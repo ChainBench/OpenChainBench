@@ -218,6 +218,10 @@ function niceStep(max: number): number {
 
 function formatTick(v: number, unit: string) {
   if (v === 0) return "0";
+  if (unit === "bps") {
+    if (v >= 1000) return `${Math.round(v / 100)}%`;
+    return `${Math.round(v)}bp`;
+  }
   if (unit === "s") {
     const s = v / 1000;
     if (s >= 60) return `${(s / 60).toFixed(0)}m`;

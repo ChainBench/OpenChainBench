@@ -87,8 +87,8 @@ export function RegionGrid({ benchmark }: Props) {
                 const isLeader = regionLeader.get(region.key) === r.slug;
                 return (
                   <td key={region.key} className="py-3 px-2">
-                    <div className="flex items-center gap-2">
-                      <div className="relative h-3 flex-1 max-w-[12rem] bg-paper-deep">
+                    <div className="grid grid-cols-[1fr_5rem] items-center gap-3">
+                      <div className="relative h-3 bg-paper-deep">
                         <span
                           className={cn(
                             "absolute inset-y-0 left-0",
@@ -104,7 +104,7 @@ export function RegionGrid({ benchmark }: Props) {
                       </div>
                       <span
                         className={cn(
-                          "font-mono text-[12px] tabular shrink-0",
+                          "font-mono text-[12px] tabular text-right whitespace-nowrap",
                           isLeader ? "font-semibold text-ink" : "text-ink-soft"
                         )}
                       >
