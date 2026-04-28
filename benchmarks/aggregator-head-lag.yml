@@ -1,0 +1,82 @@
+# OpenChainBench — Bench № 002
+
+slug: aggregator-head-lag
+number: "002"
+title: Aggregator Head Lag — How Fresh Is the Data?
+subtitle: Time between an on-chain event and its appearance on each aggregator's WebSocket — measured against archive nodes tracking the canonical tip.
+category: Data
+status: live
+metric: Head lag
+unit: s
+
+abstract: |
+  We measure the gap between a transaction settling on chain and the same
+  transaction appearing on each aggregator's data feed. The harness watches
+  reference pools across Base, BNB Chain and Solana from three regions
+  (us-east, eu-west, sgp), records every new on-chain event with millisecond
+  timestamps, and observes when each aggregator's WebSocket reflects the
+  same event. Lower is better.
+
+methodology:
+  - "Aggregators measured: Mobula, Codex, GeckoTerminal."
+  - "Chains: Base, BNB Chain, Solana."
+  - "Regions: us-east, eu-west, sgp. Cross-region median reported in the headline."
+  - "Reference: archive nodes per chain, validated against block hashes."
+  - "Metric: gauge `head_lag_seconds`, sampled every 15 seconds. Aggregated over the 24-hour window using `quantile_over_time`."
+  - "Cardinality: 3 aggregators × 3 chains × 3 regions = 27 active series."
+
+findings: []
+
+source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/aggregator-head-lag
+
+prometheus:
+  url: https://prometheus-production-0859.up.railway.app
+  window: 24h
+
+# Real metric exposed by the head-lag harness:
+#   head_lag_seconds{aggregator, chain, region}    — gauge in seconds
+#
+# Label is `aggregator=`, not `provider=`. Values are in seconds; queries
+# multiply by 1000 so the loader stores milliseconds (consistent across the
+# repo). The `unit: s` field tells the page to display in seconds.
+
+providers:
+  - slug: mobula
+    name: Mobula
+    tag: WebSocket feed
+    queries:
+      p50: quantile_over_time(0.50, head_lag_seconds{aggregator="mobula"}[24h]) * 1000
+      p90: quantile_over_time(0.90, head_lag_seconds{aggregator="mobula"}[24h]) * 1000
+      p99: quantile_over_time(0.99, head_lag_seconds{aggregator="mobula"}[24h]) * 1000
+      mean: avg_over_time(head_lag_seconds{aggregator="mobula"}[24h]) * 1000
+      sample_size: count_over_time(head_lag_seconds{aggregator="mobula"}[24h])
+      series: avg_over_time(head_lag_seconds{aggregator="mobula"}[1h]) * 1000
+      regions:
+        - region: us-east
+          p50: quantile_over_time(0.50, head_lag_seconds{aggregator="mobula", region="us-east"}[24h]) * 1000
+        - region: eu-west
+          p50: quantile_over_time(0.50, head_lag_seconds{aggregator="mobula", region="eu-west"}[24h]) * 1000
+        - region: ap-southeast
+          p50: quantile_over_time(0.50, head_lag_seconds{aggregator="mobula", region="sgp"}[24h]) * 1000
+
+  - slug: codex
+    name: Codex
+    tag: GraphQL feed
+    queries:
+      p50: quantile_over_time(0.50, head_lag_seconds{aggregator="codex"}[24h]) * 1000
+      p90: quantile_over_time(0.90, head_lag_seconds{aggregator="codex"}[24h]) * 1000
+      p99: quantile_over_time(0.99, head_lag_seconds{aggregator="codex"}[24h]) * 1000
+      mean: avg_over_time(head_lag_seconds{aggregator="codex"}[24h]) * 1000
+      sample_size: count_over_time(head_lag_seconds{aggregator="codex"}[24h])
+      series: avg_over_time(head_lag_seconds{aggregator="codex"}[1h]) * 1000
+
+  - slug: geckoterminal
+    name: GeckoTerminal
+    tag: REST feed
+    queries:
+      p50: quantile_over_time(0.50, head_lag_seconds{aggregator="geckoterminal"}[24h]) * 1000
+      p90: quantile_over_time(0.90, head_lag_seconds{aggregator="geckoterminal"}[24h]) * 1000
+      p99: quantile_over_time(0.99, head_lag_seconds{aggregator="geckoterminal"}[24h]) * 1000
+      mean: avg_over_time(head_lag_seconds{aggregator="geckoterminal"}[24h]) * 1000
+      sample_size: count_over_time(head_lag_seconds{aggregator="geckoterminal"}[24h])
+      series: avg_over_time(head_lag_seconds{aggregator="geckoterminal"}[1h]) * 1000

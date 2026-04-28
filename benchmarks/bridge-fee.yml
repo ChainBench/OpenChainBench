@@ -1,7 +1,7 @@
-# OpenChainBench — Bench № 003
+# OpenChainBench — Bench № 004
 
 slug: bridge-fee
-number: "003"
+number: "004"
 title: Cross-Chain Bridge — Fee
 subtitle: Bridge fees as a percentage of trade size, normalised to basis points so providers are comparable across notional.
 category: Bridges

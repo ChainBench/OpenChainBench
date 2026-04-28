@@ -13,20 +13,19 @@ unit: ms
 
 abstract: |
   We benchmark how long the major DEX-aggregator APIs take to return a usable
-  swap quote for a fixed set of token pairs across Ethereum, Polygon, BNB
-  Chain, Arbitrum and Base. The harness issues identical requests in parallel
-  from three regions (us-east, eu-west, ap-southeast) and records p50, p90 and
-  p99 wall-clock latency along with the success rate. Caches are warmed;
-  failures and 4xx responses are excluded from latency aggregates and counted
-  toward success rate.
+  swap quote across multiple chains. The harness issues identical requests
+  from three regions (us-east, eu-west, sgp) and records p50, p90 and p99
+  wall-clock latency along with the success rate. Failures and non-2xx
+  responses are excluded from latency aggregates and counted toward success
+  rate.
 
 methodology:
-  - "Token-pair set: 40 pairs spanning blue-chips, mid-caps and stable→stable."
-  - "Trade size: $1,000 notional per request, normalised against the pair's reference price."
-  - "Regions: us-east-1, eu-west-1, ap-southeast-1. Reported figures are the cross-region median."
-  - "Cadence: 1 request / pair / region every 30 seconds for 24 hours."
-  - "Timeout: 5,000 ms. Responses past the timeout are counted as failures."
-  - "Versioning: API endpoints pinned to public docs as of run start; full request/response transcripts stored."
+  - "Chains: Base, BNB Chain, Solana."
+  - "Regions: us-east, eu-west, sgp. Reported figures are the cross-region median; per-region figures appear in Fig. 3."
+  - "Latency metric: histogram `quote_api_latency_milliseconds_bucket` (counters of requests by latency bucket)."
+  - "Success rate: share of `quote_api_status_codes_total` responses with status `2xx` over the 24-hour window."
+  - "Failures (non-2xx, timeout, malformed) are excluded from latency aggregates and counted toward success rate."
+  - "Cardinality: ~33 active series across providers × chains × regions."
 
 findings: []
 
@@ -36,87 +35,106 @@ prometheus:
   url: https://prometheus-production-0859.up.railway.app
   window: 24h
 
-# Conventions for the aggregator-quote harness:
-#   ocb_quote_duration_ms_bucket{provider, region, le}
-#   ocb_quote_total{provider, region, success="true|false"}
+# Real metrics exposed by the aggregator-quote harness:
+#   quote_api_latency_milliseconds_{bucket,sum,count}{provider, chain, region}
+#   quote_api_status_codes_total{provider, chain, region, status_code}
+#   quote_api_errors_total{provider, chain, region, error_type}
+#
+# Label is `provider=`. Label values currently scraped:
+#   provider: codex | jupiter | kyberswap | lifi | mobula | openocean | paraswap
+#   region:   us-east | eu-west | sgp
+#
+# Regions in the YAML use canonical names (`ap-southeast` for the sgp probe);
+# the actual Prometheus label value is `sgp` so the queries pin that.
 
 providers:
   - slug: mobula
     name: Mobula
     tag: Multi-DEX aggregator
-    secondary: { label: "Chains covered", value: "44" }
     queries:
-      p50: histogram_quantile(0.5,  sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="mobula"}[24h])))
-      p90: histogram_quantile(0.9,  sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="mobula"}[24h])))
-      p99: histogram_quantile(0.99, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="mobula"}[24h])))
-      mean: sum(rate(ocb_quote_duration_ms_sum{provider="mobula"}[24h])) / sum(rate(ocb_quote_duration_ms_count{provider="mobula"}[24h]))
-      success: sum(rate(ocb_quote_total{provider="mobula", success="true"}[24h])) / sum(rate(ocb_quote_total{provider="mobula"}[24h]))
-      sample_size: sum(increase(ocb_quote_total{provider="mobula"}[24h]))
-      series: histogram_quantile(0.5, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="mobula"}[1h])))
+      p50: histogram_quantile(0.50, sum by (le) (rate(quote_api_latency_milliseconds_bucket{provider="mobula"}[24h])))
+      p90: histogram_quantile(0.90, sum by (le) (rate(quote_api_latency_milliseconds_bucket{provider="mobula"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(quote_api_latency_milliseconds_bucket{provider="mobula"}[24h])))
+      mean: sum(rate(quote_api_latency_milliseconds_sum{provider="mobula"}[24h])) / sum(rate(quote_api_latency_milliseconds_count{provider="mobula"}[24h]))
+      success: sum(rate(quote_api_status_codes_total{provider="mobula", status_code=~"2.."}[24h])) / sum(rate(quote_api_status_codes_total{provider="mobula"}[24h]))
+      sample_size: sum(increase(quote_api_status_codes_total{provider="mobula"}[24h]))
+      series: histogram_quantile(0.50, sum by (le) (rate(quote_api_latency_milliseconds_bucket{provider="mobula"}[1h])))
       regions:
         - region: us-east
-          p50: histogram_quantile(0.5, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="mobula", region="us-east"}[24h])))
+          p50: histogram_quantile(0.50, sum by (le) (rate(quote_api_latency_milliseconds_bucket{provider="mobula", region="us-east"}[24h])))
         - region: eu-west
-          p50: histogram_quantile(0.5, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="mobula", region="eu-west"}[24h])))
+          p50: histogram_quantile(0.50, sum by (le) (rate(quote_api_latency_milliseconds_bucket{provider="mobula", region="eu-west"}[24h])))
         - region: ap-southeast
-          p50: histogram_quantile(0.5, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="mobula", region="ap-southeast"}[24h])))
+          p50: histogram_quantile(0.50, sum by (le) (rate(quote_api_latency_milliseconds_bucket{provider="mobula", region="sgp"}[24h])))
 
-  - slug: 1inch
-    name: 1inch
-    tag: Pathfinder v6
-    secondary: { label: "Chains covered", value: "12" }
+  - slug: jupiter
+    name: Jupiter
+    tag: Solana
     queries:
-      p50: histogram_quantile(0.5,  sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="1inch"}[24h])))
-      p90: histogram_quantile(0.9,  sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="1inch"}[24h])))
-      p99: histogram_quantile(0.99, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="1inch"}[24h])))
-      success: sum(rate(ocb_quote_total{provider="1inch", success="true"}[24h])) / sum(rate(ocb_quote_total{provider="1inch"}[24h]))
-      sample_size: sum(increase(ocb_quote_total{provider="1inch"}[24h]))
-      series: histogram_quantile(0.5, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="1inch"}[1h])))
-
-  - slug: 0x
-    name: 0x
-    tag: Swap API v2
-    secondary: { label: "Chains covered", value: "9" }
-    queries:
-      p50: histogram_quantile(0.5,  sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="0x"}[24h])))
-      p90: histogram_quantile(0.9,  sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="0x"}[24h])))
-      p99: histogram_quantile(0.99, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="0x"}[24h])))
-      success: sum(rate(ocb_quote_total{provider="0x", success="true"}[24h])) / sum(rate(ocb_quote_total{provider="0x"}[24h]))
-      sample_size: sum(increase(ocb_quote_total{provider="0x"}[24h]))
-      series: histogram_quantile(0.5, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="0x"}[1h])))
-
-  - slug: paraswap
-    name: ParaSwap
-    tag: API v6.2
-    secondary: { label: "Chains covered", value: "11" }
-    queries:
-      p50: histogram_quantile(0.5,  sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="paraswap"}[24h])))
-      p90: histogram_quantile(0.9,  sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="paraswap"}[24h])))
-      p99: histogram_quantile(0.99, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="paraswap"}[24h])))
-      success: sum(rate(ocb_quote_total{provider="paraswap", success="true"}[24h])) / sum(rate(ocb_quote_total{provider="paraswap"}[24h]))
-      sample_size: sum(increase(ocb_quote_total{provider="paraswap"}[24h]))
-      series: histogram_quantile(0.5, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="paraswap"}[1h])))
+      p50: histogram_quantile(0.50, sum by (le) (rate(quote_api_latency_milliseconds_bucket{provider="jupiter"}[24h])))
+      p90: histogram_quantile(0.90, sum by (le) (rate(quote_api_latency_milliseconds_bucket{provider="jupiter"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(quote_api_latency_milliseconds_bucket{provider="jupiter"}[24h])))
+      mean: sum(rate(quote_api_latency_milliseconds_sum{provider="jupiter"}[24h])) / sum(rate(quote_api_latency_milliseconds_count{provider="jupiter"}[24h]))
+      success: sum(rate(quote_api_status_codes_total{provider="jupiter", status_code=~"2.."}[24h])) / sum(rate(quote_api_status_codes_total{provider="jupiter"}[24h]))
+      sample_size: sum(increase(quote_api_status_codes_total{provider="jupiter"}[24h]))
+      series: histogram_quantile(0.50, sum by (le) (rate(quote_api_latency_milliseconds_bucket{provider="jupiter"}[1h])))
 
   - slug: kyberswap
     name: KyberSwap
     tag: Aggregator API
-    secondary: { label: "Chains covered", value: "16" }
     queries:
-      p50: histogram_quantile(0.5,  sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="kyberswap"}[24h])))
-      p90: histogram_quantile(0.9,  sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="kyberswap"}[24h])))
-      p99: histogram_quantile(0.99, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="kyberswap"}[24h])))
-      success: sum(rate(ocb_quote_total{provider="kyberswap", success="true"}[24h])) / sum(rate(ocb_quote_total{provider="kyberswap"}[24h]))
-      sample_size: sum(increase(ocb_quote_total{provider="kyberswap"}[24h]))
-      series: histogram_quantile(0.5, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="kyberswap"}[1h])))
+      p50: histogram_quantile(0.50, sum by (le) (rate(quote_api_latency_milliseconds_bucket{provider="kyberswap"}[24h])))
+      p90: histogram_quantile(0.90, sum by (le) (rate(quote_api_latency_milliseconds_bucket{provider="kyberswap"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(quote_api_latency_milliseconds_bucket{provider="kyberswap"}[24h])))
+      mean: sum(rate(quote_api_latency_milliseconds_sum{provider="kyberswap"}[24h])) / sum(rate(quote_api_latency_milliseconds_count{provider="kyberswap"}[24h]))
+      success: sum(rate(quote_api_status_codes_total{provider="kyberswap", status_code=~"2.."}[24h])) / sum(rate(quote_api_status_codes_total{provider="kyberswap"}[24h]))
+      sample_size: sum(increase(quote_api_status_codes_total{provider="kyberswap"}[24h]))
+      series: histogram_quantile(0.50, sum by (le) (rate(quote_api_latency_milliseconds_bucket{provider="kyberswap"}[1h])))
 
-  - slug: jupiter
-    name: Jupiter
-    tag: Solana only
-    secondary: { label: "Chains covered", value: "1" }
+  - slug: paraswap
+    name: ParaSwap
+    tag: Aggregator
     queries:
-      p50: histogram_quantile(0.5,  sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="jupiter"}[24h])))
-      p90: histogram_quantile(0.9,  sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="jupiter"}[24h])))
-      p99: histogram_quantile(0.99, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="jupiter"}[24h])))
-      success: sum(rate(ocb_quote_total{provider="jupiter", success="true"}[24h])) / sum(rate(ocb_quote_total{provider="jupiter"}[24h]))
-      sample_size: sum(increase(ocb_quote_total{provider="jupiter"}[24h]))
-      series: histogram_quantile(0.5, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="jupiter"}[1h])))
+      p50: histogram_quantile(0.50, sum by (le) (rate(quote_api_latency_milliseconds_bucket{provider="paraswap"}[24h])))
+      p90: histogram_quantile(0.90, sum by (le) (rate(quote_api_latency_milliseconds_bucket{provider="paraswap"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(quote_api_latency_milliseconds_bucket{provider="paraswap"}[24h])))
+      mean: sum(rate(quote_api_latency_milliseconds_sum{provider="paraswap"}[24h])) / sum(rate(quote_api_latency_milliseconds_count{provider="paraswap"}[24h]))
+      success: sum(rate(quote_api_status_codes_total{provider="paraswap", status_code=~"2.."}[24h])) / sum(rate(quote_api_status_codes_total{provider="paraswap"}[24h]))
+      sample_size: sum(increase(quote_api_status_codes_total{provider="paraswap"}[24h]))
+      series: histogram_quantile(0.50, sum by (le) (rate(quote_api_latency_milliseconds_bucket{provider="paraswap"}[1h])))
+
+  - slug: openocean
+    name: OpenOcean
+    tag: Aggregator
+    queries:
+      p50: histogram_quantile(0.50, sum by (le) (rate(quote_api_latency_milliseconds_bucket{provider="openocean"}[24h])))
+      p90: histogram_quantile(0.90, sum by (le) (rate(quote_api_latency_milliseconds_bucket{provider="openocean"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(quote_api_latency_milliseconds_bucket{provider="openocean"}[24h])))
+      mean: sum(rate(quote_api_latency_milliseconds_sum{provider="openocean"}[24h])) / sum(rate(quote_api_latency_milliseconds_count{provider="openocean"}[24h]))
+      success: sum(rate(quote_api_status_codes_total{provider="openocean", status_code=~"2.."}[24h])) / sum(rate(quote_api_status_codes_total{provider="openocean"}[24h]))
+      sample_size: sum(increase(quote_api_status_codes_total{provider="openocean"}[24h]))
+      series: histogram_quantile(0.50, sum by (le) (rate(quote_api_latency_milliseconds_bucket{provider="openocean"}[1h])))
+
+  - slug: lifi
+    name: LiFi
+    tag: Aggregator
+    queries:
+      p50: histogram_quantile(0.50, sum by (le) (rate(quote_api_latency_milliseconds_bucket{provider="lifi"}[24h])))
+      p90: histogram_quantile(0.90, sum by (le) (rate(quote_api_latency_milliseconds_bucket{provider="lifi"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(quote_api_latency_milliseconds_bucket{provider="lifi"}[24h])))
+      mean: sum(rate(quote_api_latency_milliseconds_sum{provider="lifi"}[24h])) / sum(rate(quote_api_latency_milliseconds_count{provider="lifi"}[24h]))
+      success: sum(rate(quote_api_status_codes_total{provider="lifi", status_code=~"2.."}[24h])) / sum(rate(quote_api_status_codes_total{provider="lifi"}[24h]))
+      sample_size: sum(increase(quote_api_status_codes_total{provider="lifi"}[24h]))
+      series: histogram_quantile(0.50, sum by (le) (rate(quote_api_latency_milliseconds_bucket{provider="lifi"}[1h])))
+
+  - slug: codex
+    name: Codex
+    tag: Aggregator
+    queries:
+      p50: histogram_quantile(0.50, sum by (le) (rate(quote_api_latency_milliseconds_bucket{provider="codex"}[24h])))
+      p90: histogram_quantile(0.90, sum by (le) (rate(quote_api_latency_milliseconds_bucket{provider="codex"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(quote_api_latency_milliseconds_bucket{provider="codex"}[24h])))
+      mean: sum(rate(quote_api_latency_milliseconds_sum{provider="codex"}[24h])) / sum(rate(quote_api_latency_milliseconds_count{provider="codex"}[24h]))
+      success: sum(rate(quote_api_status_codes_total{provider="codex", status_code=~"2.."}[24h])) / sum(rate(quote_api_status_codes_total{provider="codex"}[24h]))
+      sample_size: sum(increase(quote_api_status_codes_total{provider="codex"}[24h]))
+      series: histogram_quantile(0.50, sum by (le) (rate(quote_api_latency_milliseconds_bucket{provider="codex"}[1h])))
