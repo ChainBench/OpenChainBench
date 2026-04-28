@@ -1,17 +1,16 @@
 type Props = {
   label: string;
+  /** Kept optional for backwards compat — currently ignored. */
   number?: string;
 };
 
-export function SectionRule({ label, number }: Props) {
+export function SectionRule({ label }: Props) {
   return (
-    <div className="my-12 flex items-center gap-4">
-      <span className="h-px flex-1 bg-ink" />
-      <span className="font-sans text-[11px] uppercase tracking-[0.24em] text-ink">
-        § {number ? `${number} · ` : ""}
+    <div className="mt-14 mb-7">
+      <h2 className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted">
         {label}
-      </span>
-      <span className="h-px flex-1 bg-ink" />
+      </h2>
+      <div className="mt-2 h-px bg-rule" />
     </div>
   );
 }

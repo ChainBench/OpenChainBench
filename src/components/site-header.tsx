@@ -1,29 +1,30 @@
 import Link from "next/link";
 import { getBenchmarks } from "@/data/benchmarks";
 
+const NAV = [
+  { href: "/", label: "Overview" },
+  { href: "/benchmarks", label: "Benchmarks" },
+  { href: "/methodology", label: "Methodology" },
+  { href: "/contribute", label: "Contribute" },
+];
+
 export async function SiteHeader() {
   const benchmarks = await getBenchmarks();
   const liveCount = benchmarks.filter((b) => b.status === "live").length;
   const totalSamples = benchmarks.reduce((s, b) => s + b.sampleSize, 0);
-  const dateLong = new Date().toLocaleDateString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
 
   return (
-    <header className="border-b border-rule">
+    <header className="border-b border-rule bg-bg/85 backdrop-blur-md sticky top-0 z-40">
       {/* Live ticker */}
-      <div className="border-b border-rule bg-paper-deep/70">
-        <div className="mx-auto max-w-7xl px-6 py-1.5 flex flex-wrap items-center justify-between gap-x-6 gap-y-1 font-mono text-[10px] tabular text-ink-soft">
+      <div className="border-b border-rule bg-bg-soft/60">
+        <div className="mx-auto max-w-7xl px-6 py-1.5 flex flex-wrap items-center justify-between gap-x-6 gap-y-1 font-mono text-[10px] tabular text-ink-muted">
           <span className="flex items-center gap-2">
             <span
               className={`inline-block h-1.5 w-1.5 rounded-full ${
-                liveCount > 0 ? "bg-flag-good animate-pulse" : "bg-ink-faint"
+                liveCount > 0 ? "bg-good animate-pulse" : "bg-ink-faint"
               }`}
             />
-            <span className="uppercase tracking-[0.2em]">
+            <span className="uppercase tracking-[0.18em]">
               {liveCount > 0
                 ? `${liveCount} of ${benchmarks.length} live`
                 : `${benchmarks.length} benchmark${benchmarks.length === 1 ? "" : "s"} · awaiting first runs`}
@@ -42,63 +43,47 @@ export async function SiteHeader() {
         </div>
       </div>
 
-      {/* Masthead */}
-      <div className="mx-auto max-w-7xl px-6 pt-10 pb-5">
-        <div className="flex items-baseline justify-between font-sans text-[11px] uppercase tracking-[0.22em] text-ink-soft">
-          <span>Vol. I · Issue 001</span>
-          <span className="hidden sm:inline italic font-serif normal-case tracking-normal text-ink-soft">
-            {dateLong}
-          </span>
-          <span>Open · Reproducible · Community-run</span>
-        </div>
-
-        <Link href="/" className="mt-4 block">
-          <h1 className="font-serif text-5xl sm:text-7xl md:text-[5.5rem] font-bold tracking-tight leading-[0.92] text-ink">
+      {/* Masthead — wordmark + nav + CTA */}
+      <div className="mx-auto max-w-7xl px-6 h-16 flex items-center justify-between gap-6">
+        <Link href="/" className="flex items-center gap-3 group">
+          <span className="display text-[1.55rem] sm:text-[1.7rem] text-ink leading-none">
             OpenChainBench
-          </h1>
+          </span>
+          <span className="hidden lg:inline editorial text-sm text-ink-muted leading-none">
+            — a field journal of crypto-infra performance
+          </span>
         </Link>
 
-        <div className="mt-3 flex flex-wrap items-baseline justify-between gap-x-8 gap-y-2">
-          <p className="font-serif italic text-ink-soft text-base sm:text-lg max-w-2xl">
-            A field journal of crypto-infrastructure performance —
-            measured in the open.
-          </p>
-          <p className="font-mono text-[10px] tabular uppercase tracking-[0.2em] text-ink-muted">
-            openchainbench.xyz
-          </p>
+        <nav className="hidden md:block">
+          <ul className="flex items-center gap-1">
+            {NAV.map((item) => (
+              <li key={item.href}>
+                <Link
+                  href={item.href}
+                  className="rounded-md px-3 py-1.5 text-sm font-medium text-ink-soft hover:text-ink hover:bg-bg-soft transition-colors"
+                >
+                  {item.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+
+        <div className="flex items-center gap-1">
+          <a
+            href="https://github.com/OpenChainBench/OpenChainBench"
+            className="hidden sm:inline-flex items-center px-3 py-1.5 text-sm font-medium text-ink-soft hover:text-ink"
+          >
+            GitHub
+          </a>
+          <Link
+            href="/benchmarks"
+            className="inline-flex items-center gap-1.5 rounded-md bg-ink px-3.5 py-2 text-sm font-medium text-bg hover:bg-ink-soft transition-colors"
+          >
+            Read benchmarks
+          </Link>
         </div>
-
-        <div className="mt-5 rule-double" />
       </div>
-
-      {/* Nav */}
-      <nav className="mx-auto max-w-7xl px-6 pb-3">
-        <ul className="flex flex-wrap items-center gap-x-7 gap-y-2 font-sans text-[12px] uppercase tracking-[0.18em]">
-          <NavLink href="/">Front Page</NavLink>
-          <NavLink href="/benchmarks">Benchmarks</NavLink>
-          <NavLink href="/methodology">Methodology</NavLink>
-          <NavLink href="/contribute">Contribute</NavLink>
-          <NavLink href="/about">About</NavLink>
-          <li className="ml-auto flex items-center gap-5 text-ink-soft normal-case tracking-normal">
-            <a className="lnk" href="https://github.com/OpenChainBench/OpenChainBench">
-              GitHub ↗
-            </a>
-            <a className="lnk" href="https://twitter.com/openchainbench">
-              Twitter ↗
-            </a>
-          </li>
-        </ul>
-      </nav>
     </header>
-  );
-}
-
-function NavLink({ href, children }: { href: string; children: React.ReactNode }) {
-  return (
-    <li>
-      <Link className="text-ink hover:text-accent transition-colors" href={href}>
-        {children}
-      </Link>
-    </li>
   );
 }
