@@ -81,7 +81,7 @@ export async function SiteHeader() {
           <NavLink href="/contribute">Contribute</NavLink>
           <NavLink href="/about">About</NavLink>
           <li className="ml-auto flex items-center gap-5 text-ink-soft normal-case tracking-normal">
-            <a className="lnk" href="https://github.com/Flotapponnier/OpenChainBench">
+            <a className="lnk" href="https://github.com/OpenChainBench/OpenChainBench">
               GitHub ↗
             </a>
             <a className="lnk" href="https://twitter.com/openchainbench">

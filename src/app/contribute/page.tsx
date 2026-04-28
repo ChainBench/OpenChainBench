@@ -63,7 +63,7 @@ methodology:
 
 findings: []  # filled in once you have data and want to publish a take
 
-source: https://github.com/Flotapponnier/OpenChainBench/tree/main/harnesses/wallet-portfolio
+source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/wallet-portfolio
 
 prometheus:
   url: https://prom.example.com
@@ -183,7 +183,7 @@ pnpm dev                                # render the page locally`}
         <li>
           <a
             className="lnk"
-            href="https://github.com/Flotapponnier/OpenChainBench/blob/main/benchmarks/README.md"
+            href="https://github.com/OpenChainBench/OpenChainBench/blob/main/benchmarks/README.md"
           >
             benchmarks/README.md &rarr; spec field reference
           </a>
@@ -191,7 +191,7 @@ pnpm dev                                # render the page locally`}
         <li>
           <a
             className="lnk"
-            href="https://github.com/Flotapponnier/OpenChainBench/blob/main/harnesses/README.md"
+            href="https://github.com/OpenChainBench/OpenChainBench/blob/main/harnesses/README.md"
           >
             harnesses/README.md &rarr; harness contract
           </a>
@@ -199,7 +199,7 @@ pnpm dev                                # render the page locally`}
         <li>
           <a
             className="lnk"
-            href="https://github.com/Flotapponnier/OpenChainBench/blob/main/CONTRIBUTING.md"
+            href="https://github.com/OpenChainBench/OpenChainBench/blob/main/CONTRIBUTING.md"
           >
             CONTRIBUTING.md &rarr; full submission flow
           </a>
@@ -211,13 +211,13 @@ pnpm dev                                # render the page locally`}
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2 font-sans text-sm">
           <a
             className="inline-flex items-center gap-2 border-b-2 border-ink pb-0.5 hover:text-accent"
-            href="https://github.com/Flotapponnier/OpenChainBench/issues/new?template=new-benchmark.md"
+            href="https://github.com/OpenChainBench/OpenChainBench/issues/new?template=new-benchmark.md"
           >
             Open a benchmark issue &rarr;
           </a>
           <a
             className="lnk text-ink-soft"
-            href="https://github.com/Flotapponnier/OpenChainBench"
+            href="https://github.com/OpenChainBench/OpenChainBench"
           >
             GitHub repository ↗
           </a>

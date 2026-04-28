@@ -35,7 +35,7 @@ export default function PressPage() {
       <dl className="grid gap-3 sm:grid-cols-2 font-serif">
         <Fact term="Founded" value="2026" />
         <Fact term="Categories" value="Aggregators · Bridges · Data · RPCs" />
-        <Fact term="Source code" value="github.com/Flotapponnier/OpenChainBench" />
+        <Fact term="Source code" value="github.com/OpenChainBench/OpenChainBench" />
         <Fact term="License" value="MIT (code) · CC-BY-4.0 (reports)" />
       </dl>
 
@@ -51,7 +51,7 @@ export default function PressPage() {
       <p className="font-serif text-[1.05rem] leading-[1.65]">
         For interviews, custom benchmark requests or pre-publication
         embargoes — open an issue or a discussion on{" "}
-        <a className="lnk" href="https://github.com/Flotapponnier/OpenChainBench">
+        <a className="lnk" href="https://github.com/OpenChainBench/OpenChainBench">
           GitHub
         </a>
         .

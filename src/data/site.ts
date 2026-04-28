@@ -2,7 +2,7 @@ export const SITE = {
   name: "OpenChainBench",
   url: "https://openchainbench.xyz",
   twitter: "@openchainbench",
-  github: "https://github.com/Flotapponnier/OpenChainBench",
+  github: "https://github.com/OpenChainBench/OpenChainBench",
   description:
     "Open, reproducible benchmarks for crypto infrastructure: aggregators, bridges, RPCs, price feeds.",
 } as const;

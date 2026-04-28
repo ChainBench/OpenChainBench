@@ -3,104 +3,89 @@
 slug: bridge-fee
 number: "003"
 title: Cross-Chain Bridge — Fee
-subtitle: Total cost charged by each bridge for the same transfer, in basis points of trade size.
+subtitle: Bridge fees as a percentage of trade size, normalised to basis points so providers are comparable across notional.
 category: Bridges
 status: live
-metric: Total fee
+metric: Bridge fee
 unit: bps
 
 abstract: |
-  We measure the total cost — protocol fee + relayer fee + destination gas —
-  charged by each bridge for the same cross-chain transfer. The harness
-  requests identical quotes on three popular routes ($25 USDC notional),
-  records the input minus output spread, and reports it in basis points
-  (1 bps = 0.01% of trade size) so providers are comparable across notional
-  and chains. Lower is better.
+  We measure the fee each bridge charges as a fraction of trade size,
+  reported in basis points (1 bps = 0.01% of notional). The harness extracts
+  the fee from each quote (across $5, $50, $300 notional and four routes
+  spanning Solana, Base and Arbitrum) and the report aggregates over 24
+  hours. Slippage and destination gas are tracked separately on the same
+  series; they are not included in the fee figures here. Lower is better.
 
 methodology:
-  - "Routes: ETH → ARB, ARB → BASE, POL → OP. Token: USDC."
-  - "Trade size: 25 USDC notional per quote."
-  - "Fee: (input - output) / input × 10,000, in basis points."
-  - "Cadence: 1 quote / route / provider every 60 seconds for 24 hours."
-  - "Failed quotes excluded from fee aggregates and counted toward success rate."
-  - "Quotes only — settlement and slippage not measured here (see Bench № 002)."
+  - "Routes: USDC pairs spanning Solana, Base and Arbitrum."
+  - "Notional sizes: $5, $50, $300 per quote."
+  - "Fee: `bridge_fees_percent` × 100, in basis points. Excludes slippage and gas."
+  - "Cadence: full sweep every 5 minutes for 24 hours."
+  - "Region: eu-west (single point — multi-region requires running additional monitor instances)."
+  - "Failures (quote_failed, unsupported route) excluded from fee aggregates and counted toward success rate."
 
 findings: []
 
-source: https://github.com/Flotapponnier/OpenChainBench/tree/main/harnesses/bridge-fee
+source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/bridge-fee
 
 prometheus:
   url: https://prometheus-production-9ffe.up.railway.app
   window: 24h
 
-# Conventions for the bridge-fee harness:
-#   ocb_bridge_fee_bps_bucket{provider, route, le}
-#   ocb_bridge_fee_total{provider, route, success="true|false"}
+# Real metrics exposed by the bridge-monitor harness:
+#   bridge_fees_percent{bridge, from_chain, to_chain, from_token, to_token, amount_usd, region}
+#   → gauge in percent (0.796 = 0.796% = 79.6 bps). Multiply by 100 to convert.
+#
+# Other fee-related gauges available for follow-up benches:
+#   bridge_cost_percent  (fees + slippage + gas)
+#   bridge_gas_usd, bridge_slippage_usd, bridge_fees_usd, bridge_fix_fee_usd
 
 providers:
-  - slug: across
-    name: Across
-    tag: Optimistic relay
+  - slug: mobula
+    name: Mobula
+    tag: Aggregator + intent layer
     queries:
-      p50: histogram_quantile(0.5,  sum by (le) (rate(ocb_bridge_fee_bps_bucket{provider="across"}[24h])))
-      p90: histogram_quantile(0.9,  sum by (le) (rate(ocb_bridge_fee_bps_bucket{provider="across"}[24h])))
-      p99: histogram_quantile(0.99, sum by (le) (rate(ocb_bridge_fee_bps_bucket{provider="across"}[24h])))
-      mean: sum(rate(ocb_bridge_fee_bps_sum{provider="across"}[24h])) / sum(rate(ocb_bridge_fee_bps_count{provider="across"}[24h]))
-      success: sum(rate(ocb_bridge_fee_total{provider="across", success="true"}[24h])) / sum(rate(ocb_bridge_fee_total{provider="across"}[24h]))
-      sample_size: sum(increase(ocb_bridge_fee_total{provider="across"}[24h]))
-      series: histogram_quantile(0.5, sum by (le) (rate(ocb_bridge_fee_bps_bucket{provider="across"}[1h])))
+      p50: quantile_over_time(0.50, bridge_fees_percent{bridge="mobula"}[24h]) * 100
+      p90: quantile_over_time(0.90, bridge_fees_percent{bridge="mobula"}[24h]) * 100
+      p99: quantile_over_time(0.99, bridge_fees_percent{bridge="mobula"}[24h]) * 100
+      mean: avg_over_time(bridge_fees_percent{bridge="mobula"}[24h]) * 100
+      success: avg_over_time(bridge_quote_success{bridge="mobula"}[24h])
+      sample_size: count_over_time(bridge_fees_percent{bridge="mobula"}[24h])
+      series: avg_over_time(bridge_fees_percent{bridge="mobula"}[1h]) * 100
+
+  - slug: relay
+    name: Relay
+    tag: Cross-chain relay
+    queries:
+      p50: quantile_over_time(0.50, bridge_fees_percent{bridge="relay"}[24h]) * 100
+      p90: quantile_over_time(0.90, bridge_fees_percent{bridge="relay"}[24h]) * 100
+      p99: quantile_over_time(0.99, bridge_fees_percent{bridge="relay"}[24h]) * 100
+      mean: avg_over_time(bridge_fees_percent{bridge="relay"}[24h]) * 100
+      success: avg_over_time(bridge_quote_success{bridge="relay"}[24h])
+      sample_size: count_over_time(bridge_fees_percent{bridge="relay"}[24h])
+      series: avg_over_time(bridge_fees_percent{bridge="relay"}[1h]) * 100
 
   - slug: lifi
     name: LiFi
     tag: Aggregator
     queries:
-      p50: histogram_quantile(0.5,  sum by (le) (rate(ocb_bridge_fee_bps_bucket{provider="lifi"}[24h])))
-      p90: histogram_quantile(0.9,  sum by (le) (rate(ocb_bridge_fee_bps_bucket{provider="lifi"}[24h])))
-      p99: histogram_quantile(0.99, sum by (le) (rate(ocb_bridge_fee_bps_bucket{provider="lifi"}[24h])))
-      success: sum(rate(ocb_bridge_fee_total{provider="lifi", success="true"}[24h])) / sum(rate(ocb_bridge_fee_total{provider="lifi"}[24h]))
-      sample_size: sum(increase(ocb_bridge_fee_total{provider="lifi"}[24h]))
-      series: histogram_quantile(0.5, sum by (le) (rate(ocb_bridge_fee_bps_bucket{provider="lifi"}[1h])))
+      p50: quantile_over_time(0.50, bridge_fees_percent{bridge="lifi"}[24h]) * 100
+      p90: quantile_over_time(0.90, bridge_fees_percent{bridge="lifi"}[24h]) * 100
+      p99: quantile_over_time(0.99, bridge_fees_percent{bridge="lifi"}[24h]) * 100
+      mean: avg_over_time(bridge_fees_percent{bridge="lifi"}[24h]) * 100
+      success: avg_over_time(bridge_quote_success{bridge="lifi"}[24h])
+      sample_size: count_over_time(bridge_fees_percent{bridge="lifi"}[24h])
+      series: avg_over_time(bridge_fees_percent{bridge="lifi"}[1h]) * 100
 
-  - slug: squid
-    name: Squid
-    tag: Axelar-based
+  - slug: debridge
+    name: Debridge
+    tag: Native-token fees
     queries:
-      p50: histogram_quantile(0.5,  sum by (le) (rate(ocb_bridge_fee_bps_bucket{provider="squid"}[24h])))
-      p90: histogram_quantile(0.9,  sum by (le) (rate(ocb_bridge_fee_bps_bucket{provider="squid"}[24h])))
-      p99: histogram_quantile(0.99, sum by (le) (rate(ocb_bridge_fee_bps_bucket{provider="squid"}[24h])))
-      success: sum(rate(ocb_bridge_fee_total{provider="squid", success="true"}[24h])) / sum(rate(ocb_bridge_fee_total{provider="squid"}[24h]))
-      sample_size: sum(increase(ocb_bridge_fee_total{provider="squid"}[24h]))
-      series: histogram_quantile(0.5, sum by (le) (rate(ocb_bridge_fee_bps_bucket{provider="squid"}[1h])))
-
-  - slug: socket
-    name: Socket
-    tag: Aggregator
-    queries:
-      p50: histogram_quantile(0.5,  sum by (le) (rate(ocb_bridge_fee_bps_bucket{provider="socket"}[24h])))
-      p90: histogram_quantile(0.9,  sum by (le) (rate(ocb_bridge_fee_bps_bucket{provider="socket"}[24h])))
-      p99: histogram_quantile(0.99, sum by (le) (rate(ocb_bridge_fee_bps_bucket{provider="socket"}[24h])))
-      success: sum(rate(ocb_bridge_fee_total{provider="socket", success="true"}[24h])) / sum(rate(ocb_bridge_fee_total{provider="socket"}[24h]))
-      sample_size: sum(increase(ocb_bridge_fee_total{provider="socket"}[24h]))
-      series: histogram_quantile(0.5, sum by (le) (rate(ocb_bridge_fee_bps_bucket{provider="socket"}[1h])))
-
-  - slug: stargate
-    name: Stargate
-    tag: LayerZero pools
-    queries:
-      p50: histogram_quantile(0.5,  sum by (le) (rate(ocb_bridge_fee_bps_bucket{provider="stargate"}[24h])))
-      p90: histogram_quantile(0.9,  sum by (le) (rate(ocb_bridge_fee_bps_bucket{provider="stargate"}[24h])))
-      p99: histogram_quantile(0.99, sum by (le) (rate(ocb_bridge_fee_bps_bucket{provider="stargate"}[24h])))
-      success: sum(rate(ocb_bridge_fee_total{provider="stargate", success="true"}[24h])) / sum(rate(ocb_bridge_fee_total{provider="stargate"}[24h]))
-      sample_size: sum(increase(ocb_bridge_fee_total{provider="stargate"}[24h]))
-      series: histogram_quantile(0.5, sum by (le) (rate(ocb_bridge_fee_bps_bucket{provider="stargate"}[1h])))
-
-  - slug: mobula-bridge
-    name: Mobula Bridge
-    tag: Aggregator + intent layer
-    queries:
-      p50: histogram_quantile(0.5,  sum by (le) (rate(ocb_bridge_fee_bps_bucket{provider="mobula-bridge"}[24h])))
-      p90: histogram_quantile(0.9,  sum by (le) (rate(ocb_bridge_fee_bps_bucket{provider="mobula-bridge"}[24h])))
-      p99: histogram_quantile(0.99, sum by (le) (rate(ocb_bridge_fee_bps_bucket{provider="mobula-bridge"}[24h])))
-      success: sum(rate(ocb_bridge_fee_total{provider="mobula-bridge", success="true"}[24h])) / sum(rate(ocb_bridge_fee_total{provider="mobula-bridge"}[24h]))
-      sample_size: sum(increase(ocb_bridge_fee_total{provider="mobula-bridge"}[24h]))
-      series: histogram_quantile(0.5, sum by (le) (rate(ocb_bridge_fee_bps_bucket{provider="mobula-bridge"}[1h])))
+      p50: quantile_over_time(0.50, bridge_fees_percent{bridge="debridge"}[24h]) * 100
+      p90: quantile_over_time(0.90, bridge_fees_percent{bridge="debridge"}[24h]) * 100
+      p99: quantile_over_time(0.99, bridge_fees_percent{bridge="debridge"}[24h]) * 100
+      mean: avg_over_time(bridge_fees_percent{bridge="debridge"}[24h]) * 100
+      success: avg_over_time(bridge_quote_success{bridge="debridge"}[24h])
+      sample_size: count_over_time(bridge_fees_percent{bridge="debridge"}[24h])
+      series: avg_over_time(bridge_fees_percent{bridge="debridge"}[1h]) * 100
