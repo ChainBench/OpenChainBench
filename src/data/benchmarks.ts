@@ -461,6 +461,145 @@ const MOCK_BENCHMARKS: Benchmark[] = [
       },
     },
   },
+
+  {
+    slug: "rpc-head-lag",
+    number: "004",
+    title: "RPC Head Lag — How Far Behind the Tip?",
+    subtitle:
+      "How quickly each RPC provider reports new blocks, measured against a private archive node tracking the canonical tip.",
+    lastRunAt: ISO("2026-04-28T07:30:00Z"),
+    status: "live",
+    sampleSize: 172_800,
+    metric: "Head lag",
+    unit: "ms",
+    category: "RPCs",
+    abstract:
+      "We measure the gap between the canonical chain tip and the head reported by each commercial RPC endpoint. The harness runs a fleet of private archive nodes (Ethereum, Base, Arbitrum, Polygon, Optimism), records every new block, then polls each RPC's `eth_blockNumber` every 250 ms and timestamps when the same block first becomes visible. Head lag is the wall-clock delta between the two. Reads that fail or return stale results past the timeout count as failures.",
+    methodology: [
+      "Chains: Ethereum, Base, Arbitrum, Polygon, Optimism. Cross-chain median is the headline.",
+      "Reference: a private archive node per chain, peered to multiple sources, validated against block hash.",
+      "Cadence: `eth_blockNumber` every 250 ms per provider per region for 24 hours.",
+      "Regions: us-east-1, eu-west-1, ap-southeast-1. Cross-region median reported.",
+      "Timeout: 2,000 ms. Stale reads past the timeout are excluded from latency aggregates and counted in success rate.",
+      "Privacy: harness wallets are public; raw block-by-block timestamps are stored for audit.",
+    ],
+    results: [
+      {
+        name: "Mobula RPC",
+        slug: "mobula-rpc",
+        tag: "Multi-chain edge",
+        ms: { p50: 78, p90: 124, p99: 218, mean: 96 },
+        successRate: 99.97,
+        secondary: { label: "Chains", value: "44" },
+        highlight: "winner",
+      },
+      {
+        name: "Alchemy",
+        slug: "alchemy",
+        tag: "Supernode",
+        ms: { p50: 124, p90: 184, p99: 312, mean: 148 },
+        successRate: 99.92,
+        secondary: { label: "Chains", value: "9" },
+      },
+      {
+        name: "QuickNode",
+        slug: "quicknode",
+        tag: "Premium",
+        ms: { p50: 142, p90: 218, p99: 388, mean: 174 },
+        successRate: 99.86,
+        secondary: { label: "Chains", value: "26" },
+      },
+      {
+        name: "Infura",
+        slug: "infura",
+        tag: "Mainnet only",
+        ms: { p50: 178, p90: 264, p99: 432, mean: 212 },
+        successRate: 99.81,
+        secondary: { label: "Chains", value: "8" },
+      },
+      {
+        name: "Ankr",
+        slug: "ankr",
+        tag: "Public+premium",
+        ms: { p50: 312, p90: 482, p99: 824, mean: 386 },
+        successRate: 99.42,
+        secondary: { label: "Chains", value: "32" },
+      },
+      {
+        name: "Tenderly",
+        slug: "tenderly",
+        tag: "Web3 gateway",
+        ms: { p50: 438, p90: 624, p99: 942, mean: 510 },
+        successRate: 99.18,
+        secondary: { label: "Chains", value: "12" },
+      },
+      {
+        name: "Public RPC",
+        slug: "public-rpc",
+        tag: "Free, rate-limited",
+        ms: { p50: 1_180, p90: 2_410, p99: 5_820, mean: 1_640 },
+        successRate: 96.74,
+        secondary: { label: "Chains", value: "n/a" },
+      },
+    ],
+    findings: [
+      "Mobula's edge layer is the only commercial RPC under 100 ms head lag at p50 across all five chains in the test set.",
+      "The premium tier (Alchemy, QuickNode, Infura) clusters tightly between 120 and 180 ms — close enough that ranking inside the cluster shifts week to week with regional load.",
+      "At p99 the spread blows out: Public RPC tail-lags by nearly 6 seconds. This is what users feel during congestion, when reading a stale block can mean a duplicate transaction.",
+      "Success rate tracks lag — providers that lag more also drop or 5xx more often. The two metrics are not independent.",
+    ],
+    source:
+      "https://github.com/mobula/openchainbench/tree/main/harnesses/rpc-head-lag",
+    extras: {
+      series24h: {
+        "mobula-rpc": series(41, 78, 0.16),
+        alchemy: series(42, 124, 0.18),
+        quicknode: series(43, 142, 0.2),
+        infura: series(44, 178, 0.2),
+        ankr: series(45, 312, 0.24),
+        tenderly: series(46, 438, 0.22),
+        "public-rpc": series(47, 1_180, 0.32),
+      },
+      regions: {
+        "mobula-rpc": [
+          { region: "us-east", p50: 74 },
+          { region: "eu-west", p50: 78 },
+          { region: "ap-southeast", p50: 86 },
+        ],
+        alchemy: [
+          { region: "us-east", p50: 118 },
+          { region: "eu-west", p50: 124 },
+          { region: "ap-southeast", p50: 138 },
+        ],
+        quicknode: [
+          { region: "us-east", p50: 134 },
+          { region: "eu-west", p50: 142 },
+          { region: "ap-southeast", p50: 158 },
+        ],
+        infura: [
+          { region: "us-east", p50: 168 },
+          { region: "eu-west", p50: 178 },
+          { region: "ap-southeast", p50: 196 },
+        ],
+        ankr: [
+          { region: "us-east", p50: 298 },
+          { region: "eu-west", p50: 312 },
+          { region: "ap-southeast", p50: 348 },
+        ],
+        tenderly: [
+          { region: "us-east", p50: 422 },
+          { region: "eu-west", p50: 438 },
+          { region: "ap-southeast", p50: 478 },
+        ],
+        "public-rpc": [
+          { region: "us-east", p50: 1_120 },
+          { region: "eu-west", p50: 1_180 },
+          { region: "ap-southeast", p50: 1_340 },
+        ],
+      },
+    },
+  },
 ];
 
 /**
