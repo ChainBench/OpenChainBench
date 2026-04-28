@@ -10,6 +10,8 @@ export type ProviderResult = {
   tag?: string;
   ms: { p50: number; p90: number; p99: number; mean: number };
   successRate: number;
+  /** Per-provider sample count over the run window. */
+  sampleSize?: number;
   secondary?: { label: string; value: string };
 };
 
