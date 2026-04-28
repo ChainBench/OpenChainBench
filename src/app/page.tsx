@@ -94,21 +94,33 @@ export default async function HomePage() {
               const leader = getLeader(b);
               const series = leader ? b.extras.series24h[leader.slug] : undefined;
               return (
-                <li key={b.slug} className="bg-paper p-5 flex flex-col">
-                  <div className="flex items-baseline justify-between font-sans text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+                <li
+                  key={b.slug}
+                  className="group relative bg-paper p-5 flex flex-col transition-[background,box-shadow,transform] duration-200 ease-out hover:bg-paper-deep/60 hover:z-10 hover:shadow-[0_18px_38px_-22px_rgba(28,26,23,0.35)] hover:-translate-y-0.5"
+                >
+                  {/* Stretched link — makes the whole card clickable */}
+                  <Link
+                    href={`/benchmarks/${b.slug}`}
+                    className="absolute inset-0 z-0"
+                    aria-label={b.title}
+                  >
+                    <span className="sr-only">{b.title}</span>
+                  </Link>
+
+                  <div className="relative flex items-baseline justify-between font-sans text-[10px] uppercase tracking-[0.18em] text-ink-muted">
                     <span>№&nbsp;{b.number}</span>
                     <span>{b.category}</span>
                   </div>
-                  <Link
-                    href={`/benchmarks/${b.slug}`}
-                    className="mt-2 block font-serif text-xl font-semibold leading-tight hover:text-accent"
-                  >
+
+                  <p className="relative mt-2 font-serif text-xl font-semibold leading-tight text-ink group-hover:text-accent transition-colors">
                     {b.title}
-                  </Link>
-                  <p className="mt-2 font-serif italic text-sm text-ink-soft line-clamp-3 flex-1">
+                  </p>
+
+                  <p className="relative mt-2 font-serif italic text-sm text-ink-soft line-clamp-3 flex-1">
                     {b.subtitle}
                   </p>
-                  <div className="mt-4 flex items-center justify-between gap-3 border-t border-rule pt-3">
+
+                  <div className="relative mt-4 flex items-center justify-between gap-3 border-t border-rule pt-3">
                     <p className="font-mono text-[10px] tabular text-ink-muted">
                       {leader
                         ? `Lead · ${leader.name} · ${fmtUnit(leader.ms.p50, b.unit)}`
@@ -118,11 +130,74 @@ export default async function HomePage() {
                       <Sparkline values={series} emphasis width={70} height={18} />
                     )}
                   </div>
-                  <p className="mt-2 font-mono text-[10px] tabular text-ink-faint">
+
+                  <p className="relative mt-2 font-mono text-[10px] tabular text-ink-faint">
                     {b.status === "draft"
                       ? "Draft · spec published"
                       : `Updated ${formatLastRun(b.lastRunAt)}`}
                   </p>
+
+                  {/* Journal-style hover unfurl — extra detail on top */}
+                  <div className="relative grid grid-rows-[0fr] group-hover:grid-rows-[1fr] transition-[grid-template-rows] duration-300 ease-out">
+                    <div className="overflow-hidden">
+                      <div className="mt-4 pt-4 border-t border-ink/40 space-y-3">
+                        <div>
+                          <p className="font-sans text-[10px] uppercase tracking-[0.2em] text-ink-muted">
+                            From the abstract
+                          </p>
+                          <p className="mt-1.5 font-serif text-sm leading-relaxed text-ink-soft line-clamp-4">
+                            {b.abstract}
+                          </p>
+                        </div>
+
+                        {b.results.length > 0 && (
+                          <div>
+                            <p className="font-sans text-[10px] uppercase tracking-[0.2em] text-ink-muted">
+                              The field
+                            </p>
+                            <ul className="mt-1.5 flex flex-wrap gap-x-1.5 gap-y-0.5 font-serif text-sm">
+                              {b.results.map((r, i) => {
+                                const isLeader = leader?.slug === r.slug;
+                                return (
+                                  <li key={r.slug}>
+                                    <span
+                                      className={
+                                        isLeader
+                                          ? "font-semibold text-ink"
+                                          : "text-ink-soft"
+                                      }
+                                    >
+                                      {r.name}
+                                      {isLeader && (
+                                        <span className="ml-1 font-sans text-[9px] uppercase tracking-[0.18em] text-accent">
+                                          lead
+                                        </span>
+                                      )}
+                                    </span>
+                                    {i < b.results.length - 1 && (
+                                      <span className="text-ink-faint">,</span>
+                                    )}
+                                  </li>
+                                );
+                              })}
+                            </ul>
+                          </div>
+                        )}
+
+                        {b.sampleSize > 0 && (
+                          <p className="font-mono text-[10px] tabular text-ink-muted">
+                            n = {Math.round(b.sampleSize).toLocaleString()} ·{" "}
+                            {b.results.length} provider
+                            {b.results.length === 1 ? "" : "s"}
+                          </p>
+                        )}
+
+                        <p className="font-sans text-[11px] uppercase tracking-[0.22em] text-accent flex items-center gap-1.5">
+                          Read the full report &rarr;
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 </li>
               );
             })}
