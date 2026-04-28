@@ -1,7 +1,7 @@
-# OpenChainBench — Bench № 002
+# OpenChainBench — Bench № 003
 
 slug: bridge-quote-latency
-number: "002"
+number: "003"
 title: Cross-Chain Bridge — Quote Latency
 subtitle: How fast each bridge API returns a usable cross-chain quote, measured under identical inputs.
 category: Bridges
