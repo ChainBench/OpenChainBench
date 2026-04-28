@@ -35,7 +35,7 @@ export type Benchmark = {
   sampleSize: number;
   abstract: string;
   metric: string;
-  unit: "ms" | "s";
+  unit: "ms" | "s" | "bps";
   category: "Aggregators" | "Bridges" | "Data" | "Wallets" | "RPCs";
   results: ProviderResult[];
   findings: string[];

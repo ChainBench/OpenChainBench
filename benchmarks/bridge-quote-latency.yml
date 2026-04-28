@@ -1,0 +1,118 @@
+# OpenChainBench — Bench № 002
+
+slug: bridge-quote-latency
+number: "002"
+title: Cross-Chain Bridge — Quote Latency
+subtitle: How fast each bridge API returns a usable cross-chain quote, measured under identical inputs.
+category: Bridges
+status: live
+metric: Quote latency
+unit: ms
+
+abstract: |
+  We benchmark how long the major bridge APIs take to return a usable
+  cross-chain quote (route + fee + estimated settlement time) for a fixed
+  set of routes. The harness issues identical requests in parallel from
+  three regions (us-east, eu-west, ap-southeast) and records p50, p90 and
+  p99 wall-clock latency along with success rate. Failed and 4xx responses
+  are excluded from latency aggregates and counted toward success rate.
+
+methodology:
+  - "Routes: ETH → ARB, ARB → BASE, POL → OP, OP → ETH. Token: USDC."
+  - "Trade size: 25 USDC notional per request."
+  - "Regions: us-east-1, eu-west-1, ap-southeast-1. Cross-region median reported."
+  - "Cadence: 1 quote / route / region every 30 seconds for 24 hours."
+  - "Timeout: 5,000 ms. Responses past the timeout count as failures."
+  - "Versioning: bridge APIs pinned to public docs at run start."
+
+findings: []
+
+source: https://github.com/Flotapponnier/OpenChainBench/tree/main/harnesses/bridge-quote
+
+prometheus:
+  url: https://prometheus-production-9ffe.up.railway.app
+  window: 24h
+
+# Conventions for the bridge-quote harness:
+#   ocb_bridge_quote_ms_bucket{provider, route, region, le}
+#   ocb_bridge_quote_total{provider, route, region, success="true|false"}
+
+providers:
+  - slug: across
+    name: Across
+    tag: Optimistic relay
+    secondary: { label: "Routes covered", value: "78" }
+    queries:
+      p50: histogram_quantile(0.5,  sum by (le) (rate(ocb_bridge_quote_ms_bucket{provider="across"}[24h])))
+      p90: histogram_quantile(0.9,  sum by (le) (rate(ocb_bridge_quote_ms_bucket{provider="across"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(ocb_bridge_quote_ms_bucket{provider="across"}[24h])))
+      success: sum(rate(ocb_bridge_quote_total{provider="across", success="true"}[24h])) / sum(rate(ocb_bridge_quote_total{provider="across"}[24h]))
+      sample_size: sum(increase(ocb_bridge_quote_total{provider="across"}[24h]))
+      series: histogram_quantile(0.5, sum by (le) (rate(ocb_bridge_quote_ms_bucket{provider="across"}[1h])))
+      regions:
+        - region: us-east
+          p50: histogram_quantile(0.5, sum by (le) (rate(ocb_bridge_quote_ms_bucket{provider="across", region="us-east"}[24h])))
+        - region: eu-west
+          p50: histogram_quantile(0.5, sum by (le) (rate(ocb_bridge_quote_ms_bucket{provider="across", region="eu-west"}[24h])))
+        - region: ap-southeast
+          p50: histogram_quantile(0.5, sum by (le) (rate(ocb_bridge_quote_ms_bucket{provider="across", region="ap-southeast"}[24h])))
+
+  - slug: lifi
+    name: LiFi
+    tag: Aggregator
+    secondary: { label: "Routes covered", value: "186" }
+    queries:
+      p50: histogram_quantile(0.5,  sum by (le) (rate(ocb_bridge_quote_ms_bucket{provider="lifi"}[24h])))
+      p90: histogram_quantile(0.9,  sum by (le) (rate(ocb_bridge_quote_ms_bucket{provider="lifi"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(ocb_bridge_quote_ms_bucket{provider="lifi"}[24h])))
+      success: sum(rate(ocb_bridge_quote_total{provider="lifi", success="true"}[24h])) / sum(rate(ocb_bridge_quote_total{provider="lifi"}[24h]))
+      sample_size: sum(increase(ocb_bridge_quote_total{provider="lifi"}[24h]))
+      series: histogram_quantile(0.5, sum by (le) (rate(ocb_bridge_quote_ms_bucket{provider="lifi"}[1h])))
+
+  - slug: squid
+    name: Squid
+    tag: Axelar-based
+    secondary: { label: "Routes covered", value: "64" }
+    queries:
+      p50: histogram_quantile(0.5,  sum by (le) (rate(ocb_bridge_quote_ms_bucket{provider="squid"}[24h])))
+      p90: histogram_quantile(0.9,  sum by (le) (rate(ocb_bridge_quote_ms_bucket{provider="squid"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(ocb_bridge_quote_ms_bucket{provider="squid"}[24h])))
+      success: sum(rate(ocb_bridge_quote_total{provider="squid", success="true"}[24h])) / sum(rate(ocb_bridge_quote_total{provider="squid"}[24h]))
+      sample_size: sum(increase(ocb_bridge_quote_total{provider="squid"}[24h]))
+      series: histogram_quantile(0.5, sum by (le) (rate(ocb_bridge_quote_ms_bucket{provider="squid"}[1h])))
+
+  - slug: socket
+    name: Socket
+    tag: Aggregator
+    secondary: { label: "Routes covered", value: "152" }
+    queries:
+      p50: histogram_quantile(0.5,  sum by (le) (rate(ocb_bridge_quote_ms_bucket{provider="socket"}[24h])))
+      p90: histogram_quantile(0.9,  sum by (le) (rate(ocb_bridge_quote_ms_bucket{provider="socket"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(ocb_bridge_quote_ms_bucket{provider="socket"}[24h])))
+      success: sum(rate(ocb_bridge_quote_total{provider="socket", success="true"}[24h])) / sum(rate(ocb_bridge_quote_total{provider="socket"}[24h]))
+      sample_size: sum(increase(ocb_bridge_quote_total{provider="socket"}[24h]))
+      series: histogram_quantile(0.5, sum by (le) (rate(ocb_bridge_quote_ms_bucket{provider="socket"}[1h])))
+
+  - slug: stargate
+    name: Stargate
+    tag: LayerZero pools
+    secondary: { label: "Routes covered", value: "42" }
+    queries:
+      p50: histogram_quantile(0.5,  sum by (le) (rate(ocb_bridge_quote_ms_bucket{provider="stargate"}[24h])))
+      p90: histogram_quantile(0.9,  sum by (le) (rate(ocb_bridge_quote_ms_bucket{provider="stargate"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(ocb_bridge_quote_ms_bucket{provider="stargate"}[24h])))
+      success: sum(rate(ocb_bridge_quote_total{provider="stargate", success="true"}[24h])) / sum(rate(ocb_bridge_quote_total{provider="stargate"}[24h]))
+      sample_size: sum(increase(ocb_bridge_quote_total{provider="stargate"}[24h]))
+      series: histogram_quantile(0.5, sum by (le) (rate(ocb_bridge_quote_ms_bucket{provider="stargate"}[1h])))
+
+  - slug: mobula-bridge
+    name: Mobula Bridge
+    tag: Aggregator + intent layer
+    secondary: { label: "Routes covered", value: "210" }
+    queries:
+      p50: histogram_quantile(0.5,  sum by (le) (rate(ocb_bridge_quote_ms_bucket{provider="mobula-bridge"}[24h])))
+      p90: histogram_quantile(0.9,  sum by (le) (rate(ocb_bridge_quote_ms_bucket{provider="mobula-bridge"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(ocb_bridge_quote_ms_bucket{provider="mobula-bridge"}[24h])))
+      success: sum(rate(ocb_bridge_quote_total{provider="mobula-bridge", success="true"}[24h])) / sum(rate(ocb_bridge_quote_total{provider="mobula-bridge"}[24h]))
+      sample_size: sum(increase(ocb_bridge_quote_total{provider="mobula-bridge"}[24h]))
+      series: histogram_quantile(0.5, sum by (le) (rate(ocb_bridge_quote_ms_bucket{provider="mobula-bridge"}[1h])))

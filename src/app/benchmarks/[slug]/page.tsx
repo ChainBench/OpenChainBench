@@ -15,7 +15,7 @@ import { RegionGrid } from "@/components/region-grid";
 import { Figure } from "@/components/figure";
 import { BigNumber } from "@/components/big-number";
 import { SectionRule } from "@/components/section-rule";
-import { fmtUnit } from "@/lib/format";
+import { fmtUnit, unitSuffix } from "@/lib/format";
 
 type Params = { slug: string };
 
@@ -122,13 +122,17 @@ export default async function BenchmarkPage({
                 /\s.*/,
                 ""
               )}
-              unit={benchmark.unit === "s" ? " s" : " ms"}
-              caption="Cross-region median latency"
+              unit={unitSuffix(benchmark.unit)}
+              caption={
+                benchmark.unit === "bps"
+                  ? "Cross-route median fee"
+                  : "Cross-region median latency"
+              }
             />
             <BigNumber
               label="Field median"
               value={fmtUnit(fieldP50, benchmark.unit).replace(/\s.*/, "")}
-              unit={benchmark.unit === "s" ? " s" : " ms"}
+              unit={unitSuffix(benchmark.unit)}
               caption={`Median across ${benchmark.results.length} providers`}
             />
             <BigNumber
