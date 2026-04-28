@@ -1,7 +1,9 @@
 export function fmtUnit(value: number, unit: string) {
   if (unit === "bps") {
-    if (value >= 100) return `${(value / 100).toFixed(2)}%`;
-    return `${value.toFixed(0)} bps`;
+    if (!Number.isFinite(value)) return "—";
+    if (value >= 10) return `${Math.round(value)} bps`;
+    if (value >= 1) return `${value.toFixed(1)} bps`;
+    return `${value.toFixed(2)} bps`;
   }
   if (unit === "s") {
     const s = value / 1000;
@@ -19,8 +21,8 @@ export function unitSuffix(unit: string) {
   return " ms";
 }
 
-export function fmtCompact(value: number) {
-  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
-  if (value >= 1_000) return `${(value / 1_000).toFixed(1)}k`;
-  return String(value);
+/** Just the formatted number (no unit) — used by BigNumber where the unit
+ * is rendered separately for typography. */
+export function fmtValue(value: number, unit: string): string {
+  return fmtUnit(value, unit).replace(/\s+(ms|s|bps|min|%)$/, "");
 }
