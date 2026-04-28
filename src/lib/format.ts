@@ -1,9 +1,9 @@
 export function fmtUnit(value: number, unit: string) {
+  if (!Number.isFinite(value)) return "—";
+  if (unit === "pct") return formatPercent(value);
   if (unit === "bps") {
-    if (!Number.isFinite(value)) return "—";
-    if (value >= 10) return `${Math.round(value)} bps`;
-    if (value >= 1) return `${value.toFixed(1)} bps`;
-    return `${value.toFixed(2)} bps`;
+    // Legacy: bps stored. Convert to percent for display.
+    return formatPercent(value / 100);
   }
   if (unit === "s") {
     const s = value / 1000;
@@ -16,7 +16,7 @@ export function fmtUnit(value: number, unit: string) {
 
 /** Just the unit suffix, with a leading space — used by BigNumber. */
 export function unitSuffix(unit: string) {
-  if (unit === "bps") return " bps";
+  if (unit === "pct" || unit === "bps") return " %";
   if (unit === "s") return " s";
   return " ms";
 }
@@ -24,5 +24,17 @@ export function unitSuffix(unit: string) {
 /** Just the formatted number (no unit) — used by BigNumber where the unit
  * is rendered separately for typography. */
 export function fmtValue(value: number, unit: string): string {
-  return fmtUnit(value, unit).replace(/\s+(ms|s|bps|min|%)$/, "");
+  return fmtUnit(value, unit).replace(/\s*(ms|s|min|%)$/, "");
+}
+
+/** Smart-precision percent formatter — picks decimals based on magnitude
+ * so both small fees (0.033%) and large fees (12.50%) read cleanly. */
+function formatPercent(pct: number): string {
+  const abs = Math.abs(pct);
+  if (abs >= 10) return `${pct.toFixed(1)}%`;
+  if (abs >= 1) return `${pct.toFixed(2)}%`;
+  if (abs >= 0.1) return `${pct.toFixed(2)}%`;
+  if (abs >= 0.01) return `${pct.toFixed(3)}%`;
+  if (abs >= 0.001) return `${pct.toFixed(4)}%`;
+  return `${pct.toFixed(5)}%`;
 }
