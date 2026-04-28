@@ -11,108 +11,80 @@ unit: ms
 
 abstract: |
   We benchmark how long the major bridge APIs take to return a usable
-  cross-chain quote (route + fee + estimated settlement time) for a fixed
-  set of routes. The harness issues identical requests in parallel from
-  three regions (us-east, eu-west, ap-southeast) and records p50, p90 and
-  p99 wall-clock latency along with success rate. Failed and 4xx responses
-  are excluded from latency aggregates and counted toward success rate.
+  cross-chain quote (route + fee + estimated settlement time). The harness
+  cycles through 4 routes × 3 notional sizes × every supported bridge every
+  five minutes, recording p50, p90 and p99 wall-clock latency along with the
+  success rate. Quotes that error or return unsupported responses are
+  excluded from latency aggregates and counted toward success rate.
 
 methodology:
-  - "Routes: ETH → ARB, ARB → BASE, POL → OP, OP → ETH. Token: USDC."
-  - "Trade size: 25 USDC notional per request."
-  - "Regions: us-east-1, eu-west-1, ap-southeast-1. Cross-region median reported."
-  - "Cadence: 1 quote / route / region every 30 seconds for 24 hours."
-  - "Timeout: 5,000 ms. Responses past the timeout count as failures."
-  - "Versioning: bridge APIs pinned to public docs at run start."
+  - "Routes: USDC pairs spanning Solana, Base and Arbitrum."
+  - "Notional sizes: $5, $50, $300 per quote."
+  - "Cadence: full sweep (4 routes × 3 amounts × N bridges) every 5 minutes for 24 hours."
+  - "Region: eu-west (single point — multi-region requires running additional monitor instances)."
+  - "Histogram buckets: 50, 100, 200, 500, 1000, 2000, 5000, 10000 ms."
+  - "Failures (quote_failed, execution_failed, unsupported route) excluded from latency aggregates and counted toward success rate."
 
 findings: []
 
-source: https://github.com/Flotapponnier/OpenChainBench/tree/main/harnesses/bridge-quote
+source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/bridge-quote
 
 prometheus:
   url: https://prometheus-production-9ffe.up.railway.app
   window: 24h
 
-# Conventions for the bridge-quote harness:
-#   ocb_bridge_quote_ms_bucket{provider, route, region, le}
-#   ocb_bridge_quote_total{provider, route, region, success="true|false"}
+# Real metrics exposed by the bridge-monitor harness:
+#   bridge_quote_latency_ms_{bucket,sum,count}{bridge, from_chain, to_chain, from_token, to_token, amount_usd, region}
+#   bridge_quote_success{...}                  — gauge 0/1
+#   bridge_errors_total{..., error_type}       — counter
+#
+# Label is `bridge=`, not `provider=`. Keep that in mind when extending.
 
 providers:
-  - slug: across
-    name: Across
-    tag: Optimistic relay
-    secondary: { label: "Routes covered", value: "78" }
+  - slug: mobula
+    name: Mobula
+    tag: Aggregator + intent layer
     queries:
-      p50: histogram_quantile(0.5,  sum by (le) (rate(ocb_bridge_quote_ms_bucket{provider="across"}[24h])))
-      p90: histogram_quantile(0.9,  sum by (le) (rate(ocb_bridge_quote_ms_bucket{provider="across"}[24h])))
-      p99: histogram_quantile(0.99, sum by (le) (rate(ocb_bridge_quote_ms_bucket{provider="across"}[24h])))
-      success: sum(rate(ocb_bridge_quote_total{provider="across", success="true"}[24h])) / sum(rate(ocb_bridge_quote_total{provider="across"}[24h]))
-      sample_size: sum(increase(ocb_bridge_quote_total{provider="across"}[24h]))
-      series: histogram_quantile(0.5, sum by (le) (rate(ocb_bridge_quote_ms_bucket{provider="across"}[1h])))
-      regions:
-        - region: us-east
-          p50: histogram_quantile(0.5, sum by (le) (rate(ocb_bridge_quote_ms_bucket{provider="across", region="us-east"}[24h])))
-        - region: eu-west
-          p50: histogram_quantile(0.5, sum by (le) (rate(ocb_bridge_quote_ms_bucket{provider="across", region="eu-west"}[24h])))
-        - region: ap-southeast
-          p50: histogram_quantile(0.5, sum by (le) (rate(ocb_bridge_quote_ms_bucket{provider="across", region="ap-southeast"}[24h])))
+      p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="mobula"}[24h])))
+      p90: histogram_quantile(0.90, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="mobula"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="mobula"}[24h])))
+      mean: sum(rate(bridge_quote_latency_ms_sum{bridge="mobula"}[24h])) / sum(rate(bridge_quote_latency_ms_count{bridge="mobula"}[24h]))
+      success: avg_over_time(bridge_quote_success{bridge="mobula"}[24h])
+      sample_size: sum(increase(bridge_quote_latency_ms_count{bridge="mobula"}[24h]))
+      series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="mobula"}[1h])))
+
+  - slug: relay
+    name: Relay
+    tag: Cross-chain relay
+    queries:
+      p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="relay"}[24h])))
+      p90: histogram_quantile(0.90, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="relay"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="relay"}[24h])))
+      mean: sum(rate(bridge_quote_latency_ms_sum{bridge="relay"}[24h])) / sum(rate(bridge_quote_latency_ms_count{bridge="relay"}[24h]))
+      success: avg_over_time(bridge_quote_success{bridge="relay"}[24h])
+      sample_size: sum(increase(bridge_quote_latency_ms_count{bridge="relay"}[24h]))
+      series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="relay"}[1h])))
 
   - slug: lifi
     name: LiFi
     tag: Aggregator
-    secondary: { label: "Routes covered", value: "186" }
     queries:
-      p50: histogram_quantile(0.5,  sum by (le) (rate(ocb_bridge_quote_ms_bucket{provider="lifi"}[24h])))
-      p90: histogram_quantile(0.9,  sum by (le) (rate(ocb_bridge_quote_ms_bucket{provider="lifi"}[24h])))
-      p99: histogram_quantile(0.99, sum by (le) (rate(ocb_bridge_quote_ms_bucket{provider="lifi"}[24h])))
-      success: sum(rate(ocb_bridge_quote_total{provider="lifi", success="true"}[24h])) / sum(rate(ocb_bridge_quote_total{provider="lifi"}[24h]))
-      sample_size: sum(increase(ocb_bridge_quote_total{provider="lifi"}[24h]))
-      series: histogram_quantile(0.5, sum by (le) (rate(ocb_bridge_quote_ms_bucket{provider="lifi"}[1h])))
+      p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="lifi"}[24h])))
+      p90: histogram_quantile(0.90, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="lifi"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="lifi"}[24h])))
+      mean: sum(rate(bridge_quote_latency_ms_sum{bridge="lifi"}[24h])) / sum(rate(bridge_quote_latency_ms_count{bridge="lifi"}[24h]))
+      success: avg_over_time(bridge_quote_success{bridge="lifi"}[24h])
+      sample_size: sum(increase(bridge_quote_latency_ms_count{bridge="lifi"}[24h]))
+      series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="lifi"}[1h])))
 
-  - slug: squid
-    name: Squid
-    tag: Axelar-based
-    secondary: { label: "Routes covered", value: "64" }
+  - slug: debridge
+    name: Debridge
+    tag: Native-token fees
     queries:
-      p50: histogram_quantile(0.5,  sum by (le) (rate(ocb_bridge_quote_ms_bucket{provider="squid"}[24h])))
-      p90: histogram_quantile(0.9,  sum by (le) (rate(ocb_bridge_quote_ms_bucket{provider="squid"}[24h])))
-      p99: histogram_quantile(0.99, sum by (le) (rate(ocb_bridge_quote_ms_bucket{provider="squid"}[24h])))
-      success: sum(rate(ocb_bridge_quote_total{provider="squid", success="true"}[24h])) / sum(rate(ocb_bridge_quote_total{provider="squid"}[24h]))
-      sample_size: sum(increase(ocb_bridge_quote_total{provider="squid"}[24h]))
-      series: histogram_quantile(0.5, sum by (le) (rate(ocb_bridge_quote_ms_bucket{provider="squid"}[1h])))
-
-  - slug: socket
-    name: Socket
-    tag: Aggregator
-    secondary: { label: "Routes covered", value: "152" }
-    queries:
-      p50: histogram_quantile(0.5,  sum by (le) (rate(ocb_bridge_quote_ms_bucket{provider="socket"}[24h])))
-      p90: histogram_quantile(0.9,  sum by (le) (rate(ocb_bridge_quote_ms_bucket{provider="socket"}[24h])))
-      p99: histogram_quantile(0.99, sum by (le) (rate(ocb_bridge_quote_ms_bucket{provider="socket"}[24h])))
-      success: sum(rate(ocb_bridge_quote_total{provider="socket", success="true"}[24h])) / sum(rate(ocb_bridge_quote_total{provider="socket"}[24h]))
-      sample_size: sum(increase(ocb_bridge_quote_total{provider="socket"}[24h]))
-      series: histogram_quantile(0.5, sum by (le) (rate(ocb_bridge_quote_ms_bucket{provider="socket"}[1h])))
-
-  - slug: stargate
-    name: Stargate
-    tag: LayerZero pools
-    secondary: { label: "Routes covered", value: "42" }
-    queries:
-      p50: histogram_quantile(0.5,  sum by (le) (rate(ocb_bridge_quote_ms_bucket{provider="stargate"}[24h])))
-      p90: histogram_quantile(0.9,  sum by (le) (rate(ocb_bridge_quote_ms_bucket{provider="stargate"}[24h])))
-      p99: histogram_quantile(0.99, sum by (le) (rate(ocb_bridge_quote_ms_bucket{provider="stargate"}[24h])))
-      success: sum(rate(ocb_bridge_quote_total{provider="stargate", success="true"}[24h])) / sum(rate(ocb_bridge_quote_total{provider="stargate"}[24h]))
-      sample_size: sum(increase(ocb_bridge_quote_total{provider="stargate"}[24h]))
-      series: histogram_quantile(0.5, sum by (le) (rate(ocb_bridge_quote_ms_bucket{provider="stargate"}[1h])))
-
-  - slug: mobula-bridge
-    name: Mobula Bridge
-    tag: Aggregator + intent layer
-    secondary: { label: "Routes covered", value: "210" }
-    queries:
-      p50: histogram_quantile(0.5,  sum by (le) (rate(ocb_bridge_quote_ms_bucket{provider="mobula-bridge"}[24h])))
-      p90: histogram_quantile(0.9,  sum by (le) (rate(ocb_bridge_quote_ms_bucket{provider="mobula-bridge"}[24h])))
-      p99: histogram_quantile(0.99, sum by (le) (rate(ocb_bridge_quote_ms_bucket{provider="mobula-bridge"}[24h])))
-      success: sum(rate(ocb_bridge_quote_total{provider="mobula-bridge", success="true"}[24h])) / sum(rate(ocb_bridge_quote_total{provider="mobula-bridge"}[24h]))
-      sample_size: sum(increase(ocb_bridge_quote_total{provider="mobula-bridge"}[24h]))
-      series: histogram_quantile(0.5, sum by (le) (rate(ocb_bridge_quote_ms_bucket{provider="mobula-bridge"}[1h])))
+      p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="debridge"}[24h])))
+      p90: histogram_quantile(0.90, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="debridge"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="debridge"}[24h])))
+      mean: sum(rate(bridge_quote_latency_ms_sum{bridge="debridge"}[24h])) / sum(rate(bridge_quote_latency_ms_count{bridge="debridge"}[24h]))
+      success: avg_over_time(bridge_quote_success{bridge="debridge"}[24h])
+      sample_size: sum(increase(bridge_quote_latency_ms_count{bridge="debridge"}[24h]))
+      series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="debridge"}[1h])))

@@ -15,7 +15,7 @@ docs/              Methodology, ADRs, style guide
 
 ## Submitting a benchmark
 
-1. **Open an issue** with the [new-benchmark template](https://github.com/Flotapponnier/OpenChainBench/issues/new?template=new-benchmark.md). Sketch the metric, providers, methodology — gets you feedback before you write code.
+1. **Open an issue** with the [new-benchmark template](https://github.com/OpenChainBench/OpenChainBench/issues/new?template=new-benchmark.md). Sketch the metric, providers, methodology — gets you feedback before you write code.
 2. **Write the spec**. Drop a YAML at `benchmarks/<slug>.yml`. The format is described in [`benchmarks/README.md`](./benchmarks/README.md) and validated by `src/lib/spec-schema.ts`.
 3. **Build the harness**. Anything that pushes Prometheus metrics with the labels your spec references. See [`harnesses/README.md`](./harnesses/README.md) for the contract.
 4. **Open a PR**. CI runs `pnpm validate` (schema lint), `pnpm typecheck`, `pnpm lint`, and `pnpm build`. Once green and reviewed, merge → ISR pulls live numbers within 60 seconds.
@@ -40,7 +40,7 @@ pnpm build               # production build
 
 ## Corrections
 
-If you can't reproduce a number, file a [correction issue](https://github.com/Flotapponnier/OpenChainBench/issues/new?template=correction.md). Material errors are corrected in place with a dated note on the report.
+If you can't reproduce a number, file a [correction issue](https://github.com/OpenChainBench/OpenChainBench/issues/new?template=correction.md). Material errors are corrected in place with a dated note on the report.
 
 ## License
 

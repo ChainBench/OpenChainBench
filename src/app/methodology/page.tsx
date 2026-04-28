@@ -100,9 +100,9 @@ export default function MethodologyPage() {
         provider you&apos;d like benchmarked? Open an issue at{" "}
         <a
           className="lnk"
-          href="https://github.com/Flotapponnier/OpenChainBench/issues"
+          href="https://github.com/OpenChainBench/OpenChainBench/issues"
         >
-          github.com/Flotapponnier/OpenChainBench/issues
+          github.com/OpenChainBench/OpenChainBench/issues
         </a>
         . Material errors are corrected in place with a dated note.
       </p>

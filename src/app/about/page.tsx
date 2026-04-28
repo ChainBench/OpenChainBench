@@ -83,7 +83,7 @@ export default function AboutPage() {
             <strong>Submit</strong> a benchmark via{" "}
             <a
               className="lnk"
-              href="https://github.com/Flotapponnier/OpenChainBench"
+              href="https://github.com/OpenChainBench/OpenChainBench"
             >
               GitHub
             </a>
@@ -98,7 +98,7 @@ export default function AboutPage() {
         Bug in a number?{" "}
         <a
           className="lnk"
-          href="https://github.com/Flotapponnier/OpenChainBench/issues/new"
+          href="https://github.com/OpenChainBench/OpenChainBench/issues/new"
         >
           File an issue
         </a>

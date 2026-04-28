@@ -37,7 +37,7 @@ export default async function HomePage() {
             </Link>
             <a
               className="lnk text-ink-soft hover:text-ink"
-              href="https://github.com/Flotapponnier/OpenChainBench"
+              href="https://github.com/OpenChainBench/OpenChainBench"
             >
               GitHub ↗
             </a>
@@ -155,7 +155,7 @@ export default async function HomePage() {
             </Link>
             <a
               className="lnk text-ink-soft hover:text-ink"
-              href="https://github.com/Flotapponnier/OpenChainBench/issues/new"
+              href="https://github.com/OpenChainBench/OpenChainBench/issues/new"
             >
               Open an issue ↗
             </a>
