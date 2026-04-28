@@ -52,7 +52,7 @@ providers:
       p99: quantile_over_time(0.99, head_lag_seconds{aggregator="mobula"}[24h]) * 1000
       mean: avg_over_time(head_lag_seconds{aggregator="mobula"}[24h]) * 1000
       success: clamp_max(count_over_time(head_lag_seconds{aggregator="mobula"}[24h]) / 5760, 1)
-      sample_size: count_over_time(head_lag_seconds{aggregator="mobula"}[24h])
+      sample_size: sum(count_over_time(head_lag_seconds{aggregator="mobula"}[24h]))
       series: avg_over_time(head_lag_seconds{aggregator="mobula"}[1h]) * 1000
       regions:
         - region: us-east
@@ -71,7 +71,7 @@ providers:
       p99: quantile_over_time(0.99, head_lag_seconds{aggregator="codex"}[24h]) * 1000
       mean: avg_over_time(head_lag_seconds{aggregator="codex"}[24h]) * 1000
       success: clamp_max(count_over_time(head_lag_seconds{aggregator="codex"}[24h]) / 5760, 1)
-      sample_size: count_over_time(head_lag_seconds{aggregator="codex"}[24h])
+      sample_size: sum(count_over_time(head_lag_seconds{aggregator="codex"}[24h]))
       series: avg_over_time(head_lag_seconds{aggregator="codex"}[1h]) * 1000
       regions:
         - region: us-east
@@ -90,7 +90,7 @@ providers:
       p99: quantile_over_time(0.99, head_lag_seconds{aggregator="geckoterminal"}[24h]) * 1000
       mean: avg_over_time(head_lag_seconds{aggregator="geckoterminal"}[24h]) * 1000
       success: clamp_max(count_over_time(head_lag_seconds{aggregator="geckoterminal"}[24h]) / 5760, 1)
-      sample_size: count_over_time(head_lag_seconds{aggregator="geckoterminal"}[24h])
+      sample_size: sum(count_over_time(head_lag_seconds{aggregator="geckoterminal"}[24h]))
       series: avg_over_time(head_lag_seconds{aggregator="geckoterminal"}[1h]) * 1000
       regions:
         - region: us-east

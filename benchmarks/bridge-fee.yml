@@ -57,7 +57,7 @@ providers:
       p99: quantile_over_time(0.99, bridge_cost_percent{bridge="mobula", amount_usd="300"}[24h])
       mean: avg_over_time(bridge_cost_percent{bridge="mobula", amount_usd="300"}[24h])
       success: avg_over_time(bridge_quote_success{bridge="mobula", amount_usd="300"}[24h])
-      sample_size: count_over_time(bridge_cost_percent{bridge="mobula", amount_usd="300"}[24h])
+      sample_size: sum(count_over_time(bridge_cost_percent{bridge="mobula", amount_usd="300"}[24h]))
       series: avg_over_time(bridge_cost_percent{bridge="mobula", amount_usd="300"}[1h])
 
   - slug: relay
@@ -69,7 +69,7 @@ providers:
       p99: quantile_over_time(0.99, bridge_cost_percent{bridge="relay", amount_usd="300"}[24h])
       mean: avg_over_time(bridge_cost_percent{bridge="relay", amount_usd="300"}[24h])
       success: avg_over_time(bridge_quote_success{bridge="relay", amount_usd="300"}[24h])
-      sample_size: count_over_time(bridge_cost_percent{bridge="relay", amount_usd="300"}[24h])
+      sample_size: sum(count_over_time(bridge_cost_percent{bridge="relay", amount_usd="300"}[24h]))
       series: avg_over_time(bridge_cost_percent{bridge="relay", amount_usd="300"}[1h])
 
   - slug: lifi
@@ -81,7 +81,7 @@ providers:
       p99: quantile_over_time(0.99, bridge_cost_percent{bridge="lifi", amount_usd="300"}[24h])
       mean: avg_over_time(bridge_cost_percent{bridge="lifi", amount_usd="300"}[24h])
       success: avg_over_time(bridge_quote_success{bridge="lifi", amount_usd="300"}[24h])
-      sample_size: count_over_time(bridge_cost_percent{bridge="lifi", amount_usd="300"}[24h])
+      sample_size: sum(count_over_time(bridge_cost_percent{bridge="lifi", amount_usd="300"}[24h]))
       series: avg_over_time(bridge_cost_percent{bridge="lifi", amount_usd="300"}[1h])
 
   - slug: debridge
@@ -93,5 +93,5 @@ providers:
       p99: quantile_over_time(0.99, bridge_cost_percent{bridge="debridge", amount_usd="300"}[24h])
       mean: avg_over_time(bridge_cost_percent{bridge="debridge", amount_usd="300"}[24h])
       success: avg_over_time(bridge_quote_success{bridge="debridge", amount_usd="300"}[24h])
-      sample_size: count_over_time(bridge_cost_percent{bridge="debridge", amount_usd="300"}[24h])
+      sample_size: sum(count_over_time(bridge_cost_percent{bridge="debridge", amount_usd="300"}[24h]))
       series: avg_over_time(bridge_cost_percent{bridge="debridge", amount_usd="300"}[1h])
