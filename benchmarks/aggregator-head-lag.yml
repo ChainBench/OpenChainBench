@@ -1,7 +1,7 @@
-# OpenChainBench — Bench № 002
+# OpenChainBench — Bench № 001
 
 slug: aggregator-head-lag
-number: "002"
+number: "001"
 title: Aggregator Head Lag — How Fresh Is the Data?
 subtitle: Time between an on-chain event and its appearance on each aggregator's WebSocket — measured against archive nodes tracking the canonical tip.
 category: Data
@@ -23,6 +23,7 @@ methodology:
   - "Regions: us-east, eu-west, sgp. Cross-region median reported in the headline."
   - "Reference: archive nodes per chain, validated against block hashes."
   - "Metric: gauge `head_lag_seconds`, sampled every 15 seconds. Aggregated over the 24-hour window using `quantile_over_time`."
+  - "Success rate: presence ratio — share of expected sampling slots where a value was actually emitted (5,760 expected per provider per day at the 15s cadence). 100% means the aggregator's feed was reachable for the full window."
   - "Cardinality: 3 aggregators × 3 chains × 3 regions = 27 active series."
 
 findings: []
@@ -35,6 +36,7 @@ prometheus:
 
 # Real metric exposed by the head-lag harness:
 #   head_lag_seconds{aggregator, chain, region}    — gauge in seconds
+#   head_lag_errors_total{aggregator, chain, region, error_type}  — counter
 #
 # Label is `aggregator=`, not `provider=`. Values are in seconds; queries
 # multiply by 1000 so the loader stores milliseconds (consistent across the
@@ -49,6 +51,7 @@ providers:
       p90: quantile_over_time(0.90, head_lag_seconds{aggregator="mobula"}[24h]) * 1000
       p99: quantile_over_time(0.99, head_lag_seconds{aggregator="mobula"}[24h]) * 1000
       mean: avg_over_time(head_lag_seconds{aggregator="mobula"}[24h]) * 1000
+      success: clamp_max(count_over_time(head_lag_seconds{aggregator="mobula"}[24h]) / 5760, 1)
       sample_size: count_over_time(head_lag_seconds{aggregator="mobula"}[24h])
       series: avg_over_time(head_lag_seconds{aggregator="mobula"}[1h]) * 1000
       regions:
@@ -67,8 +70,16 @@ providers:
       p90: quantile_over_time(0.90, head_lag_seconds{aggregator="codex"}[24h]) * 1000
       p99: quantile_over_time(0.99, head_lag_seconds{aggregator="codex"}[24h]) * 1000
       mean: avg_over_time(head_lag_seconds{aggregator="codex"}[24h]) * 1000
+      success: clamp_max(count_over_time(head_lag_seconds{aggregator="codex"}[24h]) / 5760, 1)
       sample_size: count_over_time(head_lag_seconds{aggregator="codex"}[24h])
       series: avg_over_time(head_lag_seconds{aggregator="codex"}[1h]) * 1000
+      regions:
+        - region: us-east
+          p50: quantile_over_time(0.50, head_lag_seconds{aggregator="codex", region="us-east"}[24h]) * 1000
+        - region: eu-west
+          p50: quantile_over_time(0.50, head_lag_seconds{aggregator="codex", region="eu-west"}[24h]) * 1000
+        - region: ap-southeast
+          p50: quantile_over_time(0.50, head_lag_seconds{aggregator="codex", region="sgp"}[24h]) * 1000
 
   - slug: geckoterminal
     name: GeckoTerminal
@@ -78,5 +89,13 @@ providers:
       p90: quantile_over_time(0.90, head_lag_seconds{aggregator="geckoterminal"}[24h]) * 1000
       p99: quantile_over_time(0.99, head_lag_seconds{aggregator="geckoterminal"}[24h]) * 1000
       mean: avg_over_time(head_lag_seconds{aggregator="geckoterminal"}[24h]) * 1000
+      success: clamp_max(count_over_time(head_lag_seconds{aggregator="geckoterminal"}[24h]) / 5760, 1)
       sample_size: count_over_time(head_lag_seconds{aggregator="geckoterminal"}[24h])
       series: avg_over_time(head_lag_seconds{aggregator="geckoterminal"}[1h]) * 1000
+      regions:
+        - region: us-east
+          p50: quantile_over_time(0.50, head_lag_seconds{aggregator="geckoterminal", region="us-east"}[24h]) * 1000
+        - region: eu-west
+          p50: quantile_over_time(0.50, head_lag_seconds{aggregator="geckoterminal", region="eu-west"}[24h]) * 1000
+        - region: ap-southeast
+          p50: quantile_over_time(0.50, head_lag_seconds{aggregator="geckoterminal", region="sgp"}[24h]) * 1000
