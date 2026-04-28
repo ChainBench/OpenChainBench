@@ -2,19 +2,17 @@ import Link from "next/link";
 
 export function SiteFooter() {
   return (
-    <footer className="mt-24 border-t border-rule">
-      <div className="mx-auto max-w-7xl px-6 py-12">
+    <footer className="mt-32 border-t border-rule bg-bg-soft">
+      <div className="mx-auto max-w-7xl px-6 py-14">
         <div className="grid gap-10 md:grid-cols-12">
           <div className="md:col-span-5">
-            <p className="font-serif text-3xl font-bold tracking-tight">
-              OpenChainBench
-            </p>
-            <p className="mt-2 font-serif italic text-ink-soft max-w-md">
+            <p className="wordmark text-2xl text-ink">OpenChainBench</p>
+            <p className="mt-3 max-w-md text-sm text-ink-muted leading-relaxed">
               Open, reproducible benchmarks for crypto infrastructure.
               Methodology, specs and raw metrics are public. Anyone can
               submit.
             </p>
-            <p className="mt-4 font-sans text-[11px] uppercase tracking-[0.2em] text-ink-muted">
+            <p className="mt-4 text-[11px] uppercase tracking-[0.16em] text-ink-faint">
               MIT-licensed · Community-run
             </p>
           </div>
@@ -22,9 +20,9 @@ export function SiteFooter() {
           <FooterCol
             title="Read"
             links={[
-              { label: "All benchmarks", href: "/benchmarks" },
+              { label: "Overview", href: "/" },
+              { label: "Benchmarks", href: "/benchmarks" },
               { label: "Methodology", href: "/methodology" },
-              { label: "About", href: "/about" },
               { label: "Press kit", href: "/press" },
             ]}
           />
@@ -34,7 +32,6 @@ export function SiteFooter() {
               { label: "Tutorial", href: "/contribute" },
               { label: "GitHub", href: "https://github.com/OpenChainBench/OpenChainBench" },
               { label: "Open an issue", href: "https://github.com/OpenChainBench/OpenChainBench/issues/new" },
-              { label: "RSS", href: "/rss.xml" },
             ]}
           />
           <FooterCol
@@ -42,35 +39,32 @@ export function SiteFooter() {
             links={[
               { label: "@openchainbench", href: "https://twitter.com/openchainbench" },
               { label: "r/openchainbench", href: "https://reddit.com/r/openchainbench" },
+              { label: "About", href: "/about" },
             ]}
           />
         </div>
 
-        <div className="mt-12 flex flex-wrap items-center justify-between gap-2 border-t border-rule pt-6 font-sans text-[11px] uppercase tracking-[0.2em] text-ink-muted">
+        <div className="mt-12 flex flex-wrap items-center justify-between gap-3 border-t border-rule pt-6 text-xs text-ink-muted">
           <span>© {new Date().getFullYear()} OpenChainBench · MIT License</span>
-          <span>Set in Source Serif 4 · Inter · JetBrains Mono</span>
+          <span>Open source · v0.1.0</span>
         </div>
       </div>
     </footer>
   );
 }
 
-function FooterCol({
-  title,
-  links,
-}: {
-  title: string;
-  links: { label: string; href: string }[];
-}) {
+type FooterLink = { label: string; href: string };
+
+function FooterCol({ title, links }: { title: string; links: FooterLink[] }) {
   return (
     <div className="md:col-span-2">
-      <h4 className="font-sans text-[11px] uppercase tracking-[0.2em] text-ink-muted">
+      <h4 className="text-xs font-medium uppercase tracking-[0.12em] text-ink-faint">
         {title}
       </h4>
-      <ul className="mt-3 space-y-2 font-serif">
+      <ul className="mt-4 space-y-2.5">
         {links.map((l) => (
           <li key={l.href}>
-            <Link className="lnk" href={l.href}>
+            <Link href={l.href} className="text-sm text-ink-soft hover:text-ink transition-colors">
               {l.label}
             </Link>
           </li>
