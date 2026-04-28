@@ -92,7 +92,15 @@ function series(seed: number, base: number, jitter = 0.18, length = 24): number[
 
 const ISO = (d: string) => new Date(d).toISOString();
 
-export const BENCHMARKS: Benchmark[] = [
+/**
+ * Mock benchmark data — used at build time when Prometheus is unreachable
+ * or when no spec has been authored yet. The async loaders below overlay
+ * live Prometheus numbers on top of these (see `src/lib/spec.ts`).
+ *
+ * Add a YAML file under `benchmarks/<slug>.yml` to wire a benchmark to
+ * Prometheus. The slug must match the entry below.
+ */
+const MOCK_BENCHMARKS: Benchmark[] = [
   {
     slug: "aggregator-quote-latency",
     number: "001",
@@ -455,18 +463,41 @@ export const BENCHMARKS: Benchmark[] = [
   },
 ];
 
-export function getBenchmark(slug: string): Benchmark | undefined {
-  return BENCHMARKS.find((b) => b.slug === slug);
+/**
+ * Async loader: returns the live benchmarks (Prometheus + spec overlay) or
+ * mocks if Prometheus is unreachable. React `cache()` dedupes calls inside
+ * a single request so each page renders consistently.
+ */
+import { cache } from "react";
+import { overlayLive } from "@/lib/spec";
+
+export const getBenchmarks = cache(async (): Promise<Benchmark[]> => {
+  const overlaid = await Promise.all(MOCK_BENCHMARKS.map(overlayLive));
+  return overlaid;
+});
+
+export async function getBenchmark(slug: string): Promise<Benchmark | undefined> {
+  const all = await getBenchmarks();
+  return all.find((b) => b.slug === slug);
 }
 
-export function getBenchmarksByCategory() {
+export async function getBenchmarksByCategory(): Promise<
+  Array<[Benchmark["category"], Benchmark[]]>
+> {
+  const all = await getBenchmarks();
   const map = new Map<Benchmark["category"], Benchmark[]>();
-  for (const b of BENCHMARKS) {
+  for (const b of all) {
     const list = map.get(b.category) ?? [];
     list.push(b);
     map.set(b.category, list);
   }
   return Array.from(map.entries());
+}
+
+/** Synchronous slug list for `generateStaticParams` — drawn from mocks so
+ * the route table is stable even when Prometheus is offline. */
+export function getBenchmarkSlugs(): string[] {
+  return MOCK_BENCHMARKS.map((b) => b.slug);
 }
 
 export function formatLastRun(iso: string) {

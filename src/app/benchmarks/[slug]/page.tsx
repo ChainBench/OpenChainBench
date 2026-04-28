@@ -1,7 +1,12 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { BENCHMARKS, formatLastRun, getBenchmark } from "@/data/benchmarks";
+import {
+  getBenchmark,
+  getBenchmarks,
+  getBenchmarkSlugs,
+  formatLastRun,
+} from "@/data/benchmarks";
 import { Byline } from "@/components/byline";
 import { RangeChart } from "@/components/range-chart";
 import { LedgerTable } from "@/components/ledger-table";
@@ -14,7 +19,7 @@ import { fmtUnit } from "@/lib/format";
 type Params = { slug: string };
 
 export function generateStaticParams() {
-  return BENCHMARKS.map((b) => ({ slug: b.slug }));
+  return getBenchmarkSlugs().map((slug) => ({ slug }));
 }
 
 export async function generateMetadata({
@@ -23,7 +28,7 @@ export async function generateMetadata({
   params: Promise<Params>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const b = getBenchmark(slug);
+  const b = await getBenchmark(slug);
   if (!b) return {};
   return {
     title: b.title,
@@ -38,11 +43,14 @@ export default async function BenchmarkPage({
   params: Promise<Params>;
 }) {
   const { slug } = await params;
-  const benchmark = getBenchmark(slug);
+  const [benchmark, all] = await Promise.all([
+    getBenchmark(slug),
+    getBenchmarks(),
+  ]);
   if (!benchmark) notFound();
 
   const winner = benchmark.results.find((r) => r.highlight === "winner");
-  const otherBenchmarks = BENCHMARKS.filter((b) => b.slug !== benchmark.slug);
+  const otherBenchmarks = all.filter((b) => b.slug !== benchmark.slug);
   const fieldP50 =
     benchmark.results.reduce((s, r) => s + r.ms.p50, 0) / benchmark.results.length;
   const winnerP50 = winner?.ms.p50 ?? benchmark.results[0].ms.p50;

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { BENCHMARKS, formatLastRun, getBenchmarksByCategory } from "@/data/benchmarks";
+import { getBenchmarks, formatLastRun, getBenchmarksByCategory } from "@/data/benchmarks";
 import { Sparkline } from "@/components/sparkline";
 import { fmtUnit } from "@/lib/format";
 
@@ -9,8 +9,11 @@ export const metadata: Metadata = {
   description: "All OpenChainBench reports — aggregators, bridges, price feeds.",
 };
 
-export default function BenchmarksIndex() {
-  const grouped = getBenchmarksByCategory();
+export default async function BenchmarksIndex() {
+  const [grouped, all] = await Promise.all([
+    getBenchmarksByCategory(),
+    getBenchmarks(),
+  ]);
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-12">
@@ -69,7 +72,7 @@ export default function BenchmarksIndex() {
       </div>
 
       <p className="mt-16 font-serif italic text-ink-muted text-sm text-center">
-        {BENCHMARKS.length} reports published. More on the way — request one on{" "}
+        {all.length} reports published. More on the way — request one on{" "}
         <a className="lnk" href="https://github.com/mobula/openchainbench/issues">
           GitHub
         </a>

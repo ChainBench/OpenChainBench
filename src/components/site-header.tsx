@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { BENCHMARKS } from "@/data/benchmarks";
+import { getBenchmarks } from "@/data/benchmarks";
 import { CURRENT_ISSUE } from "@/data/site";
 
-export function SiteHeader() {
-  const totalSamples = BENCHMARKS.reduce((s, b) => s + b.sampleSize, 0);
-  const totalProviders = BENCHMARKS.reduce((s, b) => s + b.results.length, 0);
+export async function SiteHeader() {
+  const benchmarks = await getBenchmarks();
+  const totalSamples = benchmarks.reduce((s, b) => s + b.sampleSize, 0);
+  const totalProviders = benchmarks.reduce((s, b) => s + b.results.length, 0);
   const dateLong = new Date().toLocaleDateString("en-US", {
     weekday: "long",
     year: "numeric",
@@ -20,7 +21,7 @@ export function SiteHeader() {
           <span className="flex items-center gap-2">
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-flag-good animate-pulse" />
             <span className="uppercase tracking-[0.2em]">
-              Live · {BENCHMARKS.length} benchmarks running
+              Live · {benchmarks.length} benchmarks running
             </span>
           </span>
           <span className="hidden sm:inline">

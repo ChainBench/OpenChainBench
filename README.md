@@ -9,30 +9,31 @@ The project is **sponsored by [Mobula](https://mobula.io)** and **edited indepen
 ## What's inside
 
 ```
+benchmarks/                       Spec files — one YAML per report
+├── README.md                     Spec reference + submission guide
+└── *.yml                         A spec wires editorial metadata to PromQL
 src/
 ├── app/                          Next.js 16 App Router
-│   ├── page.tsx                  Front page (Issue 001)
+│   ├── page.tsx                  Front page
 │   ├── benchmarks/
-│   │   ├── page.tsx              Index of benchmarks
-│   │   └── [slug]/page.tsx       One report per slug
-│   ├── methodology/page.tsx
-│   ├── about/page.tsx
-│   ├── press/page.tsx
-│   ├── opengraph-image.tsx       Social card
-│   ├── icon.tsx                  Favicon
+│   │   ├── page.tsx              Index
+│   │   └── [slug]/page.tsx       One paper-styled report per slug
+│   ├── methodology / about / press / opengraph-image / icon
 │   └── globals.css               Paper theme
 ├── components/
-│   ├── site-header.tsx           Masthead + nav
-│   ├── site-footer.tsx
-│   ├── byline.tsx                Bench №, last-run, n=
-│   ├── paper-bar-chart.tsx       Tufte-style bars
-│   ├── stat-table.tsx            p50/p90/p99/mean/success
-│   └── section-rule.tsx
+│   ├── site-header / site-footer
+│   ├── byline · big-number · section-rule · figure
+│   ├── range-chart               Editorial range plot (p50→p99 + median)
+│   ├── ledger-table              Stock-exchange-style table w/ sparklines
+│   ├── region-grid               Tufte small multiples per region
+│   └── sparkline                 24h trend SVG
 ├── data/
-│   ├── benchmarks.ts             Mock data (swap for live)
+│   ├── benchmarks.ts             Mock data + async loaders
 │   └── site.ts                   Site constants
 └── lib/
-    └── utils.ts
+    ├── prometheus.ts             HTTP API client (instant + range queries)
+    ├── spec.ts                   YAML loader, overlay-live-on-mock policy
+    └── format.ts / utils.ts
 ```
 
 Tailwind v4 with a paper aesthetic — cream background, Source Serif 4 for body, Inter for UI labels, JetBrains Mono for figures.
@@ -46,14 +47,29 @@ pnpm dev
 
 Open [localhost:3000](http://localhost:3000).
 
+## How a benchmark gets data
+
+```
+benchmarks/<slug>.yml ── PromQL ──► Prometheus
+        │                                │
+        │ (fail / empty / no URL)        │ (live numbers)
+        ▼                                ▼
+src/data/benchmarks.ts (mock fallback) ─►  Benchmark[]
+                                              │
+                                              ▼
+                                Paper report at /benchmarks/<slug>
+```
+
+Pages revalidate every minute (Next.js ISR). Live numbers replace mock numbers as soon as the harness starts emitting metrics with the labels the spec expects. The site never half-renders: any missing percentile and the page falls back to the mock so readers can't be misled about what's real.
+
 ## Adding a benchmark
 
-1. Append a new entry to `src/data/benchmarks.ts` with a unique `slug` and `number`.
-2. Drop your harness into `harnesses/<your-bench>/` (TypeScript, Bun or Python — whatever fits the providers being measured).
-3. Wire the harness output into the dataset (a build step writes to `data/benchmarks.ts` from the harness JSON output).
-4. Open a PR. The methodology + numbers go live with the merge.
+1. **Editorial mock.** Append an entry to `MOCK_BENCHMARKS` in `src/data/benchmarks.ts` with title, abstract, methodology, findings and placeholder numbers per provider. This is what readers see until the harness fills Prometheus.
+2. **Harness.** Drop the script that emits metrics into `harnesses/<slug>/` (TypeScript, Bun or Python — whatever fits). The harness runs continuously and pushes to Prometheus / writes to a Pushgateway.
+3. **Spec.** Create `benchmarks/<slug>.yml` with the Prometheus URL and the PromQL queries (see `benchmarks/aggregator-quote-latency.yml`).
+4. **PR.** The build picks the spec up automatically.
 
-The shape of a benchmark report is fixed: abstract → results chart → stat table → findings → methodology → citation block. Don't drift; readers learn the format and skim by it.
+The shape of a benchmark report is fixed: abstract → range chart → ledger table → region grid → findings → methodology → citation. Don't drift; readers learn the format and skim by it.
 
 ## Data provenance
 

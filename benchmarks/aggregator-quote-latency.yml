@@ -1,0 +1,109 @@
+# OpenChainBench — Benchmark Spec
+#
+# This file is the source of truth for one benchmark report. The build
+# pulls live numbers from the Prometheus instance below; if the queries
+# fail or return nothing, the page falls back to the mock entry of the
+# same slug in src/data/benchmarks.ts.
+#
+# Submitting a new benchmark? Drop a similar file in this directory and
+# open a PR. See ../README.md for the spec reference.
+
+slug: aggregator-quote-latency
+
+prometheus:
+  url: https://prometheus-production-0859.up.railway.app
+  window: 24h
+
+# Each provider here must match a `slug` in src/data/benchmarks.ts.
+# The `queries` block lists the PromQL the loader runs.
+#
+# Conventions (proposed for the aggregator-latency harness):
+#   - Histogram: ocb_quote_duration_ms_bucket{provider="<slug>", region="<r>"}
+#   - Counter:   ocb_quote_total{provider="<slug>", success="true|false"}
+#
+# Adjust the metric/label names to match whatever the harness actually
+# emits — that's the only place the wiring lives.
+
+providers:
+  - slug: mobula
+    queries:
+      p50: |
+        histogram_quantile(0.5,
+          sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="mobula"}[24h])))
+      p90: |
+        histogram_quantile(0.9,
+          sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="mobula"}[24h])))
+      p99: |
+        histogram_quantile(0.99,
+          sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="mobula"}[24h])))
+      mean: |
+        sum(rate(ocb_quote_duration_ms_sum{provider="mobula"}[24h]))
+        /
+        sum(rate(ocb_quote_duration_ms_count{provider="mobula"}[24h]))
+      success: |
+        sum(rate(ocb_quote_total{provider="mobula", success="true"}[24h]))
+        /
+        sum(rate(ocb_quote_total{provider="mobula"}[24h]))
+      sample_size: |
+        sum(increase(ocb_quote_duration_ms_count{provider="mobula"}[24h]))
+      series: |
+        histogram_quantile(0.5,
+          sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="mobula"}[1h])))
+      regions:
+        - region: us-east
+          p50: |
+            histogram_quantile(0.5,
+              sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="mobula", region="us-east"}[24h])))
+        - region: eu-west
+          p50: |
+            histogram_quantile(0.5,
+              sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="mobula", region="eu-west"}[24h])))
+        - region: ap-southeast
+          p50: |
+            histogram_quantile(0.5,
+              sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="mobula", region="ap-southeast"}[24h])))
+
+  - slug: 1inch
+    queries:
+      p50: histogram_quantile(0.5, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="1inch"}[24h])))
+      p90: histogram_quantile(0.9, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="1inch"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="1inch"}[24h])))
+      success: sum(rate(ocb_quote_total{provider="1inch", success="true"}[24h])) / sum(rate(ocb_quote_total{provider="1inch"}[24h]))
+      sample_size: sum(increase(ocb_quote_duration_ms_count{provider="1inch"}[24h]))
+      series: histogram_quantile(0.5, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="1inch"}[1h])))
+
+  - slug: 0x
+    queries:
+      p50: histogram_quantile(0.5, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="0x"}[24h])))
+      p90: histogram_quantile(0.9, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="0x"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="0x"}[24h])))
+      success: sum(rate(ocb_quote_total{provider="0x", success="true"}[24h])) / sum(rate(ocb_quote_total{provider="0x"}[24h]))
+      sample_size: sum(increase(ocb_quote_duration_ms_count{provider="0x"}[24h]))
+      series: histogram_quantile(0.5, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="0x"}[1h])))
+
+  - slug: paraswap
+    queries:
+      p50: histogram_quantile(0.5, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="paraswap"}[24h])))
+      p90: histogram_quantile(0.9, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="paraswap"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="paraswap"}[24h])))
+      success: sum(rate(ocb_quote_total{provider="paraswap", success="true"}[24h])) / sum(rate(ocb_quote_total{provider="paraswap"}[24h]))
+      sample_size: sum(increase(ocb_quote_duration_ms_count{provider="paraswap"}[24h]))
+      series: histogram_quantile(0.5, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="paraswap"}[1h])))
+
+  - slug: kyberswap
+    queries:
+      p50: histogram_quantile(0.5, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="kyberswap"}[24h])))
+      p90: histogram_quantile(0.9, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="kyberswap"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="kyberswap"}[24h])))
+      success: sum(rate(ocb_quote_total{provider="kyberswap", success="true"}[24h])) / sum(rate(ocb_quote_total{provider="kyberswap"}[24h]))
+      sample_size: sum(increase(ocb_quote_duration_ms_count{provider="kyberswap"}[24h]))
+      series: histogram_quantile(0.5, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="kyberswap"}[1h])))
+
+  - slug: jupiter
+    queries:
+      p50: histogram_quantile(0.5, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="jupiter"}[24h])))
+      p90: histogram_quantile(0.9, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="jupiter"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="jupiter"}[24h])))
+      success: sum(rate(ocb_quote_total{provider="jupiter", success="true"}[24h])) / sum(rate(ocb_quote_total{provider="jupiter"}[24h]))
+      sample_size: sum(increase(ocb_quote_duration_ms_count{provider="jupiter"}[24h]))
+      series: histogram_quantile(0.5, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="jupiter"}[1h])))

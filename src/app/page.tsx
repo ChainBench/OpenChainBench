@@ -1,13 +1,14 @@
 import Link from "next/link";
-import { BENCHMARKS, formatLastRun } from "@/data/benchmarks";
+import { getBenchmarks, formatLastRun } from "@/data/benchmarks";
 import { RangeChart } from "@/components/range-chart";
 import { Sparkline } from "@/components/sparkline";
 import { Figure } from "@/components/figure";
 import { fmtUnit } from "@/lib/format";
 
-export default function HomePage() {
-  const featured = BENCHMARKS[0];
-  const rest = BENCHMARKS.slice(1);
+export default async function HomePage() {
+  const benchmarks = await getBenchmarks();
+  const featured = benchmarks[0];
+  const rest = benchmarks.slice(1);
   const winner = featured.results.find((r) => r.highlight === "winner");
   const fieldP50 =
     featured.results.reduce((s, r) => s + r.ms.p50, 0) / featured.results.length;
@@ -177,7 +178,7 @@ export default function HomePage() {
         </div>
 
         <ul className="mt-6 grid gap-px bg-rule border border-rule sm:grid-cols-2 lg:grid-cols-3">
-          {BENCHMARKS.map((b) => {
+          {benchmarks.map((b) => {
             const w = b.results.find((r) => r.highlight === "winner");
             const series = w ? b.extras.series24h[w.slug] : undefined;
             return (
