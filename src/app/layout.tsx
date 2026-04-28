@@ -1,21 +1,20 @@
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono, Source_Serif_4 } from "next/font/google";
+import { Inter, Inter_Tight, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 
-const sourceSerif = Source_Serif_4({
-  variable: "--font-source-serif",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  style: ["normal", "italic"],
-  display: "swap",
-});
-
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
-  weight: ["400", "500", "600"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
+});
+
+const interTight = Inter_Tight({
+  variable: "--font-inter-tight",
+  subsets: ["latin"],
+  weight: ["500", "600", "700", "800"],
   display: "swap",
 });
 
@@ -29,15 +28,15 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL("https://openchainbench.xyz"),
   title: {
-    default: "OpenChainBench — Open Benchmarks for Crypto Infrastructure",
+    default: "OpenChainBench — Open benchmarks for crypto infrastructure",
     template: "%s · OpenChainBench",
   },
   description:
-    "An open, reproducible benchmark series measuring latency, accuracy and reliability of crypto infrastructure: aggregators, bridges, price feeds.",
+    "Open, reproducible benchmarks for the multichain stack — aggregators, bridges, RPCs, price feeds.",
   openGraph: {
     title: "OpenChainBench",
     description:
-      "Open, reproducible benchmarks for crypto infrastructure: aggregators, bridges, price feeds.",
+      "Open, reproducible benchmarks for the multichain stack.",
     type: "website",
     url: "https://openchainbench.xyz",
     siteName: "OpenChainBench",
@@ -56,14 +55,12 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${sourceSerif.variable} ${inter.variable} ${jetbrainsMono.variable} h-full`}
+      className={`${inter.variable} ${interTight.variable} ${jetbrainsMono.variable} h-full`}
     >
-      <body className="relative min-h-full flex flex-col">
-        <div className="relative z-10 flex flex-1 flex-col">
-          <SiteHeader />
-          <main className="flex-1">{children}</main>
-          <SiteFooter />
-        </div>
+      <body className="min-h-full flex flex-col">
+        <SiteHeader />
+        <main className="flex-1">{children}</main>
+        <SiteFooter />
       </body>
     </html>
   );

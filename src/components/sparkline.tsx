@@ -2,8 +2,8 @@ type Props = {
   values: number[];
   width?: number;
   height?: number;
+  color?: string;
   emphasis?: boolean;
-  /** If provided, scale Y to this maximum across rows (consistent across small multiples). */
   globalMax?: number;
   globalMin?: number;
 };
@@ -12,6 +12,7 @@ export function Sparkline({
   values,
   width = 92,
   height = 22,
+  color = "var(--color-ink-soft)",
   emphasis = false,
   globalMax,
   globalMin,
@@ -33,8 +34,6 @@ export function Sparkline({
   const lastX = width;
   const lastY = height - ((last - min) / range) * height;
 
-  const stroke = emphasis ? "var(--color-ink)" : "var(--color-ink-soft)";
-
   return (
     <svg
       width={width}
@@ -45,13 +44,13 @@ export function Sparkline({
     >
       <polyline
         fill="none"
-        stroke={stroke}
-        strokeWidth={emphasis ? 1.4 : 1}
+        stroke={color}
+        strokeWidth={emphasis ? 1.4 : 1.2}
         strokeLinecap="round"
         strokeLinejoin="round"
         points={points}
       />
-      <circle cx={lastX} cy={lastY} r={emphasis ? 2.2 : 1.8} fill={stroke} />
+      <circle cx={lastX} cy={lastY} r={emphasis ? 2.2 : 2} fill={color} />
     </svg>
   );
 }
