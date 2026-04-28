@@ -260,12 +260,12 @@ export default async function BenchmarkPage({
           <h3 className="font-sans text-[11px] uppercase tracking-[0.22em] text-ink-muted">
             More benchmarks
           </h3>
-          <ul className="mt-4 grid gap-3 sm:grid-cols-2">
+          <ul className="mt-4 grid gap-3 sm:grid-cols-2 items-stretch">
             {otherBenchmarks.map((b) => (
-              <li key={b.slug}>
+              <li key={b.slug} className="flex">
                 <Link
                   href={`/benchmarks/${b.slug}`}
-                  className="block border border-rule bg-paper-deep/50 p-4 hover:border-ink"
+                  className="flex-1 flex flex-col border border-rule bg-paper-deep/50 p-4 hover:border-ink hover:bg-paper-deep/80 transition-colors"
                 >
                   <p className="font-sans text-[10px] uppercase tracking-[0.18em] text-ink-muted">
                     Bench №&nbsp;{b.number}
