@@ -10,16 +10,15 @@ export default function Icon() {
         style={{
           width: 64,
           height: 64,
-          background: "#0a0a0a",
-          color: "#f7f6f3",
+          background: "#1c1a17",
+          color: "#faf6ee",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           fontSize: 30,
-          fontWeight: 700,
-          letterSpacing: -2,
-          fontFamily: "Inter, system-ui, sans-serif",
-          borderRadius: 14,
+          fontWeight: 800,
+          letterSpacing: -1,
+          fontFamily: "Georgia, serif",
         }}
       >
         OCB

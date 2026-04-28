@@ -1,7 +1,5 @@
 import type { Benchmark } from "@/types/benchmark";
-import { cn } from "@/lib/utils";
 import { fmtUnit } from "@/lib/format";
-import { providerColor } from "@/lib/colors";
 
 type Props = { benchmark: Benchmark };
 
@@ -25,93 +23,58 @@ export function RegionGrid({ benchmark }: Props) {
     regionMax.set(region.key, m);
   }
 
-  const regionLeader = new Map<string, string>();
-  for (const region of REGIONS) {
-    let leader = "";
-    let best = Infinity;
-    for (const r of results) {
-      const point = extras.regions[r.slug]?.find((p) => p.region === region.key);
-      if (point && point.p50 < best) {
-        best = point.p50;
-        leader = r.slug;
-      }
-    }
-    regionLeader.set(region.key, leader);
-  }
-
   return (
-    <div className="card overflow-hidden">
-      <table className="w-full text-sm tabular">
+    <div className="border-y-2 border-ink py-2">
+      <table className="w-full border-collapse text-sm tabular">
         <thead>
-          <tr className="border-b border-rule bg-bg-soft text-[11px] uppercase tracking-[0.1em] text-ink-muted">
-            <th className="py-3 px-5 text-left font-medium w-44">Provider</th>
+          <tr className="font-sans text-[10px] uppercase tracking-[0.18em] text-ink-soft">
+            <th className="py-2 pr-3 text-left font-medium w-44">Provider</th>
             {REGIONS.map((region) => (
-              <th key={region.key} className="py-3 px-3 text-left font-medium">
+              <th key={region.key} className="py-2 px-2 text-left font-medium">
                 {region.label}
               </th>
             ))}
           </tr>
         </thead>
-        <tbody>
-          {results.map((r) => {
-            const color = providerColor(r.slug);
-            return (
-              <tr key={r.slug} className="border-b border-rule last:border-b-0">
-                <td className="py-3 px-5">
-                  <span className="text-sm font-semibold" style={{ color }}>
-                    {r.name}
-                  </span>
-                </td>
-                {REGIONS.map((region) => {
-                  const point = extras.regions[r.slug]?.find(
-                    (p) => p.region === region.key
-                  );
-                  if (!point) {
-                    return (
-                      <td key={region.key} className="py-3 px-3 text-ink-faint">
-                        —
-                      </td>
-                    );
-                  }
-                  const max = regionMax.get(region.key) ?? 1;
-                  const pct = Math.max(2, (point.p50 / max) * 100);
-                  const isLeader = regionLeader.get(region.key) === r.slug;
+        <tbody className="font-mono">
+          {results.map((r) => (
+            <tr key={r.slug} className="border-t border-rule">
+              <td className="py-3 pr-3 font-serif text-ink">{r.name}</td>
+              {REGIONS.map((region) => {
+                const point = extras.regions[r.slug]?.find(
+                  (p) => p.region === region.key
+                );
+                if (!point) {
                   return (
-                    <td key={region.key} className="py-3 px-3">
-                      <div className="grid grid-cols-[1fr_5rem] items-center gap-3">
-                        <div className="relative h-3 rounded-md bg-bg-soft">
-                          <span
-                            className="absolute inset-y-0 left-0 rounded-md"
-                            style={{
-                              width: `${pct}%`,
-                              background: `${color}33`,
-                            }}
-                          />
-                          <span
-                            className="absolute inset-y-0 left-0 rounded-md"
-                            style={{
-                              width: `${pct * 0.5}%`,
-                              background: color,
-                              opacity: isLeader ? 1 : 0.5,
-                            }}
-                          />
-                        </div>
-                        <span
-                          className={cn(
-                            "font-mono text-[12px] tabular text-right whitespace-nowrap",
-                            isLeader ? "font-semibold" : "text-ink-soft"
-                          )}
-                          style={isLeader ? { color } : undefined}
-                        >
-                          {fmtUnit(point.p50, unit)}
-                        </span>
-                      </div>
+                    <td key={region.key} className="py-3 px-2 text-ink-faint">
+                      —
                     </td>
                   );
-                })}
-              </tr>
-            );
-          })}
+                }
+                const max = regionMax.get(region.key) ?? 1;
+                const pct = Math.max(2, (point.p50 / max) * 100);
+                return (
+                  <td key={region.key} className="py-3 px-2">
+                    <div className="grid grid-cols-[1fr_5rem] items-center gap-3">
+                      <div className="relative h-3 bg-paper-deep">
+                        <span
+                          className="absolute inset-y-0 left-0 bg-ink-soft/70"
+                          style={{
+                            width: `${pct}%`,
+                            backgroundImage:
+                              "repeating-linear-gradient(135deg, transparent 0 4px, rgba(250,246,238,0.45) 4px 5px)",
+                          }}
+                        />
+                      </div>
+                      <span className="font-mono text-[12px] tabular text-right whitespace-nowrap text-ink-soft">
+                        {fmtUnit(point.p50, unit)}
+                      </span>
+                    </div>
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
         </tbody>
       </table>
     </div>

@@ -1,138 +1,165 @@
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
 import { Sparkline } from "@/components/sparkline";
-import { cn } from "@/lib/utils";
 import { fmtUnit } from "@/lib/format";
-import { providerColor } from "@/lib/colors";
 
 type Props = {
   benchmark: Benchmark;
 };
 
+/**
+ * Dense KPI ledger — financial-newspaper style. Every provider rendered
+ * with equal visual weight; sort order is mechanical (ascending p50). No
+ * "Lead" or winner highlighting — readers compare the columns themselves.
+ */
 export function LedgerTable({ benchmark }: Props) {
   const { results, unit, extras } = benchmark;
   const secondary = results[0]?.secondary?.label;
+  const sorted = [...results].sort((a, b) => a.ms.p50 - b.ms.p50);
 
+  // Global sparkline scale across rows so magnitudes are comparable.
   const allSeries = Object.values(extras.series24h).flat();
   const sparkMin = allSeries.length ? Math.min(...allSeries) : 0;
   const sparkMax = allSeries.length ? Math.max(...allSeries) : 1;
-  const leaderSlug = [...results].sort((a, b) => a.ms.p50 - b.ms.p50)[0]?.slug;
+
+  // Field-level reference values for the "vs field" delta column.
+  const fieldP50 =
+    results.reduce((s, r) => s + r.ms.p50, 0) / Math.max(1, results.length);
 
   return (
-    <div className="card overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm tabular">
-          <thead>
-            <tr className="border-b border-rule bg-bg-soft text-[11px] uppercase tracking-[0.1em] text-ink-muted">
-              <th className="py-3 px-5 text-left font-medium">Provider</th>
-              <th className="py-3 px-3 text-right font-medium">p50</th>
-              <th className="py-3 px-3 text-right font-medium">p90</th>
-              <th className="py-3 px-3 text-right font-medium">p99</th>
-              <th className="py-3 px-3 text-right font-medium">Mean</th>
-              <th className="py-3 px-3 text-right font-medium">Success</th>
-              <th className="py-3 px-3 text-right font-medium">24h trend</th>
-              {secondary && (
-                <th className="py-3 px-5 text-right font-medium">{secondary}</th>
-              )}
-            </tr>
-          </thead>
-          <tbody>
-            {results.map((r) => (
-              <Row
-                key={r.slug}
-                r={r}
-                unit={unit}
-                hasSecondary={!!secondary}
-                series={extras.series24h[r.slug] ?? []}
-                sparkMin={sparkMin}
-                sparkMax={sparkMax}
-                leaderSlug={leaderSlug}
-              />
-            ))}
-          </tbody>
-        </table>
-      </div>
+    <div className="overflow-x-auto">
+      <table className="ledger w-full border-collapse">
+        <thead>
+          <tr>
+            <th colSpan={2} className="border-y-2 border-ink py-2 pr-3 text-left">
+              Provider
+            </th>
+            <th colSpan={4} className="border-y-2 border-ink py-2 px-3 text-center">
+              Latency aggregates
+            </th>
+            <th colSpan={3} className="border-y-2 border-ink py-2 px-3 text-center">
+              24-hour range
+            </th>
+            <th colSpan={2} className="border-y-2 border-ink py-2 pl-3 text-right">
+              Reliability
+            </th>
+            <th className="border-y-2 border-ink py-2 pl-3 text-right">Trend</th>
+            {secondary && (
+              <th className="border-y-2 border-ink py-2 pl-3 text-right">
+                {secondary}
+              </th>
+            )}
+          </tr>
+          <tr>
+            <th className="py-2 pr-3 text-left w-10">№</th>
+            <th className="py-2 pr-3 text-left">Name</th>
+            <th className="py-2 px-3 text-right">p50</th>
+            <th className="py-2 px-3 text-right">p90</th>
+            <th className="py-2 px-3 text-right">p99</th>
+            <th className="py-2 px-3 text-right">Mean</th>
+            <th className="py-2 px-3 text-right">Min</th>
+            <th className="py-2 px-3 text-right">Max</th>
+            <th className="py-2 px-3 text-right">Δ field</th>
+            <th className="py-2 px-3 text-right">Success</th>
+            <th className="py-2 px-3 text-right">n</th>
+            <th className="py-2 pl-3 text-right">24h</th>
+            {secondary && <th className="py-2 pl-3 text-right">Value</th>}
+          </tr>
+          <tr className="border-b border-ink">
+            <th colSpan={13} className="h-px p-0" />
+          </tr>
+        </thead>
+        <tbody>
+          {sorted.map((r, i) => (
+            <Row
+              key={r.slug}
+              r={r}
+              i={i}
+              unit={unit}
+              fieldP50={fieldP50}
+              hasSecondary={!!secondary}
+              series={extras.series24h[r.slug] ?? []}
+              sparkMin={sparkMin}
+              sparkMax={sparkMax}
+            />
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
 
 function Row({
   r,
+  i,
   unit,
+  fieldP50,
   hasSecondary,
   series,
   sparkMin,
   sparkMax,
-  leaderSlug,
 }: {
   r: ProviderResult;
+  i: number;
   unit: string;
+  fieldP50: number;
   hasSecondary: boolean;
   series: number[];
   sparkMin: number;
   sparkMax: number;
-  leaderSlug?: string;
 }) {
-  const isWinner = leaderSlug === r.slug;
-  const color = providerColor(r.slug);
+  const seriesMin = series.length ? Math.min(...series) : r.ms.p50;
+  const seriesMax = series.length ? Math.max(...series) : r.ms.p99;
+  const deltaPct = fieldP50 > 0 ? ((r.ms.p50 - fieldP50) / fieldP50) * 100 : 0;
+  const deltaSign = deltaPct > 0 ? "+" : deltaPct < 0 ? "−" : "±";
   return (
-    <tr className="border-b border-rule last:border-b-0">
-      <td className="py-3.5 px-5">
-        <div className="flex items-baseline gap-2">
-          <span
-            className={cn("text-sm font-semibold")}
-            style={{ color }}
-          >
-            {r.name}
-          </span>
-          {isWinner && (
-            <span
-              className="rounded-md px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.08em]"
-              style={{
-                color,
-                backgroundColor: `${color}1f`,
-              }}
-            >
-              Lead
-            </span>
-          )}
-        </div>
+    <tr className="border-b border-rule">
+      <td className="py-2.5 pr-3 text-ink-muted text-[12px]">
+        {String(i + 1).padStart(2, "0")}
+      </td>
+      <td className="py-2.5 pr-3 font-serif text-[14px]">
+        <span className="text-ink">{r.name}</span>
         {r.tag && (
-          <p className="mt-0.5 text-[11px] text-ink-muted">{r.tag}</p>
+          <span className="ml-2 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-muted">
+            {r.tag}
+          </span>
         )}
       </td>
-      <td
-        className={cn(
-          "py-3.5 px-3 text-right font-mono tabular",
-          isWinner ? "font-semibold" : "text-ink-soft"
-        )}
-        style={isWinner ? { color } : undefined}
-      >
-        {fmtUnit(r.ms.p50, unit)}
-      </td>
-      <td className="py-3.5 px-3 text-right font-mono tabular text-ink-soft">
+      <td className="py-2.5 px-3 text-right text-ink">{fmtUnit(r.ms.p50, unit)}</td>
+      <td className="py-2.5 px-3 text-right text-ink-soft">
         {fmtUnit(r.ms.p90, unit)}
       </td>
-      <td className="py-3.5 px-3 text-right font-mono tabular text-ink-soft">
+      <td className="py-2.5 px-3 text-right text-ink-soft">
         {fmtUnit(r.ms.p99, unit)}
       </td>
-      <td className="py-3.5 px-3 text-right font-mono tabular text-ink-soft">
+      <td className="py-2.5 px-3 text-right text-ink-soft">
         {fmtUnit(r.ms.mean, unit)}
       </td>
-      <td className="py-3.5 px-3 text-right font-mono tabular text-ink-soft">
+      <td className="py-2.5 px-3 text-right text-ink-soft">
+        {fmtUnit(seriesMin, unit)}
+      </td>
+      <td className="py-2.5 px-3 text-right text-ink-soft">
+        {fmtUnit(seriesMax, unit)}
+      </td>
+      <td className="py-2.5 px-3 text-right text-ink-muted">
+        {fieldP50 > 0 ? `${deltaSign}${Math.abs(deltaPct).toFixed(0)}%` : "—"}
+      </td>
+      <td className="py-2.5 px-3 text-right text-ink-soft">
         {r.successRate.toFixed(2)}%
       </td>
-      <td className="py-3.5 px-3 text-right">
+      <td className="py-2.5 px-3 text-right text-ink-muted">
+        {r.sampleSize ? Math.round(r.sampleSize).toLocaleString() : "—"}
+      </td>
+      <td className="py-2.5 pl-3 text-right">
         <span className="inline-flex items-center justify-end">
           <Sparkline
             values={series}
-            color={color}
             globalMin={sparkMin}
             globalMax={sparkMax}
           />
         </span>
       </td>
       {hasSecondary && (
-        <td className="py-3.5 px-5 text-right font-mono tabular text-ink-soft">
+        <td className="py-2.5 pl-3 text-right text-ink-soft">
           {r.secondary?.value ?? "—"}
         </td>
       )}

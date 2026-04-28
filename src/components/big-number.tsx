@@ -5,31 +5,24 @@ type Props = {
   unit?: string;
   label: string;
   caption?: string;
-  emphasis?: boolean;
-  color?: string;
 };
 
-export function BigNumber({ value, unit, label, caption, emphasis, color }: Props) {
+export function BigNumber({ value, unit, label, caption }: Props) {
   return (
-    <div
-      className={cn(
-        "flex flex-col gap-2 px-6 py-5 bg-bg-elev",
-        emphasis && "ring-1 ring-inset ring-ink/10"
-      )}
-    >
-      <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-ink-muted">
+    <div className={cn("flex flex-col gap-2 px-5 py-5 border-y border-ink/30")}>
+      <p className="font-sans text-[10px] uppercase tracking-[0.22em] text-ink-muted">
         {label}
       </p>
-      <p className="display text-3xl sm:text-4xl leading-none" style={color ? { color } : undefined}>
+      <p className="display-num text-3xl sm:text-4xl leading-none">
         {value}
         {unit && (
-          <span className="ml-1 font-sans font-medium text-lg text-ink-muted">
+          <span className="ml-1 font-serif font-normal italic text-xl text-ink-soft">
             {unit}
           </span>
         )}
       </p>
       {caption && (
-        <p className="text-xs text-ink-muted leading-relaxed">{caption}</p>
+        <p className="font-serif italic text-sm text-ink-soft">{caption}</p>
       )}
     </div>
   );

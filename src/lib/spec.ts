@@ -114,6 +114,7 @@ async function tryLoadLive(
         tag: p.tag,
         ms: { p50, p90, p99, mean: mean ?? p50 },
         successRate: success != null ? (success > 1 ? success : success * 100) : 100,
+        sampleSize: sampleSize ?? undefined,
         secondary: p.secondary,
       });
 
