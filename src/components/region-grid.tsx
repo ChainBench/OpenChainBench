@@ -18,6 +18,7 @@ const REGIONS = [
  */
 export function RegionGrid({ benchmark }: Props) {
   const { results, unit, extras } = benchmark;
+  const leaderSlug = [...results].sort((a, b) => a.ms.p50 - b.ms.p50)[0]?.slug;
 
   // For each region, find the global max p50 to scale bars consistently.
   const regionMax = new Map<string, number>();
@@ -64,7 +65,7 @@ export function RegionGrid({ benchmark }: Props) {
               <td className="py-3 pr-3 font-serif text-ink">
                 <span
                   className={cn(
-                    r.highlight === "winner" ? "font-semibold" : "font-normal"
+                    leaderSlug === r.slug ? "font-semibold" : "font-normal"
                   )}
                 >
                   {r.name}

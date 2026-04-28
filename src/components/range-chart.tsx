@@ -15,6 +15,7 @@ type Props = {
 export function RangeChart({ results, unit }: Props) {
   const max = Math.max(...results.map((r) => r.ms.p99));
   const sorted = [...results].sort((a, b) => a.ms.p50 - b.ms.p50);
+  const leaderSlug = sorted[0]?.slug;
   const ticks = buildTicks(max);
   const median = sorted[Math.floor(sorted.length / 2)].ms.p50;
 
@@ -63,7 +64,7 @@ export function RangeChart({ results, unit }: Props) {
           }}
         />
         {sorted.map((r, i) => {
-          const isWinner = r.highlight === "winner";
+          const isWinner = leaderSlug === r.slug;
           const left = (r.ms.p50 / max) * 100;
           const mid = (r.ms.p90 / max) * 100;
           const right = (r.ms.p99 / max) * 100;

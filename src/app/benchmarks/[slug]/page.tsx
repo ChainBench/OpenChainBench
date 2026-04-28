@@ -2,10 +2,11 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import {
+  formatLastRun,
   getBenchmark,
   getBenchmarks,
   getBenchmarkSlugs,
-  formatLastRun,
+  getLeader,
 } from "@/data/benchmarks";
 import { Byline } from "@/components/byline";
 import { RangeChart } from "@/components/range-chart";
@@ -18,8 +19,9 @@ import { fmtUnit } from "@/lib/format";
 
 type Params = { slug: string };
 
-export function generateStaticParams() {
-  return getBenchmarkSlugs().map((slug) => ({ slug }));
+export async function generateStaticParams() {
+  const slugs = await getBenchmarkSlugs();
+  return slugs.map((slug) => ({ slug }));
 }
 
 export async function generateMetadata({
@@ -49,15 +51,21 @@ export default async function BenchmarkPage({
   ]);
   if (!benchmark) notFound();
 
-  const winner = benchmark.results.find((r) => r.highlight === "winner");
+  const isDraft = benchmark.status === "draft";
+  const leader = getLeader(benchmark);
   const otherBenchmarks = all.filter((b) => b.slug !== benchmark.slug);
-  const fieldP50 =
-    benchmark.results.reduce((s, r) => s + r.ms.p50, 0) / benchmark.results.length;
-  const winnerP50 = winner?.ms.p50 ?? benchmark.results[0].ms.p50;
-  const advantage = ((fieldP50 - winnerP50) / fieldP50) * 100;
-  const worstP99 = Math.max(...benchmark.results.map((r) => r.ms.p99));
-  const winnerP99 = winner?.ms.p99 ?? benchmark.results[0].ms.p99;
-  const tailMultiple = worstP99 / winnerP99;
+
+  const fieldP50 = isDraft
+    ? 0
+    : benchmark.results.reduce((s, r) => s + r.ms.p50, 0) /
+      benchmark.results.length;
+  const advantage = leader
+    ? ((fieldP50 - leader.ms.p50) / fieldP50) * 100
+    : 0;
+  const worstP99 = isDraft
+    ? 0
+    : Math.max(...benchmark.results.map((r) => r.ms.p99));
+  const tailMultiple = leader && worstP99 > 0 ? worstP99 / leader.ms.p99 : 0;
 
   return (
     <article className="mx-auto max-w-4xl px-6 py-10">
@@ -80,109 +88,136 @@ export default async function BenchmarkPage({
         />
       </div>
 
-      {/* Pull quote */}
-      {winner && (
-        <blockquote className="my-10 border-l-4 border-ink pl-6 py-2">
-          <p className="font-serif text-2xl sm:text-3xl leading-snug">
-            <span className="font-semibold">{winner.name}</span> leads at{" "}
-            <span className="mark font-mono tabular">
-              {fmtUnit(winner.ms.p50, benchmark.unit)}
-            </span>{" "}
-            <span className="text-ink-soft italic">(p50)</span> — about{" "}
-            {Math.round(advantage)}% under the field median.
-          </p>
-          <footer className="mt-2 font-sans text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-            Across {benchmark.results.length} providers ·{" "}
-            {benchmark.sampleSize.toLocaleString()} samples · 3 regions
-          </footer>
-        </blockquote>
-      )}
+      {isDraft ? (
+        <DraftNotice source={benchmark.source} />
+      ) : (
+        <>
+          {leader && (
+            <blockquote className="my-10 border-l-4 border-ink pl-6 py-2">
+              <p className="font-serif text-2xl sm:text-3xl leading-snug">
+                <span className="font-semibold">{leader.name}</span> leads at{" "}
+                <span className="mark font-mono tabular">
+                  {fmtUnit(leader.ms.p50, benchmark.unit)}
+                </span>{" "}
+                <span className="text-ink-soft italic">(p50)</span>
+                {advantage > 0 && (
+                  <>
+                    {" "}— about {Math.round(advantage)}% under the field median.
+                  </>
+                )}
+                .
+              </p>
+              <footer className="mt-2 font-sans text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+                Across {benchmark.results.length} providers ·{" "}
+                {benchmark.sampleSize.toLocaleString()} samples
+              </footer>
+            </blockquote>
+          )}
 
-      {/* KPI band */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-px bg-rule border border-ink">
-        <BigNumber
-          emphasis
-          label={`${winner?.name ?? "Lead"} · p50`}
-          value={fmtUnit(winnerP50, benchmark.unit).replace(/\s.*/, "")}
-          unit={benchmark.unit === "s" ? " s" : " ms"}
-          caption="Cross-region median latency"
-        />
-        <BigNumber
-          label="Field median"
-          value={fmtUnit(fieldP50, benchmark.unit).replace(/\s.*/, "")}
-          unit={benchmark.unit === "s" ? " s" : " ms"}
-          caption={`Median across ${benchmark.results.length} providers`}
-        />
-        <BigNumber
-          label="Tail spread (p99)"
-          value={`${tailMultiple.toFixed(1)}×`}
-          caption={`Worst p99 vs lead p99 — ${fmtUnit(worstP99, benchmark.unit)} vs ${fmtUnit(winnerP99, benchmark.unit)}`}
-        />
-      </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-px bg-rule border border-ink">
+            <BigNumber
+              emphasis
+              label={`${leader?.name ?? "Lead"} · p50`}
+              value={fmtUnit(leader?.ms.p50 ?? 0, benchmark.unit).replace(
+                /\s.*/,
+                ""
+              )}
+              unit={benchmark.unit === "s" ? " s" : " ms"}
+              caption="Cross-region median latency"
+            />
+            <BigNumber
+              label="Field median"
+              value={fmtUnit(fieldP50, benchmark.unit).replace(/\s.*/, "")}
+              unit={benchmark.unit === "s" ? " s" : " ms"}
+              caption={`Median across ${benchmark.results.length} providers`}
+            />
+            <BigNumber
+              label="Tail spread (p99)"
+              value={tailMultiple > 0 ? `${tailMultiple.toFixed(1)}×` : "—"}
+              caption={
+                tailMultiple > 0 && leader
+                  ? `Worst p99 ${fmtUnit(worstP99, benchmark.unit)} vs lead ${fmtUnit(leader.ms.p99, benchmark.unit)}`
+                  : "n/a"
+              }
+            />
+          </div>
+        </>
+      )}
 
       <SectionRule label="Abstract" number="i" />
       <p className="font-serif text-[1.08rem] leading-[1.7] dropcap">
         {benchmark.abstract}
       </p>
 
-      <SectionRule label="Distribution" number="ii" />
-      <Figure
-        number="1"
-        title={`${benchmark.metric} (p50, p90, p99) by provider`}
-        source={`OpenChainBench harness, ${benchmark.sampleSize.toLocaleString()} samples · ${formatLastRun(benchmark.lastRunAt)}`}
-        note={
-          <>
-            Lower is better. Range is p50 → p99; dashed line is field median.
-            Failed requests are excluded from latency aggregates and counted
-            toward success rate (Table 1).
-          </>
-        }
-      >
-        <RangeChart results={benchmark.results} unit={benchmark.unit} />
-      </Figure>
+      {!isDraft && (
+        <>
+          <SectionRule label="Distribution" number="ii" />
+          <Figure
+            number="1"
+            title={`${benchmark.metric} (p50, p90, p99) by provider`}
+            source={`Run ${formatLastRun(benchmark.lastRunAt)} · ${benchmark.sampleSize.toLocaleString()} samples`}
+            note={
+              <>
+                Lower is better. Range is p50 → p99; dashed line is field
+                median. Failed requests are excluded from latency aggregates
+                and counted toward success rate (Table 1).
+              </>
+            }
+          >
+            <RangeChart results={benchmark.results} unit={benchmark.unit} />
+          </Figure>
 
-      <SectionRule label="Full ledger" number="iii" />
-      <Figure
-        number="2"
-        title="Latency, reliability and 24-hour trend, by provider"
-        source="OpenChainBench harness · cross-region medians"
-        note={
-          <>
-            Sparklines plot p50 over the last 24 hours, on a shared Y-axis so
-            magnitudes are comparable across providers. The lead row is shaded.
-          </>
-        }
-      >
-        <LedgerTable benchmark={benchmark} />
-      </Figure>
+          <SectionRule label="Full ledger" number="iii" />
+          <Figure
+            number="2"
+            title="Latency, reliability and 24-hour trend"
+            source="Cross-region medians, all providers"
+            note={
+              <>
+                Sparklines plot p50 over the last 24 hours, on a shared
+                Y-axis so magnitudes are comparable. The lead row is shaded.
+              </>
+            }
+          >
+            <LedgerTable benchmark={benchmark} />
+          </Figure>
 
-      <SectionRule label="By region" number="iv" />
-      <Figure
-        number="3"
-        title="p50 latency by region — small multiples"
-        source="OpenChainBench harness · per-region cross-section"
-        note={
-          <>
-            Each region is independently scaled to its own maximum so the
-            ranking is read across, not across regions. Solid bars are the
-            regional leader.
-          </>
-        }
-      >
-        <RegionGrid benchmark={benchmark} />
-      </Figure>
+          {Object.keys(benchmark.extras.regions).length > 0 && (
+            <>
+              <SectionRule label="By region" number="iv" />
+              <Figure
+                number="3"
+                title="p50 latency by region"
+                source="Per-region cross-section"
+                note={
+                  <>
+                    Each region is independently scaled to its own maximum
+                    so the ranking is read across, not across regions.
+                  </>
+                }
+              >
+                <RegionGrid benchmark={benchmark} />
+              </Figure>
+            </>
+          )}
+        </>
+      )}
 
-      <SectionRule label="Findings" number="v" />
-      <ol className="space-y-5">
-        {benchmark.findings.map((f, i) => (
-          <li key={i} className="flex gap-4">
-            <span className="font-serif text-3xl font-semibold leading-none text-ink-muted shrink-0 w-9">
-              {i + 1}.
-            </span>
-            <p className="font-serif text-[1.05rem] leading-[1.65]">{f}</p>
-          </li>
-        ))}
-      </ol>
+      {benchmark.findings.length > 0 && !isDraft && (
+        <>
+          <SectionRule label="Findings" number="v" />
+          <ol className="space-y-5">
+            {benchmark.findings.map((f, i) => (
+              <li key={i} className="flex gap-4">
+                <span className="font-serif text-3xl font-semibold leading-none text-ink-muted shrink-0 w-9">
+                  {i + 1}.
+                </span>
+                <p className="font-serif text-[1.05rem] leading-[1.65]">{f}</p>
+              </li>
+            ))}
+          </ol>
+        </>
+      )}
 
       <SectionRule label="Methodology" number="vi" />
       <ul className="space-y-3 font-serif text-[1.02rem] leading-[1.6] text-ink-soft">
@@ -201,8 +236,10 @@ export default async function BenchmarkPage({
         </a>
       </p>
 
-      <SectionRule label="Cite this report" number="vii" />
-      <pre className="font-mono text-[11px] leading-snug bg-paper-deep border border-rule p-4 overflow-x-auto whitespace-pre-wrap">
+      {!isDraft && (
+        <>
+          <SectionRule label="Cite this report" number="vii" />
+          <pre className="font-mono text-[11px] leading-snug bg-paper-deep border border-rule p-4 overflow-x-auto whitespace-pre-wrap">
 {`@misc{openchainbench-${benchmark.number},
   author       = {{OpenChainBench}},
   title        = {${benchmark.title}},
@@ -210,31 +247,57 @@ export default async function BenchmarkPage({
   howpublished = {\\url{https://openchainbench.xyz/benchmarks/${benchmark.slug}}},
   note         = {Run on ${formatLastRun(benchmark.lastRunAt)}}
 }`}
-      </pre>
+          </pre>
+        </>
+      )}
 
-      {/* Footer nav */}
-      <nav className="mt-16 border-t-2 border-ink pt-6">
-        <h3 className="font-sans text-[11px] uppercase tracking-[0.22em] text-ink-muted">
-          More from this issue
-        </h3>
-        <ul className="mt-4 grid gap-3 sm:grid-cols-2">
-          {otherBenchmarks.map((b) => (
-            <li key={b.slug}>
-              <Link
-                href={`/benchmarks/${b.slug}`}
-                className="block border border-rule bg-paper-deep/50 p-4 hover:border-ink"
-              >
-                <p className="font-sans text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-                  Bench №&nbsp;{b.number}
-                </p>
-                <p className="mt-1 font-serif text-lg font-semibold leading-snug">
-                  {b.title}
-                </p>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </nav>
+      {otherBenchmarks.length > 0 && (
+        <nav className="mt-16 border-t-2 border-ink pt-6">
+          <h3 className="font-sans text-[11px] uppercase tracking-[0.22em] text-ink-muted">
+            More benchmarks
+          </h3>
+          <ul className="mt-4 grid gap-3 sm:grid-cols-2">
+            {otherBenchmarks.map((b) => (
+              <li key={b.slug}>
+                <Link
+                  href={`/benchmarks/${b.slug}`}
+                  className="block border border-rule bg-paper-deep/50 p-4 hover:border-ink"
+                >
+                  <p className="font-sans text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+                    Bench №&nbsp;{b.number}
+                  </p>
+                  <p className="mt-1 font-serif text-lg font-semibold leading-snug">
+                    {b.title}
+                  </p>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      )}
     </article>
+  );
+}
+
+function DraftNotice({ source }: { source: string }) {
+  return (
+    <div className="my-10 border-2 border-dashed border-ink/40 bg-paper-deep/40 p-6">
+      <p className="font-sans text-[11px] uppercase tracking-[0.22em] text-ink">
+        Draft — Awaiting first run
+      </p>
+      <p className="mt-3 font-serif text-[1.05rem] leading-relaxed text-ink-soft">
+        The spec for this benchmark is published, but the harness has not
+        emitted enough data yet to show numbers. The methodology below
+        describes what will be measured and how. Once the harness pushes
+        results to Prometheus, this page will switch to live data on the
+        next revalidation.
+      </p>
+      <p className="mt-3 font-sans text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+        Watch the harness:{" "}
+        <a className="lnk normal-case tracking-normal" href={source}>
+          {source.replace("https://github.com/", "")}
+        </a>
+      </p>
+    </div>
   );
 }

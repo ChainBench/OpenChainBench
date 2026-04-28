@@ -1,79 +1,112 @@
-# OpenChainBench — Bench № 004 · RPC Head Lag
+# OpenChainBench — Bench № 004
 
 slug: rpc-head-lag
+number: "004"
+title: RPC Head Lag — How Far Behind the Tip?
+subtitle: How quickly each RPC provider reports new blocks, measured against a private archive node tracking the canonical tip.
+category: RPCs
+status: live
+metric: Head lag
+unit: ms
+
+abstract: |
+  We measure the gap between the canonical chain tip and the head reported by
+  each commercial RPC endpoint. The harness runs a fleet of private archive
+  nodes (Ethereum, Base, Arbitrum, Polygon, Optimism), records every new
+  block, then polls each RPC's `eth_blockNumber` every 250 ms and timestamps
+  when the same block first becomes visible. Head lag is the wall-clock delta
+  between the two. Reads that fail or return stale results past the timeout
+  count as failures.
+
+methodology:
+  - "Chains: Ethereum, Base, Arbitrum, Polygon, Optimism. Cross-chain median is the headline."
+  - "Reference: a private archive node per chain, peered to multiple sources, validated against block hash."
+  - "Cadence: `eth_blockNumber` every 250 ms per provider per region for 24 hours."
+  - "Regions: us-east-1, eu-west-1, ap-southeast-1. Cross-region median reported."
+  - "Timeout: 2,000 ms. Stale reads past the timeout are excluded from latency aggregates and counted in success rate."
+  - "Privacy: harness wallets are public; raw block-by-block timestamps are stored for audit."
+
+findings: []
+
+source: https://github.com/Flotapponnier/OpenChainBench/tree/main/harnesses/rpc-head-lag
 
 prometheus:
   url: https://prometheus-production-0859.up.railway.app
   window: 24h
 
-# Conventions (proposed for the rpc-head-lag harness):
-#   ocb_head_lag_ms_bucket{provider, chain, region}    — histogram of (now - block_time)
-#   ocb_head_poll_total{provider, chain, success}      — counter of poll attempts
-#
-# Metrics are aggregated across chains; per-chain views available in raw data.
+# Conventions for the rpc-head-lag harness:
+#   ocb_head_lag_ms_bucket{provider, chain, region, le}
+#   ocb_head_poll_total{provider, chain, region, success="true|false"}
 
 providers:
-  - slug: mobula-rpc
-    queries:
-      p50: histogram_quantile(0.5,  sum by (le) (rate(ocb_head_lag_ms_bucket{provider="mobula-rpc"}[24h])))
-      p90: histogram_quantile(0.9,  sum by (le) (rate(ocb_head_lag_ms_bucket{provider="mobula-rpc"}[24h])))
-      p99: histogram_quantile(0.99, sum by (le) (rate(ocb_head_lag_ms_bucket{provider="mobula-rpc"}[24h])))
-      mean: sum(rate(ocb_head_lag_ms_sum{provider="mobula-rpc"}[24h])) / sum(rate(ocb_head_lag_ms_count{provider="mobula-rpc"}[24h]))
-      success: sum(rate(ocb_head_poll_total{provider="mobula-rpc", success="true"}[24h])) / sum(rate(ocb_head_poll_total{provider="mobula-rpc"}[24h]))
-      sample_size: sum(increase(ocb_head_poll_total{provider="mobula-rpc"}[24h]))
-      series: histogram_quantile(0.5, sum by (le) (rate(ocb_head_lag_ms_bucket{provider="mobula-rpc"}[1h])))
-      regions:
-        - region: us-east
-          p50: histogram_quantile(0.5, sum by (le) (rate(ocb_head_lag_ms_bucket{provider="mobula-rpc", region="us-east"}[24h])))
-        - region: eu-west
-          p50: histogram_quantile(0.5, sum by (le) (rate(ocb_head_lag_ms_bucket{provider="mobula-rpc", region="eu-west"}[24h])))
-        - region: ap-southeast
-          p50: histogram_quantile(0.5, sum by (le) (rate(ocb_head_lag_ms_bucket{provider="mobula-rpc", region="ap-southeast"}[24h])))
-
   - slug: alchemy
+    name: Alchemy
+    tag: Supernode
+    secondary: { label: "Chains", value: "9" }
     queries:
       p50: histogram_quantile(0.5,  sum by (le) (rate(ocb_head_lag_ms_bucket{provider="alchemy"}[24h])))
       p90: histogram_quantile(0.9,  sum by (le) (rate(ocb_head_lag_ms_bucket{provider="alchemy"}[24h])))
       p99: histogram_quantile(0.99, sum by (le) (rate(ocb_head_lag_ms_bucket{provider="alchemy"}[24h])))
       success: sum(rate(ocb_head_poll_total{provider="alchemy", success="true"}[24h])) / sum(rate(ocb_head_poll_total{provider="alchemy"}[24h]))
+      sample_size: sum(increase(ocb_head_poll_total{provider="alchemy"}[24h]))
       series: histogram_quantile(0.5, sum by (le) (rate(ocb_head_lag_ms_bucket{provider="alchemy"}[1h])))
 
   - slug: quicknode
+    name: QuickNode
+    tag: Premium
+    secondary: { label: "Chains", value: "26" }
     queries:
       p50: histogram_quantile(0.5,  sum by (le) (rate(ocb_head_lag_ms_bucket{provider="quicknode"}[24h])))
       p90: histogram_quantile(0.9,  sum by (le) (rate(ocb_head_lag_ms_bucket{provider="quicknode"}[24h])))
       p99: histogram_quantile(0.99, sum by (le) (rate(ocb_head_lag_ms_bucket{provider="quicknode"}[24h])))
       success: sum(rate(ocb_head_poll_total{provider="quicknode", success="true"}[24h])) / sum(rate(ocb_head_poll_total{provider="quicknode"}[24h]))
+      sample_size: sum(increase(ocb_head_poll_total{provider="quicknode"}[24h]))
       series: histogram_quantile(0.5, sum by (le) (rate(ocb_head_lag_ms_bucket{provider="quicknode"}[1h])))
 
   - slug: infura
+    name: Infura
+    tag: Mainnet only
+    secondary: { label: "Chains", value: "8" }
     queries:
       p50: histogram_quantile(0.5,  sum by (le) (rate(ocb_head_lag_ms_bucket{provider="infura"}[24h])))
       p90: histogram_quantile(0.9,  sum by (le) (rate(ocb_head_lag_ms_bucket{provider="infura"}[24h])))
       p99: histogram_quantile(0.99, sum by (le) (rate(ocb_head_lag_ms_bucket{provider="infura"}[24h])))
       success: sum(rate(ocb_head_poll_total{provider="infura", success="true"}[24h])) / sum(rate(ocb_head_poll_total{provider="infura"}[24h]))
+      sample_size: sum(increase(ocb_head_poll_total{provider="infura"}[24h]))
       series: histogram_quantile(0.5, sum by (le) (rate(ocb_head_lag_ms_bucket{provider="infura"}[1h])))
 
   - slug: ankr
+    name: Ankr
+    tag: Public + premium
+    secondary: { label: "Chains", value: "32" }
     queries:
       p50: histogram_quantile(0.5,  sum by (le) (rate(ocb_head_lag_ms_bucket{provider="ankr"}[24h])))
       p90: histogram_quantile(0.9,  sum by (le) (rate(ocb_head_lag_ms_bucket{provider="ankr"}[24h])))
       p99: histogram_quantile(0.99, sum by (le) (rate(ocb_head_lag_ms_bucket{provider="ankr"}[24h])))
       success: sum(rate(ocb_head_poll_total{provider="ankr", success="true"}[24h])) / sum(rate(ocb_head_poll_total{provider="ankr"}[24h]))
+      sample_size: sum(increase(ocb_head_poll_total{provider="ankr"}[24h]))
       series: histogram_quantile(0.5, sum by (le) (rate(ocb_head_lag_ms_bucket{provider="ankr"}[1h])))
 
   - slug: tenderly
+    name: Tenderly
+    tag: Web3 gateway
+    secondary: { label: "Chains", value: "12" }
     queries:
       p50: histogram_quantile(0.5,  sum by (le) (rate(ocb_head_lag_ms_bucket{provider="tenderly"}[24h])))
       p90: histogram_quantile(0.9,  sum by (le) (rate(ocb_head_lag_ms_bucket{provider="tenderly"}[24h])))
       p99: histogram_quantile(0.99, sum by (le) (rate(ocb_head_lag_ms_bucket{provider="tenderly"}[24h])))
       success: sum(rate(ocb_head_poll_total{provider="tenderly", success="true"}[24h])) / sum(rate(ocb_head_poll_total{provider="tenderly"}[24h]))
+      sample_size: sum(increase(ocb_head_poll_total{provider="tenderly"}[24h]))
       series: histogram_quantile(0.5, sum by (le) (rate(ocb_head_lag_ms_bucket{provider="tenderly"}[1h])))
 
-  - slug: public-rpc
+  - slug: mobula-rpc
+    name: Mobula RPC
+    tag: Multi-chain edge
+    secondary: { label: "Chains", value: "44" }
     queries:
-      p50: histogram_quantile(0.5,  sum by (le) (rate(ocb_head_lag_ms_bucket{provider="public-rpc"}[24h])))
-      p90: histogram_quantile(0.9,  sum by (le) (rate(ocb_head_lag_ms_bucket{provider="public-rpc"}[24h])))
-      p99: histogram_quantile(0.99, sum by (le) (rate(ocb_head_lag_ms_bucket{provider="public-rpc"}[24h])))
-      success: sum(rate(ocb_head_poll_total{provider="public-rpc", success="true"}[24h])) / sum(rate(ocb_head_poll_total{provider="public-rpc"}[24h]))
-      series: histogram_quantile(0.5, sum by (le) (rate(ocb_head_lag_ms_bucket{provider="public-rpc"}[1h])))
+      p50: histogram_quantile(0.5,  sum by (le) (rate(ocb_head_lag_ms_bucket{provider="mobula-rpc"}[24h])))
+      p90: histogram_quantile(0.9,  sum by (le) (rate(ocb_head_lag_ms_bucket{provider="mobula-rpc"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(ocb_head_lag_ms_bucket{provider="mobula-rpc"}[24h])))
+      success: sum(rate(ocb_head_poll_total{provider="mobula-rpc", success="true"}[24h])) / sum(rate(ocb_head_poll_total{provider="mobula-rpc"}[24h]))
+      sample_size: sum(increase(ocb_head_poll_total{provider="mobula-rpc"}[24h]))
+      series: histogram_quantile(0.5, sum by (le) (rate(ocb_head_lag_ms_bucket{provider="mobula-rpc"}[1h])))

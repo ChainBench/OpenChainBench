@@ -10,11 +10,12 @@ export function SiteFooter() {
               OpenChainBench
             </p>
             <p className="mt-2 font-serif italic text-ink-soft max-w-md">
-              An open, reproducible benchmark series for crypto infrastructure.
-              Methodology, scripts and raw data are public.
+              Open, reproducible benchmarks for crypto infrastructure.
+              Methodology, specs and raw metrics are public. Anyone can
+              submit.
             </p>
             <p className="mt-4 font-sans text-[11px] uppercase tracking-[0.2em] text-ink-muted">
-              Community-run · Edited independently
+              MIT-licensed · Community-run
             </p>
           </div>
 
@@ -28,20 +29,19 @@ export function SiteFooter() {
             ]}
           />
           <FooterCol
-            title="Follow"
+            title="Contribute"
             links={[
-              { label: "@openchainbench", href: "https://twitter.com/openchainbench" },
-              { label: "r/openchainbench", href: "https://reddit.com/r/openchainbench" },
-              { label: "GitHub", href: "https://github.com/mobula/openchainbench" },
+              { label: "Tutorial", href: "/contribute" },
+              { label: "GitHub", href: "https://github.com/Flotapponnier/OpenChainBench" },
+              { label: "Open an issue", href: "https://github.com/Flotapponnier/OpenChainBench/issues/new" },
               { label: "RSS", href: "/rss.xml" },
             ]}
           />
           <FooterCol
-            title="Reach"
+            title="Follow"
             links={[
-              { label: "editor@openchainbench.xyz", href: "mailto:editor@openchainbench.xyz" },
-              { label: "press@openchainbench.xyz", href: "mailto:press@openchainbench.xyz" },
-              { label: "File a correction", href: "https://github.com/mobula/openchainbench/issues/new" },
+              { label: "@openchainbench", href: "https://twitter.com/openchainbench" },
+              { label: "r/openchainbench", href: "https://reddit.com/r/openchainbench" },
             ]}
           />
         </div>

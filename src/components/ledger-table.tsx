@@ -18,8 +18,9 @@ export function LedgerTable({ benchmark }: Props) {
 
   // Global Y-bounds for the sparklines so all rows share the same scale.
   const allSeries = Object.values(extras.series24h).flat();
-  const sparkMin = Math.min(...allSeries);
-  const sparkMax = Math.max(...allSeries);
+  const sparkMin = allSeries.length ? Math.min(...allSeries) : 0;
+  const sparkMax = allSeries.length ? Math.max(...allSeries) : 1;
+  const leaderSlug = [...results].sort((a, b) => a.ms.p50 - b.ms.p50)[0]?.slug;
 
   return (
     <div className="overflow-x-auto">
@@ -73,6 +74,7 @@ export function LedgerTable({ benchmark }: Props) {
               series={extras.series24h[r.slug] ?? []}
               sparkMin={sparkMin}
               sparkMax={sparkMax}
+              leaderSlug={leaderSlug}
             />
           ))}
         </tbody>
@@ -89,6 +91,7 @@ function Row({
   series,
   sparkMin,
   sparkMax,
+  leaderSlug,
 }: {
   r: ProviderResult;
   i: number;
@@ -97,8 +100,9 @@ function Row({
   series: number[];
   sparkMin: number;
   sparkMax: number;
+  leaderSlug?: string;
 }) {
-  const isWinner = r.highlight === "winner";
+  const isWinner = leaderSlug === r.slug;
   return (
     <tr className={cn("border-b border-rule", isWinner && "bg-paper-deep/60")}>
       <td className="py-3 pr-4 text-ink-muted">{String(i + 1).padStart(2, "0")}</td>

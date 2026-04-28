@@ -1,109 +1,122 @@
-# OpenChainBench — Benchmark Spec
-#
-# This file is the source of truth for one benchmark report. The build
-# pulls live numbers from the Prometheus instance below; if the queries
-# fail or return nothing, the page falls back to the mock entry of the
-# same slug in src/data/benchmarks.ts.
-#
-# Submitting a new benchmark? Drop a similar file in this directory and
-# open a PR. See ../README.md for the spec reference.
+# OpenChainBench — Bench № 001
+# Self-contained spec: editorial metadata + Prometheus queries.
+# Schema: src/lib/spec-schema.ts · Validate: pnpm validate
 
 slug: aggregator-quote-latency
+number: "001"
+title: DEX Aggregator — Quote Latency
+subtitle: End-to-end response time of swap-quote APIs across the leading DEX aggregators.
+category: Aggregators
+status: live
+metric: Quote latency
+unit: ms
+
+abstract: |
+  We benchmark how long the major DEX-aggregator APIs take to return a usable
+  swap quote for a fixed set of token pairs across Ethereum, Polygon, BNB
+  Chain, Arbitrum and Base. The harness issues identical requests in parallel
+  from three regions (us-east, eu-west, ap-southeast) and records p50, p90 and
+  p99 wall-clock latency along with the success rate. Caches are warmed;
+  failures and 4xx responses are excluded from latency aggregates and counted
+  toward success rate.
+
+methodology:
+  - "Token-pair set: 40 pairs spanning blue-chips, mid-caps and stable→stable."
+  - "Trade size: $1,000 notional per request, normalised against the pair's reference price."
+  - "Regions: us-east-1, eu-west-1, ap-southeast-1. Reported figures are the cross-region median."
+  - "Cadence: 1 request / pair / region every 30 seconds for 24 hours."
+  - "Timeout: 5,000 ms. Responses past the timeout are counted as failures."
+  - "Versioning: API endpoints pinned to public docs as of run start; full request/response transcripts stored."
+
+findings: []
+
+source: https://github.com/Flotapponnier/OpenChainBench/tree/main/harnesses/aggregator-quote
 
 prometheus:
   url: https://prometheus-production-0859.up.railway.app
   window: 24h
 
-# Each provider here must match a `slug` in src/data/benchmarks.ts.
-# The `queries` block lists the PromQL the loader runs.
-#
-# Conventions (proposed for the aggregator-latency harness):
-#   - Histogram: ocb_quote_duration_ms_bucket{provider="<slug>", region="<r>"}
-#   - Counter:   ocb_quote_total{provider="<slug>", success="true|false"}
-#
-# Adjust the metric/label names to match whatever the harness actually
-# emits — that's the only place the wiring lives.
+# Conventions for the aggregator-quote harness:
+#   ocb_quote_duration_ms_bucket{provider, region, le}
+#   ocb_quote_total{provider, region, success="true|false"}
 
 providers:
   - slug: mobula
+    name: Mobula
+    tag: Multi-DEX aggregator
+    secondary: { label: "Chains covered", value: "44" }
     queries:
-      p50: |
-        histogram_quantile(0.5,
-          sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="mobula"}[24h])))
-      p90: |
-        histogram_quantile(0.9,
-          sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="mobula"}[24h])))
-      p99: |
-        histogram_quantile(0.99,
-          sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="mobula"}[24h])))
-      mean: |
-        sum(rate(ocb_quote_duration_ms_sum{provider="mobula"}[24h]))
-        /
-        sum(rate(ocb_quote_duration_ms_count{provider="mobula"}[24h]))
-      success: |
-        sum(rate(ocb_quote_total{provider="mobula", success="true"}[24h]))
-        /
-        sum(rate(ocb_quote_total{provider="mobula"}[24h]))
-      sample_size: |
-        sum(increase(ocb_quote_duration_ms_count{provider="mobula"}[24h]))
-      series: |
-        histogram_quantile(0.5,
-          sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="mobula"}[1h])))
+      p50: histogram_quantile(0.5,  sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="mobula"}[24h])))
+      p90: histogram_quantile(0.9,  sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="mobula"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="mobula"}[24h])))
+      mean: sum(rate(ocb_quote_duration_ms_sum{provider="mobula"}[24h])) / sum(rate(ocb_quote_duration_ms_count{provider="mobula"}[24h]))
+      success: sum(rate(ocb_quote_total{provider="mobula", success="true"}[24h])) / sum(rate(ocb_quote_total{provider="mobula"}[24h]))
+      sample_size: sum(increase(ocb_quote_total{provider="mobula"}[24h]))
+      series: histogram_quantile(0.5, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="mobula"}[1h])))
       regions:
         - region: us-east
-          p50: |
-            histogram_quantile(0.5,
-              sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="mobula", region="us-east"}[24h])))
+          p50: histogram_quantile(0.5, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="mobula", region="us-east"}[24h])))
         - region: eu-west
-          p50: |
-            histogram_quantile(0.5,
-              sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="mobula", region="eu-west"}[24h])))
+          p50: histogram_quantile(0.5, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="mobula", region="eu-west"}[24h])))
         - region: ap-southeast
-          p50: |
-            histogram_quantile(0.5,
-              sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="mobula", region="ap-southeast"}[24h])))
+          p50: histogram_quantile(0.5, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="mobula", region="ap-southeast"}[24h])))
 
   - slug: 1inch
+    name: 1inch
+    tag: Pathfinder v6
+    secondary: { label: "Chains covered", value: "12" }
     queries:
-      p50: histogram_quantile(0.5, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="1inch"}[24h])))
-      p90: histogram_quantile(0.9, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="1inch"}[24h])))
+      p50: histogram_quantile(0.5,  sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="1inch"}[24h])))
+      p90: histogram_quantile(0.9,  sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="1inch"}[24h])))
       p99: histogram_quantile(0.99, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="1inch"}[24h])))
       success: sum(rate(ocb_quote_total{provider="1inch", success="true"}[24h])) / sum(rate(ocb_quote_total{provider="1inch"}[24h]))
-      sample_size: sum(increase(ocb_quote_duration_ms_count{provider="1inch"}[24h]))
+      sample_size: sum(increase(ocb_quote_total{provider="1inch"}[24h]))
       series: histogram_quantile(0.5, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="1inch"}[1h])))
 
   - slug: 0x
+    name: 0x
+    tag: Swap API v2
+    secondary: { label: "Chains covered", value: "9" }
     queries:
-      p50: histogram_quantile(0.5, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="0x"}[24h])))
-      p90: histogram_quantile(0.9, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="0x"}[24h])))
+      p50: histogram_quantile(0.5,  sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="0x"}[24h])))
+      p90: histogram_quantile(0.9,  sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="0x"}[24h])))
       p99: histogram_quantile(0.99, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="0x"}[24h])))
       success: sum(rate(ocb_quote_total{provider="0x", success="true"}[24h])) / sum(rate(ocb_quote_total{provider="0x"}[24h]))
-      sample_size: sum(increase(ocb_quote_duration_ms_count{provider="0x"}[24h]))
+      sample_size: sum(increase(ocb_quote_total{provider="0x"}[24h]))
       series: histogram_quantile(0.5, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="0x"}[1h])))
 
   - slug: paraswap
+    name: ParaSwap
+    tag: API v6.2
+    secondary: { label: "Chains covered", value: "11" }
     queries:
-      p50: histogram_quantile(0.5, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="paraswap"}[24h])))
-      p90: histogram_quantile(0.9, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="paraswap"}[24h])))
+      p50: histogram_quantile(0.5,  sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="paraswap"}[24h])))
+      p90: histogram_quantile(0.9,  sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="paraswap"}[24h])))
       p99: histogram_quantile(0.99, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="paraswap"}[24h])))
       success: sum(rate(ocb_quote_total{provider="paraswap", success="true"}[24h])) / sum(rate(ocb_quote_total{provider="paraswap"}[24h]))
-      sample_size: sum(increase(ocb_quote_duration_ms_count{provider="paraswap"}[24h]))
+      sample_size: sum(increase(ocb_quote_total{provider="paraswap"}[24h]))
       series: histogram_quantile(0.5, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="paraswap"}[1h])))
 
   - slug: kyberswap
+    name: KyberSwap
+    tag: Aggregator API
+    secondary: { label: "Chains covered", value: "16" }
     queries:
-      p50: histogram_quantile(0.5, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="kyberswap"}[24h])))
-      p90: histogram_quantile(0.9, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="kyberswap"}[24h])))
+      p50: histogram_quantile(0.5,  sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="kyberswap"}[24h])))
+      p90: histogram_quantile(0.9,  sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="kyberswap"}[24h])))
       p99: histogram_quantile(0.99, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="kyberswap"}[24h])))
       success: sum(rate(ocb_quote_total{provider="kyberswap", success="true"}[24h])) / sum(rate(ocb_quote_total{provider="kyberswap"}[24h]))
-      sample_size: sum(increase(ocb_quote_duration_ms_count{provider="kyberswap"}[24h]))
+      sample_size: sum(increase(ocb_quote_total{provider="kyberswap"}[24h]))
       series: histogram_quantile(0.5, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="kyberswap"}[1h])))
 
   - slug: jupiter
+    name: Jupiter
+    tag: Solana only
+    secondary: { label: "Chains covered", value: "1" }
     queries:
-      p50: histogram_quantile(0.5, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="jupiter"}[24h])))
-      p90: histogram_quantile(0.9, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="jupiter"}[24h])))
+      p50: histogram_quantile(0.5,  sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="jupiter"}[24h])))
+      p90: histogram_quantile(0.9,  sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="jupiter"}[24h])))
       p99: histogram_quantile(0.99, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="jupiter"}[24h])))
       success: sum(rate(ocb_quote_total{provider="jupiter", success="true"}[24h])) / sum(rate(ocb_quote_total{provider="jupiter"}[24h]))
-      sample_size: sum(increase(ocb_quote_duration_ms_count{provider="jupiter"}[24h]))
+      sample_size: sum(increase(ocb_quote_total{provider="jupiter"}[24h]))
       series: histogram_quantile(0.5, sum by (le) (rate(ocb_quote_duration_ms_bucket{provider="jupiter"}[1h])))
