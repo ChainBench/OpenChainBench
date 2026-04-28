@@ -32,7 +32,7 @@ export async function SiteHeader() {
           </span>
           {totalSamples > 0 && (
             <span className="hidden sm:inline">
-              {totalSamples.toLocaleString()} samples in last 24h
+              {Math.round(totalSamples).toLocaleString()} samples in last 24h
             </span>
           )}
           <span className="hidden md:inline">
