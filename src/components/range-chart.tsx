@@ -218,9 +218,16 @@ function niceStep(max: number): number {
 
 function formatTick(v: number, unit: string) {
   if (v === 0) return "0";
+  if (unit === "pct") {
+    if (v >= 1) return `${v.toFixed(0)}%`;
+    if (v >= 0.1) return `${v.toFixed(1)}%`;
+    return `${v.toFixed(2)}%`;
+  }
   if (unit === "bps") {
-    if (v >= 1000) return `${Math.round(v / 100)}%`;
-    return `${Math.round(v)}bp`;
+    // Legacy: divide by 100 to convert to percent.
+    const pct = v / 100;
+    if (pct >= 1) return `${pct.toFixed(0)}%`;
+    return `${pct.toFixed(2)}%`;
   }
   if (unit === "s") {
     const s = v / 1000;

@@ -7,24 +7,23 @@ subtitle: What a user actually pays — fees, slippage and destination gas combi
 category: Bridges
 status: live
 metric: Effective fee
-unit: bps
+unit: pct
 
 abstract: |
   We measure the effective fee each bridge charges — the bottom-line cost a
-  user pays, fees plus slippage plus destination gas — as a fraction of
-  trade size, reported in basis points (1 bps = 0.01% of notional). The
-  harness uses Prometheus gauge `bridge_cost_percent` rather than the
-  narrower `bridge_fees_percent` because providers structure pricing
-  differently — some charge an explicit fee, others bake it into the
-  spread. Comparing only the explicit fee field would let aggregators with
-  implicit pricing show a misleading 0 bps. Sampled at $300 notional so
-  small-amount fixed-fee blowups don't skew the percentile aggregates.
-  Lower is better.
+  user pays, fees plus slippage plus destination gas — as a percentage of
+  trade size. The harness uses Prometheus gauge `bridge_cost_percent`
+  rather than the narrower `bridge_fees_percent` because providers
+  structure pricing differently — some charge an explicit fee, others bake
+  it into the spread. Comparing only the explicit fee field would let
+  aggregators with implicit pricing show a misleading 0%. Sampled at $300
+  notional so small-amount fixed-fee blowups don't skew the percentile
+  aggregates. Lower is better.
 
 methodology:
   - "Routes: USDC pairs spanning Solana, Base and Arbitrum."
   - "Reference notional: $300 USDC. Smaller sizes ($5, $50) are captured by the harness but excluded from this report."
-  - "Cost: `bridge_cost_percent{amount_usd=\"300\"}` × 100, in basis points. Includes fees + slippage + destination gas."
+  - "Cost: `bridge_cost_percent{amount_usd=\"300\"}`, in percent of notional. Includes fees + slippage + destination gas."
   - "Cadence: full sweep every 5 minutes for 24 hours."
   - "Region: eu-west (single point — multi-region requires running additional monitor instances)."
   - "Failures (quote_failed, unsupported route) excluded from cost aggregates and counted toward success rate."
@@ -39,12 +38,12 @@ prometheus:
 
 # Real metrics exposed by the bridge-monitor harness:
 #   bridge_cost_percent{bridge, from_chain, to_chain, from_token, to_token, amount_usd, region}
-#   → gauge in percent (1.18 = 1.18% = 118 bps). Multiply by 100 to convert.
+#   → gauge in percent (1.18 = 1.18% of notional).
 #
 # Why cost rather than fee:
 #   bridge_fees_percent only captures the explicit fee field in each quote.
 #   Some providers (e.g. Mobula) bake the cost into the spread instead of
-#   reporting an explicit fee, so they would render as 0 bps — misleading
+#   reporting an explicit fee, so they would render as 0% — misleading
 #   readers. bridge_cost_percent = fees + slippage + gas, which is the
 #   number that actually leaves the user's wallet.
 
@@ -53,46 +52,46 @@ providers:
     name: Mobula
     tag: Aggregator + intent layer
     queries:
-      p50: quantile_over_time(0.50, bridge_cost_percent{bridge="mobula", amount_usd="300"}[24h]) * 100
-      p90: quantile_over_time(0.90, bridge_cost_percent{bridge="mobula", amount_usd="300"}[24h]) * 100
-      p99: quantile_over_time(0.99, bridge_cost_percent{bridge="mobula", amount_usd="300"}[24h]) * 100
-      mean: avg_over_time(bridge_cost_percent{bridge="mobula", amount_usd="300"}[24h]) * 100
+      p50: quantile_over_time(0.50, bridge_cost_percent{bridge="mobula", amount_usd="300"}[24h])
+      p90: quantile_over_time(0.90, bridge_cost_percent{bridge="mobula", amount_usd="300"}[24h])
+      p99: quantile_over_time(0.99, bridge_cost_percent{bridge="mobula", amount_usd="300"}[24h])
+      mean: avg_over_time(bridge_cost_percent{bridge="mobula", amount_usd="300"}[24h])
       success: avg_over_time(bridge_quote_success{bridge="mobula", amount_usd="300"}[24h])
       sample_size: count_over_time(bridge_cost_percent{bridge="mobula", amount_usd="300"}[24h])
-      series: avg_over_time(bridge_cost_percent{bridge="mobula", amount_usd="300"}[1h]) * 100
+      series: avg_over_time(bridge_cost_percent{bridge="mobula", amount_usd="300"}[1h])
 
   - slug: relay
     name: Relay
     tag: Cross-chain relay
     queries:
-      p50: quantile_over_time(0.50, bridge_cost_percent{bridge="relay", amount_usd="300"}[24h]) * 100
-      p90: quantile_over_time(0.90, bridge_cost_percent{bridge="relay", amount_usd="300"}[24h]) * 100
-      p99: quantile_over_time(0.99, bridge_cost_percent{bridge="relay", amount_usd="300"}[24h]) * 100
-      mean: avg_over_time(bridge_cost_percent{bridge="relay", amount_usd="300"}[24h]) * 100
+      p50: quantile_over_time(0.50, bridge_cost_percent{bridge="relay", amount_usd="300"}[24h])
+      p90: quantile_over_time(0.90, bridge_cost_percent{bridge="relay", amount_usd="300"}[24h])
+      p99: quantile_over_time(0.99, bridge_cost_percent{bridge="relay", amount_usd="300"}[24h])
+      mean: avg_over_time(bridge_cost_percent{bridge="relay", amount_usd="300"}[24h])
       success: avg_over_time(bridge_quote_success{bridge="relay", amount_usd="300"}[24h])
       sample_size: count_over_time(bridge_cost_percent{bridge="relay", amount_usd="300"}[24h])
-      series: avg_over_time(bridge_cost_percent{bridge="relay", amount_usd="300"}[1h]) * 100
+      series: avg_over_time(bridge_cost_percent{bridge="relay", amount_usd="300"}[1h])
 
   - slug: lifi
     name: LiFi
     tag: Aggregator
     queries:
-      p50: quantile_over_time(0.50, bridge_cost_percent{bridge="lifi", amount_usd="300"}[24h]) * 100
-      p90: quantile_over_time(0.90, bridge_cost_percent{bridge="lifi", amount_usd="300"}[24h]) * 100
-      p99: quantile_over_time(0.99, bridge_cost_percent{bridge="lifi", amount_usd="300"}[24h]) * 100
-      mean: avg_over_time(bridge_cost_percent{bridge="lifi", amount_usd="300"}[24h]) * 100
+      p50: quantile_over_time(0.50, bridge_cost_percent{bridge="lifi", amount_usd="300"}[24h])
+      p90: quantile_over_time(0.90, bridge_cost_percent{bridge="lifi", amount_usd="300"}[24h])
+      p99: quantile_over_time(0.99, bridge_cost_percent{bridge="lifi", amount_usd="300"}[24h])
+      mean: avg_over_time(bridge_cost_percent{bridge="lifi", amount_usd="300"}[24h])
       success: avg_over_time(bridge_quote_success{bridge="lifi", amount_usd="300"}[24h])
       sample_size: count_over_time(bridge_cost_percent{bridge="lifi", amount_usd="300"}[24h])
-      series: avg_over_time(bridge_cost_percent{bridge="lifi", amount_usd="300"}[1h]) * 100
+      series: avg_over_time(bridge_cost_percent{bridge="lifi", amount_usd="300"}[1h])
 
   - slug: debridge
     name: Debridge
     tag: Native-token fees
     queries:
-      p50: quantile_over_time(0.50, bridge_cost_percent{bridge="debridge", amount_usd="300"}[24h]) * 100
-      p90: quantile_over_time(0.90, bridge_cost_percent{bridge="debridge", amount_usd="300"}[24h]) * 100
-      p99: quantile_over_time(0.99, bridge_cost_percent{bridge="debridge", amount_usd="300"}[24h]) * 100
-      mean: avg_over_time(bridge_cost_percent{bridge="debridge", amount_usd="300"}[24h]) * 100
+      p50: quantile_over_time(0.50, bridge_cost_percent{bridge="debridge", amount_usd="300"}[24h])
+      p90: quantile_over_time(0.90, bridge_cost_percent{bridge="debridge", amount_usd="300"}[24h])
+      p99: quantile_over_time(0.99, bridge_cost_percent{bridge="debridge", amount_usd="300"}[24h])
+      mean: avg_over_time(bridge_cost_percent{bridge="debridge", amount_usd="300"}[24h])
       success: avg_over_time(bridge_quote_success{bridge="debridge", amount_usd="300"}[24h])
       sample_size: count_over_time(bridge_cost_percent{bridge="debridge", amount_usd="300"}[24h])
-      series: avg_over_time(bridge_cost_percent{bridge="debridge", amount_usd="300"}[1h]) * 100
+      series: avg_over_time(bridge_cost_percent{bridge="debridge", amount_usd="300"}[1h])
