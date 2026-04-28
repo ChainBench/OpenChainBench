@@ -1,0 +1,216 @@
+@import "tailwindcss";
+
+@theme {
+  /* Paper palette */
+  --color-paper: #faf6ee;
+  --color-paper-deep: #f3ecde;
+  --color-paper-edge: #e6dcc6;
+  --color-ink: #1c1a17;
+  --color-ink-soft: #4a443c;
+  --color-ink-muted: #7a7166;
+  --color-ink-faint: #a59a89;
+  --color-rule: #cdc1a8;
+  --color-rule-soft: #ddd2b9;
+  --color-accent: #7a2e1f;
+  --color-accent-soft: #b35e3f;
+  --color-flag-good: #2f5d3a;
+  --color-flag-bad: #8a2a1a;
+  --color-mark: #e8b54f;
+
+  --font-serif:
+    var(--font-source-serif), "Source Serif 4", "Iowan Old Style", "Apple Garamond",
+    Baskerville, Georgia, serif;
+  --font-sans:
+    var(--font-inter), "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono:
+    var(--font-jetbrains-mono), "JetBrains Mono", ui-monospace, SFMono-Regular,
+    Menlo, monospace;
+}
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+}
+
+body {
+  font-family: var(--font-serif);
+  font-feature-settings: "kern", "liga", "onum";
+  font-variant-numeric: oldstyle-nums proportional-nums;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-image:
+    radial-gradient(rgba(28, 26, 23, 0.025) 1px, transparent 1px),
+    radial-gradient(rgba(28, 26, 23, 0.018) 1px, transparent 1px);
+  background-size:
+    3px 3px,
+    7px 7px;
+  background-position:
+    0 0,
+    1px 1px;
+}
+
+/* Paper-grain texture overlay */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.45;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='1.2' numOctaves='2' seed='5'/><feColorMatrix values='0 0 0 0 0.11 0 0 0 0 0.10 0 0 0 0 0.09 0 0 0 0.08 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  mix-blend-mode: multiply;
+}
+
+/* Tabular figures wherever we display numbers */
+.tabular,
+table,
+.font-mono {
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+/* Drop-cap utility */
+.dropcap::first-letter {
+  font-family: var(--font-serif);
+  float: left;
+  font-size: 5.4rem;
+  line-height: 0.82;
+  padding: 0.55rem 0.65rem 0 0;
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+/* Multi-column body — newspaper feel */
+.cols-2 {
+  column-count: 2;
+  column-gap: 2.5rem;
+  column-rule: 1px solid var(--color-rule-soft);
+}
+@media (max-width: 768px) {
+  .cols-2 {
+    column-count: 1;
+  }
+}
+
+/* Small caps */
+.smallcaps {
+  font-variant: small-caps;
+  letter-spacing: 0.05em;
+}
+
+/* Decorative double rule */
+.rule-double {
+  border-top: 1px solid var(--color-ink);
+  border-bottom: 3px double var(--color-ink);
+}
+
+/* Selection */
+::selection {
+  background: #1c1a17;
+  color: var(--color-paper);
+}
+
+/* Sidenote */
+.sidenote {
+  display: block;
+  margin: 1rem 0;
+  padding: 0.5rem 0 0.5rem 0.85rem;
+  border-left: 2px solid var(--color-rule);
+  font-size: 0.85rem;
+  color: var(--color-ink-soft);
+}
+@media (min-width: 1280px) {
+  .sidenote {
+    position: absolute;
+    right: -16rem;
+    width: 14rem;
+    margin: 0;
+    padding: 0;
+    border: none;
+    font-size: 0.78rem;
+    line-height: 1.5;
+  }
+}
+
+/* Inline link */
+.lnk {
+  text-underline-offset: 3px;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-decoration-color: color-mix(in srgb, var(--color-ink) 35%, transparent);
+}
+.lnk:hover {
+  text-decoration-color: var(--color-ink);
+}
+
+/* Display number — for KPI tiles */
+.display-num {
+  font-family: var(--font-serif);
+  font-variant-numeric: lining-nums tabular-nums;
+  letter-spacing: -0.015em;
+  font-weight: 700;
+  font-feature-settings: "lnum", "tnum";
+}
+
+/* Folio (page-number style) */
+.folio {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}
+
+/* Ornamental divider */
+.ornament {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  color: var(--color-ink-muted);
+  font-family: var(--font-serif);
+  font-size: 1.2rem;
+  letter-spacing: 0.1em;
+}
+.ornament::before,
+.ornament::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    var(--color-rule) 30%,
+    var(--color-rule) 70%,
+    transparent
+  );
+}
+
+/* Highlighter mark — for emphasising a number in prose */
+.mark {
+  background: linear-gradient(180deg, transparent 50%, var(--color-mark) 50%);
+  padding: 0 0.05em;
+}
+
+/* Figure caption (smallcaps + footnote) */
+.fig-cap {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}
+
+/* Hairline rule */
+.hairline {
+  border-top: 1px solid var(--color-rule);
+}
+
+/* Ledger row striping (very subtle) */
+.ledger tbody tr:nth-child(odd) {
+  background: rgba(28, 26, 23, 0.018);
+}
