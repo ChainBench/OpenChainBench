@@ -33,7 +33,7 @@ export default function ContributePage() {
         Drop a file at <Code>benchmarks/&lt;your-slug&gt;.yml</Code>. It is the source of truth for the report — title, abstract, methodology, providers and the PromQL that fills in the numbers.
       </p>
 
-      <pre className="mt-6 font-mono text-[12px] leading-snug bg-bg-soft border border-rule p-5 overflow-x-auto whitespace-pre">
+      <pre className="mt-6 font-mono text-[12px] leading-snug bg-paper-soft border border-rule p-5 overflow-x-auto whitespace-pre">
 {`# benchmarks/wallet-portfolio-latency.yml
 
 slug: wallet-portfolio-latency
@@ -96,7 +96,7 @@ providers:
 
       <SectionRule label="Step 3 — Dry-run + open the PR" number="iii" />
       <p className="text-base leading-relaxed text-ink-soft">Test the queries locally before opening the PR:</p>
-      <pre className="mt-3 font-mono text-[12px] leading-snug bg-bg-soft border border-rule p-5 overflow-x-auto whitespace-pre">
+      <pre className="mt-3 font-mono text-[12px] leading-snug bg-paper-soft border border-rule p-5 overflow-x-auto whitespace-pre">
 {`pnpm validate                                # schema lint
 pnpm spec:dry-run wallet-portfolio-latency   # hit Prometheus, print resolved numbers
 pnpm dev                                     # render the page locally`}
@@ -148,7 +148,7 @@ function Tldr({ n, title, body }: { n: string; title: string; body: string }) {
 
 function Code({ children }: { children: React.ReactNode }) {
   return (
-    <code className="font-mono text-[0.92em] bg-bg-soft border border-rule px-1.5 py-0.5">
+    <code className="font-mono text-[0.92em] bg-paper-soft border border-rule px-1.5 py-0.5">
       {children}
     </code>
   );

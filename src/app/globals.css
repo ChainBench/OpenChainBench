@@ -2,9 +2,9 @@
 
 @theme {
   /* Hint of paper warmth, but not a magazine cream — between #fff and #faf6ee */
-  --color-bg: #faf8f1;
-  --color-bg-soft: #f3eee0;
-  --color-bg-elev: #ffffff;
+  --color-paper: #faf8f1;
+  --color-paper-soft: #f3eee0;
+  --color-surface: #ffffff;
 
   /* Ink */
   --color-ink: #181614;
@@ -45,7 +45,7 @@
 
 html,
 body {
-  background: var(--color-bg);
+  background: var(--color-paper);
   color: var(--color-ink);
 }
 
@@ -93,12 +93,12 @@ table {
 
 /* Card surfaces */
 .card {
-  background: var(--color-bg-elev);
+  background: var(--color-surface);
   border: 1px solid var(--color-rule);
   border-radius: 4px;
 }
 .card-soft {
-  background: var(--color-bg-elev);
+  background: var(--color-surface);
   border: 1px solid var(--color-rule);
   border-radius: 4px;
   transition:
@@ -124,7 +124,7 @@ table {
 
 ::selection {
   background: var(--color-ink);
-  color: var(--color-bg);
+  color: var(--color-paper);
 }
 
 /* Display number — for KPI tiles */
