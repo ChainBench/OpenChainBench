@@ -23,7 +23,10 @@ export type RegionPoint = {
 export type Series24h = number[];
 
 export type ResultExtras = {
+  /** 24h-window time-series — used by sparklines and the default chart view. */
   series24h: Record<string, Series24h>;
+  /** 7-day-window time-series — used by the chart's "7d" range view. */
+  series7d?: Record<string, Series24h>;
   regions: Record<string, RegionPoint[]>;
 };
 
