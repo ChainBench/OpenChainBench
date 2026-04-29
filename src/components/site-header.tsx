@@ -76,10 +76,7 @@ export async function SiteHeader() {
           >
             GitHub
           </a>
-          <Link
-            href="/benchmarks"
-            className="inline-flex items-center gap-1.5 rounded-md bg-ink px-3.5 py-2 text-sm font-medium text-paper hover:bg-ink-soft transition-colors"
-          >
+          <Link href="/benchmarks" className="btn-primary btn-primary--sm">
             Read benchmarks
           </Link>
         </div>
