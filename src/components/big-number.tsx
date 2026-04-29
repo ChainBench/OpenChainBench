@@ -9,14 +9,14 @@ type Props = {
 
 export function BigNumber({ value, unit, label, caption }: Props) {
   return (
-    <div className={cn("flex flex-col gap-2 px-5 py-5 bg-surface")}>
-      <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-ink-muted">
+    <div className={cn("flex flex-col gap-2 px-5 py-5 bg-surface min-w-0")}>
+      <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-ink-muted truncate">
         {label}
       </p>
-      <p className="display-num text-3xl sm:text-4xl leading-none">
+      <p className="display-num text-2xl sm:text-3xl leading-none tabular truncate">
         {value}
         {unit && (
-          <span className="ml-1 font-sans font-medium text-base text-ink-muted">
+          <span className="ml-1 font-sans font-medium text-sm text-ink-muted">
             {unit}
           </span>
         )}
