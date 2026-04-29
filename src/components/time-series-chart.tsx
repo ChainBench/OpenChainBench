@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import type { Benchmark } from "@/types/benchmark";
 import { fmtUnit } from "@/lib/format";
-import { lineColor } from "@/lib/series-colors";
+import { buildProviderColors } from "@/lib/series-colors";
 
 type Props = {
   benchmark: Benchmark;
@@ -45,18 +45,24 @@ export function TimeSeriesChart({ benchmark }: Props) {
 
   const showRegionTabs = availableRegions.length > 1;
 
+  const colors = useMemo(
+    () => buildProviderColors(benchmark.results),
+    [benchmark.results]
+  );
+
   const lines = useMemo(() => {
     const built = benchmark.results
       .map((r) => ({
         slug: r.slug,
         name: r.name,
+        color: colors.get(r.slug) ?? "var(--color-ink-soft)",
         values: pickSeries(benchmark, r.slug, range, region),
       }))
       .filter((l) => l.values.length > 0);
 
     built.sort((a, b) => mean(b.values.slice(-6)) - mean(a.values.slice(-6)));
     return built;
-  }, [benchmark, range, region]);
+  }, [benchmark, range, region, colors]);
 
   // A key that flips when the data shape changes — used to retrigger
   // the line-draw animation.
@@ -121,7 +127,7 @@ export function TimeSeriesChart({ benchmark }: Props) {
       ) : (
         <Chart
           key={seriesKey}
-          lines={lines}
+          lines={lines as LineWithColor[]}
           unit={benchmark.unit}
           windowHours={RANGE_HOURS[range]}
         />
@@ -155,12 +161,19 @@ function RegionTab({
   );
 }
 
+type LineWithColor = {
+  slug: string;
+  name: string;
+  color: string;
+  values: number[];
+};
+
 function Chart({
   lines,
   unit,
   windowHours,
 }: {
-  lines: { slug: string; name: string; values: number[] }[];
+  lines: LineWithColor[];
   unit: string;
   windowHours: number;
 }) {
@@ -218,8 +231,8 @@ function Chart({
 
   // Per-line drawn paths (memoised for animation re-trigger via key)
   const drawn = useMemo(() => {
-    return lines.map((l, idx) => {
-      const color = lineColor(idx);
+    return lines.map((l) => {
+      const color = l.color;
       const pts = l.values.map((v, i) => {
         const x = padL + innerW * (i / Math.max(1, l.values.length - 1));
         const y = padT + innerH * (1 - (v - lo) / yRange);

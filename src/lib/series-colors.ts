@@ -21,3 +21,15 @@ const PALETTE = [
 export function lineColor(i: number): string {
   return PALETTE[i % PALETTE.length];
 }
+
+/** Build a stable slug → color map from a provider list. The ranking is
+ * ascending by p50 — same providers get the same color in every viz on
+ * the bench page (legend, ledger, region bars, time-series). */
+export function buildProviderColors<
+  T extends { slug: string; ms: { p50: number } }
+>(results: T[]): Map<string, string> {
+  const sorted = [...results].sort((a, b) => a.ms.p50 - b.ms.p50);
+  const map = new Map<string, string>();
+  sorted.forEach((r, i) => map.set(r.slug, lineColor(i)));
+  return map;
+}

@@ -2,6 +2,7 @@ type Props = {
   values: number[];
   width?: number;
   height?: number;
+  color?: string;
   globalMax?: number;
   globalMin?: number;
 };
@@ -10,6 +11,7 @@ export function Sparkline({
   values,
   width = 92,
   height = 22,
+  color = "var(--color-ink-soft)",
   globalMax,
   globalMin,
 }: Props) {
@@ -39,13 +41,13 @@ export function Sparkline({
     >
       <polyline
         fill="none"
-        stroke="var(--color-ink-soft)"
-        strokeWidth={1.1}
+        stroke={color}
+        strokeWidth={1.2}
         strokeLinecap="round"
         strokeLinejoin="round"
         points={points}
       />
-      <circle cx={width} cy={lastY} r={1.8} fill="var(--color-ink-soft)" />
+      <circle cx={width} cy={lastY} r={1.8} fill={color} />
     </svg>
   );
 }
