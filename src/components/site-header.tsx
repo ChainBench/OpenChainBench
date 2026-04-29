@@ -49,9 +49,6 @@ export async function SiteHeader() {
           <span className="display text-[1.55rem] sm:text-[1.7rem] text-ink leading-none">
             OpenChainBench
           </span>
-          <span className="hidden lg:inline editorial text-sm text-ink-muted leading-none">
-            — a field journal of crypto-infra performance
-          </span>
         </Link>
 
         <nav className="hidden md:block">

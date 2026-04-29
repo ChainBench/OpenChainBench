@@ -24,8 +24,8 @@ export default async function HomePage() {
           <h1 className="mt-6 display text-5xl sm:text-7xl md:text-[5.25rem] text-ink max-w-4xl">
             Benchmark crypto infrastructure.
           </h1>
-          <p className="mt-5 max-w-2xl editorial text-xl sm:text-2xl text-ink-soft leading-snug">
-            A field journal of the multichain stack — aggregators, bridges, RPCs, price feeds. Measured in the open, the same way every time.
+          <p className="mt-5 max-w-2xl text-xl sm:text-2xl text-ink-soft leading-snug">
+            Real-time latency, cost and reliability data for the multichain stack — aggregators, bridges, RPCs, price feeds. Same metric, same conditions, every provider.
           </p>
 
           <div className="mt-8 flex flex-wrap items-center gap-3">
@@ -56,13 +56,13 @@ export default async function HomePage() {
         <div className="mx-auto max-w-6xl">
           <div className="flex items-end justify-between gap-6 flex-wrap border-b border-rule pb-3">
             <h2 className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted">
-              Reports
+              Live benchmarks
             </h2>
             <Link
               href="/benchmarks"
               className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted lnk hover:text-ink"
             >
-              Full index ↗
+              View all ↗
             </Link>
           </div>
 
