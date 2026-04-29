@@ -64,7 +64,13 @@ export class Prometheus {
   }
 
   /** Convenience: an evenly-spaced numeric series for the last `windowSec` seconds.
-   * Default 72 points = 20-min resolution over a 24h window. */
+   * Default 72 points = 20-min resolution over a 24h window.
+   *
+   * If the query returns multiple series (e.g. one per route × token × region
+   * for the same provider), the values are averaged at each timestamp so the
+   * caller gets a single coherent line. Without this, providers with broader
+   * coverage would silently drop because we used to keep only the first
+   * matching series and that one was often sparse / NaN. */
   async series(promql: string, windowSec: number, points = 72): Promise<number[] | null> {
     try {
       const end = new Date();
@@ -72,10 +78,23 @@ export class Prometheus {
       const step = Math.max(1, Math.floor(windowSec / points));
       const res = await this.queryRange(promql, start, end, step);
       if (res.result.length === 0) return null;
-      // Take the first matching series.
-      return res.result[0].values
-        .map(([, v]) => Number(v))
-        .filter((v) => Number.isFinite(v));
+
+      // Build a timestamp → [values] map across all returned series.
+      const buckets = new Map<number, number[]>();
+      for (const series of res.result) {
+        for (const [ts, raw] of series.values) {
+          const v = Number(raw);
+          if (!Number.isFinite(v)) continue;
+          const list = buckets.get(ts) ?? [];
+          list.push(v);
+          buckets.set(ts, list);
+        }
+      }
+
+      // Average values per timestamp, ordered chronologically.
+      const ordered = Array.from(buckets.entries()).sort((a, b) => a[0] - b[0]);
+      const out = ordered.map(([, vs]) => vs.reduce((s, v) => s + v, 0) / vs.length);
+      return out.length > 0 ? out : null;
     } catch {
       return null;
     }
