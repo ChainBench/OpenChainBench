@@ -10,7 +10,6 @@ import {
 } from "@/data/benchmarks";
 import { Byline } from "@/components/byline";
 import { TimeSeriesChart } from "@/components/time-series-chart";
-import { RangeChart } from "@/components/range-chart";
 import { LedgerTable } from "@/components/ledger-table";
 import { RegionGrid } from "@/components/region-grid";
 import { Figure } from "@/components/figure";
@@ -178,23 +177,9 @@ export default async function BenchmarkPage({
             <TimeSeriesChart benchmark={benchmark} />
           </Figure>
 
-          <SectionRule label="Distribution" />
-          <Figure
-            number="2"
-            title={`${benchmark.metric} (p50, p90, p99) by provider`}
-            source={`Run ${formatLastRun(benchmark.lastRunAt)} · ${Math.round(benchmark.sampleSize).toLocaleString()} samples`}
-            note={
-              <>
-                Lower is better. Range is p50 → p99; dashed line is field median. Failed requests are excluded from latency aggregates and counted toward success rate.
-              </>
-            }
-          >
-            <RangeChart results={benchmark.results} unit={benchmark.unit} />
-          </Figure>
-
           <SectionRule label="Full ledger" />
           <Figure
-            number="3"
+            number="2"
             title="Distribution, range, reliability and 24-hour trend"
             source="Cross-region medians, all providers · sorted ascending by p50"
             note={
@@ -210,7 +195,7 @@ export default async function BenchmarkPage({
             <>
               <SectionRule label="By region" />
               <Figure
-                number="4"
+                number="3"
                 title="p50 latency by region — small multiples"
                 source="Per-region cross-section"
                 note={

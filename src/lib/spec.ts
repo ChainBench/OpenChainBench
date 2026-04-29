@@ -90,8 +90,10 @@ async function tryLoadLive(
   try {
     const liveResults: ProviderResult[] = [];
     const series24h: Record<string, number[]> = {};
+    const series7d: Record<string, number[]> = {};
     const regions: Record<string, { region: string; p50: number }[]> = {};
     let totalSamples = 0;
+    const sevenDaysSec = 7 * 86_400;
 
     for (const p of spec.providers) {
       const q = p.queries;
@@ -119,8 +121,12 @@ async function tryLoadLive(
       });
 
       if (q.series) {
-        const s = await prom.series(q.series, winSec, 72);
-        if (s && s.length > 0) series24h[p.slug] = s;
+        const [s24, s7] = await Promise.all([
+          prom.series(q.series, winSec, 72),
+          prom.series(q.series, sevenDaysSec, 84),
+        ]);
+        if (s24 && s24.length > 0) series24h[p.slug] = s24;
+        if (s7 && s7.length > 0) series7d[p.slug] = s7;
       }
 
       if (q.regions && q.regions.length > 0) {
@@ -138,7 +144,11 @@ async function tryLoadLive(
 
     return {
       results: liveResults,
-      extras: { series24h, regions: regions as Benchmark["extras"]["regions"] },
+      extras: {
+        series24h,
+        series7d: Object.keys(series7d).length > 0 ? series7d : undefined,
+        regions: regions as Benchmark["extras"]["regions"],
+      },
       sampleSize: totalSamples,
       lastRunAt: new Date().toISOString(),
     };

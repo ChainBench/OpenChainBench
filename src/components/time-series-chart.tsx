@@ -1,50 +1,107 @@
+"use client";
+
+import { useMemo, useState } from "react";
 import type { Benchmark } from "@/types/benchmark";
 import { fmtUnit } from "@/lib/format";
 import { lineColor } from "@/lib/series-colors";
 
 type Props = {
   benchmark: Benchmark;
-  windowHours?: number;
+};
+
+type Range = "1h" | "6h" | "24h" | "7d";
+const RANGES: Range[] = ["1h", "6h", "24h", "7d"];
+
+const RANGE_HOURS: Record<Range, number> = {
+  "1h": 1,
+  "6h": 6,
+  "24h": 24,
+  "7d": 168,
 };
 
 /**
- * Multi-line time-series chart — every provider's metric over the trailing
- * window plotted on a single canvas. Server-rendered SVG.
+ * Multi-line time-series chart with a 1h / 6h / 24h / 7d range selector.
  *
- * Each line gets a soft area fill below it to give visual hierarchy without
- * a "winner" marker. Trailing dot + value label at the end of each line so
- * a reader can identify a series without scanning the legend.
+ * - 1h / 6h: tail-slice of the 24h dataset (~3 / ~18 points respectively)
+ * - 24h: the full 24h dataset (72 points at 20-min resolution)
+ * - 7d: a separate Prometheus query (84 points at 2-hour resolution),
+ *   only available when the harness has a deep enough retention.
  */
-export function TimeSeriesChart({ benchmark, windowHours = 24 }: Props) {
-  const { results, unit, extras } = benchmark;
+export function TimeSeriesChart({ benchmark }: Props) {
+  const [range, setRange] = useState<Range>("24h");
 
-  const lines = results
-    .map((r) => ({
-      slug: r.slug,
-      name: r.name,
-      values: extras.series24h[r.slug] ?? [],
-    }))
-    .filter((l) => l.values.length > 0);
+  const lines = useMemo(() => {
+    const built = benchmark.results
+      .map((r) => {
+        const full = pickSeries(benchmark, r.slug, range);
+        return { slug: r.slug, name: r.name, values: full };
+      })
+      .filter((l) => l.values.length > 0);
 
-  if (lines.length === 0) {
-    return (
-      <div className="border-y-2 border-ink py-12 text-center text-ink-muted text-sm">
-        No time-series data emitted yet.
-      </div>
+    built.sort(
+      (a, b) => mean(b.values.slice(-6)) - mean(a.values.slice(-6))
     );
-  }
+    return built;
+  }, [benchmark, range]);
 
-  // Sort by current value so legend reads top-down on the chart and
-  // colour assignment is deterministic.
-  lines.sort(
-    (a, b) =>
-      mean(b.values.slice(-6)) - mean(a.values.slice(-6))
+  const has7d = !!benchmark.extras.series7d && Object.keys(benchmark.extras.series7d).length > 0;
+
+  return (
+    <figure className="my-2">
+      {/* Range selector */}
+      <div className="mb-4 flex items-center gap-1">
+        {RANGES.map((r) => {
+          const active = r === range;
+          const disabled = r === "7d" && !has7d;
+          return (
+            <button
+              key={r}
+              type="button"
+              onClick={() => !disabled && setRange(r)}
+              disabled={disabled}
+              className={[
+                "rounded px-2.5 py-1 text-[11px] font-mono tabular uppercase tracking-[0.1em] transition-colors",
+                active
+                  ? "bg-ink text-paper"
+                  : "text-ink-muted hover:text-ink hover:bg-paper-soft",
+                disabled ? "opacity-40 cursor-not-allowed" : "",
+              ].join(" ")}
+              title={disabled ? "7-day retention not available yet" : undefined}
+            >
+              {r}
+            </button>
+          );
+        })}
+      </div>
+
+      {lines.length === 0 ? (
+        <div className="border-y-2 border-ink py-12 text-center text-ink-muted text-sm">
+          No time-series data emitted for this range yet.
+        </div>
+      ) : (
+        <Chart
+          lines={lines}
+          unit={benchmark.unit}
+          windowHours={RANGE_HOURS[range]}
+        />
+      )}
+    </figure>
   );
+}
 
+function Chart({
+  lines,
+  unit,
+  windowHours,
+}: {
+  lines: { slug: string; name: string; values: number[] }[];
+  unit: string;
+  windowHours: number;
+}) {
   const W = 1000;
   const H = 360;
   const padL = 60;
-  const padR = 88; // room for end-of-line labels
+  const padR = 88;
   const padT = 16;
   const padB = 36;
   const innerW = W - padL - padR;
@@ -65,14 +122,13 @@ export function TimeSeriesChart({ benchmark, windowHours = 24 }: Props) {
   const xTicks = buildXTicks(windowHours);
 
   return (
-    <figure className="my-2">
+    <>
       <svg
         viewBox={`0 0 ${W} ${H}`}
         className="w-full h-auto"
         role="img"
-        aria-label={`${benchmark.metric} over the last ${windowHours} hours`}
+        aria-label={`Last ${windowHours} hours`}
       >
-        {/* Per-provider area-fill gradients */}
         <defs>
           {lines.map((l, idx) => {
             const color = lineColor(idx);
@@ -92,7 +148,6 @@ export function TimeSeriesChart({ benchmark, windowHours = 24 }: Props) {
           })}
         </defs>
 
-        {/* Y gridlines + tick labels */}
         {yTicks.map((v, i) => {
           const y = padT + innerH * (1 - (v - lo) / yRange);
           const isBound = i === 0 || i === yTickCount;
@@ -122,7 +177,6 @@ export function TimeSeriesChart({ benchmark, windowHours = 24 }: Props) {
           );
         })}
 
-        {/* X tick labels */}
         {xTicks.map((t, i) => {
           const x = padL + innerW * t.pct;
           return (
@@ -151,7 +205,6 @@ export function TimeSeriesChart({ benchmark, windowHours = 24 }: Props) {
           );
         })}
 
-        {/* Lines + area fills */}
         {lines.map((l, idx) => {
           const color = lineColor(idx);
           const points = l.values.map((v, i) => {
@@ -162,13 +215,10 @@ export function TimeSeriesChart({ benchmark, windowHours = 24 }: Props) {
           const linePath = points
             .map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`)
             .join(" ");
-          // Closed polygon for the fill: line + bottom-right + bottom-left
           const baseY = padT + innerH;
           const fillPath =
             `M ${points[0][0].toFixed(2)},${baseY.toFixed(2)} ` +
-            points
-              .map(([x, y]) => `L ${x.toFixed(2)},${y.toFixed(2)}`)
-              .join(" ") +
+            points.map(([x, y]) => `L ${x.toFixed(2)},${y.toFixed(2)}`).join(" ") +
             ` L ${points[points.length - 1][0].toFixed(2)},${baseY.toFixed(2)} Z`;
 
           const last = l.values[l.values.length - 1];
@@ -186,9 +236,7 @@ export function TimeSeriesChart({ benchmark, windowHours = 24 }: Props) {
                 strokeLinejoin="round"
                 points={linePath}
               />
-              {/* Tail dot */}
               <circle cx={lastX} cy={lastY} r={2.8} fill={color} />
-              {/* End-of-line provider label + value */}
               <text
                 x={lastX + 8}
                 y={lastY}
@@ -214,7 +262,6 @@ export function TimeSeriesChart({ benchmark, windowHours = 24 }: Props) {
           );
         })}
 
-        {/* Vertical "now" guide */}
         <line
           x1={padL + innerW}
           x2={padL + innerW}
@@ -224,8 +271,6 @@ export function TimeSeriesChart({ benchmark, windowHours = 24 }: Props) {
           strokeWidth={0.8}
           strokeDasharray="2 3"
         />
-
-        {/* Outer Y axis */}
         <line
           x1={padL}
           x2={padL}
@@ -236,7 +281,6 @@ export function TimeSeriesChart({ benchmark, windowHours = 24 }: Props) {
         />
       </svg>
 
-      {/* Compact legend below — sorted current → low */}
       <ul className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-rule pt-3">
         {lines.map((l, idx) => {
           const color = lineColor(idx);
@@ -258,8 +302,24 @@ export function TimeSeriesChart({ benchmark, windowHours = 24 }: Props) {
           );
         })}
       </ul>
-    </figure>
+    </>
   );
+}
+
+function pickSeries(
+  benchmark: Benchmark,
+  slug: string,
+  range: Range
+): number[] {
+  const s24 = benchmark.extras.series24h[slug] ?? [];
+  const s7 = benchmark.extras.series7d?.[slug] ?? [];
+
+  if (range === "7d") return s7;
+  if (range === "24h") return s24;
+  // 1h / 6h: tail-slice of the 24h dataset (which is 72 points = 20-min res)
+  const ratio = RANGE_HOURS[range] / 24;
+  const take = Math.max(2, Math.round(s24.length * ratio));
+  return s24.slice(-take);
 }
 
 function mean(xs: number[]): number {
@@ -271,8 +331,17 @@ function buildXTicks(windowHours: number) {
   const ticks: { pct: number; label: string }[] = [];
   const step = 0.25;
   for (let p = 0; p <= 1; p += step) {
-    const hoursAgo = Math.round(windowHours * (1 - p));
-    const label = hoursAgo === 0 ? "now" : `−${hoursAgo}h`;
+    const ago = windowHours * (1 - p);
+    let label: string;
+    if (ago === 0) label = "now";
+    else if (windowHours <= 6) {
+      const m = Math.round(ago * 60);
+      label = `−${m}m`;
+    } else if (windowHours <= 48) {
+      label = `−${Math.round(ago)}h`;
+    } else {
+      label = `−${(ago / 24).toFixed(0)}d`;
+    }
     ticks.push({ pct: p, label });
   }
   return ticks;
