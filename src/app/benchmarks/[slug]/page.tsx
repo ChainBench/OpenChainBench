@@ -245,7 +245,7 @@ export default async function BenchmarkPage({
       {!isDraft && (
         <>
           <SectionRule label="Cite this report" />
-          <pre className="card font-mono text-[11px] leading-relaxed bg-bg-soft p-5 overflow-x-auto whitespace-pre-wrap">
+          <pre className="card font-mono text-[11px] leading-relaxed bg-paper-soft p-5 overflow-x-auto whitespace-pre-wrap">
 {`@misc{openchainbench-${benchmark.number},
   author       = {{OpenChainBench}},
   title        = {${benchmark.title}},

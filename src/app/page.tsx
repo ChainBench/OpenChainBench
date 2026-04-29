@@ -31,7 +31,7 @@ export default async function HomePage() {
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <Link
               href="/benchmarks"
-              className="inline-flex items-center gap-2 rounded-md bg-ink px-5 py-3 text-sm font-medium text-bg hover:bg-ink-soft transition-colors"
+              className="inline-flex items-center gap-2 rounded-md bg-ink px-5 py-3 text-sm font-medium text-paper hover:bg-ink-soft transition-colors"
             >
               Read benchmarks
             </Link>
@@ -185,7 +185,7 @@ export default async function HomePage() {
       </section>
 
       {/* Three-pillar editorial band */}
-      <section className="px-4 py-24 sm:py-32 bg-bg-soft border-y border-rule">
+      <section className="px-4 py-24 sm:py-32 bg-paper-soft border-y border-rule">
         <div className="mx-auto max-w-6xl">
           <span className="eyebrow">How it works</span>
           <h2 className="mt-5 display text-3xl sm:text-4xl max-w-2xl">
@@ -213,7 +213,7 @@ export default async function HomePage() {
           <div className="mt-12 flex flex-wrap items-center gap-3">
             <Link
               href="/contribute"
-              className="inline-flex items-center gap-2 rounded-md bg-ink px-4 py-2.5 text-sm font-medium text-bg hover:bg-ink-soft"
+              className="inline-flex items-center gap-2 rounded-md bg-ink px-4 py-2.5 text-sm font-medium text-paper hover:bg-ink-soft"
             >
               Read the tutorial
             </Link>
@@ -233,7 +233,7 @@ export default async function HomePage() {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-bg-elev px-5 py-4">
+    <div className="bg-surface px-5 py-4">
       <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-ink-faint">
         {label}
       </p>

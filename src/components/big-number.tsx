@@ -9,7 +9,7 @@ type Props = {
 
 export function BigNumber({ value, unit, label, caption }: Props) {
   return (
-    <div className={cn("flex flex-col gap-2 px-5 py-5 bg-bg-elev")}>
+    <div className={cn("flex flex-col gap-2 px-5 py-5 bg-surface")}>
       <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-ink-muted">
         {label}
       </p>

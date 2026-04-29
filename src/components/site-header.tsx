@@ -14,9 +14,9 @@ export async function SiteHeader() {
   const totalSamples = benchmarks.reduce((s, b) => s + b.sampleSize, 0);
 
   return (
-    <header className="border-b border-rule bg-bg/85 backdrop-blur-md sticky top-0 z-40">
+    <header className="border-b border-rule bg-paper/85 backdrop-blur-md sticky top-0 z-40">
       {/* Live ticker */}
-      <div className="border-b border-rule bg-bg-soft/60">
+      <div className="border-b border-rule bg-paper-soft/60">
         <div className="mx-auto max-w-7xl px-6 py-1.5 flex flex-wrap items-center justify-between gap-x-6 gap-y-1 font-mono text-[10px] tabular text-ink-muted">
           <span className="flex items-center gap-2">
             <span
@@ -60,7 +60,7 @@ export async function SiteHeader() {
               <li key={item.href}>
                 <Link
                   href={item.href}
-                  className="rounded-md px-3 py-1.5 text-sm font-medium text-ink-soft hover:text-ink hover:bg-bg-soft transition-colors"
+                  className="rounded-md px-3 py-1.5 text-sm font-medium text-ink-soft hover:text-ink hover:bg-paper-soft transition-colors"
                 >
                   {item.label}
                 </Link>
@@ -78,7 +78,7 @@ export async function SiteHeader() {
           </a>
           <Link
             href="/benchmarks"
-            className="inline-flex items-center gap-1.5 rounded-md bg-ink px-3.5 py-2 text-sm font-medium text-bg hover:bg-ink-soft transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-md bg-ink px-3.5 py-2 text-sm font-medium text-paper hover:bg-ink-soft transition-colors"
           >
             Read benchmarks
           </Link>

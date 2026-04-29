@@ -62,7 +62,7 @@ export default async function BenchmarksIndex() {
                       <li key={b.slug}>
                         <Link
                           href={`/benchmarks/${b.slug}`}
-                          className="grid grid-cols-12 items-baseline gap-4 py-7 hover:bg-bg-soft -mx-3 px-3 rounded transition-colors"
+                          className="grid grid-cols-12 items-baseline gap-4 py-7 hover:bg-paper-soft -mx-3 px-3 rounded transition-colors"
                         >
                           <div className="col-span-12 sm:col-span-2 benchmark-mark">
                             № {b.number}
