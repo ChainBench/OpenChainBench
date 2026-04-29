@@ -42,6 +42,9 @@ async function main() {
   const prom = new Prometheus(url);
 
   console.log(`\n=== Dry run · ${spec.slug} → ${url} ===\n`);
+
+  // Quick scalar check per provider
+  console.log("SCALARS (per provider):");
   for (const p of spec.providers) {
     const q = p.queries ?? {};
     const [p50, p90, p99, success, sampleSize] = await Promise.all([
@@ -51,17 +54,69 @@ async function main() {
       q.success ? prom.scalar(q.success) : Promise.resolve(null),
       q.sample_size ? prom.scalar(q.sample_size) : Promise.resolve(null),
     ]);
-    console.log(`  ${p.slug.padEnd(18)} ` +
-      `p50=${fmt(p50)}  p90=${fmt(p90)}  p99=${fmt(p99)}  ` +
-      `success=${success != null ? `${(success * 100).toFixed(2)}%` : "—"}  ` +
-      `n=${sampleSize ?? "—"}`);
+    console.log(
+      `  ${p.slug.padEnd(18)} ` +
+        `p50=${fmt(p50)}  p90=${fmt(p90)}  p99=${fmt(p99)}  ` +
+        `success=${success != null ? `${(success * 100).toFixed(2)}%` : "—"}  ` +
+        `n=${sampleSize ?? "—"}`
+    );
   }
+
+  // Series check per provider — what TimeSeriesChart actually plots
+  console.log("\nSERIES (per provider):");
+  const win = parseDurationSec(spec.prometheus?.window ?? "24h") ?? 86_400;
+  for (const p of spec.providers) {
+    const q = p.queries ?? {};
+    if (!q.series) {
+      console.log(`  ${p.slug.padEnd(18)} no 'series' query in spec`);
+      continue;
+    }
+    const s = await prom.series(q.series, win, 72);
+    if (s == null) {
+      console.log(
+        `  ${p.slug.padEnd(18)} ✗ NULL — no data returned. Provider will be MISSING from time-series chart.`
+      );
+      // Probe the raw query to see what Prometheus says
+      try {
+        const raw = await prom.query(q.series);
+        if (raw.resultType === "vector") {
+          console.log(
+            `      probe: vector with ${raw.result.length} series` +
+              (raw.result.length > 0
+                ? ` · first labels: ${JSON.stringify(raw.result[0].metric)}`
+                : "")
+          );
+        } else {
+          console.log(`      probe: ${raw.resultType}`);
+        }
+      } catch (e) {
+        console.log(`      probe error: ${(e as Error).message}`);
+      }
+      continue;
+    }
+    const min = Math.min(...s);
+    const max = Math.max(...s);
+    const last = s[s.length - 1];
+    const meanV = s.reduce((a, b) => a + b, 0) / s.length;
+    console.log(
+      `  ${p.slug.padEnd(18)} ` +
+        `points=${s.length}  ` +
+        `min=${fmt(min)}  max=${fmt(max)}  mean=${fmt(meanV)}  last=${fmt(last)}`
+    );
+  }
+
   console.log("");
 }
 
 function fmt(v: number | null) {
   if (v == null) return "  —  ";
-  return String(Math.round(v)).padStart(5, " ");
+  return Number.isFinite(v) ? v.toFixed(3).padStart(8, " ") : "  NaN  ";
+}
+
+function parseDurationSec(d: string): number | null {
+  const m = /^(\d+)([smhd])$/.exec(d.trim());
+  if (!m) return null;
+  return Number(m[1]) * { s: 1, m: 60, h: 3600, d: 86400 }[m[2] as "s" | "m" | "h" | "d"];
 }
 
 main().catch((e) => {
