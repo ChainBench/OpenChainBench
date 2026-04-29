@@ -34,7 +34,16 @@ const queries = z
     sample_size: promql.optional(),
     series: promql.optional(),
     regions: z
-      .array(z.object({ region, p50: promql.optional() }))
+      .array(
+        z.object({
+          region,
+          p50: promql.optional(),
+          /** Optional per-region time-series. When present, the chart's
+           * region selector lets readers slice the multi-line plot by
+           * region. Without this, only the global series renders. */
+          series: promql.optional(),
+        })
+      )
       .optional(),
   })
   .optional();

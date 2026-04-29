@@ -19,59 +19,99 @@ const RANGE_HOURS: Record<Range, number> = {
   "7d": 168,
 };
 
-/**
- * Multi-line time-series chart with a 1h / 6h / 24h / 7d range selector.
- *
- * - 1h / 6h: tail-slice of the 24h dataset (~3 / ~18 points respectively)
- * - 24h: the full 24h dataset (72 points at 20-min resolution)
- * - 7d: a separate Prometheus query (84 points at 2-hour resolution),
- *   only available when the harness has a deep enough retention.
- */
+const REGION_LABEL: Record<string, string> = {
+  "us-east": "US-East",
+  "eu-west": "EU-West",
+  "ap-southeast": "AP-Southeast",
+  global: "Global",
+};
+
 export function TimeSeriesChart({ benchmark }: Props) {
   const [range, setRange] = useState<Range>("24h");
+  const [region, setRegion] = useState<string>("all");
+
+  const has7d =
+    !!benchmark.extras.series7d &&
+    Object.keys(benchmark.extras.series7d).length > 0;
+
+  // Discover region tabs from per-region data
+  const availableRegions = useMemo(() => {
+    const set = new Set<string>();
+    const byRegion = benchmark.extras.seriesByRegion24h ?? {};
+    for (const slug of Object.keys(byRegion)) {
+      for (const r of Object.keys(byRegion[slug])) set.add(r);
+    }
+    return Array.from(set).sort();
+  }, [benchmark]);
+
+  const showRegionTabs = availableRegions.length > 1;
 
   const lines = useMemo(() => {
     const built = benchmark.results
-      .map((r) => {
-        const full = pickSeries(benchmark, r.slug, range);
-        return { slug: r.slug, name: r.name, values: full };
-      })
+      .map((r) => ({
+        slug: r.slug,
+        name: r.name,
+        values: pickSeries(benchmark, r.slug, range, region),
+      }))
       .filter((l) => l.values.length > 0);
 
     built.sort(
       (a, b) => mean(b.values.slice(-6)) - mean(a.values.slice(-6))
     );
     return built;
-  }, [benchmark, range]);
-
-  const has7d = !!benchmark.extras.series7d && Object.keys(benchmark.extras.series7d).length > 0;
+  }, [benchmark, range, region]);
 
   return (
     <figure className="my-2">
-      {/* Range selector */}
-      <div className="mb-4 flex items-center gap-1">
-        {RANGES.map((r) => {
-          const active = r === range;
-          const disabled = r === "7d" && !has7d;
-          return (
-            <button
-              key={r}
-              type="button"
-              onClick={() => !disabled && setRange(r)}
-              disabled={disabled}
-              className={[
-                "rounded px-2.5 py-1 text-[11px] font-mono tabular uppercase tracking-[0.1em] transition-colors",
-                active
-                  ? "bg-ink text-paper"
-                  : "text-ink-muted hover:text-ink hover:bg-paper-soft",
-                disabled ? "opacity-40 cursor-not-allowed" : "",
-              ].join(" ")}
-              title={disabled ? "7-day retention not available yet" : undefined}
-            >
-              {r}
-            </button>
-          );
-        })}
+      {/* Tabs row */}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        {/* Range */}
+        <div className="flex items-center gap-1">
+          {RANGES.map((r) => {
+            const active = r === range;
+            const disabled = r === "7d" && !has7d;
+            return (
+              <button
+                key={r}
+                type="button"
+                onClick={() => !disabled && setRange(r)}
+                disabled={disabled}
+                className={[
+                  "rounded px-2.5 py-1 text-[11px] font-mono tabular uppercase tracking-[0.1em] transition-colors",
+                  active
+                    ? "bg-ink text-paper"
+                    : "text-ink-muted hover:text-ink hover:bg-paper-soft",
+                  disabled ? "opacity-40 cursor-not-allowed" : "",
+                ].join(" ")}
+                title={disabled ? "7-day retention not available yet" : undefined}
+              >
+                {r}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Region (only when multiple) */}
+        {showRegionTabs && (
+          <div className="flex items-center gap-1">
+            <span className="mr-2 text-[10px] uppercase tracking-[0.16em] text-ink-faint">
+              Region
+            </span>
+            <RegionTab
+              label="All"
+              active={region === "all"}
+              onClick={() => setRegion("all")}
+            />
+            {availableRegions.map((r) => (
+              <RegionTab
+                key={r}
+                label={REGION_LABEL[r] ?? r}
+                active={region === r}
+                onClick={() => setRegion(r)}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       {lines.length === 0 ? (
@@ -86,6 +126,31 @@ export function TimeSeriesChart({ benchmark }: Props) {
         />
       )}
     </figure>
+  );
+}
+
+function RegionTab({
+  label,
+  active,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={[
+        "rounded px-2.5 py-1 text-[11px] font-mono tabular uppercase tracking-[0.1em] transition-colors",
+        active
+          ? "bg-ink text-paper"
+          : "text-ink-muted hover:text-ink hover:bg-paper-soft",
+      ].join(" ")}
+    >
+      {label}
+    </button>
   );
 }
 
@@ -309,14 +374,28 @@ function Chart({
 function pickSeries(
   benchmark: Benchmark,
   slug: string,
-  range: Range
+  range: Range,
+  region: string
 ): number[] {
+  const isAll = region === "all";
+
+  // Per-region path
+  if (!isAll) {
+    if (range === "7d") {
+      return benchmark.extras.seriesByRegion7d?.[slug]?.[region] ?? [];
+    }
+    const base = benchmark.extras.seriesByRegion24h?.[slug]?.[region] ?? [];
+    if (range === "24h") return base;
+    const ratio = RANGE_HOURS[range] / 24;
+    const take = Math.max(2, Math.round(base.length * ratio));
+    return base.slice(-take);
+  }
+
+  // Global path
   const s24 = benchmark.extras.series24h[slug] ?? [];
   const s7 = benchmark.extras.series7d?.[slug] ?? [];
-
   if (range === "7d") return s7;
   if (range === "24h") return s24;
-  // 1h / 6h: tail-slice of the 24h dataset (which is 72 points = 20-min res)
   const ratio = RANGE_HOURS[range] / 24;
   const take = Math.max(2, Math.round(s24.length * ratio));
   return s24.slice(-take);

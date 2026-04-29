@@ -57,10 +57,13 @@ providers:
       regions:
         - region: us-east
           p50: quantile_over_time(0.50, head_lag_seconds{aggregator="mobula", region="us-east"}[24h]) * 1000
+          series: avg_over_time(head_lag_seconds{aggregator="mobula", region="us-east"}[1h]) * 1000
         - region: eu-west
           p50: quantile_over_time(0.50, head_lag_seconds{aggregator="mobula", region="eu-west"}[24h]) * 1000
+          series: avg_over_time(head_lag_seconds{aggregator="mobula", region="eu-west"}[1h]) * 1000
         - region: ap-southeast
           p50: quantile_over_time(0.50, head_lag_seconds{aggregator="mobula", region="sgp"}[24h]) * 1000
+          series: avg_over_time(head_lag_seconds{aggregator="mobula", region="sgp"}[1h]) * 1000
 
   - slug: codex
     name: Codex
@@ -76,10 +79,13 @@ providers:
       regions:
         - region: us-east
           p50: quantile_over_time(0.50, head_lag_seconds{aggregator="codex", region="us-east"}[24h]) * 1000
+          series: avg_over_time(head_lag_seconds{aggregator="codex", region="us-east"}[1h]) * 1000
         - region: eu-west
           p50: quantile_over_time(0.50, head_lag_seconds{aggregator="codex", region="eu-west"}[24h]) * 1000
+          series: avg_over_time(head_lag_seconds{aggregator="codex", region="eu-west"}[1h]) * 1000
         - region: ap-southeast
           p50: quantile_over_time(0.50, head_lag_seconds{aggregator="codex", region="sgp"}[24h]) * 1000
+          series: avg_over_time(head_lag_seconds{aggregator="codex", region="sgp"}[1h]) * 1000
 
   - slug: geckoterminal
     name: GeckoTerminal
@@ -95,7 +101,10 @@ providers:
       regions:
         - region: us-east
           p50: quantile_over_time(0.50, head_lag_seconds{aggregator="geckoterminal", region="us-east"}[24h]) * 1000
+          series: avg_over_time(head_lag_seconds{aggregator="geckoterminal", region="us-east"}[1h]) * 1000
         - region: eu-west
           p50: quantile_over_time(0.50, head_lag_seconds{aggregator="geckoterminal", region="eu-west"}[24h]) * 1000
+          series: avg_over_time(head_lag_seconds{aggregator="geckoterminal", region="eu-west"}[1h]) * 1000
         - region: ap-southeast
           p50: quantile_over_time(0.50, head_lag_seconds{aggregator="geckoterminal", region="sgp"}[24h]) * 1000
+          series: avg_over_time(head_lag_seconds{aggregator="geckoterminal", region="sgp"}[1h]) * 1000

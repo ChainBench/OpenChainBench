@@ -91,6 +91,8 @@ async function tryLoadLive(
     const liveResults: ProviderResult[] = [];
     const series24h: Record<string, number[]> = {};
     const series7d: Record<string, number[]> = {};
+    const seriesByRegion24h: Record<string, Record<string, number[]>> = {};
+    const seriesByRegion7d: Record<string, Record<string, number[]>> = {};
     const regions: Record<string, { region: string; p50: number }[]> = {};
     let totalSamples = 0;
     const sevenDaysSec = 7 * 86_400;
@@ -131,12 +133,29 @@ async function tryLoadLive(
 
       if (q.regions && q.regions.length > 0) {
         const points = await Promise.all(
-          q.regions.map(async (r) => ({
-            region: r.region,
-            p50: r.p50 ? (await prom.scalar(r.p50)) ?? p50 : p50,
-          }))
+          q.regions.map(async (r) => {
+            const [p50Val, regionSeries24, regionSeries7] = await Promise.all([
+              r.p50 ? prom.scalar(r.p50) : Promise.resolve(p50),
+              r.series ? prom.series(r.series, winSec, 72) : Promise.resolve(null),
+              r.series ? prom.series(r.series, sevenDaysSec, 84) : Promise.resolve(null),
+            ]);
+            return {
+              region: r.region,
+              p50: p50Val ?? p50,
+              series24: regionSeries24,
+              series7: regionSeries7,
+            };
+          })
         );
-        regions[p.slug] = points;
+        regions[p.slug] = points.map(({ region: rg, p50: v }) => ({ region: rg, p50: v }));
+        for (const pt of points) {
+          if (pt.series24 && pt.series24.length > 0) {
+            (seriesByRegion24h[p.slug] ??= {})[pt.region] = pt.series24;
+          }
+          if (pt.series7 && pt.series7.length > 0) {
+            (seriesByRegion7d[p.slug] ??= {})[pt.region] = pt.series7;
+          }
+        }
       }
 
       if (sampleSize) totalSamples += sampleSize;
@@ -147,6 +166,10 @@ async function tryLoadLive(
       extras: {
         series24h,
         series7d: Object.keys(series7d).length > 0 ? series7d : undefined,
+        seriesByRegion24h:
+          Object.keys(seriesByRegion24h).length > 0 ? seriesByRegion24h : undefined,
+        seriesByRegion7d:
+          Object.keys(seriesByRegion7d).length > 0 ? seriesByRegion7d : undefined,
         regions: regions as Benchmark["extras"]["regions"],
       },
       sampleSize: totalSamples,

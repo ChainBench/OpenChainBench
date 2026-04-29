@@ -47,11 +47,19 @@ providers:
       regions:                 # optional, per-region p50 for small multiples
         - region: us-east
           p50: <PromQL>
+          series: <PromQL>     # optional, per-region series for the chart's region tab
         - region: eu-west
           p50: <PromQL>
+          series: <PromQL>
         - region: ap-southeast
           p50: <PromQL>
+          series: <PromQL>
 ```
+
+When `region.series` is set on every region, the time-series chart shows
+a "Region" selector (All · US-East · EU-West · …) so readers can slice the
+multi-line plot by region. The chart works the same way for every spec —
+single-region specs simply hide the selector.
 
 ## Failure modes
 
