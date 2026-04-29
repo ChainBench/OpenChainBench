@@ -29,16 +29,10 @@ export default async function HomePage() {
           </p>
 
           <div className="mt-8 flex flex-wrap items-center gap-3">
-            <Link
-              href="/benchmarks"
-              className="inline-flex items-center gap-2 rounded-md bg-ink px-5 py-3 text-sm font-medium text-paper hover:bg-ink-soft transition-colors"
-            >
+            <Link href="/benchmarks" className="btn-primary">
               Read benchmarks
             </Link>
-            <Link
-              href="/contribute"
-              className="inline-flex items-center gap-1.5 rounded-md px-3 py-3 text-sm font-medium text-ink-soft hover:text-ink"
-            >
+            <Link href="/contribute" className="btn-ghost">
               Submit your own
               <ArrowUpRight size={14} strokeWidth={2.2} />
             </Link>
@@ -211,15 +205,12 @@ export default async function HomePage() {
           </div>
 
           <div className="mt-12 flex flex-wrap items-center gap-3">
-            <Link
-              href="/contribute"
-              className="inline-flex items-center gap-2 rounded-md bg-ink px-4 py-2.5 text-sm font-medium text-paper hover:bg-ink-soft"
-            >
+            <Link href="/contribute" className="btn-primary">
               Read the tutorial
             </Link>
             <a
               href="https://github.com/OpenChainBench/OpenChainBench"
-              className="inline-flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium text-ink-soft hover:text-ink"
+              className="btn-ghost"
             >
               GitHub
               <ArrowUpRight size={14} strokeWidth={2.2} />

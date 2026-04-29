@@ -111,6 +111,45 @@ table {
   box-shadow: 0 12px 28px -16px rgba(24, 22, 20, 0.18);
 }
 
+/* CTA buttons — explicit color resolution so Tailwind utility generation
+   can't accidentally drop the text color (we hit a bg-/text- collision
+   earlier with the old token names). */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--color-ink);
+  color: var(--color-paper);
+  padding: 0.7rem 1.1rem;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 0.9rem;
+  letter-spacing: -0.005em;
+  transition:
+    background 0.15s ease,
+    transform 0.15s ease;
+}
+.btn-primary:hover {
+  background: var(--color-ink-soft);
+}
+.btn-primary--sm {
+  padding: 0.5rem 0.85rem;
+  font-size: 0.85rem;
+}
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--color-ink-soft);
+  padding: 0.7rem 0.6rem;
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+.btn-ghost:hover {
+  color: var(--color-ink);
+}
+
 /* Inline link */
 .lnk {
   text-underline-offset: 3px;
