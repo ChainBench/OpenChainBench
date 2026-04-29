@@ -16,7 +16,7 @@ import { RegionGrid } from "@/components/region-grid";
 import { Figure } from "@/components/figure";
 import { BigNumber } from "@/components/big-number";
 import { SectionRule } from "@/components/section-rule";
-import { fmtUnit, unitSuffix } from "@/lib/format";
+import { fmtUnit, unitSuffix, fmtValue } from "@/lib/format";
 
 type Params = { slug: string };
 
@@ -115,22 +115,22 @@ export default async function BenchmarkPage({
       {isDraft ? (
         <DraftNotice source={benchmark.source} />
       ) : (
-        <div className="mt-10 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-px bg-rule rounded overflow-hidden border border-rule">
+        <div className="mt-10 grid grid-cols-2 sm:grid-cols-3 gap-px bg-rule rounded overflow-hidden border border-rule">
           <BigNumber
             label="Field min · p50"
-            value={fmtUnit(fieldMin, benchmark.unit).replace(/\s+\S+$/, "")}
+            value={fmtValue(fieldMin, benchmark.unit)}
             unit={unitSuffix(benchmark.unit).trim()}
             caption="Lowest provider median"
           />
           <BigNumber
             label="Field median · p50"
-            value={fmtUnit(fieldMedian, benchmark.unit).replace(/\s+\S+$/, "")}
+            value={fmtValue(fieldMedian, benchmark.unit)}
             unit={unitSuffix(benchmark.unit).trim()}
             caption={`Median across ${benchmark.results.length} providers`}
           />
           <BigNumber
             label="Field max · p50"
-            value={fmtUnit(fieldMax, benchmark.unit).replace(/\s+\S+$/, "")}
+            value={fmtValue(fieldMax, benchmark.unit)}
             unit={unitSuffix(benchmark.unit).trim()}
             caption="Highest provider median"
           />
@@ -145,7 +145,8 @@ export default async function BenchmarkPage({
           />
           <BigNumber
             label="Success · field avg"
-            value={`${successAvg.toFixed(2)}%`}
+            value={successAvg.toFixed(2)}
+            unit="%"
             caption={`Worst ${successWorst.toFixed(2)}%`}
           />
           <BigNumber
