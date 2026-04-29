@@ -119,7 +119,7 @@ async function tryLoadLive(
       });
 
       if (q.series) {
-        const s = await prom.series(q.series, winSec, 24);
+        const s = await prom.series(q.series, winSec, 72);
         if (s && s.length > 0) series24h[p.slug] = s;
       }
 

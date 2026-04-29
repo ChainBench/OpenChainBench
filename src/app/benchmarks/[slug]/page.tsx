@@ -9,6 +9,7 @@ import {
   getBenchmarkSlugs,
 } from "@/data/benchmarks";
 import { Byline } from "@/components/byline";
+import { TimeSeriesChart } from "@/components/time-series-chart";
 import { RangeChart } from "@/components/range-chart";
 import { LedgerTable } from "@/components/ledger-table";
 import { RegionGrid } from "@/components/region-grid";
@@ -162,9 +163,23 @@ export default async function BenchmarkPage({
 
       {!isDraft && (
         <>
-          <SectionRule label="Distribution" />
+          <SectionRule label="Time series" />
           <Figure
             number="1"
+            title={`${benchmark.metric} over the last 24 hours`}
+            source={`Cross-region p50 per provider · resampled at 20-minute resolution`}
+            note={
+              <>
+                Each line is one provider&apos;s rolling-1h p50 evaluated every 20 minutes. Lower is better. The same Y-axis is shared across providers — magnitudes are directly comparable.
+              </>
+            }
+          >
+            <TimeSeriesChart benchmark={benchmark} />
+          </Figure>
+
+          <SectionRule label="Distribution" />
+          <Figure
+            number="2"
             title={`${benchmark.metric} (p50, p90, p99) by provider`}
             source={`Run ${formatLastRun(benchmark.lastRunAt)} · ${Math.round(benchmark.sampleSize).toLocaleString()} samples`}
             note={
@@ -178,7 +193,7 @@ export default async function BenchmarkPage({
 
           <SectionRule label="Full ledger" />
           <Figure
-            number="2"
+            number="3"
             title="Distribution, range, reliability and 24-hour trend"
             source="Cross-region medians, all providers · sorted ascending by p50"
             note={
@@ -194,7 +209,7 @@ export default async function BenchmarkPage({
             <>
               <SectionRule label="By region" />
               <Figure
-                number="3"
+                number="4"
                 title="p50 latency by region — small multiples"
                 source="Per-region cross-section"
                 note={

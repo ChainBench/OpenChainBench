@@ -63,8 +63,9 @@ export class Prometheus {
     }
   }
 
-  /** Convenience: an evenly-spaced numeric series for the last `windowSec` seconds. */
-  async series(promql: string, windowSec: number, points = 24): Promise<number[] | null> {
+  /** Convenience: an evenly-spaced numeric series for the last `windowSec` seconds.
+   * Default 72 points = 20-min resolution over a 24h window. */
+  async series(promql: string, windowSec: number, points = 72): Promise<number[] | null> {
     try {
       const end = new Date();
       const start = new Date(end.getTime() - windowSec * 1000);
