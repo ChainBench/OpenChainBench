@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { Benchmark } from "@/types/benchmark";
 import { fmtUnit } from "@/lib/format";
 import { lineColor } from "@/lib/series-colors";
@@ -34,7 +34,6 @@ export function TimeSeriesChart({ benchmark }: Props) {
     !!benchmark.extras.series7d &&
     Object.keys(benchmark.extras.series7d).length > 0;
 
-  // Discover region tabs from per-region data
   const availableRegions = useMemo(() => {
     const set = new Set<string>();
     const byRegion = benchmark.extras.seriesByRegion24h ?? {};
@@ -55,17 +54,17 @@ export function TimeSeriesChart({ benchmark }: Props) {
       }))
       .filter((l) => l.values.length > 0);
 
-    built.sort(
-      (a, b) => mean(b.values.slice(-6)) - mean(a.values.slice(-6))
-    );
+    built.sort((a, b) => mean(b.values.slice(-6)) - mean(a.values.slice(-6)));
     return built;
   }, [benchmark, range, region]);
 
+  // A key that flips when the data shape changes — used to retrigger
+  // the line-draw animation.
+  const seriesKey = `${range}::${region}`;
+
   return (
     <figure className="my-2">
-      {/* Tabs row */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        {/* Range */}
         <div className="flex items-center gap-1">
           {RANGES.map((r) => {
             const active = r === range;
@@ -83,7 +82,9 @@ export function TimeSeriesChart({ benchmark }: Props) {
                     : "text-ink-muted hover:text-ink hover:bg-paper-soft",
                   disabled ? "opacity-40 cursor-not-allowed" : "",
                 ].join(" ")}
-                title={disabled ? "7-day retention not available yet" : undefined}
+                title={
+                  disabled ? "7-day retention not available yet" : undefined
+                }
               >
                 {r}
               </button>
@@ -91,7 +92,6 @@ export function TimeSeriesChart({ benchmark }: Props) {
           })}
         </div>
 
-        {/* Region (only when multiple) */}
         {showRegionTabs && (
           <div className="flex items-center gap-1">
             <span className="mr-2 text-[10px] uppercase tracking-[0.16em] text-ink-faint">
@@ -120,6 +120,7 @@ export function TimeSeriesChart({ benchmark }: Props) {
         </div>
       ) : (
         <Chart
+          key={seriesKey}
           lines={lines}
           unit={benchmark.unit}
           windowHours={RANGE_HOURS[range]}
@@ -166,7 +167,7 @@ function Chart({
   const W = 1000;
   const H = 360;
   const padL = 60;
-  const padR = 88;
+  const padR = 96;
   const padT = 16;
   const padB = 36;
   const innerW = W - padL - padR;
@@ -182,37 +183,108 @@ function Chart({
 
   const yTickCount = 4;
   const yTicks: number[] = [];
-  for (let i = 0; i <= yTickCount; i++) yTicks.push(lo + (yRange * i) / yTickCount);
+  for (let i = 0; i <= yTickCount; i++)
+    yTicks.push(lo + (yRange * i) / yTickCount);
 
   const xTicks = buildXTicks(windowHours);
+  const numPoints = Math.max(...lines.map((l) => l.values.length));
+
+  // Hover state
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [hover, setHover] = useState<{
+    idx: number;
+    xPx: number;
+    yPx: number;
+  } | null>(null);
+
+  const onMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const wrap = wrapRef.current;
+    if (!wrap) return;
+    const rect = wrap.getBoundingClientRect();
+    const xPx = e.clientX - rect.left;
+    const yPx = e.clientY - rect.top;
+    const xVB = (xPx / rect.width) * W;
+    if (xVB < padL || xVB > W - padR || numPoints < 2) {
+      setHover(null);
+      return;
+    }
+    const ratio = (xVB - padL) / innerW;
+    const idx = Math.max(
+      0,
+      Math.min(numPoints - 1, Math.round(ratio * (numPoints - 1)))
+    );
+    setHover({ idx, xPx, yPx });
+  };
+
+  // Per-line drawn paths (memoised for animation re-trigger via key)
+  const drawn = useMemo(() => {
+    return lines.map((l, idx) => {
+      const color = lineColor(idx);
+      const pts = l.values.map((v, i) => {
+        const x = padL + innerW * (i / Math.max(1, l.values.length - 1));
+        const y = padT + innerH * (1 - (v - lo) / yRange);
+        return [x, y] as const;
+      });
+      const linePath = pts
+        .map(([x, y], i) =>
+          i === 0 ? `M ${x.toFixed(2)},${y.toFixed(2)}` : `L ${x.toFixed(2)},${y.toFixed(2)}`
+        )
+        .join(" ");
+      const baseY = padT + innerH;
+      const fillPath =
+        `M ${pts[0][0].toFixed(2)},${baseY.toFixed(2)} ` +
+        pts.map(([x, y]) => `L ${x.toFixed(2)},${y.toFixed(2)}`).join(" ") +
+        ` L ${pts[pts.length - 1][0].toFixed(2)},${baseY.toFixed(2)} Z`;
+      const last = l.values[l.values.length - 1];
+      const lastX = padL + innerW;
+      const lastY = padT + innerH * (1 - (last - lo) / yRange);
+      return { ...l, color, pts, linePath, fillPath, lastX, lastY, last };
+    });
+  }, [lines, padL, padR, padT, padB, innerW, innerH, lo, yRange]);
+
+  const hoverX = hover ? padL + innerW * (hover.idx / Math.max(1, numPoints - 1)) : null;
+  const hoverFraction = hover ? hover.idx / Math.max(1, numPoints - 1) : 0;
+  const hoverHoursAgo = hover ? windowHours * (1 - hoverFraction) : 0;
+
+  // Tooltip layout (sorted by value at hover, descending)
+  const tooltipRows = useMemo(() => {
+    if (!hover) return null;
+    return [...drawn]
+      .map((d) => ({ ...d, value: d.values[hover.idx] ?? d.last }))
+      .filter((d) => Number.isFinite(d.value))
+      .sort((a, b) => b.value - a.value);
+  }, [drawn, hover]);
 
   return (
-    <>
+    <div
+      ref={wrapRef}
+      className="relative"
+      onMouseMove={onMove}
+      onMouseLeave={() => setHover(null)}
+    >
       <svg
         viewBox={`0 0 ${W} ${H}`}
-        className="w-full h-auto"
+        className="block w-full h-auto"
         role="img"
         aria-label={`Last ${windowHours} hours`}
       >
         <defs>
-          {lines.map((l, idx) => {
-            const color = lineColor(idx);
-            return (
-              <linearGradient
-                key={l.slug}
-                id={`fill-${l.slug}`}
-                x1="0"
-                y1="0"
-                x2="0"
-                y2="1"
-              >
-                <stop offset="0%" stopColor={color} stopOpacity="0.10" />
-                <stop offset="100%" stopColor={color} stopOpacity="0" />
-              </linearGradient>
-            );
-          })}
+          {drawn.map((d) => (
+            <linearGradient
+              key={d.slug}
+              id={`fill-${d.slug}`}
+              x1="0"
+              y1="0"
+              x2="0"
+              y2="1"
+            >
+              <stop offset="0%" stopColor={d.color} stopOpacity="0.10" />
+              <stop offset="100%" stopColor={d.color} stopOpacity="0" />
+            </linearGradient>
+          ))}
         </defs>
 
+        {/* Y gridlines + tick labels */}
         {yTicks.map((v, i) => {
           const y = padT + innerH * (1 - (v - lo) / yRange);
           const isBound = i === 0 || i === yTickCount;
@@ -242,6 +314,7 @@ function Chart({
           );
         })}
 
+        {/* X tick labels */}
         {xTicks.map((t, i) => {
           const x = padL + innerW * t.pct;
           return (
@@ -270,63 +343,89 @@ function Chart({
           );
         })}
 
-        {lines.map((l, idx) => {
-          const color = lineColor(idx);
-          const points = l.values.map((v, i) => {
-            const x = padL + innerW * (i / Math.max(1, l.values.length - 1));
-            const y = padT + innerH * (1 - (v - lo) / yRange);
-            return [x, y] as const;
-          });
-          const linePath = points
-            .map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`)
-            .join(" ");
-          const baseY = padT + innerH;
-          const fillPath =
-            `M ${points[0][0].toFixed(2)},${baseY.toFixed(2)} ` +
-            points.map(([x, y]) => `L ${x.toFixed(2)},${y.toFixed(2)}`).join(" ") +
-            ` L ${points[points.length - 1][0].toFixed(2)},${baseY.toFixed(2)} Z`;
-
-          const last = l.values[l.values.length - 1];
-          const lastX = padL + innerW;
-          const lastY = padT + innerH * (1 - (last - lo) / yRange);
-
+        {/* Areas + lines */}
+        {drawn.map((d) => {
+          const dimmed = hover && hover.idx >= 0; // when hovering, slightly mute non-hovered? No, keep all visible.
+          void dimmed;
           return (
-            <g key={l.slug}>
-              <path d={fillPath} fill={`url(#fill-${l.slug})`} />
-              <polyline
+            <g key={d.slug} className="ts-line">
+              <path d={d.fillPath} fill={`url(#fill-${d.slug})`} />
+              <path
+                d={d.linePath}
                 fill="none"
-                stroke={color}
+                stroke={d.color}
                 strokeWidth={1.4}
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                points={linePath}
+                pathLength={1}
+                strokeDasharray="1"
+                style={{
+                  // Trigger draw-in via CSS animation
+                  animation: "ts-draw 0.7s ease-out forwards",
+                }}
               />
-              <circle cx={lastX} cy={lastY} r={2.8} fill={color} />
+              {/* Trailing tail dot */}
+              <circle cx={d.lastX} cy={d.lastY} r={2.8} fill={d.color} />
+              {/* End-of-line label */}
               <text
-                x={lastX + 8}
-                y={lastY}
+                x={d.lastX + 8}
+                y={d.lastY}
                 dominantBaseline="middle"
                 fontFamily="var(--font-sans)"
                 fontSize="11"
                 fontWeight="500"
-                fill={color}
+                fill={d.color}
               >
-                {l.name}
+                {d.name}
               </text>
               <text
-                x={lastX + 8}
-                y={lastY + 12}
+                x={d.lastX + 8}
+                y={d.lastY + 12}
                 dominantBaseline="middle"
                 fontFamily="var(--font-mono)"
                 fontSize="10"
                 fill="var(--color-ink-muted)"
               >
-                {fmtUnit(last, unit)}
+                {fmtUnit(d.last, unit)}
               </text>
             </g>
           );
         })}
 
+        {/* Crosshair + hover dots */}
+        {hover && hoverX != null && (
+          <g style={{ pointerEvents: "none" }}>
+            <line
+              x1={hoverX}
+              x2={hoverX}
+              y1={padT}
+              y2={padT + innerH}
+              stroke="var(--color-ink)"
+              strokeWidth={0.8}
+              strokeDasharray="2 3"
+              opacity={0.5}
+            />
+            {drawn.map((d) => {
+              const v = d.values[hover.idx];
+              if (!Number.isFinite(v)) return null;
+              const cy = padT + innerH * (1 - (v - lo) / yRange);
+              return (
+                <g key={d.slug}>
+                  <circle
+                    cx={hoverX}
+                    cy={cy}
+                    r={4}
+                    fill="var(--color-paper)"
+                    stroke={d.color}
+                    strokeWidth={1.8}
+                  />
+                </g>
+              );
+            })}
+          </g>
+        )}
+
+        {/* "now" guide and Y-axis */}
         <line
           x1={padL + innerW}
           x2={padL + innerW}
@@ -346,28 +445,125 @@ function Chart({
         />
       </svg>
 
+      {/* Floating tooltip */}
+      {hover && tooltipRows && tooltipRows.length > 0 && (
+        <Tooltip
+          xPx={hover.xPx}
+          yPx={hover.yPx}
+          containerW={wrapRef.current?.getBoundingClientRect().width ?? 1}
+          hoursAgo={hoverHoursAgo}
+          windowHours={windowHours}
+          unit={unit}
+          rows={tooltipRows}
+        />
+      )}
+
+      {/* Compact legend below chart */}
       <ul className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-rule pt-3">
-        {lines.map((l, idx) => {
-          const color = lineColor(idx);
-          const last = l.values[l.values.length - 1];
-          return (
+        {drawn.map((d) => (
+          <li
+            key={d.slug}
+            className="inline-flex items-center gap-2 text-[12px]"
+          >
+            <span
+              className="inline-block h-px w-5"
+              style={{ background: d.color }}
+            />
+            <span className="text-ink font-medium">{d.name}</span>
+            <span className="font-mono tabular text-ink-muted text-[11px]">
+              {fmtUnit(d.last, unit)}
+            </span>
+          </li>
+        ))}
+      </ul>
+
+      {/* CSS animations */}
+      <style>{`
+        @keyframes ts-draw {
+          from { stroke-dashoffset: 1; }
+          to   { stroke-dashoffset: 0; }
+        }
+        .ts-line path[d] { transition: opacity 0.2s ease; }
+      `}</style>
+    </div>
+  );
+}
+
+function Tooltip({
+  xPx,
+  yPx,
+  containerW,
+  hoursAgo,
+  windowHours,
+  unit,
+  rows,
+}: {
+  xPx: number;
+  yPx: number;
+  containerW: number;
+  hoursAgo: number;
+  windowHours: number;
+  unit: string;
+  rows: {
+    slug: string;
+    name: string;
+    color: string;
+    value: number;
+  }[];
+}) {
+  // Flip the tooltip to the left of the cursor when near the right edge
+  const flipLeft = xPx > containerW * 0.6;
+  const offsetX = 14;
+  const left = flipLeft ? undefined : xPx + offsetX;
+  const right = flipLeft ? containerW - xPx + offsetX : undefined;
+
+  // Anchor tooltip vertically to top of visible area but follow cursor a bit
+  const top = Math.max(8, Math.min(yPx - 28, 320));
+
+  return (
+    <div
+      className="pointer-events-none absolute z-10"
+      style={{
+        left,
+        right,
+        top,
+      }}
+    >
+      <div
+        className="rounded border border-rule bg-paper-soft/95 backdrop-blur-sm shadow-[0_12px_28px_-16px_rgba(28,26,23,0.25)] px-3 py-2.5 min-w-[14rem] text-[11px]"
+        style={{
+          animation: "ts-tooltip-in 0.15s ease-out forwards",
+        }}
+      >
+        <p className="font-mono tabular uppercase tracking-[0.12em] text-ink-muted">
+          {formatHoursAgo(hoursAgo, windowHours)}
+        </p>
+        <ul className="mt-2 space-y-1">
+          {rows.map((r) => (
             <li
-              key={l.slug}
-              className="inline-flex items-center gap-2 text-[12px]"
+              key={r.slug}
+              className="grid grid-cols-[10px_1fr_auto] items-center gap-2"
             >
               <span
-                className="inline-block h-px w-5"
-                style={{ background: color }}
+                className="inline-block h-2 w-2 rounded-full"
+                style={{ background: r.color }}
               />
-              <span className="text-ink font-medium">{l.name}</span>
-              <span className="font-mono tabular text-ink-muted text-[11px]">
-                {fmtUnit(last, unit)}
+              <span className="text-ink truncate">{r.name}</span>
+              <span className="font-mono tabular text-ink-soft">
+                {fmtUnit(r.value, unit)}
               </span>
             </li>
-          );
-        })}
-      </ul>
-    </>
+          ))}
+        </ul>
+      </div>
+
+      <style>{`
+        @keyframes ts-tooltip-in {
+          from { opacity: 0; transform: translateY(2px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
+    </div>
   );
 }
 
@@ -379,7 +575,6 @@ function pickSeries(
 ): number[] {
   const isAll = region === "all";
 
-  // Per-region path
   if (!isAll) {
     if (range === "7d") {
       return benchmark.extras.seriesByRegion7d?.[slug]?.[region] ?? [];
@@ -391,7 +586,6 @@ function pickSeries(
     return base.slice(-take);
   }
 
-  // Global path
   const s24 = benchmark.extras.series24h[slug] ?? [];
   const s7 = benchmark.extras.series7d?.[slug] ?? [];
   if (range === "7d") return s7;
@@ -426,6 +620,23 @@ function buildXTicks(windowHours: number) {
   return ticks;
 }
 
+function formatHoursAgo(hoursAgo: number, windowHours: number): string {
+  if (hoursAgo <= 0.001) return "now";
+  if (windowHours <= 6) {
+    const m = Math.round(hoursAgo * 60);
+    return `−${m} min`;
+  }
+  if (windowHours <= 48) {
+    const h = Math.floor(hoursAgo);
+    const m = Math.round((hoursAgo - h) * 60);
+    if (h === 0) return `−${m} min`;
+    return m > 0 ? `−${h}h ${m}m` : `−${h}h`;
+  }
+  const d = Math.floor(hoursAgo / 24);
+  const h = Math.round(hoursAgo - d * 24);
+  return d === 0 ? `−${h}h` : h > 0 ? `−${d}d ${h}h` : `−${d}d`;
+}
+
 function fmtTick(v: number, unit: string) {
   if (v === 0) return "0";
   if (unit === "pct") {
@@ -446,3 +657,4 @@ function fmtTick(v: number, unit: string) {
   if (v >= 1000) return `${(v / 1000).toFixed(1)}s`;
   return `${Math.round(v)}ms`;
 }
+
