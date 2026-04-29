@@ -1,5 +1,6 @@
 import type { Benchmark } from "@/types/benchmark";
 import { fmtUnit } from "@/lib/format";
+import { buildProviderColors } from "@/lib/series-colors";
 
 type Props = { benchmark: Benchmark };
 
@@ -12,6 +13,8 @@ const REGIONS = [
 export function RegionGrid({ benchmark }: Props) {
   const { results, unit, extras } = benchmark;
   if (!results.length) return null;
+
+  const colors = buildProviderColors(results);
 
   const regionMax = new Map<string, number>();
   for (const region of REGIONS) {
@@ -37,44 +40,57 @@ export function RegionGrid({ benchmark }: Props) {
           </tr>
         </thead>
         <tbody className="font-mono">
-          {results.map((r) => (
-            <tr key={r.slug} className="border-t border-rule">
-              <td className="py-3 pr-3 font-serif text-ink">{r.name}</td>
-              {REGIONS.map((region) => {
-                const point = extras.regions[r.slug]?.find(
-                  (p) => p.region === region.key
-                );
-                if (!point) {
+          {results.map((r) => {
+            const color = colors.get(r.slug) ?? "var(--color-ink-soft)";
+            return (
+              <tr key={r.slug} className="border-t border-rule transition-colors hover:bg-paper-soft/50">
+                <td className="py-3 pr-3 font-serif text-ink">
+                  <span className="font-semibold" style={{ color }}>
+                    {r.name}
+                  </span>
+                </td>
+                {REGIONS.map((region) => {
+                  const point = extras.regions[r.slug]?.find(
+                    (p) => p.region === region.key
+                  );
+                  if (!point) {
+                    return (
+                      <td key={region.key} className="py-3 px-2 text-ink-faint">
+                        —
+                      </td>
+                    );
+                  }
+                  const max = regionMax.get(region.key) ?? 1;
+                  const pct = Math.max(2, (point.p50 / max) * 100);
                   return (
-                    <td key={region.key} className="py-3 px-2 text-ink-faint">
-                      —
+                    <td key={region.key} className="py-3 px-2">
+                      <div className="grid grid-cols-[1fr_5rem] items-center gap-3">
+                        <div
+                          className="relative h-3 rounded-sm overflow-hidden"
+                          style={{ background: `${color}14` /* 8% */ }}
+                        >
+                          <span
+                            className="absolute inset-y-0 left-0 rounded-sm"
+                            style={{
+                              width: `${pct}%`,
+                              background: color,
+                              opacity: 0.85,
+                            }}
+                          />
+                        </div>
+                        <span
+                          className="font-mono text-[12px] tabular text-right whitespace-nowrap"
+                          style={{ color }}
+                        >
+                          {fmtUnit(point.p50, unit)}
+                        </span>
+                      </div>
                     </td>
                   );
-                }
-                const max = regionMax.get(region.key) ?? 1;
-                const pct = Math.max(2, (point.p50 / max) * 100);
-                return (
-                  <td key={region.key} className="py-3 px-2">
-                    <div className="grid grid-cols-[1fr_5rem] items-center gap-3">
-                      <div className="relative h-3 bg-paper-deep">
-                        <span
-                          className="absolute inset-y-0 left-0 bg-ink-soft/70"
-                          style={{
-                            width: `${pct}%`,
-                            backgroundImage:
-                              "repeating-linear-gradient(135deg, transparent 0 4px, rgba(250,246,238,0.45) 4px 5px)",
-                          }}
-                        />
-                      </div>
-                      <span className="font-mono text-[12px] tabular text-right whitespace-nowrap text-ink-soft">
-                        {fmtUnit(point.p50, unit)}
-                      </span>
-                    </div>
-                  </td>
-                );
-              })}
-            </tr>
-          ))}
+                })}
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
