@@ -16,6 +16,16 @@ The delta is exported as a Prometheus gauge (`head_lag_seconds`), labelled by ag
 **Tracked aggregators**: GeckoTerminal · Mobula · Codex
 **Supported chains**: Solana · Ethereum · BNB Chain · Base
 
+## Where the data goes
+
+This harness is a **data producer only** — it exposes `/metrics` on port `2112`. The shared OpenChainBench Prometheus (see [`/infrastructure/prometheus`](../../infrastructure/prometheus)) scrapes that endpoint over Railway's internal DNS:
+
+```
+aggregator-head-lag.railway.internal:2112 ──► prometheus.railway.internal ──► public site
+```
+
+A contributor running locally just needs `/metrics` reachable from their Prom scraper — nothing else.
+
 ## Metrics produced
 
 ```
@@ -32,36 +42,28 @@ quote_api_latency_milliseconds_{bucket,sum,count}{...}            histogram
 metadata_coverage_total / metadata_coverage_success{...}          counter
 ```
 
-The Prometheus URL declared in the YAML spec is what the OpenChainBench site queries — the harness pushes here and the site reads from the same instance.
-
 ## Run locally
 
-Prerequisites: Go 1.24+, Docker, API keys for the aggregators you want to track.
+Prerequisites: Go 1.24+, API keys for the aggregators you want to track.
 
 ```bash
 cp .env.example .env
 # Fill in the keys (any missing key disables that aggregator's monitor)
-docker-compose up -d
+go run ./cmd/script/
 ```
 
-Access:
+`/metrics` will be exposed on `http://localhost:2112/metrics`. To exercise the OpenChainBench site against your local data, point the YAML spec's `prom_url` at a local Prometheus that scrapes this endpoint (the `infrastructure/prometheus` config has notes on how to do this).
 
-- Grafana: <http://localhost:3000> (admin / admin)
-- Prometheus: <http://localhost:9090>
-- Metrics endpoint: <http://localhost:2112/metrics>
+Or run via Docker:
 
-If the YAML spec at `benchmarks/aggregator-head-lag.yml` is repointed at `http://localhost:9090`, the OpenChainBench site rendered with `pnpm dev` will display your local data instead of production.
+```bash
+docker build -t aggregator-head-lag .
+docker run --rm --env-file .env -p 2112:2112 aggregator-head-lag
+```
 
 ## Run on Railway
 
-The deployed services live in this repo at `harnesses/aggregator-head-lag/`. To deploy:
-
-1. Create three services on Railway from this repo, root directory `harnesses/aggregator-head-lag/`:
-   - **monitor** — uses `Dockerfile`
-   - **prometheus** — root `harnesses/aggregator-head-lag/prometheus`, uses `Dockerfile`
-   - **alertmanager** — Docker image `prom/alertmanager:latest`, mounts `monitoring/alertmanager.yml`
-2. Set environment variables on the monitor service (see `.env.example`).
-3. Point the corresponding YAML's `prom_url` at the public Prometheus URL.
+This service is deployed from the OpenChainBench repo, root directory `harnesses/aggregator-head-lag/`. Set the env vars listed below, and the shared Prometheus will pick it up via DNS automatically.
 
 ## Environment variables
 
@@ -72,57 +74,36 @@ The deployed services live in this repo at `harnesses/aggregator-head-lag/`. To 
 | `DEFINED_SESSION_COOKIE` | Defined.fi session cookie (for Codex). Auto-scraped if absent. | optional |
 | `MOBULA_WS_URL` | Override the Mobula WS endpoint | optional |
 | `MONITOR_REGION` | Label written on every metric (e.g. `us-east`) | recommended |
-| `GF_SECURITY_ADMIN_PASSWORD` | Grafana admin password (Docker only) | recommended |
 
 A monitor with no key for a given aggregator is skipped cleanly — the harness will run for whatever providers it can authenticate with.
 
 ## Project layout
 
 ```
-cmd/script/                Single Go binary: all monitors + Prometheus exporter
-  ├── main.go              Entrypoint, supervises goroutines per aggregator
-  ├── config.go            Env-var loader
-  ├── metrics.go           Prometheus metric definitions + registration
-  ├── head_lag_monitor.go  WebSocket monitor: on-chain ↔ feed timestamp delta
-  ├── mobula_*.go          Mobula REST + WS monitors
-  ├── codex_*.go           Codex REST monitor
+cmd/script/                 Single Go binary — all monitors + Prometheus exporter
+  ├── main.go               Entrypoint, supervises goroutines per aggregator
+  ├── config.go             Env-var loader
+  ├── metrics.go            Prometheus metric definitions + HTTP /metrics handler
+  ├── head_lag_monitor.go   WebSocket monitor: on-chain ↔ feed timestamp delta
+  ├── mobula_*.go           Mobula REST + WS monitors
+  ├── codex_*.go            Codex REST monitor
   ├── geckoterminal_monitor.go
-  ├── quote_api_monitor.go Mobula swap quoting latency
+  ├── quote_api_monitor.go  Mobula swap quoting latency
   ├── metadata_coverage_monitor.go
-  ├── proxy.go             HTTP transport + retries
-  └── log_buffer.go        In-memory ring buffer (last N log lines)
+  ├── proxy.go              HTTP transport + retries
+  └── log_buffer.go         In-memory ring buffer (last N log lines)
 
-monitoring/                 Local docker-compose stack
-  ├── prometheus.yml
-  ├── alert_rules.yml
-  ├── alertmanager.yml
-  └── grafana/              Datasource + dashboards provisioning
-
-prometheus/                 Production Prometheus (Railway service)
-  ├── Dockerfile
-  ├── prometheus.yml
-  ├── prometheus.staging.yml
-  └── alert_rules.yml
-
-grafana/                    Production Grafana (Railway service)
-  ├── Dockerfile
-  ├── grafana-entrypoint.sh
-  ├── dashboards/
-  └── provisioning/
-
-Dockerfile                  Monitor binary (multi-stage Go build)
-docker-compose.yml          Local dev stack
-Makefile                    `make run`, `make logs`, `make stop`, `make clean`
+Dockerfile                  Multi-stage Go build
+.env.example                Documented env vars
 ```
 
 ## Adding an aggregator
 
 1. Create `cmd/script/<aggregator>_monitor.go` mirroring an existing file (e.g. `geckoterminal_monitor.go`).
-2. Implement the WebSocket / REST loop and call `RecordLatency("<aggregator_name>", chain, latencyMs)` (or the appropriate metric registrar in `metrics.go`).
+2. Implement the WebSocket / REST loop and call the appropriate `metrics.go` recorder.
 3. Add the API key field to `Config` in `config.go` and to `.env.example`.
 4. Start the monitor goroutine in `main.go`.
 5. Update the YAML spec at `benchmarks/aggregator-head-lag.yml` to reference the new aggregator under `providers:` and add its query under `prometheus.providers.<slug>`.
-6. Add a Grafana panel if you want it visualised internally.
 
 ## Troubleshooting
 
@@ -130,17 +111,11 @@ Makefile                    `make run`, `make logs`, `make stop`, `make clean`
 # Are metrics being produced?
 curl http://localhost:2112/metrics | grep head_lag_seconds
 
-# Is Prometheus scraping?
-open http://localhost:9090/targets    # all targets should be UP
-
-# Restart the stack
-docker-compose down && docker-compose up -d --build
-
-# Tail monitor logs
-docker-compose logs -f monitor
+# Tail logs (Docker)
+docker logs -f <container>
 ```
 
-If a specific aggregator silently emits nothing: most often the API key is missing or rate-limited. Check the monitor logs for `[AGGREGATOR][skip]` lines.
+If a specific aggregator silently emits nothing: most often the API key is missing or rate-limited. Check the logs for `[AGGREGATOR][skip]` lines.
 
 ## License
 
