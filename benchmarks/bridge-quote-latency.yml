@@ -27,7 +27,7 @@ methodology:
 
 findings: []
 
-source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/bridge-quote
+source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/bridge-monitor
 
 prometheus:
   url: https://prometheus-production-9ffe.up.railway.app
