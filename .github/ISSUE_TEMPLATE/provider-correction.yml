@@ -1,0 +1,75 @@
+name: ✏️ Provider correction
+description: Submitted by a provider (or someone running their stack) who measured a different number than what the site publishes.
+title: "Correction: <bench number> · <provider>"
+labels: ["correction", "provider"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        OpenChainBench treats every provider equally and corrections in the open. If your numbers disagree with what's published, open this issue — material corrections result in a dated note on the affected report.
+
+        Please be specific and reproducible. We will not update a number based on screenshots without a method we can re-run.
+  - type: dropdown
+    id: bench
+    attributes:
+      label: Which benchmark
+      options:
+        - "№ 001 · aggregator-head-lag"
+        - "№ 002 · bridge-quote-latency"
+        - "№ 003 · bridge-fee"
+        - "Other (specify in description)"
+    validations:
+      required: true
+  - type: input
+    id: provider
+    attributes:
+      label: Provider (your service)
+      placeholder: e.g. Alchemy
+    validations:
+      required: true
+  - type: input
+    id: relationship
+    attributes:
+      label: Your relationship with this provider
+      description: For transparency. e.g. "Founding engineer", "Head of DevRel", "External user".
+      placeholder: e.g. "I'm on the platform team at <provider>"
+    validations:
+      required: true
+  - type: textarea
+    id: published
+    attributes:
+      label: What we published
+      description: The figure on the site, with link to the report.
+    validations:
+      required: true
+  - type: textarea
+    id: measured
+    attributes:
+      label: What you measured
+      description: Your aggregate (p50/p99/etc), your window, your region, your sample size.
+    validations:
+      required: true
+  - type: textarea
+    id: reproducer
+    attributes:
+      label: Reproducer
+      description: How can we reproduce your number? A Prometheus query, a script, a notebook, an exact command. We will run it before correcting.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: hypothesis
+    attributes:
+      label: Why you think the published number is off
+      description: Different region? Stale data? A bug in our harness? Different methodology?
+    validations:
+      required: false
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Confirm
+      options:
+        - label: I understand that any correction will be published openly with a dated note on the report.
+          required: true
+        - label: My reproducer is genuinely runnable by maintainers without provider-specific credentials we don't already have, OR I will provide credentials privately if needed.
+          required: true
