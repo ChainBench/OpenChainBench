@@ -22,11 +22,11 @@ export default async function BenchmarksIndex() {
   return (
     <div className="px-4 pt-12 sm:pt-16">
       <div className="mx-auto max-w-5xl">
-        <span className="eyebrow">Index</span>
+        <span className="eyebrow">Live benchmarks</span>
         <h1 className="mt-5 display text-4xl sm:text-5xl">
-          Reports, grouped by infrastructure.
+          Grouped by infrastructure.
         </h1>
-        <p className="mt-4 max-w-2xl editorial text-lg text-ink-muted leading-snug">
+        <p className="mt-4 max-w-2xl text-lg text-ink-muted leading-snug">
           Every published benchmark. Each one is a YAML spec plus a harness — both public, both reproducible.
         </p>
 
@@ -103,8 +103,8 @@ export default async function BenchmarksIndex() {
         )}
 
         <div className="mt-24 card p-8 text-center">
-          <p className="editorial text-base text-ink-muted">
-            {all.length} {all.length === 1 ? "report" : "reports"} published — and counting.
+          <p className="text-base text-ink-muted">
+            {all.length} {all.length === 1 ? "benchmark" : "benchmarks"} live — and counting.
           </p>
           <Link
             href="/contribute"
