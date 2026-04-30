@@ -9,11 +9,8 @@ export const metadata: Metadata = {
 export default function PressPage() {
   return (
     <article className="mx-auto max-w-3xl px-6 py-12">
-      <p className="eyebrow">
-        Editorial · Standing Note
-      </p>
-      <h1 className="mt-3 display text-4xl sm:text-5xl">Press kit</h1>
-      <p className="mt-3 editorial text-xl sm:text-2xl text-ink-muted leading-snug">
+      <h1 className="display text-4xl sm:text-5xl">Press kit</h1>
+      <p className="mt-3 text-xl sm:text-2xl text-ink-muted leading-snug">
         For journalists, podcasters and analysts covering crypto-infra performance.
       </p>
 
