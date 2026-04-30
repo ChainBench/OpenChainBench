@@ -49,7 +49,7 @@ export default function OG() {
               marginBottom: 12,
             }}
           >
-            A field journal of crypto-infrastructure performance
+            Open benchmarks for crypto infrastructure
           </div>
           <div
             style={{

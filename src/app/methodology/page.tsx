@@ -10,13 +10,10 @@ export const metadata: Metadata = {
 export default function MethodologyPage() {
   return (
     <article className="mx-auto max-w-3xl px-6 py-12">
-      <p className="eyebrow">
-        Editorial · Standing Note
-      </p>
-      <h1 className="mt-3 display text-4xl sm:text-5xl">
+      <h1 className="display text-4xl sm:text-5xl">
         Methodology
       </h1>
-      <p className="mt-3 editorial text-xl sm:text-2xl text-ink-muted leading-snug">
+      <p className="mt-3 text-xl sm:text-2xl text-ink-muted leading-snug">
         How every benchmark is measured, reported and reproduced.
       </p>
 
@@ -43,17 +40,22 @@ export default function MethodologyPage() {
       <ol className="space-y-3 text-base leading-relaxed text-ink-soft list-decimal pl-6 marker:font-mono marker:text-ink-muted">
         <li>Clone the harness from the link at the bottom of any benchmark report.</li>
         <li>Set API keys for the providers you want to include. Public endpoints work for most aggregators; some bridges require allow-listing.</li>
-        <li>Run the harness for at least 24 hours to get a comparable sample size (n typically ≥ 1,000 per provider per region).</li>
-        <li>Compare your aggregates to the published numbers. If they diverge, open an issue — we&apos;ll publish a correction or refine the methodology.</li>
+        <li>Run the harness — it exposes <code className="font-mono text-[0.92em]">/metrics</code> over HTTP. Point a local Prometheus at it, or query the public OpenChainBench Prometheus directly.</li>
+        <li>Run for at least 24 hours to get a comparable sample size (n typically ≥ 1,000 per provider per region).</li>
+        <li>Compare your aggregates to the published numbers. If they diverge, file a <a className="lnk" href="https://github.com/OpenChainBench/OpenChainBench/issues/new?template=provider-correction.yml">provider correction</a> with a reproducer.</li>
       </ol>
 
       <SectionRule label="Corrections" number="iv" />
       <p className="text-base leading-relaxed text-ink-soft">
-        Found a number you can&apos;t reproduce? Open an issue at{" "}
-        <a className="lnk" href="https://github.com/OpenChainBench/OpenChainBench/issues">
-          github.com/OpenChainBench/OpenChainBench/issues
+        Found a number you can&apos;t reproduce? File a{" "}
+        <a className="lnk" href="https://github.com/OpenChainBench/OpenChainBench/issues/new?template=data-quality.yml">
+          data-quality issue
         </a>
-        . Material errors are corrected in place with a dated note.
+        {" "}(the published figure looks wrong) or a{" "}
+        <a className="lnk" href="https://github.com/OpenChainBench/OpenChainBench/issues/new?template=provider-correction.yml">
+          provider correction
+        </a>
+        {" "}(your service measures a different value). Material errors are corrected in place with a dated note.
       </p>
     </article>
   );
