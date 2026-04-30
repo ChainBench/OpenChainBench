@@ -28,9 +28,10 @@ docs/              Methodology, ADRs, style guide
 
 1. **Open an issue** with the [📊 Propose a benchmark template](https://github.com/OpenChainBench/OpenChainBench/issues/new?template=new-benchmark.yml). Sketch the metric, providers, methodology, hosting plan — get feedback before you write code. The issue lands in the `Requested` column of the roadmap.
 2. **Write the spec.** Drop a YAML at `benchmarks/<slug>.yml`. The format is described in [`benchmarks/README.md`](./benchmarks/README.md) and validated by `src/lib/spec-schema.ts`.
-3. **Build the harness** at `harnesses/<slug>/`. Anything that pushes Prometheus metrics with the labels your spec references. See [`harnesses/README.md`](./harnesses/README.md) for the contract and the existing Go harnesses as reference implementations.
-4. **Open a PR** referencing the issue (`Closes #N`). CI runs `pnpm validate` (schema lint), `pnpm typecheck`, `pnpm lint`, and `pnpm build`. Once green and reviewed, merge → site picks up the spec on next ISR cycle (≤60 s).
-5. **Wire the harness on Railway** (maintainer task). Light harnesses run on the project's shared Railway. Heavier harnesses (wallets, signing) are hosted by the contributor and push to a publicly-reachable Prom endpoint.
+3. **Build the harness** at `harnesses/<slug>/`. A harness is a data producer only — it exposes `/metrics` over HTTP with the metric names and labels your spec references. See [`harnesses/README.md`](./harnesses/README.md) for the full contract and the existing Go harnesses as reference implementations.
+4. **Append a scrape job** to [`infrastructure/prometheus/prometheus.yml`](./infrastructure/prometheus/prometheus.yml) so the shared Prometheus picks up your harness. Format documented in [`infrastructure/README.md`](./infrastructure/README.md).
+5. **Open a PR** referencing the issue (`Closes #N`). CI runs `pnpm validate` (schema lint), `pnpm typecheck`, `pnpm lint`, and `pnpm build`. Once green and reviewed, merge → site picks up the spec on next ISR cycle (≤60 s).
+6. **Wire the harness on Railway** (maintainer task). Light harnesses run on the project's shared Railway. Heavier harnesses (wallets, signing) are hosted by the contributor and expose `/metrics` on a publicly-reachable URL — the central Prometheus scrapes it identically.
 
 ## Local development
 
