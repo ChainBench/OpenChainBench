@@ -16,10 +16,12 @@ benchmarks/                 Spec files — one YAML per published benchmark
 └── README.md               Spec format reference + submission guide
 
 harnesses/                  The runners that produce the metrics
-├── aggregator-head-lag/    Go service: WebSocket monitor for indexation lag
-├── bridge-quote/           Go service: 4-bridge quote latency + fees
-├── bridge-fee/             Go service: cost-percent comparison
+├── aggregator-head-lag/    Go service: WebSocket monitor (exposes :2112/metrics)
+├── bridge-monitor/         Go service: 4-bridge quote loop + execution (:9090/metrics)
 └── README.md               Contract for new harnesses
+
+infrastructure/             Shared services every harness depends on
+└── prometheus/             Single shared Prometheus that scrapes all harnesses
 
 src/                        Next.js 16 site (App Router, ISR, Tailwind v4)
 ├── app/                    Pages — overview, benchmarks index, [slug] reports
@@ -34,34 +36,38 @@ docs/                       Methodology, ADRs, style guide
 ## How a benchmark gets data
 
 ```
-[harness] ──── push metrics ────▶ [Prometheus]
-   ▲                                    │
-   │                                    │ PromQL queries
-   │ runs 24/7 on Railway               │ (defined in YAML)
-   │                                    ▼
-   │                              [benchmarks/<slug>.yml]
-   │                                    │
-   │                                    │ resolved server-side
-   │                                    │ at request time
-   │                                    ▼
-   │                              [Next.js site] ── ISR 60s
-   │                                    │
-   │                                    ▼
-   │                          openchainbench.xyz/benchmarks/<slug>
-   └──── source code lives in harnesses/<slug>/, deployed from this repo
+                          Railway (OpenChainBench project)
+   ┌───────────────────────────────────────────────────────────┐
+   │                                                           │
+   │  harnesses/aggregator-head-lag → :2112/metrics ─┐         │
+   │  harnesses/bridge-monitor      → :9090/metrics ─┼─▶ prometheus
+   │  harnesses/<future>            → :????/metrics ─┘   (scrape every 15s,
+   │                                                      365d retention)
+   └────────────────────────────────────────┬──────────────────┘
+                                            │ HTTPS public URL
+                                            │ /api/v1/query
+                                            ▼
+                                  ┌─────────────────────┐
+                                  │  Next.js site       │
+                                  │  on Vercel          │
+                                  │  ISR 60s            │
+                                  └──────────┬──────────┘
+                                             │
+                                             ▼
+                              openchainbench.xyz/benchmarks/<slug>
 ```
 
-The harness is the source of truth: it calls real provider endpoints, measures latency / cost / success, and pushes Prometheus metrics with the labels declared in the spec. The site never fakes numbers — if the harness stops emitting, the affected percentiles disappear from the page rather than fall back to placeholders.
+The harnesses are data producers — they call real provider endpoints, measure latency / cost / success, and expose Prometheus metrics on `/metrics`. A single shared Prometheus scrapes every harness over Railway's internal DNS and aggregates everything into one queryable instance. The Next.js site queries that single Prometheus URL declared in each YAML spec via the standard Prometheus HTTP API (`/api/v1/query` and `/api/v1/query_range`); ISR caches the response on Vercel's edge for 60 s.
 
 ## Architecture
 
 | Layer | Where it runs | Why |
 |---|---|---|
 | Site (Next.js, ISR) | Vercel | Static pages with 60s revalidate, edge cache |
-| Prometheus | Railway | Time-series DB, 24/7 |
+| Prometheus | Railway | Single shared instance scraping every harness |
 | Harnesses (Go) | Railway | Long-running WebSockets, schedulers, on-chain signing |
 
-Vercel and Railway are intentionally split: Vercel can't host long-lived WebSocket connections or sign on-chain transactions; Railway can't serve a globally cached Next.js site at the same cost. They communicate over HTTPS — the site queries Prom URLs declared in each YAML spec.
+Vercel and Railway are intentionally split: Vercel can't host long-lived WebSocket connections or sign on-chain transactions; Railway can't serve a globally cached Next.js site at the same cost. They communicate over HTTPS — the site queries the shared Prometheus URL declared in each YAML spec.
 
 ## Running the site locally
 
@@ -80,15 +86,15 @@ pnpm build               # production build
 
 ## Running a harness locally
 
-Each harness has its own README with run instructions. They are independent Go programs (one per benchmark) that you can build with `go run ./cmd/...` or via the included Dockerfile.
+Each harness is a standalone Go binary that exposes `/metrics` on a documented port (`:2112` for aggregator, `:9090` for bridge). They have no Prometheus / Grafana dependencies — that lives in [`infrastructure/`](./infrastructure/) and is shared.
 
 ```bash
 cd harnesses/aggregator-head-lag
 cp .env.example .env       # fill in API keys
-docker-compose up -d       # local Prom + monitor + Grafana
+go run ./cmd/script/       # or: docker build -t hh . && docker run -p 2112:2112 hh
 ```
 
-Set `prom_url` in the corresponding YAML to your local Prom (`http://localhost:9090`) to render the site against your own data.
+To render the site against your local harness, run a local Prometheus scraping `localhost:<port>` (the [`infrastructure/prometheus/README.md`](./infrastructure/prometheus/README.md) has notes) and point the corresponding YAML's `prom_url` at it.
 
 ## Adding a benchmark
 
@@ -96,10 +102,11 @@ Full guide in [CONTRIBUTING.md](./CONTRIBUTING.md). Short version:
 
 1. **Open an issue** with the [📊 Propose a benchmark template](https://github.com/OpenChainBench/OpenChainBench/issues/new?template=new-benchmark.yml). Sketch the metric, providers, methodology — get feedback before you build. Want to brainstorm first? Use [Discussions → Ideas](https://github.com/OpenChainBench/OpenChainBench/discussions/categories/ideas) instead.
 2. **Write the spec** at `benchmarks/<slug>.yml`. Format documented in [`benchmarks/README.md`](./benchmarks/README.md), validated by `src/lib/spec-schema.ts`.
-3. **Build the harness** in `harnesses/<slug>/`. Any language works as long as it pushes Prometheus metrics with the labels your spec references. See the existing harnesses as reference.
-4. **Open a PR.** CI runs schema validation, typecheck, lint, and build. Once green and merged: the site picks up the new spec automatically; a maintainer wires the harness into Railway (one-time setup per benchmark).
+3. **Build the harness** in `harnesses/<slug>/`. Any language works as long as it exposes `/metrics` over HTTP with the metric names and labels your spec references. The harness is a data producer only — no Prometheus, Grafana, or Alertmanager packaging.
+4. **Add a scrape entry** to `infrastructure/prometheus/prometheus.yml` so the shared Prometheus picks up your harness.
+5. **Open a PR.** CI runs schema validation, typecheck, lint, and build. Once merged: the site picks up the new spec automatically; a maintainer creates the Railway service for the harness and redeploys Prometheus to apply the new scrape job.
 
-Hosting trade-off: light harnesses (one HTTP poll loop, no secrets) can be deployed onto the OpenChainBench Railway. Harnesses that hold wallets, sign transactions, or otherwise represent capital must run from infra owned by the contributor — they push metrics to a public Prom endpoint and the site queries it the same way.
+Hosting trade-off: light harnesses (one HTTP poll loop, no secrets) are deployed onto the OpenChainBench Railway. Harnesses that hold wallets, sign transactions, or otherwise represent capital are hosted by the contributor — they expose `/metrics` on a publicly-reachable URL and the central Prometheus scrapes it the same way as project-hosted harnesses.
 
 ## Editorial conventions
 
