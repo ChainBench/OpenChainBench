@@ -13,12 +13,24 @@ docs/              Methodology, ADRs, style guide
 .github/           CI, issue templates, PR template
 ```
 
+## Where to start
+
+| Goal | Right channel |
+| --- | --- |
+| Float a rough idea | [Discussions → Ideas](https://github.com/OpenChainBench/OpenChainBench/discussions/categories/ideas) |
+| Ask a methodology / harness question | [Discussions → Q&A](https://github.com/OpenChainBench/OpenChainBench/discussions/categories/q-a) |
+| Propose a benchmark formally | [Issue → 📊 Propose a benchmark](https://github.com/OpenChainBench/OpenChainBench/issues/new?template=new-benchmark.yml) |
+| Report a number that looks wrong | [Issue → 🐞 Data quality](https://github.com/OpenChainBench/OpenChainBench/issues/new?template=data-quality.yml) |
+| Submit a provider correction | [Issue → ✏️ Provider correction](https://github.com/OpenChainBench/OpenChainBench/issues/new?template=provider-correction.yml) |
+| See what's planned | [Roadmap project board](https://github.com/orgs/OpenChainBench/projects) |
+
 ## Submitting a benchmark
 
-1. **Open an issue** with the [new-benchmark template](https://github.com/OpenChainBench/OpenChainBench/issues/new?template=new-benchmark.md). Sketch the metric, providers, methodology — gets you feedback before you write code.
-2. **Write the spec**. Drop a YAML at `benchmarks/<slug>.yml`. The format is described in [`benchmarks/README.md`](./benchmarks/README.md) and validated by `src/lib/spec-schema.ts`.
-3. **Build the harness**. Anything that pushes Prometheus metrics with the labels your spec references. See [`harnesses/README.md`](./harnesses/README.md) for the contract.
-4. **Open a PR**. CI runs `pnpm validate` (schema lint), `pnpm typecheck`, `pnpm lint`, and `pnpm build`. Once green and reviewed, merge → ISR pulls live numbers within 60 seconds.
+1. **Open an issue** with the [📊 Propose a benchmark template](https://github.com/OpenChainBench/OpenChainBench/issues/new?template=new-benchmark.yml). Sketch the metric, providers, methodology, hosting plan — get feedback before you write code. The issue lands in the `Requested` column of the roadmap.
+2. **Write the spec.** Drop a YAML at `benchmarks/<slug>.yml`. The format is described in [`benchmarks/README.md`](./benchmarks/README.md) and validated by `src/lib/spec-schema.ts`.
+3. **Build the harness** at `harnesses/<slug>/`. Anything that pushes Prometheus metrics with the labels your spec references. See [`harnesses/README.md`](./harnesses/README.md) for the contract and the existing Go harnesses as reference implementations.
+4. **Open a PR** referencing the issue (`Closes #N`). CI runs `pnpm validate` (schema lint), `pnpm typecheck`, `pnpm lint`, and `pnpm build`. Once green and reviewed, merge → site picks up the spec on next ISR cycle (≤60 s).
+5. **Wire the harness on Railway** (maintainer task). Light harnesses run on the project's shared Railway. Heavier harnesses (wallets, signing) are hosted by the contributor and push to a publicly-reachable Prom endpoint.
 
 ## Local development
 
@@ -40,7 +52,12 @@ pnpm build               # production build
 
 ## Corrections
 
-If you can't reproduce a number, file a [correction issue](https://github.com/OpenChainBench/OpenChainBench/issues/new?template=correction.md). Material errors are corrected in place with a dated note on the report.
+If you can't reproduce a number, file a [provider correction](https://github.com/OpenChainBench/OpenChainBench/issues/new?template=provider-correction.yml) (you measured a different value for your service) or a [data quality issue](https://github.com/OpenChainBench/OpenChainBench/issues/new?template=data-quality.yml) (the site is showing something obviously wrong or stale). Material errors are corrected in place with a dated note on the report.
+
+## Code of conduct & security
+
+- [Code of conduct](./.github/CODE_OF_CONDUCT.md) — short, applies to all project spaces (issues, PRs, discussions).
+- [Security policy](./.github/SECURITY.md) — private vulnerability reporting via GitHub advisories.
 
 ## License
 
