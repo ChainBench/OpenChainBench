@@ -1,0 +1,26 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  # Staging external label triggers [STAGING] prefix in alert summaries via templating.
+  external_labels:
+    environment: 'staging'
+
+# Load alert rules (shared with production; [STAGING] prefix is conditional via $externalLabels)
+rule_files:
+  - '/etc/prometheus/alert_rules.yml'
+
+# Staging Alertmanager (separate from production)
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager-staging.railway.internal:9093']
+
+# Staging scrape targets — 3 regions, same pattern as production
+scrape_configs:
+  - job_name: 'monitor-staging'
+    static_configs:
+      - targets:
+        - 'agg-staging-eu.railway.internal:2112'
+        - 'agg-staging-us.railway.internal:2112'
+        - 'agg-staging-sgp.railway.internal:2112'
+    metrics_path: /metrics
