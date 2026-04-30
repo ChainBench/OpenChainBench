@@ -1,0 +1,46 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    project: openchainbench
+
+# Each scrape_configs entry corresponds to one harness service deployed
+# on the OpenChainBench Railway project. The targets are Railway internal
+# DNS names (`<service>.railway.internal:<port>`) — no public URLs needed.
+#
+# To onboard a new harness:
+#   1. Create the Railway service from `harnesses/<slug>/`.
+#   2. Confirm the service exposes `/metrics` on a known port.
+#   3. Append a `- job_name: <slug>` block below referencing
+#      `<service-name>.railway.internal:<port>`.
+#   4. Open a PR. Once merged, redeploy the prometheus service so it
+#      picks up the new target.
+#
+# Conventional ports per existing harness:
+#   aggregator-head-lag → 2112  (matches `metrics.go` HTTP listener)
+#   bridge-monitor      → 9090  (matches `cmd/monitor/main.go` listener)
+
+scrape_configs:
+  - job_name: aggregator-head-lag
+    metrics_path: /metrics
+    scheme: http
+    static_configs:
+      - targets:
+          - aggregator-head-lag.railway.internal:2112
+        labels:
+          benchmark: aggregator-head-lag
+
+  - job_name: bridge-monitor
+    metrics_path: /metrics
+    scheme: http
+    static_configs:
+      - targets:
+          - bridge-monitor.railway.internal:9090
+        labels:
+          benchmark: bridge-monitor
+
+  # Self-scrape — surfaces Prometheus's own health in the same UI.
+  - job_name: prometheus
+    static_configs:
+      - targets:
+          - localhost:9090
