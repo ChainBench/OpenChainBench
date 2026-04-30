@@ -1,0 +1,101 @@
+name: 📊 Propose a benchmark
+description: Suggest a new benchmark for OpenChainBench. Sketch the metric, the providers, the methodology — the goal is to align before code is written.
+title: "Bench: <short description>"
+labels: ["bench-request"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for proposing a benchmark.
+
+        OpenChainBench prefers to align on **what** is measured and **how** before any code is written. Fill out the sections below — fields marked required are the bare minimum needed for the maintainers to give meaningful feedback. If you're not sure on some of them, write what you have and leave a note.
+
+        Have a rough idea but not ready to fill all this? Open a thread in [Discussions → Ideas](https://github.com/OpenChainBench/OpenChainBench/discussions/categories/ideas) instead.
+  - type: input
+    id: metric
+    attributes:
+      label: What should be measured (one sentence)
+      description: The metric and the providers. Be specific.
+      placeholder: e.g. "Time-to-finality of an Ethereum block, measured by RPC providers across 3 regions."
+    validations:
+      required: true
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Why it matters
+      description: Who cares about this number, and what decision does it inform?
+      placeholder: e.g. "Wallet UX teams choose RPCs based on confirmation speed; today no one publishes a like-for-like number."
+    validations:
+      required: true
+  - type: textarea
+    id: providers
+    attributes:
+      label: Providers in scope
+      description: One per line. Mark "(?)" next to any you want feedback on including.
+      placeholder: |
+        Alchemy
+        QuickNode
+        Infura
+        Ankr
+        Public RPCs (?)
+    validations:
+      required: true
+  - type: textarea
+    id: methodology
+    attributes:
+      label: Proposed methodology
+      description: How will the harness run? Cadence, timeout, success criteria, regions.
+      value: |
+        - Workload / inputs:
+        - Cadence:
+        - Timeout:
+        - Regions:
+        - What counts as success:
+        - What's excluded from latency aggregates:
+    validations:
+      required: true
+  - type: dropdown
+    id: hosting
+    attributes:
+      label: Where will the harness run?
+      description: Light = single HTTP loop, no wallets, no signing. Heavy = wallets, on-chain transactions, capital-at-risk.
+      options:
+        - "Light — happy to have OpenChainBench Railway host it"
+        - "Heavy — I'll host on my own infra and push to a public Prom endpoint"
+        - "Not sure yet"
+    validations:
+      required: true
+  - type: input
+    id: language
+    attributes:
+      label: Harness language / runtime (planned)
+      placeholder: e.g. Go 1.24, Bun, Python 3.13, Rust
+    validations:
+      required: false
+  - type: textarea
+    id: existing
+    attributes:
+      label: Existing data sources
+      description: Are you already running a similar harness? Got Prometheus metrics ready? Link/paste anything relevant.
+      placeholder: |
+        - Existing harness repo (private or public):
+        - Existing Prometheus instance:
+        - Existing metric names:
+    validations:
+      required: false
+  - type: textarea
+    id: anything
+    attributes:
+      label: Anything else
+      description: Caveats, prior art, related benchmarks, conflicts of interest.
+    validations:
+      required: false
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Confirm
+      options:
+        - label: I understand that the harness code, methodology, and any corrections will be published under the project's MIT/CC-BY-4.0 license.
+          required: true
+        - label: I have searched [existing benchmarks](https://github.com/OpenChainBench/OpenChainBench/tree/main/benchmarks) and [open issues](https://github.com/OpenChainBench/OpenChainBench/issues?q=is%3Aissue+label%3Abench-request) for duplicates.
+          required: true

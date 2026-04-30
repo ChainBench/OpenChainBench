@@ -1,0 +1,62 @@
+name: 🐞 Data quality issue
+description: Report a number on the site that looks wrong, broken, or stale. For provider-specific corrections (you measured a different number for your own service), use the "Provider correction" template instead.
+title: "Data: <bench number> · <short description>"
+labels: ["data-quality"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for flagging this. Be specific so we can investigate quickly.
+  - type: dropdown
+    id: bench
+    attributes:
+      label: Which benchmark
+      options:
+        - "№ 001 · aggregator-head-lag"
+        - "№ 002 · bridge-quote-latency"
+        - "№ 003 · bridge-fee"
+        - "Other (specify in description)"
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of issue
+      options:
+        - "Number looks wrong (out of plausible range)"
+        - "Provider missing from the page"
+        - "Sparkline / chart not updating"
+        - "Last-run timestamp is stale"
+        - "Region label looks incorrect"
+        - "Page rendering / formatting bug"
+        - "Other"
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: What you see
+      description: Paste the number, screenshot, or describe the symptom. Include the URL of the report.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+      description: Why does this look wrong to you? A reference number, a sanity check, an external dashboard.
+    validations:
+      required: false
+  - type: input
+    id: when
+    attributes:
+      label: Approximate time observed (UTC)
+      placeholder: e.g. "2026-04-30 14:20 UTC"
+    validations:
+      required: false
+  - type: textarea
+    id: anything
+    attributes:
+      label: Anything else
+      description: Context that might help narrow it down — region you're checking from, browser, recent harness changes, related issues.
+    validations:
+      required: false
