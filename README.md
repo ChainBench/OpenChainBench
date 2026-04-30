@@ -94,7 +94,7 @@ Set `prom_url` in the corresponding YAML to your local Prom (`http://localhost:9
 
 Full guide in [CONTRIBUTING.md](./CONTRIBUTING.md). Short version:
 
-1. **Open an issue** with the [new-benchmark template](https://github.com/OpenChainBench/OpenChainBench/issues/new?template=new-benchmark.md). Sketch the metric, providers, methodology — get feedback before you build.
+1. **Open an issue** with the [📊 Propose a benchmark template](https://github.com/OpenChainBench/OpenChainBench/issues/new?template=new-benchmark.yml). Sketch the metric, providers, methodology — get feedback before you build. Want to brainstorm first? Use [Discussions → Ideas](https://github.com/OpenChainBench/OpenChainBench/discussions/categories/ideas) instead.
 2. **Write the spec** at `benchmarks/<slug>.yml`. Format documented in [`benchmarks/README.md`](./benchmarks/README.md), validated by `src/lib/spec-schema.ts`.
 3. **Build the harness** in `harnesses/<slug>/`. Any language works as long as it pushes Prometheus metrics with the labels your spec references. See the existing harnesses as reference.
 4. **Open a PR.** CI runs schema validation, typecheck, lint, and build. Once green and merged: the site picks up the new spec automatically; a maintainer wires the harness into Railway (one-time setup per benchmark).
@@ -117,6 +117,15 @@ Hosting trade-off: light harnesses (one HTTP poll loop, no secrets) can be deplo
 - Zod for spec validation
 - Prometheus HTTP API (instant + range queries)
 - Go 1.24 for the existing harnesses (any language is acceptable)
+
+## Community
+
+- 💡 [Discussions → Ideas](https://github.com/OpenChainBench/OpenChainBench/discussions/categories/ideas) — brainstorm new benchmarks before writing them up
+- 🙋 [Discussions → Q&A](https://github.com/OpenChainBench/OpenChainBench/discussions/categories/q-a) — methodology / harness / spec questions
+- 📊 [Discussions → Show & tell](https://github.com/OpenChainBench/OpenChainBench/discussions/categories/show-and-tell) — share forks and dashboards
+- 🗺️ [Roadmap](https://github.com/orgs/OpenChainBench/projects) — what's planned and what's live
+- 🐞 [New issue](https://github.com/OpenChainBench/OpenChainBench/issues/new/choose) — formal benchmark proposal, data-quality flag, or provider correction
+- See [SUPPORT.md](./.github/SUPPORT.md) for the full triage matrix.
 
 ## Links
 
