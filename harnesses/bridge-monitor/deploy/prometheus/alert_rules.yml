@@ -1,0 +1,130 @@
+groups:
+  - name: bridge_latency
+    interval: 30s
+    rules:
+      - alert: HighBridgeQuoteLatency
+        expr: histogram_quantile(0.95, rate(bridge_quote_latency_ms_bucket[5m])) > 2000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High bridge quote latency"
+          description: "{{ $labels.bridge }} quote p95 ({{ $labels.from_chain }} → {{ $labels.to_chain }}) is {{ $value | humanize }}ms"
+
+      - alert: HighBridgeExecutionLatency
+        expr: histogram_quantile(0.95, rate(bridge_execution_latency_ms_bucket[5m])) > 120000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High bridge execution latency"
+          description: "{{ $labels.bridge }} exec p95 ({{ $labels.from_chain }} → {{ $labels.to_chain }}) is {{ $value | humanize }}ms"
+
+      - alert: HighBridgeFees
+        expr: bridge_fees_percent > 5
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High bridge fees"
+          description: "{{ $labels.bridge }} fees ({{ $labels.from_chain }} → {{ $labels.to_chain }}) = {{ $value }}%"
+
+  - name: bridge_reliability
+    interval: 30s
+    rules:
+      # Computed revert rate over a 1h window from counters (the bridge_revert_rate
+      # gauge was never populated — see PR fix). clamp_min prevents div-by-zero.
+      - alert: HighBridgeRevertRate
+        expr: |
+          sum by (bridge, from_chain, to_chain) (rate(bridge_reverts_total[1h]))
+          /
+          clamp_min(sum by (bridge, from_chain, to_chain) (rate(bridge_reverts_total[1h]) + rate(bridge_success_total[1h])), 0.0001)
+          > 0.1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High bridge revert rate"
+          description: "{{ $labels.bridge }} revert rate ({{ $labels.from_chain }} → {{ $labels.to_chain }}) = {{ $value | humanizePercentage }}"
+
+      # Three real-execution failures in a row on the same bridge — almost certainly a
+      # bridge-side outage or our integration broke. Page immediately.
+      - alert: BridgeConsecutiveFailures
+        expr: bridge_consecutive_failures >= 3
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.bridge }}: {{ $value }} consecutive execution failures"
+          description: "{{ $labels.bridge }} has failed {{ $value }} executions in a row (region: {{ $labels.region }})"
+
+      - alert: BridgeMonitorDown
+        expr: up{job="bridge-monitor"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Bridge monitor is down"
+          description: "bridge-monitor unreachable for 2m — scheduler not running, no executions."
+
+  - name: wallet_balance
+    interval: 30s
+    rules:
+      # Any triangle leg below $50 means the next $50 scheduled run on that chain will fail.
+      - alert: LowTriangleBalance
+        expr: wallet_balance_usd{token=~"USDC|USDT|USDT0"} < 50
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Triangle leg low: {{ $labels.chain }}/{{ $labels.token }} = ${{ $value | printf \"%.2f\" }}"
+          description: "Next $50 test from {{ $labels.chain }} will fail insufficient funds. Rebalance needed."
+
+      - alert: CriticalTriangleBalance
+        expr: wallet_balance_usd{token=~"USDC|USDT|USDT0"} < 10
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Triangle leg critically low: {{ $labels.chain }}/{{ $labels.token }} = ${{ $value | printf \"%.2f\" }}"
+          description: "Even the daily $5 test will fail on this chain."
+
+      # Gas: we keep ~$10 native on each chain. Alert when dropping under $3.
+      - alert: LowGasBalance
+        expr: wallet_balance_usd{token=~"ETH|SOL"} < 3
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low gas on {{ $labels.chain }}: {{ $labels.token }} = ${{ $value | printf \"%.2f\" }}"
+          description: "Top up native-token balance — TXs will start failing."
+
+      # R4 meme route is one-way (TRUMP Sol → BRETT Base), no inflow refill.
+      # Weekly $5 × 3 bridges = $15 per run. Alert at $30 (~2 weekly cycles left).
+      - alert: LowMemeSourceBalance
+        expr: wallet_balance_usd{chain="Solana", token="TRUMP"} < 30
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "TRUMP balance low on Solana: ${{ $value | printf \"%.2f\" }}"
+          description: "R4 TRUMP→BRETT will run out in ~{{ $value | humanize }} / 15 weekly cycles. Manual refill required (one-way route)."
+
+      - alert: CriticalMemeSourceBalance
+        expr: wallet_balance_usd{chain="Solana", token="TRUMP"} < 15
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "TRUMP critically low: ${{ $value | printf \"%.2f\" }}"
+          description: "Next weekly R4 run will fail. Bridge TRUMP from another wallet to resume."
+
+      # Balance refresh loop died: last update > 20 min ago (updater runs every 5 min).
+      - alert: WalletBalanceStale
+        expr: time() - wallet_balance_last_update_timestamp_seconds > 1200
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Wallet balance metrics stale"
+          description: "Balance refresh hasn't run in {{ $value | humanizeDuration }}. Check monitor logs."
