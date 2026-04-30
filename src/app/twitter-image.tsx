@@ -56,7 +56,7 @@ export default function TwitterImage() {
               maxWidth: 1080,
             }}
           >
-            A field journal of crypto-infrastructure performance.
+            Latency, cost and reliability — measured in the open.
           </div>
         </div>
         <div

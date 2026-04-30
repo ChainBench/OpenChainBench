@@ -178,24 +178,24 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Three-pillar editorial band */}
+      {/* Three-pillar band */}
       <section className="px-4 py-24 sm:py-32 bg-paper-soft border-y border-rule">
         <div className="mx-auto max-w-6xl">
           <span className="eyebrow">How it works</span>
           <h2 className="mt-5 display text-3xl sm:text-4xl max-w-2xl">
-            Spec it. Push metrics. The page renders itself.
+            Spec the metric. Expose <span className="font-mono text-[0.85em]">/metrics</span>. The page renders itself.
           </h2>
 
           <div className="mt-12 grid gap-10 md:grid-cols-3">
             <Pillar
               n="01"
               title="One YAML per benchmark"
-              body="Editorial metadata + Prometheus queries in a single file. Drop it in benchmarks/, open a PR. CI rejects malformed specs."
+              body="Metadata + Prometheus queries in a single file. Drop it in benchmarks/, open a PR. CI rejects malformed specs."
             />
             <Pillar
               n="02"
-              title="Run a harness anywhere"
-              body="Whatever language fits — Bun, Node, Python, Go. Push metrics named in your YAML. The site re-queries every minute."
+              title="A harness in any language"
+              body="Bun, Node, Python, Go, Rust — whatever fits the providers. The harness exposes /metrics; the shared OpenChainBench Prometheus scrapes it."
             />
             <Pillar
               n="03"
