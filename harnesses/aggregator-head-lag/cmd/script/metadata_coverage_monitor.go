@@ -245,8 +245,14 @@ func checkCodexMetadata(token TokenToCheck, sessionCookie string) MetadataFields
 		return result
 	}
 
-	// Use session cookie directly
-	apiKey := sessionCookie
+	// Codex GraphQL no longer accepts the raw Defined session cookie as Bearer
+	// (returns 401 UNAUTHENTICATED). Mint a JWT from the cookie via defined.fi/api
+	// and use that as Bearer — same path as the head_lag WS monitor.
+	apiKey, err := GetDefinedJWTToken(sessionCookie)
+	if err != nil {
+		result.Error = fmt.Sprintf("jwt_mint_error: %v", err)
+		return result
+	}
 
 	// Use token query which returns EnhancedToken with socialLinks and info
 	// https://docs.codex.io/api-reference/queries/token
