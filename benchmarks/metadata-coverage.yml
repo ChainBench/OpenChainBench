@@ -1,0 +1,96 @@
+# OpenChainBench — Bench № 004
+
+slug: metadata-coverage
+number: "004"
+title: Aggregator — Token Metadata Coverage
+subtitle: For freshly-launched tokens, what share of identifying metadata fields each aggregator actually returns.
+category: Aggregators
+status: live
+metric: Field coverage
+unit: pct
+
+abstract: |
+  We benchmark how complete each aggregator's token-metadata response is for
+  freshly-launched tokens. The harness subscribes to Mobula Pulse V2 for new
+  tokens on Solana, BNB Chain and Base, then asks each aggregator (Mobula,
+  Codex, Jupiter where the chain is supported) for that token's metadata and
+  records whether four canonical fields — `logo`, `description`, `twitter`
+  and `website` — were returned. The aggregate is the share of (provider,
+  chain, field) combinations that returned a populated value across all
+  fresh-token checks in the window.
+
+  Higher is better. A value of 100% means every field was returned for every
+  fresh token; a value of 50% means half the fields were missing on average.
+  Sort order on this page is ascending — the lowest coverage shows first,
+  which is the inverse of latency benchmarks. Readers should compare the
+  columns themselves; numerical p50 is the headline.
+
+methodology:
+  - "Token discovery: Mobula Pulse V2 WebSocket on `solana`, `evm:56` (BNB), `evm:8453` (Base) for known launchpads (pump.fun, Meteora DBC, Four.meme, Raydium CPMM, Zora, BaseApp, Bags, Moonshot)."
+  - "Coverage check: for each fresh token, query each aggregator's metadata endpoint and record whether `logo`, `description`, `twitter` and `website` are populated."
+  - "Aggregators in scope: Mobula (`/api/2/token/details`), Codex (GraphQL `token` query, JWT-authenticated), Jupiter (`/v6/tokens/<mint>`, Solana only)."
+  - "Cadence: queue-driven; every newly-discovered token is checked once across the three aggregators. Steady-state ≈ several hundred checks per provider per hour."
+  - "Region: `eu-west` (single point — multi-region requires running additional monitor instances)."
+  - "Ratio: `metadata_coverage_success_total / metadata_coverage_checks_total`, expressed in percent. Failures of the metadata API itself (timeouts, 5xx) are not counted in the denominator — only successful responses with the field check applied."
+  - "Jupiter is Solana-only — it appears with zero coverage on EVM chains by construction; the cross-chain headline excludes Jupiter on chains it does not support."
+
+findings: []
+
+source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/aggregator-head-lag
+
+prometheus:
+  url: https://prometheus-production-0859.up.railway.app
+  window: 24h
+
+# Real metrics exposed by the aggregator-head-lag harness:
+#   metadata_coverage_checks_total{provider, chain, field, region}   counter
+#   metadata_coverage_success_total{provider, chain, field, region}  counter
+#   metadata_api_latency_milliseconds{provider, chain, region}       histogram
+#
+# Field values: "logo" | "description" | "twitter" | "website"
+# Provider values: "mobula" | "codex" | "jupiter"
+#
+# Coverage % per provider, summed over all chains and all four fields:
+#   100 * sum(rate(metadata_coverage_success_total{provider="X"}[24h]))
+#       / sum(rate(metadata_coverage_checks_total{provider="X"}[24h]))
+#
+# We use quantile_over_time on a rolling 1h rate to give p50/p90/p99 the
+# same shape as latency benchmarks — so a coverage rate that drifts during
+# the day shows tail behaviour, not a single flat value.
+
+providers:
+  - slug: mobula
+    name: Mobula
+    tag: REST `/token/details`
+    queries:
+      p50: quantile_over_time(0.50, (100 * sum(rate(metadata_coverage_success_total{provider="mobula"}[1h])) / sum(rate(metadata_coverage_checks_total{provider="mobula"}[1h])))[24h:1h])
+      p90: quantile_over_time(0.90, (100 * sum(rate(metadata_coverage_success_total{provider="mobula"}[1h])) / sum(rate(metadata_coverage_checks_total{provider="mobula"}[1h])))[24h:1h])
+      p99: quantile_over_time(0.99, (100 * sum(rate(metadata_coverage_success_total{provider="mobula"}[1h])) / sum(rate(metadata_coverage_checks_total{provider="mobula"}[1h])))[24h:1h])
+      mean: 100 * sum(rate(metadata_coverage_success_total{provider="mobula"}[24h])) / sum(rate(metadata_coverage_checks_total{provider="mobula"}[24h]))
+      success: clamp_max(sum(rate(metadata_coverage_checks_total{provider="mobula"}[24h])) / scalar(sum(rate(metadata_coverage_checks_total{provider="mobula"}[24h]))), 1)
+      sample_size: sum(increase(metadata_coverage_checks_total{provider="mobula"}[24h]))
+      series: 100 * sum(rate(metadata_coverage_success_total{provider="mobula"}[1h])) / sum(rate(metadata_coverage_checks_total{provider="mobula"}[1h]))
+
+  - slug: codex
+    name: Codex
+    tag: GraphQL `token` query
+    queries:
+      p50: quantile_over_time(0.50, (100 * sum(rate(metadata_coverage_success_total{provider="codex"}[1h])) / sum(rate(metadata_coverage_checks_total{provider="codex"}[1h])))[24h:1h])
+      p90: quantile_over_time(0.90, (100 * sum(rate(metadata_coverage_success_total{provider="codex"}[1h])) / sum(rate(metadata_coverage_checks_total{provider="codex"}[1h])))[24h:1h])
+      p99: quantile_over_time(0.99, (100 * sum(rate(metadata_coverage_success_total{provider="codex"}[1h])) / sum(rate(metadata_coverage_checks_total{provider="codex"}[1h])))[24h:1h])
+      mean: 100 * sum(rate(metadata_coverage_success_total{provider="codex"}[24h])) / sum(rate(metadata_coverage_checks_total{provider="codex"}[24h]))
+      success: clamp_max(sum(rate(metadata_coverage_checks_total{provider="codex"}[24h])) / scalar(sum(rate(metadata_coverage_checks_total{provider="codex"}[24h]))), 1)
+      sample_size: sum(increase(metadata_coverage_checks_total{provider="codex"}[24h]))
+      series: 100 * sum(rate(metadata_coverage_success_total{provider="codex"}[1h])) / sum(rate(metadata_coverage_checks_total{provider="codex"}[1h]))
+
+  - slug: jupiter
+    name: Jupiter
+    tag: REST `/v6/tokens` (Solana)
+    queries:
+      p50: quantile_over_time(0.50, (100 * sum(rate(metadata_coverage_success_total{provider="jupiter"}[1h])) / sum(rate(metadata_coverage_checks_total{provider="jupiter"}[1h])))[24h:1h])
+      p90: quantile_over_time(0.90, (100 * sum(rate(metadata_coverage_success_total{provider="jupiter"}[1h])) / sum(rate(metadata_coverage_checks_total{provider="jupiter"}[1h])))[24h:1h])
+      p99: quantile_over_time(0.99, (100 * sum(rate(metadata_coverage_success_total{provider="jupiter"}[1h])) / sum(rate(metadata_coverage_checks_total{provider="jupiter"}[1h])))[24h:1h])
+      mean: 100 * sum(rate(metadata_coverage_success_total{provider="jupiter"}[24h])) / sum(rate(metadata_coverage_checks_total{provider="jupiter"}[24h]))
+      success: clamp_max(sum(rate(metadata_coverage_checks_total{provider="jupiter"}[24h])) / scalar(sum(rate(metadata_coverage_checks_total{provider="jupiter"}[24h]))), 1)
+      sample_size: sum(increase(metadata_coverage_checks_total{provider="jupiter"}[24h]))
+      series: 100 * sum(rate(metadata_coverage_success_total{provider="jupiter"}[1h])) / sum(rate(metadata_coverage_checks_total{provider="jupiter"}[1h]))
