@@ -30,6 +30,40 @@ export default function ContributePage() {
         <Tldr n="06" title="Open a PR" body="The page renders itself." />
       </div>
 
+      <div className="mt-12 grid gap-6 md:grid-cols-[1.6fr_1fr] items-start">
+        <div className="card-soft p-6">
+          <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-ink-faint">
+            How it actually works
+          </p>
+          <h2 className="mt-2 display text-xl">A federation, not a platform.</h2>
+          <p className="mt-3 text-[0.95rem] leading-relaxed text-ink-soft">
+            Every benchmark on this site is run by whoever wrote it. You host your harness wherever you like, expose <Code>/metrics</Code> over HTTPS, and the project's shared Prometheus scrapes that URL on a schedule. You keep your API keys, your wallet keys, your budget. Maintainers only see the metric values your harness chooses to publish.
+          </p>
+          <p className="mt-3 text-[0.95rem] leading-relaxed text-ink-soft">
+            The only piece of infrastructure shared by the project is one Prometheus instance — that is the URL every YAML spec points at. Adding a new harness is one extra <Code>scrape_configs</Code> block in <Code>infrastructure/prometheus/prometheus.yml</Code>. No new credentials, no new services, no privileged access to share.
+          </p>
+          <p className="mt-3 text-[0.95rem] leading-relaxed text-ink-soft">
+            For a concrete end-to-end example with a fictional contributor — the spec, the Go harness, deploying to Fly.io, opening the PR — see the{" "}
+            <a className="lnk" href="https://github.com/OpenChainBench/OpenChainBench/blob/main/docs/walkthrough.md">walkthrough doc</a>.
+          </p>
+        </div>
+        <div className="card-soft p-6">
+          <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-ink-faint">
+            Realistic timeline
+          </p>
+          <ul className="mt-3 space-y-2 text-[0.92rem] leading-relaxed text-ink-soft">
+            <li><strong className="text-ink">Day 0 · ~30 min</strong> — open issue, align on methodology with a maintainer.</li>
+            <li><strong className="text-ink">Day 1-2 · ~2 h</strong> — write the spec + harness in your fork.</li>
+            <li><strong className="text-ink">Day 2 · ~30 min</strong> — deploy your harness on Fly / Railway / your VPS, verify <Code>/metrics</Code> publicly reachable.</li>
+            <li><strong className="text-ink">Day 2 · ~10 min</strong> — open the PR (spec + harness + scrape config).</li>
+            <li><strong className="text-ink">Day 3 · ≤ 30 min</strong> — maintainer reviews, merges, reloads Prometheus. Site renders within 60 s.</li>
+          </ul>
+          <p className="mt-4 text-xs text-ink-faint">
+            ~3-4 hours of focused work, spread across a few days.
+          </p>
+        </div>
+      </div>
+
       <SectionRule label="Step 1 — Open an issue" number="i" />
       <p className="text-base leading-relaxed text-ink-soft">
         Use the{" "}
@@ -149,6 +183,7 @@ pnpm dev                                     # render the page locally`}
 
       <SectionRule label="Reference" number="vii" />
       <ul className="space-y-3 text-[1rem] leading-relaxed">
+        <li><a className="lnk" href="https://github.com/OpenChainBench/OpenChainBench/blob/main/docs/walkthrough.md">docs/walkthrough.md &rarr; concrete end-to-end example with a fictional contributor</a></li>
         <li><Link className="lnk" href="/methodology">Methodology &rarr; design principles, statistical conventions</Link></li>
         <li><a className="lnk" href="https://github.com/OpenChainBench/OpenChainBench/blob/main/benchmarks/README.md">benchmarks/README.md &rarr; spec field reference</a></li>
         <li><a className="lnk" href="https://github.com/OpenChainBench/OpenChainBench/blob/main/harnesses/README.md">harnesses/README.md &rarr; harness contract</a></li>
