@@ -33,41 +33,43 @@ scripts/                    pnpm validate, pnpm spec:dry-run
 docs/                       Methodology, ADRs, style guide
 ```
 
-## How a benchmark gets data
+## How a benchmark gets data — federation
+
+OpenChainBench is a federation of independently-hosted harnesses connected by a single shared Prometheus.
 
 ```
-                          Railway (OpenChainBench project)
-   ┌───────────────────────────────────────────────────────────┐
-   │                                                           │
-   │  harnesses/aggregator-head-lag → :2112/metrics ─┐         │
-   │  harnesses/bridge-monitor      → :9090/metrics ─┼─▶ prometheus
-   │  harnesses/<future>            → :????/metrics ─┘   (scrape every 15s,
-   │                                                      365d retention)
-   └────────────────────────────────────────┬──────────────────┘
-                                            │ HTTPS public URL
-                                            │ /api/v1/query
-                                            ▼
-                                  ┌─────────────────────┐
-                                  │  Next.js site       │
-                                  │  on Vercel          │
-                                  │  ISR 60s            │
-                                  └──────────┬──────────┘
-                                             │
-                                             ▼
-                              openchainbench.xyz/benchmarks/<slug>
+[Mobula's infra]         [Contributor B's infra]      [Provider C's infra]
+   harness exposes          harness exposes               harness exposes
+   /metrics on              /metrics on                   /metrics on
+   <public HTTPS URL>       <public HTTPS URL>            <public HTTPS URL>
+        │                          │                              │
+        └──────────────────────────┼──────────────────────────────┘
+                                   ▼
+                  ┌────────────────────────────────────┐
+                  │ OpenChainBench Prometheus          │
+                  │ scrapes every harness's URL on a   │
+                  │ schedule, 365d retention           │
+                  └────────────────┬───────────────────┘
+                                   │ HTTPS
+                                   │ /api/v1/query
+                                   ▼
+                          openchainbench.xyz
+                          (Next.js site on Vercel, ISR 60s)
 ```
 
-The harnesses are data producers — they call real provider endpoints, measure latency / cost / success, and expose Prometheus metrics on `/metrics`. A single shared Prometheus scrapes every harness over Railway's internal DNS and aggregates everything into one queryable instance. The Next.js site queries that single Prometheus URL declared in each YAML spec via the standard Prometheus HTTP API (`/api/v1/query` and `/api/v1/query_range`); ISR caches the response on Vercel's edge for 60 s.
+Each harness is run by whoever wrote it — Mobula for the existing aggregator and bridge benchmarks, independent contributors for any future ones, providers for self-benchmarks of their own services. They never share API keys with the project. They expose `/metrics` over HTTPS and the OpenChainBench Prometheus scrapes the public URL.
+
+The site queries the shared Prometheus URL declared in each YAML spec via the standard Prometheus HTTP API (`/api/v1/query`, `/api/v1/query_range`). ISR caches the response on Vercel's edge for 60 s.
 
 ## Architecture
 
-| Layer | Where it runs | Why |
+| Layer | Where it runs | Notes |
 |---|---|---|
-| Site (Next.js, ISR) | Vercel | Static pages with 60s revalidate, edge cache |
-| Prometheus | Railway | Single shared instance scraping every harness |
-| Harnesses (Go) | Railway | Long-running WebSockets, schedulers, on-chain signing |
+| Site (Next.js, ISR) | Vercel | Static pages with 60s revalidate, edge cache. Zero secrets — only queries the public Prom URL. |
+| Prometheus | A small Railway service | The only piece of shared OpenChainBench infrastructure. Open access (read-only public API). |
+| Harnesses | Wherever the contributor wants to host them | Railway, Fly, Cloud Run, a VPS — each contributor owns their own runtime, secrets, and budget. |
 
-Vercel and Railway are intentionally split: Vercel can't host long-lived WebSocket connections or sign on-chain transactions; Railway can't serve a globally cached Next.js site at the same cost. They communicate over HTTPS — the site queries the shared Prometheus URL declared in each YAML spec.
+The split is intentional: Vercel for the globally-cached read path, Prometheus for the time-series store, and any compute platform for the long-running data producers. Nobody other than the harness operator needs the harness's secrets.
 
 ## Running the site locally
 
@@ -102,11 +104,12 @@ Full guide in [CONTRIBUTING.md](./CONTRIBUTING.md). Short version:
 
 1. **Open an issue** with the [📊 Propose a benchmark template](https://github.com/OpenChainBench/OpenChainBench/issues/new?template=new-benchmark.yml). Sketch the metric, providers, methodology — get feedback before you build. Want to brainstorm first? Use [Discussions → Ideas](https://github.com/OpenChainBench/OpenChainBench/discussions/categories/ideas) instead.
 2. **Write the spec** at `benchmarks/<slug>.yml`. Format documented in [`benchmarks/README.md`](./benchmarks/README.md), validated by `src/lib/spec-schema.ts`.
-3. **Build the harness** in `harnesses/<slug>/`. Any language works as long as it exposes `/metrics` over HTTP with the metric names and labels your spec references. The harness is a data producer only — no Prometheus, Grafana, or Alertmanager packaging.
-4. **Add a scrape entry** to `infrastructure/prometheus/prometheus.yml` so the shared Prometheus picks up your harness.
-5. **Open a PR.** CI runs schema validation, typecheck, lint, and build. Once merged: the site picks up the new spec automatically; a maintainer creates the Railway service for the harness and redeploys Prometheus to apply the new scrape job.
+3. **Build the harness** in `harnesses/<slug>/`. Any language works as long as it exposes `/metrics` over HTTPS with the metric names and labels your spec references. The harness is a data producer only — no Prometheus, Grafana, or Alertmanager packaging.
+4. **Deploy the harness** on whatever infra fits — Railway, Fly, Cloud Run, a VPS, even a home server with a static IP. Expose `/metrics` over HTTPS at a stable public URL. You own the runtime, the secrets and the budget.
+5. **Add a scrape entry** to `infrastructure/prometheus/prometheus.yml` pointing at your public URL so the shared Prometheus picks up your harness.
+6. **Open a PR.** CI runs schema validation, typecheck, lint, and build. Once merged, a maintainer redeploys the central Prometheus and the site renders your benchmark on the next ISR cycle (≤ 60 s).
 
-Hosting trade-off: light harnesses (one HTTP poll loop, no secrets) are deployed onto the OpenChainBench Railway. Harnesses that hold wallets, sign transactions, or otherwise represent capital are hosted by the contributor — they expose `/metrics` on a publicly-reachable URL and the central Prometheus scrapes it the same way as project-hosted harnesses.
+You never share API keys or wallet keys with the project. Your harness runs with your credentials, on your infra, on your budget — the maintainers only see the metric values your harness chooses to publish.
 
 ## Editorial conventions
 
