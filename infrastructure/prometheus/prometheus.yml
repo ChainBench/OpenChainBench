@@ -4,42 +4,50 @@ global:
   external_labels:
     project: openchainbench
 
-# Each scrape_configs entry corresponds to one harness service deployed
-# on the OpenChainBench Railway project. The targets are Railway internal
-# DNS names (`<service>.railway.internal:<port>`) — no public URLs needed.
+# OpenChainBench is a federation: each harness is hosted by whoever wrote it
+# (Mobula, an independent contributor, a provider that wants to be benchmarked).
+# This single shared Prometheus scrapes every harness's public /metrics
+# endpoint and aggregates everything into one queryable instance — the URL
+# referenced by every YAML spec's `prom_url`.
 #
 # To onboard a new harness:
-#   1. Create the Railway service from `harnesses/<slug>/`.
-#   2. Confirm the service exposes `/metrics` on a known port.
-#   3. Append a `- job_name: <slug>` block below referencing
-#      `<service-name>.railway.internal:<port>`.
-#   4. Open a PR. Once merged, redeploy the prometheus service so it
-#      picks up the new target.
+#   1. The contributor exposes /metrics on a publicly reachable URL
+#      (Railway, Fly, Cloud Run, a VPS — anywhere with HTTPS).
+#   2. Append a `- job_name: <slug>` block below pointing at that URL.
+#   3. Open a PR. Once merged, redeploy the prometheus service so it picks
+#      up the new target (or hit the /-/reload endpoint).
 #
-# Conventional ports per existing harness:
-#   aggregator-head-lag → 2112  (matches `metrics.go` HTTP listener)
-#   bridge-monitor      → 9090  (matches `cmd/monitor/main.go` listener)
+# All metrics receive a `benchmark: <slug>` label automatically; YAML specs
+# use it to scope queries.
 
 scrape_configs:
+  # ─ Aggregator head lag ────────────────────────────────────────────────
+  # Currently hosted by Mobula on Railway. Replace the URL if you fork.
   - job_name: aggregator-head-lag
     metrics_path: /metrics
-    scheme: http
+    scheme: https
     static_configs:
       - targets:
-          - aggregator-head-lag.railway.internal:2112
+          - aggregator-head-lag-production.up.railway.app
         labels:
           benchmark: aggregator-head-lag
+          host: mobula
 
+  # ─ Bridge quote latency + cost ────────────────────────────────────────
+  # Currently hosted by Mobula on Railway. Replace the URL if you fork.
   - job_name: bridge-monitor
     metrics_path: /metrics
-    scheme: http
+    scheme: https
     static_configs:
       - targets:
-          - bridge-monitor.railway.internal:9090
+          - bridge-monitor-production.up.railway.app
         labels:
           benchmark: bridge-monitor
+          host: mobula
 
-  # Self-scrape — surfaces Prometheus's own health in the same UI.
+  # ─ Self-scrape ────────────────────────────────────────────────────────
+  # Surfaces Prometheus's own health (scrape error rates, target up/down)
+  # in the same UI used to debug harnesses.
   - job_name: prometheus
     static_configs:
       - targets:

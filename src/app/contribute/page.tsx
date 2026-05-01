@@ -18,15 +18,16 @@ export default function ContributePage() {
         Submit a benchmark.
       </h1>
       <p className="mt-3 text-xl sm:text-2xl text-ink-muted leading-snug">
-        Anyone can publish on OpenChainBench. The format is fixed, the methodology is yours, the harness is yours, the merge is open. Five steps.
+        Anyone can publish on OpenChainBench. You write the harness, you host it, you keep your secrets. The project shares one Prometheus that scrapes your public <span className="font-mono text-[0.85em]">/metrics</span> endpoint — that is the only piece of common infrastructure.
       </p>
 
-      <div className="mt-8 border-y border-rule py-5 grid gap-4 sm:grid-cols-5">
+      <div className="mt-8 border-y border-rule py-5 grid gap-4 sm:grid-cols-3 md:grid-cols-6">
         <Tldr n="01" title="Open an issue" body="Align on the metric." />
         <Tldr n="02" title="Write the spec" body="One YAML file." />
         <Tldr n="03" title="Build the harness" body="Expose /metrics." />
-        <Tldr n="04" title="Wire the scrape" body="One block in prometheus.yml." />
-        <Tldr n="05" title="Open a PR" body="The page renders itself." />
+        <Tldr n="04" title="Host it" body="Anywhere with HTTPS." />
+        <Tldr n="05" title="Wire the scrape" body="One block in prometheus.yml." />
+        <Tldr n="06" title="Open a PR" body="The page renders itself." />
       </div>
 
       <SectionRule label="Step 1 — Open an issue" number="i" />
@@ -109,25 +110,33 @@ providers:
         <li className="flex gap-3"><span className="text-ink-muted">—</span><span>Don&apos;t bundle Prometheus, Grafana or Alertmanager — they live in <Code>infrastructure/</Code> and are shared across every harness.</span></li>
       </ul>
 
-      <SectionRule label="Step 4 — Wire the scrape" number="iv" />
+      <SectionRule label="Step 4 — Host it" number="iv" />
       <p className="text-base leading-relaxed text-ink-soft">
-        Append a job to <Code>infrastructure/prometheus/prometheus.yml</Code> so the shared Prometheus picks up your harness:
+        OpenChainBench is a federation: each harness is hosted by whoever wrote it. Pick whatever fits — Railway, Fly, Cloud Run, a VPS, a home server with a static IP. The only requirement is that <Code>/metrics</Code> is reachable over HTTPS at a stable URL.
+      </p>
+      <ul className="mt-4 space-y-2 text-[1rem] leading-relaxed text-ink-soft">
+        <li className="flex gap-3"><span className="text-ink-muted">—</span><span>You own the runtime, the secrets and the budget. Maintainers never see your API keys or wallet keys.</span></li>
+        <li className="flex gap-3"><span className="text-ink-muted">—</span><span>If your harness needs API keys from the providers it benchmarks, you bring them. The data path treats every harness identically — Mobula-hosted or contributor-hosted.</span></li>
+        <li className="flex gap-3"><span className="text-ink-muted">—</span><span>Plan for stability: if your URL changes you (or a maintainer) need to update the scrape config.</span></li>
+      </ul>
+
+      <SectionRule label="Step 5 — Wire the scrape" number="v" />
+      <p className="text-base leading-relaxed text-ink-soft">
+        Append a job to <Code>infrastructure/prometheus/prometheus.yml</Code> pointing at your public URL so the shared Prometheus picks up your harness:
       </p>
       <pre className="mt-3 font-mono text-[12px] leading-snug bg-paper-soft border border-rule p-5 overflow-x-auto whitespace-pre">
 {`- job_name: <your-slug>
   metrics_path: /metrics
-  scheme: http
+  scheme: https
   static_configs:
     - targets:
-        - <your-slug>.railway.internal:<port>
+        - your-harness.example.com   # or *.up.railway.app, *.fly.dev, …
       labels:
-        benchmark: <your-slug>`}
+        benchmark: <your-slug>
+        host: <you>                   # alice | acme-rpc | mobula …`}
       </pre>
-      <p className="mt-3 text-[1rem] leading-relaxed text-ink-soft">
-        The target is the Railway internal DNS name of the service that will run your harness. If you intend to host the harness yourself (heavy harnesses with wallets or signing) replace the target with the public URL of your service.
-      </p>
 
-      <SectionRule label="Step 5 — Dry-run + open the PR" number="v" />
+      <SectionRule label="Step 6 — Dry-run + open the PR" number="vi" />
       <p className="text-base leading-relaxed text-ink-soft">Test the queries locally before opening the PR:</p>
       <pre className="mt-3 font-mono text-[12px] leading-snug bg-paper-soft border border-rule p-5 overflow-x-auto whitespace-pre">
 {`pnpm validate                                # schema lint
@@ -135,10 +144,10 @@ pnpm spec:dry-run wallet-portfolio-latency   # hit Prometheus, print resolved nu
 pnpm dev                                     # render the page locally`}
       </pre>
       <p className="mt-5 text-base leading-relaxed text-ink-soft">
-        Open the PR. CI runs <Code>pnpm validate</Code>, <Code>pnpm typecheck</Code> and the build. Once merged, a maintainer creates the Railway service for your harness, redeploys the shared Prometheus to pick up the new scrape job, and the site renders your benchmark on the next ISR cycle (within 60 seconds).
+        Open the PR. CI runs <Code>pnpm validate</Code>, <Code>pnpm typecheck</Code> and the build. Once merged, a maintainer redeploys the central Prometheus to apply the new scrape job and the site renders your benchmark on the next ISR cycle (within 60 seconds).
       </p>
 
-      <SectionRule label="Reference" number="vi" />
+      <SectionRule label="Reference" number="vii" />
       <ul className="space-y-3 text-[1rem] leading-relaxed">
         <li><Link className="lnk" href="/methodology">Methodology &rarr; design principles, statistical conventions</Link></li>
         <li><a className="lnk" href="https://github.com/OpenChainBench/OpenChainBench/blob/main/benchmarks/README.md">benchmarks/README.md &rarr; spec field reference</a></li>
