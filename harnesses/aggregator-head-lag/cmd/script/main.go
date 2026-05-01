@@ -47,6 +47,14 @@ func main() {
 		}
 	}()
 
+	// Mobula Pulse V2 feeder — only feeds the metadata coverage queue,
+	// no pulse-specific metrics emitted (see mobula_pulse_monitor.go).
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		runMobulaPulseMonitor(config, stopChan)
+	}()
+
 	// Mobula REST API monitor
 	wg.Add(1)
 	go func() {
