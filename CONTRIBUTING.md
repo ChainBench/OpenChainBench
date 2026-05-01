@@ -1,17 +1,20 @@
 # Contributing
 
-OpenChainBench is community-run. Anyone can submit a benchmark, fix a number, propose a methodology change. The web tutorial at [`/contribute`](https://openchainbench.xyz/contribute) walks through the four steps; this file is the long-form reference.
+OpenChainBench is community-run. Anyone can submit a benchmark, fix a number, propose a methodology change. The web tutorial at [`/contribute`](https://openchainbench.xyz/contribute) walks through the steps; this file is the long-form reference.
 
 ## What lives where
 
 ```
 benchmarks/        Self-contained YAML spec per benchmark
-harnesses/         The script that emits Prometheus metrics
+harnesses/         Open-source code for each benchmark runner (you host yours)
+infrastructure/    Shared services — currently just one Prometheus
 src/               The Next.js site that renders specs
 scripts/           Validate + dry-run tooling
 docs/              Methodology, ADRs, style guide
 .github/           CI, issue templates, PR template
 ```
+
+OpenChainBench is a federation. Each harness is hosted by whoever wrote it — the project shares only one Prometheus that scrapes every harness's public `/metrics` URL. You never share API keys with the maintainers.
 
 ## Where to start
 
@@ -26,12 +29,12 @@ docs/              Methodology, ADRs, style guide
 
 ## Submitting a benchmark
 
-1. **Open an issue** with the [📊 Propose a benchmark template](https://github.com/OpenChainBench/OpenChainBench/issues/new?template=new-benchmark.yml). Sketch the metric, providers, methodology, hosting plan — get feedback before you write code. The issue lands in the `Requested` column of the roadmap.
+1. **Open an issue** with the [📊 Propose a benchmark template](https://github.com/OpenChainBench/OpenChainBench/issues/new?template=new-benchmark.yml). Sketch the metric, providers, methodology, where you'll host the harness — get feedback before you write code. The issue lands in the `Requested` column of the roadmap.
 2. **Write the spec.** Drop a YAML at `benchmarks/<slug>.yml`. The format is described in [`benchmarks/README.md`](./benchmarks/README.md) and validated by `src/lib/spec-schema.ts`.
-3. **Build the harness** at `harnesses/<slug>/`. A harness is a data producer only — it exposes `/metrics` over HTTP with the metric names and labels your spec references. See [`harnesses/README.md`](./harnesses/README.md) for the full contract and the existing Go harnesses as reference implementations.
-4. **Append a scrape job** to [`infrastructure/prometheus/prometheus.yml`](./infrastructure/prometheus/prometheus.yml) so the shared Prometheus picks up your harness. Format documented in [`infrastructure/README.md`](./infrastructure/README.md).
-5. **Open a PR** referencing the issue (`Closes #N`). CI runs `pnpm validate` (schema lint), `pnpm typecheck`, `pnpm lint`, and `pnpm build`. Once green and reviewed, merge → site picks up the spec on next ISR cycle (≤60 s).
-6. **Wire the harness on Railway** (maintainer task). Light harnesses run on the project's shared Railway. Heavier harnesses (wallets, signing) are hosted by the contributor and expose `/metrics` on a publicly-reachable URL — the central Prometheus scrapes it identically.
+3. **Build the harness** at `harnesses/<slug>/`. A harness is a data producer only — it exposes `/metrics` over HTTPS with the metric names and labels your spec references. See [`harnesses/README.md`](./harnesses/README.md) for the contract and the existing Go harnesses as reference implementations.
+4. **Deploy the harness** on whatever infra fits — Railway, Fly, Cloud Run, a VPS. Expose `/metrics` over HTTPS at a stable public URL. You own the runtime, the secrets and the budget. The maintainers never see your API keys.
+5. **Append a scrape job** to [`infrastructure/prometheus/prometheus.yml`](./infrastructure/prometheus/prometheus.yml) pointing at your public URL so the shared Prometheus picks up your harness. Format documented in [`infrastructure/README.md`](./infrastructure/README.md).
+6. **Open a PR** referencing the issue (`Closes #N`). CI runs `pnpm validate` (schema lint), `pnpm typecheck`, `pnpm lint`, and `pnpm build`. Once green and reviewed, a maintainer merges and redeploys the central Prometheus to apply the new scrape job — site picks up the spec on next ISR cycle (≤ 60 s).
 
 ## Local development
 
