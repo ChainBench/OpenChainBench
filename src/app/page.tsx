@@ -26,7 +26,7 @@ export default async function HomePage() {
             Benchmark crypto infrastructure.
           </h1>
           <p className="mt-5 max-w-2xl text-xl sm:text-2xl text-ink-soft leading-snug">
-            Real-time latency, cost and reliability data for the multichain stack — aggregators, bridges, RPCs, price feeds. Same metric, same conditions, every provider.
+            Real-time latency, cost and reliability data for the multichain stack. Aggregators, bridges, RPCs, price feeds. Same metric, same conditions, every provider.
           </p>
 
           <div className="mt-8 flex flex-wrap items-center gap-3">

@@ -12,7 +12,7 @@ export default function TwitterImage() {
         style={{
           width: "100%",
           height: "100%",
-          background: "#faf6ee",
+          background: "#f8f3eb",
           color: "#1c1a17",
           padding: 60,
           display: "flex",

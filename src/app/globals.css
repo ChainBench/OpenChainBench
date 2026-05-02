@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 @theme {
-  /* Hint of paper warmth, but not a magazine cream — between #fff and #faf6ee */
-  --color-paper: #faf8f1;
+  /* Page background — warm off-white that pairs with the dark logo */
+  --color-paper: #f8f3eb;
   --color-paper-soft: #f3eee0;
   --color-surface: #ffffff;
 
