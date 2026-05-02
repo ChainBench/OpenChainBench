@@ -2,7 +2,8 @@ import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { getBenchmarks, formatLastRun } from "@/data/benchmarks";
 import { Sparkline } from "@/components/sparkline";
-import { fmtUnit } from "@/lib/format";
+import { Pill } from "@/components/pill";
+import { fmtValue, unitSuffix } from "@/lib/format";
 
 export default async function HomePage() {
   const benchmarks = await getBenchmarks();
@@ -83,90 +84,61 @@ export default async function HomePage() {
                       href={`/benchmarks/${b.slug}`}
                       className="group card-soft p-6 flex flex-col flex-1"
                     >
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="benchmark-mark">
-                          № {b.number} · {b.category}
-                        </span>
-                        <span className="inline-flex items-center gap-1.5 text-ink-muted text-[10px] uppercase tracking-[0.14em]">
-                          <span
-                            className={`h-1.5 w-1.5 rounded-full ${
-                              b.status === "live" ? "bg-good" : "bg-ink-faint"
-                            }`}
-                          />
+                      <div className="flex items-center gap-2">
+                        <Pill variant={b.status === "live" ? "live" : "draft"} pulse>
                           {b.status === "live" ? "Live" : "Draft"}
-                        </span>
+                        </Pill>
+                        <Pill variant="category">{b.category}</Pill>
                       </div>
 
                       <h3 className="mt-5 display text-xl font-bold leading-tight text-ink">
                         {b.title}
                       </h3>
-                      <p className="mt-3 editorial text-base text-ink-muted leading-snug line-clamp-3 flex-1">
-                        {b.subtitle}
-                      </p>
 
-                      <div className="mt-6 grid grid-cols-2 gap-4 border-t border-rule pt-4">
-                        <div>
-                          <dt className="text-[10px] font-medium uppercase tracking-[0.12em] text-ink-faint">
-                            Providers
-                          </dt>
-                          <dd className="mt-1 text-sm text-ink">
-                            {b.results.length}
-                          </dd>
-                        </div>
-                        <div>
-                          <dt className="text-[10px] font-medium uppercase tracking-[0.12em] text-ink-faint">
-                            Samples · 24h
-                          </dt>
-                          <dd className="mt-1 font-mono text-sm tabular text-ink">
-                            {Math.round(b.sampleSize).toLocaleString()}
-                          </dd>
-                        </div>
-                      </div>
-
-                      {series && series.length > 0 && (
-                        <div className="mt-4 flex items-center justify-between text-[11px] text-ink-faint">
-                          <span className="font-mono tabular">
-                            {b.status === "draft"
-                              ? "Spec published"
-                              : `Updated ${formatLastRun(b.lastRunAt)}`}
-                          </span>
-                          <Sparkline values={series} width={70} height={18} />
+                      {/* Headline number + sparkline */}
+                      {fastest && (
+                        <div className="mt-5 flex items-end justify-between gap-3">
+                          <div>
+                            <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-ink-faint">
+                              Field min · p50
+                            </p>
+                            <p className="mt-1 display text-3xl tabular leading-none">
+                              {fmtValue(fastest.ms.p50, b.unit)}
+                              <span className="ml-1 text-base text-ink-muted font-normal">
+                                {unitSuffix(b.unit).trim()}
+                              </span>
+                            </p>
+                          </div>
+                          {series && series.length > 0 && (
+                            <Sparkline values={series} width={90} height={28} />
+                          )}
                         </div>
                       )}
 
-                      {/* Hover unfurl: abstract + the field — neutral */}
-                      <div className="grid grid-rows-[0fr] group-hover:grid-rows-[1fr] transition-[grid-template-rows] duration-300 ease-out">
-                        <div className="overflow-hidden">
-                          <div className="mt-5 pt-5 border-t border-rule space-y-4">
-                            <div>
-                              <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-ink-faint">
-                                From the abstract
-                              </p>
-                              <p className="mt-2 text-sm leading-relaxed text-ink-soft line-clamp-4">
-                                {b.abstract}
-                              </p>
-                            </div>
-                            {b.results.length > 0 && (
-                              <div>
-                                <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-ink-faint">
-                                  The field
-                                </p>
-                                <p className="mt-2 editorial text-sm text-ink-soft">
-                                  {b.results.map((r) => r.name).join(" · ")}
-                                </p>
-                              </div>
-                            )}
-                            {fastest && (
-                              <p className="font-mono text-[10px] tabular text-ink-faint">
-                                fastest p50 · {fmtUnit(fastest.ms.p50, b.unit)} ·{" "}
-                                slowest p99 ·{" "}
-                                {fmtUnit(
-                                  Math.max(...b.results.map((r) => r.ms.p99)),
-                                  b.unit
-                                )}
-                              </p>
-                            )}
-                          </div>
+                      <div className="mt-5 pt-4 border-t border-rule grid grid-cols-3 gap-3 text-[11px]">
+                        <div>
+                          <p className="text-ink-faint uppercase tracking-[0.12em] font-medium">
+                            Providers
+                          </p>
+                          <p className="mt-0.5 font-mono tabular text-ink">
+                            {b.results.length}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-ink-faint uppercase tracking-[0.12em] font-medium">
+                            n · 24h
+                          </p>
+                          <p className="mt-0.5 font-mono tabular text-ink">
+                            {Math.round(b.sampleSize).toLocaleString()}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-ink-faint uppercase tracking-[0.12em] font-medium">
+                            Updated
+                          </p>
+                          <p className="mt-0.5 font-mono tabular text-ink-muted">
+                            {b.status === "draft" ? "—" : formatLastRun(b.lastRunAt)}
+                          </p>
                         </div>
                       </div>
                     </Link>
@@ -236,7 +208,9 @@ function Stat({ label, value }: { label: string; value: string }) {
 function Pillar({ n, title, body }: { n: string; title: string; body: string }) {
   return (
     <div>
-      <p className="benchmark-mark">{n}</p>
+      <p className="font-mono text-[11px] tabular uppercase tracking-[0.18em] text-ink-faint">
+        {n}
+      </p>
       <h3 className="mt-2 display text-xl">{title}</h3>
       <p className="mt-3 text-sm text-ink-muted leading-relaxed">{body}</p>
     </div>
@@ -246,7 +220,7 @@ function Pillar({ n, title, body }: { n: string; title: string; body: string }) 
 function EmptyState() {
   return (
     <div className="mt-12 card p-10 text-center">
-      <p className="editorial text-lg text-ink-muted">No benchmark specs yet.</p>
+      <p className="text-lg text-ink-muted">No benchmark specs yet.</p>
       <p className="mt-2 text-sm text-ink-faint">
         Drop a YAML in <code className="font-mono">benchmarks/</code> to get started — see the{" "}
         <Link className="lnk" href="/contribute">tutorial</Link>.

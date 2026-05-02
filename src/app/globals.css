@@ -72,12 +72,6 @@ table {
   line-height: 0.98;
 }
 
-/* Editorial italic — used for subtitles, figure titles, blockquotes */
-.editorial {
-  font-family: var(--font-serif);
-  font-style: italic;
-  font-feature-settings: "kern", "liga", "onum";
-}
 
 /* Eyebrow label (smallcaps with optional dot) */
 .eyebrow {
@@ -192,11 +186,3 @@ table {
   background: rgba(24, 22, 20, 0.018);
 }
 
-/* Bench numbering mark */
-.benchmark-mark {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--color-ink-muted);
-}
