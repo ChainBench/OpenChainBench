@@ -55,7 +55,6 @@ export default async function BenchmarkPage({
   // Field-level neutral KPIs
   const p50s = benchmark.results.map((r) => r.ms.p50);
   const p99s = benchmark.results.map((r) => r.ms.p99);
-  const successes = benchmark.results.map((r) => r.successRate);
 
   const fieldMin = p50s.length ? Math.min(...p50s) : 0;
   const fieldMax = p50s.length ? Math.max(...p50s) : 0;
@@ -65,9 +64,6 @@ export default async function BenchmarkPage({
   const tailMin = p99s.length ? Math.min(...p99s) : 0;
   const tailMax = p99s.length ? Math.max(...p99s) : 0;
   const tailSpread = tailMin > 0 ? tailMax / tailMin : 0;
-  const successAvg =
-    successes.length ? successes.reduce((s, v) => s + v, 0) / successes.length : 0;
-  const successWorst = successes.length ? Math.min(...successes) : 0;
 
   return (
     <article className="mx-auto max-w-5xl px-6 pt-10 sm:pt-14">
@@ -100,7 +96,7 @@ export default async function BenchmarkPage({
 
       {/* Hero KPI block */}
       {!isDraft && (
-        <div className="mt-10 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-px bg-rule rounded overflow-hidden border border-rule">
+        <div className="mt-10 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-px bg-rule rounded overflow-hidden border border-rule">
           <BigNumber
             label="Field min · p50"
             value={fmtValue(fieldMin, benchmark.unit)}
@@ -127,12 +123,6 @@ export default async function BenchmarkPage({
                 ? `${fmtUnit(tailMin, benchmark.unit)} → ${fmtUnit(tailMax, benchmark.unit)}`
                 : "n/a"
             }
-          />
-          <BigNumber
-            label="Success · avg"
-            value={successAvg.toFixed(2)}
-            unit="%"
-            caption={`Worst ${successWorst.toFixed(2)}%`}
           />
           <BigNumber
             label="Samples · 24h"
