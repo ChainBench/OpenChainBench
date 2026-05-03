@@ -979,25 +979,37 @@ async function renderCompare(
                 flexDirection: "column",
                 alignItems: "center",
                 justifyContent: "center",
-                padding: "0 10px",
-                gap: 4,
+                padding: "0 14px",
+                gap: 6,
                 borderLeft: `1px solid ${RULE}`,
                 borderRight: `1px solid ${RULE}`,
                 background: PAPER,
-                minWidth: 110,
+                minWidth: 130,
               }}
             >
               <div
                 style={{
                   display: "flex",
-                  fontSize: 11,
-                  letterSpacing: "0.18em",
-                  textTransform: "uppercase",
+                  fontSize: 28,
+                  fontWeight: 700,
                   color: INK_FAINT,
+                  letterSpacing: "-0.02em",
+                  fontStyle: "italic",
+                }}
+              >
+                vs
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  fontSize: 14,
+                  letterSpacing: "0.16em",
+                  textTransform: "uppercase",
+                  color: INK_MUTED,
                   fontWeight: 600,
                 }}
               >
-                Δ p50
+                {delta >= 0 ? "Slower by" : "Faster by"}
               </div>
               <div
                 style={{
@@ -1016,10 +1028,11 @@ async function renderCompare(
                   fontSize: 13,
                   color: INK_MUTED,
                   fontFamily: "monospace",
+                  letterSpacing: "0.04em",
                 }}
               >
-                {deltaPct >= 0 ? "+" : ""}
-                {deltaPct.toFixed(0)}%
+                {deltaPct >= 0 ? "+" : "−"}
+                {Math.abs(deltaPct).toFixed(0)}%
               </div>
             </div>
             {/* Right */}
