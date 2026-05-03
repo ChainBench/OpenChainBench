@@ -1,4 +1,4 @@
-# OpenChainBench — Bench № 002
+# OpenChainBench. Bench № 002
 
 slug: bridge-quote-latency
 number: "002"
@@ -21,7 +21,7 @@ methodology:
   - "Routes: USDC pairs spanning Solana, Base and Arbitrum."
   - "Notional sizes: $5, $50, $300 per quote."
   - "Cadence: full sweep (4 routes × 3 amounts × N bridges) every 5 minutes for 24 hours."
-  - "Region: eu-west (single point — multi-region requires running additional monitor instances)."
+  - "Region: eu-west (single point. multi-region requires running additional monitor instances)."
   - "Histogram buckets: 50, 100, 200, 500, 1000, 2000, 5000, 10000 ms."
   - "Failures (quote_failed, execution_failed, unsupported route) excluded from latency aggregates and counted toward success rate."
 
@@ -35,8 +35,8 @@ prometheus:
 
 # Real metrics exposed by the bridge-monitor harness:
 #   bridge_quote_latency_ms_{bucket,sum,count}{bridge, from_chain, to_chain, from_token, to_token, amount_usd, region}
-#   bridge_quote_success{...}                  — gauge 0/1
-#   bridge_errors_total{..., error_type}       — counter
+#   bridge_quote_success{...}                 . gauge 0/1
+#   bridge_errors_total{..., error_type}      . counter
 #
 # Label is `bridge=`, not `provider=`. Keep that in mind when extending.
 

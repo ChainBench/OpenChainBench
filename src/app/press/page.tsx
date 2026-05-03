@@ -16,7 +16,7 @@ export default function PressPage() {
 
       <SectionRule label="Boilerplate" number="i" />
       <blockquote className="border-l-4 border-ink pl-6 py-2 text-base leading-relaxed text-ink-soft">
-        OpenChainBench is an open, reproducible benchmark series for crypto infrastructure. Each report measures latency, accuracy or reliability of one category — aggregators, bridges, RPCs, price feeds — and ships alongside the script that produced it. Methodology, specs and raw metrics are public. The project is community-run and MIT-licensed.
+        OpenChainBench is an open, reproducible benchmark series for crypto infrastructure. Each report measures latency, accuracy or reliability of one category. aggregators, bridges, RPCs, price feeds. and ships alongside the script that produced it. Methodology, specs and raw metrics are public. The project is community-run and MIT-licensed.
       </blockquote>
 
       <SectionRule label="Quick facts" number="ii" />
@@ -34,7 +34,7 @@ export default function PressPage() {
 
       <SectionRule label="Contact" number="iv" />
       <p className="text-base leading-relaxed text-ink-soft">
-        For interviews, custom benchmark requests or pre-publication embargoes — open an issue or a discussion on{" "}
+        For interviews, custom benchmark requests or pre-publication embargoes. open an issue or a discussion on{" "}
         <a className="lnk" href="https://github.com/OpenChainBench/OpenChainBench">GitHub</a>.
       </p>
     </article>

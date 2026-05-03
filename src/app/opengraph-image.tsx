@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 
 export const runtime = "nodejs";
-export const alt = "OpenChainBench — Open benchmarks for crypto infrastructure";
+export const alt = "OpenChainBench. Open benchmarks for crypto infrastructure";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -72,7 +72,7 @@ export default function OG() {
               maxWidth: 1080,
             }}
           >
-            Latency, accuracy, reliability and cost — measured in the open.
+            Latency, accuracy, reliability and cost. measured in the open.
           </div>
         </div>
 
