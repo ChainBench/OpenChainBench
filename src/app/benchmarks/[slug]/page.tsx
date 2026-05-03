@@ -1,20 +1,18 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, ChevronDown } from "lucide-react";
 import {
   formatLastRun,
   getBenchmark,
   getBenchmarks,
   getBenchmarkSlugs,
 } from "@/data/benchmarks";
-import { Byline } from "@/components/byline";
+import { Pill } from "@/components/pill";
 import { TimeSeriesChart } from "@/components/time-series-chart";
 import { LedgerTable } from "@/components/ledger-table";
 import { RegionGrid } from "@/components/region-grid";
-import { Figure } from "@/components/figure";
 import { BigNumber } from "@/components/big-number";
-import { SectionRule } from "@/components/section-rule";
 import { fmtUnit, unitSuffix, fmtValue } from "@/lib/format";
 
 type Params = { slug: string };
@@ -72,7 +70,7 @@ export default async function BenchmarkPage({
   const successWorst = successes.length ? Math.min(...successes) : 0;
 
   return (
-    <article className="mx-auto max-w-4xl px-6 pt-12 sm:pt-16">
+    <article className="mx-auto max-w-5xl px-6 pt-10 sm:pt-14">
       <Link
         href="/benchmarks"
         className="inline-flex items-center gap-1.5 text-sm text-ink-muted hover:text-ink"
@@ -81,60 +79,48 @@ export default async function BenchmarkPage({
         All benchmarks
       </Link>
 
-      <div className="mt-7 flex items-center gap-3">
-        <span className="benchmark-mark">
-          № {benchmark.number} · {benchmark.category}
-        </span>
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-rule px-2.5 py-0.5 text-[10px] uppercase tracking-[0.12em] text-ink-muted">
-          <span
-            className={`h-1.5 w-1.5 rounded-full ${
-              isDraft ? "bg-ink-faint" : "bg-good animate-pulse"
-            }`}
-          />
+      {/* Status row */}
+      <div className="mt-6 flex flex-wrap items-center gap-2">
+        <Pill variant={isDraft ? "draft" : "live"} pulse>
           {isDraft ? "Draft" : "Live"}
+        </Pill>
+        <Pill variant="category">{benchmark.category}</Pill>
+        <span className="ml-auto font-mono text-[11px] tabular text-ink-muted">
+          № {benchmark.number} · Updated {formatLastRun(benchmark.lastRunAt)}
         </span>
       </div>
 
-      <h1 className="mt-4 display text-4xl sm:text-5xl md:text-6xl">
+      {/* Title */}
+      <h1 className="mt-5 display text-4xl sm:text-5xl md:text-6xl tracking-tight">
         {benchmark.title}
       </h1>
-      <p className="mt-5 editorial text-xl sm:text-2xl text-ink-soft leading-snug">
+      <p className="mt-4 max-w-3xl text-lg sm:text-xl text-ink-soft leading-snug">
         {benchmark.subtitle}
       </p>
 
-      <div className="mt-8">
-        <Byline
-          number={benchmark.number}
-          category={benchmark.category}
-          lastRunAt={benchmark.lastRunAt}
-          sampleSize={benchmark.sampleSize}
-        />
-      </div>
-
-      {isDraft ? (
-        <DraftNotice source={benchmark.source} />
-      ) : (
-        <div className="mt-10 grid grid-cols-2 sm:grid-cols-3 gap-px bg-rule rounded overflow-hidden border border-rule">
+      {/* Hero KPI block */}
+      {!isDraft && (
+        <div className="mt-10 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-px bg-rule rounded overflow-hidden border border-rule">
           <BigNumber
             label="Field min · p50"
             value={fmtValue(fieldMin, benchmark.unit)}
             unit={unitSuffix(benchmark.unit).trim()}
-            caption="Lowest provider median"
+            caption="Lowest provider"
           />
           <BigNumber
             label="Field median · p50"
             value={fmtValue(fieldMedian, benchmark.unit)}
             unit={unitSuffix(benchmark.unit).trim()}
-            caption={`Median across ${benchmark.results.length} providers`}
+            caption={`Across ${benchmark.results.length} providers`}
           />
           <BigNumber
             label="Field max · p50"
             value={fmtValue(fieldMax, benchmark.unit)}
             unit={unitSuffix(benchmark.unit).trim()}
-            caption="Highest provider median"
+            caption="Highest provider"
           />
           <BigNumber
-            label="Tail spread (p99)"
+            label="Tail spread"
             value={tailSpread > 0 ? `${tailSpread.toFixed(1)}×` : "—"}
             caption={
               tailSpread > 0
@@ -143,78 +129,48 @@ export default async function BenchmarkPage({
             }
           />
           <BigNumber
-            label="Success · field avg"
+            label="Success · avg"
             value={successAvg.toFixed(2)}
             unit="%"
             caption={`Worst ${successWorst.toFixed(2)}%`}
           />
           <BigNumber
-            label="Sample size · 24h"
+            label="Samples · 24h"
             value={Math.round(benchmark.sampleSize).toLocaleString()}
             caption={`${benchmark.results.length} providers`}
           />
         </div>
       )}
 
-      <SectionRule label="Abstract" />
-      <p className="text-base sm:text-lg leading-relaxed text-ink-soft max-w-3xl">
-        {benchmark.abstract}
-      </p>
+      {isDraft && <DraftNotice source={benchmark.source} />}
 
+      {/* Charts + tables — no Fig. captions, just data */}
       {!isDraft && (
         <>
-          <SectionRule label="Time series" />
-          <Figure
-            number="1"
-            title={`${benchmark.metric} over the last 24 hours`}
-            source={`Cross-region p50 per provider · resampled at 20-minute resolution`}
-            note={
-              <>
-                Each line is one provider&apos;s rolling-1h p50 evaluated every 20 minutes. Lower is better. The same Y-axis is shared across providers — magnitudes are directly comparable.
-              </>
-            }
-          >
+          <div className="mt-12">
+            <SectionLabel>{benchmark.metric} · last 24 hours</SectionLabel>
             <TimeSeriesChart benchmark={benchmark} />
-          </Figure>
+          </div>
 
-          <SectionRule label="Full ledger" />
-          <Figure
-            number="2"
-            title="Distribution, range, reliability and 24-hour trend"
-            source="Cross-region medians, all providers · sorted ascending by p50"
-            note={
-              <>
-                Twelve columns: percentile aggregates, the 24-hour observed range (min/max), the delta of each provider&apos;s p50 versus the field mean, success rate, sample count, and a sparkline. Sparklines share a common Y-axis.
-              </>
-            }
-          >
+          <div className="mt-14">
+            <SectionLabel>Provider ledger · sorted by p50</SectionLabel>
             <LedgerTable benchmark={benchmark} />
-          </Figure>
+          </div>
 
           {Object.keys(benchmark.extras.regions).length > 0 && (
-            <>
-              <SectionRule label="By region" />
-              <Figure
-                number="3"
-                title="p50 latency by region — small multiples"
-                source="Per-region cross-section"
-                note={
-                  <>
-                    Each region is independently scaled to its own maximum so the ranking is read across, not across regions.
-                  </>
-                }
-              >
-                <RegionGrid benchmark={benchmark} />
-              </Figure>
-            </>
+            <div className="mt-14">
+              <SectionLabel>By region</SectionLabel>
+              <RegionGrid benchmark={benchmark} />
+            </div>
           )}
         </>
       )}
 
+      {/* Findings (when present) */}
       {benchmark.findings.length > 0 && !isDraft && (
-        <>
-          <SectionRule label="Findings" />
-          <ol className="space-y-5">
+        <div className="mt-14">
+          <SectionLabel>Findings</SectionLabel>
+          <ol className="mt-2 space-y-4">
             {benchmark.findings.map((f, i) => (
               <li key={i} className="flex gap-4">
                 <span className="font-mono text-xs tabular text-ink-faint mt-1.5 w-7 shrink-0">
@@ -224,29 +180,69 @@ export default async function BenchmarkPage({
               </li>
             ))}
           </ol>
-        </>
+        </div>
       )}
 
-      <SectionRule label="Methodology" />
-      <ul className="space-y-3 text-base leading-relaxed text-ink-soft">
-        {benchmark.methodology.map((m) => (
-          <li key={m} className="flex gap-3">
-            <span className="text-ink-faint mt-1.5">—</span>
-            <span>{m}</span>
-          </li>
-        ))}
-      </ul>
-      <p className="mt-6 text-[11px] uppercase tracking-[0.14em] text-ink-muted">
-        Source code:{" "}
-        <a className="lnk" href={benchmark.source}>
-          {benchmark.source.replace("https://github.com/", "")}
-        </a>
-      </p>
+      {/* About — collapsed by default */}
+      <details className="mt-14 group border-t border-rule">
+        <summary className="flex cursor-pointer items-center justify-between py-4 list-none">
+          <span className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink">
+            About this benchmark
+          </span>
+          <ChevronDown
+            size={16}
+            strokeWidth={2}
+            className="text-ink-muted transition-transform group-open:rotate-180"
+          />
+        </summary>
+        <div className="pb-6 space-y-6">
+          <p className="text-base leading-relaxed text-ink-soft max-w-3xl">
+            {benchmark.abstract}
+          </p>
+          <div>
+            <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-ink-faint mb-3">
+              Methodology
+            </p>
+            <ul className="space-y-2 text-sm leading-relaxed text-ink-soft">
+              {benchmark.methodology.map((m) => (
+                <li key={m} className="flex gap-3">
+                  <span className="text-ink-faint mt-1.5">—</span>
+                  <span>{m}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </details>
 
+      {/* Reproduce / cite — collapsed */}
       {!isDraft && (
-        <>
-          <SectionRule label="Cite this report" />
-          <pre className="card font-mono text-[11px] leading-relaxed bg-paper-soft p-5 overflow-x-auto whitespace-pre-wrap">
+        <details className="mt-1 group border-t border-rule">
+          <summary className="flex cursor-pointer items-center justify-between py-4 list-none">
+            <span className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink">
+              Reproduce · cite · source
+            </span>
+            <ChevronDown
+              size={16}
+              strokeWidth={2}
+              className="text-ink-muted transition-transform group-open:rotate-180"
+            />
+          </summary>
+          <div className="pb-6 space-y-5">
+            <div>
+              <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-ink-faint mb-2">
+                Source code
+              </p>
+              <a className="lnk text-sm" href={benchmark.source}>
+                {benchmark.source.replace("https://github.com/", "github.com/")}
+                <ArrowUpRight size={12} strokeWidth={2} className="inline ml-1" />
+              </a>
+            </div>
+            <div>
+              <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-ink-faint mb-2">
+                BibTeX
+              </p>
+              <pre className="card font-mono text-[11px] leading-relaxed bg-paper-soft p-4 overflow-x-auto whitespace-pre-wrap">
 {`@misc{openchainbench-${benchmark.number},
   author       = {{OpenChainBench}},
   title        = {${benchmark.title}},
@@ -254,29 +250,35 @@ export default async function BenchmarkPage({
   howpublished = {\\url{https://openchainbench.xyz/benchmarks/${benchmark.slug}}},
   note         = {Run on ${formatLastRun(benchmark.lastRunAt)}}
 }`}
-          </pre>
-        </>
+              </pre>
+            </div>
+          </div>
+        </details>
       )}
 
+      {/* Other benchmarks */}
       {otherBenchmarks.length > 0 && (
-        <nav className="mt-20 border-t border-rule pt-8 -mx-2">
-          <h3 className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted px-2">
+        <nav className="mt-20 border-t border-rule pt-8">
+          <h3 className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted">
             More benchmarks
           </h3>
-          <ul className="mt-5 grid gap-4 sm:grid-cols-2 items-stretch px-2">
+          <ul className="mt-5 grid gap-4 sm:grid-cols-2 items-stretch">
             {otherBenchmarks.map((b) => (
               <li key={b.slug} className="flex">
                 <Link
                   href={`/benchmarks/${b.slug}`}
                   className="flex-1 card-soft p-5 flex flex-col"
                 >
-                  <p className="benchmark-mark">
-                    № {b.number} · {b.category}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <Pill variant={b.status === "live" ? "live" : "draft"} pulse>
+                      {b.status === "live" ? "Live" : "Draft"}
+                    </Pill>
+                    <Pill variant="category">{b.category}</Pill>
+                  </div>
                   <p className="mt-3 display text-lg font-bold leading-tight">
                     {b.title}
                   </p>
-                  <p className="mt-2 editorial text-sm text-ink-muted line-clamp-2 flex-1">
+                  <p className="mt-2 text-sm text-ink-muted line-clamp-2 flex-1">
                     {b.subtitle}
                   </p>
                 </Link>
@@ -289,19 +291,31 @@ export default async function BenchmarkPage({
   );
 }
 
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="mb-3 text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
+      {children}
+    </p>
+  );
+}
+
 function DraftNotice({ source }: { source: string }) {
   return (
-    <div className="mt-10 card p-6 sm:p-8">
-      <p className="eyebrow">Draft — Awaiting first run</p>
-      <p className="mt-4 text-base leading-relaxed text-ink-soft max-w-2xl">
-        The spec for this benchmark is published but the harness has not emitted enough data yet. The methodology below describes what will be measured. The page will switch to live data on the next ISR revalidation once Prometheus has results.
+    <div className="mt-10 card p-6 text-center">
+      <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-ink-faint">
+        Draft — no live data yet
       </p>
-      <p className="mt-4 text-xs text-ink-muted">
-        Watch the harness:{" "}
-        <a className="lnk text-ink-soft" href={source}>
-          {source.replace("https://github.com/", "")}
-        </a>
+      <p className="mt-3 text-sm text-ink-muted">
+        The spec is published. Numbers will appear here as soon as the harness
+        starts emitting metrics.
       </p>
+      <a
+        href={source}
+        className="mt-4 inline-flex items-center gap-1 text-sm font-medium lnk"
+      >
+        Source code
+        <ArrowUpRight size={12} strokeWidth={2} />
+      </a>
     </div>
   );
 }
