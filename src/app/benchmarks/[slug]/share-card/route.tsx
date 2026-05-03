@@ -969,7 +969,6 @@ async function renderCompare(
               p50={fmtValue(a.ms.p50, benchmark.unit)}
               unit={unitSuffix(benchmark.unit).trim()}
               p99={fmtUnit(a.ms.p99, benchmark.unit)}
-              successPct={a.successRate}
               n={a.sampleSize ?? 0}
             />
             {/* Center divider */}
@@ -1043,7 +1042,6 @@ async function renderCompare(
               p50={fmtValue(b.ms.p50, benchmark.unit)}
               unit={unitSuffix(benchmark.unit).trim()}
               p99={fmtUnit(b.ms.p99, benchmark.unit)}
-              successPct={b.successRate}
               n={b.sampleSize ?? 0}
             />
           </div>
@@ -1061,7 +1059,6 @@ function ComparePane({
   p50,
   unit,
   p99,
-  successPct,
   n,
 }: {
   rank: number;
@@ -1070,7 +1067,6 @@ function ComparePane({
   p50: string;
   unit: string;
   p99: string;
-  successPct: number;
   n: number;
 }) {
   return (
@@ -1166,19 +1162,6 @@ function ComparePane({
             P99
           </span>
           <span>{p99}</span>
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <span
-            style={{
-              color: INK_FAINT,
-              fontSize: 10,
-              letterSpacing: "0.16em",
-              textTransform: "uppercase",
-            }}
-          >
-            SUCCESS
-          </span>
-          <span>{successPct.toFixed(2)}%</span>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
           <span
