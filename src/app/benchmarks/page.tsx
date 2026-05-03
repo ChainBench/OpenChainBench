@@ -5,7 +5,7 @@ import {
   formatLastRun,
   getBenchmarks,
 } from "@/data/benchmarks";
-import { Sparkline } from "@/components/sparkline";
+import { MiniChart } from "@/components/mini-chart";
 import { Pill } from "@/components/pill";
 import { fmtValue, unitSuffix } from "@/lib/format";
 
@@ -44,9 +44,6 @@ export default async function BenchmarksIndex() {
               const fastest = [...b.results].sort(
                 (a, c) => a.ms.p50 - c.ms.p50
               )[0];
-              const series = fastest
-                ? b.extras.series24h[fastest.slug]
-                : undefined;
               return (
                 <li key={b.slug} className="flex">
                   <Link
@@ -65,21 +62,26 @@ export default async function BenchmarksIndex() {
                     </h3>
 
                     {fastest && (
-                      <div className="mt-5 flex items-end justify-between gap-3">
-                        <div>
-                          <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-ink-faint">
-                            Field min · p50
-                          </p>
-                          <p className="mt-1 display text-3xl tabular leading-none">
-                            {fmtValue(fastest.ms.p50, b.unit)}
-                            <span className="ml-1 text-base text-ink-muted font-normal">
-                              {unitSuffix(b.unit).trim()}
-                            </span>
+                      <div className="mt-5">
+                        <div className="flex items-end justify-between gap-3">
+                          <div>
+                            <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-ink-faint">
+                              Field min · p50
+                            </p>
+                            <p className="mt-1 display text-3xl tabular leading-none">
+                              {fmtValue(fastest.ms.p50, b.unit)}
+                              <span className="ml-1 text-base text-ink-muted font-normal">
+                                {unitSuffix(b.unit).trim()}
+                              </span>
+                            </p>
+                          </div>
+                          <p className="text-[10px] font-mono tabular text-ink-faint uppercase tracking-[0.14em]">
+                            24h
                           </p>
                         </div>
-                        {series && series.length > 0 && (
-                          <Sparkline values={series} width={90} height={28} />
-                        )}
+                        <div className="mt-3">
+                          <MiniChart benchmark={b} height={64} />
+                        </div>
                       </div>
                     )}
 
