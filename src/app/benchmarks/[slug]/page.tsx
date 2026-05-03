@@ -208,7 +208,11 @@ export default async function BenchmarkPage({
 
       {/* Share / export */}
       {!isDraft && (
-        <ShareSection slug={benchmark.slug} title={benchmark.title} />
+        <ShareSection
+          slug={benchmark.slug}
+          title={benchmark.title}
+          benchmark={benchmark}
+        />
       )}
 
       {/* Source code link — bottom of page */}
