@@ -8,8 +8,8 @@ type Template = {
   id: string;
   label: string;
   description: string;
-  /** Whether this template lets the reader filter providers. */
-  filterable: boolean;
+  /** What kind of selection UI this template supports. */
+  pick: "none" | "multi" | "single" | "pair";
 };
 
 const TEMPLATES: Template[] = [
@@ -17,31 +17,31 @@ const TEMPLATES: Template[] = [
     id: "ranking",
     label: "Ranking",
     description: "Vertical bars sorted ascending by p50, with provider names and p99 tails.",
-    filterable: false,
+    pick: "none",
   },
   {
     id: "leaderboard",
     label: "Leaderboard",
     description: "Ranked rows with horizontal mini-bars in each provider's signature color.",
-    filterable: false,
+    pick: "none",
   },
   {
     id: "snapshot",
     label: "Snapshot",
-    description: "Full 24-hour multi-line chart with per-provider legend at the bottom.",
-    filterable: true,
+    description: "Full 24-hour multi-line chart. Toggle providers in or out of the plot.",
+    pick: "multi",
   },
   {
     id: "headline",
     label: "Headline",
-    description: "Big-number poster — the field's fastest p50 in the winner's color.",
-    filterable: true,
+    description: "Big-number poster of one provider's p50. Pick which provider to feature.",
+    pick: "single",
   },
   {
     id: "compare",
     label: "Compare",
-    description: "Top-2 head-to-head with p50 / p99 / success / sample-size and the delta between them.",
-    filterable: true,
+    description: "Two providers head-to-head. Pick the pair you want to compare.",
+    pick: "pair",
   },
 ];
 
@@ -54,8 +54,6 @@ type Props = {
 export function ShareSection({ slug, title, benchmark }: Props) {
   const [activeId, setActiveId] = useState<string>("ranking");
 
-  // Sort providers ascending p50 for the toggle UI — same order as the
-  // legend / ledger.
   const orderedProviders = useMemo(
     () =>
       [...benchmark.results].sort((a, b) => a.ms.p50 - b.ms.p50).map((r) => ({
@@ -65,13 +63,26 @@ export function ShareSection({ slug, title, benchmark }: Props) {
     [benchmark]
   );
 
-  // Default: all providers selected.
-  const [selected, setSelected] = useState<Set<string>>(
+  // Snapshot: multi-select, default = all
+  const [multiSelected, setMultiSelected] = useState<Set<string>>(
     () => new Set(orderedProviders.map((p) => p.slug))
   );
 
-  function toggleProvider(slug: string) {
-    setSelected((prev) => {
+  // Headline: single-select, default = winner (first by p50)
+  const [singleSelected, setSingleSelected] = useState<string | null>(
+    () => orderedProviders[0]?.slug ?? null
+  );
+
+  // Compare: pair, default = top 2
+  const [pairA, setPairA] = useState<string | null>(
+    () => orderedProviders[0]?.slug ?? null
+  );
+  const [pairB, setPairB] = useState<string | null>(
+    () => orderedProviders[1]?.slug ?? null
+  );
+
+  function toggleMulti(slug: string) {
+    setMultiSelected((prev) => {
       const next = new Set(prev);
       if (next.has(slug)) next.delete(slug);
       else next.add(slug);
@@ -79,25 +90,47 @@ export function ShareSection({ slug, title, benchmark }: Props) {
     });
   }
 
-  const activeTemplate = TEMPLATES.find((t) => t.id === activeId);
-  const showFilter = activeTemplate?.filterable ?? false;
+  function pickPairA(s: string) {
+    if (s === pairB) setPairB(pairA); // swap to keep both filled
+    setPairA(s);
+  }
 
-  // Build the URL with optional providers filter.
-  const cardSrc = (templateId: string, applyFilter: boolean) => {
+  function pickPairB(s: string) {
+    if (s === pairA) setPairA(pairB);
+    setPairB(s);
+  }
+
+  const activeTemplate = TEMPLATES.find((t) => t.id === activeId);
+
+  // Build the URL with the right params per template.
+  const cardSrc = (templateId: string) => {
     const tpl = TEMPLATES.find((t) => t.id === templateId);
     const base = `/benchmarks/${slug}/share-card?template=${templateId}`;
-    if (!applyFilter || !tpl?.filterable) return base;
-    if (selected.size === orderedProviders.length) return base; // all selected ⇒ no param
-    if (selected.size === 0) return base; // nothing selected ⇒ no param (server falls back)
-    const list = orderedProviders
-      .filter((p) => selected.has(p.slug))
-      .map((p) => p.slug)
-      .join(",");
-    return `${base}&providers=${encodeURIComponent(list)}`;
+    if (!tpl) return base;
+    if (tpl.pick === "multi") {
+      if (
+        multiSelected.size === orderedProviders.length ||
+        multiSelected.size === 0
+      ) {
+        return base;
+      }
+      const list = orderedProviders
+        .filter((p) => multiSelected.has(p.slug))
+        .map((p) => p.slug)
+        .join(",");
+      return `${base}&providers=${encodeURIComponent(list)}`;
+    }
+    if (tpl.pick === "single" && singleSelected) {
+      return `${base}&provider=${encodeURIComponent(singleSelected)}`;
+    }
+    if (tpl.pick === "pair" && pairA && pairB) {
+      return `${base}&a=${encodeURIComponent(pairA)}&b=${encodeURIComponent(pairB)}`;
+    }
+    return base;
   };
 
   async function handleDownload(templateId: string) {
-    const url = cardSrc(templateId, true);
+    const url = cardSrc(templateId);
     try {
       const res = await fetch(url);
       const blob = await res.blob();
@@ -147,58 +180,144 @@ export function ShareSection({ slug, title, benchmark }: Props) {
           ))}
         </div>
 
-        {/* Active preview */}
         {TEMPLATES.map((t) => {
           if (t.id !== activeId) return null;
           return (
             <div key={t.id} className="space-y-3">
               <p className="text-xs text-ink-muted">{t.description}</p>
 
-              {/* Provider filter (only on filterable templates) */}
-              {showFilter && (
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-[10px] font-medium uppercase tracking-[0.16em] text-ink-faint mr-1">
-                    Providers
+              {/* Multi-select (snapshot) */}
+              {t.pick === "multi" && (
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[10px] font-medium uppercase tracking-[0.16em] text-ink-faint mr-1">
+                      Lines on chart
+                    </span>
+                    {orderedProviders.map((p) => {
+                      const isOn = multiSelected.has(p.slug);
+                      return (
+                        <button
+                          key={p.slug}
+                          onClick={() => toggleMulti(p.slug)}
+                          className={`px-2.5 py-1 rounded-full border text-[11px] font-medium uppercase tracking-[0.12em] transition-colors ${
+                            isOn
+                              ? "bg-ink text-paper border-ink"
+                              : "bg-paper-soft text-ink-muted border-rule hover:text-ink"
+                          }`}
+                        >
+                          {p.name}
+                        </button>
+                      );
+                    })}
+                    <button
+                      onClick={() =>
+                        setMultiSelected(
+                          new Set(orderedProviders.map((p) => p.slug))
+                        )
+                      }
+                      className="ml-1 text-[10px] uppercase tracking-[0.14em] text-ink-faint hover:text-ink lnk"
+                    >
+                      All
+                    </button>
+                  </div>
+                  <p className="mt-2 text-[10px] font-medium uppercase tracking-[0.16em] text-ink-faint">
+                    {multiSelected.size} of {orderedProviders.length} on chart
+                    {multiSelected.size === 0 && " · empty selection falls back to all"}
+                  </p>
+                </div>
+              )}
+
+              {/* Single-pick (headline) */}
+              {t.pick === "single" && (
+                <div>
+                  <span className="block text-[10px] font-medium uppercase tracking-[0.16em] text-ink-faint mb-2">
+                    Featured provider
                   </span>
-                  {orderedProviders.map((p) => {
-                    const isOn = selected.has(p.slug);
-                    return (
-                      <button
-                        key={p.slug}
-                        onClick={() => toggleProvider(p.slug)}
-                        className={`px-2.5 py-1 rounded-full border text-[11px] font-medium uppercase tracking-[0.12em] transition-colors ${
-                          isOn
-                            ? "bg-ink text-paper border-ink"
-                            : "bg-paper-soft text-ink-muted border-rule hover:text-ink"
-                        }`}
-                      >
-                        {p.name}
-                      </button>
-                    );
-                  })}
-                  <button
-                    onClick={() =>
-                      setSelected(new Set(orderedProviders.map((p) => p.slug)))
-                    }
-                    className="ml-1 text-[10px] uppercase tracking-[0.14em] text-ink-faint hover:text-ink lnk"
-                  >
-                    Reset
-                  </button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {orderedProviders.map((p) => {
+                      const isOn = singleSelected === p.slug;
+                      return (
+                        <button
+                          key={p.slug}
+                          onClick={() => setSingleSelected(p.slug)}
+                          className={`px-3 py-1.5 rounded-full border text-[11px] font-medium uppercase tracking-[0.12em] transition-colors ${
+                            isOn
+                              ? "bg-ink text-paper border-ink"
+                              : "bg-paper-soft text-ink-muted border-rule hover:text-ink"
+                          }`}
+                        >
+                          {p.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Pair-pick (compare) */}
+              {t.pick === "pair" && (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <span className="block text-[10px] font-medium uppercase tracking-[0.16em] text-ink-faint mb-2">
+                      Provider A
+                    </span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {orderedProviders.map((p) => {
+                        const isOn = pairA === p.slug;
+                        const disabled = pairB === p.slug;
+                        return (
+                          <button
+                            key={p.slug}
+                            onClick={() => pickPairA(p.slug)}
+                            className={`px-2.5 py-1 rounded-full border text-[11px] font-medium uppercase tracking-[0.12em] transition-colors ${
+                              isOn
+                                ? "bg-ink text-paper border-ink"
+                                : disabled
+                                ? "bg-paper-soft text-ink-faint border-rule opacity-60"
+                                : "bg-paper-soft text-ink-muted border-rule hover:text-ink"
+                            }`}
+                          >
+                            {p.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div>
+                    <span className="block text-[10px] font-medium uppercase tracking-[0.16em] text-ink-faint mb-2">
+                      Provider B
+                    </span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {orderedProviders.map((p) => {
+                        const isOn = pairB === p.slug;
+                        const disabled = pairA === p.slug;
+                        return (
+                          <button
+                            key={p.slug}
+                            onClick={() => pickPairB(p.slug)}
+                            className={`px-2.5 py-1 rounded-full border text-[11px] font-medium uppercase tracking-[0.12em] transition-colors ${
+                              isOn
+                                ? "bg-ink text-paper border-ink"
+                                : disabled
+                                ? "bg-paper-soft text-ink-faint border-rule opacity-60"
+                                : "bg-paper-soft text-ink-muted border-rule hover:text-ink"
+                            }`}
+                          >
+                            {p.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
               )}
 
               <SharePreview
-                key={cardSrc(t.id, true)}
-                src={cardSrc(t.id, true)}
+                key={cardSrc(t.id)}
+                src={cardSrc(t.id)}
                 alt={`${title} — ${t.label} share card`}
               />
 
-              {showFilter && (
-                <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-ink-faint">
-                  Showing {selected.size} of {orderedProviders.length} providers
-                  {selected.size === 0 && " · empty selection falls back to all"}
-                </p>
-              )}
               <div className="flex flex-wrap items-center gap-3">
                 <button
                   onClick={() => handleDownload(t.id)}
@@ -208,7 +327,7 @@ export function ShareSection({ slug, title, benchmark }: Props) {
                   Download PNG
                 </button>
                 <a
-                  href={cardSrc(t.id, true)}
+                  href={cardSrc(t.id)}
                   target="_blank"
                   rel="noreferrer"
                   className="text-xs font-medium uppercase tracking-[0.14em] text-ink-muted hover:text-ink"
@@ -229,7 +348,6 @@ function SharePreview({ src, alt }: { src: string; alt: string }) {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
 
-  // Reset loaded state when src changes (template or filter change).
   useEffect(() => {
     setLoaded(false);
     setError(false);
