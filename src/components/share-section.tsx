@@ -188,9 +188,17 @@ export function ShareSection({ slug, title, benchmark }: Props) {
               )}
 
               <SharePreview
+                key={cardSrc(t.id, true)}
                 src={cardSrc(t.id, true)}
                 alt={`${title} — ${t.label} share card`}
               />
+
+              {showFilter && (
+                <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-ink-faint">
+                  Showing {selected.size} of {orderedProviders.length} providers
+                  {selected.size === 0 && " · empty selection falls back to all"}
+                </p>
+              )}
               <div className="flex flex-wrap items-center gap-3">
                 <button
                   onClick={() => handleDownload(t.id)}
