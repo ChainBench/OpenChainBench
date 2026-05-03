@@ -280,6 +280,7 @@ export async function GET(
     | "compare"
     | "leaderboard";
 
+  // ─── Snapshot: multi-select via ?providers=a,b,c ─────────────────────
   const providersParam = url.searchParams.get("providers");
   const providerSlugs = providersParam
     ? providersParam.split(",").filter(Boolean)
@@ -293,17 +294,36 @@ export async function GET(
           ),
         }
       : benchmark;
+  const filteredSafe = filtered.results.length > 0 ? filtered : benchmark;
 
-  const safe = filtered.results.length > 0 ? filtered : benchmark;
+  // ─── Headline: single-pick via ?provider=slug ────────────────────────
+  const headlineSlug = url.searchParams.get("provider");
+  const headlineProvider =
+    benchmark.results.find((r) => r.slug === headlineSlug) ??
+    [...benchmark.results].sort((a, b) => a.ms.p50 - b.ms.p50)[0];
+
+  // ─── Compare: explicit pair via ?a=slug&b=slug ───────────────────────
+  const aSlug = url.searchParams.get("a");
+  const bSlug = url.searchParams.get("b");
+  const sortedByP50 = [...benchmark.results].sort(
+    (a, b) => a.ms.p50 - b.ms.p50
+  );
+  const compareA =
+    benchmark.results.find((r) => r.slug === aSlug) ?? sortedByP50[0];
+  const compareB =
+    benchmark.results.find((r) => r.slug === bSlug && r.slug !== compareA?.slug) ??
+    sortedByP50.find((r) => r.slug !== compareA?.slug) ??
+    sortedByP50[1];
+
   const colors = buildProviderColors(benchmark.results);
 
   switch (template) {
     case "snapshot":
-      return renderSnapshot(safe, colors);
+      return renderSnapshot(filteredSafe, colors);
     case "headline":
-      return renderHeadline(safe, colors);
+      return renderHeadline(benchmark, colors, headlineProvider);
     case "compare":
-      return renderCompare(safe, colors);
+      return renderCompare(benchmark, colors, compareA, compareB);
     case "leaderboard":
       return renderLeaderboard(benchmark, colors);
     case "ranking":
@@ -779,11 +799,16 @@ async function renderSnapshot(
 // ─── Headline · big-number poster ──────────────────────────────────────
 async function renderHeadline(
   benchmark: Benchmark,
-  colors: Map<string, string>
+  colors: Map<string, string>,
+  featured?: Benchmark["results"][number]
 ) {
   const sorted = [...benchmark.results].sort((a, b) => a.ms.p50 - b.ms.p50);
-  const winner = sorted[0];
+  const winner = featured ?? sorted[0];
   const winnerColor = colors.get(winner?.slug ?? "") ?? INK;
+  const rank = winner
+    ? sorted.findIndex((r) => r.slug === winner.slug) + 1
+    : 0;
+  const isFastest = rank === 1;
 
   return new ImageResponse(
     (
@@ -808,7 +833,12 @@ async function renderHeadline(
               fontWeight: 600,
             }}
           >
-            {benchmark.title} · field min p50
+            {benchmark.title}
+            {isFastest
+              ? " · field min p50"
+              : rank > 0
+                ? ` · rank ${String(rank).padStart(2, "0")} · p50`
+                : " · p50"}
           </div>
           <div
             style={{
@@ -861,8 +891,9 @@ async function renderHeadline(
               letterSpacing: "0.08em",
             }}
           >
-            ahead of {Math.max(0, sorted.length - 1)} other provider
-            {sorted.length === 2 ? "" : "s"}
+            {isFastest
+              ? `ahead of ${Math.max(0, sorted.length - 1)} other provider${sorted.length === 2 ? "" : "s"}`
+              : `${rank} of ${sorted.length} providers · field min ${winner ? fmtUnit(sorted[0].ms.p50, benchmark.unit) : "—"}`}
             {winner && ` · p99 ${fmtUnit(winner.ms.p99, benchmark.unit)}`}
           </div>
         </div>
@@ -875,15 +906,23 @@ async function renderHeadline(
 // ─── Compare · top-2 head-to-head ──────────────────────────────────────
 async function renderCompare(
   benchmark: Benchmark,
-  colors: Map<string, string>
+  colors: Map<string, string>,
+  paneA?: Benchmark["results"][number],
+  paneB?: Benchmark["results"][number]
 ) {
   const sorted = [...benchmark.results].sort((a, b) => a.ms.p50 - b.ms.p50);
-  const top = sorted.slice(0, 2);
-  if (top.length < 2) return renderHeadline(benchmark, colors);
+  const a = paneA ?? sorted[0];
+  const b =
+    paneB && paneB.slug !== a?.slug
+      ? paneB
+      : sorted.find((r) => r.slug !== a?.slug);
+  if (!a || !b) return renderHeadline(benchmark, colors, a);
 
-  const [a, b] = top;
   const aColor = colors.get(a.slug) ?? INK_SOFT;
   const bColor = colors.get(b.slug) ?? INK_SOFT;
+
+  const aRank = sorted.findIndex((r) => r.slug === a.slug) + 1;
+  const bRank = sorted.findIndex((r) => r.slug === b.slug) + 1;
 
   const delta = b.ms.p50 - a.ms.p50;
   const deltaPct = a.ms.p50 > 0 ? (delta / a.ms.p50) * 100 : 0;
@@ -924,7 +963,7 @@ async function renderCompare(
           >
             {/* Left */}
             <ComparePane
-              rank={1}
+              rank={aRank}
               name={a.name}
               color={aColor}
               p50={fmtValue(a.ms.p50, benchmark.unit)}
@@ -985,7 +1024,7 @@ async function renderCompare(
             </div>
             {/* Right */}
             <ComparePane
-              rank={2}
+              rank={bRank}
               name={b.name}
               color={bColor}
               p50={fmtValue(b.ms.p50, benchmark.unit)}
