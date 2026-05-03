@@ -112,7 +112,7 @@ export default async function HomePage() {
                             </p>
                           </div>
                           <div className="mt-3">
-                            <MiniChart benchmark={b} height={64} />
+                            <MiniChart benchmark={b} height={64} legend />
                           </div>
                         </div>
                       )}
