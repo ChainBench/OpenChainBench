@@ -13,12 +13,27 @@ const TEMPLATES: Template[] = [
   {
     id: "ranking",
     label: "Ranking",
-    description: "Provider bars sorted by p50, with values and tail at p99.",
+    description: "Vertical bars sorted ascending by p50, with provider names and p99 tails.",
+  },
+  {
+    id: "leaderboard",
+    label: "Leaderboard",
+    description: "Ranked rows with horizontal mini-bars in each provider's signature color.",
   },
   {
     id: "snapshot",
     label: "Snapshot",
-    description: "24-hour multi-line chart of every provider, with a legend.",
+    description: "Full 24-hour multi-line chart with per-provider legend at the bottom.",
+  },
+  {
+    id: "headline",
+    label: "Headline",
+    description: "Big-number poster — the field's fastest p50 in the winner's color.",
+  },
+  {
+    id: "compare",
+    label: "Compare",
+    description: "Top-2 head-to-head with p50 / p99 / success / sample-size and the delta between them.",
   },
 ];
 
