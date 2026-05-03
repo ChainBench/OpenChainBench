@@ -39,7 +39,7 @@ export default async function HomePage() {
             </Link>
           </div>
 
-          {/* Stats strip — neutral facts */}
+          {/* Stats strip. neutral facts */}
           <dl className="mt-14 grid grid-cols-2 sm:grid-cols-4 gap-px bg-rule rounded overflow-hidden border border-rule">
             <Stat label="Reports" value={String(benchmarks.length)} />
             <Stat label="Live" value={`${liveCount} / ${benchmarks.length}`} />
@@ -169,7 +169,7 @@ export default async function HomePage() {
             <Pillar
               n="02"
               title="A harness in any language"
-              body="Bun, Node, Python, Go, Rust — whatever fits the providers. The harness exposes /metrics; the shared OpenChainBench Prometheus scrapes it."
+              body="Bun, Node, Python, Go, Rust. whatever fits the providers. The harness exposes /metrics; the shared OpenChainBench Prometheus scrapes it."
             />
             <Pillar
               n="03"
@@ -224,7 +224,7 @@ function EmptyState() {
     <div className="mt-12 card p-10 text-center">
       <p className="text-lg text-ink-muted">No benchmark specs yet.</p>
       <p className="mt-2 text-sm text-ink-faint">
-        Drop a YAML in <code className="font-mono">benchmarks/</code> to get started — see the{" "}
+        Drop a YAML in <code className="font-mono">benchmarks/</code> to get started. see the{" "}
         <Link className="lnk" href="/contribute">tutorial</Link>.
       </p>
     </div>

@@ -1,4 +1,4 @@
-# OpenChainBench — Bench № 004
+# OpenChainBench. Bench № 004
 
 slug: metadata-coverage
 number: "004"
@@ -14,14 +14,14 @@ abstract: |
   freshly-launched tokens. The harness subscribes to Mobula Pulse V2 for new
   tokens on Solana, BNB Chain and Base, then asks each aggregator (Mobula,
   Codex, Jupiter where the chain is supported) for that token's metadata and
-  records whether four canonical fields — `logo`, `description`, `twitter`
-  and `website` — were returned. The aggregate is the share of (provider,
+  records whether four canonical fields. `logo`, `description`, `twitter`
+  and `website`. were returned. The aggregate is the share of (provider,
   chain, field) combinations that returned a populated value across all
   fresh-token checks in the window.
 
   Higher is better. A value of 100% means every field was returned for every
   fresh token; a value of 50% means half the fields were missing on average.
-  Sort order on this page is ascending — the lowest coverage shows first,
+  Sort order on this page is ascending. the lowest coverage shows first,
   which is the inverse of latency benchmarks. Readers should compare the
   columns themselves; numerical p50 is the headline.
 
@@ -30,9 +30,9 @@ methodology:
   - "Coverage check: for each fresh token, query each aggregator's metadata endpoint and record whether `logo`, `description`, `twitter` and `website` are populated."
   - "Aggregators in scope: Mobula (`/api/2/token/details`), Codex (GraphQL `token` query, JWT-authenticated), Jupiter (`/v6/tokens/<mint>`, Solana only)."
   - "Cadence: queue-driven; every newly-discovered token is checked once across the three aggregators. Steady-state ≈ several hundred checks per provider per hour."
-  - "Region: `eu-west` (single point — multi-region requires running additional monitor instances)."
-  - "Ratio: `metadata_coverage_success_total / metadata_coverage_checks_total`, expressed in percent. Failures of the metadata API itself (timeouts, 5xx) are not counted in the denominator — only successful responses with the field check applied."
-  - "Jupiter is Solana-only — it appears with zero coverage on EVM chains by construction; the cross-chain headline excludes Jupiter on chains it does not support."
+  - "Region: `eu-west` (single point. multi-region requires running additional monitor instances)."
+  - "Ratio: `metadata_coverage_success_total / metadata_coverage_checks_total`, expressed in percent. Failures of the metadata API itself (timeouts, 5xx) are not counted in the denominator. only successful responses with the field check applied."
+  - "Jupiter is Solana-only. it appears with zero coverage on EVM chains by construction; the cross-chain headline excludes Jupiter on chains it does not support."
 
 findings: []
 
@@ -55,7 +55,7 @@ prometheus:
 #       / sum(rate(metadata_coverage_checks_total{provider="X"}[24h]))
 #
 # We use quantile_over_time on a rolling 1h rate to give p50/p90/p99 the
-# same shape as latency benchmarks — so a coverage rate that drifts during
+# same shape as latency benchmarks. so a coverage rate that drifts during
 # the day shows tail behaviour, not a single flat value.
 
 providers:

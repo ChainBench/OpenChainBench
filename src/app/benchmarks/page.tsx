@@ -120,7 +120,7 @@ export default async function BenchmarksIndex() {
 
         <div className="mt-20 card p-8 text-center">
           <p className="text-base text-ink-muted">
-            {all.length} {all.length === 1 ? "benchmark" : "benchmarks"} live — and counting.
+            {all.length} {all.length === 1 ? "benchmark" : "benchmarks"} live. and counting.
           </p>
           <Link
             href="/contribute"

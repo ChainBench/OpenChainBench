@@ -3,7 +3,7 @@ import Link from "next/link";
 import { SectionRule } from "@/components/section-rule";
 
 export const metadata: Metadata = {
-  title: "Contribute — Submit a benchmark",
+  title: "Contribute. Submit a benchmark",
   description:
     "How to publish your own benchmark on OpenChainBench in five steps.",
 };
@@ -18,7 +18,7 @@ export default function ContributePage() {
         Submit a benchmark.
       </h1>
       <p className="mt-3 text-xl sm:text-2xl text-ink-muted leading-snug">
-        Anyone can publish on OpenChainBench. You write the harness, you host it, you keep your secrets. The project shares one Prometheus that scrapes your public <span className="font-mono text-[0.85em]">/metrics</span> endpoint — that is the only piece of common infrastructure.
+        Anyone can publish on OpenChainBench. You write the harness, you host it, you keep your secrets. The project shares one Prometheus that scrapes your public <span className="font-mono text-[0.85em]">/metrics</span> endpoint. that is the only piece of common infrastructure.
       </p>
 
       <div className="mt-8 border-y border-rule py-5 grid gap-4 sm:grid-cols-3 md:grid-cols-6">
@@ -40,10 +40,10 @@ export default function ContributePage() {
             Every benchmark on this site is run by whoever wrote it. You host your harness wherever you like, expose <Code>/metrics</Code> over HTTPS, and the project's shared Prometheus scrapes that URL on a schedule. You keep your API keys, your wallet keys, your budget. Maintainers only see the metric values your harness chooses to publish.
           </p>
           <p className="mt-3 text-[0.95rem] leading-relaxed text-ink-soft">
-            The only piece of infrastructure shared by the project is one Prometheus instance — that is the URL every YAML spec points at. Adding a new harness is one extra <Code>scrape_configs</Code> block in <Code>infrastructure/prometheus/prometheus.yml</Code>. No new credentials, no new services, no privileged access to share.
+            The only piece of infrastructure shared by the project is one Prometheus instance. that is the URL every YAML spec points at. Adding a new harness is one extra <Code>scrape_configs</Code> block in <Code>infrastructure/prometheus/prometheus.yml</Code>. No new credentials, no new services, no privileged access to share.
           </p>
           <p className="mt-3 text-[0.95rem] leading-relaxed text-ink-soft">
-            For a concrete end-to-end example with a fictional contributor — the spec, the Go harness, deploying to Fly.io, opening the PR — see the{" "}
+            For a concrete end-to-end example with a fictional contributor. the spec, the Go harness, deploying to Fly.io, opening the PR. see the{" "}
             <a className="lnk" href="https://github.com/OpenChainBench/OpenChainBench/blob/main/docs/walkthrough.md">walkthrough doc</a>.
           </p>
         </div>
@@ -52,11 +52,11 @@ export default function ContributePage() {
             Realistic timeline
           </p>
           <ul className="mt-3 space-y-2 text-[0.92rem] leading-relaxed text-ink-soft">
-            <li><strong className="text-ink">Day 0 · ~30 min</strong> — open issue, align on methodology with a maintainer.</li>
-            <li><strong className="text-ink">Day 1-2 · ~2 h</strong> — write the spec + harness in your fork.</li>
-            <li><strong className="text-ink">Day 2 · ~30 min</strong> — deploy your harness on Fly / Railway / your VPS, verify <Code>/metrics</Code> publicly reachable.</li>
-            <li><strong className="text-ink">Day 2 · ~10 min</strong> — open the PR (spec + harness + scrape config).</li>
-            <li><strong className="text-ink">Day 3 · ≤ 30 min</strong> — maintainer reviews, merges, reloads Prometheus. Site renders within 60 s.</li>
+            <li><strong className="text-ink">Day 0 · ~30 min</strong>. open issue, align on methodology with a maintainer.</li>
+            <li><strong className="text-ink">Day 1-2 · ~2 h</strong>. write the spec + harness in your fork.</li>
+            <li><strong className="text-ink">Day 2 · ~30 min</strong>. deploy your harness on Fly / Railway / your VPS, verify <Code>/metrics</Code> publicly reachable.</li>
+            <li><strong className="text-ink">Day 2 · ~10 min</strong>. open the PR (spec + harness + scrape config).</li>
+            <li><strong className="text-ink">Day 3 · ≤ 30 min</strong>. maintainer reviews, merges, reloads Prometheus. Site renders within 60 s.</li>
           </ul>
           <p className="mt-4 text-xs text-ink-faint">
             ~3-4 hours of focused work, spread across a few days.
@@ -64,11 +64,11 @@ export default function ContributePage() {
         </div>
       </div>
 
-      <SectionRule label="Step 1 — Open an issue" number="i" />
+      <SectionRule label="Step 1. Open an issue" number="i" />
       <p className="text-base leading-relaxed text-ink-soft">
         Use the{" "}
         <a className="lnk" href="https://github.com/OpenChainBench/OpenChainBench/issues/new?template=new-benchmark.yml">
-          📊 Propose a benchmark
+          Propose a benchmark
         </a>
         {" "}template to describe what you want to measure, which providers, and where the harness will run. Maintainers respond with feedback before any code is written. Want to brainstorm first? Use{" "}
         <a className="lnk" href="https://github.com/OpenChainBench/OpenChainBench/discussions/categories/ideas">
@@ -77,9 +77,9 @@ export default function ContributePage() {
         .
       </p>
 
-      <SectionRule label="Step 2 — Write the spec" number="ii" />
+      <SectionRule label="Step 2. Write the spec" number="ii" />
       <p className="text-base leading-relaxed text-ink-soft">
-        Drop a file at <Code>benchmarks/&lt;your-slug&gt;.yml</Code>. It is the source of truth for the report — title, abstract, methodology, providers and the PromQL that fills in the numbers.
+        Drop a file at <Code>benchmarks/&lt;your-slug&gt;.yml</Code>. It is the source of truth for the report. title, abstract, methodology, providers and the PromQL that fills in the numbers.
       </p>
 
       <pre className="mt-6 font-mono text-[12px] leading-snug bg-paper-soft border border-rule p-5 overflow-x-auto whitespace-pre">
@@ -87,7 +87,7 @@ export default function ContributePage() {
 
 slug: wallet-portfolio-latency
 number: "005"
-title: Wallet Portfolio API — Read Latency
+title: Wallet Portfolio API. Read Latency
 subtitle: How fast each wallet API returns a complete portfolio for a busy address.
 category: Wallets
 status: live
@@ -132,29 +132,29 @@ providers:
         That is the entire wire format. The Zod schema in <Code>src/lib/spec-schema.ts</Code> is the single source of truth; <Code>pnpm validate</Code> lints every spec in CI.
       </p>
 
-      <SectionRule label="Step 3 — Build the harness" number="iii" />
+      <SectionRule label="Step 3. Build the harness" number="iii" />
       <p className="text-base leading-relaxed text-ink-soft">
-        The harness is a long-running data producer. Whatever fits the providers — Bun, Node, Python, Go, Rust. The contract is small:
+        The harness is a long-running data producer. Whatever fits the providers. Bun, Node, Python, Go, Rust. The contract is small:
       </p>
       <ul className="mt-4 space-y-2 text-[1rem] leading-relaxed text-ink-soft">
-        <li className="flex gap-3"><span className="text-ink-muted">—</span><span>Run continuously, expose <Code>/metrics</Code> over HTTP on a documented port (e.g. <Code>:2112</Code> or <Code>:9090</Code>).</span></li>
-        <li className="flex gap-3"><span className="text-ink-muted">—</span><span>Use the metric and label names referenced by your YAML — that is how the site retrieves your numbers.</span></li>
-        <li className="flex gap-3"><span className="text-ink-muted">—</span><span>Document inputs, regions, timeouts and the metrics port in <Code>harnesses/&lt;slug&gt;/README.md</Code>.</span></li>
-        <li className="flex gap-3"><span className="text-ink-muted">—</span><span>Don&apos;t commit API keys. Read them from environment variables and document them in a <Code>.env.example</Code>.</span></li>
-        <li className="flex gap-3"><span className="text-ink-muted">—</span><span>Don&apos;t bundle Prometheus, Grafana or Alertmanager — they live in <Code>infrastructure/</Code> and are shared across every harness.</span></li>
+        <li className="flex gap-3"><span className="text-ink-faint">·</span><span>Run continuously, expose <Code>/metrics</Code> over HTTP on a documented port (e.g. <Code>:2112</Code> or <Code>:9090</Code>).</span></li>
+        <li className="flex gap-3"><span className="text-ink-faint">·</span><span>Use the metric and label names referenced by your YAML. That is how the site retrieves your numbers.</span></li>
+        <li className="flex gap-3"><span className="text-ink-faint">·</span><span>Document inputs, regions, timeouts and the metrics port in <Code>harnesses/&lt;slug&gt;/README.md</Code>.</span></li>
+        <li className="flex gap-3"><span className="text-ink-faint">·</span><span>Don&apos;t commit API keys. Read them from environment variables and document them in a <Code>.env.example</Code>.</span></li>
+        <li className="flex gap-3"><span className="text-ink-faint">·</span><span>Don&apos;t bundle Prometheus, Grafana or Alertmanager. They live in <Code>infrastructure/</Code> and are shared across every harness.</span></li>
       </ul>
 
-      <SectionRule label="Step 4 — Host it" number="iv" />
+      <SectionRule label="Step 4. Host it" number="iv" />
       <p className="text-base leading-relaxed text-ink-soft">
-        OpenChainBench is a federation: each harness is hosted by whoever wrote it. Pick whatever fits — Railway, Fly, Cloud Run, a VPS, a home server with a static IP. The only requirement is that <Code>/metrics</Code> is reachable over HTTPS at a stable URL.
+        OpenChainBench is a federation: each harness is hosted by whoever wrote it. Pick whatever fits. Railway, Fly, Cloud Run, a VPS, a home server with a static IP. The only requirement is that <Code>/metrics</Code> is reachable over HTTPS at a stable URL.
       </p>
       <ul className="mt-4 space-y-2 text-[1rem] leading-relaxed text-ink-soft">
-        <li className="flex gap-3"><span className="text-ink-muted">—</span><span>You own the runtime, the secrets and the budget. Maintainers never see your API keys or wallet keys.</span></li>
-        <li className="flex gap-3"><span className="text-ink-muted">—</span><span>If your harness needs API keys from the providers it benchmarks, you bring them. The data path treats every harness identically — Mobula-hosted or contributor-hosted.</span></li>
-        <li className="flex gap-3"><span className="text-ink-muted">—</span><span>Plan for stability: if your URL changes you (or a maintainer) need to update the scrape config.</span></li>
+        <li className="flex gap-3"><span className="text-ink-faint">·</span><span>You own the runtime, the secrets and the budget. Maintainers never see your API keys or wallet keys.</span></li>
+        <li className="flex gap-3"><span className="text-ink-faint">·</span><span>If your harness needs API keys from the providers it benchmarks, you bring them. The data path treats every harness identically. Either Mobula-hosted or contributor-hosted.</span></li>
+        <li className="flex gap-3"><span className="text-ink-faint">·</span><span>Plan for stability: if your URL changes you (or a maintainer) need to update the scrape config.</span></li>
       </ul>
 
-      <SectionRule label="Step 5 — Wire the scrape" number="v" />
+      <SectionRule label="Step 5. Wire the scrape" number="v" />
       <p className="text-base leading-relaxed text-ink-soft">
         Append a job to <Code>infrastructure/prometheus/prometheus.yml</Code> pointing at your public URL so the shared Prometheus picks up your harness:
       </p>
@@ -170,7 +170,7 @@ providers:
         host: <you>                   # alice | acme-rpc | mobula …`}
       </pre>
 
-      <SectionRule label="Step 6 — Dry-run + open the PR" number="vi" />
+      <SectionRule label="Step 6. Dry-run + open the PR" number="vi" />
       <p className="text-base leading-relaxed text-ink-soft">Test the queries locally before opening the PR:</p>
       <pre className="mt-3 font-mono text-[12px] leading-snug bg-paper-soft border border-rule p-5 overflow-x-auto whitespace-pre">
 {`pnpm validate                                # schema lint
