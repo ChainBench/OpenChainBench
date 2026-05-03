@@ -1,4 +1,4 @@
-# OpenChainBench — Bench № 001
+# OpenChainBench. Bench № 001
 
 slug: aggregator-head-lag
 number: "001"
@@ -23,7 +23,7 @@ methodology:
   - "Regions: us-east, eu-west, sgp. Cross-region median reported in the headline."
   - "Reference: archive nodes per chain, validated against block hashes."
   - "Metric: gauge `head_lag_seconds`, sampled every 15 seconds. Aggregated over the 24-hour window using `quantile_over_time`."
-  - "Success rate: presence ratio — share of expected sampling slots where a value was actually emitted (5,760 expected per provider per day at the 15s cadence). 100% means the aggregator's feed was reachable for the full window."
+  - "Success rate: presence ratio. share of expected sampling slots where a value was actually emitted (5,760 expected per provider per day at the 15s cadence). 100% means the aggregator's feed was reachable for the full window."
   - "Cardinality: 3 aggregators × 3 chains × 3 regions = 27 active series."
 
 findings: []
@@ -35,8 +35,8 @@ prometheus:
   window: 24h
 
 # Real metric exposed by the head-lag harness:
-#   head_lag_seconds{aggregator, chain, region}    — gauge in seconds
-#   head_lag_errors_total{aggregator, chain, region, error_type}  — counter
+#   head_lag_seconds{aggregator, chain, region}   . gauge in seconds
+#   head_lag_errors_total{aggregator, chain, region, error_type} . counter
 #
 # Label is `aggregator=`, not `provider=`. Values are in seconds; queries
 # multiply by 1000 so the loader stores milliseconds (consistent across the

@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 
 export const runtime = "nodejs";
-export const alt = "OpenChainBench — Open benchmarks for crypto infrastructure";
+export const alt = "OpenChainBench. Open benchmarks for crypto infrastructure";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -56,7 +56,7 @@ export default function TwitterImage() {
               maxWidth: 1080,
             }}
           >
-            Latency, cost and reliability — measured in the open.
+            Latency, cost and reliability. measured in the open.
           </div>
         </div>
         <div

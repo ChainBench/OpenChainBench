@@ -1,4 +1,4 @@
-# OpenChainBench — Bench № 003
+# OpenChainBench. Bench № 003
 
 slug: bridge-fee
 number: "003"
@@ -10,11 +10,11 @@ metric: Effective fee
 unit: pct
 
 abstract: |
-  We measure the effective fee each bridge charges — the bottom-line cost a
-  user pays, fees plus slippage plus destination gas — as a percentage of
+  We measure the effective fee each bridge charges. the bottom-line cost a
+  user pays, fees plus slippage plus destination gas. as a percentage of
   trade size. The harness uses Prometheus gauge `bridge_cost_percent`
   rather than the narrower `bridge_fees_percent` because providers
-  structure pricing differently — some charge an explicit fee, others bake
+  structure pricing differently. some charge an explicit fee, others bake
   it into the spread. Comparing only the explicit fee field would let
   aggregators with implicit pricing show a misleading 0%. Sampled at $300
   notional so small-amount fixed-fee blowups don't skew the percentile
@@ -25,7 +25,7 @@ methodology:
   - "Reference notional: $300 USDC. Smaller sizes ($5, $50) are captured by the harness but excluded from this report."
   - "Cost: `bridge_cost_percent{amount_usd=\"300\"}`, in percent of notional. Includes fees + slippage + destination gas."
   - "Cadence: full sweep every 5 minutes for 24 hours."
-  - "Region: eu-west (single point — multi-region requires running additional monitor instances)."
+  - "Region: eu-west (single point. multi-region requires running additional monitor instances)."
   - "Failures (quote_failed, unsupported route) excluded from cost aggregates and counted toward success rate."
 
 findings: []
@@ -43,7 +43,7 @@ prometheus:
 # Why cost rather than fee:
 #   bridge_fees_percent only captures the explicit fee field in each quote.
 #   Some providers (e.g. Mobula) bake the cost into the spread instead of
-#   reporting an explicit fee, so they would render as 0% — misleading
+#   reporting an explicit fee, so they would render as 0%. misleading
 #   readers. bridge_cost_percent = fees + slippage + gas, which is the
 #   number that actually leaves the user's wallet.
 

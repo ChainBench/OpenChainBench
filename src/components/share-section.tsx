@@ -269,7 +269,7 @@ export function ShareSection({ slug, title, benchmark }: Props) {
                       }}
                       className="ml-auto text-[10px] uppercase tracking-[0.14em] text-ink-muted hover:text-ink lnk inline-flex items-center gap-1"
                     >
-                      ↔ Swap
+                      Swap A and B
                     </button>
                   </div>
                   <div className="grid gap-3 sm:grid-cols-[1fr_auto_1fr] sm:items-start">
@@ -335,7 +335,7 @@ export function ShareSection({ slug, title, benchmark }: Props) {
               <SharePreview
                 key={cardSrc(t.id)}
                 src={cardSrc(t.id)}
-                alt={`${title} — ${t.label} share card`}
+                alt={`${title}. ${t.label} share card`}
               />
 
               <div className="flex flex-wrap items-center gap-3">

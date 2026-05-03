@@ -135,7 +135,7 @@ export default async function BenchmarkPage({
 
       {isDraft && <DraftNotice source={benchmark.source} />}
 
-      {/* Charts + tables — no Fig. captions, just data */}
+      {/* Charts + tables. no Fig. captions, just data */}
       {!isDraft && (
         <>
           <div className="mt-12">
@@ -174,7 +174,7 @@ export default async function BenchmarkPage({
         </div>
       )}
 
-      {/* About — collapsed by default */}
+      {/* About. collapsed by default */}
       <details className="mt-14 group border-t border-rule">
         <summary className="flex cursor-pointer items-center justify-between py-4 list-none">
           <span className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink">
@@ -197,7 +197,7 @@ export default async function BenchmarkPage({
             <ul className="space-y-2 text-sm leading-relaxed text-ink-soft">
               {benchmark.methodology.map((m) => (
                 <li key={m} className="flex gap-3">
-                  <span className="text-ink-faint mt-1.5">—</span>
+                  <span className="text-ink-faint mt-1.5">·</span>
                   <span>{m}</span>
                 </li>
               ))}
@@ -215,7 +215,7 @@ export default async function BenchmarkPage({
         />
       )}
 
-      {/* Source code link — bottom of page */}
+      {/* Source code link. bottom of page */}
       {!isDraft && (
         <p className="mt-4 text-[11px] uppercase tracking-[0.16em] text-ink-muted">
           Source code{" "}
@@ -273,7 +273,7 @@ function DraftNotice({ source }: { source: string }) {
   return (
     <div className="mt-10 card p-6 text-center">
       <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-ink-faint">
-        Draft — no live data yet
+        Draft. no live data yet
       </p>
       <p className="mt-3 text-sm text-ink-muted">
         The spec is published. Numbers will appear here as soon as the harness

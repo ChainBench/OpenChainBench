@@ -44,7 +44,7 @@ export async function SiteHeader() {
         </div>
       </div>
 
-      {/* Masthead — wordmark + nav + CTA */}
+      {/* Masthead. wordmark + nav + CTA */}
       <div className="mx-auto max-w-7xl px-6 h-16 flex items-center justify-between gap-6">
         <Link href="/" className="flex items-center gap-2.5 group">
           <Image
