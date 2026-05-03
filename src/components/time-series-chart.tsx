@@ -377,6 +377,21 @@ function Chart({
                   animation: "ts-draw 0.7s ease-out forwards",
                 }}
               />
+              {/* Live pulse halo — animated outward */}
+              <circle cx={d.lastX} cy={d.lastY} r={3} fill={d.color} opacity={0.4}>
+                <animate
+                  attributeName="r"
+                  values="3;10;3"
+                  dur="1.8s"
+                  repeatCount="indefinite"
+                />
+                <animate
+                  attributeName="opacity"
+                  values="0.45;0;0.45"
+                  dur="1.8s"
+                  repeatCount="indefinite"
+                />
+              </circle>
               {/* Trailing tail dot */}
               <circle cx={d.lastX} cy={d.lastY} r={2.8} fill={d.color} />
               {/* End-of-line label */}
