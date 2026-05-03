@@ -2,8 +2,8 @@
 
 slug: metadata-coverage
 number: "004"
-title: Aggregator — Token Metadata Coverage
-subtitle: For freshly-launched tokens, what share of identifying metadata fields each aggregator actually returns.
+title: Token Metadata Coverage
+subtitle: Share of metadata fields populated for fresh-launch tokens (logo, description, twitter, website). Higher is better.
 category: Aggregators
 status: live
 metric: Field coverage

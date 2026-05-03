@@ -7,8 +7,8 @@ export function SiteFooter() {
         <div className="grid gap-10 md:grid-cols-12">
           <div className="md:col-span-5">
             <p className="display text-2xl text-ink leading-none">OpenChainBench</p>
-            <p className="mt-3 max-w-md editorial text-base text-ink-muted leading-relaxed">
-              An open, reproducible benchmark series for crypto infrastructure.
+            <p className="mt-3 max-w-md text-sm text-ink-muted leading-relaxed">
+              Open, reproducible benchmarks for crypto infrastructure.
               Methodology, specs and raw metrics are public.
             </p>
             <p className="mt-4 text-[11px] uppercase tracking-[0.16em] text-ink-faint">

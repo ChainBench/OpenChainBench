@@ -2,8 +2,8 @@
 
 slug: bridge-fee
 number: "003"
-title: Cross-Chain Bridge — Fee
-subtitle: What a user actually pays — fees, slippage and destination gas combined, as a percentage of trade size.
+title: Bridge Effective Fee
+subtitle: Total cost as a percent of notional. Fees, slippage and destination gas combined, sampled at $300.
 category: Bridges
 status: live
 metric: Effective fee

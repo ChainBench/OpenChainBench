@@ -2,8 +2,8 @@
 
 slug: aggregator-head-lag
 number: "001"
-title: Aggregator Head Lag — How Fresh Is the Data?
-subtitle: Time between an on-chain event and its appearance on each aggregator's WebSocket — measured against archive nodes tracking the canonical tip.
+title: Aggregator Head Lag
+subtitle: On-chain event to WebSocket emission, in seconds. Measured against canonical-tip archive nodes.
 category: Data
 status: live
 metric: Head lag

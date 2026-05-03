@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { getBenchmarks } from "@/data/benchmarks";
 
 const NAV = [
@@ -45,8 +46,16 @@ export async function SiteHeader() {
 
       {/* Masthead — wordmark + nav + CTA */}
       <div className="mx-auto max-w-7xl px-6 h-16 flex items-center justify-between gap-6">
-        <Link href="/" className="flex items-center gap-3 group">
-          <span className="display text-[1.55rem] sm:text-[1.7rem] text-ink leading-none">
+        <Link href="/" className="flex items-center gap-2.5 group">
+          <Image
+            src="/logo.png"
+            alt="OpenChainBench"
+            width={32}
+            height={32}
+            priority
+            className="h-8 w-8 object-contain"
+          />
+          <span className="display text-[1.4rem] sm:text-[1.55rem] text-ink leading-none">
             OpenChainBench
           </span>
         </Link>
