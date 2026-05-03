@@ -256,57 +256,77 @@ export function ShareSection({ slug, title, benchmark }: Props) {
 
               {/* Pair-pick (compare) */}
               {t.pick === "pair" && (
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <span className="block text-[10px] font-medium uppercase tracking-[0.16em] text-ink-faint mb-2">
-                      Provider A
+                <div className="border border-rule rounded p-4 bg-paper-soft">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink">
+                      Pick 2 providers to compare
                     </span>
-                    <div className="flex flex-wrap items-center gap-2">
-                      {orderedProviders.map((p) => {
-                        const isOn = pairA === p.slug;
-                        const disabled = pairB === p.slug;
-                        return (
-                          <button
-                            key={p.slug}
-                            onClick={() => pickPairA(p.slug)}
-                            className={`px-2.5 py-1 rounded-full border text-[11px] font-medium uppercase tracking-[0.12em] transition-colors ${
-                              isOn
-                                ? "bg-ink text-paper border-ink"
-                                : disabled
-                                ? "bg-paper-soft text-ink-faint border-rule opacity-60"
-                                : "bg-paper-soft text-ink-muted border-rule hover:text-ink"
-                            }`}
-                          >
-                            {p.name}
-                          </button>
-                        );
-                      })}
-                    </div>
+                    <button
+                      onClick={() => {
+                        const a = pairA;
+                        setPairA(pairB);
+                        setPairB(a);
+                      }}
+                      className="ml-auto text-[10px] uppercase tracking-[0.14em] text-ink-muted hover:text-ink lnk inline-flex items-center gap-1"
+                    >
+                      ↔ Swap
+                    </button>
                   </div>
-                  <div>
-                    <span className="block text-[10px] font-medium uppercase tracking-[0.16em] text-ink-faint mb-2">
-                      Provider B
-                    </span>
-                    <div className="flex flex-wrap items-center gap-2">
-                      {orderedProviders.map((p) => {
-                        const isOn = pairB === p.slug;
-                        const disabled = pairA === p.slug;
-                        return (
-                          <button
-                            key={p.slug}
-                            onClick={() => pickPairB(p.slug)}
-                            className={`px-2.5 py-1 rounded-full border text-[11px] font-medium uppercase tracking-[0.12em] transition-colors ${
-                              isOn
-                                ? "bg-ink text-paper border-ink"
-                                : disabled
-                                ? "bg-paper-soft text-ink-faint border-rule opacity-60"
-                                : "bg-paper-soft text-ink-muted border-rule hover:text-ink"
-                            }`}
-                          >
-                            {p.name}
-                          </button>
-                        );
-                      })}
+                  <div className="grid gap-3 sm:grid-cols-[1fr_auto_1fr] sm:items-start">
+                    <div>
+                      <span className="block text-[10px] font-medium uppercase tracking-[0.16em] text-ink-faint mb-2">
+                        Provider A · left
+                      </span>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {orderedProviders.map((p) => {
+                          const isOn = pairA === p.slug;
+                          const disabled = pairB === p.slug;
+                          return (
+                            <button
+                              key={p.slug}
+                              onClick={() => pickPairA(p.slug)}
+                              className={`px-3 py-1.5 rounded border text-[11px] font-medium uppercase tracking-[0.12em] transition-colors ${
+                                isOn
+                                  ? "bg-ink text-paper border-ink shadow-sm"
+                                  : disabled
+                                  ? "bg-paper text-ink-faint border-rule opacity-60"
+                                  : "bg-paper text-ink-muted border-rule hover:text-ink"
+                              }`}
+                            >
+                              {p.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    <div className="hidden sm:flex items-center self-center text-ink-faint text-[14px] font-semibold italic pt-6">
+                      vs
+                    </div>
+                    <div>
+                      <span className="block text-[10px] font-medium uppercase tracking-[0.16em] text-ink-faint mb-2">
+                        Provider B · right
+                      </span>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {orderedProviders.map((p) => {
+                          const isOn = pairB === p.slug;
+                          const disabled = pairA === p.slug;
+                          return (
+                            <button
+                              key={p.slug}
+                              onClick={() => pickPairB(p.slug)}
+                              className={`px-3 py-1.5 rounded border text-[11px] font-medium uppercase tracking-[0.12em] transition-colors ${
+                                isOn
+                                  ? "bg-ink text-paper border-ink shadow-sm"
+                                  : disabled
+                                  ? "bg-paper text-ink-faint border-rule opacity-60"
+                                  : "bg-paper text-ink-muted border-rule hover:text-ink"
+                              }`}
+                            >
+                              {p.name}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
                 </div>
