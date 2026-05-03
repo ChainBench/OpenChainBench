@@ -13,6 +13,7 @@ import { TimeSeriesChart } from "@/components/time-series-chart";
 import { LedgerTable } from "@/components/ledger-table";
 import { RegionGrid } from "@/components/region-grid";
 import { BigNumber } from "@/components/big-number";
+import { ShareSection } from "@/components/share-section";
 import { fmtUnit, unitSuffix, fmtValue } from "@/lib/format";
 
 type Params = { slug: string };
@@ -205,45 +206,20 @@ export default async function BenchmarkPage({
         </div>
       </details>
 
-      {/* Reproduce / cite — collapsed */}
+      {/* Share / export */}
       {!isDraft && (
-        <details className="mt-1 group border-t border-rule">
-          <summary className="flex cursor-pointer items-center justify-between py-4 list-none">
-            <span className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink">
-              Reproduce · cite · source
-            </span>
-            <ChevronDown
-              size={16}
-              strokeWidth={2}
-              className="text-ink-muted transition-transform group-open:rotate-180"
-            />
-          </summary>
-          <div className="pb-6 space-y-5">
-            <div>
-              <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-ink-faint mb-2">
-                Source code
-              </p>
-              <a className="lnk text-sm" href={benchmark.source}>
-                {benchmark.source.replace("https://github.com/", "github.com/")}
-                <ArrowUpRight size={12} strokeWidth={2} className="inline ml-1" />
-              </a>
-            </div>
-            <div>
-              <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-ink-faint mb-2">
-                BibTeX
-              </p>
-              <pre className="card font-mono text-[11px] leading-relaxed bg-paper-soft p-4 overflow-x-auto whitespace-pre-wrap">
-{`@misc{openchainbench-${benchmark.number},
-  author       = {{OpenChainBench}},
-  title        = {${benchmark.title}},
-  year         = {${new Date(benchmark.lastRunAt).getFullYear()}},
-  howpublished = {\\url{https://openchainbench.xyz/benchmarks/${benchmark.slug}}},
-  note         = {Run on ${formatLastRun(benchmark.lastRunAt)}}
-}`}
-              </pre>
-            </div>
-          </div>
-        </details>
+        <ShareSection slug={benchmark.slug} title={benchmark.title} />
+      )}
+
+      {/* Source code link — bottom of page */}
+      {!isDraft && (
+        <p className="mt-4 text-[11px] uppercase tracking-[0.16em] text-ink-muted">
+          Source code{" "}
+          <a className="lnk" href={benchmark.source}>
+            {benchmark.source.replace("https://github.com/", "github.com/")}
+            <ArrowUpRight size={12} strokeWidth={2} className="inline ml-1" />
+          </a>
+        </p>
       )}
 
       {/* Other benchmarks */}
