@@ -22,7 +22,7 @@ export function BigNumber({ value, unit, label, caption }: Props) {
         )}
       </p>
       {caption && (
-        <p className="editorial text-sm text-ink-muted leading-snug">{caption}</p>
+        <p className="text-xs text-ink-muted leading-snug">{caption}</p>
       )}
     </div>
   );

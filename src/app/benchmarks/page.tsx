@@ -4,33 +4,33 @@ import { ArrowUpRight } from "lucide-react";
 import {
   formatLastRun,
   getBenchmarks,
-  getBenchmarksByCategory,
 } from "@/data/benchmarks";
 import { Sparkline } from "@/components/sparkline";
+import { Pill } from "@/components/pill";
+import { fmtValue, unitSuffix } from "@/lib/format";
 
 export const metadata: Metadata = {
-  title: "Benchmarks — Index",
+  title: "Benchmarks",
   description: "All open benchmarks for crypto infrastructure.",
 };
 
 export default async function BenchmarksIndex() {
-  const [grouped, all] = await Promise.all([
-    getBenchmarksByCategory(),
-    getBenchmarks(),
-  ]);
+  const all = await getBenchmarks();
 
   return (
     <div className="px-4 pt-12 sm:pt-16">
-      <div className="mx-auto max-w-5xl">
-        <span className="eyebrow">Live benchmarks</span>
+      <div className="mx-auto max-w-6xl">
+        <Pill variant="live" pulse>
+          {all.filter((b) => b.status === "live").length} live
+        </Pill>
         <h1 className="mt-5 display text-4xl sm:text-5xl">
-          Grouped by infrastructure.
+          Benchmarks
         </h1>
         <p className="mt-4 max-w-2xl text-lg text-ink-muted leading-snug">
-          Every published benchmark. Each one is a YAML spec plus a harness — both public, both reproducible.
+          Every published benchmark. Click in to see the chart, the ledger, and the harness.
         </p>
 
-        {grouped.length === 0 ? (
+        {all.length === 0 ? (
           <p className="mt-16 text-center text-ink-muted">
             No benchmarks yet.{" "}
             <Link className="lnk" href="/contribute">
@@ -39,70 +39,84 @@ export default async function BenchmarksIndex() {
             .
           </p>
         ) : (
-          <div className="mt-14 space-y-14">
-            {grouped.map(([category, list]) => (
-              <section key={category}>
-                <div className="flex items-end justify-between border-b border-rule pb-3">
-                  <h2 className="text-[12px] font-medium uppercase tracking-[0.16em] text-ink">
-                    {category}
-                  </h2>
-                  <span className="font-mono text-[11px] tabular text-ink-muted">
-                    {list.length} {list.length === 1 ? "report" : "reports"}
-                  </span>
-                </div>
-                <ul className="mt-1 divide-y divide-rule">
-                  {list.map((b) => {
-                    const fastest = [...b.results].sort(
-                      (a, c) => a.ms.p50 - c.ms.p50
-                    )[0];
-                    const series = fastest
-                      ? b.extras.series24h[fastest.slug]
-                      : undefined;
-                    return (
-                      <li key={b.slug}>
-                        <Link
-                          href={`/benchmarks/${b.slug}`}
-                          className="grid grid-cols-12 items-baseline gap-4 py-7 hover:bg-paper-soft -mx-3 px-3 rounded transition-colors"
-                        >
-                          <div className="col-span-12 sm:col-span-2 benchmark-mark">
-                            № {b.number}
-                          </div>
-                          <div className="col-span-12 sm:col-span-7">
-                            <h3 className="display text-xl font-bold leading-snug">
-                              {b.title}
-                            </h3>
-                            <p className="mt-1 editorial text-base text-ink-muted line-clamp-2">
-                              {b.subtitle}
-                            </p>
-                          </div>
-                          <div className="col-span-12 sm:col-span-3 flex items-center gap-3 sm:justify-end">
-                            {series && series.length > 0 && (
-                              <Sparkline values={series} width={70} height={22} />
-                            )}
-                            <div className="text-right font-mono text-[11px] tabular text-ink-muted">
-                              <p>
-                                {b.results.length} provider
-                                {b.results.length === 1 ? "" : "s"}
-                              </p>
-                              <p className="mt-0.5 text-ink-faint">
-                                {Math.round(b.sampleSize).toLocaleString()} samples
-                              </p>
-                              <p className="mt-0.5 text-ink-faint">
-                                {formatLastRun(b.lastRunAt)}
-                              </p>
-                            </div>
-                          </div>
-                        </Link>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </section>
-            ))}
-          </div>
+          <ul className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {all.map((b) => {
+              const fastest = [...b.results].sort(
+                (a, c) => a.ms.p50 - c.ms.p50
+              )[0];
+              const series = fastest
+                ? b.extras.series24h[fastest.slug]
+                : undefined;
+              return (
+                <li key={b.slug} className="flex">
+                  <Link
+                    href={`/benchmarks/${b.slug}`}
+                    className="flex-1 card-soft p-6 flex flex-col"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Pill variant={b.status === "live" ? "live" : "draft"} pulse>
+                        {b.status === "live" ? "Live" : "Draft"}
+                      </Pill>
+                      <Pill variant="category">{b.category}</Pill>
+                    </div>
+
+                    <h3 className="mt-5 display text-xl font-bold leading-tight">
+                      {b.title}
+                    </h3>
+
+                    {fastest && (
+                      <div className="mt-5 flex items-end justify-between gap-3">
+                        <div>
+                          <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-ink-faint">
+                            Field min · p50
+                          </p>
+                          <p className="mt-1 display text-3xl tabular leading-none">
+                            {fmtValue(fastest.ms.p50, b.unit)}
+                            <span className="ml-1 text-base text-ink-muted font-normal">
+                              {unitSuffix(b.unit).trim()}
+                            </span>
+                          </p>
+                        </div>
+                        {series && series.length > 0 && (
+                          <Sparkline values={series} width={90} height={28} />
+                        )}
+                      </div>
+                    )}
+
+                    <div className="mt-5 pt-4 border-t border-rule grid grid-cols-3 gap-3 text-[11px]">
+                      <div>
+                        <p className="text-ink-faint uppercase tracking-[0.12em] font-medium">
+                          Providers
+                        </p>
+                        <p className="mt-0.5 font-mono tabular text-ink">
+                          {b.results.length}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-ink-faint uppercase tracking-[0.12em] font-medium">
+                          n · 24h
+                        </p>
+                        <p className="mt-0.5 font-mono tabular text-ink">
+                          {Math.round(b.sampleSize).toLocaleString()}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-ink-faint uppercase tracking-[0.12em] font-medium">
+                          Updated
+                        </p>
+                        <p className="mt-0.5 font-mono tabular text-ink-muted">
+                          {b.status === "draft" ? "—" : formatLastRun(b.lastRunAt)}
+                        </p>
+                      </div>
+                    </div>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
         )}
 
-        <div className="mt-24 card p-8 text-center">
+        <div className="mt-20 card p-8 text-center">
           <p className="text-base text-ink-muted">
             {all.length} {all.length === 1 ? "benchmark" : "benchmarks"} live — and counting.
           </p>
