@@ -89,7 +89,23 @@ export function MiniChart({
                 vectorEffect="non-scaling-stroke"
                 points={points}
               />
-              <circle cx={lastX} cy={lastY} r={1.8} fill={color} />
+              {/* Live pulse halo — animated outward */}
+              <circle cx={lastX} cy={lastY} r={2} fill={color} opacity={0.35}>
+                <animate
+                  attributeName="r"
+                  values="2;7;2"
+                  dur="1.8s"
+                  repeatCount="indefinite"
+                />
+                <animate
+                  attributeName="opacity"
+                  values="0.45;0;0.45"
+                  dur="1.8s"
+                  repeatCount="indefinite"
+                />
+              </circle>
+              {/* Solid endpoint */}
+              <circle cx={lastX} cy={lastY} r={2.2} fill={color} />
             </g>
           );
         })}
