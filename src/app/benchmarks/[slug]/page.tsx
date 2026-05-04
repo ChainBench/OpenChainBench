@@ -15,6 +15,7 @@ import { RegionGrid } from "@/components/region-grid";
 import { BigNumber } from "@/components/big-number";
 import { ShareSection } from "@/components/share-section";
 import { fmtUnit, unitSuffix, fmtValue } from "@/lib/format";
+import { SITE } from "@/data/site";
 
 type Params = { slug: string };
 
@@ -31,10 +32,11 @@ export async function generateMetadata({
   const { slug } = await params;
   const b = await getBenchmark(slug);
   if (!b) return {};
+  const metaTitle = b.seoTitle ?? b.title;
   return {
-    title: b.title,
+    title: metaTitle,
     description: b.subtitle,
-    openGraph: { title: b.title, description: b.subtitle, type: "article" },
+    openGraph: { title: metaTitle, description: b.subtitle, type: "article" },
   };
 }
 
@@ -66,8 +68,33 @@ export default async function BenchmarkPage({
   const tailMax = p99s.length ? Math.max(...p99s) : 0;
   const tailSpread = tailMin > 0 ? tailMax / tailMin : 0;
 
+  const benchmarkUrl = `${SITE.url}/benchmarks/${benchmark.slug}`;
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Dataset",
+    name: benchmark.seoTitle ?? benchmark.title,
+    description: benchmark.abstract,
+    url: benchmarkUrl,
+    keywords: [
+      benchmark.category,
+      benchmark.metric,
+      ...benchmark.results.map((r) => r.name),
+      "live benchmark",
+      "crypto infrastructure",
+    ].join(", "),
+    creator: { "@type": "Organization", name: "OpenChainBench", url: SITE.url },
+    isAccessibleForFree: true,
+    license: "https://creativecommons.org/licenses/by/4.0/",
+    dateModified: benchmark.lastRunAt,
+    variableMeasured: benchmark.metric,
+  };
+
   return (
     <article className="mx-auto max-w-5xl px-6 pt-10 sm:pt-14">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <Link
         href="/benchmarks"
         className="inline-flex items-center gap-1.5 text-sm text-ink-muted hover:text-ink"

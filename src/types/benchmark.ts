@@ -38,6 +38,7 @@ export type Benchmark = {
   slug: string;
   number: string;
   title: string;
+  seoTitle?: string;
   subtitle: string;
   lastRunAt: string;
   status: "live" | "draft";
