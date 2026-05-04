@@ -28,7 +28,7 @@ OpenChainBench is a federation. **Each harness is hosted by whoever wrote it** �
                   └────────────────┬───────────────────┘
                                    │ HTTPS, /api/v1/query
                                    ▼
-                          openchainbench.xyz
+                          openchainbench.com
                           (Next.js site on Vercel)
 ```
 

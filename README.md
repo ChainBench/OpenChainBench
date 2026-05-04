@@ -1,6 +1,6 @@
 # OpenChainBench
 
-> Open, reproducible benchmarks for crypto infrastructure — aggregators, bridges, RPCs, price feeds. Same metric, same conditions, every provider. Live at [openchainbench.xyz](https://openchainbench.xyz).
+> Open, reproducible benchmarks for crypto infrastructure — aggregators, bridges, RPCs, price feeds. Same metric, same conditions, every provider. Live at [openchainbench.com](https://openchainbench.com).
 
 OpenChainBench publishes one benchmark at a time, each one shipping with the script that produces its data. The goal is to make performance an observable property of crypto infra — measured in the open, by anyone who wants to add a provider or a metric.
 
@@ -53,7 +53,7 @@ OpenChainBench is a federation of independently-hosted harnesses connected by a 
                                    │ HTTPS
                                    │ /api/v1/query
                                    ▼
-                          openchainbench.xyz
+                          openchainbench.com
                           (Next.js site on Vercel, ISR 60s)
 ```
 
@@ -139,7 +139,7 @@ You never share API keys or wallet keys with the project. Your harness runs with
 
 ## Links
 
-- Site — [openchainbench.xyz](https://openchainbench.xyz)
+- Site — [openchainbench.com](https://openchainbench.com)
 - Twitter — [@openchainbench](https://twitter.com/openchainbench)
 - GitHub — [OpenChainBench/OpenChainBench](https://github.com/OpenChainBench/OpenChainBench)
 
