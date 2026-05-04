@@ -2,7 +2,8 @@
 
 slug: metadata-coverage
 number: "004"
-title: Token Metadata Coverage
+title: Best provider for token onchain metadata
+seo_title: Best provider for token onchain metadata - Jupiter, Mobula & Codex live benchmark
 subtitle: Share of metadata fields populated for fresh-launch tokens (logo, description, twitter, website). Higher is better.
 category: Aggregators
 status: live

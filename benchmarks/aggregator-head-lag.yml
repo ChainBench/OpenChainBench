@@ -2,7 +2,8 @@
 
 slug: aggregator-head-lag
 number: "001"
-title: Aggregator Head Lag
+title: Fastest blockchain data aggregator
+seo_title: Fastest blockchain data aggregator - GeckoTerminal, Mobula & Codex live latency benchmark
 subtitle: On-chain event to WebSocket emission, in seconds. Measured against canonical-tip archive nodes.
 category: Data
 status: live

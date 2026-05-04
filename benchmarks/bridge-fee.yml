@@ -2,7 +2,8 @@
 
 slug: bridge-fee
 number: "003"
-title: Bridge Effective Fee
+title: Cheapest cross-chain bridge
+seo_title: Cheapest cross-chain bridge - Mobula, Relay, Li.Fi & Debridge live cost comparison
 subtitle: Total cost as a percent of notional. Fees, slippage and destination gas combined, sampled at $300.
 category: Bridges
 status: live
