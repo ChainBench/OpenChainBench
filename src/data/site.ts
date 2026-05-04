@@ -1,6 +1,6 @@
 export const SITE = {
   name: "OpenChainBench",
-  url: "https://openchainbench.com",
+  url: "https://openchainbench.xyz",
   twitter: "@openchainbench",
   github: "https://github.com/OpenChainBench/OpenChainBench",
   description:

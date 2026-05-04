@@ -182,7 +182,7 @@ function CardFooter({
       }}
     >
       <span>
-        openchainbench.com · № {benchmark.number} · {benchmark.category}
+        openchainbench.xyz · № {benchmark.number} · {benchmark.category}
       </span>
       <span
         style={{

@@ -28,7 +28,7 @@ Decisions are recorded in the affected thread.
 
 ## Reporting
 
-For private reports — including suspected manipulation, harassment, or undisclosed conflicts of interest — email **conduct@openchainbench.com** or open a [private security advisory](https://github.com/OpenChainBench/OpenChainBench/security/advisories/new) (the same channel works for non-security disclosures).
+For private reports — including suspected manipulation, harassment, or undisclosed conflicts of interest — email **conduct@openchainbench.xyz** or open a [private security advisory](https://github.com/OpenChainBench/OpenChainBench/security/advisories/new) (the same channel works for non-security disclosures).
 
 We treat reporters' identities as confidential by default.
 

@@ -111,7 +111,7 @@ findings: []
 source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/wallet-portfolio
 
 prometheus:
-  url: https://prom.openchainbench.com   # shared OpenChainBench Prometheus
+  url: https://prom.openchainbench.xyz   # shared OpenChainBench Prometheus
   window: 24h
 
 providers:

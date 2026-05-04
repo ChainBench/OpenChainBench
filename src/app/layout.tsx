@@ -34,7 +34,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://openchainbench.com"),
+  metadataBase: new URL("https://openchainbench.xyz"),
   title: {
     default: "OpenChainBench — Open benchmarks for crypto infrastructure",
     template: "%s · OpenChainBench",
@@ -45,7 +45,7 @@ export const metadata: Metadata = {
     title: "OpenChainBench",
     description: "Open, reproducible benchmarks for the multichain stack.",
     type: "website",
-    url: "https://openchainbench.com",
+    url: "https://openchainbench.xyz",
     siteName: "OpenChainBench",
   },
   twitter: {

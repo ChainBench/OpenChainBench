@@ -2,7 +2,7 @@
 
 A concrete, end-to-end example of how a new benchmark gets onto the site. Written from the contributor's perspective, with the maintainer + automation actions called out so you can see what is yours to do and what happens around you.
 
-For the formal step-by-step reference, see [`/CONTRIBUTING.md`](../CONTRIBUTING.md) and the [`/contribute`](https://openchainbench.com/contribute) page. This document is the "what does a real contribution look like in practice" version.
+For the formal step-by-step reference, see [`/CONTRIBUTING.md`](../CONTRIBUTING.md) and the [`/contribute`](https://openchainbench.xyz/contribute) page. This document is the "what does a real contribution look like in practice" version.
 
 ## The scenario
 
@@ -59,7 +59,7 @@ methodology:
 source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/wallet-portfolio-latency
 
 prometheus:
-  url: https://prom.openchainbench.com
+  url: https://prom.openchainbench.xyz
   window: 24h
 
 providers:
@@ -202,14 +202,14 @@ A maintainer pulls up the PR. They check four things:
 
 The maintainer comments "looks good", merges to `main`. The PR is auto-linked to the original issue, which moves to `In progress` on the roadmap.
 
-**Vercel rebuilds the site automatically.** The benchmark page appears at `https://openchainbench.com/benchmarks/wallet-portfolio-latency` immediately, but it's empty — the central Prometheus has not been told to scrape Alex's URL yet.
+**Vercel rebuilds the site automatically.** The benchmark page appears at `https://openchainbench.xyz/benchmarks/wallet-portfolio-latency` immediately, but it's empty — the central Prometheus has not been told to scrape Alex's URL yet.
 
 ## Phase 7 — Apply the scrape (Day 3, ~30 s)
 
 The maintainer triggers a Prometheus reload:
 
 ```bash
-curl -X POST https://prom.openchainbench.com/-/reload
+curl -X POST https://prom.openchainbench.xyz/-/reload
 ```
 
 Prometheus reloads its config file (which now has Alex's new scrape job), starts hitting `https://alex-portfolio-bench.fly.dev/metrics` every 15 s, and stores the data with `benchmark: wallet-portfolio-latency, host: alex` labels.
@@ -220,7 +220,7 @@ The site's ISR cache for `/benchmarks/wallet-portfolio-latency` expires (default
 
 Alex's benchmark is live. The roadmap card moves to `Live`. The maintainer pings the original issue:
 
-> "Live at https://openchainbench.com/benchmarks/wallet-portfolio-latency. Initial 24-hour run will smooth out — the page may look noisy until then."
+> "Live at https://openchainbench.xyz/benchmarks/wallet-portfolio-latency. Initial 24-hour run will smooth out — the page may look noisy until then."
 
 ## What Alex did vs what Alex didn't have to do
 

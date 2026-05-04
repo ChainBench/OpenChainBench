@@ -71,7 +71,7 @@ export default function TwitterImage() {
             color: "#1c1a17",
           }}
         >
-          <span>openchainbench.com</span>
+          <span>openchainbench.xyz</span>
           <span>@openchainbench</span>
         </div>
       </div>
