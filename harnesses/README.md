@@ -1,24 +1,30 @@
 # Harnesses
 
-One harness folder per benchmark, one Go binary per folder, one Railway service per binary. The Mobula-hosted services emit metrics that the shared OpenChainBench Prometheus scrapes; the site queries that Prometheus.
+Each subdirectory is a benchmark runner — a long-running process that calls providers, measures latency / cost / success, and exposes Prometheus metrics on `/metrics`. Anyone can clone, fork, host, or contribute one.
 
 ```
 harnesses/
-├── aggregator-head-lag/      Bench № 001 (Go, exposes :2112/metrics)
-├── bridge-quote-latency/     Bench № 002 (Go, exposes :9090/metrics)
-├── bridge-fee/               Bench № 003 (Go, exposes :9090/metrics)
-└── metadata-coverage/        Bench № 004 (Go, exposes :2112/metrics)
+├── aggregator-head-lag/   Bench № 001 — Go service, exposes :2112/metrics
+└── bridge-monitor/        Bench № 002 + № 003 — Go service, exposes :9090/metrics
 ```
 
-## Hosting model
+A single harness can serve multiple benchmarks when the same set of measurements is consumed by more than one spec — `bridge-monitor` is the canonical example, producing both `bridge_quote_latency_ms` (read by `bridge-quote-latency.yml`) and `bridge_cost_percent` (read by `bridge-fee.yml`).
 
-Federation, not centralization. Each harness is run by whoever owns it. The current four are hosted by Mobula on Railway as a sponsorship contribution; new contributors host their own and submit a scrape config so the central Prometheus picks them up.
+## Hosting model — federation, not centralization
 
-You never share API keys with the project. Your harness runs with your credentials, on your infra, on your dime; only the metric values it publishes are public.
+OpenChainBench does **not** centralize harness execution. Each harness is hosted by whoever owns it:
+
+- **Mobula** runs `aggregator-head-lag` and `bridge-monitor` on its own Railway infrastructure (sponsoring those two benchmarks).
+- **Independent contributors** run their own harnesses on whatever infra they prefer (Railway, Fly, Cloud Run, a VPS, a home server with a static IP).
+- **Providers that want to be benchmarked on their own service** can host the harness themselves and submit a scrape config — the data path is identical to externally-hosted benchmarks.
+
+The only piece of infrastructure the project shares is a single Prometheus instance ([`/infrastructure/prometheus`](../infrastructure/prometheus)) that scrapes every harness's public `/metrics` endpoint and aggregates everything into one queryable URL. The site queries that URL.
+
+This means you never share API keys with the project. You run your harness with your own credentials, on your own infra, on your own dime — the maintainers never see your secrets.
 
 ## Contract
 
-Every harness, regardless of language, must satisfy this contract:
+A harness is a **data producer**, nothing more. It must:
 
 | Concern | Requirement |
 | --- | --- |
@@ -26,12 +32,12 @@ Every harness, regardless of language, must satisfy this contract:
 | Loop | Run continuously and update the same metric set every iteration |
 | Metric names | Match the names referenced in the matching `benchmarks/<slug>.yml` exactly |
 | Labels | Include `provider` (or equivalent) and `region` at minimum; chain/route labels encouraged |
-| Endpoint | Expose `/metrics` over HTTPS on a publicly reachable URL |
-| Timeouts | Documented; failures fail closed |
+| Endpoint | Expose `/metrics` over HTTPS on a publicly reachable URL. The OpenChainBench Prometheus scrapes from the public internet — no VPN-only addresses |
+| Timeouts | Documented; failures fail closed (counted toward success rate, excluded from latency aggregates) |
 | Reproducibility | README explains how to run locally with one command |
 | License | MIT, same as the rest of the repo |
 
-A harness does not ship its own Prometheus, Grafana, or Alertmanager. The shared infrastructure handles that.
+A harness does **not** ship its own Prometheus, Grafana, Alertmanager, or `docker-compose.yml`. Hosting choice is the contributor's, but the data plane is shared.
 
 ## Subdirectory layout
 
@@ -45,4 +51,25 @@ harnesses/<slug>/
 
 ## Submitting a new harness
 
-See [`/CONTRIBUTING.md`](../CONTRIBUTING.md) for the full submission flow.
+See [`/CONTRIBUTING.md`](../CONTRIBUTING.md) for the full submission flow. Short version:
+
+1. Open an issue with the [📊 Propose a benchmark template](https://github.com/OpenChainBench/OpenChainBench/issues/new?template=new-benchmark.yml).
+2. Build the harness here at `harnesses/<slug>/`.
+3. Deploy it on whatever infra you prefer, expose `/metrics` over HTTPS at a stable URL.
+4. Append a scrape job to [`infrastructure/prometheus/prometheus.yml`](../infrastructure/prometheus/prometheus.yml) pointing at your URL.
+5. Write the spec at `benchmarks/<slug>.yml`.
+6. Open a PR.
+
+Once merged, a maintainer redeploys the central Prometheus to apply the new scrape job — your benchmark appears on the site within 60 seconds (next ISR cycle).
+
+## Hosting tips for contributors
+
+A few options for hosting a harness, ranked roughly from "trivial setup" to "more control":
+
+- **Railway** (via this repo, root `harnesses/<slug>/`) — same workflow as how Mobula hosts its harnesses. Free tier covers most light harnesses.
+- **Fly.io** — `fly deploy` in any folder with a Dockerfile. Generous free tier.
+- **Google Cloud Run** — pay-per-use, scales to zero.
+- **VPS (Hetzner, DigitalOcean, OVH)** — €5/mo, full control, run a `systemd` service exposing a port.
+- **Your laptop with ngrok** — fine for short-lived experiments, not for live benchmarks.
+
+Whatever you pick, the OpenChainBench Prometheus only needs `https://<your-host>/metrics` to be reachable.

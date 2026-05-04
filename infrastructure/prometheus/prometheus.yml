@@ -7,15 +7,12 @@ global:
 # OpenChainBench is a federation: each harness is hosted by whoever wrote it
 # (Mobula, an independent contributor, a provider that wants to be benchmarked).
 # This single shared Prometheus scrapes every harness's public /metrics
-# endpoint and aggregates everything into one queryable instance, the URL
+# endpoint and aggregates everything into one queryable instance — the URL
 # referenced by every YAML spec's `prom_url`.
-#
-# One harness per benchmark. Adding a new bench means one new harness Go
-# project, one new Railway service, one new scrape job below.
 #
 # To onboard a new harness:
 #   1. The contributor exposes /metrics on a publicly reachable URL
-#      (Railway, Fly, Cloud Run, a VPS, anywhere with HTTPS).
+#      (Railway, Fly, Cloud Run, a VPS — anywhere with HTTPS).
 #   2. Append a `- job_name: <slug>` block below pointing at that URL.
 #   3. Open a PR. Once merged, redeploy the prometheus service so it picks
 #      up the new target (or hit the /-/reload endpoint).
@@ -24,8 +21,8 @@ global:
 # use it to scope queries.
 
 scrape_configs:
-  # ─ № 001 · aggregator-head-lag ───────────────────────────────────────
-  # Hosted by Mobula on Railway. WebSocket monitor + canonical-tip checks.
+  # ─ Aggregator head lag ────────────────────────────────────────────────
+  # Currently hosted by Mobula on Railway. Replace the URL if you fork.
   - job_name: aggregator-head-lag
     metrics_path: /metrics
     scheme: https
@@ -36,41 +33,16 @@ scrape_configs:
           benchmark: aggregator-head-lag
           host: mobula
 
-  # ─ № 002 · bridge-quote-latency ──────────────────────────────────────
-  # Hosted by Mobula on Railway. Bridge quote loop, latency-focused.
-  - job_name: bridge-quote-latency
+  # ─ Bridge quote latency + cost ────────────────────────────────────────
+  # Currently hosted by Mobula on Railway. Replace the URL if you fork.
+  - job_name: bridge-monitor
     metrics_path: /metrics
     scheme: https
     static_configs:
       - targets:
-          - bridge-quote-latency-production.up.railway.app
+          - bridge-monitor-production.up.railway.app
         labels:
-          benchmark: bridge-quote-latency
-          host: mobula
-
-  # ─ № 003 · bridge-fee ────────────────────────────────────────────────
-  # Hosted by Mobula on Railway. Bridge cost-percent measurement.
-  - job_name: bridge-fee
-    metrics_path: /metrics
-    scheme: https
-    static_configs:
-      - targets:
-          - bridge-fee-production.up.railway.app
-        labels:
-          benchmark: bridge-fee
-          host: mobula
-
-  # ─ № 004 · metadata-coverage ─────────────────────────────────────────
-  # Hosted by Mobula on Railway. Pulse V2 feeder + per-aggregator metadata
-  # field checks (logo / description / twitter / website).
-  - job_name: metadata-coverage
-    metrics_path: /metrics
-    scheme: https
-    static_configs:
-      - targets:
-          - metadata-coverage-production.up.railway.app
-        labels:
-          benchmark: metadata-coverage
+          benchmark: bridge-monitor
           host: mobula
 
   # ─ Self-scrape ────────────────────────────────────────────────────────
