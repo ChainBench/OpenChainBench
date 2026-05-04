@@ -80,6 +80,8 @@ export const SpecSchema = z
     slug,
     number: z.string().regex(/^\d{3}$/, "Number must be a 3-digit string, e.g. \"001\""),
     title: z.string().min(1),
+    /** Optional SEO-tuned page title (browser tab + meta). Falls back to `title`. */
+    seo_title: z.string().min(1).optional(),
     subtitle: z.string().min(1),
     category: Category,
     status: z.enum(["live", "draft"]).default("live"),
