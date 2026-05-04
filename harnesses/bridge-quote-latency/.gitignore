@@ -1,7 +1,0 @@
-.env
-bin/
-*.log
-prometheus_data/
-grafana_data/
-.DS_Store
-monitor
