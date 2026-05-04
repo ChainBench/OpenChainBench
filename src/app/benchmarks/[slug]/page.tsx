@@ -31,10 +31,11 @@ export async function generateMetadata({
   const { slug } = await params;
   const b = await getBenchmark(slug);
   if (!b) return {};
+  const metaTitle = b.seoTitle ?? b.title;
   return {
-    title: b.title,
+    title: metaTitle,
     description: b.subtitle,
-    openGraph: { title: b.title, description: b.subtitle, type: "article" },
+    openGraph: { title: metaTitle, description: b.subtitle, type: "article" },
   };
 }
 

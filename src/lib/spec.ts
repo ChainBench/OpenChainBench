@@ -61,6 +61,7 @@ async function specToBenchmark(spec: Spec): Promise<Benchmark> {
     slug: spec.slug,
     number: spec.number,
     title: spec.title,
+    seoTitle: spec.seo_title,
     subtitle: spec.subtitle,
     category: spec.category,
     status: spec.status,
