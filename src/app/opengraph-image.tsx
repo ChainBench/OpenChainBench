@@ -88,7 +88,7 @@ export default function OG() {
             color: "#1c1a17",
           }}
         >
-          <span>openchainbench.xyz</span>
+          <span>openchainbench.com</span>
           <span>@openchainbench</span>
         </div>
       </div>
