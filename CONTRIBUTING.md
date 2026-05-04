@@ -1,6 +1,6 @@
 # Contributing
 
-OpenChainBench is community-run. Anyone can submit a benchmark, fix a number, propose a methodology change. The web tutorial at [`/contribute`](https://openchainbench.xyz/contribute) walks through the steps; this file is the long-form reference. For a concrete end-to-end worked example, see [`docs/walkthrough.md`](./docs/walkthrough.md).
+OpenChainBench is community-run. Anyone can submit a benchmark, fix a number, propose a methodology change. The web tutorial at [`/contribute`](https://openchainbench.com/contribute) walks through the steps; this file is the long-form reference. For a concrete end-to-end worked example, see [`docs/walkthrough.md`](./docs/walkthrough.md).
 
 ## What lives where
 
