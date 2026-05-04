@@ -47,21 +47,21 @@ func main() {
 		}
 	}()
 
-	// Head lag monitor — the only data producer for this binary.
-	// Measures the gap between an on-chain Swap event and its appearance
-	// on each aggregator's WebSocket / REST feed.
+	// Mobula Pulse V2 feeder — discovers fresh tokens and pushes them
+	// onto the metadata-coverage queue.
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		runHeadLagMonitor(config, stopChan)
+		runMobulaPulseMonitor(config, stopChan)
 	}()
 
-	// Mobula Fast-Trade monitor — used for the detailed Mobula breakdown
-	// (processing vs network lag) emitted alongside head lag.
+	// Metadata coverage monitor — the only data producer. Consumes the
+	// queue, queries each aggregator's metadata endpoint, records field
+	// coverage (logo, description, twitter, website).
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		runMobulaFastTradeMonitor(config, stopChan)
+		runMetadataCoverageMonitor(config, stopChan)
 	}()
 
 	<-sigChan
