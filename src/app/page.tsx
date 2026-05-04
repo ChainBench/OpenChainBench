@@ -22,7 +22,7 @@ export default async function HomePage() {
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-good animate-pulse" />
             Live · {liveCount} of {benchmarks.length} benchmarks
           </span>
-          <h1 className="mt-6 display text-5xl sm:text-7xl md:text-[5.25rem] text-ink max-w-4xl">
+          <h1 className="mt-6 display text-4xl sm:text-5xl md:text-6xl text-ink max-w-4xl">
             Benchmark crypto infrastructure.
           </h1>
           <p className="mt-5 max-w-2xl text-xl sm:text-2xl text-ink-soft leading-snug">
