@@ -14,6 +14,7 @@ import { LedgerTable } from "@/components/ledger-table";
 import { RegionGrid } from "@/components/region-grid";
 import { BigNumber } from "@/components/big-number";
 import { ShareSection } from "@/components/share-section";
+import { CountLeaderboard } from "@/components/count-leaderboard";
 import { fmtUnit, unitSuffix, fmtValue } from "@/lib/format";
 import { SITE } from "@/data/site";
 
@@ -122,49 +123,56 @@ export default async function BenchmarkPage({
         {benchmark.subtitle}
       </p>
 
-      {/* Hero KPI block */}
-      {!isDraft && (
-        <div className="mt-10 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-px bg-rule rounded overflow-hidden border border-rule">
-          <BigNumber
-            label="Field min · p50"
-            value={fmtValue(fieldMin, benchmark.unit)}
-            unit={unitSuffix(benchmark.unit).trim()}
-            caption="Lowest provider"
-          />
-          <BigNumber
-            label="Field median · p50"
-            value={fmtValue(fieldMedian, benchmark.unit)}
-            unit={unitSuffix(benchmark.unit).trim()}
-            caption={`Across ${benchmark.results.length} providers`}
-          />
-          <BigNumber
-            label="Field max · p50"
-            value={fmtValue(fieldMax, benchmark.unit)}
-            unit={unitSuffix(benchmark.unit).trim()}
-            caption="Highest provider"
-          />
-          <BigNumber
-            label="Tail spread"
-            value={tailSpread > 0 ? `${tailSpread.toFixed(1)}×` : "—"}
-            caption={
-              tailSpread > 0
-                ? `${fmtUnit(tailMin, benchmark.unit)} → ${fmtUnit(tailMax, benchmark.unit)}`
-                : "n/a"
-            }
-          />
-          <BigNumber
-            label="Samples · 24h"
-            value={Math.round(benchmark.sampleSize).toLocaleString()}
-            caption={`${benchmark.results.length} providers`}
-          />
-        </div>
+      {/* Count benches: dedicated leaderboard view (no p50/p90/p99,
+          no 24h chart — those are meaningless on a single gauge). */}
+      {!isDraft && benchmark.unit === "count" && (
+        <>
+          <CountLeaderboard benchmark={benchmark} />
+          <div className="mt-14">
+            <SectionLabel>Provider ledger</SectionLabel>
+            <LedgerTable benchmark={benchmark} />
+          </div>
+        </>
       )}
 
-      {isDraft && <DraftNotice source={benchmark.source} />}
-
-      {/* Charts + tables. no Fig. captions, just data */}
-      {!isDraft && (
+      {/* Latency / cost benches: the original 5-KPI + 24h chart layout. */}
+      {!isDraft && benchmark.unit !== "count" && (
         <>
+          <div className="mt-10 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-px bg-rule rounded overflow-hidden border border-rule">
+            <BigNumber
+              label="Field min · p50"
+              value={fmtValue(fieldMin, benchmark.unit)}
+              unit={unitSuffix(benchmark.unit).trim()}
+              caption="Lowest provider"
+            />
+            <BigNumber
+              label="Field median · p50"
+              value={fmtValue(fieldMedian, benchmark.unit)}
+              unit={unitSuffix(benchmark.unit).trim()}
+              caption={`Across ${benchmark.results.length} providers`}
+            />
+            <BigNumber
+              label="Field max · p50"
+              value={fmtValue(fieldMax, benchmark.unit)}
+              unit={unitSuffix(benchmark.unit).trim()}
+              caption="Highest provider"
+            />
+            <BigNumber
+              label="Tail spread"
+              value={tailSpread > 0 ? `${tailSpread.toFixed(1)}×` : "—"}
+              caption={
+                tailSpread > 0
+                  ? `${fmtUnit(tailMin, benchmark.unit)} → ${fmtUnit(tailMax, benchmark.unit)}`
+                  : "n/a"
+              }
+            />
+            <BigNumber
+              label="Samples · 24h"
+              value={Math.round(benchmark.sampleSize).toLocaleString()}
+              caption={`${benchmark.results.length} providers`}
+            />
+          </div>
+
           <div className="mt-12">
             <SectionLabel>{benchmark.metric} · last 24 hours</SectionLabel>
             <TimeSeriesChart benchmark={benchmark} />
@@ -183,6 +191,8 @@ export default async function BenchmarkPage({
           )}
         </>
       )}
+
+      {isDraft && <DraftNotice source={benchmark.source} />}
 
       {/* Findings (when present) */}
       {benchmark.findings.length > 0 && !isDraft && (
