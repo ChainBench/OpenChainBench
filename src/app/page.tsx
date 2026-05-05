@@ -1,9 +1,8 @@
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { getBenchmarks, formatLastRun } from "@/data/benchmarks";
-import { MiniChart } from "@/components/mini-chart";
-import { Pill } from "@/components/pill";
 import { fmtValue, unitSuffix } from "@/lib/format";
+import { leader } from "@/lib/ranking";
 
 export default async function HomePage() {
   const benchmarks = await getBenchmarks();
@@ -70,85 +69,62 @@ export default async function HomePage() {
           {benchmarks.length === 0 ? (
             <EmptyState />
           ) : (
-            <ul className="mt-8 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+            <ol className="mt-2 divide-y divide-rule border-b border-rule">
               {benchmarks.map((b) => {
-                const fastest = [...b.results].sort(
-                  (a, c) => b.higherIsBetter ? c.ms.p50 - a.ms.p50 : a.ms.p50 - c.ms.p50
-                )[0];
-                const headlineLabel = b.higherIsBetter ? "Field max · p50" : "Field min · p50";
+                const lead = leader(b);
+                const isDraft = b.status === "draft";
                 return (
-                  <li key={b.slug} className="flex">
+                  <li key={b.slug}>
                     <Link
                       href={`/benchmarks/${b.slug}`}
-                      className="group card-soft p-6 flex flex-col flex-1"
+                      className="group grid grid-cols-[3rem_1fr_auto] sm:grid-cols-[3rem_minmax(0,1fr)_8rem_minmax(0,12rem)_6rem] items-center gap-4 sm:gap-6 py-5 hover:bg-paper-soft/60 transition-colors"
                     >
-                      <div className="flex items-center gap-2">
-                        <Pill variant={b.status === "live" ? "live" : "draft"} pulse>
-                          {b.status === "live" ? "Live" : "Draft"}
-                        </Pill>
-                        <Pill variant="category">{b.category}</Pill>
+                      <span className="font-mono text-[11px] tabular text-ink-faint pl-1">
+                        № {b.number}
+                      </span>
+
+                      <div className="min-w-0">
+                        <div className="flex items-baseline gap-2 flex-wrap">
+                          <span className="display text-base sm:text-lg font-semibold text-ink truncate">
+                            {b.title}
+                          </span>
+                          {isDraft && (
+                            <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-faint">
+                              draft
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-0.5 text-xs text-ink-muted truncate hidden sm:block">
+                          {b.subtitle}
+                        </p>
                       </div>
 
-                      <h3 className="mt-5 display text-xl font-bold leading-tight text-ink">
-                        {b.title}
-                      </h3>
+                      <span className="hidden sm:inline font-mono text-[11px] uppercase tracking-[0.14em] text-ink-faint">
+                        {b.category}
+                      </span>
 
-                      {/* Headline + multi-line mini-chart */}
-                      {fastest && (
-                        <div className="mt-5">
-                          <div className="flex items-end justify-between gap-3">
-                            <div>
-                              <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-ink-faint">
-                                {headlineLabel}
-                              </p>
-                              <p className="mt-1 display text-3xl tabular leading-none">
-                                {fmtValue(fastest.ms.p50, b.unit)}
-                                <span className="ml-1 text-base text-ink-muted font-normal">
-                                  {unitSuffix(b.unit).trim()}
-                                </span>
-                              </p>
-                            </div>
-                            <p className="text-[10px] font-mono tabular text-ink-faint uppercase tracking-[0.14em]">
-                              24h
-                            </p>
-                          </div>
-                          <div className="mt-3">
-                            <MiniChart benchmark={b} height={64} legend />
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="mt-5 pt-4 border-t border-rule grid grid-cols-3 gap-3 text-[11px]">
-                        <div>
-                          <p className="text-ink-faint uppercase tracking-[0.12em] font-medium">
-                            Providers
-                          </p>
-                          <p className="mt-0.5 font-mono tabular text-ink">
-                            {b.results.length}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-ink-faint uppercase tracking-[0.12em] font-medium">
-                            n · 24h
-                          </p>
-                          <p className="mt-0.5 font-mono tabular text-ink">
-                            {Math.round(b.sampleSize).toLocaleString()}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-ink-faint uppercase tracking-[0.12em] font-medium">
-                            Updated
-                          </p>
-                          <p className="mt-0.5 font-mono tabular text-ink-muted">
-                            {b.status === "draft" ? "—" : formatLastRun(b.lastRunAt)}
-                          </p>
-                        </div>
+                      <div className="hidden sm:flex items-baseline gap-2 min-w-0">
+                        {lead && !isDraft ? (
+                          <>
+                            <span className="text-sm text-ink-soft truncate">{lead.name}</span>
+                            <span className="font-mono tabular text-sm text-ink shrink-0">
+                              {fmtValue(lead.ms.p50, b.unit)}
+                              <span className="text-ink-faint">{unitSuffix(b.unit)}</span>
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-xs text-ink-faint">—</span>
+                        )}
                       </div>
+
+                      <span className="font-mono tabular text-[11px] text-ink-muted text-right">
+                        {isDraft ? "—" : formatLastRun(b.lastRunAt)}
+                      </span>
                     </Link>
                   </li>
                 );
               })}
-            </ul>
+            </ol>
           )}
         </div>
       </section>
