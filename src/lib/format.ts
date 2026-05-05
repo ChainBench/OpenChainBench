@@ -32,6 +32,7 @@ export function fmtValue(value: number, unit: string): string {
 /** Smart-precision percent formatter — picks decimals based on magnitude
  * so both small fees (0.033%) and large fees (12.50%) read cleanly. */
 function formatPercent(pct: number): string {
+  if (pct === 0) return "0%";
   const abs = Math.abs(pct);
   if (abs >= 10) return `${pct.toFixed(1)}%`;
   if (abs >= 1) return `${pct.toFixed(2)}%`;
