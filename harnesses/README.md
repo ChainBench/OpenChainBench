@@ -5,7 +5,8 @@ Each subdirectory is a benchmark runner — a long-running process that calls pr
 ```
 harnesses/
 ├── aggregator-head-lag/   Bench № 001 — Go service, exposes :2112/metrics
-└── bridge-monitor/        Bench № 002 + № 003 — Go service, exposes :9090/metrics
+├── bridge-monitor/        Bench № 002 + № 003 — Go service, exposes :9090/metrics
+└── network-coverage/      Bench № 005 — Go service, exposes :2112/metrics
 ```
 
 A single harness can serve multiple benchmarks when the same set of measurements is consumed by more than one spec — `bridge-monitor` is the canonical example, producing both `bridge_quote_latency_ms` (read by `bridge-quote-latency.yml`) and `bridge_cost_percent` (read by `bridge-fee.yml`).
