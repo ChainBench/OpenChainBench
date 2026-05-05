@@ -9,6 +9,7 @@ category: Aggregators
 status: live
 metric: Field coverage
 unit: pct
+higher_is_better: true
 
 abstract: |
   We benchmark how complete each aggregator's token-metadata response is for

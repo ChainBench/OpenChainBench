@@ -67,6 +67,7 @@ async function specToBenchmark(spec: Spec): Promise<Benchmark> {
     status: spec.status,
     metric: spec.metric,
     unit: spec.unit,
+    higherIsBetter: spec.higher_is_better,
     abstract: spec.abstract,
     methodology: spec.methodology,
     findings: spec.findings,

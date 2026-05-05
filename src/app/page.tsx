@@ -73,8 +73,9 @@ export default async function HomePage() {
             <ul className="mt-8 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
               {benchmarks.map((b) => {
                 const fastest = [...b.results].sort(
-                  (a, c) => a.ms.p50 - c.ms.p50
+                  (a, c) => b.higherIsBetter ? c.ms.p50 - a.ms.p50 : a.ms.p50 - c.ms.p50
                 )[0];
+                const headlineLabel = b.higherIsBetter ? "Field max · p50" : "Field min · p50";
                 return (
                   <li key={b.slug} className="flex">
                     <Link
@@ -98,7 +99,7 @@ export default async function HomePage() {
                           <div className="flex items-end justify-between gap-3">
                             <div>
                               <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-ink-faint">
-                                Field min · p50
+                                {headlineLabel}
                               </p>
                               <p className="mt-1 display text-3xl tabular leading-none">
                                 {fmtValue(fastest.ms.p50, b.unit)}
