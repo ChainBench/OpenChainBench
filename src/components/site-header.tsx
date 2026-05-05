@@ -16,57 +16,29 @@ export async function SiteHeader() {
 
   return (
     <header className="border-b border-rule bg-paper/85 backdrop-blur-md sticky top-0 z-40">
-      {/* Live ticker */}
-      <div className="border-b border-rule bg-paper-soft/60">
-        <div className="mx-auto max-w-7xl px-6 py-1.5 flex flex-wrap items-center justify-between gap-x-6 gap-y-1 font-mono text-[10px] tabular text-ink-muted">
-          <span className="flex items-center gap-2">
-            <span
-              className={`inline-block h-1.5 w-1.5 rounded-full ${
-                liveCount > 0 ? "bg-good animate-pulse" : "bg-ink-faint"
-              }`}
-            />
-            <span className="uppercase tracking-[0.18em]">
-              {liveCount > 0
-                ? `${liveCount} of ${benchmarks.length} live`
-                : `${benchmarks.length} benchmark${benchmarks.length === 1 ? "" : "s"} · awaiting first runs`}
-            </span>
-          </span>
-          {totalSamples > 0 && (
-            <span className="hidden sm:inline">
-              {Math.round(totalSamples).toLocaleString()} samples · last 24h
-            </span>
-          )}
-          <span className="hidden md:inline">
-            <Link href="/contribute" className="lnk">
-              Submit a benchmark ↗
-            </Link>
-          </span>
-        </div>
-      </div>
-
-      {/* Masthead. wordmark + nav + CTA */}
-      <div className="mx-auto max-w-7xl px-6 h-16 flex items-center justify-between gap-6">
-        <Link href="/" className="flex items-center gap-2.5 group">
+      {/* Masthead. logo · nav · live status · github */}
+      <div className="mx-auto max-w-7xl px-6 h-14 flex items-center gap-6">
+        <Link href="/" className="flex items-center gap-2 shrink-0">
           <Image
             src="/logo.png"
             alt="OpenChainBench"
-            width={32}
-            height={32}
+            width={28}
+            height={28}
             priority
-            className="h-8 w-8 object-contain"
+            className="h-7 w-7 object-contain"
           />
-          <span className="display text-[1.4rem] sm:text-[1.55rem] text-ink leading-none">
+          <span className="display text-[1.25rem] text-ink leading-none">
             OpenChainBench
           </span>
         </Link>
 
-        <nav className="hidden md:block">
-          <ul className="flex items-center gap-1">
+        <nav className="hidden md:block ml-auto">
+          <ul className="flex items-center gap-5">
             {NAV.map((item) => (
               <li key={item.href}>
                 <Link
                   href={item.href}
-                  className="rounded-md px-3 py-1.5 text-sm font-medium text-ink-soft hover:text-ink hover:bg-paper-soft transition-colors"
+                  className="text-sm text-ink-soft hover:text-ink transition-colors"
                 >
                   {item.label}
                 </Link>
@@ -75,17 +47,31 @@ export async function SiteHeader() {
           </ul>
         </nav>
 
-        <div className="flex items-center gap-1">
-          <a
-            href="https://github.com/OpenChainBench/OpenChainBench"
-            className="hidden sm:inline-flex items-center px-3 py-1.5 text-sm font-medium text-ink-soft hover:text-ink"
-          >
-            GitHub
-          </a>
-          <Link href="/benchmarks" className="btn-primary btn-primary--sm">
-            Read benchmarks
-          </Link>
-        </div>
+        <span
+          className="hidden sm:inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted shrink-0"
+          aria-label={`${liveCount} of ${benchmarks.length} benchmarks live, ${Math.round(totalSamples).toLocaleString()} samples in the last 24 hours`}
+        >
+          <span
+            className={`inline-block h-1.5 w-1.5 rounded-full ${
+              liveCount > 0 ? "bg-good animate-pulse" : "bg-ink-faint"
+            }`}
+          />
+          {liveCount}/{benchmarks.length} live
+          {totalSamples > 0 && (
+            <span className="hidden lg:inline">
+              <span className="mx-1.5 text-ink-faint/50">·</span>
+              {Math.round(totalSamples).toLocaleString()} samples
+            </span>
+          )}
+        </span>
+
+        <a
+          href="https://github.com/OpenChainBench/OpenChainBench"
+          className="hidden sm:inline text-sm text-ink-muted hover:text-ink transition-colors shrink-0"
+          aria-label="View source on GitHub"
+        >
+          GitHub
+        </a>
       </div>
     </header>
   );
