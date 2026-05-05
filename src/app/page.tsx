@@ -64,7 +64,10 @@ export default async function HomePage() {
                       href={`/benchmarks/${b.slug}`}
                       className="group relative grid grid-cols-[2.5rem_1fr] sm:grid-cols-[2.5rem_minmax(0,1.4fr)_minmax(0,1fr)_10rem_5.5rem] items-center gap-4 sm:gap-6 py-5 hover:bg-paper-soft/60 transition-colors before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[2px] before:bg-ink before:opacity-0 before:transition-opacity hover:before:opacity-100"
                     >
-                      <span className="font-mono text-[11px] tabular text-ink-faint pl-1">
+                      <span
+                        className="font-mono text-[12px] font-medium tabular pl-1"
+                        style={{ color: catColor ?? "var(--color-ink-soft)" }}
+                      >
                         № {b.number}
                       </span>
 
