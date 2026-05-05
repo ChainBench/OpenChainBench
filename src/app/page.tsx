@@ -16,54 +16,18 @@ const CATEGORY_COLOR: Record<string, string> = {
 
 export default async function HomePage() {
   const benchmarks = await getBenchmarks();
-  const liveCount = benchmarks.filter((b) => b.status === "live").length;
-  const totalSamples = benchmarks.reduce((s, b) => s + b.sampleSize, 0);
-  const totalProviders = new Set(
-    benchmarks.flatMap((b) => b.results.map((r) => r.slug))
-  ).size;
 
   return (
     <>
-      {/* Hero */}
-      <section className="px-4 pt-16 sm:pt-24">
+      {/* Hero — masthead carries the live-status ticker, so the hero
+          stays editorial: dek + lead paragraph, nothing else. */}
+      <section className="px-4 pt-16 sm:pt-20 pb-2">
         <div className="mx-auto max-w-6xl">
-          <span className="eyebrow">
-            <span className="inline-block h-1.5 w-1.5 rounded-full bg-good animate-pulse" />
-            Live · {liveCount} of {benchmarks.length} benchmarks
-          </span>
-          <h1 className="mt-6 display text-3xl sm:text-4xl md:text-5xl text-ink max-w-4xl">
+          <h1 className="display text-3xl sm:text-4xl md:text-5xl text-ink max-w-4xl">
             Benchmark crypto infrastructure.
           </h1>
           <p className="mt-4 max-w-2xl text-base sm:text-lg text-ink-soft leading-snug">
-            Real-time latency, cost and reliability data for the multichain stack. Aggregators, bridges, RPCs, price feeds. Same metric, same conditions, every provider.
-          </p>
-
-          {/* Editorial inline CTAs — primary anchors to the live data
-              below (no nav change), secondary points to contribute. */}
-          <p className="mt-7 max-w-2xl text-sm sm:text-base text-ink-muted leading-relaxed">
-            <a
-              href="#latest"
-              className="text-ink font-medium border-b border-ink/30 hover:border-accent hover:text-accent transition-colors"
-            >
-              Read the live data
-            </a>
-            <span className="mx-3 text-ink-faint/60">/</span>
-            <Link
-              href="/contribute"
-              className="hover:text-ink underline-offset-4 hover:underline"
-            >
-              contribute a bench
-            </Link>
-            <span className="ml-1 text-ink-faint">↗</span>
-          </p>
-
-          {/* Tiny prose ticker */}
-          <p className="mt-10 max-w-2xl text-xs font-mono tabular text-ink-faint">
-            {benchmarks.length} reports
-            <span className="mx-1.5 text-ink-faint/40">·</span>
-            {totalProviders} providers
-            <span className="mx-1.5 text-ink-faint/40">·</span>
-            {Math.round(totalSamples).toLocaleString()} samples in the past 24h
+            Real-time latency, cost and reliability data for the multichain stack — aggregators, bridges, RPCs, price feeds. Same metric, same conditions, every provider.
           </p>
         </div>
       </section>
