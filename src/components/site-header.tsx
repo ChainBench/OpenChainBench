@@ -1,6 +1,5 @@
 import Link from "next/link";
 import Image from "next/image";
-import { getBenchmarks } from "@/data/benchmarks";
 
 const NAV = [
   { href: "/", label: "Overview" },
@@ -9,11 +8,7 @@ const NAV = [
   { href: "/contribute", label: "Contribute" },
 ];
 
-export async function SiteHeader() {
-  const benchmarks = await getBenchmarks();
-  const liveCount = benchmarks.filter((b) => b.status === "live").length;
-  const totalSamples = benchmarks.reduce((s, b) => s + b.sampleSize, 0);
-
+export function SiteHeader() {
   return (
     <header className="border-b border-rule bg-paper/85 backdrop-blur-md sticky top-0 z-40">
       {/* Masthead. logo · nav · live status · github */}
@@ -46,24 +41,6 @@ export async function SiteHeader() {
             ))}
           </ul>
         </nav>
-
-        <span
-          className="hidden sm:inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted shrink-0"
-          aria-label={`${liveCount} of ${benchmarks.length} benchmarks live, ${Math.round(totalSamples).toLocaleString()} samples in the last 24 hours`}
-        >
-          <span
-            className={`inline-block h-1.5 w-1.5 rounded-full ${
-              liveCount > 0 ? "bg-good animate-pulse" : "bg-ink-faint"
-            }`}
-          />
-          {liveCount}/{benchmarks.length} live
-          {totalSamples > 0 && (
-            <span className="hidden lg:inline">
-              <span className="mx-1.5 text-ink-faint/50">·</span>
-              {Math.round(totalSamples).toLocaleString()} samples
-            </span>
-          )}
-        </span>
 
         <a
           href="https://github.com/OpenChainBench/OpenChainBench"
