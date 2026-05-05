@@ -4,7 +4,6 @@ import { fmtValue, unitSuffix } from "@/lib/format";
 import { leader } from "@/lib/ranking";
 import { MiniChart } from "@/components/mini-chart";
 import { LiveTimestamp } from "@/components/live-timestamp";
-import { RefreshPulse } from "@/components/refresh-pulse";
 
 const CATEGORY_COLOR: Record<string, string> = {
   Aggregators: "var(--color-accent, #c97c5d)",
@@ -36,12 +35,9 @@ export default async function HomePage() {
       <section id="latest" className="px-4 pt-12 pb-12 sm:pt-16 sm:pb-16 scroll-mt-16">
         <div className="mx-auto max-w-6xl">
           <div className="flex items-end justify-between gap-6 flex-wrap border-b border-rule pb-3">
-            <div className="flex items-baseline gap-3">
-              <h2 className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted">
-                Latest
-              </h2>
-              <RefreshPulse />
-            </div>
+            <h2 className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted">
+              Latest
+            </h2>
             <Link
               href="/benchmarks"
               className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted lnk hover:text-ink"
