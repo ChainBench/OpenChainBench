@@ -53,7 +53,7 @@ export default async function HomePage() {
       </section>
 
       {/* Reports grid */}
-      <section className="px-4 py-24 sm:py-32">
+      <section className="px-4 pt-12 pb-24 sm:pt-16 sm:pb-32">
         <div className="mx-auto max-w-6xl">
           <div className="flex items-end justify-between gap-6 flex-wrap border-b border-rule pb-3">
             <h2 className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted">
