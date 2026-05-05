@@ -346,7 +346,14 @@ async function renderRanking(
 ) {
   const sorted = sortByP50(benchmark);
   const maxP50 = Math.max(...sorted.map((r) => r.ms.p50)) || 1;
-  const chartHeight = 280;
+  // Tallest bar reserves enough space ABOVE for its value label (28px) and
+  // BELOW for the provider name + p99 caption (~70px), and leaves a
+  // breathing margin under the subtitle. 220px keeps everything inside the
+  // 630px ImageResponse canvas regardless of how the title wraps.
+  const chartHeight = 220;
+  const subtitle = benchmark.higherIsBetter
+    ? "Provider ranking by p50 · descending. Higher is better."
+    : "Provider ranking by p50 · ascending. Lower is faster.";
 
   return new ImageResponse(
     (
@@ -380,17 +387,17 @@ async function renderRanking(
               maxWidth: 980,
             }}
           >
-            Provider ranking by p50 · ascending. Lower is faster.
+            {subtitle}
           </div>
 
           <div
             style={{
               display: "flex",
-              flex: 1,
               alignItems: "flex-end",
               gap: 22,
-              paddingTop: 32,
+              paddingTop: 56,
               paddingBottom: 12,
+              height: chartHeight + 100, // chart area + room for label above + name below
             }}
           >
             {sorted.map((r) => {
@@ -478,6 +485,9 @@ async function renderLeaderboard(
 ) {
   const sorted = sortByP50(benchmark);
   const maxP50 = Math.max(...sorted.map((r) => r.ms.p50)) || 1;
+  const subtitleLB = benchmark.higherIsBetter
+    ? "Ranked by p50 · descending. Higher is better."
+    : "Ranked by p50 · ascending. Lower is faster.";
 
   return new ImageResponse(
     (
@@ -510,7 +520,7 @@ async function renderLeaderboard(
               marginTop: 2,
             }}
           >
-            Ranked by p50 · ascending. Lower is faster.
+            {subtitleLB}
           </div>
 
           <div
