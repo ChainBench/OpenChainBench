@@ -10,6 +10,7 @@ export function fmtUnit(value: number, unit: string) {
     if (s >= 60) return `${(s / 60).toFixed(1)} min`;
     return `${s.toFixed(1)} s`;
   }
+  if (unit === "count") return value.toLocaleString();
   if (value >= 1000) return `${(value / 1000).toFixed(2)} s`;
   return `${value.toFixed(0)} ms`;
 }
@@ -18,6 +19,7 @@ export function fmtUnit(value: number, unit: string) {
 export function unitSuffix(unit: string) {
   if (unit === "pct" || unit === "bps") return " %";
   if (unit === "s") return " s";
+  if (unit === "count") return "";
   return " ms";
 }
 
