@@ -17,7 +17,11 @@ type Props = {
 export function LedgerTable({ benchmark }: Props) {
   const { results, unit, extras } = benchmark;
   const secondary = results[0]?.secondary?.label;
-  const sorted = [...results].sort((a, b) => a.ms.p50 - b.ms.p50);
+  const sorted = [...results].sort(
+    benchmark.higherIsBetter
+      ? (a, b) => b.ms.p50 - a.ms.p50
+      : (a, b) => a.ms.p50 - b.ms.p50,
+  );
   const colors = buildProviderColors(results);
 
   const allSeries = Object.values(extras.series24h).flat();
