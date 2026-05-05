@@ -12,7 +12,6 @@ import { Pill } from "@/components/pill";
 import { TimeSeriesChart } from "@/components/time-series-chart";
 import { LedgerTable } from "@/components/ledger-table";
 import { RegionGrid } from "@/components/region-grid";
-import { BigNumber } from "@/components/big-number";
 import { ShareSection } from "@/components/share-section";
 import { CountLeaderboard } from "@/components/count-leaderboard";
 import { fmtUnit, unitSuffix, fmtValue } from "@/lib/format";
@@ -135,43 +134,38 @@ export default async function BenchmarkPage({
         </>
       )}
 
-      {/* Latency / cost benches: the original 5-KPI + 24h chart layout. */}
+      {/* Latency / cost benches: thin summary strip + 24h chart. */}
       {!isDraft && benchmark.unit !== "count" && (
         <>
-          <div className="mt-10 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-px bg-rule rounded overflow-hidden border border-rule">
-            <BigNumber
-              label="Field min · p50"
-              value={fmtValue(fieldMin, benchmark.unit)}
-              unit={unitSuffix(benchmark.unit).trim()}
-              caption="Lowest provider"
+          {/* Thin key-value strip — replaces the 5-BigNumber grid. */}
+          <dl className="mt-10 grid grid-cols-2 sm:flex sm:flex-wrap items-baseline gap-x-8 gap-y-3 border-y border-rule py-4">
+            <SummaryStat
+              label="Best"
+              value={`${fmtValue(fieldMin, benchmark.unit)}${unitSuffix(benchmark.unit)}`}
             />
-            <BigNumber
-              label="Field median · p50"
-              value={fmtValue(fieldMedian, benchmark.unit)}
-              unit={unitSuffix(benchmark.unit).trim()}
-              caption={`Across ${benchmark.results.length} providers`}
+            <SummaryStat
+              label="Median"
+              value={`${fmtValue(fieldMedian, benchmark.unit)}${unitSuffix(benchmark.unit)}`}
             />
-            <BigNumber
-              label="Field max · p50"
-              value={fmtValue(fieldMax, benchmark.unit)}
-              unit={unitSuffix(benchmark.unit).trim()}
-              caption="Highest provider"
+            <SummaryStat
+              label="Worst"
+              value={`${fmtValue(fieldMax, benchmark.unit)}${unitSuffix(benchmark.unit)}`}
             />
-            <BigNumber
-              label="Tail spread"
+            <SummaryStat
+              label="Spread"
               value={tailSpread > 0 ? `${tailSpread.toFixed(1)}×` : "—"}
-              caption={
+              hint={
                 tailSpread > 0
                   ? `${fmtUnit(tailMin, benchmark.unit)} → ${fmtUnit(tailMax, benchmark.unit)}`
-                  : "n/a"
+                  : undefined
               }
             />
-            <BigNumber
+            <SummaryStat
               label="Samples · 24h"
               value={Math.round(benchmark.sampleSize).toLocaleString()}
-              caption={`${benchmark.results.length} providers`}
+              hint={`${benchmark.results.length} providers`}
             />
-          </div>
+          </dl>
 
           <div className="mt-12">
             <SectionLabel>{benchmark.metric} · last 24 hours</SectionLabel>
@@ -303,6 +297,33 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
     <p className="mb-3 text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
       {children}
     </p>
+  );
+}
+
+/** Thin key-value pair — replaces the BigNumber boxed grid on bench pages.
+ * Renders inline: `LABEL  value (hint)`. Used to summarise a benchmark's
+ * field stats without the SaaS-dashboard scaffolding. */
+function SummaryStat({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+}) {
+  return (
+    <div className="flex items-baseline gap-2">
+      <dt className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-faint shrink-0">
+        {label}
+      </dt>
+      <dd className="font-mono tabular text-sm text-ink leading-none">
+        {value}
+        {hint ? (
+          <span className="ml-1.5 text-ink-muted text-xs font-normal">{hint}</span>
+        ) : null}
+      </dd>
+    </div>
   );
 }
 
