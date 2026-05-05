@@ -38,24 +38,24 @@ export default async function HomePage() {
             Real-time latency, cost and reliability data for the multichain stack. Aggregators, bridges, RPCs, price feeds. Same metric, same conditions, every provider.
           </p>
 
-          {/* Editor's pick — replaces the generic CTA pair with one
-              specific, dated finding. Update the blurb when the lead
-              story changes (rotate every week or so). */}
-          <Link
-            href="/benchmarks/network-coverage"
-            className="group mt-10 max-w-3xl flex items-baseline gap-4 border-y border-rule py-4 hover:bg-paper-soft/60 transition-colors"
-          >
-            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-accent shrink-0 pt-0.5">
-              This&nbsp;week
-            </span>
-            <span className="text-sm sm:text-base text-ink-soft leading-snug">
-              <span className="text-ink">Network-coverage spread is 3.4×</span> —
-              GeckoTerminal lists 263 chains, Codex 133, Mobula 78. Coverage
-              breadth is one axis of a data provider; latency and metadata are
-              measured separately.
-              <span className="ml-1 font-mono text-ink-muted group-hover:text-ink">→</span>
-            </span>
-          </Link>
+          {/* Editorial inline CTAs — primary anchors to the live data
+              below (no nav change), secondary points to contribute. */}
+          <p className="mt-7 max-w-2xl text-sm sm:text-base text-ink-muted leading-relaxed">
+            <a
+              href="#latest"
+              className="text-ink font-medium border-b border-ink/30 hover:border-accent hover:text-accent transition-colors"
+            >
+              Read the live data
+            </a>
+            <span className="mx-3 text-ink-faint/60">/</span>
+            <Link
+              href="/contribute"
+              className="hover:text-ink underline-offset-4 hover:underline"
+            >
+              contribute a bench
+            </Link>
+            <span className="ml-1 text-ink-faint">↗</span>
+          </p>
 
           {/* Tiny prose ticker */}
           <p className="mt-10 max-w-2xl text-xs font-mono tabular text-ink-faint">
@@ -69,7 +69,7 @@ export default async function HomePage() {
       </section>
 
       {/* Reports grid */}
-      <section className="px-4 pt-12 pb-24 sm:pt-16 sm:pb-32">
+      <section id="latest" className="px-4 pt-12 pb-24 sm:pt-16 sm:pb-32 scroll-mt-16">
         <div className="mx-auto max-w-6xl">
           <div className="flex items-end justify-between gap-6 flex-wrap border-b border-rule pb-3">
             <div className="flex items-baseline gap-3">
