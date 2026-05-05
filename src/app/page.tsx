@@ -69,7 +69,7 @@ export default async function HomePage() {
       </section>
 
       {/* Reports grid */}
-      <section id="latest" className="px-4 pt-12 pb-24 sm:pt-16 sm:pb-32 scroll-mt-16">
+      <section id="latest" className="px-4 pt-12 pb-12 sm:pt-16 sm:pb-16 scroll-mt-16">
         <div className="mx-auto max-w-6xl">
           <div className="flex items-end justify-between gap-6 flex-wrap border-b border-rule pb-3">
             <div className="flex items-baseline gap-3">
