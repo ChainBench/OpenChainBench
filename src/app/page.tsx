@@ -38,19 +38,27 @@ export default async function HomePage() {
             Real-time latency, cost and reliability data for the multichain stack. Aggregators, bridges, RPCs, price feeds. Same metric, same conditions, every provider.
           </p>
 
-          {/* Inline editorial actions — no two-button SaaS dance */}
-          <p className="mt-7 max-w-2xl text-sm text-ink-muted leading-relaxed">
-            <Link href="/benchmarks" className="text-ink font-medium hover:text-accent">
-              Read the live benchmarks
-            </Link>
-            <span className="mx-2 text-ink-faint">·</span>
-            <Link href="/contribute" className="hover:text-ink">
-              contribute one →
-            </Link>
-          </p>
+          {/* Editor's pick — replaces the generic CTA pair with one
+              specific, dated finding. Update the blurb when the lead
+              story changes (rotate every week or so). */}
+          <Link
+            href="/benchmarks/network-coverage"
+            className="group mt-10 max-w-3xl flex items-baseline gap-4 border-y border-rule py-4 hover:bg-paper-soft/60 transition-colors"
+          >
+            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-accent shrink-0 pt-0.5">
+              This&nbsp;week
+            </span>
+            <span className="text-sm sm:text-base text-ink-soft leading-snug">
+              <span className="text-ink">Network-coverage spread is 3.4×</span> —
+              GeckoTerminal lists 263 chains, Codex 133, Mobula 78. Coverage
+              breadth is one axis of a data provider; latency and metadata are
+              measured separately.
+              <span className="ml-1 font-mono text-ink-muted group-hover:text-ink">→</span>
+            </span>
+          </Link>
 
-          {/* Tiny prose ticker — same data as before, less SaaS */}
-          <p className="mt-12 max-w-2xl text-xs font-mono tabular text-ink-faint">
+          {/* Tiny prose ticker */}
+          <p className="mt-10 max-w-2xl text-xs font-mono tabular text-ink-faint">
             {benchmarks.length} reports
             <span className="mx-1.5 text-ink-faint/40">·</span>
             {totalProviders} providers
@@ -156,59 +164,24 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Three-pillar band */}
-      <section className="px-4 py-24 sm:py-32 bg-paper-soft border-y border-rule">
+      {/* Colophon — single-line editorial sign-off, replaces the
+          three-pillar 'how it works' band. Detail lives on /contribute
+          and /methodology; the home shouldn't oversell. */}
+      <section className="px-4 py-16 border-t border-rule">
         <div className="mx-auto max-w-6xl">
-          <span className="eyebrow">How it works</span>
-          <h2 className="mt-5 display text-3xl sm:text-4xl max-w-2xl">
-            Spec the metric. Expose <span className="font-mono text-[0.85em]">/metrics</span>. The page renders itself.
-          </h2>
-
-          <div className="mt-12 grid gap-10 md:grid-cols-3">
-            <Pillar
-              n="01"
-              title="One YAML per benchmark"
-              body="Metadata + Prometheus queries in a single file. Drop it in benchmarks/, open a PR. CI rejects malformed specs."
-            />
-            <Pillar
-              n="02"
-              title="A harness in any language"
-              body="Bun, Node, Python, Go, Rust. whatever fits the providers. The harness exposes /metrics; the shared OpenChainBench Prometheus scrapes it."
-            />
-            <Pillar
-              n="03"
-              title="Neutral presentation"
-              body="No spec marks a winner. Every provider is rendered with equal visual weight. Tables sort mechanically; readers compare the columns themselves."
-            />
-          </div>
-
-          <p className="mt-12 max-w-2xl text-sm text-ink-muted leading-relaxed">
-            <Link href="/contribute" className="text-ink font-medium hover:text-accent">
-              Read the contribution tutorial
-            </Link>
-            <span className="mx-2 text-ink-faint">·</span>
-            <a
-              href="https://github.com/OpenChainBench/OpenChainBench"
-              className="hover:text-ink"
-            >
-              browse on GitHub →
-            </a>
+          <p className="max-w-3xl text-sm text-ink-muted leading-relaxed">
+            Every benchmark is a YAML spec plus a public harness exposing
+            <span className="font-mono text-[0.92em] text-ink"> /metrics</span>.
+            The site queries one shared Prometheus and re-renders every minute.
+            Anyone can submit a benchmark — the{" "}
+            <Link href="/contribute" className="text-ink hover:text-accent underline-offset-4 hover:underline">
+              contribution guide
+            </Link>{" "}
+            walks through it.
           </p>
         </div>
       </section>
     </>
-  );
-}
-
-function Pillar({ n, title, body }: { n: string; title: string; body: string }) {
-  return (
-    <div>
-      <p className="font-mono text-[11px] tabular uppercase tracking-[0.18em] text-ink-faint">
-        {n}
-      </p>
-      <h3 className="mt-2 display text-xl">{title}</h3>
-      <p className="mt-3 text-sm text-ink-muted leading-relaxed">{body}</p>
-    </div>
   );
 }
 
