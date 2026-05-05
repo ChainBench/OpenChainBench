@@ -164,23 +164,6 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Colophon — single-line editorial sign-off, replaces the
-          three-pillar 'how it works' band. Detail lives on /contribute
-          and /methodology; the home shouldn't oversell. */}
-      <section className="px-4 py-16 border-t border-rule">
-        <div className="mx-auto max-w-6xl">
-          <p className="max-w-3xl text-sm text-ink-muted leading-relaxed">
-            Every benchmark is a YAML spec plus a public harness exposing
-            <span className="font-mono text-[0.92em] text-ink"> /metrics</span>.
-            The site queries one shared Prometheus and re-renders every minute.
-            Anyone can submit a benchmark — the{" "}
-            <Link href="/contribute" className="text-ink hover:text-accent underline-offset-4 hover:underline">
-              contribution guide
-            </Link>{" "}
-            walks through it.
-          </p>
-        </div>
-      </section>
     </>
   );
 }

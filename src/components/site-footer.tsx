@@ -43,7 +43,18 @@ export function SiteFooter() {
           />
         </div>
 
-        <div className="mt-12 flex flex-wrap items-center justify-between gap-2 border-t border-rule pt-6 text-[11px] uppercase tracking-[0.16em] text-ink-muted">
+        <p className="mt-12 max-w-3xl text-xs text-ink-muted leading-relaxed border-t border-rule pt-6">
+          Every benchmark is a YAML spec plus a public harness exposing
+          <span className="font-mono text-[0.92em] text-ink-soft"> /metrics</span>.
+          The site queries one shared Prometheus and re-renders every minute.
+          Anyone can submit a benchmark — the{" "}
+          <Link href="/contribute" className="text-ink-soft hover:text-ink underline-offset-4 hover:underline">
+            contribution guide
+          </Link>{" "}
+          walks through it.
+        </p>
+
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-2 text-[11px] uppercase tracking-[0.16em] text-ink-muted">
           <span>© {new Date().getFullYear()} OpenChainBench · MIT License</span>
           <span>Set in Inter Tight · Inter · Source Serif 4 · JetBrains Mono</span>
         </div>
