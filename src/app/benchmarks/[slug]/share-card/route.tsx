@@ -4,7 +4,16 @@ import { join } from "node:path";
 import { getBenchmark } from "@/data/benchmarks";
 import { buildProviderColors } from "@/lib/series-colors";
 import { fmtUnit, fmtValue, unitSuffix } from "@/lib/format";
-import type { Benchmark } from "@/types/benchmark";
+import type { Benchmark, ProviderResult } from "@/types/benchmark";
+
+/** Best → worst, depending on whether higher numbers are better. */
+function sortByP50(b: Benchmark): ProviderResult[] {
+  return [...b.results].sort(
+    b.higherIsBetter
+      ? (a, c) => c.ms.p50 - a.ms.p50
+      : (a, c) => a.ms.p50 - c.ms.p50,
+  );
+}
 
 export const runtime = "nodejs";
 
@@ -300,14 +309,12 @@ export async function GET(
   const headlineSlug = url.searchParams.get("provider");
   const headlineProvider =
     benchmark.results.find((r) => r.slug === headlineSlug) ??
-    [...benchmark.results].sort((a, b) => a.ms.p50 - b.ms.p50)[0];
+    sortByP50(benchmark)[0];
 
   // ─── Compare: explicit pair via ?a=slug&b=slug ───────────────────────
   const aSlug = url.searchParams.get("a");
   const bSlug = url.searchParams.get("b");
-  const sortedByP50 = [...benchmark.results].sort(
-    (a, b) => a.ms.p50 - b.ms.p50
-  );
+  const sortedByP50 = sortByP50(benchmark);
   const compareA =
     benchmark.results.find((r) => r.slug === aSlug) ?? sortedByP50[0];
   const compareB =
@@ -337,7 +344,7 @@ async function renderRanking(
   benchmark: Benchmark,
   colors: Map<string, string>
 ) {
-  const sorted = [...benchmark.results].sort((a, b) => a.ms.p50 - b.ms.p50);
+  const sorted = sortByP50(benchmark);
   const maxP50 = Math.max(...sorted.map((r) => r.ms.p50)) || 1;
   const chartHeight = 280;
 
@@ -469,7 +476,7 @@ async function renderLeaderboard(
   benchmark: Benchmark,
   colors: Map<string, string>
 ) {
-  const sorted = [...benchmark.results].sort((a, b) => a.ms.p50 - b.ms.p50);
+  const sorted = sortByP50(benchmark);
   const maxP50 = Math.max(...sorted.map((r) => r.ms.p50)) || 1;
 
   return new ImageResponse(
@@ -619,7 +626,7 @@ async function renderSnapshot(
   benchmark: Benchmark,
   colors: Map<string, string>
 ) {
-  const sorted = [...benchmark.results].sort((a, b) => a.ms.p50 - b.ms.p50);
+  const sorted = sortByP50(benchmark);
   const seriesList = sorted
     .map((r) => ({
       slug: r.slug,
@@ -802,7 +809,7 @@ async function renderHeadline(
   colors: Map<string, string>,
   featured?: Benchmark["results"][number]
 ) {
-  const sorted = [...benchmark.results].sort((a, b) => a.ms.p50 - b.ms.p50);
+  const sorted = sortByP50(benchmark);
   const winner = featured ?? sorted[0];
   const winnerColor = colors.get(winner?.slug ?? "") ?? INK;
   const rank = winner
@@ -910,7 +917,7 @@ async function renderCompare(
   paneA?: Benchmark["results"][number],
   paneB?: Benchmark["results"][number]
 ) {
-  const sorted = [...benchmark.results].sort((a, b) => a.ms.p50 - b.ms.p50);
+  const sorted = sortByP50(benchmark);
   const a = paneA ?? sorted[0];
   const b =
     paneB && paneB.slug !== a?.slug

@@ -28,10 +28,13 @@ export function MiniChart({
   const width = viewBoxWidth;
   const colors = buildProviderColors(benchmark.results);
 
-  // Sort providers ascending by p50 so the legend reads in the same order
-  // as the ledger table on the detail page (best → worst).
+  // Sort providers so the legend reads best → worst, matching the ledger
+  // table on the detail page. Direction depends on the bench (lower vs
+  // higher is better).
   const sortedResults = [...benchmark.results].sort(
-    (a, b) => a.ms.p50 - b.ms.p50
+    benchmark.higherIsBetter
+      ? (a, b) => b.ms.p50 - a.ms.p50
+      : (a, b) => a.ms.p50 - b.ms.p50,
   );
 
   const seriesList = sortedResults
