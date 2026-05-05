@@ -42,7 +42,9 @@ export default async function BenchmarksIndex() {
           <ul className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {all.map((b) => {
               const fastest = [...b.results].sort(
-                (a, c) => a.ms.p50 - c.ms.p50
+                b.higherIsBetter
+                  ? (a, c) => c.ms.p50 - a.ms.p50
+                  : (a, c) => a.ms.p50 - c.ms.p50,
               )[0];
               return (
                 <li key={b.slug} className="flex">
