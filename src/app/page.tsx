@@ -30,25 +30,29 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Reports grid */}
+      {/* Reports table */}
       <section id="latest" className="px-4 pt-12 pb-12 sm:pt-16 sm:pb-16 scroll-mt-16">
         <div className="mx-auto max-w-6xl">
-          <div className="flex items-end justify-between gap-6 flex-wrap border-b border-rule pb-3">
-            <h2 className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted">
-              Latest
-            </h2>
-            <Link
-              href="/benchmarks"
-              className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted lnk hover:text-ink"
-            >
-              View all ↗
-            </Link>
+          {/* Table head — same grid as rows so columns align cleanly. */}
+          <div
+            className="hidden sm:grid grid-cols-[2.5rem_minmax(0,1.4fr)_minmax(0,1fr)_6rem] items-end gap-4 sm:gap-6 border-b-2 border-ink pb-2 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted"
+            role="row"
+          >
+            <span className="pl-1">№</span>
+            <span>Benchmark</span>
+            <span>24 Hours</span>
+            <span className="text-right">Value</span>
+          </div>
+          {/* Mobile head — single line */}
+          <div className="sm:hidden flex items-end justify-between border-b-2 border-ink pb-2 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+            <span>Benchmark</span>
+            <span>Value</span>
           </div>
 
           {benchmarks.length === 0 ? (
             <EmptyState />
           ) : (
-            <ol className="mt-2 divide-y divide-rule border-b border-rule">
+            <ol className="divide-y divide-rule border-b border-rule">
               {benchmarks.map((b) => {
                 const lead = leader(b);
                 const isDraft = b.status === "draft";
@@ -110,6 +114,15 @@ export default async function HomePage() {
               })}
             </ol>
           )}
+
+          <div className="mt-4 flex justify-end">
+            <Link
+              href="/benchmarks"
+              className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted hover:text-ink"
+            >
+              See all benchmarks →
+            </Link>
+          </div>
         </div>
       </section>
 
