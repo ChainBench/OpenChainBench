@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
 import { getBenchmarks, formatLastRun } from "@/data/benchmarks";
 import { fmtValue, unitSuffix } from "@/lib/format";
 import { leader } from "@/lib/ranking";
@@ -39,26 +38,25 @@ export default async function HomePage() {
             Real-time latency, cost and reliability data for the multichain stack. Aggregators, bridges, RPCs, price feeds. Same metric, same conditions, every provider.
           </p>
 
-          <div className="mt-8 flex flex-wrap items-center gap-3">
-            <Link href="/benchmarks" className="btn-primary">
-              Read benchmarks
+          {/* Inline editorial actions — no two-button SaaS dance */}
+          <p className="mt-7 max-w-2xl text-sm text-ink-muted leading-relaxed">
+            <Link href="/benchmarks" className="text-ink font-medium hover:text-accent">
+              Read the live benchmarks
             </Link>
-            <Link href="/contribute" className="btn-ghost">
-              Submit your own
-              <ArrowUpRight size={14} strokeWidth={2.2} />
+            <span className="mx-2 text-ink-faint">·</span>
+            <Link href="/contribute" className="hover:text-ink">
+              contribute one →
             </Link>
-          </div>
+          </p>
 
-          {/* Stats strip. neutral facts */}
-          <dl className="mt-14 grid grid-cols-2 sm:grid-cols-4 gap-px bg-rule rounded overflow-hidden border border-rule">
-            <Stat label="Reports" value={String(benchmarks.length)} />
-            <Stat label="Live" value={`${liveCount} / ${benchmarks.length}`} />
-            <Stat label="Providers" value={String(totalProviders)} />
-            <Stat
-              label="Samples · 24h"
-              value={Math.round(totalSamples).toLocaleString()}
-            />
-          </dl>
+          {/* Tiny prose ticker — same data as before, less SaaS */}
+          <p className="mt-12 max-w-2xl text-xs font-mono tabular text-ink-faint">
+            {benchmarks.length} reports
+            <span className="mx-1.5 text-ink-faint/40">·</span>
+            {totalProviders} providers
+            <span className="mx-1.5 text-ink-faint/40">·</span>
+            {Math.round(totalSamples).toLocaleString()} samples in the past 24h
+          </p>
         </div>
       </section>
 
@@ -184,32 +182,21 @@ export default async function HomePage() {
             />
           </div>
 
-          <div className="mt-12 flex flex-wrap items-center gap-3">
-            <Link href="/contribute" className="btn-primary">
-              Read the tutorial
+          <p className="mt-12 max-w-2xl text-sm text-ink-muted leading-relaxed">
+            <Link href="/contribute" className="text-ink font-medium hover:text-accent">
+              Read the contribution tutorial
             </Link>
+            <span className="mx-2 text-ink-faint">·</span>
             <a
               href="https://github.com/OpenChainBench/OpenChainBench"
-              className="btn-ghost"
+              className="hover:text-ink"
             >
-              GitHub
-              <ArrowUpRight size={14} strokeWidth={2.2} />
+              browse on GitHub →
             </a>
-          </div>
+          </p>
         </div>
       </section>
     </>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="bg-surface px-5 py-4">
-      <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-ink-faint">
-        {label}
-      </p>
-      <p className="mt-1 display text-2xl tabular">{value}</p>
-    </div>
   );
 }
 
