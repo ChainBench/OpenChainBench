@@ -3,6 +3,15 @@ import { ArrowUpRight } from "lucide-react";
 import { getBenchmarks, formatLastRun } from "@/data/benchmarks";
 import { fmtValue, unitSuffix } from "@/lib/format";
 import { leader } from "@/lib/ranking";
+import { MiniChart } from "@/components/mini-chart";
+
+const CATEGORY_COLOR: Record<string, string> = {
+  Aggregators: "var(--color-accent, #c97c5d)",
+  Data: "var(--color-good, #6a9466)",
+  Bridges: "var(--color-warn, #c08a3c)",
+  Wallets: "#7a6db8",
+  RPCs: "#5da0a3",
+};
 
 export default async function HomePage() {
   const benchmarks = await getBenchmarks();
@@ -73,11 +82,12 @@ export default async function HomePage() {
               {benchmarks.map((b) => {
                 const lead = leader(b);
                 const isDraft = b.status === "draft";
+                const catColor = CATEGORY_COLOR[b.category];
                 return (
                   <li key={b.slug}>
                     <Link
                       href={`/benchmarks/${b.slug}`}
-                      className="group grid grid-cols-[3rem_1fr_auto] sm:grid-cols-[3rem_minmax(0,1fr)_8rem_minmax(0,12rem)_6rem] items-center gap-4 sm:gap-6 py-5 hover:bg-paper-soft/60 transition-colors"
+                      className="group grid grid-cols-[2.5rem_1fr] sm:grid-cols-[2.5rem_minmax(0,1.4fr)_minmax(0,1fr)_10rem_5.5rem] items-center gap-4 sm:gap-6 py-5 hover:bg-paper-soft/60 transition-colors"
                     >
                       <span className="font-mono text-[11px] tabular text-ink-faint pl-1">
                         № {b.number}
@@ -85,31 +95,41 @@ export default async function HomePage() {
 
                       <div className="min-w-0">
                         <div className="flex items-baseline gap-2 flex-wrap">
-                          <span className="display text-base sm:text-lg font-semibold text-ink truncate">
-                            {b.title}
+                          <span
+                            className="font-mono text-[10px] uppercase tracking-[0.18em] shrink-0"
+                            style={{ color: catColor ?? "var(--color-ink-faint)" }}
+                          >
+                            {b.category}
                           </span>
                           {isDraft && (
-                            <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-faint">
+                            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-faint">
                               draft
                             </span>
                           )}
                         </div>
-                        <p className="mt-0.5 text-xs text-ink-muted truncate hidden sm:block">
-                          {b.subtitle}
-                        </p>
+                        <h3 className="mt-1 display text-base sm:text-lg font-semibold text-ink leading-tight truncate">
+                          {b.title}
+                        </h3>
+                        <p className="mt-0.5 text-xs text-ink-muted truncate">{b.subtitle}</p>
                       </div>
 
-                      <span className="hidden sm:inline font-mono text-[11px] uppercase tracking-[0.14em] text-ink-faint">
-                        {b.category}
-                      </span>
+                      {/* Sparkline + multi-provider legend */}
+                      <div className="hidden sm:block min-w-0">
+                        {!isDraft && (
+                          <MiniChart benchmark={b} height={32} legend className="opacity-90" />
+                        )}
+                      </div>
 
-                      <div className="hidden sm:flex items-baseline gap-2 min-w-0">
+                      {/* Leader summary */}
+                      <div className="hidden sm:flex flex-col items-end text-right min-w-0">
                         {lead && !isDraft ? (
                           <>
-                            <span className="text-sm text-ink-soft truncate">{lead.name}</span>
-                            <span className="font-mono tabular text-sm text-ink shrink-0">
+                            <span className="font-mono tabular text-base sm:text-lg text-ink leading-none">
                               {fmtValue(lead.ms.p50, b.unit)}
-                              <span className="text-ink-faint">{unitSuffix(b.unit)}</span>
+                              <span className="text-ink-faint text-sm">{unitSuffix(b.unit)}</span>
+                            </span>
+                            <span className="mt-1 text-[11px] text-ink-muted truncate max-w-full">
+                              {lead.name} · leader
                             </span>
                           </>
                         ) : (
@@ -117,7 +137,7 @@ export default async function HomePage() {
                         )}
                       </div>
 
-                      <span className="font-mono tabular text-[11px] text-ink-muted text-right">
+                      <span className="font-mono tabular text-[11px] text-ink-muted text-right whitespace-nowrap">
                         {isDraft ? "—" : formatLastRun(b.lastRunAt)}
                       </span>
                     </Link>
