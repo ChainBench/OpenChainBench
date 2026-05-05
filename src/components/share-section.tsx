@@ -56,10 +56,13 @@ export function ShareSection({ slug, title, benchmark }: Props) {
 
   const orderedProviders = useMemo(
     () =>
-      [...benchmark.results].sort((a, b) => a.ms.p50 - b.ms.p50).map((r) => ({
-        slug: r.slug,
-        name: r.name,
-      })),
+      [...benchmark.results]
+        .sort(
+          benchmark.higherIsBetter
+            ? (a, b) => b.ms.p50 - a.ms.p50
+            : (a, b) => a.ms.p50 - b.ms.p50,
+        )
+        .map((r) => ({ slug: r.slug, name: r.name })),
     [benchmark]
   );
 
