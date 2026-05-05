@@ -89,7 +89,7 @@ export const SpecSchema = z
     /* Metric */
     metric: z.string().min(1),
     /** ms / s for latencies; pct for fees as percent of notional; bps for basis points. */
-    unit: z.enum(["ms", "s", "pct", "bps"]),
+    unit: z.enum(["ms", "s", "pct", "bps", "count"]),
 
     /* Editorial copy */
     abstract: z.string().min(40),
