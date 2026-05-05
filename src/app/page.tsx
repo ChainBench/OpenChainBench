@@ -1,9 +1,8 @@
 import Link from "next/link";
-import { getBenchmarks, formatLastRun } from "@/data/benchmarks";
+import { getBenchmarks } from "@/data/benchmarks";
 import { fmtValue, unitSuffix } from "@/lib/format";
 import { leader } from "@/lib/ranking";
 import { MiniChart } from "@/components/mini-chart";
-import { LiveTimestamp } from "@/components/live-timestamp";
 
 const CATEGORY_COLOR: Record<string, string> = {
   Aggregators: "var(--color-accent, #c97c5d)",
@@ -58,7 +57,7 @@ export default async function HomePage() {
                   <li key={b.slug}>
                     <Link
                       href={`/benchmarks/${b.slug}`}
-                      className="group relative grid grid-cols-[2.5rem_1fr] sm:grid-cols-[2.5rem_minmax(0,1.4fr)_minmax(0,1fr)_10rem_5.5rem] items-center gap-4 sm:gap-6 py-5 hover:bg-paper-soft/60 transition-colors before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[2px] before:bg-ink before:opacity-0 before:transition-opacity hover:before:opacity-100"
+                      className="group relative grid grid-cols-[2.5rem_1fr] sm:grid-cols-[2.5rem_minmax(0,1.4fr)_minmax(0,1fr)_6rem] items-center gap-4 sm:gap-6 py-5 hover:bg-paper-soft/60 transition-colors before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[2px] before:bg-ink before:opacity-0 before:transition-opacity hover:before:opacity-100"
                     >
                       <span
                         className="font-mono text-[12px] font-medium tabular pl-1"
@@ -94,30 +93,17 @@ export default async function HomePage() {
                         )}
                       </div>
 
-                      {/* Leader summary */}
-                      <div className="hidden sm:flex flex-col items-end text-right min-w-0">
+                      {/* Headline value — provider name + leader caption removed */}
+                      <div className="hidden sm:flex justify-end items-baseline">
                         {lead && !isDraft ? (
-                          <>
-                            <span className="font-mono tabular text-base sm:text-lg text-ink leading-none">
-                              {fmtValue(lead.ms.p50, b.unit)}
-                              <span className="text-ink-faint text-sm">{unitSuffix(b.unit)}</span>
-                            </span>
-                            <span className="mt-1 text-[11px] text-ink-muted truncate max-w-full">
-                              {lead.name} · leader
-                            </span>
-                          </>
+                          <span className="font-mono tabular text-base sm:text-lg text-ink leading-none">
+                            {fmtValue(lead.ms.p50, b.unit)}
+                            <span className="text-ink-faint text-sm">{unitSuffix(b.unit)}</span>
+                          </span>
                         ) : (
                           <span className="text-xs text-ink-faint">—</span>
                         )}
                       </div>
-
-                      <span className="font-mono tabular text-[11px] text-ink-muted text-right whitespace-nowrap">
-                        {isDraft ? (
-                          "—"
-                        ) : (
-                          <LiveTimestamp at={b.lastRunAt} fallback={formatLastRun(b.lastRunAt)} />
-                        )}
-                      </span>
                     </Link>
                   </li>
                 );
