@@ -4,6 +4,8 @@ import { getBenchmarks, formatLastRun } from "@/data/benchmarks";
 import { fmtValue, unitSuffix } from "@/lib/format";
 import { leader } from "@/lib/ranking";
 import { MiniChart } from "@/components/mini-chart";
+import { LiveTimestamp } from "@/components/live-timestamp";
+import { RefreshPulse } from "@/components/refresh-pulse";
 
 const CATEGORY_COLOR: Record<string, string> = {
   Aggregators: "var(--color-accent, #c97c5d)",
@@ -64,9 +66,12 @@ export default async function HomePage() {
       <section className="px-4 pt-12 pb-24 sm:pt-16 sm:pb-32">
         <div className="mx-auto max-w-6xl">
           <div className="flex items-end justify-between gap-6 flex-wrap border-b border-rule pb-3">
-            <h2 className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted">
-              Live benchmarks
-            </h2>
+            <div className="flex items-baseline gap-3">
+              <h2 className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted">
+                Latest
+              </h2>
+              <RefreshPulse />
+            </div>
             <Link
               href="/benchmarks"
               className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted lnk hover:text-ink"
@@ -87,7 +92,7 @@ export default async function HomePage() {
                   <li key={b.slug}>
                     <Link
                       href={`/benchmarks/${b.slug}`}
-                      className="group grid grid-cols-[2.5rem_1fr] sm:grid-cols-[2.5rem_minmax(0,1.4fr)_minmax(0,1fr)_10rem_5.5rem] items-center gap-4 sm:gap-6 py-5 hover:bg-paper-soft/60 transition-colors"
+                      className="group relative grid grid-cols-[2.5rem_1fr] sm:grid-cols-[2.5rem_minmax(0,1.4fr)_minmax(0,1fr)_10rem_5.5rem] items-center gap-4 sm:gap-6 py-5 hover:bg-paper-soft/60 transition-colors before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[2px] before:bg-ink before:opacity-0 before:transition-opacity hover:before:opacity-100"
                     >
                       <span className="font-mono text-[11px] tabular text-ink-faint pl-1">
                         № {b.number}
@@ -138,7 +143,11 @@ export default async function HomePage() {
                       </div>
 
                       <span className="font-mono tabular text-[11px] text-ink-muted text-right whitespace-nowrap">
-                        {isDraft ? "—" : formatLastRun(b.lastRunAt)}
+                        {isDraft ? (
+                          "—"
+                        ) : (
+                          <LiveTimestamp at={b.lastRunAt} fallback={formatLastRun(b.lastRunAt)} />
+                        )}
                       </span>
                     </Link>
                   </li>
