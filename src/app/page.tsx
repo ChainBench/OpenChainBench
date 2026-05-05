@@ -22,10 +22,10 @@ export default async function HomePage() {
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-good animate-pulse" />
             Live · {liveCount} of {benchmarks.length} benchmarks
           </span>
-          <h1 className="mt-6 display text-4xl sm:text-5xl md:text-6xl text-ink max-w-4xl">
+          <h1 className="mt-6 display text-3xl sm:text-4xl md:text-5xl text-ink max-w-4xl">
             Benchmark crypto infrastructure.
           </h1>
-          <p className="mt-5 max-w-2xl text-xl sm:text-2xl text-ink-soft leading-snug">
+          <p className="mt-4 max-w-2xl text-base sm:text-lg text-ink-soft leading-snug">
             Real-time latency, cost and reliability data for the multichain stack. Aggregators, bridges, RPCs, price feeds. Same metric, same conditions, every provider.
           </p>
 
