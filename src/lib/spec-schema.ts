@@ -90,6 +90,9 @@ export const SpecSchema = z
     metric: z.string().min(1),
     /** ms / s for latencies; pct for fees as percent of notional; bps for basis points. */
     unit: z.enum(["ms", "s", "pct", "bps", "count"]),
+    /** True when bigger numbers are better (coverage, count). Default false:
+     * latency, fees, drift — every existing bench is "lower is better". */
+    higher_is_better: z.boolean().default(false),
 
     /* Editorial copy */
     abstract: z.string().min(40),
