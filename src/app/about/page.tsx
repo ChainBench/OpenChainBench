@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 export default function AboutPage() {
   return (
     <article className="mx-auto max-w-3xl px-6 py-12">
-      <h1 className="display text-4xl sm:text-5xl">
+      <h1 className="display text-3xl sm:text-4xl">
         About OpenChainBench
       </h1>
       <p className="mt-4 text-xl sm:text-2xl text-ink-muted leading-snug">

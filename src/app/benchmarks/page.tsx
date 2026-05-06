@@ -23,7 +23,7 @@ export default async function BenchmarksIndex() {
         <Pill variant="live" pulse>
           {all.filter((b) => b.status === "live").length} live
         </Pill>
-        <h1 className="mt-5 display text-4xl sm:text-5xl">
+        <h1 className="mt-5 display text-3xl sm:text-4xl">
           Benchmarks
         </h1>
         <p className="mt-4 max-w-2xl text-lg text-ink-muted leading-snug">
