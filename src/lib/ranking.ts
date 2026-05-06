@@ -16,12 +16,6 @@ export function rankResults<T extends Pick<ProviderResult, "ms">>(
   );
 }
 
-/** Comparator only. useful when sorting in place or composing. */
-export function rankCompare(higherIsBetter: boolean) {
-  return (a: { ms: { p50: number } }, b: { ms: { p50: number } }) =>
-    higherIsBetter ? b.ms.p50 - a.ms.p50 : a.ms.p50 - b.ms.p50;
-}
-
 /** Pick the leader of a benchmark. fastest / cheapest / most. */
 export function leader(b: Benchmark): ProviderResult | undefined {
   return rankResults(b.results, b.higherIsBetter)[0];

@@ -2,6 +2,8 @@ import Link from "next/link";
 import { getBenchmarks } from "@/data/benchmarks";
 import { BenchmarkTable } from "@/components/benchmark-table";
 
+export const revalidate = 60;
+
 export default async function HomePage() {
   const benchmarks = await getBenchmarks();
 
