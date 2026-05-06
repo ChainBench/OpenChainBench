@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { useTransition } from "react";
+import { useEffect, useTransition } from "react";
 
 type ChainOption = { value: string; label: string };
 
@@ -9,6 +9,9 @@ type ChainOption = { value: string; label: string };
  * Chain filter tabs rendered above the chart on a bench detail page.
  * Updates `?chain=X` in the URL (or removes it for "All"). The server
  * component re-fetches Prometheus with the chain filter injected.
+ *
+ * On mount we eagerly prefetch every variant (All + each chain) so a
+ * click swaps data instantly, without waiting for the round-trip.
  */
 export function ChainTabs({
   options,
@@ -21,6 +24,25 @@ export function ChainTabs({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [pending, startTransition] = useTransition();
+
+  // Prefetch all chain variants once on mount. Subsequent clicks are
+  // served from the Next.js client cache instead of doing a fresh
+  // Prometheus round-trip.
+  useEffect(() => {
+    const targets: string[] = [];
+    {
+      const p = new URLSearchParams(searchParams.toString());
+      p.delete("chain");
+      const qs = p.toString();
+      targets.push(qs ? `${pathname}?${qs}` : pathname);
+    }
+    for (const o of options) {
+      const p = new URLSearchParams(searchParams.toString());
+      p.set("chain", o.value);
+      targets.push(`${pathname}?${p.toString()}`);
+    }
+    for (const t of targets) router.prefetch(t);
+  }, [router, pathname, searchParams, options]);
 
   function pick(value: string | null) {
     const params = new URLSearchParams(searchParams.toString());
