@@ -80,10 +80,7 @@ export default function MethodologyPage() {
     <article className="mx-auto max-w-5xl px-6 py-12">
       {/* Hero */}
       <header className="border-b-2 border-ink pb-6">
-        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-faint">
-          Editorial standard · last reviewed 2026-05-06
-        </p>
-        <h1 className="mt-3 display text-3xl sm:text-4xl tracking-tight">
+        <h1 className="display text-3xl sm:text-4xl tracking-tight">
           Methodology
         </h1>
         <p className="mt-3 max-w-3xl text-base sm:text-lg text-ink-soft leading-snug">
