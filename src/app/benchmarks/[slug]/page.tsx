@@ -18,6 +18,7 @@ import { ChainTabs } from "@/components/chain-tabs";
 import { fmtUnit, unitSuffix, fmtValue } from "@/lib/format";
 import { computeFieldStats } from "@/lib/stats";
 import { SectionLabel, SummaryStat } from "@/components/summary-stat";
+import { CATEGORY_COLOR } from "@/lib/category-colors";
 import { SITE } from "@/data/site";
 
 export const revalidate = 60;
@@ -79,6 +80,7 @@ export default async function BenchmarkPage({
 
   const { fieldMin, fieldMedian, fieldMax, tailMin, tailMax, tailSpread } =
     computeFieldStats(benchmark.results);
+  const catColor = CATEGORY_COLOR[benchmark.category];
 
   const benchmarkUrl = `${SITE.url}/benchmarks/${benchmark.slug}`;
   const jsonLd = {
@@ -115,14 +117,15 @@ export default async function BenchmarkPage({
         All benchmarks
       </Link>
 
-      {/* Status row */}
-      <div className="mt-6 flex flex-wrap items-center gap-2">
-        <Pill variant={isDraft ? "draft" : "live"} pulse>
-          {isDraft ? "Draft" : "Live"}
-        </Pill>
-        <Pill variant="category">{benchmark.category}</Pill>
-        <span className="ml-auto font-mono text-[11px] tabular text-ink-muted">
-          № {benchmark.number} · Updated {formatLastRun(benchmark.lastRunAt)}
+      {/* Bench identifier — minimal mono line, no SaaS-style pills. */}
+      <div className="mt-6 flex flex-wrap items-baseline gap-3 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+        <span style={{ color: catColor ?? "var(--color-ink-soft)" }}>
+          {benchmark.category}
+        </span>
+        <span className="text-ink-faint">№ {benchmark.number}</span>
+        {isDraft && <span className="text-ink-faint">draft</span>}
+        <span className="ml-auto tabular text-ink-muted normal-case tracking-normal text-xs">
+          Updated {formatLastRun(benchmark.lastRunAt)}
         </span>
       </div>
 
