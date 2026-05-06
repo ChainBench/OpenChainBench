@@ -88,7 +88,7 @@ export default function MethodologyPage() {
         </h1>
         <p className="mt-3 max-w-3xl text-base sm:text-lg text-ink-soft leading-snug">
           How every benchmark on OpenChainBench is measured, reported and
-          reproduced. Open by design — every claim on this page is checkable
+          reproduced. Open by design. Every claim on this page is checkable
           against the underlying spec, harness and Prometheus dataset.
         </p>
       </header>
@@ -129,16 +129,17 @@ export default function MethodologyPage() {
         </ol>
       </section>
 
-      {/* Section: Statistical conventions — ledger-style def list */}
+      {/* Section: Statistical conventions — ledger-style def list with
+          a left rule that fills in on hover (subtle, alive) */}
       <section className="mt-16">
         <SectionHeader number="II" label="Statistical conventions" />
         <dl className="mt-6 divide-y divide-rule border-y border-rule">
           {CONVENTIONS.map((c) => (
             <div
               key={c.term}
-              className="grid grid-cols-1 sm:grid-cols-[14rem_1fr] gap-1 sm:gap-8 py-4"
+              className="group relative grid grid-cols-1 sm:grid-cols-[14rem_1fr] gap-1 sm:gap-8 py-4 px-3 hover:bg-paper-soft/60 transition-colors before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[2px] before:bg-accent before:opacity-0 hover:before:opacity-100 before:transition-opacity"
             >
-              <dt className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink pt-1">
+              <dt className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink pt-1 group-hover:text-accent transition-colors">
                 {c.term}
               </dt>
               <dd className="text-sm text-ink-soft leading-relaxed">{c.body}</dd>
@@ -147,17 +148,25 @@ export default function MethodologyPage() {
         </dl>
       </section>
 
-      {/* Section: Reproducing — recipe layout */}
+      {/* Section: Reproducing — recipe with animated connecting rail and
+          number that scales on hover */}
       <section className="mt-16">
         <SectionHeader number="III" label="Reproducing a result" />
-        <ol className="mt-6 space-y-4">
+        <ol className="mt-6 relative">
+          {/* Vertical rail — fills with accent gradient on container hover */}
+          <span
+            className="absolute left-[calc(0.75rem+1px)] top-2 bottom-2 w-px bg-rule pointer-events-none"
+            aria-hidden
+          />
           {STEPS.map((step, i) => (
             <li
               key={i}
-              className="flex gap-5 border-l-2 border-rule hover:border-accent transition-colors pl-5 py-2"
+              className="group flex gap-5 pl-3 py-2 relative hover:bg-paper-soft/40 transition-colors"
             >
-              <span className="font-mono text-[12px] tabular text-accent font-semibold shrink-0 pt-1 w-6">
-                {String(i + 1).padStart(2, "0")}
+              <span className="relative shrink-0 w-6 flex items-start pt-1">
+                <span className="font-mono text-[12px] tabular text-accent font-semibold transition-transform duration-200 group-hover:scale-125 origin-left">
+                  {String(i + 1).padStart(2, "0")}
+                </span>
               </span>
               <p className="text-sm sm:text-base text-ink-soft leading-relaxed">
                 {step}
@@ -167,24 +176,34 @@ export default function MethodologyPage() {
         </ol>
       </section>
 
-      {/* Section: Corrections — colored callout */}
+      {/* Section: Corrections — callout with a subtle pulsing accent dot */}
       <section className="mt-16">
         <SectionHeader number="IV" label="Corrections" />
         <div
-          className="mt-6 border-l-4 pl-6 py-4"
+          className="mt-6 relative pl-6 py-4 border-l-4"
           style={{ borderColor: "var(--color-accent, #c97c5d)" }}
         >
+          <span
+            className="absolute -left-2 top-5 h-3 w-3 rounded-full"
+            style={{ background: "var(--color-accent, #c97c5d)" }}
+            aria-hidden
+          >
+            <span
+              className="absolute inset-0 rounded-full animate-ping opacity-50"
+              style={{ background: "var(--color-accent, #c97c5d)" }}
+            />
+          </span>
           <p className="text-base text-ink-soft leading-relaxed max-w-3xl">
             Found a number you can&apos;t reproduce? File a{" "}
             <a
-              className="text-ink font-medium underline-offset-4 hover:underline"
+              className="text-ink font-medium underline-offset-4 hover:underline hover:text-accent transition-colors"
               href="https://github.com/OpenChainBench/OpenChainBench/issues/new?template=data-quality.yml"
             >
               data-quality issue
             </a>{" "}
             (the published figure looks wrong) or a{" "}
             <a
-              className="text-ink font-medium underline-offset-4 hover:underline"
+              className="text-ink font-medium underline-offset-4 hover:underline hover:text-accent transition-colors"
               href="https://github.com/OpenChainBench/OpenChainBench/issues/new?template=provider-correction.yml"
             >
               provider correction
