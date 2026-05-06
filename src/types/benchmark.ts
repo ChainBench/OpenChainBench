@@ -47,6 +47,10 @@ export type Benchmark = {
   metric: string;
   unit: "ms" | "s" | "pct" | "bps" | "count";
   higherIsBetter: boolean;
+  /** Optional drill-down dimensions exposed by the bench. Currently only
+   * `chain` is wired up — when set, the bench page renders a chain-tab
+   * filter and the queries get a chain="X" label injected. */
+  dimensions?: { chain?: { value: string; label: string }[] };
   category: "Aggregators" | "Bridges" | "Data" | "Wallets" | "RPCs";
   results: ProviderResult[];
   findings: string[];

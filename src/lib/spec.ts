@@ -23,14 +23,28 @@ const SPECS_DIR = path.join(process.cwd(), "benchmarks");
 
 export const loadAllBenchmarks = cache(async (): Promise<Benchmark[]> => {
   const specs = await loadSpecs();
-  const benchmarks = await Promise.all(specs.map(specToBenchmark));
+  const benchmarks = await Promise.all(specs.map((s) => specToBenchmark(s)));
   return benchmarks.sort((a, b) => a.number.localeCompare(b.number));
 });
 
-export async function loadBenchmark(slug: string): Promise<Benchmark | undefined> {
-  const all = await loadAllBenchmarks();
-  return all.find((b) => b.slug === slug);
-}
+/**
+ * Load a single bench with an optional dimension filter applied to all queries.
+ * `chain` injects `chain="<value>"` into every PromQL label selector.
+ */
+export const loadBenchmark = cache(async function loadBenchmark(
+  slug: string,
+  options: { chain?: string } = {}
+): Promise<Benchmark | undefined> {
+  // Fast path: no filter requested → use the cached aggregate dataset.
+  if (!options.chain) {
+    const all = await loadAllBenchmarks();
+    return all.find((b) => b.slug === slug);
+  }
+  const specs = await loadSpecs();
+  const spec = specs.find((s) => s.slug === slug);
+  if (!spec) return undefined;
+  return specToBenchmark(spec, { chain: options.chain });
+});
 
 const loadSpecs = cache(async (): Promise<Spec[]> => {
   let files: string[] = [];
@@ -56,7 +70,10 @@ const loadSpecs = cache(async (): Promise<Spec[]> => {
   return parsed.filter((s): s is Spec => s !== null);
 });
 
-async function specToBenchmark(spec: Spec): Promise<Benchmark> {
+async function specToBenchmark(
+  spec: Spec,
+  options: { chain?: string } = {}
+): Promise<Benchmark> {
   const editorial: Omit<Benchmark, "results" | "extras" | "sampleSize" | "lastRunAt"> = {
     slug: spec.slug,
     number: spec.number,
@@ -72,13 +89,51 @@ async function specToBenchmark(spec: Spec): Promise<Benchmark> {
     methodology: spec.methodology,
     findings: spec.findings,
     source: spec.source,
+    dimensions: spec.dimensions,
   };
 
-  const live = await tryLoadLive(spec);
+  const filteredSpec = options.chain
+    ? applyChainFilterToSpec(spec, options.chain)
+    : spec;
+
+  const live = await tryLoadLive(filteredSpec);
   if (live) {
     return { ...editorial, ...live };
   }
   return draftBenchmark(spec, editorial);
+}
+
+/** Inject `chain="X"` into every PromQL label selector across the spec's
+ * provider queries. Skips selectors that already filter by chain. */
+function applyChainFilterToSpec(spec: Spec, chain: string): Spec {
+  const inject = (q: string | undefined) => (q ? injectChainFilter(q, chain) : q);
+  return {
+    ...spec,
+    providers: spec.providers.map((p) => ({
+      ...p,
+      queries: p.queries
+        ? {
+            ...p.queries,
+            p50: inject(p.queries.p50),
+            p90: inject(p.queries.p90),
+            p99: inject(p.queries.p99),
+            mean: inject(p.queries.mean),
+            success: inject(p.queries.success),
+            sample_size: inject(p.queries.sample_size),
+            series: inject(p.queries.series),
+          }
+        : p.queries,
+    })),
+  };
+}
+
+function injectChainFilter(query: string, chain: string): string {
+  return query.replace(/\{([^}]*)\}/g, (_, inside: string) => {
+    if (/\bchain\s*=/.test(inside)) return `{${inside}}`;
+    const trimmed = inside.trim();
+    if (trimmed === "") return `{chain="${chain}"}`;
+    return `{${inside.replace(/\s*$/, "")},chain="${chain}"}`;
+  });
 }
 
 async function tryLoadLive(
