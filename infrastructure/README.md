@@ -78,7 +78,9 @@ After merging the PR, redeploy the `prometheus` Railway service so it picks up t
 | Job | Hosted by | Where the data comes from |
 | --- | --- | --- |
 | `aggregator-head-lag` | Mobula | `harnesses/aggregator-head-lag` running on Mobula Railway |
-| `bridge-monitor` | Mobula | `harnesses/bridge-monitor` running on Mobula Railway |
+| `bridge-monitor` | Mobula | `harnesses/bridge-monitor` running on Mobula Railway (powers benches № 002 + № 003) |
+| `metadata-coverage` | Mobula | Pulse V2 feeder + metadata worker running on Mobula Railway |
+| `network-coverage` | Mobula | `harnesses/network-coverage` running on Mobula Railway |
 | `prometheus` | self | the OpenChainBench Prom itself (health metrics) |
 
 When external contributors onboard, they appear here.
