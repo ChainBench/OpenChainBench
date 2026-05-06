@@ -29,13 +29,40 @@ If Prometheus answers, the page renders live numbers. If it doesn't (network err
 ## Spec reference
 
 ```yaml
-slug: my-benchmark            # required, must match the mock's slug
+slug: my-benchmark            # required, lowercase-hyphenated
+number: "006"                 # required, 3-digit string
+title: Short editorial title  # required, used as the H1
+seo_title: Long SEO title     # optional, browser tab + meta only — falls back to title
+subtitle: One-line dek        # required
+category: Data                # required: Aggregators | Bridges | Data | Wallets | RPCs
+status: live                  # default: live; "draft" hides results, keeps editorial
+metric: Field coverage        # required, label rendered above the values
+unit: pct                     # required: ms | s | pct | bps | count
+higher_is_better: true        # default false. Set true for coverage / count benches.
+abstract: |                   # required, ≥40 chars, lead paragraph for "About"
+  Why this benchmark, what it measures...
+methodology:                  # required, ≥1 bullet
+  - "First constraint"
+  - "Second constraint"
+findings: []                  # optional, ordered list rendered after the data
+source: https://github.com/...  # required, link to the harness folder
+
 prometheus:
   url: https://prom.example   # required for live data; else override via PROMETHEUS_URL env var
   window: 24h                 # window for rate()/quantile aggregations — default 24h
 
+# Optional drill-down dimensions. When set, the bench page renders a
+# tab selector and the queries get a label filter injected server-side.
+# Currently supported: chain.
+dimensions:
+  chain:
+    - { value: solana, label: Solana }
+    - { value: bnb,    label: BNB Chain }
+
 providers:
-  - slug: provider-slug       # must match a `slug` under `results:` in the mock
+  - slug: provider-slug       # required, kebab-case
+    name: Provider Name       # required, display name
+    tag: Short tagline        # optional, rendered next to the name
     queries:
       p50: <PromQL>            # required for live mode
       p90: <PromQL>            # required for live mode
@@ -55,6 +82,13 @@ providers:
           p50: <PromQL>
           series: <PromQL>
 ```
+
+### Notes on the new fields
+
+- **`unit: count`** — for benches that publish a single gauge (e.g. number of supported chains). The bench page swaps to a leaderboard layout (no p50/p90/p99 boxes, no 24-hour chart) since those are meaningless on a count.
+- **`higher_is_better`** — affects how the homepage card, ledger table, mini-chart legend and Compare share-card are sorted, and what label the Compare card prints (`Cheaper by` / `More expensive by` / `Covers more by` / `Slower by` etc.).
+- **`seo_title`** — the long, search-friendly title used in `<title>`, OpenGraph and Twitter cards. The H1 stays the shorter `title`.
+- **`dimensions.chain`** — when set, the bench page renders chain-tab pills above the chart. Picking a chain re-fetches Prom with `chain="<value>"` injected into every label selector. Cached separately per (slug, chain) tuple.
 
 When `region.series` is set on every region, the time-series chart shows
 a "Region" selector (All · US-East · EU-West · …) so readers can slice the
