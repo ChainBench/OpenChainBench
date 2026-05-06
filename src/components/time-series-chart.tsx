@@ -222,28 +222,68 @@ function Chart({
     setHover({ idx, xPx, yPx });
   };
 
-  // Per-line drawn paths (memoised for animation re-trigger via key)
+  // Per-line drawn paths (memoised for animation re-trigger via key).
+  // Treats hard zeroes among non-zero data as gaps (no-data) rather than
+  // drawing the line down to zero. A sustained outage shows as a missing
+  // segment instead of a misleading "0%" cliff.
   const drawn = useMemo(() => {
     return lines.map((l) => {
       const color = l.color;
+      const positive = l.values.filter((v) => v > 0);
+      const positiveMin = positive.length > 0 ? Math.min(...positive) : 0;
+      const isGap = (v: number) => !Number.isFinite(v) || (v === 0 && positiveMin > 1);
+
       const pts = l.values.map((v, i) => {
         const x = padL + innerW * (i / Math.max(1, l.values.length - 1));
         const y = padT + innerH * (1 - (v - lo) / yRange);
-        return [x, y] as const;
+        return { x, y, gap: isGap(v) } as const;
       });
-      const linePath = pts
-        .map(([x, y], i) =>
-          i === 0 ? `M ${x.toFixed(2)},${y.toFixed(2)}` : `L ${x.toFixed(2)},${y.toFixed(2)}`
-        )
-        .join(" ");
+
+      // Build line path with `M` at gap boundaries to break the stroke.
+      let linePath = "";
+      let openingSegment = true;
+      for (const p of pts) {
+        if (p.gap) {
+          openingSegment = true;
+          continue;
+        }
+        const cmd = openingSegment ? "M" : "L";
+        linePath += `${cmd} ${p.x.toFixed(2)},${p.y.toFixed(2)} `;
+        openingSegment = false;
+      }
+      linePath = linePath.trim();
+
+      // Fill path uses the same gap logic — closes at base on each break.
       const baseY = padT + innerH;
-      const fillPath =
-        `M ${pts[0][0].toFixed(2)},${baseY.toFixed(2)} ` +
-        pts.map(([x, y]) => `L ${x.toFixed(2)},${y.toFixed(2)}`).join(" ") +
-        ` L ${pts[pts.length - 1][0].toFixed(2)},${baseY.toFixed(2)} Z`;
-      const last = l.values[l.values.length - 1];
-      const lastX = padL + innerW;
-      const lastY = padT + innerH * (1 - (last - lo) / yRange);
+      let fillPath = "";
+      let segStart: { x: number; y: number } | null = null;
+      const closeSegment = (endX: number) => {
+        if (segStart) {
+          fillPath += `L ${endX.toFixed(2)},${baseY.toFixed(2)} Z `;
+          segStart = null;
+        }
+      };
+      for (const p of pts) {
+        if (p.gap) {
+          // close current segment at the last drawn x
+          // (the previous point's x — but we only know prev via state)
+          continue;
+        }
+        if (!segStart) {
+          fillPath += `M ${p.x.toFixed(2)},${baseY.toFixed(2)} L ${p.x.toFixed(2)},${p.y.toFixed(2)} `;
+          segStart = { x: p.x, y: p.y };
+        } else {
+          fillPath += `L ${p.x.toFixed(2)},${p.y.toFixed(2)} `;
+        }
+      }
+      // Close any open segment at its last x
+      const lastDrawn = [...pts].reverse().find((p) => !p.gap);
+      if (lastDrawn) closeSegment(lastDrawn.x);
+
+      // End-of-line label uses the last non-gap value.
+      const last = lastDrawn ? l.values[pts.indexOf(lastDrawn)] : 0;
+      const lastX = lastDrawn ? lastDrawn.x : padL + innerW;
+      const lastY = lastDrawn ? lastDrawn.y : padT + innerH;
       return { ...l, color, pts, linePath, fillPath, lastX, lastY, last };
     });
   }, [lines, padL, padR, padT, padB, innerW, innerH, lo, yRange]);
