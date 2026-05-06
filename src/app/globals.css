@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 @theme {
-  /* Page background — warm off-white that pairs with the dark logo */
+  /* Page background. warm off-white that pairs with the dark logo */
   --color-paper: #f8f3eb;
   --color-paper-soft: #f3eee0;
   --color-surface: #ffffff;
@@ -21,10 +21,10 @@
   --color-bad: #8a2a1a;
   --color-warn: #b45309;
 
-  /* Editorial accent — used sparingly */
+  /* Editorial accent. used sparingly */
   --color-accent: #4a443c;
 
-  /* Highlight wash — used only in hover/focus, neutral */
+  /* Highlight wash. used only in hover/focus, neutral */
   --color-highlight: #f3eee0;
 
   --font-sans:
@@ -50,7 +50,7 @@ body {
 }
 
 body {
-  /* Sans for body — modern product readability */
+  /* Sans for body. modern product readability */
   font-family: var(--font-sans);
   font-feature-settings: "kern", "liga", "ss01", "cv11";
   -webkit-font-smoothing: antialiased;
@@ -64,7 +64,7 @@ table {
   font-variant-numeric: tabular-nums lining-nums;
 }
 
-/* Display headlines — chunky grotesk */
+/* Display headlines. chunky grotesk */
 .display {
   font-family: var(--font-display);
   font-weight: 700;
@@ -105,7 +105,7 @@ table {
   box-shadow: 0 12px 28px -16px rgba(24, 22, 20, 0.18);
 }
 
-/* CTA buttons — explicit color resolution so Tailwind utility generation
+/* CTA buttons. explicit color resolution so Tailwind utility generation
    can't accidentally drop the text color (we hit a bg-/text- collision
    earlier with the old token names). */
 .btn-primary {
@@ -160,7 +160,7 @@ table {
   color: var(--color-paper);
 }
 
-/* Display number — for KPI tiles */
+/* Display number. for KPI tiles */
 .display-num {
   font-family: var(--font-display);
   font-variant-numeric: lining-nums tabular-nums;
@@ -168,7 +168,7 @@ table {
   font-weight: 700;
 }
 
-/* Ledger table — dense, financial-newspaper style, neutral */
+/* Ledger table. dense, financial-newspaper style, neutral */
 .ledger {
   font-variant-numeric: tabular-nums lining-nums;
 }

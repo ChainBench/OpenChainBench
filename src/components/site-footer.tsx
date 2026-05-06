@@ -47,7 +47,7 @@ export function SiteFooter() {
           Every benchmark is a YAML spec plus a public harness exposing
           <span className="font-mono text-[0.92em] text-ink-soft"> /metrics</span>.
           The site queries one shared Prometheus and re-renders every minute.
-          Anyone can submit a benchmark — the{" "}
+          Anyone can submit a benchmark. the{" "}
           <Link href="/contribute" className="text-ink-soft hover:text-ink underline-offset-4 hover:underline">
             contribution guide
           </Link>{" "}

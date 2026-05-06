@@ -45,7 +45,7 @@ export async function getBenchmarksByCategory(): Promise<
 const SPECS_DIR = path.join(process.cwd(), "benchmarks");
 let cachedSlugs: string[] | null = null;
 
-/** Slug list for `generateStaticParams` — read directly from filenames so
+/** Slug list for `generateStaticParams`. read directly from filenames so
  * we don't need Prometheus at build time. */
 export async function getBenchmarkSlugs(): Promise<string[]> {
   if (cachedSlugs) return cachedSlugs;
@@ -80,7 +80,7 @@ export function formatLastRun(iso: string) {
   });
 }
 
-/** Compute the leader (lowest p50) at render time — neutral, live, no
+/** Compute the leader (lowest p50) at render time. neutral, live, no
  * pre-determined winner in the spec. Returns undefined for drafts. */
 export function getLeader(b: Benchmark): ProviderResult | undefined {
   if (b.status === "draft" || b.results.length === 0) return undefined;

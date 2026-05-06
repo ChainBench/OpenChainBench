@@ -1,4 +1,4 @@
-# Walkthrough — what happens when you contribute a benchmark
+# Walkthrough. what happens when you contribute a benchmark
 
 A concrete, end-to-end example of how a new benchmark gets onto the site. Written from the contributor's perspective, with the maintainer + automation actions called out so you can see what is yours to do and what happens around you.
 
@@ -6,11 +6,11 @@ For the formal step-by-step reference, see [`/CONTRIBUTING.md`](../CONTRIBUTING.
 
 ## The scenario
 
-Imagine a contributor — let's call them **Alex** — who works on a wallet that surfaces token portfolios across many chains. Their UX team wants to choose between four wallet-portfolio APIs (Mobula, Zerion, DeBank, Quick Intel) on hard data, not vendor decks. Alex decides to build the benchmark in the open, on OpenChainBench.
+Imagine a contributor. let's call them **Alex**. who works on a wallet that surfaces token portfolios across many chains. Their UX team wants to choose between four wallet-portfolio APIs (Mobula, Zerion, DeBank, Quick Intel) on hard data, not vendor decks. Alex decides to build the benchmark in the open, on OpenChainBench.
 
 The whole journey takes them roughly **3-4 hours of focused work**, spread over a few days.
 
-## Phase 1 — Align (Day 0, ~30 min)
+## Phase 1. Align (Day 0, ~30 min)
 
 Alex opens an issue with the [📊 Propose a benchmark](https://github.com/OpenChainBench/OpenChainBench/issues/new?template=new-benchmark.yml) template. They fill in:
 
@@ -21,13 +21,13 @@ Alex opens an issue with the [📊 Propose a benchmark](https://github.com/OpenC
 
 A maintainer comments:
 
-> "Methodology looks solid. Two notes: (1) please add Helius for Solana addresses since DeBank is EVM-only — otherwise the comparison is uneven on multi-chain wallets. (2) 5 s timeout is fine for the headline; record the unbounded latency too as a separate metric so we can see what providers really do under load."
+> "Methodology looks solid. Two notes: (1) please add Helius for Solana addresses since DeBank is EVM-only. otherwise the comparison is uneven on multi-chain wallets. (2) 5 s timeout is fine for the headline; record the unbounded latency too as a separate metric so we can see what providers really do under load."
 
 Alex agrees, edits the issue. The maintainer labels it `bench-request` and moves it to `Approved` on the roadmap.
 
-**No code yet.** This phase exists so methodology disagreements happen on a forum, not on a closed-PR — much faster to resolve.
+**No code yet.** This phase exists so methodology disagreements happen on a forum, not on a closed-PR. much faster to resolve.
 
-## Phase 2 — Build (Day 1-2, ~2 hours)
+## Phase 2. Build (Day 1-2, ~2 hours)
 
 ### The spec
 
@@ -36,7 +36,7 @@ Alex creates `benchmarks/wallet-portfolio-latency.yml`:
 ```yaml
 slug: wallet-portfolio-latency
 number: "005"
-title: Wallet Portfolio API — Read Latency
+title: Wallet Portfolio API. Read Latency
 subtitle: How fast each wallet API returns a complete portfolio for a busy address.
 category: Wallets
 status: live
@@ -120,9 +120,9 @@ func runLoop(p Provider, cfg *Config) {
 }
 ```
 
-The metric names match those referenced in the YAML — that is the contract.
+The metric names match those referenced in the YAML. that is the contract.
 
-## Phase 3 — Host (Day 2, ~30 min)
+## Phase 3. Host (Day 2, ~30 min)
 
 Alex's harness needs to expose `/metrics` over HTTPS at a stable URL. They go with Fly.io because they already have an account.
 
@@ -155,7 +155,7 @@ The harness is alive, producing data, and reachable from the open internet. The 
 **Cost so far**: ~$5/mo on Fly's lowest tier. Alex pays it; OpenChainBench pays nothing.
 **Secrets shared with maintainers**: zero.
 
-## Phase 4 — Wire the scrape (Day 2, ~5 min)
+## Phase 4. Wire the scrape (Day 2, ~5 min)
 
 Alex appends one block to `infrastructure/prometheus/prometheus.yml`:
 
@@ -171,9 +171,9 @@ Alex appends one block to `infrastructure/prometheus/prometheus.yml`:
         host: alex
 ```
 
-That is the **only** thing the project needs from Alex's hosting. No credentials, no callbacks, no ingress rules — just a URL.
+That is the **only** thing the project needs from Alex's hosting. No credentials, no callbacks, no ingress rules. just a URL.
 
-## Phase 5 — Open the PR (Day 2, ~10 min)
+## Phase 5. Open the PR (Day 2, ~10 min)
 
 Alex pushes their branch and opens a PR with three changes:
 
@@ -185,13 +185,13 @@ infrastructure/prometheus/prometheus.yml            [+1 scrape job]
 
 CI runs on the PR (~30 s):
 
-- ✅ `pnpm validate` — schema-lints the YAML.
-- ✅ `pnpm typecheck` — type-checks the site.
-- ✅ `pnpm build` — verifies the site rebuilds with the new spec.
+- ✅ `pnpm validate`. schema-lints the YAML.
+- ✅ `pnpm typecheck`. type-checks the site.
+- ✅ `pnpm build`. verifies the site rebuilds with the new spec.
 
-Alex also runs `pnpm spec:dry-run wallet-portfolio-latency` locally — it queries Prometheus from their laptop and prints the resolved p50/p90/p99 numbers. They share those in the PR description so the maintainer can sanity-check.
+Alex also runs `pnpm spec:dry-run wallet-portfolio-latency` locally. it queries Prometheus from their laptop and prints the resolved p50/p90/p99 numbers. They share those in the PR description so the maintainer can sanity-check.
 
-## Phase 6 — Review + merge (Day 3, ~20 min)
+## Phase 6. Review + merge (Day 3, ~20 min)
 
 A maintainer pulls up the PR. They check four things:
 
@@ -202,9 +202,9 @@ A maintainer pulls up the PR. They check four things:
 
 The maintainer comments "looks good", merges to `main`. The PR is auto-linked to the original issue, which moves to `In progress` on the roadmap.
 
-**Vercel rebuilds the site automatically.** The benchmark page appears at `https://openchainbench.com/benchmarks/wallet-portfolio-latency` immediately, but it's empty — the central Prometheus has not been told to scrape Alex's URL yet.
+**Vercel rebuilds the site automatically.** The benchmark page appears at `https://openchainbench.com/benchmarks/wallet-portfolio-latency` immediately, but it's empty. the central Prometheus has not been told to scrape Alex's URL yet.
 
-## Phase 7 — Apply the scrape (Day 3, ~30 s)
+## Phase 7. Apply the scrape (Day 3, ~30 s)
 
 The maintainer triggers a Prometheus reload:
 
@@ -214,13 +214,13 @@ curl -X POST https://prom.openchainbench.com/-/reload
 
 Prometheus reloads its config file (which now has Alex's new scrape job), starts hitting `https://alex-portfolio-bench.fly.dev/metrics` every 15 s, and stores the data with `benchmark: wallet-portfolio-latency, host: alex` labels.
 
-## Phase 8 — Live (Day 3, ≤ 60 s after the reload)
+## Phase 8. Live (Day 3, ≤ 60 s after the reload)
 
 The site's ISR cache for `/benchmarks/wallet-portfolio-latency` expires (default 60 s). The next visitor's request triggers a re-render: the Next.js server queries the central Prometheus, gets fresh data, renders the page with the new numbers.
 
 Alex's benchmark is live. The roadmap card moves to `Live`. The maintainer pings the original issue:
 
-> "Live at https://openchainbench.com/benchmarks/wallet-portfolio-latency. Initial 24-hour run will smooth out — the page may look noisy until then."
+> "Live at https://openchainbench.com/benchmarks/wallet-portfolio-latency. Initial 24-hour run will smooth out. the page may look noisy until then."
 
 ## What Alex did vs what Alex didn't have to do
 
@@ -229,7 +229,7 @@ Alex's benchmark is live. The roadmap card moves to `Live`. The maintainer pings
 - Wrote the harness
 - Hosted the harness (Fly.io account, $5/mo)
 - Provided their own provider API keys
-- Maintained the harness over time (if it crashes, the bench data goes blank — gracefully)
+- Maintained the harness over time (if it crashes, the bench data goes blank. gracefully)
 
 ### Didn't have to:
 - Share API keys with anyone
@@ -244,7 +244,7 @@ Alex's benchmark is live. The roadmap card moves to `Live`. The maintainer pings
 - Triggered the Prom reload (30 s)
 
 ### What the project paid for:
-- An additional scrape target on the existing OpenChainBench Prometheus — effectively zero cost.
+- An additional scrape target on the existing OpenChainBench Prometheus. effectively zero cost.
 
 ## Failure modes and how they're handled
 
@@ -268,16 +268,16 @@ This is what "open" actually means for a benchmark project:
 ## Frequently asked questions
 
 **"What if my harness needs a paid API key I don't want to expose to the world?"**
-You don't. The API key lives in your hosting platform's secrets store (Fly secrets, Railway env vars, AWS Secrets Manager, whatever). The harness reads it from `os.Getenv("…")` at startup. Nothing about the running harness reveals the key — only the metric values it produces are public.
+You don't. The API key lives in your hosting platform's secrets store (Fly secrets, Railway env vars, AWS Secrets Manager, whatever). The harness reads it from `os.Getenv("…")` at startup. Nothing about the running harness reveals the key. only the metric values it produces are public.
 
 **"What if I want to be benchmarked on my own service?"**
 Same flow. You write the harness, host it on your infra, expose `/metrics`, PR the scrape config. Maintainers will look extra carefully at the methodology to make sure you're not benchmarking yourself in a way that flatters you, but the door is open.
 
 **"What if I don't have any infra at all?"**
-Two options. (1) Use a free tier — Fly.io and Cloud Run both have generous free tiers that cover light harnesses indefinitely. (2) Ask in the PR for OpenChainBench-hosted onboarding — a maintainer will help you deploy onto the project's Railway and you'll transfer secrets via [1Password Send](https://1password.com/send) or a similar one-shot share.
+Two options. (1) Use a free tier. Fly.io and Cloud Run both have generous free tiers that cover light harnesses indefinitely. (2) Ask in the PR for OpenChainBench-hosted onboarding. a maintainer will help you deploy onto the project's Railway and you'll transfer secrets via [1Password Send](https://1password.com/send) or a similar one-shot share.
 
 **"What if my harness is heavy and signs transactions?"**
-Same flow. You absolutely should host it yourself in that case — the project never wants custody of wallet keys. The data path is identical: the harness exposes Prometheus metrics on a URL, the central Prom scrapes.
+Same flow. You absolutely should host it yourself in that case. the project never wants custody of wallet keys. The data path is identical: the harness exposes Prometheus metrics on a URL, the central Prom scrapes.
 
 **"Can I update my harness later?"**
 Yes. As long as the metric names + labels stay stable, you can deploy whatever changes you want. If you change a metric name you'll need to update the YAML query at the same time and open a PR. If you break backward-compatibility of an established benchmark, write a methodology note in the spec's `findings:` section so the change is dated.

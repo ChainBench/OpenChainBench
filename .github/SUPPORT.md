@@ -1,6 +1,6 @@
 # Getting help
 
-OpenChainBench is community-run. Before opening an issue, pick the right channel — it gets you faster answers and keeps the issue tracker focused on actionable work.
+OpenChainBench is community-run. Before opening an issue, pick the right channel. it gets you faster answers and keeps the issue tracker focused on actionable work.
 
 ## I want to…
 
@@ -31,4 +31,4 @@ OpenChainBench is community-run. Before opening an issue, pick the right channel
 
 ## Commercial support
 
-There is no commercial support offering. The maintainers contribute on a best-effort basis. If your team depends on continuous, SLA-backed visibility into a particular metric, run your own harness — the contract documented in [`harnesses/README.md`](../harnesses/README.md) is small and the existing harnesses are MIT-licensed reference implementations.
+There is no commercial support offering. The maintainers contribute on a best-effort basis. If your team depends on continuous, SLA-backed visibility into a particular metric, run your own harness. the contract documented in [`harnesses/README.md`](../harnesses/README.md) is small and the existing harnesses are MIT-licensed reference implementations.

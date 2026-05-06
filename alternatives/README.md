@@ -1,6 +1,6 @@
 # Alternative landing pages
 
-Each YAML in this folder produces a `/alternatives/<slug>` page that re-frames an existing benchmark as "X alternatives" — built so anyone in the community can answer "what's an alternative to X?" by linking a permanent OpenChainBench URL instead of typing a list every time.
+Each YAML in this folder produces a `/alternatives/<slug>` page that re-frames an existing benchmark as "X alternatives". built so anyone in the community can answer "what's an alternative to X?" by linking a permanent OpenChainBench URL instead of typing a list every time.
 
 The benchmark stays the source of truth; the alternative file only carries the framing copy + a pointer to its source bench.
 
@@ -13,10 +13,10 @@ target_url: https://pumpportal.fun      # optional, rendered as a link
 description: One-line description       # required
 benchmark: aggregator-head-lag          # required, slug of an existing benchmark
 chain: solana                           # optional, applied as chain filter on the source bench
-intro: |                                # required, ≥40 chars — lead paragraph rendered above the data
+intro: |                                # required, ≥40 chars. lead paragraph rendered above the data
   Looking for an alternative to Pump Portal? Here's how the major
   onchain data providers compare on real-time blockchain data latency...
-seo_title: Pump Portal alternatives — live latency benchmark
+seo_title: Pump Portal alternatives. live latency benchmark
 seo_description: Compare Mobula, GeckoTerminal and Codex on...
 status: live                            # optional, default live
 ```
@@ -30,7 +30,7 @@ status: live                            # optional, default live
 ## Adding a new alternative
 
 1. Drop a YAML in this folder. Pick a benchmark whose providers are credible competitors of the target product.
-2. Open a PR. CI doesn't validate alternatives explicitly today, but the runtime loader logs warnings for malformed entries and skips them — so check the deploy logs after merge.
+2. Open a PR. CI doesn't validate alternatives explicitly today, but the runtime loader logs warnings for malformed entries and skips them. so check the deploy logs after merge.
 3. The page is auto-added to `/sitemap.xml` for indexing.
 
 ## Currently shipped
@@ -44,4 +44,4 @@ status: live                            # optional, default live
 
 ## License
 
-MIT — same as the rest of OpenChainBench.
+MIT. same as the rest of OpenChainBench.

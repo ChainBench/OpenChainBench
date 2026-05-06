@@ -7,12 +7,12 @@ global:
 # OpenChainBench is a federation: each harness is hosted by whoever wrote it
 # (Mobula, an independent contributor, a provider that wants to be benchmarked).
 # This single shared Prometheus scrapes every harness's public /metrics
-# endpoint and aggregates everything into one queryable instance — the URL
+# endpoint and aggregates everything into one queryable instance. the URL
 # referenced by every YAML spec's `prom_url`.
 #
 # To onboard a new harness:
 #   1. The contributor exposes /metrics on a publicly reachable URL
-#      (Railway, Fly, Cloud Run, a VPS — anywhere with HTTPS).
+#      (Railway, Fly, Cloud Run, a VPS. anywhere with HTTPS).
 #   2. Append a `- job_name: <slug>` block below pointing at that URL.
 #   3. Open a PR. Once merged, redeploy the prometheus service so it picks
 #      up the new target (or hit the /-/reload endpoint).

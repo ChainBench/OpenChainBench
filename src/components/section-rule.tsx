@@ -1,6 +1,6 @@
 type Props = {
   label: string;
-  /** Kept optional for backwards compat — currently ignored. */
+  /** Kept optional for backwards compat. currently ignored. */
   number?: string;
 };
 

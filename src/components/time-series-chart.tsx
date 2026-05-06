@@ -64,7 +64,7 @@ export function TimeSeriesChart({ benchmark }: Props) {
     return built;
   }, [benchmark, range, region, colors]);
 
-  // A key that flips when the data shape changes — used to retrigger
+  // A key that flips when the data shape changes. used to retrigger
   // the line-draw animation.
   const seriesKey = `${range}::${region}`;
 
@@ -377,7 +377,7 @@ function Chart({
                   animation: "ts-draw 0.7s ease-out forwards",
                 }}
               />
-              {/* Live pulse halo — animated outward */}
+              {/* Live pulse halo. animated outward */}
               <circle cx={d.lastX} cy={d.lastY} r={3} fill={d.color} opacity={0.4}>
                 <animate
                   attributeName="r"

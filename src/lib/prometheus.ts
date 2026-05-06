@@ -14,7 +14,7 @@ type PromEnvelope<T> =
   | { status: "success"; data: T; warnings?: string[] }
   | { status: "error"; errorType: string; error: string };
 
-/** Default timeout for Prometheus queries — keep short, build time is finite. */
+/** Default timeout for Prometheus queries. keep short, build time is finite. */
 const DEFAULT_TIMEOUT_MS = 4_000;
 
 export class Prometheus {
@@ -22,14 +22,14 @@ export class Prometheus {
     if (!baseUrl) throw new Error("Prometheus baseUrl is required");
   }
 
-  /** GET /api/v1/query — instant query at evaluation time `now`. */
+  /** GET /api/v1/query. instant query at evaluation time `now`. */
   async query(promql: string, signal?: AbortSignal): Promise<PromInstantResult> {
     const url = new URL("/api/v1/query", this.baseUrl);
     url.searchParams.set("query", promql);
     return this.fetchEnvelope<PromInstantResult>(url, signal);
   }
 
-  /** GET /api/v1/query_range — range query for series/sparklines. */
+  /** GET /api/v1/query_range. range query for series/sparklines. */
   async queryRange(
     promql: string,
     start: Date,
@@ -107,7 +107,7 @@ export class Prometheus {
       const merged = signal ? mergeSignals(signal, controller.signal) : controller.signal;
       const res = await fetch(url, {
         signal: merged,
-        // Cache at the platform level — pages call us through ISR.
+        // Cache at the platform level. pages call us through ISR.
         next: { revalidate: 60 },
       });
       if (!res.ok) {

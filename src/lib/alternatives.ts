@@ -2,7 +2,7 @@
  * Alternative landing pages.
  *
  * Each `alternatives/<slug>.yml` is a thin layer on top of an existing
- * benchmark — it reframes the same data as "X alternatives" so we have
+ * benchmark. it reframes the same data as "X alternatives" so we have
  * a public URL to drop in Discord/Twitter when someone asks for a
  * competitor. The benchmark stays the source of truth; the alternative
  * file only carries the framing copy and a pointer to its bench.

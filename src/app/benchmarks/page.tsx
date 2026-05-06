@@ -19,11 +19,11 @@ const CATEGORY_COLOR: Record<string, string> = {
 };
 
 const CATEGORY_BLURB: Record<string, string> = {
-  Aggregators: "Token-data aggregators — metadata, prices, charts.",
-  Data: "Onchain data providers — block-level latency, network coverage.",
-  Bridges: "Cross-chain bridges — quote latency and effective cost.",
-  Wallets: "Wallet APIs — portfolio, balances, history.",
-  RPCs: "RPC endpoints — uptime, response time, reorg behaviour.",
+  Aggregators: "Token-data aggregators. metadata, prices, charts.",
+  Data: "Onchain data providers. block-level latency, network coverage.",
+  Bridges: "Cross-chain bridges. quote latency and effective cost.",
+  Wallets: "Wallet APIs. portfolio, balances, history.",
+  RPCs: "RPC endpoints. uptime, response time, reorg behaviour.",
 };
 
 const CATEGORY_ORDER = ["Data", "Aggregators", "Bridges", "Wallets", "RPCs"] as const;
@@ -43,7 +43,7 @@ export default async function BenchmarksIndex() {
         <h1 className="display text-3xl sm:text-4xl tracking-tight">Index</h1>
         <p className="mt-3 max-w-2xl text-base text-ink-muted leading-snug">
           Every published benchmark, grouped by category. Click into a row for
-          the full report — chart, ledger, methodology and the harness that
+          the full report. chart, ledger, methodology and the harness that
           produces the numbers.
         </p>
 
