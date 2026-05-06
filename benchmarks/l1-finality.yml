@@ -91,7 +91,7 @@ providers:
     name: Avalanche C-Chain
     tag: Snowman++ consensus, sub-second finality
     queries:
-      p50: quantile_over_time(0.50, l1_finality_lag_seconds{chain="avalanche"}[24h]) * 1000
+      p50: avg_over_time(l1_finality_lag_seconds{chain="avalanche"}[24h]) * 1000
       p90: quantile_over_time(0.90, l1_finality_lag_seconds{chain="avalanche"}[24h]) * 1000
       p99: quantile_over_time(0.99, l1_finality_lag_seconds{chain="avalanche"}[24h]) * 1000
       mean: avg_over_time(l1_finality_lag_seconds{chain="avalanche"}[24h]) * 1000
@@ -103,7 +103,7 @@ providers:
     name: BNB Smart Chain
     tag: Fast finality fork (BEP-126)
     queries:
-      p50: quantile_over_time(0.50, l1_finality_lag_seconds{chain="bnb"}[24h]) * 1000
+      p50: avg_over_time(l1_finality_lag_seconds{chain="bnb"}[24h]) * 1000
       p90: quantile_over_time(0.90, l1_finality_lag_seconds{chain="bnb"}[24h]) * 1000
       p99: quantile_over_time(0.99, l1_finality_lag_seconds{chain="bnb"}[24h]) * 1000
       mean: avg_over_time(l1_finality_lag_seconds{chain="bnb"}[24h]) * 1000
@@ -115,7 +115,7 @@ providers:
     name: SUI
     tag: Mysticeti DAG, ~1 s checkpoint finality
     queries:
-      p50: quantile_over_time(0.50, l1_finality_lag_seconds{chain="sui"}[24h]) * 1000
+      p50: avg_over_time(l1_finality_lag_seconds{chain="sui"}[24h]) * 1000
       p90: quantile_over_time(0.90, l1_finality_lag_seconds{chain="sui"}[24h]) * 1000
       p99: quantile_over_time(0.99, l1_finality_lag_seconds{chain="sui"}[24h]) * 1000
       mean: avg_over_time(l1_finality_lag_seconds{chain="sui"}[24h]) * 1000
@@ -127,7 +127,7 @@ providers:
     name: TON
     tag: Masterchain finality, 3-block depth
     queries:
-      p50: quantile_over_time(0.50, l1_finality_lag_seconds{chain="ton"}[24h]) * 1000
+      p50: avg_over_time(l1_finality_lag_seconds{chain="ton"}[24h]) * 1000
       p90: quantile_over_time(0.90, l1_finality_lag_seconds{chain="ton"}[24h]) * 1000
       p99: quantile_over_time(0.99, l1_finality_lag_seconds{chain="ton"}[24h]) * 1000
       mean: avg_over_time(l1_finality_lag_seconds{chain="ton"}[24h]) * 1000
@@ -139,7 +139,7 @@ providers:
     name: Hedera
     tag: aBFT hashgraph
     queries:
-      p50: quantile_over_time(0.50, l1_finality_lag_seconds{chain="hedera"}[24h]) * 1000
+      p50: avg_over_time(l1_finality_lag_seconds{chain="hedera"}[24h]) * 1000
       p90: quantile_over_time(0.90, l1_finality_lag_seconds{chain="hedera"}[24h]) * 1000
       p99: quantile_over_time(0.99, l1_finality_lag_seconds{chain="hedera"}[24h]) * 1000
       mean: avg_over_time(l1_finality_lag_seconds{chain="hedera"}[24h]) * 1000
@@ -151,7 +151,7 @@ providers:
     name: Stellar
     tag: SCP federated voting
     queries:
-      p50: quantile_over_time(0.50, l1_finality_lag_seconds{chain="stellar"}[24h]) * 1000
+      p50: avg_over_time(l1_finality_lag_seconds{chain="stellar"}[24h]) * 1000
       p90: quantile_over_time(0.90, l1_finality_lag_seconds{chain="stellar"}[24h]) * 1000
       p99: quantile_over_time(0.99, l1_finality_lag_seconds{chain="stellar"}[24h]) * 1000
       mean: avg_over_time(l1_finality_lag_seconds{chain="stellar"}[24h]) * 1000
@@ -163,7 +163,7 @@ providers:
     name: Solana
     tag: Tower BFT, 32-slot finalized commitment
     queries:
-      p50: quantile_over_time(0.50, l1_finality_lag_seconds{chain="solana"}[24h]) * 1000
+      p50: avg_over_time(l1_finality_lag_seconds{chain="solana"}[24h]) * 1000
       p90: quantile_over_time(0.90, l1_finality_lag_seconds{chain="solana"}[24h]) * 1000
       p99: quantile_over_time(0.99, l1_finality_lag_seconds{chain="solana"}[24h]) * 1000
       mean: avg_over_time(l1_finality_lag_seconds{chain="solana"}[24h]) * 1000
@@ -175,7 +175,7 @@ providers:
     name: TRON
     tag: 20-block solidity confirmation
     queries:
-      p50: quantile_over_time(0.50, l1_finality_lag_seconds{chain="tron"}[24h]) * 1000
+      p50: avg_over_time(l1_finality_lag_seconds{chain="tron"}[24h]) * 1000
       p90: quantile_over_time(0.90, l1_finality_lag_seconds{chain="tron"}[24h]) * 1000
       p99: quantile_over_time(0.99, l1_finality_lag_seconds{chain="tron"}[24h]) * 1000
       mean: avg_over_time(l1_finality_lag_seconds{chain="tron"}[24h]) * 1000
@@ -187,7 +187,7 @@ providers:
     name: Ethereum
     tag: Casper FFG, 2-epoch finalization
     queries:
-      p50: quantile_over_time(0.50, l1_finality_lag_seconds{chain="ethereum"}[24h]) * 1000
+      p50: avg_over_time(l1_finality_lag_seconds{chain="ethereum"}[24h]) * 1000
       p90: quantile_over_time(0.90, l1_finality_lag_seconds{chain="ethereum"}[24h]) * 1000
       p99: quantile_over_time(0.99, l1_finality_lag_seconds{chain="ethereum"}[24h]) * 1000
       mean: avg_over_time(l1_finality_lag_seconds{chain="ethereum"}[24h]) * 1000
@@ -199,7 +199,7 @@ providers:
     name: Cardano
     tag: Probabilistic, ~50 confirmations
     queries:
-      p50: quantile_over_time(0.50, l1_finality_lag_seconds{chain="cardano"}[24h]) * 1000
+      p50: avg_over_time(l1_finality_lag_seconds{chain="cardano"}[24h]) * 1000
       p90: quantile_over_time(0.90, l1_finality_lag_seconds{chain="cardano"}[24h]) * 1000
       p99: quantile_over_time(0.99, l1_finality_lag_seconds{chain="cardano"}[24h]) * 1000
       mean: avg_over_time(l1_finality_lag_seconds{chain="cardano"}[24h]) * 1000
@@ -211,7 +211,7 @@ providers:
     name: Litecoin
     tag: Probabilistic, 6 confirmations
     queries:
-      p50: quantile_over_time(0.50, l1_finality_lag_seconds{chain="litecoin"}[24h]) * 1000
+      p50: avg_over_time(l1_finality_lag_seconds{chain="litecoin"}[24h]) * 1000
       p90: quantile_over_time(0.90, l1_finality_lag_seconds{chain="litecoin"}[24h]) * 1000
       p99: quantile_over_time(0.99, l1_finality_lag_seconds{chain="litecoin"}[24h]) * 1000
       mean: avg_over_time(l1_finality_lag_seconds{chain="litecoin"}[24h]) * 1000
@@ -223,7 +223,7 @@ providers:
     name: Monero
     tag: Probabilistic, 10 confirmations
     queries:
-      p50: quantile_over_time(0.50, l1_finality_lag_seconds{chain="monero"}[24h]) * 1000
+      p50: avg_over_time(l1_finality_lag_seconds{chain="monero"}[24h]) * 1000
       p90: quantile_over_time(0.90, l1_finality_lag_seconds{chain="monero"}[24h]) * 1000
       p99: quantile_over_time(0.99, l1_finality_lag_seconds{chain="monero"}[24h]) * 1000
       mean: avg_over_time(l1_finality_lag_seconds{chain="monero"}[24h]) * 1000
