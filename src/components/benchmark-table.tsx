@@ -24,11 +24,26 @@ const CATEGORY_COLOR: Record<string, string> = {
  */
 export function BenchmarkTable({ benchmarks }: { benchmarks: Benchmark[] }) {
   const [query, setQuery] = useState("");
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const q = query.trim().toLowerCase();
 
+  // Categories present in the data, in the order benchmarks declare them.
+  const categories = useMemo(() => {
+    const seen = new Set<string>();
+    const list: string[] = [];
+    for (const b of benchmarks) {
+      if (!seen.has(b.category)) {
+        seen.add(b.category);
+        list.push(b.category);
+      }
+    }
+    return list;
+  }, [benchmarks]);
+
   const filtered = useMemo(() => {
-    if (!q) return benchmarks;
     return benchmarks.filter((b) => {
+      if (activeCategory && b.category !== activeCategory) return false;
+      if (!q) return true;
       const haystack = [
         b.title,
         b.subtitle,
@@ -40,31 +55,52 @@ export function BenchmarkTable({ benchmarks }: { benchmarks: Benchmark[] }) {
         .toLowerCase();
       return haystack.includes(q);
     });
-  }, [benchmarks, q]);
+  }, [benchmarks, q, activeCategory]);
 
   return (
     <div>
-      {/* Search bar — discreet, right-aligned */}
-      <div className="mb-3 flex items-center justify-end gap-3">
-        {q && (
-          <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-            {filtered.length} of {benchmarks.length}
-          </span>
-        )}
-        <label className="group relative flex items-center w-44 focus-within:w-64 transition-[width] duration-200">
-          <Search
-            size={13}
-            strokeWidth={2}
-            className="absolute left-2.5 text-ink-faint group-focus-within:text-ink-muted pointer-events-none"
+      {/* Filter row — categories left, search right */}
+      <div className="mb-3 flex flex-wrap items-center gap-3">
+        <ul className="flex flex-wrap items-center gap-1">
+          <CategoryPill
+            label="All"
+            active={activeCategory === null}
+            onClick={() => setActiveCategory(null)}
           />
-          <input
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search"
-            className="w-full pl-7 pr-2 py-1 text-xs bg-transparent border-b border-rule focus:outline-none focus:border-ink/60 placeholder:text-ink-faint transition-colors"
-          />
-        </label>
+          {categories.map((c) => (
+            <CategoryPill
+              key={c}
+              label={c}
+              color={CATEGORY_COLOR[c]}
+              active={activeCategory === c}
+              onClick={() =>
+                setActiveCategory(activeCategory === c ? null : c)
+              }
+            />
+          ))}
+        </ul>
+
+        <div className="ml-auto flex items-center gap-3">
+          {(q || activeCategory) && (
+            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+              {filtered.length} of {benchmarks.length}
+            </span>
+          )}
+          <label className="group relative flex items-center w-44 focus-within:w-64 transition-[width] duration-200">
+            <Search
+              size={13}
+              strokeWidth={2}
+              className="absolute left-2.5 text-ink-faint group-focus-within:text-ink-muted pointer-events-none"
+            />
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search"
+              className="w-full pl-7 pr-2 py-1 text-xs bg-transparent border-b border-rule focus:outline-none focus:border-ink/60 placeholder:text-ink-faint transition-colors"
+            />
+          </label>
+        </div>
       </div>
 
       {/* Table head — same grid as rows so columns align cleanly. */}
@@ -85,7 +121,12 @@ export function BenchmarkTable({ benchmarks }: { benchmarks: Benchmark[] }) {
       {filtered.length === 0 ? (
         <p className="py-12 text-center text-sm text-ink-muted">
           No benchmark matches{" "}
-          <span className="font-mono text-ink">&quot;{query}&quot;</span>.
+          {q && <span className="font-mono text-ink">&quot;{query}&quot;</span>}
+          {q && activeCategory && " in "}
+          {activeCategory && (
+            <span className="font-mono text-ink">{activeCategory}</span>
+          )}
+          .
         </p>
       ) : (
         <ol className="divide-y divide-rule border-b border-rule">
@@ -150,5 +191,34 @@ export function BenchmarkTable({ benchmarks }: { benchmarks: Benchmark[] }) {
         </ol>
       )}
     </div>
+  );
+}
+
+function CategoryPill({
+  label,
+  color,
+  active,
+  onClick,
+}: {
+  label: string;
+  color?: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  const accent = color ?? "var(--color-ink)";
+  return (
+    <li>
+      <button
+        onClick={onClick}
+        style={
+          active
+            ? { background: accent, borderColor: accent, color: "var(--color-paper)" }
+            : { color: accent, borderColor: "var(--color-rule)" }
+        }
+        className="px-2.5 py-1 border rounded-sm font-mono text-[10px] uppercase tracking-[0.18em] transition-colors hover:bg-paper-soft/60"
+      >
+        {label}
+      </button>
+    </li>
   );
 }
