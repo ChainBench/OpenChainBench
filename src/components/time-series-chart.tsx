@@ -187,17 +187,10 @@ function Chart({
   const innerH = H - padT - padB;
 
   const allValues = lines.flatMap((l) => l.values);
-  const yMin = Math.min(...allValues);
-  const yMax = Math.max(...allValues);
-  const yPad = (yMax - yMin) * 0.1 || 1;
-  const lo = Math.max(0, yMin - yPad);
-  const hi = yMax + yPad;
+  const dataMin = Math.min(...allValues);
+  const dataMax = Math.max(...allValues);
+  const { lo, hi, yTicks } = niceTicks(dataMin, dataMax, 4);
   const yRange = hi - lo;
-
-  const yTickCount = 4;
-  const yTicks: number[] = [];
-  for (let i = 0; i <= yTickCount; i++)
-    yTicks.push(lo + (yRange * i) / yTickCount);
 
   const xTicks = buildXTicks(windowHours);
   const numPoints = Math.max(...lines.map((l) => l.values.length));
@@ -300,7 +293,7 @@ function Chart({
         {/* Y gridlines + tick labels */}
         {yTicks.map((v, i) => {
           const y = padT + innerH * (1 - (v - lo) / yRange);
-          const isBound = i === 0 || i === yTickCount;
+          const isBound = i === 0 || i === yTicks.length - 1;
           return (
             <g key={i}>
               <line
@@ -663,6 +656,39 @@ function formatHoursAgo(hoursAgo: number, windowHours: number): string {
   const d = Math.floor(hoursAgo / 24);
   const h = Math.round(hoursAgo - d * 24);
   return d === 0 ? `−${h}h` : h > 0 ? `−${d}d ${h}h` : `−${d}d`;
+}
+
+// niceTicks picks rounded y-axis bounds + tick values so labels read as
+// 0%, 25%, 50%, 75%, 100% rather than 18.2%, 36.4%, 54.6%, 72.8%.
+function niceTicks(
+  dataMin: number,
+  dataMax: number,
+  targetCount: number
+): { lo: number; hi: number; yTicks: number[] } {
+  if (!Number.isFinite(dataMin) || !Number.isFinite(dataMax)) {
+    return { lo: 0, hi: 1, yTicks: [0, 0.25, 0.5, 0.75, 1] };
+  }
+  if (dataMin === dataMax) {
+    const v = dataMin;
+    return { lo: v - 1, hi: v + 1, yTicks: [v - 1, v, v + 1] };
+  }
+  const rawSpan = dataMax - dataMin;
+  const rawStep = rawSpan / targetCount;
+  const mag = Math.pow(10, Math.floor(Math.log10(rawStep)));
+  const norm = rawStep / mag;
+  // Pick the smallest "nice" step >= raw step. 1, 2, 2.5, 5, 10
+  let niceStep: number;
+  if (norm <= 1) niceStep = 1;
+  else if (norm <= 2) niceStep = 2;
+  else if (norm <= 2.5) niceStep = 2.5;
+  else if (norm <= 5) niceStep = 5;
+  else niceStep = 10;
+  niceStep *= mag;
+  const lo = Math.max(0, Math.floor(dataMin / niceStep) * niceStep);
+  const hi = Math.ceil(dataMax / niceStep) * niceStep;
+  const yTicks: number[] = [];
+  for (let v = lo; v <= hi + niceStep / 2; v += niceStep) yTicks.push(v);
+  return { lo, hi, yTicks };
 }
 
 function fmtTick(v: number, unit: string) {
