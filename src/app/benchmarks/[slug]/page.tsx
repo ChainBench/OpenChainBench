@@ -10,6 +10,7 @@ import {
 } from "@/data/benchmarks";
 import { Pill } from "@/components/pill";
 import { TimeSeriesChart } from "@/components/time-series-chart";
+import { SmallMultiplesChart } from "@/components/small-multiples-chart";
 import { LedgerTable } from "@/components/ledger-table";
 import { RegionGrid } from "@/components/region-grid";
 import { ShareSection } from "@/components/share-section";
@@ -195,7 +196,11 @@ export default async function BenchmarkPage({
 
           <div className="mt-12">
             <SectionLabel>{benchmark.metric} · last 24 hours</SectionLabel>
-            <TimeSeriesChart benchmark={benchmark} />
+            {benchmark.results.length > 6 ? (
+              <SmallMultiplesChart benchmark={benchmark} />
+            ) : (
+              <TimeSeriesChart benchmark={benchmark} />
+            )}
           </div>
 
           <div className="mt-14">
