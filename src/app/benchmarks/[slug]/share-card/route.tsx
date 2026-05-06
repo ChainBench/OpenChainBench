@@ -155,9 +155,11 @@ function CategoryPill({ children }: { children: string }) {
 function CardHeader({
   benchmark,
   showCategory = true,
+  chainLabel,
 }: {
   benchmark: Benchmark;
   showCategory?: boolean;
+  chainLabel?: string | null;
 }) {
   return (
     <div
@@ -171,6 +173,7 @@ function CardHeader({
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <LivePill />
         {showCategory && <CategoryPill>{benchmark.category}</CategoryPill>}
+        {chainLabel && <ChainPill>{chainLabel}</ChainPill>}
         <div
           style={{
             display: "flex",
@@ -185,6 +188,31 @@ function CardHeader({
           {formatTimestamp(benchmark.lastRunAt)}
         </div>
       </div>
+    </div>
+  );
+}
+
+function ChainPill({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 6,
+        padding: "4px 10px",
+        borderRadius: 999,
+        background: PAPER_SOFT,
+        border: `1px solid ${RULE}`,
+        fontSize: 11,
+        color: INK,
+        letterSpacing: "0.14em",
+        textTransform: "uppercase",
+        fontWeight: 600,
+        fontFamily: "monospace",
+      }}
+    >
+      <span style={{ color: INK_FAINT, fontSize: 10 }}>CHAIN</span>
+      {children}
     </div>
   );
 }
@@ -237,12 +265,14 @@ function CardShell({
   children,
   rightText,
   showCategory = true,
+  chainLabel,
 }: {
   benchmark: Benchmark;
   accentColor?: string;
   children: React.ReactNode;
   rightText?: string;
   showCategory?: boolean;
+  chainLabel?: string | null;
 }) {
   return (
     <div
@@ -275,7 +305,11 @@ function CardShell({
           gap: 18,
         }}
       >
-        <CardHeader benchmark={benchmark} showCategory={showCategory} />
+        <CardHeader
+          benchmark={benchmark}
+          showCategory={showCategory}
+          chainLabel={chainLabel}
+        />
         <div
           style={{
             display: "flex",
@@ -297,12 +331,22 @@ export async function GET(
   { params }: { params: Promise<{ slug: string }> }
 ) {
   const { slug } = await params;
-  const benchmark = await getBenchmark(slug);
-  if (!benchmark) {
+  const url = new URL(request.url);
+
+  // Validate `?chain=` against the spec-declared dimension before passing
+  // it to the loader — same pattern as the bench detail page.
+  const aggregate = await getBenchmark(slug);
+  if (!aggregate) {
     return new Response("Not found", { status: 404 });
   }
+  const chainParam = url.searchParams.get("chain");
+  const chainOptions = aggregate.dimensions?.chain ?? [];
+  const chainOption = chainOptions.find((c) => c.value === chainParam);
+  const benchmark = chainOption
+    ? (await getBenchmark(slug, { chain: chainOption.value })) ?? aggregate
+    : aggregate;
+  const chainLabel = chainOption?.label ?? null;
 
-  const url = new URL(request.url);
   const template = (url.searchParams.get("template") ?? "ranking") as
     | "ranking"
     | "snapshot"
@@ -347,23 +391,24 @@ export async function GET(
 
   switch (template) {
     case "snapshot":
-      return renderSnapshot(filteredSafe, colors);
+      return renderSnapshot(filteredSafe, colors, chainLabel);
     case "headline":
-      return renderHeadline(benchmark, colors, headlineProvider);
+      return renderHeadline(benchmark, colors, headlineProvider, chainLabel);
     case "compare":
-      return renderCompare(benchmark, colors, compareA, compareB);
+      return renderCompare(benchmark, colors, compareA, compareB, chainLabel);
     case "leaderboard":
-      return renderLeaderboard(benchmark, colors);
+      return renderLeaderboard(benchmark, colors, chainLabel);
     case "ranking":
     default:
-      return renderRanking(benchmark, colors);
+      return renderRanking(benchmark, colors, chainLabel);
   }
 }
 
 // ─── Ranking · vertical bars ───────────────────────────────────────────
 async function renderRanking(
   benchmark: Benchmark,
-  colors: Map<string, string>
+  colors: Map<string, string>,
+  chainLabel?: string | null
 ) {
   const sorted = sortByP50(benchmark);
   const maxP50 = Math.max(...sorted.map((r) => r.ms.p50)) || 1;
@@ -378,7 +423,7 @@ async function renderRanking(
 
   return new ImageResponse(
     (
-      <CardShell benchmark={benchmark}>
+      <CardShell benchmark={benchmark} chainLabel={chainLabel}>
         <div
           style={{
             display: "flex",
@@ -502,7 +547,8 @@ async function renderRanking(
 // ─── Leaderboard · ranked rows ─────────────────────────────────────────
 async function renderLeaderboard(
   benchmark: Benchmark,
-  colors: Map<string, string>
+  colors: Map<string, string>,
+  chainLabel?: string | null
 ) {
   const sorted = sortByP50(benchmark);
   const maxP50 = Math.max(...sorted.map((r) => r.ms.p50)) || 1;
@@ -512,7 +558,7 @@ async function renderLeaderboard(
 
   return new ImageResponse(
     (
-      <CardShell benchmark={benchmark}>
+      <CardShell benchmark={benchmark} chainLabel={chainLabel}>
         <div
           style={{
             display: "flex",
@@ -655,7 +701,8 @@ async function renderLeaderboard(
 // ─── Snapshot · 24h multi-line ─────────────────────────────────────────
 async function renderSnapshot(
   benchmark: Benchmark,
-  colors: Map<string, string>
+  colors: Map<string, string>,
+  chainLabel?: string | null
 ) {
   const sorted = sortByP50(benchmark);
   const seriesList = sorted
@@ -678,7 +725,7 @@ async function renderSnapshot(
 
   return new ImageResponse(
     (
-      <CardShell benchmark={benchmark}>
+      <CardShell benchmark={benchmark} chainLabel={chainLabel}>
         <div
           style={{
             display: "flex",
@@ -838,7 +885,8 @@ async function renderSnapshot(
 async function renderHeadline(
   benchmark: Benchmark,
   colors: Map<string, string>,
-  featured?: Benchmark["results"][number]
+  featured?: Benchmark["results"][number],
+  chainLabel?: string | null
 ) {
   const sorted = sortByP50(benchmark);
   const winner = featured ?? sorted[0];
@@ -850,7 +898,7 @@ async function renderHeadline(
 
   return new ImageResponse(
     (
-      <CardShell benchmark={benchmark} accentColor={winnerColor}>
+      <CardShell benchmark={benchmark} accentColor={winnerColor} chainLabel={chainLabel}>
         <div
           style={{
             display: "flex",
@@ -946,7 +994,8 @@ async function renderCompare(
   benchmark: Benchmark,
   colors: Map<string, string>,
   paneA?: Benchmark["results"][number],
-  paneB?: Benchmark["results"][number]
+  paneB?: Benchmark["results"][number],
+  chainLabel?: string | null
 ) {
   const sorted = sortByP50(benchmark);
   const a = paneA ?? sorted[0];
@@ -967,7 +1016,7 @@ async function renderCompare(
 
   return new ImageResponse(
     (
-      <CardShell benchmark={benchmark}>
+      <CardShell benchmark={benchmark} chainLabel={chainLabel}>
         <div
           style={{
             display: "flex",

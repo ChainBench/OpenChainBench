@@ -49,9 +49,12 @@ type Props = {
   slug: string;
   title: string;
   benchmark: Benchmark;
+  /** When the bench page is filtered by chain, propagate it to the
+   * share-card so the generated PNG renders with the same scope. */
+  chain?: string | null;
 };
 
-export function ShareSection({ slug, title, benchmark }: Props) {
+export function ShareSection({ slug, title, benchmark, chain }: Props) {
   const [activeId, setActiveId] = useState<string>("ranking");
 
   const orderedProviders = useMemo(
@@ -108,7 +111,8 @@ export function ShareSection({ slug, title, benchmark }: Props) {
   // Build the URL with the right params per template.
   const cardSrc = (templateId: string) => {
     const tpl = TEMPLATES.find((t) => t.id === templateId);
-    const base = `/benchmarks/${slug}/share-card?template=${templateId}`;
+    const chainParam = chain ? `&chain=${encodeURIComponent(chain)}` : "";
+    const base = `/benchmarks/${slug}/share-card?template=${templateId}${chainParam}`;
     if (!tpl) return base;
     if (tpl.pick === "multi") {
       if (
