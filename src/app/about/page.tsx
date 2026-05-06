@@ -10,13 +10,15 @@ export const metadata: Metadata = {
 export default function AboutPage() {
   return (
     <article className="mx-auto max-w-3xl px-6 py-12">
-      <h1 className="display text-3xl sm:text-4xl">
-        About OpenChainBench
-      </h1>
-      <p className="mt-4 text-xl sm:text-2xl text-ink-muted leading-snug">
-        Open, reproducible benchmarks for crypto infrastructure. measured in
-        the open, published in the same format every time.
-      </p>
+      <header className="border-b-2 border-ink pb-6">
+        <h1 className="display text-3xl sm:text-4xl tracking-tight">
+          About OpenChainBench
+        </h1>
+        <p className="mt-3 max-w-3xl text-base sm:text-lg text-ink-soft leading-snug">
+          Open, reproducible benchmarks for crypto infrastructure. Measured in
+          the open, published in the same format every time.
+        </p>
+      </header>
 
       <SectionRule label="Why" number="i" />
       <p className="text-base sm:text-lg leading-relaxed text-ink-soft">
