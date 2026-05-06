@@ -131,6 +131,13 @@ export default async function BenchmarkPage({
             <SectionLabel>Provider ledger</SectionLabel>
             <LedgerTable benchmark={benchmark} />
           </div>
+          <div className="mt-10">
+            <ShareSection
+              slug={benchmark.slug}
+              title={benchmark.title}
+              benchmark={benchmark}
+            />
+          </div>
         </>
       )}
 
@@ -183,6 +190,14 @@ export default async function BenchmarkPage({
               <RegionGrid benchmark={benchmark} />
             </div>
           )}
+
+          <div className="mt-10">
+            <ShareSection
+              slug={benchmark.slug}
+              title={benchmark.title}
+              benchmark={benchmark}
+            />
+          </div>
         </>
       )}
 
@@ -236,15 +251,6 @@ export default async function BenchmarkPage({
           </div>
         </div>
       </details>
-
-      {/* Share / export */}
-      {!isDraft && (
-        <ShareSection
-          slug={benchmark.slug}
-          title={benchmark.title}
-          benchmark={benchmark}
-        />
-      )}
 
       {/* Source code link. bottom of page */}
       {!isDraft && (
