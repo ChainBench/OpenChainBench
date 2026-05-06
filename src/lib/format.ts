@@ -15,7 +15,7 @@ export function fmtUnit(value: number, unit: string) {
   return `${value.toFixed(0)} ms`;
 }
 
-/** Just the unit suffix, with a leading space — used by BigNumber. */
+/** Just the unit suffix, with a leading space. used by BigNumber. */
 export function unitSuffix(unit: string) {
   if (unit === "pct" || unit === "bps") return " %";
   if (unit === "s") return " s";
@@ -23,13 +23,13 @@ export function unitSuffix(unit: string) {
   return " ms";
 }
 
-/** Just the formatted number (no unit) — used by BigNumber where the unit
+/** Just the formatted number (no unit). used by BigNumber where the unit
  * is rendered separately for typography. */
 export function fmtValue(value: number, unit: string): string {
   return fmtUnit(value, unit).replace(/\s*(ms|s|min|%)$/, "");
 }
 
-/** Smart-precision percent formatter — picks decimals based on magnitude
+/** Smart-precision percent formatter. picks decimals based on magnitude
  * so both small fees (0.033%) and large fees (12.50%) read cleanly. */
 function formatPercent(pct: number): string {
   if (pct === 0) return "0%";

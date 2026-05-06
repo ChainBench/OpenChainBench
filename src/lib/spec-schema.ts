@@ -3,7 +3,7 @@
  *
  * A spec is a self-contained YAML file: editorial metadata + Prometheus
  * queries. Everything that appears on a benchmark page comes from one of
- * these — there are no hidden mocks.
+ * these. there are no hidden mocks.
  *
  * The Zod schema below is consumed in three places:
  *   1. The runtime loader (src/lib/spec.ts) parses every YAML through it.
@@ -19,7 +19,7 @@ const slug = z
   .min(1)
   .regex(/^[a-z0-9][a-z0-9-]*$/, "Slug must be lowercase, hyphenated");
 
-/** PromQL — a non-empty string. We don't parse PromQL; that's Prometheus's job. */
+/** PromQL. a non-empty string. We don't parse PromQL; that's Prometheus's job. */
 const promql = z.string().min(1);
 
 const region = z.enum(["us-east", "eu-west", "ap-southeast", "global"]);
@@ -49,7 +49,7 @@ const queries = z
   .optional();
 
 const provider = z.object({
-  /** Stable identifier — also used as the metric label. */
+  /** Stable identifier. also used as the metric label. */
   slug,
   /** Display name. */
   name: z.string().min(1),
@@ -91,7 +91,7 @@ export const SpecSchema = z
     /** ms / s for latencies; pct for fees as percent of notional; bps for basis points. */
     unit: z.enum(["ms", "s", "pct", "bps", "count"]),
     /** True when bigger numbers are better (coverage, count). Default false:
-     * latency, fees, drift — every existing bench is "lower is better". */
+     * latency, fees, drift. every existing bench is "lower is better". */
     higher_is_better: z.boolean().default(false),
 
     /* Editorial copy */

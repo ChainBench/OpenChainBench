@@ -134,7 +134,7 @@ export default async function BenchmarkPage({
         {benchmark.subtitle}
       </p>
 
-      {/* Chain filter tabs — rendered when the spec declares a chain
+      {/* Chain filter tabs. rendered when the spec declares a chain
           dimension. Server re-fetches Prom with `chain="X"` injected. */}
       {chainOptions.length > 0 && (
         <div className="mt-8">
@@ -143,7 +143,7 @@ export default async function BenchmarkPage({
       )}
 
       {/* Count benches: dedicated leaderboard view (no p50/p90/p99,
-          no 24h chart — those are meaningless on a single gauge). */}
+          no 24h chart. those are meaningless on a single gauge). */}
       {!isDraft && benchmark.unit === "count" && (
         <>
           <CountLeaderboard benchmark={benchmark} />
@@ -164,7 +164,7 @@ export default async function BenchmarkPage({
       {/* Latency / cost benches: thin summary strip + 24h chart. */}
       {!isDraft && benchmark.unit !== "count" && (
         <>
-          {/* Thin key-value strip — replaces the 5-BigNumber grid. */}
+          {/* Thin key-value strip. replaces the 5-BigNumber grid. */}
           <dl className="mt-10 grid grid-cols-2 sm:flex sm:flex-wrap items-baseline gap-x-8 gap-y-3 border-y border-rule py-4">
             <SummaryStat
               label="Best"
@@ -326,7 +326,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** Thin key-value pair — replaces the BigNumber boxed grid on bench pages.
+/** Thin key-value pair. replaces the BigNumber boxed grid on bench pages.
  * Renders inline: `LABEL  value (hint)`. Used to summarise a benchmark's
  * field stats without the SaaS-dashboard scaffolding. */
 function SummaryStat({

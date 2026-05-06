@@ -1,26 +1,26 @@
 # Harness · bridge-monitor
 
-> Real-world benchmark of cross-chain bridges. Produces every metric consumed by both [`benchmarks/bridge-quote-latency.yml`](../../benchmarks/bridge-quote-latency.yml) and [`benchmarks/bridge-fee.yml`](../../benchmarks/bridge-fee.yml) — quote latency, cost percent, fees, success rate, end-to-end execution latency.
+> Real-world benchmark of cross-chain bridges. Produces every metric consumed by both [`benchmarks/bridge-quote-latency.yml`](../../benchmarks/bridge-quote-latency.yml) and [`benchmarks/bridge-fee.yml`](../../benchmarks/bridge-fee.yml). quote latency, cost percent, fees, success rate, end-to-end execution latency.
 
 **Benches**:
 
-- [№ 002 · Bridge — Quote Latency](../../benchmarks/bridge-quote-latency.yml)
-- [№ 003 · Bridge — Cost Percent](../../benchmarks/bridge-fee.yml)
+- [№ 002 · Bridge. Quote Latency](../../benchmarks/bridge-quote-latency.yml)
+- [№ 003 · Bridge. Cost Percent](../../benchmarks/bridge-fee.yml)
 
-**Tracked bridges**: Mobula · Relay · Li.Fi (executed) · Debridge (quote-only — flat fees too high for small tickets)
+**Tracked bridges**: Mobula · Relay · Li.Fi (executed) · Debridge (quote-only. flat fees too high for small tickets)
 
 ## How it works
 
 Two loops run simultaneously inside one Go binary:
 
-1. **Quote loop** (free, every 5 minutes) — fetches a quote from every bridge for every route × every notional ($5 / $50 / $300). Records quote latency, fees, slippage, estimated time. All four bridges benchmarked here.
-2. **Execution loop** (paid, fixed UTC times) — actually broadcasts real transactions through Mobula + Relay + Li.Fi. Measures quote → broadcast → settlement end-to-end latency and revert rates. Debridge is excluded from execution.
+1. **Quote loop** (free, every 5 minutes). fetches a quote from every bridge for every route × every notional ($5 / $50 / $300). Records quote latency, fees, slippage, estimated time. All four bridges benchmarked here.
+2. **Execution loop** (paid, fixed UTC times). actually broadcasts real transactions through Mobula + Relay + Li.Fi. Measures quote → broadcast → settlement end-to-end latency and revert rates. Debridge is excluded from execution.
 
 Plus daily P&L cron, wallet balance metrics, pre-flight tier simulation, and per-tier Slack notifications.
 
 ## Where the data goes
 
-This harness is a **data producer only** — it exposes `/metrics` on port `9090` (overridable via `METRICS_PORT`). The shared OpenChainBench Prometheus (see [`/infrastructure/prometheus`](../../infrastructure/prometheus)) scrapes that endpoint:
+This harness is a **data producer only**. it exposes `/metrics` on port `9090` (overridable via `METRICS_PORT`). The shared OpenChainBench Prometheus (see [`/infrastructure/prometheus`](../../infrastructure/prometheus)) scrapes that endpoint:
 
 ```
 bridge-monitor.railway.internal:9090 ──► prometheus.railway.internal ──► public site
@@ -38,7 +38,7 @@ bridge-monitor.railway.internal:9090 ──► prometheus.railway.internal ─�
 Arbitrum USDT ←──R2─── Base USDC
 ```
 
-Capital circulates through the triangle — only bridge fees + gas are consumed. Each tier executes one bridge at a time round-trip, then the next bridge starts a fresh triangle with the replenished wallet (peak capital = 1× tier per leg, not 3×).
+Capital circulates through the triangle. only bridge fees + gas are consumed. Each tier executes one bridge at a time round-trip, then the next bridge starts a fresh triangle with the replenished wallet (peak capital = 1× tier per leg, not 3×).
 
 | Route | From | To | Schedule |
 | --- | --- | --- | --- |
@@ -73,7 +73,7 @@ Capital circulates through the triangle — only bridge fees + gas are consumed.
 | `wallet_balance_usd{chain,token}` | Current USD per leg, refreshed every 5 min |
 | `wallet_balance_last_update_timestamp_seconds` | Last refresh timestamp |
 
-The site reads these via the YAML specs — `bridge-quote-latency.yml` reads `bridge_quote_latency_ms_*`, `bridge-fee.yml` reads `bridge_cost_percent`.
+The site reads these via the YAML specs. `bridge-quote-latency.yml` reads `bridge_quote_latency_ms_*`, `bridge-fee.yml` reads `bridge_cost_percent`.
 
 ## Run locally
 
@@ -85,7 +85,7 @@ go run ./cmd/monitor/
 
 `/metrics` will be exposed on `http://localhost:9090/metrics`.
 
-If `EXECUTION_MODE=dry-run` (default) the monitor only fetches quotes — no transactions, no fees, no wallets needed. Quote-loop metrics still flow normally.
+If `EXECUTION_MODE=dry-run` (default) the monitor only fetches quotes. no transactions, no fees, no wallets needed. Quote-loop metrics still flow normally.
 
 Or via Docker:
 
@@ -115,7 +115,7 @@ This service is deployed from the OpenChainBench repo, root directory `harnesses
 ## Project layout
 
 ```
-cmd/monitor/                       Main binary — quote loop, execution, scheduler
+cmd/monitor/                       Main binary. quote loop, execution, scheduler
   ├── main.go
   ├── config.go                    Env loading
   ├── metrics.go                   Prometheus metric definitions + HTTP /metrics handler
@@ -153,7 +153,7 @@ Dockerfile                         Multi-stage Go build
 
 - Quote: `POST /quote` JSON body
 - TX data: `steps[].items[].data.instructions[]` (Solana) or `steps[].items[].data` (EVM)
-- 2-step EVM (approve + deposit) handled — iterates `steps[]` to find approve before deposit
+- 2-step EVM (approve + deposit) handled. iterates `steps[]` to find approve before deposit
 - Request ID: `steps[].requestId` (deposit step)
 - Status: `GET /intents/status/v3?requestId=...`
 
@@ -166,7 +166,7 @@ Dockerfile                         Multi-stage Go build
 
 ### Debridge
 
-- Quote only — execution disabled because flat native-token fees make $5 tickets unprofitable.
+- Quote only. execution disabled because flat native-token fees make $5 tickets unprofitable.
 
 ## Wallet funding (production mode only)
 
@@ -180,7 +180,7 @@ Dockerfile                         Multi-stage Go build
 | Arbitrum | USDT | $0+ (R2 auto-fills before R3 needs it) | R3 source |
 | Arbitrum | ETH | $5 | Gas (~$0.10/TX) |
 
-Pre-flight `SimulateTriangleCycle` checks the 1× threshold before every scheduled tier — non-viable tiers skip cleanly with a single Slack message.
+Pre-flight `SimulateTriangleCycle` checks the 1× threshold before every scheduled tier. non-viable tiers skip cleanly with a single Slack message.
 
 ## Environment variables
 
@@ -203,13 +203,13 @@ Pre-flight `SimulateTriangleCycle` checks the 1× threshold before every schedul
 
 ## Safety features
 
-1. **Per-tier pre-flight** — full cycle simulated before execution, skip cleanly if not viable.
-2. **Per-route balance check** — secondary guard during `RunReal` (1.05× buffer).
-3. **Daily spending cap** — `MAX_DAILY_SPEND_USD` hard stops runaway.
-4. **Consecutive-failure streak** — 3 fails in a row on the same bridge → critical alert.
-5. **Dry-run / single-test default** — no accidental production runs.
-6. **EVM revert detection** — TX receipt inspected.
-7. **Gas price +50 % bump** on Arbitrum — handles rapid base-fee variance.
+1. **Per-tier pre-flight**. full cycle simulated before execution, skip cleanly if not viable.
+2. **Per-route balance check**. secondary guard during `RunReal` (1.05× buffer).
+3. **Daily spending cap**. `MAX_DAILY_SPEND_USD` hard stops runaway.
+4. **Consecutive-failure streak**. 3 fails in a row on the same bridge → critical alert.
+5. **Dry-run / single-test default**. no accidental production runs.
+6. **EVM revert detection**. TX receipt inspected.
+7. **Gas price +50 % bump** on Arbitrum. handles rapid base-fee variance.
 
 ## Adding a bridge
 
@@ -220,4 +220,4 @@ Pre-flight `SimulateTriangleCycle` checks the 1× threshold before every schedul
 
 ## License
 
-MIT — same as the rest of OpenChainBench.
+MIT. same as the rest of OpenChainBench.

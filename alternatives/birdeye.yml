@@ -6,7 +6,7 @@ benchmark: metadata-coverage
 chain: solana
 
 intro: |
-  Birdeye is a Solana token analytics platform with a price + metadata API. If you need an alternative, one practical axis is metadata completeness — for a freshly-launched Solana token, how often does the API return a populated logo, description, twitter and website? Below is the live percentage for each provider on Solana, refreshed every minute against fresh-launch tokens detected from Mobula Pulse.
+  Birdeye is a Solana token analytics platform with a price + metadata API. If you need an alternative, one practical axis is metadata completeness. for a freshly-launched Solana token, how often does the API return a populated logo, description, twitter and website? Below is the live percentage for each provider on Solana, refreshed every minute against fresh-launch tokens detected from Mobula Pulse.
 
-seo_title: Birdeye alternatives — live Solana metadata coverage benchmark
+seo_title: Birdeye alternatives. live Solana metadata coverage benchmark
 seo_description: Compare Birdeye alternatives on token metadata coverage for Solana. Logo, description, twitter and website availability for freshly-launched tokens, measured live.

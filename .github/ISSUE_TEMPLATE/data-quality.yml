@@ -57,6 +57,6 @@ body:
     id: anything
     attributes:
       label: Anything else
-      description: Context that might help narrow it down — region you're checking from, browser, recent harness changes, related issues.
+      description: Context that might help narrow it down. region you're checking from, browser, recent harness changes, related issues.
     validations:
       required: false

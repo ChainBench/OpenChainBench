@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        OpenChainBench treats every provider equally and corrections in the open. If your numbers disagree with what's published, open this issue — material corrections result in a dated note on the affected report.
+        OpenChainBench treats every provider equally and corrections in the open. If your numbers disagree with what's published, open this issue. material corrections result in a dated note on the affected report.
 
         Please be specific and reproducible. We will not update a number based on screenshots without a method we can re-run.
   - type: dropdown

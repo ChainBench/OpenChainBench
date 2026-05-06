@@ -1,5 +1,5 @@
 name: 📊 Propose a benchmark
-description: Suggest a new benchmark for OpenChainBench. Sketch the metric, the providers, the methodology — the goal is to align before code is written.
+description: Suggest a new benchmark for OpenChainBench. Sketch the metric, the providers, the methodology. the goal is to align before code is written.
 title: "Bench: <short description>"
 labels: ["bench-request"]
 body:
@@ -8,7 +8,7 @@ body:
       value: |
         Thanks for proposing a benchmark.
 
-        OpenChainBench prefers to align on **what** is measured and **how** before any code is written. Fill out the sections below — fields marked required are the bare minimum needed for the maintainers to give meaningful feedback. If you're not sure on some of them, write what you have and leave a note.
+        OpenChainBench prefers to align on **what** is measured and **how** before any code is written. Fill out the sections below. fields marked required are the bare minimum needed for the maintainers to give meaningful feedback. If you're not sure on some of them, write what you have and leave a note.
 
         Have a rough idea but not ready to fill all this? Open a thread in [Discussions → Ideas](https://github.com/OpenChainBench/OpenChainBench/discussions/categories/ideas) instead.
   - type: input
@@ -60,8 +60,8 @@ body:
       label: Where will the harness run?
       description: Light = single HTTP loop, no wallets, no signing. Heavy = wallets, on-chain transactions, capital-at-risk.
       options:
-        - "Light — happy to have OpenChainBench Railway host it"
-        - "Heavy — I'll host on my own infra and push to a public Prom endpoint"
+        - "Light. happy to have OpenChainBench Railway host it"
+        - "Heavy. I'll host on my own infra and push to a public Prom endpoint"
         - "Not sure yet"
     validations:
       required: true

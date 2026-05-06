@@ -12,13 +12,13 @@ const PRINCIPLES = [
     n: "I",
     title: "Identical inputs",
     color: "var(--color-good, #6a9466)",
-    body: "Every provider sees the same request — same pair, same notional, same destination, submitted at the same moment from the same region. If inputs differ, we say so.",
+    body: "Every provider sees the same request. same pair, same notional, same destination, submitted at the same moment from the same region. If inputs differ, we say so.",
   },
   {
     n: "II",
     title: "Honest aggregates",
     color: "var(--color-accent, #c97c5d)",
-    body: "We report p50, p90 and p99 latency along with success rate. Means are reported but never used as a headline — tail behaviour is what users feel.",
+    body: "We report p50, p90 and p99 latency along with success rate. Means are reported but never used as a headline. tail behaviour is what users feel.",
   },
   {
     n: "III",
@@ -70,7 +70,7 @@ const CONVENTIONS = [
 const STEPS = [
   "Clone the harness from the link at the bottom of any benchmark report.",
   "Set API keys for the providers you want to include. Public endpoints work for most aggregators; some bridges require allow-listing.",
-  "Run the harness — it exposes /metrics over HTTP. Point a local Prometheus at it, or query the public OpenChainBench Prometheus directly.",
+  "Run the harness. it exposes /metrics over HTTP. Point a local Prometheus at it, or query the public OpenChainBench Prometheus directly.",
   "Run for at least 24 hours to get a comparable sample size (n typically ≥ 1,000 per provider per region).",
   "Compare your aggregates to the published numbers. If they diverge, file a provider correction with a reproducer.",
 ] as const;
@@ -93,7 +93,7 @@ export default function MethodologyPage() {
         </p>
       </header>
 
-      {/* Section: Design principles — colored grid */}
+      {/* Section: Design principles. colored grid */}
       <section className="mt-14">
         <SectionHeader number="I" label="Design principles" />
         <ol className="mt-6 grid gap-px bg-rule border border-rule sm:grid-cols-2">
@@ -129,7 +129,7 @@ export default function MethodologyPage() {
         </ol>
       </section>
 
-      {/* Section: Statistical conventions — ledger-style def list with
+      {/* Section: Statistical conventions. ledger-style def list with
           a left rule that fills in on hover (subtle, alive) */}
       <section className="mt-16">
         <SectionHeader number="II" label="Statistical conventions" />
@@ -148,12 +148,12 @@ export default function MethodologyPage() {
         </dl>
       </section>
 
-      {/* Section: Reproducing — recipe with animated connecting rail and
+      {/* Section: Reproducing. recipe with animated connecting rail and
           number that scales on hover */}
       <section className="mt-16">
         <SectionHeader number="III" label="Reproducing a result" />
         <ol className="mt-6 relative">
-          {/* Vertical rail — fills with accent gradient on container hover */}
+          {/* Vertical rail. fills with accent gradient on container hover */}
           <span
             className="absolute left-[calc(0.75rem+1px)] top-2 bottom-2 w-px bg-rule pointer-events-none"
             aria-hidden
@@ -176,7 +176,7 @@ export default function MethodologyPage() {
         </ol>
       </section>
 
-      {/* Section: Corrections — callout with a subtle pulsing accent dot */}
+      {/* Section: Corrections. callout with a subtle pulsing accent dot */}
       <section className="mt-16">
         <SectionHeader number="IV" label="Corrections" />
         <div

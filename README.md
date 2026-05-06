@@ -1,15 +1,15 @@
 # OpenChainBench
 
-> Open, reproducible benchmarks for crypto infrastructure — aggregators, bridges, RPCs, price feeds. Same metric, same conditions, every provider. Live at [openchainbench.com](https://openchainbench.com).
+> Open, reproducible benchmarks for crypto infrastructure. aggregators, bridges, RPCs, price feeds. Same metric, same conditions, every provider. Live at [openchainbench.com](https://openchainbench.com).
 
-OpenChainBench publishes one benchmark at a time, each one shipping with the script that produces its data. The goal is to make performance an observable property of crypto infra — measured in the open, by anyone who wants to add a provider or a metric.
+OpenChainBench publishes one benchmark at a time, each one shipping with the script that produces its data. The goal is to make performance an observable property of crypto infra. measured in the open, by anyone who wants to add a provider or a metric.
 
 The project is community-run, MIT-licensed, and accepts PRs from any party including the providers it benchmarks.
 
 ## What's inside
 
 ```
-benchmarks/                 Spec files — one YAML per published benchmark
+benchmarks/                 Spec files. one YAML per published benchmark
 ├── aggregator-head-lag.yml     №001 · onchain data provider latency
 ├── bridge-quote-latency.yml    №002 · cross-chain bridge quote latency
 ├── bridge-fee.yml              №003 · cross-chain bridge effective fee
@@ -30,7 +30,7 @@ infrastructure/             Shared services every harness depends on
 └── prometheus/             Single shared Prometheus that scrapes all harnesses
 
 src/                        Next.js 16 site (App Router, ISR, Tailwind v4)
-├── app/                    Pages — overview, benchmarks index, [slug] reports, alternatives
+├── app/                    Pages. overview, benchmarks index, [slug] reports, alternatives
 ├── components/             time-series-chart, ledger-table, region-grid, chain-tabs, …
 ├── data/                   Spec loader (YAML → Prometheus → Benchmark[])
 └── lib/                    Prometheus client, spec schema (Zod), formatting, ranking
@@ -39,7 +39,7 @@ scripts/                    pnpm validate, pnpm spec:dry-run
 docs/                       Methodology, ADRs, style guide
 ```
 
-## How a benchmark gets data — federation
+## How a benchmark gets data. federation
 
 OpenChainBench is a federation of independently-hosted harnesses connected by a single shared Prometheus.
 
@@ -63,7 +63,7 @@ OpenChainBench is a federation of independently-hosted harnesses connected by a 
                           (Next.js site on Vercel, ISR 60s)
 ```
 
-Each harness is run by whoever wrote it — Mobula for the existing aggregator and bridge benchmarks, independent contributors for any future ones, providers for self-benchmarks of their own services. They never share API keys with the project. They expose `/metrics` over HTTPS and the OpenChainBench Prometheus scrapes the public URL.
+Each harness is run by whoever wrote it. Mobula for the existing aggregator and bridge benchmarks, independent contributors for any future ones, providers for self-benchmarks of their own services. They never share API keys with the project. They expose `/metrics` over HTTPS and the OpenChainBench Prometheus scrapes the public URL.
 
 The site queries the shared Prometheus URL declared in each YAML spec via the standard Prometheus HTTP API (`/api/v1/query`, `/api/v1/query_range`). ISR caches the response on Vercel's edge for 60 s.
 
@@ -71,9 +71,9 @@ The site queries the shared Prometheus URL declared in each YAML spec via the st
 
 | Layer | Where it runs | Notes |
 |---|---|---|
-| Site (Next.js, ISR) | Vercel | Static pages with 60s revalidate, edge cache. Zero secrets — only queries the public Prom URL. |
+| Site (Next.js, ISR) | Vercel | Static pages with 60s revalidate, edge cache. Zero secrets. only queries the public Prom URL. |
 | Prometheus | A small Railway service | The only piece of shared OpenChainBench infrastructure. Open access (read-only public API). |
-| Harnesses | Wherever the contributor wants to host them | Railway, Fly, Cloud Run, a VPS — each contributor owns their own runtime, secrets, and budget. |
+| Harnesses | Wherever the contributor wants to host them | Railway, Fly, Cloud Run, a VPS. each contributor owns their own runtime, secrets, and budget. |
 
 The split is intentional: Vercel for the globally-cached read path, Prometheus for the time-series store, and any compute platform for the long-running data producers. Nobody other than the harness operator needs the harness's secrets.
 
@@ -94,7 +94,7 @@ pnpm build               # production build
 
 ## Running a harness locally
 
-Each harness is a standalone Go binary that exposes `/metrics` on a documented port (`:2112` for aggregator, `:9090` for bridge). They have no Prometheus / Grafana dependencies — that lives in [`infrastructure/`](./infrastructure/) and is shared.
+Each harness is a standalone Go binary that exposes `/metrics` on a documented port (`:2112` for aggregator, `:9090` for bridge). They have no Prometheus / Grafana dependencies. that lives in [`infrastructure/`](./infrastructure/) and is shared.
 
 ```bash
 cd harnesses/aggregator-head-lag
@@ -108,14 +108,14 @@ To render the site against your local harness, run a local Prometheus scraping `
 
 Full guide in [CONTRIBUTING.md](./CONTRIBUTING.md). For a concrete end-to-end example, read [`docs/walkthrough.md`](./docs/walkthrough.md). Short version:
 
-1. **Open an issue** with the [📊 Propose a benchmark template](https://github.com/OpenChainBench/OpenChainBench/issues/new?template=new-benchmark.yml). Sketch the metric, providers, methodology — get feedback before you build. Want to brainstorm first? Use [Discussions → Ideas](https://github.com/OpenChainBench/OpenChainBench/discussions/categories/ideas) instead.
+1. **Open an issue** with the [📊 Propose a benchmark template](https://github.com/OpenChainBench/OpenChainBench/issues/new?template=new-benchmark.yml). Sketch the metric, providers, methodology. get feedback before you build. Want to brainstorm first? Use [Discussions → Ideas](https://github.com/OpenChainBench/OpenChainBench/discussions/categories/ideas) instead.
 2. **Write the spec** at `benchmarks/<slug>.yml`. Format documented in [`benchmarks/README.md`](./benchmarks/README.md), validated by `src/lib/spec-schema.ts`.
-3. **Build the harness** in `harnesses/<slug>/`. Any language works as long as it exposes `/metrics` over HTTPS with the metric names and labels your spec references. The harness is a data producer only — no Prometheus, Grafana, or Alertmanager packaging.
-4. **Deploy the harness** on whatever infra fits — Railway, Fly, Cloud Run, a VPS, even a home server with a static IP. Expose `/metrics` over HTTPS at a stable public URL. You own the runtime, the secrets and the budget.
+3. **Build the harness** in `harnesses/<slug>/`. Any language works as long as it exposes `/metrics` over HTTPS with the metric names and labels your spec references. The harness is a data producer only. no Prometheus, Grafana, or Alertmanager packaging.
+4. **Deploy the harness** on whatever infra fits. Railway, Fly, Cloud Run, a VPS, even a home server with a static IP. Expose `/metrics` over HTTPS at a stable public URL. You own the runtime, the secrets and the budget.
 5. **Add a scrape entry** to `infrastructure/prometheus/prometheus.yml` pointing at your public URL so the shared Prometheus picks up your harness.
 6. **Open a PR.** CI runs schema validation, typecheck, lint, and build. Once merged, a maintainer redeploys the central Prometheus and the site renders your benchmark on the next ISR cycle (≤ 60 s).
 
-You never share API keys or wallet keys with the project. Your harness runs with your credentials, on your infra, on your budget — the maintainers only see the metric values your harness chooses to publish.
+You never share API keys or wallet keys with the project. Your harness runs with your credentials, on your infra, on your budget. the maintainers only see the metric values your harness chooses to publish.
 
 ## Editorial conventions
 
@@ -136,18 +136,18 @@ You never share API keys or wallet keys with the project. Your harness runs with
 
 ## Community
 
-- 💡 [Discussions → Ideas](https://github.com/OpenChainBench/OpenChainBench/discussions/categories/ideas) — brainstorm new benchmarks before writing them up
-- 🙋 [Discussions → Q&A](https://github.com/OpenChainBench/OpenChainBench/discussions/categories/q-a) — methodology / harness / spec questions
-- 📊 [Discussions → Show & tell](https://github.com/OpenChainBench/OpenChainBench/discussions/categories/show-and-tell) — share forks and dashboards
-- 🗺️ [Roadmap](https://github.com/orgs/OpenChainBench/projects) — what's planned and what's live
-- 🐞 [New issue](https://github.com/OpenChainBench/OpenChainBench/issues/new/choose) — formal benchmark proposal, data-quality flag, or provider correction
+- 💡 [Discussions → Ideas](https://github.com/OpenChainBench/OpenChainBench/discussions/categories/ideas). brainstorm new benchmarks before writing them up
+- 🙋 [Discussions → Q&A](https://github.com/OpenChainBench/OpenChainBench/discussions/categories/q-a). methodology / harness / spec questions
+- 📊 [Discussions → Show & tell](https://github.com/OpenChainBench/OpenChainBench/discussions/categories/show-and-tell). share forks and dashboards
+- 🗺️ [Roadmap](https://github.com/orgs/OpenChainBench/projects). what's planned and what's live
+- 🐞 [New issue](https://github.com/OpenChainBench/OpenChainBench/issues/new/choose). formal benchmark proposal, data-quality flag, or provider correction
 - See [SUPPORT.md](./.github/SUPPORT.md) for the full triage matrix.
 
 ## Links
 
-- Site — [openchainbench.com](https://openchainbench.com)
-- Twitter — [@openchainbench](https://twitter.com/openchainbench)
-- GitHub — [OpenChainBench/OpenChainBench](https://github.com/OpenChainBench/OpenChainBench)
+- Site. [openchainbench.com](https://openchainbench.com)
+- Twitter. [@openchainbench](https://twitter.com/openchainbench)
+- GitHub. [OpenChainBench/OpenChainBench](https://github.com/OpenChainBench/OpenChainBench)
 
 ## License
 

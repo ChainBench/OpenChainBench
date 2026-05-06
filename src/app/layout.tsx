@@ -36,11 +36,11 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL("https://openchainbench.com"),
   title: {
-    default: "OpenChainBench — Open benchmarks for crypto infrastructure",
+    default: "OpenChainBench. Open benchmarks for crypto infrastructure",
     template: "%s · OpenChainBench",
   },
   description:
-    "Open, reproducible benchmarks for the multichain stack — aggregators, bridges, RPCs, price feeds.",
+    "Open, reproducible benchmarks for the multichain stack. aggregators, bridges, RPCs, price feeds.",
   openGraph: {
     title: "OpenChainBench",
     description: "Open, reproducible benchmarks for the multichain stack.",

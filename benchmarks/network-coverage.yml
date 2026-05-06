@@ -15,7 +15,7 @@ abstract: |
   We benchmark how many networks each major onchain data provider lists
   in its public "supported networks" endpoint. The harness fetches the
   official listing every six hours from GeckoTerminal, Codex and Mobula,
-  deduplicates by chain id and counts. Mainnet only — testnets are
+  deduplicates by chain id and counts. Mainnet only. testnets are
   excluded because providers list them inconsistently and the comparison
   is meant to reflect what a builder can integrate against in production.
   Coverage breadth is one dimension of a data provider's product, not a
@@ -29,7 +29,7 @@ methodology:
   - "Mobula: GET /api/1/blockchains with an Authorization API key."
   - "Cadence: full refresh every 6 hours."
   - "Counting: a provider's network is counted once per unique chain id; mainnet only."
-  - "Failures (network errors, rate limits, auth errors) leave the previous count in place and increment a fetch_errors counter — the page falls back to its last successful sample."
+  - "Failures (network errors, rate limits, auth errors) leave the previous count in place and increment a fetch_errors counter. the page falls back to its last successful sample."
 
 findings: []
 

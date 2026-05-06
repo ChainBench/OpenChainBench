@@ -3,7 +3,7 @@
  *
  * Reads every YAML file in `benchmarks/`, validates it against the schema,
  * queries Prometheus for live numbers, and returns a `Benchmark[]` ready
- * for rendering. There are no fallback mocks — if Prometheus has nothing,
+ * for rendering. There are no fallback mocks. if Prometheus has nothing,
  * the benchmark renders in a "draft" state (page shows the editorial
  * metadata, but the results section is replaced by a "Awaiting first run"
  * notice).
@@ -241,7 +241,7 @@ function draftBenchmark(
   spec: Spec,
   editorial: Omit<Benchmark, "results" | "extras" | "sampleSize" | "lastRunAt">
 ): Benchmark {
-  // Render the page even when Prometheus has no data yet — the editorial
+  // Render the page even when Prometheus has no data yet. the editorial
   // metadata is still useful, and the results section shows "awaiting first
   // run" so readers know what's happening.
   const results: ProviderResult[] = spec.providers.map((p) => ({

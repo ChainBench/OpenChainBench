@@ -18,13 +18,13 @@ The delta is exported as a Prometheus gauge (`head_lag_seconds`), labelled by ag
 
 ## Where the data goes
 
-This harness is a **data producer only** — it exposes `/metrics` on port `2112`. The shared OpenChainBench Prometheus (see [`/infrastructure/prometheus`](../../infrastructure/prometheus)) scrapes that endpoint over Railway's internal DNS:
+This harness is a **data producer only**. it exposes `/metrics` on port `2112`. The shared OpenChainBench Prometheus (see [`/infrastructure/prometheus`](../../infrastructure/prometheus)) scrapes that endpoint over Railway's internal DNS:
 
 ```
 aggregator-head-lag.railway.internal:2112 ──► prometheus.railway.internal ──► public site
 ```
 
-A contributor running locally just needs `/metrics` reachable from their Prom scraper — nothing else.
+A contributor running locally just needs `/metrics` reachable from their Prom scraper. nothing else.
 
 ## Metrics produced
 
@@ -75,12 +75,12 @@ This service is deployed from the OpenChainBench repo, root directory `harnesses
 | `MOBULA_WS_URL` | Override the Mobula WS endpoint | optional |
 | `MONITOR_REGION` | Label written on every metric (e.g. `us-east`) | recommended |
 
-A monitor with no key for a given aggregator is skipped cleanly — the harness will run for whatever providers it can authenticate with.
+A monitor with no key for a given aggregator is skipped cleanly. the harness will run for whatever providers it can authenticate with.
 
 ## Project layout
 
 ```
-cmd/script/                 Single Go binary — all monitors + Prometheus exporter
+cmd/script/                 Single Go binary. all monitors + Prometheus exporter
   ├── main.go               Entrypoint, supervises goroutines per aggregator
   ├── config.go             Env-var loader
   ├── metrics.go            Prometheus metric definitions + HTTP /metrics handler
@@ -119,4 +119,4 @@ If a specific aggregator silently emits nothing: most often the API key is missi
 
 ## License
 
-MIT — same as the rest of OpenChainBench.
+MIT. same as the rest of OpenChainBench.

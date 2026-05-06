@@ -7,7 +7,7 @@ import { buildProviderColors } from "@/lib/series-colors";
  * Dedicated view for `count` / coverage benches where p50/p90/p99 are
  * meaningless (the value is a single gauge) and a 24-hour latency chart
  * collapses to a flat line. Renders a podium + a horizontal comparison
- * bar instead — the two visualizations that actually carry information
+ * bar instead. the two visualizations that actually carry information
  * for this metric shape.
  */
 export function CountLeaderboard({ benchmark }: { benchmark: Benchmark }) {
@@ -23,7 +23,7 @@ export function CountLeaderboard({ benchmark }: { benchmark: Benchmark }) {
 
   return (
     <>
-      {/* Thin summary strip — matches the latency-bench layout. */}
+      {/* Thin summary strip. matches the latency-bench layout. */}
       <dl className="mt-10 grid grid-cols-2 sm:flex sm:flex-wrap items-baseline gap-x-8 gap-y-3 border-y border-rule py-4">
         <CountStat
           label="Leader"
@@ -42,7 +42,7 @@ export function CountLeaderboard({ benchmark }: { benchmark: Benchmark }) {
         />
       </dl>
 
-      {/* Horizontal bars — the comparison that actually reads */}
+      {/* Horizontal bars. the comparison that actually reads */}
       <div className="mt-12">
         <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted">
           {benchmark.metric} · by provider
