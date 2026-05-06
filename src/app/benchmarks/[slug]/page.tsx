@@ -115,7 +115,7 @@ export default async function BenchmarkPage({
       </div>
 
       {/* Title */}
-      <h1 className="mt-5 display text-4xl sm:text-5xl md:text-6xl tracking-tight">
+      <h1 className="mt-5 display text-3xl sm:text-4xl md:text-5xl tracking-tight">
         {benchmark.title}
       </h1>
       <p className="mt-4 max-w-3xl text-lg sm:text-xl text-ink-soft leading-snug">
