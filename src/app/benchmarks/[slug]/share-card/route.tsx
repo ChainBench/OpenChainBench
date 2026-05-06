@@ -15,6 +15,27 @@ function sortByP50(b: Benchmark): ProviderResult[] {
   );
 }
 
+/** Direction-aware comparison label for the Compare card centre cell.
+ *  delta = b - a, where a is the leader (rank 1).
+ *  - Latency / time benches: a is faster, b is "slower by".
+ *  - Cost / fee (pct lower is better): a is cheaper, b is "more expensive by".
+ *  - Coverage / count (higher is better): a covers more, b "covers less".
+ */
+function compareLabel(b: Benchmark, delta: number): string {
+  const isCost = b.unit === "pct" || b.unit === "bps";
+  const isLatency = b.unit === "ms" || b.unit === "s";
+  if (b.higherIsBetter) {
+    return delta >= 0 ? "Covers less by" : "Covers more by";
+  }
+  if (isCost) {
+    return delta >= 0 ? "More expensive by" : "Cheaper by";
+  }
+  if (isLatency) {
+    return delta >= 0 ? "Slower by" : "Faster by";
+  }
+  return delta >= 0 ? "Higher by" : "Lower by";
+}
+
 export const runtime = "nodejs";
 
 const SIZE = { width: 1200, height: 630 };
@@ -1025,7 +1046,7 @@ async function renderCompare(
                   fontWeight: 600,
                 }}
               >
-                {delta >= 0 ? "Slower by" : "Faster by"}
+                {compareLabel(benchmark, delta)}
               </div>
               <div
                 style={{
