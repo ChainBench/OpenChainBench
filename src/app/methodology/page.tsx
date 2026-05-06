@@ -79,7 +79,7 @@ export default function MethodologyPage() {
   return (
     <article className="mx-auto max-w-5xl px-6 py-12">
       {/* Hero */}
-      <header className="border-b border-rule pb-6">
+      <header className="border-b-2 border-ink pb-6">
         <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-faint">
           Editorial standard · last reviewed 2026-05-06
         </p>

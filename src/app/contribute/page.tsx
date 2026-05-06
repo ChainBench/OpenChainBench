@@ -180,7 +180,7 @@ export default function ContributePage() {
   return (
     <article className="mx-auto max-w-5xl px-6 py-12">
       {/* Hero */}
-      <header className="border-b border-rule pb-6">
+      <header className="border-b-2 border-ink pb-6">
         <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-faint">
           Tutorial · ~3-4 hours of focused work
         </p>
