@@ -9,11 +9,14 @@ export function fmtUnit(value: number, unit: string) {
     const ms = value;
     const s = ms / 1000;
     if (s >= 60) return `${(s / 60).toFixed(1)} min`;
-    // Sub-second values come from RPCs whose timestamps round to the
-    // whole second. We can't honestly show "0.0 s" for chains that
-    // finalize in <1 s. surface that explicitly.
     if (ms === 0) return "<1 s";
-    if (s < 10) return `${Math.round(ms)} ms`;
+    // If the value is at whole-second resolution (chain timestamps were
+    // seconds), render in s — avoids "1000 ms" reading bigger than "<1 s"
+    // for chains in the same ballpark. Otherwise show ms precision.
+    if (s < 10) {
+      const isWholeSecond = ms % 1000 === 0;
+      return isWholeSecond ? `${s.toFixed(0)} s` : `${Math.round(ms)} ms`;
+    }
     return `${s.toFixed(1)} s`;
   }
   if (unit === "count") return value.toLocaleString();
