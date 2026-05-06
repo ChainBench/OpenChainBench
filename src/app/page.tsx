@@ -25,7 +25,7 @@ export default async function HomePage() {
             Open-source KPIs from onchain products.
           </h1>
           <p className="mt-4 max-w-2xl text-base sm:text-lg text-ink-soft leading-snug">
-            Real-time latency, cost and reliability data for the multichain stack. Aggregators, bridges, RPCs, price feeds. Same metric, same conditions, every provider.
+            Benchmark & monitor key metrics from the best onchain products through transparent live-running ingests.
           </p>
         </div>
       </section>
