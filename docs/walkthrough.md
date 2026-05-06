@@ -35,7 +35,7 @@ Alex creates `benchmarks/wallet-portfolio-latency.yml`:
 
 ```yaml
 slug: wallet-portfolio-latency
-number: "005"
+number: "999"  # walkthrough placeholder; pick the next free number when you ship
 title: Wallet Portfolio API. Read Latency
 subtitle: How fast each wallet API returns a complete portfolio for a busy address.
 category: Wallets
