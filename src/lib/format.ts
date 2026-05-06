@@ -10,14 +10,12 @@ export function fmtUnit(value: number, unit: string) {
     const s = ms / 1000;
     if (s >= 60) return `${(s / 60).toFixed(1)} min`;
     if (ms === 0) return "<1 s";
-    // If the value is at whole-second resolution (chain timestamps were
-    // seconds), render in s — avoids "1000 ms" reading bigger than "<1 s"
-    // for chains in the same ballpark. Otherwise show ms precision.
-    if (s < 10) {
-      const isWholeSecond = ms % 1000 === 0;
-      return isWholeSecond ? `${s.toFixed(0)} s` : `${Math.round(ms)} ms`;
-    }
-    return `${s.toFixed(1)} s`;
+    // Sub-10s: render as "X.Y s" so all chains in the same ballpark
+    // read with the same units (avoids "1 s" next to "1096 ms" for
+    // values 100ms apart). Sub-second precision is preserved as 0.1 s
+    // rather than ms — fine grain enough for finality comparison.
+    if (s < 10) return `${s.toFixed(1)} s`;
+    return `${s.toFixed(0)} s`;
   }
   if (unit === "count") return value.toLocaleString();
   if (value >= 1000) return `${(value / 1000).toFixed(2)} s`;
