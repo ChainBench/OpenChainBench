@@ -150,10 +150,10 @@ export function ShareSection({ slug, title, benchmark }: Props) {
   }
 
   return (
-    <details className="mt-1 group border-t border-rule">
+    <details open className="mt-1 group border-t border-rule">
       <summary className="flex cursor-pointer items-center justify-between py-4 list-none">
         <span className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink">
-          Share · export · embed
+          View as image · 5 layouts
         </span>
         <ChevronDown
           size={16}
