@@ -28,7 +28,7 @@ export async function generateMetadata({
   if (!alt) return {};
   const title =
     alt.seo_title ??
-    `${alt.target_product} alternatives — live benchmark · OpenChainBench`;
+    `${alt.target_product} alternatives. live benchmark · OpenChainBench`;
   const description = alt.seo_description ?? alt.intro.slice(0, 200);
   const url = `${SITE.url}/alternatives/${alt.slug}`;
   return {
@@ -102,7 +102,7 @@ export default async function AlternativePage({
         </p>
       )}
 
-      {/* Reuse bench rendering — count vs latency split, same as the
+      {/* Reuse bench rendering. count vs latency split, same as the
           /benchmarks/[slug] page. */}
       {!isDraft && bench.unit === "count" && (
         <>

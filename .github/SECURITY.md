@@ -2,7 +2,7 @@
 
 ## Reporting a vulnerability
 
-Open a [private security advisory](https://github.com/OpenChainBench/OpenChainBench/security/advisories/new) on this repository. Do **not** open a public issue for a security report — the advisory mechanism keeps the disclosure private until a fix is in place.
+Open a [private security advisory](https://github.com/OpenChainBench/OpenChainBench/security/advisories/new) on this repository. Do **not** open a public issue for a security report. the advisory mechanism keeps the disclosure private until a fix is in place.
 
 If GitHub is not an option, email **security@openchainbench.com** with:
 
@@ -19,7 +19,7 @@ In-scope:
 - The Next.js site (`src/`).
 - The published harnesses (`harnesses/`).
 - The Prometheus / Grafana / Alertmanager configurations under `harnesses/<bench>/deploy/`.
-- The benchmark specs (`benchmarks/*.yml`) — particularly any spec that could exfiltrate secrets through a malformed Prometheus URL.
+- The benchmark specs (`benchmarks/*.yml`). particularly any spec that could exfiltrate secrets through a malformed Prometheus URL.
 
 Out-of-scope:
 
@@ -38,7 +38,7 @@ We assign CVEs (via GitHub) for:
 
 ## What's already disclosed
 
-If you find a hardcoded secret in the git history (e.g. an old API key, a wallet token), please open a private advisory anyway — the secret should be rotated even if the value has been replaced in HEAD. We monitor `git log -p` for these but report them in any case.
+If you find a hardcoded secret in the git history (e.g. an old API key, a wallet token), please open a private advisory anyway. the secret should be rotated even if the value has been replaced in HEAD. We monitor `git log -p` for these but report them in any case.
 
 ## Preferred languages
 

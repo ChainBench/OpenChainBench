@@ -5,7 +5,7 @@ description: GraphQL API for blockchain data, multi-chain
 benchmark: network-coverage
 
 intro: |
-  Bitquery is a GraphQL data API covering many chains. If you're sizing alternatives, the first axis is breadth — how many networks does each provider officially support? Below is the live count from each major onchain data provider, scraped from their public supported-networks endpoint and refreshed every six hours.
+  Bitquery is a GraphQL data API covering many chains. If you're sizing alternatives, the first axis is breadth. how many networks does each provider officially support? Below is the live count from each major onchain data provider, scraped from their public supported-networks endpoint and refreshed every six hours.
 
-seo_title: Bitquery alternatives — live network coverage benchmark
+seo_title: Bitquery alternatives. live network coverage benchmark
 seo_description: Compare Bitquery alternatives on the number of blockchains each major onchain data provider officially supports. Live data, refreshed every six hours.

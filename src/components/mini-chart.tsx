@@ -3,8 +3,8 @@ import { buildProviderColors } from "@/lib/series-colors";
 
 /**
  * Compact multi-line chart for bench cards. Same visual language as the
- * full TimeSeriesChart on the bench detail page — every provider gets a
- * line in their signature color — but stripped of axes, hover and tabs.
+ * full TimeSeriesChart on the bench detail page. every provider gets a
+ * line in their signature color. but stripped of axes, hover and tabs.
  * Reads `series24h` from the benchmark's `extras` payload.
  */
 
@@ -92,7 +92,7 @@ export function MiniChart({
                 vectorEffect="non-scaling-stroke"
                 points={points}
               />
-              {/* Live pulse halo — animated outward */}
+              {/* Live pulse halo. animated outward */}
               <circle cx={lastX} cy={lastY} r={2} fill={color} opacity={0.35}>
                 <animate
                   attributeName="r"

@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 /**
- * `pnpm spec:dry-run <slug>` — fetches a single benchmark from Prometheus
+ * `pnpm spec:dry-run <slug>`. fetches a single benchmark from Prometheus
  * exactly the way the website does, and prints the resolved Benchmark
  * object as JSON. Useful when you're tweaking a YAML and want to confirm
  * the queries return what you expect before opening a PR.
@@ -62,7 +62,7 @@ async function main() {
     );
   }
 
-  // Series check per provider — what TimeSeriesChart actually plots
+  // Series check per provider. what TimeSeriesChart actually plots
   console.log("\nSERIES (per provider):");
   const win = parseDurationSec(spec.prometheus?.window ?? "24h") ?? 86_400;
   for (const p of spec.providers) {
@@ -74,7 +74,7 @@ async function main() {
     const s = await prom.series(q.series, win, 72);
     if (s == null) {
       console.log(
-        `  ${p.slug.padEnd(18)} ✗ NULL — no data returned. Provider will be MISSING from time-series chart.`
+        `  ${p.slug.padEnd(18)} ✗ NULL. no data returned. Provider will be MISSING from time-series chart.`
       );
       // Probe the raw query to see what Prometheus says
       try {
@@ -109,7 +109,7 @@ async function main() {
 }
 
 function fmt(v: number | null) {
-  if (v == null) return "  —  ";
+  if (v == null) return " .  ";
   return Number.isFinite(v) ? v.toFixed(3).padStart(8, " ") : "  NaN  ";
 }
 

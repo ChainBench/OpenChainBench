@@ -17,7 +17,7 @@ export default async function HomePage() {
 
   return (
     <>
-      {/* Hero — masthead carries the live-status ticker, so the hero
+      {/* Hero. masthead carries the live-status ticker, so the hero
           stays editorial: dek + lead paragraph, nothing else. */}
       <section className="px-4 pt-16 sm:pt-20 pb-2">
         <div className="mx-auto max-w-6xl">
@@ -33,7 +33,7 @@ export default async function HomePage() {
       {/* Reports table */}
       <section id="latest" className="px-4 pt-12 pb-12 sm:pt-16 sm:pb-16 scroll-mt-16">
         <div className="mx-auto max-w-6xl">
-          {/* Table head — same grid as rows so columns align cleanly. */}
+          {/* Table head. same grid as rows so columns align cleanly. */}
           <div
             className="hidden sm:grid grid-cols-[2.5rem_minmax(0,1.4fr)_minmax(0,1fr)_6rem] items-end gap-4 sm:gap-6 border-b-2 border-ink pb-2 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted"
             role="row"
@@ -43,7 +43,7 @@ export default async function HomePage() {
             <span>24 Hours</span>
             <span className="text-right">Value</span>
           </div>
-          {/* Mobile head — single line */}
+          {/* Mobile head. single line */}
           <div className="sm:hidden flex items-end justify-between border-b-2 border-ink pb-2 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
             <span>Benchmark</span>
             <span>Value</span>
@@ -98,7 +98,7 @@ export default async function HomePage() {
                         )}
                       </div>
 
-                      {/* Headline value — provider name + leader caption removed */}
+                      {/* Headline value. provider name + leader caption removed */}
                       <div className="hidden sm:flex justify-end items-baseline">
                         {lead && !isDraft ? (
                           <span className="font-mono tabular text-base sm:text-lg text-ink leading-none">

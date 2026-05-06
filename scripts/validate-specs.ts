@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 /**
- * `pnpm validate` — lint every benchmarks/*.yml file against the spec
+ * `pnpm validate`. lint every benchmarks/*.yml file against the spec
  * schema. Exits non-zero on any error. Run in CI on every PR.
  */
 
@@ -63,7 +63,7 @@ async function main() {
       issues.push({
         file: f,
         level: "error",
-        message: `duplicate slug "${spec.slug}" — also defined in ${seenSlugs.get(spec.slug)}`,
+        message: `duplicate slug "${spec.slug}". also defined in ${seenSlugs.get(spec.slug)}`,
       });
     } else {
       seenSlugs.set(spec.slug, f);
@@ -74,7 +74,7 @@ async function main() {
       issues.push({
         file: f,
         level: "error",
-        message: `duplicate number "${spec.number}" — also used by ${seenNumbers.get(spec.number)}`,
+        message: `duplicate number "${spec.number}". also used by ${seenNumbers.get(spec.number)}`,
       });
     } else {
       seenNumbers.set(spec.number, f);

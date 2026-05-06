@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
  * Auto-updating "X seconds/minutes ago" timestamp. Renders the same string
  * the server produced on first paint so hydration matches, then re-formats
  * client-side every 15 seconds. Adds the live feel without re-fetching
- * data — the timestamps just keep ageing on screen.
+ * data. the timestamps just keep ageing on screen.
  */
 export function LiveTimestamp({ at, fallback }: { at: string; fallback: string }) {
   const [label, setLabel] = useState(fallback);

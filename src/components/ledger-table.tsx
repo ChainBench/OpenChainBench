@@ -8,7 +8,7 @@ type Props = {
 };
 
 /**
- * Dense KPI ledger — every provider rendered in its signature color
+ * Dense KPI ledger. every provider rendered in its signature color
  * (matched to the time-series chart) so a reader can scan rows and lines
  * without re-reading the legend. The colour assignment is purely an aid
  * to recognition; sort order remains mechanical (ascending p50) and no
@@ -28,7 +28,7 @@ export function LedgerTable({ benchmark }: Props) {
   const sparkMin = allSeries.length ? Math.min(...allSeries) : 0;
   const sparkMax = allSeries.length ? Math.max(...allSeries) : 1;
 
-  // Maximum p50 across the field — used to size the inline data bar
+  // Maximum p50 across the field. used to size the inline data bar
   const maxP50 = Math.max(...results.map((r) => r.ms.p50)) || 1;
 
   const fieldP50 =
@@ -132,7 +132,7 @@ function Row({
 
   return (
     <tr className="border-b border-rule transition-colors hover:bg-paper-soft/50">
-      {/* Color accent — left edge of row */}
+      {/* Color accent. left edge of row */}
       <td
         className="p-0 align-middle"
         style={{ width: 4 }}

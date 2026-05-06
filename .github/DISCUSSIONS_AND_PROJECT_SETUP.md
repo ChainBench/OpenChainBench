@@ -1,4 +1,4 @@
-# Discussions & Project board — manual setup
+# Discussions & Project board. manual setup
 
 This file documents the GitHub UI configuration that lives outside the repo (Discussions categories, the Project board). It exists so a maintainer can recreate the setup if it gets lost or migrated.
 
@@ -41,8 +41,8 @@ Requested  →  Approved  →  In progress  →  Live  →  Archived
 
 In Project Settings → Workflows, enable:
 
-- **Auto-add to project** — for issues in `OpenChainBench/OpenChainBench` matching the filter `is:issue label:bench-request`. They land in `Requested` automatically.
-- **Item closed → Archived** — when an issue is closed without a `live` label, move it to `Archived`.
+- **Auto-add to project**. for issues in `OpenChainBench/OpenChainBench` matching the filter `is:issue label:bench-request`. They land in `Requested` automatically.
+- **Item closed → Archived**. when an issue is closed without a `live` label, move it to `Archived`.
 - **PR merged → Live** (manual; GitHub doesn't have a native trigger, so a maintainer moves the card after merge).
 
 ### Custom fields (optional)
