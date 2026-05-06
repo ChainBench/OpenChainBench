@@ -59,7 +59,6 @@ export function ChainTabs({
       className="flex flex-wrap items-center gap-1 border border-rule rounded p-1 bg-paper-soft w-fit"
       data-pending={pending ? "" : undefined}
     >
-      <Tab onClick={() => pick(null)} active={selected === null} label="All chains" />
       {options.map((o) => (
         <Tab
           key={o.value}
