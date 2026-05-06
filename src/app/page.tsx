@@ -22,7 +22,7 @@ export default async function HomePage() {
       <section className="px-4 pt-16 sm:pt-20 pb-2">
         <div className="mx-auto max-w-6xl">
           <h1 className="display text-3xl sm:text-4xl md:text-5xl text-ink max-w-4xl">
-            Benchmark crypto infrastructure.
+            Open-source KPIs from onchain products.
           </h1>
           <p className="mt-4 max-w-2xl text-base sm:text-lg text-ink-soft leading-snug">
             Real-time latency, cost and reliability data for the multichain stack. Aggregators, bridges, RPCs, price feeds. Same metric, same conditions, every provider.
