@@ -152,11 +152,7 @@ export default async function BenchmarkPage({
             <LedgerTable benchmark={benchmark} />
           </div>
           <div className="mt-10">
-            <ShareSection
-              slug={benchmark.slug}
-              title={benchmark.title}
-              benchmark={benchmark}
-            />
+            <ShareSection slug={benchmark.slug} title={benchmark.title} benchmark={benchmark} chain={chain} />
           </div>
         </>
       )}
@@ -212,11 +208,7 @@ export default async function BenchmarkPage({
           )}
 
           <div className="mt-10">
-            <ShareSection
-              slug={benchmark.slug}
-              title={benchmark.title}
-              benchmark={benchmark}
-            />
+            <ShareSection slug={benchmark.slug} title={benchmark.title} benchmark={benchmark} chain={chain} />
           </div>
         </>
       )}
