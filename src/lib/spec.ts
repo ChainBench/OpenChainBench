@@ -167,7 +167,11 @@ async function tryLoadLive(
         q.sample_size ? prom.scalar(q.sample_size) : Promise.resolve(null),
       ]);
 
-      if (p50 == null || p90 == null || p99 == null) return null;
+      // If a provider has no data for the current filter (e.g. Jupiter on
+      // BNB Chain when Jupiter is Solana-only), skip it instead of failing
+      // the whole benchmark. The page still renders with the providers
+      // that do have numbers.
+      if (p50 == null || p90 == null || p99 == null) continue;
 
       liveResults.push({
         name: p.name,
@@ -217,6 +221,9 @@ async function tryLoadLive(
 
       if (sampleSize) totalSamples += sampleSize;
     }
+
+    // No live numbers from anyone (every provider was skipped) → draft.
+    if (liveResults.length === 0) return null;
 
     return {
       results: liveResults,
