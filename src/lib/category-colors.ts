@@ -9,6 +9,7 @@
 export const CATEGORY_COLOR: Record<string, string> = {
   Aggregators: "var(--color-accent, #c97c5d)",
   Data: "var(--color-good, #6a9466)",
+  Networks: "#3b6fb5",
   Bridges: "var(--color-warn, #c08a3c)",
   Wallets: "#7a6db8",
   RPCs: "#5da0a3",
