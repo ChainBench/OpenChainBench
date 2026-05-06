@@ -1,9 +1,13 @@
 import type { MetadataRoute } from "next";
 import { getBenchmarkSlugs } from "@/data/benchmarks";
+import { loadAlternativeSlugs } from "@/lib/alternatives";
 import { SITE } from "@/data/site";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const slugs = await getBenchmarkSlugs();
+  const [slugs, altSlugs] = await Promise.all([
+    getBenchmarkSlugs(),
+    loadAlternativeSlugs(),
+  ]);
   const now = new Date();
 
   const staticRoutes: MetadataRoute.Sitemap = [
@@ -22,5 +26,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.95,
   }));
 
-  return [...staticRoutes, ...benchmarkRoutes];
+  const alternativeRoutes: MetadataRoute.Sitemap = altSlugs.map((slug) => ({
+    url: `${SITE.url}/alternatives/${slug}`,
+    lastModified: now,
+    changeFrequency: "daily",
+    priority: 0.85,
+  }));
+
+  return [...staticRoutes, ...benchmarkRoutes, ...alternativeRoutes];
 }
