@@ -14,6 +14,7 @@ import { LedgerTable } from "@/components/ledger-table";
 import { RegionGrid } from "@/components/region-grid";
 import { ShareSection } from "@/components/share-section";
 import { CountLeaderboard } from "@/components/count-leaderboard";
+import { ChainTabs } from "@/components/chain-tabs";
 import { fmtUnit, unitSuffix, fmtValue } from "@/lib/format";
 import { SITE } from "@/data/site";
 
@@ -42,12 +43,23 @@ export async function generateMetadata({
 
 export default async function BenchmarkPage({
   params,
+  searchParams,
 }: {
   params: Promise<Params>;
+  searchParams: Promise<{ chain?: string }>;
 }) {
   const { slug } = await params;
+  const sp = await searchParams;
+
+  // Resolve the chain filter against what the spec actually declares —
+  // an arbitrary `?chain=` in the URL is ignored if it's not a known option.
+  const aggregate = await getBenchmark(slug);
+  if (!aggregate) notFound();
+  const chainOptions = aggregate.dimensions?.chain ?? [];
+  const chain = chainOptions.some((c) => c.value === sp.chain) ? sp.chain ?? null : null;
+
   const [benchmark, all] = await Promise.all([
-    getBenchmark(slug),
+    chain ? getBenchmark(slug, { chain }) : Promise.resolve(aggregate),
     getBenchmarks(),
   ]);
   if (!benchmark) notFound();
@@ -121,6 +133,14 @@ export default async function BenchmarkPage({
       <p className="mt-4 max-w-3xl text-lg sm:text-xl text-ink-soft leading-snug">
         {benchmark.subtitle}
       </p>
+
+      {/* Chain filter tabs — rendered when the spec declares a chain
+          dimension. Server re-fetches Prom with `chain="X"` injected. */}
+      {chainOptions.length > 0 && (
+        <div className="mt-8">
+          <ChainTabs options={chainOptions} selected={chain ?? null} />
+        </div>
+      )}
 
       {/* Count benches: dedicated leaderboard view (no p50/p90/p99,
           no 24h chart — those are meaningless on a single gauge). */}

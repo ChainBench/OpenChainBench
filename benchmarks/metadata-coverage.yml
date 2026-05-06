@@ -44,6 +44,14 @@ prometheus:
   url: https://prometheus-production-0859.up.railway.app
   window: 24h
 
+# Drill-down dimensions exposed to the page UI. When the reader picks a
+# chain, every PromQL query gets `chain="X"` injected into its label
+# selectors. Only chains the harness actually emits should be listed.
+dimensions:
+  chain:
+    - { value: solana, label: Solana }
+    - { value: bnb,    label: BNB Chain }
+
 # Real metrics exposed by the aggregator-head-lag harness:
 #   metadata_coverage_checks_total{provider, chain, field, region}   counter
 #   metadata_coverage_success_total{provider, chain, field, region}  counter
