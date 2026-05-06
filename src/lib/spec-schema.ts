@@ -105,6 +105,22 @@ export const SpecSchema = z
       .object({ url: z.url().optional(), window: window.optional() })
       .optional(),
 
+    /* Optional drill-down dimensions. When set, the bench page renders
+     * a tab selector for the dimension; queries get the corresponding
+     * label filter injected server-side. Currently supported: chain. */
+    dimensions: z
+      .object({
+        chain: z
+          .array(
+            z.object({
+              value: z.string().min(1), // PromQL label value, e.g. "solana"
+              label: z.string().min(1), // display label, e.g. "Solana"
+            })
+          )
+          .optional(),
+      })
+      .optional(),
+
     providers: z.array(provider).min(1),
   })
   .strict();

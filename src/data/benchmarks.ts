@@ -22,8 +22,11 @@ export type {
 
 export const getBenchmarks = cache(loadAllBenchmarks);
 
-export async function getBenchmark(slug: string): Promise<Benchmark | undefined> {
-  return loadBenchmark(slug);
+export async function getBenchmark(
+  slug: string,
+  options: { chain?: string } = {}
+): Promise<Benchmark | undefined> {
+  return loadBenchmark(slug, options);
 }
 
 export async function getBenchmarksByCategory(): Promise<
