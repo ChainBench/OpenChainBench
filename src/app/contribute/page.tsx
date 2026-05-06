@@ -14,7 +14,7 @@ export default function ContributePage() {
       <p className="eyebrow">
         Tutorial
       </p>
-      <h1 className="mt-3 display text-4xl sm:text-5xl">
+      <h1 className="mt-3 display text-3xl sm:text-4xl">
         Submit a benchmark.
       </h1>
       <p className="mt-3 text-xl sm:text-2xl text-ink-muted leading-snug">
