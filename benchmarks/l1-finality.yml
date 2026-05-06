@@ -3,7 +3,7 @@
 slug: l1-finality
 number: "006"
 title: Layer-1 finality lag
-seo_title: Layer-1 finality time benchmark - Ethereum, Solana, TRON, Stellar, Hedera, SUI, TON, Litecoin, Monero, Cardano
+seo_title: Layer-1 finality time benchmark - Ethereum, BNB, Avalanche, Solana, TRON, Stellar, Hedera, SUI, TON, Litecoin, Monero, Cardano
 subtitle: Wall-clock distance between each L1's latest block and its finalized block. Lower is faster.
 category: Networks
 status: live
@@ -16,19 +16,18 @@ abstract: |
   and its finalized block. The harness reads two endpoints per chain every
   10 seconds and exposes the time delta as a Prometheus gauge. No
   transactions are sent. only freely-available public RPCs are queried.
-  For PoS / BFT chains with explicit finalization tags (Ethereum, Solana,
-  TRON, Stellar, Hedera, SUI, TON) we read the chain's own finalized
-  pointer. For probabilistic-finality chains (Litecoin, Monero, Cardano)
-  we approximate finality by the docs-recommended confirmation depth (6,
-  10, 50 respectively). The bench is honest about what RPC polling can
-  measure. chains whose finality is faster than the polling interval or
-  the timestamp resolution of their RPC (BNB, Avalanche, XRP) are not
-  included here. they need a WebSocket wall-clock measurement to be
-  reported truthfully and will be re-added when that path is wired up.
+  For PoS / BFT chains with explicit finalization tags (Ethereum, BNB,
+  Avalanche, Solana, TRON, Stellar, Hedera, SUI, TON) we read the chain's
+  own finalized pointer. For probabilistic-finality chains (Litecoin,
+  Monero, Cardano) we approximate finality by the docs-recommended
+  confirmation depth (6, 10, 50 respectively). Note: BNB and Avalanche
+  finalize sub-second but their RPCs round timestamps to whole seconds.
+  the reading is therefore floored at 1 s resolution. an upcoming WS
+  wall-clock implementation will surface the true sub-second numbers.
 
 methodology:
   - "Cadence: every 10 seconds, in parallel across all chains."
-  - "Ethereum: `eth_getBlockByNumber(\"latest\")` minus `eth_getBlockByNumber(\"finalized\")`."
+  - "Ethereum / BNB / Avalanche: `eth_getBlockByNumber(\"latest\")` minus `eth_getBlockByNumber(\"finalized\")`."
   - "Solana: `getSlot{commitment:\"processed\"}` + `getBlockTime` minus `getSlot{commitment:\"finalized\"}` + `getBlockTime`."
   - "TRON: `/wallet/getnowblock` (head) minus `/walletsolidity/getnowblock` (solidity-confirmed)."
   - "Stellar: latest two records of `/ledgers?order=desc&limit=2`. one-back is SCP-final."
@@ -39,7 +38,8 @@ methodology:
   - "Monero (probabilistic): monero-rpc `get_info` minus 10 confirmations via `get_block_header_by_height`."
   - "Cardano (probabilistic): koios `/tip` minus 50 confirmations via `/blocks?block_height=eq.<height>`."
   - "Result: `lag_seconds = headTimestamp - finalizedTimestamp`. We also record the block-height delta and per-chain fetch latency."
-  - "Excluded by design: BNB, Avalanche (sub-second finality but RPC timestamps round to whole seconds. our 10 s polling can only report 0/1 s, so the noise dwarfs the signal). XRP (no close-time on `ledger_current`. would require WS subscribe for an honest number)."
+  - "Resolution caveat: BNB and Avalanche finalize sub-second, but EVM RPCs round timestamps to whole seconds. their measurement floors at 1 s. The number is honest at chain-RPC resolution. WS wall-clock measurement (planned) will surface the true sub-second value."
+  - "Excluded by design: XRP (no close-time on `ledger_current`. lag would have to be hardcoded as `block_lag × 4`, which is not a real measurement)."
   - "Failures (5xx, timeouts, rate limits) leave the previous gauge in place and increment a per-chain `fetch_errors_total` counter; the page falls back to the last successful sample."
 
 findings:
@@ -60,6 +60,8 @@ dimensions:
   chain:
     - { value: ethereum,  label: Ethereum }
     - { value: solana,    label: Solana }
+    - { value: bnb,       label: BNB Chain }
+    - { value: avalanche, label: Avalanche }
     - { value: tron,      label: TRON }
     - { value: stellar,   label: Stellar }
     - { value: hedera,    label: Hedera }
@@ -85,6 +87,30 @@ dimensions:
 # during the day shows tail behaviour, not a single flat value.
 
 providers:
+  - slug: avalanche
+    name: Avalanche C-Chain
+    tag: Snowman++ consensus, sub-second finality
+    queries:
+      p50: quantile_over_time(0.50, l1_finality_lag_seconds{chain="avalanche"}[24h]) * 1000
+      p90: quantile_over_time(0.90, l1_finality_lag_seconds{chain="avalanche"}[24h]) * 1000
+      p99: quantile_over_time(0.99, l1_finality_lag_seconds{chain="avalanche"}[24h]) * 1000
+      mean: avg_over_time(l1_finality_lag_seconds{chain="avalanche"}[24h]) * 1000
+      success: avg_over_time(l1_finality_health{chain="avalanche"}[24h])
+      sample_size: count_over_time(l1_finality_lag_seconds{chain="avalanche"}[24h])
+      series: l1_finality_lag_seconds{chain="avalanche"} * 1000
+
+  - slug: bnb
+    name: BNB Smart Chain
+    tag: Fast finality fork (BEP-126)
+    queries:
+      p50: quantile_over_time(0.50, l1_finality_lag_seconds{chain="bnb"}[24h]) * 1000
+      p90: quantile_over_time(0.90, l1_finality_lag_seconds{chain="bnb"}[24h]) * 1000
+      p99: quantile_over_time(0.99, l1_finality_lag_seconds{chain="bnb"}[24h]) * 1000
+      mean: avg_over_time(l1_finality_lag_seconds{chain="bnb"}[24h]) * 1000
+      success: avg_over_time(l1_finality_health{chain="bnb"}[24h])
+      sample_size: count_over_time(l1_finality_lag_seconds{chain="bnb"}[24h])
+      series: l1_finality_lag_seconds{chain="bnb"} * 1000
+
   - slug: sui
     name: SUI
     tag: Mysticeti DAG, ~1 s checkpoint finality
