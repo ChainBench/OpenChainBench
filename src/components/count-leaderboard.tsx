@@ -23,40 +23,24 @@ export function CountLeaderboard({ benchmark }: { benchmark: Benchmark }) {
 
   return (
     <>
-      {/* Hero summary row — leader + spread, nothing fancy */}
-      <div className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-px bg-rule rounded overflow-hidden border border-rule">
-        <div className="bg-surface px-5 py-5">
-          <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-ink-faint">
-            Leader
-          </p>
-          <p className="mt-1 display text-3xl tabular leading-none">
-            {fmtValue(leader?.ms.p50 ?? 0, benchmark.unit)}
-          </p>
-          <p className="mt-1 text-xs text-ink-muted">{leader?.name ?? "—"}</p>
-        </div>
-        <div className="bg-surface px-5 py-5">
-          <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-ink-faint">
-            Field range
-          </p>
-          <p className="mt-1 display text-3xl tabular leading-none">
-            {fmtValue(trailer?.ms.p50 ?? 0, benchmark.unit)}
-            <span className="text-ink-faint"> → </span>
-            {fmtValue(leader?.ms.p50 ?? 0, benchmark.unit)}
-          </p>
-          <p className="mt-1 text-xs text-ink-muted">
-            {benchmark.results.length} providers
-          </p>
-        </div>
-        <div className="bg-surface px-5 py-5">
-          <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-ink-faint">
-            Gap
-          </p>
-          <p className="mt-1 display text-3xl tabular leading-none">
-            {gap > 0 ? `${gap.toFixed(1)}×` : "—"}
-          </p>
-          <p className="mt-1 text-xs text-ink-muted">leader vs lowest</p>
-        </div>
-      </div>
+      {/* Thin summary strip — matches the latency-bench layout. */}
+      <dl className="mt-10 grid grid-cols-2 sm:flex sm:flex-wrap items-baseline gap-x-8 gap-y-3 border-y border-rule py-4">
+        <CountStat
+          label="Leader"
+          value={fmtValue(leader?.ms.p50 ?? 0, benchmark.unit)}
+          hint={leader?.name}
+        />
+        <CountStat
+          label="Range"
+          value={`${fmtValue(trailer?.ms.p50 ?? 0, benchmark.unit)} → ${fmtValue(leader?.ms.p50 ?? 0, benchmark.unit)}`}
+          hint={`${benchmark.results.length} providers`}
+        />
+        <CountStat
+          label="Gap"
+          value={gap > 0 ? `${gap.toFixed(1)}×` : "—"}
+          hint="leader vs lowest"
+        />
+      </dl>
 
       {/* Horizontal bars — the comparison that actually reads */}
       <div className="mt-12">
@@ -101,5 +85,29 @@ export function CountLeaderboard({ benchmark }: { benchmark: Benchmark }) {
         </ol>
       </div>
     </>
+  );
+}
+
+function CountStat({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+}) {
+  return (
+    <div className="flex items-baseline gap-2">
+      <dt className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-faint shrink-0">
+        {label}
+      </dt>
+      <dd className="font-mono tabular text-sm text-ink leading-none">
+        {value}
+        {hint ? (
+          <span className="ml-1.5 text-ink-muted text-xs font-normal">{hint}</span>
+        ) : null}
+      </dd>
+    </div>
   );
 }
