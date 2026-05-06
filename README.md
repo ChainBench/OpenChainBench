@@ -10,24 +10,30 @@ The project is community-run, MIT-licensed, and accepts PRs from any party inclu
 
 ```
 benchmarks/                 Spec files — one YAML per published benchmark
-├── aggregator-head-lag.yml
-├── bridge-quote-latency.yml
-├── bridge-fee.yml
-└── README.md               Spec format reference + submission guide
+├── aggregator-head-lag.yml     №001 · onchain data provider latency
+├── bridge-quote-latency.yml    №002 · cross-chain bridge quote latency
+├── bridge-fee.yml              №003 · cross-chain bridge effective fee
+├── metadata-coverage.yml       №004 · token metadata coverage
+├── network-coverage.yml        №005 · networks supported (count)
+└── README.md                   Spec format reference + submission guide
 
 harnesses/                  The runners that produce the metrics
-├── aggregator-head-lag/    Go service: WebSocket monitor (exposes :2112/metrics)
+├── aggregator-head-lag/    Go service: WebSocket monitor (:2112/metrics)
 ├── bridge-monitor/         Go service: 4-bridge quote loop + execution (:9090/metrics)
+├── network-coverage/       Go service: counts each provider's supported networks (:2112/metrics)
 └── README.md               Contract for new harnesses
+
+alternatives/               YAML-driven /alternatives/<slug> SEO landing pages
+└── README.md               Format for "Pump Portal alternatives", "Relay alternatives", …
 
 infrastructure/             Shared services every harness depends on
 └── prometheus/             Single shared Prometheus that scrapes all harnesses
 
 src/                        Next.js 16 site (App Router, ISR, Tailwind v4)
-├── app/                    Pages — overview, benchmarks index, [slug] reports
-├── components/             time-series-chart, ledger-table, region-grid, …
+├── app/                    Pages — overview, benchmarks index, [slug] reports, alternatives
+├── components/             time-series-chart, ledger-table, region-grid, chain-tabs, …
 ├── data/                   Spec loader (YAML → Prometheus → Benchmark[])
-└── lib/                    Prometheus client, spec schema (Zod), formatting
+└── lib/                    Prometheus client, spec schema (Zod), formatting, ranking
 
 scripts/                    pnpm validate, pnpm spec:dry-run
 docs/                       Methodology, ADRs, style guide
