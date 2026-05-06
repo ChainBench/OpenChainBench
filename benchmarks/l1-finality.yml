@@ -3,7 +3,7 @@
 slug: l1-finality
 number: "006"
 title: Layer-1 finality lag
-seo_title: Layer-1 finality time benchmark - Ethereum, Solana, BNB, Avalanche, TRON, XRP, Stellar, Hedera, SUI, TON, Litecoin, Monero, Cardano
+seo_title: Layer-1 finality time benchmark - Ethereum, Solana, TRON, Stellar, Hedera, SUI, TON, Litecoin, Monero, Cardano
 subtitle: Wall-clock distance between each L1's latest block and its finalized block. Lower is faster.
 category: Networks
 status: live
@@ -14,36 +14,37 @@ higher_is_better: false
 abstract: |
   We measure the live wall-clock gap between every L1 chain's latest block
   and its finalized block. The harness reads two endpoints per chain every
-  10 seconds (a "head" probe and a "finalized" probe) and exposes the time
-  delta as a Prometheus gauge. No transactions are sent. only the
-  freely-available public RPCs are queried. For PoS chains with explicit
-  finalization tags (Ethereum, BNB, Avalanche, Solana, SUI, TRON, XRP,
-  Stellar, Hedera, TON) we read the chain's own finalized pointer. For
-  probabilistic-finality chains (Litecoin, Monero, Cardano) we approximate
-  finality by the docs-recommended confirmation depth (6, 10, 50
-  respectively). Every L1 publishes a target finalization time. this bench
-  measures what a reader actually sees from a public endpoint, refreshed
-  every 10 seconds. The gap between docs and reality is the story.
+  10 seconds and exposes the time delta as a Prometheus gauge. No
+  transactions are sent. only freely-available public RPCs are queried.
+  For PoS / BFT chains with explicit finalization tags (Ethereum, Solana,
+  TRON, Stellar, Hedera, SUI, TON) we read the chain's own finalized
+  pointer. For probabilistic-finality chains (Litecoin, Monero, Cardano)
+  we approximate finality by the docs-recommended confirmation depth (6,
+  10, 50 respectively). The bench is honest about what RPC polling can
+  measure. chains whose finality is faster than the polling interval or
+  the timestamp resolution of their RPC (BNB, Avalanche, XRP) are not
+  included here. they need a WebSocket wall-clock measurement to be
+  reported truthfully and will be re-added when that path is wired up.
 
 methodology:
-  - "Cadence: every 10 seconds, in parallel across all 13 chains."
-  - "Ethereum / BNB / Avalanche: `eth_getBlockByNumber(\"latest\")` minus `eth_getBlockByNumber(\"finalized\")`."
+  - "Cadence: every 10 seconds, in parallel across all chains."
+  - "Ethereum: `eth_getBlockByNumber(\"latest\")` minus `eth_getBlockByNumber(\"finalized\")`."
   - "Solana: `getSlot{commitment:\"processed\"}` + `getBlockTime` minus `getSlot{commitment:\"finalized\"}` + `getBlockTime`."
   - "TRON: `/wallet/getnowblock` (head) minus `/walletsolidity/getnowblock` (solidity-confirmed)."
-  - "XRP Ledger: `ledger_current` minus `ledger { ledger_index: validated }`."
   - "Stellar: latest two records of `/ledgers?order=desc&limit=2`. one-back is SCP-final."
-  - "Hedera: latest two records of mirror-node `/api/v1/blocks?order=desc&limit=2`."
+  - "Hedera: latest two records of mirror-node `/api/v1/blocks?order=desc&limit=2`. timestamps parsed at nanosecond precision."
   - "SUI: `sui_getLatestCheckpointSequenceNumber` minus 5 checkpoints back."
-  - "TON: tonapi.io `/blockchain/masterchain-head` minus 3 seqno (anonymous tier; tonapi.io is friendlier than toncenter)."
+  - "TON: tonapi.io `/blockchain/masterchain-head` minus 3 seqno."
   - "Litecoin (probabilistic): blockchair `/stats.best_block_height` minus 6 confirmations via `/dashboards/block/{height}.block.time`."
   - "Monero (probabilistic): monero-rpc `get_info` minus 10 confirmations via `get_block_header_by_height`."
   - "Cardano (probabilistic): koios `/tip` minus 50 confirmations via `/blocks?block_height=eq.<height>`."
   - "Result: `lag_seconds = headTimestamp - finalizedTimestamp`. We also record the block-height delta and per-chain fetch latency."
+  - "Excluded by design: BNB, Avalanche (sub-second finality but RPC timestamps round to whole seconds. our 10 s polling can only report 0/1 s, so the noise dwarfs the signal). XRP (no close-time on `ledger_current`. would require WS subscribe for an honest number)."
   - "Failures (5xx, timeouts, rate limits) leave the previous gauge in place and increment a per-chain `fetch_errors_total` counter; the page falls back to the last successful sample."
 
 findings:
-  - "Avalanche, BNB and SUI return sub-2-second lag. matching their docs."
-  - "Ethereum sits around 13 minutes (the spec calls for 12.8). the bench tracks epoch boundaries cleanly."
+  - "SUI and Hedera return sub-2-second lag, matching their BFT designs. the chains expose ms / ns timestamps so the measurement is genuinely sub-second."
+  - "Ethereum sits around 12-13 minutes, aligned with the 2-epoch finalization spec."
   - "TRON's solidity confirmation hovers around 60 s. exactly the documented 20-block delay at 3 s blocks."
   - "PoW-style chains (Litecoin, Monero, Cardano) cluster at 15-30 minutes by construction, set by the chosen confirmation depth."
 
@@ -59,10 +60,7 @@ dimensions:
   chain:
     - { value: ethereum,  label: Ethereum }
     - { value: solana,    label: Solana }
-    - { value: bnb,       label: BNB Chain }
-    - { value: avalanche, label: Avalanche }
     - { value: tron,      label: TRON }
-    - { value: xrp,       label: XRP }
     - { value: stellar,   label: Stellar }
     - { value: hedera,    label: Hedera }
     - { value: sui,       label: SUI }
@@ -87,18 +85,6 @@ dimensions:
 # during the day shows tail behaviour, not a single flat value.
 
 providers:
-  - slug: avalanche
-    name: Avalanche C-Chain
-    tag: Snowman++ consensus, sub-second finality
-    queries:
-      p50: quantile_over_time(0.50, l1_finality_lag_seconds{chain="avalanche"}[24h]) * 1000
-      p90: quantile_over_time(0.90, l1_finality_lag_seconds{chain="avalanche"}[24h]) * 1000
-      p99: quantile_over_time(0.99, l1_finality_lag_seconds{chain="avalanche"}[24h]) * 1000
-      mean: avg_over_time(l1_finality_lag_seconds{chain="avalanche"}[24h]) * 1000
-      success: avg_over_time(l1_finality_health{chain="avalanche"}[24h])
-      sample_size: count_over_time(l1_finality_lag_seconds{chain="avalanche"}[24h])
-      series: l1_finality_lag_seconds{chain="avalanche"} * 1000
-
   - slug: sui
     name: SUI
     tag: Mysticeti DAG, ~1 s checkpoint finality
@@ -110,18 +96,6 @@ providers:
       success: avg_over_time(l1_finality_health{chain="sui"}[24h])
       sample_size: count_over_time(l1_finality_lag_seconds{chain="sui"}[24h])
       series: l1_finality_lag_seconds{chain="sui"} * 1000
-
-  - slug: bnb
-    name: BNB Smart Chain
-    tag: Fast finality fork (BEP-126)
-    queries:
-      p50: quantile_over_time(0.50, l1_finality_lag_seconds{chain="bnb"}[24h]) * 1000
-      p90: quantile_over_time(0.90, l1_finality_lag_seconds{chain="bnb"}[24h]) * 1000
-      p99: quantile_over_time(0.99, l1_finality_lag_seconds{chain="bnb"}[24h]) * 1000
-      mean: avg_over_time(l1_finality_lag_seconds{chain="bnb"}[24h]) * 1000
-      success: avg_over_time(l1_finality_health{chain="bnb"}[24h])
-      sample_size: count_over_time(l1_finality_lag_seconds{chain="bnb"}[24h])
-      series: l1_finality_lag_seconds{chain="bnb"} * 1000
 
   - slug: ton
     name: TON
@@ -146,18 +120,6 @@ providers:
       success: avg_over_time(l1_finality_health{chain="hedera"}[24h])
       sample_size: count_over_time(l1_finality_lag_seconds{chain="hedera"}[24h])
       series: l1_finality_lag_seconds{chain="hedera"} * 1000
-
-  - slug: xrp
-    name: XRP Ledger
-    tag: RPCA validated-ledger close
-    queries:
-      p50: quantile_over_time(0.50, l1_finality_lag_seconds{chain="xrp"}[24h]) * 1000
-      p90: quantile_over_time(0.90, l1_finality_lag_seconds{chain="xrp"}[24h]) * 1000
-      p99: quantile_over_time(0.99, l1_finality_lag_seconds{chain="xrp"}[24h]) * 1000
-      mean: avg_over_time(l1_finality_lag_seconds{chain="xrp"}[24h]) * 1000
-      success: avg_over_time(l1_finality_health{chain="xrp"}[24h])
-      sample_size: count_over_time(l1_finality_lag_seconds{chain="xrp"}[24h])
-      series: l1_finality_lag_seconds{chain="xrp"} * 1000
 
   - slug: stellar
     name: Stellar
