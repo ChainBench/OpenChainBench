@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { Search } from "lucide-react";
 import type { Benchmark } from "@/types/benchmark";
 import { MiniChart } from "@/components/mini-chart";
 import { fmtValue, unitSuffix } from "@/lib/format";
@@ -43,25 +44,27 @@ export function BenchmarkTable({ benchmarks }: { benchmarks: Benchmark[] }) {
 
   return (
     <div>
-      {/* Search bar — sits above the table head */}
-      <div className="mb-3 flex flex-wrap items-center gap-3">
-        <label className="relative flex items-center flex-1 min-w-[16rem] max-w-md">
-          <span className="absolute left-3 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-faint pointer-events-none">
-            /
-          </span>
-          <input
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search benchmarks, providers, categories…"
-            className="w-full pl-7 pr-3 py-2 text-sm bg-paper-soft/60 border border-rule rounded-sm focus:outline-none focus:border-ink/60 placeholder:text-ink-faint transition-colors"
-          />
-        </label>
+      {/* Search bar — discreet, right-aligned */}
+      <div className="mb-3 flex items-center justify-end gap-3">
         {q && (
           <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
             {filtered.length} of {benchmarks.length}
           </span>
         )}
+        <label className="group relative flex items-center w-44 focus-within:w-64 transition-[width] duration-200">
+          <Search
+            size={13}
+            strokeWidth={2}
+            className="absolute left-2.5 text-ink-faint group-focus-within:text-ink-muted pointer-events-none"
+          />
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search"
+            className="w-full pl-7 pr-2 py-1 text-xs bg-transparent border-b border-rule focus:outline-none focus:border-ink/60 placeholder:text-ink-faint transition-colors"
+          />
+        </label>
       </div>
 
       {/* Table head — same grid as rows so columns align cleanly. */}
