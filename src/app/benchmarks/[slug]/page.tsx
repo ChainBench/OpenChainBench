@@ -55,12 +55,18 @@ export default async function BenchmarkPage({
   const { slug } = await params;
   const sp = await searchParams;
 
-  // Resolve the chain filter against what the spec actually declares —
-  // an arbitrary `?chain=` in the URL is ignored if it's not a known option.
+  // Resolve the chain filter against what the spec actually declares.
+  // When the spec declares chains, we always render scoped to one of them
+  // (defaulting to the first option) — there's no aggregate view, since
+  // averaging across chains rarely produces a comparable number.
   const aggregate = await getBenchmark(slug);
   if (!aggregate) notFound();
   const chainOptions = aggregate.dimensions?.chain ?? [];
-  const chain = chainOptions.some((c) => c.value === sp.chain) ? sp.chain ?? null : null;
+  const matchedChain =
+    chainOptions.find((c) => c.value === sp.chain)?.value ??
+    chainOptions[0]?.value ??
+    null;
+  const chain = chainOptions.length > 0 ? matchedChain : null;
 
   const [benchmark, all] = await Promise.all([
     chain ? getBenchmark(slug, { chain }) : Promise.resolve(aggregate),
