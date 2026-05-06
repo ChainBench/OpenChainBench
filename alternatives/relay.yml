@@ -1,0 +1,11 @@
+slug: relay
+target_product: Relay
+target_url: https://relay.link
+description: Cross-chain bridge with intent-based routing
+benchmark: bridge-quote-latency
+
+intro: |
+  Relay is a cross-chain bridge that routes via solver intents. If you're sizing alternatives, quote latency is one of the most felt UX axes — how long does the bridge take to return a usable quote for a given route? Below is the live measurement for the four major bridges on identical routes (Solana ↔ Base ↔ Arbitrum), with multiple notional sizes ($5/$50/$300). Numbers refresh every five minutes.
+
+seo_title: Relay alternatives — Mobula, Li.Fi & Debridge live quote latency benchmark
+seo_description: Compare Relay alternatives on cross-chain bridge quote latency. Mobula, Li.Fi and Debridge measured on identical routes, refreshed every five minutes.
