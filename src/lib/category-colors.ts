@@ -13,9 +13,3 @@ export const CATEGORY_COLOR: Record<string, string> = {
   Wallets: "#7a6db8",
   RPCs: "#5da0a3",
 };
-
-/** Resolve a category to its accent color, with a sensible fallback so
- * an unknown category still gets rendered (just in plain ink). */
-export function categoryColor(category: string): string {
-  return CATEGORY_COLOR[category] ?? "var(--color-ink-soft)";
-}

@@ -16,7 +16,11 @@ import { ShareSection } from "@/components/share-section";
 import { CountLeaderboard } from "@/components/count-leaderboard";
 import { ChainTabs } from "@/components/chain-tabs";
 import { fmtUnit, unitSuffix, fmtValue } from "@/lib/format";
+import { computeFieldStats } from "@/lib/stats";
+import { SectionLabel, SummaryStat } from "@/components/summary-stat";
 import { SITE } from "@/data/site";
+
+export const revalidate = 60;
 
 type Params = { slug: string };
 
@@ -67,18 +71,8 @@ export default async function BenchmarkPage({
   const isDraft = benchmark.status === "draft";
   const otherBenchmarks = all.filter((b) => b.slug !== benchmark.slug);
 
-  // Field-level neutral KPIs
-  const p50s = benchmark.results.map((r) => r.ms.p50);
-  const p99s = benchmark.results.map((r) => r.ms.p99);
-
-  const fieldMin = p50s.length ? Math.min(...p50s) : 0;
-  const fieldMax = p50s.length ? Math.max(...p50s) : 0;
-  const fieldMedian = p50s.length
-    ? [...p50s].sort((a, b) => a - b)[Math.floor(p50s.length / 2)]
-    : 0;
-  const tailMin = p99s.length ? Math.min(...p99s) : 0;
-  const tailMax = p99s.length ? Math.max(...p99s) : 0;
-  const tailSpread = tailMin > 0 ? tailMax / tailMin : 0;
+  const { fieldMin, fieldMedian, fieldMax, tailMin, tailMax, tailSpread } =
+    computeFieldStats(benchmark.results);
 
   const benchmarkUrl = `${SITE.url}/benchmarks/${benchmark.slug}`;
   const jsonLd = {
@@ -307,41 +301,6 @@ export default async function BenchmarkPage({
         </nav>
       )}
     </article>
-  );
-}
-
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="mb-3 text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
-      {children}
-    </p>
-  );
-}
-
-/** Thin key-value pair. replaces the BigNumber boxed grid on bench pages.
- * Renders inline: `LABEL  value (hint)`. Used to summarise a benchmark's
- * field stats without the SaaS-dashboard scaffolding. */
-function SummaryStat({
-  label,
-  value,
-  hint,
-}: {
-  label: string;
-  value: string;
-  hint?: string;
-}) {
-  return (
-    <div className="flex items-baseline gap-2">
-      <dt className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-faint shrink-0">
-        {label}
-      </dt>
-      <dd className="font-mono tabular text-sm text-ink leading-none">
-        {value}
-        {hint ? (
-          <span className="ml-1.5 text-ink-muted text-xs font-normal">{hint}</span>
-        ) : null}
-      </dd>
-    </div>
   );
 }
 

@@ -9,7 +9,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import yaml from "js-yaml";
 import { cache } from "react";
-import type { Benchmark, ProviderResult } from "@/types/benchmark";
+import type { Benchmark } from "@/types/benchmark";
 import { loadAllBenchmarks, loadBenchmark } from "@/lib/spec";
 
 export type {
@@ -80,12 +80,3 @@ export function formatLastRun(iso: string) {
   });
 }
 
-/** Compute the leader (lowest p50) at render time. neutral, live, no
- * pre-determined winner in the spec. Returns undefined for drafts. */
-export function getLeader(b: Benchmark): ProviderResult | undefined {
-  if (b.status === "draft" || b.results.length === 0) return undefined;
-  return b.results.reduce<ProviderResult | undefined>(
-    (best, r) => (!best || r.ms.p50 < best.ms.p50 ? r : best),
-    undefined
-  );
-}

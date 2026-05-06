@@ -11,6 +11,8 @@ export const metadata: Metadata = {
   description: "Every published benchmark, grouped by category.",
 };
 
+export const revalidate = 60;
+
 const CATEGORY_BLURB: Record<string, string> = {
   Aggregators: "Token-data aggregators. metadata, prices, charts.",
   Data: "Onchain data providers. block-level latency, network coverage.",

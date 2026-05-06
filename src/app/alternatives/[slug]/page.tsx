@@ -8,8 +8,12 @@ import { LedgerTable } from "@/components/ledger-table";
 import { CountLeaderboard } from "@/components/count-leaderboard";
 import { ShareSection } from "@/components/share-section";
 import { fmtUnit, unitSuffix, fmtValue } from "@/lib/format";
+import { computeFieldStats } from "@/lib/stats";
+import { SectionLabel, SummaryStat } from "@/components/summary-stat";
 import { SITE } from "@/data/site";
 import { loadAlternative, loadAlternativeSlugs } from "@/lib/alternatives";
+
+export const revalidate = 60;
 
 type Params = { slug: string };
 
@@ -50,19 +54,8 @@ export default async function AlternativePage({
 
   const { bench } = alt;
   const isDraft = bench.status === "draft";
-  const p50s = bench.results.map((r) => r.ms.p50);
-  const fieldMin = p50s.length ? Math.min(...p50s) : 0;
-  const fieldMax = p50s.length ? Math.max(...p50s) : 0;
-  const fieldMedian = p50s.length
-    ? [...p50s].sort((a, b) => a - b)[Math.floor(p50s.length / 2)]
-    : 0;
-  const tailMin = bench.results.length
-    ? Math.min(...bench.results.map((r) => r.ms.p99))
-    : 0;
-  const tailMax = bench.results.length
-    ? Math.max(...bench.results.map((r) => r.ms.p99))
-    : 0;
-  const tailSpread = tailMin > 0 ? tailMax / tailMin : 0;
+  const { fieldMin, fieldMedian, fieldMax, tailMin, tailMax, tailSpread } =
+    computeFieldStats(bench.results);
 
   return (
     <article className="mx-auto max-w-5xl px-6 pt-10 sm:pt-14">
@@ -179,34 +172,3 @@ export default async function AlternativePage({
   );
 }
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="mb-3 text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
-      {children}
-    </p>
-  );
-}
-
-function SummaryStat({
-  label,
-  value,
-  hint,
-}: {
-  label: string;
-  value: string;
-  hint?: string;
-}) {
-  return (
-    <div className="flex items-baseline gap-2">
-      <dt className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-faint shrink-0">
-        {label}
-      </dt>
-      <dd className="font-mono tabular text-sm text-ink leading-none">
-        {value}
-        {hint ? (
-          <span className="ml-1.5 text-ink-muted text-xs font-normal">{hint}</span>
-        ) : null}
-      </dd>
-    </div>
-  );
-}
