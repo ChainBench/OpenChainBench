@@ -97,10 +97,14 @@ export default function MethodologyPage() {
       <section className="mt-14">
         <SectionHeader number="I" label="Design principles" />
         <ol className="mt-6 grid gap-px bg-rule border border-rule sm:grid-cols-2">
-          {PRINCIPLES.map((p) => (
+          {PRINCIPLES.map((p, i) => (
             <li
               key={p.n}
-              className="bg-paper p-6 sm:p-7 relative"
+              className={`bg-paper p-6 sm:p-7 relative ${
+                i === PRINCIPLES.length - 1 && PRINCIPLES.length % 2 === 1
+                  ? "sm:col-span-2"
+                  : ""
+              }`}
               style={{ ["--accent" as string]: p.color }}
             >
               <span
