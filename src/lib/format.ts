@@ -6,8 +6,14 @@ export function fmtUnit(value: number, unit: string) {
     return formatPercent(value / 100);
   }
   if (unit === "s") {
-    const s = value / 1000;
+    const ms = value;
+    const s = ms / 1000;
     if (s >= 60) return `${(s / 60).toFixed(1)} min`;
+    // Sub-second values come from RPCs whose timestamps round to the
+    // whole second. We can't honestly show "0.0 s" for chains that
+    // finalize in <1 s. surface that explicitly.
+    if (ms === 0) return "<1 s";
+    if (s < 10) return `${Math.round(ms)} ms`;
     return `${s.toFixed(1)} s`;
   }
   if (unit === "count") return value.toLocaleString();
