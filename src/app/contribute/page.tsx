@@ -192,36 +192,44 @@ export default function ContributePage() {
         </p>
       </header>
 
-      {/* Step strip — colored grid, instantly tells the reader the shape of the work */}
+      {/* Step strip — colored grid, each tile anchors to its detail below */}
       <ol className="mt-10 grid gap-px bg-rule border border-rule sm:grid-cols-2 lg:grid-cols-3">
         {STEPS.map((s, i) => (
-          <li
-            key={s.n}
-            className="bg-paper p-5 relative group"
-            style={{ ["--accent" as string]: STEP_COLORS[i] }}
-          >
-            <span
-              className="absolute left-0 top-0 bottom-0 w-[3px] transition-transform duration-200 origin-top group-hover:scale-y-110"
-              style={{ background: STEP_COLORS[i] }}
-              aria-hidden
-            />
-            <p
-              className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em]"
-              style={{ color: STEP_COLORS[i] }}
+          <li key={s.n}>
+            <a
+              href={`#step-${s.n}`}
+              className="bg-paper p-5 relative group block h-full hover:bg-paper-soft/40 transition-colors"
+              style={{ ["--accent" as string]: STEP_COLORS[i] }}
             >
-              {s.n}
-            </p>
-            <p className="mt-1.5 display text-base text-ink leading-tight">
-              {s.title}
-            </p>
-            <p className="mt-1 text-xs text-ink-muted">{s.tagline}</p>
+              <span
+                className="absolute left-0 top-0 bottom-0 w-[3px] transition-transform duration-200 origin-top group-hover:scale-y-110"
+                style={{ background: STEP_COLORS[i] }}
+                aria-hidden
+              />
+              <p
+                className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em]"
+                style={{ color: STEP_COLORS[i] }}
+              >
+                {s.n}
+              </p>
+              <p className="mt-1.5 display text-base text-ink leading-tight">
+                {s.title}
+              </p>
+              <p className="mt-1 text-xs text-ink-muted">{s.tagline}</p>
+              <span
+                className="absolute right-3 top-3 font-mono text-[11px] text-ink-faint opacity-0 group-hover:opacity-100 transition-opacity"
+                aria-hidden
+              >
+                ↓
+              </span>
+            </a>
           </li>
         ))}
       </ol>
 
       {/* Detailed step bodies */}
       {STEPS.map((s, i) => (
-        <section key={s.n} className="mt-14">
+        <section key={s.n} id={`step-${s.n}`} className="mt-14 scroll-mt-20">
           <header
             className="flex items-baseline gap-3 border-b pb-2"
             style={{ borderColor: STEP_COLORS[i] }}
