@@ -9,10 +9,12 @@ export const metadata: Metadata = {
 export default function PressPage() {
   return (
     <article className="mx-auto max-w-3xl px-6 py-12">
-      <h1 className="display text-3xl sm:text-4xl">Press kit</h1>
-      <p className="mt-3 text-xl sm:text-2xl text-ink-muted leading-snug">
-        For journalists, podcasters and analysts covering crypto-infra performance.
-      </p>
+      <header className="border-b-2 border-ink pb-6">
+        <h1 className="display text-3xl sm:text-4xl tracking-tight">Press kit</h1>
+        <p className="mt-3 max-w-3xl text-base sm:text-lg text-ink-soft leading-snug">
+          For journalists, podcasters and analysts covering crypto-infra performance.
+        </p>
+      </header>
 
       <SectionRule label="Boilerplate" number="i" />
       <blockquote className="border-l-4 border-ink pl-6 py-2 text-base leading-relaxed text-ink-soft">
