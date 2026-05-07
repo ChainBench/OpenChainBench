@@ -12,6 +12,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { cache } from "react";
+import { unstable_cache } from "next/cache";
 import yaml from "js-yaml";
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
 import { Prometheus } from "@/lib/prometheus";
@@ -28,6 +29,23 @@ export const loadAllBenchmarks = cache(async (): Promise<Benchmark[]> => {
 });
 
 /**
+ * Cross-request server cache for chain-filtered loads. Each (slug, chain)
+ * combo is computed at most once per `revalidate` window across ALL
+ * concurrent users, so flipping between BTC/ETH/SOL tabs hits a warm
+ * cache instead of triggering 30+ Prom queries on every click.
+ */
+const loadBenchmarkForChain = unstable_cache(
+  async (slug: string, chain: string): Promise<Benchmark | undefined> => {
+    const specs = await loadSpecs();
+    const spec = specs.find((s) => s.slug === slug);
+    if (!spec) return undefined;
+    return specToBenchmark(spec, { chain });
+  },
+  ["bench-chain"], // cache key prefix
+  { revalidate: 60, tags: ["benchmarks"] }
+);
+
+/**
  * Load a single bench with an optional dimension filter applied to all queries.
  * `chain` injects `chain="<value>"` into every PromQL label selector.
  */
@@ -35,15 +53,11 @@ export const loadBenchmark = cache(async function loadBenchmark(
   slug: string,
   options: { chain?: string } = {}
 ): Promise<Benchmark | undefined> {
-  // Fast path: no filter requested → use the cached aggregate dataset.
   if (!options.chain) {
     const all = await loadAllBenchmarks();
     return all.find((b) => b.slug === slug);
   }
-  const specs = await loadSpecs();
-  const spec = specs.find((s) => s.slug === slug);
-  if (!spec) return undefined;
-  return specToBenchmark(spec, { chain: options.chain });
+  return loadBenchmarkForChain(slug, options.chain);
 });
 
 const loadSpecs = cache(async (): Promise<Spec[]> => {
