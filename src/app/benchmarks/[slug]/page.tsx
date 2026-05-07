@@ -196,7 +196,7 @@ export default async function BenchmarkPage({
 
           <div className="mt-12">
             <SectionLabel>{benchmark.metric} · last 24 hours</SectionLabel>
-            {benchmark.results.length > 6 ? (
+            {benchmark.results.length >= 5 || benchmark.unit === "bps" ? (
               <RankedBarChart benchmark={benchmark} />
             ) : (
               <TimeSeriesChart benchmark={benchmark} />
