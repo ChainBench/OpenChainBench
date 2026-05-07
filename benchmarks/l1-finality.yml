@@ -125,15 +125,15 @@ providers:
 
   - slug: ton
     name: TON
-    tag: Masterchain finality, 3-block depth
+    tag: Masterchain commit, measured via SSE wall-clock
     queries:
-      p50: avg_over_time(l1_finality_lag_seconds{chain="ton"}[24h]) * 1000
-      p90: quantile_over_time(0.90, l1_finality_lag_seconds{chain="ton"}[24h]) * 1000
-      p99: quantile_over_time(0.99, l1_finality_lag_seconds{chain="ton"}[24h]) * 1000
-      mean: avg_over_time(l1_finality_lag_seconds{chain="ton"}[24h]) * 1000
-      success: avg_over_time(l1_finality_health{chain="ton"}[24h])
-      sample_size: count_over_time(l1_finality_lag_seconds{chain="ton"}[24h])
-      series: l1_finality_lag_seconds{chain="ton"} * 1000
+      p50: quantile_over_time(0.50, l1_finality_wallclock_lag_milliseconds{chain="ton"}[24h])
+      p90: quantile_over_time(0.90, l1_finality_wallclock_lag_milliseconds{chain="ton"}[24h])
+      p99: quantile_over_time(0.99, l1_finality_wallclock_lag_milliseconds{chain="ton"}[24h])
+      mean: avg_over_time(l1_finality_wallclock_lag_milliseconds{chain="ton"}[24h])
+      success: avg_over_time(l1_finality_wallclock_health{chain="ton"}[24h])
+      sample_size: increase(l1_finality_wallclock_samples_total{chain="ton"}[24h])
+      series: l1_finality_wallclock_lag_milliseconds{chain="ton"}
 
   - slug: hedera
     name: Hedera
