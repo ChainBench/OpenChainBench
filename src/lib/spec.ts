@@ -22,11 +22,22 @@ export type { Spec } from "@/lib/spec-schema";
 
 const SPECS_DIR = path.join(process.cwd(), "benchmarks");
 
-export const loadAllBenchmarks = cache(async (): Promise<Benchmark[]> => {
-  const specs = await loadSpecs();
-  const benchmarks = await Promise.all(specs.map((s) => specToBenchmark(s)));
-  return benchmarks.sort((a, b) => a.number.localeCompare(b.number));
-});
+// Cross-request server cache. Without it, each new HTTP request that
+// missed the page-level ISR window would re-run every Prom query for
+// every spec — concurrent visitors all paying full price. With it, the
+// first miss warms the cache and every later request inside `revalidate`
+// gets the result instantly. Wrapped in React `cache()` too so duplicate
+// calls within a single render tree dedupe.
+const loadAllBenchmarksCached = unstable_cache(
+  async (): Promise<Benchmark[]> => {
+    const specs = await loadSpecs();
+    const benchmarks = await Promise.all(specs.map((s) => specToBenchmark(s)));
+    return benchmarks.sort((a, b) => a.number.localeCompare(b.number));
+  },
+  ["all-benchmarks"],
+  { revalidate: 60, tags: ["benchmarks"] }
+);
+export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
 
 /**
  * Cross-request server cache for chain-filtered loads. Each (slug, chain)
