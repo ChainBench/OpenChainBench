@@ -3,7 +3,7 @@
 slug: l1-finality
 number: "006"
 title: Layer-1 finality lag
-seo_title: Layer-1 finality time benchmark - Ethereum, Solana, TRON, Stellar, Hedera, SUI, TON, Litecoin, Monero, Cardano
+seo_title: Layer-1 finality time benchmark - Ethereum, BNB, Avalanche, Solana, TRON, Stellar, Hedera, SUI, TON, Litecoin, Monero, Cardano
 subtitle: Wall-clock distance between each L1's latest block and its finalized block. Lower is faster.
 category: Networks
 status: live
@@ -13,24 +13,22 @@ higher_is_better: false
 
 abstract: |
   We measure the live gap between every L1 chain's latest block and its
-  finalized block. The harness polls two endpoints per chain every 10 s
-  and exposes the time delta as a Prometheus gauge. No transactions are
-  sent. only freely-available public RPCs are queried. For PoS / BFT
-  chains with explicit finalization tags (Ethereum, Solana, TRON,
-  Stellar, Hedera, SUI, TON) we read the chain's own finalized pointer.
-  For probabilistic-finality chains (Litecoin, Monero, Cardano) we
-  approximate finality by the docs-recommended confirmation depth (6,
-  10, 50 respectively). The methodology only holds when finality is
-  much longer than the polling interval. chains whose finality is
-  faster than 10 s (BNB, Avalanche, XRP) are excluded — comparing
-  latest and finalized at one poll instant doesn't measure "time to
-  finalize a block" there, it measures the current gap, which collapses
-  to zero when finalization catches up. They will be re-added once the
-  harness has WebSocket wall-clock measurement.
+  finalized block. The harness uses two complementary methods. For
+  chains with finality much longer than our 10 s poll interval we read
+  `latest.timestamp - finalized.timestamp` from the chain RPCs (Ethereum,
+  Solana, TRON, Stellar, Hedera, SUI, TON, Litecoin, Monero, Cardano).
+  For chains whose finality is faster than the poll interval (BNB,
+  Avalanche) we maintain a persistent WebSocket subscription, recording
+  wall-clock time T1 when block N is first seen as `latest` and T2 when
+  it becomes `finalized`. lag = T2 − T1 with millisecond precision. The
+  WS path is the only honest way to measure sub-poll-cadence finality —
+  comparing two pointers at a single instant collapses to zero when
+  finalization catches up to head.
 
 methodology:
-  - "Cadence: every 10 seconds, in parallel across all chains."
+  - "Cadence: every 10 seconds for HTTP-polled chains, continuous WS for BNB and Avalanche."
   - "Ethereum: `eth_getBlockByNumber(\"latest\")` minus `eth_getBlockByNumber(\"finalized\")`."
+  - "BNB / Avalanche (WS wall-clock): persistent `eth_subscribe(\"newHeads\")` records T1 = first time block N is seen as latest. Periodic `eth_getBlockByNumber(\"finalized\")` over same WS records T2 when N becomes finalized. lag = T2 − T1, ms precision, independent of chain timestamp resolution."
   - "Solana: `getSlot{commitment:\"processed\"}` + `getBlockTime` minus `getSlot{commitment:\"finalized\"}` + `getBlockTime`."
   - "TRON: `/wallet/getnowblock` (head) minus `/walletsolidity/getnowblock` (solidity-confirmed)."
   - "Stellar: latest two records of `/ledgers?order=desc&limit=2`. one-back is SCP-final."
@@ -41,7 +39,7 @@ methodology:
   - "Monero (probabilistic): monero-rpc `get_info` minus 10 confirmations via `get_block_header_by_height`."
   - "Cardano (probabilistic): koios `/tip` minus 50 confirmations via `/blocks?block_height=eq.<height>`."
   - "Result: `lag_seconds = headTimestamp - finalizedTimestamp`. We also record the block-height delta and per-chain fetch latency."
-  - "Excluded by design: BNB, Avalanche (finality of ~1-2 s is faster than our 10 s poll cadence — at most poll instants `latest` and `finalized` collapse to the same block, so the timestamp diff measures the gap-at-instant, not the finalization wall-clock). XRP (no close-time on `ledger_current`). All three need a WS subscribe + wall-clock measurement to be reported truthfully."
+  - "Excluded by design: XRP (no close-time on `ledger_current` — wall-clock measurement requires WS subscribe to ledger stream, not yet implemented)."
   - "Failures (5xx, timeouts, rate limits) leave the previous gauge in place and increment a per-chain `fetch_errors_total` counter; the page falls back to the last successful sample."
 
 findings:
@@ -61,6 +59,8 @@ prometheus:
 dimensions:
   chain:
     - { value: ethereum,  label: Ethereum }
+    - { value: bnb,       label: BNB Chain }
+    - { value: avalanche, label: Avalanche }
     - { value: solana,    label: Solana }
     - { value: tron,      label: TRON }
     - { value: stellar,   label: Stellar }
@@ -87,6 +87,30 @@ dimensions:
 # during the day shows tail behaviour, not a single flat value.
 
 providers:
+  - slug: bnb
+    name: BNB Smart Chain
+    tag: Fast finality fork (BEP-126), measured via WS wall-clock
+    queries:
+      p50: quantile_over_time(0.50, l1_finality_wallclock_lag_milliseconds{chain="bnb"}[24h])
+      p90: quantile_over_time(0.90, l1_finality_wallclock_lag_milliseconds{chain="bnb"}[24h])
+      p99: quantile_over_time(0.99, l1_finality_wallclock_lag_milliseconds{chain="bnb"}[24h])
+      mean: avg_over_time(l1_finality_wallclock_lag_milliseconds{chain="bnb"}[24h])
+      success: avg_over_time(l1_finality_wallclock_health{chain="bnb"}[24h])
+      sample_size: increase(l1_finality_wallclock_samples_total{chain="bnb"}[24h])
+      series: l1_finality_wallclock_lag_milliseconds{chain="bnb"}
+
+  - slug: avalanche
+    name: Avalanche C-Chain
+    tag: Snowman++ consensus, measured via WS wall-clock
+    queries:
+      p50: quantile_over_time(0.50, l1_finality_wallclock_lag_milliseconds{chain="avalanche"}[24h])
+      p90: quantile_over_time(0.90, l1_finality_wallclock_lag_milliseconds{chain="avalanche"}[24h])
+      p99: quantile_over_time(0.99, l1_finality_wallclock_lag_milliseconds{chain="avalanche"}[24h])
+      mean: avg_over_time(l1_finality_wallclock_lag_milliseconds{chain="avalanche"}[24h])
+      success: avg_over_time(l1_finality_wallclock_health{chain="avalanche"}[24h])
+      sample_size: increase(l1_finality_wallclock_samples_total{chain="avalanche"}[24h])
+      series: l1_finality_wallclock_lag_milliseconds{chain="avalanche"}
+
   - slug: sui
     name: SUI
     tag: Mysticeti DAG, ~1 s checkpoint finality
