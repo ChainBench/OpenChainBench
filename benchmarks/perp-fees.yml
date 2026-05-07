@@ -1,0 +1,117 @@
+# OpenChainBench. Bench № 007
+
+slug: perp-fees
+number: "007"
+title: Perp opening cost
+seo_title: Perpetual futures opening cost benchmark - Hyperliquid, dYdX, GMX, Lighter, Gains
+subtitle: All-in cost (in bps) to open a $1000 ETH long 10x position. Taker fee + half-spread + impact, measured live from public APIs. Lower is cheaper.
+category: Trading
+status: live
+metric: All-in cost
+unit: bps
+higher_is_better: false
+
+abstract: |
+  We measure the live all-in cost of opening a $1000 ETH long 10x perp
+  position across major perpetual venues. Cost = taker fee + half-spread
+  + price impact at notional, all in basis points. No transactions are
+  sent. only freely-available public APIs are queried. Every value is
+  read live, no hardcoded fee schedules. taker fees come from each
+  venue's own API (Hyperliquid `userFees`, dYdX Cosmos REST
+  `/feetiers/perpetual_fee_params`, GMX Subsquid `positionFeeFactor`,
+  Lighter `/orderBookDetails`). spreads come from walking each venue's
+  orderbook for $1000 of buy-side notional. The bench refreshes every
+  5 minutes.
+
+methodology:
+  - "Cadence: every 5 minutes, in parallel across all venues."
+  - "Trade simulated: ETH long 10x, $1000 notional ($100 collateral)."
+  - "Hyperliquid: `POST /info {type: l2Book}` for asks + `{type: userFees, user: 0x000...000}` for taker fee + `{type: metaAndAssetCtxs}` for funding."
+  - "dYdX v4: indexer `/orderbooks/perpetualMarket/ETH-USD` + `/perpetualMarkets` (funding) + Cosmos REST `/dydxprotocol/v4/feetiers/perpetual_fee_params` for tier-0 default fee."
+  - "GMX v2 (Arbitrum): Subsquid GraphQL on the synthetics-arbitrum subgraph for `positionFeeFactorForNegativeImpact` (worst-case open) + gmxinfra REST for funding."
+  - "Lighter: `/orderBookDetails` (taker fee per market) + `/orderBookOrders` (orderbook walk)."
+  - "Gains Network: Mobula `/api/2/perp/quote` with `dexes:[gains]`. Confirms a route exists but doesn't yet expose taker fee in plain JSON. callData decoding planned."
+  - "All-in formula: `all_in_bps = taker_fee_bps + spread_bps`. Both components emitted as separate metrics for transparency."
+  - "Failures (5xx, timeouts, rate limits) leave the previous gauge in place and increment a per-venue `fetch_errors_total` counter. The page falls back to the last successful sample."
+
+findings:
+  - "Lighter charges zero taker fees on ETH-PERP — confirmed live via their public API."
+  - "Hyperliquid (4.5 bps base taker) is the cheapest non-zero-fee venue measured."
+  - "GMX position fee is variable: 4 bps on positive impact opens, 6 bps on negative impact. We report the negative branch as the conservative upper bound."
+
+source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/perp-fees
+
+prometheus:
+  url: https://prometheus-production-0859.up.railway.app
+  window: 24h
+
+# Real metrics emitted by the perp-fees harness:
+#   perp_fees_taker_fee_bps{venue, asset}                 gauge
+#   perp_fees_spread_bps{venue, asset}                    gauge (half-spread + impact at $1k)
+#   perp_fees_all_in_bps{venue, asset}                    gauge (taker + spread)
+#   perp_fees_funding_rate_per_hour_bps{venue, asset}     gauge (signed)
+#   perp_fees_fetch_latency_milliseconds{venue, asset}
+#   perp_fees_fetch_errors_total{venue, asset, error_type}  counter
+#   perp_fees_health{venue, asset}                        gauge (0|1)
+#   perp_fees_last_refresh_timestamp_seconds{venue, asset}
+
+providers:
+  - slug: lighter
+    name: Lighter
+    tag: zk-rollup, zero taker fee
+    queries:
+      p50: avg_over_time(perp_fees_all_in_bps{venue="lighter",asset="ETH"}[24h])
+      p90: quantile_over_time(0.90, perp_fees_all_in_bps{venue="lighter",asset="ETH"}[24h])
+      p99: quantile_over_time(0.99, perp_fees_all_in_bps{venue="lighter",asset="ETH"}[24h])
+      mean: avg_over_time(perp_fees_all_in_bps{venue="lighter",asset="ETH"}[24h])
+      success: avg_over_time(perp_fees_health{venue="lighter",asset="ETH"}[24h])
+      sample_size: count_over_time(perp_fees_all_in_bps{venue="lighter",asset="ETH"}[24h])
+      series: perp_fees_all_in_bps{venue="lighter",asset="ETH"}
+
+  - slug: hyperliquid
+    name: Hyperliquid
+    tag: HyperBFT L1 perp DEX
+    queries:
+      p50: avg_over_time(perp_fees_all_in_bps{venue="hyperliquid",asset="ETH"}[24h])
+      p90: quantile_over_time(0.90, perp_fees_all_in_bps{venue="hyperliquid",asset="ETH"}[24h])
+      p99: quantile_over_time(0.99, perp_fees_all_in_bps{venue="hyperliquid",asset="ETH"}[24h])
+      mean: avg_over_time(perp_fees_all_in_bps{venue="hyperliquid",asset="ETH"}[24h])
+      success: avg_over_time(perp_fees_health{venue="hyperliquid",asset="ETH"}[24h])
+      sample_size: count_over_time(perp_fees_all_in_bps{venue="hyperliquid",asset="ETH"}[24h])
+      series: perp_fees_all_in_bps{venue="hyperliquid",asset="ETH"}
+
+  - slug: dydx
+    name: dYdX v4
+    tag: Cosmos-based decentralized perp
+    queries:
+      p50: avg_over_time(perp_fees_all_in_bps{venue="dydx",asset="ETH"}[24h])
+      p90: quantile_over_time(0.90, perp_fees_all_in_bps{venue="dydx",asset="ETH"}[24h])
+      p99: quantile_over_time(0.99, perp_fees_all_in_bps{venue="dydx",asset="ETH"}[24h])
+      mean: avg_over_time(perp_fees_all_in_bps{venue="dydx",asset="ETH"}[24h])
+      success: avg_over_time(perp_fees_health{venue="dydx",asset="ETH"}[24h])
+      sample_size: count_over_time(perp_fees_all_in_bps{venue="dydx",asset="ETH"}[24h])
+      series: perp_fees_all_in_bps{venue="dydx",asset="ETH"}
+
+  - slug: gmx
+    name: GMX v2
+    tag: Synthetics on Arbitrum, oracle-priced
+    queries:
+      p50: avg_over_time(perp_fees_all_in_bps{venue="gmx",asset="ETH"}[24h])
+      p90: quantile_over_time(0.90, perp_fees_all_in_bps{venue="gmx",asset="ETH"}[24h])
+      p99: quantile_over_time(0.99, perp_fees_all_in_bps{venue="gmx",asset="ETH"}[24h])
+      mean: avg_over_time(perp_fees_all_in_bps{venue="gmx",asset="ETH"}[24h])
+      success: avg_over_time(perp_fees_health{venue="gmx",asset="ETH"}[24h])
+      sample_size: count_over_time(perp_fees_all_in_bps{venue="gmx",asset="ETH"}[24h])
+      series: perp_fees_all_in_bps{venue="gmx",asset="ETH"}
+
+  - slug: gains
+    name: Gains Network
+    tag: Synthetic perps on Base / Arbitrum (via Mobula)
+    queries:
+      p50: avg_over_time(perp_fees_all_in_bps{venue="gains",asset="ETH"}[24h])
+      p90: quantile_over_time(0.90, perp_fees_all_in_bps{venue="gains",asset="ETH"}[24h])
+      p99: quantile_over_time(0.99, perp_fees_all_in_bps{venue="gains",asset="ETH"}[24h])
+      mean: avg_over_time(perp_fees_all_in_bps{venue="gains",asset="ETH"}[24h])
+      success: avg_over_time(perp_fees_health{venue="gains",asset="ETH"}[24h])
+      sample_size: count_over_time(perp_fees_all_in_bps{venue="gains",asset="ETH"}[24h])
+      series: perp_fees_all_in_bps{venue="gains",asset="ETH"}

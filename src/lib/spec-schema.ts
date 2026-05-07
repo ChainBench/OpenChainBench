@@ -71,6 +71,7 @@ export const Category = z.enum([
   "Bridges",
   "Data",
   "Networks",
+  "Trading",
   "Wallets",
   "RPCs",
 ]);
