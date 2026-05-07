@@ -17,6 +17,7 @@ const CATEGORY_BLURB: Record<string, string> = {
   Aggregators: "Token-data aggregators. metadata, prices, charts.",
   Data: "Onchain data providers. block-level latency, network coverage.",
   Networks: "Layer-1 networks. block-level finality, RPC freshness.",
+  Trading: "CEX and DEX perpetual venues. all-in fees, spread, funding.",
   Bridges: "Cross-chain bridges. quote latency and effective cost.",
   Wallets: "Wallet APIs. portfolio, balances, history.",
   RPCs: "RPC endpoints. uptime, response time, reorg behaviour.",
