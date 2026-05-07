@@ -30,7 +30,7 @@ methodology:
   - "dYdX v4: indexer `/orderbooks/perpetualMarket/ETH-USD` + `/perpetualMarkets` (funding) + Cosmos REST `/dydxprotocol/v4/feetiers/perpetual_fee_params` for tier-0 default fee."
   - "GMX v2 (Arbitrum): Subsquid GraphQL on the synthetics-arbitrum subgraph for `positionFeeFactorForNegativeImpact` (worst-case open) + gmxinfra REST for funding."
   - "Lighter: `/orderBookDetails` (taker fee per market) + `/orderBookOrders` (orderbook walk)."
-  - "Gains Network: Mobula `/api/2/perp/quote` with `dexes:[gains]`. Confirms a route exists but doesn't yet expose taker fee in plain JSON. callData decoding planned."
+  - "gains.trade (Gains v8 on Base): we read the fee directly on-chain. `eth_call pairs(N)` to find the pair index for the asset and its `feeIndex`, then `eth_call fees(feeIndex).openFeeP` for the actual taker fee. Spread comes from `pairs(N).spreadP`. Both values in 1e10 precision per Gains v8 convention. Cached 1h to keep Base RPC quota low."
   - "All-in formula: `all_in_bps = taker_fee_bps + spread_bps`. Both components emitted as separate metrics for transparency."
   - "Failures (5xx, timeouts, rate limits) leave the previous gauge in place and increment a per-venue `fetch_errors_total` counter. The page falls back to the last successful sample."
 
@@ -44,6 +44,17 @@ source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/per
 prometheus:
   url: https://prometheus-production-0859.up.railway.app
   window: 24h
+
+# Asset selector. Tabs at the top of the page let the reader switch
+# between ETH, BTC, SOL — every PromQL query gets `chain="X"` injected
+# server-side so each tab is its own ranking. Note: the harness uses
+# `chain` as the metric label even though semantically it's the
+# underlying asset, to reuse the existing dimension-filter mechanism.
+dimensions:
+  chain:
+    - { value: ETH, label: ETH }
+    - { value: BTC, label: BTC }
+    - { value: SOL, label: SOL }
 
 # Real metrics emitted by the perp-fees harness:
 #   perp_fees_taker_fee_bps{venue, asset}                 gauge
@@ -60,58 +71,58 @@ providers:
     name: Lighter
     tag: zk-rollup, zero taker fee
     queries:
-      p50: avg_over_time(perp_fees_all_in_bps{venue="lighter",asset="ETH"}[24h])
-      p90: quantile_over_time(0.90, perp_fees_all_in_bps{venue="lighter",asset="ETH"}[24h])
-      p99: quantile_over_time(0.99, perp_fees_all_in_bps{venue="lighter",asset="ETH"}[24h])
-      mean: avg_over_time(perp_fees_all_in_bps{venue="lighter",asset="ETH"}[24h])
-      success: avg_over_time(perp_fees_health{venue="lighter",asset="ETH"}[24h])
-      sample_size: count_over_time(perp_fees_all_in_bps{venue="lighter",asset="ETH"}[24h])
-      series: perp_fees_all_in_bps{venue="lighter",asset="ETH"}
+      p50: avg_over_time(perp_fees_all_in_bps{venue="lighter",chain="ETH"}[24h])
+      p90: quantile_over_time(0.90, perp_fees_all_in_bps{venue="lighter",chain="ETH"}[24h])
+      p99: quantile_over_time(0.99, perp_fees_all_in_bps{venue="lighter",chain="ETH"}[24h])
+      mean: avg_over_time(perp_fees_all_in_bps{venue="lighter",chain="ETH"}[24h])
+      success: avg_over_time(perp_fees_health{venue="lighter",chain="ETH"}[24h])
+      sample_size: count_over_time(perp_fees_all_in_bps{venue="lighter",chain="ETH"}[24h])
+      series: perp_fees_all_in_bps{venue="lighter",chain="ETH"}
 
   - slug: hyperliquid
     name: Hyperliquid
     tag: HyperBFT L1 perp DEX
     queries:
-      p50: avg_over_time(perp_fees_all_in_bps{venue="hyperliquid",asset="ETH"}[24h])
-      p90: quantile_over_time(0.90, perp_fees_all_in_bps{venue="hyperliquid",asset="ETH"}[24h])
-      p99: quantile_over_time(0.99, perp_fees_all_in_bps{venue="hyperliquid",asset="ETH"}[24h])
-      mean: avg_over_time(perp_fees_all_in_bps{venue="hyperliquid",asset="ETH"}[24h])
-      success: avg_over_time(perp_fees_health{venue="hyperliquid",asset="ETH"}[24h])
-      sample_size: count_over_time(perp_fees_all_in_bps{venue="hyperliquid",asset="ETH"}[24h])
-      series: perp_fees_all_in_bps{venue="hyperliquid",asset="ETH"}
+      p50: avg_over_time(perp_fees_all_in_bps{venue="hyperliquid",chain="ETH"}[24h])
+      p90: quantile_over_time(0.90, perp_fees_all_in_bps{venue="hyperliquid",chain="ETH"}[24h])
+      p99: quantile_over_time(0.99, perp_fees_all_in_bps{venue="hyperliquid",chain="ETH"}[24h])
+      mean: avg_over_time(perp_fees_all_in_bps{venue="hyperliquid",chain="ETH"}[24h])
+      success: avg_over_time(perp_fees_health{venue="hyperliquid",chain="ETH"}[24h])
+      sample_size: count_over_time(perp_fees_all_in_bps{venue="hyperliquid",chain="ETH"}[24h])
+      series: perp_fees_all_in_bps{venue="hyperliquid",chain="ETH"}
 
   - slug: dydx
     name: dYdX v4
     tag: Cosmos-based decentralized perp
     queries:
-      p50: avg_over_time(perp_fees_all_in_bps{venue="dydx",asset="ETH"}[24h])
-      p90: quantile_over_time(0.90, perp_fees_all_in_bps{venue="dydx",asset="ETH"}[24h])
-      p99: quantile_over_time(0.99, perp_fees_all_in_bps{venue="dydx",asset="ETH"}[24h])
-      mean: avg_over_time(perp_fees_all_in_bps{venue="dydx",asset="ETH"}[24h])
-      success: avg_over_time(perp_fees_health{venue="dydx",asset="ETH"}[24h])
-      sample_size: count_over_time(perp_fees_all_in_bps{venue="dydx",asset="ETH"}[24h])
-      series: perp_fees_all_in_bps{venue="dydx",asset="ETH"}
+      p50: avg_over_time(perp_fees_all_in_bps{venue="dydx",chain="ETH"}[24h])
+      p90: quantile_over_time(0.90, perp_fees_all_in_bps{venue="dydx",chain="ETH"}[24h])
+      p99: quantile_over_time(0.99, perp_fees_all_in_bps{venue="dydx",chain="ETH"}[24h])
+      mean: avg_over_time(perp_fees_all_in_bps{venue="dydx",chain="ETH"}[24h])
+      success: avg_over_time(perp_fees_health{venue="dydx",chain="ETH"}[24h])
+      sample_size: count_over_time(perp_fees_all_in_bps{venue="dydx",chain="ETH"}[24h])
+      series: perp_fees_all_in_bps{venue="dydx",chain="ETH"}
 
   - slug: gmx
     name: GMX v2
     tag: Synthetics on Arbitrum, oracle-priced
     queries:
-      p50: avg_over_time(perp_fees_all_in_bps{venue="gmx",asset="ETH"}[24h])
-      p90: quantile_over_time(0.90, perp_fees_all_in_bps{venue="gmx",asset="ETH"}[24h])
-      p99: quantile_over_time(0.99, perp_fees_all_in_bps{venue="gmx",asset="ETH"}[24h])
-      mean: avg_over_time(perp_fees_all_in_bps{venue="gmx",asset="ETH"}[24h])
-      success: avg_over_time(perp_fees_health{venue="gmx",asset="ETH"}[24h])
-      sample_size: count_over_time(perp_fees_all_in_bps{venue="gmx",asset="ETH"}[24h])
-      series: perp_fees_all_in_bps{venue="gmx",asset="ETH"}
+      p50: avg_over_time(perp_fees_all_in_bps{venue="gmx",chain="ETH"}[24h])
+      p90: quantile_over_time(0.90, perp_fees_all_in_bps{venue="gmx",chain="ETH"}[24h])
+      p99: quantile_over_time(0.99, perp_fees_all_in_bps{venue="gmx",chain="ETH"}[24h])
+      mean: avg_over_time(perp_fees_all_in_bps{venue="gmx",chain="ETH"}[24h])
+      success: avg_over_time(perp_fees_health{venue="gmx",chain="ETH"}[24h])
+      sample_size: count_over_time(perp_fees_all_in_bps{venue="gmx",chain="ETH"}[24h])
+      series: perp_fees_all_in_bps{venue="gmx",chain="ETH"}
 
   - slug: gains
-    name: Gains Network
-    tag: Synthetic perps on Base / Arbitrum (via Mobula)
+    name: gains.trade
+    tag: Synthetic perps on Base, fees read on-chain
     queries:
-      p50: avg_over_time(perp_fees_all_in_bps{venue="gains",asset="ETH"}[24h])
-      p90: quantile_over_time(0.90, perp_fees_all_in_bps{venue="gains",asset="ETH"}[24h])
-      p99: quantile_over_time(0.99, perp_fees_all_in_bps{venue="gains",asset="ETH"}[24h])
-      mean: avg_over_time(perp_fees_all_in_bps{venue="gains",asset="ETH"}[24h])
-      success: avg_over_time(perp_fees_health{venue="gains",asset="ETH"}[24h])
-      sample_size: count_over_time(perp_fees_all_in_bps{venue="gains",asset="ETH"}[24h])
-      series: perp_fees_all_in_bps{venue="gains",asset="ETH"}
+      p50: avg_over_time(perp_fees_all_in_bps{venue="gains",chain="ETH"}[24h])
+      p90: quantile_over_time(0.90, perp_fees_all_in_bps{venue="gains",chain="ETH"}[24h])
+      p99: quantile_over_time(0.99, perp_fees_all_in_bps{venue="gains",chain="ETH"}[24h])
+      mean: avg_over_time(perp_fees_all_in_bps{venue="gains",chain="ETH"}[24h])
+      success: avg_over_time(perp_fees_health{venue="gains",chain="ETH"}[24h])
+      sample_size: count_over_time(perp_fees_all_in_bps{venue="gains",chain="ETH"}[24h])
+      series: perp_fees_all_in_bps{venue="gains",chain="ETH"}
