@@ -15,6 +15,20 @@ function sortByP50(b: Benchmark): ProviderResult[] {
   );
 }
 
+/** Compact label for the share-card bar chart. Long multi-word names
+ * (e.g. "BNB Smart Chain", "Avalanche C-Chain") wrap to two lines,
+ * which breaks the bottom-aligned bar layout — the wrapped column gets
+ * taller and pushes its top-of-bar value above the others. Use a
+ * shortened form here. */
+function compactProviderName(name: string): string {
+  const map: Record<string, string> = {
+    "BNB Smart Chain": "BNB",
+    "Avalanche C-Chain": "Avalanche",
+    "XRP Ledger": "XRP",
+  };
+  return map[name] ?? name;
+}
+
 /** Direction-aware comparison label for the Compare card centre cell.
  *  delta = b - a, where a is the leader (rank 1).
  *  - Latency / time benches: a is faster, b is "slower by".
@@ -518,9 +532,10 @@ async function renderRanking(
                       fontWeight: 600,
                       color: INK,
                       marginTop: 6,
+                      whiteSpace: "nowrap",
                     }}
                   >
-                    {r.name}
+                    {compactProviderName(r.name)}
                   </div>
                   <div
                     style={{
