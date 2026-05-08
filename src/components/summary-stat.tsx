@@ -1,3 +1,5 @@
+"use client";
+
 import type { ReactNode } from "react";
 
 /** Mono uppercase section label rendered above tables and charts. */
