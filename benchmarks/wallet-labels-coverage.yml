@@ -1,0 +1,176 @@
+# OpenChainBench. Bench № 008
+
+slug: wallet-labels-coverage
+number: "008"
+title: Wallet labels coverage
+seo_title: Wallet labels coverage benchmark - Mobula, Helius, Moralis, Blockscout, OLI, TonAPI
+subtitle: Share of well-known addresses each provider correctly labels with an entity (CEX, DEX, multisig, sanctioned, etc.). Higher is better.
+category: Aggregators
+status: live
+metric: Coverage rate
+unit: pct
+higher_is_better: true
+
+abstract: |
+  We benchmark how well each major wallet-labeling provider identifies a curated
+  sample of publicly-known addresses across 11 chains. The harness pushes ~60
+  rotating anchor addresses (Etherscan public name tags, OFAC SDN list, Safe
+  multisigs, DEX routers, public figures) onto a queue and asks every supported
+  provider for an entity label. A provider scores a hit when it returns a
+  non-generic entity name. categorical fillers like "EOA" or "Contract" don't
+  count.
+
+  Coverage is shown per chain. some providers cover 90+ chains (Mobula), others
+  are chain-specialists (Helius for Solana, TonAPI for TON, StellarExpert for
+  Stellar, XRPScan for XRP, WalletExplorer for Bitcoin). Showing per-chain rather
+  than aggregating prevents specialists from being unfairly penalized for
+  chains they don't claim to cover.
+
+methodology:
+  - "Sample: ~60 curated anchor addresses (CEX hot wallets, DEX routers, Safe multisigs, OFAC SDN, public figures), shuffled and re-checked every 30 minutes. List rotated quarterly from public sources."
+  - "Query each provider's labels endpoint live: Mobula `/api/2/wallet/labels`, Helius `/v1/wallet/{addr}/identity`, Moralis `/api/v2.2/entities`, Blockscout `/api/v2/addresses/{addr}`, OLI Base EAS GraphQL, TonAPI `/v2/accounts/{addr}`, StellarExpert `/explorer/directory/{addr}`, XRPScan `/api/v1/account/{addr}`, WalletExplorer `/api/1/address-lookup`."
+  - "A provider scores 'hit' when it returns a non-generic entity name. Filler labels like 'EOA', 'Contract', 'Wallet', 'Multisig', 'Unknown' are explicitly excluded — they carry no entity signal."
+  - "Per-chain leaderboards. providers are filtered by their declared chain support, so Helius (Solana-only) doesn't get penalized on Ethereum and vice versa."
+  - "Failures (timeouts, 5xx, auth errors) are counted as 'no label' and surfaced separately as `wallet_labels_fetch_errors_total`."
+  - "Region: `eu-west` (single point)."
+
+findings: []
+
+source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/wallet-labels
+
+prometheus:
+  url: https://prometheus-production-0859.up.railway.app
+  window: 24h
+
+# Chain selector. tabs at the top of the page. Server injects
+# `chain="X"` into every PromQL query for the active tab.
+dimensions:
+  chain:
+    - { value: ethereum, label: Ethereum }
+    - { value: solana,   label: Solana }
+    - { value: bnb,      label: BNB Chain }
+    - { value: base,     label: Base }
+    - { value: arbitrum, label: Arbitrum }
+    - { value: polygon,  label: Polygon }
+    - { value: optimism, label: Optimism }
+    - { value: ton,      label: TON }
+    - { value: stellar,  label: Stellar }
+    - { value: xrp,      label: XRP }
+    - { value: bitcoin,  label: Bitcoin }
+
+# Real metrics emitted by the wallet-labels harness:
+#   wallet_labels_checks_total{provider, chain}             counter
+#   wallet_labels_success_total{provider, chain}            counter
+#   wallet_labels_api_latency_milliseconds{provider}        histogram
+#   wallet_labels_fetch_errors_total{provider, error_type}  counter
+#   wallet_labels_health{provider}                          gauge (0|1)
+#   wallet_labels_queue_depth                               gauge
+
+providers:
+  - slug: mobula
+    name: Mobula
+    tag: REST `/wallet/labels`, 90+ chains
+    queries:
+      p50: quantile_over_time(0.50, (100 * sum(rate(wallet_labels_success_total{provider="mobula"}[1h])) / sum(rate(wallet_labels_checks_total{provider="mobula"}[1h])))[24h:1h])
+      p90: quantile_over_time(0.90, (100 * sum(rate(wallet_labels_success_total{provider="mobula"}[1h])) / sum(rate(wallet_labels_checks_total{provider="mobula"}[1h])))[24h:1h])
+      p99: quantile_over_time(0.99, (100 * sum(rate(wallet_labels_success_total{provider="mobula"}[1h])) / sum(rate(wallet_labels_checks_total{provider="mobula"}[1h])))[24h:1h])
+      mean: 100 * sum(rate(wallet_labels_success_total{provider="mobula"}[24h])) / sum(rate(wallet_labels_checks_total{provider="mobula"}[24h]))
+      success: clamp_max(sum(rate(wallet_labels_checks_total{provider="mobula"}[24h])) / scalar(sum(rate(wallet_labels_checks_total{provider="mobula"}[24h]))), 1)
+      sample_size: sum(increase(wallet_labels_checks_total{provider="mobula"}[24h]))
+      series: 100 * sum(rate(wallet_labels_success_total{provider="mobula"}[1h])) / sum(rate(wallet_labels_checks_total{provider="mobula"}[1h]))
+
+  - slug: helius
+    name: Helius
+    tag: Solana Wallet Identity
+    queries:
+      p50: quantile_over_time(0.50, (100 * sum(rate(wallet_labels_success_total{provider="helius"}[1h])) / sum(rate(wallet_labels_checks_total{provider="helius"}[1h])))[24h:1h])
+      p90: quantile_over_time(0.90, (100 * sum(rate(wallet_labels_success_total{provider="helius"}[1h])) / sum(rate(wallet_labels_checks_total{provider="helius"}[1h])))[24h:1h])
+      p99: quantile_over_time(0.99, (100 * sum(rate(wallet_labels_success_total{provider="helius"}[1h])) / sum(rate(wallet_labels_checks_total{provider="helius"}[1h])))[24h:1h])
+      mean: 100 * sum(rate(wallet_labels_success_total{provider="helius"}[24h])) / sum(rate(wallet_labels_checks_total{provider="helius"}[24h]))
+      success: clamp_max(sum(rate(wallet_labels_checks_total{provider="helius"}[24h])) / scalar(sum(rate(wallet_labels_checks_total{provider="helius"}[24h]))), 1)
+      sample_size: sum(increase(wallet_labels_checks_total{provider="helius"}[24h]))
+      series: 100 * sum(rate(wallet_labels_success_total{provider="helius"}[1h])) / sum(rate(wallet_labels_checks_total{provider="helius"}[1h]))
+
+  - slug: moralis
+    name: Moralis
+    tag: Web3 Data API entities
+    queries:
+      p50: quantile_over_time(0.50, (100 * sum(rate(wallet_labels_success_total{provider="moralis"}[1h])) / sum(rate(wallet_labels_checks_total{provider="moralis"}[1h])))[24h:1h])
+      p90: quantile_over_time(0.90, (100 * sum(rate(wallet_labels_success_total{provider="moralis"}[1h])) / sum(rate(wallet_labels_checks_total{provider="moralis"}[1h])))[24h:1h])
+      p99: quantile_over_time(0.99, (100 * sum(rate(wallet_labels_success_total{provider="moralis"}[1h])) / sum(rate(wallet_labels_checks_total{provider="moralis"}[1h])))[24h:1h])
+      mean: 100 * sum(rate(wallet_labels_success_total{provider="moralis"}[24h])) / sum(rate(wallet_labels_checks_total{provider="moralis"}[24h]))
+      success: clamp_max(sum(rate(wallet_labels_checks_total{provider="moralis"}[24h])) / scalar(sum(rate(wallet_labels_checks_total{provider="moralis"}[24h]))), 1)
+      sample_size: sum(increase(wallet_labels_checks_total{provider="moralis"}[24h]))
+      series: 100 * sum(rate(wallet_labels_success_total{provider="moralis"}[1h])) / sum(rate(wallet_labels_checks_total{provider="moralis"}[1h]))
+
+  - slug: blockscout
+    name: Blockscout
+    tag: Open-source explorer, 100+ EVM chains
+    queries:
+      p50: quantile_over_time(0.50, (100 * sum(rate(wallet_labels_success_total{provider="blockscout"}[1h])) / sum(rate(wallet_labels_checks_total{provider="blockscout"}[1h])))[24h:1h])
+      p90: quantile_over_time(0.90, (100 * sum(rate(wallet_labels_success_total{provider="blockscout"}[1h])) / sum(rate(wallet_labels_checks_total{provider="blockscout"}[1h])))[24h:1h])
+      p99: quantile_over_time(0.99, (100 * sum(rate(wallet_labels_success_total{provider="blockscout"}[1h])) / sum(rate(wallet_labels_checks_total{provider="blockscout"}[1h])))[24h:1h])
+      mean: 100 * sum(rate(wallet_labels_success_total{provider="blockscout"}[24h])) / sum(rate(wallet_labels_checks_total{provider="blockscout"}[24h]))
+      success: clamp_max(sum(rate(wallet_labels_checks_total{provider="blockscout"}[24h])) / scalar(sum(rate(wallet_labels_checks_total{provider="blockscout"}[24h]))), 1)
+      sample_size: sum(increase(wallet_labels_checks_total{provider="blockscout"}[24h]))
+      series: 100 * sum(rate(wallet_labels_success_total{provider="blockscout"}[1h])) / sum(rate(wallet_labels_checks_total{provider="blockscout"}[1h]))
+
+  - slug: oli
+    name: OLI
+    tag: Open Labels Initiative — attestations on Base EAS
+    queries:
+      p50: quantile_over_time(0.50, (100 * sum(rate(wallet_labels_success_total{provider="oli"}[1h])) / sum(rate(wallet_labels_checks_total{provider="oli"}[1h])))[24h:1h])
+      p90: quantile_over_time(0.90, (100 * sum(rate(wallet_labels_success_total{provider="oli"}[1h])) / sum(rate(wallet_labels_checks_total{provider="oli"}[1h])))[24h:1h])
+      p99: quantile_over_time(0.99, (100 * sum(rate(wallet_labels_success_total{provider="oli"}[1h])) / sum(rate(wallet_labels_checks_total{provider="oli"}[1h])))[24h:1h])
+      mean: 100 * sum(rate(wallet_labels_success_total{provider="oli"}[24h])) / sum(rate(wallet_labels_checks_total{provider="oli"}[24h]))
+      success: clamp_max(sum(rate(wallet_labels_checks_total{provider="oli"}[24h])) / scalar(sum(rate(wallet_labels_checks_total{provider="oli"}[24h]))), 1)
+      sample_size: sum(increase(wallet_labels_checks_total{provider="oli"}[24h]))
+      series: 100 * sum(rate(wallet_labels_success_total{provider="oli"}[1h])) / sum(rate(wallet_labels_checks_total{provider="oli"}[1h]))
+
+  - slug: tonapi
+    name: TonAPI
+    tag: Tonkeeper directory, TON only
+    queries:
+      p50: quantile_over_time(0.50, (100 * sum(rate(wallet_labels_success_total{provider="tonapi"}[1h])) / sum(rate(wallet_labels_checks_total{provider="tonapi"}[1h])))[24h:1h])
+      p90: quantile_over_time(0.90, (100 * sum(rate(wallet_labels_success_total{provider="tonapi"}[1h])) / sum(rate(wallet_labels_checks_total{provider="tonapi"}[1h])))[24h:1h])
+      p99: quantile_over_time(0.99, (100 * sum(rate(wallet_labels_success_total{provider="tonapi"}[1h])) / sum(rate(wallet_labels_checks_total{provider="tonapi"}[1h])))[24h:1h])
+      mean: 100 * sum(rate(wallet_labels_success_total{provider="tonapi"}[24h])) / sum(rate(wallet_labels_checks_total{provider="tonapi"}[24h]))
+      success: clamp_max(sum(rate(wallet_labels_checks_total{provider="tonapi"}[24h])) / scalar(sum(rate(wallet_labels_checks_total{provider="tonapi"}[24h]))), 1)
+      sample_size: sum(increase(wallet_labels_checks_total{provider="tonapi"}[24h]))
+      series: 100 * sum(rate(wallet_labels_success_total{provider="tonapi"}[1h])) / sum(rate(wallet_labels_checks_total{provider="tonapi"}[1h]))
+
+  - slug: stellarexpert
+    name: StellarExpert
+    tag: SDF directory, Stellar only
+    queries:
+      p50: quantile_over_time(0.50, (100 * sum(rate(wallet_labels_success_total{provider="stellarexpert"}[1h])) / sum(rate(wallet_labels_checks_total{provider="stellarexpert"}[1h])))[24h:1h])
+      p90: quantile_over_time(0.90, (100 * sum(rate(wallet_labels_success_total{provider="stellarexpert"}[1h])) / sum(rate(wallet_labels_checks_total{provider="stellarexpert"}[1h])))[24h:1h])
+      p99: quantile_over_time(0.99, (100 * sum(rate(wallet_labels_success_total{provider="stellarexpert"}[1h])) / sum(rate(wallet_labels_checks_total{provider="stellarexpert"}[1h])))[24h:1h])
+      mean: 100 * sum(rate(wallet_labels_success_total{provider="stellarexpert"}[24h])) / sum(rate(wallet_labels_checks_total{provider="stellarexpert"}[24h]))
+      success: clamp_max(sum(rate(wallet_labels_checks_total{provider="stellarexpert"}[24h])) / scalar(sum(rate(wallet_labels_checks_total{provider="stellarexpert"}[24h]))), 1)
+      sample_size: sum(increase(wallet_labels_checks_total{provider="stellarexpert"}[24h]))
+      series: 100 * sum(rate(wallet_labels_success_total{provider="stellarexpert"}[1h])) / sum(rate(wallet_labels_checks_total{provider="stellarexpert"}[1h]))
+
+  - slug: xrpscan
+    name: XRPScan
+    tag: XRP ledger account names
+    queries:
+      p50: quantile_over_time(0.50, (100 * sum(rate(wallet_labels_success_total{provider="xrpscan"}[1h])) / sum(rate(wallet_labels_checks_total{provider="xrpscan"}[1h])))[24h:1h])
+      p90: quantile_over_time(0.90, (100 * sum(rate(wallet_labels_success_total{provider="xrpscan"}[1h])) / sum(rate(wallet_labels_checks_total{provider="xrpscan"}[1h])))[24h:1h])
+      p99: quantile_over_time(0.99, (100 * sum(rate(wallet_labels_success_total{provider="xrpscan"}[1h])) / sum(rate(wallet_labels_checks_total{provider="xrpscan"}[1h])))[24h:1h])
+      mean: 100 * sum(rate(wallet_labels_success_total{provider="xrpscan"}[24h])) / sum(rate(wallet_labels_checks_total{provider="xrpscan"}[24h]))
+      success: clamp_max(sum(rate(wallet_labels_checks_total{provider="xrpscan"}[24h])) / scalar(sum(rate(wallet_labels_checks_total{provider="xrpscan"}[24h]))), 1)
+      sample_size: sum(increase(wallet_labels_checks_total{provider="xrpscan"}[24h]))
+      series: 100 * sum(rate(wallet_labels_success_total{provider="xrpscan"}[1h])) / sum(rate(wallet_labels_checks_total{provider="xrpscan"}[1h]))
+
+  - slug: walletexplorer
+    name: WalletExplorer
+    tag: Bitcoin clustering + service tags
+    queries:
+      p50: quantile_over_time(0.50, (100 * sum(rate(wallet_labels_success_total{provider="walletexplorer"}[1h])) / sum(rate(wallet_labels_checks_total{provider="walletexplorer"}[1h])))[24h:1h])
+      p90: quantile_over_time(0.90, (100 * sum(rate(wallet_labels_success_total{provider="walletexplorer"}[1h])) / sum(rate(wallet_labels_checks_total{provider="walletexplorer"}[1h])))[24h:1h])
+      p99: quantile_over_time(0.99, (100 * sum(rate(wallet_labels_success_total{provider="walletexplorer"}[1h])) / sum(rate(wallet_labels_checks_total{provider="walletexplorer"}[1h])))[24h:1h])
+      mean: 100 * sum(rate(wallet_labels_success_total{provider="walletexplorer"}[24h])) / sum(rate(wallet_labels_checks_total{provider="walletexplorer"}[24h]))
+      success: clamp_max(sum(rate(wallet_labels_checks_total{provider="walletexplorer"}[24h])) / scalar(sum(rate(wallet_labels_checks_total{provider="walletexplorer"}[24h]))), 1)
+      sample_size: sum(increase(wallet_labels_checks_total{provider="walletexplorer"}[24h]))
+      series: 100 * sum(rate(wallet_labels_success_total{provider="walletexplorer"}[1h])) / sum(rate(wallet_labels_checks_total{provider="walletexplorer"}[1h]))
