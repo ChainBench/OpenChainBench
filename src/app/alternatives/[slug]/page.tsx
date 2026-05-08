@@ -70,7 +70,7 @@ export default async function AlternativePage({
       <div className="mt-6 flex flex-wrap items-center gap-2">
         <Pill variant="category">Alternatives</Pill>
         <span className="ml-auto font-mono text-[11px] tabular text-ink-muted">
-          Sourced from bench № {bench.number} · {bench.title}
+          Sourced from {bench.title}
         </span>
       </div>
 
