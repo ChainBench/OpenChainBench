@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Download, ChevronDown, Loader2 } from "lucide-react";
+import { Download, Image as ImageIcon, Loader2, X } from "lucide-react";
 import type { Benchmark } from "@/types/benchmark";
 
 type Template = {
@@ -56,6 +56,22 @@ type Props = {
 
 export function ShareSection({ slug, title, benchmark, chain }: Props) {
   const [activeId, setActiveId] = useState<string>("ranking");
+  const [open, setOpen] = useState(false);
+
+  // Lock body scroll while modal open and close on Escape.
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
 
   const orderedProviders = useMemo(
     () =>
@@ -154,18 +170,37 @@ export function ShareSection({ slug, title, benchmark, chain }: Props) {
   }
 
   return (
-    <details open className="mt-1 group border-t border-rule">
-      <summary className="flex cursor-pointer items-center justify-between py-4 list-none">
-        <span className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink">
-          View as image · 5 layouts
-        </span>
-        <ChevronDown
-          size={16}
-          strokeWidth={2}
-          className="text-ink-muted transition-transform group-open:rotate-180"
-        />
-      </summary>
-      <div className="pb-6 space-y-5">
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        className="inline-flex items-center gap-2 rounded-md border border-ink bg-paper px-3.5 py-2 text-[11px] font-medium uppercase tracking-[0.18em] text-ink hover:bg-ink hover:text-paper transition-colors"
+      >
+        <ImageIcon size={14} strokeWidth={2} />
+        Export as image
+      </button>
+
+      {open && (
+        <div
+          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-ink/40 backdrop-blur-sm p-4 sm:p-8"
+          onClick={() => setOpen(false)}
+        >
+          <div
+            className="relative w-full max-w-4xl rounded-md border border-rule bg-paper shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-rule px-6 py-4">
+              <span className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink">
+                Export as image · 5 layouts
+              </span>
+              <button
+                onClick={() => setOpen(false)}
+                aria-label="Close"
+                className="text-ink-muted hover:text-ink transition-colors"
+              >
+                <X size={20} strokeWidth={2} />
+              </button>
+            </div>
+      <div className="px-6 py-5 space-y-5">
         <p className="text-sm text-ink-muted leading-relaxed max-w-2xl">
           Pick a layout and download a 1200×630 PNG ready for Twitter, Reddit, LinkedIn or any OG-card embed. Same data, same colors as this dashboard.
         </p>
@@ -366,7 +401,10 @@ export function ShareSection({ slug, title, benchmark, chain }: Props) {
           );
         })}
       </div>
-    </details>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
