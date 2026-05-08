@@ -42,8 +42,9 @@ export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
 /**
  * Cross-request server cache for chain-filtered loads. Each (slug, chain)
  * combo is computed at most once per `revalidate` window across ALL
- * concurrent users, so flipping between BTC/ETH/SOL tabs hits a warm
- * cache instead of triggering 30+ Prom queries on every click.
+ * concurrent users — so the page-level pre-fetch (which loads every
+ * chain variant in parallel) hits a warm cache after the first miss
+ * instead of triggering 30+ Prom queries on every render.
  */
 const loadBenchmarkForChain = unstable_cache(
   async (slug: string, chain: string): Promise<Benchmark | undefined> => {
@@ -52,7 +53,7 @@ const loadBenchmarkForChain = unstable_cache(
     if (!spec) return undefined;
     return specToBenchmark(spec, { chain });
   },
-  ["bench-chain"], // cache key prefix
+  ["bench-chain-v2"], // cache key prefix. bumped to bust stale entries.
   { revalidate: 60, tags: ["benchmarks"] }
 );
 

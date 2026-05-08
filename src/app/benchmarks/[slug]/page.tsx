@@ -9,18 +9,11 @@ import {
   getBenchmarkSlugs,
 } from "@/data/benchmarks";
 import { Pill } from "@/components/pill";
-import { TimeSeriesChart } from "@/components/time-series-chart";
-import { RankedBarChart } from "@/components/ranked-bar-chart";
-import { LedgerTable } from "@/components/ledger-table";
-import { RegionGrid } from "@/components/region-grid";
-import { ShareSection } from "@/components/share-section";
-import { CountLeaderboard } from "@/components/count-leaderboard";
-import { ChainTabs } from "@/components/chain-tabs";
-import { fmtUnit, unitSuffix, fmtValue } from "@/lib/format";
-import { computeFieldStats } from "@/lib/stats";
-import { SectionLabel, SummaryStat } from "@/components/summary-stat";
+import { BenchmarkBody } from "@/components/benchmark-body";
+import { SectionLabel } from "@/components/summary-stat";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
 import { SITE } from "@/data/site";
+import type { Benchmark } from "@/types/benchmark";
 
 export const revalidate = 60;
 
@@ -70,17 +63,28 @@ export default async function BenchmarkPage({
     null;
   const chain = chainOptions.length > 0 ? matchedChain : null;
 
-  const [benchmark, all] = await Promise.all([
-    chain ? getBenchmark(slug, { chain }) : Promise.resolve(aggregate),
+  // Pre-fetch every chain variant in parallel so the client can flip
+  // between tabs with zero network round-trip. unstable_cache dedupes
+  // each (slug, chain) combo across users so this is cheap.
+  const [variantList, all] = await Promise.all([
+    chainOptions.length > 0
+      ? Promise.all(
+          chainOptions.map(async (c) => {
+            const b = await getBenchmark(slug, { chain: c.value });
+            return [c.value, b ?? aggregate] as const;
+          })
+        )
+      : Promise.resolve(
+          [["__default", aggregate]] as ReadonlyArray<readonly [string, Benchmark]>
+        ),
     getBenchmarks(),
   ]);
-  if (!benchmark) notFound();
+  const variants: Record<string, Benchmark> = Object.fromEntries(variantList);
+  const benchmark = chain ? (variants[chain] ?? aggregate) : aggregate;
 
   const isDraft = benchmark.status === "draft";
   const otherBenchmarks = all.filter((b) => b.slug !== benchmark.slug);
 
-  const { fieldMin, fieldMedian, fieldMax, tailMin, tailMax, tailSpread } =
-    computeFieldStats(benchmark.results);
   const catColor = CATEGORY_COLOR[benchmark.category];
 
   const benchmarkUrl = `${SITE.url}/benchmarks/${benchmark.slug}`;
@@ -137,87 +141,15 @@ export default async function BenchmarkPage({
         {benchmark.subtitle}
       </p>
 
-      {/* Chain filter tabs. rendered when the spec declares a chain
-          dimension. Server re-fetches Prom with `chain="X"` injected. */}
-      {chainOptions.length > 0 && (
-        <div className="mt-8">
-          <ChainTabs options={chainOptions} selected={chain ?? null} />
-        </div>
-      )}
-
-      {/* Count benches: dedicated leaderboard view (no p50/p90/p99,
-          no 24h chart. those are meaningless on a single gauge). */}
-      {!isDraft && benchmark.unit === "count" && (
-        <>
-          <CountLeaderboard benchmark={benchmark} />
-          <div className="mt-14">
-            <SectionLabel>Provider ledger</SectionLabel>
-            <LedgerTable benchmark={benchmark} />
-          </div>
-          <div className="mt-10">
-            <ShareSection slug={benchmark.slug} title={benchmark.title} benchmark={benchmark} chain={chain} />
-          </div>
-        </>
-      )}
-
-      {/* Latency / cost benches: thin summary strip + 24h chart. */}
-      {!isDraft && benchmark.unit !== "count" && (
-        <>
-          {/* Thin key-value strip. replaces the 5-BigNumber grid. */}
-          <dl className="mt-10 grid grid-cols-2 sm:flex sm:flex-wrap items-baseline gap-x-8 gap-y-3 border-y border-rule py-4">
-            <SummaryStat
-              label="Best"
-              value={`${fmtValue(fieldMin, benchmark.unit)}${unitSuffix(benchmark.unit)}`}
-            />
-            <SummaryStat
-              label="Median"
-              value={`${fmtValue(fieldMedian, benchmark.unit)}${unitSuffix(benchmark.unit)}`}
-            />
-            <SummaryStat
-              label="Worst"
-              value={`${fmtValue(fieldMax, benchmark.unit)}${unitSuffix(benchmark.unit)}`}
-            />
-            <SummaryStat
-              label="Spread"
-              value={tailSpread > 0 ? `${tailSpread.toFixed(1)}×` : "—"}
-              hint={
-                tailSpread > 0
-                  ? `${fmtUnit(tailMin, benchmark.unit)} → ${fmtUnit(tailMax, benchmark.unit)}`
-                  : undefined
-              }
-            />
-            <SummaryStat
-              label="Samples · 24h"
-              value={Math.round(benchmark.sampleSize).toLocaleString()}
-              hint={`${benchmark.results.length} providers`}
-            />
-          </dl>
-
-          <div className="mt-12">
-            <SectionLabel>{benchmark.metric} · last 24 hours</SectionLabel>
-            {benchmark.results.length >= 5 || benchmark.unit === "bps" ? (
-              <RankedBarChart benchmark={benchmark} />
-            ) : (
-              <TimeSeriesChart benchmark={benchmark} />
-            )}
-          </div>
-
-          <div className="mt-14">
-            <SectionLabel>Provider ledger · sorted by p50</SectionLabel>
-            <LedgerTable benchmark={benchmark} />
-          </div>
-
-          {Object.keys(benchmark.extras.regions).length > 0 && (
-            <div className="mt-14">
-              <SectionLabel>By region</SectionLabel>
-              <RegionGrid benchmark={benchmark} />
-            </div>
-          )}
-
-          <div className="mt-10">
-            <ShareSection slug={benchmark.slug} title={benchmark.title} benchmark={benchmark} chain={chain} />
-          </div>
-        </>
+      {/* Body: chain tabs + summary + chart + ledger + share. Receives every
+          chain variant pre-fetched server-side. flipping a tab swaps which
+          variant is rendered, instantly, no network round-trip. */}
+      {!isDraft && (
+        <BenchmarkBody
+          variants={variants}
+          options={chainOptions}
+          initialChain={chain ?? null}
+        />
       )}
 
       {isDraft && <DraftNotice source={benchmark.source} />}

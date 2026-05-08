@@ -1,68 +1,28 @@
 "use client";
 
-import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { useEffect, useTransition } from "react";
-
 type ChainOption = { value: string; label: string };
 
 /**
  * Chain filter tabs rendered above the chart on a bench detail page.
- * Updates `?chain=X` in the URL (or removes it for "All"). The server
- * component re-fetches Prometheus with the chain filter injected.
- *
- * On mount we eagerly prefetch every variant (All + each chain) so a
- * click swaps data instantly, without waiting for the round-trip.
+ * Stateless. parent owns the selected value and decides what to do on click
+ * (typically: swap which pre-fetched benchmark variant is rendered, then
+ * sync `?chain=` via `history.replaceState` to keep the URL shareable).
  */
 export function ChainTabs({
   options,
   selected,
+  onSelect,
 }: {
   options: ChainOption[];
   selected: string | null;
+  onSelect: (value: string) => void;
 }) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const [pending, startTransition] = useTransition();
-
-  // Prefetch all chain variants once on mount. Subsequent clicks are
-  // served from the Next.js client cache instead of doing a fresh
-  // Prometheus round-trip.
-  useEffect(() => {
-    const targets: string[] = [];
-    {
-      const p = new URLSearchParams(searchParams.toString());
-      p.delete("chain");
-      const qs = p.toString();
-      targets.push(qs ? `${pathname}?${qs}` : pathname);
-    }
-    for (const o of options) {
-      const p = new URLSearchParams(searchParams.toString());
-      p.set("chain", o.value);
-      targets.push(`${pathname}?${p.toString()}`);
-    }
-    for (const t of targets) router.prefetch(t);
-  }, [router, pathname, searchParams, options]);
-
-  function pick(value: string | null) {
-    const params = new URLSearchParams(searchParams.toString());
-    if (value === null) params.delete("chain");
-    else params.set("chain", value);
-    const qs = params.toString();
-    startTransition(() => {
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-    });
-  }
-
   return (
-    <div
-      className="flex flex-wrap items-center gap-1 border border-rule rounded p-1 bg-paper-soft w-fit"
-      data-pending={pending ? "" : undefined}
-    >
+    <div className="flex flex-wrap items-center gap-1 border border-rule rounded p-1 bg-paper-soft w-fit">
       {options.map((o) => (
         <Tab
           key={o.value}
-          onClick={() => pick(o.value)}
+          onClick={() => onSelect(o.value)}
           active={selected === o.value}
           label={o.label}
         />
