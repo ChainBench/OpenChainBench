@@ -123,7 +123,6 @@ export default async function BenchmarkPage({
         <span style={{ color: catColor ?? "var(--color-ink-soft)" }}>
           {benchmark.category}
         </span>
-        <span className="text-ink-faint">№ {benchmark.number}</span>
         {isDraft && <span className="text-ink-faint">draft</span>}
         <span className="ml-auto tabular text-ink-muted normal-case tracking-normal text-xs">
           Updated {formatLastRun(benchmark.lastRunAt)}
