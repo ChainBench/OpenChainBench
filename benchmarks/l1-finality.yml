@@ -54,23 +54,6 @@ prometheus:
   url: https://prometheus-production-0859.up.railway.app
   window: 24h
 
-# Drill-down dimension. The bench page renders a chain selector across the
-# 13 tracked L1s; queries get `chain="X"` injected server-side.
-dimensions:
-  chain:
-    - { value: ethereum,  label: Ethereum }
-    - { value: bnb,       label: BNB Chain }
-    - { value: avalanche, label: Avalanche }
-    - { value: solana,    label: Solana }
-    - { value: tron,      label: TRON }
-    - { value: stellar,   label: Stellar }
-    - { value: hedera,    label: Hedera }
-    - { value: sui,       label: SUI }
-    - { value: ton,       label: TON }
-    - { value: litecoin,  label: Litecoin }
-    - { value: monero,    label: Monero }
-    - { value: cardano,   label: Cardano }
-
 # Real metrics exposed by the l1-finality harness:
 #   l1_finality_lag_seconds{chain}                 gauge (seconds)
 #   l1_finality_block_lag{chain}                   gauge (block count)
