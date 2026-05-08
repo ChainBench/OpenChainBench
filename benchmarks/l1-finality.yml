@@ -96,15 +96,15 @@ providers:
 
   - slug: sui
     name: SUI
-    tag: Mysticeti DAG, ~1 s checkpoint finality
+    tag: Mysticeti DAG, measured via wall-clock checkpoint cadence
     queries:
-      p50: avg_over_time(l1_finality_lag_seconds{chain="sui"}[24h]) * 1000
-      p90: quantile_over_time(0.90, l1_finality_lag_seconds{chain="sui"}[24h]) * 1000
-      p99: quantile_over_time(0.99, l1_finality_lag_seconds{chain="sui"}[24h]) * 1000
-      mean: avg_over_time(l1_finality_lag_seconds{chain="sui"}[24h]) * 1000
-      success: avg_over_time(l1_finality_health{chain="sui"}[24h])
-      sample_size: count_over_time(l1_finality_lag_seconds{chain="sui"}[24h])
-      series: l1_finality_lag_seconds{chain="sui"} * 1000
+      p50: quantile_over_time(0.50, l1_finality_wallclock_lag_milliseconds{chain="sui"}[24h])
+      p90: quantile_over_time(0.90, l1_finality_wallclock_lag_milliseconds{chain="sui"}[24h])
+      p99: quantile_over_time(0.99, l1_finality_wallclock_lag_milliseconds{chain="sui"}[24h])
+      mean: avg_over_time(l1_finality_wallclock_lag_milliseconds{chain="sui"}[24h])
+      success: avg_over_time(l1_finality_wallclock_health{chain="sui"}[24h])
+      sample_size: increase(l1_finality_wallclock_samples_total{chain="sui"}[24h])
+      series: l1_finality_wallclock_lag_milliseconds{chain="sui"}
 
   - slug: ton
     name: TON
@@ -118,29 +118,17 @@ providers:
       sample_size: increase(l1_finality_wallclock_samples_total{chain="ton"}[24h])
       series: l1_finality_wallclock_lag_milliseconds{chain="ton"}
 
-  - slug: hedera
-    name: Hedera
-    tag: aBFT hashgraph
-    queries:
-      p50: avg_over_time(l1_finality_lag_seconds{chain="hedera"}[24h]) * 1000
-      p90: quantile_over_time(0.90, l1_finality_lag_seconds{chain="hedera"}[24h]) * 1000
-      p99: quantile_over_time(0.99, l1_finality_lag_seconds{chain="hedera"}[24h]) * 1000
-      mean: avg_over_time(l1_finality_lag_seconds{chain="hedera"}[24h]) * 1000
-      success: avg_over_time(l1_finality_health{chain="hedera"}[24h])
-      sample_size: count_over_time(l1_finality_lag_seconds{chain="hedera"}[24h])
-      series: l1_finality_lag_seconds{chain="hedera"} * 1000
-
   - slug: stellar
     name: Stellar
-    tag: SCP federated voting
+    tag: SCP federated voting, measured via Horizon SSE wall-clock
     queries:
-      p50: avg_over_time(l1_finality_lag_seconds{chain="stellar"}[24h]) * 1000
-      p90: quantile_over_time(0.90, l1_finality_lag_seconds{chain="stellar"}[24h]) * 1000
-      p99: quantile_over_time(0.99, l1_finality_lag_seconds{chain="stellar"}[24h]) * 1000
-      mean: avg_over_time(l1_finality_lag_seconds{chain="stellar"}[24h]) * 1000
-      success: avg_over_time(l1_finality_health{chain="stellar"}[24h])
-      sample_size: count_over_time(l1_finality_lag_seconds{chain="stellar"}[24h])
-      series: l1_finality_lag_seconds{chain="stellar"} * 1000
+      p50: quantile_over_time(0.50, l1_finality_wallclock_lag_milliseconds{chain="stellar"}[24h])
+      p90: quantile_over_time(0.90, l1_finality_wallclock_lag_milliseconds{chain="stellar"}[24h])
+      p99: quantile_over_time(0.99, l1_finality_wallclock_lag_milliseconds{chain="stellar"}[24h])
+      mean: avg_over_time(l1_finality_wallclock_lag_milliseconds{chain="stellar"}[24h])
+      success: avg_over_time(l1_finality_wallclock_health{chain="stellar"}[24h])
+      sample_size: increase(l1_finality_wallclock_samples_total{chain="stellar"}[24h])
+      series: l1_finality_wallclock_lag_milliseconds{chain="stellar"}
 
   - slug: solana
     name: Solana
