@@ -1,3 +1,5 @@
+"use client";
+
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
 import { Sparkline } from "@/components/sparkline";
 import { fmtUnit } from "@/lib/format";

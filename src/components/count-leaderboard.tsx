@@ -1,3 +1,5 @@
+"use client";
+
 import type { Benchmark } from "@/types/benchmark";
 import { fmtValue } from "@/lib/format";
 import { rankResults } from "@/lib/ranking";
