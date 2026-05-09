@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertTriangle, Loader2, X } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Loader2, X } from "lucide-react";
 
 type Status = "idle" | "submitting" | "ok" | "error";
 
@@ -17,6 +17,7 @@ export function ReportSection({ slug }: Props) {
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [contact, setContact] = useState("");
+  const [wantsContact, setWantsContact] = useState(false);
   const [status, setStatus] = useState<Status>("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -39,6 +40,7 @@ export function ReportSection({ slug }: Props) {
     if (status === "ok") {
       setMessage("");
       setContact("");
+      setWantsContact(false);
       setStatus("idle");
       setErrorMsg(null);
     }
@@ -59,7 +61,7 @@ export function ReportSection({ slug }: Props) {
           slug,
           chain,
           message,
-          contact: contact || null,
+          contact: wantsContact && contact ? contact : null,
           page: url?.toString() ?? "",
         }),
       });
@@ -116,15 +118,22 @@ export function ReportSection({ slug }: Props) {
             </div>
 
             {status === "ok" ? (
-              <div className="px-6 py-8 text-center space-y-2">
-                <p className="text-base text-ink">Thanks — report received.</p>
-                <p className="text-sm text-ink-muted">
-                  A maintainer will look into it. We may reach out if you left a
-                  contact.
+              <div className="px-6 py-10 text-center flex flex-col items-center gap-3">
+                <span
+                  className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-good/10 text-[var(--color-good)]"
+                  aria-hidden
+                >
+                  <CheckCircle2 size={28} strokeWidth={2} />
+                </span>
+                <p className="display text-xl text-ink">Thanks, report received.</p>
+                <p className="text-sm text-ink-muted max-w-sm leading-relaxed">
+                  {wantsContact && contact
+                    ? "A maintainer will take a look and reach out at the contact you left."
+                    : "A maintainer will take a look. Have a great day."}
                 </p>
                 <button
                   onClick={close}
-                  className="mt-4 inline-flex items-center gap-1.5 rounded-md border border-ink bg-ink px-3.5 py-2 text-[11px] font-medium uppercase tracking-[0.18em] text-paper hover:bg-paper hover:text-ink transition-colors"
+                  className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-ink bg-ink px-4 py-2 text-[11px] font-medium uppercase tracking-[0.18em] text-paper hover:bg-paper hover:text-ink transition-colors"
                 >
                   Close
                 </button>
@@ -157,22 +166,33 @@ export function ReportSection({ slug }: Props) {
                     {message.length} / 2000
                   </p>
                 </div>
-                <div>
-                  <label
-                    htmlFor="report-contact"
-                    className="block text-[10px] font-medium uppercase tracking-[0.16em] text-ink-faint mb-2"
-                  >
-                    Contact <span className="text-ink-faint">· optional</span>
+                <div className="space-y-2">
+                  <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={wantsContact}
+                      onChange={(e) => setWantsContact(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 cursor-pointer accent-[var(--color-ink)]"
+                    />
+                    <span className="text-sm text-ink leading-snug">
+                      I&apos;d like a reply
+                      <span className="block text-xs text-ink-muted mt-0.5">
+                        Leave an email, Telegram or GitHub handle so a maintainer can follow up.
+                      </span>
+                    </span>
                   </label>
-                  <input
-                    id="report-contact"
-                    value={contact}
-                    onChange={(e) => setContact(e.target.value)}
-                    type="text"
-                    maxLength={200}
-                    placeholder="email, telegram, github handle…"
-                    className="w-full rounded border border-rule bg-paper-soft px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:outline-none focus:border-ink"
-                  />
+                  {wantsContact && (
+                    <input
+                      id="report-contact"
+                      value={contact}
+                      onChange={(e) => setContact(e.target.value)}
+                      type="text"
+                      maxLength={200}
+                      autoFocus
+                      placeholder="email, telegram, github handle…"
+                      className="w-full rounded border border-rule bg-paper-soft px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:outline-none focus:border-ink"
+                    />
+                  )}
                 </div>
 
                 {errorMsg && (
