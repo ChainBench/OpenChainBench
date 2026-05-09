@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import type { Benchmark } from "@/types/benchmark";
 import { fmtUnit } from "@/lib/format";
 import { buildProviderColors } from "@/lib/series-colors";
+import { LiveDot } from "@/components/live-dot";
 
 type Props = { benchmark: Benchmark };
 
@@ -45,6 +46,10 @@ export function RankedBarChart({ benchmark }: Props) {
 
   return (
     <figure className="my-2">
+      <p className="mb-3 inline-flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
+        <LiveDot />
+        <span>{benchmark.metric} · last 24 hours</span>
+      </p>
       <ul className="space-y-2">
         {rows.map((r, idx) => {
           const w = project(r.value);

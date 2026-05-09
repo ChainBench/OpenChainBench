@@ -3,13 +3,13 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ArrowUpRight, ChevronDown } from "lucide-react";
 import {
-  formatLastRun,
   getBenchmark,
   getBenchmarks,
   getBenchmarkSlugs,
 } from "@/data/benchmarks";
 import { Pill } from "@/components/pill";
 import { BenchmarkBody } from "@/components/benchmark-body";
+import { LiveIndicator } from "@/components/live-indicator";
 import { SectionLabel } from "@/components/summary-stat";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
 import { SITE } from "@/data/site";
@@ -123,14 +123,16 @@ export default async function BenchmarkPage({
       </Link>
 
       {/* Bench identifier — minimal mono line, no SaaS-style pills. */}
-      <div className="mt-6 flex flex-wrap items-baseline gap-3 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+      <div className="mt-6 flex flex-wrap items-center gap-3 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
         <span style={{ color: catColor ?? "var(--color-ink-soft)" }}>
           {benchmark.category}
         </span>
         {isDraft && <span className="text-ink-faint">draft</span>}
-        <span className="ml-auto tabular text-ink-muted normal-case tracking-normal text-xs">
-          Updated {formatLastRun(benchmark.lastRunAt)}
-        </span>
+        {!isDraft && (
+          <span className="ml-auto">
+            <LiveIndicator lastRunAt={benchmark.lastRunAt} />
+          </span>
+        )}
       </div>
 
       {/* Title */}

@@ -56,11 +56,21 @@ export function BenchmarkBody({
 
   return (
     <>
-      {options.length > 0 && (
-        <div className="mt-8">
+      <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
+        {options.length > 0 ? (
           <ChainTabs options={options} selected={chain} onSelect={setChain} />
-        </div>
-      )}
+        ) : (
+          <span />
+        )}
+        {!isDraft && (
+          <ShareSection
+            slug={benchmark.slug}
+            title={benchmark.title}
+            benchmark={benchmark}
+            chain={chain}
+          />
+        )}
+      </div>
 
       {!isDraft && benchmark.unit === "count" && (
         <>
@@ -68,14 +78,6 @@ export function BenchmarkBody({
           <div className="mt-14">
             <SectionLabel>Provider ledger</SectionLabel>
             <LedgerTable benchmark={benchmark} />
-          </div>
-          <div className="mt-10">
-            <ShareSection
-              slug={benchmark.slug}
-              title={benchmark.title}
-              benchmark={benchmark}
-              chain={chain}
-            />
           </div>
         </>
       )}
@@ -112,7 +114,6 @@ export function BenchmarkBody({
           </dl>
 
           <div className="mt-12">
-            <SectionLabel>{benchmark.metric} · last 24 hours</SectionLabel>
             {benchmark.results.length >= 5 || benchmark.unit === "bps" ? (
               <RankedBarChart benchmark={benchmark} />
             ) : (
@@ -131,15 +132,6 @@ export function BenchmarkBody({
               <RegionGrid benchmark={benchmark} />
             </div>
           )}
-
-          <div className="mt-10">
-            <ShareSection
-              slug={benchmark.slug}
-              title={benchmark.title}
-              benchmark={benchmark}
-              chain={chain}
-            />
-          </div>
         </>
       )}
     </>

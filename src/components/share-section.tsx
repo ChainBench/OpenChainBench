@@ -173,7 +173,7 @@ export function ShareSection({ slug, title, benchmark, chain }: Props) {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-2 rounded-md border border-ink bg-paper px-3.5 py-2 text-[11px] font-medium uppercase tracking-[0.18em] text-ink hover:bg-ink hover:text-paper transition-colors"
+        className="inline-flex items-center gap-2 rounded-md border border-ink bg-ink px-3.5 py-2 text-[11px] font-medium uppercase tracking-[0.18em] text-paper hover:bg-paper hover:text-ink transition-colors shadow-sm"
       >
         <ImageIcon size={14} strokeWidth={2} />
         Export as image
