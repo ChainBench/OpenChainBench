@@ -10,6 +10,7 @@ import { RegionGrid } from "@/components/region-grid";
 import { CountLeaderboard } from "@/components/count-leaderboard";
 import { SectionLabel, SummaryStat } from "@/components/summary-stat";
 import { ShareSection } from "@/components/share-section";
+import { ReportSection } from "@/components/report-section";
 import { fmtUnit, unitSuffix, fmtValue } from "@/lib/format";
 import { computeFieldStats } from "@/lib/stats";
 
@@ -63,12 +64,15 @@ export function BenchmarkBody({
           <span />
         )}
         {!isDraft && (
-          <ShareSection
-            slug={benchmark.slug}
-            title={benchmark.title}
-            benchmark={benchmark}
-            chain={chain}
-          />
+          <div className="flex flex-wrap items-center gap-2">
+            <ShareSection
+              slug={benchmark.slug}
+              title={benchmark.title}
+              benchmark={benchmark}
+              chain={chain}
+            />
+            <ReportSection slug={benchmark.slug} />
+          </div>
         )}
       </div>
 
