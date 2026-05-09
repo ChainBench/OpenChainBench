@@ -118,7 +118,9 @@ export function BenchmarkBody({
           </dl>
 
           <div className="mt-12">
-            {benchmark.results.length >= 5 || benchmark.unit === "bps" ? (
+            {benchmark.results.length >= 5 ||
+            benchmark.unit === "bps" ||
+            benchmark.unit === "pct" ? (
               <RankedBarChart benchmark={benchmark} />
             ) : (
               <TimeSeriesChart benchmark={benchmark} />
