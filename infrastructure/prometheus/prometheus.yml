@@ -45,6 +45,18 @@ scrape_configs:
           benchmark: bridge-monitor
           host: mobula
 
+  # ─ Wallet labels coverage ────────────────────────────────────────────
+  # Currently hosted by Mobula on Railway. Replace the URL if you fork.
+  - job_name: wallet-labels
+    metrics_path: /metrics
+    scheme: https
+    static_configs:
+      - targets:
+          - mobula-monorepo-production-1f1b.up.railway.app
+        labels:
+          benchmark: wallet-labels
+          host: mobula
+
   # ─ Self-scrape ────────────────────────────────────────────────────────
   # Surfaces Prometheus's own health (scrape error rates, target up/down)
   # in the same UI used to debug harnesses.
