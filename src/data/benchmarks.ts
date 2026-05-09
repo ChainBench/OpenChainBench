@@ -67,16 +67,3 @@ export async function getBenchmarkSlugs(): Promise<string[]> {
   }
 }
 
-export function formatLastRun(iso: string) {
-  const d = new Date(iso);
-  return d.toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: "UTC",
-    timeZoneName: "short",
-  });
-}
-
