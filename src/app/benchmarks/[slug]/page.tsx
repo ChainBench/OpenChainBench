@@ -10,7 +10,6 @@ import {
 import { Pill } from "@/components/pill";
 import { BenchmarkBody } from "@/components/benchmark-body";
 import { LiveIndicator } from "@/components/live-indicator";
-import { ReportSection } from "@/components/report-section";
 import { SectionLabel } from "@/components/summary-stat";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
 import { SITE } from "@/data/site";
@@ -206,18 +205,15 @@ export default async function BenchmarkPage({
         </div>
       </details>
 
-      {/* Source code + report-a-problem. bottom of page */}
+      {/* Source code link. bottom of page */}
       {!isDraft && (
-        <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-[11px] uppercase tracking-[0.16em] text-ink-muted">
-          <p>
-            Source code{" "}
-            <a className="lnk" href={benchmark.source}>
-              {benchmark.source.replace("https://github.com/", "github.com/")}
-              <ArrowUpRight size={12} strokeWidth={2} className="inline ml-1" />
-            </a>
-          </p>
-          <ReportSection slug={benchmark.slug} />
-        </div>
+        <p className="mt-4 text-[11px] uppercase tracking-[0.16em] text-ink-muted">
+          Source code{" "}
+          <a className="lnk" href={benchmark.source}>
+            {benchmark.source.replace("https://github.com/", "github.com/")}
+            <ArrowUpRight size={12} strokeWidth={2} className="inline ml-1" />
+          </a>
+        </p>
       )}
 
       {/* Other benchmarks */}
