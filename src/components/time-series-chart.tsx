@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import type { Benchmark } from "@/types/benchmark";
 import { fmtUnit } from "@/lib/format";
 import { buildProviderColors } from "@/lib/series-colors";
+import { LiveDot } from "@/components/live-dot";
 
 type Props = {
   benchmark: Benchmark;
@@ -17,6 +18,13 @@ const RANGE_HOURS: Record<Range, number> = {
   "6h": 6,
   "24h": 24,
   "7d": 168,
+};
+
+const RANGE_LABEL: Record<Range, string> = {
+  "1h": "last hour",
+  "6h": "last 6 hours",
+  "24h": "last 24 hours",
+  "7d": "last 7 days",
 };
 
 const REGION_LABEL: Record<string, string> = {
@@ -70,6 +78,12 @@ export function TimeSeriesChart({ benchmark }: Props) {
 
   return (
     <figure className="my-2">
+      <p className="mb-3 inline-flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
+        <LiveDot />
+        <span>
+          {benchmark.metric} · {RANGE_LABEL[range]}
+        </span>
+      </p>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-1">
           {RANGES.map((r) => {
