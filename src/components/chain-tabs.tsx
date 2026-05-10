@@ -1,5 +1,7 @@
 "use client";
 
+import { brandColor } from "@/lib/brand";
+
 type ChainOption = { value: string; label: string };
 
 /**
@@ -7,6 +9,8 @@ type ChainOption = { value: string; label: string };
  * Stateless. parent owns the selected value and decides what to do on click
  * (typically: swap which pre-fetched benchmark variant is rendered, then
  * sync `?chain=` via `history.replaceState` to keep the URL shareable).
+ *
+ * Active tab borrows the chain's brand color as a left rail accent.
  */
 export function ChainTabs({
   options,
@@ -25,6 +29,7 @@ export function ChainTabs({
           onClick={() => onSelect(o.value)}
           active={selected === o.value}
           label={o.label}
+          accent={brandColor(o.value)}
         />
       ))}
     </div>
@@ -35,14 +40,21 @@ function Tab({
   active,
   label,
   onClick,
+  accent,
 }: {
   active: boolean;
   label: string;
   onClick: () => void;
+  accent: string | null;
 }) {
+  const activeStyle =
+    active && accent
+      ? { boxShadow: `inset 3px 0 0 0 ${accent}` }
+      : undefined;
   return (
     <button
       onClick={onClick}
+      style={activeStyle}
       className={`px-3 py-1.5 text-xs font-medium uppercase tracking-[0.14em] rounded transition-colors ${
         active
           ? "bg-paper text-ink shadow-sm"

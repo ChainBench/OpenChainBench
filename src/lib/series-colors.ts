@@ -1,9 +1,14 @@
 /**
- * Muted editorial palette for multi-line charts. Warm paper-print tones —
- * distinguishable enough to read a tangled multi-line plot, restrained
- * enough to avoid feeling promotional. No "leader" emphasis: the order is
- * just the rotation in which we draw lines.
+ * Color assignment for multi-line charts and leaderboard bars.
+ *
+ * 1. If the slug has a registered brand color (chains + a few providers,
+ *    see `lib/brand.ts`), use that — Ethereum is always its purple-blue,
+ *    Solana its violet, etc., across every viz on the site.
+ * 2. Otherwise fall back to the muted editorial palette below in p50
+ *    order. Warm paper-print tones, distinguishable but restrained.
  */
+
+import { brandColor } from "./brand";
 
 const PALETTE = [
   "#181614", // ink
@@ -16,20 +21,29 @@ const PALETTE = [
   "#4a443c", // ink-soft
 ];
 
-/** Return a color for the i-th line. Stable across renders given a fixed
- * provider order (we sort ascending by p50). */
+/** Return a color for the i-th unbranded line. */
 export function lineColor(i: number): string {
   return PALETTE[i % PALETTE.length];
 }
 
-/** Build a stable slug → color map from a provider list. The ranking is
- * ascending by p50. same providers get the same color in every viz on
- * the bench page (legend, ledger, region bars, time-series). */
+/** Build a stable slug → color map from a provider list. Branded slugs
+ * (chains + known providers) get their brand color directly. Unbranded
+ * slugs are assigned palette colors in ascending p50 order so adjacent
+ * leaders sit next to each other in the legend. */
 export function buildProviderColors<
   T extends { slug: string; ms: { p50: number } }
 >(results: T[]): Map<string, string> {
   const sorted = [...results].sort((a, b) => a.ms.p50 - b.ms.p50);
   const map = new Map<string, string>();
-  sorted.forEach((r, i) => map.set(r.slug, lineColor(i)));
+  let paletteIdx = 0;
+  for (const r of sorted) {
+    const branded = brandColor(r.slug);
+    if (branded) {
+      map.set(r.slug, branded);
+    } else {
+      map.set(r.slug, lineColor(paletteIdx));
+      paletteIdx += 1;
+    }
+  }
   return map;
 }
