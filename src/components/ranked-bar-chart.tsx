@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { Benchmark } from "@/types/benchmark";
 import { fmtUnit } from "@/lib/format";
 import { buildProviderColors } from "@/lib/series-colors";
@@ -28,6 +28,8 @@ function matchMethodFor(name: string, methodology: string[]): string[] {
 }
 
 export function RankedBarChart({ benchmark }: Props) {
+  const [excluded, setExcluded] = useState<Set<string>>(() => new Set());
+
   const colors = useMemo(
     () => buildProviderColors(benchmark.results),
     [benchmark.results]
@@ -47,9 +49,13 @@ export function RankedBarChart({ benchmark }: Props) {
     }));
   }, [benchmark, colors]);
 
-  const values = rows.map((r) => r.value);
-  const maxV = Math.max(...values, 1);
-  const minV = Math.min(...values.filter((v) => v > 0), maxV);
+  // The bar scale recomputes from visible rows only — excluding the
+  // tail outliers gives the remaining bars more room to breathe.
+  const visibleValues = rows
+    .filter((r) => !excluded.has(r.slug))
+    .map((r) => r.value);
+  const maxV = Math.max(...visibleValues, 1);
+  const minV = Math.min(...visibleValues.filter((v) => v > 0), maxV);
 
   // Use log scale when dynamic range > 50x — typical for finality where
   // sub-second chains coexist with 30-min ones. Linear scale crushes
@@ -64,38 +70,92 @@ export function RankedBarChart({ benchmark }: Props) {
     return Math.max(0, (Math.log10(v) - lo) / (hi - lo));
   };
 
+  function toggle(slug: string) {
+    setExcluded((prev) => {
+      const next = new Set(prev);
+      if (next.has(slug)) next.delete(slug);
+      else next.add(slug);
+      return next;
+    });
+  }
+
+  const excludedCount = excluded.size;
+  // Visible-row ranking — excluded rows lose their #N badge so the
+  // remaining list reads as a clean leaderboard.
+  let visibleRank = 0;
+
   return (
     <figure className="my-2">
-      <p className="mb-3 inline-flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
-        <LiveDot />
-        <span>{benchmark.metric} · last 24 hours</span>
-      </p>
+      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-3">
+        <p className="inline-flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
+          <LiveDot />
+          <span>{benchmark.metric} · last 24 hours</span>
+        </p>
+        {excludedCount > 0 && (
+          <button
+            type="button"
+            onClick={() => setExcluded(new Set())}
+            className="text-[10px] font-mono uppercase tracking-[0.16em] text-ink-muted hover:text-ink lnk"
+          >
+            Reset · {excludedCount} excluded
+          </button>
+        )}
+      </div>
       <ul className="space-y-2">
-        {rows.map((r, idx) => {
-          const w = project(r.value);
+        {rows.map((r) => {
+          const isOff = excluded.has(r.slug);
+          const w = isOff ? 0 : project(r.value);
           const hasNote = r.methodNotes.length > 0;
+          if (!isOff) visibleRank += 1;
+          const rank = isOff ? null : visibleRank;
           return (
             <li
               key={r.slug}
-              className="group relative grid grid-cols-[2.5rem_minmax(7rem,11rem)_1fr_auto] items-center gap-3 sm:gap-4"
+              onClick={() => toggle(r.slug)}
+              role="button"
+              tabIndex={0}
+              aria-pressed={isOff}
+              title={
+                isOff
+                  ? `Click to include ${r.name} in the chart`
+                  : `Click to exclude ${r.name} from the chart`
+              }
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  toggle(r.slug);
+                }
+              }}
+              className={`group relative grid grid-cols-[2.5rem_minmax(7rem,11rem)_1fr_auto] items-center gap-3 sm:gap-4 cursor-pointer rounded-sm transition-colors hover:bg-paper-soft/40 ${
+                isOff ? "opacity-40" : ""
+              }`}
             >
               <span className="font-mono tabular text-[11px] text-ink-faint text-right">
-                #{idx + 1}
+                {rank !== null ? `#${rank}` : "—"}
               </span>
-              <span className="text-[13px] text-ink truncate" title={r.tag}>
+              <span
+                className={`text-[13px] truncate ${
+                  isOff ? "text-ink-faint line-through decoration-1" : "text-ink"
+                }`}
+                title={r.tag}
+              >
                 {r.name}
               </span>
               <div className="relative h-7 bg-paper-soft/60 rounded-sm overflow-hidden">
                 <div
-                  className="h-full rounded-sm transition-opacity"
+                  className="h-full rounded-sm transition-[width,opacity] duration-300"
                   style={{
-                    width: `${Math.max(w * 100, 0.6)}%`,
+                    width: `${Math.max(w * 100, isOff ? 0 : 0.6)}%`,
                     background: r.color,
-                    opacity: 0.85,
+                    opacity: isOff ? 0 : 0.85,
                   }}
                 />
               </div>
-              <span className="font-mono tabular text-[12px] text-ink-soft tabular-nums whitespace-nowrap">
+              <span
+                className={`font-mono tabular text-[12px] tabular-nums whitespace-nowrap ${
+                  isOff ? "text-ink-faint" : "text-ink-soft"
+                }`}
+              >
                 {fmtUnit(r.value, benchmark.unit)}
               </span>
               {hasNote && (
@@ -124,7 +184,7 @@ export function RankedBarChart({ benchmark }: Props) {
         })}
       </ul>
       <p className="mt-3 text-[11px] font-mono uppercase tracking-[0.12em] text-ink-faint">
-        {useLog ? "Log scale · " : ""}p50 · last 24 h
+        {useLog ? "Log scale · " : ""}p50 · last 24 h · click rows to exclude
       </p>
     </figure>
   );
