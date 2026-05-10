@@ -2,8 +2,8 @@
 
 slug: network-coverage
 number: "005"
-title: Onchain data providers
-seo_title: Onchain data providers - GeckoTerminal, Codex & Mobula network coverage benchmark
+title: Most networks supported by data provider
+seo_title: Onchain data provider with the most networks supported - GeckoTerminal, Codex & Mobula live benchmark
 subtitle: Number of blockchains each major onchain data provider officially supports. Higher is better.
 category: Data
 status: live
