@@ -9,8 +9,6 @@ import { RankedBarChart } from "@/components/ranked-bar-chart";
 import { RegionGrid } from "@/components/region-grid";
 import { CountLeaderboard } from "@/components/count-leaderboard";
 import { SectionLabel, SummaryStat } from "@/components/summary-stat";
-import { ShareSection } from "@/components/share-section";
-import { ReportSection } from "@/components/report-section";
 import { fmtUnit, unitSuffix, fmtValue } from "@/lib/format";
 import { computeFieldStats } from "@/lib/stats";
 
@@ -57,24 +55,11 @@ export function BenchmarkBody({
 
   return (
     <>
-      <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
-        {options.length > 0 ? (
+      {options.length > 0 && (
+        <div className="mt-8">
           <ChainTabs options={options} selected={chain} onSelect={setChain} />
-        ) : (
-          <span />
-        )}
-        {!isDraft && (
-          <div className="flex flex-wrap items-center gap-2">
-            <ShareSection
-              slug={benchmark.slug}
-              title={benchmark.title}
-              benchmark={benchmark}
-              chain={chain}
-            />
-            <ReportSection slug={benchmark.slug} />
-          </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {!isDraft && benchmark.unit === "count" && (
         <>

@@ -10,6 +10,8 @@ import {
 import { Pill } from "@/components/pill";
 import { BenchmarkBody } from "@/components/benchmark-body";
 import { LiveIndicator } from "@/components/live-indicator";
+import { ShareSection } from "@/components/share-section";
+import { ReportSection } from "@/components/report-section";
 import { SectionLabel } from "@/components/summary-stat";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
 import { SITE } from "@/data/site";
@@ -114,13 +116,26 @@ export default async function BenchmarkPage({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <Link
-        href="/benchmarks"
-        className="inline-flex items-center gap-1.5 text-sm text-ink-muted hover:text-ink"
-      >
-        <ArrowLeft size={14} strokeWidth={2} />
-        All benchmarks
-      </Link>
+      <div className="flex flex-wrap items-center gap-3">
+        <Link
+          href="/benchmarks"
+          className="inline-flex items-center gap-1.5 text-sm text-ink-muted hover:text-ink"
+        >
+          <ArrowLeft size={14} strokeWidth={2} />
+          All benchmarks
+        </Link>
+        {!isDraft && (
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            <ShareSection
+              slug={benchmark.slug}
+              title={benchmark.title}
+              benchmark={benchmark}
+              chain={chain}
+            />
+            <ReportSection slug={benchmark.slug} />
+          </div>
+        )}
+      </div>
 
       {/* Bench identifier — minimal mono line, no SaaS-style pills. */}
       <div className="mt-6 flex flex-wrap items-center gap-3 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
@@ -142,6 +157,40 @@ export default async function BenchmarkPage({
       <p className="mt-4 max-w-3xl text-lg sm:text-xl text-ink-soft leading-snug">
         {benchmark.subtitle}
       </p>
+
+      {/* Methodology — expanded by default so readers can verify the
+          measurement before reading the numbers. Collapsible for repeat
+          visitors who already know the harness. */}
+      {!isDraft && (
+        <details
+          open
+          className="mt-8 group border-y border-rule"
+        >
+          <summary className="flex cursor-pointer items-center justify-between py-3 list-none">
+            <span className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink">
+              Methodology
+            </span>
+            <ChevronDown
+              size={16}
+              strokeWidth={2}
+              className="text-ink-muted transition-transform group-open:rotate-180"
+            />
+          </summary>
+          <div className="pb-5 space-y-5">
+            <p className="text-sm leading-relaxed text-ink-soft max-w-3xl">
+              {benchmark.abstract}
+            </p>
+            <ul className="space-y-1.5 text-sm leading-relaxed text-ink-soft">
+              {benchmark.methodology.map((m) => (
+                <li key={m} className="flex gap-3">
+                  <span className="text-ink-faint mt-1.5">·</span>
+                  <span>{m}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </details>
+      )}
 
       {/* Body: chain tabs + summary + chart + ledger + share. Receives every
           chain variant pre-fetched server-side. flipping a tab swaps which
@@ -172,38 +221,6 @@ export default async function BenchmarkPage({
           </ol>
         </div>
       )}
-
-      {/* About. collapsed by default */}
-      <details className="mt-14 group border-t border-rule">
-        <summary className="flex cursor-pointer items-center justify-between py-4 list-none">
-          <span className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink">
-            About this benchmark
-          </span>
-          <ChevronDown
-            size={16}
-            strokeWidth={2}
-            className="text-ink-muted transition-transform group-open:rotate-180"
-          />
-        </summary>
-        <div className="pb-6 space-y-6">
-          <p className="text-base leading-relaxed text-ink-soft max-w-3xl">
-            {benchmark.abstract}
-          </p>
-          <div>
-            <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-ink-faint mb-3">
-              Methodology
-            </p>
-            <ul className="space-y-2 text-sm leading-relaxed text-ink-soft">
-              {benchmark.methodology.map((m) => (
-                <li key={m} className="flex gap-3">
-                  <span className="text-ink-faint mt-1.5">·</span>
-                  <span>{m}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      </details>
 
       {/* Source code link. bottom of page */}
       {!isDraft && (
