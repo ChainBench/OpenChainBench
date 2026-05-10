@@ -2,8 +2,8 @@
 
 slug: perp-fees
 number: "007"
-title: Perp opening cost
-seo_title: Perpetual futures opening cost benchmark - Hyperliquid, dYdX, GMX, Lighter, Gains
+title: Cheapest perp DEX
+seo_title: Cheapest perp DEX - Hyperliquid, dYdX, GMX, Lighter, Gains.trade live fee benchmark
 subtitle: All-in cost (in bps) to open a $1000 ETH long 10x position. Taker fee + half-spread + impact, measured live from public APIs. Lower is cheaper.
 category: Trading
 status: live
