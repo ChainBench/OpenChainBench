@@ -127,7 +127,14 @@ export function ShareSection({ slug, title, benchmark, chain }: Props) {
   // Build the URL with the right params per template.
   const cardSrc = (templateId: string) => {
     const tpl = TEMPLATES.find((t) => t.id === templateId);
-    const chainParam = chain ? `&chain=${encodeURIComponent(chain)}` : "";
+    // Read the chain from the live URL so the share-card stays in sync
+    // when the user flips chain tabs client-side. `chain` prop is the
+    // server-rendered fallback for the very first render.
+    const liveChain =
+      typeof window !== "undefined"
+        ? new URL(window.location.href).searchParams.get("chain")
+        : chain ?? null;
+    const chainParam = liveChain ? `&chain=${encodeURIComponent(liveChain)}` : "";
     const base = `/benchmarks/${slug}/share-card?template=${templateId}${chainParam}`;
     if (!tpl) return base;
     if (tpl.pick === "multi") {
