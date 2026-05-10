@@ -67,12 +67,14 @@ export default async function BenchmarkPage({
 
   // Pre-fetch every chain variant in parallel so the client can flip
   // between tabs with zero network round-trip. unstable_cache dedupes
-  // each (slug, chain) combo across users so this is cheap.
+  // each (slug, chain) combo across users so this is cheap. The special
+  // `all` value skips the filter — same as the unscoped fetch.
   const [variantList, all] = await Promise.all([
     chainOptions.length > 0
       ? Promise.all(
           chainOptions.map(async (c) => {
-            const b = await getBenchmark(slug, { chain: c.value });
+            const filter = c.value === "all" ? undefined : c.value;
+            const b = await getBenchmark(slug, filter ? { chain: filter } : {});
             return [c.value, b ?? aggregate] as const;
           })
         )
