@@ -10,7 +10,9 @@ type ChainOption = { value: string; label: string };
  * (typically: swap which pre-fetched benchmark variant is rendered, then
  * sync `?chain=` via `history.replaceState` to keep the URL shareable).
  *
- * Active tab borrows the chain's brand color as a left rail accent.
+ * Layout: a flat row of pill chips. Active chip fills with the chain's
+ * brand color; inactive chips stay neutral. Designed to scale to ~12
+ * options without the cramped table-tab look.
  */
 export function ChainTabs({
   options,
@@ -22,7 +24,7 @@ export function ChainTabs({
   onSelect: (value: string) => void;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-1 border border-rule rounded p-1 bg-paper-soft w-fit">
+    <div className="flex flex-wrap items-center gap-1.5">
       {options.map((o) => (
         <Tab
           key={o.value}
@@ -47,19 +49,26 @@ function Tab({
   onClick: () => void;
   accent: string | null;
 }) {
-  const activeStyle =
-    active && accent
-      ? { boxShadow: `inset 3px 0 0 0 ${accent}` }
-      : undefined;
+  if (active) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        style={{
+          background: accent ?? "var(--color-ink)",
+          color: "var(--color-paper)",
+        }}
+        className="px-3 py-1.5 text-xs font-medium uppercase tracking-[0.14em] rounded-md shadow-sm transition-colors"
+      >
+        {label}
+      </button>
+    );
+  }
   return (
     <button
+      type="button"
       onClick={onClick}
-      style={activeStyle}
-      className={`px-3 py-1.5 text-xs font-medium uppercase tracking-[0.14em] rounded transition-colors ${
-        active
-          ? "bg-paper text-ink shadow-sm"
-          : "text-ink-muted hover:text-ink"
-      }`}
+      className="px-3 py-1.5 text-xs font-medium uppercase tracking-[0.14em] rounded-md border border-rule text-ink-muted hover:text-ink hover:bg-paper-soft transition-colors"
     >
       {label}
     </button>

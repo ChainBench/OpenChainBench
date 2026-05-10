@@ -43,9 +43,11 @@ prometheus:
   window: 24h
 
 # Chain selector. tabs at the top of the page. Server injects
-# `chain="X"` into every PromQL query for the active tab.
+# `chain="X"` into every PromQL query for the active tab. The special
+# value `all` skips the filter — aggregate over every chain at once.
 dimensions:
   chain:
+    - { value: all,      label: All chains }
     - { value: ethereum, label: Ethereum }
     - { value: solana,   label: Solana }
     - { value: bnb,      label: BNB Chain }
