@@ -176,18 +176,10 @@ export default async function BenchmarkPage({
               className="text-ink-muted transition-transform group-open:rotate-180"
             />
           </summary>
-          <div className="pb-5 space-y-5">
+          <div className="pb-5">
             <p className="text-sm leading-relaxed text-ink-soft max-w-3xl">
               {benchmark.abstract}
             </p>
-            <ul className="space-y-1.5 text-sm leading-relaxed text-ink-soft">
-              {benchmark.methodology.map((m) => (
-                <li key={m} className="flex gap-3">
-                  <span className="text-ink-faint mt-1.5">·</span>
-                  <span>{m}</span>
-                </li>
-              ))}
-            </ul>
           </div>
         </details>
       )}
