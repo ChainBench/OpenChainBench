@@ -1,6 +1,8 @@
 "use client";
 
 import { brandColor } from "@/lib/brand";
+import { ProviderLogo } from "@/components/provider-logo";
+import { hasLogo } from "@/lib/logo-manifest";
 
 type ChainOption = { value: string; label: string };
 
@@ -38,6 +40,7 @@ export function ChainTabs({
           key={o.value}
           onClick={() => onSelect(o.value)}
           active={selected === o.value}
+          value={o.value}
           label={o.label}
           accent={brandColor(o.value)}
           info={meta?.[o.value]}
@@ -49,12 +52,14 @@ export function ChainTabs({
 
 function Tab({
   active,
+  value,
   label,
   onClick,
   accent,
   info,
 }: {
   active: boolean;
+  value: string;
   label: string;
   onClick: () => void;
   accent: string | null;
@@ -74,7 +79,12 @@ function Tab({
 
   return (
     <button type="button" onClick={onClick} style={activeStyle} className={className}>
-      {label}
+      <span className="inline-flex items-center gap-1.5">
+        {hasLogo(value) && (
+          <ProviderLogo slug={value} name={label} size={14} />
+        )}
+        {label}
+      </span>
       {info && (info.providers > 0 || info.leader) && (
         <span
           role="tooltip"

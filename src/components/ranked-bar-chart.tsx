@@ -5,6 +5,7 @@ import type { Benchmark } from "@/types/benchmark";
 import { fmtUnit } from "@/lib/format";
 import { buildProviderColors } from "@/lib/series-colors";
 import { LiveDot } from "@/components/live-dot";
+import { ProviderLogo } from "@/components/provider-logo";
 
 type Props = { benchmark: Benchmark };
 
@@ -134,12 +135,13 @@ export function RankedBarChart({ benchmark }: Props) {
                 {rank !== null ? `#${rank}` : "—"}
               </span>
               <span
-                className={`text-[13px] truncate ${
+                className={`inline-flex items-center gap-2 text-[13px] truncate ${
                   isOff ? "text-ink-faint line-through decoration-1" : "text-ink"
                 }`}
                 title={r.tag}
               >
-                {r.name}
+                <ProviderLogo slug={r.slug} name={r.name} size={18} />
+                <span className="truncate">{r.name}</span>
               </span>
               <div className="relative h-7 bg-paper-soft/60 rounded-sm overflow-hidden">
                 <div
