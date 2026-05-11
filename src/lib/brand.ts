@@ -30,6 +30,14 @@ const BRANDS: Record<string, Brand> = {
   cardano: { color: "#0033AD", dark: true },
   litecoin: { color: "#345D9D", dark: true },
   monero: { color: "#FF6600" },
+  bitcoin: { color: "#F7931A" },
+  xrp: { color: "#0085C3" },
+
+  // ─── EVM L2s & sidechains ───
+  base: { color: "#0052FF" },
+  arbitrum: { color: "#28A0F0" },
+  polygon: { color: "#8247E5" },
+  optimism: { color: "#FF0420" },
 
   // ─── Trading-pair "chains" (perp-fees uses asset symbols) ───
   eth: { color: "#627EEA" },
