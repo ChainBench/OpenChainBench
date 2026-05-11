@@ -1,9 +1,11 @@
 import { ImageResponse } from "next/og";
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, extname } from "node:path";
 import { getBenchmark } from "@/data/benchmarks";
 import { buildProviderColors } from "@/lib/series-colors";
 import { fmtUnit, fmtValue, unitSuffix } from "@/lib/format";
+import { logoPath } from "@/lib/logo-manifest";
+import { chipBackground, chipTextColor, initials } from "@/lib/brand";
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
 
 /** Best → worst, depending on whether higher numbers are better. */
@@ -72,6 +74,93 @@ function getLogoDataUrl() {
     _logoDataUrl = `data:image/png;base64,${buf.toString("base64")}`;
   }
   return _logoDataUrl;
+}
+
+const MIME: Record<string, string> = {
+  ".png": "image/png",
+  ".jpeg": "image/jpeg",
+  ".jpg": "image/jpeg",
+  ".svg": "image/svg+xml",
+  ".webp": "image/webp",
+};
+
+const _providerLogoCache = new Map<string, string | null>();
+/** Returns a data URL for the registered logo file, or null if missing.
+ * Result is cached per slug to avoid hitting the filesystem on every
+ * render of the share-card. */
+function getProviderLogoDataUrl(slug: string): string | null {
+  if (_providerLogoCache.has(slug)) return _providerLogoCache.get(slug) ?? null;
+  const rel = logoPath(slug); // e.g. "/logos/ethereum.png"
+  if (!rel) {
+    _providerLogoCache.set(slug, null);
+    return null;
+  }
+  try {
+    const buf = readFileSync(join(process.cwd(), "public", rel));
+    const mime = MIME[extname(rel).toLowerCase()] ?? "image/png";
+    const url = `data:${mime};base64,${buf.toString("base64")}`;
+    _providerLogoCache.set(slug, url);
+    return url;
+  } catch {
+    _providerLogoCache.set(slug, null);
+    return null;
+  }
+}
+
+/** Share-card variant of <ProviderLogo> — server-rendered, embedded as a
+ * data URL when a logo file exists, otherwise a brand-colored chip with
+ * the provider's initials. */
+function CardProviderLogo({
+  slug,
+  name,
+  size,
+}: {
+  slug: string;
+  name: string;
+  size: number;
+}) {
+  const dataUrl = getProviderLogoDataUrl(slug);
+  if (dataUrl) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          width: size,
+          height: size,
+          borderRadius: "50%",
+          background: PAPER,
+          overflow: "hidden",
+        }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={dataUrl}
+          alt={`${name} logo`}
+          width={size}
+          height={size}
+          style={{ objectFit: "contain" }}
+        />
+      </div>
+    );
+  }
+  return (
+    <div
+      style={{
+        display: "flex",
+        width: size,
+        height: size,
+        borderRadius: "50%",
+        background: chipBackground(slug),
+        color: chipTextColor(slug),
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: Math.round(size * 0.42),
+        fontWeight: 700,
+      }}
+    >
+      {initials(name)}
+    </div>
+  );
 }
 
 function formatTimestamp(iso: string): string {
@@ -544,6 +633,8 @@ async function renderRanking(
                   <div
                     style={{
                       display: "flex",
+                      alignItems: "center",
+                      gap: 6,
                       fontSize: nameSize,
                       fontWeight: 600,
                       color: INK,
@@ -553,6 +644,11 @@ async function renderRanking(
                       overflow: "hidden",
                     }}
                   >
+                    <CardProviderLogo
+                      slug={r.slug}
+                      name={r.name}
+                      size={Math.round(nameSize * 1.15)}
+                    />
                     {compactProviderName(r.name)}
                   </div>
                   <div
@@ -663,16 +759,24 @@ async function renderLeaderboard(
                       style={{
                         display: "flex",
                         justifyContent: "space-between",
-                        alignItems: "baseline",
+                        alignItems: "center",
                       }}
                     >
                       <span
                         style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 10,
                           fontSize: 24,
                           fontWeight: 700,
                           color: color,
                         }}
                       >
+                        <CardProviderLogo
+                          slug={r.slug}
+                          name={r.name}
+                          size={28}
+                        />
                         {r.name}
                       </span>
                       <span
@@ -988,14 +1092,23 @@ async function renderHeadline(
           <div
             style={{
               display: "flex",
+              alignItems: "center",
+              gap: 10,
               fontSize: 28,
               fontWeight: 600,
               color: INK,
               marginTop: 2,
             }}
           >
-            by{" "}
-            <span style={{ color: winnerColor, marginLeft: 10 }}>
+            by
+            {winner && (
+              <CardProviderLogo
+                slug={winner.slug}
+                name={winner.name}
+                size={36}
+              />
+            )}
+            <span style={{ color: winnerColor }}>
               {winner?.name ?? "—"}
             </span>
           </div>
@@ -1082,6 +1195,7 @@ async function renderCompare(
             {/* Left */}
             <ComparePane
               rank={aRank}
+              slug={a.slug}
               name={a.name}
               color={aColor}
               p50={fmtValue(a.ms.p50, benchmark.unit)}
@@ -1155,6 +1269,7 @@ async function renderCompare(
             {/* Right */}
             <ComparePane
               rank={bRank}
+              slug={b.slug}
               name={b.name}
               color={bColor}
               p50={fmtValue(b.ms.p50, benchmark.unit)}
@@ -1172,6 +1287,7 @@ async function renderCompare(
 
 function ComparePane({
   rank,
+  slug,
   name,
   color,
   p50,
@@ -1180,6 +1296,7 @@ function ComparePane({
   n,
 }: {
   rank: number;
+  slug: string;
   name: string;
   color: string;
   p50: string;
@@ -1213,6 +1330,8 @@ function ComparePane({
       <div
         style={{
           display: "flex",
+          alignItems: "center",
+          gap: 14,
           fontSize: 44,
           fontWeight: 700,
           color: color,
@@ -1220,6 +1339,7 @@ function ComparePane({
           lineHeight: 1,
         }}
       >
+        <CardProviderLogo slug={slug} name={name} size={52} />
         {name}
       </div>
       <div

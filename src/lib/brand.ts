@@ -67,3 +67,29 @@ export function initials(name: string): string {
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return (parts[0][0] + parts[1][0]).toUpperCase();
 }
+
+/** Perceived-luminance check used to pick a contrasting label color on top
+ * of the brand chip. Threshold tuned so yellows/oranges read as light
+ * (ink text) and saturated blues/reds as dark (paper text). */
+export function isLight(hex: string): boolean {
+  const c = hex.replace("#", "");
+  if (c.length !== 6) return false;
+  const r = parseInt(c.slice(0, 2), 16);
+  const g = parseInt(c.slice(2, 4), 16);
+  const b = parseInt(c.slice(4, 6), 16);
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.6;
+}
+
+/** Resolve the on-chip text color for a slug's brand. Returns hex/var
+ * suitable for inline style. Defaults to paper (light) when no brand. */
+export function chipTextColor(slug: string): string {
+  const color = BRANDS[key(slug)]?.color;
+  if (!color) return "var(--color-paper)";
+  return isLight(color) ? "var(--color-ink)" : "var(--color-paper)";
+}
+
+/** Background for the chip fallback. Falls back to ink so the chip still
+ * reads as a coherent element even with no brand entry. */
+export function chipBackground(slug: string): string {
+  return BRANDS[key(slug)]?.color ?? "var(--color-ink-soft)";
+}

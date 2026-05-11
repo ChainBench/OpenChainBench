@@ -2,6 +2,7 @@
 
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
 import { Sparkline } from "@/components/sparkline";
+import { ProviderLogo } from "@/components/provider-logo";
 import { fmtUnit } from "@/lib/format";
 import { buildProviderColors } from "@/lib/series-colors";
 
@@ -149,14 +150,17 @@ function Row({
         {String(i + 1).padStart(2, "0")}
       </td>
       <td className="py-2.5 pr-3 font-serif text-[14px]">
-        <span className="font-semibold" style={{ color }}>
-          {r.name}
-        </span>
-        {r.tag && (
-          <span className="ml-2 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-muted">
-            {r.tag}
+        <span className="inline-flex items-center gap-2">
+          <ProviderLogo slug={r.slug} name={r.name} size={20} />
+          <span className="font-semibold" style={{ color }}>
+            {r.name}
           </span>
-        )}
+          {r.tag && (
+            <span className="font-sans text-[10px] uppercase tracking-[0.14em] text-ink-muted">
+              {r.tag}
+            </span>
+          )}
+        </span>
       </td>
       {/* p50 with inline data bar */}
       <td className="py-2.5 px-3 text-right">
