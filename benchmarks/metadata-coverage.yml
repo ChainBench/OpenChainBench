@@ -4,7 +4,7 @@ slug: metadata-coverage
 number: "004"
 title: Best provider for token onchain metadata
 seo_title: Best provider for token onchain metadata - Jupiter, Mobula & Codex live benchmark
-subtitle: Share of metadata fields populated for fresh-launch tokens (logo, description, twitter, website). Higher is better.
+subtitle: Share of metadata fields populated for fresh-launch tokens (logo, description, twitter, website).
 category: Aggregators
 status: live
 metric: Field coverage
@@ -21,7 +21,7 @@ abstract: |
   chain, field) combinations that returned a populated value across all
   fresh-token checks in the window.
 
-  Higher is better. A value of 100% means every field was returned for every
+  A value of 100% means every field was returned for every
   fresh token; a value of 50% means half the fields were missing on average.
   Sort order on this page is ascending. the lowest coverage shows first,
   which is the inverse of latency benchmarks. Readers should compare the

@@ -4,7 +4,7 @@ slug: network-coverage
 number: "005"
 title: Most networks supported by data provider
 seo_title: Onchain data provider with the most networks supported - GeckoTerminal, Codex & Mobula live benchmark
-subtitle: Number of blockchains each major onchain data provider officially supports. Higher is better.
+subtitle: Number of blockchains each major onchain data provider officially supports.
 category: Data
 status: live
 metric: Networks supported

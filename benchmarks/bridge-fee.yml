@@ -19,7 +19,7 @@ abstract: |
   it into the spread. Comparing only the explicit fee field would let
   aggregators with implicit pricing show a misleading 0%. Sampled at $300
   notional so small-amount fixed-fee blowups don't skew the percentile
-  aggregates. Lower is better.
+  aggregates.
 
 methodology:
   - "Routes: USDC pairs spanning Solana, Base and Arbitrum."
