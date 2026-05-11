@@ -4,6 +4,12 @@ import { brandColor } from "@/lib/brand";
 
 type ChainOption = { value: string; label: string };
 
+export type ChainMeta = {
+  providers: number;
+  metric: string;
+  leader?: { name: string; value: string };
+};
+
 /**
  * Chain filter tabs rendered above the chart on a bench detail page.
  * Stateless. parent owns the selected value and decides what to do on click
@@ -11,17 +17,19 @@ type ChainOption = { value: string; label: string };
  * sync `?chain=` via `history.replaceState` to keep the URL shareable).
  *
  * Layout: a flat row of pill chips. Active chip fills with the chain's
- * brand color; inactive chips stay neutral. Designed to scale to ~12
- * options without the cramped table-tab look.
+ * brand color; inactive chips stay neutral. Hover any chip for a small
+ * peek at how that chain is doing without leaving the current view.
  */
 export function ChainTabs({
   options,
   selected,
   onSelect,
+  meta,
 }: {
   options: ChainOption[];
   selected: string | null;
   onSelect: (value: string) => void;
+  meta?: Record<string, ChainMeta>;
 }) {
   return (
     <div className="flex flex-wrap items-center gap-1.5">
@@ -32,6 +40,7 @@ export function ChainTabs({
           active={selected === o.value}
           label={o.label}
           accent={brandColor(o.value)}
+          info={meta?.[o.value]}
         />
       ))}
     </div>
@@ -43,34 +52,53 @@ function Tab({
   label,
   onClick,
   accent,
+  info,
 }: {
   active: boolean;
   label: string;
   onClick: () => void;
   accent: string | null;
+  info: ChainMeta | undefined;
 }) {
-  if (active) {
-    return (
-      <button
-        type="button"
-        onClick={onClick}
-        style={{
-          background: accent ?? "var(--color-ink)",
-          color: "var(--color-paper)",
-        }}
-        className="px-3 py-1.5 text-xs font-medium uppercase tracking-[0.14em] rounded-md shadow-sm transition-colors"
-      >
-        {label}
-      </button>
-    );
-  }
+  const baseClass =
+    "relative group px-3 py-1.5 text-xs font-medium uppercase tracking-[0.14em] rounded-md transition-colors";
+  const activeStyle = active
+    ? {
+        background: accent ?? "var(--color-ink)",
+        color: "var(--color-paper)",
+      }
+    : undefined;
+  const className = active
+    ? `${baseClass} shadow-sm`
+    : `${baseClass} border border-rule text-ink-muted hover:text-ink hover:bg-paper-soft`;
+
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="px-3 py-1.5 text-xs font-medium uppercase tracking-[0.14em] rounded-md border border-rule text-ink-muted hover:text-ink hover:bg-paper-soft transition-colors"
-    >
+    <button type="button" onClick={onClick} style={activeStyle} className={className}>
       {label}
+      {info && (info.providers > 0 || info.leader) && (
+        <span
+          role="tooltip"
+          className="pointer-events-none absolute left-1/2 top-full z-30 mt-1.5 hidden -translate-x-1/2 w-[min(16rem,90vw)] rounded-md border border-rule bg-paper p-2.5 shadow-xl group-hover:block text-left normal-case tracking-normal"
+        >
+          <p
+            className="text-[10px] font-medium uppercase tracking-[0.16em]"
+            style={{ color: accent ?? "var(--color-ink)" }}
+          >
+            {label}
+          </p>
+          {info.leader ? (
+            <p className="mt-1.5 text-xs text-ink leading-snug">
+              <span className="font-semibold">{info.leader.name}</span>
+              <span className="text-ink-muted"> · {info.leader.value}</span>
+            </p>
+          ) : (
+            <p className="mt-1.5 text-xs text-ink-muted">No provider live yet.</p>
+          )}
+          <p className="mt-1 text-[10px] uppercase tracking-[0.14em] text-ink-faint">
+            {info.providers} provider{info.providers === 1 ? "" : "s"} · {info.metric}
+          </p>
+        </span>
+      )}
     </button>
   );
 }

@@ -11,8 +11,26 @@ import { CountLeaderboard } from "@/components/count-leaderboard";
 import { SectionLabel, SummaryStat } from "@/components/summary-stat";
 import { fmtUnit, unitSuffix, fmtValue } from "@/lib/format";
 import { computeFieldStats } from "@/lib/stats";
+import type { ChainMeta } from "@/components/chain-tabs";
 
 type ChainOption = { value: string; label: string };
+
+function summarize(b: Benchmark | undefined): ChainMeta | null {
+  if (!b) return null;
+  const live = b.results.filter((r) => r.ms.p50 > 0);
+  if (live.length === 0) return { providers: 0, metric: b.metric };
+  const sorted = [...live].sort((a, c) =>
+    b.higherIsBetter ? c.ms.p50 - a.ms.p50 : a.ms.p50 - c.ms.p50
+  );
+  return {
+    providers: live.length,
+    metric: b.metric,
+    leader: {
+      name: sorted[0].name,
+      value: fmtUnit(sorted[0].ms.p50, b.unit),
+    },
+  };
+}
 
 /**
  * Client wrapper that renders the dynamic body of a bench detail page.
@@ -57,7 +75,16 @@ export function BenchmarkBody({
     <>
       {options.length > 0 && (
         <div className="mt-8">
-          <ChainTabs options={options} selected={chain} onSelect={setChain} />
+          <ChainTabs
+            options={options}
+            selected={chain}
+            onSelect={setChain}
+            meta={Object.fromEntries(
+              options
+                .map((o) => [o.value, summarize(variants[o.value])])
+                .filter(([, v]) => v !== null) as [string, ChainMeta][]
+            )}
+          />
         </div>
       )}
 
