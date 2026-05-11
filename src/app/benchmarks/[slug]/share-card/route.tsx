@@ -25,6 +25,8 @@ function compactProviderName(name: string): string {
     "BNB Smart Chain": "BNB",
     "Avalanche C-Chain": "Avalanche",
     "XRP Ledger": "XRP",
+    StellarExpert: "Stellar Exp.",
+    WalletExplorer: "Wallet Exp.",
   };
   return map[name] ?? name;
 }
@@ -355,10 +357,18 @@ export async function GET(
   }
   const chainParam = url.searchParams.get("chain");
   const chainOptions = aggregate.dimensions?.chain ?? [];
-  const chainOption = chainOptions.find((c) => c.value === chainParam);
+  // `all` is a synthetic option meaning "no chain filter" — same exception
+  // as the bench detail page. Don't pass it down to the Prom loader or the
+  // query labels won't match anything and every value reads 0.
+  const isAll = chainParam === "all";
+  const chainOption = isAll
+    ? null
+    : chainOptions.find((c) => c.value === chainParam) ?? null;
   const benchmark = chainOption
     ? (await getBenchmark(slug, { chain: chainOption.value })) ?? aggregate
     : aggregate;
+  // No pill for `all` either — it's the unfiltered default view, calling
+  // it out as a "chain" reads awkward.
   const chainLabel = chainOption?.label ?? null;
 
   const template = (url.searchParams.get("template") ?? "ranking") as
@@ -426,14 +436,19 @@ async function renderRanking(
 ) {
   const sorted = sortByP50(benchmark);
   const maxP50 = Math.max(...sorted.map((r) => r.ms.p50)) || 1;
-  // Tallest bar reserves enough space ABOVE for its value label (28px) and
-  // BELOW for the provider name + p99 caption (~70px), and leaves a
-  // breathing margin under the subtitle. 220px keeps everything inside the
-  // 630px ImageResponse canvas regardless of how the title wraps.
-  const chartHeight = 220;
-  const subtitle = benchmark.higherIsBetter
-    ? "Provider ranking by p50 · descending. Higher is better."
-    : "Provider ranking by p50 · ascending. Lower is faster.";
+  const count = sorted.length;
+  // Scale type sizes down when the bench has many providers, otherwise
+  // the long names (StellarExpert, WalletExplorer, …) collide.
+  const dense = count >= 7;
+  const titleSize = dense ? 44 : 56;
+  const valueSize = dense ? 22 : 26;
+  const nameSize = dense ? 15 : 18;
+  const captionSize = dense ? 11 : 12;
+  const barGap = dense ? 14 : 22;
+  // Tallest bar reserves enough space ABOVE for its value label and BELOW
+  // for the name + p99 caption. 220px keeps everything inside the 630px
+  // ImageResponse canvas regardless of how the title wraps.
+  const chartHeight = dense ? 200 : 220;
 
   return new ImageResponse(
     (
@@ -449,7 +464,7 @@ async function renderRanking(
           <div
             style={{
               display: "flex",
-              fontSize: 56,
+              fontSize: titleSize,
               fontWeight: 700,
               color: INK,
               letterSpacing: "-0.02em",
@@ -467,17 +482,17 @@ async function renderRanking(
               maxWidth: 980,
             }}
           >
-            {subtitle}
+            Provider ranking by p50 · {benchmark.metric}.
           </div>
 
           <div
             style={{
               display: "flex",
               alignItems: "flex-end",
-              gap: 22,
-              paddingTop: 56,
+              gap: barGap,
+              paddingTop: 40,
               paddingBottom: 12,
-              height: chartHeight + 100, // chart area + room for label above + name below
+              height: chartHeight + 100,
             }}
           >
             {sorted.map((r) => {
@@ -492,13 +507,14 @@ async function renderRanking(
                     flexDirection: "column",
                     alignItems: "center",
                     gap: 8,
+                    minWidth: 0,
                   }}
                 >
                   <div
                     style={{
                       display: "flex",
                       alignItems: "baseline",
-                      fontSize: 26,
+                      fontSize: valueSize,
                       fontWeight: 700,
                       color: INK,
                       letterSpacing: "-0.02em",
@@ -508,7 +524,7 @@ async function renderRanking(
                     {fmtValue(r.ms.p50, benchmark.unit)}
                     <span
                       style={{
-                        fontSize: 14,
+                        fontSize: Math.round(valueSize * 0.55),
                         color: INK_MUTED,
                         fontWeight: 500,
                       }}
@@ -528,11 +544,13 @@ async function renderRanking(
                   <div
                     style={{
                       display: "flex",
-                      fontSize: 18,
+                      fontSize: nameSize,
                       fontWeight: 600,
                       color: INK,
                       marginTop: 6,
                       whiteSpace: "nowrap",
+                      maxWidth: "100%",
+                      overflow: "hidden",
                     }}
                   >
                     {compactProviderName(r.name)}
@@ -540,7 +558,7 @@ async function renderRanking(
                   <div
                     style={{
                       display: "flex",
-                      fontSize: 12,
+                      fontSize: captionSize,
                       color: INK_FAINT,
                       fontFamily: "monospace",
                       letterSpacing: "0.08em",
@@ -567,9 +585,7 @@ async function renderLeaderboard(
 ) {
   const sorted = sortByP50(benchmark);
   const maxP50 = Math.max(...sorted.map((r) => r.ms.p50)) || 1;
-  const subtitleLB = benchmark.higherIsBetter
-    ? "Ranked by p50 · descending. Higher is better."
-    : "Ranked by p50 · ascending. Lower is faster.";
+  const subtitleLB = `Ranked by p50 · ${benchmark.metric}.`;
 
   return new ImageResponse(
     (
