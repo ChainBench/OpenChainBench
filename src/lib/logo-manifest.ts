@@ -32,6 +32,12 @@ const RAW: Record<string, string> = {
   arbitrum: "/logos/arbitrum.png",
   polygon: "/logos/polygon.png",
   optimism: "/logos/optimism.png",
+
+  // ─── Providers ───
+  mobula: "/logos/mobula.svg",
+  codex: "/logos/codex.svg",
+  relay: "/logos/relay.svg",
+  lifi: "/logos/lifi.png",
 };
 
 // Asset-symbol aliases used by perp-fees as chain dimension values.
