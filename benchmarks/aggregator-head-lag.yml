@@ -16,7 +16,7 @@ abstract: |
   reference pools across Base, BNB Chain and Solana from three regions
   (us-east, eu-west, sgp), records every new on-chain event with millisecond
   timestamps, and observes when each aggregator's WebSocket reflects the
-  same event. Lower is better.
+  same event.
 
 methodology:
   - "Aggregators measured: Mobula, Codex, GeckoTerminal."
