@@ -142,7 +142,7 @@ export function ReportSection({ slug }: Props) {
               <form onSubmit={submit} className="px-6 py-5 space-y-4">
                 <p className="text-sm text-ink-muted leading-relaxed">
                   Spotted a wrong number, a missing provider, an outage, or
-                  anything off about this benchmark? Tell us — it goes straight
+                  anything off about this benchmark? Tell us, it goes straight
                   to a maintainer.
                 </p>
                 <div>

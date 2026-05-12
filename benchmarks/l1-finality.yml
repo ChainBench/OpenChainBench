@@ -21,8 +21,8 @@ abstract: |
   Avalanche) we maintain a persistent WebSocket subscription, recording
   wall-clock time T1 when block N is first seen as `latest` and T2 when
   it becomes `finalized`. lag = T2 − T1 with millisecond precision. The
-  WS path is the only honest way to measure sub-poll-cadence finality —
-  comparing two pointers at a single instant collapses to zero when
+  WS path is the only honest way to measure sub-poll-cadence finality.
+  Comparing two pointers at a single instant collapses to zero when
   finalization catches up to head.
 
 methodology:
@@ -39,7 +39,7 @@ methodology:
   - "Monero (probabilistic): monero-rpc `get_info` minus 10 confirmations via `get_block_header_by_height`."
   - "Cardano (probabilistic): koios `/tip` minus 50 confirmations via `/blocks?block_height=eq.<height>`."
   - "Result: `lag_seconds = headTimestamp - finalizedTimestamp`. We also record the block-height delta and per-chain fetch latency."
-  - "Excluded by design: XRP (no close-time on `ledger_current` — wall-clock measurement requires WS subscribe to ledger stream, not yet implemented)."
+  - "Excluded by design: XRP (no close-time on `ledger_current`, wall-clock measurement requires WS subscribe to ledger stream, not yet implemented)."
   - "Failures (5xx, timeouts, rate limits) leave the previous gauge in place and increment a per-chain `fetch_errors_total` counter; the page falls back to the last successful sample."
 
 findings:
