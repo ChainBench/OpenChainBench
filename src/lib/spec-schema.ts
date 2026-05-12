@@ -69,8 +69,7 @@ const window = z
 export const Category = z.enum([
   "Aggregators",
   "Bridges",
-  "Data",
-  "Networks",
+  "Blockchains",
   "Trading",
   "Wallets",
   "RPCs",

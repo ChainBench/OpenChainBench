@@ -5,7 +5,7 @@ number: "001"
 title: Fastest onchain data provider
 seo_title: Fastest onchain data provider - GeckoTerminal, Mobula & Codex live latency benchmark
 subtitle: On-chain event to WebSocket emission, in seconds. Measured against canonical-tip archive nodes.
-category: Data
+category: Aggregators
 status: live
 metric: Head lag
 unit: s
