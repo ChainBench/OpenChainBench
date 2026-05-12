@@ -12,7 +12,6 @@ import { BenchmarkBody } from "@/components/benchmark-body";
 import { LiveIndicator } from "@/components/live-indicator";
 import { ShareSection } from "@/components/share-section";
 import { ReportSection } from "@/components/report-section";
-import { SectionLabel } from "@/components/summary-stat";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
 import { SITE } from "@/data/site";
 import type { Benchmark } from "@/types/benchmark";
@@ -198,23 +197,6 @@ export default async function BenchmarkPage({
       )}
 
       {isDraft && <DraftNotice source={benchmark.source} />}
-
-      {/* Findings (when present) */}
-      {benchmark.findings.length > 0 && !isDraft && (
-        <div className="mt-14">
-          <SectionLabel>Findings</SectionLabel>
-          <ol className="mt-2 space-y-4">
-            {benchmark.findings.map((f, i) => (
-              <li key={i} className="flex gap-4">
-                <span className="font-mono text-xs tabular text-ink-faint mt-1.5 w-7 shrink-0">
-                  {String(i + 1).padStart(2, "0")}
-                </span>
-                <p className="text-base leading-relaxed text-ink-soft">{f}</p>
-              </li>
-            ))}
-          </ol>
-        </div>
-      )}
 
       {/* Source code link. bottom of page */}
       {!isDraft && (
