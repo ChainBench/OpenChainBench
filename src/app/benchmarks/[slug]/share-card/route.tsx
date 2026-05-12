@@ -988,9 +988,10 @@ async function renderSnapshot(
                 key={s.slug}
                 style={{ display: "flex", alignItems: "center", gap: 8 }}
               >
+                <CardProviderLogo slug={s.slug} name={s.name} size={20} />
                 <div
                   style={{
-                    width: 16,
+                    width: 14,
                     height: 4,
                     borderRadius: 2,
                     background: s.color,
