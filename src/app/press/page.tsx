@@ -24,7 +24,7 @@ export default function PressPage() {
       <SectionRule label="Quick facts" number="ii" />
       <dl className="grid gap-3 sm:grid-cols-2 ">
         <Fact term="Founded" value="2026" />
-        <Fact term="Categories" value="Aggregators · Bridges · Data · Networks · RPCs" />
+        <Fact term="Categories" value="Aggregators · Blockchains · Bridges · Trading · Wallets · RPCs" />
         <Fact term="Source code" value="github.com/OpenChainBench/OpenChainBench" />
         <Fact term="License" value="MIT (code) · CC-BY-4.0 (reports)" />
       </dl>
