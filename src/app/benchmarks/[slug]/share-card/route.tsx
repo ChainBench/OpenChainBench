@@ -82,6 +82,7 @@ const MIME: Record<string, string> = {
   ".jpg": "image/jpeg",
   ".svg": "image/svg+xml",
   ".webp": "image/webp",
+  ".avif": "image/avif",
 };
 
 const _providerLogoCache = new Map<string, string | null>();
