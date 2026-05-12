@@ -14,16 +14,15 @@ export const metadata: Metadata = {
 export const revalidate = 60;
 
 const CATEGORY_BLURB: Record<string, string> = {
-  Aggregators: "Token-data aggregators. metadata, prices, charts.",
-  Data: "Onchain data providers. block-level latency, network coverage.",
-  Networks: "Layer-1 networks. block-level finality, RPC freshness.",
+  Aggregators: "Onchain data + token-data aggregators. latency, metadata, network coverage.",
+  Blockchains: "Layer-1 blockchains. block-level finality, RPC freshness.",
   Trading: "CEX and DEX perpetual venues. all-in fees, spread, funding.",
   Bridges: "Cross-chain bridges. quote latency and effective cost.",
   Wallets: "Wallet APIs. portfolio, balances, history.",
   RPCs: "RPC endpoints. uptime, response time, reorg behaviour.",
 };
 
-const CATEGORY_ORDER = ["Data", "Networks", "Aggregators", "Bridges", "Wallets", "RPCs"] as const;
+const CATEGORY_ORDER = ["Aggregators", "Blockchains", "Bridges", "Trading", "Wallets", "RPCs"] as const;
 
 export default async function BenchmarksIndex() {
   const byCategory = await getBenchmarksByCategory();
