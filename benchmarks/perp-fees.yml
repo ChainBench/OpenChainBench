@@ -35,7 +35,7 @@ methodology:
   - "Failures (5xx, timeouts, rate limits) leave the previous gauge in place and increment a per-venue `fetch_errors_total` counter. The page falls back to the last successful sample."
 
 findings:
-  - "Lighter charges zero taker fees on ETH-PERP — confirmed live via their public API."
+  - "Lighter charges zero taker fees on ETH-PERP, confirmed live via their public API."
   - "Hyperliquid (4.5 bps base taker) is the cheapest non-zero-fee venue measured."
   - "GMX position fee is variable: 4 bps on positive impact opens, 6 bps on negative impact. We report the negative branch as the conservative upper bound."
 

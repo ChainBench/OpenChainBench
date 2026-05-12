@@ -29,7 +29,7 @@ abstract: |
 methodology:
   - "Sample: ~60 curated anchor addresses (CEX hot wallets, DEX routers, Safe multisigs, OFAC SDN, public figures), shuffled and re-checked every 30 minutes. List rotated quarterly from public sources."
   - "Query each provider's labels endpoint live: Mobula `/api/2/wallet/labels`, Helius `/v1/wallet/{addr}/identity`, Moralis `/api/v2.2/entities`, Blockscout `/api/v2/addresses/{addr}`, OLI Base EAS GraphQL, TonAPI `/v2/accounts/{addr}`, StellarExpert `/explorer/directory/{addr}`, XRPScan `/api/v1/account/{addr}`, WalletExplorer `/api/1/address-lookup`."
-  - "A provider scores 'hit' when it returns a non-generic entity name. Filler labels like 'EOA', 'Contract', 'Wallet', 'Multisig', 'Unknown' are explicitly excluded — they carry no entity signal."
+  - "A provider scores 'hit' when it returns a non-generic entity name. Filler labels like 'EOA', 'Contract', 'Wallet', 'Multisig', 'Unknown' are explicitly excluded, they carry no entity signal."
   - "Per-chain leaderboards. providers are filtered by their declared chain support, so Helius (Solana-only) doesn't get penalized on Ethereum and vice versa."
   - "Failures (timeouts, 5xx, auth errors) are counted as 'no label' and surfaced separately as `wallet_labels_fetch_errors_total`."
   - "Region: `eu-west` (single point)."
