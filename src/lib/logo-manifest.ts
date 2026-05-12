@@ -25,7 +25,7 @@ const RAW: Record<string, string> = {
   cardano: "/logos/cardano.png",
   litecoin: "/logos/litecoin.png",
   monero: "/logos/monero.png",
-  xrp: "/logos/xrp.png",
+  xrp: "/logos/xrp.jpg",
 
   // ─── EVM L2s & sidechains ───
   base: "/logos/base.jpeg",
@@ -38,6 +38,15 @@ const RAW: Record<string, string> = {
   codex: "/logos/codex.svg",
   relay: "/logos/relay.svg",
   lifi: "/logos/lifi.png",
+  geckoterminal: "/logos/geckoterminal.avif",
+  gains: "/logos/gains.png",
+  blockscout: "/logos/blockscout.svg",
+  gmx: "/logos/gmx.svg",
+  hyperliquid: "/logos/hyperliquid.png",
+  helius: "/logos/helius.svg",
+  dydx: "/logos/dydx.svg",
+  moralis: "/logos/moralis.png",
+  stellarexpert: "/logos/stellarexpert.png",
 };
 
 // Asset-symbol aliases used by perp-fees as chain dimension values.
