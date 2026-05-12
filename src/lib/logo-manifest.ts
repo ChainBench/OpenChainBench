@@ -38,7 +38,7 @@ const RAW: Record<string, string> = {
   codex: "/logos/codex.svg",
   relay: "/logos/relay.svg",
   lifi: "/logos/lifi.png",
-  geckoterminal: "/logos/geckoterminal.avif",
+  geckoterminal: "/logos/geckoterminal.png",
   gains: "/logos/gains.png",
   blockscout: "/logos/blockscout.svg",
   gmx: "/logos/gmx.svg",
@@ -47,6 +47,9 @@ const RAW: Record<string, string> = {
   dydx: "/logos/dydx.svg",
   moralis: "/logos/moralis.png",
   stellarexpert: "/logos/stellarexpert.png",
+  jupiter: "/logos/jupiter.png",
+  lighter: "/logos/lighter.svg",
+  debridge: "/logos/debridge.svg",
 };
 
 // Asset-symbol aliases used by perp-fees as chain dimension values.
