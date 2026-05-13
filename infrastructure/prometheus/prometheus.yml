@@ -57,6 +57,54 @@ scrape_configs:
           benchmark: wallet-labels
           host: mobula
 
+  # ─ L1 finality ────────────────────────────────────────────────────────
+  # Currently hosted by Mobula on Railway. Replace the URL if you fork.
+  - job_name: l1-finality
+    metrics_path: /metrics
+    scheme: https
+    static_configs:
+      - targets:
+          - l1-finality-production.up.railway.app
+        labels:
+          benchmark: l1-finality
+          host: mobula
+
+  # ─ Metadata coverage ──────────────────────────────────────────────────
+  # Currently hosted by Mobula on Railway. Replace the URL if you fork.
+  - job_name: metadata-coverage
+    metrics_path: /metrics
+    scheme: https
+    static_configs:
+      - targets:
+          - metadata-coverage-production.up.railway.app
+        labels:
+          benchmark: metadata-coverage
+          host: mobula
+
+  # ─ Network coverage ───────────────────────────────────────────────────
+  # Currently hosted by Mobula on Railway. Replace the URL if you fork.
+  - job_name: network-coverage
+    metrics_path: /metrics
+    scheme: https
+    static_configs:
+      - targets:
+          - network-coverage-production.up.railway.app
+        labels:
+          benchmark: network-coverage
+          host: mobula
+
+  # ─ Perp fees ──────────────────────────────────────────────────────────
+  # Currently hosted by Mobula on Railway. Replace the URL if you fork.
+  - job_name: perp-fees
+    metrics_path: /metrics
+    scheme: https
+    static_configs:
+      - targets:
+          - perp-fees-production.up.railway.app
+        labels:
+          benchmark: perp-fees
+          host: mobula
+
   # ─ Self-scrape ────────────────────────────────────────────────────────
   # Surfaces Prometheus's own health (scrape error rates, target up/down)
   # in the same UI used to debug harnesses.
