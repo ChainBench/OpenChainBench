@@ -45,19 +45,31 @@ type StatsTick = {
 const MAX_FEED = 30;
 const CHAIN_SLUGS: Record<string, { slug: string; display: string }> = {
   ethereum: { slug: "ethereum", display: "Ethereum" },
+  Ethereum: { slug: "ethereum", display: "Ethereum" },
   solana: { slug: "solana", display: "Solana" },
+  Solana: { slug: "solana", display: "Solana" },
   base: { slug: "base", display: "Base" },
+  Base: { slug: "base", display: "Base" },
   bnb: { slug: "bnb", display: "BNB" },
+  BNB: { slug: "bnb", display: "BNB" },
+  BSC: { slug: "bnb", display: "BNB" },
   bsc: { slug: "bnb", display: "BNB" },
   "BNB Smart Chain (BEP20)": { slug: "bnb", display: "BNB" },
+  "BNB Smart Chain": { slug: "bnb", display: "BNB" },
   arbitrum: { slug: "arbitrum", display: "Arbitrum" },
-  Ethereum: { slug: "ethereum", display: "Ethereum" },
-  Solana: { slug: "solana", display: "Solana" },
-  Base: { slug: "base", display: "Base" },
   Arbitrum: { slug: "arbitrum", display: "Arbitrum" },
   Optimism: { slug: "optimism", display: "Optimism" },
+  optimism: { slug: "optimism", display: "Optimism" },
   Polygon: { slug: "polygon", display: "Polygon" },
+  polygon: { slug: "polygon", display: "Polygon" },
+  Avalanche: { slug: "avalanche", display: "Avalanche" },
+  avalanche: { slug: "avalanche", display: "Avalanche" },
 };
+
+/** Only show chains we have a logo + recognizable display name for. */
+function isKnownChain(name: string): boolean {
+  return name in CHAIN_SLUGS;
+}
 
 export function LiveDashboard() {
   const [stats, setStats] = useState<GlobalView | null>(null);
@@ -242,9 +254,10 @@ function Tile({
 function ChainStrip({ stats }: { stats: GlobalView | null }) {
   if (!stats?.byChain?.length) return null;
   const top = stats.byChain
-    .slice()
+    .filter((c) => isKnownChain(c.name) && c.vol24h > 0)
     .sort((a, b) => b.vol24h - a.vol24h)
     .slice(0, 6);
+  if (!top.length) return null;
   const max = top[0]?.vol24h || 1;
 
   return (
