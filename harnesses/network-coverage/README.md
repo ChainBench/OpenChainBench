@@ -1,85 +1,50 @@
-# Harness · network-coverage
+# network-coverage
 
-> Counts the chains/networks each onchain data provider officially supports. Produces the metrics consumed by [`benchmarks/network-coverage.yml`](../../benchmarks/network-coverage.yml).
+Bench № 005 — counts the chains/networks each onchain data provider officially supports.
 
-**Bench**: [№ 005 · Onchain data providers](../../benchmarks/network-coverage.yml)
+A single Go binary that fetches the public "supported networks" listing from each provider every 6h and exposes the counts as Prometheus gauges. Powers `/benchmarks/network-coverage` on openchainbench.com.
 
-## How it works
-
-A single Go binary calls each provider's public "supported networks" listing every six hours and exposes the counts as Prometheus gauges:
+## What it measures
 
 ```
-networks_supported_total{provider="geckoterminal"} 263
-networks_supported_total{provider="codex"}         133
-networks_supported_total{provider="mobula"}         78
+networks_supported_total{provider="geckoterminal"}   ~ 150
+networks_supported_total{provider="mobula"}          ~  45
+networks_supported_total{provider="codex"}           ~  40
 ```
 
-Plus a `network_supported{provider, chain_id, slug, name}` gauge that flips to `1` for each chain the provider currently lists. useful for a per-chain diff view on the site (e.g. "which chains is Codex missing that Gecko has?").
-
-**Tracked providers**: GeckoTerminal · Codex · Mobula
+Plus a `network_supported{provider, chain_id, slug, name}` gauge that flips to 1 for each network in the listing — useful for diff queries on the site.
 
 ## Sources
 
 | Provider | Endpoint | Auth |
 | --- | --- | --- |
 | GeckoTerminal | `GET /api/v2/networks?page=N` | none |
-| Codex | GraphQL `getNetworks` at `https://graph.codex.io/graphql` | API key (`CODEX_API_KEY`, free tier at https://dashboard.codex.io) |
 | Mobula | `GET /api/1/blockchains` | `Authorization: <api-key>` |
+| Codex | GraphQL `getNetworks` at `https://graph.codex.io/graphql` | Bearer JWT minted from Defined.fi session cookie |
 
-All endpoints are public. no scraping, no provider-specific deal.
-
-## Where the data goes
-
-This harness is a **data producer only**. it exposes `/metrics` on port `2112`. The OpenChainBench Prometheus scrapes that endpoint over Railway's internal DNS:
-
-```
-network-coverage.railway.internal:2112 ──► prometheus.railway.internal ──► public site
-```
+All endpoints are public — no scraping, no provider-specific deal.
 
 ## Run locally
 
 ```bash
 cp .env.example .env
-# Fill MOBULA_API_KEY, CODEX_API_KEY (or DEFINED_SESSION_COOKIE for the legacy path)
+# fill MOBULA_API_KEY, DEFINED_SESSION_COOKIE
 go run ./cmd/script/
 ```
 
-`/metrics` will be exposed on `http://localhost:2112/metrics`.
+`/metrics` will be exposed on `http://localhost:2112/metrics`. Other endpoints:
 
-Or via Docker:
+- `GET /metrics` — Prometheus scrape
+- `GET /logs?tail=N` — last N lines of the in-memory log ring (5000 max)
+- `GET /debug/networks` — last fetch snapshot per provider (count, sample of 5 networks, raw response sample of 400 chars, latency)
+- `GET /health` — `OK`
 
-```bash
-docker build -t network-coverage .
-docker run --rm --env-file .env -p 2112:2112 network-coverage
-```
+## Run on Railway
 
-## Endpoints exposed
+Deploy from the OpenChainBench monorepo, root directory `miniapps/network-coverage/`. Set the env vars listed in `.env.example`. The shared `openchainbench-monitoring` Prometheus picks it up via Railway internal DNS automatically once a scrape job is added to `prometheus.yml`.
 
-| Endpoint | What |
-| --- | --- |
-| `GET /metrics` | Prometheus scrape |
-| `GET /logs?tail=N` | Last N lines of the in-memory log ring (5000 max). If `LOGS_TOKEN` is set, requires header `X-Logs-Token` |
-| `GET /debug/networks` | JSON snapshot per provider. count, sample of 5 networks, raw response sample (400 chars), latency, error if any |
-| `GET /health` | Liveness probe |
+## Why this bench is honest
 
-The debug endpoint is meant for production troubleshooting. when a provider's count drops or stalls, hit `/debug/networks` to see the exact response their API returned.
-
-## Environment variables
-
-| Var | Description | Required |
-| --- | --- | --- |
-| `MOBULA_API_KEY` | Mobula API key (Authorization header) | yes (else Mobula skipped) |
-| `CODEX_API_KEY` | Codex official API key from dashboard.codex.io | recommended |
-| `DEFINED_SESSION_COOKIE` | Legacy auth path. mints a JWT from defined.fi/api when CODEX_API_KEY is unset | optional |
-| `DEFINED_TOKEN_SERVICE_URL` | Optional sidecar URL serving pre-minted JWTs | optional |
-| `HTTP_PROXY` / `HTTPS_PROXY` | Webshare rotating proxy (only used by the legacy mint path) | only with cookie path |
-| `REFRESH_INTERVAL_MINUTES` | Seconds between refreshes (default 360 = 6h) | optional |
-| `LOGS_TOKEN` | Bearer for `/logs` (leave empty to make it open) | optional |
-
-## Why this bench
-
-Onchain data providers compete on three axes. coverage breadth, freshness, metadata completeness. Existing benches (№ 001 head lag, № 004 metadata coverage) test the latter two. This one tests the first, and is the bench Mobula loses by design: GeckoTerminal lists ~263 networks, Codex ~133, Mobula ~78. Builders comparing providers should weigh all three.
-
-## License
-
-MIT. same as the rest of OpenChainBench.
+- Endpoints are public — anyone can verify the count by hitting them
+- Comparing only mainnet networks (testnet inclusion is opt-in via `INCLUDE_TESTNETS=true`)
+- Counts what a provider _claims_ to support — quality of coverage (token presence, metadata) is a separate bench
