@@ -14,8 +14,10 @@
     "check": "pnpm validate && pnpm typecheck && pnpm lint"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.26.0",
     "js-yaml": "^4.1.1",
     "lucide-react": "^1.11.0",
+    "mcp-handler": "^1.1.0",
     "next": "16.2.4",
     "react": "19.2.4",
     "react-dom": "19.2.4",

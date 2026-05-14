@@ -9,6 +9,7 @@ import {
 } from "@/data/benchmarks";
 import { Pill } from "@/components/pill";
 import { BenchmarkBody } from "@/components/benchmark-body";
+import { CitationBar } from "@/components/citation-bar";
 import { LiveIndicator } from "@/components/live-indicator";
 import { ShareSection } from "@/components/share-section";
 import { ReportSection } from "@/components/report-section";
@@ -167,6 +168,10 @@ export default async function BenchmarkPage({
       <p className="mt-4 max-w-3xl text-lg sm:text-xl text-ink-soft leading-snug">
         {benchmark.subtitle}
       </p>
+
+      {/* Citation affordances. one click takes a journalist or agent from
+          the page to a pasteable quote or a JSON endpoint. */}
+      {!isDraft && <CitationBar benchmark={benchmark} />}
 
       {/* Methodology — expanded by default so readers can verify the
           measurement before reading the numbers. Collapsible for repeat
