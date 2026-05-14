@@ -4,10 +4,15 @@
  * exist between `src/data/benchmarks.ts` and `src/lib/spec.ts`.
  */
 
+export type ProviderType = "protocol" | "aggregator" | "intent" | "relay";
+
 export type ProviderResult = {
   name: string;
   slug: string;
   tag?: string;
+  /** Architectural category. Drives the small badge next to the name so
+   *  readers know whether comparisons are apples-to-apples. */
+  type?: ProviderType;
   ms: { p50: number; p90: number; p99: number; mean: number };
   successRate: number;
   /** Per-provider sample count over the run window. */

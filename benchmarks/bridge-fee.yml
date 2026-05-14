@@ -28,6 +28,7 @@ methodology:
   - "Cadence: full sweep every 5 minutes for 24 hours."
   - "Region: eu-west (single point. multi-region requires running additional monitor instances)."
   - "Failures (quote_failed, unsupported route) excluded from cost aggregates and counted toward success rate."
+  - "Provider types are surfaced as badges: direct protocols (Debridge) charge their own bridging fees; aggregators (LiFi) route through whichever underlying bridge is cheapest, so their effective fee includes that bridge's cost plus any aggregator markup; intent / relay layers (Mobula, Relay) bake cost into the spread of a settlement intent rather than charging an explicit fee."
 
 findings: []
 
@@ -52,6 +53,7 @@ providers:
   - slug: mobula
     name: Mobula
     tag: Aggregator + intent layer
+    type: intent
     queries:
       p50: quantile_over_time(0.50, bridge_cost_percent{bridge="mobula", amount_usd="300"}[24h])
       p90: quantile_over_time(0.90, bridge_cost_percent{bridge="mobula", amount_usd="300"}[24h])
@@ -64,6 +66,7 @@ providers:
   - slug: relay
     name: Relay
     tag: Cross-chain relay
+    type: relay
     queries:
       p50: quantile_over_time(0.50, bridge_cost_percent{bridge="relay", amount_usd="300"}[24h])
       p90: quantile_over_time(0.90, bridge_cost_percent{bridge="relay", amount_usd="300"}[24h])
@@ -76,6 +79,7 @@ providers:
   - slug: lifi
     name: LiFi
     tag: Aggregator
+    type: aggregator
     queries:
       p50: quantile_over_time(0.50, bridge_cost_percent{bridge="lifi", amount_usd="300"}[24h])
       p90: quantile_over_time(0.90, bridge_cost_percent{bridge="lifi", amount_usd="300"}[24h])
@@ -88,6 +92,7 @@ providers:
   - slug: debridge
     name: Debridge
     tag: Native-token fees
+    type: protocol
     queries:
       p50: quantile_over_time(0.50, bridge_cost_percent{bridge="debridge", amount_usd="300"}[24h])
       p90: quantile_over_time(0.90, bridge_cost_percent{bridge="debridge", amount_usd="300"}[24h])
