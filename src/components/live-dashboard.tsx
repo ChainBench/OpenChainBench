@@ -142,6 +142,11 @@ export function LiveDashboard() {
   const [pops, setPops] = useState<ChartPop[]>([]);
   const [feedOpen, setFeedOpen] = useState(true);
   const feedHydratedRef = useRef(false);
+  // Offset between the relay's clock and the browser's clock, learned from
+  // the snapshot's nowMs. Using this avoids mis-positioning swap pops when
+  // the server has clock drift (we saw ~4min drift on Railway).
+  const serverOffsetRef = useRef(0);
+  const [serverOffsetMs, setServerOffsetMs] = useState(0);
 
   // Restore the user's last choice from localStorage. We default to OPEN and
   // only swap to closed if they explicitly hid the feed before.
@@ -195,8 +200,10 @@ export function LiveDashboard() {
         }
 
         if (msg.type === "snapshot") {
-          // Server-replayed last 10min of incremental buckets — initial fill.
           setBuckets(msg.buckets.slice());
+          const offset = msg.nowMs - Date.now();
+          serverOffsetRef.current = offset;
+          setServerOffsetMs(offset);
           return;
         }
 
@@ -212,12 +219,12 @@ export function LiveDashboard() {
           setSessionSwaps((n) => n + 1);
           setSessionVol((v) => v + (s.usd || 0));
 
-          // Buckets + pops
-          const now = Date.now();
+          // All time math uses server time (Date.now + offset) so the buckets
+          // we add line up with the snapshot buckets the server sent.
+          const serverNow = Date.now() + serverOffsetRef.current;
           setBuckets((prev) => {
-            const next = appendSwapToBuckets(prev, meta.key, s.usd || 0, now);
-            // Spawn pop after we know the line tip position.
-            if ((s.usd || 0) >= 1) spawnPop(next, meta, s);
+            const next = appendSwapToBuckets(prev, meta.key, s.usd || 0, serverNow);
+            if ((s.usd || 0) >= 1) spawnPop(next, meta, s, serverNow);
             return next;
           });
         } else if (msg.type === "stats") {
@@ -226,22 +233,25 @@ export function LiveDashboard() {
       };
     }
 
-    function spawnPop(nextBuckets: Bucket[], meta: ChainMeta, s: SwapEvent) {
+    function spawnPop(nextBuckets: Bucket[], meta: ChainMeta, s: SwapEvent, nowMs: number) {
       const last = nextBuckets[nextBuckets.length - 1];
       if (!last) return;
-      const now = Date.now();
-      const xMin = now - WINDOW_MS;
+      const xMin = nowMs - WINDOW_MS;
       const anchorX = ((last.ts - xMin) / WINDOW_MS) * 100;
 
-      // Compute yMax across all chains in this final view, just like the chart does
-      let yMax = 0;
+      // yMax matches the chart's: max CUMULATIVE per chain across the window.
+      const cumPerChain: Record<string, number> = {};
       for (const b of nextBuckets) {
-        for (const v of Object.values(b.perChain)) {
-          if (v > yMax) yMax = v;
+        for (const k in b.perChain) {
+          cumPerChain[k] = (cumPerChain[k] ?? 0) + b.perChain[k];
         }
       }
-      if (yMax === 0) yMax = 1;
-      const chainCum = last.perChain[meta.key] ?? 0;
+      let yMax = 0;
+      for (const k in cumPerChain) {
+        if (cumPerChain[k] > yMax) yMax = cumPerChain[k];
+      }
+      yMax = niceCeil(yMax || 1);
+      const chainCum = cumPerChain[meta.key] ?? 0;
       const anchorY = (1 - chainCum / yMax) * 100;
 
       const id = ++popIdRef.current;
@@ -286,6 +296,7 @@ export function LiveDashboard() {
         buckets={buckets}
         pops={pops}
         recent={recent}
+        serverOffsetMs={serverOffsetMs}
         onToggleFeed={() => setFeedOpen((v) => !v)}
         feedOpen={feedOpen}
       />
@@ -443,26 +454,30 @@ function LiveChart({
   buckets,
   pops,
   recent,
+  serverOffsetMs,
   onToggleFeed,
   feedOpen,
 }: {
   buckets: Bucket[];
   pops: ChartPop[];
   recent: SwapEvent[];
+  serverOffsetMs: number;
   onToggleFeed: () => void;
   feedOpen: boolean;
 }) {
   // Tick the "now" reference once per second so the right edge keeps advancing
-  // even when no swaps arrive (visual continuity).
-  const [now, setNow] = useState(() => Date.now());
+  // even when no swaps arrive (visual continuity). Apply the server offset
+  // so bucket timestamps from the relay line up with the chart's xMax.
+  const [clientNow, setClientNow] = useState(() => Date.now());
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000);
+    const id = setInterval(() => setClientNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, []);
+  const serverNow = clientNow + serverOffsetMs;
 
   const { paths, yMax, latest, totalCum } = useMemo(
-    () => computeChart(buckets, now),
-    [buckets, now],
+    () => computeChart(buckets, serverNow),
+    [buckets, serverNow],
   );
 
   const empty = buckets.length === 0;
@@ -664,8 +679,9 @@ function LiveChart({
 
 function CompactFeed({ recent }: { recent: SwapEvent[] }) {
   return (
-    <div className="flex flex-col h-full max-h-[363px] lg:max-h-none">
-      <div className="px-4 py-3 border-b border-rule flex items-center gap-2">
+    // h matches the chart column (legend ~32 + svg 280 + pb-4 16 ≈ 328)
+    <div className="flex flex-col h-[328px]">
+      <div className="px-4 py-3 border-b border-rule flex items-center gap-2 shrink-0">
         <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
           Live feed
         </span>
@@ -677,7 +693,7 @@ function CompactFeed({ recent }: { recent: SwapEvent[] }) {
           last {recent.length}
         </span>
       </div>
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 min-h-0 overflow-y-auto">
         <table className="w-full font-mono text-[10.5px] tabular">
           <tbody>
             {recent.length === 0 && (
