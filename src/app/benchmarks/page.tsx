@@ -84,7 +84,7 @@ export default async function BenchmarksIndex() {
                           <Link
                             href={`/benchmarks/${b.slug}`}
                             style={{ ["--cat-color" as string]: catColor ?? "var(--color-ink)" }}
-                            className="group relative grid grid-cols-[1fr] sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_6rem_5rem] items-center gap-4 sm:gap-6 py-5 pl-3 hover:bg-paper-soft/60 transition-colors before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[2px] before:bg-[var(--cat-color)] before:opacity-0 before:transition-opacity hover:before:opacity-100"
+                            className="group relative grid grid-cols-[1fr] sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_5.5rem_10rem] items-center gap-4 sm:gap-6 py-5 pl-3 pr-3 hover:bg-paper-soft/60 transition-colors before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[2px] before:bg-[var(--cat-color)] before:opacity-0 before:transition-opacity hover:before:opacity-100"
                           >
 
                             <div className="min-w-0">
