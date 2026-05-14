@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getBenchmarksByCategory } from "@/data/benchmarks";
 import { MiniChart } from "@/components/mini-chart";
+import { LiveIndicator } from "@/components/live-indicator";
 import { fmtValue, unitSuffix } from "@/lib/format";
 import { leader } from "@/lib/ranking";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
@@ -36,8 +37,7 @@ export default async function BenchmarksIndex() {
   return (
     <div className="px-4 pt-12 pb-12 sm:pt-16 sm:pb-16">
       <div className="mx-auto max-w-6xl">
-        <h1 className="display text-3xl sm:text-4xl tracking-tight">Index</h1>
-        <p className="mt-3 max-w-2xl text-base text-ink-muted leading-snug">
+        <p className="max-w-2xl text-base text-ink-muted leading-snug">
           Every published benchmark, grouped by category. Click into a row for
           the full report. chart, ledger, methodology and the harness that
           produces the numbers.
@@ -125,8 +125,10 @@ export default async function BenchmarksIndex() {
                               )}
                             </div>
 
-                            <div className="hidden sm:flex justify-end items-baseline font-mono text-[11px] tabular text-ink-faint">
-                              {b.results.length} prov.
+                            <div className="hidden sm:flex justify-end items-baseline">
+                              {!isDraft && (
+                                <LiveIndicator lastRunAt={b.lastRunAt} />
+                              )}
                             </div>
                           </Link>
                         </li>
