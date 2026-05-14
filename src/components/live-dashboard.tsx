@@ -142,11 +142,51 @@ export function LiveDashboard() {
   const [pops, setPops] = useState<ChartPop[]>([]);
   const [feedOpen, setFeedOpen] = useState(true);
   const feedHydratedRef = useRef(false);
+  const [hiddenChains, setHiddenChains] = useState<Set<string>>(new Set());
+  const hiddenHydratedRef = useRef(false);
+
+  function toggleChain(key: string) {
+    setHiddenChains((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
+  // Restore hidden-chains choice from localStorage
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem("ocb-live-hidden-chains");
+      if (saved) {
+        const arr = JSON.parse(saved);
+        if (Array.isArray(arr)) setHiddenChains(new Set(arr));
+      }
+    } catch {
+      // ignore
+    }
+    hiddenHydratedRef.current = true;
+  }, []);
+
+  useEffect(() => {
+    hiddenChainsRef.current = hiddenChains;
+    if (!hiddenHydratedRef.current) return;
+    try {
+      window.localStorage.setItem(
+        "ocb-live-hidden-chains",
+        JSON.stringify(Array.from(hiddenChains)),
+      );
+    } catch {
+      // ignore
+    }
+  }, [hiddenChains]);
   // Offset between the relay's clock and the browser's clock, learned from
   // the snapshot's nowMs. Using this avoids mis-positioning swap pops when
   // the server has clock drift (we saw ~4min drift on Railway).
   const serverOffsetRef = useRef(0);
   const [serverOffsetMs, setServerOffsetMs] = useState(0);
+  // Kept in sync with hiddenChains so the WS handler closure can read it.
+  const hiddenChainsRef = useRef<Set<string>>(new Set());
 
   // Restore the user's last choice from localStorage. We default to OPEN and
   // only swap to closed if they explicitly hid the feed before.
@@ -222,9 +262,10 @@ export function LiveDashboard() {
           // All time math uses server time (Date.now + offset) so the buckets
           // we add line up with the snapshot buckets the server sent.
           const serverNow = Date.now() + serverOffsetRef.current;
+          const isHidden = hiddenChainsRef.current.has(meta.key);
           setBuckets((prev) => {
             const next = appendSwapToBuckets(prev, meta.key, s.usd || 0, serverNow);
-            if ((s.usd || 0) >= 1) spawnPop(next, meta, s, serverNow);
+            if (!isHidden && (s.usd || 0) >= 1) spawnPop(next, meta, s, serverNow);
             return next;
           });
         } else if (msg.type === "stats") {
@@ -297,6 +338,8 @@ export function LiveDashboard() {
         pops={pops}
         recent={recent}
         serverOffsetMs={serverOffsetMs}
+        hiddenChains={hiddenChains}
+        onToggleChain={toggleChain}
         onToggleFeed={() => setFeedOpen((v) => !v)}
         feedOpen={feedOpen}
       />
@@ -455,6 +498,8 @@ function LiveChart({
   pops,
   recent,
   serverOffsetMs,
+  hiddenChains,
+  onToggleChain,
   onToggleFeed,
   feedOpen,
 }: {
@@ -462,6 +507,8 @@ function LiveChart({
   pops: ChartPop[];
   recent: SwapEvent[];
   serverOffsetMs: number;
+  hiddenChains: Set<string>;
+  onToggleChain: (key: string) => void;
   onToggleFeed: () => void;
   feedOpen: boolean;
 }) {
@@ -476,8 +523,8 @@ function LiveChart({
   const serverNow = clientNow + serverOffsetMs;
 
   const { paths, yMax, latest, totalCum } = useMemo(
-    () => computeChart(buckets, serverNow),
-    [buckets, serverNow],
+    () => computeChart(buckets, serverNow, hiddenChains),
+    [buckets, serverNow, hiddenChains],
   );
 
   const empty = buckets.length === 0;
@@ -516,13 +563,25 @@ function LiveChart({
         }
       >
         <div className="min-w-0">
-      {/* Legend strip — chain pills with colored dots (cumulative per chain) */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 pt-3 pb-2 text-[11px]">
+      {/* Legend strip — clickable chain toggles. Click to hide / show. */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-5 pt-3 pb-2 text-[11px]">
         {CHAIN_LIST.map((c) => {
           let cum = 0;
           for (const b of buckets) cum += b.perChain[c.key] ?? 0;
+          const hidden = hiddenChains.has(c.key);
           return (
-            <span key={c.key} className="inline-flex items-center gap-2 text-ink-soft">
+            <button
+              key={c.key}
+              type="button"
+              onClick={() => onToggleChain(c.key)}
+              aria-pressed={!hidden}
+              title={hidden ? `Show ${c.display}` : `Hide ${c.display}`}
+              className={`inline-flex items-center gap-2 rounded-full px-2 py-0.5 transition-opacity ${
+                hidden
+                  ? "opacity-40 hover:opacity-70 text-ink-faint line-through decoration-1"
+                  : "opacity-100 text-ink-soft hover:bg-paper-soft"
+              }`}
+            >
               <span
                 className="h-2 w-2 rounded-full"
                 style={{ background: c.color }}
@@ -531,7 +590,7 @@ function LiveChart({
               <ProviderLogo slug={c.slug} name={c.display} size={14} />
               <span className="font-medium">{c.display}</span>
               <span className="font-mono tabular text-ink-faint">{fmtMoney(cum)}</span>
-            </span>
+            </button>
           );
         })}
       </div>
@@ -564,7 +623,7 @@ function LiveChart({
 
           {/* Per-chain soft-fill areas (visual weight even when one chain dominates) */}
           {paths.map((p) =>
-            p.cumNow > 0 ? (
+            !hiddenChains.has(p.chainKey) && p.cumNow > 0 ? (
               <path
                 key={`area-${p.chainKey}`}
                 d={p.areaPath}
@@ -574,22 +633,24 @@ function LiveChart({
             ) : null,
           )}
           {/* Per-chain polylines */}
-          {paths.map((p) => (
-            <polyline
-              key={p.chainKey}
-              fill="none"
-              stroke={p.color}
-              strokeWidth={1.75}
-              strokeLinejoin="round"
-              strokeLinecap="round"
-              points={p.points}
-              opacity={p.cumNow > 0 ? 0.95 : 0.25}
-            />
-          ))}
+          {paths.map((p) =>
+            hiddenChains.has(p.chainKey) ? null : (
+              <polyline
+                key={p.chainKey}
+                fill="none"
+                stroke={p.color}
+                strokeWidth={1.75}
+                strokeLinejoin="round"
+                strokeLinecap="round"
+                points={p.points}
+                opacity={p.cumNow > 0 ? 0.95 : 0.25}
+              />
+            ),
+          )}
 
           {/* Latest tip dots */}
           {latest.map((p) =>
-            p.cum > 0 ? (
+            !hiddenChains.has(p.chainKey) && p.cum > 0 ? (
               <circle
                 key={p.chainKey}
                 cx={p.x}
@@ -658,16 +719,18 @@ function LiveChart({
 
         {/* Floating swap pops anchored to line tips */}
         <div className="pointer-events-none absolute inset-x-2 inset-y-0">
-          {pops.map((p) => (
-            <ChartPopBubble key={p.id} pop={p} />
-          ))}
+          {pops
+            .filter((p) => !hiddenChains.has(p.chainKey))
+            .map((p) => (
+              <ChartPopBubble key={p.id} pop={p} />
+            ))}
         </div>
       </div>
         </div>
 
         {feedOpen && (
           <aside className="border-t lg:border-t-0 lg:border-l border-rule flex flex-col">
-            <CompactFeed recent={recent} />
+            <CompactFeed recent={recent} hiddenChains={hiddenChains} />
           </aside>
         )}
       </div>
@@ -677,9 +740,18 @@ function LiveChart({
 
 /* ─────────────── compact feed (side-by-side with chart) ─────────────── */
 
-function CompactFeed({ recent }: { recent: SwapEvent[] }) {
+function CompactFeed({
+  recent,
+  hiddenChains,
+}: {
+  recent: SwapEvent[];
+  hiddenChains: Set<string>;
+}) {
+  const filtered = recent.filter((s) => {
+    const meta = chainMeta(s.chain);
+    return meta ? !hiddenChains.has(meta.key) : true;
+  });
   return (
-    // h matches the chart column (legend ~32 + svg 280 + pb-4 16 ≈ 328)
     <div className="flex flex-col h-[328px]">
       <div className="px-4 py-3 border-b border-rule flex items-center gap-2 shrink-0">
         <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
@@ -690,20 +762,20 @@ function CompactFeed({ recent }: { recent: SwapEvent[] }) {
           <span className="relative h-1.5 w-1.5 rounded-full bg-good" />
         </span>
         <span className="ml-auto font-mono text-[10px] uppercase tracking-[0.18em] text-ink-faint">
-          last {recent.length}
+          last {filtered.length}
         </span>
       </div>
       <div className="flex-1 min-h-0 overflow-y-auto">
         <table className="w-full font-mono text-[10.5px] tabular">
           <tbody>
-            {recent.length === 0 && (
+            {filtered.length === 0 && (
               <tr>
                 <td className="text-center text-ink-faint py-8">
-                  Listening…
+                  {recent.length === 0 ? "Listening…" : "All chains hidden"}
                 </td>
               </tr>
             )}
-            {recent.map((s, i) => (
+            {filtered.map((s, i) => (
               <CompactRow key={s.hash + s.pool + i} s={s} fresh={i === 0} />
             ))}
           </tbody>
@@ -758,7 +830,7 @@ type ChainLatest = { chainKey: string; color: string; x: number; y: number; cum:
 
 type ChainPath = { chainKey: string; color: string; points: string; areaPath: string; cumNow: number };
 
-function computeChart(buckets: Bucket[], nowMs: number): {
+function computeChart(buckets: Bucket[], nowMs: number, hiddenChains: Set<string>): {
   paths: ChainPath[];
   yMax: number;
   latest: ChainLatest[];
@@ -784,7 +856,10 @@ function computeChart(buckets: Bucket[], nowMs: number): {
   }
 
   let yMax = 0;
-  for (const k in cum) if (cum[k] > yMax) yMax = cum[k];
+  for (const k in cum) {
+    if (hiddenChains.has(k)) continue;
+    if (cum[k] > yMax) yMax = cum[k];
+  }
   yMax = niceCeil(yMax || 1);
 
   const yScale = (v: number) => baseY - (v / yMax) * innerH;
@@ -799,7 +874,7 @@ function computeChart(buckets: Bucket[], nowMs: number): {
     let lastX = 0;
     let lastY = baseY;
     const cumNow = cum[chain.key] ?? 0;
-    totalCum += cumNow;
+    if (!hiddenChains.has(chain.key)) totalCum += cumNow;
 
     if (cumPerBucket.length > 0) {
       const first = cumPerBucket[0];
