@@ -1,0 +1,36 @@
+global:
+  resolve_timeout: 5m
+
+route:
+  group_by: ['alertname', 'chain', 'aggregator']
+  group_wait: 10s
+  group_interval: 30s
+  repeat_interval: 4h
+  receiver: 'slack-webhook'
+
+receivers:
+  - name: 'slack-webhook'
+    webhook_configs:
+      - url: 'https://agent-slack-production.up.railway.app/webhook/grafana'
+        send_resolved: true
+
+inhibit_rules:
+  # Inhibit warning alerts if critical alert is firing
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'chain', 'aggregator']
+
+  # Inhibit stale metrics alerts if service is down
+  - source_match:
+      alert_type: 'service_down'
+    target_match:
+      alert_type: 'stale_metrics'
+
+  # Inhibit stale metrics if missing metrics alert is firing
+  - source_match:
+      alert_type: 'missing_metrics'
+    target_match:
+      alert_type: 'stale_metrics'
+    equal: ['aggregator']
