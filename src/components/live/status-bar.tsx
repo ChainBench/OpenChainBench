@@ -8,9 +8,11 @@ import type { GlobalView } from "@/lib/live/types";
 export function StatusBar({
   connected,
   stats,
+  onCollapse,
 }: {
   connected: boolean;
   stats: GlobalView | null;
+  onCollapse?: () => void;
 }) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -43,6 +45,17 @@ export function StatusBar({
             Refreshed {fmtAge(ageSec)} ago
           </span>
         </>
+      )}
+      {onCollapse && (
+        <button
+          type="button"
+          onClick={onCollapse}
+          className={`label-mono text-ink-faint hover:text-ink transition-colors ${
+            ageSec >= 0 ? "" : "ml-auto"
+          }`}
+        >
+          Collapse ▴
+        </button>
       )}
     </div>
   );

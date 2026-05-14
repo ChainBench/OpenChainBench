@@ -38,3 +38,4 @@ export const WHALE_USD = 100_000;
 /** localStorage keys. */
 export const STORAGE_FEED_OPEN = "ocb-live-feed-open";
 export const STORAGE_HIDDEN_CHAINS = "ocb-live-hidden-chains";
+export const STORAGE_LIVE_EXPANDED = "ocb-live-expanded";

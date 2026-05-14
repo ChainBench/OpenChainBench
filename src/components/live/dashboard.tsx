@@ -11,6 +11,7 @@ import {
   RELAY_WS_URL,
   STORAGE_FEED_OPEN,
   STORAGE_HIDDEN_CHAINS,
+  STORAGE_LIVE_EXPANDED,
   WINDOW_MS,
 } from "@/lib/live/config";
 import type {
@@ -23,6 +24,7 @@ import type {
 import { LiveChart } from "./chart";
 import { StatsBand } from "./stats-band";
 import { StatusBar } from "./status-bar";
+import { LiveTicker } from "./ticker";
 
 export function LiveDashboard() {
   const [stats, setStats] = useState<GlobalView | null>(null);
@@ -35,6 +37,7 @@ export function LiveDashboard() {
   const [feedOpen, setFeedOpen] = useState(true);
   const [hiddenChains, setHiddenChains] = useState<Set<string>>(new Set());
   const [serverOffsetMs, setServerOffsetMs] = useState(0);
+  const [expanded, setExpanded] = useState(false);
 
   // Refs the WebSocket handler reads at message-time without rerunning.
   const serverOffsetRef = useRef(0);
@@ -43,6 +46,7 @@ export function LiveDashboard() {
   const reconnectTimer = useRef<number | null>(null);
   const feedHydratedRef = useRef(false);
   const hiddenHydratedRef = useRef(false);
+  const expandedHydratedRef = useRef(false);
 
   const toggleChain = useCallback((key: string) => {
     setHiddenChains((prev) => {
@@ -54,6 +58,8 @@ export function LiveDashboard() {
   }, []);
 
   const toggleFeed = useCallback(() => setFeedOpen((v) => !v), []);
+  const expand = useCallback(() => setExpanded(true), []);
+  const collapse = useCallback(() => setExpanded(false), []);
 
   // Restore hidden-chains from localStorage on mount.
   useEffect(() => {
@@ -103,6 +109,27 @@ export function LiveDashboard() {
       // ignore
     }
   }, [feedOpen]);
+
+  // Expanded vs compact ticker. Default collapsed so the dashboard
+  // doesn't dominate the home page.
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(STORAGE_LIVE_EXPANDED);
+      if (saved === "1") setExpanded(true);
+    } catch {
+      // ignore
+    }
+    expandedHydratedRef.current = true;
+  }, []);
+
+  useEffect(() => {
+    if (!expandedHydratedRef.current) return;
+    try {
+      window.localStorage.setItem(STORAGE_LIVE_EXPANDED, expanded ? "1" : "0");
+    } catch {
+      // ignore
+    }
+  }, [expanded]);
 
   // WebSocket loop.
   useEffect(() => {
@@ -207,9 +234,20 @@ export function LiveDashboard() {
     };
   }, []);
 
+  if (!expanded) {
+    return (
+      <LiveTicker
+        connected={connected}
+        stats={stats}
+        sessionSwaps={sessionSwaps}
+        onExpand={expand}
+      />
+    );
+  }
+
   return (
     <>
-      <StatusBar connected={connected} stats={stats} />
+      <StatusBar connected={connected} stats={stats} onCollapse={collapse} />
       <StatsBand
         stats={stats}
         sessionSwaps={sessionSwaps}
