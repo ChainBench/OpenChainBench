@@ -6,8 +6,6 @@ import { Search } from "lucide-react";
 import type { Benchmark } from "@/types/benchmark";
 import { MiniChart } from "@/components/mini-chart";
 import { LiveIndicator } from "@/components/live-indicator";
-import { fmtValue, unitSuffix } from "@/lib/format";
-import { leader } from "@/lib/ranking";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
 
 /**
@@ -99,17 +97,16 @@ export function BenchmarkTable({ benchmarks }: { benchmarks: Benchmark[] }) {
 
       {/* Table head — same grid as rows so columns align cleanly. */}
       <div
-        className="hidden sm:grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_5.5rem_10rem] items-end gap-4 sm:gap-6 border-b-2 border-ink pb-2 pl-3 pr-3 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted"
+        className="hidden sm:grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_10rem] items-end gap-4 sm:gap-6 border-b-2 border-ink pb-2 pl-3 pr-3 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted"
         role="row"
       >
         <span>Benchmark</span>
         <span>24 Hours</span>
-        <span className="text-right">Value</span>
         <span>Live</span>
       </div>
       <div className="sm:hidden flex items-end justify-between border-b-2 border-ink pb-2 pl-3 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
         <span>Benchmark</span>
-        <span>Value</span>
+        <span>Live</span>
       </div>
 
       {filtered.length === 0 ? (
@@ -125,7 +122,6 @@ export function BenchmarkTable({ benchmarks }: { benchmarks: Benchmark[] }) {
       ) : (
         <ol className="divide-y divide-rule border-b border-rule">
           {filtered.map((b) => {
-            const lead = leader(b);
             const isDraft = b.status === "draft";
             const catColor = CATEGORY_COLOR[b.category];
             return (
@@ -133,7 +129,7 @@ export function BenchmarkTable({ benchmarks }: { benchmarks: Benchmark[] }) {
                 <Link
                   href={`/benchmarks/${b.slug}`}
                   style={{ ["--cat-color" as string]: catColor ?? "var(--color-ink)" }}
-                  className="group relative grid grid-cols-[1fr] sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_5.5rem_10rem] items-center gap-4 sm:gap-6 py-5 pl-3 pr-3 hover:bg-paper-soft/60 transition-colors before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[2px] before:bg-[var(--cat-color)] before:opacity-0 before:transition-opacity hover:before:opacity-100"
+                  className="group relative grid grid-cols-[1fr] sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_10rem] items-center gap-4 sm:gap-6 py-5 pl-3 pr-3 hover:bg-paper-soft/60 transition-colors before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[2px] before:bg-[var(--cat-color)] before:opacity-0 before:transition-opacity hover:before:opacity-100"
                 >
                   <div className="min-w-0">
                     <div className="flex items-baseline gap-2 flex-wrap">
@@ -158,17 +154,6 @@ export function BenchmarkTable({ benchmarks }: { benchmarks: Benchmark[] }) {
                   <div className="hidden sm:block min-w-0">
                     {!isDraft && (
                       <MiniChart benchmark={b} height={32} legend className="opacity-90" />
-                    )}
-                  </div>
-
-                  <div className="hidden sm:flex justify-end items-baseline">
-                    {lead && !isDraft ? (
-                      <span className="font-mono tabular text-base sm:text-lg text-ink leading-none">
-                        {fmtValue(lead.ms.p50, b.unit)}
-                        <span className="text-ink-faint text-sm">{unitSuffix(b.unit)}</span>
-                      </span>
-                    ) : (
-                      <span className="text-xs text-ink-faint">-</span>
                     )}
                   </div>
 
