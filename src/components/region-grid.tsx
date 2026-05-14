@@ -58,7 +58,7 @@ export function RegionGrid({ benchmark }: Props) {
                   if (!point) {
                     return (
                       <td key={region.key} className="py-3 px-2 text-ink-faint">
-                        —
+                        -
                       </td>
                     );
                   }

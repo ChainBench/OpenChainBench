@@ -195,13 +195,13 @@ function Row({
         {fmtUnit(seriesMax, unit)}
       </td>
       <td className="py-2.5 px-3 text-right text-ink-muted">
-        {fieldP50 > 0 ? `${deltaSign}${Math.abs(deltaPct).toFixed(0)}%` : "—"}
+        {fieldP50 > 0 ? `${deltaSign}${Math.abs(deltaPct).toFixed(0)}%` : "-"}
       </td>
       <td className="py-2.5 px-3 text-right text-ink-soft">
         {r.successRate.toFixed(2)}%
       </td>
       <td className="py-2.5 px-3 text-right text-ink-muted">
-        {r.sampleSize ? Math.round(r.sampleSize).toLocaleString() : "—"}
+        {r.sampleSize ? Math.round(r.sampleSize).toLocaleString() : "-"}
       </td>
       <td className="py-2.5 pl-3 text-right">
         <span className="inline-flex items-center justify-end">
@@ -215,7 +215,7 @@ function Row({
       </td>
       {hasSecondary && (
         <td className="py-2.5 pl-3 text-right text-ink-soft">
-          {r.secondary?.value ?? "—"}
+          {r.secondary?.value ?? "-"}
         </td>
       )}
     </tr>
