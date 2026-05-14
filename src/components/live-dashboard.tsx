@@ -71,13 +71,18 @@ function isKnownChain(name: string): boolean {
   return name in CHAIN_SLUGS;
 }
 
+type Pop = { id: number; amount: number; side: "buy" | "sell" };
+
 export function LiveDashboard() {
   const [stats, setStats] = useState<GlobalView | null>(null);
   const [recent, setRecent] = useState<SwapEvent[]>([]);
   const [sessionSwaps, setSessionSwaps] = useState(0);
   const [sessionVol, setSessionVol] = useState(0);
   const [connected, setConnected] = useState(false);
+  const [pops, setPops] = useState<Pop[]>([]);
+  const [feedOpen, setFeedOpen] = useState(false);
   const reconnectTimer = useRef<number | null>(null);
+  const popIdRef = useRef(0);
 
   useEffect(() => {
     let stopped = false;
@@ -111,6 +116,15 @@ export function LiveDashboard() {
           });
           setSessionSwaps((n) => n + 1);
           setSessionVol((v) => v + (s.usd || 0));
+          // Polymarket-style ephemeral increment overlay on the Vol tile.
+          // Skip dust to avoid clutter — keep the "alive" cues meaningful.
+          if (s.usd >= 1) {
+            const id = ++popIdRef.current;
+            setPops((prev) => [...prev, { id, amount: s.usd, side: s.side }]);
+            window.setTimeout(() => {
+              setPops((prev) => prev.filter((p) => p.id !== id));
+            }, 1800);
+          }
         } else if (msg.type === "stats") {
           setStats(msg.global);
         }
@@ -128,9 +142,16 @@ export function LiveDashboard() {
   return (
     <>
       <StatusBar connected={connected} stats={stats} />
-      <StatsBand stats={stats} sessionSwaps={sessionSwaps} sessionVol={sessionVol} />
+      <StatsBand
+        stats={stats}
+        sessionSwaps={sessionSwaps}
+        sessionVol={sessionVol}
+        pops={pops}
+        feedOpen={feedOpen}
+        onToggleFeed={() => setFeedOpen((v) => !v)}
+      />
       <ChainStrip stats={stats} />
-      <LiveFeed recent={recent} />
+      {feedOpen && <LiveFeed recent={recent} />}
     </>
   );
 }
@@ -185,10 +206,16 @@ function StatsBand({
   stats,
   sessionSwaps,
   sessionVol,
+  pops,
+  feedOpen,
+  onToggleFeed,
 }: {
   stats: GlobalView | null;
   sessionSwaps: number;
   sessionVol: number;
+  pops: Pop[];
+  feedOpen: boolean;
+  onToggleFeed: () => void;
 }) {
   return (
     <div className="card grid grid-cols-2 sm:grid-cols-4 gap-px bg-rule overflow-hidden">
@@ -196,6 +223,7 @@ function StatsBand({
         label="Vol 24h"
         value={fmtMoney(stats?.vol24h)}
         sub="All chains · DEX trades"
+        overlay={<PopOverlay pops={pops} />}
       />
       <Tile
         label="Txs 24h"
@@ -214,8 +242,10 @@ function StatsBand({
       <Tile
         label="Streamed live"
         value={sessionSwaps.toLocaleString()}
-        sub={sessionVol > 0 ? `${fmtMoney(sessionVol)} since you loaded` : "This session"}
+        sub={sessionVol > 0 ? `${fmtMoney(sessionVol)} streamed` : "This session"}
         emphasize
+        onClick={onToggleFeed}
+        action={feedOpen ? "Hide feed ▾" : "View feed ▸"}
       />
     </div>
   );
@@ -226,14 +256,38 @@ function Tile({
   value,
   sub,
   emphasize,
+  overlay,
+  onClick,
+  action,
 }: {
   label: string;
   value: string;
   sub: string;
   emphasize?: boolean;
+  overlay?: React.ReactNode;
+  onClick?: () => void;
+  action?: string;
 }) {
+  const interactive = !!onClick;
   return (
-    <div className="flex flex-col gap-3 px-5 py-6 bg-surface min-w-0">
+    <div
+      role={interactive ? "button" : undefined}
+      tabIndex={interactive ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={
+        interactive
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onClick?.();
+              }
+            }
+          : undefined
+      }
+      className={`relative flex flex-col gap-3 px-5 py-6 bg-surface min-w-0 overflow-hidden ${
+        interactive ? "cursor-pointer hover:bg-paper-soft transition-colors" : ""
+      }`}
+    >
       <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted truncate">
         {label}
       </p>
@@ -244,8 +298,49 @@ function Tile({
       >
         {value}
       </p>
-      <p className="text-[11px] text-ink-muted leading-snug truncate">{sub}</p>
+      <p className="text-[11px] text-ink-muted leading-snug truncate">
+        {sub}
+        {action && (
+          <span className="ml-2 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-faint">
+            {action}
+          </span>
+        )}
+      </p>
+      {overlay}
     </div>
+  );
+}
+
+/** Ephemeral floating "+$X" bubbles per swap. Polymarket-inspired. */
+function PopOverlay({ pops }: { pops: Pop[] }) {
+  if (pops.length === 0) return null;
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-0">
+      {pops.slice(-6).map((p) => (
+        <PopBubble key={p.id} amount={p.amount} side={p.side} />
+      ))}
+    </div>
+  );
+}
+
+function PopBubble({ amount, side }: { amount: number; side: "buy" | "sell" }) {
+  // Random horizontal offset so multiple pops don't stack on top of each other.
+  const left = useRef<number>(8 + Math.random() * 70);
+  const fontSize = amount >= 100_000 ? 18 : amount >= 10_000 ? 15 : 12;
+  const color = side === "buy" ? "var(--color-good)" : "var(--color-bad)";
+  return (
+    <span
+      className="absolute pop-rise font-mono font-semibold tabular"
+      style={{
+        left: `${left.current}%`,
+        bottom: "14%",
+        color,
+        fontSize: `${fontSize}px`,
+        whiteSpace: "nowrap",
+      }}
+    >
+      +{fmtMoney(amount)}
+    </span>
   );
 }
 
@@ -316,7 +411,7 @@ function LiveFeed({ recent }: { recent: SwapEvent[] }) {
           <span className="relative h-1.5 w-1.5 rounded-full bg-good" />
         </span>
         <span className="ml-auto font-mono text-[10px] uppercase tracking-[0.18em] text-ink-faint">
-          last {recent.length}
+          last {recent.length} swaps · scroll for more
         </span>
       </div>
       <div className="overflow-x-auto">
