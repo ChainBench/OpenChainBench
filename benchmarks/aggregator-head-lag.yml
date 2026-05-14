@@ -35,6 +35,16 @@ prometheus:
   url: https://prometheus-production-0859.up.railway.app
   window: 24h
 
+# Chain filter tabs above the chart. The "all" option leaves queries
+# unscoped (cross-chain aggregate); the others inject chain="<value>" into
+# every PromQL selector via lib/spec.ts:injectChainFilter.
+dimensions:
+  chain:
+    - { value: all,    label: All chains }
+    - { value: base,   label: Base }
+    - { value: bnb,    label: BNB Chain }
+    - { value: solana, label: Solana }
+
 # Real metric exposed by the head-lag harness:
 #   head_lag_seconds{aggregator, chain, region}   . gauge in seconds
 #   head_lag_errors_total{aggregator, chain, region, error_type} . counter
