@@ -71,7 +71,10 @@ function isKnownChain(name: string): boolean {
   return name in CHAIN_SLUGS;
 }
 
-type Pop = { id: number; amount: number; side: "buy" | "sell" };
+type Pop = { id: number; amount: number; side: "buy" | "sell"; lane: number };
+
+const POP_LANES = 3; // vertical lanes prevent overlap on bursts
+const MAX_POPS = POP_LANES;
 
 export function LiveDashboard() {
   const [stats, setStats] = useState<GlobalView | null>(null);
@@ -120,10 +123,14 @@ export function LiveDashboard() {
           // Skip dust to avoid clutter — keep the "alive" cues meaningful.
           if (s.usd >= 1) {
             const id = ++popIdRef.current;
-            setPops((prev) => [...prev, { id, amount: s.usd, side: s.side }]);
+            const lane = id % POP_LANES;
+            setPops((prev) => {
+              const next = [...prev, { id, amount: s.usd, side: s.side, lane }];
+              return next.length > MAX_POPS ? next.slice(-MAX_POPS) : next;
+            });
             window.setTimeout(() => {
               setPops((prev) => prev.filter((p) => p.id !== id));
-            }, 1800);
+            }, 1500);
           }
         } else if (msg.type === "stats") {
           setStats(msg.global);
@@ -311,29 +318,40 @@ function Tile({
   );
 }
 
-/** Ephemeral floating "+$X" bubbles per swap. Polymarket-inspired. */
+/** Ephemeral "+$X" bubbles per swap, anchored top-right of the Vol tile.
+ * Three fixed lanes (round-robin) so concurrent pops never overlap. */
 function PopOverlay({ pops }: { pops: Pop[] }) {
   if (pops.length === 0) return null;
   return (
-    <div aria-hidden className="pointer-events-none absolute inset-0">
-      {pops.slice(-6).map((p) => (
-        <PopBubble key={p.id} amount={p.amount} side={p.side} />
+    <div
+      aria-hidden
+      className="pointer-events-none absolute top-3 right-3 w-[120px] h-[80px]"
+    >
+      {pops.map((p) => (
+        <PopBubble key={p.id} amount={p.amount} side={p.side} lane={p.lane} />
       ))}
     </div>
   );
 }
 
-function PopBubble({ amount, side }: { amount: number; side: "buy" | "sell" }) {
-  // Random horizontal offset so multiple pops don't stack on top of each other.
-  const left = useRef<number>(8 + Math.random() * 70);
-  const fontSize = amount >= 100_000 ? 18 : amount >= 10_000 ? 15 : 12;
+function PopBubble({
+  amount,
+  side,
+  lane,
+}: {
+  amount: number;
+  side: "buy" | "sell";
+  lane: number;
+}) {
+  const top = lane * 24; // px — three lanes at 0, 24, 48 px from overlay top
+  const fontSize = amount >= 100_000 ? 16 : amount >= 10_000 ? 14 : 12;
   const color = side === "buy" ? "var(--color-good)" : "var(--color-bad)";
   return (
     <span
       className="absolute pop-rise font-mono font-semibold tabular"
       style={{
-        left: `${left.current}%`,
-        bottom: "14%",
+        top: `${top}px`,
+        right: 0,
         color,
         fontSize: `${fontSize}px`,
         whiteSpace: "nowrap",
