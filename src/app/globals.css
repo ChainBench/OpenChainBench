@@ -180,17 +180,12 @@ table {
   border-bottom: 1px solid var(--color-rule);
 }
 
-/* Polymarket-style ephemeral pop on a swap event.
- * 3 lanes prevent overlap; rise + fade in 1.5s. */
-@keyframes pop-rise {
-  0%   { opacity: 0;    transform: translateY(6px)  scale(0.94); }
-  15%  { opacity: 0.95; transform: translateY(0)    scale(1); }
-  100% { opacity: 0;    transform: translateY(-18px) scale(0.96); }
+/* Polymarket-style ephemeral pops floating off chart line tips */
+@keyframes chart-pop-rise {
+  0%   { opacity: 0;    transform: translate(0, calc(-50% + 4px)) scale(0.92); }
+  18%  { opacity: 1;    transform: translate(0, -50%)              scale(1); }
+  100% { opacity: 0;    transform: translate(14px, calc(-50% - 26px)) scale(0.94); }
 }
-.pop-rise {
-  animation: pop-rise 1500ms cubic-bezier(0.16, 0.84, 0.32, 1) forwards;
-  text-shadow:
-    0 0 4px var(--color-surface),
-    0 0 8px var(--color-surface);
-  letter-spacing: -0.01em;
+.chart-pop-rise {
+  animation: chart-pop-rise 2200ms cubic-bezier(0.16, 0.84, 0.32, 1) forwards;
 }

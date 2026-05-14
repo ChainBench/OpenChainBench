@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ProviderLogo } from "@/components/provider-logo";
 
 const RELAY_WS_URL =
   process.env.NEXT_PUBLIC_RELAY_WS_URL ??
   "wss://ocb-stream-relay-production.up.railway.app/ws";
+
+/* ─────────────── types from the relay ─────────────── */
 
 type SwapEvent = {
   type: "swap";
@@ -42,39 +44,88 @@ type StatsTick = {
   nowMs: number;
 };
 
-const MAX_FEED = 30;
-const CHAIN_SLUGS: Record<string, { slug: string; display: string }> = {
-  ethereum: { slug: "ethereum", display: "Ethereum" },
-  Ethereum: { slug: "ethereum", display: "Ethereum" },
-  solana: { slug: "solana", display: "Solana" },
-  Solana: { slug: "solana", display: "Solana" },
-  base: { slug: "base", display: "Base" },
-  Base: { slug: "base", display: "Base" },
-  bnb: { slug: "bnb", display: "BNB" },
-  BNB: { slug: "bnb", display: "BNB" },
-  BSC: { slug: "bnb", display: "BNB" },
-  bsc: { slug: "bnb", display: "BNB" },
-  "BNB Smart Chain (BEP20)": { slug: "bnb", display: "BNB" },
-  "BNB Smart Chain": { slug: "bnb", display: "BNB" },
-  arbitrum: { slug: "arbitrum", display: "Arbitrum" },
-  Arbitrum: { slug: "arbitrum", display: "Arbitrum" },
-  Optimism: { slug: "optimism", display: "Optimism" },
-  optimism: { slug: "optimism", display: "Optimism" },
-  Polygon: { slug: "polygon", display: "Polygon" },
-  polygon: { slug: "polygon", display: "Polygon" },
-  Avalanche: { slug: "avalanche", display: "Avalanche" },
-  avalanche: { slug: "avalanche", display: "Avalanche" },
-};
+/* ─────────────── chain catalog (display + colors) ─────────────── */
 
-/** Only show chains we have a logo + recognizable display name for. */
-function isKnownChain(name: string): boolean {
-  return name in CHAIN_SLUGS;
+type ChainMeta = { key: string; slug: string; display: string; color: string };
+
+const CHAIN_LIST: ChainMeta[] = [
+  { key: "ethereum", slug: "ethereum", display: "Ethereum", color: "#627EEA" },
+  { key: "solana", slug: "solana", display: "Solana", color: "#9945FF" },
+  { key: "base", slug: "base", display: "Base", color: "#0052FF" },
+  { key: "bnb", slug: "bnb", display: "BNB", color: "#F0B90B" },
+  { key: "arbitrum", slug: "arbitrum", display: "Arbitrum", color: "#28A0F0" },
+];
+
+const CHAIN_BY_INPUT: Record<string, ChainMeta> = (() => {
+  const m: Record<string, ChainMeta> = {};
+  for (const c of CHAIN_LIST) {
+    m[c.key] = c;
+    m[c.display] = c;
+    m[c.display.toLowerCase()] = c;
+  }
+  // aliases
+  m.bsc = CHAIN_LIST.find((c) => c.key === "bnb")!;
+  m.BSC = m.bsc;
+  m["BNB Smart Chain"] = m.bsc;
+  m["BNB Smart Chain (BEP20)"] = m.bsc;
+  return m;
+})();
+
+function chainMeta(raw: string | undefined): ChainMeta | null {
+  if (!raw) return null;
+  return CHAIN_BY_INPUT[raw] ?? null;
 }
 
-type Pop = { id: number; amount: number; side: "buy" | "sell"; lane: number };
+/* ─────────────── time-series bucket store ─────────────── */
 
-const POP_LANES = 3; // vertical lanes prevent overlap on bursts
-const MAX_POPS = POP_LANES;
+const WINDOW_MS = 10 * 60 * 1000; // 10 min
+const BUCKET_MS = 5 * 1000; // 5 s
+const MAX_POPS = 8;
+
+type Bucket = { ts: number; perChain: Record<string, number> };
+
+function appendSwapToBuckets(prev: Bucket[], chainKey: string, usd: number, nowMs: number): Bucket[] {
+  const bucketTs = Math.floor(nowMs / BUCKET_MS) * BUCKET_MS;
+  const buckets = [...prev];
+  const last = buckets[buckets.length - 1];
+
+  // Fill gap buckets if no swaps for a while (carry forward last cumulative)
+  if (last && bucketTs > last.ts + BUCKET_MS) {
+    for (let t = last.ts + BUCKET_MS; t < bucketTs; t += BUCKET_MS) {
+      buckets.push({ ts: t, perChain: { ...last.perChain } });
+    }
+  }
+
+  if (last && last.ts === bucketTs) {
+    const upd = { ts: last.ts, perChain: { ...last.perChain } };
+    upd.perChain[chainKey] = (upd.perChain[chainKey] ?? 0) + usd;
+    buckets[buckets.length - 1] = upd;
+  } else {
+    const carry: Record<string, number> = last ? { ...last.perChain } : {};
+    carry[chainKey] = (carry[chainKey] ?? 0) + usd;
+    buckets.push({ ts: bucketTs, perChain: carry });
+  }
+
+  // Slide window
+  const cutoff = nowMs - WINDOW_MS;
+  while (buckets.length > 0 && buckets[0].ts < cutoff) {
+    buckets.shift();
+  }
+  return buckets;
+}
+
+/* ─────────────── component ─────────────── */
+
+type ChartPop = {
+  id: number;
+  chainKey: string;
+  pair: string;
+  exchange: string;
+  usd: number;
+  side: "buy" | "sell";
+  anchorX: number; // 0–100% of chart width
+  anchorY: number; // 0–100% of chart height
+};
 
 export function LiveDashboard() {
   const [stats, setStats] = useState<GlobalView | null>(null);
@@ -82,10 +133,12 @@ export function LiveDashboard() {
   const [sessionSwaps, setSessionSwaps] = useState(0);
   const [sessionVol, setSessionVol] = useState(0);
   const [connected, setConnected] = useState(false);
-  const [pops, setPops] = useState<Pop[]>([]);
+  const [buckets, setBuckets] = useState<Bucket[]>([]);
+  const [pops, setPops] = useState<ChartPop[]>([]);
   const [feedOpen, setFeedOpen] = useState(false);
-  const reconnectTimer = useRef<number | null>(null);
+
   const popIdRef = useRef(0);
+  const reconnectTimer = useRef<number | null>(null);
 
   useEffect(() => {
     let stopped = false;
@@ -111,31 +164,69 @@ export function LiveDashboard() {
         } catch {
           return;
         }
+
         if (msg.type === "swap") {
           const s = msg as SwapEvent;
+          const meta = chainMeta(s.chain);
+          if (!meta) return; // skip non-tracked chains
+
           setRecent((prev) => {
             const next = [s, ...prev];
-            return next.length > MAX_FEED ? next.slice(0, MAX_FEED) : next;
+            return next.length > 50 ? next.slice(0, 50) : next;
           });
           setSessionSwaps((n) => n + 1);
           setSessionVol((v) => v + (s.usd || 0));
-          // Polymarket-style ephemeral increment overlay on the Vol tile.
-          // Skip dust to avoid clutter — keep the "alive" cues meaningful.
-          if (s.usd >= 1) {
-            const id = ++popIdRef.current;
-            const lane = id % POP_LANES;
-            setPops((prev) => {
-              const next = [...prev, { id, amount: s.usd, side: s.side, lane }];
-              return next.length > MAX_POPS ? next.slice(-MAX_POPS) : next;
-            });
-            window.setTimeout(() => {
-              setPops((prev) => prev.filter((p) => p.id !== id));
-            }, 1500);
-          }
+
+          // Buckets + pops
+          const now = Date.now();
+          setBuckets((prev) => {
+            const next = appendSwapToBuckets(prev, meta.key, s.usd || 0, now);
+            // Spawn pop after we know the line tip position.
+            if ((s.usd || 0) >= 1) spawnPop(next, meta, s);
+            return next;
+          });
         } else if (msg.type === "stats") {
           setStats(msg.global);
         }
       };
+    }
+
+    function spawnPop(nextBuckets: Bucket[], meta: ChainMeta, s: SwapEvent) {
+      const last = nextBuckets[nextBuckets.length - 1];
+      if (!last) return;
+      const now = Date.now();
+      const xMin = now - WINDOW_MS;
+      const anchorX = ((last.ts - xMin) / WINDOW_MS) * 100;
+
+      // Compute yMax across all chains in this final view, just like the chart does
+      let yMax = 0;
+      for (const b of nextBuckets) {
+        for (const v of Object.values(b.perChain)) {
+          if (v > yMax) yMax = v;
+        }
+      }
+      if (yMax === 0) yMax = 1;
+      const chainCum = last.perChain[meta.key] ?? 0;
+      const anchorY = (1 - chainCum / yMax) * 100;
+
+      const id = ++popIdRef.current;
+      const pop: ChartPop = {
+        id,
+        chainKey: meta.key,
+        pair: s.pair || meta.display,
+        exchange: s.exchange || "",
+        usd: s.usd || 0,
+        side: s.side,
+        anchorX: Math.max(0, Math.min(100, anchorX)),
+        anchorY: Math.max(0, Math.min(95, anchorY)),
+      };
+      setPops((prev) => {
+        const next = [...prev, pop];
+        return next.length > MAX_POPS ? next.slice(-MAX_POPS) : next;
+      });
+      window.setTimeout(() => {
+        setPops((prev) => prev.filter((p) => p.id !== id));
+      }, 2200);
     }
 
     connect();
@@ -153,17 +244,16 @@ export function LiveDashboard() {
         stats={stats}
         sessionSwaps={sessionSwaps}
         sessionVol={sessionVol}
-        pops={pops}
         feedOpen={feedOpen}
         onToggleFeed={() => setFeedOpen((v) => !v)}
       />
-      <ChainStrip stats={stats} />
+      <LiveChart buckets={buckets} pops={pops} onToggleFeed={() => setFeedOpen((v) => !v)} feedOpen={feedOpen} />
       {feedOpen && <LiveFeed recent={recent} />}
     </>
   );
 }
 
-/* ---------- Status bar ---------- */
+/* ─────────────── status bar ─────────────── */
 
 function StatusBar({ connected, stats }: { connected: boolean; stats: GlobalView | null }) {
   const [now, setNow] = useState(() => Date.now());
@@ -180,9 +270,7 @@ function StatusBar({ connected, stats }: { connected: boolean; stats: GlobalView
           <span className="absolute inset-0 rounded-full bg-good opacity-60 animate-ping" />
         )}
         <span
-          className={`relative h-2 w-2 rounded-full ${
-            connected ? "bg-good" : "bg-ink-faint"
-          }`}
+          className={`relative h-2 w-2 rounded-full ${connected ? "bg-good" : "bg-ink-faint"}`}
         />
       </span>
       <span
@@ -207,31 +295,24 @@ function StatusBar({ connected, stats }: { connected: boolean; stats: GlobalView
   );
 }
 
-/* ---------- Stats band (4 hero tiles) ---------- */
+/* ─────────────── stats band ─────────────── */
 
 function StatsBand({
   stats,
   sessionSwaps,
   sessionVol,
-  pops,
   feedOpen,
   onToggleFeed,
 }: {
   stats: GlobalView | null;
   sessionSwaps: number;
   sessionVol: number;
-  pops: Pop[];
   feedOpen: boolean;
   onToggleFeed: () => void;
 }) {
   return (
     <div className="card grid grid-cols-2 sm:grid-cols-4 gap-px bg-rule overflow-hidden">
-      <Tile
-        label="Vol 24h"
-        value={fmtMoney(stats?.vol24h)}
-        sub="All chains · DEX trades"
-        overlay={<PopOverlay pops={pops} />}
-      />
+      <Tile label="Vol 24h" value={fmtMoney(stats?.vol24h)} sub="All chains · DEX trades" />
       <Tile
         label="Txs 24h"
         value={fmtCount(stats?.trades24h)}
@@ -241,11 +322,7 @@ function StatsBand({
             : "All chains"
         }
       />
-      <Tile
-        label="Market Cap"
-        value={fmtMoney(stats?.mcap)}
-        sub="All tracked assets"
-      />
+      <Tile label="Market Cap" value={fmtMoney(stats?.mcap)} sub="All tracked assets" />
       <Tile
         label="Streamed live"
         value={sessionSwaps.toLocaleString()}
@@ -263,7 +340,6 @@ function Tile({
   value,
   sub,
   emphasize,
-  overlay,
   onClick,
   action,
 }: {
@@ -271,7 +347,6 @@ function Tile({
   value: string;
   sub: string;
   emphasize?: boolean;
-  overlay?: React.ReactNode;
   onClick?: () => void;
   action?: string;
 }) {
@@ -291,7 +366,7 @@ function Tile({
             }
           : undefined
       }
-      className={`relative flex flex-col gap-3 px-5 py-6 bg-surface min-w-0 overflow-hidden ${
+      className={`relative flex flex-col gap-3 px-5 py-6 bg-surface min-w-0 ${
         interactive ? "cursor-pointer hover:bg-paper-soft transition-colors" : ""
       }`}
     >
@@ -313,109 +388,302 @@ function Tile({
           </span>
         )}
       </p>
-      {overlay}
     </div>
   );
 }
 
-/** Ephemeral "+$X" bubbles per swap, anchored top-right of the Vol tile.
- * Three fixed lanes (round-robin) so concurrent pops never overlap. */
-function PopOverlay({ pops }: { pops: Pop[] }) {
-  if (pops.length === 0) return null;
-  return (
-    <div
-      aria-hidden
-      className="pointer-events-none absolute top-3 right-3 w-[120px] h-[80px]"
-    >
-      {pops.map((p) => (
-        <PopBubble key={p.id} amount={p.amount} side={p.side} lane={p.lane} />
-      ))}
-    </div>
-  );
-}
+/* ─────────────── time-series chart ─────────────── */
 
-function PopBubble({
-  amount,
-  side,
-  lane,
+const CHART_W = 1100;
+const CHART_H = 280;
+const PAD_X = 40;
+const PAD_Y = 20;
+
+function LiveChart({
+  buckets,
+  pops,
+  onToggleFeed,
+  feedOpen,
 }: {
-  amount: number;
-  side: "buy" | "sell";
-  lane: number;
+  buckets: Bucket[];
+  pops: ChartPop[];
+  onToggleFeed: () => void;
+  feedOpen: boolean;
 }) {
-  const top = lane * 24; // px — three lanes at 0, 24, 48 px from overlay top
-  const fontSize = amount >= 100_000 ? 16 : amount >= 10_000 ? 14 : 12;
-  const color = side === "buy" ? "var(--color-good)" : "var(--color-bad)";
-  return (
-    <span
-      className="absolute pop-rise font-mono font-semibold tabular"
-      style={{
-        top: `${top}px`,
-        right: 0,
-        color,
-        fontSize: `${fontSize}px`,
-        whiteSpace: "nowrap",
-      }}
-    >
-      +{fmtMoney(amount)}
-    </span>
-  );
-}
+  // Tick the "now" reference once per second so the right edge keeps advancing
+  // even when no swaps arrive (visual continuity).
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
 
-/* ---------- Per-chain breakdown ---------- */
+  const { paths, yMax, latest } = useMemo(() => computeChart(buckets, now), [buckets, now]);
 
-function ChainStrip({ stats }: { stats: GlobalView | null }) {
-  if (!stats?.byChain?.length) return null;
-  const top = stats.byChain
-    .filter((c) => isKnownChain(c.name) && c.vol24h > 0)
-    .sort((a, b) => b.vol24h - a.vol24h)
-    .slice(0, 6);
-  if (!top.length) return null;
-  const max = top[0]?.vol24h || 1;
+  const empty = buckets.length === 0;
 
   return (
-    <div className="card mt-4 px-4 py-4">
-      <div className="flex items-center justify-between mb-3">
-        <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
-          Top chains · vol 24h
-        </p>
-        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-faint">
-          {stats.byChain.length} chains tracked
-        </p>
-      </div>
-      <ul className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
-        {top.map((c) => {
-          const meta = CHAIN_SLUGS[c.name] ?? {
-            slug: c.name.toLowerCase(),
-            display: c.name,
-          };
-          const pct = Math.max(2, (c.vol24h / max) * 100);
+    <section className="card mt-4 relative overflow-hidden">
+      <header className="flex items-center justify-between px-5 py-3 border-b border-rule">
+        <div className="flex items-center gap-3">
+          <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+            Streamed volume · last 10 min
+          </span>
+          <span className="relative flex h-1.5 w-1.5">
+            <span className="absolute inset-0 rounded-full bg-good opacity-60 animate-ping" />
+            <span className="relative h-1.5 w-1.5 rounded-full bg-good" />
+          </span>
+        </div>
+
+        <button
+          type="button"
+          onClick={onToggleFeed}
+          className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted hover:text-ink transition-colors"
+        >
+          {feedOpen ? "Hide feed ▾" : "View feed ▸"}
+        </button>
+      </header>
+
+      {/* Legend strip — chain pills with colored dots */}
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 px-5 pt-3 pb-2 text-[11px]">
+        {CHAIN_LIST.map((c) => {
+          const last = buckets[buckets.length - 1];
+          const v = last?.perChain[c.key] ?? 0;
           return (
-            <li key={c.name} className="flex flex-col gap-1.5">
-              <div className="flex items-center gap-2">
-                <ProviderLogo slug={meta.slug} name={meta.display} size={18} />
-                <span className="text-xs text-ink truncate font-medium">
-                  {meta.display}
-                </span>
-              </div>
-              <p className="font-mono tabular text-[11px] text-ink-soft">
-                {fmtMoney(c.vol24h)}
-              </p>
-              <div className="h-1 bg-paper-soft rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-ink/70 rounded-full transition-[width] duration-500"
-                  style={{ width: `${pct}%` }}
-                />
-              </div>
-            </li>
+            <span key={c.key} className="inline-flex items-center gap-2 text-ink-soft">
+              <span
+                className="h-2 w-2 rounded-full"
+                style={{ background: c.color }}
+                aria-hidden
+              />
+              <ProviderLogo slug={c.slug} name={c.display} size={14} />
+              <span className="font-medium">{c.display}</span>
+              <span className="font-mono tabular text-ink-faint">{fmtMoney(v)}</span>
+            </span>
           );
         })}
-      </ul>
+      </div>
+
+      {/* Chart area: SVG + pop overlay */}
+      <div className="relative px-2 pb-4">
+        <svg
+          viewBox={`0 0 ${CHART_W} ${CHART_H}`}
+          preserveAspectRatio="none"
+          className="w-full h-[260px] sm:h-[280px]"
+          aria-label="Live streamed volume per chain"
+        >
+          {/* Gridlines */}
+          {[0.25, 0.5, 0.75].map((f) => {
+            const y = PAD_Y + (CHART_H - PAD_Y * 2) * f;
+            return (
+              <line
+                key={f}
+                x1={PAD_X}
+                x2={CHART_W - 8}
+                y1={y}
+                y2={y}
+                stroke="var(--color-rule)"
+                strokeDasharray="2 4"
+                strokeWidth={1}
+                opacity={0.5}
+              />
+            );
+          })}
+
+          {/* Per-chain polylines */}
+          {paths.map((p) => (
+            <polyline
+              key={p.chainKey}
+              fill="none"
+              stroke={p.color}
+              strokeWidth={2}
+              strokeLinejoin="round"
+              strokeLinecap="round"
+              points={p.points}
+              opacity={p.points ? 0.95 : 0}
+            />
+          ))}
+
+          {/* Latest tip dots */}
+          {latest.map((p) =>
+            p.cum > 0 ? (
+              <circle
+                key={p.chainKey}
+                cx={p.x}
+                cy={p.y}
+                r={3}
+                fill={p.color}
+                stroke="var(--color-surface)"
+                strokeWidth={1.5}
+              />
+            ) : null,
+          )}
+
+          {/* Y-axis ticks (right side) */}
+          {[1, 0.5].map((f) => {
+            const y = PAD_Y + (CHART_H - PAD_Y * 2) * (1 - f);
+            return (
+              <text
+                key={f}
+                x={CHART_W - 6}
+                y={y + 4}
+                textAnchor="end"
+                fontFamily="var(--font-mono)"
+                fontSize={10}
+                fill="var(--color-ink-faint)"
+              >
+                {fmtMoney(yMax * f)}
+              </text>
+            );
+          })}
+
+          {/* X-axis labels */}
+          <text
+            x={PAD_X}
+            y={CHART_H - 4}
+            textAnchor="start"
+            fontFamily="var(--font-mono)"
+            fontSize={10}
+            fill="var(--color-ink-faint)"
+          >
+            10 min ago
+          </text>
+          <text
+            x={CHART_W - 8}
+            y={CHART_H - 4}
+            textAnchor="end"
+            fontFamily="var(--font-mono)"
+            fontSize={10}
+            fill="var(--color-ink-faint)"
+          >
+            now
+          </text>
+
+          {empty && (
+            <text
+              x={CHART_W / 2}
+              y={CHART_H / 2}
+              textAnchor="middle"
+              fontFamily="var(--font-mono)"
+              fontSize={12}
+              fill="var(--color-ink-faint)"
+            >
+              Listening for swaps…
+            </text>
+          )}
+        </svg>
+
+        {/* Floating swap pops anchored to line tips */}
+        <div className="pointer-events-none absolute inset-x-2 inset-y-0">
+          {pops.map((p) => (
+            <ChartPopBubble key={p.id} pop={p} />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ─────────────── chart math ─────────────── */
+
+type ChainPath = { chainKey: string; color: string; points: string };
+type ChainLatest = { chainKey: string; color: string; x: number; y: number; cum: number };
+
+function computeChart(buckets: Bucket[], nowMs: number): {
+  paths: ChainPath[];
+  yMax: number;
+  latest: ChainLatest[];
+} {
+  const xMin = nowMs - WINDOW_MS;
+  const innerW = CHART_W - PAD_X - 8;
+  const innerH = CHART_H - PAD_Y * 2;
+
+  const xScale = (ts: number) => PAD_X + ((ts - xMin) / WINDOW_MS) * innerW;
+
+  let yMax = 0;
+  for (const b of buckets) {
+    for (const v of Object.values(b.perChain)) {
+      if (v > yMax) yMax = v;
+    }
+  }
+  // Round up to a nicer ceiling so labels look clean
+  yMax = niceCeil(yMax || 1);
+
+  const yScale = (vol: number) => PAD_Y + innerH - (vol / yMax) * innerH;
+
+  const paths: ChainPath[] = [];
+  const latest: ChainLatest[] = [];
+
+  for (const chain of CHAIN_LIST) {
+    let points = "";
+    let lastX = 0;
+    let lastY = PAD_Y + innerH;
+    let cum = 0;
+    for (const b of buckets) {
+      const v = b.perChain[chain.key] ?? 0;
+      const x = xScale(b.ts);
+      const y = yScale(v);
+      points += `${x.toFixed(1)},${y.toFixed(1)} `;
+      lastX = x;
+      lastY = y;
+      cum = v;
+    }
+    paths.push({ chainKey: chain.key, color: chain.color, points: points.trim() });
+    if (buckets.length > 0) {
+      latest.push({ chainKey: chain.key, color: chain.color, x: lastX, y: lastY, cum });
+    }
+  }
+  return { paths, yMax, latest };
+}
+
+function niceCeil(v: number): number {
+  if (v <= 0) return 1;
+  const mag = Math.pow(10, Math.floor(Math.log10(v)));
+  const frac = v / mag;
+  const niceFrac = frac <= 1 ? 1 : frac <= 2 ? 2 : frac <= 5 ? 5 : 10;
+  return niceFrac * mag;
+}
+
+/* ─────────────── floating pop bubble ─────────────── */
+
+function ChartPopBubble({ pop }: { pop: ChartPop }) {
+  const meta = chainMeta(pop.chainKey);
+  if (!meta) return null;
+  const isBuy = pop.side === "buy";
+  const color = isBuy ? "var(--color-good)" : "var(--color-bad)";
+
+  // Cap the right side so the bubble never overflows the chart edge.
+  const left = `${Math.min(pop.anchorX, 96)}%`;
+  const top = `${Math.max(0, Math.min(pop.anchorY, 85))}%`;
+
+  return (
+    <div
+      className="absolute chart-pop-rise -translate-y-1/2"
+      style={{
+        left,
+        top,
+        // Anchor near the line tip; the translate above centers vertically on it.
+      }}
+      aria-hidden
+    >
+      <div
+        className="inline-flex items-center gap-1.5 rounded-full pl-1 pr-2 py-0.5 bg-surface border whitespace-nowrap shadow-sm"
+        style={{ borderColor: meta.color, color: "var(--color-ink)" }}
+      >
+        <ProviderLogo slug={meta.slug} name={meta.display} size={14} />
+        <span className="font-mono text-[10px] uppercase tracking-[0.04em] text-ink-soft">
+          {pop.pair}
+        </span>
+        <span className="font-mono font-semibold tabular text-[11px]" style={{ color }}>
+          {isBuy ? "+" : "+"}
+          {fmtMoney(pop.usd)}
+        </span>
+      </div>
     </div>
   );
 }
 
-/* ---------- Live feed ---------- */
+/* ─────────────── live feed (drill-down) ─────────────── */
 
 function LiveFeed({ recent }: { recent: SwapEvent[] }) {
   return (
@@ -429,7 +697,7 @@ function LiveFeed({ recent }: { recent: SwapEvent[] }) {
           <span className="relative h-1.5 w-1.5 rounded-full bg-good" />
         </span>
         <span className="ml-auto font-mono text-[10px] uppercase tracking-[0.18em] text-ink-faint">
-          last {recent.length} swaps · scroll for more
+          last {recent.length} swaps
         </span>
       </div>
       <div className="overflow-x-auto">
@@ -450,13 +718,7 @@ function LiveFeed({ recent }: { recent: SwapEvent[] }) {
             {recent.length === 0 && (
               <tr>
                 <td colSpan={8} className="text-center text-ink-faint py-10">
-                  <span className="inline-flex items-center gap-2">
-                    <span className="relative flex h-1.5 w-1.5">
-                      <span className="absolute inset-0 rounded-full bg-good opacity-60 animate-ping" />
-                      <span className="relative h-1.5 w-1.5 rounded-full bg-good" />
-                    </span>
-                    Listening for swaps…
-                  </span>
+                  Listening for swaps…
                 </td>
               </tr>
             )}
@@ -475,17 +737,10 @@ function FeedRow({ s, fresh }: { s: SwapEvent; fresh: boolean }) {
   const pair = s.pair || (s.pool ? s.pool.slice(0, 8) + "…" : "—");
   const dex = s.exchange || "—";
   const time = new Date(s.receivedMs).toISOString().slice(11, 19);
-
-  const meta = CHAIN_SLUGS[s.chain] ?? {
-    slug: (s.chain || "").toLowerCase(),
-    display: s.chain || "—",
-  };
-
+  const meta = chainMeta(s.chain) ?? { slug: (s.chain || "").toLowerCase(), display: s.chain || "—" };
   const isBuy = s.side === "buy";
   const sideColor = isBuy ? "text-good" : "text-bad";
   const sideArrow = isBuy ? "▲" : "▼";
-
-  // Whale highlights: $10k → semibold, $100k+ → bolder + warn color
   const isWhale = s.usd >= 100_000;
   const isBig = s.usd >= 10_000;
   const usdClass = isWhale
@@ -493,14 +748,7 @@ function FeedRow({ s, fresh }: { s: SwapEvent; fresh: boolean }) {
     : isBig
       ? "font-semibold text-ink"
       : "text-ink";
-
-  // Lag color scale (showcases provider speed)
-  const lagClass =
-    lag < 1000
-      ? "text-good"
-      : lag < 3000
-        ? "text-warn"
-        : "text-bad";
+  const lagClass = lag < 1000 ? "text-good" : lag < 3000 ? "text-warn" : "text-bad";
 
   return (
     <tr className={fresh ? "feed-fresh" : ""}>
@@ -508,9 +756,7 @@ function FeedRow({ s, fresh }: { s: SwapEvent; fresh: boolean }) {
       <td className="px-2 py-2">
         <span className="inline-flex items-center gap-2">
           <ProviderLogo slug={meta.slug} name={meta.display} size={16} />
-          <span className="text-[11px] text-ink-soft hidden sm:inline">
-            {meta.display}
-          </span>
+          <span className="text-[11px] text-ink-soft hidden sm:inline">{meta.display}</span>
         </span>
       </td>
       <td className="px-2 py-2 text-ink text-[12px] whitespace-nowrap">{pair}</td>
@@ -543,7 +789,7 @@ function FeedRow({ s, fresh }: { s: SwapEvent; fresh: boolean }) {
   );
 }
 
-/* ---------- formatting helpers ---------- */
+/* ─────────────── formatting ─────────────── */
 
 function fmtMoney(n: number | undefined): string {
   if (n == null || n <= 0) return "—";
