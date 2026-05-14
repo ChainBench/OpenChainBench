@@ -47,10 +47,13 @@ export type Benchmark = {
   metric: string;
   unit: "ms" | "s" | "pct" | "bps" | "count";
   higherIsBetter: boolean;
-  /** Optional drill-down dimensions exposed by the bench. Currently only
-   * `chain` is wired up. when set, the bench page renders a chain-tab
-   * filter and the queries get a chain="X" label injected. */
-  dimensions?: { chain?: { value: string; label: string }[] };
+  /** Optional drill-down dimensions exposed by the bench. When set, the
+   * bench page renders one tab selector per dimension and the queries get
+   * a matching `<label>="<value>"` injected. */
+  dimensions?: {
+    chain?: { value: string; label: string }[];
+    region?: { value: string; label: string }[];
+  };
   category: "Aggregators" | "Bridges" | "Blockchains" | "Trading" | "Wallets" | "RPCs";
   results: ProviderResult[];
   findings: string[];

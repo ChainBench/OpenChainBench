@@ -44,6 +44,11 @@ dimensions:
     - { value: base,   label: Base }
     - { value: bnb,    label: BNB Chain }
     - { value: solana, label: Solana }
+  region:
+    - { value: all,     label: All regions }
+    - { value: us-east, label: US East }
+    - { value: eu-west, label: EU West }
+    - { value: sgp,     label: Singapore }
 
 # Real metric exposed by the head-lag harness:
 #   head_lag_seconds{aggregator, chain, region}   . gauge in seconds
