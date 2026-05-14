@@ -96,7 +96,7 @@ export function LiveChart({
             latest={latest}
             yMax={yMax}
             hiddenChains={hiddenChains}
-            pops={pops}
+            pops={feedOpen ? pops : []}
             empty={empty}
           />
         </div>
