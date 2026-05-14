@@ -6,20 +6,21 @@ import { fmtCount, fmtMoney } from "@/lib/live/format";
 import type { GlobalView } from "@/lib/live/types";
 
 /**
- * Compact one-line live ticker — the collapsed state of LiveDashboard.
- * Keeps the "ça stream" signal + headline numbers visible without
- * eating ~250px of vertical space above the benchmark table.
+ * Single-row live ticker. Always visible at the top of the home page —
+ * clicking the toggle reveals the streamed-volume chart + feed below.
  */
 export const LiveTicker = memo(function LiveTicker({
   connected,
   stats,
   sessionSwaps,
-  onExpand,
+  expanded,
+  onToggle,
 }: {
   connected: boolean;
   stats: GlobalView | null;
   sessionSwaps: number;
-  onExpand: () => void;
+  expanded: boolean;
+  onToggle: () => void;
 }) {
   return (
     <div className="card flex flex-wrap items-center gap-x-5 gap-y-1 px-4 py-2 text-xs">
@@ -48,10 +49,10 @@ export const LiveTicker = memo(function LiveTicker({
 
       <button
         type="button"
-        onClick={onExpand}
+        onClick={onToggle}
         className="ml-auto label-mono text-ink-muted hover:text-ink transition-colors"
       >
-        Expand ▾
+        {expanded ? "Collapse ▴" : "Expand ▾"}
       </button>
     </div>
   );

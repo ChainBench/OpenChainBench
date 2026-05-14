@@ -23,8 +23,6 @@ type Props = {
   serverOffsetMs: number;
   hiddenChains: Set<string>;
   onToggleChain: (key: string) => void;
-  onToggleFeed: () => void;
-  feedOpen: boolean;
 };
 
 export function LiveChart({
@@ -34,8 +32,6 @@ export function LiveChart({
   serverOffsetMs,
   hiddenChains,
   onToggleChain,
-  onToggleFeed,
-  feedOpen,
 }: Props) {
   // Tick once per second so the chart's right edge keeps advancing even
   // during quiet periods. Apply the server offset so bucket timestamps
@@ -59,32 +55,16 @@ export function LiveChart({
 
   return (
     <section className="card mt-4 relative overflow-hidden">
-      <header className="flex items-center justify-between px-5 py-3 border-b border-rule">
-        <div className="flex items-center gap-3">
-          <span className="label-mono text-ink-muted">Streamed volume · last 10 min</span>
-          <LiveDot />
-          <span className="text-ink-faint">·</span>
-          <span className="font-mono tabular text-[11px] text-ink-soft">
-            {fmtMoney(totalCum)} total
-          </span>
-        </div>
-
-        <button
-          type="button"
-          onClick={onToggleFeed}
-          className="label-mono text-ink-muted hover:text-ink transition-colors"
-        >
-          {feedOpen ? "Hide feed ▾" : "View feed ▸"}
-        </button>
+      <header className="flex items-center gap-3 px-5 py-3 border-b border-rule">
+        <span className="label-mono text-ink-muted">Streamed volume · last 10 min</span>
+        <LiveDot />
+        <span className="text-ink-faint">·</span>
+        <span className="font-mono tabular text-[11px] text-ink-soft">
+          {fmtMoney(totalCum)} total
+        </span>
       </header>
 
-      <div
-        className={
-          feedOpen
-            ? "grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px]"
-            : "block"
-        }
-      >
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="min-w-0">
           <ChainLegend
             cumPerChain={cumPerChain}
@@ -96,16 +76,14 @@ export function LiveChart({
             latest={latest}
             yMax={yMax}
             hiddenChains={hiddenChains}
-            pops={feedOpen ? pops : []}
+            pops={pops}
             empty={empty}
           />
         </div>
 
-        {feedOpen && (
-          <aside className="border-t lg:border-t-0 lg:border-l border-rule flex flex-col">
-            <CompactFeed recent={recent} hiddenChains={hiddenChains} />
-          </aside>
-        )}
+        <aside className="border-t lg:border-t-0 lg:border-l border-rule flex flex-col">
+          <CompactFeed recent={recent} hiddenChains={hiddenChains} />
+        </aside>
       </div>
     </section>
   );
