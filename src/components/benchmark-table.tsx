@@ -166,7 +166,7 @@ export function BenchmarkTable({ benchmarks }: { benchmarks: Benchmark[] }) {
                         <span className="text-ink-faint text-sm">{unitSuffix(b.unit)}</span>
                       </span>
                     ) : (
-                      <span className="text-xs text-ink-faint">—</span>
+                      <span className="text-xs text-ink-faint">-</span>
                     )}
                   </div>
                 </Link>

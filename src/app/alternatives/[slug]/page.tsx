@@ -124,7 +124,7 @@ export default async function AlternativePage({
             />
             <SummaryStat
               label="Spread"
-              value={tailSpread > 0 ? `${tailSpread.toFixed(1)}×` : "—"}
+              value={tailSpread > 0 ? `${tailSpread.toFixed(1)}×` : "-"}
               hint={
                 tailSpread > 0
                   ? `${fmtUnit(tailMin, bench.unit)} → ${fmtUnit(tailMax, bench.unit)}`

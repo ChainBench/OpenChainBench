@@ -1,5 +1,5 @@
 export function fmtUnit(value: number, unit: string) {
-  if (!Number.isFinite(value)) return "—";
+  if (!Number.isFinite(value)) return "-";
   if (unit === "pct") return formatPercent(value);
   if (unit === "bps") {
     // Legacy: bps stored. Convert to percent for display.
