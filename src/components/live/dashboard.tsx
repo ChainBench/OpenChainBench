@@ -9,7 +9,6 @@ import {
   POP_DURATION_MS,
   POP_MIN_USD,
   RELAY_WS_URL,
-  STORAGE_FEED_OPEN,
   STORAGE_HIDDEN_CHAINS,
   STORAGE_LIVE_EXPANDED,
   WINDOW_MS,
@@ -22,29 +21,23 @@ import type {
   SwapEvent,
 } from "@/lib/live/types";
 import { LiveChart } from "./chart";
-import { StatsBand } from "./stats-band";
-import { StatusBar } from "./status-bar";
 import { LiveTicker } from "./ticker";
 
 export function LiveDashboard() {
   const [stats, setStats] = useState<GlobalView | null>(null);
   const [recent, setRecent] = useState<SwapEvent[]>([]);
   const [sessionSwaps, setSessionSwaps] = useState(0);
-  const [sessionVol, setSessionVol] = useState(0);
   const [connected, setConnected] = useState(false);
   const [buckets, setBuckets] = useState<Bucket[]>([]);
   const [pops, setPops] = useState<ChartPop[]>([]);
-  const [feedOpen, setFeedOpen] = useState(true);
   const [hiddenChains, setHiddenChains] = useState<Set<string>>(new Set());
   const [serverOffsetMs, setServerOffsetMs] = useState(0);
   const [expanded, setExpanded] = useState(false);
 
-  // Refs the WebSocket handler reads at message-time without rerunning.
   const serverOffsetRef = useRef(0);
   const hiddenChainsRef = useRef<Set<string>>(new Set());
   const popIdRef = useRef(0);
   const reconnectTimer = useRef<number | null>(null);
-  const feedHydratedRef = useRef(false);
   const hiddenHydratedRef = useRef(false);
   const expandedHydratedRef = useRef(false);
 
@@ -57,11 +50,9 @@ export function LiveDashboard() {
     });
   }, []);
 
-  const toggleFeed = useCallback(() => setFeedOpen((v) => !v), []);
-  const expand = useCallback(() => setExpanded(true), []);
-  const collapse = useCallback(() => setExpanded(false), []);
+  const toggleExpanded = useCallback(() => setExpanded((v) => !v), []);
 
-  // Restore hidden-chains from localStorage on mount.
+  // Hidden chains persisted across visits.
   useEffect(() => {
     try {
       const saved = window.localStorage.getItem(STORAGE_HIDDEN_CHAINS);
@@ -75,7 +66,6 @@ export function LiveDashboard() {
     hiddenHydratedRef.current = true;
   }, []);
 
-  // Keep ref in sync + persist on change.
   useEffect(() => {
     hiddenChainsRef.current = hiddenChains;
     if (!hiddenHydratedRef.current) return;
@@ -89,29 +79,7 @@ export function LiveDashboard() {
     }
   }, [hiddenChains]);
 
-  // Feed open/close from localStorage. Default open; flip to closed only if
-  // the user explicitly hid the feed before.
-  useEffect(() => {
-    try {
-      const saved = window.localStorage.getItem(STORAGE_FEED_OPEN);
-      if (saved === "0") setFeedOpen(false);
-    } catch {
-      // ignore
-    }
-    feedHydratedRef.current = true;
-  }, []);
-
-  useEffect(() => {
-    if (!feedHydratedRef.current) return;
-    try {
-      window.localStorage.setItem(STORAGE_FEED_OPEN, feedOpen ? "1" : "0");
-    } catch {
-      // ignore
-    }
-  }, [feedOpen]);
-
-  // Expanded vs compact ticker. Default collapsed so the dashboard
-  // doesn't dominate the home page.
+  // Expanded state persisted. Default collapsed.
   useEffect(() => {
     try {
       const saved = window.localStorage.getItem(STORAGE_LIVE_EXPANDED);
@@ -131,7 +99,6 @@ export function LiveDashboard() {
     }
   }, [expanded]);
 
-  // WebSocket loop.
   useEffect(() => {
     let stopped = false;
     let ws: WebSocket | null = null;
@@ -175,7 +142,6 @@ export function LiveDashboard() {
             return next.length > MAX_FEED ? next.slice(0, MAX_FEED) : next;
           });
           setSessionSwaps((n) => n + 1);
-          setSessionVol((v) => v + (s.usd || 0));
 
           const serverNow = Date.now() + serverOffsetRef.current;
           const isHidden = hiddenChainsRef.current.has(meta.key);
@@ -196,7 +162,6 @@ export function LiveDashboard() {
       const xMin = nowMs - WINDOW_MS;
       const anchorX = ((last.ts - xMin) / WINDOW_MS) * 100;
 
-      // yMax matches the chart's: max CUMULATIVE per chain across the window.
       const cumPerChain = cumulativePerChain(nextBuckets);
       let yMax = 0;
       for (const k in cumPerChain) {
@@ -234,28 +199,16 @@ export function LiveDashboard() {
     };
   }, []);
 
-  if (!expanded) {
-    return (
+  return (
+    <>
       <LiveTicker
         connected={connected}
         stats={stats}
         sessionSwaps={sessionSwaps}
-        onExpand={expand}
+        expanded={expanded}
+        onToggle={toggleExpanded}
       />
-    );
-  }
-
-  return (
-    <>
-      <StatusBar connected={connected} stats={stats} onCollapse={collapse} />
-      <StatsBand
-        stats={stats}
-        sessionSwaps={sessionSwaps}
-        sessionVol={sessionVol}
-        feedOpen={feedOpen}
-        onToggleFeed={toggleFeed}
-      />
-      {feedOpen && (
+      {expanded && (
         <LiveChart
           buckets={buckets}
           pops={pops}
@@ -263,8 +216,6 @@ export function LiveDashboard() {
           serverOffsetMs={serverOffsetMs}
           hiddenChains={hiddenChains}
           onToggleChain={toggleChain}
-          onToggleFeed={toggleFeed}
-          feedOpen={feedOpen}
         />
       )}
     </>
