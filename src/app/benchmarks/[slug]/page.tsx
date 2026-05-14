@@ -14,6 +14,7 @@ import { LiveIndicator } from "@/components/live-indicator";
 import { ShareSection } from "@/components/share-section";
 import { ReportSection } from "@/components/report-section";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
+import { headlineSentence } from "@/lib/citation";
 import { SITE } from "@/data/site";
 import type { Benchmark } from "@/types/benchmark";
 
@@ -35,10 +36,18 @@ export async function generateMetadata({
   const b = await getBenchmark(slug);
   if (!b) return {};
   const metaTitle = b.seoTitle ?? b.title;
+  // Use the live headline sentence as the meta description so Google
+  // snippets and social unfurls surface the current value instead of a
+  // static methodology paragraph. Falls back to the YAML subtitle for
+  // drafts and benchmarks awaiting first run.
+  const headline = headlineSentence(b);
+  const description =
+    b.status === "live" && !headline.startsWith(b.title) ? headline : b.subtitle;
   return {
     title: metaTitle,
-    description: b.subtitle,
-    openGraph: { title: metaTitle, description: b.subtitle, type: "article" },
+    description,
+    openGraph: { title: metaTitle, description, type: "article" },
+    twitter: { card: "summary_large_image", title: metaTitle, description },
   };
 }
 
