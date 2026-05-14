@@ -54,6 +54,39 @@ upstream API key; the browser talks to it directly over WebSocket. Vercel
 only serves the static page shell. See [`docs/architecture.md`](./docs/architecture.md#the-live-page)
 for the data flow.
 
+## Cite OpenChainBench
+
+Every benchmark is licensed CC-BY-4.0 and exposed through a small set of
+machine-readable endpoints so journalists, devs, and AI agents can quote
+us without screenshotting:
+
+| Endpoint | Audience | What it returns |
+|---|---|---|
+| [`/llms.txt`](https://openchainbench.com/llms.txt) | LLM crawlers (ChatGPT, Claude, Perplexity, Gemini) | Plain-text index of every benchmark + links to JSON. Follows the [llmstxt.org](https://llmstxt.org) convention. |
+| [`/api/citable`](https://openchainbench.com/api/citable) | Devs, agents | Flat JSON: every benchmark with current value, leader, headline sentence, citation URL, OG image URL. |
+| [`/api/stat/<slug>`](https://openchainbench.com/api/stat/aggregator-head-lag) | Devs, agents | Single benchmark: full rankings, sparkline (24h), methodology, paste-ready quote, attribution URL. |
+| [`/api/llm-context`](https://openchainbench.com/api/llm-context) | LLMs | All 8 benchmarks + rankings + methodology in one Markdown blob — paste into a system prompt for "here's everything you need to answer questions about crypto-infra performance today". |
+| [`/api/og/<slug>`](https://openchainbench.com/api/og/aggregator-head-lag) | Twitter/Slack/Discord/iMessage | 1200×630 PNG with the current value, leader, sparkline, watermark. Returned automatically as the OG image when someone shares a benchmark link. |
+| [`/api/openapi.json`](https://openchainbench.com/api/openapi.json) | LangChain, Custom GPTs, generic clients | OpenAPI 3.1 schema describing every endpoint. |
+| [`/api/mcp/mcp`](https://openchainbench.com/api/mcp/mcp) | MCP-capable agents (Claude Desktop, Cursor) | MCP server exposing `list_benchmarks`, `get_benchmark`, `query_prom` tools. Streamable HTTP transport. |
+
+Each bench detail page also has a **Copy quote** / **Copy API URL** / **Open API** strip under the title — one click and a journalist has a paste-ready attribution string.
+
+### How journalists cite us
+
+```text
+"Mobula leads head lag at 0.8s (p50, 24h) — Fastest onchain data provider. 
+— source: OpenChainBench (https://openchainbench.com/benchmarks/aggregator-head-lag)"
+```
+
+That string is what the "Copy quote" button gives you. The page URL is stable, the OG preview unfurls automatically with the current value, and the data is CC-BY-4.0.
+
+### How agents query us
+
+Via MCP (recommended): point any MCP-capable client at `https://openchainbench.com/api/mcp/mcp`. It will discover three tools — `list_benchmarks`, `get_benchmark(slug, chain?, region?)`, `query_prom(query, windowSec?)` — and can answer questions like *"which aggregator is fastest on Base from EU right now?"* with live data.
+
+Via REST: hit `/api/citable` once to discover everything, then `/api/stat/<slug>` for specifics. Both are zero-auth, edge-cached for 60 s.
+
 ## How a benchmark gets data. federation
 
 OpenChainBench is a federation of independently-hosted harnesses connected by a single shared Prometheus.
