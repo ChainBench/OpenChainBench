@@ -282,8 +282,13 @@ export function LiveDashboard() {
         feedOpen={feedOpen}
         onToggleFeed={() => setFeedOpen((v) => !v)}
       />
-      <LiveChart buckets={buckets} pops={pops} onToggleFeed={() => setFeedOpen((v) => !v)} feedOpen={feedOpen} />
-      {feedOpen && <LiveFeed recent={recent} />}
+      <LiveChart
+        buckets={buckets}
+        pops={pops}
+        recent={recent}
+        onToggleFeed={() => setFeedOpen((v) => !v)}
+        feedOpen={feedOpen}
+      />
     </>
   );
 }
@@ -437,11 +442,13 @@ const PAD_Y = 20;
 function LiveChart({
   buckets,
   pops,
+  recent,
   onToggleFeed,
   feedOpen,
 }: {
   buckets: Bucket[];
   pops: ChartPop[];
+  recent: SwapEvent[];
   onToggleFeed: () => void;
   feedOpen: boolean;
 }) {
@@ -486,11 +493,19 @@ function LiveChart({
         </button>
       </header>
 
-      {/* Legend strip — chain pills with colored dots */}
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 px-5 pt-3 pb-2 text-[11px]">
+      <div
+        className={
+          feedOpen
+            ? "grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px]"
+            : "block"
+        }
+      >
+        <div className="min-w-0">
+      {/* Legend strip — chain pills with colored dots (cumulative per chain) */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 pt-3 pb-2 text-[11px]">
         {CHAIN_LIST.map((c) => {
-          const last = buckets[buckets.length - 1];
-          const v = last?.perChain[c.key] ?? 0;
+          let cum = 0;
+          for (const b of buckets) cum += b.perChain[c.key] ?? 0;
           return (
             <span key={c.key} className="inline-flex items-center gap-2 text-ink-soft">
               <span
@@ -500,7 +515,7 @@ function LiveChart({
               />
               <ProviderLogo slug={c.slug} name={c.display} size={14} />
               <span className="font-medium">{c.display}</span>
-              <span className="font-mono tabular text-ink-faint">{fmtMoney(v)}</span>
+              <span className="font-mono tabular text-ink-faint">{fmtMoney(cum)}</span>
             </span>
           );
         })}
@@ -511,7 +526,7 @@ function LiveChart({
         <svg
           viewBox={`0 0 ${CHART_W} ${CHART_H}`}
           preserveAspectRatio="none"
-          className="w-full h-[260px] sm:h-[280px]"
+          className="w-full h-[280px]"
           aria-label="Live streamed volume per chain"
         >
           {/* Gridlines */}
@@ -633,7 +648,91 @@ function LiveChart({
           ))}
         </div>
       </div>
+        </div>
+
+        {feedOpen && (
+          <aside className="border-t lg:border-t-0 lg:border-l border-rule flex flex-col">
+            <CompactFeed recent={recent} />
+          </aside>
+        )}
+      </div>
     </section>
+  );
+}
+
+/* ─────────────── compact feed (side-by-side with chart) ─────────────── */
+
+function CompactFeed({ recent }: { recent: SwapEvent[] }) {
+  return (
+    <div className="flex flex-col h-full max-h-[363px] lg:max-h-none">
+      <div className="px-4 py-3 border-b border-rule flex items-center gap-2">
+        <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+          Live feed
+        </span>
+        <span className="relative flex h-1.5 w-1.5">
+          <span className="absolute inset-0 rounded-full bg-good opacity-60 animate-ping" />
+          <span className="relative h-1.5 w-1.5 rounded-full bg-good" />
+        </span>
+        <span className="ml-auto font-mono text-[10px] uppercase tracking-[0.18em] text-ink-faint">
+          last {recent.length}
+        </span>
+      </div>
+      <div className="flex-1 overflow-y-auto">
+        <table className="w-full font-mono text-[10.5px] tabular">
+          <tbody>
+            {recent.length === 0 && (
+              <tr>
+                <td className="text-center text-ink-faint py-8">
+                  Listening…
+                </td>
+              </tr>
+            )}
+            {recent.map((s, i) => (
+              <CompactRow key={s.hash + s.pool + i} s={s} fresh={i === 0} />
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function CompactRow({ s, fresh }: { s: SwapEvent; fresh: boolean }) {
+  const lag = Math.max(0, s.receivedMs - s.onChainMs);
+  const pair = s.pair || (s.pool ? s.pool.slice(0, 8) + "…" : "—");
+  const meta = chainMeta(s.chain);
+  const isBuy = s.side === "buy";
+  const sideColor = isBuy ? "text-good" : "text-bad";
+  const sideArrow = isBuy ? "▲" : "▼";
+  const isWhale = s.usd >= 100_000;
+  const isBig = s.usd >= 10_000;
+  const usdClass = isWhale
+    ? "font-semibold text-warn"
+    : isBig
+      ? "font-semibold text-ink"
+      : "text-ink";
+  const lagClass = lag < 1000 ? "text-good" : lag < 3000 ? "text-warn" : "text-bad";
+
+  return (
+    <tr className={`${fresh ? "feed-fresh" : ""} border-b border-rule/40`}>
+      <td className="pl-4 pr-1 py-1.5 align-middle">
+        {meta ? (
+          <ProviderLogo slug={meta.slug} name={meta.display} size={14} />
+        ) : (
+          <span className="inline-block h-3.5 w-3.5 rounded-full bg-paper-soft" />
+        )}
+      </td>
+      <td className="px-1 py-1.5 text-ink whitespace-nowrap truncate max-w-[110px]">
+        {pair}
+      </td>
+      <td className={`px-1 py-1.5 text-center w-4 ${sideColor}`}>{sideArrow}</td>
+      <td className={`px-1 py-1.5 text-right whitespace-nowrap ${usdClass}`}>
+        {fmtMoney(s.usd)}
+      </td>
+      <td className={`pl-1 pr-4 py-1.5 text-right whitespace-nowrap ${lagClass}`}>
+        {fmtLag(lag)}
+      </td>
+    </tr>
   );
 }
 
@@ -761,112 +860,6 @@ function ChartPopBubble({ pop }: { pop: ChartPop }) {
   );
 }
 
-/* ─────────────── live feed (drill-down) ─────────────── */
-
-function LiveFeed({ recent }: { recent: SwapEvent[] }) {
-  return (
-    <div className="card mt-4 overflow-hidden">
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-rule">
-        <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
-          Live feed
-        </span>
-        <span className="relative flex h-1.5 w-1.5">
-          <span className="absolute inset-0 rounded-full bg-good opacity-60 animate-ping" />
-          <span className="relative h-1.5 w-1.5 rounded-full bg-good" />
-        </span>
-        <span className="ml-auto font-mono text-[10px] uppercase tracking-[0.18em] text-ink-faint">
-          last {recent.length} swaps
-        </span>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="ledger w-full">
-          <thead>
-            <tr>
-              <th className="text-left px-4 py-2">Time</th>
-              <th className="text-left px-2 py-2">Chain</th>
-              <th className="text-left px-2 py-2">Pair</th>
-              <th className="text-left px-2 py-2 hidden sm:table-cell">DEX</th>
-              <th className="text-center px-2 py-2">Side</th>
-              <th className="text-right px-2 py-2">USD</th>
-              <th className="text-right px-2 py-2 hidden md:table-cell">Lag</th>
-              <th className="text-left px-4 py-2 hidden md:table-cell">Tx</th>
-            </tr>
-          </thead>
-          <tbody>
-            {recent.length === 0 && (
-              <tr>
-                <td colSpan={8} className="text-center text-ink-faint py-10">
-                  Listening for swaps…
-                </td>
-              </tr>
-            )}
-            {recent.map((s, i) => (
-              <FeedRow key={s.hash + s.pool + i} s={s} fresh={i === 0} />
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-function FeedRow({ s, fresh }: { s: SwapEvent; fresh: boolean }) {
-  const lag = Math.max(0, s.receivedMs - s.onChainMs);
-  const pair = s.pair || (s.pool ? s.pool.slice(0, 8) + "…" : "—");
-  const dex = s.exchange || "—";
-  const time = new Date(s.receivedMs).toISOString().slice(11, 19);
-  const meta = chainMeta(s.chain) ?? { slug: (s.chain || "").toLowerCase(), display: s.chain || "—" };
-  const isBuy = s.side === "buy";
-  const sideColor = isBuy ? "text-good" : "text-bad";
-  const sideArrow = isBuy ? "▲" : "▼";
-  const isWhale = s.usd >= 100_000;
-  const isBig = s.usd >= 10_000;
-  const usdClass = isWhale
-    ? "font-semibold text-warn"
-    : isBig
-      ? "font-semibold text-ink"
-      : "text-ink";
-  const lagClass = lag < 1000 ? "text-good" : lag < 3000 ? "text-warn" : "text-bad";
-
-  return (
-    <tr className={fresh ? "feed-fresh" : ""}>
-      <td className="px-4 py-2 tabular text-[11px] text-ink-muted whitespace-nowrap">{time}</td>
-      <td className="px-2 py-2">
-        <span className="inline-flex items-center gap-2">
-          <ProviderLogo slug={meta.slug} name={meta.display} size={16} />
-          <span className="text-[11px] text-ink-soft hidden sm:inline">{meta.display}</span>
-        </span>
-      </td>
-      <td className="px-2 py-2 text-ink text-[12px] whitespace-nowrap">{pair}</td>
-      <td className="px-2 py-2 hidden sm:table-cell text-[11px] text-ink-soft whitespace-nowrap">
-        {dex}
-      </td>
-      <td className={`px-2 py-2 text-center ${sideColor} font-semibold`}>{sideArrow}</td>
-      <td className={`px-2 py-2 text-right tabular text-[12px] whitespace-nowrap ${usdClass}`}>
-        {fmtMoney(s.usd)}
-        {isWhale && <span className="ml-1 text-[9px]">🐋</span>}
-      </td>
-      <td className={`px-2 py-2 text-right tabular text-[11px] hidden md:table-cell ${lagClass}`}>
-        {fmtLag(lag)}
-      </td>
-      <td className="px-4 py-2 hidden md:table-cell tabular text-[11px] text-ink-faint">
-        {s.hash ? (
-          <a
-            href={txExplorerURL(s.chain, s.hash)}
-            target="_blank"
-            rel="noreferrer"
-            className="hover:text-ink-soft transition-colors"
-          >
-            {s.hash.slice(0, 10)}…
-          </a>
-        ) : (
-          ""
-        )}
-      </td>
-    </tr>
-  );
-}
-
 /* ─────────────── formatting ─────────────── */
 
 function fmtMoney(n: number | undefined): string {
@@ -899,12 +892,3 @@ function fmtAge(sec: number): string {
   return `${h}h`;
 }
 
-function txExplorerURL(chain: string, hash: string): string {
-  const c = (chain || "").toLowerCase();
-  if (c === "ethereum") return `https://etherscan.io/tx/${hash}`;
-  if (c === "solana") return `https://solscan.io/tx/${hash}`;
-  if (c === "base") return `https://basescan.org/tx/${hash}`;
-  if (c === "bnb" || c === "bsc") return `https://bscscan.com/tx/${hash}`;
-  if (c === "arbitrum") return `https://arbiscan.io/tx/${hash}`;
-  return `#`;
-}
