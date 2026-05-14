@@ -46,44 +46,53 @@ export default async function BenchmarkPage({
   searchParams,
 }: {
   params: Promise<Params>;
-  searchParams: Promise<{ chain?: string }>;
+  searchParams: Promise<{ chain?: string; region?: string }>;
 }) {
   const { slug } = await params;
   const sp = await searchParams;
 
-  // Resolve the chain filter against what the spec actually declares.
-  // When the spec declares chains, we always render scoped to one of them
-  // (defaulting to the first option) — there's no aggregate view, since
-  // averaging across chains rarely produces a comparable number.
+  // Resolve the dimension filters against what the spec declares. Each
+  // dimension defaults to its first option (typically `all`) when the
+  // URL doesn't specify one.
   const aggregate = await getBenchmark(slug);
   if (!aggregate) notFound();
   const chainOptions = aggregate.dimensions?.chain ?? [];
+  const regionOptions = aggregate.dimensions?.region ?? [];
   const matchedChain =
     chainOptions.find((c) => c.value === sp.chain)?.value ??
     chainOptions[0]?.value ??
     null;
+  const matchedRegion =
+    regionOptions.find((r) => r.value === sp.region)?.value ??
+    regionOptions[0]?.value ??
+    null;
   const chain = chainOptions.length > 0 ? matchedChain : null;
+  const region = regionOptions.length > 0 ? matchedRegion : null;
 
-  // Pre-fetch every chain variant in parallel so the client can flip
-  // between tabs with zero network round-trip. unstable_cache dedupes
-  // each (slug, chain) combo across users so this is cheap. The special
-  // `all` value skips the filter — same as the unscoped fetch.
+  // Pre-fetch every (chain × region) variant in parallel so client flips
+  // are zero round-trip. unstable_cache dedupes each (slug, filters) combo
+  // across users — first miss warms it, every later viewer gets it instant.
+  // `all` is the "no filter" sentinel — same as the unscoped fetch.
+  const chainsForFetch = chainOptions.length > 0 ? chainOptions.map((c) => c.value) : [null];
+  const regionsForFetch = regionOptions.length > 0 ? regionOptions.map((r) => r.value) : [null];
+
+  const variantPairs = chainsForFetch.flatMap((c) =>
+    regionsForFetch.map((r) => [c, r] as const)
+  );
   const [variantList, all] = await Promise.all([
-    chainOptions.length > 0
-      ? Promise.all(
-          chainOptions.map(async (c) => {
-            const filter = c.value === "all" ? undefined : c.value;
-            const b = await getBenchmark(slug, filter ? { chain: filter } : {});
-            return [c.value, b ?? aggregate] as const;
-          })
-        )
-      : Promise.resolve(
-          [["__default", aggregate]] as ReadonlyArray<readonly [string, Benchmark]>
-        ),
+    Promise.all(
+      variantPairs.map(async ([c, r]) => {
+        const filters: { chain?: string; region?: string } = {};
+        if (c && c !== "all") filters.chain = c;
+        if (r && r !== "all") filters.region = r;
+        const b = await getBenchmark(slug, filters);
+        return [variantKey(c, r), b ?? aggregate] as const;
+      })
+    ),
     getBenchmarks(),
   ]);
   const variants: Record<string, Benchmark> = Object.fromEntries(variantList);
-  const benchmark = chain ? (variants[chain] ?? aggregate) : aggregate;
+  const benchmark = variants[variantKey(chain, region)] ?? aggregate;
 
   const isDraft = benchmark.status === "draft";
   const otherBenchmarks = all.filter((b) => b.slug !== benchmark.slug);
@@ -191,8 +200,10 @@ export default async function BenchmarkPage({
       {!isDraft && (
         <BenchmarkBody
           variants={variants}
-          options={chainOptions}
+          chainOptions={chainOptions}
+          regionOptions={regionOptions}
           initialChain={chain ?? null}
+          initialRegion={region ?? null}
         />
       )}
 
@@ -242,6 +253,13 @@ export default async function BenchmarkPage({
       )}
     </article>
   );
+}
+
+/** Stable variant-map key. Mirrors what BenchmarkBody computes on every
+ * filter change. Use `null` for "no dimension" and "all" / undefined as
+ * the unscoped sentinel. */
+function variantKey(chain: string | null, region: string | null): string {
+  return `${chain ?? "__none"}|${region ?? "__none"}`;
 }
 
 function DraftNotice({ source }: { source: string }) {

@@ -39,37 +39,67 @@ const loadAllBenchmarksCached = unstable_cache(
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
 
+export type BenchmarkFilters = {
+  chain?: string;
+  region?: string;
+};
+
 /**
- * Cross-request server cache for chain-filtered loads. Each (slug, chain)
- * combo is computed at most once per `revalidate` window across ALL
- * concurrent users — so the page-level pre-fetch (which loads every
- * chain variant in parallel) hits a warm cache after the first miss
- * instead of triggering 30+ Prom queries on every render.
+ * Cross-request server cache for filtered loads. Each (slug, filters) combo
+ * is computed at most once per `revalidate` window across ALL concurrent
+ * users — so the page-level pre-fetch (which loads every chain × region
+ * variant in parallel) hits a warm cache after the first miss instead of
+ * triggering N × Prom queries on every render.
+ *
+ * Cache key includes a stable filter signature so adding new dimensions
+ * later won't collide with prior cache entries.
  */
-const loadBenchmarkForChain = unstable_cache(
-  async (slug: string, chain: string): Promise<Benchmark | undefined> => {
+const loadBenchmarkFiltered = unstable_cache(
+  async (slug: string, sig: string): Promise<Benchmark | undefined> => {
     const specs = await loadSpecs();
     const spec = specs.find((s) => s.slug === slug);
     if (!spec) return undefined;
-    return specToBenchmark(spec, { chain });
+    return specToBenchmark(spec, parseFilterSig(sig));
   },
-  ["bench-chain-v2"], // cache key prefix. bumped to bust stale entries.
+  ["bench-filters-v1"],
   { revalidate: 60, tags: ["benchmarks"] }
 );
 
+function filterSig(f: BenchmarkFilters): string {
+  // Stable ordering, ignore "all" / undefined which mean "no filter".
+  const parts: string[] = [];
+  for (const k of Object.keys(f).sort()) {
+    const v = (f as Record<string, string | undefined>)[k];
+    if (v && v !== "all") parts.push(`${k}=${v}`);
+  }
+  return parts.join("&");
+}
+function parseFilterSig(sig: string): BenchmarkFilters {
+  const out: BenchmarkFilters = {};
+  if (!sig) return out;
+  for (const kv of sig.split("&")) {
+    const [k, v] = kv.split("=");
+    if (k && v && (k === "chain" || k === "region")) {
+      out[k as "chain" | "region"] = v;
+    }
+  }
+  return out;
+}
+
 /**
- * Load a single bench with an optional dimension filter applied to all queries.
- * `chain` injects `chain="<value>"` into every PromQL label selector.
+ * Load a single bench with optional dimension filters applied to all queries.
+ * Each filter injects `<label>="<value>"` into every PromQL label selector.
  */
 export const loadBenchmark = cache(async function loadBenchmark(
   slug: string,
-  options: { chain?: string } = {}
+  options: BenchmarkFilters = {}
 ): Promise<Benchmark | undefined> {
-  if (!options.chain) {
+  const sig = filterSig(options);
+  if (!sig) {
     const all = await loadAllBenchmarks();
     return all.find((b) => b.slug === slug);
   }
-  return loadBenchmarkForChain(slug, options.chain);
+  return loadBenchmarkFiltered(slug, sig);
 });
 
 const loadSpecs = cache(async (): Promise<Spec[]> => {
@@ -98,7 +128,7 @@ const loadSpecs = cache(async (): Promise<Spec[]> => {
 
 async function specToBenchmark(
   spec: Spec,
-  options: { chain?: string } = {}
+  options: BenchmarkFilters = {}
 ): Promise<Benchmark> {
   const editorial: Omit<Benchmark, "results" | "extras" | "sampleSize" | "lastRunAt"> = {
     slug: spec.slug,
@@ -118,9 +148,9 @@ async function specToBenchmark(
     dimensions: spec.dimensions,
   };
 
-  const filteredSpec = options.chain
-    ? applyChainFilterToSpec(spec, options.chain)
-    : spec;
+  const activeLabels = activeFilterLabels(options);
+  const filteredSpec =
+    Object.keys(activeLabels).length > 0 ? applyDimensionsToSpec(spec, activeLabels) : spec;
 
   const live = await tryLoadLive(filteredSpec);
   if (live) {
@@ -129,10 +159,19 @@ async function specToBenchmark(
   return draftBenchmark(spec, editorial);
 }
 
-/** Inject `chain="X"` into every PromQL label selector across the spec's
- * provider queries. Skips selectors that already filter by chain. */
-function applyChainFilterToSpec(spec: Spec, chain: string): Spec {
-  const inject = (q: string | undefined) => (q ? injectChainFilter(q, chain) : q);
+function activeFilterLabels(opts: BenchmarkFilters): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(opts)) {
+    if (v && v !== "all") out[k] = v;
+  }
+  return out;
+}
+
+/** Inject every active `<label>="<value>"` into every PromQL label selector
+ * across the spec's provider queries (including per-region subqueries).
+ * Skips selectors that already filter by a given label. */
+function applyDimensionsToSpec(spec: Spec, labels: Record<string, string>): Spec {
+  const inject = (q: string | undefined) => (q ? injectLabels(q, labels) : q);
   return {
     ...spec,
     providers: spec.providers.map((p) => ({
@@ -147,19 +186,33 @@ function applyChainFilterToSpec(spec: Spec, chain: string): Spec {
             success: inject(p.queries.success),
             sample_size: inject(p.queries.sample_size),
             series: inject(p.queries.series),
+            regions: p.queries.regions?.map((r) => ({
+              ...r,
+              p50: inject(r.p50),
+              series: inject(r.series),
+            })),
           }
         : p.queries,
     })),
   };
 }
 
-function injectChainFilter(query: string, chain: string): string {
+function injectLabels(query: string, labels: Record<string, string>): string {
   return query.replace(/\{([^}]*)\}/g, (_, inside: string) => {
-    if (/\bchain\s*=/.test(inside)) return `{${inside}}`;
+    const additions: string[] = [];
+    for (const [k, v] of Object.entries(labels)) {
+      const present = new RegExp(`\\b${escapeRe(k)}\\s*=`).test(inside);
+      if (!present) additions.push(`${k}="${v}"`);
+    }
+    if (additions.length === 0) return `{${inside}}`;
     const trimmed = inside.trim();
-    if (trimmed === "") return `{chain="${chain}"}`;
-    return `{${inside.replace(/\s*$/, "")},chain="${chain}"}`;
+    if (trimmed === "") return `{${additions.join(",")}}`;
+    return `{${inside.replace(/\s*$/, "")},${additions.join(",")}}`;
   });
+}
+
+function escapeRe(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 async function tryLoadLive(
