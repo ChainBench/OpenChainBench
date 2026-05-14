@@ -38,7 +38,7 @@ infrastructure/             Shared services every harness depends on
 
 src/                        Next.js 16 site (App Router, ISR, Tailwind v4)
 ├── app/                    Pages. overview, benchmarks index, [slug] reports,
-│                           alternatives, /live (real-time stream dashboard)
+│                           alternatives. live dashboard is folded into /.
 ├── components/             time-series-chart, ledger-table, region-grid, chain-tabs, …
 │   └── live/               Live page: dashboard, chart, stats-band, compact-feed, status-bar
 ├── data/                   Spec loader (YAML → Prometheus → Benchmark[])
@@ -47,7 +47,7 @@ src/                        Next.js 16 site (App Router, ISR, Tailwind v4)
     └── live/               Live page domain logic (types, config, chains, format, buckets)
 ```
 
-The `/live` page is fed by a separate **stream relay** living in the
+The live dashboard at the top of `/` is fed by a separate **stream relay** living in the
 [`mobula-monorepo`](https://github.com/MobulaFi/mobula-monorepo) at
 `miniapps/ocb-stream-relay/`. It is hosted by Mobula because it holds an
 upstream API key; the browser talks to it directly over WebSocket. Vercel
@@ -115,9 +115,9 @@ Each harness is run by whoever wrote it. Mobula for the existing aggregator and 
 
 The site queries the shared Prometheus URL declared in each YAML spec via the standard Prometheus HTTP API (`/api/v1/query`, `/api/v1/query_range`). ISR caches the response on Vercel's edge for 60 s.
 
-## The `/live` page
+## The live dashboard on /
 
-A second data path exists for [openchainbench.com/live](https://openchainbench.com/live): a real-time dashboard of swap events streamed from Mobula's fast-trade WebSocket. The data **does not flow through Prometheus** — it goes directly from the relay's WebSocket to the browser, with the Vercel site acting as a thin static shell.
+A second data path feeds the live dashboard at the top of [openchainbench.com](https://openchainbench.com): a real-time stream of swap events from Mobula's fast-trade WebSocket. The data **does not flow through Prometheus** — it goes directly from the relay's WebSocket to the browser, with the Vercel site acting as a thin static shell.
 
 ```
 [Mobula fast-trade WS]      [Mobula REST /lighthouse,/all]
@@ -130,7 +130,7 @@ A second data path exists for [openchainbench.com/live](https://openchainbench.c
                  │  - mcap poller (10min)
                  │  - snapshot sent on each client connect
                  ▼  wss://ocb-stream-relay-...up.railway.app/ws
-                browser (openchainbench.com/live)
+                browser (openchainbench.com)
                 Next.js Client Component, no Vercel relay
 ```
 
@@ -143,7 +143,7 @@ Single Railway box, in-memory fan-out. Cost stays flat regardless of viewer coun
 | Site (Next.js, ISR) | Vercel | Static pages with 60s revalidate, edge cache. Zero secrets. only queries the public Prom URL. |
 | Prometheus | A small Railway service | The only piece of shared OpenChainBench infrastructure. Open access (read-only public API). |
 | Harnesses | Wherever the contributor wants to host them | Railway, Fly, Cloud Run, a VPS. each contributor owns their own runtime, secrets, and budget. |
-| `/live` relay | Mobula's Railway | Holds the Mobula API key, fans out Mobula fast-trade events to browsers. Not in this repo. |
+| Live-stream relay | Mobula's Railway | Holds the Mobula API key, fans out Mobula fast-trade events to browsers. Not in this repo. |
 
 The split is intentional: Vercel for the globally-cached read path, Prometheus for the time-series store, and any compute platform for the long-running data producers. Nobody other than the harness operator needs the harness's secrets.
 
@@ -162,7 +162,7 @@ pnpm spec:dry-run <slug> # query Prometheus and print numbers, no rendering
 pnpm build               # production build
 ```
 
-The `/live` page connects to the production relay by default. To point it at a local relay (see the relay README for instructions), set:
+The live dashboard connects to the production relay by default. To point it at a local relay (see the relay README for instructions), set:
 
 ```bash
 NEXT_PUBLIC_RELAY_WS_URL=ws://localhost:2112/ws pnpm dev
@@ -224,7 +224,7 @@ Selecting `Base` injects `chain="base"` into every selector in the spec — incl
 - Zod for spec validation
 - Prometheus HTTP API (instant + range queries)
 - Go 1.24 for the existing harnesses (any language is acceptable)
-- WebSockets + a small Go relay for the `/live` page
+- WebSockets + a small Go relay for the live dashboard
 
 ## Community
 
@@ -238,7 +238,7 @@ Selecting `Base` injects `chain="base"` into every selector in the spec — incl
 ## Links
 
 - Site. [openchainbench.com](https://openchainbench.com)
-- Live stream. [openchainbench.com/live](https://openchainbench.com/live)
+- Live stream. folded into [openchainbench.com](https://openchainbench.com)
 - Twitter. [@openchainbench](https://twitter.com/openchainbench)
 - GitHub. [OpenChainBench/OpenChainBench](https://github.com/OpenChainBench/OpenChainBench)
 

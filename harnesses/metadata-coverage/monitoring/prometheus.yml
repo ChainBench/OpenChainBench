@@ -1,0 +1,21 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+# Load alert rules
+rule_files:
+  - '/etc/prometheus/alert_rules.yml'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+
+scrape_configs:
+  - job_name: 'latency_monitor'
+    static_configs:
+      - targets: ['monitor:2112']
+        labels:
+          app: 'aggregator_latency_monitor'
+          environment: 'production'
