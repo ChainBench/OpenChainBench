@@ -15,12 +15,19 @@ benchmarks/                 Spec files. one YAML per published benchmark
 ├── bridge-fee.yml              №003 · cross-chain bridge effective fee
 ├── metadata-coverage.yml       №004 · token metadata coverage
 ├── network-coverage.yml        №005 · networks supported (count)
+├── perp-fees.yml               №006 · perp DEX taker fees
+├── wallet-labels-coverage.yml  №007 · wallet-labels coverage
+├── l1-finality.yml             №008 · L1 finality latency
 └── README.md                   Spec format reference + submission guide
 
 harnesses/                  The runners that produce the metrics
 ├── aggregator-head-lag/    Go service: WebSocket monitor (:2112/metrics)
 ├── bridge-monitor/         Go service: 4-bridge quote loop + execution (:9090/metrics)
 ├── network-coverage/       Go service: counts each provider's supported networks (:2112/metrics)
+├── metadata-coverage/      Go service: per-token metadata coverage probe
+├── perp-fees/              Go service: perp-DEX taker fee + funding scrape
+├── wallet-labels/          Go service: wallet-labels coverage probe
+├── l1-finality/            Go service: per-chain finality latency probe
 └── README.md               Contract for new harnesses
 
 alternatives/               YAML-driven /alternatives/<slug> SEO landing pages
@@ -30,14 +37,22 @@ infrastructure/             Shared services every harness depends on
 └── prometheus/             Single shared Prometheus that scrapes all harnesses
 
 src/                        Next.js 16 site (App Router, ISR, Tailwind v4)
-├── app/                    Pages. overview, benchmarks index, [slug] reports, alternatives
+├── app/                    Pages. overview, benchmarks index, [slug] reports,
+│                           alternatives, /live (real-time stream dashboard)
 ├── components/             time-series-chart, ledger-table, region-grid, chain-tabs, …
+│   └── live/               Live page: dashboard, chart, stats-band, compact-feed, status-bar
 ├── data/                   Spec loader (YAML → Prometheus → Benchmark[])
-└── lib/                    Prometheus client, spec schema (Zod), formatting, ranking
-
-scripts/                    pnpm validate, pnpm spec:dry-run
-docs/                       Methodology, ADRs, style guide
+└── lib/
+    ├── prometheus.ts       Prometheus HTTP client + spec/formatting helpers
+    └── live/               Live page domain logic (types, config, chains, format, buckets)
 ```
+
+The `/live` page is fed by a separate **stream relay** living in the
+[`mobula-monorepo`](https://github.com/MobulaFi/mobula-monorepo) at
+`miniapps/ocb-stream-relay/`. It is hosted by Mobula because it holds an
+upstream API key; the browser talks to it directly over WebSocket. Vercel
+only serves the static page shell. See [`docs/architecture.md`](./docs/architecture.md#the-live-page)
+for the data flow.
 
 ## How a benchmark gets data. federation
 
@@ -67,6 +82,27 @@ Each harness is run by whoever wrote it. Mobula for the existing aggregator and 
 
 The site queries the shared Prometheus URL declared in each YAML spec via the standard Prometheus HTTP API (`/api/v1/query`, `/api/v1/query_range`). ISR caches the response on Vercel's edge for 60 s.
 
+## The `/live` page
+
+A second data path exists for [openchainbench.com/live](https://openchainbench.com/live): a real-time dashboard of swap events streamed from Mobula's fast-trade WebSocket. The data **does not flow through Prometheus** — it goes directly from the relay's WebSocket to the browser, with the Vercel site acting as a thin static shell.
+
+```
+[Mobula fast-trade WS]      [Mobula REST /lighthouse,/all]
+        │                              │
+        ▼                              ▼
+                ocb-stream-relay (Railway)
+                 │  - 10min rolling chart buffer
+                 │  - 24h vol counter
+                 │  - lighthouse poller (5min)
+                 │  - mcap poller (10min)
+                 │  - snapshot sent on each client connect
+                 ▼  wss://ocb-stream-relay-...up.railway.app/ws
+                browser (openchainbench.com/live)
+                Next.js Client Component, no Vercel relay
+```
+
+Single Railway box, in-memory fan-out. Cost stays flat regardless of viewer count. See [`docs/architecture.md`](./docs/architecture.md#the-live-page) for the full diagram.
+
 ## Architecture
 
 | Layer | Where it runs | Notes |
@@ -74,6 +110,7 @@ The site queries the shared Prometheus URL declared in each YAML spec via the st
 | Site (Next.js, ISR) | Vercel | Static pages with 60s revalidate, edge cache. Zero secrets. only queries the public Prom URL. |
 | Prometheus | A small Railway service | The only piece of shared OpenChainBench infrastructure. Open access (read-only public API). |
 | Harnesses | Wherever the contributor wants to host them | Railway, Fly, Cloud Run, a VPS. each contributor owns their own runtime, secrets, and budget. |
+| `/live` relay | Mobula's Railway | Holds the Mobula API key, fans out Mobula fast-trade events to browsers. Not in this repo. |
 
 The split is intentional: Vercel for the globally-cached read path, Prometheus for the time-series store, and any compute platform for the long-running data producers. Nobody other than the harness operator needs the harness's secrets.
 
@@ -90,6 +127,12 @@ The site reads every `benchmarks/*.yml` at request time. Specs whose Prometheus 
 pnpm validate            # schema-lint every spec in benchmarks/
 pnpm spec:dry-run <slug> # query Prometheus and print numbers, no rendering
 pnpm build               # production build
+```
+
+The `/live` page connects to the production relay by default. To point it at a local relay (see the relay README for instructions), set:
+
+```bash
+NEXT_PUBLIC_RELAY_WS_URL=ws://localhost:2112/ws pnpm dev
 ```
 
 ## Running a harness locally
@@ -117,6 +160,21 @@ Full guide in [CONTRIBUTING.md](./CONTRIBUTING.md). For a concrete end-to-end ex
 
 You never share API keys or wallet keys with the project. Your harness runs with your credentials, on your infra, on your budget. the maintainers only see the metric values your harness chooses to publish.
 
+### Filtering by chain / dimension
+
+A spec can declare `dimensions.chain` (or other dimensions) to expose a tab strip above the chart that filters every PromQL query by that label. Example from `benchmarks/aggregator-head-lag.yml`:
+
+```yaml
+dimensions:
+  chain:
+    - { value: all,    label: All chains }
+    - { value: base,   label: Base }
+    - { value: bnb,    label: BNB Chain }
+    - { value: solana, label: Solana }
+```
+
+Selecting `Base` injects `chain="base"` into every selector in the spec — including the per-provider `regions:` subqueries. URLs are shareable via `?chain=base`.
+
 ## Editorial conventions
 
 - **No pre-determined winners.** Specs do not declare a "best" provider. The leader on every page is computed at render time from the lowest p50.
@@ -133,6 +191,7 @@ You never share API keys or wallet keys with the project. Your harness runs with
 - Zod for spec validation
 - Prometheus HTTP API (instant + range queries)
 - Go 1.24 for the existing harnesses (any language is acceptable)
+- WebSockets + a small Go relay for the `/live` page
 
 ## Community
 
@@ -146,6 +205,7 @@ You never share API keys or wallet keys with the project. Your harness runs with
 ## Links
 
 - Site. [openchainbench.com](https://openchainbench.com)
+- Live stream. [openchainbench.com/live](https://openchainbench.com/live)
 - Twitter. [@openchainbench](https://twitter.com/openchainbench)
 - GitHub. [OpenChainBench/OpenChainBench](https://github.com/OpenChainBench/OpenChainBench)
 
@@ -153,4 +213,3 @@ You never share API keys or wallet keys with the project. Your harness runs with
 
 Code: [MIT](./LICENSE).
 Reports & figures: [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/).
-
