@@ -53,9 +53,9 @@ Paper-styled report at /benchmarks/<slug>
 - Build time grows linearly with the number of providers (one Prometheus call per provider per benchmark). At ~6 providers × 5 benchmarks × 24 ticks for series, expect ~150 round-trips per build. The HTTP client times out at 4s; total build should stay under 10s.
 - `generateStaticParams` reads the YAML filenames directly so the route table is stable even when Prometheus is offline.
 
-## The `/live` page
+## The live dashboard on /
 
-The live dashboard at [openchainbench.com/live](https://openchainbench.com/live) has its **own data path** that does not touch Prometheus or the spec/YAML pipeline. It exists in addition to (not instead of) the benchmark pages.
+The live dashboard at [openchainbench.com](https://openchainbench.com) has its **own data path** that does not touch Prometheus or the spec/YAML pipeline. It exists in addition to (not instead of) the benchmark pages.
 
 ### Data flow
 
