@@ -24,7 +24,7 @@ export const getBenchmarks = cache(loadAllBenchmarks);
 
 export async function getBenchmark(
   slug: string,
-  options: { chain?: string } = {}
+  options: { chain?: string; region?: string } = {}
 ): Promise<Benchmark | undefined> {
   return loadBenchmark(slug, options);
 }
