@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import { SectionRule } from "@/components/section-rule";
 
 export const metadata: Metadata = {
@@ -29,12 +30,36 @@ export default function PressPage() {
         <Fact term="License" value="MIT (code) · CC-BY-4.0 (reports)" />
       </dl>
 
-      <SectionRule label="Use of figures" number="iii" />
+      <SectionRule label="OCBKit" number="iii" />
+      <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+        <p className="text-base leading-relaxed text-ink-soft">
+          Logos and X-ready banners. Free to use in editorial and partner contexts with attribution.
+        </p>
+        <a
+          href="/press/OCBKit.zip"
+          download
+          className="ml-auto label-mono inline-flex items-center gap-1.5 border border-ink px-3 py-1.5 hover:bg-ink hover:text-paper transition-colors"
+        >
+          Download OCBKit (.zip)
+        </a>
+      </div>
+
+      <div className="mt-6 grid gap-4 sm:grid-cols-3">
+        <KitTile name="Dark logo" file="dark-logo.png" tone="dark" />
+        <KitTile name="Grey logo" file="grey-logo.png" tone="grey" />
+        <KitTile name="White logo" file="white-logo.png" tone="light" />
+      </div>
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <KitTile name="X banner · 1" file="banner-1.png" tone="dark" wide />
+        <KitTile name="X banner · 2" file="banner-2.png" tone="dark" wide />
+      </div>
+
+      <SectionRule label="Use of figures" number="iv" />
       <p className="text-base leading-relaxed text-ink-soft">
         All charts and tables on this site are free to reproduce in editorial contexts with attribution to OpenChainBench and a link to the source report. Please don&apos;t crop charts in a way that changes their meaning.
       </p>
 
-      <SectionRule label="Contact" number="iv" />
+      <SectionRule label="Contact" number="v" />
       <p className="text-base leading-relaxed text-ink-soft">
         For interviews, custom benchmark requests or pre-publication embargoes. open an issue or a discussion on{" "}
         <a className="lnk" href="https://github.com/OpenChainBench/OpenChainBench">GitHub</a>.
@@ -49,5 +74,47 @@ function Fact({ term, value }: { term: string; value: string }) {
       <dt className="font-sans text-[10px] uppercase tracking-[0.2em] text-ink-muted">{term}</dt>
       <dd className="mt-1 text-base font-medium">{value}</dd>
     </div>
+  );
+}
+
+function KitTile({
+  name,
+  file,
+  tone,
+  wide,
+}: {
+  name: string;
+  file: string;
+  tone: "dark" | "grey" | "light";
+  wide?: boolean;
+}) {
+  const bg =
+    tone === "dark"
+      ? "bg-ink"
+      : tone === "grey"
+        ? "bg-[var(--color-paper-soft)]"
+        : "bg-paper border border-rule";
+  return (
+    <figure className="flex flex-col gap-2">
+      <div className={`${bg} flex items-center justify-center ${wide ? "aspect-[3/1]" : "aspect-[3/2]"} overflow-hidden`}>
+        <Image
+          src={`/press/ocbkit/${file}`}
+          alt={name}
+          width={wide ? 1500 : 600}
+          height={wide ? 500 : 400}
+          className="max-w-[80%] max-h-[80%] object-contain"
+        />
+      </div>
+      <figcaption className="flex items-baseline justify-between">
+        <span className="label-mono text-ink-muted">{name}</span>
+        <a
+          href={`/press/ocbkit/${file}`}
+          download
+          className="label-mono text-ink-faint hover:text-ink transition-colors"
+        >
+          .png
+        </a>
+      </figcaption>
+    </figure>
   );
 }
