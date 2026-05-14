@@ -171,15 +171,6 @@ table {
   100% { background: transparent; }
 }
 
-/* Sticky feed header (cleaner long-table scroll) */
-.ledger thead th {
-  position: sticky;
-  top: 0;
-  background: var(--color-surface);
-  z-index: 1;
-  border-bottom: 1px solid var(--color-rule);
-}
-
 /* Polymarket-style ephemeral pops floating off chart line tips */
 @keyframes chart-pop-rise {
   0%   { opacity: 0;    transform: translate(0, calc(-50% + 4px)) scale(0.92); }
