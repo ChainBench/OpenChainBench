@@ -3,6 +3,7 @@
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
 import { Sparkline } from "@/components/sparkline";
 import { ProviderLogo } from "@/components/provider-logo";
+import { ProviderTypeBadge } from "@/components/provider-type-badge";
 import { fmtUnit } from "@/lib/format";
 import { buildProviderColors } from "@/lib/series-colors";
 
@@ -160,6 +161,7 @@ function Row({
               {r.tag}
             </span>
           )}
+          {r.type && <ProviderTypeBadge type={r.type} />}
         </span>
       </td>
       {/* p50 with inline data bar */}

@@ -48,6 +48,18 @@ const queries = z
   })
   .optional();
 
+/** Architectural category. Surfaced as a badge next to the provider
+ *  name on the bench detail page + share-card so readers know whether
+ *  numbers compare like-for-like. Used heavily on bridge benches where
+ *  aggregators (LiFi) and single protocols (Debridge) are inherently
+ *  not apples-to-apples on latency. */
+export const ProviderType = z.enum([
+  "protocol",   // single bridge / single data feed (Debridge, Codex)
+  "aggregator", // queries N underlying providers (LiFi, Mobula's aggregator side)
+  "intent",     // intent / settlement layer (Mobula intents, Mayan)
+  "relay",      // relayer / settlement network (Relay, deBridge solver layer)
+]);
+
 const provider = z.object({
   /** Stable identifier. also used as the metric label. */
   slug,
@@ -55,6 +67,9 @@ const provider = z.object({
   name: z.string().min(1),
   /** Optional one-liner shown under the name. */
   tag: z.string().optional(),
+  /** Optional architectural category. When set, a badge appears next to
+   *  the name so readers understand the comparison. */
+  type: ProviderType.optional(),
   /** Optional secondary metric (e.g. "Chains covered") shown in the table. */
   secondary: z
     .object({ label: z.string(), value: z.string() })
