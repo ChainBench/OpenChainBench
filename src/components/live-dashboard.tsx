@@ -140,7 +140,31 @@ export function LiveDashboard() {
   const [connected, setConnected] = useState(false);
   const [buckets, setBuckets] = useState<Bucket[]>([]);
   const [pops, setPops] = useState<ChartPop[]>([]);
-  const [feedOpen, setFeedOpen] = useState(false);
+  const [feedOpen, setFeedOpen] = useState(true);
+  const feedHydratedRef = useRef(false);
+
+  // Restore the user's last choice from localStorage. We default to OPEN and
+  // only swap to closed if they explicitly hid the feed before.
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem("ocb-live-feed-open");
+      if (saved === "0") setFeedOpen(false);
+    } catch {
+      // ignore (private browsing / quota / etc.)
+    }
+    feedHydratedRef.current = true;
+  }, []);
+
+  // Persist toggles. Skip the initial mount so we don't clobber whatever was
+  // saved before the hydration effect has run.
+  useEffect(() => {
+    if (!feedHydratedRef.current) return;
+    try {
+      window.localStorage.setItem("ocb-live-feed-open", feedOpen ? "1" : "0");
+    } catch {
+      // ignore
+    }
+  }, [feedOpen]);
 
   const popIdRef = useRef(0);
   const reconnectTimer = useRef<number | null>(null);
