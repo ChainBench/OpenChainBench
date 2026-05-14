@@ -171,6 +171,16 @@ table {
   100% { background: transparent; }
 }
 
+/* Mono section labels — used everywhere on the /live page above tiles,
+ * status bar, feed headers, chart headers. */
+.label-mono {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+}
+
 /* Polymarket-style ephemeral pops floating off chart line tips */
 @keyframes chart-pop-rise {
   0%   { opacity: 0;    transform: translate(0, calc(-50% + 4px)) scale(0.92); }
