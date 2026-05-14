@@ -217,16 +217,18 @@ export function LiveDashboard() {
         feedOpen={feedOpen}
         onToggleFeed={toggleFeed}
       />
-      <LiveChart
-        buckets={buckets}
-        pops={pops}
-        recent={recent}
-        serverOffsetMs={serverOffsetMs}
-        hiddenChains={hiddenChains}
-        onToggleChain={toggleChain}
-        onToggleFeed={toggleFeed}
-        feedOpen={feedOpen}
-      />
+      {feedOpen && (
+        <LiveChart
+          buckets={buckets}
+          pops={pops}
+          recent={recent}
+          serverOffsetMs={serverOffsetMs}
+          hiddenChains={hiddenChains}
+          onToggleChain={toggleChain}
+          onToggleFeed={toggleFeed}
+          feedOpen={feedOpen}
+        />
+      )}
     </>
   );
 }
