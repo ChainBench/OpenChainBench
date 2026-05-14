@@ -15,6 +15,53 @@ import type { ChainMeta } from "@/components/chain-tabs";
 
 type ChainOption = { value: string; label: string };
 
+/** One labelled row of dimension tabs (Chain, Region, …). Reuses the
+ *  existing ChainTabs visual so we keep one design vocabulary for filters. */
+function DimensionRow({
+  label,
+  options,
+  selected,
+  onSelect,
+  metaByValue,
+}: {
+  label: string;
+  options: ChainOption[];
+  selected: string | null;
+  onSelect: (v: string) => void;
+  metaByValue?: Record<string, ChainMeta>;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-3">
+      <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-faint shrink-0 w-14">
+        {label}
+      </span>
+      <ChainTabs
+        options={options}
+        selected={selected}
+        onSelect={onSelect}
+        meta={metaByValue}
+      />
+    </div>
+  );
+}
+
+/** Mutate `url.searchParams` to keep one dimension param in sync.
+ *  Removes the param when the value is the first option (the implicit
+ *  default) so canonical URLs stay short. */
+function syncParam(
+  url: URL,
+  key: string,
+  value: string | null,
+  options: ChainOption[],
+) {
+  const fallback = options[0]?.value ?? null;
+  if (!options.length || !value || value === fallback) {
+    url.searchParams.delete(key);
+  } else {
+    url.searchParams.set(key, value);
+  }
+}
+
 function summarize(b: Benchmark | undefined): ChainMeta | null {
   if (!b) return null;
   const live = b.results.filter((r) => r.ms.p50 > 0);
@@ -42,29 +89,45 @@ function summarize(b: Benchmark | undefined): ChainMeta | null {
  * shareable, but we never trigger Next.js navigation (which would defeat
  * the whole point).
  */
+/** Stable variant-map key mirroring `page.tsx:variantKey`. */
+function variantKey(chain: string | null, region: string | null): string {
+  return `${chain ?? "__none"}|${region ?? "__none"}`;
+}
+
 export function BenchmarkBody({
   variants,
-  options,
+  chainOptions,
+  regionOptions,
   initialChain,
+  initialRegion,
 }: {
   variants: Record<string, Benchmark>;
-  options: ChainOption[];
+  chainOptions: ChainOption[];
+  regionOptions: ChainOption[];
   initialChain: string | null;
+  initialRegion: string | null;
 }) {
   const [chain, setChain] = useState<string | null>(initialChain);
+  const [region, setRegion] = useState<string | null>(initialRegion);
 
   useEffect(() => {
-    if (options.length === 0) return;
     const url = new URL(window.location.href);
-    if (chain) url.searchParams.set("chain", chain);
-    else url.searchParams.delete("chain");
+    syncParam(url, "chain", chain, chainOptions);
+    syncParam(url, "region", region, regionOptions);
     const next = url.pathname + (url.search ? url.search : "");
     if (next !== window.location.pathname + window.location.search) {
       window.history.replaceState(null, "", next);
     }
-  }, [chain, options.length]);
+  }, [chain, region, chainOptions, regionOptions]);
 
-  const benchmark = chain && variants[chain] ? variants[chain] : variants.__default;
+  const fallbackChain = chainOptions[0]?.value ?? null;
+  const fallbackRegion = regionOptions[0]?.value ?? null;
+  const effectiveChain = chainOptions.length > 0 ? (chain ?? fallbackChain) : null;
+  const effectiveRegion = regionOptions.length > 0 ? (region ?? fallbackRegion) : null;
+  const benchmark =
+    variants[variantKey(effectiveChain, effectiveRegion)] ??
+    variants[variantKey(null, null)] ??
+    Object.values(variants)[0];
   if (!benchmark) return null;
 
   const isDraft = benchmark.status === "draft";
@@ -73,18 +136,40 @@ export function BenchmarkBody({
 
   return (
     <>
-      {options.length > 0 && (
-        <div className="mt-8">
-          <ChainTabs
-            options={options}
-            selected={chain}
-            onSelect={setChain}
-            meta={Object.fromEntries(
-              options
-                .map((o) => [o.value, summarize(variants[o.value])])
-                .filter(([, v]) => v !== null) as [string, ChainMeta][]
-            )}
-          />
+      {(chainOptions.length > 0 || regionOptions.length > 0) && (
+        <div className="mt-8 space-y-3">
+          {chainOptions.length > 0 && (
+            <DimensionRow
+              label="Chain"
+              options={chainOptions}
+              selected={chain ?? fallbackChain}
+              onSelect={setChain}
+              metaByValue={Object.fromEntries(
+                chainOptions
+                  .map((o) => [
+                    o.value,
+                    summarize(variants[variantKey(o.value, effectiveRegion)]),
+                  ])
+                  .filter(([, v]) => v !== null) as [string, ChainMeta][]
+              )}
+            />
+          )}
+          {regionOptions.length > 0 && (
+            <DimensionRow
+              label="Region"
+              options={regionOptions}
+              selected={region ?? fallbackRegion}
+              onSelect={setRegion}
+              metaByValue={Object.fromEntries(
+                regionOptions
+                  .map((o) => [
+                    o.value,
+                    summarize(variants[variantKey(effectiveChain, o.value)]),
+                  ])
+                  .filter(([, v]) => v !== null) as [string, ChainMeta][]
+              )}
+            />
+          )}
         </div>
       )}
 
