@@ -24,7 +24,7 @@ export async function GET(
 
   const top = leader(b);
   const value = fieldValue(b);
-  const valueStr = value != null ? fmtUnit(value, b.unit) : "—";
+  const valueStr = value != null ? fmtUnit(value, b.unit) : "-";
   const spark = sparklineFor(b, top?.slug);
 
   return new ImageResponse(

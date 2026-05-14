@@ -1079,7 +1079,7 @@ async function renderHeadline(
                 lineHeight: 1,
               }}
             >
-              {winner ? fmtValue(winner.ms.p50, benchmark.unit) : "—"}
+              {winner ? fmtValue(winner.ms.p50, benchmark.unit) : "-"}
             </span>
             <span
               style={{
@@ -1111,7 +1111,7 @@ async function renderHeadline(
               />
             )}
             <span style={{ color: winnerColor }}>
-              {winner?.name ?? "—"}
+              {winner?.name ?? "-"}
             </span>
           </div>
           <div
@@ -1125,7 +1125,7 @@ async function renderHeadline(
           >
             {isFastest
               ? `ahead of ${Math.max(0, sorted.length - 1)} other provider${sorted.length === 2 ? "" : "s"}`
-              : `${rank} of ${sorted.length} providers · field min ${winner ? fmtUnit(sorted[0].ms.p50, benchmark.unit) : "—"}`}
+              : `${rank} of ${sorted.length} providers · field min ${winner ? fmtUnit(sorted[0].ms.p50, benchmark.unit) : "-"}`}
             {winner && ` · p99 ${fmtUnit(winner.ms.p99, benchmark.unit)}`}
           </div>
         </div>

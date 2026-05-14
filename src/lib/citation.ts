@@ -32,15 +32,15 @@ export function leader(b: Benchmark): { name: string; slug: string; value: numbe
 /** Short factual sentence ready to paste into an article. Templated, no LLM. */
 export function headlineSentence(b: Benchmark): string {
   const top = leader(b);
-  if (!top) return `${b.title} — awaiting first run.`;
+  if (!top) return `${b.title}. Awaiting first run.`;
   const value = fmtUnit(top.value, b.unit);
-  return `${top.name} leads ${b.metric.toLowerCase()} at ${value} (p50, 24h) — ${b.title}.`;
+  return `${top.name} leads ${b.metric.toLowerCase()} at ${value} (p50, 24h) on ${b.title}.`;
 }
 
-/** Pasteable attribution string. Standard convention: "<sentence> — source: OpenChainBench (url)". */
+/** Pasteable attribution string. Standard convention: "<sentence> Source: OpenChainBench (url)". */
 export function citationQuote(b: Benchmark, origin: string): string {
   const sentence = headlineSentence(b);
-  return `${sentence} — source: OpenChainBench (${origin}/benchmarks/${b.slug})`;
+  return `${sentence} Source: OpenChainBench (${origin}/benchmarks/${b.slug}).`;
 }
 
 /** Compact sparkline (last N points, 24h) for the JSON payload. */

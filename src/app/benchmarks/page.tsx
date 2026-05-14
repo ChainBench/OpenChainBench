@@ -121,7 +121,7 @@ export default async function BenchmarksIndex() {
                                   </span>
                                 </span>
                               ) : (
-                                <span className="text-xs text-ink-faint">—</span>
+                                <span className="text-xs text-ink-faint">-</span>
                               )}
                             </div>
 

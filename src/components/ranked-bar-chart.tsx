@@ -132,7 +132,7 @@ export function RankedBarChart({ benchmark }: Props) {
               }`}
             >
               <span className="font-mono tabular text-[11px] text-ink-faint text-right">
-                {rank !== null ? `#${rank}` : "—"}
+                {rank !== null ? `#${rank}` : "-"}
               </span>
               <span
                 className={`inline-flex items-center gap-2 text-[13px] truncate ${

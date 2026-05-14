@@ -39,7 +39,7 @@ export function CountLeaderboard({ benchmark }: { benchmark: Benchmark }) {
         />
         <CountStat
           label="Gap"
-          value={gap > 0 ? `${gap.toFixed(1)}×` : "—"}
+          value={gap > 0 ? `${gap.toFixed(1)}×` : "-"}
           hint="leader vs lowest"
         />
       </dl>

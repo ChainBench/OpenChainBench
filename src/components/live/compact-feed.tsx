@@ -54,7 +54,7 @@ export function CompactFeed({
 
 const CompactRow = memo(function CompactRow({ s }: { s: SwapEvent }) {
   const lag = Math.max(0, s.receivedMs - s.onChainMs);
-  const pair = s.pair || (s.pool ? s.pool.slice(0, 8) + "…" : "—");
+  const pair = s.pair || (s.pool ? s.pool.slice(0, 8) + "…" : "-");
   const meta = chainMeta(s.chain);
   const isBuy = s.side === "buy";
   const sideColor = isBuy ? "text-good" : "text-bad";

@@ -23,7 +23,7 @@ export async function GET() {
   const now = new Date().toISOString();
 
   const lines: string[] = [];
-  lines.push(`# OpenChainBench — live state`);
+  lines.push(`# OpenChainBench live state`);
   lines.push("");
   lines.push(`> Auto-refreshed every 60s · last fetch ${now} · license CC-BY-4.0`);
   lines.push("");
@@ -57,7 +57,7 @@ export async function GET() {
       for (let i = 0; i < ranked.length; i++) {
         const r = ranked[i];
         lines.push(
-          `${i + 1}. ${r.name} — ${fmtUnit(r.ms.p50, b.unit)} (p99 ${fmtUnit(
+          `${i + 1}. ${r.name}: ${fmtUnit(r.ms.p50, b.unit)} (p99 ${fmtUnit(
             r.ms.p99,
             b.unit,
           )}, success ${r.successRate.toFixed(1)}%, sample ${r.sampleSize ?? "n/a"})`,
