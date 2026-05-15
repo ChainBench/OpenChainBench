@@ -42,7 +42,21 @@ const BRANDS: Record<string, Brand> = {
   // ─── Trading-pair "chains" (perp-fees uses asset symbols) ───
   eth: { color: "#627EEA" },
   btc: { color: "#F7931A" },
+
+  // ─── Region pseudo-brands (used by the dimension tabs alongside chains) ───
+  "us-east": { color: "#C7833A" },
+  "eu-west": { color: "#3A7BC7" },
+  "ap-southeast": { color: "#3F8F66" },
+  global: { color: "#7a7166" },
 };
+
+const REGION_VALUES = new Set(["us-east", "eu-west", "ap-southeast", "global"]);
+
+/** Is this slug a region value? Region tabs render with a unified globe
+ *  glyph instead of a per-entity logo, so callers can branch on this. */
+export function isRegion(slug: string): boolean {
+  return REGION_VALUES.has(key(slug));
+}
 
 function key(slug: string): string {
   return slug.toLowerCase();
