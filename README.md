@@ -37,13 +37,17 @@ infrastructure/             Shared services every harness depends on
 └── prometheus/             Single shared Prometheus that scrapes all harnesses
 
 src/                        Next.js 16 site (App Router, ISR, Tailwind v4)
-├── app/                    Pages. overview, benchmarks index, [slug] reports,
-│                           alternatives. live dashboard is folded into /.
+├── app/                    Pages: overview, benchmarks index, [slug] reports,
+│                           providers index + detail, alternatives, press kit.
+│                           Live dashboard is folded into /.
 ├── components/             time-series-chart, ledger-table, region-grid, chain-tabs, …
-│   └── live/               Live page: dashboard, chart, stats-band, compact-feed, status-bar
-├── data/                   Spec loader (YAML → Prometheus → Benchmark[])
+│   └── live/               Live page: dashboard, ticker, chart, compact-feed
+├── data/
+│   ├── benchmarks.ts       Spec loader (YAML → Prometheus → Benchmark[])
+│   └── provider-registry.ts  Per-provider description, URL, Twitter handle
 └── lib/
     ├── prometheus.ts       Prometheus HTTP client + spec/formatting helpers
+    ├── providers.ts        Aggregates each provider's benchmark appearances
     └── live/               Live page domain logic (types, config, chains, format, buckets)
 ```
 
@@ -65,25 +69,36 @@ us without screenshotting:
 | [`/llms.txt`](https://openchainbench.com/llms.txt) | LLM crawlers (ChatGPT, Claude, Perplexity, Gemini) | Plain-text index of every benchmark + links to JSON. Follows the [llmstxt.org](https://llmstxt.org) convention. |
 | [`/api/citable`](https://openchainbench.com/api/citable) | Devs, agents | Flat JSON: every benchmark with current value, leader, headline sentence, citation URL, OG image URL. |
 | [`/api/stat/<slug>`](https://openchainbench.com/api/stat/aggregator-head-lag) | Devs, agents | Single benchmark: full rankings, sparkline (24h), methodology, paste-ready quote, attribution URL. |
-| [`/api/llm-context`](https://openchainbench.com/api/llm-context) | LLMs | All 8 benchmarks + rankings + methodology in one Markdown blob — paste into a system prompt for "here's everything you need to answer questions about crypto-infra performance today". |
+| [`/api/llm-context`](https://openchainbench.com/api/llm-context) | LLMs | Every benchmark with rankings + methodology in one Markdown blob. Paste into a system prompt for "here's everything you need to answer questions about crypto-infra performance today". |
 | [`/api/og/<slug>`](https://openchainbench.com/api/og/aggregator-head-lag) | Twitter/Slack/Discord/iMessage | 1200×630 PNG with the current value, leader, sparkline, watermark. Returned automatically as the OG image when someone shares a benchmark link. |
 | [`/api/openapi.json`](https://openchainbench.com/api/openapi.json) | LangChain, Custom GPTs, generic clients | OpenAPI 3.1 schema describing every endpoint. |
 | [`/api/mcp/mcp`](https://openchainbench.com/api/mcp/mcp) | MCP-capable agents (Claude Desktop, Cursor) | MCP server exposing `list_benchmarks`, `get_benchmark`, `query_prom` tools. Streamable HTTP transport. |
+| [`/api/badge/<bench>/<provider>`](https://openchainbench.com/api/badge/aggregator-head-lag/mobula) | Provider sites, READMEs, blogs | Embeddable SVG badge with the provider's current rank and headline figure. 360×36, cache-aware. |
 
-Each bench detail page also has a **Copy quote** / **Copy API URL** / **Open API** strip under the title — one click and a journalist has a paste-ready attribution string.
+Each bench detail page also has a **Copy API URL** strip under the title. one click and a journalist has the JSON endpoint for live numbers.
 
 ### How journalists cite us
 
 ```text
-"Mobula leads head lag at 0.8s (p50, 24h) — Fastest onchain data provider. 
-— source: OpenChainBench (https://openchainbench.com/benchmarks/aggregator-head-lag)"
+"Mobula leads head lag at 0.8s (p50, 24h) on Fastest onchain data provider.
+Source: OpenChainBench (https://openchainbench.com/benchmarks/aggregator-head-lag)"
 ```
 
-That string is what the "Copy quote" button gives you. The page URL is stable, the OG preview unfurls automatically with the current value, and the data is CC-BY-4.0.
+This is the `headlineSentence` exposed on `/api/stat/<slug>`. The page URL is stable, the OG preview unfurls automatically with the current value, and the data is CC-BY-4.0.
+
+### Provider pages
+
+Every provider that appears in at least one live benchmark gets a page at `/providers/<slug>` (auto-generated from spec results). Each page lists:
+
+- the provider's rank on every benchmark it competes in, sorted by rank
+- a short description, official URL, and Twitter handle (from [`src/data/provider-registry.ts`](./src/data/provider-registry.ts))
+- embeddable badge HTML for every benchmark where the provider is currently #1
+
+The full provider directory lives at [`/providers`](https://openchainbench.com/providers) with a search bar that filters by name, slug, type, and category.
 
 ### How agents query us
 
-Via MCP (recommended): point any MCP-capable client at `https://openchainbench.com/api/mcp/mcp`. It will discover three tools — `list_benchmarks`, `get_benchmark(slug, chain?, region?)`, `query_prom(query, windowSec?)` — and can answer questions like *"which aggregator is fastest on Base from EU right now?"* with live data.
+Via MCP (recommended): point any MCP-capable client at `https://openchainbench.com/api/mcp/mcp`. It will discover three tools (`list_benchmarks`, `get_benchmark(slug, chain?, region?)`, `query_prom(query, windowSec?)`) and can answer questions like *"which aggregator is fastest on Base from EU right now?"* with live data.
 
 Via REST: hit `/api/citable` once to discover everything, then `/api/stat/<slug>` for specifics. Both are zero-auth, edge-cached for 60 s.
 
@@ -117,14 +132,17 @@ The site queries the shared Prometheus URL declared in each YAML spec via the st
 
 ## The live dashboard on /
 
-A second data path feeds the live dashboard at the top of [openchainbench.com](https://openchainbench.com): a real-time stream of swap events from Mobula's fast-trade WebSocket. The data **does not flow through Prometheus** — it goes directly from the relay's WebSocket to the browser, with the Vercel site acting as a thin static shell.
+A second data path feeds the live dashboard at the top of [openchainbench.com](https://openchainbench.com): a real-time stream of swap events from Mobula's fast-trade WebSocket. The data **does not flow through Prometheus**. it goes directly from the relay's WebSocket to the browser, with the Vercel site acting as a thin static shell.
 
 ```
 [Mobula fast-trade WS]      [Mobula REST /lighthouse,/all]
         │                              │
         ▼                              ▼
                 ocb-stream-relay (Railway)
-                 │  - 10min rolling chart buffer
+                 │  - Multi-resolution chart store:
+                 │      10m window @ 5s buckets
+                 │      1h  window @ 30s buckets
+                 │      24h window @ 10min buckets
                  │  - 24h vol counter
                  │  - lighthouse poller (5min)
                  │  - mcap poller (10min)
@@ -134,7 +152,7 @@ A second data path feeds the live dashboard at the top of [openchainbench.com](h
                 Next.js Client Component, no Vercel relay
 ```
 
-Single Railway box, in-memory fan-out. Cost stays flat regardless of viewer count. See [`docs/architecture.md`](./docs/architecture.md#the-live-page) for the full diagram.
+Single Railway box, in-memory fan-out. Cost stays flat regardless of viewer count. The dashboard collapses to a one-line ticker by default and expands to a cumulative-volume chart with hover crosshair, per-chain tooltip, and live trade feed when toggled. The chart's range picker (10 min / 1 hour / 24 h) reads from the relay's three ring buffers and the x-axis auto-fits to the data extent when a buffer is still filling. See [`docs/architecture.md`](./docs/architecture.md#the-live-page) for the full diagram.
 
 ## Architecture
 
@@ -206,7 +224,7 @@ dimensions:
     - { value: solana, label: Solana }
 ```
 
-Selecting `Base` injects `chain="base"` into every selector in the spec — including the per-provider `regions:` subqueries. URLs are shareable via `?chain=base`.
+Selecting `Base` injects `chain="base"` into every selector in the spec, including the per-provider `regions:` subqueries. URLs are shareable via `?chain=base`.
 
 ## Editorial conventions
 
