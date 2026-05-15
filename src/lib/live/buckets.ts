@@ -1,4 +1,3 @@
-import { BUCKET_MS, WINDOW_MS } from "./config";
 import type { Bucket } from "./types";
 
 /**
@@ -6,22 +5,28 @@ import type { Bucket } from "./types";
  * with empty buckets so the chart line goes flat (not jumps) during quiet
  * periods, and evict buckets outside the rolling window.
  *
- * Buckets are INCREMENTAL (volume added during the 5s window). The chart
- * computes cumulative at render time — that way when the window slides
+ * Buckets are INCREMENTAL (volume added during the bucket window). The
+ * chart computes cumulative at render time. when the window slides
  * forward, the oldest bucket simply disappears and the line re-bases at 0.
+ *
+ * `bucketMs` and `windowMs` come from the relay snapshot, so this
+ * function works for every resolution (10m, 1h, 24h) without hardcoded
+ * constants.
  */
 export function appendSwapToBuckets(
   prev: Bucket[],
   chainKey: string,
   usd: number,
   nowMs: number,
+  bucketMs: number,
+  windowMs: number,
 ): Bucket[] {
-  const bucketTs = Math.floor(nowMs / BUCKET_MS) * BUCKET_MS;
+  const bucketTs = Math.floor(nowMs / bucketMs) * bucketMs;
   const buckets = [...prev];
   const last = buckets[buckets.length - 1];
 
-  if (last && bucketTs > last.ts + BUCKET_MS) {
-    for (let t = last.ts + BUCKET_MS; t < bucketTs; t += BUCKET_MS) {
+  if (last && bucketTs > last.ts + bucketMs) {
+    for (let t = last.ts + bucketMs; t < bucketTs; t += bucketMs) {
       buckets.push({ ts: t, perChain: {} });
     }
   }
@@ -34,7 +39,7 @@ export function appendSwapToBuckets(
     buckets.push({ ts: bucketTs, perChain: { [chainKey]: usd } });
   }
 
-  const cutoff = nowMs - WINDOW_MS;
+  const cutoff = nowMs - windowMs;
   while (buckets.length > 0 && buckets[0].ts < cutoff) {
     buckets.shift();
   }

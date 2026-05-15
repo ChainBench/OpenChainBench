@@ -1,8 +1,10 @@
 /**
  * Wire types for the openchainbench live relay. Mirrors the JSON shapes
- * produced by `miniapps/ocb-stream-relay` (Go) — keep both sides in sync
+ * produced by `miniapps/ocb-stream-relay` (Go). keep both sides in sync
  * when adding or renaming fields.
  */
+
+export type RangeKey = "10m" | "1h" | "24h";
 
 export type SwapEvent = {
   type: "swap";
@@ -43,19 +45,27 @@ export type StatsTick = {
   nowMs: number;
 };
 
-export type SnapshotMsg = {
-  type: "snapshot";
-  buckets: Bucket[];
-  nowMs: number;
-};
-
-export type RelayMessage = SwapEvent | StatsTick | SnapshotMsg;
-
 /** Bucket of incremental per-chain volume over a fixed time window. */
 export type Bucket = {
   ts: number;
   perChain: Record<string, number>;
 };
+
+/** One resolution worth of chart data. windowMs and bucketMs come from
+ *  the relay so the client never hardcodes them. */
+export type ChartSeries = {
+  windowMs: number;
+  bucketMs: number;
+  buckets: Bucket[];
+};
+
+export type SnapshotMsg = {
+  type: "snapshot";
+  series: Record<RangeKey, ChartSeries>;
+  nowMs: number;
+};
+
+export type RelayMessage = SwapEvent | StatsTick | SnapshotMsg;
 
 /** Ephemeral floating "+$X" label spawned at a line tip on each swap. */
 export type ChartPop = {
