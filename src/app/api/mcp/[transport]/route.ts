@@ -50,7 +50,7 @@ const mcpHandler = createMcpHandler(
         inputSchema: {},
       },
       async () => {
-        const benches = (await getBenchmarks()).filter((b) => b.status === "live");
+        const benches = (await getBenchmarks()).filter((b) => b.editorialStatus === "live");
         const rows = benches.map((b) => {
           const top = leader(b);
           return {
@@ -98,7 +98,7 @@ const mcpHandler = createMcpHandler(
       },
       async ({ slug, chain, region }) => {
         const b = await getBenchmark(slug, { chain, region });
-        if (!b || b.status !== "live") {
+        if (!b || b.editorialStatus !== "live") {
           return {
             content: [{ type: "text", text: JSON.stringify({ error: "unknown_slug", slug }) }],
             isError: true,

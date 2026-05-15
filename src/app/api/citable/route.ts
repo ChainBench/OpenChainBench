@@ -19,7 +19,7 @@ export async function GET(req: Request) {
   const r = rateLimit(clientKey(req, "citable"), 60, 60);
   if (!r.ok) return tooManyRequests(r.retryAfterSec);
 
-  const benches = (await getBenchmarks()).filter((b) => b.status === "live");
+  const benches = (await getBenchmarks()).filter((b) => b.editorialStatus === "live");
   const data = benches.map((b) => {
     const top = leader(b);
     return {

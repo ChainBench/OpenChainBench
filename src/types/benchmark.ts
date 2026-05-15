@@ -46,7 +46,14 @@ export type Benchmark = {
   seoTitle?: string;
   subtitle: string;
   lastRunAt: string;
+  /** Runtime status. flipped to "draft" when Prom returns no data, even if
+   *  the spec is editorially published. Use `editorialStatus` to gate
+   *  visibility from public surfaces. */
   status: "live" | "draft";
+  /** What the spec author declared in the YAML (`status:` field, default
+   *  "live"). Stays "live" even when Prom has no samples yet, so a
+   *  published-but-awaiting-data bench remains visible. */
+  editorialStatus: "live" | "draft";
   sampleSize: number;
   abstract: string;
   metric: string;

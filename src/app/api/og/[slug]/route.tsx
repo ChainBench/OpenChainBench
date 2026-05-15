@@ -32,7 +32,7 @@ export async function GET(
     });
   }
   const b = await getBenchmark(slug);
-  if (!b || b.status !== "live") {
+  if (!b || b.editorialStatus !== "live") {
     return new Response("not_found", {
       status: 404,
       headers: { "cache-control": "public, s-maxage=60" },
