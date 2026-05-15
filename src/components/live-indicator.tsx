@@ -50,11 +50,11 @@ export function LiveIndicator({
     }
 
     fetchOnce();
-    // Poll every 8 s. /api/freshness is edge-cached for 5 s + swr 20 s so
-    // the origin sees at most one Prom round-trip every few seconds even
-    // with many viewers. End-to-end staleness lands around 15-20 s, which
-    // is the floor set by the Prom scrape interval (15 s).
-    const id = setInterval(fetchOnce, 8_000);
+    // Poll every 5 s. Must stay above the /api/freshness cache window
+    // (s-maxage=2 + swr=4) so consecutive polls don't keep hitting the
+    // same cached asOf — otherwise the counter visibly grows between
+    // refreshes instead of resetting cleanly each tick.
+    const id = setInterval(fetchOnce, 5_000);
     return () => {
       cancelled = true;
       clearInterval(id);
