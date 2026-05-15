@@ -8,7 +8,7 @@ import { TimeSeriesChart } from "@/components/time-series-chart";
 import { RankedBarChart } from "@/components/ranked-bar-chart";
 import { RegionGrid } from "@/components/region-grid";
 import { CountLeaderboard } from "@/components/count-leaderboard";
-import { SectionLabel, SummaryStat } from "@/components/summary-stat";
+import { SummaryStat } from "@/components/summary-stat";
 import { fmtUnit, unitSuffix, fmtValue } from "@/lib/format";
 import { computeFieldStats } from "@/lib/stats";
 import type { ChainMeta } from "@/components/chain-tabs";
@@ -219,8 +219,10 @@ export function BenchmarkBody({
       {!isDraft && benchmark.unit === "count" && (
         <>
           <CountLeaderboard benchmark={benchmark} />
-          <div className="mt-14">
-            <SectionLabel>Product ledger</SectionLabel>
+          <div className="mt-10 card-soft rounded-xl p-6 lg:p-8">
+            <p className="label-mono text-ink-faint mb-4">
+              Product ledger
+            </p>
             <LedgerTable benchmark={benchmark} />
           </div>
         </>
@@ -228,7 +230,7 @@ export function BenchmarkBody({
 
       {!isDraft && benchmark.unit !== "count" && (
         <>
-          <dl className="mt-10 grid grid-cols-2 sm:flex sm:flex-wrap items-baseline gap-x-4 sm:gap-x-8 gap-y-2 sm:gap-y-3 border-y border-rule py-4">
+          <dl className="mt-10 card rounded-xl flex flex-wrap divide-x divide-rule overflow-hidden">
             <SummaryStat
               label="Best"
               value={`${fmtValue(fieldMin, benchmark.unit)}${unitSuffix(benchmark.unit)}`}
@@ -252,7 +254,7 @@ export function BenchmarkBody({
             />
           </dl>
 
-          <div className="mt-12">
+          <div className="mt-8 card-soft rounded-xl p-6 lg:p-8">
             {benchmark.results.length >= 5 ||
             benchmark.unit === "bps" ||
             benchmark.unit === "pct" ? (
@@ -265,14 +267,16 @@ export function BenchmarkBody({
             )}
           </div>
 
-          <div className="mt-14">
-            <SectionLabel>Product ledger · sorted by p50</SectionLabel>
+          <div className="mt-8 card-soft rounded-xl p-6 lg:p-8">
+            <p className="label-mono text-ink-faint mb-4">
+              Product ledger · sorted by p50
+            </p>
             <LedgerTable benchmark={benchmark} />
           </div>
 
           {Object.keys(benchmark.extras.regions).length > 0 && (
-            <div className="mt-14">
-              <SectionLabel>By region</SectionLabel>
+            <div className="mt-8 card-soft rounded-xl p-6 lg:p-8">
+              <p className="label-mono text-ink-faint mb-4">By region</p>
               <RegionGrid benchmark={benchmark} />
             </div>
           )}

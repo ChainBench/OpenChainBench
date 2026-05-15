@@ -24,11 +24,11 @@ export function SummaryStat({
   hint?: string;
 }) {
   return (
-    <div className="flex items-baseline gap-2">
-      <dt className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-faint shrink-0">
+    <div className="flex-1 min-w-[8rem] flex flex-col gap-1.5 px-5 py-4 sm:px-6 sm:py-5">
+      <dt className="label-mono text-ink-faint">
         {label}
       </dt>
-      <dd className="font-mono tabular text-sm text-ink leading-none">
+      <dd className="font-mono tabular text-lg sm:text-xl text-ink leading-none">
         {value}
         {hint ? (
           <span className="ml-1.5 text-ink-muted text-xs font-normal">{hint}</span>
