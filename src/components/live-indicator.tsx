@@ -42,7 +42,18 @@ export function LiveIndicator({
         .then((data: { freshness?: Record<string, number> } | null) => {
           if (cancelled || !data?.freshness) return;
           const asOf = data.freshness[targetSlug];
-          if (typeof asOf === "number") setCanonical(new Date(asOf).toISOString());
+          // Guard against NaN / +-Infinity / out-of-range timestamps.
+          // new Date(NaN).toISOString() throws RangeError; new Date(2e16).toISOString()
+          // does too because of the +-8.64e15 ms epoch range.
+          if (
+            typeof asOf !== "number" ||
+            !Number.isFinite(asOf) ||
+            asOf <= 0 ||
+            asOf > 8.64e15
+          ) {
+            return;
+          }
+          setCanonical(new Date(asOf).toISOString());
         })
         .catch(() => {
           // ignore — keep current value
