@@ -8,6 +8,7 @@ import { logoPath } from "@/lib/logo-manifest";
 import { chipBackground, chipTextColor, initials } from "@/lib/brand";
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
+import { SLUG_RE } from "@/lib/slug";
 
 /** Best → worst, depending on whether higher numbers are better. */
 function sortByP50(b: Benchmark): ProviderResult[] {
@@ -432,7 +433,6 @@ function CardShell({
   );
 }
 
-const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,79}$/;
 
 // ─── GET ───────────────────────────────────────────────────────────────
 export async function GET(

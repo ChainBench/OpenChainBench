@@ -9,11 +9,11 @@ import {
   sparklineFor,
 } from "@/lib/citation";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
+import { SLUG_RE } from "@/lib/slug";
 
 export const runtime = "nodejs";
 export const revalidate = 60;
 
-const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,79}$/;
 
 /**
  * Single benchmark as a citable atomic unit. Designed to fit into one
