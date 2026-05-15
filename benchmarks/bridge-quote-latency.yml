@@ -2,7 +2,7 @@
 
 slug: bridge-quote-latency
 number: "002"
-title: Fastest cross-chain bridge
+title: Fastest bridge quote API
 seo_title: Fastest cross-chain bridge quote API - Mobula, Relay, Li.Fi & Debridge live benchmark
 subtitle: Time to receive a usable cross-chain quote, in milliseconds. Identical route, identical notional, every bridge.
 category: Bridges

@@ -6,12 +6,13 @@ import { type ChainMeta, chainMeta } from "@/lib/live/chains";
 import {
   MAX_FEED,
   MAX_POPS,
+  POP_ANCHOR_X_PCT,
   POP_DURATION_MS,
   POP_MIN_USD,
+  POP_STACK_OFFSET_PCT,
   RELAY_WS_URL,
   STORAGE_HIDDEN_CHAINS,
   STORAGE_LIVE_EXPANDED,
-  WINDOW_MS,
 } from "@/lib/live/config";
 import type {
   Bucket,
@@ -156,11 +157,9 @@ export function LiveDashboard() {
       };
     }
 
-    function spawnPop(nextBuckets: Bucket[], meta: ChainMeta, s: SwapEvent, nowMs: number) {
+    function spawnPop(nextBuckets: Bucket[], meta: ChainMeta, s: SwapEvent, _nowMs: number) {
       const last = nextBuckets[nextBuckets.length - 1];
       if (!last) return;
-      const xMin = nowMs - WINDOW_MS;
-      const anchorX = ((last.ts - xMin) / WINDOW_MS) * 100;
 
       const cumPerChain = cumulativePerChain(nextBuckets);
       let yMax = 0;
@@ -169,20 +168,24 @@ export function LiveDashboard() {
       }
       yMax = niceCeil(yMax || 1);
       const chainCum = cumPerChain[meta.key] ?? 0;
-      const anchorY = (1 - chainCum / yMax) * 100;
+      const baseY = (1 - chainCum / yMax) * 100;
 
       const id = ++popIdRef.current;
-      const pop: ChartPop = {
-        id,
-        chainKey: meta.key,
-        pair: s.pair || meta.display,
-        exchange: s.exchange || "",
-        usd: s.usd || 0,
-        side: s.side,
-        anchorX: Math.max(0, Math.min(100, anchorX)),
-        anchorY: Math.max(0, Math.min(95, anchorY)),
-      };
       setPops((prev) => {
+        // Stagger anchorY by the count of currently-active pops so they
+        // don't collide at the right edge.
+        const slot = prev.length % MAX_POPS;
+        const anchorY = Math.max(2, Math.min(88, baseY + slot * POP_STACK_OFFSET_PCT));
+        const pop: ChartPop = {
+          id,
+          chainKey: meta.key,
+          pair: s.pair || meta.display,
+          exchange: s.exchange || "",
+          usd: s.usd || 0,
+          side: s.side,
+          anchorX: POP_ANCHOR_X_PCT,
+          anchorY,
+        };
         const next = [...prev, pop];
         return next.length > MAX_POPS ? next.slice(-MAX_POPS) : next;
       });
