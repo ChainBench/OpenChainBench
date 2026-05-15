@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { LiveDot } from "@/components/live-dot";
 import { ProviderLogo } from "@/components/provider-logo";
 import { cumulativePerChain, niceCeil } from "@/lib/live/buckets";
@@ -23,11 +23,13 @@ import type {
 import { CompactFeed } from "./compact-feed";
 
 const RANGE_ORDER: RangeKey[] = ["10m", "1h", "24h"];
-const LEFT_LABEL: Record<RangeKey, string> = {
-  "10m": "10 min ago",
-  "1h": "1 h ago",
-  "24h": "24 h ago",
-};
+
+function fmtSpan(ms: number): string {
+  const min = Math.max(1, Math.round(ms / 60_000));
+  if (min < 60) return `${min} min ago`;
+  const h = Math.round(min / 60);
+  return `${h} h ago`;
+}
 
 type Props = {
   series: ChartSeries;
@@ -62,45 +64,25 @@ export function LiveChart({
     [series.buckets],
   );
 
-  const { paths, yMax, latest, totalCum } = useMemo(
+  const { paths, yMax, latest, totalCum, effectiveWindowMs } = useMemo(
     () => computeChart(series.buckets, serverNow, hiddenChains, cumPerChain, series.windowMs),
     [series.buckets, series.windowMs, serverNow, hiddenChains, cumPerChain],
   );
 
   const empty = series.buckets.length === 0;
+  const leftLabel = fmtSpan(effectiveWindowMs);
 
   return (
     <section className="card mt-4 relative overflow-hidden">
       <header className="flex flex-wrap items-center gap-3 px-5 py-3 border-b border-rule">
-        <span className="label-mono text-ink-muted">
-          Streamed volume · {RANGE_LABELS[range].toLowerCase()}
-        </span>
+        <span className="label-mono text-ink-muted">Streamed volume</span>
+        <span className="text-ink-faint">·</span>
+        <RangePicker range={range} onRangeChange={onRangeChange} />
         <LiveDot />
         <span className="text-ink-faint">·</span>
         <span className="font-mono tabular text-[11px] text-ink-soft">
           {fmtMoney(totalCum)} total
         </span>
-
-        <div className="ml-auto inline-flex items-center rounded-sm border border-rule overflow-hidden">
-          {RANGE_ORDER.map((r) => {
-            const active = r === range;
-            return (
-              <button
-                key={r}
-                type="button"
-                onClick={() => onRangeChange(r)}
-                aria-pressed={active}
-                className={`px-2.5 py-1 label-mono transition-colors ${
-                  active
-                    ? "bg-ink text-paper"
-                    : "text-ink-muted hover:bg-paper-soft hover:text-ink"
-                }`}
-              >
-                {r}
-              </button>
-            );
-          })}
-        </div>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px]">
@@ -117,7 +99,7 @@ export function LiveChart({
             hiddenChains={hiddenChains}
             pops={pops}
             empty={empty}
-            leftLabel={LEFT_LABEL[range]}
+            leftLabel={leftLabel}
           />
         </div>
 
@@ -126,6 +108,72 @@ export function LiveChart({
         </aside>
       </div>
     </section>
+  );
+}
+
+/* ─────────────── inline range picker ─────────────── */
+
+function RangePicker({
+  range,
+  onRangeChange,
+}: {
+  range: RangeKey;
+  onRangeChange: (r: RangeKey) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onDocClick(e: MouseEvent) {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [open]);
+
+  return (
+    <div ref={rootRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="label-mono inline-flex items-center gap-1 text-ink hover:text-ink/80 transition-colors"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+      >
+        {RANGE_LABELS[range].toLowerCase()}
+        <span className="text-ink-faint">{open ? "▴" : "▾"}</span>
+      </button>
+      {open && (
+        <ul
+          role="listbox"
+          className="absolute left-0 top-full z-20 mt-1 min-w-[10rem] rounded-sm border border-rule bg-paper shadow-sm overflow-hidden"
+        >
+          {RANGE_ORDER.map((r) => {
+            const active = r === range;
+            return (
+              <li key={r}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onRangeChange(r);
+                    setOpen(false);
+                  }}
+                  className={`flex w-full items-center justify-between px-3 py-1.5 text-left label-mono transition-colors ${
+                    active ? "bg-paper-soft text-ink" : "text-ink-muted hover:bg-paper-soft hover:text-ink"
+                  }`}
+                >
+                  <span>{RANGE_LABELS[r].toLowerCase()}</span>
+                  {active && <span className="text-ink-faint">●</span>}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
   );
 }
 
@@ -371,20 +419,62 @@ function computeChart(
   yMax: number;
   latest: ChainLatest[];
   totalCum: number;
+  effectiveWindowMs: number;
 } {
-  const xMin = nowMs - windowMs;
+  // The relay always pads with empty buckets on the left so the array
+  // spans the full nominal window. When the ring is still filling
+  // (the 1h and 24h buckets right after a redeploy), those leading
+  // buckets are zero. Find the first bucket with any data and tighten
+  // the x-axis to that extent so the chart fills from the left instead
+  // of squashing the action into the right edge.
+  let firstDataTs = nowMs;
+  for (const b of buckets) {
+    let hasData = false;
+    for (const k in b.perChain) {
+      if ((b.perChain[k] ?? 0) > 0) {
+        hasData = true;
+        break;
+      }
+    }
+    if (hasData) {
+      firstDataTs = b.ts;
+      break;
+    }
+  }
+  const actualSpan = Math.max(60_000, nowMs - firstDataTs);
+  // Only compress when data fills less than ~75% of the nominal window.
+  // Once the ring is mostly full, snap back to the full window so the
+  // axis label stops jittering.
+  const effectiveWindowMs =
+    actualSpan < windowMs * 0.75 ? actualSpan : windowMs;
+  const xMin = nowMs - effectiveWindowMs;
   const innerW = CHART_W - CHART_PAD_X - 8;
   const innerH = CHART_H - CHART_PAD_Y * 2;
   const baseY = CHART_PAD_Y + innerH;
 
-  const xScale = (ts: number) => CHART_PAD_X + ((ts - xMin) / windowMs) * innerW;
+  const xScale = (ts: number) =>
+    CHART_PAD_X + ((ts - xMin) / effectiveWindowMs) * innerW;
 
   const running: Record<string, number> = {};
   for (const chain of CHAIN_LIST) running[chain.key] = 0;
   const cumPerBucket: Array<{ x: number; ys: Record<string, number> }> = [];
+  let started = false;
   for (const b of buckets) {
     for (const chain of CHAIN_LIST) {
       running[chain.key] += b.perChain[chain.key] ?? 0;
+    }
+    // Drop the leading empty span so the polyline starts at the left
+    // edge of the visible chart instead of running off-canvas.
+    if (!started) {
+      let any = false;
+      for (const k in running) {
+        if (running[k] > 0) {
+          any = true;
+          break;
+        }
+      }
+      if (!any) continue;
+      started = true;
     }
     cumPerBucket.push({ x: xScale(b.ts), ys: { ...running } });
   }
@@ -441,5 +531,5 @@ function computeChart(
       });
     }
   }
-  return { paths, yMax, latest, totalCum };
+  return { paths, yMax, latest, totalCum, effectiveWindowMs };
 }
