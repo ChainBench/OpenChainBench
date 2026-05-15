@@ -110,9 +110,12 @@ function isQueryAllowed(q: string): { ok: true } | { ok: false; reason: string }
   }
   if (/\bcount_values\b/.test(q)) return { ok: false, reason: "count_values_blocked" };
 
-  // Metric-name allowlist.
+  // Metric-name allowlist. Strip string literals first so quoted label
+  // VALUES (`aggregator="mobula"`) don't get scanned as identifiers.
+  // The double-quote-only form is what PromQL accepts.
+  const noStrings = q.replace(/"(?:\\.|[^"\\])*"/g, '""');
   let sawAllowed = false;
-  const idents = q.match(/[a-zA-Z_:][a-zA-Z0-9_:]*/g) ?? [];
+  const idents = noStrings.match(/[a-zA-Z_:][a-zA-Z0-9_:]*/g) ?? [];
   for (const id of idents) {
     if (PROMQL_RESERVED_IDENTS.has(id)) continue;
     if (/^\d/.test(id)) continue;
