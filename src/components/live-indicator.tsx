@@ -34,18 +34,29 @@ export function LiveIndicator({
   useEffect(() => {
     if (!slug) return;
     let cancelled = false;
-    fetch("/api/citable")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data: { benchmarks?: { slug: string; asOf?: string }[] } | null) => {
-        if (cancelled || !data?.benchmarks) return;
-        const hit = data.benchmarks.find((b) => b.slug === slug);
-        if (hit?.asOf) setCanonical(hit.asOf);
-      })
-      .catch(() => {
-        // ignore — keep SSR fallback
-      });
+
+    function fetchOnce() {
+      fetch("/api/citable")
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data: { benchmarks?: { slug: string; asOf?: string }[] } | null) => {
+          if (cancelled || !data?.benchmarks) return;
+          const hit = data.benchmarks.find((b) => b.slug === slug);
+          if (hit?.asOf) setCanonical(hit.asOf);
+        })
+        .catch(() => {
+          // ignore — keep current value
+        });
+    }
+
+    fetchOnce();
+    // Re-poll every 30s so the canonical lastRunAt keeps up with Prom
+    // freshness. Without this the counter ticks indefinitely against the
+    // mount-time snapshot and slides into "Stale" even though Prom data
+    // is fresh — the edge cache on /api/citable already coalesces calls.
+    const id = setInterval(fetchOnce, 30_000);
     return () => {
       cancelled = true;
+      clearInterval(id);
     };
   }, [slug]);
 
