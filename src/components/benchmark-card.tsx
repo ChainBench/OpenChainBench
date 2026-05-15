@@ -22,7 +22,7 @@ export function BenchmarkCard({ benchmark }: { benchmark: Benchmark }) {
     b.higherIsBetter ? (a, x) => x.ms.p50 - a.ms.p50 : (a, x) => a.ms.p50 - x.ms.p50,
   );
   const leader = sorted[0];
-  const headlineValue = !isDraft && leader ? fmtValue(leader.ms.p50, b.unit) : "—";
+  const headlineValue = !isDraft && leader ? fmtValue(leader.ms.p50, b.unit) : "n/a";
   const headlineUnit = unitSuffix(b.unit).trim();
 
   // Top-right provider chips — first 3 results, single-letter circle badges.
@@ -110,9 +110,9 @@ function Footer({ label, value }: { label: string; value: string }) {
 
 /** "May 6, 2026, 9:17 AM UTC" — matches the spec wording. */
 function formatUpdated(iso: string): string {
-  if (!iso) return "—";
+  if (!iso) return "n/a";
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
+  if (Number.isNaN(d.getTime())) return "n/a";
   const date = d.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
