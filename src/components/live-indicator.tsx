@@ -35,13 +35,14 @@ export function LiveIndicator({
     if (!slug) return;
     let cancelled = false;
 
+    const targetSlug = slug;
     function fetchOnce() {
-      fetch("/api/citable")
+      fetch("/api/freshness")
         .then((r) => (r.ok ? r.json() : null))
-        .then((data: { benchmarks?: { slug: string; asOf?: string }[] } | null) => {
-          if (cancelled || !data?.benchmarks) return;
-          const hit = data.benchmarks.find((b) => b.slug === slug);
-          if (hit?.asOf) setCanonical(hit.asOf);
+        .then((data: { freshness?: Record<string, number> } | null) => {
+          if (cancelled || !data?.freshness) return;
+          const asOf = data.freshness[targetSlug];
+          if (typeof asOf === "number") setCanonical(new Date(asOf).toISOString());
         })
         .catch(() => {
           // ignore — keep current value
@@ -49,11 +50,11 @@ export function LiveIndicator({
     }
 
     fetchOnce();
-    // Re-poll every 30s so the canonical lastRunAt keeps up with Prom
-    // freshness. Without this the counter ticks indefinitely against the
-    // mount-time snapshot and slides into "Stale" even though Prom data
-    // is fresh — the edge cache on /api/citable already coalesces calls.
-    const id = setInterval(fetchOnce, 30_000);
+    // Poll every 8 s. /api/freshness is edge-cached for 5 s + swr 20 s so
+    // the origin sees at most one Prom round-trip every few seconds even
+    // with many viewers. End-to-end staleness lands around 15-20 s, which
+    // is the floor set by the Prom scrape interval (15 s).
+    const id = setInterval(fetchOnce, 8_000);
     return () => {
       cancelled = true;
       clearInterval(id);
