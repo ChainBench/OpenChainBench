@@ -271,14 +271,25 @@ function ChartCanvas({
   yScale: (v: number) => number;
   nowMs: number;
 }) {
-  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+  type HoverState = {
+    idx: number;
+    xPx: number;
+    yPx: number;
+    svgY: number;
+    containerW: number;
+    containerH: number;
+  };
+  const [hover, setHover] = useState<HoverState | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
 
   function onMove(e: React.MouseEvent<SVGSVGElement>) {
     if (hoverPoints.length === 0) return;
     const rect = e.currentTarget.getBoundingClientRect();
-    const ratio = (e.clientX - rect.left) / rect.width;
-    const svgX = ratio * CHART_W;
+    const xPx = e.clientX - rect.left;
+    const yPx = e.clientY - rect.top;
+    const xRatio = xPx / rect.width;
+    const svgX = xRatio * CHART_W;
+    const svgY = (yPx / rect.height) * CHART_H;
     // Find closest bucket by X. Linear scan is fine, buckets are ~150 max.
     let bestIdx = 0;
     let bestDist = Number.POSITIVE_INFINITY;
@@ -289,10 +300,37 @@ function ChartCanvas({
         bestIdx = i;
       }
     }
-    setHoverIdx(bestIdx);
+    setHover({
+      idx: bestIdx,
+      xPx,
+      yPx,
+      svgY,
+      containerW: rect.width,
+      containerH: rect.height,
+    });
   }
 
-  const hover = hoverIdx != null ? hoverPoints[hoverIdx] : null;
+  const hoverPoint = hover != null ? hoverPoints[hover.idx] : null;
+
+  // Closest chain to the cursor's Y at the hovered X. Used to bold its
+  // line and emphasize its row in the tooltip.
+  const closestChain: string | null = (() => {
+    if (!hover || !hoverPoint) return null;
+    let bestKey: string | null = null;
+    let bestDist = 30; // SVG units. Only highlight when within ~30 of a line.
+    for (const c of CHAIN_LIST) {
+      if (hiddenChains.has(c.key)) continue;
+      const v = hoverPoint.ys[c.key] ?? 0;
+      if (v <= 0) continue;
+      const lineY = yScale(v);
+      const d = Math.abs(lineY - hover.svgY);
+      if (d < bestDist) {
+        bestDist = d;
+        bestKey = c.key;
+      }
+    }
+    return bestKey;
+  })();
 
   return (
     <div className="relative px-2 pb-4">
@@ -303,7 +341,7 @@ function ChartCanvas({
         className="w-full h-[280px]"
         aria-label="Live streamed volume per chain"
         onMouseMove={onMove}
-        onMouseLeave={() => setHoverIdx(null)}
+        onMouseLeave={() => setHover(null)}
       >
         {[0.25, 0.5, 0.75].map((f) => {
           const y = CHART_PAD_Y + (CHART_H - CHART_PAD_Y * 2) * f;
@@ -328,24 +366,27 @@ function ChartCanvas({
               key={`area-${p.chainKey}`}
               d={p.areaPath}
               fill={p.color}
-              opacity={0.08}
+              opacity={closestChain === p.chainKey ? 0.18 : 0.08}
             />
           ) : null,
         )}
-        {paths.map((p) =>
-          hiddenChains.has(p.chainKey) ? null : (
+        {paths.map((p) => {
+          if (hiddenChains.has(p.chainKey)) return null;
+          const focused = closestChain === p.chainKey;
+          const dim = closestChain != null && !focused;
+          return (
             <polyline
               key={p.chainKey}
               fill="none"
               stroke={p.color}
-              strokeWidth={1.75}
+              strokeWidth={focused ? 2.6 : 1.75}
               strokeLinejoin="round"
               strokeLinecap="round"
               points={p.points}
-              opacity={p.cumNow > 0 ? 0.95 : 0.25}
+              opacity={p.cumNow > 0 ? (dim ? 0.45 : 0.95) : 0.25}
             />
-          ),
-        )}
+          );
+        })}
 
         {latest.map((p) =>
           !hiddenChains.has(p.chainKey) && p.cum > 0 ? (
@@ -413,11 +454,11 @@ function ChartCanvas({
         )}
 
         {/* Hover crosshair: vertical dotted line + per-chain dots */}
-        {hover && (
+        {hoverPoint && (
           <g pointerEvents="none">
             <line
-              x1={hover.x}
-              x2={hover.x}
+              x1={hoverPoint.x}
+              x2={hoverPoint.x}
               y1={CHART_PAD_Y}
               y2={CHART_H - CHART_PAD_Y}
               stroke="var(--color-ink)"
@@ -427,17 +468,18 @@ function ChartCanvas({
             />
             {CHAIN_LIST.map((c) => {
               if (hiddenChains.has(c.key)) return null;
-              const v = hover.ys[c.key] ?? 0;
+              const v = hoverPoint.ys[c.key] ?? 0;
               if (v <= 0) return null;
+              const focused = closestChain === c.key;
               return (
                 <circle
                   key={`hov-${c.key}`}
-                  cx={hover.x}
+                  cx={hoverPoint.x}
                   cy={yScale(v)}
-                  r={2.5}
+                  r={focused ? 4 : 2.5}
                   fill={c.color}
                   stroke="var(--color-surface)"
-                  strokeWidth={1.25}
+                  strokeWidth={focused ? 2 : 1.25}
                 />
               );
             })}
@@ -453,11 +495,16 @@ function ChartCanvas({
           ))}
       </div>
 
-      {hover && (
+      {hover && hoverPoint && (
         <HoverTooltip
-          point={hover}
+          point={hoverPoint}
           hiddenChains={hiddenChains}
           nowMs={nowMs}
+          xPx={hover.xPx}
+          yPx={hover.yPx}
+          containerW={hover.containerW}
+          containerH={hover.containerH}
+          closestChain={closestChain}
         />
       )}
     </div>
@@ -480,53 +527,84 @@ function fmtAgo(ms: number, nowMs: number): string {
   return min > 0 ? `${h}h ${min}m ago` : `${h}h ago`;
 }
 
+// Approximate tooltip size used to clamp it inside the chart bounds.
+const TIP_W = 200;
+const TIP_H = 180;
+const TIP_OFFSET = 14;
+
 function HoverTooltip({
   point,
   hiddenChains,
   nowMs,
+  xPx,
+  yPx,
+  containerW,
+  containerH,
+  closestChain,
 }: {
   point: HoverPoint;
   hiddenChains: Set<string>;
   nowMs: number;
+  xPx: number;
+  yPx: number;
+  containerW: number;
+  containerH: number;
+  closestChain: string | null;
 }) {
   const visibleChains = CHAIN_LIST.filter(
     (c) => !hiddenChains.has(c.key) && (point.ys[c.key] ?? 0) > 0,
   ).sort((a, b) => (point.ys[b.key] ?? 0) - (point.ys[a.key] ?? 0));
   const total = visibleChains.reduce((s, c) => s + (point.ys[c.key] ?? 0), 0);
-  const leftPct = (point.x / CHART_W) * 100;
-  // Flip to left side of the cursor when past 60% so the tooltip stays on screen.
-  const flip = leftPct > 60;
-  const positionStyle = flip
-    ? { right: `${100 - leftPct}%`, marginRight: "12px" }
-    : { left: `${leftPct}%`, marginLeft: "12px" };
+
+  // Flip the tooltip to the left of the cursor when it would overflow
+  // the right edge. Clamp vertically.
+  const flipX = xPx + TIP_OFFSET + TIP_W > containerW;
+  const left = flipX ? xPx - TIP_OFFSET - TIP_W : xPx + TIP_OFFSET;
+  const clampedLeft = Math.max(4, Math.min(left, containerW - TIP_W - 4));
+  const top = Math.max(
+    4,
+    Math.min(yPx - TIP_H / 2, containerH - TIP_H - 4),
+  );
 
   return (
     <div
-      className="pointer-events-none absolute top-3 z-30"
-      style={positionStyle}
+      className="pointer-events-none absolute z-30"
+      style={{ left: `${clampedLeft}px`, top: `${top}px` }}
     >
-      <div className="min-w-[180px] rounded-sm bg-paper/95 backdrop-blur ring-1 ring-ink/10 shadow-[0_10px_24px_-12px_rgba(20,17,12,0.4)] px-3 py-2">
+      <div
+        className="min-w-[180px] rounded-sm bg-paper/95 backdrop-blur ring-1 ring-ink/10 shadow-[0_10px_24px_-12px_rgba(20,17,12,0.4)] px-3 py-2"
+        style={{ width: TIP_W }}
+      >
         <p className="label-mono text-ink-muted">
           {fmtAgo(point.ts, nowMs)}
         </p>
         <ul className="mt-2 space-y-1">
-          {visibleChains.map((c) => (
-            <li
-              key={c.key}
-              className="flex items-baseline justify-between gap-4 text-[11px]"
-            >
-              <span className="flex items-center gap-1.5 text-ink-soft">
+          {visibleChains.map((c) => {
+            const focused = closestChain === c.key;
+            return (
+              <li
+                key={c.key}
+                className={`flex items-baseline justify-between gap-4 text-[11px] rounded-sm px-1 -mx-1 transition-colors ${
+                  focused ? "bg-ink/[0.05]" : ""
+                }`}
+              >
+                <span className="flex items-center gap-1.5 text-ink-soft">
+                  <span
+                    className="h-1.5 w-1.5 rounded-full"
+                    style={{ background: c.color }}
+                  />
+                  <span className={focused ? "font-semibold text-ink" : ""}>
+                    {c.display}
+                  </span>
+                </span>
                 <span
-                  className="h-1.5 w-1.5 rounded-full"
-                  style={{ background: c.color }}
-                />
-                {c.display}
-              </span>
-              <span className="font-mono tabular text-ink">
-                {fmtMoney(point.ys[c.key] ?? 0)}
-              </span>
-            </li>
-          ))}
+                  className={`font-mono tabular ${focused ? "font-semibold text-ink" : "text-ink"}`}
+                >
+                  {fmtMoney(point.ys[c.key] ?? 0)}
+                </span>
+              </li>
+            );
+          })}
         </ul>
         {visibleChains.length > 0 && (
           <div className="mt-2 pt-2 border-t border-rule flex items-baseline justify-between text-[11px]">
