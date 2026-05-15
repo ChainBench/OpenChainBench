@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { AiBriefBlock } from "@/components/ai-brief-block";
 
 export const metadata: Metadata = {
   title: "Contribute. Submit a benchmark",
@@ -223,6 +224,8 @@ export default function ContributePage() {
           </li>
         ))}
       </ol>
+
+      <AiBriefBlock />
 
       {/* Detailed step bodies */}
       {STEPS.map((s, i) => (
