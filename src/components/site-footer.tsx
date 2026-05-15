@@ -29,11 +29,11 @@ export function SiteFooter() {
           <FooterCol
             title="Developers"
             links={[
+              { label: "MCP server", href: "/mcp" },
               { label: "OpenAPI spec", href: "/api/openapi.json" },
               { label: "JSON citation", href: "/api/citable" },
               { label: "LLM context", href: "/api/llm-context" },
               { label: "llms.txt", href: "/llms.txt" },
-              { label: "MCP server", href: "/api/mcp/mcp" },
             ]}
           />
           <FooterCol
