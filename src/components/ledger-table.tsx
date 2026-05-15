@@ -46,15 +46,10 @@ export function LedgerTable({ benchmark }: Props) {
             <th colSpan={3} className="border-y-2 border-ink py-2 pr-3 text-left">
               Product
             </th>
-            <th colSpan={4} className="border-y-2 border-ink py-2 px-3 text-center">
+            <th colSpan={5} className="border-y-2 border-ink py-2 px-3 text-center">
               Latency aggregates
             </th>
-            <th colSpan={3} className="border-y-2 border-ink py-2 px-3 text-center">
-              24-hour range
-            </th>
-            <th colSpan={2} className="border-y-2 border-ink py-2 pl-3 text-right">
-              Reliability
-            </th>
+            <th className="border-y-2 border-ink py-2 pl-3 text-right">Reliability</th>
             <th className="border-y-2 border-ink py-2 pl-3 text-right">Trend</th>
             {secondary && (
               <th className="border-y-2 border-ink py-2 pl-3 text-right">
@@ -70,16 +65,13 @@ export function LedgerTable({ benchmark }: Props) {
             <th className="py-2 px-3 text-right">p90</th>
             <th className="py-2 px-3 text-right">p99</th>
             <th className="py-2 px-3 text-right">Mean</th>
-            <th className="py-2 px-3 text-right">Min</th>
-            <th className="py-2 px-3 text-right">Max</th>
             <th className="py-2 px-3 text-right">Δ field</th>
             <th className="py-2 px-3 text-right">Success</th>
-            <th className="py-2 px-3 text-right">n</th>
             <th className="py-2 pl-3 text-right">24h</th>
             {secondary && <th className="py-2 pl-3 text-right">Value</th>}
           </tr>
           <tr className="border-b border-ink">
-            <th colSpan={14} className="h-px p-0" />
+            <th colSpan={secondary ? 11 : 10} className="h-px p-0" />
           </tr>
         </thead>
         <tbody>
@@ -127,8 +119,6 @@ function Row({
   sparkMax: number;
   color: string;
 }) {
-  const seriesMin = series.length ? Math.min(...series) : r.ms.p50;
-  const seriesMax = series.length ? Math.max(...series) : r.ms.p99;
   const deltaPct = fieldP50 > 0 ? ((r.ms.p50 - fieldP50) / fieldP50) * 100 : 0;
   const deltaSign = deltaPct > 0 ? "+" : deltaPct < 0 ? "−" : "±";
   // Inline p50 bar width relative to the field max
@@ -190,20 +180,11 @@ function Row({
       <td className="py-2.5 px-3 text-right text-ink-soft">
         {fmtUnit(r.ms.mean, unit)}
       </td>
-      <td className="py-2.5 px-3 text-right text-ink-soft">
-        {fmtUnit(seriesMin, unit)}
-      </td>
-      <td className="py-2.5 px-3 text-right text-ink-soft">
-        {fmtUnit(seriesMax, unit)}
-      </td>
       <td className="py-2.5 px-3 text-right text-ink-muted">
         {fieldP50 > 0 ? `${deltaSign}${Math.abs(deltaPct).toFixed(0)}%` : "-"}
       </td>
       <td className="py-2.5 px-3 text-right text-ink-soft">
         {r.successRate.toFixed(2)}%
-      </td>
-      <td className="py-2.5 px-3 text-right text-ink-muted">
-        {r.sampleSize ? Math.round(r.sampleSize).toLocaleString() : "-"}
       </td>
       <td className="py-2.5 pl-3 text-right">
         <span className="inline-flex items-center justify-end">
