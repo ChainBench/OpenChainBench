@@ -41,28 +41,85 @@ const STEPS = [
   },
 ];
 
-const TIMELINE = [
+const WALKTHROUGH = [
   {
-    when: "Day 0 · ~30 min.",
-    what: "open issue, align on methodology with a maintainer.",
+    n: "01",
+    title: "Open an issue",
+    body: (
+      <>
+        Describe the metric and the providers you intend to compare.
+        Maintainers reply within a day to align on methodology before you
+        write any code — what counts as a sample, the sampling cadence,
+        which percentiles matter, and how to label cohorts. The output
+        of this step is a one-paragraph spec you both agree on.
+      </>
+    ),
   },
   {
-    when: "Day 1-2 · ~2 h.",
-    what: "write the spec + harness in your fork.",
+    n: "02",
+    title: "Write the spec",
+    body: (
+      <>
+        One YAML file at <CodeChip>benchmarks/&lt;your-slug&gt;.yml</CodeChip>{" "}
+        — title, description, the Prometheus query that draws the chart,
+        the dimensions (chain / region / asset), and the providers it
+        will rank. The site reads this file at build time and renders
+        the page itself; you never touch React.
+      </>
+    ),
   },
   {
-    when: "Day 2 · ~30 min.",
-    what: "deploy your harness on Fly / Railway / your VPS, verify ",
-    code: "/metrics",
-    tail: " publicly reachable.",
+    n: "03",
+    title: "Build the harness",
+    body: (
+      <>
+        Any language. The only contract is a publicly reachable{" "}
+        <CodeChip>/metrics</CodeChip> endpoint speaking the Prometheus
+        exposition format. Pick the providers you want to measure, hold
+        your own credentials, and emit one labelled time-series per
+        observation. Reference harnesses live in{" "}
+        <CodeChip>mobula-api/openchainbench-app</CodeChip> and{" "}
+        <CodeChip>miniapps/</CodeChip>.
+      </>
+    ),
   },
   {
-    when: "Day 2 · ~10 min.",
-    what: "open the PR (spec + harness + scrape config).",
+    n: "04",
+    title: "Host it",
+    body: (
+      <>
+        Anywhere with HTTPS — Fly, Railway, Cloud Run, your VPS, a Pi
+        in your cupboard. The cost stays with the person who cares
+        about the benchmark. Verify the endpoint answers a{" "}
+        <CodeChip>200 OK</CodeChip> from the public internet before
+        moving on.
+      </>
+    ),
   },
   {
-    when: "Day 3 · < 30 min.",
-    what: "maintainer reviews, merges, reloads Prometheus. Site renders within 60 s.",
+    n: "05",
+    title: "Wire the scrape",
+    body: (
+      <>
+        Add one block under <CodeChip>scrape_configs</CodeChip> in{" "}
+        <CodeChip>infrastructure/prometheus/prometheus.yml</CodeChip>{" "}
+        pointing at your endpoint, with the labels your spec expects.
+        That is the only file in shared infrastructure you ever touch.
+      </>
+    ),
+  },
+  {
+    n: "06",
+    title: "Open a PR",
+    body: (
+      <>
+        Spec + scrape config in one PR. Maintainers review the
+        methodology, merge, and reload Prometheus. The page picks up
+        the new series within 60 seconds. From that moment on the
+        benchmark is yours — you update the spec or the harness
+        whenever you want.
+      </>
+    ),
   },
 ];
 
@@ -115,8 +172,8 @@ export default function ContributePage() {
         ))}
       </ol>
 
-      {/* Two-column section */}
-      <div className="mt-16 sm:mt-24 grid grid-cols-1 lg:grid-cols-2 gap-8">
+      {/* Two-column section: federation explainer + AI assist */}
+      <div className="mt-16 sm:mt-24 grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
         {/* Left: How it actually works */}
         <section className="card p-8 sm:p-10 bg-paper-soft border border-rule rounded-xl">
           <p className="label-mono text-ink-faint">HOW IT ACTUALLY WORKS</p>
@@ -151,31 +208,63 @@ export default function ContributePage() {
           </div>
         </section>
 
-        {/* Right: Realistic timeline */}
+        {/* Right: Drafting with AI (vertical stack) */}
         <section className="card p-8 sm:p-10 bg-paper-soft border border-rule rounded-xl">
-          <p className="label-mono text-ink-faint">REALISTIC TIMELINE</p>
-          <ul className="mt-6 space-y-5 text-sm sm:text-base text-ink-soft leading-relaxed">
-            {TIMELINE.map((t) => (
-              <li key={t.when}>
-                <span className="font-bold text-ink">{t.when}</span>{" "}
-                {t.what}
-                {t.code ? (
-                  <>
-                    <CodeChip>{t.code}</CodeChip>
-                    {t.tail}
-                  </>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-          <p className="mt-8 text-xs sm:text-sm italic text-ink-muted">
-            ~3-4 hours of focused work, spread across a few days.
+          <div className="flex items-baseline gap-3">
+            <span className="label-mono text-ink-faint">OPTIONAL</span>
+            <h2 className="display text-2xl sm:text-3xl text-ink font-bold tracking-tight leading-tight">
+              Drafting with AI
+            </h2>
+          </div>
+          <p className="mt-4 text-sm sm:text-base text-ink-soft leading-relaxed">
+            We maintain a single source-of-truth skill that walks any agent
+            through the six steps above with the exact conventions a
+            reviewer will check. Pick the surface that matches your tooling.
           </p>
+          <div className="mt-6">
+            <AiBriefBlock />
+          </div>
         </section>
       </div>
 
-      {/* Keep existing AI brief block */}
-      <AiBriefBlock />
+      {/* Detailed walkthrough — what each step really involves */}
+      <section className="mt-16 sm:mt-24">
+        <p className="label-mono text-ink-faint">WALK-THROUGH</p>
+        <h2 className="mt-4 display text-3xl sm:text-4xl text-ink font-bold tracking-tight leading-tight">
+          What each step really involves.
+        </h2>
+        <p className="mt-4 max-w-3xl text-sm sm:text-base text-ink-soft leading-relaxed">
+          The six tiles above are the shape of a contribution. Here is the
+          detail behind each one — roughly three to four hours of focused
+          work, spread across a couple of days.
+        </p>
+
+        <ol className="mt-10 grid grid-cols-1 md:grid-cols-2 gap-6">
+          {WALKTHROUGH.map((s) => (
+            <li
+              key={s.n}
+              className="border border-rule rounded-xl bg-paper p-6 sm:p-7"
+            >
+              <div className="flex items-baseline gap-3">
+                <span className="label-mono text-accent">{s.n}</span>
+                <h3 className="display text-lg text-ink font-bold tracking-tight">
+                  {s.title}
+                </h3>
+              </div>
+              <p className="mt-3 text-sm sm:text-base text-ink-soft leading-relaxed">
+                {s.body}
+              </p>
+            </li>
+          ))}
+        </ol>
+
+        <p className="mt-10 max-w-3xl text-sm text-ink-muted leading-relaxed">
+          Reference contributors live in{" "}
+          <CodeChip>mobula-api/openchainbench-app</CodeChip> (multi-chain
+          harnesses) and <CodeChip>miniapps/</CodeChip> (single-purpose
+          probes). Start there if you want a working example to copy.
+        </p>
+      </section>
     </article>
   );
 }
