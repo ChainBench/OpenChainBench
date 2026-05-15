@@ -9,14 +9,12 @@ export const RELAY_WS_URL =
 
 /** Default range opened on the live chart. */
 export const DEFAULT_RANGE: import("./types").RangeKey = "10m";
-/** Human labels for the range tab strip. */
+/** Human labels for the range picker. */
 export const RANGE_LABELS: Record<import("./types").RangeKey, string> = {
   "10m": "Last 10 min",
   "1h": "Last hour",
   "24h": "Last 24h",
 };
-/** Pops only make sense on the live (10m) range. */
-export const POP_RANGE: import("./types").RangeKey = "10m";
 
 /** Cap on simultaneously rendered pops + their fade duration. */
 export const MAX_POPS = 5;
