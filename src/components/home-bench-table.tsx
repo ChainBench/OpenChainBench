@@ -109,7 +109,7 @@ function ValueCell({ b }: { b: Benchmark }) {
     const top = leader(b);
     return (
       <p className="text-right text-ink-faint italic text-sm">
-        {top ? "—" : "awaiting"}
+        {top ? "n/a" : "awaiting"}
       </p>
     );
   }
