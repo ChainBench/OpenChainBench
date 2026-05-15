@@ -99,9 +99,32 @@ The full provider directory lives at [`/providers`](https://openchainbench.com/p
 
 ### How agents query us
 
-Via MCP (recommended): point any MCP-capable client at `https://openchainbench.com/api/mcp/mcp`. It will discover three tools (`list_benchmarks`, `get_benchmark(slug, chain?, region?)`, `query_prom(query, windowSec?)`) and can answer questions like *"which aggregator is fastest on Base from EU right now?"* with live data.
+**Via MCP (recommended)**: OpenChainBench ships an MCP server at `https://openchainbench.com/api/mcp/mcp` (Streamable HTTP transport, no auth). Any MCP-capable client (Claude Desktop, Cursor, ChatGPT custom tools, generic MCP clients) can connect and discover:
 
-Via REST: hit `/api/citable` once to discover everything, then `/api/stat/<slug>` for specifics. Both are zero-auth, edge-cached for 60 s. For just the live freshness, `/api/freshness` is a few hundred bytes and refreshes every 5 s at the edge.
+- **3 tools**: `list_benchmarks`, `get_benchmark(slug, chain?, region?)`, `query_prom(query, windowSec?, steps?)` — `query_prom` is scoped to the published benchmark metric namespaces so the public endpoint can't be used to walk the underlying Prometheus catalog.
+- **1 resource template**: `openchainbench://benchmark/{slug}` — every live benchmark is also exposed as an MCP resource (Markdown + JSON), so an agent can pin a bench into its context as a long-lived document instead of re-fetching every turn.
+
+#### Install in Claude Desktop
+
+Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (or the equivalent on your OS):
+
+```json
+{
+  "mcpServers": {
+    "openchainbench": {
+      "url": "https://openchainbench.com/api/mcp/mcp"
+    }
+  }
+}
+```
+
+Restart Claude Desktop. The tools appear under the 🔌 icon; ask *"what's the fastest crypto data aggregator on Base today?"* and watch it call `get_benchmark` live.
+
+#### Install in Cursor
+
+Settings → MCP → Add server → URL `https://openchainbench.com/api/mcp/mcp`.
+
+**Via REST**: hit `/api/citable` once to discover everything, then `/api/stat/<slug>` for specifics. Both are zero-auth, edge-cached for 60 s. For just the live freshness, `/api/freshness` is a few hundred bytes and refreshes every 5 s at the edge.
 
 ## How a benchmark gets data. federation
 
