@@ -23,6 +23,21 @@ const DEFAULT_TIMEOUT_MS = 4_000;
 export class Prometheus {
   constructor(public readonly baseUrl: string) {
     if (!baseUrl) throw new Error("Prometheus baseUrl is required");
+    // Belt-and-suspenders: even the operator-set env URL is sanity-checked,
+    // so a typo (http://, embedded basic-auth, javascript:) fails fast at
+    // construction time rather than leaking creds on every fetch.
+    let u: URL;
+    try {
+      u = new URL(baseUrl);
+    } catch {
+      throw new Error("Prometheus baseUrl is not a valid URL");
+    }
+    if (u.protocol !== "https:") {
+      throw new Error("Prometheus baseUrl must be https://");
+    }
+    if (u.username || u.password) {
+      throw new Error("Prometheus baseUrl must not embed credentials");
+    }
   }
 
   /** GET /api/v1/query. instant query at evaluation time `now`. */
@@ -196,10 +211,10 @@ function extractMetricName(promql: string): string | null {
   return null;
 }
 
-/** Reject loopback, private, link-local, metadata, ULA and CGNAT addresses.
- *  Mirrors the schema-time check but operates on resolved IPs so a hostname
- *  that publicly resolved at PR time can't get repointed to 169.254.169.254
- *  at fetch time. */
+/** Reject loopback, private, link-local, metadata, ULA, CGNAT, and the
+ *  IPv6 re-encodings that wrap a private v4. Mirrors the schema-time check
+ *  but operates on resolved IPs so a hostname that publicly resolved at PR
+ *  time can't get repointed to 169.254.169.254 at fetch time. */
 function isPrivateAddress(addr: string): boolean {
   const family = isIP(addr);
   if (family === 0) return false;
@@ -218,21 +233,51 @@ function isPrivateAddress(addr: string): boolean {
   if (a === "::1" || a === "::") return true;
   if (/^f[cd][0-9a-f]{2}:/.test(a)) return true; // ULA
   if (/^fe80:/.test(a)) return true; // link-local
-  // IPv4-mapped IPv6
+  // IPv4-mapped IPv6 — recurse on the embedded v4 address.
   const mapped = /^::ffff:([0-9.]+)$/.exec(a);
   if (mapped) return isPrivateAddress(mapped[1]);
+  // NAT64 (RFC 6052) — last 32 bits encode a v4 address.
+  if (/^64:ff9b:/.test(a)) return true;
+  // 6to4 (RFC 3056) — second/third hextets encode the v4 address.
+  // Conservative: reject any 6to4 whose embedded v4 lands in a private range.
+  const sixToFour = /^2002:([0-9a-f]{1,4}):([0-9a-f]{1,4}):/.exec(a);
+  if (sixToFour) {
+    const b1 = parseInt(sixToFour[1], 16);
+    const b2 = parseInt(sixToFour[2], 16);
+    const v4 = `${(b1 >> 8) & 0xff}.${b1 & 0xff}.${(b2 >> 8) & 0xff}.${b2 & 0xff}`;
+    if (isPrivateAddress(v4)) return true;
+  }
   return false;
 }
 
+/** dns.lookup hangs on getaddrinfo with no built-in timeout. A malicious
+ *  spec URL pointing at an unresolvable hostname would stall the route
+ *  for 20-30 s, easily DoSing /api/freshness. Race the lookup against a
+ *  short timer. */
+const DNS_TIMEOUT_MS = 1500;
+
+async function dnsLookupWithTimeout(host: string): Promise<{ address: string }[]> {
+  return Promise.race([
+    dns.lookup(host, { all: true }) as Promise<{ address: string; family: number }[]>,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`dns: timeout resolving ${host}`)), DNS_TIMEOUT_MS),
+    ),
+  ]);
+}
+
 async function assertPublicHost(url: URL): Promise<void> {
-  const host = url.hostname;
+  // hostname keeps brackets for IPv6 literals; strip them so isIP can
+  // recognise the address.
+  let host = url.hostname;
+  if (host.startsWith("[") && host.endsWith("]")) host = host.slice(1, -1);
+
   if (isIP(host)) {
     if (isPrivateAddress(host)) {
       throw new Error(`prometheus: refused private host ${host}`);
     }
     return;
   }
-  const addrs = await dns.lookup(host, { all: true });
+  const addrs = await dnsLookupWithTimeout(host);
   for (const { address } of addrs) {
     if (isPrivateAddress(address)) {
       throw new Error(`prometheus: ${host} resolves to private address ${address}`);

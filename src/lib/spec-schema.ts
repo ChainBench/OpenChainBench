@@ -36,7 +36,14 @@ function isPublicHttpsUrl(raw: string): boolean {
     return false;
   }
   if (u.protocol !== "https:") return false;
-  const host = u.hostname.toLowerCase();
+  // Reject embedded credentials: a contributor could otherwise stuff
+  // basic-auth into the YAML that the site would send on every Prom call.
+  if (u.username || u.password) return false;
+  // URL.hostname preserves brackets for IPv6. Strip them before the
+  // private-range tests, otherwise `[::1]`, `[fc00::1]`, `[::ffff:a9fe:a9fe]`
+  // (= IPv4-mapped 169.254.169.254 / AWS IMDS) etc. would all pass.
+  let host = u.hostname.toLowerCase();
+  if (host.startsWith("[") && host.endsWith("]")) host = host.slice(1, -1);
   if (host === "localhost" || host === "0.0.0.0" || host === "::1" || host === "::") return false;
   if (/^127\./.test(host)) return false;
   if (/^10\./.test(host)) return false;
@@ -46,6 +53,10 @@ function isPublicHttpsUrl(raw: string): boolean {
   if (/^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./.test(host)) return false; // CGNAT
   if (/^f[cd][0-9a-f]{2}:/.test(host)) return false; // IPv6 ULA
   if (/^fe80:/.test(host)) return false; // IPv6 link-local
+  // IPv6 forms that re-encode private v4 addresses.
+  if (/^::ffff:/.test(host)) return false; // IPv4-mapped
+  if (/^64:ff9b:/.test(host)) return false; // NAT64
+  if (/^2002:a9fe:/.test(host)) return false; // 6to4 over 169.254/16
   return true;
 }
 
