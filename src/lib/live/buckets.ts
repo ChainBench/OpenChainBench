@@ -57,11 +57,34 @@ export function cumulativePerChain(buckets: Bucket[]): Record<string, number> {
   return out;
 }
 
-/** Round up to a clean numeric ceiling for chart Y-axis labels. */
+/** Round up to a clean numeric ceiling for chart Y-axis labels.
+ *  The bands are finer than the canonical 1/2/5/10 so the chart wastes
+ *  less vertical space on values like 3.6 (no need to jump to 5). */
 export function niceCeil(v: number): number {
   if (v <= 0) return 1;
   const mag = Math.pow(10, Math.floor(Math.log10(v)));
   const frac = v / mag;
-  const niceFrac = frac <= 1 ? 1 : frac <= 2 ? 2 : frac <= 5 ? 5 : 10;
+  const niceFrac =
+    frac <= 1
+      ? 1
+      : frac <= 1.2
+        ? 1.2
+        : frac <= 1.5
+          ? 1.5
+          : frac <= 2
+            ? 2
+            : frac <= 2.5
+              ? 2.5
+              : frac <= 3
+                ? 3
+                : frac <= 4
+                  ? 4
+                  : frac <= 5
+                    ? 5
+                    : frac <= 6
+                      ? 6
+                      : frac <= 8
+                        ? 8
+                        : 10;
   return niceFrac * mag;
 }
