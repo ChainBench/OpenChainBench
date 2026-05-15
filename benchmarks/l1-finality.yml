@@ -2,8 +2,8 @@
 
 slug: l1-finality
 number: "006"
-title: Fastest blockchain finality
-seo_title: Fastest blockchain finality - Ethereum, Solana, BNB, Avalanche, TRON, SUI, Stellar, TON, Litecoin, Monero, Cardano live benchmark
+title: Fastest layer one blockchain finality
+seo_title: Fastest layer one blockchain finality - Ethereum, Solana, BNB, Avalanche, TRON, SUI, Stellar, TON, Litecoin, Monero, Cardano live benchmark
 subtitle: Wall-clock distance between each L1's latest block and its finalized block.
 category: Blockchains
 status: live

@@ -2,8 +2,8 @@
 
 slug: wallet-labels-coverage
 number: "008"
-title: Best wallet labeling provider
-seo_title: Best wallet labeling provider - Mobula, Helius, Moralis, Blockscout, OLI, TonAPI live coverage benchmark
+title: Best wallet labeling API provider
+seo_title: Best wallet labeling API provider - Mobula, Helius, Moralis, Blockscout, OLI, TonAPI live coverage benchmark
 subtitle: Share of well-known addresses each provider correctly labels with an entity (CEX, DEX, multisig, sanctioned, etc.).
 category: Aggregators
 status: live
