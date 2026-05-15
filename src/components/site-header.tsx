@@ -2,9 +2,10 @@ import Link from "next/link";
 import Image from "next/image";
 
 const NAV = [
-  { href: "/", label: "Overview" },
   { href: "/benchmarks", label: "Benchmarks" },
+  { href: "/providers", label: "Providers" },
   { href: "/methodology", label: "Methodology" },
+  { href: "/glossary", label: "Glossary" },
   { href: "/contribute", label: "Contribute" },
 ];
 
