@@ -7,10 +7,17 @@
  *    so a hot path benefits, but a burst across cold instances will get
  *    a higher effective ceiling than the configured value. Acceptable
  *    for our use case (abuse mitigation, not strict quotas).
- *  - Keyed on the first hop of x-forwarded-for; an attacker behind a
- *    rotating IP pool can sidestep this. Pair with platform-level
- *    protection (Vercel firewall, BotID) when bigger guarantees are needed.
+ *  - Pair with platform-level protection (Vercel firewall, BotID) when
+ *    bigger guarantees are needed.
  */
+
+/** Hard cap on the in-memory bucket Map. Prevents an attacker rotating
+ *  X-Forwarded-For across millions of fake IPs from growing the Map
+ *  unboundedly. When the cap is hit we evict the least-recently-updated
+ *  entry, which under attack will be the spoofed keys (they don't come
+ *  back) rather than the real victim IP buckets. */
+const MAX_BUCKETS = 5000;
+
 const buckets = new Map<string, { tokens: number; updatedAt: number }>();
 
 export type RateLimitResult = {
@@ -30,6 +37,12 @@ export function rateLimit(
   capacity: number,
   windowSec: number,
 ): RateLimitResult {
+  if (capacity <= 0 || windowSec <= 0) {
+    // Defensive: a misconfigured caller would otherwise produce Infinity
+    // retry-after via /0 below. Treat as "denied with finite backoff".
+    return { ok: false, remaining: 0, retryAfterSec: 60 };
+  }
+
   const now = Date.now();
   const refillPerMs = capacity / (windowSec * 1000);
   const prev = buckets.get(key);
@@ -37,33 +50,73 @@ export function rateLimit(
   if (!prev) {
     tokens = capacity;
   } else {
-    const elapsed = now - prev.updatedAt;
-    tokens = Math.min(capacity, prev.tokens + elapsed * refillPerMs);
+    // Clamp `elapsed` so a clock step backward (NTP correction) can't
+    // produce negative tokens that lock the bucket forever.
+    const elapsed = Math.max(0, now - prev.updatedAt);
+    tokens = Math.max(0, Math.min(capacity, prev.tokens + elapsed * refillPerMs));
   }
   if (tokens < 1) {
     const need = 1 - tokens;
     const retryAfterMs = Math.ceil(need / refillPerMs);
-    buckets.set(key, { tokens, updatedAt: now });
+    // Don't re-`set` on the rejected path — avoids Map churn under
+    // sustained 429 spam and preserves the original updatedAt for refill.
     return { ok: false, remaining: 0, retryAfterSec: Math.ceil(retryAfterMs / 1000) };
   }
   tokens -= 1;
   buckets.set(key, { tokens, updatedAt: now });
-  if (buckets.size > 5000) pruneOldest();
+  if (buckets.size > MAX_BUCKETS) evictOne();
   return { ok: true, remaining: Math.floor(tokens), retryAfterSec: 0 };
 }
 
-function pruneOldest() {
-  const cutoff = Date.now() - 10 * 60 * 1000;
+/** Evict the least-recently-updated bucket. Single-pass O(n) — n is
+ *  bounded to MAX_BUCKETS, so amortised O(1) per request. Cheaper than
+ *  the previous age-cutoff sweep that did full scans under load. */
+function evictOne() {
+  let oldestKey: string | null = null;
+  let oldestAt = Infinity;
   for (const [k, v] of buckets) {
-    if (v.updatedAt < cutoff) buckets.delete(k);
+    if (v.updatedAt < oldestAt) {
+      oldestAt = v.updatedAt;
+      oldestKey = k;
+    }
   }
+  if (oldestKey !== null) buckets.delete(oldestKey);
 }
 
-/** Extract a stable client identifier from request headers. */
+/** Extract a stable client identifier from request headers.
+ *
+ *  Trust order (Vercel-aware):
+ *  1. `x-vercel-forwarded-for` — Vercel's vetted client IP. Single value,
+ *     not spoofable by the client (the platform sets it).
+ *  2. `x-real-ip` — same in most reverse-proxy setups.
+ *  3. **Last** hop of `x-forwarded-for` — Vercel APPENDS its observed
+ *     client IP to whatever the request brought in. Reading the FIRST
+ *     hop is exactly the spoofable value an attacker pre-injected; the
+ *     last hop is the platform-attached one.
+ *  4. `"unknown"` fallback — folds anonymous traffic into one shared
+ *     bucket (acceptable: protects the route from /0 IP attribution). */
 export function clientKey(req: Request, suffix = ""): string {
-  const xff = req.headers.get("x-forwarded-for");
-  const ip = xff ? xff.split(",")[0]?.trim() : req.headers.get("x-real-ip") ?? "unknown";
+  const ip = resolveClientIp(req);
   return `${ip}:${suffix}`;
+}
+
+function resolveClientIp(req: Request): string {
+  const vercel = req.headers.get("x-vercel-forwarded-for");
+  if (vercel) {
+    const v = vercel.split(",")[0]?.trim();
+    if (v) return v;
+  }
+  const real = req.headers.get("x-real-ip");
+  if (real) {
+    const v = real.trim();
+    if (v) return v;
+  }
+  const xff = req.headers.get("x-forwarded-for");
+  if (xff) {
+    const parts = xff.split(",").map((p) => p.trim()).filter(Boolean);
+    if (parts.length > 0) return parts[parts.length - 1];
+  }
+  return "unknown";
 }
 
 /** Helper: build a 429 JSON Response with the standard headers. */
