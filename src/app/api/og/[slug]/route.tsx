@@ -4,12 +4,12 @@ import { SITE } from "@/data/site";
 import { fmtUnit } from "@/lib/format";
 import { fieldValue, leader, sparklineFor } from "@/lib/citation";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
+import { SLUG_RE } from "@/lib/slug";
 
 export const runtime = "nodejs";
 export const contentType = "image/png";
 export const size = { width: 1200, height: 630 };
 
-const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,79}$/;
 
 /**
  * 1200×630 PNG OG image with the current value, leader and a sparkline,

@@ -12,13 +12,11 @@ import { type NextRequest, NextResponse } from "next/server";
 import { getBenchmark } from "@/data/benchmarks";
 import { fmtUnit } from "@/lib/format";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
+import { PROVIDER_RE, SLUG_RE } from "@/lib/slug";
 
 export const revalidate = 300;
 
 type Params = { slug: string; provider: string };
-
-const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,79}$/;
-const PROVIDER_RE = /^[a-z0-9][a-z0-9-]{0,63}$/;
 
 const H = 36;
 // Width is fixed but generous so most benchmark titles fit without

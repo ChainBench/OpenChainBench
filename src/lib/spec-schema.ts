@@ -63,6 +63,7 @@ function isPublicHttpsUrl(raw: string): boolean {
 const slug = z
   .string()
   .min(1)
+  .max(80)
   .regex(/^[a-z0-9][a-z0-9-]*$/, "Slug must be lowercase, hyphenated");
 
 /** PromQL. a non-empty string. We don't parse PromQL; that's Prometheus's job. */

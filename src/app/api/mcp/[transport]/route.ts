@@ -74,6 +74,8 @@ const PROMQL_RESERVED_IDENTS = new Set([
   "day_of_month", "day_of_week", "day_of_year", "days_in_month",
   "month", "year",
   "absent", "absent_over_time", "present", "pi",
+  // PromQL @-modifier anchors (Prom 2.26+): `metric @ start()` / `@ end()`.
+  "start", "end", "step",
   // Label names that appear as bare identifiers inside selectors / `by(...)`.
   "le", "chain", "region", "provider", "bridge", "aggregator", "venue",
   "exchange", "asset", "from_chain", "to_chain", "from_token", "to_token",
@@ -114,8 +116,15 @@ function isQueryAllowed(q: string): { ok: true } | { ok: false; reason: string }
   if (/(__name__|__address__|job|instance|host)(!?~|!="")/.test(c)) {
     return { ok: false, reason: "label_enum_blocked" };
   }
-  if (/\b(group|count|sum|avg|min|max|topk|bottomk|stddev|stdvar|quantile)by\(/.test(c)) {
-    return { ok: false, reason: "aggregation_by_blocked" };
+  // Aggregation by (instance|host|__name__|__address__|job) reveals
+  // topology labels we don't publish. `by (le)` is fine — it's how
+  // every histogram_quantile query in our specs is shaped.
+  if (
+    /\b(group|count|sum|avg|min|max|topk|bottomk|stddev|stdvar|quantile)by\((__name__|__address__|job|instance|host)\b/.test(
+      c,
+    )
+  ) {
+    return { ok: false, reason: "topology_aggregation_blocked" };
   }
   if (/\bcount_values\b/.test(c)) return { ok: false, reason: "count_values_blocked" };
 
@@ -365,12 +374,12 @@ async function rejectBatchOrTooBig(req: Request): Promise<{ response?: Response;
 }
 
 async function wrapped(req: Request): Promise<Response> {
-  // SSE short-circuit: the mcp-handler package honours `disableSse` at
-  // config level but the runtime cast we use to set it may not survive
-  // tree-shaking. Return 404 fast here so an SSE GET (which needs a
-  // Redis we don't run) doesn't hang the function for maxDuration.
+  // SSE short-circuit. `disableSse: true` is set on the handler config
+  // but its TypeScript shape is undocumented; this belt-and-suspenders
+  // return ensures /api/mcp/sse never reaches the package code that
+  // would hang waiting for a Redis we don't run.
   const url = new URL(req.url);
-  if (url.pathname.endsWith("/sse")) {
+  if (url.pathname === "/api/mcp/sse") {
     return new Response("Not Found", {
       status: 404,
       headers: { "Cache-Control": "public, s-maxage=3600" },
