@@ -8,16 +8,48 @@ import { useEffect, useState } from "react";
  * Falls back to a muted "Stale" state if `lastRunAt` is older than 5 min,
  * which usually means the harness is down or ISR is wedged — better to
  * show staleness than to lie about freshness.
+ *
+ * Every page that renders this widget has its own ISR cycle, so the SSR
+ * `lastRunAt` can drift across pages by a few seconds (home was rendered
+ * at one cache miss, detail at another). To present a single canonical
+ * value site-wide, when a `slug` is passed we re-fetch /api/citable on
+ * mount and replace the SSR value with the API value. /api/citable is
+ * edge-cached for 60 s so the network cost is amortised across viewers.
  */
-export function LiveIndicator({ lastRunAt }: { lastRunAt: string }) {
+export function LiveIndicator({
+  lastRunAt,
+  slug,
+}: {
+  lastRunAt: string;
+  slug?: string;
+}) {
   const [now, setNow] = useState(() => Date.now());
+  const [canonical, setCanonical] = useState(lastRunAt);
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, []);
 
-  const ageSec = Math.max(0, Math.floor((now - new Date(lastRunAt).getTime()) / 1000));
+  useEffect(() => {
+    if (!slug) return;
+    let cancelled = false;
+    fetch("/api/citable")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { benchmarks?: { slug: string; asOf?: string }[] } | null) => {
+        if (cancelled || !data?.benchmarks) return;
+        const hit = data.benchmarks.find((b) => b.slug === slug);
+        if (hit?.asOf) setCanonical(hit.asOf);
+      })
+      .catch(() => {
+        // ignore — keep SSR fallback
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [slug]);
+
+  const ageSec = Math.max(0, Math.floor((now - new Date(canonical).getTime()) / 1000));
   const stale = ageSec > 300;
 
   return (

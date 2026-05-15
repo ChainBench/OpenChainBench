@@ -76,6 +76,7 @@ export default async function BenchmarksIndex() {
                   <ol className="divide-y divide-rule">
                     {list.map((b) => {
                       const isDraft = b.status === "draft";
+                      const isAwaiting = isDraft && b.editorialStatus === "live";
                       return (
                         <li key={b.slug}>
                           <Link
@@ -87,7 +88,7 @@ export default async function BenchmarksIndex() {
                             <div className="min-w-0">
                               {isDraft && (
                                 <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-faint">
-                                  draft
+                                  {isAwaiting ? "awaiting samples" : "draft"}
                                 </span>
                               )}
                               <h3 className="display text-base sm:text-lg font-semibold text-ink leading-tight truncate">
@@ -111,7 +112,7 @@ export default async function BenchmarksIndex() {
 
                             <div className="hidden sm:flex items-baseline">
                               {!isDraft && (
-                                <LiveIndicator lastRunAt={b.lastRunAt} />
+                                <LiveIndicator lastRunAt={b.lastRunAt} slug={b.slug} />
                               )}
                             </div>
                           </Link>

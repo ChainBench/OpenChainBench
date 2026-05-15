@@ -104,6 +104,7 @@ export default async function BenchmarkPage({
   const benchmark = variants[variantKey(chain, region)] ?? aggregate;
 
   const isDraft = benchmark.status === "draft";
+  const isAwaiting = isDraft && benchmark.editorialStatus === "live";
   const otherBenchmarks = all.filter((b) => b.slug !== benchmark.slug);
 
   const catColor = CATEGORY_COLOR[benchmark.category];
@@ -191,10 +192,14 @@ export default async function BenchmarkPage({
         <span style={{ color: catColor ?? "var(--color-ink-soft)" }}>
           {benchmark.category}
         </span>
-        {isDraft && <span className="text-ink-faint">draft</span>}
+        {isDraft && (
+          <span className="text-ink-faint">
+            {isAwaiting ? "awaiting samples" : "draft"}
+          </span>
+        )}
         {!isDraft && (
           <span className="ml-auto">
-            <LiveIndicator lastRunAt={benchmark.lastRunAt} />
+            <LiveIndicator lastRunAt={benchmark.lastRunAt} slug={benchmark.slug} />
           </span>
         )}
       </div>

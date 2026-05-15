@@ -123,6 +123,7 @@ export function BenchmarkTable({ benchmarks }: { benchmarks: Benchmark[] }) {
         <ol className="divide-y divide-rule border-b border-rule">
           {filtered.map((b) => {
             const isDraft = b.status === "draft";
+            const isAwaiting = isDraft && b.editorialStatus === "live";
             const catColor = CATEGORY_COLOR[b.category];
             return (
               <li key={b.slug}>
@@ -141,7 +142,7 @@ export function BenchmarkTable({ benchmarks }: { benchmarks: Benchmark[] }) {
                       </span>
                       {isDraft && (
                         <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-faint">
-                          draft
+                          {isAwaiting ? "awaiting samples" : "draft"}
                         </span>
                       )}
                     </div>
@@ -158,7 +159,7 @@ export function BenchmarkTable({ benchmarks }: { benchmarks: Benchmark[] }) {
                   </div>
 
                   <div className="hidden sm:flex items-baseline">
-                    {!isDraft && <LiveIndicator lastRunAt={b.lastRunAt} />}
+                    {!isDraft && <LiveIndicator lastRunAt={b.lastRunAt} slug={b.slug} />}
                   </div>
                 </Link>
               </li>
