@@ -138,6 +138,7 @@ async function specToBenchmark(
     subtitle: spec.subtitle,
     category: spec.category,
     status: spec.status,
+    editorialStatus: spec.status,
     metric: spec.metric,
     unit: spec.unit,
     higherIsBetter: spec.higher_is_better,

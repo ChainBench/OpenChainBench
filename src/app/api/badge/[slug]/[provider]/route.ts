@@ -70,7 +70,7 @@ export async function GET(
     });
   }
   const b = await getBenchmark(slug);
-  if (!b || b.status !== "live") {
+  if (!b || b.editorialStatus !== "live") {
     return new NextResponse("not found", {
       status: 404,
       headers: { "cache-control": "public, s-maxage=60" },

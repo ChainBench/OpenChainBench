@@ -32,7 +32,7 @@ export async function GET(
     return NextResponse.json({ error: "bad_slug" }, { status: 400 });
   }
   const b = await getBenchmark(slug);
-  if (!b || b.status !== "live") {
+  if (!b || b.editorialStatus !== "live") {
     return NextResponse.json(
       { error: "unknown_slug", slug },
       {

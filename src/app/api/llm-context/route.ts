@@ -26,7 +26,7 @@ export async function GET(req: Request) {
     return new Response(await tooMany.text(), { status: tooMany.status, headers: tooMany.headers });
   }
 
-  const benches = (await getBenchmarks()).filter((b) => b.status === "live");
+  const benches = (await getBenchmarks()).filter((b) => b.editorialStatus === "live");
   const now = new Date().toISOString();
 
   const lines: string[] = [];
