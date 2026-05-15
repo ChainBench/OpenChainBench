@@ -4,6 +4,7 @@ import { ArrowRight } from "lucide-react";
 import { getBenchmarks } from "@/data/benchmarks";
 import { HeroRadar } from "@/components/hero-radar";
 import { HomeBenchTable } from "@/components/home-bench-table";
+import { LiveDashboard } from "@/components/live-dashboard";
 
 export const revalidate = 60;
 
@@ -50,6 +51,18 @@ export default async function HomePage() {
         <div className="flex justify-center lg:justify-end">
           <HeroRadar size={520} />
         </div>
+      </section>
+
+      {/* Live Network ecosystem */}
+      <section>
+        <header className="mb-6 sm:mb-8">
+          <h2 className="display text-3xl sm:text-4xl text-ink">Network Ecosystem</h2>
+          <p className="mt-3 max-w-2xl text-sm sm:text-base text-ink-soft leading-snug">
+            Live stream of ecosystem data, transaction volumes, and network activity across
+            supported chains.
+          </p>
+        </header>
+        <LiveDashboard />
       </section>
 
       {/* Latest deployed benchmarks */}

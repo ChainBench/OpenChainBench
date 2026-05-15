@@ -82,7 +82,11 @@ export function BenchmarkGrid({ benchmarks }: { benchmarks: Benchmark[] }) {
               type="button"
               aria-label="Grid view"
               onClick={() => setView("grid")}
-              className={`p-1.5 rounded ${view === "grid" ? "bg-paper-soft text-ink" : "text-ink-faint hover:text-ink-muted"}`}
+              className={`inline-flex items-center justify-center w-7 h-7 rounded transition-colors ${
+                view === "grid"
+                  ? "bg-accent-soft text-accent border border-accent/30"
+                  : "text-ink-muted hover:text-ink hover:bg-paper-soft"
+              }`}
             >
               <LayoutGrid size={14} strokeWidth={2} />
             </button>
@@ -90,7 +94,11 @@ export function BenchmarkGrid({ benchmarks }: { benchmarks: Benchmark[] }) {
               type="button"
               aria-label="List view"
               onClick={() => setView("list")}
-              className={`p-1.5 rounded ${view === "list" ? "bg-paper-soft text-ink" : "text-ink-faint hover:text-ink-muted"}`}
+              className={`inline-flex items-center justify-center w-7 h-7 rounded transition-colors ${
+                view === "list"
+                  ? "bg-accent-soft text-accent border border-accent/30"
+                  : "text-ink-muted hover:text-ink hover:bg-paper-soft"
+              }`}
             >
               <List size={14} strokeWidth={2} />
             </button>

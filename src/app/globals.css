@@ -51,28 +51,28 @@
 .dark {
   color-scheme: dark;
 
-  --color-paper: #0a0a0b;       /* near-black background */
-  --color-paper-soft: #141417;  /* card hover / soft section */
-  --color-surface: #141417;     /* card background — slightly elevated */
+  --color-paper: #0a0b0d;       /* near-black background */
+  --color-paper-soft: #181a1f;  /* lifted soft surface */
+  --color-surface: #15171c;     /* card background — slightly elevated from paper */
 
-  --color-banner: #1a1c1f;
-  --color-banner-ink: #cbd5e1;
+  --color-banner: #1a1e26;
+  --color-banner-ink: #e2e8f0;
   --color-banner-link: #38bdf8;
 
-  --color-ink: #f1f5f9;         /* primary text */
-  --color-ink-soft: #cbd5e1;
-  --color-ink-muted: #94a3b8;
-  --color-ink-faint: #64748b;
+  --color-ink: #f8fafc;         /* slightly brighter primary */
+  --color-ink-soft: #d6dee8;    /* brighter softs */
+  --color-ink-muted: #a3b0c2;   /* brighter muteds */
+  --color-ink-faint: #8290a3;   /* much brighter faints — biggest legibility win */
 
-  --color-rule: #1f2329;
-  --color-rule-strong: #2a2f37;
+  --color-rule: #2a2f38;        /* visible card border */
+  --color-rule-strong: #3a4150; /* hover border */
 
   --color-good: #34d399;
-  --color-bad: #f87171;
+  --color-bad: #fb7185;
   --color-warn: #fbbf24;
 
-  --color-accent: #f97316;      /* slightly brighter orange to read on dark */
-  --color-accent-soft: #2a1810;
+  --color-accent: #fb923c;      /* slightly brighter orange in dark */
+  --color-accent-soft: #2d1a0e;
 }
 
 html,
@@ -92,7 +92,7 @@ body {
 }
 
 .dark body {
-  background-image: radial-gradient(#1f2329 1px, transparent 1px);
+  background-image: radial-gradient(#23272f 1px, transparent 1px);
 }
 
 /* Tabular nums for everything that displays numbers */
@@ -226,7 +226,7 @@ table {
   text-transform: uppercase;
   letter-spacing: 0.14em;
   color: var(--color-ink-soft);
-  background: #ffffff;
+  background: var(--color-surface);
   transition:
     background 0.12s ease,
     border-color 0.12s ease,
