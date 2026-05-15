@@ -305,6 +305,22 @@ async function tryLoadLive(
     // No live numbers from anyone (every provider was skipped) → draft.
     if (liveResults.length === 0) return null;
 
+    // Derive lastRunAt from the actual Prom data freshness. We probe the
+    // first provider that has a p50 query and ask Prom for the age of
+    // its underlying metric. This is consistent across pages (Prom is the
+    // single source of truth) and reflects real data freshness instead of
+    // ISR cache age. Falls back to `now` only when extraction fails.
+    let lastRunAt = new Date().toISOString();
+    for (const p of spec.providers) {
+      const q = p.queries?.p50;
+      if (!q) continue;
+      const ageSec = await prom.dataAgeSec(q);
+      if (ageSec != null && Number.isFinite(ageSec) && ageSec >= 0) {
+        lastRunAt = new Date(Date.now() - Math.floor(ageSec * 1000)).toISOString();
+        break;
+      }
+    }
+
     return {
       results: liveResults,
       extras: {
@@ -317,7 +333,7 @@ async function tryLoadLive(
         regions: regions as Benchmark["extras"]["regions"],
       },
       sampleSize: totalSamples,
-      lastRunAt: new Date().toISOString(),
+      lastRunAt,
     };
   } catch {
     return null;
