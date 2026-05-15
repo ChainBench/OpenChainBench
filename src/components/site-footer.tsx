@@ -1,12 +1,18 @@
 import Link from "next/link";
+import { SiteLogo } from "@/components/site-logo";
 
 export function SiteFooter() {
   return (
-    <footer className="mt-12 border-t border-rule bg-paper-soft/50">
-      <div className="mx-auto max-w-7xl px-6 py-10">
+    <footer className="mt-20 border-t border-rule bg-surface">
+      <div className="mx-auto max-w-[1400px] px-6 py-12">
         <div className="grid gap-10 md:grid-cols-12">
           <div className="md:col-span-5">
-            <p className="display text-2xl text-ink leading-none">OpenChainBench</p>
+            <div className="flex items-center gap-2">
+              <SiteLogo size={20} />
+              <p className="font-bold tracking-tight text-[15px] text-ink">
+                OpenChainBench
+              </p>
+            </div>
             <p className="mt-3 max-w-md text-sm text-ink-muted leading-relaxed">
               Open, reproducible benchmarks for crypto infrastructure.
               Methodology, specs and raw metrics are public.
@@ -19,8 +25,7 @@ export function SiteFooter() {
           <FooterCol
             title="Read"
             links={[
-              { label: "Overview", href: "/" },
-              { label: "Benchmarks", href: "/#latest" },
+              { label: "Benchmarks", href: "/benchmarks" },
               { label: "Products", href: "/providers" },
               { label: "Methodology", href: "/methodology" },
               { label: "Press kit", href: "/press" },
@@ -48,20 +53,11 @@ export function SiteFooter() {
           />
         </div>
 
-        <p className="mt-12 max-w-3xl text-xs text-ink-muted leading-relaxed border-t border-rule pt-6">
-          Every benchmark is a YAML spec plus a public harness exposing
-          <span className="font-mono text-[0.92em] text-ink-soft"> /metrics</span>.
-          The site queries one shared Prometheus and re-renders every minute.
-          Anyone can submit a benchmark. the{" "}
-          <Link href="/contribute" className="text-ink-soft hover:text-ink underline-offset-4 hover:underline">
-            contribution guide
-          </Link>{" "}
-          walks through it.
-        </p>
-
-        <div className="mt-6 flex flex-wrap items-center justify-between gap-2 text-[11px] uppercase tracking-[0.16em] text-ink-muted">
+        <div className="mt-10 flex flex-wrap items-center justify-between gap-2 text-[11px] uppercase tracking-[0.16em] text-ink-muted border-t border-rule pt-6">
           <span>© {new Date().getFullYear()} OpenChainBench · MIT License</span>
-          <span>Set in Inter Tight · Inter · Source Serif 4 · JetBrains Mono</span>
+          <Link href="/about" className="hover:text-ink transition-colors">
+            About
+          </Link>
         </div>
       </div>
     </footer>
@@ -83,7 +79,7 @@ function FooterCol({
       <ul className="mt-3 space-y-2">
         {links.map((l) => (
           <li key={l.href}>
-            <Link className="text-sm text-ink-soft hover:text-ink lnk" href={l.href}>
+            <Link className="text-sm text-ink-muted hover:text-ink transition-colors" href={l.href}>
               {l.label}
             </Link>
           </li>

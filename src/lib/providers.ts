@@ -42,12 +42,21 @@ export const getProviders = cache(async (): Promise<ProviderProfile[]> => {
   const byKey = new Map<string, ProviderProfile>();
 
   for (const b of benches) {
-    if (b.status !== "live") continue;
-    const ranked = rankProviders(b);
+    // Walk every result in the spec (live or draft). For live benches we
+    // also rank them so the first-place provider gets a +1 win. For
+    // drafts we still register the provider so the /providers index
+    // doesn't disappear when an upstream harness is temporarily down
+    // (which would otherwise hide ~80% of products locally).
+    const ranked = b.status === "live" ? rankProviders(b) : [];
+    const rankBySlug = new Map<string, number>();
+    ranked.forEach((r, idx) => rankBySlug.set(r.slug.toLowerCase(), idx));
     const total = ranked.length;
-    ranked.forEach((r, idx) => {
+
+    b.results.forEach((r) => {
       const key = r.slug.toLowerCase();
       const existing = byKey.get(key);
+      const idx = rankBySlug.get(key);
+      const isRanked = idx !== undefined;
       const appearance: ProviderAppearance = {
         benchmark: {
           slug: b.slug,
@@ -60,7 +69,7 @@ export const getProviders = cache(async (): Promise<ProviderProfile[]> => {
           lastRunAt: b.lastRunAt,
         },
         result: r,
-        rank: idx + 1,
+        rank: isRanked ? (idx as number) + 1 : 0,
         totalRanked: total,
       };
       if (existing) {
@@ -68,7 +77,7 @@ export const getProviders = cache(async (): Promise<ProviderProfile[]> => {
         if (!existing.categories.includes(b.category)) {
           existing.categories.push(b.category);
         }
-        if (idx === 0) existing.wins += 1;
+        if (isRanked && idx === 0) existing.wins += 1;
         if (!existing.type && r.type) existing.type = r.type;
       } else {
         byKey.set(key, {
@@ -76,7 +85,7 @@ export const getProviders = cache(async (): Promise<ProviderProfile[]> => {
           name: r.name,
           type: r.type,
           appearances: [appearance],
-          wins: idx === 0 ? 1 : 0,
+          wins: isRanked && idx === 0 ? 1 : 0,
           categories: [b.category],
         });
       }
