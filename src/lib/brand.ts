@@ -49,31 +49,31 @@ const BRANDS: Record<string, Brand> = {
   "ap-southeast": { color: "#3F8F66" },
   global: { color: "#7a7166" },
 
-  // ─── Aggregators / providers (distinct colors that read on both modes) ───
-  mobula: { color: "#ea580c" },
-  codex: { color: "#84cc16" },
-  geckoterminal: { color: "#22c55e" },
-  jupiter: { color: "#f97316" },
-  helius: { color: "#a855f7" },
-  moralis: { color: "#3b82f6" },
-  blockscout: { color: "#0ea5e9" },
-  tonapi: { color: "#0098EA" },
-  stellarexpert: { color: "#06b6d4" },
-  xrpscan: { color: "#0085C3" },
-  oli: { color: "#94a3b8" },
-  walletexplorer: { color: "#facc15" },
+  // ─── Aggregators / providers (bright, saturated — read on both modes) ───
+  mobula: { color: "#FF6B35" },        // vivid orange
+  codex: { color: "#D6FF00" },         // electric lime (matches brand)
+  geckoterminal: { color: "#8B5CF6" }, // vivid violet (gecko brand)
+  jupiter: { color: "#FF7A00" },       // amber-orange
+  helius: { color: "#FF4D8D" },        // hot pink (helius brand)
+  moralis: { color: "#5B89FF" },       // azure
+  blockscout: { color: "#3DD7C8" },    // bright cyan
+  tonapi: { color: "#26A4F2" },        // ton-blue
+  stellarexpert: { color: "#00D1FF" }, // electric sky
+  xrpscan: { color: "#42B9F5" },       // bright sky
+  oli: { color: "#FFC857" },           // sun yellow
+  walletexplorer: { color: "#F5A623" },// gold
 
   // ─── Bridges / relays ───
-  debridge: { color: "#ea580c" },
-  lifi: { color: "#eab308" },
-  relay: { color: "#14b8a6" },
+  debridge: { color: "#FFB347" },      // pumpkin
+  lifi: { color: "#F5C518" },          // saturated yellow
+  relay: { color: "#26D49B" },         // mint
 
   // ─── Trading / perps ───
-  hyperliquid: { color: "#22d3ee" },
-  dydx: { color: "#a78bfa" },
-  gmx: { color: "#3b82f6" },
-  lighter: { color: "#f43f5e" },
-  gains: { color: "#10b981" },
+  hyperliquid: { color: "#22D3EE" },   // cyan
+  dydx: { color: "#C084FC" },          // bright violet
+  gmx: { color: "#4F8BFF" },           // royal blue
+  lighter: { color: "#FF2E63" },       // hot magenta
+  gains: { color: "#10E2A4" },         // emerald
 };
 
 const REGION_VALUES = new Set(["us-east", "eu-west", "ap-southeast", "global"]);

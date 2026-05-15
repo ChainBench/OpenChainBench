@@ -10,15 +10,17 @@
 
 import { brandColor } from "./brand";
 
+// Bright, saturated fallback palette — reads on light + dark backgrounds
+// with high contrast. Used when a provider isn't in the brand table.
 const PALETTE = [
-  "#64748b", // slate
-  "#a16207", // amber
-  "#0d9488", // teal
-  "#7c3aed", // violet
-  "#16a34a", // green
-  "#c2410c", // rust
-  "#db2777", // pink
-  "#0284c7", // sky
+  "#FF6B35", // vivid orange
+  "#8B5CF6", // violet
+  "#26D49B", // mint
+  "#FFC857", // gold
+  "#5B89FF", // azure
+  "#FF4D8D", // hot pink
+  "#22D3EE", // cyan
+  "#D6FF00", // electric lime
 ];
 
 /** Return a color for the i-th unbranded line. */
