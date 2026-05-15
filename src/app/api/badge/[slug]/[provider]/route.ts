@@ -11,10 +11,14 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { getBenchmark } from "@/data/benchmarks";
 import { fmtUnit } from "@/lib/format";
+import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 
 export const revalidate = 300;
 
 type Params = { slug: string; provider: string };
+
+const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,79}$/;
+const PROVIDER_RE = /^[a-z0-9][a-z0-9-]{0,63}$/;
 
 const H = 36;
 // Width is fixed but generous so most benchmark titles fit without
@@ -52,13 +56,25 @@ function truncate(s: string, max: number): string {
 }
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<Params> },
 ) {
+  const rl = rateLimit(clientKey(req, "badge"), 120, 60);
+  if (!rl.ok) return tooManyRequests(rl.retryAfterSec);
+
   const { slug, provider } = await params;
+  if (!SLUG_RE.test(slug) || !PROVIDER_RE.test(provider)) {
+    return new NextResponse("bad_input", {
+      status: 400,
+      headers: { "cache-control": "public, s-maxage=60" },
+    });
+  }
   const b = await getBenchmark(slug);
   if (!b || b.status !== "live") {
-    return new NextResponse("not found", { status: 404 });
+    return new NextResponse("not found", {
+      status: 404,
+      headers: { "cache-control": "public, s-maxage=60" },
+    });
   }
   const r = rankOf(b.results, provider, b.higherIsBetter);
   if (!r) return new NextResponse("not found", { status: 404 });

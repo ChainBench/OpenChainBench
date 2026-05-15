@@ -2,6 +2,7 @@ import { getBenchmarks } from "@/data/benchmarks";
 import { SITE } from "@/data/site";
 import { fmtUnit } from "@/lib/format";
 import { fieldValue, headlineSentence, leader } from "@/lib/citation";
+import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const revalidate = 60;
@@ -18,8 +19,14 @@ export const revalidate = 60;
  *  - Less precise than /api/stat/[slug] (no sparkline numbers, no
  *    per-region breakdown) but covers all 8 benches in one round-trip.
  */
-export async function GET() {
-  const benches = await getBenchmarks();
+export async function GET(req: Request) {
+  const r = rateLimit(clientKey(req, "llm-context"), 30, 60);
+  if (!r.ok) {
+    const tooMany = tooManyRequests(r.retryAfterSec);
+    return new Response(await tooMany.text(), { status: tooMany.status, headers: tooMany.headers });
+  }
+
+  const benches = (await getBenchmarks()).filter((b) => b.status === "live");
   const now = new Date().toISOString();
 
   const lines: string[] = [];
