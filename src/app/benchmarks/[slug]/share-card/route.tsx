@@ -471,9 +471,12 @@ export async function GET(
       : "ranking";
 
   // ─── Snapshot: multi-select via ?providers=a,b,c ─────────────────────
+  // Cap both raw length and result count so a 50KB `?providers=` cannot
+  // amplify the in-memory filter pass beyond what a normal share-card
+  // request needs. 16 providers is more than any current bench has.
   const providersParam = url.searchParams.get("providers");
   const providerSlugs = providersParam
-    ? providersParam.split(",").filter(Boolean)
+    ? providersParam.slice(0, 1024).split(",").filter(Boolean).slice(0, 16)
     : null;
   const filtered =
     providerSlugs && providerSlugs.length > 0
