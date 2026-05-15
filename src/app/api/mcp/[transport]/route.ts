@@ -27,15 +27,29 @@ export const runtime = "nodejs";
 
 /** Reject PromQL that enumerates the metric catalog or matches all series.
  *  These are the queries that turn the public MCP endpoint into a data-exfil
- *  channel for series the site never intended to publish. */
+ *  channel for series the site never intended to publish, including the
+ *  *.railway.internal hostnames that leak via the `instance` label. */
 function isEnumerationQuery(q: string): boolean {
-  // `{__name__=~...}` or `{__name__!=...}` matches against the metric name
-  // itself, used to walk every metric in the cluster.
+  // Strip JS whitespace + non-ASCII space variants (NBSP, en/em, ZWSP,
+  // ideographic) so `{ }` etc. cant slip the empty-selector check.
+  const compact = q.replace(new RegExp("[\\s\\u00a0\\u1680\\u2000-\\u200b\\u202f\\u205f\\u3000\\ufeff]+", "g"), "");
+
+  // 1. Any regex/negative match against __name__ — used to walk metric names.
   if (/__name__\s*[=!]~/.test(q)) return true;
-  // Empty/whitespace-only selector `{}` matches every series.
-  if (/\{\s*\}/.test(q)) return true;
-  // `{__name__=".+"}` or `{__name__="(.+)"}` shapes that select all.
+  // 2. Empty/whitespace-only selector — matches every series in the cluster.
+  if (/\{\s*\}/.test(q) || compact.includes("{}")) return true;
+  // 3. Catch-all literal __name__ matchers.
   if (/__name__\s*=\s*"(\.\+|\.\*|\(.+\))"/.test(q)) return true;
+  // 4. Negative-equality / regex enumeration via any other catalog label.
+  //    `{job=~".+"}`, `{instance!=""}`, `{__name__!=""}` — these are the
+  //    paths that returned the bridge-monitor.railway.internal hostname in
+  //    the audit. Reject any selector that has a regex or `!=""` test
+  //    against `job`, `instance`, `host`, `__name__`, `__address__`.
+  const labelEnum = /\b(__name__|__address__|job|instance|host)\s*(?:!?~|!=\s*""|=~)/;
+  if (labelEnum.test(q)) return true;
+  // 5. Topology fingerprinting via `group by` / `count by` over no
+  //    concrete __name__ matcher.
+  if (/\b(?:group|count)\s+by\s*\(/.test(q)) return true;
   return false;
 }
 
