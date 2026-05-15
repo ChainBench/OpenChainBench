@@ -10,6 +10,7 @@ import {
   LAG_GREEN_MS,
   WHALE_USD,
 } from "@/lib/live/config";
+import { explorerTxUrl } from "@/lib/live/explorer";
 import { fmtLag, fmtMoney } from "@/lib/live/format";
 import type { SwapEvent } from "@/lib/live/types";
 
@@ -68,9 +69,10 @@ const CompactRow = memo(function CompactRow({ s }: { s: SwapEvent }) {
       : "text-ink";
   const lagClass =
     lag < LAG_GREEN_MS ? "text-good" : lag < LAG_AMBER_MS ? "text-warn" : "text-bad";
+  const href = explorerTxUrl(s.chain, s.hash);
 
-  return (
-    <tr className="border-b border-rule/40">
+  const cells = (
+    <>
       <td className="pl-4 pr-1 py-1.5 align-middle">
         {meta ? (
           <ProviderLogo slug={meta.slug} name={meta.display} size={14} />
@@ -88,6 +90,19 @@ const CompactRow = memo(function CompactRow({ s }: { s: SwapEvent }) {
       <td className={`pl-1 pr-4 py-1.5 text-right whitespace-nowrap ${lagClass}`}>
         {fmtLag(lag)}
       </td>
+    </>
+  );
+
+  if (!href) {
+    return <tr className="border-b border-rule/40">{cells}</tr>;
+  }
+  return (
+    <tr
+      className="border-b border-rule/40 cursor-pointer hover:bg-paper-soft/60 transition-colors"
+      onClick={() => window.open(href, "_blank", "noopener,noreferrer")}
+      title="View transaction on explorer"
+    >
+      {cells}
     </tr>
   );
 });
