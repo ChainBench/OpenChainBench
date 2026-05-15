@@ -32,6 +32,12 @@ export function ProviderLogo({
     return <Chip slug={slug} name={name} size={size} className={className} />;
   }
 
+  // A handful of brand marks are dark-on-transparent and disappear on the
+  // dark-mode page background. Force a white coaster + thin ring for those
+  // specific slugs so they stay legible without altering the look of every
+  // other (already-colored) logo.
+  const needsLightChip = NEEDS_LIGHT_CHIP.has(slug.toLowerCase());
+
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
@@ -45,11 +51,22 @@ export function ProviderLogo({
         width: size,
         height: size,
         borderRadius: "50%",
-        background: "var(--color-paper)",
+        background: needsLightChip ? "#ffffff" : "var(--color-paper)",
+        boxShadow: needsLightChip ? "0 0 0 1px rgba(15, 23, 42, 0.08)" : undefined,
       }}
     />
   );
 }
+
+const NEEDS_LIGHT_CHIP = new Set([
+  "mobula",
+  "lighter",
+  "stellar",
+  "stellarexpert",
+  "relay",
+  "debridge",
+  "tonapi",
+]);
 
 function Chip({
   slug,
