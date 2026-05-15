@@ -37,10 +37,14 @@ export async function generateMetadata({
   const b = await getBenchmark(slug);
   if (!b) return {};
   const metaTitle = b.seoTitle ?? b.title;
-  // Static description so Google does not see the meta change every hour
-  // when the leader's p50 moves. Live figures are visible in the page
-  // body, which Google indexes for snippet rewriting anyway.
-  const description = b.subtitle;
+  // Headline ("Mobula leads head lag at 0.8 s (p50, 24h) on ...") prepended
+  // to the static subtitle. The leader rarely changes day-to-day, so the
+  // description stays mostly stable but ships a citable figure to AI
+  // search engines (Perplexity, ChatGPT Search, Google AI Overview) and
+  // raises CTR on classic search snippets. Falls back to subtitle when
+  // the bench is still awaiting samples.
+  const sentence = headlineSentence(b);
+  const description = sentence ? `${sentence} ${b.subtitle}` : b.subtitle;
   const url = `${SITE.url}/benchmarks/${b.slug}`;
   return {
     title: metaTitle,
