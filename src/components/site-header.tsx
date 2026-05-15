@@ -1,55 +1,59 @@
 import Link from "next/link";
-import Image from "next/image";
+import { SiteBanner } from "@/components/site-banner";
+import { SiteLogo } from "@/components/site-logo";
+import { ThemeToggle } from "@/components/theme-toggle";
+
+function GithubIcon({ size = 15 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="currentColor" aria-hidden>
+      <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
+    </svg>
+  );
+}
 
 const NAV = [
+  { href: "/benchmarks", label: "Benchmarks" },
   { href: "/providers", label: "Products" },
   { href: "/methodology", label: "Methodology" },
   { href: "/contribute", label: "Contribute" },
-  { href: "/mcp", label: "MCP" },
 ];
 
 export function SiteHeader() {
   return (
-    <header className="border-b border-rule bg-paper/85 backdrop-blur-md sticky top-0 z-40">
-      {/* Masthead. logo · nav · live status · github */}
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 h-14 flex items-center gap-6">
-        <Link href="/" className="flex items-center gap-2 shrink-0">
-          <Image
-            src="/logo.png"
-            alt="OpenChainBench"
-            width={28}
-            height={28}
-            priority
-            className="h-7 w-7 object-contain"
-          />
-          <span className="display text-[1.25rem] text-ink leading-none">
-            OpenChainBench
-          </span>
-        </Link>
+    <div className="sticky top-0 z-50 flex flex-col font-sans">
+      <SiteBanner />
+      <header className="border-b border-rule py-4 md:py-5 px-6 shrink-0 text-sm bg-surface relative">
+        <div className="max-w-[1400px] mx-auto flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-2 group">
+            <SiteLogo size={22} />
+            <span className="font-bold tracking-tight text-[17px] text-ink">
+              OpenChainBench
+            </span>
+          </Link>
 
-        <nav className="hidden md:block ml-auto">
-          <ul className="flex items-center gap-5">
+          <nav className="hidden md:flex items-center gap-8 text-ink-muted font-medium">
             {NAV.map((item) => (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  className="text-sm text-ink-soft hover:text-ink transition-colors"
-                >
-                  {item.label}
-                </Link>
-              </li>
+              <Link
+                key={item.href}
+                href={item.href}
+                className="hover:text-ink transition-colors"
+              >
+                {item.label}
+              </Link>
             ))}
-          </ul>
-        </nav>
-
-        <a
-          href="https://github.com/OpenChainBench/OpenChainBench"
-          className="hidden sm:inline text-sm text-ink-muted hover:text-ink transition-colors shrink-0"
-          aria-label="View source on GitHub"
-        >
-          GitHub
-        </a>
-      </div>
-    </header>
+            <span className="text-rule-strong">|</span>
+            <a
+              href="https://github.com/OpenChainBench/OpenChainBench"
+              className="inline-flex items-center gap-1.5 hover:text-ink transition-colors"
+              aria-label="View source on GitHub"
+            >
+              <GithubIcon size={15} />
+              GitHub
+            </a>
+            <ThemeToggle />
+          </nav>
+        </div>
+      </header>
+    </div>
   );
 }
