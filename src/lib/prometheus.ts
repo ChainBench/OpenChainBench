@@ -48,6 +48,22 @@ export class Prometheus {
     }>;
   }
 
+  /** Age in seconds of the most recent sample for the metric used in the
+   *  given query. Derived by extracting the first raw metric identifier
+   *  from the query and asking Prom for `time() - max(timestamp(<metric>))`.
+   *
+   *  Returns null when the metric name cannot be extracted (unusual query
+   *  shape) or when Prom has no samples for it. Callers should fall back
+   *  to a sensible default in that case.
+   *
+   *  This is a single instant query, shared cache-friendly. one extra
+   *  round-trip per benchmark per ISR cycle. */
+  async dataAgeSec(promql: string): Promise<number | null> {
+    const metric = extractMetricName(promql);
+    if (!metric) return null;
+    return this.scalar(`scalar(time() - max(timestamp(${metric})))`);
+  }
+
   /** Convenience: scalar number from any instant query, or null if empty/error. */
   async scalar(promql: string): Promise<number | null> {
     try {
@@ -122,6 +138,38 @@ export class Prometheus {
       clearTimeout(timeout);
     }
   }
+}
+
+/** PromQL built-in functions and keywords we should skip when scanning
+ *  for the first raw metric name in a query string. */
+const PROMQL_RESERVED = new Set([
+  "rate", "irate", "increase", "delta", "idelta", "deriv", "predict_linear",
+  "sum", "avg", "max", "min", "count", "count_values", "stddev", "stdvar",
+  "quantile", "topk", "bottomk", "group", "absent", "present",
+  "quantile_over_time", "avg_over_time", "max_over_time", "min_over_time",
+  "sum_over_time", "count_over_time", "stddev_over_time", "stdvar_over_time",
+  "last_over_time", "present_over_time", "changes", "resets",
+  "time", "timestamp", "scalar", "vector", "clamp_max", "clamp_min", "clamp",
+  "abs", "floor", "ceil", "round", "exp", "ln", "log2", "log10", "sqrt",
+  "on", "ignoring", "group_left", "group_right", "by", "without", "bool",
+  "and", "or", "unless", "offset", "atan", "cos", "sin", "tan",
+]);
+
+/** Best-effort extraction of the first raw metric identifier from a PromQL
+ *  query. Returns null when nothing recognisable is found. Used by
+ *  `dataAgeSec` to build a freshness probe without needing the spec to
+ *  declare it explicitly. */
+function extractMetricName(promql: string): string | null {
+  const re = /\b([a-zA-Z_:][a-zA-Z0-9_:]*)\b/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(promql)) !== null) {
+    const name = m[1];
+    if (PROMQL_RESERVED.has(name)) continue;
+    // Skip numeric-prefixed false positives (quantile params, etc.).
+    if (/^\d/.test(name)) continue;
+    return name;
+  }
+  return null;
 }
 
 function mergeSignals(a: AbortSignal, b: AbortSignal): AbortSignal {
