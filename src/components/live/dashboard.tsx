@@ -104,7 +104,6 @@ function emptySeries(): SeriesByRange {
 export function LiveDashboard() {
   const [stats, setStats] = useState<GlobalView | null>(null);
   const [recent, setRecent] = useState<SwapEvent[]>([]);
-  const [sessionSwaps, setSessionSwaps] = useState(0);
   const [connected, setConnected] = useState(false);
   const [series, setSeries] = useState<SeriesByRange>(emptySeries);
   const [pops, setPops] = useState<ChartPop[]>([]);
@@ -265,7 +264,6 @@ export function LiveDashboard() {
             const next = [s, ...prev];
             return next.length > MAX_FEED ? next.slice(0, MAX_FEED) : next;
           });
-          setSessionSwaps((n) => n + 1);
 
           const serverNow = Date.now() + serverOffsetRef.current;
           const isHidden = hiddenChainsRef.current.has(meta.key);
@@ -349,7 +347,6 @@ export function LiveDashboard() {
       <LiveTicker
         connected={connected}
         stats={stats}
-        sessionSwaps={sessionSwaps}
         expanded={expanded}
         onToggle={toggleExpanded}
       />

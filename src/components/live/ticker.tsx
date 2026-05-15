@@ -2,28 +2,36 @@
 
 import { memo } from "react";
 import { LiveDot } from "@/components/live-dot";
-import { fmtCount, fmtMoney } from "@/lib/live/format";
+import { LiveNumber } from "@/components/live/live-number";
+import { fmtCountFull, fmtMoneyFull } from "@/lib/live/format";
 import type { GlobalView } from "@/lib/live/types";
 
 /**
  * Single-row live ticker. Always visible at the top of the home page —
  * clicking the toggle reveals the streamed-volume chart + feed below.
+ *
+ * Numbers are shown in full (commas, every digit visible) and tick
+ * between relay snapshots via LiveNumber, so the rolling 24h counters
+ * feel alive instead of refreshing in once-per-second steps.
+ *
+ * Data sources (Mobula REST, polled by miniapps/ocb-stream-relay):
+ *   • vol24h   — sum of trading volume across all chains/DEXes (lighthouse)
+ *   • trades24h — total swap count over the last 24h (lighthouse)
+ *   • mcap     — sum of market_cap from /api/1/all = total crypto market cap
  */
 export const LiveTicker = memo(function LiveTicker({
   connected,
   stats,
-  sessionSwaps,
   expanded,
   onToggle,
 }: {
   connected: boolean;
   stats: GlobalView | null;
-  sessionSwaps: number;
   expanded: boolean;
   onToggle: () => void;
 }) {
   return (
-    <div className="card flex flex-wrap items-center gap-x-5 gap-y-1 px-4 py-2 text-xs">
+    <div className="card flex flex-wrap items-center gap-x-6 gap-y-1.5 px-4 py-2.5 text-xs">
       <div className="flex items-center gap-2">
         {connected ? (
           <LiveDot className="h-2 w-2" />
@@ -38,13 +46,22 @@ export const LiveTicker = memo(function LiveTicker({
         </span>
       </div>
 
-      <Stat label="Vol 24h" value={fmtMoney(stats?.vol24h)} />
-      <Stat label="Txs 24h" value={fmtCount(stats?.trades24h)} />
-      <Stat label="Mcap" value={fmtMoney(stats?.mcap)} />
       <Stat
-        label="Streamed"
-        value={sessionSwaps.toLocaleString()}
-        accent={sessionSwaps > 0}
+        label="Onchain volume · 24h"
+        value={stats?.vol24h}
+        format={fmtMoneyFull}
+        monotonic
+      />
+      <Stat
+        label="Onchain txs · 24h"
+        value={stats?.trades24h}
+        format={fmtCountFull}
+        monotonic
+      />
+      <Stat
+        label="Total crypto mcap"
+        value={stats?.mcap}
+        format={fmtMoneyFull}
       />
 
       <button
@@ -61,22 +78,23 @@ export const LiveTicker = memo(function LiveTicker({
 function Stat({
   label,
   value,
-  accent,
+  format,
+  monotonic,
 }: {
   label: string;
-  value: string;
-  accent?: boolean;
+  value: number | undefined;
+  format: (n: number | undefined) => string;
+  monotonic?: boolean;
 }) {
   return (
-    <div className="flex items-baseline gap-1.5 min-w-0">
-      <span className="label-mono text-ink-faint">{label}</span>
-      <span
-        className={`font-mono tabular text-[12px] ${
-          accent ? "text-good" : "text-ink-soft"
-        }`}
-      >
-        {value}
-      </span>
+    <div className="flex items-baseline gap-2 min-w-0">
+      <span className="label-mono text-ink-faint shrink-0">{label}</span>
+      <LiveNumber
+        value={value}
+        format={format}
+        monotonic={monotonic}
+        className="font-mono tabular text-[12px] text-ink-soft"
+      />
     </div>
   );
 }
