@@ -33,9 +33,9 @@ async function main() {
   const raw = await fs.readFile(path.join(SPECS_DIR, file), "utf8");
   const spec = SpecSchema.parse(yaml.load(raw));
 
-  const url = spec.prometheus?.url ?? process.env.PROMETHEUS_URL;
+  const url = process.env.PROMETHEUS_URL;
   if (!url) {
-    console.error("No prometheus.url in spec and PROMETHEUS_URL unset.");
+    console.error("PROMETHEUS_URL env var is required.");
     process.exit(1);
   }
 
