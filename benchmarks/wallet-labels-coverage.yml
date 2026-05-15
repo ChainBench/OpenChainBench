@@ -39,7 +39,6 @@ findings: []
 source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/wallet-labels
 
 prometheus:
-  url: https://prometheus-production-0859.up.railway.app
   window: 24h
 
 # Chain selector. tabs at the top of the page. Server injects

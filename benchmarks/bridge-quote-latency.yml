@@ -31,7 +31,6 @@ findings: []
 source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/bridge-monitor
 
 prometheus:
-  url: https://prometheus-production-9ffe.up.railway.app
   window: 24h
 
 # Real metrics exposed by the bridge-monitor harness:
