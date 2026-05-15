@@ -167,7 +167,7 @@ const mcpHandler = createMcpHandler(
           "Returns one line per bench:",
           "  { slug, title, category, metric, unit, value, leader, headline, url, asOf }",
           "",
-          "Drafts are filtered out — only live benchmarks appear.",
+          "Drafts are filtered out: only live benchmarks appear.",
         ].join("\n"),
         inputSchema: {},
       },
@@ -282,7 +282,7 @@ const mcpHandler = createMcpHandler(
         title: "Run a PromQL query (scoped to benchmark metric namespaces)",
         description: [
           "Direct PromQL passthrough for advanced questions that don't map cleanly",
-          "to `list_benchmarks` / `get_benchmark` — e.g. \"what was Mobula's p50",
+          "to `list_benchmarks` / `get_benchmark`, e.g. \"what was Mobula's p50",
           "head-lag yesterday at 14:00 UTC\" or \"plot bridge fees over the last hour\".",
           "",
           "Prefer the higher-level tools first; reach for this when you need:",
@@ -377,7 +377,7 @@ const mcpHandler = createMcpHandler(
           return {
             resources: benches.map((b) => ({
               uri: `openchainbench://benchmark/${b.slug}`,
-              name: `${b.title} — ${b.category}`,
+              name: `${b.title} · ${b.category}`,
               description: headlineSentence(b),
               mimeType: "text/markdown",
             })),
@@ -442,7 +442,7 @@ const mcpHandler = createMcpHandler(
           for (let i = 0; i < ranked.length; i++) {
             const r = ranked[i];
             md.push(
-              `${i + 1}. **${r.name}** — ${fmtUnit(r.ms.p50, b.unit)} (p99 ${fmtUnit(r.ms.p99, b.unit)}, success ${r.successRate.toFixed(1)}%, sample ${r.sampleSize ?? "n/a"})`,
+              `${i + 1}. **${r.name}**: ${fmtUnit(r.ms.p50, b.unit)} (p99 ${fmtUnit(r.ms.p99, b.unit)}, success ${r.successRate.toFixed(1)}%, sample ${r.sampleSize ?? "n/a"})`,
             );
           }
           md.push("");
