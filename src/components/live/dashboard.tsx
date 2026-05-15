@@ -10,7 +10,6 @@ import {
   POP_ANCHOR_X_PCT,
   POP_DURATION_MS,
   POP_MIN_USD,
-  POP_RANGE,
   POP_STACK_OFFSET_PCT,
   RELAY_WS_URL,
   STORAGE_HIDDEN_CHAINS,
@@ -189,7 +188,10 @@ export function LiveDashboard() {
               };
             });
             if (!isHidden && (s.usd || 0) >= POP_MIN_USD) {
-              spawnPop(next[POP_RANGE].buckets, meta, s);
+              // Always anchor pops from the 10m view. anchor maths stays
+              // simple and the pop is a floaty bubble so a minor offset
+              // on longer ranges does not matter visually.
+              spawnPop(next["10m"].buckets, meta, s);
             }
             return next;
           });
@@ -243,8 +245,6 @@ export function LiveDashboard() {
   }, []);
 
   const activeSeries = useMemo(() => series[range], [series, range]);
-  // Pops only make sense on the live (10m) view. Mute them on longer ranges.
-  const visiblePops = range === POP_RANGE ? pops : [];
 
   return (
     <>
@@ -260,7 +260,7 @@ export function LiveDashboard() {
           series={activeSeries}
           range={range}
           onRangeChange={setRange}
-          pops={visiblePops}
+          pops={pops}
           recent={recent}
           serverOffsetMs={serverOffsetMs}
           hiddenChains={hiddenChains}
