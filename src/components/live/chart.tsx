@@ -41,13 +41,6 @@ type Props = {
   serverOffsetMs: number;
   hiddenChains: Set<string>;
   onToggleChain: (key: string) => void;
-  /**
-   * "card" (default) wraps the chart + feed in the original .card section
-   * used on the home page. "embed" returns the chart-only inner column
-   * (legend + canvas, no header, no feed) so a parent (e.g. /networks)
-   * can compose its own card chrome around it.
-   */
-  variant?: "card" | "embed";
 };
 
 export function LiveChart({
@@ -59,7 +52,6 @@ export function LiveChart({
   serverOffsetMs,
   hiddenChains,
   onToggleChain,
-  variant = "card",
 }: Props) {
   const [clientNow, setClientNow] = useState(() => Date.now());
   useEffect(() => {
@@ -80,30 +72,6 @@ export function LiveChart({
 
   const empty = series.buckets.length === 0;
   const leftLabel = fmtSpan(effectiveWindowMs);
-
-  if (variant === "embed") {
-    return (
-      <div className="min-w-0">
-        <ChainLegend
-          cumPerChain={cumPerChain}
-          hiddenChains={hiddenChains}
-          onToggleChain={onToggleChain}
-        />
-        <ChartCanvas
-          paths={paths}
-          latest={latest}
-          yMax={yMax}
-          hiddenChains={hiddenChains}
-          pops={pops}
-          empty={empty}
-          leftLabel={leftLabel}
-          hoverPoints={hoverPoints}
-          yScale={yScale}
-          nowMs={serverNow}
-        />
-      </div>
-    );
-  }
 
   return (
     <section className="card mt-4 relative overflow-hidden">
@@ -149,7 +117,7 @@ export function LiveChart({
 
 /* ─────────────── inline range picker ─────────────── */
 
-export function RangePicker({
+function RangePicker({
   range,
   onRangeChange,
 }: {

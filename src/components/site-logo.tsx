@@ -18,7 +18,7 @@ export function SiteLogo({ size = 22 }: { size?: number }) {
         <ellipse cx="45" cy="50" rx="22" ry="40" fill="black" />
         <rect x="45" y="38" width="55" height="24" fill="black" />
       </mask>
-      <circle cx="45" cy="50" r="45" fill="#0f172a" mask="url(#c-mask-header)" />
+      <circle cx="45" cy="50" r="45" fill="var(--color-ink)" mask="url(#c-mask-header)" />
       <path d="M 65 0 L 100 0 L 100 35 Z" fill="#A0A0A0" />
       <path d="M 65 100 L 100 100 L 100 65 Z" fill="#A0A0A0" />
     </svg>

@@ -53,7 +53,7 @@ export function BenchmarkCard({ benchmark }: { benchmark: Benchmark }) {
             <span
               key={r.slug}
               title={r.name}
-              className="inline-flex items-center justify-center w-6 h-6 rounded-full border border-rule text-[10px] font-semibold text-ink-muted bg-white"
+              className="inline-flex items-center justify-center w-6 h-6 rounded-full border border-rule text-[10px] font-semibold text-ink-muted bg-surface"
             >
               {r.name.charAt(0).toUpperCase()}
             </span>

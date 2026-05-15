@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
-import { LetterAvatar } from "@/components/letter-avatar";
+import { ProviderLogo } from "@/components/provider-logo";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
 import type { Benchmark } from "@/types/benchmark";
 
@@ -91,7 +91,7 @@ export function ProvidersTable({ providers }: { providers: Row[] }) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search products..."
-            className="w-full pl-9 pr-12 py-2 text-sm bg-white border border-rule rounded-md focus:outline-none focus:border-ink/40 placeholder:text-ink-faint transition-colors"
+            className="w-full pl-9 pr-12 py-2 text-sm bg-surface border border-rule rounded-md focus:outline-none focus:border-ink/40 placeholder:text-ink-faint transition-colors"
           />
           <span className="absolute right-2 hidden sm:inline-flex items-center font-mono text-[10px] tracking-[0.12em] text-ink-faint border border-rule rounded px-1.5 py-0.5 pointer-events-none">
             ⌘K
@@ -118,7 +118,7 @@ export function ProvidersTable({ providers }: { providers: Row[] }) {
                 href={`/providers/${p.slug}`}
                 className="group flex items-center gap-4 py-5 px-2 hover:bg-paper-soft/40 transition-colors"
               >
-                <LetterAvatar slug={p.slug} name={p.name} size={52} />
+                <ProviderLogo slug={p.slug} name={p.name} size={52} />
 
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">

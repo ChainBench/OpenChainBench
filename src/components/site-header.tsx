@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { SiteBanner } from "@/components/site-banner";
 import { SiteLogo } from "@/components/site-logo";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 function GithubIcon({ size = 15 }: { size?: number }) {
   return (
@@ -22,7 +23,7 @@ export function SiteHeader() {
   return (
     <div className="sticky top-0 z-50 flex flex-col font-sans">
       <SiteBanner />
-      <header className="border-b border-rule py-4 md:py-5 px-6 shrink-0 text-sm bg-white relative">
+      <header className="border-b border-rule py-4 md:py-5 px-6 shrink-0 text-sm bg-surface relative">
         <div className="max-w-[1400px] mx-auto flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2 group">
             <SiteLogo size={22} />
@@ -50,6 +51,7 @@ export function SiteHeader() {
               <GithubIcon size={15} />
               GitHub
             </a>
+            <ThemeToggle />
           </nav>
         </div>
       </header>

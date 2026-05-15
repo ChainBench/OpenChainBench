@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   /* Page surfaces — white with subtle radial-dot pattern applied on body */
   --color-paper: #ffffff;
@@ -30,9 +32,6 @@
   --color-accent: #ea580c;
   --color-accent-soft: #fef3ec;
 
-  /* Highlight wash — used in hover/focus */
-  --color-highlight: #f8fafc;
-
   --font-sans:
     var(--font-inter), "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
   --font-display:
@@ -49,6 +48,33 @@
   color-scheme: light;
 }
 
+.dark {
+  color-scheme: dark;
+
+  --color-paper: #0a0a0b;       /* near-black background */
+  --color-paper-soft: #141417;  /* card hover / soft section */
+  --color-surface: #141417;     /* card background — slightly elevated */
+
+  --color-banner: #1a1c1f;
+  --color-banner-ink: #cbd5e1;
+  --color-banner-link: #38bdf8;
+
+  --color-ink: #f1f5f9;         /* primary text */
+  --color-ink-soft: #cbd5e1;
+  --color-ink-muted: #94a3b8;
+  --color-ink-faint: #64748b;
+
+  --color-rule: #1f2329;
+  --color-rule-strong: #2a2f37;
+
+  --color-good: #34d399;
+  --color-bad: #f87171;
+  --color-warn: #fbbf24;
+
+  --color-accent: #f97316;      /* slightly brighter orange to read on dark */
+  --color-accent-soft: #2a1810;
+}
+
 html,
 body {
   background: var(--color-paper);
@@ -63,6 +89,10 @@ body {
   /* Radial dot pattern — same as target design */
   background-image: radial-gradient(#e5e5e5 1px, transparent 1px);
   background-size: 16px 16px;
+}
+
+.dark body {
+  background-image: radial-gradient(#1f2329 1px, transparent 1px);
 }
 
 /* Tabular nums for everything that displays numbers */
@@ -161,15 +191,6 @@ table {
 }
 .ledger tbody tr:hover td {
   background: rgba(15, 23, 42, 0.018);
-}
-
-/* Live feed insert-flash */
-.feed-fresh td {
-  animation: feed-fresh-flash 800ms ease-out;
-}
-@keyframes feed-fresh-flash {
-  0%   { background: rgba(234, 88, 12, 0.10); }
-  100% { background: transparent; }
 }
 
 /* Mono section labels */
