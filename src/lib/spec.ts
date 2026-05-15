@@ -102,6 +102,8 @@ export const loadBenchmark = cache(async function loadBenchmark(
   return loadBenchmarkFiltered(slug, sig);
 });
 
+export const getSpecs = (): Promise<Spec[]> => loadSpecs();
+
 const loadSpecs = cache(async (): Promise<Spec[]> => {
   let files: string[] = [];
   try {
