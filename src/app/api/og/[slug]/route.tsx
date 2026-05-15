@@ -3,10 +3,13 @@ import { getBenchmark } from "@/data/benchmarks";
 import { SITE } from "@/data/site";
 import { fmtUnit } from "@/lib/format";
 import { fieldValue, leader, sparklineFor } from "@/lib/citation";
+import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const contentType = "image/png";
 export const size = { width: 1200, height: 630 };
+
+const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,79}$/;
 
 /**
  * 1200×630 PNG OG image with the current value, leader and a sparkline,
@@ -15,12 +18,26 @@ export const size = { width: 1200, height: 630 };
  * makes every screenshot a backlink.
  */
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ slug: string }> },
 ) {
+  const r = rateLimit(clientKey(req, "og"), 60, 60);
+  if (!r.ok) return tooManyRequests(r.retryAfterSec);
+
   const { slug } = await params;
+  if (!SLUG_RE.test(slug)) {
+    return new Response("bad_slug", {
+      status: 400,
+      headers: { "cache-control": "public, s-maxage=60" },
+    });
+  }
   const b = await getBenchmark(slug);
-  if (!b) return new Response("not_found", { status: 404 });
+  if (!b || b.status !== "live") {
+    return new Response("not_found", {
+      status: 404,
+      headers: { "cache-control": "public, s-maxage=60" },
+    });
+  }
 
   const top = leader(b);
   const value = fieldValue(b);
