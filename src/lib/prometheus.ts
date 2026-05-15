@@ -170,18 +170,40 @@ export class Prometheus {
 }
 
 /** PromQL built-in functions and keywords we should skip when scanning
- *  for the first raw metric name in a query string. */
+ *  for the first raw metric name in a query string. Updated from the
+ *  Prometheus 2.49 function reference — any identifier here is guaranteed
+ *  not to be a real metric, so `dataAgeSec` won't probe a non-existent
+ *  series and silently fall back to `now`. */
 const PROMQL_RESERVED = new Set([
-  "rate", "irate", "increase", "delta", "idelta", "deriv", "predict_linear",
+  // Aggregation operators
   "sum", "avg", "max", "min", "count", "count_values", "stddev", "stdvar",
-  "quantile", "topk", "bottomk", "group", "absent", "present",
+  "topk", "bottomk", "group", "quantile",
+  // Aggregation modifiers / keywords
+  "on", "ignoring", "group_left", "group_right", "by", "without", "bool",
+  "and", "or", "unless", "offset",
+  // Range vector / time functions
+  "rate", "irate", "increase", "delta", "idelta", "deriv", "predict_linear",
   "quantile_over_time", "avg_over_time", "max_over_time", "min_over_time",
   "sum_over_time", "count_over_time", "stddev_over_time", "stdvar_over_time",
-  "last_over_time", "present_over_time", "changes", "resets",
-  "time", "timestamp", "scalar", "vector", "clamp_max", "clamp_min", "clamp",
+  "last_over_time", "present_over_time", "mad_over_time",
+  "changes", "resets",
+  // Histogram helpers
+  "histogram_quantile", "histogram_sum", "histogram_count", "histogram_avg",
+  "histogram_fraction", "histogram_stddev", "histogram_stdvar",
+  // Label manipulation
+  "label_replace", "label_join",
+  // Math / unary
   "abs", "floor", "ceil", "round", "exp", "ln", "log2", "log10", "sqrt",
-  "on", "ignoring", "group_left", "group_right", "by", "without", "bool",
-  "and", "or", "unless", "offset", "atan", "cos", "sin", "tan",
+  "clamp_max", "clamp_min", "clamp", "sgn", "sort", "sort_desc",
+  // Trig
+  "atan", "atanh", "acos", "acosh", "asin", "asinh",
+  "cos", "cosh", "sin", "sinh", "tan", "tanh", "deg", "rad",
+  // Time
+  "time", "timestamp", "scalar", "vector", "minute", "hour",
+  "day_of_month", "day_of_week", "day_of_year", "days_in_month",
+  "month", "year",
+  // Set helpers
+  "absent", "absent_over_time", "present", "pi",
 ]);
 
 /** Best-effort extraction of the first raw metric identifier from a PromQL
