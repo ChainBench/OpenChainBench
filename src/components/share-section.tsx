@@ -135,7 +135,14 @@ export function ShareSection({ slug, title, benchmark, chain }: Props) {
         ? new URL(window.location.href).searchParams.get("chain")
         : chain ?? null;
     const chainParam = liveChain ? `&chain=${encodeURIComponent(liveChain)}` : "";
-    const base = `/benchmarks/${slug}/share-card?template=${templateId}${chainParam}`;
+    // Mirror the active site theme so the exported PNG matches what the
+    // user is looking at. SSR can't read the dark state — default to light
+    // server-side, the client re-renders with `dark` once mounted.
+    const isDark =
+      typeof window !== "undefined" &&
+      document.documentElement.classList.contains("dark");
+    const themeParam = isDark ? "&theme=dark" : "";
+    const base = `/benchmarks/${slug}/share-card?template=${templateId}${chainParam}${themeParam}`;
     if (!tpl) return base;
     if (tpl.pick === "multi") {
       if (
