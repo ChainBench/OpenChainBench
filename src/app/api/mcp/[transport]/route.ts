@@ -10,6 +10,7 @@ import {
   sparklineFor,
 } from "@/lib/citation";
 import { Prometheus } from "@/lib/prometheus";
+import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -23,7 +24,22 @@ export const runtime = "nodejs";
  * or the streamable-HTTP transport at:
  *     https://openchainbench.com/api/mcp/mcp
  */
-const handler = createMcpHandler(
+
+/** Reject PromQL that enumerates the metric catalog or matches all series.
+ *  These are the queries that turn the public MCP endpoint into a data-exfil
+ *  channel for series the site never intended to publish. */
+function isEnumerationQuery(q: string): boolean {
+  // `{__name__=~...}` or `{__name__!=...}` matches against the metric name
+  // itself, used to walk every metric in the cluster.
+  if (/__name__\s*[=!]~/.test(q)) return true;
+  // Empty/whitespace-only selector `{}` matches every series.
+  if (/\{\s*\}/.test(q)) return true;
+  // `{__name__=".+"}` or `{__name__="(.+)"}` shapes that select all.
+  if (/__name__\s*=\s*"(\.\+|\.\*|\(.+\))"/.test(q)) return true;
+  return false;
+}
+
+const mcpHandler = createMcpHandler(
   (server) => {
     server.registerTool(
       "list_benchmarks",
@@ -34,7 +50,7 @@ const handler = createMcpHandler(
         inputSchema: {},
       },
       async () => {
-        const benches = await getBenchmarks();
+        const benches = (await getBenchmarks()).filter((b) => b.status === "live");
         const rows = benches.map((b) => {
           const top = leader(b);
           return {
@@ -82,7 +98,7 @@ const handler = createMcpHandler(
       },
       async ({ slug, chain, region }) => {
         const b = await getBenchmark(slug, { chain, region });
-        if (!b) {
+        if (!b || b.status !== "live") {
           return {
             content: [{ type: "text", text: JSON.stringify({ error: "unknown_slug", slug }) }],
             isError: true,
@@ -142,6 +158,12 @@ const handler = createMcpHandler(
         },
       },
       async ({ query, windowSec, steps }) => {
+        if (isEnumerationQuery(query)) {
+          return {
+            content: [{ type: "text", text: JSON.stringify({ error: "enumeration_blocked", reason: "queries matching every metric or selecting the catalog are not allowed" }) }],
+            isError: true,
+          };
+        }
         const url = process.env.PROMETHEUS_URL;
         if (!url) {
           return {
@@ -174,4 +196,20 @@ const handler = createMcpHandler(
   },
 );
 
-export { handler as GET, handler as POST };
+/** Per-IP rate limit at the transport level. The MCP package handler exposes
+ *  a single GET/POST entry point for all tool calls; we cannot distinguish
+ *  tools at this layer, so the bucket caps total MCP RPS for a given IP. */
+async function rateLimited(req: Request): Promise<Response | null> {
+  const key = clientKey(req, "mcp");
+  const r = rateLimit(key, 60, 60); // 60 calls / 60 s
+  if (!r.ok) return tooManyRequests(r.retryAfterSec);
+  return null;
+}
+
+async function wrapped(req: Request): Promise<Response> {
+  const limited = await rateLimited(req);
+  if (limited) return limited;
+  return mcpHandler(req);
+}
+
+export { wrapped as GET, wrapped as POST };

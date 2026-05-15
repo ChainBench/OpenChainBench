@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getBenchmarks } from "@/data/benchmarks";
 import { SITE } from "@/data/site";
 import { fieldValue, leader, headlineSentence } from "@/lib/citation";
+import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const revalidate = 60;
@@ -14,8 +15,11 @@ export const revalidate = 60;
  * License is intentionally surfaced per-row so downstream agents can
  * cite without needing to read the footer of every page.
  */
-export async function GET() {
-  const benches = await getBenchmarks();
+export async function GET(req: Request) {
+  const r = rateLimit(clientKey(req, "citable"), 60, 60);
+  if (!r.ok) return tooManyRequests(r.retryAfterSec);
+
+  const benches = (await getBenchmarks()).filter((b) => b.status === "live");
   const data = benches.map((b) => {
     const top = leader(b);
     return {

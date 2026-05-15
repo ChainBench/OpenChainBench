@@ -8,9 +8,12 @@ import {
   leader,
   sparklineFor,
 } from "@/lib/citation";
+import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const revalidate = 60;
+
+const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,79}$/;
 
 /**
  * Single benchmark as a citable atomic unit. Designed to fit into one
@@ -18,13 +21,25 @@ export const revalidate = 60;
  * pre-formatted attribution string, and stable citation URL.
  */
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ slug: string }> },
 ) {
+  const r = rateLimit(clientKey(req, "stat"), 60, 60);
+  if (!r.ok) return tooManyRequests(r.retryAfterSec);
+
   const { slug } = await params;
+  if (!SLUG_RE.test(slug)) {
+    return NextResponse.json({ error: "bad_slug" }, { status: 400 });
+  }
   const b = await getBenchmark(slug);
-  if (!b) {
-    return NextResponse.json({ error: "unknown_slug", slug }, { status: 404 });
+  if (!b || b.status !== "live") {
+    return NextResponse.json(
+      { error: "unknown_slug", slug },
+      {
+        status: 404,
+        headers: { "cache-control": "public, s-maxage=60" },
+      },
+    );
   }
 
   const top = leader(b);
