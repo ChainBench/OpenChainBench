@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { clientKey, globalLimit, rateLimit, tooManyRequests } from "@/lib/rate-limit";
+import { CHAIN_RE, SLUG_RE } from "@/lib/slug";
 
 export const runtime = "nodejs";
 
@@ -22,15 +23,6 @@ const CONTROL_CHARS_KEEP_NL = new RegExp(
   "g",
 );
 
-const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,79}$/;
-const CHAIN_RE = /^[a-z0-9][a-z0-9-]{0,39}$/;
-
-/** Neutralise Slack mrkdwn so user-supplied strings can't inject mentions
- *  (`<@U123>`, `<!channel>`), link cloaking (`<https://evil|safe>`), code
- *  blocks (``` ``` ``` ```), or bold/italic/strike formatting that would
- *  let a reporter forge fake "*IP:* / *Contact:*" lines in the webhook.
- *  Escapes `<` `>` `&` and prefixes the rest of the mrkdwn meta-chars
- *  with a zero-width space so they render as literals. */
 /** Defang bare URLs so Slack doesn't auto-link them. Reporter abusing the
  *  endpoint can otherwise inject phishing URLs that render as clickable
  *  links in the on-call channel. Replace `:` after any URL-ish scheme. */
@@ -38,6 +30,10 @@ function defangUrls(s: string): string {
   return s.replace(/\b(https?|ftp|mailto|tel|javascript|data|file)(:)/gi, "$1[:]");
 }
 
+/** Neutralise Slack mrkdwn so user-supplied strings can't inject mentions
+ *  (`<@U123>`, `<!channel>`), link cloaking (`<https://evil|safe>`), code
+ *  blocks (``` ``` ``` ```), or bold/italic/strike formatting that would
+ *  let a reporter forge fake "*IP:* / *Contact:*" lines in the webhook. */
 function slackSafe(s: string, max: number): string {
   // NFKC normalize first so Unicode-confusable variants (combining marks,
   // compatibility forms) collapse to ASCII-equivalents the mention regex
