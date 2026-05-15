@@ -64,9 +64,20 @@ const handler = createMcpHandler(
         description:
           "Returns full detail for one benchmark: rankings, sparkline (24h), headline sentence, pasteable citation quote, and methodology link. Optionally filter by chain and/or region.",
         inputSchema: {
-          slug: z.string().describe("Benchmark slug, e.g. 'aggregator-head-lag'."),
-          chain: z.string().optional().describe("Chain label value, e.g. 'base' or 'solana'."),
-          region: z.string().optional().describe("Region label value, e.g. 'us-east' or 'eu-west'."),
+          slug: z
+            .string()
+            .regex(/^[a-z0-9][a-z0-9-]{0,79}$/)
+            .describe("Benchmark slug, e.g. 'aggregator-head-lag'."),
+          chain: z
+            .string()
+            .regex(/^[a-z0-9-]{1,64}$/)
+            .optional()
+            .describe("Chain label value, e.g. 'base' or 'solana'."),
+          region: z
+            .string()
+            .regex(/^[a-z0-9-]{1,64}$/)
+            .optional()
+            .describe("Region label value, e.g. 'us-east' or 'eu-west'."),
         },
       },
       async ({ slug, chain, region }) => {
@@ -115,13 +126,18 @@ const handler = createMcpHandler(
         description:
           "Passthrough to the OpenChainBench Prometheus instance. Use this for queries that don't map to a published benchmark. Caller is responsible for the query semantics. Returns the raw scalar (instant query) or matrix (range query if windowSec is given).",
         inputSchema: {
-          query: z.string().describe("PromQL expression."),
+          query: z
+            .string()
+            .min(1)
+            .max(2000)
+            .describe("PromQL expression."),
           windowSec: z
             .number()
             .int()
             .positive()
+            .max(604_800)
             .optional()
-            .describe("If set, run a range query over the last N seconds. Otherwise an instant query."),
+            .describe("If set, run a range query over the last N seconds (max 7 days). Otherwise an instant query."),
           steps: z.number().int().min(2).max(360).optional().describe("Number of samples for a range query. Default 60."),
         },
       },
@@ -136,8 +152,9 @@ const handler = createMcpHandler(
           const v = await prom.scalar(query);
           return { content: [{ type: "text", text: JSON.stringify({ query, value: v }) }] };
         } catch (err) {
+          console.error("[mcp:query_prom] upstream error", err);
           return {
-            content: [{ type: "text", text: JSON.stringify({ error: "prom_error", message: String(err) }) }],
+            content: [{ type: "text", text: JSON.stringify({ error: "upstream_error" }) }],
             isError: true,
           };
         }

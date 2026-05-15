@@ -202,7 +202,7 @@ function injectLabels(query: string, labels: Record<string, string>): string {
     const additions: string[] = [];
     for (const [k, v] of Object.entries(labels)) {
       const present = new RegExp(`\\b${escapeRe(k)}\\s*=`).test(inside);
-      if (!present) additions.push(`${k}="${v}"`);
+      if (!present) additions.push(`${k}="${escapePromLabelValue(v)}"`);
     }
     if (additions.length === 0) return `{${inside}}`;
     const trimmed = inside.trim();
@@ -213,6 +213,16 @@ function injectLabels(query: string, labels: Record<string, string>): string {
 
 function escapeRe(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** PromQL label values are double-quoted strings. Escape backslash and
+ *  double-quote so a URL-supplied filter value can never break out of the
+ *  selector and inject extra label matchers. Newlines stripped for safety. */
+function escapePromLabelValue(v: string): string {
+  return v
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"')
+    .replace(/[\r\n]/g, "");
 }
 
 async function tryLoadLive(

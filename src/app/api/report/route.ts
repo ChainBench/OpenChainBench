@@ -102,6 +102,7 @@ export async function POST(req: Request) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(slackPayload),
+      signal: AbortSignal.timeout(5_000),
     });
     if (!slackRes.ok) {
       const text = await slackRes.text().catch(() => "");
