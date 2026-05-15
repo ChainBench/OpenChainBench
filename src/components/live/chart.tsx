@@ -294,21 +294,21 @@ function ChartPopBubble({ pop }: { pop: ChartPop }) {
   const isBuy = pop.side === "buy";
   const color = isBuy ? "var(--color-good)" : "var(--color-bad)";
 
-  const left = `${Math.min(pop.anchorX, 96)}%`;
-  const top = `${Math.max(0, Math.min(pop.anchorY, 85))}%`;
+  const left = `${Math.min(pop.anchorX, 88)}%`;
+  const top = `${Math.max(0, Math.min(pop.anchorY, 88))}%`;
 
   return (
     <div className="absolute chart-pop-rise -translate-y-1/2" style={{ left, top }} aria-hidden>
       <div
-        className="inline-flex items-center gap-1.5 rounded-full pl-1 pr-2 py-0.5 bg-surface border whitespace-nowrap shadow-sm"
+        className="inline-flex items-center gap-1 rounded-full pl-1 pr-1.5 py-0.5 bg-surface border whitespace-nowrap shadow-sm"
         style={{ borderColor: meta.color, color: "var(--color-ink)" }}
       >
-        <ProviderLogo slug={meta.slug} name={meta.display} size={14} />
-        <span className="font-mono text-[10px] uppercase tracking-[0.04em] text-ink-soft">
+        <ProviderLogo slug={meta.slug} name={meta.display} size={11} />
+        <span className="font-mono text-[9px] uppercase tracking-[0.04em] text-ink-soft">
           {pop.pair}
         </span>
-        <span className="font-mono font-semibold tabular text-[11px]" style={{ color }}>
-          {isBuy ? "+" : "−"}
+        <span className="font-mono font-semibold tabular text-[10px]" style={{ color }}>
+          {isBuy ? "+" : "-"}
           {fmtMoney(pop.usd)}
         </span>
       </div>

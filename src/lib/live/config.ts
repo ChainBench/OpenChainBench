@@ -13,8 +13,14 @@ export const WINDOW_MS = 10 * 60 * 1000;
 export const BUCKET_MS = 5 * 1000;
 
 /** Cap on simultaneously rendered pops + their fade duration. */
-export const MAX_POPS = 8;
-export const POP_DURATION_MS = 2200;
+export const MAX_POPS = 5;
+export const POP_DURATION_MS = 1500;
+/** Vertical offset (% of chart height) applied between stacked pops
+ *  so simultaneous events don't overlap at the right edge. */
+export const POP_STACK_OFFSET_PCT = 9;
+/** Horizontal anchor for pops — left of the chart-end so labels and
+ *  endpoint dots stay readable. */
+export const POP_ANCHOR_X_PCT = 82;
 /** Minimum swap USD that earns a pop (dust filter). */
 export const POP_MIN_USD = 1;
 
