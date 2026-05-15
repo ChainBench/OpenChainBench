@@ -36,7 +36,6 @@ findings: []
 source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/network-coverage
 
 prometheus:
-  url: https://prometheus-production-0859.up.railway.app
   window: 24h
 
 # Real metrics exposed by the network-coverage harness:

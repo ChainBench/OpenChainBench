@@ -142,7 +142,13 @@ const handler = createMcpHandler(
         },
       },
       async ({ query, windowSec, steps }) => {
-        const url = process.env.PROMETHEUS_URL ?? "https://prometheus-production-0859.up.railway.app";
+        const url = process.env.PROMETHEUS_URL;
+        if (!url) {
+          return {
+            content: [{ type: "text", text: JSON.stringify({ error: "prometheus_unconfigured" }) }],
+            isError: true,
+          };
+        }
         const prom = new Prometheus(url);
         try {
           if (windowSec) {

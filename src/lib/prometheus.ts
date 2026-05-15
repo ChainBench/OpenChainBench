@@ -123,9 +123,16 @@ export class Prometheus {
       const merged = signal ? mergeSignals(signal, controller.signal) : controller.signal;
       const res = await fetch(url, {
         signal: merged,
+        // Refuse to follow redirects. defense in depth against an operator-set
+        // PROMETHEUS_URL whose origin returns a 3xx pointing at a private/
+        // metadata host (DNS rebinding, link-local, etc.).
+        redirect: "manual",
         // Cache at the platform level. pages call us through ISR.
         next: { revalidate: 60 },
       });
+      if (res.status >= 300 && res.status < 400) {
+        throw new Error(`prometheus: refused redirect (${res.status})`);
+      }
       if (!res.ok) {
         throw new Error(`prometheus: ${res.status} ${res.statusText}`);
       }

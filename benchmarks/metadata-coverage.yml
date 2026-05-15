@@ -41,7 +41,6 @@ findings: []
 source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/aggregator-head-lag
 
 prometheus:
-  url: https://prometheus-production-0859.up.railway.app
   window: 24h
 
 # Drill-down dimensions exposed to the page UI. When the reader picks a
