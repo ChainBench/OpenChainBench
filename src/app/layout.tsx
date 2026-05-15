@@ -4,6 +4,7 @@ import "./globals.css";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { SITE } from "@/data/site";
+import { safeJsonLd } from "@/lib/jsonld";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -100,7 +101,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(ORG_JSONLD) }}
+          dangerouslySetInnerHTML={{ __html: safeJsonLd(ORG_JSONLD) }}
         />
         <SiteHeader />
         <main className="flex-1">{children}</main>

@@ -178,22 +178,27 @@ export const SpecSchema = z
 
     /* Optional drill-down dimensions. When set, the bench page renders
      * a tab selector for the dimension; queries get the corresponding
-     * label filter injected server-side. Supported: chain, region. */
+     * label filter injected server-side. Supported: chain, region.
+     *
+     * Values are constrained to a safe label-value alphabet because they
+     * end up in PromQL selectors. escapePromLabelValue handles the wire
+     * escape, but the regex below is defense-in-depth so a `value: "x\""`
+     * never reaches the runtime in the first place. */
     dimensions: z
       .object({
         chain: z
           .array(
             z.object({
-              value: z.string().min(1), // PromQL label value, e.g. "solana"
-              label: z.string().min(1), // display label, e.g. "Solana"
+              value: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/), // PromQL label value
+              label: z.string().min(1).max(64), // display label
             })
           )
           .optional(),
         region: z
           .array(
             z.object({
-              value: z.string().min(1), // PromQL label value, e.g. "eu-west"
-              label: z.string().min(1), // display label, e.g. "EU West"
+              value: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/),
+              label: z.string().min(1).max(64),
             })
           )
           .optional(),
