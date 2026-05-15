@@ -95,10 +95,19 @@ const NON_ASCII_WS = new RegExp(
  *    query is refused. This is what turns the public MCP from a passthrough
  *    into a sandbox bound to the data the site already serves. */
 function isQueryAllowed(q: string): { ok: true } | { ok: false; reason: string } {
-  // Length is already capped to 2000 by Zod, but recompute compact form.
-  const c = q.replace(NON_ASCII_WS, "");
+  // Strip PromQL `#` comments first so a comment like `# wallet_balance`
+  // doesn't tip the allowlist. PromQL comments run to end-of-line.
+  const noComments = q.replace(/#[^\n]*/g, "");
+  // Strip string literals so quoted label VALUES (`aggregator="mobula"`)
+  // never get scanned as identifiers — they're attacker-controlled text,
+  // but PromQL escapes their content via Prom's parser, not our regex.
+  const stripped = noComments.replace(/"(?:\\.|[^"\\])*"/g, '""');
+  // Whitespace-normalised form. Used for every pattern check so a NBSP
+  // between operator and operand can't slip a rule.
+  const c = stripped.replace(NON_ASCII_WS, "");
 
-  // Pattern blocks.
+  // Pattern blocks — all operate on `c`, the comment+string-stripped,
+  // whitespace-normalised form.
   if (/__name__[=!]~/.test(c)) return { ok: false, reason: "name_regex_blocked" };
   if (c.includes("{}")) return { ok: false, reason: "empty_selector_blocked" };
   if (/__name__="(\.\+|\.\*|\(.+\))"/.test(c)) return { ok: false, reason: "name_catchall_blocked" };
@@ -108,14 +117,12 @@ function isQueryAllowed(q: string): { ok: true } | { ok: false; reason: string }
   if (/\b(group|count|sum|avg|min|max|topk|bottomk|stddev|stdvar|quantile)by\(/.test(c)) {
     return { ok: false, reason: "aggregation_by_blocked" };
   }
-  if (/\bcount_values\b/.test(q)) return { ok: false, reason: "count_values_blocked" };
+  if (/\bcount_values\b/.test(c)) return { ok: false, reason: "count_values_blocked" };
 
-  // Metric-name allowlist. Strip string literals first so quoted label
-  // VALUES (`aggregator="mobula"`) don't get scanned as identifiers.
-  // The double-quote-only form is what PromQL accepts.
-  const noStrings = q.replace(/"(?:\\.|[^"\\])*"/g, '""');
+  // Metric-name allowlist — every identifier-like token outside strings
+  // and comments must match a published benchmark namespace.
   let sawAllowed = false;
-  const idents = noStrings.match(/[a-zA-Z_:][a-zA-Z0-9_:]*/g) ?? [];
+  const idents = stripped.match(/[a-zA-Z_:][a-zA-Z0-9_:]*/g) ?? [];
   for (const id of idents) {
     if (PROMQL_RESERVED_IDENTS.has(id)) continue;
     if (/^\d/.test(id)) continue;
@@ -358,6 +365,18 @@ async function rejectBatchOrTooBig(req: Request): Promise<{ response?: Response;
 }
 
 async function wrapped(req: Request): Promise<Response> {
+  // SSE short-circuit: the mcp-handler package honours `disableSse` at
+  // config level but the runtime cast we use to set it may not survive
+  // tree-shaking. Return 404 fast here so an SSE GET (which needs a
+  // Redis we don't run) doesn't hang the function for maxDuration.
+  const url = new URL(req.url);
+  if (url.pathname.endsWith("/sse")) {
+    return new Response("Not Found", {
+      status: 404,
+      headers: { "Cache-Control": "public, s-maxage=3600" },
+    });
+  }
+
   const limited = rateLimited(req);
   if (limited) return limited;
   const { response, cloned } = await rejectBatchOrTooBig(req);
