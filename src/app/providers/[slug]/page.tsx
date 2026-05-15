@@ -7,6 +7,7 @@ import { ProviderLogo } from "@/components/provider-logo";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
 import { fmtUnit } from "@/lib/format";
 import { SITE } from "@/data/site";
+import { getProviderRegistry } from "@/data/provider-registry";
 
 export const revalidate = 60;
 
@@ -25,8 +26,11 @@ export async function generateMetadata({
   const { slug } = await params;
   const p = await getProvider(slug);
   if (!p) return {};
+  const reg = getProviderRegistry(p.slug);
   const title = `${p.name} benchmark record`;
-  const description = `Every OpenChainBench result for ${p.name}. Tracked across ${p.appearances.length} ${p.appearances.length === 1 ? "benchmark" : "benchmarks"}, ${p.wins} #1 ${p.wins === 1 ? "finish" : "finishes"}.`;
+  const description =
+    reg?.description ??
+    `Every OpenChainBench result for ${p.name}. Tracked across ${p.appearances.length} ${p.appearances.length === 1 ? "benchmark" : "benchmarks"}, ${p.wins} #1 ${p.wins === 1 ? "finish" : "finishes"}.`;
   const url = `${SITE.url}/providers/${p.slug}`;
   return {
     title,
@@ -45,6 +49,7 @@ export default async function ProviderPage({
   const { slug } = await params;
   const p = await getProvider(slug);
   if (!p) notFound();
+  const reg = getProviderRegistry(p.slug);
 
   const sorted = [...p.appearances].sort((a, b) => {
     if (a.rank !== b.rank) return a.rank - b.rank;
@@ -52,13 +57,21 @@ export default async function ProviderPage({
   });
 
   const url = `${SITE.url}/providers/${p.slug}`;
+  const sameAs: string[] = [];
+  if (reg?.url) sameAs.push(reg.url);
+  if (reg?.twitter) {
+    sameAs.push(`https://twitter.com/${reg.twitter.replace(/^@/, "")}`);
+  }
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Organization",
     name: p.name,
-    url,
+    url: reg?.url ?? url,
     identifier: p.slug,
-    description: `Crypto-infrastructure provider tracked by OpenChainBench across ${p.appearances.length} live benchmarks.`,
+    description:
+      reg?.description ??
+      `Crypto-infrastructure provider tracked by OpenChainBench across ${p.appearances.length} live benchmarks.`,
+    ...(sameAs.length > 0 ? { sameAs } : {}),
     subjectOf: sorted.map((a) => ({
       "@type": "Dataset",
       name: a.benchmark.title,
@@ -106,6 +119,38 @@ export default async function ProviderPage({
           </p>
         </div>
       </header>
+
+      {reg && (
+        <section className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-8">
+          <p className="text-base text-ink-soft leading-relaxed max-w-2xl">
+            {reg.description}
+          </p>
+          <ul className="flex flex-wrap gap-x-4 gap-y-1 sm:ml-auto sm:flex-col sm:items-end sm:text-right shrink-0">
+            <li>
+              <a
+                className="lnk inline-flex items-center gap-1 font-mono text-[11px] uppercase tracking-[0.16em] text-ink-soft hover:text-ink"
+                href={reg.url}
+                rel="noopener"
+              >
+                {reg.url.replace(/^https?:\/\//, "").replace(/\/$/, "")}
+                <ArrowUpRight size={11} strokeWidth={2} />
+              </a>
+            </li>
+            {reg.twitter && (
+              <li>
+                <a
+                  className="lnk inline-flex items-center gap-1 font-mono text-[11px] uppercase tracking-[0.16em] text-ink-soft hover:text-ink"
+                  href={`https://twitter.com/${reg.twitter.replace(/^@/, "")}`}
+                  rel="noopener"
+                >
+                  {reg.twitter}
+                  <ArrowUpRight size={11} strokeWidth={2} />
+                </a>
+              </li>
+            )}
+          </ul>
+        </section>
+      )}
 
       <section className="mt-10">
         <h2 className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted">
