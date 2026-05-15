@@ -9,13 +9,13 @@ const LABELS: Record<ProviderType, string> = {
 
 const HINTS: Record<ProviderType, string> = {
   protocol:
-    "Direct protocol — returns its own quote / charges its own fee. Apples-to-apples with other protocols.",
+    "Direct protocol: returns its own quote / charges its own fee. Apples-to-apples with other protocols.",
   aggregator:
-    "Aggregator — queries N underlying providers and surfaces the best route. Latency / fee figures include aggregation overhead.",
+    "Aggregator: queries N underlying providers and surfaces the best route. Latency / fee figures include aggregation overhead.",
   intent:
-    "Intent layer — settlement bakes the multi-provider query into one signed intent.",
+    "Intent layer: settlement bakes the multi-provider query into one signed intent.",
   relay:
-    "Relay / settlement network — operates its own relayer infrastructure.",
+    "Relay / settlement network: operates its own relayer infrastructure.",
 };
 
 /**

@@ -177,7 +177,7 @@ export default async function McpPage() {
           <Tile
             tag="Tool"
             title="query_prom(query, windowSec?, steps?)"
-            desc="Direct PromQL passthrough, scoped to published benchmark metric namespaces. Allowlist enforced — wallet inventories and operational metrics are refused."
+            desc="Direct PromQL passthrough, scoped to published benchmark metric namespaces. Allowlist enforced: wallet inventories and operational metrics are refused."
           />
           <Tile
             tag="Resource"

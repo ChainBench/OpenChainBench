@@ -48,7 +48,7 @@ const WALKTHROUGH = [
     body: (
       <>
         Describe the metric and the providers you intend to compare.
-        Maintainers reply within a day to align on methodology — what
+        Maintainers reply within a day to align on methodology: what
         counts as a sample, the cadence, which percentiles matter, and
         how to label cohorts. Output: a one-paragraph spec you both
         agree on.
@@ -61,7 +61,7 @@ const WALKTHROUGH = [
     body: (
       <>
         One YAML file at <CodeChip>benchmarks/&lt;slug&gt;.yml</CodeChip>{" "}
-        — title, description, the Prometheus query, the dimensions
+        with title, description, the Prometheus query, the dimensions
         (chain / region / asset), and the providers it ranks. The site
         reads it at build time and renders the page; you never touch
         React.
@@ -87,7 +87,7 @@ const WALKTHROUGH = [
     title: "Host it",
     body: (
       <>
-        Anywhere with HTTPS — Fly, Railway, Cloud Run, your VPS, a Pi.
+        Anywhere with HTTPS: Fly, Railway, Cloud Run, your VPS, a Pi.
         Cost stays with the person who cares. Verify the endpoint
         answers a <CodeChip>200 OK</CodeChip> from the public internet
         before moving on.
@@ -139,7 +139,7 @@ export default function ContributePage() {
       <p className="mt-4 max-w-3xl text-base sm:text-lg text-ink-muted leading-snug">
         Anyone can publish on OpenChainBench. You write the harness, you host
         it, you keep your secrets. The project shares one Prometheus that
-        scrapes your public <CodeChip>/metrics</CodeChip> endpoint — the only
+        scrapes your public <CodeChip>/metrics</CodeChip> endpoint, the only
         piece of common infrastructure.
       </p>
 
@@ -179,7 +179,7 @@ export default function ContributePage() {
               the providers, write the harness, host it on Fly, Railway, Cloud
               Run or your own VPS. There is no shared runtime, no shared
               credentials, no central queue. The harness exposes a public{" "}
-              <CodeChip>/metrics</CodeChip> endpoint over HTTPS — the entire
+              <CodeChip>/metrics</CodeChip> endpoint over HTTPS, the entire
               integration surface.
             </p>
             <p>
