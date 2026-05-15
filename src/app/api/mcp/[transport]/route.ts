@@ -1,4 +1,5 @@
 import { createMcpHandler } from "mcp-handler";
+import { ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { getBenchmark, getBenchmarks } from "@/data/benchmarks";
 import { SITE } from "@/data/site";
@@ -9,6 +10,7 @@ import {
   leader,
   sparklineFor,
 } from "@/lib/citation";
+import { fmtUnit } from "@/lib/format";
 import { Prometheus } from "@/lib/prometheus";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 
@@ -153,9 +155,20 @@ const mcpHandler = createMcpHandler(
     server.registerTool(
       "list_benchmarks",
       {
-        title: "List benchmarks",
-        description:
-          "Returns the flat index of every published OpenChainBench benchmark with the current headline value, leader and citation URL. Call this first to discover what's available.",
+        title: "List OpenChainBench benchmarks",
+        description: [
+          "Returns a flat index of every published OpenChainBench benchmark with its",
+          "current headline value, leader, category, units, and citation URL.",
+          "",
+          "Call this first when the user asks a discovery question like",
+          "\"what benchmarks does OpenChainBench have?\" or \"compare crypto aggregators\".",
+          "Then use `get_benchmark` for the specific slug(s) the answer needs.",
+          "",
+          "Returns one line per bench:",
+          "  { slug, title, category, metric, unit, value, leader, headline, url, asOf }",
+          "",
+          "Drafts are filtered out — only live benchmarks appear.",
+        ].join("\n"),
         inputSchema: {},
       },
       async () => {
@@ -185,24 +198,43 @@ const mcpHandler = createMcpHandler(
     server.registerTool(
       "get_benchmark",
       {
-        title: "Get a single benchmark",
-        description:
-          "Returns full detail for one benchmark: rankings, sparkline (24h), headline sentence, pasteable citation quote, and methodology link. Optionally filter by chain and/or region.",
+        title: "Get a single OpenChainBench benchmark",
+        description: [
+          "Returns full detail for one benchmark, ready to cite verbatim:",
+          "  • rankings (every provider sorted by p50)",
+          "  • sparkline (24h trend, 72 points)",
+          "  • headline sentence + paste-ready citation quote",
+          "  • methodology bullets + source-code URL + canonical pageUrl + OG image URL",
+          "",
+          "Pass `chain` and/or `region` to scope the result to a sub-slice when",
+          "the benchmark declares those dimensions (e.g. aggregator-head-lag",
+          "exposes chain=base|bnb|solana, region=us-east|eu-west|ap-southeast).",
+          "Both args are optional; omit them for the global aggregate.",
+          "",
+          "Example usage:",
+          "  • User: \"who's the fastest crypto data aggregator on Base?\"",
+          "    → get_benchmark({ slug: \"aggregator-head-lag\", chain: \"base\" })",
+          "  • User: \"how much does it cost to bridge $300 cross-chain?\"",
+          "    → get_benchmark({ slug: \"bridge-fee\" })",
+          "",
+          "Drafts return { error: \"unknown_slug\" }. Cite the returned `pageUrl`",
+          "and use `quote` as the attribution line in your answer.",
+        ].join("\n"),
         inputSchema: {
           slug: z
             .string()
             .regex(/^[a-z0-9][a-z0-9-]{0,79}$/)
-            .describe("Benchmark slug, e.g. 'aggregator-head-lag'."),
+            .describe("Benchmark slug from list_benchmarks. e.g. 'aggregator-head-lag', 'bridge-quote-latency', 'l1-finality'."),
           chain: z
             .string()
             .regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/)
             .optional()
-            .describe("Chain label value, e.g. 'base' or 'solana'."),
+            .describe("Optional chain filter, e.g. 'base', 'solana', 'bnb'. Only honored when the bench declares chain dimensions."),
           region: z
             .string()
             .regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/)
             .optional()
-            .describe("Region label value, e.g. 'us-east' or 'eu-west'."),
+            .describe("Optional region filter, e.g. 'us-east', 'eu-west', 'ap-southeast'. Only honored when the bench declares region dimensions."),
         },
       },
       async ({ slug, chain, region }) => {
@@ -247,23 +279,53 @@ const mcpHandler = createMcpHandler(
     server.registerTool(
       "query_prom",
       {
-        title: "Run a PromQL query against the published benchmark metrics",
-        description:
-          "Run an instant or range PromQL query, scoped to the metric namespaces OpenChainBench publishes (head_lag_seconds, bridge_*, l1_finality_*, metadata_coverage_*, network_coverage_*, networks_supported, perp_fees_*, wallet_labels_*). Queries that reach outside this namespace are rejected.",
+        title: "Run a PromQL query (scoped to benchmark metric namespaces)",
+        description: [
+          "Direct PromQL passthrough for advanced questions that don't map cleanly",
+          "to `list_benchmarks` / `get_benchmark` — e.g. \"what was Mobula's p50",
+          "head-lag yesterday at 14:00 UTC\" or \"plot bridge fees over the last hour\".",
+          "",
+          "Prefer the higher-level tools first; reach for this when you need:",
+          "  • a custom time window (instant query at a specific point, or range)",
+          "  • a derived metric (rates, ratios, deltas)",
+          "  • a histogram bucket aggregation across chains/regions",
+          "",
+          "Allowed metric namespaces: head_lag_seconds, bridge_quote_latency_ms*,",
+          "bridge_cost*, bridge_fees*, bridge_fix_fee*, bridge_gas*, bridge_output*,",
+          "bridge_estimated_time*, bridge_quote_success, l1_finality_*,",
+          "metadata_coverage_*, network_coverage_*, networks_supported, perp_fees_*,",
+          "wallet_labels_*. Queries referencing other metrics (operational/internal",
+          "ones like `up`, `scrape_*`, `process_*`, `go_*`, `wallet_balance_*` or any",
+          "label-enumeration shape) are refused with `{error, reason}`.",
+          "",
+          "Example: instant p50 over 1h for Mobula head-lag on Base:",
+          "  query_prom({",
+          "    query: \"quantile_over_time(0.5, head_lag_seconds{aggregator=\\\"mobula\\\",chain=\\\"base\\\"}[1h]) * 1000\"",
+          "  })",
+          "",
+          "Example: 7-day sparkline of average bridge fees:",
+          "  query_prom({",
+          "    query: \"avg_over_time(bridge_fees_percent[1d])\",",
+          "    windowSec: 604800,",
+          "    steps: 168",
+          "  })",
+          "",
+          "Returns: `{ query, value }` for instant queries, `{ query, windowSec, series }` for range.",
+        ].join("\n"),
         inputSchema: {
           query: z
             .string()
             .min(1)
             .max(2000)
-            .describe("PromQL expression referencing published benchmark metrics."),
+            .describe("PromQL expression referencing published benchmark metric prefixes only. Function names, label keys, and quoted label values are fine; bare metric names must be allowlisted."),
           windowSec: z
             .number()
             .int()
             .positive()
             .max(604_800)
             .optional()
-            .describe("If set, run a range query over the last N seconds (max 7 days). Otherwise an instant query."),
-          steps: z.number().int().min(2).max(360).optional().describe("Number of samples for a range query. Default 60."),
+            .describe("If set, run a range query over the last N seconds (max 7 days = 604800). Omit for an instant query."),
+          steps: z.number().int().min(2).max(360).optional().describe("Number of samples for a range query (2–360). Default 60. Step duration = windowSec / steps."),
         },
       },
       async ({ query, windowSec, steps }) => {
@@ -296,6 +358,134 @@ const mcpHandler = createMcpHandler(
             isError: true,
           };
         }
+      },
+    );
+
+    // ── Resources ──────────────────────────────────────────────────────
+    // Every live benchmark is also exposed as an MCP resource so an agent
+    // can pin it into its context as a long-lived document — useful when
+    // the user is iterating on the same benchmark across several turns and
+    // doesn't want the agent to re-fetch via tool calls each time.
+    //
+    // URI scheme: `openchainbench://benchmark/<slug>`
+    // The same content is also offered at the canonical https:// pageUrl.
+    server.registerResource(
+      "benchmark",
+      new ResourceTemplate("openchainbench://benchmark/{slug}", {
+        list: async () => {
+          const benches = (await getBenchmarks()).filter((b) => b.editorialStatus === "live");
+          return {
+            resources: benches.map((b) => ({
+              uri: `openchainbench://benchmark/${b.slug}`,
+              name: `${b.title} — ${b.category}`,
+              description: headlineSentence(b),
+              mimeType: "text/markdown",
+            })),
+          };
+        },
+      }),
+      {
+        title: "OpenChainBench benchmark",
+        description:
+          "A single benchmark rendered as Markdown with live rankings, methodology and citation metadata. Use as long-lived context when reasoning across multiple turns about the same bench.",
+        mimeType: "text/markdown",
+      },
+      async (uri: URL) => {
+        const slug = uri.pathname.replace(/^\/?/, "");
+        if (!/^[a-z0-9][a-z0-9-]{0,79}$/.test(slug)) {
+          return {
+            contents: [
+              {
+                uri: uri.href,
+                mimeType: "application/json",
+                text: JSON.stringify({ error: "bad_slug", slug }),
+              },
+            ],
+          };
+        }
+        const b = await getBenchmark(slug);
+        if (!b || b.editorialStatus !== "live") {
+          return {
+            contents: [
+              {
+                uri: uri.href,
+                mimeType: "application/json",
+                text: JSON.stringify({ error: "unknown_slug", slug }),
+              },
+            ],
+          };
+        }
+        const top = leader(b);
+        const ranked = b.results
+          .filter((r) => r.ms.p50 > 0)
+          .sort((a, c) => (b.higherIsBetter ? c.ms.p50 - a.ms.p50 : a.ms.p50 - c.ms.p50));
+
+        const md: string[] = [];
+        md.push(`# ${b.title}`);
+        md.push("");
+        md.push(`> ${b.subtitle}`);
+        md.push("");
+        md.push(`- Category: ${b.category}`);
+        md.push(`- Metric: ${b.metric} (${b.unit})`);
+        md.push(`- Page: ${SITE.url}/benchmarks/${b.slug}`);
+        md.push(`- Source: ${b.source}`);
+        md.push(`- License: CC-BY-4.0`);
+        md.push(`- Last sample: ${b.lastRunAt}`);
+        md.push("");
+        md.push(`**Headline.** ${headlineSentence(b)}`);
+        md.push("");
+        md.push(`**Citation quote.** ${citationQuote(b, SITE.url)}`);
+        md.push("");
+        if (ranked.length > 0) {
+          md.push(`## Rankings (p50, 24h)`);
+          md.push("");
+          for (let i = 0; i < ranked.length; i++) {
+            const r = ranked[i];
+            md.push(
+              `${i + 1}. **${r.name}** — ${fmtUnit(r.ms.p50, b.unit)} (p99 ${fmtUnit(r.ms.p99, b.unit)}, success ${r.successRate.toFixed(1)}%, sample ${r.sampleSize ?? "n/a"})`,
+            );
+          }
+          md.push("");
+        }
+        if (b.methodology.length > 0) {
+          md.push(`## Methodology`);
+          md.push("");
+          for (const m of b.methodology) md.push(`- ${m}`);
+          md.push("");
+        }
+        md.push(`---`);
+        md.push(`Cite this benchmark: link ${SITE.url}/benchmarks/${b.slug} · JSON ${SITE.url}/api/stat/${b.slug}`);
+
+        // We attach both Markdown (default rendering) and JSON (structured
+        // access) so clients can pick whichever matches their context.
+        const payload = {
+          slug: b.slug,
+          title: b.title,
+          metric: b.metric,
+          unit: b.unit,
+          value: fieldValue(b),
+          leader: top,
+          rankings: ranked.map((r) => ({
+            name: r.name,
+            slug: r.slug,
+            ms: r.ms,
+            successRate: r.successRate,
+            sampleSize: r.sampleSize,
+          })),
+          sparkline: sparklineFor(b, top?.slug),
+          headline: headlineSentence(b),
+          quote: citationQuote(b, SITE.url),
+          pageUrl: `${SITE.url}/benchmarks/${b.slug}`,
+          asOf: b.lastRunAt,
+          methodology: b.methodology,
+          source: b.source,
+        };
+        return {
+          contents: [
+            { uri: uri.href, mimeType: "text/markdown", text: md.join("\n") },
+            { uri: `${uri.href}.json`, mimeType: "application/json", text: JSON.stringify(payload, null, 2) },
+          ],
+        };
       },
     );
   },
