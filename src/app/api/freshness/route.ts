@@ -17,6 +17,11 @@ export const runtime = "nodejs";
  * floor (15 s) that bounds how fresh any client-side query can ever be.
  */
 
+// Cache window has to stay STRICTLY shorter than the LiveIndicator poll
+// interval. Otherwise the same asOf is served on consecutive polls, React
+// skips the canonical state update, and the client-side counter grows
+// linearly until the cache finally refreshes — giving the user the
+// impression that the indicator "doesn't reset on refetch".
 const computeFreshness = unstable_cache(
   async (): Promise<{ now: number; freshness: Record<string, number> }> => {
     const specs = await getSpecs();
@@ -51,7 +56,7 @@ const computeFreshness = unstable_cache(
     return { now: Date.now(), freshness };
   },
   ["freshness-v1"],
-  { revalidate: 5, tags: ["benchmarks", "freshness"] },
+  { revalidate: 2, tags: ["benchmarks", "freshness"] },
 );
 
 export async function GET(req: Request) {
@@ -61,7 +66,10 @@ export async function GET(req: Request) {
   const data = await computeFreshness();
   return Response.json(data, {
     headers: {
-      "cache-control": "public, s-maxage=5, stale-while-revalidate=20",
+      // 2 s s-maxage matches the unstable_cache window above. Short swr
+      // because anything beyond a few seconds produces a stale asOf that
+      // would defeat the point of the polling counter.
+      "cache-control": "public, s-maxage=2, stale-while-revalidate=4",
       "access-control-allow-origin": "*",
     },
   });
