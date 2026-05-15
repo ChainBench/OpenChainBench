@@ -51,7 +51,7 @@ const BRANDS: Record<string, Brand> = {
 
   // ─── Aggregators / providers (bright, saturated — read on both modes) ───
   mobula: { color: "#FF6B35" },        // vivid orange
-  codex: { color: "#D6FF00" },         // electric lime (matches brand)
+  codex: { color: "#84cc16" },         // saturated lime — readable on white + dark
   geckoterminal: { color: "#8B5CF6" }, // vivid violet (gecko brand)
   jupiter: { color: "#FF7A00" },       // amber-orange
   helius: { color: "#FF4D8D" },        // hot pink (helius brand)
