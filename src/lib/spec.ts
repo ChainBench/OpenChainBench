@@ -229,7 +229,7 @@ function escapePromLabelValue(v: string): string {
 async function tryLoadLive(
   spec: Spec
 ): Promise<Pick<Benchmark, "results" | "extras" | "sampleSize" | "lastRunAt"> | null> {
-  const url = process.env.PROMETHEUS_URL;
+  const url = spec.prometheus?.url ?? process.env.PROMETHEUS_URL;
   if (!url) return null;
   const prom = new Prometheus(url);
   const winSec = parseDurationSec(spec.prometheus?.window ?? "24h") ?? 86_400;
