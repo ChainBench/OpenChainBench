@@ -7,9 +7,15 @@ import type { NextConfig } from "next";
 // XSS risk is bounded. Future hardening: move JSON-LD to <Script> with a
 // sha256 hash in script-src.
 const RELAY_WS = "wss://ocb-stream-relay-production.up.railway.app";
+const IS_DEV = process.env.NODE_ENV !== "production";
+// React dev mode needs 'unsafe-eval' for fast refresh / call stack reconstruction.
+// In prod we keep the lock-tight policy.
+const SCRIPT_SRC = IS_DEV
+  ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
+  : "script-src 'self' 'unsafe-inline'";
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
+  SCRIPT_SRC,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self' data:",
@@ -58,14 +64,8 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
-      // /live was folded into the home page. keep the old URL working
-      // for shared links, RSS feeds, and OG previews on external sites.
-      { source: "/live", destination: "/", permanent: true },
-      // /benchmarks listing was folded into the home page (the table
-      // there already lists every published bench). Redirect to the
-      // benchmarks section of the home so old links/search results /
-      // existing internal links stay alive.
-      { source: "/benchmarks", destination: "/#latest", permanent: true },
+      // /live now lives at /networks (ecosystem dashboard).
+      { source: "/live", destination: "/networks", permanent: true },
     ];
   },
 };

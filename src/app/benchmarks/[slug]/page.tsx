@@ -219,10 +219,10 @@ export default async function BenchmarkPage({
       </div>
 
       {/* Title */}
-      <h1 className="mt-5 display text-2xl sm:text-3xl md:text-4xl tracking-tight">
+      <h1 className="mt-5 display text-3xl sm:text-4xl md:text-5xl tracking-tight text-ink">
         {benchmark.title}
       </h1>
-      <p className="mt-4 max-w-3xl text-lg sm:text-xl text-ink-soft leading-snug">
+      <p className="mt-4 max-w-3xl text-lg sm:text-xl text-ink-muted leading-snug">
         {benchmark.subtitle}
       </p>
 
@@ -236,10 +236,10 @@ export default async function BenchmarkPage({
       {!isDraft && (
         <details
           open
-          className="mt-8 group border-y border-rule"
+          className="mt-8 group card-soft px-5 py-1"
         >
           <summary className="flex cursor-pointer items-center justify-between py-3 list-none">
-            <span className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink">
+            <span className="label-mono text-ink">
               Methodology
             </span>
             <ChevronDown
@@ -248,7 +248,7 @@ export default async function BenchmarkPage({
               className="text-ink-muted transition-transform group-open:rotate-180"
             />
           </summary>
-          <div className="pb-5">
+          <div className="pb-4 pt-1">
             <p className="text-sm leading-relaxed text-ink-soft max-w-3xl">
               {benchmark.abstract}
             </p>
@@ -284,8 +284,8 @@ export default async function BenchmarkPage({
 
       {/* Other benchmarks */}
       {otherBenchmarks.length > 0 && (
-        <nav className="mt-20 border-t border-rule pt-8">
-          <h3 className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted">
+        <nav className="mt-20 pt-8">
+          <h3 className="label-mono text-ink-muted">
             More benchmarks
           </h3>
           <ul className="mt-5 grid gap-4 sm:grid-cols-2 items-stretch">
@@ -293,7 +293,7 @@ export default async function BenchmarkPage({
               <li key={b.slug} className="flex">
                 <Link
                   href={`/benchmarks/${b.slug}`}
-                  className="flex-1 card-soft p-5 flex flex-col"
+                  className="flex-1 card-soft rounded-xl p-5 flex flex-col"
                 >
                   <div className="flex items-center gap-2">
                     <Pill variant={b.status === "live" ? "live" : "draft"} pulse>
@@ -301,7 +301,7 @@ export default async function BenchmarkPage({
                     </Pill>
                     <Pill variant="category">{b.category}</Pill>
                   </div>
-                  <p className="mt-3 display text-lg font-bold leading-tight">
+                  <p className="mt-3 display text-lg font-bold leading-tight text-ink">
                     {b.title}
                   </p>
                   <p className="mt-2 text-sm text-ink-muted line-clamp-2 flex-1">
