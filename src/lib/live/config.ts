@@ -7,10 +7,16 @@ export const RELAY_WS_URL =
   process.env.NEXT_PUBLIC_RELAY_WS_URL ??
   "wss://ocb-stream-relay-production.up.railway.app/ws";
 
-/** Rolling chart window length (mirrors the relay's chart_store). */
-export const WINDOW_MS = 10 * 60 * 1000;
-/** Bucket granularity inside the window. */
-export const BUCKET_MS = 5 * 1000;
+/** Default range opened on the live chart. */
+export const DEFAULT_RANGE: import("./types").RangeKey = "10m";
+/** Human labels for the range tab strip. */
+export const RANGE_LABELS: Record<import("./types").RangeKey, string> = {
+  "10m": "Last 10 min",
+  "1h": "Last hour",
+  "24h": "Last 24h",
+};
+/** Pops only make sense on the live (10m) range. */
+export const POP_RANGE: import("./types").RangeKey = "10m";
 
 /** Cap on simultaneously rendered pops + their fade duration. */
 export const MAX_POPS = 5;

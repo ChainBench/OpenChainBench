@@ -1,14 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { appendSwapToBuckets, cumulativePerChain, niceCeil } from "@/lib/live/buckets";
 import { type ChainMeta, chainMeta } from "@/lib/live/chains";
 import {
+  DEFAULT_RANGE,
   MAX_FEED,
   MAX_POPS,
   POP_ANCHOR_X_PCT,
   POP_DURATION_MS,
   POP_MIN_USD,
+  POP_RANGE,
   POP_STACK_OFFSET_PCT,
   RELAY_WS_URL,
   STORAGE_HIDDEN_CHAINS,
@@ -17,23 +19,36 @@ import {
 import type {
   Bucket,
   ChartPop,
+  ChartSeries,
   GlobalView,
+  RangeKey,
   RelayMessage,
   SwapEvent,
 } from "@/lib/live/types";
 import { LiveChart } from "./chart";
 import { LiveTicker } from "./ticker";
 
+type SeriesByRange = Record<RangeKey, ChartSeries>;
+
+function emptySeries(): SeriesByRange {
+  return {
+    "10m": { windowMs: 10 * 60 * 1000, bucketMs: 5 * 1000, buckets: [] },
+    "1h": { windowMs: 60 * 60 * 1000, bucketMs: 30 * 1000, buckets: [] },
+    "24h": { windowMs: 24 * 60 * 60 * 1000, bucketMs: 10 * 60 * 1000, buckets: [] },
+  };
+}
+
 export function LiveDashboard() {
   const [stats, setStats] = useState<GlobalView | null>(null);
   const [recent, setRecent] = useState<SwapEvent[]>([]);
   const [sessionSwaps, setSessionSwaps] = useState(0);
   const [connected, setConnected] = useState(false);
-  const [buckets, setBuckets] = useState<Bucket[]>([]);
+  const [series, setSeries] = useState<SeriesByRange>(emptySeries);
   const [pops, setPops] = useState<ChartPop[]>([]);
   const [hiddenChains, setHiddenChains] = useState<Set<string>>(new Set());
   const [serverOffsetMs, setServerOffsetMs] = useState(0);
   const [expanded, setExpanded] = useState(false);
+  const [range, setRange] = useState<RangeKey>(DEFAULT_RANGE);
 
   const serverOffsetRef = useRef(0);
   const hiddenChainsRef = useRef<Set<string>>(new Set());
@@ -53,7 +68,6 @@ export function LiveDashboard() {
 
   const toggleExpanded = useCallback(() => setExpanded((v) => !v), []);
 
-  // Hidden chains persisted across visits.
   useEffect(() => {
     try {
       const saved = window.localStorage.getItem(STORAGE_HIDDEN_CHAINS);
@@ -80,7 +94,6 @@ export function LiveDashboard() {
     }
   }, [hiddenChains]);
 
-  // Expanded state persisted. Default collapsed.
   useEffect(() => {
     try {
       const saved = window.localStorage.getItem(STORAGE_LIVE_EXPANDED);
@@ -126,7 +139,20 @@ export function LiveDashboard() {
         }
 
         if (msg.type === "snapshot") {
-          setBuckets(msg.buckets.slice());
+          // Forward-compat with the multi-resolution relay AND backward-compat
+          // with the legacy `buckets`-only shape during deploy interleaving.
+          const fallback = emptySeries();
+          const legacy = (msg as unknown as { buckets?: Bucket[] }).buckets;
+          const next: SeriesByRange = msg.series
+            ? {
+                "10m": msg.series["10m"] ?? fallback["10m"],
+                "1h": msg.series["1h"] ?? fallback["1h"],
+                "24h": msg.series["24h"] ?? fallback["24h"],
+              }
+            : legacy
+              ? { ...fallback, "10m": { ...fallback["10m"], buckets: legacy } }
+              : fallback;
+          setSeries(next);
           const offset = msg.nowMs - Date.now();
           serverOffsetRef.current = offset;
           setServerOffsetMs(offset);
@@ -146,9 +172,25 @@ export function LiveDashboard() {
 
           const serverNow = Date.now() + serverOffsetRef.current;
           const isHidden = hiddenChainsRef.current.has(meta.key);
-          setBuckets((prev) => {
-            const next = appendSwapToBuckets(prev, meta.key, s.usd || 0, serverNow);
-            if (!isHidden && (s.usd || 0) >= POP_MIN_USD) spawnPop(next, meta, s, serverNow);
+          setSeries((prev) => {
+            const next: SeriesByRange = { ...prev };
+            (Object.keys(prev) as RangeKey[]).forEach((key) => {
+              const r = prev[key];
+              next[key] = {
+                ...r,
+                buckets: appendSwapToBuckets(
+                  r.buckets,
+                  meta.key,
+                  s.usd || 0,
+                  serverNow,
+                  r.bucketMs,
+                  r.windowMs,
+                ),
+              };
+            });
+            if (!isHidden && (s.usd || 0) >= POP_MIN_USD) {
+              spawnPop(next[POP_RANGE].buckets, meta, s);
+            }
             return next;
           });
         } else if (msg.type === "stats") {
@@ -157,7 +199,7 @@ export function LiveDashboard() {
       };
     }
 
-    function spawnPop(nextBuckets: Bucket[], meta: ChainMeta, s: SwapEvent, _nowMs: number) {
+    function spawnPop(nextBuckets: Bucket[], meta: ChainMeta, s: SwapEvent) {
       const last = nextBuckets[nextBuckets.length - 1];
       if (!last) return;
 
@@ -172,8 +214,6 @@ export function LiveDashboard() {
 
       const id = ++popIdRef.current;
       setPops((prev) => {
-        // Stagger anchorY by the count of currently-active pops so they
-        // don't collide at the right edge.
         const slot = prev.length % MAX_POPS;
         const anchorY = Math.max(2, Math.min(88, baseY + slot * POP_STACK_OFFSET_PCT));
         const pop: ChartPop = {
@@ -202,6 +242,10 @@ export function LiveDashboard() {
     };
   }, []);
 
+  const activeSeries = useMemo(() => series[range], [series, range]);
+  // Pops only make sense on the live (10m) view. Mute them on longer ranges.
+  const visiblePops = range === POP_RANGE ? pops : [];
+
   return (
     <>
       <LiveTicker
@@ -213,8 +257,10 @@ export function LiveDashboard() {
       />
       {expanded && (
         <LiveChart
-          buckets={buckets}
-          pops={pops}
+          series={activeSeries}
+          range={range}
+          onRangeChange={setRange}
+          pops={visiblePops}
           recent={recent}
           serverOffsetMs={serverOffsetMs}
           hiddenChains={hiddenChains}

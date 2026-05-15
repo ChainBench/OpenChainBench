@@ -9,15 +9,30 @@ import {
   CHART_PAD_X,
   CHART_PAD_Y,
   CHART_W,
-  WINDOW_MS,
+  RANGE_LABELS,
 } from "@/lib/live/config";
 import { CHAIN_LIST, chainMeta } from "@/lib/live/chains";
 import { fmtMoney } from "@/lib/live/format";
-import type { Bucket, ChartPop, SwapEvent } from "@/lib/live/types";
+import type {
+  Bucket,
+  ChartPop,
+  ChartSeries,
+  RangeKey,
+  SwapEvent,
+} from "@/lib/live/types";
 import { CompactFeed } from "./compact-feed";
 
+const RANGE_ORDER: RangeKey[] = ["10m", "1h", "24h"];
+const LEFT_LABEL: Record<RangeKey, string> = {
+  "10m": "10 min ago",
+  "1h": "1 h ago",
+  "24h": "24 h ago",
+};
+
 type Props = {
-  buckets: Bucket[];
+  series: ChartSeries;
+  range: RangeKey;
+  onRangeChange: (r: RangeKey) => void;
   pops: ChartPop[];
   recent: SwapEvent[];
   serverOffsetMs: number;
@@ -26,16 +41,15 @@ type Props = {
 };
 
 export function LiveChart({
-  buckets,
+  series,
+  range,
+  onRangeChange,
   pops,
   recent,
   serverOffsetMs,
   hiddenChains,
   onToggleChain,
 }: Props) {
-  // Tick once per second so the chart's right edge keeps advancing even
-  // during quiet periods. Apply the server offset so bucket timestamps
-  // from the relay line up with the chart's xMax.
   const [clientNow, setClientNow] = useState(() => Date.now());
   useEffect(() => {
     const id = setInterval(() => setClientNow(Date.now()), 1000);
@@ -43,25 +57,50 @@ export function LiveChart({
   }, []);
   const serverNow = clientNow + serverOffsetMs;
 
-  // Shared cumulative pass used by both chart computation and legend totals.
-  const cumPerChain = useMemo(() => cumulativePerChain(buckets), [buckets]);
-
-  const { paths, yMax, latest, totalCum } = useMemo(
-    () => computeChart(buckets, serverNow, hiddenChains, cumPerChain),
-    [buckets, serverNow, hiddenChains, cumPerChain],
+  const cumPerChain = useMemo(
+    () => cumulativePerChain(series.buckets),
+    [series.buckets],
   );
 
-  const empty = buckets.length === 0;
+  const { paths, yMax, latest, totalCum } = useMemo(
+    () => computeChart(series.buckets, serverNow, hiddenChains, cumPerChain, series.windowMs),
+    [series.buckets, series.windowMs, serverNow, hiddenChains, cumPerChain],
+  );
+
+  const empty = series.buckets.length === 0;
 
   return (
     <section className="card mt-4 relative overflow-hidden">
-      <header className="flex items-center gap-3 px-5 py-3 border-b border-rule">
-        <span className="label-mono text-ink-muted">Streamed volume · last 10 min</span>
+      <header className="flex flex-wrap items-center gap-3 px-5 py-3 border-b border-rule">
+        <span className="label-mono text-ink-muted">
+          Streamed volume · {RANGE_LABELS[range].toLowerCase()}
+        </span>
         <LiveDot />
         <span className="text-ink-faint">·</span>
         <span className="font-mono tabular text-[11px] text-ink-soft">
           {fmtMoney(totalCum)} total
         </span>
+
+        <div className="ml-auto inline-flex items-center rounded-sm border border-rule overflow-hidden">
+          {RANGE_ORDER.map((r) => {
+            const active = r === range;
+            return (
+              <button
+                key={r}
+                type="button"
+                onClick={() => onRangeChange(r)}
+                aria-pressed={active}
+                className={`px-2.5 py-1 label-mono transition-colors ${
+                  active
+                    ? "bg-ink text-paper"
+                    : "text-ink-muted hover:bg-paper-soft hover:text-ink"
+                }`}
+              >
+                {r}
+              </button>
+            );
+          })}
+        </div>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px]">
@@ -78,6 +117,7 @@ export function LiveChart({
             hiddenChains={hiddenChains}
             pops={pops}
             empty={empty}
+            leftLabel={LEFT_LABEL[range]}
           />
         </div>
 
@@ -151,6 +191,7 @@ function ChartCanvas({
   hiddenChains,
   pops,
   empty,
+  leftLabel,
 }: {
   paths: ChainPath[];
   latest: ChainLatest[];
@@ -158,6 +199,7 @@ function ChartCanvas({
   hiddenChains: Set<string>;
   pops: ChartPop[];
   empty: boolean;
+  leftLabel: string;
 }) {
   return (
     <div className="relative px-2 pb-4">
@@ -248,7 +290,7 @@ function ChartCanvas({
           fontSize={10}
           fill="var(--color-ink-faint)"
         >
-          10 min ago
+          {leftLabel}
         </text>
         <text
           x={CHART_W - 8}
@@ -323,20 +365,20 @@ function computeChart(
   nowMs: number,
   hiddenChains: Set<string>,
   cumNow: Record<string, number>,
+  windowMs: number,
 ): {
   paths: ChainPath[];
   yMax: number;
   latest: ChainLatest[];
   totalCum: number;
 } {
-  const xMin = nowMs - WINDOW_MS;
+  const xMin = nowMs - windowMs;
   const innerW = CHART_W - CHART_PAD_X - 8;
   const innerH = CHART_H - CHART_PAD_Y * 2;
   const baseY = CHART_PAD_Y + innerH;
 
-  const xScale = (ts: number) => CHART_PAD_X + ((ts - xMin) / WINDOW_MS) * innerW;
+  const xScale = (ts: number) => CHART_PAD_X + ((ts - xMin) / windowMs) * innerW;
 
-  // Compute cumulative-per-bucket once.
   const running: Record<string, number> = {};
   for (const chain of CHAIN_LIST) running[chain.key] = 0;
   const cumPerBucket: Array<{ x: number; ys: Record<string, number> }> = [];
