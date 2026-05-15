@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
+import { clientKey, globalLimit, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -31,30 +31,40 @@ const CHAIN_RE = /^[a-z0-9][a-z0-9-]{0,39}$/;
  *  let a reporter forge fake "*IP:* / *Contact:*" lines in the webhook.
  *  Escapes `<` `>` `&` and prefixes the rest of the mrkdwn meta-chars
  *  with a zero-width space so they render as literals. */
+/** Defang bare URLs so Slack doesn't auto-link them. Reporter abusing the
+ *  endpoint can otherwise inject phishing URLs that render as clickable
+ *  links in the on-call channel. Replace `:` after any URL-ish scheme. */
+function defangUrls(s: string): string {
+  return s.replace(/\b(https?|ftp|mailto|tel|javascript|data|file)(:)/gi, "$1[:]");
+}
+
 function slackSafe(s: string, max: number): string {
-  return s
+  // NFKC normalize first so Unicode-confusable variants (combining marks,
+  // compatibility forms) collapse to ASCII-equivalents the mention regex
+  // catches.
+  const normalized = s
+    .normalize("NFKC")
     .replace(CONTROL_CHARS, " ")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/([`*_~|])/g, "​$1")
-    .replace(/@(channel|here|everyone)/gi, "@​$1")
-    .slice(0, max)
-    .trim();
+    .replace(/@(channel|here|everyone)/gi, "@​$1");
+  return defangUrls(normalized).slice(0, max).trim();
 }
 
 /** Multiline variant: preserves \n so report bodies can use paragraphs. */
 function slackSafeMultiline(s: string, max: number): string {
-  return s
+  const normalized = s
+    .normalize("NFKC")
     .replace(/\r\n?/g, "\n")
     .replace(CONTROL_CHARS_KEEP_NL, " ")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/([`*_~|])/g, "​$1")
-    .replace(/@(channel|here|everyone)/gi, "@​$1")
-    .slice(0, max)
-    .trim();
+    .replace(/@(channel|here|everyone)/gi, "@​$1");
+  return defangUrls(normalized).slice(0, max).trim();
 }
 
 type Body = {
@@ -66,8 +76,13 @@ type Body = {
 };
 
 export async function POST(req: Request) {
+  // Per-IP cap (anti-burst per actor) AND site-wide cap (anti-amplification
+  // from a swarm of cheap residential IPs — even when each stays under the
+  // per-IP limit, the global bucket bounds total Slack webhook fan-out).
   const rl = rateLimit(clientKey(req, "report"), 5, 60);
   if (!rl.ok) return tooManyRequests(rl.retryAfterSec);
+  const gl = globalLimit("report", 60, 60);
+  if (!gl.ok) return tooManyRequests(gl.retryAfterSec);
 
   const webhook = process.env.SLACK_REPORT_WEBHOOK_URL;
   if (!webhook) {

@@ -24,8 +24,14 @@ const AlternativeSchema = z.object({
   slug,
   /** Display name of the product the page is alternative-to. */
   target_product: z.string().min(1),
-  /** Optional homepage URL of the target product (rendered as a link). */
-  target_url: z.url().optional(),
+  /** Optional homepage URL of the target product (rendered as a link).
+   *  Pin to http(s) so `javascript:` / `data:` / `file:` never reach a
+   *  rendered href. React strips them today, but the schema-time refusal
+   *  is the right place to enforce this. */
+  target_url: z
+    .url()
+    .refine((u) => /^https?:\/\//i.test(u), "must be http(s)")
+    .optional(),
   /** One-line description of the target product. */
   description: z.string().min(1),
   /** Slug of the existing benchmark this page reuses. */
@@ -65,7 +71,7 @@ export const loadAllAlternatives = cache(async (): Promise<Alternative[]> => {
     })
   );
   return parsed
-    .filter((a): a is Alternative => a !== null)
+    .filter((a): a is Alternative => a !== null && a.status === "live")
     .sort((a, b) => a.target_product.localeCompare(b.target_product));
 });
 

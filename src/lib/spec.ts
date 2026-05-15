@@ -34,7 +34,10 @@ const loadAllBenchmarksCached = unstable_cache(
     const benchmarks = await Promise.all(specs.map((s) => specToBenchmark(s)));
     return benchmarks.sort((a, b) => a.number.localeCompare(b.number));
   },
-  ["all-benchmarks"],
+  // Version bumped when the Benchmark shape changes so a stale cached
+  // entry from a previous deploy can't surface objects missing newer
+  // fields (e.g. editorialStatus introduced in commit 0457fb1).
+  ["all-benchmarks-v2"],
   { revalidate: 60, tags: ["benchmarks"] }
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);

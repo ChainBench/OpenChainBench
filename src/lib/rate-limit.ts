@@ -101,22 +101,34 @@ export function clientKey(req: Request, suffix = ""): string {
 }
 
 function resolveClientIp(req: Request): string {
+  // Vercel sets x-vercel-forwarded-for to a single vetted IP. Prefer it
+  // — it's the only header on this list that an external client cannot
+  // forge.
   const vercel = req.headers.get("x-vercel-forwarded-for");
   if (vercel) {
     const v = vercel.split(",")[0]?.trim();
     if (v) return v;
   }
-  const real = req.headers.get("x-real-ip");
-  if (real) {
-    const v = real.trim();
-    if (v) return v;
-  }
+  // Fallback: the LAST hop of x-forwarded-for. Vercel APPENDS its observed
+  // client IP to whatever the request brought in, so the last entry is
+  // platform-attached. We DO NOT trust x-real-ip — Vercel never sets it,
+  // so any value present came from the client and is fully attacker-
+  // controlled.
   const xff = req.headers.get("x-forwarded-for");
   if (xff) {
     const parts = xff.split(",").map((p) => p.trim()).filter(Boolean);
     if (parts.length > 0) return parts[parts.length - 1];
   }
   return "unknown";
+}
+
+/** Site-wide cap. Cheap "every-IP-bucket" limit composed on top of the
+ *  per-IP bucket — guards against distributed amplification (many IPs
+ *  flooding /api/report, e.g.) where the per-IP cap is per-actor but a
+ *  coordinated swarm can still saturate the route. Key the global bucket
+ *  by the route suffix, not by IP. */
+export function globalLimit(suffix: string, capacity: number, windowSec: number): RateLimitResult {
+  return rateLimit(`__global__:${suffix}`, capacity, windowSec);
 }
 
 /** Helper: build a 429 JSON Response with the standard headers. */
