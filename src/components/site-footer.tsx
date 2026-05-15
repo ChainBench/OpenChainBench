@@ -33,6 +33,7 @@ export function SiteFooter() {
               { label: "JSON citation", href: "/api/citable" },
               { label: "LLM context", href: "/api/llm-context" },
               { label: "llms.txt", href: "/llms.txt" },
+              { label: "MCP server", href: "/api/mcp/mcp" },
             ]}
           />
           <FooterCol
