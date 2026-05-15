@@ -168,7 +168,7 @@ export default async function ProviderPage({
             {sorted.filter((a) => a.rank === 1).map((a) => {
               const badgeUrl = `${SITE.url}/api/badge/${a.benchmark.slug}/${p.slug}`;
               const targetUrl = `${SITE.url}/benchmarks/${a.benchmark.slug}`;
-              const html = `<a href="${targetUrl}"><img src="${badgeUrl}" alt="Ranked #1 on OpenChainBench: ${a.benchmark.title}" height="28" /></a>`;
+              const html = `<a href="${targetUrl}"><img src="${badgeUrl}" alt="Ranked #1 on OpenChainBench: ${a.benchmark.title}" height="36" /></a>`;
               return (
                 <li key={`badge-${a.benchmark.slug}`} className="card-soft p-4">
                   <p className="text-xs font-mono uppercase tracking-[0.18em] text-ink-muted">
@@ -176,7 +176,7 @@ export default async function ProviderPage({
                   </p>
                   <div className="mt-3 flex items-center">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={badgeUrl} alt={`Ranked #1 on OpenChainBench: ${a.benchmark.title}`} height={28} />
+                    <img src={badgeUrl} alt={`Ranked #1 on OpenChainBench: ${a.benchmark.title}`} height={36} />
                   </div>
                   <details className="mt-3">
                     <summary className="cursor-pointer text-[11px] font-mono uppercase tracking-[0.18em] text-ink-muted hover:text-ink">
