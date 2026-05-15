@@ -14,6 +14,41 @@
 
 import { z } from "zod";
 
+/** Schema-time guard for spec-declared Prometheus URLs. Rejects non-https,
+ *  loopback, RFC1918, link-local (incl. AWS/GCP metadata at 169.254.x),
+ *  ULA and CGNAT literals.
+ *
+ *  This is the FIRST line of defense — it blocks obvious bad URLs in PR.
+ *  The runtime client (src/lib/prometheus.ts) also DNS-resolves the hostname
+ *  before every fetch and rejects if it lands on a private address, so a
+ *  hostname that *currently* resolves to a public IP can't get repointed to
+ *  169.254.169.254 later without the fetch failing.
+ *
+ *  Federation context: every contributor declares their own
+ *  `prometheus.url` in the YAML (https://<their-prom>.example). Maintainers
+ *  do a manual review on PR; this guard plus the runtime DNS check is the
+ *  belt-and-suspenders pair. */
+function isPublicHttpsUrl(raw: string): boolean {
+  let u: URL;
+  try {
+    u = new URL(raw);
+  } catch {
+    return false;
+  }
+  if (u.protocol !== "https:") return false;
+  const host = u.hostname.toLowerCase();
+  if (host === "localhost" || host === "0.0.0.0" || host === "::1" || host === "::") return false;
+  if (/^127\./.test(host)) return false;
+  if (/^10\./.test(host)) return false;
+  if (/^192\.168\./.test(host)) return false;
+  if (/^172\.(1[6-9]|2\d|3[01])\./.test(host)) return false;
+  if (/^169\.254\./.test(host)) return false;
+  if (/^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./.test(host)) return false; // CGNAT
+  if (/^f[cd][0-9a-f]{2}:/.test(host)) return false; // IPv6 ULA
+  if (/^fe80:/.test(host)) return false; // IPv6 link-local
+  return true;
+}
+
 const slug = z
   .string()
   .min(1)
@@ -116,11 +151,16 @@ export const SpecSchema = z
     findings: z.array(z.string()).default([]),
     source: z.url(),
 
-    /* Data source — runtime URL comes from process.env.PROMETHEUS_URL (operator-set).
-     * Per-spec URLs were removed to eliminate the SSRF surface (a malicious
-     * YAML PR could otherwise point the server at internal hosts). */
+    /* Data source. OpenChainBench is a federation: every contributor
+     * declares the Prometheus their harness publishes to. Schema-time
+     * isPublicHttpsUrl + runtime DNS-resolve guard in the Prom client
+     * defend the site from SSRF via a malicious or DNS-rebound URL. */
     prometheus: z
       .object({
+        url: z
+          .url()
+          .refine(isPublicHttpsUrl, "Prometheus URL must be https:// and resolve to a public host (no loopback / RFC1918 / link-local / metadata IPs)")
+          .optional(),
         window: window.optional(),
       })
       .optional(),

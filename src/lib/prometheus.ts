@@ -3,6 +3,9 @@
  * Docs: https://prometheus.io/docs/prometheus/latest/querying/api/
  */
 
+import { promises as dns } from "node:dns";
+import { isIP } from "node:net";
+
 export type PromVector = { metric: Record<string, string>; value: [number, string] };
 export type PromMatrix = { metric: Record<string, string>; values: [number, string][] };
 export type PromInstantResult =
@@ -117,15 +120,19 @@ export class Prometheus {
   }
 
   private async fetchEnvelope<T>(url: URL, signal?: AbortSignal): Promise<T> {
+    // Defense in depth against DNS-rebinding: the schema guards URL
+    // literals, but a hostname can resolve to a private address at fetch
+    // time. Refuse if any resolved IP is loopback / RFC1918 / link-local
+    // / metadata / ULA / CGNAT.
+    await assertPublicHost(url);
+
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
     try {
       const merged = signal ? mergeSignals(signal, controller.signal) : controller.signal;
       const res = await fetch(url, {
         signal: merged,
-        // Refuse to follow redirects. defense in depth against an operator-set
-        // PROMETHEUS_URL whose origin returns a 3xx pointing at a private/
-        // metadata host (DNS rebinding, link-local, etc.).
+        // Refuse to follow redirects. blocks 3xx into a private host.
         redirect: "manual",
         // Cache at the platform level. pages call us through ISR.
         next: { revalidate: 60 },
@@ -177,6 +184,50 @@ function extractMetricName(promql: string): string | null {
     return name;
   }
   return null;
+}
+
+/** Reject loopback, private, link-local, metadata, ULA and CGNAT addresses.
+ *  Mirrors the schema-time check but operates on resolved IPs so a hostname
+ *  that publicly resolved at PR time can't get repointed to 169.254.169.254
+ *  at fetch time. */
+function isPrivateAddress(addr: string): boolean {
+  const family = isIP(addr);
+  if (family === 0) return false;
+  if (family === 4) {
+    if (addr === "0.0.0.0") return true;
+    if (/^127\./.test(addr)) return true;
+    if (/^10\./.test(addr)) return true;
+    if (/^192\.168\./.test(addr)) return true;
+    if (/^172\.(1[6-9]|2\d|3[01])\./.test(addr)) return true;
+    if (/^169\.254\./.test(addr)) return true;
+    if (/^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./.test(addr)) return true; // CGNAT
+    return false;
+  }
+  // IPv6
+  const a = addr.toLowerCase();
+  if (a === "::1" || a === "::") return true;
+  if (/^f[cd][0-9a-f]{2}:/.test(a)) return true; // ULA
+  if (/^fe80:/.test(a)) return true; // link-local
+  // IPv4-mapped IPv6
+  const mapped = /^::ffff:([0-9.]+)$/.exec(a);
+  if (mapped) return isPrivateAddress(mapped[1]);
+  return false;
+}
+
+async function assertPublicHost(url: URL): Promise<void> {
+  const host = url.hostname;
+  if (isIP(host)) {
+    if (isPrivateAddress(host)) {
+      throw new Error(`prometheus: refused private host ${host}`);
+    }
+    return;
+  }
+  const addrs = await dns.lookup(host, { all: true });
+  for (const { address } of addrs) {
+    if (isPrivateAddress(address)) {
+      throw new Error(`prometheus: ${host} resolves to private address ${address}`);
+    }
+  }
 }
 
 function mergeSignals(a: AbortSignal, b: AbortSignal): AbortSignal {
