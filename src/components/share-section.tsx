@@ -195,7 +195,7 @@ export function ShareSection({ slug, title, benchmark, chain }: Props) {
             className="relative w-full max-w-4xl rounded-md border border-rule bg-paper shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between border-b border-rule px-6 py-4">
+            <div className="flex items-center justify-between border-b border-rule px-4 sm:px-6 py-4">
               <span className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink">
                 Export as image · 5 layouts
               </span>
@@ -207,7 +207,7 @@ export function ShareSection({ slug, title, benchmark, chain }: Props) {
                 <X size={20} strokeWidth={2} />
               </button>
             </div>
-      <div className="px-6 py-5 space-y-5">
+      <div className="px-4 sm:px-6 py-5 space-y-5">
         <p className="text-sm text-ink-muted leading-relaxed max-w-2xl">
           Pick a layout and download a 1200×630 PNG ready for Twitter, Reddit, LinkedIn or any OG-card embed. Same data, same colors as this dashboard.
         </p>

@@ -220,7 +220,7 @@ export function BenchmarkBody({
         <>
           <CountLeaderboard benchmark={benchmark} />
           <div className="mt-14">
-            <SectionLabel>Provider ledger</SectionLabel>
+            <SectionLabel>Product ledger</SectionLabel>
             <LedgerTable benchmark={benchmark} />
           </div>
         </>
@@ -228,7 +228,7 @@ export function BenchmarkBody({
 
       {!isDraft && benchmark.unit !== "count" && (
         <>
-          <dl className="mt-10 grid grid-cols-2 sm:flex sm:flex-wrap items-baseline gap-x-8 gap-y-3 border-y border-rule py-4">
+          <dl className="mt-10 grid grid-cols-2 sm:flex sm:flex-wrap items-baseline gap-x-4 sm:gap-x-8 gap-y-2 sm:gap-y-3 border-y border-rule py-4">
             <SummaryStat
               label="Best"
               value={`${fmtValue(fieldMin, benchmark.unit)}${unitSuffix(benchmark.unit)}`}
@@ -271,7 +271,7 @@ export function BenchmarkBody({
           </div>
 
           <div className="mt-14">
-            <SectionLabel>Provider ledger · sorted by p50</SectionLabel>
+            <SectionLabel>Product ledger · sorted by p50</SectionLabel>
             <LedgerTable benchmark={benchmark} />
           </div>
 

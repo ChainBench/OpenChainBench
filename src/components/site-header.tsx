@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 
 const NAV = [
-  { href: "/providers", label: "Providers" },
+  { href: "/providers", label: "Products" },
   { href: "/methodology", label: "Methodology" },
   { href: "/contribute", label: "Contribute" },
   { href: "/mcp", label: "MCP" },
@@ -12,7 +12,7 @@ export function SiteHeader() {
   return (
     <header className="border-b border-rule bg-paper/85 backdrop-blur-md sticky top-0 z-40">
       {/* Masthead. logo · nav · live status · github */}
-      <div className="mx-auto max-w-7xl px-6 h-14 flex items-center gap-6">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 h-14 flex items-center gap-6">
         <Link href="/" className="flex items-center gap-2 shrink-0">
           <Image
             src="/logo.png"

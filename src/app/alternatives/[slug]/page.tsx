@@ -101,7 +101,7 @@ export default async function AlternativePage({
         <>
           <CountLeaderboard benchmark={bench} />
           <div className="mt-14">
-            <SectionLabel>Provider ledger</SectionLabel>
+            <SectionLabel>Product ledger</SectionLabel>
             <LedgerTable benchmark={bench} />
           </div>
         </>
@@ -144,7 +144,7 @@ export default async function AlternativePage({
           </div>
 
           <div className="mt-14">
-            <SectionLabel>Provider ledger · sorted by p50</SectionLabel>
+            <SectionLabel>Product ledger · sorted by p50</SectionLabel>
             <LedgerTable benchmark={bench} />
           </div>
         </>

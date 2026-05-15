@@ -61,7 +61,7 @@ export function ProvidersTable({ providers }: { providers: Row[] }) {
 
       {filtered.length === 0 ? (
         <p className="py-12 text-center text-sm text-ink-muted">
-          No provider matches{" "}
+          No product matches{" "}
           <span className="font-mono text-ink">&quot;{query}&quot;</span>.
         </p>
       ) : (

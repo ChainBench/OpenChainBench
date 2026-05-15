@@ -78,7 +78,7 @@ export function BenchmarkTable({ benchmarks }: { benchmarks: Benchmark[] }) {
               {filtered.length} of {benchmarks.length}
             </span>
           )}
-          <label className="group relative flex items-center w-44 focus-within:w-64 transition-[width] duration-200">
+          <label className="group relative flex items-center w-36 sm:w-44 focus-within:w-44 focus-within:sm:w-64 transition-[width] duration-200">
             <Search
               size={13}
               strokeWidth={2}

@@ -39,12 +39,12 @@ export function LedgerTable({ benchmark }: Props) {
     results.reduce((s, r) => s + r.ms.p50, 0) / Math.max(1, results.length);
 
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
       <table className="ledger w-full border-collapse">
         <thead>
           <tr>
             <th colSpan={3} className="border-y-2 border-ink py-2 pr-3 text-left">
-              Provider
+              Product
             </th>
             <th colSpan={4} className="border-y-2 border-ink py-2 px-3 text-center">
               Latency aggregates

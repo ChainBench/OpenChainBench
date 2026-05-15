@@ -175,7 +175,7 @@ export default async function BenchmarkPage({
   };
 
   return (
-    <article className="mx-auto max-w-5xl px-6 pt-10 sm:pt-14">
+    <article className="mx-auto max-w-5xl px-4 sm:px-6 pt-10 sm:pt-14">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}

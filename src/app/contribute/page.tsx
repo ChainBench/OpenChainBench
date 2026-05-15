@@ -179,7 +179,7 @@ const REFERENCES = [
 
 export default function ContributePage() {
   return (
-    <article className="mx-auto max-w-5xl px-6 py-12">
+    <article className="mx-auto max-w-5xl px-4 sm:px-6 py-12">
       {/* Hero */}
       <header className="border-b-2 border-ink pb-6">
         <h1 className="display text-3xl sm:text-4xl tracking-tight">

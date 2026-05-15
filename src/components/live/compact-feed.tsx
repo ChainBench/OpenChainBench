@@ -27,7 +27,7 @@ export function CompactFeed({
   });
   return (
     // h matches the chart column (legend ~32 + svg 280 + pb-4 16 ≈ 328)
-    <div className="flex flex-col h-[328px]">
+    <div className="flex flex-col h-[260px] sm:h-[328px]">
       <div className="px-4 py-3 border-b border-rule flex items-center gap-2 shrink-0">
         <span className="label-mono text-ink-muted">Live feed</span>
         <LiveDot />
@@ -73,21 +73,21 @@ const CompactRow = memo(function CompactRow({ s }: { s: SwapEvent }) {
 
   const cells = (
     <>
-      <td className="pl-4 pr-1 py-1.5 align-middle">
+      <td className="pl-3 sm:pl-4 pr-1 py-1.5 align-middle">
         {meta ? (
           <ProviderLogo slug={meta.slug} name={meta.display} size={14} />
         ) : (
           <span className="inline-block h-3.5 w-3.5 rounded-full bg-paper-soft" />
         )}
       </td>
-      <td className="px-1 py-1.5 text-ink whitespace-nowrap truncate max-w-[110px]">
+      <td className="px-1 py-1.5 text-ink whitespace-nowrap truncate max-w-[72px] sm:max-w-[110px]">
         {pair}
       </td>
       <td className={`px-1 py-1.5 text-center w-4 ${sideColor}`}>{sideArrow}</td>
       <td className={`px-1 py-1.5 text-right whitespace-nowrap ${usdClass}`}>
         {fmtMoney(s.usd)}
       </td>
-      <td className={`pl-1 pr-4 py-1.5 text-right whitespace-nowrap ${lagClass}`}>
+      <td className={`pl-1 pr-3 sm:pr-4 py-1.5 text-right whitespace-nowrap ${lagClass}`}>
         {fmtLag(lag)}
       </td>
     </>
