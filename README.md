@@ -69,6 +69,7 @@ us without screenshotting:
 | [`/llms.txt`](https://openchainbench.com/llms.txt) | LLM crawlers (ChatGPT, Claude, Perplexity, Gemini) | Plain-text index of every benchmark + links to JSON. Follows the [llmstxt.org](https://llmstxt.org) convention. |
 | [`/api/citable`](https://openchainbench.com/api/citable) | Devs, agents | Flat JSON: every benchmark with current value, leader, headline sentence, citation URL, OG image URL. |
 | [`/api/stat/<slug>`](https://openchainbench.com/api/stat/aggregator-head-lag) | Devs, agents | Single benchmark: full rankings, sparkline (24h), methodology, paste-ready quote, attribution URL. |
+| [`/api/freshness`](https://openchainbench.com/api/freshness) | Live UI, dashboards | Tiny `{slug → asOf ms}` map. Edge-cached 5 s, polled by the on-page "Live" indicator every 8 s for ~15-20 s p99 staleness. |
 | [`/api/llm-context`](https://openchainbench.com/api/llm-context) | LLMs | Every benchmark with rankings + methodology in one Markdown blob. Paste into a system prompt for "here's everything you need to answer questions about crypto-infra performance today". |
 | [`/api/og/<slug>`](https://openchainbench.com/api/og/aggregator-head-lag) | Twitter/Slack/Discord/iMessage | 1200×630 PNG with the current value, leader, sparkline, watermark. Returned automatically as the OG image when someone shares a benchmark link. |
 | [`/api/openapi.json`](https://openchainbench.com/api/openapi.json) | LangChain, Custom GPTs, generic clients | OpenAPI 3.1 schema describing every endpoint. |
@@ -100,11 +101,11 @@ The full provider directory lives at [`/providers`](https://openchainbench.com/p
 
 Via MCP (recommended): point any MCP-capable client at `https://openchainbench.com/api/mcp/mcp`. It will discover three tools (`list_benchmarks`, `get_benchmark(slug, chain?, region?)`, `query_prom(query, windowSec?)`) and can answer questions like *"which aggregator is fastest on Base from EU right now?"* with live data.
 
-Via REST: hit `/api/citable` once to discover everything, then `/api/stat/<slug>` for specifics. Both are zero-auth, edge-cached for 60 s.
+Via REST: hit `/api/citable` once to discover everything, then `/api/stat/<slug>` for specifics. Both are zero-auth, edge-cached for 60 s. For just the live freshness, `/api/freshness` is a few hundred bytes and refreshes every 5 s at the edge.
 
 ## How a benchmark gets data. federation
 
-OpenChainBench is a federation of independently-hosted harnesses connected by a single shared Prometheus.
+OpenChainBench is a federation of independently-hosted harnesses. Each spec declares the Prometheus its harness writes to. nothing forces every contributor onto the same instance.
 
 ```
 [Mobula's infra]         [Contributor B's infra]      [Provider C's infra]
@@ -112,23 +113,28 @@ OpenChainBench is a federation of independently-hosted harnesses connected by a 
    /metrics on              /metrics on                   /metrics on
    <public HTTPS URL>       <public HTTPS URL>            <public HTTPS URL>
         │                          │                              │
+        ▼                          ▼                              ▼
+   Prometheus A               Prometheus B                   Prometheus C
+   (operator's,               (operator's,                   (operator's,
+   public read API)           public read API)               public read API)
+        │                          │                              │
         └──────────────────────────┼──────────────────────────────┘
                                    ▼
-                  ┌────────────────────────────────────┐
-                  │ OpenChainBench Prometheus          │
-                  │ scrapes every harness's URL on a   │
-                  │ schedule, 365d retention           │
-                  └────────────────┬───────────────────┘
-                                   │ HTTPS
-                                   │ /api/v1/query
-                                   ▼
                           openchainbench.com
-                          (Next.js site on Vercel, ISR 60s)
+                          (Next.js site on Vercel)
+                          queries spec.prometheus.url
+                          declared in each YAML
 ```
 
-Each harness is run by whoever wrote it. Mobula for the existing aggregator and bridge benchmarks, independent contributors for any future ones, providers for self-benchmarks of their own services. They never share API keys with the project. They expose `/metrics` over HTTPS and the OpenChainBench Prometheus scrapes the public URL.
+Each harness is run by whoever wrote it. Mobula for the existing aggregator and bridge benchmarks, independent contributors for any future ones, providers for self-benchmarks of their own services. They never share API keys with the project. They expose `/metrics` over HTTPS to **their own** Prometheus, and that Prom's read API is what the site queries.
 
-The site queries the shared Prometheus URL declared in each YAML spec via the standard Prometheus HTTP API (`/api/v1/query`, `/api/v1/query_range`). ISR caches the response on Vercel's edge for 60 s.
+The site queries the Prometheus URL declared in each YAML spec via the standard HTTP API (`/api/v1/query`, `/api/v1/query_range`). Caching happens in three layers:
+
+1. **`unstable_cache` revalidate 60 s** for the full benchmark payload (rankings, series, sparklines) used by every bench page and `/api/citable`.
+2. **`unstable_cache` revalidate 5 s** for the lightweight `/api/freshness` probe consumed by the on-page "Live" indicator.
+3. **Vercel edge cache** (`s-maxage` + `stale-while-revalidate`) on every public route.
+
+A spec's Prometheus URL goes through a two-layer SSRF guard: a schema-time rejection of non-HTTPS / RFC1918 / link-local / metadata IPs at PR-validate time (`pnpm validate`), and a runtime DNS resolution that refuses if the hostname currently lands on a private address. Plus `redirect: "manual"` on every Prom fetch so a 3xx into a private host gets blocked too.
 
 ## The live dashboard on /
 
