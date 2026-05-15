@@ -47,7 +47,7 @@ export function CountLeaderboard({ benchmark }: { benchmark: Benchmark }) {
       {/* Horizontal bars. the comparison that actually reads */}
       <div className="mt-12">
         <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted">
-          {benchmark.metric} · by provider
+          {benchmark.metric} · by product
         </p>
         <ol className="mt-4 space-y-3">
           {ranked.map((r, i) => {

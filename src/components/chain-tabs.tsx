@@ -115,10 +115,10 @@ function Tab({
               <span className="text-ink-muted"> · {info.leader.value}</span>
             </p>
           ) : (
-            <p className="mt-1.5 text-xs text-ink-muted">No provider live yet.</p>
+            <p className="mt-1.5 text-xs text-ink-muted">No product live yet.</p>
           )}
           <p className="mt-1 text-[10px] uppercase tracking-[0.14em] text-ink-faint">
-            {info.providers} provider{info.providers === 1 ? "" : "s"} · {info.metric}
+            {info.providers} product{info.providers === 1 ? "" : "s"} · {info.metric}
           </p>
         </span>
       )}

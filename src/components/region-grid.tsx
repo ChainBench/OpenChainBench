@@ -33,7 +33,7 @@ export function RegionGrid({ benchmark }: Props) {
       <table className="w-full border-collapse text-sm tabular">
         <thead>
           <tr className="font-sans text-[10px] uppercase tracking-[0.18em] text-ink-soft">
-            <th className="py-2 pr-3 text-left font-medium w-44">Provider</th>
+            <th className="py-2 pr-3 text-left font-medium w-32 sm:w-44">Product</th>
             {REGIONS.map((region) => (
               <th key={region.key} className="py-2 px-2 text-left font-medium">
                 {region.label}

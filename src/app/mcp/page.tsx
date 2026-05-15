@@ -46,7 +46,7 @@ export default async function McpPage() {
   const benches = (await getBenchmarks()).filter((b) => b.editorialStatus === "live");
 
   return (
-    <article className="mx-auto max-w-3xl px-6 pt-12 pb-16">
+    <article className="mx-auto max-w-3xl px-4 sm:px-6 pt-12 pb-16">
       <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-ink-faint">
         Integration
       </p>

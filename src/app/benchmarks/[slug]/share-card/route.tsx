@@ -596,7 +596,7 @@ async function renderRanking(
               maxWidth: 980,
             }}
           >
-            Provider ranking by p50 · {benchmark.metric}.
+            Product ranking by p50 · {benchmark.metric}.
           </div>
 
           <div
@@ -1148,7 +1148,7 @@ async function renderHeadline(
             }}
           >
             {isFastest
-              ? `ahead of ${Math.max(0, sorted.length - 1)} other provider${sorted.length === 2 ? "" : "s"}`
+              ? `ahead of ${Math.max(0, sorted.length - 1)} other product${sorted.length === 2 ? "" : "s"}`
               : `${rank} of ${sorted.length} providers · field min ${winner ? fmtUnit(sorted[0].ms.p50, benchmark.unit) : "-"}`}
             {winner && ` · p99 ${fmtUnit(winner.ms.p99, benchmark.unit)}`}
           </div>
