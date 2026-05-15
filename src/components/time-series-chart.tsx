@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import { Globe } from "lucide-react";
 import type { Benchmark } from "@/types/benchmark";
+import { brandColor } from "@/lib/brand";
 import { fmtUnit } from "@/lib/format";
 import { buildProviderColors } from "@/lib/series-colors";
 import { LiveDot } from "@/components/live-dot";
@@ -118,6 +120,7 @@ export function TimeSeriesChart({ benchmark }: Props) {
               Region
             </span>
             <RegionTab
+              slug="all"
               label="All"
               active={region === "all"}
               onClick={() => setRegion("all")}
@@ -125,6 +128,7 @@ export function TimeSeriesChart({ benchmark }: Props) {
             {availableRegions.map((r) => (
               <RegionTab
                 key={r}
+                slug={r}
                 label={REGION_LABEL[r] ?? r}
                 active={region === r}
                 onClick={() => setRegion(r)}
@@ -151,26 +155,39 @@ export function TimeSeriesChart({ benchmark }: Props) {
 }
 
 function RegionTab({
+  slug,
   label,
   active,
   onClick,
 }: {
+  slug: string;
   label: string;
   active: boolean;
   onClick: () => void;
 }) {
+  const accent = brandColor(slug);
+  const activeStyle = active
+    ? { background: accent ?? "var(--color-ink)", color: "var(--color-paper)" }
+    : undefined;
+  const className = active
+    ? "rounded-md px-3 py-1.5 text-xs font-medium uppercase tracking-[0.14em] shadow-sm transition-colors"
+    : "rounded-md px-3 py-1.5 text-xs font-medium uppercase tracking-[0.14em] border border-rule text-ink-muted hover:text-ink hover:bg-paper-soft transition-colors";
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={[
-        "rounded px-2.5 py-1 text-[11px] font-mono tabular uppercase tracking-[0.1em] transition-colors",
-        active
-          ? "bg-ink text-paper"
-          : "text-ink-muted hover:text-ink hover:bg-paper-soft",
-      ].join(" ")}
-    >
-      {label}
+    <button type="button" onClick={onClick} style={activeStyle} className={className}>
+      <span className="inline-flex items-center gap-1.5">
+        <span
+          className="inline-flex items-center justify-center rounded-full"
+          style={{
+            width: 14,
+            height: 14,
+            background: active ? "rgba(255,255,255,0.18)" : (accent ?? "var(--color-ink-soft)"),
+            color: "var(--color-paper)",
+          }}
+        >
+          <Globe size={9} strokeWidth={2.2} />
+        </span>
+        {label}
+      </span>
     </button>
   );
 }
