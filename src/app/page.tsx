@@ -20,7 +20,7 @@ export default async function HomePage() {
   return (
     <article className="mx-auto max-w-[1400px] px-4 sm:px-6 py-10 sm:py-14 space-y-14 sm:space-y-20">
       {/* Hero */}
-      <section className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,380px)] gap-8 items-center">
+      <section className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,420px)] gap-8 lg:gap-12 items-center lg:pr-12">
         <div>
           <h1 className="display text-3xl sm:text-4xl md:text-5xl text-ink leading-[1.05]">
             Highest accuracy at every price point
@@ -48,8 +48,8 @@ export default async function HomePage() {
             </Link>
           </div>
         </div>
-        <div className="flex justify-center lg:justify-end">
-          <HeroRadar size={380} />
+        <div className="flex justify-center">
+          <HeroRadar size={360} />
         </div>
       </section>
 
