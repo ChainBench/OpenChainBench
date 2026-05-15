@@ -3,10 +3,9 @@
  *
  * Endpoint shape: /api/badge/<benchmark-slug>/<provider-slug>
  *
- * Returns an SVG showing the provider's current rank + p50 on that bench.
- * Cache-Control is short so the figure refreshes within a few minutes of
- * a new run, but long enough to absorb burst traffic without hammering
- * Prometheus on every page load.
+ * Returns an SVG showing the provider's current rank + headline figure
+ * on that bench. Cache-Control is short so the figure refreshes within
+ * a few minutes of a new run.
  */
 
 import { type NextRequest, NextResponse } from "next/server";
@@ -17,8 +16,12 @@ export const revalidate = 300;
 
 type Params = { slug: string; provider: string };
 
-const W = 240;
-const H = 28;
+const H = 36;
+// Width is fixed but generous so most benchmark titles fit without
+// truncation. Anything over ~32 chars gets ellipsis.
+const W = 360;
+const LEFT_W = 78;
+const TITLE_MAX = 32;
 
 function rankOf(
   results: { slug: string; ms: { p50: number } }[],
@@ -37,6 +40,17 @@ function rankOf(
   return { rank: idx + 1, total: sorted.length, value: sorted[idx].ms.p50 };
 }
 
+function valueSuffix(unit: string): string {
+  if (unit === "count") return "(24h)";
+  if (unit === "pct" || unit === "bps") return "(24h avg)";
+  return "(p50, 24h)";
+}
+
+function truncate(s: string, max: number): string {
+  if (s.length <= max) return s;
+  return s.slice(0, max - 1).trimEnd() + "…";
+}
+
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<Params> },
@@ -49,22 +63,28 @@ export async function GET(
   const r = rankOf(b.results, provider, b.higherIsBetter);
   if (!r) return new NextResponse("not found", { status: 404 });
 
+  // Colour signals rank. green for #1, dark ink for everyone else.
   const accent = r.rank === 1 ? "#3F7B47" : "#22272F";
-  const rankLabel = `#${r.rank} of ${r.total}`;
-  const valueLabel = `${fmtUnit(r.value, b.unit)} p50`;
-  const benchLabel = b.title.length > 30 ? `${b.title.slice(0, 28)}...` : b.title;
+  const rankLabel = `#${r.rank}/${r.total}`;
+  const value = fmtUnit(r.value, b.unit);
+  const suffix = valueSuffix(b.unit);
+  const title = truncate(b.title, TITLE_MAX);
+
+  // Provider initials in the bottom-left corner. mirrors the brand
+  // chip the site uses internally.
+  const ocbBrand = "OCB";
 
   const svg = `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="OpenChainBench: ${benchLabel} ${rankLabel}">
-  <title>OpenChainBench. ${benchLabel}. ${rankLabel}, ${valueLabel}</title>
-  <rect width="${W}" height="${H}" rx="3" fill="#F5F1E8"/>
-  <rect x="0" y="0" width="68" height="${H}" rx="3" fill="${accent}"/>
-  <rect x="65" y="0" width="3" height="${H}" fill="${accent}"/>
-  <g font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="10">
-    <text x="6" y="11" fill="#F5F1E8" font-weight="600" letter-spacing="1.2">OCB</text>
-    <text x="6" y="22" fill="#F5F1E8" font-weight="500">${rankLabel}</text>
-    <text x="76" y="11" fill="#22272F" font-weight="600">${escapeXml(benchLabel)}</text>
-    <text x="76" y="22" fill="#5A6068">${valueLabel}</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="OpenChainBench: ${escapeXml(b.title)} ${rankLabel}, ${value}">
+  <title>OpenChainBench. ${escapeXml(b.title)}. ${rankLabel}, ${value} ${suffix}</title>
+  <rect width="${W}" height="${H}" rx="4" fill="#F5F1E8"/>
+  <rect width="${LEFT_W}" height="${H}" rx="4" fill="${accent}"/>
+  <rect x="${LEFT_W - 4}" width="4" height="${H}" fill="${accent}"/>
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace">
+    <text x="10" y="15" fill="#F5F1E8" font-size="9" font-weight="600" letter-spacing="1.6">${ocbBrand}</text>
+    <text x="10" y="28" fill="#F5F1E8" font-size="12" font-weight="700" letter-spacing="0.4">${rankLabel}</text>
+    <text x="${LEFT_W + 12}" y="15" fill="#22272F" font-size="11" font-weight="600">${escapeXml(title)}</text>
+    <text x="${LEFT_W + 12}" y="28" fill="#5A6068" font-size="10" font-weight="500">${value} <tspan fill="#9aa0a8">${suffix}</tspan></text>
   </g>
 </svg>`;
 
