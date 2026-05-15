@@ -11,14 +11,14 @@
 import { brandColor } from "./brand";
 
 const PALETTE = [
-  "#181614", // ink
-  "#7a3a25", // warm rust
-  "#2c5e5e", // deep teal
-  "#9c7a18", // muted ochre
-  "#5a3a7a", // aged purple
-  "#3d6d3d", // moss
-  "#8a2a3f", // burgundy
-  "#4a443c", // ink-soft
+  "#64748b", // slate
+  "#a16207", // amber
+  "#0d9488", // teal
+  "#7c3aed", // violet
+  "#16a34a", // green
+  "#c2410c", // rust
+  "#db2777", // pink
+  "#0284c7", // sky
 ];
 
 /** Return a color for the i-th unbranded line. */

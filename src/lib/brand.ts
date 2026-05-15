@@ -48,6 +48,32 @@ const BRANDS: Record<string, Brand> = {
   "eu-west": { color: "#3A7BC7" },
   "ap-southeast": { color: "#3F8F66" },
   global: { color: "#7a7166" },
+
+  // ─── Aggregators / providers (distinct colors that read on both modes) ───
+  mobula: { color: "#ea580c" },
+  codex: { color: "#84cc16" },
+  geckoterminal: { color: "#22c55e" },
+  jupiter: { color: "#f97316" },
+  helius: { color: "#a855f7" },
+  moralis: { color: "#3b82f6" },
+  blockscout: { color: "#0ea5e9" },
+  tonapi: { color: "#0098EA" },
+  stellarexpert: { color: "#06b6d4" },
+  xrpscan: { color: "#0085C3" },
+  oli: { color: "#94a3b8" },
+  walletexplorer: { color: "#facc15" },
+
+  // ─── Bridges / relays ───
+  debridge: { color: "#ea580c" },
+  lifi: { color: "#eab308" },
+  relay: { color: "#14b8a6" },
+
+  // ─── Trading / perps ───
+  hyperliquid: { color: "#22d3ee" },
+  dydx: { color: "#a78bfa" },
+  gmx: { color: "#3b82f6" },
+  lighter: { color: "#f43f5e" },
+  gains: { color: "#10b981" },
 };
 
 const REGION_VALUES = new Set(["us-east", "eu-west", "ap-southeast", "global"]);
