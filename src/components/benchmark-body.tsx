@@ -250,11 +250,6 @@ export function BenchmarkBody({
                   : undefined
               }
             />
-            <SummaryStat
-              label="Samples · 24h"
-              value={Math.round(benchmark.sampleSize).toLocaleString()}
-              hint={`${benchmark.results.length} providers`}
-            />
           </dl>
 
           <div className="mt-12">
