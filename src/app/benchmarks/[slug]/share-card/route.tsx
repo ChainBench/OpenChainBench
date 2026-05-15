@@ -7,6 +7,7 @@ import { fmtUnit, fmtValue, unitSuffix } from "@/lib/format";
 import { logoPath } from "@/lib/logo-manifest";
 import { chipBackground, chipTextColor, initials } from "@/lib/brand";
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
+import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 
 /** Best → worst, depending on whether higher numbers are better. */
 function sortByP50(b: Benchmark): ProviderResult[] {
@@ -431,19 +432,37 @@ function CardShell({
   );
 }
 
+const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,79}$/;
+
 // ─── GET ───────────────────────────────────────────────────────────────
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ slug: string }> }
 ) {
+  // Rate-limit per IP — share-card renders 5 templates and runs full
+  // benchmark loaders, each render is 50-200ms CPU. Without this an
+  // attacker hitting random query-string variants would burn function
+  // CPU even for unknown slugs.
+  const rl = rateLimit(clientKey(request, "share-card"), 60, 60);
+  if (!rl.ok) return tooManyRequests(rl.retryAfterSec);
+
   const { slug } = await params;
+  if (!SLUG_RE.test(slug)) {
+    return new Response("bad_slug", {
+      status: 400,
+      headers: { "cache-control": "public, s-maxage=3600" },
+    });
+  }
   const url = new URL(request.url);
 
   // Validate `?chain=` against the spec-declared dimension before passing
   // it to the loader — same pattern as the bench detail page.
   const aggregate = await getBenchmark(slug);
-  if (!aggregate) {
-    return new Response("Not found", { status: 404 });
+  if (!aggregate || aggregate.editorialStatus !== "live") {
+    return new Response("Not found", {
+      status: 404,
+      headers: { "cache-control": "public, s-maxage=60" },
+    });
   }
   const chainParam = url.searchParams.get("chain");
   const chainOptions = aggregate.dimensions?.chain ?? [];

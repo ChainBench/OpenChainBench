@@ -141,15 +141,15 @@ export const SpecSchema = z
     /* Identity */
     slug,
     number: z.string().regex(/^\d{3}$/, "Number must be a 3-digit string, e.g. \"001\""),
-    title: z.string().min(1),
+    title: z.string().min(1).max(200),
     /** Optional SEO-tuned page title (browser tab + meta). Falls back to `title`. */
-    seo_title: z.string().min(1).optional(),
-    subtitle: z.string().min(1),
+    seo_title: z.string().min(1).max(200).optional(),
+    subtitle: z.string().min(1).max(400),
     category: Category,
     status: z.enum(["live", "draft"]).default("live"),
 
     /* Metric */
-    metric: z.string().min(1),
+    metric: z.string().min(1).max(100),
     /** ms / s for latencies; pct for fees as percent of notional; bps for basis points. */
     unit: z.enum(["ms", "s", "pct", "bps", "count"]),
     /** True when bigger numbers are better (coverage, count). Default false:
@@ -157,9 +157,9 @@ export const SpecSchema = z
     higher_is_better: z.boolean().default(false),
 
     /* Editorial copy */
-    abstract: z.string().min(40),
-    methodology: z.array(z.string()).min(1),
-    findings: z.array(z.string()).default([]),
+    abstract: z.string().min(40).max(4000),
+    methodology: z.array(z.string().max(500)).min(1).max(40),
+    findings: z.array(z.string().max(500)).max(40).default([]),
     source: z.url(),
 
     /* Data source. OpenChainBench is a federation: every contributor

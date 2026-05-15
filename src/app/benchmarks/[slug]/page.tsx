@@ -68,6 +68,15 @@ export default async function BenchmarkPage({
   if (!aggregate) notFound();
   const chainOptions = aggregate.dimensions?.chain ?? [];
   const regionOptions = aggregate.dimensions?.region ?? [];
+  // 404 on unknown ?chain= / ?region= so the page can't be cached at the
+  // ISR layer per garbage value. Falling through to the default option
+  // used to produce a 200 with default render, blowing up cache cardinality.
+  if (typeof sp.chain === "string" && sp.chain && !chainOptions.find((c) => c.value === sp.chain)) {
+    notFound();
+  }
+  if (typeof sp.region === "string" && sp.region && !regionOptions.find((r) => r.value === sp.region)) {
+    notFound();
+  }
   const matchedChain =
     chainOptions.find((c) => c.value === sp.chain)?.value ??
     chainOptions[0]?.value ??

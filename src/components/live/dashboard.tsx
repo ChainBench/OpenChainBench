@@ -34,7 +34,11 @@ type SeriesByRange = Record<RangeKey, ChartSeries>;
 const MAX_STR = 128;
 const MAX_USD = 1e12;
 const MAX_BUCKETS_PER_RANGE = 2000;
-const MAX_CLOCK_SKEW_MS = 24 * 60 * 60 * 1000;
+const MAX_RANGE_KEYS = 8;
+// Relay clocks should be NTP-synced to within a few hundred ms in practice;
+// 5 minutes is a generous bound that still defeats a hostile/buggy relay
+// pushing timestamps far into past or future.
+const MAX_CLOCK_SKEW_MS = 5 * 60 * 1000;
 
 /** Best-effort runtime shape check on each WS frame. Mirrors the wire
  *  protocol documented in miniapps/ocb-stream-relay/README.md. Drops any
@@ -51,6 +55,10 @@ function isRelayMessage(v: unknown): v is RelayMessage {
     if (s.series == null) return true;
     if (typeof s.series !== "object") return false;
     const series = s.series as Record<string, { buckets?: unknown }>;
+    // Bound the range-key dictionary so a hostile relay can't ship
+    // `{ r1: {}, r2: {}, ... }` with millions of keys.
+    const keys = Object.keys(series);
+    if (keys.length > MAX_RANGE_KEYS) return false;
     for (const r of Object.values(series)) {
       if (r && Array.isArray(r.buckets) && r.buckets.length > MAX_BUCKETS_PER_RANGE) {
         return false;
