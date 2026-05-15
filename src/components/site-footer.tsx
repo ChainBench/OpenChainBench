@@ -23,7 +23,6 @@ export function SiteFooter() {
               { label: "Benchmarks", href: "/benchmarks" },
               { label: "Providers", href: "/providers" },
               { label: "Methodology", href: "/methodology" },
-              { label: "Glossary", href: "/glossary" },
               { label: "Press kit", href: "/press" },
             ]}
           />
