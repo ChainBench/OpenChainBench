@@ -8,6 +8,7 @@ import { CATEGORY_COLOR } from "@/lib/category-colors";
 import { fmtUnit } from "@/lib/format";
 import { SITE } from "@/data/site";
 import { getProviderRegistry } from "@/data/provider-registry";
+import { safeJsonLd } from "@/lib/jsonld";
 
 export const revalidate = 60;
 
@@ -83,7 +84,7 @@ export default async function ProviderPage({
     <article className="mx-auto max-w-5xl px-6 pt-10 sm:pt-14 pb-16">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
       />
 
       <div className="flex flex-wrap items-center gap-3">
