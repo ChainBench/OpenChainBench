@@ -7,22 +7,38 @@ const MAX_MESSAGE = 2000;
 const MAX_CONTACT = 200;
 const MAX_HEADER_ECHO = 200;
 
-// C0 control characters + DEL. Stripped from every user-controlled string
-// before it hits a Slack mrkdwn field. KEEP_NL preserves \n (U+000A) so
-// the report body can still have paragraphs.
-const CONTROL_CHARS = new RegExp("[\\u0000-\\u001f\\u007f]", "g");
-const CONTROL_CHARS_KEEP_NL = new RegExp("[\\u0000-\\u0009\\u000b-\\u001f\\u007f]", "g");
+// C0 control characters + DEL + the Unicode "line/paragraph separator"
+// characters that Slack renders as newlines (U+2028, U+2029), plus the
+// bidi/format chars that visually rearrange text (U+200B-U+200F,
+// U+202A-U+202E, U+2060, U+FEFF). Stripped from every user-controlled
+// string before it hits a Slack mrkdwn field. KEEP_NL preserves \n
+// (U+000A) so the report body can still have paragraphs.
+const CONTROL_CHARS = new RegExp(
+  "[\\u0000-\\u001f\\u007f\\u2028\\u2029\\u200b-\\u200f\\u202a-\\u202e\\u2060\\ufeff]",
+  "g",
+);
+const CONTROL_CHARS_KEEP_NL = new RegExp(
+  "[\\u0000-\\u0009\\u000b-\\u001f\\u007f\\u2028\\u2029\\u200b-\\u200f\\u202a-\\u202e\\u2060\\ufeff]",
+  "g",
+);
+
+const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,79}$/;
+const CHAIN_RE = /^[a-z0-9][a-z0-9-]{0,39}$/;
 
 /** Neutralise Slack mrkdwn so user-supplied strings can't inject mentions
- *  (`<@U123>`, `<!channel>`), link cloaking (`<https://evil|safe>`), or
- *  channel pings. Strips control chars (single-line variant) and escapes
- *  `<` `>` `&`. */
+ *  (`<@U123>`, `<!channel>`), link cloaking (`<https://evil|safe>`), code
+ *  blocks (``` ``` ``` ```), or bold/italic/strike formatting that would
+ *  let a reporter forge fake "*IP:* / *Contact:*" lines in the webhook.
+ *  Escapes `<` `>` `&` and prefixes the rest of the mrkdwn meta-chars
+ *  with a zero-width space so they render as literals. */
 function slackSafe(s: string, max: number): string {
   return s
     .replace(CONTROL_CHARS, " ")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
+    .replace(/([`*_~|])/g, "​$1")
+    .replace(/@(channel|here|everyone)/gi, "@​$1")
     .slice(0, max)
     .trim();
 }
@@ -35,6 +51,8 @@ function slackSafeMultiline(s: string, max: number): string {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
+    .replace(/([`*_~|])/g, "​$1")
+    .replace(/@(channel|here|everyone)/gi, "@​$1")
     .slice(0, max)
     .trim();
 }
@@ -76,8 +94,11 @@ export async function POST(req: Request) {
       : null;
   const page = typeof body.page === "string" ? body.page.slice(0, 500) : "";
 
-  if (!slug) {
-    return NextResponse.json({ error: "Missing slug." }, { status: 400 });
+  if (!slug || !SLUG_RE.test(slug)) {
+    return NextResponse.json({ error: "Invalid slug." }, { status: 400 });
+  }
+  if (chain != null && !CHAIN_RE.test(chain)) {
+    return NextResponse.json({ error: "Invalid chain." }, { status: 400 });
   }
   if (message.length < 5) {
     return NextResponse.json(
