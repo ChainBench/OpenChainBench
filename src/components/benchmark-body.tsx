@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Benchmark } from "@/types/benchmark";
 import { ChainTabs } from "@/components/chain-tabs";
 import { LedgerTable } from "@/components/ledger-table";
@@ -94,6 +94,26 @@ function variantKey(chain: string | null, region: string | null): string {
   return `${chain ?? "__none"}|${region ?? "__none"}`;
 }
 
+/** Region values that appear in extras.seriesByRegion24h. Used when the
+ *  spec doesn't declare `dimensions.region` but the chart still has
+ *  per-region series — so we can offer the same picker affordance at the
+ *  top of the page next to Chain rather than buried in the chart toolbar. */
+function chartOnlyRegions(b: Benchmark): string[] {
+  const byRegion = b.extras.seriesByRegion24h ?? {};
+  const set = new Set<string>();
+  for (const slug of Object.keys(byRegion)) {
+    for (const r of Object.keys(byRegion[slug])) set.add(r);
+  }
+  return Array.from(set).sort();
+}
+
+const REGION_DISPLAY: Record<string, string> = {
+  "us-east": "US-East",
+  "eu-west": "EU-West",
+  "ap-southeast": "AP-Southeast",
+  global: "Global",
+};
+
 export function BenchmarkBody({
   variants,
   chainOptions,
@@ -134,6 +154,21 @@ export function BenchmarkBody({
   const { fieldMin, fieldMedian, fieldMax, tailMin, tailMax, tailSpread } =
     computeFieldStats(benchmark.results);
 
+  // Region tabs derived from chart-only per-region series data when the spec
+  // doesn't declare `dimensions.region`. Keeping the affordance at the top
+  // alongside Chain so both filters live in one visual block instead of
+  // being split between the dimension row and the chart toolbar.
+  const chartRegions = chartOnlyRegions(benchmark);
+  const showChartRegionRow = regionOptions.length === 0 && chartRegions.length > 1;
+  const [chartRegion, setChartRegion] = useState<string>("all");
+  const chartRegionOptions: ChainOption[] = useMemo(
+    () => [
+      { value: "all", label: "All" },
+      ...chartRegions.map((r) => ({ value: r, label: REGION_DISPLAY[r] ?? r })),
+    ],
+    [chartRegions],
+  );
+
   return (
     <>
       {(chainOptions.length > 0 || regionOptions.length > 0) && (
@@ -168,6 +203,14 @@ export function BenchmarkBody({
                   ])
                   .filter(([, v]) => v !== null) as [string, ChainMeta][]
               )}
+            />
+          )}
+          {showChartRegionRow && (
+            <DimensionRow
+              label="Region"
+              options={chartRegionOptions}
+              selected={chartRegion}
+              onSelect={setChartRegion}
             />
           )}
         </div>
@@ -220,7 +263,10 @@ export function BenchmarkBody({
             benchmark.unit === "pct" ? (
               <RankedBarChart benchmark={benchmark} />
             ) : (
-              <TimeSeriesChart benchmark={benchmark} />
+              <TimeSeriesChart
+                benchmark={benchmark}
+                region={showChartRegionRow ? chartRegion : undefined}
+              />
             )}
           </div>
 

@@ -22,15 +22,6 @@ export default async function HomePage() {
             Live multichain swaps, global market stats, and reproducible benchmarks of the
             providers behind them. all in one place, refreshed continuously.
           </p>
-          <p className="mt-5 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-            <Link
-              href="/mcp"
-              className="inline-flex items-center gap-2 border border-ink/40 px-3 py-1.5 hover:border-ink hover:bg-paper-soft transition-colors"
-            >
-              <span className="h-1.5 w-1.5 rounded-full bg-good" aria-hidden />
-              Use from Claude / Cursor / any MCP client →
-            </Link>
-          </p>
         </div>
       </section>
 
