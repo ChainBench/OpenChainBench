@@ -29,29 +29,58 @@ import { LiveTicker } from "./ticker";
 
 type SeriesByRange = Record<RangeKey, ChartSeries>;
 
+/** Hard caps on relay-supplied data so a hostile (or buggy) relay can't
+ *  freeze the tab via memory blow-up or infinite gap-fill loops. */
+const MAX_STR = 128;
+const MAX_USD = 1e12;
+const MAX_BUCKETS_PER_RANGE = 2000;
+const MAX_CLOCK_SKEW_MS = 24 * 60 * 60 * 1000;
+
 /** Best-effort runtime shape check on each WS frame. Mirrors the wire
  *  protocol documented in miniapps/ocb-stream-relay/README.md. Drops any
- *  message whose `type` is unknown or whose required fields are missing.
- *  Defense in depth: even if a relay regression sends garbage, the UI
- *  ignores it rather than crashing or rendering unexpected strings. */
+ *  message whose `type` is unknown, required fields missing, or numeric
+ *  fields are not finite. Defense in depth — even if a relay regression
+ *  (or compromise) sends garbage, the UI ignores it rather than freezing
+ *  the chart with NaN/Infinity or eating gigabytes via huge buckets. */
 function isRelayMessage(v: unknown): v is RelayMessage {
   if (typeof v !== "object" || v === null) return false;
   const m = v as { type?: unknown };
   if (m.type === "snapshot") {
     const s = v as { series?: unknown; nowMs?: unknown };
-    return typeof s.nowMs === "number" && (s.series == null || typeof s.series === "object");
+    if (typeof s.nowMs !== "number" || !Number.isFinite(s.nowMs)) return false;
+    if (s.series == null) return true;
+    if (typeof s.series !== "object") return false;
+    const series = s.series as Record<string, { buckets?: unknown }>;
+    for (const r of Object.values(series)) {
+      if (r && Array.isArray(r.buckets) && r.buckets.length > MAX_BUCKETS_PER_RANGE) {
+        return false;
+      }
+    }
+    return true;
   }
   if (m.type === "swap") {
-    const s = v as { chain?: unknown; usd?: unknown; side?: unknown };
-    return (
-      typeof s.chain === "string" &&
-      typeof s.usd === "number" &&
-      (s.side === "buy" || s.side === "sell")
-    );
+    const s = v as {
+      chain?: unknown;
+      usd?: unknown;
+      side?: unknown;
+      pair?: unknown;
+      exchange?: unknown;
+    };
+    if (typeof s.chain !== "string" || s.chain.length > MAX_STR) return false;
+    if (typeof s.usd !== "number" || !Number.isFinite(s.usd) || s.usd < 0 || s.usd > MAX_USD) {
+      return false;
+    }
+    if (s.side !== "buy" && s.side !== "sell") return false;
+    if (s.pair != null && (typeof s.pair !== "string" || s.pair.length > MAX_STR)) return false;
+    if (s.exchange != null && (typeof s.exchange !== "string" || s.exchange.length > MAX_STR)) {
+      return false;
+    }
+    return true;
   }
   if (m.type === "stats") {
     const s = v as { global?: unknown; nowMs?: unknown };
-    return typeof s.nowMs === "number" && typeof s.global === "object" && s.global !== null;
+    if (typeof s.nowMs !== "number" || !Number.isFinite(s.nowMs)) return false;
+    return typeof s.global === "object" && s.global !== null;
   }
   return false;
 }
@@ -146,9 +175,14 @@ export function LiveDashboard() {
 
     function scheduleReconnect() {
       if (stopped) return;
+      // Clear any previously-scheduled timer so onerror → close → onclose
+      // double-fires (browser-dependent) don't stack timers and produce
+      // racing WebSockets.
+      if (reconnectTimer.current != null) {
+        clearTimeout(reconnectTimer.current);
+        reconnectTimer.current = null;
+      }
       // Exponential backoff with jitter. 2s → 4s → 8s → 16s → 30s (cap).
-      // Without this, every browser tab hammers the relay in lockstep every
-      // 2 s when it goes down — N tabs × every 2 s.
       reconnectAttempts.current += 1;
       const base = Math.min(30_000, 2_000 * 2 ** (reconnectAttempts.current - 1));
       const jitter = base * (0.75 + Math.random() * 0.5);
@@ -157,7 +191,15 @@ export function LiveDashboard() {
 
     function connect() {
       if (stopped) return;
-      ws = new WebSocket(RELAY_WS_URL);
+      // `new WebSocket(...)` throws synchronously on a malformed RELAY_WS_URL
+      // (empty, http://, missing host). Without the try/catch the useEffect
+      // bubbles the error to React and the reconnect loop never starts.
+      try {
+        ws = new WebSocket(RELAY_WS_URL);
+      } catch {
+        scheduleReconnect();
+        return;
+      }
 
       ws.onopen = () => {
         setConnected(true);
@@ -195,7 +237,12 @@ export function LiveDashboard() {
               ? { ...fallback, "10m": { ...fallback["10m"], buckets: legacy } }
               : fallback;
           setSeries(next);
-          const offset = msg.nowMs - Date.now();
+          // Clamp the relay's reported clock so an extreme nowMs (compromised
+          // or buggy relay sending Date.now() + 1e15) doesn't drive
+          // appendSwapToBuckets into a multi-million-iteration gap-fill loop
+          // that freezes the main thread.
+          const rawOffset = msg.nowMs - Date.now();
+          const offset = Math.max(-MAX_CLOCK_SKEW_MS, Math.min(MAX_CLOCK_SKEW_MS, rawOffset));
           serverOffsetRef.current = offset;
           setServerOffsetMs(offset);
           return;
