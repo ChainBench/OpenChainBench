@@ -128,10 +128,13 @@ function isQueryAllowed(q: string): { ok: true } | { ok: false; reason: string }
   }
   if (/\bcount_values\b/.test(c)) return { ok: false, reason: "count_values_blocked" };
 
-  // Metric-name allowlist — every identifier-like token outside strings
-  // and comments must match a published benchmark namespace.
+  // Metric-name allowlist — every identifier-like token outside strings,
+  // comments, AND range-vector durations must match a published benchmark
+  // namespace. Strip `[5m]` / `[24h]` / `[7d]` etc. so the `h`/`m`/`d`/`s`
+  // suffix letters aren't scanned as identifiers.
+  const noDurations = stripped.replace(/\[\s*\d+\s*(?:ms|s|m|h|d|w|y)\s*\]/g, "[]");
   let sawAllowed = false;
-  const idents = stripped.match(/[a-zA-Z_:][a-zA-Z0-9_:]*/g) ?? [];
+  const idents = noDurations.match(/[a-zA-Z_:][a-zA-Z0-9_:]*/g) ?? [];
   for (const id of idents) {
     if (PROMQL_RESERVED_IDENTS.has(id)) continue;
     if (/^\d/.test(id)) continue;
