@@ -1,58 +1,72 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import { getBenchmarks } from "@/data/benchmarks";
-import { BenchmarkTable } from "@/components/benchmark-table";
+import { HeroRadar } from "@/components/hero-radar";
+import { HomeBenchTable } from "@/components/home-bench-table";
 import { LiveDashboard } from "@/components/live-dashboard";
 
 export const revalidate = 60;
+
+export const metadata: Metadata = {
+  title: "OpenChainBench. Open benchmarks for crypto infrastructure",
+  description:
+    "State of the art across the most challenging benchmarks for crypto infrastructure, data providers, and bridge nodes.",
+};
 
 export default async function HomePage() {
   const benchmarks = await getBenchmarks();
 
   return (
-    <>
-      {/* Hero — editorial dek + live dashboard fronts the page. The live
-          stream replaces the previous /live page so the home is the one
-          surface where everything begins. */}
-      <section className="px-4 pt-16 sm:pt-20 pb-2">
-        <div className="mx-auto max-w-6xl">
-          <h1 className="display text-3xl sm:text-4xl md:text-5xl text-ink max-w-4xl">
-            Open-source KPIs from onchain products.
+    <article className="mx-auto max-w-[1400px] px-4 sm:px-6 py-10 sm:py-14 space-y-14 sm:space-y-20">
+      {/* Hero */}
+      <section className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,380px)] gap-8 items-center">
+        <div>
+          <h1 className="display text-3xl sm:text-4xl md:text-5xl text-ink leading-[1.05]">
+            Highest accuracy at every price point
           </h1>
-          <p className="mt-4 max-w-2xl text-base sm:text-lg text-ink-soft leading-snug">
-            Live multichain swaps, global market stats, and reproducible benchmarks of the
-            providers behind them. all in one place, refreshed continuously.
+          <p className="mt-5 max-w-xl text-base text-ink-soft leading-snug">
+            State of the art across the most challenging benchmarks for crypto
+            infrastructure, data providers, and bridge nodes.
           </p>
+          <div className="mt-6 flex flex-wrap items-center gap-3">
+            <Link
+              href="/benchmarks"
+              className="inline-flex items-center gap-2 rounded-md bg-accent hover:bg-accent/90 text-white px-4 py-2.5 text-sm font-semibold tracking-wide uppercase transition-colors"
+            >
+              View all benchmarks
+              <kbd className="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] rounded text-[10px] font-mono bg-white/20 px-1">
+                B
+              </kbd>
+            </Link>
+            <Link
+              href="/contribute"
+              className="inline-flex items-center gap-2 rounded-md border border-rule-strong bg-surface hover:border-ink/40 text-ink px-4 py-2.5 text-sm font-semibold tracking-wide uppercase transition-colors"
+            >
+              Contribute
+              <ArrowRight size={14} strokeWidth={2} />
+            </Link>
+          </div>
+        </div>
+        <div className="flex justify-center lg:justify-end">
+          <HeroRadar size={380} />
         </div>
       </section>
 
-      {/* Live dashboard — streaming volume chart + compact feed + stats band. */}
-      <section className="px-4 pt-8 pb-12">
-        <div className="mx-auto max-w-6xl">
-          <LiveDashboard />
-        </div>
-      </section>
-
-      {/* Reports table */}
-      <section id="latest" className="px-4 pt-4 pb-12 sm:pt-8 sm:pb-16 scroll-mt-16 border-t border-rule">
-        <div className="mx-auto max-w-6xl">
-          <p className="mt-8 mb-6 font-mono text-[11px] uppercase tracking-[0.2em] text-ink-muted">
-            Benchmarks
+      {/* Live Network ecosystem */}
+      <section>
+        <header className="mb-5 sm:mb-7">
+          <h2 className="display text-2xl sm:text-3xl text-ink">Network Ecosystem</h2>
+          <p className="mt-2 max-w-2xl text-sm text-ink-soft leading-snug">
+            Live stream of ecosystem data, transaction volumes, and network activity across
+            supported chains.
           </p>
-          {benchmarks.length === 0 ? (
-            <div className="mt-12 card p-10 text-center">
-              <p className="text-lg text-ink-muted">No benchmark specs yet.</p>
-              <p className="mt-2 text-sm text-ink-faint">
-                Drop a YAML in <code className="font-mono">benchmarks/</code> to get started. see the{" "}
-                <Link className="lnk" href="/contribute">tutorial</Link>.
-              </p>
-            </div>
-          ) : (
-            <BenchmarkTable benchmarks={benchmarks} />
-          )}
-
-        </div>
+        </header>
+        <LiveDashboard />
       </section>
 
-    </>
+      {/* Latest deployed benchmarks */}
+      <HomeBenchTable benchmarks={benchmarks} />
+    </article>
   );
 }
