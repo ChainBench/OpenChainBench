@@ -43,6 +43,7 @@ export function AiBriefBlock() {
           tag="Claude Code"
           title="ClawHub skill"
           desc="One-line install with the ClawHub CLI. The skill auto-loads as a slash command and applies the conventions on every reply."
+          code="openclaw skills install openchainbench-contributor"
           action={<CopyButton value="openclaw skills install openchainbench-contributor" label="Copy install" mono />}
           link={{ label: "ClawHub listing ↗", href: "https://clawhub.ai/skills/openchainbench-contributor", external: true }}
         />
@@ -60,12 +61,14 @@ function Tile({
   tag,
   title,
   desc,
+  code,
   action,
   link,
 }: {
   tag: string;
   title: string;
   desc: string;
+  code?: string;
   action: React.ReactNode;
   link?: { label: string; href: string; external?: boolean };
 }) {
@@ -76,6 +79,11 @@ function Tile({
       </p>
       <p className="display text-base text-ink leading-tight">{title}</p>
       <p className="text-sm text-ink-soft leading-relaxed flex-1">{desc}</p>
+      {code && (
+        <pre className="overflow-x-auto border border-ink/20 bg-ink/5 px-3 py-2 font-mono text-[11px] text-ink leading-relaxed">
+          <code>$ {code}</code>
+        </pre>
+      )}
       <div className="flex items-center gap-3 flex-wrap">
         {action}
         {link && (
