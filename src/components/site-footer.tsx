@@ -21,8 +21,19 @@ export function SiteFooter() {
             links={[
               { label: "Overview", href: "/" },
               { label: "Benchmarks", href: "/benchmarks" },
+              { label: "Providers", href: "/providers" },
               { label: "Methodology", href: "/methodology" },
+              { label: "Glossary", href: "/glossary" },
               { label: "Press kit", href: "/press" },
+            ]}
+          />
+          <FooterCol
+            title="Developers"
+            links={[
+              { label: "OpenAPI spec", href: "/api/openapi.json" },
+              { label: "JSON citation", href: "/api/citable" },
+              { label: "LLM context", href: "/api/llm-context" },
+              { label: "llms.txt", href: "/llms.txt" },
             ]}
           />
           <FooterCol
@@ -31,13 +42,7 @@ export function SiteFooter() {
               { label: "Tutorial", href: "/contribute" },
               { label: "GitHub", href: "https://github.com/OpenChainBench/OpenChainBench" },
               { label: "Open an issue", href: "https://github.com/OpenChainBench/OpenChainBench/issues/new" },
-            ]}
-          />
-          <FooterCol
-            title="Follow"
-            links={[
               { label: "@openchainbench", href: "https://twitter.com/openchainbench" },
-              { label: "r/openchainbench", href: "https://reddit.com/r/openchainbench" },
               { label: "About", href: "/about" },
             ]}
           />

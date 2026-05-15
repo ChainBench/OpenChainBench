@@ -36,17 +36,16 @@ export async function generateMetadata({
   const b = await getBenchmark(slug);
   if (!b) return {};
   const metaTitle = b.seoTitle ?? b.title;
-  // Use the live headline sentence as the meta description so Google
-  // snippets and social unfurls surface the current value instead of a
-  // static methodology paragraph. Falls back to the YAML subtitle for
-  // drafts and benchmarks awaiting first run.
-  const headline = headlineSentence(b);
-  const description =
-    b.status === "live" && !headline.startsWith(b.title) ? headline : b.subtitle;
+  // Static description so Google does not see the meta change every hour
+  // when the leader's p50 moves. Live figures are visible in the page
+  // body, which Google indexes for snippet rewriting anyway.
+  const description = b.subtitle;
+  const url = `${SITE.url}/benchmarks/${b.slug}`;
   return {
     title: metaTitle,
     description,
-    openGraph: { title: metaTitle, description, type: "article" },
+    alternates: { canonical: url },
+    openGraph: { title: metaTitle, description, type: "article", url },
     twitter: { card: "summary_large_image", title: metaTitle, description },
   };
 }
@@ -110,24 +109,54 @@ export default async function BenchmarkPage({
   const catColor = CATEGORY_COLOR[benchmark.category];
 
   const benchmarkUrl = `${SITE.url}/benchmarks/${benchmark.slug}`;
+  const sentence = headlineSentence(benchmark);
   const jsonLd = {
     "@context": "https://schema.org",
-    "@type": "Dataset",
-    name: benchmark.seoTitle ?? benchmark.title,
-    description: benchmark.abstract,
-    url: benchmarkUrl,
-    keywords: [
-      benchmark.category,
-      benchmark.metric,
-      ...benchmark.results.map((r) => r.name),
-      "live benchmark",
-      "crypto infrastructure",
-    ].join(", "),
-    creator: { "@type": "Organization", name: "OpenChainBench", url: SITE.url },
-    isAccessibleForFree: true,
-    license: "https://creativecommons.org/licenses/by/4.0/",
-    dateModified: benchmark.lastRunAt,
-    variableMeasured: benchmark.metric,
+    "@graph": [
+      {
+        "@type": "Dataset",
+        "@id": `${benchmarkUrl}#dataset`,
+        name: benchmark.seoTitle ?? benchmark.title,
+        alternateName: benchmark.title,
+        description: benchmark.abstract,
+        url: benchmarkUrl,
+        identifier: benchmark.slug,
+        keywords: [
+          benchmark.category,
+          benchmark.metric,
+          ...benchmark.results.map((r) => r.name),
+          "live benchmark",
+          "crypto infrastructure",
+        ].join(", "),
+        creator: { "@id": `${SITE.url}/#org` },
+        publisher: { "@id": `${SITE.url}/#org` },
+        isAccessibleForFree: true,
+        license: "https://creativecommons.org/licenses/by/4.0/",
+        dateModified: benchmark.lastRunAt,
+        variableMeasured: benchmark.metric,
+        distribution: [
+          {
+            "@type": "DataDownload",
+            encodingFormat: "application/json",
+            contentUrl: `${SITE.url}/api/stat/${benchmark.slug}`,
+          },
+        ],
+        measurementTechnique: benchmark.methodology.join(" "),
+      },
+      {
+        "@type": "TechArticle",
+        "@id": `${benchmarkUrl}#article`,
+        headline: benchmark.title,
+        description: benchmark.subtitle,
+        url: benchmarkUrl,
+        mainEntityOfPage: benchmarkUrl,
+        articleBody: sentence,
+        dateModified: benchmark.lastRunAt,
+        author: { "@id": `${SITE.url}/#org` },
+        publisher: { "@id": `${SITE.url}/#org` },
+        about: { "@id": `${benchmarkUrl}#dataset` },
+      },
+    ],
   };
 
   return (

@@ -1,0 +1,205 @@
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import Link from "next/link";
+import { ArrowLeft, ArrowUpRight } from "lucide-react";
+import { getProvider, getProviderSlugs } from "@/lib/providers";
+import { ProviderLogo } from "@/components/provider-logo";
+import { CATEGORY_COLOR } from "@/lib/category-colors";
+import { fmtUnit } from "@/lib/format";
+import { SITE } from "@/data/site";
+
+export const revalidate = 60;
+
+type Params = { slug: string };
+
+export async function generateStaticParams() {
+  const slugs = await getProviderSlugs();
+  return slugs.map((slug) => ({ slug }));
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<Params>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const p = await getProvider(slug);
+  if (!p) return {};
+  const title = `${p.name} benchmark record`;
+  const description = `Every OpenChainBench result for ${p.name}. Tracked across ${p.appearances.length} ${p.appearances.length === 1 ? "benchmark" : "benchmarks"}, ${p.wins} #1 ${p.wins === 1 ? "finish" : "finishes"}.`;
+  const url = `${SITE.url}/providers/${p.slug}`;
+  return {
+    title,
+    description,
+    alternates: { canonical: url },
+    openGraph: { title, description, type: "profile", url },
+    twitter: { card: "summary_large_image", title, description },
+  };
+}
+
+export default async function ProviderPage({
+  params,
+}: {
+  params: Promise<Params>;
+}) {
+  const { slug } = await params;
+  const p = await getProvider(slug);
+  if (!p) notFound();
+
+  const sorted = [...p.appearances].sort((a, b) => {
+    if (a.rank !== b.rank) return a.rank - b.rank;
+    return a.benchmark.title.localeCompare(b.benchmark.title);
+  });
+
+  const url = `${SITE.url}/providers/${p.slug}`;
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: p.name,
+    url,
+    identifier: p.slug,
+    description: `Crypto-infrastructure provider tracked by OpenChainBench across ${p.appearances.length} live benchmarks.`,
+    subjectOf: sorted.map((a) => ({
+      "@type": "Dataset",
+      name: a.benchmark.title,
+      url: `${SITE.url}/benchmarks/${a.benchmark.slug}`,
+    })),
+  };
+
+  return (
+    <article className="mx-auto max-w-5xl px-6 pt-10 sm:pt-14 pb-16">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+
+      <div className="flex flex-wrap items-center gap-3">
+        <Link
+          href="/providers"
+          className="inline-flex items-center gap-1.5 text-sm text-ink-muted hover:text-ink"
+        >
+          <ArrowLeft size={14} strokeWidth={2} />
+          All providers
+        </Link>
+      </div>
+
+      <header className="mt-6 flex items-center gap-4 border-b-2 border-ink pb-6">
+        <ProviderLogo slug={p.slug} name={p.name} size={56} />
+        <div className="min-w-0">
+          <h1 className="display text-2xl sm:text-3xl md:text-4xl tracking-tight">
+            {p.name}
+          </h1>
+          <p className="mt-2 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+            {p.appearances.length} {p.appearances.length === 1 ? "benchmark" : "benchmarks"}
+            {p.wins > 0 && (
+              <>
+                <span className="text-ink-faint"> · </span>
+                <span className="text-good">{p.wins} #1 {p.wins === 1 ? "finish" : "finishes"}</span>
+              </>
+            )}
+            {p.type && (
+              <>
+                <span className="text-ink-faint"> · </span>
+                <span>{p.type}</span>
+              </>
+            )}
+          </p>
+        </div>
+      </header>
+
+      <section className="mt-10">
+        <h2 className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted">
+          Benchmark record
+        </h2>
+        <ol className="mt-4 divide-y divide-rule border-y border-rule">
+          {sorted.map((a) => {
+            const catColor = CATEGORY_COLOR[a.benchmark.category];
+            const value = fmtUnit(a.result.ms.p50, a.benchmark.unit);
+            return (
+              <li key={a.benchmark.slug}>
+                <Link
+                  href={`/benchmarks/${a.benchmark.slug}`}
+                  className="group grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 py-5 pl-3 pr-3 hover:bg-paper-soft/60 transition-colors"
+                >
+                  <span
+                    className="font-mono tabular text-xl sm:text-2xl font-semibold w-12 text-center"
+                    style={{ color: a.rank === 1 ? "var(--color-good)" : "var(--color-ink-soft)" }}
+                  >
+                    #{a.rank}
+                    <span className="block text-[9px] uppercase tracking-[0.16em] text-ink-faint mt-0.5">
+                      of {a.totalRanked}
+                    </span>
+                  </span>
+                  <div className="min-w-0">
+                    <p className="font-mono text-[10px] uppercase tracking-[0.18em]" style={{ color: catColor ?? "var(--color-ink-faint)" }}>
+                      {a.benchmark.category}
+                    </p>
+                    <h3 className="mt-0.5 display text-base sm:text-lg font-semibold leading-tight truncate">
+                      {a.benchmark.title}
+                    </h3>
+                    <p className="text-xs text-ink-muted truncate">
+                      {a.benchmark.metric}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-mono tabular text-base text-ink">{value}</p>
+                    <p className="font-mono text-[9px] uppercase tracking-[0.16em] text-ink-faint mt-0.5">
+                      p50 · 24h
+                    </p>
+                  </div>
+                </Link>
+              </li>
+            );
+          })}
+        </ol>
+      </section>
+
+      {p.wins > 0 && (
+        <section className="mt-12">
+          <h2 className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted">
+            Embeddable badges
+          </h2>
+          <p className="mt-2 text-sm text-ink-soft leading-snug max-w-2xl">
+            Drop these on your site to show your standing on a benchmark.
+            The SVG fetches the latest figures on every request, so the badge
+            stays accurate without redeploying.
+          </p>
+          <ul className="mt-4 grid gap-3 sm:grid-cols-2">
+            {sorted.filter((a) => a.rank === 1).map((a) => {
+              const badgeUrl = `${SITE.url}/api/badge/${a.benchmark.slug}/${p.slug}`;
+              const targetUrl = `${SITE.url}/benchmarks/${a.benchmark.slug}`;
+              const html = `<a href="${targetUrl}"><img src="${badgeUrl}" alt="Ranked #1 on OpenChainBench: ${a.benchmark.title}" height="28" /></a>`;
+              return (
+                <li key={`badge-${a.benchmark.slug}`} className="card-soft p-4">
+                  <p className="text-xs font-mono uppercase tracking-[0.18em] text-ink-muted">
+                    {a.benchmark.title}
+                  </p>
+                  <div className="mt-3 flex items-center">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={badgeUrl} alt={`Ranked #1 on OpenChainBench: ${a.benchmark.title}`} height={28} />
+                  </div>
+                  <details className="mt-3">
+                    <summary className="cursor-pointer text-[11px] font-mono uppercase tracking-[0.18em] text-ink-muted hover:text-ink">
+                      Copy HTML
+                    </summary>
+                    <pre className="mt-2 overflow-x-auto rounded border border-rule bg-paper-soft p-2 text-[11px] leading-snug">
+{html}
+                    </pre>
+                  </details>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
+
+      <p className="mt-12 text-[11px] uppercase tracking-[0.16em] text-ink-muted">
+        Raw figures{" "}
+        <a className="lnk" href={`${SITE.url}/api/citable`}>
+          /api/citable
+          <ArrowUpRight size={12} strokeWidth={2} className="inline ml-1" />
+        </a>
+      </p>
+    </article>
+  );
+}

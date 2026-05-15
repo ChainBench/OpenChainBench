@@ -3,6 +3,7 @@ import { Inter, Inter_Tight, JetBrains_Mono, Source_Serif_4 } from "next/font/go
 import "./globals.css";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { SITE } from "@/data/site";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -56,6 +57,38 @@ export const metadata: Metadata = {
   },
 };
 
+const ORG_JSONLD = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": `${SITE.url}/#org`,
+      name: SITE.name,
+      url: SITE.url,
+      logo: `${SITE.url}/logo.png`,
+      description: SITE.description,
+      sameAs: [
+        SITE.github,
+        `https://twitter.com/${SITE.twitter.replace(/^@/, "")}`,
+        `https://reddit.com/r/${SITE.name.toLowerCase()}`,
+      ],
+    },
+    {
+      "@type": "WebSite",
+      "@id": `${SITE.url}/#site`,
+      url: SITE.url,
+      name: SITE.name,
+      description: SITE.description,
+      publisher: { "@id": `${SITE.url}/#org` },
+      potentialAction: {
+        "@type": "SearchAction",
+        target: { "@type": "EntryPoint", urlTemplate: `${SITE.url}/benchmarks?q={search_term_string}` },
+        "query-input": "required name=search_term_string",
+      },
+    },
+  ],
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
@@ -65,6 +98,10 @@ export default function RootLayout({
       className={`${inter.variable} ${interTight.variable} ${sourceSerif.variable} ${jetbrainsMono.variable} h-full`}
     >
       <body className="min-h-full flex flex-col">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(ORG_JSONLD) }}
+        />
         <SiteHeader />
         <main className="flex-1">{children}</main>
         <SiteFooter />
