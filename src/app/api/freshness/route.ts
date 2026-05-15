@@ -24,7 +24,9 @@ export const runtime = "nodejs";
 // impression that the indicator "doesn't reset on refetch".
 const computeFreshness = unstable_cache(
   async (): Promise<{ now: number; freshness: Record<string, number> }> => {
-    const specs = await getSpecs();
+    // Filter editorial drafts so a `status: draft` spec doesn't surface
+    // here while every other public route correctly hides it.
+    const specs = (await getSpecs()).filter((s) => s.status === "live");
     const fallback = process.env.PROMETHEUS_URL;
 
     const entries = await Promise.all(
