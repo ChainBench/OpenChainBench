@@ -61,6 +61,11 @@ const nextConfig: NextConfig = {
       // /live was folded into the home page. keep the old URL working
       // for shared links, RSS feeds, and OG previews on external sites.
       { source: "/live", destination: "/", permanent: true },
+      // /benchmarks listing was folded into the home page (the table
+      // there already lists every published bench). Redirect to the
+      // benchmarks section of the home so old links/search results /
+      // existing internal links stay alive.
+      { source: "/benchmarks", destination: "/#latest", permanent: true },
     ];
   },
 };
