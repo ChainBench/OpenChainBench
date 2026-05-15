@@ -1,6 +1,7 @@
 "use client";
 
-import { brandColor } from "@/lib/brand";
+import { Globe } from "lucide-react";
+import { brandColor, isRegion } from "@/lib/brand";
 import { ProviderLogo } from "@/components/provider-logo";
 import { hasLogo } from "@/lib/logo-manifest";
 
@@ -80,9 +81,21 @@ function Tab({
   return (
     <button type="button" onClick={onClick} style={activeStyle} className={className}>
       <span className="inline-flex items-center gap-1.5">
-        {hasLogo(value) && (
+        {hasLogo(value) ? (
           <ProviderLogo slug={value} name={label} size={14} />
-        )}
+        ) : isRegion(value) ? (
+          <span
+            className="inline-flex items-center justify-center rounded-full"
+            style={{
+              width: 14,
+              height: 14,
+              background: active ? "rgba(255,255,255,0.18)" : (accent ?? "var(--color-ink-soft)"),
+              color: active ? "var(--color-paper)" : "var(--color-paper)",
+            }}
+          >
+            <Globe size={9} strokeWidth={2.2} />
+          </span>
+        ) : null}
         {label}
       </span>
       {info && (info.providers > 0 || info.leader) && (
