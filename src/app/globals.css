@@ -129,13 +129,13 @@ table {
   box-shadow: 0 4px 12px -8px rgba(15, 23, 42, 0.12);
 }
 
-/* Primary CTA */
+/* Primary CTA — token-driven so it inverts in dark mode */
 .btn-primary {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
   background: var(--color-ink);
-  color: #ffffff;
+  color: var(--color-paper);
   padding: 0.7rem 1.1rem;
   border-radius: 8px;
   font-weight: 500;
