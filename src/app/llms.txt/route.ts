@@ -29,7 +29,7 @@ export async function GET() {
   lines.push(`- [Citable index (JSON)](${SITE.url}/api/citable): flat list of all benchmarks with current values, ready for one-shot lookup.`);
   lines.push(`- [LLM context (Markdown)](${SITE.url}/api/llm-context): all 8 benchmarks + rankings + methodology in one Markdown blob, ready to paste into a system prompt.`);
   lines.push(`- [OpenAPI schema](${SITE.url}/api/openapi.json): full description of every endpoint.`);
-  lines.push(`- [MCP server](${SITE.url}/api/mcp/mcp): exposes \`list_benchmarks\`, \`get_benchmark\`, \`query_prom\` tools over Streamable HTTP.`);
+  lines.push(`- [MCP server](${SITE.url}/api/mcp/mcp): exposes \`list_benchmarks\`, \`get_benchmark\`, \`query_prom\` tools + \`openchainbench://benchmark/{slug}\` resources over Streamable HTTP. See [/mcp](${SITE.url}/mcp) for install instructions (Claude Desktop, Cursor, generic clients).`);
   lines.push("");
   lines.push(`## Benchmarks`);
   lines.push("");
