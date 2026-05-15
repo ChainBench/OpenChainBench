@@ -42,7 +42,7 @@ export function HomeBenchTable({ benchmarks }: { benchmarks: Benchmark[] }) {
           <li key={b.slug}>
             <Link
               href={`/benchmarks/${b.slug}`}
-              className="group grid grid-cols-1 md:grid-cols-[minmax(0,1.6fr)_minmax(0,1.4fr)_minmax(0,9rem)] items-center gap-4 sm:gap-8 py-5 px-3 border-b border-rule hover:bg-accent-soft/40 transition-colors"
+              className="group grid grid-cols-1 md:grid-cols-[minmax(0,1.6fr)_minmax(0,1.4fr)_minmax(0,9rem)] items-center gap-4 sm:gap-8 py-3.5 px-3 border-b border-rule hover:bg-accent-soft/40 transition-colors"
             >
               <BenchTitleCell b={b} />
               <div className="hidden md:block min-w-0">
