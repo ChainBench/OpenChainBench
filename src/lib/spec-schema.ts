@@ -14,6 +14,28 @@
 
 import { z } from "zod";
 
+/** SSRF guard for spec-declared Prometheus URLs. Rejects loopback, private
+ *  ranges, link-local (incl. cloud metadata at 169.254.x), and non-https
+ *  schemes. The runtime override `PROMETHEUS_URL` is trusted (operator-set). */
+function isPublicHttpsUrl(raw: string): boolean {
+  let u: URL;
+  try {
+    u = new URL(raw);
+  } catch {
+    return false;
+  }
+  if (u.protocol !== "https:") return false;
+  const host = u.hostname.toLowerCase();
+  if (host === "localhost" || host === "0.0.0.0" || host === "::1") return false;
+  if (/^127\./.test(host)) return false;
+  if (/^10\./.test(host)) return false;
+  if (/^192\.168\./.test(host)) return false;
+  if (/^172\.(1[6-9]|2\d|3[01])\./.test(host)) return false;
+  if (/^169\.254\./.test(host)) return false;
+  if (/^f[cd][0-9a-f]{2}:/.test(host)) return false;
+  return true;
+}
+
 const slug = z
   .string()
   .min(1)
@@ -118,7 +140,13 @@ export const SpecSchema = z
 
     /* Data source */
     prometheus: z
-      .object({ url: z.url().optional(), window: window.optional() })
+      .object({
+        url: z
+          .url()
+          .refine(isPublicHttpsUrl, "Prometheus URL must be a public https:// host (no loopback / private / link-local)")
+          .optional(),
+        window: window.optional(),
+      })
       .optional(),
 
     /* Optional drill-down dimensions. When set, the bench page renders
