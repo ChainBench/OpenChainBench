@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { LiveDot } from "@/components/live-dot";
 import { ProviderLogo } from "@/components/provider-logo";
 import { cumulativePerChain, niceCeil } from "@/lib/live/buckets";
@@ -64,7 +65,7 @@ export function LiveChart({
     [series.buckets],
   );
 
-  const { paths, yMax, latest, totalCum, effectiveWindowMs } = useMemo(
+  const { paths, yMax, latest, totalCum, effectiveWindowMs, hoverPoints, yScale } = useMemo(
     () => computeChart(series.buckets, serverNow, hiddenChains, cumPerChain, series.windowMs),
     [series.buckets, series.windowMs, serverNow, hiddenChains, cumPerChain],
   );
@@ -100,6 +101,9 @@ export function LiveChart({
             pops={pops}
             empty={empty}
             leftLabel={leftLabel}
+            hoverPoints={hoverPoints}
+            yScale={yScale}
+            nowMs={serverNow}
           />
         </div>
 
@@ -139,17 +143,21 @@ function RangePicker({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="label-mono inline-flex items-center gap-1 text-ink hover:text-ink/80 transition-colors"
+        className="label-mono inline-flex items-center gap-1.5 text-ink hover:text-ink/70 transition-colors"
         aria-haspopup="listbox"
         aria-expanded={open}
       >
         {RANGE_LABELS[range].toLowerCase()}
-        <span className="text-ink-faint">{open ? "▴" : "▾"}</span>
+        <ChevronDown
+          size={11}
+          strokeWidth={2.2}
+          className={`text-ink-faint transition-transform ${open ? "rotate-180" : ""}`}
+        />
       </button>
       {open && (
         <ul
           role="listbox"
-          className="absolute left-0 top-full z-20 mt-1 min-w-[10rem] rounded-sm border border-rule bg-paper shadow-sm overflow-hidden"
+          className="absolute left-0 top-full z-20 mt-1.5 min-w-[10rem] rounded-sm bg-paper ring-1 ring-ink/[0.08] shadow-[0_10px_28px_-12px_rgba(20,17,12,0.35)] overflow-hidden"
         >
           {RANGE_ORDER.map((r) => {
             const active = r === range;
@@ -161,12 +169,20 @@ function RangePicker({
                     onRangeChange(r);
                     setOpen(false);
                   }}
-                  className={`flex w-full items-center justify-between px-3 py-1.5 text-left label-mono transition-colors ${
-                    active ? "bg-paper-soft text-ink" : "text-ink-muted hover:bg-paper-soft hover:text-ink"
+                  className={`flex w-full items-center justify-between gap-3 px-3 py-1.5 text-left label-mono transition-colors ${
+                    active
+                      ? "text-ink bg-ink/[0.04]"
+                      : "text-ink-muted hover:text-ink hover:bg-ink/[0.03]"
                   }`}
                 >
                   <span>{RANGE_LABELS[r].toLowerCase()}</span>
-                  {active && <span className="text-ink-faint">●</span>}
+                  {active && (
+                    <span
+                      aria-hidden
+                      className="h-1.5 w-1.5 rounded-full"
+                      style={{ background: "var(--color-good)" }}
+                    />
+                  )}
                 </button>
               </li>
             );
@@ -240,6 +256,9 @@ function ChartCanvas({
   pops,
   empty,
   leftLabel,
+  hoverPoints,
+  yScale,
+  nowMs,
 }: {
   paths: ChainPath[];
   latest: ChainLatest[];
@@ -248,14 +267,43 @@ function ChartCanvas({
   pops: ChartPop[];
   empty: boolean;
   leftLabel: string;
+  hoverPoints: HoverPoint[];
+  yScale: (v: number) => number;
+  nowMs: number;
 }) {
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
+
+  function onMove(e: React.MouseEvent<SVGSVGElement>) {
+    if (hoverPoints.length === 0) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const ratio = (e.clientX - rect.left) / rect.width;
+    const svgX = ratio * CHART_W;
+    // Find closest bucket by X. Linear scan is fine, buckets are ~150 max.
+    let bestIdx = 0;
+    let bestDist = Number.POSITIVE_INFINITY;
+    for (let i = 0; i < hoverPoints.length; i++) {
+      const d = Math.abs(hoverPoints[i].x - svgX);
+      if (d < bestDist) {
+        bestDist = d;
+        bestIdx = i;
+      }
+    }
+    setHoverIdx(bestIdx);
+  }
+
+  const hover = hoverIdx != null ? hoverPoints[hoverIdx] : null;
+
   return (
     <div className="relative px-2 pb-4">
       <svg
+        ref={svgRef}
         viewBox={`0 0 ${CHART_W} ${CHART_H}`}
         preserveAspectRatio="none"
         className="w-full h-[280px]"
         aria-label="Live streamed volume per chain"
+        onMouseMove={onMove}
+        onMouseLeave={() => setHoverIdx(null)}
       >
         {[0.25, 0.5, 0.75].map((f) => {
           const y = CHART_PAD_Y + (CHART_H - CHART_PAD_Y * 2) * f;
@@ -363,6 +411,38 @@ function ChartCanvas({
             Listening for swaps…
           </text>
         )}
+
+        {/* Hover crosshair: vertical dotted line + per-chain dots */}
+        {hover && (
+          <g pointerEvents="none">
+            <line
+              x1={hover.x}
+              x2={hover.x}
+              y1={CHART_PAD_Y}
+              y2={CHART_H - CHART_PAD_Y}
+              stroke="var(--color-ink)"
+              strokeOpacity={0.4}
+              strokeDasharray="2 3"
+              strokeWidth={1}
+            />
+            {CHAIN_LIST.map((c) => {
+              if (hiddenChains.has(c.key)) return null;
+              const v = hover.ys[c.key] ?? 0;
+              if (v <= 0) return null;
+              return (
+                <circle
+                  key={`hov-${c.key}`}
+                  cx={hover.x}
+                  cy={yScale(v)}
+                  r={2.5}
+                  fill={c.color}
+                  stroke="var(--color-surface)"
+                  strokeWidth={1.25}
+                />
+              );
+            })}
+          </g>
+        )}
       </svg>
 
       <div className="pointer-events-none absolute inset-x-2 inset-y-0">
@@ -371,6 +451,91 @@ function ChartCanvas({
           .map((p) => (
             <ChartPopBubble key={p.id} pop={p} />
           ))}
+      </div>
+
+      {hover && (
+        <HoverTooltip
+          point={hover}
+          hiddenChains={hiddenChains}
+          nowMs={nowMs}
+        />
+      )}
+    </div>
+  );
+}
+
+/* ─────────────── hover tooltip ─────────────── */
+
+function fmtAgo(ms: number, nowMs: number): string {
+  const diff = Math.max(0, nowMs - ms);
+  const totalSec = Math.floor(diff / 1000);
+  if (totalSec < 60) return `${totalSec}s ago`;
+  const totalMin = Math.floor(totalSec / 60);
+  const sec = totalSec % 60;
+  if (totalMin < 60) {
+    return sec > 0 ? `${totalMin}m ${sec}s ago` : `${totalMin}m ago`;
+  }
+  const h = Math.floor(totalMin / 60);
+  const min = totalMin % 60;
+  return min > 0 ? `${h}h ${min}m ago` : `${h}h ago`;
+}
+
+function HoverTooltip({
+  point,
+  hiddenChains,
+  nowMs,
+}: {
+  point: HoverPoint;
+  hiddenChains: Set<string>;
+  nowMs: number;
+}) {
+  const visibleChains = CHAIN_LIST.filter(
+    (c) => !hiddenChains.has(c.key) && (point.ys[c.key] ?? 0) > 0,
+  ).sort((a, b) => (point.ys[b.key] ?? 0) - (point.ys[a.key] ?? 0));
+  const total = visibleChains.reduce((s, c) => s + (point.ys[c.key] ?? 0), 0);
+  const leftPct = (point.x / CHART_W) * 100;
+  // Flip to left side of the cursor when past 60% so the tooltip stays on screen.
+  const flip = leftPct > 60;
+  const positionStyle = flip
+    ? { right: `${100 - leftPct}%`, marginRight: "12px" }
+    : { left: `${leftPct}%`, marginLeft: "12px" };
+
+  return (
+    <div
+      className="pointer-events-none absolute top-3 z-30"
+      style={positionStyle}
+    >
+      <div className="min-w-[180px] rounded-sm bg-paper/95 backdrop-blur ring-1 ring-ink/10 shadow-[0_10px_24px_-12px_rgba(20,17,12,0.4)] px-3 py-2">
+        <p className="label-mono text-ink-muted">
+          {fmtAgo(point.ts, nowMs)}
+        </p>
+        <ul className="mt-2 space-y-1">
+          {visibleChains.map((c) => (
+            <li
+              key={c.key}
+              className="flex items-baseline justify-between gap-4 text-[11px]"
+            >
+              <span className="flex items-center gap-1.5 text-ink-soft">
+                <span
+                  className="h-1.5 w-1.5 rounded-full"
+                  style={{ background: c.color }}
+                />
+                {c.display}
+              </span>
+              <span className="font-mono tabular text-ink">
+                {fmtMoney(point.ys[c.key] ?? 0)}
+              </span>
+            </li>
+          ))}
+        </ul>
+        {visibleChains.length > 0 && (
+          <div className="mt-2 pt-2 border-t border-rule flex items-baseline justify-between text-[11px]">
+            <span className="label-mono text-ink-muted">Total</span>
+            <span className="font-mono tabular font-semibold text-ink">
+              {fmtMoney(total)}
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -408,6 +573,8 @@ function ChartPopBubble({ pop }: { pop: ChartPop }) {
 
 /* ─────────────── chart math (pure) ─────────────── */
 
+type HoverPoint = { x: number; ts: number; ys: Record<string, number> };
+
 function computeChart(
   buckets: Bucket[],
   nowMs: number,
@@ -420,6 +587,8 @@ function computeChart(
   latest: ChainLatest[];
   totalCum: number;
   effectiveWindowMs: number;
+  hoverPoints: HoverPoint[];
+  yScale: (v: number) => number;
 } {
   // The relay always pads with empty buckets on the left so the array
   // spans the full nominal window. When the ring is still filling
@@ -457,7 +626,7 @@ function computeChart(
 
   const running: Record<string, number> = {};
   for (const chain of CHAIN_LIST) running[chain.key] = 0;
-  const cumPerBucket: Array<{ x: number; ys: Record<string, number> }> = [];
+  const cumPerBucket: HoverPoint[] = [];
   let started = false;
   for (const b of buckets) {
     for (const chain of CHAIN_LIST) {
@@ -476,7 +645,7 @@ function computeChart(
       if (!any) continue;
       started = true;
     }
-    cumPerBucket.push({ x: xScale(b.ts), ys: { ...running } });
+    cumPerBucket.push({ x: xScale(b.ts), ts: b.ts, ys: { ...running } });
   }
 
   let yMax = 0;
@@ -531,5 +700,13 @@ function computeChart(
       });
     }
   }
-  return { paths, yMax, latest, totalCum, effectiveWindowMs };
+  return {
+    paths,
+    yMax,
+    latest,
+    totalCum,
+    effectiveWindowMs,
+    hoverPoints: cumPerBucket,
+    yScale,
+  };
 }
