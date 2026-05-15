@@ -5,24 +5,24 @@ import { useEffect, useRef, useState } from "react";
 /**
  * Number that visibly increments between data snapshots.
  *
- * The relay pushes a fresh `stats` envelope every ~1 s. Without help, the
- * displayed number would jump in step-functions once per second — which
- * feels lifeless on a "live" ticker. We linearly extrapolate between the
- * last two snapshots:
+ * The relay broadcasts `stats` every ~1 s but only re-polls Mobula's
+ * lighthouse every few minutes, so most 1 s pushes carry the SAME
+ * trades24h / vol24h values. Naive snapshot pairing (last two pushes)
+ * sees delta=0 and freezes the counter between polls, then makes it
+ * jump every few minutes — exactly the lifeless behavior we want to
+ * avoid.
  *
- *   1. Keep the last two (value, timestamp) pairs.
- *   2. Compute deltaPerMs = (lastValue - prevValue) / (lastTs - prevTs).
- *   3. On each animation frame, display lastValue + deltaPerMs * (now - lastTs).
+ * Fix: track only DISTINCT value transitions. The span between two
+ * distinct values (typically the lighthouse refresh interval) gives a
+ * meaningful rate that extrapolates smoothly through the next gap. So:
  *
- * When a new snapshot arrives and it's HIGHER than where we extrapolated to
- * (the common case for monotonically-rising counters like vol24h, txs24h),
- * we just keep going. If it's lower or jumps, we snap to the new anchor —
- * the math has us correct itself the moment the next snapshot lands.
+ *   1. Keep the last two (value, timestamp) pairs that actually changed.
+ *   2. deltaPerMs = (lastValue - prevValue) / (lastTs - prevTs).
+ *   3. On each animation frame: display lastValue + deltaPerMs * (now - lastTs).
  *
- * `monotonic` mode never lets the displayed value go DOWN between renders,
- * even if the underlying value momentarily dips (e.g. a snapshot revision
- * from the upstream API). Helps avoid a "rolling backward" look that
- * confuses readers on a 24h rolling counter.
+ * `monotonic` mode never lets the displayed value go DOWN between
+ * renders, even if the underlying value momentarily dips (e.g. a
+ * snapshot revision from the upstream API).
  */
 export function LiveNumber({
   value,
@@ -43,6 +43,14 @@ export function LiveNumber({
   useEffect(() => {
     if (value == null || !Number.isFinite(value)) return;
     const now = performance.now();
+    // Only advance the snapshot pair on DISTINCT values. Consecutive pushes
+    // with the same value (relay 1 Hz tick × lighthouse 1-5 min poll) would
+    // otherwise collapse the delta to zero and freeze the counter.
+    if (!lastRef.current) {
+      lastRef.current = { value, ts: now };
+      return;
+    }
+    if (lastRef.current.value === value) return;
     prevRef.current = lastRef.current;
     lastRef.current = { value, ts: now };
   }, [value]);
