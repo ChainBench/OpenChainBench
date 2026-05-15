@@ -461,12 +461,14 @@ export async function GET(
   // it out as a "chain" reads awkward.
   const chainLabel = chainOption?.label ?? null;
 
-  const template = (url.searchParams.get("template") ?? "ranking") as
-    | "ranking"
-    | "snapshot"
-    | "headline"
-    | "compare"
-    | "leaderboard";
+  const rawTemplate = url.searchParams.get("template");
+  const template: "ranking" | "snapshot" | "headline" | "compare" | "leaderboard" =
+    rawTemplate === "snapshot" ||
+    rawTemplate === "headline" ||
+    rawTemplate === "compare" ||
+    rawTemplate === "leaderboard"
+      ? rawTemplate
+      : "ranking";
 
   // ─── Snapshot: multi-select via ?providers=a,b,c ─────────────────────
   const providersParam = url.searchParams.get("providers");
