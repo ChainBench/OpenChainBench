@@ -172,14 +172,24 @@ const PROMQL_RESERVED = new Set([
 /** Best-effort extraction of the first raw metric identifier from a PromQL
  *  query. Returns null when nothing recognisable is found. Used by
  *  `dataAgeSec` to build a freshness probe without needing the spec to
- *  declare it explicitly. */
+ *  declare it explicitly.
+ *
+ *  Strategy: prefer identifiers immediately followed by `{` (label selector)
+ *  or `[` (range vector) — those are always real metric references, never
+ *  functions. Falls back to the reserved-set scan for queries like
+ *  `metric_name` or `metric > 0` that don't carry a selector. */
 function extractMetricName(promql: string): string | null {
-  const re = /\b([a-zA-Z_:][a-zA-Z0-9_:]*)\b/g;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(promql)) !== null) {
+  const withSelector = /\b([a-zA-Z_:][a-zA-Z0-9_:]*)\b\s*[{[]/g;
+  const m = withSelector.exec(promql);
+  if (m) {
     const name = m[1];
+    if (!PROMQL_RESERVED.has(name) && !/^\d/.test(name)) return name;
+  }
+  const re = /\b([a-zA-Z_:][a-zA-Z0-9_:]*)\b/g;
+  let next: RegExpExecArray | null;
+  while ((next = re.exec(promql)) !== null) {
+    const name = next[1];
     if (PROMQL_RESERVED.has(name)) continue;
-    // Skip numeric-prefixed false positives (quantile params, etc.).
     if (/^\d/.test(name)) continue;
     return name;
   }
