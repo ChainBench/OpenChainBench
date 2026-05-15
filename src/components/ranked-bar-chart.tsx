@@ -127,7 +127,7 @@ export function RankedBarChart({ benchmark }: Props) {
                   toggle(r.slug);
                 }
               }}
-              className={`group relative grid grid-cols-[2.5rem_minmax(7rem,11rem)_1fr_auto] items-center gap-3 sm:gap-4 cursor-pointer rounded-sm transition-colors hover:bg-paper-soft/40 ${
+              className={`group relative grid grid-cols-[2rem_minmax(5rem,8rem)_1fr_auto] sm:grid-cols-[2.5rem_minmax(7rem,11rem)_1fr_auto] items-center gap-3 sm:gap-4 cursor-pointer rounded-sm transition-colors hover:bg-paper-soft/40 ${
                 isOff ? "opacity-40" : ""
               }`}
             >

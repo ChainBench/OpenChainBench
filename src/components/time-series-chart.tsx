@@ -630,7 +630,7 @@ function Tooltip({
       }}
     >
       <div
-        className="rounded border border-rule bg-paper-soft/95 backdrop-blur-sm shadow-[0_12px_28px_-16px_rgba(28,26,23,0.25)] px-3 py-2.5 min-w-[14rem] text-[11px]"
+        className="rounded border border-rule bg-paper-soft/95 backdrop-blur-sm shadow-[0_12px_28px_-16px_rgba(28,26,23,0.25)] px-3 py-2.5 min-w-[12rem] sm:min-w-[14rem] max-w-[calc(100vw-2rem)] text-[11px]"
         style={{
           animation: "ts-tooltip-in 0.15s ease-out forwards",
         }}
