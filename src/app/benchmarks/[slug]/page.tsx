@@ -16,6 +16,7 @@ import { ReportSection } from "@/components/report-section";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
 import { headlineSentence } from "@/lib/citation";
 import { SITE } from "@/data/site";
+import { safeJsonLd } from "@/lib/jsonld";
 import type { Benchmark } from "@/types/benchmark";
 
 export const revalidate = 60;
@@ -164,7 +165,7 @@ export default async function BenchmarkPage({
     <article className="mx-auto max-w-5xl px-6 pt-10 sm:pt-14">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
       />
       <div className="flex flex-wrap items-center gap-3">
         <Link
