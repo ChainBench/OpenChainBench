@@ -37,18 +37,32 @@ infrastructure/             Shared services every harness depends on
 └── prometheus/             Single shared Prometheus that scrapes all harnesses
 
 src/                        Next.js 16 site (App Router, ISR, Tailwind v4)
-├── app/                    Pages: overview, benchmarks index, [slug] reports,
-│                           providers index + detail, alternatives, press kit.
-│                           Live dashboard is folded into /.
-├── components/             time-series-chart, ledger-table, region-grid, chain-tabs, …
-│   └── live/               Live page: dashboard, ticker, chart, compact-feed
+├── app/                    Pages:
+│                             /             — hero ("Highest accuracy at every price point")
+│                                             with animated radar dial, live Network Ecosystem,
+│                                             Latest deployed benchmarks table
+│                             /benchmarks   — card grid (3-col) with category pill filter + search
+│                             /providers    — "Products" list with brand logos, benchmarks /
+│                                             top-1 counts (Top-1 green when > 0)
+│                             /contribute   — 6-step tutorial + federation / timeline cards
+│                             /methodology  — design principles + statistical conventions
+│                             /benchmarks/[slug] — bench detail with card-wrapped chart + ledger
+│                             /alternatives, /press, /mcp, /about
+├── components/
+│   ├── site-header.tsx, site-footer.tsx, site-banner.tsx, site-logo.tsx
+│   ├── theme-toggle.tsx     Sun/moon toggle, html.dark class strategy, localStorage-persisted
+│   ├── hero-radar.tsx       Animated SVG dial on the home hero
+│   ├── benchmark-card.tsx, benchmark-grid.tsx, home-bench-table.tsx
+│   ├── time-series-chart, ledger-table, region-grid, chain-tabs, …
+│   └── live/                Live page: dashboard, ticker, chart, compact-feed
 ├── data/
-│   ├── benchmarks.ts       Spec loader (YAML → Prometheus → Benchmark[])
-│   └── provider-registry.ts  Per-provider description, URL, Twitter handle
+│   ├── benchmarks.ts        Spec loader (YAML → Prometheus → Benchmark[])
+│   └── provider-registry.ts Per-provider description, URL, Twitter handle
 └── lib/
-    ├── prometheus.ts       Prometheus HTTP client + spec/formatting helpers
-    ├── providers.ts        Aggregates each provider's benchmark appearances
-    └── live/               Live page domain logic (types, config, chains, format, buckets)
+    ├── prometheus.ts        Prometheus HTTP client + spec/formatting helpers
+    ├── providers.ts         Aggregates each provider's benchmark appearances
+    ├── brand.ts             Vivid brand-color table per chain / provider (legible both modes)
+    └── live/                Live page domain logic (types, config, chains, format, buckets)
 ```
 
 The live dashboard at the top of `/` is fed by a separate **stream relay** living in the
@@ -71,7 +85,8 @@ us without screenshotting:
 | [`/api/stat/<slug>`](https://openchainbench.com/api/stat/aggregator-head-lag) | Devs, agents | Single benchmark: full rankings, sparkline (24h), methodology, paste-ready quote, attribution URL. |
 | [`/api/freshness`](https://openchainbench.com/api/freshness) | Live UI, dashboards | Tiny `{slug → asOf ms}` map. Edge-cached 5 s, polled by the on-page "Live" indicator every 8 s for ~15-20 s p99 staleness. |
 | [`/api/llm-context`](https://openchainbench.com/api/llm-context) | LLMs | Every benchmark with rankings + methodology in one Markdown blob. Paste into a system prompt for "here's everything you need to answer questions about crypto-infra performance today". |
-| [`/api/og/<slug>`](https://openchainbench.com/api/og/aggregator-head-lag) | Twitter/Slack/Discord/iMessage | 1200×630 PNG with the current value, leader, sparkline, watermark. Returned automatically as the OG image when someone shares a benchmark link. |
+| [`/benchmarks/<slug>/opengraph-image`](https://openchainbench.com/benchmarks/aggregator-head-lag/opengraph-image) | Twitter/Slack/Discord/iMessage | 1200×630 PNG with the current value, leader, sparkline, watermark. Returned automatically as the OG image when someone shares a benchmark link. |
+| [`/benchmarks/<slug>/share-card?template=...&theme=...`](https://openchainbench.com/benchmarks/aggregator-head-lag/share-card) | Manual export | 5 share templates (ranking, snapshot, headline, compare, leaderboard) — supports `?theme=dark` so the export matches the user's site theme. |
 | [`/api/openapi.json`](https://openchainbench.com/api/openapi.json) | LangChain, Custom GPTs, generic clients | OpenAPI 3.1 schema describing every endpoint. |
 | [`/api/mcp/mcp`](https://openchainbench.com/api/mcp/mcp) | MCP-capable agents (Claude Desktop, Cursor) | MCP server exposing `list_benchmarks`, `get_benchmark`, `query_prom` tools. Streamable HTTP transport. |
 | [`/api/badge/<bench>/<provider>`](https://openchainbench.com/api/badge/aggregator-head-lag/mobula) | Provider sites, READMEs, blogs | Embeddable SVG badge with the provider's current rank and headline figure. 360×36, cache-aware. |
@@ -87,15 +102,17 @@ Source: OpenChainBench (https://openchainbench.com/benchmarks/aggregator-head-la
 
 This is the `headlineSentence` exposed on `/api/stat/<slug>`. The page URL is stable, the OG preview unfurls automatically with the current value, and the data is CC-BY-4.0.
 
-### Provider pages
+### Product pages
 
-Every provider that appears in at least one live benchmark gets a page at `/providers/<slug>` (auto-generated from spec results). Each page lists:
+Every product (provider) that appears in at least one benchmark spec gets a page at `/providers/<slug>` (the URL stays `providers/` for SEO continuity; the UI labels everything as "Products"). The list at [`/providers`](https://openchainbench.com/providers) is now a flat avatar list with each row showing:
 
-- the provider's rank on every benchmark it competes in, sorted by rank
-- a short description, official URL, and Twitter handle (from [`src/data/provider-registry.ts`](./src/data/provider-registry.ts))
-- embeddable badge HTML for every benchmark where the provider is currently #1
+- the product's brand logo + name + optional type pill (intent / protocol / aggregator / relay)
+- the categories it appears in, colored by category (Aggregators / Bridges / Blockchains / Trading)
+- two right-aligned counts: **Benchmarks** (total appearances) and **Top 1** (green when > 0, gray otherwise)
 
-The full provider directory lives at [`/providers`](https://openchainbench.com/providers) with a search bar that filters by name, slug, type, and category.
+A category pill filter and `⌘K` search box sit above the list. Drafts (products from harnesses temporarily unreachable) still surface in the list rather than disappearing — keeps the directory stable when a single harness is down.
+
+The bench detail page also keeps the per-product registry (description, URL, Twitter handle) from [`src/data/provider-registry.ts`](./src/data/provider-registry.ts) and renders an embeddable badge for every bench where the product is currently #1.
 
 ### How agents query us
 
@@ -266,12 +283,27 @@ Selecting `Base` injects `chain="base"` into every selector in the spec, includi
 ## Stack
 
 - Next.js 16 (App Router, ISR, Turbopack) on Vercel
-- Tailwind v4 (CSS-only theme, `@theme` tokens)
-- Source Serif 4 / Inter Tight / JetBrains Mono via `next/font`
+- Tailwind v4 (CSS-only theme, `@theme` tokens) with `@custom-variant dark` class strategy
+- Light + dark mode, localStorage-persisted with a pre-paint inline script to avoid flash
+- Inter / Inter Tight / JetBrains Mono via `next/font` (Source Serif 4 still loaded for the server-rendered share cards)
 - Zod for spec validation
 - Prometheus HTTP API (instant + range queries)
 - Go 1.24 for the existing harnesses (any language is acceptable)
 - WebSockets + a small Go relay for the live dashboard
+
+### Design system
+
+White paper, slate ink ramp, vivid orange accent (`#EA580C`). All chrome
+colors are CSS variables in `src/app/globals.css`, with a `.dark` block
+that overrides each token for dark mode. Components reference tokens
+(`text-ink`, `bg-surface`, `border-rule`, …) instead of literal hex so
+the theme switch is purely declarative. Brand colors per chain/product
+live in `src/lib/brand.ts` — picked to be saturated enough to read on
+both light and dark backgrounds.
+
+Exported share-cards (`/benchmarks/[slug]/share-card`) mirror the active
+site theme by reading `html.dark` and appending `?theme=dark` to the
+PNG URL — the downloaded image matches what the user is looking at.
 
 ## Community
 
