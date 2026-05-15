@@ -10,6 +10,10 @@ import { LiveDot } from "@/components/live-dot";
 
 type Props = {
   benchmark: Benchmark;
+  /** Optional externally-controlled region. When provided, the chart
+   *  filters its lines by this value and hides its internal region tabs
+   *  (the parent component renders them in a shared dimension row). */
+  region?: string;
 };
 
 type Range = "1h" | "6h" | "24h" | "7d";
@@ -36,9 +40,11 @@ const REGION_LABEL: Record<string, string> = {
   global: "Global",
 };
 
-export function TimeSeriesChart({ benchmark }: Props) {
+export function TimeSeriesChart({ benchmark, region: regionProp }: Props) {
   const [range, setRange] = useState<Range>("24h");
-  const [region, setRegion] = useState<string>("all");
+  const [regionLocal, setRegionLocal] = useState<string>("all");
+  const region = regionProp ?? regionLocal;
+  const setRegion = regionProp != null ? () => {} : setRegionLocal;
 
   const has7d =
     !!benchmark.extras.series7d &&
@@ -53,7 +59,9 @@ export function TimeSeriesChart({ benchmark }: Props) {
     return Array.from(set).sort();
   }, [benchmark]);
 
-  const showRegionTabs = availableRegions.length > 1;
+  // Internal region tabs are hidden when the parent controls the region —
+  // it renders a unified Chain + Region row above and passes the value down.
+  const showRegionTabs = regionProp == null && availableRegions.length > 1;
 
   const colors = useMemo(
     () => buildProviderColors(benchmark.results),
