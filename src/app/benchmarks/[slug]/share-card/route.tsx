@@ -59,14 +59,53 @@ function compareLabel(b: Benchmark, delta: number): string {
 export const runtime = "nodejs";
 
 const SIZE = { width: 1200, height: 630 };
-const PAPER = "#f8f3eb";
-const PAPER_SOFT = "#f3eee0";
-const INK = "#181614";
-const INK_SOFT = "#4a443c";
-const INK_MUTED = "#7a7166";
-const INK_FAINT = "#a59b87";
-const RULE = "rgba(24, 22, 20, 0.12)";
-const GOOD = "#3d6d3d";
+
+// Palette is mutable so the GET handler can swap between light and dark
+// per ?theme= query param. Render helpers below reference these by closure
+// so they pick up whichever values are active at render time. Each request
+// reassigns at the top of GET — single-threaded JS event loop per request
+// keeps the swap race-free.
+let PAPER = "#ffffff";
+let PAPER_SOFT = "#f8fafc";
+let INK = "#0f172a";
+let INK_SOFT = "#334155";
+let INK_MUTED = "#64748b";
+let INK_FAINT = "#94a3b8";
+let RULE = "rgba(15, 23, 42, 0.10)";
+let GOOD = "#10b981";
+
+const LIGHT_PALETTE = {
+  PAPER: "#ffffff",
+  PAPER_SOFT: "#f8fafc",
+  INK: "#0f172a",
+  INK_SOFT: "#334155",
+  INK_MUTED: "#64748b",
+  INK_FAINT: "#94a3b8",
+  RULE: "rgba(15, 23, 42, 0.10)",
+  GOOD: "#10b981",
+};
+const DARK_PALETTE = {
+  PAPER: "#0a0b0d",
+  PAPER_SOFT: "#181a1f",
+  INK: "#f8fafc",
+  INK_SOFT: "#d6dee8",
+  INK_MUTED: "#a3b0c2",
+  INK_FAINT: "#8290a3",
+  RULE: "rgba(248, 250, 252, 0.10)",
+  GOOD: "#34d399",
+};
+
+function applyTheme(theme: "light" | "dark") {
+  const p = theme === "dark" ? DARK_PALETTE : LIGHT_PALETTE;
+  PAPER = p.PAPER;
+  PAPER_SOFT = p.PAPER_SOFT;
+  INK = p.INK;
+  INK_SOFT = p.INK_SOFT;
+  INK_MUTED = p.INK_MUTED;
+  INK_FAINT = p.INK_FAINT;
+  RULE = p.RULE;
+  GOOD = p.GOOD;
+}
 
 // ─── Cached assets ─────────────────────────────────────────────────────
 let _logoDataUrl: string | null = null;
@@ -454,6 +493,10 @@ export async function GET(
     });
   }
   const url = new URL(request.url);
+  // Theme switch — defaults to light. The share-section UI reads the
+  // current `<html class="dark">` state and appends `?theme=dark` so the
+  // exported PNG matches what the user is looking at.
+  applyTheme(url.searchParams.get("theme") === "dark" ? "dark" : "light");
 
   // Validate `?chain=` against the spec-declared dimension before passing
   // it to the loader — same pattern as the bench detail page.
