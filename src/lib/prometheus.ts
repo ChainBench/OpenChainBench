@@ -287,23 +287,54 @@ async function dnsLookupWithTimeout(host: string): Promise<{ address: string }[]
   ]);
 }
 
+// Cache the host-validation result for 60 s so the DNS lookup isn't
+// repeated on every Prom query. The validation result ("this hostname
+// resolves only to public addresses") doesn't change minute-to-minute
+// in honest operation; capping the cache at 60 s also bounds the
+// DNS-rebinding window for a hostile-DNS attacker to a single minute
+// per spec — they'd still need to flip DNS through the cache miss to
+// reach a private IP.
+type HostCheckEntry = { ok: boolean; reason?: string; expiresAt: number };
+const HOST_CHECK_TTL_MS = 60_000;
+const hostCheckCache = new Map<string, HostCheckEntry>();
+
 async function assertPublicHost(url: URL): Promise<void> {
   // hostname keeps brackets for IPv6 literals; strip them so isIP can
   // recognise the address.
   let host = url.hostname;
   if (host.startsWith("[") && host.endsWith("]")) host = host.slice(1, -1);
 
-  if (isIP(host)) {
-    if (isPrivateAddress(host)) {
-      throw new Error(`prometheus: refused private host ${host}`);
-    }
+  const cached = hostCheckCache.get(host);
+  const now = Date.now();
+  if (cached && cached.expiresAt > now) {
+    if (!cached.ok) throw new Error(`prometheus: ${cached.reason}`);
     return;
   }
-  const addrs = await dnsLookupWithTimeout(host);
-  for (const { address } of addrs) {
-    if (isPrivateAddress(address)) {
-      throw new Error(`prometheus: ${host} resolves to private address ${address}`);
+
+  try {
+    if (isIP(host)) {
+      if (isPrivateAddress(host)) {
+        const reason = `refused private host ${host}`;
+        hostCheckCache.set(host, { ok: false, reason, expiresAt: now + HOST_CHECK_TTL_MS });
+        throw new Error(`prometheus: ${reason}`);
+      }
+      hostCheckCache.set(host, { ok: true, expiresAt: now + HOST_CHECK_TTL_MS });
+      return;
     }
+    const addrs = await dnsLookupWithTimeout(host);
+    for (const { address } of addrs) {
+      if (isPrivateAddress(address)) {
+        const reason = `${host} resolves to private address ${address}`;
+        hostCheckCache.set(host, { ok: false, reason, expiresAt: now + HOST_CHECK_TTL_MS });
+        throw new Error(`prometheus: ${reason}`);
+      }
+    }
+    hostCheckCache.set(host, { ok: true, expiresAt: now + HOST_CHECK_TTL_MS });
+  } catch (e) {
+    // DNS timeout / NXDOMAIN: do NOT cache as failure forever — let the
+    // next request retry. Only the explicit "private address" path above
+    // gets cached on failure.
+    throw e;
   }
 }
 

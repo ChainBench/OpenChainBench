@@ -60,7 +60,7 @@ export default async function AlternativePage({
   return (
     <article className="mx-auto max-w-5xl px-6 pt-10 sm:pt-14">
       <Link
-        href="/benchmarks"
+        href="/#latest"
         className="inline-flex items-center gap-1.5 text-sm text-ink-muted hover:text-ink"
       >
         <ArrowLeft size={14} strokeWidth={2} />

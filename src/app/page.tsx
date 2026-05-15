@@ -50,14 +50,6 @@ export default async function HomePage() {
             <BenchmarkTable benchmarks={benchmarks} />
           )}
 
-          <div className="mt-4 flex justify-end">
-            <Link
-              href="/benchmarks"
-              className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted hover:text-ink"
-            >
-              See all benchmarks →
-            </Link>
-          </div>
         </div>
       </section>
 

@@ -182,7 +182,7 @@ export default async function BenchmarkPage({
       />
       <div className="flex flex-wrap items-center gap-3">
         <Link
-          href="/benchmarks"
+          href="/#latest"
           className="inline-flex items-center gap-1.5 text-sm text-ink-muted hover:text-ink"
         >
           <ArrowLeft size={14} strokeWidth={2} />
