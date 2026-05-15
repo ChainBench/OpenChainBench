@@ -689,11 +689,11 @@ function computeChart(
     }
   }
   const actualSpan = Math.max(60_000, nowMs - firstDataTs);
-  // Only compress when data fills less than ~75% of the nominal window.
-  // Once the ring is mostly full, snap back to the full window so the
-  // axis label stops jittering.
-  const effectiveWindowMs =
-    actualSpan < windowMs * 0.75 ? actualSpan : windowMs;
+  // Always fit the x-axis to the data extent so the polyline starts
+  // flush against the left edge of the chart. The label below the
+  // chart reflects this actual span (e.g. "53 min ago") so the axis
+  // and the reading stay consistent.
+  const effectiveWindowMs = Math.min(windowMs, actualSpan);
   const xMin = nowMs - effectiveWindowMs;
   const innerW = CHART_W - CHART_PAD_X - 8;
   const innerH = CHART_H - CHART_PAD_Y * 2;
