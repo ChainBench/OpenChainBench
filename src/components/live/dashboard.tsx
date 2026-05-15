@@ -29,6 +29,33 @@ import { LiveTicker } from "./ticker";
 
 type SeriesByRange = Record<RangeKey, ChartSeries>;
 
+/** Best-effort runtime shape check on each WS frame. Mirrors the wire
+ *  protocol documented in miniapps/ocb-stream-relay/README.md. Drops any
+ *  message whose `type` is unknown or whose required fields are missing.
+ *  Defense in depth: even if a relay regression sends garbage, the UI
+ *  ignores it rather than crashing or rendering unexpected strings. */
+function isRelayMessage(v: unknown): v is RelayMessage {
+  if (typeof v !== "object" || v === null) return false;
+  const m = v as { type?: unknown };
+  if (m.type === "snapshot") {
+    const s = v as { series?: unknown; nowMs?: unknown };
+    return typeof s.nowMs === "number" && (s.series == null || typeof s.series === "object");
+  }
+  if (m.type === "swap") {
+    const s = v as { chain?: unknown; usd?: unknown; side?: unknown };
+    return (
+      typeof s.chain === "string" &&
+      typeof s.usd === "number" &&
+      (s.side === "buy" || s.side === "sell")
+    );
+  }
+  if (m.type === "stats") {
+    const s = v as { global?: unknown; nowMs?: unknown };
+    return typeof s.nowMs === "number" && typeof s.global === "object" && s.global !== null;
+  }
+  return false;
+}
+
 function emptySeries(): SeriesByRange {
   return {
     "10m": { windowMs: 10 * 60 * 1000, bucketMs: 5 * 1000, buckets: [] },
@@ -53,6 +80,7 @@ export function LiveDashboard() {
   const hiddenChainsRef = useRef<Set<string>>(new Set());
   const popIdRef = useRef(0);
   const reconnectTimer = useRef<number | null>(null);
+  const reconnectAttempts = useRef(0);
   const hiddenHydratedRef = useRef(false);
   const expandedHydratedRef = useRef(false);
 
@@ -116,26 +144,41 @@ export function LiveDashboard() {
     let stopped = false;
     let ws: WebSocket | null = null;
 
+    function scheduleReconnect() {
+      if (stopped) return;
+      // Exponential backoff with jitter. 2s → 4s → 8s → 16s → 30s (cap).
+      // Without this, every browser tab hammers the relay in lockstep every
+      // 2 s when it goes down — N tabs × every 2 s.
+      reconnectAttempts.current += 1;
+      const base = Math.min(30_000, 2_000 * 2 ** (reconnectAttempts.current - 1));
+      const jitter = base * (0.75 + Math.random() * 0.5);
+      reconnectTimer.current = window.setTimeout(connect, jitter);
+    }
+
     function connect() {
       if (stopped) return;
       ws = new WebSocket(RELAY_WS_URL);
 
-      ws.onopen = () => setConnected(true);
+      ws.onopen = () => {
+        setConnected(true);
+        reconnectAttempts.current = 0;
+      };
       ws.onerror = () => ws?.close();
       ws.onclose = () => {
         setConnected(false);
-        if (!stopped) {
-          reconnectTimer.current = window.setTimeout(connect, 2000);
-        }
+        scheduleReconnect();
       };
 
       ws.onmessage = (e) => {
-        let msg: RelayMessage;
+        if (typeof e.data !== "string" || e.data.length > 64 * 1024) return;
+        let parsed: unknown;
         try {
-          msg = JSON.parse(e.data);
+          parsed = JSON.parse(e.data);
         } catch {
           return;
         }
+        if (!isRelayMessage(parsed)) return;
+        const msg: RelayMessage = parsed;
 
         if (msg.type === "snapshot") {
           // Forward-compat with the multi-resolution relay AND backward-compat
