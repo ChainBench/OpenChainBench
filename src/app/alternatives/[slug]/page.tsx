@@ -12,6 +12,7 @@ import { computeFieldStats } from "@/lib/stats";
 import { SectionLabel, SummaryStat } from "@/components/summary-stat";
 import { SITE } from "@/data/site";
 import { loadAlternative, loadAlternativeSlugs } from "@/lib/alternatives";
+import { safeJsonLd } from "@/lib/jsonld";
 
 export const revalidate = 60;
 
@@ -57,8 +58,72 @@ export default async function AlternativePage({
   const { fieldMin, fieldMedian, fieldMax, tailMin, tailMax, tailSpread } =
     computeFieldStats(bench.results);
 
+  const url = `${SITE.url}/alternatives/${alt.slug}`;
+  const benchUrl = `${SITE.url}/benchmarks/${bench.slug}`;
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Dataset",
+        "@id": `${url}#dataset`,
+        name: `${alt.target_product} alternatives — benchmark snapshot`,
+        description: alt.description ?? alt.intro.slice(0, 280),
+        url,
+        identifier: alt.slug,
+        keywords: [
+          `${alt.target_product} alternatives`,
+          bench.category,
+          bench.metric,
+          ...bench.results.map((r) => r.name),
+        ].join(", "),
+        creator: { "@id": `${SITE.url}/#org` },
+        publisher: { "@id": `${SITE.url}/#org` },
+        isAccessibleForFree: true,
+        license: "https://creativecommons.org/licenses/by/4.0/",
+        dateModified: bench.lastRunAt,
+        variableMeasured: bench.metric,
+        isBasedOn: benchUrl,
+      },
+      {
+        "@type": "Article",
+        "@id": `${url}#article`,
+        headline: `${alt.target_product} alternatives`,
+        description: alt.description ?? alt.intro.slice(0, 280),
+        url,
+        mainEntityOfPage: url,
+        articleBody: alt.intro,
+        dateModified: bench.lastRunAt,
+        author: { "@id": `${SITE.url}/#org` },
+        publisher: { "@id": `${SITE.url}/#org` },
+        about: { "@id": `${url}#dataset` },
+      },
+      {
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "Home", item: SITE.url },
+          {
+            "@type": "ListItem",
+            position: 2,
+            name: "Alternatives",
+            item: `${SITE.url}/benchmarks`,
+          },
+          {
+            "@type": "ListItem",
+            position: 3,
+            name: `${alt.target_product} alternatives`,
+            item: url,
+          },
+        ],
+      },
+    ],
+  };
+
   return (
     <article className="mx-auto max-w-5xl px-6 pt-10 sm:pt-14">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
+      />
       <Link
         href="/#latest"
         className="inline-flex items-center gap-1.5 text-sm text-ink-muted hover:text-ink"

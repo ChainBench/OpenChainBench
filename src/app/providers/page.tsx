@@ -3,9 +3,9 @@ import { getProviders } from "@/lib/providers";
 import { ProvidersTable } from "@/components/providers-table";
 
 export const metadata: Metadata = {
-  title: "Products",
+  title: "Providers",
   description:
-    "Every product tracked by OpenChainBench, grouped by performance. Click a name for its full benchmark record.",
+    "Every provider tracked by OpenChainBench, grouped by performance. Click a name for its full benchmark record.",
 };
 
 export const revalidate = 60;
@@ -24,9 +24,9 @@ export default async function ProvidersIndex() {
   return (
     <article className="mx-auto max-w-[1400px] px-4 sm:px-6 py-12 sm:py-16">
       <header className="mb-10">
-        <h1 className="display text-4xl sm:text-5xl text-ink">Products</h1>
+        <h1 className="display text-4xl sm:text-5xl text-ink">Providers</h1>
         <p className="mt-4 max-w-2xl text-base sm:text-lg text-ink-soft leading-snug">
-          Every product that appears in at least one live benchmark.
+          Every provider that appears in at least one live benchmark.
           Sorted by number of #1 finishes, then by reach across categories.
         </p>
       </header>
