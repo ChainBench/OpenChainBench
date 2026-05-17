@@ -197,7 +197,7 @@ export default function ContributePage() {
           </div>
         </section>
 
-        <section className="card-soft rounded-xl p-5 sm:p-6">
+        <section id="ai-assist" className="card-soft rounded-xl p-5 sm:p-6 scroll-mt-20">
           <div className="flex items-baseline gap-3">
             <span className="label-mono text-ink-faint">OPTIONAL</span>
             <h2 className="display text-xl sm:text-2xl text-ink tracking-tight leading-tight">

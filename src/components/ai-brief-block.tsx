@@ -8,7 +8,7 @@ import { CopyButton } from "@/components/copy-button";
  */
 export function AiBriefBlock() {
   return (
-    <div id="ai-assist" className="scroll-mt-20 flex flex-col gap-4">
+    <div className="flex flex-col gap-4">
       <Tile
         tag="any LLM"
         title="Web brief"
