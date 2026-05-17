@@ -26,7 +26,7 @@ export function SiteFooter() {
             title="Read"
             links={[
               { label: "Benchmarks", href: "/benchmarks" },
-              { label: "Providers", href: "/providers" },
+              { label: "Products", href: "/products" },
               { label: "Methodology", href: "/methodology" },
               { label: "Press kit", href: "/press" },
             ]}
