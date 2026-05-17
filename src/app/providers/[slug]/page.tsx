@@ -65,22 +65,49 @@ export default async function ProviderPage({
   }
   const jsonLd = {
     "@context": "https://schema.org",
-    "@type": "Organization",
-    name: p.name,
-    url: reg?.url ?? url,
-    identifier: p.slug,
-    description:
-      reg?.description ??
-      `Crypto-infrastructure provider tracked by OpenChainBench across ${p.appearances.length} live benchmarks.`,
-    ...(sameAs.length > 0 ? { sameAs } : {}),
-    subjectOf: sorted.map((a) => ({
-      "@type": "Dataset",
-      name: a.benchmark.title,
-      description: a.benchmark.subtitle,
-      url: `${SITE.url}/benchmarks/${a.benchmark.slug}`,
-      creator: { "@id": `${SITE.url}/#org` },
-      license: "https://creativecommons.org/licenses/by/4.0/",
-    })),
+    "@graph": [
+      {
+        "@type": "Organization",
+        name: p.name,
+        url: reg?.url ?? url,
+        identifier: p.slug,
+        description:
+          reg?.description ??
+          `Crypto-infrastructure provider tracked by OpenChainBench across ${p.appearances.length} live benchmarks.`,
+        ...(sameAs.length > 0 ? { sameAs } : {}),
+        subjectOf: sorted.map((a) => ({
+          "@type": "Dataset",
+          name: a.benchmark.title,
+          description: a.benchmark.subtitle,
+          url: `${SITE.url}/benchmarks/${a.benchmark.slug}`,
+          creator: { "@id": `${SITE.url}/#org` },
+          license: "https://creativecommons.org/licenses/by/4.0/",
+        })),
+      },
+      {
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          {
+            "@type": "ListItem",
+            position: 1,
+            name: "Home",
+            item: SITE.url,
+          },
+          {
+            "@type": "ListItem",
+            position: 2,
+            name: "Providers",
+            item: `${SITE.url}/providers`,
+          },
+          {
+            "@type": "ListItem",
+            position: 3,
+            name: p.name,
+            item: url,
+          },
+        ],
+      },
+    ],
   };
 
   return (

@@ -171,6 +171,29 @@ export default async function BenchmarkPage({
         publisher: { "@id": `${SITE.url}/#org` },
         about: { "@id": `${benchmarkUrl}#dataset` },
       },
+      {
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          {
+            "@type": "ListItem",
+            position: 1,
+            name: "Home",
+            item: SITE.url,
+          },
+          {
+            "@type": "ListItem",
+            position: 2,
+            name: "Benchmarks",
+            item: `${SITE.url}/benchmarks`,
+          },
+          {
+            "@type": "ListItem",
+            position: 3,
+            name: benchmark.title,
+            item: benchmarkUrl,
+          },
+        ],
+      },
     ],
   };
 
