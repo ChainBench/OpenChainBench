@@ -1,0 +1,11 @@
+slug: the-graph
+target_product: The Graph
+target_url: https://thegraph.com
+description: Decentralised indexing protocol with subgraph queries
+benchmark: network-coverage
+
+intro: |
+  The Graph powers subgraph queries used by many dApps for indexed onchain data. If you are evaluating alternatives, the first dimension worth checking is the breadth of supported networks. how many chains does each major data provider officially cover? Below is the live count from each provider's public supported-networks endpoint, refreshed every six hours.
+
+seo_title: The Graph alternatives. live network coverage benchmark
+seo_description: Compare The Graph alternatives on the number of blockchains each major onchain data provider officially supports. Live data, refreshed every six hours.

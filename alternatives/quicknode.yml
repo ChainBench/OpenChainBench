@@ -1,0 +1,11 @@
+slug: quicknode
+target_product: QuickNode
+target_url: https://www.quicknode.com
+description: Multi-chain RPC + data infrastructure
+benchmark: aggregator-head-lag
+
+intro: |
+  QuickNode runs RPC endpoints, streams and data APIs across EVM chains, Solana and more. For any pipeline that consumes the chain in real time, the practical question is how quickly the provider sees a fresh block. Below is the live head-lag for each major onchain data provider, measured against a canonical-tip archive node and refreshed every minute. Lower is faster.
+
+seo_title: QuickNode alternatives. live head-lag benchmark across data providers
+seo_description: Compare QuickNode alternatives on real-time data freshness. Live head-lag against a canonical archive node, refreshed every minute and published openly.
