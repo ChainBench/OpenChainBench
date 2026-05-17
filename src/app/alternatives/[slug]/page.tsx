@@ -13,6 +13,9 @@ import { SectionLabel, SummaryStat } from "@/components/summary-stat";
 import { SITE } from "@/data/site";
 import { loadAlternative, loadAlternativeSlugs } from "@/lib/alternatives";
 import { safeJsonLd } from "@/lib/jsonld";
+import { ProviderLogo } from "@/components/provider-logo";
+import { ProviderTypeBadge } from "@/components/provider-type-badge";
+import { isRegion } from "@/lib/brand";
 
 export const revalidate = 60;
 
@@ -57,6 +60,17 @@ export default async function AlternativePage({
   const isDraft = bench.status === "draft";
   const { fieldMin, fieldMedian, fieldMax, tailMin, tailMax, tailSpread } =
     computeFieldStats(bench.results);
+
+  // Top alternatives = leading bench results, excluding the target product
+  // itself (matched on slug, case-insensitive) and any region pseudo-slugs.
+  const targetSlug = alt.target_product.toLowerCase().replace(/\s+/g, "-");
+  const sortedResults = [...bench.results]
+    .filter((r) => !isRegion(r.slug))
+    .filter((r) => r.slug.toLowerCase() !== targetSlug)
+    .sort((a, b) =>
+      bench.higherIsBetter ? b.ms.p50 - a.ms.p50 : a.ms.p50 - b.ms.p50,
+    );
+  const topAlternatives = sortedResults.slice(0, 5);
 
   const url = `${SITE.url}/alternatives/${alt.slug}`;
   const benchUrl = `${SITE.url}/benchmarks/${bench.slug}`;
@@ -158,6 +172,51 @@ export default async function AlternativePage({
             <ArrowUpRight size={11} strokeWidth={2} className="inline ml-0.5" />
           </a>
         </p>
+      )}
+
+      {/* Top alternatives cards — explicit list with internal links to
+          product pages. The bench leaderboard below carries the full data;
+          this section frames the answer for skim-readers and search. */}
+      {topAlternatives.length > 0 && (
+        <section className="mt-10">
+          <SectionLabel>
+            Top {topAlternatives.length} {alt.target_product} alternatives
+          </SectionLabel>
+          <ol className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {topAlternatives.map((r, i) => (
+              <li key={r.slug}>
+                <Link
+                  href={`/products/${r.slug}`}
+                  className="card-soft rounded-xl p-4 flex flex-col gap-2 h-full hover:border-ink/40 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <ProviderLogo slug={r.slug} name={r.name} size={32} />
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-ink leading-tight truncate">
+                        {r.name}
+                      </p>
+                      <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-faint">
+                        #{i + 1} · {bench.metric}
+                      </p>
+                    </div>
+                    {r.type && <ProviderTypeBadge type={r.type} />}
+                  </div>
+                  <div className="flex items-baseline gap-2 text-ink">
+                    <span className="font-mono text-lg font-semibold tabular">
+                      {fmtValue(r.ms.p50, bench.unit)}
+                    </span>
+                    <span className="font-mono text-[11px] text-ink-muted">
+                      {unitSuffix(bench.unit).trim()}
+                    </span>
+                    <span className="ml-auto text-[11px] text-ink-faint">
+                      p99 {fmtUnit(r.ms.p99, bench.unit)}
+                    </span>
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ol>
+        </section>
       )}
 
       {/* Reuse bench rendering. count vs latency split, same as the
