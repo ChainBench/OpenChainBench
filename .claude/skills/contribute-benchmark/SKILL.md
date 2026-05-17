@@ -133,12 +133,12 @@ These are strict. Reviewers will reject PRs that violate them.
 
 ## References inside the repo
 
-- `benchmarks/README.md` — spec field reference and submission guide
-- `harnesses/README.md` — harness contract details
-- `docs/architecture.md` — data flow diagram
-- `docs/walkthrough.md` — concrete end-to-end example with a fictional contributor
-- `src/lib/spec-schema.ts` — Zod schema (single source of truth)
-- `CONTRIBUTING.md` — full submission flow
+- `benchmarks/README.md`: spec field reference and submission guide
+- `harnesses/README.md`: harness contract details
+- `docs/architecture.md`: data flow diagram
+- `docs/walkthrough.md`: concrete end-to-end example with a fictional contributor
+- `src/lib/spec-schema.ts`: Zod schema (single source of truth)
+- `CONTRIBUTING.md`: full submission flow
 
 ## Tone for your responses
 
