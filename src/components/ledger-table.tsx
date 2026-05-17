@@ -151,7 +151,7 @@ function Row({
             </span>
           ) : (
             <Link
-              href={`/providers/${r.slug}`}
+              href={`/products/${r.slug}`}
               className="font-semibold hover:underline underline-offset-2"
               style={{ color }}
             >
