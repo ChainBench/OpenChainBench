@@ -13,7 +13,7 @@ import { getBenchmarks } from "@/data/benchmarks";
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
 
 export type ProviderAppearance = {
-  benchmark: Pick<Benchmark, "slug" | "title" | "category" | "metric" | "unit" | "higherIsBetter" | "status" | "lastRunAt">;
+  benchmark: Pick<Benchmark, "slug" | "title" | "subtitle" | "category" | "metric" | "unit" | "higherIsBetter" | "status" | "lastRunAt">;
   result: ProviderResult;
   rank: number;
   totalRanked: number;
@@ -61,6 +61,7 @@ export const getProviders = cache(async (): Promise<ProviderProfile[]> => {
         benchmark: {
           slug: b.slug,
           title: b.title,
+          subtitle: b.subtitle,
           category: b.category,
           metric: b.metric,
           unit: b.unit,
