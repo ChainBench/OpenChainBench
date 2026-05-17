@@ -190,7 +190,8 @@ export default async function ProviderPage({
         <ol className="mt-4 divide-y divide-rule border-y border-rule">
           {sorted.map((a) => {
             const catColor = CATEGORY_COLOR[a.benchmark.category];
-            const value = fmtUnit(a.result.ms.p50, a.benchmark.unit);
+            const hasData = a.rank > 0 && a.result.ms.p50 > 0;
+            const value = hasData ? fmtUnit(a.result.ms.p50, a.benchmark.unit) : null;
             return (
               <li key={a.benchmark.slug}>
                 <Link
@@ -201,10 +202,18 @@ export default async function ProviderPage({
                     className="font-mono tabular text-xl sm:text-2xl font-semibold w-12 text-center"
                     style={{ color: a.rank === 1 ? "var(--color-good)" : "var(--color-ink-soft)" }}
                   >
-                    #{a.rank}
-                    <span className="block text-[9px] uppercase tracking-[0.16em] text-ink-faint mt-0.5">
-                      of {a.totalRanked}
-                    </span>
+                    {hasData ? (
+                      <>
+                        #{a.rank}
+                        <span className="block text-[9px] uppercase tracking-[0.16em] text-ink-faint mt-0.5">
+                          of {a.totalRanked}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="block text-[10px] uppercase tracking-[0.16em] text-ink-faint italic font-normal">
+                        awaiting
+                      </span>
+                    )}
                   </span>
                   <div className="min-w-0">
                     <p className="font-mono text-[10px] uppercase tracking-[0.18em]" style={{ color: catColor ?? "var(--color-ink-faint)" }}>
@@ -218,10 +227,18 @@ export default async function ProviderPage({
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="font-mono tabular text-base text-ink">{value}</p>
-                    <p className="font-mono text-[9px] uppercase tracking-[0.16em] text-ink-faint mt-0.5">
-                      p50 · 24h
-                    </p>
+                    {hasData ? (
+                      <>
+                        <p className="font-mono tabular text-base text-ink">{value}</p>
+                        <p className="font-mono text-[9px] uppercase tracking-[0.16em] text-ink-faint mt-0.5">
+                          p50 · 24h
+                        </p>
+                      </>
+                    ) : (
+                      <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-faint italic">
+                        data warming up
+                      </p>
+                    )}
                   </div>
                 </Link>
               </li>
