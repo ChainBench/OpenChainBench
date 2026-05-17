@@ -62,11 +62,14 @@ export default async function AlternativePage({
     computeFieldStats(bench.results);
 
   // Top alternatives = leading bench results, excluding the target product
-  // itself (matched on slug, case-insensitive) and any region pseudo-slugs.
+  // itself, region pseudo-slugs, and any zero-data fallback rows (Prom miss
+  // at build time renders p50=0 for every provider — drop those instead of
+  // showing "0%" cards).
   const targetSlug = alt.target_product.toLowerCase().replace(/\s+/g, "-");
   const sortedResults = [...bench.results]
     .filter((r) => !isRegion(r.slug))
     .filter((r) => r.slug.toLowerCase() !== targetSlug)
+    .filter((r) => r.ms.p50 > 0 || r.ms.p99 > 0)
     .sort((a, b) =>
       bench.higherIsBetter ? b.ms.p50 - a.ms.p50 : a.ms.p50 - b.ms.p50,
     );
