@@ -1,11 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
 import { Sparkline } from "@/components/sparkline";
 import { ProviderLogo } from "@/components/provider-logo";
 import { ProviderTypeBadge } from "@/components/provider-type-badge";
 import { fmtUnit } from "@/lib/format";
 import { buildProviderColors } from "@/lib/series-colors";
+import { isRegion } from "@/lib/brand";
 
 type Props = {
   benchmark: Benchmark;
@@ -143,9 +145,19 @@ function Row({
       <td className="py-2.5 pr-3 font-serif text-[14px]">
         <span className="inline-flex items-center gap-2">
           <ProviderLogo slug={r.slug} name={r.name} size={20} />
-          <span className="font-semibold" style={{ color }}>
-            {r.name}
-          </span>
+          {isRegion(r.slug) ? (
+            <span className="font-semibold" style={{ color }}>
+              {r.name}
+            </span>
+          ) : (
+            <Link
+              href={`/providers/${r.slug}`}
+              className="font-semibold hover:underline underline-offset-2"
+              style={{ color }}
+            >
+              {r.name}
+            </Link>
+          )}
           {r.tag && (
             <span className="font-sans text-[10px] uppercase tracking-[0.14em] text-ink-muted">
               {r.tag}
