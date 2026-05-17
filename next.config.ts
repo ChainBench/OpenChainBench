@@ -64,8 +64,9 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
-      // /live now lives at /networks (ecosystem dashboard).
       { source: "/live", destination: "/networks", permanent: true },
+      { source: "/providers", destination: "/products", permanent: true },
+      { source: "/providers/:slug", destination: "/products/:slug", permanent: true },
     ];
   },
 };

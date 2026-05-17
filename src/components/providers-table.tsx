@@ -115,7 +115,7 @@ export function ProvidersTable({ providers }: { providers: Row[] }) {
           {filtered.map((p) => (
             <li key={p.slug} className="border-b border-rule">
               <Link
-                href={`/providers/${p.slug}`}
+                href={`/products/${p.slug}`}
                 className="group flex items-center gap-4 py-5 px-2 hover:bg-paper-soft/40 transition-colors"
               >
                 <ProviderLogo slug={p.slug} name={p.name} size={52} />

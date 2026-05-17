@@ -13,7 +13,7 @@ function GithubIcon({ size = 15 }: { size?: number }) {
 
 const NAV = [
   { href: "/benchmarks", label: "Benchmarks" },
-  { href: "/providers", label: "Providers" },
+  { href: "/products", label: "Products" },
   { href: "/methodology", label: "Methodology" },
   { href: "/contribute", label: "Contribute" },
 ];

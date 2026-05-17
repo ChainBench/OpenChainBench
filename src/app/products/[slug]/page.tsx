@@ -32,7 +32,7 @@ export async function generateMetadata({
   const description =
     reg?.description ??
     `Every OpenChainBench result for ${p.name}. Tracked across ${p.appearances.length} ${p.appearances.length === 1 ? "benchmark" : "benchmarks"}, ${p.wins} #1 ${p.wins === 1 ? "finish" : "finishes"}.`;
-  const url = `${SITE.url}/providers/${p.slug}`;
+  const url = `${SITE.url}/products/${p.slug}`;
   return {
     title,
     description,
@@ -57,7 +57,7 @@ export default async function ProviderPage({
     return a.benchmark.title.localeCompare(b.benchmark.title);
   });
 
-  const url = `${SITE.url}/providers/${p.slug}`;
+  const url = `${SITE.url}/products/${p.slug}`;
   const sameAs: string[] = [];
   if (reg?.url) sameAs.push(reg.url);
   if (reg?.twitter) {
@@ -96,8 +96,8 @@ export default async function ProviderPage({
           {
             "@type": "ListItem",
             position: 2,
-            name: "Providers",
-            item: `${SITE.url}/providers`,
+            name: "Products",
+            item: `${SITE.url}/products`,
           },
           {
             "@type": "ListItem",
@@ -119,11 +119,11 @@ export default async function ProviderPage({
 
       <div className="flex flex-wrap items-center gap-3">
         <Link
-          href="/providers"
+          href="/products"
           className="inline-flex items-center gap-1.5 text-sm text-ink-muted hover:text-ink"
         >
           <ArrowLeft size={14} strokeWidth={2} />
-          All providers
+          All products
         </Link>
       </div>
 
