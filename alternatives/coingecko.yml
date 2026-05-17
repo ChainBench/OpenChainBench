@@ -1,0 +1,11 @@
+slug: coingecko
+target_product: CoinGecko
+target_url: https://www.coingecko.com/en/api
+description: Crypto price + market data API, multi-chain
+benchmark: network-coverage
+
+intro: |
+  CoinGecko offers a broad price + market data REST API used across thousands of crypto apps. The first axis people compare alternatives on is breadth. how many blockchains does each provider officially support? Below is the live count from each major onchain data API, scraped directly from their public supported-networks endpoint and refreshed every six hours.
+
+seo_title: CoinGecko alternatives. live network coverage benchmark
+seo_description: Compare CoinGecko alternatives on the number of blockchains each major onchain data API officially supports. Live data, refreshed every six hours.

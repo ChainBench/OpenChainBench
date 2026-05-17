@@ -1,0 +1,11 @@
+slug: alchemy
+target_product: Alchemy
+target_url: https://www.alchemy.com
+description: Multi-chain node + enhanced API provider
+benchmark: aggregator-head-lag
+
+intro: |
+  Alchemy serves RPC endpoints and enhanced data APIs across EVM chains and Solana. For real-time feeds, the metric that matters most is freshness. how long between a transaction landing on chain and the API reflecting it? Below is the live head-lag for each major onchain data provider, measured against a canonical-tip archive node and refreshed every minute. Lower is faster.
+
+seo_title: Alchemy alternatives. live head-lag benchmark across data providers
+seo_description: Compare Alchemy alternatives on real-time data freshness. Live head-lag against a canonical archive node, refreshed every minute and published openly.
