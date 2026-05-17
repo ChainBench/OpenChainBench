@@ -6,7 +6,6 @@ import { Pill } from "@/components/pill";
 import { TimeSeriesChart } from "@/components/time-series-chart";
 import { LedgerTable } from "@/components/ledger-table";
 import { CountLeaderboard } from "@/components/count-leaderboard";
-import { ShareSection } from "@/components/share-section";
 import { fmtUnit, unitSuffix, fmtValue } from "@/lib/format";
 import { computeFieldStats } from "@/lib/stats";
 import { SectionLabel, SummaryStat } from "@/components/summary-stat";
@@ -286,15 +285,6 @@ export default async function AlternativePage({
         OpenChainBench is community-run; methodology is open.
       </p>
 
-      {!isDraft && (
-        <div className="mt-10">
-          <ShareSection
-            slug={`${bench.slug}`}
-            title={`${alt.target_product} alternatives`}
-            benchmark={bench}
-          />
-        </div>
-      )}
     </article>
   );
 }
