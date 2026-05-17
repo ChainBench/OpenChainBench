@@ -76,7 +76,10 @@ export default async function ProviderPage({
     subjectOf: sorted.map((a) => ({
       "@type": "Dataset",
       name: a.benchmark.title,
+      description: a.benchmark.subtitle,
       url: `${SITE.url}/benchmarks/${a.benchmark.slug}`,
+      creator: { "@id": `${SITE.url}/#org` },
+      license: "https://creativecommons.org/licenses/by/4.0/",
     })),
   };
 
