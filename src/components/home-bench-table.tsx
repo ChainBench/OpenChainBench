@@ -78,7 +78,7 @@ function BenchTitleCell({ b }: { b: Benchmark }) {
     <div className="min-w-0">
       <div className="flex items-center gap-2 flex-wrap">
         <span
-          className="font-mono text-[10px] uppercase tracking-[0.18em] shrink-0"
+          className="font-sans text-[10px] uppercase tracking-[0.18em] shrink-0 font-medium"
           style={{ color: catColor }}
         >
           {b.category}

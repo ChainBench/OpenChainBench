@@ -74,7 +74,7 @@ export function BenchmarkTable({ benchmarks }: { benchmarks: Benchmark[] }) {
 
         <div className="ml-auto flex items-center gap-3">
           {(q || activeCategory) && (
-            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+            <span className="font-sans text-[10px] uppercase tracking-[0.18em] text-ink-muted font-medium">
               {filtered.length} of {benchmarks.length}
             </span>
           )}
@@ -97,14 +97,14 @@ export function BenchmarkTable({ benchmarks }: { benchmarks: Benchmark[] }) {
 
       {/* Table head — same grid as rows so columns align cleanly. */}
       <div
-        className="hidden sm:grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_10rem] items-end gap-4 sm:gap-6 border-b-2 border-ink pb-2 pl-3 pr-3 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted"
+        className="hidden sm:grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_10rem] items-end gap-4 sm:gap-6 border-b-2 border-ink pb-2 pl-3 pr-3 font-sans text-[10px] uppercase tracking-[0.18em] text-ink-muted font-medium"
         role="row"
       >
         <span>Benchmark</span>
         <span>24 Hours</span>
         <span>Live</span>
       </div>
-      <div className="sm:hidden flex items-end justify-between border-b-2 border-ink pb-2 pl-3 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+      <div className="sm:hidden flex items-end justify-between border-b-2 border-ink pb-2 pl-3 font-sans text-[10px] uppercase tracking-[0.18em] text-ink-muted font-medium">
         <span>Benchmark</span>
         <span>Live</span>
       </div>
@@ -135,13 +135,13 @@ export function BenchmarkTable({ benchmarks }: { benchmarks: Benchmark[] }) {
                   <div className="min-w-0">
                     <div className="flex items-baseline gap-2 flex-wrap">
                       <span
-                        className="font-mono text-[10px] uppercase tracking-[0.18em] shrink-0"
+                        className="font-sans text-[10px] uppercase tracking-[0.18em] shrink-0 font-medium"
                         style={{ color: catColor ?? "var(--color-ink-faint)" }}
                       >
                         {b.category}
                       </span>
                       {isDraft && (
-                        <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-faint">
+                        <span className="font-sans text-[10px] uppercase tracking-[0.18em] text-ink-faint font-medium">
                           {isAwaiting ? "awaiting samples" : "draft"}
                         </span>
                       )}
@@ -192,7 +192,7 @@ function CategoryPill({
             ? { background: accent, borderColor: accent, color: "var(--color-paper)" }
             : { color: accent, borderColor: "var(--color-rule)" }
         }
-        className="px-2.5 py-1 border rounded-sm font-mono text-[10px] uppercase tracking-[0.18em] transition-colors hover:bg-paper-soft/60"
+        className="px-2.5 py-1 border rounded-sm font-sans text-[10px] uppercase tracking-[0.18em] font-medium transition-colors hover:bg-paper-soft/60"
       >
         {label}
       </button>

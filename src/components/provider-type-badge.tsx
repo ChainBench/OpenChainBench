@@ -29,7 +29,7 @@ export function ProviderTypeBadge({ type }: { type: ProviderType }) {
   return (
     <span
       title={HINTS[type]}
-      className="font-mono text-[9px] uppercase tracking-[0.14em] px-1.5 py-[1px] rounded-sm border border-rule text-ink-faint bg-paper-soft/40"
+      className="font-sans text-[9px] uppercase tracking-[0.14em] font-medium px-1.5 py-[1px] rounded-sm border border-rule text-ink-faint bg-paper-soft/40"
     >
       {LABELS[type]}
     </span>

@@ -110,7 +110,7 @@ export default function MethodologyPage() {
                 aria-hidden
               />
               <p
-                className="font-mono text-[11px] font-semibold uppercase tracking-[0.2em]"
+                className="font-sans text-[11px] font-semibold uppercase tracking-[0.2em]"
                 style={{ color: p.color }}
               >
                 {p.n}
@@ -136,7 +136,7 @@ export default function MethodologyPage() {
               key={c.term}
               className="group relative grid grid-cols-1 sm:grid-cols-[14rem_1fr] gap-1 sm:gap-8 py-4 px-5 hover:bg-paper-soft/40 transition-colors before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[2px] before:bg-accent before:opacity-0 hover:before:opacity-100 before:transition-opacity"
             >
-              <dt className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink pt-1 group-hover:text-accent transition-colors">
+              <dt className="font-sans text-[11px] uppercase tracking-[0.18em] text-ink pt-1 font-medium group-hover:text-accent transition-colors">
                 {c.term}
               </dt>
               <dd className="text-sm text-ink-soft leading-relaxed">{c.body}</dd>
@@ -161,7 +161,7 @@ export default function MethodologyPage() {
               className="group flex gap-5 pl-3 py-2 relative rounded-md hover:bg-paper-soft/40 transition-colors"
             >
               <span className="relative shrink-0 w-6 flex items-start pt-1">
-                <span className="font-mono text-[12px] tabular text-accent font-semibold transition-transform duration-200 group-hover:scale-125 origin-left">
+                <span className="font-sans tabular text-[12px] text-accent font-semibold transition-transform duration-200 group-hover:scale-125 origin-left">
                   {String(i + 1).padStart(2, "0")}
                 </span>
               </span>
@@ -233,7 +233,7 @@ export default function MethodologyPage() {
 function SectionHeader({ number, label }: { number: string; label: string }) {
   return (
     <header className="flex items-baseline gap-3 border-b border-rule pb-2">
-      <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-faint">
+      <span className="font-sans text-[10px] uppercase tracking-[0.2em] text-ink-faint font-medium">
         Section {number}
       </span>
       <h2 className="display text-xl sm:text-2xl text-ink leading-none">

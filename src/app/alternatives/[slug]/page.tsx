@@ -150,7 +150,7 @@ export default async function AlternativePage({
 
       <div className="mt-6 flex flex-wrap items-center gap-2">
         <Pill variant="category">Alternatives</Pill>
-        <span className="ml-auto font-mono text-[11px] tabular text-ink-muted">
+        <span className="ml-auto font-sans tabular text-[11px] text-ink-muted">
           Sourced from {bench.title}
         </span>
       </div>
@@ -197,17 +197,17 @@ export default async function AlternativePage({
                       <p className="font-semibold text-ink leading-tight truncate">
                         {r.name}
                       </p>
-                      <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-faint">
+                      <p className="font-sans text-[10px] uppercase tracking-[0.16em] text-ink-faint font-medium">
                         #{i + 1} · {bench.metric}
                       </p>
                     </div>
                     {r.type && <ProviderTypeBadge type={r.type} />}
                   </div>
                   <div className="flex items-baseline gap-2 text-ink">
-                    <span className="font-mono text-lg font-semibold tabular">
+                    <span className="font-sans tabular text-lg font-semibold">
                       {fmtValue(r.ms.p50, bench.unit)}
                     </span>
-                    <span className="font-mono text-[11px] text-ink-muted">
+                    <span className="font-sans text-[11px] text-ink-muted">
                       {unitSuffix(bench.unit).trim()}
                     </span>
                     <span className="ml-auto text-[11px] text-ink-faint">

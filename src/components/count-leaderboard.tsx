@@ -57,7 +57,7 @@ export function CountLeaderboard({ benchmark }: { benchmark: Benchmark }) {
               <li key={r.slug}>
                 <div className="flex items-baseline justify-between gap-3 mb-1.5">
                   <div className="flex items-baseline gap-3 min-w-0">
-                    <span className="font-mono text-[11px] tabular text-ink-faint w-5 shrink-0">
+                    <span className="font-sans tabular text-[11px] text-ink-faint w-5 shrink-0">
                       {String(i + 1).padStart(2, "0")}
                     </span>
                     <span className="font-medium text-ink truncate">{r.name}</span>
@@ -67,7 +67,7 @@ export function CountLeaderboard({ benchmark }: { benchmark: Benchmark }) {
                       </span>
                     ) : null}
                   </div>
-                  <span className="font-mono tabular text-base text-ink shrink-0">
+                  <span className="font-sans tabular text-base text-ink shrink-0">
                     {fmtValue(r.ms.p50, benchmark.unit)}
                   </span>
                 </div>
@@ -101,10 +101,10 @@ function CountStat({
 }) {
   return (
     <div className="flex items-baseline gap-2">
-      <dt className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-faint shrink-0">
+      <dt className="font-sans text-[10px] uppercase tracking-[0.18em] text-ink-faint shrink-0 font-medium">
         {label}
       </dt>
-      <dd className="font-mono tabular text-sm text-ink leading-none">
+      <dd className="font-sans tabular text-sm text-ink leading-none">
         {value}
         {hint ? (
           <span className="ml-1.5 text-ink-muted text-xs font-normal">{hint}</span>

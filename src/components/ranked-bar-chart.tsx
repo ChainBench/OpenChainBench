@@ -96,7 +96,7 @@ export function RankedBarChart({ benchmark }: Props) {
           <button
             type="button"
             onClick={() => setExcluded(new Set())}
-            className="text-[10px] font-mono uppercase tracking-[0.16em] text-ink-muted hover:text-ink lnk"
+            className="text-[10px] font-sans font-medium uppercase tracking-[0.16em] text-ink-muted hover:text-ink lnk"
           >
             Reset · {excludedCount} excluded
           </button>
@@ -131,7 +131,7 @@ export function RankedBarChart({ benchmark }: Props) {
                 isOff ? "opacity-40" : ""
               }`}
             >
-              <span className="font-mono tabular text-[11px] text-ink-faint text-right">
+              <span className="font-sans tabular text-[11px] text-ink-faint text-right">
                 {rank !== null ? `#${rank}` : "-"}
               </span>
               <span
@@ -154,7 +154,7 @@ export function RankedBarChart({ benchmark }: Props) {
                 />
               </div>
               <span
-                className={`font-mono tabular text-[12px] tabular-nums whitespace-nowrap ${
+                className={`font-sans tabular text-[12px] tabular-nums whitespace-nowrap ${
                   isOff ? "text-ink-faint" : "text-ink-soft"
                 }`}
               >
@@ -185,7 +185,7 @@ export function RankedBarChart({ benchmark }: Props) {
           );
         })}
       </ul>
-      <p className="mt-3 text-[11px] font-mono uppercase tracking-[0.12em] text-ink-faint">
+      <p className="mt-3 text-[11px] font-sans font-medium uppercase tracking-[0.12em] text-ink-faint">
         {useLog ? "Log scale · " : ""}p50 · last 24 h · click rows to exclude
       </p>
     </figure>

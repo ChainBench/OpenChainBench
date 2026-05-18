@@ -47,7 +47,7 @@ export default async function McpPage() {
 
   return (
     <article className="mx-auto max-w-3xl px-4 sm:px-6 pt-12 pb-16">
-      <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-ink-faint">
+      <p className="font-sans text-[11px] uppercase tracking-[0.2em] text-ink-faint font-medium">
         Integration
       </p>
       <h1 className="mt-3 display text-3xl sm:text-4xl md:text-5xl tracking-tight">
@@ -69,7 +69,7 @@ export default async function McpPage() {
 
       {/* The URL */}
       <section className="mt-10 border border-ink/80 bg-paper-soft/50 p-5">
-        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-faint">
+        <p className="font-sans text-[10px] uppercase tracking-[0.18em] text-ink-faint font-medium">
           Server URL
         </p>
         <div className="mt-2 flex flex-wrap items-center gap-3">
@@ -78,7 +78,7 @@ export default async function McpPage() {
           </code>
           <CopyButton value={MCP_URL} label="Copy URL" />
         </div>
-        <p className="mt-3 font-mono text-[11px] text-ink-muted">
+        <p className="mt-3 text-[11px] text-ink-muted">
           Transport: streamable HTTP · Auth: none · Rate limit: 60 req/min/IP
         </p>
       </section>
@@ -86,7 +86,7 @@ export default async function McpPage() {
       {/* Install in Claude Desktop */}
       <section className="mt-12">
         <header className="flex items-baseline gap-3">
-          <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-faint">
+          <span className="font-sans text-[10px] uppercase tracking-[0.2em] text-ink-faint font-medium">
             I
           </span>
           <h2 className="display text-xl sm:text-2xl text-ink leading-none">
@@ -113,7 +113,7 @@ export default async function McpPage() {
       {/* Install in Cursor */}
       <section className="mt-10">
         <header className="flex items-baseline gap-3">
-          <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-faint">
+          <span className="font-sans text-[10px] uppercase tracking-[0.2em] text-ink-faint font-medium">
             II
           </span>
           <h2 className="display text-xl sm:text-2xl text-ink leading-none">
@@ -134,7 +134,7 @@ export default async function McpPage() {
       {/* Other clients */}
       <section className="mt-10">
         <header className="flex items-baseline gap-3">
-          <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-faint">
+          <span className="font-sans text-[10px] uppercase tracking-[0.2em] text-ink-faint font-medium">
             III
           </span>
           <h2 className="display text-xl sm:text-2xl text-ink leading-none">
@@ -155,7 +155,7 @@ export default async function McpPage() {
       {/* What's exposed */}
       <section className="mt-14 border-t border-rule pt-8">
         <header className="flex items-baseline gap-3">
-          <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-faint">
+          <span className="font-sans text-[10px] uppercase tracking-[0.2em] text-ink-faint font-medium">
             Surface
           </span>
           <h2 className="display text-xl sm:text-2xl text-ink leading-none">
@@ -190,7 +190,7 @@ export default async function McpPage() {
       {/* Example questions */}
       <section className="mt-14 border-t border-rule pt-8">
         <header className="flex items-baseline gap-3">
-          <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-faint">
+          <span className="font-sans text-[10px] uppercase tracking-[0.2em] text-ink-faint font-medium">
             Examples
           </span>
           <h2 className="display text-xl sm:text-2xl text-ink leading-none">
@@ -224,7 +224,7 @@ export default async function McpPage() {
       {/* Safety + open source */}
       <section className="mt-14 border-t border-rule pt-8">
         <header className="flex items-baseline gap-3">
-          <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-faint">
+          <span className="font-sans text-[10px] uppercase tracking-[0.2em] text-ink-faint font-medium">
             Safety
           </span>
           <h2 className="display text-xl sm:text-2xl text-ink leading-none">
@@ -284,7 +284,7 @@ function Tile({
 }) {
   return (
     <div className="bg-paper p-5 flex flex-col gap-2">
-      <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-faint">
+      <p className="font-sans text-[10px] uppercase tracking-[0.2em] text-ink-faint font-medium">
         {tag}
       </p>
       <p className="font-mono text-sm text-ink leading-tight">{title}</p>

@@ -133,7 +133,7 @@ export default async function ProviderPage({
           <h1 className="display text-2xl sm:text-3xl md:text-4xl tracking-tight">
             {p.name}
           </h1>
-          <p className="mt-2 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+          <p className="mt-2 font-sans text-[11px] uppercase tracking-[0.18em] text-ink-muted font-medium">
             {p.appearances.length} {p.appearances.length === 1 ? "benchmark" : "benchmarks"}
             {p.wins > 0 && (
               <>
@@ -159,7 +159,7 @@ export default async function ProviderPage({
           <ul className="flex flex-wrap gap-x-4 gap-y-1 sm:ml-auto sm:flex-col sm:items-end sm:text-right shrink-0">
             <li>
               <a
-                className="lnk inline-flex items-center gap-1 font-mono text-[11px] uppercase tracking-[0.16em] text-ink-soft hover:text-ink"
+                className="lnk inline-flex items-center gap-1 font-sans text-[11px] uppercase tracking-[0.16em] font-medium text-ink-soft hover:text-ink"
                 href={reg.url}
                 rel="noopener"
               >
@@ -170,7 +170,7 @@ export default async function ProviderPage({
             {reg.twitter && (
               <li>
                 <a
-                  className="lnk inline-flex items-center gap-1 font-mono text-[11px] uppercase tracking-[0.16em] text-ink-soft hover:text-ink"
+                  className="lnk inline-flex items-center gap-1 font-sans text-[11px] uppercase tracking-[0.16em] font-medium text-ink-soft hover:text-ink"
                   href={`https://twitter.com/${reg.twitter.replace(/^@/, "")}`}
                   rel="noopener"
                 >
@@ -199,7 +199,7 @@ export default async function ProviderPage({
                   className="group grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 py-5 pl-3 pr-3 hover:bg-paper-soft/60 transition-colors"
                 >
                   <span
-                    className="font-mono tabular text-xl sm:text-2xl font-semibold w-12 text-center"
+                    className="font-sans tabular text-xl sm:text-2xl font-semibold w-12 text-center"
                     style={{ color: a.rank === 1 ? "var(--color-good)" : "var(--color-ink-soft)" }}
                   >
                     {hasData ? (
@@ -216,7 +216,7 @@ export default async function ProviderPage({
                     )}
                   </span>
                   <div className="min-w-0">
-                    <p className="font-mono text-[10px] uppercase tracking-[0.18em]" style={{ color: catColor ?? "var(--color-ink-faint)" }}>
+                    <p className="font-sans text-[10px] uppercase tracking-[0.18em] font-medium" style={{ color: catColor ?? "var(--color-ink-faint)" }}>
                       {a.benchmark.category}
                     </p>
                     <h3 className="mt-0.5 display text-base sm:text-lg font-semibold leading-tight truncate">
@@ -229,13 +229,13 @@ export default async function ProviderPage({
                   <div className="text-right">
                     {hasData ? (
                       <>
-                        <p className="font-mono tabular text-base text-ink">{value}</p>
-                        <p className="font-mono text-[9px] uppercase tracking-[0.16em] text-ink-faint mt-0.5">
+                        <p className="font-sans tabular text-base text-ink">{value}</p>
+                        <p className="font-sans text-[9px] uppercase tracking-[0.16em] text-ink-faint mt-0.5 font-medium">
                           p50 · 24h
                         </p>
                       </>
                     ) : (
-                      <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-faint italic">
+                      <p className="font-sans text-[10px] uppercase tracking-[0.16em] text-ink-faint italic font-medium">
                         data warming up
                       </p>
                     )}
@@ -264,7 +264,7 @@ export default async function ProviderPage({
               const html = `<a href="${targetUrl}"><img src="${badgeUrl}" alt="Ranked #1 on OpenChainBench: ${a.benchmark.title}" height="36" /></a>`;
               return (
                 <li key={`badge-${a.benchmark.slug}`} className="card-soft p-4">
-                  <p className="text-xs font-mono uppercase tracking-[0.18em] text-ink-muted">
+                  <p className="text-xs font-sans font-medium uppercase tracking-[0.18em] text-ink-muted">
                     {a.benchmark.title}
                   </p>
                   <div className="mt-3 flex items-center">
@@ -272,7 +272,7 @@ export default async function ProviderPage({
                     <img src={badgeUrl} alt={`Ranked #1 on OpenChainBench: ${a.benchmark.title}`} height={36} />
                   </div>
                   <details className="mt-3">
-                    <summary className="cursor-pointer text-[11px] font-mono uppercase tracking-[0.18em] text-ink-muted hover:text-ink">
+                    <summary className="cursor-pointer text-[11px] font-sans font-medium uppercase tracking-[0.18em] text-ink-muted hover:text-ink">
                       Copy HTML
                     </summary>
                     <pre className="mt-2 overflow-x-auto rounded border border-rule bg-paper-soft p-2 text-[11px] leading-snug">
