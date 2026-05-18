@@ -193,9 +193,11 @@ table {
   background: rgba(15, 23, 42, 0.018);
 }
 
-/* Mono section labels */
+/* Editorial section labels — sans-serif with wide tracking + uppercase
+ * for a Bloomberg-style tech-editorial feel, instead of the developer-tool
+ * vibe that monospace gives off when used on body / UI labels. */
 .label-mono {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 10px;
   font-weight: 500;
   text-transform: uppercase;
@@ -220,7 +222,7 @@ table {
   padding: 0.4rem 0.75rem;
   border: 1px solid var(--color-rule);
   border-radius: 6px;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 10px;
   font-weight: 500;
   text-transform: uppercase;

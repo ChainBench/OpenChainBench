@@ -106,7 +106,7 @@ export function TimeSeriesChart({ benchmark, region: regionProp }: Props) {
                 onClick={() => !disabled && setRange(r)}
                 disabled={disabled}
                 className={[
-                  "rounded px-2.5 py-1 text-[11px] font-mono tabular uppercase tracking-[0.1em] transition-colors",
+                  "rounded px-2.5 py-1 text-[11px] font-sans tabular uppercase tracking-[0.1em] font-medium transition-colors",
                   active
                     ? "bg-ink text-paper"
                     : "text-ink-muted hover:text-ink hover:bg-paper-soft",
@@ -570,7 +570,7 @@ function Chart({
               style={{ background: d.color }}
             />
             <span className="text-ink font-medium">{d.name}</span>
-            <span className="font-mono tabular text-ink-muted text-[11px]">
+            <span className="font-sans tabular text-ink-muted text-[11px]">
               {fmtUnit(d.last, unit)}
             </span>
           </li>
@@ -635,7 +635,7 @@ function Tooltip({
           animation: "ts-tooltip-in 0.15s ease-out forwards",
         }}
       >
-        <p className="font-mono tabular uppercase tracking-[0.12em] text-ink-muted">
+        <p className="font-sans tabular uppercase tracking-[0.12em] text-ink-muted font-medium">
           {formatHoursAgo(hoursAgo, windowHours)}
         </p>
         <ul className="mt-2 space-y-1">
@@ -649,7 +649,7 @@ function Tooltip({
                 style={{ background: r.color }}
               />
               <span className="text-ink truncate">{r.name}</span>
-              <span className="font-mono tabular text-ink-soft">
+              <span className="font-sans tabular text-ink-soft">
                 {fmtUnit(r.value, unit)}
               </span>
             </li>

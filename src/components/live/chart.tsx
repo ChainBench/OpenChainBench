@@ -81,7 +81,7 @@ export function LiveChart({
         <RangePicker range={range} onRangeChange={onRangeChange} />
         <LiveDot />
         <span className="text-ink-faint">·</span>
-        <span className="font-mono tabular text-[11px] text-ink-soft">
+        <span className="font-sans tabular text-[11px] text-ink-soft">
           {fmtMoney(totalCum)} total
         </span>
       </header>
@@ -229,7 +229,7 @@ function ChainLegend({
             />
             <ProviderLogo slug={c.slug} name={c.display} size={14} />
             <span className="font-medium">{c.display}</span>
-            <span className="font-mono tabular text-ink-faint">{fmtMoney(cum)}</span>
+            <span className="font-sans tabular text-ink-faint">{fmtMoney(cum)}</span>
           </button>
         );
       })}
@@ -599,7 +599,7 @@ function HoverTooltip({
                   </span>
                 </span>
                 <span
-                  className={`font-mono tabular ${focused ? "font-semibold text-ink" : "text-ink"}`}
+                  className={`font-sans tabular ${focused ? "font-semibold text-ink" : "text-ink"}`}
                 >
                   {fmtMoney(point.ys[c.key] ?? 0)}
                 </span>
@@ -610,7 +610,7 @@ function HoverTooltip({
         {visibleChains.length > 0 && (
           <div className="mt-2 pt-2 border-t border-rule flex items-baseline justify-between text-[11px]">
             <span className="label-mono text-ink-muted">Total</span>
-            <span className="font-mono tabular font-semibold text-ink">
+            <span className="font-sans tabular font-semibold text-ink">
               {fmtMoney(total)}
             </span>
           </div>
