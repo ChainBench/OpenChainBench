@@ -89,7 +89,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     twitter: "@HyperliquidX",
   },
   dydx: {
-    url: "https://dydx.exchange",
+    url: "https://dydx.trade",
     description:
       "Perp DEX on the dYdX Chain, a Cosmos SDK appchain. Orderbook with off-chain matching and onchain settlement, validators propagate orders via the mempool.",
     twitter: "@dYdX",
