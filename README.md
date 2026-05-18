@@ -314,6 +314,20 @@ PNG URL — the downloaded image matches what the user is looking at.
 - 🐞 [New issue](https://github.com/OpenChainBench/OpenChainBench/issues/new/choose). formal benchmark proposal, data-quality flag, or provider correction
 - See [SUPPORT.md](./.github/SUPPORT.md) for the full triage matrix.
 
+## SEO TODOs
+
+Tracking the work to make benchmark pages rank for the queries they target.
+
+- **Auto-crawl ping on data update.** Today Google decides when to re-crawl on its own (often 1-2 weeks for a young domain). Build a Vercel cron that:
+  - POSTs to [IndexNow](https://www.indexnow.org/) (Bing, Yandex, others) with the changed URLs each day → free, no auth
+  - Re-submits `sitemap.xml` to Search Console via the official URL Inspection or Indexing API
+  - Why: even though our HTML is regenerated every 60 s via ISR, search snippets keep showing the timestamp Google last crawled. Faster re-crawl = fresher SERP snippet = higher CTR on freshness-sensitive queries ("fastest crypto data API today"). Side benefit: new pages (`/alternatives/*`, new benches) get indexed in 24-48 h instead of weeks.
+- **FAQ JSON-LD on /benchmarks/[slug].** Add a `FAQPage` block with 3-5 Q&As per bench ("Which provider is fastest on X?"). Rich snippet in Google + extra keyword density.
+- **Keyword densification on high-competition benches** (aggregator-head-lag, bridge-fee). Currently the title contains the target keyword once. Etoffer subtitle + abstract to repeat naturally 2-3×, plus a `headlineSentence()` tweak so the snippet contains the keyword.
+- **Internal linking with descriptive anchors.** Ledger-table now links provider names to `/products/[slug]` but with the provider name as anchor. Add cross-references between related benches with anchors like "fastest data provider API" pointing to the relevant /benchmarks/[slug].
+- **Backlink playbook.** Embed badges on `mobula.io`, `codex.io`, `geckoterminal.com`, etc. for the benches where they're #1. Contact TechRxiv authors of the bridge-aggregator paper. Submit /alternatives/* pages to relevant directories.
+- **Headline sentence formatter bug.** Output currently concatenates samples + provider count without separator (e.g. `522,88211 providers`). Split with `·` for readability and Google snippet quality.
+
 ## Links
 
 - Site. [openchainbench.com](https://openchainbench.com)
