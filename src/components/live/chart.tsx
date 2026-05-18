@@ -367,7 +367,6 @@ function ChartCanvas({
               d={p.areaPath}
               fill={p.color}
               opacity={closestChain === p.chainKey ? 0.18 : 0.08}
-              style={{ transition: "d 800ms cubic-bezier(0.22, 1, 0.36, 1)" }}
             />
           ) : null,
         )}
@@ -385,7 +384,6 @@ function ChartCanvas({
               strokeLinecap="round"
               d={p.linePath}
               opacity={p.cumNow > 0 ? (dim ? 0.45 : 0.95) : 0.25}
-              style={{ transition: "d 800ms cubic-bezier(0.22, 1, 0.36, 1)" }}
             />
           );
         })}
