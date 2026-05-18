@@ -49,7 +49,7 @@ function Tile({
 }) {
   return (
     <div className="border border-rule rounded-lg bg-paper p-5 flex flex-col gap-3">
-      <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-faint">
+      <p className="font-sans text-[10px] uppercase tracking-[0.2em] text-ink-faint font-medium">
         {tag}
       </p>
       <p className="display text-base text-ink leading-tight">{title}</p>
