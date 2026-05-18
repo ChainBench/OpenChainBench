@@ -219,7 +219,12 @@ export function LiveDashboard() {
       };
 
       ws.onmessage = (e) => {
-        if (typeof e.data !== "string" || e.data.length > 64 * 1024) return;
+        // Cap raised from 64 KB to 512 KB: the multi-resolution snapshot
+        // (10m + 1h + 24h ring buffers) regularly exceeds 64 KB (~92 KB
+        // observed in prod), so the silent drop was wiping the entire
+        // initial state on every reconnect and forcing the chart to
+        // rebuild from accumulating swap events only.
+        if (typeof e.data !== "string" || e.data.length > 512 * 1024) return;
         let parsed: unknown;
         try {
           parsed = JSON.parse(e.data);
