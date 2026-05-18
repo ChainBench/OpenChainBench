@@ -225,7 +225,7 @@ export default async function BenchmarkPage({
       </div>
 
       {/* Bench identifier — minimal mono line, no SaaS-style pills. */}
-      <div className="mt-6 flex flex-wrap items-center gap-3 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+      <div className="mt-6 flex flex-wrap items-center gap-3 font-sans text-[11px] uppercase tracking-[0.18em] text-ink-muted font-medium">
         <span style={{ color: catColor ?? "var(--color-ink-soft)" }}>
           {benchmark.category}
         </span>

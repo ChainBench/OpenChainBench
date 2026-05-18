@@ -29,7 +29,7 @@ export function CopyButton({
         });
       }}
       className={`inline-flex items-center gap-2 border border-ink/70 hover:bg-ink hover:text-paper transition-colors px-3 py-1.5 ${
-        mono ? "font-mono text-[11px]" : "font-mono text-[11px] uppercase tracking-[0.16em]"
+        mono ? "font-mono text-[11px]" : "font-sans text-[11px] uppercase tracking-[0.16em] font-medium"
       }`}
     >
       {copied ? (

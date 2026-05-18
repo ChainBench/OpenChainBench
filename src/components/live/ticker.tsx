@@ -93,7 +93,7 @@ function Stat({
         value={value}
         format={format}
         monotonic={monotonic}
-        className="font-mono tabular text-[12px] text-ink-soft"
+        className="font-sans tabular text-[12px] text-ink-soft"
       />
     </div>
   );

@@ -28,7 +28,7 @@ export function SummaryStat({
       <dt className="label-mono text-ink-faint">
         {label}
       </dt>
-      <dd className="font-mono tabular text-lg sm:text-xl text-ink leading-none">
+      <dd className="font-sans tabular text-lg sm:text-xl text-ink leading-none">
         {value}
         {hint ? (
           <span className="ml-1.5 text-ink-muted text-xs font-normal">{hint}</span>

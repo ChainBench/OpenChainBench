@@ -32,7 +32,7 @@ function DimensionRow({
 }) {
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-faint shrink-0 w-14">
+      <span className="font-sans text-[10px] uppercase tracking-[0.18em] text-ink-faint shrink-0 w-14 font-medium">
         {label}
       </span>
       <ChainTabs
