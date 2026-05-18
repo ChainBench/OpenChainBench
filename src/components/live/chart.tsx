@@ -242,7 +242,7 @@ function ChainLegend({
 type ChainPath = {
   chainKey: string;
   color: string;
-  points: string;
+  linePath: string;
   areaPath: string;
   cumNow: number;
 };
@@ -367,6 +367,7 @@ function ChartCanvas({
               d={p.areaPath}
               fill={p.color}
               opacity={closestChain === p.chainKey ? 0.18 : 0.08}
+              style={{ transition: "d 800ms cubic-bezier(0.22, 1, 0.36, 1)" }}
             />
           ) : null,
         )}
@@ -375,15 +376,16 @@ function ChartCanvas({
           const focused = closestChain === p.chainKey;
           const dim = closestChain != null && !focused;
           return (
-            <polyline
+            <path
               key={p.chainKey}
               fill="none"
               stroke={p.color}
               strokeWidth={focused ? 2.6 : 1.75}
               strokeLinejoin="round"
               strokeLinecap="round"
-              points={p.points}
+              d={p.linePath}
               opacity={p.cumNow > 0 ? (dim ? 0.45 : 0.95) : 0.25}
+              style={{ transition: "d 800ms cubic-bezier(0.22, 1, 0.36, 1)" }}
             />
           );
         })}
@@ -398,6 +400,7 @@ function ChartCanvas({
               fill={p.color}
               stroke="var(--color-surface)"
               strokeWidth={1.5}
+              style={{ transition: "cx 800ms cubic-bezier(0.22, 1, 0.36, 1), cy 800ms cubic-bezier(0.22, 1, 0.36, 1)" }}
             />
           ) : null,
         )}
@@ -740,7 +743,7 @@ function computeChart(
   let totalCum = 0;
 
   for (const chain of CHAIN_LIST) {
-    let points = "";
+    let linePath = "";
     let areaPath = "";
     let lastX = 0;
     let lastY = baseY;
@@ -750,10 +753,11 @@ function computeChart(
     if (cumPerBucket.length > 0) {
       const first = cumPerBucket[0];
       areaPath += `M ${first.x.toFixed(1)} ${baseY.toFixed(1)} `;
-      for (const p of cumPerBucket) {
+      for (let i = 0; i < cumPerBucket.length; i++) {
+        const p = cumPerBucket[i];
         const x = p.x;
         const y = yScale(p.ys[chain.key] ?? 0);
-        points += `${x.toFixed(1)},${y.toFixed(1)} `;
+        linePath += i === 0 ? `M ${x.toFixed(1)} ${y.toFixed(1)} ` : `L ${x.toFixed(1)} ${y.toFixed(1)} `;
         areaPath += `L ${x.toFixed(1)} ${y.toFixed(1)} `;
         lastX = x;
         lastY = y;
@@ -764,7 +768,7 @@ function computeChart(
     paths.push({
       chainKey: chain.key,
       color: chain.color,
-      points: points.trim(),
+      linePath: linePath.trim(),
       areaPath,
       cumNow: cumVal,
     });
