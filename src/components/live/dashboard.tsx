@@ -5,6 +5,7 @@ import { appendSwapToBuckets, cumulativePerChain, niceCeil } from "@/lib/live/bu
 import { type ChainMeta, chainMeta } from "@/lib/live/chains";
 import {
   DEFAULT_RANGE,
+  FEED_MIN_USD,
   MAX_FEED,
   MAX_POPS,
   POP_ANCHOR_X_PCT,
@@ -265,10 +266,16 @@ export function LiveDashboard() {
           const meta = chainMeta(s.chain);
           if (!meta) return;
 
-          setRecent((prev) => {
-            const next = [s, ...prev];
-            return next.length > MAX_FEED ? next.slice(0, MAX_FEED) : next;
-          });
+          // Feed gets only the swaps above FEED_MIN_USD — the chart still
+          // accumulates everything below for volume accuracy, but at the
+          // Multi-Events firehose rate (~230 evt/s) the feed would
+          // otherwise turn over in 0.2 s and be unreadable.
+          if ((s.usd || 0) >= FEED_MIN_USD) {
+            setRecent((prev) => {
+              const next = [s, ...prev];
+              return next.length > MAX_FEED ? next.slice(0, MAX_FEED) : next;
+            });
+          }
 
           const serverNow = Date.now() + serverOffsetRef.current;
           const isHidden = hiddenChainsRef.current.has(meta.key);
