@@ -25,8 +25,16 @@ export const POP_STACK_OFFSET_PCT = 9;
 /** Horizontal anchor for pops — left of the chart-end so labels and
  *  endpoint dots stay readable. */
 export const POP_ANCHOR_X_PCT = 82;
-/** Minimum swap USD that earns a pop (dust filter). */
-export const POP_MIN_USD = 1;
+/** Minimum swap USD that earns a pop. Raised from $1 to $5000 once
+ *  Multi-Events became the active source: 234 evt/sec made the dust
+ *  pops a blur. $5k keeps roughly 1-2 pops/sec — paced enough to be
+ *  visible while still feeling alive. */
+export const POP_MIN_USD = 5_000;
+
+/** Minimum swap USD before a row is pushed into the compact feed.
+ *  Same rationale as POP_MIN_USD but a softer threshold so the feed
+ *  still shows context, not just whales. */
+export const FEED_MIN_USD = 500;
 
 /** Compact feed buffer size (browser-side rolling list). */
 export const MAX_FEED = 50;
