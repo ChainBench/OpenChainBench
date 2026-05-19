@@ -44,6 +44,14 @@ export type Benchmark = {
   number: string;
   title: string;
   seoTitle?: string;
+  /** Optional SEO-tuned meta description. Overrides the default headline
+   *  + subtitle concatenation. */
+  seoDescription?: string;
+  /** Optional SSR-rendered intro paragraph displayed under the H1. */
+  seoIntro?: string;
+  /** Optional FAQ entries. Surfaced both as visible Q&A blocks and as
+   *  FAQPage JSON-LD for rich-result eligibility. */
+  faq?: { q: string; a: string }[];
   subtitle: string;
   lastRunAt: string;
   /** Runtime status. flipped to "draft" when Prom returns no data, even if

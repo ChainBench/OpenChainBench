@@ -3,8 +3,26 @@
 slug: l1-finality
 number: "006"
 title: Fastest layer one blockchain finality
-seo_title: Fastest layer one blockchain finality - Ethereum, Solana, BNB, Avalanche, TRON, SUI, Stellar, TON, Litecoin, Monero, Cardano live benchmark
+seo_title: Time to finality by L1 blockchain — Ethereum, Solana, Stellar, Hedera live benchmark
+seo_description: "Live time to finality for every major Layer-1: Ethereum ~12.8 min (2 epochs / 64 slots, Casper FFG), Solana sub-second on processed and ~12.8 s on finalized, Hedera consensus finality, Stellar finality, SUI, TON, BNB, Avalanche, TRON, Cardano. p50 / p90 / p99 measured every 10 seconds."
 subtitle: Wall-clock distance between each L1's latest block and its finalized block.
+seo_intro: |
+  This benchmark measures the time to finality on every major Layer-1 blockchain, live, with p50 / p90 / p99 percentiles refreshed every 10 seconds. Ethereum L1 finality time is ~12.8 minutes — that's 2 epochs, or 64 slots of 12 seconds each, the wait Casper FFG needs to lock in the chain. Solana finality time goes from sub-second on the processed commitment to ~12.8 s on finalized (after 32 confirmed slots). Hedera consensus finality and Stellar finality both clear within seconds — Hashgraph aBFT for Hedera, the Stellar Consensus Protocol for Stellar. SUI, TON, BNB and Avalanche sit under two seconds via BFT and fast-finality forks; probabilistic PoW-style chains (Litecoin, Monero, Cardano) settle on a confirmation-depth convention.
+
+faq:
+  - q: "What is the time to finality for Ethereum L1?"
+    a: "Ethereum L1 finality time is ~12.8 minutes. That's 2 epochs of 32 slots × 12 seconds, the window Casper FFG needs to justify and finalize a checkpoint. This benchmark measures it live by polling eth_getBlockByNumber(\"latest\") and eth_getBlockByNumber(\"finalized\") every 10 seconds and taking their timestamp delta."
+  - q: "What is Solana finality time? Is it really sub-second?"
+    a: "Solana exposes two commitments. Processed is optimistic and lands sub-second — typically under 500 ms. Finalized requires 32 confirmed slots and clocks around 12.8 seconds. The leaderboard value here is finalized, the stricter guarantee. Solana finality time at the sub-second tier is real but only at the processed commitment level."
+  - q: "What is Hedera consensus finality time?"
+    a: "Hedera Hashgraph delivers asynchronous Byzantine fault tolerant (aBFT) deterministic finality in 3 to 5 seconds. The mirror node only exposes already-final blocks, so true wall-clock measurement of consensus lag is currently impossible from public endpoints. We re-enable Hedera once the Block Node service (HIP-1056) leaves private preview."
+  - q: "What is Stellar finality time?"
+    a: "Stellar uses the Stellar Consensus Protocol, a federated Byzantine agreement that reaches deterministic finality at every ledger close — roughly every 5 seconds, no probabilistic confirmation needed. This benchmark records wall-clock time between a new ledger appearing on the Horizon stream and its SCP-final commit."
+  - q: "Which blockchain has the fastest finality time?"
+    a: "Sub-second BFT chains lead. TON and SUI both clock under one second on this live benchmark. BNB and Avalanche sit around one to two seconds via their fast-finality forks. Solana finalized lands around 12.8 s, Ethereum at 12.8 min, and probabilistic chains (Litecoin, Monero, Cardano) trail at 15 to 30 minutes by confirmation-depth convention."
+  - q: "How is L1 finality time measured on this page?"
+    a: "Two methods, picked per chain. RPC pollers compare latest vs finalized block timestamps every 10 seconds — used for Ethereum, Solana, TRON, Stellar, SUI, TON, Litecoin, Monero, Cardano. WebSocket subscribers record wall-clock time T1 when a block first appears on the head stream and T2 when it crosses the finality threshold, giving millisecond-precision lag for sub-poll chains (BNB, Avalanche)."
+
 category: Blockchains
 status: live
 metric: Finality lag
@@ -16,14 +34,18 @@ abstract: |
   finalized block. The harness uses two complementary methods. For
   chains with finality much longer than our 10 s poll interval we read
   `latest.timestamp - finalized.timestamp` from the chain RPCs (Ethereum,
-  Solana, TRON, Stellar, Hedera, SUI, TON, Litecoin, Monero, Cardano).
-  For chains whose finality is faster than the poll interval (BNB,
-  Avalanche) we maintain a persistent WebSocket subscription, recording
-  wall-clock time T1 when block N is first seen as `latest` and T2 when
-  it becomes `finalized`. lag = T2 − T1 with millisecond precision. The
-  WS path is the only honest way to measure sub-poll-cadence finality.
-  Comparing two pointers at a single instant collapses to zero when
-  finalization catches up to head.
+  Solana, TRON, Litecoin, Monero, Cardano). For chains whose finality
+  is faster than the poll interval (BNB, Avalanche, SUI, TON, Stellar)
+  we maintain a persistent WebSocket / SSE subscription, recording
+  wall-clock time T1 when block N is first seen as `latest` and T2
+  when it becomes `finalized`. lag = T2 − T1 with millisecond
+  precision. The WS path is the only honest way to measure
+  sub-poll-cadence finality. Comparing two pointers at a single
+  instant collapses to zero when finalization catches up to head.
+  Hedera is mentioned in the FAQ but not currently measured — its
+  mirror node only exposes already-final blocks, which makes
+  wall-clock lag impossible. Re-enabling is gated on Block Nodes
+  (HIP-1056) leaving private preview.
 
 methodology:
   - "Cadence: every 10 seconds for HTTP-polled chains, continuous WS for BNB and Avalanche."
@@ -31,22 +53,24 @@ methodology:
   - "BNB / Avalanche (WS wall-clock): persistent `eth_subscribe(\"newHeads\")` records T1 = first time block N is seen as latest. Periodic `eth_getBlockByNumber(\"finalized\")` over same WS records T2 when N becomes finalized. lag = T2 − T1, ms precision, independent of chain timestamp resolution."
   - "Solana: `getSlot{commitment:\"processed\"}` + `getBlockTime` minus `getSlot{commitment:\"finalized\"}` + `getBlockTime`."
   - "TRON: `/wallet/getnowblock` (head) minus `/walletsolidity/getnowblock` (solidity-confirmed)."
-  - "Stellar: latest two records of `/ledgers?order=desc&limit=2`. one-back is SCP-final."
-  - "Hedera: latest two records of mirror-node `/api/v1/blocks?order=desc&limit=2`. timestamps parsed at nanosecond precision."
+  - "Stellar (SSE wall-clock): Horizon `/ledgers?cursor=now&order=asc` event-stream records T1 on first sight of ledger N and T2 on the next ledger close (SCP-final at every close)."
   - "SUI: `sui_getLatestCheckpointSequenceNumber` minus 5 checkpoints back."
   - "TON: tonapi.io `/blockchain/masterchain-head` minus 3 seqno."
   - "Litecoin (probabilistic): blockchair `/stats.best_block_height` minus 6 confirmations via `/dashboards/block/{height}.block.time`."
   - "Monero (probabilistic): monero-rpc `get_info` minus 10 confirmations via `get_block_header_by_height`."
-  - "Cardano (probabilistic): koios `/tip` minus 50 confirmations via `/blocks?block_height=eq.<height>`."
+  - "Cardano (probabilistic): koios `/tip` minus 15 confirmations via `/blocks?block_height=eq.<height>`. 15 matches the depth top exchanges (Coinbase / Kraken) treat as final settlement; Ouroboros Praos full settlement is k = 2160 blocks (~12 h) and is not the practical convention."
+  - "Hedera (planned, currently disabled): mirror-node `/api/v1/blocks` only exposes already-final blocks, so true wall-clock lag is impossible from public endpoints. Re-enables once Block Nodes (HIP-1056) leave private preview."
   - "Result: `lag_seconds = headTimestamp - finalizedTimestamp`. We also record the block-height delta and per-chain fetch latency."
   - "Excluded by design: XRP (no close-time on `ledger_current`, wall-clock measurement requires WS subscribe to ledger stream, not yet implemented)."
   - "Failures (5xx, timeouts, rate limits) leave the previous gauge in place and increment a per-chain `fetch_errors_total` counter; the page falls back to the last successful sample."
 
 findings:
-  - "SUI and Hedera return sub-2-second lag, matching their BFT designs. the chains expose ms / ns timestamps so the measurement is genuinely sub-second."
-  - "Ethereum sits around 12-13 minutes, aligned with the 2-epoch finalization spec."
-  - "TRON's solidity confirmation hovers around 60 s. exactly the documented 20-block delay at 3 s blocks."
-  - "PoW-style chains (Litecoin, Monero, Cardano) cluster at 15-30 minutes by construction, set by the chosen confirmation depth."
+  - "{{name:sui}} returns {{p50:sui}} (p50, 24 h), matching its Mysticeti DAG BFT design. The chain exposes ms timestamps so the measurement is genuinely sub-second."
+  - "{{name:ethereum}} sits at {{p50:ethereum}} (p50, 24 h), aligned with the 2-epoch finalization spec (32 slots × 12 s × 2)."
+  - "{{name:tron}}'s solidity confirmation hovers around {{p50:tron}}, exactly the documented 20-block delay at 3 s blocks."
+  - "{{name:litecoin}} and {{name:monero}} sit at {{p50:litecoin}} and {{p50:monero}} (p50, 24 h) by construction — set by the chosen confirmation depth. {{name:cardano}} clocks {{p50:cardano}} at the 15-confirmation convention used by major exchanges."
+  - "{{best_name}} currently leads the leaderboard at {{best_p50}} (p50, 24 h) across {{count}} measured L1s. {{worst_name}} trails at {{worst_p50}}."
+  - "Hedera's Hashgraph aBFT is designed to finalize in 3-5 s but is excluded from the live leaderboard because the mirror node only exposes finalized blocks — wall-clock measurement requires the Block Node service (HIP-1056), still in private preview."
 
 source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/l1-finality
 
@@ -167,7 +191,7 @@ providers:
 
   - slug: cardano
     name: Cardano
-    tag: Probabilistic, ~50 confirmations
+    tag: Probabilistic, 15 confirmations (exchange-settlement convention)
     queries:
       p50: avg_over_time(l1_finality_lag_seconds{chain="cardano"}[24h]) * 1000
       p90: quantile_over_time(0.90, l1_finality_lag_seconds{chain="cardano"}[24h]) * 1000

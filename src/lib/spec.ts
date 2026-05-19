@@ -17,6 +17,7 @@ import yaml from "js-yaml";
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
 import { Prometheus } from "@/lib/prometheus";
 import { SpecSchema, type Spec } from "@/lib/spec-schema";
+import { renderBenchmarkText } from "@/lib/bench-template";
 
 export type { Spec } from "@/lib/spec-schema";
 
@@ -140,6 +141,9 @@ async function specToBenchmark(
     number: spec.number,
     title: spec.title,
     seoTitle: spec.seo_title,
+    seoDescription: spec.seo_description,
+    seoIntro: spec.seo_intro,
+    faq: spec.faq,
     subtitle: spec.subtitle,
     category: spec.category,
     status: spec.status,
@@ -160,7 +164,10 @@ async function specToBenchmark(
 
   const live = await tryLoadLive(filteredSpec);
   if (live) {
-    return { ...editorial, ...live };
+    // Resolve {{p50:slug}} / {{best_name}} / {{count}} etc. placeholders
+    // against the freshly loaded numbers so editorial text (findings,
+    // seo_intro, faq) never drifts from the displayed data.
+    return renderBenchmarkText({ ...editorial, ...live });
   }
   return draftBenchmark(spec, editorial);
 }
