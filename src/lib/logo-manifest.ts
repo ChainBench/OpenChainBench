@@ -32,6 +32,13 @@ const RAW: Record<string, string> = {
   arbitrum: "/logos/arbitrum.png",
   polygon: "/logos/polygon.png",
   optimism: "/logos/optimism.png",
+  linea: "/logos/linea.png",
+  mantle: "/logos/mantle.svg",
+  blast: "/logos/blast.png",
+  scroll: "/logos/scroll.png",
+  zksync: "/logos/zksync.png",
+  sonic: "/logos/sonic.png",
+  berachain: "/logos/berachain.png",
 
   // ─── Providers ───
   mobula: "/logos/mobula.svg",
