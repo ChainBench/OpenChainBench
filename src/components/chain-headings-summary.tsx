@@ -21,13 +21,12 @@ export function ChainHeadingsSummary({ benchmark }: { benchmark: Benchmark }) {
   const liveResults = benchmark.results.filter((r) => r.ms.p50 > 0);
   if (liveResults.length === 0) return null;
 
-  // Heuristic: only render for benches whose metric is a chain-property
-  // measurement (finality, latency, consensus, coverage). Skip benches
-  // where providers are aggregators/bridges/protocols (perp-fees, etc.).
-  const isChainBench = /finality|consensus|coverage|latency/i.test(
-    benchmark.metric
-  );
-  if (!isChainBench) return null;
+  // Render for benches whose providers ARE chains — currently the
+  // "Blockchains" category (l1-finality, l2-block-time, ...). Skip
+  // aggregator / bridge / trading benches where providers are
+  // protocols, not chains, and the per-chain heading shape would not
+  // make sense.
+  if (benchmark.category !== "Blockchains") return null;
 
   // Sort by p50: best-first when lower-is-better, worst-first otherwise.
   const sorted = [...liveResults].sort((a, b) =>
