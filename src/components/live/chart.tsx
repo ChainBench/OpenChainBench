@@ -529,8 +529,12 @@ function fmtAgo(ms: number, nowMs: number): string {
 }
 
 // Approximate tooltip size used to clamp it inside the chart bounds.
+// TIP_H assumes worst-case 15-ish chains visible at once — the section
+// container has overflow-hidden so an underestimate would clip the
+// bottom rows. The inner list still gets max-h + scroll as a safety
+// net for the day we exceed that.
 const TIP_W = 200;
-const TIP_H = 180;
+const TIP_H = 360;
 const TIP_OFFSET = 14;
 
 function HoverTooltip({
@@ -579,7 +583,7 @@ function HoverTooltip({
         <p className="label-mono text-ink-muted">
           {fmtAgo(point.ts, nowMs)}
         </p>
-        <ul className="mt-2 space-y-1">
+        <ul className="mt-2 space-y-1 max-h-[20rem] overflow-y-auto">
           {visibleChains.map((c) => {
             const focused = closestChain === c.key;
             return (
