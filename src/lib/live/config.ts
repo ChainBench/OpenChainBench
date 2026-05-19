@@ -18,18 +18,22 @@ export const RANGE_LABELS: Record<import("./types").RangeKey, string> = {
 
 /** Cap on simultaneously rendered pops + their fade duration. */
 export const MAX_POPS = 5;
-export const POP_DURATION_MS = 1500;
+/** Pop lifetime before fade-out. Bumped from 1.5 s once Multi-Events
+ *  became active: pops were appearing and disappearing too fast to
+ *  read at 1-2/sec spawn rate. 3.5 s gives the eye enough time to
+ *  register each one, MAX_POPS=5 still caps screen clutter. */
+export const POP_DURATION_MS = 3500;
 /** Vertical offset (% of chart height) applied between stacked pops
  *  so simultaneous events don't overlap at the right edge. */
 export const POP_STACK_OFFSET_PCT = 9;
 /** Horizontal anchor for pops — left of the chart-end so labels and
  *  endpoint dots stay readable. */
 export const POP_ANCHOR_X_PCT = 82;
-/** Minimum swap USD that earns a pop. Raised from $1 to $5000 once
- *  Multi-Events became the active source: 234 evt/sec made the dust
- *  pops a blur. $5k keeps roughly 1-2 pops/sec — paced enough to be
- *  visible while still feeling alive. */
-export const POP_MIN_USD = 5_000;
+/** Minimum swap USD that earns a pop. Multi-Events sends ~230 evt/s;
+ *  $10k floor keeps pops sparse enough (~0.5-1/sec) that combined
+ *  with POP_DURATION_MS = 3.5 s each bubble has time to be seen
+ *  before another lands on top. */
+export const POP_MIN_USD = 10_000;
 
 /** Minimum swap USD before a row is pushed into the compact feed.
  *  Same rationale as POP_MIN_USD but a softer threshold so the feed
