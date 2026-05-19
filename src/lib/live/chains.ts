@@ -18,6 +18,16 @@ export const CHAIN_LIST: ChainMeta[] = [
   { key: "base", slug: "base", display: "Base", color: "#0052FF" },
   { key: "bnb", slug: "bnb", display: "BNB", color: "#F0B90B" },
   { key: "arbitrum", slug: "arbitrum", display: "Arbitrum", color: "#28A0F0" },
+  { key: "optimism", slug: "optimism", display: "Optimism", color: "#FF0420" },
+  { key: "polygon", slug: "polygon", display: "Polygon", color: "#8247E5" },
+  { key: "avalanche", slug: "avalanche", display: "Avalanche", color: "#E84142" },
+  { key: "linea", slug: "linea", display: "Linea", color: "#61DFFF" },
+  { key: "mantle", slug: "mantle", display: "Mantle", color: "#79EAA1" },
+  { key: "blast", slug: "blast", display: "Blast", color: "#FCFC03" },
+  { key: "scroll", slug: "scroll", display: "Scroll", color: "#C78F50" },
+  { key: "zksync", slug: "zksync", display: "zkSync Era", color: "#8C8DFC" },
+  { key: "sonic", slug: "sonic", display: "Sonic", color: "#FE9933" },
+  { key: "berachain", slug: "berachain", display: "Berachain", color: "#814625" },
 ];
 
 const BY_INPUT: Record<string, ChainMeta> = (() => {
