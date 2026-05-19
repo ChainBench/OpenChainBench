@@ -9,6 +9,7 @@ import {
 } from "@/data/benchmarks";
 import { Pill } from "@/components/pill";
 import { BenchmarkBody } from "@/components/benchmark-body";
+import { ChainHeadingsSummary } from "@/components/chain-headings-summary";
 import { CitationBar } from "@/components/citation-bar";
 import { LiveIndicator } from "@/components/live-indicator";
 import { ShareSection } from "@/components/share-section";
@@ -37,14 +38,15 @@ export async function generateMetadata({
   const b = await getBenchmark(slug);
   if (!b) return {};
   const metaTitle = b.seoTitle ?? b.title;
-  // Headline ("Mobula leads head lag at 0.8 s (p50, 24h) on ...") prepended
-  // to the static subtitle. The leader rarely changes day-to-day, so the
-  // description stays mostly stable but ships a citable figure to AI
-  // search engines (Perplexity, ChatGPT Search, Google AI Overview) and
-  // raises CTR on classic search snippets. Falls back to subtitle when
-  // the bench is still awaiting samples.
+  // Description precedence (most-to-least specific):
+  //   1. `seo_description` from the YAML — hand-crafted snippet with the
+  //      long-tail query phrases we want to rank for.
+  //   2. `headlineSentence(b) + subtitle` — auto-generated citable hook
+  //      from the current leader's measured value.
+  //   3. Just `subtitle` — when the bench has no live data yet.
   const sentence = headlineSentence(b);
-  const description = sentence ? `${sentence} ${b.subtitle}` : b.subtitle;
+  const description =
+    b.seoDescription ?? (sentence ? `${sentence} ${b.subtitle}` : b.subtitle);
   const url = `${SITE.url}/benchmarks/${b.slug}`;
   return {
     title: metaTitle,
@@ -194,6 +196,25 @@ export default async function BenchmarkPage({
           },
         ],
       },
+      // FAQPage entry is emitted only when the spec declares `faq:`. Google
+      // requires every Question/Answer pair to also appear visibly on the
+      // page — the FaqSection below renders them, so the JSON-LD is honest.
+      ...(benchmark.faq && benchmark.faq.length > 0
+        ? [
+            {
+              "@type": "FAQPage",
+              "@id": `${benchmarkUrl}#faq`,
+              mainEntity: benchmark.faq.map((item) => ({
+                "@type": "Question",
+                name: item.q,
+                acceptedAnswer: {
+                  "@type": "Answer",
+                  text: item.a,
+                },
+              })),
+            },
+          ]
+        : []),
     ],
   };
 
@@ -203,6 +224,29 @@ export default async function BenchmarkPage({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
       />
+      {/* Visible breadcrumb trail — duplicates the JSON-LD BreadcrumbList
+          so Google can show the crumb above the URL in the SERP. */}
+      <nav
+        aria-label="Breadcrumb"
+        className="mb-3 text-[11px] font-medium uppercase tracking-[0.16em] text-ink-faint"
+      >
+        <ol className="flex flex-wrap items-center gap-1.5">
+          <li>
+            <Link href="/" className="hover:text-ink transition-colors">
+              Home
+            </Link>
+          </li>
+          <li aria-hidden>/</li>
+          <li>
+            <Link href="/benchmarks" className="hover:text-ink transition-colors">
+              Benchmarks
+            </Link>
+          </li>
+          <li aria-hidden>/</li>
+          <li className="text-ink-muted">{benchmark.title}</li>
+        </ol>
+      </nav>
+
       <div className="flex flex-wrap items-center gap-3">
         <Link
           href="/#latest"
@@ -249,6 +293,20 @@ export default async function BenchmarkPage({
         {benchmark.subtitle}
       </p>
 
+      {/* SEO-tuned intro paragraph rendered server-side under the H1 so
+          long-tail query phrases land in the first ~200 words crawlers
+          weight heavily. Optional — omitted when the YAML doesn't set it. */}
+      {benchmark.seoIntro && (
+        <div className="mt-6 max-w-3xl space-y-3 text-[15px] leading-relaxed text-ink-soft">
+          {benchmark.seoIntro
+            .split(/\n\n+/)
+            .map((para, i) => (
+              // eslint-disable-next-line react/no-array-index-key
+              <p key={i}>{para.trim()}</p>
+            ))}
+        </div>
+      )}
+
       {/* Citation affordances. one click takes a journalist or agent from
           the page to a pasteable quote or a JSON endpoint. */}
       {!isDraft && <CitationBar benchmark={benchmark} />}
@@ -293,6 +351,32 @@ export default async function BenchmarkPage({
       )}
 
       {isDraft && <DraftNotice source={benchmark.source} />}
+
+      {/* SEO-friendly per-chain H2 block. Renders server-side so the
+          long-tail "Ethereum finality time", "Solana finality time"
+          phrases land in static HTML for crawlers to index. */}
+      {!isDraft && <ChainHeadingsSummary benchmark={benchmark} />}
+
+      {/* FAQ section — every question/answer mirrors a FAQPage JSON-LD
+          entry above. Google requires the content to be visible on the
+          page, so we render the same text here. */}
+      {!isDraft && benchmark.faq && benchmark.faq.length > 0 && (
+        <section className="mt-16 max-w-3xl">
+          <h2 className="display text-2xl tracking-tight text-ink">
+            Frequently asked
+          </h2>
+          <dl className="mt-6 space-y-5">
+            {benchmark.faq.map((item) => (
+              <div key={item.q} className="card-soft px-5 py-4">
+                <dt className="text-base font-semibold text-ink">{item.q}</dt>
+                <dd className="mt-2 text-sm leading-relaxed text-ink-soft">
+                  {item.a}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      )}
 
       {/* Source code link. bottom of page */}
       {!isDraft && (
