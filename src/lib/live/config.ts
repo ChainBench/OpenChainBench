@@ -29,11 +29,11 @@ export const POP_STACK_OFFSET_PCT = 9;
 /** Horizontal anchor for pops — left of the chart-end so labels and
  *  endpoint dots stay readable. */
 export const POP_ANCHOR_X_PCT = 82;
-/** Minimum swap USD that earns a pop. Multi-Events sends ~230 evt/s;
- *  $10k floor keeps pops sparse enough (~0.5-1/sec) that combined
- *  with POP_DURATION_MS = 3.5 s each bubble has time to be seen
- *  before another lands on top. */
-export const POP_MIN_USD = 10_000;
+/** Minimum swap USD that earns a pop. At $10k almost nothing got
+ *  through (most Multi-Events swaps are memecoin-sized). $3k is the
+ *  sweet spot: visible pops several times per minute, paced enough
+ *  by POP_DURATION_MS = 3.5 s that each one is readable. */
+export const POP_MIN_USD = 3_000;
 
 /** Minimum swap USD before a row is pushed into the compact feed.
  *  Same rationale as POP_MIN_USD but a softer threshold so the feed
