@@ -145,6 +145,26 @@ export const SpecSchema = z
     title: z.string().min(1).max(200),
     /** Optional SEO-tuned page title (browser tab + meta). Falls back to `title`. */
     seo_title: z.string().min(1).max(200).optional(),
+    /** Optional SEO-tuned meta description. Overrides the headline-sentence
+     *  fallback so we can pack query-phrase keywords into the SERP snippet. */
+    seo_description: z.string().min(40).max(320).optional(),
+    /** Optional SSR-rendered intro paragraph displayed under the H1. Use it
+     *  to spell out the exact long-tail phrases visitors search for ("time
+     *  to finality", "sub-second finality", etc.) so the page ranks beyond
+     *  its short title. */
+    seo_intro: z.string().min(40).max(2000).optional(),
+    /** Optional FAQ section. Each pair generates a FAQPage JSON-LD entry +
+     *  a visible block on the page. Capped at 12 entries to keep the page
+     *  reasonable. */
+    faq: z
+      .array(
+        z.object({
+          q: z.string().min(1).max(200),
+          a: z.string().min(1).max(1000),
+        })
+      )
+      .max(12)
+      .optional(),
     subtitle: z.string().min(1).max(400),
     category: Category,
     status: z.enum(["live", "draft"]).default("live"),
