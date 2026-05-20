@@ -2,81 +2,91 @@
 
 slug: stablecoin-peg-usdt-anchored
 number: "015"
-title: Most stable USDT-anchored stablecoin on Binance
-seo_title: "Stablecoin vs USDT on Binance 2026: USDC, FDUSD, USDe live deviation benchmark"
-seo_description: "Live USDT-anchored stablecoin deviation leaderboard. Distance from 1.0000 USDT on Binance for USDC/USDT, FDUSD/USDT and USDE/USDT pairs, audited every 5 seconds. p50, p90 and p99 over 24h. The honest live measurement for stablecoins that exist only against USDT on the deepest non-US venue."
-subtitle: Absolute deviation from 1.0000 USDT for stablecoins quoted in USDT on Binance (USDC/USDT, FDUSD/USDT, USDE/USDT).
+title: Cheapest stablecoin swap on Binance
+seo_title: "Cheapest USDT stablecoin swap on Binance in 2026: USDC, FDUSD, USDe live spread benchmark"
+seo_description: "Live Binance stablecoin pair spread leaderboard. Basis points you eat swapping between USDC/USDT, FDUSD/USDT and USDE/USDT on Binance, the deepest non-US CEX. p50, p90 and p99 over 24h, audited every 5 seconds. The honest swap-cost number, not a marketing claim."
+subtitle: Basis points you eat swapping inventory between stables on Binance. Spread of X/USDT mid-price from 1.0000 USDT, audited every 5 seconds.
 category: Trading
 status: live
-metric: USDT-relative deviation
+metric: USDT-pair spread
 unit: bps
 higher_is_better: false
 
 seo_intro: |
-  This benchmark is the companion to the USD-anchored `stablecoin-peg`
-  bench (№ 014). It exists because two of the largest stablecoins on
-  Binance, FDUSD ($41M+ daily volume on FDUSD/USDT) and USDe ($1.8M+
-  daily on USDE/USDT), have no deep USD-quoted venue. Ranking them
-  against Kraken or Bitstamp would silently smooth out the venue that
-  actually carries their depth. Ranking them against USDC would
-  contaminate the measurement with USDC's own drift. The only honest
-  answer is: how close to 1.0000 USDT does this stable trade on
-  Binance, in real time. USDC/USDT is included as a reference anchor.
-  it's the most liquid pair on the entire venue ($2.8B+ daily) and
-  any deviation USDC shows here is mostly USDT's own drift relative
-  to USD reaching back. The headline number is p99 deviation over 24
-  hours, the worst-1%-of-minutes measurement a desk holding inventory
-  has to budget against. The October 10 2025 USDe flash to $0.65 on
-  Binance USDEUSDT is exactly the kind of tail event this surface is
-  designed to catch, and the depeg event flag fires within 5 minutes
-  of any stable breaking the [0.97, 1.03] band.
+  This benchmark answers the question every CEX trader has when
+  rotating stablecoin inventory on Binance. how many basis points do
+  I actually lose swapping X to USDT (or USDT to X) on the deepest
+  pair available. We poll Binance's bookTicker for USDC/USDT,
+  FDUSD/USDT and USDE/USDT every 5 seconds, record the mid-price,
+  and measure its distance from 1.0000 USDT. p99 over 24 hours is
+  the headline. the worst-1%-of-minutes number a desk holding
+  inventory has to budget against on a forced rebalance. This is
+  NOT a measurement of which stablecoin is fundamentally safest.
+  Cash-backed USDC, monthly-audited FDUSD, and basis-trade-anchored
+  USDe carry fundamentally different reserve risks that no
+  order-book spread can capture. What this bench DOES tell you is.
+  on the venue that actually carries depth for FDUSD and USDe,
+  which pair trades tightest to USDT right now. USDC/USDT is
+  included as a reference baseline. it's the most liquid stablecoin
+  pair on the venue ($2.8B+ daily) and its spread is mostly USDT's
+  own drift away from USD reaching back, so subtract its number to
+  read each other stable's "true vs-USDT" drift. The October 10
+  2025 USDe flash to $0.65 on Binance USDEUSDT is the tail event
+  the surface is wired to catch. the depeg event flag fires within
+  5 minutes of any pair breaking the [0.97, 1.03] band.
 
 abstract: |
-  We measure how far each USDT-anchored stablecoin trades from
-  1.0000 USDT on Binance, the deepest single venue for these pairs.
-  The harness polls Binance's REST ticker every 5 seconds for
-  USDCUSDT, FDUSDUSDT and USDEUSDT, records the mid-price, and emits
-  `peg_deviation_usdt_anchored_bps{stable, venue}` per scrape. p50,
-  p90 and p99 over 24 h are computed via Prometheus
-  `quantile_over_time`. USDC serves as a reference anchor.
-  any drift it shows is mostly USDT's own deviation relative to USD,
-  so other stables' true vs-USDT drift is "this number minus USDC's
-  number". FDUSD and USDe are the two stables for which this is the
-  only honest signal in the absence of deep USD-quoted venues.
-  Polling at 5 second cadence keeps us comfortably inside Binance's
-  free-tier `/api/v3/ticker/bookTicker` rate limit while preserving
-  fine enough resolution to catch a flash depeg within seconds of
-  the order book printing it.
+  We measure the live spread between each USDT-quoted stablecoin
+  pair on Binance and the 1.0000 USDT reference. The harness polls
+  `/api/v3/ticker/bookTicker` every 5 seconds per pair (USDCUSDT,
+  FDUSDUSDT, USDEUSDT), records the mid-price (bid + ask) / 2, and
+  emits `peg_deviation_usdt_anchored_bps{stable, venue}` per scrape.
+  p50, p90 and p99 over 24 h are computed via Prometheus
+  `quantile_over_time`. The leaderboard ranks by p99, the worst-1%
+  tail a desk rebalancing inventory has to budget for. Calling this
+  "stability" would be misleading. it is the live swap-cost reality
+  of moving inventory between stables on the deepest non-US venue,
+  not a measurement of underlying peg robustness. USDC/USDT sits on
+  the leaderboard as a reference anchor because USDC's deviation
+  here is mostly USDT's own drift reaching back into the pair, so
+  any stable scoring above USDC is genuinely wider vs USDT, and any
+  stable scoring below is in fact tracking USDT more tightly than
+  USDC is. Polling at 5 second cadence keeps the harness inside
+  Binance's free-tier bookTicker rate budget while preserving fine
+  enough resolution to register a flash-depeg within seconds of the
+  order book printing it.
 
 methodology:
-  - "Source: Binance REST `/api/v3/ticker/bookTicker?symbol=<pair>` polled every 5 seconds per pair. No API key required. Mid-price = (bid + ask) / 2."
-  - "Pairs: USDCUSDT (2.8B daily, the most liquid stable pair on the venue), FDUSDUSDT (41M daily, FDUSD's primary book), USDEUSDT (1.8M daily, the book that flashed to $0.65 on October 10 2025)."
-  - "Metric: `peg_deviation_usdt_anchored_bps{stable, venue=\"binance\"}` = |mid_price - 1.0000| × 10000. 1 bp = 0.01% = 0.0001 USDT off peg."
-  - "Aggregation: p50 / p90 / p99 over 24 hours via Prometheus `quantile_over_time`. Headline number is p99, the worst-1% tail a desk holding inventory has to size against."
-  - "USDC reference anchor: USDC/USDT deviation is the floor below which no other stable can credibly score, because that gap reflects USDT's own drift away from USD reaching back into the pair. Read other stables' true vs-USDT drift as `their_p99 - usdc_p99` to control for it."
-  - "Depeg event flag: shared with the USD-anchored bench. Binary `peg_depeg_event_flag{stable}` fires when the per-minute aggregated price is outside [0.97, 1.03] for ≥5 consecutive minutes. The flag clears after 30 minutes back inside the band."
-  - "Excluded by design: stables with deep USD-quoted venues (USDT, DAI). USDT itself is the anchor on this bench so it cannot be measured against itself. DAI's only live signal is on-chain via Curve 3pool and lives on the primary USD-anchored bench."
+  - "Source: Binance REST `/api/v3/ticker/bookTicker?symbol=<pair>` polled every 5 seconds per pair. No API key required. Mid-price = (bid + ask) / 2 in USDT."
+  - "Pairs: USDCUSDT ($2.8B daily, reference anchor for USDT-vs-USD drift), FDUSDUSDT ($41M daily, FDUSD's primary book), USDEUSDT ($1.8M daily, the book that flashed to $0.65 on October 10 2025)."
+  - "Metric: `peg_deviation_usdt_anchored_bps{stable, venue=\"binance\"}` = |mid_price - 1.0000| × 10000. 1 bp = 0.01% = 0.0001 USDT off pair-reference."
+  - "Aggregation: p50 / p90 / p99 over 24 hours via Prometheus `quantile_over_time`. p99 is the headline because swap cost during stress is what matters for inventory rotation, not the calm-minute median."
+  - "USDC reference anchor: USDC/USDT spread is the floor below which no other pair can credibly score, because that gap reflects USDT's own drift away from USD reaching back into the pair. Read other stables' true vs-USDT drift as `their_p99 - usdc_p99` to control for it."
+  - "Depeg event flag (shared with bench № 014): binary `peg_depeg_event_flag{stable}` fires when the per-minute aggregated price is outside [0.97, 1.03] for ≥5 consecutive minutes. The flag clears after 30 minutes back inside the band. Conservative so it does not flap during normal stress."
+  - "Out of scope: this is a swap-cost / pair-spread bench, NOT a peg-robustness bench. Reserve attestations, basis-trade health, redemption windows, on-chain pool liquidity and other fundamental peg signals live on `stablecoin-peg` (bench № 014) or off-chain in each issuer's transparency dashboard."
 
 findings:
-  - "{{best_name}} currently leads at {{best_p50}} (p99 deviation vs USDT on Binance, 24 h) across {{count}} measured stablecoins. The number is the worst 1% of per-minute mid-price distance from 1.0000 USDT, in basis points."
-  - "{{name:usdc}} returns {{p50:usdc}} (p99 deviation vs USDT, 24 h). USDC serves as the reference anchor here. its deviation is mostly USDT's own drift away from USD reaching back into the pair, so any other stable scoring meaningfully below this number is genuinely tighter to USDT than USDT itself is to USD."
-  - "{{name:fdusd}} sits at {{p50:fdusd}} (p99 deviation vs USDT, 24 h) on Binance FDUSDUSDT, the only book with meaningful depth on FDUSD. First Digital's USD reserves are audited monthly but redemption is Hong Kong-clearing and slower than Circle's same-day, which surfaces here as wider tails during risk-off minutes."
-  - "{{name:usde}} clocks {{p50:usde}} (p99 deviation vs USDT, 24 h) on Binance USDEUSDT. Ethena's USDe is not USD-backed at all but anchored by a delta-neutral basis trade on perpetuals, which makes its tail behaviour fundamentally different from reserve-backed stables. The October 10 2025 flash to $0.65 on this exact book is the cautionary precedent."
-  - "{{worst_name}} trails at {{worst_p50}} (p99 deviation vs USDT, 24 h). The gap between leader and laggard mostly reflects how much each stable's redemption mechanism resists Binance order-book stress during high-volatility minutes."
+  - "{{best_name}} currently has the tightest pair on Binance at {{best_p50}} (p99 spread vs 1.0000 USDT, 24 h) across {{count}} measured stables. That is the worst 1% of per-minute mid-price distance from the pair reference, in basis points."
+  - "{{name:usdc}} sits at {{p50:usdc}} (p99 spread vs USDT, 24 h). USDC is the reference anchor. its spread is mostly USDT's own drift away from USD reaching back, so subtract this number from each other stable's p99 to read its true vs-USDT drift. A stable scoring below USDC is in fact tracking USDT more tightly than USDC is."
+  - "{{name:fdusd}} clocks {{p50:fdusd}} (p99 spread vs USDT, 24 h) on Binance FDUSDUSDT. FDUSD's depth lives almost entirely here ($41M daily) so the order-book number is the only live signal that matters for inventory rotation. First Digital's USD reserves are audited monthly but Hong Kong-clearing is slower than Circle's same-day, which surfaces here as wider tails during risk-off minutes."
+  - "{{name:usde}} returns {{p50:usde}} (p99 spread vs USDT, 24 h) on Binance USDEUSDT. Ethena's USDe is anchored by a delta-neutral perp basis trade, not USD reserves, which makes its tail behaviour fundamentally different. The October 10 2025 flash to $0.65 on this exact book is the cautionary precedent. a tight calm-minute spread does not imply a robust peg under perp-market stress."
+  - "{{worst_name}} trails at {{worst_p50}} (p99 spread vs USDT, 24 h). The gap between leader and laggard mostly reflects book depth and how each stable's redemption / arbitrage mechanism resists Binance order-book stress during high-volatility minutes."
 
 faq:
-  - q: "Why a separate USDT-anchored stablecoin bench?"
-    a: "Because FDUSD and USDe have no deep USD-quoted venue. Their primary book is Binance against USDT. Mixing them into a USD-anchored leaderboard would either (a) drop them entirely for lack of data, or (b) ranks them against USDC/USDT/DAI on a different denominator, which is apples-to-oranges. This bench keeps the comparison clean. all three pairs are quoted in USDT, on the same venue, polled at the same cadence."
-  - q: "Why is USDC included as a USDT-anchored stable?"
-    a: "USDC serves as a reference anchor. {{name:usdc}} currently shows {{p50:usdc}} (p99 deviation vs USDT, 24 h) on Binance USDCUSDT. Any deviation USDC shows here is mostly USDT's own drift relative to USD reaching back into the pair. So a stable scoring above USDC's number on this bench is in fact drifting against USDT, not just inheriting USDT's USD drift. Subtract USDC's p99 from any other stable's p99 to get its true vs-USDT drift."
+  - q: "What does this benchmark actually measure?"
+    a: "The live spread between each Binance X/USDT stablecoin pair and the 1.0000 USDT reference, in basis points. Concretely. if you swap $1000 of USDC to USDT on Binance and the current USDC/USDT spread is 7 bps, you eat ~$0.70 in pair-drift cost (on top of the 0.1% Binance trading fee). This bench ranks the live swap-cost reality on the deepest non-US venue, NOT the fundamental safety of each stablecoin's reserve structure."
+  - q: "Is this the same as 'which stablecoin is safest to hold'?"
+    a: "No, and it would be misleading to read it that way. USDC is cash-backed and audited monthly. FDUSD is also cash-backed and audited monthly but Hong Kong-clearing. USDe is not USD-backed at all but anchored by a delta-neutral perp basis trade. These carry fundamentally different reserve risks that no order-book spread can capture. A tight calm-minute pair spread on Binance does not imply a robust peg under stress. for fundamental peg signals (reserve attestations, on-chain pool depth, basis-trade health) read the issuer's transparency dashboard, not this bench."
+  - q: "What is USDC doing on a USDT-anchored bench?"
+    a: "USDC serves as a reference anchor. {{name:usdc}} currently shows {{p50:usdc}} (p99 spread vs USDT, 24 h) on Binance USDCUSDT, the most liquid stablecoin pair on the venue ($2.8B daily). USDC is the cleanest cash-backed stablecoin in the cohort, so any drift it shows here is mostly USDT's own drift away from USD reaching back into the pair. Subtract USDC's p99 from any other stable's p99 to get its true vs-USDT drift, controlling for USDT's own USD drift."
+  - q: "Why FDUSD and USDe specifically?"
+    a: "Because they have no other honest live signal. FDUSD's depth lives almost entirely on Binance FDUSDUSDT ($41M daily, no comparable USD-quoted venue). USDe's main spot book is Binance USDEUSDT ($1.8M daily, same situation). The USD-anchored bench `stablecoin-peg` (№ 014) covers USDC / USDT / DAI which have real USD-quoted venues (Kraken, Bitstamp, Curve). This companion bench is the only place where FDUSD and USDe can be measured on a live order book at all."
   - q: "Did USDe really flash to $0.65 on Binance?"
-    a: "Yes, on Binance USDEUSDT specifically, the night of October 10 2025. A sharp liquidation cascade on perp positions cleared the orderbook well below peg for several minutes. Ethena's USDe is not reserve-backed. it's anchored by a delta-neutral basis trade on perpetual futures, so when perp markets dislocate, the spot can follow without any redemption mechanism stepping in fast enough. This bench is the live surface where that kind of event becomes visible within 5 minutes of the order book printing it."
-  - q: "What is FDUSD and how is its peg structured?"
-    a: "First Digital USD (FDUSD) is a Hong Kong-issued stablecoin backed 1:1 by USD reserves held in segregated accounts and audited monthly. Its primary depth lives on Binance (FDUSDUSDT, ~41M daily volume) because Binance briefly used FDUSD as a fee-free trading pair currency in 2024-2025, building deep liquidity there. USD-quoted venues for FDUSD are negligible by comparison, which is why this bench is the only honest live measurement of FDUSD's peg."
-  - q: "How is this bench different from stablecoin-peg (the USD-anchored one)?"
-    a: "Primary bench (`stablecoin-peg`, № 014) measures USDC / USDT / DAI against $1.00 USD using Kraken, Bitstamp and Curve 3pool. Honest USD anchor, but doesn't cover FDUSD or USDe (no deep USD venue). This bench measures USDC / FDUSD / USDe against 1.0000 USDT on Binance. Same venue, same cadence, same currency. Read them together. the primary bench tells you which stable holds its USD peg best, this one tells you which one holds its USDT-quote book best."
-  - q: "Which stablecoin is safest to hold on Binance?"
-    a: "Holding on a CEX means the relevant question is 'how does this stable trade on the CEX', not 'how close to USD reserve value is it'. {{best_name}} currently leads at {{best_p50}} (p99 deviation vs USDT, 24 h) on Binance. The leaderboard re-sorts every minute. For inventory sizing, use p99 (worst 1% of minutes) rather than p50 (typical minute), because the tail is what determines the loss on a forced exit during stress."
+    a: "Yes, on Binance USDEUSDT specifically, the night of October 10 2025. A sharp liquidation cascade on perpetual futures cleared the orderbook well below the 1.0000 reference for several minutes. Ethena's USDe is not reserve-backed. it's anchored by a delta-neutral basis trade on perps, so when perp markets dislocate, the spot can follow without any redemption mechanism stepping in fast enough. The depeg event flag on this bench fires within 5 minutes of any pair breaking the [0.97, 1.03] band, so a recurrence would be visible live."
+  - q: "How is this different from stablecoin-peg (bench № 014)?"
+    a: "Bench № 014 measures USDC / USDT / DAI against $1.00 USD using Kraken USD pairs, Bitstamp USD pairs and Curve 3pool on-chain. Honest USD anchor, real peg measurement. but it can't cover FDUSD or USDe because no deep USD-quoted venue exists for them. This bench (№ 015) measures USDC / FDUSD / USDe against 1.0000 USDT on Binance. Same venue, same cadence, same currency. one is a peg-robustness measurement, the other is a swap-cost measurement on the deepest CEX. Read them together for a complete picture."
+  - q: "Which stable should I hold on Binance for the lowest rotation cost?"
+    a: "{{best_name}} currently has the tightest pair at {{best_p50}} (p99 spread vs USDT, 24 h). The leaderboard re-sorts every minute. For inventory sizing, use p99 rather than p50, because the spread during a forced rebalance under stress is what determines actual cost, not the calm-minute median. Combine with the success-rate column and the fundamental reserve-risk story (which this bench does NOT capture) before committing meaningful inventory."
 
 source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/stablecoin-peg
 
