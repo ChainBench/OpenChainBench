@@ -38,7 +38,7 @@ const loadAllBenchmarksCached = unstable_cache(
   // Version bumped when the Benchmark shape changes so a stale cached
   // entry from a previous deploy can't surface objects missing newer
   // fields (e.g. editorialStatus introduced in commit 0457fb1).
-  ["all-benchmarks-v2"],
+  ["all-benchmarks-v3"],
   { revalidate: 60, tags: ["benchmarks"] }
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -65,7 +65,7 @@ const loadBenchmarkFiltered = unstable_cache(
     if (!spec) return undefined;
     return specToBenchmark(spec, parseFilterSig(sig));
   },
-  ["bench-filters-v1"],
+  ["bench-filters-v2"],
   { revalidate: 60, tags: ["benchmarks"] }
 );
 
