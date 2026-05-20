@@ -57,6 +57,16 @@ const RAW: Record<string, string> = {
   jupiter: "/logos/jupiter.png",
   lighter: "/logos/lighter.svg",
   debridge: "/logos/debridge.svg",
+
+  // ─── Public RPC providers ───
+  publicnode: "/logos/publicnode.svg",
+  drpc: "/logos/drpc.svg",
+  "1rpc": "/logos/1rpc.svg",
+  meowrpc: "/logos/meowrpc.png",
+  flashbots: "/logos/flashbots.svg",
+  cloudflare: "/logos/cloudflare.svg",
+  "base-official": "/logos/base.jpeg",
+  binance: "/logos/bnb.png",
 };
 
 // Asset-symbol aliases used by perp-fees as chain dimension values.
