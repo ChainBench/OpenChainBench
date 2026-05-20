@@ -211,6 +211,55 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Privacy-focused PoW chain using RandomX, tuned for CPU mining. 2-minute block times with ring signatures of size 16 and stealth addresses by default.",
     twitter: "@monero",
   },
+
+  // ─── Public RPC providers ─────────────────────────────────────
+  publicnode: {
+    url: "https://www.publicnode.com",
+    description:
+      "Public no-key RPC service operated by Allnodes covering 70+ chains. JSON-RPC and WebSocket endpoints with archive support on most networks.",
+    twitter: "@AllnodesHQ",
+  },
+  drpc: {
+    url: "https://drpc.org",
+    description:
+      "Decentralized RPC mesh routing requests across third-party node providers with consensus checks. Free public tier plus higher-tier authenticated access.",
+    twitter: "@drpcorg",
+  },
+  "1rpc": {
+    url: "https://1rpc.io",
+    description:
+      "Privacy-preserving public RPC by Automata Network. Strips client metadata before forwarding to upstream node operators; load-balanced across providers.",
+    twitter: "@1RPC_io",
+  },
+  meowrpc: {
+    url: "https://meowrpc.com",
+    description:
+      "Free public RPC service covering Ethereum, Base, Arbitrum, Optimism and other EVM chains. No registration required, modest rate limits per IP.",
+  },
+  flashbots: {
+    url: "https://rpc.flashbots.net",
+    description:
+      "Flashbots Protect RPC sends transactions through a private mempool, shielding them from sandwich attacks. Read calls go to a standard Ethereum node behind the proxy.",
+    twitter: "@flashbots",
+  },
+  cloudflare: {
+    url: "https://cloudflare-eth.com",
+    description:
+      "Cloudflare's public Ethereum gateway. Recently switched to a permissioned mode for many JSON-RPC methods, returning `-32046 Cannot fulfill request` for most endpoints.",
+    twitter: "@Cloudflare",
+  },
+  "base-official": {
+    url: "https://mainnet.base.org",
+    description:
+      "Official Base public RPC operated by the Base team (Coinbase). No-key access for read methods; documented as best-effort with rate limits.",
+    twitter: "@base",
+  },
+  binance: {
+    url: "https://docs.bnbchain.org/docs/rpc",
+    description:
+      "Official BNB Chain RPC endpoints operated by Binance. Multiple dataseed hosts (`bsc-dataseed1.binance.org` etc.) round-robin for load distribution.",
+    twitter: "@BNBCHAIN",
+  },
 };
 
 export function getProviderRegistry(slug: string): ProviderRegistryEntry | undefined {
