@@ -11,7 +11,7 @@ type Props = {
 
 /**
  * Discreet "Report a problem" trigger + modal. Posts to /api/report which
- * forwards to a Slack webhook server-side — the URL never reaches the client.
+ * forwards to a Slack webhook server-side - the URL never reaches the client.
  */
 export function ReportSection({ slug }: Props) {
   const [open, setOpen] = useState(false);

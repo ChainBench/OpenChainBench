@@ -92,7 +92,7 @@ providers:
 
 When `region.series` is set on every region, the time-series chart shows
 a "Region" selector (All · US-East · EU-West · …) so readers can slice the
-multi-line plot by region. The chart works the same way for every spec —
+multi-line plot by region. The chart works the same way for every spec -
 single-region specs simply hide the selector.
 
 ## Failure modes

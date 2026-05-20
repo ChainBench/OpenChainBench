@@ -62,7 +62,7 @@ export default async function AlternativePage({
 
   // Top alternatives = leading bench results, excluding the target product
   // itself, region pseudo-slugs, and any zero-data fallback rows (Prom miss
-  // at build time renders p50=0 for every provider — drop those instead of
+  // at build time renders p50=0 for every provider - drop those instead of
   // showing "0%" cards).
   const targetSlug = alt.target_product.toLowerCase().replace(/\s+/g, "-");
   const sortedResults = [...bench.results]
@@ -82,7 +82,7 @@ export default async function AlternativePage({
       {
         "@type": "Dataset",
         "@id": `${url}#dataset`,
-        name: `${alt.target_product} alternatives — benchmark snapshot`,
+        name: `${alt.target_product} alternatives - benchmark snapshot`,
         description: alt.description ?? alt.intro.slice(0, 280),
         url,
         identifier: alt.slug,
@@ -176,7 +176,7 @@ export default async function AlternativePage({
         </p>
       )}
 
-      {/* Top alternatives cards — explicit list with internal links to
+      {/* Top alternatives cards - explicit list with internal links to
           product pages. The bench leaderboard below carries the full data;
           this section frames the answer for skim-readers and search. */}
       {topAlternatives.length > 0 && (

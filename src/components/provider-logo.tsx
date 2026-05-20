@@ -12,7 +12,7 @@ import { logoPath } from "@/lib/logo-manifest";
  *
  * Kept slug-driven (not path-driven) so adding a new logo is just a
  * matter of dropping a file in `public/logos/` and registering it in
- * `logo-manifest.ts` — every consumer picks it up automatically.
+ * `logo-manifest.ts` - every consumer picks it up automatically.
  */
 export function ProviderLogo({
   slug,

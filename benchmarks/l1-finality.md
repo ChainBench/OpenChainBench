@@ -2,11 +2,11 @@
 
 Companion document to [`l1-finality.yml`](./l1-finality.yml). Mirrors the harness README in the [mobula-monorepo `miniapps/l1-finality/`](https://github.com/MobulaFi/mobula-monorepo/tree/dev/miniapps/l1-finality) folder so both repos stay in sync.
 
-Bench № 006 — measures the live finality time of every L1 chain we can honestly observe from public endpoints. No transactions are sent. The harness either polls two RPC endpoints per chain (for slow-finality chains) or maintains a persistent WebSocket / SSE subscription (for sub-poll-cadence chains) and exposes the time delta as a Prometheus gauge.
+Bench № 006 - measures the live finality time of every L1 chain we can honestly observe from public endpoints. No transactions are sent. The harness either polls two RPC endpoints per chain (for slow-finality chains) or maintains a persistent WebSocket / SSE subscription (for sub-poll-cadence chains) and exposes the time delta as a Prometheus gauge.
 
 ## Why this bench is honest
 
-Every L1 publishes a finalization-time figure in its docs. Those numbers are *targets* — what the protocol claims under ideal conditions. This bench measures what a public client can actually observe, refreshed every 10 s for slow chains and continuously for fast ones. The gap between docs and reality is the story.
+Every L1 publishes a finalization-time figure in its docs. Those numbers are *targets* - what the protocol claims under ideal conditions. This bench measures what a public client can actually observe, refreshed every 10 s for slow chains and continuously for fast ones. The gap between docs and reality is the story.
 
 ## Two measurement methods
 
@@ -18,7 +18,7 @@ This works for: **Ethereum, Solana, TRON, Stellar, Hedera, SUI, Litecoin, Monero
 
 ### 2. WebSocket / SSE wall-clock (sub-poll-cadence chains)
 
-For chains where finality is faster than our poll interval, comparing two pointers at one instant doesn't measure finalization time — it measures the gap-at-instant, which collapses to zero when finalization catches up to head. The honest path is to subscribe to a push stream, record `T1 = time.Now()` when block N is first observed, and `T2 = time.Now()` when N becomes finalized. `lag = T2 − T1`, with millisecond precision, independent of chain timestamp resolution.
+For chains where finality is faster than our poll interval, comparing two pointers at one instant doesn't measure finalization time - it measures the gap-at-instant, which collapses to zero when finalization catches up to head. The honest path is to subscribe to a push stream, record `T1 = time.Now()` when block N is first observed, and `T2 = time.Now()` when N becomes finalized. `lag = T2 − T1`, with millisecond precision, independent of chain timestamp resolution.
 
 This works for: **BNB, Avalanche, TON**.
 
@@ -27,8 +27,8 @@ This works for: **BNB, Avalanche, TON**.
 | Chain | Method | Endpoint(s) | Finality definition | Why this depth |
 | --- | --- | --- | --- | --- |
 | **Ethereum** | HTTP poll | `eth_getBlockByNumber("latest" | "finalized")` | Casper FFG `finalized` tag (~64 slots) | Protocol-level. Coinbase 35, Binance 12, Circle 65 |
-| **BNB** | WS wall-clock | `wss://bsc-rpc.publicnode.com` — `eth_subscribe(["newHeads"])` + 1 s `getBlockByNumber("finalized")` poll on the same socket | Wall-clock T1→T2 between block first seen as latest and as finalized | Sub-poll-cadence finality (~1.5 s) |
-| **Avalanche** | WS wall-clock | `wss://avalanche-c-chain-rpc.publicnode.com/ext/bc/C/ws` — same as BNB | Same | Sub-poll-cadence (~1.5 s) |
+| **BNB** | WS wall-clock | `wss://bsc-rpc.publicnode.com` - `eth_subscribe(["newHeads"])` + 1 s `getBlockByNumber("finalized")` poll on the same socket | Wall-clock T1→T2 between block first seen as latest and as finalized | Sub-poll-cadence finality (~1.5 s) |
+| **Avalanche** | WS wall-clock | `wss://avalanche-c-chain-rpc.publicnode.com/ext/bc/C/ws` - same as BNB | Same | Sub-poll-cadence (~1.5 s) |
 | **Solana** | HTTP poll | `getSlot{commitment:"finalized"}` + `getBlockTime` | 32 slots (`finalized` commitment) | Circle USDC standard, industry consensus |
 | **TRON** | HTTP poll | `/wallet/getnowblock` vs `/walletsolidity/getnowblock` | 19-block solidity confirmation | Protocol minimum (2/3 of 27 SRs) |
 | **Stellar** | HTTP poll | Horizon `/ledgers?order=desc&limit=2` | 1 ledger back (SCP-final) | Circle = 1, deterministic SCP |
@@ -43,7 +43,7 @@ This works for: **BNB, Avalanche, TON**.
 
 | Chain | Why |
 | --- | --- |
-| **XRP Ledger** | `ledger_current` has no `close_time`, so any HTTP-based lag formula collapses to either a hardcoded `block_lag × 4 s` (not a real measurement) or zero. Honest measurement requires WS subscribe to the validated-ledger stream — not yet implemented |
+| **XRP Ledger** | `ledger_current` has no `close_time`, so any HTTP-based lag formula collapses to either a hardcoded `block_lag × 4 s` (not a real measurement) or zero. Honest measurement requires WS subscribe to the validated-ledger stream - not yet implemented |
 
 ## Confidence audit
 

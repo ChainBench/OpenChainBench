@@ -59,7 +59,7 @@ export function TimeSeriesChart({ benchmark, region: regionProp }: Props) {
     return Array.from(set).sort();
   }, [benchmark]);
 
-  // Internal region tabs are hidden when the parent controls the region —
+  // Internal region tabs are hidden when the parent controls the region -
   // it renders a unified Chain + Region row above and passes the value down.
   const showRegionTabs = regionProp == null && availableRegions.length > 1;
 
@@ -292,7 +292,7 @@ function Chart({
       }
       linePath = linePath.trim();
 
-      // Fill path uses the same gap logic — closes at base on each break.
+      // Fill path uses the same gap logic - closes at base on each break.
       const baseY = padT + innerH;
       let fillPath = "";
       let segStart: { x: number; y: number } | null = null;
@@ -305,7 +305,7 @@ function Chart({
       for (const p of pts) {
         if (p.gap) {
           // close current segment at the last drawn x
-          // (the previous point's x — but we only know prev via state)
+          // (the previous point's x - but we only know prev via state)
           continue;
         }
         if (!segStart) {

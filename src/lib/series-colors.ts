@@ -2,7 +2,7 @@
  * Color assignment for multi-line charts and leaderboard bars.
  *
  * 1. If the slug has a registered brand color (chains + a few providers,
- *    see `lib/brand.ts`), use that — Ethereum is always its purple-blue,
+ *    see `lib/brand.ts`), use that - Ethereum is always its purple-blue,
  *    Solana its violet, etc., across every viz on the site.
  * 2. Otherwise fall back to the muted editorial palette below in p50
  *    order. Warm paper-print tones, distinguishable but restrained.
@@ -10,7 +10,7 @@
 
 import { brandColor } from "./brand";
 
-// Bright, saturated fallback palette — reads on light + dark backgrounds
+// Bright, saturated fallback palette - reads on light + dark backgrounds
 // with high contrast. Used when a provider isn't in the brand table.
 const PALETTE = [
   "#FF6B35", // vivid orange
