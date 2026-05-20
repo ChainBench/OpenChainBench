@@ -111,10 +111,10 @@ providers:
     name: PublicNode
     tag: Allnodes-operated, 70+ chains, archive on most
     queries:
-      p50: histogram_quantile(0.50, sum by (le) (rate(rpc_latency_milliseconds_histogram_bucket{provider="publicnode"}[24h])))
-      p90: histogram_quantile(0.90, sum by (le) (rate(rpc_latency_milliseconds_histogram_bucket{provider="publicnode"}[24h])))
-      p99: histogram_quantile(0.99, sum by (le) (rate(rpc_latency_milliseconds_histogram_bucket{provider="publicnode"}[24h])))
-      mean: sum(rate(rpc_latency_milliseconds_histogram_sum{provider="publicnode"}[24h])) / sum(rate(rpc_latency_milliseconds_histogram_count{provider="publicnode"}[24h]))
+      p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="publicnode"}[24h])
+      p90: quantile_over_time(0.90, rpc_latency_milliseconds{provider="publicnode"}[24h])
+      p99: quantile_over_time(0.99, rpc_latency_milliseconds{provider="publicnode"}[24h])
+      mean: avg_over_time(rpc_latency_milliseconds{provider="publicnode"}[24h])
       success: sum(rate(rpc_call_total{provider="publicnode", result="ok"}[24h])) / sum(rate(rpc_call_total{provider="publicnode"}[24h]))
       sample_size: sum(increase(rpc_call_total{provider="publicnode"}[24h]))
       series: avg_over_time(rpc_latency_milliseconds{provider="publicnode"}[1h])
@@ -123,10 +123,10 @@ providers:
     name: dRPC
     tag: Decentralized RPC mesh, consensus-checked
     queries:
-      p50: histogram_quantile(0.50, sum by (le) (rate(rpc_latency_milliseconds_histogram_bucket{provider="drpc"}[24h])))
-      p90: histogram_quantile(0.90, sum by (le) (rate(rpc_latency_milliseconds_histogram_bucket{provider="drpc"}[24h])))
-      p99: histogram_quantile(0.99, sum by (le) (rate(rpc_latency_milliseconds_histogram_bucket{provider="drpc"}[24h])))
-      mean: sum(rate(rpc_latency_milliseconds_histogram_sum{provider="drpc"}[24h])) / sum(rate(rpc_latency_milliseconds_histogram_count{provider="drpc"}[24h]))
+      p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="drpc"}[24h])
+      p90: quantile_over_time(0.90, rpc_latency_milliseconds{provider="drpc"}[24h])
+      p99: quantile_over_time(0.99, rpc_latency_milliseconds{provider="drpc"}[24h])
+      mean: avg_over_time(rpc_latency_milliseconds{provider="drpc"}[24h])
       success: sum(rate(rpc_call_total{provider="drpc", result="ok"}[24h])) / sum(rate(rpc_call_total{provider="drpc"}[24h]))
       sample_size: sum(increase(rpc_call_total{provider="drpc"}[24h]))
       series: avg_over_time(rpc_latency_milliseconds{provider="drpc"}[1h])
@@ -135,10 +135,10 @@ providers:
     name: 1RPC
     tag: Privacy-preserving gateway by Automata Network
     queries:
-      p50: histogram_quantile(0.50, sum by (le) (rate(rpc_latency_milliseconds_histogram_bucket{provider="1rpc"}[24h])))
-      p90: histogram_quantile(0.90, sum by (le) (rate(rpc_latency_milliseconds_histogram_bucket{provider="1rpc"}[24h])))
-      p99: histogram_quantile(0.99, sum by (le) (rate(rpc_latency_milliseconds_histogram_bucket{provider="1rpc"}[24h])))
-      mean: sum(rate(rpc_latency_milliseconds_histogram_sum{provider="1rpc"}[24h])) / sum(rate(rpc_latency_milliseconds_histogram_count{provider="1rpc"}[24h]))
+      p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="1rpc"}[24h])
+      p90: quantile_over_time(0.90, rpc_latency_milliseconds{provider="1rpc"}[24h])
+      p99: quantile_over_time(0.99, rpc_latency_milliseconds{provider="1rpc"}[24h])
+      mean: avg_over_time(rpc_latency_milliseconds{provider="1rpc"}[24h])
       success: sum(rate(rpc_call_total{provider="1rpc", result="ok"}[24h])) / sum(rate(rpc_call_total{provider="1rpc"}[24h]))
       sample_size: sum(increase(rpc_call_total{provider="1rpc"}[24h]))
       series: avg_over_time(rpc_latency_milliseconds{provider="1rpc"}[1h])
@@ -147,10 +147,10 @@ providers:
     name: MeowRPC
     tag: Free public RPC, no registration
     queries:
-      p50: histogram_quantile(0.50, sum by (le) (rate(rpc_latency_milliseconds_histogram_bucket{provider="meowrpc"}[24h])))
-      p90: histogram_quantile(0.90, sum by (le) (rate(rpc_latency_milliseconds_histogram_bucket{provider="meowrpc"}[24h])))
-      p99: histogram_quantile(0.99, sum by (le) (rate(rpc_latency_milliseconds_histogram_bucket{provider="meowrpc"}[24h])))
-      mean: sum(rate(rpc_latency_milliseconds_histogram_sum{provider="meowrpc"}[24h])) / sum(rate(rpc_latency_milliseconds_histogram_count{provider="meowrpc"}[24h]))
+      p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="meowrpc"}[24h])
+      p90: quantile_over_time(0.90, rpc_latency_milliseconds{provider="meowrpc"}[24h])
+      p99: quantile_over_time(0.99, rpc_latency_milliseconds{provider="meowrpc"}[24h])
+      mean: avg_over_time(rpc_latency_milliseconds{provider="meowrpc"}[24h])
       success: sum(rate(rpc_call_total{provider="meowrpc", result="ok"}[24h])) / sum(rate(rpc_call_total{provider="meowrpc"}[24h]))
       sample_size: sum(increase(rpc_call_total{provider="meowrpc"}[24h]))
       series: avg_over_time(rpc_latency_milliseconds{provider="meowrpc"}[1h])
@@ -159,10 +159,10 @@ providers:
     name: Flashbots Protect
     tag: Private-mempool RPC, anti-sandwich
     queries:
-      p50: histogram_quantile(0.50, sum by (le) (rate(rpc_latency_milliseconds_histogram_bucket{provider="flashbots"}[24h])))
-      p90: histogram_quantile(0.90, sum by (le) (rate(rpc_latency_milliseconds_histogram_bucket{provider="flashbots"}[24h])))
-      p99: histogram_quantile(0.99, sum by (le) (rate(rpc_latency_milliseconds_histogram_bucket{provider="flashbots"}[24h])))
-      mean: sum(rate(rpc_latency_milliseconds_histogram_sum{provider="flashbots"}[24h])) / sum(rate(rpc_latency_milliseconds_histogram_count{provider="flashbots"}[24h]))
+      p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="flashbots"}[24h])
+      p90: quantile_over_time(0.90, rpc_latency_milliseconds{provider="flashbots"}[24h])
+      p99: quantile_over_time(0.99, rpc_latency_milliseconds{provider="flashbots"}[24h])
+      mean: avg_over_time(rpc_latency_milliseconds{provider="flashbots"}[24h])
       success: sum(rate(rpc_call_total{provider="flashbots", result="ok"}[24h])) / sum(rate(rpc_call_total{provider="flashbots"}[24h]))
       sample_size: sum(increase(rpc_call_total{provider="flashbots"}[24h]))
       series: avg_over_time(rpc_latency_milliseconds{provider="flashbots"}[1h])
@@ -171,10 +171,10 @@ providers:
     name: Cloudflare
     tag: Permissioned-mode for many JSON-RPC methods
     queries:
-      p50: histogram_quantile(0.50, sum by (le) (rate(rpc_latency_milliseconds_histogram_bucket{provider="cloudflare"}[24h])))
-      p90: histogram_quantile(0.90, sum by (le) (rate(rpc_latency_milliseconds_histogram_bucket{provider="cloudflare"}[24h])))
-      p99: histogram_quantile(0.99, sum by (le) (rate(rpc_latency_milliseconds_histogram_bucket{provider="cloudflare"}[24h])))
-      mean: sum(rate(rpc_latency_milliseconds_histogram_sum{provider="cloudflare"}[24h])) / sum(rate(rpc_latency_milliseconds_histogram_count{provider="cloudflare"}[24h]))
+      p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="cloudflare"}[24h])
+      p90: quantile_over_time(0.90, rpc_latency_milliseconds{provider="cloudflare"}[24h])
+      p99: quantile_over_time(0.99, rpc_latency_milliseconds{provider="cloudflare"}[24h])
+      mean: avg_over_time(rpc_latency_milliseconds{provider="cloudflare"}[24h])
       success: sum(rate(rpc_call_total{provider="cloudflare", result="ok"}[24h])) / sum(rate(rpc_call_total{provider="cloudflare"}[24h]))
       sample_size: sum(increase(rpc_call_total{provider="cloudflare"}[24h]))
       series: avg_over_time(rpc_latency_milliseconds{provider="cloudflare"}[1h])
@@ -183,10 +183,10 @@ providers:
     name: Base Official
     tag: Coinbase-operated, Base mainnet RPC
     queries:
-      p50: histogram_quantile(0.50, sum by (le) (rate(rpc_latency_milliseconds_histogram_bucket{provider="base-official"}[24h])))
-      p90: histogram_quantile(0.90, sum by (le) (rate(rpc_latency_milliseconds_histogram_bucket{provider="base-official"}[24h])))
-      p99: histogram_quantile(0.99, sum by (le) (rate(rpc_latency_milliseconds_histogram_bucket{provider="base-official"}[24h])))
-      mean: sum(rate(rpc_latency_milliseconds_histogram_sum{provider="base-official"}[24h])) / sum(rate(rpc_latency_milliseconds_histogram_count{provider="base-official"}[24h]))
+      p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="base-official"}[24h])
+      p90: quantile_over_time(0.90, rpc_latency_milliseconds{provider="base-official"}[24h])
+      p99: quantile_over_time(0.99, rpc_latency_milliseconds{provider="base-official"}[24h])
+      mean: avg_over_time(rpc_latency_milliseconds{provider="base-official"}[24h])
       success: sum(rate(rpc_call_total{provider="base-official", result="ok"}[24h])) / sum(rate(rpc_call_total{provider="base-official"}[24h]))
       sample_size: sum(increase(rpc_call_total{provider="base-official"}[24h]))
       series: avg_over_time(rpc_latency_milliseconds{provider="base-official"}[1h])
@@ -195,10 +195,10 @@ providers:
     name: Binance Official
     tag: BNB Chain dataseed RPC, Binance-operated
     queries:
-      p50: histogram_quantile(0.50, sum by (le) (rate(rpc_latency_milliseconds_histogram_bucket{provider="binance"}[24h])))
-      p90: histogram_quantile(0.90, sum by (le) (rate(rpc_latency_milliseconds_histogram_bucket{provider="binance"}[24h])))
-      p99: histogram_quantile(0.99, sum by (le) (rate(rpc_latency_milliseconds_histogram_bucket{provider="binance"}[24h])))
-      mean: sum(rate(rpc_latency_milliseconds_histogram_sum{provider="binance"}[24h])) / sum(rate(rpc_latency_milliseconds_histogram_count{provider="binance"}[24h]))
+      p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="binance"}[24h])
+      p90: quantile_over_time(0.90, rpc_latency_milliseconds{provider="binance"}[24h])
+      p99: quantile_over_time(0.99, rpc_latency_milliseconds{provider="binance"}[24h])
+      mean: avg_over_time(rpc_latency_milliseconds{provider="binance"}[24h])
       success: sum(rate(rpc_call_total{provider="binance", result="ok"}[24h])) / sum(rate(rpc_call_total{provider="binance"}[24h]))
       sample_size: sum(increase(rpc_call_total{provider="binance"}[24h]))
       series: avg_over_time(rpc_latency_milliseconds{provider="binance"}[1h])
