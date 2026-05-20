@@ -3,7 +3,8 @@
 slug: network-coverage
 number: "005"
 title: Onchain data API with most networks supported
-seo_title: Onchain data API with the most networks supported - GeckoTerminal, Codex & Mobula live benchmark
+seo_title: "Crypto data API with the most blockchains supported in 2026: Mobula, Codex, GeckoTerminal live"
+seo_description: "Live blockchain coverage leaderboard. How many mainnets each onchain data API (Mobula, Codex, GeckoTerminal) officially supports right now, audited every six hours against their public network endpoints."
 subtitle: Number of blockchains each major onchain data provider officially supports.
 category: Aggregators
 status: live
@@ -11,11 +12,28 @@ metric: Networks supported
 unit: count
 higher_is_better: true
 
+seo_intro: |
+  This benchmark counts how many blockchains each major onchain data
+  API officially supports, audited live from each provider's own
+  "supported networks" endpoint every six hours. The number is what a
+  builder integrating an SDK actually cares about. how many chains can
+  I query without rolling my own indexer. Provider marketing pages
+  quote round numbers (250+, 100+, 50+ chains) without a list a reader
+  can verify; this benchmark reads the list from the API itself and
+  publishes the unique-chain count, refreshed against the source of
+  truth. Mainnets only. Testnets are excluded because providers list
+  them inconsistently and a builder shipping to production needs the
+  mainnet count, not a longer list inflated with chains nobody trades
+  on. Coverage breadth is one dimension of a data API's product; head
+  lag and metadata completeness sit on separate benches (№ 001 and
+  № 004) so a provider strong on raw count can be checked against the
+  quality dimensions too.
+
 abstract: |
   We benchmark how many networks each major onchain data provider lists
   in its public "supported networks" endpoint. The harness fetches the
   official listing every six hours from GeckoTerminal, Codex and Mobula,
-  deduplicates by chain id and counts. Mainnet only. testnets are
+  deduplicates by chain id and counts. Mainnet only, testnets are
   excluded because providers list them inconsistently and the comparison
   is meant to reflect what a builder can integrate against in production.
   Coverage breadth is one dimension of a data provider's product, not a
@@ -31,12 +49,31 @@ methodology:
   - "Counting: a provider's network is counted once per unique chain id; mainnet only."
   - "Failures (network errors, rate limits, auth errors) leave the previous count in place and increment a fetch_errors counter. the page falls back to its last successful sample."
 
-findings: []
+findings:
+  - "{{best_name}} currently leads at {{best_p50}} mainnets across {{count}} measured providers. The count is read live from each provider's own networks endpoint and deduplicated by chain id, so the number reflects what is queryable through the API today, not what marketing pages claim."
+  - "{{name:mobula}} returns {{p50:mobula}} mainnets. The breadth includes long-tail EVM L2s, Solana, Bitcoin and non-EVM chains, which is the coverage shape an aggregator pursues when the product is a single API across the full multichain surface."
+  - "{{name:codex}} clocks {{p50:codex}} mainnets. Defined.fi historically prioritises depth on EVM and Solana DEX coverage rather than breadth across niche chains, which surfaces here as a tighter count with stronger per-chain DEX data than a raw breadth ranking implies."
+  - "{{name:geckoterminal}} sits at {{p50:geckoterminal}} mainnets. GeckoTerminal indexes wherever CoinGecko already tracks tokens, so the count tracks closely with CoinGecko's DEX coverage rollout rather than a standalone listing decision."
+  - "Raw chain count is one dimension of a data API's product. A provider with 200 chains and shallow per-chain depth can rank above one with 80 chains and full DEX, metadata and event coverage on each. Latency (bench № 001) and metadata completeness (bench № 004) measure the other dimensions."
 
 source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/network-coverage
 
 prometheus:
   window: 24h
+
+faq:
+  - q: "Which crypto data API supports the most blockchains?"
+    a: "{{best_name}} currently leads at {{best_p50}} mainnets across {{count}} measured providers. The count is read every six hours directly from each provider's own supported-networks endpoint and deduplicated by chain id, so the leaderboard reflects what each API actually publishes as queryable, not a claim from a marketing page."
+  - q: "Does Mobula support more chains than CoinGecko's GeckoTerminal?"
+    a: "On this benchmark {{name:mobula}} returns {{p50:mobula}} mainnets and {{name:geckoterminal}} returns {{p50:geckoterminal}} mainnets. The two have different coverage philosophies. Mobula indexes EVM, Solana, Bitcoin and a long tail of non-EVM chains under a single API. GeckoTerminal grows alongside CoinGecko's DEX rollout, which is deep on the major chains and slower on niche L2s."
+  - q: "Why doesn't this benchmark include testnets?"
+    a: "Testnet listings are inconsistent across providers. Some list every devnet the engineering team ever spun up, others list none. Mainnets are what a builder shipping to production actually integrates against, so the comparison is restricted to mainnets only. The harness reads the full network list from each API and filters server-side."
+  - q: "Is having more chains supported always better?"
+    a: "Breadth and depth are independent dimensions. A provider with 200 chains might only index price ticks on most of them and full DEX swap history on a dozen. A provider with 60 chains might cover every chain end-to-end (pools, swaps, holders, metadata). Use this benchmark for the breadth question; head lag (bench № 001) and metadata coverage (bench № 004) answer the depth question. A serious integration decision reads all three."
+  - q: "How often is the network count refreshed?"
+    a: "Every six hours. The harness hits each provider's supported-networks endpoint, parses the response, deduplicates by chain id and updates the Prometheus gauge `networks_supported_total{provider}`. Failures (network errors, rate limits, auth errors) leave the previous count in place and increment a `fetch_errors_total` counter, so a temporary outage does not silently drop a provider off the leaderboard."
+  - q: "What counts as a 'mainnet' in this benchmark?"
+    a: "Any chain a provider lists as a queryable production environment, identified by a unique chain id. Ethereum mainnet, Solana mainnet, Base, Arbitrum, BNB Chain, Bitcoin and so on each count once regardless of how the provider labels them internally. Bridged variants of a token on different chains are not the same chain. The chain id is the deduplication key."
 
 # Real metrics exposed by the network-coverage harness:
 #   networks_supported_total{provider="geckoterminal"|"codex"|"mobula"}

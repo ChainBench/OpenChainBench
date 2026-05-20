@@ -3,7 +3,8 @@
 slug: metadata-coverage
 number: "004"
 title: Best onchain token metadata API
-seo_title: Best onchain token metadata API - Jupiter, Mobula & Codex live benchmark
+seo_title: "Best token metadata API in 2026: Mobula, Codex and Jupiter fresh-token coverage benchmark"
+seo_description: "Live token metadata API coverage leaderboard. Share of logo, description, twitter and website fields populated on freshly-launched Solana, BNB Chain and Base tokens. Mobula, Codex and Jupiter measured side by side over 24h."
 subtitle: Share of metadata fields populated for fresh-launch tokens (logo, description, twitter, website).
 category: Aggregators
 status: live
@@ -11,21 +12,38 @@ metric: Field coverage
 unit: pct
 higher_is_better: true
 
+seo_intro: |
+  This benchmark measures the gap every wallet, portfolio tracker and
+  DEX terminal hits within a few minutes of a memecoin launch. when a
+  token is two minutes old, how much of its metadata does each
+  aggregator actually return. Logo, description, twitter, website. The
+  four fields a UI needs to render a tradeable card instead of a
+  contract address and a question mark. Aggregator marketing pages
+  quote "37M tokens indexed" or "real-time coverage", but the moment a
+  pump.fun or Four.meme token clears its bonding curve the gap between
+  providers becomes visible to end users. The harness watches new
+  launches on Solana, BNB Chain and Base via Mobula Pulse V2, then
+  asks Mobula, Codex and Jupiter (Solana only) for the same token and
+  records which fields came back populated. Coverage is the share of
+  field checks that returned a value, computed as a rolling rate so
+  the leaderboard reflects what the API is doing this hour, not what
+  its catalogue claims to hold.
+
 abstract: |
   We benchmark how complete each aggregator's token-metadata response is for
   freshly-launched tokens. The harness subscribes to Mobula Pulse V2 for new
   tokens on Solana, BNB Chain and Base, then asks each aggregator (Mobula,
   Codex, Jupiter where the chain is supported) for that token's metadata and
-  records whether four canonical fields. `logo`, `description`, `twitter`
-  and `website`. were returned. The aggregate is the share of (provider,
+  records whether four canonical fields (`logo`, `description`, `twitter`,
+  `website`) were returned. The aggregate is the share of (provider,
   chain, field) combinations that returned a populated value across all
   fresh-token checks in the window.
 
-  A value of 100% means every field was returned for every
-  fresh token; a value of 50% means half the fields were missing on average.
-  Sort order on this page is ascending. the lowest coverage shows first,
-  which is the inverse of latency benchmarks. Readers should compare the
-  columns themselves; numerical p50 is the headline.
+  A value of 100% means every field was returned for every fresh token; a
+  value of 50% means half the fields were missing on average. Sort order on
+  this page is ascending, so the lowest coverage shows first, which is the
+  inverse of latency benchmarks. Readers should compare the columns
+  themselves; numerical p50 is the headline.
 
 methodology:
   - "Token discovery: Mobula Pulse V2 WebSocket on `solana`, `evm:56` (BNB), `evm:8453` (Base) for known launchpads (pump.fun, Meteora DBC, Four.meme, Raydium CPMM, Zora, BaseApp, Bags, Moonshot)."
@@ -36,12 +54,32 @@ methodology:
   - "Ratio: `metadata_coverage_success_total / metadata_coverage_checks_total`, expressed in percent. Failures of the metadata API itself (timeouts, 5xx) are not counted in the denominator. only successful responses with the field check applied."
   - "Jupiter is Solana-only. it appears with zero coverage on EVM chains by construction; the cross-chain headline excludes Jupiter on chains it does not support."
 
-findings: []
+findings:
+  - "{{best_name}} currently leads metadata coverage at {{best_p50}} (p50, 24 h) across {{count}} measured providers. The number is the share of (logo, description, twitter, website) field checks that returned a populated value on freshly-launched tokens."
+  - "{{name:mobula}} returns {{p50:mobula}} (p50, 24 h). Coverage on fresh tokens reflects how aggressively the provider's indexer pulls launchpad-side metadata at mint time rather than waiting for a curator to add it later."
+  - "{{name:codex}} clocks {{p50:codex}} (p50, 24 h). GraphQL `token` queries return a richer schema by design, so coverage is high on tokens that survive their first hour and lower on fresh launches still missing socials."
+  - "{{name:jupiter}} sits at {{p50:jupiter}} (p50, 24 h) on Solana, by far its strongest chain. Jupiter does not index EVM, so the cross-chain headline excludes Jupiter on chains it does not support."
+  - "Coverage drops sharply on the first hour after a launch. p99 ({{p99:mobula}} / {{p99:codex}} / {{p99:jupiter}}) is what a trading UI sees during a launch burst when dozens of new tokens land in the same minute."
+  - "{{worst_name}} trails at {{worst_p50}} (p50, 24 h). A 30-point gap on the leaderboard means roughly one in three field renders falls back to a placeholder when displaying a fresh-launch token."
 
 source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/aggregator-head-lag
 
 prometheus:
   window: 24h
+
+faq:
+  - q: "Which token metadata API has the best coverage for fresh launches?"
+    a: "{{best_name}} currently leads at {{best_p50}} (p50, 24 h) across {{count}} measured providers. The benchmark targets the hardest case for any aggregator, tokens minted in the last few minutes on Solana, BNB Chain or Base launchpads (pump.fun, Four.meme, Meteora DBC, Raydium CPMM and others), where catalogue size matters less than how fast the indexer reads off-chain metadata."
+  - q: "What does 'metadata coverage' actually measure?"
+    a: "For every freshly-launched token the harness asks each provider for that token's metadata and records whether four canonical fields came back populated. Logo, description, twitter, website. Coverage is the share of those field checks that returned a value, summed across providers, chains and fields, then expressed as a percentage. A provider with 80% coverage returns four-fifths of the requested fields on average for fresh tokens; a provider with 50% leaves half the fields blank."
+  - q: "Why do fresh tokens have low metadata coverage everywhere?"
+    a: "Most fresh tokens are minted by a launchpad with on-chain metadata that contains name, symbol, decimals, and sometimes a logo URI, but rarely a twitter or website out of the box. Aggregators have to pull the rest from off-chain sources (the launchpad's metadata server, the token creator's social profiles, in-protocol IPFS pins). Providers that hook directly into the launchpad's mint flow recover more fields than providers that wait for a curator to backfill them, which is the architectural reason coverage on fresh launches separates the leaderboard."
+  - q: "Does Jupiter cover BNB Chain or Base tokens?"
+    a: "No. Jupiter is Solana-only by design, so it appears with zero coverage on EVM chains by construction. The cross-chain headline value excludes Jupiter on chains it does not support so the comparison stays fair. On Solana Jupiter sits at {{p50:jupiter}} (p50, 24 h) on this benchmark."
+  - q: "How does OpenChainBench discover fresh tokens to test?"
+    a: "The harness subscribes to Mobula Pulse V2's WebSocket on Solana, BNB Chain and Base, scoped to known launchpads (pump.fun, Meteora DBC, Four.meme, Raydium CPMM, Zora, BaseApp, Bags, Moonshot). Every new mint triggers a metadata check on each provider in scope, and the result is recorded into Prometheus counters. Steady-state runs several hundred checks per provider per hour, which is the sample density that gives the percentile aggregates statistical meaning."
+  - q: "Why use a rolling rate instead of a single number for coverage?"
+    a: "Coverage drifts during the day. A launchpad releases dozens of tokens in a minute then quiets down, and provider coverage on the fast-launch burst is different from coverage during the lull. We use `quantile_over_time` on a one-hour rolling rate, sampled over 24 hours, so the headline is p50 of the hourly coverage rate rather than a flat average. The same shape as a latency benchmark, applied to a coverage ratio."
 
 # Drill-down dimensions exposed to the page UI. When the reader picks a
 # chain, every PromQL query gets `chain="X"` injected into its label

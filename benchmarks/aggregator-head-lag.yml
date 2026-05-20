@@ -3,12 +3,29 @@
 slug: aggregator-head-lag
 number: "001"
 title: Fastest onchain data API provider
-seo_title: Fastest onchain data API provider - GeckoTerminal, Mobula & Codex live latency benchmark
+seo_title: "Fastest crypto data API in 2026: Mobula, Codex and GeckoTerminal live head-lag benchmark"
+seo_description: "Live crypto data feed latency leaderboard. How many seconds between an on-chain swap landing in a block and it appearing on Mobula, Codex or GeckoTerminal WebSocket and REST feeds. p50, p90 and p99 over 24h, three regions."
 subtitle: On-chain event to WebSocket emission, in seconds. Measured against canonical-tip archive nodes.
 category: Aggregators
 status: live
 metric: Head lag
 unit: s
+
+seo_intro: |
+  This benchmark measures the question every builder of a trading UI, a
+  PnL tracker or a live DEX dashboard has to answer before picking a
+  data provider. how many seconds elapse between a swap landing on
+  chain and the same event appearing on the provider's feed. Marketing
+  pages quote "real-time" without a number; this page quotes the
+  number. Mobula's WebSocket, Codex's GraphQL feed and GeckoTerminal's
+  REST endpoint are watched from three regions (us-east, eu-west, sgp)
+  against canonical-tip archive nodes on Base, BNB Chain and Solana.
+  p50 and p99 are computed via Prometheus `quantile_over_time` over a
+  24-hour window so the leaderboard reflects sustained freshness, not
+  a cherry-picked cold-start sample. The same harness tracks presence
+  (5760 expected samples per provider per day), so a provider whose
+  feed dropped for an hour shows it on the success rate column rather
+  than disappearing silently from the latency aggregate.
 
 abstract: |
   We measure the gap between a transaction settling on chain and the same
@@ -24,15 +41,35 @@ methodology:
   - "Regions: us-east, eu-west, sgp. Cross-region median reported in the headline."
   - "Reference: archive nodes per chain, validated against block hashes."
   - "Metric: gauge `head_lag_seconds`, sampled every 15 seconds. Aggregated over the 24-hour window using `quantile_over_time`."
-  - "Success rate: presence ratio. share of expected sampling slots where a value was actually emitted (5,760 expected per provider per day at the 15s cadence). 100% means the aggregator's feed was reachable for the full window."
+  - "Success rate: presence ratio. Share of expected sampling slots where a value was actually emitted (5,760 expected per provider per day at the 15s cadence). 100% means the aggregator's feed was reachable for the full window."
   - "Cardinality: 3 aggregators × 3 chains × 3 regions = 27 active series."
 
-findings: []
+findings:
+  - "{{best_name}} currently leads head lag at {{best_p50}} (p50, 24 h) across {{count}} measured providers. The number is the wall-clock interval between a swap settling on chain and that swap appearing on the provider's feed, cross-region median."
+  - "{{name:mobula}} returns {{p50:mobula}} (p50, 24 h). WebSocket feeds compress latency by pushing events the moment the harness emits them rather than waiting for the next poll cycle, which is the architectural reason real-time integrations prefer them over REST."
+  - "{{name:codex}} clocks {{p50:codex}} (p50, 24 h). GraphQL subscriptions are a server-push pattern in practice and cluster near WebSocket performance on liquid pools, but tail latency tends to widen on long-tail tokens with sparse events."
+  - "{{name:geckoterminal}} sits at {{p50:geckoterminal}} (p50, 24 h). REST polling adds the poll interval to every read, so head lag tracks the publisher's chosen cadence rather than raw infrastructure speed."
+  - "p99 is the integration-grade number. The gap between p50 and {{p99:mobula}} / {{p99:codex}} / {{p99:geckoterminal}} is what a live UI feels when a chain spikes or a region's path degrades."
+  - "{{worst_name}} trails at {{worst_p50}} (p50, 24 h). On a real-time trading UI the gap between leader and laggard becomes visible to end users when chart candles stutter or the trade tape lags behind the explorer."
 
 source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/aggregator-head-lag
 
 prometheus:
   window: 24h
+
+faq:
+  - q: "Which crypto data API has the lowest latency right now?"
+    a: "{{best_name}} currently leads at {{best_p50}} (p50, 24 h) across {{count}} measured providers. The leaderboard re-sorts every 15 seconds against fresh Prometheus samples, so the answer reflects the last 24 hours of measured head lag on Base, BNB Chain and Solana from three regions, not a marketing-page claim."
+  - q: "What is head lag in a crypto data feed?"
+    a: "Head lag is the wall-clock interval between a transaction landing in a confirmed block on chain and the same transaction appearing on the data provider's feed. A provider with 200 ms head lag pushes the event a fifth of a second after it settled; a provider with 6 s head lag pushes it after six seconds. The number controls how live a trading UI, a chart or a PnL tracker actually feels when the underlying chain moves."
+  - q: "Is WebSocket faster than REST for crypto market data?"
+    a: "Yes, structurally. A WebSocket connection pushes events the moment the provider's indexer has them, so latency tracks the publisher's indexer speed and the network path. REST polling adds the poll interval to every read: a one-second poll cadence puts a floor of one second on top of whatever the indexer adds. The leaderboard shows the difference live, with Mobula on a WebSocket feed, Codex on GraphQL subscriptions and GeckoTerminal on REST."
+  - q: "How fast does GeckoTerminal update prices?"
+    a: "{{name:geckoterminal}} currently sits at {{p50:geckoterminal}} (p50, 24 h) head lag on this benchmark. REST endpoints update at the publisher's chosen cadence rather than the moment a swap lands, which is the architectural reason REST polling reads slower than WebSocket feeds for the same underlying chain data."
+  - q: "How is head lag measured on OpenChainBench?"
+    a: "The harness holds a live WebSocket subscription to canonical-tip archive nodes on each chain (Base, BNB Chain, Solana). Every new on-chain swap is timestamped on receipt with millisecond precision. The harness then watches each provider's feed for the same event and computes the delta. p50, p90 and p99 are aggregated over 24 hours via Prometheus `quantile_over_time`. Errors and dropouts are tracked separately as a presence ratio so a fast feed that disappears does not silently rank above a slower feed that stays up."
+  - q: "Which data provider should I pick for a real-time trading interface?"
+    a: "Read both the p50 and the p99 columns. p50 tells the typical experience, p99 tells the worst minute a user will see when a chain spikes or a region's path degrades. A 500 ms p50 with a 30 s p99 means most of the time the UI feels snappy and once per minute it stutters. The leaderboard splits both, plus the success rate column flags providers whose feed dropped during the measurement window."
 
 # Chain filter tabs above the chart. The "all" option leaves queries
 # unscoped (cross-chain aggregate); the others inject chain="<value>" into

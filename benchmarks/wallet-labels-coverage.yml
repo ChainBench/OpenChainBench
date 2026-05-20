@@ -3,7 +3,8 @@
 slug: wallet-labels-coverage
 number: "008"
 title: Best wallet labeling API provider
-seo_title: Best wallet labeling API provider - Mobula, Helius, Moralis, Blockscout, OLI, TonAPI live coverage benchmark
+seo_title: "Best wallet labeling API in 2026: Mobula, Helius, Moralis, Blockscout, TonAPI live coverage audit"
+seo_description: "Live wallet labeling API leaderboard. Share of well-known addresses (CEX hot wallets, DEX routers, Safe multisigs, OFAC SDN, public figures) each provider correctly identifies, audited every 30 minutes across 11 chains."
 subtitle: Share of well-known addresses each provider correctly labels with an entity (CEX, DEX, multisig, sanctioned, etc.).
 category: Aggregators
 status: live
@@ -11,20 +12,38 @@ metric: Coverage rate
 unit: pct
 higher_is_better: true
 
+seo_intro: |
+  This benchmark answers the question that decides whether a wallet
+  labeling API is worth integrating. given a publicly-known address,
+  does the API actually identify it. Arkham and Nansen own the
+  consumer visualization layer; the builder side of the question lives
+  elsewhere, in the labeling APIs wallets, portfolio trackers and AML
+  flows hit under the hood. We push roughly 60 curated anchor
+  addresses (CEX hot wallets, DEX routers, Safe multisigs, OFAC SDN,
+  public figures) into a queue every 30 minutes and ask each provider
+  for an entity name. Hits count only when the response is a
+  meaningful name, generic fillers ("EOA", "Contract", "Wallet") are
+  excluded because they carry no entity signal. Coverage is reported
+  per chain so chain-specialists (Helius on Solana, TonAPI on TON,
+  StellarExpert on Stellar, XRPScan on XRP, WalletExplorer on Bitcoin)
+  are not unfairly penalised for chains they do not claim to cover.
+  Universal providers (Mobula, Moralis, Blockscout, OLI) are scored
+  on every chain they advertise.
+
 abstract: |
   We benchmark how well each major wallet-labeling provider identifies a curated
   sample of publicly-known addresses across 11 chains. The harness pushes ~60
   rotating anchor addresses (Etherscan public name tags, OFAC SDN list, Safe
   multisigs, DEX routers, public figures) onto a queue and asks every supported
   provider for an entity label. A provider scores a hit when it returns a
-  non-generic entity name. categorical fillers like "EOA" or "Contract" don't
+  non-generic entity name; categorical fillers like "EOA" or "Contract" don't
   count.
 
-  Coverage is shown per chain. some providers cover 90+ chains (Mobula), others
+  Coverage is shown per chain. Some providers cover 90+ chains (Mobula), others
   are chain-specialists (Helius for Solana, TonAPI for TON, StellarExpert for
-  Stellar, XRPScan for XRP, WalletExplorer for Bitcoin). Showing per-chain rather
-  than aggregating prevents specialists from being unfairly penalized for
-  chains they don't claim to cover.
+  Stellar, XRPScan for XRP, WalletExplorer for Bitcoin). Showing per-chain
+  rather than aggregating prevents specialists from being unfairly penalized
+  for chains they don't claim to cover.
 
 methodology:
   - "Sample: ~60 curated anchor addresses (CEX hot wallets, DEX routers, Safe multisigs, OFAC SDN, public figures), shuffled and re-checked every 30 minutes. List rotated quarterly from public sources."
@@ -34,7 +53,27 @@ methodology:
   - "Failures (timeouts, 5xx, auth errors) are counted as 'no label' and surfaced separately as `wallet_labels_fetch_errors_total`."
   - "Region: `eu-west` (single point)."
 
-findings: []
+findings:
+  - "{{best_name}} currently leads coverage at {{best_p50}} (24 h) on the active chain tab, across {{count}} measured providers. The number is the share of curated anchor addresses for which the provider returns a non-generic entity name, audited every 30 minutes against ~60 publicly-known wallets per chain."
+  - "{{name:mobula}} returns {{p50:mobula}}. Universal coverage providers score on every chain they advertise, so a single number summarizes how broad the underlying label graph actually is once chain-specialists are stripped out."
+  - "{{name:helius}} scores {{p50:helius}} on Solana. Chain-specialists tend to dominate their home chain because their label graph is curated against native protocols (Jito, Jupiter, Pump.fun, marketplace programs) rather than translated from an EVM-shaped schema."
+  - "{{name:moralis}} returns {{p50:moralis}}. EVM-centric providers usually trail on TON, Stellar, XRP and Bitcoin because their indexers and entity graphs were built for EVM patterns and ported chains afterwards."
+  - "{{name:blockscout}} sits at {{p50:blockscout}}. Explorer-derived labels rely on public name tags and chain-by-chain instances, so coverage tracks how active each chain's Blockscout deployment is rather than a single universal label graph."
+  - "{{worst_name}} trails at {{worst_p50}} on the active tab. The gap between leader and laggard is mostly which entities each provider's graph has been curated against: CEX hot wallets, OFAC SDN and Safe multisigs are easy hits; long-tail public figures and DEX routers separate the top tier."
+
+faq:
+  - q: "Which wallet labeling API has the best coverage right now?"
+    a: "{{best_name}} currently leads the active chain tab at {{best_p50}} (24 h) across {{count}} measured providers. The leaderboard re-sorts every 30 minutes against fresh Prometheus samples, so the answer reflects the last 24 hours of live audits against ~60 curated anchor addresses, not a marketing-page claim."
+  - q: "What does 'wallet labeling' mean in a crypto API?"
+    a: "A wallet labeling API takes an address and returns an entity name. The CEX it belongs to (`Binance hot wallet 14`), the protocol (`Uniswap V3 router`), the multisig owner (`Safe: foundation treasury`), the sanctioned status (`OFAC SDN`), or a public-figure tag (`Vitalik Buterin`). Generic categorical labels like `EOA`, `Contract`, `Wallet` are not considered a hit on this benchmark because they carry no entity signal."
+  - q: "Is Mobula's labels API better than Moralis or Helius?"
+    a: "It depends on the chain. {{name:mobula}} is a universal provider audited on every chain it advertises and currently returns {{p50:mobula}} on the active tab. {{name:helius}} is Solana-only and dominates that chain because its label graph is curated against native Solana programs. {{name:moralis}} is EVM-centric and trails on TON, Stellar, XRP and Bitcoin. The per-chain tabs are the honest comparison; the All chains tab is the universal-coverage story."
+  - q: "What is the alternative to Arkham or Nansen for builders?"
+    a: "Arkham and Nansen own the consumer visualization layer (browse-the-web-of-onchain-money). The builder side of the question, the API integrated under the hood by wallets, portfolio trackers and AML flows, lives elsewhere. Mobula, Helius, Moralis, Blockscout, OLI, TonAPI, StellarExpert, XRPScan and WalletExplorer are the labeling APIs benchmarked here. Pick the one whose coverage matches the chains your product touches and whose response shape fits your integration latency budget."
+  - q: "How does OpenChainBench measure wallet label coverage?"
+    a: "The harness maintains a curated list of ~60 publicly-known anchor addresses (CEX hot wallets, DEX routers, Safe multisigs, OFAC SDN, public figures) rotated quarterly from public sources (Etherscan public name tags, Treasury OFAC list, Safe registry). Every 30 minutes each address is pushed to every provider that declares support for its chain. A `hit` is recorded only when the response is a non-generic entity name. Coverage is `success_total / checks_total` over 24 hours, sliced per chain so chain-specialists are not penalised on chains they do not claim to cover."
+  - q: "Which wallet labeling API has the best Solana coverage?"
+    a: "{{name:helius}} returns {{p50:helius}} on Solana. Chain-specialists dominate their home chain because their label graph is curated against native protocols (Jito stake pools, Jupiter routers, Pump.fun creators, Magic Eden marketplace programs) rather than translated from an EVM-shaped schema. Universal providers (Mobula, Moralis) are also audited on Solana, but switch the chain tab to Solana to see the direct comparison rather than the cross-chain average."
 
 source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/wallet-labels
 
