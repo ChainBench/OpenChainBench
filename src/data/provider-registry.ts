@@ -260,6 +260,64 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Official BNB Chain RPC endpoints operated by Binance. Multiple dataseed hosts (`bsc-dataseed1.binance.org` etc.) round-robin for load distribution.",
     twitter: "@BNBCHAIN",
   },
+
+  // ─── Gas oracles ──────────────────────────────────────────────
+  blocknative: {
+    url: "https://www.blocknative.com",
+    description:
+      "Mempool observability platform with a probability-of-inclusion gas oracle. EIP-1559 tier predictions exposed via the public /gasprices/blockprices endpoint, free tier without an API key.",
+    twitter: "@blocknative",
+  },
+  "publicnode-feehistory": {
+    url: "https://www.publicnode.com",
+    description:
+      "Gas predictor that wraps the canonical eth_feeHistory JSON-RPC method against PublicNode's Ethereum endpoint. Returns reward percentiles directly from the EIP-1559 spec implementation; no proprietary model.",
+    twitter: "@AllnodesHQ",
+  },
+  owlracle: {
+    url: "https://owlracle.info",
+    description:
+      "Multi-oracle gas aggregator across Ethereum, BNB Chain, Polygon and other EVM chains. Free tier 100 requests/hour, 1000/h with a free API key. Recommendation aggregates several upstream oracles into a single tier value.",
+    twitter: "@owlracle",
+  },
+  etherscan: {
+    url: "https://etherscan.io/gastracker",
+    description:
+      "Most-visited Ethereum gas tracker on the web, operated by Etherscan. The v2 gastracker API exposes Safe / Propose / Fast tiers; the legacy single-price shape predates EIP-1559's per-tier priority-fee model.",
+    twitter: "@etherscan",
+  },
+
+  // ─── Stablecoin issuers (appearing as providers in peg bench) ─
+  usdc: {
+    url: "https://www.circle.com/usdc",
+    description:
+      "Circle's USD-redeemed stablecoin, audited and backed by short-duration Treasuries and same-day USD cash. Same-day primary-market redemption with US banks is the structural anchor for the peg.",
+    twitter: "@circle",
+  },
+  usdt: {
+    url: "https://tether.to",
+    description:
+      "Tether's USD-pegged stablecoin, the dominant pair currency on most non-US crypto venues. Primary-market redemption is slower than USDC; secondary-market peg carries a premium during risk-on minutes.",
+    twitter: "@Tether_to",
+  },
+  dai: {
+    url: "https://makerdao.com",
+    description:
+      "MakerDAO's overcollateralized stablecoin (now Sky's USDS legacy version). CEX coverage is essentially dead in 2026; the only honest live peg signal is on-chain via Curve 3pool's get_dy.",
+    twitter: "@MakerDAO",
+  },
+  fdusd: {
+    url: "https://firstdigitallabs.com",
+    description:
+      "First Digital USD, Hong Kong-issued stablecoin backed 1:1 by USD reserves. Primary depth lives on Binance USDT-quoted FDUSDUSDT; USD-quoted venues offer negligible volume.",
+    twitter: "@firstdigitallabs",
+  },
+  usde: {
+    url: "https://ethena.fi",
+    description:
+      "Ethena's synthetic dollar anchored by a delta-neutral basis trade on perpetual futures. Flashed to $0.65 on Binance USDEUSDT during the October 10 2025 liquidation cascade.",
+    twitter: "@ethena_labs",
+  },
 };
 
 export function getProviderRegistry(slug: string): ProviderRegistryEntry | undefined {
