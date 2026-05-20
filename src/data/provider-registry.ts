@@ -212,6 +212,62 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     twitter: "@monero",
   },
 
+  // ─── Ethereum L2 rollups ──────────────────────────────────────
+  arbitrum: {
+    url: "https://arbitrum.io",
+    description:
+      "Optimistic rollup built on Nitro stack with a fast-finality sequencer. Sub-second block times (~250 ms) via a 250 ms default block interval, far below the 2 s OP Stack convention. 7-day fraud-proof window for L1 finality.",
+    twitter: "@arbitrum",
+  },
+  optimism: {
+    url: "https://www.optimism.io",
+    description:
+      "Optimistic rollup and the canonical OP Stack reference implementation. 2-second sequencer block time, 7-day fraud-proof window, anchored to Ethereum L1 via batch submissions to the Optimism Portal.",
+    twitter: "@Optimism",
+  },
+  base: {
+    url: "https://www.base.org",
+    description:
+      "Coinbase-operated optimistic rollup on the OP Stack. 2-second sequencer block time, shared bridge with Optimism via the OP Superchain, fastest-growing L2 by TVL since 2024.",
+    twitter: "@base",
+  },
+  blast: {
+    url: "https://blast.io",
+    description:
+      "OP Stack fork with native ETH and stablecoin yield baked into the L2 protocol (ETH rebases via Lido, USDB via MakerDAO). 2-second sequencer block time, otherwise stock OP Stack.",
+    twitter: "@Blast_L2",
+  },
+  mantle: {
+    url: "https://www.mantle.xyz",
+    description:
+      "Modular OP Stack fork using EigenDA for data availability rather than Ethereum calldata, cutting L1 anchoring cost. 2-second sequencer block time, MNT token for gas (ETH-pegged).",
+    twitter: "@Mantle_Official",
+  },
+  linea: {
+    url: "https://linea.build",
+    description:
+      "ConsenSys zkEVM rollup with a prover-bound block cadence. Idle periods batch into longer intervals (p50 around 3-6 s) while busy periods produce blocks closer to the nominal 2 s mark.",
+    twitter: "@LineaBuild",
+  },
+  scroll: {
+    url: "https://scroll.io",
+    description:
+      "Native bytecode-equivalent zkEVM rollup. Sequencer cadence is prover-bound: empty periods see longer gaps between blocks while busy minutes produce blocks at a sub-3-second rate.",
+    twitter: "@Scroll_ZKP",
+  },
+  zksync: {
+    url: "https://zksync.io",
+    description:
+      "Matter Labs' zk-rollup with the ZK Stack reference implementation and a custom LLVM-based VM (EraVM). Batched producer with variable block cadence (p50 ~3-6 s) tied to proof generation rather than fixed sequencer intervals.",
+    twitter: "@zksync",
+  },
+  taiko: {
+    url: "https://taiko.xyz",
+    description:
+      "Based rollup: Ethereum L1 validators sequence the L2 directly via Taiko Inbox contracts, no separate sequencer. Block time around 3 seconds. Fundamentally different trust model from the operator-sequenced rollups in the rest of the field.",
+    twitter: "@taikoxyz",
+  },
+
   // ─── Public RPC providers ─────────────────────────────────────
   publicnode: {
     url: "https://www.publicnode.com",
