@@ -3,19 +3,19 @@
 slug: l1-finality
 number: "006"
 title: Fastest layer one blockchain finality
-seo_title: Time to finality by L1 blockchain - Ethereum, Solana, Stellar, Hedera live benchmark
-seo_description: "Live time to finality for every major Layer-1: Ethereum ~12.8 min (2 epochs / 64 slots, Casper FFG), Solana sub-second on processed and ~12.8 s on finalized, Hedera consensus finality, Stellar finality, SUI, TON, BNB, Avalanche, TRON, Cardano. p50 / p90 / p99 measured every 10 seconds."
+seo_title: "L1 finality time: Stellar, Solana, Ethereum, Hedera live"
+seo_description: "Stellar finality time ~5s. Solana finalized 12.8s. Ethereum 12.8 min. Hedera 3-5s. SUI and TON sub-second. Live p50/p90/p99 over 24h."
 subtitle: Wall-clock distance between each L1's latest block and its finalized block.
 seo_intro: |
-  This benchmark measures the time to finality on every major Layer-1 blockchain, live, with p50 / p90 / p99 percentiles refreshed every 10 seconds. Ethereum L1 finality time is ~12.8 minutes - that's 2 epochs, or 64 slots of 12 seconds each, the wait Casper FFG needs to lock in the chain. Solana finality time goes from sub-second on the processed commitment to ~12.8 s on finalized (after 32 confirmed slots). Hedera consensus finality and Stellar finality both clear within seconds - Hashgraph aBFT for Hedera, the Stellar Consensus Protocol for Stellar. SUI, TON, BNB and Avalanche sit under two seconds via BFT and fast-finality forks; probabilistic PoW-style chains (Litecoin, Monero, Cardano) settle on a confirmation-depth convention.
+  This page measures L1 finality time live for every major Layer-1 blockchain, with p50 / p90 / p99 refreshed every 10 seconds. Stellar finality time is ~5 seconds, the close interval the Stellar Consensus Protocol locks in via federated Byzantine agreement. Solana finality time goes from sub-second on the processed commitment to ~12.8 s on finalized after 32 confirmed slots. Ethereum finality time is ~12.8 minutes, the 2-epoch Casper FFG window. Hedera finality time clears in 3-5 seconds via Hashgraph aBFT. SUI finality time and TON finality time both sit under one second via Mysticeti DAG-BFT and BAG consensus. BNB and Avalanche finality time land near two seconds through fast-finality forks. Probabilistic chains (Litecoin, Monero, Cardano) settle on a confirmation-depth convention measured here in minutes.
 
 faq:
-  - q: "What is the time to finality for Ethereum L1?"
-    a: "Ethereum L1 finality time is ~12.8 minutes. That's 2 epochs of 32 slots × 12 seconds, the window Casper FFG needs to justify and finalize a checkpoint. This benchmark measures it live by polling eth_getBlockByNumber(\"latest\") and eth_getBlockByNumber(\"finalized\") every 10 seconds and taking their timestamp delta."
-  - q: "What is Solana finality time? Is it really sub-second?"
+  - q: "What is Ethereum finality time?"
+    a: "Ethereum finality time is ~12.8 minutes. That's 2 epochs of 32 slots × 12 seconds, the window Casper FFG needs to justify and finalize a checkpoint. This benchmark measures it live by polling eth_getBlockByNumber(\"latest\") and eth_getBlockByNumber(\"finalized\") every 10 seconds and taking their timestamp delta."
+  - q: "What is Solana finality time?"
     a: "Solana exposes two commitments. Processed is optimistic and lands sub-second - typically under 500 ms. Finalized requires 32 confirmed slots and clocks around 12.8 seconds. The leaderboard value here is finalized, the stricter guarantee. Solana finality time at the sub-second tier is real but only at the processed commitment level."
-  - q: "What is Hedera consensus finality time?"
-    a: "Hedera Hashgraph delivers asynchronous Byzantine fault tolerant (aBFT) deterministic finality in 3 to 5 seconds. The mirror node only exposes already-final blocks, so true wall-clock measurement of consensus lag is currently impossible from public endpoints. We re-enable Hedera once the Block Node service (HIP-1056) leaves private preview."
+  - q: "What is Hedera finality time?"
+    a: "Hedera finality time is 3 to 5 seconds via Hashgraph asynchronous Byzantine fault tolerant (aBFT) consensus. The mirror node only exposes already-final blocks, so true wall-clock measurement of consensus lag is currently impossible from public endpoints. We re-enable Hedera once the Block Node service (HIP-1056) leaves private preview."
   - q: "What is Stellar finality time?"
     a: "Stellar uses the Stellar Consensus Protocol, a federated Byzantine agreement that reaches deterministic finality at every ledger close - roughly every 5 seconds, no probabilistic confirmation needed. This benchmark records wall-clock time between a new ledger appearing on the Horizon stream and its SCP-final commit."
   - q: "Which blockchain has the fastest finality time?"
@@ -25,7 +25,7 @@ faq:
 
 category: Blockchains
 status: live
-metric: Finality lag
+metric: Finality time
 unit: s
 higher_is_better: false
 
