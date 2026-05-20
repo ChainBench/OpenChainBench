@@ -255,7 +255,7 @@ export function BenchmarkBody({
           </dl>
 
           <div className="mt-8 card-soft rounded-xl p-6 lg:p-8">
-            {benchmark.results.length >= 5 ||
+            {benchmark.results.length >= 3 ||
             benchmark.unit === "bps" ||
             benchmark.unit === "pct" ? (
               <RankedBarChart benchmark={benchmark} />
