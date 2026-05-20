@@ -29,7 +29,12 @@
 import type { Benchmark } from "@/types/benchmark";
 import { fmtUnit } from "@/lib/format";
 
-const TEMPLATE_RE = /\{\{\s*([a-z_]+)(?::([a-z0-9-]+))?\s*\}\}/gi;
+// Keyword allows digits ({{p50:slug}}, {{best_p50}}, {{worst_p99}}) and
+// underscores, must start with a letter. The earlier [a-z_]+ form
+// silently dropped every percentile placeholder because the `5` in `p50`
+// fell outside the character class - the match never anchored, leaving
+// the literal `{{p50:slug}}` in the rendered page.
+const TEMPLATE_RE = /\{\{\s*([a-z][a-z0-9_]*)(?::([a-z0-9-]+))?\s*\}\}/gi;
 
 export function renderTemplate(text: string, benchmark: Benchmark): string {
   if (!text || text.indexOf("{{") === -1) return text;
