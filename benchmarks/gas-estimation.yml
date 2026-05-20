@@ -1,0 +1,157 @@
+# OpenChainBench. Bench № 013
+
+slug: gas-estimation
+number: "013"
+title: Most accurate Ethereum gas oracle
+seo_title: "Most accurate Ethereum gas oracle in 2026: Blocknative, Etherscan, Owlracle and PublicNode feeHistory benchmark"
+seo_description: "Live Ethereum gas oracle accuracy leaderboard. Absolute prediction error in gwei between each oracle's priority-fee tier and the realized percentile in the next mined block. Blocknative, PublicNode feeHistory, Owlracle and Etherscan, p50 and p90 over 24h."
+subtitle: Absolute error in gwei between each oracle's priority-fee prediction and the realized percentile in the next mined block.
+category: RPCs
+status: live
+metric: Prediction error
+unit: count
+higher_is_better: false
+
+seo_intro: |
+  This benchmark answers the question every wallet, swap router and
+  bridge UI has to confront before sending a transaction. which gas
+  oracle's prediction actually matches what the next block will
+  charge. Most oracles advertise a fast / standard / slow tier
+  without ever publishing the gap between prediction and reality.
+  We normalize each oracle's tiers onto a unified p25 / p50 / p75 /
+  p90 / p99 percentile scheme, take the predicted priority fee in
+  gwei, then compare it against the realized percentile computed
+  directly from the actual transactions in the next mined Ethereum
+  block. The absolute error (|predicted - realized|, in gwei) is
+  the headline metric. Lower is better. Blocknative and PublicNode
+  feeHistory are polled every 12 seconds (the Ethereum block time),
+  Owlracle every 60 seconds (free quota 100/hour), Etherscan every
+  15 seconds (no-key throttle is 1 request per 5 seconds). The
+  realized fee is computed from `eth_getBlockByNumber` with full
+  transaction objects, so the comparison is grounded in on-chain
+  truth rather than a second oracle's opinion.
+
+abstract: |
+  We measure how accurately each Ethereum gas oracle predicts the
+  priority fee a transaction must pay to land in the next block.
+  Every oracle is polled at its tier-tolerant cadence and its
+  predicted priority fee is buffered with the predicted block height.
+  When that block is mined, the harness pulls the full block via
+  `eth_getBlockByNumber(.., true)`, computes the realized priority
+  percentile from the actual `maxPriorityFeePerGas` values across
+  all included transactions, and records the absolute error per
+  (oracle, tier) pair as both a gauge and a histogram. p50 / p90
+  are computed via Prometheus `quantile_over_time` over the 24 h
+  window. The base-fee prediction is also tracked but is mostly a
+  sanity check, every EIP-1559-aware oracle inherits the next-block
+  base fee from `eth_feeHistory` directly, so the priority-fee
+  prediction is the only signal that meaningfully separates the
+  field. Pending-buffer growth surfaces when the realizer falls
+  behind so a temporarily backlogged Ethereum node does not silently
+  inflate one oracle's error scores.
+
+methodology:
+  - "Oracles: Blocknative (12 s, no-key tolerated), PublicNode feeHistory (12 s, free fair-use), Owlracle (60 s, free quota 100/hour, ceiling 1000/h with optional key), Etherscan v2 gastracker (15 s, no-key 1/5s, 5/s with key)."
+  - "Tier normalization: each oracle's named tiers (fast / standard / slow / safe / propose) are mapped onto a unified p25 / p50 / p75 / p90 / p99 scheme. Blocknative and Owlracle expose finer buckets so `tier=p75` and `tier=p99` are populated when the oracle supplies them."
+  - "Realized priority fee: the harness pulls each mined block via `eth_getBlockByNumber(.., true)` and computes the realized percentile from the actual `maxPriorityFeePerGas` values across every included transaction. Empty blocks (`gas_realized_tx_count` near zero) are surfaced separately because the realized percentile is noisy at low transaction counts."
+  - "Realized base fee: the actual `baseFeePerGas` of the mined block is the canonical answer. Predicted base fee is recorded for completeness but is not the ranking signal, every EIP-1559 oracle inherits this from `eth_feeHistory` and converges to the same number."
+  - "Pending buffer: every prediction sits in an in-memory buffer waiting for the realized block. TTL is ~25 blocks (~5 minutes), beyond which the prediction is dropped as no-longer-informative. Buffer growth surfaces via `gas_pending_buffer_size` so a backlogged realizer does not silently inflate an oracle's error."
+  - "Polling result classification: `ok`, `http_err`, `parse_err`, `throttled` (HTTP 429 or oracle-specific quota message). Counter `gas_oracle_call_total{result}` powers the reliability column so an oracle that 429s 30% of the time is not silently ranked next to one that always responds."
+  - "Chain coverage: Ethereum mainnet only. Layer 2 gas oracles use different schemes (sequencer fees, L1 data-availability cost) and would live in a separate bench."
+  - "Excluded by design: rough median oracles that publish only a single number (no tier breakdown) cannot be compared against per-tier realized percentiles. EthGasStation is retired; Etherchain's gasnow shut down years ago; both are out of scope."
+
+findings:
+  - "{{best_name}} currently leads at {{best_p50}} gwei absolute error (p50, 24 h) across {{count}} measured oracles. The number is the median absolute gap between the oracle's predicted p50 priority fee and the realized p50 priority fee in the next mined block, in gwei."
+  - "{{name:blocknative}} returns {{p50:blocknative}} gwei median error. Blocknative is the historical reference oracle on this surface, with a probability-of-inclusion model published per tier and the fastest poll cadence (12 s) any free-tier oracle tolerates."
+  - "{{name:publicnode-feehistory}} returns {{p50:publicnode-feehistory}} gwei median error. PublicNode's `eth_feeHistory` predictor is a thin wrapper over the EIP-1559 spec's reward percentiles, so it tends to agree closely with the realized percentile by construction; the gap is mostly the difference between the lookback window the oracle uses and the next-block reality."
+  - "{{name:etherscan}} clocks {{p50:etherscan}} gwei median error. Etherscan's gas tracker is the most-visited gas oracle on the web but its tiering (`SafeGasPrice` / `ProposeGasPrice` / `FastGasPrice`) was originally designed for the pre-EIP-1559 single-price world and shows the heaviest mapping loss against per-tier realized percentiles."
+  - "{{name:owlracle}} sits at {{p50:owlracle}} gwei median error. Owlracle aggregates several oracles into a recommendation, which compresses tail risk but adds polling latency at the 60 s cadence the free quota allows."
+  - "{{worst_name}} trails at {{worst_p50}} gwei median error on the active tier. The gap between leader and laggard is small on quiet blocks and balloons on volatile minutes - the p99 column is the integration-grade number for products that cannot afford to silently overpay or under-bid during gas spikes."
+
+faq:
+  - q: "Which Ethereum gas oracle is the most accurate right now?"
+    a: "{{best_name}} currently leads at {{best_p50}} gwei absolute error (p50, 24 h) across {{count}} measured oracles. The leaderboard re-sorts every block against fresh realized-percentile data computed directly from the actual transactions in the mined block, so the answer reflects the last 24 hours of measured prediction error, not a marketing claim."
+  - q: "What is a gas oracle and why does accuracy matter?"
+    a: "A gas oracle predicts the priority fee a transaction needs to pay to land in the next block. Wallets, swap routers and bridge UIs query an oracle for a fast / standard / slow tier, then attach that fee to the user's transaction. Overpaying is wasted user money; underpaying delays inclusion (the trade re-quotes, the swap reverts on slippage, the bridge intent expires). The accuracy gap between oracles is the difference between users paying $0.20 and $1.50 for the same swap, or between landing in block N and block N+3."
+  - q: "How does Blocknative compare to Etherscan and Owlracle?"
+    a: "{{name:blocknative}} returns {{p50:blocknative}} gwei median error, {{name:etherscan}} returns {{p50:etherscan}} gwei, {{name:owlracle}} returns {{p50:owlracle}} gwei. Blocknative's model is built specifically for EIP-1559 priority-fee tiering, Etherscan's tracker carries legacy assumptions from the pre-1559 single-price world, Owlracle aggregates multiple oracles into a recommended value. The leaderboard surfaces the live gap so the comparison is grounded in measured data rather than vendor copy."
+  - q: "What about eth_feeHistory and EIP-1559 oracles directly?"
+    a: "PublicNode's `eth_feeHistory` predictor is a thin wrapper over the EIP-1559 spec's reward percentiles and is the cleanest reference for what the canonical Geth implementation suggests. It tends to agree closely with the realized percentile by construction. Most wallet teams who want to skip third-party oracles entirely call `eth_feeHistory` directly against their own node. The benchmark includes PublicNode's variant ({{p50:publicnode-feehistory}} gwei median error, 24 h) as a reference baseline for that approach."
+  - q: "How is gas prediction error measured on OpenChainBench?"
+    a: "Every oracle is polled at its tier-tolerant cadence and the predicted priority fee per tier is buffered with the predicted block height. When that block is mined, the harness pulls the full block via `eth_getBlockByNumber(.., true)` and computes the realized percentile from the actual `maxPriorityFeePerGas` values across every included transaction. Absolute error (|predicted - realized|, in gwei) is recorded per (oracle, tier) as both a gauge and a histogram. p50 / p90 are computed via Prometheus `quantile_over_time` over the last 24 h. Empty blocks are flagged separately because the realized percentile is noisy when transaction count is near zero."
+  - q: "Why is gas prediction so hard?"
+    a: "EIP-1559 makes the base fee deterministic (it adjusts by ±12.5% per block based on the previous block's gas used), so every oracle agrees on base fee within a fraction of a gwei. The hard part is predicting the priority-fee distribution in the *next* block. Priority fees are set by users in response to mempool congestion, which shifts on swap activity, MEV bot deployments, NFT mints and DEX volume in a way no historical-lookback model can fully anticipate. The leaderboard surfaces which oracle's lookback / inference scheme tracks reality best, sustained over 24 h."
+
+source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/gas-estimation
+
+prometheus:
+  window: 24h
+
+# Real metrics emitted by the gas-estimation harness:
+#   gas_predicted_priority_gwei{oracle, tier}        gauge
+#   gas_predicted_base_gwei{oracle}                  gauge
+#   gas_realized_priority_gwei{tier}                 gauge
+#   gas_realized_base_gwei                           gauge
+#   gas_error_priority_gwei{oracle, tier}            gauge (latest |pred - real|)
+#   gas_error_priority_gwei_histogram{oracle, tier}  histogram (per-block samples)
+#   gas_error_base_gwei{oracle}                      gauge
+#   gas_oracle_call_total{oracle, result}            counter
+#   gas_oracle_health{oracle}                        gauge (0|1)
+#   gas_realized_tx_count                            gauge
+#   gas_pending_buffer_size{oracle}                  gauge
+#
+# Tier note: the leaderboard ranks oracles on their p50-tier
+# prediction error (standard speed, the tier wallets use by default).
+# Per-tier breakdowns (p25 / p75 / p90 / p99) are emitted by the
+# harness and visible in raw Prometheus; surfacing them as a UI tab
+# is deferred until the spec schema gains a generic `dimensions.tier`
+# slot - the current schema is restricted to `chain` and `region`.
+
+providers:
+  - slug: blocknative
+    name: Blocknative
+    tag: Probability-of-inclusion model, EIP-1559 tiered
+    queries:
+      p50: histogram_quantile(0.50, sum by (le) (rate(gas_error_priority_gwei_histogram_bucket{oracle="blocknative", tier="p50"}[24h])))
+      p90: histogram_quantile(0.90, sum by (le) (rate(gas_error_priority_gwei_histogram_bucket{oracle="blocknative", tier="p50"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(gas_error_priority_gwei_histogram_bucket{oracle="blocknative", tier="p50"}[24h])))
+      mean: avg_over_time(gas_error_priority_gwei{oracle="blocknative", tier="p50"}[24h])
+      success: sum(rate(gas_oracle_call_total{oracle="blocknative", result="ok"}[24h])) / sum(rate(gas_oracle_call_total{oracle="blocknative"}[24h]))
+      sample_size: sum(increase(gas_oracle_call_total{oracle="blocknative"}[24h]))
+      series: gas_error_priority_gwei{oracle="blocknative", tier="p50"}
+
+  - slug: publicnode-feehistory
+    name: PublicNode feeHistory
+    tag: Thin wrapper over EIP-1559 reward percentiles
+    queries:
+      p50: histogram_quantile(0.50, sum by (le) (rate(gas_error_priority_gwei_histogram_bucket{oracle="publicnode-feehistory", tier="p50"}[24h])))
+      p90: histogram_quantile(0.90, sum by (le) (rate(gas_error_priority_gwei_histogram_bucket{oracle="publicnode-feehistory", tier="p50"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(gas_error_priority_gwei_histogram_bucket{oracle="publicnode-feehistory", tier="p50"}[24h])))
+      mean: avg_over_time(gas_error_priority_gwei{oracle="publicnode-feehistory", tier="p50"}[24h])
+      success: sum(rate(gas_oracle_call_total{oracle="publicnode-feehistory", result="ok"}[24h])) / sum(rate(gas_oracle_call_total{oracle="publicnode-feehistory"}[24h]))
+      sample_size: sum(increase(gas_oracle_call_total{oracle="publicnode-feehistory"}[24h]))
+      series: gas_error_priority_gwei{oracle="publicnode-feehistory", tier="p50"}
+
+  - slug: owlracle
+    name: Owlracle
+    tag: Multi-oracle aggregator, free tier 100/h
+    queries:
+      p50: histogram_quantile(0.50, sum by (le) (rate(gas_error_priority_gwei_histogram_bucket{oracle="owlracle", tier="p50"}[24h])))
+      p90: histogram_quantile(0.90, sum by (le) (rate(gas_error_priority_gwei_histogram_bucket{oracle="owlracle", tier="p50"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(gas_error_priority_gwei_histogram_bucket{oracle="owlracle", tier="p50"}[24h])))
+      mean: avg_over_time(gas_error_priority_gwei{oracle="owlracle", tier="p50"}[24h])
+      success: sum(rate(gas_oracle_call_total{oracle="owlracle", result="ok"}[24h])) / sum(rate(gas_oracle_call_total{oracle="owlracle"}[24h]))
+      sample_size: sum(increase(gas_oracle_call_total{oracle="owlracle"}[24h]))
+      series: gas_error_priority_gwei{oracle="owlracle", tier="p50"}
+
+  - slug: etherscan
+    name: Etherscan
+    tag: Most-visited gas tracker, legacy tier shape
+    queries:
+      p50: histogram_quantile(0.50, sum by (le) (rate(gas_error_priority_gwei_histogram_bucket{oracle="etherscan", tier="p50"}[24h])))
+      p90: histogram_quantile(0.90, sum by (le) (rate(gas_error_priority_gwei_histogram_bucket{oracle="etherscan", tier="p50"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(gas_error_priority_gwei_histogram_bucket{oracle="etherscan", tier="p50"}[24h])))
+      mean: avg_over_time(gas_error_priority_gwei{oracle="etherscan", tier="p50"}[24h])
+      success: sum(rate(gas_oracle_call_total{oracle="etherscan", result="ok"}[24h])) / sum(rate(gas_oracle_call_total{oracle="etherscan"}[24h]))
+      sample_size: sum(increase(gas_oracle_call_total{oracle="etherscan"}[24h]))
+      series: gas_error_priority_gwei{oracle="etherscan", tier="p50"}

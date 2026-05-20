@@ -1,0 +1,204 @@
+# OpenChainBench. Bench № 010
+
+slug: rpc-capabilities
+number: "010"
+title: Fastest public Ethereum RPC provider
+seo_title: "Fastest free Ethereum RPC in 2026: PublicNode, dRPC, 1RPC, Flashbots, Cloudflare live latency benchmark"
+seo_description: "Live no-key public RPC latency leaderboard. eth_blockNumber round-trip in milliseconds against PublicNode, dRPC, 1RPC, MeowRPC, Flashbots and Cloudflare on Ethereum, Base and BNB Chain. p50, p90 and p99 over 24h, plus archive-depth support per provider."
+subtitle: HTTP round-trip latency for eth_blockNumber against free, no-key public RPC endpoints, audited every 15 seconds.
+category: RPCs
+status: live
+metric: RPC latency
+unit: ms
+higher_is_better: false
+
+seo_intro: |
+  This benchmark answers the question every developer reaching for a
+  free Ethereum RPC asks before pasting a URL into their dapp.
+  which public no-key endpoint is actually fast and reliable right
+  now. Alchemy and Infura own the keyed-tier market; the free public
+  side of the question lives elsewhere, in the RPC services dapps
+  hit when a contributor's free quota is the budget. We probe
+  `eth_blockNumber` every 15 seconds against PublicNode, dRPC, 1RPC,
+  MeowRPC, Flashbots Protect, Cloudflare and chain-official RPCs
+  (Base, Binance) from a single region, with the same payload and
+  the same client. Latency is the headline number; the leaderboard
+  also exposes call-result classification (`ok` vs `http_err` vs
+  `jsonrpc_err` vs `stale` vs `timeout`, the Cloudflare-eth trap
+  where a 200 OK hides a JSON-RPC error field) and archive-depth
+  support so a fast endpoint that returned a state-pruned response
+  at block (head - 5M) is not silently treated as a viable archive
+  source.
+
+abstract: |
+  We measure the round-trip latency of a single, identical RPC call
+  (`eth_blockNumber`) against every major no-key Ethereum-compatible
+  public RPC endpoint, on Ethereum mainnet, Base and BNB Chain. The
+  harness emits three metric families from one binary because they
+  share the same (provider × chain) client matrix and same 15 s
+  scrape interval: (a) `rpc_latency_milliseconds` for the speed
+  leaderboard, (b) `rpc_call_total{result}` for the reliability and
+  silent-failure analysis, (c) `rpc_archive_depth_supported{depth}`
+  for an honest read on which endpoints actually serve historical
+  state. The depth set covers Geth's default pruned cap (~5760
+  blocks) up through genesis-era archive (5M blocks). Stale-head
+  detection compares each provider's reported block against the
+  cross-provider tip and flags anything more than 20 blocks behind
+  so a dead endpoint stuck on an old number is not silently ranked
+  as the fastest.
+
+methodology:
+  - "Cadence: every 15 seconds per (provider, chain) pair. Single eu-west region; multi-region requires running additional monitor instances."
+  - "Payload: `{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_blockNumber\",\"params\":[]}`. Plain HTTP POST, identical for every endpoint, no API key in any request."
+  - "Latency: client-side `time.Now()` delta around the round-trip, in milliseconds. Exposed as both a gauge (`rpc_latency_milliseconds`) and a histogram (`rpc_latency_milliseconds_histogram`) with buckets 50 ms → 10 s, so p50/p90/p99 are computed via Prometheus `histogram_quantile` / `quantile_over_time`."
+  - "Call-result classification: `ok` (HTTP 200 + non-empty result), `http_err` (status ≠ 200 or transport failure), `jsonrpc_err` (HTTP 200 with an `error` field, the Cloudflare-eth trap), `stale` (returned block more than 20 behind the cross-provider tip for that chain), `timeout`. Counter `rpc_call_total{result}` powers the reliability leaderboard."
+  - "Archive depth: every 5 minutes we issue `eth_getBalance` at (head - depth) for `depth` in {300, 7200, 216_000, 1_296_000, 5_000_000}. Gauge `rpc_archive_depth_supported{depth}` is 1 when the response is non-pruned, 0 otherwise. The 300/7200 thresholds cover Geth's default pruned-cap range; 216k ≈ 1 month; 1.3M ≈ 6 months; 5M ≈ genesis-era full archive."
+  - "Chain coverage: Ethereum mainnet (6 providers: PublicNode, dRPC, 1RPC, MeowRPC, Flashbots Protect, Cloudflare), Base (3 providers: PublicNode, dRPC, Base official), BNB Chain (3 providers: PublicNode, dRPC, Binance official)."
+  - "Excluded by design: Ankr (`rpc.ankr.com/eth` returns JSON-RPC -32000 'Unauthorized' without a paid key). Endpoints that require auth in the free tier are out of scope, this is the no-key bench."
+
+findings:
+  - "{{best_name}} currently leads at {{best_p50}} (p50, 24 h) on the active chain tab, across {{count}} measured RPC providers. The number is the round-trip latency of a single `eth_blockNumber` call from eu-west, the cheapest possible read on any Ethereum-shaped RPC."
+  - "{{name:publicnode}} returns {{p50:publicnode}}. PublicNode (operated by Allnodes) is the de-facto default no-key RPC for many dapps and tends to lead the cohort because it terminates close to a large EU-anchored validator footprint."
+  - "{{name:drpc}} sits at {{p50:drpc}}. dRPC is a decentralized RPC mesh that routes each request across third-party node providers with consensus checks, so latency tracks the median of the underlying mesh rather than a single host."
+  - "{{name:flashbots}} clocks {{p50:flashbots}} on Ethereum. Flashbots Protect proxies reads through a standard Ethereum node behind the private-mempool write path, so read latency is a good proxy for how the proxy itself is provisioned, not for the upstream node."
+  - "Cloudflare-eth is a cautionary tale on this leaderboard. The endpoint returns HTTP 200 in well under a second, but a growing share of calls now resolve to `jsonrpc_err -32046 Cannot fulfill request` rather than a usable block - reliability is measured by `rpc_call_total{result=\"ok\"} / rpc_call_total` rather than HTTP status alone."
+  - "{{worst_name}} trails at {{worst_p50}} on the active tab. On a free public RPC the gap between leader and laggard is rarely about raw infrastructure speed; it is usually about how heavily a popular free endpoint is currently being hammered by the rest of the public, with no rate-limit budget to keep tail latency bounded."
+
+faq:
+  - q: "What is the fastest free Ethereum RPC right now?"
+    a: "{{best_name}} currently leads the Ethereum tab at {{best_p50}} (p50, 24 h) across {{count}} measured providers. The leaderboard re-sorts every 15 seconds against fresh Prometheus samples, so the answer reflects the last 24 hours of measured `eth_blockNumber` round-trip latency from eu-west, not a marketing-page claim."
+  - q: "Which public RPCs work without an API key in 2026?"
+    a: "Six no-key Ethereum RPCs are audited live on this page: PublicNode (`ethereum-rpc.publicnode.com`), dRPC (`eth.drpc.org`), 1RPC (`1rpc.io/eth`), MeowRPC (`eth.meowrpc.com`), Flashbots Protect (`rpc.flashbots.net`), Cloudflare (`cloudflare-eth.com`). Base also exposes the chain-official `mainnet.base.org`; BNB Chain has `bsc-dataseed1.binance.org`. Ankr is excluded because the free tier now returns JSON-RPC -32000 'Unauthorized'. All endpoints in this leaderboard return a usable response without a key, today."
+  - q: "Why is Cloudflare-eth returning errors?"
+    a: "Cloudflare's public Ethereum gateway recently switched to a permissioned mode for many JSON-RPC methods. The endpoint still returns HTTP 200 quickly, but the body is increasingly a JSON-RPC error (`-32046 Cannot fulfill request`) rather than a block number. This benchmark catches the trap by classifying responses as `ok` only when both the HTTP status is 200 and the JSON-RPC body has a usable `result` field. Latency without reliability is a misleading ranking signal for a public RPC."
+  - q: "Which free RPC supports Ethereum archive node calls?"
+    a: "Most free public RPCs are state-pruned, so `eth_getBalance` at block (head - 5,000,000) returns an error rather than the historical balance. This benchmark probes five depths (300, 7,200, 216,000, 1,296,000, 5,000,000 blocks) every five minutes and exposes a gauge per provider per depth. The page surfaces a per-provider archive-depth badge: a green tick at the 5M tier means full historical state is available for free without a key. Anything pruned at 7200 confirms the endpoint is on a Geth default config and only serves the last ~24 hours."
+  - q: "How is RPC latency measured on OpenChainBench?"
+    a: "The harness issues a single `eth_blockNumber` JSON-RPC POST every 15 seconds against each (provider, chain) pair from eu-west, using the same plain HTTP client for every endpoint. Wall-clock delta around the round-trip is recorded with millisecond precision and pushed to both a gauge and a histogram. p50/p90/p99 are computed via Prometheus `quantile_over_time` over the last 24 hours. Stale-head detection compares each response against the cross-provider tip and flags anything more than 20 blocks behind as `stale`, so a dead endpoint stuck on yesterday's block cannot rank as the fastest."
+  - q: "Are public RPCs production-grade for a dapp?"
+    a: "Read the success-rate column before deciding. A median latency under 100 ms is irrelevant if the endpoint silently returns a JSON-RPC error 5% of the time or stalls during an L1 reorg. Free public RPCs share rate-limit budgets with the entire internet and have no SLA. They are good for read-heavy demos, local development and fallback paths; production dapps usually graduate to a keyed tier (Alchemy, QuickNode, Infura) for `eth_sendRawTransaction`, websocket subscriptions and archive queries beyond Geth's pruned cap. This benchmark measures the no-key tier specifically because that is the unmeasured part of the market."
+
+source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
+
+prometheus:
+  window: 24h
+
+# Chain selector. tabs at the top of the page. Server injects
+# `chain="X"` into every PromQL query for the active tab. The special
+# value `all` skips the filter - aggregate across every chain.
+dimensions:
+  chain:
+    - { value: all,      label: All chains }
+    - { value: ethereum, label: Ethereum }
+    - { value: base,     label: Base }
+    - { value: bnb,      label: BNB Chain }
+
+# Real metrics emitted by the rpc-capabilities harness:
+#   rpc_latency_milliseconds{provider, chain}                       gauge
+#   rpc_latency_milliseconds_histogram{provider, chain}             histogram
+#   rpc_call_total{provider, chain, result}                         counter
+#   rpc_health{provider, chain}                                     gauge (0|1)
+#   rpc_archive_depth_supported{provider, chain, depth}             gauge (0|1)
+#
+# Each "provider" below is one public no-key RPC service. The chain
+# dimension above filters every PromQL query to the active tab. The
+# All chains tab aggregates across chains where the provider is
+# present (so universal providers like PublicNode + dRPC compare
+# meaningfully against chain-specialists like base-official + binance).
+
+providers:
+  - slug: publicnode
+    name: PublicNode
+    tag: Allnodes-operated, 70+ chains, archive on most
+    queries:
+      p50: histogram_quantile(0.50, sum by (le) (rate(rpc_latency_milliseconds_histogram_bucket{provider="publicnode"}[24h])))
+      p90: histogram_quantile(0.90, sum by (le) (rate(rpc_latency_milliseconds_histogram_bucket{provider="publicnode"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(rpc_latency_milliseconds_histogram_bucket{provider="publicnode"}[24h])))
+      mean: sum(rate(rpc_latency_milliseconds_histogram_sum{provider="publicnode"}[24h])) / sum(rate(rpc_latency_milliseconds_histogram_count{provider="publicnode"}[24h]))
+      success: sum(rate(rpc_call_total{provider="publicnode", result="ok"}[24h])) / sum(rate(rpc_call_total{provider="publicnode"}[24h]))
+      sample_size: sum(increase(rpc_call_total{provider="publicnode"}[24h]))
+      series: avg_over_time(rpc_latency_milliseconds{provider="publicnode"}[1h])
+
+  - slug: drpc
+    name: dRPC
+    tag: Decentralized RPC mesh, consensus-checked
+    queries:
+      p50: histogram_quantile(0.50, sum by (le) (rate(rpc_latency_milliseconds_histogram_bucket{provider="drpc"}[24h])))
+      p90: histogram_quantile(0.90, sum by (le) (rate(rpc_latency_milliseconds_histogram_bucket{provider="drpc"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(rpc_latency_milliseconds_histogram_bucket{provider="drpc"}[24h])))
+      mean: sum(rate(rpc_latency_milliseconds_histogram_sum{provider="drpc"}[24h])) / sum(rate(rpc_latency_milliseconds_histogram_count{provider="drpc"}[24h]))
+      success: sum(rate(rpc_call_total{provider="drpc", result="ok"}[24h])) / sum(rate(rpc_call_total{provider="drpc"}[24h]))
+      sample_size: sum(increase(rpc_call_total{provider="drpc"}[24h]))
+      series: avg_over_time(rpc_latency_milliseconds{provider="drpc"}[1h])
+
+  - slug: 1rpc
+    name: 1RPC
+    tag: Privacy-preserving gateway by Automata Network
+    queries:
+      p50: histogram_quantile(0.50, sum by (le) (rate(rpc_latency_milliseconds_histogram_bucket{provider="1rpc"}[24h])))
+      p90: histogram_quantile(0.90, sum by (le) (rate(rpc_latency_milliseconds_histogram_bucket{provider="1rpc"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(rpc_latency_milliseconds_histogram_bucket{provider="1rpc"}[24h])))
+      mean: sum(rate(rpc_latency_milliseconds_histogram_sum{provider="1rpc"}[24h])) / sum(rate(rpc_latency_milliseconds_histogram_count{provider="1rpc"}[24h]))
+      success: sum(rate(rpc_call_total{provider="1rpc", result="ok"}[24h])) / sum(rate(rpc_call_total{provider="1rpc"}[24h]))
+      sample_size: sum(increase(rpc_call_total{provider="1rpc"}[24h]))
+      series: avg_over_time(rpc_latency_milliseconds{provider="1rpc"}[1h])
+
+  - slug: meowrpc
+    name: MeowRPC
+    tag: Free public RPC, no registration
+    queries:
+      p50: histogram_quantile(0.50, sum by (le) (rate(rpc_latency_milliseconds_histogram_bucket{provider="meowrpc"}[24h])))
+      p90: histogram_quantile(0.90, sum by (le) (rate(rpc_latency_milliseconds_histogram_bucket{provider="meowrpc"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(rpc_latency_milliseconds_histogram_bucket{provider="meowrpc"}[24h])))
+      mean: sum(rate(rpc_latency_milliseconds_histogram_sum{provider="meowrpc"}[24h])) / sum(rate(rpc_latency_milliseconds_histogram_count{provider="meowrpc"}[24h]))
+      success: sum(rate(rpc_call_total{provider="meowrpc", result="ok"}[24h])) / sum(rate(rpc_call_total{provider="meowrpc"}[24h]))
+      sample_size: sum(increase(rpc_call_total{provider="meowrpc"}[24h]))
+      series: avg_over_time(rpc_latency_milliseconds{provider="meowrpc"}[1h])
+
+  - slug: flashbots
+    name: Flashbots Protect
+    tag: Private-mempool RPC, anti-sandwich
+    queries:
+      p50: histogram_quantile(0.50, sum by (le) (rate(rpc_latency_milliseconds_histogram_bucket{provider="flashbots"}[24h])))
+      p90: histogram_quantile(0.90, sum by (le) (rate(rpc_latency_milliseconds_histogram_bucket{provider="flashbots"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(rpc_latency_milliseconds_histogram_bucket{provider="flashbots"}[24h])))
+      mean: sum(rate(rpc_latency_milliseconds_histogram_sum{provider="flashbots"}[24h])) / sum(rate(rpc_latency_milliseconds_histogram_count{provider="flashbots"}[24h]))
+      success: sum(rate(rpc_call_total{provider="flashbots", result="ok"}[24h])) / sum(rate(rpc_call_total{provider="flashbots"}[24h]))
+      sample_size: sum(increase(rpc_call_total{provider="flashbots"}[24h]))
+      series: avg_over_time(rpc_latency_milliseconds{provider="flashbots"}[1h])
+
+  - slug: cloudflare
+    name: Cloudflare
+    tag: Permissioned-mode for many JSON-RPC methods
+    queries:
+      p50: histogram_quantile(0.50, sum by (le) (rate(rpc_latency_milliseconds_histogram_bucket{provider="cloudflare"}[24h])))
+      p90: histogram_quantile(0.90, sum by (le) (rate(rpc_latency_milliseconds_histogram_bucket{provider="cloudflare"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(rpc_latency_milliseconds_histogram_bucket{provider="cloudflare"}[24h])))
+      mean: sum(rate(rpc_latency_milliseconds_histogram_sum{provider="cloudflare"}[24h])) / sum(rate(rpc_latency_milliseconds_histogram_count{provider="cloudflare"}[24h]))
+      success: sum(rate(rpc_call_total{provider="cloudflare", result="ok"}[24h])) / sum(rate(rpc_call_total{provider="cloudflare"}[24h]))
+      sample_size: sum(increase(rpc_call_total{provider="cloudflare"}[24h]))
+      series: avg_over_time(rpc_latency_milliseconds{provider="cloudflare"}[1h])
+
+  - slug: base-official
+    name: Base Official
+    tag: Coinbase-operated, Base mainnet RPC
+    queries:
+      p50: histogram_quantile(0.50, sum by (le) (rate(rpc_latency_milliseconds_histogram_bucket{provider="base-official"}[24h])))
+      p90: histogram_quantile(0.90, sum by (le) (rate(rpc_latency_milliseconds_histogram_bucket{provider="base-official"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(rpc_latency_milliseconds_histogram_bucket{provider="base-official"}[24h])))
+      mean: sum(rate(rpc_latency_milliseconds_histogram_sum{provider="base-official"}[24h])) / sum(rate(rpc_latency_milliseconds_histogram_count{provider="base-official"}[24h]))
+      success: sum(rate(rpc_call_total{provider="base-official", result="ok"}[24h])) / sum(rate(rpc_call_total{provider="base-official"}[24h]))
+      sample_size: sum(increase(rpc_call_total{provider="base-official"}[24h]))
+      series: avg_over_time(rpc_latency_milliseconds{provider="base-official"}[1h])
+
+  - slug: binance
+    name: Binance Official
+    tag: BNB Chain dataseed RPC, Binance-operated
+    queries:
+      p50: histogram_quantile(0.50, sum by (le) (rate(rpc_latency_milliseconds_histogram_bucket{provider="binance"}[24h])))
+      p90: histogram_quantile(0.90, sum by (le) (rate(rpc_latency_milliseconds_histogram_bucket{provider="binance"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(rpc_latency_milliseconds_histogram_bucket{provider="binance"}[24h])))
+      mean: sum(rate(rpc_latency_milliseconds_histogram_sum{provider="binance"}[24h])) / sum(rate(rpc_latency_milliseconds_histogram_count{provider="binance"}[24h]))
+      success: sum(rate(rpc_call_total{provider="binance", result="ok"}[24h])) / sum(rate(rpc_call_total{provider="binance"}[24h]))
+      sample_size: sum(increase(rpc_call_total{provider="binance"}[24h]))
+      series: avg_over_time(rpc_latency_milliseconds{provider="binance"}[1h])

@@ -1,0 +1,174 @@
+# OpenChainBench. Bench № 014
+
+slug: stablecoin-peg
+number: "014"
+title: Most stable USD-pegged stablecoin
+seo_title: "Stablecoin peg stability 2026: USDC, USDT, DAI, FDUSD, USDe live deviation benchmark"
+seo_description: "Live stablecoin peg deviation leaderboard. Absolute deviation from $1.00 in basis points across USDC, USDT, DAI, FDUSD and USDe, computed from a liquidity-weighted median across Binance, Kraken, Bitstamp and Curve, p99 over the last 24h. Plus cross-venue gap, time outside ±50 bps and active depeg flag."
+subtitle: Absolute deviation from $1.00 in basis points, computed from a liquidity-weighted median across USD-quoted venues.
+category: Trading
+status: live
+metric: Peg deviation
+unit: bps
+higher_is_better: false
+
+seo_intro: |
+  This benchmark answers the question that decides whether a
+  stablecoin is actually $1 today. how far has the per-minute
+  aggregated price drifted from $1.00, on which venue, and for how
+  long. Most "stablecoin tracker" sites display CoinGecko or
+  Coinmarketcap averages refreshed every few minutes. That
+  smooths out the venue-level discrepancies that actually matter,
+  the USDC/USDT cross-venue gap on Binance when USDC briefly
+  trades 25 bps below its Kraken quote, the USDe flash to $0.65
+  the night of October 10 2025, the DAI Curve 3pool reverse swap
+  rate diverging from forward. We poll Binance, Kraken, Bitstamp
+  (CEX REST tickers, 5 second cadence) and the Curve 3pool
+  on-chain (12 second cadence, matches Ethereum block time),
+  aggregate per-venue prices into a per-minute liquidity-weighted
+  median per USD-quoted stable, and surface five live numbers per
+  stablecoin: instantaneous deviation in basis points, cross-venue
+  gap (max - min across venues), time outside the ±50 bps band over
+  24 h, time below peg vs time above peg (Circle redeems above-peg
+  only, so the split tells you which side is structurally rare),
+  and a depeg event flag set when the stable has been outside
+  [$0.97, $1.03] for ≥5 consecutive minutes.
+
+abstract: |
+  We measure live stablecoin peg deviation by pulling mid-price
+  ticks from every venue that exposes a USD-quoted pair for a given
+  stable, then aggregating per-minute into a liquidity-weighted
+  median. Deviation is `|aggregated_price - 1.00|` in basis points,
+  recorded as both a gauge (latest) and a histogram (per-minute
+  samples). p99 over 24 h via `quantile_over_time` is the headline
+  leaderboard number. USDT-quoted pairs (Binance USDC/USDT, FDUSD,
+  USDe) are deliberately excluded from the primary ranking because
+  USDT's own peg deviation would contaminate every other stable's
+  measurement; they are exposed on a separate `peg_deviation_usdt_anchored`
+  metric instead. DAI's CEX coverage is essentially dead in 2026
+  (Binance zero book, Kraken thin, Bitstamp dead), so the only
+  honest signal is on-chain via Curve 3pool's `get_dy`. We poll the
+  pool both forward (USDC → DAI) and reverse (DAI → USDC) to
+  surface directional asymmetry. A binary `peg_depeg_event_flag`
+  goes high when a stable spends ≥5 consecutive minutes outside
+  [$0.97, $1.03] and clears after 30 minutes back inside;
+  conservative so it does not flap on normal stress.
+
+methodology:
+  - "Sources per stable - USDC: Binance USDC/USDT (USDT-anchored, secondary), Kraken USDCUSD, Bitstamp usdcusd. USDT: Kraken USDTUSD, Bitstamp usdtusd. FDUSD: Binance FDUSDUSDT (USDT-anchored, secondary). USDe: Binance USDEUSDT (USDT-anchored, secondary). DAI: Curve 3pool `get_dy` forward (USDC → DAI) and reverse (DAI → USDC)."
+  - "Cadence: 5 seconds for CEX REST tickers, 12 seconds for Curve `get_dy` on-chain (matches Ethereum block time). Per-venue samples are grouped into 60-second buckets for the liquidity-weighted median aggregation."
+  - "Aggregation: per-minute liquidity-weighted median across USD-quoted venues (`Quote = QuoteUSD`). Weight is 24 h USD volume estimate. The aggregated price drives `peg_deviation_bps` and `peg_deviation_bps_histogram`; the percentile metric is computed on this series, not on raw per-venue samples."
+  - "Cross-venue gap (OCB-only number): `max(price across USD-quoted venues) - min(price)`, per minute, in basis points. Surfaces the windows where Coinbase quotes $1.0003 while Kraken quotes $0.9978. Stored as `peg_cross_venue_gap_bps`."
+  - "USDT-anchored secondary metric: Binance USDC/USDT, FDUSD/USDT and USDE/USDT are exposed on `peg_deviation_usdt_anchored_bps{venue}` separately so the USD-anchored primary leaderboard is not contaminated by USDT's own peg deviation."
+  - "Time outside band: total seconds in the trailing 24 h during which the per-minute aggregated price fell outside [0.995, 1.005] (±50 bps). Split into `peg_time_below_peg_24h_seconds` (< 0.995) and `peg_time_above_peg_24h_seconds` (> 1.005) because Circle redemption only clears above-peg, so the direction tells you which failure mode is active."
+  - "Depeg event flag: binary `peg_depeg_event_flag` set to 1 when the per-minute aggregated price has been outside [0.97, 1.03] for ≥5 consecutive minutes; cleared after 30 minutes back inside. Conservative so it does not flap during normal stress events."
+  - "Excluded by design: aggregator-only prices (CoinGecko, Coinmarketcap, DefiLlama) because they are themselves liquidity-weighted medians of the venues we already poll directly. Algo-stables that have already failed (UST, USDR) are out of scope; the bench tracks live, currently-redeemable stables."
+
+findings:
+  - "{{best_name}} currently leads at {{best_p50}} (p99 deviation, 24 h) across {{count}} measured stablecoins. The number is the worst 1% of the per-minute aggregated price's distance from $1.00, in basis points, on USD-quoted venues only."
+  - "{{name:usdc}} returns {{p50:usdc}} (p99 deviation, 24 h). USDC's peg is anchored by Circle's primary-market redemption window with US banks, so USD-quoted CEX deviations are usually mean-reverted within minutes by arbitrageurs hitting Coinbase or Kraken."
+  - "{{name:usdt}} sits at {{p50:usdt}} (p99 deviation, 24 h). USDT carries the secondary-market premium of being the dominant pair currency on Binance and most non-US CEXes, so its CEX deviation is structurally biased above $1 during risk-on minutes and below during risk-off."
+  - "{{name:dai}} clocks {{p50:dai}} (p99 deviation, 24 h) measured on Curve 3pool. DAI's CEX coverage is essentially dead in 2026 so the on-chain pool quote is the only honest signal; the forward vs reverse swap rates surface arbitrage gaps that an averaged CEX tracker would silently smooth out."
+  - "USDe and FDUSD are USDT-anchored on the deepest venue (Binance), so they appear on the secondary `peg_deviation_usdt_anchored` metric rather than the headline. USDe specifically flashed to $0.65 on Binance the night of October 10 2025; the depeg event flag is the right column to monitor those tail events."
+  - "{{worst_name}} trails at {{worst_p50}} (p99 deviation, 24 h) on the active filter. The gap between leader and laggard widens on volatile minutes - the cross-venue gap column ({{p50:usdc}} etc.) surfaces how synchronized the venues are at the exact moment of stress."
+
+faq:
+  - q: "Which stablecoin is the most stable right now?"
+    a: "{{best_name}} currently leads the leaderboard at {{best_p50}} (p99 deviation, 24 h) across {{count}} measured stablecoins on USD-quoted venues. The leaderboard re-sorts every minute against fresh Prometheus samples, so the answer reflects the last 24 hours of measured per-minute aggregated price, not a static white-paper figure."
+  - q: "What is stablecoin peg deviation in basis points?"
+    a: "Peg deviation is the absolute distance between a stablecoin's price and $1.00, expressed in basis points where 1 bp = 0.0001 = 0.01%. A stablecoin trading at $0.9978 has 22 bps of deviation; at $1.0050 it has 50 bps. The industry uses bps because the deviations are small. tens of bps is normal noise, hundreds of bps is stress, thousands of bps is a depeg event. The benchmark records both per-minute deviation and the worst-1% tail (p99) over 24 h, the integration-grade number for any product that holds inventory in the stable."
+  - q: "How does USDC compare to USDT on stability?"
+    a: "{{name:usdc}} returns {{p50:usdc}} (p99 deviation, 24 h) on USD-quoted venues (Kraken, Bitstamp). {{name:usdt}} returns {{p50:usdt}} on USD-quoted venues (Kraken, Bitstamp). USDC's peg is anchored by Circle's same-day USD redemption with US banks, USDT's by Tether's larger but slower-clearing redemption window. The leaderboard surfaces the live gap and the cross-venue spread per minute so the comparison is grounded in measured data rather than a sentiment-driven preference."
+  - q: "Did USDe really depeg to $0.65 in October 2025?"
+    a: "Yes, on Binance USDEUSDT specifically, the night of October 10 2025. Ethena's USDe is anchored by a delta-neutral basis trade rather than fiat reserves, and a sharp liquidation cascade on perp positions briefly cleared the orderbook on Binance well below peg. The benchmark exposes this kind of event live via the `peg_depeg_event_flag` (set when a stable has been outside [$0.97, $1.03] for ≥5 consecutive minutes) and via the USDT-anchored secondary metric. USDe's USD-anchored primary deviation cannot be measured because no major USD venue lists a deep USDe/USD pair; the USDT-anchored value is the honest live signal."
+  - q: "How is the stablecoin peg measured on OpenChainBench?"
+    a: "We poll Binance, Kraken and Bitstamp REST tickers every 5 seconds for every (stable, venue) pair, and the Curve 3pool `get_dy` on-chain every 12 seconds (matches Ethereum block time). Per-venue samples are grouped into 60-second buckets and aggregated into a liquidity-weighted median per stable (weight = 24h USD volume). Deviation is `|aggregated_price - 1.00|` in basis points, recorded as both a gauge and a histogram. p99 over 24 h via Prometheus `quantile_over_time` is the headline. USDT-quoted pairs are exposed on a separate secondary metric so USDT's own peg deviation does not contaminate the USD-anchored primary."
+  - q: "Why ignore CoinGecko or CoinMarketCap prices?"
+    a: "Aggregator prices (CoinGecko, CoinMarketCap, DefiLlama) are themselves liquidity-weighted medians of the venues this benchmark already polls directly, refreshed every 1-5 minutes. Re-aggregating an aggregator adds latency, hides the venue-level cross-spread that actually matters during stress (USDC briefly $0.9978 on Kraken while $1.0003 on Coinbase), and inherits whatever venue selection the aggregator chose. The benchmark goes to the source venues directly so the cross-venue gap is visible and the depeg event flag fires within 5 minutes of the price actually breaking the band."
+
+source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/stablecoin-peg
+
+prometheus:
+  window: 24h
+
+# Real metrics emitted by the stablecoin-peg harness:
+#   peg_raw_price{stable, venue, quote}                            gauge
+#   peg_aggregated_price_usd{stable}                               gauge
+#   peg_deviation_bps{stable}                                      gauge
+#   peg_deviation_bps_histogram{stable}                            histogram
+#   peg_cross_venue_gap_bps{stable}                                gauge
+#   peg_cross_venue_gap_bps_histogram{stable}                      histogram
+#   peg_deviation_usdt_anchored_bps{stable, venue}                 gauge
+#   peg_time_outside_band_24h_seconds{stable}                      gauge (seconds)
+#   peg_time_below_peg_24h_seconds{stable}                         gauge (seconds)
+#   peg_time_above_peg_24h_seconds{stable}                         gauge (seconds)
+#   peg_depeg_event_flag{stable}                                   gauge (0|1)
+#   peg_source_call_total{stable, venue, result}                   counter
+#   peg_source_health{stable, venue}                               gauge (0|1)
+#   peg_minute_sample_count{stable, venue}                         gauge
+#
+# Each "provider" below is one stablecoin. The leaderboard ranks
+# stables by p99 deviation (lower = more stable). USDT-anchored
+# stables (FDUSD, USDe) are tracked on the secondary metric because
+# their USD-quoted pairs do not exist with depth on any no-key venue.
+
+providers:
+  - slug: usdc
+    name: USDC
+    tag: Circle, USD-redeemed primary, audited on Kraken + Bitstamp
+    queries:
+      p50: histogram_quantile(0.50, sum by (le) (rate(peg_deviation_bps_histogram_bucket{stable="usdc"}[24h])))
+      p90: histogram_quantile(0.90, sum by (le) (rate(peg_deviation_bps_histogram_bucket{stable="usdc"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(peg_deviation_bps_histogram_bucket{stable="usdc"}[24h])))
+      mean: avg_over_time(peg_deviation_bps{stable="usdc"}[24h])
+      success: avg_over_time(peg_source_health{stable="usdc"}[24h])
+      sample_size: sum(increase(peg_source_call_total{stable="usdc"}[24h]))
+      series: peg_deviation_bps{stable="usdc"}
+
+  - slug: usdt
+    name: USDT
+    tag: Tether, dominant CEX pair currency, audited on Kraken + Bitstamp
+    queries:
+      p50: histogram_quantile(0.50, sum by (le) (rate(peg_deviation_bps_histogram_bucket{stable="usdt"}[24h])))
+      p90: histogram_quantile(0.90, sum by (le) (rate(peg_deviation_bps_histogram_bucket{stable="usdt"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(peg_deviation_bps_histogram_bucket{stable="usdt"}[24h])))
+      mean: avg_over_time(peg_deviation_bps{stable="usdt"}[24h])
+      success: avg_over_time(peg_source_health{stable="usdt"}[24h])
+      sample_size: sum(increase(peg_source_call_total{stable="usdt"}[24h]))
+      series: peg_deviation_bps{stable="usdt"}
+
+  - slug: dai
+    name: DAI
+    tag: MakerDAO, audited via Curve 3pool get_dy (on-chain only)
+    queries:
+      p50: histogram_quantile(0.50, sum by (le) (rate(peg_deviation_bps_histogram_bucket{stable="dai"}[24h])))
+      p90: histogram_quantile(0.90, sum by (le) (rate(peg_deviation_bps_histogram_bucket{stable="dai"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(peg_deviation_bps_histogram_bucket{stable="dai"}[24h])))
+      mean: avg_over_time(peg_deviation_bps{stable="dai"}[24h])
+      success: avg_over_time(peg_source_health{stable="dai"}[24h])
+      sample_size: sum(increase(peg_source_call_total{stable="dai"}[24h]))
+      series: peg_deviation_bps{stable="dai"}
+
+  - slug: fdusd
+    name: FDUSD
+    tag: First Digital, USDT-anchored on Binance (secondary metric)
+    queries:
+      p50: histogram_quantile(0.50, sum by (le) (rate(peg_deviation_bps_histogram_bucket{stable="fdusd"}[24h])))
+      p90: histogram_quantile(0.90, sum by (le) (rate(peg_deviation_bps_histogram_bucket{stable="fdusd"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(peg_deviation_bps_histogram_bucket{stable="fdusd"}[24h])))
+      mean: avg_over_time(peg_deviation_bps{stable="fdusd"}[24h])
+      success: avg_over_time(peg_source_health{stable="fdusd"}[24h])
+      sample_size: sum(increase(peg_source_call_total{stable="fdusd"}[24h]))
+      series: peg_deviation_bps{stable="fdusd"}
+
+  - slug: usde
+    name: USDe
+    tag: Ethena synthetic dollar, USDT-anchored on Binance
+    queries:
+      p50: histogram_quantile(0.50, sum by (le) (rate(peg_deviation_bps_histogram_bucket{stable="usde"}[24h])))
+      p90: histogram_quantile(0.90, sum by (le) (rate(peg_deviation_bps_histogram_bucket{stable="usde"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(peg_deviation_bps_histogram_bucket{stable="usde"}[24h])))
+      mean: avg_over_time(peg_deviation_bps{stable="usde"}[24h])
+      success: avg_over_time(peg_source_health{stable="usde"}[24h])
+      sample_size: sum(increase(peg_source_call_total{stable="usde"}[24h]))
+      series: peg_deviation_bps{stable="usde"}
