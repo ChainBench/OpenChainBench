@@ -3,7 +3,8 @@
 slug: perp-fees
 number: "007"
 title: Cheapest perpetual futures DEX
-seo_title: Cheapest perpetual futures DEX - Hyperliquid, dYdX, GMX, Lighter, Gains.trade live fee benchmark
+seo_title: "Cheapest perpetual futures DEX in 2026: Hyperliquid, Lighter, dYdX, GMX live all-in fee benchmark"
+seo_description: "Live perp DEX fee leaderboard. All-in cost (taker fee + half-spread + price impact) to open a $1000 ETH 10x position, measured every 5 minutes from public APIs. Hyperliquid, Lighter, dYdX v4, GMX v2, gains.trade ranked live."
 subtitle: All-in cost (in bps) to open a $1000 ETH long 10x position. Taker fee + half-spread + impact, measured live from public APIs.
 category: Trading
 status: live
@@ -11,15 +12,31 @@ metric: All-in cost
 unit: bps
 higher_is_better: false
 
+seo_intro: |
+  This benchmark answers the question every perp DEX comparison article
+  refuses to answer with real numbers. what does it actually cost to
+  open a $1000 ETH long 10x position right now, all-in, on each major
+  decentralized venue. Published fee schedules quote a taker rate of
+  0 bps (Lighter), 4.5 bps (Hyperliquid), 5 bps (dYdX) or 6 bps (GMX),
+  but the rack rate is half the story. The other half is the spread you
+  cross at market and the price impact you eat at $1000 notional, both
+  of which are missing from every comparison roundup currently ranking
+  for "best perp DEX". We read taker fees from each venue's own API
+  (no hardcoded schedules), walk the orderbook for $1000 of buy-side
+  notional to compute spread plus impact, and sum the two into a single
+  basis-point figure refreshed every five minutes. Hyperliquid vs
+  Lighter vs dYdX vs GMX vs gains.trade is then a one-number
+  comparison, not a five-tab spreadsheet.
+
 abstract: |
   We measure the live all-in cost of opening a $1000 ETH long 10x perp
   position across major perpetual venues. Cost = taker fee + half-spread
   + price impact at notional, all in basis points. No transactions are
-  sent. only freely-available public APIs are queried. Every value is
-  read live, no hardcoded fee schedules. taker fees come from each
+  sent, only freely-available public APIs are queried. Every value is
+  read live, no hardcoded fee schedules. Taker fees come from each
   venue's own API (Hyperliquid `userFees`, dYdX Cosmos REST
   `/feetiers/perpetual_fee_params`, GMX Subsquid `positionFeeFactor`,
-  Lighter `/orderBookDetails`). spreads come from walking each venue's
+  Lighter `/orderBookDetails`). Spreads come from walking each venue's
   orderbook for $1000 of buy-side notional. The bench refreshes every
   5 minutes.
 
@@ -35,14 +52,33 @@ methodology:
   - "Failures (5xx, timeouts, rate limits) leave the previous gauge in place and increment a per-venue `fetch_errors_total` counter. The page falls back to the last successful sample."
 
 findings:
-  - "Lighter charges zero taker fees on ETH-PERP, confirmed live via their public API."
-  - "Hyperliquid (4.5 bps base taker) is the cheapest non-zero-fee venue measured."
-  - "GMX position fee is variable: 4 bps on positive impact opens, 6 bps on negative impact. We report the negative branch as the conservative upper bound."
+  - "{{best_name}} currently leads the leaderboard at {{best_p50}} all-in (p50, 24 h) across {{count}} measured perp venues. The number includes taker fee plus the spread crossed at $1000 notional, not the rack-rate taker fee alone."
+  - "Lighter charges zero taker fees on ETH-PERP, confirmed live via their public API. {{name:lighter}} clocks {{p50:lighter}} all-in (p50, 24 h), so the headline figure is essentially the half-spread plus orderbook impact crossed at $1000."
+  - "{{name:hyperliquid}} sits at {{p50:hyperliquid}} all-in (p50, 24 h) on a 4.5 bps base taker. The deep HyperBFT orderbook keeps the spread component compressed, so the all-in number tracks the rack rate closer than any other venue in the cohort."
+  - "{{name:dydx}} sits at {{p50:dydx}} all-in (p50, 24 h). The published tier-0 taker fee is 5 bps; the rest is the orderbook crossed at $1000, which on dYdX v4 is consistently the tightest non-zero-fee book outside Hyperliquid."
+  - "GMX position fee is variable: 4 bps on positive impact opens, 6 bps on negative impact. We report the negative branch (conservative upper bound). {{name:gmx}} clocks {{p50:gmx}} all-in (p50, 24 h)."
+  - "{{worst_name}} trails at {{worst_p50}} all-in (p50, 24 h). The leaderboard reorders intra-day with spread volatility, so a venue cheap on the rack rate can still trail when its book thins out at a $1000 buy."
 
 source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/perp-fees
 
 prometheus:
   window: 24h
+
+faq:
+  - q: "What is the cheapest perpetual futures DEX right now?"
+    a: "{{best_name}} currently leads the leaderboard at {{best_p50}} all-in (p50, 24 h) for opening a $1000 ETH long 10x position. The leaderboard re-sorts every five minutes against fresh Prometheus samples, so the answer reflects the last 24 hours of live data from each venue's public API, not a frozen rack-rate table."
+  - q: "Is Lighter really zero fees on perpetual futures?"
+    a: "The taker fee on Lighter is 0 bps, confirmed live via `/orderBookDetails` rather than a marketing page. The all-in cost is not zero, however, because every market order still crosses the half-spread and eats price impact at notional. The Lighter line on this benchmark shows what that residual cost actually is at $1000, which is the right number to compare against a paid venue's all-in figure."
+  - q: "How do Hyperliquid fees compare to Lighter or dYdX in practice?"
+    a: "Hyperliquid quotes 4.5 bps taker but its HyperBFT orderbook is among the deepest of any decentralized venue, so the spread component stays compressed and the all-in figure usually clocks close to the rack rate. Lighter starts from 0 bps taker but pays for it in slightly wider spreads on smaller markets. dYdX v4 sits at 5 bps taker with a comparably tight book. The leaderboard above shows the resulting one-number comparison live."
+  - q: "What is the actual cost of trading on Hyperliquid for a $1000 position?"
+    a: "{{name:hyperliquid}} is currently at {{p50:hyperliquid}} all-in (p50, 24 h), which means a $1000 ETH 10x long costs that fraction of $1000 to open. Funding is charged separately and is not part of this benchmark; we publish the per-hour funding rate as a side metric (`perp_fees_funding_rate_per_hour_bps`) so traders sizing a multi-hour hold can layer it on top."
+  - q: "Why include spread and impact instead of just taker fee?"
+    a: "Rack-rate taker fee is what every comparison article quotes; it is also what every trader stops being able to read off a marketing page the second they place a market order. Spread plus impact at notional is the rest of the bill. On a tight book the gap is small, on a thin book it can dominate a 5 bps taker. Bundling both into one number is the only way to make a fair across-venue ranking that survives contact with a $1000 trade."
+  - q: "How does GMX v2 fee work and why does this benchmark show the higher number?"
+    a: "GMX v2 splits the position fee into a positive-impact branch (4 bps, when your trade reduces the venue's net open interest skew) and a negative-impact branch (6 bps, when it adds to the skew). Which branch fires depends on the current open interest at the moment of the trade and is not predictable from the user's side. We report the negative branch as the conservative upper bound; the positive branch is read by the harness as well and would lower the all-in number by 2 bps when it fires."
+  - q: "Does this benchmark include funding rates or only the open cost?"
+    a: "Open cost only. Funding is paid every hour you hold, not at open, so bundling it into a one-number leaderboard would conflate two different fee mechanics. The harness still records funding rate per venue (`perp_fees_funding_rate_per_hour_bps`, signed) so a trader can read both numbers and compute their own time-adjusted cost for a longer hold."
 
 # Asset selector. Tabs at the top of the page let the reader switch
 # between ETH, BTC, SOL - every PromQL query gets `chain="X"` injected

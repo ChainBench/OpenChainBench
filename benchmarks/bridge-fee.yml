@@ -3,34 +3,69 @@
 slug: bridge-fee
 number: "003"
 title: Cheapest cross-chain bridge
-seo_title: Cheapest cross-chain bridge - Mobula, Relay, Li.Fi & Debridge live cost comparison
+seo_title: "Cheapest cross-chain bridge in 2026: Mobula, Relay, LiFi and Debridge live fee comparison"
+seo_description: "Live cheapest USDC bridge leaderboard, refreshed every 5 minutes. Total cost (fees, slippage, destination gas) measured at $300 notional across Solana, Base and Arbitrum corridors. p50 and p99 over 24h."
 subtitle: Total cost as a percent of notional. Fees, slippage and destination gas combined, sampled at $300.
 category: Bridges
 status: live
 metric: Effective fee
 unit: pct
 
+seo_intro: |
+  This benchmark measures the cheapest cross-chain bridge live, refreshed
+  every five minutes across the major USDC corridors. The headline figure
+  is total cost (fees plus slippage plus destination gas) expressed as a
+  percent of trade size, not the explicit fee field most providers
+  advertise. Bridge fee tables in the wild quote $1000 or $10000
+  notionals, where fixed costs are diluted into the percentage. We sample
+  at $300, the size where small-trade dynamics actually dominate. Gas
+  eats a larger share, intent spreads compress, aggregator markups
+  become visible. The leaderboard sorts by p50 over 24 hours, so a
+  single favourable quote cannot crown a winner. Below the table the
+  same providers split into three pricing architectures (intent,
+  aggregator, direct protocol) because each absorbs cost differently
+  and they do not converge under the same query.
+
 abstract: |
-  We measure the effective fee each bridge charges. the bottom-line cost a
-  user pays, fees plus slippage plus destination gas. as a percentage of
-  trade size. The harness uses Prometheus gauge `bridge_cost_percent`
+  We measure the effective fee each bridge charges, the bottom-line cost
+  a user pays (fees plus slippage plus destination gas) as a percentage
+  of trade size. The harness uses Prometheus gauge `bridge_cost_percent`
   rather than the narrower `bridge_fees_percent` because providers
-  structure pricing differently. some charge an explicit fee, others bake
-  it into the spread. Comparing only the explicit fee field would let
-  aggregators with implicit pricing show a misleading 0%. Sampled at $300
-  notional so small-amount fixed-fee blowups don't skew the percentile
-  aggregates.
+  structure pricing differently. Some charge an explicit fee, others
+  bake it into the spread. Comparing only the explicit fee field would
+  let aggregators with implicit pricing show a misleading 0%. Sampled
+  at $300 notional so small-amount fixed-fee blowups don't skew the
+  percentile aggregates.
 
 methodology:
   - "Routes: USDC pairs spanning Solana, Base and Arbitrum."
   - "Reference notional: $300 USDC. Smaller sizes ($5, $50) are captured by the harness but excluded from this report."
   - "Cost: `bridge_cost_percent{amount_usd=\"300\"}`, in percent of notional. Includes fees + slippage + destination gas."
   - "Cadence: full sweep every 5 minutes for 24 hours."
-  - "Region: eu-west (single point. multi-region requires running additional monitor instances)."
+  - "Region: eu-west. Single point of measurement; multi-region requires running additional monitor instances."
   - "Failures (quote_failed, unsupported route) excluded from cost aggregates and counted toward success rate."
   - "Provider types are surfaced as badges: direct protocols (Debridge) charge their own bridging fees; aggregators (LiFi) route through whichever underlying bridge is cheapest, so their effective fee includes that bridge's cost plus any aggregator markup; intent / relay layers (Mobula, Relay) bake cost into the spread of a settlement intent rather than charging an explicit fee."
 
-findings: []
+findings:
+  - "{{best_name}} currently leads at {{best_p50}} (p50, 24 h) on the $300 USDC corridor, across {{count}} measured bridges."
+  - "{{name:mobula}} returns {{p50:mobula}} (p50, 24 h). Intent layers compress fees, slippage and destination gas into a single spread, so the effective number reads lower than aggregators that route through a paid underlying bridge."
+  - "{{name:lifi}} sits at {{p50:lifi}} (p50, 24 h). Aggregators pay the underlying bridge plus a thin markup, so their effective cost trails intent layers on liquid corridors where multiple solvers compete on the same route."
+  - "{{name:debridge}} clocks {{p50:debridge}} (p50, 24 h). Direct protocols front-load cost into a native-token fee, which dominates on $300 trades because the fixed component does not scale with notional."
+  - "{{worst_name}} trails at {{worst_p50}} (p50, 24 h). On a $300 trade the gap between leader and laggard is mostly the fixed-fee floor of the slower path, not relative spread efficiency."
+
+faq:
+  - q: "What is the cheapest cross-chain bridge right now?"
+    a: "{{best_name}} currently leads the leaderboard at {{best_p50}} (p50, 24 h) for $300 USDC trades across the measured corridors (Solana, Base, Arbitrum). The leaderboard re-sorts every five minutes against fresh Prometheus samples, so the answer is always anchored to the last 24 hours of live data rather than a frozen table from a blog post."
+  - q: "How much does it cost to bridge $300 USDC?"
+    a: "Total cost varies between providers. The current p50 across {{count}} bridges spans from {{best_p50}} (leader) up to {{worst_p50}} (laggard) of the $300 notional. The figure already includes fees, slippage and destination gas because we report `bridge_cost_percent`, the all-in number that actually leaves the user's wallet, not the explicit fee field providers advertise."
+  - q: "Why do bridge fees vary 10x between providers?"
+    a: "Three pricing architectures cohabit in this leaderboard. Direct protocols (Debridge) charge a native-token fee front-loaded into the quote. Aggregators (LiFi) pay an underlying bridge plus a thin markup. Intent layers (Mobula, Relay) compress all of it into a single spread quoted on a settlement intent. On small trades the fixed-fee component dominates and the gap stretches, on large trades the spread component dominates and the leaderboard re-orders."
+  - q: "Are bridge aggregators cheaper than direct bridges?"
+    a: "Not consistently. Aggregators route through whichever underlying bridge is cheapest at quote time, but they add a markup on top and their best route is constrained to the bridges they have integrated. Intent layers can route to any solver willing to settle the intent, including aggregators themselves. On liquid USDC corridors intent layers usually lead this leaderboard, but aggregators win when a corridor has only one underlying bridge and that bridge is cheaper than every solver's quote."
+  - q: "Why does OpenChainBench use $300 notional instead of $1000 or $10000?"
+    a: "Most published bridge fee tables sample at $1000 or $10000, where fixed-fee blowups are diluted into the percentage. At $300 the fixed component (destination gas, base protocol fee) becomes the dominant share of the cost, which is the regime real retail users face. Small-trade dynamics are also where intent layers compress costs hardest and aggregator markups become visible. The harness records $5, $50, $300, $1000 and $10000 buckets; this report surfaces $300 as the most representative retail size."
+  - q: "Why does the cheapest bridge change throughout the day?"
+    a: "Solver competition is the main driver. Intent layers like Mobula and Relay rank quotes from a rotating set of solvers whose inventory and risk appetite shift with destination-chain volatility and time of day. When Solana gas spikes or an L2 sees a deposit cluster, solvers reprice, and the leaderboard re-orders. The 5-minute scrape cadence catches these moves; the 24-hour p50 smooths them so the headline number reflects sustained competitiveness rather than a single favourable quote."
 
 source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/bridge-monitor
 
@@ -45,7 +80,7 @@ prometheus:
 # Why cost rather than fee:
 #   bridge_fees_percent only captures the explicit fee field in each quote.
 #   Some providers (e.g. Mobula) bake the cost into the spread instead of
-#   reporting an explicit fee, so they would render as 0%. misleading
+#   reporting an explicit fee, so they would render as 0%, misleading
 #   readers. bridge_cost_percent = fees + slippage + gas, which is the
 #   number that actually leaves the user's wallet.
 
