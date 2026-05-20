@@ -365,16 +365,26 @@ export default async function BenchmarkPage({
           <h2 className="display text-2xl tracking-tight text-ink">
             Frequently asked
           </h2>
-          <dl className="mt-6 space-y-5">
+          <div className="mt-6 space-y-3">
             {benchmark.faq.map((item) => (
-              <div key={item.q} className="card-soft px-5 py-4">
-                <dt className="text-base font-semibold text-ink">{item.q}</dt>
-                <dd className="mt-2 text-sm leading-relaxed text-ink-soft">
+              <details
+                key={item.q}
+                className="group card-soft px-5 py-4 [&_summary]:cursor-pointer [&_summary::-webkit-details-marker]:hidden [&_summary]:list-none"
+              >
+                <summary className="flex items-center justify-between gap-4 text-base font-semibold text-ink">
+                  <span>{item.q}</span>
+                  <ChevronDown
+                    size={18}
+                    strokeWidth={2}
+                    className="shrink-0 text-ink-muted transition-transform duration-200 group-open:rotate-180"
+                  />
+                </summary>
+                <p className="mt-3 text-sm leading-relaxed text-ink-soft">
                   {item.a}
-                </dd>
-              </div>
+                </p>
+              </details>
             ))}
-          </dl>
+          </div>
         </section>
       )}
 
