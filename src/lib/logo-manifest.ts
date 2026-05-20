@@ -59,21 +59,38 @@ const RAW: Record<string, string> = {
   debridge: "/logos/debridge.svg",
 
   // ─── Public RPC providers ───
-  publicnode: "/logos/publicnode.svg",
-  drpc: "/logos/drpc.svg",
+  publicnode: "/logos/publicnode.avif",
+  drpc: "/logos/drpc.webp",
   "1rpc": "/logos/1rpc.svg",
-  meowrpc: "/logos/meowrpc.png",
-  flashbots: "/logos/flashbots.svg",
   cloudflare: "/logos/cloudflare.svg",
   "base-official": "/logos/base.jpeg",
   binance: "/logos/bnb.png",
+
+  // ─── Gas oracles ───
+  etherscan: "/logos/etherscan.svg",
+  owlracle: "/logos/owlracle.webp",
+  // publicnode-feehistory aliased to publicnode below (same brand)
+
+  // ─── Stablecoins ───
+  usdc: "/logos/usdc.png",
+  usdt: "/logos/usdt.svg",
+  dai: "/logos/dai.png",
+  fdusd: "/logos/fdusd.png",
+  usde: "/logos/usde.png",
+
+  // ─── L2 chains (additions) ───
+  taiko: "/logos/taiko.png",
 };
 
 // Asset-symbol aliases used by perp-fees as chain dimension values.
+// Also: provider-slug aliases when two providers share branding (e.g.
+// the publicnode-feehistory gas oracle is the same brand as the
+// publicnode RPC service).
 const ALIASES: Record<string, string> = {
   eth: "ethereum",
   btc: "bitcoin",
   sol: "solana",
+  "publicnode-feehistory": "publicnode",
 };
 
 export function logoPath(slug: string): string | null {
