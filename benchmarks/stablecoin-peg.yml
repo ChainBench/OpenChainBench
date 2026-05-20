@@ -69,7 +69,7 @@ findings:
   - "{{name:usdc}} returns {{p50:usdc}} (p99 deviation, 24 h). USDC's peg is anchored by Circle's primary-market redemption window with US banks, so USD-quoted CEX deviations are usually mean-reverted within minutes by arbitrageurs hitting Coinbase or Kraken."
   - "{{name:usdt}} sits at {{p50:usdt}} (p99 deviation, 24 h). USDT carries the secondary-market premium of being the dominant pair currency on Binance and most non-US CEXes, so its CEX deviation is structurally biased above $1 during risk-on minutes and below during risk-off."
   - "{{name:dai}} clocks {{p50:dai}} (p99 deviation, 24 h) measured on Curve 3pool. DAI's CEX coverage is essentially dead in 2026 so the on-chain pool quote is the only honest signal; the forward vs reverse swap rates surface arbitrage gaps that an averaged CEX tracker would silently smooth out."
-  - "USDe and FDUSD are USDT-anchored on the deepest venue (Binance), so they appear on the secondary `peg_deviation_usdt_anchored` metric rather than the headline. USDe specifically flashed to $0.65 on Binance the night of October 10 2025; the depeg event flag is the right column to monitor those tail events."
+  - "USDe and FDUSD are USDT-anchored on Binance (no deep USD-quoted venue exists for either) and live on the companion bench `stablecoin-peg-usdt-anchored` (bench № 015), which is the only honest comparison surface for them. Mixing them into a USD-anchored leaderboard would compare apples to oranges since their deviation includes USDT's own drift."
   - "{{worst_name}} trails at {{worst_p50}} (p99 deviation, 24 h) on the active filter. The gap between leader and laggard widens on volatile minutes - the cross-venue gap column ({{p50:usdc}} etc.) surfaces how synchronized the venues are at the exact moment of stress."
 
 faq:
@@ -149,26 +149,9 @@ providers:
       sample_size: sum(increase(peg_source_call_total{stable="dai"}[24h]))
       series: peg_deviation_bps{stable="dai"}
 
-  - slug: fdusd
-    name: FDUSD
-    tag: First Digital, USDT-anchored on Binance (secondary metric)
-    queries:
-      p50: quantile_over_time(0.50, peg_deviation_bps{stable="fdusd"}[24h])
-      p90: quantile_over_time(0.90, peg_deviation_bps{stable="fdusd"}[24h])
-      p99: quantile_over_time(0.99, peg_deviation_bps{stable="fdusd"}[24h])
-      mean: avg_over_time(peg_deviation_bps{stable="fdusd"}[24h])
-      success: avg_over_time(peg_source_health{stable="fdusd"}[24h])
-      sample_size: sum(increase(peg_source_call_total{stable="fdusd"}[24h]))
-      series: peg_deviation_bps{stable="fdusd"}
-
-  - slug: usde
-    name: USDe
-    tag: Ethena synthetic dollar, USDT-anchored on Binance
-    queries:
-      p50: quantile_over_time(0.50, peg_deviation_bps{stable="usde"}[24h])
-      p90: quantile_over_time(0.90, peg_deviation_bps{stable="usde"}[24h])
-      p99: quantile_over_time(0.99, peg_deviation_bps{stable="usde"}[24h])
-      mean: avg_over_time(peg_deviation_bps{stable="usde"}[24h])
-      success: avg_over_time(peg_source_health{stable="usde"}[24h])
-      sample_size: sum(increase(peg_source_call_total{stable="usde"}[24h]))
-      series: peg_deviation_bps{stable="usde"}
+# FDUSD and USDe are USDT-anchored stables with no deep USD-quoted
+# venue, so they have no signal on the primary `peg_deviation_bps`
+# metric. They live on the companion bench `stablecoin-peg-usdt-anchored`
+# (bench № 015) which ranks them on `peg_deviation_usdt_anchored_bps`,
+# the only honest live measurement for stables that exist only against
+# USDT on the deepest venue (Binance).
