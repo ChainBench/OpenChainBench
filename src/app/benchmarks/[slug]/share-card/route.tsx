@@ -21,7 +21,7 @@ function sortByP50(b: Benchmark): ProviderResult[] {
 
 /** Compact label for the share-card bar chart. Long multi-word names
  * (e.g. "BNB Smart Chain", "Avalanche C-Chain") wrap to two lines,
- * which breaks the bottom-aligned bar layout — the wrapped column gets
+ * which breaks the bottom-aligned bar layout - the wrapped column gets
  * taller and pushes its top-of-bar value above the others. Use a
  * shortened form here. */
 function compactProviderName(name: string): string {
@@ -63,7 +63,7 @@ const SIZE = { width: 1200, height: 630 };
 // Palette is mutable so the GET handler can swap between light and dark
 // per ?theme= query param. Render helpers below reference these by closure
 // so they pick up whichever values are active at render time. Each request
-// reassigns at the top of GET — single-threaded JS event loop per request
+// reassigns at the top of GET - single-threaded JS event loop per request
 // keeps the swap race-free.
 let PAPER = "#ffffff";
 let PAPER_SOFT = "#f8fafc";
@@ -149,7 +149,7 @@ function getProviderLogoDataUrl(slug: string): string | null {
   }
 }
 
-/** Share-card variant of <ProviderLogo> — server-rendered, embedded as a
+/** Share-card variant of <ProviderLogo> - server-rendered, embedded as a
  * data URL when a logo file exists, otherwise a brand-colored chip with
  * the provider's initials. */
 function CardProviderLogo({
@@ -478,7 +478,7 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ slug: string }> }
 ) {
-  // Rate-limit per IP — share-card renders 5 templates and runs full
+  // Rate-limit per IP - share-card renders 5 templates and runs full
   // benchmark loaders, each render is 50-200ms CPU. Without this an
   // attacker hitting random query-string variants would burn function
   // CPU even for unknown slugs.
@@ -493,13 +493,13 @@ export async function GET(
     });
   }
   const url = new URL(request.url);
-  // Theme switch — defaults to light. The share-section UI reads the
+  // Theme switch - defaults to light. The share-section UI reads the
   // current `<html class="dark">` state and appends `?theme=dark` so the
   // exported PNG matches what the user is looking at.
   applyTheme(url.searchParams.get("theme") === "dark" ? "dark" : "light");
 
   // Validate `?chain=` against the spec-declared dimension before passing
-  // it to the loader — same pattern as the bench detail page.
+  // it to the loader - same pattern as the bench detail page.
   const aggregate = await getBenchmark(slug);
   if (!aggregate || aggregate.editorialStatus !== "live") {
     return new Response("Not found", {
@@ -509,7 +509,7 @@ export async function GET(
   }
   const chainParam = url.searchParams.get("chain");
   const chainOptions = aggregate.dimensions?.chain ?? [];
-  // `all` is a synthetic option meaning "no chain filter" — same exception
+  // `all` is a synthetic option meaning "no chain filter" - same exception
   // as the bench detail page. Don't pass it down to the Prom loader or the
   // query labels won't match anything and every value reads 0.
   const isAll = chainParam === "all";
@@ -519,7 +519,7 @@ export async function GET(
   const benchmark = chainOption
     ? (await getBenchmark(slug, { chain: chainOption.value })) ?? aggregate
     : aggregate;
-  // No pill for `all` either — it's the unfiltered default view, calling
+  // No pill for `all` either - it's the unfiltered default view, calling
   // it out as a "chain" reads awkward.
   const chainLabel = chainOption?.label ?? null;
 

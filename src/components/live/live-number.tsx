@@ -9,7 +9,7 @@ import { useEffect, useRef, useState } from "react";
  * lighthouse every few minutes, so most 1 s pushes carry the SAME
  * trades24h / vol24h values. Naive snapshot pairing (last two pushes)
  * sees delta=0 and freezes the counter between polls, then makes it
- * jump every few minutes — exactly the lifeless behavior we want to
+ * jump every few minutes - exactly the lifeless behavior we want to
  * avoid.
  *
  * Fix: track only DISTINCT value transitions. The span between two

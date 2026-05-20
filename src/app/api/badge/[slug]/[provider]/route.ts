@@ -112,7 +112,7 @@ export async function GET(
 
 // C0 control chars (minus \t \n \r) + DEL are forbidden in XML 1.0 text.
 // A spec PR with a title containing one of these would otherwise produce
-// an SVG that browsers refuse to render — self-DoS on every embed of the
+// an SVG that browsers refuse to render - self-DoS on every embed of the
 // badge. Strip before escaping the XML metachars.
 const XML_FORBIDDEN_CHARS = new RegExp(
   "[\\u0000-\\u0008\\u000b\\u000c\\u000e-\\u001f\\u007f]",

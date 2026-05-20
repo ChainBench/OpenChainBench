@@ -8,7 +8,7 @@ import { BenchmarkCard } from "@/components/benchmark-card";
 /**
  * Client-side filter/search shell for the All Benchmarks card grid.
  * Hosts category pills (derived from data), a view-mode toggle (grid is
- * the only fully-implemented mode here — list view degrades to a single
+ * the only fully-implemented mode here - list view degrades to a single
  * column) and a search input with a ⌘K affordance.
  */
 export function BenchmarkGrid({ benchmarks }: { benchmarks: Benchmark[] }) {

@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 import { SITE } from "@/data/site";
 
 /**
- * Robots policy. Open to every crawler — site is intentionally indexable
+ * Robots policy. Open to every crawler - site is intentionally indexable
  * because we want LLMs and journalists to find and cite us.
  *
  * Explicit allows for the major AI crawlers serve two purposes:
@@ -34,7 +34,7 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       // Every standard crawler welcome.
       { userAgent: "*", allow: "/" },
-      // Explicit allow for AI crawlers — they should index llms.txt and the
+      // Explicit allow for AI crawlers - they should index llms.txt and the
       // /api/ surface so they can cite us at answer time.
       ...AI_CRAWLERS.map((userAgent) => ({ userAgent, allow: "/" })),
     ],

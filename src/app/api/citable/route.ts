@@ -9,7 +9,7 @@ export const revalidate = 60;
 
 /**
  * Flat machine-readable index of every citable benchmark. Designed to be
- * the **first** endpoint an AI agent or journalist crawls — gives them
+ * the **first** endpoint an AI agent or journalist crawls - gives them
  * everything they need to decide whether to deep-link to a specific bench.
  *
  * License is intentionally surfaced per-row so downstream agents can

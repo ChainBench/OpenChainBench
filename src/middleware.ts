@@ -11,7 +11,7 @@ import { NextResponse, type NextRequest } from "next/server";
  *    fan out to Prom. We redirect (308) such requests to the canonical
  *    path so the edge cache key never includes the query string.
  *
- * 2. **(future)** any cross-route concerns — kept lightweight.
+ * 2. **(future)** any cross-route concerns - kept lightweight.
  */
 
 const CANONICAL_NO_QUERY = new Set([

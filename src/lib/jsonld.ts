@@ -4,7 +4,7 @@
  *
  * JSON.stringify alone does NOT escape `<`, `>`, `&`, U+2028 or U+2029.
  * A string containing `</script>` would close the surrounding script tag
- * and let the rest render as HTML — a stored-XSS vector if any field
+ * and let the rest render as HTML - a stored-XSS vector if any field
  * inside the payload ever stops being editor-controlled.
  *
  * Today every JSON-LD field is derived from spec YAMLs or the provider

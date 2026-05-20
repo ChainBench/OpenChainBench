@@ -50,7 +50,7 @@ export function RankedBarChart({ benchmark }: Props) {
     }));
   }, [benchmark, colors]);
 
-  // The bar scale recomputes from visible rows only — excluding the
+  // The bar scale recomputes from visible rows only - excluding the
   // tail outliers gives the remaining bars more room to breathe.
   const visibleValues = rows
     .filter((r) => !excluded.has(r.slug))
@@ -58,7 +58,7 @@ export function RankedBarChart({ benchmark }: Props) {
   const maxV = Math.max(...visibleValues, 1);
   const minV = Math.min(...visibleValues.filter((v) => v > 0), maxV);
 
-  // Use log scale when dynamic range > 50x — typical for finality where
+  // Use log scale when dynamic range > 50x - typical for finality where
   // sub-second chains coexist with 30-min ones. Linear scale crushes
   // everything below the slowest chain into invisible slivers.
   const useLog = maxV / Math.max(minV, 1) > 50;
@@ -81,7 +81,7 @@ export function RankedBarChart({ benchmark }: Props) {
   }
 
   const excludedCount = excluded.size;
-  // Visible-row ranking — excluded rows lose their #N badge so the
+  // Visible-row ranking - excluded rows lose their #N badge so the
   // remaining list reads as a clean leaderboard.
   let visibleRank = 0;
 

@@ -171,7 +171,7 @@ export class Prometheus {
 
 /** PromQL built-in functions and keywords we should skip when scanning
  *  for the first raw metric name in a query string. Updated from the
- *  Prometheus 2.49 function reference — any identifier here is guaranteed
+ *  Prometheus 2.49 function reference - any identifier here is guaranteed
  *  not to be a real metric, so `dataAgeSec` won't probe a non-existent
  *  series and silently fall back to `now`. */
 const PROMQL_RESERVED = new Set([
@@ -212,7 +212,7 @@ const PROMQL_RESERVED = new Set([
  *  declare it explicitly.
  *
  *  Strategy: prefer identifiers immediately followed by `{` (label selector)
- *  or `[` (range vector) — those are always real metric references, never
+ *  or `[` (range vector) - those are always real metric references, never
  *  functions. Falls back to the reserved-set scan for queries like
  *  `metric_name` or `metric > 0` that don't carry a selector. */
 function extractMetricName(promql: string): string | null {
@@ -255,12 +255,12 @@ function isPrivateAddress(addr: string): boolean {
   if (a === "::1" || a === "::") return true;
   if (/^f[cd][0-9a-f]{2}:/.test(a)) return true; // ULA
   if (/^fe80:/.test(a)) return true; // link-local
-  // IPv4-mapped IPv6 — recurse on the embedded v4 address.
+  // IPv4-mapped IPv6 - recurse on the embedded v4 address.
   const mapped = /^::ffff:([0-9.]+)$/.exec(a);
   if (mapped) return isPrivateAddress(mapped[1]);
-  // NAT64 (RFC 6052) — last 32 bits encode a v4 address.
+  // NAT64 (RFC 6052) - last 32 bits encode a v4 address.
   if (/^64:ff9b:/.test(a)) return true;
-  // 6to4 (RFC 3056) — second/third hextets encode the v4 address.
+  // 6to4 (RFC 3056) - second/third hextets encode the v4 address.
   // Conservative: reject any 6to4 whose embedded v4 lands in a private range.
   const sixToFour = /^2002:([0-9a-f]{1,4}):([0-9a-f]{1,4}):/.exec(a);
   if (sixToFour) {
@@ -292,7 +292,7 @@ async function dnsLookupWithTimeout(host: string): Promise<{ address: string }[]
 // resolves only to public addresses") doesn't change minute-to-minute
 // in honest operation; capping the cache at 60 s also bounds the
 // DNS-rebinding window for a hostile-DNS attacker to a single minute
-// per spec — they'd still need to flip DNS through the cache miss to
+// per spec - they'd still need to flip DNS through the cache miss to
 // reach a private IP.
 type HostCheckEntry = { ok: boolean; reason?: string; expiresAt: number };
 const HOST_CHECK_TTL_MS = 60_000;
@@ -331,7 +331,7 @@ async function assertPublicHost(url: URL): Promise<void> {
     }
     hostCheckCache.set(host, { ok: true, expiresAt: now + HOST_CHECK_TTL_MS });
   } catch (e) {
-    // DNS timeout / NXDOMAIN: do NOT cache as failure forever — let the
+    // DNS timeout / NXDOMAIN: do NOT cache as failure forever - let the
     // next request retry. Only the explicit "private address" path above
     // gets cached on failure.
     throw e;

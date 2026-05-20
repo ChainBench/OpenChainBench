@@ -136,7 +136,7 @@ export function ShareSection({ slug, title, benchmark, chain }: Props) {
         : chain ?? null;
     const chainParam = liveChain ? `&chain=${encodeURIComponent(liveChain)}` : "";
     // Mirror the active site theme so the exported PNG matches what the
-    // user is looking at. SSR can't read the dark state — default to light
+    // user is looking at. SSR can't read the dark state - default to light
     // server-side, the client re-renders with `dark` once mounted.
     const isDark =
       typeof window !== "undefined" &&

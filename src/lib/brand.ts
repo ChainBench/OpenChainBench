@@ -5,7 +5,7 @@
  * Lookup is slug-based and case-insensitive. Anything not in this table
  * falls back to the rotating editorial palette in `series-colors.ts`.
  *
- * Sources: official brand kits and press pages. Kept conservative — we
+ * Sources: official brand kits and press pages. Kept conservative - we
  * only declare a brand color when it's unambiguous. Add a logo asset at
  * `public/logos/<slug>.svg` and the `<ProviderLogo>` component picks it
  * up automatically.
@@ -13,7 +13,7 @@
 
 export type Brand = {
   color: string;
-  /** Whether the brand color is dark — picked by Logo to flip its text color. */
+  /** Whether the brand color is dark - picked by Logo to flip its text color. */
   dark?: boolean;
 };
 
@@ -49,9 +49,9 @@ const BRANDS: Record<string, Brand> = {
   "ap-southeast": { color: "#3F8F66" },
   global: { color: "#7a7166" },
 
-  // ─── Aggregators / providers (bright, saturated — read on both modes) ───
+  // ─── Aggregators / providers (bright, saturated - read on both modes) ───
   mobula: { color: "#FF6B35" },        // vivid orange
-  codex: { color: "#84cc16" },         // saturated lime — readable on white + dark
+  codex: { color: "#84cc16" },         // saturated lime - readable on white + dark
   geckoterminal: { color: "#8B5CF6" }, // vivid violet (gecko brand)
   jupiter: { color: "#FF7A00" },       // amber-orange
   helius: { color: "#FF4D8D" },        // hot pink (helius brand)

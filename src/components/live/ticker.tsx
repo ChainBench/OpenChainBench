@@ -7,7 +7,7 @@ import { fmtCountFull, fmtMoneyFull } from "@/lib/live/format";
 import type { GlobalView } from "@/lib/live/types";
 
 /**
- * Single-row live ticker. Always visible at the top of the home page —
+ * Single-row live ticker. Always visible at the top of the home page -
  * clicking the toggle reveals the streamed-volume chart + feed below.
  *
  * Numbers are shown in full (commas, every digit visible) and tick
@@ -15,9 +15,9 @@ import type { GlobalView } from "@/lib/live/types";
  * feel alive instead of refreshing in once-per-second steps.
  *
  * Data sources (Mobula REST, polled by miniapps/ocb-stream-relay):
- *   • vol24h   — sum of trading volume across all chains/DEXes (lighthouse)
- *   • trades24h — total swap count over the last 24h (lighthouse)
- *   • mcap     — sum of market_cap from /api/1/all = total crypto market cap
+ *   • vol24h   - sum of trading volume across all chains/DEXes (lighthouse)
+ *   • trades24h - total swap count over the last 24h (lighthouse)
+ *   • mcap     - sum of market_cap from /api/1/all = total crypto market cap
  */
 export const LiveTicker = memo(function LiveTicker({
   connected,

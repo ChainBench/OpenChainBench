@@ -10,7 +10,7 @@ import { fmtValue, unitSuffix } from "@/lib/format";
  * "Latest deployed benchmarks" preview table on the home page.
  *
  * 3-column row: title cluster | 24h chart | value. Top 5 benchmarks by
- * `lastRunAt`. Matches the home design — a row-style list, not the
+ * `lastRunAt`. Matches the home design - a row-style list, not the
  * card grid that lives at /benchmarks.
  */
 export function HomeBenchTable({ benchmarks }: { benchmarks: Benchmark[] }) {

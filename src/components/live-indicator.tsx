@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
  * Real-time freshness indicator for a bench: a pulsing green dot plus a
  * "Live · updated Ns ago" counter that ticks client-side every second.
  * Falls back to a muted "Stale" state if `lastRunAt` is older than 5 min,
- * which usually means the harness is down or ISR is wedged — better to
+ * which usually means the harness is down or ISR is wedged - better to
  * show staleness than to lie about freshness.
  *
  * Every page that renders this widget has its own ISR cycle, so the SSR
@@ -56,14 +56,14 @@ export function LiveIndicator({
           setCanonical(new Date(asOf).toISOString());
         })
         .catch(() => {
-          // ignore — keep current value
+          // ignore - keep current value
         });
     }
 
     fetchOnce();
     // Poll every 5 s. Must stay above the /api/freshness cache window
     // (s-maxage=2 + swr=4) so consecutive polls don't keep hitting the
-    // same cached asOf — otherwise the counter visibly grows between
+    // same cached asOf - otherwise the counter visibly grows between
     // refreshes instead of resetting cleanly each tick.
     const id = setInterval(fetchOnce, 5_000);
     return () => {

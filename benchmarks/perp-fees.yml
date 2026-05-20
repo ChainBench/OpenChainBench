@@ -45,7 +45,7 @@ prometheus:
   window: 24h
 
 # Asset selector. Tabs at the top of the page let the reader switch
-# between ETH, BTC, SOL — every PromQL query gets `chain="X"` injected
+# between ETH, BTC, SOL - every PromQL query gets `chain="X"` injected
 # server-side so each tab is its own ranking. Note: the harness uses
 # `chain` as the metric label even though semantically it's the
 # underlying asset, to reuse the existing dimension-filter mechanism.

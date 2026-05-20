@@ -13,7 +13,7 @@ export function fmtUnit(value: number, unit: string) {
     // Sub-10s: render as "X.Y s" so all chains in the same ballpark
     // read with the same units (avoids "1 s" next to "1096 ms" for
     // values 100ms apart). Sub-second precision is preserved as 0.1 s
-    // rather than ms — fine grain enough for finality comparison.
+    // rather than ms - fine grain enough for finality comparison.
     if (s < 10) return `${s.toFixed(1)} s`;
     return `${s.toFixed(0)} s`;
   }

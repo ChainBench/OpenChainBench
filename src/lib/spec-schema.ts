@@ -18,7 +18,7 @@ import { z } from "zod";
  *  loopback, RFC1918, link-local (incl. AWS/GCP metadata at 169.254.x),
  *  ULA and CGNAT literals.
  *
- *  This is the FIRST line of defense — it blocks obvious bad URLs in PR.
+ *  This is the FIRST line of defense - it blocks obvious bad URLs in PR.
  *  The runtime client (src/lib/prometheus.ts) also DNS-resolves the hostname
  *  before every fetch and rejects if it lands on a private address, so a
  *  hostname that *currently* resolves to a public IP can't get repointed to

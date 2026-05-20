@@ -5,7 +5,7 @@ import { CATEGORY_COLOR } from "@/lib/category-colors";
 import { fmtValue, unitSuffix } from "@/lib/format";
 
 /**
- * Card tile for the All Benchmarks grid. Self-contained — renders the
+ * Card tile for the All Benchmarks grid. Self-contained - renders the
  * category badge, title, headline KPI (field-composite p50), a compact
  * MiniChart preview, and a 3-column footer (providers / samples / updated).
  * Drafts render the same skeleton with an "Awaiting first run" placeholder
@@ -25,7 +25,7 @@ export function BenchmarkCard({ benchmark }: { benchmark: Benchmark }) {
   const headlineValue = !isDraft && leader ? fmtValue(leader.ms.p50, b.unit) : "n/a";
   const headlineUnit = unitSuffix(b.unit).trim();
 
-  // Top-right provider chips — first 3 results, single-letter circle badges.
+  // Top-right provider chips - first 3 results, single-letter circle badges.
   const chips = b.results.slice(0, 3);
 
   return (
@@ -33,7 +33,7 @@ export function BenchmarkCard({ benchmark }: { benchmark: Benchmark }) {
       href={`/benchmarks/${b.slug}`}
       className="card-soft p-6 flex flex-col gap-4 group"
     >
-      {/* Top row — category + draft pill + provider chips */}
+      {/* Top row - category + draft pill + provider chips */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0">
           <span
@@ -80,7 +80,7 @@ export function BenchmarkCard({ benchmark }: { benchmark: Benchmark }) {
         <span className="label-mono text-ink-faint shrink-0">24H</span>
       </div>
 
-      {/* Chart preview — or draft placeholder */}
+      {/* Chart preview - or draft placeholder */}
       <div className="min-h-[48px] flex items-center">
         {isDraft ? (
           <p className="label-mono text-ink-faint">Awaiting first run</p>
@@ -108,7 +108,7 @@ function Footer({ label, value }: { label: string; value: string }) {
   );
 }
 
-/** "May 6, 2026, 9:17 AM UTC" — matches the spec wording. */
+/** "May 6, 2026, 9:17 AM UTC" - matches the spec wording. */
 function formatUpdated(iso: string): string {
   if (!iso) return "n/a";
   const d = new Date(iso);

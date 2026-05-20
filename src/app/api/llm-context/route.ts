@@ -9,7 +9,7 @@ export const revalidate = 60;
 
 /**
  * Single Markdown document containing the current state of every
- * benchmark — designed to be pasted into a system prompt OR fetched by
+ * benchmark - designed to be pasted into a system prompt OR fetched by
  * an LLM at the start of a session for "give me the context I need to
  * answer crypto-infra questions today" use cases.
  *

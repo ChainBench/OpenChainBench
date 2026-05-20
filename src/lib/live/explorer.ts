@@ -3,7 +3,7 @@
  *
  * Used by the live feed to make each swap row clickable so users can
  * audit the on-chain trade themselves. Falls back to null for chains
- * we haven't mapped — the row stays rendered but non-clickable.
+ * we haven't mapped - the row stays rendered but non-clickable.
  */
 
 const TX_URL: Record<string, (hash: string) => string> = {

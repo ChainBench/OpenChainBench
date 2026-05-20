@@ -25,7 +25,7 @@ const SPECS_DIR = path.join(process.cwd(), "benchmarks");
 
 // Cross-request server cache. Without it, each new HTTP request that
 // missed the page-level ISR window would re-run every Prom query for
-// every spec — concurrent visitors all paying full price. With it, the
+// every spec - concurrent visitors all paying full price. With it, the
 // first miss warms the cache and every later request inside `revalidate`
 // gets the result instantly. Wrapped in React `cache()` too so duplicate
 // calls within a single render tree dedupe.
@@ -51,7 +51,7 @@ export type BenchmarkFilters = {
 /**
  * Cross-request server cache for filtered loads. Each (slug, filters) combo
  * is computed at most once per `revalidate` window across ALL concurrent
- * users — so the page-level pre-fetch (which loads every chain × region
+ * users - so the page-level pre-fetch (which loads every chain × region
  * variant in parallel) hits a warm cache after the first miss instead of
  * triggering N × Prom queries on every render.
  *
