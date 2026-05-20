@@ -112,9 +112,9 @@ providers:
     name: Blocknative
     tag: Probability-of-inclusion model, EIP-1559 tiered
     queries:
-      p50: histogram_quantile(0.50, sum by (le) (rate(gas_error_priority_gwei_histogram_bucket{oracle="blocknative", tier="p50"}[24h])))
-      p90: histogram_quantile(0.90, sum by (le) (rate(gas_error_priority_gwei_histogram_bucket{oracle="blocknative", tier="p50"}[24h])))
-      p99: histogram_quantile(0.99, sum by (le) (rate(gas_error_priority_gwei_histogram_bucket{oracle="blocknative", tier="p50"}[24h])))
+      p50: quantile_over_time(0.50, gas_error_priority_gwei{oracle="blocknative", tier="p50"}[24h])
+      p90: quantile_over_time(0.90, gas_error_priority_gwei{oracle="blocknative", tier="p50"}[24h])
+      p99: quantile_over_time(0.99, gas_error_priority_gwei{oracle="blocknative", tier="p50"}[24h])
       mean: avg_over_time(gas_error_priority_gwei{oracle="blocknative", tier="p50"}[24h])
       success: sum(rate(gas_oracle_call_total{oracle="blocknative", result="ok"}[24h])) / sum(rate(gas_oracle_call_total{oracle="blocknative"}[24h]))
       sample_size: sum(increase(gas_oracle_call_total{oracle="blocknative"}[24h]))
@@ -124,9 +124,9 @@ providers:
     name: PublicNode feeHistory
     tag: Thin wrapper over EIP-1559 reward percentiles
     queries:
-      p50: histogram_quantile(0.50, sum by (le) (rate(gas_error_priority_gwei_histogram_bucket{oracle="publicnode-feehistory", tier="p50"}[24h])))
-      p90: histogram_quantile(0.90, sum by (le) (rate(gas_error_priority_gwei_histogram_bucket{oracle="publicnode-feehistory", tier="p50"}[24h])))
-      p99: histogram_quantile(0.99, sum by (le) (rate(gas_error_priority_gwei_histogram_bucket{oracle="publicnode-feehistory", tier="p50"}[24h])))
+      p50: quantile_over_time(0.50, gas_error_priority_gwei{oracle="publicnode-feehistory", tier="p50"}[24h])
+      p90: quantile_over_time(0.90, gas_error_priority_gwei{oracle="publicnode-feehistory", tier="p50"}[24h])
+      p99: quantile_over_time(0.99, gas_error_priority_gwei{oracle="publicnode-feehistory", tier="p50"}[24h])
       mean: avg_over_time(gas_error_priority_gwei{oracle="publicnode-feehistory", tier="p50"}[24h])
       success: sum(rate(gas_oracle_call_total{oracle="publicnode-feehistory", result="ok"}[24h])) / sum(rate(gas_oracle_call_total{oracle="publicnode-feehistory"}[24h]))
       sample_size: sum(increase(gas_oracle_call_total{oracle="publicnode-feehistory"}[24h]))
@@ -136,9 +136,9 @@ providers:
     name: Owlracle
     tag: Multi-oracle aggregator, free tier 100/h
     queries:
-      p50: histogram_quantile(0.50, sum by (le) (rate(gas_error_priority_gwei_histogram_bucket{oracle="owlracle", tier="p50"}[24h])))
-      p90: histogram_quantile(0.90, sum by (le) (rate(gas_error_priority_gwei_histogram_bucket{oracle="owlracle", tier="p50"}[24h])))
-      p99: histogram_quantile(0.99, sum by (le) (rate(gas_error_priority_gwei_histogram_bucket{oracle="owlracle", tier="p50"}[24h])))
+      p50: quantile_over_time(0.50, gas_error_priority_gwei{oracle="owlracle", tier="p50"}[24h])
+      p90: quantile_over_time(0.90, gas_error_priority_gwei{oracle="owlracle", tier="p50"}[24h])
+      p99: quantile_over_time(0.99, gas_error_priority_gwei{oracle="owlracle", tier="p50"}[24h])
       mean: avg_over_time(gas_error_priority_gwei{oracle="owlracle", tier="p50"}[24h])
       success: sum(rate(gas_oracle_call_total{oracle="owlracle", result="ok"}[24h])) / sum(rate(gas_oracle_call_total{oracle="owlracle"}[24h]))
       sample_size: sum(increase(gas_oracle_call_total{oracle="owlracle"}[24h]))
@@ -148,9 +148,9 @@ providers:
     name: Etherscan
     tag: Most-visited gas tracker, legacy tier shape
     queries:
-      p50: histogram_quantile(0.50, sum by (le) (rate(gas_error_priority_gwei_histogram_bucket{oracle="etherscan", tier="p50"}[24h])))
-      p90: histogram_quantile(0.90, sum by (le) (rate(gas_error_priority_gwei_histogram_bucket{oracle="etherscan", tier="p50"}[24h])))
-      p99: histogram_quantile(0.99, sum by (le) (rate(gas_error_priority_gwei_histogram_bucket{oracle="etherscan", tier="p50"}[24h])))
+      p50: quantile_over_time(0.50, gas_error_priority_gwei{oracle="etherscan", tier="p50"}[24h])
+      p90: quantile_over_time(0.90, gas_error_priority_gwei{oracle="etherscan", tier="p50"}[24h])
+      p99: quantile_over_time(0.99, gas_error_priority_gwei{oracle="etherscan", tier="p50"}[24h])
       mean: avg_over_time(gas_error_priority_gwei{oracle="etherscan", tier="p50"}[24h])
       success: sum(rate(gas_oracle_call_total{oracle="etherscan", result="ok"}[24h])) / sum(rate(gas_oracle_call_total{oracle="etherscan"}[24h]))
       sample_size: sum(increase(gas_oracle_call_total{oracle="etherscan"}[24h]))
