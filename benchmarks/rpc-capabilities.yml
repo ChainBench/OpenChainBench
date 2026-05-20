@@ -2,8 +2,8 @@
 
 slug: rpc-capabilities
 number: "010"
-title: Fastest public Ethereum RPC provider
-seo_title: "Fastest free Ethereum RPC in 2026: PublicNode, dRPC, 1RPC, Flashbots, Cloudflare live latency benchmark"
+title: Fastest public RPC provider
+seo_title: "Fastest free public RPC in 2026: Ethereum, Base, BNB Chain live latency benchmark (PublicNode, dRPC, 1RPC, Cloudflare)"
 seo_description: "Live no-key public RPC latency leaderboard. eth_blockNumber round-trip in milliseconds against PublicNode, dRPC, 1RPC, MeowRPC, Flashbots and Cloudflare on Ethereum, Base and BNB Chain. p50, p90 and p99 over 24h, plus archive-depth support per provider."
 subtitle: HTTP round-trip latency for eth_blockNumber against free, no-key public RPC endpoints, audited every 15 seconds.
 category: RPCs
@@ -14,21 +14,23 @@ higher_is_better: false
 
 seo_intro: |
   This benchmark answers the question every developer reaching for a
-  free Ethereum RPC asks before pasting a URL into their dapp.
-  which public no-key endpoint is actually fast and reliable right
-  now. Alchemy and Infura own the keyed-tier market; the free public
-  side of the question lives elsewhere, in the RPC services dapps
-  hit when a contributor's free quota is the budget. We probe
-  `eth_blockNumber` every 15 seconds against PublicNode, dRPC, 1RPC,
-  MeowRPC, Flashbots Protect, Cloudflare and chain-official RPCs
-  (Base, Binance) from a single region, with the same payload and
-  the same client. Latency is the headline number; the leaderboard
-  also exposes call-result classification (`ok` vs `http_err` vs
-  `jsonrpc_err` vs `stale` vs `timeout`, the Cloudflare-eth trap
-  where a 200 OK hides a JSON-RPC error field) and archive-depth
-  support so a fast endpoint that returned a state-pruned response
-  at block (head - 5M) is not silently treated as a viable archive
-  source.
+  free public RPC asks before pasting a URL into their dapp. which
+  no-key endpoint is actually fast and reliable right now, on the
+  chain my product runs on. Alchemy and Infura own the keyed-tier
+  market; the free public side of the question lives elsewhere, in
+  the RPC services dapps hit when a contributor's free quota is the
+  budget. We probe `eth_blockNumber` every 15 seconds against
+  PublicNode, dRPC, 1RPC, MeowRPC, Flashbots Protect, Cloudflare and
+  chain-official RPCs on three networks. Ethereum mainnet (6
+  providers), Base (3 providers including the Coinbase-operated
+  `mainnet.base.org`), BNB Chain (3 providers including the Binance
+  dataseed). Use the chain tab above to filter the leaderboard.
+  Latency is the headline number; the leaderboard also exposes
+  call-result classification (`ok` vs `http_err` vs `jsonrpc_err` vs
+  `stale` vs `timeout`, the Cloudflare-eth trap where a 200 OK hides
+  a JSON-RPC error field) and archive-depth support so a fast
+  endpoint that returned a state-pruned response at block
+  (head - 5M) is not silently treated as a viable archive source.
 
 abstract: |
   We measure the round-trip latency of a single, identical RPC call
@@ -65,8 +67,8 @@ findings:
   - "{{worst_name}} trails at {{worst_p50}} on the active tab. On a free public RPC the gap between leader and laggard is rarely about raw infrastructure speed; it is usually about how heavily a popular free endpoint is currently being hammered by the rest of the public, with no rate-limit budget to keep tail latency bounded."
 
 faq:
-  - q: "What is the fastest free Ethereum RPC right now?"
-    a: "{{best_name}} currently leads the Ethereum tab at {{best_p50}} (p50, 24 h) across {{count}} measured providers. The leaderboard re-sorts every 15 seconds against fresh Prometheus samples, so the answer reflects the last 24 hours of measured `eth_blockNumber` round-trip latency from eu-west, not a marketing-page claim."
+  - q: "What is the fastest free public RPC right now?"
+    a: "{{best_name}} currently leads the active chain tab at {{best_p50}} (p50, 24 h) across {{count}} measured providers. The leaderboard re-sorts every 15 seconds against fresh Prometheus samples, so the answer reflects the last 24 hours of measured `eth_blockNumber` round-trip latency from eu-west, not a marketing-page claim. Switch the chain tab (Ethereum, Base, BNB Chain, or All) to see the leader on the network your product runs on."
   - q: "Which public RPCs work without an API key in 2026?"
     a: "Six no-key Ethereum RPCs are audited live on this page: PublicNode (`ethereum-rpc.publicnode.com`), dRPC (`eth.drpc.org`), 1RPC (`1rpc.io/eth`), MeowRPC (`eth.meowrpc.com`), Flashbots Protect (`rpc.flashbots.net`), Cloudflare (`cloudflare-eth.com`). Base also exposes the chain-official `mainnet.base.org`; BNB Chain has `bsc-dataseed1.binance.org`. Ankr is excluded because the free tier now returns JSON-RPC -32000 'Unauthorized'. All endpoints in this leaderboard return a usable response without a key, today."
   - q: "Why is Cloudflare-eth returning errors?"
