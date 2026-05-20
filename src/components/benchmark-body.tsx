@@ -83,7 +83,7 @@ function summarize(b: Benchmark | undefined): ChainMeta | null {
  * Client wrapper that renders the dynamic body of a bench detail page.
  * Receives every chain variant pre-fetched server-side, so flipping a
  * chain tab is a pure client state swap. No network round-trip, no RSC
- * payload, no Prom round-trip — instant.
+ * payload, no Prom round-trip - instant.
  *
  * URL is kept in sync via `history.replaceState` so the active tab is
  * shareable, but we never trigger Next.js navigation (which would defeat
@@ -96,7 +96,7 @@ function variantKey(chain: string | null, region: string | null): string {
 
 /** Region values that appear in extras.seriesByRegion24h. Used when the
  *  spec doesn't declare `dimensions.region` but the chart still has
- *  per-region series — so we can offer the same picker affordance at the
+ *  per-region series - so we can offer the same picker affordance at the
  *  top of the page next to Chain rather than buried in the chart toolbar. */
 function chartOnlyRegions(b: Benchmark): string[] {
   const byRegion = b.extras.seriesByRegion24h ?? {};

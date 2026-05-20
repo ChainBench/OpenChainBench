@@ -58,7 +58,7 @@ export function rateLimit(
   if (tokens < 1) {
     const need = 1 - tokens;
     const retryAfterMs = Math.ceil(need / refillPerMs);
-    // Don't re-`set` on the rejected path — avoids Map churn under
+    // Don't re-`set` on the rejected path - avoids Map churn under
     // sustained 429 spam and preserves the original updatedAt for refill.
     return { ok: false, remaining: 0, retryAfterSec: Math.ceil(retryAfterMs / 1000) };
   }
@@ -68,7 +68,7 @@ export function rateLimit(
   return { ok: true, remaining: Math.floor(tokens), retryAfterSec: 0 };
 }
 
-/** Evict the least-recently-updated bucket. Single-pass O(n) — n is
+/** Evict the least-recently-updated bucket. Single-pass O(n) - n is
  *  bounded to MAX_BUCKETS, so amortised O(1) per request. Cheaper than
  *  the previous age-cutoff sweep that did full scans under load. */
 function evictOne() {
@@ -86,14 +86,14 @@ function evictOne() {
 /** Extract a stable client identifier from request headers.
  *
  *  Trust order (Vercel-aware):
- *  1. `x-vercel-forwarded-for` — Vercel's vetted client IP. Single value,
+ *  1. `x-vercel-forwarded-for` - Vercel's vetted client IP. Single value,
  *     not spoofable by the client (the platform sets it).
- *  2. `x-real-ip` — same in most reverse-proxy setups.
- *  3. **Last** hop of `x-forwarded-for` — Vercel APPENDS its observed
+ *  2. `x-real-ip` - same in most reverse-proxy setups.
+ *  3. **Last** hop of `x-forwarded-for` - Vercel APPENDS its observed
  *     client IP to whatever the request brought in. Reading the FIRST
  *     hop is exactly the spoofable value an attacker pre-injected; the
  *     last hop is the platform-attached one.
- *  4. `"unknown"` fallback — folds anonymous traffic into one shared
+ *  4. `"unknown"` fallback - folds anonymous traffic into one shared
  *     bucket (acceptable: protects the route from /0 IP attribution). */
 export function clientKey(req: Request, suffix = ""): string {
   const ip = resolveClientIp(req);
@@ -102,7 +102,7 @@ export function clientKey(req: Request, suffix = ""): string {
 
 function resolveClientIp(req: Request): string {
   // Vercel sets x-vercel-forwarded-for to a single vetted IP. Prefer it
-  // — it's the only header on this list that an external client cannot
+  // - it's the only header on this list that an external client cannot
   // forge.
   const vercel = req.headers.get("x-vercel-forwarded-for");
   if (vercel) {
@@ -111,7 +111,7 @@ function resolveClientIp(req: Request): string {
   }
   // Fallback: the LAST hop of x-forwarded-for. Vercel APPENDS its observed
   // client IP to whatever the request brought in, so the last entry is
-  // platform-attached. We DO NOT trust x-real-ip — Vercel never sets it,
+  // platform-attached. We DO NOT trust x-real-ip - Vercel never sets it,
   // so any value present came from the client and is fully attacker-
   // controlled.
   const xff = req.headers.get("x-forwarded-for");
@@ -123,7 +123,7 @@ function resolveClientIp(req: Request): string {
 }
 
 /** Site-wide cap. Cheap "every-IP-bucket" limit composed on top of the
- *  per-IP bucket — guards against distributed amplification (many IPs
+ *  per-IP bucket - guards against distributed amplification (many IPs
  *  flooding /api/report, e.g.) where the per-IP cap is per-actor but a
  *  coordinated swarm can still saturate the route. Key the global bucket
  *  by the route suffix, not by IP. */

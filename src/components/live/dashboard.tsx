@@ -44,7 +44,7 @@ const MAX_CLOCK_SKEW_MS = 5 * 60 * 1000;
 /** Best-effort runtime shape check on each WS frame. Mirrors the wire
  *  protocol documented in miniapps/ocb-stream-relay/README.md. Drops any
  *  message whose `type` is unknown, required fields missing, or numeric
- *  fields are not finite. Defense in depth — even if a relay regression
+ *  fields are not finite. Defense in depth - even if a relay regression
  *  (or compromise) sends garbage, the UI ignores it rather than freezing
  *  the chart with NaN/Infinity or eating gigabytes via huge buckets. */
 function isRelayMessage(v: unknown): v is RelayMessage {
@@ -266,7 +266,7 @@ export function LiveDashboard() {
           const meta = chainMeta(s.chain);
           if (!meta) return;
 
-          // Feed gets only the swaps above FEED_MIN_USD — the chart still
+          // Feed gets only the swaps above FEED_MIN_USD - the chart still
           // accumulates everything below for volume accuracy, but at the
           // Multi-Events firehose rate (~230 evt/s) the feed would
           // otherwise turn over in 0.2 s and be unreadable.

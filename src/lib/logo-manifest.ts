@@ -1,7 +1,7 @@
 /**
  * Build-time manifest mapping each slug to its public logo path.
  *
- * Lookup is case-insensitive — the perp-fees bench uses uppercase chain
+ * Lookup is case-insensitive - the perp-fees bench uses uppercase chain
  * values like `ETH` / `BTC` while the L1 bench uses lowercase chain
  * provider slugs like `ethereum` / `bitcoin`. Both resolve to the same
  * file via aliasing.

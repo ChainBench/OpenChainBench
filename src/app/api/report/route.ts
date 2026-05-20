@@ -73,7 +73,7 @@ type Body = {
 
 export async function POST(req: Request) {
   // Per-IP cap (anti-burst per actor) AND site-wide cap (anti-amplification
-  // from a swarm of cheap residential IPs — even when each stays under the
+  // from a swarm of cheap residential IPs - even when each stays under the
   // per-IP limit, the global bucket bounds total Slack webhook fan-out).
   const rl = rateLimit(clientKey(req, "report"), 5, 60);
   if (!rl.ok) return tooManyRequests(rl.retryAfterSec);

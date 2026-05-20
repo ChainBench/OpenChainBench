@@ -19,7 +19,7 @@ export const runtime = "nodejs";
 /**
  * MCP server. Exposes OpenChainBench data to any MCP-capable agent
  * (Claude Desktop, ChatGPT custom tools, generic MCP clients) via three
- * tools that mirror the public REST surface. Streamable-HTTP only — the
+ * tools that mirror the public REST surface. Streamable-HTTP only - the
  * SSE transport requires Redis which we don't run.
  *
  * Connect at:
@@ -52,7 +52,7 @@ const QUERY_PROM_ALLOWED_METRIC_PREFIXES = [
   "wallet_labels_",
 ];
 
-// PromQL identifiers that are NOT metric names — built-in functions,
+// PromQL identifiers that are NOT metric names - built-in functions,
 // aggregators, modifiers, plus the label names that appear bare in
 // selectors. Mirrors the set in src/lib/prometheus.ts plus the labels.
 const PROMQL_RESERVED_IDENTS = new Set([
@@ -94,7 +94,7 @@ const NON_ASCII_WS = new RegExp(
 /** Decide whether a public query_prom request is allowed. Two passes:
  *  - Enumeration patterns that would walk the metric catalog / fingerprint
  *    topology, ignoring case-sensitivity tricks via Unicode whitespace.
- *  - Allowlist of metric-name prefixes — every metric-like identifier in
+ *  - Allowlist of metric-name prefixes - every metric-like identifier in
  *    the query must match a published benchmark namespace, otherwise the
  *    query is refused. This is what turns the public MCP from a passthrough
  *    into a sandbox bound to the data the site already serves. */
@@ -103,14 +103,14 @@ function isQueryAllowed(q: string): { ok: true } | { ok: false; reason: string }
   // doesn't tip the allowlist. PromQL comments run to end-of-line.
   const noComments = q.replace(/#[^\n]*/g, "");
   // Strip string literals so quoted label VALUES (`aggregator="mobula"`)
-  // never get scanned as identifiers — they're attacker-controlled text,
+  // never get scanned as identifiers - they're attacker-controlled text,
   // but PromQL escapes their content via Prom's parser, not our regex.
   const stripped = noComments.replace(/"(?:\\.|[^"\\])*"/g, '""');
   // Whitespace-normalised form. Used for every pattern check so a NBSP
   // between operator and operand can't slip a rule.
   const c = stripped.replace(NON_ASCII_WS, "");
 
-  // Pattern blocks — all operate on `c`, the comment+string-stripped,
+  // Pattern blocks - all operate on `c`, the comment+string-stripped,
   // whitespace-normalised form.
   if (/__name__[=!]~/.test(c)) return { ok: false, reason: "name_regex_blocked" };
   if (c.includes("{}")) return { ok: false, reason: "empty_selector_blocked" };
@@ -119,7 +119,7 @@ function isQueryAllowed(q: string): { ok: true } | { ok: false; reason: string }
     return { ok: false, reason: "label_enum_blocked" };
   }
   // Aggregation by (instance|host|__name__|__address__|job) reveals
-  // topology labels we don't publish. `by (le)` is fine — it's how
+  // topology labels we don't publish. `by (le)` is fine - it's how
   // every histogram_quantile query in our specs is shaped.
   if (
     /\b(group|count|sum|avg|min|max|topk|bottomk|stddev|stdvar|quantile)by\((__name__|__address__|job|instance|host)\b/.test(
@@ -130,7 +130,7 @@ function isQueryAllowed(q: string): { ok: true } | { ok: false; reason: string }
   }
   if (/\bcount_values\b/.test(c)) return { ok: false, reason: "count_values_blocked" };
 
-  // Metric-name allowlist — every identifier-like token outside strings,
+  // Metric-name allowlist - every identifier-like token outside strings,
   // comments, AND range-vector durations must match a published benchmark
   // namespace. Strip `[5m]` / `[24h]` / `[7d]` etc. so the `h`/`m`/`d`/`s`
   // suffix letters aren't scanned as identifiers.
@@ -363,7 +363,7 @@ const mcpHandler = createMcpHandler(
 
     // ── Resources ──────────────────────────────────────────────────────
     // Every live benchmark is also exposed as an MCP resource so an agent
-    // can pin it into its context as a long-lived document — useful when
+    // can pin it into its context as a long-lived document - useful when
     // the user is iterating on the same benchmark across several turns and
     // doesn't want the agent to re-fetch via tool calls each time.
     //
@@ -502,7 +502,7 @@ const mcpHandler = createMcpHandler(
 
 /** Per-IP rate limit at the transport level. The MCP handler is a single
  *  endpoint for all tool calls, so this bucket caps total MCP RPS for a
- *  given IP. A JSON-RPC batch in a single POST counts only once — we also
+ *  given IP. A JSON-RPC batch in a single POST counts only once - we also
  *  reject batches explicitly (see below). */
 function rateLimited(req: Request): Response | null {
   const key = clientKey(req, "mcp");
@@ -511,7 +511,7 @@ function rateLimited(req: Request): Response | null {
   return null;
 }
 
-/** Reject JSON-RPC batch requests — they're an MCP-spec feature but our
+/** Reject JSON-RPC batch requests - they're an MCP-spec feature but our
  *  per-request rate limit charges 1 token for the whole batch, so a client
  *  posting `[{call1}, {call2}, ..., {callN}]` could otherwise multiply
  *  effective throughput by N. We don't need batching for any documented use

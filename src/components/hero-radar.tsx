@@ -1,5 +1,5 @@
 /**
- * Radar / "cadran qui tourne" — animated SVG dial that sits on the right
+ * Radar / "cadran qui tourne" - animated SVG dial that sits on the right
  * of the home hero. Concentric circles + radial spokes + a sweeping orange
  * wedge that rotates around the centre. Pure CSS animation, no JS.
  *

@@ -39,11 +39,11 @@ export async function generateMetadata({
   if (!b) return {};
   const metaTitle = b.seoTitle ?? b.title;
   // Description precedence (most-to-least specific):
-  //   1. `seo_description` from the YAML — hand-crafted snippet with the
+  //   1. `seo_description` from the YAML - hand-crafted snippet with the
   //      long-tail query phrases we want to rank for.
-  //   2. `headlineSentence(b) + subtitle` — auto-generated citable hook
+  //   2. `headlineSentence(b) + subtitle` - auto-generated citable hook
   //      from the current leader's measured value.
-  //   3. Just `subtitle` — when the bench has no live data yet.
+  //   3. Just `subtitle` - when the bench has no live data yet.
   const sentence = headlineSentence(b);
   const description =
     b.seoDescription ?? (sentence ? `${sentence} ${b.subtitle}` : b.subtitle);
@@ -96,8 +96,8 @@ export default async function BenchmarkPage({
 
   // Pre-fetch every (chain × region) variant in parallel so client flips
   // are zero round-trip. unstable_cache dedupes each (slug, filters) combo
-  // across users — first miss warms it, every later viewer gets it instant.
-  // `all` is the "no filter" sentinel — same as the unscoped fetch.
+  // across users - first miss warms it, every later viewer gets it instant.
+  // `all` is the "no filter" sentinel - same as the unscoped fetch.
   const chainsForFetch = chainOptions.length > 0 ? chainOptions.map((c) => c.value) : [null];
   const regionsForFetch = regionOptions.length > 0 ? regionOptions.map((r) => r.value) : [null];
 
@@ -198,7 +198,7 @@ export default async function BenchmarkPage({
       },
       // FAQPage entry is emitted only when the spec declares `faq:`. Google
       // requires every Question/Answer pair to also appear visibly on the
-      // page — the FaqSection below renders them, so the JSON-LD is honest.
+      // page - the FaqSection below renders them, so the JSON-LD is honest.
       ...(benchmark.faq && benchmark.faq.length > 0
         ? [
             {
@@ -224,7 +224,7 @@ export default async function BenchmarkPage({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
       />
-      {/* Visible breadcrumb trail — duplicates the JSON-LD BreadcrumbList
+      {/* Visible breadcrumb trail - duplicates the JSON-LD BreadcrumbList
           so Google can show the crumb above the URL in the SERP. */}
       <nav
         aria-label="Breadcrumb"
@@ -268,7 +268,7 @@ export default async function BenchmarkPage({
         )}
       </div>
 
-      {/* Bench identifier — minimal mono line, no SaaS-style pills. */}
+      {/* Bench identifier - minimal mono line, no SaaS-style pills. */}
       <div className="mt-6 flex flex-wrap items-center gap-3 font-sans text-[11px] uppercase tracking-[0.18em] text-ink-muted font-medium">
         <span style={{ color: catColor ?? "var(--color-ink-soft)" }}>
           {benchmark.category}
@@ -295,7 +295,7 @@ export default async function BenchmarkPage({
 
       {/* SEO-tuned intro paragraph rendered server-side under the H1 so
           long-tail query phrases land in the first ~200 words crawlers
-          weight heavily. Optional — omitted when the YAML doesn't set it. */}
+          weight heavily. Optional - omitted when the YAML doesn't set it. */}
       {benchmark.seoIntro && (
         <div className="mt-6 max-w-3xl space-y-3 text-[15px] leading-relaxed text-ink-soft">
           {benchmark.seoIntro
@@ -311,7 +311,7 @@ export default async function BenchmarkPage({
           the page to a pasteable quote or a JSON endpoint. */}
       {!isDraft && <CitationBar benchmark={benchmark} />}
 
-      {/* Methodology — expanded by default so readers can verify the
+      {/* Methodology - expanded by default so readers can verify the
           measurement before reading the numbers. Collapsible for repeat
           visitors who already know the harness. */}
       {!isDraft && (
@@ -357,7 +357,7 @@ export default async function BenchmarkPage({
           phrases land in static HTML for crawlers to index. */}
       {!isDraft && <ChainHeadingsSummary benchmark={benchmark} />}
 
-      {/* FAQ section — every question/answer mirrors a FAQPage JSON-LD
+      {/* FAQ section - every question/answer mirrors a FAQPage JSON-LD
           entry above. Google requires the content to be visible on the
           page, so we render the same text here. */}
       {!isDraft && benchmark.faq && benchmark.faq.length > 0 && (

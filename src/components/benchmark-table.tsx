@@ -9,7 +9,7 @@ import { LiveIndicator } from "@/components/live-indicator";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
 
 /**
- * Live-filterable benchmark table — used on the home `/` page.
+ * Live-filterable benchmark table - used on the home `/` page.
  * Server component fetches the full list; this client wrapper handles
  * the search input + matching against title / subtitle / category /
  * provider names. No API round-trip.
@@ -51,7 +51,7 @@ export function BenchmarkTable({ benchmarks }: { benchmarks: Benchmark[] }) {
 
   return (
     <div>
-      {/* Filter row — categories left, search right */}
+      {/* Filter row - categories left, search right */}
       <div className="mb-3 flex flex-wrap items-center gap-3">
         <ul className="flex flex-wrap items-center gap-1">
           <CategoryPill
@@ -95,7 +95,7 @@ export function BenchmarkTable({ benchmarks }: { benchmarks: Benchmark[] }) {
         </div>
       </div>
 
-      {/* Table head — same grid as rows so columns align cleanly. */}
+      {/* Table head - same grid as rows so columns align cleanly. */}
       <div
         className="hidden sm:grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_10rem] items-end gap-4 sm:gap-6 border-b-2 border-ink pb-2 pl-3 pr-3 font-sans text-[10px] uppercase tracking-[0.18em] text-ink-muted font-medium"
         role="row"

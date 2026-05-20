@@ -529,7 +529,7 @@ function fmtAgo(ms: number, nowMs: number): string {
 }
 
 // Approximate tooltip size used to clamp it inside the chart bounds.
-// TIP_H assumes worst-case 15-ish chains visible at once — the section
+// TIP_H assumes worst-case 15-ish chains visible at once - the section
 // container has overflow-hidden so an underestimate would clip the
 // bottom rows. The inner list still gets max-h + scroll as a safety
 // net for the day we exceed that.

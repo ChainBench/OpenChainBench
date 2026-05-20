@@ -1,6 +1,6 @@
 /**
  * Tiny pulsing green dot used inline in section labels to signal that
- * the surrounding figure reflects live data. Discreet by design — when
+ * the surrounding figure reflects live data. Discreet by design - when
  * paired with the masthead `LiveIndicator`, this is just visual reinforcement.
  */
 export function LiveDot({ className = "" }: { className?: string }) {

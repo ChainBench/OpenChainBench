@@ -10,7 +10,7 @@ import { fmtUnit } from "@/lib/format";
  * exact long-tail phrases they index against ("ethereum finality
  * time", "solana finality time sub-second", "stellar finality time").
  *
- * Only renders for benches whose results ARE chains — i.e. the
+ * Only renders for benches whose results ARE chains - i.e. the
  * provider slug matches an entry in the spec's findings about
  * consensus. For aggregator / bridge benches the heading shape
  * differs and is not generated here.
@@ -21,7 +21,7 @@ export function ChainHeadingsSummary({ benchmark }: { benchmark: Benchmark }) {
   const liveResults = benchmark.results.filter((r) => r.ms.p50 > 0);
   if (liveResults.length === 0) return null;
 
-  // Render for benches whose providers ARE chains — currently the
+  // Render for benches whose providers ARE chains - currently the
   // "Blockchains" category (l1-finality, l2-block-time, ...). Skip
   // aggregator / bridge / trading benches where providers are
   // protocols, not chains, and the per-chain heading shape would not
@@ -44,7 +44,7 @@ export function ChainHeadingsSummary({ benchmark }: { benchmark: Benchmark }) {
       <p className="mt-3 text-sm text-ink-muted">
         Live p50 over the last 24 hours, ranked{" "}
         {benchmark.higherIsBetter ? "highest" : "lowest"} first. Each chain has
-        its own consensus mechanism — the explainer below matches what the
+        its own consensus mechanism - the explainer below matches what the
         harness actually measures.
       </p>
 

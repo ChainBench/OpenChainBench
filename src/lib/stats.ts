@@ -2,7 +2,7 @@ import type { ProviderResult } from "@/types/benchmark";
 
 /**
  * Field-level summary stats for a benchmark's provider list.
- * Pure function — used by the bench detail page and the alternative
+ * Pure function - used by the bench detail page and the alternative
  * landing pages, which both render the same summary strip above the
  * chart.
  */

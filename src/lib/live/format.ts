@@ -23,12 +23,12 @@ export function fmtCount(n: number | undefined): string {
 /** Full-number variants used by the live ticker so every digit is visible
  *  and the value can visibly tick up between relay snapshots. */
 export function fmtMoneyFull(n: number | undefined): string {
-  if (n == null || n <= 0) return "—";
+  if (n == null || n <= 0) return "-";
   return `$${Math.round(n).toLocaleString("en-US")}`;
 }
 
 export function fmtCountFull(n: number | undefined): string {
-  if (n == null || n < 0) return "—";
+  if (n == null || n < 0) return "-";
   return Math.round(n).toLocaleString("en-US");
 }
 
