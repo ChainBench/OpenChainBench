@@ -118,9 +118,10 @@ export function ProvidersTable({ providers }: { providers: Row[] }) {
             <li key={p.slug} className="border-b border-rule">
               <Link
                 href={`/products/${p.slug}`}
-                className="group flex items-center gap-4 py-5 px-2 hover:bg-paper-soft/40 transition-colors"
+                className="group flex flex-col gap-3 py-5 px-2 hover:bg-paper-soft/40 transition-colors sm:flex-row sm:items-center sm:gap-4"
               >
-                <ProviderLogo slug={p.slug} name={p.name} size={52} />
+                <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
+                  <ProviderLogo slug={p.slug} name={p.name} size={40} />
 
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -157,14 +158,15 @@ export function ProvidersTable({ providers }: { providers: Row[] }) {
                   </p>
                 </div>
 
-                <div className="flex items-center gap-8 sm:gap-12 pr-2">
-                  <div className="text-right min-w-[72px]">
+                </div>
+                <div className="flex items-center justify-between gap-6 sm:justify-end sm:gap-12 pl-[3.25rem] sm:pl-0 pr-2">
+                  <div className="text-left sm:text-right sm:min-w-[72px]">
                     <p className="label-mono text-ink-faint">Benchmarks</p>
                     <p className="mt-1 font-semibold text-base text-ink tabular">
                       {p.appearances}
                     </p>
                   </div>
-                  <div className="text-right min-w-[56px]">
+                  <div className="text-left sm:text-right sm:min-w-[56px]">
                     <p className="label-mono text-ink-faint">Top 1</p>
                     <p
                       className={`mt-1 font-semibold text-base tabular ${
