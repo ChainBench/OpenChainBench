@@ -3,8 +3,8 @@
 slug: rpc-capabilities
 number: "010"
 title: Fastest public RPC provider
-seo_title: "Fastest free public RPC in 2026: Ethereum, Base, BNB Chain live latency benchmark (PublicNode, dRPC, 1RPC, Cloudflare)"
-seo_description: "Live no-key public RPC latency leaderboard. eth_blockNumber round-trip in milliseconds against PublicNode, dRPC, 1RPC, MeowRPC, Flashbots and Cloudflare on Ethereum, Base and BNB Chain. p50, p90 and p99 over 24h, plus archive-depth support per provider."
+seo_title: "Fastest free public RPC in 2026 (Ethereum, Polygon, Arbitrum, Optimism, Base, BNB, Avalanche, Linea, Scroll, Mantle): PublicNode, dRPC, 1RPC, Tenderly, Nodies live latency benchmark"
+seo_description: "Live no-key public RPC latency leaderboard across 10 EVM chains. eth_blockNumber round-trip latency against 15 audited providers (PublicNode, dRPC, 1RPC, Tenderly, Nodies, Lava, Merkle, plus official endpoints). p50/p90/p99 over 24h + archive-depth support."
 subtitle: HTTP round-trip latency for eth_blockNumber against free, no-key public RPC endpoints, audited every 15 seconds.
 category: RPCs
 status: live
@@ -19,12 +19,16 @@ seo_intro: |
   chain my product runs on. Alchemy and Infura own the keyed-tier
   market; the free public side of the question lives elsewhere, in
   the RPC services dapps hit when a contributor's free quota is the
-  budget. We probe `eth_blockNumber` every 15 seconds against
-  PublicNode, dRPC, 1RPC, MeowRPC, Flashbots Protect, Cloudflare and
-  chain-official RPCs on three networks. Ethereum mainnet (6
-  providers), Base (3 providers including the Coinbase-operated
-  `mainnet.base.org`), BNB Chain (3 providers including the Binance
-  dataseed). Use the chain tab above to filter the leaderboard.
+  budget. We probe `eth_blockNumber` every 15 seconds against 15
+  audited providers across 10 EVM chains. PublicNode, dRPC, 1RPC,
+  MeowRPC, Tenderly Gateway, Nodies (POKT), Lava Network, Merkle,
+  Flashbots Protect, Cloudflare and the chain-official endpoints
+  (Coinbase's `mainnet.base.org`, Binance's `bsc-dataseed1`, Ava
+  Labs' `api.avax.network`, Arbitrum Foundation's `arb1.arbitrum.io`,
+  Optimism Foundation's `mainnet.optimism.io`). Chains covered.
+  Ethereum (9 providers), Arbitrum (8), Base (6), Optimism (6),
+  Avalanche (6), BNB (5), Polygon (5), Linea + Scroll + Mantle (4
+  each). Use the chain tab above to filter the leaderboard.
   Latency is the headline number; the leaderboard also exposes
   call-result classification (`ok` vs `http_err` vs `jsonrpc_err` vs
   `stale` vs `timeout`, the Cloudflare-eth trap where a 200 OK hides
@@ -55,8 +59,8 @@ methodology:
   - "Latency: client-side `time.Now()` delta around the round-trip, in milliseconds. Exposed as both a gauge (`rpc_latency_milliseconds`) and a histogram (`rpc_latency_milliseconds_histogram`) with buckets 50 ms → 10 s, so p50/p90/p99 are computed via Prometheus `histogram_quantile` / `quantile_over_time`."
   - "Call-result classification: `ok` (HTTP 200 + non-empty result), `http_err` (status ≠ 200 or transport failure), `jsonrpc_err` (HTTP 200 with an `error` field, the Cloudflare-eth trap), `stale` (returned block more than 20 behind the cross-provider tip for that chain), `timeout`. Counter `rpc_call_total{result}` powers the reliability leaderboard."
   - "Archive depth: every 5 minutes we issue `eth_getBalance` at (head - depth) for `depth` in {300, 7200, 216_000, 1_296_000, 5_000_000}. Gauge `rpc_archive_depth_supported{depth}` is 1 when the response is non-pruned, 0 otherwise. The 300/7200 thresholds cover Geth's default pruned-cap range; 216k ≈ 1 month; 1.3M ≈ 6 months; 5M ≈ genesis-era full archive."
-  - "Chain coverage: Ethereum mainnet (6 providers: PublicNode, dRPC, 1RPC, MeowRPC, Flashbots Protect, Cloudflare), Base (3 providers: PublicNode, dRPC, Base official), BNB Chain (3 providers: PublicNode, dRPC, Binance official)."
-  - "Excluded by design: Ankr (`rpc.ankr.com/eth` returns JSON-RPC -32000 'Unauthorized' without a paid key). Endpoints that require auth in the free tier are out of scope, this is the no-key bench."
+  - "Chain coverage: 10 EVM chains. Ethereum (9 providers), Arbitrum (8), Base (6), Optimism (6), Avalanche (6), BNB (5), Polygon (5), Linea (4), Scroll (4), Mantle (4). Provider matrix per chain is documented in `miniapps/rpc-capabilities/cmd/script/config.go`."
+  - "Excluded by design: Ankr (key-gated), gateway.fm (29 req/IP budget too tight for 15s polling), LlamaRPC + BlockPI + OmniaTech (Cloudflare 521 region-blocked), Alchemy demo (rate-limited dead), NodeReal + GetBlock + Chainstack (key-gated). Merkle on Ethereum + Lava on non-ETH/Arb + MeowRPC on non-ETH/Arb all excluded chain-by-chain. Every (provider, chain) was live-verified no-key before inclusion."
 
 findings:
   - "{{best_name}} currently leads at {{best_p50}} (p50, 24 h) on the active chain tab, across {{count}} measured RPC providers. The number is the round-trip latency of a single `eth_blockNumber` call from eu-west, the cheapest possible read on any Ethereum-shaped RPC."
@@ -68,9 +72,9 @@ findings:
 
 faq:
   - q: "What is the fastest free public RPC right now?"
-    a: "{{best_name}} currently leads the active chain tab at {{best_p50}} (p50, 24 h) across {{count}} measured providers. The leaderboard re-sorts every 15 seconds against fresh Prometheus samples, so the answer reflects the last 24 hours of measured `eth_blockNumber` round-trip latency from eu-west, not a marketing-page claim. Switch the chain tab (Ethereum, Base, BNB Chain, or All) to see the leader on the network your product runs on."
+    a: "{{best_name}} currently leads the active chain tab at {{best_p50}} (p50, 24 h) across {{count}} measured providers. The leaderboard re-sorts every 15 seconds against fresh Prometheus samples, so the answer reflects the last 24 hours of measured `eth_blockNumber` round-trip latency from eu-west, not a marketing-page claim. Switch the chain tab (10 EVM chains: Ethereum, Polygon, Arbitrum, Optimism, Base, BNB, Avalanche, Linea, Scroll, Mantle, or All) to see the leader on the network your product runs on."
   - q: "Which public RPCs work without an API key in 2026?"
-    a: "Six no-key Ethereum RPCs are audited live on this page: PublicNode (`ethereum-rpc.publicnode.com`), dRPC (`eth.drpc.org`), 1RPC (`1rpc.io/eth`), MeowRPC (`eth.meowrpc.com`), Flashbots Protect (`rpc.flashbots.net`), Cloudflare (`cloudflare-eth.com`). Base also exposes the chain-official `mainnet.base.org`; BNB Chain has `bsc-dataseed1.binance.org`. Ankr is excluded because the free tier now returns JSON-RPC -32000 'Unauthorized'. All endpoints in this leaderboard return a usable response without a key, today."
+    a: "15 audited providers across 10 EVM chains. Universal multi-chain (work on 4+ chains): PublicNode, dRPC, 1RPC, Tenderly Gateway (`gateway.tenderly.co/public/<slug>`), Nodies (POKT successor at `*-pokt.nodies.app`). Ethereum-specific or limited footprint: MeowRPC (ETH + Arbitrum only since 2025), Flashbots Protect, Cloudflare (read-degraded), Lava Network (ETH + Arbitrum no-key, other chains require key), Merkle (Base + BSC stable, ETH locked-out by Cloudflare). Chain-official foundation RPCs: Arbitrum (`arb1.arbitrum.io/rpc`), Optimism (`mainnet.optimism.io`), Base (`mainnet.base.org`), Avalanche (`api.avax.network`), BNB (`bsc-dataseed1.binance.org`). Excluded: Ankr (key-gated), gateway.fm (29 req/IP), LlamaRPC / BlockPI / OmniaTech (Cloudflare 521 region-blocked), Alchemy demo (rate-limited dead), NodeReal / GetBlock / Chainstack (key-gated)."
   - q: "Why is Cloudflare-eth returning errors?"
     a: "Cloudflare's public Ethereum gateway recently switched to a permissioned mode for many JSON-RPC methods. The endpoint still returns HTTP 200 quickly, but the body is increasingly a JSON-RPC error (`-32046 Cannot fulfill request`) rather than a block number. This benchmark catches the trap by classifying responses as `ok` only when both the HTTP status is 200 and the JSON-RPC body has a usable `result` field. Latency without reliability is a misleading ranking signal for a public RPC."
   - q: "Which free RPC supports Ethereum archive node calls?"
@@ -90,10 +94,17 @@ prometheus:
 # value `all` skips the filter - aggregate across every chain.
 dimensions:
   chain:
-    - { value: all,      label: All chains }
-    - { value: ethereum, label: Ethereum }
-    - { value: base,     label: Base }
-    - { value: bnb,      label: BNB Chain }
+    - { value: all,       label: All chains }
+    - { value: ethereum,  label: Ethereum }
+    - { value: polygon,   label: Polygon }
+    - { value: arbitrum,  label: Arbitrum }
+    - { value: optimism,  label: Optimism }
+    - { value: base,      label: Base }
+    - { value: bnb,       label: BNB Chain }
+    - { value: avalanche, label: Avalanche }
+    - { value: linea,     label: Linea }
+    - { value: scroll,    label: Scroll }
+    - { value: mantle,    label: Mantle }
 
 # Real metrics emitted by the rpc-capabilities harness:
 #   rpc_latency_milliseconds{provider, chain}                       gauge
@@ -204,3 +215,87 @@ providers:
       success: sum(rate(rpc_call_total{provider="binance", result="ok"}[24h])) / sum(rate(rpc_call_total{provider="binance"}[24h]))
       sample_size: sum(increase(rpc_call_total{provider="binance"}[24h]))
       series: avg_over_time(rpc_latency_milliseconds{provider="binance"}[1h])
+
+  - slug: tenderly
+    name: Tenderly Gateway
+    tag: Multi-chain public gateway, 9 chains, no key
+    queries:
+      p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="tenderly"}[24h])
+      p90: quantile_over_time(0.90, rpc_latency_milliseconds{provider="tenderly"}[24h])
+      p99: quantile_over_time(0.99, rpc_latency_milliseconds{provider="tenderly"}[24h])
+      mean: avg_over_time(rpc_latency_milliseconds{provider="tenderly"}[24h])
+      success: sum(rate(rpc_call_total{provider="tenderly", result="ok"}[24h])) / sum(rate(rpc_call_total{provider="tenderly"}[24h]))
+      sample_size: sum(increase(rpc_call_total{provider="tenderly"}[24h]))
+      series: avg_over_time(rpc_latency_milliseconds{provider="tenderly"}[1h])
+
+  - slug: nodies
+    name: Nodies (POKT)
+    tag: POKT Network's decentralized public RPC successor, 7+ chains
+    queries:
+      p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="nodies"}[24h])
+      p90: quantile_over_time(0.90, rpc_latency_milliseconds{provider="nodies"}[24h])
+      p99: quantile_over_time(0.99, rpc_latency_milliseconds{provider="nodies"}[24h])
+      mean: avg_over_time(rpc_latency_milliseconds{provider="nodies"}[24h])
+      success: sum(rate(rpc_call_total{provider="nodies", result="ok"}[24h])) / sum(rate(rpc_call_total{provider="nodies"}[24h]))
+      sample_size: sum(increase(rpc_call_total{provider="nodies"}[24h]))
+      series: avg_over_time(rpc_latency_milliseconds{provider="nodies"}[1h])
+
+  - slug: lava
+    name: Lava Network
+    tag: Decentralized permissionless RPC mesh (ETH + Arbitrum no-key)
+    queries:
+      p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="lava"}[24h])
+      p90: quantile_over_time(0.90, rpc_latency_milliseconds{provider="lava"}[24h])
+      p99: quantile_over_time(0.99, rpc_latency_milliseconds{provider="lava"}[24h])
+      mean: avg_over_time(rpc_latency_milliseconds{provider="lava"}[24h])
+      success: sum(rate(rpc_call_total{provider="lava", result="ok"}[24h])) / sum(rate(rpc_call_total{provider="lava"}[24h]))
+      sample_size: sum(increase(rpc_call_total{provider="lava"}[24h]))
+      series: avg_over_time(rpc_latency_milliseconds{provider="lava"}[1h])
+
+  - slug: merkle
+    name: Merkle
+    tag: Base + BSC public no-key gateway (Ethereum hit by Cloudflare 20-min lockout, excluded)
+    queries:
+      p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="merkle"}[24h])
+      p90: quantile_over_time(0.90, rpc_latency_milliseconds{provider="merkle"}[24h])
+      p99: quantile_over_time(0.99, rpc_latency_milliseconds{provider="merkle"}[24h])
+      mean: avg_over_time(rpc_latency_milliseconds{provider="merkle"}[24h])
+      success: sum(rate(rpc_call_total{provider="merkle", result="ok"}[24h])) / sum(rate(rpc_call_total{provider="merkle"}[24h]))
+      sample_size: sum(increase(rpc_call_total{provider="merkle"}[24h]))
+      series: avg_over_time(rpc_latency_milliseconds{provider="merkle"}[1h])
+
+  - slug: arbitrum-official
+    name: Arbitrum Official
+    tag: Arbitrum Foundation public RPC, Arbitrum One only
+    queries:
+      p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="arbitrum-official"}[24h])
+      p90: quantile_over_time(0.90, rpc_latency_milliseconds{provider="arbitrum-official"}[24h])
+      p99: quantile_over_time(0.99, rpc_latency_milliseconds{provider="arbitrum-official"}[24h])
+      mean: avg_over_time(rpc_latency_milliseconds{provider="arbitrum-official"}[24h])
+      success: sum(rate(rpc_call_total{provider="arbitrum-official", result="ok"}[24h])) / sum(rate(rpc_call_total{provider="arbitrum-official"}[24h]))
+      sample_size: sum(increase(rpc_call_total{provider="arbitrum-official"}[24h]))
+      series: avg_over_time(rpc_latency_milliseconds{provider="arbitrum-official"}[1h])
+
+  - slug: optimism-official
+    name: Optimism Official
+    tag: Optimism Foundation public RPC, Optimism mainnet only
+    queries:
+      p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="optimism-official"}[24h])
+      p90: quantile_over_time(0.90, rpc_latency_milliseconds{provider="optimism-official"}[24h])
+      p99: quantile_over_time(0.99, rpc_latency_milliseconds{provider="optimism-official"}[24h])
+      mean: avg_over_time(rpc_latency_milliseconds{provider="optimism-official"}[24h])
+      success: sum(rate(rpc_call_total{provider="optimism-official", result="ok"}[24h])) / sum(rate(rpc_call_total{provider="optimism-official"}[24h]))
+      sample_size: sum(increase(rpc_call_total{provider="optimism-official"}[24h]))
+      series: avg_over_time(rpc_latency_milliseconds{provider="optimism-official"}[1h])
+
+  - slug: avalanche-official
+    name: Avalanche Official
+    tag: Ava Labs C-Chain public RPC, Avalanche C-Chain only
+    queries:
+      p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="avalanche-official"}[24h])
+      p90: quantile_over_time(0.90, rpc_latency_milliseconds{provider="avalanche-official"}[24h])
+      p99: quantile_over_time(0.99, rpc_latency_milliseconds{provider="avalanche-official"}[24h])
+      mean: avg_over_time(rpc_latency_milliseconds{provider="avalanche-official"}[24h])
+      success: sum(rate(rpc_call_total{provider="avalanche-official", result="ok"}[24h])) / sum(rate(rpc_call_total{provider="avalanche-official"}[24h]))
+      sample_size: sum(increase(rpc_call_total{provider="avalanche-official"}[24h]))
+      series: avg_over_time(rpc_latency_milliseconds{provider="avalanche-official"}[1h])
