@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import { SectionRule } from "@/components/section-rule";
+import { pageMetadata } from "@/lib/page-metadata";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
+  path: "/press",
   title: "Press kit",
   description: "Logos, boilerplate and contact details for journalists and partners.",
-};
+});
 
 export default function PressPage() {
   return (

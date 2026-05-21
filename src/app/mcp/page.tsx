@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CopyButton } from "@/components/copy-button";
 import { getBenchmarks } from "@/data/benchmarks";
+import { pageMetadata } from "@/lib/page-metadata";
 
 const MCP_URL = "https://openchainbench.com/api/mcp/mcp";
 
@@ -34,11 +35,12 @@ const CURL_EXAMPLE = `curl -s -X POST ${MCP_URL} \\
   -H "Accept: application/json, text/event-stream" \\
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"get_benchmark","arguments":{"slug":"aggregator-head-lag","chain":"base"}}}'`;
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
+  path: "/mcp",
   title: "MCP server",
   description:
     "Connect Claude Desktop, Cursor, ChatGPT or any MCP-capable agent to OpenChainBench. Live crypto-infra benchmarks become a first-class tool for your AI assistant.",
-};
+});
 
 export const revalidate = 300;
 

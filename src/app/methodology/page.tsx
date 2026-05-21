@@ -1,11 +1,12 @@
-import type { Metadata } from "next";
 import Link from "next/link";
+import { pageMetadata } from "@/lib/page-metadata";
 
-export const metadata: Metadata = {
+export const metadata: import("next").Metadata = pageMetadata({
+  path: "/methodology",
   title: "Methodology",
   description:
     "How OpenChainBench measures: design principles, statistical conventions, and reproduction guidelines.",
-};
+});
 
 const PRINCIPLES = [
   {
@@ -213,9 +214,9 @@ export default function MethodologyPage() {
 
       {/* Footer link */}
       <p className="mt-16 text-xs text-ink-muted">
-        Read more about the project on{" "}
+        Read more about the project on the{" "}
         <Link href="/about" className="lnk text-ink-soft">
-          /about
+          About page
         </Link>{" "}
         or browse the source on{" "}
         <a
