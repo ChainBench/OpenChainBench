@@ -316,6 +316,48 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Official BNB Chain RPC endpoints operated by Binance. Multiple dataseed hosts (`bsc-dataseed1.binance.org` etc.) round-robin for load distribution.",
     twitter: "@BNBCHAIN",
   },
+  tenderly: {
+    url: "https://tenderly.co",
+    description:
+      "Tenderly's public gateway exposes a no-key JSON-RPC endpoint per chain at `gateway.tenderly.co/public/<slug>`. Covers Ethereum, Polygon, Arbitrum, Optimism, Base, Avalanche, Linea, Scroll and Mantle. The same Tenderly platform behind the keyed Web3 dev suite.",
+    twitter: "@TenderlyApp",
+  },
+  nodies: {
+    url: "https://nodies.app",
+    description:
+      "Nodies is the surviving public-RPC frontend for POKT Network's decentralized infrastructure. Per-chain subdomains like `eth-pokt.nodies.app`, `polygon-pokt.nodies.app`, `arb-pokt.nodies.app`. Covers most major EVM chains no-key.",
+    twitter: "@nodies_app",
+  },
+  lava: {
+    url: "https://www.lavanet.xyz",
+    description:
+      "Lava Network is a decentralized RPC mesh with permissionless validators. Public no-key endpoints work for Ethereum (`eth1.lava.build`) and Arbitrum (`arb1.lava.build`); other chains require an account-issued key.",
+    twitter: "@lavanetxyz",
+  },
+  merkle: {
+    url: "https://merkle.io",
+    description:
+      "Merkle exposes per-chain RPC subdomains (`eth.merkle.io`, `base.merkle.io`, `bsc.merkle.io`). Stable on Base + BSC for no-key benchmarking; Ethereum is fronted by an aggressive Cloudflare bot filter (20-minute lockout after a single request) so we exclude it from the leaderboard.",
+    twitter: "@merkle_xyz",
+  },
+  "arbitrum-official": {
+    url: "https://docs.arbitrum.io/build-decentralized-apps/reference/node-providers",
+    description:
+      "Arbitrum Foundation's public RPC endpoint at `arb1.arbitrum.io/rpc`. Best-effort, rate-limited, intended for dev access — production dapps are expected to use a keyed provider.",
+    twitter: "@arbitrum",
+  },
+  "optimism-official": {
+    url: "https://docs.optimism.io/builders/tools/build/node-providers",
+    description:
+      "Optimism Foundation's public RPC endpoint at `mainnet.optimism.io`. Best-effort, rate-limited, intended as a fallback. The Foundation recommends keyed providers for production load.",
+    twitter: "@Optimism",
+  },
+  "avalanche-official": {
+    url: "https://docs.avax.network/dapps/rpc-providers",
+    description:
+      "Ava Labs' public C-Chain RPC at `api.avax.network/ext/bc/C/rpc`. Best-effort, capped per IP. Production dapps usually graduate to keyed providers (Ankr, BlockDaemon, GetBlock).",
+    twitter: "@avax",
+  },
 
   // ─── Gas oracles ──────────────────────────────────────────────
   blocknative: {
