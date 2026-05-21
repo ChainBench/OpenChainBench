@@ -293,6 +293,21 @@ export default async function BenchmarkPage({
         {benchmark.subtitle}
       </p>
 
+      {/* Disclaimer callout, rendered before the SEO intro so it
+          catches the eye BEFORE the reader scrolls to the leaderboard.
+          Optional, used on benches where the metric is easy to misread
+          (e.g. gas oracle prediction error, where lower-is-better hides
+          a deliberate over-pay trade-off). */}
+      {benchmark.disclaimer && (
+        <div
+          role="note"
+          className="mt-6 max-w-3xl rounded-md border border-warn/40 bg-warn/10 px-4 py-3 text-[14px] leading-relaxed text-ink"
+        >
+          <p className="label-mono mb-1 text-warn">Read this carefully</p>
+          <p>{benchmark.disclaimer}</p>
+        </div>
+      )}
+
       {/* SEO-tuned intro paragraph rendered server-side under the H1 so
           long-tail query phrases land in the first ~200 words crawlers
           weight heavily. Optional - omitted when the YAML doesn't set it. */}
