@@ -15,8 +15,8 @@ export function HeroRadar({ size = 520 }: { size?: number }) {
 
   return (
     <div
-      className="relative shrink-0"
-      style={{ width: size, height: size, maxWidth: "100%" }}
+      className="relative shrink-0 w-full aspect-square mx-auto"
+      style={{ maxWidth: size }}
       aria-hidden
     >
       <svg

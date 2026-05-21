@@ -42,16 +42,22 @@ export function LedgerTable({ benchmark }: Props) {
 
   return (
     <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
-      <table className="ledger w-full border-collapse">
+      <table className="ledger w-full min-w-[480px] md:min-w-0 border-collapse">
         <thead>
           <tr>
             <th colSpan={3} className="border-y-2 border-ink py-2 pr-3 text-left">
               Product
             </th>
-            <th colSpan={5} className="border-y-2 border-ink py-2 px-3 text-center">
+            <th
+              colSpan={5}
+              className="border-y-2 border-ink py-2 px-3 text-center hidden md:table-cell"
+            >
               Latency aggregates
             </th>
-            <th className="border-y-2 border-ink py-2 pl-3 text-right">Reliability</th>
+            <th className="border-y-2 border-ink py-2 px-3 text-right md:hidden">p50</th>
+            <th className="border-y-2 border-ink py-2 pl-3 text-right hidden md:table-cell">
+              Reliability
+            </th>
             <th className="border-y-2 border-ink py-2 pl-3 text-right">Trend</th>
             {secondary && (
               <th className="border-y-2 border-ink py-2 pl-3 text-right">
@@ -64,11 +70,11 @@ export function LedgerTable({ benchmark }: Props) {
             <th className="py-2 pr-3 text-left w-10">№</th>
             <th className="py-2 pr-3 text-left">Name</th>
             <th className="py-2 px-3 text-right">p50</th>
-            <th className="py-2 px-3 text-right">p90</th>
-            <th className="py-2 px-3 text-right">p99</th>
-            <th className="py-2 px-3 text-right">Mean</th>
-            <th className="py-2 px-3 text-right">Δ field</th>
-            <th className="py-2 px-3 text-right">Success</th>
+            <th className="py-2 px-3 text-right hidden md:table-cell">p90</th>
+            <th className="py-2 px-3 text-right hidden md:table-cell">p99</th>
+            <th className="py-2 px-3 text-right hidden md:table-cell">Mean</th>
+            <th className="py-2 px-3 text-right hidden md:table-cell">Δ field</th>
+            <th className="py-2 px-3 text-right hidden md:table-cell">Success</th>
             <th className="py-2 pl-3 text-right">24h</th>
             {secondary && <th className="py-2 pl-3 text-right">Value</th>}
           </tr>
@@ -142,32 +148,39 @@ function Row({
       <td className="py-2.5 pr-3 text-ink-muted text-[12px]">
         {String(i + 1).padStart(2, "0")}
       </td>
-      <td className="py-2.5 pr-3 font-serif text-[14px]">
-        <span className="inline-flex items-center gap-2">
+      <td className="py-2.5 pr-3 font-serif text-[14px] min-w-0">
+        <span className="flex items-center gap-2 min-w-0">
           <ProviderLogo slug={r.slug} name={r.name} size={20} />
           {isRegion(r.slug) ? (
-            <span className="font-semibold" style={{ color }}>
+            <span
+              className="font-semibold truncate min-w-0"
+              style={{ color }}
+            >
               {r.name}
             </span>
           ) : (
             <Link
               href={`/products/${r.slug}`}
-              className="font-semibold hover:underline underline-offset-2"
+              className="font-semibold hover:underline underline-offset-2 truncate min-w-0"
               style={{ color }}
             >
               {r.name}
             </Link>
           )}
           {r.tag && (
-            <span className="font-sans text-[10px] uppercase tracking-[0.14em] text-ink-muted">
+            <span className="hidden sm:inline-block truncate max-w-[140px] md:max-w-[220px] font-sans text-[10px] uppercase tracking-[0.14em] text-ink-muted">
               {r.tag}
             </span>
           )}
-          {r.type && <ProviderTypeBadge type={r.type} />}
+          {r.type && (
+            <span className="hidden md:inline-flex">
+              <ProviderTypeBadge type={r.type} />
+            </span>
+          )}
         </span>
       </td>
       {/* p50 with inline data bar */}
-      <td className="py-2.5 px-3 text-right">
+      <td className="py-2.5 px-3 text-right whitespace-nowrap">
         <span className="inline-flex items-center gap-2 justify-end">
           <span
             className="hidden sm:inline-block h-1.5 rounded-sm"
@@ -183,19 +196,19 @@ function Row({
           </span>
         </span>
       </td>
-      <td className="py-2.5 px-3 text-right text-ink-soft">
+      <td className="py-2.5 px-3 text-right text-ink-soft whitespace-nowrap hidden md:table-cell">
         {fmtUnit(r.ms.p90, unit)}
       </td>
-      <td className="py-2.5 px-3 text-right text-ink-soft">
+      <td className="py-2.5 px-3 text-right text-ink-soft whitespace-nowrap hidden md:table-cell">
         {fmtUnit(r.ms.p99, unit)}
       </td>
-      <td className="py-2.5 px-3 text-right text-ink-soft">
+      <td className="py-2.5 px-3 text-right text-ink-soft whitespace-nowrap hidden md:table-cell">
         {fmtUnit(r.ms.mean, unit)}
       </td>
-      <td className="py-2.5 px-3 text-right text-ink-muted">
+      <td className="py-2.5 px-3 text-right text-ink-muted whitespace-nowrap hidden md:table-cell">
         {fieldP50 > 0 ? `${deltaSign}${Math.abs(deltaPct).toFixed(0)}%` : "-"}
       </td>
-      <td className="py-2.5 px-3 text-right text-ink-soft">
+      <td className="py-2.5 px-3 text-right text-ink-soft whitespace-nowrap hidden md:table-cell">
         {r.successRate.toFixed(2)}%
       </td>
       <td className="py-2.5 pl-3 text-right">
