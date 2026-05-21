@@ -214,12 +214,14 @@ table {
   animation: chart-pop-rise 2200ms cubic-bezier(0.16, 0.84, 0.32, 1) forwards;
 }
 
-/* Pill - used for category/chain filters across the redesign */
+/* Pill - used for category/chain filters across the redesign.
+   min-height bumps mobile tap target without disturbing desktop visual density. */
 .pill {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.4rem 0.75rem;
+  padding: 0.45rem 0.85rem;
+  min-height: 32px;
   border: 1px solid var(--color-rule);
   border-radius: 6px;
   font-family: var(--font-sans);
