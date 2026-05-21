@@ -1,0 +1,260 @@
+# OpenChainBench. Bench № 022
+
+slug: token-unlocks
+number: "022"
+title: Token unlocks pressure (90-day horizon)
+seo_title: "Token unlocks 2026: ARB, OP, SUI, JTO, EIGEN, ENA, WLD, APT, TIA, NEAR live unlock calendar with conditional price impact"
+seo_description: "Live token unlocks leaderboard. % circulating supply impacted over the next 90 days for 53 tracked tokens (curated whitelist + CryptoRank hasVesting=true top-200), plus a conditional median price-impact prediction (J+30) built from the last 200 historical comparable unlocks bucketed by unlock size."
+subtitle: Upcoming unlock pressure (% circulating supply) over a J+0 to J+90 horizon, with a conditional median price-impact prediction at J+30 built from historical bucket-matched comparables.
+category: Trading
+status: live
+metric: Expected impact (J+30)
+unit: pct
+higher_is_better: true
+
+disclaimer: |
+  Four caveats. (1) Predictions are conditional medians, not point forecasts — they describe the historical centre-of-mass for bucket-matched unlocks, not "the price will move X%". (2) ARB has a known v1 gap — the upcoming-supply rows surface correctly but the expected-impact gauge is silently dropped on collection; filed for v2. (3) The 3-5% and >10% buckets currently hold zero mature samples, so unlocks falling in those size classes do not emit an expected-impact value (fail-closed by design, the gate requires ≥5 samples). (4) Source is CryptoRank's public Next.js routes — when CR rotates its buildId on deploy, the calendar lags by up to one scrape cycle until the harness re-parses __NEXT_DATA__.
+
+seo_intro: |
+  This benchmark answers the question every token holder, market
+  maker and protocol treasury asks before the next vesting event.
+  how much supply lands in the next 90 days, on which date, and
+  what does the historical comparable set say about the price
+  reaction. Most "token unlock tracker" sites stop at the calendar
+  view (date + nominal token count + dollar notional at spot).
+  That ignores the only number that actually drives the trade.
+  what % of circulating supply does the unlock represent, and
+  what is the conditional median price move for unlocks of that
+  size bucket over the next 30 days. We pull the calendar and
+  per-token vesting schedules from CryptoRank's public Next.js
+  data routes (no API key, ~1 req/s with backoff), enrich with
+  DeFiLlama daily prices for the historical backfill, and pool
+  the last 200 historical unlocks into 5 size buckets (<1%,
+  1-3%, 3-5%, 5-10%, >10% of circulating supply at the unlock
+  date). For each upcoming unlock we publish the % supply, the
+  dollar notional at current spot, the matched-bucket median of
+  `(price_J+30 / price_J-7 − 1) × 100` across all historical
+  pooled unlocks (gated to require ≥5 mature samples, otherwise
+  no gauge emitted), and a 22-token curated whitelist (ARB, OP,
+  SUI, STRK, JTO, EIGEN, ENA, WLD, APT, MANTA, NEAR, W, ZK, DYM,
+  TIA, ONDO, PYTH, AVAX, FET, TON, HYPE, OMNI) unioned with the
+  CryptoRank top-200 filtered by `hasVesting=true` so the page
+  covers every token that has both a public schedule and enough
+  market cap to matter.
+
+abstract: |
+  We compute upcoming-unlock pressure by parsing CryptoRank's
+  Next.js `_next/data/<buildId>/...` token-unlock.json (global
+  calendar) and per-token vesting.json (full schedule per slug),
+  refreshed hourly. For each token in the priority list (curated
+  whitelist of 22 majors unioned with CR's top-200 hasVesting=true
+  coins, capped at 200 total), we expose every unlock in J+0..J+90
+  as `ocb_unlock_upcoming_pct_supply{token, unlock_date, allocation_type}`
+  in % circulating supply, plus `ocb_unlock_upcoming_value_usd` at
+  current spot. The conditional impact model runs separately. for
+  each mature historical unlock (J+30 already elapsed) we compute
+  `(price_J+30 / price_J-7 − 1) × 100` using DeFiLlama daily
+  prices, bucket by % supply (<1%, 1-3%, 3-5%, 5-10%, >10%), and
+  expose the per-bucket median as the prediction for every upcoming
+  unlock that falls into the same bucket. Median over mean for
+  robustness — a handful of post-unlock 2× rallies (catalyst
+  coinciding with vesting) would swamp the arithmetic mean. The
+  prediction gauge is gated to require ≥5 mature samples in the
+  matching bucket; thinner buckets fail closed (no gauge emitted)
+  rather than publish a misleading median computed from 1-2
+  outliers. CryptoRank's buildId rotates on every CR deploy;
+  the harness lazily re-parses `<script id="__NEXT_DATA__">` from
+  the index page when a data route returns 404, counted via
+  `ocb_unlock_buildid_rotations_total`.
+
+methodology:
+  - "Sources: CryptoRank `_next/data/<buildId>/token-unlock.json` for the global calendar (1×/h refresh), `_next/data/<buildId>/coins/<slug>/vesting.json` for the per-token schedule (1×/d backfill, cached 30 min), `api.cryptorank.io/v0/coins?limit=1000` for the priority list (1×/d), DeFiLlama `coins.llama.fi/chart/coingecko:<id>` for daily historical prices, CoinGecko `coins/list` for the CR-slug → CG-id map. Everything keyless."
+  - "Priority list: union of a 22-token curated whitelist (ARB, OP, SUI, STRK, JTO, EIGEN, ENA, WLD, APT, MANTA, NEAR, W, ZK, DYM, TIA, ONDO, PYTH, AVAX, FET, TON, HYPE, OMNI) and the CryptoRank /v0/coins top-N filtered by `hasVesting=true`, capped at 200 total. CoinGecko `/coins/markets` is deliberately *not* used as the source — its top entries (BTC, ETH, stables, SOL) don't have CryptoRank vesting schedules, so naive list intersection previously 404'd 48/50 backfill requests."
+  - "Horizon: J+0 to J+90 (configurable via `UNLOCK_HORIZON_DAYS`, default 90). Anything beyond 90 days is too noisy — vesting cliffs and team allocations get edited frequently in the 3-12 month forward window."
+  - "Conditional impact model: for each mature historical unlock (J+30 already elapsed) compute `r_J+30 = (price_J+30 / price_J-7 − 1) × 100` using DeFiLlama daily closes. Bucket by `pct_supply_unlocked` at the unlock date into 5 size classes: lt1pct (<1%), 1to3pct, 3to5pct, 5to10pct, gt10pct (>10%). Pool the last 200 mature unlocks (`UNLOCK_HISTORY_CAP`, default 200). The per-bucket median becomes the prediction gauge for every upcoming unlock that falls in the same bucket."
+  - "Median over mean: a handful of post-unlock 2× rallies (token launch coinciding with a catalyst, narrative pump on the same week as the vesting cliff) would swamp the arithmetic mean. The median is the centre-of-mass of the historical reaction distribution and is robust to those tail rallies."
+  - "Min-samples gate: `expected_impact_pct` is emitted only when the matching bucket holds ≥5 mature samples. Thinner buckets fail closed (no gauge published) rather than expose a noisy median computed from 1-2 outliers. Sample counts per bucket are surfaced separately via `ocb_unlock_historical_samples{bucket}` so the prediction's epistemic strength is auditable from the dashboard."
+  - "Allocation tagging: each upcoming unlock carries an `allocation_type` label (team, investors, ecosystem, advisors, airdrop, public_sale, etc.) so the leaderboard can be filtered. Per-allocation impact is *not* computed in v1 — team-vs-ecosystem historically have very different post-unlock behaviour but require sub-day price data we don't have for free."
+  - "CryptoRank rate-limit handling: a process-global limiter caps CR-bound traffic at ~1 req/s with 3 s → 6 s linear backoff on 429. Per-slug vesting payloads are cached for 30 min so backfill and upcoming loops don't double-pay. BuildId rotation is detected on first 404 from a data route; the harness then re-parses `<script id=\"__NEXT_DATA__\">` from cryptorank.io index, counted as `ocb_unlock_buildid_rotations_total`."
+  - "Excluded by design: aggregator-derived unlock calendars (TokenUnlocks.app, CryptoRank's own UI rendering), intraday price reactions (model uses daily closes only), per-allocation conditional impact (v2 work), TGE unlocks where >30% of supply lands in a single event (these dominate the >10% bucket and skew the historical distribution toward fresh-listing volatility rather than mature-token unlock pressure)."
+  - "Why not DeFiLlama emissions endpoint as the calendar source: DeFiLlama's `/emissions` route is on the paid Pro tier in 2026 (returns HTTP 402 without an API key). CryptoRank's Next.js data routes are the only free, full-fidelity source for the per-token vesting schedule that includes both the date and the allocation breakdown."
+
+findings:
+  - "{{count}} tokens tracked with at least one upcoming unlock in the J+0..J+90 window. Curated whitelist (22 majors) plus CryptoRank top-200 hasVesting=true, hard-capped at 200 to stay within the CryptoRank ~1 req/s budget."
+  - "Top upcoming pressure by % circulating supply (J+0..J+90, observed live): ESPORTS at 7.08% (ecosystem & airdrop, 2026-06-19), ASTER at 6.61% (airdrop, 2026-06-09), ZRO at 4.17% (strategic partners, 2026-06-20), GRASS at 4.17% (early investors, 2026-05-31), EIGEN at 4.00% (investors, 2026-06-01). The leaderboard re-sorts hourly on the next CryptoRank calendar refresh."
+  - "Historical sample distribution across the 5 buckets: lt1pct holds 175 mature samples (J+30 elapsed), 1to3pct holds 23, 5to10pct holds 2, and the 3to5pct and gt10pct buckets currently hold 0. Buckets below the 5-sample gate emit no `expected_impact_pct` gauge — predictions for those size classes fail closed, which is the honest answer for a bucket without enough comparables."
+  - "Conditional median impact, lt1pct bucket (n=175): {{p50:lt1pct-median}} over the J-7 → J+30 window. Sub-1% unlocks are the noise floor — most major-token vesting events fall here once the early-investor cliff has passed."
+  - "Conditional median impact, 1to3pct bucket (n=23): {{p50:1to3pct-median}} over the J-7 → J+30 window. The harder-to-absorb size class, where market makers historically struggle to fully internalize the new supply within a month."
+  - "{{name:arb}} is a known v1 limitation: the upcoming-supply rows surface correctly (4 unlocks visible in the J+0..J+90 window), the gate condition passes, `MedianImpact` returns a valid value, and the writer is invoked — confirmed via runtime trace — yet the resulting `ocb_unlock_expected_impact_pct` series does not surface in `/metrics`. Same-bucket peers (JTO, ZK, MANTA, ENA) emit normally via the identical code path, so this is an isolated collection-layer drop filed for v2. ARB's % supply column on the page is correct; only the predicted-impact column is blank for this token."
+  - "Source freshness: CryptoRank calendar refreshes every 1 h, per-token vesting every 24 h with a 30-min cache, DeFiLlama price backfill runs once at boot then on-demand for newly-detected tokens. `ocb_unlock_source_freshness_seconds` exposes the age of the most recent successful CR scrape so stale-calendar conditions are visible at the dashboard level."
+
+faq:
+  - q: "What is a token unlock and why does it move the price?"
+    a: "A token unlock is a scheduled release of previously-vested tokens into the circulating supply — typically belonging to team members, early investors, ecosystem grants or airdrop recipients whose tokens were locked at TGE with a vesting cliff and a linear unlock thereafter. The price moves because the newly-unlocked holders frequently sell to crystallise gains (early investors bought at $0.01, the spot price is $4.00, the vesting is the only liquidity event they get). The size of the move is roughly proportional to the unlocked % of circulating supply weighted by who the recipient is — team unlocks tend to bleed slowly via OTC, investor unlocks hit the orderbook harder. This bench measures the historical median reaction conditional on the % supply bucket."
+  - q: "Why don't I see an expected-impact prediction for ARB?"
+    a: "Known v1 limitation. The upcoming-supply rows for ARB surface correctly (the calendar shows the 4 vesting events in the J+0..J+90 window with the right % supply and dollar notional), the bucket gate passes, `MedianImpact` returns a valid value, and the gauge writer is invoked — all confirmed via runtime trace. Yet the resulting `ocb_unlock_expected_impact_pct{token=\"ARB\"}` series does not surface in `/metrics`. Same-bucket peers (JTO 2.78%, ZK 2.50%, MANTA 1.59%, ENA 1.19%) emit normally via the identical code path, so this is not a gate-tightness issue — it's an isolated drop in the Prometheus collection layer for this specific token. Filed for v2: instrument the collection writer to identify the silent drop. ARB's % supply column on the page is correct; only the predicted-impact column is blank."
+  - q: "What's the expected-impact model exactly?"
+    a: "For each upcoming unlock, look up the historical bucket the unlock falls into based on % circulating supply (<1%, 1-3%, 3-5%, 5-10%, >10%). Compute the median of `(price_J+30 / price_J-7 − 1) × 100` across every mature historical unlock (J+30 already elapsed) pooled into the same bucket. That median is the prediction. It is a conditional centre-of-mass over the historical reaction distribution for unlocks of comparable size — not a point forecast, not a directional bet, not a recommendation. The gauge is emitted only when the matching bucket holds ≥5 mature samples; otherwise it fails closed (no gauge published), which is the honest answer for a bucket without enough comparables. Sample counts per bucket are exposed via `ocb_unlock_historical_samples{bucket}` so the prediction's epistemic strength is always visible next to the number."
+  - q: "Why a 90-day horizon and not 6 or 12 months?"
+    a: "Three reasons. (1) Calendar quality: CryptoRank's per-token vesting schedules are reliable in the J+0..J+90 window because team and investor allocations rarely get amended on a 3-month forward basis. Beyond that, schedules get edited frequently (governance proposals modify ecosystem allocations, project teams renegotiate vesting cliffs, airdrop rounds get added or postponed). (2) Tradeable horizon: a 90-day window is what perp funding curves, options expiries and market-maker inventory cycles actually price against. Anything past 90 days is portfolio thinking, not trading thinking — and the bench is positioned for the trading side. (3) Storage: emitting a gauge per (token, date) for J+0..J+90 produces ~900 series at 53 tokens; J+0..J+365 would produce ~19,000 series, mostly stale, mostly noise."
+  - q: "How is the historical impact measured?"
+    a: "For each mature historical unlock (one where J+30 has already elapsed), fetch the DeFiLlama daily close on day J-7 (one week before the unlock, the baseline) and day J+30 (one month after the unlock, the reaction window). Compute `r_J+30 = (price_J+30 / price_J-7 − 1) × 100`. The J-7 baseline rather than J-0 captures the pre-positioning move (market often front-runs an unlock by 1-2 weeks). The J+30 reaction window is long enough to absorb the unlock distribution but short enough to attribute the move primarily to the unlock rather than to broader market regime change. Daily granularity only — intraday isn't captured, the bench claim is medium-term pressure rather than microstructure."
+  - q: "Why CryptoRank and not DeFiLlama as the unlock calendar source?"
+    a: "DeFiLlama's `/emissions` endpoint moved to the paid Pro tier in 2026 (returns HTTP 402 without an API key — verified directly during harness development). The free-tier alternatives are CryptoRank's public Next.js data routes (`_next/data/<buildId>/...` for both the global calendar and per-token vesting schedules), TokenUnlocks.app (UI-only, no JSON API), and the on-chain vesting contracts themselves (would require an indexer per chain per token-contract type, not feasible at 200 tokens). CryptoRank is the only source that exposes full schedules with allocation breakdowns through a no-key JSON route. The harness funnels CR-bound traffic through a process-global limiter at ~1 req/s with 3 s → 6 s backoff on 429 to stay polite, and caches per-slug vesting payloads for 30 min so the backfill and upcoming loops don't double-pay."
+  - q: "Why does the 3-5% and >10% bucket show no prediction?"
+    a: "Honest gate. The expected-impact gauge is emitted only when the matching historical bucket holds ≥5 mature samples (unlocks where J+30 has already elapsed in our 200-sample pool). The 3to5pct bucket currently holds 0 samples and the gt10pct bucket currently holds 0 mature samples — most >10% unlocks in our pool are TGE events that we filter out (TGE skews the distribution toward fresh-listing volatility rather than mature-token unlock pressure). When an upcoming unlock falls into those buckets, no `ocb_unlock_expected_impact_pct` is emitted for it, which surfaces on the page as a blank predicted-impact column. The page footnotes the sample count per bucket so readers can see exactly why a prediction is or isn't available, rather than receiving a misleading median computed from 1-2 outlier points."
+  - q: "Are the predictions a buy or sell signal?"
+    a: "No. The predictions are conditional medians over historical bucket-matched comparables, not point forecasts. A median of −7% in the lt1pct bucket means: across the 175 mature historical unlocks where less than 1% of supply was released, the centre-of-mass of the (price_J+30 / price_J-7 − 1) distribution was around −7%. Half the historical outcomes were worse, half were better. The number is useful for sizing a position around a known upcoming event (market makers reading this should already know how to use a conditional median); it is not directional advice. The bench's job is to publish the historical centre-of-mass faithfully and let readers price the trade against their own model of regime, narrative, and idiosyncratic catalysts."
+
+source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/token-unlocks
+
+prometheus:
+  window: 24h
+
+# Real metrics emitted by the token-unlocks harness:
+#   ocb_unlock_upcoming_pct_supply{token, unlock_date, allocation_type}   gauge (% circulating)
+#   ocb_unlock_upcoming_value_usd{token, unlock_date}                     gauge (USD at spot)
+#   ocb_unlock_expected_impact_pct{token, unlock_date, window="J+30"}     gauge (% — conditional median)
+#   ocb_unlock_historical_impact_pct{token, unlock_date, window}          gauge
+#   ocb_unlock_historical_samples{bucket}                                 gauge (sample count per bucket)
+#   ocb_unlock_tokens_tracked                                             gauge
+#   ocb_unlock_source_freshness_seconds                                   gauge
+#   ocb_unlock_scrape_errors_total{source}                                counter
+#   ocb_unlock_buildid_rotations_total                                    counter
+#
+# Each "provider" below is one major token in the curated whitelist.
+# The leaderboard ranks tokens by aggregate upcoming pressure over J+0..J+90
+# (sum of % supply unlocked in the window). higher_is_better: true is set
+# because the leaderboard sorts by the prediction (less-negative median is
+# "better" from a holder's perspective — smaller historical drawdown for the
+# unlock size); the headline metric is the conditional median impact at J+30
+# in the matching bucket. p50/p90/p99 columns mirror the same gauge (single
+# scalar per token, not a statistical distribution) for renderer consistency.
+
+providers:
+  - slug: arb
+    name: ARB
+    tag: Arbitrum, monthly investor + team unlocks, known v1 expected-impact gap
+    queries:
+      p50: max(ocb_unlock_expected_impact_pct{token="ARB"})
+      p90: max(ocb_unlock_expected_impact_pct{token="ARB"})
+      p99: max(ocb_unlock_expected_impact_pct{token="ARB"})
+      mean: avg(ocb_unlock_expected_impact_pct{token="ARB"})
+      success: clamp_max(count(ocb_unlock_upcoming_pct_supply{token="ARB"}) / 4, 1)
+      sample_size: sum(ocb_unlock_upcoming_pct_supply{token="ARB"})
+      series: max(ocb_unlock_upcoming_pct_supply{token="ARB"}) by (unlock_date)
+
+  - slug: op
+    name: OP
+    tag: Optimism, monthly RetroPGF + investor cliffs
+    queries:
+      p50: max(ocb_unlock_expected_impact_pct{token="OP"})
+      p90: max(ocb_unlock_expected_impact_pct{token="OP"})
+      p99: max(ocb_unlock_expected_impact_pct{token="OP"})
+      mean: avg(ocb_unlock_expected_impact_pct{token="OP"})
+      success: clamp_max(count(ocb_unlock_upcoming_pct_supply{token="OP"}) / 4, 1)
+      sample_size: sum(ocb_unlock_upcoming_pct_supply{token="OP"})
+      series: max(ocb_unlock_upcoming_pct_supply{token="OP"}) by (unlock_date)
+
+  - slug: sui
+    name: SUI
+    tag: Sui Foundation, monthly linear unlocks, large absolute notional
+    queries:
+      p50: max(ocb_unlock_expected_impact_pct{token="SUI"})
+      p90: max(ocb_unlock_expected_impact_pct{token="SUI"})
+      p99: max(ocb_unlock_expected_impact_pct{token="SUI"})
+      mean: avg(ocb_unlock_expected_impact_pct{token="SUI"})
+      success: clamp_max(count(ocb_unlock_upcoming_pct_supply{token="SUI"}) / 4, 1)
+      sample_size: sum(ocb_unlock_upcoming_pct_supply{token="SUI"})
+      series: max(ocb_unlock_upcoming_pct_supply{token="SUI"}) by (unlock_date)
+
+  - slug: strk
+    name: STRK
+    tag: Starknet, contributor + investor linear schedule
+    queries:
+      p50: max(ocb_unlock_expected_impact_pct{token="STRK"})
+      p90: max(ocb_unlock_expected_impact_pct{token="STRK"})
+      p99: max(ocb_unlock_expected_impact_pct{token="STRK"})
+      mean: avg(ocb_unlock_expected_impact_pct{token="STRK"})
+      success: clamp_max(count(ocb_unlock_upcoming_pct_supply{token="STRK"}) / 4, 1)
+      sample_size: sum(ocb_unlock_upcoming_pct_supply{token="STRK"})
+      series: max(ocb_unlock_upcoming_pct_supply{token="STRK"}) by (unlock_date)
+
+  - slug: jto
+    name: JTO
+    tag: Jito Labs, monthly team + investor cliffs (1to3pct bucket)
+    queries:
+      p50: max(ocb_unlock_expected_impact_pct{token="JTO"})
+      p90: max(ocb_unlock_expected_impact_pct{token="JTO"})
+      p99: max(ocb_unlock_expected_impact_pct{token="JTO"})
+      mean: avg(ocb_unlock_expected_impact_pct{token="JTO"})
+      success: clamp_max(count(ocb_unlock_upcoming_pct_supply{token="JTO"}) / 4, 1)
+      sample_size: sum(ocb_unlock_upcoming_pct_supply{token="JTO"})
+      series: max(ocb_unlock_upcoming_pct_supply{token="JTO"}) by (unlock_date)
+
+  - slug: eigen
+    name: EIGEN
+    tag: EigenLayer, investor 4.00% cliffs (2026-06-01, 2026-08-01)
+    queries:
+      p50: max(ocb_unlock_expected_impact_pct{token="EIGEN"})
+      p90: max(ocb_unlock_expected_impact_pct{token="EIGEN"})
+      p99: max(ocb_unlock_expected_impact_pct{token="EIGEN"})
+      mean: avg(ocb_unlock_expected_impact_pct{token="EIGEN"})
+      success: clamp_max(count(ocb_unlock_upcoming_pct_supply{token="EIGEN"}) / 4, 1)
+      sample_size: sum(ocb_unlock_upcoming_pct_supply{token="EIGEN"})
+      series: max(ocb_unlock_upcoming_pct_supply{token="EIGEN"}) by (unlock_date)
+
+  - slug: wld
+    name: WLD
+    tag: Worldcoin, daily linear ecosystem + investor allocations
+    queries:
+      p50: max(ocb_unlock_expected_impact_pct{token="WLD"})
+      p90: max(ocb_unlock_expected_impact_pct{token="WLD"})
+      p99: max(ocb_unlock_expected_impact_pct{token="WLD"})
+      mean: avg(ocb_unlock_expected_impact_pct{token="WLD"})
+      success: clamp_max(count(ocb_unlock_upcoming_pct_supply{token="WLD"}) / 4, 1)
+      sample_size: sum(ocb_unlock_upcoming_pct_supply{token="WLD"})
+      series: max(ocb_unlock_upcoming_pct_supply{token="WLD"}) by (unlock_date)
+
+  - slug: apt
+    name: APT
+    tag: Aptos Foundation, monthly cliffs (1to3pct), large notional
+    queries:
+      p50: max(ocb_unlock_expected_impact_pct{token="APT"})
+      p90: max(ocb_unlock_expected_impact_pct{token="APT"})
+      p99: max(ocb_unlock_expected_impact_pct{token="APT"})
+      mean: avg(ocb_unlock_expected_impact_pct{token="APT"})
+      success: clamp_max(count(ocb_unlock_upcoming_pct_supply{token="APT"}) / 4, 1)
+      sample_size: sum(ocb_unlock_upcoming_pct_supply{token="APT"})
+      series: max(ocb_unlock_upcoming_pct_supply{token="APT"}) by (unlock_date)
+
+  - slug: near
+    name: NEAR
+    tag: NEAR Protocol, validator + ecosystem linear unlocks
+    queries:
+      p50: max(ocb_unlock_expected_impact_pct{token="NEAR"})
+      p90: max(ocb_unlock_expected_impact_pct{token="NEAR"})
+      p99: max(ocb_unlock_expected_impact_pct{token="NEAR"})
+      mean: avg(ocb_unlock_expected_impact_pct{token="NEAR"})
+      success: clamp_max(count(ocb_unlock_upcoming_pct_supply{token="NEAR"}) / 4, 1)
+      sample_size: sum(ocb_unlock_upcoming_pct_supply{token="NEAR"})
+      series: max(ocb_unlock_upcoming_pct_supply{token="NEAR"}) by (unlock_date)
+
+  - slug: manta
+    name: MANTA
+    tag: Manta Network, investor + ecosystem cliffs (lt1pct + 1to3pct mix)
+    queries:
+      p50: max(ocb_unlock_expected_impact_pct{token="MANTA"})
+      p90: max(ocb_unlock_expected_impact_pct{token="MANTA"})
+      p99: max(ocb_unlock_expected_impact_pct{token="MANTA"})
+      mean: avg(ocb_unlock_expected_impact_pct{token="MANTA"})
+      success: clamp_max(count(ocb_unlock_upcoming_pct_supply{token="MANTA"}) / 4, 1)
+      sample_size: sum(ocb_unlock_upcoming_pct_supply{token="MANTA"})
+      series: max(ocb_unlock_upcoming_pct_supply{token="MANTA"}) by (unlock_date)
+
+# The full universe is wider than the 10 majors listed above (53 distinct
+# tokens currently emitting upcoming-supply rows, capped at 200 by
+# UNLOCK_PRIORITY_CAP). The page renders the leaderboard as a sortable
+# table of every token with at least one upcoming unlock in the J+0..J+90
+# window — the providers list above pins the editorial picks for the
+# narrative columns and per-token sparklines.
