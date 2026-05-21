@@ -165,6 +165,26 @@ async function specToBenchmark(
 
   const live = await tryLoadLive(filteredSpec);
   if (live) {
+    // Augment live results with any spec-declared providers that didn't
+    // return data this cycle. Without this, providers with transiently
+    // missing Prom data fall out of `getProviders()` entirely → their
+    // /products/<slug> page 404s and they disappear from the sitemap.
+    // We append them as zero-valued entries; `rankProviders` already
+    // filters p50<=0 out of the leaderboard, and the product page shows
+    // them as "awaiting samples" — same UX as a brand-new draft bench.
+    const liveSlugs = new Set(live.results.map((r) => r.slug.toLowerCase()));
+    for (const p of spec.providers) {
+      if (liveSlugs.has(p.slug.toLowerCase())) continue;
+      live.results.push({
+        name: p.name,
+        slug: p.slug,
+        tag: p.tag,
+        type: p.type,
+        ms: { p50: 0, p90: 0, p99: 0, mean: 0 },
+        successRate: 0,
+        secondary: p.secondary,
+      });
+    }
     // Resolve {{p50:slug}} / {{best_name}} / {{count}} etc. placeholders
     // against the freshly loaded numbers so editorial text (findings,
     // seo_intro, faq) never drifts from the displayed data.
