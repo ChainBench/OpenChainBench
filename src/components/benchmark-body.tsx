@@ -219,7 +219,7 @@ export function BenchmarkBody({
       {!isDraft && benchmark.unit === "count" && (
         <>
           <CountLeaderboard benchmark={benchmark} />
-          <div className="mt-10 card-soft rounded-xl p-6 lg:p-8">
+          <div className="mt-10 card-soft rounded-xl p-4 sm:p-6 lg:p-8">
             <p className="label-mono text-ink-faint mb-4">
               Product ledger
             </p>
@@ -230,7 +230,7 @@ export function BenchmarkBody({
 
       {!isDraft && benchmark.unit !== "count" && (
         <>
-          <dl className="mt-10 card rounded-xl flex flex-wrap divide-x divide-rule overflow-hidden">
+          <dl className="mt-10 card rounded-xl grid grid-cols-2 sm:flex sm:flex-wrap divide-y divide-x sm:divide-y-0 divide-rule overflow-hidden">
             <SummaryStat
               label="Best"
               value={`${fmtValue(fieldMin, benchmark.unit)}${unitSuffix(benchmark.unit)}`}
@@ -254,7 +254,7 @@ export function BenchmarkBody({
             />
           </dl>
 
-          <div className="mt-8 card-soft rounded-xl p-6 lg:p-8">
+          <div className="mt-8 card-soft rounded-xl p-4 sm:p-6 lg:p-8">
             {benchmark.results.length >= 3 ||
             benchmark.unit === "bps" ||
             benchmark.unit === "pct" ? (
@@ -267,7 +267,7 @@ export function BenchmarkBody({
             )}
           </div>
 
-          <div className="mt-8 card-soft rounded-xl p-6 lg:p-8">
+          <div className="mt-8 card-soft rounded-xl p-4 sm:p-6 lg:p-8">
             <p className="label-mono text-ink-faint mb-4">
               Product ledger · sorted by p50
             </p>
@@ -275,7 +275,7 @@ export function BenchmarkBody({
           </div>
 
           {Object.keys(benchmark.extras.regions).length > 0 && (
-            <div className="mt-8 card-soft rounded-xl p-6 lg:p-8">
+            <div className="mt-8 card-soft rounded-xl p-4 sm:p-6 lg:p-8">
               <p className="label-mono text-ink-faint mb-4">By region</p>
               <RegionGrid benchmark={benchmark} />
             </div>

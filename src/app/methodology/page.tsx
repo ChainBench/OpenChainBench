@@ -77,7 +77,7 @@ const STEPS = [
 
 export default function MethodologyPage() {
   return (
-    <article className="mx-auto max-w-5xl px-6 py-12">
+    <article className="mx-auto max-w-5xl px-4 sm:px-6 py-8 sm:py-12">
       {/* Hero */}
       <header className="pb-2">
         <h1 className="display text-4xl sm:text-5xl tracking-tight text-ink">

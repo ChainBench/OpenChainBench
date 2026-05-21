@@ -59,28 +59,30 @@ export function ProvidersTable({ providers }: { providers: Row[] }) {
   return (
     <div>
       {/* Filter row: category pills + search */}
-      <div className="flex flex-wrap items-center gap-3 mb-6">
-        <button
-          type="button"
-          onClick={() => setActiveCategory(ALL)}
-          data-active={activeCategory === ALL}
-          className="pill"
-        >
-          All
-        </button>
-        {categories.map((c) => (
+      <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3 mb-6">
+        <div className="-mx-4 px-4 sm:mx-0 sm:px-0 flex flex-nowrap sm:flex-wrap overflow-x-auto sm:overflow-visible items-center gap-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <button
-            key={c}
             type="button"
-            onClick={() => setActiveCategory(c)}
-            data-active={activeCategory === c}
-            className="pill"
+            onClick={() => setActiveCategory(ALL)}
+            data-active={activeCategory === ALL}
+            className="pill shrink-0"
           >
-            {c}
+            All
           </button>
-        ))}
+          {categories.map((c) => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => setActiveCategory(c)}
+              data-active={activeCategory === c}
+              className="pill shrink-0"
+            >
+              {c}
+            </button>
+          ))}
+        </div>
 
-        <label className="group relative flex items-center ml-auto w-56 focus-within:w-72 transition-[width] duration-200">
+        <label className="group relative flex items-center w-full sm:w-56 sm:ml-auto focus-within:sm:w-72 transition-[width] duration-200">
           <Search
             size={14}
             strokeWidth={2}
