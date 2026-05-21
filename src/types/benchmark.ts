@@ -49,6 +49,9 @@ export type Benchmark = {
   seoDescription?: string;
   /** Optional SSR-rendered intro paragraph displayed under the H1. */
   seoIntro?: string;
+  /** Optional warning callout rendered as a visible card under the H1,
+   *  before the leaderboard. Use when the metric is easy to misread. */
+  disclaimer?: string;
   /** Optional FAQ entries. Surfaced both as visible Q&A blocks and as
    *  FAQPage JSON-LD for rich-result eligibility. */
   faq?: { q: string; a: string }[];

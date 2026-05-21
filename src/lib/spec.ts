@@ -143,6 +143,7 @@ async function specToBenchmark(
     seoTitle: spec.seo_title,
     seoDescription: spec.seo_description,
     seoIntro: spec.seo_intro,
+    disclaimer: spec.disclaimer,
     faq: spec.faq,
     subtitle: spec.subtitle,
     category: spec.category,
