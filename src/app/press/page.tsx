@@ -31,23 +31,26 @@ export default function PressPage() {
       </dl>
 
       <SectionRule label="OCBKit" number="iii" />
-      <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-        <p className="text-base leading-relaxed text-ink-soft">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <p className="max-w-md text-base leading-relaxed text-ink-soft">
           Logos and X-ready banners. Free to use in editorial and partner contexts with attribution.
         </p>
         <a
           href="/press/OCBKit.zip"
           download
-          className="ml-auto label-mono inline-flex items-center gap-1.5 border border-ink px-3 py-1.5 hover:bg-ink hover:text-paper transition-colors"
+          className="self-start label-mono inline-flex items-center gap-1.5 border border-ink px-3 py-1.5 hover:bg-ink hover:text-paper transition-colors sm:self-auto"
         >
           Download OCBKit (.zip)
         </a>
       </div>
 
+      {/* Tile background = the surface the logo is designed to sit on.
+          Dark-colored logo → light background (so it's visible).
+          White logo → dark background. Grey logo → mid-tone. */}
       <div className="mt-6 grid gap-4 sm:grid-cols-3">
-        <KitTile name="Dark logo" file="dark-logo.png" tone="dark" />
+        <KitTile name="Dark logo" file="dark-logo.png" tone="light" />
         <KitTile name="Grey logo" file="grey-logo.png" tone="grey" />
-        <KitTile name="White logo" file="white-logo.png" tone="light" />
+        <KitTile name="White logo" file="white-logo.png" tone="dark" />
       </div>
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
         <KitTile name="X banner · 1" file="banner-1.png" tone="dark" wide />
