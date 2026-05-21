@@ -85,6 +85,20 @@ export default async function ProviderPage({
         })),
       },
       {
+        "@type": "SoftwareApplication",
+        name: p.name,
+        identifier: p.slug,
+        url,
+        applicationCategory: "DeveloperApplication",
+        operatingSystem: "Cross-platform",
+        description:
+          reg?.description ??
+          `${p.name} is a crypto-infrastructure product measured by OpenChainBench across ${p.appearances.length} live benchmarks.`,
+        ...(reg?.url ? { downloadUrl: reg.url } : {}),
+        ...(sameAs.length > 0 ? { sameAs } : {}),
+        creator: { "@id": `${SITE.url}/#org` },
+      },
+      {
         "@type": "BreadcrumbList",
         itemListElement: [
           {

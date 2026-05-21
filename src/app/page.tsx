@@ -8,10 +8,26 @@ import { LiveDashboard } from "@/components/live-dashboard";
 
 export const revalidate = 60;
 
+const DESCRIPTION =
+  "State of the art across the most challenging benchmarks for crypto infrastructure, data providers, and bridge nodes.";
+
 export const metadata: Metadata = {
   title: "OpenChainBench. Open benchmarks for crypto infrastructure",
-  description:
-    "State of the art across the most challenging benchmarks for crypto infrastructure, data providers, and bridge nodes.",
+  description: DESCRIPTION,
+  alternates: { canonical: "https://openchainbench.com/" },
+  openGraph: {
+    title: "OpenChainBench. Open benchmarks for crypto infrastructure",
+    description: DESCRIPTION,
+    url: "https://openchainbench.com/",
+    type: "website",
+    siteName: "OpenChainBench",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "OpenChainBench. Open benchmarks for crypto infrastructure",
+    description: DESCRIPTION,
+    site: "@openchainbench",
+  },
 };
 
 export default async function HomePage() {

@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SectionRule } from "@/components/section-rule";
+import { pageMetadata } from "@/lib/page-metadata";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
+  path: "/about",
   title: "About",
   description: "Why OpenChainBench exists and how it stays honest.",
-};
+});
 
 export default function AboutPage() {
   return (
