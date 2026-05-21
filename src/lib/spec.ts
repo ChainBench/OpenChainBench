@@ -33,12 +33,24 @@ const loadAllBenchmarksCached = unstable_cache(
   async (): Promise<Benchmark[]> => {
     const specs = await loadSpecs();
     const benchmarks = await Promise.all(specs.map((s) => specToBenchmark(s)));
+    // Stale-while-revalidate safety: if every spec collapsed to draft (the
+    // upstream Prometheus is unreachable / timing out / returning empty
+    // vectors for all queries simultaneously), throw so unstable_cache
+    // preserves the previous cached entry instead of overwriting it with
+    // an all-n/a snapshot that would surface to every visitor for the
+    // next revalidate window. A partial outage (one bench draft, others
+    // live) is still cached normally — only the total-blackout case is
+    // treated as transient.
+    const live = benchmarks.filter((b) => b.editorialStatus === "live");
+    if (benchmarks.length > 0 && live.length === 0) {
+      throw new Error("loadAllBenchmarks: every bench draft, refusing to update cache");
+    }
     return benchmarks.sort((a, b) => a.number.localeCompare(b.number));
   },
   // Version bumped when the Benchmark shape changes so a stale cached
   // entry from a previous deploy can't surface objects missing newer
   // fields (e.g. editorialStatus introduced in commit 0457fb1).
-  ["all-benchmarks-v3"],
+  ["all-benchmarks-v4"],
   { revalidate: 60, tags: ["benchmarks"] }
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -63,9 +75,16 @@ const loadBenchmarkFiltered = unstable_cache(
     const specs = await loadSpecs();
     const spec = specs.find((s) => s.slug === slug);
     if (!spec) return undefined;
-    return specToBenchmark(spec, parseFilterSig(sig));
+    const bench = await specToBenchmark(spec, parseFilterSig(sig));
+    // Same stale-while-revalidate as loadAllBenchmarks: if Prom drops the
+    // single bench we just queried to draft, throw so unstable_cache keeps
+    // the previous live entry instead of overwriting with n/a.
+    if (bench.editorialStatus !== "live") {
+      throw new Error(`loadBenchmark(${slug}): draft, refusing to update cache`);
+    }
+    return bench;
   },
-  ["bench-filters-v2"],
+  ["bench-filters-v3"],
   { revalidate: 60, tags: ["benchmarks"] }
 );
 
