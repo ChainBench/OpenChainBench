@@ -13,7 +13,7 @@ unit: ms
 higher_is_better: false
 
 disclaimer: |
-  Five caveats. (1) Single region — these are us-east numbers; a sgp or eu-west client will see different absolute latencies (geographic-edge story arrives in a later bench tier). (2) Single tip level per service — bench characterises landing at the pre-registered tip floor (Jito 10k, Helius 10k, Astralane 500k, Nozomi 1M, 0slot 1M lamports). Tip-elasticity will be its own bench. (3) Synthetic payload — 1-lamport self-transfer + memo. Real swap payloads are heavier and may land differently; the bench does not extrapolate. (4) Fan-out attribution — Helius / Astralane / Nozomi route a portion of flow through Jito internally; we run a Jito control probe in every cycle so the comparison is honest. Helius is additionally probed in `?swqos_only=true` mode to isolate its own path. (5) Confirmation = `confirmed` (1+ block); a service that lands at `processed` but never reaches `confirmed` would be undercounted (rare in practice). Pair this with the observational market-share view at /benchmarks/solana-tx-landing.
+  Five caveats. (1) us-east only — sgp / eu-west arrive in V2. (2) One pre-registered tip per service. (3) Synthetic payload (1-lamport self-transfer + memo); real swaps may land differently. (4) Helius / Astralane / Nozomi fan out to Jito internally; we run a Jito control probe each cycle. Helius is probed in `swqos_only=true` mode. (5) Confirmation = `confirmed`; rare `processed`-only landings undercounted. Pair with the observational view at /benchmarks/solana-tx-landing.
 
 seo_intro: |
   This benchmark answers the only question that actually matters
