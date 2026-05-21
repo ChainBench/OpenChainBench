@@ -31,7 +31,7 @@ export const LiveTicker = memo(function LiveTicker({
   onToggle: () => void;
 }) {
   return (
-    <div className="card flex flex-wrap items-center gap-x-6 gap-y-1.5 px-4 py-2.5 text-xs">
+    <div className="card flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-x-6 gap-y-2 px-4 py-2.5 text-xs">
       <div className="flex items-center gap-2">
         {connected ? (
           <LiveDot className="h-2 w-2" />
@@ -67,7 +67,7 @@ export const LiveTicker = memo(function LiveTicker({
       <button
         type="button"
         onClick={onToggle}
-        className="ml-auto label-mono text-ink-muted hover:text-ink transition-colors"
+        className="self-end sm:self-auto sm:ml-auto label-mono text-ink-muted hover:text-ink transition-colors min-h-[32px]"
       >
         {expanded ? "Collapse ▴" : "Expand ▾"}
       </button>
