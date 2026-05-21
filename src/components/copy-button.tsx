@@ -28,7 +28,7 @@ export function CopyButton({
           window.setTimeout(() => setCopied(false), 1500);
         });
       }}
-      className={`inline-flex items-center gap-2 border border-ink/70 hover:bg-ink hover:text-paper transition-colors px-3 py-1.5 ${
+      className={`inline-flex items-center justify-center gap-2 min-h-[44px] sm:min-h-0 border border-ink/70 hover:bg-ink hover:text-paper transition-colors px-3 py-1.5 ${
         mono ? "font-mono text-[11px]" : "font-sans text-[11px] uppercase tracking-[0.16em] font-medium"
       }`}
     >

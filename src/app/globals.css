@@ -243,3 +243,17 @@ table {
   border-color: var(--color-accent);
   color: #ffffff;
 }
+
+/* Respect users who opted out of animation at the OS level. Disables
+   animate-ping / animate-pulse / chart-pop-rise / theme transitions
+   without touching individual component classes. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

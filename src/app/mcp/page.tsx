@@ -95,7 +95,7 @@ export default async function McpPage() {
         </header>
         <p className="mt-4 text-sm text-ink-soft leading-relaxed">
           Add this block to{" "}
-          <code className="font-mono text-[0.92em] text-ink">
+          <code className="font-mono text-[0.92em] text-ink break-all">
             ~/Library/Application Support/Claude/claude_desktop_config.json
           </code>{" "}
           (macOS) or the equivalent on your OS, then restart the app.
@@ -231,7 +231,7 @@ export default async function McpPage() {
             Open by design
           </h2>
         </header>
-        <p className="mt-4 max-w-2xl text-sm text-ink-soft leading-relaxed">
+        <p className="mt-4 max-w-2xl text-sm text-ink-soft leading-relaxed break-words">
           The server is read-only. There are no admin actions, no mutating
           tools, no upstream secrets reachable through the wire. PromQL
           queries are scoped to the metric namespaces we publish, so the
@@ -240,7 +240,7 @@ export default async function McpPage() {
           enforced at the route. Source is on{" "}
           <a
             href="https://github.com/OpenChainBench/OpenChainBench/blob/main/src/app/api/mcp/%5Btransport%5D/route.ts"
-            className="lnk"
+            className="lnk break-all"
             rel="noopener"
           >
             GitHub
