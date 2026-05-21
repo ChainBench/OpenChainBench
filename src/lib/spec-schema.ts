@@ -153,6 +153,13 @@ export const SpecSchema = z
      *  to finality", "sub-second finality", etc.) so the page ranks beyond
      *  its short title. */
     seo_intro: z.string().min(40).max(2000).optional(),
+    /** Optional warning callout rendered as a visible card right under
+     *  the H1, BEFORE the leaderboard. Use when the metric is easy to
+     *  misread — e.g. on benches where "lower is better" hides a
+     *  fundamental trade-off (gas oracle inclusion-confidence oracles
+     *  show larger gaps by design). Kept short so it can be read at a
+     *  glance; expand the long version in seo_intro / FAQ. */
+    disclaimer: z.string().min(20).max(500).optional(),
     /** Optional FAQ section. Each pair generates a FAQPage JSON-LD entry +
      *  a visible block on the page. Capped at 12 entries to keep the page
      *  reasonable. */

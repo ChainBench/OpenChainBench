@@ -2,15 +2,18 @@
 
 slug: gas-estimation
 number: "013"
-title: Gas oracle prediction error
-seo_title: "Most accurate gas oracle in 2026 (Ethereum, Polygon, Avalanche): Blocknative, Etherscan, Owlracle and PublicNode feeHistory benchmark"
-seo_description: "Live gas oracle prediction error leaderboard across Ethereum, Polygon and Avalanche. Absolute gap in gwei between each oracle's priority-fee p50 prediction and the realized percentile in the next mined block. Blocknative, PublicNode feeHistory, Owlracle and Etherscan compared per chain, p50 / p90 / p99 over 24h."
-subtitle: Absolute |predicted − realized| priority fee in gwei, per oracle, per chain. Lower is closer to reality, but does not capture inclusion latency or over-pay cost.
+title: Gas oracle vs realized percentile
+seo_title: "Gas oracle vs realized fee percentile (Ethereum, Polygon, Avalanche): Blocknative, Etherscan, Owlracle and PublicNode feeHistory live comparison"
+seo_description: "Live gas oracle leaderboard across Ethereum, Polygon and Avalanche. Absolute gap in gwei between each oracle's p50 prediction and the realized priority-fee percentile in the next mined block. Lower gap is NOT 'best oracle' — inclusion-confidence oracles intentionally over-predict."
+subtitle: Absolute gap in gwei between each oracle's predicted priority-fee tier and the realized percentile in the next mined block, per chain.
 category: RPCs
 status: live
-metric: Prediction error (gwei)
+metric: Gap vs realized (gwei)
 unit: count
 higher_is_better: false
+
+disclaimer: |
+  Lower gap is NOT the same as "best oracle". Inclusion-confidence oracles (Blocknative, Etherscan) deliberately over-predict to guarantee next-block inclusion and show larger gaps here by design. Percentile-tracking oracles (PublicNode feeHistory, Owlracle) mirror the realized rewards distribution and hug the realized number by construction. Read this column as "distance from realized percentile", not "recommended for production".
 
 seo_intro: |
   This benchmark answers the question wallets, swap routers and
