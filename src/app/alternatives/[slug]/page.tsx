@@ -148,9 +148,9 @@ export default async function AlternativePage({
         All benchmarks
       </Link>
 
-      <div className="mt-6 flex flex-wrap items-center gap-2">
+      <div className="mt-6 flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2">
         <Pill variant="category">Alternatives</Pill>
-        <span className="ml-auto font-sans tabular text-[11px] text-ink-muted">
+        <span className="sm:ml-auto font-sans tabular text-[11px] text-ink-muted">
           Sourced from {bench.title}
         </span>
       </div>
@@ -167,11 +167,11 @@ export default async function AlternativePage({
       </div>
 
       {alt.target_url && (
-        <p className="mt-4 text-xs text-ink-muted">
+        <p className="mt-4 text-xs text-ink-muted break-words">
           About {alt.target_product}:{" "}
-          <a className="lnk" href={alt.target_url} target="_blank" rel="noopener noreferrer">
+          <a className="lnk break-all" href={alt.target_url} target="_blank" rel="noopener noreferrer">
             {alt.target_url.replace(/^https?:\/\//, "")}
-            <ArrowUpRight size={11} strokeWidth={2} className="inline ml-0.5" />
+            <ArrowUpRight size={11} strokeWidth={2} className="inline ml-0.5 shrink-0" />
           </a>
         </p>
       )}
@@ -203,14 +203,14 @@ export default async function AlternativePage({
                     </div>
                     {r.type && <ProviderTypeBadge type={r.type} />}
                   </div>
-                  <div className="flex items-baseline gap-2 text-ink">
+                  <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-ink">
                     <span className="font-sans tabular text-lg font-semibold">
                       {fmtValue(r.ms.p50, bench.unit)}
                     </span>
                     <span className="font-sans text-[11px] text-ink-muted">
                       {unitSuffix(bench.unit).trim()}
                     </span>
-                    <span className="ml-auto text-[11px] text-ink-faint">
+                    <span className="w-full sm:w-auto sm:ml-auto text-[11px] text-ink-faint">
                       p99 {fmtUnit(r.ms.p99, bench.unit)}
                     </span>
                   </div>

@@ -338,7 +338,7 @@ function ChartCanvas({
         ref={svgRef}
         viewBox={`0 0 ${CHART_W} ${CHART_H}`}
         preserveAspectRatio="none"
-        className="w-full h-[280px]"
+        className="w-full h-[200px] sm:h-[240px] lg:h-[280px]"
         aria-label="Live streamed volume per chain"
         onMouseMove={onMove}
         onMouseLeave={() => setHover(null)}

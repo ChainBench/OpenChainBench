@@ -156,15 +156,15 @@ export default async function ProviderPage({
           <p className="text-base text-ink-soft leading-relaxed max-w-2xl">
             {reg.description}
           </p>
-          <ul className="flex flex-wrap gap-x-4 gap-y-1 sm:ml-auto sm:flex-col sm:items-end sm:text-right shrink-0">
-            <li>
+          <ul className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:gap-x-4 sm:gap-y-1 sm:ml-auto sm:flex-col sm:items-end sm:text-right shrink-0 min-w-0">
+            <li className="min-w-0">
               <a
-                className="lnk inline-flex items-center gap-1 font-sans text-[11px] uppercase tracking-[0.16em] font-medium text-ink-soft hover:text-ink"
+                className="lnk inline-flex items-center gap-1 font-sans text-[11px] uppercase tracking-[0.16em] font-medium text-ink-soft hover:text-ink break-all"
                 href={reg.url}
                 rel="noopener"
               >
                 {reg.url.replace(/^https?:\/\//, "").replace(/\/$/, "")}
-                <ArrowUpRight size={11} strokeWidth={2} />
+                <ArrowUpRight size={11} strokeWidth={2} className="shrink-0" />
               </a>
             </li>
             {reg.twitter && (
@@ -196,7 +196,7 @@ export default async function ProviderPage({
               <li key={a.benchmark.slug}>
                 <Link
                   href={`/benchmarks/${a.benchmark.slug}`}
-                  className="group grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 py-5 pl-3 pr-3 hover:bg-paper-soft/60 transition-colors"
+                  className="group grid grid-cols-[auto_minmax(0,1fr)] sm:grid-cols-[auto_minmax(0,1fr)_auto] items-start sm:items-center gap-x-4 gap-y-2 py-5 pl-3 pr-3 hover:bg-paper-soft/60 transition-colors"
                 >
                   <span
                     className="font-sans tabular text-xl sm:text-2xl font-semibold w-12 text-center"
@@ -226,7 +226,7 @@ export default async function ProviderPage({
                       {a.benchmark.metric}
                     </p>
                   </div>
-                  <div className="text-right">
+                  <div className="col-start-2 sm:col-start-3 text-left sm:text-right">
                     {hasData ? (
                       <>
                         <p className="font-sans tabular text-base text-ink">{value}</p>
