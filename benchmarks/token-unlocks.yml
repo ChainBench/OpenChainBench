@@ -13,7 +13,7 @@ unit: pct
 higher_is_better: true
 
 disclaimer: |
-  Four caveats. (1) Predictions are conditional medians, not point forecasts — they describe the historical centre-of-mass for bucket-matched unlocks, not "the price will move X%". (2) ARB has a known v1 gap — the upcoming-supply rows surface correctly but the expected-impact gauge is silently dropped on collection; filed for v2. (3) The 3-5% and >10% buckets currently hold zero mature samples, so unlocks falling in those size classes do not emit an expected-impact value (fail-closed by design, the gate requires ≥5 samples). (4) Source is CryptoRank's public Next.js routes — when CR rotates its buildId on deploy, the calendar lags by up to one scrape cycle until the harness re-parses __NEXT_DATA__.
+  Four caveats. (1) Predictions are conditional medians, not forecasts. (2) ARB v1 gap — upcoming rows surface but expected-impact silently drops on collection; filed v2. (3) 3-5% and >10% buckets hold 0 mature samples, so unlocks of those sizes emit no expected-impact (fail-closed, ≥5 samples required). (4) Source = CryptoRank Next.js routes — calendar lags up to one scrape cycle on buildId rotation.
 
 seo_intro: |
   This benchmark answers the question every token holder, market
@@ -85,7 +85,7 @@ findings:
   - "Historical sample distribution across the 5 buckets: lt1pct holds 175 mature samples (J+30 elapsed), 1to3pct holds 23, 5to10pct holds 2, and the 3to5pct and gt10pct buckets currently hold 0. Buckets below the 5-sample gate emit no `expected_impact_pct` gauge — predictions for those size classes fail closed, which is the honest answer for a bucket without enough comparables."
   - "Conditional median impact, lt1pct bucket (n=175): {{p50:lt1pct-median}} over the J-7 → J+30 window. Sub-1% unlocks are the noise floor — most major-token vesting events fall here once the early-investor cliff has passed."
   - "Conditional median impact, 1to3pct bucket (n=23): {{p50:1to3pct-median}} over the J-7 → J+30 window. The harder-to-absorb size class, where market makers historically struggle to fully internalize the new supply within a month."
-  - "{{name:arb}} is a known v1 limitation: the upcoming-supply rows surface correctly (4 unlocks visible in the J+0..J+90 window), the gate condition passes, `MedianImpact` returns a valid value, and the writer is invoked — confirmed via runtime trace — yet the resulting `ocb_unlock_expected_impact_pct` series does not surface in `/metrics`. Same-bucket peers (JTO, ZK, MANTA, ENA) emit normally via the identical code path, so this is an isolated collection-layer drop filed for v2. ARB's % supply column on the page is correct; only the predicted-impact column is blank for this token."
+  - "{{name:arb}} is a v1 limitation: upcoming-supply rows surface correctly (4 unlocks in J+0..J+90), gate passes, `MedianImpact` returns valid, the writer is invoked (confirmed via trace) — yet `ocb_unlock_expected_impact_pct` does not surface in `/metrics`. Same-bucket peers (JTO, ZK, MANTA, ENA) emit normally via the identical code path, so this is an isolated collection-layer drop filed for v2. ARB's % supply column is correct; only the predicted-impact column is blank."
   - "Source freshness: CryptoRank calendar refreshes every 1 h, per-token vesting every 24 h with a 30-min cache, DeFiLlama price backfill runs once at boot then on-demand for newly-detected tokens. `ocb_unlock_source_freshness_seconds` exposes the age of the most recent successful CR scrape so stale-calendar conditions are visible at the dashboard level."
 
 faq:
