@@ -49,8 +49,8 @@ export function BenchmarkGrid({ benchmarks }: { benchmarks: Benchmark[] }) {
   return (
     <div>
       {/* Filter row */}
-      <div className="mb-8 flex flex-wrap items-center gap-3">
-        <ul className="flex flex-wrap items-center gap-2">
+      <div className="mb-8 flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3">
+        <ul className="-mx-4 px-4 sm:mx-0 sm:px-0 flex flex-nowrap sm:flex-wrap overflow-x-auto sm:overflow-visible items-center gap-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <li>
             <button
               type="button"
@@ -75,7 +75,7 @@ export function BenchmarkGrid({ benchmarks }: { benchmarks: Benchmark[] }) {
           ))}
         </ul>
 
-        <div className="ml-auto flex items-center gap-3">
+        <div className="sm:ml-auto flex items-center gap-3">
           {/* View toggle */}
           <div className="hidden sm:inline-flex items-center rounded-md border border-rule p-0.5 bg-surface">
             <button
@@ -105,7 +105,7 @@ export function BenchmarkGrid({ benchmarks }: { benchmarks: Benchmark[] }) {
           </div>
 
           {/* Search */}
-          <label className="group relative flex items-center w-44 sm:w-56 focus-within:sm:w-72 transition-[width] duration-200">
+          <label className="group relative flex items-center flex-1 sm:flex-none sm:w-56 focus-within:sm:w-72 transition-[width] duration-200">
             <Search
               size={13}
               strokeWidth={2}
