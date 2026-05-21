@@ -13,7 +13,7 @@ unit: count
 higher_is_better: true
 
 disclaimer: |
-  Three caveats before reading the numbers. (1) Market share, NOT landing rate — we count landed tx attributed via tip-wallet matching, not per-service success rates (those would require sending controlled tx, which costs SOL). (2) Jito is over-counted — most other services (Helius Sender, Astralane, bloXroute) fan-out tips to Jito in parallel with their own wallet, so every fan-out tx hits both wallets and bumps the Jito counter on top of the originating service. Real Jito-only share is somewhat lower than the headline. (3) High share ≠ best — Nozomi has tiny share but charges 10x higher tips, used by serious traders for guaranteed inclusion. Choose the right service for your latency / cost / reliability tradeoff, not the one at the top of the leaderboard.
+  Three caveats. (1) Market share, NOT landing rate — measuring success rates would require sending controlled tx, which costs SOL. (2) Jito is over-counted — other services (Helius Sender, Astralane, bloXroute) fan-out tips to Jito alongside their own wallet, inflating Jito's counter. (3) High share ≠ best — Nozomi has tiny share but charges 10x higher tips for guaranteed inclusion. Pick on latency / cost / reliability fit, not leaderboard position.
 
 seo_intro: |
   This benchmark answers the question every Solana dev choosing a
