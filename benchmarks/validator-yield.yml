@@ -127,7 +127,7 @@ prometheus:
 providers:
   - slug: solana
     name: Solana
-    tag: Top 200 validators by stake, Stakewiz total_apy (MEV-included) × uptime
+    tag: Top 200 by stake · Stakewiz APY (MEV in)
     queries:
       p50: ocb_chain_median_net_yield_bps{chain="solana"}
       p90: quantile_over_time(0.90, ocb_validator_net_yield_bps{chain="solana"}[24h])
@@ -139,7 +139,7 @@ providers:
 
   - slug: hyperliquid
     name: Hyperliquid
-    tag: All active validators, /info validatorSummaries predictedApr.day × uptimeFraction
+    tag: All active · predictedApr.day × uptime
     queries:
       p50: ocb_chain_median_net_yield_bps{chain="hyperliquid"}
       p90: quantile_over_time(0.90, ocb_validator_net_yield_bps{chain="hyperliquid"}[24h])
