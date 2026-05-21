@@ -121,7 +121,16 @@ export default async function BenchmarkPage({
 
   const isDraft = benchmark.status === "draft";
   const isAwaiting = isDraft && benchmark.editorialStatus === "live";
-  const otherBenchmarks = all.filter((b) => b.slug !== benchmark.slug);
+  // Cap the "more benchmarks" rail at 6 items so it doesn't turn into
+  // an endless single-column scroll on mobile (with 18 benches the old
+  // unlimited list rendered 17 full cards stacked). Prefer same-category
+  // siblings first, pad with cross-category benches if needed, then
+  // surface a "View all" link to /benchmarks for full discovery.
+  const otherAll = all.filter((b) => b.slug !== benchmark.slug);
+  const sameCat = otherAll.filter((b) => b.category === benchmark.category);
+  const otherCat = otherAll.filter((b) => b.category !== benchmark.category);
+  const otherBenchmarks = [...sameCat, ...otherCat].slice(0, 6);
+  const hasMoreToShow = otherAll.length > otherBenchmarks.length;
 
   const catColor = CATEGORY_COLOR[benchmark.category];
 
@@ -416,16 +425,26 @@ export default async function BenchmarkPage({
 
       {/* Other benchmarks */}
       {otherBenchmarks.length > 0 && (
-        <nav className="mt-20 pt-8">
-          <h3 className="label-mono text-ink-muted">
-            More benchmarks
-          </h3>
+        <nav className="mt-16 sm:mt-20 pt-8">
+          <div className="flex items-baseline justify-between gap-4">
+            <h3 className="label-mono text-ink-muted">
+              More benchmarks
+            </h3>
+            {hasMoreToShow && (
+              <Link
+                href="/benchmarks"
+                className="label-mono text-ink-muted hover:text-ink transition-colors"
+              >
+                View all →
+              </Link>
+            )}
+          </div>
           <ul className="mt-5 grid gap-4 sm:grid-cols-2 items-stretch">
             {otherBenchmarks.map((b) => (
               <li key={b.slug} className="flex">
                 <Link
                   href={`/benchmarks/${b.slug}`}
-                  className="flex-1 card-soft rounded-xl p-5 flex flex-col"
+                  className="flex-1 card-soft rounded-xl p-4 sm:p-5 flex flex-col"
                 >
                   <div className="flex items-center gap-2">
                     <Pill variant={b.status === "live" ? "live" : "draft"} pulse>
@@ -433,7 +452,7 @@ export default async function BenchmarkPage({
                     </Pill>
                     <Pill variant="category">{b.category}</Pill>
                   </div>
-                  <p className="mt-3 display text-lg font-bold leading-tight text-ink">
+                  <p className="mt-3 display text-base sm:text-lg font-bold leading-tight text-ink">
                     {b.title}
                   </p>
                   <p className="mt-2 text-sm text-ink-muted line-clamp-2 flex-1">
