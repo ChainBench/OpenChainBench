@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function PressPage() {
   return (
-    <article className="mx-auto max-w-3xl px-6 py-12">
+    <article className="mx-auto max-w-3xl px-4 sm:px-6 py-8 sm:py-12">
       <header className="border-b-2 border-ink pb-6">
         <h1 className="display text-3xl sm:text-4xl tracking-tight">Press kit</h1>
         <p className="mt-3 max-w-3xl text-base sm:text-lg text-ink-soft leading-snug">
@@ -75,7 +75,7 @@ function Fact({ term, value }: { term: string; value: string }) {
   return (
     <div className="border-y border-rule py-3">
       <dt className="font-sans text-[10px] uppercase tracking-[0.2em] text-ink-muted">{term}</dt>
-      <dd className="mt-1 text-base font-medium">{value}</dd>
+      <dd className="mt-1 text-base font-medium break-all">{value}</dd>
     </div>
   );
 }

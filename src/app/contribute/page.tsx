@@ -121,7 +121,7 @@ const WALKTHROUGH = [
 
 function CodeChip({ children }: { children: React.ReactNode }) {
   return (
-    <code className="inline-block px-1.5 py-0.5 mx-0.5 rounded bg-paper-soft text-[0.92em] font-mono text-ink">
+    <code className="px-1.5 py-0.5 mx-0.5 rounded bg-paper-soft text-[0.92em] font-mono text-ink break-all">
       {children}
     </code>
   );
@@ -129,7 +129,7 @@ function CodeChip({ children }: { children: React.ReactNode }) {
 
 export default function ContributePage() {
   return (
-    <article className="mx-auto max-w-5xl px-6 py-12">
+    <article className="mx-auto max-w-5xl px-4 sm:px-6 py-8 sm:py-12">
       <p className="label-mono text-ink-faint">TUTORIAL</p>
 
       <h1 className="mt-3 display text-4xl sm:text-5xl text-ink tracking-tight">
