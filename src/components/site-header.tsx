@@ -38,7 +38,7 @@ export function SiteHeader() {
   }, [open]);
 
   return (
-    <div className="sticky top-0 z-50 flex flex-col font-sans">
+    <div className="sticky top-0 z-50 flex flex-col font-sans pt-[env(safe-area-inset-top)]">
       <SiteBanner />
       <header className="border-b border-rule py-4 md:py-5 px-4 sm:px-6 shrink-0 text-sm bg-surface relative">
         <div className="max-w-[1400px] mx-auto flex items-center justify-between gap-3">
