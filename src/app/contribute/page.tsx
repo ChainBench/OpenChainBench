@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import { AiBriefBlock } from "@/components/ai-brief-block";
+import { pageMetadata } from "@/lib/page-metadata";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
+  path: "/contribute",
   title: "Contribute. Submit a benchmark",
   description:
     "How to publish your own benchmark on OpenChainBench in six steps.",
-};
+});
 
 const STEPS = [
   {
