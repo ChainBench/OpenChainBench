@@ -116,7 +116,7 @@ prometheus:
 providers:
   - slug: hyperliquid
     name: Hyperliquid
-    tag: Assistance Fund 0xfefe…fefe, 97% of HyperCore fees → on-market HYPE spot buyback
+    tag: Assistance Fund, 97% fees → HYPE spot buyback
     queries:
       p50: ocb_buyback_ratio{protocol="hyperliquid",window="7d"}
       p90: ocb_buyback_ratio{protocol="hyperliquid",window="7d"}
@@ -128,7 +128,7 @@ providers:
 
   - slug: sky
     name: Sky (Maker)
-    tag: Smart Burn Engine 0xBE8E…98FB, 100% of protocol surplus → on-market SKY buyback via Uniswap
+    tag: Smart Burn Engine, 100% surplus → SKY via Uniswap
     queries:
       p50: ocb_buyback_ratio{protocol="sky",window="7d"}
       p90: ocb_buyback_ratio{protocol="sky",window="7d"}

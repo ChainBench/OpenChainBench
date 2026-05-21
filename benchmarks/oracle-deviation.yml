@@ -126,7 +126,7 @@ prometheus:
 providers:
   - slug: btc-usd
     name: BTC/USD
-    tag: Bitcoin spot, 4 sources (Chainlink, Pyth, Binance, Coinbase)
+    tag: Bitcoin spot · 4 sources
     queries:
       p50: quantile_over_time(0.50, ocb_oracle_max_deviation_pct{pair="BTC/USD"}[24h]) * 100
       p90: quantile_over_time(0.90, ocb_oracle_max_deviation_pct{pair="BTC/USD"}[24h]) * 100
@@ -138,7 +138,7 @@ providers:
 
   - slug: eth-usd
     name: ETH/USD
-    tag: Ether spot, 4 sources (Chainlink, Pyth, Binance, Coinbase)
+    tag: Ether spot · 4 sources
     queries:
       p50: quantile_over_time(0.50, ocb_oracle_max_deviation_pct{pair="ETH/USD"}[24h]) * 100
       p90: quantile_over_time(0.90, ocb_oracle_max_deviation_pct{pair="ETH/USD"}[24h]) * 100
@@ -150,7 +150,7 @@ providers:
 
   - slug: sol-usd
     name: SOL/USD
-    tag: Solana spot, 4 sources — Chainlink mainnet feed lags on fast moves
+    tag: Solana spot · 4 sources (Chainlink lags)
     queries:
       p50: quantile_over_time(0.50, ocb_oracle_max_deviation_pct{pair="SOL/USD"}[24h]) * 100
       p90: quantile_over_time(0.90, ocb_oracle_max_deviation_pct{pair="SOL/USD"}[24h]) * 100
@@ -162,7 +162,7 @@ providers:
 
   - slug: bnb-usd
     name: BNB/USD
-    tag: Binance Coin spot, 4 sources (Chainlink, Pyth, Binance, Coinbase)
+    tag: BNB spot · 4 sources
     queries:
       p50: quantile_over_time(0.50, ocb_oracle_max_deviation_pct{pair="BNB/USD"}[24h]) * 100
       p90: quantile_over_time(0.90, ocb_oracle_max_deviation_pct{pair="BNB/USD"}[24h]) * 100
@@ -174,7 +174,7 @@ providers:
 
   - slug: avax-usd
     name: AVAX/USD
-    tag: Avalanche spot, 4 sources (Chainlink, Pyth, Binance, Coinbase)
+    tag: Avalanche spot · 4 sources
     queries:
       p50: quantile_over_time(0.50, ocb_oracle_max_deviation_pct{pair="AVAX/USD"}[24h]) * 100
       p90: quantile_over_time(0.90, ocb_oracle_max_deviation_pct{pair="AVAX/USD"}[24h]) * 100
@@ -186,7 +186,7 @@ providers:
 
   - slug: link-usd
     name: LINK/USD
-    tag: Chainlink token spot, 4 sources (Chainlink, Pyth, Binance, Coinbase)
+    tag: Chainlink token spot · 4 sources
     queries:
       p50: quantile_over_time(0.50, ocb_oracle_max_deviation_pct{pair="LINK/USD"}[24h]) * 100
       p90: quantile_over_time(0.90, ocb_oracle_max_deviation_pct{pair="LINK/USD"}[24h]) * 100
@@ -198,7 +198,7 @@ providers:
 
   - slug: matic-usd
     name: POL/USD
-    tag: Polygon POL spot (legacy MATIC ticker on Chainlink feed), 4 sources
+    tag: POL spot · 4 sources (legacy MATIC feed)
     queries:
       p50: quantile_over_time(0.50, ocb_oracle_max_deviation_pct{pair="MATIC/USD"}[24h]) * 100
       p90: quantile_over_time(0.90, ocb_oracle_max_deviation_pct{pair="MATIC/USD"}[24h]) * 100
@@ -210,7 +210,7 @@ providers:
 
   - slug: xrp-usd
     name: XRP/USD
-    tag: Ripple spot, 3 sources (Pyth, Binance, Coinbase — Chainlink mainnet feed deprecated)
+    tag: Ripple spot · 3 sources (no CL mainnet)
     queries:
       p50: quantile_over_time(0.50, ocb_oracle_max_deviation_pct{pair="XRP/USD"}[24h]) * 100
       p90: quantile_over_time(0.90, ocb_oracle_max_deviation_pct{pair="XRP/USD"}[24h]) * 100
@@ -222,7 +222,7 @@ providers:
 
   - slug: ada-usd
     name: ADA/USD
-    tag: Cardano spot, 3 sources (Pyth, Binance, Coinbase — Chainlink mainnet feed deprecated)
+    tag: Cardano spot · 3 sources (no CL mainnet)
     queries:
       p50: quantile_over_time(0.50, ocb_oracle_max_deviation_pct{pair="ADA/USD"}[24h]) * 100
       p90: quantile_over_time(0.90, ocb_oracle_max_deviation_pct{pair="ADA/USD"}[24h]) * 100
@@ -234,7 +234,7 @@ providers:
 
   - slug: doge-usd
     name: DOGE/USD
-    tag: Dogecoin spot, 3 sources (Pyth, Binance, Coinbase — Chainlink mainnet feed deprecated)
+    tag: Dogecoin spot · 3 sources (no CL mainnet)
     queries:
       p50: quantile_over_time(0.50, ocb_oracle_max_deviation_pct{pair="DOGE/USD"}[24h]) * 100
       p90: quantile_over_time(0.90, ocb_oracle_max_deviation_pct{pair="DOGE/USD"}[24h]) * 100
