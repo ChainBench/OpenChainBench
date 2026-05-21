@@ -70,7 +70,7 @@ export function BenchmarkCard({ benchmark }: { benchmark: Benchmark }) {
       {/* Big number row */}
       <div className="flex items-baseline justify-between gap-3">
         <div className="flex items-baseline gap-1.5 min-w-0">
-          <span className="display-num text-5xl text-ink tabular">
+          <span className="display-num text-4xl sm:text-5xl text-ink tabular">
             {headlineValue}
           </span>
           {headlineUnit && (
@@ -90,7 +90,7 @@ export function BenchmarkCard({ benchmark }: { benchmark: Benchmark }) {
       </div>
 
       {/* Divider + footer */}
-      <div className="border-t border-rule pt-4 grid grid-cols-3 gap-3">
+      <div className="border-t border-rule pt-4 grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
         <Footer label="Providers" value={b.results.length.toString()} />
         <Footer label="N · 24H" value={b.sampleSize.toLocaleString()} />
         <Footer label="Updated" value={formatUpdated(b.lastRunAt)} />
