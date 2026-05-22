@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CopyButton } from "@/components/copy-button";
 import { getBenchmarks } from "@/data/benchmarks";
+import { mcpPageLd } from "@/lib/hub-jsonld";
+import { safeJsonLd } from "@/lib/jsonld";
 import { pageMetadata } from "@/lib/page-metadata";
 
 const MCP_URL = "https://openchainbench.com/api/mcp/mcp";
@@ -49,6 +51,14 @@ export default async function McpPage() {
 
   return (
     <article className="mx-auto max-w-3xl px-4 sm:px-6 pt-12 pb-16">
+      {mcpPageLd().map((ld, i) => (
+        <script
+          key={i}
+          type="application/ld+json"
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: serialized via safeJsonLd
+          dangerouslySetInnerHTML={{ __html: safeJsonLd(ld) }}
+        />
+      ))}
       <p className="font-sans text-[11px] uppercase tracking-[0.2em] text-ink-faint font-medium">
         Integration
       </p>
