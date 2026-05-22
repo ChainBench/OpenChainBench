@@ -4,7 +4,7 @@ slug: l2-block-time
 number: "009"
 title: Fastest Layer 2 sequencer block time
 seo_title: Live L2 block time benchmark - Arbitrum, Base, zkSync, Linea, Scroll, Taiko
-seo_description: "Live wall-clock block time for every major Ethereum Layer 2: Arbitrum sub-second, Base 2 s, Optimism 2 s, zkSync Era batched ~5 s, Linea 3-6 s, Scroll variable, Blast 2 s, Mantle 2 s, Taiko 2-3 s. p50 / p90 / p99 measured from continuous eth_subscribe(newHeads) WebSocket subscriptions."
+seo_description: "Live wall-clock block time: Arbitrum sub-second, Base 2s, Optimism 2s, zkSync ~5s, Linea 3-6s, Blast 2s, Mantle 2s, Taiko 2-3s. p50/p90/p99 every 24h."
 subtitle: Wall-clock interval between two consecutive newHeads events on each L2 sequencer.
 category: Blockchains
 status: live
