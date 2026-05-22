@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import { SectionRule } from "@/components/section-rule";
+import { pressPageLd } from "@/lib/hub-jsonld";
+import { safeJsonLd } from "@/lib/jsonld";
 import { pageMetadata } from "@/lib/page-metadata";
 
 export const metadata: Metadata = pageMetadata({
@@ -12,6 +14,14 @@ export const metadata: Metadata = pageMetadata({
 export default function PressPage() {
   return (
     <article className="mx-auto max-w-3xl px-4 sm:px-6 py-8 sm:py-12">
+      {pressPageLd().map((ld, i) => (
+        <script
+          key={i}
+          type="application/ld+json"
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: serialized via safeJsonLd
+          dangerouslySetInnerHTML={{ __html: safeJsonLd(ld) }}
+        />
+      ))}
       <header className="border-b-2 border-ink pb-6">
         <h1 className="display text-3xl sm:text-4xl tracking-tight">Press kit</h1>
         <p className="mt-3 max-w-3xl text-base sm:text-lg text-ink-soft leading-snug">
