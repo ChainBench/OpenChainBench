@@ -5,6 +5,16 @@ import { loadAlternativeSlugs } from "@/lib/alternatives";
 import { getProviderSlugs } from "@/lib/providers";
 import { SITE } from "@/data/site";
 
+// Force build-time generation. Vercel's serverless runtime has no git
+// binary and no .git directory, so the git-based lastmod lookup below
+// only works during the build phase - if we let this revalidate every
+// 60 s (the next.js default for fs-touching sitemaps), every refresh
+// served a sitemap whose 118 URLs all reported the same fallback time.
+// Static + force-static = generated once per deploy, served forever
+// until the next push, which is also when lastmods need to update.
+export const dynamic = "force-static";
+export const revalidate = false;
+
 // Each sitemap entry's `lastmod` should reflect the file's last *edit*,
 // not the current request time and not the build's git-checkout time
 // (statSync on Vercel returns the checkout timestamp, which makes every
