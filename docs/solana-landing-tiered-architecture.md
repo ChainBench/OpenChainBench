@@ -1,4 +1,4 @@
-# Solana TX Landing Bench — Launch Plan (V0-Lean)
+# Solana TX Landing Bench - Launch Plan (V0-Lean)
 
 > **Direction validée 2026-05-21.** On lance V0-Lean : 5 services × 1 région × cadence 1 h, **$159/mo** à SOL=$86.20. Escalade par triggers explicites (voir §7).
 
@@ -18,7 +18,7 @@ Compagnon : [`solana-landing-cost-model.md`](./solana-landing-cost-model.md) pou
 
 *Coût par probe = 5 000 base + 2 500 priority + tip floor lamports, converti à SOL=$86.20.*
 
-**Pas dans V0-Lean (réservés V1+) :** bloXroute, NextBlock, SolanaVibeStation — tous demandent un onboarding manuel (sales call, form, paid plan) qui ralentirait le launch. On les ajoute quand le 1er sponsor est signé.
+**Pas dans V0-Lean (réservés V1+) :** bloXroute, NextBlock, SolanaVibeStation - tous demandent un onboarding manuel (sales call, form, paid plan) qui ralentirait le launch. On les ajoute quand le 1er sponsor est signé.
 
 ---
 
@@ -65,9 +65,9 @@ Compagnon : [`solana-landing-cost-model.md`](./solana-landing-cost-model.md) pou
                                          ▼
                   openchainbench.com /benchmarks/solana-tx-landing
                   ┌─────────────────────────────────────────────┐
-                  │ Tab 1 — Market Share (observationnel,       │
+                  │ Tab 1 - Market Share (observationnel,       │
                   │         garde la logique tip-wallet existante)│
-                  │ Tab 2 — Landing Latency (NEW, active probe) │
+                  │ Tab 2 - Landing Latency (NEW, active probe) │
                   │   • Leaderboard hebdomadaire                │
                   │   • p50 / p99 par service                   │
                   │   • Histogram time-to-land                  │
@@ -112,7 +112,7 @@ Compagnon : [`solana-landing-cost-model.md`](./solana-landing-cost-model.md) pou
 
 ---
 
-## 4. Le levier sponsor — SOL credits, pas cash
+## 4. Le levier sponsor - SOL credits, pas cash
 
 Au lieu de demander du cash à Nozomi :
 - **Ask :** "Vous payez vos propres frais d'évaluation. ~8 SOL / trimestre couvre votre slot Nozomi dans le bench."
@@ -130,7 +130,7 @@ Astralane n'est probablement pas un bon premier ask (plus petit acteur), mais No
 
 ---
 
-## 5. Méthodologie — ce qu'on mesure, comment
+## 5. Méthodologie - ce qu'on mesure, comment
 
 ### Probe payload
 Self-transfer de 1 lamport + Memo program (8 octets aléatoires). ~5 000 lamports de frais base. Pas de mutation de state extérieur, pas de risque de perte.
@@ -166,7 +166,7 @@ On probe Helius en 2 modes :
 
 ## 6. Garanties méthodologie (sponsor-proof)
 
-Bake-in dès le launch — ajouter après coup donne l'air défensif.
+Bake-in dès le launch - ajouter après coup donne l'air défensif.
 
 1. **Méthodo pré-enregistrée sur GitHub** avant tout contrat sponsor. Changements via PR public + fenêtre commentaire 14 jours.
 2. **Inclusion automatique** dès qu'un endpoint est publiquement reachable. Les sponsors n'entrent pas dans le leaderboard via cash.
@@ -178,7 +178,7 @@ Bake-in dès le launch — ajouter après coup donne l'air défensif.
 
 **Disclosure block** (72 mots, à mettre dans le champ `sponsorship` du spec YAML) :
 
-> OCB measures every reachable Solana transaction-landing service on identical probe parameters. The harness is open-source and re-runnable by anyone. Sponsors fund OCB's operations and receive newsletter visibility, case studies, and integration support — never leaderboard influence, advance results, or methodology changes. Current sponsors : see /funding (updated quarterly). Sponsor contracts include a non-suppression clause : OCB publishes unfavorable results without exception. Disputes go through public GitHub issues.
+> OCB measures every reachable Solana transaction-landing service on identical probe parameters. The harness is open-source and re-runnable by anyone. Sponsors fund OCB's operations and receive newsletter visibility, case studies, and integration support - never leaderboard influence, advance results, or methodology changes. Current sponsors : see /funding (updated quarterly). Sponsor contracts include a non-suppression clause : OCB publishes unfavorable results without exception. Disputes go through public GitHub issues.
 
 ---
 
@@ -215,48 +215,48 @@ START ──► V0-Lean  $159/mo
 
 ## 8. Roadmap d'implémentation
 
-### Étape 1 — mobula-api (refactor harness)
+### Étape 1 - mobula-api (refactor harness)
 
 Fichiers à toucher dans `miniapps/solana-tx-landing/cmd/script/` :
 
 ```
-  main.go        — fork en 2 goroutines: runSubscriber() (obs) + runProber() (actif)
-  prober.go      — NEW. Boucle 1 cycle/h, fire les 5 services en parallèle
-  active_metrics.go  — NEW. Définitions Prom solana_landing_probe_*
-  config.go      — env vars: SOLANA_LANDING_SERVICES, _CADENCE, _RPC_URL, etc.
-  subscriber.go  — UNCHANGED (la logique observationnelle reste)
-  wallets.go     — UNCHANGED (tip wallets pour l'attribution Market Share)
+  main.go        - fork en 2 goroutines: runSubscriber() (obs) + runProber() (actif)
+  prober.go      - NEW. Boucle 1 cycle/h, fire les 5 services en parallèle
+  active_metrics.go  - NEW. Définitions Prom solana_landing_probe_*
+  config.go      - env vars: SOLANA_LANDING_SERVICES, _CADENCE, _RPC_URL, etc.
+  subscriber.go  - UNCHANGED (la logique observationnelle reste)
+  wallets.go     - UNCHANGED (tip wallets pour l'attribution Market Share)
 ```
 
-### Étape 2 — mobula-api (infra)
+### Étape 2 - mobula-api (infra)
 
 - Générer 1 keypair Solana, le funder de 1 SOL (~$86) via wallet perso, store en Railway Env Secret `SOLANA_PROBE_KEYPAIR`.
 - Renommer le service Railway existant `solana-tx-landing` → `solana-tx-landing-us` pour cohérence future multi-région (geste de cleanup, ne change rien à l'usage actuel).
-- Ajouter scrape target dans `miniapps/openchainbench-monitoring/prometheus/prometheus.yml` : pointer vers `solana-tx-landing-us.railway.internal:2112` (le service est déjà scraped en V0 — vérifier le job_name).
+- Ajouter scrape target dans `miniapps/openchainbench-monitoring/prometheus/prometheus.yml` : pointer vers `solana-tx-landing-us.railway.internal:2112` (le service est déjà scraped en V0 - vérifier le job_name).
 
-### Étape 3 — OpenChainBench (spec + UI)
+### Étape 3 - OpenChainBench (spec + UI)
 
 ```
   benchmarks/solana-tx-landing.yml
-    — Garder le contenu existant (Market Share)
-    — Ajouter section "Landing Latency" avec métriques solana_landing_probe_*
-    — Ajouter champ `sponsorship` avec le disclosure block du §6
-    — Mettre à jour `disclaimer` pour mentionner les 2 facettes
+    - Garder le contenu existant (Market Share)
+    - Ajouter section "Landing Latency" avec métriques solana_landing_probe_*
+    - Ajouter champ `sponsorship` avec le disclosure block du §6
+    - Mettre à jour `disclaimer` pour mentionner les 2 facettes
   docs/methodology/solana-tx-landing-active.md
-    — NEW. Méthodo pré-enregistrée (les 7 règles du §6 + détails probe)
-    — Commit AVANT toute conversation contractuelle sponsor
+    - NEW. Méthodo pré-enregistrée (les 7 règles du §6 + détails probe)
+    - Commit AVANT toute conversation contractuelle sponsor
   src/lib/spec.ts
-    — Vérifier qu'il supporte un schema 2-tabs (Market Share + Latency)
-    — Sinon : étendre minimal le loader
+    - Vérifier qu'il supporte un schema 2-tabs (Market Share + Latency)
+    - Sinon : étendre minimal le loader
 ```
 
-### Étape 4 — Sponsor outreach
+### Étape 4 - Sponsor outreach
 
 1. **Nozomi en premier** (contact direct Florent). Pitch : 8 SOL / trimestre = leur slot Nozomi dans le bench. Featured tier dans `/funding`.
 2. **0slot ensuite** (Discord `kurt0slot` ou TG `@kurt0slot`). Même ask.
 3. Si les 2 signent → OCB net mensuel ≈ $34. Le bench se finance.
 
-### Étape 5 — Aller live
+### Étape 5 - Aller live
 
 - Méthodo committée sur GitHub.
 - 4 semaines de data accumulée en privé (pour valider le pipeline + détecter les bugs).
@@ -270,7 +270,7 @@ Fichiers à toucher dans `miniapps/solana-tx-landing/cmd/script/` :
 |---|---|---|
 | 1 | Disclose aux providers qu'on les probe ? | **Oui**, top-3 (Jito, Helius, Nozomi) avant launch |
 | 2 | Helius en double-mode (swqos_only + default) ? | **Oui**, coût négligeable |
-| 3 | Ask Nozomi : flat fee cash ou SOL credits ? | **SOL credits** — plus naturel |
+| 3 | Ask Nozomi : flat fee cash ou SOL credits ? | **SOL credits** - plus naturel |
 | 4 | Garder le tab observational (Market Share) ? | **Oui**, 1 page 2 tabs |
 | 5 | Renommer service Railway de `solana-tx-landing` → `solana-tx-landing-us` ? | **Oui**, cleanup pour cohérence future |
 
@@ -278,11 +278,11 @@ Fichiers à toucher dans `miniapps/solana-tx-landing/cmd/script/` :
 
 ## 10. Ce qui n'est PAS dans ce plan
 
-- **Code Go** — pas écrit tant que décisions §9 pas validées.
-- **YAML du spec OCB** — pas modifié avant méthodo committée sur GitHub (cf §6.1).
-- **Contrat sponsor type** — étape légale séparée, hors scope ingénieur.
-- **bloXroute, NextBlock, SVS** — reportés V1+, on les onboard quand le pipeline V0-Lean tourne.
-- **Multi-région** — reporté V2, on lance us-east only.
+- **Code Go** - pas écrit tant que décisions §9 pas validées.
+- **YAML du spec OCB** - pas modifié avant méthodo committée sur GitHub (cf §6.1).
+- **Contrat sponsor type** - étape légale séparée, hors scope ingénieur.
+- **bloXroute, NextBlock, SVS** - reportés V1+, on les onboard quand le pipeline V0-Lean tourne.
+- **Multi-région** - reporté V2, on lance us-east only.
 
 ---
 

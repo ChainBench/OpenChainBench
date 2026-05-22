@@ -1,4 +1,4 @@
-# Solana TX Landing — Plan obsolète
+# Solana TX Landing - Plan obsolète
 
 > ⚠️ **Ce document est obsolète depuis 2026-05-21.**
 >
@@ -6,7 +6,7 @@
 >
 > Le plan courant est dans [`solana-landing-tiered-architecture.md`](./solana-landing-tiered-architecture.md).
 >
-> Le cost-model détaillé est dans [`solana-landing-cost-model.md`](./solana-landing-cost-model.md) — note de correction en tête du fichier.
+> Le cost-model détaillé est dans [`solana-landing-cost-model.md`](./solana-landing-cost-model.md) - note de correction en tête du fichier.
 
 ---
 

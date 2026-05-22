@@ -1,16 +1,16 @@
-# Solana TX Landing — Deployment Checklist (V0-Lean)
+# Solana TX Landing - Deployment Checklist (V0-Lean)
 
 > Liste exhaustive de ce dont tu as besoin pour passer du code committé à un bench actif en prod. Ordre conseillé : lis tout, puis suis les étapes 1 → 8.
 
 ---
 
-## 0. État actuel — ce qui est déjà fait
+## 0. État actuel - ce qui est déjà fait
 
 ✅ Code écrit, compile, vet propre. 4 fichiers dans `mobula-api/miniapps/solana-tx-landing/cmd/script/` :
-- `prober.go` (NEW) — boucle de probe, build/sign tx, polling
-- `senders.go` (NEW) — HTTP par service (Jito, Helius, Nozomi, Astralane, 0slot)
-- `active_metrics.go` (NEW) — métriques Prom
-- `main.go` (EDITED) — lance la goroutine prober en plus du subscriber
+- `prober.go` (NEW) - boucle de probe, build/sign tx, polling
+- `senders.go` (NEW) - HTTP par service (Jito, Helius, Nozomi, Astralane, 0slot)
+- `active_metrics.go` (NEW) - métriques Prom
+- `main.go` (EDITED) - lance la goroutine prober en plus du subscriber
 
 ✅ Méthodologie pré-enregistrée dans `OpenChainBench/docs/methodology/solana-tx-landing-active.md`
 
@@ -21,7 +21,7 @@
 ## 1. Générer + funder le keypair Solana
 
 ```bash
-# Sur ta machine locale (PAS sur Railway — la clé privée ne doit jamais
+# Sur ta machine locale (PAS sur Railway - la clé privée ne doit jamais
 # transiter par git ou stdout sur un serveur)
 solana-keygen new --no-bip39-passphrase -o ~/probe-keypair-us-east.json
 
@@ -37,7 +37,7 @@ node -e "console.log(require('bs58').encode(Buffer.from(JSON.parse(require('fs')
 
 **Funder le keypair** : envoie ~1 SOL (~$86) sur l'adresse publique depuis ton wallet perso. À V0-Lean cadence (1/h, 5 services), 1 SOL dure ~2 mois. Le bench logge un warning quand le balance passe sous 0.3 SOL.
 
-⚠️ **Stocke le fichier `probe-keypair-us-east.json` quelque part de safe** (1Password / coffre Mobula). Si tu le perds, les fonds restent récupérables via la base58 que tu auras mise en Railway — mais inversement, si Railway leak la base58, anyone peut vider le wallet. Le risque est limité à 1 SOL.
+⚠️ **Stocke le fichier `probe-keypair-us-east.json` quelque part de safe** (1Password / coffre Mobula). Si tu le perds, les fonds restent récupérables via la base58 que tu auras mise en Railway - mais inversement, si Railway leak la base58, anyone peut vider le wallet. Le risque est limité à 1 SOL.
 
 ---
 
@@ -50,7 +50,7 @@ node -e "console.log(require('bs58').encode(Buffer.from(JSON.parse(require('fs')
 | **0slot.trade** | Discord `kurt0slot` ou Telegram `@kurt0slot` | Rapide (manuel) | Première semaine gratuite, puis Trial/Entry/Intermediate/Advanced tier |
 | **Jito UUID** *(optional)* | Ticket via `discord.gg/jito` | Variable | Augmente le rate limit au-delà des 1 req/s par IP |
 
-**Si une clé n'est pas obtenue**, le service est simplement skippé au launch (log `[prober] <service>: <ENV_VAR> not set — service skipped`). Le bench tourne avec les services restants. Tu peux ajouter les services au fur et à mesure.
+**Si une clé n'est pas obtenue**, le service est simplement skippé au launch (log `[prober] <service>: <ENV_VAR> not set - service skipped`). Le bench tourne avec les services restants. Tu peux ajouter les services au fur et à mesure.
 
 **Reco order** : Nozomi → 0slot → Astralane → Jito UUID. Les 2 premiers sont les plus impactants pour la cardinalité du bench.
 
@@ -58,7 +58,7 @@ node -e "console.log(require('bs58').encode(Buffer.from(JSON.parse(require('fs')
 
 ## 3. Setup les env vars Railway
 
-Service Railway : **`solana-tx-landing`** (existing — pas besoin de créer un nouveau service en V0-Lean ; on déploie le code sur le service existant qui devient hybride observational + active).
+Service Railway : **`solana-tx-landing`** (existing - pas besoin de créer un nouveau service en V0-Lean ; on déploie le code sur le service existant qui devient hybride observational + active).
 
 | Env var | Required? | Valeur | Notes |
 |---|---|---|---|
@@ -86,9 +86,9 @@ Service Railway : **`solana-tx-landing`** (existing — pas besoin de créer un 
 - `ASTRALANE_ENDPOINT` (def `https://ny.gateway.astralane.io/iris`)
 - `ZEROSLOT_ENDPOINT` (def `https://ny.0slot.trade`)
 
-Pas de override pour Jito ou Helius — leurs hosts sont hardcodés dans `senders.go` (modifier requiert PR méthodologique).
+Pas de override pour Jito ou Helius - leurs hosts sont hardcodés dans `senders.go` (modifier requiert PR méthodologique).
 
-**Métrique opérationnelle additionnelle :** `solana_landing_probe_enabled{region}` (gauge, 0 ou 1) — permet de distinguer sur le dashboard "prober désactivé" (env var pas set) vs "prober planté" (set mais aucune cycle récente).
+**Métrique opérationnelle additionnelle :** `solana_landing_probe_enabled{region}` (gauge, 0 ou 1) - permet de distinguer sur le dashboard "prober désactivé" (env var pas set) vs "prober planté" (set mais aucune cycle récente).
 
 ---
 
@@ -166,9 +166,9 @@ git push -u origin feat/solana-landing-active-methodology
 Une fois Railway redéployé avec `SOLANA_PROBE_KEYPAIR_BASE58` set :
 
 ```bash
-# Logs Railway — chercher le banner du prober
+# Logs Railway - chercher le banner du prober
 # Tu devrais voir:
-#   [prober] enabled — region=us-east interval=1h0m0s services=N
+#   [prober] enabled - region=us-east interval=1h0m0s services=N
 #   · jito              mode=default       tip=10000 lamports endpoint=https://...
 #   · helius-sender     mode=swqos_only    tip=10000 lamports endpoint=http://...
 #   · ...
@@ -202,13 +202,13 @@ Le fichier `OpenChainBench/benchmarks/solana-tx-landing.yml` actuel décrit la v
 1. Ajouter une section pour les nouvelles métriques (`solana_landing_probe_*`)
 2. Ajouter le champ `sponsorship` avec le disclosure block (cf §6 de tiered-architecture.md)
 3. Ajouter une référence vers la méthodologie pré-enregistrée
-4. *Optionnel* : étendre `src/lib/spec.ts` pour supporter le rendu 2-tabs (Market Share + Landing Latency) — à voir si nécessaire ou si on rend tout dans une seule page allongée
+4. *Optionnel* : étendre `src/lib/spec.ts` pour supporter le rendu 2-tabs (Market Share + Landing Latency) - à voir si nécessaire ou si on rend tout dans une seule page allongée
 
 À faire dans une PR séparée pour découpler infra (mobula-api) et site (OpenChainBench).
 
 ---
 
-## 8. Sponsor outreach — DEUX semaines après que la méthodologie soit mergée
+## 8. Sponsor outreach - DEUX semaines après que la méthodologie soit mergée
 
 | Étape | Action |
 |---|---|
@@ -225,7 +225,7 @@ Le fichier `OpenChainBench/benchmarks/solana-tx-landing.yml` actuel décrit la v
 
 | # | Décision | Reco par défaut |
 |---|---|---|
-| A | Disclose à Jito/Helius/Nozomi qu'on les probe ? | **Oui**, avant launch — email courte annonçant le bench public |
+| A | Disclose à Jito/Helius/Nozomi qu'on les probe ? | **Oui**, avant launch - email courte annonçant le bench public |
 | B | Renommer le service Railway `solana-tx-landing` → `-us` pour cohérence multi-région future ? | **Oui**, geste de cleanup |
 | C | Si Nozomi répond "non" au sponsoring, on probe quand même ? | **Oui**, méthodologie dit "sponsors ne contrôlent pas l'inclusion" |
 | D | Configurer un alert Slack sur `solana_landing_probe_keypair_balance_sol < 0.3` ? | **Oui**, sinon on rate des cycles silencieusement |
@@ -233,7 +233,7 @@ Le fichier `OpenChainBench/benchmarks/solana-tx-landing.yml` actuel décrit la v
 
 ---
 
-## Annexe — Que faire si quelque chose plante
+## Annexe - Que faire si quelque chose plante
 
 | Symptôme | Cause probable | Fix |
 |---|---|---|
@@ -247,4 +247,4 @@ Le fichier `OpenChainBench/benchmarks/solana-tx-landing.yml` actuel décrit la v
 
 ---
 
-**Last updated :** 2026-05-21 — V0-Lean (5 services × us-east × 1 h cadence × $159/mo théorique).
+**Last updated :** 2026-05-21 - V0-Lean (5 services × us-east × 1 h cadence × $159/mo théorique).

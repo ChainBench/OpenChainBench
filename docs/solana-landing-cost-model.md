@@ -1,8 +1,8 @@
-# Solana Tx-Landing Benchmark — Cost Model
+# Solana Tx-Landing Benchmark - Cost Model
 
 > ⚠️ **Correction 2026-05-21 :** la table de scénarios §3 contient une erreur d'arithmétique d'un facteur ~18× sur les coûts mensuels. Le coût réel d'un "Phase 0" tel que défini ici (8 svc × 3 reg × 2 min) est **~$26 140/mo** et non $1 452/mo. Voir la note de correction §3 corrigée.
 >
-> **Le plan courant n'utilise plus ce scope.** Le launch validé est V0-Lean (5 svc × 1 reg × 60 min × $159/mo) — voir [`solana-landing-tiered-architecture.md`](./solana-landing-tiered-architecture.md). Les sections §0 (assumptions), §1 (formule), §2 (statistical power), §4 (leviers), §5 (sensibilité), §6 (sponsorship) restent valides. Seul le tableau §3 (scenarios) est faux.
+> **Le plan courant n'utilise plus ce scope.** Le launch validé est V0-Lean (5 svc × 1 reg × 60 min × $159/mo) - voir [`solana-landing-tiered-architecture.md`](./solana-landing-tiered-architecture.md). Les sections §0 (assumptions), §1 (formule), §2 (statistical power), §4 (leviers), §5 (sensibilité), §6 (sponsorship) restent valides. Seul le tableau §3 (scenarios) est faux.
 
 ---
 
@@ -80,7 +80,7 @@ n = 7.84 × 0.1375 / 0.0025  ≈ 431 probes per service per arm
 
 So **~430 probes per service per region** to call a 5pp gap. To resolve the same gap **per hour** (e.g., detect a leader-rotation effect within a single hour window) you need ~430 probes/hour/service/region = **1 probe every 8.4 seconds per (service, region)**. That's the upper bound; weekly aggregation needs only ~2.5 probes/hour.
 
-For a 2pp gap (95% vs 93%) the requirement balloons to ~2,600/service/region — only Phase 1+ budgets reach this.
+For a 2pp gap (95% vs 93%) the requirement balloons to ~2,600/service/region - only Phase 1+ budgets reach this.
 
 ---
 
@@ -95,7 +95,7 @@ For a 2pp gap (95% vs 93%) the requirement balloons to ~2,600/service/region —
 
 ### Defending Phase 0 = $1.2k/mo
 
-Florent's number is **slightly conservative**: my model puts true Phase 0 at $1,452 at SOL=$86. At Florent's likely working assumption of SOL=$150 the same cadence costs **$2,527/mo** — so $1.2k/mo only holds at today's price OR with a slightly slower cadence (1 sweep per 2.5 min instead of 2 min, which still gives 6h 5pp resolution). The figure is defensible if disclosed with the SOL-price assumption.
+Florent's number is **slightly conservative**: my model puts true Phase 0 at $1,452 at SOL=$86. At Florent's likely working assumption of SOL=$150 the same cadence costs **$2,527/mo** - so $1.2k/mo only holds at today's price OR with a slightly slower cadence (1 sweep per 2.5 min instead of 2 min, which still gives 6h 5pp resolution). The figure is defensible if disclosed with the SOL-price assumption.
 
 ### What each phase unlocks
 
@@ -110,13 +110,13 @@ Florent's number is **slightly conservative**: my model puts true Phase 0 at $1,
 
 | Lever | Cost elasticity | Signal elasticity | Verdict |
 |---|---|---|---|
-| **Tip size on Nozomi/bX/0slot/NB** | Linear, dominant (5 of 8 services @ 1M lamports = 86% of probe cost) | High — these services' landing % is tip-sensitive; we MUST run ≥2 tip tiers to be honest | **#1 lever**: split budget across tip tiers, not more cadence |
-| **Cadence** | Linear | Sub-linear (√n in CI width) | #2 — doubling cadence only narrows CI by 1.41× |
-| **Regions** | Linear ×3 | High once — first region anchors, 2nd/3rd reveal geo edge but with diminishing returns | #3 — keep all 3, don't add a 4th |
+| **Tip size on Nozomi/bX/0slot/NB** | Linear, dominant (5 of 8 services @ 1M lamports = 86% of probe cost) | High - these services' landing % is tip-sensitive; we MUST run ≥2 tip tiers to be honest | **#1 lever**: split budget across tip tiers, not more cadence |
+| **Cadence** | Linear | Sub-linear (√n in CI width) | #2 - doubling cadence only narrows CI by 1.41× |
+| **Regions** | Linear ×3 | High once - first region anchors, 2nd/3rd reveal geo edge but with diminishing returns | #3 - keep all 3, don't add a 4th |
 | **# services** | Linear | High but bounded by market (only 8 services exist worth measuring) | Fixed at 8 |
 | **SOL price** | Linear, exogenous | Zero | Hedge: hold 30-day SOL float to smooth |
 
-**Punchline:** the cheapest way to buy 2× more signal is **not** to double cadence — it's to split existing cadence across 2 tip tiers per service. Same budget, exposes the price-of-landing curve.
+**Punchline:** the cheapest way to buy 2× more signal is **not** to double cadence - it's to split existing cadence across 2 tip tiers per service. Same budget, exposes the price-of-landing curve.
 
 ---
 
@@ -128,7 +128,7 @@ Florent's number is **slightly conservative**: my model puts true Phase 0 at $1,
 | Tip size (÷10× / base / ×10×) | $169 | $1,452 | $14,420 |
 | Cadence (÷2 / base / ×2) | $726 | $1,452 | $2,904 |
 
-Tip size dominates — a 10× shift in tip assumption moves the bench ~10× in cost. SOL price is the most volatile real-world driver; a SOL run to $300 nearly 4× the bench cost (because the lamport tips of the big-5 services are denominated in lamports, not USD).
+Tip size dominates - a 10× shift in tip assumption moves the bench ~10× in cost. SOL price is the most volatile real-world driver; a SOL run to $300 nearly 4× the bench cost (because the lamport tips of the big-5 services are denominated in lamports, not USD).
 
 ---
 
@@ -140,9 +140,9 @@ Tip size dominates — a 10× shift in tip assumption moves the bench ~10× in c
 
 | Tier | Price | What it buys (METHODOLOGICALLY OK) | What it explicitly does NOT buy |
 |---|---|---|---|
-| **Listed** | $0 | Inclusion in the public benchmark, default tip tier, public CSV exports | — |
+| **Listed** | $0 | Inclusion in the public benchmark, default tip tier, public CSV exports | - |
 | **Verified** | $500/mo | Logo on dashboard, methodology AMA quote, access to raw per-probe latency CSV, monthly 1-pager with their service's percentiles cited in our newsletter | Score adjustments |
-| **Featured** | $2,000/mo | All Verified + a **2nd tip tier** probed for their service (so they can advertise "at 5M lamports we land 99.2% — measured by OpenChainBench"), geographic-edge add-on (we add a 4th region of their choice for their service only), newsletter co-write | Score adjustments, exclusivity over competitors |
+| **Featured** | $2,000/mo | All Verified + a **2nd tip tier** probed for their service (so they can advertise "at 5M lamports we land 99.2% - measured by OpenChainBench"), geographic-edge add-on (we add a 4th region of their choice for their service only), newsletter co-write | Score adjustments, exclusivity over competitors |
 | **Research partner** | $5,000/mo | All Featured + bespoke A/B experiment design (e.g., "test your new gRPC endpoint vs your REST endpoint for 30 days"), data API access | Anything that biases reported public numbers |
 
 **Hard rule:** no tier ever modifies a service's headline landing rate or latency percentile shown on the public leaderboard. Sponsorship buys **more measurement, more distribution**, never a better score. This is the methodological cliff we cannot cross without becoming Gartner Magic Quadrant.
@@ -151,7 +151,7 @@ Tip size dominates — a 10× shift in tip assumption moves the bench ~10× in c
 
 ## 7. Recommendation
 
-**Launch with Phase 0 ($1,452/mo at SOL=$86, ~$2.5k/mo at SOL=$150).** Cadence of 1 sweep every 2 minutes across 8 services × 3 regions gives a daily-updated public leaderboard with 5pp statistical resolution per 6-hour window — enough to make defensible public claims while staying lean. Pre-sell 2 Verified sponsors ($500/mo each) before launch to halve net burn; pitch Featured tier ($2k/mo, methodologically-clean 2nd-tip-tier slot) to Helius or bloXroute since they're the most likely to want a tip-elasticity story. Upgrade to Phase 1 only once we have ≥4 paying sponsors and a clear research question that needs hourly resolution (e.g., "does Jito's BAM rollout move landing rates?"). Phase 2 is a trap — spend that money on adding a second chain instead.
+**Launch with Phase 0 ($1,452/mo at SOL=$86, ~$2.5k/mo at SOL=$150).** Cadence of 1 sweep every 2 minutes across 8 services × 3 regions gives a daily-updated public leaderboard with 5pp statistical resolution per 6-hour window - enough to make defensible public claims while staying lean. Pre-sell 2 Verified sponsors ($500/mo each) before launch to halve net burn; pitch Featured tier ($2k/mo, methodologically-clean 2nd-tip-tier slot) to Helius or bloXroute since they're the most likely to want a tip-elasticity story. Upgrade to Phase 1 only once we have ≥4 paying sponsors and a clear research question that needs hourly resolution (e.g., "does Jito's BAM rollout move landing rates?"). Phase 2 is a trap - spend that money on adding a second chain instead.
 
 ---
 

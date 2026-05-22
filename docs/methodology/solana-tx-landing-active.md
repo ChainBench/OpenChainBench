@@ -1,46 +1,46 @@
-# Methodology — Solana TX Landing (Active Probing)
+# Methodology - Solana TX Landing (Active Probing)
 
 > **Pre-registered methodology.** Pinned commit before any sponsor contract is signed. Changes ship as public PRs with a 14-day comment window. Disputes go through public GitHub issues.
 >
-> **Version :** v1.0 — first commit 2026-05-21. Bench № 016 (Solana TX Landing).
+> **Version :** v1.0 - first commit 2026-05-21. Bench № 016 (Solana TX Landing).
 > **Replaces / extends :** the observational tip-wallet attribution methodology that ships with the same bench page (kept as the "Market Share" tab).
 
 ---
 
 ## 1. Question we answer
 
-For each Solana transaction landing service, **how long does it take for a transaction submitted via that service to be confirmed on mainnet, and what fraction never confirms within a usable window** — measured from a single fixed geographic origin, on a uniform synthetic payload, at a uniform cadence.
+For each Solana transaction landing service, **how long does it take for a transaction submitted via that service to be confirmed on mainnet, and what fraction never confirms within a usable window** - measured from a single fixed geographic origin, on a uniform synthetic payload, at a uniform cadence.
 
-The bench does **not** answer "which service is best for your trading bot" — that requires modeling your own payload size, tip elasticity, and venue. The bench answers "what is the typical, comparable, reproducible time-to-land per service today."
+The bench does **not** answer "which service is best for your trading bot" - that requires modeling your own payload size, tip elasticity, and venue. The bench answers "what is the typical, comparable, reproducible time-to-land per service today."
 
 ## 2. Scope (V0-Lean launch)
 
 | Dimension | Value |
 |---|---|
-| Services probed | 5 — Jito Block Engine, Helius Sender, Astralane Iris, Nozomi (Temporal), 0slot.trade |
-| Region | 1 — Railway us-east (Newark / NY area) |
+| Services probed | 5 - Jito Block Engine, Helius Sender, Astralane Iris, Nozomi (Temporal), 0slot.trade |
+| Region | 1 - Railway us-east (Newark / NY area) |
 | Cadence | 1 cycle per hour |
 | Duration | continuous, 24 / 7 |
 | Window for headline metrics | rolling 7-day weekly leaderboard |
 | Confirmation level | `confirmed` (1+ block confirmation) |
 
-Services and regions are added through the public escalation rules in [`solana-landing-tiered-architecture.md`](../solana-landing-tiered-architecture.md). Any expansion is a PR + 14-day window — never a silent change.
+Services and regions are added through the public escalation rules in [`solana-landing-tiered-architecture.md`](../solana-landing-tiered-architecture.md). Any expansion is a PR + 14-day window - never a silent change.
 
 ## 3. Probe payload (exact)
 
 Every probe is a single Solana transaction containing three instructions, in this order :
 
-1. `ComputeBudgetProgram.SetComputeUnitLimit(50 000)` — caps compute units.
-2. `ComputeBudgetProgram.SetComputeUnitPrice(50 000 micro-lamports)` — priority fee per CU.
-3. `SystemProgram.Transfer(from = prober keypair, to = prober keypair, lamports = 1)` — the payload itself, self-transfer of 1 lamport. Solana requires non-zero state-touching for a tx to be valid; self-transfer is the minimum honest payload.
-4. `SystemProgram.Transfer(from = prober keypair, to = <service tip wallet>, lamports = <service tip floor>)` — the tip required by the landing service.
+1. `ComputeBudgetProgram.SetComputeUnitLimit(50 000)` - caps compute units.
+2. `ComputeBudgetProgram.SetComputeUnitPrice(50 000 micro-lamports)` - priority fee per CU.
+3. `SystemProgram.Transfer(from = prober keypair, to = prober keypair, lamports = 1)` - the payload itself, self-transfer of 1 lamport. Solana requires non-zero state-touching for a tx to be valid; self-transfer is the minimum honest payload.
+4. `SystemProgram.Transfer(from = prober keypair, to = <service tip wallet>, lamports = <service tip floor>)` - the tip required by the landing service.
 5. `MemoProgram.Memo("ocb-<cycle_id>-<service>-<mode>")` where `cycle_id` is a per-cycle 8-byte random hex generated once and shared across all per-service probes in the cycle. This lets us correlate the 5 simultaneous probes on-chain.
 
 The exact tip amount per service is published as part of this methodology and frozen unless a methodology PR amends it :
 
 | Service | Tip lamports | Source / justification |
 |---|---:|---|
-| Jito Block Engine | 10 000 | "Competitive" floor per docs.jito.wtf — above 1 000 doc minimum, below 50th-percentile observed real-traffic tip |
+| Jito Block Engine | 10 000 | "Competitive" floor per docs.jito.wtf - above 1 000 doc minimum, below 50th-percentile observed real-traffic tip |
 | Helius Sender | 10 000 | Same with `?swqos_only=true` (isolates Helius own path from Jito fan-out) |
 | Astralane Iris | 500 000 | Mid-range net of refunds per astralane.gitbook.io |
 | Nozomi (Temporal) | 1 000 000 | Hard floor per use.temporal.xyz/nozomi/tipping-and-faq |
