@@ -55,6 +55,12 @@ export type Benchmark = {
   /** Optional FAQ entries. Surfaced both as visible Q&A blocks and as
    *  FAQPage JSON-LD for rich-result eligibility. */
   faq?: { q: string; a: string }[];
+  /** Optional per-chain explainer blocks rendered as H2-anchored sections
+   *  below the main chart. Targets long-tail "X chain {metric}" queries
+   *  that benefit from a dedicated on-page anchor (#ethereum, #solana, ...).
+   *  Body strings go through the template resolver so {{p50:slug}} etc.
+   *  resolve to live numbers. */
+  perChainExplainer?: { slug: string; h2: string; body: string }[];
   subtitle: string;
   lastRunAt: string;
   /** Runtime status. flipped to "draft" when Prom returns no data, even if

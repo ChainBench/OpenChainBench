@@ -91,5 +91,12 @@ export function renderBenchmarkText(benchmark: Benchmark): Benchmark {
       a: renderTemplate(item.a, benchmark),
     }));
   }
+  if (benchmark.perChainExplainer) {
+    benchmark.perChainExplainer = benchmark.perChainExplainer.map((item) => ({
+      slug: item.slug,
+      h2: renderTemplate(item.h2, benchmark),
+      body: renderTemplate(item.body, benchmark),
+    }));
+  }
   return benchmark;
 }

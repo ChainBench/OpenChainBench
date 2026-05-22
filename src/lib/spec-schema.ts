@@ -172,6 +172,22 @@ export const SpecSchema = z
       )
       .max(12)
       .optional(),
+    /** Optional per-chain or per-provider explainer blocks. Renders as
+     *  H2-anchored sections below the main chart, one per slug. Each body
+     *  is template-resolved so {{p50:slug}}, {{name:slug}} placeholders
+     *  pick up live Prom data. Used on Blockchains-category benches to
+     *  win long-tail "X chain finality time" queries that each map to
+     *  a stable on-page anchor (#ethereum, #solana, ...). */
+    per_chain_explainer: z
+      .array(
+        z.object({
+          slug: z.string().min(1).max(50),
+          h2: z.string().min(1).max(200),
+          body: z.string().min(1).max(1000),
+        })
+      )
+      .max(20)
+      .optional(),
     subtitle: z.string().min(1).max(400),
     category: Category,
     status: z.enum(["live", "draft"]).default("live"),
