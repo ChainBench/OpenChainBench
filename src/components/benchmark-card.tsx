@@ -91,19 +91,47 @@ export function BenchmarkCard({ benchmark }: { benchmark: Benchmark }) {
 
       {/* Divider + footer */}
       <div className="border-t border-rule pt-4 grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
-        <Footer label="Providers" value={b.results.length.toString()} />
-        <Footer label="N · 24H" value={b.sampleSize.toLocaleString()} />
-        <Footer label="Updated" value={formatUpdated(b.lastRunAt)} />
+        <Footer
+          label="Providers"
+          value={b.results.length.toString()}
+          srSuffix={`${b.results.length === 1 ? "provider" : "providers"} tracked.`}
+        />
+        <Footer
+          label="N · 24H"
+          value={b.sampleSize.toLocaleString()}
+          srSuffix="samples in the last 24 hours."
+        />
+        <Footer
+          label="Updated"
+          value={formatUpdated(b.lastRunAt)}
+          srSuffix="last refreshed."
+        />
       </div>
     </Link>
   );
 }
 
-function Footer({ label, value }: { label: string; value: string }) {
+// `srSuffix` is screen-reader-only text appended to the numeric value. it
+// also serves as a parser cue so search snippets don't smush sibling values
+// (e.g. "522,882" + "11" rendered next to each other had been scraped as a
+// nonsense "522,88211" in google's SERP snippet because nothing in the DOM
+// signalled where one stat ended and the next began).
+function Footer({
+  label,
+  value,
+  srSuffix,
+}: {
+  label: string;
+  value: string;
+  srSuffix?: string;
+}) {
   return (
     <div className="min-w-0">
       <p className="label-mono text-ink-faint">{label}</p>
-      <p className="mt-1 text-sm text-ink truncate tabular">{value}</p>
+      <p className="mt-1 text-sm text-ink truncate tabular">
+        {value}
+        {srSuffix && <span className="sr-only"> {srSuffix}</span>}
+      </p>
     </div>
   );
 }
