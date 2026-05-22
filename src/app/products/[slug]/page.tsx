@@ -7,7 +7,10 @@ import { ProviderLogo } from "@/components/provider-logo";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
 import { fmtUnit } from "@/lib/format";
 import { SITE } from "@/data/site";
-import { getProviderRegistry } from "@/data/provider-registry";
+import {
+  getProviderRegistry,
+  PROVIDER_REGISTRY,
+} from "@/data/provider-registry";
 import { safeJsonLd } from "@/lib/jsonld";
 
 export const revalidate = 60;
@@ -141,29 +144,68 @@ export default async function ProviderPage({
         </Link>
       </div>
 
-      <header className="mt-6 flex items-center gap-4 border-b-2 border-ink pb-6">
-        <ProviderLogo slug={p.slug} name={p.name} size={56} />
-        <div className="min-w-0">
-          <h1 className="display text-2xl sm:text-3xl md:text-4xl tracking-tight">
-            {p.name}
-          </h1>
-          <p className="mt-2 font-sans text-[11px] uppercase tracking-[0.18em] text-ink-muted font-medium">
-            {p.appearances.length} {p.appearances.length === 1 ? "benchmark" : "benchmarks"}
-            {p.wins > 0 && (
-              <>
-                <span className="text-ink-faint"> · </span>
-                <span className="text-good">{p.wins} #1 {p.wins === 1 ? "finish" : "finishes"}</span>
-              </>
+      {(() => {
+        // Brand-family cross-link: surface a "Part of <parent>" badge when
+        // this entry is a sub-product, and a "Related products" list on
+        // the parent page enumerating its declared children. Computed
+        // once near the header so the JSX below only renders if non-empty.
+        const parentSlug = reg?.parent;
+        const parentReg = parentSlug ? getProviderRegistry(parentSlug) : undefined;
+        const children = Object.entries(PROVIDER_REGISTRY)
+          .filter(([childSlug, e]) => e.parent === p.slug && childSlug !== p.slug)
+          .map(([childSlug, e]) => ({ slug: childSlug, name: e.description.split(".")[0] || childSlug }));
+        return (
+          <>
+            <header className="mt-6 flex items-center gap-4 border-b-2 border-ink pb-6">
+              <ProviderLogo slug={p.slug} name={p.name} size={56} />
+              <div className="min-w-0">
+                <h1 className="display text-2xl sm:text-3xl md:text-4xl tracking-tight">
+                  {p.name}
+                </h1>
+                <p className="mt-2 font-sans text-[11px] uppercase tracking-[0.18em] text-ink-muted font-medium">
+                  {p.appearances.length} {p.appearances.length === 1 ? "benchmark" : "benchmarks"}
+                  {p.wins > 0 && (
+                    <>
+                      <span className="text-ink-faint"> · </span>
+                      <span className="text-good">{p.wins} #1 {p.wins === 1 ? "finish" : "finishes"}</span>
+                    </>
+                  )}
+                  {p.type && (
+                    <>
+                      <span className="text-ink-faint"> · </span>
+                      <span>{p.type}</span>
+                    </>
+                  )}
+                  {parentSlug && parentReg && (
+                    <>
+                      <span className="text-ink-faint"> · </span>
+                      <Link
+                        href={`/products/${parentSlug}`}
+                        className="hover:text-ink transition-colors underline underline-offset-2 decoration-rule"
+                      >
+                        Part of {parentSlug}
+                      </Link>
+                    </>
+                  )}
+                </p>
+              </div>
+            </header>
+            {children.length > 0 && (
+              <p className="mt-6 text-sm text-ink-muted">
+                Related {p.name} products:{" "}
+                {children.map((c, i) => (
+                  <span key={c.slug}>
+                    {i > 0 && <span className="text-ink-faint"> · </span>}
+                    <Link href={`/products/${c.slug}`} className="lnk">
+                      {c.slug}
+                    </Link>
+                  </span>
+                ))}
+              </p>
             )}
-            {p.type && (
-              <>
-                <span className="text-ink-faint"> · </span>
-                <span>{p.type}</span>
-              </>
-            )}
-          </p>
-        </div>
-      </header>
+          </>
+        );
+      })()}
 
       {reg && (
         <section className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-8">
