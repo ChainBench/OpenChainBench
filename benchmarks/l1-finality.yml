@@ -3,8 +3,8 @@
 slug: l1-finality
 number: "006"
 title: Fastest layer one blockchain finality
-seo_title: "L1 finality time: Stellar, Solana, Ethereum, Hedera live"
-seo_description: "Stellar finality time ~5s. Solana finalized 12.8s. Ethereum 12.8 min. Hedera 3-5s. SUI and TON sub-second. Live p50/p90/p99 over 24h."
+seo_title: "Ethereum 12.8min, Solana 12.8s, Stellar 5s | L1 finality"
+seo_description: "Ethereum 12.8 min, Solana 12.8s, Hedera 3-5s, Stellar 5s, SUI and TON sub-second. Live p50/p90/p99 finality time across 13 L1 chains, refreshed every 10s."
 subtitle: Wall-clock distance between each L1's latest block and its finalized block.
 seo_intro: |
   This page measures L1 finality time live for every major Layer-1 blockchain, with p50 / p90 / p99 refreshed every 10 seconds. Stellar finality time is ~5 seconds, the close interval the Stellar Consensus Protocol locks in via federated Byzantine agreement. Solana finality time goes from sub-second on the processed commitment to ~12.8 s on finalized after 32 confirmed slots. Ethereum finality time is ~12.8 minutes, the 2-epoch Casper FFG window. Hedera finality time clears in 3-5 seconds via Hashgraph aBFT. SUI finality time and TON finality time both sit under one second via Mysticeti DAG-BFT and BAG consensus. BNB and Avalanche finality time land near two seconds through fast-finality forks. Probabilistic chains (Litecoin, Monero, Cardano) settle on a confirmation-depth convention measured here in minutes.

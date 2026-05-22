@@ -120,12 +120,6 @@ export default async function AlternativePage({
           {
             "@type": "ListItem",
             position: 2,
-            name: "Alternatives",
-            item: `${SITE.url}/benchmarks`,
-          },
-          {
-            "@type": "ListItem",
-            position: 3,
             name: `${alt.target_product} alternatives`,
             item: url,
           },
