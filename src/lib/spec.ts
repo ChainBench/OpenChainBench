@@ -164,6 +164,7 @@ async function specToBenchmark(
     seoIntro: spec.seo_intro,
     disclaimer: spec.disclaimer,
     faq: spec.faq,
+    perChainExplainer: spec.per_chain_explainer,
     subtitle: spec.subtitle,
     category: spec.category,
     status: spec.status,
