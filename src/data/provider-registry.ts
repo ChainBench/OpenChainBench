@@ -26,6 +26,13 @@ export type ProviderRegistryEntry = {
   docs?: string;
   github?: string;
   blog?: string;
+
+  /** Parent product slug when this entry is a sub-product of a broader
+   * brand (e.g. helius-sender → helius). The product page surfaces a
+   * "Part of <parent>" badge and the parent page lists its sub-products.
+   * Sub-products keep their own bench rankings — this is editorial
+   * cross-linking, not data merging. */
+  parent?: string;
 };
 
 export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
@@ -79,6 +86,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     description:
       "Helius transaction sender for Solana. Dual-path submission to Jito and SWQoS staked validators from 7 regional endpoints, no API credit cost.",
     twitter: "@heliuslabs",
+    parent: "helius",
   },
   nozomi: {
     url: "https://www.temporal.xyz/nozomi",
@@ -371,6 +379,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     description:
       "Official Base public RPC operated by the Base team (Coinbase). No-key access for read methods; documented as best-effort with rate limits.",
     twitter: "@base",
+    parent: "base",
   },
   binance: {
     url: "https://docs.bnbchain.org/docs/rpc",
@@ -407,18 +416,21 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     description:
       "Arbitrum Foundation's public RPC endpoint at `arb1.arbitrum.io/rpc`. Best-effort, rate-limited, intended for dev access — production dapps are expected to use a keyed provider.",
     twitter: "@arbitrum",
+    parent: "arbitrum",
   },
   "optimism-official": {
     url: "https://docs.optimism.io/builders/tools/build/node-providers",
     description:
       "Optimism Foundation's public RPC endpoint at `mainnet.optimism.io`. Best-effort, rate-limited, intended as a fallback. The Foundation recommends keyed providers for production load.",
     twitter: "@Optimism",
+    parent: "optimism",
   },
   "avalanche-official": {
     url: "https://docs.avax.network/dapps/rpc-providers",
     description:
       "Ava Labs' public C-Chain RPC at `api.avax.network/ext/bc/C/rpc`. Best-effort, capped per IP. Production dapps usually graduate to keyed providers (Ankr, BlockDaemon, GetBlock).",
     twitter: "@avax",
+    parent: "avalanche",
   },
 
   // ─── Gas oracles ──────────────────────────────────────────────
@@ -433,6 +445,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     description:
       "Gas predictor that wraps the canonical eth_feeHistory JSON-RPC method against PublicNode's Ethereum endpoint. Returns reward percentiles directly from the EIP-1559 spec implementation; no proprietary model.",
     twitter: "@AllnodesHQ",
+    parent: "publicnode",
   },
   owlracle: {
     url: "https://owlracle.info",
