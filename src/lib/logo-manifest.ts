@@ -80,6 +80,23 @@ const RAW: Record<string, string> = {
 
   // ─── L2 chains (additions) ───
   taiko: "/logos/taiko.png",
+
+  // ─── Solana transaction landing services (bench 016) ───
+  jito: "/logos/jito.svg",
+  nozomi: "/logos/nozomi.svg",
+  bloxroute: "/logos/bloxroute.png",
+  "0slot": "/logos/0slot.png",
+  nextblock: "/logos/nextblock.png",
+  astralane: "/logos/astralane.svg",
+  solanavibestation: "/logos/solanavibestation.png",
+
+  // ─── Buyback audit (bench 018) ───
+  sky: "/logos/sky.svg",
+
+  // ─── Oracle deviation (bench 025) — additional brand logos ───
+  // (pairs alias to chain/asset logos in the ALIASES block below)
+  chainlink: "/logos/chainlink.svg",
+  dogecoin: "/logos/dogecoin.svg",
 };
 
 // Asset-symbol aliases used by perp-fees as chain dimension values.
@@ -103,10 +120,12 @@ const ALIASES: Record<string, string> = {
   "bnb-usd": "bnb",
   "xrp-usd": "xrp",
   "ada-usd": "cardano",
-  // doge-usd / link-usd fall back to initials chip — no logo file
-  // shipped for these brands yet.
+  "doge-usd": "dogecoin",
   "avax-usd": "avalanche",
+  "link-usd": "chainlink",
   "matic-usd": "polygon",
+  // helius-sender shares brand with the Helius RPC entry
+  "helius-sender": "helius",
 };
 
 export function logoPath(slug: string): string | null {
