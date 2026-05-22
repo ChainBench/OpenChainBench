@@ -14,6 +14,18 @@ export type ProviderRegistryEntry = {
   url: string;
   description: string;
   twitter?: string;
+
+  // Optional rich content surfaced on the product detail page when present.
+  // Every field is independently optional; the page renders only the
+  // sections that have data, so partial enrichment is safe.
+  longDescription?: string;
+  chains?: string[];
+  features?: string[];
+  pricing?: string;
+  founded?: number;
+  docs?: string;
+  github?: string;
+  blog?: string;
 };
 
 export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
@@ -53,6 +65,56 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     description:
       "Solana RPC and data provider. Enhanced transactions, webhooks, DAS API for assets, and standard JSON-RPC.",
     twitter: "@heliuslabs",
+  },
+
+  // ─── Solana transaction landing services ──────────────────────
+  jito: {
+    url: "https://www.jito.wtf",
+    description:
+      "Solana MEV infrastructure. Block Engine runs an off-chain tip auction for atomic bundles, the oldest production transaction-landing service on Solana.",
+    twitter: "@jito_labs",
+  },
+  "helius-sender": {
+    url: "https://www.helius.dev/docs/sending-transactions/sender",
+    description:
+      "Helius transaction sender for Solana. Dual-path submission to Jito and SWQoS staked validators from 7 regional endpoints, no API credit cost.",
+    twitter: "@heliuslabs",
+  },
+  nozomi: {
+    url: "https://www.temporal.xyz/nozomi",
+    description:
+      "Solana transaction landing service by Temporal Labs. Direct-to-leader submission from 9 colocated regions, tip paid only on successful landing.",
+    twitter: "@temporal_xyz",
+  },
+  bloxroute: {
+    url: "https://bloxroute.com",
+    description:
+      "Solana Trader API over the bloXroute BDN. Multi-path leader-aware propagation across bare-metal RPCs, dedicated nodes, and SWQoS for institutional flow.",
+    twitter: "@bloXrouteLabs",
+  },
+  "0slot": {
+    url: "https://0slot.trade",
+    description:
+      "Solana transaction landing service. SWQoS-based premium sender with globally distributed endpoints (Frankfurt, Amsterdam, NY, Tokyo, LA) and tip-based prioritization.",
+    twitter: "@0slot_trade",
+  },
+  nextblock: {
+    url: "https://nextblock.io",
+    description:
+      "Solana transaction landing service. SWQoS sender backed by a large stake pool, plus a TX Stream API for low-latency mempool-style transaction feeds.",
+    twitter: "@nextblock_sol",
+  },
+  astralane: {
+    url: "https://astralane.io",
+    description:
+      "Solana transaction landing service. Iris sender uses validator co-location and leader-schedule-aware routing for p90 sub-slot latency on high-frequency workloads.",
+    twitter: "@Astralaneio",
+  },
+  solanavibestation: {
+    url: "https://solanavibestation.com",
+    description:
+      "Solana transaction landing service. Lightspeed sender routes through SVS's own ~101K SOL validator pool with co-located bare-metal infra in Atlanta and Amsterdam.",
+    twitter: "@solvibestation",
   },
 
   // ─── Bridges ──────────────────────────────────────────────────
@@ -415,6 +477,80 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     description:
       "Ethena's synthetic dollar anchored by a delta-neutral basis trade on perpetual futures. Flashed to $0.65 on Binance USDEUSDT during the October 10 2025 liquidation cascade.",
     twitter: "@ethena_labs",
+  },
+
+  // ─── Buyback audit (bench 018) ─────────────────────────────────
+  sky: {
+    url: "https://sky.money",
+    description:
+      "Rebrand of MakerDAO around USDS and SKY. Smart Burn Engine routes protocol surplus to buy and burn SKY against USDS on Uniswap v2.",
+    twitter: "@SkyEcosystem",
+  },
+
+  // ─── Oracle deviation pairs (bench 025) ───────────────────────
+  // Each "provider" in oracle-deviation is a USD trading pair. The entry
+  // describes the underlying asset that the cross-oracle deviation
+  // benchmark is measured against. Logos alias to the chain/asset image
+  // in `lib/logo-manifest.ts`.
+  "btc-usd": {
+    url: "https://bitcoin.org",
+    description:
+      "Bitcoin, the first proof-of-work cryptocurrency. Treated as digital gold and the primary store-of-value asset across crypto markets.",
+    twitter: "@Bitcoin",
+  },
+  "eth-usd": {
+    url: "https://ethereum.org",
+    description:
+      "Ethereum, a proof-of-stake smart contract platform. Settlement layer for most DeFi, stablecoins, and L2 rollups; often called the world computer.",
+    twitter: "@ethereum",
+  },
+  "sol-usd": {
+    url: "https://solana.com",
+    description:
+      "Solana, a high-throughput monolithic L1 using proof-of-history with proof-of-stake. Low-latency execution layer for trading, payments, and consumer apps.",
+    twitter: "@solana",
+  },
+  "bnb-usd": {
+    url: "https://www.bnbchain.org",
+    description:
+      "BNB, the native asset of BNB Chain and Binance ecosystem. Used for gas on BNB Smart Chain and fee discounts on Binance exchange.",
+    twitter: "@BNBCHAIN",
+  },
+  "xrp-usd": {
+    url: "https://ripple.com/xrp",
+    description:
+      "XRP, the native asset of the XRP Ledger. Used for cross-border payments and liquidity bridging within the Ripple Labs ecosystem.",
+    twitter: "@Ripple",
+  },
+  "ada-usd": {
+    url: "https://cardano.org",
+    description:
+      "Cardano native token. PoS L1 using Ouroboros consensus, Haskell-based smart contracts via Plutus. ADA used for staking and fees.",
+    twitter: "@Cardano",
+  },
+  "doge-usd": {
+    url: "https://dogecoin.com",
+    description:
+      "Dogecoin native coin. Litecoin-derived PoW chain originating as a meme, widely used for tipping and small-value payments.",
+    twitter: "@dogecoin",
+  },
+  "avax-usd": {
+    url: "https://www.avax.network",
+    description:
+      "Avalanche native token. PoS L1 using Snowman consensus with a subnet architecture for app-specific chains. AVAX pays fees and secures the network.",
+    twitter: "@avax",
+  },
+  "link-usd": {
+    url: "https://chain.link",
+    description:
+      "Chainlink token. Powers a decentralized oracle network providing offchain data and compute, used for node payments and staking.",
+    twitter: "@chainlink",
+  },
+  "matic-usd": {
+    url: "https://polygon.technology",
+    description:
+      "Polygon ecosystem token, renamed from MATIC to POL in September 2024. Gas and staking asset across Polygon PoS and the AggLayer stack.",
+    twitter: "@0xPolygon",
   },
 };
 

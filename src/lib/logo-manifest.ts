@@ -91,6 +91,22 @@ const ALIASES: Record<string, string> = {
   btc: "bitcoin",
   sol: "solana",
   "publicnode-feehistory": "publicnode",
+
+  // Oracle-deviation bench exposes one provider per trading pair (e.g.
+  // `btc-usd`). The page describes the underlying asset, so alias each
+  // pair slug to the existing chain/asset logo rather than ship a new
+  // file. `matic-usd` points at polygon — the chain renamed MATIC to
+  // POL in Sep 2024 but the slug + chain logo cover the asset.
+  "btc-usd": "bitcoin",
+  "eth-usd": "ethereum",
+  "sol-usd": "solana",
+  "bnb-usd": "bnb",
+  "xrp-usd": "xrp",
+  "ada-usd": "cardano",
+  // doge-usd / link-usd fall back to initials chip — no logo file
+  // shipped for these brands yet.
+  "avax-usd": "avalanche",
+  "matic-usd": "polygon",
 };
 
 export function logoPath(slug: string): string | null {
