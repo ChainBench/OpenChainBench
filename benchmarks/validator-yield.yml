@@ -130,8 +130,8 @@ providers:
     tag: Top 200 by stake · Stakewiz APY (MEV in)
     queries:
       p50: ocb_chain_median_net_yield_bps{chain="solana"}
-      p90: quantile_over_time(0.90, ocb_validator_net_yield_bps{chain="solana"}[24h])
-      p99: quantile_over_time(0.99, ocb_validator_net_yield_bps{chain="solana"}[24h])
+      p90: quantile(0.90, ocb_validator_net_yield_bps{chain="solana"})
+      p99: quantile(0.99, ocb_validator_net_yield_bps{chain="solana"})
       mean: avg(ocb_validator_net_yield_bps{chain="solana"})
       success: clamp_max(avg_over_time(ocb_validator_uptime_pct{chain="solana"}[24h]) / 100, 1)
       sample_size: ocb_chain_total_validators{chain="solana"}
@@ -142,8 +142,8 @@ providers:
     tag: All active · predictedApr.day × uptime
     queries:
       p50: ocb_chain_median_net_yield_bps{chain="hyperliquid"}
-      p90: quantile_over_time(0.90, ocb_validator_net_yield_bps{chain="hyperliquid"}[24h])
-      p99: quantile_over_time(0.99, ocb_validator_net_yield_bps{chain="hyperliquid"}[24h])
+      p90: quantile(0.90, ocb_validator_net_yield_bps{chain="hyperliquid"})
+      p99: quantile(0.99, ocb_validator_net_yield_bps{chain="hyperliquid"})
       mean: avg(ocb_validator_net_yield_bps{chain="hyperliquid"})
       success: clamp_max(avg_over_time(ocb_validator_uptime_pct{chain="hyperliquid"}[24h]) / 100, 1)
       sample_size: ocb_chain_total_validators{chain="hyperliquid"}
