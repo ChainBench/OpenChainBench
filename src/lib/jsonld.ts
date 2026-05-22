@@ -23,3 +23,76 @@ export function safeJsonLd(value: unknown): string {
     .replace(LS, "\\u2028")
     .replace(PS, "\\u2029");
 }
+
+/**
+ * Strip inline markdown from a string so it can be embedded in a JSON-LD
+ * Answer.text node. Google's Rich Results checker (and the indexing
+ * pipeline behind it) treats Answer.text as plain text + a narrow HTML
+ * allowlist; backticks, asterisks and bracketed link syntax surface as
+ * literal characters in the SERP snippet when accepted, and have
+ * historically been one of the silent failure modes that keeps a
+ * FAQPage block from ever earning a rich result.
+ *
+ * We don't want a full markdown parser dependency for six characters
+ * worth of formatting noise. The transformations below mirror what
+ * shows up in `benchmarks/*.yml` faq blocks today:
+ *   - inline code: `metric_name`         -> metric_name
+ *   - bold:        **text** / __text__   -> text
+ *   - italic:      *text* / _text_       -> text (only when paired)
+ *   - md link:     [label](url)          -> label
+ *   - em-dash:     U+2014                -> " - " (matches house style)
+ *   - collapse runs of whitespace
+ */
+export function stripFaqMarkdown(input: string): string {
+  let s = input;
+  // Links first so we capture the label before stripping brackets elsewhere.
+  s = s.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");
+  // Bold (double markers) before italic (single) so **x** doesn't become *x*.
+  s = s.replace(/\*\*([^*]+)\*\*/g, "$1");
+  s = s.replace(/__([^_]+)__/g, "$1");
+  // Italic. Paired markers only - bare `_` inside identifiers like
+  // `bridge_cost_percent` must survive after the backtick pass below.
+  s = s.replace(/(^|[\s(])\*([^*\n]+)\*(?=[\s.,;:)!?]|$)/g, "$1$2");
+  // Inline code. Drop the backticks but keep contents verbatim.
+  s = s.replace(/`([^`]+)`/g, "$1");
+  // Em-dash and en-dash. House style is hyphen-with-spaces.
+  s = s.replace(/—/g, " - ");
+  s = s.replace(/–/g, "-");
+  // Collapse any newlines / multi-space artifacts. Google reads Answer.text
+  // as a single block; line breaks render as spaces in the snippet anyway.
+  s = s.replace(/\s+/g, " ").trim();
+  return s;
+}
+
+type FaqItem = { q: string; a: string };
+
+/**
+ * Build a top-level FAQPage JSON-LD object per https://schema.org/FAQPage.
+ *
+ * Emitted as its own `<script type="application/ld+json">` block on the
+ * bench page rather than nested inside an `@graph`. Google's Rich Results
+ * Test parses both shapes; standalone FAQPage scripts have a markedly
+ * higher hit rate in Search Console's "Rich result" reports (the
+ * @graph-nested variant currently shipped on /benchmarks/* is what the
+ * site rendered before this change, and Search Console showed zero
+ * registered FAQ rich results).
+ *
+ * Caller is responsible for guarding empty `faq` arrays. Returns `null`
+ * when there's nothing to emit so the call site can skip the script tag.
+ */
+export function buildFaqPageJsonLd(faq: FaqItem[] | undefined, pageUrl: string): Record<string, unknown> | null {
+  if (!faq || faq.length === 0) return null;
+  return {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "@id": `${pageUrl}#faq`,
+    mainEntity: faq.map((item) => ({
+      "@type": "Question",
+      name: stripFaqMarkdown(item.q),
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: stripFaqMarkdown(item.a),
+      },
+    })),
+  };
+}
