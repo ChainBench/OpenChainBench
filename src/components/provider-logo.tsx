@@ -45,6 +45,8 @@ export function ProviderLogo({
       alt={`${name} logo`}
       width={size}
       height={size}
+      loading="lazy"
+      decoding="async"
       onError={() => setFailed(true)}
       className={`shrink-0 object-contain ${className}`}
       style={{
