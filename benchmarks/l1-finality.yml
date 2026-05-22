@@ -28,8 +28,6 @@ faq:
     a: "Hedera finality time is documented at 3 to 5 seconds via Hashgraph asynchronous Byzantine fault tolerant (aBFT) consensus. The mirror node only exposes already-final blocks, so true wall-clock measurement of consensus lag is currently impossible from public endpoints. We re-enable Hedera once the Block Node service (HIP-1056) leaves private preview."
   - q: "What is BNB Chain finality time?"
     a: "BNB Smart Chain finalizes via the BEP-126 fast-finality fork, dropping the confirmation depth that legacy probabilistic chains require. p50 sits at {{p50:bnb}} (24h), measured via persistent WebSocket subscription that records T1 when block N first appears as latest and T2 when it crosses the finalized threshold."
-  - q: "What is Cardano finality time?"
-    a: "Cardano runs Ouroboros Praos, a probabilistic proof-of-stake consensus. Full settlement is k = 2160 blocks deep (~12 hours). This benchmark reports {{p50:cardano}} (p50, 24h) at the 15-confirmation convention used by major exchanges (Coinbase, Kraken) as practical settlement, not the theoretical full window."
   - q: "Which blockchain has the fastest finality time?"
     a: "Sub-second BFT chains lead. TON and SUI both clock under one second on this live benchmark. BNB and Avalanche sit around one to two seconds via their fast-finality forks. Solana finalized lands around 12.8 s, Ethereum at 12.8 min, and probabilistic chains (Litecoin, Monero, Cardano) trail at 15 to 30 minutes by confirmation-depth convention."
   - q: "How is L1 finality time measured on this page?"
@@ -72,10 +70,6 @@ per_chain_explainer:
     h2: "TRON finality time"
     body: |
       TRON's solidity confirmation hovers around {{p50:tron}} (p50, 24h), matching the documented 20-block delay at 3-second block intervals. The solidity flag in TRON consensus is the chain's equivalent of finalized: a block survives until 20 confirmations before being considered irreversible. Measured via `/wallet/getnowblock` (head) minus `/walletsolidity/getnowblock` (solidity-confirmed).
-  - slug: cardano
-    h2: "Cardano finality time"
-    body: |
-      Cardano runs Ouroboros Praos, a probabilistic proof-of-stake consensus. Full settlement is k = 2160 blocks deep (~12 hours), the worst-case window before a chain is unconditionally final. This benchmark reports {{p50:cardano}} (p50, 24h) at the 15-confirmation convention used by major exchanges (Coinbase, Kraken) as practical settlement, not the theoretical full window. Measured via koios `/tip` minus a 15-confirmation lookback.
   - slug: litecoin
     h2: "Litecoin finality time"
     body: |
@@ -130,7 +124,7 @@ findings:
   - "{{name:sui}} returns {{p50:sui}} (p50, 24 h), matching its Mysticeti DAG BFT design. The chain exposes ms timestamps so the measurement is genuinely sub-second."
   - "{{name:ethereum}} sits at {{p50:ethereum}} (p50, 24 h), aligned with the 2-epoch finalization spec (32 slots × 12 s × 2)."
   - "{{name:tron}}'s solidity confirmation hovers around {{p50:tron}}, exactly the documented 20-block delay at 3 s blocks."
-  - "{{name:litecoin}} and {{name:monero}} sit at {{p50:litecoin}} and {{p50:monero}} (p50, 24 h) by construction - set by the chosen confirmation depth. {{name:cardano}} clocks {{p50:cardano}} at the 15-confirmation convention used by major exchanges."
+  - "{{name:litecoin}} and {{name:monero}} sit at {{p50:litecoin}} and {{p50:monero}} (p50, 24 h) by construction - set by the chosen confirmation depth."
   - "{{best_name}} currently leads the leaderboard at {{best_p50}} (p50, 24 h) across {{count}} measured L1s. {{worst_name}} trails at {{worst_p50}}."
   - "Hedera's Hashgraph aBFT is designed to finalize in 3-5 s but is excluded from the live leaderboard because the mirror node only exposes finalized blocks - wall-clock measurement requires the Block Node service (HIP-1056), still in private preview."
 
@@ -250,18 +244,6 @@ providers:
       success: avg_over_time(l1_finality_health{chain="ethereum"}[24h])
       sample_size: count_over_time(l1_finality_lag_seconds{chain="ethereum"}[24h])
       series: l1_finality_lag_seconds{chain="ethereum"} * 1000
-
-  - slug: cardano
-    name: Cardano
-    tag: Probabilistic, 15 confirmations (exchange-settlement convention)
-    queries:
-      p50: avg_over_time(l1_finality_lag_seconds{chain="cardano"}[24h]) * 1000
-      p90: quantile_over_time(0.90, l1_finality_lag_seconds{chain="cardano"}[24h]) * 1000
-      p99: quantile_over_time(0.99, l1_finality_lag_seconds{chain="cardano"}[24h]) * 1000
-      mean: avg_over_time(l1_finality_lag_seconds{chain="cardano"}[24h]) * 1000
-      success: avg_over_time(l1_finality_health{chain="cardano"}[24h])
-      sample_size: count_over_time(l1_finality_lag_seconds{chain="cardano"}[24h])
-      series: l1_finality_lag_seconds{chain="cardano"} * 1000
 
   - slug: litecoin
     name: Litecoin

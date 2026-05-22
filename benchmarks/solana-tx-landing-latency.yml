@@ -173,14 +173,3 @@ providers:
       sample_size: sum(increase(solana_landing_probe_success_total{service="nozomi",region="us-east"}[7d]))
       series: histogram_quantile(0.5, sum by (le)(rate(solana_landing_probe_latency_ms_histogram_bucket{service="nozomi",region="us-east"}[1h])))
 
-  - slug: 0slot
-    name: 0slot.trade
-    tag: Premium 1M-lamport floor (100k on Advanced tier), anti-MEV + durable-nonce
-    queries:
-      p50: histogram_quantile(0.5, sum by (le)(rate(solana_landing_probe_latency_ms_histogram_bucket{service="0slot",region="us-east"}[7d])))
-      p90: histogram_quantile(0.9, sum by (le)(rate(solana_landing_probe_latency_ms_histogram_bucket{service="0slot",region="us-east"}[7d])))
-      p99: histogram_quantile(0.99, sum by (le)(rate(solana_landing_probe_latency_ms_histogram_bucket{service="0slot",region="us-east"}[7d])))
-      mean: avg_over_time(solana_landing_probe_latency_ms{service="0slot",region="us-east"}[7d])
-      success: sum(rate(solana_landing_probe_success_total{service="0slot",region="us-east"}[7d])) / (sum(rate(solana_landing_probe_success_total{service="0slot",region="us-east"}[7d])) + sum(rate(solana_landing_probe_dropped_total{service="0slot",region="us-east",reason="timeout"}[7d])))
-      sample_size: sum(increase(solana_landing_probe_success_total{service="0slot",region="us-east"}[7d]))
-      series: histogram_quantile(0.5, sum by (le)(rate(solana_landing_probe_latency_ms_histogram_bucket{service="0slot",region="us-east"}[1h])))
