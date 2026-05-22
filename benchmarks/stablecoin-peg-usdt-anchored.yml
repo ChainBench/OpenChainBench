@@ -59,9 +59,9 @@ abstract: |
 methodology:
   - "Source: Binance REST `/api/v3/ticker/bookTicker?symbol=<pair>` polled every 5 seconds per pair. No API key required. Mid-price = (bid + ask) / 2 in USDT."
   - "Pairs: USDCUSDT ($2.8B daily, reference anchor for USDT-vs-USD drift), FDUSDUSDT ($41M daily, FDUSD's primary book), USDEUSDT ($1.8M daily, the book that flashed to $0.65 on October 10 2025)."
-  - "Metric: `peg_deviation_usdt_anchored_bps{stable, venue=\"binance\"}` = |mid_price - 1.0000| × 10000. 1 bp = 0.01% = 0.0001 USDT off pair-reference."
+  - "Metric: `peg_deviation_usdt_anchored_bps{stable, venue=\"binance\"}` = |mid_price, 1.0000| × 10000. 1 bp = 0.01% = 0.0001 USDT off pair-reference."
   - "Aggregation: p50 / p90 / p99 over 24 hours via Prometheus `quantile_over_time`. p99 is the headline because swap cost during stress is what matters for inventory rotation, not the calm-minute median."
-  - "USDC reference anchor: USDC/USDT spread is the floor below which no other pair can credibly score, because that gap reflects USDT's own drift away from USD reaching back into the pair. Read other stables' true vs-USDT drift as `their_p99 - usdc_p99` to control for it."
+  - "USDC reference anchor: USDC/USDT spread is the floor below which no other pair can credibly score, because that gap reflects USDT's own drift away from USD reaching back into the pair. Read other stables' true vs-USDT drift as `their_p99, usdc_p99` to control for it."
   - "Depeg event flag (shared with bench № 014): binary `peg_depeg_event_flag{stable}` fires when the per-minute aggregated price is outside [0.97, 1.03] for ≥5 consecutive minutes. The flag clears after 30 minutes back inside the band. Conservative so it does not flap during normal stress."
   - "Out of scope: this is a swap-cost / pair-spread bench, NOT a peg-robustness bench. Reserve attestations, basis-trade health, redemption windows, on-chain pool liquidity and other fundamental peg signals live on `stablecoin-peg` (bench № 014) or off-chain in each issuer's transparency dashboard."
 
@@ -100,9 +100,9 @@ prometheus:
 #   peg_source_health{stable, venue}                   gauge (0|1)
 #
 # Only stables with a USDT-quoted venue appear here. Currently:
-#   - usdc/binance (reference anchor, deepest book at $2.8B daily)
-#   - fdusd/binance (FDUSD's primary depth, $41M daily)
-#   - usde/binance (Ethena's main spot book, $1.8M daily)
+#  , usdc/binance (reference anchor, deepest book at $2.8B daily)
+#  , fdusd/binance (FDUSD's primary depth, $41M daily)
+#  , usde/binance (Ethena's main spot book, $1.8M daily)
 
 providers:
   - slug: usdc

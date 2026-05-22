@@ -82,7 +82,7 @@ export default async function AlternativePage({
       {
         "@type": "Dataset",
         "@id": `${url}#dataset`,
-        name: `${alt.target_product} alternatives - benchmark snapshot`,
+        name: `${alt.target_product} alternatives, benchmark snapshot`,
         description: alt.description ?? alt.intro.slice(0, 280),
         url,
         identifier: alt.slug,

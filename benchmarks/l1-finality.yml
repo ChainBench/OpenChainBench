@@ -89,7 +89,7 @@ abstract: |
   We measure the live gap between every L1 chain's latest block and its
   finalized block. The harness uses two complementary methods. For
   chains with finality much longer than our 10 s poll interval we read
-  `latest.timestamp - finalized.timestamp` from the chain RPCs (Ethereum,
+  `latest.timestamp, finalized.timestamp` from the chain RPCs (Ethereum,
   Solana, TRON, Litecoin, Monero, Cardano). For chains whose finality
   is faster than the poll interval (BNB, Avalanche, SUI, TON, Stellar)
   we maintain a persistent WebSocket / SSE subscription, recording
@@ -98,7 +98,7 @@ abstract: |
   precision. The WS path is the only honest way to measure
   sub-poll-cadence finality. Comparing two pointers at a single
   instant collapses to zero when finalization catches up to head.
-  Hedera is mentioned in the FAQ but not currently measured - its
+  Hedera is mentioned in the FAQ but not currently measured, its
   mirror node only exposes already-final blocks, which makes
   wall-clock lag impossible. Re-enabling is gated on Block Nodes
   (HIP-1056) leaving private preview.
@@ -116,7 +116,7 @@ methodology:
   - "Monero (probabilistic): monero-rpc `get_info` minus 10 confirmations via `get_block_header_by_height`."
   - "Cardano (probabilistic): koios `/tip` minus 15 confirmations via `/blocks?block_height=eq.<height>`. 15 matches the depth top exchanges (Coinbase / Kraken) treat as final settlement; Ouroboros Praos full settlement is k = 2160 blocks (~12 h) and is not the practical convention."
   - "Hedera (planned, currently disabled): mirror-node `/api/v1/blocks` only exposes already-final blocks, so true wall-clock lag is impossible from public endpoints. Re-enables once Block Nodes (HIP-1056) leave private preview."
-  - "Result: `lag_seconds = headTimestamp - finalizedTimestamp`. We also record the block-height delta and per-chain fetch latency."
+  - "Result: `lag_seconds = headTimestamp, finalizedTimestamp`. We also record the block-height delta and per-chain fetch latency."
   - "Excluded by design: XRP (no close-time on `ledger_current`, wall-clock measurement requires WS subscribe to ledger stream, not yet implemented)."
   - "Failures (5xx, timeouts, rate limits) leave the previous gauge in place and increment a per-chain `fetch_errors_total` counter; the page falls back to the last successful sample."
 
@@ -124,9 +124,9 @@ findings:
   - "{{name:sui}} returns {{p50:sui}} (p50, 24 h), matching its Mysticeti DAG BFT design. The chain exposes ms timestamps so the measurement is genuinely sub-second."
   - "{{name:ethereum}} sits at {{p50:ethereum}} (p50, 24 h), aligned with the 2-epoch finalization spec (32 slots × 12 s × 2)."
   - "{{name:tron}}'s solidity confirmation hovers around {{p50:tron}}, exactly the documented 20-block delay at 3 s blocks."
-  - "{{name:litecoin}} and {{name:monero}} sit at {{p50:litecoin}} and {{p50:monero}} (p50, 24 h) by construction - set by the chosen confirmation depth."
+  - "{{name:litecoin}} and {{name:monero}} sit at {{p50:litecoin}} and {{p50:monero}} (p50, 24 h) by construction, set by the chosen confirmation depth."
   - "{{best_name}} currently leads the leaderboard at {{best_p50}} (p50, 24 h) across {{count}} measured L1s. {{worst_name}} trails at {{worst_p50}}."
-  - "Hedera's Hashgraph aBFT is designed to finalize in 3-5 s but is excluded from the live leaderboard because the mirror node only exposes finalized blocks - wall-clock measurement requires the Block Node service (HIP-1056), still in private preview."
+  - "Hedera's Hashgraph aBFT is designed to finalize in 3-5 s but is excluded from the live leaderboard because the mirror node only exposes finalized blocks, wall-clock measurement requires the Block Node service (HIP-1056), still in private preview."
 
 source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/l1-finality
 
