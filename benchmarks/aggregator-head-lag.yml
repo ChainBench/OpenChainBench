@@ -3,8 +3,8 @@
 slug: aggregator-head-lag
 number: "001"
 title: Fastest onchain data API provider
-seo_title: "Fastest crypto data API in 2026: Mobula, Codex and GeckoTerminal live head-lag benchmark"
-seo_description: "Live crypto data feed latency leaderboard. How many seconds between an on-chain swap landing in a block and it appearing on Mobula, Codex or GeckoTerminal WebSocket and REST feeds. p50, p90 and p99 over 24h, three regions."
+seo_title: "Fastest crypto data API: Mobula, Codex, GeckoTerminal ms"
+seo_description: "Live head-lag ms from on-chain swap to data feed. Mobula WebSocket, Codex GraphQL, GeckoTerminal REST on Base/BNB/Solana, p50/p90/p99 over 24h, 3 regions."
 subtitle: On-chain event to WebSocket emission, in seconds. Measured against canonical-tip archive nodes.
 category: Aggregators
 status: live
