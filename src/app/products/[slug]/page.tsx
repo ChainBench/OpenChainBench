@@ -325,7 +325,13 @@ export default async function ProviderPage({
                   </p>
                   <div className="mt-3 flex items-center">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={badgeUrl} alt={`Ranked #1 on OpenChainBench: ${a.benchmark.title}`} height={36} />
+                    <img
+                      src={badgeUrl}
+                      alt={`Ranked #1 on OpenChainBench: ${a.benchmark.title}`}
+                      height={36}
+                      loading="lazy"
+                      decoding="async"
+                    />
                   </div>
                   <details className="mt-3">
                     <summary className="cursor-pointer text-[11px] font-sans font-medium uppercase tracking-[0.18em] text-ink-muted hover:text-ink">
