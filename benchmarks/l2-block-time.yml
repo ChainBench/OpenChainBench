@@ -3,7 +3,7 @@
 slug: l2-block-time
 number: "009"
 title: Fastest Layer 2 sequencer block time
-seo_title: Live L2 block time benchmark - Arbitrum, Base, zkSync, Linea, Scroll, Taiko
+seo_title: Live L2 block time benchmark, Arbitrum, Base, zkSync, Linea, Scroll, Taiko
 seo_description: "Live wall-clock block time: Arbitrum sub-second, Base 2s, Optimism 2s, zkSync ~5s, Linea 3-6s, Blast 2s, Mantle 2s, Taiko 2-3s. p50/p90/p99 every 24h."
 subtitle: Wall-clock interval between two consecutive newHeads events on each L2 sequencer.
 category: Blockchains
@@ -13,7 +13,7 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  This benchmark measures the live block time of every major Ethereum Layer 2 - the actual wall-clock interval between two consecutive newHeads events on the sequencer, not the marketing figure each chain advertises. Arbitrum One leads with sub-second blocks (~250 ms median), built on Nitro's fast-finality fork. Optimism, Base, Blast and Mantle all cluster around the 2 s OP Stack default. zkSync Era, Linea and Scroll show batched cadence with p50 around 3-6 s and a long tail on idle gaps. Taiko's based rollup sits at the 3 s mark. The p99 column reveals stalls 2-3× the nominal block time on every L2 - the part marketing pages never quote.
+  This benchmark measures the live block time of every major Ethereum Layer 2, the actual wall-clock interval between two consecutive newHeads events on the sequencer, not the marketing figure each chain advertises. Arbitrum One leads with sub-second blocks (~250 ms median), built on Nitro's fast-finality fork. Optimism, Base, Blast and Mantle all cluster around the 2 s OP Stack default. zkSync Era, Linea and Scroll show batched cadence with p50 around 3-6 s and a long tail on idle gaps. Taiko's based rollup sits at the 3 s mark. The p99 column reveals stalls 2-3× the nominal block time on every L2, the part marketing pages never quote.
 
 abstract: |
   We measure the live block time of every major Ethereum L2 by holding a
@@ -27,19 +27,19 @@ abstract: |
   outlier sample is capped at 5 min so a reconnect can't pollute p50.
 
 methodology:
-  - "Cadence: continuous WebSocket subscription per L2 - one persistent connection, no polling."
+  - "Cadence: continuous WebSocket subscription per L2, one persistent connection, no polling."
   - "Subscribe payload: `{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_subscribe\",\"params\":[\"newHeads\"]}`. No API key, public endpoints (publicnode.com mostly, era.zksync.io/ws for zkSync)."
   - "Sample: block-time(N) = T_recv(N) − T_recv(N-1), measured in milliseconds with `time.Now()` precision on the harness clock. Block-number duplicates from the same connection are filtered."
   - "Sanity bound: any single sample > 5 min is dropped (reconnect artifact, never a real block-time)."
   - "Reconnect logic: exponential backoff 2 s → 60 s on dial / read errors. Per-chain `l2_block_time_reconnects_total` counter exposed for instability alerting."
   - "Endpoint health: client-side ping every 30 s defensive against idle close, pong handler resets the read deadline. publicnode and era.zksync.io endpoints verified live for 90-second windows during harness inception (full table in the harness README)."
-  - "Excluded by design: Polygon zkEVM and Mode (no public no-key WS available - would require an API-keyed contributor endpoint; deferred to v2). Starknet excluded - Cairo stack with a different RPC shape, would live in its own bench."
+  - "Excluded by design: Polygon zkEVM and Mode (no public no-key WS available, would require an API-keyed contributor endpoint; deferred to v2). Starknet excluded, Cairo stack with a different RPC shape, would live in its own bench."
 
 findings:
-  - "{{best_name}} currently leads at {{best_p50}} (p50, 24 h) - by far the fastest sequencer in the cohort."
+  - "{{best_name}} currently leads at {{best_p50}} (p50, 24 h), by far the fastest sequencer in the cohort."
   - "{{name:optimism}}, {{name:base}}, {{name:blast}} and {{name:mantle}} all sit around 2 s, matching the OP Stack's default sequencer interval ({{p50:optimism}} / {{p50:base}} / {{p50:blast}} / {{p50:mantle}})."
-  - "{{name:zksync}}, {{name:linea}} and {{name:scroll}} show variable p50 with a long tail - block production batches when traffic is low ({{p50:zksync}} / {{p50:linea}} / {{p50:scroll}})."
-  - "{{name:taiko}} clocks {{p50:taiko}} on a based-rollup design where Ethereum L1 validators sequence the L2 directly - fundamentally different from the sequencer model used by every other chain in this leaderboard."
+  - "{{name:zksync}}, {{name:linea}} and {{name:scroll}} show variable p50 with a long tail, block production batches when traffic is low ({{p50:zksync}} / {{p50:linea}} / {{p50:scroll}})."
+  - "{{name:taiko}} clocks {{p50:taiko}} on a based-rollup design where Ethereum L1 validators sequence the L2 directly, fundamentally different from the sequencer model used by every other chain in this leaderboard."
   - "{{count}} L2s measured live. Trailing the leaderboard: {{worst_name}} at {{worst_p50}} (p50)."
 
 source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/l2-block-time
@@ -49,17 +49,17 @@ prometheus:
 
 faq:
   - q: "What is the fastest Layer 2 block time?"
-    a: "Arbitrum One leads the leaderboard at sub-second block times - typically 200-300 ms median, occasionally spiking past 800 ms under load. Arbitrum Nitro's fast-finality fork is the reason: it commits blocks every 250 ms by default, far below the 2 s convention used by most OP Stack chains."
+    a: "Arbitrum One leads the leaderboard at sub-second block times, typically 200-300 ms median, occasionally spiking past 800 ms under load. Arbitrum Nitro's fast-finality fork is the reason: it commits blocks every 250 ms by default, far below the 2 s convention used by most OP Stack chains."
   - q: "Why are Base and Optimism block times so similar?"
-    a: "Base and Optimism both run the OP Stack with the same default sequencer cadence (2 s). Blast and Mantle are also OP Stack forks - their block times cluster identically. The architectural similarity is by design: OP Stack is meant to be a turnkey rollup framework where the sequencer interval is a configuration constant, not a chain-specific design choice."
+    a: "Base and Optimism both run the OP Stack with the same default sequencer cadence (2 s). Blast and Mantle are also OP Stack forks, their block times cluster identically. The architectural similarity is by design: OP Stack is meant to be a turnkey rollup framework where the sequencer interval is a configuration constant, not a chain-specific design choice."
   - q: "What is the block time on zkSync Era, Linea, and Scroll?"
     a: "zk rollups produce blocks in bursts rather than at a fixed cadence. p50 sits around 3-6 s but p90 / p99 can balloon to 15-30 s during idle periods because the sequencer waits for enough transactions to fill a batch before generating the validity proof. The nominal '2 s block time' those chains advertise is the within-burst figure, not the median observed externally."
   - q: "Is L2 block time the same as L2 finality?"
-    a: "No. Block time measures how often the sequencer produces a block - it's a soft confirmation, reversible if the sequencer decides to. Finality on an L2 means the L1 anchor batch is final on Ethereum, which takes 12-18 minutes (block posting + 12.8 min Casper finality) at best, and 7 days for optimistic rollups under contestation. We track the latter in a separate bench."
+    a: "No. Block time measures how often the sequencer produces a block, it's a soft confirmation, reversible if the sequencer decides to. Finality on an L2 means the L1 anchor batch is final on Ethereum, which takes 12-18 minutes (block posting + 12.8 min Casper finality) at best, and 7 days for optimistic rollups under contestation. We track the latter in a separate bench."
   - q: "How is the L2 block time measured here?"
     a: "We hold one persistent WebSocket subscription per L2 via `eth_subscribe('newHeads')`. Every new head event is timestamped on receipt and the difference between consecutive events is the block-time sample. p50 / p90 / p99 are computed via Prometheus `quantile_over_time` over the last 24 h. Reconnect artifacts above 5 min are filtered so a network blip can't skew the percentiles."
   - q: "What about Polygon zkEVM, Mode, Starknet and the rest?"
-    a: "Polygon zkEVM and Mode don't expose a public WebSocket endpoint without an API key, so we defer them to v2 when an API-keyed contributor endpoint lands. Starknet uses the Cairo stack with a different RPC shape - it would live in a dedicated bench rather than be shoehorned into the EVM cohort here. Berachain, Sonic and other adjacent chains are L1s, not L2s, so they live in the l1-finality bench."
+    a: "Polygon zkEVM and Mode don't expose a public WebSocket endpoint without an API key, so we defer them to v2 when an API-keyed contributor endpoint lands. Starknet uses the Cairo stack with a different RPC shape, it would live in a dedicated bench rather than be shoehorned into the EVM cohort here. Berachain, Sonic and other adjacent chains are L1s, not L2s, so they live in the l1-finality bench."
 
 providers:
   - slug: arbitrum

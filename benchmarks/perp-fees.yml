@@ -81,7 +81,7 @@ faq:
     a: "Open cost only. Funding is paid every hour you hold, not at open, so bundling it into a one-number leaderboard would conflate two different fee mechanics. The harness still records funding rate per venue (`perp_fees_funding_rate_per_hour_bps`, signed) so a trader can read both numbers and compute their own time-adjusted cost for a longer hold."
 
 # Asset selector. Tabs at the top of the page let the reader switch
-# between ETH, BTC, SOL - every PromQL query gets `chain="X"` injected
+# between ETH, BTC, SOL, every PromQL query gets `chain="X"` injected
 # server-side so each tab is its own ranking. Note: the harness uses
 # `chain` as the metric label even though semantically it's the
 # underlying asset, to reuse the existing dimension-filter mechanism.
