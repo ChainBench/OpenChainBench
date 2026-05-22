@@ -33,6 +33,13 @@ export function ChainHeadingsSummary({ benchmark }: { benchmark: Benchmark }) {
     benchmark.higherIsBetter ? b.ms.p50 - a.ms.p50 : a.ms.p50 - b.ms.p50
   );
 
+  // Look up per-chain explainer by slug. Map for O(1) access from the
+  // sort loop. When present, the slug's body is rendered as a second
+  // paragraph below the live p50 line.
+  const explainerBySlug = new Map(
+    (benchmark.perChainExplainer ?? []).map((e) => [e.slug, e])
+  );
+
   return (
     <section
       aria-label={`Per-chain ${benchmark.metric.toLowerCase()}`}
@@ -44,29 +51,44 @@ export function ChainHeadingsSummary({ benchmark }: { benchmark: Benchmark }) {
       <p className="mt-3 text-sm text-ink-muted">
         Live p50 over the last 24 hours, ranked{" "}
         {benchmark.higherIsBetter ? "highest" : "lowest"} first. Each chain has
-        its own consensus mechanism - the explainer below matches what the
+        its own consensus mechanism. The explainer below matches what the
         harness actually measures.
       </p>
 
-      <div className="mt-8 space-y-7">
-        {sorted.map((r) => (
-          <article key={r.slug}>
-            <h3 className="display text-xl tracking-tight text-ink">
-              {r.name} {benchmark.metric.toLowerCase()}
-            </h3>
-            <p className="mt-2 text-base leading-relaxed text-ink-soft">
-              <span className="font-semibold text-ink">
-                {fmtUnit(r.ms.p50, benchmark.unit)}
-              </span>{" "}
-              p50 over the last 24 hours
-              {r.successRate < 99
-                ? ` · ${r.successRate.toFixed(1)}% success rate`
-                : ""}
-              {r.tag ? ` · ${r.tag}` : ""}
-              .
-            </p>
-          </article>
-        ))}
+      <div className="mt-8 space-y-8">
+        {sorted.map((r) => {
+          const explainer = explainerBySlug.get(r.slug);
+          // Heading: prefer the YAML-declared H2 string when present (it
+          // can phrase the heading more naturally than the default
+          // "{name} {metric}" template). Each heading gets an id={slug}
+          // so URLs like /benchmarks/l1-finality#ethereum land at the
+          // exact section, which directly answers GSC long-tail queries.
+          const heading =
+            explainer?.h2 ?? `${r.name} ${benchmark.metric.toLowerCase()}`;
+          return (
+            <article key={r.slug} id={r.slug} className="scroll-mt-20">
+              <h2 className="display text-xl tracking-tight text-ink">
+                {heading}
+              </h2>
+              <p className="mt-2 text-base leading-relaxed text-ink-soft">
+                <span className="font-semibold text-ink">
+                  {fmtUnit(r.ms.p50, benchmark.unit)}
+                </span>{" "}
+                p50 over the last 24 hours
+                {r.successRate < 99
+                  ? ` · ${r.successRate.toFixed(1)}% success rate`
+                  : ""}
+                {r.tag ? ` · ${r.tag}` : ""}
+                .
+              </p>
+              {explainer?.body && (
+                <p className="mt-3 text-base leading-relaxed text-ink-soft">
+                  {explainer.body}
+                </p>
+              )}
+            </article>
+          );
+        })}
       </div>
     </section>
   );

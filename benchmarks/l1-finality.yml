@@ -10,18 +10,80 @@ seo_intro: |
   This page measures L1 finality time live for every major Layer-1 blockchain, with p50 / p90 / p99 refreshed every 10 seconds. Stellar finality time is ~5 seconds, the close interval the Stellar Consensus Protocol locks in via federated Byzantine agreement. Solana finality time goes from sub-second on the processed commitment to ~12.8 s on finalized after 32 confirmed slots. Ethereum finality time is ~12.8 minutes, the 2-epoch Casper FFG window. Hedera finality time clears in 3-5 seconds via Hashgraph aBFT. SUI finality time and TON finality time both sit under one second via Mysticeti DAG-BFT and BAG consensus. BNB and Avalanche finality time land near two seconds through fast-finality forks. Probabilistic chains (Litecoin, Monero, Cardano) settle on a confirmation-depth convention measured here in minutes.
 
 faq:
+  - q: "What is blockchain finality?"
+    a: "Blockchain finality is the point at which a confirmed transaction cannot be reversed without breaking the protocol's security assumptions. Two finality models exist. Deterministic finality (Ethereum Casper FFG, Stellar SCP, Hedera Hashgraph) reaches an explicit consensus commitment that the network treats as irreversible. Probabilistic finality (Bitcoin, Litecoin, Monero, Cardano) leaves a non-zero reorg probability that decreases exponentially with confirmation depth. This benchmark measures the wall-clock time each chain needs to reach its native finality threshold."
+  - q: "Probabilistic vs deterministic finality, what is the difference?"
+    a: "Deterministic finality is a binary state. A block is either finalized or it is not, and finalized blocks cannot be reorganized. Probabilistic finality is a confidence curve: a block becomes more final with each confirmation that builds on top of it. Exchanges set a convention (Bitcoin 6, Litecoin 6, Monero 10, Cardano 15) past which they treat funds as settled, but the protocol itself never declares strict finality. This benchmark uses each chain's native convention rather than imposing a uniform depth across all chains."
   - q: "What is Ethereum finality time?"
-    a: "Ethereum finality time is ~12.8 minutes. That's 2 epochs of 32 slots × 12 seconds, the window Casper FFG needs to justify and finalize a checkpoint. This benchmark measures it live by polling eth_getBlockByNumber(\"latest\") and eth_getBlockByNumber(\"finalized\") every 10 seconds and taking their timestamp delta."
+    a: "Ethereum finality time is {{p50:ethereum}} (p50, 24h). That is 2 epochs of 32 slots of 12 seconds each, the window Casper FFG needs to justify and finalize a checkpoint. The benchmark measures it live by polling eth_getBlockByNumber(\"latest\") and eth_getBlockByNumber(\"finalized\") every 10 seconds and taking the timestamp delta."
   - q: "What is Solana finality time?"
-    a: "Solana exposes two commitments. Processed is optimistic and lands sub-second - typically under 500 ms. Finalized requires 32 confirmed slots and clocks around 12.8 seconds. The leaderboard value here is finalized, the stricter guarantee. Solana finality time at the sub-second tier is real but only at the processed commitment level."
-  - q: "What is Hedera finality time?"
-    a: "Hedera finality time is 3 to 5 seconds via Hashgraph asynchronous Byzantine fault tolerant (aBFT) consensus. The mirror node only exposes already-final blocks, so true wall-clock measurement of consensus lag is currently impossible from public endpoints. We re-enable Hedera once the Block Node service (HIP-1056) leaves private preview."
+    a: "Solana exposes two commitments. Processed is optimistic and lands sub-second, typically under 500 ms. Finalized requires 32 confirmed slots and clocks {{p50:solana}} (p50, 24h). The leaderboard value is finalized, the stricter guarantee. Sub-second Solana finality is real but only at the processed commitment level, not finalized."
+  - q: "What is SUI finality time?"
+    a: "SUI clocks {{p50:sui}} (p50, 24h) on this benchmark via the Mysticeti DAG-BFT consensus protocol. The chain exposes millisecond-precision timestamps so the measurement is genuinely sub-second. Mysticeti's two-vote commitment pattern reaches deterministic finality without the multi-block confirmation depth used by classical Byzantine fault tolerant chains."
+  - q: "What is TON finality time?"
+    a: "TON's BAG consensus pushes masterchain finality to {{p50:ton}} (p50, 24h), one of the lowest deterministic finalities measured on this leaderboard. TON's design splits state across a masterchain and many workchains. The figure here is the masterchain commit, the canonical reference for cross-chain settlement."
   - q: "What is Stellar finality time?"
-    a: "Stellar uses the Stellar Consensus Protocol, a federated Byzantine agreement that reaches deterministic finality at every ledger close - roughly every 5 seconds, no probabilistic confirmation needed. This benchmark records wall-clock time between a new ledger appearing on the Horizon stream and its SCP-final commit."
+    a: "Stellar uses the Stellar Consensus Protocol, a federated Byzantine agreement that reaches deterministic finality at every ledger close, roughly every 5 seconds, no probabilistic confirmation needed. p50 sits at {{p50:stellar}} (24h). The benchmark records wall-clock time between a new ledger appearing on the Horizon stream and its SCP-final commit."
+  - q: "What is Hedera finality time?"
+    a: "Hedera finality time is documented at 3 to 5 seconds via Hashgraph asynchronous Byzantine fault tolerant (aBFT) consensus. The mirror node only exposes already-final blocks, so true wall-clock measurement of consensus lag is currently impossible from public endpoints. We re-enable Hedera once the Block Node service (HIP-1056) leaves private preview."
+  - q: "What is BNB Chain finality time?"
+    a: "BNB Smart Chain finalizes via the BEP-126 fast-finality fork, dropping the confirmation depth that legacy probabilistic chains require. p50 sits at {{p50:bnb}} (24h), measured via persistent WebSocket subscription that records T1 when block N first appears as latest and T2 when it crosses the finalized threshold."
+  - q: "What is Cardano finality time?"
+    a: "Cardano runs Ouroboros Praos, a probabilistic proof-of-stake consensus. Full settlement is k = 2160 blocks deep (~12 hours). This benchmark reports {{p50:cardano}} (p50, 24h) at the 15-confirmation convention used by major exchanges (Coinbase, Kraken) as practical settlement, not the theoretical full window."
   - q: "Which blockchain has the fastest finality time?"
     a: "Sub-second BFT chains lead. TON and SUI both clock under one second on this live benchmark. BNB and Avalanche sit around one to two seconds via their fast-finality forks. Solana finalized lands around 12.8 s, Ethereum at 12.8 min, and probabilistic chains (Litecoin, Monero, Cardano) trail at 15 to 30 minutes by confirmation-depth convention."
   - q: "How is L1 finality time measured on this page?"
-    a: "Two methods, picked per chain. RPC pollers compare latest vs finalized block timestamps every 10 seconds - used for Ethereum, Solana, TRON, Stellar, SUI, TON, Litecoin, Monero, Cardano. WebSocket subscribers record wall-clock time T1 when a block first appears on the head stream and T2 when it crosses the finality threshold, giving millisecond-precision lag for sub-poll chains (BNB, Avalanche)."
+    a: "Two methods, picked per chain. RPC pollers compare latest vs finalized block timestamps every 10 seconds, used for Ethereum, Solana, TRON, Stellar, SUI, TON, Litecoin, Monero, Cardano. WebSocket subscribers record wall-clock time T1 when a block first appears on the head stream and T2 when it crosses the finality threshold, giving millisecond-precision lag for sub-poll chains (BNB, Avalanche)."
+
+per_chain_explainer:
+  - slug: ethereum
+    h2: "Ethereum finality time"
+    body: |
+      Ethereum finality time is {{p50:ethereum}} (p50, 24h). Casper FFG finalizes a checkpoint two epochs after it is justified, where each epoch is 32 slots of 12 seconds, the documented 12.8-minute target. Finality is deterministic once reached, but reorgs of unfinalized blocks remain possible inside the two-epoch window. Measured by polling `eth_getBlockByNumber("finalized")` against `latest` every 10 seconds and reporting the timestamp delta.
+  - slug: solana
+    h2: "Solana finality time"
+    body: |
+      Solana exposes two commitments. Processed is optimistic and lands sub-second, typically under 500 ms. Finalized requires 32 confirmed slots and clocks {{p50:solana}} (p50, 24h) on this benchmark. The leaderboard value is finalized, the stricter guarantee. Sub-second Solana finality is real but only at the processed commitment level. Measured via `getSlot{commitment:"processed"}` and `getSlot{commitment:"finalized"}` translated through block timestamps.
+  - slug: stellar
+    h2: "Stellar finality time"
+    body: |
+      Stellar uses the Stellar Consensus Protocol, a federated Byzantine agreement that reaches deterministic finality at every ledger close. p50 sits at {{p50:stellar}} (24h), aligned with the documented 5-second close interval. No probabilistic confirmation, no reorg window. Measured via the Horizon `/ledgers?cursor=now&order=asc` SSE stream, recording wall-clock T1 on first ledger sight and T2 on the next SCP-final commit.
+  - slug: hedera
+    h2: "Hedera finality time"
+    body: |
+      Hedera finality time is documented at 3 to 5 seconds via Hashgraph asynchronous Byzantine fault tolerant (aBFT) consensus. The mirror node only exposes already-final blocks, so true wall-clock measurement of consensus lag is currently impossible from public endpoints. This chain is excluded from the live leaderboard for that reason. We re-enable Hedera once the Block Node service (HIP-1056) leaves private preview.
+  - slug: sui
+    h2: "SUI finality time"
+    body: |
+      SUI clocks {{p50:sui}} (p50, 24h) on this benchmark via the Mysticeti DAG-BFT consensus protocol. The chain exposes millisecond-precision timestamps, so the measurement is genuinely sub-second. Mysticeti's two-vote commitment pattern reaches deterministic finality without the multi-block confirmation depth used by classical Byzantine fault tolerant chains. Measured via `sui_getLatestCheckpointSequenceNumber` minus a 5-checkpoint lookback.
+  - slug: ton
+    h2: "TON finality time"
+    body: |
+      TON's BAG consensus pushes masterchain finality to {{p50:ton}} (p50, 24h), one of the lowest deterministic finalities measured on this leaderboard. TON's design splits state across a masterchain and many workchains; the figure reported here is the masterchain commit, the canonical reference for cross-chain settlement. Measured via the tonapi.io `/blockchain/masterchain-head` endpoint with a 3-seqno lookback.
+  - slug: bnb
+    h2: "BNB Chain finality time"
+    body: |
+      BNB Smart Chain finalizes via the BEP-126 fast-finality fork, dropping the confirmation depth that legacy probabilistic chains require. p50 sits at {{p50:bnb}} (24h), measured via persistent WebSocket subscription that records T1 when block N first appears as `latest` and T2 when it crosses the finalized threshold. The WS approach gives millisecond precision on a chain whose block timestamps have 1-second granularity.
+  - slug: avalanche
+    h2: "Avalanche finality time"
+    body: |
+      Avalanche C-Chain uses Snowman++ consensus and reaches finality at {{p50:avalanche}} (p50, 24h). The Avalanche family targets sub-second finality through a sampled-voting protocol that converges with high probability after a few rounds of random validator queries. Measured via persistent WebSocket subscription on the C-Chain, recording wall-clock between latest and finalized block emission.
+  - slug: tron
+    h2: "TRON finality time"
+    body: |
+      TRON's solidity confirmation hovers around {{p50:tron}} (p50, 24h), matching the documented 20-block delay at 3-second block intervals. The solidity flag in TRON consensus is the chain's equivalent of finalized: a block survives until 20 confirmations before being considered irreversible. Measured via `/wallet/getnowblock` (head) minus `/walletsolidity/getnowblock` (solidity-confirmed).
+  - slug: cardano
+    h2: "Cardano finality time"
+    body: |
+      Cardano runs Ouroboros Praos, a probabilistic proof-of-stake consensus. Full settlement is k = 2160 blocks deep (~12 hours), the worst-case window before a chain is unconditionally final. This benchmark reports {{p50:cardano}} (p50, 24h) at the 15-confirmation convention used by major exchanges (Coinbase, Kraken) as practical settlement, not the theoretical full window. Measured via koios `/tip` minus a 15-confirmation lookback.
+  - slug: litecoin
+    h2: "Litecoin finality time"
+    body: |
+      Litecoin is a probabilistic chain with a 2.5-minute target block interval. Finality is set by convention at 6 confirmations, giving p50 = {{p50:litecoin}} (24h). The exact wall-clock depends on block-time variance: a fast streak yields shorter finality, a slow streak extends it. Measured via blockchair `/stats.best_block_height` minus a 6-confirmation lookback.
+  - slug: monero
+    h2: "Monero finality time"
+    body: |
+      Monero is a probabilistic chain with a 2-minute target block interval. Finality convention is 10 confirmations (a higher depth reflecting Monero's lower-throughput chain mining a smaller security budget), giving p50 = {{p50:monero}} (24h). Measured via the monero-rpc `get_info` endpoint minus a 10-confirmation lookback through `get_block_header_by_height`.
 
 category: Blockchains
 status: live
