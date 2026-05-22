@@ -81,7 +81,6 @@ const ORG_JSONLD = {
       sameAs: [
         SITE.github,
         `https://twitter.com/${SITE.twitter.replace(/^@/, "")}`,
-        `https://reddit.com/r/${SITE.name.toLowerCase()}`,
       ],
     },
     {
