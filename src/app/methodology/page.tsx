@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { methodologyPageLd } from "@/lib/hub-jsonld";
+import { safeJsonLd } from "@/lib/jsonld";
 import { pageMetadata } from "@/lib/page-metadata";
 
 export const metadata: import("next").Metadata = pageMetadata({
@@ -79,6 +81,14 @@ const STEPS = [
 export default function MethodologyPage() {
   return (
     <article className="mx-auto max-w-5xl px-4 sm:px-6 py-8 sm:py-12">
+      {methodologyPageLd().map((ld, i) => (
+        <script
+          key={i}
+          type="application/ld+json"
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: serialized via safeJsonLd
+          dangerouslySetInnerHTML={{ __html: safeJsonLd(ld) }}
+        />
+      ))}
       {/* Hero */}
       <header className="pb-2">
         <h1 className="display text-4xl sm:text-5xl tracking-tight text-ink">

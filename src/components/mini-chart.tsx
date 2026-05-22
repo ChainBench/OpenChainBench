@@ -41,7 +41,7 @@ export function MiniChart({
     .map((r) => ({
       slug: r.slug,
       name: r.name,
-      values: benchmark.extras.series24h[r.slug] ?? [],
+      values: downsample(benchmark.extras.series24h[r.slug] ?? [], 28),
       color: colors.get(r.slug) ?? "var(--color-ink-soft)",
     }))
     .filter((s) => s.values.length > 1);
@@ -130,4 +130,27 @@ export function MiniChart({
       )}
     </div>
   );
+}
+
+// 48-px-tall sparkline can't render >~30 distinct points anyway. Bucket
+// long series down so the rendered SVG path stays compact (each kept
+// point is the bucket mean, preserving the shape that drove the polyline
+// at full resolution). Cuts the /benchmarks HTML payload sharply when
+// the grid is showing every bench's series at once.
+function downsample(values: number[], target: number): number[] {
+  if (values.length <= target) return values;
+  const bucketSize = values.length / target;
+  const out: number[] = [];
+  for (let i = 0; i < target; i++) {
+    const start = Math.floor(i * bucketSize);
+    const end = Math.floor((i + 1) * bucketSize);
+    let sum = 0;
+    let n = 0;
+    for (let j = start; j < end && j < values.length; j++) {
+      sum += values[j];
+      n++;
+    }
+    if (n > 0) out.push(sum / n);
+  }
+  return out;
 }

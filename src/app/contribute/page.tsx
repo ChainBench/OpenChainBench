@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { AiBriefBlock } from "@/components/ai-brief-block";
+import { contributePageLd } from "@/lib/hub-jsonld";
+import { safeJsonLd } from "@/lib/jsonld";
 import { pageMetadata } from "@/lib/page-metadata";
 
 export const metadata: Metadata = pageMetadata({
@@ -132,6 +134,14 @@ function CodeChip({ children }: { children: React.ReactNode }) {
 export default function ContributePage() {
   return (
     <article className="mx-auto max-w-5xl px-4 sm:px-6 py-8 sm:py-12">
+      {contributePageLd().map((ld, i) => (
+        <script
+          key={i}
+          type="application/ld+json"
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: serialized via safeJsonLd
+          dangerouslySetInnerHTML={{ __html: safeJsonLd(ld) }}
+        />
+      ))}
       <p className="label-mono text-ink-faint">TUTORIAL</p>
 
       <h1 className="mt-3 display text-4xl sm:text-5xl text-ink tracking-tight">
