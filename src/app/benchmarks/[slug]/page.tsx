@@ -17,7 +17,7 @@ import { ReportSection } from "@/components/report-section";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
 import { headlineSentence } from "@/lib/citation";
 import { SITE } from "@/data/site";
-import { safeJsonLd } from "@/lib/jsonld";
+import { buildFaqPageJsonLd, safeJsonLd } from "@/lib/jsonld";
 import type { Benchmark } from "@/types/benchmark";
 
 export const revalidate = 60;
@@ -205,34 +205,33 @@ export default async function BenchmarkPage({
           },
         ],
       },
-      // FAQPage entry is emitted only when the spec declares `faq:`. Google
-      // requires every Question/Answer pair to also appear visibly on the
-      // page - the FaqSection below renders them, so the JSON-LD is honest.
-      ...(benchmark.faq && benchmark.faq.length > 0
-        ? [
-            {
-              "@type": "FAQPage",
-              "@id": `${benchmarkUrl}#faq`,
-              mainEntity: benchmark.faq.map((item) => ({
-                "@type": "Question",
-                name: item.q,
-                acceptedAnswer: {
-                  "@type": "Answer",
-                  text: item.a,
-                },
-              })),
-            },
-          ]
-        : []),
     ],
   };
+
+  // FAQPage is emitted as a standalone JSON-LD block (not nested inside
+  // the @graph above). Both shapes validate, but Search Console
+  // historically registers more rich-result hits on standalone FAQPage
+  // scripts, and the @graph-nested variant we shipped previously netted
+  // zero. Strip inline markdown from each answer so backticks and asterisks
+  // don't leak into the SERP snippet. The visible FAQ section below
+  // mirrors every question/answer, satisfying Google's "content visible
+  // on the page" requirement.
+  const faqJsonLd = buildFaqPageJsonLd(benchmark.faq, benchmarkUrl);
 
   return (
     <article className="mx-auto max-w-5xl px-4 sm:px-6 pt-10 sm:pt-14">
       <script
         type="application/ld+json"
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: serialized via safeJsonLd
         dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
       />
+      {faqJsonLd && (
+        <script
+          type="application/ld+json"
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: serialized via safeJsonLd
+          dangerouslySetInnerHTML={{ __html: safeJsonLd(faqJsonLd) }}
+        />
+      )}
       {/* Visible breadcrumb trail - duplicates the JSON-LD BreadcrumbList
           so Google can show the crumb above the URL in the SERP. */}
       <nav
