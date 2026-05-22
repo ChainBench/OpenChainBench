@@ -73,7 +73,7 @@ abstract: |
   dual-mode arrives in v1.0.1 methodology PR.
 
 methodology:
-  - "Source endpoints (all base64 sendTransaction, all submitted from a Railway us-east node) — Jito: `https://ny.mainnet.block-engine.jito.wtf/api/v1/transactions`. Helius Sender: `http://ewr-sender.helius-rpc.com/fast?swqos_only=true` (mandatory `skipPreflight=true`, `maxRetries=0`). Nozomi: `https://ewr.nozomi.temporal.xyz/?c=<KEY>`. Astralane: `https://ny.gateway.astralane.io/iris?api-key=<KEY>` (non-canonical 3-element params with `mevProtect=true`). 0slot: `https://ny.0slot.trade?api-key=<KEY>`."
+  - "Source endpoints (base64 sendTransaction, us-east Railway node): Jito `ny.mainnet.block-engine.jito.wtf/api/v1/transactions`. Helius Sender `ewr-sender.helius-rpc.com/fast?swqos_only=true` (requires skipPreflight + maxRetries=0). Nozomi `ewr.nozomi.temporal.xyz/?c=<KEY>`. Astralane `ny.gateway.astralane.io/iris?api-key=<KEY>` (non-canonical 3-elem params, mevProtect=true). 0slot `ny.0slot.trade?api-key=<KEY>`."
   - "Probe payload. 5 instructions in this exact order: SetComputeUnitLimit(50,000) + SetComputeUnitPrice(50,000 micro-lamports/CU) + SystemProgram.Transfer(payer→payer, 1 lamport) + SystemProgram.Transfer(payer→service tip wallet, floor lamports) + Memo(`ocb-<cycle_id>-<service>-<mode>`). cycle_id is an 8-byte random hex shared across the five parallel probes of one cycle, so the on-chain memos correlate."
   - "Tip floors (pre-registered, methodology PR + 14-day window to change). Jito 10,000 lamports. Helius Sender 10,000. Astralane 500,000 net of refunds. Nozomi 1,000,000. 0slot 1,000,000."
   - "Submission flow. One getLatestBlockhash(processed) shared across all five probes of a cycle. One getSlot(processed) captured before send — used as submit_slot. The five probes fire in parallel goroutines, sign, POST. Each returns a signature; we poll getSignatureStatuses on the public RPC every 1 s. First non-null confirmationStatus == confirmed or finalized counts as landed; land_slot is read from the response context."
@@ -108,12 +108,6 @@ faq:
     a: "V0-Lean cadence = 1 probe per service per hour from 1 region. 168 = 24 hours × 7 days. The 7-day publication window is the trade-off between statistical resolution (sample size grows with window) and freshness (shorter window reflects current chain conditions). At ~168 samples per cell, p50 is stable to within ±5 % and p99 to within ±15 %. Lower confidence intervals are unlocked at V0.5 cadence (1 / 10 min, ~$760 / mo) and above."
 
 source: https://github.com/MobulaFi/mobula-monorepo/tree/main/miniapps/solana-tx-landing
-
-methodology_doc: https://github.com/OpenChainBench/OpenChainBench/blob/main/docs/methodology/solana-tx-landing-active.md
-
-related_benches:
-  - slug: solana-tx-landing
-    relation: "Observational counterpart — measures market share via on-chain tip-wallet attribution (who carries the flow). Read both."
 
 prometheus:
   window: 7d
