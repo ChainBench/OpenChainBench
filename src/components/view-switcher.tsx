@@ -76,29 +76,6 @@ export function ViewSwitcher({
     };
   }, [open]);
 
-  // Wheel-to-cycle while popover open. Captures every wheel event whose
-  // target is inside the popover and shifts the active view by one. We
-  // throttle via a ref so a single trackpad swipe (which emits dozens
-  // of low-delta events) doesn't sprint through every option in 16 ms.
-  const wheelLockRef = useRef(0);
-  useEffect(() => {
-    if (!open) return;
-    const onWheel = (e: WheelEvent) => {
-      if (!wrapRef.current?.contains(e.target as Node)) return;
-      e.preventDefault();
-      const now = Date.now();
-      if (now - wheelLockRef.current < 90) return;
-      wheelLockRef.current = now;
-      const idx = allowed.indexOf(value);
-      if (idx === -1) return;
-      const delta = e.deltaY > 0 ? 1 : -1;
-      const next = allowed[(idx + delta + allowed.length) % allowed.length];
-      onChange(next);
-    };
-    document.addEventListener("wheel", onWheel, { passive: false });
-    return () => document.removeEventListener("wheel", onWheel);
-  }, [open, allowed, value, onChange]);
-
   if (allowed.length <= 1) return null;
 
   const ActiveIcon = META[value].icon;
@@ -109,7 +86,7 @@ export function ViewSwitcher({
     <div ref={wrapRef} className="relative shrink-0">
       <button
         type="button"
-        title={`View: ${META[value].label} (scroll inside the menu to cycle)`}
+        title={`View: ${META[value].label}`}
         aria-label={`Change chart view, currently ${META[value].label}`}
         aria-haspopup="menu"
         aria-expanded={open}
@@ -151,9 +128,6 @@ export function ViewSwitcher({
               </button>
             );
           })}
-          <div className="px-3 py-1.5 border-t border-rule text-[10px] font-sans uppercase tracking-[0.14em] text-ink-faint bg-paper-soft/50">
-            Scroll to cycle
-          </div>
         </div>
       )}
     </div>
