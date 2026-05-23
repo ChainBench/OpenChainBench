@@ -86,11 +86,16 @@ export function DistributionChart({
                 }
               }}
               title={methodologyTooltip(r, isOff)}
-              className={`grid grid-cols-[minmax(8rem,11rem)_1fr_3.5rem_3.5rem] sm:grid-cols-[minmax(10rem,14rem)_1fr_4rem_4rem] items-center gap-3 sm:gap-4 py-3 border-b border-rule/50 last:border-b-0 cursor-pointer transition-colors hover:bg-paper-soft/40 ${
+              className={`grid grid-cols-[minmax(6rem,9rem)_1fr_3rem_3rem] sm:grid-cols-[minmax(7rem,10rem)_1fr_3.5rem_3.5rem] items-center gap-3 sm:gap-4 py-3 border-b border-rule/50 last:border-b-0 cursor-pointer transition-colors hover:bg-paper-soft/40 ${
                 isOff ? "opacity-40" : ""
               }`}
             >
-              <span className="flex items-center gap-2 min-w-0">
+              {/* Identity column right-aligned: pushes the logo+name flush
+                  against the track start so the eye reads
+                  name → track without a white gap to cross. Empty space
+                  (when name is short like 'BNB') stays on the LEFT
+                  edge of the row where it's off the visual path. */}
+              <span className="flex items-center gap-2 min-w-0 justify-end">
                 <ProviderLogo slug={r.slug} name={r.name} size={18} />
                 <span
                   className={`font-sans font-medium text-[12.5px] truncate ${
