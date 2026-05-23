@@ -65,7 +65,7 @@ function syncParam(
 
 function summarize(b: Benchmark | undefined): ChainMeta | null {
   if (!b) return null;
-  const live = b.results.filter((r) => r.ms.p50 > 0);
+  const live = b.results.filter((r) => r.availability !== "unavailable" && r.ms.p50 > 0);
   if (live.length === 0) return { providers: 0, metric: b.metric };
   const sorted = [...live].sort((a, c) =>
     b.higherIsBetter ? c.ms.p50 - a.ms.p50 : a.ms.p50 - c.ms.p50

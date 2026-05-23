@@ -23,11 +23,16 @@ type Props = {
 export function LedgerTable({ benchmark }: Props) {
   const { results, unit, extras } = benchmark;
   const secondary = results[0]?.secondary?.label;
-  const sorted = [...results].sort(
-    benchmark.higherIsBetter
-      ? (a, b) => b.ms.p50 - a.ms.p50
-      : (a, b) => a.ms.p50 - b.ms.p50,
-  );
+  // Sort by p50 then push unavailable providers to the bottom. Without
+  // the secondary sort they'd land at rank #1 on lower-is-better benches
+  // because their placeholder p50 is 0 - which is what made 0slot, then
+  // cardano, show up as "fastest" in the recent SERP screenshots.
+  const sorted = [...results].sort((a, b) => {
+    const aOff = a.availability === "unavailable" ? 1 : 0;
+    const bOff = b.availability === "unavailable" ? 1 : 0;
+    if (aOff !== bOff) return aOff - bOff;
+    return benchmark.higherIsBetter ? b.ms.p50 - a.ms.p50 : a.ms.p50 - b.ms.p50;
+  });
   const colors = buildProviderColors(results);
 
   const allSeries = Object.values(extras.series24h).flat();
@@ -127,13 +132,14 @@ function Row({
   sparkMax: number;
   color: string;
 }) {
+  const isOffline = r.availability === "unavailable";
   const deltaPct = fieldP50 > 0 ? ((r.ms.p50 - fieldP50) / fieldP50) * 100 : 0;
   const deltaSign = deltaPct > 0 ? "+" : deltaPct < 0 ? "−" : "±";
   // Inline p50 bar width relative to the field max
   const barPct = Math.max(2, (r.ms.p50 / maxP50) * 100);
 
   return (
-    <tr className="border-b border-rule transition-colors hover:bg-paper-soft/50">
+    <tr className={`border-b border-rule transition-colors hover:bg-paper-soft/50 ${isOffline ? "opacity-65" : ""}`}>
       {/* Color accent. left edge of row */}
       <td
         className="p-0 align-middle"
@@ -141,7 +147,7 @@ function Row({
       >
         <span
           className="block w-[3px] h-7 rounded-sm"
-          style={{ background: color }}
+          style={{ background: isOffline ? "var(--color-ink-faint)" : color }}
           aria-hidden
         />
       </td>
@@ -154,7 +160,7 @@ function Row({
           {isRegion(r.slug) ? (
             <span
               className="font-semibold truncate min-w-0"
-              style={{ color }}
+              style={{ color: isOffline ? "var(--color-ink-muted)" : color }}
             >
               {r.name}
             </span>
@@ -162,69 +168,89 @@ function Row({
             <Link
               href={`/products/${r.slug}`}
               className="font-semibold hover:underline underline-offset-2 truncate min-w-0"
-              style={{ color }}
+              style={{ color: isOffline ? "var(--color-ink-muted)" : color }}
             >
               {r.name}
             </Link>
           )}
-          {r.tag && (
+          {r.tag && !isOffline && (
             <span className="hidden sm:inline-block truncate max-w-[140px] md:max-w-[220px] font-sans text-[10px] uppercase tracking-[0.14em] text-ink-muted">
               {r.tag}
             </span>
           )}
-          {r.type && (
+          {isOffline && (
+            <span
+              className="inline-flex items-center gap-1 shrink-0 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-muted"
+              title="No samples returned this cycle — provider or its upstream is currently unavailable. Values will reappear once data resumes."
+            >
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-[var(--color-warn,#c08a3c)]" aria-hidden />
+              Currently unavailable
+            </span>
+          )}
+          {r.type && !isOffline && (
             <span className="hidden md:inline-flex">
               <ProviderTypeBadge type={r.type} />
             </span>
           )}
         </span>
       </td>
-      {/* p50 with inline data bar */}
-      <td className="py-2.5 px-3 text-right whitespace-nowrap">
-        <span className="inline-flex items-center gap-2 justify-end">
-          <span
-            className="hidden sm:inline-block h-1.5 rounded-sm"
-            style={{
-              width: `${barPct * 0.45}px`,
-              background: `${color}26`, // 15% alpha
-              borderLeft: `2px solid ${color}`,
-            }}
-            aria-hidden
-          />
-          <span className="text-ink whitespace-nowrap">
-            {fmtUnit(r.ms.p50, unit)}
-          </span>
-        </span>
-      </td>
-      <td className="py-2.5 px-3 text-right text-ink-soft whitespace-nowrap hidden md:table-cell">
-        {fmtUnit(r.ms.p90, unit)}
-      </td>
-      <td className="py-2.5 px-3 text-right text-ink-soft whitespace-nowrap hidden md:table-cell">
-        {fmtUnit(r.ms.p99, unit)}
-      </td>
-      <td className="py-2.5 px-3 text-right text-ink-soft whitespace-nowrap hidden md:table-cell">
-        {fmtUnit(r.ms.mean, unit)}
-      </td>
-      <td className="py-2.5 px-3 text-right text-ink-muted whitespace-nowrap hidden md:table-cell">
-        {fieldP50 > 0 ? `${deltaSign}${Math.abs(deltaPct).toFixed(0)}%` : "-"}
-      </td>
-      <td className="py-2.5 px-3 text-right text-ink-soft whitespace-nowrap hidden md:table-cell">
-        {r.successRate.toFixed(2)}%
-      </td>
-      <td className="py-2.5 pl-3 text-right">
-        <span className="inline-flex items-center justify-end">
-          <Sparkline
-            values={series}
-            color={color}
-            globalMin={sparkMin}
-            globalMax={sparkMax}
-          />
-        </span>
-      </td>
-      {hasSecondary && (
-        <td className="py-2.5 pl-3 text-right text-ink-soft">
-          {r.secondary?.value ?? "-"}
+      {isOffline ? (
+        <td
+          colSpan={hasSecondary ? 8 : 7}
+          className="py-2.5 px-3 text-right text-ink-faint italic text-[12px]"
+        >
+          Awaiting next successful scrape
         </td>
+      ) : (
+        <>
+          {/* p50 with inline data bar */}
+          <td className="py-2.5 px-3 text-right whitespace-nowrap">
+            <span className="inline-flex items-center gap-2 justify-end">
+              <span
+                className="hidden sm:inline-block h-1.5 rounded-sm"
+                style={{
+                  width: `${barPct * 0.45}px`,
+                  background: `${color}26`, // 15% alpha
+                  borderLeft: `2px solid ${color}`,
+                }}
+                aria-hidden
+              />
+              <span className="text-ink whitespace-nowrap">
+                {fmtUnit(r.ms.p50, unit)}
+              </span>
+            </span>
+          </td>
+          <td className="py-2.5 px-3 text-right text-ink-soft whitespace-nowrap hidden md:table-cell">
+            {fmtUnit(r.ms.p90, unit)}
+          </td>
+          <td className="py-2.5 px-3 text-right text-ink-soft whitespace-nowrap hidden md:table-cell">
+            {fmtUnit(r.ms.p99, unit)}
+          </td>
+          <td className="py-2.5 px-3 text-right text-ink-soft whitespace-nowrap hidden md:table-cell">
+            {fmtUnit(r.ms.mean, unit)}
+          </td>
+          <td className="py-2.5 px-3 text-right text-ink-muted whitespace-nowrap hidden md:table-cell">
+            {fieldP50 > 0 ? `${deltaSign}${Math.abs(deltaPct).toFixed(0)}%` : "-"}
+          </td>
+          <td className="py-2.5 px-3 text-right text-ink-soft whitespace-nowrap hidden md:table-cell">
+            {r.successRate.toFixed(2)}%
+          </td>
+          <td className="py-2.5 pl-3 text-right">
+            <span className="inline-flex items-center justify-end">
+              <Sparkline
+                values={series}
+                color={color}
+                globalMin={sparkMin}
+                globalMax={sparkMax}
+              />
+            </span>
+          </td>
+          {hasSecondary && (
+            <td className="py-2.5 pl-3 text-right text-ink-soft">
+              {r.secondary?.value ?? "-"}
+            </td>
+          )}
+        </>
       )}
     </tr>
   );

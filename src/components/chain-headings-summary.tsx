@@ -18,7 +18,7 @@ import { fmtUnit } from "@/lib/format";
  * No-op when the bench has no live data yet.
  */
 export function ChainHeadingsSummary({ benchmark }: { benchmark: Benchmark }) {
-  const liveResults = benchmark.results.filter((r) => r.ms.p50 > 0);
+  const liveResults = benchmark.results.filter((r) => r.availability !== "unavailable" && r.ms.p50 > 0);
   if (liveResults.length === 0) return null;
 
   // Render for benches whose providers ARE chains - currently the
