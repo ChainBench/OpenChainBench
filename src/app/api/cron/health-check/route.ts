@@ -44,10 +44,13 @@ type ProviderState = {
 };
 
 function isAuthorized(req: NextRequest): boolean {
-  const secret = process.env.CRON_SECRET;
+  // Trim both sides. The vercel UI / `vercel env add` paste flow has
+  // historically appended a trailing newline to multi-line copies, which
+  // would otherwise produce a constant 401 with no obvious explanation.
+  const secret = (process.env.CRON_SECRET ?? "").trim();
   if (!secret) return true; // dev mode, no auth required
-  const auth = req.headers.get("authorization") ?? "";
-  return auth === `Bearer ${secret}`;
+  const header = (req.headers.get("authorization") ?? "").trim();
+  return header === `Bearer ${secret}`;
 }
 
 export async function GET(req: NextRequest) {
