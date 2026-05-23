@@ -1,11 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import type { Benchmark } from "@/types/benchmark";
+import { liveResults } from "@/lib/provider-filters";
 import { ProviderLogo } from "@/components/provider-logo";
 import { fmtUnit } from "@/lib/format";
 import { methodologyTooltip } from "@/lib/methodology-tooltip";
 import { buildProviderColors } from "@/lib/series-colors";
+import { useChartExclusion } from "@/hooks/use-chart-exclusion";
 
 /**
  * Latency-spread view. One row per provider, three markers (p50 / p90 /
@@ -32,28 +34,14 @@ export function DistributionChart({
   onToggleExclude?: (slug: string) => void;
 }) {
   const { results, unit, higherIsBetter } = benchmark;
-  const [internalExcluded, setInternalExcluded] = useState<Set<string>>(
-    () => new Set(),
+  const { excluded, toggle } = useChartExclusion(
+    controlledExcluded,
+    onToggleExclude,
   );
-  const excluded = controlledExcluded ?? internalExcluded;
-  const toggle = (slug: string) => {
-    if (onToggleExclude) {
-      onToggleExclude(slug);
-      return;
-    }
-    setInternalExcluded((prev) => {
-      const next = new Set(prev);
-      if (next.has(slug)) next.delete(slug);
-      else next.add(slug);
-      return next;
-    });
-  };
 
   const colors = useMemo(() => buildProviderColors(results), [results]);
 
-  const live = results.filter(
-    (r) => r.availability !== "unavailable" && r.ms.p50 > 0,
-  );
+  const live = liveResults(results);
   if (live.length === 0) {
     return <p className="text-[12px] text-ink-faint py-8 text-center">No data.</p>;
   }
