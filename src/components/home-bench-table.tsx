@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import type { Benchmark } from "@/types/benchmark";
+import { Hint } from "@/components/hint";
 import { MiniChart } from "@/components/mini-chart";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
 import { leader, fieldValue } from "@/lib/citation";
@@ -85,12 +86,12 @@ function BenchTitleCell({ b }: { b: Benchmark }) {
         </span>
         <ul className="flex items-center gap-1">
           {chips.map((c) => (
-            <li
-              key={c.slug}
-              className="inline-flex items-center justify-center w-5 h-5 rounded-full border border-rule bg-surface text-[9px] font-semibold text-ink-muted"
-              title={c.name}
-            >
-              {c.name.charAt(0)}
+            <li key={c.slug} className="inline-flex">
+              <Hint label={c.name}>
+                <span className="inline-flex items-center justify-center w-5 h-5 rounded-full border border-rule bg-surface text-[9px] font-semibold text-ink-muted">
+                  {c.name.charAt(0)}
+                </span>
+              </Hint>
             </li>
           ))}
         </ul>
