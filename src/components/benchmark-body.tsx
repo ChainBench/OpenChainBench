@@ -1,5 +1,6 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import type { Benchmark } from "@/types/benchmark";
 import { ChainTabs } from "@/components/chain-tabs";
@@ -127,8 +128,21 @@ export function BenchmarkBody({
   initialChain: string | null;
   initialRegion: string | null;
 }) {
-  const [chain, setChain] = useState<string | null>(initialChain);
-  const [region, setRegion] = useState<string | null>(initialRegion);
+  // Read ?chain= / ?region= client-side. The server can't read these any
+  // more (doing so would force /benchmarks/<slug> to render dynamic on
+  // every visit) so URL-driven filter state is hydrated here. Falls back
+  // to the server-rendered initial when the URL has no filter or a
+  // value that doesn't match the spec's dimensions.
+  const searchParams = useSearchParams();
+  const urlChain = searchParams.get("chain");
+  const urlRegion = searchParams.get("region");
+  const resolvedInitialChain =
+    (urlChain && chainOptions.find((c) => c.value === urlChain)?.value) ?? initialChain;
+  const resolvedInitialRegion =
+    (urlRegion && regionOptions.find((r) => r.value === urlRegion)?.value) ?? initialRegion;
+
+  const [chain, setChain] = useState<string | null>(resolvedInitialChain);
+  const [region, setRegion] = useState<string | null>(resolvedInitialRegion);
 
   useEffect(() => {
     const url = new URL(window.location.href);

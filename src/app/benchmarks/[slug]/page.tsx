@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -59,40 +60,25 @@ export async function generateMetadata({
 
 export default async function BenchmarkPage({
   params,
-  searchParams,
 }: {
   params: Promise<Params>;
-  searchParams: Promise<{ chain?: string; region?: string }>;
 }) {
   const { slug } = await params;
-  const sp = await searchParams;
 
-  // Resolve the dimension filters against what the spec declares. Each
-  // dimension defaults to its first option (typically `all`) when the
-  // URL doesn't specify one.
+  // The page renders the no-filter ("all") view server-side and lets the
+  // client component swap to a ?chain= / ?region= variant after hydration.
+  // Reading searchParams here used to flip the route to fully dynamic,
+  // which made vercel respond with `cache-control: private, no-store` on
+  // every bench page - the slowest visit-by-visit story on the site. Going
+  // fully static lets the CDN keep each /benchmarks/<slug> warm for the
+  // 60 s revalidate window, so every region's edge serves the page in
+  // sub-100 ms after one warm-up.
   const aggregate = await getBenchmark(slug);
   if (!aggregate) notFound();
   const chainOptions = aggregate.dimensions?.chain ?? [];
   const regionOptions = aggregate.dimensions?.region ?? [];
-  // 404 on unknown ?chain= / ?region= so the page can't be cached at the
-  // ISR layer per garbage value. Falling through to the default option
-  // used to produce a 200 with default render, blowing up cache cardinality.
-  if (typeof sp.chain === "string" && sp.chain && !chainOptions.find((c) => c.value === sp.chain)) {
-    notFound();
-  }
-  if (typeof sp.region === "string" && sp.region && !regionOptions.find((r) => r.value === sp.region)) {
-    notFound();
-  }
-  const matchedChain =
-    chainOptions.find((c) => c.value === sp.chain)?.value ??
-    chainOptions[0]?.value ??
-    null;
-  const matchedRegion =
-    regionOptions.find((r) => r.value === sp.region)?.value ??
-    regionOptions[0]?.value ??
-    null;
-  const chain = chainOptions.length > 0 ? matchedChain : null;
-  const region = regionOptions.length > 0 ? matchedRegion : null;
+  const chain = chainOptions[0]?.value ?? null;
+  const region = regionOptions[0]?.value ?? null;
 
   // Pre-fetch every (chain × region) variant in parallel so client flips
   // are zero round-trip. unstable_cache dedupes each (slug, filters) combo
@@ -364,13 +350,15 @@ export default async function BenchmarkPage({
           chain variant pre-fetched server-side. flipping a tab swaps which
           variant is rendered, instantly, no network round-trip. */}
       {!isDraft && (
-        <BenchmarkBody
-          variants={variants}
-          chainOptions={chainOptions}
-          regionOptions={regionOptions}
-          initialChain={chain ?? null}
-          initialRegion={region ?? null}
-        />
+        <Suspense fallback={null}>
+          <BenchmarkBody
+            variants={variants}
+            chainOptions={chainOptions}
+            regionOptions={regionOptions}
+            initialChain={chain ?? null}
+            initialRegion={region ?? null}
+          />
+        </Suspense>
       )}
 
       {isDraft && <DraftNotice source={benchmark.source} />}
