@@ -66,6 +66,7 @@ source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/agg
 
 prometheus:
   window: 24h
+  expected_freshness_seconds: 3600
 
 faq:
   - q: "Which token metadata API has the best coverage for fresh launches?"

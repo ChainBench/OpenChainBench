@@ -104,6 +104,7 @@ source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/val
 
 prometheus:
   window: 24h
+  expected_freshness_seconds: 1800
 
 # Real metrics emitted by the validator-yield harness:
 #   ocb_validator_net_yield_bps{chain, validator, name}        gauge (APR × uptime, bps)

@@ -217,6 +217,19 @@ export const SpecSchema = z
           .refine(isPublicHttpsUrl, "Prometheus URL must be https:// and resolve to a public host (no loopback / RFC1918 / link-local / metadata IPs)")
           .optional(),
         window: window.optional(),
+        /**
+         * Cadence-aware freshness threshold for the cron health-check
+         * alerter. A provider is treated as offline when no samples landed
+         * in the last `expected_freshness_seconds`. Default 600 (10 min)
+         * fits the high-frequency 10-30 s scrapers. Long-cadence benches
+         * (5 min, 30 min, 1 h, 6 h) need to declare their own value here
+         * - otherwise the cron sees them as offline most of the time and
+         * spams slack on every probe gap.
+         *
+         * Rule of thumb: set this to roughly 2-3 x the scrape interval
+         * so one missed cycle is tolerated, two missed cycles fire.
+         */
+        expected_freshness_seconds: z.number().int().positive().optional(),
       })
       .optional(),
 

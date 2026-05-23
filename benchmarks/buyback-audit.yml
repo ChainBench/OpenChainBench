@@ -95,6 +95,7 @@ source: https://github.com/MobulaFi/mobula-monorepo/tree/main/miniapps/buyback-a
 
 prometheus:
   window: 7d
+  expected_freshness_seconds: 1800
 
 # Real metrics emitted by the buyback-audit harness:
 #   ocb_buyback_executed_usd{protocol, window}              gauge (USD)
