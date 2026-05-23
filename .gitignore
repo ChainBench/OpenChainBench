@@ -36,6 +36,21 @@ yarn-error.log*
 # vercel
 .vercel
 
+# Internal-only docs that must NOT ship with the open-source repo.
+# Patterns reserved as a tripwire: if a contributor adds a new doc with
+# one of these naming conventions, git won't track it without an
+# explicit override. The legacy individual filenames stay for safety in
+# case anyone restores them from git history locally.
+docs/solana-landing-deployment-checklist.md
+docs/solana-landing-tiered-architecture.md
+docs/solana-landing-cost-model.md
+docs/solana-landing-active-bench-plan.md
+docs/france-cryptos-roadmap.md
+docs/*-internal.md
+docs/*-roadmap.md
+docs/*-checklist.md
+docs/*-cost-model.md
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
