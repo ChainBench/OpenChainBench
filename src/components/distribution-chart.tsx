@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import type { Benchmark } from "@/types/benchmark";
 import { liveResults } from "@/lib/provider-filters";
+import { Hint } from "@/components/hint";
 import { ProviderLogo } from "@/components/provider-logo";
 import { fmtUnit } from "@/lib/format";
 import { methodologyTooltip } from "@/lib/methodology-tooltip";
@@ -127,30 +128,33 @@ export function DistributionChart({
                       aria-hidden
                     />
                     {/* p99 — vertical bar, right edge of the spread */}
-                    <span
-                      className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-0.5 h-3.5 rounded-sm"
-                      style={{ left: `${p99Pct}%`, background: color }}
-                      title={`p99 ${fmtUnit(r.ms.p99, unit)}`}
-                      aria-label={`p99 ${fmtUnit(r.ms.p99, unit)}`}
-                    />
+                    <Hint label={`p99 ${fmtUnit(r.ms.p99, unit)}`}>
+                      <span
+                        className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-0.5 h-3.5 rounded-sm"
+                        style={{ left: `${p99Pct}%`, background: color }}
+                        aria-label={`p99 ${fmtUnit(r.ms.p99, unit)}`}
+                      />
+                    </Hint>
                     {/* p90 — outlined ring */}
-                    <span
-                      className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-2.5 h-2.5 rounded-full"
-                      style={{
-                        left: `${p90Pct}%`,
-                        border: `1.5px solid ${color}`,
-                        background: "var(--color-paper)",
-                      }}
-                      title={`p90 ${fmtUnit(r.ms.p90, unit)}`}
-                      aria-label={`p90 ${fmtUnit(r.ms.p90, unit)}`}
-                    />
+                    <Hint label={`p90 ${fmtUnit(r.ms.p90, unit)}`}>
+                      <span
+                        className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-2.5 h-2.5 rounded-full"
+                        style={{
+                          left: `${p90Pct}%`,
+                          border: `1.5px solid ${color}`,
+                          background: "var(--color-paper)",
+                        }}
+                        aria-label={`p90 ${fmtUnit(r.ms.p90, unit)}`}
+                      />
+                    </Hint>
                     {/* p50 — filled dot, the headline */}
-                    <span
-                      className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3 h-3 rounded-full"
-                      style={{ background: color }}
-                      title={`p50 ${fmtUnit(r.ms.p50, unit)}`}
-                      aria-label={`p50 ${fmtUnit(r.ms.p50, unit)}`}
-                    />
+                    <Hint label={`p50 ${fmtUnit(r.ms.p50, unit)}`}>
+                      <span
+                        className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3 h-3 rounded-full"
+                        style={{ background: color }}
+                        aria-label={`p50 ${fmtUnit(r.ms.p50, unit)}`}
+                      />
+                    </Hint>
                   </>
                 )}
               </div>
