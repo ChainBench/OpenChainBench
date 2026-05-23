@@ -114,6 +114,16 @@ const RAW: Record<string, string> = {
   // (pairs alias to chain/asset logos in the ALIASES block below)
   chainlink: "/logos/chainlink.svg",
   dogecoin: "/logos/dogecoin.svg",
+
+  // ─── Data / API providers (alternatives + products pages) ───
+  alchemy: "/logos/alchemy.svg",
+  birdeye: "/logos/birdeye.png",
+  bitquery: "/logos/bitquery.png",
+  coingecko: "/logos/coingecko.webp",
+  dune: "/logos/dune.svg",
+  "pump-portal": "/logos/pump-portal.svg",
+  quicknode: "/logos/quicknode.svg",
+  "the-graph": "/logos/the-graph.svg",
 };
 
 // Asset-symbol aliases used by perp-fees as chain dimension values.
