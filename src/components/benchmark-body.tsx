@@ -10,8 +10,11 @@ import { RankedBarChart } from "@/components/ranked-bar-chart";
 import { RegionGrid } from "@/components/region-grid";
 import { CountLeaderboard } from "@/components/count-leaderboard";
 import { SummaryStat } from "@/components/summary-stat";
+import { ViewSwitcher } from "@/components/view-switcher";
 import { fmtUnit, unitSuffix, fmtValue } from "@/lib/format";
 import { computeFieldStats } from "@/lib/stats";
+import { defaultViewFor, viewsForBenchmark } from "@/lib/views";
+import { useViewPreference } from "@/hooks/use-view-preference";
 import type { ChainMeta } from "@/components/chain-tabs";
 
 type ChainOption = { value: string; label: string };
@@ -168,6 +171,14 @@ export function BenchmarkBody({
   const { fieldMin, fieldMedian, fieldMax, tailMin, tailMax, tailSpread } =
     computeFieldStats(benchmark.results);
 
+  // View switcher state. Per-bench, persisted via localStorage. Default
+  // mirrors the heuristic the page used before the switcher existed so
+  // an anonymous user with no prior preference sees the same layout
+  // they always saw.
+  const allowedViews = viewsForBenchmark(benchmark);
+  const defaultView = defaultViewFor(benchmark);
+  const [view, setView] = useViewPreference(benchmark.slug, defaultView, allowedViews);
+
   // Region tabs derived from chart-only per-region series data when the spec
   // doesn't declare `dimensions.region`. Keeping the affordance at the top
   // alongside Chain so both filters live in one visual block instead of
@@ -230,50 +241,48 @@ export function BenchmarkBody({
         </div>
       )}
 
-      {!isDraft && benchmark.unit === "count" && (
-        <>
-          <CountLeaderboard benchmark={benchmark} />
-          <div className="mt-10 card-soft rounded-xl p-4 sm:p-6 lg:p-8">
-            <p className="label-mono text-ink-faint mb-4">
-              Product ledger
-            </p>
-            <LedgerTable benchmark={benchmark} />
-          </div>
-        </>
+      {!isDraft && benchmark.unit !== "count" && (
+        <dl className="mt-10 card rounded-xl grid grid-cols-2 sm:flex sm:flex-wrap divide-y divide-x sm:divide-y-0 divide-rule overflow-hidden">
+          <SummaryStat
+            label="Best"
+            value={`${fmtValue(fieldMin, benchmark.unit)}${unitSuffix(benchmark.unit)}`}
+          />
+          <SummaryStat
+            label="Median"
+            value={`${fmtValue(fieldMedian, benchmark.unit)}${unitSuffix(benchmark.unit)}`}
+          />
+          <SummaryStat
+            label="Worst"
+            value={`${fmtValue(fieldMax, benchmark.unit)}${unitSuffix(benchmark.unit)}`}
+          />
+          <SummaryStat
+            label="Spread"
+            value={tailSpread > 0 ? `${tailSpread.toFixed(1)}×` : "-"}
+            hint={
+              tailSpread > 0
+                ? `${fmtUnit(tailMin, benchmark.unit)} → ${fmtUnit(tailMax, benchmark.unit)}`
+                : undefined
+            }
+          />
+        </dl>
       )}
 
-      {!isDraft && benchmark.unit !== "count" && (
+      {!isDraft && (
         <>
-          <dl className="mt-10 card rounded-xl grid grid-cols-2 sm:flex sm:flex-wrap divide-y divide-x sm:divide-y-0 divide-rule overflow-hidden">
-            <SummaryStat
-              label="Best"
-              value={`${fmtValue(fieldMin, benchmark.unit)}${unitSuffix(benchmark.unit)}`}
-            />
-            <SummaryStat
-              label="Median"
-              value={`${fmtValue(fieldMedian, benchmark.unit)}${unitSuffix(benchmark.unit)}`}
-            />
-            <SummaryStat
-              label="Worst"
-              value={`${fmtValue(fieldMax, benchmark.unit)}${unitSuffix(benchmark.unit)}`}
-            />
-            <SummaryStat
-              label="Spread"
-              value={tailSpread > 0 ? `${tailSpread.toFixed(1)}×` : "-"}
-              hint={
-                tailSpread > 0
-                  ? `${fmtUnit(tailMin, benchmark.unit)} → ${fmtUnit(tailMax, benchmark.unit)}`
-                  : undefined
-              }
-            />
-          </dl>
-
-          <div className="mt-8 card-soft rounded-xl p-4 sm:p-6 lg:p-8">
-            {benchmark.results.length >= 3 ||
-            benchmark.unit === "bps" ||
-            benchmark.unit === "pct" ? (
-              <RankedBarChart benchmark={benchmark} />
-            ) : (
+          <div
+            className={`card-soft rounded-xl p-4 sm:p-6 lg:p-8 ${
+              benchmark.unit === "count" ? "mt-8" : "mt-8"
+            }`}
+          >
+            {/* Switcher hides itself when only 1 view is available. The
+                empty flex row still reserves the space so the chart
+                doesn't bounce when toggling views. */}
+            <div className="flex items-center justify-end mb-4">
+              <ViewSwitcher allowed={allowedViews} value={view} onChange={setView} />
+            </div>
+            {view === "countLeaderboard" && <CountLeaderboard benchmark={benchmark} />}
+            {view === "rankedBar" && <RankedBarChart benchmark={benchmark} />}
+            {view === "timeseries" && (
               <TimeSeriesChart
                 benchmark={benchmark}
                 region={showChartRegionRow ? chartRegion : undefined}
@@ -283,17 +292,20 @@ export function BenchmarkBody({
 
           <div className="mt-8 card-soft rounded-xl p-4 sm:p-6 lg:p-8">
             <p className="label-mono text-ink-faint mb-4">
-              Product ledger · sorted by p50
+              {benchmark.unit === "count"
+                ? "Product ledger"
+                : "Product ledger · sorted by p50"}
             </p>
             <LedgerTable benchmark={benchmark} />
           </div>
 
-          {Object.keys(benchmark.extras.regions).length > 0 && (
-            <div className="mt-8 card-soft rounded-xl p-4 sm:p-6 lg:p-8">
-              <p className="label-mono text-ink-faint mb-4">By region</p>
-              <RegionGrid benchmark={benchmark} />
-            </div>
-          )}
+          {benchmark.unit !== "count" &&
+            Object.keys(benchmark.extras.regions).length > 0 && (
+              <div className="mt-8 card-soft rounded-xl p-4 sm:p-6 lg:p-8">
+                <p className="label-mono text-ink-faint mb-4">By region</p>
+                <RegionGrid benchmark={benchmark} />
+              </div>
+            )}
         </>
       )}
     </>
