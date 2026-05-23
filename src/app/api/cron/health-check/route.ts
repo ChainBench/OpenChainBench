@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { getBenchmarkSlugs } from "@/data/benchmarks";
 import { getSpecs } from "@/lib/spec";
@@ -57,9 +58,29 @@ function isAuthorized(req: NextRequest): boolean {
   // historically appended a trailing newline to multi-line copies, which
   // would otherwise produce a constant 401 with no obvious explanation.
   const secret = (process.env.CRON_SECRET ?? "").trim();
-  if (!secret) return true; // dev mode, no auth required
   const header = (req.headers.get("authorization") ?? "").trim();
-  return header === `Bearer ${secret}`;
+
+  // Fail closed in production: without a configured CRON_SECRET the
+  // cron route would otherwise accept any request, exposing the alert
+  // and prom-probe machinery to anyone who guesses the URL. Keep the
+  // permissive "any request OK" fall-through for local dev only.
+  if (!secret) {
+    if (process.env.NODE_ENV === "production") return false;
+    return true;
+  }
+
+  // Constant-time comparison. The previous `header === \`Bearer ${secret}\``
+  // shortcut leaked the secret one byte at a time under a remote timing
+  // attack (response latency varied with prefix-match length). Pad to
+  // equal length before comparing so timingSafeEqual never throws on
+  // mismatched buffer sizes, then AND the equality with a length check
+  // so a shorter-but-prefix-matching header still fails.
+  const expected = Buffer.from(`Bearer ${secret}`);
+  const provided = Buffer.from(header);
+  const padded = Buffer.alloc(expected.length);
+  provided.copy(padded);
+  const lengthMatches = provided.length === expected.length;
+  return timingSafeEqual(padded, expected) && lengthMatches;
 }
 
 export async function GET(req: NextRequest) {
