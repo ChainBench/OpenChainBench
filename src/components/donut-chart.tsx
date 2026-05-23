@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import type { Benchmark } from "@/types/benchmark";
 import { ProviderLogo } from "@/components/provider-logo";
+import { methodologyTooltip } from "@/lib/methodology-tooltip";
 import { buildProviderColors } from "@/lib/series-colors";
 
 /**
@@ -14,12 +16,37 @@ import { buildProviderColors } from "@/lib/series-colors";
  * Unavailable providers and zero-valued rows are skipped so they don't
  * eat the legend without contributing to the total.
  */
-export function DonutChart({ benchmark }: { benchmark: Benchmark }) {
+export function DonutChart({
+  benchmark,
+  excluded: controlledExcluded,
+  onToggleExclude,
+}: {
+  benchmark: Benchmark;
+  excluded?: Set<string>;
+  onToggleExclude?: (slug: string) => void;
+}) {
   const { results } = benchmark;
+  const [internalExcluded, setInternalExcluded] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const excluded = controlledExcluded ?? internalExcluded;
+  const toggle = (slug: string) => {
+    if (onToggleExclude) {
+      onToggleExclude(slug);
+      return;
+    }
+    setInternalExcluded((prev) => {
+      const next = new Set(prev);
+      if (next.has(slug)) next.delete(slug);
+      else next.add(slug);
+      return next;
+    });
+  };
 
-  const live = results.filter(
+  const liveAll = results.filter(
     (r) => r.availability !== "unavailable" && r.ms.p50 > 0,
   );
+  const live = liveAll.filter((r) => !excluded.has(r.slug));
   const total = live.reduce((s, r) => s + r.ms.p50, 0);
   if (live.length === 0 || total <= 0) {
     return (
@@ -107,32 +134,50 @@ export function DonutChart({ benchmark }: { benchmark: Benchmark }) {
           </text>
         </svg>
         <ul className="flex-1 flex flex-col gap-1.5 min-w-0">
-          {sorted.map((r) => {
-            const share = r.ms.p50 / total;
-            const color = colors.get(r.slug) ?? "var(--color-ink-soft)";
-            return (
-              <li
-                key={r.slug}
-                className="flex items-center gap-2 text-[12px] min-w-0"
-              >
-                <span
-                  className="inline-block w-2.5 h-2.5 rounded-sm shrink-0"
-                  style={{ background: color }}
-                  aria-hidden
-                />
-                <ProviderLogo slug={r.slug} name={r.name} size={16} />
-                <span
-                  className="font-serif font-semibold truncate"
-                  style={{ color }}
+          {[...liveAll]
+            .sort((a, b) => b.ms.p50 - a.ms.p50)
+            .map((r) => {
+              const isOff = excluded.has(r.slug);
+              const share = isOff ? 0 : r.ms.p50 / total;
+              const color = colors.get(r.slug) ?? "var(--color-ink-soft)";
+              return (
+                <li
+                  key={r.slug}
+                  role="button"
+                  tabIndex={0}
+                  aria-pressed={isOff}
+                  title={methodologyTooltip(r, isOff)}
+                  onClick={() => toggle(r.slug)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      toggle(r.slug);
+                    }
+                  }}
+                  className={`flex items-center gap-2 text-[12px] min-w-0 cursor-pointer rounded-sm px-1 py-0.5 transition-colors hover:bg-paper-soft/40 ${
+                    isOff ? "opacity-40" : ""
+                  }`}
                 >
-                  {r.name}
-                </span>
-                <span className="ml-auto tabular text-ink-muted shrink-0">
-                  {(share * 100).toFixed(1)}%
-                </span>
-              </li>
-            );
-          })}
+                  <span
+                    className="inline-block w-2.5 h-2.5 rounded-sm shrink-0"
+                    style={{ background: color }}
+                    aria-hidden
+                  />
+                  <ProviderLogo slug={r.slug} name={r.name} size={16} />
+                  <span
+                    className={`font-serif font-semibold truncate ${
+                      isOff ? "line-through decoration-1" : ""
+                    }`}
+                    style={{ color: isOff ? "var(--color-ink-faint)" : color }}
+                  >
+                    {r.name}
+                  </span>
+                  <span className="ml-auto tabular text-ink-muted shrink-0">
+                    {isOff ? "—" : `${(share * 100).toFixed(1)}%`}
+                  </span>
+                </li>
+              );
+            })}
         </ul>
       </div>
     </div>

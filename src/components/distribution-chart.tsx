@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import type { Benchmark } from "@/types/benchmark";
 import { ProviderLogo } from "@/components/provider-logo";
 import { fmtUnit } from "@/lib/format";
+import { methodologyTooltip } from "@/lib/methodology-tooltip";
 import { buildProviderColors } from "@/lib/series-colors";
 
 /**
@@ -13,10 +15,37 @@ import { buildProviderColors } from "@/lib/series-colors";
  * view (rank order) by surfacing tail behaviour at a glance.
  *
  * Skips unavailable rows and rows with p50 == 0 so the field scale isn't
- * collapsed to a single column by missing-data placeholders.
+ * collapsed to a single column by missing-data placeholders. Excluded
+ * rows are dimmed but still rendered so the reader sees what they hid.
  */
-export function DistributionChart({ benchmark }: { benchmark: Benchmark }) {
+export function DistributionChart({
+  benchmark,
+  excluded: controlledExcluded,
+  onToggleExclude,
+}: {
+  benchmark: Benchmark;
+  /** Shared exclusion set with the rest of the bench's chart views.
+   *  When omitted the chart manages its own local state. */
+  excluded?: Set<string>;
+  onToggleExclude?: (slug: string) => void;
+}) {
   const { results, unit, higherIsBetter } = benchmark;
+  const [internalExcluded, setInternalExcluded] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const excluded = controlledExcluded ?? internalExcluded;
+  const toggle = (slug: string) => {
+    if (onToggleExclude) {
+      onToggleExclude(slug);
+      return;
+    }
+    setInternalExcluded((prev) => {
+      const next = new Set(prev);
+      if (next.has(slug)) next.delete(slug);
+      else next.add(slug);
+      return next;
+    });
+  };
 
   const live = results.filter(
     (r) => r.availability !== "unavailable" && r.ms.p50 > 0,
@@ -33,10 +62,10 @@ export function DistributionChart({ benchmark }: { benchmark: Benchmark }) {
     higherIsBetter ? b.ms.p50 - a.ms.p50 : a.ms.p50 - b.ms.p50,
   );
 
-  // Shared scale across providers so the bars are directly comparable.
-  // Anchor at 0 and the max of p99 across the field; one outlier widens
-  // everyone, which is the point (you want to see who's tail-heavy).
-  const fieldMax = Math.max(...live.map((r) => r.ms.p99));
+  // Field scale recomputes from visible rows only - excluding an outlier
+  // lets the remaining providers fill the track.
+  const visible = sorted.filter((r) => !excluded.has(r.slug));
+  const fieldMax = Math.max(...visible.map((r) => r.ms.p99), 1);
   const scale = (v: number) => Math.max(0, Math.min(100, (v / fieldMax) * 100));
 
   const colors = buildProviderColors(results);
@@ -45,7 +74,7 @@ export function DistributionChart({ benchmark }: { benchmark: Benchmark }) {
     <div className="w-full">
       <div className="flex items-center justify-between mb-4">
         <p className="label-mono text-ink-faint">
-          Latency distribution · p50 / p90 / p99
+          Latency distribution · p50 / p90 / p99 · click rows to exclude
         </p>
         <p className="label-mono text-ink-faint hidden sm:block">
           0 → {fmtUnit(fieldMax, unit)}
@@ -53,17 +82,36 @@ export function DistributionChart({ benchmark }: { benchmark: Benchmark }) {
       </div>
       <ul className="flex flex-col divide-y divide-rule">
         {sorted.map((r) => {
+          const isOff = excluded.has(r.slug);
           const color = colors.get(r.slug) ?? "var(--color-ink-soft)";
-          const p50Pct = scale(r.ms.p50);
-          const p90Pct = scale(r.ms.p90);
-          const p99Pct = scale(r.ms.p99);
+          const p50Pct = isOff ? 0 : scale(r.ms.p50);
+          const p90Pct = isOff ? 0 : scale(r.ms.p90);
+          const p99Pct = isOff ? 0 : scale(r.ms.p99);
           return (
-            <li key={r.slug} className="py-3">
+            <li
+              key={r.slug}
+              role="button"
+              tabIndex={0}
+              aria-pressed={isOff}
+              onClick={() => toggle(r.slug)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  toggle(r.slug);
+                }
+              }}
+              title={methodologyTooltip(r, isOff)}
+              className={`py-3 cursor-pointer rounded-sm transition-colors hover:bg-paper-soft/40 ${
+                isOff ? "opacity-40" : ""
+              }`}
+            >
               <div className="flex items-center gap-2 mb-2 min-w-0">
                 <ProviderLogo slug={r.slug} name={r.name} size={18} />
                 <span
-                  className="font-serif font-semibold truncate text-[13px]"
-                  style={{ color }}
+                  className={`font-serif font-semibold truncate text-[13px] ${
+                    isOff ? "line-through decoration-1" : ""
+                  }`}
+                  style={{ color: isOff ? "var(--color-ink-faint)" : color }}
                 >
                   {r.name}
                 </span>
@@ -73,22 +121,22 @@ export function DistributionChart({ benchmark }: { benchmark: Benchmark }) {
               </div>
               {/* Track */}
               <div className="relative h-4 rounded-sm bg-paper-soft">
-                {/* p50 → p99 spread band */}
-                <div
-                  className="absolute top-1/2 -translate-y-1/2 h-1 rounded-full"
-                  style={{
-                    left: `${Math.min(p50Pct, p99Pct)}%`,
-                    width: `${Math.abs(p99Pct - p50Pct)}%`,
-                    background: `${color}40`,
-                  }}
-                  aria-hidden
-                />
-                {/* p50 marker */}
-                <Marker pct={p50Pct} color={color} label="p50" tip={fmtUnit(r.ms.p50, unit)} />
-                {/* p90 marker */}
-                <Marker pct={p90Pct} color={color} label="p90" tip={fmtUnit(r.ms.p90, unit)} dimmed />
-                {/* p99 marker */}
-                <Marker pct={p99Pct} color={color} label="p99" tip={fmtUnit(r.ms.p99, unit)} dimmed />
+                {!isOff && (
+                  <>
+                    <div
+                      className="absolute top-1/2 -translate-y-1/2 h-1 rounded-full"
+                      style={{
+                        left: `${Math.min(p50Pct, p99Pct)}%`,
+                        width: `${Math.abs(p99Pct - p50Pct)}%`,
+                        background: `${color}40`,
+                      }}
+                      aria-hidden
+                    />
+                    <Marker pct={p50Pct} color={color} label="p50" tip={fmtUnit(r.ms.p50, unit)} />
+                    <Marker pct={p90Pct} color={color} label="p90" tip={fmtUnit(r.ms.p90, unit)} dimmed />
+                    <Marker pct={p99Pct} color={color} label="p99" tip={fmtUnit(r.ms.p99, unit)} dimmed />
+                  </>
+                )}
               </div>
             </li>
           );

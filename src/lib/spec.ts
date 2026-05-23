@@ -330,6 +330,7 @@ async function tryLoadLive(
         successRate: success != null ? (success > 1 ? success : success * 100) : 100,
         sampleSize: sampleSize ?? undefined,
         secondary: p.secondary,
+        query: q.p50,
       });
 
       if (q.series) {

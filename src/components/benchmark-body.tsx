@@ -181,6 +181,21 @@ export function BenchmarkBody({
   const defaultView = defaultViewFor(benchmark);
   const [view, setView] = useViewPreference(benchmark.slug, defaultView, allowedViews);
 
+  // Shared exclusion set across every chart view on this page. A reader
+  // who hides a provider on the ranked-bar view sees the same provider
+  // hidden when they switch to distribution or donut - the model is
+  // "this is the field of providers the reader chose to focus on",
+  // not "what each view chose to drop". Resets on bench navigation.
+  const [excluded, setExcluded] = useState<Set<string>>(() => new Set());
+  const toggleExclude = (slug: string) =>
+    setExcluded((prev) => {
+      const next = new Set(prev);
+      if (next.has(slug)) next.delete(slug);
+      else next.add(slug);
+      return next;
+    });
+  const resetExcluded = () => setExcluded(new Set());
+
   // Region tabs derived from chart-only per-region series data when the spec
   // doesn't declare `dimensions.region`. Keeping the affordance at the top
   // alongside Chain so both filters live in one visual block instead of
@@ -283,9 +298,28 @@ export function BenchmarkBody({
               <ViewSwitcher allowed={allowedViews} value={view} onChange={setView} />
             </div>
             {view === "countLeaderboard" && <CountLeaderboard benchmark={benchmark} />}
-            {view === "rankedBar" && <RankedBarChart benchmark={benchmark} />}
-            {view === "distribution" && <DistributionChart benchmark={benchmark} />}
-            {view === "donut" && <DonutChart benchmark={benchmark} />}
+            {view === "rankedBar" && (
+              <RankedBarChart
+                benchmark={benchmark}
+                excluded={excluded}
+                onToggleExclude={toggleExclude}
+                onResetExcluded={resetExcluded}
+              />
+            )}
+            {view === "distribution" && (
+              <DistributionChart
+                benchmark={benchmark}
+                excluded={excluded}
+                onToggleExclude={toggleExclude}
+              />
+            )}
+            {view === "donut" && (
+              <DonutChart
+                benchmark={benchmark}
+                excluded={excluded}
+                onToggleExclude={toggleExclude}
+              />
+            )}
             {view === "timeseries" && (
               <TimeSeriesChart
                 benchmark={benchmark}

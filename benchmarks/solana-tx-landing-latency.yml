@@ -116,61 +116,70 @@ prometheus:
 # Real metrics emitted by the active prober in solana-tx-landing harness:
 #   solana_landing_probe_success_total{service, mode, region}              counter
 #   solana_landing_probe_dropped_total{service, mode, region, reason}      counter
-#   solana_landing_probe_latency_slots_histogram{service, mode, region}    histogram
-#   solana_landing_probe_latency_ms_histogram{service, mode, region}       histogram
+#   solana_landing_probe_latency_ms{service, mode, region}                 gauge (set every cycle)
+#   solana_landing_probe_latency_slots_histogram{service, mode, region}    histogram (debug)
+#   solana_landing_probe_latency_ms_histogram{service, mode, region}       histogram (debug)
 #   solana_landing_probe_keypair_balance_sol{region}                       gauge
 #   solana_landing_probe_cycle_total{region}                               counter
 #   solana_landing_probe_enabled{region}                                   gauge
 #
 # Headline metric = p50 ms time-to-land. lower_is_better.
 # Mode label is `swqos_only` for helius-sender, `default` for the rest.
+#
+# Why quantile_over_time(gauge) instead of histogram_quantile(histogram)?
+# At V0-Lean cadence (1 probe / hour) we have ~168 samples per cell over 7d.
+# Histogram buckets {100, 250, 500, 1000, 2000, 5000, 10000, 30000, 60000} ms
+# have ~3 buckets in the 1-5s zone where probes actually land, so
+# histogram_quantile collapses to bucket midpoints (1500, 3500 ms) and the
+# series looks flat. quantile_over_time on the gauge takes the real sample
+# at the 50th percentile, which is the accurate published number.
 
 providers:
   - slug: jito
     name: Jito Block Engine
     tag: Baseline + control probe; atomic bundles + tip auction since 2022
     queries:
-      p50: histogram_quantile(0.5, sum by (le)(rate(solana_landing_probe_latency_ms_histogram_bucket{service="jito",region="us-east"}[7d])))
-      p90: histogram_quantile(0.9, sum by (le)(rate(solana_landing_probe_latency_ms_histogram_bucket{service="jito",region="us-east"}[7d])))
-      p99: histogram_quantile(0.99, sum by (le)(rate(solana_landing_probe_latency_ms_histogram_bucket{service="jito",region="us-east"}[7d])))
+      p50: quantile_over_time(0.5, solana_landing_probe_latency_ms{service="jito",region="us-east"}[7d])
+      p90: quantile_over_time(0.9, solana_landing_probe_latency_ms{service="jito",region="us-east"}[7d])
+      p99: quantile_over_time(0.99, solana_landing_probe_latency_ms{service="jito",region="us-east"}[7d])
       mean: avg_over_time(solana_landing_probe_latency_ms{service="jito",region="us-east"}[7d])
       success: sum(rate(solana_landing_probe_success_total{service="jito",region="us-east"}[7d])) / (sum(rate(solana_landing_probe_success_total{service="jito",region="us-east"}[7d])) + sum(rate(solana_landing_probe_dropped_total{service="jito",region="us-east",reason="timeout"}[7d])))
       sample_size: sum(increase(solana_landing_probe_success_total{service="jito",region="us-east"}[7d]))
-      series: histogram_quantile(0.5, sum by (le)(rate(solana_landing_probe_latency_ms_histogram_bucket{service="jito",region="us-east"}[1h])))
+      series: solana_landing_probe_latency_ms{service="jito",region="us-east"}
 
   - slug: helius-sender
     name: Helius Sender (swqos_only)
     tag: Isolated Helius own-path (no Jito fan-out); anycast + 7 POPs
     queries:
-      p50: histogram_quantile(0.5, sum by (le)(rate(solana_landing_probe_latency_ms_histogram_bucket{service="helius-sender",mode="swqos_only",region="us-east"}[7d])))
-      p90: histogram_quantile(0.9, sum by (le)(rate(solana_landing_probe_latency_ms_histogram_bucket{service="helius-sender",mode="swqos_only",region="us-east"}[7d])))
-      p99: histogram_quantile(0.99, sum by (le)(rate(solana_landing_probe_latency_ms_histogram_bucket{service="helius-sender",mode="swqos_only",region="us-east"}[7d])))
+      p50: quantile_over_time(0.5, solana_landing_probe_latency_ms{service="helius-sender",mode="swqos_only",region="us-east"}[7d])
+      p90: quantile_over_time(0.9, solana_landing_probe_latency_ms{service="helius-sender",mode="swqos_only",region="us-east"}[7d])
+      p99: quantile_over_time(0.99, solana_landing_probe_latency_ms{service="helius-sender",mode="swqos_only",region="us-east"}[7d])
       mean: avg_over_time(solana_landing_probe_latency_ms{service="helius-sender",mode="swqos_only",region="us-east"}[7d])
       success: sum(rate(solana_landing_probe_success_total{service="helius-sender",mode="swqos_only",region="us-east"}[7d])) / (sum(rate(solana_landing_probe_success_total{service="helius-sender",mode="swqos_only",region="us-east"}[7d])) + sum(rate(solana_landing_probe_dropped_total{service="helius-sender",mode="swqos_only",region="us-east",reason="timeout"}[7d])))
       sample_size: sum(increase(solana_landing_probe_success_total{service="helius-sender",mode="swqos_only",region="us-east"}[7d]))
-      series: histogram_quantile(0.5, sum by (le)(rate(solana_landing_probe_latency_ms_histogram_bucket{service="helius-sender",mode="swqos_only",region="us-east"}[1h])))
+      series: solana_landing_probe_latency_ms{service="helius-sender",mode="swqos_only",region="us-east"}
 
   - slug: astralane
     name: Astralane Iris
     tag: Tip-refund mechanism, sendBundle / sendIdeal modes, FRA + NY POPs
     queries:
-      p50: histogram_quantile(0.5, sum by (le)(rate(solana_landing_probe_latency_ms_histogram_bucket{service="astralane",region="us-east"}[7d])))
-      p90: histogram_quantile(0.9, sum by (le)(rate(solana_landing_probe_latency_ms_histogram_bucket{service="astralane",region="us-east"}[7d])))
-      p99: histogram_quantile(0.99, sum by (le)(rate(solana_landing_probe_latency_ms_histogram_bucket{service="astralane",region="us-east"}[7d])))
+      p50: quantile_over_time(0.5, solana_landing_probe_latency_ms{service="astralane",region="us-east"}[7d])
+      p90: quantile_over_time(0.9, solana_landing_probe_latency_ms{service="astralane",region="us-east"}[7d])
+      p99: quantile_over_time(0.99, solana_landing_probe_latency_ms{service="astralane",region="us-east"}[7d])
       mean: avg_over_time(solana_landing_probe_latency_ms{service="astralane",region="us-east"}[7d])
       success: sum(rate(solana_landing_probe_success_total{service="astralane",region="us-east"}[7d])) / (sum(rate(solana_landing_probe_success_total{service="astralane",region="us-east"}[7d])) + sum(rate(solana_landing_probe_dropped_total{service="astralane",region="us-east",reason="timeout"}[7d])))
       sample_size: sum(increase(solana_landing_probe_success_total{service="astralane",region="us-east"}[7d]))
-      series: histogram_quantile(0.5, sum by (le)(rate(solana_landing_probe_latency_ms_histogram_bucket{service="astralane",region="us-east"}[1h])))
+      series: solana_landing_probe_latency_ms{service="astralane",region="us-east"}
 
   - slug: nozomi
     name: Nozomi
     tag: Temporal Labs, direct-to-leader, premium 1M-lamport hard floor
     queries:
-      p50: histogram_quantile(0.5, sum by (le)(rate(solana_landing_probe_latency_ms_histogram_bucket{service="nozomi",region="us-east"}[7d])))
-      p90: histogram_quantile(0.9, sum by (le)(rate(solana_landing_probe_latency_ms_histogram_bucket{service="nozomi",region="us-east"}[7d])))
-      p99: histogram_quantile(0.99, sum by (le)(rate(solana_landing_probe_latency_ms_histogram_bucket{service="nozomi",region="us-east"}[7d])))
+      p50: quantile_over_time(0.5, solana_landing_probe_latency_ms{service="nozomi",region="us-east"}[7d])
+      p90: quantile_over_time(0.9, solana_landing_probe_latency_ms{service="nozomi",region="us-east"}[7d])
+      p99: quantile_over_time(0.99, solana_landing_probe_latency_ms{service="nozomi",region="us-east"}[7d])
       mean: avg_over_time(solana_landing_probe_latency_ms{service="nozomi",region="us-east"}[7d])
       success: sum(rate(solana_landing_probe_success_total{service="nozomi",region="us-east"}[7d])) / (sum(rate(solana_landing_probe_success_total{service="nozomi",region="us-east"}[7d])) + sum(rate(solana_landing_probe_dropped_total{service="nozomi",region="us-east",reason="timeout"}[7d])))
       sample_size: sum(increase(solana_landing_probe_success_total{service="nozomi",region="us-east"}[7d]))
-      series: histogram_quantile(0.5, sum by (le)(rate(solana_landing_probe_latency_ms_histogram_bucket{service="nozomi",region="us-east"}[1h])))
+      series: solana_landing_probe_latency_ms{service="nozomi",region="us-east"}
 
