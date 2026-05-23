@@ -6,6 +6,18 @@
 
 export type ProviderType = "protocol" | "aggregator" | "intent" | "relay";
 
+/**
+ * Per-provider data availability. Drives whether the leaderboard renders
+ * the numbers or a "currently unavailable" stub.
+ *
+ *  - `live`        : fresh data, all the latency aggregates are real.
+ *  - `unavailable` : the underlying source (provider API, the harness
+ *                    that scrapes it, the prom job) is not delivering
+ *                    samples right now. Numbers are zero placeholders -
+ *                    show a soft offline pill, not 0 ms.
+ */
+export type ProviderAvailability = "live" | "unavailable";
+
 export type ProviderResult = {
   name: string;
   slug: string;
@@ -18,6 +30,11 @@ export type ProviderResult = {
   /** Per-provider sample count over the run window. */
   sampleSize?: number;
   secondary?: { label: string; value: string };
+  /** Defaults to "live" when the provider returns numbers; the spec
+   *  loader sets "unavailable" when prom has no data for the p50 / p90 /
+   *  p99 queries so the UI can render a soft offline state instead of
+   *  zero values. */
+  availability?: ProviderAvailability;
 };
 
 export type RegionPoint = {

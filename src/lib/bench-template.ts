@@ -38,7 +38,7 @@ const TEMPLATE_RE = /\{\{\s*([a-z][a-z0-9_]*)(?::([a-z0-9-]+))?\s*\}\}/gi;
 
 export function renderTemplate(text: string, benchmark: Benchmark): string {
   if (!text || text.indexOf("{{") === -1) return text;
-  const liveResults = benchmark.results.filter((r) => r.ms.p50 > 0);
+  const liveResults = benchmark.results.filter((r) => r.availability !== "unavailable" && r.ms.p50 > 0);
   const sorted = [...liveResults].sort((a, b) =>
     benchmark.higherIsBetter ? b.ms.p50 - a.ms.p50 : a.ms.p50 - b.ms.p50
   );

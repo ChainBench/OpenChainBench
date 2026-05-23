@@ -189,10 +189,14 @@ async function specToBenchmark(
     // return data this cycle. Without this, providers with transiently
     // missing Prom data fall out of `getProviders()` entirely → their
     // /products/<slug> page 404s and they disappear from the sitemap.
-    // We append them as zero-valued entries; `rankProviders` already
-    // filters p50<=0 out of the leaderboard, and the product page shows
-    // them as "awaiting samples" — same UX as a brand-new draft bench.
+    //
+    // These entries are tagged `availability: "unavailable"` so the
+    // leaderboard renders a soft offline pill ("Currently unavailable")
+    // instead of a row of 0 ms / 0% that misleads readers into thinking
+    // the provider is genuinely the fastest. Mark live entries explicitly
+    // too so a missing `availability` field always reads as "unknown".
     const liveSlugs = new Set(live.results.map((r) => r.slug.toLowerCase()));
+    for (const r of live.results) r.availability = "live";
     for (const p of spec.providers) {
       if (liveSlugs.has(p.slug.toLowerCase())) continue;
       live.results.push({
@@ -203,6 +207,7 @@ async function specToBenchmark(
         ms: { p50: 0, p90: 0, p99: 0, mean: 0 },
         successRate: 0,
         secondary: p.secondary,
+        availability: "unavailable",
       });
     }
     // Resolve {{p50:slug}} / {{best_name}} / {{count}} etc. placeholders

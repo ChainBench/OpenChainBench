@@ -31,7 +31,9 @@ export type ProviderProfile = {
 };
 
 function rankProviders(b: Benchmark): ProviderResult[] {
-  const live = b.results.filter((r) => r.ms.p50 > 0);
+  const live = b.results.filter(
+    (r) => r.availability !== "unavailable" && r.ms.p50 > 0,
+  );
   return [...live].sort((a, c) =>
     b.higherIsBetter ? c.ms.p50 - a.ms.p50 : a.ms.p50 - c.ms.p50,
   );
