@@ -180,35 +180,45 @@ async function specToBenchmark(
   };
 
   const activeLabels = activeFilterLabels(options);
-  const filteredSpec =
-    Object.keys(activeLabels).length > 0 ? applyDimensionsToSpec(spec, activeLabels) : spec;
+  const isFiltered = Object.keys(activeLabels).length > 0;
+  const filteredSpec = isFiltered ? applyDimensionsToSpec(spec, activeLabels) : spec;
 
   const live = await tryLoadLive(filteredSpec);
   if (live) {
-    // Augment live results with any spec-declared providers that didn't
-    // return data this cycle. Without this, providers with transiently
-    // missing Prom data fall out of `getProviders()` entirely → their
-    // /products/<slug> page 404s and they disappear from the sitemap.
-    //
-    // These entries are tagged `availability: "unavailable"` so the
-    // leaderboard renders a soft offline pill ("Currently unavailable")
-    // instead of a row of 0 ms / 0% that misleads readers into thinking
-    // the provider is genuinely the fastest. Mark live entries explicitly
-    // too so a missing `availability` field always reads as "unknown".
-    const liveSlugs = new Set(live.results.map((r) => r.slug.toLowerCase()));
+    // Mark live entries explicitly so a missing `availability` reads as
+    // "unknown" everywhere else in the code.
     for (const r of live.results) r.availability = "live";
-    for (const p of spec.providers) {
-      if (liveSlugs.has(p.slug.toLowerCase())) continue;
-      live.results.push({
-        name: p.name,
-        slug: p.slug,
-        tag: p.tag,
-        type: p.type,
-        ms: { p50: 0, p90: 0, p99: 0, mean: 0 },
-        successRate: 0,
-        secondary: p.secondary,
-        availability: "unavailable",
-      });
+
+    // Augment with spec-declared providers that didn't return data this
+    // cycle, but only on the *unfiltered* view. When the reader has
+    // applied a dimension filter (e.g. chain=bnb on rpc-capabilities)
+    // a no-data result almost always means the provider doesn't cover
+    // that dimension at all (rpc-capabilities ships ~15 providers but
+    // only 5 of them serve BNB; the other 10 are by-design absent on
+    // that tab). Surfacing those as "Currently unavailable" rows would
+    // pollute the leaderboard with 10 fake-offline entries and confuse
+    // the reader about which providers are actually broken vs which
+    // simply don't compete on this chain.
+    //
+    // On the unfiltered "All" tab we still augment because then a no-data
+    // result really does mean "harness lost this provider"; product
+    // pages also rely on the augmentation to stay reachable when the
+    // upstream is briefly down.
+    if (!isFiltered) {
+      const liveSlugs = new Set(live.results.map((r) => r.slug.toLowerCase()));
+      for (const p of spec.providers) {
+        if (liveSlugs.has(p.slug.toLowerCase())) continue;
+        live.results.push({
+          name: p.name,
+          slug: p.slug,
+          tag: p.tag,
+          type: p.type,
+          ms: { p50: 0, p90: 0, p99: 0, mean: 0 },
+          successRate: 0,
+          secondary: p.secondary,
+          availability: "unavailable",
+        });
+      }
     }
     // Resolve {{p50:slug}} / {{best_name}} / {{count}} etc. placeholders
     // against the freshly loaded numbers so editorial text (findings,
