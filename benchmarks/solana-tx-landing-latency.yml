@@ -5,11 +5,11 @@ number: "027"
 title: Solana transaction landing latency
 seo_title: "Solana tx landing latency 2026: Jito vs Helius vs Nozomi vs Astralane time-to-land in slots"
 seo_description: "Live active benchmark of Solana transaction landing services. Slot-level time-to-land (canonical on-chain measurement) plus wall-clock milliseconds. Identical signed mainnet probes submitted to each service from us-east every hour. Methodology pre-registered."
-subtitle: How fast does each landing service get a signed mainnet tx confirmed. Canonical headline = slot delta between submit and confirmed (Solana slot ~400 ms). Wall-clock ms is published alongside for intuition.
+subtitle: How fast does each landing service get a signed mainnet tx confirmed. Slot delta = number of Solana slots between submit and confirmed (1 slot ≈ 400 ms). Active probing, identical signed txs every hour from us-east.
 category: Trading
 status: live
-metric: p50 time-to-land (7-day window)
-unit: ms
+metric: p50 slot delta to confirmed (7-day window)
+unit: slots
 higher_is_better: false
 
 disclaimer: |
@@ -96,11 +96,11 @@ methodology:
   - "Methodology v1.3 pre-registered at github.com/OpenChainBench/OpenChainBench/blob/main/docs/methodology/solana-tx-landing-active.md. Any change (tip floor, probe payload, cadence, region, metric definitions) ships as a public PR with a 14-day comment window. Major version bumps run a 30-day shadow period publishing old and new metrics in parallel."
 
 findings:
-  - "{{best_name}} leads the V0-Lean probe set at p50 = {{best_p50}} ms wall-clock over the rolling 7-day window. The slot delta column shows the canonical on-chain measurement (lower = fewer slots between your submission and chain confirmation). The gap between fastest and slowest matters more than the absolute numbers, every service claims '99 %+ landing rate' in marketing copy, but the chain doesn't lie about which slot included your tx."
-  - "{{name:jito}} is the baseline / control. Because Helius default mode, Astralane, and Nozomi all internally fan out to Jito, the Jito slot_delta is the floor any service must beat to justify its premium. Same slot_delta as Jito on a given cycle = the service is essentially using Jito as its inclusion path. {{name:jito}} sits at {{p50:jito}} ms wall-clock (see slot column for the on-chain delta)."
-  - "{{name:helius-sender}} in `swqos_only` mode tells you what Helius's own routing path delivers without the Jito leg. Slot delta in the column shows whether Helius's own path lands at the Jito floor or beats it. p50 wall-clock = {{p50:helius-sender}} ms. A v1.0.1 methodology update will publish Helius default mode (with Jito fan-out) side-by-side for direct comparison."
-  - "{{name:nozomi}} premium pricing (1M lamport hard floor, ~10 × Jito's competitive level) only makes economic sense if the slot_delta advantage is meaningful. A single slot of advantage = ~400 ms = enough for a MEV bot front-running a competitor. p50 wall-clock = {{p50:nozomi}} ms; the slot column tells you whether the tip premium is buying you actual slot priority."
-  - "{{worst_name}} trails at {{worst_p50}} ms p50 wall-clock. Worst latency in the V0-Lean set is not necessarily a bad service, it may be a service whose strength is in dimensions this bench doesn't measure (anti-MEV protection, durable nonce support, fee-refund mechanics). Latency is one variable, not the whole product."
+  - "{{best_name}} leads the V0-Lean probe set at p50 = {{best_p50}} slot delta over the rolling 7-day window. Lower = fewer Solana slots between submission and confirmation. The gap between fastest and slowest is the operational signal, every service claims '99 %+ landing rate' in marketing copy, but the chain doesn't lie about which slot included your tx. A 1-slot difference is ~400 ms — enough for a MEV bot to front-run a competitor."
+  - "{{name:jito}} is the baseline / control. Helius (default mode), Astralane, and Nozomi all internally fan out to Jito, so the Jito p50 is the floor any premium service must beat. Same slot_delta as Jito on a given cycle = the service is essentially using Jito as its inclusion path. {{name:jito}} sits at p50 = {{p50:jito}} slot delta."
+  - "{{name:helius-sender}} in `swqos_only` mode isolates Helius's own routing path from the Jito leg. p50 = {{p50:helius-sender}} slot delta. A v1.0.1 methodology update will publish Helius default mode (with Jito fan-out) side-by-side for direct comparison."
+  - "{{name:nozomi}} premium pricing (1M lamport hard floor, ~10 × Jito's competitive level) only makes economic sense if the slot_delta advantage is meaningful. p50 = {{p50:nozomi}} slot delta. The gap vs Jito quantifies whether the tip premium buys real slot priority."
+  - "{{worst_name}} trails at p50 = {{worst_p50}} slot delta. The worst slot delta in the V0-Lean set is not necessarily a bad service, it may be a service whose strength is in dimensions this bench doesn't measure (anti-MEV protection, durable nonce, fee-refund mechanics). Latency is one variable, not the whole product."
 
 faq:
   - q: "Why is slot delta the headline metric instead of wall-clock latency?"
@@ -161,54 +161,46 @@ providers:
     name: Jito Block Engine
     tag: Baseline + control probe; atomic bundles + tip auction since 2022
     queries:
-      p50: quantile_over_time(0.5, solana_landing_probe_latency_ms{service="jito",region="us-east"}[7d])
-      p90: quantile_over_time(0.9, solana_landing_probe_latency_ms{service="jito",region="us-east"}[7d])
-      p99: quantile_over_time(0.99, solana_landing_probe_latency_ms{service="jito",region="us-east"}[7d])
-      mean: avg_over_time(solana_landing_probe_latency_ms{service="jito",region="us-east"}[7d])
-      slot_p50: quantile_over_time(0.5, solana_landing_probe_latency_slots{service="jito",region="us-east"}[7d])
-      slot_p99: quantile_over_time(0.99, solana_landing_probe_latency_slots{service="jito",region="us-east"}[7d])
+      p50: quantile_over_time(0.5, solana_landing_probe_latency_slots{service="jito",region="us-east"}[7d])
+      p90: quantile_over_time(0.9, solana_landing_probe_latency_slots{service="jito",region="us-east"}[7d])
+      p99: quantile_over_time(0.99, solana_landing_probe_latency_slots{service="jito",region="us-east"}[7d])
+      mean: avg_over_time(solana_landing_probe_latency_slots{service="jito",region="us-east"}[7d])
       success: sum(rate(solana_landing_probe_success_total{service="jito",region="us-east"}[7d])) / (sum(rate(solana_landing_probe_success_total{service="jito",region="us-east"}[7d])) + sum(rate(solana_landing_probe_dropped_total{service="jito",region="us-east",reason="timeout"}[7d])))
       sample_size: sum(increase(solana_landing_probe_success_total{service="jito",region="us-east"}[7d]))
-      series: solana_landing_probe_latency_ms{service="jito",region="us-east"}
+      series: solana_landing_probe_latency_slots{service="jito",region="us-east"}
 
   - slug: helius-sender
     name: Helius Sender (swqos_only)
     tag: Isolated Helius own-path (no Jito fan-out); anycast + 7 POPs
     queries:
-      p50: quantile_over_time(0.5, solana_landing_probe_latency_ms{service="helius-sender",mode="swqos_only",region="us-east"}[7d])
-      p90: quantile_over_time(0.9, solana_landing_probe_latency_ms{service="helius-sender",mode="swqos_only",region="us-east"}[7d])
-      p99: quantile_over_time(0.99, solana_landing_probe_latency_ms{service="helius-sender",mode="swqos_only",region="us-east"}[7d])
-      mean: avg_over_time(solana_landing_probe_latency_ms{service="helius-sender",mode="swqos_only",region="us-east"}[7d])
-      slot_p50: quantile_over_time(0.5, solana_landing_probe_latency_slots{service="helius-sender",mode="swqos_only",region="us-east"}[7d])
-      slot_p99: quantile_over_time(0.99, solana_landing_probe_latency_slots{service="helius-sender",mode="swqos_only",region="us-east"}[7d])
+      p50: quantile_over_time(0.5, solana_landing_probe_latency_slots{service="helius-sender",mode="swqos_only",region="us-east"}[7d])
+      p90: quantile_over_time(0.9, solana_landing_probe_latency_slots{service="helius-sender",mode="swqos_only",region="us-east"}[7d])
+      p99: quantile_over_time(0.99, solana_landing_probe_latency_slots{service="helius-sender",mode="swqos_only",region="us-east"}[7d])
+      mean: avg_over_time(solana_landing_probe_latency_slots{service="helius-sender",mode="swqos_only",region="us-east"}[7d])
       success: sum(rate(solana_landing_probe_success_total{service="helius-sender",mode="swqos_only",region="us-east"}[7d])) / (sum(rate(solana_landing_probe_success_total{service="helius-sender",mode="swqos_only",region="us-east"}[7d])) + sum(rate(solana_landing_probe_dropped_total{service="helius-sender",mode="swqos_only",region="us-east",reason="timeout"}[7d])))
       sample_size: sum(increase(solana_landing_probe_success_total{service="helius-sender",mode="swqos_only",region="us-east"}[7d]))
-      series: solana_landing_probe_latency_ms{service="helius-sender",mode="swqos_only",region="us-east"}
+      series: solana_landing_probe_latency_slots{service="helius-sender",mode="swqos_only",region="us-east"}
 
   - slug: astralane
     name: Astralane Iris
     tag: Tip-refund mechanism, sendBundle / sendIdeal modes, FRA + NY POPs
     queries:
-      p50: quantile_over_time(0.5, solana_landing_probe_latency_ms{service="astralane",region="us-east"}[7d])
-      p90: quantile_over_time(0.9, solana_landing_probe_latency_ms{service="astralane",region="us-east"}[7d])
-      p99: quantile_over_time(0.99, solana_landing_probe_latency_ms{service="astralane",region="us-east"}[7d])
-      mean: avg_over_time(solana_landing_probe_latency_ms{service="astralane",region="us-east"}[7d])
-      slot_p50: quantile_over_time(0.5, solana_landing_probe_latency_slots{service="astralane",region="us-east"}[7d])
-      slot_p99: quantile_over_time(0.99, solana_landing_probe_latency_slots{service="astralane",region="us-east"}[7d])
+      p50: quantile_over_time(0.5, solana_landing_probe_latency_slots{service="astralane",region="us-east"}[7d])
+      p90: quantile_over_time(0.9, solana_landing_probe_latency_slots{service="astralane",region="us-east"}[7d])
+      p99: quantile_over_time(0.99, solana_landing_probe_latency_slots{service="astralane",region="us-east"}[7d])
+      mean: avg_over_time(solana_landing_probe_latency_slots{service="astralane",region="us-east"}[7d])
       success: sum(rate(solana_landing_probe_success_total{service="astralane",region="us-east"}[7d])) / (sum(rate(solana_landing_probe_success_total{service="astralane",region="us-east"}[7d])) + sum(rate(solana_landing_probe_dropped_total{service="astralane",region="us-east",reason="timeout"}[7d])))
       sample_size: sum(increase(solana_landing_probe_success_total{service="astralane",region="us-east"}[7d]))
-      series: solana_landing_probe_latency_ms{service="astralane",region="us-east"}
+      series: solana_landing_probe_latency_slots{service="astralane",region="us-east"}
 
   - slug: nozomi
     name: Nozomi
     tag: Temporal Labs, direct-to-leader, premium 1M-lamport hard floor
     queries:
-      p50: quantile_over_time(0.5, solana_landing_probe_latency_ms{service="nozomi",region="us-east"}[7d])
-      p90: quantile_over_time(0.9, solana_landing_probe_latency_ms{service="nozomi",region="us-east"}[7d])
-      p99: quantile_over_time(0.99, solana_landing_probe_latency_ms{service="nozomi",region="us-east"}[7d])
-      mean: avg_over_time(solana_landing_probe_latency_ms{service="nozomi",region="us-east"}[7d])
-      slot_p50: quantile_over_time(0.5, solana_landing_probe_latency_slots{service="nozomi",region="us-east"}[7d])
-      slot_p99: quantile_over_time(0.99, solana_landing_probe_latency_slots{service="nozomi",region="us-east"}[7d])
+      p50: quantile_over_time(0.5, solana_landing_probe_latency_slots{service="nozomi",region="us-east"}[7d])
+      p90: quantile_over_time(0.9, solana_landing_probe_latency_slots{service="nozomi",region="us-east"}[7d])
+      p99: quantile_over_time(0.99, solana_landing_probe_latency_slots{service="nozomi",region="us-east"}[7d])
+      mean: avg_over_time(solana_landing_probe_latency_slots{service="nozomi",region="us-east"}[7d])
       success: sum(rate(solana_landing_probe_success_total{service="nozomi",region="us-east"}[7d])) / (sum(rate(solana_landing_probe_success_total{service="nozomi",region="us-east"}[7d])) + sum(rate(solana_landing_probe_dropped_total{service="nozomi",region="us-east",reason="timeout"}[7d])))
       sample_size: sum(increase(solana_landing_probe_success_total{service="nozomi",region="us-east"}[7d]))
-      series: solana_landing_probe_latency_ms{service="nozomi",region="us-east"}
+      series: solana_landing_probe_latency_slots{service="nozomi",region="us-east"}
