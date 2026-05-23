@@ -82,17 +82,34 @@ export class Prometheus {
     return this.scalar(`scalar(time() - max(timestamp(${metric})))`);
   }
 
-  /** Convenience: scalar number from any instant query, or null if empty/error. */
+  /** Convenience: scalar number from any instant query, or null if empty
+   *  / error. Errors are logged with the query that failed and the
+   *  underlying reason ("empty", "timeout", network error, parse error)
+   *  so a misbehaving spec or a flaky Prom doesn't disappear into a
+   *  silent null. Callers stay simple - they keep the existing
+   *  `null = no data` semantics - but operators can grep vercel logs
+   *  for `prom.scalar` to find the actual failure mode.
+   *
+   *  The query string is truncated to 200 chars to avoid leaking a
+   *  multi-line PromQL into the log line. */
   async scalar(promql: string): Promise<number | null> {
     try {
       const res = await this.query(promql);
-      if (res.resultType === "scalar") return Number(res.result[1]);
+      if (res.resultType === "scalar") {
+        const v = Number(res.result[1]);
+        return Number.isFinite(v) ? v : null;
+      }
       if (res.resultType === "vector" && res.result.length > 0) {
         const v = Number(res.result[0].value[1]);
         return Number.isFinite(v) ? v : null;
       }
-      return null;
-    } catch {
+      return null; // legitimately empty - not an error, not logged
+    } catch (err) {
+      const reason =
+        err instanceof Error ? err.message : String(err);
+      console.warn(
+        `prom.scalar failed (${reason}) for query: ${promql.slice(0, 200)}`,
+      );
       return null;
     }
   }
