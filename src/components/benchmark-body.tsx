@@ -291,7 +291,20 @@ export function BenchmarkBody({
 
       {!isDraft && (
         <>
-          <div className="mt-8 card-soft rounded-xl p-4 sm:p-6 lg:p-8">
+          <div className="mt-8 card-soft rounded-xl p-4 sm:p-6 lg:p-8 relative">
+            {/* View switcher floats in the card's top-right corner so it
+                doesn't reserve a vertical band of its own. The chart fills
+                the card top-to-bottom; the switcher sits in the existing
+                card padding and never competes with the chart for space.
+                Popover opens downward (default) since there's room below
+                the corner before the chart geometry begins. */}
+            <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-10">
+              <ViewSwitcher
+                allowed={allowedViews}
+                value={view}
+                onChange={setView}
+              />
+            </div>
             {/* Fade-in until the localStorage view preference resolves.
                 Without this the SSR-default view paints first, then
                 useViewPreference swaps to the saved view in a visible
@@ -331,20 +344,6 @@ export function BenchmarkBody({
                   region={showChartRegionRow ? chartRegion : undefined}
                 />
               )}
-            </div>
-            {/* Footer row hosts the view switcher. Sat at the top before
-                this revision and ate ~40 px of header to a button most
-                readers never used; bottom placement keeps the chart
-                pinned to the top of the card and lets the control hide
-                in the visual margin. Popover opens upward so it doesn't
-                spill into the product ledger below. */}
-            <div className="mt-4 pt-3 border-t border-rule/60 flex items-center justify-end">
-              <ViewSwitcher
-                allowed={allowedViews}
-                value={view}
-                onChange={setView}
-                direction="up"
-              />
             </div>
           </div>
 
