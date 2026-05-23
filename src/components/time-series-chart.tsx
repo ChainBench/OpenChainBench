@@ -14,6 +14,8 @@ type Props = {
    *  filters its lines by this value and hides its internal region tabs
    *  (the parent component renders them in a shared dimension row). */
   region?: string;
+  /** Optional slot rendered in the chart's header row, right-aligned. */
+  headerActions?: import("react").ReactNode;
 };
 
 type Range = "1h" | "6h" | "24h" | "7d";
@@ -40,7 +42,7 @@ const REGION_LABEL: Record<string, string> = {
   global: "Global",
 };
 
-export function TimeSeriesChart({ benchmark, region: regionProp }: Props) {
+export function TimeSeriesChart({ benchmark, region: regionProp, headerActions }: Props) {
   const [range, setRange] = useState<Range>("24h");
   const [regionLocal, setRegionLocal] = useState<string>("all");
   const region = regionProp ?? regionLocal;
@@ -88,12 +90,15 @@ export function TimeSeriesChart({ benchmark, region: regionProp }: Props) {
 
   return (
     <figure className="my-2">
-      <p className="mb-3 inline-flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
-        <LiveDot />
-        <span>
-          {benchmark.metric} · {RANGE_LABEL[range]}
-        </span>
-      </p>
+      <div className="mb-3 flex items-center justify-between gap-3 min-h-7">
+        <p className="inline-flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
+          <LiveDot />
+          <span>
+            {benchmark.metric} · {RANGE_LABEL[range]}
+          </span>
+        </p>
+        {headerActions}
+      </div>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-1">
           {RANGES.map((r) => {
