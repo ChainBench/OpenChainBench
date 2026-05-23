@@ -42,10 +42,15 @@ export function ViewSwitcher({
   allowed,
   value,
   onChange,
+  direction = "down",
 }: {
   allowed: ViewType[];
   value: ViewType;
   onChange: (next: ViewType) => void;
+  /** Where the popover opens relative to the trigger. Pass "up" when the
+   *  switcher lives at the bottom of a card so the menu doesn't get
+   *  clipped under the next section. */
+  direction?: "up" | "down";
 }) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -71,15 +76,40 @@ export function ViewSwitcher({
     };
   }, [open]);
 
+  // Wheel-to-cycle while popover open. Captures every wheel event whose
+  // target is inside the popover and shifts the active view by one. We
+  // throttle via a ref so a single trackpad swipe (which emits dozens
+  // of low-delta events) doesn't sprint through every option in 16 ms.
+  const wheelLockRef = useRef(0);
+  useEffect(() => {
+    if (!open) return;
+    const onWheel = (e: WheelEvent) => {
+      if (!wrapRef.current?.contains(e.target as Node)) return;
+      e.preventDefault();
+      const now = Date.now();
+      if (now - wheelLockRef.current < 90) return;
+      wheelLockRef.current = now;
+      const idx = allowed.indexOf(value);
+      if (idx === -1) return;
+      const delta = e.deltaY > 0 ? 1 : -1;
+      const next = allowed[(idx + delta + allowed.length) % allowed.length];
+      onChange(next);
+    };
+    document.addEventListener("wheel", onWheel, { passive: false });
+    return () => document.removeEventListener("wheel", onWheel);
+  }, [open, allowed, value, onChange]);
+
   if (allowed.length <= 1) return null;
 
   const ActiveIcon = META[value].icon;
+  const popoverPosition =
+    direction === "up" ? "bottom-full mb-1" : "top-full mt-1";
 
   return (
     <div ref={wrapRef} className="relative shrink-0">
       <button
         type="button"
-        title={`View: ${META[value].label}`}
+        title={`View: ${META[value].label} (scroll inside the menu to cycle)`}
         aria-label={`Change chart view, currently ${META[value].label}`}
         aria-haspopup="menu"
         aria-expanded={open}
@@ -94,7 +124,7 @@ export function ViewSwitcher({
         <div
           id={popoverId}
           role="menu"
-          className="absolute right-0 top-full mt-1 z-20 min-w-[160px] rounded-md border border-rule bg-surface shadow-lg overflow-hidden"
+          className={`absolute right-0 ${popoverPosition} z-20 min-w-[170px] rounded-md border border-rule bg-surface shadow-lg overflow-hidden`}
         >
           {allowed.map((v) => {
             const { icon: Icon, label } = META[v];
@@ -121,6 +151,9 @@ export function ViewSwitcher({
               </button>
             );
           })}
+          <div className="px-3 py-1.5 border-t border-rule text-[10px] font-sans uppercase tracking-[0.14em] text-ink-faint bg-paper-soft/50">
+            Scroll to cycle
+          </div>
         </div>
       )}
     </div>
