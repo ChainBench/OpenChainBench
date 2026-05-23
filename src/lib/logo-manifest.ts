@@ -113,7 +113,7 @@ const RAW: Record<string, string> = {
   // ─── Oracle deviation (bench 025) — additional brand logos ───
   // (pairs alias to chain/asset logos in the ALIASES block below)
   chainlink: "/logos/chainlink.svg",
-  dogecoin: "/logos/dogecoin.svg",
+  dogecoin: "/logos/dogecoin.png",
 
   // ─── Data / API providers (alternatives + products pages) ───
   alchemy: "/logos/alchemy.svg",
