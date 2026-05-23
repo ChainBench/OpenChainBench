@@ -291,37 +291,30 @@ export function BenchmarkBody({
 
       {!isDraft && (
         <>
-          <div className="mt-8 card-soft rounded-xl p-4 sm:p-6 lg:p-8 relative">
-            {/* View switcher floats in the card's top-right corner so it
-                doesn't reserve a vertical band of its own. The chart fills
-                the card top-to-bottom; the switcher sits in the existing
-                card padding and never competes with the chart for space.
-                Popover opens downward (default) since there's room below
-                the corner before the chart geometry begins. */}
-            <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-10">
-              <ViewSwitcher
-                allowed={allowedViews}
-                value={view}
-                onChange={setView}
-              />
-            </div>
-            {/* Fade-in until the localStorage view preference resolves.
-                Without this the SSR-default view paints first, then
-                useViewPreference swaps to the saved view in a visible
-                second frame ("two charts at once" user report). The
-                wrapper keeps a min-h so the card doesn't collapse to
-                zero while the chart is invisible. */}
+          <div className="mt-8 card-soft rounded-xl p-4 sm:p-6 lg:p-8">
+            {/* Each chart owns its header row and accepts a headerActions
+                slot. We pass the ViewSwitcher there so the control sits
+                on the same baseline as the chart's own title text -
+                consistent across all views, no separate row reserved,
+                no absolute overlay that risks clipping the legend or
+                action buttons each chart already has on the right. */}
             <div
               className="min-h-[260px] transition-opacity duration-200"
               style={{ opacity: viewMounted ? 1 : 0 }}
             >
-              {view === "countLeaderboard" && <CountLeaderboard benchmark={benchmark} />}
+              {view === "countLeaderboard" && (
+                <CountLeaderboard
+                  benchmark={benchmark}
+                  headerActions={<ViewSwitcher allowed={allowedViews} value={view} onChange={setView} />}
+                />
+              )}
               {view === "rankedBar" && (
                 <RankedBarChart
                   benchmark={benchmark}
                   excluded={excluded}
                   onToggleExclude={toggleExclude}
                   onResetExcluded={resetExcluded}
+                  headerActions={<ViewSwitcher allowed={allowedViews} value={view} onChange={setView} />}
                 />
               )}
               {view === "distribution" && (
@@ -329,6 +322,7 @@ export function BenchmarkBody({
                   benchmark={benchmark}
                   excluded={excluded}
                   onToggleExclude={toggleExclude}
+                  headerActions={<ViewSwitcher allowed={allowedViews} value={view} onChange={setView} />}
                 />
               )}
               {view === "donut" && (
@@ -336,12 +330,14 @@ export function BenchmarkBody({
                   benchmark={benchmark}
                   excluded={excluded}
                   onToggleExclude={toggleExclude}
+                  headerActions={<ViewSwitcher allowed={allowedViews} value={view} onChange={setView} />}
                 />
               )}
               {view === "timeseries" && (
                 <TimeSeriesChart
                   benchmark={benchmark}
                   region={showChartRegionRow ? chartRegion : undefined}
+                  headerActions={<ViewSwitcher allowed={allowedViews} value={view} onChange={setView} />}
                 />
               )}
             </div>

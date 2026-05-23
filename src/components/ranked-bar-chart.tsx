@@ -19,6 +19,9 @@ type Props = {
   excluded?: Set<string>;
   onToggleExclude?: (slug: string) => void;
   onResetExcluded?: () => void;
+  /** Optional slot rendered in the chart's header row, right-aligned.
+   *  BenchmarkBody passes the <ViewSwitcher> here. */
+  headerActions?: import("react").ReactNode;
 };
 
 /**
@@ -45,6 +48,7 @@ export function RankedBarChart({
   excluded: controlledExcluded,
   onToggleExclude,
   onResetExcluded,
+  headerActions,
 }: Props) {
   const { excluded, toggle, reset } = useChartExclusion(
     controlledExcluded,
@@ -100,20 +104,23 @@ export function RankedBarChart({
 
   return (
     <figure className="my-2">
-      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-3">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3 min-h-7">
         <p className="inline-flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
           <LiveDot />
           <span>{benchmark.metric} · last 24 hours</span>
         </p>
-        {excludedCount > 0 && (
-          <button
-            type="button"
-            onClick={reset}
-            className="text-[10px] font-sans font-medium uppercase tracking-[0.16em] text-ink-muted hover:text-ink lnk"
-          >
-            Reset · {excludedCount} excluded
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          {excludedCount > 0 && (
+            <button
+              type="button"
+              onClick={reset}
+              className="text-[10px] font-sans font-medium uppercase tracking-[0.16em] text-ink-muted hover:text-ink lnk"
+            >
+              Reset · {excludedCount} excluded
+            </button>
+          )}
+          {headerActions}
+        </div>
       </div>
       <ul className="space-y-2">
         {rows.map((r) => {
