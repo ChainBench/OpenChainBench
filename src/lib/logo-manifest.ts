@@ -65,6 +65,23 @@ const RAW: Record<string, string> = {
   cloudflare: "/logos/cloudflare.svg",
   "base-official": "/logos/base.jpeg",
   binance: "/logos/bnb.png",
+  lava: "/logos/lava.webp",
+  nodies: "/logos/nodies.png",
+  tenderly: "/logos/tenderly.svg",
+  tonapi: "/logos/tonapi.png",
+
+  // ─── MEV / private mempools (gas-estimation, RPC capabilities) ───
+  flashbots: "/logos/flashbots.svg",
+  blocknative: "/logos/blocknative.svg",
+  merkle: "/logos/merkle.svg",
+
+  // ─── Block explorers / address-label providers ───
+  walletexplorer: "/logos/walletexplorer.png",
+  xrpscan: "/logos/xrpscan.png",
+  oli: "/logos/oli.png",
+
+  // ─── L1 chains (additions) ───
+  hedera: "/logos/hedera.svg",
 
   // ─── Gas oracles ───
   etherscan: "/logos/etherscan.svg",
@@ -126,6 +143,12 @@ const ALIASES: Record<string, string> = {
   "matic-usd": "polygon",
   // helius-sender shares brand with the Helius RPC entry
   "helius-sender": "helius",
+
+  // Official-RPC providers reuse the chain's brand mark (RPC capabilities
+  // bench distinguishes the chain's own endpoint from third-party RPCs).
+  "arbitrum-official": "arbitrum",
+  "avalanche-official": "avalanche",
+  "optimism-official": "optimism",
 };
 
 export function logoPath(slug: string): string | null {
