@@ -101,25 +101,23 @@ export function DistributionChart({
                 }
               }}
               title={methodologyTooltip(r, isOff)}
-              className={`py-3 cursor-pointer rounded-sm transition-colors hover:bg-paper-soft/40 ${
+              className={`grid grid-cols-[minmax(6rem,9rem)_1fr_auto] sm:grid-cols-[minmax(8rem,12rem)_1fr_auto] items-center gap-3 sm:gap-4 py-2.5 cursor-pointer rounded-sm transition-colors hover:bg-paper-soft/40 ${
                 isOff ? "opacity-40" : ""
               }`}
             >
-              <div className="flex items-center gap-2 mb-2 min-w-0">
+              {/* Identity column — logo + name on one line, no white gap above the track */}
+              <span className="flex items-center gap-2 min-w-0 text-[13px]">
                 <ProviderLogo slug={r.slug} name={r.name} size={18} />
                 <span
-                  className={`font-serif font-semibold truncate text-[13px] ${
+                  className={`font-serif font-semibold truncate ${
                     isOff ? "line-through decoration-1" : ""
                   }`}
                   style={{ color: isOff ? "var(--color-ink-faint)" : color }}
                 >
                   {r.name}
                 </span>
-                <span className="ml-auto label-mono text-ink-faint tabular shrink-0">
-                  {fmtUnit(r.ms.p50, unit)}
-                </span>
-              </div>
-              {/* Track */}
+              </span>
+              {/* Track column — inline with the name so the row reads in a single line */}
               <div className="relative h-4 rounded-sm bg-paper-soft">
                 {!isOff && (
                   <>
@@ -138,6 +136,9 @@ export function DistributionChart({
                   </>
                 )}
               </div>
+              <span className="label-mono text-ink-faint tabular shrink-0 whitespace-nowrap">
+                {fmtUnit(r.ms.p50, unit)}
+              </span>
             </li>
           );
         })}
