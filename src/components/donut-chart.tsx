@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import type { Benchmark } from "@/types/benchmark";
 import { liveResults } from "@/lib/provider-filters";
 import { ProviderLogo } from "@/components/provider-logo";
@@ -36,10 +36,12 @@ export function DonutChart({
   benchmark,
   excluded: controlledExcluded,
   onToggleExclude,
+  headerActions,
 }: {
   benchmark: Benchmark;
   excluded?: Set<string>;
   onToggleExclude?: (slug: string) => void;
+  headerActions?: ReactNode;
 }) {
   const { results } = benchmark;
   const { excluded, toggle } = useChartExclusion(
@@ -106,13 +108,16 @@ export function DonutChart({
 
   return (
     <div className="w-full">
-      <div className="flex items-baseline justify-between mb-5">
+      <div className="flex items-center justify-between gap-3 mb-5 min-h-7">
         <p className="text-[11px] font-sans font-medium uppercase tracking-[0.18em] text-ink-faint">
           Share by p50
         </p>
-        <p className="text-[11px] font-mono tabular text-ink-faint">
-          {live.length} of {liveAll.length} live
-        </p>
+        <div className="flex items-center gap-3">
+          <p className="text-[11px] font-mono tabular text-ink-faint">
+            {live.length} of {liveAll.length} live
+          </p>
+          {headerActions}
+        </div>
       </div>
       <div className="flex flex-col items-center md:flex-row md:items-center gap-6 md:gap-10">
         <div

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { type ReactNode, useMemo } from "react";
 import type { Benchmark } from "@/types/benchmark";
 import { liveResults } from "@/lib/provider-filters";
 import { Hint } from "@/components/hint";
@@ -29,10 +29,16 @@ export function DistributionChart({
   benchmark,
   excluded: controlledExcluded,
   onToggleExclude,
+  headerActions,
 }: {
   benchmark: Benchmark;
   excluded?: Set<string>;
   onToggleExclude?: (slug: string) => void;
+  /** Optional slot rendered in the chart's header row, right-aligned.
+   *  BenchmarkBody passes the <ViewSwitcher> here so the control sits
+   *  on the same baseline as the chart title instead of floating in
+   *  the card corner or eating a footer row of its own. */
+  headerActions?: ReactNode;
 }) {
   const { results, unit, higherIsBetter } = benchmark;
   const { excluded, toggle } = useChartExclusion(
@@ -59,11 +65,14 @@ export function DistributionChart({
 
   return (
     <div className="w-full">
-      <div className="flex items-baseline justify-between mb-5">
+      <div className="flex items-center justify-between gap-3 mb-5 min-h-7">
         <p className="text-[11px] font-sans font-medium uppercase tracking-[0.18em] text-ink-faint">
           Latency spread
         </p>
-        <MarkerLegend />
+        <div className="flex items-center gap-3">
+          <MarkerLegend />
+          {headerActions}
+        </div>
       </div>
       <ul className="flex flex-col">
         {sorted.map((r) => {

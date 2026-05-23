@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { type ReactNode, useMemo } from "react";
 
 import type { Benchmark } from "@/types/benchmark";
 import { fmtValue } from "@/lib/format";
@@ -14,7 +14,13 @@ import { buildProviderColors } from "@/lib/series-colors";
  * bar instead. the two visualizations that actually carry information
  * for this metric shape.
  */
-export function CountLeaderboard({ benchmark }: { benchmark: Benchmark }) {
+export function CountLeaderboard({
+  benchmark,
+  headerActions,
+}: {
+  benchmark: Benchmark;
+  headerActions?: ReactNode;
+}) {
   const ranked = rankResults(benchmark.results, benchmark.higherIsBetter);
   const max = Math.max(...ranked.map((r) => r.ms.p50)) || 1;
   const colors = useMemo(() => buildProviderColors(benchmark.results), [benchmark.results]);
@@ -27,8 +33,20 @@ export function CountLeaderboard({ benchmark }: { benchmark: Benchmark }) {
 
   return (
     <>
+      {/* Header row: leaderboard label + headerActions slot (view
+          switcher). Aligned with the same baseline pattern as the
+          other chart views so the toolbar position is consistent
+          across views. */}
+      {headerActions && (
+        <div className="flex items-center justify-between gap-3 mb-3 min-h-7">
+          <p className="text-[11px] font-sans font-medium uppercase tracking-[0.18em] text-ink-faint">
+            Leaderboard
+          </p>
+          {headerActions}
+        </div>
+      )}
       {/* Thin summary strip. matches the latency-bench layout. */}
-      <dl className="mt-10 grid grid-cols-2 sm:flex sm:flex-wrap items-baseline gap-x-8 gap-y-3 border-y border-rule py-4">
+      <dl className="grid grid-cols-2 sm:flex sm:flex-wrap items-baseline gap-x-8 gap-y-3 border-y border-rule py-4">
         <CountStat
           label="Leader"
           value={fmtValue(leader?.ms.p50 ?? 0, benchmark.unit)}
