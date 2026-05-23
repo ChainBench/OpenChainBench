@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Benchmark } from "@/types/benchmark";
+import { Hint } from "@/components/hint";
 import { MiniChart } from "@/components/mini-chart";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
 import { fmtValue, unitSuffix } from "@/lib/format";
@@ -50,13 +51,11 @@ export function BenchmarkCard({ benchmark }: { benchmark: Benchmark }) {
         </div>
         <div className="flex items-center gap-1 shrink-0">
           {chips.map((r) => (
-            <span
-              key={r.slug}
-              title={r.name}
-              className="inline-flex items-center justify-center w-6 h-6 rounded-full border border-rule text-[10px] font-semibold text-ink-muted bg-surface"
-            >
-              {r.name.charAt(0).toUpperCase()}
-            </span>
+            <Hint key={r.slug} label={r.name}>
+              <span className="inline-flex items-center justify-center w-6 h-6 rounded-full border border-rule text-[10px] font-semibold text-ink-muted bg-surface">
+                {r.name.charAt(0).toUpperCase()}
+              </span>
+            </Hint>
           ))}
         </div>
       </div>
