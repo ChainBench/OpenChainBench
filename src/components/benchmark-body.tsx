@@ -3,6 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import type { Benchmark } from "@/types/benchmark";
+import { liveResults } from "@/lib/provider-filters";
 import { ChainTabs } from "@/components/chain-tabs";
 import { LedgerTable } from "@/components/ledger-table";
 import { TimeSeriesChart } from "@/components/time-series-chart";
@@ -70,7 +71,7 @@ function syncParam(
 
 function summarize(b: Benchmark | undefined): ChainMeta | null {
   if (!b) return null;
-  const live = b.results.filter((r) => r.availability !== "unavailable" && r.ms.p50 > 0);
+  const live = liveResults(b.results);
   if (live.length === 0) return { providers: 0, metric: b.metric };
   const sorted = [...live].sort((a, c) =>
     b.higherIsBetter ? c.ms.p50 - a.ms.p50 : a.ms.p50 - c.ms.p50

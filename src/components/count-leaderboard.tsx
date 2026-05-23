@@ -1,5 +1,7 @@
 "use client";
 
+import { useMemo } from "react";
+
 import type { Benchmark } from "@/types/benchmark";
 import { fmtValue } from "@/lib/format";
 import { rankResults } from "@/lib/ranking";
@@ -15,7 +17,7 @@ import { buildProviderColors } from "@/lib/series-colors";
 export function CountLeaderboard({ benchmark }: { benchmark: Benchmark }) {
   const ranked = rankResults(benchmark.results, benchmark.higherIsBetter);
   const max = Math.max(...ranked.map((r) => r.ms.p50)) || 1;
-  const colors = buildProviderColors(benchmark.results);
+  const colors = useMemo(() => buildProviderColors(benchmark.results), [benchmark.results]);
 
   const leader = ranked[0];
   const trailer = ranked[ranked.length - 1];

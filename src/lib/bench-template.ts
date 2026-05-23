@@ -27,6 +27,7 @@
  */
 
 import type { Benchmark } from "@/types/benchmark";
+import { liveResults } from "@/lib/provider-filters";
 import { fmtUnit } from "@/lib/format";
 
 // Keyword allows digits ({{p50:slug}}, {{best_p50}}, {{worst_p99}}) and
@@ -38,8 +39,8 @@ const TEMPLATE_RE = /\{\{\s*([a-z][a-z0-9_]*)(?::([a-z0-9-]+))?\s*\}\}/gi;
 
 export function renderTemplate(text: string, benchmark: Benchmark): string {
   if (!text || text.indexOf("{{") === -1) return text;
-  const liveResults = benchmark.results.filter((r) => r.availability !== "unavailable" && r.ms.p50 > 0);
-  const sorted = [...liveResults].sort((a, b) =>
+  const live = liveResults(benchmark.results);
+  const sorted = [...live].sort((a, b) =>
     benchmark.higherIsBetter ? b.ms.p50 - a.ms.p50 : a.ms.p50 - b.ms.p50
   );
   const best = sorted[0];
@@ -53,7 +54,7 @@ export function renderTemplate(text: string, benchmark: Benchmark): string {
       case "mean":
       case "name": {
         if (!arg) return whole;
-        const provider = liveResults.find(
+        const provider = live.find(
           (r) => r.slug.toLowerCase() === arg.toLowerCase()
         );
         if (!provider) return whole;
@@ -70,7 +71,7 @@ export function renderTemplate(text: string, benchmark: Benchmark): string {
       case "worst_p50":
         return worst ? fmtUnit(worst.ms.p50, benchmark.unit) : whole;
       case "count":
-        return String(liveResults.length);
+        return String(live.length);
       default:
         return whole;
     }

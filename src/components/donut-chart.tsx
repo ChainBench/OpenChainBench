@@ -2,10 +2,12 @@
 
 import { useMemo, useState } from "react";
 import type { Benchmark } from "@/types/benchmark";
+import { liveResults } from "@/lib/provider-filters";
 import { ProviderLogo } from "@/components/provider-logo";
 import { fmtUnit } from "@/lib/format";
 import { methodologyTooltip } from "@/lib/methodology-tooltip";
 import { buildProviderColors } from "@/lib/series-colors";
+import { useChartExclusion } from "@/hooks/use-chart-exclusion";
 
 /**
  * Share-of-field donut. Each provider is a slice sized by p50 vs the
@@ -40,25 +42,13 @@ export function DonutChart({
   onToggleExclude?: (slug: string) => void;
 }) {
   const { results } = benchmark;
-  const [internalExcluded, setInternalExcluded] = useState<Set<string>>(
-    () => new Set(),
+  const { excluded, toggle } = useChartExclusion(
+    controlledExcluded,
+    onToggleExclude,
   );
-  const excluded = controlledExcluded ?? internalExcluded;
-  const toggle = (slug: string) => {
-    if (onToggleExclude) {
-      onToggleExclude(slug);
-      return;
-    }
-    setInternalExcluded((prev) => {
-      const next = new Set(prev);
-      if (next.has(slug)) next.delete(slug);
-      else next.add(slug);
-      return next;
-    });
-  };
 
   const liveAll = useMemo(
-    () => results.filter((r) => r.availability !== "unavailable" && r.ms.p50 > 0),
+    () => liveResults(results),
     [results],
   );
   const live = liveAll.filter((r) => !excluded.has(r.slug));

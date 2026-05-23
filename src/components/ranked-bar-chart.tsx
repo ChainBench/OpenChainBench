@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import type { Benchmark } from "@/types/benchmark";
 import { fmtUnit } from "@/lib/format";
 import { methodologyTooltip } from "@/lib/methodology-tooltip";
 import { buildProviderColors } from "@/lib/series-colors";
+import { useChartExclusion } from "@/hooks/use-chart-exclusion";
 import { LiveDot } from "@/components/live-dot";
 import { ProviderLogo } from "@/components/provider-logo";
 
@@ -44,29 +45,11 @@ export function RankedBarChart({
   onToggleExclude,
   onResetExcluded,
 }: Props) {
-  const [internalExcluded, setInternalExcluded] = useState<Set<string>>(
-    () => new Set(),
+  const { excluded, toggle, reset } = useChartExclusion(
+    controlledExcluded,
+    onToggleExclude,
+    onResetExcluded,
   );
-  const excluded = controlledExcluded ?? internalExcluded;
-  const toggle = (slug: string) => {
-    if (onToggleExclude) {
-      onToggleExclude(slug);
-      return;
-    }
-    setInternalExcluded((prev) => {
-      const next = new Set(prev);
-      if (next.has(slug)) next.delete(slug);
-      else next.add(slug);
-      return next;
-    });
-  };
-  const reset = () => {
-    if (onResetExcluded) {
-      onResetExcluded();
-      return;
-    }
-    setInternalExcluded(new Set());
-  };
 
   const colors = useMemo(
     () => buildProviderColors(benchmark.results),

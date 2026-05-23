@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import type { Benchmark } from "@/types/benchmark";
 import { fmtUnit } from "@/lib/format";
 import { buildProviderColors } from "@/lib/series-colors";
@@ -14,19 +15,26 @@ const REGIONS = [
 
 export function RegionGrid({ benchmark }: Props) {
   const { results, unit, extras } = benchmark;
-  if (!results.length) return null;
 
-  const colors = buildProviderColors(results);
-
-  const regionMax = new Map<string, number>();
-  for (const region of REGIONS) {
-    let m = 0;
-    for (const r of results) {
-      const point = extras.regions[r.slug]?.find((p) => p.region === region.key);
-      if (point && point.p50 > m) m = point.p50;
+  // Both maps recompute O(n*m) over results × regions. Memoise so the
+  // grid doesn't reprice every cell on each parent re-render (parent
+  // re-renders on every chain/region tab change and every chart view
+  // switch, none of which touch results or extras.regions).
+  const colors = useMemo(() => buildProviderColors(results), [results]);
+  const regionMax = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const region of REGIONS) {
+      let m = 0;
+      for (const r of results) {
+        const point = extras.regions[r.slug]?.find((p) => p.region === region.key);
+        if (point && point.p50 > m) m = point.p50;
+      }
+      map.set(region.key, m);
     }
-    regionMax.set(region.key, m);
-  }
+    return map;
+  }, [results, extras.regions]);
+
+  if (!results.length) return null;
 
   return (
     <div className="border-y-2 border-ink py-2 overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">

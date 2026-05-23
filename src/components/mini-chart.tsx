@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import type { Benchmark } from "@/types/benchmark";
 import { buildProviderColors } from "@/lib/series-colors";
 
@@ -26,7 +27,7 @@ export function MiniChart({
   legend = false,
 }: Props) {
   const width = viewBoxWidth;
-  const colors = buildProviderColors(benchmark.results);
+  const colors = useMemo(() => buildProviderColors(benchmark.results), [benchmark.results]);
 
   // Sort providers so the legend reads best → worst, matching the ledger
   // table on the detail page. Direction depends on the bench (lower vs

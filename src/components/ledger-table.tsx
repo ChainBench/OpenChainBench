@@ -1,5 +1,7 @@
 "use client";
 
+import { useMemo } from "react";
+
 import Link from "next/link";
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
 import { Sparkline } from "@/components/sparkline";
@@ -33,7 +35,7 @@ export function LedgerTable({ benchmark }: Props) {
     if (aOff !== bOff) return aOff - bOff;
     return benchmark.higherIsBetter ? b.ms.p50 - a.ms.p50 : a.ms.p50 - b.ms.p50;
   });
-  const colors = buildProviderColors(results);
+  const colors = useMemo(() => buildProviderColors(results), [results]);
 
   const allSeries = Object.values(extras.series24h).flat();
   const sparkMin = allSeries.length ? Math.min(...allSeries) : 0;

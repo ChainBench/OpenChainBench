@@ -10,6 +10,7 @@
 
 import { cache } from "react";
 import { getBenchmarks } from "@/data/benchmarks";
+import { liveResults } from "@/lib/provider-filters";
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
 
 export type ProviderAppearance = {
@@ -31,9 +32,7 @@ export type ProviderProfile = {
 };
 
 function rankProviders(b: Benchmark): ProviderResult[] {
-  const live = b.results.filter(
-    (r) => r.availability !== "unavailable" && r.ms.p50 > 0,
-  );
+  const live = liveResults(b.results);
   return [...live].sort((a, c) =>
     b.higherIsBetter ? c.ms.p50 - a.ms.p50 : a.ms.p50 - c.ms.p50,
   );
