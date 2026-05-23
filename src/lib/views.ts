@@ -12,14 +12,26 @@ import type { Benchmark } from "@/types/benchmark";
  * valid set from its `unit`, so a brand-new bench gets the right options
  * the moment its yml is loaded.
  */
-export type ViewType = "timeseries" | "rankedBar" | "countLeaderboard";
+export type ViewType =
+  | "timeseries"
+  | "rankedBar"
+  | "countLeaderboard"
+  | "distribution"
+  | "donut";
 
 const ALLOWED_BY_UNIT: Record<Benchmark["unit"], ViewType[]> = {
-  ms: ["timeseries", "rankedBar"],
-  s: ["timeseries", "rankedBar"],
-  bps: ["timeseries", "rankedBar"],
-  pct: ["timeseries", "rankedBar"],
-  count: ["countLeaderboard", "rankedBar", "timeseries"],
+  // distribution surfaces tail behaviour (p90/p99 vs p50) which is the
+  // signal users actually care about on latency / cost / yield benches.
+  ms: ["timeseries", "rankedBar", "distribution"],
+  s: ["timeseries", "rankedBar", "distribution"],
+  bps: ["timeseries", "rankedBar", "distribution"],
+  pct: ["timeseries", "rankedBar", "distribution"],
+  // donut only makes sense when each provider's value is a share of a
+  // meaningful total. count benches with market-share semantics
+  // (solana-tx-landing) get the most out of it; other count benches
+  // also render but the slices represent the relative size of each
+  // provider's footprint, which is still a useful read.
+  count: ["countLeaderboard", "rankedBar", "donut", "timeseries"],
 };
 
 /**
