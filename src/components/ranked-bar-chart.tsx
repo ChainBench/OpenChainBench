@@ -3,11 +3,21 @@
 import { useMemo, useState } from "react";
 import type { Benchmark } from "@/types/benchmark";
 import { fmtUnit } from "@/lib/format";
+import { methodologyTooltip } from "@/lib/methodology-tooltip";
 import { buildProviderColors } from "@/lib/series-colors";
 import { LiveDot } from "@/components/live-dot";
 import { ProviderLogo } from "@/components/provider-logo";
 
-type Props = { benchmark: Benchmark };
+type Props = {
+  benchmark: Benchmark;
+  /** Optional controlled exclusion set. When provided, this chart
+   *  defers exclusion state to the parent so multiple views (ranked
+   *  bar, distribution, donut, timeseries) can share which providers
+   *  the reader has hidden. */
+  excluded?: Set<string>;
+  onToggleExclude?: (slug: string) => void;
+  onResetExcluded?: () => void;
+};
 
 /**
  * Try to match a provider's name against the bench's methodology bullets.
@@ -28,8 +38,35 @@ function matchMethodFor(name: string, methodology: string[]): string[] {
   });
 }
 
-export function RankedBarChart({ benchmark }: Props) {
-  const [excluded, setExcluded] = useState<Set<string>>(() => new Set());
+export function RankedBarChart({
+  benchmark,
+  excluded: controlledExcluded,
+  onToggleExclude,
+  onResetExcluded,
+}: Props) {
+  const [internalExcluded, setInternalExcluded] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const excluded = controlledExcluded ?? internalExcluded;
+  const toggle = (slug: string) => {
+    if (onToggleExclude) {
+      onToggleExclude(slug);
+      return;
+    }
+    setInternalExcluded((prev) => {
+      const next = new Set(prev);
+      if (next.has(slug)) next.delete(slug);
+      else next.add(slug);
+      return next;
+    });
+  };
+  const reset = () => {
+    if (onResetExcluded) {
+      onResetExcluded();
+      return;
+    }
+    setInternalExcluded(new Set());
+  };
 
   const colors = useMemo(
     () => buildProviderColors(benchmark.results),
@@ -47,6 +84,7 @@ export function RankedBarChart({ benchmark }: Props) {
       value: r.ms.p50,
       color: colors.get(r.slug) ?? "var(--color-ink-soft)",
       methodNotes: matchMethodFor(r.name, benchmark.methodology),
+      query: r.query,
     }));
   }, [benchmark, colors]);
 
@@ -71,15 +109,6 @@ export function RankedBarChart({ benchmark }: Props) {
     return Math.max(0, (Math.log10(v) - lo) / (hi - lo));
   };
 
-  function toggle(slug: string) {
-    setExcluded((prev) => {
-      const next = new Set(prev);
-      if (next.has(slug)) next.delete(slug);
-      else next.add(slug);
-      return next;
-    });
-  }
-
   const excludedCount = excluded.size;
   // Visible-row ranking - excluded rows lose their #N badge so the
   // remaining list reads as a clean leaderboard.
@@ -95,7 +124,7 @@ export function RankedBarChart({ benchmark }: Props) {
         {excludedCount > 0 && (
           <button
             type="button"
-            onClick={() => setExcluded(new Set())}
+            onClick={reset}
             className="text-[10px] font-sans font-medium uppercase tracking-[0.16em] text-ink-muted hover:text-ink lnk"
           >
             Reset · {excludedCount} excluded
@@ -116,11 +145,7 @@ export function RankedBarChart({ benchmark }: Props) {
               role="button"
               tabIndex={0}
               aria-pressed={isOff}
-              title={
-                isOff
-                  ? `Click to include ${r.name} in the chart`
-                  : `Click to exclude ${r.name} from the chart`
-              }
+              title={methodologyTooltip(r, isOff)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
