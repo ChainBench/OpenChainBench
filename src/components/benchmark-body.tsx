@@ -179,7 +179,11 @@ export function BenchmarkBody({
   // they always saw.
   const allowedViews = viewsForBenchmark(benchmark);
   const defaultView = defaultViewFor(benchmark);
-  const [view, setView] = useViewPreference(benchmark.slug, defaultView, allowedViews);
+  const [view, setView, viewMounted] = useViewPreference(
+    benchmark.slug,
+    defaultView,
+    allowedViews,
+  );
 
   // Shared exclusion set across every chart view on this page. A reader
   // who hides a provider on the ranked-bar view sees the same provider
@@ -287,35 +291,46 @@ export function BenchmarkBody({
       {!isDraft && (
         <>
           <div className="mt-8 card-soft rounded-xl p-4 sm:p-6 lg:p-8">
-            {view === "countLeaderboard" && <CountLeaderboard benchmark={benchmark} />}
-            {view === "rankedBar" && (
-              <RankedBarChart
-                benchmark={benchmark}
-                excluded={excluded}
-                onToggleExclude={toggleExclude}
-                onResetExcluded={resetExcluded}
-              />
-            )}
-            {view === "distribution" && (
-              <DistributionChart
-                benchmark={benchmark}
-                excluded={excluded}
-                onToggleExclude={toggleExclude}
-              />
-            )}
-            {view === "donut" && (
-              <DonutChart
-                benchmark={benchmark}
-                excluded={excluded}
-                onToggleExclude={toggleExclude}
-              />
-            )}
-            {view === "timeseries" && (
-              <TimeSeriesChart
-                benchmark={benchmark}
-                region={showChartRegionRow ? chartRegion : undefined}
-              />
-            )}
+            {/* Fade-in until the localStorage view preference resolves.
+                Without this the SSR-default view paints first, then
+                useViewPreference swaps to the saved view in a visible
+                second frame ("two charts at once" user report). The
+                wrapper keeps a min-h so the card doesn't collapse to
+                zero while the chart is invisible. */}
+            <div
+              className="min-h-[260px] transition-opacity duration-200"
+              style={{ opacity: viewMounted ? 1 : 0 }}
+            >
+              {view === "countLeaderboard" && <CountLeaderboard benchmark={benchmark} />}
+              {view === "rankedBar" && (
+                <RankedBarChart
+                  benchmark={benchmark}
+                  excluded={excluded}
+                  onToggleExclude={toggleExclude}
+                  onResetExcluded={resetExcluded}
+                />
+              )}
+              {view === "distribution" && (
+                <DistributionChart
+                  benchmark={benchmark}
+                  excluded={excluded}
+                  onToggleExclude={toggleExclude}
+                />
+              )}
+              {view === "donut" && (
+                <DonutChart
+                  benchmark={benchmark}
+                  excluded={excluded}
+                  onToggleExclude={toggleExclude}
+                />
+              )}
+              {view === "timeseries" && (
+                <TimeSeriesChart
+                  benchmark={benchmark}
+                  region={showChartRegionRow ? chartRegion : undefined}
+                />
+              )}
+            </div>
             {/* Footer row hosts the view switcher. Sat at the top before
                 this revision and ate ~40 px of header to a button most
                 readers never used; bottom placement keeps the chart

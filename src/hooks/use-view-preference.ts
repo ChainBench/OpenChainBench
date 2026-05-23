@@ -6,24 +6,30 @@ import type { ViewType } from "@/lib/views";
 const STORAGE_KEY_PREFIX = "ocb:view:";
 
 /**
- * Per-bench chart-view preference, persisted in localStorage. Initial
- * render uses the server-derived default (so the prerendered HTML stays
- * cacheable - see export const dynamic = "force-static" on the bench
- * page). After hydration we read localStorage and switch if the user
- * has a saved preference compatible with the bench's allowed set.
+ * Per-bench chart-view preference, persisted in localStorage.
  *
- * If the saved value is no longer valid (e.g. the bench changed unit,
- * or the view was removed from the codebase) we silently fall back to
- * the default and let the next setter rewrite the key.
+ * Returns `[view, setView, mounted]`. The mounted flag is the
+ * hydration-flicker fix: the SSR HTML renders with the server default,
+ * the client then reads localStorage and may swap to a saved view that
+ * differs from the default - users were reporting "two charts visible
+ * before settling on one" because the swap repainted the chart in a
+ * visible second frame.
+ *
+ * Callers fade the chart in with `opacity: mounted ? 1 : 0` so the
+ * default-view paint is invisible and only the resolved view ever
+ * reaches the screen. Adds ~100 ms of empty card on first paint, in
+ * exchange for zero flicker on every subsequent paint.
  */
 export function useViewPreference(
   benchmarkSlug: string,
   defaultView: ViewType,
   allowed: ViewType[],
-): [ViewType, (next: ViewType) => void] {
+): [ViewType, (next: ViewType) => void, boolean] {
   const [view, setView] = useState<ViewType>(defaultView);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     if (typeof window === "undefined") return;
     try {
       const stored = window.localStorage.getItem(STORAGE_KEY_PREFIX + benchmarkSlug);
@@ -51,5 +57,5 @@ export function useViewPreference(
     }
   };
 
-  return [view, update];
+  return [view, update, mounted];
 }
