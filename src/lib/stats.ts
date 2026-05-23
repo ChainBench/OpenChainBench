@@ -14,8 +14,13 @@ export function computeFieldStats(results: ProviderResult[]): {
   tailMax: number;
   tailSpread: number;
 } {
-  const p50s = results.map((r) => r.ms.p50);
-  const p99s = results.map((r) => r.ms.p99);
+  // Drop "currently unavailable" providers from every aggregate. Their
+  // placeholder values are 0 and would otherwise drag the Best stat to
+  // 0 ms, the Spread tailMin to 0 (which kills the ratio), and the
+  // Median toward the lower half of the field.
+  const live = results.filter((r) => r.availability !== "unavailable");
+  const p50s = live.map((r) => r.ms.p50);
+  const p99s = live.map((r) => r.ms.p99);
 
   const fieldMin = p50s.length ? Math.min(...p50s) : 0;
   const fieldMax = p50s.length ? Math.max(...p50s) : 0;
