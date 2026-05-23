@@ -10,7 +10,7 @@ import { fmtUnit } from "@/lib/format";
 /** Median value of the benchmark (the field shown in the headline). */
 export function fieldValue(b: Benchmark): number | null {
   if (b.status !== "live") return null;
-  const live = b.results.filter((r) => r.ms.p50 > 0);
+  const live = b.results.filter((r) => r.availability !== "unavailable" && r.ms.p50 > 0);
   if (live.length === 0) return null;
   const sorted = [...live].sort((a, c) =>
     b.higherIsBetter ? c.ms.p50 - a.ms.p50 : a.ms.p50 - c.ms.p50
@@ -21,7 +21,7 @@ export function fieldValue(b: Benchmark): number | null {
 /** Who is currently #1 on this benchmark, if any. */
 export function leader(b: Benchmark): { name: string; slug: string; value: number } | null {
   if (b.status !== "live") return null;
-  const live = b.results.filter((r) => r.ms.p50 > 0);
+  const live = b.results.filter((r) => r.availability !== "unavailable" && r.ms.p50 > 0);
   if (live.length === 0) return null;
   const sorted = [...live].sort((a, c) =>
     b.higherIsBetter ? c.ms.p50 - a.ms.p50 : a.ms.p50 - c.ms.p50
