@@ -60,6 +60,7 @@ source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/net
 
 prometheus:
   window: 24h
+  expected_freshness_seconds: 43200
 
 faq:
   - q: "Which crypto data API supports the most blockchains?"

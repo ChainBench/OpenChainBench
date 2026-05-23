@@ -63,6 +63,7 @@ source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/per
 
 prometheus:
   window: 24h
+  expected_freshness_seconds: 1800
 
 faq:
   - q: "What is the cheapest perpetual futures DEX right now?"

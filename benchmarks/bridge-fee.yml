@@ -72,6 +72,7 @@ source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/bri
 prometheus:
   url: https://prometheus-production-9ffe.up.railway.app
   window: 24h
+  expected_freshness_seconds: 1800
 
 # Real metrics exposed by the bridge-monitor harness:
 #   bridge_cost_percent{bridge, from_chain, to_chain, from_token, to_token, amount_usd, region}

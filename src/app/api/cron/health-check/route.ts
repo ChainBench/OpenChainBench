@@ -32,7 +32,16 @@ export const dynamic = "force-dynamic";
  */
 
 const LOOKBACK_SECONDS = 360; // 6 minutes. covers the 5-minute cron + slack delivery slack.
-const PROVIDER_FRESH_THRESHOLD_SECONDS = 600; // 10 minutes. window during which we still treat the provider as live.
+const DEFAULT_FRESH_THRESHOLD_SECONDS = 600; // 10 minutes. only used when a bench yml doesn't declare its own.
+// Hysteresis: alert only when the offline state has been observed for
+// HYSTERESIS_OFFSET_SECONDS continuously. Concretely we sample the
+// "still offline?" question at offset 0 AND offset HYSTERESIS, and
+// require both to agree before firing. This eats single-cycle blips
+// (a harness reboot, a flaky upstream that recovers in <5 min) which
+// would otherwise spam slack on every transient hiccup. Same logic
+// gates recovery alerts so a flapping provider doesn't generate
+// up/down/up/down noise.
+const HYSTERESIS_OFFSET_SECONDS = 600; // ~2 cron cycles of confirmation.
 
 type ProviderState = {
   benchSlug: string;
@@ -73,6 +82,12 @@ export async function GET(req: NextRequest) {
   const transitions: ProviderState[] = [];
 
   for (const spec of liveSpecs) {
+    // Per-bench freshness window. High-freq scrapers (10-30 s) keep the
+    // 10 min default. Slow scrapers (5 min, 30 min, 1 h, 6 h) declare
+    // their own `prometheus.expected_freshness_seconds` so the cron
+    // doesn't treat their normal idle stretches as outages.
+    const threshold =
+      spec.prometheus?.expected_freshness_seconds ?? DEFAULT_FRESH_THRESHOLD_SECONDS;
     for (const provider of spec.providers) {
       const q = provider.queries?.p50;
       if (!q) continue;
@@ -85,18 +100,44 @@ export async function GET(req: NextRequest) {
       const labelSelector = extractLabelSelector(q);
       if (!metricName) continue;
 
-      const recentQ = `count_over_time(${metricName}${labelSelector}[${PROVIDER_FRESH_THRESHOLD_SECONDS}s])`;
-      const pastQ = `count_over_time(${metricName}${labelSelector}[${PROVIDER_FRESH_THRESHOLD_SECONDS}s] offset ${LOOKBACK_SECONDS}s)`;
+      // changes() over count_over_time(): prom scrapes the harness every
+      // 15 s by default, so count_over_time stays > 0 forever even when
+      // the harness has stopped pulling fresh data from its upstream
+      // source (gauges keep the last value, prom keeps recording it).
+      // changes() counts how many distinct values landed in the window,
+      // which correctly drops to 0 when the value stalls. Works for both
+      // gauges (value moves on each update) and counters (increments are
+      // changes), so we get one consistent freshness probe per metric type.
+      //
+      // Three samples per provider for the hysteresis check:
+      //   - now     : "is it alive right now?"
+      //   - confirm : "was it alive (or dead) 10 min ago too?"        (HYSTERESIS_OFFSET)
+      //   - past    : "was it the OPPOSITE state 16 min ago?"         (LOOKBACK + HYSTERESIS)
+      // We only alert when `now == confirm` (state sustained for the
+      // hysteresis window) AND `past` is the opposite (it really did
+      // flip). Single-cycle blips show now != confirm and are dropped.
+      const recentQ = `changes(${metricName}${labelSelector}[${threshold}s])`;
+      const confirmQ = `changes(${metricName}${labelSelector}[${threshold}s] offset ${HYSTERESIS_OFFSET_SECONDS}s)`;
+      const pastQ = `changes(${metricName}${labelSelector}[${threshold}s] offset ${LOOKBACK_SECONDS + HYSTERESIS_OFFSET_SECONDS}s)`;
 
-      const [now, past] = await Promise.all([
-        prom.scalar(recentQ).catch(() => null),
-        prom.scalar(pastQ).catch(() => null),
+      const [now, confirm, past] = await Promise.all([
+        // For multi-series metrics the spec's p50 query already narrows
+        // to a single provider via labels, but if changes() still returns
+        // a vector we want any-series-alive as the live signal.
+        prom.scalar(`max(${recentQ})`).catch(() => null),
+        prom.scalar(`max(${confirmQ})`).catch(() => null),
+        prom.scalar(`max(${pastQ})`).catch(() => null),
       ]);
 
       const isLive = (now ?? 0) > 0;
+      const isLiveConfirmed = (confirm ?? 0) > 0;
       const wasLive = (past ?? 0) > 0;
 
-      if (isLive !== wasLive) {
+      // Sustained transition only: both "now" and "10 min ago" agree on
+      // the new state, AND the older "past" sample disagreed.
+      const sustainedFlip = isLive === isLiveConfirmed && isLive !== wasLive;
+
+      if (sustainedFlip) {
         transitions.push({
           benchSlug: spec.slug,
           benchTitle: spec.title,
