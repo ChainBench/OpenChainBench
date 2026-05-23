@@ -7,6 +7,8 @@ import { ChainTabs } from "@/components/chain-tabs";
 import { LedgerTable } from "@/components/ledger-table";
 import { TimeSeriesChart } from "@/components/time-series-chart";
 import { RankedBarChart } from "@/components/ranked-bar-chart";
+import { DistributionChart } from "@/components/distribution-chart";
+import { DonutChart } from "@/components/donut-chart";
 import { RegionGrid } from "@/components/region-grid";
 import { CountLeaderboard } from "@/components/count-leaderboard";
 import { SummaryStat } from "@/components/summary-stat";
@@ -282,6 +284,8 @@ export function BenchmarkBody({
             </div>
             {view === "countLeaderboard" && <CountLeaderboard benchmark={benchmark} />}
             {view === "rankedBar" && <RankedBarChart benchmark={benchmark} />}
+            {view === "distribution" && <DistributionChart benchmark={benchmark} />}
+            {view === "donut" && <DonutChart benchmark={benchmark} />}
             {view === "timeseries" && (
               <TimeSeriesChart
                 benchmark={benchmark}
