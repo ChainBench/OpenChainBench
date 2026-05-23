@@ -22,16 +22,15 @@ export type ViewType =
 const ALLOWED_BY_UNIT: Record<Benchmark["unit"], ViewType[]> = {
   // distribution surfaces tail behaviour (p90/p99 vs p50) which is the
   // signal users actually care about on latency / cost / yield benches.
-  ms: ["timeseries", "rankedBar", "distribution"],
-  s: ["timeseries", "rankedBar", "distribution"],
-  bps: ["timeseries", "rankedBar", "distribution"],
-  pct: ["timeseries", "rankedBar", "distribution"],
-  // donut only makes sense when each provider's value is a share of a
-  // meaningful total. count benches with market-share semantics
-  // (solana-tx-landing) get the most out of it; other count benches
-  // also render but the slices represent the relative size of each
-  // provider's footprint, which is still a useful read.
-  count: ["countLeaderboard", "rankedBar", "donut", "timeseries"],
+  // donut is offered everywhere too: on latency / pct / bps it reads as
+  // "share of the field's total p50", a perfectly valid (if unusual)
+  // comparison the reader can ignore if they don't want it. Putting the
+  // option behind the switcher gives the choice instead of guessing.
+  ms: ["timeseries", "rankedBar", "distribution", "donut"],
+  s: ["timeseries", "rankedBar", "distribution", "donut"],
+  bps: ["timeseries", "rankedBar", "distribution", "donut"],
+  pct: ["timeseries", "rankedBar", "distribution", "donut"],
+  count: ["countLeaderboard", "rankedBar", "donut", "distribution", "timeseries"],
 };
 
 /**
