@@ -111,6 +111,7 @@ source: https://github.com/MobulaFi/mobula-monorepo/tree/main/miniapps/solana-tx
 
 prometheus:
   window: 7d
+  expected_freshness_seconds: 7200
 
 # Real metrics emitted by the active prober in solana-tx-landing harness:
 #   solana_landing_probe_success_total{service, mode, region}              counter

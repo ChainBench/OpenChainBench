@@ -79,6 +79,7 @@ source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/wal
 
 prometheus:
   window: 24h
+  expected_freshness_seconds: 5400
 
 # Chain selector. tabs at the top of the page. Server injects
 # `chain="X"` into every PromQL query for the active tab. The special

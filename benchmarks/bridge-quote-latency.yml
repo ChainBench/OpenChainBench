@@ -56,6 +56,7 @@ source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/bri
 prometheus:
   url: https://prometheus-production-9ffe.up.railway.app
   window: 24h
+  expected_freshness_seconds: 1800
 
 faq:
   - q: "Which cross-chain bridge has the lowest API latency?"
