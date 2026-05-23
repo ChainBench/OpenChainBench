@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { Benchmark } from "@/types/benchmark";
 import { ProviderLogo } from "@/components/provider-logo";
 import { fmtUnit } from "@/lib/format";
@@ -8,15 +8,19 @@ import { methodologyTooltip } from "@/lib/methodology-tooltip";
 import { buildProviderColors } from "@/lib/series-colors";
 
 /**
- * Per-provider distribution view. One row per provider, three horizontal
- * marks at p50 / p90 / p99 along a shared field-wide scale. Reads as
- * "where does each provider sit on the latency spectrum and how wide
- * is its tail." Complements the time-series view (drift) and the ranked-bar
- * view (rank order) by surfacing tail behaviour at a glance.
+ * Latency-spread view. One row per provider, three markers (p50 / p90 /
+ * p99) plotted on a shared field-wide scale.
  *
- * Skips unavailable rows and rows with p50 == 0 so the field scale isn't
- * collapsed to a single column by missing-data placeholders. Excluded
- * rows are dimmed but still rendered so the reader sees what they hid.
+ * Design borrowed from Vercel Speed Insights / Honeycomb service list:
+ *   - Sans-serif provider name (serif read amateur on data dense rows).
+ *   - 4-column row: name | track | p50 | p99 — two values right-aligned,
+ *     not one, so the spread story is in the table itself, not just the
+ *     visual.
+ *   - Thin 2 px hairline track that spans the row; per-row coloured
+ *     band between p50 and p99 at low opacity sits on top.
+ *   - Three differentiated markers: filled dot (p50), outlined dot (p90),
+ *     vertical bar (p99). Reader learns the grammar from the small
+ *     header legend.
  */
 export function DistributionChart({
   benchmark,
@@ -24,8 +28,6 @@ export function DistributionChart({
   onToggleExclude,
 }: {
   benchmark: Benchmark;
-  /** Shared exclusion set with the rest of the bench's chart views.
-   *  When omitted the chart manages its own local state. */
   excluded?: Set<string>;
   onToggleExclude?: (slug: string) => void;
 }) {
@@ -47,15 +49,13 @@ export function DistributionChart({
     });
   };
 
+  const colors = useMemo(() => buildProviderColors(results), [results]);
+
   const live = results.filter(
     (r) => r.availability !== "unavailable" && r.ms.p50 > 0,
   );
   if (live.length === 0) {
-    return (
-      <p className="label-mono text-ink-faint py-8 text-center">
-        No live samples in this view yet.
-      </p>
-    );
+    return <p className="text-[12px] text-ink-faint py-8 text-center">No data.</p>;
   }
 
   const sorted = [...live].sort((a, b) =>
@@ -63,24 +63,20 @@ export function DistributionChart({
   );
 
   // Field scale recomputes from visible rows only - excluding an outlier
-  // lets the remaining providers fill the track.
+  // gives the remaining rows the full track width.
   const visible = sorted.filter((r) => !excluded.has(r.slug));
   const fieldMax = Math.max(...visible.map((r) => r.ms.p99), 1);
   const scale = (v: number) => Math.max(0, Math.min(100, (v / fieldMax) * 100));
 
-  const colors = buildProviderColors(results);
-
   return (
     <div className="w-full">
-      <div className="flex items-center justify-between mb-4">
-        <p className="label-mono text-ink-faint">
-          Latency distribution · p50 / p90 / p99 · click rows to exclude
+      <div className="flex items-baseline justify-between mb-5">
+        <p className="text-[11px] font-sans font-medium uppercase tracking-[0.18em] text-ink-faint">
+          Latency spread
         </p>
-        <p className="label-mono text-ink-faint hidden sm:block">
-          0 → {fmtUnit(fieldMax, unit)}
-        </p>
+        <MarkerLegend />
       </div>
-      <ul className="flex flex-col divide-y divide-rule">
+      <ul className="flex flex-col">
         {sorted.map((r) => {
           const isOff = excluded.has(r.slug);
           const color = colors.get(r.slug) ?? "var(--color-ink-soft)";
@@ -101,75 +97,120 @@ export function DistributionChart({
                 }
               }}
               title={methodologyTooltip(r, isOff)}
-              className={`grid grid-cols-[minmax(6rem,9rem)_1fr_auto] sm:grid-cols-[minmax(8rem,12rem)_1fr_auto] items-center gap-3 sm:gap-4 py-2.5 cursor-pointer rounded-sm transition-colors hover:bg-paper-soft/40 ${
+              className={`grid grid-cols-[minmax(8rem,11rem)_1fr_3.5rem_3.5rem] sm:grid-cols-[minmax(10rem,14rem)_1fr_4rem_4rem] items-center gap-3 sm:gap-4 py-3 border-b border-rule/50 last:border-b-0 cursor-pointer transition-colors hover:bg-paper-soft/40 ${
                 isOff ? "opacity-40" : ""
               }`}
             >
-              {/* Identity column — logo + name on one line, no white gap above the track */}
-              <span className="flex items-center gap-2 min-w-0 text-[13px]">
+              <span className="flex items-center gap-2 min-w-0">
                 <ProviderLogo slug={r.slug} name={r.name} size={18} />
                 <span
-                  className={`font-serif font-semibold truncate ${
-                    isOff ? "line-through decoration-1" : ""
+                  className={`font-sans font-medium text-[12.5px] truncate ${
+                    isOff ? "line-through decoration-1 text-ink-faint" : "text-ink"
                   }`}
-                  style={{ color: isOff ? "var(--color-ink-faint)" : color }}
                 >
                   {r.name}
                 </span>
               </span>
-              {/* Track column — inline with the name so the row reads in a single line */}
-              <div className="relative h-4 rounded-sm bg-paper-soft">
+              {/* Track. 1 px reference hairline + per-row coloured band
+                  + three differentiated markers. */}
+              <div className="relative h-5">
+                {/* Reference hairline spanning the field. */}
+                <div
+                  className="absolute top-1/2 -translate-y-1/2 left-0 right-0 h-px bg-rule"
+                  aria-hidden
+                />
+                {/* Median guide at 50 % of the field. */}
+                <div
+                  className="absolute top-1 bottom-1 w-px bg-rule"
+                  style={{ left: "50%" }}
+                  aria-hidden
+                />
                 {!isOff && (
                   <>
+                    {/* p50 → p99 spread band */}
                     <div
-                      className="absolute top-1/2 -translate-y-1/2 h-1 rounded-full"
+                      className="absolute top-1/2 -translate-y-1/2 h-2 rounded-full"
                       style={{
                         left: `${Math.min(p50Pct, p99Pct)}%`,
                         width: `${Math.abs(p99Pct - p50Pct)}%`,
-                        background: `${color}40`,
+                        background: color,
+                        opacity: 0.18,
                       }}
                       aria-hidden
                     />
-                    <Marker pct={p50Pct} color={color} label="p50" tip={fmtUnit(r.ms.p50, unit)} />
-                    <Marker pct={p90Pct} color={color} label="p90" tip={fmtUnit(r.ms.p90, unit)} dimmed />
-                    <Marker pct={p99Pct} color={color} label="p99" tip={fmtUnit(r.ms.p99, unit)} dimmed />
+                    {/* p99 — vertical bar, right edge of the spread */}
+                    <span
+                      className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-0.5 h-3.5 rounded-sm"
+                      style={{ left: `${p99Pct}%`, background: color }}
+                      title={`p99 ${fmtUnit(r.ms.p99, unit)}`}
+                      aria-label={`p99 ${fmtUnit(r.ms.p99, unit)}`}
+                    />
+                    {/* p90 — outlined ring */}
+                    <span
+                      className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-2.5 h-2.5 rounded-full"
+                      style={{
+                        left: `${p90Pct}%`,
+                        border: `1.5px solid ${color}`,
+                        background: "var(--color-paper)",
+                      }}
+                      title={`p90 ${fmtUnit(r.ms.p90, unit)}`}
+                      aria-label={`p90 ${fmtUnit(r.ms.p90, unit)}`}
+                    />
+                    {/* p50 — filled dot, the headline */}
+                    <span
+                      className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3 h-3 rounded-full"
+                      style={{ background: color }}
+                      title={`p50 ${fmtUnit(r.ms.p50, unit)}`}
+                      aria-label={`p50 ${fmtUnit(r.ms.p50, unit)}`}
+                    />
                   </>
                 )}
               </div>
-              <span className="label-mono text-ink-faint tabular shrink-0 whitespace-nowrap">
+              <span className="font-mono tabular text-[11.5px] text-ink-soft text-right tabular-nums">
                 {fmtUnit(r.ms.p50, unit)}
+              </span>
+              <span className="font-mono tabular text-[11.5px] text-ink-faint text-right tabular-nums">
+                {fmtUnit(r.ms.p99, unit)}
               </span>
             </li>
           );
         })}
       </ul>
+      <div className="mt-3 flex items-center justify-between text-[10px] font-sans uppercase tracking-[0.14em] text-ink-faint">
+        <span>0</span>
+        <span>max {fmtUnit(fieldMax, unit)}</span>
+      </div>
     </div>
   );
 }
 
-function Marker({
-  pct,
-  color,
-  label,
-  tip,
-  dimmed,
-}: {
-  pct: number;
-  color: string;
-  label: string;
-  tip: string;
-  dimmed?: boolean;
-}) {
+function MarkerLegend() {
   return (
-    <span
-      className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-[3px] h-3 rounded-sm"
-      style={{
-        left: `${pct}%`,
-        background: color,
-        opacity: dimmed ? 0.55 : 1,
-      }}
-      title={`${label}: ${tip}`}
-      aria-label={`${label} ${tip}`}
-    />
+    <div className="hidden sm:flex items-center gap-3 text-[10px] font-sans uppercase tracking-[0.14em] text-ink-faint">
+      <span className="inline-flex items-center gap-1.5">
+        <span
+          className="inline-block w-2.5 h-2.5 rounded-full"
+          style={{ background: "var(--color-ink-muted)" }}
+          aria-hidden
+        />
+        p50
+      </span>
+      <span className="inline-flex items-center gap-1.5">
+        <span
+          className="inline-block w-2 h-2 rounded-full"
+          style={{ border: "1.5px solid var(--color-ink-muted)" }}
+          aria-hidden
+        />
+        p90
+      </span>
+      <span className="inline-flex items-center gap-1.5">
+        <span
+          className="inline-block w-0.5 h-3 rounded-sm"
+          style={{ background: "var(--color-ink-muted)" }}
+          aria-hidden
+        />
+        p99
+      </span>
+    </div>
   );
 }
