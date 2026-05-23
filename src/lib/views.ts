@@ -31,6 +31,11 @@ const ALLOWED_BY_UNIT: Record<Benchmark["unit"], ViewType[]> = {
   bps: ["timeseries", "rankedBar", "distribution", "donut"],
   pct: ["timeseries", "rankedBar", "distribution", "donut"],
   count: ["countLeaderboard", "rankedBar", "donut", "distribution", "timeseries"],
+  // slots: integer-ish gauge values (Solana slot delta). Same view set as
+  // latency benches — timeseries shows step-function patterns over time
+  // which is exactly what we want to surface (1 slot vs 2 slots = the
+  // operational signal).
+  slots: ["timeseries", "rankedBar", "distribution", "donut"],
 };
 
 /**
