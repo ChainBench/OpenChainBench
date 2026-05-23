@@ -80,6 +80,13 @@ const queries = z
     success: promql.optional(),
     sample_size: promql.optional(),
     series: promql.optional(),
+    /** Optional slot-level companion queries. Solana-native benches set
+     *  these to surface slot_delta p50/p99 alongside the ms columns. The
+     *  ms numbers are wall-clock derived; slot_delta is the canonical
+     *  on-chain measurement and what should be cited in methodology
+     *  audits. */
+    slot_p50: promql.optional(),
+    slot_p99: promql.optional(),
     regions: z
       .array(
         z.object({
