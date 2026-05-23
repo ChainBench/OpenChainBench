@@ -28,13 +28,10 @@ export function methodologyTooltip(
   const lines = [r.name];
   if (r.query) {
     lines.push("");
-    lines.push(`Computed from: ${r.query}`);
+    lines.push("Method");
+    lines.push(r.query);
   }
   lines.push("");
-  lines.push(
-    isExcluded
-      ? "Click to include in the chart"
-      : "Click to hide from the chart",
-  );
+  lines.push(isExcluded ? "Click to show" : "Click to hide");
   return lines.join("\n");
 }
