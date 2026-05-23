@@ -26,6 +26,11 @@ export type ProviderResult = {
    *  readers know whether comparisons are apples-to-apples. */
   type?: ProviderType;
   ms: { p50: number; p90: number; p99: number; mean: number };
+  /** Optional slot-level companion to ms. Used by Solana-native benches
+   *  where confirmation is a slot-level event (~400 ms granularity).
+   *  When present, the providers table renders a "Slot delta" column
+   *  next to the ms columns. */
+  slots?: { p50: number; p99: number };
   successRate: number;
   /** Per-provider sample count over the run window. */
   sampleSize?: number;

@@ -39,6 +39,12 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: __dirname,
   },
+  // Tree-shake lucide-react down to just the icons we actually import.
+  // Without this hint Next's App Router can include the full barrel
+  // (~1k icons, ~25 KB gzipped) on routes that touch lucide indirectly.
+  experimental: {
+    optimizePackageImports: ["lucide-react"],
+  },
   async headers() {
     return [
       {

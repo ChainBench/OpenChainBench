@@ -316,13 +316,15 @@ async function tryLoadLive(
       const q = p.queries;
       if (!q) return null;
 
-      const [p50, p90, p99, mean, success, sampleSize] = await Promise.all([
+      const [p50, p90, p99, mean, success, sampleSize, slotP50, slotP99] = await Promise.all([
         q.p50 ? prom.scalar(q.p50) : Promise.resolve(null),
         q.p90 ? prom.scalar(q.p90) : Promise.resolve(null),
         q.p99 ? prom.scalar(q.p99) : Promise.resolve(null),
         q.mean ? prom.scalar(q.mean) : Promise.resolve(null),
         q.success ? prom.scalar(q.success) : Promise.resolve(null),
         q.sample_size ? prom.scalar(q.sample_size) : Promise.resolve(null),
+        q.slot_p50 ? prom.scalar(q.slot_p50) : Promise.resolve(null),
+        q.slot_p99 ? prom.scalar(q.slot_p99) : Promise.resolve(null),
       ]);
 
       // If a provider has no data for the current filter (e.g. Jupiter on
@@ -337,6 +339,10 @@ async function tryLoadLive(
         tag: p.tag,
         type: p.type,
         ms: { p50, p90, p99, mean: mean ?? p50 },
+        slots:
+          slotP50 != null && slotP99 != null
+            ? { p50: slotP50, p99: slotP99 }
+            : undefined,
         successRate: success != null ? (success > 1 ? success : success * 100) : 100,
         sampleSize: sampleSize ?? undefined,
         secondary: p.secondary,

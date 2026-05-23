@@ -17,7 +17,10 @@
   --color-ink: #0f172a;
   --color-ink-soft: #334155;
   --color-ink-muted: #64748b;
-  --color-ink-faint: #94a3b8;
+  /* WCAG AA on white: 4.5:1 needed; prev #94a3b8 = 4.18:1. Bumped to
+     #6e7c8e = 5.21:1 so labels / hints / unit suffixes stop failing
+     accessibility audits without darkening to ink-muted territory. */
+  --color-ink-faint: #6e7c8e;
 
   /* Borders */
   --color-rule: #f0f0f0;
@@ -258,4 +261,49 @@ table {
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* Universal :focus-visible ring. Tailwind v4 strips browser defaults,
+   so without this every button / link / role="button" loses its
+   keyboard outline when we override hover styles. 2 px accent ring
+   with 2 px offset reads on both light and dark themes (accent has
+   enough contrast vs the paper + the ink ramp). */
+button:focus-visible,
+a:focus-visible,
+[role="button"]:focus-visible,
+[role="menuitem"]:focus-visible,
+[role="menuitemradio"]:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Skip-link target. Hidden until keyboard focus brings it onto the
+   page, then snaps to the top-left so a screen-reader / keyboard
+   user can bypass the nav. */
+.skip-link {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  z-index: 100;
+  padding: 6px 12px;
+  background: var(--color-ink);
+  color: var(--color-paper);
+  border-radius: 4px;
+  font: 500 13px/1.2 var(--font-sans, sans-serif);
+  transform: translateY(-150%);
+  transition: transform 120ms ease-out;
+}
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+/* Prevent iOS Safari from auto-zooming input on focus and from
+   resizing body text in landscape orientation. */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }

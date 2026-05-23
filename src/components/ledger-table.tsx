@@ -25,6 +25,11 @@ type Props = {
 export function LedgerTable({ benchmark }: Props) {
   const { results, unit, extras } = benchmark;
   const secondary = results[0]?.secondary?.label;
+  // Detected from the first provider's results — if ANY provider declares
+  // slot_p50/slot_p99 in its YAML queries, every row gets the column (with
+  // "-" for providers that don't declare it). Used by Solana-native benches
+  // where slot_delta is the canonical metric and ms is wall-clock derived.
+  const hasSlots = results.some((r) => r.slots != null);
   // Sort by p50 then push unavailable providers to the bottom. Without
   // the secondary sort they'd land at rank #1 on lower-is-better benches
   // because their placeholder p50 is 0 - which is what made 0slot, then
@@ -66,6 +71,14 @@ export function LedgerTable({ benchmark }: Props) {
               Reliability
             </th>
             <th className="border-y-2 border-ink py-2 pl-3 text-right">Trend</th>
+            {hasSlots && (
+              <th
+                className="border-y-2 border-ink py-2 pl-3 text-right"
+                title="Slot delta = number of Solana slots between submit and confirmed. Canonical on-chain measurement (~400 ms per slot)."
+              >
+                Slot delta
+              </th>
+            )}
             {secondary && (
               <th className="border-y-2 border-ink py-2 pl-3 text-right">
                 {secondary}
@@ -83,10 +96,14 @@ export function LedgerTable({ benchmark }: Props) {
             <th className="py-2 px-3 text-right hidden md:table-cell">Δ field</th>
             <th className="py-2 px-3 text-right hidden md:table-cell">Success</th>
             <th className="py-2 pl-3 text-right">24h</th>
+            {hasSlots && <th className="py-2 pl-3 text-right">p50 / p99</th>}
             {secondary && <th className="py-2 pl-3 text-right">Value</th>}
           </tr>
           <tr className="border-b border-ink">
-            <th colSpan={secondary ? 11 : 10} className="h-px p-0" />
+            <th
+              colSpan={10 + (hasSlots ? 1 : 0) + (secondary ? 1 : 0)}
+              className="h-px p-0"
+            />
           </tr>
         </thead>
         <tbody>
@@ -99,6 +116,7 @@ export function LedgerTable({ benchmark }: Props) {
               fieldP50={fieldP50}
               maxP50={maxP50}
               hasSecondary={!!secondary}
+              hasSlots={hasSlots}
               series={extras.series24h[r.slug] ?? []}
               sparkMin={sparkMin}
               sparkMax={sparkMax}
@@ -118,6 +136,7 @@ function Row({
   fieldP50,
   maxP50,
   hasSecondary,
+  hasSlots,
   series,
   sparkMin,
   sparkMax,
@@ -129,6 +148,7 @@ function Row({
   fieldP50: number;
   maxP50: number;
   hasSecondary: boolean;
+  hasSlots: boolean;
   series: number[];
   sparkMin: number;
   sparkMax: number;
@@ -198,7 +218,7 @@ function Row({
       </td>
       {isOffline ? (
         <td
-          colSpan={hasSecondary ? 8 : 7}
+          colSpan={7 + (hasSlots ? 1 : 0) + (hasSecondary ? 1 : 0)}
           className="py-2.5 px-3 text-right text-ink-faint italic text-[12px]"
         >
           Awaiting next successful scrape
@@ -247,6 +267,16 @@ function Row({
               />
             </span>
           </td>
+          {hasSlots && (
+            <td
+              className="py-2.5 pl-3 text-right text-ink-soft whitespace-nowrap font-mono text-[12px]"
+              title="p50 / p99 slot delta — canonical Solana on-chain measurement"
+            >
+              {r.slots
+                ? `${r.slots.p50.toFixed(0)} / ${r.slots.p99.toFixed(0)}`
+                : "-"}
+            </td>
+          )}
           {hasSecondary && (
             <td className="py-2.5 pl-3 text-right text-ink-soft">
               {r.secondary?.value ?? "-"}
