@@ -35,6 +35,10 @@ export type ProviderResult = {
    *  p99 queries so the UI can render a soft offline state instead of
    *  zero values. */
   availability?: ProviderAvailability;
+  /** The raw PromQL query that produced this provider's p50 value.
+   *  Surfaced in the chart hover tooltip so readers can see exactly
+   *  how the headline number was computed, not just trust it. */
+  query?: string;
 };
 
 export type RegionPoint = {
