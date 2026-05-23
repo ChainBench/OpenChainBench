@@ -1,4 +1,5 @@
 import type { Benchmark } from "@/types/benchmark";
+import { liveResults } from "@/lib/provider-filters";
 import { fmtUnit } from "@/lib/format";
 
 /**
@@ -18,8 +19,8 @@ import { fmtUnit } from "@/lib/format";
  * No-op when the bench has no live data yet.
  */
 export function ChainHeadingsSummary({ benchmark }: { benchmark: Benchmark }) {
-  const liveResults = benchmark.results.filter((r) => r.availability !== "unavailable" && r.ms.p50 > 0);
-  if (liveResults.length === 0) return null;
+  const live = liveResults(benchmark.results);
+  if (live.length === 0) return null;
 
   // Render for benches whose providers ARE chains - currently the
   // "Blockchains" category (l1-finality, l2-block-time, ...). Skip
@@ -29,7 +30,7 @@ export function ChainHeadingsSummary({ benchmark }: { benchmark: Benchmark }) {
   if (benchmark.category !== "Blockchains") return null;
 
   // Sort by p50: best-first when lower-is-better, worst-first otherwise.
-  const sorted = [...liveResults].sort((a, b) =>
+  const sorted = [...live].sort((a, b) =>
     benchmark.higherIsBetter ? b.ms.p50 - a.ms.p50 : a.ms.p50 - b.ms.p50
   );
 
