@@ -22,11 +22,20 @@ export const runtime = "nodejs";
 // skips the canonical state update, and the client-side counter grows
 // linearly until the cache finally refreshes - giving the user the
 // impression that the indicator "doesn't reset on refetch".
+//
+// The cache key now folds in the sorted slug list so adding / removing /
+// renaming a bench yml invalidates only what changed - the previous v1
+// keyed on a constant ("freshness-v1") and shared one cache entry
+// across every possible spec set, so a spec edit invalidated freshness
+// for every other bench during the next 2 s window.
 const computeFreshness = unstable_cache(
-  async (): Promise<{ now: number; freshness: Record<string, number> }> => {
-    // Filter editorial drafts so a `status: draft` spec doesn't surface
-    // here while every other public route correctly hides it.
-    const specs = (await getSpecs()).filter((s) => s.status === "live");
+  async (
+    sortedLiveSlugs: string[],
+  ): Promise<{ now: number; freshness: Record<string, number> }> => {
+    const liveSlugSet = new Set(sortedLiveSlugs);
+    const specs = (await getSpecs()).filter(
+      (s) => s.status === "live" && liveSlugSet.has(s.slug),
+    );
     const fallback = process.env.PROMETHEUS_URL;
 
     const entries = await Promise.all(
@@ -57,7 +66,7 @@ const computeFreshness = unstable_cache(
     }
     return { now: Date.now(), freshness };
   },
-  ["freshness-v1"],
+  ["freshness-v2"],
   { revalidate: 2, tags: ["benchmarks", "freshness"] },
 );
 
@@ -65,7 +74,14 @@ export async function GET(req: Request) {
   const r = rateLimit(clientKey(req, "freshness"), 120, 60);
   if (!r.ok) return tooManyRequests(r.retryAfterSec);
 
-  const data = await computeFreshness();
+  // Resolve the spec list outside the cached function so its slug list
+  // can be part of the cache key. getSpecs() is itself memoised so this
+  // is a Map read on the hot path.
+  const sortedLiveSlugs = (await getSpecs())
+    .filter((s) => s.status === "live")
+    .map((s) => s.slug)
+    .sort();
+  const data = await computeFreshness(sortedLiveSlugs);
   return Response.json(data, {
     headers: {
       // 2 s s-maxage matches the unstable_cache window above. Short swr

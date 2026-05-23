@@ -21,14 +21,17 @@ import { SITE } from "@/data/site";
 import { buildFaqPageJsonLd, safeJsonLd } from "@/lib/jsonld";
 import type { Benchmark } from "@/types/benchmark";
 
-export const revalidate = 60;
-
 // Force static. The page is prerendered by generateStaticParams below;
 // without this explicit hint, vercel was still serving each request with
 // `cache-control: private, no-cache, no-store` even though the route is
 // `●` (SSG) in the build output - useSearchParams in the client subtree
 // (BenchmarkBody, wrapped in Suspense) is enough to flip the runtime
 // classification back to "dynamic" without it.
+//
+// `revalidate` is intentionally NOT set: with `force-static` the page
+// only refreshes on a fresh deploy. Setting both was redundant and has
+// hit vercel-side bugs historically. Live numbers come from prom via
+// /api/citable polling, not from re-rendering the shell.
 export const dynamic = "force-static";
 
 type Params = { slug: string };
