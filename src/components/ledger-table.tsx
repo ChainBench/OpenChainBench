@@ -4,6 +4,7 @@ import { useMemo } from "react";
 
 import Link from "next/link";
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
+import { Hint } from "@/components/hint";
 import { Sparkline } from "@/components/sparkline";
 import { ProviderLogo } from "@/components/provider-logo";
 import { ProviderTypeBadge } from "@/components/provider-type-badge";
@@ -201,13 +202,12 @@ function Row({
             </span>
           )}
           {isOffline && (
-            <span
-              className="inline-flex items-center gap-1 shrink-0 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-muted"
-              title="No samples returned this cycle — provider or its upstream is currently unavailable. Values will reappear once data resumes."
-            >
-              <span className="inline-block w-1.5 h-1.5 rounded-full bg-[var(--color-warn,#c08a3c)]" aria-hidden />
-              Currently unavailable
-            </span>
+            <Hint label="No samples returned this cycle. Provider or its upstream is unavailable. Values reappear once data resumes.">
+              <span className="inline-flex items-center gap-1 shrink-0 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-muted">
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-[var(--color-warn,#c08a3c)]" aria-hidden />
+                Currently unavailable
+              </span>
+            </Hint>
           )}
           {r.type && !isOffline && (
             <span className="hidden md:inline-flex">

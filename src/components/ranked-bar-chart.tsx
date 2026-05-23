@@ -6,6 +6,7 @@ import { fmtUnit } from "@/lib/format";
 import { methodologyTooltip } from "@/lib/methodology-tooltip";
 import { buildProviderColors } from "@/lib/series-colors";
 import { useChartExclusion } from "@/hooks/use-chart-exclusion";
+import { Hint } from "@/components/hint";
 import { LiveDot } from "@/components/live-dot";
 import { ProviderLogo } from "@/components/provider-logo";
 
@@ -142,15 +143,16 @@ export function RankedBarChart({
               <span className="font-sans tabular text-[11px] text-ink-faint text-right">
                 {rank !== null ? `#${rank}` : "-"}
               </span>
-              <span
-                className={`inline-flex items-center gap-2 text-[13px] truncate ${
-                  isOff ? "text-ink-faint line-through decoration-1" : "text-ink"
-                }`}
-                title={r.tag}
-              >
-                <ProviderLogo slug={r.slug} name={r.name} size={18} />
-                <span className="truncate">{r.name}</span>
-              </span>
+              <Hint label={r.tag ?? r.name}>
+                <span
+                  className={`inline-flex items-center gap-2 text-[13px] truncate ${
+                    isOff ? "text-ink-faint line-through decoration-1" : "text-ink"
+                  }`}
+                >
+                  <ProviderLogo slug={r.slug} name={r.name} size={18} />
+                  <span className="truncate">{r.name}</span>
+                </span>
+              </Hint>
               <div className="relative h-7 bg-paper-soft/60 rounded-sm overflow-hidden">
                 <div
                   className="h-full rounded-sm transition-[width,opacity] duration-300"
