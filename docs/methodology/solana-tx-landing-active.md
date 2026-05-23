@@ -151,16 +151,6 @@ Sponsorship policy and the disclosure block live in [`solana-landing-tiered-arch
 - The non-suppression clause grants the sponsor a single remedy for unfavorable results : terminate the agreement and receive a pro-rata refund. Never edit, delay, or selectively publish.
 - Methodology changes (this document) ship as PRs and are independent of sponsor contracts.
 
-### 11.1 Endpoint selection principle
-
-Each service is probed against its **publicly-documented best-practice configuration** for the region the harness runs in. Concretely :
-
-- If a service documents a geo-routed DNS or a region-specific endpoint that minimises RTT for the harness's region, we use that.
-- If a service publishes a recommended transport (HTTP vs HTTPS, gRPC vs JSON-RPC) for server-to-server submission, we use that.
-- If a service publishes a tip floor, priority-fee guidance, or required flag (e.g. `skipPreflight=true`), we honour it.
-
-The defensible test : a developer reading the service's public docs and setting up the service for production should converge on the same configuration we probe with. We do NOT accept private optimisations communicated via DM or sales call; those are escalated to a public methodology PR (the same 14-day window applies). Every service is invited to open an issue or PR if their current probe configuration is not their documented optimum - the v1.4 entry below was triggered by such an exchange with Temporal Labs.
-
 ## 12. Change log
 
 | Version | Date | Change |
