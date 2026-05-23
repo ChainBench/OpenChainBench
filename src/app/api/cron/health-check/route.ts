@@ -158,14 +158,29 @@ export async function GET(req: NextRequest) {
       const verb = t.isLive ? "back online" : "offline";
       const text = `${emoji} *${t.providerName}* ${verb} on \`${t.benchSlug}\`\nbench: <https://openchainbench.com/benchmarks/${t.benchSlug}|${t.benchTitle}>`;
       try {
-        await fetch(webhook, {
+        const res = await fetch(webhook, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ text }),
         });
-        sent.push({ provider: `${t.benchSlug}/${t.providerSlug}`, text });
-      } catch {
-        // best effort - don't break the cron on a single slack failure
+        if (!res.ok) {
+          // Slack returns 4xx (bad webhook, archived channel, payload
+          // shape) or 5xx with a plain text body. Surface in the vercel
+          // function logs so an invalid webhook doesn't disappear into
+          // a silent void - this is the *alerting* channel, so a dead
+          // alerter is the worst possible failure mode.
+          const body = await res.text().catch(() => "");
+          console.error(
+            `slack webhook ${res.status} for ${t.benchSlug}/${t.providerSlug}: ${body.slice(0, 200)}`,
+          );
+        } else {
+          sent.push({ provider: `${t.benchSlug}/${t.providerSlug}`, text });
+        }
+      } catch (err) {
+        console.error(
+          `slack webhook network error for ${t.benchSlug}/${t.providerSlug}:`,
+          err,
+        );
       }
     }
   }
