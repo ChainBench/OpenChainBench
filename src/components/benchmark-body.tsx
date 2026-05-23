@@ -286,17 +286,7 @@ export function BenchmarkBody({
 
       {!isDraft && (
         <>
-          <div
-            className={`card-soft rounded-xl p-4 sm:p-6 lg:p-8 ${
-              benchmark.unit === "count" ? "mt-8" : "mt-8"
-            }`}
-          >
-            {/* Switcher hides itself when only 1 view is available. The
-                empty flex row still reserves the space so the chart
-                doesn't bounce when toggling views. */}
-            <div className="flex items-center justify-end mb-4">
-              <ViewSwitcher allowed={allowedViews} value={view} onChange={setView} />
-            </div>
+          <div className="mt-8 card-soft rounded-xl p-4 sm:p-6 lg:p-8">
             {view === "countLeaderboard" && <CountLeaderboard benchmark={benchmark} />}
             {view === "rankedBar" && (
               <RankedBarChart
@@ -326,6 +316,20 @@ export function BenchmarkBody({
                 region={showChartRegionRow ? chartRegion : undefined}
               />
             )}
+            {/* Footer row hosts the view switcher. Sat at the top before
+                this revision and ate ~40 px of header to a button most
+                readers never used; bottom placement keeps the chart
+                pinned to the top of the card and lets the control hide
+                in the visual margin. Popover opens upward so it doesn't
+                spill into the product ledger below. */}
+            <div className="mt-4 pt-3 border-t border-rule/60 flex items-center justify-end">
+              <ViewSwitcher
+                allowed={allowedViews}
+                value={view}
+                onChange={setView}
+                direction="up"
+              />
+            </div>
           </div>
 
           <div className="mt-8 card-soft rounded-xl p-4 sm:p-6 lg:p-8">
