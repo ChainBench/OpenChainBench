@@ -17,6 +17,17 @@ export function fmtUnit(value: number, unit: string) {
     if (s < 10) return `${s.toFixed(1)} s`;
     return `${s.toFixed(0)} s`;
   }
+  if (unit === "slots") {
+    // Solana slot delta. integer-ish (gauge stores last observed slot
+    // delta, p50 over 7d may be fractional e.g. 1.5). Show 1 decimal for
+    // sub-10, integer for larger. Suffix is " slot" or " slots".
+    if (value === 0) return "0 slots";
+    if (value < 10) {
+      const formatted = value.toFixed(1);
+      return `${formatted} ${formatted === "1.0" ? "slot" : "slots"}`;
+    }
+    return `${value.toFixed(0)} slots`;
+  }
   if (unit === "count") {
     // Sub-unit values are common when a "count" bench is measuring an
     // error or gap that converges toward zero (e.g. gas-oracle prediction
@@ -35,6 +46,7 @@ export function fmtUnit(value: number, unit: string) {
 export function unitSuffix(unit: string) {
   if (unit === "pct" || unit === "bps") return " %";
   if (unit === "s") return " s";
+  if (unit === "slots") return " slots";
   if (unit === "count") return "";
   return " ms";
 }
@@ -42,7 +54,7 @@ export function unitSuffix(unit: string) {
 /** Just the formatted number (no unit). used by BigNumber where the unit
  * is rendered separately for typography. */
 export function fmtValue(value: number, unit: string): string {
-  return fmtUnit(value, unit).replace(/\s*(ms|s|min|%)$/, "");
+  return fmtUnit(value, unit).replace(/\s*(ms|s|min|%|slots?)$/, "");
 }
 
 /** Smart-precision percent formatter. picks decimals based on magnitude
