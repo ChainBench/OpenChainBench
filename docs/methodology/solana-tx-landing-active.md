@@ -24,7 +24,7 @@ The bench does **not** answer "which service is best for your trading bot" - tha
 | Window for headline metrics | rolling 7-day weekly leaderboard |
 | Confirmation level | `confirmed` (1+ block confirmation) |
 
-Services and regions are added through the public escalation rules in [`solana-landing-tiered-architecture.md`](../solana-landing-tiered-architecture.md). Any expansion is a PR + 14-day window - never a silent change.
+Services and regions are added through a public PR with a 14-day comment window. Any expansion is a PR + 14-day window - never a silent change.
 
 ## 3. Probe payload (exact)
 
@@ -131,7 +131,7 @@ At V0-Lean cadence (1 / h × 1 region × 5 services) a single service accumulate
 - `p99_latency_ms` standard error ≈ ±15 % (broad; published with confidence interval)
 - Difference in `landing_rate` between two services detectable at 5 pp gap, p < 0.05, after ~18 days of data
 
-For sub-weekly resolution, cadence must increase. The escalation path is in [`solana-landing-tiered-architecture.md`](../solana-landing-tiered-architecture.md) §7.
+For sub-weekly resolution, cadence must increase. Any such change ships as a public PR + 14-day comment window.
 
 ## 10. Limitations (explicit)
 
@@ -145,7 +145,7 @@ For sub-weekly resolution, cadence must increase. The escalation path is in [`so
 
 ## 11. Sponsor independence
 
-Sponsorship policy and the disclosure block live in [`solana-landing-tiered-architecture.md`](../solana-landing-tiered-architecture.md) §6. The contract template enforces :
+Sponsorship contracts (when present) follow a fixed public template with these clauses :
 
 - Sponsors fund operations and receive newsletter visibility, case studies, integration support. Never leaderboard influence, advance results, or methodology changes.
 - The non-suppression clause grants the sponsor a single remedy for unfavorable results : terminate the agreement and receive a pro-rata refund. Never edit, delay, or selectively publish.
