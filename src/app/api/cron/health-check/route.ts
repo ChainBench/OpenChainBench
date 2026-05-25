@@ -2,7 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { getBenchmarkSlugs } from "@/data/benchmarks";
 import { getSpecs } from "@/lib/spec";
-import { Prometheus } from "@/lib/prometheus";
+import { extractMetricName, Prometheus } from "@/lib/prometheus";
 
 export const runtime = "nodejs";
 // Always read live state from prom. ISR cache here would defeat the
@@ -115,7 +115,7 @@ export async function GET(req: NextRequest) {
 
       // For the freshness probe we just need a metric name to ask prom
       // "do you have any sample within X seconds for this label set".
-      const metricName = extractFirstMetric(q);
+      const metricName = extractMetricName(q);
       const labelSelector = extractLabelSelector(q);
       if (!metricName) continue;
 
@@ -223,18 +223,11 @@ export async function GET(req: NextRequest) {
   });
 }
 
-// Pull the first raw metric identifier out of a promql query. Mirrors the
-// helper in lib/prometheus.ts but specialised to also capture the label
-// selector that follows so we can reuse it in the freshness probe.
-function extractFirstMetric(q: string): string | null {
-  const m = /\b([a-zA-Z_:][a-zA-Z0-9_:]*)\s*\{/.exec(q);
-  if (!m) {
-    const bare = /\b([a-zA-Z_:][a-zA-Z0-9_:]*)\b/.exec(q);
-    return bare ? bare[1] : null;
-  }
-  return m[1];
-}
-
+// extractMetricName is reused from @/lib/prometheus (filters PROMQL
+// reserved keywords, so a query that starts with `rate(metric[...])`
+// returns "metric", not "rate"). The label-selector extraction stays
+// local — only the cron needs to re-paste a {...} selector into a
+// freshly built freshness probe.
 function extractLabelSelector(q: string): string {
   const m = /\{[^{}]*\}/.exec(q);
   return m ? m[0] : "";
