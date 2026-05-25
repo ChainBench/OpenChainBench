@@ -11,11 +11,12 @@
 
 ## What ships in this directory
 
-This open-source tree currently contains the **rebalance utility** (`cmd/rebalance/`), a standalone helper that keeps the execution wallets topped up across chains so the bench's paid leg never runs out of inventory mid-cycle. The Dockerfile builds this binary by default.
+Two binaries live here:
 
-The **continuous monitor binary** that actually emits the Prometheus metrics consumed by the two benches is operated by Mobula in the current production deployment and lives outside this directory. A fork that wants to publish its own bridge benchmark can either re-implement the monitor against the contract described below (the Prometheus metric names the YAML specs expect) or open an issue to coordinate an open-source reference implementation.
+- **`cmd/monitor/`** (the Dockerfile default) is the continuous quote loop + execution scheduler. It scrapes every bridge for quotes, executes the paid leg on its schedule, and exposes every Prometheus metric the two benches above consume.
+- **`cmd/rebalance/`** is a one-shot utility that keeps the execution wallets topped up across chains so the paid leg never runs out of inventory mid-cycle. Build separately with `go build ./cmd/rebalance`.
 
-The rest of this README documents the data contract a working monitor must satisfy. The numbers on openchainbench.com come from an instance that follows it.
+The numbers on openchainbench.com come from an instance of `cmd/monitor/` running on Mobula's Railway infra. Anyone with the wallet capital documented below can clone this directory, fill `.env`, and reproduce them end-to-end.
 
 ## How it works
 
