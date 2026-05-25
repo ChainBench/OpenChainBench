@@ -368,7 +368,7 @@ function applyDimensionsToSpec(spec: Spec, labels: Record<string, string>): Spec
   };
 }
 
-function injectLabels(query: string, labels: Record<string, string>): string {
+export function injectLabels(query: string, labels: Record<string, string>): string {
   return query.replace(/\{([^}]*)\}/g, (_, inside: string) => {
     const additions: string[] = [];
     for (const [k, v] of Object.entries(labels)) {

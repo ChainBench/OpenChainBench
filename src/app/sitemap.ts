@@ -1,36 +1,50 @@
+import { statSync } from "node:fs";
+import path from "node:path";
 import type { MetadataRoute } from "next";
 import { getBenchmarks } from "@/data/benchmarks";
-import { loadAlternativeSlugs } from "@/lib/alternatives";
+import { loadAllAlternatives } from "@/lib/alternatives";
 import { getProviderSlugs } from "@/lib/providers";
 import { SITE } from "@/data/site";
 
 export const dynamic = "force-static";
 export const revalidate = false;
 
-// Sitemap lastmod strategy. Two attempts using statSync and git log both
-// returned a single timestamp per URL on Vercel - the platform's git is
-// shallow at build time and the serverless runtime has no git binary at
-// all. Instead we use what we actually have at build time:
+// Sitemap lastmod strategy. The previous version hardcoded one
+// SITE_LAST_EDIT constant for every editorial URL, which meant Google
+// saw stale timestamps until someone remembered to bump it manually.
+// Replaced with three real signals derived at build time:
 //
-// - Bench detail pages: the bench's `lastRunAt` from Prometheus. Each
-//   harness scrapes on its own cadence so the timestamps are naturally
-//   varied (and are the *real* "last data refresh" for that bench - the
-//   value Google would care about for a data page).
-// - Hub pages and indexes: SITE_LAST_EDIT, a hand-bumped constant that
-//   tracks editorial site-wide changes. Bump it when content changes.
-// - Provider pages: the most recent lastRunAt of any bench the provider
-//   appears in (= the freshest signal that page has new data to show).
-// - Alternative pages: SITE_LAST_EDIT (alternative copy is editorial).
-//
-// Net effect: a sitemap with 15-20 distinct timestamps that move with
-// actual data churn, not 118 URLs stamped with the build clock.
+//   - Bench detail pages: `bench.lastRunAt` from prom. Each harness
+//     scrapes on its own cadence so the timestamps reflect actual data
+//     churn.
+//   - Provider pages: most-recent `lastRunAt` across the benches the
+//     provider competes in.
+//   - Aggregator hub pages (`/`, `/benchmarks`, `/products`): max
+//     `bench.lastRunAt` across the catalog. Whenever any bench refreshes,
+//     these hubs claim to have moved too — accurate from a crawler's
+//     perspective since the hub HTML embeds bench leaderboards.
+//   - Editorial hub pages (`/about`, `/methodology`, `/mcp`,
+//     `/contribute`, `/press`): mtime of the corresponding `page.tsx`.
+//     `fs.statSync` works at build time on Vercel (the page files are
+//     on disk) and reflects real edits to the page content.
+//   - Alternative pages: `lastRunAt` of the bench each alternative
+//     wraps. An alternative page is a re-skin of a bench; when the
+//     underlying data refreshes the alternative does too.
 
-const SITE_LAST_EDIT = new Date("2026-05-22T20:00:00Z");
+const BUILD_TIME = new Date();
+
+function pageMtime(relPath: string): Date {
+  try {
+    return statSync(path.join(process.cwd(), "src/app", relPath)).mtime;
+  } catch {
+    return BUILD_TIME;
+  }
+}
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [benchmarks, altSlugs, providerSlugs] = await Promise.all([
+  const [benchmarks, alternatives, providerSlugs] = await Promise.all([
     getBenchmarks(),
-    loadAlternativeSlugs(),
+    loadAllAlternatives(),
     getProviderSlugs(),
   ]);
 
@@ -47,34 +61,55 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }
   }
 
+  // Catalog-wide most-recent bench run. Drives the lastmod of the three
+  // hub pages that render bench leaderboards.
+  const catalogLastRun = benchmarks.reduce<Date>((acc, b) => {
+    if (!b.lastRunAt) return acc;
+    const t = new Date(b.lastRunAt);
+    return t > acc ? t : acc;
+  }, new Date(0));
+
+  // Most-recent lastRunAt across the benches each alternative references.
+  // Looked up via the already-loaded `benchmarks` array rather than
+  // re-fetching each alternative's bench (which would trigger N extra
+  // Prom round-trips at build time).
+  const benchBySlug = new Map(benchmarks.map((b) => [b.slug, b]));
+  const alternativeLastRun = new Map<string, Date>();
+  for (const alt of alternatives) {
+    const bench = benchBySlug.get(alt.benchmark);
+    if (bench?.lastRunAt) {
+      alternativeLastRun.set(alt.slug, new Date(bench.lastRunAt));
+    }
+  }
+
   const staticRoutes: MetadataRoute.Sitemap = [
-    { url: SITE.url, lastModified: SITE_LAST_EDIT, changeFrequency: "daily", priority: 1.0 },
-    { url: `${SITE.url}/benchmarks`, lastModified: SITE_LAST_EDIT, changeFrequency: "daily", priority: 0.9 },
-    { url: `${SITE.url}/products`, lastModified: SITE_LAST_EDIT, changeFrequency: "daily", priority: 0.9 },
-    { url: `${SITE.url}/mcp`, lastModified: SITE_LAST_EDIT, changeFrequency: "monthly", priority: 0.8 },
-    { url: `${SITE.url}/methodology`, lastModified: SITE_LAST_EDIT, changeFrequency: "monthly", priority: 0.7 },
-    { url: `${SITE.url}/contribute`, lastModified: SITE_LAST_EDIT, changeFrequency: "monthly", priority: 0.7 },
-    { url: `${SITE.url}/about`, lastModified: SITE_LAST_EDIT, changeFrequency: "monthly", priority: 0.5 },
-    { url: `${SITE.url}/press`, lastModified: SITE_LAST_EDIT, changeFrequency: "monthly", priority: 0.4 },
+    { url: SITE.url, lastModified: catalogLastRun, changeFrequency: "daily", priority: 1.0 },
+    { url: `${SITE.url}/benchmarks`, lastModified: catalogLastRun, changeFrequency: "daily", priority: 0.9 },
+    { url: `${SITE.url}/products`, lastModified: catalogLastRun, changeFrequency: "daily", priority: 0.9 },
+    { url: `${SITE.url}/mcp`, lastModified: pageMtime("mcp/page.tsx"), changeFrequency: "monthly", priority: 0.8 },
+    { url: `${SITE.url}/methodology`, lastModified: pageMtime("methodology/page.tsx"), changeFrequency: "monthly", priority: 0.7 },
+    { url: `${SITE.url}/contribute`, lastModified: pageMtime("contribute/page.tsx"), changeFrequency: "monthly", priority: 0.7 },
+    { url: `${SITE.url}/about`, lastModified: pageMtime("about/page.tsx"), changeFrequency: "monthly", priority: 0.5 },
+    { url: `${SITE.url}/press`, lastModified: pageMtime("press/page.tsx"), changeFrequency: "monthly", priority: 0.4 },
   ];
 
   const benchmarkRoutes: MetadataRoute.Sitemap = benchmarks.map((b) => ({
     url: `${SITE.url}/benchmarks/${b.slug}`,
-    lastModified: b.lastRunAt ? new Date(b.lastRunAt) : SITE_LAST_EDIT,
+    lastModified: b.lastRunAt ? new Date(b.lastRunAt) : BUILD_TIME,
     changeFrequency: "hourly",
     priority: 0.95,
   }));
 
   const providerRoutes: MetadataRoute.Sitemap = providerSlugs.map((slug) => ({
     url: `${SITE.url}/products/${slug}`,
-    lastModified: providerLastRun.get(slug.toLowerCase()) ?? SITE_LAST_EDIT,
+    lastModified: providerLastRun.get(slug.toLowerCase()) ?? catalogLastRun,
     changeFrequency: "daily",
     priority: 0.85,
   }));
 
-  const alternativeRoutes: MetadataRoute.Sitemap = altSlugs.map((slug) => ({
-    url: `${SITE.url}/alternatives/${slug}`,
-    lastModified: SITE_LAST_EDIT,
+  const alternativeRoutes: MetadataRoute.Sitemap = alternatives.map((alt) => ({
+    url: `${SITE.url}/alternatives/${alt.slug}`,
+    lastModified: alternativeLastRun.get(alt.slug) ?? catalogLastRun,
     changeFrequency: "daily",
     priority: 0.85,
   }));
