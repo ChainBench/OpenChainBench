@@ -3,7 +3,7 @@
 slug: bridge-fee
 number: "003"
 title: Cheapest cross-chain bridge
-seo_title: "Cheapest cross-chain bridge: Mobula, Relay, LiFi, Debridge"
+seo_title: "Cheapest cross-chain bridge: Debridge, LiFi, Mobula, Relay"
 seo_description: "Live USDC bridge cost ranking: fees + slippage + destination gas at $300 notional, Solana/Base/Arbitrum corridors, p50/p99 over 24h, refreshed every 5 min."
 subtitle: Total cost as a percent of notional. Fees, slippage and destination gas combined, sampled at $300.
 category: Bridges
