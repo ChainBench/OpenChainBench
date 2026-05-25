@@ -232,7 +232,7 @@ const PROMQL_RESERVED = new Set([
  *  or `[` (range vector) - those are always real metric references, never
  *  functions. Falls back to the reserved-set scan for queries like
  *  `metric_name` or `metric > 0` that don't carry a selector. */
-function extractMetricName(promql: string): string | null {
+export function extractMetricName(promql: string): string | null {
   const withSelector = /\b([a-zA-Z_:][a-zA-Z0-9_:]*)\b\s*[{[]/g;
   const m = withSelector.exec(promql);
   if (m) {
