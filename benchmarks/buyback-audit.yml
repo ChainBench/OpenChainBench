@@ -123,7 +123,7 @@ providers:
       p90: ocb_buyback_ratio{protocol="hyperliquid",window="7d"}
       p99: ocb_buyback_ratio{protocol="hyperliquid",window="7d"}
       mean: ocb_buyback_ratio{protocol="hyperliquid",window="7d"}
-      success: clamp_max(1, (sum(rate(ocb_buyback_scrape_errors_total{protocol="hyperliquid"}[24h])) / 1), 1)
+      success: clamp_min(clamp_max(1 - 300 * sum(rate(ocb_buyback_scrape_errors_total{protocol="hyperliquid"}[24h])), 1), 0)
       sample_size: ocb_buyback_executed_usd{protocol="hyperliquid",window="7d"}
       series: ocb_buyback_ratio{protocol="hyperliquid",window="7d"}
 
@@ -135,7 +135,7 @@ providers:
       p90: ocb_buyback_ratio{protocol="sky",window="7d"}
       p99: ocb_buyback_ratio{protocol="sky",window="7d"}
       mean: ocb_buyback_ratio{protocol="sky",window="7d"}
-      success: clamp_max(1, (sum(rate(ocb_buyback_scrape_errors_total{protocol="sky"}[24h])) / 1), 1)
+      success: clamp_min(clamp_max(1 - 300 * sum(rate(ocb_buyback_scrape_errors_total{protocol="sky"}[24h])), 1), 0)
       sample_size: ocb_buyback_executed_usd{protocol="sky",window="7d"}
       series: ocb_buyback_ratio{protocol="sky",window="7d"}
 
