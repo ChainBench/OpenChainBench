@@ -23,35 +23,71 @@ export type { Spec } from "@/lib/spec-schema";
 
 const SPECS_DIR = path.join(process.cwd(), "benchmarks");
 
-// Cross-request server cache. Without it, each new HTTP request that
-// missed the page-level ISR window would re-run every Prom query for
-// every spec - concurrent visitors all paying full price. With it, the
-// first miss warms the cache and every later request inside `revalidate`
-// gets the result instantly. Wrapped in React `cache()` too so duplicate
-// calls within a single render tree dedupe.
+// Per-bench unfiltered cache. ONE unstable_cache entry per slug so a
+// transient Prom hiccup on bench A doesn't poison the cache for benches
+// B, C, ...Z. Inside: if a spec marked `status: live` collapses to a
+// runtime draft (all providers' p50/p90/p99 came back null), we throw.
+// unstable_cache treats the throw as transient: it keeps the previous
+// cached value (last successful render) and serves that to readers.
+// When there is no previous value (cold start during a Prom blackout),
+// the throw propagates to the aggregator below which falls back to a
+// draft placeholder so the page still renders.
+const loadBenchmarkUnfilteredCached = unstable_cache(
+  async (slug: string): Promise<Benchmark | undefined> => {
+    const specs = await loadSpecs();
+    const spec = specs.find((s) => s.slug === slug);
+    if (!spec) return undefined;
+    const bench = await specToBenchmark(spec);
+    if (spec.status === "live" && bench.status === "draft") {
+      throw new Error(
+        `loadBenchmark(${slug}): live spec collapsed to draft, keeping prev cache`,
+      );
+    }
+    return bench;
+  },
+  // Version key bumped when Benchmark shape changes so stale cache entries
+  // from a previous deploy can't surface objects missing newer fields.
+  ["bench-unfiltered-v1"],
+  { revalidate: 60, tags: ["benchmarks"] },
+);
+
+// Aggregator: fan out to N per-bench caches in parallel via
+// Promise.allSettled so a single bench's transient throw doesn't bring
+// down the whole list. For specs whose per-bench cache is empty AND the
+// fresh fetch threw (cold-start blackout case), we fall back to a draft
+// placeholder so the page renders. The OG "all benches draft" safety
+// throw is preserved: if literally every bench resolves to draft we
+// throw to keep the previous all-benches cache intact.
 const loadAllBenchmarksCached = unstable_cache(
   async (): Promise<Benchmark[]> => {
     const specs = await loadSpecs();
-    const benchmarks = await Promise.all(specs.map((s) => specToBenchmark(s)));
-    // Stale-while-revalidate safety: if every spec collapsed to draft (the
-    // upstream Prometheus is unreachable / timing out / returning empty
-    // vectors for all queries simultaneously), throw so unstable_cache
-    // preserves the previous cached entry instead of overwriting it with
-    // an all-n/a snapshot that would surface to every visitor for the
-    // next revalidate window. A partial outage (one bench draft, others
-    // live) is still cached normally — only the total-blackout case is
-    // treated as transient.
-    const live = benchmarks.filter((b) => b.editorialStatus === "live");
+    const settled = await Promise.allSettled(
+      specs.map((s) => loadBenchmarkUnfilteredCached(s.slug)),
+    );
+    const benchmarks: Benchmark[] = [];
+    for (let i = 0; i < specs.length; i++) {
+      const spec = specs[i];
+      const r = settled[i];
+      if (r.status === "fulfilled" && r.value) {
+        benchmarks.push(r.value);
+      } else {
+        // The per-bench throw fired with no previous cache to fall back
+        // to. Surface a placeholder so the page still renders rather
+        // than dropping the bench from the list (which would break the
+        // sitemap, the products pages, and the "More benchmarks" rail).
+        benchmarks.push(draftPlaceholderForSpec(spec));
+      }
+    }
+    const live = benchmarks.filter((b) => b.status === "live");
     if (benchmarks.length > 0 && live.length === 0) {
-      throw new Error("loadAllBenchmarks: every bench draft, refusing to update cache");
+      throw new Error(
+        "loadAllBenchmarks: every bench draft, refusing to update cache",
+      );
     }
     return benchmarks.sort((a, b) => a.number.localeCompare(b.number));
   },
-  // Version bumped when the Benchmark shape changes so a stale cached
-  // entry from a previous deploy can't surface objects missing newer
-  // fields (e.g. editorialStatus introduced in commit 0457fb1).
-  ["all-benchmarks-v4"],
-  { revalidate: 60, tags: ["benchmarks"] }
+  ["all-benchmarks-v5"],
+  { revalidate: 60, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
 
@@ -79,8 +115,16 @@ const loadBenchmarkFiltered = unstable_cache(
     // Same stale-while-revalidate as loadAllBenchmarks: if Prom drops the
     // single bench we just queried to draft, throw so unstable_cache keeps
     // the previous live entry instead of overwriting with n/a.
-    if (bench.editorialStatus !== "live") {
-      throw new Error(`loadBenchmark(${slug}): draft, refusing to update cache`);
+    //
+    // Bug fix: previously checked `editorialStatus !== "live"`, which is
+    // sourced from the YAML and never changes at runtime — so the throw
+    // never fired for editorially-live benches. Comparing runtime
+    // `bench.status` to editorial `spec.status` catches the real collapse
+    // case: spec says live, Prom returned nothing, runtime fell to draft.
+    if (spec.status === "live" && bench.status === "draft") {
+      throw new Error(
+        `loadBenchmark(${slug}): live spec collapsed to draft, keeping prev cache`,
+      );
     }
     return bench;
   },
@@ -122,7 +166,19 @@ export const loadBenchmark = cache(async function loadBenchmark(
     const all = await loadAllBenchmarks();
     return all.find((b) => b.slug === slug);
   }
-  return loadBenchmarkFiltered(slug, sig);
+  // The filtered cache throws when a live spec collapses to draft so the
+  // last good cached value survives transient Prom hiccups. The throw
+  // only resurfaces here on COLD CACHE (build time or a fresh function
+  // instance during a blackout) — in that case unstable_cache has no
+  // prior value to substitute and the rejection propagates up. Catch it
+  // and fall back to the unfiltered "All" view so the page still renders
+  // (sitemap, build, products pages all rely on this never throwing).
+  try {
+    return await loadBenchmarkFiltered(slug, sig);
+  } catch {
+    const all = await loadAllBenchmarks();
+    return all.find((b) => b.slug === slug);
+  }
 });
 
 export const getSpecs = (): Promise<Spec[]> => loadSpecs();
@@ -151,11 +207,10 @@ const loadSpecs = cache(async (): Promise<Spec[]> => {
   return parsed.filter((s): s is Spec => s !== null);
 });
 
-async function specToBenchmark(
+function buildEditorial(
   spec: Spec,
-  options: BenchmarkFilters = {}
-): Promise<Benchmark> {
-  const editorial: Omit<Benchmark, "results" | "extras" | "sampleSize" | "lastRunAt"> = {
+): Omit<Benchmark, "results" | "extras" | "sampleSize" | "lastRunAt"> {
+  return {
     slug: spec.slug,
     number: spec.number,
     title: spec.title,
@@ -178,6 +233,20 @@ async function specToBenchmark(
     source: spec.source,
     dimensions: spec.dimensions,
   };
+}
+
+// Used by the per-bench cache aggregator when a single bench fully fails
+// (cold start + Prom blackout, no previous cache to preserve). Renders a
+// draft placeholder so the page still works.
+function draftPlaceholderForSpec(spec: Spec): Benchmark {
+  return draftBenchmark(spec, buildEditorial(spec));
+}
+
+async function specToBenchmark(
+  spec: Spec,
+  options: BenchmarkFilters = {}
+): Promise<Benchmark> {
+  const editorial = buildEditorial(spec);
 
   const activeLabels = activeFilterLabels(options);
   const isFiltered = Object.keys(activeLabels).length > 0;
