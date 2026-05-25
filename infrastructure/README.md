@@ -105,6 +105,6 @@ Default retention is 365 days, configurable via the `PROM_RETENTION` Railway env
 - Single-binary deployment, single config file. nothing to patch over time
 - Trivial to redeploy / wipe / split if scaling demands it
 
-## Self-hosting the OpenChainBench Prometheus (current status)
+## Self-hosting the OpenChainBench Prometheus
 
-The Prometheus described here is the **target architecture**. As of writing, the live site still queries Mobula-hosted Prometheus instances declared per-spec in each YAML. Migrating the site to a single OpenChainBench-owned Prometheus is a one-step change in those YAMLs once the central instance is up and scraping the existing harnesses.
+A central OpenChainBench Prometheus is now live and scrapes every harness declared in this `prometheus.yml`. The site queries it through the URL set in each spec's `prometheus.url` field (or the global `PROMETHEUS_URL` env var as a fallback). Forking the project means deploying your own Prometheus (this folder builds a Railway-ready image) and pointing your fork's specs at it. The Mobula-hosted instance is one valid implementation; nothing in the spec format depends on who runs it.

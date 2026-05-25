@@ -3,7 +3,7 @@
 slug: network-coverage
 number: "005"
 title: Onchain data API with most networks supported
-seo_title: "Crypto data API with the most blockchains supported in 2026: Mobula, Codex, GeckoTerminal live"
+seo_title: "Crypto data API with the most blockchains supported in 2026: Codex, GeckoTerminal, Mobula live"
 seo_description: "Live blockchain coverage leaderboard. How many mainnets each onchain data API (Mobula, Codex, GeckoTerminal) officially supports right now, audited every six hours against their public network endpoints."
 subtitle: Number of blockchains each major onchain data provider officially supports.
 category: Aggregators

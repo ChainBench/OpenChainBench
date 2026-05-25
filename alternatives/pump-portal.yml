@@ -7,5 +7,5 @@ benchmark: aggregator-head-lag
 intro: |
   Pump Portal is a real-time API serving pump.fun-launched tokens on Solana. websocket trade events, new pool detection, swap data. Looking for an alternative? Below is how the three major onchain data providers compare on the metric that matters most for this kind of feed: time between an on-chain event and its delivery on a WebSocket. Numbers are live, refreshed every minute, measured against a canonical-tip archive node. Lower is faster.
 
-seo_title: Pump Portal alternatives. Mobula, GeckoTerminal & Codex live latency benchmark
-seo_description: Looking for an alternative to Pump Portal? Compare Mobula, GeckoTerminal and Codex on real-time blockchain data latency, measured continuously and published openly.
+seo_title: Pump Portal alternatives. Codex, GeckoTerminal & Mobula live latency benchmark
+seo_description: Looking for an alternative to Pump Portal? Compare Codex, GeckoTerminal and Mobula on real-time blockchain data latency, measured continuously and published openly.
