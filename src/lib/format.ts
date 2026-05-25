@@ -36,7 +36,7 @@ export function fmtUnit(value: number, unit: string) {
     // the headline card reads as "no data" instead of "essentially zero".
     if (value > 0 && value < 0.01) return "~0";
     if (value > 0 && value < 1) return value.toFixed(3);
-    return value.toLocaleString();
+    return formatCompactCount(value);
   }
   if (value >= 1000) return `${(value / 1000).toFixed(2)} s`;
   return `${value.toFixed(0)} ms`;
@@ -54,7 +54,23 @@ export function unitSuffix(unit: string) {
 /** Just the formatted number (no unit). used by BigNumber where the unit
  * is rendered separately for typography. */
 export function fmtValue(value: number, unit: string): string {
-  return fmtUnit(value, unit).replace(/\s*(ms|s|min|%|slots?)$/, "");
+  // Keep K/M/B suffixes — they are part of the number, not a unit. Only
+  // strip trailing unit words that the caller renders separately.
+  return fmtUnit(value, unit).replace(/\s+(ms|s|min|slots?)$/, "").replace(/\s*%$/, "");
+}
+
+/** Compact short-form for large counts so the home table's narrow value
+ * column doesn't overflow (e.g. solana-tx-landing market share ~11M txs
+ * would render as `11,146,337.253` at ~250 px and bust the 9 rem grid
+ * cell). Thresholds picked so anything below 10k stays in full
+ * locale-formatted form (still useful for low-volume benches), and 10k+
+ * collapses to K / M / B with 1-2 significant decimals. */
+function formatCompactCount(value: number): string {
+  const abs = Math.abs(value);
+  if (abs >= 1e9) return `${(value / 1e9).toFixed(2)}B`;
+  if (abs >= 1e6) return `${(value / 1e6).toFixed(2)}M`;
+  if (abs >= 1e4) return `${(value / 1e3).toFixed(1)}K`;
+  return value.toLocaleString();
 }
 
 /** Smart-precision percent formatter. picks decimals based on magnitude
