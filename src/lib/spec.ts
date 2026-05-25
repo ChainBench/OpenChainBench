@@ -18,6 +18,11 @@ import type { Benchmark, ProviderResult } from "@/types/benchmark";
 import { Prometheus } from "@/lib/prometheus";
 import { SpecSchema, type Spec } from "@/lib/spec-schema";
 import { renderBenchmarkText } from "@/lib/bench-template";
+import {
+  readSnapshot,
+  snapshotFromBenchmark,
+  writeSnapshot,
+} from "@/lib/snapshot";
 
 export type { Spec } from "@/lib/spec-schema";
 
@@ -39,6 +44,25 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
     if (!spec) return undefined;
     const bench = await specToBenchmark(spec);
     if (spec.status === "live" && bench.status === "draft") {
+      // Live spec, but Prom returned nothing this cycle. Try the
+      // persistent snapshot before giving up. This is the cold-start
+      // path: a fresh Vercel instance with no in-memory cache, called
+      // during a Prom blackout. With KV configured we serve the last
+      // good data; without KV we throw to preserve any previous cache
+      // value (or eventually fall through to the draft placeholder in
+      // the aggregator).
+      const snap = await readSnapshot(slug);
+      if (snap) {
+        const editorial = buildEditorial(spec);
+        const reconstructed = renderBenchmarkText({ ...editorial, ...snap });
+        // The reconstructed bench is live data, just sourced from KV
+        // instead of Prom. Mark providers as live (snapshot only
+        // captures providers that did return data).
+        for (const r of reconstructed.results) {
+          if (!r.availability) r.availability = "live";
+        }
+        return reconstructed;
+      }
       throw new Error(
         `loadBenchmark(${slug}): live spec collapsed to draft, keeping prev cache`,
       );
@@ -47,7 +71,7 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   },
   // Version key bumped when Benchmark shape changes so stale cache entries
   // from a previous deploy can't surface objects missing newer fields.
-  ["bench-unfiltered-v1"],
+  ["bench-unfiltered-v2"],
   { revalidate: 60, tags: ["benchmarks"] },
 );
 
@@ -292,7 +316,16 @@ async function specToBenchmark(
     // Resolve {{p50:slug}} / {{best_name}} / {{count}} etc. placeholders
     // against the freshly loaded numbers so editorial text (findings,
     // seo_intro, faq) never drifts from the displayed data.
-    return renderBenchmarkText({ ...editorial, ...live });
+    const rendered = renderBenchmarkText({ ...editorial, ...live });
+    // Persist a snapshot of the runtime data so a future cold start
+    // during a Prom blackout can still render this bench. Only the
+    // unfiltered "All" view is snapshotted: filtered variants (per
+    // chain / region) are derived at request time from spec + filters.
+    // No-op when KV isn't configured.
+    if (!isFiltered && spec.status === "live") {
+      writeSnapshot(spec.slug, snapshotFromBenchmark(rendered));
+    }
+    return rendered;
   }
   return draftBenchmark(spec, editorial);
 }
