@@ -168,11 +168,12 @@ OpenChainBench is a federation of independently-hosted harnesses. Each spec decl
 
 Each harness is run by whoever wrote it. Mobula for the existing aggregator and bridge benchmarks, independent contributors for any future ones, providers for self-benchmarks of their own services. They never share API keys with the project. They expose `/metrics` over HTTPS to **their own** Prometheus, and that Prom's read API is what the site queries.
 
-The site queries the Prometheus URL declared in each YAML spec via the standard HTTP API (`/api/v1/query`, `/api/v1/query_range`). Caching happens in three layers:
+The site queries the Prometheus URL declared in each YAML spec via the standard HTTP API (`/api/v1/query`, `/api/v1/query_range`). Resilience against transient Prometheus failures is built in four layers:
 
-1. **`unstable_cache` revalidate 60 s** for the full benchmark payload (rankings, series, sparklines) used by every bench page and `/api/citable`.
-2. **`unstable_cache` revalidate 5 s** for the lightweight `/api/freshness` probe consumed by the on-page "Live" indicator.
-3. **Vercel edge cache** (`s-maxage` + `stale-while-revalidate`) on every public route.
+1. **Per-bench `unstable_cache` revalidate 60 s.** One isolated cache entry per benchmark slug, so a transient failure on bench A does not poison bench B. If Prom returns nothing for an editorially-live bench, the cache throws to preserve the previous good value instead of writing a draft snapshot.
+2. **Persistent KV snapshot fallback.** On cold start during a Prometheus blackout (no in-memory cache to preserve), the last successful render is restored from Vercel KV / Upstash. Editorial metadata is rebuilt fresh from YAML on every read, so snapshot age never bleeds into stale copy. Set `KV_REST_API_URL` + `KV_REST_API_TOKEN` to enable; without them the layer is a silent no-op and the site behaves identically to before.
+3. **`unstable_cache` revalidate 5 s** for the lightweight `/api/freshness` probe consumed by the on-page "Live" indicator.
+4. **Vercel edge cache** (`s-maxage` + `stale-while-revalidate`) on every public route. Bench detail pages use ISR with `revalidate: 60`, so the "More benchmarks" rail stays fresh without waiting for a redeploy.
 
 A spec's Prometheus URL goes through a two-layer SSRF guard: a schema-time rejection of non-HTTPS / RFC1918 / link-local / metadata IPs at PR-validate time (`pnpm validate`), and a runtime DNS resolution that refuses if the hostname currently lands on a private address. Plus `redirect: "manual"` on every Prom fetch so a 3xx into a private host gets blocked too.
 
@@ -204,12 +205,14 @@ Single Railway box, in-memory fan-out. Cost stays flat regardless of viewer coun
 
 | Layer | Where it runs | Notes |
 |---|---|---|
-| Site (Next.js, ISR) | Vercel | Static pages with 60s revalidate, edge cache. Zero secrets. only queries the public Prom URL. |
+| Site (Next.js 16, ISR) | Vercel | Bench detail pages on `revalidate: 60`, static hubs. Per-bench `unstable_cache` + KV snapshot fallback for Prom downtime. Zero secrets, only queries the public Prom URL. |
 | Prometheus | A small Railway service | The only piece of shared OpenChainBench infrastructure. Open access (read-only public API). |
 | Harnesses | Wherever the contributor wants to host them | Railway, Fly, Cloud Run, a VPS. each contributor owns their own runtime, secrets, and budget. |
 | Live-stream relay | Mobula's Railway | Holds the Mobula API key, fans out Mobula fast-trade events to browsers. Not in this repo. |
 
 The split is intentional: Vercel for the globally-cached read path, Prometheus for the time-series store, and any compute platform for the long-running data producers. Nobody other than the harness operator needs the harness's secrets.
+
+A background **health-check cron** on Vercel (`/api/cron/health-check`, every 5 min) detects providers that have gone silent. It uses PromQL `present_over_time()` to test whether Prometheus has actually scraped a sample for a metric inside the freshness window, which works correctly for slow-cadence gauges where the value can be stable for minutes at a time. Sustained transitions (10 minute hysteresis) post a Slack message; the UI separately renders `availability: "unavailable"` for the affected provider rows.
 
 ## Running the site locally
 
@@ -223,6 +226,8 @@ The site reads every `benchmarks/*.yml` at request time. Specs whose Prometheus 
 ```bash
 pnpm validate            # schema-lint every spec in benchmarks/
 pnpm spec:dry-run <slug> # query Prometheus and print numbers, no rendering
+pnpm test                # run unit tests (bun test src/)
+pnpm check               # validate + typecheck + lint + test (pre-PR gate)
 pnpm build               # production build
 ```
 
@@ -231,6 +236,8 @@ The live dashboard connects to the production relay by default. To point it at a
 ```bash
 NEXT_PUBLIC_RELAY_WS_URL=ws://localhost:2112/ws pnpm dev
 ```
+
+For production deployments, attaching a Vercel KV (or Upstash Redis via the Marketplace) is recommended but optional. Once connected, the env vars `KV_REST_API_URL` and `KV_REST_API_TOKEN` are injected automatically and the snapshot fallback activates. Without them the site behaves identically to a deployment without KV: a cold-start hit during a Prom blackout will fall through to a draft placeholder until the next successful scrape lands.
 
 ## Running a harness locally
 
@@ -325,7 +332,6 @@ Tracking the work to make benchmark pages rank for the queries they target.
 - **FAQ JSON-LD on /benchmarks/[slug].** Add a `FAQPage` block with 3-5 Q&As per bench ("Which provider is fastest on X?"). Rich snippet in Google + extra keyword density.
 - **Keyword densification on high-competition benches** (aggregator-head-lag, bridge-fee). Currently the title contains the target keyword once. Etoffer subtitle + abstract to repeat naturally 2-3×, plus a `headlineSentence()` tweak so the snippet contains the keyword.
 - **Internal linking with descriptive anchors.** Ledger-table now links provider names to `/products/[slug]` but with the provider name as anchor. Add cross-references between related benches with anchors like "fastest data provider API" pointing to the relevant /benchmarks/[slug].
-- **Backlink playbook.** Embed badges on `mobula.io`, `codex.io`, `geckoterminal.com`, etc. for the benches where they're #1. Contact TechRxiv authors of the bridge-aggregator paper. Submit /alternatives/* pages to relevant directories.
 - **Headline sentence formatter bug.** Output currently concatenates samples + provider count without separator (e.g. `522,88211 providers`). Split with `·` for readability and Google snippet quality.
 
 ## Links

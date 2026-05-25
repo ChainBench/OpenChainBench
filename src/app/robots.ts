@@ -30,6 +30,18 @@ const AI_CRAWLERS = [
 ];
 
 export default function robots(): MetadataRoute.Robots {
+  // Staging / preview deploys (Vercel `dev` branch, per-PR previews) must
+  // not be indexed. Otherwise Google sees two copies of the site — the
+  // openchainbench.com production and the *.vercel.app staging — and flags
+  // duplicate content, costing the prod domain its SERP authority. Only
+  // VERCEL_ENV='production' (the alias openchainbench.com) gets the open
+  // crawl policy; everything else returns Disallow: /.
+  if (process.env.VERCEL_ENV && process.env.VERCEL_ENV !== "production") {
+    return {
+      rules: [{ userAgent: "*", disallow: "/" }],
+    };
+  }
+
   return {
     rules: [
       // Every standard crawler welcome.
