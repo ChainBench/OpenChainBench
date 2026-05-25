@@ -92,7 +92,7 @@ faq:
   - q: "What about Syncro Sender and Slipstream?"
     a: "Syncro Sender (P2P.org) uses per-customer tip wallets that aren't publicly documented, every customer gets a private address. We can't enumerate them, so Syncro flow is invisible to this bench. Estimated share: small (Syncro launched in 2025 and hasn't disclosed adoption metrics). Slipstream is a router that calls the underlying senders' SDKs, its tx land via Jito/Nozomi/0slot tip wallets and are attributed to those services. So Slipstream-originated flow shows up correctly counted, just under the underlying service's name. If you specifically want to know 'what % uses Slipstream as the router', this bench can't answer that, Slipstream itself doesn't add an identifying memo."
 
-source: https://github.com/OpenChainBench/OpenChainBench/blob/main/benchmarks/solana-tx-landing.yml
+source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/solana-tx-landing
 
 prometheus:
   window: 24h
