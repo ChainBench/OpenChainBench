@@ -8,18 +8,19 @@ This version has breaking changes. APIs, conventions, and file structure may all
 
 Two long-lived branches:
 
-- `main` → openchainbench.com (production)
-- `dev` → staging (auto-deployed by Vercel to the `*-git-dev-*.vercel.app` preview URL)
+- `main` → openchainbench.com (production). Vercel auto-deploy on push is **disabled**; production deploys are **manual** via `vercel --prod` from a checkout of `main`.
+- `dev` → staging. Each push triggers `.github/workflows/vercel-staging.yml` which calls Vercel CLI with a token and emits a Preview URL. The Vercel GitHub App is NOT used for staging because the OpenChainBench user account + mobula-labs Vercel team pairing wouldn't propagate.
 
 **Standard flow:**
 
 1. Open a feature branch from `dev`: `git checkout dev && git pull && git checkout -b feat/your-thing`
-2. PR `feat/your-thing` → `dev`. Vercel posts a per-PR preview URL in the checks. Review there.
-3. Merge the PR into `dev`. The staging URL refreshes automatically.
-4. When the staging state looks ready to ship, open a PR `dev` → `main`. Merge → openchainbench.com auto-deploys.
+2. PR `feat/your-thing` → `dev` (NOT `main`). After merge, the staging Action posts a Preview URL in the workflow summary.
+3. Review on the Preview URL.
+4. When the staging state looks ready to ship, open a PR `dev` → `main`. After merge, manually run `vercel --prod` to deploy production (or ask whoever has the Vercel team session).
 
 **Rules:**
 
-- Never push directly to `main`. PRs only.
-- Per-PR preview URLs and the `dev` staging URL emit `<meta robots=noindex>` and serve `robots.txt: Disallow /` — see `src/app/robots.ts` and `src/app/layout.tsx`. Don't undo this without thinking through duplicate-content SEO impact on the prod domain.
-- Hotfix path: if prod is on fire and waiting through `dev` is unacceptable, open the fix PR directly against `main`, merge, then immediately fast-forward `dev` from `main` (`git checkout dev && git merge --ff-only main && git push`) so the two branches don't diverge.
+- Never push directly to `main` or `dev`. PRs only.
+- The staging URL emits `<meta robots=noindex>` and serves `robots.txt: Disallow /` — see `src/app/robots.ts` and `src/app/layout.tsx`. Don't undo without thinking through duplicate-content SEO impact on the prod domain. Vercel Preview SSO is disabled (URL is publicly shareable), so the noindex is the only thing keeping crawlers out.
+- Hotfix path: if prod is on fire and waiting through `dev` is unacceptable, open the fix PR directly against `main`, merge, run `vercel --prod`, then immediately fast-forward `dev` from `main` (`git checkout dev && git merge --ff-only main && git push`) so the two branches don't diverge.
+- Required GitHub secrets (repo-level, not environment-scoped): `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`.
