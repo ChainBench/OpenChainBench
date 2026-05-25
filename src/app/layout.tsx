@@ -45,6 +45,13 @@ export const viewport: Viewport = {
   ],
 };
 
+// Staging / preview deploys (Vercel `dev` branch, per-PR previews) must
+// emit a `<meta name="robots" content="noindex">` header so well-behaved
+// crawlers that ignore robots.txt still skip indexing. Pairs with the
+// robots.ts Disallow rule for VERCEL_ENV !== 'production'.
+const IS_STAGING =
+  !!process.env.VERCEL_ENV && process.env.VERCEL_ENV !== "production";
+
 export const metadata: Metadata = {
   metadataBase: new URL("https://openchainbench.com"),
   title: {
@@ -53,6 +60,9 @@ export const metadata: Metadata = {
   },
   description:
     "Open, reproducible benchmarks for the multichain stack. aggregators, bridges, RPCs, price feeds.",
+  ...(IS_STAGING && {
+    robots: { index: false, follow: false, googleBot: { index: false, follow: false } },
+  }),
   openGraph: {
     title: "OpenChainBench",
     description: "Open, reproducible benchmarks for the multichain stack.",
