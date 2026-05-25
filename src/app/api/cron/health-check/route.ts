@@ -115,20 +115,28 @@ export async function GET(req: NextRequest) {
 
       // For the freshness probe we just need a metric name to ask prom
       // "do you have any sample within X seconds for this label set".
-      // The trick: `count_over_time(metric{...}[Xs])` returns >0 when
-      // prom received at least one sample in the window, 0 otherwise.
       const metricName = extractFirstMetric(q);
       const labelSelector = extractLabelSelector(q);
       if (!metricName) continue;
 
-      // changes() over count_over_time(): prom scrapes the harness every
-      // 15 s by default, so count_over_time stays > 0 forever even when
-      // the harness has stopped pulling fresh data from its upstream
-      // source (gauges keep the last value, prom keeps recording it).
-      // changes() counts how many distinct values landed in the window,
-      // which correctly drops to 0 when the value stalls. Works for both
-      // gauges (value moves on each update) and counters (increments are
-      // changes), so we get one consistent freshness probe per metric type.
+      // present_over_time(metric[Xs]): returns 1 if prom actually
+      // scraped a sample in the window, 0 otherwise. Scrape-existence
+      // probe, NOT value-change probe.
+      //
+      // Previous implementation used `changes(metric[Xs])` which
+      // returned 0 for "value didn't move" — but for stable gauges
+      // (USDT peg deviation = 0bp, validator-yield median stable
+      // between epochs, low-traffic counters not incrementing) the
+      // harness was alive and scraping fresh samples, just always
+      // emitting the same value. Result: dozens of flapping
+      // online/offline alerts per night for benches that were
+      // perfectly healthy.
+      //
+      // present_over_time is the correct probe because it triggers
+      // off scrape success (prom records a sample), not value motion.
+      // When a target dies, prom stops getting samples and after the
+      // threshold window present_over_time drops to 0. Works
+      // identically for gauges, counters, and histograms.
       //
       // Three samples per provider for the hysteresis check:
       //   - now     : "is it alive right now?"
@@ -137,13 +145,13 @@ export async function GET(req: NextRequest) {
       // We only alert when `now == confirm` (state sustained for the
       // hysteresis window) AND `past` is the opposite (it really did
       // flip). Single-cycle blips show now != confirm and are dropped.
-      const recentQ = `changes(${metricName}${labelSelector}[${threshold}s])`;
-      const confirmQ = `changes(${metricName}${labelSelector}[${threshold}s] offset ${HYSTERESIS_OFFSET_SECONDS}s)`;
-      const pastQ = `changes(${metricName}${labelSelector}[${threshold}s] offset ${LOOKBACK_SECONDS + HYSTERESIS_OFFSET_SECONDS}s)`;
+      const recentQ = `present_over_time(${metricName}${labelSelector}[${threshold}s])`;
+      const confirmQ = `present_over_time(${metricName}${labelSelector}[${threshold}s] offset ${HYSTERESIS_OFFSET_SECONDS}s)`;
+      const pastQ = `present_over_time(${metricName}${labelSelector}[${threshold}s] offset ${LOOKBACK_SECONDS + HYSTERESIS_OFFSET_SECONDS}s)`;
 
       const [now, confirm, past] = await Promise.all([
         // For multi-series metrics the spec's p50 query already narrows
-        // to a single provider via labels, but if changes() still returns
+        // to a single provider via labels, but if the result is still
         // a vector we want any-series-alive as the live signal.
         prom.scalar(`max(${recentQ})`).catch(() => null),
         prom.scalar(`max(${confirmQ})`).catch(() => null),
