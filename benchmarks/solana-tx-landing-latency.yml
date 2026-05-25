@@ -124,7 +124,7 @@ faq:
   - q: "How is the confirmation observed?"
     a: "Via `signatureSubscribe` on the public mainnet WebSocket (`wss://api.mainnet-beta.solana.com`). The subscription is registered BEFORE submission so a fast-confirming tx cannot complete before we are listening (otherwise we'd miss the notification and timeout spuriously). The RPC pushes the notification at the instant the commitment level is reached, so observation resolution is RTT-bounded (~30-50 ms us-east → mainnet-beta) and slot_delta is read directly from the notification's context.slot field. HTTP polling at 200 ms is an automatic fallback if the WebSocket fails to connect for a given cycle."
 
-source: https://github.com/MobulaFi/mobula-monorepo/tree/main/miniapps/solana-tx-landing
+source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/solana-tx-landing
 
 prometheus:
   window: 7d
