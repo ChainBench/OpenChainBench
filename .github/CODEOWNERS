@@ -1,0 +1,9 @@
+# OpenChainBench code owners.
+# See https://docs.github.com/en/repositories/managing-your-repositories-settings-and-features/customizing-your-repository/about-code-owners
+#
+# Anyone with write access to the repo can review and merge. The entries
+# below tag the default reviewers GitHub auto-requests on PR open. They
+# do NOT block merge by themselves. branch-protection rules + the CI
+# checks listed in .github/workflows/ci.yml decide what can land.
+
+* @Flotapponnier

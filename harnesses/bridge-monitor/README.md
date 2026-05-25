@@ -1,13 +1,21 @@
 # Harness · bridge-monitor
 
-> Real-world benchmark of cross-chain bridges. Produces every metric consumed by both [`benchmarks/bridge-quote-latency.yml`](../../benchmarks/bridge-quote-latency.yml) and [`benchmarks/bridge-fee.yml`](../../benchmarks/bridge-fee.yml). quote latency, cost percent, fees, success rate, end-to-end execution latency.
+> Source for the cross-chain bridge benchmarks. Tracks quote latency, cost percent, fees, success rate, and end-to-end execution latency on a USDC triangle across Solana, Base, and Arbitrum.
 
 **Benches**:
 
 - [№ 002 · Bridge. Quote Latency](../../benchmarks/bridge-quote-latency.yml)
 - [№ 003 · Bridge. Cost Percent](../../benchmarks/bridge-fee.yml)
 
-**Tracked bridges**: Mobula · Relay · Li.Fi (executed) · Debridge (quote-only. flat fees too high for small tickets)
+**Tracked bridges**: Debridge (quote-only, flat fees too high for small tickets) · Li.Fi (executed) · Mobula · Relay
+
+## What ships in this directory
+
+This open-source tree currently contains the **rebalance utility** (`cmd/rebalance/`), a standalone helper that keeps the execution wallets topped up across chains so the bench's paid leg never runs out of inventory mid-cycle. The Dockerfile builds this binary by default.
+
+The **continuous monitor binary** that actually emits the Prometheus metrics consumed by the two benches is operated by Mobula in the current production deployment and lives outside this directory. A fork that wants to publish its own bridge benchmark can either re-implement the monitor against the contract described below (the Prometheus metric names the YAML specs expect) or open an issue to coordinate an open-source reference implementation.
+
+The rest of this README documents the data contract a working monitor must satisfy. The numbers on openchainbench.com come from an instance that follows it.
 
 ## How it works
 
