@@ -1,0 +1,63 @@
+name: Vercel staging deploy
+
+# Auto-deploy to Vercel Preview on every push to dev. Workaround for the
+# Vercel ↔ GitHub App pairing being unreliable across the OpenChainBench
+# (user account) + mobula-labs (Vercel team) setup. The Action calls the
+# Vercel CLI directly with VERCEL_TOKEN, bypassing the App webhook flow.
+#
+# Required GitHub secrets (Settings → Secrets and variables → Actions):
+#   VERCEL_TOKEN       — vercel.com/account/tokens, scope = mobula-labs
+#   VERCEL_ORG_ID      — team_FBSeNa7wUR3XTi1ucbjRdAAv
+#   VERCEL_PROJECT_ID  — prj_IgUo7t17IBKw5XBBz9IiarFkIVOs
+
+on:
+  push:
+    branches:
+      - dev
+  workflow_dispatch:
+
+concurrency:
+  group: vercel-staging
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel@latest
+
+      - name: Pull Vercel env (Preview)
+        run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Build
+        run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy Preview
+        id: deploy
+        run: |
+          url=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }})
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "Preview ready at $url"
+
+      - name: Comment summary
+        run: |
+          {
+            echo "## Vercel staging deploy ✓"
+            echo ""
+            echo "Branch \`dev\` deployed to:"
+            echo ""
+            echo "  ${{ steps.deploy.outputs.url }}"
+            echo ""
+            echo "Commit: \`${{ github.sha }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
