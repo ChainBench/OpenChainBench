@@ -21,18 +21,26 @@ import { SITE } from "@/data/site";
 import { buildFaqPageJsonLd, safeJsonLd } from "@/lib/jsonld";
 import type { Benchmark } from "@/types/benchmark";
 
-// Force static. The page is prerendered by generateStaticParams below;
-// without this explicit hint, vercel was still serving each request with
-// `cache-control: private, no-cache, no-store` even though the route is
-// `●` (SSG) in the build output - useSearchParams in the client subtree
-// (BenchmarkBody, wrapped in Suspense) is enough to flip the runtime
-// classification back to "dynamic" without it.
+// ISR with a 60 s revalidate window. The page is prerendered by
+// generateStaticParams below and served from the CDN until 60 s after
+// the last render, after which the next request triggers a background
+// regeneration that swaps the cached HTML in place.
 //
-// `revalidate` is intentionally NOT set: with `force-static` the page
-// only refreshes on a fresh deploy. Setting both was redundant and has
-// hit vercel-side bugs historically. Live numbers come from prom via
-// /api/citable polling, not from re-rendering the shell.
-export const dynamic = "force-static";
+// Why not `force-static`: the page composes the "More benchmarks" rail
+// from `loadAllBenchmarks()`, which calls Prom for every spec. With
+// pure force-static the HTML is frozen at deploy time — if a single
+// bench was in a transient draft state during the deploy build, that
+// "DRAFT" pill stays on every visitor's screen until the next deploy.
+// ISR + the per-bench unstable_cache + the KV snapshot fallback in
+// spec.ts together mean every regeneration either gets fresh Prom data,
+// reads the last good snapshot from KV, or preserves the previous
+// cached page — never poisons the rail with a transient draft.
+//
+// `dynamic` is not pinned to "force-static" anymore: client subtrees
+// using useSearchParams (BenchmarkBody, wrapped in Suspense) won't
+// flip the route to fully dynamic because they're behind Suspense, so
+// the route still prerenders cleanly.
+export const revalidate = 60;
 
 type Params = { slug: string };
 
