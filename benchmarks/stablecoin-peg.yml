@@ -86,7 +86,7 @@ faq:
   - q: "Why ignore CoinGecko or CoinMarketCap prices?"
     a: "Aggregator prices (CoinGecko, CoinMarketCap, DefiLlama) are themselves liquidity-weighted medians of the venues this benchmark already polls directly, refreshed every 1-5 minutes. Re-aggregating an aggregator adds latency, hides the venue-level cross-spread that actually matters during stress (USDC briefly $0.9978 on Kraken while $1.0003 on Coinbase), and inherits whatever venue selection the aggregator chose. The benchmark goes to the source venues directly so the cross-venue gap is visible and the depeg event flag fires within 5 minutes of the price actually breaking the band."
 
-source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/stablecoin-peg
+source: https://github.com/OpenChainBench/OpenChainBench/blob/main/benchmarks/stablecoin-peg.yml
 
 prometheus:
   window: 24h

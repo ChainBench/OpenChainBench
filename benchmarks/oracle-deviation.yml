@@ -95,7 +95,7 @@ faq:
   - q: "How often is each oracle polled and why 30 s?"
     a: "Every (source, pair) is polled every 30 seconds. The cadence is bounded below by Chainlink's update mechanics, the on-chain feed only refreshes on deviation or heartbeat, so polling faster than the feed updates returns the same value and wastes RPC calls. 30 s is fast enough to catch every Chainlink round within ~half a heartbeat of its on-chain landing while keeping total request volume at 80 req/min across all 4 sources × 10 pairs (well under every free-tier ceiling). Pyth Hermes, Binance and Coinbase tickers refresh continuously so 30 s polling captures them at full freshness."
 
-source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/oracle-deviation
+source: https://github.com/OpenChainBench/OpenChainBench/blob/main/benchmarks/oracle-deviation.yml
 
 prometheus:
   window: 24h

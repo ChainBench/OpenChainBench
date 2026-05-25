@@ -42,7 +42,7 @@ findings:
   - "{{name:taiko}} clocks {{p50:taiko}} on a based-rollup design where Ethereum L1 validators sequence the L2 directly, fundamentally different from the sequencer model used by every other chain in this leaderboard."
   - "{{count}} L2s measured live. Trailing the leaderboard: {{worst_name}} at {{worst_p50}} (p50)."
 
-source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/l2-block-time
+source: https://github.com/OpenChainBench/OpenChainBench/blob/main/benchmarks/l2-block-time.yml
 
 prometheus:
   window: 24h

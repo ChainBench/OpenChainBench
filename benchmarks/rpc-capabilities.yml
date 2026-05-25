@@ -84,7 +84,7 @@ faq:
   - q: "Are public RPCs production-grade for a dapp?"
     a: "Read the success-rate column before deciding. A median latency under 100 ms is irrelevant if the endpoint silently returns a JSON-RPC error 5% of the time or stalls during an L1 reorg. Free public RPCs share rate-limit budgets with the entire internet and have no SLA. They are good for read-heavy demos, local development and fallback paths; production dapps usually graduate to a keyed tier (Alchemy, QuickNode, Infura) for `eth_sendRawTransaction`, websocket subscriptions and archive queries beyond Geth's pruned cap. This benchmark measures the no-key tier specifically because that is the unmeasured part of the market."
 
-source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
+source: https://github.com/OpenChainBench/OpenChainBench/blob/main/benchmarks/rpc-capabilities.yml
 
 prometheus:
   window: 24h
