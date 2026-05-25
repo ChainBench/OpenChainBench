@@ -183,7 +183,7 @@ async function specToBenchmark(
   const isFiltered = Object.keys(activeLabels).length > 0;
   const filteredSpec = isFiltered ? applyDimensionsToSpec(spec, activeLabels) : spec;
 
-  const live = await tryLoadLive(filteredSpec);
+  const live = await tryLoadLive(filteredSpec, isFiltered);
   if (live) {
     // Mark live entries explicitly so a missing `availability` reads as
     // "unknown" everywhere else in the code.
@@ -295,7 +295,8 @@ function escapePromLabelValue(v: string): string {
 }
 
 async function tryLoadLive(
-  spec: Spec
+  spec: Spec,
+  isFiltered = false
 ): Promise<Pick<Benchmark, "results" | "extras" | "sampleSize" | "lastRunAt"> | null> {
   const url = spec.prometheus?.url ?? process.env.PROMETHEUS_URL;
   if (!url) return null;
@@ -331,7 +332,28 @@ async function tryLoadLive(
       // BNB Chain when Jupiter is Solana-only), skip it instead of failing
       // the whole benchmark. The page still renders with the providers
       // that do have numbers.
-      if (p50 == null || p90 == null || p99 == null) continue;
+      //
+      // Log which percentile came back null so transient AWAITING events
+      // are diagnosable. The Prom-client only logs explicit errors (400,
+      // timeout), not legitimately empty results, which is the most
+      // common AWAITING trigger. Logged at warn level only on the
+      // unfiltered "All" view to avoid spamming logs on filtered views
+      // where a missing provider is expected behavior.
+      if (p50 == null || p90 == null || p99 == null) {
+        if (!isFiltered && spec.status === "live") {
+          const missing = [
+            p50 == null ? "p50" : null,
+            p90 == null ? "p90" : null,
+            p99 == null ? "p99" : null,
+          ]
+            .filter(Boolean)
+            .join(",");
+          console.warn(
+            `bench skip: ${spec.slug}/${p.slug} missing ${missing}`,
+          );
+        }
+        continue;
+      }
 
       liveResults.push({
         name: p.name,

@@ -132,7 +132,7 @@ providers:
       p90: quantile_over_time(0.90, ocb_oracle_max_deviation_pct{pair="BTC/USD"}[24h]) * 100
       p99: quantile_over_time(0.99, ocb_oracle_max_deviation_pct{pair="BTC/USD"}[24h]) * 100
       mean: avg_over_time(ocb_oracle_max_deviation_pct{pair="BTC/USD"}[24h]) * 100
-      success: 1, (sum(rate(ocb_oracle_scrape_errors_total{pair="BTC/USD"}[24h])) / (4 * (1/30)))
+      success: clamp_min(clamp_max(1 - sum(rate(ocb_oracle_scrape_errors_total{pair="BTC/USD"}[24h])) / (4 * (1/30)), 1), 0)
       sample_size: count(count by (source) (ocb_oracle_price{pair="BTC/USD"}))
       series: ocb_oracle_max_deviation_pct{pair="BTC/USD"} * 100
 
@@ -144,7 +144,7 @@ providers:
       p90: quantile_over_time(0.90, ocb_oracle_max_deviation_pct{pair="ETH/USD"}[24h]) * 100
       p99: quantile_over_time(0.99, ocb_oracle_max_deviation_pct{pair="ETH/USD"}[24h]) * 100
       mean: avg_over_time(ocb_oracle_max_deviation_pct{pair="ETH/USD"}[24h]) * 100
-      success: 1, (sum(rate(ocb_oracle_scrape_errors_total{pair="ETH/USD"}[24h])) / (4 * (1/30)))
+      success: clamp_min(clamp_max(1 - sum(rate(ocb_oracle_scrape_errors_total{pair="ETH/USD"}[24h])) / (4 * (1/30)), 1), 0)
       sample_size: count(count by (source) (ocb_oracle_price{pair="ETH/USD"}))
       series: ocb_oracle_max_deviation_pct{pair="ETH/USD"} * 100
 
@@ -156,7 +156,7 @@ providers:
       p90: quantile_over_time(0.90, ocb_oracle_max_deviation_pct{pair="SOL/USD"}[24h]) * 100
       p99: quantile_over_time(0.99, ocb_oracle_max_deviation_pct{pair="SOL/USD"}[24h]) * 100
       mean: avg_over_time(ocb_oracle_max_deviation_pct{pair="SOL/USD"}[24h]) * 100
-      success: 1, (sum(rate(ocb_oracle_scrape_errors_total{pair="SOL/USD"}[24h])) / (4 * (1/30)))
+      success: clamp_min(clamp_max(1 - sum(rate(ocb_oracle_scrape_errors_total{pair="SOL/USD"}[24h])) / (4 * (1/30)), 1), 0)
       sample_size: count(count by (source) (ocb_oracle_price{pair="SOL/USD"}))
       series: ocb_oracle_max_deviation_pct{pair="SOL/USD"} * 100
 
@@ -168,7 +168,7 @@ providers:
       p90: quantile_over_time(0.90, ocb_oracle_max_deviation_pct{pair="BNB/USD"}[24h]) * 100
       p99: quantile_over_time(0.99, ocb_oracle_max_deviation_pct{pair="BNB/USD"}[24h]) * 100
       mean: avg_over_time(ocb_oracle_max_deviation_pct{pair="BNB/USD"}[24h]) * 100
-      success: 1, (sum(rate(ocb_oracle_scrape_errors_total{pair="BNB/USD"}[24h])) / (4 * (1/30)))
+      success: clamp_min(clamp_max(1 - sum(rate(ocb_oracle_scrape_errors_total{pair="BNB/USD"}[24h])) / (4 * (1/30)), 1), 0)
       sample_size: count(count by (source) (ocb_oracle_price{pair="BNB/USD"}))
       series: ocb_oracle_max_deviation_pct{pair="BNB/USD"} * 100
 
@@ -180,7 +180,7 @@ providers:
       p90: quantile_over_time(0.90, ocb_oracle_max_deviation_pct{pair="AVAX/USD"}[24h]) * 100
       p99: quantile_over_time(0.99, ocb_oracle_max_deviation_pct{pair="AVAX/USD"}[24h]) * 100
       mean: avg_over_time(ocb_oracle_max_deviation_pct{pair="AVAX/USD"}[24h]) * 100
-      success: 1, (sum(rate(ocb_oracle_scrape_errors_total{pair="AVAX/USD"}[24h])) / (4 * (1/30)))
+      success: clamp_min(clamp_max(1 - sum(rate(ocb_oracle_scrape_errors_total{pair="AVAX/USD"}[24h])) / (4 * (1/30)), 1), 0)
       sample_size: count(count by (source) (ocb_oracle_price{pair="AVAX/USD"}))
       series: ocb_oracle_max_deviation_pct{pair="AVAX/USD"} * 100
 
@@ -192,7 +192,7 @@ providers:
       p90: quantile_over_time(0.90, ocb_oracle_max_deviation_pct{pair="LINK/USD"}[24h]) * 100
       p99: quantile_over_time(0.99, ocb_oracle_max_deviation_pct{pair="LINK/USD"}[24h]) * 100
       mean: avg_over_time(ocb_oracle_max_deviation_pct{pair="LINK/USD"}[24h]) * 100
-      success: 1, (sum(rate(ocb_oracle_scrape_errors_total{pair="LINK/USD"}[24h])) / (4 * (1/30)))
+      success: clamp_min(clamp_max(1 - sum(rate(ocb_oracle_scrape_errors_total{pair="LINK/USD"}[24h])) / (4 * (1/30)), 1), 0)
       sample_size: count(count by (source) (ocb_oracle_price{pair="LINK/USD"}))
       series: ocb_oracle_max_deviation_pct{pair="LINK/USD"} * 100
 
@@ -204,7 +204,7 @@ providers:
       p90: quantile_over_time(0.90, ocb_oracle_max_deviation_pct{pair="MATIC/USD"}[24h]) * 100
       p99: quantile_over_time(0.99, ocb_oracle_max_deviation_pct{pair="MATIC/USD"}[24h]) * 100
       mean: avg_over_time(ocb_oracle_max_deviation_pct{pair="MATIC/USD"}[24h]) * 100
-      success: 1, (sum(rate(ocb_oracle_scrape_errors_total{pair="MATIC/USD"}[24h])) / (4 * (1/30)))
+      success: clamp_min(clamp_max(1 - sum(rate(ocb_oracle_scrape_errors_total{pair="MATIC/USD"}[24h])) / (4 * (1/30)), 1), 0)
       sample_size: count(count by (source) (ocb_oracle_price{pair="MATIC/USD"}))
       series: ocb_oracle_max_deviation_pct{pair="MATIC/USD"} * 100
 
@@ -216,7 +216,7 @@ providers:
       p90: quantile_over_time(0.90, ocb_oracle_max_deviation_pct{pair="XRP/USD"}[24h]) * 100
       p99: quantile_over_time(0.99, ocb_oracle_max_deviation_pct{pair="XRP/USD"}[24h]) * 100
       mean: avg_over_time(ocb_oracle_max_deviation_pct{pair="XRP/USD"}[24h]) * 100
-      success: 1, (sum(rate(ocb_oracle_scrape_errors_total{pair="XRP/USD"}[24h])) / (3 * (1/30)))
+      success: clamp_min(clamp_max(1 - sum(rate(ocb_oracle_scrape_errors_total{pair="XRP/USD"}[24h])) / (3 * (1/30)), 1), 0)
       sample_size: count(count by (source) (ocb_oracle_price{pair="XRP/USD"}))
       series: ocb_oracle_max_deviation_pct{pair="XRP/USD"} * 100
 
@@ -228,7 +228,7 @@ providers:
       p90: quantile_over_time(0.90, ocb_oracle_max_deviation_pct{pair="ADA/USD"}[24h]) * 100
       p99: quantile_over_time(0.99, ocb_oracle_max_deviation_pct{pair="ADA/USD"}[24h]) * 100
       mean: avg_over_time(ocb_oracle_max_deviation_pct{pair="ADA/USD"}[24h]) * 100
-      success: 1, (sum(rate(ocb_oracle_scrape_errors_total{pair="ADA/USD"}[24h])) / (3 * (1/30)))
+      success: clamp_min(clamp_max(1 - sum(rate(ocb_oracle_scrape_errors_total{pair="ADA/USD"}[24h])) / (3 * (1/30)), 1), 0)
       sample_size: count(count by (source) (ocb_oracle_price{pair="ADA/USD"}))
       series: ocb_oracle_max_deviation_pct{pair="ADA/USD"} * 100
 
@@ -240,6 +240,6 @@ providers:
       p90: quantile_over_time(0.90, ocb_oracle_max_deviation_pct{pair="DOGE/USD"}[24h]) * 100
       p99: quantile_over_time(0.99, ocb_oracle_max_deviation_pct{pair="DOGE/USD"}[24h]) * 100
       mean: avg_over_time(ocb_oracle_max_deviation_pct{pair="DOGE/USD"}[24h]) * 100
-      success: 1, (sum(rate(ocb_oracle_scrape_errors_total{pair="DOGE/USD"}[24h])) / (3 * (1/30)))
+      success: clamp_min(clamp_max(1 - sum(rate(ocb_oracle_scrape_errors_total{pair="DOGE/USD"}[24h])) / (3 * (1/30)), 1), 0)
       sample_size: count(count by (source) (ocb_oracle_price{pair="DOGE/USD"}))
       series: ocb_oracle_max_deviation_pct{pair="DOGE/USD"} * 100
