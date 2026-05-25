@@ -115,20 +115,43 @@ export function MiniChart({
         })}
       </svg>
 
-      {legend && (
-        <ul className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-medium tabular leading-none">
-          {seriesList.map((s) => (
-            <li key={s.slug} className="inline-flex items-center gap-1.5">
-              <span
-                className="inline-block h-[3px] w-3 rounded-sm"
-                style={{ background: s.color }}
-                aria-hidden
-              />
-              <span style={{ color: s.color }}>{s.name}</span>
-            </li>
-          ))}
-        </ul>
-      )}
+      {legend && (() => {
+        // Cap visible legend entries so dense benches (8+ providers, e.g.
+        // solana-tx-landing market share) don't wrap to multiple lines and
+        // overflow the chart column on the homepage table. Matches the
+        // 4-chip cap in HomeBenchTable's title cell.
+        const MAX_VISIBLE = 5;
+        const visible = seriesList.slice(0, MAX_VISIBLE);
+        const hidden = seriesList.length - visible.length;
+        return (
+          <ul className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-medium tabular leading-none">
+            {visible.map((s) => (
+              <li key={s.slug} className="inline-flex items-center gap-1.5 min-w-0">
+                <span
+                  className="inline-block h-[3px] w-3 rounded-sm shrink-0"
+                  style={{ background: s.color }}
+                  aria-hidden
+                />
+                <span
+                  className="truncate max-w-[110px]"
+                  style={{ color: s.color }}
+                  title={s.name}
+                >
+                  {s.name}
+                </span>
+              </li>
+            ))}
+            {hidden > 0 && (
+              <li
+                className="text-ink-muted"
+                title={seriesList.slice(MAX_VISIBLE).map((s) => s.name).join(", ")}
+              >
+                +{hidden} more
+              </li>
+            )}
+          </ul>
+        );
+      })()}
     </div>
   );
 }
