@@ -88,7 +88,7 @@ faq:
   - q: "Which stable should I hold on Binance for the lowest rotation cost?"
     a: "{{best_name}} currently has the tightest pair at {{best_p50}} (p99 spread vs USDT, 24 h). The leaderboard re-sorts every minute. For inventory sizing, use p99 rather than p50, because the spread during a forced rebalance under stress is what determines actual cost, not the calm-minute median. Combine with the success-rate column and the fundamental reserve-risk story (which this bench does NOT capture) before committing meaningful inventory."
 
-source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/stablecoin-peg
+source: https://github.com/OpenChainBench/OpenChainBench/blob/main/benchmarks/stablecoin-peg-usdt-anchored.yml
 
 prometheus:
   window: 24h
