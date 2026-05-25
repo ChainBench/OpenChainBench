@@ -98,7 +98,7 @@ faq:
   - q: "Why is gas prediction so hard?"
     a: "EIP-1559 makes the base fee deterministic (it adjusts by ±12.5% per block based on the previous block's gas used), so every oracle agrees on base fee within a fraction of a gwei. The hard part is predicting the priority-fee distribution in the *next* block. Priority fees are set by users in response to mempool congestion, which shifts on swap activity, MEV bot deployments, NFT mints and DEX volume in a way no historical-lookback model can fully anticipate. The leaderboard surfaces which oracle's lookback / inference scheme tracks reality best per chain, sustained over 24 h."
 
-source: https://github.com/OpenChainBench/OpenChainBench/blob/main/benchmarks/gas-estimation.yml
+source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/gas-estimation
 
 prometheus:
   window: 24h
