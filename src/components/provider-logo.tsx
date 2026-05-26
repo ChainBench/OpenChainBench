@@ -77,6 +77,11 @@ const NEEDS_LIGHT_CHIP = new Set([
   "astralane",
   "dydx",
   "sky",
+  // Dark-tone logos that vanish on the dark-mode page bg (the white chip
+  // gives them a visible surface in both light and dark modes):
+  "merkle",
+  "moralis",
+  "nodies",
 ]);
 
 function Chip({
