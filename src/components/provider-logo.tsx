@@ -68,6 +68,13 @@ const NEEDS_LIGHT_CHIP = new Set([
   "relay",
   "debridge",
   "tonapi",
+  // Dark/single-tone logos that need a white chip to read on the page bg:
+  "1rpc",
+  "blocknative",
+  "lava",
+  "tenderly",
+  "jito",
+  "astralane",
 ]);
 
 function Chip({
