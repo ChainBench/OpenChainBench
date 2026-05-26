@@ -42,7 +42,9 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
     const specs = await loadSpecs();
     const spec = specs.find((s) => s.slug === slug);
     if (!spec) return undefined;
+    const promStart = Date.now();
     const bench = await specToBenchmark(spec);
+    const promMs = Date.now() - promStart;
     if (spec.status === "live" && bench.status === "draft") {
       // Live spec, but Prom returned nothing this cycle. Try the
       // persistent snapshot before giving up. This is the cold-start
@@ -51,8 +53,18 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
       // good data; without KV we throw to preserve any previous cache
       // value (or eventually fall through to the draft placeholder in
       // the aggregator).
+      // [DRAFT-TRACE] temporary observability — remove once we've pinned
+      // the cause of intermittent draft renders.
+      console.warn(
+        `[DRAFT-TRACE] collapse slug=${slug} prom_ms=${promMs} → trying KV snapshot`,
+      );
+      const kvStart = Date.now();
       const snap = await readSnapshot(slug);
+      const kvMs = Date.now() - kvStart;
       if (snap) {
+        console.warn(
+          `[DRAFT-TRACE] kv_hit slug=${slug} kv_ms=${kvMs} → serving snapshot`,
+        );
         const editorial = buildEditorial(spec);
         const reconstructed = renderBenchmarkText({ ...editorial, ...snap });
         // The reconstructed bench is live data, just sourced from KV
@@ -63,6 +75,9 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
         }
         return reconstructed;
       }
+      console.warn(
+        `[DRAFT-TRACE] kv_miss slug=${slug} kv_ms=${kvMs} → throwing to keep prev cache`,
+      );
       throw new Error(
         `loadBenchmark(${slug}): live spec collapsed to draft, keeping prev cache`,
       );
@@ -99,6 +114,13 @@ const loadAllBenchmarksCached = unstable_cache(
         // to. Surface a placeholder so the page still renders rather
         // than dropping the bench from the list (which would break the
         // sitemap, the products pages, and the "More benchmarks" rail).
+        // [DRAFT-TRACE] this is the path that produces a visible "draft"
+        // render to the user — log so we can correlate with KV / prom state.
+        const reason =
+          r.status === "rejected" ? (r.reason instanceof Error ? r.reason.message : String(r.reason)) : "no_value";
+        console.warn(
+          `[DRAFT-TRACE] placeholder_used slug=${spec.slug} reason=${reason}`,
+        );
         benchmarks.push(draftPlaceholderForSpec(spec));
       }
     }
