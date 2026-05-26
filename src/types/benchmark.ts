@@ -44,6 +44,10 @@ export type ProviderResult = {
    *  Surfaced in the chart hover tooltip so readers can see exactly
    *  how the headline number was computed, not just trust it. */
   query?: string;
+  /** Single-line plain-English explanation of how this provider's
+   *  headline value is computed. Rendered as the leaderboard-row
+   *  hover tooltip. Authored per-bench in YAML (provider.formula). */
+  formula?: string;
 };
 
 export type RegionPoint = {

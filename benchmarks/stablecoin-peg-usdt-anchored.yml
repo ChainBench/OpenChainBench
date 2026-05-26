@@ -108,6 +108,7 @@ providers:
   - slug: usdc
     name: USDC
     tag: Reference anchor (USDC/USDT, $2.8B daily)
+    formula: "Median |mid_price − 1.0000| in bps on Binance USDCUSDT bookTicker, polled every 5s and aggregated over 24h via quantile_over_time."
     queries:
       p50: quantile_over_time(0.50, peg_deviation_usdt_anchored_bps{stable="usdc", venue="binance"}[24h])
       p90: quantile_over_time(0.90, peg_deviation_usdt_anchored_bps{stable="usdc", venue="binance"}[24h])
@@ -120,6 +121,7 @@ providers:
   - slug: fdusd
     name: FDUSD
     tag: First Digital, Binance FDUSDUSDT ($41M daily)
+    formula: "Median |mid_price − 1.0000| in bps on Binance FDUSDUSDT bookTicker, polled every 5s and aggregated over 24h via quantile_over_time."
     queries:
       p50: quantile_over_time(0.50, peg_deviation_usdt_anchored_bps{stable="fdusd", venue="binance"}[24h])
       p90: quantile_over_time(0.90, peg_deviation_usdt_anchored_bps{stable="fdusd", venue="binance"}[24h])
@@ -132,6 +134,7 @@ providers:
   - slug: usde
     name: USDe
     tag: Ethena synthetic dollar, Binance USDEUSDT ($1.8M daily)
+    formula: "Median |mid_price − 1.0000| in bps on Binance USDEUSDT bookTicker (the book that flashed to $0.65 Oct 10 2025), 5s polls over 24h."
     queries:
       p50: quantile_over_time(0.50, peg_deviation_usdt_anchored_bps{stable="usde", venue="binance"}[24h])
       p90: quantile_over_time(0.90, peg_deviation_usdt_anchored_bps{stable="usde", venue="binance"}[24h])
