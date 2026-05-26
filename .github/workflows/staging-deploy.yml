@@ -56,14 +56,21 @@ jobs:
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "Preview ready at $url"
 
+      - name: Update stable staging alias
+        run: |
+          vercel alias set "${{ steps.deploy.outputs.url }}" \
+            staging-openchainbench.vercel.app \
+            --token=${{ secrets.VERCEL_TOKEN }} \
+            --scope=mobula-labs
+
       - name: Comment summary
         run: |
           {
             echo "## Vercel staging deploy ✓"
             echo ""
-            echo "Branch \`dev\` deployed to:"
+            echo "**Stable:**  https://staging-openchainbench.vercel.app"
             echo ""
-            echo "  ${{ steps.deploy.outputs.url }}"
+            echo "**Preview:** ${{ steps.deploy.outputs.url }}"
             echo ""
             echo "Commit: \`${{ github.sha }}\`"
           } >> "$GITHUB_STEP_SUMMARY"
