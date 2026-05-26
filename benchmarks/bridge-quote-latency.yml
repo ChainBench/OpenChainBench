@@ -83,6 +83,7 @@ providers:
   - slug: mobula
     name: Mobula
     tag: Aggregator + intent layer
+    formula: "Median wall-clock ms over 24h for Mobula's quote API to return a usable USDC route, sampled every 5 minutes across 4 routes and 3 notionals from eu-west."
     queries:
       p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="mobula"}[24h])))
       p90: histogram_quantile(0.90, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="mobula"}[24h])))
@@ -95,6 +96,7 @@ providers:
   - slug: relay
     name: Relay
     tag: Cross-chain relay
+    formula: "Median wall-clock ms over 24h for Relay's solver-quote API to return a usable USDC route, sampled every 5 minutes across 4 routes and 3 notionals from eu-west."
     queries:
       p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="relay"}[24h])))
       p90: histogram_quantile(0.90, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="relay"}[24h])))
@@ -107,6 +109,7 @@ providers:
   - slug: lifi
     name: LiFi
     tag: Aggregator
+    formula: "Median wall-clock ms over 24h for LiFi's route-search API to return a usable USDC route across underlying bridges, sampled every 5 minutes across 4 routes and 3 notionals from eu-west."
     queries:
       p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="lifi"}[24h])))
       p90: histogram_quantile(0.90, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="lifi"}[24h])))
@@ -119,6 +122,7 @@ providers:
   - slug: debridge
     name: Debridge
     tag: Native-token fees
+    formula: "Median wall-clock ms over 24h for Debridge's direct-protocol quote API to return a single-route USDC quote, sampled every 5 minutes across 4 routes and 3 notionals from eu-west."
     queries:
       p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="debridge"}[24h])))
       p90: histogram_quantile(0.90, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="debridge"}[24h])))

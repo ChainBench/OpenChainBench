@@ -110,6 +110,7 @@ dimensions:
 providers:
   - slug: mobula
     name: Mobula
+    formula: "Share of ~60 anchor addresses for which Mobula's /api/2/wallet/labels returns a non-generic entity name, computed as success_total ÷ checks_total over 24h."
     queries:
       p50: 100 * sum(increase(wallet_labels_success_total{provider="mobula"}[24h])) / sum(increase(wallet_labels_checks_total{provider="mobula"}[24h]))
       p90: 100 * sum(increase(wallet_labels_success_total{provider="mobula"}[24h])) / sum(increase(wallet_labels_checks_total{provider="mobula"}[24h]))
@@ -121,6 +122,7 @@ providers:
 
   - slug: helius
     name: Helius
+    formula: "Share of Solana anchor addresses for which Helius /v1/wallet/{addr}/identity returns a non-generic entity name, success_total ÷ checks_total over 24h."
     queries:
       p50: 100 * sum(increase(wallet_labels_success_total{provider="helius"}[24h])) / sum(increase(wallet_labels_checks_total{provider="helius"}[24h]))
       p90: 100 * sum(increase(wallet_labels_success_total{provider="helius"}[24h])) / sum(increase(wallet_labels_checks_total{provider="helius"}[24h]))
@@ -132,6 +134,7 @@ providers:
 
   - slug: moralis
     name: Moralis
+    formula: "Share of anchor addresses for which Moralis /api/v2.2/entities returns a non-generic entity name across declared EVM chains, success_total ÷ checks_total over 24h."
     queries:
       p50: 100 * sum(increase(wallet_labels_success_total{provider="moralis"}[24h])) / sum(increase(wallet_labels_checks_total{provider="moralis"}[24h]))
       p90: 100 * sum(increase(wallet_labels_success_total{provider="moralis"}[24h])) / sum(increase(wallet_labels_checks_total{provider="moralis"}[24h]))
@@ -143,6 +146,7 @@ providers:
 
   - slug: blockscout
     name: Blockscout
+    formula: "Share of anchor addresses for which Blockscout /api/v2/addresses/{addr} returns a non-generic public name tag, success_total ÷ checks_total over 24h."
     queries:
       p50: 100 * sum(increase(wallet_labels_success_total{provider="blockscout"}[24h])) / sum(increase(wallet_labels_checks_total{provider="blockscout"}[24h]))
       p90: 100 * sum(increase(wallet_labels_success_total{provider="blockscout"}[24h])) / sum(increase(wallet_labels_checks_total{provider="blockscout"}[24h]))
@@ -154,6 +158,7 @@ providers:
 
   - slug: oli
     name: OLI
+    formula: "Share of anchor addresses for which the OLI Base EAS GraphQL endpoint returns a non-generic entity attestation, success_total ÷ checks_total over 24h."
     queries:
       p50: 100 * sum(increase(wallet_labels_success_total{provider="oli"}[24h])) / sum(increase(wallet_labels_checks_total{provider="oli"}[24h]))
       p90: 100 * sum(increase(wallet_labels_success_total{provider="oli"}[24h])) / sum(increase(wallet_labels_checks_total{provider="oli"}[24h]))
@@ -165,6 +170,7 @@ providers:
 
   - slug: tonapi
     name: TonAPI
+    formula: "Share of TON anchor addresses for which TonAPI /v2/accounts/{addr} returns a non-generic entity name, success_total ÷ checks_total over 24h."
     queries:
       p50: 100 * sum(increase(wallet_labels_success_total{provider="tonapi"}[24h])) / sum(increase(wallet_labels_checks_total{provider="tonapi"}[24h]))
       p90: 100 * sum(increase(wallet_labels_success_total{provider="tonapi"}[24h])) / sum(increase(wallet_labels_checks_total{provider="tonapi"}[24h]))
@@ -176,6 +182,7 @@ providers:
 
   - slug: stellarexpert
     name: StellarExpert
+    formula: "Share of Stellar anchor addresses for which StellarExpert /explorer/directory/{addr} returns a non-generic entity name, success_total ÷ checks_total over 24h."
     queries:
       p50: 100 * sum(increase(wallet_labels_success_total{provider="stellarexpert"}[24h])) / sum(increase(wallet_labels_checks_total{provider="stellarexpert"}[24h]))
       p90: 100 * sum(increase(wallet_labels_success_total{provider="stellarexpert"}[24h])) / sum(increase(wallet_labels_checks_total{provider="stellarexpert"}[24h]))
@@ -187,6 +194,7 @@ providers:
 
   - slug: xrpscan
     name: XRPScan
+    formula: "Share of XRP anchor addresses for which XRPScan /api/v1/account/{addr} returns a non-generic entity name, success_total ÷ checks_total over 24h."
     queries:
       p50: 100 * sum(increase(wallet_labels_success_total{provider="xrpscan"}[24h])) / sum(increase(wallet_labels_checks_total{provider="xrpscan"}[24h]))
       p90: 100 * sum(increase(wallet_labels_success_total{provider="xrpscan"}[24h])) / sum(increase(wallet_labels_checks_total{provider="xrpscan"}[24h]))
@@ -198,6 +206,7 @@ providers:
 
   - slug: walletexplorer
     name: WalletExplorer
+    formula: "Share of Bitcoin anchor addresses for which WalletExplorer /api/1/address-lookup returns a non-generic entity name, success_total ÷ checks_total over 24h."
     queries:
       p50: 100 * sum(increase(wallet_labels_success_total{provider="walletexplorer"}[24h])) / sum(increase(wallet_labels_checks_total{provider="walletexplorer"}[24h]))
       p90: 100 * sum(increase(wallet_labels_success_total{provider="walletexplorer"}[24h])) / sum(increase(wallet_labels_checks_total{provider="walletexplorer"}[24h]))

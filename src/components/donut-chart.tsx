@@ -5,9 +5,9 @@ import type { Benchmark } from "@/types/benchmark";
 import { liveResults } from "@/lib/provider-filters";
 import { ProviderLogo } from "@/components/provider-logo";
 import { fmtUnit } from "@/lib/format";
-import { methodologyTooltip } from "@/lib/methodology-tooltip";
 import { buildProviderColors } from "@/lib/series-colors";
 import { useChartExclusion } from "@/hooks/use-chart-exclusion";
+import { rankResults } from "@/lib/ranking";
 
 /**
  * Share-of-field donut. Each provider is a slice sized by p50 vs the
@@ -88,17 +88,21 @@ export function DonutChart({
     return { r, share, a0, a1, color: colors.get(r.slug) ?? "var(--color-ink-soft)" };
   });
 
-  // Inner-ring centre label. Defaults to "Leader · p50". When the reader
-  // hovers a slice the same lines swap to that slice's identity so the
-  // eye doesn't have to jump to a separate tooltip.
-  const leader = sorted[0];
+  // Inner-ring centre label. Uses the bench's higherIsBetter setting to
+  // pick the actual best provider — on lower-is-better latency / fee
+  // benches the biggest slice is the WORST, so a naive sorted[0] would
+  // mis-label it as the leader. The "Leader" label is direction-neutral
+  // once the selection respects the bench's intent.
+  const leader = rankResults(live, benchmark.higherIsBetter)[0] ?? sorted[0];
   const centre = hoveredResult
     ? {
+        label: hoveredResult.name === leader.name ? "Leader" : "Hovered",
         name: hoveredResult.name,
         value: fmtUnit(hoveredResult.ms.p50, benchmark.unit),
         pct: `${(hoveredShare * 100).toFixed(1)}%`,
       }
     : {
+        label: "Leader",
         name: leader.name,
         value: fmtUnit(leader.ms.p50, benchmark.unit),
         pct: `${((leader.ms.p50 / total) * 100).toFixed(1)}%`,
@@ -152,9 +156,7 @@ export function DonutChart({
                   }}
                   onMouseEnter={() => setHovered(r.slug)}
                   onClick={() => toggle(r.slug)}
-                >
-                  <title>{methodologyTooltip(r, false)}</title>
-                </path>
+                />
               );
             })}
             {/* Centre label, swaps to hovered provider on hover. */}
@@ -170,7 +172,7 @@ export function DonutChart({
                 fill: "var(--color-ink-faint)",
               }}
             >
-              {hovered ? "Hovered" : "Leader"}
+              {centre.label}
             </text>
             <text
               x={cx}
@@ -214,7 +216,6 @@ export function DonutChart({
                   role="button"
                   tabIndex={0}
                   aria-pressed={isOff}
-                  title={methodologyTooltip(r, isOff)}
                   onMouseEnter={() => !isOff && setHovered(r.slug)}
                   onMouseLeave={() => setHovered(null)}
                   onClick={() => toggle(r.slug)}
@@ -254,7 +255,9 @@ export function DonutChart({
 }
 
 // Annular sector. The `large-arc-flag` flips beyond a half-turn so a
-// dominant slice (>50 %) still renders.
+// dominant slice (>50 %) still renders. Full-circle (share=1.0) is
+// special-cased because a single SVG arc can't draw 360° in one go
+// (start and end points coincide and the path collapses to nothing).
 function arcPath(
   cx: number,
   cy: number,
@@ -263,7 +266,20 @@ function arcPath(
   a0: number,
   a1: number,
 ): string {
-  const large = a1 - a0 > Math.PI ? 1 : 0;
+  const sweep = a1 - a0;
+  if (sweep >= Math.PI * 2 - 1e-6) {
+    // Render as two half-arcs so the full ring closes properly.
+    return [
+      `M ${(cx + rOuter).toFixed(2)} ${cy.toFixed(2)}`,
+      `A ${rOuter} ${rOuter} 0 1 1 ${(cx - rOuter).toFixed(2)} ${cy.toFixed(2)}`,
+      `A ${rOuter} ${rOuter} 0 1 1 ${(cx + rOuter).toFixed(2)} ${cy.toFixed(2)}`,
+      `M ${(cx + rInner).toFixed(2)} ${cy.toFixed(2)}`,
+      `A ${rInner} ${rInner} 0 1 0 ${(cx - rInner).toFixed(2)} ${cy.toFixed(2)}`,
+      `A ${rInner} ${rInner} 0 1 0 ${(cx + rInner).toFixed(2)} ${cy.toFixed(2)}`,
+      "Z",
+    ].join(" ");
+  }
+  const large = sweep > Math.PI ? 1 : 0;
   const x0o = cx + rOuter * Math.cos(a0);
   const y0o = cy + rOuter * Math.sin(a0);
   const x1o = cx + rOuter * Math.cos(a1);

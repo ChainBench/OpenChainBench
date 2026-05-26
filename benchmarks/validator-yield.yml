@@ -129,6 +129,7 @@ providers:
   - slug: solana
     name: Solana
     tag: Top 200 by stake · Stakewiz APY (MEV in)
+    formula: "Median net yield in bps across the top 200 Solana validators by stake, where net_yield = Stakewiz total_apy (MEV folded in) × uptime_fraction."
     queries:
       p50: ocb_chain_median_net_yield_bps{chain="solana"}
       p90: quantile(0.90, ocb_validator_net_yield_bps{chain="solana"})
@@ -141,6 +142,7 @@ providers:
   - slug: hyperliquid
     name: Hyperliquid
     tag: All active · predictedApr.day × uptime
+    formula: "Median net yield in bps across all ~30 active Hyperliquid validators, where net_yield = predictedApr.day × stats[day].uptimeFraction from /info validatorSummaries."
     queries:
       p50: ocb_chain_median_net_yield_bps{chain="hyperliquid"}
       p90: quantile(0.90, ocb_validator_net_yield_bps{chain="hyperliquid"})

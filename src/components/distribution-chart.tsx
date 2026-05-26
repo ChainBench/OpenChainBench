@@ -6,7 +6,6 @@ import { liveResults } from "@/lib/provider-filters";
 import { Hint } from "@/components/hint";
 import { ProviderLogo } from "@/components/provider-logo";
 import { fmtUnit } from "@/lib/format";
-import { methodologyTooltip } from "@/lib/methodology-tooltip";
 import { buildProviderColors } from "@/lib/series-colors";
 import { useChartExclusion } from "@/hooks/use-chart-exclusion";
 
@@ -94,7 +93,6 @@ export function DistributionChart({
                   toggle(r.slug);
                 }
               }}
-              title={methodologyTooltip(r, isOff)}
               className={`grid grid-cols-[minmax(6rem,9rem)_1fr_3rem_3rem] sm:grid-cols-[minmax(7rem,10rem)_1fr_3.5rem_3.5rem] items-center gap-3 sm:gap-4 py-3 border-b border-rule/50 last:border-b-0 cursor-pointer transition-colors hover:bg-paper-soft/40 ${
                 isOff ? "opacity-40" : ""
               }`}

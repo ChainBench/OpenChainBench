@@ -118,6 +118,7 @@ providers:
   - slug: hyperliquid
     name: Hyperliquid
     tag: Assistance Fund, 97% fees → HYPE spot buyback
+    formula: "USD value of HYPE spot fills credited to the Assistance Fund 0xfefe…fefe over the rolling 7d window, divided by 97% of DeFiLlama's hyperliquid fees for the same window."
     queries:
       p50: ocb_buyback_ratio{protocol="hyperliquid",window="7d"}
       p90: ocb_buyback_ratio{protocol="hyperliquid",window="7d"}
@@ -130,6 +131,7 @@ providers:
   - slug: sky
     name: Sky (Maker)
     tag: Smart Burn Engine, 100% surplus → SKY via Uniswap
+    formula: "USD value of SKY ERC-20 inflows to the SBE 0xBE8E…98FB over 7d (Etherscan v2, priced at CoinGecko), divided by 100% of DeFiLlama's makerdao fees for the same window."
     queries:
       p50: ocb_buyback_ratio{protocol="sky",window="7d"}
       p90: ocb_buyback_ratio{protocol="sky",window="7d"}

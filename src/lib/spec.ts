@@ -310,6 +310,7 @@ async function specToBenchmark(
           successRate: 0,
           secondary: p.secondary,
           availability: "unavailable",
+          formula: p.formula,
         });
       }
     }
@@ -471,6 +472,7 @@ async function tryLoadLive(
         sampleSize: sampleSize ?? undefined,
         secondary: p.secondary,
         query: q.p50,
+        formula: p.formula,
       });
 
       if (q.series) {
@@ -565,6 +567,7 @@ function draftBenchmark(
     ms: { p50: 0, p90: 0, p99: 0, mean: 0 },
     successRate: 0,
     secondary: p.secondary,
+    formula: p.formula,
   }));
   return {
     ...editorial,
