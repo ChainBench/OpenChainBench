@@ -17,8 +17,13 @@ type PromEnvelope<T> =
   | { status: "success"; data: T; warnings?: string[] }
   | { status: "error"; errorType: string; error: string };
 
-/** Default timeout for Prometheus queries. keep short, build time is finite. */
-const DEFAULT_TIMEOUT_MS = 4_000;
+/** Default timeout for Prometheus queries. Bumped 4s → 10s after staging
+ *  logs showed `quantile_over_time(0.99, …[24h])` consistently taking
+ *  4-8s under load (observed 2026-05-26), which would otherwise abort
+ *  the query and collapse the bench to a draft render. 10s is the safe
+ *  upper bound for our heaviest percentile-over-window queries while
+ *  still bounding the SSR render at a tolerable ceiling. */
+const DEFAULT_TIMEOUT_MS = 10_000;
 
 export class Prometheus {
   constructor(public readonly baseUrl: string) {

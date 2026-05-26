@@ -1,7 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { getBenchmarkSlugs } from "@/data/benchmarks";
-import { getSpecs } from "@/lib/spec";
+import { getSpecs, loadAllBenchmarks } from "@/lib/spec";
 import { extractMetricName, Prometheus } from "@/lib/prometheus";
 
 export const runtime = "nodejs";
@@ -214,12 +214,28 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // Pre-warm the per-bench unstable_cache + KV snapshot layer. This
+  // single call is what spares an unlucky cold-start user a draft render
+  // when Prom is slow: it keeps each bench's runtime-cache entry fresh
+  // and triggers a writeSnapshot to KV so the snapshot fallback always
+  // has a recent good value to surface. Failures are caught so a Prom
+  // hiccup here doesn't 500 the cron and lose the Slack alert.
+  let prewarmCount = 0;
+  let prewarmErr: string | undefined;
+  try {
+    const benches = await loadAllBenchmarks();
+    prewarmCount = benches.length;
+  } catch (err) {
+    prewarmErr = err instanceof Error ? err.message : String(err);
+  }
+
   return NextResponse.json({
     checked: liveSpecs.length,
     transitions: transitions.length,
     sent: sent.length,
     dryRun: !webhook,
     transitionsList: transitions,
+    prewarm: { count: prewarmCount, err: prewarmErr },
   });
 }
 
