@@ -139,21 +139,27 @@ export async function readSnapshot(
         signal: AbortSignal.timeout(2_000),
       },
     );
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.warn(`[DRAFT-TRACE] kv_http slug=${slug} status=${res.status}`);
+      return null;
+    }
     const env = (await res.json()) as { result?: string | null };
-    if (!env.result) return null;
+    if (!env.result) {
+      console.warn(`[DRAFT-TRACE] kv_empty slug=${slug} (no snapshot ever written)`);
+      return null;
+    }
     const raw = JSON.parse(env.result);
     const parsed = SnapshotSchema.safeParse(raw);
     if (!parsed.success) {
       console.warn(
-        `snapshot.read rejected (shape) for ${slug}: ${parsed.error.message}`,
+        `[DRAFT-TRACE] kv_shape slug=${slug} err=${parsed.error.message}`,
       );
       return null;
     }
     const age = Date.now() - parsed.data.savedAt;
     if (age > MAX_SNAPSHOT_AGE_MS) {
       console.warn(
-        `snapshot.read rejected (stale ${Math.round(age / 1000 / 60)}m) for ${slug}`,
+        `[DRAFT-TRACE] kv_stale slug=${slug} age_min=${Math.round(age / 1000 / 60)}`,
       );
       return null;
     }
@@ -164,11 +170,13 @@ export async function readSnapshot(
       lastRunAt: parsed.data.lastRunAt,
     };
   } catch (err) {
-    console.warn(
-      `snapshot.read failed for ${slug}: ${
-        err instanceof Error ? err.message : String(err)
-      }`,
-    );
+    const msg = err instanceof Error ? err.message : String(err);
+    // Distinguish abort/timeout (most common) from other network errors so
+    // the post-incident grep can see if it's KV slowness vs KV down.
+    const tag = msg.toLowerCase().includes("abort") || msg.toLowerCase().includes("timeout")
+      ? "kv_timeout"
+      : "kv_neterr";
+    console.warn(`[DRAFT-TRACE] ${tag} slug=${slug} err=${msg}`);
     return null;
   }
 }
