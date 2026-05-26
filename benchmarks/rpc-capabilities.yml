@@ -123,6 +123,7 @@ providers:
   - slug: publicnode
     name: PublicNode
     tag: Allnodes-operated, 70+ chains, archive on most
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from eu-west to PublicNode's no-key endpoint."
     queries:
       p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="publicnode"}[24h])
       p90: quantile_over_time(0.90, rpc_latency_milliseconds{provider="publicnode"}[24h])
@@ -135,6 +136,7 @@ providers:
   - slug: drpc
     name: dRPC
     tag: Decentralized RPC mesh, consensus-checked
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from eu-west to dRPC's decentralized mesh."
     queries:
       p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="drpc"}[24h])
       p90: quantile_over_time(0.90, rpc_latency_milliseconds{provider="drpc"}[24h])
@@ -147,6 +149,7 @@ providers:
   - slug: 1rpc
     name: 1RPC
     tag: Privacy-preserving gateway by Automata Network
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from eu-west to 1RPC's Automata gateway."
     queries:
       p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="1rpc"}[24h])
       p90: quantile_over_time(0.90, rpc_latency_milliseconds{provider="1rpc"}[24h])
@@ -159,6 +162,7 @@ providers:
   - slug: meowrpc
     name: MeowRPC
     tag: Free public RPC, no registration
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from eu-west to MeowRPC's no-key endpoint."
     queries:
       p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="meowrpc"}[24h])
       p90: quantile_over_time(0.90, rpc_latency_milliseconds{provider="meowrpc"}[24h])
@@ -171,6 +175,7 @@ providers:
   - slug: flashbots
     name: Flashbots Protect
     tag: Private-mempool RPC, anti-sandwich
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from eu-west to the Flashbots Protect read proxy."
     queries:
       p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="flashbots"}[24h])
       p90: quantile_over_time(0.90, rpc_latency_milliseconds{provider="flashbots"}[24h])
@@ -183,6 +188,7 @@ providers:
   - slug: cloudflare
     name: Cloudflare
     tag: Permissioned-mode for many JSON-RPC methods
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from eu-west to cloudflare-eth (check success column for jsonrpc_err share)."
     queries:
       p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="cloudflare"}[24h])
       p90: quantile_over_time(0.90, rpc_latency_milliseconds{provider="cloudflare"}[24h])
@@ -195,6 +201,7 @@ providers:
   - slug: base-official
     name: Base Official
     tag: Coinbase-operated, Base mainnet RPC
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from eu-west to Coinbase's `mainnet.base.org` endpoint."
     queries:
       p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="base-official"}[24h])
       p90: quantile_over_time(0.90, rpc_latency_milliseconds{provider="base-official"}[24h])
@@ -207,6 +214,7 @@ providers:
   - slug: binance
     name: Binance Official
     tag: BNB Chain dataseed RPC, Binance-operated
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from eu-west to Binance's `bsc-dataseed1.binance.org` endpoint."
     queries:
       p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="binance"}[24h])
       p90: quantile_over_time(0.90, rpc_latency_milliseconds{provider="binance"}[24h])
@@ -219,6 +227,7 @@ providers:
   - slug: tenderly
     name: Tenderly Gateway
     tag: Multi-chain public gateway, 9 chains, no key
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from eu-west to `gateway.tenderly.co/public/<slug>`."
     queries:
       p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="tenderly"}[24h])
       p90: quantile_over_time(0.90, rpc_latency_milliseconds{provider="tenderly"}[24h])
@@ -231,6 +240,7 @@ providers:
   - slug: nodies
     name: Nodies (POKT)
     tag: POKT Network's decentralized public RPC successor, 7+ chains
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from eu-west to Nodies' `*-pokt.nodies.app` endpoint."
     queries:
       p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="nodies"}[24h])
       p90: quantile_over_time(0.90, rpc_latency_milliseconds{provider="nodies"}[24h])
@@ -243,6 +253,7 @@ providers:
   - slug: lava
     name: Lava Network
     tag: Decentralized permissionless RPC mesh (ETH + Arbitrum no-key)
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from eu-west to Lava Network's no-key mesh endpoint."
     queries:
       p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="lava"}[24h])
       p90: quantile_over_time(0.90, rpc_latency_milliseconds{provider="lava"}[24h])
@@ -255,6 +266,7 @@ providers:
   - slug: merkle
     name: Merkle
     tag: Base + BSC public no-key gateway (Ethereum hit by Cloudflare 20-min lockout, excluded)
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from eu-west to Merkle's Base/BSC no-key gateway."
     queries:
       p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="merkle"}[24h])
       p90: quantile_over_time(0.90, rpc_latency_milliseconds{provider="merkle"}[24h])
@@ -267,6 +279,7 @@ providers:
   - slug: arbitrum-official
     name: Arbitrum Official
     tag: Arbitrum Foundation public RPC, Arbitrum One only
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from eu-west to the Arbitrum Foundation's `arb1.arbitrum.io/rpc`."
     queries:
       p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="arbitrum-official"}[24h])
       p90: quantile_over_time(0.90, rpc_latency_milliseconds{provider="arbitrum-official"}[24h])
@@ -279,6 +292,7 @@ providers:
   - slug: optimism-official
     name: Optimism Official
     tag: Optimism Foundation public RPC, Optimism mainnet only
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from eu-west to the Optimism Foundation's `mainnet.optimism.io`."
     queries:
       p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="optimism-official"}[24h])
       p90: quantile_over_time(0.90, rpc_latency_milliseconds{provider="optimism-official"}[24h])
@@ -291,6 +305,7 @@ providers:
   - slug: avalanche-official
     name: Avalanche Official
     tag: Ava Labs C-Chain public RPC, Avalanche C-Chain only
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from eu-west to Ava Labs' `api.avax.network/ext/bc/C/rpc`."
     queries:
       p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="avalanche-official"}[24h])
       p90: quantile_over_time(0.90, rpc_latency_milliseconds{provider="avalanche-official"}[24h])

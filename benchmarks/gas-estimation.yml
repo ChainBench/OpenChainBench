@@ -138,6 +138,7 @@ providers:
   - slug: blocknative
     name: Blocknative
     tag: Probability-of-inclusion model, EIP-1559 tiered
+    formula: "Median over 24h of |Blocknative's predicted p50-tier priority fee − realized p50 priority fee| in gwei, computed per next-mined block on the active chain."
     queries:
       p50: quantile_over_time(0.50, gas_error_priority_gwei{oracle="blocknative", tier="p50"}[24h])
       p90: quantile_over_time(0.90, gas_error_priority_gwei{oracle="blocknative", tier="p50"}[24h])
@@ -150,6 +151,7 @@ providers:
   - slug: publicnode-feehistory
     name: PublicNode feeHistory
     tag: Thin wrapper over EIP-1559 reward percentiles
+    formula: "Median over 24h of |PublicNode eth_feeHistory p50 reward − realized p50 priority fee| in gwei, computed per next-mined block on the active chain."
     queries:
       p50: quantile_over_time(0.50, gas_error_priority_gwei{oracle="publicnode-feehistory", tier="p50"}[24h])
       p90: quantile_over_time(0.90, gas_error_priority_gwei{oracle="publicnode-feehistory", tier="p50"}[24h])
@@ -162,6 +164,7 @@ providers:
   - slug: owlracle
     name: Owlracle
     tag: Multi-oracle aggregator, free tier 100/h
+    formula: "Median over 24h of |Owlracle's aggregated p50-tier prediction − realized p50 priority fee| in gwei, polled every 60s and matched to the next-mined block on the active chain."
     queries:
       p50: quantile_over_time(0.50, gas_error_priority_gwei{oracle="owlracle", tier="p50"}[24h])
       p90: quantile_over_time(0.90, gas_error_priority_gwei{oracle="owlracle", tier="p50"}[24h])
@@ -174,6 +177,7 @@ providers:
   - slug: etherscan
     name: Etherscan
     tag: Most-visited gas tracker, Ethereum + Polygon
+    formula: "Median over 24h of |Etherscan's ProposeGasPrice mapped to p50-tier − realized p50 priority fee| in gwei, polled every 15s and matched to the next-mined block on the active chain."
     queries:
       p50: quantile_over_time(0.50, gas_error_priority_gwei{oracle="etherscan", tier="p50"}[24h])
       p90: quantile_over_time(0.90, gas_error_priority_gwei{oracle="etherscan", tier="p50"}[24h])

@@ -158,6 +158,7 @@ providers:
   - slug: jito
     name: Jito Block Engine
     tag: Baseline + control probe; atomic bundles + tip auction since 2022
+    formula: "50th percentile over 7d of slot delta (land_slot − submit_slot) for hourly signed mainnet probes submitted to Jito's `ny.mainnet.block-engine.jito.wtf` from us-east."
     queries:
       p50: quantile_over_time(0.5, solana_landing_probe_latency_slots{service="jito",region="us-east"}[7d])
       p90: quantile_over_time(0.9, solana_landing_probe_latency_slots{service="jito",region="us-east"}[7d])
@@ -170,6 +171,7 @@ providers:
   - slug: helius-sender
     name: Helius Sender (swqos_only)
     tag: Isolated Helius own-path (no Jito fan-out); anycast + 7 POPs
+    formula: "50th percentile over 7d of slot delta (land_slot − submit_slot) for hourly signed probes submitted to Helius Sender in `swqos_only=true` mode from us-east, isolating its own-path."
     queries:
       p50: quantile_over_time(0.5, solana_landing_probe_latency_slots{service="helius-sender",mode="swqos_only",region="us-east"}[7d])
       p90: quantile_over_time(0.9, solana_landing_probe_latency_slots{service="helius-sender",mode="swqos_only",region="us-east"}[7d])
@@ -182,6 +184,7 @@ providers:
   - slug: astralane
     name: Astralane Iris
     tag: Tip-refund mechanism, sendBundle / sendIdeal modes, FRA + NY POPs
+    formula: "50th percentile over 7d of slot delta (land_slot − submit_slot) for hourly signed probes submitted with a 500k-lamport net tip to Astralane Iris's NY gateway from us-east."
     queries:
       p50: quantile_over_time(0.5, solana_landing_probe_latency_slots{service="astralane",region="us-east"}[7d])
       p90: quantile_over_time(0.9, solana_landing_probe_latency_slots{service="astralane",region="us-east"}[7d])
@@ -194,6 +197,7 @@ providers:
   - slug: nozomi
     name: Nozomi
     tag: Temporal Labs, direct-to-leader, premium 1M-lamport hard floor
+    formula: "50th percentile over 7d of slot delta (land_slot − submit_slot) for hourly signed probes submitted with a 1M-lamport tip to Nozomi's `edge.nozomi.temporal.xyz` from us-east."
     queries:
       p50: quantile_over_time(0.5, solana_landing_probe_latency_slots{service="nozomi",region="us-east"}[7d])
       p90: quantile_over_time(0.9, solana_landing_probe_latency_slots{service="nozomi",region="us-east"}[7d])

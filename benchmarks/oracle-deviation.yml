@@ -127,6 +127,7 @@ providers:
   - slug: btc-usd
     name: BTC/USD
     tag: Bitcoin spot · 4 sources
+    formula: "Median of the max pairwise BTC/USD price disagreement (in bps) across Chainlink, Pyth, Binance and Coinbase, polled every 30s, p50 over 24h."
     queries:
       p50: quantile_over_time(0.50, ocb_oracle_max_deviation_pct{pair="BTC/USD"}[24h]) * 100
       p90: quantile_over_time(0.90, ocb_oracle_max_deviation_pct{pair="BTC/USD"}[24h]) * 100
@@ -139,6 +140,7 @@ providers:
   - slug: eth-usd
     name: ETH/USD
     tag: Ether spot · 4 sources
+    formula: "Median of the max pairwise ETH/USD price disagreement (in bps) across Chainlink, Pyth, Binance and Coinbase, polled every 30s, p50 over 24h."
     queries:
       p50: quantile_over_time(0.50, ocb_oracle_max_deviation_pct{pair="ETH/USD"}[24h]) * 100
       p90: quantile_over_time(0.90, ocb_oracle_max_deviation_pct{pair="ETH/USD"}[24h]) * 100
@@ -151,6 +153,7 @@ providers:
   - slug: sol-usd
     name: SOL/USD
     tag: Solana spot · 4 sources (Chainlink lags)
+    formula: "Median of the max pairwise SOL/USD price disagreement (in bps) across Chainlink, Pyth, Binance and Coinbase, widened by Chainlink's 0.5% deviation trigger lag, p50 over 24h."
     queries:
       p50: quantile_over_time(0.50, ocb_oracle_max_deviation_pct{pair="SOL/USD"}[24h]) * 100
       p90: quantile_over_time(0.90, ocb_oracle_max_deviation_pct{pair="SOL/USD"}[24h]) * 100
@@ -163,6 +166,7 @@ providers:
   - slug: bnb-usd
     name: BNB/USD
     tag: BNB spot · 4 sources
+    formula: "Median of the max pairwise BNB/USD price disagreement (in bps) across Chainlink, Pyth, Binance and Coinbase, polled every 30s, p50 over 24h."
     queries:
       p50: quantile_over_time(0.50, ocb_oracle_max_deviation_pct{pair="BNB/USD"}[24h]) * 100
       p90: quantile_over_time(0.90, ocb_oracle_max_deviation_pct{pair="BNB/USD"}[24h]) * 100
@@ -175,6 +179,7 @@ providers:
   - slug: avax-usd
     name: AVAX/USD
     tag: Avalanche spot · 4 sources
+    formula: "Median of the max pairwise AVAX/USD price disagreement (in bps) across Chainlink, Pyth, Binance and Coinbase, polled every 30s, p50 over 24h."
     queries:
       p50: quantile_over_time(0.50, ocb_oracle_max_deviation_pct{pair="AVAX/USD"}[24h]) * 100
       p90: quantile_over_time(0.90, ocb_oracle_max_deviation_pct{pair="AVAX/USD"}[24h]) * 100
@@ -187,6 +192,7 @@ providers:
   - slug: link-usd
     name: LINK/USD
     tag: Chainlink token spot · 4 sources
+    formula: "Median of the max pairwise LINK/USD price disagreement (in bps) across Chainlink, Pyth, Binance and Coinbase, polled every 30s, p50 over 24h."
     queries:
       p50: quantile_over_time(0.50, ocb_oracle_max_deviation_pct{pair="LINK/USD"}[24h]) * 100
       p90: quantile_over_time(0.90, ocb_oracle_max_deviation_pct{pair="LINK/USD"}[24h]) * 100
@@ -199,6 +205,7 @@ providers:
   - slug: matic-usd
     name: POL/USD
     tag: POL spot · 4 sources (legacy MATIC feed)
+    formula: "Median of the max pairwise POL/USD price disagreement (in bps) across Chainlink's legacy MATIC feed, Pyth, Binance and Coinbase (all pointed at POL post-migration), p50 over 24h."
     queries:
       p50: quantile_over_time(0.50, ocb_oracle_max_deviation_pct{pair="MATIC/USD"}[24h]) * 100
       p90: quantile_over_time(0.90, ocb_oracle_max_deviation_pct{pair="MATIC/USD"}[24h]) * 100
@@ -211,6 +218,7 @@ providers:
   - slug: xrp-usd
     name: XRP/USD
     tag: Ripple spot · 3 sources (no CL mainnet)
+    formula: "Median of the max pairwise XRP/USD price disagreement (in bps) across Pyth, Binance and Coinbase only (Chainlink mainnet feed deprecated), p50 over 24h."
     queries:
       p50: quantile_over_time(0.50, ocb_oracle_max_deviation_pct{pair="XRP/USD"}[24h]) * 100
       p90: quantile_over_time(0.90, ocb_oracle_max_deviation_pct{pair="XRP/USD"}[24h]) * 100
@@ -223,6 +231,7 @@ providers:
   - slug: ada-usd
     name: ADA/USD
     tag: Cardano spot · 3 sources (no CL mainnet)
+    formula: "Median of the max pairwise ADA/USD price disagreement (in bps) across Pyth, Binance and Coinbase only (Chainlink mainnet feed deprecated), p50 over 24h."
     queries:
       p50: quantile_over_time(0.50, ocb_oracle_max_deviation_pct{pair="ADA/USD"}[24h]) * 100
       p90: quantile_over_time(0.90, ocb_oracle_max_deviation_pct{pair="ADA/USD"}[24h]) * 100
@@ -235,6 +244,7 @@ providers:
   - slug: doge-usd
     name: DOGE/USD
     tag: Dogecoin spot · 3 sources (no CL mainnet)
+    formula: "Median of the max pairwise DOGE/USD price disagreement (in bps) across Pyth, Binance and Coinbase only (Chainlink mainnet feed deprecated), p50 over 24h."
     queries:
       p50: quantile_over_time(0.50, ocb_oracle_max_deviation_pct{pair="DOGE/USD"}[24h]) * 100
       p90: quantile_over_time(0.90, ocb_oracle_max_deviation_pct{pair="DOGE/USD"}[24h]) * 100
