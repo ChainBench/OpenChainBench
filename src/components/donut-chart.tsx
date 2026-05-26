@@ -91,18 +91,18 @@ export function DonutChart({
   // Inner-ring centre label. Uses the bench's higherIsBetter setting to
   // pick the actual best provider — on lower-is-better latency / fee
   // benches the biggest slice is the WORST, so a naive sorted[0] would
-  // mis-label it as the leader.
+  // mis-label it as the leader. The "Leader" label is direction-neutral
+  // once the selection respects the bench's intent.
   const leader = rankResults(live, benchmark.higherIsBetter)[0] ?? sorted[0];
-  const leaderLabel = benchmark.higherIsBetter ? "Leader" : "Fastest";
   const centre = hoveredResult
     ? {
-        label: hoveredResult.name === leader.name ? leaderLabel : "Hovered",
+        label: hoveredResult.name === leader.name ? "Leader" : "Hovered",
         name: hoveredResult.name,
         value: fmtUnit(hoveredResult.ms.p50, benchmark.unit),
         pct: `${(hoveredShare * 100).toFixed(1)}%`,
       }
     : {
-        label: leaderLabel,
+        label: "Leader",
         name: leader.name,
         value: fmtUnit(leader.ms.p50, benchmark.unit),
         pct: `${((leader.ms.p50 / total) * 100).toFixed(1)}%`,
