@@ -44,6 +44,10 @@ export type ProviderResult = {
    *  Surfaced in the chart hover tooltip so readers can see exactly
    *  how the headline number was computed, not just trust it. */
   query?: string;
+  /** Single-line plain-English explanation of how this provider's
+   *  headline value is computed. Rendered as the leaderboard-row
+   *  hover tooltip. Authored per-bench in YAML (provider.formula). */
+  formula?: string;
 };
 
 export type RegionPoint = {
@@ -100,7 +104,7 @@ export type Benchmark = {
   sampleSize: number;
   abstract: string;
   metric: string;
-  unit: "ms" | "s" | "pct" | "bps" | "count" | "slots";
+  unit: "ms" | "s" | "pct" | "bps" | "count" | "slots" | "usd";
   higherIsBetter: boolean;
   /** Optional drill-down dimensions exposed by the bench. When set, the
    * bench page renders one tab selector per dimension and the queries get

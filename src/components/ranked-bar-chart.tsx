@@ -1,12 +1,10 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { Benchmark } from "@/types/benchmark";
 import { fmtUnit } from "@/lib/format";
-import { methodologyTooltip } from "@/lib/methodology-tooltip";
 import { buildProviderColors } from "@/lib/series-colors";
 import { useChartExclusion } from "@/hooks/use-chart-exclusion";
-import { Hint } from "@/components/hint";
 import { LiveDot } from "@/components/live-dot";
 import { ProviderLogo } from "@/components/provider-logo";
 
@@ -24,25 +22,6 @@ type Props = {
   headerActions?: import("react").ReactNode;
 };
 
-/**
- * Try to match a provider's name against the bench's methodology bullets.
- * Useful for benches like l1-finality where each chain has its own
- * harness method ("Ethereum: eth_getBlockByNumber…", "Solana: getSlot…").
- * Falls back to an empty list when no per-provider line is found.
- */
-function matchMethodFor(name: string, methodology: string[]): string[] {
-  const tokens = name
-    .replace(/\s+(Smart Chain|C-Chain|v\d+|\.trade)/gi, "")
-    .toLowerCase()
-    .split(/\s+/)
-    .filter((t) => t.length >= 3);
-  if (tokens.length === 0) return [];
-  return methodology.filter((m) => {
-    const lower = m.toLowerCase();
-    return tokens.some((t) => lower.includes(t));
-  });
-}
-
 export function RankedBarChart({
   benchmark,
   excluded: controlledExcluded,
@@ -55,6 +34,8 @@ export function RankedBarChart({
     onToggleExclude,
     onResetExcluded,
   );
+
+  const [hoveredSlug, setHoveredSlug] = useState<string | null>(null);
 
   const colors = useMemo(
     () => buildProviderColors(benchmark.results),
@@ -71,7 +52,7 @@ export function RankedBarChart({
       tag: r.tag,
       value: r.ms.p50,
       color: colors.get(r.slug) ?? "var(--color-ink-soft)",
-      methodNotes: matchMethodFor(r.name, benchmark.methodology),
+      formula: r.formula,
       query: r.query,
     }));
   }, [benchmark, colors]);
@@ -126,40 +107,42 @@ export function RankedBarChart({
         {rows.map((r) => {
           const isOff = excluded.has(r.slug);
           const w = isOff ? 0 : project(r.value);
-          const hasNote = r.methodNotes.length > 0;
+          const hasFormula = Boolean(r.formula);
+          const isHovered = hoveredSlug === r.slug;
           if (!isOff) visibleRank += 1;
           const rank = isOff ? null : visibleRank;
           return (
             <li
               key={r.slug}
               onClick={() => toggle(r.slug)}
+              onMouseEnter={() => setHoveredSlug(r.slug)}
+              onMouseLeave={() => setHoveredSlug(null)}
+              onFocus={() => setHoveredSlug(r.slug)}
+              onBlur={() => setHoveredSlug(null)}
               role="button"
               tabIndex={0}
               aria-pressed={isOff}
-              title={methodologyTooltip(r, isOff)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
                   toggle(r.slug);
                 }
               }}
-              className={`group relative grid grid-cols-[2rem_minmax(5rem,8rem)_1fr_auto] sm:grid-cols-[2.5rem_minmax(7rem,11rem)_1fr_auto] items-center gap-3 sm:gap-4 cursor-pointer rounded-sm transition-colors hover:bg-paper-soft/40 ${
-                isOff ? "opacity-40" : ""
-              }`}
+              className={`relative grid grid-cols-[2rem_minmax(5rem,8rem)_1fr_auto] sm:grid-cols-[2.5rem_minmax(7rem,11rem)_1fr_auto] items-center gap-3 sm:gap-4 cursor-pointer rounded-sm transition-colors hover:bg-paper-soft/40 ${
+                isHovered ? "z-40" : ""
+              } ${isOff ? "opacity-40" : ""}`}
             >
               <span className="font-sans tabular text-[11px] text-ink-faint text-right">
                 {rank !== null ? `#${rank}` : "-"}
               </span>
-              <Hint label={r.tag ?? r.name}>
-                <span
-                  className={`inline-flex items-center gap-2 text-[13px] truncate ${
-                    isOff ? "text-ink-faint line-through decoration-1" : "text-ink"
-                  }`}
-                >
-                  <ProviderLogo slug={r.slug} name={r.name} size={18} />
-                  <span className="truncate">{r.name}</span>
-                </span>
-              </Hint>
+              <span
+                className={`inline-flex items-center gap-2 text-[13px] truncate ${
+                  isOff ? "text-ink-faint line-through decoration-1" : "text-ink"
+                }`}
+              >
+                <ProviderLogo slug={r.slug} name={r.name} size={18} />
+                <span className="truncate">{r.name}</span>
+              </span>
               <div className="relative h-7 bg-paper-soft/60 rounded-sm overflow-hidden">
                 <div
                   className="h-full rounded-sm transition-[width,opacity] duration-300"
@@ -177,25 +160,20 @@ export function RankedBarChart({
               >
                 {fmtUnit(r.value, benchmark.unit)}
               </span>
-              {hasNote && (
+              {hasFormula && isHovered && (
                 <div
                   role="tooltip"
-                  className="pointer-events-none absolute left-[calc(2.5rem+0.75rem)] top-full z-30 mt-1 hidden w-[min(28rem,90vw)] rounded-md border border-rule bg-paper p-3 shadow-xl group-hover:block"
+                  className="pointer-events-none absolute left-[calc(2.5rem+0.75rem)] top-full z-50 mt-1 w-[min(28rem,90vw)] rounded-md border border-rule bg-paper px-3 py-2 shadow-xl"
                 >
-                  <p
-                    className="text-[10px] font-medium uppercase tracking-[0.16em] mb-2"
-                    style={{ color: r.color }}
-                  >
-                    How {r.name} is measured
+                  <p className="text-xs leading-snug text-ink-soft">
+                    <span
+                      className="font-medium"
+                      style={{ color: r.color }}
+                    >
+                      {r.name}:
+                    </span>{" "}
+                    {r.formula}
                   </p>
-                  <ul className="space-y-1.5 text-xs leading-relaxed text-ink-soft">
-                    {r.methodNotes.map((m) => (
-                      <li key={m} className="flex gap-2">
-                        <span className="text-ink-faint mt-1">·</span>
-                        <span>{m}</span>
-                      </li>
-                    ))}
-                  </ul>
                 </div>
               )}
             </li>

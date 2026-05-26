@@ -65,6 +65,7 @@ providers:
   - slug: arbitrum
     name: Arbitrum One
     tag: Nitro fast-finality, sub-second sequencer
+    formula: "Median wall-clock milliseconds between consecutive `newHeads` events from the Arbitrum One sequencer WebSocket, capturing Nitro's ~250ms cadence, p50 over 24h."
     queries:
       p50: quantile_over_time(0.50, l2_block_time_milliseconds{chain="arbitrum"}[24h])
       p90: quantile_over_time(0.90, l2_block_time_milliseconds{chain="arbitrum"}[24h])
@@ -77,6 +78,7 @@ providers:
   - slug: optimism
     name: Optimism
     tag: OP Stack default, 2 s sequencer
+    formula: "Median wall-clock milliseconds between consecutive `newHeads` events on the Optimism sequencer WebSocket, matching the OP Stack 2s default cadence, p50 over 24h."
     queries:
       p50: quantile_over_time(0.50, l2_block_time_milliseconds{chain="optimism"}[24h])
       p90: quantile_over_time(0.90, l2_block_time_milliseconds{chain="optimism"}[24h])
@@ -89,6 +91,7 @@ providers:
   - slug: base
     name: Base
     tag: OP Stack, 2 s sequencer
+    formula: "Median wall-clock milliseconds between consecutive `newHeads` events on the Base sequencer WebSocket, tracking the OP Stack 2s interval, p50 over 24h."
     queries:
       p50: quantile_over_time(0.50, l2_block_time_milliseconds{chain="base"}[24h])
       p90: quantile_over_time(0.90, l2_block_time_milliseconds{chain="base"}[24h])
@@ -101,6 +104,7 @@ providers:
   - slug: zksync
     name: zkSync Era
     tag: zk-rollup, batched producer
+    formula: "Median wall-clock milliseconds between consecutive `newHeads` events on the zkSync Era WebSocket, capturing batched zk-rollup cadence (within-burst vs idle gap), p50 over 24h."
     queries:
       p50: quantile_over_time(0.50, l2_block_time_milliseconds{chain="zksync"}[24h])
       p90: quantile_over_time(0.90, l2_block_time_milliseconds{chain="zksync"}[24h])
@@ -113,6 +117,7 @@ providers:
   - slug: linea
     name: Linea
     tag: zk-rollup, prover-bound cadence
+    formula: "Median wall-clock milliseconds between consecutive `newHeads` events on the Linea sequencer WebSocket, governed by prover-bound batching, p50 over 24h."
     queries:
       p50: quantile_over_time(0.50, l2_block_time_milliseconds{chain="linea"}[24h])
       p90: quantile_over_time(0.90, l2_block_time_milliseconds{chain="linea"}[24h])
@@ -125,6 +130,7 @@ providers:
   - slug: scroll
     name: Scroll
     tag: zkEVM rollup, prover-bound cadence
+    formula: "Median wall-clock milliseconds between consecutive `newHeads` events on the Scroll zkEVM sequencer WebSocket, with prover-bound batching driving the cadence, p50 over 24h."
     queries:
       p50: quantile_over_time(0.50, l2_block_time_milliseconds{chain="scroll"}[24h])
       p90: quantile_over_time(0.90, l2_block_time_milliseconds{chain="scroll"}[24h])
@@ -137,6 +143,7 @@ providers:
   - slug: blast
     name: Blast
     tag: OP Stack fork, 2 s sequencer + native yield
+    formula: "Median wall-clock milliseconds between consecutive `newHeads` events on the Blast sequencer WebSocket, tracking the OP Stack fork's 2s interval, p50 over 24h."
     queries:
       p50: quantile_over_time(0.50, l2_block_time_milliseconds{chain="blast"}[24h])
       p90: quantile_over_time(0.90, l2_block_time_milliseconds{chain="blast"}[24h])
@@ -149,6 +156,7 @@ providers:
   - slug: mantle
     name: Mantle
     tag: OP Stack fork, modular DA, 2 s sequencer
+    formula: "Median wall-clock milliseconds between consecutive `newHeads` events on the Mantle sequencer WebSocket, tracking the OP Stack fork's 2s interval, p50 over 24h."
     queries:
       p50: quantile_over_time(0.50, l2_block_time_milliseconds{chain="mantle"}[24h])
       p90: quantile_over_time(0.90, l2_block_time_milliseconds{chain="mantle"}[24h])
@@ -161,6 +169,7 @@ providers:
   - slug: taiko
     name: Taiko
     tag: Based rollup, L1-sequenced by Ethereum validators
+    formula: "Median wall-clock milliseconds between consecutive `newHeads` events on Taiko's based-rollup WebSocket, with Ethereum L1 validators driving sequencing, p50 over 24h."
     queries:
       p50: quantile_over_time(0.50, l2_block_time_milliseconds{chain="taiko"}[24h])
       p90: quantile_over_time(0.90, l2_block_time_milliseconds{chain="taiko"}[24h])

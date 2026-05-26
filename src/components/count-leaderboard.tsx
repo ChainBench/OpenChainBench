@@ -1,11 +1,13 @@
 "use client";
 
-import { type ReactNode, useMemo } from "react";
+import { type ReactNode, useMemo, useState } from "react";
+import Link from "next/link";
 
 import type { Benchmark } from "@/types/benchmark";
 import { fmtValue } from "@/lib/format";
 import { rankResults } from "@/lib/ranking";
 import { buildProviderColors } from "@/lib/series-colors";
+import { ProviderLogo } from "@/components/provider-logo";
 
 /**
  * Dedicated view for `count` / coverage benches where p50/p90/p99 are
@@ -24,6 +26,7 @@ export function CountLeaderboard({
   const ranked = rankResults(benchmark.results, benchmark.higherIsBetter);
   const max = Math.max(...ranked.map((r) => r.ms.p50)) || 1;
   const colors = useMemo(() => buildProviderColors(benchmark.results), [benchmark.results]);
+  const [hoveredSlug, setHoveredSlug] = useState<string | null>(null);
 
   const leader = ranked[0];
   const trailer = ranked[ranked.length - 1];
@@ -73,14 +76,27 @@ export function CountLeaderboard({
           {ranked.map((r, i) => {
             const pct = (r.ms.p50 / max) * 100;
             const color = colors.get(r.slug) ?? "var(--color-ink-soft)";
+            const hasFormula = Boolean(r.formula);
+            const isHovered = hoveredSlug === r.slug;
             return (
-              <li key={r.slug}>
+              <li
+                key={r.slug}
+                className={`relative ${isHovered ? "z-40" : ""}`}
+                onMouseEnter={() => setHoveredSlug(r.slug)}
+                onMouseLeave={() => setHoveredSlug(null)}
+              >
                 <div className="flex items-baseline justify-between gap-3 mb-1.5">
-                  <div className="flex items-baseline gap-3 min-w-0">
+                  <div className="flex items-center gap-3 min-w-0">
                     <span className="font-sans tabular text-[11px] text-ink-faint w-5 shrink-0">
                       {String(i + 1).padStart(2, "0")}
                     </span>
-                    <span className="font-medium text-ink truncate">{r.name}</span>
+                    <ProviderLogo slug={r.slug} name={r.name} size={18} />
+                    <Link
+                      href={`/products/${r.slug}`}
+                      className="font-medium text-ink truncate hover:underline"
+                    >
+                      {r.name}
+                    </Link>
                     {r.tag ? (
                       <span className="text-xs text-ink-muted hidden sm:inline truncate">
                         {r.tag}
@@ -101,6 +117,19 @@ export function CountLeaderboard({
                     }}
                   />
                 </div>
+                {hasFormula && isHovered && (
+                  <div
+                    role="tooltip"
+                    className="pointer-events-none absolute left-8 top-full z-50 mt-1 w-[min(28rem,90vw)] rounded-md border border-rule bg-paper px-3 py-2 shadow-xl"
+                  >
+                    <p className="text-xs leading-snug text-ink-soft">
+                      <span className="font-medium" style={{ color }}>
+                        {r.name}:
+                      </span>{" "}
+                      {r.formula}
+                    </p>
+                  </div>
+                )}
               </li>
             );
           })}

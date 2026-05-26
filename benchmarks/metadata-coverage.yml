@@ -110,6 +110,7 @@ providers:
   - slug: mobula
     name: Mobula
     tag: REST `/token/details`
+    formula: "Median of hourly coverage rate (populated logo/description/twitter/website fields divided by total field checks) on Mobula `/token/details` for fresh tokens, p50 over 24h."
     queries:
       p50: quantile_over_time(0.50, (100 * sum(rate(metadata_coverage_success_total{provider="mobula"}[1h])) / sum(rate(metadata_coverage_checks_total{provider="mobula"}[1h])))[24h:1h])
       p90: quantile_over_time(0.90, (100 * sum(rate(metadata_coverage_success_total{provider="mobula"}[1h])) / sum(rate(metadata_coverage_checks_total{provider="mobula"}[1h])))[24h:1h])
@@ -122,6 +123,7 @@ providers:
   - slug: codex
     name: Codex
     tag: GraphQL `token` query
+    formula: "Median of hourly coverage rate (populated logo/description/twitter/website fields divided by total field checks) on Codex GraphQL `token` query for fresh tokens, p50 over 24h."
     queries:
       p50: quantile_over_time(0.50, (100 * sum(rate(metadata_coverage_success_total{provider="codex"}[1h])) / sum(rate(metadata_coverage_checks_total{provider="codex"}[1h])))[24h:1h])
       p90: quantile_over_time(0.90, (100 * sum(rate(metadata_coverage_success_total{provider="codex"}[1h])) / sum(rate(metadata_coverage_checks_total{provider="codex"}[1h])))[24h:1h])
@@ -134,6 +136,7 @@ providers:
   - slug: jupiter
     name: Jupiter
     tag: REST `/v6/tokens` (Solana)
+    formula: "Median of hourly coverage rate (populated logo/description/twitter/website fields divided by total field checks) on Jupiter `/v6/tokens` for fresh Solana mints, p50 over 24h."
     queries:
       p50: quantile_over_time(0.50, (100 * sum(rate(metadata_coverage_success_total{provider="jupiter"}[1h])) / sum(rate(metadata_coverage_checks_total{provider="jupiter"}[1h])))[24h:1h])
       p90: quantile_over_time(0.90, (100 * sum(rate(metadata_coverage_success_total{provider="jupiter"}[1h])) / sum(rate(metadata_coverage_checks_total{provider="jupiter"}[1h])))[24h:1h])
