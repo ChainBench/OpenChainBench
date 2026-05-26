@@ -38,6 +38,14 @@ export function fmtUnit(value: number, unit: string) {
     if (value > 0 && value < 1) return value.toFixed(3);
     return formatCompactCount(value);
   }
+  if (unit === "usd") {
+    if (value === 0) return "$0";
+    const abs = Math.abs(value);
+    if (abs < 0.01) return "~$0";
+    if (abs < 1) return `$${value.toFixed(2)}`;
+    if (abs < 1000) return `$${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+    return `$${formatCompactCount(value)}`;
+  }
   if (value >= 1000) return `${(value / 1000).toFixed(2)} s`;
   return `${value.toFixed(0)} ms`;
 }
@@ -48,14 +56,15 @@ export function unitSuffix(unit: string) {
   if (unit === "s") return " s";
   if (unit === "slots") return " slots";
   if (unit === "count") return "";
+  if (unit === "usd") return "";
   return " ms";
 }
 
 /** Just the formatted number (no unit). used by BigNumber where the unit
  * is rendered separately for typography. */
 export function fmtValue(value: number, unit: string): string {
-  // Keep K/M/B suffixes — they are part of the number, not a unit. Only
-  // strip trailing unit words that the caller renders separately.
+  // Keep K/M/B suffixes and $ prefix — they are part of the number, not a
+  // unit. Only strip trailing unit words that the caller renders separately.
   return fmtUnit(value, unit).replace(/\s+(ms|s|min|slots?)$/, "").replace(/\s*%$/, "");
 }
 

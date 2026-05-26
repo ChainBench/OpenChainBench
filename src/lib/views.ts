@@ -36,6 +36,10 @@ const ALLOWED_BY_UNIT: Record<Benchmark["unit"], ViewType[]> = {
   // which is exactly what we want to surface (1 slot vs 2 slots = the
   // operational signal).
   slots: ["timeseries", "rankedBar", "distribution", "donut"],
+  // usd: USD-denominated revenue/volume gauge. Same view set as count
+  // benches — the leaderboard view shows the $ value per provider with
+  // a comparison bar, which is the at-a-glance read users want.
+  usd: ["countLeaderboard", "rankedBar", "donut", "distribution", "timeseries"],
 };
 
 /**
@@ -54,7 +58,7 @@ export function viewsForBenchmark(b: Benchmark): ViewType[] {
  * explicit preference change.
  */
 export function defaultViewFor(b: Benchmark): ViewType {
-  if (b.unit === "count") return "countLeaderboard";
+  if (b.unit === "count" || b.unit === "usd") return "countLeaderboard";
   if (b.results.length >= 3 || b.unit === "bps" || b.unit === "pct") {
     return "rankedBar";
   }

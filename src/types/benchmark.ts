@@ -100,7 +100,7 @@ export type Benchmark = {
   sampleSize: number;
   abstract: string;
   metric: string;
-  unit: "ms" | "s" | "pct" | "bps" | "count" | "slots";
+  unit: "ms" | "s" | "pct" | "bps" | "count" | "slots" | "usd";
   higherIsBetter: boolean;
   /** Optional drill-down dimensions exposed by the bench. When set, the
    * bench page renders one tab selector per dimension and the queries get
