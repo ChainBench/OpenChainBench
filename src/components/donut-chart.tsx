@@ -250,7 +250,9 @@ export function DonutChart({
 }
 
 // Annular sector. The `large-arc-flag` flips beyond a half-turn so a
-// dominant slice (>50 %) still renders.
+// dominant slice (>50 %) still renders. Full-circle (share=1.0) is
+// special-cased because a single SVG arc can't draw 360° in one go
+// (start and end points coincide and the path collapses to nothing).
 function arcPath(
   cx: number,
   cy: number,
@@ -259,7 +261,20 @@ function arcPath(
   a0: number,
   a1: number,
 ): string {
-  const large = a1 - a0 > Math.PI ? 1 : 0;
+  const sweep = a1 - a0;
+  if (sweep >= Math.PI * 2 - 1e-6) {
+    // Render as two half-arcs so the full ring closes properly.
+    return [
+      `M ${(cx + rOuter).toFixed(2)} ${cy.toFixed(2)}`,
+      `A ${rOuter} ${rOuter} 0 1 1 ${(cx - rOuter).toFixed(2)} ${cy.toFixed(2)}`,
+      `A ${rOuter} ${rOuter} 0 1 1 ${(cx + rOuter).toFixed(2)} ${cy.toFixed(2)}`,
+      `M ${(cx + rInner).toFixed(2)} ${cy.toFixed(2)}`,
+      `A ${rInner} ${rInner} 0 1 0 ${(cx - rInner).toFixed(2)} ${cy.toFixed(2)}`,
+      `A ${rInner} ${rInner} 0 1 0 ${(cx + rInner).toFixed(2)} ${cy.toFixed(2)}`,
+      "Z",
+    ].join(" ");
+  }
+  const large = sweep > Math.PI ? 1 : 0;
   const x0o = cx + rOuter * Math.cos(a0);
   const y0o = cy + rOuter * Math.sin(a0);
   const x1o = cx + rOuter * Math.cos(a1);
