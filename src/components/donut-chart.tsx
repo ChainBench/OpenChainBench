@@ -7,6 +7,7 @@ import { ProviderLogo } from "@/components/provider-logo";
 import { fmtUnit } from "@/lib/format";
 import { buildProviderColors } from "@/lib/series-colors";
 import { useChartExclusion } from "@/hooks/use-chart-exclusion";
+import { rankResults } from "@/lib/ranking";
 
 /**
  * Share-of-field donut. Each provider is a slice sized by p50 vs the
@@ -87,17 +88,21 @@ export function DonutChart({
     return { r, share, a0, a1, color: colors.get(r.slug) ?? "var(--color-ink-soft)" };
   });
 
-  // Inner-ring centre label. Defaults to "Leader · p50". When the reader
-  // hovers a slice the same lines swap to that slice's identity so the
-  // eye doesn't have to jump to a separate tooltip.
-  const leader = sorted[0];
+  // Inner-ring centre label. Uses the bench's higherIsBetter setting to
+  // pick the actual best provider — on lower-is-better latency / fee
+  // benches the biggest slice is the WORST, so a naive sorted[0] would
+  // mis-label it as the leader.
+  const leader = rankResults(live, benchmark.higherIsBetter)[0] ?? sorted[0];
+  const leaderLabel = benchmark.higherIsBetter ? "Leader" : "Fastest";
   const centre = hoveredResult
     ? {
+        label: hoveredResult.name === leader.name ? leaderLabel : "Hovered",
         name: hoveredResult.name,
         value: fmtUnit(hoveredResult.ms.p50, benchmark.unit),
         pct: `${(hoveredShare * 100).toFixed(1)}%`,
       }
     : {
+        label: leaderLabel,
         name: leader.name,
         value: fmtUnit(leader.ms.p50, benchmark.unit),
         pct: `${((leader.ms.p50 / total) * 100).toFixed(1)}%`,
@@ -167,7 +172,7 @@ export function DonutChart({
                 fill: "var(--color-ink-faint)",
               }}
             >
-              {hovered ? "Hovered" : "Leader"}
+              {centre.label}
             </text>
             <text
               x={cx}
