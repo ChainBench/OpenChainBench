@@ -126,8 +126,18 @@ const loadAllBenchmarksCached = unstable_cache(
     }
     const live = benchmarks.filter((b) => b.status === "live");
     if (benchmarks.length > 0 && live.length === 0) {
-      throw new Error(
-        "loadAllBenchmarks: every bench draft, refusing to update cache",
+      // Previously this threw to make unstable_cache keep the previous
+      // value during a Prom blackout. The throw, however, propagates
+      // unhandled into the BUILD-time page-generation path (no previous
+      // cache there) and crashes `next build` with "Error: every bench
+      // draft". With the snapshot/KV fallback + 10s Prom timeout + cron
+      // pre-warm now in place, this safety net mostly fires during the
+      // build window of a cold deploy. Warn loudly and return the
+      // draft set — the page renders with placeholders and recovers on
+      // the next revalidate cycle. Avoids deploy crashes.
+      console.warn(
+        "[DRAFT-TRACE] all_draft slug_count=" + benchmarks.length +
+          " — Prom blackout during build/cold-start, returning placeholders",
       );
     }
     return benchmarks.sort((a, b) => a.number.localeCompare(b.number));
