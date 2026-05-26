@@ -75,6 +75,8 @@ const NEEDS_LIGHT_CHIP = new Set([
   "tenderly",
   "jito",
   "astralane",
+  "dydx",
+  "sky",
 ]);
 
 function Chip({
