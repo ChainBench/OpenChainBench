@@ -89,6 +89,7 @@ providers:
   - slug: mobula
     name: Mobula
     tag: Aggregator + intent layer
+    formula: "Median over 24h of total cost percent (fees + slippage + destination gas) on a $300 USDC quote returned by Mobula's intent layer, sampled every 5 minutes from eu-west."
     type: intent
     queries:
       p50: quantile_over_time(0.50, bridge_cost_percent{bridge="mobula", amount_usd="300"}[24h])
@@ -102,6 +103,7 @@ providers:
   - slug: relay
     name: Relay
     tag: Cross-chain relay
+    formula: "Median over 24h of total cost percent (fees + slippage + destination gas) on a $300 USDC quote returned by Relay's API, sampled every 5 minutes from eu-west."
     type: relay
     queries:
       p50: quantile_over_time(0.50, bridge_cost_percent{bridge="relay", amount_usd="300"}[24h])
@@ -115,6 +117,7 @@ providers:
   - slug: lifi
     name: LiFi
     tag: Aggregator
+    formula: "Median over 24h of total cost percent (underlying bridge fee + slippage + destination gas + LiFi markup) on a $300 USDC quote, sampled every 5 minutes from eu-west."
     type: aggregator
     queries:
       p50: quantile_over_time(0.50, bridge_cost_percent{bridge="lifi", amount_usd="300"}[24h])
@@ -128,6 +131,7 @@ providers:
   - slug: debridge
     name: Debridge
     tag: Native-token fees
+    formula: "Median over 24h of total cost percent (native-token protocol fee + slippage + destination gas) on a $300 USDC quote from Debridge's direct API, sampled every 5 minutes from eu-west."
     type: protocol
     queries:
       p50: quantile_over_time(0.50, bridge_cost_percent{bridge="debridge", amount_usd="300"}[24h])

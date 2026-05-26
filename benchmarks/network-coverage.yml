@@ -87,6 +87,7 @@ providers:
   - slug: geckoterminal
     name: GeckoTerminal
     tag: CoinGecko's DEX index
+    formula: "Count of unique mainnet chain ids returned by GeckoTerminal's `/api/v2/networks` paginated endpoint, refreshed every 6 hours."
     queries:
       p50: networks_supported_total{provider="geckoterminal"}
       p90: networks_supported_total{provider="geckoterminal"}
@@ -99,6 +100,7 @@ providers:
   - slug: codex
     name: Codex
     tag: Defined.fi data API
+    formula: "Count of unique mainnet chain ids returned by Codex's GraphQL `getNetworks` query, refreshed every 6 hours."
     queries:
       p50: networks_supported_total{provider="codex"}
       p90: networks_supported_total{provider="codex"}
@@ -111,6 +113,7 @@ providers:
   - slug: mobula
     name: Mobula
     tag: Aggregator + intent layer
+    formula: "Count of unique mainnet chain ids returned by Mobula's `/api/1/blockchains` endpoint, refreshed every 6 hours."
     queries:
       p50: networks_supported_total{provider="mobula"}
       p90: networks_supported_total{provider="mobula"}

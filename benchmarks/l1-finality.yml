@@ -152,6 +152,7 @@ providers:
   - slug: bnb
     name: BNB Smart Chain
     tag: Fast finality fork (BEP-126), measured via WS wall-clock
+    formula: "Median wall-clock milliseconds between a BNB block first appearing as `latest` on WebSocket and crossing the BEP-126 finalized threshold, p50 over 24h."
     queries:
       p50: quantile_over_time(0.50, l1_finality_wallclock_lag_milliseconds{chain="bnb"}[24h])
       p90: quantile_over_time(0.90, l1_finality_wallclock_lag_milliseconds{chain="bnb"}[24h])
@@ -164,6 +165,7 @@ providers:
   - slug: avalanche
     name: Avalanche C-Chain
     tag: Snowman++ consensus, measured via WS wall-clock
+    formula: "Median wall-clock milliseconds between a C-Chain block emitting as `latest` and as `finalized` on a persistent WebSocket, p50 over 24h."
     queries:
       p50: quantile_over_time(0.50, l1_finality_wallclock_lag_milliseconds{chain="avalanche"}[24h])
       p90: quantile_over_time(0.90, l1_finality_wallclock_lag_milliseconds{chain="avalanche"}[24h])
@@ -176,6 +178,7 @@ providers:
   - slug: sui
     name: SUI
     tag: Mysticeti DAG, measured via wall-clock checkpoint cadence
+    formula: "Median wall-clock milliseconds for a SUI Mysticeti checkpoint to reach finality, measured via `sui_getLatestCheckpointSequenceNumber` with a 5-checkpoint lookback, p50 over 24h."
     queries:
       p50: quantile_over_time(0.50, l1_finality_wallclock_lag_milliseconds{chain="sui"}[24h])
       p90: quantile_over_time(0.90, l1_finality_wallclock_lag_milliseconds{chain="sui"}[24h])
@@ -188,6 +191,7 @@ providers:
   - slug: ton
     name: TON
     tag: Masterchain commit, measured via SSE wall-clock
+    formula: "Median wall-clock milliseconds for a TON masterchain block to commit under BAG consensus, polled via tonapi.io with a 3-seqno lookback, p50 over 24h."
     queries:
       p50: quantile_over_time(0.50, l1_finality_wallclock_lag_milliseconds{chain="ton"}[24h])
       p90: quantile_over_time(0.90, l1_finality_wallclock_lag_milliseconds{chain="ton"}[24h])
@@ -200,6 +204,7 @@ providers:
   - slug: stellar
     name: Stellar
     tag: SCP federated voting, measured via Horizon SSE wall-clock
+    formula: "Median wall-clock milliseconds between two SCP-final ledger closes on the Horizon `/ledgers` SSE stream, aligned with Stellar's ~5s close interval, p50 over 24h."
     queries:
       p50: quantile_over_time(0.50, l1_finality_wallclock_lag_milliseconds{chain="stellar"}[24h])
       p90: quantile_over_time(0.90, l1_finality_wallclock_lag_milliseconds{chain="stellar"}[24h])
@@ -212,6 +217,7 @@ providers:
   - slug: solana
     name: Solana
     tag: Tower BFT, 32-slot finalized commitment
+    formula: "Mean elapsed time (in ms) between Solana's processed and finalized commitments via `getSlot` + `getBlockTime`, covering the 32-slot Tower BFT finalization gap, over 24h."
     queries:
       p50: avg_over_time(l1_finality_lag_seconds{chain="solana"}[24h]) * 1000
       p90: quantile_over_time(0.90, l1_finality_lag_seconds{chain="solana"}[24h]) * 1000
@@ -224,6 +230,7 @@ providers:
   - slug: tron
     name: TRON
     tag: 20-block solidity confirmation
+    formula: "Mean elapsed time (in ms) between TRON head and solidity-confirmed block via `/wallet/getnowblock` vs `/walletsolidity/getnowblock`, the 20-block irreversibility delay, over 24h."
     queries:
       p50: avg_over_time(l1_finality_lag_seconds{chain="tron"}[24h]) * 1000
       p90: quantile_over_time(0.90, l1_finality_lag_seconds{chain="tron"}[24h]) * 1000
@@ -236,6 +243,7 @@ providers:
   - slug: ethereum
     name: Ethereum
     tag: Casper FFG, 2-epoch finalization
+    formula: "Mean elapsed time (in ms) between `eth_getBlockByNumber(\"latest\")` and `eth_getBlockByNumber(\"finalized\")` timestamps, the 2-epoch Casper FFG window (~12.8 min), over 24h."
     queries:
       p50: avg_over_time(l1_finality_lag_seconds{chain="ethereum"}[24h]) * 1000
       p90: quantile_over_time(0.90, l1_finality_lag_seconds{chain="ethereum"}[24h]) * 1000
@@ -248,6 +256,7 @@ providers:
   - slug: litecoin
     name: Litecoin
     tag: Probabilistic, 6 confirmations
+    formula: "Mean elapsed time (in ms) to accumulate 6 Litecoin confirmations via blockchair `/stats.best_block_height` with a 6-block lookback, the standard probabilistic settlement convention, over 24h."
     queries:
       p50: avg_over_time(l1_finality_lag_seconds{chain="litecoin"}[24h]) * 1000
       p90: quantile_over_time(0.90, l1_finality_lag_seconds{chain="litecoin"}[24h]) * 1000
@@ -260,6 +269,7 @@ providers:
   - slug: monero
     name: Monero
     tag: Probabilistic, 10 confirmations
+    formula: "Mean elapsed time (in ms) to accumulate 10 Monero confirmations via monero-rpc `get_info` and `get_block_header_by_height` lookback, the conservative probabilistic depth, over 24h."
     queries:
       p50: avg_over_time(l1_finality_lag_seconds{chain="monero"}[24h]) * 1000
       p90: quantile_over_time(0.90, l1_finality_lag_seconds{chain="monero"}[24h]) * 1000

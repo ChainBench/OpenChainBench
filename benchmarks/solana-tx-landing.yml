@@ -114,6 +114,7 @@ providers:
   - slug: jito
     name: Jito
     tag: Block Engine, atomic bundles + tip auction, OG since 2022
+    formula: "Total count over the last 24h of confirmed mainnet txs that paid a tip to one of Jito's 8 documented tip wallets, deduped via 50k-entry LRU."
     queries:
       p50: sum(increase(solana_landing_tx_total{service="jito"}[24h]))
       p90: sum(increase(solana_landing_tx_total{service="jito"}[24h]))
@@ -126,6 +127,7 @@ providers:
   - slug: helius-sender
     name: Helius Sender
     tag: Dual-path fan-out (Jito + SWQoS staked connections), 7 regions
+    formula: "Total count over the last 24h of confirmed mainnet txs that paid a tip to one of Helius Sender's 10 documented tip wallets, deduped via 50k-entry LRU."
     queries:
       p50: sum(increase(solana_landing_tx_total{service="helius-sender"}[24h]))
       p90: sum(increase(solana_landing_tx_total{service="helius-sender"}[24h]))
@@ -138,6 +140,7 @@ providers:
   - slug: nozomi
     name: Nozomi
     tag: Temporal Labs, direct-to-leader, 9 co-located regions, premium tips
+    formula: "Total count over the last 24h of confirmed mainnet txs that paid a tip to one of Nozomi's 17 `noz`-prefixed tip wallets, deduped via 50k-entry LRU."
     queries:
       p50: sum(increase(solana_landing_tx_total{service="nozomi"}[24h]))
       p90: sum(increase(solana_landing_tx_total{service="nozomi"}[24h]))
@@ -150,6 +153,7 @@ providers:
   - slug: bloxroute
     name: bloXroute Trader API
     tag: Multi-path BDN propagation, institutional flow
+    formula: "Total count over the last 24h of confirmed mainnet txs that paid a tip to one of bloXroute's 17 `bLx`-prefixed tip wallets, deduped via 50k-entry LRU."
     queries:
       p50: sum(increase(solana_landing_tx_total{service="bloxroute"}[24h]))
       p90: sum(increase(solana_landing_tx_total{service="bloxroute"}[24h]))
@@ -162,6 +166,7 @@ providers:
   - slug: 0slot
     name: 0slot.trade
     tag: Premium QUIC leader-direct sender
+    formula: "Total count over the last 24h of confirmed mainnet txs that paid a tip to one of 0slot.trade's 10 documented tip wallets, deduped via 50k-entry LRU."
     queries:
       p50: sum(increase(solana_landing_tx_total{service="0slot"}[24h]))
       p90: sum(increase(solana_landing_tx_total{service="0slot"}[24h]))
@@ -174,6 +179,7 @@ providers:
   - slug: nextblock
     name: NextBlock
     tag: SWQoS sender, TX Stream API
+    formula: "Total count over the last 24h of confirmed mainnet txs that paid a tip to one of NextBlock's 8 documented tip wallets, deduped via 50k-entry LRU."
     queries:
       p50: sum(increase(solana_landing_tx_total{service="nextblock"}[24h]))
       p90: sum(increase(solana_landing_tx_total{service="nextblock"}[24h]))
@@ -186,6 +192,7 @@ providers:
   - slug: astralane
     name: Astralane Iris
     tag: Validator co-located, leader-schedule-aware routing
+    formula: "Total count over the last 24h of confirmed mainnet txs that paid a tip to Astralane Iris's documented tip wallet, deduped via 50k-entry LRU."
     queries:
       p50: sum(increase(solana_landing_tx_total{service="astralane"}[24h]))
       p90: sum(increase(solana_landing_tx_total{service="astralane"}[24h]))
@@ -198,6 +205,7 @@ providers:
   - slug: solanavibestation
     name: SolanaVibeStation
     tag: Lightspeed validator-pool tip-based sender
+    formula: "Total count over the last 24h of confirmed mainnet txs that paid a tip to SolanaVibeStation's documented Lightspeed tip wallet, deduped via 50k-entry LRU."
     queries:
       p50: sum(increase(solana_landing_tx_total{service="solanavibestation"}[24h]))
       p90: sum(increase(solana_landing_tx_total{service="solanavibestation"}[24h]))
