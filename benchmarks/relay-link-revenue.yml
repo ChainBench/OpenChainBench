@@ -9,7 +9,7 @@ subtitle: Implied margin in USD that Relay.link plus its solver network collecti
 category: Bridges
 status: live
 metric: Implied revenue USD (24h)
-unit: count
+unit: usd
 higher_is_better: true
 
 disclaimer: |
@@ -147,7 +147,7 @@ prometheus:
 
 providers:
   - slug: relay
-    name: Relay.link
+    name: Relay
     tag: Cross-chain swap routing protocol, implied margin upper bound
     type: relay
     secondary:
