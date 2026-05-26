@@ -149,6 +149,7 @@ providers:
   - slug: relay
     name: Relay
     tag: Cross-chain swap routing protocol, implied margin upper bound
+    formula: "Sum over the last 24h of (input USD − output USD − gas USD − disclosed external app fees) for every successful swap from Relay.link's public API, an upper bound on Relay+solver margin."
     type: relay
     secondary:
       label: Take rate (24h, bps)

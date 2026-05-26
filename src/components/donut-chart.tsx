@@ -5,7 +5,6 @@ import type { Benchmark } from "@/types/benchmark";
 import { liveResults } from "@/lib/provider-filters";
 import { ProviderLogo } from "@/components/provider-logo";
 import { fmtUnit } from "@/lib/format";
-import { methodologyTooltip } from "@/lib/methodology-tooltip";
 import { buildProviderColors } from "@/lib/series-colors";
 import { useChartExclusion } from "@/hooks/use-chart-exclusion";
 
@@ -152,9 +151,7 @@ export function DonutChart({
                   }}
                   onMouseEnter={() => setHovered(r.slug)}
                   onClick={() => toggle(r.slug)}
-                >
-                  <title>{methodologyTooltip(r, false)}</title>
-                </path>
+                />
               );
             })}
             {/* Centre label, swaps to hovered provider on hover. */}
@@ -214,7 +211,6 @@ export function DonutChart({
                   role="button"
                   tabIndex={0}
                   aria-pressed={isOff}
-                  title={methodologyTooltip(r, isOff)}
                   onMouseEnter={() => !isOff && setHovered(r.slug)}
                   onMouseLeave={() => setHovered(null)}
                   onClick={() => toggle(r.slug)}

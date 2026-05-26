@@ -75,8 +75,9 @@ export function CountLeaderboard({
           {ranked.map((r, i) => {
             const pct = (r.ms.p50 / max) * 100;
             const color = colors.get(r.slug) ?? "var(--color-ink-soft)";
+            const hasFormula = Boolean(r.formula);
             return (
-              <li key={r.slug}>
+              <li key={r.slug} className="group relative">
                 <div className="flex items-baseline justify-between gap-3 mb-1.5">
                   <div className="flex items-center gap-3 min-w-0">
                     <span className="font-sans tabular text-[11px] text-ink-faint w-5 shrink-0">
@@ -109,6 +110,19 @@ export function CountLeaderboard({
                     }}
                   />
                 </div>
+                {hasFormula && (
+                  <div
+                    role="tooltip"
+                    className="pointer-events-none absolute left-8 top-full z-30 mt-1 hidden w-[min(28rem,90vw)] rounded-md border border-rule bg-paper px-3 py-2 shadow-xl group-hover:block"
+                  >
+                    <p className="text-xs leading-snug text-ink-soft">
+                      <span className="font-medium" style={{ color }}>
+                        {r.name}:
+                      </span>{" "}
+                      {r.formula}
+                    </p>
+                  </div>
+                )}
               </li>
             );
           })}

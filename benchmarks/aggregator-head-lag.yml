@@ -97,6 +97,7 @@ providers:
   - slug: mobula
     name: Mobula
     tag: WebSocket feed
+    formula: "Median seconds between an on-chain swap landing on Base/BNB/Solana archive nodes and the same event arriving on Mobula's WebSocket, sampled every 15s over 24h."
     queries:
       p50: quantile_over_time(0.50, head_lag_seconds{aggregator="mobula"}[24h]) * 1000
       p90: quantile_over_time(0.90, head_lag_seconds{aggregator="mobula"}[24h]) * 1000
@@ -119,6 +120,7 @@ providers:
   - slug: codex
     name: Codex
     tag: GraphQL feed
+    formula: "Median seconds between an on-chain swap landing on Base/BNB/Solana archive nodes and the same event arriving on Codex's GraphQL subscription, sampled every 15s over 24h."
     queries:
       p50: quantile_over_time(0.50, head_lag_seconds{aggregator="codex"}[24h]) * 1000
       p90: quantile_over_time(0.90, head_lag_seconds{aggregator="codex"}[24h]) * 1000
@@ -141,6 +143,7 @@ providers:
   - slug: geckoterminal
     name: GeckoTerminal
     tag: REST feed
+    formula: "Median seconds between an on-chain swap landing on Base/BNB/Solana archive nodes and the same event surfacing on GeckoTerminal's REST endpoint, sampled every 15s over 24h."
     queries:
       p50: quantile_over_time(0.50, head_lag_seconds{aggregator="geckoterminal"}[24h]) * 1000
       p90: quantile_over_time(0.90, head_lag_seconds{aggregator="geckoterminal"}[24h]) * 1000

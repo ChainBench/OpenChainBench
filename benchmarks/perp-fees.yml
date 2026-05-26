@@ -106,6 +106,7 @@ providers:
   - slug: lighter
     name: Lighter
     tag: zk-rollup, zero taker fee
+    formula: "Average over 24h of (taker fee from Lighter `/orderBookDetails` + half-spread plus impact from walking `/orderBookOrders` for $1000 of ETH buy notional), in bps."
     queries:
       p50: avg_over_time(perp_fees_all_in_bps{venue="lighter"}[24h])
       p90: quantile_over_time(0.90, perp_fees_all_in_bps{venue="lighter"}[24h])
@@ -118,6 +119,7 @@ providers:
   - slug: hyperliquid
     name: Hyperliquid
     tag: HyperBFT L1 perp DEX
+    formula: "Average over 24h of (Hyperliquid `userFees` taker rate + half-spread plus impact from the `l2Book` asks side walked for $1000 of ETH buy notional), in bps."
     queries:
       p50: avg_over_time(perp_fees_all_in_bps{venue="hyperliquid"}[24h])
       p90: quantile_over_time(0.90, perp_fees_all_in_bps{venue="hyperliquid"}[24h])
@@ -130,6 +132,7 @@ providers:
   - slug: dydx
     name: dYdX v4
     tag: Cosmos-based decentralized perp
+    formula: "Average over 24h of (dYdX Cosmos REST tier-0 taker fee + half-spread plus impact from the indexer `/orderbooks/perpetualMarket/ETH-USD` walked at $1000 notional), in bps."
     queries:
       p50: avg_over_time(perp_fees_all_in_bps{venue="dydx"}[24h])
       p90: quantile_over_time(0.90, perp_fees_all_in_bps{venue="dydx"}[24h])
@@ -142,6 +145,7 @@ providers:
   - slug: gmx
     name: GMX v2
     tag: Synthetics on Arbitrum, oracle-priced
+    formula: "Average over 24h of GMX v2 `positionFeeFactorForNegativeImpact` (worst-case open) from the synthetics-arbitrum subgraph, expressed in bps; oracle-priced so no spread component."
     queries:
       p50: avg_over_time(perp_fees_all_in_bps{venue="gmx"}[24h])
       p90: quantile_over_time(0.90, perp_fees_all_in_bps{venue="gmx"}[24h])
@@ -154,6 +158,7 @@ providers:
   - slug: gains
     name: gains.trade
     tag: Synthetic perps on Base, fees read on-chain
+    formula: "Average over 24h of (Gains v8 `fees(feeIndex).openFeeP` taker rate + `pairs(N).spreadP` synthetic spread), both read on-chain via Base RPC and converted to bps."
     queries:
       p50: avg_over_time(perp_fees_all_in_bps{venue="gains"}[24h])
       p90: quantile_over_time(0.90, perp_fees_all_in_bps{venue="gains"}[24h])

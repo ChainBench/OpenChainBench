@@ -116,6 +116,7 @@ providers:
   - slug: usdc
     name: USDC
     tag: Circle, USD-redeemed primary, audited on Kraken + Bitstamp
+    formula: "Median |aggregated_price − $1.00| in bps, where aggregated_price is the per-minute liquidity-weighted median of USDCUSD ticks on Kraken and Bitstamp."
     queries:
       p50: quantile_over_time(0.50, peg_deviation_bps{stable="usdc"}[24h])
       p90: quantile_over_time(0.90, peg_deviation_bps{stable="usdc"}[24h])
@@ -128,6 +129,7 @@ providers:
   - slug: usdt
     name: USDT
     tag: Tether, dominant CEX pair currency, audited on Kraken + Bitstamp
+    formula: "Median |aggregated_price − $1.00| in bps, where aggregated_price is the per-minute liquidity-weighted median of USDTUSD ticks on Kraken and Bitstamp."
     queries:
       p50: quantile_over_time(0.50, peg_deviation_bps{stable="usdt"}[24h])
       p90: quantile_over_time(0.90, peg_deviation_bps{stable="usdt"}[24h])
@@ -140,6 +142,7 @@ providers:
   - slug: dai
     name: DAI
     tag: MakerDAO, audited via Curve 3pool get_dy (on-chain only)
+    formula: "Median |dai_price − $1.00| in bps, derived from Curve 3pool get_dy forward (USDC → DAI) and reverse (DAI → USDC) every 12s over 24h."
     queries:
       p50: quantile_over_time(0.50, peg_deviation_bps{stable="dai"}[24h])
       p90: quantile_over_time(0.90, peg_deviation_bps{stable="dai"}[24h])
