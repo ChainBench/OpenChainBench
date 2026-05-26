@@ -1,11 +1,13 @@
 "use client";
 
 import { type ReactNode, useMemo } from "react";
+import Link from "next/link";
 
 import type { Benchmark } from "@/types/benchmark";
 import { fmtValue } from "@/lib/format";
 import { rankResults } from "@/lib/ranking";
 import { buildProviderColors } from "@/lib/series-colors";
+import { ProviderLogo } from "@/components/provider-logo";
 
 /**
  * Dedicated view for `count` / coverage benches where p50/p90/p99 are
@@ -76,11 +78,17 @@ export function CountLeaderboard({
             return (
               <li key={r.slug}>
                 <div className="flex items-baseline justify-between gap-3 mb-1.5">
-                  <div className="flex items-baseline gap-3 min-w-0">
+                  <div className="flex items-center gap-3 min-w-0">
                     <span className="font-sans tabular text-[11px] text-ink-faint w-5 shrink-0">
                       {String(i + 1).padStart(2, "0")}
                     </span>
-                    <span className="font-medium text-ink truncate">{r.name}</span>
+                    <ProviderLogo slug={r.slug} name={r.name} size={18} />
+                    <Link
+                      href={`/products/${r.slug}`}
+                      className="font-medium text-ink truncate hover:underline"
+                    >
+                      {r.name}
+                    </Link>
                     {r.tag ? (
                       <span className="text-xs text-ink-muted hidden sm:inline truncate">
                         {r.tag}

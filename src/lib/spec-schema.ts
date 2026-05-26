@@ -202,7 +202,7 @@ export const SpecSchema = z
     /* Metric */
     metric: z.string().min(1).max(100),
     /** ms / s for latencies; pct for fees as percent of notional; bps for basis points; slots for Solana slot delta. */
-    unit: z.enum(["ms", "s", "pct", "bps", "count", "slots"]),
+    unit: z.enum(["ms", "s", "pct", "bps", "count", "slots", "usd"]),
     /** True when bigger numbers are better (coverage, count). Default false:
      * latency, fees, drift. every existing bench is "lower is better". */
     higher_is_better: z.boolean().default(false),
