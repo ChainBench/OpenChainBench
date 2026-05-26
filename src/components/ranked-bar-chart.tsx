@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { Benchmark } from "@/types/benchmark";
 import { fmtUnit } from "@/lib/format";
 import { buildProviderColors } from "@/lib/series-colors";
@@ -34,6 +34,8 @@ export function RankedBarChart({
     onToggleExclude,
     onResetExcluded,
   );
+
+  const [hoveredSlug, setHoveredSlug] = useState<string | null>(null);
 
   const colors = useMemo(
     () => buildProviderColors(benchmark.results),
@@ -106,12 +108,17 @@ export function RankedBarChart({
           const isOff = excluded.has(r.slug);
           const w = isOff ? 0 : project(r.value);
           const hasFormula = Boolean(r.formula);
+          const isHovered = hoveredSlug === r.slug;
           if (!isOff) visibleRank += 1;
           const rank = isOff ? null : visibleRank;
           return (
             <li
               key={r.slug}
               onClick={() => toggle(r.slug)}
+              onMouseEnter={() => setHoveredSlug(r.slug)}
+              onMouseLeave={() => setHoveredSlug(null)}
+              onFocus={() => setHoveredSlug(r.slug)}
+              onBlur={() => setHoveredSlug(null)}
               role="button"
               tabIndex={0}
               aria-pressed={isOff}
@@ -121,9 +128,9 @@ export function RankedBarChart({
                   toggle(r.slug);
                 }
               }}
-              className={`group relative grid grid-cols-[2rem_minmax(5rem,8rem)_1fr_auto] sm:grid-cols-[2.5rem_minmax(7rem,11rem)_1fr_auto] items-center gap-3 sm:gap-4 cursor-pointer rounded-sm transition-colors hover:bg-paper-soft/40 ${
-                isOff ? "opacity-40" : ""
-              }`}
+              className={`relative grid grid-cols-[2rem_minmax(5rem,8rem)_1fr_auto] sm:grid-cols-[2.5rem_minmax(7rem,11rem)_1fr_auto] items-center gap-3 sm:gap-4 cursor-pointer rounded-sm transition-colors hover:bg-paper-soft/40 ${
+                isHovered ? "z-40" : ""
+              } ${isOff ? "opacity-40" : ""}`}
             >
               <span className="font-sans tabular text-[11px] text-ink-faint text-right">
                 {rank !== null ? `#${rank}` : "-"}
@@ -153,10 +160,10 @@ export function RankedBarChart({
               >
                 {fmtUnit(r.value, benchmark.unit)}
               </span>
-              {hasFormula && (
+              {hasFormula && isHovered && (
                 <div
                   role="tooltip"
-                  className="pointer-events-none absolute left-[calc(2.5rem+0.75rem)] top-full z-30 mt-1 hidden w-[min(28rem,90vw)] rounded-md border border-rule bg-paper px-3 py-2 shadow-xl group-hover:block"
+                  className="pointer-events-none absolute left-[calc(2.5rem+0.75rem)] top-full z-50 mt-1 w-[min(28rem,90vw)] rounded-md border border-rule bg-paper px-3 py-2 shadow-xl"
                 >
                   <p className="text-xs leading-snug text-ink-soft">
                     <span

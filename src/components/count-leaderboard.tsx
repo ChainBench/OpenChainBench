@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useMemo } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import Link from "next/link";
 
 import type { Benchmark } from "@/types/benchmark";
@@ -26,6 +26,7 @@ export function CountLeaderboard({
   const ranked = rankResults(benchmark.results, benchmark.higherIsBetter);
   const max = Math.max(...ranked.map((r) => r.ms.p50)) || 1;
   const colors = useMemo(() => buildProviderColors(benchmark.results), [benchmark.results]);
+  const [hoveredSlug, setHoveredSlug] = useState<string | null>(null);
 
   const leader = ranked[0];
   const trailer = ranked[ranked.length - 1];
@@ -76,8 +77,14 @@ export function CountLeaderboard({
             const pct = (r.ms.p50 / max) * 100;
             const color = colors.get(r.slug) ?? "var(--color-ink-soft)";
             const hasFormula = Boolean(r.formula);
+            const isHovered = hoveredSlug === r.slug;
             return (
-              <li key={r.slug} className="group relative">
+              <li
+                key={r.slug}
+                className={`relative ${isHovered ? "z-40" : ""}`}
+                onMouseEnter={() => setHoveredSlug(r.slug)}
+                onMouseLeave={() => setHoveredSlug(null)}
+              >
                 <div className="flex items-baseline justify-between gap-3 mb-1.5">
                   <div className="flex items-center gap-3 min-w-0">
                     <span className="font-sans tabular text-[11px] text-ink-faint w-5 shrink-0">
@@ -110,10 +117,10 @@ export function CountLeaderboard({
                     }}
                   />
                 </div>
-                {hasFormula && (
+                {hasFormula && isHovered && (
                   <div
                     role="tooltip"
-                    className="pointer-events-none absolute left-8 top-full z-30 mt-1 hidden w-[min(28rem,90vw)] rounded-md border border-rule bg-paper px-3 py-2 shadow-xl group-hover:block"
+                    className="pointer-events-none absolute left-8 top-full z-50 mt-1 w-[min(28rem,90vw)] rounded-md border border-rule bg-paper px-3 py-2 shadow-xl"
                   >
                     <p className="text-xs leading-snug text-ink-soft">
                       <span className="font-medium" style={{ color }}>
