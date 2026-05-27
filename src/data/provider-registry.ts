@@ -73,6 +73,36 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Solana RPC and data provider. Enhanced transactions, webhooks, DAS API for assets, and standard JSON-RPC.",
     twitter: "@heliuslabs",
   },
+  dune: {
+    url: "https://dune.com",
+    description:
+      "Onchain analytics platform. SQL-queryable indexed data across EVM chains and Solana, public dashboards, plus the Sim onchain-data API for wallet, transaction, and token endpoints.",
+    twitter: "@DuneAnalytics",
+  },
+  "sim-dune": {
+    url: "https://sim.dune.com",
+    description:
+      "Onchain-data REST API by Dune. EVM wallet balances, transactions, token info, holders, collectibles, and DeFi positions across 60+ mainnets.",
+    twitter: "@DuneAnalytics",
+  },
+  coinpaprika: {
+    url: "https://coinpaprika.com",
+    description:
+      "Independent crypto market data API. Token prices, OHLCV, exchange tickers, and contract/platform lookups across 300+ supported chains. Public free tier with no auth.",
+    twitter: "@coinpaprika",
+  },
+  covalent: {
+    url: "https://goldrush.dev",
+    description:
+      "Multichain onchain data API by GoldRush (formerly Covalent). Unified REST endpoints for wallet balances, transactions, NFTs, and pricing across 100+ EVM chains.",
+    twitter: "@goldrushdev",
+  },
+  coinstats: {
+    url: "https://coinstats.app",
+    description:
+      "Portfolio tracker and market data API. REST endpoints for prices, exchanges, NFTs, and wallet balances across 100+ blockchains. Consumer app + paid API tiers.",
+    twitter: "@CoinStats",
+  },
 
   // ─── Solana transaction landing services ──────────────────────
   jito: {
