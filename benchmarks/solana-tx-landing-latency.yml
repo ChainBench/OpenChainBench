@@ -3,8 +3,8 @@
 slug: solana-tx-landing-latency
 number: "027"
 title: Solana transaction landing latency
-seo_title: "Solana tx landing latency 2026: Jito vs Helius vs Nozomi vs Astralane time-to-land in slots"
-seo_description: "Live active benchmark of Solana transaction landing services. Slot-level time-to-land (canonical on-chain measurement) plus wall-clock milliseconds. Identical signed mainnet probes submitted to each service from us-east every hour. Methodology pre-registered."
+seo_title: "Solana tx landing latency 2026: Jito vs Helius vs Nozomi vs Astralane vs Mobula time-to-land in slots"
+seo_description: "Live active benchmark of Solana transaction landing services. Slot-level time-to-land (canonical on-chain measurement) plus wall-clock milliseconds. Identical signed mainnet probes submitted to each service (Jito, Helius Sender, Astralane, Nozomi, Mobula) from us-east every hour. Methodology pre-registered."
 subtitle: How fast does each landing service get a signed mainnet tx confirmed. Slot delta = number of Solana slots between submit and confirmed (1 slot ≈ 400 ms). Active probing, identical signed txs every hour from us-east.
 category: Trading
 status: live
@@ -206,3 +206,16 @@ providers:
       success: sum(rate(solana_landing_probe_success_total{service="nozomi",region="us-east"}[7d])) / (sum(rate(solana_landing_probe_success_total{service="nozomi",region="us-east"}[7d])) + sum(rate(solana_landing_probe_dropped_total{service="nozomi",region="us-east",reason="timeout"}[7d])))
       sample_size: sum(increase(solana_landing_probe_success_total{service="nozomi",region="us-east"}[7d]))
       series: solana_landing_probe_latency_slots{service="nozomi",region="us-east"}
+
+  - slug: mobula
+    name: Mobula Swap-Send
+    tag: Multi-RPC fan-out aggregator (relays via Jito / Nozomi / zeroslot)
+    formula: "50th percentile over 7d of slot delta (land_slot − submit_slot) for hourly signed probes submitted via Mobula's `api.mobula.io/api/2/swap/send` (multi-RPC fan-out) from us-east. Tip wallet reuses Jito's because Mobula default-routes to Jito; attribution is via signatureSubscribe, independent of the tip wallet."
+    queries:
+      p50: quantile_over_time(0.5, solana_landing_probe_latency_slots{service="mobula",region="us-east"}[7d])
+      p90: quantile_over_time(0.9, solana_landing_probe_latency_slots{service="mobula",region="us-east"}[7d])
+      p99: quantile_over_time(0.99, solana_landing_probe_latency_slots{service="mobula",region="us-east"}[7d])
+      mean: avg_over_time(solana_landing_probe_latency_slots{service="mobula",region="us-east"}[7d])
+      success: sum(rate(solana_landing_probe_success_total{service="mobula",region="us-east"}[7d])) / (sum(rate(solana_landing_probe_success_total{service="mobula",region="us-east"}[7d])) + sum(rate(solana_landing_probe_dropped_total{service="mobula",region="us-east",reason="timeout"}[7d])))
+      sample_size: sum(increase(solana_landing_probe_success_total{service="mobula",region="us-east"}[7d]))
+      series: solana_landing_probe_latency_slots{service="mobula",region="us-east"}
