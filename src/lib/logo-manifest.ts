@@ -165,8 +165,6 @@ const ALIASES: Record<string, string> = {
   "avalanche-official": "avalanche",
   "optimism-official": "optimism",
 
-  // Sim by Dune is Dune's onchain-data product — reuses Dune's brand mark.
-  "sim-dune": "dune",
 };
 
 export function logoPath(slug: string): string | null {
