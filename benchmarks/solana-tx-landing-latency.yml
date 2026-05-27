@@ -156,7 +156,7 @@ prometheus:
 
 providers:
   - slug: jito
-    name: Jito Block Engine
+    name: Jito
     tag: Baseline + control probe; atomic bundles + tip auction since 2022
     formula: "50th percentile over 7d of slot delta (land_slot − submit_slot) for hourly signed mainnet probes submitted to Jito's `ny.mainnet.block-engine.jito.wtf` from us-east."
     queries:
@@ -169,7 +169,7 @@ providers:
       series: solana_landing_probe_latency_slots{service="jito",region="us-east"}
 
   - slug: helius-sender
-    name: Helius Sender (swqos_only)
+    name: Helius
     tag: Isolated Helius own-path (no Jito fan-out); anycast + 7 POPs
     formula: "50th percentile over 7d of slot delta (land_slot − submit_slot) for hourly signed probes submitted to Helius Sender in `swqos_only=true` mode from us-east, isolating its own-path."
     queries:
@@ -182,7 +182,7 @@ providers:
       series: solana_landing_probe_latency_slots{service="helius-sender",mode="swqos_only",region="us-east"}
 
   - slug: astralane
-    name: Astralane Iris
+    name: Astralane
     tag: Tip-refund mechanism, sendBundle / sendIdeal modes, FRA + NY POPs
     formula: "50th percentile over 7d of slot delta (land_slot − submit_slot) for hourly signed probes submitted with a 500k-lamport net tip to Astralane Iris's NY gateway from us-east."
     queries:

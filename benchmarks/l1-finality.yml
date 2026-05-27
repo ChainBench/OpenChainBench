@@ -150,7 +150,7 @@ prometheus:
 
 providers:
   - slug: bnb
-    name: BNB Smart Chain
+    name: BNB
     tag: Fast finality fork (BEP-126), measured via WS wall-clock
     formula: "Median wall-clock milliseconds between a BNB block first appearing as `latest` on WebSocket and crossing the BEP-126 finalized threshold, p50 over 24h."
     queries:
@@ -163,7 +163,7 @@ providers:
       series: l1_finality_wallclock_lag_milliseconds{chain="bnb"}
 
   - slug: avalanche
-    name: Avalanche C-Chain
+    name: Avalanche
     tag: Snowman++ consensus, measured via WS wall-clock
     formula: "Median wall-clock milliseconds between a C-Chain block emitting as `latest` and as `finalized` on a persistent WebSocket, p50 over 24h."
     queries:
