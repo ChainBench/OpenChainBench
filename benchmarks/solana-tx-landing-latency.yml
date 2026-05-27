@@ -208,7 +208,7 @@ providers:
       series: solana_landing_probe_latency_slots{service="nozomi",region="us-east"}
 
   - slug: mobula
-    name: Mobula Swap-Send
+    name: Mobula
     tag: Multi-RPC fan-out aggregator (relays via Jito / Nozomi / zeroslot)
     formula: "50th percentile over 7d of slot delta (land_slot − submit_slot) for hourly probes submitted via Mobula's `api.mobula.io/api/2/swap/send` multi-RPC fan-out from us-east, using a Jito tip wallet."
     queries:
