@@ -210,7 +210,7 @@ providers:
   - slug: mobula
     name: Mobula Swap-Send
     tag: Multi-RPC fan-out aggregator (relays via Jito / Nozomi / zeroslot)
-    formula: "50th percentile over 7d of slot delta (land_slot − submit_slot) for hourly signed probes submitted via Mobula's `api.mobula.io/api/2/swap/send` (multi-RPC fan-out) from us-east. Tip wallet reuses Jito's because Mobula default-routes to Jito; attribution is via signatureSubscribe, independent of the tip wallet."
+    formula: "50th percentile over 7d of slot delta (land_slot − submit_slot) for hourly probes submitted via Mobula's `api.mobula.io/api/2/swap/send` multi-RPC fan-out from us-east, using a Jito tip wallet."
     queries:
       p50: quantile_over_time(0.5, solana_landing_probe_latency_slots{service="mobula",region="us-east"}[7d])
       p90: quantile_over_time(0.9, solana_landing_probe_latency_slots{service="mobula",region="us-east"}[7d])
