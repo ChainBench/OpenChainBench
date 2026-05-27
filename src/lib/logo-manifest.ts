@@ -124,6 +124,11 @@ const RAW: Record<string, string> = {
   "pump-portal": "/logos/pump-portal.svg",
   quicknode: "/logos/quicknode.svg",
   "the-graph": "/logos/the-graph.svg",
+
+  // ─── network-coverage bench providers (bench № 005 expansion) ───
+  coinpaprika: "/logos/coinpaprika.svg",
+  covalent: "/logos/covalent.svg",
+  coinstats: "/logos/coinstats.svg",
 };
 
 // Asset-symbol aliases used by perp-fees as chain dimension values.
@@ -159,6 +164,9 @@ const ALIASES: Record<string, string> = {
   "arbitrum-official": "arbitrum",
   "avalanche-official": "avalanche",
   "optimism-official": "optimism",
+
+  // Sim by Dune is Dune's onchain-data product — reuses Dune's brand mark.
+  "sim-dune": "dune",
 };
 
 export function logoPath(slug: string): string | null {
