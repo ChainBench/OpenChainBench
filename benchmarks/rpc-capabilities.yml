@@ -173,7 +173,7 @@ providers:
       series: avg_over_time(rpc_latency_milliseconds{provider="meowrpc"}[1h])
 
   - slug: flashbots
-    name: Flashbots Protect
+    name: Flashbots
     tag: Private-mempool RPC, anti-sandwich
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from eu-west to the Flashbots Protect read proxy."
     queries:
@@ -199,7 +199,7 @@ providers:
       series: avg_over_time(rpc_latency_milliseconds{provider="cloudflare"}[1h])
 
   - slug: base-official
-    name: Base Official
+    name: Base
     tag: Coinbase-operated, Base mainnet RPC
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from eu-west to Coinbase's `mainnet.base.org` endpoint."
     queries:
@@ -212,7 +212,7 @@ providers:
       series: avg_over_time(rpc_latency_milliseconds{provider="base-official"}[1h])
 
   - slug: binance
-    name: Binance Official
+    name: Binance
     tag: BNB Chain dataseed RPC, Binance-operated
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from eu-west to Binance's `bsc-dataseed1.binance.org` endpoint."
     queries:
@@ -225,7 +225,7 @@ providers:
       series: avg_over_time(rpc_latency_milliseconds{provider="binance"}[1h])
 
   - slug: tenderly
-    name: Tenderly Gateway
+    name: Tenderly
     tag: Multi-chain public gateway, 9 chains, no key
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from eu-west to `gateway.tenderly.co/public/<slug>`."
     queries:
@@ -238,7 +238,7 @@ providers:
       series: avg_over_time(rpc_latency_milliseconds{provider="tenderly"}[1h])
 
   - slug: nodies
-    name: Nodies (POKT)
+    name: Nodies
     tag: POKT Network's decentralized public RPC successor, 7+ chains
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from eu-west to Nodies' `*-pokt.nodies.app` endpoint."
     queries:
@@ -251,7 +251,7 @@ providers:
       series: avg_over_time(rpc_latency_milliseconds{provider="nodies"}[1h])
 
   - slug: lava
-    name: Lava Network
+    name: Lava
     tag: Decentralized permissionless RPC mesh (ETH + Arbitrum no-key)
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from eu-west to Lava Network's no-key mesh endpoint."
     queries:
@@ -277,7 +277,7 @@ providers:
       series: avg_over_time(rpc_latency_milliseconds{provider="merkle"}[1h])
 
   - slug: arbitrum-official
-    name: Arbitrum Official
+    name: Arbitrum
     tag: Arbitrum Foundation public RPC, Arbitrum One only
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from eu-west to the Arbitrum Foundation's `arb1.arbitrum.io/rpc`."
     queries:
@@ -290,7 +290,7 @@ providers:
       series: avg_over_time(rpc_latency_milliseconds{provider="arbitrum-official"}[1h])
 
   - slug: optimism-official
-    name: Optimism Official
+    name: Optimism
     tag: Optimism Foundation public RPC, Optimism mainnet only
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from eu-west to the Optimism Foundation's `mainnet.optimism.io`."
     queries:
@@ -303,7 +303,7 @@ providers:
       series: avg_over_time(rpc_latency_milliseconds{provider="optimism-official"}[1h])
 
   - slug: avalanche-official
-    name: Avalanche Official
+    name: Avalanche
     tag: Ava Labs C-Chain public RPC, Avalanche C-Chain only
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from eu-west to Ava Labs' `api.avax.network/ext/bc/C/rpc`."
     queries:
