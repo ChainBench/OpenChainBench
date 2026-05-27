@@ -48,7 +48,7 @@ methodology:
   - "Mobula: GET /api/1/blockchains with an Authorization API key."
   - "CoinPaprika: GET /v1/contracts (no auth) — list of platforms supported for contract lookup."
   - "Covalent / GoldRush: GET /v1/chains/ with a Bearer API key; testnets filtered via `is_testnet`."
-  - "CoinStats: GET /coins/blockchains with X-API-KEY."
+  - "CoinStats: GET /wallet/blockchains with X-API-KEY."
   - "Sim by Dune: GET /v1/evm/supported-chains (no auth) — EVM only, mainnets filtered via the `mainnet` tag."
   - "Cadence: full refresh every 6 hours."
   - "Counting: a provider's network is counted once per unique chain id; mainnet only."
@@ -159,7 +159,7 @@ providers:
   - slug: coinstats
     name: CoinStats
     tag: Portfolio + market data
-    formula: "Count of blockchains returned by CoinStats's `/coins/blockchains` endpoint, refreshed every 6 hours."
+    formula: "Count of blockchains returned by CoinStats's `/wallet/blockchains` endpoint, refreshed every 6 hours."
     queries:
       p50: networks_supported_total{provider="coinstats"}
       p90: networks_supported_total{provider="coinstats"}
