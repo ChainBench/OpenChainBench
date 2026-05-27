@@ -120,7 +120,7 @@ const RAW: Record<string, string> = {
   birdeye: "/logos/birdeye.png",
   bitquery: "/logos/bitquery.png",
   coingecko: "/logos/coingecko.webp",
-  dune: "/logos/dune.svg",
+  dune: "/logos/dune.png",
   "pump-portal": "/logos/pump-portal.svg",
   quicknode: "/logos/quicknode.svg",
   "the-graph": "/logos/the-graph.svg",
