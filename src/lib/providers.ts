@@ -13,6 +13,76 @@ import { getBenchmarks } from "@/data/benchmarks";
 import { liveResults } from "@/lib/provider-filters";
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
 
+/**
+ * Slug consolidation for /products. When the same brand or asset appears
+ * under multiple slugs across benches (e.g. helius vs helius-sender,
+ * ethereum vs eth-usd oracle pair, avalanche vs avalanche-official RPC),
+ * we collapse their appearances into one canonical entry so the products
+ * leaderboard reads cleanly.
+ *
+ * Mirrors the logo-manifest ALIASES set, plus the registry `parent` field
+ * on sub-products. Kept inline here (not derived from the registry) so the
+ * aggregator never has to read the registry at build time.
+ */
+const PRODUCT_ALIASES: Record<string, string> = {
+  // Sub-products → parent brand
+  "helius-sender": "helius",
+  "publicnode-feehistory": "publicnode",
+  // Chain official RPC → chain brand
+  "arbitrum-official": "arbitrum",
+  "avalanche-official": "avalanche",
+  "base-official": "base",
+  "optimism-official": "optimism",
+  // Oracle pair → underlying chain / asset
+  "eth-usd": "ethereum",
+  "sol-usd": "solana",
+  "bnb-usd": "bnb",
+  "avax-usd": "avalanche",
+  "btc-usd": "bitcoin",
+  "xrp-usd": "xrp",
+  "ada-usd": "cardano",
+  "doge-usd": "dogecoin",
+  "link-usd": "chainlink",
+  "matic-usd": "polygon",
+};
+
+/**
+ * Display name for a canonical slug when the canonical itself has no own
+ * bench appearance (e.g. bitcoin shows up only via the BTC/USD oracle
+ * pair). Falls back to title-case of the slug for anything not listed.
+ */
+const CANONICAL_NAMES: Record<string, string> = {
+  bitcoin: "Bitcoin",
+  ethereum: "Ethereum",
+  solana: "Solana",
+  bnb: "BNB",
+  avalanche: "Avalanche",
+  xrp: "XRP",
+  cardano: "Cardano",
+  dogecoin: "Dogecoin",
+  chainlink: "Chainlink",
+  polygon: "Polygon",
+  helius: "Helius",
+  publicnode: "PublicNode",
+  arbitrum: "Arbitrum",
+  base: "Base",
+  optimism: "Optimism",
+};
+
+function titleCaseSlug(s: string): string {
+  return s
+    .split(/[-_]/)
+    .map((w) => (w.length === 0 ? w : w.charAt(0).toUpperCase() + w.slice(1)))
+    .join(" ");
+}
+
+/** Resolves a slug to its canonical (slug, display name) pair. */
+function canonicalize(slug: string): { slug: string; name: string } {
+  const lc = slug.toLowerCase();
+  const canon = PRODUCT_ALIASES[lc] ?? lc;
+  return { slug: canon, name: CANONICAL_NAMES[canon] ?? titleCaseSlug(canon) };
+}
+
 export type ProviderAppearance = {
   benchmark: Pick<Benchmark, "slug" | "title" | "subtitle" | "category" | "metric" | "unit" | "higherIsBetter" | "status" | "lastRunAt">;
   result: ProviderResult;
@@ -54,9 +124,13 @@ export const getProviders = cache(async (): Promise<ProviderProfile[]> => {
     const total = ranked.length;
 
     b.results.forEach((r) => {
-      const key = r.slug.toLowerCase();
+      const canon = canonicalize(r.slug);
+      const key = canon.slug;
       const existing = byKey.get(key);
-      const idx = rankBySlug.get(key);
+      // Ranking is per-bench, so look up the rank by the result's own
+      // slug (the bench knows it under its original name), not the
+      // canonical key.
+      const idx = rankBySlug.get(r.slug.toLowerCase());
       const isRanked = idx !== undefined;
       const appearance: ProviderAppearance = {
         benchmark: {
@@ -83,8 +157,8 @@ export const getProviders = cache(async (): Promise<ProviderProfile[]> => {
         if (!existing.type && r.type) existing.type = r.type;
       } else {
         byKey.set(key, {
-          slug: r.slug,
-          name: r.name,
+          slug: canon.slug,
+          name: canon.name,
           type: r.type,
           appearances: [appearance],
           wins: isRanked && idx === 0 ? 1 : 0,
@@ -112,5 +186,8 @@ export async function getProviderSlugs(): Promise<string[]> {
 
 export async function getProvider(slug: string): Promise<ProviderProfile | undefined> {
   const profiles = await getProviders();
-  return profiles.find((p) => p.slug.toLowerCase() === slug.toLowerCase());
+  // Aliased URLs (e.g. /products/helius-sender, /products/btc-usd) resolve
+  // to the canonical profile so backward-compat links keep working.
+  const canon = canonicalize(slug).slug;
+  return profiles.find((p) => p.slug.toLowerCase() === canon);
 }
