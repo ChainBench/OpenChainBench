@@ -76,13 +76,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   dune: {
     url: "https://dune.com",
     description:
-      "Onchain analytics platform. SQL-queryable indexed data across EVM chains and Solana, public dashboards, plus the Sim onchain-data API for wallet, transaction, and token endpoints.",
-    twitter: "@DuneAnalytics",
-  },
-  "sim-dune": {
-    url: "https://sim.dune.com",
-    description:
-      "Onchain-data REST API by Dune. EVM wallet balances, transactions, token info, holders, collectibles, and DeFi positions across 60+ mainnets.",
+      "Onchain analytics platform. SQL-queryable indexed data across EVM chains and Solana, public dashboards, plus the Sim REST API for wallet balances, transactions, token info, holders, and DeFi positions across 60+ EVM mainnets.",
     twitter: "@DuneAnalytics",
   },
   coinpaprika: {
