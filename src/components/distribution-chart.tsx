@@ -57,10 +57,29 @@ export function DistributionChart({
   );
 
   // Field scale recomputes from visible rows only - excluding an outlier
-  // gives the remaining rows the full track width.
+  // gives the remaining rows the full track width. We take both extremes
+  // because the auto-log switch needs the dynamic range, not just the max.
   const visible = sorted.filter((r) => !excluded.has(r.slug));
   const fieldMax = Math.max(...visible.map((r) => r.ms.p99), 1);
-  const scale = (v: number) => Math.max(0, Math.min(100, (v / fieldMax) * 100));
+  const fieldMin = Math.min(
+    ...visible.flatMap((r) => [r.ms.p50, r.ms.p90, r.ms.p99]).filter((v) => v > 0),
+    fieldMax,
+  );
+
+  // Use log scale when dynamic range > 50x. Same threshold as
+  // ranked-bar-chart for consistency. Critical on benches like l1-finality
+  // where TON (0.4 s) coexists with Monero (36 min): a linear scale
+  // collapses every sub-second chain into the same invisible pixel at the
+  // left, making 8 of 9 rows visually indistinguishable.
+  const useLog = fieldMax / Math.max(fieldMin, 1) > 50;
+
+  const scale = (v: number) => {
+    if (v <= 0) return 0;
+    if (!useLog) return Math.max(0, Math.min(100, (v / fieldMax) * 100));
+    const lo = Math.log10(Math.max(1, fieldMin / 2));
+    const hi = Math.log10(fieldMax);
+    return Math.max(0, Math.min(100, ((Math.log10(v) - lo) / (hi - lo)) * 100));
+  };
 
   return (
     <div className="w-full">
@@ -181,8 +200,10 @@ export function DistributionChart({
         })}
       </ul>
       <div className="mt-3 flex items-center justify-between text-[10px] font-sans uppercase tracking-[0.14em] text-ink-faint">
-        <span>0</span>
-        <span>max {fmtUnit(fieldMax, unit)}</span>
+        <span>{useLog ? `min ${fmtUnit(fieldMin, unit)}` : "0"}</span>
+        <span>
+          {useLog ? "log scale · " : ""}max {fmtUnit(fieldMax, unit)}
+        </span>
       </div>
     </div>
   );
