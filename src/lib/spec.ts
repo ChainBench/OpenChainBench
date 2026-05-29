@@ -87,7 +87,10 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   },
   // Version key bumped when Benchmark shape changes so stale cache entries
   // from a previous deploy can't surface objects missing newer fields.
-  ["bench-unfiltered-v2"],
+  // v3: added bestPerChain + worstPerChain stash; cached objects from
+  // v2 deploys lack those fields, which made `{{best_name:chain:X}}`
+  // placeholders fall through to the raw token on the rendered page.
+  ["bench-unfiltered-v3"],
   { revalidate: 60, tags: ["benchmarks"] },
 );
 
