@@ -171,6 +171,19 @@ export function DistributionChart({
           const p50Pct = x(r.ms.p50);
           const p90Pct = x(r.ms.p90);
           const p99Pct = x(r.ms.p99);
+          // Mean is rendered as a small open ring layered on top of the
+          // bands so the reader sees where the distribution's "centre of
+          // gravity" sits versus the median (p50). For a healthy / Gaussian
+          // distribution mean ≈ p50; the further mean drifts toward p99,
+          // the more the heavy tail is dragging the average up — useful
+          // signal that the percentile story alone can hide. We only show
+          // the marker when the data exposes a meaningful mean (not equal
+          // to p50, finite, > 0).
+          const hasMean =
+            Number.isFinite(r.ms.mean) &&
+            r.ms.mean > 0 &&
+            Math.abs(r.ms.mean - r.ms.p50) > Math.max(r.ms.p50 * 0.01, 1e-9);
+          const meanPct = hasMean ? x(r.ms.mean) : null;
           // Subtle gridline at every landmark — drawn per-row so it
           // sits between the connector and the whisker, never above
           // the data. Same x positions as the tick rail above.
@@ -225,7 +238,11 @@ export function DistributionChart({
                   />
                 ))}
                 <Hint
-                  label={`p50 ${fmtUnit(r.ms.p50, unit)} · p90 ${fmtUnit(r.ms.p90, unit)} · p99 ${fmtUnit(r.ms.p99, unit)}`}
+                  label={
+                    hasMean
+                      ? `p50 ${fmtUnit(r.ms.p50, unit)} · mean ${fmtUnit(r.ms.mean, unit)} · p90 ${fmtUnit(r.ms.p90, unit)} · p99 ${fmtUnit(r.ms.p99, unit)}`
+                      : `p50 ${fmtUnit(r.ms.p50, unit)} · p90 ${fmtUnit(r.ms.p90, unit)} · p99 ${fmtUnit(r.ms.p99, unit)}`
+                  }
                 >
                   <div
                     className="absolute inset-0"
@@ -283,6 +300,21 @@ export function DistributionChart({
                       style={{ left: `${p99Pct}%`, background: color }}
                       aria-label={`p99 ${fmtUnit(r.ms.p99, unit)}`}
                     />
+                    {/* Mean — small outlined ring. Shows where the
+                        average sits versus the median (p50 dot). When
+                        the ring drifts right of the dot, the tail is
+                        pulling the average up. */}
+                    {meanPct != null && (
+                      <span
+                        className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-2 h-2 rounded-full"
+                        style={{
+                          left: `${meanPct}%`,
+                          border: `1.2px solid ${color}`,
+                          background: "var(--color-paper)",
+                        }}
+                        aria-label={`mean ${fmtUnit(r.ms.mean, unit)}`}
+                      />
+                    )}
                   </div>
                 </Hint>
               </div>
@@ -311,6 +343,17 @@ function WhiskerLegend() {
           aria-hidden
         />
         p50
+      </span>
+      <span className="inline-flex items-center gap-1.5">
+        <span
+          className="inline-block w-2 h-2 rounded-full"
+          style={{
+            border: "1.2px solid var(--color-ink-muted)",
+            background: "var(--color-paper)",
+          }}
+          aria-hidden
+        />
+        mean
       </span>
       <span className="inline-flex items-center gap-1.5">
         <span
