@@ -46,16 +46,26 @@ methodology:
   - "Failures (quote_failed, unsupported route) excluded from cost aggregates and counted toward success rate."
   - "Provider types are surfaced as badges: direct protocols (Debridge) charge their own bridging fees; aggregators (LiFi) route through whichever underlying bridge is cheapest, so their effective fee includes that bridge's cost plus any aggregator markup; intent / relay layers (Mobula, Relay) bake cost into the spread of a settlement intent rather than charging an explicit fee."
 
+# Per-corridor leader rewrite deferred: this YAML does not yet declare
+# `dimensions:` for `from_chain`/`to_chain` / corridor. The underlying
+# metric already carries those labels (see comment block lower in this
+# file), so per-corridor placeholders can be wired in once dimensions
+# are added (separate code/data PR). Until then, the {{best_name}} /
+# {{worst_name}} placeholders below resolve to the cross-corridor
+# aggregate, which is honest because every provider in this bench is
+# queried on the same Solana/Base/Arbitrum corridors. but the text is
+# softened to make the aggregation explicit rather than implying a
+# single winning corridor.
 findings:
-  - "{{best_name}} currently leads at {{best_p50}} (p50, 24 h) on the $300 USDC corridor, across {{count}} measured bridges."
+  - "{{best_name}} currently leads the cross-corridor aggregate at {{best_p50}} (p50, 24 h) for $300 USDC trades, across {{count}} measured bridges. The number averages over the Solana/Base/Arbitrum corridors the harness sweeps; per-corridor leaders can diverge sharply on routes where one solver has inventory and another does not."
   - "{{name:mobula}} returns {{p50:mobula}} (p50, 24 h). Intent layers compress fees, slippage and destination gas into a single spread, so the effective number reads lower than aggregators that route through a paid underlying bridge."
   - "{{name:lifi}} sits at {{p50:lifi}} (p50, 24 h). Aggregators pay the underlying bridge plus a thin markup, so their effective cost trails intent layers on liquid corridors where multiple solvers compete on the same route."
   - "{{name:debridge}} clocks {{p50:debridge}} (p50, 24 h). Direct protocols front-load cost into a native-token fee, which dominates on $300 trades because the fixed component does not scale with notional."
-  - "{{worst_name}} trails at {{worst_p50}} (p50, 24 h). On a $300 trade the gap between leader and laggard is mostly the fixed-fee floor of the slower path, not relative spread efficiency."
+  - "{{worst_name}} trails the cross-corridor aggregate at {{worst_p50}} (p50, 24 h). On a $300 trade the gap between leader and laggard is mostly the fixed-fee floor of the slower path, not relative spread efficiency, and the laggard on one corridor can be the leader on another once corridor dimensions are surfaced."
 
 faq:
   - q: "What is the cheapest cross-chain bridge right now?"
-    a: "{{best_name}} currently leads the leaderboard at {{best_p50}} (p50, 24 h) for $300 USDC trades across the measured corridors (Solana, Base, Arbitrum). The leaderboard re-sorts every five minutes against fresh Prometheus samples, so the answer is always anchored to the last 24 hours of live data rather than a frozen table from a blog post."
+    a: "{{best_name}} currently leads the cross-corridor aggregate at {{best_p50}} (p50, 24 h) for $300 USDC trades, averaged across the Solana/Base/Arbitrum corridors the harness sweeps. The leaderboard re-sorts every five minutes against fresh Prometheus samples, so the answer is anchored to the last 24 hours of live data rather than a frozen table from a blog post. Per-corridor leaders can diverge from this aggregate when a solver has deep inventory on one specific route and not on others, that breakdown is on the roadmap once corridor dimensions are surfaced in the page UI."
   - q: "How much does it cost to bridge $300 USDC?"
     a: "Total cost varies between providers. The current p50 across {{count}} bridges spans from {{best_p50}} (leader) up to {{worst_p50}} (laggard) of the $300 notional. The figure already includes fees, slippage and destination gas because we report `bridge_cost_percent`, the all-in number that actually leaves the user's wallet, not the explicit fee field providers advertise."
   - q: "Why do bridge fees vary 10x between providers?"
