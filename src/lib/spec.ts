@@ -371,15 +371,15 @@ async function specToBenchmark(
     let bestPerChain: Record<string, ProviderResult> | undefined;
     let worstPerChain: Record<string, ProviderResult> | undefined;
     let providersPerChain: Record<string, string[]> | undefined;
-    // Compute per-chain leaders for BOTH unfiltered and filtered views.
-    // Filtered variants are pre-fetched by the page (one per chain × region
-    // combo) and end up in the RSC payload; their findings/seo_intro/faq
-    // reference `{{best_name:chain:X}}` for ALL chains, not just the
-    // currently selected one, so each variant needs the full stash to
-    // resolve those placeholders. Cached per (slug, filterSig) via
-    // loadBenchmarkFiltered's unstable_cache so the extra Prom roundtrips
-    // are paid once per variant, not per request.
-    if (spec.dimensions?.chain && spec.dimensions.chain.length > 0) {
+    // Per-chain leaders/trailers/presence are computed ONLY on the
+    // unfiltered view. Earlier this also ran for filtered variants to
+    // populate {{best_name:chain:X}} in the variant's editorial copy,
+    // but that quadrupled Prom load per page (3 extra queries × 9
+    // pre-fetched variants on benches like aggregator-head-lag). The
+    // filtered variants now inherit findings/faq/seoIntro from the
+    // aggregate via the page-level fetch in app/benchmarks/[slug]/page.tsx,
+    // so per-chain compute on filtered variants is no longer needed.
+    if (!isFiltered && spec.dimensions?.chain && spec.dimensions.chain.length > 0) {
       const chainValues = spec.dimensions.chain
         .map((c) => c.value)
         .filter((v) => v !== "all");
