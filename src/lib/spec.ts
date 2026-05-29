@@ -362,7 +362,15 @@ async function specToBenchmark(
     // with no Prom data just doesn't show up in bestPerChain.
     let bestPerChain: Record<string, ProviderResult> | undefined;
     let worstPerChain: Record<string, ProviderResult> | undefined;
-    if (!isFiltered && spec.dimensions?.chain && spec.dimensions.chain.length > 0) {
+    // Compute per-chain leaders for BOTH unfiltered and filtered views.
+    // Filtered variants are pre-fetched by the page (one per chain × region
+    // combo) and end up in the RSC payload; their findings/seo_intro/faq
+    // reference `{{best_name:chain:X}}` for ALL chains, not just the
+    // currently selected one, so each variant needs the full stash to
+    // resolve those placeholders. Cached per (slug, filterSig) via
+    // loadBenchmarkFiltered's unstable_cache so the extra Prom roundtrips
+    // are paid once per variant, not per request.
+    if (spec.dimensions?.chain && spec.dimensions.chain.length > 0) {
       const chainValues = spec.dimensions.chain
         .map((c) => c.value)
         .filter((v) => v !== "all");
