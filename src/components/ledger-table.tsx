@@ -4,6 +4,7 @@ import { useMemo } from "react";
 
 import Link from "next/link";
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
+import { ChainCoverageChip } from "@/components/chain-coverage-chip";
 import { Hint } from "@/components/hint";
 import { Sparkline } from "@/components/sparkline";
 import { ProviderLogo } from "@/components/provider-logo";
@@ -122,6 +123,7 @@ export function LedgerTable({ benchmark }: Props) {
               sparkMin={sparkMin}
               sparkMax={sparkMax}
               color={colors.get(r.slug) ?? "var(--color-ink-soft)"}
+              benchmark={benchmark}
             />
           ))}
         </tbody>
@@ -142,6 +144,7 @@ function Row({
   sparkMin,
   sparkMax,
   color,
+  benchmark,
 }: {
   r: ProviderResult;
   i: number;
@@ -154,6 +157,7 @@ function Row({
   sparkMin: number;
   sparkMax: number;
   color: string;
+  benchmark: Benchmark;
 }) {
   const isOffline = r.availability === "unavailable";
   const deltaPct = fieldP50 > 0 ? ((r.ms.p50 - fieldP50) / fieldP50) * 100 : 0;
@@ -212,6 +216,19 @@ function Row({
           {r.type && !isOffline && (
             <span className="hidden md:inline-flex">
               <ProviderTypeBadge type={r.type} />
+            </span>
+          )}
+          {/* Per-chain coverage chip — chain-restricted providers like
+              GMGN (Solana-only) are flagged inline so the unfiltered
+              ranking can't be misread as a global #1. Renders nothing
+              when the bench has no per-chain leader data. */}
+          {!isOffline && (
+            <span className="hidden md:inline-flex">
+              <ChainCoverageChip
+                providerSlug={r.slug}
+                benchmark={benchmark}
+                size="xs"
+              />
             </span>
           )}
         </span>
