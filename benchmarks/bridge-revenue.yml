@@ -117,10 +117,12 @@ faq:
   - q: "Why is this bench in the Bridges category?"
     a: "Relay.link is a cross-chain swap routing protocol, the closest fit in the OpenChainBench category list is Bridges. Other benches in this category measure bridge fees, bridge quote latency and bridge-monitor finality. A Trading or Aggregators classification would also be defensible since Relay is structurally closer to an intent-settlement layer than a classic bridge, but Bridges is the most discoverable bucket for the readers most likely to want this number."
 
-source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/relay-link-revenue
-# Harness directory keeps its provider-specific name. Additional bridges
-# land as sibling harnesses (e.g. across-revenue, socket-revenue) and feed
-# their own provider entries into this same bench spec.
+source: https://github.com/OpenChainBench/OpenChainBench/blob/main/benchmarks/bridge-revenue.yml
+# The Relay harness lives in the private mobula-api/miniapps tree for
+# now; this spec self-links until the harness is ported to the public
+# OCB repo. Additional bridges (across-revenue, socket-revenue) will
+# land as sibling harnesses and feed their own provider entries into
+# this same bench spec.
 
 prometheus:
   window: 24h
