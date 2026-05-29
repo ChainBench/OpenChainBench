@@ -46,6 +46,7 @@ const RAW: Record<string, string> = {
   relay: "/logos/relay.svg",
   lifi: "/logos/lifi.png",
   geckoterminal: "/logos/geckoterminal.png",
+  gmgn: "/logos/gmgn.svg",
   gains: "/logos/gains.png",
   blockscout: "/logos/blockscout.svg",
   gmx: "/logos/gmx.svg",
