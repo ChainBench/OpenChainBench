@@ -442,11 +442,14 @@ async function tryLoadLive(
     const liveResults: ProviderResult[] = [];
     const series24h: Record<string, number[]> = {};
     const series7d: Record<string, number[]> = {};
+    const series30d: Record<string, number[]> = {};
     const seriesByRegion24h: Record<string, Record<string, number[]>> = {};
     const seriesByRegion7d: Record<string, Record<string, number[]>> = {};
+    const seriesByRegion30d: Record<string, Record<string, number[]>> = {};
     const regions: Record<string, { region: string; p50: number }[]> = {};
     let totalSamples = 0;
     const sevenDaysSec = 7 * 86_400;
+    const thirtyDaysSec = 30 * 86_400;
 
     for (const p of spec.providers) {
       const q = p.queries;
@@ -508,27 +511,31 @@ async function tryLoadLive(
       });
 
       if (q.series) {
-        const [s24, s7] = await Promise.all([
+        const [s24, s7, s30] = await Promise.all([
           prom.series(q.series, winSec, 72),
           prom.series(q.series, sevenDaysSec, 84),
+          prom.series(q.series, thirtyDaysSec, 60),
         ]);
         if (s24 && s24.length > 0) series24h[p.slug] = s24;
         if (s7 && s7.length > 0) series7d[p.slug] = s7;
+        if (s30 && s30.length > 0) series30d[p.slug] = s30;
       }
 
       if (q.regions && q.regions.length > 0) {
         const points = await Promise.all(
           q.regions.map(async (r) => {
-            const [p50Val, regionSeries24, regionSeries7] = await Promise.all([
+            const [p50Val, regionSeries24, regionSeries7, regionSeries30] = await Promise.all([
               r.p50 ? prom.scalar(r.p50) : Promise.resolve(p50),
               r.series ? prom.series(r.series, winSec, 72) : Promise.resolve(null),
               r.series ? prom.series(r.series, sevenDaysSec, 84) : Promise.resolve(null),
+              r.series ? prom.series(r.series, thirtyDaysSec, 60) : Promise.resolve(null),
             ]);
             return {
               region: r.region,
               p50: p50Val ?? p50,
               series24: regionSeries24,
               series7: regionSeries7,
+              series30: regionSeries30,
             };
           })
         );
@@ -539,6 +546,9 @@ async function tryLoadLive(
           }
           if (pt.series7 && pt.series7.length > 0) {
             (seriesByRegion7d[p.slug] ??= {})[pt.region] = pt.series7;
+          }
+          if (pt.series30 && pt.series30.length > 0) {
+            (seriesByRegion30d[p.slug] ??= {})[pt.region] = pt.series30;
           }
         }
       }
@@ -570,10 +580,13 @@ async function tryLoadLive(
       extras: {
         series24h,
         series7d: Object.keys(series7d).length > 0 ? series7d : undefined,
+        series30d: Object.keys(series30d).length > 0 ? series30d : undefined,
         seriesByRegion24h:
           Object.keys(seriesByRegion24h).length > 0 ? seriesByRegion24h : undefined,
         seriesByRegion7d:
           Object.keys(seriesByRegion7d).length > 0 ? seriesByRegion7d : undefined,
+        seriesByRegion30d:
+          Object.keys(seriesByRegion30d).length > 0 ? seriesByRegion30d : undefined,
         regions: regions as Benchmark["extras"]["regions"],
       },
       sampleSize: totalSamples,

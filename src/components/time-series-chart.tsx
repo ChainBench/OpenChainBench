@@ -18,14 +18,15 @@ type Props = {
   headerActions?: import("react").ReactNode;
 };
 
-type Range = "1h" | "6h" | "24h" | "7d";
-const RANGES: Range[] = ["1h", "6h", "24h", "7d"];
+type Range = "1h" | "6h" | "24h" | "7d" | "30d";
+const RANGES: Range[] = ["1h", "6h", "24h", "7d", "30d"];
 
 const RANGE_HOURS: Record<Range, number> = {
   "1h": 1,
   "6h": 6,
   "24h": 24,
   "7d": 168,
+  "30d": 720,
 };
 
 const RANGE_LABEL: Record<Range, string> = {
@@ -33,6 +34,7 @@ const RANGE_LABEL: Record<Range, string> = {
   "6h": "last 6 hours",
   "24h": "last 24 hours",
   "7d": "last 7 days",
+  "30d": "last 30 days",
 };
 
 const REGION_LABEL: Record<string, string> = {
@@ -51,6 +53,10 @@ export function TimeSeriesChart({ benchmark, region: regionProp, headerActions }
   const has7d =
     !!benchmark.extras.series7d &&
     Object.keys(benchmark.extras.series7d).length > 0;
+
+  const has30d =
+    !!benchmark.extras.series30d &&
+    Object.keys(benchmark.extras.series30d).length > 0;
 
   const availableRegions = useMemo(() => {
     const set = new Set<string>();
@@ -103,7 +109,8 @@ export function TimeSeriesChart({ benchmark, region: regionProp, headerActions }
         <div className="flex items-center gap-1">
           {RANGES.map((r) => {
             const active = r === range;
-            const disabled = r === "7d" && !has7d;
+            const disabled =
+              (r === "7d" && !has7d) || (r === "30d" && !has30d);
             return (
               <button
                 key={r}
@@ -118,7 +125,9 @@ export function TimeSeriesChart({ benchmark, region: regionProp, headerActions }
                   disabled ? "opacity-40 cursor-not-allowed" : "",
                 ].join(" ")}
                 title={
-                  disabled ? "7-day retention not available yet" : undefined
+                  disabled
+                    ? `${r} retention not available yet`
+                    : undefined
                 }
               >
                 {r}
@@ -681,6 +690,9 @@ function pickSeries(
   const isAll = region === "all";
 
   if (!isAll) {
+    if (range === "30d") {
+      return benchmark.extras.seriesByRegion30d?.[slug]?.[region] ?? [];
+    }
     if (range === "7d") {
       return benchmark.extras.seriesByRegion7d?.[slug]?.[region] ?? [];
     }
@@ -693,6 +705,8 @@ function pickSeries(
 
   const s24 = benchmark.extras.series24h[slug] ?? [];
   const s7 = benchmark.extras.series7d?.[slug] ?? [];
+  const s30 = benchmark.extras.series30d?.[slug] ?? [];
+  if (range === "30d") return s30;
   if (range === "7d") return s7;
   if (range === "24h") return s24;
   const ratio = RANGE_HOURS[range] / 24;
