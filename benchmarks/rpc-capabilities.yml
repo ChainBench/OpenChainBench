@@ -132,6 +132,16 @@ providers:
       success: sum(rate(rpc_call_total{provider="publicnode", result="ok"}[24h])) / sum(rate(rpc_call_total{provider="publicnode"}[24h]))
       sample_size: sum(increase(rpc_call_total{provider="publicnode"}[24h]))
       series: avg(avg_over_time(rpc_latency_milliseconds{provider="publicnode"}[1h]))
+      regions:
+        - region: us-east
+          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="publicnode", region="us-east"}[24h])
+          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", region="us-east"}[1h])
+        - region: eu-west
+          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="publicnode", region="eu-west"}[24h])
+          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="publicnode", region="sgp"}[24h])
+          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", region="sgp"}[1h])
 
   - slug: drpc
     name: dRPC
@@ -145,6 +155,16 @@ providers:
       success: sum(rate(rpc_call_total{provider="drpc", result="ok"}[24h])) / sum(rate(rpc_call_total{provider="drpc"}[24h]))
       sample_size: sum(increase(rpc_call_total{provider="drpc"}[24h]))
       series: avg(avg_over_time(rpc_latency_milliseconds{provider="drpc"}[1h]))
+      regions:
+        - region: us-east
+          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="drpc", region="us-east"}[24h])
+          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", region="us-east"}[1h])
+        - region: eu-west
+          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="drpc", region="eu-west"}[24h])
+          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="drpc", region="sgp"}[24h])
+          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", region="sgp"}[1h])
 
   - slug: 1rpc
     name: 1RPC
@@ -158,6 +178,16 @@ providers:
       success: sum(rate(rpc_call_total{provider="1rpc", result="ok"}[24h])) / sum(rate(rpc_call_total{provider="1rpc"}[24h]))
       sample_size: sum(increase(rpc_call_total{provider="1rpc"}[24h]))
       series: avg(avg_over_time(rpc_latency_milliseconds{provider="1rpc"}[1h]))
+      regions:
+        - region: us-east
+          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="1rpc", region="us-east"}[24h])
+          series: avg_over_time(rpc_latency_milliseconds{provider="1rpc", region="us-east"}[1h])
+        - region: eu-west
+          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="1rpc", region="eu-west"}[24h])
+          series: avg_over_time(rpc_latency_milliseconds{provider="1rpc", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="1rpc", region="sgp"}[24h])
+          series: avg_over_time(rpc_latency_milliseconds{provider="1rpc", region="sgp"}[1h])
 
   - slug: meowrpc
     name: MeowRPC
@@ -171,6 +201,16 @@ providers:
       success: sum(rate(rpc_call_total{provider="meowrpc", result="ok"}[24h])) / sum(rate(rpc_call_total{provider="meowrpc"}[24h]))
       sample_size: sum(increase(rpc_call_total{provider="meowrpc"}[24h]))
       series: avg(avg_over_time(rpc_latency_milliseconds{provider="meowrpc"}[1h]))
+      regions:
+        - region: us-east
+          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="meowrpc", region="us-east"}[24h])
+          series: avg_over_time(rpc_latency_milliseconds{provider="meowrpc", region="us-east"}[1h])
+        - region: eu-west
+          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="meowrpc", region="eu-west"}[24h])
+          series: avg_over_time(rpc_latency_milliseconds{provider="meowrpc", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="meowrpc", region="sgp"}[24h])
+          series: avg_over_time(rpc_latency_milliseconds{provider="meowrpc", region="sgp"}[1h])
 
   - slug: flashbots
     name: Flashbots
@@ -184,6 +224,16 @@ providers:
       success: sum(rate(rpc_call_total{provider="flashbots", result="ok"}[24h])) / sum(rate(rpc_call_total{provider="flashbots"}[24h]))
       sample_size: sum(increase(rpc_call_total{provider="flashbots"}[24h]))
       series: avg(avg_over_time(rpc_latency_milliseconds{provider="flashbots"}[1h]))
+      regions:
+        - region: us-east
+          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="flashbots", region="us-east"}[24h])
+          series: avg_over_time(rpc_latency_milliseconds{provider="flashbots", region="us-east"}[1h])
+        - region: eu-west
+          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="flashbots", region="eu-west"}[24h])
+          series: avg_over_time(rpc_latency_milliseconds{provider="flashbots", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="flashbots", region="sgp"}[24h])
+          series: avg_over_time(rpc_latency_milliseconds{provider="flashbots", region="sgp"}[1h])
 
   - slug: cloudflare
     name: Cloudflare
@@ -197,6 +247,16 @@ providers:
       success: sum(rate(rpc_call_total{provider="cloudflare", result="ok"}[24h])) / sum(rate(rpc_call_total{provider="cloudflare"}[24h]))
       sample_size: sum(increase(rpc_call_total{provider="cloudflare"}[24h]))
       series: avg(avg_over_time(rpc_latency_milliseconds{provider="cloudflare"}[1h]))
+      regions:
+        - region: us-east
+          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="cloudflare", region="us-east"}[24h])
+          series: avg_over_time(rpc_latency_milliseconds{provider="cloudflare", region="us-east"}[1h])
+        - region: eu-west
+          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="cloudflare", region="eu-west"}[24h])
+          series: avg_over_time(rpc_latency_milliseconds{provider="cloudflare", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="cloudflare", region="sgp"}[24h])
+          series: avg_over_time(rpc_latency_milliseconds{provider="cloudflare", region="sgp"}[1h])
 
   - slug: base-official
     name: Base
@@ -210,6 +270,16 @@ providers:
       success: sum(rate(rpc_call_total{provider="base-official", result="ok"}[24h])) / sum(rate(rpc_call_total{provider="base-official"}[24h]))
       sample_size: sum(increase(rpc_call_total{provider="base-official"}[24h]))
       series: avg(avg_over_time(rpc_latency_milliseconds{provider="base-official"}[1h]))
+      regions:
+        - region: us-east
+          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="base-official", region="us-east"}[24h])
+          series: avg_over_time(rpc_latency_milliseconds{provider="base-official", region="us-east"}[1h])
+        - region: eu-west
+          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="base-official", region="eu-west"}[24h])
+          series: avg_over_time(rpc_latency_milliseconds{provider="base-official", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="base-official", region="sgp"}[24h])
+          series: avg_over_time(rpc_latency_milliseconds{provider="base-official", region="sgp"}[1h])
 
   - slug: binance
     name: Binance
@@ -223,6 +293,16 @@ providers:
       success: sum(rate(rpc_call_total{provider="binance", result="ok"}[24h])) / sum(rate(rpc_call_total{provider="binance"}[24h]))
       sample_size: sum(increase(rpc_call_total{provider="binance"}[24h]))
       series: avg(avg_over_time(rpc_latency_milliseconds{provider="binance"}[1h]))
+      regions:
+        - region: us-east
+          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="binance", region="us-east"}[24h])
+          series: avg_over_time(rpc_latency_milliseconds{provider="binance", region="us-east"}[1h])
+        - region: eu-west
+          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="binance", region="eu-west"}[24h])
+          series: avg_over_time(rpc_latency_milliseconds{provider="binance", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="binance", region="sgp"}[24h])
+          series: avg_over_time(rpc_latency_milliseconds{provider="binance", region="sgp"}[1h])
 
   - slug: tenderly
     name: Tenderly
@@ -236,6 +316,16 @@ providers:
       success: sum(rate(rpc_call_total{provider="tenderly", result="ok"}[24h])) / sum(rate(rpc_call_total{provider="tenderly"}[24h]))
       sample_size: sum(increase(rpc_call_total{provider="tenderly"}[24h]))
       series: avg(avg_over_time(rpc_latency_milliseconds{provider="tenderly"}[1h]))
+      regions:
+        - region: us-east
+          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="tenderly", region="us-east"}[24h])
+          series: avg_over_time(rpc_latency_milliseconds{provider="tenderly", region="us-east"}[1h])
+        - region: eu-west
+          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="tenderly", region="eu-west"}[24h])
+          series: avg_over_time(rpc_latency_milliseconds{provider="tenderly", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="tenderly", region="sgp"}[24h])
+          series: avg_over_time(rpc_latency_milliseconds{provider="tenderly", region="sgp"}[1h])
 
   - slug: nodies
     name: Nodies
@@ -249,6 +339,16 @@ providers:
       success: sum(rate(rpc_call_total{provider="nodies", result="ok"}[24h])) / sum(rate(rpc_call_total{provider="nodies"}[24h]))
       sample_size: sum(increase(rpc_call_total{provider="nodies"}[24h]))
       series: avg(avg_over_time(rpc_latency_milliseconds{provider="nodies"}[1h]))
+      regions:
+        - region: us-east
+          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="nodies", region="us-east"}[24h])
+          series: avg_over_time(rpc_latency_milliseconds{provider="nodies", region="us-east"}[1h])
+        - region: eu-west
+          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="nodies", region="eu-west"}[24h])
+          series: avg_over_time(rpc_latency_milliseconds{provider="nodies", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="nodies", region="sgp"}[24h])
+          series: avg_over_time(rpc_latency_milliseconds{provider="nodies", region="sgp"}[1h])
 
   - slug: lava
     name: Lava
@@ -262,6 +362,16 @@ providers:
       success: sum(rate(rpc_call_total{provider="lava", result="ok"}[24h])) / sum(rate(rpc_call_total{provider="lava"}[24h]))
       sample_size: sum(increase(rpc_call_total{provider="lava"}[24h]))
       series: avg(avg_over_time(rpc_latency_milliseconds{provider="lava"}[1h]))
+      regions:
+        - region: us-east
+          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="lava", region="us-east"}[24h])
+          series: avg_over_time(rpc_latency_milliseconds{provider="lava", region="us-east"}[1h])
+        - region: eu-west
+          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="lava", region="eu-west"}[24h])
+          series: avg_over_time(rpc_latency_milliseconds{provider="lava", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="lava", region="sgp"}[24h])
+          series: avg_over_time(rpc_latency_milliseconds{provider="lava", region="sgp"}[1h])
 
   - slug: merkle
     name: Merkle
@@ -275,6 +385,16 @@ providers:
       success: sum(rate(rpc_call_total{provider="merkle", result="ok"}[24h])) / sum(rate(rpc_call_total{provider="merkle"}[24h]))
       sample_size: sum(increase(rpc_call_total{provider="merkle"}[24h]))
       series: avg(avg_over_time(rpc_latency_milliseconds{provider="merkle"}[1h]))
+      regions:
+        - region: us-east
+          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="merkle", region="us-east"}[24h])
+          series: avg_over_time(rpc_latency_milliseconds{provider="merkle", region="us-east"}[1h])
+        - region: eu-west
+          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="merkle", region="eu-west"}[24h])
+          series: avg_over_time(rpc_latency_milliseconds{provider="merkle", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="merkle", region="sgp"}[24h])
+          series: avg_over_time(rpc_latency_milliseconds{provider="merkle", region="sgp"}[1h])
 
   - slug: arbitrum-official
     name: Arbitrum
@@ -288,6 +408,16 @@ providers:
       success: sum(rate(rpc_call_total{provider="arbitrum-official", result="ok"}[24h])) / sum(rate(rpc_call_total{provider="arbitrum-official"}[24h]))
       sample_size: sum(increase(rpc_call_total{provider="arbitrum-official"}[24h]))
       series: avg(avg_over_time(rpc_latency_milliseconds{provider="arbitrum-official"}[1h]))
+      regions:
+        - region: us-east
+          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="arbitrum-official", region="us-east"}[24h])
+          series: avg_over_time(rpc_latency_milliseconds{provider="arbitrum-official", region="us-east"}[1h])
+        - region: eu-west
+          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="arbitrum-official", region="eu-west"}[24h])
+          series: avg_over_time(rpc_latency_milliseconds{provider="arbitrum-official", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="arbitrum-official", region="sgp"}[24h])
+          series: avg_over_time(rpc_latency_milliseconds{provider="arbitrum-official", region="sgp"}[1h])
 
   - slug: optimism-official
     name: Optimism
@@ -301,6 +431,16 @@ providers:
       success: sum(rate(rpc_call_total{provider="optimism-official", result="ok"}[24h])) / sum(rate(rpc_call_total{provider="optimism-official"}[24h]))
       sample_size: sum(increase(rpc_call_total{provider="optimism-official"}[24h]))
       series: avg(avg_over_time(rpc_latency_milliseconds{provider="optimism-official"}[1h]))
+      regions:
+        - region: us-east
+          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="optimism-official", region="us-east"}[24h])
+          series: avg_over_time(rpc_latency_milliseconds{provider="optimism-official", region="us-east"}[1h])
+        - region: eu-west
+          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="optimism-official", region="eu-west"}[24h])
+          series: avg_over_time(rpc_latency_milliseconds{provider="optimism-official", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="optimism-official", region="sgp"}[24h])
+          series: avg_over_time(rpc_latency_milliseconds{provider="optimism-official", region="sgp"}[1h])
 
   - slug: avalanche-official
     name: Avalanche
@@ -314,3 +454,13 @@ providers:
       success: sum(rate(rpc_call_total{provider="avalanche-official", result="ok"}[24h])) / sum(rate(rpc_call_total{provider="avalanche-official"}[24h]))
       sample_size: sum(increase(rpc_call_total{provider="avalanche-official"}[24h]))
       series: avg(avg_over_time(rpc_latency_milliseconds{provider="avalanche-official"}[1h]))
+      regions:
+        - region: us-east
+          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="avalanche-official", region="us-east"}[24h])
+          series: avg_over_time(rpc_latency_milliseconds{provider="avalanche-official", region="us-east"}[1h])
+        - region: eu-west
+          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="avalanche-official", region="eu-west"}[24h])
+          series: avg_over_time(rpc_latency_milliseconds{provider="avalanche-official", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="avalanche-official", region="sgp"}[24h])
+          series: avg_over_time(rpc_latency_milliseconds{provider="avalanche-official", region="sgp"}[1h])
