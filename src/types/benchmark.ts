@@ -136,6 +136,13 @@ export type Benchmark = {
    *  the `{{worst_name:chain:X}}` / `{{worst_p50:chain:X}}` editorial
    *  placeholders. */
   worstPerChain?: Record<string, ProviderResult>;
+  /** Set of provider slugs that returned live data on each chain. Same
+   *  key set as `bestPerChain`. Powers the per-chain rank chips on
+   *  /products/[slug] so chain-restricted providers (Solana-only like
+   *  GMGN) only get chips on chains they actually compete on, instead
+   *  of inheriting their aggregate position on every chain in the
+   *  bench. */
+  providersPerChain?: Record<string, string[]>;
   findings: string[];
   methodology: string[];
   source: string;
