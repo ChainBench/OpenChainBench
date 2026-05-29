@@ -113,11 +113,17 @@ Standard OCB-miniapp shape — multi-stage Dockerfile, port 2112, internal-only 
 
 ### Region labeling
 
-Every emitted metric carries a `region` label. The value comes from the `REGION` env var read once at startup (`main.go: loadRegion()`). Default `eu-west` for backward compatibility with the original single-region deploy.
+Every emitted metric carries a `region` label resolved at boot by `main.go: loadRegion()`, in this order:
 
-### Multi-region deploy (recommended)
+1. `$REGION` — explicit override (set when running 3 separate Railway services)
+2. `$RAILWAY_REPLICA_REGION` — set automatically by Railway per replica when a single service is scaled across regions via "Add Region". Raw GCP-style slugs (`us-east4-eqdc4a`, `europe-west4-drams5`, `asia-southeast1-eqsg3a`) are normalized to the canonical `us-east` / `eu-west` / `sgp` set
+3. `eu-west` — back-compat default for the original single-region deploy
 
-Run one Railway service per region. Suggested set: `us-east`, `eu-west`, `sgp` (same shape as `aggregator-head-lag`).
+### Multi-region deploy — two options
+
+**Option A: one service, replicas per region (recommended on Railway).** Go to the service → Settings → Regions → "+ Add Region". Pick US East + EU West + Asia Southeast (Singapore). Railway sets `RAILWAY_REPLICA_REGION` on each replica and the harness self-labels correctly. Prometheus scrapes one internal DNS target (`rpc-capabilities.railway.internal:2112`) and the load-balancer cycles through replicas.
+
+**Option B: three separate services.** Use this when you want predictable scrape targets or per-region service ownership (e.g. for cost attribution).
 
 | Railway service | `REGION` env | Railway region | Internal DNS |
 |---|---|---|---|
@@ -125,7 +131,7 @@ Run one Railway service per region. Suggested set: `us-east`, `eu-west`, `sgp` (
 | `rpc-capabilities-eu` | `eu-west` | europe-west4 | `rpc-capabilities-eu.railway.internal:2112` |
 | `rpc-capabilities-sgp` | `sgp` | asia-southeast1 | `rpc-capabilities-sgp.railway.internal:2112` |
 
-After scaling out, update the shared Prometheus `scrape_configs:` to target all three:
+Prometheus scrape config for Option B:
 
 ```yaml
 - job_name: 'rpc-capabilities'
@@ -137,7 +143,7 @@ After scaling out, update the shared Prometheus `scrape_configs:` to target all 
   metrics_path: /metrics
 ```
 
-Prometheus will record three series per `(provider, chain)` pair — one per region. The bench's PromQL queries pool across regions for the headline number and slice by region for the per-region chart.
+Either way Prometheus records three series per `(provider, chain)` pair — one per region. The bench's PromQL queries pool across regions for the headline number and slice by region for the per-region chart.
 
 ## Known limits
 - **Shard variance** — `1rpc` and `flashbots` appear to load-balance across a mixed pool where some shards are pruned. The bench observes the variance honestly but reports per-cycle, so a single hourly cycle can land on either the archive or pruned shard. A v2 improvement would do a 3-probe quorum per (provider × depth).
