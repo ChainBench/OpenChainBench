@@ -9,9 +9,13 @@ route:
   receiver: 'slack-webhook'
 
 receivers:
+  # Replace with your own Slack-bridge webhook URL before deploying.
+  # In your alertmanager container's entrypoint, run
+  #   envsubst < alertmanager.yml.tpl > alertmanager.yml
+  # so the value comes from the SLACK_WEBHOOK_URL env var, not the repo.
   - name: 'slack-webhook'
     webhook_configs:
-      - url: 'https://agent-slack-production.up.railway.app/webhook/grafana'
+      - url: 'https://example.invalid/your-slack-webhook'
         send_resolved: true
 
 inhibit_rules:
