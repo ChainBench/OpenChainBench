@@ -73,12 +73,23 @@ export function DistributionChart({
   // left, making 8 of 9 rows visually indistinguishable.
   const useLog = fieldMax / Math.max(fieldMin, 1) > 50;
 
+  // Both paths anchor the left edge at fieldMin (best observed value),
+  // not at absolute zero. Otherwise narrow-range benches with small mins
+  // (e.g. solana-tx-landing-latency where every provider's p50 = 2 slots
+  // on a 14-slot field) compress every median dot into a single sliver
+  // at the left, making it impossible to read dispersion. With this
+  // baseline the leader sits at 0 % and laggards spread the full track.
   const scale = (v: number) => {
     if (v <= 0) return 0;
-    if (!useLog) return Math.max(0, Math.min(100, (v / fieldMax) * 100));
-    const lo = Math.log10(Math.max(1, fieldMin / 2));
-    const hi = Math.log10(fieldMax);
-    return Math.max(0, Math.min(100, ((Math.log10(v) - lo) / (hi - lo)) * 100));
+    if (useLog) {
+      const lo = Math.log10(Math.max(1, fieldMin / 2));
+      const hi = Math.log10(fieldMax);
+      if (hi <= lo) return 50;
+      return Math.max(0, Math.min(100, ((Math.log10(v) - lo) / (hi - lo)) * 100));
+    }
+    const range = fieldMax - fieldMin;
+    if (range <= 0) return 50;
+    return Math.max(0, Math.min(100, ((v - fieldMin) / range) * 100));
   };
 
   return (
@@ -200,7 +211,7 @@ export function DistributionChart({
         })}
       </ul>
       <div className="mt-3 flex items-center justify-between text-[10px] font-sans uppercase tracking-[0.14em] text-ink-faint">
-        <span>{useLog ? `min ${fmtUnit(fieldMin, unit)}` : "0"}</span>
+        <span>min {fmtUnit(fieldMin, unit)}</span>
         <span>
           {useLog ? "log scale · " : ""}max {fmtUnit(fieldMax, unit)}
         </span>
