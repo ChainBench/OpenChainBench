@@ -68,6 +68,14 @@ export function TimeSeriesChart({
     onToggleExclude,
     onResetExcluded,
   );
+  // Drag-to-zoom state. Fractions are 0..1 of the original visible range
+  // for the current Range tab. Lives in the parent so it survives the
+  // Chart's internal re-renders. Reset to null when range or region
+  // changes (the data shape is different, the old zoom doesn't apply).
+  const [zoom, setZoom] = useState<{ startFrac: number; endFrac: number } | null>(null);
+  useEffect(() => {
+    setZoom(null);
+  }, [range, region]);
 
   const has7d =
     !!benchmark.extras.series7d &&
@@ -119,16 +127,61 @@ export function TimeSeriesChart({
   // the line-draw animation.
   const seriesKey = `${range}::${region}`;
 
+  // Format the zoomed-window label so the header tells the reader
+  // exactly which slice of the original range they're looking at, e.g.
+  // "head lag · −18 h → −12 h (6 h window)". Falls back to the normal
+  // range label when no zoom is active.
+  const totalWindowH = RANGE_HOURS[range];
+  const zoomLabel = zoom
+    ? (() => {
+        const startAgo = (1 - zoom.startFrac) * totalWindowH;
+        const endAgo = (1 - zoom.endFrac) * totalWindowH;
+        const spanH = startAgo - endAgo;
+        const fmt = (h: number) =>
+          h < 0.05
+            ? "now"
+            : h < 1
+              ? `−${Math.round(h * 60)} min`
+              : h < 48
+                ? `−${h.toFixed(h < 6 ? 1 : 0)} h`
+                : `−${(h / 24).toFixed(0)} d`;
+        const span =
+          spanH < 1
+            ? `${Math.round(spanH * 60)} min`
+            : spanH < 48
+              ? `${spanH.toFixed(spanH < 6 ? 1 : 0)} h`
+              : `${(spanH / 24).toFixed(0)} d`;
+        return `${fmt(startAgo)} → ${fmt(endAgo)} (${span} window)`;
+      })()
+    : RANGE_LABEL[range];
+
   return (
     <figure className="my-2">
       <div className="mb-3 flex items-center justify-between gap-3 min-h-7">
         <p className="inline-flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
           <LiveDot />
           <span>
-            {benchmark.metric} · {RANGE_LABEL[range]}
+            {benchmark.metric} · {zoomLabel}
           </span>
         </p>
-        {headerActions}
+        <div className="flex items-center gap-3">
+          {zoom && (
+            <button
+              type="button"
+              onClick={() => setZoom(null)}
+              className="inline-flex items-center gap-1.5 rounded-md border border-ink/15 bg-paper px-2.5 py-1 text-[11px] font-sans font-medium uppercase tracking-[0.1em] text-ink shadow-sm transition-all hover:border-ink/40 hover:shadow-md"
+              aria-label="Reset chart zoom"
+              title="Show the full range again"
+            >
+              <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M3 8a5 5 0 1 0 1.5-3.5" />
+                <path d="M3 3v3h3" />
+              </svg>
+              Reset zoom
+            </button>
+          )}
+          {headerActions}
+        </div>
       </div>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-1">
@@ -195,6 +248,8 @@ export function TimeSeriesChart({
           lines={lines as LineWithColor[]}
           unit={benchmark.unit}
           windowHours={RANGE_HOURS[range]}
+          zoom={zoom}
+          onZoom={setZoom}
           onToggleExclude={toggle}
           onResetExcluded={excluded.size > 0 ? reset : undefined}
         />
@@ -303,12 +358,16 @@ function Chart({
   lines,
   unit,
   windowHours,
+  zoom,
+  onZoom,
   onToggleExclude,
   onResetExcluded,
 }: {
   lines: LineWithColor[];
   unit: string;
   windowHours: number;
+  zoom?: { startFrac: number; endFrac: number } | null;
+  onZoom?: (next: { startFrac: number; endFrac: number } | null) => void;
   onToggleExclude?: (slug: string) => void;
   onResetExcluded?: () => void;
 }) {
@@ -321,12 +380,32 @@ function Chart({
   const innerW = W - padL - padR;
   const innerH = H - padT - padB;
 
+  // Apply drag-to-zoom by slicing each line's values to the zoom window.
+  // The sliced series still uses the full chart width so the zoomed
+  // segment naturally expands. windowHours / endHoursAgo shrink + offset
+  // accordingly for the X-axis labels and the hover tooltip.
+  const zoomedWindowHours = zoom
+    ? Math.max(0.0167, (zoom.endFrac - zoom.startFrac) * windowHours)
+    : windowHours;
+  const endHoursAgo = zoom ? (1 - zoom.endFrac) * windowHours : 0;
+
+  const slicedLines = useMemo(() => {
+    if (!zoom) return lines;
+    return lines.map((l) => {
+      const n = l.values.length;
+      if (n < 2) return l;
+      const startIdx = Math.max(0, Math.floor(zoom.startFrac * (n - 1)));
+      const endIdx = Math.min(n - 1, Math.ceil(zoom.endFrac * (n - 1)));
+      return { ...l, values: l.values.slice(startIdx, endIdx + 1) };
+    });
+  }, [lines, zoom]);
+
   // Y-axis bounds come from VISIBLE values only so excluding a dominant
   // outlier (e.g. GeckoTerminal at 11s while the others sit under 1s)
   // lets the remaining lines spread out. If everything is excluded we
   // fall back to the full set so the axis doesn't collapse.
-  const visibleValues = lines.filter((l) => !l.excluded).flatMap((l) => l.values);
-  const sourceValues = visibleValues.length > 0 ? visibleValues : lines.flatMap((l) => l.values);
+  const visibleValues = slicedLines.filter((l) => !l.excluded).flatMap((l) => l.values);
+  const sourceValues = visibleValues.length > 0 ? visibleValues : slicedLines.flatMap((l) => l.values);
   const dataMin = Math.min(...sourceValues);
   const dataMax = Math.max(...sourceValues);
   const targetTicks = niceTicks(dataMin, dataMax, 4);
@@ -337,8 +416,8 @@ function Chart({
   const { yTicks } = niceTicks(lo, hi, 4);
   const yRange = hi - lo;
 
-  const xTicks = buildXTicks(windowHours);
-  const numPoints = Math.max(...lines.map((l) => l.values.length));
+  const xTicks = buildXTicks(zoomedWindowHours, endHoursAgo);
+  const numPoints = Math.max(...slicedLines.map((l) => l.values.length));
 
   // Hover state
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -348,6 +427,24 @@ function Chart({
     yPx: number;
   } | null>(null);
 
+  // Drag-to-zoom state. `dragFrac` is the [start, current] pair while
+  // the mouse is held. On mouse-up we commit to the parent's zoom via
+  // onZoom if the drag distance is meaningful (otherwise treat as click
+  // and skip the zoom — guards against accidental tiny drags).
+  const [dragFrac, setDragFrac] = useState<{ start: number; current: number } | null>(null);
+  const MIN_DRAG_FRACTION = 0.02; // 2% of innerW. Anything smaller = click, not zoom.
+
+  // Map a mouse event to a fractional X position within the plot area
+  // (0 = padL edge, 1 = W-padR edge), clamped to [0, 1].
+  const xFractionFromEvent = (e: React.MouseEvent<HTMLDivElement>): number | null => {
+    const wrap = wrapRef.current;
+    if (!wrap) return null;
+    const rect = wrap.getBoundingClientRect();
+    const xVB = ((e.clientX - rect.left) / rect.width) * W;
+    const ratio = (xVB - padL) / innerW;
+    return Math.max(0, Math.min(1, ratio));
+  };
+
   const onMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const wrap = wrapRef.current;
     if (!wrap) return;
@@ -355,6 +452,17 @@ function Chart({
     const xPx = e.clientX - rect.left;
     const yPx = e.clientY - rect.top;
     const xVB = (xPx / rect.width) * W;
+
+    // While a drag is in progress, track the moving edge for the
+    // selection rect. Tooltip stays hidden during drag so the two
+    // overlays don't compete for the cursor.
+    if (dragFrac) {
+      const frac = xFractionFromEvent(e);
+      if (frac != null) setDragFrac({ start: dragFrac.start, current: frac });
+      setHover(null);
+      return;
+    }
+
     if (xVB < padL || xVB > W - padR || numPoints < 2) {
       setHover(null);
       return;
@@ -367,12 +475,45 @@ function Chart({
     setHover({ idx, xPx, yPx });
   };
 
+  const onDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!onZoom || numPoints < 2) return;
+    if (e.button !== 0) return; // left click only
+    const frac = xFractionFromEvent(e);
+    if (frac == null) return;
+    setDragFrac({ start: frac, current: frac });
+    setHover(null);
+  };
+
+  const commitDrag = () => {
+    if (!dragFrac || !onZoom) {
+      setDragFrac(null);
+      return;
+    }
+    const a = Math.min(dragFrac.start, dragFrac.current);
+    const b = Math.max(dragFrac.start, dragFrac.current);
+    if (b - a >= MIN_DRAG_FRACTION) {
+      // Compose with existing zoom: drag fractions are in the *visible*
+      // window, so when we're already zoomed [z.startFrac, z.endFrac]
+      // a sub-drag of [a, b] maps to the absolute fractions below.
+      if (zoom) {
+        const span = zoom.endFrac - zoom.startFrac;
+        onZoom({
+          startFrac: zoom.startFrac + a * span,
+          endFrac: zoom.startFrac + b * span,
+        });
+      } else {
+        onZoom({ startFrac: a, endFrac: b });
+      }
+    }
+    setDragFrac(null);
+  };
+
   // Per-line drawn paths (memoised for animation re-trigger via key).
   // Treats hard zeroes among non-zero data as gaps (no-data) rather than
   // drawing the line down to zero. A sustained outage shows as a missing
   // segment instead of a misleading "0%" cliff.
   const drawn = useMemo(() => {
-    return lines.map((l) => {
+    return slicedLines.map((l) => {
       const color = l.color;
       const positive = l.values.filter((v) => v > 0);
       const positiveMin = positive.length > 0 ? Math.min(...positive) : 0;
@@ -431,11 +572,23 @@ function Chart({
       const lastY = lastDrawn ? lastDrawn.y : padT + innerH;
       return { ...l, color, pts, linePath, fillPath, lastX, lastY, last };
     });
-  }, [lines, padL, padR, padT, padB, innerW, innerH, lo, yRange]);
+  }, [slicedLines, padL, padR, padT, padB, innerW, innerH, lo, yRange]);
 
   const hoverX = hover ? padL + innerW * (hover.idx / Math.max(1, numPoints - 1)) : null;
   const hoverFraction = hover ? hover.idx / Math.max(1, numPoints - 1) : 0;
-  const hoverHoursAgo = hover ? windowHours * (1 - hoverFraction) : 0;
+  // hoursAgo is computed against the VISIBLE window — if the chart is
+  // zoomed in, the visible window is shorter and the rightmost point
+  // sits at endHoursAgo (not 0). hoverHoursAgo follows.
+  const hoverHoursAgo = hover
+    ? endHoursAgo + zoomedWindowHours * (1 - hoverFraction)
+    : 0;
+
+  const dragRectX = dragFrac
+    ? padL + innerW * Math.min(dragFrac.start, dragFrac.current)
+    : null;
+  const dragRectW = dragFrac
+    ? innerW * Math.abs(dragFrac.current - dragFrac.start)
+    : 0;
 
   // Tooltip layout (sorted by value at hover, descending)
   const tooltipRows = useMemo(() => {
@@ -449,9 +602,15 @@ function Chart({
   return (
     <div
       ref={wrapRef}
-      className="relative"
+      className="relative select-none"
+      style={{ cursor: onZoom ? (dragFrac ? "ew-resize" : "crosshair") : undefined }}
       onMouseMove={onMove}
-      onMouseLeave={() => setHover(null)}
+      onMouseDown={onDown}
+      onMouseUp={commitDrag}
+      onMouseLeave={() => {
+        setHover(null);
+        if (dragFrac) commitDrag();
+      }}
     >
       <svg
         viewBox={`0 0 ${W} ${H}`}
@@ -605,6 +764,40 @@ function Chart({
             </g>
           );
         })}
+
+        {/* Drag-to-zoom selection rect. Brushed window highlighted in
+            the foreground tint; mouse-up commits to zoom (Y-axis then
+            re-scales via useAnimatedDomain). */}
+        {dragFrac && dragRectW > 1 && (
+          <g style={{ pointerEvents: "none" }}>
+            <rect
+              x={dragRectX ?? padL}
+              y={padT}
+              width={dragRectW}
+              height={innerH}
+              fill="var(--color-ink)"
+              opacity={0.08}
+            />
+            <line
+              x1={dragRectX ?? padL}
+              x2={dragRectX ?? padL}
+              y1={padT}
+              y2={padT + innerH}
+              stroke="var(--color-ink)"
+              strokeWidth={1}
+              opacity={0.4}
+            />
+            <line
+              x1={(dragRectX ?? padL) + dragRectW}
+              x2={(dragRectX ?? padL) + dragRectW}
+              y1={padT}
+              y2={padT + innerH}
+              stroke="var(--color-ink)"
+              strokeWidth={1}
+              opacity={0.4}
+            />
+          </g>
+        )}
 
         {/* Crosshair + hover dots */}
         {hover && hoverX != null && (
@@ -849,13 +1042,21 @@ function mean(xs: number[]): number {
   return xs.reduce((s, v) => s + v, 0) / xs.length;
 }
 
-function buildXTicks(windowHours: number) {
+/**
+ * X-axis ticks for the visible window. When the chart is zoomed the
+ * right edge isn't `now` anymore — pass `endHoursAgo` to offset every
+ * tick by that many hours (the rightmost tick becomes `−{endHoursAgo}h`
+ * instead of `now`). The label granularity (minutes / hours / days) is
+ * picked from the *visible* windowHours so a 6-hour zoom-in of a 24h
+ * range gets minute-level ticks.
+ */
+function buildXTicks(windowHours: number, endHoursAgo: number = 0) {
   const ticks: { pct: number; label: string }[] = [];
   const step = 0.25;
   for (let p = 0; p <= 1; p += step) {
-    const ago = windowHours * (1 - p);
+    const ago = endHoursAgo + windowHours * (1 - p);
     let label: string;
-    if (ago === 0) label = "now";
+    if (ago < 0.001) label = "now";
     else if (windowHours <= 6) {
       const m = Math.round(ago * 60);
       label = `−${m}m`;
