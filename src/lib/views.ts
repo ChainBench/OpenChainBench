@@ -15,6 +15,7 @@ import type { Benchmark } from "@/types/benchmark";
 export type ViewType =
   | "timeseries"
   | "rankedBar"
+  | "countLeaderboard"
   | "distribution"
   | "donut";
 
@@ -29,16 +30,16 @@ const ALLOWED_BY_UNIT: Record<Benchmark["unit"], ViewType[]> = {
   s: ["timeseries", "rankedBar", "distribution", "donut"],
   bps: ["timeseries", "rankedBar", "distribution", "donut"],
   pct: ["timeseries", "rankedBar", "distribution", "donut"],
-  // count + usd previously offered a dedicated Leaderboard view; retired
-  // 2026-05-29 in favour of the standard distribution/ranked-bar/donut
-  // set so every bench shares the same view affordances.
-  count: ["distribution", "rankedBar", "donut", "timeseries"],
+  count: ["countLeaderboard", "rankedBar", "donut", "distribution", "timeseries"],
   // slots: integer-ish gauge values (Solana slot delta). Same view set as
   // latency benches — timeseries shows step-function patterns over time
   // which is exactly what we want to surface (1 slot vs 2 slots = the
   // operational signal).
   slots: ["timeseries", "rankedBar", "distribution", "donut"],
-  usd: ["distribution", "rankedBar", "donut", "timeseries"],
+  // usd: USD-denominated revenue/volume gauge. Same view set as count
+  // benches — the leaderboard view shows the $ value per provider with
+  // a comparison bar, which is the at-a-glance read users want.
+  usd: ["countLeaderboard", "rankedBar", "donut", "distribution", "timeseries"],
 };
 
 /**
@@ -57,12 +58,7 @@ export function viewsForBenchmark(b: Benchmark): ViewType[] {
  * explicit preference change.
  */
 export function defaultViewFor(b: Benchmark): ViewType {
-  // count + usd benches used to default to the Leaderboard view; that
-  // view was retired (2026-05-29). Distribution is the closest read on
-  // a single-number-per-provider bench: it shows each provider's value
-  // on a shared scale with a coloured spread, which makes outliers
-  // obvious without inventing percentile semantics that don't apply.
-  if (b.unit === "count" || b.unit === "usd") return "distribution";
+  if (b.unit === "count" || b.unit === "usd") return "countLeaderboard";
   if (b.results.length >= 3 || b.unit === "bps" || b.unit === "pct") {
     return "rankedBar";
   }
