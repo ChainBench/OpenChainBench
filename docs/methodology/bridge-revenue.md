@@ -122,7 +122,7 @@ This mapping is explicit on the bench page FAQ so readers do not misread the col
 
 ## 11. Reproducibility
 
-The full harness source is published at `harnesses/relay-link-revenue/` in the OpenChainBench monorepo (Go). Anyone can clone, set the Relay.link API endpoint env var, configure a USD price source, run the binary against a Prometheus scraper, and reproduce all metrics. The bench does not rely on any internal Mobula service for measurement.
+The Relay sub-harness currently lives in the private `mobula-api/miniapps/relay-link-revenue/` tree (Go) — the bench spec self-links to its YAML for now and the harness is on the backlog to port to the public OCB repo. Anyone with the Relay.link public API endpoint and a USD price source can reproduce the metrics by running their own implementation against the published methodology. The bench does not rely on any internal Mobula service for measurement.
 
 Anyone replicating the bench from a different USD-price source will see different absolute numbers (CoinGecko vs. Pyth vs. on-chain DEX price will disagree on long-tail tokens) but should see the same trend over a rolling 7-day window. Discrepancies of more than ~10 % in the 7d revenue sum between independent replications should be filed as GitHub issues with the price-source diff attached.
 
