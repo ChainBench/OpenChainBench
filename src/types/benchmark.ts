@@ -62,10 +62,14 @@ export type ResultExtras = {
   series24h: Record<string, Series24h>;
   /** 7-day-window global series per provider. chart's "7d" range. */
   series7d?: Record<string, Series24h>;
+  /** 30-day-window global series per provider. chart's "30d" range. */
+  series30d?: Record<string, Series24h>;
   /** Per-region 24h series, when the spec defines region.series queries. */
   seriesByRegion24h?: Record<string, Record<string, Series24h>>;
   /** Per-region 7d series. */
   seriesByRegion7d?: Record<string, Record<string, Series24h>>;
+  /** Per-region 30d series. */
+  seriesByRegion30d?: Record<string, Record<string, Series24h>>;
   regions: Record<string, RegionPoint[]>;
 };
 
