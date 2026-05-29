@@ -322,6 +322,7 @@ export function BenchmarkBody({
                   benchmark={benchmark}
                   excluded={excluded}
                   onToggleExclude={toggleExclude}
+                  onResetExcluded={resetExcluded}
                   headerActions={<ViewSwitcher allowed={allowedViews} value={view} onChange={setView} />}
                 />
               )}
