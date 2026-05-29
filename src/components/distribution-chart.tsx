@@ -70,8 +70,11 @@ export function DistributionChart({
   // ranked-bar-chart for consistency. Critical on benches like l1-finality
   // where TON (0.4 s) coexists with Monero (36 min): a linear scale
   // collapses every sub-second chain into the same invisible pixel at the
-  // left, making 8 of 9 rows visually indistinguishable.
-  const useLog = fieldMax / Math.max(fieldMin, 1) > 50;
+  // left, making 8 of 9 rows visually indistinguishable. The min-clamp
+  // is a tiny epsilon (not 1) so sub-1 ranges — typical for second-scale
+  // latency benches — get detected as wide-dynamic-range correctly.
+  const EPS = 1e-6;
+  const useLog = fieldMax / Math.max(fieldMin, EPS) > 50;
 
   // Both paths anchor the left edge at fieldMin (best observed value),
   // not at absolute zero. Otherwise narrow-range benches with small mins
@@ -79,10 +82,17 @@ export function DistributionChart({
   // on a 14-slot field) compress every median dot into a single sliver
   // at the left, making it impossible to read dispersion. With this
   // baseline the leader sits at 0 % and laggards spread the full track.
+  //
+  // For log scale we use `fieldMin / 2` as the left bound, floored at a
+  // tiny epsilon to avoid log(0). The earlier `Math.max(1, fieldMin/2)`
+  // floor silently flattened every sub-1 value onto position 0 % —
+  // l1-finality (TON 0.4 s, SUI 0.5 s, BNB 1 s) had its three fastest
+  // chains stacked on top of each other at the leftmost pixel even
+  // though their p50s are clearly distinct on the actual log axis.
   const scale = (v: number) => {
     if (v <= 0) return 0;
     if (useLog) {
-      const lo = Math.log10(Math.max(1, fieldMin / 2));
+      const lo = Math.log10(Math.max(fieldMin / 2, EPS));
       const hi = Math.log10(fieldMax);
       if (hi <= lo) return 50;
       return Math.max(0, Math.min(100, ((Math.log10(v) - lo) / (hi - lo)) * 100));
