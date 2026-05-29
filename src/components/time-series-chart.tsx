@@ -590,10 +590,13 @@ function Chart({
     ? innerW * Math.abs(dragFrac.current - dragFrac.start)
     : 0;
 
-  // Tooltip layout (sorted by value at hover, descending)
+  // Tooltip layout (sorted by value at hover, descending). Excluded
+  // providers are dropped so the tooltip stays consistent with the
+  // visible line set — a faded line shouldn't get a tooltip row.
   const tooltipRows = useMemo(() => {
     if (!hover) return null;
     return [...drawn]
+      .filter((d) => !d.excluded)
       .map((d) => ({ ...d, value: d.values[hover.idx] ?? d.last }))
       .filter((d) => Number.isFinite(d.value))
       .sort((a, b) => b.value - a.value);
@@ -813,6 +816,7 @@ function Chart({
               opacity={0.5}
             />
             {drawn.map((d) => {
+              if (d.excluded) return null;
               const v = d.values[hover.idx];
               if (!Number.isFinite(v)) return null;
               const cy = padT + innerH * (1 - (v - lo) / yRange);
