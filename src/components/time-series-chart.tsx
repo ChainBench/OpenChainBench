@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Globe } from "lucide-react";
 import type { Benchmark } from "@/types/benchmark";
 import { brandColor } from "@/lib/brand";
 import { fmtUnit } from "@/lib/format";
 import { buildProviderColors } from "@/lib/series-colors";
+import { useChartExclusion } from "@/hooks/use-chart-exclusion";
 import { LiveDot } from "@/components/live-dot";
 
 type Props = {
@@ -14,6 +15,12 @@ type Props = {
    *  filters its lines by this value and hides its internal region tabs
    *  (the parent component renders them in a shared dimension row). */
   region?: string;
+  /** Optional controlled exclusion set shared with the other chart views
+   *  (ranked-bar, distribution, donut). Lets the reader hide a dominant
+   *  outlier here too — Y-axis re-zooms smoothly to fit the rest. */
+  excluded?: Set<string>;
+  onToggleExclude?: (slug: string) => void;
+  onResetExcluded?: () => void;
   /** Optional slot rendered in the chart's header row, right-aligned. */
   headerActions?: import("react").ReactNode;
 };
@@ -44,11 +51,23 @@ const REGION_LABEL: Record<string, string> = {
   global: "Global",
 };
 
-export function TimeSeriesChart({ benchmark, region: regionProp, headerActions }: Props) {
+export function TimeSeriesChart({
+  benchmark,
+  region: regionProp,
+  excluded: controlledExcluded,
+  onToggleExclude,
+  onResetExcluded,
+  headerActions,
+}: Props) {
   const [range, setRange] = useState<Range>("24h");
   const [regionLocal, setRegionLocal] = useState<string>("all");
   const region = regionProp ?? regionLocal;
   const setRegion = regionProp != null ? () => {} : setRegionLocal;
+  const { excluded, toggle, reset } = useChartExclusion(
+    controlledExcluded,
+    onToggleExclude,
+    onResetExcluded,
+  );
 
   const has7d =
     !!benchmark.extras.series7d &&
@@ -76,6 +95,11 @@ export function TimeSeriesChart({ benchmark, region: regionProp, headerActions }
     [benchmark.results]
   );
 
+  // Build every provider's line up-front so the legend always lists the
+  // full set (excluded items stay visible there for re-enable). The
+  // `excluded` flag drives both opacity (CSS fade-out) and Y-axis math
+  // (excluded values are dropped from min/max so the remaining lines
+  // can spread out vertically when an outlier is hidden).
   const lines = useMemo(() => {
     const built = benchmark.results
       .map((r) => ({
@@ -83,12 +107,13 @@ export function TimeSeriesChart({ benchmark, region: regionProp, headerActions }
         name: r.name,
         color: colors.get(r.slug) ?? "var(--color-ink-soft)",
         values: pickSeries(benchmark, r.slug, range, region),
+        excluded: excluded.has(r.slug),
       }))
       .filter((l) => l.values.length > 0);
 
     built.sort((a, b) => mean(b.values.slice(-6)) - mean(a.values.slice(-6)));
     return built;
-  }, [benchmark, range, region, colors]);
+  }, [benchmark, range, region, colors, excluded]);
 
   // A key that flips when the data shape changes. used to retrigger
   // the line-draw animation.
@@ -170,6 +195,8 @@ export function TimeSeriesChart({ benchmark, region: regionProp, headerActions }
           lines={lines as LineWithColor[]}
           unit={benchmark.unit}
           windowHours={RANGE_HOURS[range]}
+          onToggleExclude={toggle}
+          onResetExcluded={excluded.size > 0 ? reset : undefined}
         />
       )}
     </figure>
@@ -219,16 +246,71 @@ type LineWithColor = {
   name: string;
   color: string;
   values: number[];
+  excluded: boolean;
 };
+
+/**
+ * Smoothly interpolate between the previous and current [lo, hi] domain
+ * when the reader excludes / re-adds a provider so the Y-axis re-scales
+ * with a 450 ms ease-out instead of snapping. We only run the animation
+ * when the new bounds differ by more than ~20% from the current ones —
+ * for small shifts (toggling a tightly-clustered provider) the snap is
+ * imperceptible and the extra frames are wasted.
+ */
+function useAnimatedDomain(targetLo: number, targetHi: number) {
+  const [displayed, setDisplayed] = useState({ lo: targetLo, hi: targetHi });
+  const rafRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const targetRange = Math.max(targetHi - targetLo, 1);
+    const currentRange = Math.max(displayed.hi - displayed.lo, 1);
+    const hiDelta = Math.abs(targetHi - displayed.hi) / Math.max(currentRange, 1);
+    const loDelta = Math.abs(targetLo - displayed.lo) / Math.max(currentRange, 1);
+    const rangeDelta = Math.abs(targetRange - currentRange) / currentRange;
+    const significant = hiDelta > 0.2 || loDelta > 0.2 || rangeDelta > 0.2;
+
+    if (!significant) {
+      setDisplayed({ lo: targetLo, hi: targetHi });
+      return;
+    }
+
+    const from = displayed;
+    const to = { lo: targetLo, hi: targetHi };
+    const start = performance.now();
+    const duration = 450;
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / duration);
+      const e = 1 - Math.pow(1 - t, 3); // ease-out cubic
+      setDisplayed({
+        lo: from.lo + (to.lo - from.lo) * e,
+        hi: from.hi + (to.hi - from.hi) * e,
+      });
+      if (t < 1) rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => {
+      if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
+    };
+    // displayed intentionally omitted: we only want to react to target changes
+    // (the next animation frame will read the latest displayed value via closure).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [targetLo, targetHi]);
+
+  return displayed;
+}
 
 function Chart({
   lines,
   unit,
   windowHours,
+  onToggleExclude,
+  onResetExcluded,
 }: {
   lines: LineWithColor[];
   unit: string;
   windowHours: number;
+  onToggleExclude?: (slug: string) => void;
+  onResetExcluded?: () => void;
 }) {
   const W = 1000;
   const H = 360;
@@ -239,10 +321,20 @@ function Chart({
   const innerW = W - padL - padR;
   const innerH = H - padT - padB;
 
-  const allValues = lines.flatMap((l) => l.values);
-  const dataMin = Math.min(...allValues);
-  const dataMax = Math.max(...allValues);
-  const { lo, hi, yTicks } = niceTicks(dataMin, dataMax, 4);
+  // Y-axis bounds come from VISIBLE values only so excluding a dominant
+  // outlier (e.g. GeckoTerminal at 11s while the others sit under 1s)
+  // lets the remaining lines spread out. If everything is excluded we
+  // fall back to the full set so the axis doesn't collapse.
+  const visibleValues = lines.filter((l) => !l.excluded).flatMap((l) => l.values);
+  const sourceValues = visibleValues.length > 0 ? visibleValues : lines.flatMap((l) => l.values);
+  const dataMin = Math.min(...sourceValues);
+  const dataMax = Math.max(...sourceValues);
+  const targetTicks = niceTicks(dataMin, dataMax, 4);
+  const { lo, hi } = useAnimatedDomain(targetTicks.lo, targetTicks.hi);
+  // Recompute the tick set against the animated bounds so the gridline
+  // labels morph in sync with the line geometry. niceTicks rounds to
+  // human-friendly steps so the morphing reads as smooth re-scaling.
+  const { yTicks } = niceTicks(lo, hi, 4);
   const yRange = hi - lo;
 
   const xTicks = buildXTicks(windowHours);
@@ -447,7 +539,15 @@ function Chart({
           const dimmed = hover && hover.idx >= 0; // when hovering, slightly mute non-hovered? No, keep all visible.
           void dimmed;
           return (
-            <g key={d.slug} className="ts-line">
+            <g
+              key={d.slug}
+              className="ts-line"
+              style={{
+                opacity: d.excluded ? 0 : 1,
+                pointerEvents: d.excluded ? "none" : undefined,
+                transition: "opacity 0.3s ease-out",
+              }}
+            >
               <path d={d.fillPath} fill={`url(#fill-${d.slug})`} />
               <path
                 d={d.linePath}
@@ -572,24 +672,54 @@ function Chart({
         />
       )}
 
-      {/* Compact legend below chart */}
-      <ul className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-rule pt-3">
-        {drawn.map((d) => (
-          <li
-            key={d.slug}
-            className="inline-flex items-center gap-2 text-[12px]"
+      {/* Compact legend below chart. Clicking a provider toggles exclusion;
+          Y-axis re-zooms smoothly (useAnimatedDomain) so the remaining
+          lines spread out. Excluded items stay listed (greyed + line-through)
+          for re-enable. */}
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-x-5 gap-y-2 border-t border-rule pt-3">
+        <ul className="flex flex-wrap items-center gap-x-5 gap-y-2">
+          {drawn.map((d) => {
+            const clickable = !!onToggleExclude;
+            return (
+              <li key={d.slug}>
+                <button
+                  type="button"
+                  onClick={clickable ? () => onToggleExclude(d.slug) : undefined}
+                  disabled={!clickable}
+                  aria-pressed={d.excluded}
+                  className={`inline-flex items-center gap-2 text-[12px] transition-opacity duration-200 ${
+                    clickable ? "cursor-pointer hover:opacity-80" : "cursor-default"
+                  } ${d.excluded ? "opacity-40" : ""}`}
+                >
+                  <span
+                    className="inline-block h-px w-5"
+                    style={{ background: d.color }}
+                  />
+                  <span
+                    className={`font-medium ${
+                      d.excluded ? "text-ink-faint line-through decoration-1" : "text-ink"
+                    }`}
+                  >
+                    {d.name}
+                  </span>
+                  <span className="font-sans tabular text-ink-muted text-[11px]">
+                    {fmtUnit(d.last, unit)}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+        {onResetExcluded && (
+          <button
+            type="button"
+            onClick={onResetExcluded}
+            className="text-[10px] font-sans font-medium uppercase tracking-[0.16em] text-ink-muted hover:text-ink lnk"
           >
-            <span
-              className="inline-block h-px w-5"
-              style={{ background: d.color }}
-            />
-            <span className="text-ink font-medium">{d.name}</span>
-            <span className="font-sans tabular text-ink-muted text-[11px]">
-              {fmtUnit(d.last, unit)}
-            </span>
-          </li>
-        ))}
-      </ul>
+            Reset
+          </button>
+        )}
+      </div>
 
       {/* CSS animations */}
       <style>{`
