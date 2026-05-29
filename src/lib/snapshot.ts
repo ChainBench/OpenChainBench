@@ -46,7 +46,7 @@ const KEY_PREFIX = "ocb:snap:v1:";
  *  new field don't try to deserialize old-shape values. The Zod schema
  *  below would also reject those, but the version prefix lets us
  *  invalidate without writing strict-mode parsers. */
-const SCHEMA_VERSION = 1 as const;
+const SCHEMA_VERSION = 2 as const;
 
 // Minimal runtime payload. Editorial metadata isn't snapshotted because
 // it lives in YAML and is rebuilt from the spec on every read.
@@ -57,6 +57,8 @@ const SnapshotSchema = z.object({
   sampleSize: z.number(),
   results: z.array(z.any()),
   extras: z.any(),
+  bestPerChain: z.record(z.string(), z.any()).optional(),
+  worstPerChain: z.record(z.string(), z.any()).optional(),
 });
 
 export type SnapshotPayload = {
@@ -64,6 +66,8 @@ export type SnapshotPayload = {
   extras: ResultExtras;
   sampleSize: number;
   lastRunAt: string;
+  bestPerChain?: Record<string, ProviderResult>;
+  worstPerChain?: Record<string, ProviderResult>;
 };
 
 function isConfigured(): boolean {
@@ -168,6 +172,12 @@ export async function readSnapshot(
       extras: parsed.data.extras as ResultExtras,
       sampleSize: parsed.data.sampleSize,
       lastRunAt: parsed.data.lastRunAt,
+      bestPerChain: parsed.data.bestPerChain as
+        | Record<string, ProviderResult>
+        | undefined,
+      worstPerChain: parsed.data.worstPerChain as
+        | Record<string, ProviderResult>
+        | undefined,
     };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -190,5 +200,13 @@ export function snapshotFromBenchmark(b: Benchmark): SnapshotPayload {
     extras: b.extras,
     sampleSize: b.sampleSize,
     lastRunAt: b.lastRunAt,
+    // Persist per-chain leader stash so the snapshot-recovery path
+    // (loadBenchmarkUnfilteredCached's KV fallback in spec.ts) can
+    // reconstruct a Benchmark that still resolves the
+    // `{{best_name:chain:X}}` / `{{best_p50:chain:X}}` family of
+    // placeholders. Without these, a cold-start fetched from the
+    // snapshot serves the raw placeholder string to the page.
+    bestPerChain: b.bestPerChain,
+    worstPerChain: b.worstPerChain,
   };
 }
