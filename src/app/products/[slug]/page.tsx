@@ -248,6 +248,26 @@ export default async function ProviderPage({
             const catColor = CATEGORY_COLOR[a.benchmark.category];
             const hasData = a.rank > 0 && a.result.ms.p50 > 0;
             const value = hasData ? fmtUnit(a.result.ms.p50, a.benchmark.unit) : null;
+            // Per-chain rank chips. Rendered alongside the aggregate rank
+            // when the bench declares chain dimensions and the provider has
+            // per-chain ranks populated. Surface text reads e.g. "#1 on
+            // Solana · #4 on Base · #4 on BNB" so a chain-restricted
+            // provider can't be passed off as a free cross-chain #1.
+            const chainRanks =
+              a.rankPerChain && a.benchmark.chainDimensions
+                ? a.benchmark.chainDimensions
+                    .filter((c) => c.value !== "all")
+                    .map((c) => ({ chain: c, entry: a.rankPerChain?.[c.value] }))
+                    .filter(
+                      (
+                        x,
+                      ): x is {
+                        chain: { value: string; label: string };
+                        entry: { rank: number; totalRanked: number };
+                      } => !!x.entry,
+                    )
+                : [];
+            const hasChainRanks = chainRanks.length > 0;
             return (
               <li key={a.benchmark.slug}>
                 <Link
@@ -281,6 +301,22 @@ export default async function ProviderPage({
                     <p className="text-xs text-ink-muted truncate">
                       {a.benchmark.metric}
                     </p>
+                    {hasChainRanks && (
+                      <p className="mt-1.5 flex flex-wrap items-center gap-1.5 font-sans text-[10px] uppercase tracking-[0.14em] font-medium">
+                        {chainRanks.map(({ chain, entry }) => (
+                          <span
+                            key={chain.value}
+                            className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 ${
+                              entry.rank === 1
+                                ? "border-good/40 bg-good/10 text-good"
+                                : "border-rule bg-paper-soft text-ink-muted"
+                            }`}
+                          >
+                            #{entry.rank} on {chain.label}
+                          </span>
+                        ))}
+                      </p>
+                    )}
                   </div>
                   <div className="col-start-2 sm:col-start-3 text-left sm:text-right">
                     {hasData ? (
