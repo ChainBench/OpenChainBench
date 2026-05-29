@@ -74,6 +74,7 @@ const nextConfig: NextConfig = {
       { source: "/networks", destination: "/", permanent: true },
       { source: "/providers", destination: "/products", permanent: true },
       { source: "/providers/:slug", destination: "/products/:slug", permanent: true },
+      { source: "/benchmarks/relay-link-revenue", destination: "/benchmarks/bridge-revenue", permanent: true },
     ];
   },
 };

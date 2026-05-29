@@ -1,11 +1,11 @@
 # OpenChainBench. Bench № 028
 
-slug: relay-link-revenue
+slug: bridge-revenue
 number: "028"
-title: Relay.link implied protocol revenue
-seo_title: "Relay.link revenue tracker 2026: implied margin USD per day, take rate bps, cross-chain swap volume"
-seo_description: "Live tracker of Relay.link implied protocol revenue. Sum of (USD paid - USD received - gas - disclosed app fees) over all swaps in 24h / 7d / 30d windows. Upper bound on what Relay + solvers collectively keep. Methodology pre-registered, harness open source."
-subtitle: Implied margin in USD that Relay.link plus its solver network collectively retain per swap, summed over rolling 24h / 7d / 30d windows. Upper bound, not exact. Read methodology before citing.
+title: Cross-chain bridge implied protocol revenue
+seo_title: "Bridge revenue tracker 2026: cross-chain protocol implied margin USD per day, take rate bps, swap volume (Relay + comparable bridges)"
+seo_description: "Live tracker of cross-chain bridge implied protocol revenue. Sum of (USD paid - USD received - gas - disclosed app fees) over all swaps in 24h / 7d / 30d windows. Upper bound on what each bridge + its solver network collectively keep. Methodology pre-registered, harness open source. Relay tracked today; Across / Socket / deBridge to follow."
+subtitle: Implied margin in USD that each cross-chain bridge plus its solver network collectively retain per swap, summed over rolling 24h / 7d / 30d windows. Upper bound, not exact. Read methodology before citing.
 category: Bridges
 status: live
 metric: Implied revenue USD (24h)
@@ -118,6 +118,9 @@ faq:
     a: "Relay.link is a cross-chain swap routing protocol, the closest fit in the OpenChainBench category list is Bridges. Other benches in this category measure bridge fees, bridge quote latency and bridge-monitor finality. A Trading or Aggregators classification would also be defensible since Relay is structurally closer to an intent-settlement layer than a classic bridge, but Bridges is the most discoverable bucket for the readers most likely to want this number."
 
 source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/relay-link-revenue
+# Harness directory keeps its provider-specific name. Additional bridges
+# land as sibling harnesses (e.g. across-revenue, socket-revenue) and feed
+# their own provider entries into this same bench spec.
 
 prometheus:
   window: 24h
