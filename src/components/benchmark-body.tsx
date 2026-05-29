@@ -11,6 +11,7 @@ import { RankedBarChart } from "@/components/ranked-bar-chart";
 import { DistributionChart } from "@/components/distribution-chart";
 import { DonutChart } from "@/components/donut-chart";
 import { RegionGrid } from "@/components/region-grid";
+import { CountLeaderboard } from "@/components/count-leaderboard";
 import { SummaryStat } from "@/components/summary-stat";
 import { ViewSwitcher } from "@/components/view-switcher";
 import { fmtUnit, unitSuffix, fmtValue } from "@/lib/format";
@@ -301,6 +302,12 @@ export function BenchmarkBody({
               className="min-h-[260px] transition-opacity duration-200"
               style={{ opacity: viewMounted ? 1 : 0 }}
             >
+              {view === "countLeaderboard" && (
+                <CountLeaderboard
+                  benchmark={benchmark}
+                  headerActions={<ViewSwitcher allowed={allowedViews} value={view} onChange={setView} />}
+                />
+              )}
               {view === "rankedBar" && (
                 <RankedBarChart
                   benchmark={benchmark}
