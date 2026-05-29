@@ -46,7 +46,7 @@ const KEY_PREFIX = "ocb:snap:v1:";
  *  new field don't try to deserialize old-shape values. The Zod schema
  *  below would also reject those, but the version prefix lets us
  *  invalidate without writing strict-mode parsers. */
-const SCHEMA_VERSION = 2 as const;
+const SCHEMA_VERSION = 3 as const;
 
 // Minimal runtime payload. Editorial metadata isn't snapshotted because
 // it lives in YAML and is rebuilt from the spec on every read.
@@ -59,6 +59,7 @@ const SnapshotSchema = z.object({
   extras: z.any(),
   bestPerChain: z.record(z.string(), z.any()).optional(),
   worstPerChain: z.record(z.string(), z.any()).optional(),
+  providersPerChain: z.record(z.string(), z.array(z.string())).optional(),
 });
 
 export type SnapshotPayload = {
@@ -68,6 +69,7 @@ export type SnapshotPayload = {
   lastRunAt: string;
   bestPerChain?: Record<string, ProviderResult>;
   worstPerChain?: Record<string, ProviderResult>;
+  providersPerChain?: Record<string, string[]>;
 };
 
 function isConfigured(): boolean {
@@ -178,6 +180,9 @@ export async function readSnapshot(
       worstPerChain: parsed.data.worstPerChain as
         | Record<string, ProviderResult>
         | undefined,
+      providersPerChain: parsed.data.providersPerChain as
+        | Record<string, string[]>
+        | undefined,
     };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -208,5 +213,7 @@ export function snapshotFromBenchmark(b: Benchmark): SnapshotPayload {
     // snapshot serves the raw placeholder string to the page.
     bestPerChain: b.bestPerChain,
     worstPerChain: b.worstPerChain,
+    providersPerChain: (b as { providersPerChain?: Record<string, string[]> })
+      .providersPerChain,
   };
 }
