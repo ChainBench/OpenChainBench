@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 )
 
@@ -15,9 +16,26 @@ import (
 // listener away from the address Prometheus expects. Same fix as
 // l2-block-time (see mobula-api commit 833026a719).
 
+// currentRegion is the value stamped onto every emitted Prometheus
+// label as `region=`. Set once at startup from $REGION; default
+// "eu-west" matches the original single-region deploy so a Railway
+// service that doesn't set the variable keeps its existing label
+// shape. Multi-region deploys (us-east + eu-west + sgp) must set
+// REGION on each instance — same convention as aggregator-head-lag.
+var currentRegion = loadRegion()
+
+func loadRegion() string {
+	r := strings.TrimSpace(os.Getenv("REGION"))
+	if r == "" {
+		return "eu-west"
+	}
+	return r
+}
+
 func main() {
 	fmt.Println("=== RPC Capabilities Harness ===")
 	fmt.Println("OpenChainBench - public RPC latency, reliability, and archive depth.")
+	fmt.Printf("Region: %s (set via $REGION env)\n", currentRegion)
 	fmt.Println()
 
 	for _, c := range chains() {
