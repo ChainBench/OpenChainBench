@@ -90,7 +90,10 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v3: added bestPerChain + worstPerChain stash; cached objects from
   // v2 deploys lack those fields, which made `{{best_name:chain:X}}`
   // placeholders fall through to the raw token on the rendered page.
-  ["bench-unfiltered-v3"],
+  // v4: added providersPerChain so per-chain rank chips only render for
+  // providers that actually returned data on that chain (Solana-only
+  // providers no longer get phantom chips on Base/BNB).
+  ["bench-unfiltered-v4"],
   { revalidate: 60, tags: ["benchmarks"] },
 );
 
@@ -362,6 +365,7 @@ async function specToBenchmark(
     // with no Prom data just doesn't show up in bestPerChain.
     let bestPerChain: Record<string, ProviderResult> | undefined;
     let worstPerChain: Record<string, ProviderResult> | undefined;
+    let providersPerChain: Record<string, string[]> | undefined;
     // Compute per-chain leaders for BOTH unfiltered and filtered views.
     // Filtered variants are pre-fetched by the page (one per chain × region
     // combo) and end up in the RSC payload; their findings/seo_intro/faq
@@ -378,26 +382,37 @@ async function specToBenchmark(
         chainValues.map(async (chain) => {
           const chainSpec = applyDimensionsToSpec(spec, { chain });
           const chainLive = await tryLoadLive(chainSpec, true);
-          if (!chainLive) return [chain, undefined, undefined] as const;
+          if (!chainLive) {
+            return [chain, undefined, undefined, [] as string[]] as const;
+          }
           for (const r of chainLive.results) r.availability = "live";
           const liveForChain = liveProviderResults(chainLive.results);
+          const slugs = liveForChain.map((r) => r.slug);
           if (liveForChain.length === 0) {
-            return [chain, undefined, undefined] as const;
+            return [chain, undefined, undefined, slugs] as const;
           }
           const sorted = [...liveForChain].sort((a, b) =>
             spec.higher_is_better ? b.ms.p50 - a.ms.p50 : a.ms.p50 - b.ms.p50,
           );
-          return [chain, sorted[0], sorted[sorted.length - 1]] as const;
+          return [
+            chain,
+            sorted[0],
+            sorted[sorted.length - 1],
+            slugs,
+          ] as const;
         }),
       );
       const bests: Record<string, ProviderResult> = {};
       const worsts: Record<string, ProviderResult> = {};
-      for (const [chain, leader, trailer] of perChainEntries) {
+      const providers: Record<string, string[]> = {};
+      for (const [chain, leader, trailer, slugs] of perChainEntries) {
         if (leader) bests[chain] = leader;
         if (trailer) worsts[chain] = trailer;
+        if (slugs.length > 0) providers[chain] = slugs;
       }
       if (Object.keys(bests).length > 0) bestPerChain = bests;
       if (Object.keys(worsts).length > 0) worstPerChain = worsts;
+      if (Object.keys(providers).length > 0) providersPerChain = providers;
     }
 
     // Resolve {{p50:slug}} / {{best_name}} / {{count}} etc. placeholders
@@ -408,6 +423,7 @@ async function specToBenchmark(
       ...live,
       bestPerChain,
       worstPerChain,
+      providersPerChain,
     });
     // Persist a snapshot of the runtime data so a future cold start
     // during a Prom blackout can still render this bench. Only the
