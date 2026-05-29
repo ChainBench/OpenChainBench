@@ -182,48 +182,51 @@ function Row({
         {String(i + 1).padStart(2, "0")}
       </td>
       <td className="py-2.5 pr-3 font-serif text-[14px] min-w-0">
-        <span className="flex items-center gap-2 min-w-0">
-          <ProviderLogo slug={r.slug} name={r.name} size={20} />
-          {isRegion(r.slug) ? (
-            <span
-              className="font-semibold truncate min-w-0"
-              style={{ color: isOffline ? "var(--color-ink-muted)" : color }}
-            >
-              {r.name}
-            </span>
-          ) : (
-            <Link
-              href={`/products/${r.slug}`}
-              className="font-semibold hover:underline underline-offset-2 truncate min-w-0"
-              style={{ color: isOffline ? "var(--color-ink-muted)" : color }}
-            >
-              {r.name}
-            </Link>
-          )}
-          {r.tag && !isOffline && (
-            <span className="hidden sm:inline-block truncate max-w-[140px] md:max-w-[220px] font-sans text-[10px] uppercase tracking-[0.14em] text-ink-muted">
-              {r.tag}
-            </span>
-          )}
-          {isOffline && (
-            <Hint label="No samples returned this cycle. Provider or its upstream is unavailable. Values reappear once data resumes.">
-              <span className="inline-flex items-center gap-1 shrink-0 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-muted">
-                <span className="inline-block w-1.5 h-1.5 rounded-full bg-[var(--color-warn,#c08a3c)]" aria-hidden />
-                Currently unavailable
+        <div className="flex flex-col gap-1 min-w-0">
+          <span className="flex items-center gap-2 min-w-0">
+            <ProviderLogo slug={r.slug} name={r.name} size={20} />
+            {isRegion(r.slug) ? (
+              <span
+                className="font-semibold truncate min-w-0"
+                style={{ color: isOffline ? "var(--color-ink-muted)" : color }}
+              >
+                {r.name}
               </span>
-            </Hint>
-          )}
-          {r.type && !isOffline && (
-            <span className="hidden md:inline-flex">
-              <ProviderTypeBadge type={r.type} />
-            </span>
-          )}
-          {/* Per-chain coverage chip — chain-restricted providers like
-              GMGN (Solana-only) are flagged inline so the unfiltered
-              ranking can't be misread as a global #1. Renders nothing
-              when the bench has no per-chain leader data. */}
+            ) : (
+              <Link
+                href={`/products/${r.slug}`}
+                className="font-semibold hover:underline underline-offset-2 truncate min-w-0"
+                style={{ color: isOffline ? "var(--color-ink-muted)" : color }}
+              >
+                {r.name}
+              </Link>
+            )}
+            {r.tag && !isOffline && (
+              <span className="hidden sm:inline-block truncate max-w-[140px] md:max-w-[220px] font-sans text-[10px] uppercase tracking-[0.14em] text-ink-muted">
+                {r.tag}
+              </span>
+            )}
+            {isOffline && (
+              <Hint label="No samples returned this cycle. Provider or its upstream is unavailable. Values reappear once data resumes.">
+                <span className="inline-flex items-center gap-1 shrink-0 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-muted">
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-[var(--color-warn,#c08a3c)]" aria-hidden />
+                  Currently unavailable
+                </span>
+              </Hint>
+            )}
+            {r.type && !isOffline && (
+              <span className="hidden md:inline-flex">
+                <ProviderTypeBadge type={r.type} />
+              </span>
+            )}
+          </span>
+          {/* Per-chain coverage chips on their own row — chain-restricted
+              providers like GMGN (Solana-only) are flagged so the unfiltered
+              ranking can't be misread as a global #1. Indented to align
+              with the name (logo width + gap = 20 + 8 = 28 px). Renders
+              nothing when the bench has no per-chain leader data. */}
           {!isOffline && (
-            <span className="hidden md:inline-flex">
+            <span className="hidden md:flex flex-wrap items-center gap-1 pl-7">
               <ChainCoverageChip
                 providerSlug={r.slug}
                 benchmark={benchmark}
@@ -231,7 +234,7 @@ function Row({
               />
             </span>
           )}
-        </span>
+        </div>
       </td>
       {isOffline ? (
         <td
