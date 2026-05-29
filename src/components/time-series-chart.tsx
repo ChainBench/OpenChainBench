@@ -570,7 +570,10 @@ function Chart({
       const last = lastDrawn ? l.values[pts.indexOf(lastDrawn)] : 0;
       const lastX = lastDrawn ? lastDrawn.x : padL + innerW;
       const lastY = lastDrawn ? lastDrawn.y : padT + innerH;
-      return { ...l, color, pts, linePath, fillPath, lastX, lastY, last };
+      // Expose isGap so the hover dot + tooltip can drop a sample that
+      // sits inside a gap (provider stopped emitting). Otherwise the
+      // line draws a break but the dot keeps rendering at 0 / NaN.
+      return { ...l, color, pts, linePath, fillPath, lastX, lastY, last, isGap };
     });
   }, [slicedLines, padL, padR, padT, padB, innerW, innerH, lo, yRange]);
 
@@ -590,17 +593,30 @@ function Chart({
     ? innerW * Math.abs(dragFrac.current - dragFrac.start)
     : 0;
 
-  // Tooltip layout (sorted by value at hover, descending). Excluded
-  // providers are dropped so the tooltip stays consistent with the
-  // visible line set — a faded line shouldn't get a tooltip row.
+  // Tooltip layout (sorted by value at hover, descending). Two subtleties:
+  // (1) excluded providers are dropped so a faded line doesn't get a row;
+  // (2) different lines can have different point counts (provider added
+  //     later, missing samples from Prom), so we map the global hover.idx
+  //     to each line's own proportional index before looking up the
+  //     value. Gap samples are dropped so a stopped provider doesn't
+  //     keep showing the last-known number.
   const tooltipRows = useMemo(() => {
     if (!hover) return null;
+    const globalFraction =
+      numPoints > 1 ? hover.idx / (numPoints - 1) : 0;
     return [...drawn]
       .filter((d) => !d.excluded)
-      .map((d) => ({ ...d, value: d.values[hover.idx] ?? d.last }))
-      .filter((d) => Number.isFinite(d.value))
+      .map((d) => {
+        const localIdx =
+          d.values.length > 1
+            ? Math.round(globalFraction * (d.values.length - 1))
+            : 0;
+        const value = d.values[localIdx];
+        return { ...d, value };
+      })
+      .filter((d) => Number.isFinite(d.value) && !d.isGap(d.value))
       .sort((a, b) => b.value - a.value);
-  }, [drawn, hover]);
+  }, [drawn, hover, numPoints]);
 
   return (
     <div
@@ -817,8 +833,18 @@ function Chart({
             />
             {drawn.map((d) => {
               if (d.excluded) return null;
-              const v = d.values[hover.idx];
-              if (!Number.isFinite(v)) return null;
+              // Map the global crosshair index to this line's own index
+              // — short arrays (provider added late, Prom dropouts) must
+              // not look up values past their end, and a gap sample
+              // (provider stopped emitting) shouldn't show a dot at all.
+              const globalFraction =
+                numPoints > 1 ? hover.idx / (numPoints - 1) : 0;
+              const localIdx =
+                d.values.length > 1
+                  ? Math.round(globalFraction * (d.values.length - 1))
+                  : 0;
+              const v = d.values[localIdx];
+              if (!Number.isFinite(v) || d.isGap(v)) return null;
               const cy = padT + innerH * (1 - (v - lo) / yRange);
               return (
                 <g key={d.slug}>
