@@ -7,7 +7,6 @@ import {
   CircleDashed,
   LineChart,
   SlidersHorizontal,
-  Trophy,
 } from "lucide-react";
 import {
   type ComponentType,
@@ -24,7 +23,6 @@ const META: Record<
 > = {
   timeseries: { icon: LineChart, label: "Time series" },
   rankedBar: { icon: BarChart3, label: "Ranked bar" },
-  countLeaderboard: { icon: Trophy, label: "Leaderboard" },
   distribution: { icon: SlidersHorizontal, label: "Distribution" },
   donut: { icon: CircleDashed, label: "Donut" },
 };
