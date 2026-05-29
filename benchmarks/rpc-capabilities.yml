@@ -113,6 +113,16 @@ dimensions:
     - { value: linea,     label: Linea }
     - { value: scroll,    label: Scroll }
     - { value: mantle,    label: Mantle }
+  # Region values are the raw harness labels (REGION env on each Railway
+  # service: us-east / eu-west / sgp). Selecting one at the top of the
+  # page re-fetches all queries with `region="X"` injected — headline
+  # numbers + ranked-bar + chart all flip to that region. "All" leaves
+  # the queries unscoped, falling back to the cross-region average.
+  region:
+    - { value: all,     label: All regions }
+    - { value: us-east, label: US-East }
+    - { value: eu-west, label: EU-West }
+    - { value: sgp,     label: AP-Southeast }
 
 # Real metrics emitted by the rpc-capabilities harness:
 #   rpc_latency_milliseconds{provider, chain}                       gauge
