@@ -67,13 +67,17 @@ export function RankedBarChart({
 
   // Use log scale when dynamic range > 50x - typical for finality where
   // sub-second chains coexist with 30-min ones. Linear scale crushes
-  // everything below the slowest chain into invisible slivers.
-  const useLog = maxV / Math.max(minV, 1) > 50;
+  // everything below the slowest chain into invisible slivers. Min-clamp
+  // is a tiny epsilon (not 1) so sub-1 ranges — typical for second-scale
+  // latency benches — get detected as wide-dynamic-range correctly and
+  // sub-1 values don't all collapse to 0 width on the log axis.
+  const EPS = 1e-6;
+  const useLog = maxV / Math.max(minV, EPS) > 50;
 
   const project = (v: number) => {
     if (!useLog) return Math.max(0, v) / maxV;
     if (v <= 0) return 0;
-    const lo = Math.log10(Math.max(1, minV / 2));
+    const lo = Math.log10(Math.max(minV / 2, EPS));
     const hi = Math.log10(maxV);
     return Math.max(0, (Math.log10(v) - lo) / (hi - lo));
   };
