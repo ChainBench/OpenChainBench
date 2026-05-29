@@ -168,24 +168,37 @@ function rankPerChainForBench(
   if (!bestPerChain || !b.dimensions?.chain) return out;
   const liveSorted = rankProviders(b);
   if (liveSorted.length === 0) return out;
+  // Set of provider slugs that returned data per chain, populated by
+  // spec.ts. When present, we restrict per-chain ranks to that set so
+  // a Solana-only provider doesn't get a phantom chip on Base/BNB.
+  // Falls back to "everyone on the aggregate list" only when the bench
+  // hasn't stashed this — e.g. older cached entries from a v3 deploy.
+  const providersPerChain = (b as { providersPerChain?: Record<string, string[]> })
+    .providersPerChain;
   for (const chain of b.dimensions.chain) {
     if (chain.value === "all") continue;
     const leader = bestPerChain[chain.value];
     if (!leader) continue;
+    const presentSet = providersPerChain?.[chain.value]
+      ? new Set(providersPerChain[chain.value].map((s) => s.toLowerCase()))
+      : undefined;
+    const scoped = presentSet
+      ? liveSorted.filter((r) => presentSet.has(r.slug.toLowerCase()))
+      : liveSorted;
     const perProvider = new Map<string, { rank: number; totalRanked: number }>();
     const leaderLc = leader.slug.toLowerCase();
-    const leaderIdx = liveSorted.findIndex((r) => r.slug.toLowerCase() === leaderLc);
-    liveSorted.forEach((r, idx) => {
+    const leaderIdx = scoped.findIndex((r) => r.slug.toLowerCase() === leaderLc);
+    scoped.forEach((r, idx) => {
       const lc = r.slug.toLowerCase();
       if (lc === leaderLc) {
-        perProvider.set(lc, { rank: 1, totalRanked: liveSorted.length });
+        perProvider.set(lc, { rank: 1, totalRanked: scoped.length });
         return;
       }
       // Anyone ranked above the leader in the unfiltered set drops by one
       // slot here (since the leader skips ahead of them on this chain).
       const rankOnChain =
         leaderIdx !== -1 && idx < leaderIdx ? idx + 2 : idx + 1;
-      perProvider.set(lc, { rank: rankOnChain, totalRanked: liveSorted.length });
+      perProvider.set(lc, { rank: rankOnChain, totalRanked: scoped.length });
     });
     out[chain.value] = perProvider;
   }
