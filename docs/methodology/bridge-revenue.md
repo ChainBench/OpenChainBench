@@ -1,8 +1,8 @@
-# Methodology - Relay.link Implied Protocol Revenue
+# Methodology - Cross-chain bridge implied protocol revenue (Relay sub-methodology)
 
 > **Pre-registered methodology.** Pinned before any external party is invited to use the bench number for due diligence, deal terms, or commentary. Changes ship as public PRs with a 14-day comment window. Disputes go through public GitHub issues.
 >
-> **Version :** v1.0 - first commit 2026-05-23. Bench № 028 (Relay.link implied protocol revenue).
+> **Version :** v1.0 - first commit 2026-05-23. Bench № 028 (cross-chain bridge implied protocol revenue). This file documents the Relay.link sub-methodology; additional bridges (Across, Socket, deBridge) land as sibling sections once their harnesses ship.
 
 ---
 
