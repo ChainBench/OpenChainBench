@@ -24,10 +24,15 @@ seo_intro: |
   providers becomes visible to end users. The harness watches new
   launches on Solana, BNB Chain and Base via Mobula Pulse V2, then
   asks Mobula, Codex and Jupiter (Solana only) for the same token and
-  records which fields came back populated. Coverage is the share of
-  field checks that returned a value, computed as a rolling rate so
-  the leaderboard reflects what the API is doing this hour, not what
-  its catalogue claims to hold.
+  records which fields came back populated. Because Jupiter is
+  Solana-only by construction, the leaderboard is read per chain
+  rather than as a cross-chain aggregate that mechanically favours
+  the chain-restricted provider. On Solana the current leader is
+  {{best_name:chain:solana}} at {{best_p50:chain:solana}}; on BNB
+  Chain it is {{best_name:chain:bnb}} at {{best_p50:chain:bnb}}.
+  Coverage is the share of field checks that returned a value,
+  computed as a rolling rate so the leaderboard reflects what the
+  API is doing this hour, not what its catalogue claims to hold.
 
 abstract: |
   We benchmark how complete each aggregator's token-metadata response is for
@@ -55,12 +60,13 @@ methodology:
   - "Jupiter is Solana-only. it appears with zero coverage on EVM chains by construction; the cross-chain headline excludes Jupiter on chains it does not support."
 
 findings:
-  - "{{best_name}} currently leads metadata coverage at {{best_p50}} (p50, 24 h) across {{count}} measured providers. The number is the share of (logo, description, twitter, website) field checks that returned a populated value on freshly-launched tokens."
-  - "{{name:mobula}} returns {{p50:mobula}} (p50, 24 h). Coverage on fresh tokens reflects how aggressively the provider's indexer pulls launchpad-side metadata at mint time rather than waiting for a curator to add it later."
-  - "{{name:codex}} clocks {{p50:codex}} (p50, 24 h). GraphQL `token` queries return a richer schema by design, so coverage is high on tokens that survive their first hour and lower on fresh launches still missing socials."
-  - "{{name:jupiter}} sits at {{p50:jupiter}} (p50, 24 h) on Solana, by far its strongest chain. Jupiter does not index EVM, so the cross-chain headline excludes Jupiter on chains it does not support."
+  - "On Solana, {{best_name:chain:solana}} leads metadata coverage at {{best_p50:chain:solana}} (p50, 24 h). The number is the share of (logo, description, twitter, website) field checks that returned a populated value on freshly-launched Solana tokens."
+  - "On BNB Chain, {{best_name:chain:bnb}} leads at {{best_p50:chain:bnb}} (p50, 24 h). BNB is the cleaner read on indexer quality across providers because Jupiter does not index EVM, so the leaderboard is decided between Mobula and Codex on the same footing."
+  - "{{name:mobula}} returns {{p50:mobula}} (p50, 24 h) on the unfiltered aggregate. Coverage on fresh tokens reflects how aggressively the provider's indexer pulls launchpad-side metadata at mint time rather than waiting for a curator to add it later."
+  - "{{name:codex}} clocks {{p50:codex}} (p50, 24 h) on the unfiltered aggregate. GraphQL `token` queries return a richer schema by design, so coverage is high on tokens that survive their first hour and lower on fresh launches still missing socials."
+  - "{{name:jupiter}} sits at {{p50:jupiter}} (p50, 24 h). Jupiter is Solana-only by design, so its number reflects Solana coverage exclusively, the cross-chain aggregate is not comparable to multi-chain providers and is reported per chain instead."
   - "Coverage drops sharply on the first hour after a launch. p99 ({{p99:mobula}} / {{p99:codex}} / {{p99:jupiter}}) is what a trading UI sees during a launch burst when dozens of new tokens land in the same minute."
-  - "{{worst_name}} trails at {{worst_p50}} (p50, 24 h). A 30-point gap on the leaderboard means roughly one in three field renders falls back to a placeholder when displaying a fresh-launch token."
+  - "{{worst_name:chain:solana}} trails on Solana at {{worst_p50:chain:solana}} (p50, 24 h). A 30-point gap on the leaderboard means roughly one in three field renders falls back to a placeholder when displaying a fresh-launch token."
 
 source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/metadata-coverage
 
@@ -70,7 +76,7 @@ prometheus:
 
 faq:
   - q: "Which token metadata API has the best coverage for fresh launches?"
-    a: "{{best_name}} currently leads at {{best_p50}} (p50, 24 h) across {{count}} measured providers. The benchmark targets the hardest case for any aggregator, tokens minted in the last few minutes on Solana, BNB Chain or Base launchpads (pump.fun, Four.meme, Meteora DBC, Raydium CPMM and others), where catalogue size matters less than how fast the indexer reads off-chain metadata."
+    a: "The leaderboard is read per chain because one provider (Jupiter) is Solana-only and would mechanically dominate an unfiltered cross-chain aggregate. On Solana, {{best_name:chain:solana}} currently leads at {{best_p50:chain:solana}} (p50, 24 h). On BNB Chain, {{best_name:chain:bnb}} leads at {{best_p50:chain:bnb}} (p50, 24 h). The benchmark targets the hardest case for any aggregator, tokens minted in the last few minutes on Solana, BNB or Base launchpads (pump.fun, Four.meme, Meteora DBC, Raydium CPMM and others), where catalogue size matters less than how fast the indexer reads off-chain metadata."
   - q: "What does 'metadata coverage' actually measure?"
     a: "For every freshly-launched token the harness asks each provider for that token's metadata and records whether four canonical fields came back populated. Logo, description, twitter, website. Coverage is the share of those field checks that returned a value, summed across providers, chains and fields, then expressed as a percentage. A provider with 80% coverage returns four-fifths of the requested fields on average for fresh tokens; a provider with 50% leaves half the fields blank."
   - q: "Why do fresh tokens have low metadata coverage everywhere?"
