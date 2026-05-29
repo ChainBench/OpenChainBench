@@ -149,7 +149,12 @@ const loadAllBenchmarksCached = unstable_cache(
     }
     return benchmarks.sort((a, b) => a.number.localeCompare(b.number));
   },
-  ["all-benchmarks-v5"],
+  // v6: aggregate cache. Bumped together with bench-unfiltered-v4 so
+  // the per-bench providersPerChain field actually propagates into the
+  // benchmark slice the products page reads. Without bumping this, the
+  // outer cache can keep serving v5-era benchmarks (no providersPerChain)
+  // even after the inner cache is fresh.
+  ["all-benchmarks-v6"],
   { revalidate: 60, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
