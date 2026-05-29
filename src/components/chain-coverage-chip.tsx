@@ -11,6 +11,11 @@ type Props = {
   /** Optional. When set, hides chains the provider is NOT present on
    *  (default: true — only show chains the provider has a measurement on). */
   onlyPresent?: boolean;
+  /** When true (default), only render chips for chains the provider LEADS.
+   *  Set to false on /products/[slug] where surfacing every covered chain
+   *  is useful. On the bench page leaderboard the leader-only view keeps
+   *  the row scannable on benches with 10+ chain dimensions. */
+  leadersOnly?: boolean;
   /** Small visual variant for inline use inside a leaderboard row. */
   size?: "sm" | "xs";
   className?: string;
@@ -34,6 +39,7 @@ export function ChainCoverageChip({
   providerSlug,
   benchmark,
   onlyPresent = true,
+  leadersOnly = true,
   size = "sm",
   className = "",
 }: Props) {
@@ -55,6 +61,11 @@ export function ChainCoverageChip({
       const leader = bestPerChain[c.value];
       if (!leader) return null;
       const isLeader = leader.slug.toLowerCase() === lower;
+      // In leaders-only mode (used by the bench page leaderboard) we hard
+      // skip non-leader chips. Benches like wallet-labels-coverage declare
+      // 11 chain dimensions; rendering every one of them per row inflates
+      // the name column past readability without adding signal.
+      if (leadersOnly && !isLeader) return null;
       // Detect provider presence on this chain: a provider is "present"
       // when it has a non-zero p50 entry in the unfiltered results AND
       // bestPerChain has any leader for this chain (proxy: the chain is
