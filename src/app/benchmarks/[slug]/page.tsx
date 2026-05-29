@@ -19,6 +19,7 @@ import { CATEGORY_COLOR } from "@/lib/category-colors";
 import { headlineSentence } from "@/lib/citation";
 import { SITE } from "@/data/site";
 import { buildFaqPageJsonLd, safeJsonLd } from "@/lib/jsonld";
+import { renderTemplate } from "@/lib/bench-template";
 import type { Benchmark } from "@/types/benchmark";
 
 // ISR with a 60 s revalidate window. The page is prerendered by
@@ -51,13 +52,44 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: Promise<Params>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const b = await getBenchmark(slug);
-  if (!b) return {};
-  const metaTitle = b.seoTitle ?? b.title;
+  // Next 16 ships searchParams as a Promise. Reading it here would normally
+  // tip the segment into "dynamic", but generateMetadata is allowed to
+  // consume request data without affecting the parent page's static
+  // rendering — the page.tsx body still resolves searchParams client-side
+  // through BenchmarkBody.
+  const sp = (await searchParams) ?? {};
+  const rawChain = Array.isArray(sp.chain) ? sp.chain[0] : sp.chain;
+  // Always re-fetch unfiltered first — used for canonical fields and the
+  // default copy. When a chain is requested, fetch the filtered variant
+  // so headline sentence + template placeholders resolve against the
+  // chain-scoped leader rather than the cross-chain aggregate.
+  const baseBench = await getBenchmark(slug);
+  if (!baseBench) return {};
+  const chainOption = (baseBench.dimensions?.chain ?? []).find(
+    (c) => c.value.toLowerCase() === (rawChain ?? "").toLowerCase(),
+  );
+  const isChainScoped = Boolean(chainOption && chainOption.value !== "all");
+  const filteredBench = isChainScoped
+    ? (await getBenchmark(slug, { chain: chainOption!.value })) ?? baseBench
+    : baseBench;
+  // Use the filtered bench for headline + template substitutions so the
+  // OG/Twitter card and meta description reference the chain-specific
+  // leader rather than the cross-chain aggregate (the headline of the
+  // unfiltered bench is misleading when a single chain dominates the
+  // baseline — e.g. Solana skewing the "fastest data API" claim on the
+  // Bench-001 aggregate view).
+  const b = filteredBench;
+  const chainLabel = chainOption?.label ?? null;
+  const baseTitle = b.seoTitle ?? b.title;
+  const metaTitle = isChainScoped && chainLabel
+    ? `${baseTitle} on ${chainLabel}`
+    : baseTitle;
   // Description precedence (most-to-least specific):
   //   1. `seo_description` from the YAML - hand-crafted snippet with the
   //      long-tail query phrases we want to rank for.
@@ -65,14 +97,32 @@ export async function generateMetadata({
   //      from the current leader's measured value.
   //   3. Just `subtitle` - when the bench has no live data yet.
   const sentence = headlineSentence(b);
-  const description =
+  let description =
     b.seoDescription ?? (sentence ? `${sentence} ${b.subtitle}` : b.subtitle);
-  const url = `${SITE.url}/benchmarks/${b.slug}`;
+  // Resolve any template placeholders ({{best_name}}, {{best_p50}}, ...)
+  // against the (possibly chain-scoped) bench so editorial copy in the
+  // description renders with live, chain-honest numbers. seoDescription
+  // is the most common host for these placeholders.
+  if (description) description = renderTemplate(description, b);
+  // Canonical NEVER carries `?chain=...`. Per-chain variants share the
+  // same canonical URL so Google consolidates link signal on the hub
+  // page instead of treating each tab as a separate document. The OG
+  // url is the chain-scoped one so social previews don't all collapse
+  // to the same target.
+  const canonical = `${SITE.url}/benchmarks/${baseBench.slug}`;
+  const ogUrl = isChainScoped
+    ? `${canonical}?chain=${chainOption!.value}`
+    : canonical;
   return {
     title: metaTitle,
     description,
-    alternates: { canonical: url },
-    openGraph: { title: metaTitle, description, type: "article", url },
+    alternates: { canonical },
+    openGraph: {
+      title: metaTitle,
+      description,
+      type: "article",
+      url: ogUrl,
+    },
     twitter: { card: "summary_large_image", title: metaTitle, description },
   };
 }

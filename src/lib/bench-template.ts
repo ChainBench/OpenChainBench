@@ -11,22 +11,32 @@
  *
  * Supported placeholders, all enclosed in `{{ ... }}`:
  *
- *   {{p50:<slug>}}         live p50 for a provider, formatted with the
- *                          benchmark's unit. e.g. "6.6 min" / "397 ms".
- *   {{p99:<slug>}}         same for p99.
- *   {{mean:<slug>}}        same for mean.
- *   {{name:<slug>}}        provider display name.
- *   {{best_name}}          name of the leading provider (best p50).
- *   {{best_p50}}           p50 of the leader, formatted.
- *   {{worst_name}}         name of the trailing provider.
- *   {{worst_p50}}          p50 of the trailing provider, formatted.
- *   {{count}}              number of providers with live data.
+ *   {{p50:<slug>}}             live p50 for a provider, formatted with
+ *                              the benchmark's unit. e.g. "6.6 min" /
+ *                              "397 ms".
+ *   {{p99:<slug>}}             same for p99.
+ *   {{mean:<slug>}}            same for mean.
+ *   {{name:<slug>}}            provider display name.
+ *   {{best_name}}              name of the leading provider (best p50).
+ *   {{best_p50}}               p50 of the leader, formatted.
+ *   {{worst_name}}             name of the trailing provider.
+ *   {{worst_p50}}              p50 of the trailing provider, formatted.
+ *   {{best_name:chain:<x>}}    name of the provider that leads on chain
+ *                              <x> specifically. Defuses the cross-chain
+ *                              aggregate bias (a Solana-only provider
+ *                              mechanically winning head-lag because
+ *                              Solana slots are sub-second). Requires the
+ *                              spec to declare `dimensions.chain`.
+ *   {{best_p50:chain:<x>}}     p50 of the per-chain leader, formatted.
+ *   {{worst_name:chain:<x>}}   trailing provider on chain <x>.
+ *   {{worst_p50:chain:<x>}}    p50 of the trailing provider on chain <x>.
+ *   {{count}}                  number of providers with live data.
  *
  * Unknown placeholders are left untouched so a typo in the YAML can't
  * silently erase a sentence.
  */
 
-import type { Benchmark } from "@/types/benchmark";
+import type { Benchmark, ProviderResult } from "@/types/benchmark";
 import { liveResults } from "@/lib/provider-filters";
 import { fmtUnit } from "@/lib/format";
 
@@ -37,6 +47,22 @@ import { fmtUnit } from "@/lib/format";
 // the literal `{{p50:slug}}` in the rendered page.
 const TEMPLATE_RE = /\{\{\s*([a-z][a-z0-9_]*)(?::([a-z0-9-]+))?\s*\}\}/gi;
 
+// Chain-aware variants. Resolved BEFORE TEMPLATE_RE so the longer form
+// gets first dibs; whatever is left falls through to the unfiltered
+// resolver. Pattern: {{best_name:chain:solana}}, {{worst_p50:chain:bnb}}.
+const CHAIN_TEMPLATE_RE =
+  /\{\{\s*(best_name|best_p50|worst_name|worst_p50):chain:([a-z0-9_-]+)\s*\}\}/gi;
+
+/** Per-chain leader / trailer lookups against the Benchmark stash
+ *  populated by spec.ts. Inlined (not re-imported from spec.ts) to
+ *  avoid a spec.ts → bench-template.ts → spec.ts circular import. */
+function bestForChain(b: Benchmark, chain: string): ProviderResult | undefined {
+  return b.bestPerChain?.[chain];
+}
+function worstForChain(b: Benchmark, chain: string): ProviderResult | undefined {
+  return b.worstPerChain?.[chain];
+}
+
 export function renderTemplate(text: string, benchmark: Benchmark): string {
   if (!text || text.indexOf("{{") === -1) return text;
   const live = liveResults(benchmark.results);
@@ -46,7 +72,34 @@ export function renderTemplate(text: string, benchmark: Benchmark): string {
   const best = sorted[0];
   const worst = sorted[sorted.length - 1];
 
-  return text.replace(TEMPLATE_RE, (whole, keyword: string, arg?: string) => {
+  // Resolve chain-scoped placeholders first so they don't fall through to
+  // the unfiltered resolver as unknown tokens.
+  const withChain = text.replace(
+    CHAIN_TEMPLATE_RE,
+    (whole, keyword: string, chain: string) => {
+      const k = keyword.toLowerCase();
+      const chainKey = chain.toLowerCase();
+      if (k === "best_name") {
+        const lead = bestForChain(benchmark, chainKey);
+        return lead ? lead.name : whole;
+      }
+      if (k === "best_p50") {
+        const lead = bestForChain(benchmark, chainKey);
+        return lead ? fmtUnit(lead.ms.p50, benchmark.unit) : whole;
+      }
+      if (k === "worst_name") {
+        const trailer = worstForChain(benchmark, chainKey);
+        return trailer ? trailer.name : whole;
+      }
+      if (k === "worst_p50") {
+        const trailer = worstForChain(benchmark, chainKey);
+        return trailer ? fmtUnit(trailer.ms.p50, benchmark.unit) : whole;
+      }
+      return whole;
+    },
+  );
+
+  return withChain.replace(TEMPLATE_RE, (whole, keyword: string, arg?: string) => {
     const k = keyword.toLowerCase();
     switch (k) {
       case "p50":
