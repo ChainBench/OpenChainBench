@@ -171,7 +171,31 @@ export default async function BenchmarkPage({
     ),
     getBenchmarks(),
   ]);
-  const variants: Record<string, Benchmark> = Object.fromEntries(variantList);
+  // Variants only contribute chart / leaderboard / extras to the displayed
+  // bench (those legitimately differ per (chain, region) filter). Editorial
+  // copy (findings, faq, seoIntro, abstract, methodology) is the SAME on
+  // every tab and only resolves chain placeholders against the aggregate's
+  // bestPerChain/worstPerChain stash (computed unfiltered only), so we
+  // override these fields onto every variant. Without this, switching to
+  // a chain tab surfaces raw `{{best_name:chain:X}}` strings.
+  const variants: Record<string, Benchmark> = Object.fromEntries(
+    variantList.map(([key, v]) => [
+      key,
+      v === aggregate
+        ? v
+        : {
+            ...v,
+            findings: aggregate.findings,
+            faq: aggregate.faq,
+            seoIntro: aggregate.seoIntro,
+            abstract: aggregate.abstract,
+            methodology: aggregate.methodology,
+            perChainExplainer: aggregate.perChainExplainer,
+            bestPerChain: aggregate.bestPerChain,
+            worstPerChain: aggregate.worstPerChain,
+          },
+    ]),
+  );
   const benchmark = variants[variantKey(chain, region)] ?? aggregate;
 
   const isDraft = benchmark.status === "draft";
