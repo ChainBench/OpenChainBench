@@ -203,7 +203,7 @@ export function DistributionChart({
                     <Hint label={`p50 ${fmtUnit(r.ms.p50, unit)}`}>
                       <span
                         className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3 h-3 rounded-full"
-                        style={{ background: color }}
+                        style={{ left: `${p50Pct}%`, background: color }}
                         aria-label={`p50 ${fmtUnit(r.ms.p50, unit)}`}
                       />
                     </Hint>
