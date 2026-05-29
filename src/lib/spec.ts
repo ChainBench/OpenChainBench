@@ -18,6 +18,7 @@ import type { Benchmark, ProviderResult } from "@/types/benchmark";
 import { Prometheus } from "@/lib/prometheus";
 import { SpecSchema, type Spec } from "@/lib/spec-schema";
 import { renderBenchmarkText } from "@/lib/bench-template";
+import { liveResults as liveProviderResults } from "@/lib/provider-filters";
 import {
   readSnapshot,
   snapshotFromBenchmark,
@@ -346,10 +347,57 @@ async function specToBenchmark(
         });
       }
     }
+    // Per-chain leaders/trailers: computed only on the unfiltered "All"
+    // view of benches that declare `dimensions.chain`. Fan out one extra
+    // tryLoadLive() per chain value (excluding "all") with the chain
+    // label injected via applyDimensionsToSpec, then pick the live
+    // leader + trailer for that chain. This powers the
+    // `{{best_name:chain:X}}` placeholders + chain-aware OG/badge
+    // surfaces. We deliberately don't augment unavailable providers
+    // here: for per-chain leader we only care which provider actually
+    // reported data on that chain. Failures are tolerated — a chain
+    // with no Prom data just doesn't show up in bestPerChain.
+    let bestPerChain: Record<string, ProviderResult> | undefined;
+    let worstPerChain: Record<string, ProviderResult> | undefined;
+    if (!isFiltered && spec.dimensions?.chain && spec.dimensions.chain.length > 0) {
+      const chainValues = spec.dimensions.chain
+        .map((c) => c.value)
+        .filter((v) => v !== "all");
+      const perChainEntries = await Promise.all(
+        chainValues.map(async (chain) => {
+          const chainSpec = applyDimensionsToSpec(spec, { chain });
+          const chainLive = await tryLoadLive(chainSpec, true);
+          if (!chainLive) return [chain, undefined, undefined] as const;
+          for (const r of chainLive.results) r.availability = "live";
+          const liveForChain = liveProviderResults(chainLive.results);
+          if (liveForChain.length === 0) {
+            return [chain, undefined, undefined] as const;
+          }
+          const sorted = [...liveForChain].sort((a, b) =>
+            spec.higher_is_better ? b.ms.p50 - a.ms.p50 : a.ms.p50 - b.ms.p50,
+          );
+          return [chain, sorted[0], sorted[sorted.length - 1]] as const;
+        }),
+      );
+      const bests: Record<string, ProviderResult> = {};
+      const worsts: Record<string, ProviderResult> = {};
+      for (const [chain, leader, trailer] of perChainEntries) {
+        if (leader) bests[chain] = leader;
+        if (trailer) worsts[chain] = trailer;
+      }
+      if (Object.keys(bests).length > 0) bestPerChain = bests;
+      if (Object.keys(worsts).length > 0) worstPerChain = worsts;
+    }
+
     // Resolve {{p50:slug}} / {{best_name}} / {{count}} etc. placeholders
     // against the freshly loaded numbers so editorial text (findings,
     // seo_intro, faq) never drifts from the displayed data.
-    const rendered = renderBenchmarkText({ ...editorial, ...live });
+    const rendered = renderBenchmarkText({
+      ...editorial,
+      ...live,
+      bestPerChain,
+      worstPerChain,
+    });
     // Persist a snapshot of the runtime data so a future cold start
     // during a Prom blackout can still render this bench. Only the
     // unfiltered "All" view is snapshotted: filtered variants (per
@@ -630,4 +678,22 @@ function parseDurationSec(d: string): number | null {
   const n = Number(m[1]);
   const unit = m[2];
   return n * { s: 1, m: 60, h: 3600, d: 86_400 }[unit as "s" | "m" | "h" | "d"];
+}
+
+/**
+ * Lookup helper for the per-chain leader stash. Returns the ProviderResult
+ * that leads on `chain` (e.g. "solana"), or undefined when the bench
+ * doesn't declare chain dimensions, when the chain isn't in the spec, or
+ * when no live data was collected for that chain this cycle.
+ *
+ * Consumed by the chain-aware template placeholders (bench-template.ts),
+ * the chain-aware OG image / badge endpoints (SEO + API surfaces), and
+ * the products pages that want to call out a chain-specific winner
+ * instead of the biased unfiltered aggregate.
+ */
+export function bestForChain(
+  b: Benchmark,
+  chain: string,
+): ProviderResult | undefined {
+  return b.bestPerChain?.[chain];
 }

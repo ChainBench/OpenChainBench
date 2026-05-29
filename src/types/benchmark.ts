@@ -119,6 +119,23 @@ export type Benchmark = {
   };
   category: "Aggregators" | "Bridges" | "Blockchains" | "Trading" | "Wallets" | "RPCs";
   results: ProviderResult[];
+  /** Per-chain leader, computed only on the unfiltered ("All chains") view
+   *  when the spec declares `dimensions.chain`. Key = chain slug from the
+   *  YAML (e.g. "solana", "base", "bnb"); excludes "all". Value = the live
+   *  ProviderResult that leads on that chain.
+   *
+   *  Motivation: the unfiltered aggregate is biased by chain mix (e.g.
+   *  Solana 400 ms slots vs Base 2 s blocks make Solana-only providers
+   *  mechanically beat cross-chain ones on head-lag). Per-chain winners
+   *  are computed via extra Prom queries with `chain="<x>"` injected, so
+   *  headline copy / OG image / badge endpoint can call out the leader on
+   *  each chain instead of one biased global winner. */
+  bestPerChain?: Record<string, ProviderResult>;
+  /** Per-chain trailing provider, populated in lockstep with
+   *  `bestPerChain` (same key set, same population conditions). Powers
+   *  the `{{worst_name:chain:X}}` / `{{worst_p50:chain:X}}` editorial
+   *  placeholders. */
+  worstPerChain?: Record<string, ProviderResult>;
   findings: string[];
   methodology: string[];
   source: string;
