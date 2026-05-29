@@ -93,12 +93,39 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE.url}/press`, lastModified: pageMtime("press/page.tsx"), changeFrequency: "monthly", priority: 0.4 },
   ];
 
-  const benchmarkRoutes: MetadataRoute.Sitemap = benchmarks.map((b) => ({
-    url: `${SITE.url}/benchmarks/${b.slug}`,
-    lastModified: b.lastRunAt ? new Date(b.lastRunAt) : BUILD_TIME,
-    changeFrequency: "hourly",
-    priority: 0.95,
-  }));
+  // Bench routes. The hub URL (no query string) is the canonical entry
+  // and ranks highest. Per-chain variants (`?chain=X`) are emitted as
+  // secondary URLs so Google's crawler discovers the chain-honest
+  // metadata / OG card pairs for each filter. We skip the "all" sentinel
+  // (which maps to the canonical hub) and any chain dimension whose
+  // value would collide with the hub after URL-encoding. Each variant
+  // shares the parent bench's `lastModified` because the chain filter
+  // doesn't change the underlying scrape cadence — they all refresh as
+  // a single Prom poll. Priority is dropped one tier on variants so
+  // Search Console reads the hub as the head of the cluster.
+  const benchmarkRoutes: MetadataRoute.Sitemap = benchmarks.flatMap((b) => {
+    const last = b.lastRunAt ? new Date(b.lastRunAt) : BUILD_TIME;
+    const entries: MetadataRoute.Sitemap = [
+      {
+        url: `${SITE.url}/benchmarks/${b.slug}`,
+        lastModified: last,
+        changeFrequency: "hourly",
+        priority: 0.95,
+      },
+    ];
+    const chains = (b.dimensions?.chain ?? []).filter(
+      (c) => c.value && c.value.toLowerCase() !== "all",
+    );
+    for (const c of chains) {
+      entries.push({
+        url: `${SITE.url}/benchmarks/${b.slug}?chain=${encodeURIComponent(c.value)}`,
+        lastModified: last,
+        changeFrequency: "hourly",
+        priority: 0.8,
+      });
+    }
+    return entries;
+  });
 
   const providerRoutes: MetadataRoute.Sitemap = providerSlugs.map((slug) => ({
     url: `${SITE.url}/products/${slug}`,
