@@ -109,11 +109,37 @@ go run ./cmd/script
 
 ## Deployment
 
-Standard OCB-miniapp shape — multi-stage Dockerfile, port 2112, internal-only on Railway, scraped by `openchainbench-monitoring/prometheus/prometheus.yml` via `rpc-capabilities.railway.internal:2112`.
+Standard OCB-miniapp shape — multi-stage Dockerfile, port 2112, internal-only on Railway, scraped by `openchainbench-monitoring/prometheus/prometheus.yml`.
+
+### Region labeling
+
+Every emitted metric carries a `region` label. The value comes from the `REGION` env var read once at startup (`main.go: loadRegion()`). Default `eu-west` for backward compatibility with the original single-region deploy.
+
+### Multi-region deploy (recommended)
+
+Run one Railway service per region. Suggested set: `us-east`, `eu-west`, `sgp` (same shape as `aggregator-head-lag`).
+
+| Railway service | `REGION` env | Railway region | Internal DNS |
+|---|---|---|---|
+| `rpc-capabilities-us` | `us-east` | us-east4 | `rpc-capabilities-us.railway.internal:2112` |
+| `rpc-capabilities-eu` | `eu-west` | europe-west4 | `rpc-capabilities-eu.railway.internal:2112` |
+| `rpc-capabilities-sgp` | `sgp` | asia-southeast1 | `rpc-capabilities-sgp.railway.internal:2112` |
+
+After scaling out, update the shared Prometheus `scrape_configs:` to target all three:
+
+```yaml
+- job_name: 'rpc-capabilities'
+  static_configs:
+    - targets:
+        - 'rpc-capabilities-us.railway.internal:2112'
+        - 'rpc-capabilities-eu.railway.internal:2112'
+        - 'rpc-capabilities-sgp.railway.internal:2112'
+  metrics_path: /metrics
+```
+
+Prometheus will record three series per `(provider, chain)` pair — one per region. The bench's PromQL queries pool across regions for the headline number and slice by region for the per-region chart.
 
 ## Known limits
-
-- **Single geo** — the bench currently runs from one Railway region. Latency rankings can reorder under different network paths; for full credibility the published numbers should say which geo they came from. Multi-region replication is a v2 lift (same pattern as `aggregator-head-lag`).
 - **Shard variance** — `1rpc` and `flashbots` appear to load-balance across a mixed pool where some shards are pruned. The bench observes the variance honestly but reports per-cycle, so a single hourly cycle can land on either the archive or pruned shard. A v2 improvement would do a 3-probe quorum per (provider × depth).
 - **Stale-state classification** — needs ≥2 working providers per chain to compute the cross-provider tip. If both Ethereum providers fail simultaneously, `stale` cannot be detected; the harness falls back to whatever tip it last observed.
 - **No rate-limit signals** — none of the probed endpoints return `x-ratelimit-*` headers, so the bench cannot proactively show quotas. KyberSwap-style explicit limits would be a nice future addition.
