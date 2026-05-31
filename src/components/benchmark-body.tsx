@@ -337,7 +337,13 @@ export function BenchmarkBody({
               {view === "timeseries" && (
                 <TimeSeriesChart
                   benchmark={benchmark}
-                  region={showChartRegionRow ? chartRegion : undefined}
+                  region={
+                    regionOptions.length > 0
+                      ? (region ?? fallbackRegion ?? undefined)
+                      : showChartRegionRow
+                        ? chartRegion
+                        : undefined
+                  }
                   excluded={excluded}
                   onToggleExclude={toggleExclude}
                   onResetExcluded={resetExcluded}
