@@ -8,11 +8,12 @@ import (
 )
 
 var (
-	quoteLatencyMs    *prometheus.HistogramVec
-	quoteSuccess      *prometheus.GaugeVec
-	quoteThrottled    *prometheus.CounterVec
-	quoteAuthError    *prometheus.CounterVec
-	quoteOtherError   *prometheus.CounterVec
+	quoteLatencyMs  *prometheus.HistogramVec
+	quoteSuccess    *prometheus.GaugeVec
+	quoteThrottled  *prometheus.CounterVec
+	quoteAuthError  *prometheus.CounterVec
+	quoteNoRoute    *prometheus.CounterVec
+	quoteOtherError *prometheus.CounterVec
 )
 
 func init() {
@@ -53,10 +54,19 @@ func init() {
 	)
 	prometheus.MustRegister(quoteAuthError)
 
+	quoteNoRoute = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "solana_quote_no_route_total",
+			Help: "Total times a provider returned no route for the picked tokenOut (long-tail liquidity gap, not a server error)",
+		},
+		[]string{"provider", "region"},
+	)
+	prometheus.MustRegister(quoteNoRoute)
+
 	quoteOtherError = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "solana_quote_other_error_total",
-			Help: "Total non-auth, non-throttle errors per provider (network, timeout, parse, non-2xx)",
+			Help: "Total non-auth, non-throttle, non-no-route errors per provider (network, timeout, parse, non-2xx)",
 		},
 		[]string{"provider", "region", "error_type"},
 	)
@@ -83,6 +93,10 @@ func RecordThrottled(provider, region string) {
 
 func RecordAuthError(provider, region string) {
 	quoteAuthError.WithLabelValues(provider, region).Inc()
+}
+
+func RecordNoRoute(provider, region string) {
+	quoteNoRoute.WithLabelValues(provider, region).Inc()
 }
 
 func RecordOtherError(provider, region, errorType string) {

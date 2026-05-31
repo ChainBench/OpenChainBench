@@ -20,7 +20,7 @@ func NewDFlowProvider(region, apiKey string) *DFlowProvider {
 
 func (p *DFlowProvider) Slug() string { return "dflow" }
 
-func (p *DFlowProvider) Probe(ctx context.Context) (int64, bool, error) {
+func (p *DFlowProvider) Probe(ctx context.Context, tokenOut TrendingToken) (int64, bool, error) {
 	// TODO: implement based on agent-1's curl validation
 	RecordOtherError(p.Slug(), p.region, "not_implemented")
 	return 0, false, fmt.Errorf("dflow provider not implemented")

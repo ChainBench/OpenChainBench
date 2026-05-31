@@ -8,18 +8,14 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 )
 
-// RaydiumProvider hits Raydium's single-venue Trade API for the canonical
-// 1 SOL -> USDC swap. Note: Raydium is NOT an aggregator — its Trade API
-// routes only against Raydium's own pools. Included as a reference for
-// what a direct AMM compute endpoint costs vs. an aggregator search.
-//
-// Response shape diverges from Jupiter:
-//   - Wrapper: {id, success: bool, version, data: {...}}
-//   - Quote field: data.outputAmount (NOT data.outAmount).
-//   - Must verify success == true before reading data.
+// RaydiumProvider quotes USDC -> tokenOut on Raydium's single-venue Trade API.
+// Raydium is NOT an aggregator; the Trade API only routes against Raydium's
+// own pools, so many long-tail tokens will legitimately return "no route".
+// That's intentional and surfaces the single-venue limitation in the bench.
 type RaydiumProvider struct {
 	region string
 	client *http.Client
@@ -34,17 +30,18 @@ func (p *RaydiumProvider) Slug() string { return "raydium" }
 const raydiumQuoteEndpoint = "https://transaction-v1.raydium.io/compute/swap-base-in"
 
 type raydiumQuoteResp struct {
-	Success bool `json:"success"`
+	Success bool   `json:"success"`
+	Msg     string `json:"msg"`
 	Data    struct {
 		OutputAmount string `json:"outputAmount"`
 	} `json:"data"`
 }
 
-func (p *RaydiumProvider) Probe(ctx context.Context) (int64, bool, error) {
+func (p *RaydiumProvider) Probe(ctx context.Context, tokenOut TrendingToken) (int64, bool, error) {
 	q := url.Values{}
-	q.Set("inputMint", solMint)
-	q.Set("outputMint", usdcMint)
-	q.Set("amount", canonicalAmountSol)
+	q.Set("inputMint", usdcMint)
+	q.Set("outputMint", tokenOut.Mint)
+	q.Set("amount", canonicalUsdcRaw)
 	q.Set("slippageBps", canonicalSlippageBps)
 	q.Set("txVersion", "V0")
 
@@ -86,8 +83,14 @@ func (p *RaydiumProvider) Probe(ctx context.Context) (int64, bool, error) {
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		var parsed raydiumQuoteResp
+		_ = json.Unmarshal(body, &parsed)
+		if isNoRouteSignal("", parsed.Msg) || strings.Contains(strings.ToLower(string(body)), "no route") {
+			RecordNoRoute(p.Slug(), p.region)
+			return 0, false, fmt.Errorf("raydium no route for %s", tokenOut.Symbol)
+		}
 		RecordOtherError(p.Slug(), p.region, fmt.Sprintf("http_%d", resp.StatusCode))
-		return 0, false, fmt.Errorf("raydium http %d", resp.StatusCode)
+		return 0, false, fmt.Errorf("raydium http %d: %s", resp.StatusCode, parsed.Msg)
 	}
 
 	var parsed raydiumQuoteResp
@@ -96,12 +99,20 @@ func (p *RaydiumProvider) Probe(ctx context.Context) (int64, bool, error) {
 		return 0, false, fmt.Errorf("parse: %w", err)
 	}
 	if !parsed.Success {
+		if isNoRouteSignal("", parsed.Msg) || parsed.Msg == "" {
+			// Raydium returns success=false with msg empty or "route not found"
+			// when the token isn't in any Raydium pool. Treat all success=false
+			// as no-route for the metric (it's an AMM limitation, not a server
+			// error).
+			RecordNoRoute(p.Slug(), p.region)
+			return 0, false, fmt.Errorf("raydium no route for %s: %s", tokenOut.Symbol, parsed.Msg)
+		}
 		RecordOtherError(p.Slug(), p.region, "api_not_success")
-		return 0, false, fmt.Errorf("raydium success=false")
+		return 0, false, fmt.Errorf("raydium success=false: %s", parsed.Msg)
 	}
 	if parsed.Data.OutputAmount == "" {
-		RecordOtherError(p.Slug(), p.region, "empty_quote")
-		return 0, false, fmt.Errorf("empty data.outputAmount")
+		RecordNoRoute(p.Slug(), p.region)
+		return 0, false, fmt.Errorf("raydium empty data.outputAmount for %s", tokenOut.Symbol)
 	}
 
 	latencyMs := time.Since(start).Milliseconds()
