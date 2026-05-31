@@ -125,7 +125,9 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="min-h-full flex flex-col">
+      {/* grid (not flex) so position: sticky on <SiteHeader> works reliably
+          on iOS Safari — sticky inside a flex column has known quirks. */}
+      <body className="min-h-full grid grid-rows-[auto_1fr_auto]">
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: safeJsonLd(ORG_JSONLD) }}
