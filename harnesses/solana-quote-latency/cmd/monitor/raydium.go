@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"net/url"
 	"time"
@@ -23,10 +22,11 @@ import (
 //   - Must verify success == true before reading data.
 type RaydiumProvider struct {
 	region string
+	client *http.Client
 }
 
 func NewRaydiumProvider(region string) *RaydiumProvider {
-	return &RaydiumProvider{region: region}
+	return &RaydiumProvider{region: region, client: newWarmHTTPClient()}
 }
 
 func (p *RaydiumProvider) Slug() string { return "raydium" }
@@ -41,21 +41,6 @@ type raydiumQuoteResp struct {
 }
 
 func (p *RaydiumProvider) Probe(ctx context.Context) (int64, bool, error) {
-	client := &http.Client{
-		Timeout: 10 * time.Second,
-		Transport: &http.Transport{
-			DialContext: (&net.Dialer{
-				Timeout:   10 * time.Second,
-				KeepAlive: -1,
-			}).DialContext,
-			DisableKeepAlives:     true,
-			MaxIdleConns:          0,
-			IdleConnTimeout:       0,
-			TLSHandshakeTimeout:   10 * time.Second,
-			ExpectContinueTimeout: 1 * time.Second,
-		},
-	}
-
 	q := url.Values{}
 	q.Set("inputMint", solMint)
 	q.Set("outputMint", usdcMint)
@@ -72,7 +57,7 @@ func (p *RaydiumProvider) Probe(ctx context.Context) (int64, bool, error) {
 	req.Header.Set("Accept", "application/json")
 
 	start := time.Now()
-	resp, err := client.Do(req)
+	resp, err := p.client.Do(req)
 	if err != nil {
 		errType := "network"
 		if errors.Is(err, context.DeadlineExceeded) {

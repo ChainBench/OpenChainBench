@@ -11,7 +11,7 @@ Exposes Prometheus metrics on `:2112/metrics` (OCB Railway convention).
 One tick = one quote per provider in parallel. Each provider adapter:
 
 1. Builds the canonical request (1 SOL → USDC, 50 bps, dummy wallet `HN7cABqLq46Es1jh92dQQisAq662SmxELLLsHHe4YWrH`, no fee, no referrer).
-2. Opens a fresh TCP+TLS connection per tick (`net.Dialer{KeepAlive: -1}`). DNS + handshake cost is part of the user-perceived latency we want to measure.
+2. Reuses a per-provider `http.Client` configured for keepalive (30s `KeepAlive`, 90s `IdleConnTimeout`, HTTP/2 attempt). After the first tick the TCP + TLS connection is reused, so the wallclock around `client.Do(req)` measures steady-state RTT (request handling + origin work + response), not the cold handshake.
 3. Measures wallclock from `http.Client.Do` dispatch to the first byte of a response body containing a usable `outAmount` (`data.outAmount` for Mobula/OpenOcean, `outAmount` for Jupiter, `data.outputAmount` for Raydium).
 4. Records the sample in `solana_quote_latency_ms{provider, region}`. 401/403/429/parse errors are excluded from the histogram and tracked separately.
 
@@ -67,7 +67,7 @@ OpenOcean and Raydium have no auth on their public quote endpoints.
 
 ## Design notes
 
-- **No keepalive.** Each tick re-opens TCP + TLS. We measure what a cold integration sees, not what a warmed-up internal client sees.
+- **Warm-path measurement.** Each provider gets one `http.Client` for the life of the process and reuses TCP + TLS across ticks. This matches how a long-running backend integration actually consumes the API — the measured number is the steady-state RTT, not the first-call cold-start.
 - **10s per-request timeout.** Slow responses are recorded as `other_error{error_type="timeout"}`, not as 10s latency samples.
 - **60s tick.** ≈1,440 samples per provider per region per day.
 - **Histogram-only buckets.** No quantile is computed inside the harness; the bench YAML uses `histogram_quantile()` on Prometheus's side over a 24-hour window. This keeps the percentiles correct across restarts and across replicas.

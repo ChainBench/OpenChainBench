@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"net/url"
 	"time"
@@ -22,10 +21,11 @@ import (
 type MobulaProvider struct {
 	region string
 	apiKey string
+	client *http.Client
 }
 
 func NewMobulaProvider(region, apiKey string) *MobulaProvider {
-	return &MobulaProvider{region: region, apiKey: apiKey}
+	return &MobulaProvider{region: region, apiKey: apiKey, client: newWarmHTTPClient()}
 }
 
 func (p *MobulaProvider) Slug() string { return "mobula" }
@@ -48,21 +48,6 @@ func (p *MobulaProvider) Probe(ctx context.Context) (int64, bool, error) {
 		return 0, false, fmt.Errorf("mobula api key missing")
 	}
 
-	client := &http.Client{
-		Timeout: 10 * time.Second,
-		Transport: &http.Transport{
-			DialContext: (&net.Dialer{
-				Timeout:   10 * time.Second,
-				KeepAlive: -1,
-			}).DialContext,
-			DisableKeepAlives:     true,
-			MaxIdleConns:          0,
-			IdleConnTimeout:       0,
-			TLSHandshakeTimeout:   10 * time.Second,
-			ExpectContinueTimeout: 1 * time.Second,
-		},
-	}
-
 	q := url.Values{}
 	q.Set("chainId", "solana")
 	q.Set("tokenIn", solMint)
@@ -83,7 +68,7 @@ func (p *MobulaProvider) Probe(ctx context.Context) (int64, bool, error) {
 	req.Header.Set("Authorization", p.apiKey)
 
 	start := time.Now()
-	resp, err := client.Do(req)
+	resp, err := p.client.Do(req)
 	if err != nil {
 		errType := "network"
 		if errors.Is(err, context.DeadlineExceeded) {
