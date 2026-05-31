@@ -8,16 +8,12 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 )
 
-// MobulaProvider hits Mobula's swap quote endpoint for the canonical 1 SOL ->
-// USDC swap. Differences from Jupiter:
-//   - Auth via `Authorization: <MOBULA_API_KEY>` header — NO Bearer prefix.
-//   - Query params: chainId=solana, tokenIn, tokenOut, walletAddress, slippage (percent).
-//   - `amount` is in WHOLE TOKENS (1 = 1 SOL) — Mobula also accepts `amountRaw`
-//     for raw lamports, but `amount=1` is the simpler form here.
-//   - Response field: data.amountOutTokens (human-readable, decimal string).
+// MobulaProvider quotes USDC -> tokenOut via Mobula's swap quoting endpoint.
+// Auth header is the raw key (no Bearer). Amount is in whole tokens.
 type MobulaProvider struct {
 	region string
 	apiKey string
@@ -32,7 +28,6 @@ func (p *MobulaProvider) Slug() string { return "mobula" }
 
 const (
 	mobulaQuoteEndpoint  = "https://api.mobula.io/api/2/swap/quoting"
-	canonicalSlippagePct = "0.5"
 	canonicalFromAddress = "HN7cABqLq46Es1jh92dQQisAq662SmxELLLsHHe4YWrH"
 )
 
@@ -40,9 +35,14 @@ type mobulaQuoteResp struct {
 	Data struct {
 		AmountOutTokens string `json:"amountOutTokens"`
 	} `json:"data"`
+	// Mobula returns 4xx with {message,error,statusCode} on validation errors,
+	// and {message:"No route found"} when there's no path for the requested pair.
+	Message    string `json:"message"`
+	Error      string `json:"error"`
+	StatusCode int    `json:"statusCode"`
 }
 
-func (p *MobulaProvider) Probe(ctx context.Context) (int64, bool, error) {
+func (p *MobulaProvider) Probe(ctx context.Context, tokenOut TrendingToken) (int64, bool, error) {
 	if p.apiKey == "" {
 		RecordAuthError(p.Slug(), p.region)
 		return 0, false, fmt.Errorf("mobula api key missing")
@@ -50,10 +50,9 @@ func (p *MobulaProvider) Probe(ctx context.Context) (int64, bool, error) {
 
 	q := url.Values{}
 	q.Set("chainId", "solana")
-	q.Set("tokenIn", solMint)
-	q.Set("tokenOut", usdcMint)
-	// Whole tokens — 1 = 1 SOL. Mobula treats `amount` as human-readable units.
-	q.Set("amount", "1")
+	q.Set("tokenIn", usdcMint)
+	q.Set("tokenOut", tokenOut.Mint)
+	q.Set("amount", canonicalUsdcWhole) // 100 USDC, whole tokens
 	q.Set("walletAddress", canonicalFromAddress)
 	q.Set("slippage", canonicalSlippagePct)
 
@@ -64,7 +63,6 @@ func (p *MobulaProvider) Probe(ctx context.Context) (int64, bool, error) {
 		return 0, false, fmt.Errorf("build request: %w", err)
 	}
 	req.Header.Set("Accept", "application/json")
-	// Mobula expects the raw key in Authorization (no Bearer prefix).
 	req.Header.Set("Authorization", p.apiKey)
 
 	start := time.Now()
@@ -97,8 +95,15 @@ func (p *MobulaProvider) Probe(ctx context.Context) (int64, bool, error) {
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		var parsed mobulaQuoteResp
+		_ = json.Unmarshal(body, &parsed)
+		if isNoRouteSignal(parsed.Error, parsed.Message) ||
+			strings.Contains(strings.ToLower(string(body)), "no route") {
+			RecordNoRoute(p.Slug(), p.region)
+			return 0, false, fmt.Errorf("mobula no route for %s", tokenOut.Symbol)
+		}
 		RecordOtherError(p.Slug(), p.region, fmt.Sprintf("http_%d", resp.StatusCode))
-		return 0, false, fmt.Errorf("mobula http %d", resp.StatusCode)
+		return 0, false, fmt.Errorf("mobula http %d: %s", resp.StatusCode, parsed.Message)
 	}
 
 	var parsed mobulaQuoteResp
@@ -107,8 +112,8 @@ func (p *MobulaProvider) Probe(ctx context.Context) (int64, bool, error) {
 		return 0, false, fmt.Errorf("parse: %w", err)
 	}
 	if parsed.Data.AmountOutTokens == "" {
-		RecordOtherError(p.Slug(), p.region, "empty_quote")
-		return 0, false, fmt.Errorf("empty data.amountOutTokens")
+		RecordNoRoute(p.Slug(), p.region)
+		return 0, false, fmt.Errorf("mobula empty data.amountOutTokens for %s", tokenOut.Symbol)
 	}
 
 	latencyMs := time.Since(start).Milliseconds()
