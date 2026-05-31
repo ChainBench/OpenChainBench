@@ -17,9 +17,9 @@ seo_intro: |
   data provider. how many seconds elapse between a swap landing on
   chain and the same event appearing on the provider's feed. Marketing
   pages quote "real-time" without a number; this page quotes the
-  number. Mobula's WebSocket, Codex's GraphQL feed, GeckoTerminal's
-  REST endpoint and GMGN's Solana-only WebSocket are watched from
-  three regions (us-east, eu-west, sgp) against canonical-tip archive
+  number. Mobula's WebSocket, Codex's GraphQL feed and GeckoTerminal's
+  REST endpoint are watched from three regions (us-east, eu-west, sgp)
+  against canonical-tip archive
   nodes on Base, BNB Chain and Solana. Because each chain has its own
   base block cadence (Solana's ~400 ms slots vs Base/BNB's 2-3 s
   blocks), the headline winner shifts by chain. On Solana the leader
@@ -42,13 +42,13 @@ abstract: |
   same event.
 
 methodology:
-  - "Aggregators measured: Mobula, Codex, GeckoTerminal, GMGN."
-  - "Chains: Base, BNB Chain, Solana. GMGN measured Solana-only — its WebSocket pushes per-pair routing events for Solana but only chain-level summaries for EVM chains."
+  - "Aggregators measured: Mobula, Codex, GeckoTerminal."
+  - "Chains: Base, BNB Chain, Solana."
   - "Regions: us-east, eu-west, sgp. Cross-region median reported in the headline."
-  - "Reference: archive nodes per chain, validated against block hashes. For GMGN the slot-level `route_info` stream (`gk=\"s\"`) is the canonical observation timestamp."
+  - "Reference: archive nodes per chain, validated against block hashes."
   - "Metric: gauge `head_lag_seconds`, sampled every 15 seconds. Aggregated over the 24-hour window using `quantile_over_time`."
   - "Success rate: presence ratio. Share of expected sampling slots where a value was actually emitted (5,760 expected per provider per day at the 15s cadence). 100% means the aggregator's feed was reachable for the full window."
-  - "Cardinality: 4 aggregators × up to 3 chains × 3 regions, minus inapplicable chains for chain-restricted providers."
+  - "Cardinality: 3 aggregators × 3 chains × 3 regions = 27 active series."
 
 findings:
   - "Across the unfiltered cross-chain aggregate the leader is {{best_name}} at {{best_p50}} (p50, 24 h) over {{count}} measured providers, but that headline number mixes chains with very different baseline cadences (Solana 400 ms slots vs Base/BNB 2-3 s blocks) so the per-chain breakdown below is what to read for an integration decision."
@@ -171,32 +171,3 @@ providers:
           p50: quantile_over_time(0.50, head_lag_seconds{aggregator="geckoterminal", region="sgp"}[24h]) * 1000
           series: avg_over_time(head_lag_seconds{aggregator="geckoterminal", region="sgp"}[1h]) * 1000
 
-  # GMGN is Solana-only. We deliberately leave `chain=` out of the selectors
-  # so the per-chain dimension filter from lib/spec.ts handles visibility:
-  #   - "All chains" → no chain= injected → GMGN's solana samples returned.
-  #   - "Solana"     → chain="solana" injected → returns solana samples.
-  #   - "Base" / "BNB Chain" → chain="base"/"bnb" injected → empty result
-  #     → tryLoadLive skips the provider entirely (see spec.ts ~L477) so
-  #     GMGN is hidden on those tabs instead of showing zeros.
-  - slug: gmgn
-    name: GMGN
-    tag: WebSocket feed (Solana only)
-    formula: "Median seconds between a Solana slot landing on-chain and GMGN's WebSocket chain-tip stream (chain_stat, gk='s', rs) reflecting it. GMGN doesn't push per-pair events for arbitrary Solana pools, so we measure at the slot level."
-    queries:
-      p50: quantile_over_time(0.50, head_lag_seconds{aggregator="gmgn"}[24h]) * 1000
-      p90: quantile_over_time(0.90, head_lag_seconds{aggregator="gmgn"}[24h]) * 1000
-      p99: quantile_over_time(0.99, head_lag_seconds{aggregator="gmgn"}[24h]) * 1000
-      mean: avg_over_time(head_lag_seconds{aggregator="gmgn"}[24h]) * 1000
-      success: clamp_max(count_over_time(head_lag_seconds{aggregator="gmgn"}[24h]) / 5760, 1)
-      sample_size: sum(count_over_time(head_lag_seconds{aggregator="gmgn"}[24h]))
-      series: avg_over_time(head_lag_seconds{aggregator="gmgn"}[1h]) * 1000
-      regions:
-        - region: us-east
-          p50: quantile_over_time(0.50, head_lag_seconds{aggregator="gmgn", region="us-east"}[24h]) * 1000
-          series: avg_over_time(head_lag_seconds{aggregator="gmgn", region="us-east"}[1h]) * 1000
-        - region: eu-west
-          p50: quantile_over_time(0.50, head_lag_seconds{aggregator="gmgn", region="eu-west"}[24h]) * 1000
-          series: avg_over_time(head_lag_seconds{aggregator="gmgn", region="eu-west"}[1h]) * 1000
-        - region: ap-southeast
-          p50: quantile_over_time(0.50, head_lag_seconds{aggregator="gmgn", region="sgp"}[24h]) * 1000
-          series: avg_over_time(head_lag_seconds{aggregator="gmgn", region="sgp"}[1h]) * 1000

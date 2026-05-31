@@ -13,7 +13,6 @@ type Config struct {
 	DefinedSessionCookie string
 	MonitorRegion        string // Deployment region: us-west, us-east, singapore, etc.
 	MobulaWSURL          string // Mobula fast-trade WebSocket endpoint (allows staging to use EU-specific cluster)
-	GMGNEnabled          bool   // GMGN.ai monitor enabled (Solana per-pair head-lag). Requires Chrome installed for chromedp.
 }
 
 func loadEnv() (*Config, error) {
@@ -25,7 +24,6 @@ func loadEnv() (*Config, error) {
 	config.DefinedSessionCookie = strings.TrimSpace(os.Getenv("DEFINED_SESSION_COOKIE"))
 	config.MonitorRegion = strings.TrimSpace(os.Getenv("MONITOR_REGION"))
 	config.MobulaWSURL = strings.TrimSpace(os.Getenv("MOBULA_WS_URL"))
-	config.GMGNEnabled = strings.EqualFold(strings.TrimSpace(os.Getenv("GMGN_ENABLED")), "true")
 
 	// Default to "unknown" if not set
 	if config.MonitorRegion == "" {
