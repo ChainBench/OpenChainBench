@@ -131,6 +131,16 @@ const RAW: Record<string, string> = {
   coinpaprika: "/logos/coinpaprika.svg",
   covalent: "/logos/covalent.svg",
   coinstats: "/logos/coinstats.svg",
+
+  // ─── Hyperliquid frontends (bench № 030) ───
+  "phantom-perps": "/logos/phantom-perps.svg",
+  axiom: "/logos/axiom.png",
+  "pvp-trade": "/logos/pvp-trade.png",
+  insilico: "/logos/insilico.svg",
+  defiapp: "/logos/defiapp.svg",
+  metamask: "/logos/metamask.svg",
+  dexari: "/logos/dexari.png",
+  okto: "/logos/okto.png",
 };
 
 // Asset-symbol aliases used by perp-fees as chain dimension values.
