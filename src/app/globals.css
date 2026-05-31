@@ -99,14 +99,14 @@ body {
 }
 
 /* Mobile: soften the dot pattern so it doesn't fight thin body text.
-   Smaller solid centre + feathered transparent halo + reduced opacity
-   gives a "blurred" feel without a CSS filter on the whole background. */
+   Same density as desktop, but a small solid centre + feathered halo
+   gives the dots a "blurred" look while keeping them visible. */
 @media (max-width: 767px) {
   body {
-    background-image: radial-gradient(rgba(229, 229, 229, 0.45) 0.5px, transparent 1.6px);
+    background-image: radial-gradient(rgba(229, 229, 229, 0.8) 0.7px, transparent 1.8px);
   }
   .dark body {
-    background-image: radial-gradient(rgba(35, 39, 47, 0.55) 0.5px, transparent 1.6px);
+    background-image: radial-gradient(rgba(35, 39, 47, 0.85) 0.7px, transparent 1.8px);
   }
 }
 
