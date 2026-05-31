@@ -111,9 +111,8 @@ body {
 }
 
 /* Masthead logo: hide the SVG fallback on desktop (real mouse + ≥ 768px)
-   so it never paints alongside the 3D sphere — desktop sees a brief
-   empty slot while the 3D chunk loads, then the 3D appears. Touch /
-   small screens ignore this and keep the SVG as the only logo. */
+   so it never paints alongside the 3D sphere. Touch / small screens
+   ignore this and keep the SVG as the only logo. */
 @media (pointer: fine) and (min-width: 768px) {
   .logo-touch-only {
     display: none;
