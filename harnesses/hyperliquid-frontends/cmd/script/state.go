@@ -94,10 +94,13 @@ func (s *State) Retention(ctx context.Context, builder string, days int) (float6
 	activeAfter := now - 86_400_000
 
 	var cohort, returned int
+	// COALESCE because SUM(CASE) returns NULL on an empty result
+	// set (no users in the cohort window). database/sql can't scan
+	// NULL into a plain int, so we coerce to 0 in SQL.
 	err := s.db.QueryRowContext(ctx, `
 		SELECT
 			COUNT(*) AS cohort,
-			SUM(CASE WHEN last_seen_ms >= ? THEN 1 ELSE 0 END) AS returned
+			COALESCE(SUM(CASE WHEN last_seen_ms >= ? THEN 1 ELSE 0 END), 0) AS returned
 		FROM user_activity
 		WHERE builder = ?
 		  AND first_seen_ms >= ?
