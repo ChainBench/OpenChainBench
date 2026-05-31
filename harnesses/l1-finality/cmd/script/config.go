@@ -93,7 +93,11 @@ func loadConfig() *Config {
 				Slug: "litecoin",
 				Name: "Litecoin",
 				Kind: KindBitcoinLike,
-				RPCURL: getenvDefault("RPC_LITECOIN", "https://api.blockchair.com/litecoin"),
+				// Switched from blockchair (free-tier IP blacklist hit on
+				// 2026-05-31, 100% 430 responses) to litecoinspace.org's
+				// Esplora-compatible API. Fewer calls per tick (1 vs 2) and
+				// no auth required.
+				RPCURL: getenvDefault("RPC_LITECOIN", "https://litecoinspace.org/api"),
 				// Coinbase deposit standard for LTC. The April 2026 13-block
 				// MWEB reorg made 6 unsafe; 12 is the post-incident floor.
 				Confirmations: 12,

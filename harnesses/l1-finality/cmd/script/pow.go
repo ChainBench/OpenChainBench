@@ -5,28 +5,24 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strconv"
 	"time"
 )
 
-// PoW chains: probabilistic finality, "finalized" === N confirmations
-// back. We use blockchair's free public API for the Bitcoin-family
-// (Litecoin works the same way; Bitcoin would too if added).
+// PoW chains: probabilistic finality, "finalized" === N confirmations back.
+//
+// We use an Esplora-compatible block explorer (litecoinspace.org for Litecoin;
+// mempool.space-style API works the same way for Bitcoin if added later).
+// `GET /api/blocks` returns the last ~15 blocks with `height` and `timestamp`,
+// so a single call covers BOTH the latest block AND the finalized one (12
+// confirmations back for Litecoin). This replaces the old 2-call blockchair
+// flow that was blacklisted by free-tier IP rate limits.
+//
+// API spec: https://github.com/Blockstream/esplora/blob/master/API.md
 
-type blockchairStats struct {
-	Data struct {
-		Blocks       int64 `json:"blocks"`
-		BestBlockTime string `json:"best_block_time"` // "2026-05-06 19:01:13" UTC
-	} `json:"data"`
-}
-
-type blockchairBlock struct {
-	Data map[string]struct {
-		Block struct {
-			ID    int64  `json:"id"`
-			Time  string `json:"time"` // UTC string
-		} `json:"block"`
-	} `json:"data"`
+type esploraBlock struct {
+	ID        string `json:"id"`        // block hash
+	Height    int64  `json:"height"`
+	Timestamp int64  `json:"timestamp"` // unix seconds, UTC
 }
 
 func fetchBitcoinLike(ch ChainConfig) FinalitySample {
@@ -34,49 +30,71 @@ func fetchBitcoinLike(ch ChainConfig) FinalitySample {
 	start := time.Now()
 	client := &http.Client{Timeout: 10 * time.Second}
 
-	stats, err := blockchairStatsFetch(client, ch.RPCURL)
-	if err != nil {
-		s.Err = fmt.Sprintf("stats: %v", err)
-		s.FetchLatencyMs = time.Since(start).Milliseconds()
-		return s
-	}
-	latestHeight := stats.Data.Blocks - 1 // blocks count is 1-indexed
-	finalHeight := latestHeight - int64(ch.Confirmations)
-	if finalHeight < 0 {
-		finalHeight = 0
-	}
-
-	finalBlock, err := blockchairBlockAt(client, ch.RPCURL, finalHeight)
-	if err != nil {
-		s.Err = fmt.Sprintf("final_block (h=%d): %v", finalHeight, err)
-		s.FetchLatencyMs = time.Since(start).Milliseconds()
-		return s
-	}
+	blocks, err := esploraRecentBlocks(client, ch.RPCURL)
 	s.FetchLatencyMs = time.Since(start).Milliseconds()
-
-	latestTs, err := time.Parse("2006-01-02 15:04:05", stats.Data.BestBlockTime)
 	if err != nil {
-		s.Err = fmt.Sprintf("parse_latest_ts: %v", err)
+		s.Err = fmt.Sprintf("blocks: %v", err)
 		return s
 	}
-	finalTs, err := time.Parse("2006-01-02 15:04:05", finalBlock.Time)
-	if err != nil {
-		s.Err = fmt.Sprintf("parse_final_ts: %v", err)
+	if len(blocks) == 0 {
+		s.Err = "blocks: empty"
 		return s
 	}
 
-	s.LatestBlock = latestHeight
-	s.FinalizedBlock = finalHeight
+	tip := blocks[0]
+	// If the returned window is shorter than the desired confirmations
+	// depth, paginate one more call using /api/blocks/<height>. Litecoin
+	// (12 conf) is satisfied by the default 15-block window.
+	finalIdx := ch.Confirmations
+	if finalIdx >= len(blocks) {
+		more, err := esploraBlocksFrom(client, ch.RPCURL, tip.Height-int64(ch.Confirmations))
+		if err != nil {
+			s.Err = fmt.Sprintf("blocks_at_h-%d: %v", ch.Confirmations, err)
+			return s
+		}
+		if len(more) == 0 {
+			s.Err = "blocks_at_h: empty"
+			return s
+		}
+		// /api/blocks/<H> returns blocks <= H, newest first; index 0 is the
+		// finalized block we want.
+		final := more[0]
+		s.LatestBlock = tip.Height
+		s.FinalizedBlock = final.Height
+		s.BlockLag = s.LatestBlock - s.FinalizedBlock
+		s.LagSeconds = float64(tip.Timestamp - final.Timestamp)
+		if s.LagSeconds < 0 {
+			s.LagSeconds = 0
+		}
+		return s
+	}
+
+	final := blocks[finalIdx]
+	s.LatestBlock = tip.Height
+	s.FinalizedBlock = final.Height
 	s.BlockLag = s.LatestBlock - s.FinalizedBlock
-	s.LagSeconds = latestTs.Sub(finalTs).Seconds()
+	s.LagSeconds = float64(tip.Timestamp - final.Timestamp)
 	if s.LagSeconds < 0 {
 		s.LagSeconds = 0
 	}
 	return s
 }
 
-func blockchairStatsFetch(client *http.Client, base string) (*blockchairStats, error) {
-	resp, err := client.Get(base + "/stats")
+// esploraRecentBlocks calls GET /api/blocks — returns the most recent ~15
+// blocks, newest first. Each entry has height + unix timestamp.
+func esploraRecentBlocks(client *http.Client, base string) ([]esploraBlock, error) {
+	return esploraGetBlocks(client, base+"/blocks")
+}
+
+// esploraBlocksFrom calls GET /api/blocks/<height> — returns blocks <= height,
+// newest first. Used when the desired confirmations depth exceeds the default
+// 15-block window.
+func esploraBlocksFrom(client *http.Client, base string, height int64) ([]esploraBlock, error) {
+	return esploraGetBlocks(client, fmt.Sprintf("%s/blocks/%d", base, height))
+}
+
+func esploraGetBlocks(client *http.Client, url string) ([]esploraBlock, error) {
+	resp, err := client.Get(url)
 	if err != nil {
 		return nil, err
 	}
@@ -85,34 +103,9 @@ func blockchairStatsFetch(client *http.Client, base string) (*blockchairStats, e
 	if resp.StatusCode != 200 {
 		return nil, fmt.Errorf("status_%d: %s", resp.StatusCode, truncate(string(body), 200))
 	}
-	var parsed blockchairStats
-	if err := json.Unmarshal(body, &parsed); err != nil {
+	var blocks []esploraBlock
+	if err := json.Unmarshal(body, &blocks); err != nil {
 		return nil, fmt.Errorf("parse: %v", err)
 	}
-	return &parsed, nil
-}
-
-type blockchairSimpleBlock struct {
-	ID   int64  `json:"id"`
-	Time string `json:"time"`
-}
-
-func blockchairBlockAt(client *http.Client, base string, height int64) (*blockchairSimpleBlock, error) {
-	resp, err := client.Get(base + "/dashboards/block/" + strconv.FormatInt(height, 10))
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	body, _ := io.ReadAll(resp.Body)
-	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("status_%d: %s", resp.StatusCode, truncate(string(body), 200))
-	}
-	var parsed blockchairBlock
-	if err := json.Unmarshal(body, &parsed); err != nil {
-		return nil, fmt.Errorf("parse: %v", err)
-	}
-	for _, v := range parsed.Data {
-		return &blockchairSimpleBlock{ID: v.Block.ID, Time: v.Block.Time}, nil
-	}
-	return nil, fmt.Errorf("no_block_in_response: %s", truncate(string(body), 200))
+	return blocks, nil
 }
