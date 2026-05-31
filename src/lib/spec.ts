@@ -93,7 +93,11 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v4: added providersPerChain so per-chain rank chips only render for
   // providers that actually returned data on that chain (Solana-only
   // providers no longer get phantom chips on Base/BNB).
-  ["bench-unfiltered-v4"],
+  // v5: forced bust after adding bench-029 (solana-dex-quote-latency) —
+  // older cache entries for the all-benchmarks list didn't include the
+  // new slug, so the bench was 404 on direct hit and absent from search
+  // until the cache aged out.
+  ["bench-unfiltered-v5"],
   { revalidate: 60, tags: ["benchmarks"] },
 );
 
@@ -154,7 +158,7 @@ const loadAllBenchmarksCached = unstable_cache(
   // benchmark slice the products page reads. Without bumping this, the
   // outer cache can keep serving v5-era benchmarks (no providersPerChain)
   // even after the inner cache is fresh.
-  ["all-benchmarks-v6"],
+  ["all-benchmarks-v7"],
   { revalidate: 60, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
