@@ -13,23 +13,30 @@ import (
 
 // logBuffer keeps the last N log lines in memory for debug fetching via /logs.
 // Captures BOTH log.* and fmt.Print* output (stdout is dup'd via a pipe).
+//
+// Implementation: fixed-size circular buffer. `head` points at the next slot
+// to write; once `filled` is true every overwrite is O(1) instead of the O(n)
+// slice-shift the prior version used.
 type logBuffer struct {
-	mu    sync.Mutex
-	lines []string
-	max   int
+	mu     sync.Mutex
+	lines  []string
+	max    int
+	head   int  // next write index
+	filled bool // wrapped at least once
 }
 
 const logBufferMax = 5000
 
-var globalLogBuffer = &logBuffer{max: logBufferMax}
+var globalLogBuffer = &logBuffer{lines: make([]string, logBufferMax), max: logBufferMax}
 
 func (b *logBuffer) push(line string) {
 	entry := time.Now().UTC().Format("2006-01-02T15:04:05.000Z") + " " + line
 	b.mu.Lock()
-	if len(b.lines) >= b.max {
-		b.lines = append(b.lines[1:], entry)
-	} else {
-		b.lines = append(b.lines, entry)
+	b.lines[b.head] = entry
+	b.head++
+	if b.head >= b.max {
+		b.head = 0
+		b.filled = true
 	}
 	b.mu.Unlock()
 }
@@ -37,14 +44,19 @@ func (b *logBuffer) push(line string) {
 func (b *logBuffer) Snapshot(tail int) []string {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	if tail <= 0 || tail >= len(b.lines) {
-		out := make([]string, len(b.lines))
-		copy(out, b.lines)
-		return out
+	size := b.head
+	if b.filled {
+		size = b.max
 	}
-	start := len(b.lines) - tail
-	out := make([]string, tail)
-	copy(out, b.lines[start:])
+	if tail <= 0 || tail >= size {
+		tail = size
+	}
+	out := make([]string, 0, tail)
+	// Walk back `tail` slots from head-1 (modular).
+	for i := 0; i < tail; i++ {
+		idx := (b.head - tail + i + b.max) % b.max
+		out = append(out, b.lines[idx])
+	}
 	return out
 }
 

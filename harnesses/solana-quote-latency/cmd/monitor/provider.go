@@ -3,17 +3,18 @@ package main
 import "context"
 
 // Provider is the contract every quote-latency adapter satisfies.
-// Implementations MUST:
-//   - return latencyMs measured from the moment we begin building the request
-//     (or initiating the dial) until the response body has been parsed and
-//     accepted as a real quote.
-//   - return ok=false (and the corresponding RecordAuthError / RecordThrottled
-//     / RecordOtherError already recorded) on 401/403/429 or any failure where
-//     the latency value is NOT representative of a successful quote. The
-//     scheduler will NOT record the histogram in that case.
-//   - return ok=true ONLY when the response body parsed and contained a valid
-//     quote payload.
+//
+// Probe quotes USDC -> tokenOut on the provider's Solana endpoint and returns:
+//   - latencyMs measured around the HTTP round-trip on a warm (keep-alive)
+//     connection. Only meaningful when ok == true.
+//   - ok=true ONLY when the response body parsed AND contained a usable
+//     out-amount field for tokenOut.
+//   - ok=false on any failure where the latency is NOT representative of a
+//     successful quote. Implementations record the failure into the right
+//     counter (RecordAuthError / RecordThrottled / RecordNoRoute /
+//     RecordOtherError) before returning so the scheduler only has to
+//     record latency for the happy path.
 type Provider interface {
 	Slug() string
-	Probe(ctx context.Context) (latencyMs int64, ok bool, err error)
+	Probe(ctx context.Context, tokenOut TrendingToken) (latencyMs int64, ok bool, err error)
 }
