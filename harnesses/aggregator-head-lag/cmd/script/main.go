@@ -30,11 +30,6 @@ func main() {
 	}
 
 	fmt.Println("Metrics will be exposed on :2112/metrics for Prometheus")
-	// GMGN integration status — printed unconditionally at startup so we can
-	// confirm via /logs whether the binary we deployed actually contains the
-	// GMGN monitor.
-	fmt.Printf("[GMGN-BUILD] integration v1 present | GMGN_ENABLED=%v | HTTP_PROXY=%v\n",
-		config.GMGNEnabled, os.Getenv("HTTP_PROXY") != "" || os.Getenv("HTTPS_PROXY") != "")
 	fmt.Println()
 
 	sigChan := make(chan os.Signal, 1)
@@ -68,11 +63,6 @@ func main() {
 		defer wg.Done()
 		runMobulaFastTradeMonitor(config, stopChan)
 	}()
-
-	// GMGN.ai head-lag monitor (Solana only — gated by GMGN_ENABLED env).
-	fmt.Println("[GMGN-BUILD] launching GMGN goroutine…")
-	wg.Add(1)
-	go runGMGNHeadLagMonitor(config, stopChan, &wg)
 
 	<-sigChan
 	fmt.Println("\n\nShutting down monitors...")
