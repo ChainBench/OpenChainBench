@@ -2,7 +2,7 @@
 
 import { Menu, X } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { SiteBanner } from "@/components/site-banner";
 import { SiteLogoSwitcher } from "@/components/site-logo-switcher";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -25,6 +25,10 @@ const NAV = [
 
 export function SiteHeader() {
   const [open, setOpen] = useState(false);
+  const headerRef = useRef<HTMLDivElement>(null);
+  // Sensible initial estimate (banner + nav + iOS safe area) so the page
+  // does not jump on first paint; ResizeObserver refines it after mount.
+  const [headerH, setHeaderH] = useState(96);
 
   // Close the mobile menu when the viewport crosses md so the dropdown
   // doesn't stick around as the desktop nav reappears.
@@ -38,8 +42,27 @@ export function SiteHeader() {
     return () => mql.removeEventListener("change", onChange);
   }, [open]);
 
+  // Measure the fixed header so we can reserve the same height in the
+  // flow with a spacer. ResizeObserver picks up the change when the
+  // banner is dismissed or the viewport resizes.
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const update = () => setHeaderH(el.offsetHeight);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   return (
-    <div className="sticky top-0 z-50 flex flex-col font-sans pt-[env(safe-area-inset-top)]">
+    <>
+      <div
+        ref={headerRef}
+        // position: fixed (not sticky) — sticky is flaky on iOS Safari
+        // when the URL bar animates; fixed keeps the navbar glued.
+        className="fixed top-0 left-0 right-0 z-50 flex flex-col font-sans pt-[env(safe-area-inset-top)]"
+      >
       <SiteBanner />
       <header className="border-b border-rule py-4 md:py-5 px-4 sm:px-6 shrink-0 text-sm bg-surface relative">
         <div className="max-w-[1400px] mx-auto flex items-center justify-between gap-3">
@@ -125,6 +148,12 @@ export function SiteHeader() {
           </nav>
         )}
       </header>
-    </div>
+      </div>
+      {/* Spacer reserves the fixed header's height in the document flow
+          so page content does not start under it. Height tracks the
+          header via ResizeObserver, so dismissing the banner reclaims
+          the freed space automatically. */}
+      <div aria-hidden style={{ height: headerH }} />
+    </>
   );
 }
