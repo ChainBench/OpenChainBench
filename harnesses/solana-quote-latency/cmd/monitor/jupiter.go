@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"net/url"
 	"time"
@@ -17,10 +16,11 @@ import (
 type JupiterProvider struct {
 	region string
 	apiKey string // optional; lite endpoint works without it
+	client *http.Client
 }
 
 func NewJupiterProvider(region, apiKey string) *JupiterProvider {
-	return &JupiterProvider{region: region, apiKey: apiKey}
+	return &JupiterProvider{region: region, apiKey: apiKey, client: newWarmHTTPClient()}
 }
 
 func (p *JupiterProvider) Slug() string { return "jupiter" }
@@ -38,22 +38,6 @@ type jupiterQuoteResp struct {
 }
 
 func (p *JupiterProvider) Probe(ctx context.Context) (int64, bool, error) {
-	// Fresh TCP/TLS per tick. We want DNS+dial+TLS overhead in the measurement.
-	client := &http.Client{
-		Timeout: 10 * time.Second,
-		Transport: &http.Transport{
-			DialContext: (&net.Dialer{
-				Timeout:   10 * time.Second,
-				KeepAlive: -1,
-			}).DialContext,
-			DisableKeepAlives:     true,
-			MaxIdleConns:          0,
-			IdleConnTimeout:       0,
-			TLSHandshakeTimeout:   10 * time.Second,
-			ExpectContinueTimeout: 1 * time.Second,
-		},
-	}
-
 	q := url.Values{}
 	q.Set("inputMint", solMint)
 	q.Set("outputMint", usdcMint)
@@ -72,7 +56,7 @@ func (p *JupiterProvider) Probe(ctx context.Context) (int64, bool, error) {
 	}
 
 	start := time.Now()
-	resp, err := client.Do(req)
+	resp, err := p.client.Do(req)
 	if err != nil {
 		errType := "network"
 		if errors.Is(err, context.DeadlineExceeded) {

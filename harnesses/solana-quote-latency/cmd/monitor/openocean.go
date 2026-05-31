@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"net/url"
 	"time"
@@ -18,10 +17,11 @@ import (
 //   - The body is double-enveloped: {code, data:{code, ..., outAmount}}.
 type OpenOceanProvider struct {
 	region string
+	client *http.Client
 }
 
 func NewOpenOceanProvider(region string) *OpenOceanProvider {
-	return &OpenOceanProvider{region: region}
+	return &OpenOceanProvider{region: region, client: newWarmHTTPClient()}
 }
 
 func (p *OpenOceanProvider) Slug() string { return "openocean" }
@@ -37,21 +37,6 @@ type openOceanQuoteResp struct {
 }
 
 func (p *OpenOceanProvider) Probe(ctx context.Context) (int64, bool, error) {
-	client := &http.Client{
-		Timeout: 10 * time.Second,
-		Transport: &http.Transport{
-			DialContext: (&net.Dialer{
-				Timeout:   10 * time.Second,
-				KeepAlive: -1,
-			}).DialContext,
-			DisableKeepAlives:     true,
-			MaxIdleConns:          0,
-			IdleConnTimeout:       0,
-			TLSHandshakeTimeout:   10 * time.Second,
-			ExpectContinueTimeout: 1 * time.Second,
-		},
-	}
-
 	q := url.Values{}
 	q.Set("inTokenAddress", solMint)
 	q.Set("outTokenAddress", usdcMint)
@@ -70,7 +55,7 @@ func (p *OpenOceanProvider) Probe(ctx context.Context) (int64, bool, error) {
 	req.Header.Set("Accept", "application/json")
 
 	start := time.Now()
-	resp, err := client.Do(req)
+	resp, err := p.client.Do(req)
 	if err != nil {
 		errType := "network"
 		if errors.Is(err, context.DeadlineExceeded) {
