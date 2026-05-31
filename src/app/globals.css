@@ -110,13 +110,22 @@ body {
   }
 }
 
-/* Masthead logo: hide the SVG fallback on desktop (real mouse + ≥ 768px)
-   so it never paints alongside the 3D sphere — desktop sees a brief
-   empty slot while the 3D chunk loads, then the 3D appears. Touch /
-   small screens ignore this and keep the SVG as the only logo. */
+/* Masthead logo layering:
+    - `.logo-touch-only` is the full 2D SVG with corner triangles —
+      shown on touch / small screens, hidden on desktop.
+    - `.logo-desktop-only` is a static "sphere placeholder" — hidden on
+      touch, shown on desktop so first paint is not a blank slot while
+      the 3D chunk loads. The real 3D mounts on top once ready and
+      covers the placeholder cleanly (same circular silhouette). */
+.logo-desktop-only {
+  display: none;
+}
 @media (pointer: fine) and (min-width: 768px) {
   .logo-touch-only {
     display: none;
+  }
+  .logo-desktop-only {
+    display: block;
   }
 }
 
