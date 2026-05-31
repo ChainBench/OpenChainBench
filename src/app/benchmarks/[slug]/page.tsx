@@ -492,11 +492,14 @@ export default async function BenchmarkPage({
         </section>
       )}
 
-      {/* Source code link. bottom of page */}
+      {/* Source code link. bottom of page. The URL goes 'github.com/Org/Repo/tree/main/harnesses/<slug>'
+          which can run to 80+ chars and overflows the viewport on mobile when uppercase + tracked.
+          `break-all` wraps it character-by-character (no natural word boundaries inside a path);
+          `max-w-full` clamps the inline anchor so flex parents don't blow out horizontally either. */}
       {!isDraft && (
-        <p className="mt-4 text-[11px] uppercase tracking-[0.16em] text-ink-muted">
+        <p className="mt-4 text-[11px] uppercase tracking-[0.16em] text-ink-muted break-all">
           Source code{" "}
-          <a className="lnk" href={benchmark.source}>
+          <a className="lnk inline max-w-full" href={benchmark.source}>
             {benchmark.source.replace("https://github.com/", "github.com/")}
             <ArrowUpRight size={12} strokeWidth={2} className="inline ml-1" />
           </a>
