@@ -7,7 +7,7 @@ seo_title: "Fastest Solana DEX quote API in 2026: Jupiter vs Mobula vs OpenOcean
 seo_description: "Live ms latency benchmark for Solana DEX aggregator quote APIs. Jupiter, Mobula, OpenOcean and Raydium probed every 60s from 3 regions, p50/p90/p99 over a 24h window."
 subtitle: Wallclock milliseconds from quote request to usable quote response.
 category: Aggregators
-status: draft
+status: live
 metric: Quote latency
 unit: ms
 
