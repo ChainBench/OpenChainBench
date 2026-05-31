@@ -58,8 +58,16 @@ func main() {
 	fmt.Println("Metrics server: :2112/metrics")
 	fmt.Println()
 
+	// Hardcoded :2112 per the OCB Railway scrape convention. We
+	// deliberately ignore Railway's $PORT (would move the listener
+	// away from where the shared Prom expects it). METRICS_ADDR is
+	// a local-dev escape hatch only — never set in production.
+	addr := os.Getenv("METRICS_ADDR")
+	if addr == "" {
+		addr = ":2112"
+	}
 	go func() {
-		if err := StartMetricsServer(":2112"); err != nil {
+		if err := StartMetricsServer(addr); err != nil {
 			fmt.Printf("[fatal] metrics server: %v\n", err)
 			os.Exit(1)
 		}
