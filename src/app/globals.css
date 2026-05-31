@@ -84,6 +84,17 @@ body {
   color: var(--color-ink);
 }
 
+/* Safety net against horizontal overflow on mobile — any element that
+   exceeds the viewport (long crypto address, wide chart, fixed-width
+   table) gets clipped rather than scrolling the whole page sideways.
+   `clip` is preferred over `hidden` because it doesn't create a new
+   scroll context, so position: sticky / fixed still anchor to the
+   real viewport. Tables that need horizontal scroll keep their own
+   `overflow-x-auto` wrappers — those still work inside this clip. */
+html {
+  overflow-x: clip;
+}
+
 body {
   font-family: var(--font-sans);
   font-feature-settings: "kern", "liga", "ss01", "cv11";

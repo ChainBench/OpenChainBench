@@ -38,6 +38,10 @@ const jetbrainsMono = JetBrains_Mono({
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  // viewport-fit=cover lets the page paint under the iOS notch + home
+  // indicator and turns env(safe-area-inset-*) into non-zero values
+  // the fixed header can pad against.
+  viewportFit: "cover",
   colorScheme: "light dark",
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#ffffff" },
