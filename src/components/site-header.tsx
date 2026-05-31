@@ -61,7 +61,12 @@ export function SiteHeader() {
         ref={headerRef}
         // position: fixed (not sticky) — sticky is flaky on iOS Safari
         // when the URL bar animates; fixed keeps the navbar glued.
-        className="fixed top-0 left-0 right-0 z-50 flex flex-col font-sans pt-[env(safe-area-inset-top)]"
+        // bg-surface fills the safe-area-inset padding so body content
+        // does not show through the notch strip and read as a "hole".
+        // translate3d forces GPU compositing — known iOS Safari hint
+        // that stops fixed elements from detaching during momentum scroll.
+        className="fixed top-0 left-0 right-0 z-50 flex flex-col font-sans pt-[env(safe-area-inset-top)] bg-surface"
+        style={{ transform: "translate3d(0, 0, 0)" }}
       >
       <SiteBanner />
       <header className="border-b border-rule py-4 md:py-5 px-4 sm:px-6 shrink-0 text-sm bg-surface relative">
