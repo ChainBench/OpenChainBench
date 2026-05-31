@@ -55,6 +55,8 @@ const RAW: Record<string, string> = {
   moralis: "/logos/moralis.png",
   stellarexpert: "/logos/stellarexpert.png",
   jupiter: "/logos/jupiter.png",
+  raydium: "/logos/raydium.svg",
+  openocean: "/logos/openocean.png",
   lighter: "/logos/lighter.svg",
   debridge: "/logos/debridge.svg",
 
