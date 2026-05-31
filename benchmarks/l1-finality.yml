@@ -128,7 +128,7 @@ findings:
   - "{{best_name}} currently leads the leaderboard at {{best_p50}} (p50, 24 h) across {{count}} measured L1s. {{worst_name}} trails at {{worst_p50}}."
   - "Hedera's Hashgraph aBFT is designed to finalize in 3-5 s but is excluded from the live leaderboard because the mirror node only exposes finalized blocks, wall-clock measurement requires the Block Node service (HIP-1056), still in private preview."
 
-source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/l1-finality
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/l1-finality
 
 prometheus:
   window: 24h

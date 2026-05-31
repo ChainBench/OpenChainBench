@@ -66,7 +66,7 @@ export function SiteHeader() {
             ))}
             <span className="text-rule-strong">|</span>
             <a
-              href="https://github.com/OpenChainBench/OpenChainBench"
+              href="https://github.com/ChainBench/OpenChainBench"
               className="inline-flex items-center gap-1.5 hover:text-ink transition-colors"
               aria-label="View source on GitHub"
             >
@@ -107,7 +107,7 @@ export function SiteHeader() {
               ))}
               <li className="border-t border-rule mt-1 pt-1 flex items-center gap-4">
                 <a
-                  href="https://github.com/OpenChainBench/OpenChainBench"
+                  href="https://github.com/ChainBench/OpenChainBench"
                   className="inline-flex items-center gap-2 min-h-[44px] text-ink-muted hover:text-ink transition-colors"
                   aria-label="View source on GitHub"
                   onClick={() => setOpen(false)}

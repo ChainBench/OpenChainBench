@@ -60,7 +60,7 @@ findings:
   - "{{name:geckoterminal}} sits at {{p50:geckoterminal}} (p50, 24 h) cross-chain. REST polling adds the poll interval to every read, so head lag tracks the publisher's chosen cadence rather than raw infrastructure speed."
   - "p99 is the integration-grade number. The gap between p50 and {{p99:mobula}} / {{p99:codex}} / {{p99:geckoterminal}} is what a live UI feels when a chain spikes or a region's path degrades."
 
-source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/aggregator-head-lag
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/aggregator-head-lag
 
 prometheus:
   window: 24h

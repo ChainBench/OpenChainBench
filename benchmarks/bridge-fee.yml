@@ -77,7 +77,7 @@ faq:
   - q: "Why does the cheapest bridge change throughout the day?"
     a: "Solver competition is the main driver. Intent layers like Mobula and Relay rank quotes from a rotating set of solvers whose inventory and risk appetite shift with destination-chain volatility and time of day. When Solana gas spikes or an L2 sees a deposit cluster, solvers reprice, and the leaderboard re-orders. The 5-minute scrape cadence catches these moves; the 24-hour p50 smooths them so the headline number reflects sustained competitiveness rather than a single favourable quote."
 
-source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/bridge-monitor
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/bridge-monitor
 
 prometheus:
   url: https://prometheus-production-9ffe.up.railway.app

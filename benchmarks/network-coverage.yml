@@ -61,7 +61,7 @@ findings:
   - "{{name:geckoterminal}} sits at {{p50:geckoterminal}} mainnets. GeckoTerminal indexes wherever CoinGecko already tracks tokens, so the count tracks closely with CoinGecko's DEX coverage rollout rather than a standalone listing decision."
   - "Raw chain count is one dimension of a data API's product. A provider with 200 chains and shallow per-chain depth can rank above one with 80 chains and full DEX, metadata and event coverage on each. Latency (bench № 001) and metadata completeness (bench № 004) measure the other dimensions."
 
-source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/network-coverage
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/network-coverage
 
 prometheus:
   window: 24h

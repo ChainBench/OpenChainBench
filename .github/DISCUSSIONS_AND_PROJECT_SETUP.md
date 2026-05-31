@@ -21,7 +21,7 @@ Default categories like "General" and "Polls" should be deleted to keep the surf
 
 - **Name**: `OpenChainBench Roadmap`
 - **Visibility**: Public
-- **Linked repository**: `OpenChainBench/OpenChainBench`
+- **Linked repository**: `ChainBench/OpenChainBench`
 
 ### Columns
 
@@ -41,7 +41,7 @@ Requested  →  Approved  →  In progress  →  Live  →  Archived
 
 In Project Settings → Workflows, enable:
 
-- **Auto-add to project**. for issues in `OpenChainBench/OpenChainBench` matching the filter `is:issue label:bench-request`. They land in `Requested` automatically.
+- **Auto-add to project**. for issues in `ChainBench/OpenChainBench` matching the filter `is:issue label:bench-request`. They land in `Requested` automatically.
 - **Item closed → Archived**. when an issue is closed without a `live` label, move it to `Archived`.
 - **PR merged → Live** (manual; GitHub doesn't have a native trigger, so a maintainer moves the card after merge).
 

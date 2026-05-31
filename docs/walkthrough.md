@@ -12,7 +12,7 @@ The whole journey takes them roughly **3-4 hours of focused work**, spread over 
 
 ## Phase 1. Align (Day 0, ~30 min)
 
-Alex opens an issue with the [📊 Propose a benchmark](https://github.com/OpenChainBench/OpenChainBench/issues/new?template=new-benchmark.yml) template. They fill in:
+Alex opens an issue with the [📊 Propose a benchmark](https://github.com/ChainBench/OpenChainBench/issues/new?template=new-benchmark.yml) template. They fill in:
 
 - **What to measure**: time-to-receive-full-portfolio in milliseconds.
 - **Providers**: Mobula, Zerion, DeBank, Quick Intel.
@@ -56,7 +56,7 @@ methodology:
   - "Timeout: 5,000 ms. Failures excluded from latency aggregates."
   - "Regions: us-east-1, eu-west-1, ap-southeast-1."
 
-source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/wallet-portfolio-latency
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/wallet-portfolio-latency
 
 prometheus:
   url: https://prom.openchainbench.com
@@ -254,7 +254,7 @@ Alex's benchmark is live. The roadmap card moves to `Live`. The maintainer pings
 | Alex moves the harness to a new URL | Alex (or the maintainer, if Alex disappears) opens a 1-line PR updating the scrape config. Prom reloads, scraping resumes. |
 | One provider in the bench rate-limits Alex | That provider's success rate drops on the page; latency aggregates exclude failures so the bench stays interpretable. |
 | Alex stops paying for the harness | The bench goes dark. After ~30 days of no data, a maintainer can archive the bench (move issue to `Archived`, mark spec `status: draft` in the YAML). The code stays in the repo for anyone to revive. |
-| A provider files a [provider correction](https://github.com/OpenChainBench/OpenChainBench/issues/new?template=provider-correction.yml) saying "your number is wrong" | Public discussion in the issue. If they're right and provide a reproducer, the YAML or harness gets a correction with a dated note on the report. |
+| A provider files a [provider correction](https://github.com/ChainBench/OpenChainBench/issues/new?template=provider-correction.yml) saying "your number is wrong" | Public discussion in the issue. If they're right and provide a reproducer, the YAML or harness gets a correction with a dated note on the report. |
 
 ## What this enables
 

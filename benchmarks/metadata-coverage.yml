@@ -68,7 +68,7 @@ findings:
   - "Coverage drops sharply on the first hour after a launch. p99 ({{p99:mobula}} / {{p99:codex}} / {{p99:jupiter}}) is what a trading UI sees during a launch burst when dozens of new tokens land in the same minute."
   - "{{worst_name:chain:solana}} trails on Solana at {{worst_p50:chain:solana}} (p50, 24 h). A 30-point gap on the leaderboard means roughly one in three field renders falls back to a placeholder when displaying a fresh-launch token."
 
-source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/metadata-coverage
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/metadata-coverage
 
 prometheus:
   window: 24h
