@@ -3,8 +3,8 @@
 slug: solana-dex-quote-latency
 number: "029"
 title: Fastest Solana DEX quote API
-seo_title: "Fastest Solana DEX quote API: Jupiter, Mobula, OpenOcean, Raydium ms"
-seo_description: "Live ms quote latency for Solana DEX aggregator APIs. Jupiter, Mobula, OpenOcean, Raydium probed every 60s from 3 regions, p50/p90/p99 over 24h."
+seo_title: "Fastest Solana DEX quote API in 2026: Jupiter vs Mobula vs OpenOcean vs Raydium"
+seo_description: "Live ms latency benchmark for Solana DEX aggregator quote APIs. Jupiter, Mobula, OpenOcean and Raydium probed every 60s from 3 regions, p50/p90/p99 over a 24h window."
 subtitle: Wallclock milliseconds from quote request to usable quote response.
 category: Aggregators
 status: draft
@@ -55,7 +55,7 @@ findings:
   - "{{name:raydium}} returns quotes in {{p50:raydium}} (p50, 24 h). Raydium's Trade API is a single-venue compute endpoint (Raydium pools only) — included as a reference point for what a direct AMM quote costs versus an aggregator."
   - "p99 is the integration-grade number. {{p99:jupiter}} / {{p99:mobula}} / {{p99:openocean}} / {{p99:raydium}} is what a swap UI feels when a region spikes or a provider's route engine churns."
 
-source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/solana-dex-monitor
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/solana-quote-latency
 
 prometheus:
   window: 24h
