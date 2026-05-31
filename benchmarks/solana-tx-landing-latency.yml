@@ -93,7 +93,7 @@ methodology:
   - "Drop classification. timeout = no confirmation within 60 s. invalid = RPC error, on-chain Err, or BlockhashNotFound. network_error = transport-level (timeout, DNS, EOF, connection refused). rate_limited = HTTP 419 / 429 / 'rate limit' / 'too many requests'. landing_rate is published as success / (success + timeout), rate_limited and network_error are excluded so quota / transport issues don't bias the bench against a throttled service."
   - "Jito control probe. Helius (default), Astralane, Nozomi route a portion of flow through Jito internally, conflating own-path vs Jito-caught-it. Jito is in the V0-Lean set so its control fires in the same cycle. Same slot_delta as Jito = no measurable own-path value. Suspect ahead by 1+ slot = real routing advantage."
   - "Reproducibility. The full harness source is at github.com/MobulaFi/mobula-monorepo/tree/main/miniapps/solana-tx-landing. Anyone with a funded Solana keypair (~1 SOL) can clone, set SOLANA_PROBE_KEYPAIR_BASE58, run the binary, and reproduce these metrics. The bench does not rely on any private or internal service for measurement, the only RPC dependency is the public `api.mainnet-beta.solana.com` HTTP + WebSocket endpoints."
-  - "Methodology v1.3 pre-registered at github.com/OpenChainBench/OpenChainBench/blob/main/docs/methodology/solana-tx-landing-active.md. Any change (tip floor, probe payload, cadence, region, metric definitions) ships as a public PR with a 14-day comment window. Major version bumps run a 30-day shadow period publishing old and new metrics in parallel."
+  - "Methodology v1.3 pre-registered at github.com/ChainBench/OpenChainBench/blob/main/docs/methodology/solana-tx-landing-active.md. Any change (tip floor, probe payload, cadence, region, metric definitions) ships as a public PR with a 14-day comment window. Major version bumps run a 30-day shadow period publishing old and new metrics in parallel."
 
 findings:
   - "{{best_name}} leads the V0-Lean probe set at p50 = {{best_p50}} slot delta over the rolling 7-day window. Lower = fewer Solana slots between submission and confirmation. The gap between fastest and slowest is the operational signal, every service claims '99 %+ landing rate' in marketing copy, but the chain doesn't lie about which slot included your tx. A 1-slot difference is ~400 ms — enough for a MEV bot to front-run a competitor."
@@ -124,7 +124,7 @@ faq:
   - q: "How is the confirmation observed?"
     a: "Via `signatureSubscribe` on the public mainnet WebSocket (`wss://api.mainnet-beta.solana.com`). The subscription is registered BEFORE submission so a fast-confirming tx cannot complete before we are listening (otherwise we'd miss the notification and timeout spuriously). The RPC pushes the notification at the instant the commitment level is reached, so observation resolution is RTT-bounded (~30-50 ms us-east → mainnet-beta) and slot_delta is read directly from the notification's context.slot field. HTTP polling at 200 ms is an automatic fallback if the WebSocket fails to connect for a given cycle."
 
-source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/solana-tx-landing
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/solana-tx-landing
 
 prometheus:
   window: 7d

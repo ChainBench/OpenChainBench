@@ -100,7 +100,7 @@ faq:
   - q: "Why cap Solana at the top 200 validators?"
     a: "Prometheus cardinality budget. The full Solana validator set is ~3000; tracking all of them across `net_yield`, `gross_yield`, `mev_share`, `commission`, `uptime`, `stake_usd`, `jailed` would land ~21k label combinations on the OCB Prom, vs ~1.6k for the top 200. The top 200 by activated stake represent ~90% of staked SOL by USD value, so the chain median is representative of where real delegated stake sits, not skewed by the long tail of <1k-SOL validators that have negligible delegate base. The cap is a knob, if Prom capacity grows, it lifts to 500 or 1000."
 
-source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/validator-yield
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/validator-yield
 
 prometheus:
   window: 24h

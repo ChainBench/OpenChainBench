@@ -251,7 +251,7 @@ export default async function McpPage() {
           Rate limits, body caps, batch rejection and SSE disable are
           enforced at the route. Source is on{" "}
           <a
-            href="https://github.com/OpenChainBench/OpenChainBench/blob/main/src/app/api/mcp/%5Btransport%5D/route.ts"
+            href="https://github.com/ChainBench/OpenChainBench/blob/main/src/app/api/mcp/%5Btransport%5D/route.ts"
             className="lnk break-all"
             rel="noopener"
           >

@@ -10,7 +10,7 @@ body:
 
         OpenChainBench prefers to align on **what** is measured and **how** before any code is written. Fill out the sections below. fields marked required are the bare minimum needed for the maintainers to give meaningful feedback. If you're not sure on some of them, write what you have and leave a note.
 
-        Have a rough idea but not ready to fill all this? Open a thread in [Discussions → Ideas](https://github.com/OpenChainBench/OpenChainBench/discussions/categories/ideas) instead.
+        Have a rough idea but not ready to fill all this? Open a thread in [Discussions → Ideas](https://github.com/ChainBench/OpenChainBench/discussions/categories/ideas) instead.
   - type: input
     id: metric
     attributes:
@@ -97,5 +97,5 @@ body:
       options:
         - label: I understand that the harness code, methodology, and any corrections will be published under the project's MIT/CC-BY-4.0 license.
           required: true
-        - label: I have searched [existing benchmarks](https://github.com/OpenChainBench/OpenChainBench/tree/main/benchmarks) and [open issues](https://github.com/OpenChainBench/OpenChainBench/issues?q=is%3Aissue+label%3Abench-request) for duplicates.
+        - label: I have searched [existing benchmarks](https://github.com/ChainBench/OpenChainBench/tree/main/benchmarks) and [open issues](https://github.com/ChainBench/OpenChainBench/issues?q=is%3Aissue+label%3Abench-request) for duplicates.
           required: true
