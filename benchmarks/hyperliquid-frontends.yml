@@ -50,11 +50,11 @@ abstract: |
   last 24 hours, volume-weighted across every fill attributed to
   the builder address. (2) D7 and D30 cohort retention, the
   percentage of users whose first observed fill for the builder
-  lands in the 24h window 7 (or 30) days ago and who traded
+  lands in the UTC-day window 7 (or 30) days ago and who traded
   again within the last 24 hours — derived from a local SQLite
   state of `(builder, user, first_seen_ms, last_seen_ms)`. (3)
   USD captured per unique trader, `sum(builder_fee) /
-  count(distinct user)` over the 24h window. (4) Volume share in
+  count(distinct user)` over the UTC-day window. (4) Volume share in
   percent, exposed as a secondary signal so readers who came for
   the standard leaderboard number still find it. The harness
   maintains a curated `builders.json` mapping of builder EVM
@@ -68,9 +68,9 @@ abstract: |
 methodology:
   - "Data source. The Hyperliquid team publishes a per-builder, per-day CSV of every attributed fill at `https://stats-data.hyperliquid.xyz/Mainnet/builder_fills/{builder_address_lowercase}/{YYYYMMDD}.csv.lz4`. The bucket is public, unauthenticated, and lossless (LZ4-compressed). Schema: `time, user, coin, side, px, sz, crossed, special_trade_type, tif, is_trigger, counterparty, closed_pnl, twap_id, builder_fee`."
   - "Cadence. The harness polls each registered builder's `T-1` (yesterday's, complete) and `T-0` (today's, preview) CSV every 3600 seconds. `T-1` is treated as authoritative; `T-0` updates the live gauge with a `preview=true` label that the page ignores for ranking purposes."
-  - "Effective fee calculation. For each builder over a 24-hour window: `effective_fee_bps = sum(builder_fee_usd) / sum(notional_usd) * 10000`, where `notional_usd = px * sz` summed over every fill row. Volume-weighted, not flat-averaged, so a builder routing one $10M trade at 1 bps and 10,000 $100 trades at 10 bps lands near 1 bps (matching what its biggest users actually paid)."
-  - "USD-per-user efficiency. `fees_per_user_usd = sum(builder_fee_usd) / count(distinct user)` over the same 24-hour window. Surfaces predatory pricing more clearly than effective fee alone: a builder with 5 bps effective fee and $50 per user is extracting differently than one with the same 5 bps and $0.50 per user."
-  - "D7 / D30 cohort retention. Local SQLite state of `(builder, user, first_seen_ms, last_seen_ms)` updated on every fill. D7 = (users with `first_seen_ms` 7 days ago AND `last_seen_ms` within 24h) ÷ (cohort size). D30 same with 30d window. Catches frontends that dominate 24h volume while bleeding their day-old cohort. State pruned past 90 days to keep the SQLite bounded."
+  - "Effective fee calculation. For each builder over a UTC-day window: `effective_fee_bps = sum(builder_fee_usd) / sum(notional_usd) * 10000`, where `notional_usd = px * sz` summed over every fill row. Volume-weighted, not flat-averaged, so a builder routing one $10M trade at 1 bps and 10,000 $100 trades at 10 bps lands near 1 bps (matching what its biggest users actually paid)."
+  - "USD-per-user efficiency. `fees_per_user_usd = sum(builder_fee_usd) / count(distinct user)` over the same UTC-day window. Surfaces predatory pricing more clearly than effective fee alone: a builder with 5 bps effective fee and $50 per user is extracting differently than one with the same 5 bps and $0.50 per user."
+  - "D7 / D30 cohort retention. Local SQLite state of `(builder, user, first_seen_ms, last_seen_ms)` updated on every fill. D7 = (users with `first_seen_ms` 7 days ago AND `last_seen_ms` within 24h) ÷ (cohort size). D30 same with 30d window. Catches frontends that dominate yesterday's UTC volume while bleeding their day-old cohort. State pruned past 90 days to keep the SQLite bounded."
   - "Fee discipline (secondary). `stddev_over_time(hl_frontend_effective_fee_bps[30d])` computed in Prometheus. Frontends running rotating fee-free promotions show high variance; frontends with stable transparent pricing show low. Not in the leaderboard columns by default but queryable via the MCP server for any reader who wants it."
   - "Builder registry. `harnesses/hyperliquid-frontends/builders.json` is a hand-curated `[{slug, name, address, valid_from, notes}]` array, cross-referenced against Flowscan's builder leaderboard, the Hyperliquid governance forum's builder-code disclosures, and each frontend's public announcement of their builder address. Reviewed weekly. When a new builder address appears in the `unattributed` slice with >0.5% volume share, an issue is filed."
   - "Unattributed bucket. Builder addresses present in Hyperliquid CSV dumps but absent from `builders.json` are aggregated under the `unattributed` slug. The bench surfaces this slice explicitly rather than hiding it so the reader knows the coverage limit. An `unattributed` share >2% triggers a registry-update alert."
@@ -87,7 +87,7 @@ findings:
 
 faq:
   - q: "Why does OpenChainBench not show Hyperliquid volume share?"
-    a: "Volume share is already published cleanly by ASXN HyperScreener, Coinmarketman HyperTracker, Flowscan, Allium, and at least three Dune dashboards. Republishing it would add no value. The unmeasured part of the frontend question is user cost — how much does each frontend take per dollar routed, and how stable is that take rate. That's what this bench answers. Raw 24h notional per builder is still exposed as a secondary metric for readers who want it; it just doesn't drive the headline ranking."
+    a: "Volume share is already published cleanly by ASXN HyperScreener, Coinmarketman HyperTracker, Flowscan, Allium, and at least three Dune dashboards. Republishing it would add no value. The unmeasured part of the frontend question is user cost — how much does each frontend take per dollar routed, and how stable is that take rate. That's what this bench answers. Raw yesterday's UTC notional per builder is still exposed as a secondary metric for readers who want it; it just doesn't drive the headline ranking."
   - q: "How is the effective fee actually computed?"
     a: "For each Hyperliquid builder address in our registry, the harness fetches `https://stats-data.hyperliquid.xyz/Mainnet/builder_fills/{address}/{YYYYMMDD}.csv.lz4` once per hour. Each row of the CSV is one attributed fill with a `builder_fee` field and the `px × sz` notional. We sum `builder_fee` and `px × sz` across every row in the last 24 hours and compute `sum(builder_fee) / sum(notional) × 10000`. That's the volume-weighted effective fee in basis points — what a representative dollar of flow paid that frontend."
   - q: "What's the on-chain cap?"
@@ -138,7 +138,7 @@ providers:
   - slug: phantom-perps
     name: Phantom
     tag: Phantom wallet's HL perps integration
-    formula: "Volume-weighted effective builder fee in basis points over the last 24h, computed from Hyperliquid's public attributed-fills CSV for Phantom's builder address."
+    formula: "Volume-weighted effective builder fee in basis points over the last complete UTC day, computed from Hyperliquid's public attributed-fills CSV for Phantom's builder address."
     queries:
       p50: hl_frontend_effective_fee_bps{builder="phantom-perps"}
       p90: hl_frontend_d7_retention_pct{builder="phantom-perps"}
@@ -151,7 +151,7 @@ providers:
   - slug: axiom
     name: Axiom
     tag: Solana-native terminal expanding to HL
-    formula: "Volume-weighted effective builder fee in basis points over the last 24h, computed from Hyperliquid's public attributed-fills CSV for Axiom's builder address."
+    formula: "Volume-weighted effective builder fee in basis points over the last complete UTC day, computed from Hyperliquid's public attributed-fills CSV for Axiom's builder address."
     queries:
       p50: hl_frontend_effective_fee_bps{builder="axiom"}
       p90: hl_frontend_d7_retention_pct{builder="axiom"}
@@ -164,7 +164,7 @@ providers:
   - slug: pvp-trade
     name: pvp.trade
     tag: Social PvP trading rooms
-    formula: "Volume-weighted effective builder fee in basis points over the last 24h, computed from Hyperliquid's public attributed-fills CSV for pvp.trade's builder address."
+    formula: "Volume-weighted effective builder fee in basis points over the last complete UTC day, computed from Hyperliquid's public attributed-fills CSV for pvp.trade's builder address."
     queries:
       p50: hl_frontend_effective_fee_bps{builder="pvp-trade"}
       p90: hl_frontend_d7_retention_pct{builder="pvp-trade"}
@@ -177,7 +177,7 @@ providers:
   - slug: insilico
     name: Insilico
     tag: Institutional trading workstation
-    formula: "Volume-weighted effective builder fee in basis points over the last 24h, computed from Hyperliquid's public attributed-fills CSV for Insilico's builder address."
+    formula: "Volume-weighted effective builder fee in basis points over the last complete UTC day, computed from Hyperliquid's public attributed-fills CSV for Insilico's builder address."
     queries:
       p50: hl_frontend_effective_fee_bps{builder="insilico"}
       p90: hl_frontend_d7_retention_pct{builder="insilico"}
@@ -190,7 +190,7 @@ providers:
   - slug: defiapp
     name: Defiapp
     tag: Defiapp HL frontend
-    formula: "Volume-weighted effective builder fee in basis points over the last 24h, computed from Hyperliquid's public attributed-fills CSV for Defiapp's builder address."
+    formula: "Volume-weighted effective builder fee in basis points over the last complete UTC day, computed from Hyperliquid's public attributed-fills CSV for Defiapp's builder address."
     queries:
       p50: hl_frontend_effective_fee_bps{builder="defiapp"}
       p90: hl_frontend_d7_retention_pct{builder="defiapp"}
@@ -203,7 +203,7 @@ providers:
   - slug: metamask
     name: MetaMask
     tag: MetaMask wallet HL integration
-    formula: "Volume-weighted effective builder fee in basis points over the last 24h, computed from Hyperliquid's public attributed-fills CSV for MetaMask's builder address."
+    formula: "Volume-weighted effective builder fee in basis points over the last complete UTC day, computed from Hyperliquid's public attributed-fills CSV for MetaMask's builder address."
     queries:
       p50: hl_frontend_effective_fee_bps{builder="metamask"}
       p90: hl_frontend_d7_retention_pct{builder="metamask"}
@@ -216,7 +216,7 @@ providers:
   - slug: dexari
     name: Dexari
     tag: Pro trading UI for HL
-    formula: "Volume-weighted effective builder fee in basis points over the last 24h, computed from Hyperliquid's public attributed-fills CSV for Dexari's builder address."
+    formula: "Volume-weighted effective builder fee in basis points over the last complete UTC day, computed from Hyperliquid's public attributed-fills CSV for Dexari's builder address."
     queries:
       p50: hl_frontend_effective_fee_bps{builder="dexari"}
       p90: hl_frontend_d7_retention_pct{builder="dexari"}
@@ -229,7 +229,7 @@ providers:
   - slug: okto
     name: Okto
     tag: Okto wallet HL integration
-    formula: "Volume-weighted effective builder fee in basis points over the last 24h, computed from Hyperliquid's public attributed-fills CSV for Okto's builder address."
+    formula: "Volume-weighted effective builder fee in basis points over the last complete UTC day, computed from Hyperliquid's public attributed-fills CSV for Okto's builder address."
     queries:
       p50: hl_frontend_effective_fee_bps{builder="okto"}
       p90: hl_frontend_d7_retention_pct{builder="okto"}
