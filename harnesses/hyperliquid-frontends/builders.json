@@ -2,64 +2,57 @@
   {
     "slug": "phantom-perps",
     "name": "Phantom",
-    "address": "0x0000000000000000000000000000000000000000",
+    "address": "0xb84168cf3be63c6b8dad05ff5d755e97432ff80b",
     "valid_from": "2026-05-31",
-    "notes": "Placeholder — replace with the verified Phantom Perps builder code address from Flowscan /builders. See https://www.flowscan.xyz/builders for the live registry."
+    "notes": "Phantom wallet's Hyperliquid perps integration. Verified via CoinMarketMan HyperTracker registry + 200 OK on the public fills bucket on 2026-05-29 and 2026-05-30."
   },
   {
     "slug": "axiom",
     "name": "Axiom",
-    "address": "0x0000000000000000000000000000000000000000",
+    "address": "0x1cc34f6af34653c515b47a83e1de70ba9b0cda1f",
     "valid_from": "2026-05-31",
-    "notes": "Placeholder — verify against Flowscan + Axiom's public docs / governance forum post."
-  },
-  {
-    "slug": "okx",
-    "name": "OKX",
-    "address": "0x0000000000000000000000000000000000000000",
-    "valid_from": "2026-05-31",
-    "notes": "Placeholder — verify against Flowscan + OKX's announcement of their HL builder address."
-  },
-  {
-    "slug": "gmgn",
-    "name": "GMGN",
-    "address": "0x0000000000000000000000000000000000000000",
-    "valid_from": "2026-05-31",
-    "notes": "Placeholder — verify against Flowscan."
+    "notes": "Axiom trading terminal (Solana-native, expanding to HL). Verified via CMM registry + bucket 200 OK."
   },
   {
     "slug": "pvp-trade",
     "name": "pvp.trade",
-    "address": "0x0000000000000000000000000000000000000000",
+    "address": "0x0cbf655b0d22ae71fba3a674b0e1c0c7e7f975af",
     "valid_from": "2026-05-31",
-    "notes": "Placeholder — verify against Flowscan + Hyperdash."
-  },
-  {
-    "slug": "dexterity",
-    "name": "Dexterity",
-    "address": "0x0000000000000000000000000000000000000000",
-    "valid_from": "2026-05-31",
-    "notes": "Placeholder — verify against Flowscan."
-  },
-  {
-    "slug": "kgen",
-    "name": "KGEN",
-    "address": "0x0000000000000000000000000000000000000000",
-    "valid_from": "2026-05-31",
-    "notes": "Placeholder — verify against Flowscan + KGEN docs."
+    "notes": "Social PvP trading rooms. Verified via CMM registry + bucket 200 OK + CMM per-builder URL."
   },
   {
     "slug": "insilico",
     "name": "Insilico",
-    "address": "0x0000000000000000000000000000000000000000",
+    "address": "0x2868fc0d9786a740b491577a43502259efa78a39",
     "valid_from": "2026-05-31",
-    "notes": "Placeholder — verify against Flowscan + Insilico Terminal docs."
+    "notes": "Insilico Terminal (institutional trading workstation). Verified via CMM registry + bucket 200 OK + CMM per-builder URL."
   },
   {
-    "slug": "asxn",
-    "name": "ASXN",
-    "address": "0x0000000000000000000000000000000000000000",
+    "slug": "defiapp",
+    "name": "Defiapp",
+    "address": "0x1922810825c90f4270048b96da7b1803cd8609ef",
     "valid_from": "2026-05-31",
-    "notes": "Placeholder — verify against ASXN HyperScreener + Flowscan."
+    "notes": "Defiapp HL frontend. Verified via bucket 200 OK with real data (sample test: 133 fills, $164K notional, 5 bps eff, 2026-05-29)."
+  },
+  {
+    "slug": "metamask",
+    "name": "MetaMask",
+    "address": "0xe95a5e31904e005066614247d309e00d8ad753aa",
+    "valid_from": "2026-05-31",
+    "notes": "MetaMask HL integration (primary address). MetaMask is documented to operate a secondary address 0xea2c82b5aba243ab631c0ce151763d5e38df75b3 — aggregate manually if needed."
+  },
+  {
+    "slug": "dexari",
+    "name": "Dexari",
+    "address": "0x7975cafdff839ed5047244ed3a0dd82a89866081",
+    "valid_from": "2026-05-31",
+    "notes": "Dexari HL frontend (previously called Dexterity in our internal docs — naming corrected after Flowscan cross-reference). Verified via CMM registry."
+  },
+  {
+    "slug": "okto",
+    "name": "Okto",
+    "address": "0x05984fd37db96dc2a11a09519a8def556e80590b",
+    "valid_from": "2026-05-31",
+    "notes": "Okto HL integration (primary address). Documented secondary: 0x4fe1141b9066f3777f4bd4d4ac9d216173031dc1."
   }
 ]
