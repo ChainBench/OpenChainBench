@@ -55,12 +55,6 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "DEX data terminal by CoinGecko covering 200+ chains. REST API for pools, tokens, trades, and OHLCV.",
     twitter: "@GeckoTerminal",
   },
-  gmgn: {
-    url: "https://gmgn.ai",
-    description:
-      "Solana memecoin trading terminal. WebSocket chain_stat feed for per-pair routing events on tracked Solana pools (slot, price, holder activity) used by GMGN's own trading UI.",
-    twitter: "@gmgnai",
-  },
   jupiter: {
     url: "https://jup.ag",
     description:

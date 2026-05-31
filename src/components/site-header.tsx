@@ -4,7 +4,7 @@ import { Menu, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { SiteBanner } from "@/components/site-banner";
-import { SiteLogo } from "@/components/site-logo";
+import { SiteLogo3D } from "@/components/site-logo-3d";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 function GithubIcon({ size = 15 }: { size?: number }) {
@@ -48,7 +48,7 @@ export function SiteHeader() {
             className="flex items-center gap-2 group"
             onClick={() => setOpen(false)}
           >
-            <SiteLogo size={22} />
+            <SiteLogo3D size={22} />
             <span className="font-bold tracking-tight text-[17px] text-ink">
               OpenChainBench
             </span>
