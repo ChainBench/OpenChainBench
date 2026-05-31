@@ -110,6 +110,17 @@ body {
   }
 }
 
+/* Hide the SVG masthead logo on desktop (real mouse + viewport ≥ 768px).
+   Pure-CSS gate so the SVG never paints alongside the 3D sphere on the
+   first frame — accepts a brief empty slot while the 3D chunk loads,
+   which is much less jarring than the SVG → 3D pop. Mobile / touch
+   ignores this rule and keeps the SVG. */
+@media (pointer: fine) and (min-width: 768px) {
+  .logo-touch-only {
+    display: none;
+  }
+}
+
 /* Tabular nums for everything that displays numbers */
 .tabular,
 .font-mono,
