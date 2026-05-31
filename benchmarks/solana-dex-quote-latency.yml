@@ -1,0 +1,168 @@
+# OpenChainBench. Bench № 029
+
+slug: solana-dex-quote-latency
+number: "029"
+title: Fastest Solana DEX quote API
+seo_title: "Fastest Solana DEX quote API: Jupiter, Mobula, OpenOcean, Raydium ms"
+seo_description: "Live ms quote latency for Solana DEX aggregator APIs. Jupiter, Mobula, OpenOcean, Raydium probed every 60s from 3 regions, p50/p90/p99 over 24h."
+subtitle: Wallclock milliseconds from quote request to usable quote response.
+category: Aggregators
+status: draft
+metric: Quote latency
+unit: ms
+
+seo_intro: |
+  Solana DEX aggregators sit on the hot path of every swap a wallet,
+  trading UI or routing front-end builds. A quote API that takes 600 ms
+  pushes a perceptible delay onto the user; a quote API at 80 ms feels
+  instant. This benchmark measures the wall-clock latency of the
+  request-response round trip on each major Solana DEX aggregator's
+  quote endpoint. The same canonical quote (1 SOL → USDC, 50 bps
+  slippage) is sent every 60 seconds from three regions (us-east,
+  eu-west, sgp) directly from Railway egress against each provider's
+  public production endpoint. p50, p90 and p99 are aggregated via
+  Prometheus `histogram_quantile` over a 24-hour window so the
+  leaderboard reflects sustained latency, not a cherry-picked cold
+  start. Authentication errors (401/403) and rate limits (429) are
+  excluded from the latency histogram and tracked separately on the
+  success rate column, so a billing lapse doesn't poison the
+  percentiles.
+
+abstract: |
+  We measure the wallclock latency of the Solana DEX aggregator quote APIs
+  most commonly integrated by wallets and routing front-ends. The harness
+  sends the same canonical quote request (1 SOL → USDC, 50 bps slippage,
+  no fee, no referrer) to each provider every 60 seconds from three
+  Railway regions and records the time from request dispatch to the first
+  byte of a response that contains a usable quote.
+
+methodology:
+  - "Providers measured: Jupiter, Mobula, OpenOcean, Raydium. (DFlow added when partnership API key is available.)"
+  - "Canonical quote: 1 SOL → USDC, 50 bps slippage, dummy wallet HN7cABqLq46Es1jh92dQQisAq662SmxELLLsHHe4YWrH, no fee account, no referrer, no onlyDirectRoutes."
+  - "Cadence: one quote per provider per region every 60 seconds. 1,440 samples per provider per region per day."
+  - "Regions: us-east, eu-west, sgp."
+  - "Latency definition: wallclock from HTTP request dispatch to the first byte of a response body that includes the quoted output amount (Jupiter `outAmount`, Mobula `data.outAmount`, OpenOcean `data.outAmount`, Raydium `data.outputAmount`). TCP keepalive disabled so each tick incurs a fresh DNS + TLS handshake — this matches what a cold backend integration measures."
+  - "Authentication errors (HTTP 401/403) and rate limits (HTTP 429) are excluded from the latency histogram. They are counted separately and surface on the success rate column."
+  - "Direct egress from Railway, no residential proxy. The bench measures backend-to-backend latency as a real integration would see it."
+  - "Histogram buckets: 10, 25, 50, 100, 200, 500, 1000, 2000, 5000 ms."
+  - "Disclosure: Mobula operates OpenChainBench. Mobula's API is hosted on Railway us-east, which gives it a network-distance advantage on the us-east region series. The per-region tabs surface this transparently; the cross-region median in the headline neutralises it."
+
+findings:
+  - "{{best_name}} leads at {{best_p50}} (p50, 24 h) across {{count}} measured Solana DEX quote APIs. The headline is the cross-region median; the per-region tabs below show where each provider's infrastructure actually sits."
+  - "{{name:jupiter}} returns quotes in {{p50:jupiter}} (p50, 24 h). Jupiter's lite-api endpoint is Cloudflare-fronted and largely region-agnostic — sub-100 ms from any of the three measurement regions."
+  - "{{name:mobula}} returns quotes in {{p50:mobula}} (p50, 24 h). Mobula's API is co-located on Railway us-east, so the us-east region tab shows the lowest measurable RTT; the eu-west and sgp tabs surface the transatlantic / transpacific cost."
+  - "{{name:openocean}} returns quotes in {{p50:openocean}} (p50, 24 h). OpenOcean's v4 Solana endpoint routes a different multi-DEX path engine than Jupiter; the routing search dominates the latency curve."
+  - "{{name:raydium}} returns quotes in {{p50:raydium}} (p50, 24 h). Raydium's Trade API is a single-venue compute endpoint (Raydium pools only) — included as a reference point for what a direct AMM quote costs versus an aggregator."
+  - "p99 is the integration-grade number. {{p99:jupiter}} / {{p99:mobula}} / {{p99:openocean}} / {{p99:raydium}} is what a swap UI feels when a region spikes or a provider's route engine churns."
+
+source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/solana-dex-monitor
+
+prometheus:
+  window: 24h
+
+faq:
+  - q: "Which Solana DEX has the fastest quote API right now?"
+    a: "{{best_name}} currently returns quotes the fastest at {{best_p50}} (p50, 24 h) across {{count}} measured providers. The leaderboard re-sorts every 60 seconds against fresh samples, so the answer reflects the last 24 hours of measured latency from three regions (us-east, eu-west, sgp), not a marketing-page claim."
+  - q: "What is quote latency on a DEX aggregator?"
+    a: "Quote latency is the wallclock time between a swap UI asking a DEX aggregator 'what would I get for 1 SOL right now?' and the aggregator answering with a usable routed price. A quote API at 80 ms feels instant to the user; a quote API at 600 ms introduces a visible delay between input change and updated output. The number sets the floor on how live a swap UI can feel before any other latency (RPC, signing, broadcast) is added."
+  - q: "How is quote latency measured on OpenChainBench?"
+    a: "A harness in each of three Railway regions (us-east, eu-west, sgp) sends the same canonical quote — 1 SOL → USDC, 50 bps slippage, no fee — to each provider's quote endpoint every 60 seconds. Each request opens a fresh TCP connection (no keepalive reuse) so DNS, TLS and request handling are all counted, the way a cold backend integration measures. The wallclock from request dispatch to the first byte containing the quoted output amount is the recorded latency. p50, p90 and p99 are aggregated via Prometheus `histogram_quantile` over 24 hours."
+  - q: "Why is Jupiter so much faster than Raydium's Trade API?"
+    a: "Jupiter is an aggregator: it computes routes server-side and serves the result from a Cloudflare-fronted edge that's largely region-agnostic. Raydium's Trade API is a single-venue compute endpoint that runs the routing calculation per request against Raydium's own pools only. Raydium isn't optimised for the speed an aggregator front-end needs because it isn't the front-end."
+  - q: "Why is Mobula not the fastest in every region?"
+    a: "Mobula's quote API is hosted on Railway us-east. The us-east region tab measures Mobula at the lowest possible RTT for that infra. The eu-west and sgp tabs measure with the network distance penalty added — that's an honest reflection of what a user in those regions experiences when they hit Mobula. The per-region tabs surface this; the cross-region median in the headline neutralises it."
+  - q: "Are authentication errors and rate limits counted as 'slow'?"
+    a: "No. HTTP 401/403/429 responses are excluded from the latency histogram entirely. They are counted in separate counters (`solana_quote_auth_error_total`, `solana_quote_throttled_total`) which show up on the success rate column. A provider that's fast but rate-limits us at the configured cadence loses points on success rate, not on latency."
+
+providers:
+  - slug: jupiter
+    name: Jupiter
+    tag: DEX aggregator (REST)
+    formula: "Median wallclock ms over 24h from request dispatch to first byte of a 200 response containing a non-empty `outAmount` field on Jupiter's `lite-api.jup.ag/swap/v1/quote` endpoint."
+    queries:
+      p50: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="jupiter"}[24h])))
+      p90: histogram_quantile(0.90, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="jupiter"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="jupiter"}[24h])))
+      mean: sum(rate(solana_quote_latency_ms_sum{provider="jupiter"}[24h])) / sum(rate(solana_quote_latency_ms_count{provider="jupiter"}[24h]))
+      success: avg_over_time(solana_quote_success{provider="jupiter"}[24h])
+      sample_size: sum(increase(solana_quote_latency_ms_count{provider="jupiter"}[24h]))
+      series: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="jupiter"}[1h])))
+      regions:
+        - region: us-east
+          p50: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="jupiter", region="us-east"}[24h])))
+          series: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="jupiter", region="us-east"}[1h])))
+        - region: eu-west
+          p50: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="jupiter", region="eu-west"}[24h])))
+          series: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="jupiter", region="eu-west"}[1h])))
+        - region: ap-southeast
+          p50: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="jupiter", region="sgp"}[24h])))
+          series: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="jupiter", region="sgp"}[1h])))
+
+  - slug: mobula
+    name: Mobula
+    tag: DEX aggregator (REST)
+    formula: "Median wallclock ms over 24h from request dispatch to first byte of a 200 response containing a non-empty `data.outAmount` field on Mobula's `api.mobula.io/api/2/swap/quoting` endpoint."
+    queries:
+      p50: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="mobula"}[24h])))
+      p90: histogram_quantile(0.90, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="mobula"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="mobula"}[24h])))
+      mean: sum(rate(solana_quote_latency_ms_sum{provider="mobula"}[24h])) / sum(rate(solana_quote_latency_ms_count{provider="mobula"}[24h]))
+      success: avg_over_time(solana_quote_success{provider="mobula"}[24h])
+      sample_size: sum(increase(solana_quote_latency_ms_count{provider="mobula"}[24h]))
+      series: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="mobula"}[1h])))
+      regions:
+        - region: us-east
+          p50: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="mobula", region="us-east"}[24h])))
+          series: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="mobula", region="us-east"}[1h])))
+        - region: eu-west
+          p50: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="mobula", region="eu-west"}[24h])))
+          series: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="mobula", region="eu-west"}[1h])))
+        - region: ap-southeast
+          p50: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="mobula", region="sgp"}[24h])))
+          series: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="mobula", region="sgp"}[1h])))
+
+  - slug: openocean
+    name: OpenOcean
+    tag: DEX aggregator (REST)
+    formula: "Median wallclock ms over 24h from request dispatch to first byte of a response containing a non-empty `data.outAmount` field on OpenOcean's `open-api.openocean.finance/v4/solana/quote` endpoint."
+    queries:
+      p50: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="openocean"}[24h])))
+      p90: histogram_quantile(0.90, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="openocean"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="openocean"}[24h])))
+      mean: sum(rate(solana_quote_latency_ms_sum{provider="openocean"}[24h])) / sum(rate(solana_quote_latency_ms_count{provider="openocean"}[24h]))
+      success: avg_over_time(solana_quote_success{provider="openocean"}[24h])
+      sample_size: sum(increase(solana_quote_latency_ms_count{provider="openocean"}[24h]))
+      series: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="openocean"}[1h])))
+      regions:
+        - region: us-east
+          p50: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="openocean", region="us-east"}[24h])))
+          series: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="openocean", region="us-east"}[1h])))
+        - region: eu-west
+          p50: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="openocean", region="eu-west"}[24h])))
+          series: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="openocean", region="eu-west"}[1h])))
+        - region: ap-southeast
+          p50: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="openocean", region="sgp"}[24h])))
+          series: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="openocean", region="sgp"}[1h])))
+
+  - slug: raydium
+    name: Raydium
+    tag: AMM (single-venue Trade API)
+    formula: "Median wallclock ms over 24h from request dispatch to first byte of a response containing a non-empty `data.outputAmount` field on Raydium's `transaction-v1.raydium.io/compute/swap-base-in` endpoint."
+    queries:
+      p50: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="raydium"}[24h])))
+      p90: histogram_quantile(0.90, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="raydium"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="raydium"}[24h])))
+      mean: sum(rate(solana_quote_latency_ms_sum{provider="raydium"}[24h])) / sum(rate(solana_quote_latency_ms_count{provider="raydium"}[24h]))
+      success: avg_over_time(solana_quote_success{provider="raydium"}[24h])
+      sample_size: sum(increase(solana_quote_latency_ms_count{provider="raydium"}[24h]))
+      series: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="raydium"}[1h])))
+      regions:
+        - region: us-east
+          p50: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="raydium", region="us-east"}[24h])))
+          series: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="raydium", region="us-east"}[1h])))
+        - region: eu-west
+          p50: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="raydium", region="eu-west"}[24h])))
+          series: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="raydium", region="eu-west"}[1h])))
+        - region: ap-southeast
+          p50: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="raydium", region="sgp"}[24h])))
+          series: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="raydium", region="sgp"}[1h])))
