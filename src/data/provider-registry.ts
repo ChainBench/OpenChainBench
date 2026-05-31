@@ -61,6 +61,18 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Solana swap aggregator. REST APIs for quotes, swap routing, price, and token lists across Solana DEXs.",
     twitter: "@JupiterExchange",
   },
+  raydium: {
+    url: "https://raydium.io",
+    description:
+      "Solana AMM with both standard constant-product pools and concentrated liquidity (CLMM). Trade API exposes single-venue swap quotes and route construction over Raydium-owned liquidity only — not an aggregator.",
+    twitter: "@RaydiumProtocol",
+  },
+  openocean: {
+    url: "https://openocean.finance",
+    description:
+      "Multi-chain DEX aggregator. v4 swap API quotes and routes across EVM chains and Solana, aggregating across multiple AMMs with gas-aware path selection.",
+    twitter: "@OpenOceanGlobal",
+  },
   moralis: {
     url: "https://moralis.io",
     description:
