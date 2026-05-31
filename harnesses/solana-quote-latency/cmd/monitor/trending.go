@@ -13,29 +13,42 @@ import (
 	"time"
 )
 
-// TrendingToken is one rotation entry. Symbol is only for logs / debugging;
-// the mint is what every provider takes.
+// TrendingToken is one rotation entry. Symbol is for logs / debugging only;
+// the mint is the canonical identity passed to every provider adapter.
 type TrendingToken struct {
 	Mint   string
 	Symbol string
 }
 
-// trendingFetchEndpoint queries Mobula market-query sorted by volume DESC and
-// skips the top N to dodge the always-cached pairs (USDC, USDT, CBBTC, SOL).
-// What's left is real tradable long-tail volume — the kind a swap UI quotes
-// when a user picks a memecoin or a wrapped asset, where no provider can serve
-// from edge cache.
+// TrendingFetcher is the rotation source the scheduler reads from. It holds
+// two parallel populations:
+//
+//   - "pulse pool" — fed by PulseSubscriber via Note() / Forget() from the
+//     live `wss://pulse-v2-api.mobula.io` bonded view. Each entry has a
+//     `lastSeen` timestamp and is evicted from Pick after 30 min of silence.
+//     This is the preferred source — it tracks what's actually trending right
+//     now, refreshed on the millisecond.
+//
+//   - "rest fallback" — the older list fetched from
+//     `api.mobula.io/api/1/market/query?sortBy=volume&offset=5&limit=50` every
+//     10 min. Used ONLY when the Pulse WS hasn't seen a message in > 90 s
+//     (initial connection delay, network blip, Mobula incident). Without this
+//     safety net the bench would stall during any Pulse outage.
+//
+// Pick() prefers pulse when it has fresh entries and falls through to the
+// REST snapshot otherwise. The scheduler never has to branch.
 const (
-	trendingFetchEndpoint = "https://api.mobula.io/api/1/market/query"
-	trendingSkipTop       = 5  // skip USDC, USDT, CBBTC, SOL, USD1
-	trendingFetchLimit    = 50 // ranks 6..55 by volume on Solana
-	trendingRefreshEvery  = 10 * time.Minute
-	trendingMinLiquidity  = 50_000.0 // USD — drop dust tokens with no routable path
+	trendingFetchEndpoint    = "https://api.mobula.io/api/1/market/query"
+	trendingSkipTop          = 5 // skip USDC, USDT, CBBTC, SOL, USD1
+	trendingFetchLimit       = 50
+	trendingRefreshEvery     = 10 * time.Minute
+	trendingMinLiquidity     = 50_000.0
+	pulseEntryTTL            = 30 * time.Minute // entries older than this stop appearing in Pick
 )
 
-// stablecoinSymbols is the set we skip even if they show up in the rank window.
-// They behave like cached pairs (issuers + market-makers run the same canonical
-// quote a lot) so they bias the latency the same way SOL↔USDC did.
+// stablecoinSymbols mirrors the stablecoin filter applied to the REST snapshot
+// — the Pulse bonded view occasionally emits a stable graduating from a
+// launchpad too, and quoting USDC → USDC defeats the purpose.
 var stablecoinSymbols = map[string]bool{
 	"USDC": true, "USDT": true, "USD1": true, "USDG": true, "USDE": true,
 	"DAI": true, "FDUSD": true, "PYUSD": true, "USDD": true, "USDS": true,
@@ -50,23 +63,112 @@ type mobulaQueryResp []struct {
 	} `json:"contracts"`
 }
 
+type pulseEntry struct {
+	mint     string
+	symbol   string
+	lastSeen time.Time
+}
+
 type TrendingFetcher struct {
 	apiKey string
 	client *http.Client
 
-	mu       sync.RWMutex
-	tokens   []TrendingToken
-	lastLoad time.Time
+	mu sync.RWMutex
+	// rest snapshot (background refresh from /market/query)
+	restTokens []TrendingToken
+	// pulse-fed pool keyed by mint
+	pulse map[string]*pulseEntry
+
+	// lastRESTLoad / lastPulseAt track how fresh each source is.
+	lastRESTLoad time.Time
 }
 
 func NewTrendingFetcher(apiKey string) *TrendingFetcher {
-	return &TrendingFetcher{apiKey: apiKey, client: newWarmHTTPClient()}
+	return &TrendingFetcher{
+		apiKey: apiKey,
+		client: newWarmHTTPClient(),
+		pulse:  make(map[string]*pulseEntry),
+	}
 }
 
-// Refresh pulls a fresh list. Safe to call concurrently; only one fetch lands.
-// On any failure the prior list is kept (so a transient Mobula hiccup doesn't
-// empty the rotation and stop the bench).
-func (f *TrendingFetcher) Refresh(ctx context.Context) error {
+// Note records that the Pulse bonded view saw this token. Called from the WS
+// subscriber's goroutine on every `update-token` / `new-token` event. Skips
+// stablecoin symbols and the canonical pair anchors (SOL, USDC).
+func (f *TrendingFetcher) Note(mint, symbol string) {
+	if mint == "" || mint == solMint || mint == usdcMint {
+		return
+	}
+	if stablecoinSymbols[symbol] {
+		return
+	}
+	now := time.Now()
+	f.mu.Lock()
+	if e, ok := f.pulse[mint]; ok {
+		e.lastSeen = now
+		if e.symbol == "" && symbol != "" {
+			e.symbol = symbol
+		}
+	} else {
+		f.pulse[mint] = &pulseEntry{mint: mint, symbol: symbol, lastSeen: now}
+	}
+	f.mu.Unlock()
+}
+
+// Forget drops a token from the pulse pool. Called when Pulse emits
+// `remove-token` (the bonded view shrunk past this entry).
+func (f *TrendingFetcher) Forget(mint string) {
+	f.mu.Lock()
+	delete(f.pulse, mint)
+	f.mu.Unlock()
+}
+
+// pulseLive returns the subset of pulse entries seen within pulseEntryTTL.
+// Also opportunistically prunes anything older.
+func (f *TrendingFetcher) pulseLive() []TrendingToken {
+	now := time.Now()
+	cutoff := now.Add(-pulseEntryTTL)
+	out := make([]TrendingToken, 0, len(f.pulse))
+	for mint, e := range f.pulse {
+		if e.lastSeen.Before(cutoff) {
+			delete(f.pulse, mint)
+			continue
+		}
+		out = append(out, TrendingToken{Mint: e.mint, Symbol: e.symbol})
+	}
+	return out
+}
+
+// Pick returns one random token from the freshest available source. Tries the
+// Pulse pool first; falls through to the REST snapshot when Pulse is empty.
+func (f *TrendingFetcher) Pick() (TrendingToken, bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if live := f.pulseLive(); len(live) > 0 {
+		return live[rand.Intn(len(live))], true
+	}
+	if len(f.restTokens) > 0 {
+		return f.restTokens[rand.Intn(len(f.restTokens))], true
+	}
+	return TrendingToken{}, false
+}
+
+// Stats returns counts for logging.
+func (f *TrendingFetcher) Stats() (pulseLive, restCount int) {
+	f.mu.RLock()
+	defer f.mu.RUnlock()
+	cutoff := time.Now().Add(-pulseEntryTTL)
+	for _, e := range f.pulse {
+		if !e.lastSeen.Before(cutoff) {
+			pulseLive++
+		}
+	}
+	restCount = len(f.restTokens)
+	return
+}
+
+// RefreshREST pulls the long-tail-by-volume snapshot. Used as fallback when
+// the Pulse WS is down. Keeps the prior list on failure so we don't stall.
+func (f *TrendingFetcher) RefreshREST(ctx context.Context) error {
 	q := url.Values{}
 	q.Set("sortBy", "volume")
 	q.Set("sortOrder", "desc")
@@ -90,7 +192,7 @@ func (f *TrendingFetcher) Refresh(ctx context.Context) error {
 		if errors.Is(err, context.DeadlineExceeded) {
 			errType = "timeout"
 		}
-		return fmt.Errorf("trending fetch (%s): %w", errType, err)
+		return fmt.Errorf("rest fetch (%s): %w", errType, err)
 	}
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
@@ -98,7 +200,7 @@ func (f *TrendingFetcher) Refresh(ctx context.Context) error {
 		return fmt.Errorf("read body: %w", err)
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("trending http %d", resp.StatusCode)
+		return fmt.Errorf("rest http %d", resp.StatusCode)
 	}
 
 	var parsed mobulaQueryResp
@@ -114,54 +216,38 @@ func (f *TrendingFetcher) Refresh(ctx context.Context) error {
 		if t.Liquidity < trendingMinLiquidity {
 			continue
 		}
-		var solMintAddr string
+		var solAddr string
 		for _, c := range t.Contracts {
 			if c.Blockchain == "solana:solana" {
-				solMintAddr = c.Address
+				solAddr = c.Address
 				break
 			}
 		}
-		if solMintAddr == "" {
+		if solAddr == "" || solAddr == solMint || solAddr == usdcMint {
 			continue
 		}
-		if solMintAddr == solMint || solMintAddr == usdcMint {
-			continue
-		}
-		out = append(out, TrendingToken{Mint: solMintAddr, Symbol: t.Symbol})
+		out = append(out, TrendingToken{Mint: solAddr, Symbol: t.Symbol})
 	}
 	if len(out) == 0 {
-		return fmt.Errorf("trending: 0 tradable long-tail tokens after filter")
+		return fmt.Errorf("rest: 0 tradable tokens after filter")
 	}
 
 	f.mu.Lock()
-	f.tokens = out
-	f.lastLoad = time.Now()
+	f.restTokens = out
+	f.lastRESTLoad = time.Now()
 	f.mu.Unlock()
-	fmt.Printf("[TRENDING] refreshed list: %d tokens (first=%s, last=%s)\n",
-		len(out), out[0].Symbol, out[len(out)-1].Symbol)
+	fmt.Printf("[TRENDING][REST] fallback list refreshed: %d tokens\n", len(out))
 	return nil
 }
 
-// Pick returns one random token from the current list. Returns ok=false when
-// the list is empty (first call before Refresh succeeded).
-func (f *TrendingFetcher) Pick() (TrendingToken, bool) {
-	f.mu.RLock()
-	defer f.mu.RUnlock()
-	if len(f.tokens) == 0 {
-		return TrendingToken{}, false
-	}
-	return f.tokens[rand.Intn(len(f.tokens))], true
-}
-
-// Run blocks until ctx is done; refreshes the list immediately on entry and
-// every trendingRefreshEvery thereafter. Logs failures but doesn't exit.
-func (f *TrendingFetcher) Run(ctx context.Context) {
+// RunREST keeps the REST snapshot warm on a 10-min cycle. The Pulse WS feeds
+// the primary pool; this is the safety net.
+func (f *TrendingFetcher) RunREST(ctx context.Context) {
 	doRefresh := func() {
-		refreshCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
+		c, cancel := context.WithTimeout(ctx, 15*time.Second)
 		defer cancel()
-		if err := f.Refresh(refreshCtx); err != nil {
-			fmt.Printf("[TRENDING] refresh failed: %v (keeping prior list of %d tokens)\n",
-				err, len(f.tokens))
+		if err := f.RefreshREST(c); err != nil {
+			fmt.Printf("[TRENDING][REST] refresh failed: %v (keeping prior list)\n", err)
 		}
 	}
 	doRefresh()
