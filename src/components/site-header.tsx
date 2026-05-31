@@ -4,7 +4,7 @@ import { Menu, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { SiteBanner } from "@/components/site-banner";
-import { SiteLogo } from "@/components/site-logo";
+import { SiteLogo3D } from "@/components/site-logo-3d";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 function GithubIcon({ size = 15 }: { size?: number }) {
@@ -43,16 +43,18 @@ export function SiteHeader() {
       <SiteBanner />
       <header className="border-b border-rule py-4 md:py-5 px-4 sm:px-6 shrink-0 text-sm bg-surface relative">
         <div className="max-w-[1400px] mx-auto flex items-center justify-between gap-3">
-          <Link
-            href="/"
-            className="flex items-center gap-2 group"
-            onClick={() => setOpen(false)}
-          >
-            <SiteLogo size={22} />
-            <span className="font-bold tracking-tight text-[17px] text-ink">
-              OpenChainBench
-            </span>
-          </Link>
+          <div className="flex items-center gap-2">
+            <SiteLogo3D size={22} />
+            <Link
+              href="/"
+              className="group"
+              onClick={() => setOpen(false)}
+            >
+              <span className="font-bold tracking-tight text-[17px] text-ink">
+                OpenChainBench
+              </span>
+            </Link>
+          </div>
 
           <nav className="hidden md:flex items-center gap-8 text-ink-muted font-medium">
             {NAV.map((item) => (
