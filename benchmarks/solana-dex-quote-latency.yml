@@ -45,12 +45,12 @@ methodology:
   - "Authentication errors (HTTP 401/403) and rate limits (HTTP 429) are excluded from the latency histogram. They are counted separately and surface on the success rate column."
   - "Direct egress from Railway, no residential proxy. The bench measures backend-to-backend latency as a real integration would see it."
   - "Histogram buckets: 10, 25, 50, 100, 200, 500, 1000, 2000, 5000 ms."
-  - "Disclosure: Mobula operates OpenChainBench. Mobula's API is hosted on Railway us-east, which gives it a network-distance advantage on the us-east region series. The per-region tabs surface this transparently; the cross-region median in the headline neutralises it."
+  - "Disclosure: Mobula operates OpenChainBench. All four measured endpoints sit behind a CDN (Cloudflare for Mobula, OpenOcean, Raydium; CloudFront for Jupiter), so the visible latency is the sum of edge TLS handshake plus whatever portion of the request the origin actually computes — providers that cache the canonical 1 SOL → USDC response at the edge look faster than providers that re-route every request. The per-region tabs surface this transparently; the cross-region median in the headline neutralises it."
 
 findings:
   - "{{best_name}} leads at {{best_p50}} (p50, 24 h) across {{count}} measured Solana DEX quote APIs. The headline is the cross-region median; the per-region tabs below show where each provider's infrastructure actually sits."
   - "{{name:jupiter}} returns quotes in {{p50:jupiter}} (p50, 24 h). Jupiter's lite-api endpoint is Cloudflare-fronted and largely region-agnostic — sub-100 ms from any of the three measurement regions."
-  - "{{name:mobula}} returns quotes in {{p50:mobula}} (p50, 24 h). Mobula's API is co-located on Railway us-east, so the us-east region tab shows the lowest measurable RTT; the eu-west and sgp tabs surface the transatlantic / transpacific cost."
+  - "{{name:mobula}} returns quotes in {{p50:mobula}} (p50, 24 h). Mobula's quote API runs a live multi-DEX routing search per request rather than serving cached responses, so the per-region tabs reflect the cost of the edge-to-origin hop on top of the routing compute."
   - "{{name:openocean}} returns quotes in {{p50:openocean}} (p50, 24 h). OpenOcean's v4 Solana endpoint routes a different multi-DEX path engine than Jupiter; the routing search dominates the latency curve."
   - "{{name:raydium}} returns quotes in {{p50:raydium}} (p50, 24 h). Raydium's Trade API is a single-venue compute endpoint (Raydium pools only) — included as a reference point for what a direct AMM quote costs versus an aggregator."
   - "p99 is the integration-grade number. {{p99:jupiter}} / {{p99:mobula}} / {{p99:openocean}} / {{p99:raydium}} is what a swap UI feels when a region spikes or a provider's route engine churns."
@@ -59,6 +59,18 @@ source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/solana-
 
 prometheus:
   window: 24h
+
+# Region selector — tabs at the top of the page. Server-side injects
+# `region="X"` into every PromQL query for the active tab. The special
+# value `all` skips the filter and aggregates across every region.
+# Values match the raw harness labels emitted by the MONITOR_REGION env
+# var on each Railway service.
+dimensions:
+  region:
+    - { value: all,     label: All regions }
+    - { value: us-east, label: US-East }
+    - { value: eu-west, label: EU-West }
+    - { value: sgp,     label: AP-Southeast }
 
 faq:
   - q: "Which Solana DEX has the fastest quote API right now?"
@@ -70,7 +82,7 @@ faq:
   - q: "Why is Jupiter so much faster than Raydium's Trade API?"
     a: "Jupiter is an aggregator: it computes routes server-side and serves the result from a Cloudflare-fronted edge that's largely region-agnostic. Raydium's Trade API is a single-venue compute endpoint that runs the routing calculation per request against Raydium's own pools only. Raydium isn't optimised for the speed an aggregator front-end needs because it isn't the front-end."
   - q: "Why is Mobula not the fastest in every region?"
-    a: "Mobula's quote API is hosted on Railway us-east. The us-east region tab measures Mobula at the lowest possible RTT for that infra. The eu-west and sgp tabs measure with the network distance penalty added — that's an honest reflection of what a user in those regions experiences when they hit Mobula. The per-region tabs surface this; the cross-region median in the headline neutralises it."
+    a: "Mobula's quote API sits behind Cloudflare and runs a live multi-DEX routing search per request (no cached response bodies for popular pairs). Jupiter, by contrast, fronts the canonical `1 SOL → USDC` quote with aggressive edge caching, so the closest CloudFront PoP returns a pre-computed body without round-tripping to the origin. That's the gap on the most-popular pair; on a less-popular long-tail pair the gap collapses because the CDN cache miss forces every provider back to the origin. The per-region tabs let you see who's CDN-leaning vs origin-leaning — large region-to-region variance indicates edge caching; flat numbers across regions indicate origin compute."
   - q: "Are authentication errors and rate limits counted as 'slow'?"
     a: "No. HTTP 401/403/429 responses are excluded from the latency histogram entirely. They are counted in separate counters (`solana_quote_auth_error_total`, `solana_quote_throttled_total`) which show up on the success rate column. A provider that's fast but rate-limits us at the configured cadence loses points on success rate, not on latency."
 
