@@ -2,7 +2,10 @@ module mobula_solana_quote_latency
 
 go 1.24.4
 
-require github.com/prometheus/client_golang v1.23.2
+require (
+	github.com/gorilla/websocket v1.5.3
+	github.com/prometheus/client_golang v1.23.2
+)
 
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
