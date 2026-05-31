@@ -78,6 +78,8 @@ const QUERY_PROM_ALLOWED_METRIC_PREFIXES = [
   // Bridge revenue (Relay-style implied margin)
   "relay_",
   "per_swap_margin_usd",
+  // Hyperliquid frontends quality bench (bench № 030)
+  "hl_frontend_",
 ];
 
 // PromQL identifiers that are NOT metric names - built-in functions,
