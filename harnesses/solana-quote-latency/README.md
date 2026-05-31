@@ -2,15 +2,21 @@
 
 Source for OpenChainBench bench [`solana-dex-quote-latency`](https://openchainbench.com/benchmarks/solana-dex-quote-latency).
 
-Every 60 s the harness picks a **long-tail Solana token** from the live trending list and asks each of Jupiter, Mobula, OpenOcean and Raydium for a `100 USDC → tokenOut` quote. Rotating the `tokenOut` defeats the per-pair edge cache Jupiter maintains on the most-popular pairs (SOL, USDT, CBBTC), so the recorded number reflects the routing-search cost rather than a CDN hit.
+Every 60 s the harness picks a **currently-trending Solana token** from a live Pulse V2 WebSocket feed and asks each of Jupiter, Mobula, OpenOcean and Raydium for a `100 USDC → tokenOut` quote. Rotating against tokens that are actually trending right now defeats every per-pair edge cache and forces each provider to actually search a route — the recorded number reflects routing-search cost, not a CDN hit.
 
 Exposes Prometheus metrics on `:2112/metrics` (OCB Railway convention).
 
 ## How it works
 
-A persistent goroutine refreshes the rotation list every 10 minutes from Mobula's market-query API (`api.mobula.io/api/1/market/query?sortBy=volume&sortOrder=desc&blockchain=Solana&limit=50&offset=5`). That returns Solana tokens ranked 6-55 by 24 h volume — past the always-cached top five (USDC, USDT, CBBTC, SOL, USD1) but inside the band where every aggregator can still find a route. Stablecoins by symbol and tokens with < $50 k liquidity are dropped client-side.
+### Rotation source
 
-One tick = one randomly picked token from that list × four parallel probes. Each provider adapter:
+A persistent WebSocket goroutine subscribes to `wss://pulse-v2-api.mobula.io` (`model: "default"`, `assetMode: true`, `chainId: ["solana:solana"]`, view `new`). The server auto-pushes all three views — `new`, `bonding`, `bonded` — over the same connection. The subscriber filters incoming events to `viewName == "bonded"` (post-bonding-curve graduates from Pump.fun, Meteora DBC, Raydium LaunchLab) and maintains a sliding 30-minute pool deduped by mint. On the Solana bonded view this stabilises at ~50-300 active mints. A REST snapshot of `api.mobula.io/api/1/market/query` (Solana volume ranks 6-55) refreshes every 10 minutes as a passive fallback so the bench survives a Pulse outage. In steady state every tick is sourced from the WS feed.
+
+> Mobula caps each API key at 3 tracked views across all open subscriptions. Each Railway replica (us-east, eu-west, sgp) opens 1 view = 3 total — right at the cap. Do not add another Pulse-using harness on the same key.
+
+### Per tick
+
+One tick = one randomly picked token (Pulse first, REST fallback) × four parallel probes. Each provider adapter:
 
 1. Builds the canonical request: `inputMint=USDC, outputMint=<picked>, amount=100 USDC, slippage=1%`.
 2. Reuses a per-provider `http.Client` configured for keep-alive (30 s `KeepAlive`, 90 s `IdleConnTimeout`, HTTP/2 attempt). After the first tick the TCP + TLS connection is reused, so the wallclock around `client.Do(req)` measures steady-state RTT (request handling + origin work + response), not the cold handshake.
@@ -86,7 +92,7 @@ curl localhost:2112/metrics | grep solana_quote_latency
 
 ## Design notes
 
-- **Token rotation, not a canonical pair.** Anchoring the bench to SOL → USDC (or any single popular pair) meant we were comparing edge caches, not routing. The trending list rotation forces every provider to actually search a path.
+- **Token rotation, not a canonical pair.** Anchoring the bench to SOL → USDC (or any single popular pair) meant we were comparing edge caches, not routing. The Pulse-fed rotation against tokens that are actually trending right now forces every provider to actually search a path.
 - **Warm-path measurement.** Each provider keeps one `http.Client` for the life of the process and reuses TCP + TLS across ticks. We measure steady-state RTT, not the first-call cold-start.
 - **10 s per-request timeout.** Slow responses are recorded as `other_error{error_type="timeout"}`, not as 10 s latency samples.
 - **60 s tick.** ≈ 1,440 samples per provider per region per day, with each tick targeting a different token from the ~40-token rotation list.
