@@ -48,7 +48,8 @@ const RANGE_LABEL: Record<Range, string> = {
 const REGION_LABEL: Record<string, string> = {
   "us-east": "US-East",
   "eu-west": "EU-West",
-  "ap-southeast": "AP-Southeast",
+  "ap-southeast": "Singapore",
+  sgp: "Singapore",
   global: "Global",
 };
 
