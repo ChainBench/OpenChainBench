@@ -7,7 +7,7 @@ seo_title: "Hyperliquid frontends 2026: effective builder fee bps, $/user effici
 seo_description: "Live benchmark of Hyperliquid frontends ranked by how much they extract from users, not by raw volume. Effective builder fee in bps (cap 100), D7 cohort retention per builder, and USD captured per active trader. Observational, on-chain attribution via builder code field, methodology public."
 subtitle: How much each Hyperliquid frontend charges its users via the on-chain builder code. Effective fee in basis points (cap 100), summed over 24h. Lower = more aligned with traders.
 category: Trading
-status: draft
+status: live
 metric: Effective builder fee (24h, bps)
 unit: bps
 higher_is_better: false
