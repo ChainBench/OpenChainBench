@@ -70,7 +70,7 @@ dimensions:
     - { value: all,     label: All regions }
     - { value: us-east, label: US-East }
     - { value: eu-west, label: EU-West }
-    - { value: sgp,     label: AP-Southeast }
+    - { value: sgp,     label: Singapore }
 
 faq:
   - q: "Which Solana DEX has the fastest quote API right now?"

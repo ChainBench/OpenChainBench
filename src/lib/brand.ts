@@ -47,13 +47,21 @@ const BRANDS: Record<string, Brand> = {
   "us-east": { color: "#C7833A" },
   "eu-west": { color: "#3A7BC7" },
   "ap-southeast": { color: "#3F8F66" },
+  // `sgp` is the raw Railway region label emitted by the harnesses; the bench
+  // YAML uses it as the dimension value, so we alias the same color here so
+  // the region tab gets a globe glyph + colored ring instead of a no-brand
+  // fallback.
+  sgp: { color: "#3F8F66" },
   global: { color: "#7a7166" },
 
   // ─── Aggregators / providers (bright, saturated - read on both modes) ───
   mobula: { color: "#FF6B35" },        // vivid orange
   codex: { color: "#84cc16" },         // saturated lime - readable on white + dark
   geckoterminal: { color: "#8B5CF6" }, // vivid violet (gecko brand)
-  jupiter: { color: "#FF7A00" },       // amber-orange
+  jupiter: { color: "#C7F284" },       // jupiter matrix green (secondary brand) - keeps it
+                                       //   distinct from mobula's orange on solana-dex-quote
+  raydium: { color: "#00C2FF" },       // raydium cyan
+  openocean: { color: "#2563EB" },     // openocean deep blue
   helius: { color: "#FF4D8D" },        // hot pink (helius brand)
   moralis: { color: "#5B89FF" },       // azure
   blockscout: { color: "#3DD7C8" },    // bright cyan
@@ -76,7 +84,7 @@ const BRANDS: Record<string, Brand> = {
   gains: { color: "#10E2A4" },         // emerald
 };
 
-const REGION_VALUES = new Set(["us-east", "eu-west", "ap-southeast", "global"]);
+const REGION_VALUES = new Set(["us-east", "eu-west", "ap-southeast", "sgp", "global"]);
 
 /** Is this slug a region value? Region tabs render with a unified globe
  *  glyph instead of a per-entity logo, so callers can branch on this. */

@@ -122,7 +122,7 @@ dimensions:
     - { value: all,     label: All regions }
     - { value: us-east, label: US-East }
     - { value: eu-west, label: EU-West }
-    - { value: sgp,     label: AP-Southeast }
+    - { value: sgp,     label: Singapore }
 
 # Real metrics emitted by the rpc-capabilities harness:
 #   rpc_latency_milliseconds{provider, chain}                       gauge
