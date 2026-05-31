@@ -1,32 +1,34 @@
 "use client";
 
 /**
- * Hybrid logo switcher: the 2D SVG <SiteLogo> on touch devices (phones,
- * tablets), the interactive 3D sphere <SiteLogo3D> on desktop.
+ * Hybrid masthead logo: 2D SVG on touch / small screens, interactive 3D
+ * sphere on desktop. The 3D bundle is loaded with `next/dynamic` so it
+ * only ships when actually mounted.
  *
- * The 3D component is loaded with `next/dynamic` and `ssr: false`, so
- * touch users never download the three.js chunk — they only ship the
- * tiny SVG. Desktop users get the chunk on demand after first paint.
+ * No-flash strategy: the SVG renders unconditionally in the same slot
+ * as a layered fallback. The 3D component overlays it once mounted and
+ * fully covers it, so the swap is visually seamless — no blank state
+ * and no visible SVG→3D pop. While the chunk is downloading, the SVG
+ * underneath is exactly what the user already saw at first paint.
  *
- * Detection rule: `(pointer: fine) and (min-width: 768px)`. This means
- * a real mouse/trackpad on a viewport ≥ 768px. Touchscreen laptops with
- * a mouse still qualify as desktop; phones and tablets do not.
+ * Detection: `(pointer: fine) and (min-width: 768px)` — real mouse on
+ * a viewport ≥ 768px. Touchscreen laptops with a mouse still get 3D.
  */
 
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { SiteLogo } from "@/components/site-logo";
 
-const SiteLogo3D = dynamic(
-  () => import("@/components/site-logo-3d").then((m) => m.SiteLogo3D),
-  { ssr: false, loading: () => <SiteLogo size={22} /> },
-);
-
 const DESKTOP_MQ = "(pointer: fine) and (min-width: 768px)";
 
+const SiteLogo3D = dynamic(
+  () => import("@/components/site-logo-3d").then((m) => m.SiteLogo3D),
+  // No loading element — the always-rendered SVG below is the fallback,
+  // so we render nothing here to avoid a double layer during the load.
+  { ssr: false, loading: () => null },
+);
+
 export function SiteLogoSwitcher({ size = 22 }: { size?: number }) {
-  // Render the SVG fallback during SSR / first client paint so the
-  // markup never flashes, then upgrade to 3D on desktop after mount.
   const [enable3D, setEnable3D] = useState(false);
 
   useEffect(() => {
@@ -34,8 +36,28 @@ export function SiteLogoSwitcher({ size = 22 }: { size?: number }) {
     const sync = () => setEnable3D(mq.matches);
     sync();
     mq.addEventListener("change", sync);
+
+    // Eagerly fetch the 3D chunk on desktop so it is in the browser
+    // cache by the time React tries to mount <SiteLogo3D> — keeps the
+    // SVG→3D handover under a frame in the common case.
+    if (mq.matches) import("@/components/site-logo-3d");
+
     return () => mq.removeEventListener("change", sync);
   }, []);
 
-  return enable3D ? <SiteLogo3D size={size} /> : <SiteLogo size={size} />;
+  return (
+    <div
+      className="relative shrink-0"
+      style={{ width: size, height: size }}
+    >
+      <div className="absolute inset-0">
+        <SiteLogo size={size} />
+      </div>
+      {enable3D && (
+        <div className="absolute inset-0">
+          <SiteLogo3D size={size} />
+        </div>
+      )}
+    </div>
+  );
 }
