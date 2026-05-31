@@ -45,8 +45,8 @@ export function SiteFooter() {
             title="Contribute"
             links={[
               { label: "Tutorial", href: "/contribute" },
-              { label: "GitHub", href: "https://github.com/OpenChainBench/OpenChainBench" },
-              { label: "Open an issue", href: "https://github.com/OpenChainBench/OpenChainBench/issues/new" },
+              { label: "GitHub", href: "https://github.com/ChainBench/OpenChainBench" },
+              { label: "Open an issue", href: "https://github.com/ChainBench/OpenChainBench/issues/new" },
               { label: "@openchainbench", href: "https://twitter.com/openchainbench" },
               { label: "About", href: "/about" },
             ]}

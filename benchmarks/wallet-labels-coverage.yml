@@ -75,7 +75,7 @@ faq:
   - q: "Which wallet labeling API has the best Solana coverage?"
     a: "{{name:helius}} returns {{p50:helius}} on Solana. Chain-specialists dominate their home chain because their label graph is curated against native protocols (Jito stake pools, Jupiter routers, Pump.fun creators, Magic Eden marketplace programs) rather than translated from an EVM-shaped schema. Universal providers (Mobula, Moralis) are also audited on Solana, but switch the chain tab to Solana to see the direct comparison rather than the cross-chain average."
 
-source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/wallet-labels
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/wallet-labels
 
 prometheus:
   window: 24h

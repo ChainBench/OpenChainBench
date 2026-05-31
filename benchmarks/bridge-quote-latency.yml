@@ -59,7 +59,7 @@ findings:
   - "Tail latency tells the integration story. p99 ({{p99:relay}} / {{p99:lifi}} / {{p99:debridge}}) is what dictates timeouts in production wallets; SDKs that wait for the slowest bridge degrade the whole UX when one provider has a bad minute."
   - "{{worst_name}} trails the cross-corridor aggregate at {{worst_p50}} (p50, 24 h). A 5x gap at p50 turns into a 10 to 20x gap at p99. A bridge that lags overall can still be fastest on a specific corridor where it is closer to its solver pool, that per-corridor breakdown is on the roadmap."
 
-source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/bridge-monitor
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/bridge-monitor
 
 prometheus:
   url: https://prometheus-production-9ffe.up.railway.app
