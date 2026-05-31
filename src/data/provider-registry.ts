@@ -601,6 +601,56 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Polygon ecosystem token, renamed from MATIC to POL in September 2024. Gas and staking asset across Polygon PoS and the AggLayer stack.",
     twitter: "@0xPolygon",
   },
+
+  // ─── Hyperliquid frontends (bench № 030) ─────────────────────────
+  "phantom-perps": {
+    url: "https://phantom.app",
+    description:
+      "Phantom is the leading multi-chain crypto wallet on Solana, Ethereum, and Bitcoin; its Hyperliquid perps tab routes orders with a registered builder code so users trade HL directly from the wallet UI.",
+    twitter: "@phantom",
+  },
+  axiom: {
+    url: "https://axiom.trade",
+    description:
+      "Axiom is a Solana-native trading terminal expanding to Hyperliquid perps with a registered builder code, focused on advanced order types and pro-trader UX.",
+    twitter: "@AxiomExchange",
+  },
+  "pvp-trade": {
+    url: "https://pvp.trade",
+    description:
+      "pvp.trade runs social PvP trading rooms on Hyperliquid where friends bet against each other on perp positions, with a registered builder code on every routed order.",
+    twitter: "@pvptrade",
+  },
+  insilico: {
+    url: "https://insilicoterminal.com",
+    description:
+      "Insilico Terminal is an institutional trading workstation for Hyperliquid perps, with risk controls, order ladders, and a registered builder code for attribution.",
+    twitter: "@InsilicoFinance",
+  },
+  defiapp: {
+    url: "https://defi.app",
+    description:
+      "Defiapp is a cross-chain DeFi front-end that routes Hyperliquid perps orders via a registered builder code, exposing HL alongside spot and bridge flows in one UI.",
+    twitter: "@defidotapp",
+  },
+  metamask: {
+    url: "https://metamask.io",
+    description:
+      "MetaMask is the largest self-custody EVM wallet; its Hyperliquid integration routes perps orders through a registered builder code so users can trade HL from within the wallet.",
+    twitter: "@MetaMask",
+  },
+  dexari: {
+    url: "https://dexari.com",
+    description:
+      "Dexari is a pro trading UI for Hyperliquid perps focused on power users; orders carry a registered builder code for on-chain attribution.",
+    twitter: "@DexariDotCom",
+  },
+  okto: {
+    url: "https://okto.tech",
+    description:
+      "Okto is a self-custody multi-chain wallet by Coinswitch with a Hyperliquid perps integration that routes orders through a registered builder code.",
+    twitter: "@okto_web3",
+  },
 };
 
 /**
