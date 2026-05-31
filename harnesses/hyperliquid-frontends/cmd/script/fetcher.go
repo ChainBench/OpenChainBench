@@ -14,20 +14,29 @@ import (
 )
 
 // processBuilder fetches today's + yesterday's Hyperliquid fills CSV
-// for one builder address, aggregates the 24h window, updates every
-// Prom metric for that builder, AND upserts each fill into the
-// SQLite state so the retention pass later in the cycle sees fresh
-// data. Returns the 24h notional so the caller can compute the
-// cross-builder volume share.
+// for one builder address, aggregates the last complete UTC day,
+// updates every Prom metric for that builder, AND upserts each fill
+// into the SQLite state so the retention pass later in the cycle
+// sees fresh data. Returns the day notional so the caller can
+// compute the cross-builder volume share.
 //
-// The "last 24h" is computed by trimming both CSVs at `now - 24h`
-// so the rollover at UTC midnight doesn't double-count or drop fills.
+// The headline window is `yesterday's complete UTC day` (i.e. the
+// CSV for date T-1). We switched from rolling-24h because the
+// rolling cutoff was unfairly zeroing builders whose flow lands
+// early in the UTC day — at 18:00 UTC the cutoff `now - 24h` is
+// 18:00 yesterday, so a builder that traded between 00:00-17:00
+// yesterday would show 0. The UTC-day window gives every builder
+// the same comparison surface at the cost of 0-24h of staleness,
+// which is fine for a fee-quality bench (frontends don't change
+// pricing minute-to-minute). Today's CSV is still fetched so the
+// SQLite state captures the in-progress day for retention math.
 func processBuilder(ctx context.Context, b Builder, state *State) float64 {
 	now := time.Now().UTC()
-	cutoff := now.Add(-24 * time.Hour)
+	yesterday := now.AddDate(0, 0, -1)
+	yesterdayKey := yesterday.Format("20060102")
 
-	dates := []time.Time{now.AddDate(0, 0, -1), now}
-	var fills []fillRow
+	dates := []time.Time{yesterday, now}
+	var yesterdayFills []fillRow
 	for _, d := range dates {
 		batch, code, err := fetchDay(ctx, b.Address, d)
 		hlCSVFetchStatus.WithLabelValues(b.Slug, code).Inc()
@@ -35,7 +44,20 @@ func processBuilder(ctx context.Context, b Builder, state *State) float64 {
 			fmt.Printf("[%s] %s: %s err=%v\n", b.Slug, d.Format("20060102"), code, err)
 			continue
 		}
-		fills = append(fills, batch...)
+		// State always gets every fill from both days so retention
+		// math can use the freshest signal — the in-progress day
+		// matters as much as the completed one for D7/D30 cohorts.
+		for _, f := range batch {
+			if state != nil && f.User != "" {
+				if err := state.Upsert(b.Slug, f.User, f.Time.UnixMilli(), f.Px*f.Sz); err != nil {
+					fmt.Printf("[%s] state upsert error: %v\n", b.Slug, err)
+				}
+			}
+		}
+		// Only yesterday's complete CSV drives the headline gauges.
+		if d.Format("20060102") == yesterdayKey {
+			yesterdayFills = batch
+		}
 	}
 
 	var (
@@ -44,20 +66,8 @@ func processBuilder(ctx context.Context, b Builder, state *State) float64 {
 		fillCount     int
 		users         = make(map[string]struct{})
 	)
-	for _, f := range fills {
-		notional := f.Px * f.Sz
-		// State always gets every fill (full builder history), not
-		// just the 24h window — retention math needs the long tail.
-		if state != nil && f.User != "" {
-			if err := state.Upsert(b.Slug, f.User, f.Time.UnixMilli(), notional); err != nil {
-				fmt.Printf("[%s] state upsert error: %v\n", b.Slug, err)
-			}
-		}
-		// 24h windowed aggregates for the live gauges.
-		if f.Time.Before(cutoff) {
-			continue
-		}
-		notionalUSD += notional
+	for _, f := range yesterdayFills {
+		notionalUSD += f.Px * f.Sz
 		builderFeeUSD += f.BuilderFee
 		fillCount++
 		if f.User != "" {
