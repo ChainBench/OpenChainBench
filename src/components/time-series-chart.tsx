@@ -785,18 +785,28 @@ function Chart({
             />
             {drawn.map((d) => {
               if (d.excluded) return null;
-              // Map the global crosshair index to this line's own index
-              // — short arrays (provider added late, Prom dropouts) must
-              // not look up values past their end, and a gap sample
-              // (provider stopped emitting) shouldn't show a dot at all.
+              // Map the global crosshair index to this line's own continuous
+              // index AND interpolate Y between bracketing samples so the
+              // dot lands exactly on the rendered line at hover-X. Round to
+              // nearest sample snapped the dot to a single sample's value,
+              // which disagreed visually with the line during steep slopes
+              // (the line is drawn as straight SVG segments M…L…L…, so the
+              // line's Y at hoverX is lerp(v[N], v[N+1], t) — match it here).
               const globalFraction =
                 numPoints > 1 ? hover.idx / (numPoints - 1) : 0;
-              const localIdx =
-                d.values.length > 1
-                  ? Math.round(globalFraction * (d.values.length - 1))
-                  : 0;
-              const v = d.values[localIdx];
-              if (!Number.isFinite(v) || d.isGap(v)) return null;
+              if (d.values.length === 0) return null;
+              const fract = globalFraction * (d.values.length - 1);
+              const i0 = Math.floor(fract);
+              const i1 = Math.min(i0 + 1, d.values.length - 1);
+              const t = fract - i0;
+              const v0 = d.values[i0];
+              const v1 = d.values[i1];
+              // If either bracketing sample is a gap, the line itself is
+              // broken here (drawn as `M` not `L`) — skip the dot so we
+              // don't paint over a missing segment.
+              if (!Number.isFinite(v0) || !Number.isFinite(v1)) return null;
+              if (d.isGap(v0) || d.isGap(v1)) return null;
+              const v = v0 + (v1 - v0) * t;
               const cy = padT + innerH * (1 - (v - lo) / yRange);
               return (
                 <g key={d.slug}>
