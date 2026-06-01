@@ -49,7 +49,7 @@ export function CountLeaderboard({
         </div>
       )}
       {/* Thin summary strip. matches the latency-bench layout. */}
-      <dl className="grid grid-cols-2 sm:flex sm:flex-wrap items-baseline gap-x-8 gap-y-3 border-y border-rule py-4">
+      <dl className="grid grid-cols-1 sm:flex sm:flex-wrap items-baseline gap-x-3 sm:gap-x-8 gap-y-2 sm:gap-y-3 border-y border-rule py-4">
         <CountStat
           label="Leader"
           value={fmtValue(leader?.ms.p50 ?? 0, benchmark.unit)}
@@ -149,11 +149,11 @@ function CountStat({
   hint?: string;
 }) {
   return (
-    <div className="flex items-baseline gap-2">
-      <dt className="font-sans text-[10px] uppercase tracking-[0.18em] text-ink-faint shrink-0 font-medium">
+    <div className="flex items-baseline gap-2 min-w-0">
+      <dt className="font-sans text-[10px] uppercase tracking-[0.14em] sm:tracking-[0.18em] text-ink-faint shrink-0 font-medium">
         {label}
       </dt>
-      <dd className="font-sans tabular text-sm text-ink leading-none">
+      <dd className="font-sans tabular text-sm text-ink leading-none min-w-0 truncate">
         {value}
         {hint ? (
           <span className="ml-1.5 text-ink-muted text-xs font-normal">{hint}</span>
