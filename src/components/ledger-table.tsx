@@ -75,14 +75,14 @@ export function LedgerTable({ benchmark }: Props) {
             <th className="border-y-2 border-ink py-2 pl-3 text-right">Trend</th>
             {hasSlots && (
               <th
-                className="border-y-2 border-ink py-2 pl-3 text-right"
+                className="border-y-2 border-ink py-2 pl-3 text-right hidden md:table-cell"
                 title="Slot delta = number of Solana slots between submit and confirmed. Canonical on-chain measurement (~400 ms per slot)."
               >
                 Slot delta
               </th>
             )}
             {secondary && (
-              <th className="border-y-2 border-ink py-2 pl-3 text-right">
+              <th className="border-y-2 border-ink py-2 pl-3 text-right hidden md:table-cell">
                 {secondary}
               </th>
             )}
@@ -98,8 +98,8 @@ export function LedgerTable({ benchmark }: Props) {
             <th className="py-2 px-3 text-right hidden md:table-cell">Δ field</th>
             <th className="py-2 px-3 text-right hidden md:table-cell">Success</th>
             <th className="py-2 pl-3 text-right">24h</th>
-            {hasSlots && <th className="py-2 pl-3 text-right">p50 / p99</th>}
-            {secondary && <th className="py-2 pl-3 text-right">Value</th>}
+            {hasSlots && <th className="py-2 pl-3 text-right hidden md:table-cell">p50 / p99</th>}
+            {secondary && <th className="py-2 pl-3 text-right hidden md:table-cell">Value</th>}
           </tr>
           <tr className="border-b border-ink">
             <th
@@ -289,7 +289,7 @@ function Row({
           </td>
           {hasSlots && (
             <td
-              className="py-2.5 pl-3 text-right text-ink-soft whitespace-nowrap font-mono text-[12px]"
+              className="py-2.5 pl-3 text-right text-ink-soft whitespace-nowrap font-mono text-[12px] hidden md:table-cell"
               title="p50 / p99 slot delta — canonical Solana on-chain measurement"
             >
               {r.slots
@@ -298,7 +298,7 @@ function Row({
             </td>
           )}
           {hasSecondary && (
-            <td className="py-2.5 pl-3 text-right text-ink-soft">
+            <td className="py-2.5 pl-3 text-right text-ink-soft hidden md:table-cell">
               {r.secondary?.value ?? "-"}
             </td>
           )}
