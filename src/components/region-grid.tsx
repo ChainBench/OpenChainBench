@@ -38,7 +38,7 @@ export function RegionGrid({ benchmark }: Props) {
 
   return (
     <div className="border-y-2 border-ink py-2 overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
-      <table className="w-full min-w-[520px] border-collapse text-sm tabular">
+      <table className="w-full min-w-full sm:min-w-[520px] border-collapse text-sm tabular">
         <thead>
           <tr className="font-sans text-[10px] uppercase tracking-[0.18em] text-ink-soft">
             <th className="py-2 pr-3 text-left font-medium w-32 sm:w-44">Product</th>

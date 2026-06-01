@@ -327,4 +327,10 @@ textarea:focus-visible {
 html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+  /* Safety net: clip any rogue horizontal overflow at the root so a
+     single wide child (e.g. a min-w table) can never push the whole
+     page off-screen on mobile. Per-component fixes still target the
+     intrinsic min-widths so the clip rarely fires. `clip` (not hidden)
+     avoids creating a scroll container that breaks position: sticky. */
+  overflow-x: clip;
 }
