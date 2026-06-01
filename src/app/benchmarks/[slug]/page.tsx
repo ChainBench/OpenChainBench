@@ -315,9 +315,9 @@ export default async function BenchmarkPage({
           so Google can show the crumb above the URL in the SERP. */}
       <nav
         aria-label="Breadcrumb"
-        className="mb-3 text-[11px] font-medium uppercase tracking-[0.16em] text-ink-faint"
+        className="mb-3 text-[11px] font-medium uppercase tracking-[0.08em] sm:tracking-[0.16em] text-ink-faint"
       >
-        <ol className="flex flex-wrap items-center gap-1.5">
+        <ol className="flex flex-wrap items-center gap-1 sm:gap-1.5 min-w-0">
           <li>
             <Link href="/" className="hover:text-ink transition-colors">
               Home
@@ -330,7 +330,9 @@ export default async function BenchmarkPage({
             </Link>
           </li>
           <li aria-hidden>/</li>
-          <li className="text-ink-muted">{benchmark.title}</li>
+          <li className="text-ink-muted truncate max-w-[60vw] sm:max-w-none">
+            {benchmark.title}
+          </li>
         </ol>
       </nav>
 
@@ -356,7 +358,7 @@ export default async function BenchmarkPage({
       </div>
 
       {/* Bench identifier - minimal mono line, no SaaS-style pills. */}
-      <div className="mt-6 flex flex-wrap items-center gap-3 font-sans text-[11px] uppercase tracking-[0.18em] text-ink-muted font-medium">
+      <div className="mt-6 flex flex-wrap items-center gap-3 font-sans text-[11px] uppercase tracking-[0.1em] sm:tracking-[0.18em] text-ink-muted font-medium">
         <span style={{ color: catColor ?? "var(--color-ink-soft)" }}>
           {benchmark.category}
         </span>
@@ -373,10 +375,10 @@ export default async function BenchmarkPage({
       </div>
 
       {/* Title */}
-      <h1 className="mt-5 display text-3xl sm:text-4xl md:text-5xl tracking-tight text-ink">
+      <h1 className="mt-5 display text-3xl sm:text-4xl md:text-5xl tracking-tight text-ink break-words">
         {benchmark.title}
       </h1>
-      <p className="mt-4 max-w-3xl text-lg sm:text-xl text-ink-muted leading-snug">
+      <p className="mt-4 max-w-3xl text-lg sm:text-xl text-ink-muted leading-snug break-words">
         {benchmark.subtitle}
       </p>
 

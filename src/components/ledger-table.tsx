@@ -56,7 +56,7 @@ export function LedgerTable({ benchmark }: Props) {
 
   return (
     <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
-      <table className="ledger w-full min-w-[480px] md:min-w-0 border-collapse">
+      <table className="ledger w-full min-w-full sm:min-w-[480px] md:min-w-0 border-collapse">
         <thead>
           <tr>
             <th colSpan={3} className="border-y-2 border-ink py-2 pr-3 text-left">
