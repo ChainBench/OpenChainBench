@@ -140,7 +140,7 @@ export function TimeSeriesChart({
 
   // A key that flips when the data shape changes. used to retrigger
   // the line-draw animation.
-  const seriesKey = `${range}::${region}`;
+  const seriesKey = `${range}::${region}::${metricLabelOverride ?? "default"}`;
 
   // Format the zoomed-window label so the header tells the reader
   // exactly which slice of the original range they're looking at, e.g.
