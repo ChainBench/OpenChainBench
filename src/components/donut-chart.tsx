@@ -243,7 +243,7 @@ export function DonutChart({
                     {r.name}
                   </span>
                   <span className="ml-auto font-mono tabular text-[11.5px] text-ink-soft shrink-0">
-                    {isOff ? "—" : `${(share * 100).toFixed(1)}%`}
+                    {isOff ? "-" : `${(share * 100).toFixed(1)}%`}
                   </span>
                 </li>
               );

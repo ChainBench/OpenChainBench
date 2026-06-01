@@ -290,7 +290,7 @@ function Row({
           {hasSlots && (
             <td
               className="py-2.5 pl-3 text-right text-ink-soft whitespace-nowrap font-mono text-[12px] hidden md:table-cell"
-              title="p50 / p99 slot delta — canonical Solana on-chain measurement"
+              title="p50 / p99 slot delta: canonical Solana on-chain measurement"
             >
               {r.slots
                 ? `${r.slots.p50.toFixed(0)} / ${r.slots.p99.toFixed(0)}`

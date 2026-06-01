@@ -64,7 +64,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   raydium: {
     url: "https://raydium.io",
     description:
-      "Solana AMM with both standard constant-product pools and concentrated liquidity (CLMM). Trade API exposes single-venue swap quotes and route construction over Raydium-owned liquidity only — not an aggregator.",
+      "Solana AMM with both standard constant-product pools and concentrated liquidity (CLMM). Trade API exposes single-venue swap quotes and route construction over Raydium-owned liquidity only. Not an aggregator.",
     twitter: "@RaydiumProtocol",
   },
   openocean: {
@@ -450,7 +450,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   "arbitrum-official": {
     url: "https://docs.arbitrum.io/build-decentralized-apps/reference/node-providers",
     description:
-      "Arbitrum Foundation's public RPC endpoint at `arb1.arbitrum.io/rpc`. Best-effort, rate-limited, intended for dev access — production dapps are expected to use a keyed provider.",
+      "Arbitrum Foundation's public RPC endpoint at `arb1.arbitrum.io/rpc`. Best-effort, rate-limited, intended for dev access. Production dapps are expected to use a keyed provider.",
     twitter: "@arbitrum",
     parent: "arbitrum",
   },
