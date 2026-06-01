@@ -112,7 +112,7 @@ providers:
         - region: eu-west
           p50: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="jupiter", region="eu-west"}[24h])))
           series: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="jupiter", region="eu-west"}[1h])))
-        - region: ap-southeast
+        - region: sgp
           p50: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="jupiter", region="sgp"}[24h])))
           series: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="jupiter", region="sgp"}[1h])))
 
@@ -135,7 +135,7 @@ providers:
         - region: eu-west
           p50: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="mobula", region="eu-west"}[24h])))
           series: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="mobula", region="eu-west"}[1h])))
-        - region: ap-southeast
+        - region: sgp
           p50: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="mobula", region="sgp"}[24h])))
           series: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="mobula", region="sgp"}[1h])))
 
@@ -158,7 +158,7 @@ providers:
         - region: eu-west
           p50: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="openocean", region="eu-west"}[24h])))
           series: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="openocean", region="eu-west"}[1h])))
-        - region: ap-southeast
+        - region: sgp
           p50: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="openocean", region="sgp"}[24h])))
           series: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="openocean", region="sgp"}[1h])))
 
@@ -181,6 +181,6 @@ providers:
         - region: eu-west
           p50: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="raydium", region="eu-west"}[24h])))
           series: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="raydium", region="eu-west"}[1h])))
-        - region: ap-southeast
+        - region: sgp
           p50: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="raydium", region="sgp"}[24h])))
           series: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="raydium", region="sgp"}[1h])))
