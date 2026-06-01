@@ -14,7 +14,7 @@ import path from "node:path";
 import { cache } from "react";
 import { unstable_cache } from "next/cache";
 import yaml from "js-yaml";
-import type { Benchmark, ProviderResult } from "@/types/benchmark";
+import type { Benchmark, MetricPanel, ProviderResult } from "@/types/benchmark";
 import { Prometheus } from "@/lib/prometheus";
 import { SpecSchema, type Spec } from "@/lib/spec-schema";
 import { renderBenchmarkText } from "@/lib/bench-template";
@@ -516,7 +516,7 @@ function escapePromLabelValue(v: string): string {
 async function tryLoadLive(
   spec: Spec,
   isFiltered = false
-): Promise<Pick<Benchmark, "results" | "extras" | "sampleSize" | "lastRunAt"> | null> {
+): Promise<Pick<Benchmark, "results" | "extras" | "sampleSize" | "lastRunAt" | "metricPanels"> | null> {
   const url = spec.prometheus?.url ?? process.env.PROMETHEUS_URL;
   if (!url) return null;
   const prom = new Prometheus(url);
@@ -643,6 +643,31 @@ async function tryLoadLive(
     // No live numbers from anyone (every provider was skipped) → draft.
     if (liveResults.length === 0) return null;
 
+    // Optional companion metric panels. Each panel declares one Prometheus
+    // metric; we query it per provider (`<metric>{<label_key>="<slug>"}`)
+    // and store the scalar values. Providers with no data for that metric
+    // are omitted from the values map (rendered as "no data" by the UI).
+    const metricPanels: MetricPanel[] = [];
+    for (const panel of spec.metric_panels ?? []) {
+      const values: Record<string, number> = {};
+      await Promise.all(
+        spec.providers.map(async (p) => {
+          const q = `${panel.metric}{${panel.label_key}="${escapePromLabelValue(p.slug)}"}`;
+          const v = await prom.scalar(q);
+          if (v != null && Number.isFinite(v)) values[p.slug] = v;
+        })
+      );
+      metricPanels.push({
+        id: panel.id,
+        label: panel.label,
+        description: panel.description,
+        metric: panel.metric,
+        unit: panel.unit,
+        higherIsBetter: panel.higher_is_better,
+        values,
+      });
+    }
+
     // Derive lastRunAt from the actual Prom data freshness. We probe the
     // first provider that has a p50 query and ask Prom for the age of
     // its underlying metric. This is consistent across pages (Prom is the
@@ -673,6 +698,7 @@ async function tryLoadLive(
           Object.keys(seriesByRegion30d).length > 0 ? seriesByRegion30d : undefined,
         regions: regions as Benchmark["extras"]["regions"],
       },
+      metricPanels: metricPanels.length > 0 ? metricPanels : undefined,
       sampleSize: totalSamples,
       lastRunAt,
     };
