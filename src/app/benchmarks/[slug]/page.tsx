@@ -401,7 +401,7 @@ export default async function BenchmarkPage({
           long-tail query phrases land in the first ~200 words crawlers
           weight heavily. Optional - omitted when the YAML doesn't set it. */}
       {benchmark.seoIntro && (
-        <div className="mt-6 max-w-3xl space-y-3 text-[15px] leading-relaxed text-ink-soft">
+        <div className="mt-6 max-w-3xl space-y-3 text-[15px] leading-relaxed text-ink-soft break-words">
           {benchmark.seoIntro
             .split(/\n\n+/)
             .map((para, i) => (
@@ -434,7 +434,7 @@ export default async function BenchmarkPage({
             />
           </summary>
           <div className="pb-4 pt-1">
-            <p className="text-sm leading-relaxed text-ink-soft max-w-3xl">
+            <p className="text-sm leading-relaxed text-ink-soft max-w-3xl break-words">
               {benchmark.abstract}
             </p>
           </div>
