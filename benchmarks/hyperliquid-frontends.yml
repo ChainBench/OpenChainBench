@@ -13,7 +13,7 @@ unit: bps
 higher_is_better: false
 
 disclaimer: |
-  Volume-share dashboards already exist (ASXN, Coinmarketman, Flowscan, Allium). OCB leads with user cost instead: effective fee is a volume-weighted `builder_fee / notional` over 24h, so fee-free promo windows pull it down. Native HL UI orders carry no builder code and are excluded — covered by `aggregator-head-lag`.
+  Volume-share dashboards already exist (ASXN, Coinmarketman, Flowscan, Allium). OCB leads with user cost instead: effective fee is a volume-weighted `builder_fee / notional` over 24h, so fee-free promo windows pull it down. Native HL UI orders carry no builder code and are excluded. Coverage is in `aggregator-head-lag`.
 
 seo_intro: |
   Every Hyperliquid order carries an optional on-chain `builder`
@@ -39,7 +39,7 @@ seo_intro: |
   them publish retention per builder because none of them keep
   the persistent state. OCB does. Volume share is exposed as a
   secondary gauge so the number readers expect to see is still
-  on the page — it just doesn't drive the ranking.
+  on the page. It just doesn't drive the ranking.
 
 abstract: |
   We compute four quality metrics per Hyperliquid builder code
@@ -51,7 +51,7 @@ abstract: |
   the builder address. (2) D7 and D30 cohort retention, the
   percentage of users whose first observed fill for the builder
   lands in the UTC-day window 7 (or 30) days ago and who traded
-  again within the last 24 hours — derived from a local SQLite
+  again within the last 24 hours, derived from a local SQLite
   state of `(builder, user, first_seen_ms, last_seen_ms)`. (3)
   USD captured per unique trader, `sum(builder_fee) /
   count(distinct user)` over the UTC-day window. (4) Volume share in
@@ -79,23 +79,23 @@ methodology:
   - "Methodology versioning. Any change (registry additions, formula tweaks, exclusion thresholds, window sizes) ships as a public PR with a 14-day comment window before activation. Major changes run a 30-day shadow period publishing old and new metric series in parallel."
 
 findings:
-  - "{{best_name}} currently charges {{best_p50}} effective on the last 24 hours of attributed Hyperliquid flow — the most aligned frontend in the {{count}}-builder set we track. Lower is better here: 100 bps is the on-chain cap, 0 bps means the frontend is fully waiving its builder rebate."
+  - "{{best_name}} currently charges {{best_p50}} effective on the last 24 hours of attributed Hyperliquid flow. That is the most aligned frontend in the {{count}}-builder set we track. Lower is better here: 100 bps is the on-chain cap, 0 bps means the frontend is fully waiving its builder rebate."
   - "{{name:phantom-perps}} sits at {{p50:phantom-perps}}. Phantom routes the largest share of attributed Hyperliquid volume but the fee column tells you what its users actually pay on top of HL's base schedule, which is the number that matters for choosing a frontend."
-  - "{{name:axiom}} reports {{p50:axiom}}. Axiom expanded from Solana to Hyperliquid in 2025 and runs a transparent flat fee model — useful counterpoint to frontends that promote fee-free windows."
+  - "{{name:axiom}} reports {{p50:axiom}}. Axiom expanded from Solana to Hyperliquid in 2025 and runs a transparent flat fee model, a useful counterpoint to frontends that promote fee-free windows."
   - "{{worst_name}} extracts {{worst_p50}} from its users on the same window. The gap between {{best_name}} and {{worst_name}} is the operational signal traders should weigh against the UX advantages each frontend ships with."
   - "Fee discipline (the secondary p90 column, 30-day stddev) flags frontends running promotional cycles. A builder with a low 24h fee but a high stddev is in a fee-free phase and will normalize; one with both low is what alignment looks like."
 
 faq:
   - q: "Why does OpenChainBench not show Hyperliquid volume share?"
-    a: "Volume share is already published cleanly by ASXN HyperScreener, Coinmarketman HyperTracker, Flowscan, Allium, and at least three Dune dashboards. Republishing it would add no value. The unmeasured part of the frontend question is user cost — how much does each frontend take per dollar routed, and how stable is that take rate. That's what this bench answers. Raw yesterday's UTC notional per builder is still exposed as a secondary metric for readers who want it; it just doesn't drive the headline ranking."
+    a: "Volume share is already published cleanly by ASXN HyperScreener, Coinmarketman HyperTracker, Flowscan, Allium, and at least three Dune dashboards. Republishing it would add no value. The unmeasured part of the frontend question is user cost: how much does each frontend take per dollar routed, and how stable is that take rate. That's what this bench answers. Raw yesterday's UTC notional per builder is still exposed as a secondary metric for readers who want it; it just doesn't drive the headline ranking."
   - q: "How is the effective fee actually computed?"
-    a: "For each Hyperliquid builder address in our registry, the harness fetches `https://stats-data.hyperliquid.xyz/Mainnet/builder_fills/{address}/{YYYYMMDD}.csv.lz4` once per hour. Each row of the CSV is one attributed fill with a `builder_fee` field and the `px × sz` notional. We sum `builder_fee` and `px × sz` across every row in the last 24 hours and compute `sum(builder_fee) / sum(notional) × 10000`. That's the volume-weighted effective fee in basis points — what a representative dollar of flow paid that frontend."
+    a: "For each Hyperliquid builder address in our registry, the harness fetches `https://stats-data.hyperliquid.xyz/Mainnet/builder_fills/{address}/{YYYYMMDD}.csv.lz4` once per hour. Each row of the CSV is one attributed fill with a `builder_fee` field and the `px × sz` notional. We sum `builder_fee` and `px × sz` across every row in the last 24 hours and compute `sum(builder_fee) / sum(notional) × 10000`. That's the volume-weighted effective fee in basis points, what a representative dollar of flow paid that frontend."
   - q: "What's the on-chain cap?"
     a: "Hyperliquid caps builder fees at 100 basis points on perps and 1000 basis points on spot, configured via the `ApproveBuilderFee` action signed by each user's main wallet. The bench's headline is denominated in basis points so 100 = the on-chain cap and 0 = fully waived rebate. Most frontends sit well below the cap; the bench surfaces who sits where."
   - q: "Which frontends are tracked?"
     a: "The registry tracks Phantom Perps, Axiom, OKX, GMGN, pvp.trade, Dexterity, KGEN, Insilico Terminal, and ASXN. Builder addresses are cross-referenced against Flowscan's builder leaderboard, governance forum disclosures, and each frontend's public announcement of their address. New builders meeting the 0.5% volume threshold get added on the next weekly review."
   - q: "What is the 'unattributed' slice?"
-    a: "Builder addresses that appear in Hyperliquid's public dumps but aren't in our registry, aggregated together. Surfacing this slice explicitly is honest — it's the share of attributed flow our methodology doesn't yet cover. When the unattributed share crosses 2%, a registry-update issue is filed; the bench freshness counter on the page tells you when the registry was last reviewed."
+    a: "Builder addresses that appear in Hyperliquid's public dumps but aren't in our registry, aggregated together. Surfacing this slice explicitly is honest. It's the share of attributed flow our methodology doesn't yet cover. When the unattributed share crosses 2%, a registry-update issue is filed; the bench freshness counter on the page tells you when the registry was last reviewed."
   - q: "What's fee discipline and why is it useful?"
     a: "The 30-day standard deviation of the daily effective fee in basis points. Frontends running rotating promotions (fee-free week → normalize the next week → discount cycle) show high variance even when the 24h headline is low. Frontends with stable transparent pricing show low variance. The discipline column is what tells you whether the headline number you're reading is a stable rate or a snapshot mid-promo."
   - q: "Does the bench measure native HL UI orders?"

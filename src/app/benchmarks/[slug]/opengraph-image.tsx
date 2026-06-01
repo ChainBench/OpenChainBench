@@ -42,7 +42,7 @@ export async function generateImageMetadata({
     },
     ...chains.map((c) => ({
       id: c.value,
-      alt: `${alt} — ${c.label}`,
+      alt: `${alt}. ${c.label}`,
       size,
       contentType,
     })),
