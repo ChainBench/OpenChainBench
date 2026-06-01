@@ -113,16 +113,16 @@ prometheus:
 # are kept narrow (just `builder`) so the cross-series queries below don't
 # explode in cardinality.
 #
-#   hl_frontend_effective_fee_bps{builder}            gauge   (p50 headline)
+#   hl_frontend_effective_fee_bps_v2{builder}            gauge   (p50 headline)
 #   hl_frontend_d7_retention_pct{builder}             gauge   (p90 column)
 #   hl_frontend_d30_retention_pct{builder}            gauge   (also exposed)
-#   hl_frontend_fees_per_user_usd{builder}            gauge   (p99 column)
+#   hl_frontend_fees_per_user_usd_v2{builder}            gauge   (p99 column)
 #   hl_frontend_volume_usd_24h{builder}               gauge   (secondary)
 #   hl_frontend_volume_share_pct{builder}             gauge   (secondary)
 #   hl_frontend_users_24h{builder}                    gauge
 #   hl_frontend_d7_cohort_size{builder}               gauge   (sample-size guard)
 #   hl_frontend_d30_cohort_size{builder}              gauge
-#   hl_frontend_fills_total{builder}                  gauge
+#   hl_frontend_fills_total_24h_v2{builder}                  gauge
 #   hl_frontend_unattributed_share_pct                gauge   (coverage signal)
 #   hl_frontend_registry_age_seconds                  gauge   (freshness signal)
 #   hl_frontend_csv_fetch_status_total{builder,code}  counter (per HTTP code)
@@ -140,101 +140,101 @@ providers:
     tag: Phantom wallet's HL perps integration
     formula: "Volume-weighted effective builder fee in basis points over the last complete UTC day, computed from Hyperliquid's public attributed-fills CSV for Phantom's builder address."
     queries:
-      p50: hl_frontend_effective_fee_bps{builder="phantom-perps"}
+      p50: hl_frontend_effective_fee_bps_v2{builder="phantom-perps"}
       p90: hl_frontend_d7_retention_pct{builder="phantom-perps"}
-      p99: hl_frontend_fees_per_user_usd{builder="phantom-perps"}
-      mean: avg_over_time(hl_frontend_effective_fee_bps{builder="phantom-perps"}[7d])
-      success: clamp_max(rate(hl_frontend_csv_fetch_status_total{builder="phantom-perps",code="200"}[6h]) / rate(hl_frontend_csv_fetch_status_total{builder="phantom-perps"}[6h]), 1)
-      sample_size: hl_frontend_fills_total{builder="phantom-perps"}
-      series: hl_frontend_effective_fee_bps{builder="phantom-perps"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="phantom-perps"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="phantom-perps"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="phantom-perps"}
+      series: hl_frontend_effective_fee_bps_v2{builder="phantom-perps"}
 
   - slug: axiom
     name: Axiom
     tag: Solana-native terminal expanding to HL
     formula: "Volume-weighted effective builder fee in basis points over the last complete UTC day, computed from Hyperliquid's public attributed-fills CSV for Axiom's builder address."
     queries:
-      p50: hl_frontend_effective_fee_bps{builder="axiom"}
+      p50: hl_frontend_effective_fee_bps_v2{builder="axiom"}
       p90: hl_frontend_d7_retention_pct{builder="axiom"}
-      p99: hl_frontend_fees_per_user_usd{builder="axiom"}
-      mean: avg_over_time(hl_frontend_effective_fee_bps{builder="axiom"}[7d])
-      success: clamp_max(rate(hl_frontend_csv_fetch_status_total{builder="axiom",code="200"}[6h]) / rate(hl_frontend_csv_fetch_status_total{builder="axiom"}[6h]), 1)
-      sample_size: hl_frontend_fills_total{builder="axiom"}
-      series: hl_frontend_effective_fee_bps{builder="axiom"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="axiom"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="axiom"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="axiom"}
+      series: hl_frontend_effective_fee_bps_v2{builder="axiom"}
 
   - slug: pvp-trade
     name: pvp.trade
     tag: Social PvP trading rooms
     formula: "Volume-weighted effective builder fee in basis points over the last complete UTC day, computed from Hyperliquid's public attributed-fills CSV for pvp.trade's builder address."
     queries:
-      p50: hl_frontend_effective_fee_bps{builder="pvp-trade"}
+      p50: hl_frontend_effective_fee_bps_v2{builder="pvp-trade"}
       p90: hl_frontend_d7_retention_pct{builder="pvp-trade"}
-      p99: hl_frontend_fees_per_user_usd{builder="pvp-trade"}
-      mean: avg_over_time(hl_frontend_effective_fee_bps{builder="pvp-trade"}[7d])
-      success: clamp_max(rate(hl_frontend_csv_fetch_status_total{builder="pvp-trade",code="200"}[6h]) / rate(hl_frontend_csv_fetch_status_total{builder="pvp-trade"}[6h]), 1)
-      sample_size: hl_frontend_fills_total{builder="pvp-trade"}
-      series: hl_frontend_effective_fee_bps{builder="pvp-trade"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="pvp-trade"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="pvp-trade"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="pvp-trade"}
+      series: hl_frontend_effective_fee_bps_v2{builder="pvp-trade"}
 
   - slug: insilico
     name: Insilico
     tag: Institutional trading workstation
     formula: "Volume-weighted effective builder fee in basis points over the last complete UTC day, computed from Hyperliquid's public attributed-fills CSV for Insilico's builder address."
     queries:
-      p50: hl_frontend_effective_fee_bps{builder="insilico"}
+      p50: hl_frontend_effective_fee_bps_v2{builder="insilico"}
       p90: hl_frontend_d7_retention_pct{builder="insilico"}
-      p99: hl_frontend_fees_per_user_usd{builder="insilico"}
-      mean: avg_over_time(hl_frontend_effective_fee_bps{builder="insilico"}[7d])
-      success: clamp_max(rate(hl_frontend_csv_fetch_status_total{builder="insilico",code="200"}[6h]) / rate(hl_frontend_csv_fetch_status_total{builder="insilico"}[6h]), 1)
-      sample_size: hl_frontend_fills_total{builder="insilico"}
-      series: hl_frontend_effective_fee_bps{builder="insilico"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="insilico"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="insilico"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="insilico"}
+      series: hl_frontend_effective_fee_bps_v2{builder="insilico"}
 
   - slug: defiapp
     name: Defiapp
     tag: Defiapp HL frontend
     formula: "Volume-weighted effective builder fee in basis points over the last complete UTC day, computed from Hyperliquid's public attributed-fills CSV for Defiapp's builder address."
     queries:
-      p50: hl_frontend_effective_fee_bps{builder="defiapp"}
+      p50: hl_frontend_effective_fee_bps_v2{builder="defiapp"}
       p90: hl_frontend_d7_retention_pct{builder="defiapp"}
-      p99: hl_frontend_fees_per_user_usd{builder="defiapp"}
-      mean: avg_over_time(hl_frontend_effective_fee_bps{builder="defiapp"}[7d])
-      success: clamp_max(rate(hl_frontend_csv_fetch_status_total{builder="defiapp",code="200"}[6h]) / rate(hl_frontend_csv_fetch_status_total{builder="defiapp"}[6h]), 1)
-      sample_size: hl_frontend_fills_total{builder="defiapp"}
-      series: hl_frontend_effective_fee_bps{builder="defiapp"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="defiapp"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="defiapp"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="defiapp"}
+      series: hl_frontend_effective_fee_bps_v2{builder="defiapp"}
 
   - slug: metamask
     name: MetaMask
     tag: MetaMask wallet HL integration
     formula: "Volume-weighted effective builder fee in basis points over the last complete UTC day, computed from Hyperliquid's public attributed-fills CSV for MetaMask's builder address."
     queries:
-      p50: hl_frontend_effective_fee_bps{builder="metamask"}
+      p50: hl_frontend_effective_fee_bps_v2{builder="metamask"}
       p90: hl_frontend_d7_retention_pct{builder="metamask"}
-      p99: hl_frontend_fees_per_user_usd{builder="metamask"}
-      mean: avg_over_time(hl_frontend_effective_fee_bps{builder="metamask"}[7d])
-      success: clamp_max(rate(hl_frontend_csv_fetch_status_total{builder="metamask",code="200"}[6h]) / rate(hl_frontend_csv_fetch_status_total{builder="metamask"}[6h]), 1)
-      sample_size: hl_frontend_fills_total{builder="metamask"}
-      series: hl_frontend_effective_fee_bps{builder="metamask"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="metamask"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="metamask"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="metamask"}
+      series: hl_frontend_effective_fee_bps_v2{builder="metamask"}
 
   - slug: dexari
     name: Dexari
     tag: Pro trading UI for HL
     formula: "Volume-weighted effective builder fee in basis points over the last complete UTC day, computed from Hyperliquid's public attributed-fills CSV for Dexari's builder address."
     queries:
-      p50: hl_frontend_effective_fee_bps{builder="dexari"}
+      p50: hl_frontend_effective_fee_bps_v2{builder="dexari"}
       p90: hl_frontend_d7_retention_pct{builder="dexari"}
-      p99: hl_frontend_fees_per_user_usd{builder="dexari"}
-      mean: avg_over_time(hl_frontend_effective_fee_bps{builder="dexari"}[7d])
-      success: clamp_max(rate(hl_frontend_csv_fetch_status_total{builder="dexari",code="200"}[6h]) / rate(hl_frontend_csv_fetch_status_total{builder="dexari"}[6h]), 1)
-      sample_size: hl_frontend_fills_total{builder="dexari"}
-      series: hl_frontend_effective_fee_bps{builder="dexari"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="dexari"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="dexari"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="dexari"}
+      series: hl_frontend_effective_fee_bps_v2{builder="dexari"}
 
   - slug: okto
     name: Okto
     tag: Okto wallet HL integration
     formula: "Volume-weighted effective builder fee in basis points over the last complete UTC day, computed from Hyperliquid's public attributed-fills CSV for Okto's builder address."
     queries:
-      p50: hl_frontend_effective_fee_bps{builder="okto"}
+      p50: hl_frontend_effective_fee_bps_v2{builder="okto"}
       p90: hl_frontend_d7_retention_pct{builder="okto"}
-      p99: hl_frontend_fees_per_user_usd{builder="okto"}
-      mean: avg_over_time(hl_frontend_effective_fee_bps{builder="okto"}[7d])
-      success: clamp_max(rate(hl_frontend_csv_fetch_status_total{builder="okto",code="200"}[6h]) / rate(hl_frontend_csv_fetch_status_total{builder="okto"}[6h]), 1)
-      sample_size: hl_frontend_fills_total{builder="okto"}
-      series: hl_frontend_effective_fee_bps{builder="okto"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="okto"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="okto"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="okto"}
+      series: hl_frontend_effective_fee_bps_v2{builder="okto"}
