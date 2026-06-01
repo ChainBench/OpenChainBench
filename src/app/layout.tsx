@@ -126,8 +126,11 @@ export default function RootLayout({
         />
       </head>
       {/* grid (not flex) so position: sticky on <SiteHeader> works reliably
-          on iOS Safari — sticky inside a flex column has known quirks. */}
-      <body className="min-h-full grid grid-rows-[auto_1fr_auto]">
+          on iOS Safari — sticky inside a flex column has known quirks.
+          w-full + overflow-x-clip on the body guarantees no descendant can
+          push the page past the viewport, even when WKWebView (Telegram in-app
+          browser) ignores the html-level safety net in globals.css. */}
+      <body className="min-h-full w-full max-w-full overflow-x-clip grid grid-rows-[auto_1fr_auto]">
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: safeJsonLd(ORG_JSONLD) }}
@@ -136,7 +139,7 @@ export default function RootLayout({
           Skip to main content
         </a>
         <SiteHeader />
-        <main id="main-content" className="flex-1">{children}</main>
+        <main id="main-content" className="flex-1 w-full max-w-full overflow-x-clip min-w-0">{children}</main>
         <SiteFooter />
       </body>
     </html>

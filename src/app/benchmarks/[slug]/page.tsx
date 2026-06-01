@@ -298,7 +298,7 @@ export default async function BenchmarkPage({
   const faqJsonLd = buildFaqPageJsonLd(benchmark.faq, benchmarkUrl);
 
   return (
-    <article className="mx-auto max-w-5xl px-4 sm:px-6 pt-10 sm:pt-14">
+    <article className="mx-auto max-w-5xl w-full px-4 sm:px-6 pt-10 sm:pt-14 overflow-x-clip min-w-0">
       <script
         type="application/ld+json"
         // biome-ignore lint/security/noDangerouslySetInnerHtml: serialized via safeJsonLd
