@@ -89,7 +89,7 @@ export default async function AlternativePage({
     const peers = altCount > 0
       ? `${altCount} live alternative${altCount === 1 ? "" : "s"}`
       : "live alternatives";
-    const pad = ` — open benchmark snapshot of ${alt.target_product} versus ${peers} on ${bench.metric}, measured continuously and published with full methodology.`;
+    const pad = `. Open benchmark snapshot of ${alt.target_product} versus ${peers} on ${bench.metric}, measured continuously and published with full methodology.`;
     const joined = `${altDescriptionBase}${pad}`;
     return joined.slice(0, 5000);
   })();

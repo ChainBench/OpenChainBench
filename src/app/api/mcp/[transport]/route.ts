@@ -364,7 +364,7 @@ const mcpHandler = createMcpHandler(
             .max(604_800)
             .optional()
             .describe("If set, run a range query over the last N seconds (max 7 days = 604800). Omit for an instant query."),
-          steps: z.number().int().min(2).max(360).optional().describe("Number of samples for a range query (2–360). Default 60. Step duration = windowSec / steps."),
+          steps: z.number().int().min(2).max(360).optional().describe("Number of samples for a range query (2 to 360). Default 60. Step duration = windowSec / steps."),
         },
       },
       async ({ query, windowSec, steps }) => {
