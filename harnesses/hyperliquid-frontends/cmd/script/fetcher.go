@@ -32,11 +32,21 @@ import (
 // SQLite state captures the in-progress day for retention math.
 func processBuilder(ctx context.Context, b Builder, state *State) float64 {
 	now := time.Now().UTC()
-	yesterday := now.AddDate(0, 0, -1)
-	yesterdayKey := yesterday.Format("20060102")
 
-	dates := []time.Time{yesterday, now}
-	var yesterdayFills []fillRow
+	// Hyperliquid publishes the per-day CSV with a variable delay —
+	// usually T-1 lands within hours of UTC midnight, but the bucket
+	// has gone 48 h+ without a fresh file (observed 2026-05-31). To
+	// avoid zeroing every builder on a publish lag, walk back up to
+	// 3 days and pick the most recent date that returned a non-empty
+	// CSV. State always upserts from whatever days we did fetch so
+	// retention math gets the freshest signal regardless.
+	dates := []time.Time{
+		now.AddDate(0, 0, -1),
+		now.AddDate(0, 0, -2),
+		now.AddDate(0, 0, -3),
+	}
+	var headlineFills []fillRow
+	var headlineDateKey string
 	for _, d := range dates {
 		batch, code, err := fetchDay(ctx, b.Address, d)
 		hlCSVFetchStatus.WithLabelValues(b.Slug, code).Inc()
@@ -44,9 +54,8 @@ func processBuilder(ctx context.Context, b Builder, state *State) float64 {
 			fmt.Printf("[%s] %s: %s err=%v\n", b.Slug, d.Format("20060102"), code, err)
 			continue
 		}
-		// State always gets every fill from both days so retention
-		// math can use the freshest signal — the in-progress day
-		// matters as much as the completed one for D7/D30 cohorts.
+		// State always gets every fill — retention math wants the
+		// long history of unique users, not just the headline day.
 		for _, f := range batch {
 			if state != nil && f.User != "" {
 				if err := state.Upsert(b.Slug, f.User, f.Time.UnixMilli(), f.Px*f.Sz); err != nil {
@@ -54,9 +63,11 @@ func processBuilder(ctx context.Context, b Builder, state *State) float64 {
 				}
 			}
 		}
-		// Only yesterday's complete CSV drives the headline gauges.
-		if d.Format("20060102") == yesterdayKey {
-			yesterdayFills = batch
+		// Pick the first day that has at least one fill — that's
+		// the freshest "complete UTC day" for this builder.
+		if headlineDateKey == "" && len(batch) > 0 {
+			headlineFills = batch
+			headlineDateKey = d.Format("20060102")
 		}
 	}
 
@@ -66,7 +77,7 @@ func processBuilder(ctx context.Context, b Builder, state *State) float64 {
 		fillCount     int
 		users         = make(map[string]struct{})
 	)
-	for _, f := range yesterdayFills {
+	for _, f := range headlineFills {
 		notionalUSD += f.Px * f.Sz
 		builderFeeUSD += f.BuilderFee
 		fillCount++
@@ -86,8 +97,8 @@ func processBuilder(ctx context.Context, b Builder, state *State) float64 {
 		hlFeesPerUserUSD.WithLabelValues(b.Slug).Set(builderFeeUSD / float64(len(users)))
 	}
 
-	fmt.Printf("[%s] fills=%d notional=$%.0f fees=$%.2f users=%d eff=%.2fbps\n",
-		b.Slug, fillCount, notionalUSD, builderFeeUSD, len(users),
+	fmt.Printf("[%s] day=%s fills=%d notional=$%.0f fees=$%.2f users=%d eff=%.2fbps\n",
+		b.Slug, headlineDateKey, fillCount, notionalUSD, builderFeeUSD, len(users),
 		safeRatio(builderFeeUSD, notionalUSD)*10_000)
 	return notionalUSD
 }
