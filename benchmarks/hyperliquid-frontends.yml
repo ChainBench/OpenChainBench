@@ -243,3 +243,40 @@ providers:
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
       sample_size: hl_frontend_fills_total_24h_v2{builder="okto"}
       series: hl_frontend_effective_fee_bps_v2{builder="okto"}
+
+# Companion metric panels surfaced as a switchable mini leaderboard below
+# the main p50/p90/p99 table. Each panel queries one Prom metric per
+# provider (builder label) and re-ranks the cohort under its direction.
+# All five metrics come from the local hl-node harness and update at the
+# same sub-minute cadence as the main headline.
+metric_panels:
+  - id: deviation
+    label: Slippage proxy
+    description: "Per fill, the basis-point gap between the executed price and the previous trade price on the same asset, averaged over the rolling 24h window. Lower is better. Frontends that route to less liquid venues or slower order paths show higher deviation, which is direct user cost on top of the fee column."
+    metric: hl_frontend_price_deviation_bps_v2
+    unit: bps
+    higher_is_better: false
+  - id: outage
+    label: Time since last fill
+    description: "Seconds since this builder's most recent attributed fill landed on Hyperliquid. Cohort baseline runs under one minute during active hours; above a few minutes is a real anomaly. Catches frontends whose routing pipeline is down or quietly stopped operating."
+    metric: hl_frontend_last_fill_age_seconds_v2
+    unit: s
+    higher_is_better: false
+  - id: activity
+    label: Fills per minute
+    description: "Activity rate over the rolling 24h window. Higher means more flow currently routes through this frontend. Combine with effective fee bps to read the operational intent: high activity + low fee = aligned, high activity + high fee = extractive."
+    metric: hl_frontend_fills_per_min_v2
+    unit: count
+    higher_is_better: true
+  - id: taker
+    label: Taker share
+    description: "Fraction of fills that crossed the spread (paid the bid ask gap). Aggressive instant execution wallets skew taker heavy, pro terminals with limit order workflows skew maker heavy. Reveals the routing intent embedded in each frontend's UX."
+    metric: hl_frontend_taker_pct_v2
+    unit: pct
+    higher_is_better: false
+  - id: volume
+    label: Volume routed
+    description: "Notional USD routed in the rolling 24h window. Headline volume metric most other HL dashboards publish. Here it is companion, not the headline, because volume is only loosely correlated with how aligned a frontend is with its users."
+    metric: hl_frontend_volume_usd_24h_v2
+    unit: usd
+    higher_is_better: true

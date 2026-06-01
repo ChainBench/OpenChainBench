@@ -69,7 +69,7 @@ const slug = z
 /** PromQL. a non-empty string. We don't parse PromQL; that's Prometheus's job. */
 const promql = z.string().min(1);
 
-const region = z.enum(["us-east", "eu-west", "ap-southeast", "global"]);
+const region = z.enum(["us-east", "eu-west", "ap-southeast", "sgp", "global"]);
 
 const queries = z
   .object({
@@ -274,6 +274,35 @@ export const SpecSchema = z
       .optional(),
 
     providers: z.array(provider).min(1),
+
+    /**
+     * Optional companion metrics rendered as switchable mini leaderboards
+     * below the main table. Each panel declares a single Prometheus metric
+     * name; the spec loader queries it per provider as
+     * `<metric>{builder="<slug>"}` and stores the value. Used by the HL
+     * frontends bench to surface execution quality, outage signal, taker
+     * share, etc. without changing the main p50 headline.
+     */
+    metric_panels: z
+      .array(
+        z.object({
+          id: z
+            .string()
+            .min(1)
+            .max(40)
+            .regex(/^[a-z][a-z0-9_]*$/, "Panel id must be lowercase snake_case"),
+          label: z.string().min(1).max(80),
+          description: z.string().max(300).optional(),
+          metric: z.string().min(1).max(200),
+          /** The PromQL label that holds each provider's slug. Defaults to
+           *  "builder"; other benches may use "provider", "venue", etc. */
+          label_key: z.string().min(1).max(40).default("builder"),
+          unit: z.enum(["ms", "s", "pct", "bps", "count", "slots", "usd"]),
+          higher_is_better: z.boolean().default(false),
+        })
+      )
+      .max(8)
+      .optional(),
   })
   .strict();
 
