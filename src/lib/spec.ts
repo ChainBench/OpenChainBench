@@ -650,11 +650,16 @@ async function tryLoadLive(
     const metricPanels: MetricPanel[] = [];
     for (const panel of spec.metric_panels ?? []) {
       const values: Record<string, number> = {};
+      const seriesByProvider: Record<string, number[]> = {};
       await Promise.all(
         spec.providers.map(async (p) => {
           const q = `${panel.metric}{${panel.label_key}="${escapePromLabelValue(p.slug)}"}`;
-          const v = await prom.scalar(q);
+          const [v, series] = await Promise.all([
+            prom.scalar(q),
+            prom.series(q, winSec, 72),
+          ]);
           if (v != null && Number.isFinite(v)) values[p.slug] = v;
+          if (series && series.length > 0) seriesByProvider[p.slug] = series;
         })
       );
       metricPanels.push({
@@ -665,6 +670,7 @@ async function tryLoadLive(
         unit: panel.unit,
         higherIsBetter: panel.higher_is_better,
         values,
+        seriesByProvider,
       });
     }
 
