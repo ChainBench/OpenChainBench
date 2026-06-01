@@ -13,90 +13,95 @@ unit: bps
 higher_is_better: false
 
 disclaimer: |
-  Volume-share dashboards already exist (ASXN, Coinmarketman, Flowscan, Allium). OCB leads with user cost instead: effective fee is a volume-weighted `builder_fee / notional` over 24h, so fee-free promo windows pull it down. Native HL UI orders carry no builder code and are excluded. Coverage is in `aggregator-head-lag`.
+  Volume share dashboards already exist (ASXN, Coinmarketman, Flowscan, Allium). OCB leads with user cost instead. Effective fee is a volume weighted `builder_fee / notional` over the rolling 24h, so fee free promo windows pull it down. Native HL UI orders carry no builder code and are excluded; the bench tracks third party frontends that opt into the builder field. Companion metrics surface slippage, freshness, taker share, asset concentration. Local hl-node source, sub minute freshness.
 
 seo_intro: |
-  Every Hyperliquid order carries an optional on-chain `builder`
-  field. Frontends like Phantom Perps, Axiom, OKX, GMGN,
-  pvp.trade, Dexterity, KGEN, Insilico, and ASXN use this field to
-  claim a share of taker fees as their own rebate (capped at 100
-  basis points on perps, 1000 on spot). The same field is the
-  cleanest user-cost signal available: dividing the total
-  `builder_fee` captured by the total notional routed gives the
-  effective fee each frontend charges its users on top of the
-  base Hyperliquid fee schedule. This benchmark publishes that
-  ratio per builder, refreshed hourly from Hyperliquid's public
-  `stats-data.hyperliquid.xyz/Mainnet/builder_fills` daily CSV
-  dumps. Three columns surface per frontend. The headline is the
-  24-hour volume-weighted effective fee in basis points; the
-  second column is D7 cohort retention, the percentage of users
-  who first traded via this builder a week ago and traded again
-  within the last 24 hours; the third is USD fees captured per
-  unique trader. Lower fee + higher retention + lower $/user =
-  most aligned with traders. Why this framing. The Hyperliquid
-  frontend wars have a half-dozen volume-share dashboards
-  already (ASXN, Coinmarketman, Flowscan, Allium, Dune); none of
-  them publish retention per builder because none of them keep
-  the persistent state. OCB does. Volume share is exposed as a
-  secondary gauge so the number readers expect to see is still
-  on the page. It just doesn't drive the ranking.
+  Every Hyperliquid order carries an optional on chain `builder`
+  field. Frontends like Phantom Perps, Axiom, MetaMask, pvp.trade,
+  Insilico, DefiApp, Dexari and Okto use this field to claim a
+  share of taker fees as their own rebate (capped at 100 basis
+  points on perps, 1000 on spot). The same field is the cleanest
+  user cost signal available. Dividing the total `builder_fee`
+  captured by the total notional routed gives the effective fee
+  each frontend charges its users on top of the base Hyperliquid
+  fee schedule. This benchmark publishes that ratio per builder
+  in sub minute freshness, reading the local hl-node fills stream
+  on the OCB infrastructure rather than the public daily CSV bucket.
+  The default chart shows the 24h volume weighted effective fee
+  in basis points. A tab switcher above the chart surfaces five
+  companion views computed from the same stream. Slippage proxy
+  is the per fill basis point gap between executed price and the
+  previous trade on the same asset, averaged over 24h, so a
+  frontend with a low fee but a wide routing path shows the real
+  user cost. Time since last fill is an outage detector, seconds
+  since the most recent attributed fill for that builder. Fills
+  per minute is the rolling activity rate. Taker share is the
+  fraction of fills that crossed the spread, separating aggressive
+  wallet style UIs from pro maker heavy terminals. Volume routed
+  is the headline number every other dashboard publishes, kept
+  here as a companion not the ranking driver.
 
 abstract: |
-  We compute four quality metrics per Hyperliquid builder code
-  by reading the public per-day fills dumps published by the
-  Hyperliquid team at `stats-data.hyperliquid.xyz`, plus a
-  local SQLite state layer for cohort retention. (1) Effective
-  fee bps, `sum(builder_fee) / sum(notional) * 10000` over the
-  last 24 hours, volume-weighted across every fill attributed to
-  the builder address. (2) D7 and D30 cohort retention, the
-  percentage of users whose first observed fill for the builder
-  lands in the UTC-day window 7 (or 30) days ago and who traded
-  again within the last 24 hours, derived from a local SQLite
-  state of `(builder, user, first_seen_ms, last_seen_ms)`. (3)
-  USD captured per unique trader, `sum(builder_fee) /
-  count(distinct user)` over the UTC-day window. (4) Volume share in
-  percent, exposed as a secondary signal so readers who came for
-  the standard leaderboard number still find it. The harness
-  maintains a curated `builders.json` mapping of builder EVM
-  addresses to frontend slugs (Phantom Perps, Axiom, OKX, GMGN,
-  pvp.trade, Dexterity, KGEN, Insilico, ASXN). Builder addresses
-  with valid fills outside this registry are bucketed as
-  `unattributed` so the coverage gap is visible. The bench does
-  not place trades, does not touch private keys, and does not
-  depend on any internal Mobula service.
+  We compute a family of quality metrics per Hyperliquid builder
+  code by tailing the fills stream of a local hl-node operated
+  on OCB infrastructure. The node writes every block of fills
+  to `node_fills_by_block/hourly/YYYYMMDD/HH`, one JSON object
+  per line, with the `builder` address and `builderFee` on every
+  attributed fill. A Go harness tails these files every 30 seconds,
+  maintains a rolling 24h window in memory, and exposes a stable
+  Prometheus surface that this page consumes. The headline metric
+  is effective fee in basis points, `sum(builder_fee_usd) /
+  sum(notional_usd) * 10000` over the rolling 24h, volume weighted
+  across every fill attributed to the builder address. Five
+  companion metrics share the same stream. Price deviation bps is
+  the per fill `|fill_px - last_seen_px_same_asset| / last_seen_px
+  * 10000` averaged over the window, a proxy for execution quality.
+  Time since last fill in seconds catches frontends whose routing
+  pipeline is down. Fills per minute is the rolling activity rate.
+  Taker share is `crossed_fills / total_fills`. Top three assets
+  by routed notional per builder reveals routing strategy and
+  surfaces HIP-3 perps. The harness keeps a curated `builders.json`
+  mapping of EVM addresses to frontend slugs (Phantom Perps, Axiom,
+  pvp.trade, Insilico, DefiApp, MetaMask, Dexari, Okto). Builder
+  addresses with valid fills outside this registry route through
+  the same `builder` field but stay invisible to this leaderboard
+  until added by a public PR. The bench does not place trades,
+  does not touch private keys, and does not depend on any internal
+  Mobula service.
 
 methodology:
-  - "Data source. The Hyperliquid team publishes a per-builder, per-day CSV of every attributed fill at `https://stats-data.hyperliquid.xyz/Mainnet/builder_fills/{builder_address_lowercase}/{YYYYMMDD}.csv.lz4`. The bucket is public, unauthenticated, and lossless (LZ4-compressed). Schema: `time, user, coin, side, px, sz, crossed, special_trade_type, tif, is_trigger, counterparty, closed_pnl, twap_id, builder_fee`."
-  - "Cadence. The harness polls each registered builder's `T-1` (yesterday's, complete) and `T-0` (today's, preview) CSV every 3600 seconds. `T-1` is treated as authoritative; `T-0` updates the live gauge with a `preview=true` label that the page ignores for ranking purposes."
-  - "Effective fee calculation. For each builder over a UTC-day window: `effective_fee_bps = sum(builder_fee_usd) / sum(notional_usd) * 10000`, where `notional_usd = px * sz` summed over every fill row. Volume-weighted, not flat-averaged, so a builder routing one $10M trade at 1 bps and 10,000 $100 trades at 10 bps lands near 1 bps (matching what its biggest users actually paid)."
-  - "USD-per-user efficiency. `fees_per_user_usd = sum(builder_fee_usd) / count(distinct user)` over the same UTC-day window. Surfaces predatory pricing more clearly than effective fee alone: a builder with 5 bps effective fee and $50 per user is extracting differently than one with the same 5 bps and $0.50 per user."
-  - "D7 / D30 cohort retention. Local SQLite state of `(builder, user, first_seen_ms, last_seen_ms)` updated on every fill. D7 = (users with `first_seen_ms` 7 days ago AND `last_seen_ms` within 24h) ÷ (cohort size). D30 same with 30d window. Catches frontends that dominate yesterday's UTC volume while bleeding their day-old cohort. State pruned past 90 days to keep the SQLite bounded."
-  - "Fee discipline (secondary). `stddev_over_time(hl_frontend_effective_fee_bps[30d])` computed in Prometheus. Frontends running rotating fee-free promotions show high variance; frontends with stable transparent pricing show low. Not in the leaderboard columns by default but queryable via the MCP server for any reader who wants it."
-  - "Builder registry. `harnesses/hyperliquid-frontends/builders.json` is a hand-curated `[{slug, name, address, valid_from, notes}]` array, cross-referenced against Flowscan's builder leaderboard, the Hyperliquid governance forum's builder-code disclosures, and each frontend's public announcement of their builder address. Reviewed weekly. When a new builder address appears in the `unattributed` slice with >0.5% volume share, an issue is filed."
-  - "Unattributed bucket. Builder addresses present in Hyperliquid CSV dumps but absent from `builders.json` are aggregated under the `unattributed` slug. The bench surfaces this slice explicitly rather than hiding it so the reader knows the coverage limit. An `unattributed` share >2% triggers a registry-update alert."
-  - "Excluded by design. (a) Native HL UI orders have no builder code, not user-attributable; `aggregator-head-lag` covers HL's data feed separately. (b) Spot fills roll into the perp headline; per-asset breakdowns ship in v1.1. (c) Builders with <100 unique users over 24h tag as `low_sample` and drop from the leaderboard ranking (raw metrics still visible)."
-  - "Reproducibility. The full harness source is published at `harnesses/hyperliquid-frontends/` in the OCB repo (Go). Anyone can clone, point at the public `stats-data.hyperliquid.xyz` URL, run the binary against a Prometheus scraper, and reproduce these metrics. No private API keys, no internal Mobula service dependency."
-  - "Methodology versioning. Any change (registry additions, formula tweaks, exclusion thresholds, window sizes) ships as a public PR with a 14-day comment window before activation. Major changes run a 30-day shadow period publishing old and new metric series in parallel."
+  - "Data source. A local hl-node operated on OCB infrastructure tails the Hyperliquid mainnet and writes every block of attributed fills to `node_fills_by_block/hourly/YYYYMMDD/HH`. Each line is one block, the `events` array carries one entry per fill, and every fill with a builder code includes the `builder` address plus `builderFee` in USDC. Sub minute freshness, no dependency on the public daily CSV bucket."
+  - "Cadence. The Go harness re reads the current and previous hourly files every 30 seconds, parses appended lines, and maintains a rolling 24h window in memory. Prometheus scrapes the metrics every 30 seconds via a Caddy reverse proxy with basic auth. End to end staleness from fill landing on chain to bench page render is typically under 60 seconds."
+  - "Effective fee calculation. For each builder over the rolling 24h window: `effective_fee_bps = sum(builder_fee_usd) / sum(notional_usd) * 10000`, where `notional_usd = px * sz` summed over every fill. Volume weighted, not flat averaged, so a builder routing one large trade at 1 bps and many tiny trades at 10 bps lands near the rate the biggest dollars actually paid."
+  - "USD per user efficiency. `fees_per_user_usd = sum(builder_fee_usd) / count(distinct user)` over the rolling 24h window. Surfaces predatory pricing more clearly than effective fee alone. A builder with 5 bps effective fee and $50 per user is extracting differently than one with the same 5 bps and $0.50 per user."
+  - "Price deviation, slippage proxy. For each new fill on asset A by builder B: `dev_bps = abs(fill_px - last_seen_px_on_A) / last_seen_px * 10000`, where `last_seen_px` is the most recent fill price on that asset across the whole cohort. Averaged per builder over the rolling 24h. Proxy for execution quality. A frontend that routes to less liquid venues or slower order paths shows higher deviation, a direct user cost on top of the fee column."
+  - "Outage detector. `last_fill_age_seconds = now - max(fill.time for fills in window)` per builder. During active hours the cohort baseline runs under one minute, so anything above a few minutes is a real anomaly. Catches frontends whose routing pipeline is down and frontends that quietly stopped operating but still have their builder code in circulation."
+  - "Taker share. Each fill has a boolean `crossed` field, true when the fill crossed the spread (taker), false when it rested in the book (maker). `taker_pct = crossed_fills / total_fills` per builder over the window. Separates aggressive instant execution UIs from pro maker heavy terminals."
+  - "Per asset top three. For each builder, the three assets with the highest notional volume in the rolling 24h. Cardinality bounded at 8 builders times 3 ranks. The `asset` label rotates as concentration shifts. Reveals routing strategy and surfaces HIP-3 perps (xyz: prefix) that the older Hyperliquid frontends do not list."
+  - "Builder registry. `miniapps/hyperliquid-frontends-local/builders.json` is a hand curated `[{slug, name, address, valid_from, notes}]` array. Currently tracks Phantom Perps, Axiom, pvp.trade, Insilico, DefiApp, MetaMask, Dexari, Okto, accounting for roughly half of attributed Hyperliquid volume. The remaining attributed volume routes through several hundred smaller builder addresses, expansion planned via public PR."
+  - "Excluded by design. Native HL UI orders carry no builder code so they are not user attributable by this method. Roughly 95 percent of Hyperliquid fills land without a builder field. The 5 percent that do are the frontend ecosystem this bench measures."
+  - "Reproducibility. Harness source at `miniapps/hyperliquid-frontends-local/` in the mobula-api repo (Go). Anyone running their own hl-node can clone, point the `-data` flag at their `node_fills_by_block/hourly` root, run the binary against a Prometheus scraper, and reproduce these metrics. No private API keys, no internal Mobula service dependency."
+  - "Methodology versioning. Any change (registry additions, formula tweaks, exclusion thresholds, window sizes) ships as a public PR. Major changes run a parallel period publishing old and new metric series side by side under a `_v2` suffix until cutover."
 
 findings:
   - "Effective fee spread is 10x across the cohort. Insilico and Axiom both clock 1.00 bps on the last 24h of attributed flow, the cheapest transparent flat in the set. MetaMask sits at 10.00 bps, the practical on-chain cap most frontends respect, making it the most extractive currently tracked. Phantom Perps lands at 5.22, in line with the wallet-integrated tier."
   - "Fee alone is half the story. DefiApp executes tightest at 1.90 bps price deviation despite charging 5.02 bps in builder fee. Dexari deviates 25.83 bps, 13x the cohort median of about 3 bps, on top of its 8.91 bps fee. A user paying Dexari to route their flow is paying twice: once at the fee line, once at the fill price."
   - "Volume and user-cost are uncorrelated. Phantom Perps routes 19.4M USD in 24h at 5.22 bps. Insilico routes 7.9M USD at 1.00 bps. MetaMask routes 5M USD at 10 bps. The leaderboard most HL dashboards publish (volume share) ranks Phantom first; the leaderboard users actually care about (what each routed dollar pays) ranks Insilico and Axiom on top."
   - "Two outage signals are currently firing. Dexari's last attributed fill is 19 minutes stale against a cohort baseline under 1 minute. Okto has zero fills in 24h, fully inactive. The sub-minute hl-node freshness lets the bench distinguish 'no flow yet today' from 'frontend down', a gap the daily CSV pipeline could not close."
-  - "Taker share separates aggressive UIs from pro terminals. pvp.trade fills 100% taker, Phantom 99.4%, MetaMask 97.9% — instant-execution wallets that cross the spread by default. Insilico sits at 80.6%, the most maker-heavy in the cohort, consistent with its workstation positioning where users place resting limit orders rather than market-buying."
-  - "Asset concentration reveals routing strategy. Phantom is 51% BTC-weighted (9.9M of 19.4M USD in 24h on BTC alone). DefiApp is the only frontend with HYPE as its #1 asset. Dexari and MetaMask both surface HIP-3 perps in their top-3 (xyz:TSLA, xyz:CL crude) — a feature that does not exist on the older Hyperliquid frontends, useful for traders looking for stock-perps exposure."
+  - "Taker share separates aggressive UIs from pro terminals. pvp.trade fills 100% taker, Phantom 99.4%, MetaMask 97.9%, all instant execution wallets that cross the spread by default. Insilico sits at 80.6%, the most maker heavy in the cohort, consistent with its workstation positioning where users place resting limit orders rather than market buying."
+  - "Asset concentration reveals routing strategy. Phantom is 51% BTC weighted (9.9M of 19.4M USD in 24h on BTC alone). DefiApp is the only frontend with HYPE as its #1 asset. Dexari and MetaMask both surface HIP-3 perps in their top three (xyz:TSLA, xyz:CL crude), a feature that does not exist on the older Hyperliquid frontends, useful for traders looking for stock perps exposure."
 
 faq:
   - q: "Why does OpenChainBench not show Hyperliquid volume share?"
     a: "Volume share is already published cleanly by ASXN HyperScreener, Coinmarketman HyperTracker, Flowscan, Allium, and at least three Dune dashboards. Republishing it would add no value. The unmeasured part of the frontend question is user cost: how much does each frontend take per dollar routed, and how stable is that take rate. That's what this bench answers. Raw yesterday's UTC notional per builder is still exposed as a secondary metric for readers who want it; it just doesn't drive the headline ranking."
   - q: "How is the effective fee actually computed?"
-    a: "For each Hyperliquid builder address in our registry, the harness fetches `https://stats-data.hyperliquid.xyz/Mainnet/builder_fills/{address}/{YYYYMMDD}.csv.lz4` once per hour. Each row of the CSV is one attributed fill with a `builder_fee` field and the `px × sz` notional. We sum `builder_fee` and `px × sz` across every row in the last 24 hours and compute `sum(builder_fee) / sum(notional) × 10000`. That's the volume-weighted effective fee in basis points, what a representative dollar of flow paid that frontend."
+    a: "A local hl-node operated on OCB infrastructure tails the Hyperliquid mainnet and writes every block of attributed fills to disk. A Go harness re reads the current hourly file every 30 seconds. For each builder in our registry, we sum `builderFee` (USD) and `px * sz` (notional USD) over every fill in the rolling 24h window, then compute `sum(builder_fee) / sum(notional) * 10000`. That's the volume weighted effective fee in basis points, what a representative dollar of flow paid that frontend. End to end staleness from fill landing on chain to bench page render is typically under 60 seconds."
   - q: "What's the on-chain cap?"
     a: "Hyperliquid caps builder fees at 100 basis points on perps and 1000 basis points on spot, configured via the `ApproveBuilderFee` action signed by each user's main wallet. The bench's headline is denominated in basis points so 100 = the on-chain cap and 0 = fully waived rebate. Most frontends sit well below the cap; the bench surfaces who sits where."
   - q: "Which frontends are tracked?"
-    a: "The registry tracks Phantom Perps, Axiom, OKX, GMGN, pvp.trade, Dexterity, KGEN, Insilico Terminal, and ASXN. Builder addresses are cross-referenced against Flowscan's builder leaderboard, governance forum disclosures, and each frontend's public announcement of their address. New builders meeting the 0.5% volume threshold get added on the next weekly review."
-  - q: "What is the 'unattributed' slice?"
-    a: "Builder addresses that appear in Hyperliquid's public dumps but aren't in our registry, aggregated together. Surfacing this slice explicitly is honest. It's the share of attributed flow our methodology doesn't yet cover. When the unattributed share crosses 2%, a registry-update issue is filed; the bench freshness counter on the page tells you when the registry was last reviewed."
+    a: "The registry currently tracks Phantom Perps, Axiom, pvp.trade, Insilico Terminal, DefiApp, MetaMask, Dexari and Okto. These eight account for roughly half of attributed Hyperliquid volume. Builder addresses were sourced from each frontend's public announcement, cross referenced against CoinMarketMan HyperTracker and Flowscan. Several hundred smaller builder addresses route the remaining attributed volume. They show in our local node stream and are scheduled for inclusion via public PR. The 95 percent of HL flow that uses no builder code (native UI orders, frontends that did not opt into the attribution system) sits outside this bench by design."
+  - q: "What about builder addresses outside the eight tracked frontends?"
+    a: "The local hl-node sees every builder address that appears on any Hyperliquid fill. Several hundred smaller builders route attributed volume below the eight tracked here. Those addresses are visible in our raw node stream but stay off the leaderboard until a public PR adds them to `builders.json` with a verified name. The coverage gap is honest, not hidden. Volume share dashboards from ASXN and CoinMarketMan list the full distribution if you need the exhaustive picture today."
   - q: "What's fee discipline and why is it useful?"
     a: "The 30-day standard deviation of the daily effective fee in basis points. Frontends running rotating promotions (fee-free week → normalize the next week → discount cycle) show high variance even when the 24h headline is low. Frontends with stable transparent pricing show low variance. The discipline column is what tells you whether the headline number you're reading is a stable rate or a snapshot mid-promo."
   - q: "Does the bench measure native HL UI orders?"
@@ -108,7 +113,7 @@ faq:
   - q: "What does the last-fill-age outage signal actually measure?"
     a: "Seconds since the most recent attributed fill for that builder. The cohort baseline runs under one minute during active hours, so above a few minutes is a real anomaly. Catches two failure modes: a frontend whose routing pipeline is down (no new fills even when users try to trade), and a frontend that has quietly stopped operating but still has its builder code in circulation. Both were invisible on volume dashboards where zero volume reads as zero, not as broken."
 
-source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/hyperliquid-frontends
+source: https://github.com/MobulaFi/mobula-monorepo/tree/dev/miniapps/hyperliquid-frontends-local
 
 prometheus:
   window: 24h
