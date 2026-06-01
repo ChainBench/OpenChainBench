@@ -68,6 +68,10 @@ export type MetricPanel = {
    *  live data for this metric are omitted; the renderer renders them as
    *  "no data" instead of zero. */
   values: Record<string, number>;
+  /** Per-provider 24h time-series (72 points by default), keyed by
+   *  provider slug. Powers the multi-line chart view of the panel.
+   *  Providers with no Prom data for the query are absent from the map. */
+  seriesByProvider?: Record<string, number[]>;
 };
 
 export type ResultExtras = {

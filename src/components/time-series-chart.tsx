@@ -24,6 +24,14 @@ type Props = {
   onResetExcluded?: () => void;
   /** Optional slot rendered in the chart's header row, right-aligned. */
   headerActions?: import("react").ReactNode;
+  /** Optional metric-panel override. When set, the chart pulls its per-
+   *  provider series from `seriesOverride[slug]` instead of
+   *  `benchmark.extras.series24h[slug]`, swaps the metric name in the
+   *  header, and switches the Y-axis unit. Used by the bench page when
+   *  the reader selects a companion metric from the panel tab row. */
+  seriesOverride?: Record<string, number[]>;
+  metricLabelOverride?: string;
+  unitOverride?: Benchmark["unit"];
 };
 
 type Range = "1h" | "6h" | "24h" | "7d" | "30d";
@@ -58,6 +66,9 @@ export function TimeSeriesChart({
   region: regionProp,
   excluded: controlledExcluded,
   onToggleExclude,
+  seriesOverride,
+  metricLabelOverride,
+  unitOverride,
   onResetExcluded,
   headerActions,
 }: Props) {
@@ -116,14 +127,16 @@ export function TimeSeriesChart({
         slug: r.slug,
         name: r.name,
         color: colors.get(r.slug) ?? "var(--color-ink-soft)",
-        values: pickSeries(benchmark, r.slug, range, region),
+        values: seriesOverride
+          ? (seriesOverride[r.slug] ?? [])
+          : pickSeries(benchmark, r.slug, range, region),
         excluded: excluded.has(r.slug),
       }))
       .filter((l) => l.values.length > 0);
 
     built.sort((a, b) => mean(b.values.slice(-6)) - mean(a.values.slice(-6)));
     return built;
-  }, [benchmark, range, region, colors, excluded]);
+  }, [benchmark, range, region, colors, excluded, seriesOverride]);
 
   // A key that flips when the data shape changes. used to retrigger
   // the line-draw animation.
@@ -163,7 +176,7 @@ export function TimeSeriesChart({
         <p className="inline-flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
           <LiveDot />
           <span>
-            {benchmark.metric} · {zoomLabel}
+            {metricLabelOverride ?? benchmark.metric} · {zoomLabel}
           </span>
         </p>
         <div className="flex items-center gap-3">
@@ -248,7 +261,7 @@ export function TimeSeriesChart({
         <Chart
           key={seriesKey}
           lines={lines as LineWithColor[]}
-          unit={benchmark.unit}
+          unit={unitOverride ?? benchmark.unit}
           windowHours={RANGE_HOURS[range]}
           zoom={zoom}
           onZoom={setZoom}

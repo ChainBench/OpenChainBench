@@ -11,7 +11,7 @@ import { RankedBarChart } from "@/components/ranked-bar-chart";
 import { DistributionChart } from "@/components/distribution-chart";
 import { DonutChart } from "@/components/donut-chart";
 import { RegionGrid } from "@/components/region-grid";
-import { MetricPanelGrid } from "@/components/metric-panel-grid";
+import { MetricViewTabs } from "@/components/metric-view-tabs";
 import { CountLeaderboard } from "@/components/count-leaderboard";
 import { SummaryStat } from "@/components/summary-stat";
 import { ViewSwitcher } from "@/components/view-switcher";
@@ -209,6 +209,14 @@ export function BenchmarkBody({
   const chartRegions = chartOnlyRegions(benchmark);
   const showChartRegionRow = regionOptions.length === 0 && chartRegions.length > 1;
   const [chartRegion, setChartRegion] = useState<string>("all");
+
+  // Active companion-metric panel. null = main spec metric (default chart
+  // data, default unit, default header). When a panel id is set, the chart
+  // pulls its per-provider series from panel.seriesByProvider, swaps the
+  // header label to panel.label, and the Y-axis unit to panel.unit.
+  const [activePanelId, setActivePanelId] = useState<string | null>(null);
+  const activePanel =
+    benchmark.metricPanels?.find((p) => p.id === activePanelId) ?? null;
   const chartRegionOptions: ChainOption[] = useMemo(
     () => [
       { value: "all", label: "All" },
@@ -336,20 +344,38 @@ export function BenchmarkBody({
                 />
               )}
               {view === "timeseries" && (
-                <TimeSeriesChart
-                  benchmark={benchmark}
-                  region={
-                    regionOptions.length > 0
-                      ? (region ?? fallbackRegion ?? undefined)
-                      : showChartRegionRow
-                        ? chartRegion
-                        : undefined
-                  }
-                  excluded={excluded}
-                  onToggleExclude={toggleExclude}
-                  onResetExcluded={resetExcluded}
-                  headerActions={<ViewSwitcher allowed={allowedViews} value={view} onChange={setView} />}
-                />
+                <>
+                  {benchmark.metricPanels && benchmark.metricPanels.length > 0 && (
+                    <MetricViewTabs
+                      panels={benchmark.metricPanels}
+                      mainLabel={benchmark.metric}
+                      activeId={activePanelId}
+                      onSelect={setActivePanelId}
+                    />
+                  )}
+                  <TimeSeriesChart
+                    benchmark={benchmark}
+                    region={
+                      regionOptions.length > 0
+                        ? (region ?? fallbackRegion ?? undefined)
+                        : showChartRegionRow
+                          ? chartRegion
+                          : undefined
+                    }
+                    excluded={excluded}
+                    onToggleExclude={toggleExclude}
+                    onResetExcluded={resetExcluded}
+                    headerActions={<ViewSwitcher allowed={allowedViews} value={view} onChange={setView} />}
+                    seriesOverride={activePanel?.seriesByProvider}
+                    metricLabelOverride={activePanel?.label}
+                    unitOverride={activePanel?.unit}
+                  />
+                  {activePanel?.description && (
+                    <p className="mt-3 text-[12px] text-ink-muted max-w-2xl">
+                      {activePanel.description}
+                    </p>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -362,12 +388,6 @@ export function BenchmarkBody({
             </p>
             <LedgerTable benchmark={benchmark} />
           </div>
-
-          {benchmark.metricPanels && benchmark.metricPanels.length > 0 && (
-            <div className="mt-8 card-soft rounded-xl p-4 sm:p-6 lg:p-8">
-              <MetricPanelGrid benchmark={benchmark} />
-            </div>
-          )}
 
           {benchmark.unit !== "count" &&
             Object.keys(benchmark.extras.regions).length > 0 && (
