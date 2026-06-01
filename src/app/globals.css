@@ -327,10 +327,18 @@ textarea:focus-visible {
 html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
-  /* Safety net: clip any rogue horizontal overflow at the root so a
-     single wide child (e.g. a min-w table) can never push the whole
-     page off-screen on mobile. Per-component fixes still target the
-     intrinsic min-widths so the clip rarely fires. `clip` (not hidden)
-     avoids creating a scroll container that breaks position: sticky. */
+}
+
+/* Safety net: clip any rogue horizontal overflow on BOTH html and body.
+   iOS Safari + Telegram WKWebView sometimes ignore `overflow-x: clip`
+   on <html> alone and still let a wide child push the page past 100vw.
+   Applying it to body too — plus capping body width at 100vw — covers
+   the WebView edge cases. `clip` (not `hidden`) avoids creating a
+   scroll container, so position: sticky on the header keeps working. */
+html,
+body {
   overflow-x: clip;
+}
+body {
+  max-width: 100vw;
 }
