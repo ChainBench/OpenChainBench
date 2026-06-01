@@ -57,6 +57,19 @@ export type RegionPoint = {
 
 export type Series24h = number[];
 
+export type MetricPanel = {
+  id: string;
+  label: string;
+  description?: string;
+  metric: string;
+  unit: "ms" | "s" | "pct" | "bps" | "count" | "slots" | "usd";
+  higherIsBetter: boolean;
+  /** Per-provider scalar values, keyed by provider slug. Providers with no
+   *  live data for this metric are omitted; the renderer renders them as
+   *  "no data" instead of zero. */
+  values: Record<string, number>;
+};
+
 export type ResultExtras = {
   /** 24h-window global series per provider. sparklines + default chart view. */
   series24h: Record<string, Series24h>;
@@ -147,4 +160,8 @@ export type Benchmark = {
   methodology: string[];
   source: string;
   extras: ResultExtras;
+  /** Optional companion metrics surfaced as switchable mini leaderboards
+   *  below the main table. Populated by the spec loader from
+   *  `metric_panels` in the YAML. */
+  metricPanels?: MetricPanel[];
 };

@@ -11,6 +11,7 @@ import { RankedBarChart } from "@/components/ranked-bar-chart";
 import { DistributionChart } from "@/components/distribution-chart";
 import { DonutChart } from "@/components/donut-chart";
 import { RegionGrid } from "@/components/region-grid";
+import { MetricPanelGrid } from "@/components/metric-panel-grid";
 import { CountLeaderboard } from "@/components/count-leaderboard";
 import { SummaryStat } from "@/components/summary-stat";
 import { ViewSwitcher } from "@/components/view-switcher";
@@ -361,6 +362,12 @@ export function BenchmarkBody({
             </p>
             <LedgerTable benchmark={benchmark} />
           </div>
+
+          {benchmark.metricPanels && benchmark.metricPanels.length > 0 && (
+            <div className="mt-8 card-soft rounded-xl p-4 sm:p-6 lg:p-8">
+              <MetricPanelGrid benchmark={benchmark} />
+            </div>
+          )}
 
           {benchmark.unit !== "count" &&
             Object.keys(benchmark.extras.regions).length > 0 && (
