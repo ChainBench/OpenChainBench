@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 
 import Link from "next/link";
-import type { Benchmark, ProviderResult } from "@/types/benchmark";
+import type { Benchmark, MetricPanel, ProviderResult } from "@/types/benchmark";
 import { ChainCoverageChip } from "@/components/chain-coverage-chip";
 import { Hint } from "@/components/hint";
 import { Sparkline } from "@/components/sparkline";
@@ -15,6 +15,11 @@ import { isRegion } from "@/lib/brand";
 
 type Props = {
   benchmark: Benchmark;
+  /** When the bench page has a companion-panel tab selected on the
+   *  chart, the ledger mirrors it so chart + table show the same
+   *  providers in the same order. When null/undefined the ledger uses
+   *  the headline p50 metric. */
+  activePanel?: MetricPanel | null;
 };
 
 /**
@@ -24,8 +29,17 @@ type Props = {
  * to recognition; sort order remains mechanical (ascending p50) and no
  * row is highlighted as the "winner".
  */
-export function LedgerTable({ benchmark }: Props) {
-  const { results, unit, extras } = benchmark;
+export function LedgerTable({ benchmark, activePanel }: Props) {
+  const { results, extras } = benchmark;
+  const unit = activePanel?.unit ?? benchmark.unit;
+  const higherIsBetter = activePanel?.higherIsBetter ?? benchmark.higherIsBetter;
+  // Single source of value per row — `r.ms.p50` for the headline metric,
+  // `panel.values[slug]` when a panel tab is active. Used for sort,
+  // filter, the inline data bar, and the displayed value in the p50
+  // column.
+  const pickValue = (r: ProviderResult): number =>
+    activePanel ? (activePanel.values[r.slug] ?? 0) : r.ms.p50;
+  const panelActive = !!activePanel;
   const secondary = results[0]?.secondary?.label;
   // Detected from the first provider's results — if ANY provider declares
   // slot_p50/slot_p99 in its YAML queries, every row gets the column (with
@@ -53,21 +67,30 @@ export function LedgerTable({ benchmark }: Props) {
   // seriesByProvider when the reader switches metric, so coverage isn't
   // lost — only the noisy ledger rows are pruned.
   const sorted = [...results]
-    .filter((r) => r.ms.p50 > 0 || r.ms.p90 > 0 || r.ms.p99 > 0)
-    .sort((a, b) =>
-      benchmark.higherIsBetter ? b.ms.p50 - a.ms.p50 : a.ms.p50 - b.ms.p50
-    );
+    .filter((r) => {
+      if (activePanel) {
+        const v = activePanel.values[r.slug];
+        return v != null && Number.isFinite(v) && v !== 0;
+      }
+      return r.ms.p50 > 0 || r.ms.p90 > 0 || r.ms.p99 > 0;
+    })
+    .sort((a, b) => {
+      const av = pickValue(a);
+      const bv = pickValue(b);
+      return higherIsBetter ? bv - av : av - bv;
+    });
   const colors = useMemo(() => buildProviderColors(results), [results]);
 
   const allSeries = Object.values(extras.series24h).flat();
   const sparkMin = allSeries.length ? Math.min(...allSeries) : 0;
   const sparkMax = allSeries.length ? Math.max(...allSeries) : 1;
 
-  // Maximum p50 across the field. used to size the inline data bar
-  const maxP50 = Math.max(...results.map((r) => r.ms.p50)) || 1;
-
-  const fieldP50 =
-    results.reduce((s, r) => s + r.ms.p50, 0) / Math.max(1, results.length);
+  // Max + field-mean of the active column. Computed off `sorted` (the
+  // scored set) so the field mean isn't pulled to zero by augmented
+  // unavailable rows, which would flatten every delta to +999%.
+  const maxValue = Math.max(...sorted.map((r) => pickValue(r))) || 1;
+  const fieldValue =
+    sorted.reduce((s, r) => s + pickValue(r), 0) / Math.max(1, sorted.length);
 
   return (
     <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
@@ -130,11 +153,17 @@ export function LedgerTable({ benchmark }: Props) {
               r={r}
               i={i}
               unit={unit}
-              fieldP50={fieldP50}
-              maxP50={maxP50}
+              value={pickValue(r)}
+              fieldValue={fieldValue}
+              maxValue={maxValue}
+              panelActive={panelActive}
               hasSecondary={!!secondary}
               hasSlots={hasSlots}
-              series={extras.series24h[r.slug] ?? []}
+              series={
+                activePanel
+                  ? (activePanel.seriesByProvider?.[r.slug] ?? [])
+                  : (extras.series24h[r.slug] ?? [])
+              }
               sparkMin={sparkMin}
               sparkMax={sparkMax}
               color={colors.get(r.slug) ?? "var(--color-ink-soft)"}
@@ -151,8 +180,10 @@ function Row({
   r,
   i,
   unit,
-  fieldP50,
-  maxP50,
+  value,
+  fieldValue,
+  maxValue,
+  panelActive,
   hasSecondary,
   hasSlots,
   series,
@@ -164,8 +195,10 @@ function Row({
   r: ProviderResult;
   i: number;
   unit: string;
-  fieldP50: number;
-  maxP50: number;
+  value: number;
+  fieldValue: number;
+  maxValue: number;
+  panelActive: boolean;
   hasSecondary: boolean;
   hasSlots: boolean;
   series: number[];
@@ -175,10 +208,9 @@ function Row({
   benchmark: Benchmark;
 }) {
   const isOffline = r.availability === "unavailable";
-  const deltaPct = fieldP50 > 0 ? ((r.ms.p50 - fieldP50) / fieldP50) * 100 : 0;
+  const deltaPct = fieldValue > 0 ? ((value - fieldValue) / fieldValue) * 100 : 0;
   const deltaSign = deltaPct > 0 ? "+" : deltaPct < 0 ? "−" : "±";
-  // Inline p50 bar width relative to the field max
-  const barPct = Math.max(2, (r.ms.p50 / maxP50) * 100);
+  const barPct = Math.max(2, (value / maxValue) * 100);
 
   return (
     <tr className={`border-b border-rule transition-colors hover:bg-paper-soft/50 ${isOffline ? "opacity-65" : ""}`}>
@@ -273,21 +305,21 @@ function Row({
                 aria-hidden
               />
               <span className="text-ink whitespace-nowrap">
-                {fmtUnit(r.ms.p50, unit)}
+                {fmtUnit(value, unit)}
               </span>
             </span>
           </td>
           <td className="py-2.5 px-3 text-right text-ink-soft whitespace-nowrap hidden md:table-cell">
-            {fmtUnit(r.ms.p90, unit)}
+            {panelActive ? "—" : fmtUnit(r.ms.p90, unit)}
           </td>
           <td className="py-2.5 px-3 text-right text-ink-soft whitespace-nowrap hidden md:table-cell">
-            {fmtUnit(r.ms.p99, unit)}
+            {panelActive ? "—" : fmtUnit(r.ms.p99, unit)}
           </td>
           <td className="py-2.5 px-3 text-right text-ink-soft whitespace-nowrap hidden md:table-cell">
-            {fmtUnit(r.ms.mean, unit)}
+            {panelActive ? "—" : fmtUnit(r.ms.mean, unit)}
           </td>
           <td className="py-2.5 px-3 text-right text-ink-muted whitespace-nowrap hidden md:table-cell">
-            {fieldP50 > 0 ? `${deltaSign}${Math.abs(deltaPct).toFixed(0)}%` : "-"}
+            {fieldValue > 0 ? `${deltaSign}${Math.abs(deltaPct).toFixed(0)}%` : "-"}
           </td>
           <td className="py-2.5 px-3 text-right text-ink-soft whitespace-nowrap hidden md:table-cell">
             {r.successRate.toFixed(2)}%
