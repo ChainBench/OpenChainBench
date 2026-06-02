@@ -91,7 +91,7 @@ faq:
   - q: "How often does this bench update?"
     a: "Every 5 minutes per protocol. The numbers are gauges over rolling 7-day and 30-day windows, so sub-5-minute resolution would not surface anything new, both the DeFiLlama promised side and the destination-wallet executed side are bounded by minutes-to-hours upstream cadences. The full window is recomputed on each scrape rather than carrying a running delta, so the ratio reacts immediately to DeFiLlama historical revisions or to a freshly indexed Etherscan transfer without needing a backfill pass."
 
-source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/buyback-audit
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/buyback-audit
 
 prometheus:
   window: 7d

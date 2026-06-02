@@ -3,8 +3,8 @@
 slug: network-coverage
 number: "005"
 title: Onchain data API with most networks supported
-seo_title: "Crypto data API with the most blockchains supported in 2026: Codex, GeckoTerminal, Mobula live"
-seo_description: "Live blockchain coverage leaderboard. How many mainnets each onchain data API (Mobula, Codex, GeckoTerminal) officially supports right now, audited every six hours against their public network endpoints."
+seo_title: "Crypto data API with the most blockchains supported in 2026: Mobula, Codex, GeckoTerminal, Covalent, CoinPaprika, CoinStats, Dune live"
+seo_description: "Live blockchain coverage leaderboard. How many mainnets each onchain data API (Mobula, Codex, GeckoTerminal, Covalent/GoldRush, CoinPaprika, CoinStats, Dune) officially supports right now, audited every six hours against their public network endpoints."
 subtitle: Number of blockchains each major onchain data provider officially supports.
 category: Aggregators
 status: live
@@ -32,19 +32,24 @@ seo_intro: |
 abstract: |
   We benchmark how many networks each major onchain data provider lists
   in its public "supported networks" endpoint. The harness fetches the
-  official listing every six hours from GeckoTerminal, Codex and Mobula,
-  deduplicates by chain id and counts. Mainnet only, testnets are
-  excluded because providers list them inconsistently and the comparison
-  is meant to reflect what a builder can integrate against in production.
-  Coverage breadth is one dimension of a data provider's product, not a
-  ranking on quality. Latency, freshness and metadata completeness are
-  measured separately by benches № 001 and № 004.
+  official listing every six hours from seven providers (GeckoTerminal,
+  Codex, Mobula, CoinPaprika, Covalent/GoldRush, CoinStats and Dune via
+  Sim API), deduplicates by chain id and counts. Mainnet only,
+  testnets are excluded because providers list them inconsistently and
+  the comparison is meant to reflect what a builder can integrate against
+  in production. Coverage breadth is one dimension of a data provider's
+  product, not a ranking on quality. Latency, freshness and metadata
+  completeness are measured separately by benches № 001 and № 004.
 
 methodology:
   - "Source: each provider's public supported-networks endpoint."
   - "GeckoTerminal: GET /api/v2/networks (paginated, no auth)."
   - "Codex: GraphQL `getNetworks` query at https://graph.codex.io/graphql with an official API key."
   - "Mobula: GET /api/1/blockchains with an Authorization API key."
+  - "CoinPaprika: GET /v1/contracts (no auth). Lists platforms supported for contract lookup."
+  - "Covalent / GoldRush: GET /v1/chains/ with a Bearer API key; testnets filtered via `is_testnet`."
+  - "CoinStats: GET /wallet/blockchains with X-API-KEY."
+  - "Dune (via Sim API): GET https://api.sim.dune.com/v1/evm/supported-chains (no auth). EVM only, mainnets filtered via the `mainnet` tag."
   - "Cadence: full refresh every 6 hours."
   - "Counting: a provider's network is counted once per unique chain id; mainnet only."
   - "Failures (network errors, rate limits, auth errors) leave the previous count in place and increment a fetch_errors counter. the page falls back to its last successful sample."
@@ -56,7 +61,7 @@ findings:
   - "{{name:geckoterminal}} sits at {{p50:geckoterminal}} mainnets. GeckoTerminal indexes wherever CoinGecko already tracks tokens, so the count tracks closely with CoinGecko's DEX coverage rollout rather than a standalone listing decision."
   - "Raw chain count is one dimension of a data API's product. A provider with 200 chains and shallow per-chain depth can rank above one with 80 chains and full DEX, metadata and event coverage on each. Latency (bench № 001) and metadata completeness (bench № 004) measure the other dimensions."
 
-source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/network-coverage
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/network-coverage
 
 prometheus:
   window: 24h
@@ -77,7 +82,9 @@ faq:
     a: "Any chain a provider lists as a queryable production environment, identified by a unique chain id. Ethereum mainnet, Solana mainnet, Base, Arbitrum, BNB Chain, Bitcoin and so on each count once regardless of how the provider labels them internally. Bridged variants of a token on different chains are not the same chain. The chain id is the deduplication key."
 
 # Real metrics exposed by the network-coverage harness:
-#   networks_supported_total{provider="geckoterminal"|"codex"|"mobula"}
+#   networks_supported_total{provider="geckoterminal"|"codex"|"mobula"|
+#                                     "coinpaprika"|"covalent"|
+#                                     "coinstats"|"dune"}
 #     -> gauge, the unique-chain count from the latest successful refresh.
 #   network_supported{provider, chain_id, slug, name} -> gauge (1 per
 #     network; useful for diff queries on the site if we add a
@@ -122,3 +129,55 @@ providers:
       success: clamp_max(networks_supported_total{provider="mobula"} > bool 0, 1)
       sample_size: networks_supported_total{provider="mobula"}
       series: networks_supported_total{provider="mobula"}
+
+  - slug: coinpaprika
+    name: CoinPaprika
+    tag: Market data API
+    formula: "Count of platform slugs returned by CoinPaprika's public `/v1/contracts` endpoint, refreshed every 6 hours."
+    queries:
+      p50: networks_supported_total{provider="coinpaprika"}
+      p90: networks_supported_total{provider="coinpaprika"}
+      p99: networks_supported_total{provider="coinpaprika"}
+      mean: networks_supported_total{provider="coinpaprika"}
+      success: clamp_max(networks_supported_total{provider="coinpaprika"} > bool 0, 1)
+      sample_size: networks_supported_total{provider="coinpaprika"}
+      series: networks_supported_total{provider="coinpaprika"}
+
+  - slug: covalent
+    name: Covalent
+    tag: GoldRush multichain data
+    formula: "Count of unique mainnet chains returned by Covalent's `/v1/chains/` endpoint with `is_testnet=false`, refreshed every 6 hours."
+    queries:
+      p50: networks_supported_total{provider="covalent"}
+      p90: networks_supported_total{provider="covalent"}
+      p99: networks_supported_total{provider="covalent"}
+      mean: networks_supported_total{provider="covalent"}
+      success: clamp_max(networks_supported_total{provider="covalent"} > bool 0, 1)
+      sample_size: networks_supported_total{provider="covalent"}
+      series: networks_supported_total{provider="covalent"}
+
+  - slug: coinstats
+    name: CoinStats
+    tag: Portfolio + market data
+    formula: "Count of blockchains returned by CoinStats's `/wallet/blockchains` endpoint, refreshed every 6 hours."
+    queries:
+      p50: networks_supported_total{provider="coinstats"}
+      p90: networks_supported_total{provider="coinstats"}
+      p99: networks_supported_total{provider="coinstats"}
+      mean: networks_supported_total{provider="coinstats"}
+      success: clamp_max(networks_supported_total{provider="coinstats"} > bool 0, 1)
+      sample_size: networks_supported_total{provider="coinstats"}
+      series: networks_supported_total{provider="coinstats"}
+
+  - slug: dune
+    name: Dune
+    tag: Onchain analytics + Sim API
+    formula: "Count of EVM chains tagged `mainnet` in Sim by Dune's `/v1/evm/supported-chains` endpoint, refreshed every 6 hours. EVM-only."
+    queries:
+      p50: networks_supported_total{provider="dune"}
+      p90: networks_supported_total{provider="dune"}
+      p99: networks_supported_total{provider="dune"}
+      mean: networks_supported_total{provider="dune"}
+      success: clamp_max(networks_supported_total{provider="dune"} > bool 0, 1)
+      sample_size: networks_supported_total{provider="dune"}
+      series: networks_supported_total{provider="dune"}

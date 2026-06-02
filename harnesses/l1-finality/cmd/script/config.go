@@ -33,6 +33,11 @@ type ChainConfig struct {
 	// Confirmations to consider a block "finalized" — used by PoW kinds
 	// where finality is probabilistic. Ignored otherwise.
 	Confirmations int
+	// Optional per-chain minimum poll interval. Used when an upstream API
+	// has a daily request quota (Koios free tier on Cardano is 5k/day —
+	// our default 10s cadence burns through it in 14h, then the IP gets
+	// blocked). 0 = use the global Interval.
+	MinIntervalSeconds int
 }
 
 type Config struct {
@@ -93,7 +98,11 @@ func loadConfig() *Config {
 				Slug: "litecoin",
 				Name: "Litecoin",
 				Kind: KindBitcoinLike,
-				RPCURL: getenvDefault("RPC_LITECOIN", "https://api.blockchair.com/litecoin"),
+				// Switched from blockchair (free-tier IP blacklist hit on
+				// 2026-05-31, 100% 430 responses) to litecoinspace.org's
+				// Esplora-compatible API. Fewer calls per tick (1 vs 2) and
+				// no auth required.
+				RPCURL: getenvDefault("RPC_LITECOIN", "https://litecoinspace.org/api"),
 				// Coinbase deposit standard for LTC. The April 2026 13-block
 				// MWEB reorg made 6 unsafe; 12 is the post-incident floor.
 				Confirmations: 12,
@@ -114,6 +123,13 @@ func loadConfig() *Config {
 				// Picking 15 — protects above k_practical, well below the
 				// theoretical k = 2160 (~12h) which no production actor uses.
 				Confirmations: 15,
+				// Koios free tier: 5,000 req/day per IP. Our 2-call cadence at
+				// the global 10s interval = 17,280 req/day — burns the quota in
+				// ~7h then the IP gets blocked. 60s cadence = 2,880 req/day,
+				// safely under quota. Cardano blocks are ~20s, so per-minute
+				// resolution is fine for a finality-lag metric that updates
+				// over multi-minute windows anyway (15 confs × 20s = 5 min).
+				MinIntervalSeconds: 60,
 			},
 		},
 	}

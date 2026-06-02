@@ -3,8 +3,7 @@
 import { Menu, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { SiteBanner } from "@/components/site-banner";
-import { SiteLogo } from "@/components/site-logo";
+import { SiteLogoSwitcher } from "@/components/site-logo-switcher";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 function GithubIcon({ size = 15 }: { size?: number }) {
@@ -39,20 +38,30 @@ export function SiteHeader() {
   }, [open]);
 
   return (
-    <div className="sticky top-0 z-50 flex flex-col font-sans pt-[env(safe-area-inset-top)]">
-      <SiteBanner />
+    <div
+      // Sticky everywhere by default. Only iOS in-app WebViews (Telegram,
+      // Instagram, FB, etc.) get downgraded to non-sticky to dodge the
+      // iOS 26 WebKit jitter bug (bugs.webkit.org/297779). Regular mobile
+      // Safari and Chrome iOS keep their sticky nav because the symptom is
+      // not visible there in practice. Override lives in globals.css
+      // (`html.ios-webview .site-header-root` rule) so the WebView-only
+      // selector stays out of the Tailwind class soup here.
+      className="site-header-root sticky top-0 z-50 flex flex-col font-sans bg-surface"
+    >
       <header className="border-b border-rule py-4 md:py-5 px-4 sm:px-6 shrink-0 text-sm bg-surface relative">
         <div className="max-w-[1400px] mx-auto flex items-center justify-between gap-3">
-          <Link
-            href="/"
-            className="flex items-center gap-2 group"
-            onClick={() => setOpen(false)}
-          >
-            <SiteLogo size={22} />
-            <span className="font-bold tracking-tight text-[17px] text-ink">
-              OpenChainBench
-            </span>
-          </Link>
+          <div className="flex items-center gap-2">
+            <SiteLogoSwitcher size={22} />
+            <Link
+              href="/"
+              className="group"
+              onClick={() => setOpen(false)}
+            >
+              <span className="font-bold tracking-tight text-[17px] text-ink">
+                OpenChainBench
+              </span>
+            </Link>
+          </div>
 
           <nav className="hidden md:flex items-center gap-8 text-ink-muted font-medium">
             {NAV.map((item) => (
@@ -66,7 +75,7 @@ export function SiteHeader() {
             ))}
             <span className="text-rule-strong">|</span>
             <a
-              href="https://github.com/OpenChainBench/OpenChainBench"
+              href="https://github.com/ChainBench/OpenChainBench"
               className="inline-flex items-center gap-1.5 hover:text-ink transition-colors"
               aria-label="View source on GitHub"
             >
@@ -107,7 +116,7 @@ export function SiteHeader() {
               ))}
               <li className="border-t border-rule mt-1 pt-1 flex items-center gap-4">
                 <a
-                  href="https://github.com/OpenChainBench/OpenChainBench"
+                  href="https://github.com/ChainBench/OpenChainBench"
                   className="inline-flex items-center gap-2 min-h-[44px] text-ink-muted hover:text-ink transition-colors"
                   aria-label="View source on GitHub"
                   onClick={() => setOpen(false)}

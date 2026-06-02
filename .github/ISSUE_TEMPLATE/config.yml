@@ -1,14 +1,14 @@
 blank_issues_enabled: false
 contact_links:
   - name: 💡 Idea or rough proposal
-    url: https://github.com/OpenChainBench/OpenChainBench/discussions/new?category=ideas
+    url: https://github.com/ChainBench/OpenChainBench/discussions/new?category=ideas
     about: Have an idea but not ready for a formal benchmark proposal? Start a discussion in Ideas.
   - name: 🙋 Question (How do I…?)
-    url: https://github.com/OpenChainBench/OpenChainBench/discussions/new?category=q-a
+    url: https://github.com/ChainBench/OpenChainBench/discussions/new?category=q-a
     about: Ask a question about a spec, harness, methodology, or how the site works.
   - name: 📊 Show & tell
-    url: https://github.com/OpenChainBench/OpenChainBench/discussions/new?category=show-and-tell
+    url: https://github.com/ChainBench/OpenChainBench/discussions/new?category=show-and-tell
     about: Show a fork, a dashboard, or a benchmark you ran locally.
   - name: 🔐 Security disclosure
-    url: https://github.com/OpenChainBench/OpenChainBench/security/advisories/new
+    url: https://github.com/ChainBench/OpenChainBench/security/advisories/new
     about: Privately report a vulnerability. Do not file a public issue for security problems.
