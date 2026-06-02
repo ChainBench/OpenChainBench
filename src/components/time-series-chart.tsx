@@ -122,13 +122,27 @@ export function TimeSeriesChart({
   // (excluded values are dropped from min/max so the remaining lines
   // can spread out vertically when an outlier is hidden).
   const allLines = useMemo(() => {
+    // Panel overrides ship as a 24h series with 72 datapoints (one per
+    // ~20 min). Without slicing them by the active range the 1h / 6h
+    // tabs would replay the same 24h shape on a shorter axis, which is
+    // why every range looks identical when a companion-panel tab is
+    // selected. Mirror what `pickSeries` does for the base series:
+    // when the range is sub-24h, take the trailing slice corresponding
+    // to that ratio. The 7d / 30d tabs degrade to the 24h slice because
+    // panels don't ship long-horizon series.
+    const sliceOverride = (full: number[]): number[] => {
+      if (range === "24h" || range === "7d" || range === "30d") return full;
+      const ratio = RANGE_HOURS[range] / 24;
+      const take = Math.max(2, Math.round(full.length * ratio));
+      return full.slice(-take);
+    };
     const built = benchmark.results
       .map((r) => ({
         slug: r.slug,
         name: r.name,
         color: colors.get(r.slug) ?? "var(--color-ink-soft)",
         values: seriesOverride
-          ? (seriesOverride[r.slug] ?? [])
+          ? sliceOverride(seriesOverride[r.slug] ?? [])
           : pickSeries(benchmark, r.slug, range, region),
         excluded: excluded.has(r.slug),
       }))
