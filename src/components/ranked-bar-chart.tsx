@@ -48,8 +48,12 @@ export function RankedBarChart({
   // ledger below mirrors the same filter so the two surfaces tell the
   // same story.
   const allRows = useMemo(() => {
+    // See ledger-table for the rationale on this filter — same intent
+    // here: drop rows whose headline metric is zero so the ranked-bar
+    // surface doesn't open with a long stack of empty bars that tie at
+    // the bottom (or, when lower-is-better, falsely lead the ranking).
     const scored = benchmark.results.filter(
-      (r) => r.availability !== "unavailable" || r.ms.p50 > 0
+      (r) => r.ms.p50 > 0 || r.ms.p90 > 0 || r.ms.p99 > 0
     );
     const sorted = scored.sort((a, b) =>
       benchmark.higherIsBetter ? b.ms.p50 - a.ms.p50 : a.ms.p50 - b.ms.p50
