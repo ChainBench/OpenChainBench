@@ -32,16 +32,22 @@ export function LedgerTable({ benchmark }: Props) {
   // "-" for providers that don't declare it). Used by Solana-native benches
   // where slot_delta is the canonical metric and ms is wall-clock derived.
   const hasSlots = results.some((r) => r.slots != null);
-  // Sort by p50 then push unavailable providers to the bottom. Without
-  // the secondary sort they'd land at rank #1 on lower-is-better benches
-  // because their placeholder p50 is 0 - which is what made 0slot, then
-  // cardano, show up as "fastest" in the recent SERP screenshots.
-  const sorted = [...results].sort((a, b) => {
-    const aOff = a.availability === "unavailable" ? 1 : 0;
-    const bOff = b.availability === "unavailable" ? 1 : 0;
-    if (aOff !== bOff) return aOff - bOff;
-    return benchmark.higherIsBetter ? b.ms.p50 - a.ms.p50 : a.ms.p50 - b.ms.p50;
-  });
+  // Drop unscored providers (availability=unavailable AND p50=0). They
+  // stay in the underlying spec so /products/<slug> pages still resolve
+  // and SEO coverage holds, but they're noise in a "ranked by performance"
+  // ledger. Mirrors the filter the ranked-bar chart applies above so the
+  // two surfaces tell the same story.
+  // Sort by p50; unavailable rows with non-zero p50 (rare, e.g. cached
+  // values served while a brief Prom outage was recovering) still get
+  // pushed to the bottom.
+  const sorted = [...results]
+    .filter((r) => r.availability !== "unavailable" || r.ms.p50 > 0)
+    .sort((a, b) => {
+      const aOff = a.availability === "unavailable" ? 1 : 0;
+      const bOff = b.availability === "unavailable" ? 1 : 0;
+      if (aOff !== bOff) return aOff - bOff;
+      return benchmark.higherIsBetter ? b.ms.p50 - a.ms.p50 : a.ms.p50 - b.ms.p50;
+    });
   const colors = useMemo(() => buildProviderColors(results), [results]);
 
   const allSeries = Object.values(extras.series24h).flat();

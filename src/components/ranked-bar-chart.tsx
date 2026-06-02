@@ -42,8 +42,16 @@ export function RankedBarChart({
     [benchmark.results]
   );
 
-  const rows = useMemo(() => {
-    const sorted = [...benchmark.results].sort((a, b) =>
+  // Unscored providers (availability=unavailable AND no p50) are dropped
+  // up front: they're SEO-relevant for /products page coverage but they
+  // are pure visual noise on a "ranked by performance" view. The
+  // ledger below mirrors the same filter so the two surfaces tell the
+  // same story.
+  const allRows = useMemo(() => {
+    const scored = benchmark.results.filter(
+      (r) => r.availability !== "unavailable" || r.ms.p50 > 0
+    );
+    const sorted = scored.sort((a, b) =>
       benchmark.higherIsBetter ? b.ms.p50 - a.ms.p50 : a.ms.p50 - b.ms.p50
     );
     return sorted.map((r) => ({
@@ -56,6 +64,18 @@ export function RankedBarChart({
       query: r.query,
     }));
   }, [benchmark, colors]);
+
+  // Top-N selector — sized off the registered cohort, mirroring the
+  // time-series chart. When the bench ships more than 10 providers the
+  // toolbar exposes Top 5 / 10 / 20 / All so a cluttered leaderboard
+  // can be focused without losing the option to widen.
+  const cohortSize = benchmark.results.length;
+  const TOP_N_DEFAULT = cohortSize > 20 ? 20 : null;
+  const [topN, setTopN] = useState<number | null>(TOP_N_DEFAULT);
+  const rows = useMemo(() => {
+    if (topN == null) return allRows;
+    return allRows.slice(0, topN);
+  }, [allRows, topN]);
 
   // The bar scale recomputes from visible rows only - excluding the
   // tail outliers gives the remaining bars more room to breathe.
@@ -107,6 +127,32 @@ export function RankedBarChart({
           {headerActions}
         </div>
       </div>
+      {cohortSize > 10 && (
+        <div className="mb-4 flex flex-wrap items-center justify-end gap-1">
+          <span className="mr-2 text-[10px] uppercase tracking-[0.16em] text-ink-faint">
+            Show
+          </span>
+          {([5, 10, 20, null] as const).map((n) => {
+            const active = topN === n;
+            const label = n == null ? "All" : `Top ${n}`;
+            return (
+              <button
+                key={String(n)}
+                type="button"
+                onClick={() => setTopN(n)}
+                className={`rounded-md border px-2 py-1 text-[11px] font-sans font-medium uppercase tracking-[0.1em] transition-all ${
+                  active
+                    ? "border-ink bg-ink text-paper"
+                    : "border-ink/15 bg-paper text-ink hover:border-ink/40"
+                }`}
+                aria-pressed={active}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+      )}
       <ul className="space-y-2">
         {rows.map((r) => {
           const isOff = excluded.has(r.slug);
