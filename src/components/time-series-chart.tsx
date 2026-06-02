@@ -152,17 +152,32 @@ export function TimeSeriesChart({
     return built;
   }, [benchmark, range, region, colors, excluded, seriesOverride]);
 
-  // Top-N selector. Sized off the REGISTERED cohort, not the subset
-  // that happened to emit data this cycle. On the headline metric some
-  // providers can return empty series for legitimate reasons (zero
-  // activity in the window, fresh registry entry not yet backfilled by
-  // Prom), but the reader still has a 60 row cohort and wants the
-  // filter affordance — sizing off `allLines` would hide the selector
-  // for exactly the views where it matters most. The slice itself
-  // operates on `allLines` so empty providers stay out of the chart.
-  const cohortSize = benchmark.results.length;
-  const TOP_N_DEFAULT = cohortSize > 20 ? 20 : null;
+  // Top-N selector. Sized off the providers that actually have data
+  // for the active range / panel — `allLines.length`, which is the
+  // post-filter count after empty series are dropped. Earlier this
+  // sized off the whole registered cohort so the toolbar would always
+  // offer Top 5 / 10 / 20 / All, but on panels where only e.g. 7
+  // builders emit data the Top 10 / Top 20 buttons were useless
+  // placeholders. Now the option set is curated per render: an N
+  // button only appears when at least N providers have data; "All"
+  // shows up whenever the cohort is wider than 10. Below-10 cohorts
+  // skip the toolbar entirely.
+  const scoredCount = allLines.length;
+  const topNOptions = useMemo<(number | null)[]>(() => {
+    const opts: (number | null)[] = [];
+    for (const n of [5, 10, 20]) if (n < scoredCount) opts.push(n);
+    if (scoredCount > 10) opts.push(null);
+    return opts;
+  }, [scoredCount]);
+  const TOP_N_DEFAULT = scoredCount > 20 ? 20 : null;
   const [topN, setTopN] = useState<number | null>(TOP_N_DEFAULT);
+  // If the active option disappeared (e.g. reader swapped to a sparser
+  // panel where Top 20 is no longer offered), gracefully reset to the
+  // widest still-available option.
+  useEffect(() => {
+    if (topN == null) return;
+    if (!topNOptions.includes(topN)) setTopN(null);
+  }, [topNOptions, topN]);
   const lines = useMemo(() => {
     if (topN == null) return allLines;
     return allLines.slice(0, topN);
@@ -282,12 +297,12 @@ export function TimeSeriesChart({
           </div>
         )}
 
-        {cohortSize > 10 && (
+        {topNOptions.length > 1 && (
           <div className="flex items-center gap-1">
             <span className="mr-2 text-[10px] uppercase tracking-[0.16em] text-ink-faint">
               Show
             </span>
-            {([5, 10, 20, null] as const).map((n) => {
+            {topNOptions.map((n) => {
               const active = topN === n;
               const label = n == null ? "All" : `Top ${n}`;
               return (
