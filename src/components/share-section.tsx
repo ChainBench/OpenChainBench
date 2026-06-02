@@ -122,8 +122,6 @@ export function ShareSection({ slug, title, benchmark, chain }: Props) {
     setPairB(s);
   }
 
-  const activeTemplate = TEMPLATES.find((t) => t.id === activeId);
-
   // Build the URL with the right params per template.
   const cardSrc = (templateId: string) => {
     const tpl = TEMPLATES.find((t) => t.id === templateId);

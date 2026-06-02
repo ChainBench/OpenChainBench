@@ -405,7 +405,6 @@ export default async function BenchmarkPage({
           {benchmark.seoIntro
             .split(/\n\n+/)
             .map((para, i) => (
-              // eslint-disable-next-line react/no-array-index-key
               <p key={i}>{para.trim()}</p>
             ))}
         </div>
