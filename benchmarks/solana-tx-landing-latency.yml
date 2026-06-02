@@ -3,8 +3,8 @@
 slug: solana-tx-landing-latency
 number: "027"
 title: Solana transaction landing latency
-seo_title: "Solana tx landing latency 2026: Jito vs Helius vs Nozomi vs Astralane time-to-land in slots"
-seo_description: "Live active benchmark of Solana transaction landing services. Slot-level time-to-land (canonical on-chain measurement) plus wall-clock milliseconds. Identical signed mainnet probes submitted to each service from us-east every hour. Methodology pre-registered."
+seo_title: "Solana tx landing latency 2026: Jito vs Helius vs Nozomi vs Astralane vs Mobula time-to-land in slots"
+seo_description: "Live active benchmark of Solana transaction landing services. Slot-level time-to-land (canonical on-chain measurement) plus wall-clock milliseconds. Identical signed mainnet probes submitted to each service (Jito, Helius Sender, Astralane, Nozomi, Mobula) from us-east every hour. Methodology pre-registered."
 subtitle: How fast does each landing service get a signed mainnet tx confirmed. Slot delta = number of Solana slots between submit and confirmed (1 slot ≈ 400 ms). Active probing, identical signed txs every hour from us-east.
 category: Trading
 status: live
@@ -93,10 +93,10 @@ methodology:
   - "Drop classification. timeout = no confirmation within 60 s. invalid = RPC error, on-chain Err, or BlockhashNotFound. network_error = transport-level (timeout, DNS, EOF, connection refused). rate_limited = HTTP 419 / 429 / 'rate limit' / 'too many requests'. landing_rate is published as success / (success + timeout), rate_limited and network_error are excluded so quota / transport issues don't bias the bench against a throttled service."
   - "Jito control probe. Helius (default), Astralane, Nozomi route a portion of flow through Jito internally, conflating own-path vs Jito-caught-it. Jito is in the V0-Lean set so its control fires in the same cycle. Same slot_delta as Jito = no measurable own-path value. Suspect ahead by 1+ slot = real routing advantage."
   - "Reproducibility. The full harness source is at github.com/MobulaFi/mobula-monorepo/tree/main/miniapps/solana-tx-landing. Anyone with a funded Solana keypair (~1 SOL) can clone, set SOLANA_PROBE_KEYPAIR_BASE58, run the binary, and reproduce these metrics. The bench does not rely on any private or internal service for measurement, the only RPC dependency is the public `api.mainnet-beta.solana.com` HTTP + WebSocket endpoints."
-  - "Methodology v1.3 pre-registered at github.com/OpenChainBench/OpenChainBench/blob/main/docs/methodology/solana-tx-landing-active.md. Any change (tip floor, probe payload, cadence, region, metric definitions) ships as a public PR with a 14-day comment window. Major version bumps run a 30-day shadow period publishing old and new metrics in parallel."
+  - "Methodology v1.3 pre-registered at github.com/ChainBench/OpenChainBench/blob/main/docs/methodology/solana-tx-landing-active.md. Any change (tip floor, probe payload, cadence, region, metric definitions) ships as a public PR with a 14-day comment window. Major version bumps run a 30-day shadow period publishing old and new metrics in parallel."
 
 findings:
-  - "{{best_name}} leads the V0-Lean probe set at p50 = {{best_p50}} slot delta over the rolling 7-day window. Lower = fewer Solana slots between submission and confirmation. The gap between fastest and slowest is the operational signal, every service claims '99 %+ landing rate' in marketing copy, but the chain doesn't lie about which slot included your tx. A 1-slot difference is ~400 ms — enough for a MEV bot to front-run a competitor."
+  - "{{best_name}} leads the V0-Lean probe set at p50 = {{best_p50}} slot delta over the rolling 7-day window. Lower = fewer Solana slots between submission and confirmation. The gap between fastest and slowest is the operational signal, every service claims '99 %+ landing rate' in marketing copy, but the chain doesn't lie about which slot included your tx. A 1-slot difference is ~400 ms, enough for a MEV bot to front-run a competitor."
   - "{{name:jito}} is the baseline / control. Helius (default mode), Astralane, and Nozomi all internally fan out to Jito, so the Jito p50 is the floor any premium service must beat. Same slot_delta as Jito on a given cycle = the service is essentially using Jito as its inclusion path. {{name:jito}} sits at p50 = {{p50:jito}} slot delta."
   - "{{name:helius-sender}} in `swqos_only` mode isolates Helius's own routing path from the Jito leg. p50 = {{p50:helius-sender}} slot delta. A v1.0.1 methodology update will publish Helius default mode (with Jito fan-out) side-by-side for direct comparison."
   - "{{name:nozomi}} premium pricing (1M lamport hard floor, ~10 × Jito's competitive level) only makes economic sense if the slot_delta advantage is meaningful. p50 = {{p50:nozomi}} slot delta. The gap vs Jito quantifies whether the tip premium buys real slot priority."
@@ -124,7 +124,7 @@ faq:
   - q: "How is the confirmation observed?"
     a: "Via `signatureSubscribe` on the public mainnet WebSocket (`wss://api.mainnet-beta.solana.com`). The subscription is registered BEFORE submission so a fast-confirming tx cannot complete before we are listening (otherwise we'd miss the notification and timeout spuriously). The RPC pushes the notification at the instant the commitment level is reached, so observation resolution is RTT-bounded (~30-50 ms us-east → mainnet-beta) and slot_delta is read directly from the notification's context.slot field. HTTP polling at 200 ms is an automatic fallback if the WebSocket fails to connect for a given cycle."
 
-source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/solana-tx-landing
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/solana-tx-landing
 
 prometheus:
   window: 7d
@@ -156,7 +156,7 @@ prometheus:
 
 providers:
   - slug: jito
-    name: Jito Block Engine
+    name: Jito
     tag: Baseline + control probe; atomic bundles + tip auction since 2022
     formula: "50th percentile over 7d of slot delta (land_slot − submit_slot) for hourly signed mainnet probes submitted to Jito's `ny.mainnet.block-engine.jito.wtf` from us-east."
     queries:
@@ -169,7 +169,7 @@ providers:
       series: solana_landing_probe_latency_slots{service="jito",region="us-east"}
 
   - slug: helius-sender
-    name: Helius Sender (swqos_only)
+    name: Helius
     tag: Isolated Helius own-path (no Jito fan-out); anycast + 7 POPs
     formula: "50th percentile over 7d of slot delta (land_slot − submit_slot) for hourly signed probes submitted to Helius Sender in `swqos_only=true` mode from us-east, isolating its own-path."
     queries:
@@ -182,7 +182,7 @@ providers:
       series: solana_landing_probe_latency_slots{service="helius-sender",mode="swqos_only",region="us-east"}
 
   - slug: astralane
-    name: Astralane Iris
+    name: Astralane
     tag: Tip-refund mechanism, sendBundle / sendIdeal modes, FRA + NY POPs
     formula: "50th percentile over 7d of slot delta (land_slot − submit_slot) for hourly signed probes submitted with a 500k-lamport net tip to Astralane Iris's NY gateway from us-east."
     queries:
@@ -206,3 +206,16 @@ providers:
       success: sum(rate(solana_landing_probe_success_total{service="nozomi",region="us-east"}[7d])) / (sum(rate(solana_landing_probe_success_total{service="nozomi",region="us-east"}[7d])) + sum(rate(solana_landing_probe_dropped_total{service="nozomi",region="us-east",reason="timeout"}[7d])))
       sample_size: sum(increase(solana_landing_probe_success_total{service="nozomi",region="us-east"}[7d]))
       series: solana_landing_probe_latency_slots{service="nozomi",region="us-east"}
+
+  - slug: mobula
+    name: Mobula
+    tag: Multi-RPC fan-out aggregator (relays via Jito / Nozomi / zeroslot)
+    formula: "50th percentile over 7d of slot delta (land_slot − submit_slot) for hourly probes submitted via Mobula's `api.mobula.io/api/2/swap/send` multi-RPC fan-out from us-east, using a Jito tip wallet."
+    queries:
+      p50: quantile_over_time(0.5, solana_landing_probe_latency_slots{service="mobula",region="us-east"}[7d])
+      p90: quantile_over_time(0.9, solana_landing_probe_latency_slots{service="mobula",region="us-east"}[7d])
+      p99: quantile_over_time(0.99, solana_landing_probe_latency_slots{service="mobula",region="us-east"}[7d])
+      mean: avg_over_time(solana_landing_probe_latency_slots{service="mobula",region="us-east"}[7d])
+      success: sum(rate(solana_landing_probe_success_total{service="mobula",region="us-east"}[7d])) / (sum(rate(solana_landing_probe_success_total{service="mobula",region="us-east"}[7d])) + sum(rate(solana_landing_probe_dropped_total{service="mobula",region="us-east",reason="timeout"}[7d])))
+      sample_size: sum(increase(solana_landing_probe_success_total{service="mobula",region="us-east"}[7d]))
+      series: solana_landing_probe_latency_slots{service="mobula",region="us-east"}

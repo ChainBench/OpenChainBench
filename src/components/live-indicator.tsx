@@ -92,8 +92,8 @@ export function LiveIndicator({
       <span className="font-medium" style={{ color: stale ? undefined : "var(--color-good)" }}>
         {stale ? "Stale" : "Live"}
       </span>
-      <span className="text-ink-faint">·</span>
-      <span>updated {formatAge(ageSec)} ago</span>
+      <span className="text-ink-faint hidden sm:inline">·</span>
+      <span className="hidden sm:inline">updated {formatAge(ageSec)} ago</span>
     </span>
   );
 }

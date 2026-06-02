@@ -66,14 +66,14 @@ export default function AboutPage() {
       <ul className="space-y-4 text-base leading-relaxed text-ink-soft">
         <li className="flex gap-3"><span className="text-ink-faint">·</span><span><strong>Read</strong> the{" "}<Link className="lnk" href="/#latest">live benchmarks</Link>{" "}.</span></li>
         <li className="flex gap-3"><span className="text-ink-faint">·</span><span><strong>Reproduce</strong> any number. the{" "}<Link className="lnk" href="/methodology">methodology</Link>{" "}page tells you how.</span></li>
-        <li className="flex gap-3"><span className="text-ink-faint">·</span><span><strong>Contribute</strong> a harness via{" "}<a className="lnk" href="https://github.com/OpenChainBench/OpenChainBench">GitHub</a>. Pull requests for new providers and new benchmarks are reviewed openly.</span></li>
-        <li className="flex gap-3"><span className="text-ink-faint">·</span><span><strong>Discuss</strong> ideas in{" "}<a className="lnk" href="https://github.com/OpenChainBench/OpenChainBench/discussions">GitHub Discussions</a>{" "}or follow{" "}<a className="lnk" href="https://twitter.com/openchainbench">@openchainbench</a>.</span></li>
+        <li className="flex gap-3"><span className="text-ink-faint">·</span><span><strong>Contribute</strong> a harness via{" "}<a className="lnk" href="https://github.com/ChainBench/OpenChainBench">GitHub</a>. Pull requests for new providers and new benchmarks are reviewed openly.</span></li>
+        <li className="flex gap-3"><span className="text-ink-faint">·</span><span><strong>Discuss</strong> ideas in{" "}<a className="lnk" href="https://github.com/ChainBench/OpenChainBench/discussions">GitHub Discussions</a>{" "}or follow{" "}<a className="lnk" href="https://twitter.com/openchainbench">@openchainbench</a>.</span></li>
       </ul>
 
       <SectionRule label="Contact" number="v" />
       <p className="text-base leading-relaxed text-ink-soft">
         See a number you can&apos;t reproduce? File a{" "}
-        <a className="lnk" href="https://github.com/OpenChainBench/OpenChainBench/issues/new/choose">
+        <a className="lnk" href="https://github.com/ChainBench/OpenChainBench/issues/new/choose">
           data-quality issue or a provider correction
         </a>
         . Material errors are corrected in place with a dated note on the affected report.

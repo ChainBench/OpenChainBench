@@ -79,12 +79,16 @@ func installLogCapture() {
 }
 
 // setupLogsEndpoint exposes GET /logs?tail=N (default 500, max logBufferMax).
-// If LOGS_TOKEN env var is set, requires header `X-Logs-Token` to match.
-// Otherwise the endpoint is open — only safe for Railway-internal access.
+// Fail-secure: when LOGS_TOKEN env var is not set, the endpoint returns 404
+// (refuses by default). When set, requires header `X-Logs-Token` to match.
 func setupLogsEndpoint(mux *http.ServeMux) {
 	expectedToken := os.Getenv("LOGS_TOKEN")
 	mux.HandleFunc("/logs", func(w http.ResponseWriter, r *http.Request) {
-		if expectedToken != "" && r.Header.Get("X-Logs-Token") != expectedToken {
+		if expectedToken == "" {
+			http.NotFound(w, r)
+			return
+		}
+		if r.Header.Get("X-Logs-Token") != expectedToken {
 			http.Error(w, "forbidden", http.StatusForbidden)
 			return
 		}

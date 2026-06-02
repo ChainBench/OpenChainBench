@@ -5,7 +5,7 @@ description: Walks a contributor through adding a new benchmark to OpenChainBenc
 
 You are helping someone add a new benchmark to OpenChainBench, an open registry of crypto-infrastructure benchmarks.
 
-If the user does not already have the repo cloned, your first step is to suggest `git clone https://github.com/OpenChainBench/OpenChainBench && cd OpenChainBench`. Everything below assumes that working directory.
+If the user does not already have the repo cloned, your first step is to suggest `git clone https://github.com/ChainBench/OpenChainBench && cd OpenChainBench`. Everything below assumes that working directory.
 
 ## Mental model
 
@@ -24,7 +24,7 @@ Walk the user through these six steps in order. Do not skip ahead.
 
 ### 1. Open an issue
 
-Direct them to the `Propose a benchmark` issue template at https://github.com/OpenChainBench/OpenChainBench/issues/new?template=new-benchmark.yml. Maintainers need to see the proposed metric, providers, methodology and harness location before code review. Brainstorm-stage ideas belong in https://github.com/OpenChainBench/OpenChainBench/discussions/categories/ideas instead.
+Direct them to the `Propose a benchmark` issue template at https://github.com/ChainBench/OpenChainBench/issues/new?template=new-benchmark.yml. Maintainers need to see the proposed metric, providers, methodology and harness location before code review. Brainstorm-stage ideas belong in https://github.com/ChainBench/OpenChainBench/discussions/categories/ideas instead.
 
 ### 2. Write the spec
 

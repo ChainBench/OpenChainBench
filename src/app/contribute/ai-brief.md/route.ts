@@ -40,7 +40,7 @@ export async function GET() {
     "for help drafting a spec, a harness, or a PR.",
     "",
     "Source: https://openchainbench.com/contribute/ai-brief.md",
-    "Repo:   https://github.com/OpenChainBench/OpenChainBench",
+    "Repo:   https://github.com/ChainBench/OpenChainBench",
     "",
     "---",
     "",

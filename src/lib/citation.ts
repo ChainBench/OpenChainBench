@@ -30,6 +30,26 @@ export function leader(b: Benchmark): { name: string; slug: string; value: numbe
   return { name: sorted[0].name, slug: sorted[0].slug, value: sorted[0].ms.p50 };
 }
 
+/**
+ * Chain-scoped variant of `leader()`. Returns the leading provider on a
+ * specific chain when the bench precomputed a `bestPerChain` stash
+ * (declared `dimensions.chain` in YAML and rendered the unfiltered view).
+ *
+ * Use this for chain-aware headline copy, badge endpoints and OG images
+ * so we don't end up parroting the biased cross-chain aggregate winner
+ * (e.g. a Solana-only provider that mechanically beats EVM providers on
+ * head-lag because Solana slots are sub-second).
+ */
+export function leaderForChain(
+  b: Benchmark,
+  chain: string,
+): { name: string; slug: string; value: number } | null {
+  if (b.status !== "live") return null;
+  const r = b.bestPerChain?.[chain];
+  if (!r) return null;
+  return { name: r.name, slug: r.slug, value: r.ms.p50 };
+}
+
 /** Short factual sentence ready to paste into an article. Templated, no LLM. */
 export function headlineSentence(b: Benchmark): string {
   const top = leader(b);

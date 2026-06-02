@@ -1,15 +1,5 @@
 name: Vercel staging deploy
 
-# Auto-deploy to Vercel Preview on every push to dev. Workaround for the
-# Vercel ↔ GitHub App pairing being unreliable across the OpenChainBench
-# (user account) + mobula-labs (Vercel team) setup. The Action calls the
-# Vercel CLI directly with VERCEL_TOKEN, bypassing the App webhook flow.
-#
-# Required GitHub secrets (Settings → Secrets and variables → Actions):
-#   VERCEL_TOKEN       — vercel.com/account/tokens, scope = mobula-labs
-#   VERCEL_ORG_ID      — ***SCRUBBED***
-#   VERCEL_PROJECT_ID  — ***SCRUBBED***
-
 on:
   push:
     branches:
@@ -61,7 +51,7 @@ jobs:
           vercel alias set "${{ steps.deploy.outputs.url }}" \
             staging-openchainbench.vercel.app \
             --token=${{ secrets.VERCEL_TOKEN }} \
-            --scope=mobula-labs
+            --scope=${{ secrets.VERCEL_ORG_ID }}
 
       - name: Comment summary
         run: |

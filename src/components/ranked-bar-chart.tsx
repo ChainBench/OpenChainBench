@@ -5,8 +5,10 @@ import type { Benchmark } from "@/types/benchmark";
 import { fmtUnit } from "@/lib/format";
 import { buildProviderColors } from "@/lib/series-colors";
 import { useChartExclusion } from "@/hooks/use-chart-exclusion";
+import { useTopN } from "@/hooks/use-top-n";
 import { LiveDot } from "@/components/live-dot";
 import { ProviderLogo } from "@/components/provider-logo";
+import { TopNSelector } from "@/components/top-n-selector";
 
 type Props = {
   benchmark: Benchmark;
@@ -42,8 +44,20 @@ export function RankedBarChart({
     [benchmark.results]
   );
 
-  const rows = useMemo(() => {
-    const sorted = [...benchmark.results].sort((a, b) =>
+  // Unscored providers (availability=unavailable AND no p50) are dropped
+  // up front: they're SEO-relevant for /products page coverage but they
+  // are pure visual noise on a "ranked by performance" view. The
+  // ledger below mirrors the same filter so the two surfaces tell the
+  // same story.
+  const allRows = useMemo(() => {
+    // See ledger-table for the rationale on this filter — same intent
+    // here: drop rows whose headline metric is zero so the ranked-bar
+    // surface doesn't open with a long stack of empty bars that tie at
+    // the bottom (or, when lower-is-better, falsely lead the ranking).
+    const scored = benchmark.results.filter(
+      (r) => r.ms.p50 > 0 || r.ms.p90 > 0 || r.ms.p99 > 0
+    );
+    const sorted = scored.sort((a, b) =>
       benchmark.higherIsBetter ? b.ms.p50 - a.ms.p50 : a.ms.p50 - b.ms.p50
     );
     return sorted.map((r) => ({
@@ -57,6 +71,16 @@ export function RankedBarChart({
     }));
   }, [benchmark, colors]);
 
+  // Top-N selector — sized off the providers that actually scored on
+  // the headline metric (`allRows`), via the shared `useTopN` hook so
+  // every chart view (ranked bar, time series, distribution, donut)
+  // agrees on the option set and the empty-toolbar rule.
+  const { topN, setTopN, topNOptions } = useTopN(allRows.length);
+  const rows = useMemo(() => {
+    if (topN == null) return allRows;
+    return allRows.slice(0, topN);
+  }, [allRows, topN]);
+
   // The bar scale recomputes from visible rows only - excluding the
   // tail outliers gives the remaining bars more room to breathe.
   const visibleValues = rows
@@ -67,13 +91,17 @@ export function RankedBarChart({
 
   // Use log scale when dynamic range > 50x - typical for finality where
   // sub-second chains coexist with 30-min ones. Linear scale crushes
-  // everything below the slowest chain into invisible slivers.
-  const useLog = maxV / Math.max(minV, 1) > 50;
+  // everything below the slowest chain into invisible slivers. Min-clamp
+  // is a tiny epsilon (not 1) so sub-1 ranges — typical for second-scale
+  // latency benches — get detected as wide-dynamic-range correctly and
+  // sub-1 values don't all collapse to 0 width on the log axis.
+  const EPS = 1e-6;
+  const useLog = maxV / Math.max(minV, EPS) > 50;
 
   const project = (v: number) => {
     if (!useLog) return Math.max(0, v) / maxV;
     if (v <= 0) return 0;
-    const lo = Math.log10(Math.max(1, minV / 2));
+    const lo = Math.log10(Math.max(minV / 2, EPS));
     const hi = Math.log10(maxV);
     return Math.max(0, (Math.log10(v) - lo) / (hi - lo));
   };
@@ -102,6 +130,9 @@ export function RankedBarChart({
           )}
           {headerActions}
         </div>
+      </div>
+      <div className="mb-4 flex flex-wrap items-center justify-end gap-1">
+        <TopNSelector value={topN} options={topNOptions} onChange={setTopN} />
       </div>
       <ul className="space-y-2">
         {rows.map((r) => {

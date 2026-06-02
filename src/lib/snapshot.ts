@@ -46,7 +46,7 @@ const KEY_PREFIX = "ocb:snap:v1:";
  *  new field don't try to deserialize old-shape values. The Zod schema
  *  below would also reject those, but the version prefix lets us
  *  invalidate without writing strict-mode parsers. */
-const SCHEMA_VERSION = 1 as const;
+const SCHEMA_VERSION = 3 as const;
 
 // Minimal runtime payload. Editorial metadata isn't snapshotted because
 // it lives in YAML and is rebuilt from the spec on every read.
@@ -57,6 +57,9 @@ const SnapshotSchema = z.object({
   sampleSize: z.number(),
   results: z.array(z.any()),
   extras: z.any(),
+  bestPerChain: z.record(z.string(), z.any()).optional(),
+  worstPerChain: z.record(z.string(), z.any()).optional(),
+  providersPerChain: z.record(z.string(), z.array(z.string())).optional(),
 });
 
 export type SnapshotPayload = {
@@ -64,6 +67,9 @@ export type SnapshotPayload = {
   extras: ResultExtras;
   sampleSize: number;
   lastRunAt: string;
+  bestPerChain?: Record<string, ProviderResult>;
+  worstPerChain?: Record<string, ProviderResult>;
+  providersPerChain?: Record<string, string[]>;
 };
 
 function isConfigured(): boolean {
@@ -139,21 +145,27 @@ export async function readSnapshot(
         signal: AbortSignal.timeout(2_000),
       },
     );
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.warn(`[DRAFT-TRACE] kv_http slug=${slug} status=${res.status}`);
+      return null;
+    }
     const env = (await res.json()) as { result?: string | null };
-    if (!env.result) return null;
+    if (!env.result) {
+      console.warn(`[DRAFT-TRACE] kv_empty slug=${slug} (no snapshot ever written)`);
+      return null;
+    }
     const raw = JSON.parse(env.result);
     const parsed = SnapshotSchema.safeParse(raw);
     if (!parsed.success) {
       console.warn(
-        `snapshot.read rejected (shape) for ${slug}: ${parsed.error.message}`,
+        `[DRAFT-TRACE] kv_shape slug=${slug} err=${parsed.error.message}`,
       );
       return null;
     }
     const age = Date.now() - parsed.data.savedAt;
     if (age > MAX_SNAPSHOT_AGE_MS) {
       console.warn(
-        `snapshot.read rejected (stale ${Math.round(age / 1000 / 60)}m) for ${slug}`,
+        `[DRAFT-TRACE] kv_stale slug=${slug} age_min=${Math.round(age / 1000 / 60)}`,
       );
       return null;
     }
@@ -162,13 +174,24 @@ export async function readSnapshot(
       extras: parsed.data.extras as ResultExtras,
       sampleSize: parsed.data.sampleSize,
       lastRunAt: parsed.data.lastRunAt,
+      bestPerChain: parsed.data.bestPerChain as
+        | Record<string, ProviderResult>
+        | undefined,
+      worstPerChain: parsed.data.worstPerChain as
+        | Record<string, ProviderResult>
+        | undefined,
+      providersPerChain: parsed.data.providersPerChain as
+        | Record<string, string[]>
+        | undefined,
     };
   } catch (err) {
-    console.warn(
-      `snapshot.read failed for ${slug}: ${
-        err instanceof Error ? err.message : String(err)
-      }`,
-    );
+    const msg = err instanceof Error ? err.message : String(err);
+    // Distinguish abort/timeout (most common) from other network errors so
+    // the post-incident grep can see if it's KV slowness vs KV down.
+    const tag = msg.toLowerCase().includes("abort") || msg.toLowerCase().includes("timeout")
+      ? "kv_timeout"
+      : "kv_neterr";
+    console.warn(`[DRAFT-TRACE] ${tag} slug=${slug} err=${msg}`);
     return null;
   }
 }
@@ -182,5 +205,15 @@ export function snapshotFromBenchmark(b: Benchmark): SnapshotPayload {
     extras: b.extras,
     sampleSize: b.sampleSize,
     lastRunAt: b.lastRunAt,
+    // Persist per-chain leader stash so the snapshot-recovery path
+    // (loadBenchmarkUnfilteredCached's KV fallback in spec.ts) can
+    // reconstruct a Benchmark that still resolves the
+    // `{{best_name:chain:X}}` / `{{best_p50:chain:X}}` family of
+    // placeholders. Without these, a cold-start fetched from the
+    // snapshot serves the raw placeholder string to the page.
+    bestPerChain: b.bestPerChain,
+    worstPerChain: b.worstPerChain,
+    providersPerChain: (b as { providersPerChain?: Record<string, string[]> })
+      .providersPerChain,
   };
 }

@@ -9,7 +9,7 @@ This version has breaking changes. APIs, conventions, and file structure may all
 Two long-lived branches:
 
 - `main` → openchainbench.com (production). Vercel auto-deploy on push is **disabled**; production deploys are **manual** via `vercel --prod` from a checkout of `main`.
-- `dev` → staging. Each push triggers `.github/workflows/vercel-staging.yml` which calls Vercel CLI with a token and emits a Preview URL. The Vercel GitHub App is NOT used for staging because the OpenChainBench user account + mobula-labs Vercel team pairing wouldn't propagate.
+- `dev` → staging. Each push triggers `.github/workflows/staging-deploy.yml` which calls Vercel CLI with a token and emits a Preview URL.
 
 **Standard flow:**
 

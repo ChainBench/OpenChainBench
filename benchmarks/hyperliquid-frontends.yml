@@ -1,0 +1,965 @@
+# OpenChainBench. Bench № 030
+
+slug: hyperliquid-frontends
+number: "030"
+title: Hyperliquid frontends user-cost benchmark
+seo_title: "Hyperliquid frontends 2026: effective builder fee bps, $/user efficiency, fee discipline (Phantom, Axiom, OKX, GMGN, pvp.trade)"
+seo_description: "Live benchmark of Hyperliquid frontends ranked by how much they extract from users, not by raw volume. Effective builder fee in bps (cap 100), D7 cohort retention per builder, and USD captured per active trader. Observational, on-chain attribution via builder code field, methodology public."
+subtitle: How much each Hyperliquid frontend charges its users via the on-chain builder code. Effective fee in basis points (cap 100), summed over 24h. Lower = more aligned with traders.
+category: Trading
+status: live
+metric: Effective builder fee (24h, bps)
+unit: bps
+higher_is_better: false
+
+disclaimer: |
+  Volume share dashboards already exist (ASXN, Coinmarketman, Flowscan, Allium). OCB leads with user cost instead. Effective fee is a volume weighted `builder_fee / notional` over the rolling 24h, so fee free promo windows pull it down. Native HL UI orders carry no builder code and are excluded; the bench tracks third party frontends that opt into the builder field. Companion metrics surface slippage, freshness, taker share, asset concentration. Local hl-node source, sub minute freshness.
+
+seo_intro: |
+  Every Hyperliquid order carries an optional on chain `builder`
+  field. Frontends like Phantom Perps, Axiom, MetaMask, pvp.trade,
+  Insilico, DefiApp, Dexari and Okto use this field to claim a
+  share of taker fees as their own rebate (capped at 100 basis
+  points on perps, 1000 on spot). The same field is the cleanest
+  user cost signal available. Dividing the total `builder_fee`
+  captured by the total notional routed gives the effective fee
+  each frontend charges its users on top of the base Hyperliquid
+  fee schedule. This benchmark publishes that ratio per builder
+  in sub minute freshness, reading the local hl-node fills stream
+  on the OCB infrastructure rather than the public daily CSV bucket.
+  The default chart shows the 24h volume weighted effective fee
+  in basis points. A tab switcher above the chart surfaces five
+  companion views computed from the same stream. Slippage proxy
+  is the per fill basis point gap between executed price and the
+  previous trade on the same asset, averaged over 24h, so a
+  frontend with a low fee but a wide routing path shows the real
+  user cost. Time since last fill is an outage detector, seconds
+  since the most recent attributed fill for that builder. Fills
+  per minute is the rolling activity rate. Taker share is the
+  fraction of fills that crossed the spread, separating aggressive
+  wallet style UIs from pro maker heavy terminals. Volume routed
+  is the headline number every other dashboard publishes, kept
+  here as a companion not the ranking driver.
+
+abstract: |
+  We compute a family of quality metrics per Hyperliquid builder
+  code by tailing the fills stream of a local hl-node operated
+  on OCB infrastructure. The node writes every block of fills
+  to `node_fills_by_block/hourly/YYYYMMDD/HH`, one JSON object
+  per line, with the `builder` address and `builderFee` on every
+  attributed fill. A Go harness tails these files every 30 seconds,
+  maintains a rolling 24h window in memory, and exposes a stable
+  Prometheus surface that this page consumes. The headline metric
+  is effective fee in basis points, `sum(builder_fee_usd) /
+  sum(notional_usd) * 10000` over the rolling 24h, volume weighted
+  across every fill attributed to the builder address. Five
+  companion metrics share the same stream. Price deviation bps is
+  the per fill `|fill_px - last_seen_px_same_asset| / last_seen_px
+  * 10000` averaged over the window, a proxy for execution quality.
+  Time since last fill in seconds catches frontends whose routing
+  pipeline is down. Fills per minute is the rolling activity rate.
+  Taker share is `crossed_fills / total_fills`. Top three assets
+  by routed notional per builder reveals routing strategy and
+  surfaces HIP-3 perps. The harness keeps a curated `builders.json`
+  mapping of EVM addresses to frontend slugs, currently 60 entries
+  covering wallets, terminals, social trading apps, bots, and
+  HIP-3 perps deployers, seeded from the public DefiLlama
+  dimension adapter registry plus behavioral cross reference of
+  the top unidentified addresses. Builder addresses with valid
+  fills outside this registry route through the same `builder`
+  field but stay invisible to this leaderboard until added by a
+  public PR. The bench does not place trades,
+  does not touch private keys, and does not depend on any internal
+  Mobula service.
+
+methodology:
+  - "Data source. A local hl-node operated on OCB infrastructure tails the Hyperliquid mainnet and writes every block of attributed fills to `node_fills_by_block/hourly/YYYYMMDD/HH`. Each line is one block, the `events` array carries one entry per fill, and every fill with a builder code includes the `builder` address plus `builderFee` in USDC. Sub minute freshness, no dependency on the public daily CSV bucket."
+  - "Cadence. The Go harness re reads the current and previous hourly files every 30 seconds, parses appended lines, and maintains a rolling 24h window in memory. Prometheus scrapes the metrics every 30 seconds via a Caddy reverse proxy with basic auth. End to end staleness from fill landing on chain to bench page render is typically under 60 seconds."
+  - "Effective fee calculation. For each builder over the rolling 24h window: `effective_fee_bps = sum(builder_fee_usd) / sum(notional_usd) * 10000`, where `notional_usd = px * sz` summed over every fill. Volume weighted, not flat averaged, so a builder routing one large trade at 1 bps and many tiny trades at 10 bps lands near the rate the biggest dollars actually paid."
+  - "USD per user efficiency. `fees_per_user_usd = sum(builder_fee_usd) / count(distinct user)` over the rolling 24h window. Surfaces predatory pricing more clearly than effective fee alone. A builder with 5 bps effective fee and $50 per user is extracting differently than one with the same 5 bps and $0.50 per user."
+  - "Price deviation, slippage proxy. For each new fill on asset A by builder B: `dev_bps = abs(fill_px - last_seen_px_on_A) / last_seen_px * 10000`, where `last_seen_px` is the most recent fill price on that asset across the whole cohort. Averaged per builder over the rolling 24h. Proxy for execution quality. A frontend that routes to less liquid venues or slower order paths shows higher deviation, a direct user cost on top of the fee column."
+  - "Outage detector. `last_fill_age_seconds = now - max(fill.time for fills in window)` per builder. During active hours the cohort baseline runs under one minute, so anything above a few minutes is a real anomaly. Catches frontends whose routing pipeline is down and frontends that quietly stopped operating but still have their builder code in circulation."
+  - "Taker share. Each fill has a boolean `crossed` field, true when the fill crossed the spread (taker), false when it rested in the book (maker). `taker_pct = crossed_fills / total_fills` per builder over the window. Separates aggressive instant execution UIs from pro maker heavy terminals."
+  - "Per asset top three. For each builder, the three assets with the highest notional volume in the rolling 24h. Cardinality bounded at the cohort size times 3 ranks (currently 60 builders × 3 = 180 series). The `asset` label rotates as concentration shifts. Reveals routing strategy and surfaces HIP-3 perps (xyz:, km:, cash: prefixes) that the older Hyperliquid frontends do not list."
+  - "Builder registry. `miniapps/hyperliquid-frontends-local/builders.json` is a hand curated `[{slug, name, address, valid_from, notes}]` array, currently 60 entries seeded from DefiLlama's open source dimension adapter registry plus a behavioral cross reference pass on the top unidentified addresses. Cohort spans wallets, pro terminals, social and PvP UIs, automated bots, signal apps, and HIP-3 deployers. New addresses ship via public PR."
+  - "Excluded by design. Native HL UI orders carry no builder code so they are not user attributable by this method. Roughly 95 percent of Hyperliquid fills land without a builder field. The 5 percent that do are the frontend ecosystem this bench measures."
+  - "Reproducibility. Harness source at `miniapps/hyperliquid-frontends-local/` in the mobula-api repo (Go). Anyone running their own hl-node can clone, point the `-data` flag at their `node_fills_by_block/hourly` root, run the binary against a Prometheus scraper, and reproduce these metrics. No private API keys, no internal Mobula service dependency."
+  - "Methodology versioning. Any change (registry additions, formula tweaks, exclusion thresholds, window sizes) ships as a public PR. Major changes run a parallel period publishing old and new metric series side by side under a `_v2` suffix until cutover."
+
+findings:
+  - "Effective fee spread is 10x across the cohort. Insilico and Axiom both clock 1.00 bps on the last 24h of attributed flow, the cheapest transparent flat in the set. MetaMask sits at 10.00 bps, the practical on-chain cap most frontends respect, making it the most extractive currently tracked. Phantom Perps lands at 5.22, in line with the wallet-integrated tier."
+  - "Fee alone is half the story. DefiApp executes tightest at 1.90 bps price deviation despite charging 5.02 bps in builder fee. Dexari deviates 25.83 bps, 13x the cohort median of about 3 bps, on top of its 8.91 bps fee. A user paying Dexari to route their flow is paying twice: once at the fee line, once at the fill price."
+  - "Volume and user-cost are uncorrelated. Phantom Perps routes 19.4M USD in 24h at 5.22 bps. Insilico routes 7.9M USD at 1.00 bps. MetaMask routes 5M USD at 10 bps. The leaderboard most HL dashboards publish (volume share) ranks Phantom first; the leaderboard users actually care about (what each routed dollar pays) ranks Insilico and Axiom on top."
+  - "Two outage signals are currently firing. Dexari's last attributed fill is 19 minutes stale against a cohort baseline under 1 minute. Okto has zero fills in 24h, fully inactive. The sub-minute hl-node freshness lets the bench distinguish 'no flow yet today' from 'frontend down', a gap the daily CSV pipeline could not close."
+  - "Taker share separates aggressive UIs from pro terminals. pvp.trade fills 100% taker, Phantom 99.4%, MetaMask 97.9%, all instant execution wallets that cross the spread by default. Insilico sits at 80.6%, the most maker heavy in the cohort, consistent with its workstation positioning where users place resting limit orders rather than market buying."
+  - "Asset concentration reveals routing strategy. Phantom is 51% BTC weighted (9.9M of 19.4M USD in 24h on BTC alone). DefiApp is the only frontend with HYPE as its #1 asset. Dexari and MetaMask both surface HIP-3 perps in their top three (xyz:TSLA, xyz:CL crude), a feature that does not exist on the older Hyperliquid frontends, useful for traders looking for stock perps exposure."
+
+faq:
+  - q: "Why does OpenChainBench not show Hyperliquid volume share?"
+    a: "Volume share is already published cleanly by ASXN HyperScreener, Coinmarketman HyperTracker, Flowscan, Allium, and at least three Dune dashboards. Republishing it would add no value. The unmeasured part of the frontend question is user cost: how much does each frontend take per dollar routed, and how stable is that take rate. That's what this bench answers. Raw yesterday's UTC notional per builder is still exposed as a secondary metric for readers who want it; it just doesn't drive the headline ranking."
+  - q: "How is the effective fee actually computed?"
+    a: "A local hl-node operated on OCB infrastructure tails the Hyperliquid mainnet and writes every block of attributed fills to disk. A Go harness re reads the current hourly file every 30 seconds. For each builder in our registry, we sum `builderFee` (USD) and `px * sz` (notional USD) over every fill in the rolling 24h window, then compute `sum(builder_fee) / sum(notional) * 10000`. That's the volume weighted effective fee in basis points, what a representative dollar of flow paid that frontend. End to end staleness from fill landing on chain to bench page render is typically under 60 seconds."
+  - q: "What's the on-chain cap?"
+    a: "Hyperliquid caps builder fees at 100 basis points on perps and 1000 basis points on spot, configured via the `ApproveBuilderFee` action signed by each user's main wallet. The bench's headline is denominated in basis points so 100 = the on-chain cap and 0 = fully waived rebate. Most frontends sit well below the cap; the bench surfaces who sits where."
+  - q: "Which frontends are tracked?"
+    a: "The registry currently tracks Phantom Perps, Axiom, pvp.trade, Insilico Terminal, DefiApp, MetaMask, Dexari and Okto. These eight account for roughly half of attributed Hyperliquid volume. Builder addresses were sourced from each frontend's public announcement, cross referenced against CoinMarketMan HyperTracker and Flowscan. Several hundred smaller builder addresses route the remaining attributed volume. They show in our local node stream and are scheduled for inclusion via public PR. The 95 percent of HL flow that uses no builder code (native UI orders, frontends that did not opt into the attribution system) sits outside this bench by design."
+  - q: "What about builder addresses outside the eight tracked frontends?"
+    a: "The local hl-node sees every builder address that appears on any Hyperliquid fill. Several hundred smaller builders route attributed volume below the eight tracked here. Those addresses are visible in our raw node stream but stay off the leaderboard until a public PR adds them to `builders.json` with a verified name. The coverage gap is honest, not hidden. Volume share dashboards from ASXN and CoinMarketMan list the full distribution if you need the exhaustive picture today."
+  - q: "What's fee discipline and why is it useful?"
+    a: "The 30-day standard deviation of the daily effective fee in basis points. Frontends running rotating promotions (fee-free week → normalize the next week → discount cycle) show high variance even when the 24h headline is low. Frontends with stable transparent pricing show low variance. The discipline column is what tells you whether the headline number you're reading is a stable rate or a snapshot mid-promo."
+  - q: "Does the bench measure native HL UI orders?"
+    a: "No. The native HL UI doesn't set a builder code, so its orders are not user-attributable by this method. Native HL's performance is covered separately by `/benchmarks/aggregator-head-lag` (data-feed latency) and the operational metrics Hyperliquid publishes themselves. This bench is specifically about third-party frontends that opt into the builder-code attribution system."
+  - q: "Can a frontend game the bench by routing wash trades?"
+    a: "Yes, the bench measures what the chain records. A frontend running wash volume to drive its own fee revenue (or to suppress its effective fee via 0-fee internal flow) shows up exactly as it appears on-chain. Mitigation is structural: the user-count column flags frontends with anomalously low unique-user counts relative to volume (a wash-heavy frontend has high $/user efficiency and low user count). A v1.1 methodology PR will add a sybil-cluster heuristic for repeat-counterparty fills."
+  - q: "What is price deviation and why publish it alongside the fee?"
+    a: "Per-fill basis-point gap between executed price and the most recent fill price on the same asset, averaged across the 24h window. Cleanest proxy for execution quality from a frontend that does not publish slippage stats. A frontend can charge a low builder fee and still cost users more if its routing fills wide of the recent print. Fee plus deviation is closer to true user cost than either alone."
+  - q: "What does the last-fill-age outage signal actually measure?"
+    a: "Seconds since the most recent attributed fill for that builder. The cohort baseline runs under one minute during active hours, so above a few minutes is a real anomaly. Catches two failure modes: a frontend whose routing pipeline is down (no new fills even when users try to trade), and a frontend that has quietly stopped operating but still has its builder code in circulation. Both were invisible on volume dashboards where zero volume reads as zero, not as broken."
+
+source: https://github.com/MobulaFi/mobula-monorepo/tree/dev/miniapps/hyperliquid-frontends-local
+
+prometheus:
+  window: 24h
+  expected_freshness_seconds: 5400
+
+# Real metrics emitted by the hyperliquid-frontends harness. The Prom labels
+# are kept narrow (just `builder`) so the cross-series queries below don't
+# explode in cardinality.
+#
+#   hl_frontend_effective_fee_bps_v2{builder}            gauge   (p50 headline)
+#   hl_frontend_d7_retention_pct{builder}             gauge   (p90 column)
+#   hl_frontend_d30_retention_pct{builder}            gauge   (also exposed)
+#   hl_frontend_fees_per_user_usd_v2{builder}            gauge   (p99 column)
+#   hl_frontend_volume_usd_24h{builder}               gauge   (secondary)
+#   hl_frontend_volume_share_pct{builder}             gauge   (secondary)
+#   hl_frontend_users_24h{builder}                    gauge
+#   hl_frontend_d7_cohort_size{builder}               gauge   (sample-size guard)
+#   hl_frontend_d30_cohort_size{builder}              gauge
+#   hl_frontend_fills_total_24h_v2{builder}                  gauge
+#   hl_frontend_unattributed_share_pct                gauge   (coverage signal)
+#   hl_frontend_registry_age_seconds                  gauge   (freshness signal)
+#   hl_frontend_csv_fetch_status_total{builder,code}  counter (per HTTP code)
+#
+# Bench page column mapping. The p50/p90/p99 slots are repurposed since the
+# unit is bps and there is no native percentile semantics: p50 = effective
+# fee, p90 = D7 cohort retention, p99 = USD fees per unique trader. The
+# repurposing is called out in the methodology + FAQ so readers don't
+# misread the columns. Fee discipline (30d stddev) is computable in
+# Prom via the MCP server but not surfaced in a column.
+
+providers:
+  - slug: phantom-perps
+    name: Phantom
+    tag: Phantom wallet's HL perps integration
+    formula: "Volume-weighted effective builder fee in basis points over the last complete UTC day, computed from Hyperliquid's public attributed-fills CSV for Phantom's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="phantom-perps"}
+      p90: hl_frontend_d7_retention_pct{builder="phantom-perps"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="phantom-perps"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="phantom-perps"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="phantom-perps"}
+      series: hl_frontend_effective_fee_bps_v2{builder="phantom-perps"}
+
+  - slug: axiom
+    name: Axiom
+    tag: Solana-native terminal expanding to HL
+    formula: "Volume-weighted effective builder fee in basis points over the last complete UTC day, computed from Hyperliquid's public attributed-fills CSV for Axiom's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="axiom"}
+      p90: hl_frontend_d7_retention_pct{builder="axiom"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="axiom"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="axiom"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="axiom"}
+      series: hl_frontend_effective_fee_bps_v2{builder="axiom"}
+
+  - slug: pvp-trade
+    name: pvp.trade
+    tag: Social PvP trading rooms
+    formula: "Volume-weighted effective builder fee in basis points over the last complete UTC day, computed from Hyperliquid's public attributed-fills CSV for pvp.trade's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="pvp-trade"}
+      p90: hl_frontend_d7_retention_pct{builder="pvp-trade"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="pvp-trade"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="pvp-trade"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="pvp-trade"}
+      series: hl_frontend_effective_fee_bps_v2{builder="pvp-trade"}
+
+  - slug: insilico
+    name: Insilico
+    tag: Institutional trading workstation
+    formula: "Volume-weighted effective builder fee in basis points over the last complete UTC day, computed from Hyperliquid's public attributed-fills CSV for Insilico's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="insilico"}
+      p90: hl_frontend_d7_retention_pct{builder="insilico"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="insilico"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="insilico"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="insilico"}
+      series: hl_frontend_effective_fee_bps_v2{builder="insilico"}
+
+  - slug: defiapp
+    name: Defiapp
+    tag: Defiapp HL frontend
+    formula: "Volume-weighted effective builder fee in basis points over the last complete UTC day, computed from Hyperliquid's public attributed-fills CSV for Defiapp's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="defiapp"}
+      p90: hl_frontend_d7_retention_pct{builder="defiapp"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="defiapp"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="defiapp"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="defiapp"}
+      series: hl_frontend_effective_fee_bps_v2{builder="defiapp"}
+
+  - slug: metamask
+    name: MetaMask
+    tag: MetaMask wallet HL integration
+    formula: "Volume-weighted effective builder fee in basis points over the last complete UTC day, computed from Hyperliquid's public attributed-fills CSV for MetaMask's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="metamask"}
+      p90: hl_frontend_d7_retention_pct{builder="metamask"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="metamask"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="metamask"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="metamask"}
+      series: hl_frontend_effective_fee_bps_v2{builder="metamask"}
+
+  - slug: dexari
+    name: Dexari
+    tag: Pro trading UI for HL
+    formula: "Volume-weighted effective builder fee in basis points over the last complete UTC day, computed from Hyperliquid's public attributed-fills CSV for Dexari's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="dexari"}
+      p90: hl_frontend_d7_retention_pct{builder="dexari"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="dexari"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="dexari"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="dexari"}
+      series: hl_frontend_effective_fee_bps_v2{builder="dexari"}
+
+  - slug: okto
+    name: Okto
+    tag: Okto wallet HL integration
+    formula: "Volume-weighted effective builder fee in basis points over the last complete UTC day, computed from Hyperliquid's public attributed-fills CSV for Okto's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="okto"}
+      p90: hl_frontend_d7_retention_pct{builder="okto"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="okto"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="okto"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="okto"}
+      series: hl_frontend_effective_fee_bps_v2{builder="okto"}
+  - slug: trust-wallet
+    name: Trust Wallet
+    tag: Trust Wallet HL frontend
+    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Trust Wallet's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="trust-wallet"}
+      p90: hl_frontend_d7_retention_pct{builder="trust-wallet"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="trust-wallet"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="trust-wallet"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="trust-wallet"}
+      series: hl_frontend_effective_fee_bps_v2{builder="trust-wallet"}
+
+  - slug: sushi
+    name: Sushi
+    tag: Sushi HL frontend
+    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Sushi's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="sushi"}
+      p90: hl_frontend_d7_retention_pct{builder="sushi"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="sushi"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="sushi"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="sushi"}
+      series: hl_frontend_effective_fee_bps_v2{builder="sushi"}
+
+  - slug: dreamcash
+    name: Dreamcash
+    tag: Dreamcash HL frontend
+    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Dreamcash's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="dreamcash"}
+      p90: hl_frontend_d7_retention_pct{builder="dreamcash"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="dreamcash"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="dreamcash"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="dreamcash"}
+      series: hl_frontend_effective_fee_bps_v2{builder="dreamcash"}
+
+  - slug: based-app
+    name: Based
+    tag: Based HL frontend
+    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Based's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="based-app"}
+      p90: hl_frontend_d7_retention_pct{builder="based-app"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="based-app"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="based-app"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="based-app"}
+      series: hl_frontend_effective_fee_bps_v2{builder="based-app"}
+
+  - slug: blink
+    name: Blink
+    tag: Blink HL frontend
+    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Blink's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="blink"}
+      p90: hl_frontend_d7_retention_pct{builder="blink"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="blink"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="blink"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="blink"}
+      series: hl_frontend_effective_fee_bps_v2{builder="blink"}
+
+  - slug: perpmate
+    name: Perpmate
+    tag: Perpmate HL frontend
+    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Perpmate's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="perpmate"}
+      p90: hl_frontend_d7_retention_pct{builder="perpmate"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="perpmate"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="perpmate"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="perpmate"}
+      series: hl_frontend_effective_fee_bps_v2{builder="perpmate"}
+
+  - slug: arena
+    name: Arena
+    tag: Arena HL frontend
+    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Arena's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="arena"}
+      p90: hl_frontend_d7_retention_pct{builder="arena"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="arena"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="arena"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="arena"}
+      series: hl_frontend_effective_fee_bps_v2{builder="arena"}
+
+  - slug: minaraai
+    name: MinaraAI
+    tag: MinaraAI HL frontend
+    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for MinaraAI's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="minaraai"}
+      p90: hl_frontend_d7_retention_pct{builder="minaraai"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="minaraai"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="minaraai"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="minaraai"}
+      series: hl_frontend_effective_fee_bps_v2{builder="minaraai"}
+
+  - slug: apexliquid
+    name: ApexLiquid
+    tag: ApexLiquid HL frontend
+    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for ApexLiquid's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="apexliquid"}
+      p90: hl_frontend_d7_retention_pct{builder="apexliquid"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="apexliquid"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="apexliquid"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="apexliquid"}
+      series: hl_frontend_effective_fee_bps_v2{builder="apexliquid"}
+
+  - slug: coin98
+    name: Coin98
+    tag: Coin98 HL frontend
+    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Coin98's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="coin98"}
+      p90: hl_frontend_d7_retention_pct{builder="coin98"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="coin98"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="coin98"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="coin98"}
+      series: hl_frontend_effective_fee_bps_v2{builder="coin98"}
+
+  - slug: coinpilot
+    name: CoinPilot
+    tag: CoinPilot HL frontend
+    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for CoinPilot's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="coinpilot"}
+      p90: hl_frontend_d7_retention_pct{builder="coinpilot"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="coinpilot"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="coinpilot"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="coinpilot"}
+      series: hl_frontend_effective_fee_bps_v2{builder="coinpilot"}
+
+  - slug: echosync
+    name: Echosync
+    tag: Echosync HL frontend
+    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Echosync's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="echosync"}
+      p90: hl_frontend_d7_retention_pct{builder="echosync"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="echosync"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="echosync"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="echosync"}
+      series: hl_frontend_effective_fee_bps_v2{builder="echosync"}
+
+  - slug: fomo
+    name: FOMO
+    tag: FOMO HL frontend
+    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for FOMO's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="fomo"}
+      p90: hl_frontend_d7_retention_pct{builder="fomo"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="fomo"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="fomo"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="fomo"}
+      series: hl_frontend_effective_fee_bps_v2{builder="fomo"}
+
+  - slug: gemwallet
+    name: Gem Wallet
+    tag: Gem Wallet HL frontend
+    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Gem Wallet's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="gemwallet"}
+      p90: hl_frontend_d7_retention_pct{builder="gemwallet"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="gemwallet"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="gemwallet"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="gemwallet"}
+      series: hl_frontend_effective_fee_bps_v2{builder="gemwallet"}
+
+  - slug: gtr-trade
+    name: GTR Trade
+    tag: GTR Trade HL frontend
+    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for GTR Trade's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="gtr-trade"}
+      p90: hl_frontend_d7_retention_pct{builder="gtr-trade"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="gtr-trade"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="gtr-trade"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="gtr-trade"}
+      series: hl_frontend_effective_fee_bps_v2{builder="gtr-trade"}
+
+  - slug: hyprearn
+    name: Hyprearn
+    tag: Hyprearn HL frontend
+    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Hyprearn's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="hyprearn"}
+      p90: hl_frontend_d7_retention_pct{builder="hyprearn"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="hyprearn"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="hyprearn"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="hyprearn"}
+      series: hl_frontend_effective_fee_bps_v2{builder="hyprearn"}
+
+  - slug: legend-trade
+    name: Legend Trade
+    tag: Legend Trade HL frontend
+    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Legend Trade's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="legend-trade"}
+      p90: hl_frontend_d7_retention_pct{builder="legend-trade"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="legend-trade"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="legend-trade"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="legend-trade"}
+      series: hl_frontend_effective_fee_bps_v2{builder="legend-trade"}
+
+  - slug: katoshi
+    name: Katoshi
+    tag: Katoshi HL frontend
+    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Katoshi's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="katoshi"}
+      p90: hl_frontend_d7_retention_pct{builder="katoshi"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="katoshi"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="katoshi"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="katoshi"}
+      series: hl_frontend_effective_fee_bps_v2{builder="katoshi"}
+
+  - slug: metascalp
+    name: Metascalp
+    tag: Metascalp HL frontend
+    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Metascalp's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="metascalp"}
+      p90: hl_frontend_d7_retention_pct{builder="metascalp"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="metascalp"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="metascalp"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="metascalp"}
+      series: hl_frontend_effective_fee_bps_v2{builder="metascalp"}
+
+  - slug: moontrader
+    name: Moontrader
+    tag: Moontrader HL frontend
+    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Moontrader's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="moontrader"}
+      p90: hl_frontend_d7_retention_pct{builder="moontrader"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="moontrader"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="moontrader"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="moontrader"}
+      series: hl_frontend_effective_fee_bps_v2{builder="moontrader"}
+
+  - slug: onekey
+    name: OneKey
+    tag: OneKey HL frontend
+    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for OneKey's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="onekey"}
+      p90: hl_frontend_d7_retention_pct{builder="onekey"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="onekey"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="onekey"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="onekey"}
+      series: hl_frontend_effective_fee_bps_v2{builder="onekey"}
+
+  - slug: pear
+    name: Pear
+    tag: Pear HL frontend
+    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Pear's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="pear"}
+      p90: hl_frontend_d7_retention_pct{builder="pear"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="pear"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="pear"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="pear"}
+      series: hl_frontend_effective_fee_bps_v2{builder="pear"}
+
+  - slug: rabby
+    name: Rabby
+    tag: Rabby HL frontend
+    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Rabby's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="rabby"}
+      p90: hl_frontend_d7_retention_pct{builder="rabby"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="rabby"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="rabby"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="rabby"}
+      series: hl_frontend_effective_fee_bps_v2{builder="rabby"}
+
+  - slug: ranger-finance
+    name: Ranger Finance
+    tag: Ranger Finance HL frontend
+    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Ranger Finance's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="ranger-finance"}
+      p90: hl_frontend_d7_retention_pct{builder="ranger-finance"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="ranger-finance"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="ranger-finance"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="ranger-finance"}
+      series: hl_frontend_effective_fee_bps_v2{builder="ranger-finance"}
+
+  - slug: senpi
+    name: Senpi
+    tag: Senpi HL frontend
+    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Senpi's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="senpi"}
+      p90: hl_frontend_d7_retention_pct{builder="senpi"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="senpi"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="senpi"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="senpi"}
+      series: hl_frontend_effective_fee_bps_v2{builder="senpi"}
+
+  - slug: superx
+    name: SuperX
+    tag: SuperX HL frontend
+    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for SuperX's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="superx"}
+      p90: hl_frontend_d7_retention_pct{builder="superx"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="superx"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="superx"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="superx"}
+      series: hl_frontend_effective_fee_bps_v2{builder="superx"}
+
+  - slug: supurr
+    name: Supurr
+    tag: Supurr HL frontend
+    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Supurr's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="supurr"}
+      p90: hl_frontend_d7_retention_pct{builder="supurr"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="supurr"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="supurr"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="supurr"}
+      series: hl_frontend_effective_fee_bps_v2{builder="supurr"}
+
+  - slug: unigox
+    name: Unigox
+    tag: Unigox HL frontend
+    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Unigox's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="unigox"}
+      p90: hl_frontend_d7_retention_pct{builder="unigox"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="unigox"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="unigox"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="unigox"}
+      series: hl_frontend_effective_fee_bps_v2{builder="unigox"}
+
+  - slug: uxuy
+    name: UXUY
+    tag: UXUY HL frontend
+    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for UXUY's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="uxuy"}
+      p90: hl_frontend_d7_retention_pct{builder="uxuy"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="uxuy"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="uxuy"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="uxuy"}
+      series: hl_frontend_effective_fee_bps_v2{builder="uxuy"}
+
+  - slug: wunder
+    name: Wunder
+    tag: Wunder HL frontend
+    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Wunder's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="wunder"}
+      p90: hl_frontend_d7_retention_pct{builder="wunder"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="wunder"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="wunder"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="wunder"}
+      series: hl_frontend_effective_fee_bps_v2{builder="wunder"}
+
+  - slug: grider
+    name: Grider
+    tag: Grider HL frontend
+    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Grider's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="grider"}
+      p90: hl_frontend_d7_retention_pct{builder="grider"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="grider"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="grider"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="grider"}
+      series: hl_frontend_effective_fee_bps_v2{builder="grider"}
+
+  - slug: tradoor
+    name: Tradoor
+    tag: Tradoor HL frontend
+    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Tradoor's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="tradoor"}
+      p90: hl_frontend_d7_retention_pct{builder="tradoor"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="tradoor"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="tradoor"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="tradoor"}
+      series: hl_frontend_effective_fee_bps_v2{builder="tradoor"}
+
+  - slug: bullpenfi
+    name: BullpenFi
+    tag: BullpenFi HL frontend
+    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for BullpenFi's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="bullpenfi"}
+      p90: hl_frontend_d7_retention_pct{builder="bullpenfi"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="bullpenfi"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="bullpenfi"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="bullpenfi"}
+      series: hl_frontend_effective_fee_bps_v2{builder="bullpenfi"}
+
+  - slug: dexly-trade
+    name: Dexly Trade
+    tag: Dexly Trade HL frontend
+    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Dexly Trade's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="dexly-trade"}
+      p90: hl_frontend_d7_retention_pct{builder="dexly-trade"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="dexly-trade"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="dexly-trade"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="dexly-trade"}
+      series: hl_frontend_effective_fee_bps_v2{builder="dexly-trade"}
+
+  - slug: hyperdash
+    name: Hyperdash
+    tag: Hyperdash HL frontend
+    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Hyperdash's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="hyperdash"}
+      p90: hl_frontend_d7_retention_pct{builder="hyperdash"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="hyperdash"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="hyperdash"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="hyperdash"}
+      series: hl_frontend_effective_fee_bps_v2{builder="hyperdash"}
+
+  - slug: infinex
+    name: Infinex
+    tag: Infinex HL frontend
+    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Infinex's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="infinex"}
+      p90: hl_frontend_d7_retention_pct{builder="infinex"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="infinex"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="infinex"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="infinex"}
+      series: hl_frontend_effective_fee_bps_v2{builder="infinex"}
+
+  - slug: liminal
+    name: Liminal
+    tag: Liminal HL frontend
+    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Liminal's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="liminal"}
+      p90: hl_frontend_d7_retention_pct{builder="liminal"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="liminal"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="liminal"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="liminal"}
+      series: hl_frontend_effective_fee_bps_v2{builder="liminal"}
+
+  - slug: liquid-perps
+    name: Liquid Perps
+    tag: Liquid Perps HL frontend
+    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Liquid Perps's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="liquid-perps"}
+      p90: hl_frontend_d7_retention_pct{builder="liquid-perps"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="liquid-perps"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="liquid-perps"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="liquid-perps"}
+      series: hl_frontend_effective_fee_bps_v2{builder="liquid-perps"}
+
+  - slug: lit-trade
+    name: Lit Trade
+    tag: Lit Trade HL frontend
+    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Lit Trade's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="lit-trade"}
+      p90: hl_frontend_d7_retention_pct{builder="lit-trade"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="lit-trade"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="lit-trade"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="lit-trade"}
+      series: hl_frontend_effective_fee_bps_v2{builder="lit-trade"}
+
+  - slug: lootbase
+    name: Lootbase
+    tag: Lootbase HL frontend
+    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Lootbase's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="lootbase"}
+      p90: hl_frontend_d7_retention_pct{builder="lootbase"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="lootbase"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="lootbase"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="lootbase"}
+      series: hl_frontend_effective_fee_bps_v2{builder="lootbase"}
+
+  - slug: mass-dot-money
+    name: Mass.money
+    tag: Mass.money HL frontend
+    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Mass.money's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="mass-dot-money"}
+      p90: hl_frontend_d7_retention_pct{builder="mass-dot-money"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="mass-dot-money"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="mass-dot-money"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="mass-dot-money"}
+      series: hl_frontend_effective_fee_bps_v2{builder="mass-dot-money"}
+
+  - slug: moonbot
+    name: Moonbot
+    tag: Moonbot HL frontend
+    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Moonbot's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="moonbot"}
+      p90: hl_frontend_d7_retention_pct{builder="moonbot"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="moonbot"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="moonbot"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="moonbot"}
+      series: hl_frontend_effective_fee_bps_v2{builder="moonbot"}
+
+  - slug: rainbow
+    name: Rainbow
+    tag: Rainbow HL frontend
+    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Rainbow's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="rainbow"}
+      p90: hl_frontend_d7_retention_pct{builder="rainbow"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="rainbow"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="rainbow"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="rainbow"}
+      series: hl_frontend_effective_fee_bps_v2{builder="rainbow"}
+
+  - slug: supercexy
+    name: SuperCEXy
+    tag: SuperCEXy HL frontend
+    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for SuperCEXy's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="supercexy"}
+      p90: hl_frontend_d7_retention_pct{builder="supercexy"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="supercexy"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="supercexy"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="supercexy"}
+      series: hl_frontend_effective_fee_bps_v2{builder="supercexy"}
+
+  - slug: superstack
+    name: Superstack
+    tag: Superstack HL frontend
+    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Superstack's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="superstack"}
+      p90: hl_frontend_d7_retention_pct{builder="superstack"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="superstack"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="superstack"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="superstack"}
+      series: hl_frontend_effective_fee_bps_v2{builder="superstack"}
+
+  - slug: wallet-v
+    name: Wallet V
+    tag: Wallet V HL frontend
+    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Wallet V's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="wallet-v"}
+      p90: hl_frontend_d7_retention_pct{builder="wallet-v"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="wallet-v"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="wallet-v"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="wallet-v"}
+      series: hl_frontend_effective_fee_bps_v2{builder="wallet-v"}
+
+  - slug: xtrade-protocol
+    name: xTrade Protocol
+    tag: xTrade Protocol HL frontend
+    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for xTrade Protocol's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="xtrade-protocol"}
+      p90: hl_frontend_d7_retention_pct{builder="xtrade-protocol"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="xtrade-protocol"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="xtrade-protocol"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="xtrade-protocol"}
+      series: hl_frontend_effective_fee_bps_v2{builder="xtrade-protocol"}
+
+  - slug: taco-trade
+    name: Taco Trade
+    tag: Taco Trade HL frontend
+    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Taco Trade's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="taco-trade"}
+      p90: hl_frontend_d7_retention_pct{builder="taco-trade"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="taco-trade"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="taco-trade"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="taco-trade"}
+      series: hl_frontend_effective_fee_bps_v2{builder="taco-trade"}
+
+  - slug: silhouette
+    name: Silhouette
+    tag: Silhouette HL frontend
+    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Silhouette's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="silhouette"}
+      p90: hl_frontend_d7_retention_pct{builder="silhouette"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="silhouette"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="silhouette"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="silhouette"}
+      series: hl_frontend_effective_fee_bps_v2{builder="silhouette"}
+
+  - slug: tread-fi
+    name: Tread.fi
+    tag: Tread.fi HL frontend
+    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Tread.fi's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="tread-fi"}
+      p90: hl_frontend_d7_retention_pct{builder="tread-fi"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="tread-fi"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="tread-fi"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="tread-fi"}
+      series: hl_frontend_effective_fee_bps_v2{builder="tread-fi"}
+
+  - slug: flowbot
+    name: FlowBot
+    tag: FlowBot HL frontend
+    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for FlowBot's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="flowbot"}
+      p90: hl_frontend_d7_retention_pct{builder="flowbot"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="flowbot"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="flowbot"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="flowbot"}
+      series: hl_frontend_effective_fee_bps_v2{builder="flowbot"}
+
+  - slug: nautilus-trader
+    name: Nautilus Trader
+    tag: Nautilus Trader HL frontend
+    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Nautilus Trader's builder address."
+    queries:
+      p50: hl_frontend_effective_fee_bps_v2{builder="nautilus-trader"}
+      p90: hl_frontend_d7_retention_pct{builder="nautilus-trader"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="nautilus-trader"}
+      mean: avg_over_time(hl_frontend_effective_fee_bps_v2{builder="nautilus-trader"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="nautilus-trader"}
+      series: hl_frontend_effective_fee_bps_v2{builder="nautilus-trader"}
+
+# Companion metric panels surfaced as a switchable mini leaderboard below
+# the main p50/p90/p99 table. Each panel queries one Prom metric per
+# provider (builder label) and re-ranks the cohort under its direction.
+# All five metrics come from the local hl-node harness and update at the
+# same sub-minute cadence as the main headline.
+metric_panels:
+  - id: deviation
+    label: Slippage proxy
+    description: "Per fill, the basis-point gap between the executed price and the previous trade price on the same asset, averaged over the rolling 24h window. Lower is better. Frontends that route to less liquid venues or slower order paths show higher deviation, which is direct user cost on top of the fee column."
+    metric: hl_frontend_price_deviation_bps_v2
+    unit: bps
+    higher_is_better: false
+  - id: outage
+    label: Time since last fill
+    description: "Seconds since this builder's most recent attributed fill landed on Hyperliquid. Cohort baseline runs under one minute during active hours; above a few minutes is a real anomaly. Catches frontends whose routing pipeline is down or quietly stopped operating."
+    metric: hl_frontend_last_fill_age_seconds_v2
+    unit: s
+    higher_is_better: false
+  - id: activity
+    label: Fills per minute
+    description: "Activity rate over the rolling 24h window. Higher means more flow currently routes through this frontend. Combine with effective fee bps to read the operational intent: high activity + low fee = aligned, high activity + high fee = extractive."
+    metric: hl_frontend_fills_per_min_v2
+    unit: count
+    higher_is_better: true
+  - id: taker
+    label: Taker share
+    description: "Fraction of fills that crossed the spread (paid the bid ask gap). Aggressive instant execution wallets skew taker heavy, pro terminals with limit order workflows skew maker heavy. Reveals the routing intent embedded in each frontend's UX."
+    metric: hl_frontend_taker_pct_v2
+    unit: pct
+    higher_is_better: false
+  - id: volume
+    label: Volume routed
+    description: "Notional USD routed in the rolling 24h window. Headline volume metric most other HL dashboards publish. Here it is companion, not the headline, because volume is only loosely correlated with how aligned a frontend is with its users."
+    metric: hl_frontend_volume_usd_24h_v2
+    unit: usd
+    higher_is_better: true
