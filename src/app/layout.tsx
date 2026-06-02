@@ -127,10 +127,10 @@ export default function RootLayout({
       </head>
       {/* grid (not flex) so position: sticky on <SiteHeader> works reliably
           on iOS Safari — sticky inside a flex column has known quirks.
-          w-full + overflow-x-clip on the body guarantees no descendant can
-          push the page past the viewport, even when WKWebView (Telegram in-app
-          browser) ignores the html-level safety net in globals.css. */}
-      <body className="min-h-full w-full max-w-full overflow-x-clip grid grid-rows-[auto_1fr_auto]">
+          Do NOT add overflow-x clip here — WebKit treats it as creating a
+          containing block for position: fixed descendants and the header
+          ends up scrolling with the body. Clip is on html + main + article. */}
+      <body className="min-h-full grid grid-rows-[auto_1fr_auto]">
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: safeJsonLd(ORG_JSONLD) }}
