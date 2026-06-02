@@ -361,6 +361,35 @@ async function specToBenchmark(
           formula: p.formula,
         });
       }
+
+      // Companion-metric backstop. The augmentation above marks any
+      // provider whose headline `p50` query returned nothing as
+      // "unavailable". On benches like hl-frontends where the headline
+      // metric (effective fee bps) is legitimately empty for a builder
+      // that had no fees in the rolling window but still routed real
+      // volume, the same builder shows up live on the companion
+      // panels (volume, fills/min, last fill age, taker share). Marking
+      // it "unavailable" then is misleading: the reader switches to
+      // the Volume panel, sees the line, then looks at the table and
+      // reads "Currently unavailable" against a row that clearly has
+      // data. Reclassify those to "live" so the row renders as a
+      // first-class entry; the ledger still sorts it last because
+      // ms.p50=0, but it stops claiming the provider is down.
+      if (live.metricPanels && live.metricPanels.length > 0) {
+        for (const r of live.results) {
+          if (r.availability !== "unavailable") continue;
+          const slug = r.slug.toLowerCase();
+          const hasPanelData = live.metricPanels.some((panel) => {
+            const v = panel.values?.[r.slug] ?? panel.values?.[slug];
+            if (v != null && Number.isFinite(v)) return true;
+            const series =
+              panel.seriesByProvider?.[r.slug] ??
+              panel.seriesByProvider?.[slug];
+            return Array.isArray(series) && series.length > 0;
+          });
+          if (hasPanelData) r.availability = "live";
+        }
+      }
     }
     // Per-chain leaders/trailers: computed only on the unfiltered "All"
     // view of benches that declare `dimensions.chain`. Fan out one extra
