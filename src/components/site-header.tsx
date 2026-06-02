@@ -3,7 +3,6 @@
 import { Menu, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { SiteBanner } from "@/components/site-banner";
 import { SiteLogoSwitcher } from "@/components/site-logo-switcher";
 import { ThemeToggle } from "@/components/theme-toggle";
 
@@ -26,9 +25,9 @@ const NAV = [
 export function SiteHeader() {
   const [open, setOpen] = useState(false);
   const headerRef = useRef<HTMLDivElement>(null);
-  // Sensible initial estimate (banner + nav + iOS safe area) so the page
-  // does not jump on first paint; ResizeObserver refines it after mount.
-  const [headerH, setHeaderH] = useState(96);
+  // Initial estimate matches the rendered header height so the spacer
+  // doesn't jump on first paint; ResizeObserver refines it after mount.
+  const [headerH, setHeaderH] = useState(64);
 
   // Close the mobile menu when the viewport crosses md so the dropdown
   // doesn't stick around as the desktop nav reappears.
@@ -43,8 +42,7 @@ export function SiteHeader() {
   }, [open]);
 
   // Measure the fixed header so we can reserve the same height in the
-  // flow with a spacer. ResizeObserver picks up the change when the
-  // banner is dismissed or the viewport resizes.
+  // flow with a spacer. ResizeObserver picks up viewport resizes.
   useEffect(() => {
     const el = headerRef.current;
     if (!el) return;
@@ -68,7 +66,6 @@ export function SiteHeader() {
         className="fixed top-0 left-0 right-0 z-50 flex flex-col font-sans pt-[env(safe-area-inset-top)] bg-surface"
         style={{ transform: "translate3d(0, 0, 0)" }}
       >
-      <SiteBanner />
       <header className="border-b border-rule py-4 md:py-5 px-4 sm:px-6 shrink-0 text-sm bg-surface relative">
         <div className="max-w-[1400px] mx-auto flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
@@ -155,9 +152,7 @@ export function SiteHeader() {
       </header>
       </div>
       {/* Spacer reserves the fixed header's height in the document flow
-          so page content does not start under it. Height tracks the
-          header via ResizeObserver, so dismissing the banner reclaims
-          the freed space automatically. */}
+          so page content does not start under it. */}
       <div aria-hidden style={{ height: headerH }} />
     </>
   );
