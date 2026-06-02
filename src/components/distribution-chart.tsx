@@ -9,6 +9,8 @@ import { fmtUnit } from "@/lib/format";
 import { buildProviderColors } from "@/lib/series-colors";
 import { useChartExclusion } from "@/hooks/use-chart-exclusion";
 import { useAnimatedDomain } from "@/hooks/use-animated-domain";
+import { useTopN } from "@/hooks/use-top-n";
+import { TopNSelector } from "@/components/top-n-selector";
 
 /**
  * Latency-spread view, "percentile whisker" design.
@@ -73,12 +75,19 @@ export function DistributionChart({
 
   // Sort once; sort order does NOT depend on the excluded set, so a
   // row stays in its slot when toggled and the rank #N is stable.
-  const sorted = useMemo(
+  const sortedAll = useMemo(
     () =>
       [...live].sort((a, b) =>
         higherIsBetter ? b.ms.p50 - a.ms.p50 : a.ms.p50 - b.ms.p50,
       ),
     [live, higherIsBetter],
+  );
+  // Top-N selector — shared shape with the other chart views so the
+  // reader can focus on the top tail without losing the option to widen.
+  const { topN, setTopN, topNOptions } = useTopN(sortedAll.length);
+  const sorted = useMemo(
+    () => (topN == null ? sortedAll : sortedAll.slice(0, topN)),
+    [sortedAll, topN],
   );
 
   // The animated domain is driven by the *visible* set's min/max snapped
@@ -134,6 +143,7 @@ export function DistributionChart({
               Reset · {excluded.size} excluded
             </button>
           )}
+          <TopNSelector value={topN} options={topNOptions} onChange={setTopN} />
           <WhiskerLegend />
           {headerActions}
         </div>

@@ -8,7 +8,9 @@ import { fmtUnit } from "@/lib/format";
 import { buildProviderColors } from "@/lib/series-colors";
 import { useChartExclusion } from "@/hooks/use-chart-exclusion";
 import { useAnimatedDomain } from "@/hooks/use-animated-domain";
+import { useTopN } from "@/hooks/use-top-n";
 import { LiveDot } from "@/components/live-dot";
+import { TopNSelector } from "@/components/top-n-selector";
 
 type Props = {
   benchmark: Benchmark;
@@ -152,32 +154,10 @@ export function TimeSeriesChart({
     return built;
   }, [benchmark, range, region, colors, excluded, seriesOverride]);
 
-  // Top-N selector. Sized off the providers that actually have data
-  // for the active range / panel — `allLines.length`, which is the
-  // post-filter count after empty series are dropped. Earlier this
-  // sized off the whole registered cohort so the toolbar would always
-  // offer Top 5 / 10 / 20 / All, but on panels where only e.g. 7
-  // builders emit data the Top 10 / Top 20 buttons were useless
-  // placeholders. Now the option set is curated per render: an N
-  // button only appears when at least N providers have data; "All"
-  // shows up whenever the cohort is wider than 10. Below-10 cohorts
-  // skip the toolbar entirely.
-  const scoredCount = allLines.length;
-  const topNOptions = useMemo<(number | null)[]>(() => {
-    const opts: (number | null)[] = [];
-    for (const n of [5, 10, 20]) if (n < scoredCount) opts.push(n);
-    if (scoredCount > 10) opts.push(null);
-    return opts;
-  }, [scoredCount]);
-  const TOP_N_DEFAULT = scoredCount > 20 ? 20 : null;
-  const [topN, setTopN] = useState<number | null>(TOP_N_DEFAULT);
-  // If the active option disappeared (e.g. reader swapped to a sparser
-  // panel where Top 20 is no longer offered), gracefully reset to the
-  // widest still-available option.
-  useEffect(() => {
-    if (topN == null) return;
-    if (!topNOptions.includes(topN)) setTopN(null);
-  }, [topNOptions, topN]);
+  // Top-N selector — sized off the post-filter line count via the
+  // shared `useTopN` hook so the option set agrees across every
+  // chart view on the bench page.
+  const { topN, setTopN, topNOptions } = useTopN(allLines.length);
   const lines = useMemo(() => {
     if (topN == null) return allLines;
     return allLines.slice(0, topN);
@@ -297,32 +277,7 @@ export function TimeSeriesChart({
           </div>
         )}
 
-        {topNOptions.length > 1 && (
-          <div className="flex items-center gap-1">
-            <span className="mr-2 text-[10px] uppercase tracking-[0.16em] text-ink-faint">
-              Show
-            </span>
-            {topNOptions.map((n) => {
-              const active = topN === n;
-              const label = n == null ? "All" : `Top ${n}`;
-              return (
-                <button
-                  key={String(n)}
-                  type="button"
-                  onClick={() => setTopN(n)}
-                  className={`rounded-md border px-2 py-1 text-[11px] font-sans font-medium uppercase tracking-[0.1em] transition-all ${
-                    active
-                      ? "border-ink bg-ink text-paper"
-                      : "border-ink/15 bg-paper text-ink hover:border-ink/40"
-                  }`}
-                  aria-pressed={active}
-                >
-                  {label}
-                </button>
-              );
-            })}
-          </div>
-        )}
+        <TopNSelector value={topN} options={topNOptions} onChange={setTopN} />
       </div>
 
       {lines.length === 0 ? (
