@@ -67,7 +67,7 @@ faq:
   - q: "What does 'wallet labeling' mean in a crypto API?"
     a: "A wallet labeling API takes an address and returns an entity name. The CEX it belongs to (`Binance hot wallet 14`), the protocol (`Uniswap V3 router`), the multisig owner (`Safe: foundation treasury`), the sanctioned status (`OFAC SDN`), or a public-figure tag (`Vitalik Buterin`). Generic categorical labels like `EOA`, `Contract`, `Wallet` are not considered a hit on this benchmark because they carry no entity signal."
   - q: "Is Mobula's labels API better than Moralis or Helius?"
-    a: "It depends on the chain. {{name:mobula}} is a universal provider audited on every chain it advertises and currently returns {{p50:mobula}} on the active tab. {{name:helius}} is Solana-only and dominates that chain because its label graph is curated against native Solana programs. {{name:moralis}} is EVM-centric and trails on TON, Stellar, XRP and Bitcoin. The per-chain tabs are the honest comparison; the All chains tab is the universal-coverage story."
+    a: "It depends on the chain. {{name:mobula}} is a universal provider audited on every chain it advertises and currently returns {{p50:mobula}} on the active tab. {{name:helius}} is Solana-only and dominates that chain because its label graph is curated against native Solana programs. {{name:moralis}} is EVM-centric and trails on TON, Stellar, XRP and Bitcoin. The per-chain tabs are the honest comparison."
   - q: "What is the alternative to Arkham or Nansen for builders?"
     a: "Arkham and Nansen own the consumer visualization layer (browse-the-web-of-onchain-money). The builder side of the question, the API integrated under the hood by wallets, portfolio trackers and AML flows, lives elsewhere. Mobula, Helius, Moralis, Blockscout, OLI, TonAPI, StellarExpert, XRPScan and WalletExplorer are the labeling APIs benchmarked here. Pick the one whose coverage matches the chains your product touches and whose response shape fits your integration latency budget."
   - q: "How does OpenChainBench measure wallet label coverage?"
@@ -86,7 +86,6 @@ prometheus:
 # value `all` skips the filter, aggregate over every chain at once.
 dimensions:
   chain:
-    - { value: all,      label: All chains }
     - { value: ethereum, label: Ethereum }
     - { value: solana,   label: Solana }
     - { value: bnb,      label: BNB Chain }
