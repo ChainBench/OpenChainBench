@@ -121,7 +121,7 @@ export function TimeSeriesChart({
   // `excluded` flag drives both opacity (CSS fade-out) and Y-axis math
   // (excluded values are dropped from min/max so the remaining lines
   // can spread out vertically when an outlier is hidden).
-  const lines = useMemo(() => {
+  const allLines = useMemo(() => {
     const built = benchmark.results
       .map((r) => ({
         slug: r.slug,
@@ -137,6 +137,16 @@ export function TimeSeriesChart({
     built.sort((a, b) => mean(b.values.slice(-6)) - mean(a.values.slice(-6)));
     return built;
   }, [benchmark, range, region, colors, excluded, seriesOverride]);
+
+  // Top-N selector. When the cohort grows past ~20 series the chart
+  // becomes visually noisy and the legend wraps to multiple lines.
+  // null = show all; number = clip to the top N by recent mean.
+  const TOP_N_DEFAULT = allLines.length > 20 ? 20 : null;
+  const [topN, setTopN] = useState<number | null>(TOP_N_DEFAULT);
+  const lines = useMemo(() => {
+    if (topN == null) return allLines;
+    return allLines.slice(0, topN);
+  }, [allLines, topN]);
 
   // A key that flips when the data shape changes. used to retrigger
   // the line-draw animation.
@@ -249,6 +259,33 @@ export function TimeSeriesChart({
                 onClick={() => setRegion(r)}
               />
             ))}
+          </div>
+        )}
+
+        {allLines.length > 10 && (
+          <div className="flex items-center gap-1">
+            <span className="mr-2 text-[10px] uppercase tracking-[0.16em] text-ink-faint">
+              Show
+            </span>
+            {([5, 10, 20, null] as const).map((n) => {
+              const active = topN === n;
+              const label = n == null ? "All" : `Top ${n}`;
+              return (
+                <button
+                  key={String(n)}
+                  type="button"
+                  onClick={() => setTopN(n)}
+                  className={`rounded-md border px-2 py-1 text-[11px] font-sans font-medium uppercase tracking-[0.1em] transition-all ${
+                    active
+                      ? "border-ink bg-ink text-paper"
+                      : "border-ink/15 bg-paper text-ink hover:border-ink/40"
+                  }`}
+                  aria-pressed={active}
+                >
+                  {label}
+                </button>
+              );
+            })}
           </div>
         )}
       </div>
