@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { Benchmark } from "@/types/benchmark";
 import { fmtUnit } from "@/lib/format";
 import { buildProviderColors } from "@/lib/series-colors";
 import { useChartExclusion } from "@/hooks/use-chart-exclusion";
+import { useTopN } from "@/hooks/use-top-n";
 import { LiveDot } from "@/components/live-dot";
 import { ProviderLogo } from "@/components/provider-logo";
+import { TopNSelector } from "@/components/top-n-selector";
 
 type Props = {
   benchmark: Benchmark;
@@ -70,23 +72,10 @@ export function RankedBarChart({
   }, [benchmark, colors]);
 
   // Top-N selector — sized off the providers that actually scored on
-  // the headline metric (`allRows`), not the registered cohort. An N
-  // button only renders when at least N providers have data, and "All"
-  // only appears when there's enough to make filtering meaningful
-  // (>10). Below 10 the toolbar disappears entirely.
-  const scoredCount = allRows.length;
-  const topNOptions = useMemo<(number | null)[]>(() => {
-    const opts: (number | null)[] = [];
-    for (const n of [5, 10, 20]) if (n < scoredCount) opts.push(n);
-    if (scoredCount > 10) opts.push(null);
-    return opts;
-  }, [scoredCount]);
-  const TOP_N_DEFAULT = scoredCount > 20 ? 20 : null;
-  const [topN, setTopN] = useState<number | null>(TOP_N_DEFAULT);
-  useEffect(() => {
-    if (topN == null) return;
-    if (!topNOptions.includes(topN)) setTopN(null);
-  }, [topNOptions, topN]);
+  // the headline metric (`allRows`), via the shared `useTopN` hook so
+  // every chart view (ranked bar, time series, distribution, donut)
+  // agrees on the option set and the empty-toolbar rule.
+  const { topN, setTopN, topNOptions } = useTopN(allRows.length);
   const rows = useMemo(() => {
     if (topN == null) return allRows;
     return allRows.slice(0, topN);
@@ -142,32 +131,9 @@ export function RankedBarChart({
           {headerActions}
         </div>
       </div>
-      {topNOptions.length > 1 && (
-        <div className="mb-4 flex flex-wrap items-center justify-end gap-1">
-          <span className="mr-2 text-[10px] uppercase tracking-[0.16em] text-ink-faint">
-            Show
-          </span>
-          {topNOptions.map((n) => {
-            const active = topN === n;
-            const label = n == null ? "All" : `Top ${n}`;
-            return (
-              <button
-                key={String(n)}
-                type="button"
-                onClick={() => setTopN(n)}
-                className={`rounded-md border px-2 py-1 text-[11px] font-sans font-medium uppercase tracking-[0.1em] transition-all ${
-                  active
-                    ? "border-ink bg-ink text-paper"
-                    : "border-ink/15 bg-paper text-ink hover:border-ink/40"
-                }`}
-                aria-pressed={active}
-              >
-                {label}
-              </button>
-            );
-          })}
-        </div>
-      )}
+      <div className="mb-4 flex flex-wrap items-center justify-end gap-1">
+        <TopNSelector value={topN} options={topNOptions} onChange={setTopN} />
+      </div>
       <ul className="space-y-2">
         {rows.map((r) => {
           const isOff = excluded.has(r.slug);
