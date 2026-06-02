@@ -329,16 +329,12 @@ html {
   text-size-adjust: 100%;
 }
 
-/* Safety net: clip any rogue horizontal overflow on BOTH html and body.
-   iOS Safari + Telegram WKWebView sometimes ignore `overflow-x: clip`
-   on <html> alone and still let a wide child push the page past 100vw.
-   Applying it to body too — plus capping body width at 100vw — covers
-   the WebView edge cases. `clip` (not `hidden`) avoids creating a
-   scroll container, so position: sticky on the header keeps working. */
-html,
-body {
+/* Safety net: clip horizontal overflow at the html (viewport) level only.
+   Do NOT apply overflow-x: clip to <body> — WebKit treats clip on <body>
+   as creating a containing block for position: fixed descendants, which
+   detaches the sticky/fixed header from the viewport and lets a 1-2 px
+   gap appear at the top during momentum scroll in Telegram WKWebView.
+   Per-component clipping (main, article) catches anything html misses. */
+html {
   overflow-x: clip;
-}
-body {
-  max-width: 100vw;
 }
