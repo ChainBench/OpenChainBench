@@ -101,11 +101,6 @@ export function brandColor(slug: string): string | null {
   return BRANDS[key(slug)]?.color ?? null;
 }
 
-/** Whether the brand color is dark enough that overlaid text should be light. */
-export function brandIsDark(slug: string): boolean {
-  return BRANDS[key(slug)]?.dark === true;
-}
-
 /** Two-letter initials used by the fallback colored chip when no SVG logo
  * is present in `public/logos/`. */
 export function initials(name: string): string {
@@ -119,7 +114,7 @@ export function initials(name: string): string {
 /** Perceived-luminance check used to pick a contrasting label color on top
  * of the brand chip. Threshold tuned so yellows/oranges read as light
  * (ink text) and saturated blues/reds as dark (paper text). */
-export function isLight(hex: string): boolean {
+function isLight(hex: string): boolean {
   const c = hex.replace("#", "");
   if (c.length !== 6) return false;
   const r = parseInt(c.slice(0, 2), 16);

@@ -1,4 +1,4 @@
-import type { Benchmark, ProviderResult } from "@/types/benchmark";
+import type { Benchmark } from "@/types/benchmark";
 import { liveResults } from "@/lib/provider-filters";
 import { readBestPerChain } from "@/lib/per-chain-contract";
 
@@ -144,60 +144,3 @@ export function rankOnChain(
   return { rank: idx + 1, totalRanked: sorted.length };
 }
 
-/**
- * Helper for badge / products page rendering. Returns the set of chain
- * slugs the provider has a leadership position on for the given bench.
- */
-export function leaderChains(
-  benchmark: Benchmark,
-  providerSlug: string,
-): string[] {
-  const bestPerChain = readBestPerChain(benchmark);
-  if (!bestPerChain) return [];
-  const lower = providerSlug.toLowerCase();
-  return Object.entries(bestPerChain)
-    .filter(([, leader]) => leader.slug.toLowerCase() === lower)
-    .map(([chain]) => chain);
-}
-
-/**
- * Build a compact "#1 on Solana · #4 on Base" sentence from a benchmark's
- * per-chain leaderboard for a given provider. Returns an array of segments
- * so the caller can intersperse separators. Empty array when there's no
- * meaningful chain context to surface.
- */
-export function perChainRankSegments(
-  benchmark: Benchmark,
-  providerSlug: string,
-): { chain: string; chainLabel: string; rank: number; totalRanked: number }[] {
-  const bestPerChain = readBestPerChain(benchmark);
-  const chainOptions = benchmark.dimensions?.chain ?? [];
-  if (!bestPerChain || chainOptions.length === 0) return [];
-  const out: { chain: string; chainLabel: string; rank: number; totalRanked: number }[] = [];
-  for (const c of chainOptions) {
-    if (c.value === "all") continue;
-    const ranked = rankOnChain(benchmark, c.value, providerSlug);
-    if (!ranked) continue;
-    out.push({ chain: c.value, chainLabel: c.label, rank: ranked.rank, totalRanked: ranked.totalRanked });
-  }
-  return out;
-}
-
-/** Pure helper: chain label lookup (e.g. "Solana" for value "solana"). */
-export function chainLabelFor(
-  benchmark: Benchmark,
-  chain: string,
-): string {
-  return (
-    benchmark.dimensions?.chain?.find((c) => c.value === chain)?.label ?? chain
-  );
-}
-
-/** Looks up the leader for `chain` on a benchmark, or undefined. Thin
- *  wrapper kept here so consumers don't need a separate spec import. */
-export function chainLeader(
-  benchmark: Benchmark,
-  chain: string,
-): ProviderResult | undefined {
-  return readBestPerChain(benchmark)?.[chain];
-}
