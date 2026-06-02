@@ -384,9 +384,11 @@ export function BenchmarkBody({
             <p className="label-mono text-ink-faint mb-4">
               {benchmark.unit === "count"
                 ? "Product ledger"
-                : "Product ledger · sorted by p50"}
+                : activePanel
+                  ? `Product ledger · sorted by ${activePanel.label}`
+                  : "Product ledger · sorted by p50"}
             </p>
-            <LedgerTable benchmark={benchmark} />
+            <LedgerTable benchmark={benchmark} activePanel={activePanel} />
           </div>
 
           {benchmark.unit !== "count" &&
