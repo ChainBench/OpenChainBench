@@ -2,10 +2,10 @@
 
 slug: network-fees
 number: "031"
-title: Current native transfer fee across L1 blockchains
-seo_title: "Cheapest blockchain transaction fee 2026: Ethereum, Solana, BNB, Avalanche, TRON, Cardano, SUI, TON, Stellar, Litecoin, Monero USD live"
-seo_description: "Live USD cost of a native-token transfer on 11 L1 chains: Ethereum, Solana, BNB, Avalanche, TRON, Cardano, SUI, TON, Stellar, Litecoin, Monero. Slow/standard/fast tiers refreshed every 30s, USD price from Mobula."
-subtitle: "Current USD cost of moving the chain's native asset, refreshed every 30 seconds for the same 11 L1s tracked on the finality bench."
+title: Current native transfer fee across L1 and L2 blockchains
+seo_title: "Cheapest blockchain transaction fee 2026: L1 and L2 USD live (Ethereum, Arbitrum, Optimism, Base, zkSync, Solana, BNB, Avalanche)"
+seo_description: "Live USD cost of a native-token transfer across 20 L1 and L2 chains. L1: Ethereum, Solana, BNB, Avalanche, TRON, Cardano, SUI, TON, Stellar, Litecoin, Monero. L2: Arbitrum, Optimism, Base, zkSync, Linea, Scroll, Blast, Mantle, Taiko. Slow/standard/fast tiers refreshed every 30s."
+subtitle: "Current USD cost of moving the chain's native asset across 20 L1 and L2 chains, refreshed every 30 seconds."
 
 seo_intro: |
   This page shows the live USD cost of sending the native token on every major Layer-1 blockchain. We sample the chain-native fee market (eth_feeHistory for EVM chains, getRecentPrioritizationFees for Solana, koios protocol params for Cardano, fee_stats for Stellar, fee_estimate for Monero, mempool oracles for Litecoin, getChainParameters for TRON, sui_getReferenceGasPrice for SUI, hardcoded typical observed for TON), convert to the chain's smallest unit, then multiply by the native-token USD price pulled from Mobula every 30 seconds. The result is a head-to-head comparison of what it actually costs an end user to move one unit of value on each chain, rather than a gas-price comparison in gwei or lamports which is meaningless across protocols.
@@ -83,6 +83,7 @@ prometheus:
 providers:
   - slug: ethereum
     name: Ethereum
+    layer: l1
     tag: EIP-1559 fee market, 21000 gas × (base + p50 priority)
     formula: "Median USD cost of a native ETH transfer over 24h: (base_fee + p50 priority_fee) × 21000 gas × ETH USD price."
     queries:
@@ -95,6 +96,7 @@ providers:
 
   - slug: bnb
     name: BNB Chain
+    layer: l1
     tag: EIP-1559 fee market, 21000 gas
     formula: "Median USD cost of a native BNB transfer over 24h."
     queries:
@@ -107,6 +109,7 @@ providers:
 
   - slug: avalanche
     name: Avalanche
+    layer: l1
     tag: C-Chain EIP-1559 fee market, 21000 gas
     formula: "Median USD cost of a native AVAX transfer over 24h."
     queries:
@@ -119,6 +122,7 @@ providers:
 
   - slug: solana
     name: Solana
+    layer: l1
     tag: 5000 lamport base + getRecentPrioritizationFees × 200 CU
     formula: "Median USD cost of a native SOL transfer over 24h: 5000 lamports + p50 priority × 200 CU × SOL USD price."
     queries:
@@ -131,6 +135,7 @@ providers:
 
   - slug: tron
     name: TRON
+    layer: l1
     tag: Bandwidth model, 268 bytes × getTransactionFee SUN/byte
     formula: "Deterministic USD cost of a native TRX transfer using the bandwidth-rate parameter × 268 bytes typical transfer × TRX USD price."
     queries:
@@ -143,6 +148,7 @@ providers:
 
   - slug: cardano
     name: Cardano
+    layer: l1
     tag: min_fee_b + size × min_fee_a, deterministic
     formula: "Protocol-deterministic ADA transfer cost: koios live min_fee_a/b × 250 bytes typical × ADA USD price."
     queries:
@@ -155,6 +161,7 @@ providers:
 
   - slug: sui
     name: Sui
+    layer: l1
     tag: suix_getReferenceGasPrice × 2_000_000 gas budget
     formula: "USD cost of a native SUI transfer: live reference gas price × 2M gas budget × SUI USD price."
     queries:
@@ -167,6 +174,7 @@ providers:
 
   - slug: ton
     name: TON
+    layer: l1
     tag: Hardcoded 0.005 TON typical wallet-v4 transfer
     formula: "Conservative typical-observed cost of a TON wallet transfer × TON USD price. TON has no fee-estimate RPC; this is the observed median."
     queries:
@@ -179,6 +187,7 @@ providers:
 
   - slug: stellar
     name: Stellar
+    layer: l1
     tag: 100 stroops base per operation, surge during congestion
     formula: "Live horizon fee_stats.last_ledger_base_fee × 1 op × XLM USD price."
     queries:
@@ -191,6 +200,7 @@ providers:
 
   - slug: litecoin
     name: Litecoin
+    layer: l1
     tag: litecoinspace fee oracle × 225 vBytes
     formula: "Mempool-based litoshi/vByte × 225 vBytes typical P2WPKH transfer × LTC USD price."
     queries:
@@ -203,6 +213,7 @@ providers:
 
   - slug: monero
     name: Monero
+    layer: l1
     tag: get_fee_estimate × 1500 bytes RingCT
     formula: "Monero-rpc fee per byte × 1500 bytes typical 1-in-2-out RingCT × XMR USD price."
     queries:
@@ -212,3 +223,112 @@ providers:
       mean: avg_over_time(tx_fee_native_transfer_usd{chain="monero",tier="std"}[24h])
       success: avg_over_time(tx_fee_health{chain="monero"}[24h])
       series: tx_fee_native_transfer_usd{chain="monero",tier="std"}
+
+  - slug: arbitrum
+    name: Arbitrum One
+    layer: l2
+    tag: "Optimistic rollup (Nitro), 21000 gas"
+    formula: "Median USD cost of a native ETH transfer on Arbitrum One over 24h. L2 execution cost only; L1 data posting fee excluded (Phase 2)."
+    queries:
+      p50: quantile_over_time(0.50, tx_fee_native_transfer_usd{chain="arbitrum",tier="std"}[24h])
+      p90: quantile_over_time(0.90, tx_fee_native_transfer_usd{chain="arbitrum",tier="fast"}[24h])
+      p99: quantile_over_time(0.99, tx_fee_native_transfer_usd{chain="arbitrum",tier="fast"}[24h])
+      mean: avg_over_time(tx_fee_native_transfer_usd{chain="arbitrum",tier="std"}[24h])
+      success: avg_over_time(tx_fee_health{chain="arbitrum"}[24h])
+      series: tx_fee_native_transfer_usd{chain="arbitrum",tier="std"}
+  - slug: optimism
+    name: Optimism
+    layer: l2
+    tag: "OP Stack optimistic rollup, 21000 gas"
+    formula: "Median USD cost of a native ETH transfer on Optimism over 24h. L2 execution cost only; L1 data posting fee excluded (Phase 2)."
+    queries:
+      p50: quantile_over_time(0.50, tx_fee_native_transfer_usd{chain="optimism",tier="std"}[24h])
+      p90: quantile_over_time(0.90, tx_fee_native_transfer_usd{chain="optimism",tier="fast"}[24h])
+      p99: quantile_over_time(0.99, tx_fee_native_transfer_usd{chain="optimism",tier="fast"}[24h])
+      mean: avg_over_time(tx_fee_native_transfer_usd{chain="optimism",tier="std"}[24h])
+      success: avg_over_time(tx_fee_health{chain="optimism"}[24h])
+      series: tx_fee_native_transfer_usd{chain="optimism",tier="std"}
+  - slug: base
+    name: Base
+    layer: l2
+    tag: "OP Stack optimistic rollup (Coinbase), 21000 gas"
+    formula: "Median USD cost of a native ETH transfer on Base over 24h. L2 execution cost only; L1 data posting fee excluded (Phase 2)."
+    queries:
+      p50: quantile_over_time(0.50, tx_fee_native_transfer_usd{chain="base",tier="std"}[24h])
+      p90: quantile_over_time(0.90, tx_fee_native_transfer_usd{chain="base",tier="fast"}[24h])
+      p99: quantile_over_time(0.99, tx_fee_native_transfer_usd{chain="base",tier="fast"}[24h])
+      mean: avg_over_time(tx_fee_native_transfer_usd{chain="base",tier="std"}[24h])
+      success: avg_over_time(tx_fee_health{chain="base"}[24h])
+      series: tx_fee_native_transfer_usd{chain="base",tier="std"}
+  - slug: zksync
+    name: zkSync Era
+    layer: l2
+    tag: "ZK rollup, 21000 gas"
+    formula: "Median USD cost of a native ETH transfer on zkSync Era over 24h. L2 execution cost only; L1 data posting fee excluded (Phase 2)."
+    queries:
+      p50: quantile_over_time(0.50, tx_fee_native_transfer_usd{chain="zksync",tier="std"}[24h])
+      p90: quantile_over_time(0.90, tx_fee_native_transfer_usd{chain="zksync",tier="fast"}[24h])
+      p99: quantile_over_time(0.99, tx_fee_native_transfer_usd{chain="zksync",tier="fast"}[24h])
+      mean: avg_over_time(tx_fee_native_transfer_usd{chain="zksync",tier="std"}[24h])
+      success: avg_over_time(tx_fee_health{chain="zksync"}[24h])
+      series: tx_fee_native_transfer_usd{chain="zksync",tier="std"}
+  - slug: linea
+    name: Linea
+    layer: l2
+    tag: "ZK rollup (Stark), 21000 gas"
+    formula: "Median USD cost of a native ETH transfer on Linea over 24h. L2 execution cost only; L1 data posting fee excluded (Phase 2)."
+    queries:
+      p50: quantile_over_time(0.50, tx_fee_native_transfer_usd{chain="linea",tier="std"}[24h])
+      p90: quantile_over_time(0.90, tx_fee_native_transfer_usd{chain="linea",tier="fast"}[24h])
+      p99: quantile_over_time(0.99, tx_fee_native_transfer_usd{chain="linea",tier="fast"}[24h])
+      mean: avg_over_time(tx_fee_native_transfer_usd{chain="linea",tier="std"}[24h])
+      success: avg_over_time(tx_fee_health{chain="linea"}[24h])
+      series: tx_fee_native_transfer_usd{chain="linea",tier="std"}
+  - slug: scroll
+    name: Scroll
+    layer: l2
+    tag: "zkEVM rollup, 21000 gas"
+    formula: "Median USD cost of a native ETH transfer on Scroll over 24h. L2 execution cost only; L1 data posting fee excluded (Phase 2)."
+    queries:
+      p50: quantile_over_time(0.50, tx_fee_native_transfer_usd{chain="scroll",tier="std"}[24h])
+      p90: quantile_over_time(0.90, tx_fee_native_transfer_usd{chain="scroll",tier="fast"}[24h])
+      p99: quantile_over_time(0.99, tx_fee_native_transfer_usd{chain="scroll",tier="fast"}[24h])
+      mean: avg_over_time(tx_fee_native_transfer_usd{chain="scroll",tier="std"}[24h])
+      success: avg_over_time(tx_fee_health{chain="scroll"}[24h])
+      series: tx_fee_native_transfer_usd{chain="scroll",tier="std"}
+  - slug: blast
+    name: Blast
+    layer: l2
+    tag: "OP Stack optimistic rollup (Blast), 21000 gas"
+    formula: "Median USD cost of a native ETH transfer on Blast over 24h. L2 execution cost only; L1 data posting fee excluded (Phase 2)."
+    queries:
+      p50: quantile_over_time(0.50, tx_fee_native_transfer_usd{chain="blast",tier="std"}[24h])
+      p90: quantile_over_time(0.90, tx_fee_native_transfer_usd{chain="blast",tier="fast"}[24h])
+      p99: quantile_over_time(0.99, tx_fee_native_transfer_usd{chain="blast",tier="fast"}[24h])
+      mean: avg_over_time(tx_fee_native_transfer_usd{chain="blast",tier="std"}[24h])
+      success: avg_over_time(tx_fee_health{chain="blast"}[24h])
+      series: tx_fee_native_transfer_usd{chain="blast",tier="std"}
+  - slug: mantle
+    name: Mantle
+    layer: l2
+    tag: "OP Stack optimistic rollup (Mantle), 21000 gas"
+    formula: "Median USD cost of a native ETH transfer on Mantle over 24h. L2 execution cost only; L1 data posting fee excluded (Phase 2)."
+    queries:
+      p50: quantile_over_time(0.50, tx_fee_native_transfer_usd{chain="mantle",tier="std"}[24h])
+      p90: quantile_over_time(0.90, tx_fee_native_transfer_usd{chain="mantle",tier="fast"}[24h])
+      p99: quantile_over_time(0.99, tx_fee_native_transfer_usd{chain="mantle",tier="fast"}[24h])
+      mean: avg_over_time(tx_fee_native_transfer_usd{chain="mantle",tier="std"}[24h])
+      success: avg_over_time(tx_fee_health{chain="mantle"}[24h])
+      series: tx_fee_native_transfer_usd{chain="mantle",tier="std"}
+  - slug: taiko
+    name: Taiko
+    layer: l2
+    tag: "Based rollup, 21000 gas"
+    formula: "Median USD cost of a native ETH transfer on Taiko over 24h. L2 execution cost only; L1 data posting fee excluded (Phase 2)."
+    queries:
+      p50: quantile_over_time(0.50, tx_fee_native_transfer_usd{chain="taiko",tier="std"}[24h])
+      p90: quantile_over_time(0.90, tx_fee_native_transfer_usd{chain="taiko",tier="fast"}[24h])
+      p99: quantile_over_time(0.99, tx_fee_native_transfer_usd{chain="taiko",tier="fast"}[24h])
+      mean: avg_over_time(tx_fee_native_transfer_usd{chain="taiko",tier="std"}[24h])
+      success: avg_over_time(tx_fee_health{chain="taiko"}[24h])
+      series: tx_fee_native_transfer_usd{chain="taiko",tier="std"}
