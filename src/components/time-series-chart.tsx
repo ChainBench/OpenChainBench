@@ -540,7 +540,7 @@ function Chart({
       // line draws a break but the dot keeps rendering at 0 / NaN.
       return { ...l, color, pts, linePath, fillPath, lastX, lastY, last, isGap };
     });
-  }, [slicedLines, padL, padR, padT, padB, innerW, innerH, lo, yRange]);
+  }, [slicedLines, padL, padT, innerW, innerH, lo, yRange]);
 
   const hoverX = hover ? padL + innerW * (hover.idx / Math.max(1, numPoints - 1)) : null;
   const hoverFraction = hover ? hover.idx / Math.max(1, numPoints - 1) : 0;

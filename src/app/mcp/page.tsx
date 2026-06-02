@@ -171,7 +171,7 @@ export default async function McpPage() {
             Surface
           </span>
           <h2 className="display text-xl sm:text-2xl text-ink leading-none">
-            What's exposed
+            What&apos;s exposed
           </h2>
         </header>
 
@@ -247,7 +247,7 @@ export default async function McpPage() {
           The server is read-only. There are no admin actions, no mutating
           tools, no upstream secrets reachable through the wire. PromQL
           queries are scoped to the metric namespaces we publish, so the
-          public endpoint can't be used to walk the underlying Prometheus.
+          public endpoint can&apos;t be used to walk the underlying Prometheus.
           Rate limits, body caps, batch rejection and SSE disable are
           enforced at the route. Source is on{" "}
           <a
