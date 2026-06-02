@@ -2,7 +2,7 @@
 
 import { Menu, X } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { SiteLogoSwitcher } from "@/components/site-logo-switcher";
 import { ThemeToggle } from "@/components/theme-toggle";
 
@@ -24,10 +24,6 @@ const NAV = [
 
 export function SiteHeader() {
   const [open, setOpen] = useState(false);
-  const headerRef = useRef<HTMLDivElement>(null);
-  // Initial estimate matches the rendered header height so the spacer
-  // doesn't jump on first paint; ResizeObserver refines it after mount.
-  const [headerH, setHeaderH] = useState(64);
 
   // Close the mobile menu when the viewport crosses md so the dropdown
   // doesn't stick around as the desktop nav reappears.
@@ -41,29 +37,16 @@ export function SiteHeader() {
     return () => mql.removeEventListener("change", onChange);
   }, [open]);
 
-  // Measure the fixed header so we can reserve the same height in the
-  // flow with a spacer. ResizeObserver picks up viewport resizes.
-  useEffect(() => {
-    const el = headerRef.current;
-    if (!el) return;
-    const update = () => setHeaderH(el.offsetHeight);
-    update();
-    const ro = new ResizeObserver(update);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-
   return (
-    <>
-      <div
-        ref={headerRef}
-        // position: fixed (not sticky) — sticky is flaky on iOS Safari when
-        // the URL bar animates; fixed keeps the navbar glued. No ancestor
-        // may carry overflow: clip / transform / will-change or fixed
-        // positions relative to that ancestor instead of the viewport
-        // (Telegram WKWebView gap symptom). Verified clean as of dev.
-        className="fixed top-0 left-0 right-0 z-50 flex flex-col font-sans bg-surface"
-      >
+    <div
+      // position: sticky (not fixed) — WebKit iOS 26 has a known bug where
+      // position: fixed elements jitter 10-24 px on scroll direction change
+      // (bugs.webkit.org/297779). The bug affects Safari, Chrome AND every
+      // WKWebView host (Telegram in-app browser is the symptom we hit).
+      // sticky uses a different render path that doesn't trip the bug, and
+      // since it stays in normal flow there's no spacer div to keep in sync.
+      className="sticky top-0 z-50 flex flex-col font-sans bg-surface"
+    >
       <header className="border-b border-rule py-4 md:py-5 px-4 sm:px-6 shrink-0 text-sm bg-surface relative">
         <div className="max-w-[1400px] mx-auto flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
@@ -148,10 +131,6 @@ export function SiteHeader() {
           </nav>
         )}
       </header>
-      </div>
-      {/* Spacer reserves the fixed header's height in the document flow
-          so page content does not start under it. */}
-      <div aria-hidden style={{ height: headerH }} />
-    </>
+    </div>
   );
 }
