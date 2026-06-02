@@ -124,6 +124,18 @@ export default function RootLayout({
             __html: `(function(){try{var t=localStorage.getItem('ocb-theme');var d=t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d)document.documentElement.classList.add('dark');}catch(e){}})();`,
           }}
         />
+        {/* Detect iOS in-app WebView (Telegram, Instagram, FB, Twitter, etc.).
+            These hosts hit the iOS 26 WebKit fixed/sticky jitter bug
+            (bugs.webkit.org/297779) harder than regular Safari because their
+            own URL-bar overlay animates the layout viewport on top of the
+            WebKit regression. CSS below downgrades the site header to
+            non-sticky only when this class is present. Inline so the class
+            is on the html element before React hydrates — no flash. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var ua=navigator.userAgent;if(/iPhone|iPad|iPod/.test(ua)&&!/Safari\\//.test(ua))document.documentElement.classList.add('ios-webview');}catch(e){}})();`,
+          }}
+        />
       </head>
       {/* grid (not flex) so position: sticky on <SiteHeader> works reliably
           on iOS Safari — sticky inside a flex column has known quirks.

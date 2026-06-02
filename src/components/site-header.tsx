@@ -39,16 +39,14 @@ export function SiteHeader() {
 
   return (
     <div
-      // Sticky only on md+ (desktop). On mobile the header stays in normal
-      // flow and scrolls away with the page. Reason: WebKit iOS 26 has a
-      // regression (bugs.webkit.org/297779) where sticky AND fixed elements
-      // jitter 10-24 px on scroll direction change, leaving a visible gap
-      // at the top in every WKWebView host (Telegram in-app, Chrome iOS,
-      // Mastodon and LinkedIn ship the same symptom). Apple's fix is
-      // partial; until iOS 26.2+ lands across the user base, non-sticky on
-      // mobile is the only way to avoid the jitter entirely. Standard
-      // mobile UX anyway — pull to top to see the nav.
-      className="relative md:sticky md:top-0 z-50 flex flex-col font-sans bg-surface"
+      // Sticky everywhere by default. Only iOS in-app WebViews (Telegram,
+      // Instagram, FB, etc.) get downgraded to non-sticky to dodge the
+      // iOS 26 WebKit jitter bug (bugs.webkit.org/297779). Regular mobile
+      // Safari and Chrome iOS keep their sticky nav because the symptom is
+      // not visible there in practice. Override lives in globals.css
+      // (`html.ios-webview .site-header-root` rule) so the WebView-only
+      // selector stays out of the Tailwind class soup here.
+      className="site-header-root sticky top-0 z-50 flex flex-col font-sans bg-surface"
     >
       <header className="border-b border-rule py-4 md:py-5 px-4 sm:px-6 shrink-0 text-sm bg-surface relative">
         <div className="max-w-[1400px] mx-auto flex items-center justify-between gap-3">
