@@ -338,3 +338,17 @@ html {
 html {
   overflow-x: clip;
 }
+
+/* iOS in-app WebView (Telegram, Instagram, Facebook, Twitter, TikTok)
+   downgrade only: drop sticky on the site header so the iOS 26 WebKit
+   jitter bug (bugs.webkit.org/297779) cannot expose a gap at the top.
+   The `ios-webview` class is set by an inline script in layout.tsx
+   based on userAgent (iOS device with no `Safari/` token = WebView).
+   Regular mobile Safari / Chrome iOS keep sticky because the symptom
+   does not visibly trigger there. Desktop is sticky everywhere. */
+@media (max-width: 767px) {
+  html.ios-webview .site-header-root {
+    position: relative;
+    top: auto;
+  }
+}
