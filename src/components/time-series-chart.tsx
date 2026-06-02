@@ -138,10 +138,16 @@ export function TimeSeriesChart({
     return built;
   }, [benchmark, range, region, colors, excluded, seriesOverride]);
 
-  // Top-N selector. When the cohort grows past ~20 series the chart
-  // becomes visually noisy and the legend wraps to multiple lines.
-  // null = show all; number = clip to the top N by recent mean.
-  const TOP_N_DEFAULT = allLines.length > 20 ? 20 : null;
+  // Top-N selector. Sized off the REGISTERED cohort, not the subset
+  // that happened to emit data this cycle. On the headline metric some
+  // providers can return empty series for legitimate reasons (zero
+  // activity in the window, fresh registry entry not yet backfilled by
+  // Prom), but the reader still has a 60 row cohort and wants the
+  // filter affordance — sizing off `allLines` would hide the selector
+  // for exactly the views where it matters most. The slice itself
+  // operates on `allLines` so empty providers stay out of the chart.
+  const cohortSize = benchmark.results.length;
+  const TOP_N_DEFAULT = cohortSize > 20 ? 20 : null;
   const [topN, setTopN] = useState<number | null>(TOP_N_DEFAULT);
   const lines = useMemo(() => {
     if (topN == null) return allLines;
@@ -262,7 +268,7 @@ export function TimeSeriesChart({
           </div>
         )}
 
-        {allLines.length > 10 && (
+        {cohortSize > 10 && (
           <div className="flex items-center gap-1">
             <span className="mr-2 text-[10px] uppercase tracking-[0.16em] text-ink-faint">
               Show
