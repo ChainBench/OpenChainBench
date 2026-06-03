@@ -99,7 +99,7 @@ prometheus:
 # explode in cardinality.
 #
 #   hl_frontend_fees_usd_24h_v2{builder}            gauge   (p50 headline)
-#   hl_frontend_d7_retention_pct{builder}             gauge   (p90 column)
+#   hl_frontend_volume_usd_24h_v2{builder}             gauge   (p90 column)
 #   hl_frontend_d30_retention_pct{builder}            gauge   (also exposed)
 #   hl_frontend_fees_per_user_usd_v2{builder}            gauge   (p99 column)
 #   hl_frontend_volume_usd_24h{builder}               gauge   (secondary)
@@ -113,11 +113,12 @@ prometheus:
 #   hl_frontend_csv_fetch_status_total{builder,code}  counter (per HTTP code)
 #
 # Bench page column mapping. The p50/p90/p99 slots are repurposed since the
-# unit is bps and there is no native percentile semantics: p50 = effective
-# fee, p90 = D7 cohort retention, p99 = USD fees per unique trader. The
-# repurposing is called out in the methodology + FAQ so readers don't
-# misread the columns. Fee discipline (30d stddev) is computable in
-# Prom via the MCP server but not surfaced in a column.
+# unit is USD and there is no native percentile semantics: p50 = builder
+# fees collected 24h, p90 = volume routed 24h, p99 = builder fees per unique
+# trader. p90 was previously d7_retention_pct but that metric is only emitted
+# for the original 8 builders, which silently dropped the other 52 from the
+# leaderboard (spec.ts skips any provider with a null p90 or p99). Switching
+# p90 to volume_usd_24h_v2 unblocks the full 60-builder cohort.
 
 providers:
   - slug: phantom-perps
@@ -126,7 +127,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the last complete UTC day, computed from Hyperliquid's public attributed-fills CSV for Phantom's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="phantom-perps"}
-      p90: hl_frontend_d7_retention_pct{builder="phantom-perps"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="phantom-perps"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="phantom-perps"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="phantom-perps"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -139,7 +140,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the last complete UTC day, computed from Hyperliquid's public attributed-fills CSV for Axiom's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="axiom"}
-      p90: hl_frontend_d7_retention_pct{builder="axiom"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="axiom"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="axiom"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="axiom"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -152,7 +153,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the last complete UTC day, computed from Hyperliquid's public attributed-fills CSV for pvp.trade's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="pvp-trade"}
-      p90: hl_frontend_d7_retention_pct{builder="pvp-trade"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="pvp-trade"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="pvp-trade"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="pvp-trade"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -165,7 +166,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the last complete UTC day, computed from Hyperliquid's public attributed-fills CSV for Insilico's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="insilico"}
-      p90: hl_frontend_d7_retention_pct{builder="insilico"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="insilico"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="insilico"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="insilico"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -178,7 +179,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the last complete UTC day, computed from Hyperliquid's public attributed-fills CSV for Defiapp's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="defiapp"}
-      p90: hl_frontend_d7_retention_pct{builder="defiapp"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="defiapp"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="defiapp"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="defiapp"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -191,7 +192,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the last complete UTC day, computed from Hyperliquid's public attributed-fills CSV for MetaMask's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="metamask"}
-      p90: hl_frontend_d7_retention_pct{builder="metamask"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="metamask"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="metamask"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="metamask"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -204,7 +205,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the last complete UTC day, computed from Hyperliquid's public attributed-fills CSV for Dexari's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="dexari"}
-      p90: hl_frontend_d7_retention_pct{builder="dexari"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="dexari"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="dexari"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="dexari"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -217,7 +218,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the last complete UTC day, computed from Hyperliquid's public attributed-fills CSV for Okto's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="okto"}
-      p90: hl_frontend_d7_retention_pct{builder="okto"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="okto"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="okto"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="okto"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -229,7 +230,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Trust Wallet's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="trust-wallet"}
-      p90: hl_frontend_d7_retention_pct{builder="trust-wallet"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="trust-wallet"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="trust-wallet"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="trust-wallet"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -242,7 +243,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Sushi's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="sushi"}
-      p90: hl_frontend_d7_retention_pct{builder="sushi"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="sushi"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="sushi"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="sushi"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -255,7 +256,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Dreamcash's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="dreamcash"}
-      p90: hl_frontend_d7_retention_pct{builder="dreamcash"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="dreamcash"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="dreamcash"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="dreamcash"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -268,7 +269,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Based's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="based-app"}
-      p90: hl_frontend_d7_retention_pct{builder="based-app"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="based-app"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="based-app"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="based-app"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -281,7 +282,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Blink's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="blink"}
-      p90: hl_frontend_d7_retention_pct{builder="blink"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="blink"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="blink"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="blink"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -294,7 +295,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Perpmate's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="perpmate"}
-      p90: hl_frontend_d7_retention_pct{builder="perpmate"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="perpmate"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="perpmate"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="perpmate"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -307,7 +308,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Arena's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="arena"}
-      p90: hl_frontend_d7_retention_pct{builder="arena"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="arena"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="arena"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="arena"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -320,7 +321,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for MinaraAI's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="minaraai"}
-      p90: hl_frontend_d7_retention_pct{builder="minaraai"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="minaraai"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="minaraai"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="minaraai"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -333,7 +334,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for ApexLiquid's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="apexliquid"}
-      p90: hl_frontend_d7_retention_pct{builder="apexliquid"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="apexliquid"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="apexliquid"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="apexliquid"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -346,7 +347,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Coin98's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="coin98"}
-      p90: hl_frontend_d7_retention_pct{builder="coin98"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="coin98"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="coin98"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="coin98"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -359,7 +360,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for CoinPilot's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="coinpilot"}
-      p90: hl_frontend_d7_retention_pct{builder="coinpilot"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="coinpilot"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="coinpilot"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="coinpilot"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -372,7 +373,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Echosync's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="echosync"}
-      p90: hl_frontend_d7_retention_pct{builder="echosync"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="echosync"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="echosync"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="echosync"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -385,7 +386,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for FOMO's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="fomo"}
-      p90: hl_frontend_d7_retention_pct{builder="fomo"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="fomo"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="fomo"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="fomo"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -398,7 +399,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Gem Wallet's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="gemwallet"}
-      p90: hl_frontend_d7_retention_pct{builder="gemwallet"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="gemwallet"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="gemwallet"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="gemwallet"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -411,7 +412,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for GTR Trade's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="gtr-trade"}
-      p90: hl_frontend_d7_retention_pct{builder="gtr-trade"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="gtr-trade"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="gtr-trade"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="gtr-trade"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -424,7 +425,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Hyprearn's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="hyprearn"}
-      p90: hl_frontend_d7_retention_pct{builder="hyprearn"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="hyprearn"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="hyprearn"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="hyprearn"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -437,7 +438,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Legend Trade's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="legend-trade"}
-      p90: hl_frontend_d7_retention_pct{builder="legend-trade"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="legend-trade"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="legend-trade"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="legend-trade"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -450,7 +451,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Katoshi's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="katoshi"}
-      p90: hl_frontend_d7_retention_pct{builder="katoshi"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="katoshi"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="katoshi"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="katoshi"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -463,7 +464,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Metascalp's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="metascalp"}
-      p90: hl_frontend_d7_retention_pct{builder="metascalp"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="metascalp"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="metascalp"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="metascalp"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -476,7 +477,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Moontrader's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="moontrader"}
-      p90: hl_frontend_d7_retention_pct{builder="moontrader"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="moontrader"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="moontrader"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="moontrader"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -489,7 +490,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for OneKey's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="onekey"}
-      p90: hl_frontend_d7_retention_pct{builder="onekey"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="onekey"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="onekey"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="onekey"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -502,7 +503,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Pear's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="pear"}
-      p90: hl_frontend_d7_retention_pct{builder="pear"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="pear"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="pear"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="pear"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -515,7 +516,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Rabby's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="rabby"}
-      p90: hl_frontend_d7_retention_pct{builder="rabby"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="rabby"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="rabby"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="rabby"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -528,7 +529,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Ranger Finance's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="ranger-finance"}
-      p90: hl_frontend_d7_retention_pct{builder="ranger-finance"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="ranger-finance"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="ranger-finance"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="ranger-finance"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -541,7 +542,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Senpi's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="senpi"}
-      p90: hl_frontend_d7_retention_pct{builder="senpi"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="senpi"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="senpi"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="senpi"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -554,7 +555,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for SuperX's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="superx"}
-      p90: hl_frontend_d7_retention_pct{builder="superx"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="superx"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="superx"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="superx"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -567,7 +568,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Supurr's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="supurr"}
-      p90: hl_frontend_d7_retention_pct{builder="supurr"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="supurr"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="supurr"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="supurr"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -580,7 +581,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Unigox's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="unigox"}
-      p90: hl_frontend_d7_retention_pct{builder="unigox"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="unigox"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="unigox"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="unigox"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -593,7 +594,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for UXUY's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="uxuy"}
-      p90: hl_frontend_d7_retention_pct{builder="uxuy"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="uxuy"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="uxuy"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="uxuy"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -606,7 +607,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Wunder's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="wunder"}
-      p90: hl_frontend_d7_retention_pct{builder="wunder"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="wunder"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="wunder"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="wunder"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -619,7 +620,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Grider's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="grider"}
-      p90: hl_frontend_d7_retention_pct{builder="grider"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="grider"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="grider"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="grider"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -632,7 +633,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Tradoor's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="tradoor"}
-      p90: hl_frontend_d7_retention_pct{builder="tradoor"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="tradoor"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="tradoor"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="tradoor"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -645,7 +646,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for BullpenFi's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="bullpenfi"}
-      p90: hl_frontend_d7_retention_pct{builder="bullpenfi"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="bullpenfi"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="bullpenfi"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="bullpenfi"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -658,7 +659,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Dexly Trade's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="dexly-trade"}
-      p90: hl_frontend_d7_retention_pct{builder="dexly-trade"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="dexly-trade"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="dexly-trade"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="dexly-trade"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -671,7 +672,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Hyperdash's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="hyperdash"}
-      p90: hl_frontend_d7_retention_pct{builder="hyperdash"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="hyperdash"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="hyperdash"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="hyperdash"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -684,7 +685,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Infinex's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="infinex"}
-      p90: hl_frontend_d7_retention_pct{builder="infinex"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="infinex"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="infinex"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="infinex"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -697,7 +698,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Liminal's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="liminal"}
-      p90: hl_frontend_d7_retention_pct{builder="liminal"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="liminal"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="liminal"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="liminal"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -710,7 +711,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Liquid Perps's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="liquid-perps"}
-      p90: hl_frontend_d7_retention_pct{builder="liquid-perps"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="liquid-perps"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="liquid-perps"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="liquid-perps"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -723,7 +724,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Lit Trade's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="lit-trade"}
-      p90: hl_frontend_d7_retention_pct{builder="lit-trade"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="lit-trade"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="lit-trade"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="lit-trade"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -736,7 +737,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Lootbase's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="lootbase"}
-      p90: hl_frontend_d7_retention_pct{builder="lootbase"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="lootbase"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="lootbase"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="lootbase"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -749,7 +750,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Mass.money's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="mass-dot-money"}
-      p90: hl_frontend_d7_retention_pct{builder="mass-dot-money"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="mass-dot-money"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="mass-dot-money"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="mass-dot-money"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -762,7 +763,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Moonbot's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="moonbot"}
-      p90: hl_frontend_d7_retention_pct{builder="moonbot"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="moonbot"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="moonbot"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="moonbot"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -775,7 +776,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Rainbow's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="rainbow"}
-      p90: hl_frontend_d7_retention_pct{builder="rainbow"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="rainbow"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="rainbow"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="rainbow"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -788,7 +789,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for SuperCEXy's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="supercexy"}
-      p90: hl_frontend_d7_retention_pct{builder="supercexy"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="supercexy"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="supercexy"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="supercexy"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -801,7 +802,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Superstack's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="superstack"}
-      p90: hl_frontend_d7_retention_pct{builder="superstack"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="superstack"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="superstack"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="superstack"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -814,7 +815,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Wallet V's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="wallet-v"}
-      p90: hl_frontend_d7_retention_pct{builder="wallet-v"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="wallet-v"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="wallet-v"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="wallet-v"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -827,7 +828,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for xTrade Protocol's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="xtrade-protocol"}
-      p90: hl_frontend_d7_retention_pct{builder="xtrade-protocol"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="xtrade-protocol"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="xtrade-protocol"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="xtrade-protocol"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -840,7 +841,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Taco Trade's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="taco-trade"}
-      p90: hl_frontend_d7_retention_pct{builder="taco-trade"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="taco-trade"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="taco-trade"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="taco-trade"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -853,7 +854,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Silhouette's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="silhouette"}
-      p90: hl_frontend_d7_retention_pct{builder="silhouette"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="silhouette"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="silhouette"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="silhouette"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -866,7 +867,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Tread.fi's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="tread-fi"}
-      p90: hl_frontend_d7_retention_pct{builder="tread-fi"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="tread-fi"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="tread-fi"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="tread-fi"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -879,7 +880,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for FlowBot's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="flowbot"}
-      p90: hl_frontend_d7_retention_pct{builder="flowbot"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="flowbot"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="flowbot"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="flowbot"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
@@ -892,7 +893,7 @@ providers:
     formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Nautilus Trader's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="nautilus-trader"}
-      p90: hl_frontend_d7_retention_pct{builder="nautilus-trader"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="nautilus-trader"}
       p99: hl_frontend_fees_per_user_usd_v2{builder="nautilus-trader"}
       mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="nautilus-trader"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
