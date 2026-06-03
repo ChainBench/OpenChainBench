@@ -12,7 +12,7 @@ seo_intro: |
 
 faq:
   - q: "What does this benchmark measure?"
-    a: "The current USD cost of a single native-token transfer on each of the 11 tracked L1 chains. A native transfer is the simplest possible action: send the chain's main asset from one address to another. ETH on Ethereum, SOL on Solana, ADA on Cardano, XLM on Stellar, and so on. We do not measure ERC-20 transfers, DEX swaps, or contract calls."
+    a: "The current USD cost of a single native-token transfer on each tracked L1 and L2 chain. A native transfer is the simplest possible action: send the chain's main asset from one address to another. ETH on Ethereum, SOL on Solana, ADA on Cardano, XLM on Stellar, and so on. We do not measure ERC-20 transfers, DEX swaps, or contract calls."
   - q: "Why USD instead of gas price?"
     a: "Gas price in gwei (Ethereum) cannot be compared to lamports per CU (Solana) or stroops per operation (Stellar). The only honest cross-chain unit is the dollar cost of a user-facing action, computed at scrape time using a live USD price for each native token. Mobula's market API provides the prices we multiply by."
   - q: "What do slow, standard, and fast tiers mean?"
@@ -22,7 +22,7 @@ faq:
   - q: "Why is the Cardano fee always similar?"
     a: "Cardano fees are deterministic. The protocol parameters (`min_fee_a` per byte, `min_fee_b` base) are set by governance and updated rarely; a standard ADA transfer is roughly 250 bytes, so the lovelace cost is essentially fixed until the next parameter vote. The USD figure on the leaderboard only moves because ADA's USD price moves."
   - q: "How are L2 fees handled?"
-    a: "Not on this page. L2 fees are a separate measurement problem (rollup fee = L2 execution + L1 data posting, the latter being a non-trivial blob market). The L2 bench is in progress as a companion to this L1 page; once shipped, you'll be able to compare L1-fee vs L2-fee for any wallet decision in one click."
+    a: "L2 native-transfer fees are sampled the same way as L1: query the chain's fee oracle (`eth_feeHistory` on rollups with EVM RPC) and multiply by the L2's native-token USD price. The number you see is the user-facing cost only; the L2 sequencer absorbs the L1 data-posting component into the gas price under the hood, so this leaderboard reflects what an end user pays, not the rollup's internal economics."
   - q: "How often does the page refresh?"
     a: "Every 30 seconds. The harness re-queries each chain's fee oracle and Mobula's price API every 30 seconds, so headline values are at most 30 seconds stale plus chain RPC latency (typically under a second)."
   - q: "Why are some chains using single tier?"
@@ -35,18 +35,18 @@ unit: usd
 higher_is_better: false
 
 abstract: |
-  Every 30 seconds we ask each L1 chain its current native-transfer fee
-  in the chain's smallest unit (wei, lamport, lovelace, stroop, sun,
-  MIST, nanoton, litoshi, atomic), multiply by the live USD price of
-  the chain's native token from Mobula's market API, and publish the
-  result. Chains with a priority market expose three tiers (slow / std
-  / fast) mapped to roughly the 25th, 50th and 90th percentile of the
-  recent fee distribution. Deterministic-fee chains emit a single tier.
-  The 11-chain list mirrors the L1 finality bench so users can compare
-  cost and speed head-to-head.
+  Every 30 seconds we ask each tracked L1 and L2 chain its current
+  native-transfer fee in the chain's smallest unit (wei, lamport,
+  lovelace, stroop, sun, MIST, nanoton, litoshi, atomic), multiply by
+  the live USD price of the chain's native token from Mobula's market
+  API, and publish the result. Chains with a priority market expose
+  three tiers (slow / std / fast) mapped to roughly the 25th, 50th and
+  90th percentile of the recent fee distribution. Deterministic-fee
+  chains emit a single tier. The L1 list mirrors the L1 finality bench
+  so users can compare cost and speed head-to-head.
 
 methodology:
-  - "Refresh cadence: 30 s. One process samples all 11 chains in parallel goroutines."
+  - "Refresh cadence: 30 s. One process samples all tracked chains in parallel goroutines."
   - "Ethereum / BNB / Avalanche (EVM): `eth_feeHistory` over the last 4 blocks at percentiles [25, 50, 90]. Cost = (base_fee + reward_percentile) × 21_000 gas, mapped to slow/std/fast."
   - "Solana: `getRecentPrioritizationFees` percentiles 25/50/90 of micro-lamports per CU × 200 CU + 5_000 lamport base. Empty-fees response collapses to single std tier at the 5_000 base."
   - "TRON: `getChainParameters.getTransactionFee` (currently 1_000 SUN/byte) × 268 bytes typical native transfer."
@@ -56,12 +56,12 @@ methodology:
   - "TON: hardcoded 0.005 TON, the typical observed wallet-v4 transfer. TON's fee model is BoC-emulation only; a clean fee-estimate RPC does not exist."
   - "Litecoin: litecoinspace.org `/api/v1/fees/recommended` (hourFee / halfHourFee / fastestFee in litoshi/vByte) × 225 vBytes typical 1-in-1-out P2WPKH transfer."
   - "Monero: monero-rpc `get_fee_estimate.fees[0..2]` × 1500 bytes typical 1-in-2-out RingCT transaction."
-  - "USD prices: `api.mobula.io/api/1/market/multi-data` polled every 30 s for all 11 native tokens in one call."
+  - "USD prices: `api.mobula.io/api/1/market/multi-data` polled every 30 s for every tracked native token in one call."
   - "Failures: any upstream error leaves the previous gauge in place, increments `tx_fee_fetch_errors_total{chain, error_type}`, and sets `tx_fee_health{chain}=0`."
 
 findings:
-  - "{{best_name}} is the cheapest L1 native transfer at {{best_p50}} (std, 24h)."
-  - "{{name:ethereum}} sits at {{p50:ethereum}} (std, 24h), the most expensive L1 transfer on this leaderboard during normal congestion."
+  - "{{best_name}} is the cheapest native transfer at {{best_p50}} (std, 24h)."
+  - "{{name:ethereum}} sits at {{p50:ethereum}} (std, 24h), the most expensive transfer on this leaderboard during normal congestion."
   - "{{name:bnb}}, {{name:avalanche}}, {{name:stellar}}, {{name:solana}}, {{name:litecoin}} cluster near or below one cent for a standard transfer."
   - "{{name:cardano}}, {{name:tron}}, {{name:monero}} use deterministic or near-deterministic fee models; USD movement on the leaderboard reflects native-token price movement, not network congestion."
   - "USD costs are computed at scrape time. A 10% intraday move in the native token's USD price moves the headline by 10% even if the chain-native fee is flat. We surface that intentionally — the dollar cost is what a user actually pays."
