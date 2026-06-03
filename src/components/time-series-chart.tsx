@@ -49,6 +49,20 @@ const RANGE_HOURS: Record<Range, number> = {
   "30d": 720,
 };
 
+// How many points spec.ts (src/lib/spec.ts:prom.series) requests for each
+// range. Used to anchor partial series correctly. When a metric has
+// fewer real samples than EXPECTED (harness started recently, or a
+// provider went offline mid-window), we anchor the rightmost point to
+// "now" and step earlier points backwards by 1/EXPECTED of the chart
+// width. The unfilled left side is honest, not stretched.
+const RANGE_EXPECTED_POINTS: Record<Range, number> = {
+  "1h": 3,
+  "6h": 18,
+  "24h": 72,
+  "7d": 84,
+  "30d": 60,
+};
+
 const RANGE_LABEL: Record<Range, string> = {
   "1h": "last hour",
   "6h": "last 6 hours",
@@ -294,6 +308,7 @@ export function TimeSeriesChart({
           lines={lines as LineWithColor[]}
           unit={unitOverride ?? benchmark.unit}
           windowHours={RANGE_HOURS[range]}
+          expectedPoints={RANGE_EXPECTED_POINTS[range]}
           zoom={zoom}
           onZoom={setZoom}
           onToggleExclude={toggle}
@@ -354,6 +369,7 @@ function Chart({
   lines,
   unit,
   windowHours,
+  expectedPoints,
   zoom,
   onZoom,
   onToggleExclude,
@@ -362,6 +378,10 @@ function Chart({
   lines: LineWithColor[];
   unit: string;
   windowHours: number;
+  /** Number of samples spec.ts requested for this range. Used to anchor
+   *  partial series correctly on the right of the chart instead of
+   *  stretching a sparse line across the full width. */
+  expectedPoints: number;
   zoom?: { startFrac: number; endFrac: number } | null;
   onZoom?: (next: { startFrac: number; endFrac: number } | null) => void;
   onToggleExclude?: (slug: string) => void;
@@ -464,10 +484,17 @@ function Chart({
       return;
     }
     const ratio = (xVB - padL) / innerW;
-    const idx = Math.max(
-      0,
-      Math.min(numPoints - 1, Math.round(ratio * (numPoints - 1)))
-    );
+    // Inverse of the right-anchored point placement used in drawn().
+    // offsetFromRight is the fraction of the chart width to the left
+    // of "now"; converting to a data-index means scaling by EXPECTED
+    // (the step density spec.ts requests) and subtracting from the
+    // last index. If the cursor sits in the empty left region beyond
+    // actual data, idx clamps to 0 (oldest available point).
+    const expected = Math.max(1, expectedPoints - 1);
+    const offsetFromRight = 1 - ratio;
+    const dataOffsetFromLast = offsetFromRight * expected;
+    const lastIdx = numPoints - 1;
+    const idx = Math.max(0, Math.min(lastIdx, Math.round(lastIdx - dataOffsetFromLast)));
     setHover({ idx, xPx, yPx });
   };
 
@@ -509,14 +536,26 @@ function Chart({
   // drawing the line down to zero. A sustained outage shows as a missing
   // segment instead of a misleading "0%" cliff.
   const drawn = useMemo(() => {
+    // Position math: anchor the rightmost point to "now" (right edge)
+    // and step earlier points backwards by 1 / (EXPECTED - 1) of the
+    // chart width. EXPECTED is the point count spec.ts requests for
+    // this range. When the actual series length matches EXPECTED, the
+    // formula collapses to the classic i / (len - 1). When the series
+    // is shorter (harness recently started, partial coverage), the
+    // unfilled left side stays empty instead of stretching a sparse
+    // line across the whole range — which used to imply we had data
+    // we did not.
+    const expected = Math.max(1, expectedPoints - 1);
     return slicedLines.map((l) => {
       const color = l.color;
       const positive = l.values.filter((v) => v > 0);
       const positiveMin = positive.length > 0 ? Math.min(...positive) : 0;
       const isGap = (v: number) => !Number.isFinite(v) || (v === 0 && positiveMin > 1);
 
+      const lastIdx = Math.max(0, l.values.length - 1);
       const pts = l.values.map((v, i) => {
-        const x = padL + innerW * (i / Math.max(1, l.values.length - 1));
+        const offsetFromRight = (lastIdx - i) / expected;
+        const x = padL + innerW * (1 - offsetFromRight);
         const y = padT + innerH * (1 - (v - lo) / yRange);
         return { x, y, gap: isGap(v) } as const;
       });
@@ -571,10 +610,17 @@ function Chart({
       // line draws a break but the dot keeps rendering at 0 / NaN.
       return { ...l, color, pts, linePath, fillPath, lastX, lastY, last, isGap };
     });
-  }, [slicedLines, padL, padT, innerW, innerH, lo, yRange]);
+  }, [slicedLines, padL, padT, innerW, innerH, lo, yRange, expectedPoints]);
 
-  const hoverX = hover ? padL + innerW * (hover.idx / Math.max(1, numPoints - 1)) : null;
-  const hoverFraction = hover ? hover.idx / Math.max(1, numPoints - 1) : 0;
+  // Hover line position: mirror the right-anchored placement used by drawn().
+  // hover.idx is in [0, numPoints-1]; we map it to the visible chart via the
+  // same offsetFromRight = (last - i) / EXPECTED so the vertical hairline
+  // sits exactly on the data point under the cursor.
+  const hoverExpected = Math.max(1, expectedPoints - 1);
+  const hoverLast = Math.max(1, numPoints - 1);
+  const hoverOffsetFromRight = hover ? (hoverLast - hover.idx) / hoverExpected : 0;
+  const hoverFraction = hover ? 1 - hoverOffsetFromRight : 0;
+  const hoverX = hover ? padL + innerW * hoverFraction : null;
   // hoursAgo is computed against the VISIBLE window — if the chart is
   // zoomed in, the visible window is shorter and the rightmost point
   // sits at endHoursAgo (not 0). hoverHoursAgo follows.
