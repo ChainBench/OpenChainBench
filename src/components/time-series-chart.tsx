@@ -1214,6 +1214,22 @@ function fmtTick(v: number, unit: string) {
     if (pct >= 1) return `${pct.toFixed(1)}%`;
     return `${pct.toFixed(2)}%`;
   }
+  if (unit === "usd") {
+    const abs = Math.abs(v);
+    if (abs >= 1e9) return `$${(v / 1e9).toFixed(1)}B`;
+    if (abs >= 1e6) return `$${(v / 1e6).toFixed(1)}M`;
+    if (abs >= 1e3) return `$${(v / 1e3).toFixed(1)}K`;
+    if (abs >= 1) return `$${v.toFixed(0)}`;
+    if (abs >= 0.01) return `$${v.toFixed(2)}`;
+    return `$${v.toFixed(4)}`;
+  }
+  if (unit === "count") {
+    const abs = Math.abs(v);
+    if (abs >= 1e9) return `${(v / 1e9).toFixed(1)}B`;
+    if (abs >= 1e6) return `${(v / 1e6).toFixed(1)}M`;
+    if (abs >= 1e3) return `${(v / 1e3).toFixed(1)}K`;
+    return `${Math.round(v)}`;
+  }
   if (unit === "s") {
     const s = v / 1000;
     if (s >= 60) return `${(s / 60).toFixed(0)}m`;
