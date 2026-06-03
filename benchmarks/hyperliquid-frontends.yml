@@ -4,7 +4,7 @@ slug: hyperliquid-frontends
 number: "030"
 title: Best Hyperliquid frontend by builder fee
 seo_title: "Best Hyperliquid frontend 2026: live builder fee leaderboard"
-seo_description: "Compare Phantom, Axiom, MetaMask, Dexari, Insilico, DefiApp, Okto and pvp.trade on Hyperliquid by effective builder fee (bps), USD per trader, fills per minute and taker share. Sub minute freshness from a local hl node."
+seo_description: "Compare Phantom, Axiom, MetaMask, Dexari, Insilico, DefiApp, Okto, FOMO and pvp.trade on Hyperliquid by effective builder fee (bps), USD per trader, fills per minute and taker share. Sub minute freshness from a local hl node."
 subtitle: How much each Hyperliquid frontend charges its users via the on-chain builder code. Effective fee in basis points, volume weighted over 24h. Lower is better.
 category: Trading
 status: live
@@ -115,6 +115,10 @@ faq:
     a: "Per-fill basis-point gap between executed price and the most recent fill price on the same asset, averaged across the 24h window. Cleanest proxy for execution quality from a frontend that does not publish slippage stats. A frontend can charge a low builder fee and still cost users more if its routing fills wide of the recent print. Fee plus deviation is closer to true user cost than either alone."
   - q: "What does the last-fill-age outage signal actually measure?"
     a: "Seconds since the most recent attributed fill for that builder. The cohort baseline runs under one minute during active hours, so above a few minutes is a real anomaly. Catches two failure modes: a frontend whose routing pipeline is down (no new fills even when users try to trade), and a frontend that has quietly stopped operating but still has its builder code in circulation. Both were invisible on volume dashboards where zero volume reads as zero, not as broken."
+  - q: "How does FOMO compare on this bench?"
+    a: "FOMO (fomo.family, @tryfomo) is a social trading app on Telegram, iOS and Android that surfaces signals from consistently profitable Hyperliquid traders and routes perp orders via a registered builder code. On this bench it shows up like any other Hyperliquid frontend: effective fee in bps, USD per trader, fills per minute, taker share, plus its asset routing mix. The signal-based product means FOMO tends to skew taker heavier than wallet-style UIs, with shorter average time between fills during active signal windows. The dedicated product page at /products/fomo carries the full per-bench rank history."
+  - q: "Which Hyperliquid frontend is best for copy trading and social signals?"
+    a: "Copy and signal-based UIs route a meaningful slice of Hyperliquid flow today. FOMO surfaces signals from profitable traders and supports auto execution from Telegram. pvp.trade builds PvP rooms where users bet against each other on perp positions. Insilico Terminal targets institutional workstations rather than social trading. Compare them on this bench by effective fee, fills per minute and taker share to see which UX pattern matches your trading style. Lower effective fee plus higher fills per minute typically signals a frontend that is both cheap and actively used."
 
 source: https://github.com/MobulaFi/mobula-monorepo/tree/dev/miniapps/hyperliquid-frontends-local
 
