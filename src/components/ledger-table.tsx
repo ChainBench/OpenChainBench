@@ -20,6 +20,7 @@ type Props = {
    *  providers in the same order. When null/undefined the ledger uses
    *  the headline p50 metric. */
   activePanel?: MetricPanel | null;
+  topN?: number | null;
 };
 
 /**
@@ -29,7 +30,7 @@ type Props = {
  * to recognition; sort order remains mechanical (ascending p50) and no
  * row is highlighted as the "winner".
  */
-export function LedgerTable({ benchmark, activePanel }: Props) {
+export function LedgerTable({ benchmark, activePanel, topN }: Props) {
   const { results, extras } = benchmark;
   const unit = activePanel?.unit ?? benchmark.unit;
   const higherIsBetter = activePanel?.higherIsBetter ?? benchmark.higherIsBetter;
@@ -66,7 +67,7 @@ export function LedgerTable({ benchmark, activePanel }: Props) {
   // The chart's panel tabs still surface those providers via
   // seriesByProvider when the reader switches metric, so coverage isn't
   // lost — only the noisy ledger rows are pruned.
-  const sorted = [...results]
+  const sortedAll = [...results]
     .filter((r) => {
       if (activePanel) {
         const v = activePanel.values[r.slug];
@@ -79,6 +80,7 @@ export function LedgerTable({ benchmark, activePanel }: Props) {
       const bv = pickValue(b);
       return higherIsBetter ? bv - av : av - bv;
     });
+  const sorted = topN == null ? sortedAll : sortedAll.slice(0, topN);
   const colors = useMemo(() => buildProviderColors(results), [results]);
 
   const allSeries = Object.values(extras.series24h).flat();

@@ -50,6 +50,7 @@ export function DistributionChart({
   excluded: controlledExcluded,
   onToggleExclude,
   onResetExcluded,
+  topNControl,
   headerActions,
 }: {
   benchmark: Benchmark;
@@ -61,6 +62,7 @@ export function DistributionChart({
    *  on the same baseline as the chart title instead of floating in
    *  the card corner or eating a footer row of its own. */
   headerActions?: ReactNode;
+  topNControl?: { topN: number | null; setTopN: (n: number | null) => void };
 }) {
   const { results, unit, higherIsBetter } = benchmark;
   const { excluded, toggle, reset } = useChartExclusion(
@@ -68,6 +70,8 @@ export function DistributionChart({
     onToggleExclude,
     onResetExcluded,
   );
+  // topNControl is destructured from the function signature below — accept it via Props.
+
 
   const colors = useMemo(() => buildProviderColors(results), [results]);
 
@@ -84,7 +88,7 @@ export function DistributionChart({
   );
   // Top-N selector — shared shape with the other chart views so the
   // reader can focus on the top tail without losing the option to widen.
-  const { topN, setTopN, topNOptions } = useTopN(sortedAll.length);
+  const { topN, setTopN, topNOptions } = useTopN(sortedAll.length, { external: topNControl });
   const sorted = useMemo(
     () => (topN == null ? sortedAll : sortedAll.slice(0, topN)),
     [sortedAll, topN],
