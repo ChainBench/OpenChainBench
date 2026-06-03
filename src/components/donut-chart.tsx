@@ -39,6 +39,10 @@ export function DonutChart({
   excluded: controlledExcluded,
   onToggleExclude,
   topNControl,
+<<<<<<< HEAD
+=======
+  disableTopN,
+>>>>>>> origin/dev
   headerActions,
 }: {
   benchmark: Benchmark;
@@ -46,6 +50,10 @@ export function DonutChart({
   onToggleExclude?: (slug: string) => void;
   headerActions?: ReactNode;
   topNControl?: { topN: number | null; setTopN: (n: number | null) => void };
+<<<<<<< HEAD
+=======
+  disableTopN?: boolean;
+>>>>>>> origin/dev
 }) {
   const { results } = benchmark;
   const { excluded, toggle } = useChartExclusion(
@@ -60,7 +68,11 @@ export function DonutChart({
   // Top-N selector — clip the cohort BEFORE applying exclusion so the
   // "top N" semantic matches what every other view shows. Sized off
   // the live provider count via the shared `useTopN` hook.
+<<<<<<< HEAD
   const { topN, setTopN, topNOptions } = useTopN(liveAll.length, { external: topNControl });
+=======
+  const { topN, setTopN, topNOptions } = useTopN(liveAll.length, { external: topNControl, disabled: disableTopN });
+>>>>>>> origin/dev
   const liveClipped = useMemo(
     () =>
       topN == null

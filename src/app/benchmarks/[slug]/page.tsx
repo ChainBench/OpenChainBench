@@ -43,6 +43,14 @@ import type { Benchmark } from "@/types/benchmark";
 // the route still prerenders cleanly.
 export const revalidate = 60;
 
+// Cold start render does up to ~200 Prom calls (provider × percentiles ×
+// series queries) which can exceed Vercel's default 10s function timeout
+// on benches with 20+ providers. Once ISR warms, the page is cached and
+// fast — this only affects the first hit per revalidate window. Bumped
+// to 60s to absorb the slow cold path. The actual hot path latency is
+// served from the CDN cache so the user-facing P99 stays sub-second.
+export const maxDuration = 60;
+
 type Params = { slug: string };
 
 export async function generateStaticParams() {

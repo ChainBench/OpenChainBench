@@ -51,6 +51,10 @@ export function DistributionChart({
   onToggleExclude,
   onResetExcluded,
   topNControl,
+<<<<<<< HEAD
+=======
+  disableTopN,
+>>>>>>> origin/dev
   headerActions,
 }: {
   benchmark: Benchmark;
@@ -63,6 +67,10 @@ export function DistributionChart({
    *  the card corner or eating a footer row of its own. */
   headerActions?: ReactNode;
   topNControl?: { topN: number | null; setTopN: (n: number | null) => void };
+<<<<<<< HEAD
+=======
+  disableTopN?: boolean;
+>>>>>>> origin/dev
 }) {
   const { results, unit, higherIsBetter } = benchmark;
   const { excluded, toggle, reset } = useChartExclusion(
@@ -88,7 +96,11 @@ export function DistributionChart({
   );
   // Top-N selector — shared shape with the other chart views so the
   // reader can focus on the top tail without losing the option to widen.
+<<<<<<< HEAD
   const { topN, setTopN, topNOptions } = useTopN(sortedAll.length, { external: topNControl });
+=======
+  const { topN, setTopN, topNOptions } = useTopN(sortedAll.length, { external: topNControl, disabled: disableTopN });
+>>>>>>> origin/dev
   const sorted = useMemo(
     () => (topN == null ? sortedAll : sortedAll.slice(0, topN)),
     [sortedAll, topN],
