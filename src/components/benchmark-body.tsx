@@ -249,6 +249,12 @@ export function BenchmarkBody({
   // pulls its per-provider series from panel.seriesByProvider, swaps the
   // header label to panel.label, and the Y-axis unit to panel.unit.
   const [activePanelId, setActivePanelId] = useState<string | null>(null);
+  // Single Top-N value shared across every chart view AND the ledger
+  // so a reader who picks "Top 5" sees the same 5 providers in every
+  // surface. Each chart still computes its own option set off its own
+  // post-filter cohort, but the active value is parent-controlled.
+  const [topN, setTopN] = useState<number | null>(null);
+  const topNControl = useMemo(() => ({ topN, setTopN }), [topN]);
   const activePanel =
     benchmark.metricPanels?.find((p) => p.id === activePanelId) ?? null;
   const chartRegionOptions: ChainOption[] = useMemo(
@@ -369,6 +375,7 @@ export function BenchmarkBody({
                   onToggleExclude={toggleExclude}
                   onResetExcluded={resetExcluded}
                   disableTopN={hasLayerSplit}
+                  topNControl={topNControl}
                   headerActions={<ViewSwitcher allowed={allowedViews} value={view} onChange={setView} />}
                 />
               )}
@@ -379,6 +386,7 @@ export function BenchmarkBody({
                   onToggleExclude={toggleExclude}
                   onResetExcluded={resetExcluded}
                   disableTopN={hasLayerSplit}
+                  topNControl={topNControl}
                   headerActions={<ViewSwitcher allowed={allowedViews} value={view} onChange={setView} />}
                 />
               )}
@@ -388,6 +396,7 @@ export function BenchmarkBody({
                   excluded={excluded}
                   onToggleExclude={toggleExclude}
                   disableTopN={hasLayerSplit}
+                  topNControl={topNControl}
                   headerActions={<ViewSwitcher allowed={allowedViews} value={view} onChange={setView} />}
                 />
               )}
@@ -414,6 +423,7 @@ export function BenchmarkBody({
                     onToggleExclude={toggleExclude}
                     onResetExcluded={resetExcluded}
                     disableTopN={hasLayerSplit}
+                  topNControl={topNControl}
                     headerActions={<ViewSwitcher allowed={allowedViews} value={view} onChange={setView} />}
                     seriesOverride={activePanel?.seriesByProvider}
                     metricLabelOverride={activePanel?.label}
@@ -437,7 +447,7 @@ export function BenchmarkBody({
                   ? `Product ledger · sorted by ${activePanel.label}`
                   : "Product ledger · sorted by p50"}
             </p>
-            <LedgerTable benchmark={viewBenchmark} activePanel={activePanel} />
+            <LedgerTable benchmark={viewBenchmark} activePanel={activePanel} topN={topN} />
           </div>
 
           {viewBenchmark.unit !== "count" &&
