@@ -48,7 +48,7 @@ const AlternativeSchema = z.object({
 });
 
 export type Alternative = z.infer<typeof AlternativeSchema>;
-export type AlternativeWithBench = Alternative & { bench: Benchmark };
+type AlternativeWithBench = Alternative & { bench: Benchmark };
 
 export const loadAllAlternatives = cache(async (): Promise<Alternative[]> => {
   let files: string[] = [];

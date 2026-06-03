@@ -43,7 +43,7 @@ export function safeJsonLd(value: unknown): string {
  *   - em-dash:     U+2014                -> " - " (matches house style)
  *   - collapse runs of whitespace
  */
-export function stripFaqMarkdown(input: string): string {
+function stripFaqMarkdown(input: string): string {
   let s = input;
   // Links first so we capture the label before stripping brackets elsewhere.
   s = s.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");
@@ -73,7 +73,7 @@ type FaqItem = { q: string; a: string };
  * the sentinel "all" and for empty input so call sites can fall back to
  * the unscoped @id seamlessly.
  */
-export function chainIdFragment(chain?: string | null): string | null {
+function chainIdFragment(chain?: string | null): string | null {
   if (!chain) return null;
   const trimmed = chain.trim().toLowerCase();
   if (!trimmed || trimmed === "all") return null;
