@@ -114,6 +114,12 @@ export const ProviderType = z.enum([
   "relay",      // relayer / settlement network (Relay, deBridge solver layer)
 ]);
 
+/** Network-layer classification used by benches that mix L1 and L2 chains
+ *  in the same provider set (e.g. network-fees). Powers the L1/L2/All
+ *  toggle pill on the bench page so readers can split the leaderboard
+ *  by execution layer without leaving the page. */
+export const ProviderLayer = z.enum(["l1", "l2"]);
+
 const provider = z.object({
   /** Stable identifier. also used as the metric label. */
   slug,
@@ -128,6 +134,10 @@ const provider = z.object({
   /** Optional architectural category. When set, a badge appears next to
    *  the name so readers understand the comparison. */
   type: ProviderType.optional(),
+  /** Optional network-layer classification. When set, a bench that mixes
+   *  L1 and L2 providers (network-fees) renders an L1/L2/All toggle pill
+   *  that filters the ledger by this field. */
+  layer: ProviderLayer.optional(),
   /** Optional secondary metric (e.g. "Chains covered") shown in the table. */
   secondary: z
     .object({ label: z.string(), value: z.string() })
