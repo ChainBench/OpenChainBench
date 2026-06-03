@@ -4,8 +4,8 @@ slug: network-fees
 number: "031"
 title: Current native transfer fee across L1 and L2 blockchains
 seo_title: "Cheapest blockchain transaction fee 2026: L1 and L2 USD live (Ethereum, Arbitrum, Optimism, Base, zkSync, Solana, BNB, Avalanche)"
-seo_description: "Live USD cost of a native-token transfer across 20 L1 and L2 chains. L1: Ethereum, Solana, BNB, Avalanche, TRON, Cardano, SUI, TON, Stellar, Litecoin, Monero. L2: Arbitrum, Optimism, Base, zkSync, Linea, Scroll, Blast, Mantle, Taiko. Slow/standard/fast tiers refreshed every 30s."
-subtitle: "Current USD cost of moving the chain's native asset across 20 L1 and L2 chains, refreshed every 30 seconds."
+seo_description: "Live USD cost of a native-token transfer across L1 and L2 chains. L1: Ethereum, Solana, BNB, Avalanche, TRON, Cardano, SUI, TON, Stellar, Litecoin, Monero. L2: Arbitrum, Optimism, Base, zkSync, Linea, Scroll, Blast, Mantle, Taiko. Slow/standard/fast tiers refreshed every 30s."
+subtitle: "Current USD cost of moving the chain's native asset across L1 and L2 chains, refreshed every 30 seconds."
 
 seo_intro: |
   This page shows the live USD cost of sending the native token on every major Layer-1 blockchain. We sample the chain-native fee market (eth_feeHistory for EVM chains, getRecentPrioritizationFees for Solana, koios protocol params for Cardano, fee_stats for Stellar, fee_estimate for Monero, mempool oracles for Litecoin, getChainParameters for TRON, sui_getReferenceGasPrice for SUI, hardcoded typical observed for TON), convert to the chain's smallest unit, then multiply by the native-token USD price pulled from Mobula every 30 seconds. The result is a head-to-head comparison of what it actually costs an end user to move one unit of value on each chain, rather than a gas-price comparison in gwei or lamports which is meaningless across protocols.
