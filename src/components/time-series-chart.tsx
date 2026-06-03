@@ -35,6 +35,7 @@ type Props = {
   metricLabelOverride?: string;
   unitOverride?: Benchmark["unit"];
   topNControl?: { topN: number | null; setTopN: (n: number | null) => void };
+  disableTopN?: boolean;
 };
 
 type Range = "1h" | "6h" | "24h" | "7d" | "30d";
@@ -74,6 +75,7 @@ export function TimeSeriesChart({
   unitOverride,
   onResetExcluded,
   topNControl,
+  disableTopN,
   headerActions,
 }: Props) {
   const [range, setRange] = useState<Range>("24h");
@@ -159,7 +161,7 @@ export function TimeSeriesChart({
   // Top-N selector — sized off the post-filter line count via the
   // shared `useTopN` hook so the option set agrees across every
   // chart view on the bench page.
-  const { topN, setTopN, topNOptions } = useTopN(allLines.length, { external: topNControl });
+  const { topN, setTopN, topNOptions } = useTopN(allLines.length, { external: topNControl, disabled: disableTopN });
   const lines = useMemo(() => {
     if (topN == null) return allLines;
     return allLines.slice(0, topN);

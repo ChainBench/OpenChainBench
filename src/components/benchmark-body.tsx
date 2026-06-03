@@ -144,23 +144,30 @@ export function BenchmarkBody({
   const searchParams = useSearchParams();
   const urlChain = searchParams.get("chain");
   const urlRegion = searchParams.get("region");
+  const urlLayer = searchParams.get("layer");
   const resolvedInitialChain =
     (urlChain && chainOptions.find((c) => c.value === urlChain)?.value) ?? initialChain;
   const resolvedInitialRegion =
     (urlRegion && regionOptions.find((r) => r.value === urlRegion)?.value) ?? initialRegion;
+  const resolvedInitialLayer: ProviderLayer =
+    urlLayer === "l2" ? "l2" : "l1";
 
   const [chain, setChain] = useState<string | null>(resolvedInitialChain);
   const [region, setRegion] = useState<string | null>(resolvedInitialRegion);
+  const [layer, setLayer] = useState<ProviderLayer>(resolvedInitialLayer);
 
   useEffect(() => {
     const url = new URL(window.location.href);
     syncParam(url, "chain", chain, chainOptions);
     syncParam(url, "region", region, regionOptions);
+    // Layer param: drop when default ("l1"), keep when user picked l2.
+    if (layer === "l1") url.searchParams.delete("layer");
+    else url.searchParams.set("layer", layer);
     const next = url.pathname + (url.search ? url.search : "");
     if (next !== window.location.pathname + window.location.search) {
       window.history.replaceState(null, "", next);
     }
-  }, [chain, region, chainOptions, regionOptions]);
+  }, [chain, region, layer, chainOptions, regionOptions]);
 
   const fallbackChain = chainOptions[0]?.value ?? null;
   const fallbackRegion = regionOptions[0]?.value ?? null;
@@ -172,8 +179,9 @@ export function BenchmarkBody({
     Object.values(variants)[0];
   if (!benchmark) return null;
 
-  // L1/L2 filter counts, derived from the full unfiltered results so the
-  // pill counts are stable as the user toggles the filter.
+  // L1/L2 layer counts. When both > 0 the bench mixes L1 and L2 chains
+  // and we render a top-level Layer toggle that filters the entire page
+  // (chart + summary + ledger) to one layer at a time. Default is L1.
   const layerCounts = useMemo(() => {
     let l1 = 0;
     let l2 = 0;
@@ -183,33 +191,32 @@ export function BenchmarkBody({
     }
     return { all: benchmark.results.length, l1, l2 };
   }, [benchmark.results]);
-
-  // When the bench mixes L1 and L2 chains we render two separate ledger
-  // tables — one per layer — so the ranking inside each layer reads
-  // cleanly. Mixing them in a single sort buries Avalanche between
-  // Blast and Optimism, which is technically correct but unreadable for
-  // wallet UX decisions ("what does it cost on L1 vs L2"). Keeping the
-  // full unfiltered benchmark for the chart above.
   const hasLayerSplit = layerCounts.l1 > 0 && layerCounts.l2 > 0;
-  const filterByLayer = (l: ProviderLayer) => ({
-    ...benchmark,
-    results: benchmark.results.filter((r) => r.layer === l),
-  });
-  const l1Benchmark = useMemo(() => filterByLayer("l1"), [benchmark]);
-  const l2Benchmark = useMemo(() => filterByLayer("l2"), [benchmark]);
 
-  const isDraft = benchmark.status === "draft";
+  // Filter the benchmark to the active layer for the entire page. When
+  // hasLayerSplit is false the original benchmark is returned untouched
+  // so non-layer benches keep their existing behavior. The chart, the
+  // summary stats and the ledger all read from `viewBenchmark`.
+  const viewBenchmark = useMemo(() => {
+    if (!hasLayerSplit) return benchmark;
+    return {
+      ...benchmark,
+      results: benchmark.results.filter((r) => r.layer === layer),
+    };
+  }, [benchmark, hasLayerSplit, layer]);
+
+  const isDraft = viewBenchmark.status === "draft";
   const { fieldMin, fieldMedian, fieldMax, tailMin, tailMax, tailSpread } =
-    computeFieldStats(benchmark.results);
+    computeFieldStats(viewBenchmark.results);
 
   // View switcher state. Per-bench, persisted via localStorage. Default
   // mirrors the heuristic the page used before the switcher existed so
   // an anonymous user with no prior preference sees the same layout
   // they always saw.
-  const allowedViews = viewsForBenchmark(benchmark);
-  const defaultView = defaultViewFor(benchmark);
+  const allowedViews = viewsForBenchmark(viewBenchmark);
+  const defaultView = defaultViewFor(viewBenchmark);
   const [view, setView, viewMounted] = useViewPreference(
-    benchmark.slug,
+    viewBenchmark.slug,
     defaultView,
     allowedViews,
   );
@@ -242,6 +249,12 @@ export function BenchmarkBody({
   // pulls its per-provider series from panel.seriesByProvider, swaps the
   // header label to panel.label, and the Y-axis unit to panel.unit.
   const [activePanelId, setActivePanelId] = useState<string | null>(null);
+  // Single Top-N value shared across every chart view AND the ledger
+  // so a reader who picks "Top 5" sees the same 5 providers in every
+  // surface. Each chart still computes its own option set off its own
+  // post-filter cohort, but the active value is parent-controlled.
+  const [topN, setTopN] = useState<number | null>(null);
+  const topNControl = useMemo(() => ({ topN, setTopN }), [topN]);
   const activePanel =
     benchmark.metricPanels?.find((p) => p.id === activePanelId) ?? null;
   const chartRegionOptions: ChainOption[] = useMemo(
@@ -254,8 +267,19 @@ export function BenchmarkBody({
 
   return (
     <>
-      {(chainOptions.length > 0 || regionOptions.length > 0) && (
+      {(hasLayerSplit || chainOptions.length > 0 || regionOptions.length > 0) && (
         <div className="mt-8 space-y-3">
+          {hasLayerSplit && (
+            <DimensionRow
+              label="Layer"
+              options={[
+                { value: "l1", label: `L1 · ${layerCounts.l1}` },
+                { value: "l2", label: `L2 · ${layerCounts.l2}` },
+              ]}
+              selected={layer}
+              onSelect={(v) => setLayer(v as ProviderLayer)}
+            />
+          )}
           {chainOptions.length > 0 && (
             <DimensionRow
               label="Chain"
@@ -340,33 +364,39 @@ export function BenchmarkBody({
             >
               {view === "countLeaderboard" && (
                 <CountLeaderboard
-                  benchmark={benchmark}
+                  benchmark={viewBenchmark}
                   headerActions={<ViewSwitcher allowed={allowedViews} value={view} onChange={setView} />}
                 />
               )}
               {view === "rankedBar" && (
                 <RankedBarChart
-                  benchmark={benchmark}
+                  benchmark={viewBenchmark}
                   excluded={excluded}
                   onToggleExclude={toggleExclude}
                   onResetExcluded={resetExcluded}
+                  disableTopN={hasLayerSplit}
+                  topNControl={topNControl}
                   headerActions={<ViewSwitcher allowed={allowedViews} value={view} onChange={setView} />}
                 />
               )}
               {view === "distribution" && (
                 <DistributionChart
-                  benchmark={benchmark}
+                  benchmark={viewBenchmark}
                   excluded={excluded}
                   onToggleExclude={toggleExclude}
                   onResetExcluded={resetExcluded}
+                  disableTopN={hasLayerSplit}
+                  topNControl={topNControl}
                   headerActions={<ViewSwitcher allowed={allowedViews} value={view} onChange={setView} />}
                 />
               )}
               {view === "donut" && (
                 <DonutChart
-                  benchmark={benchmark}
+                  benchmark={viewBenchmark}
                   excluded={excluded}
                   onToggleExclude={toggleExclude}
+                  disableTopN={hasLayerSplit}
+                  topNControl={topNControl}
                   headerActions={<ViewSwitcher allowed={allowedViews} value={view} onChange={setView} />}
                 />
               )}
@@ -381,7 +411,7 @@ export function BenchmarkBody({
                     />
                   )}
                   <TimeSeriesChart
-                    benchmark={benchmark}
+                    benchmark={viewBenchmark}
                     region={
                       regionOptions.length > 0
                         ? (region ?? fallbackRegion ?? undefined)
@@ -392,6 +422,8 @@ export function BenchmarkBody({
                     excluded={excluded}
                     onToggleExclude={toggleExclude}
                     onResetExcluded={resetExcluded}
+                    disableTopN={hasLayerSplit}
+                  topNControl={topNControl}
                     headerActions={<ViewSwitcher allowed={allowedViews} value={view} onChange={setView} />}
                     seriesOverride={activePanel?.seriesByProvider}
                     metricLabelOverride={activePanel?.label}
@@ -407,39 +439,22 @@ export function BenchmarkBody({
             </div>
           </div>
 
-          {hasLayerSplit ? (
-            <>
-              <div className="mt-8 card-soft rounded-xl p-4 sm:p-6 lg:p-8">
-                <p className="label-mono text-ink-faint mb-4">
-                  Layer 1 · {layerCounts.l1} chains · sorted by p50
-                </p>
-                <LedgerTable benchmark={l1Benchmark} activePanel={activePanel} />
-              </div>
-              <div className="mt-8 card-soft rounded-xl p-4 sm:p-6 lg:p-8">
-                <p className="label-mono text-ink-faint mb-4">
-                  Layer 2 · {layerCounts.l2} chains · sorted by p50
-                </p>
-                <LedgerTable benchmark={l2Benchmark} activePanel={activePanel} />
-              </div>
-            </>
-          ) : (
-            <div className="mt-8 card-soft rounded-xl p-4 sm:p-6 lg:p-8">
-              <p className="label-mono text-ink-faint mb-4">
-                {benchmark.unit === "count"
-                  ? "Product ledger"
-                  : activePanel
-                    ? `Product ledger · sorted by ${activePanel.label}`
-                    : "Product ledger · sorted by p50"}
-              </p>
-              <LedgerTable benchmark={benchmark} activePanel={activePanel} />
-            </div>
-          )}
+          <div className="mt-8 card-soft rounded-xl p-4 sm:p-6 lg:p-8">
+            <p className="label-mono text-ink-faint mb-4">
+              {viewBenchmark.unit === "count"
+                ? "Product ledger"
+                : activePanel
+                  ? `Product ledger · sorted by ${activePanel.label}`
+                  : "Product ledger · sorted by p50"}
+            </p>
+            <LedgerTable benchmark={viewBenchmark} activePanel={activePanel} topN={topN} />
+          </div>
 
-          {benchmark.unit !== "count" &&
+          {viewBenchmark.unit !== "count" &&
             Object.keys(benchmark.extras.regions).length > 0 && (
               <div className="mt-8 card-soft rounded-xl p-4 sm:p-6 lg:p-8">
                 <p className="label-mono text-ink-faint mb-4">By region</p>
-                <RegionGrid benchmark={benchmark} />
+                <RegionGrid benchmark={viewBenchmark} />
               </div>
             )}
         </>

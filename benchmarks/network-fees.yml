@@ -2,31 +2,37 @@
 
 slug: network-fees
 number: "031"
-title: Current native transfer fee across L1 and L2 blockchains
-seo_title: "Cheapest blockchain transaction fee 2026: L1 and L2 USD live (Ethereum, Arbitrum, Optimism, Base, zkSync, Solana, BNB, Avalanche)"
-seo_description: "Live USD cost of a native-token transfer across L1 and L2 chains. L1: Ethereum, Solana, BNB, Avalanche, TRON, Cardano, SUI, TON, Stellar, Litecoin, Monero. L2: Arbitrum, Optimism, Base, zkSync, Linea, Scroll, Blast, Mantle, Taiko. Slow/standard/fast tiers refreshed every 30s."
-subtitle: "Current USD cost of moving the chain's native asset across L1 and L2 chains, refreshed every 30 seconds."
+title: Live blockchain transaction fee comparison across 20 L1 and L2 chains
+seo_title: "Cheapest blockchain transaction fee 2026 in USD: Ethereum, Solana, BNB, Avalanche, TRON, Arbitrum, Optimism, Base, zkSync live"
+seo_description: "Live USD cost of one native transaction on 20 chains. Layer 1: Ethereum, Solana, BNB, Avalanche, TRON, Cardano, Sui, TON, Stellar, Litecoin, Monero. Layer 2: Arbitrum, Optimism, Base, zkSync, Linea, Scroll, Blast, Mantle, Taiko. Slow, standard and fast tiers refreshed every 30 seconds."
+subtitle: "Current USD cost of one native token transaction on 20 Layer 1 and Layer 2 chains, refreshed every 30 seconds."
 
 seo_intro: |
-  This page shows the live USD cost of sending the native token on every major Layer-1 blockchain. We sample the chain-native fee market (eth_feeHistory for EVM chains, getRecentPrioritizationFees for Solana, koios protocol params for Cardano, fee_stats for Stellar, fee_estimate for Monero, mempool oracles for Litecoin, getChainParameters for TRON, sui_getReferenceGasPrice for SUI, hardcoded typical observed for TON), convert to the chain's smallest unit, then multiply by the native-token USD price pulled from Mobula every 30 seconds. The result is a head-to-head comparison of what it actually costs an end user to move one unit of value on each chain, rather than a gas-price comparison in gwei or lamports which is meaningless across protocols.
+  This page answers one question. How much does it cost in dollars to send one transaction on each major blockchain right now. We track 20 chains in parallel and refresh the number every 30 seconds. The eleven Layer 1 chains are Ethereum, Solana, BNB Chain, Avalanche, TRON, Cardano, Sui, TON, Stellar, Litecoin and Monero. The nine Layer 2 rollups are Arbitrum, Optimism, Base, zkSync Era, Linea, Scroll, Blast, Mantle and Taiko. For every chain we query its own fee market directly (eth_feeHistory for the EVM family, getRecentPrioritizationFees on Solana, koios epoch params on Cardano, fee_stats on Stellar, get_fee_estimate on Monero, the mempool oracle on Litecoin, getChainParameters on TRON, suix_getReferenceGasPrice on Sui), convert the result to the smallest native unit, then multiply by the live USD price of the chain's native token from Mobula. The output is the actual dollar amount a wallet user pays today. No gwei to lamport conversion, no marketing claim. Compare Ethereum gas now versus Solana fee in USD, see whether Arbitrum is still cheaper than Base today, find out which Layer 1 has the lowest transaction cost this minute.
 
 faq:
   - q: "What does this benchmark measure?"
-    a: "The current USD cost of a single native-token transfer on each of the 11 tracked L1 chains. A native transfer is the simplest possible action: send the chain's main asset from one address to another. ETH on Ethereum, SOL on Solana, ADA on Cardano, XLM on Stellar, and so on. We do not measure ERC-20 transfers, DEX swaps, or contract calls."
-  - q: "Why USD instead of gas price?"
-    a: "Gas price in gwei (Ethereum) cannot be compared to lamports per CU (Solana) or stroops per operation (Stellar). The only honest cross-chain unit is the dollar cost of a user-facing action, computed at scrape time using a live USD price for each native token. Mobula's market API provides the prices we multiply by."
-  - q: "What do slow, standard, and fast tiers mean?"
-    a: "Tiers exist for chains with a priority market where users can pay more to get faster inclusion. Slow targets roughly the 25th percentile of recent priority bids, standard the 50th, fast the 90th. Chains with deterministic or near-deterministic fees (Cardano, Stellar, TON, TRON native transfer) emit a single tier because there is no priority market to bid into."
+    a: "The USD cost of one native token transaction on each of the 20 tracked chains, refreshed every 30 seconds. A native transaction is the simplest action on a chain. Send ETH on Ethereum, SOL on Solana, ADA on Cardano, XLM on Stellar, and so on. We do not yet measure ERC 20 transfers, DEX swaps or smart contract deployments. Those will ship as companion metrics in a later phase."
+  - q: "Which chains are tracked?"
+    a: "Eleven Layer 1 chains on the L1 tab. Ethereum, Solana, BNB Chain, Avalanche, TRON, Cardano, Sui, TON, Stellar, Litecoin and Monero. Nine Layer 2 rollups on the L2 tab. Arbitrum, Optimism, Base, zkSync Era, Linea, Scroll, Blast, Mantle and Taiko. The list matches the L1 finality and L2 block time benches so you can read cost and speed side by side."
+  - q: "Why USD instead of gas price in gwei?"
+    a: "Gas price in gwei on Ethereum cannot be compared to lamports per compute unit on Solana, stroops per operation on Stellar or sun per byte on TRON. The only honest cross chain unit is the dollar cost of a user facing action, computed at scrape time using a live USD price for each native token. Mobula's market API delivers the prices we multiply by."
+  - q: "What do slow, standard and fast tiers mean?"
+    a: "Tiers exist on chains with a priority market where users can pay more for faster inclusion. Slow targets the 25th percentile of recent priority bids, standard the 50th, fast the 90th. Chains with deterministic or near deterministic fees (Cardano, Stellar, TON, TRON native transfer) emit a single tier because there is no priority market to bid into."
   - q: "Why is the Solana fee so low?"
-    a: "Solana charges 5000 lamports per signature as a hard base, plus an optional priority fee priced in micro-lamports per compute unit. A simple SOL transfer uses around 200 compute units, so the priority component is typically dwarfed by the base. At current SOL prices the headline fee sits well under one cent for non-congested blocks."
+    a: "Solana charges 5000 lamports per signature as a hard base, plus an optional priority fee priced in micro lamports per compute unit. A simple SOL transfer uses around 200 compute units, so the priority component is typically dwarfed by the base. At current SOL prices the headline fee sits well under one cent on non congested blocks."
   - q: "Why is the Cardano fee always similar?"
-    a: "Cardano fees are deterministic. The protocol parameters (`min_fee_a` per byte, `min_fee_b` base) are set by governance and updated rarely; a standard ADA transfer is roughly 250 bytes, so the lovelace cost is essentially fixed until the next parameter vote. The USD figure on the leaderboard only moves because ADA's USD price moves."
-  - q: "How are L2 fees handled?"
-    a: "Not on this page. L2 fees are a separate measurement problem (rollup fee = L2 execution + L1 data posting, the latter being a non-trivial blob market). The L2 bench is in progress as a companion to this L1 page; once shipped, you'll be able to compare L1-fee vs L2-fee for any wallet decision in one click."
+    a: "Cardano fees are deterministic. The protocol parameters min_fee_a per byte and min_fee_b base are set by governance and updated rarely. A standard ADA transaction is roughly 250 bytes, so the lovelace cost is essentially fixed until the next parameter vote. The USD figure on the leaderboard only moves because ADA's USD price moves."
+  - q: "Are the L2 numbers complete?"
+    a: "Not yet. The figure for each Layer 2 reflects L2 execution cost only (the wallet visible gas price times 21000 gas times the ETH price). The L1 data posting fee (blob market for EIP 4844 rollups like Arbitrum, Optimism and Base after Dencun, calldata for the rest) is a separate component that varies block to block and is currently excluded. A blended total cost figure will ship in a later phase. For now use the L1 view for true wallet cost comparison, and read the L2 view as the execution component only."
+  - q: "Which Layer 1 chain has the cheapest transaction fee right now?"
+    a: "Open the page. The leaderboard refreshes every 30 seconds and is sorted by cost. As a general pattern, Stellar, Avalanche, Litecoin, Solana, BNB Chain and TON cluster below one cent, Ethereum and Cardano around three to five cents, and TRON and Monero in the ten cent range. Sui sits in the low one cent range. Exact ordering depends on congestion and native token price at the moment of read."
   - q: "How often does the page refresh?"
-    a: "Every 30 seconds. The harness re-queries each chain's fee oracle and Mobula's price API every 30 seconds, so headline values are at most 30 seconds stale plus chain RPC latency (typically under a second)."
-  - q: "Why are some chains using single tier?"
-    a: "Cardano fees are protocol-deterministic. Stellar's base fee is 100 stroops per operation network-wide. TON's typical fee is a hardcoded conservative estimate because TON has no clean fee-estimate RPC. TRON native transfers consume bandwidth at the published rate per byte. None of these chains expose a priority market a user can bid into for a TRX, ADA, XLM or TON transfer, so emitting a single tier is more honest than fabricating three identical values."
+    a: "Every 30 seconds. The harness re queries each chain's fee oracle and Mobula's price API on the same cadence, so headline values are at most 30 seconds stale plus chain RPC latency (typically under one second)."
+  - q: "Why are some chains showing one tier instead of three?"
+    a: "Cardano fees are protocol deterministic. Stellar's base fee is 100 stroops per operation network wide. TON's typical fee is a conservative observed value because TON has no clean fee estimate RPC. TRON native transfers consume bandwidth at the published rate per byte. None of these chains expose a priority market a user can bid into for a TRX, ADA, XLM or TON transfer, so emitting a single tier is more honest than fabricating three identical values."
+  - q: "Can I cite a value from this page?"
+    a: "Yes. Every number is a Prometheus query over a 24h window. The query string is shown in the row's hover tooltip. The harness source is open at the link in the source field below. Cite the value and the timestamp at the top of the page."
 
 category: Blockchains
 status: live
@@ -35,36 +41,41 @@ unit: usd
 higher_is_better: false
 
 abstract: |
-  Every 30 seconds we ask each L1 chain its current native-transfer fee
-  in the chain's smallest unit (wei, lamport, lovelace, stroop, sun,
-  MIST, nanoton, litoshi, atomic), multiply by the live USD price of
-  the chain's native token from Mobula's market API, and publish the
-  result. Chains with a priority market expose three tiers (slow / std
-  / fast) mapped to roughly the 25th, 50th and 90th percentile of the
-  recent fee distribution. Deterministic-fee chains emit a single tier.
-  The 11-chain list mirrors the L1 finality bench so users can compare
-  cost and speed head-to-head.
+  Every 30 seconds we ask each of 20 chains for its current native
+  transaction fee in the chain's smallest unit (wei, lamport, lovelace,
+  stroop, sun, MIST, nanoton, litoshi, atomic), multiply by the live
+  USD price of the chain's native token from Mobula's market API and
+  publish the result. Chains with a priority market expose three tiers
+  (slow, standard, fast) mapped to roughly the 25th, 50th and 90th
+  percentile of the recent fee distribution. Deterministic fee chains
+  emit a single tier. The eleven Layer 1 chains mirror the L1 finality
+  bench so users can compare cost and speed side by side. The nine
+  Layer 2 rollups add the layer dimension so a wallet routing decision
+  can be made on real data instead of marketing claims.
 
 methodology:
-  - "Refresh cadence: 30 s. One process samples all 11 chains in parallel goroutines."
-  - "Ethereum / BNB / Avalanche (EVM): `eth_feeHistory` over the last 4 blocks at percentiles [25, 50, 90]. Cost = (base_fee + reward_percentile) × 21_000 gas, mapped to slow/std/fast."
-  - "Solana: `getRecentPrioritizationFees` percentiles 25/50/90 of micro-lamports per CU × 200 CU + 5_000 lamport base. Empty-fees response collapses to single std tier at the 5_000 base."
-  - "TRON: `getChainParameters.getTransactionFee` (currently 1_000 SUN/byte) × 268 bytes typical native transfer."
-  - "Cardano: koios `epoch_params.min_fee_a / min_fee_b` × 250 bytes typical native transfer. Deterministic, refreshes only when on-chain parameters change."
-  - "Stellar: horizon `fee_stats.last_ledger_base_fee` × 1 operation. Single tier."
-  - "SUI: `suix_getReferenceGasPrice` × 2_000_000 gas budget (typical observed for `Coin::transfer`). Single std tier."
-  - "TON: hardcoded 0.005 TON, the typical observed wallet-v4 transfer. TON's fee model is BoC-emulation only; a clean fee-estimate RPC does not exist."
-  - "Litecoin: litecoinspace.org `/api/v1/fees/recommended` (hourFee / halfHourFee / fastestFee in litoshi/vByte) × 225 vBytes typical 1-in-1-out P2WPKH transfer."
-  - "Monero: monero-rpc `get_fee_estimate.fees[0..2]` × 1500 bytes typical 1-in-2-out RingCT transaction."
-  - "USD prices: `api.mobula.io/api/1/market/multi-data` polled every 30 s for all 11 native tokens in one call."
-  - "Failures: any upstream error leaves the previous gauge in place, increments `tx_fee_fetch_errors_total{chain, error_type}`, and sets `tx_fee_health{chain}=0`."
+  - "Refresh cadence. 30 seconds. One process samples all 20 chains in parallel goroutines."
+  - "Ethereum, BNB Chain and Avalanche on the L1 tab. eth_feeHistory over the last 4 blocks at percentiles 25, 50 and 90. Cost = (base_fee + reward_percentile) * 21000 gas, mapped to slow, standard and fast."
+  - "Arbitrum, Optimism, Base, zkSync Era, Linea, Scroll, Blast, Mantle and Taiko on the L2 tab. Same eth_feeHistory flow against each rollup's sequencer RPC. ETH is the native gas asset on every tracked rollup."
+  - "Layer 2 caveat. The published figure is L2 execution cost only. The L1 data posting fee (blob market for EIP 4844 rollups, calldata for the rest) is excluded from this page and will be added as a separate blended figure in a later phase. On OP Stack rollups the L1 data fee can dominate the wallet visible total during expensive blob periods."
+  - "Solana. getRecentPrioritizationFees percentiles 25, 50 and 90 of micro lamports per compute unit, times 200 compute units, plus 5000 lamports base. Empty fees response collapses to a single standard tier at the 5000 base."
+  - "TRON. getChainParameters.getTransactionFee (currently 1000 sun per byte) times 268 bytes for a typical native transfer. Single tier because TRON native transfers do not bid into a priority market."
+  - "Cardano. koios epoch_params.min_fee_a and min_fee_b, times 250 bytes for a typical native transfer. Deterministic by protocol, refreshes only when on chain parameters change."
+  - "Stellar. horizon fee_stats.last_ledger_base_fee times 1 operation. Single tier."
+  - "Sui. suix_getReferenceGasPrice times 76000 gas (typical observed for a Coin::transfer call). Single standard tier."
+  - "TON. Hardcoded 0.005 TON, the typical observed wallet v4 transfer. TON's fee model uses Bag of Cells emulation and has no clean fee estimate RPC."
+  - "Litecoin. litecoinspace.org /api/v1/fees/recommended (hour, half hour and fastest fees in litoshi per vByte) times 225 vBytes for a typical 1 input 1 output P2WPKH transfer."
+  - "Monero. monero rpc get_fee_estimate.fees[0..2] times 1500 bytes for a typical 1 input 2 output RingCT transaction."
+  - "USD prices. api.mobula.io/api/1/market/multi-data polled every 30 seconds for all 20 native tokens in one call."
+  - "Failures. Any upstream error leaves the previous gauge in place, increments tx_fee_fetch_errors_total{chain, error_type}, and sets tx_fee_health{chain} to zero."
 
 findings:
-  - "{{best_name}} is the cheapest L1 native transfer at {{best_p50}} (std, 24h)."
-  - "{{name:ethereum}} sits at {{p50:ethereum}} (std, 24h), the most expensive L1 transfer on this leaderboard during normal congestion."
-  - "{{name:bnb}}, {{name:avalanche}}, {{name:stellar}}, {{name:solana}}, {{name:litecoin}} cluster near or below one cent for a standard transfer."
-  - "{{name:cardano}}, {{name:tron}}, {{name:monero}} use deterministic or near-deterministic fee models; USD movement on the leaderboard reflects native-token price movement, not network congestion."
-  - "USD costs are computed at scrape time. A 10% intraday move in the native token's USD price moves the headline by 10% even if the chain-native fee is flat. We surface that intentionally — the dollar cost is what a user actually pays."
+  - "{{best_name}} is the cheapest tracked native transaction at {{best_p50}} over the last 24 hours."
+  - "{{name:ethereum}} sits at {{p50:ethereum}} (standard tier, 24h median), the most expensive Layer 1 transaction on the leaderboard during normal congestion."
+  - "{{name:bnb}}, {{name:avalanche}}, {{name:stellar}}, {{name:solana}} and {{name:litecoin}} cluster near or below one cent for a standard transaction."
+  - "{{name:cardano}}, {{name:tron}} and {{name:monero}} use deterministic or near deterministic fee models. The USD figure on the leaderboard moves with native token price, not with network congestion."
+  - "USD costs are computed at scrape time. A 10 percent intraday move in the native token's USD price shifts the headline by 10 percent even if the chain native fee is flat. We surface that intentionally because the dollar cost is what a wallet user actually pays."
+  - "Layer 2 values currently capture L2 execution only. The L1 data posting component is excluded until the blended figure ships in a follow up phase."
 
 source: https://github.com/MobulaFi/mobula-monorepo/tree/main/miniapps/transaction-fee
 
@@ -84,7 +95,7 @@ providers:
   - slug: ethereum
     name: Ethereum
     layer: l1
-    tag: EIP-1559 fee market, 21000 gas × (base + p50 priority)
+    tag: EIP 1559 fee market, 21000 gas × (base + p50 priority)
     formula: "Median USD cost of a native ETH transfer over 24h: (base_fee + p50 priority_fee) × 21000 gas × ETH USD price."
     queries:
       p50: quantile_over_time(0.50, tx_fee_native_transfer_usd{chain="ethereum",tier="std"}[24h])
@@ -97,7 +108,7 @@ providers:
   - slug: bnb
     name: BNB Chain
     layer: l1
-    tag: EIP-1559 fee market, 21000 gas
+    tag: EIP 1559 fee market, 21000 gas
     formula: "Median USD cost of a native BNB transfer over 24h."
     queries:
       p50: quantile_over_time(0.50, tx_fee_native_transfer_usd{chain="bnb",tier="std"}[24h])
@@ -110,7 +121,7 @@ providers:
   - slug: avalanche
     name: Avalanche
     layer: l1
-    tag: C-Chain EIP-1559 fee market, 21000 gas
+    tag: C-Chain EIP 1559 fee market, 21000 gas
     formula: "Median USD cost of a native AVAX transfer over 24h."
     queries:
       p50: quantile_over_time(0.50, tx_fee_native_transfer_usd{chain="avalanche",tier="std"}[24h])
@@ -137,7 +148,7 @@ providers:
     name: TRON
     layer: l1
     tag: Bandwidth model, 268 bytes × getTransactionFee SUN/byte
-    formula: "Deterministic USD cost of a native TRX transfer using the bandwidth-rate parameter × 268 bytes typical transfer × TRX USD price."
+    formula: "Deterministic USD cost of a native TRX transfer using the bandwidth rate parameter × 268 bytes typical transfer × TRX USD price."
     queries:
       p50: quantile_over_time(0.50, tx_fee_native_transfer_usd{chain="tron",tier="single"}[24h])
       p90: quantile_over_time(0.90, tx_fee_native_transfer_usd{chain="tron",tier="single"}[24h])
@@ -149,8 +160,8 @@ providers:
   - slug: cardano
     name: Cardano
     layer: l1
-    tag: min_fee_b + size × min_fee_a, deterministic
-    formula: "Protocol-deterministic ADA transfer cost: koios live min_fee_a/b × 250 bytes typical × ADA USD price."
+    tag: min_fee_b plus size times min_fee_a, deterministic
+    formula: "Protocol deterministic ADA transfer cost: koios live min_fee_a/b × 250 bytes typical × ADA USD price."
     queries:
       p50: quantile_over_time(0.50, tx_fee_native_transfer_usd{chain="cardano",tier="single"}[24h])
       p90: quantile_over_time(0.90, tx_fee_native_transfer_usd{chain="cardano",tier="single"}[24h])
@@ -162,8 +173,8 @@ providers:
   - slug: sui
     name: Sui
     layer: l1
-    tag: suix_getReferenceGasPrice × 2_000_000 gas budget
-    formula: "USD cost of a native SUI transfer: live reference gas price × 2M gas budget × SUI USD price."
+    tag: suix_getReferenceGasPrice × 76000 gas budget
+    formula: "USD cost of a native SUI transfer: live reference gas price × 76000 gas × SUI USD price."
     queries:
       p50: quantile_over_time(0.50, tx_fee_native_transfer_usd{chain="sui",tier="std"}[24h])
       p90: quantile_over_time(0.90, tx_fee_native_transfer_usd{chain="sui",tier="std"}[24h])
@@ -175,8 +186,8 @@ providers:
   - slug: ton
     name: TON
     layer: l1
-    tag: Hardcoded 0.005 TON typical wallet-v4 transfer
-    formula: "Conservative typical-observed cost of a TON wallet transfer × TON USD price. TON has no fee-estimate RPC; this is the observed median."
+    tag: Hardcoded 0.005 TON typical wallet v4 transfer
+    formula: "Conservative typical observed cost of a TON wallet transfer × TON USD price. TON has no fee estimate RPC; this is the observed median."
     queries:
       p50: quantile_over_time(0.50, tx_fee_native_transfer_usd{chain="ton",tier="single"}[24h])
       p90: quantile_over_time(0.90, tx_fee_native_transfer_usd{chain="ton",tier="single"}[24h])
@@ -202,7 +213,7 @@ providers:
     name: Litecoin
     layer: l1
     tag: litecoinspace fee oracle × 225 vBytes
-    formula: "Mempool-based litoshi/vByte × 225 vBytes typical P2WPKH transfer × LTC USD price."
+    formula: "Mempool based litoshi per vByte × 225 vBytes typical P2WPKH transfer × LTC USD price."
     queries:
       p50: quantile_over_time(0.50, tx_fee_native_transfer_usd{chain="litecoin",tier="std"}[24h])
       p90: quantile_over_time(0.90, tx_fee_native_transfer_usd{chain="litecoin",tier="fast"}[24h])
@@ -215,7 +226,7 @@ providers:
     name: Monero
     layer: l1
     tag: get_fee_estimate × 1500 bytes RingCT
-    formula: "Monero-rpc fee per byte × 1500 bytes typical 1-in-2-out RingCT × XMR USD price."
+    formula: "Monero rpc fee per byte times 1500 bytes typical 1 input 2 output RingCT times XMR USD price."
     queries:
       p50: quantile_over_time(0.50, tx_fee_native_transfer_usd{chain="monero",tier="std"}[24h])
       p90: quantile_over_time(0.90, tx_fee_native_transfer_usd{chain="monero",tier="fast"}[24h])
@@ -227,8 +238,8 @@ providers:
   - slug: arbitrum
     name: Arbitrum One
     layer: l2
-    tag: "Optimistic rollup (Nitro), 21000 gas"
-    formula: "Median USD cost of a native ETH transfer on Arbitrum One over 24h. L2 execution cost only; L1 data posting fee excluded (Phase 2)."
+    tag: "Optimistic rollup Nitro, 21000 gas"
+    formula: "Median USD cost of a native ETH transfer on Arbitrum One over 24h. L2 execution cost only, L1 data posting fee excluded for now."
     queries:
       p50: quantile_over_time(0.50, tx_fee_native_transfer_usd{chain="arbitrum",tier="std"}[24h])
       p90: quantile_over_time(0.90, tx_fee_native_transfer_usd{chain="arbitrum",tier="fast"}[24h])
@@ -240,7 +251,7 @@ providers:
     name: Optimism
     layer: l2
     tag: "OP Stack optimistic rollup, 21000 gas"
-    formula: "Median USD cost of a native ETH transfer on Optimism over 24h. L2 execution cost only; L1 data posting fee excluded (Phase 2)."
+    formula: "Median USD cost of a native ETH transfer on Optimism over 24h. L2 execution cost only, L1 data posting fee excluded for now."
     queries:
       p50: quantile_over_time(0.50, tx_fee_native_transfer_usd{chain="optimism",tier="std"}[24h])
       p90: quantile_over_time(0.90, tx_fee_native_transfer_usd{chain="optimism",tier="fast"}[24h])
@@ -251,8 +262,8 @@ providers:
   - slug: base
     name: Base
     layer: l2
-    tag: "OP Stack optimistic rollup (Coinbase), 21000 gas"
-    formula: "Median USD cost of a native ETH transfer on Base over 24h. L2 execution cost only; L1 data posting fee excluded (Phase 2)."
+    tag: "OP Stack optimistic rollup Coinbase, 21000 gas"
+    formula: "Median USD cost of a native ETH transfer on Base over 24h. L2 execution cost only, L1 data posting fee excluded for now."
     queries:
       p50: quantile_over_time(0.50, tx_fee_native_transfer_usd{chain="base",tier="std"}[24h])
       p90: quantile_over_time(0.90, tx_fee_native_transfer_usd{chain="base",tier="fast"}[24h])
@@ -264,7 +275,7 @@ providers:
     name: zkSync Era
     layer: l2
     tag: "ZK rollup, 21000 gas"
-    formula: "Median USD cost of a native ETH transfer on zkSync Era over 24h. L2 execution cost only; L1 data posting fee excluded (Phase 2)."
+    formula: "Median USD cost of a native ETH transfer on zkSync Era over 24h. L2 execution cost only, L1 data posting fee excluded for now."
     queries:
       p50: quantile_over_time(0.50, tx_fee_native_transfer_usd{chain="zksync",tier="std"}[24h])
       p90: quantile_over_time(0.90, tx_fee_native_transfer_usd{chain="zksync",tier="fast"}[24h])
@@ -275,8 +286,8 @@ providers:
   - slug: linea
     name: Linea
     layer: l2
-    tag: "ZK rollup (Stark), 21000 gas"
-    formula: "Median USD cost of a native ETH transfer on Linea over 24h. L2 execution cost only; L1 data posting fee excluded (Phase 2)."
+    tag: "ZK rollup Stark, 21000 gas"
+    formula: "Median USD cost of a native ETH transfer on Linea over 24h. L2 execution cost only, L1 data posting fee excluded for now."
     queries:
       p50: quantile_over_time(0.50, tx_fee_native_transfer_usd{chain="linea",tier="std"}[24h])
       p90: quantile_over_time(0.90, tx_fee_native_transfer_usd{chain="linea",tier="fast"}[24h])
@@ -288,7 +299,7 @@ providers:
     name: Scroll
     layer: l2
     tag: "zkEVM rollup, 21000 gas"
-    formula: "Median USD cost of a native ETH transfer on Scroll over 24h. L2 execution cost only; L1 data posting fee excluded (Phase 2)."
+    formula: "Median USD cost of a native ETH transfer on Scroll over 24h. L2 execution cost only, L1 data posting fee excluded for now."
     queries:
       p50: quantile_over_time(0.50, tx_fee_native_transfer_usd{chain="scroll",tier="std"}[24h])
       p90: quantile_over_time(0.90, tx_fee_native_transfer_usd{chain="scroll",tier="fast"}[24h])
@@ -299,8 +310,8 @@ providers:
   - slug: blast
     name: Blast
     layer: l2
-    tag: "OP Stack optimistic rollup (Blast), 21000 gas"
-    formula: "Median USD cost of a native ETH transfer on Blast over 24h. L2 execution cost only; L1 data posting fee excluded (Phase 2)."
+    tag: "OP Stack optimistic rollup Blast, 21000 gas"
+    formula: "Median USD cost of a native ETH transfer on Blast over 24h. L2 execution cost only, L1 data posting fee excluded for now."
     queries:
       p50: quantile_over_time(0.50, tx_fee_native_transfer_usd{chain="blast",tier="std"}[24h])
       p90: quantile_over_time(0.90, tx_fee_native_transfer_usd{chain="blast",tier="fast"}[24h])
@@ -311,8 +322,8 @@ providers:
   - slug: mantle
     name: Mantle
     layer: l2
-    tag: "OP Stack optimistic rollup (Mantle), 21000 gas"
-    formula: "Median USD cost of a native ETH transfer on Mantle over 24h. L2 execution cost only; L1 data posting fee excluded (Phase 2)."
+    tag: "OP Stack optimistic rollup Mantle, 21000 gas"
+    formula: "Median USD cost of a native ETH transfer on Mantle over 24h. L2 execution cost only, L1 data posting fee excluded for now."
     queries:
       p50: quantile_over_time(0.50, tx_fee_native_transfer_usd{chain="mantle",tier="std"}[24h])
       p90: quantile_over_time(0.90, tx_fee_native_transfer_usd{chain="mantle",tier="fast"}[24h])
@@ -324,7 +335,7 @@ providers:
     name: Taiko
     layer: l2
     tag: "Based rollup, 21000 gas"
-    formula: "Median USD cost of a native ETH transfer on Taiko over 24h. L2 execution cost only; L1 data posting fee excluded (Phase 2)."
+    formula: "Median USD cost of a native ETH transfer on Taiko over 24h. L2 execution cost only, L1 data posting fee excluded for now."
     queries:
       p50: quantile_over_time(0.50, tx_fee_native_transfer_usd{chain="taiko",tier="std"}[24h])
       p90: quantile_over_time(0.90, tx_fee_native_transfer_usd{chain="taiko",tier="fast"}[24h])
