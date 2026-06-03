@@ -23,6 +23,7 @@ type Props = {
    *  BenchmarkBody passes the <ViewSwitcher> here. */
   headerActions?: import("react").ReactNode;
   topNControl?: { topN: number | null; setTopN: (n: number | null) => void };
+  disableTopN?: boolean;
 };
 
 export function RankedBarChart({
@@ -31,6 +32,7 @@ export function RankedBarChart({
   onToggleExclude,
   onResetExcluded,
   topNControl,
+  disableTopN,
   headerActions,
 }: Props) {
   const { excluded, toggle, reset } = useChartExclusion(
@@ -77,7 +79,7 @@ export function RankedBarChart({
   // the headline metric (`allRows`), via the shared `useTopN` hook so
   // every chart view (ranked bar, time series, distribution, donut)
   // agrees on the option set and the empty-toolbar rule.
-  const { topN, setTopN, topNOptions } = useTopN(allRows.length, { external: topNControl });
+  const { topN, setTopN, topNOptions } = useTopN(allRows.length, { external: topNControl, disabled: disableTopN });
   const rows = useMemo(() => {
     if (topN == null) return allRows;
     return allRows.slice(0, topN);
