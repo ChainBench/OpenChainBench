@@ -83,7 +83,14 @@ export function LedgerTable({ benchmark, activePanel, topN }: Props) {
   const sorted = topN == null ? sortedAll : sortedAll.slice(0, topN);
   const colors = useMemo(() => buildProviderColors(results), [results]);
 
-  const allSeries = Object.values(extras.series24h).flat();
+  // Sparkline scale must follow the active source. When a panel tab is
+  // selected the ledger pulls series from panel.seriesByProvider (e.g.
+  // last-fill-age in seconds, 0–thousands) instead of extras.series24h
+  // (the headline metric, often a few bps or ms). Reusing the headline
+  // min/max projects panel values wildly out of bounds and the trend
+  // column renders vertical streaks running off the row.
+  const sparkSource = activePanel?.seriesByProvider ?? extras.series24h;
+  const allSeries = Object.values(sparkSource).flat();
   const sparkMin = allSeries.length ? Math.min(...allSeries) : 0;
   const sparkMax = allSeries.length ? Math.max(...allSeries) : 1;
 
