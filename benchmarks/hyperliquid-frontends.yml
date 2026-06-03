@@ -2,10 +2,10 @@
 
 slug: hyperliquid-frontends
 number: "030"
-title: Hyperliquid frontends user-cost benchmark
-seo_title: "Hyperliquid frontends 2026: effective builder fee bps, $/user efficiency, fee discipline (Phantom, Axiom, OKX, GMGN, pvp.trade)"
-seo_description: "Live benchmark of Hyperliquid frontends ranked by how much they extract from users, not by raw volume. Effective builder fee in bps (cap 100), D7 cohort retention per builder, and USD captured per active trader. Observational, on-chain attribution via builder code field, methodology public."
-subtitle: How much each Hyperliquid frontend charges its users via the on-chain builder code. Effective fee in basis points (cap 100), summed over 24h. Lower = more aligned with traders.
+title: Best Hyperliquid frontend by builder fee
+seo_title: "Best Hyperliquid frontend 2026: live builder fee leaderboard"
+seo_description: "Compare Phantom, Axiom, MetaMask, Dexari, Insilico, DefiApp, Okto and pvp.trade on Hyperliquid by effective builder fee (bps), USD per trader, fills per minute and taker share. Sub minute freshness from a local hl node."
+subtitle: How much each Hyperliquid frontend charges its users via the on-chain builder code. Effective fee in basis points, volume weighted over 24h. Lower is better.
 category: Trading
 status: live
 metric: Effective builder fee (24h, bps)
@@ -103,8 +103,8 @@ faq:
     a: "Hyperliquid caps builder fees at 100 basis points on perps and 1000 basis points on spot, configured via the `ApproveBuilderFee` action signed by each user's main wallet. The bench's headline is denominated in basis points so 100 = the on-chain cap and 0 = fully waived rebate. Most frontends sit well below the cap; the bench surfaces who sits where."
   - q: "Which frontends are tracked?"
     a: "The registry currently tracks Phantom Perps, Axiom, pvp.trade, Insilico Terminal, DefiApp, MetaMask, Dexari and Okto. These eight account for roughly half of attributed Hyperliquid volume. Builder addresses were sourced from each frontend's public announcement, cross referenced against CoinMarketMan HyperTracker and Flowscan. Several hundred smaller builder addresses route the remaining attributed volume. They show in our local node stream and are scheduled for inclusion via public PR. The 95 percent of HL flow that uses no builder code (native UI orders, frontends that did not opt into the attribution system) sits outside this bench by design."
-  - q: "What about builder addresses outside the eight tracked frontends?"
-    a: "The local hl-node sees every builder address that appears on any Hyperliquid fill. Several hundred smaller builders route attributed volume below the eight tracked here. Those addresses are visible in our raw node stream but stay off the leaderboard until a public PR adds them to `builders.json` with a verified name. The coverage gap is honest, not hidden. Volume share dashboards from ASXN and CoinMarketMan list the full distribution if you need the exhaustive picture today."
+  - q: "What about builder addresses outside the tracked cohort?"
+    a: "The local hl-node sees every builder address that appears on any Hyperliquid fill. Several hundred smaller builders route attributed volume below the cohort tracked here. Those addresses are visible in our raw node stream but stay off the leaderboard until a public PR adds them to `builders.json` with a verified name. The coverage gap is honest, not hidden. Volume share dashboards from ASXN and CoinMarketMan list the full distribution if you need the exhaustive picture today."
   - q: "What's fee discipline and why is it useful?"
     a: "The 30-day standard deviation of the daily effective fee in basis points. Frontends running rotating promotions (fee-free week → normalize the next week → discount cycle) show high variance even when the 24h headline is low. Frontends with stable transparent pricing show low variance. The discipline column is what tells you whether the headline number you're reading is a stable rate or a snapshot mid-promo."
   - q: "Does the bench measure native HL UI orders?"
