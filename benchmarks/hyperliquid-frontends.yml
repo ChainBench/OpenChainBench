@@ -905,31 +905,11 @@ providers:
 # All five metrics come from the local hl-node harness and update at the
 # same sub-minute cadence as the main headline.
 metric_panels:
-  - id: fees_7d
-    label: Fees 7d
-    metric: hl_frontend_fees_usd_7d_v2
-    unit: usd
-    description: "Total builder fees collected over the rolling 7 day window in USD per Hyperliquid frontend."
-  - id: fees_30d
-    label: Fees 30d
-    metric: hl_frontend_fees_usd_30d_v2
-    unit: usd
-    description: "Total builder fees collected over the rolling 30 day window in USD."
-  - id: volume_24h
-    label: Volume 24h
+  - id: volume
+    label: Volume routed
     metric: hl_frontend_volume_usd_24h_v2
     unit: usd
-    description: "Notional USD routed through this frontend over the last 24 hours."
-  - id: volume_7d
-    label: Volume 7d
-    metric: hl_frontend_volume_usd_7d_v2
-    unit: usd
-    description: "Notional USD routed over the last 7 days."
-  - id: volume_30d
-    label: Volume 30d
-    metric: hl_frontend_volume_usd_30d_v2
-    unit: usd
-    description: "Notional USD routed over the last 30 days."
+    description: "Notional USD routed through this frontend in the last 24 hours. Use the chart range tabs (1h, 6h, 24h, 7d, 30d) to see the trend over longer windows."
   - id: users
     label: Users 24h
     metric: hl_frontend_users_24h_v2
