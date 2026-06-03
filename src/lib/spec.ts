@@ -354,6 +354,7 @@ async function specToBenchmark(
           slug: p.slug,
           tag: p.tag,
           type: p.type,
+          layer: p.layer,
           ms: { p50: 0, p90: 0, p99: 0, mean: 0 },
           successRate: 0,
           secondary: p.secondary,
@@ -611,6 +612,7 @@ async function tryLoadLive(
         slug: p.slug,
         tag: p.tag,
         type: p.type,
+        layer: p.layer,
         ms: { p50, p90, p99, mean: mean ?? p50 },
         slots:
           slotP50 != null && slotP99 != null
@@ -754,6 +756,7 @@ function draftBenchmark(
     slug: p.slug,
     tag: p.tag,
     type: p.type,
+    layer: p.layer,
     ms: { p50: 0, p90: 0, p99: 0, mean: 0 },
     successRate: 0,
     secondary: p.secondary,

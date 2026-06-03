@@ -6,6 +6,11 @@
 
 export type ProviderType = "protocol" | "aggregator" | "intent" | "relay";
 
+/** Network-layer classification used by benches that mix L1 and L2 chains
+ *  in the same provider set (network-fees). Drives the L1/L2/All toggle
+ *  pill rendered above the ledger table. */
+export type ProviderLayer = "l1" | "l2";
+
 /**
  * Per-provider data availability. Drives whether the leaderboard renders
  * the numbers or a "currently unavailable" stub.
@@ -25,6 +30,10 @@ export type ProviderResult = {
   /** Architectural category. Drives the small badge next to the name so
    *  readers know whether comparisons are apples-to-apples. */
   type?: ProviderType;
+  /** Optional network-layer classification. When set on every provider of
+   *  a bench, the bench page renders an L1/L2/All toggle pill above the
+   *  ledger that filters rows by this field. */
+  layer?: ProviderLayer;
   ms: { p50: number; p90: number; p99: number; mean: number };
   /** Optional slot-level companion to ms. Used by Solana-native benches
    *  where confirmation is a slot-level event (~400 ms granularity).
