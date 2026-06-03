@@ -909,11 +909,13 @@ metric_panels:
     label: Volume routed
     metric: hl_frontend_volume_usd_24h_v2
     unit: usd
+    higher_is_better: true
     description: "Notional USD routed through this frontend in the last 24 hours. Use the chart range tabs (1h, 6h, 24h, 7d, 30d) to see the trend over longer windows."
   - id: users
     label: Users 24h
     metric: hl_frontend_users_24h_v2
     unit: count
+    higher_is_better: true
     description: "Unique wallets that traded through this frontend in the last 24 hours."
   - id: effective_fee
     label: Effective fee bps
