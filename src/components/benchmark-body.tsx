@@ -359,31 +359,39 @@ export function BenchmarkBody({
         </div>
       )}
 
-      {!isDraft && benchmark.unit !== "count" && (
-        <dl className="mt-10 card rounded-xl grid grid-cols-2 sm:flex sm:flex-wrap divide-y divide-x sm:divide-y-0 divide-rule overflow-hidden">
-          <SummaryStat
-            label="Best"
-            value={`${fmtValue(fieldMin, benchmark.unit)}${unitSuffix(benchmark.unit)}`}
-          />
-          <SummaryStat
-            label="Median"
-            value={`${fmtValue(fieldMedian, benchmark.unit)}${unitSuffix(benchmark.unit)}`}
-          />
-          <SummaryStat
-            label="Worst"
-            value={`${fmtValue(fieldMax, benchmark.unit)}${unitSuffix(benchmark.unit)}`}
-          />
-          <SummaryStat
-            label="Spread"
-            value={tailSpread > 0 ? `${tailSpread.toFixed(1)}×` : "-"}
-            hint={
-              tailSpread > 0
-                ? `${fmtUnit(tailMin, benchmark.unit)} → ${fmtUnit(tailMax, benchmark.unit)}`
-                : undefined
-            }
-          />
-        </dl>
-      )}
+      {!isDraft && benchmark.unit !== "count" && (() => {
+        // For higher-is-better benches (e.g. HL frontends USD revenue), the
+        // "best" headline is the max value, not the min. Latency benches keep
+        // the original min=best mapping.
+        const higherIsBetter = benchmark.higherIsBetter === true;
+        const bestValue = higherIsBetter ? fieldMax : fieldMin;
+        const worstValue = higherIsBetter ? fieldMin : fieldMax;
+        return (
+          <dl className="mt-10 card rounded-xl grid grid-cols-2 sm:flex sm:flex-wrap divide-y divide-x sm:divide-y-0 divide-rule overflow-hidden">
+            <SummaryStat
+              label="Best"
+              value={`${fmtValue(bestValue, benchmark.unit)}${unitSuffix(benchmark.unit)}`}
+            />
+            <SummaryStat
+              label="Median"
+              value={`${fmtValue(fieldMedian, benchmark.unit)}${unitSuffix(benchmark.unit)}`}
+            />
+            <SummaryStat
+              label="Worst"
+              value={`${fmtValue(worstValue, benchmark.unit)}${unitSuffix(benchmark.unit)}`}
+            />
+            <SummaryStat
+              label="Spread"
+              value={tailSpread > 0 ? `${tailSpread.toFixed(1)}×` : "-"}
+              hint={
+                tailSpread > 0
+                  ? `${fmtUnit(tailMin, benchmark.unit)} → ${fmtUnit(tailMax, benchmark.unit)}`
+                  : undefined
+              }
+            />
+          </dl>
+        );
+      })()}
 
       {!isDraft && (
         <>
