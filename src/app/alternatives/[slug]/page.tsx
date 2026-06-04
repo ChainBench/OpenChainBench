@@ -250,7 +250,7 @@ export default async function AlternativePage({
           <dl className="mt-10 grid grid-cols-2 sm:flex sm:flex-wrap items-baseline gap-x-8 gap-y-3 border-y border-rule py-4">
             <SummaryStat
               label="Best"
-              value={`${fmtValue(fieldMin, bench.unit)}${unitSuffix(bench.unit)}`}
+              value={`${fmtValue(bench.higherIsBetter ? fieldMax : fieldMin, bench.unit)}${unitSuffix(bench.unit)}`}
             />
             <SummaryStat
               label="Median"
@@ -258,7 +258,7 @@ export default async function AlternativePage({
             />
             <SummaryStat
               label="Worst"
-              value={`${fmtValue(fieldMax, bench.unit)}${unitSuffix(bench.unit)}`}
+              value={`${fmtValue(bench.higherIsBetter ? fieldMin : fieldMax, bench.unit)}${unitSuffix(bench.unit)}`}
             />
             <SummaryStat
               label="Spread"
