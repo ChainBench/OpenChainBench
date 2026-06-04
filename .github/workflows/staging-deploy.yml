@@ -1,5 +1,15 @@
 name: Vercel staging deploy
 
+# Auto-deploy to Vercel Preview on every push to dev. Workaround for the
+# Vercel ↔ GitHub App pairing being unreliable across the OpenChainBench
+# (user account) + the Vercel team (Vercel team) setup. The Action calls the
+# Vercel CLI directly with VERCEL_TOKEN, bypassing the App webhook flow.
+#
+# Required GitHub secrets (Settings → Secrets and variables → Actions):
+#   VERCEL_TOKEN       — vercel.com/account/tokens, scope = the Vercel team
+#   VERCEL_ORG_ID      — ***SCRUBBED***
+#   VERCEL_PROJECT_ID  — ***SCRUBBED***
+
 on:
   push:
     branches:

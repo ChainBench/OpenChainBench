@@ -166,11 +166,8 @@ export function ProvidersTable({ providers }: { providers: Row[] }) {
                       {p.appearances}
                     </p>
                   </div>
-                  <div
-                    className="text-left sm:text-right sm:min-w-[56px]"
-                    title="#1 finishes. For benches with chain dimensions, counted per chain led (one credit per chain a provider tops) so chain-restricted providers don't get inflated cross-chain wins."
-                  >
-                    <p className="label-mono text-ink-faint">Wins (per-chain)</p>
+                  <div className="text-left sm:text-right sm:min-w-[56px]">
+                    <p className="label-mono text-ink-faint">Top 1</p>
                     <p
                       className={`mt-1 font-semibold text-base tabular ${
                         p.wins > 0 ? "text-good" : "text-ink-faint"

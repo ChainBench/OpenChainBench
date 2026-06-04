@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"sync/atomic"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -31,14 +30,6 @@ const (
 	// Sanity bound — never emit a single sample larger than this. Drops
 	// the natural outlier of a reconnect gap from polluting p50.
 	maxSampleMs    = 5 * 60 * 1000 // 5 min
-	// Max time without receiving a newHead event before we force a
-	// reconnect. Important because the pong handler bumps SetReadDeadline,
-	// so a provider that keeps sending pongs but silently drops our
-	// subscription (observed on publicnode → scroll: 0 reconnects in 1h
-	// while samples_total stuck at 23,887) wedges the goroutine forever.
-	// All L2s in the panel have block-time < 15s, so 90s of silence is
-	// unambiguously broken.
-	headWatchdog   = 90 * time.Second
 )
 
 type rpcReq struct {
@@ -112,20 +103,13 @@ func runChain(ch L2Chain) error {
 	blockTimeHealth.WithLabelValues(ch.Slug).Set(1)
 	fmt.Printf("[%s] connected, subscribed to newHeads\n", ch.Slug)
 
-	done := make(chan struct{})
-	// lastHeadUnixNano is read by the watchdog and written on every new head.
-	// Atomic int64 keeps the watchdog lock-free; initial value = connect time
-	// so the watchdog gives the subscription a normal head-window grace
-	// period before counting silence.
-	var lastHeadUnixNano atomic.Int64
-	lastHeadUnixNano.Store(time.Now().UnixNano())
-
+	pingDone := make(chan struct{})
 	go func() {
 		t := time.NewTicker(pingEvery)
 		defer t.Stop()
 		for {
 			select {
-			case <-done:
+			case <-pingDone:
 				return
 			case <-t.C:
 				_ = conn.WriteControl(
@@ -136,30 +120,7 @@ func runChain(ch L2Chain) error {
 			}
 		}
 	}()
-	// Head watchdog. The pong handler extends SetReadDeadline on every pong,
-	// so the read deadline alone can't catch a provider that keeps the WS
-	// heartbeat alive while silently dropping the subscription. Check every
-	// 15s: if we haven't received a head in headWatchdog, slam the connection
-	// closed → ReadMessage returns an error → runChain returns → outer loop
-	// bumps the reconnect counter and dials again.
-	go func() {
-		t := time.NewTicker(15 * time.Second)
-		defer t.Stop()
-		for {
-			select {
-			case <-done:
-				return
-			case now := <-t.C:
-				silent := now.Sub(time.Unix(0, lastHeadUnixNano.Load()))
-				if silent > headWatchdog {
-					fmt.Printf("[%s] watchdog: no head for %s — forcing reconnect\n", ch.Slug, silent.Round(time.Second))
-					_ = conn.Close()
-					return
-				}
-			}
-		}
-	}()
-	defer close(done)
+	defer close(pingDone)
 
 	conn.SetPongHandler(func(string) error {
 		_ = conn.SetReadDeadline(time.Now().Add(readDeadline))
@@ -198,7 +159,6 @@ func runChain(ch L2Chain) error {
 		}
 
 		now := time.Now()
-		lastHeadUnixNano.Store(now.UnixNano())
 		if !lastSeen.IsZero() {
 			deltaMs := float64(now.Sub(lastSeen).Milliseconds())
 			if deltaMs > 0 && deltaMs < maxSampleMs {

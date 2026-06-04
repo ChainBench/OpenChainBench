@@ -64,7 +64,7 @@ func archiveOne(ctx context.Context, c Chain, p Provider) {
 			// Mark every depth as unsupported so a flap doesn't
 			// leave a stale `1` in the time series.
 			for _, d := range depthBuckets {
-				rpcArchiveDepth.WithLabelValues(p.Slug, c.Slug, currentRegion, fmt.Sprintf("%d", d)).Set(0)
+				rpcArchiveDepth.WithLabelValues(p.Slug, c.Slug, fmt.Sprintf("%d", d)).Set(0)
 			}
 			return
 		}
@@ -81,7 +81,7 @@ func archiveOne(ctx context.Context, c Chain, p Provider) {
 			if ok {
 				val = 1.0
 			}
-			rpcArchiveDepth.WithLabelValues(p.Slug, c.Slug, currentRegion, fmt.Sprintf("%d", d)).Set(val)
+			rpcArchiveDepth.WithLabelValues(p.Slug, c.Slug, fmt.Sprintf("%d", d)).Set(val)
 			fmt.Printf("[archive/%s/%s] depth=%d head=%d ok=%v\n", c.Slug, p.Slug, d, head, ok)
 			select {
 			case <-ctx.Done():

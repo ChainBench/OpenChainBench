@@ -38,10 +38,10 @@ export function RegionGrid({ benchmark }: Props) {
 
   return (
     <div className="border-y-2 border-ink py-2 overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
-      <table className="w-full min-w-full sm:min-w-[520px] border-collapse text-sm tabular">
+      <table className="w-full min-w-[520px] border-collapse text-sm tabular">
         <thead>
           <tr className="font-sans text-[10px] uppercase tracking-[0.18em] text-ink-soft">
-            <th className="py-2 pr-3 text-left font-medium w-20 sm:w-44">Product</th>
+            <th className="py-2 pr-3 text-left font-medium w-32 sm:w-44">Product</th>
             {REGIONS.map((region) => (
               <th key={region.key} className="py-2 px-2 text-left font-medium">
                 {region.label}
@@ -73,10 +73,10 @@ export function RegionGrid({ benchmark }: Props) {
                   const max = regionMax.get(region.key) ?? 1;
                   const pct = Math.max(2, (point.p50 / max) * 100);
                   return (
-                    <td key={region.key} className="py-3 px-1 sm:px-2 min-w-0">
-                      <div className="grid grid-cols-[1fr_auto] sm:grid-cols-[1fr_5rem] items-center gap-1.5 sm:gap-3 min-w-0">
+                    <td key={region.key} className="py-3 px-2">
+                      <div className="grid grid-cols-[1fr_5rem] items-center gap-3">
                         <div
-                          className="relative h-3 rounded-sm overflow-hidden min-w-0"
+                          className="relative h-3 rounded-sm overflow-hidden"
                           style={{ background: `${color}14` /* 8% */ }}
                         >
                           <span
@@ -89,7 +89,7 @@ export function RegionGrid({ benchmark }: Props) {
                           />
                         </div>
                         <span
-                          className="font-mono text-[11px] sm:text-[12px] tabular text-right whitespace-nowrap"
+                          className="font-mono text-[12px] tabular text-right whitespace-nowrap"
                           style={{ color }}
                         >
                           {fmtUnit(point.p50, unit)}

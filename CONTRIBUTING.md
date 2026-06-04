@@ -20,16 +20,16 @@ OpenChainBench is a federation. Each harness is hosted by whoever wrote it. the 
 
 | Goal | Right channel |
 | --- | --- |
-| Float a rough idea | [Discussions → Ideas](https://github.com/ChainBench/OpenChainBench/discussions/categories/ideas) |
-| Ask a methodology / harness question | [Discussions → Q&A](https://github.com/ChainBench/OpenChainBench/discussions/categories/q-a) |
-| Propose a benchmark formally | [Issue → 📊 Propose a benchmark](https://github.com/ChainBench/OpenChainBench/issues/new?template=new-benchmark.yml) |
-| Report a number that looks wrong | [Issue → 🐞 Data quality](https://github.com/ChainBench/OpenChainBench/issues/new?template=data-quality.yml) |
-| Submit a provider correction | [Issue → ✏️ Provider correction](https://github.com/ChainBench/OpenChainBench/issues/new?template=provider-correction.yml) |
+| Float a rough idea | [Discussions → Ideas](https://github.com/OpenChainBench/OpenChainBench/discussions/categories/ideas) |
+| Ask a methodology / harness question | [Discussions → Q&A](https://github.com/OpenChainBench/OpenChainBench/discussions/categories/q-a) |
+| Propose a benchmark formally | [Issue → 📊 Propose a benchmark](https://github.com/OpenChainBench/OpenChainBench/issues/new?template=new-benchmark.yml) |
+| Report a number that looks wrong | [Issue → 🐞 Data quality](https://github.com/OpenChainBench/OpenChainBench/issues/new?template=data-quality.yml) |
+| Submit a provider correction | [Issue → ✏️ Provider correction](https://github.com/OpenChainBench/OpenChainBench/issues/new?template=provider-correction.yml) |
 | See what's planned | [Roadmap project board](https://github.com/orgs/OpenChainBench/projects) |
 
 ## Submitting a benchmark
 
-1. **Open an issue** with the [📊 Propose a benchmark template](https://github.com/ChainBench/OpenChainBench/issues/new?template=new-benchmark.yml). Sketch the metric, providers, methodology, where you'll host the harness. get feedback before you write code. The issue lands in the `Requested` column of the roadmap.
+1. **Open an issue** with the [📊 Propose a benchmark template](https://github.com/OpenChainBench/OpenChainBench/issues/new?template=new-benchmark.yml). Sketch the metric, providers, methodology, where you'll host the harness. get feedback before you write code. The issue lands in the `Requested` column of the roadmap.
 2. **Write the spec.** Drop a YAML at `benchmarks/<slug>.yml`. The format is described in [`benchmarks/README.md`](./benchmarks/README.md) and validated by `src/lib/spec-schema.ts`.
 3. **Build the harness** at `harnesses/<slug>/`. A harness is a data producer only. it exposes `/metrics` over HTTPS with the metric names and labels your spec references. See [`harnesses/README.md`](./harnesses/README.md) for the contract and the existing Go harnesses as reference implementations.
 4. **Deploy the harness** on whatever infra fits. Railway, Fly, Cloud Run, a VPS. Expose `/metrics` over HTTPS at a stable public URL. You own the runtime, the secrets and the budget. The maintainers never see your API keys.
@@ -56,7 +56,7 @@ pnpm build               # production build
 
 ## Corrections
 
-If you can't reproduce a number, file a [provider correction](https://github.com/ChainBench/OpenChainBench/issues/new?template=provider-correction.yml) (you measured a different value for your service) or a [data quality issue](https://github.com/ChainBench/OpenChainBench/issues/new?template=data-quality.yml) (the site is showing something obviously wrong or stale). Material errors are corrected in place with a dated note on the report.
+If you can't reproduce a number, file a [provider correction](https://github.com/OpenChainBench/OpenChainBench/issues/new?template=provider-correction.yml) (you measured a different value for your service) or a [data quality issue](https://github.com/OpenChainBench/OpenChainBench/issues/new?template=data-quality.yml) (the site is showing something obviously wrong or stale). Material errors are corrected in place with a dated note on the report.
 
 ## Code of conduct & security
 

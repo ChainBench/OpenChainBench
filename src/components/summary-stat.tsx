@@ -24,7 +24,7 @@ export function SummaryStat({
   hint?: string;
 }) {
   return (
-    <div className="flex-1 min-w-0 sm:min-w-[8rem] flex flex-col gap-1.5 px-5 py-4 sm:px-6 sm:py-5">
+    <div className="flex-1 min-w-[8rem] flex flex-col gap-1.5 px-5 py-4 sm:px-6 sm:py-5">
       <dt className="label-mono text-ink-faint">
         {label}
       </dt>

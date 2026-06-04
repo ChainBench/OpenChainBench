@@ -87,10 +87,6 @@ func buildProbes(enabled map[Service]bool) ([]serviceProbe, error) {
 		buildNozomiProbe(tipWallets[ServiceNozomi]),
 		buildAstralaneProbe(tipWallets[ServiceAstralane]),
 		buildZeroSlotProbe(tipWallets[Service0slot]),
-		// Mobula has no own tip wallet (relays via Jito/Nozomi/zeroslot internally).
-		// Embed a Jito tip transfer so Mobula's default routing sees a valid tip;
-		// attribution uses signatureSubscribe (active probe path), not tip-wallet.
-		buildMobulaProbe(tipWallets[ServiceJito]),
 	}
 
 	out := make([]serviceProbe, 0, len(candidates))
@@ -277,10 +273,7 @@ func buildAstralaneProbe(tip solana.PublicKey) serviceProbe {
 	}
 	host := envDefault("ASTRALANE_ENDPOINT", "https://ny.gateway.astralane.io/iris")
 	url := host + "?api-key=" + key
-	// Astralane raised their min tip floor 500_000 → 1_000_000 lamports
-	// (observed 2026-05-26 via prober alerts). Default to the new floor;
-	// the ASTRALANE_TIP_LAMPORTS env var still overrides.
-	tipLamports := uint64(envInt("ASTRALANE_TIP_LAMPORTS", 1_000_000))
+	tipLamports := uint64(envInt("ASTRALANE_TIP_LAMPORTS", 500_000))
 
 	return serviceProbe{
 		Service:     ServiceAstralane,
@@ -442,110 +435,4 @@ func truncate(s string, n int) string {
 		return s
 	}
 	return s[:n] + "…"
-}
-
-// -----------------------------------------------------------------------------
-// Mobula swap-send — multi-RPC fan-out aggregator
-// docs.mobula.io/rest-api-reference/endpoint/swap-send
-//
-// Wire shape (verified 2026-05-27):
-//   - POST https://api.mobula.io/api/2/swap/send
-//   - Authorization: Bearer <MOBULA_API_KEY>
-//   - Body: {"chainId": "solana:solana", "signedTransaction": "<base64>"}
-//   - Response on success: {"data": {"transactionHash": "<sig>", "requestId": "...",
-//                                    "success": true, "lander": "jito|nozomi|..."}}
-//   - 201 returned for accepted submission; downstream failure surfaces inside
-//     the JSON body via `error` / `data.success=false`.
-//
-// Mobula relays internally to Jito / Nozomi / zeroslot via multi-RPC fan-out,
-// so there is no dedicated Mobula tip wallet. The probe embeds a Jito tip
-// transfer (same wallet as the Jito control probe) so Mobula's default
-// routing sees a valid tip on the underlying lander. Active-probe attribution
-// works via signatureSubscribe on the tx signature, independent of the tip
-// wallet used.
-// -----------------------------------------------------------------------------
-
-func buildMobulaProbe(tip solana.PublicKey) serviceProbe {
-	key := strings.TrimSpace(os.Getenv("MOBULA_API_KEY"))
-	if key == "" {
-		fmt.Println("[prober] mobula: MOBULA_API_KEY not set — service skipped")
-		return serviceProbe{}
-	}
-	url := envDefault("MOBULA_ENDPOINT", "https://api.mobula.io/api/2/swap/send")
-	tipLamports := uint64(envInt("MOBULA_TIP_LAMPORTS", 10_000))
-
-	return serviceProbe{
-		Service:     ServiceMobula,
-		Mode:        "default",
-		Endpoint:    url,
-		TipWallet:   tip,
-		TipLamports: tipLamports,
-		Sender: func(ctx context.Context, tx *solana.Transaction) (string, error) {
-			return postMobulaSwapSend(ctx, url, key, tx)
-		},
-	}
-}
-
-func postMobulaSwapSend(ctx context.Context, url, apiKey string, tx *solana.Transaction) (string, error) {
-	txB64, err := txToBase64(tx)
-	if err != nil {
-		return "", err
-	}
-	reqBody := map[string]any{
-		"chainId":           "solana:solana",
-		"signedTransaction": txB64,
-	}
-	buf, err := json.Marshal(reqBody)
-	if err != nil {
-		return "", fmt.Errorf("marshal req: %w", err)
-	}
-	cctx, cancel := context.WithTimeout(ctx, senderHTTPTimeout)
-	defer cancel()
-	req, err := http.NewRequestWithContext(cctx, http.MethodPost, url, bytes.NewReader(buf))
-	if err != nil {
-		return "", fmt.Errorf("new req: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+apiKey)
-
-	resp, err := senderHTTPClient.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("http: %s", scrubSecrets(err.Error()))
-	}
-	defer resp.Body.Close()
-	respBody, _ := io.ReadAll(resp.Body)
-
-	if resp.StatusCode == 419 || resp.StatusCode == 429 {
-		return "", fmt.Errorf("http %d (rate limit): %s",
-			resp.StatusCode, scrubSecrets(truncate(string(respBody), 200)))
-	}
-	if resp.StatusCode >= 500 {
-		return "", fmt.Errorf("http %d: %s",
-			resp.StatusCode, scrubSecrets(truncate(string(respBody), 200)))
-	}
-
-	var parsed struct {
-		Data struct {
-			TransactionHash string `json:"transactionHash"`
-			Success         bool   `json:"success"`
-		} `json:"data"`
-		Error string `json:"error"`
-	}
-	if err := json.Unmarshal(respBody, &parsed); err != nil {
-		return "", fmt.Errorf("decode resp (status=%d body=%s): %w",
-			resp.StatusCode, scrubSecrets(truncate(string(respBody), 200)), err)
-	}
-	if parsed.Error != "" {
-		return "", fmt.Errorf("mobula: %s", scrubSecrets(parsed.Error))
-	}
-	if parsed.Data.TransactionHash != "" {
-		return parsed.Data.TransactionHash, nil
-	}
-	// Mobula sometimes returns 201 without echoing the sig. Fall back to
-	// the locally-computed signature (known once tx.Sign ran).
-	if len(tx.Signatures) == 0 {
-		return "", fmt.Errorf("no signature in response or on tx (status=%d body=%s)",
-			resp.StatusCode, scrubSecrets(truncate(string(respBody), 200)))
-	}
-	return tx.Signatures[0].String(), nil
 }

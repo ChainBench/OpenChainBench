@@ -136,8 +136,8 @@ func probeOne(ctx context.Context, c Chain, p Provider) {
 		probeCtx, cancel := context.WithTimeout(ctx, probeTimeout)
 		defer cancel()
 		block, result, latency, err := callBlockNumber(probeCtx, p.URL)
-		rpcLatency.WithLabelValues(p.Slug, c.Slug, currentRegion).Set(latency)
-		rpcLatencyHist.WithLabelValues(p.Slug, c.Slug, currentRegion).Observe(latency)
+		rpcLatency.WithLabelValues(p.Slug, c.Slug).Set(latency)
+		rpcLatencyHist.WithLabelValues(p.Slug, c.Slug).Observe(latency)
 
 		if result == "ok" {
 			tips.update(c.Slug, block)
@@ -146,12 +146,12 @@ func probeOne(ctx context.Context, c Chain, p Provider) {
 				result = "stale"
 			}
 		}
-		rpcCallTotal.WithLabelValues(p.Slug, c.Slug, currentRegion, result).Inc()
+		rpcCallTotal.WithLabelValues(p.Slug, c.Slug, result).Inc()
 		if result == "ok" {
-			rpcHealth.WithLabelValues(p.Slug, c.Slug, currentRegion).Set(1)
+			rpcHealth.WithLabelValues(p.Slug, c.Slug).Set(1)
 			fmt.Printf("[%s/%s] block=%d latency=%.0fms\n", c.Slug, p.Slug, block, latency)
 		} else {
-			rpcHealth.WithLabelValues(p.Slug, c.Slug, currentRegion).Set(0)
+			rpcHealth.WithLabelValues(p.Slug, c.Slug).Set(0)
 			fmt.Printf("[%s/%s] %s latency=%.0fms err=%v\n", c.Slug, p.Slug, result, latency, err)
 		}
 	}
