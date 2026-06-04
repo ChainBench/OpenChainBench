@@ -109,12 +109,19 @@ scrape_configs:
   # Cross-correlates Polymarket CLOB WebSocket (T0) vs Mobula PM WS vs
   # Codex (defined.fi) GraphQL WS for the same trade. Reports per-provider
   # millisecond lag.
+  #
+  # Scraped over Railway internal DNS because the harness lives in the
+  # same `Dashboard OpenChainBench` Railway project as this Prometheus.
+  # Public *.up.railway.app routes go through the edge and Railway does
+  # not always allow same-project traffic to loop back via the public
+  # gateway. Internal DNS is HTTP on port 2112 (the harness's exposed
+  # /metrics port) — never goes through Cloudflare / edge.
   - job_name: pm-freshness
     metrics_path: /metrics
-    scheme: https
+    scheme: http
     static_configs:
       - targets:
-          - pm-freshness-bench-production.up.railway.app
+          - pm-freshness-bench-production.railway.internal:2112
         labels:
           benchmark: pm-freshness
           host: mobula
