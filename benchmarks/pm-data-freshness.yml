@@ -86,13 +86,18 @@ providers:
       # Polymarket gateway IS T0. The "delta" against itself is zero by
       # construction. We still emit Prom-shaped queries (with a constant
       # vector) so the loader doesn't fall back to draft for this row.
-      p50: vector(0)
-      p90: vector(0)
-      p99: vector(0)
-      mean: vector(0)
+      # Polymarket is T0 by construction — the delta vs itself is zero.
+      # Use a sub-millisecond floor (0.5 ms) so the row + the chart line
+      # are visible on a linear y-axis next to the multi-second Codex
+      # value; pure vector(0) gets clipped to the axis baseline and
+      # disappears.
+      p50: vector(0.5)
+      p90: vector(0.5)
+      p99: vector(0.5)
+      mean: vector(0.5)
       success: avg_over_time(pm_health{provider="polymarket"}[24h])
       sample_size: sum(increase(pm_events_total{provider="polymarket"}[24h]))
-      series: vector(0)
+      series: vector(0.5)
 
   - slug: mobula
     name: Mobula Pulse PM
