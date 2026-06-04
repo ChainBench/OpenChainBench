@@ -55,6 +55,8 @@ const QUERY_PROM_ALLOWED_METRIC_PREFIXES = [
   "networks_supported",
   "network_coverage_",
   "wallet_labels_",
+  // PM freshness bench
+  "pm_",
   // Perp fees + buyback + oracle + validator yield
   "perp_fees_",
   "ocb_buyback_",
