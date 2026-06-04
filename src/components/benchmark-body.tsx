@@ -430,6 +430,7 @@ export function BenchmarkBody({
                     seriesOverride30d={activePanel?.seriesByProvider30d}
                     metricLabelOverride={activePanel?.label}
                     unitOverride={activePanel?.unit}
+                    higherIsBetterOverride={activePanel?.higherIsBetter}
                   />
                   {activePanel?.description && (
                     <p className="mt-3 text-[12px] text-ink-muted max-w-2xl">
