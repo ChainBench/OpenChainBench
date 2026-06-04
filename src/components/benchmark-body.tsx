@@ -99,8 +99,12 @@ function summarize(b: Benchmark | undefined): ChainMeta | null {
  * the whole point).
  */
 /** Stable variant-map key mirroring `page.tsx:variantKey`. */
-function variantKey(chain: string | null, region: string | null): string {
-  return `${chain ?? "__none"}|${region ?? "__none"}`;
+function variantKey(
+  chain: string | null,
+  region: string | null,
+  kind: string | null,
+): string {
+  return `${chain ?? "__none"}|${region ?? "__none"}|${kind ?? "__none"}`;
 }
 
 /** Region values that appear in extras.seriesByRegion24h. Used when the
@@ -127,16 +131,20 @@ export function BenchmarkBody({
   variants,
   chainOptions,
   regionOptions,
+  kindOptions = [],
   initialChain,
   initialRegion,
+  initialKind = null,
 }: {
   variants: Record<string, Benchmark>;
   chainOptions: ChainOption[];
   regionOptions: ChainOption[];
+  kindOptions?: ChainOption[];
   initialChain: string | null;
   initialRegion: string | null;
+  initialKind?: string | null;
 }) {
-  // Read ?chain= / ?region= client-side. The server can't read these any
+  // Read ?chain= / ?region= / ?kind= client-side. The server can't read these any
   // more (doing so would force /benchmarks/<slug> to render dynamic on
   // every visit) so URL-driven filter state is hydrated here. Falls back
   // to the server-rendered initial when the URL has no filter or a
@@ -144,22 +152,27 @@ export function BenchmarkBody({
   const searchParams = useSearchParams();
   const urlChain = searchParams.get("chain");
   const urlRegion = searchParams.get("region");
+  const urlKind = searchParams.get("kind");
   const urlLayer = searchParams.get("layer");
   const resolvedInitialChain =
     (urlChain && chainOptions.find((c) => c.value === urlChain)?.value) ?? initialChain;
   const resolvedInitialRegion =
     (urlRegion && regionOptions.find((r) => r.value === urlRegion)?.value) ?? initialRegion;
+  const resolvedInitialKind =
+    (urlKind && kindOptions.find((k) => k.value === urlKind)?.value) ?? initialKind;
   const resolvedInitialLayer: ProviderLayer =
     urlLayer === "l2" ? "l2" : "l1";
 
   const [chain, setChain] = useState<string | null>(resolvedInitialChain);
   const [region, setRegion] = useState<string | null>(resolvedInitialRegion);
+  const [kind, setKind] = useState<string | null>(resolvedInitialKind);
   const [layer, setLayer] = useState<ProviderLayer>(resolvedInitialLayer);
 
   useEffect(() => {
     const url = new URL(window.location.href);
     syncParam(url, "chain", chain, chainOptions);
     syncParam(url, "region", region, regionOptions);
+    syncParam(url, "kind", kind, kindOptions);
     // Layer param: drop when default ("l1"), keep when user picked l2.
     if (layer === "l1") url.searchParams.delete("layer");
     else url.searchParams.set("layer", layer);
@@ -167,15 +180,17 @@ export function BenchmarkBody({
     if (next !== window.location.pathname + window.location.search) {
       window.history.replaceState(null, "", next);
     }
-  }, [chain, region, layer, chainOptions, regionOptions]);
+  }, [chain, region, kind, layer, chainOptions, regionOptions, kindOptions]);
 
   const fallbackChain = chainOptions[0]?.value ?? null;
   const fallbackRegion = regionOptions[0]?.value ?? null;
+  const fallbackKind = kindOptions[0]?.value ?? null;
   const effectiveChain = chainOptions.length > 0 ? (chain ?? fallbackChain) : null;
   const effectiveRegion = regionOptions.length > 0 ? (region ?? fallbackRegion) : null;
+  const effectiveKind = kindOptions.length > 0 ? (kind ?? fallbackKind) : null;
   const benchmark =
-    variants[variantKey(effectiveChain, effectiveRegion)] ??
-    variants[variantKey(null, null)] ??
+    variants[variantKey(effectiveChain, effectiveRegion, effectiveKind)] ??
+    variants[variantKey(null, null, null)] ??
     Object.values(variants)[0];
   if (!benchmark) return null;
 
@@ -267,7 +282,10 @@ export function BenchmarkBody({
 
   return (
     <>
-      {(hasLayerSplit || chainOptions.length > 0 || regionOptions.length > 0) && (
+      {(hasLayerSplit ||
+        chainOptions.length > 0 ||
+        regionOptions.length > 0 ||
+        kindOptions.length > 0) && (
         <div className="mt-8 space-y-3">
           {hasLayerSplit && (
             <DimensionRow
@@ -280,6 +298,24 @@ export function BenchmarkBody({
               onSelect={(v) => setLayer(v as ProviderLayer)}
             />
           )}
+          {kindOptions.length > 0 && (
+            <DimensionRow
+              label="Kind"
+              options={kindOptions}
+              selected={kind ?? fallbackKind}
+              onSelect={setKind}
+              metaByValue={Object.fromEntries(
+                kindOptions
+                  .map((o) => [
+                    o.value,
+                    summarize(
+                      variants[variantKey(effectiveChain, effectiveRegion, o.value)],
+                    ),
+                  ])
+                  .filter(([, v]) => v !== null) as [string, ChainMeta][]
+              )}
+            />
+          )}
           {chainOptions.length > 0 && (
             <DimensionRow
               label="Chain"
@@ -290,7 +326,7 @@ export function BenchmarkBody({
                 chainOptions
                   .map((o) => [
                     o.value,
-                    summarize(variants[variantKey(o.value, effectiveRegion)]),
+                    summarize(variants[variantKey(o.value, effectiveRegion, effectiveKind)]),
                   ])
                   .filter(([, v]) => v !== null) as [string, ChainMeta][]
               )}
@@ -306,7 +342,7 @@ export function BenchmarkBody({
                 regionOptions
                   .map((o) => [
                     o.value,
-                    summarize(variants[variantKey(effectiveChain, o.value)]),
+                    summarize(variants[variantKey(effectiveChain, o.value, effectiveKind)]),
                   ])
                   .filter(([, v]) => v !== null) as [string, ChainMeta][]
               )}

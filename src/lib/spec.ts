@@ -166,6 +166,7 @@ export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
 export type BenchmarkFilters = {
   chain?: string;
   region?: string;
+  kind?: string;
 };
 
 /**
@@ -218,8 +219,8 @@ function parseFilterSig(sig: string): BenchmarkFilters {
   if (!sig) return out;
   for (const kv of sig.split("&")) {
     const [k, v] = kv.split("=");
-    if (k && v && (k === "chain" || k === "region")) {
-      out[k as "chain" | "region"] = v;
+    if (k && v && (k === "chain" || k === "region" || k === "kind")) {
+      out[k as "chain" | "region" | "kind"] = v;
     }
   }
   return out;

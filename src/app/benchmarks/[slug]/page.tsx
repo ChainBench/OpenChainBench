@@ -154,27 +154,33 @@ export default async function BenchmarkPage({
   if (!aggregate) notFound();
   const chainOptions = aggregate.dimensions?.chain ?? [];
   const regionOptions = aggregate.dimensions?.region ?? [];
+  const kindOptions = aggregate.dimensions?.kind ?? [];
   const chain = chainOptions[0]?.value ?? null;
   const region = regionOptions[0]?.value ?? null;
+  const kind = kindOptions[0]?.value ?? null;
 
-  // Pre-fetch every (chain × region) variant in parallel so client flips
+  // Pre-fetch every (chain × region × kind) variant in parallel so client flips
   // are zero round-trip. unstable_cache dedupes each (slug, filters) combo
   // across users - first miss warms it, every later viewer gets it instant.
   // `all` is the "no filter" sentinel - same as the unscoped fetch.
   const chainsForFetch = chainOptions.length > 0 ? chainOptions.map((c) => c.value) : [null];
   const regionsForFetch = regionOptions.length > 0 ? regionOptions.map((r) => r.value) : [null];
+  const kindsForFetch = kindOptions.length > 0 ? kindOptions.map((k) => k.value) : [null];
 
   const variantPairs = chainsForFetch.flatMap((c) =>
-    regionsForFetch.map((r) => [c, r] as const)
+    regionsForFetch.flatMap((r) =>
+      kindsForFetch.map((k) => [c, r, k] as const)
+    )
   );
   const [variantList, all] = await Promise.all([
     Promise.all(
-      variantPairs.map(async ([c, r]) => {
-        const filters: { chain?: string; region?: string } = {};
+      variantPairs.map(async ([c, r, k]) => {
+        const filters: { chain?: string; region?: string; kind?: string } = {};
         if (c && c !== "all") filters.chain = c;
         if (r && r !== "all") filters.region = r;
+        if (k && k !== "all") filters.kind = k;
         const b = await getBenchmark(slug, filters);
-        return [variantKey(c, r), b ?? aggregate] as const;
+        return [variantKey(c, r, k), b ?? aggregate] as const;
       })
     ),
     getBenchmarks(),
@@ -204,7 +210,7 @@ export default async function BenchmarkPage({
           },
     ]),
   );
-  const benchmark = variants[variantKey(chain, region)] ?? aggregate;
+  const benchmark = variants[variantKey(chain, region, kind)] ?? aggregate;
 
   const isDraft = benchmark.status === "draft";
   const isAwaiting = isDraft && benchmark.editorialStatus === "live";
@@ -457,8 +463,10 @@ export default async function BenchmarkPage({
             variants={variants}
             chainOptions={chainOptions}
             regionOptions={regionOptions}
+            kindOptions={kindOptions}
             initialChain={chain ?? null}
             initialRegion={region ?? null}
+            initialKind={kind ?? null}
           />
         </Suspense>
       )}
@@ -563,8 +571,12 @@ export default async function BenchmarkPage({
 /** Stable variant-map key. Mirrors what BenchmarkBody computes on every
  * filter change. Use `null` for "no dimension" and "all" / undefined as
  * the unscoped sentinel. */
-function variantKey(chain: string | null, region: string | null): string {
-  return `${chain ?? "__none"}|${region ?? "__none"}`;
+function variantKey(
+  chain: string | null,
+  region: string | null,
+  kind: string | null,
+): string {
+  return `${chain ?? "__none"}|${region ?? "__none"}|${kind ?? "__none"}`;
 }
 
 function DraftNotice({ source }: { source: string }) {
