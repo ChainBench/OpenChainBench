@@ -81,10 +81,21 @@ prometheus:
   window: 24h
   expected_freshness_seconds: 5400
 
-# Chain selector. tabs at the top of the page. Server injects
-# `chain="X"` into every PromQL query for the active tab. The special
-# value `all` skips the filter, aggregate over every chain at once.
+# Chain + Kind selectors. tabs at the top of the page. Server injects
+# `chain="X"` and `kind="X"` into every PromQL query for the active tab.
+# `kind` separates the two distinct signals this bench actually measures:
+#  - contract: does the provider resolve a verified smart contract's name
+#    (Blockscout gets this for free on any verified contract)
+#  - eoa: does the provider resolve an externally-owned account to a
+#    curated entity (CEX hot wallet, foundation, public figure) - the
+#    real labeling-graph signal
+# Default is `eoa` because the contract tab is trivially easy for explorers
+# and saturates near 100%; the EOA tab is where curated entity coverage
+# actually differentiates providers.
 dimensions:
+  kind:
+    - { value: eoa,      label: EOA }
+    - { value: contract, label: Contract }
   chain:
     - { value: ethereum, label: Ethereum }
     - { value: solana,   label: Solana }

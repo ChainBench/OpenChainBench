@@ -148,6 +148,7 @@ export type Benchmark = {
   dimensions?: {
     chain?: { value: string; label: string }[];
     region?: { value: string; label: string }[];
+    kind?: { value: string; label: string }[];
   };
   category: "Aggregators" | "Bridges" | "Blockchains" | "Trading" | "Wallets" | "RPCs";
   results: ProviderResult[];
