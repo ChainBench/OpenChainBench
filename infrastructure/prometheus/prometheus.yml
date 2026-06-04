@@ -105,6 +105,20 @@ scrape_configs:
           benchmark: perp-fees
           host: mobula
 
+  # ─ PM data freshness ─────────────────────────────────────────────────
+  # Cross-correlates Polymarket CLOB WebSocket (T0) vs Mobula PM WS vs
+  # Codex (defined.fi) GraphQL WS for the same trade. Reports per-provider
+  # millisecond lag.
+  - job_name: pm-freshness
+    metrics_path: /metrics
+    scheme: https
+    static_configs:
+      - targets:
+          - pm-freshness-bench-production.up.railway.app
+        labels:
+          benchmark: pm-freshness
+          host: mobula
+
   # ─ Self-scrape ────────────────────────────────────────────────────────
   # Surfaces Prometheus's own health (scrape error rates, target up/down)
   # in the same UI used to debug harnesses.
