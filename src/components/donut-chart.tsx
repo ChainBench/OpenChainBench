@@ -7,9 +7,7 @@ import { ProviderLogo } from "@/components/provider-logo";
 import { fmtUnit } from "@/lib/format";
 import { buildProviderColors } from "@/lib/series-colors";
 import { useChartExclusion } from "@/hooks/use-chart-exclusion";
-import { useTopN } from "@/hooks/use-top-n";
 import { rankResults } from "@/lib/ranking";
-import { TopNSelector } from "@/components/top-n-selector";
 
 /**
  * Share-of-field donut. Each provider is a slice sized by p50 vs the
@@ -55,20 +53,7 @@ export function DonutChart({
     () => liveResults(results),
     [results],
   );
-  // Top-N selector — clip the cohort BEFORE applying exclusion so the
-  // "top N" semantic matches what every other view shows. Sized off
-  // the live provider count via the shared `useTopN` hook.
-  const { topN, setTopN, topNOptions } = useTopN(liveAll.length);
-  const liveClipped = useMemo(
-    () =>
-      topN == null
-        ? liveAll
-        : [...liveAll]
-            .sort((a, b) => b.ms.p50 - a.ms.p50)
-            .slice(0, topN),
-    [liveAll, topN],
-  );
-  const live = liveClipped.filter((r) => !excluded.has(r.slug));
+  const live = liveAll.filter((r) => !excluded.has(r.slug));
   const total = live.reduce((s, r) => s + r.ms.p50, 0);
   const colors = useMemo(() => buildProviderColors(results), [results]);
   const sorted = useMemo(
@@ -132,7 +117,6 @@ export function DonutChart({
           Share by p50
         </p>
         <div className="flex items-center gap-3">
-          <TopNSelector value={topN} options={topNOptions} onChange={setTopN} />
           <p className="text-[11px] font-mono tabular text-ink-faint">
             {live.length} of {liveAll.length} live
           </p>
@@ -259,7 +243,7 @@ export function DonutChart({
                     {r.name}
                   </span>
                   <span className="ml-auto font-mono tabular text-[11.5px] text-ink-soft shrink-0">
-                    {isOff ? "-" : `${(share * 100).toFixed(1)}%`}
+                    {isOff ? "—" : `${(share * 100).toFixed(1)}%`}
                   </span>
                 </li>
               );

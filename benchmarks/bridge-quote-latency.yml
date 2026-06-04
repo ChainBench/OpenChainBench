@@ -43,23 +43,15 @@ methodology:
   - "Histogram buckets: 50, 100, 200, 500, 1000, 2000, 5000, 10000 ms."
   - "Failures (quote_failed, execution_failed, unsupported route) excluded from latency aggregates and counted toward success rate."
 
-# Per-corridor leader rewrite deferred: this YAML does not yet declare
-# `dimensions:` for `from_chain`/`to_chain` / corridor. The bridge-monitor
-# metric carries those labels (see comment block below), so per-corridor
-# placeholders can be wired in once the dimensions block is added in a
-# separate code/data PR. The {{best_name}} / {{worst_name}} below
-# resolve to the cross-corridor aggregate, which is honest because every
-# bridge is queried on the same 4 USDC routes, but the text now makes
-# the aggregation explicit rather than implying a single winning route.
 findings:
-  - "{{best_name}} currently leads the cross-corridor aggregate at {{best_p50}} (p50, 24 h) across {{count}} measured bridges. The cohort spans direct protocols, aggregators and intent layers under the same query, averaged over the 4 USDC routes the harness sweeps."
+  - "{{best_name}} currently leads quote latency at {{best_p50}} (p50, 24 h) across {{count}} measured bridges. The cohort spans direct protocols, aggregators and intent layers under the same query."
   - "{{name:relay}} returns {{p50:relay}} (p50, 24 h). Intent and relay layers usually clock lowest because the API surface is a thin price-discovery call against pre-quoted solvers, not a full route-search graph."
   - "{{name:lifi}} sits at {{p50:lifi}} (p50, 24 h). Aggregators do more work per call (route search across N underlying bridges, fee normalisation), which costs them a stable 100 to 400 ms versus pure relays."
   - "{{name:debridge}} clocks {{p50:debridge}} (p50, 24 h). Direct protocols quote a single canonical route, so latency reflects raw API plumbing rather than route-search complexity."
   - "Tail latency tells the integration story. p99 ({{p99:relay}} / {{p99:lifi}} / {{p99:debridge}}) is what dictates timeouts in production wallets; SDKs that wait for the slowest bridge degrade the whole UX when one provider has a bad minute."
-  - "{{worst_name}} trails the cross-corridor aggregate at {{worst_p50}} (p50, 24 h). A 5x gap at p50 turns into a 10 to 20x gap at p99. A bridge that lags overall can still be fastest on a specific corridor where it is closer to its solver pool, that per-corridor breakdown is on the roadmap."
+  - "{{worst_name}} trails at {{worst_p50}} (p50, 24 h). A 5x gap at p50 turns into a 10 to 20x gap at p99, which is where flaky integrations actually surface to end users."
 
-source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/bridge-monitor
+source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/bridge-monitor
 
 prometheus:
   url: https://prometheus-production-9ffe.up.railway.app
@@ -68,7 +60,7 @@ prometheus:
 
 faq:
   - q: "Which cross-chain bridge has the lowest API latency?"
-    a: "{{best_name}} currently leads the cross-corridor aggregate at {{best_p50}} (p50, 24 h) across {{count}} measured bridges, averaged over the 4 USDC routes the harness sweeps. The leaderboard re-sorts every five minutes against fresh Prometheus samples, so the ranking reflects the last 24 hours of actual API performance from a single eu-west origin under the same routes. Per-corridor latency leaders can differ from this aggregate where one provider has a solver pool closer to a specific destination chain, that breakdown is on the roadmap once corridor dimensions are surfaced in the page UI."
+    a: "{{best_name}} currently leads at {{best_p50}} (p50, 24 h) across {{count}} measured bridges. The leaderboard re-sorts every five minutes against fresh Prometheus samples, so the ranking reflects the last 24 hours of actual API performance from a single eu-west origin under the same USDC routes."
   - q: "What is the difference between quote latency and bridge fill time?"
     a: "Quote latency is the wall-clock time the bridge API takes to return a price. Fill time is the wall-clock time the funds take to land on the destination chain after the user signs. They are decoupled: a bridge can quote in 100 ms and take 30 seconds to settle, or quote in 2 seconds and settle in 5 seconds. This benchmark measures the quote half because that is the part a wallet, an aggregator or an embedded swap UI feels first and tunes its UX around."
   - q: "Why does bridge quote latency matter for builders?"

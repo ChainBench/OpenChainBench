@@ -36,14 +36,15 @@ services:
       - monitor
 
   alertmanager:
-    build:
-      context: ./alertmanager
-      dockerfile: Dockerfile
+    image: prom/alertmanager:latest
     container_name: alertmanager
     ports:
       - "9093:9093"
-    environment:
-      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
+    volumes:
+      - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
     networks:
       - monitoring
     restart: unless-stopped

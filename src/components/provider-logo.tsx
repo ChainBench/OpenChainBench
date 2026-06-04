@@ -32,27 +32,11 @@ export function ProviderLogo({
     return <Chip slug={slug} name={name} size={size} className={className} />;
   }
 
-  // Brand marks come in two failure modes against our page background:
-  //   • dark-on-transparent → invisible on dark-mode page         → light chip
-  //   • white-on-transparent → invisible on white light-mode page → dark chip
-  // Each problematic slug is opted in to ONE of the two sets below. Logos
-  // with proper colored fills (Helius orange, GeckoTerminal purple, …)
-  // need neither and ride the default transparent paper background.
-  const lc = slug.toLowerCase();
-  const needsLightChip = NEEDS_LIGHT_CHIP.has(lc);
-  const needsDarkChip = NEEDS_DARK_CHIP.has(lc);
-  let background: string;
-  let boxShadow: string | undefined;
-  if (needsDarkChip) {
-    background = "#0f172a";
-    boxShadow = "0 0 0 1px rgba(15, 23, 42, 0.18)";
-  } else if (needsLightChip) {
-    background = "#ffffff";
-    boxShadow = "0 0 0 1px rgba(15, 23, 42, 0.08)";
-  } else {
-    background = "var(--color-paper)";
-    boxShadow = undefined;
-  }
+  // A handful of brand marks are dark-on-transparent and disappear on the
+  // dark-mode page background. Force a white coaster + thin ring for those
+  // specific slugs so they stay legible without altering the look of every
+  // other (already-colored) logo.
+  const needsLightChip = NEEDS_LIGHT_CHIP.has(slug.toLowerCase());
 
   return (
     // eslint-disable-next-line @next/next/no-img-element
@@ -69,15 +53,13 @@ export function ProviderLogo({
         width: size,
         height: size,
         borderRadius: "50%",
-        background,
-        boxShadow,
+        background: needsLightChip ? "#ffffff" : "var(--color-paper)",
+        boxShadow: needsLightChip ? "0 0 0 1px rgba(15, 23, 42, 0.08)" : undefined,
       }}
     />
   );
 }
 
-// Dark-tone (or dark-on-transparent) logos — get a WHITE chip with a
-// hairline shadow so they pop on both light and dark page backgrounds.
 const NEEDS_LIGHT_CHIP = new Set([
   "mobula",
   "lighter",
@@ -86,23 +68,6 @@ const NEEDS_LIGHT_CHIP = new Set([
   "relay",
   "debridge",
   "tonapi",
-  "1rpc",
-  "blocknative",
-  "lava",
-  "tenderly",
-  "merkle",
-  "moralis",
-  "nodies",
-]);
-
-// White-on-transparent logos — invisible on a white chip. They get a
-// near-black chip so the white artwork pops. Verified via SVG fill audit
-// (fill="white" present in the brand mark).
-const NEEDS_DARK_CHIP = new Set([
-  "jito",
-  "astralane",
-  "sky",
-  "dydx",
 ]);
 
 function Chip({

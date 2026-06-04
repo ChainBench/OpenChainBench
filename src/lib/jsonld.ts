@@ -67,21 +67,6 @@ export function stripFaqMarkdown(input: string): string {
 type FaqItem = { q: string; a: string };
 
 /**
- * Normalise a chain value into a JSON-LD-safe @id suffix. Lowercased,
- * letters/digits/hyphens only — strips anything that would need URL
- * encoding when concatenated into an @id fragment. Returns `null` for
- * the sentinel "all" and for empty input so call sites can fall back to
- * the unscoped @id seamlessly.
- */
-export function chainIdFragment(chain?: string | null): string | null {
-  if (!chain) return null;
-  const trimmed = chain.trim().toLowerCase();
-  if (!trimmed || trimmed === "all") return null;
-  const cleaned = trimmed.replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "");
-  return cleaned || null;
-}
-
-/**
  * Build a top-level FAQPage JSON-LD object per https://schema.org/FAQPage.
  *
  * Emitted as its own `<script type="application/ld+json">` block on the
@@ -94,23 +79,13 @@ export function chainIdFragment(chain?: string | null): string | null {
  *
  * Caller is responsible for guarding empty `faq` arrays. Returns `null`
  * when there's nothing to emit so the call site can skip the script tag.
- *
- * `chain` is an optional context tag. When set, the @id gets a
- * `-<chain>` suffix so per-chain variants don't collide with the
- * unscoped FAQPage @id in Google's index.
  */
-export function buildFaqPageJsonLd(
-  faq: FaqItem[] | undefined,
-  pageUrl: string,
-  chain?: string | null,
-): Record<string, unknown> | null {
+export function buildFaqPageJsonLd(faq: FaqItem[] | undefined, pageUrl: string): Record<string, unknown> | null {
   if (!faq || faq.length === 0) return null;
-  const suffix = chainIdFragment(chain);
-  const id = suffix ? `${pageUrl}#faq-${suffix}` : `${pageUrl}#faq`;
   return {
     "@context": "https://schema.org",
     "@type": "FAQPage",
-    "@id": id,
+    "@id": `${pageUrl}#faq`,
     mainEntity: faq.map((item) => ({
       "@type": "Question",
       name: stripFaqMarkdown(item.q),

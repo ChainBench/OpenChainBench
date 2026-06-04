@@ -11,8 +11,6 @@ import { RankedBarChart } from "@/components/ranked-bar-chart";
 import { DistributionChart } from "@/components/distribution-chart";
 import { DonutChart } from "@/components/donut-chart";
 import { RegionGrid } from "@/components/region-grid";
-import { MetricViewTabs } from "@/components/metric-view-tabs";
-import { LayerFilter, type LayerSelection } from "@/components/layer-filter";
 import { CountLeaderboard } from "@/components/count-leaderboard";
 import { SummaryStat } from "@/components/summary-stat";
 import { ViewSwitcher } from "@/components/view-switcher";
@@ -144,29 +142,23 @@ export function BenchmarkBody({
   const searchParams = useSearchParams();
   const urlChain = searchParams.get("chain");
   const urlRegion = searchParams.get("region");
-  const urlLayer = searchParams.get("layer");
   const resolvedInitialChain =
     (urlChain && chainOptions.find((c) => c.value === urlChain)?.value) ?? initialChain;
   const resolvedInitialRegion =
     (urlRegion && regionOptions.find((r) => r.value === urlRegion)?.value) ?? initialRegion;
-  const resolvedInitialLayer: LayerSelection =
-    urlLayer === "l1" || urlLayer === "l2" ? urlLayer : "all";
 
   const [chain, setChain] = useState<string | null>(resolvedInitialChain);
   const [region, setRegion] = useState<string | null>(resolvedInitialRegion);
-  const [layer, setLayer] = useState<LayerSelection>(resolvedInitialLayer);
 
   useEffect(() => {
     const url = new URL(window.location.href);
     syncParam(url, "chain", chain, chainOptions);
     syncParam(url, "region", region, regionOptions);
-    if (layer === "all") url.searchParams.delete("layer");
-    else url.searchParams.set("layer", layer);
     const next = url.pathname + (url.search ? url.search : "");
     if (next !== window.location.pathname + window.location.search) {
       window.history.replaceState(null, "", next);
     }
-  }, [chain, region, layer, chainOptions, regionOptions]);
+  }, [chain, region, chainOptions, regionOptions]);
 
   const fallbackChain = chainOptions[0]?.value ?? null;
   const fallbackRegion = regionOptions[0]?.value ?? null;
@@ -177,29 +169,6 @@ export function BenchmarkBody({
     variants[variantKey(null, null)] ??
     Object.values(variants)[0];
   if (!benchmark) return null;
-
-  // L1/L2 filter counts, derived from the full unfiltered results so the
-  // pill counts are stable as the user toggles the filter.
-  const layerCounts = useMemo(() => {
-    let l1 = 0;
-    let l2 = 0;
-    for (const r of benchmark.results) {
-      if (r.layer === "l1") l1++;
-      else if (r.layer === "l2") l2++;
-    }
-    return { all: benchmark.results.length, l1, l2 };
-  }, [benchmark.results]);
-
-  // Filtered benchmark for the ledger table only. Charts above keep the
-  // full provider set so the chart vs ledger don't disagree on which
-  // providers exist.
-  const ledgerBenchmark = useMemo(() => {
-    if (layer === "all") return benchmark;
-    return {
-      ...benchmark,
-      results: benchmark.results.filter((r) => r.layer === layer),
-    };
-  }, [benchmark, layer]);
 
   const isDraft = benchmark.status === "draft";
   const { fieldMin, fieldMedian, fieldMax, tailMin, tailMax, tailSpread } =
@@ -239,14 +208,6 @@ export function BenchmarkBody({
   const chartRegions = chartOnlyRegions(benchmark);
   const showChartRegionRow = regionOptions.length === 0 && chartRegions.length > 1;
   const [chartRegion, setChartRegion] = useState<string>("all");
-
-  // Active companion-metric panel. null = main spec metric (default chart
-  // data, default unit, default header). When a panel id is set, the chart
-  // pulls its per-provider series from panel.seriesByProvider, swaps the
-  // header label to panel.label, and the Y-axis unit to panel.unit.
-  const [activePanelId, setActivePanelId] = useState<string | null>(null);
-  const activePanel =
-    benchmark.metricPanels?.find((p) => p.id === activePanelId) ?? null;
   const chartRegionOptions: ChainOption[] = useMemo(
     () => [
       { value: "all", label: "All" },
@@ -361,7 +322,6 @@ export function BenchmarkBody({
                   benchmark={benchmark}
                   excluded={excluded}
                   onToggleExclude={toggleExclude}
-                  onResetExcluded={resetExcluded}
                   headerActions={<ViewSwitcher allowed={allowedViews} value={view} onChange={setView} />}
                 />
               )}
@@ -374,38 +334,11 @@ export function BenchmarkBody({
                 />
               )}
               {view === "timeseries" && (
-                <>
-                  {benchmark.metricPanels && benchmark.metricPanels.length > 0 && (
-                    <MetricViewTabs
-                      panels={benchmark.metricPanels}
-                      mainLabel={benchmark.metric}
-                      activeId={activePanelId}
-                      onSelect={setActivePanelId}
-                    />
-                  )}
-                  <TimeSeriesChart
-                    benchmark={benchmark}
-                    region={
-                      regionOptions.length > 0
-                        ? (region ?? fallbackRegion ?? undefined)
-                        : showChartRegionRow
-                          ? chartRegion
-                          : undefined
-                    }
-                    excluded={excluded}
-                    onToggleExclude={toggleExclude}
-                    onResetExcluded={resetExcluded}
-                    headerActions={<ViewSwitcher allowed={allowedViews} value={view} onChange={setView} />}
-                    seriesOverride={activePanel?.seriesByProvider}
-                    metricLabelOverride={activePanel?.label}
-                    unitOverride={activePanel?.unit}
-                  />
-                  {activePanel?.description && (
-                    <p className="mt-3 text-[12px] text-ink-muted max-w-2xl">
-                      {activePanel.description}
-                    </p>
-                  )}
-                </>
+                <TimeSeriesChart
+                  benchmark={benchmark}
+                  region={showChartRegionRow ? chartRegion : undefined}
+                  headerActions={<ViewSwitcher allowed={allowedViews} value={view} onChange={setView} />}
+                />
               )}
             </div>
           </div>
@@ -414,14 +347,9 @@ export function BenchmarkBody({
             <p className="label-mono text-ink-faint mb-4">
               {benchmark.unit === "count"
                 ? "Product ledger"
-                : activePanel
-                  ? `Product ledger · sorted by ${activePanel.label}`
-                  : "Product ledger · sorted by p50"}
+                : "Product ledger · sorted by p50"}
             </p>
-            {layerCounts.all > 0 && (layerCounts.l1 > 0 || layerCounts.l2 > 0) && (
-              <LayerFilter selected={layer} onSelect={setLayer} counts={layerCounts} />
-            )}
-            <LedgerTable benchmark={ledgerBenchmark} activePanel={activePanel} />
+            <LedgerTable benchmark={benchmark} />
           </div>
 
           {benchmark.unit !== "count" &&

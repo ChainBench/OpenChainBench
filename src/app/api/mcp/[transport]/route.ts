@@ -35,9 +35,7 @@ const MAX_BODY_BYTES = 64 * 1024;
 // / instance-leak class of exfil attacks via the public MCP endpoint.
 // Derived from the metric names declared by current benchmark YAMLs.
 const QUERY_PROM_ALLOWED_METRIC_PREFIXES = [
-  // Aggregator latency / head-lag
   "head_lag_seconds",
-  // Bridge benches (bridge-fee + bridge-quote-latency)
   "bridge_quote_latency_ms",
   "bridge_cost",
   "bridge_fees",
@@ -46,40 +44,12 @@ const QUERY_PROM_ALLOWED_METRIC_PREFIXES = [
   "bridge_output",
   "bridge_estimated_time",
   "bridge_quote_success",
-  // L1 finality + L2 block time
   "l1_finality_",
-  "l2_block_time_",
-  // Metadata + network + wallet coverage
   "metadata_coverage_",
-  "metadata_api_latency_",
   "networks_supported",
   "network_coverage_",
-  "wallet_labels_",
-  // Perp fees + buyback + oracle + validator yield
   "perp_fees_",
-  "ocb_buyback_",
-  "ocb_oracle_",
-  "ocb_validator_",
-  "ocb_chain_",
-  // Gas oracle prediction accuracy
-  "gas_error_",
-  "gas_predicted_",
-  "gas_realized_",
-  "gas_oracle_",
-  // Stablecoin peg (+ usdt-anchored variant)
-  "peg_",
-  // Solana TX landing (observational + active)
-  "solana_landing_",
-  // Public RPC capabilities
-  "rpc_latency_",
-  "rpc_call_total",
-  "rpc_health",
-  "rpc_archive_depth_supported",
-  // Bridge revenue (Relay-style implied margin)
-  "relay_",
-  "per_swap_margin_usd",
-  // Hyperliquid frontends quality bench (bench № 030)
-  "hl_frontend_",
+  "wallet_labels_",
 ];
 
 // PromQL identifiers that are NOT metric names - built-in functions,
@@ -320,22 +290,13 @@ const mcpHandler = createMcpHandler(
           "  • a derived metric (rates, ratios, deltas)",
           "  • a histogram bucket aggregation across chains/regions",
           "",
-          "Allowed metric namespaces (one prefix per OCB bench family):",
-          "  head_lag_seconds (aggregator latency)",
-          "  bridge_quote_latency_ms*, bridge_cost*, bridge_fees*, bridge_fix_fee*,",
-          "    bridge_gas*, bridge_output*, bridge_estimated_time*, bridge_quote_success",
-          "  l1_finality_*, l2_block_time_*",
-          "  metadata_coverage_*, metadata_api_latency_*, network_coverage_*,",
-          "    networks_supported, wallet_labels_*",
-          "  perp_fees_*, ocb_buyback_*, ocb_oracle_*, ocb_validator_*, ocb_chain_*",
-          "  gas_error_*, gas_predicted_*, gas_realized_*, gas_oracle_*",
-          "  peg_* (stablecoin peg, both variants)",
-          "  solana_landing_* (TX landing observational + active)",
-          "  rpc_latency_*, rpc_call_total, rpc_health, rpc_archive_depth_supported",
-          "  relay_*, per_swap_margin_usd (bridge revenue)",
-          "Queries referencing other metrics (operational/internal ones like `up`,",
-          "`scrape_*`, `process_*`, `go_*`, `wallet_balance_*` or any label-",
-          "enumeration shape) are refused with `{error, reason}`.",
+          "Allowed metric namespaces: head_lag_seconds, bridge_quote_latency_ms*,",
+          "bridge_cost*, bridge_fees*, bridge_fix_fee*, bridge_gas*, bridge_output*,",
+          "bridge_estimated_time*, bridge_quote_success, l1_finality_*,",
+          "metadata_coverage_*, network_coverage_*, networks_supported, perp_fees_*,",
+          "wallet_labels_*. Queries referencing other metrics (operational/internal",
+          "ones like `up`, `scrape_*`, `process_*`, `go_*`, `wallet_balance_*` or any",
+          "label-enumeration shape) are refused with `{error, reason}`.",
           "",
           "Example: instant p50 over 1h for Mobula head-lag on Base:",
           "  query_prom({",
@@ -364,7 +325,7 @@ const mcpHandler = createMcpHandler(
             .max(604_800)
             .optional()
             .describe("If set, run a range query over the last N seconds (max 7 days = 604800). Omit for an instant query."),
-          steps: z.number().int().min(2).max(360).optional().describe("Number of samples for a range query (2 to 360). Default 60. Step duration = windowSec / steps."),
+          steps: z.number().int().min(2).max(360).optional().describe("Number of samples for a range query (2–360). Default 60. Step duration = windowSec / steps."),
         },
       },
       async ({ query, windowSec, steps }) => {

@@ -255,7 +255,7 @@ To render the site against your local harness, run a local Prometheus scraping `
 
 Full guide in [CONTRIBUTING.md](./CONTRIBUTING.md). For a concrete end-to-end example, read [`docs/walkthrough.md`](./docs/walkthrough.md). Short version:
 
-1. **Open an issue** with the [📊 Propose a benchmark template](https://github.com/ChainBench/OpenChainBench/issues/new?template=new-benchmark.yml). Sketch the metric, providers, methodology. get feedback before you build. Want to brainstorm first? Use [Discussions → Ideas](https://github.com/ChainBench/OpenChainBench/discussions/categories/ideas) instead.
+1. **Open an issue** with the [📊 Propose a benchmark template](https://github.com/OpenChainBench/OpenChainBench/issues/new?template=new-benchmark.yml). Sketch the metric, providers, methodology. get feedback before you build. Want to brainstorm first? Use [Discussions → Ideas](https://github.com/OpenChainBench/OpenChainBench/discussions/categories/ideas) instead.
 2. **Write the spec** at `benchmarks/<slug>.yml`. Format documented in [`benchmarks/README.md`](./benchmarks/README.md), validated by `src/lib/spec-schema.ts`.
 3. **Build the harness** in `harnesses/<slug>/`. Any language works as long as it exposes `/metrics` over HTTPS with the metric names and labels your spec references. The harness is a data producer only. no Prometheus, Grafana, or Alertmanager packaging.
 4. **Deploy the harness** on whatever infra fits. Railway, Fly, Cloud Run, a VPS, even a home server with a static IP. Expose `/metrics` over HTTPS at a stable public URL. You own the runtime, the secrets and the budget.
@@ -314,11 +314,11 @@ PNG URL — the downloaded image matches what the user is looking at.
 
 ## Community
 
-- 💡 [Discussions → Ideas](https://github.com/ChainBench/OpenChainBench/discussions/categories/ideas). brainstorm new benchmarks before writing them up
-- 🙋 [Discussions → Q&A](https://github.com/ChainBench/OpenChainBench/discussions/categories/q-a). methodology / harness / spec questions
-- 📊 [Discussions → Show & tell](https://github.com/ChainBench/OpenChainBench/discussions/categories/show-and-tell). share forks and dashboards
+- 💡 [Discussions → Ideas](https://github.com/OpenChainBench/OpenChainBench/discussions/categories/ideas). brainstorm new benchmarks before writing them up
+- 🙋 [Discussions → Q&A](https://github.com/OpenChainBench/OpenChainBench/discussions/categories/q-a). methodology / harness / spec questions
+- 📊 [Discussions → Show & tell](https://github.com/OpenChainBench/OpenChainBench/discussions/categories/show-and-tell). share forks and dashboards
 - 🗺️ [Roadmap](https://github.com/orgs/OpenChainBench/projects). what's planned and what's live
-- 🐞 [New issue](https://github.com/ChainBench/OpenChainBench/issues/new/choose). formal benchmark proposal, data-quality flag, or provider correction
+- 🐞 [New issue](https://github.com/OpenChainBench/OpenChainBench/issues/new/choose). formal benchmark proposal, data-quality flag, or provider correction
 - See [SUPPORT.md](./.github/SUPPORT.md) for the full triage matrix.
 
 ## SEO TODOs
@@ -339,7 +339,7 @@ Tracking the work to make benchmark pages rank for the queries they target.
 - Site. [openchainbench.com](https://openchainbench.com)
 - Live stream. folded into [openchainbench.com](https://openchainbench.com)
 - Twitter. [@openchainbench](https://twitter.com/openchainbench)
-- GitHub. [ChainBench/OpenChainBench](https://github.com/ChainBench/OpenChainBench)
+- GitHub. [OpenChainBench/OpenChainBench](https://github.com/OpenChainBench/OpenChainBench)
 
 ## License
 

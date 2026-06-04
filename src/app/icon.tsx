@@ -21,6 +21,7 @@ export default function Icon() {
           justifyContent: "center",
         }}
       >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={logoDataUrl} alt="OpenChainBench" width={52} height={52} style={{ objectFit: "contain" }} />
       </div>
     ),

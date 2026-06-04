@@ -92,7 +92,7 @@ faq:
   - q: "What about Syncro Sender and Slipstream?"
     a: "Syncro Sender (P2P.org) uses per-customer tip wallets that aren't publicly documented, every customer gets a private address. We can't enumerate them, so Syncro flow is invisible to this bench. Estimated share: small (Syncro launched in 2025 and hasn't disclosed adoption metrics). Slipstream is a router that calls the underlying senders' SDKs, its tx land via Jito/Nozomi/0slot tip wallets and are attributed to those services. So Slipstream-originated flow shows up correctly counted, just under the underlying service's name. If you specifically want to know 'what % uses Slipstream as the router', this bench can't answer that, Slipstream itself doesn't add an identifying memo."
 
-source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/solana-tx-landing
+source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/solana-tx-landing
 
 prometheus:
   window: 24h
@@ -125,7 +125,7 @@ providers:
       series: sum(rate(solana_landing_tx_total{service="jito"}[5m]))
 
   - slug: helius-sender
-    name: Helius
+    name: Helius Sender
     tag: Dual-path fan-out (Jito + SWQoS staked connections), 7 regions
     formula: "Total count over the last 24h of confirmed mainnet txs that paid a tip to one of Helius Sender's 10 documented tip wallets, deduped via 50k-entry LRU."
     queries:
@@ -151,7 +151,7 @@ providers:
       series: sum(rate(solana_landing_tx_total{service="nozomi"}[5m]))
 
   - slug: bloxroute
-    name: bloXroute
+    name: bloXroute Trader API
     tag: Multi-path BDN propagation, institutional flow
     formula: "Total count over the last 24h of confirmed mainnet txs that paid a tip to one of bloXroute's 17 `bLx`-prefixed tip wallets, deduped via 50k-entry LRU."
     queries:
@@ -164,7 +164,7 @@ providers:
       series: sum(rate(solana_landing_tx_total{service="bloxroute"}[5m]))
 
   - slug: 0slot
-    name: 0slot
+    name: 0slot.trade
     tag: Premium QUIC leader-direct sender
     formula: "Total count over the last 24h of confirmed mainnet txs that paid a tip to one of 0slot.trade's 10 documented tip wallets, deduped via 50k-entry LRU."
     queries:
@@ -190,7 +190,7 @@ providers:
       series: sum(rate(solana_landing_tx_total{service="nextblock"}[5m]))
 
   - slug: astralane
-    name: Astralane
+    name: Astralane Iris
     tag: Validator co-located, leader-schedule-aware routing
     formula: "Total count over the last 24h of confirmed mainnet txs that paid a tip to Astralane Iris's documented tip wallet, deduped via 50k-entry LRU."
     queries:

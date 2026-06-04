@@ -54,7 +54,7 @@ harnesses/<slug>/
 
 See [`/CONTRIBUTING.md`](../CONTRIBUTING.md) for the full submission flow. Short version:
 
-1. Open an issue with the [📊 Propose a benchmark template](https://github.com/ChainBench/OpenChainBench/issues/new?template=new-benchmark.yml).
+1. Open an issue with the [📊 Propose a benchmark template](https://github.com/OpenChainBench/OpenChainBench/issues/new?template=new-benchmark.yml).
 2. Build the harness here at `harnesses/<slug>/`.
 3. Deploy it on whatever infra you prefer, expose `/metrics` over HTTPS at a stable URL.
 4. Append a scrape job to [`infrastructure/prometheus/prometheus.yml`](../infrastructure/prometheus/prometheus.yml) pointing at your URL.

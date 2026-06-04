@@ -71,10 +71,6 @@ func fetchAll(cfg *Config) {
 		{"geckoterminal", fetchGeckoTerminal},
 		{"mobula", fetchMobula},
 		{"codex", fetchCodex},
-		{"coinpaprika", fetchCoinPaprika},
-		{"dune", fetchSimDune},
-		{"covalent", fetchCovalent},
-		{"coinstats", fetchCoinStats},
 	}
 
 	var wg sync.WaitGroup

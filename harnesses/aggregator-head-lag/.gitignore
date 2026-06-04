@@ -32,6 +32,3 @@ Thumbs.db
 # Temporary files
 tmp/
 temp/
-
-# Local build output from `go build ./cmd/script`
-/script

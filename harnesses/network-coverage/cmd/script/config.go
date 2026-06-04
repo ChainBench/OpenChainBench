@@ -12,9 +12,6 @@ type Config struct {
 	CodexAPIKey        string // official Codex Bearer (preferred — no mint, no proxy)
 	CodexSessionCookie string // fallback path: mint JWT from Defined.fi cookie
 	DefinedTokenURL    string // optional: pre-minted JWT sidecar
-	CovalentAPIKey     string
-	CoinStatsAPIKey    string
-	SimDuneAPIKey      string // optional — Sim's public endpoint works keyless, but a key avoids rate limits
 	HTTPProxy          string
 	RefreshInterval    time.Duration
 	IncludeTestnets    bool
@@ -26,9 +23,6 @@ func loadConfig() *Config {
 		CodexAPIKey:        os.Getenv("CODEX_API_KEY"),
 		CodexSessionCookie: os.Getenv("DEFINED_SESSION_COOKIE"),
 		DefinedTokenURL:    os.Getenv("DEFINED_TOKEN_SERVICE_URL"),
-		CovalentAPIKey:     os.Getenv("COVALENT_API_KEY"),
-		CoinStatsAPIKey:    os.Getenv("COINSTATS_API_KEY"),
-		SimDuneAPIKey:      os.Getenv("SIM_DUNE_API_KEY"),
 		HTTPProxy:          os.Getenv("HTTP_PROXY"),
 		RefreshInterval:    6 * time.Hour,
 		IncludeTestnets:    false,
@@ -49,8 +43,7 @@ func loadConfig() *Config {
 	} else if c.CodexSessionCookie != "" {
 		codexAuth = "cookie+mint"
 	}
-	fmt.Printf("Config: refresh=%v, testnets=%v, mobula_key=%v, codex=%s, covalent_key=%v, coinstats_key=%v, sim_dune_key=%v\n",
-		c.RefreshInterval, c.IncludeTestnets, c.MobulaAPIKey != "", codexAuth,
-		c.CovalentAPIKey != "", c.CoinStatsAPIKey != "", c.SimDuneAPIKey != "")
+	fmt.Printf("Config: refresh=%v, testnets=%v, mobula_key=%v, codex=%s\n",
+		c.RefreshInterval, c.IncludeTestnets, c.MobulaAPIKey != "", codexAuth)
 	return c
 }
