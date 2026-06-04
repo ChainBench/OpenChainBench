@@ -38,7 +38,7 @@ export default function PressPage() {
       <dl className="grid gap-3 sm:grid-cols-2 ">
         <Fact term="Founded" value="2026" />
         <Fact term="Categories" value="Aggregators · Blockchains · Bridges · Trading · Wallets · RPCs" />
-        <Fact term="Source code" value="github.com/ChainBench/OpenChainBench" />
+        <Fact term="Source code" value="github.com/OpenChainBench/OpenChainBench" />
         <Fact term="License" value="MIT (code) · CC-BY-4.0 (reports)" />
       </dl>
 
@@ -77,7 +77,7 @@ export default function PressPage() {
       <SectionRule label="Contact" number="v" />
       <p className="text-base leading-relaxed text-ink-soft">
         For interviews, custom benchmark requests or pre-publication embargoes. open an issue or a discussion on{" "}
-        <a className="lnk" href="https://github.com/ChainBench/OpenChainBench">GitHub</a>.
+        <a className="lnk" href="https://github.com/OpenChainBench/OpenChainBench">GitHub</a>.
       </p>
     </article>
   );

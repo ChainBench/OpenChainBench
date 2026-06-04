@@ -59,7 +59,7 @@ This works for: **BNB, Avalanche, TON**.
 | TON | High (after SSE refactor) | tonapi `workchain=-1` SSE stream, ms-precise |
 | Cardano | Medium | 15-conf compromise between Coinbase 10 and Kraken 15. Academic k=2160 is theoretical; no actor uses it |
 | Litecoin | Medium | 12-conf post-April-2026 reorg; standard is evolving |
-| TRON | Medium | CEX confirmation counts vary 19 to 30; we use the 19-block protocol minimum |
+| TRON | Medium | CEX confirmation counts vary 19–30; we use the 19-block protocol minimum |
 | Monero | Lower | XMR delisted from major regulated CEXes since 2024; no canonical confirmation count today |
 
 ## Why we chose the depths we did

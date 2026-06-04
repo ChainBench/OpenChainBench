@@ -6,13 +6,13 @@ OpenChainBench is community-run. Before opening an issue, pick the right channel
 
 | Goal | Where to go |
 | --- | --- |
-| Propose a new benchmark formally | [New issue → 📊 Propose a benchmark](https://github.com/ChainBench/OpenChainBench/issues/new?template=new-benchmark.yml) |
-| Float an idea before writing it up | [Discussions → Ideas](https://github.com/ChainBench/OpenChainBench/discussions/categories/ideas) |
-| Ask a question about a spec, harness, methodology, or the site | [Discussions → Q&A](https://github.com/ChainBench/OpenChainBench/discussions/categories/q-a) |
-| Show a fork or a dashboard you built | [Discussions → Show & tell](https://github.com/ChainBench/OpenChainBench/discussions/categories/show-and-tell) |
-| Report a number that looks wrong on the site | [New issue → 🐞 Data quality](https://github.com/ChainBench/OpenChainBench/issues/new?template=data-quality.yml) |
-| Submit a provider correction (you measured a different number) | [New issue → ✏️ Provider correction](https://github.com/ChainBench/OpenChainBench/issues/new?template=provider-correction.yml) |
-| Privately report a security vulnerability | [Security advisories](https://github.com/ChainBench/OpenChainBench/security/advisories/new) |
+| Propose a new benchmark formally | [New issue → 📊 Propose a benchmark](https://github.com/OpenChainBench/OpenChainBench/issues/new?template=new-benchmark.yml) |
+| Float an idea before writing it up | [Discussions → Ideas](https://github.com/OpenChainBench/OpenChainBench/discussions/categories/ideas) |
+| Ask a question about a spec, harness, methodology, or the site | [Discussions → Q&A](https://github.com/OpenChainBench/OpenChainBench/discussions/categories/q-a) |
+| Show a fork or a dashboard you built | [Discussions → Show & tell](https://github.com/OpenChainBench/OpenChainBench/discussions/categories/show-and-tell) |
+| Report a number that looks wrong on the site | [New issue → 🐞 Data quality](https://github.com/OpenChainBench/OpenChainBench/issues/new?template=data-quality.yml) |
+| Submit a provider correction (you measured a different number) | [New issue → ✏️ Provider correction](https://github.com/OpenChainBench/OpenChainBench/issues/new?template=provider-correction.yml) |
+| Privately report a security vulnerability | [Security advisories](https://github.com/OpenChainBench/OpenChainBench/security/advisories/new) |
 | See what's planned and where to contribute code | [Roadmap project board](https://github.com/orgs/OpenChainBench/projects) |
 | Read about how the data is produced | [`benchmarks/README.md`](../benchmarks/README.md) and [`harnesses/README.md`](../harnesses/README.md) |
 

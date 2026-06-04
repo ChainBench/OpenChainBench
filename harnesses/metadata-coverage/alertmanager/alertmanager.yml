@@ -9,12 +9,9 @@ route:
   receiver: 'slack-webhook'
 
 receivers:
-  # __SLACK_WEBHOOK_URL__ is substituted at container startup by entrypoint.sh
-  # from the SLACK_WEBHOOK_URL env var (see alertmanager/Dockerfile + entrypoint.sh).
-  # Set SLACK_WEBHOOK_URL in your Railway / .env to your real webhook before deploy.
   - name: 'slack-webhook'
     webhook_configs:
-      - url: '__SLACK_WEBHOOK_URL__'
+      - url: 'https://agent-slack-production.up.railway.app/webhook/grafana'
         send_resolved: true
 
 inhibit_rules:

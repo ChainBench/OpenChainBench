@@ -171,7 +171,7 @@ export default async function McpPage() {
             Surface
           </span>
           <h2 className="display text-xl sm:text-2xl text-ink leading-none">
-            What&apos;s exposed
+            What's exposed
           </h2>
         </header>
 
@@ -247,11 +247,11 @@ export default async function McpPage() {
           The server is read-only. There are no admin actions, no mutating
           tools, no upstream secrets reachable through the wire. PromQL
           queries are scoped to the metric namespaces we publish, so the
-          public endpoint can&apos;t be used to walk the underlying Prometheus.
+          public endpoint can't be used to walk the underlying Prometheus.
           Rate limits, body caps, batch rejection and SSE disable are
           enforced at the route. Source is on{" "}
           <a
-            href="https://github.com/ChainBench/OpenChainBench/blob/main/src/app/api/mcp/%5Btransport%5D/route.ts"
+            href="https://github.com/OpenChainBench/OpenChainBench/blob/main/src/app/api/mcp/%5Btransport%5D/route.ts"
             className="lnk break-all"
             rel="noopener"
           >
