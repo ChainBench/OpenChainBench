@@ -43,6 +43,7 @@ const RAW: Record<string, string> = {
   // ─── Providers ───
   mobula: "/logos/mobula.svg",
   codex: "/logos/codex.svg",
+  polymarket: "/logos/polymarket.png",
   relay: "/logos/relay.svg",
   lifi: "/logos/lifi.png",
   geckoterminal: "/logos/geckoterminal.png",
