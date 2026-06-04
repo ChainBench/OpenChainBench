@@ -2,17 +2,17 @@
 
 slug: network-fees
 number: "031"
-title: Live blockchain transaction fee comparison across 20 L1 and L2 chains
+title: Live blockchain transaction fee comparison across L1 and L2 chains
 seo_title: "Cheapest blockchain transaction fee 2026 in USD: Ethereum, Solana, BNB, Avalanche, TRON, Arbitrum, Optimism, Base, zkSync live"
-seo_description: "Live USD cost of one native transaction on 20 chains. Layer 1: Ethereum, Solana, BNB, Avalanche, TRON, Cardano, Sui, TON, Stellar, Litecoin, Monero. Layer 2: Arbitrum, Optimism, Base, zkSync, Linea, Scroll, Blast, Mantle, Taiko. Slow, standard and fast tiers refreshed every 30 seconds."
-subtitle: "Current USD cost of one native token transaction on 20 Layer 1 and Layer 2 chains, refreshed every 30 seconds."
+seo_description: "Live USD cost of one native transaction across major L1 and L2 chains. Layer 1: Ethereum, Solana, BNB, Avalanche, TRON, Cardano, Sui, TON, Stellar, Litecoin, Monero. Layer 2: Arbitrum, Optimism, Base, zkSync, Linea, Scroll, Blast, Mantle, Taiko. Slow, standard and fast tiers refreshed every 30 seconds."
+subtitle: "Current USD cost of one native token transaction across Layer 1 and Layer 2 chains, refreshed every 30 seconds."
 
 seo_intro: |
-  This page answers one question. How much does it cost in dollars to send one transaction on each major blockchain right now. We track 20 chains in parallel and refresh the number every 30 seconds. The eleven Layer 1 chains are Ethereum, Solana, BNB Chain, Avalanche, TRON, Cardano, Sui, TON, Stellar, Litecoin and Monero. The nine Layer 2 rollups are Arbitrum, Optimism, Base, zkSync Era, Linea, Scroll, Blast, Mantle and Taiko. For every chain we query its own fee market directly (eth_feeHistory for the EVM family, getRecentPrioritizationFees on Solana, koios epoch params on Cardano, fee_stats on Stellar, get_fee_estimate on Monero, the mempool oracle on Litecoin, getChainParameters on TRON, suix_getReferenceGasPrice on Sui), convert the result to the smallest native unit, then multiply by the live USD price of the chain's native token from Mobula. The output is the actual dollar amount a wallet user pays today. No gwei to lamport conversion, no marketing claim. Compare Ethereum gas now versus Solana fee in USD, see whether Arbitrum is still cheaper than Base today, find out which Layer 1 has the lowest transaction cost this minute.
+  This page answers one question. How much does it cost in dollars to send one transaction on each major blockchain right now. We track every supported chain in parallel and refresh the number every 30 seconds. The Layer 1 chains are Ethereum, Solana, BNB Chain, Avalanche, TRON, Cardano, Sui, TON, Stellar, Litecoin and Monero. The Layer 2 rollups are Arbitrum, Optimism, Base, zkSync Era, Linea, Scroll, Blast, Mantle and Taiko. For every chain we query its own fee market directly (eth_feeHistory for the EVM family, getRecentPrioritizationFees on Solana, koios epoch params on Cardano, fee_stats on Stellar, get_fee_estimate on Monero, the mempool oracle on Litecoin, getChainParameters on TRON, suix_getReferenceGasPrice on Sui), convert the result to the smallest native unit, then multiply by the live USD price of the chain's native token from Mobula. The output is the actual dollar amount a wallet user pays today. No gwei to lamport conversion, no marketing claim. Compare Ethereum gas now versus Solana fee in USD, see whether Arbitrum is still cheaper than Base today, find out which Layer 1 has the lowest transaction cost this minute.
 
 faq:
   - q: "What does this benchmark measure?"
-    a: "The USD cost of one native token transaction on each of the 20 tracked chains, refreshed every 30 seconds. A native transaction is the simplest action on a chain. Send ETH on Ethereum, SOL on Solana, ADA on Cardano, XLM on Stellar, and so on. We do not yet measure ERC 20 transfers, DEX swaps or smart contract deployments. Those will ship as companion metrics in a later phase."
+    a: "The USD cost of one native token transaction on each tracked chain, refreshed every 30 seconds. A native transaction is the simplest action on a chain. Send ETH on Ethereum, SOL on Solana, ADA on Cardano, XLM on Stellar, and so on. We do not yet measure ERC 20 transfers, DEX swaps or smart contract deployments. Those will ship as companion metrics in a later phase."
   - q: "Which chains are tracked?"
     a: "Eleven Layer 1 chains on the L1 tab. Ethereum, Solana, BNB Chain, Avalanche, TRON, Cardano, Sui, TON, Stellar, Litecoin and Monero. Nine Layer 2 rollups on the L2 tab. Arbitrum, Optimism, Base, zkSync Era, Linea, Scroll, Blast, Mantle and Taiko. The list matches the L1 finality and L2 block time benches so you can read cost and speed side by side."
   - q: "Why USD instead of gas price in gwei?"
@@ -41,7 +41,7 @@ unit: usd
 higher_is_better: false
 
 abstract: |
-  Every 30 seconds we ask each of 20 chains for its current native
+  Every 30 seconds we ask each tracked chain for its current native
   transaction fee in the chain's smallest unit (wei, lamport, lovelace,
   stroop, sun, MIST, nanoton, litoshi, atomic), multiply by the live
   USD price of the chain's native token from Mobula's market API and
@@ -54,7 +54,7 @@ abstract: |
   can be made on real data instead of marketing claims.
 
 methodology:
-  - "Refresh cadence. 30 seconds. One process samples all 20 chains in parallel goroutines."
+  - "Refresh cadence. 30 seconds. One process samples every tracked chain in parallel goroutines."
   - "Ethereum, BNB Chain and Avalanche on the L1 tab. eth_feeHistory over the last 4 blocks at percentiles 25, 50 and 90. Cost = (base_fee + reward_percentile) * 21000 gas, mapped to slow, standard and fast."
   - "Arbitrum, Optimism, Base, zkSync Era, Linea, Scroll, Blast, Mantle and Taiko on the L2 tab. Same eth_feeHistory flow against each rollup's sequencer RPC. ETH is the native gas asset on every tracked rollup."
   - "Layer 2 caveat. The published figure is L2 execution cost only. The L1 data posting fee (blob market for EIP 4844 rollups, calldata for the rest) is excluded from this page and will be added as a separate blended figure in a later phase. On OP Stack rollups the L1 data fee can dominate the wallet visible total during expensive blob periods."
@@ -66,7 +66,7 @@ methodology:
   - "TON. Hardcoded 0.005 TON, the typical observed wallet v4 transfer. TON's fee model uses Bag of Cells emulation and has no clean fee estimate RPC."
   - "Litecoin. litecoinspace.org /api/v1/fees/recommended (hour, half hour and fastest fees in litoshi per vByte) times 225 vBytes for a typical 1 input 1 output P2WPKH transfer."
   - "Monero. monero rpc get_fee_estimate.fees[0..2] times 1500 bytes for a typical 1 input 2 output RingCT transaction."
-  - "USD prices. api.mobula.io/api/1/market/multi-data polled every 30 seconds for all 20 native tokens in one call."
+  - "USD prices. api.mobula.io/api/1/market/multi-data polled every 30 seconds for every tracked native token in one call."
   - "Failures. Any upstream error leaves the previous gauge in place, increments tx_fee_fetch_errors_total{chain, error_type}, and sets tx_fee_health{chain} to zero."
 
 findings:
