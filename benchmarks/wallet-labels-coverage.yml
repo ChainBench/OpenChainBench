@@ -4,8 +4,8 @@ slug: wallet-labels-coverage
 number: "008"
 title: Best wallet labeling API provider
 seo_title: "Best wallet labeling API in 2026: Blockscout, Helius, Mobula, Moralis, TonAPI live coverage audit"
-seo_description: "Live wallet labeling API leaderboard. Share of well-known addresses (CEX hot wallets, DEX routers, Safe multisigs, OFAC SDN, public figures) each provider correctly identifies, audited every 30 minutes across 11 chains."
-subtitle: Share of well-known addresses each provider correctly labels with an entity (CEX, DEX, multisig, sanctioned, etc.).
+seo_description: "Live wallet labeling API leaderboard split by address kind. EOA tab measures curated entity coverage on plain wallets (CEX hot wallets, OFAC SDN, public figures); Contract tab measures smart-contract name resolution. Audited every 30 minutes across 11 chains against ~180 anchors."
+subtitle: Share of well-known addresses each provider correctly labels with an entity (CEX, DEX, multisig, sanctioned, etc.), split by EOA vs contract.
 category: Aggregators
 status: live
 metric: Coverage rate
@@ -18,35 +18,60 @@ seo_intro: |
   does the API actually identify it. Arkham and Nansen own the
   consumer visualization layer; the builder side of the question lives
   elsewhere, in the labeling APIs wallets, portfolio trackers and AML
-  flows hit under the hood. We push roughly 60 curated anchor
+  flows hit under the hood. The harness pushes ~180 curated anchor
   addresses (CEX hot wallets, DEX routers, Safe multisigs, OFAC SDN,
-  public figures) into a queue every 30 minutes and ask each provider
-  for an entity name. Hits count only when the response is a
-  meaningful name, generic fillers ("EOA", "Contract", "Wallet") are
-  excluded because they carry no entity signal. Coverage is reported
-  per chain so chain-specialists (Helius on Solana, TonAPI on TON,
-  StellarExpert on Stellar, XRPScan on XRP, WalletExplorer on Bitcoin)
-  are not unfairly penalised for chains they do not claim to cover.
-  Universal providers (Mobula, Moralis, Blockscout, OLI) are scored
-  on every chain they advertise.
+  public figures, verified smart contracts) into a queue every 30
+  minutes and asks each provider for an entity name. The leaderboard
+  splits the result by address kind because the two jobs measure
+  different things. Contract identification asks whether the provider
+  returns the name of a verified smart contract (Uniswap V3 router,
+  WETH9, Aave V3 pool). Any chain explorer that reads verified source
+  code passes this trivially, so Blockscout saturates near 100% on
+  every chain it indexes. EOA identification asks whether the provider
+  resolves an externally-owned account to a curated entity name
+  (Binance hot wallet 14, Vitalik Buterin, OFAC SDN address). EOAs
+  carry no on-chain signal at all, the answer has to come from a
+  curated graph, which is where Mobula, Helius, TonAPI, StellarExpert
+  and the chain specialists actually compete. The Kind tab at the top
+  of the page switches between the two. Hits count only when the
+  response is a meaningful name, generic fillers like "EOA",
+  "Contract" or "Wallet" are excluded because they carry no entity
+  signal. Coverage is also reported per chain so chain-specialists
+  (Helius on Solana, TonAPI on TON, StellarExpert on Stellar, XRPScan
+  on XRP, WalletExplorer on Bitcoin) are not unfairly penalised for
+  chains they do not claim to cover. Universal providers (Mobula,
+  Moralis, Blockscout, OLI) are scored on every chain they advertise.
 
 abstract: |
   We benchmark how well each major wallet-labeling provider identifies a curated
-  sample of publicly-known addresses across 11 chains. The harness pushes ~60
+  sample of publicly-known addresses across 11 chains. The harness pushes ~180
   rotating anchor addresses (Etherscan public name tags, OFAC SDN list, Safe
-  multisigs, DEX routers, public figures) onto a queue and asks every supported
-  provider for an entity label. A provider scores a hit when it returns a
-  non-generic entity name; categorical fillers like "EOA" or "Contract" don't
-  count.
+  multisigs, DEX routers, public figures, verified smart contracts) onto a queue
+  and asks every supported provider for an entity label. A provider scores a hit
+  when it returns a non-generic entity name; categorical fillers like "EOA" or
+  "Contract" don't count.
 
-  Coverage is shown per chain. Some providers cover 90+ chains (Mobula), others
-  are chain-specialists (Helius for Solana, TonAPI for TON, StellarExpert for
-  Stellar, XRPScan for XRP, WalletExplorer for Bitcoin). Showing per-chain
-  rather than aggregating prevents specialists from being unfairly penalized
-  for chains they don't claim to cover.
+  Coverage is split by address kind because the two jobs are very different.
+  Contract identification asks whether the provider returns the name of a
+  verified smart contract (Uniswap V3 router, WETH9, Aave V3 pool). Any chain
+  explorer that reads verified source code passes this trivially. EOA
+  identification asks whether the provider resolves an externally-owned account
+  to a curated entity name (Binance hot wallet 14, Vitalik Buterin, an OFAC SDN
+  address). EOAs carry no on-chain signal, the answer comes from a curated
+  knowledge graph. The Kind tab on the page switches between the two views so
+  the contract-easy providers and the entity-curated providers are no longer
+  averaged into one number.
+
+  Coverage is also shown per chain. Some providers cover 90+ chains (Mobula),
+  others are chain-specialists (Helius for Solana, TonAPI for TON, StellarExpert
+  for Stellar, XRPScan for XRP, WalletExplorer for Bitcoin). Showing per-chain
+  rather than aggregating prevents specialists from being unfairly penalized for
+  chains they don't claim to cover.
 
 methodology:
-  - "Sample: ~60 curated anchor addresses (CEX hot wallets, DEX routers, Safe multisigs, OFAC SDN, public figures), shuffled and re-checked every 30 minutes. List rotated quarterly from public sources."
+  - "Sample: ~180 curated anchor addresses across 11 chains (CEX hot wallets, DEX routers, Safe multisigs, OFAC SDN, public figures, verified smart contracts), shuffled and re-checked every 30 minutes. List rotated quarterly from public sources."
+  - "Each anchor is tagged with a kind: `contract` (verified smart contracts where a non-generic name comes from source code) or `eoa` (externally-owned accounts where the name must come from a curated entity graph). The kind is set at curation time using an on-chain code probe (eth_getCode for EVM, equivalent RPC for non-EVM)."
+  - "Kind tab on the bench page: `contract` measures contract-name resolution (easy for any explorer reading verified source), `eoa` measures entity resolution on plain wallets (the curated-graph job). The two views are separate Prometheus queries with `kind=\"contract\"` and `kind=\"eoa\"` injected into every selector."
   - "Query each provider's labels endpoint live: Mobula `/api/2/wallet/labels`, Helius `/v1/wallet/{addr}/identity`, Moralis `/api/v2.2/entities`, Blockscout `/api/v2/addresses/{addr}`, OLI Base EAS GraphQL, TonAPI `/v2/accounts/{addr}`, StellarExpert `/explorer/directory/{addr}`, XRPScan `/api/v1/account/{addr}`, WalletExplorer `/api/1/address-lookup`."
   - "A provider scores 'hit' when it returns a non-generic entity name. Filler labels like 'EOA', 'Contract', 'Wallet', 'Multisig', 'Unknown' are explicitly excluded, they carry no entity signal."
   - "Per-chain leaderboards. providers are filtered by their declared chain support, so Helius (Solana-only) doesn't get penalized on Ethereum and vice versa."
@@ -54,24 +79,29 @@ methodology:
   - "Region: `eu-west` (single point)."
 
 findings:
-  - "{{best_name}} currently leads coverage at {{best_p50}} (24 h) on the active chain tab, across {{count}} measured providers. The number is the share of curated anchor addresses for which the provider returns a non-generic entity name, audited every 30 minutes against ~60 publicly-known wallets per chain."
-  - "{{name:mobula}} returns {{p50:mobula}}. Universal coverage providers score on every chain they advertise, so a single number summarizes how broad the underlying label graph actually is once chain-specialists are stripped out."
+  - "{{best_name}} currently leads coverage at {{best_p50}} (24 h) on the active tab, across {{count}} measured providers. The number is the share of curated anchor addresses for which the provider returns a non-generic entity name, audited every 30 minutes against ~180 publicly-known addresses split by kind (contract vs EOA)."
+  - "The Kind toggle separates two distinct jobs. On the Contract tab any explorer that reads verified source code (Blockscout in particular) saturates near 100% because the contract's name is already in the bytecode metadata. On the EOA tab the score reflects how well the provider's curated entity graph covers plain wallets, the actually-hard job."
+  - "{{name:mobula}} returns {{p50:mobula}}. Universal coverage providers score on every chain they advertise, so a single number summarizes how broad the underlying label graph actually is once chain-specialists are stripped out. Switch to the EOA tab to see the curated-entity comparison without contract names lifting every score."
   - "{{name:helius}} scores {{p50:helius}} on Solana. Chain-specialists tend to dominate their home chain because their label graph is curated against native protocols (Jito, Jupiter, Pump.fun, marketplace programs) rather than translated from an EVM-shaped schema."
   - "{{name:moralis}} returns {{p50:moralis}}. EVM-centric providers usually trail on TON, Stellar, XRP and Bitcoin because their indexers and entity graphs were built for EVM patterns and ported chains afterwards."
-  - "{{name:blockscout}} sits at {{p50:blockscout}}. Explorer-derived labels rely on public name tags and chain-by-chain instances, so coverage tracks how active each chain's Blockscout deployment is rather than a single universal label graph."
+  - "{{name:blockscout}} sits at {{p50:blockscout}}. Explorer-derived labels rely on verified source code on the Contract tab and on public name tags on the EOA tab. Coverage on the Contract tab tracks how active each chain's Blockscout deployment is; on the EOA tab it tracks how curated each chain's `public_tags` table is, which is far less complete."
   - "{{worst_name}} trails at {{worst_p50}} on the active tab. The gap between leader and laggard is mostly which entities each provider's graph has been curated against: CEX hot wallets, OFAC SDN and Safe multisigs are easy hits; long-tail public figures and DEX routers separate the top tier."
 
 faq:
   - q: "Which wallet labeling API has the best coverage right now?"
-    a: "{{best_name}} currently leads the active chain tab at {{best_p50}} (24 h) across {{count}} measured providers. The leaderboard re-sorts every 30 minutes against fresh Prometheus samples, so the answer reflects the last 24 hours of live audits against ~60 curated anchor addresses, not a marketing-page claim."
+    a: "{{best_name}} currently leads the active chain tab at {{best_p50}} (24 h) across {{count}} measured providers. The leaderboard re-sorts every 30 minutes against fresh Prometheus samples, so the answer reflects the last 24 hours of live audits against ~180 curated anchor addresses, not a marketing-page claim. The Kind tab at the top of the page switches between EOA coverage (entity identification on plain wallets) and contract coverage (smart-contract name resolution); the right answer depends which job your product is doing."
+  - q: "What is the difference between EOA and contract coverage on this benchmark?"
+    a: "Two different jobs, two different scores. Contract coverage measures whether the provider returns a name for a verified smart contract (Uniswap V3 router, WETH9, Aave V3 pool). The name lives in the contract's verified source code, so any chain explorer that indexes verified contracts will saturate near 100% on this tab. EOA coverage measures whether the provider resolves an externally-owned account (a plain wallet, no code) to a curated entity name (`Binance hot wallet 14`, `Vitalik Buterin`, an OFAC SDN address). EOAs carry no on-chain signal at all, the name has to come from a curated knowledge graph. The EOA tab is the honest comparison between Mobula's, Moralis's, Helius's, TonAPI's etc. label graphs; the Contract tab is the comparison between Blockscout's and other explorers' verified-source pipelines. The bench previously averaged the two together, which mechanically favoured explorers over entity-graph APIs."
   - q: "What does 'wallet labeling' mean in a crypto API?"
     a: "A wallet labeling API takes an address and returns an entity name. The CEX it belongs to (`Binance hot wallet 14`), the protocol (`Uniswap V3 router`), the multisig owner (`Safe: foundation treasury`), the sanctioned status (`OFAC SDN`), or a public-figure tag (`Vitalik Buterin`). Generic categorical labels like `EOA`, `Contract`, `Wallet` are not considered a hit on this benchmark because they carry no entity signal."
   - q: "Is Mobula's labels API better than Moralis or Helius?"
-    a: "It depends on the chain. {{name:mobula}} is a universal provider audited on every chain it advertises and currently returns {{p50:mobula}} on the active tab. {{name:helius}} is Solana-only and dominates that chain because its label graph is curated against native Solana programs. {{name:moralis}} is EVM-centric and trails on TON, Stellar, XRP and Bitcoin. The per-chain tabs are the honest comparison."
+    a: "It depends on the chain and on the kind. {{name:mobula}} is a universal provider audited on every chain it advertises and currently returns {{p50:mobula}} on the active tab. {{name:helius}} is Solana-only and dominates that chain because its label graph is curated against native Solana programs. {{name:moralis}} is EVM-centric and trails on TON, Stellar, XRP and Bitcoin. The Kind = EOA tab is where curated entity graphs (Mobula, Helius, chain specialists) actually compete; the Kind = Contract tab favours explorers like Blockscout because they read verified source code for free."
   - q: "What is the alternative to Arkham or Nansen for builders?"
     a: "Arkham and Nansen own the consumer visualization layer (browse-the-web-of-onchain-money). The builder side of the question, the API integrated under the hood by wallets, portfolio trackers and AML flows, lives elsewhere. Mobula, Helius, Moralis, Blockscout, OLI, TonAPI, StellarExpert, XRPScan and WalletExplorer are the labeling APIs benchmarked here. Pick the one whose coverage matches the chains your product touches and whose response shape fits your integration latency budget."
   - q: "How does OpenChainBench measure wallet label coverage?"
-    a: "The harness maintains a curated list of ~60 publicly-known anchor addresses (CEX hot wallets, DEX routers, Safe multisigs, OFAC SDN, public figures) rotated quarterly from public sources (Etherscan public name tags, Treasury OFAC list, Safe registry). Every 30 minutes each address is pushed to every provider that declares support for its chain. A `hit` is recorded only when the response is a non-generic entity name. Coverage is `success_total / checks_total` over 24 hours, sliced per chain so chain-specialists are not penalised on chains they do not claim to cover."
+    a: "The harness maintains a curated list of ~180 publicly-known anchor addresses (CEX hot wallets, DEX routers, Safe multisigs, OFAC SDN, public figures, verified smart contracts) rotated quarterly from public sources (Etherscan public name tags, Treasury OFAC list, Safe registry). Each anchor is tagged with a kind (contract or eoa) at curation time using an on-chain code probe. Every 30 minutes each address is pushed to every provider that declares support for its chain. A `hit` is recorded only when the response is a non-generic entity name. Coverage is `success_total / checks_total` over 24 hours, sliced per chain AND per kind so chain-specialists are not penalised on chains they do not claim to cover, and the contract-name signal does not get conflated with the entity-curation signal."
+  - q: "Why does Blockscout score so well on coverage?"
+    a: "Blockscout reads verified contract source code on every chain it indexes. For any verified smart contract (Uniswap V3 router, an Aave pool, the WETH9 contract) the contract's source already contains a constructor name like `Aave V3 Pool` or `Uniswap V3 Router`, so Blockscout returns it for free without curating anything. That's why it saturates near 100% on the Contract tab. On the EOA tab Blockscout drops sharply because EOAs have no source code to read, the entity name has to come from a curated `public_tags` table which is chain-instance-specific and far less complete. The bench used to average the two jobs into one number, which made Blockscout look stronger than it actually is at the entity-curation job. The Kind tab separates the two so each provider is judged on the job it actually does."
   - q: "Which wallet labeling API has the best Solana coverage?"
     a: "{{name:helius}} returns {{p50:helius}} on Solana. Chain-specialists dominate their home chain because their label graph is curated against native protocols (Jito stake pools, Jupiter routers, Pump.fun creators, Magic Eden marketplace programs) rather than translated from an EVM-shaped schema. Universal providers (Mobula, Moralis) are also audited on Solana, but switch the chain tab to Solana to see the direct comparison rather than the cross-chain average."
 
