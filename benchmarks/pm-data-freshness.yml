@@ -4,8 +4,8 @@ slug: pm-data-freshness
 number: "032"
 title: Best prediction market data API by freshness
 seo_title: "Fastest Polymarket data API in 2026: Mobula vs Codex vs Polymarket native WebSocket freshness benchmark"
-seo_description: "Live freshness leaderboard for prediction market data APIs. How many milliseconds each provider lags Polymarket's own CLOB WebSocket gateway when relaying the same trade. Mobula, Codex (defined.fi), and Polymarket native compared every minute on a rotating basket of top-volume markets."
-subtitle: Per-event delay between provider arrival and Polymarket CLOB gateway publish, measured every minute on the top markets by 24h volume.
+seo_description: "Live freshness leaderboard for prediction market data APIs. How many milliseconds each provider lags Polymarket's own CLOB WebSocket gateway when relaying the same trade. Mobula, Codex, and Polymarket native compared every minute on a rotating basket of top volume markets."
+subtitle: Per event delay between provider arrival and Polymarket gateway publish, measured every minute on the top markets by 24h volume.
 
 category: Aggregators
 status: live
@@ -14,62 +14,62 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Prediction markets generate the most time-sensitive event stream in crypto.
+  Prediction markets generate the most time sensitive event stream in crypto.
   An election market settles in seconds, a sports book moves on every play.
   Builders that integrate Polymarket through a data provider rather than
   hitting the CLOB directly need to know how many milliseconds that
   provider adds between when Polymarket itself publishes a trade and when
   the provider relays the same trade to its WebSocket subscribers. This
   benchmark measures exactly that. The harness subscribes to the same
-  basket of top-volume Polymarket markets on Polymarket's own CLOB
-  WebSocket (the canonical source, T0), on Mobula Pulse's PM WebSocket,
-  and on Codex (defined.fi) GraphQL subscriptions. Each trade is
-  cross-correlated by condition id and price across the three streams,
-  and the per-provider lag versus Polymarket's gateway publish time is
-  recorded as a Prometheus histogram. The leaderboard sorts by p50
-  freshness delta in milliseconds, lower is better.
+  basket of top volume Polymarket markets on Polymarket's own CLOB
+  WebSocket (the canonical source, T0), on Mobula's PM WebSocket, and on
+  Codex GraphQL subscriptions. Each trade is cross correlated by
+  condition id and price across the three streams, and the per provider
+  lag versus Polymarket's gateway publish time is recorded as a
+  Prometheus histogram. The leaderboard sorts by p50 freshness delta in
+  milliseconds, lower is better.
 
 abstract: |
-  Three WebSocket subscribers ride the same rotating basket of ~20
-  top-volume Polymarket markets simultaneously. For every trade event
+  Three WebSocket subscribers ride the same rotating basket of ~20 top
+  volume Polymarket markets simultaneously. For every trade event
   published on Polymarket's own CLOB WebSocket gateway (the canonical
   T0), we record the moment it lands and the moment each provider
   relays the same trade. The signature used to match a trade across
   providers is the tuple (conditionId, priceUSD rounded to 3 decimals,
-  trade size, 5-second time bucket), which is robust against the minor
+  trade size, 5 second time bucket), which is robust against the minor
   clock skew between gateways. Providers that fail to relay a trade
   within 90 seconds are not counted toward their p50, only toward their
-  receive total — so a provider can look fresh on the leaderboard while
-  silently dropping events; the success-rate column flags that.
+  receive total, so a provider can look fresh on the leaderboard while
+  silently dropping events. The success rate column flags that.
 
 methodology:
-  - "Polymarket CLOB WebSocket is the canonical T0. `wss://ws-subscriptions-clob.polymarket.com/ws/market` is public, no auth, sub-50ms gateway publish latency from EU-West."
-  - "Mobula Pulse PM WebSocket. `wss://pm-api-prod-eu.mobula.io`. Auth via API key in the subscribe payload. Cloudflare on the gateway requires a browser User-Agent on the upgrade request, default Go HTTP UA is silently filtered."
-  - "Codex (defined.fi) GraphQL subscriptions. `wss://graph.codex.io/graphql` with the `graphql-transport-ws` subprotocol. Firehose `onPredictionTradesCreated` subscription filtered client-side to the Polymarket protocol marketIds in our basket."
-  - "Basket: top-20 active Polymarket markets by 24h volume, refreshed every 5 minutes from `gamma-api.polymarket.com`. Each market contributes two clobTokenIds (Yes + No outcomes)."
-  - "Cross-correlation key: (conditionId, priceUSD * 1000 rounded, sizeUSD * 1_000_000 rounded, floor(trade_time / 5s)). The 5-second bucket absorbs clock skew without merging unrelated trades."
+  - "Polymarket CLOB WebSocket is the canonical T0. `wss://ws-subscriptions-clob.polymarket.com/ws/market` is public, no auth, sub 50ms gateway publish latency from EU West."
+  - "Mobula PM WebSocket. `wss://pm-api-prod-eu.mobula.io`. Auth via API key in the subscribe payload. Cloudflare on the gateway requires a browser User Agent on the upgrade request, default Go HTTP UA is silently filtered."
+  - "Codex GraphQL subscriptions. `wss://graph.codex.io/graphql` with the `graphql-transport-ws` subprotocol. Firehose `onPredictionTradesCreated` subscription filtered client side to the Polymarket protocol marketIds in our basket."
+  - "Basket: top 20 active Polymarket markets by 24h volume, refreshed every 5 minutes from `gamma-api.polymarket.com`. Each market contributes two clobTokenIds (Yes and No outcomes)."
+  - "Cross correlation key: (conditionId, priceUSD × 1000 rounded, sizeUSD × 1_000_000 rounded, floor(trade_time / 5s)). The 5 second bucket absorbs clock skew without merging unrelated trades."
   - "Histogram buckets: 10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000, 30000, 60000 ms. Polymarket's own arrivals always land in the smallest bucket because by construction we measure other providers against it."
   - "Region: `eu-west` (Railway europe-west4). Polymarket gateway is geographically distributed; deltas reflect EU client to EU gateway latency."
 
 findings:
-  - "Polymarket's own CLOB WebSocket is by definition the freshest source on the leaderboard. The lag versus its own gateway publish time is on the order of the network round-trip from the harness to the gateway, typically below 100 ms p50 from EU-West."
-  - "{{name:mobula}} relays Polymarket trades with a p50 delta of {{p50:mobula}} versus Polymarket native gateway. Mobula's PM WebSocket runs on a dedicated edge service in EU-West and forwards events without orderbook reconstruction, which is why the gap to native is small."
-  - "{{name:codex}} sits at p50 {{p50:codex}} because Codex's pipeline indexes the chain event (Polygon block confirmation) rather than the off-chain orderbook publish. The lag includes Polygon block time (~2s) plus ingestion."
-  - "The spread between providers reflects integration depth: native gateway vs edge-cached relay vs chain-indexed pipeline. None of these is wrong, they answer different questions — but for live trading UIs the gateway path is the only viable one."
+  - "Polymarket's own CLOB WebSocket is by definition the freshest source on the leaderboard. The lag versus its own gateway publish time is on the order of the network round trip from the harness to the gateway, typically below 100 ms p50 from EU West."
+  - "{{name:mobula}} relays Polymarket trades with a p50 delta of {{p50:mobula}} versus Polymarket native gateway. Mobula's PM WebSocket runs on a dedicated edge service in EU West and forwards events without orderbook reconstruction, which is why the gap to native is small."
+  - "{{name:codex}} sits at p50 {{p50:codex}} because Codex indexes the chain event (Polygon block confirmation) rather than the off chain orderbook publish. The lag includes Polygon block time (~2s) plus ingestion."
+  - "The spread between providers reflects integration depth: native gateway vs edge cached relay vs chain indexed pipeline. None of these is wrong, they answer different questions. For live trading UIs the gateway path is the only viable one."
 
 faq:
   - q: "Which Polymarket data API has the lowest latency right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (p50 over the last 24h) measured as time from Polymarket's own CLOB WebSocket publish to provider relay. The leaderboard re-sorts every minute on fresh Prometheus samples, so the answer reflects the actual measured lag on the active market basket, not a marketing claim."
+    a: "{{best_name}} currently leads at {{best_p50}} (p50 over the last 24h) measured as time from Polymarket's own CLOB WebSocket publish to provider relay. The leaderboard re sorts every minute on fresh Prometheus samples, so the answer reflects the actual measured lag on the active market basket, not a marketing claim."
   - q: "What does 'freshness delta' mean for a prediction market API?"
     a: "We connect to Polymarket's own CLOB WebSocket and to the provider's WebSocket simultaneously, subscribe to the same markets, and for every trade event we record how many milliseconds the provider takes to relay the event after Polymarket itself publishes it. Lower is better. Polymarket's own gateway publish time is the canonical T0 because by construction nothing downstream can be faster than the source."
-  - q: "Is Mobula's PM WebSocket faster than Codex (defined.fi)?"
-    a: "It depends on what each provider does under the hood. {{name:mobula}} is an edge-cached relay of Polymarket's own gateway, so the p50 delta is roughly the network round-trip between the two gateways plus a few ms of bookkeeping. {{name:codex}} ingests the on-chain confirmation on Polygon, which adds the block time (~2 seconds) before any trade can be relayed. For a live UI building on Polymarket, the relay path wins on freshness. For onchain reconciliation or settlement workflows, the chain-indexed path is what you actually want — they answer different questions."
+  - q: "Is Mobula's PM WebSocket faster than Codex?"
+    a: "It depends on what each provider does under the hood. {{name:mobula}} is an edge cached relay of Polymarket's own gateway, so the p50 delta is roughly the network round trip between the two gateways plus a few ms of bookkeeping. {{name:codex}} ingests the on chain confirmation on Polygon, which adds the block time (~2 seconds) before any trade can be relayed. For a live UI building on Polymarket, the relay path wins on freshness. For on chain reconciliation or settlement workflows, the chain indexed path is what you actually want. They answer different questions."
   - q: "Why don't you include Polymarket REST polling on this benchmark?"
-    a: "Freshness is a WebSocket question. REST polling at 1s would have a floor freshness around 500ms (poll interval / 2) plus RTT, dominated by how often you poll. The Polymarket gateway WebSocket exists for exactly this reason — to avoid that floor. Adding REST as a row would make the leaderboard noisy without changing the conclusion: WebSocket beats polling by definition for real-time data."
+    a: "Freshness is a WebSocket question. REST polling at 1s would have a floor freshness around 500ms (poll interval / 2) plus RTT, dominated by how often you poll. The Polymarket gateway WebSocket exists for exactly this reason, to avoid that floor. Adding REST as a row would make the leaderboard noisy without changing the conclusion: WebSocket beats polling by definition for real time data."
   - q: "Are these numbers comparable to Kalshi or Limitless?"
-    a: "Not directly. This benchmark measures Polymarket as the underlying venue, since it's the largest and the one most providers proxy. Kalshi and Limitless are separate exchanges with separate data feeds, and providers that cover them often have a different ingestion path. We may add a Kalshi-specific tab in a later phase. For now, treat the leaderboard as 'how fresh is your Polymarket data feed'."
+    a: "Not directly. This benchmark measures Polymarket as the underlying venue, since it's the largest and the one most providers proxy. Kalshi and Limitless are separate exchanges with separate data feeds, and providers that cover them often have a different ingestion path. We may add a Kalshi specific tab in a later phase. For now, treat the leaderboard as 'how fresh is your Polymarket data feed'."
   - q: "How does OpenChainBench measure freshness?"
-    a: "Three WebSocket clients run in parallel inside the harness, all subscribed to the same basket of top-volume Polymarket markets. Every minute we refresh the basket from `gamma-api.polymarket.com`. For each trade event, we compute a signature `(conditionId, price rounded to 3 decimals, size in micros, 5-second time bucket)` and record the wall-clock receive time on each provider. The freshness delta is `recv_provider - recv_polymarket` for the same signature. We export the histogram to Prometheus, the leaderboard reads the 24h p50."
+    a: "Three WebSocket clients run in parallel inside the harness, all subscribed to the same basket of top volume Polymarket markets. Every minute we refresh the basket from `gamma-api.polymarket.com`. For each trade event, we compute a signature `(conditionId, price rounded to 3 decimals, size in micros, 5 second time bucket)` and record the wall clock receive time on each provider. The freshness delta is `recv_provider - recv_polymarket` for the same signature. We export the histogram to Prometheus, the leaderboard reads the 24h p50."
 
 source: https://github.com/MobulaFi/mobula-monorepo/tree/main/miniapps/pm-freshness-bench
 
@@ -79,18 +79,14 @@ prometheus:
 
 providers:
   - slug: polymarket
-    name: Polymarket CLOB
-    tag: Native gateway WebSocket, no auth, ~50ms publish latency
-    formula: "Polymarket gateway publish time is the canonical T0. The 0 ms row is the network round-trip from the harness to the gateway, not a comparison against another source."
+    name: Polymarket
+    tag: Native gateway WebSocket, no auth, sub 50ms publish latency
+    formula: "Polymarket gateway publish time is the canonical T0. The near zero row is the network round trip from the harness to the gateway, not a comparison against another source."
     queries:
-      # Polymarket gateway IS T0. The "delta" against itself is zero by
-      # construction. We still emit Prom-shaped queries (with a constant
-      # vector) so the loader doesn't fall back to draft for this row.
-      # Polymarket is T0 by construction — the delta vs itself is zero.
-      # Use a sub-millisecond floor (0.5 ms) so the row + the chart line
-      # are visible on a linear y-axis next to the multi-second Codex
-      # value; pure vector(0) gets clipped to the axis baseline and
-      # disappears.
+      # Polymarket is T0 by construction. Delta vs itself is zero. Use a
+      # sub millisecond floor (0.5 ms) so the row and the chart line are
+      # visible on a linear y axis next to the multi second Codex value.
+      # Pure vector(0) gets clipped to the axis baseline and disappears.
       p50: vector(0.5)
       p90: vector(0.5)
       p99: vector(0.5)
@@ -100,9 +96,9 @@ providers:
       series: vector(0.5)
 
   - slug: mobula
-    name: Mobula Pulse PM
-    tag: Edge-cached Polymarket relay, browser-UA required
-    formula: "Median ms lag versus Polymarket CLOB gateway, measured by cross-correlating trades by (conditionId, price, size, 5s bucket) over the rotating basket of top-20 markets."
+    name: Mobula
+    tag: Edge cached Polymarket relay, browser UA required
+    formula: "Median ms lag versus Polymarket CLOB gateway, measured by cross correlating trades by (conditionId, price, size, 5s bucket) over the rotating basket of top 20 markets."
     queries:
       p50: histogram_quantile(0.50, sum(rate(pm_freshness_delta_ms_bucket{provider="mobula",kind="trade"}[24h])) by (le))
       p90: histogram_quantile(0.90, sum(rate(pm_freshness_delta_ms_bucket{provider="mobula",kind="trade"}[24h])) by (le))
@@ -113,9 +109,9 @@ providers:
       series: histogram_quantile(0.50, sum(rate(pm_freshness_delta_ms_bucket{provider="mobula",kind="trade"}[1h])) by (le))
 
   - slug: codex
-    name: Codex (defined.fi)
-    tag: On-chain Polygon indexer, ~2s block-time floor
-    formula: "Median ms lag versus Polymarket CLOB gateway. Codex indexes the on-chain Polygon settlement of each trade, so the lag includes block time (~2s) plus ingestion."
+    name: Codex
+    tag: On chain Polygon indexer, ~2s block time floor
+    formula: "Median ms lag versus Polymarket CLOB gateway. Codex indexes the on chain Polygon settlement of each trade, so the lag includes block time (~2s) plus ingestion."
     queries:
       p50: histogram_quantile(0.50, sum(rate(pm_freshness_delta_ms_bucket{provider="codex",kind="trade"}[24h])) by (le))
       p90: histogram_quantile(0.90, sum(rate(pm_freshness_delta_ms_bucket{provider="codex",kind="trade"}[24h])) by (le))
