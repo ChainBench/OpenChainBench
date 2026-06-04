@@ -682,15 +682,21 @@ async function tryLoadLive(
     for (const panel of spec.metric_panels ?? []) {
       const values: Record<string, number> = {};
       const seriesByProvider: Record<string, number[]> = {};
+      const seriesByProvider7d: Record<string, number[]> = {};
+      const seriesByProvider30d: Record<string, number[]> = {};
       await Promise.all(
         spec.providers.map(async (p) => {
           const q = `${panel.metric}{${panel.label_key}="${escapePromLabelValue(p.slug)}"}`;
-          const [v, series] = await Promise.all([
+          const [v, s24, s7, s30] = await Promise.all([
             prom.scalar(q),
             prom.series(q, winSec, 72),
+            prom.series(q, sevenDaysSec, 84),
+            prom.series(q, thirtyDaysSec, 60),
           ]);
           if (v != null && Number.isFinite(v)) values[p.slug] = v;
-          if (series && series.length > 0) seriesByProvider[p.slug] = series;
+          if (s24 && s24.length > 0) seriesByProvider[p.slug] = s24;
+          if (s7 && s7.length > 0) seriesByProvider7d[p.slug] = s7;
+          if (s30 && s30.length > 0) seriesByProvider30d[p.slug] = s30;
         })
       );
       metricPanels.push({
@@ -702,6 +708,10 @@ async function tryLoadLive(
         higherIsBetter: panel.higher_is_better,
         values,
         seriesByProvider,
+        seriesByProvider7d:
+          Object.keys(seriesByProvider7d).length > 0 ? seriesByProvider7d : undefined,
+        seriesByProvider30d:
+          Object.keys(seriesByProvider30d).length > 0 ? seriesByProvider30d : undefined,
       });
     }
 

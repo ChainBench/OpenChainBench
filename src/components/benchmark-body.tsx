@@ -426,6 +426,8 @@ export function BenchmarkBody({
                   topNControl={topNControl}
                     headerActions={<ViewSwitcher allowed={allowedViews} value={view} onChange={setView} />}
                     seriesOverride={activePanel?.seriesByProvider}
+                    seriesOverride7d={activePanel?.seriesByProvider7d}
+                    seriesOverride30d={activePanel?.seriesByProvider30d}
                     metricLabelOverride={activePanel?.label}
                     unitOverride={activePanel?.unit}
                   />

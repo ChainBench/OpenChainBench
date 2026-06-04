@@ -81,6 +81,12 @@ export type MetricPanel = {
    *  provider slug. Powers the multi-line chart view of the panel.
    *  Providers with no Prom data for the query are absent from the map. */
   seriesByProvider?: Record<string, number[]>;
+  /** Per-provider 7 day time-series (84 points by default). Used by the
+   *  chart's 7D range tab when a panel is active. */
+  seriesByProvider7d?: Record<string, number[]>;
+  /** Per-provider 30 day time-series (60 points by default). Used by the
+   *  chart's 30D range tab when a panel is active. */
+  seriesByProvider30d?: Record<string, number[]>;
 };
 
 export type ResultExtras = {
