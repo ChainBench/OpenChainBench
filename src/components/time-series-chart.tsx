@@ -32,6 +32,10 @@ type Props = {
    *  header, and switches the Y-axis unit. Used by the bench page when
    *  the reader selects a companion metric from the panel tab row. */
   seriesOverride?: Record<string, number[]>;
+  /** Optional 7 day and 30 day variants of the panel override. The chart
+   *  picks the matching one when the range tab is 7d or 30d. */
+  seriesOverride7d?: Record<string, number[]>;
+  seriesOverride30d?: Record<string, number[]>;
   metricLabelOverride?: string;
   unitOverride?: Benchmark["unit"];
   topNControl?: { topN: number | null; setTopN: (n: number | null) => void };
@@ -85,6 +89,8 @@ export function TimeSeriesChart({
   excluded: controlledExcluded,
   onToggleExclude,
   seriesOverride,
+  seriesOverride7d,
+  seriesOverride30d,
   metricLabelOverride,
   unitOverride,
   onResetExcluded,
@@ -142,15 +148,19 @@ export function TimeSeriesChart({
   // (excluded values are dropped from min/max so the remaining lines
   // can spread out vertically when an outlier is hidden).
   const allLines = useMemo(() => {
-    // Panel overrides ship as a 24h series with 72 datapoints (one per
-    // ~20 min). Without slicing them by the active range the 1h / 6h
-    // tabs would replay the same 24h shape on a shorter axis, which is
-    // why every range looks identical when a companion-panel tab is
-    // selected. Mirror what `pickSeries` does for the base series:
-    // when the range is sub-24h, take the trailing slice corresponding
-    // to that ratio. The 7d / 30d tabs degrade to the 24h slice because
-    // panels don't ship long-horizon series.
+    // Panel overrides ship in up to three variants: 24h (72 pts), 7d (84
+    // pts) and 30d (60 pts). When the chart range is 7d or 30d we pick
+    // the matching variant if it exists. Sub 24h tabs slice the 24h
+    // variant trailing edge. Long range tabs fall back to the 24h
+    // variant when the longer one is missing (older specs).
+    const pickPanel = (): Record<string, number[]> | undefined => {
+      if (range === "30d" && seriesOverride30d) return seriesOverride30d;
+      if (range === "7d" && seriesOverride7d) return seriesOverride7d;
+      return seriesOverride;
+    };
+    const panel = pickPanel();
     const sliceOverride = (full: number[]): number[] => {
+      // Sub 24h ranges slice the 24h panel series trailing edge.
       if (range === "24h" || range === "7d" || range === "30d") return full;
       const ratio = RANGE_HOURS[range] / 24;
       const take = Math.max(2, Math.round(full.length * ratio));
@@ -161,8 +171,8 @@ export function TimeSeriesChart({
         slug: r.slug,
         name: r.name,
         color: colors.get(r.slug) ?? "var(--color-ink-soft)",
-        values: seriesOverride
-          ? sliceOverride(seriesOverride[r.slug] ?? [])
+        values: panel
+          ? sliceOverride(panel[r.slug] ?? [])
           : pickSeries(benchmark, r.slug, range, region),
         excluded: excluded.has(r.slug),
       }))
@@ -170,7 +180,7 @@ export function TimeSeriesChart({
 
     built.sort((a, b) => mean(b.values.slice(-6)) - mean(a.values.slice(-6)));
     return built;
-  }, [benchmark, range, region, colors, excluded, seriesOverride]);
+  }, [benchmark, range, region, colors, excluded, seriesOverride, seriesOverride7d, seriesOverride30d]);
 
   // Top-N selector — sized off the post-filter line count via the
   // shared `useTopN` hook so the option set agrees across every
