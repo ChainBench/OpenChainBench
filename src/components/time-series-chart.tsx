@@ -38,6 +38,12 @@ type Props = {
   seriesOverride30d?: Record<string, number[]>;
   metricLabelOverride?: string;
   unitOverride?: Benchmark["unit"];
+  /** Direction override for ranking when a metric panel is active. Bench
+   *  level higher_is_better doesn't apply to companion metrics with
+   *  inverse semantics (effective fee bps lower is better, time since
+   *  last fill lower is better). When set, the chart's Top N selector
+   *  picks the BEST N rather than the BIGGEST N. */
+  higherIsBetterOverride?: boolean;
   topNControl?: { topN: number | null; setTopN: (n: number | null) => void };
   disableTopN?: boolean;
 };
@@ -93,6 +99,7 @@ export function TimeSeriesChart({
   seriesOverride30d,
   metricLabelOverride,
   unitOverride,
+  higherIsBetterOverride,
   onResetExcluded,
   topNControl,
   disableTopN,
@@ -178,9 +185,19 @@ export function TimeSeriesChart({
       }))
       .filter((l) => l.values.length > 0);
 
-    built.sort((a, b) => mean(b.values.slice(-6)) - mean(a.values.slice(-6)));
+    // Respect higher_is_better when ranking lines. For a panel like
+    // effective fee bps where lower means better, the Top N selector
+    // should surface the BEST N (smallest values), matching the ledger
+    // table below which sorts the same way. Without this the chart and
+    // ledger would disagree on what Top 5 means.
+    const higherIsBetter = higherIsBetterOverride ?? benchmark.higherIsBetter;
+    built.sort((a, b) => {
+      const av = mean(a.values.slice(-6));
+      const bv = mean(b.values.slice(-6));
+      return higherIsBetter ? bv - av : av - bv;
+    });
     return built;
-  }, [benchmark, range, region, colors, excluded, seriesOverride, seriesOverride7d, seriesOverride30d]);
+  }, [benchmark, range, region, colors, excluded, seriesOverride, seriesOverride7d, seriesOverride30d, higherIsBetterOverride]);
 
   // Top-N selector — sized off the post-filter line count via the
   // shared `useTopN` hook so the option set agrees across every
