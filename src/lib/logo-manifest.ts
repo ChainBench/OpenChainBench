@@ -60,6 +60,7 @@ const RAW: Record<string, string> = {
   jupiter: "/logos/jupiter.png",
   raydium: "/logos/raydium.svg",
   openocean: "/logos/openocean.png",
+  cow: "/logos/cow.png",
   lighter: "/logos/lighter.svg",
   debridge: "/logos/debridge.svg",
 
