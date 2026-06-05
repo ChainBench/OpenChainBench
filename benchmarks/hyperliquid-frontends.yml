@@ -77,7 +77,7 @@ faq:
   - q: "How is the 24 hour figure built?"
     a: "Same hourly bucket logic, last 24 buckets. The harness also keeps a separate fill level window for the 24h companions that require per fill granularity (unique users, taker share, slippage proxy)."
   - q: "Which frontends are tracked?"
-    a: "Sixty Hyperliquid frontends with a known builder address. The cohort spans consumer wallets (Phantom Perps, MetaMask, Rabby, OneKey, Trust Wallet), pro terminals (Insilico, Axiom, Pear, Lit Trade), social and pvp UIs (pvp dot trade, Senpi, FOMO), bots and signal apps (FlowBot, Tread fi, Moonbot, Hyperdash), based.app, defiapp and HIP-3 deployers. The registry is in miniapps hyperliquid frontends local builders dot json on the open mobula api repo. New addresses ship via public PR."
+    a: "Sixty Hyperliquid frontends with a known builder address. The cohort spans consumer wallets (Phantom Perps, MetaMask, Rabby, OneKey, Trust Wallet), pro terminals (Insilico, Axiom, Pear, Lit Trade), social and pvp UIs (pvp dot trade, Senpi, FOMO), bots and signal apps (FlowBot, Tread fi, Moonbot, Hyperdash), based.app, defi.app and HIP-3 deployers. The registry is in miniapps hyperliquid frontends local builders dot json on the open mobula api repo. New addresses ship via public PR."
   - q: "Why are some frontends at zero?"
     a: "Three reasons. The frontend stopped operating or hasn't routed any attributed fills in the window. The frontend never enabled the builder code attribution system. The frontend uses a builder address not yet in our registry. The Time since last fill companion separates these cases. A frontend with hours of inactivity is in the first bucket. A frontend with consistent zero across all timeframes is in the second or third."
   - q: "Why does Phantom Perps usually lead?"
@@ -88,7 +88,7 @@ faq:
     a: "Yes. Every number is a Prometheus query exposed via the OCB API endpoints. The query string is visible in the row hover tooltip on the leaderboard. The harness source is open at the link in the source field below. Cite the value and the timestamp at the top of the page."
 
 
-source: https://github.com/MobulaFi/mobula-monorepo/tree/dev/miniapps/hyperliquid-frontends-local
+source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/hyperliquid-frontends
 
 prometheus:
   window: 24h
@@ -124,7 +124,7 @@ providers:
   - slug: phantom-perps
     name: Phantom
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the last complete UTC day, computed from Hyperliquid's public attributed-fills CSV for Phantom's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Phantom's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="phantom-perps"}
       p90: hl_frontend_volume_usd_24h_v2{builder="phantom-perps"}
@@ -137,7 +137,7 @@ providers:
   - slug: axiom
     name: Axiom
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the last complete UTC day, computed from Hyperliquid's public attributed-fills CSV for Axiom's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Axiom's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="axiom"}
       p90: hl_frontend_volume_usd_24h_v2{builder="axiom"}
@@ -150,7 +150,7 @@ providers:
   - slug: pvp-trade
     name: pvp.trade
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the last complete UTC day, computed from Hyperliquid's public attributed-fills CSV for pvp.trade's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for pvp.trade's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="pvp-trade"}
       p90: hl_frontend_volume_usd_24h_v2{builder="pvp-trade"}
@@ -163,7 +163,7 @@ providers:
   - slug: insilico
     name: Insilico
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the last complete UTC day, computed from Hyperliquid's public attributed-fills CSV for Insilico's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Insilico's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="insilico"}
       p90: hl_frontend_volume_usd_24h_v2{builder="insilico"}
@@ -174,9 +174,9 @@ providers:
       series: hl_frontend_fees_usd_24h_v2{builder="insilico"}
 
   - slug: defiapp
-    name: Defiapp
+    name: defi.app
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the last complete UTC day, computed from Hyperliquid's public attributed-fills CSV for Defiapp's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Defiapp's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="defiapp"}
       p90: hl_frontend_volume_usd_24h_v2{builder="defiapp"}
@@ -189,7 +189,7 @@ providers:
   - slug: metamask
     name: MetaMask
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the last complete UTC day, computed from Hyperliquid's public attributed-fills CSV for MetaMask's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for MetaMask's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="metamask"}
       p90: hl_frontend_volume_usd_24h_v2{builder="metamask"}
@@ -202,7 +202,7 @@ providers:
   - slug: dexari
     name: Dexari
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the last complete UTC day, computed from Hyperliquid's public attributed-fills CSV for Dexari's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Dexari's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="dexari"}
       p90: hl_frontend_volume_usd_24h_v2{builder="dexari"}
@@ -215,7 +215,7 @@ providers:
   - slug: okto
     name: Okto
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the last complete UTC day, computed from Hyperliquid's public attributed-fills CSV for Okto's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Okto's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="okto"}
       p90: hl_frontend_volume_usd_24h_v2{builder="okto"}
@@ -227,7 +227,7 @@ providers:
   - slug: trust-wallet
     name: Trust Wallet
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Trust Wallet's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Trust Wallet's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="trust-wallet"}
       p90: hl_frontend_volume_usd_24h_v2{builder="trust-wallet"}
@@ -240,7 +240,7 @@ providers:
   - slug: sushi
     name: Sushi
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Sushi's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Sushi's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="sushi"}
       p90: hl_frontend_volume_usd_24h_v2{builder="sushi"}
@@ -253,7 +253,7 @@ providers:
   - slug: dreamcash
     name: Dreamcash
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Dreamcash's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Dreamcash's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="dreamcash"}
       p90: hl_frontend_volume_usd_24h_v2{builder="dreamcash"}
@@ -264,9 +264,9 @@ providers:
       series: hl_frontend_fees_usd_24h_v2{builder="dreamcash"}
 
   - slug: based-app
-    name: Based
+    name: based.app
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Based's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Based's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="based-app"}
       p90: hl_frontend_volume_usd_24h_v2{builder="based-app"}
@@ -279,7 +279,7 @@ providers:
   - slug: blink
     name: Blink
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Blink's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Blink's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="blink"}
       p90: hl_frontend_volume_usd_24h_v2{builder="blink"}
@@ -292,7 +292,7 @@ providers:
   - slug: perpmate
     name: Perpmate
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Perpmate's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Perpmate's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="perpmate"}
       p90: hl_frontend_volume_usd_24h_v2{builder="perpmate"}
@@ -305,7 +305,7 @@ providers:
   - slug: arena
     name: Arena
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Arena's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Arena's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="arena"}
       p90: hl_frontend_volume_usd_24h_v2{builder="arena"}
@@ -318,7 +318,7 @@ providers:
   - slug: minaraai
     name: MinaraAI
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for MinaraAI's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for MinaraAI's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="minaraai"}
       p90: hl_frontend_volume_usd_24h_v2{builder="minaraai"}
@@ -331,7 +331,7 @@ providers:
   - slug: apexliquid
     name: ApexLiquid
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for ApexLiquid's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for ApexLiquid's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="apexliquid"}
       p90: hl_frontend_volume_usd_24h_v2{builder="apexliquid"}
@@ -344,7 +344,7 @@ providers:
   - slug: coin98
     name: Coin98
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Coin98's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Coin98's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="coin98"}
       p90: hl_frontend_volume_usd_24h_v2{builder="coin98"}
@@ -357,7 +357,7 @@ providers:
   - slug: coinpilot
     name: CoinPilot
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for CoinPilot's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for CoinPilot's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="coinpilot"}
       p90: hl_frontend_volume_usd_24h_v2{builder="coinpilot"}
@@ -370,7 +370,7 @@ providers:
   - slug: echosync
     name: Echosync
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Echosync's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Echosync's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="echosync"}
       p90: hl_frontend_volume_usd_24h_v2{builder="echosync"}
@@ -383,7 +383,7 @@ providers:
   - slug: fomo
     name: FOMO
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for FOMO's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for FOMO's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="fomo"}
       p90: hl_frontend_volume_usd_24h_v2{builder="fomo"}
@@ -396,7 +396,7 @@ providers:
   - slug: gemwallet
     name: Gem Wallet
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Gem Wallet's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Gem Wallet's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="gemwallet"}
       p90: hl_frontend_volume_usd_24h_v2{builder="gemwallet"}
@@ -409,7 +409,7 @@ providers:
   - slug: gtr-trade
     name: GTR Trade
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for GTR Trade's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for GTR Trade's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="gtr-trade"}
       p90: hl_frontend_volume_usd_24h_v2{builder="gtr-trade"}
@@ -422,7 +422,7 @@ providers:
   - slug: hyprearn
     name: Hyprearn
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Hyprearn's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Hyprearn's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="hyprearn"}
       p90: hl_frontend_volume_usd_24h_v2{builder="hyprearn"}
@@ -435,7 +435,7 @@ providers:
   - slug: legend-trade
     name: Legend Trade
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Legend Trade's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Legend Trade's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="legend-trade"}
       p90: hl_frontend_volume_usd_24h_v2{builder="legend-trade"}
@@ -448,7 +448,7 @@ providers:
   - slug: katoshi
     name: Katoshi
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Katoshi's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Katoshi's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="katoshi"}
       p90: hl_frontend_volume_usd_24h_v2{builder="katoshi"}
@@ -461,7 +461,7 @@ providers:
   - slug: metascalp
     name: Metascalp
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Metascalp's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Metascalp's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="metascalp"}
       p90: hl_frontend_volume_usd_24h_v2{builder="metascalp"}
@@ -474,7 +474,7 @@ providers:
   - slug: moontrader
     name: Moontrader
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Moontrader's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Moontrader's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="moontrader"}
       p90: hl_frontend_volume_usd_24h_v2{builder="moontrader"}
@@ -487,7 +487,7 @@ providers:
   - slug: onekey
     name: OneKey
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for OneKey's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for OneKey's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="onekey"}
       p90: hl_frontend_volume_usd_24h_v2{builder="onekey"}
@@ -500,7 +500,7 @@ providers:
   - slug: pear
     name: Pear
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Pear's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Pear's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="pear"}
       p90: hl_frontend_volume_usd_24h_v2{builder="pear"}
@@ -513,7 +513,7 @@ providers:
   - slug: rabby
     name: Rabby
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Rabby's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Rabby's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="rabby"}
       p90: hl_frontend_volume_usd_24h_v2{builder="rabby"}
@@ -526,7 +526,7 @@ providers:
   - slug: ranger-finance
     name: Ranger Finance
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Ranger Finance's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Ranger Finance's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="ranger-finance"}
       p90: hl_frontend_volume_usd_24h_v2{builder="ranger-finance"}
@@ -539,7 +539,7 @@ providers:
   - slug: senpi
     name: Senpi
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Senpi's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Senpi's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="senpi"}
       p90: hl_frontend_volume_usd_24h_v2{builder="senpi"}
@@ -552,7 +552,7 @@ providers:
   - slug: superx
     name: SuperX
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for SuperX's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for SuperX's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="superx"}
       p90: hl_frontend_volume_usd_24h_v2{builder="superx"}
@@ -565,7 +565,7 @@ providers:
   - slug: supurr
     name: Supurr
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Supurr's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Supurr's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="supurr"}
       p90: hl_frontend_volume_usd_24h_v2{builder="supurr"}
@@ -578,7 +578,7 @@ providers:
   - slug: unigox
     name: Unigox
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Unigox's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Unigox's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="unigox"}
       p90: hl_frontend_volume_usd_24h_v2{builder="unigox"}
@@ -591,7 +591,7 @@ providers:
   - slug: uxuy
     name: UXUY
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for UXUY's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for UXUY's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="uxuy"}
       p90: hl_frontend_volume_usd_24h_v2{builder="uxuy"}
@@ -604,7 +604,7 @@ providers:
   - slug: wunder
     name: Wunder
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Wunder's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Wunder's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="wunder"}
       p90: hl_frontend_volume_usd_24h_v2{builder="wunder"}
@@ -617,7 +617,7 @@ providers:
   - slug: grider
     name: Grider
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Grider's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Grider's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="grider"}
       p90: hl_frontend_volume_usd_24h_v2{builder="grider"}
@@ -630,7 +630,7 @@ providers:
   - slug: tradoor
     name: Tradoor
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Tradoor's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Tradoor's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="tradoor"}
       p90: hl_frontend_volume_usd_24h_v2{builder="tradoor"}
@@ -643,7 +643,7 @@ providers:
   - slug: bullpenfi
     name: BullpenFi
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for BullpenFi's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for BullpenFi's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="bullpenfi"}
       p90: hl_frontend_volume_usd_24h_v2{builder="bullpenfi"}
@@ -656,7 +656,7 @@ providers:
   - slug: dexly-trade
     name: Dexly Trade
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Dexly Trade's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Dexly Trade's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="dexly-trade"}
       p90: hl_frontend_volume_usd_24h_v2{builder="dexly-trade"}
@@ -669,7 +669,7 @@ providers:
   - slug: hyperdash
     name: Hyperdash
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Hyperdash's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Hyperdash's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="hyperdash"}
       p90: hl_frontend_volume_usd_24h_v2{builder="hyperdash"}
@@ -682,7 +682,7 @@ providers:
   - slug: infinex
     name: Infinex
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Infinex's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Infinex's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="infinex"}
       p90: hl_frontend_volume_usd_24h_v2{builder="infinex"}
@@ -695,7 +695,7 @@ providers:
   - slug: liminal
     name: Liminal
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Liminal's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Liminal's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="liminal"}
       p90: hl_frontend_volume_usd_24h_v2{builder="liminal"}
@@ -708,7 +708,7 @@ providers:
   - slug: liquid-perps
     name: Liquid Perps
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Liquid Perps's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Liquid Perps's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="liquid-perps"}
       p90: hl_frontend_volume_usd_24h_v2{builder="liquid-perps"}
@@ -721,7 +721,7 @@ providers:
   - slug: lit-trade
     name: Lit Trade
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Lit Trade's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Lit Trade's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="lit-trade"}
       p90: hl_frontend_volume_usd_24h_v2{builder="lit-trade"}
@@ -734,7 +734,7 @@ providers:
   - slug: lootbase
     name: Lootbase
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Lootbase's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Lootbase's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="lootbase"}
       p90: hl_frontend_volume_usd_24h_v2{builder="lootbase"}
@@ -747,7 +747,7 @@ providers:
   - slug: mass-dot-money
     name: Mass.money
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Mass.money's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Mass.money's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="mass-dot-money"}
       p90: hl_frontend_volume_usd_24h_v2{builder="mass-dot-money"}
@@ -760,7 +760,7 @@ providers:
   - slug: moonbot
     name: Moonbot
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Moonbot's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Moonbot's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="moonbot"}
       p90: hl_frontend_volume_usd_24h_v2{builder="moonbot"}
@@ -773,7 +773,7 @@ providers:
   - slug: rainbow
     name: Rainbow
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Rainbow's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Rainbow's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="rainbow"}
       p90: hl_frontend_volume_usd_24h_v2{builder="rainbow"}
@@ -786,7 +786,7 @@ providers:
   - slug: supercexy
     name: SuperCEXy
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for SuperCEXy's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for SuperCEXy's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="supercexy"}
       p90: hl_frontend_volume_usd_24h_v2{builder="supercexy"}
@@ -799,7 +799,7 @@ providers:
   - slug: superstack
     name: Superstack
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Superstack's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Superstack's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="superstack"}
       p90: hl_frontend_volume_usd_24h_v2{builder="superstack"}
@@ -812,7 +812,7 @@ providers:
   - slug: wallet-v
     name: Wallet V
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Wallet V's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Wallet V's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="wallet-v"}
       p90: hl_frontend_volume_usd_24h_v2{builder="wallet-v"}
@@ -825,7 +825,7 @@ providers:
   - slug: xtrade-protocol
     name: xTrade Protocol
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for xTrade Protocol's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for xTrade Protocol's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="xtrade-protocol"}
       p90: hl_frontend_volume_usd_24h_v2{builder="xtrade-protocol"}
@@ -838,7 +838,7 @@ providers:
   - slug: taco-trade
     name: Taco Trade
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Taco Trade's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Taco Trade's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="taco-trade"}
       p90: hl_frontend_volume_usd_24h_v2{builder="taco-trade"}
@@ -851,7 +851,7 @@ providers:
   - slug: silhouette
     name: Silhouette
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Silhouette's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Silhouette's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="silhouette"}
       p90: hl_frontend_volume_usd_24h_v2{builder="silhouette"}
@@ -864,7 +864,7 @@ providers:
   - slug: tread-fi
     name: Tread.fi
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Tread.fi's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Tread.fi's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="tread-fi"}
       p90: hl_frontend_volume_usd_24h_v2{builder="tread-fi"}
@@ -877,7 +877,7 @@ providers:
   - slug: flowbot
     name: FlowBot
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for FlowBot's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for FlowBot's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="flowbot"}
       p90: hl_frontend_volume_usd_24h_v2{builder="flowbot"}
@@ -890,7 +890,7 @@ providers:
   - slug: nautilus-trader
     name: Nautilus Trader
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "Volume-weighted effective builder fee in basis points over the rolling 24h window, computed from the local hl-node fills stream for Nautilus Trader's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Nautilus Trader's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="nautilus-trader"}
       p90: hl_frontend_volume_usd_24h_v2{builder="nautilus-trader"}
