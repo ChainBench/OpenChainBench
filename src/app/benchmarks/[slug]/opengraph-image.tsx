@@ -3,6 +3,7 @@ import { getBenchmark, getBenchmarkSlugs } from "@/data/benchmarks";
 import { headlineSentence, leader } from "@/lib/citation";
 import { fmtUnit } from "@/lib/format";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
+import { loadBenchmark } from "@/lib/spec";
 
 export const runtime = "nodejs";
 export const alt = "OpenChainBench. Open benchmarks for crypto infrastructure";
@@ -14,19 +15,67 @@ export async function generateStaticParams() {
   return slugs.map((slug) => ({ slug }));
 }
 
-export default async function OG({
+// Emit one OG image per (slug, chain) combo so social shares of
+// `/benchmarks/{slug}?chain=X` render a chain-honest card instead of the
+// cross-chain aggregate leader (which is the misleading baseline-skew
+// case bench-001 ran into: GMGN looking like "fastest crypto data API"
+// on the unfiltered view because Solana's faster baseline drags the
+// average down). The `id` Next.js threads through to the default image
+// handler is the chain value; the unfiltered card uses `id="default"`.
+export async function generateImageMetadata({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+  // Load editorial-only via getBenchmark (memoised; safe at build time).
   const b = await getBenchmark(slug);
+  const chains = (b?.dimensions?.chain ?? []).filter(
+    (c) => c.value !== "all",
+  );
+  return [
+    {
+      id: "default",
+      alt,
+      size,
+      contentType,
+    },
+    ...chains.map((c) => ({
+      id: c.value,
+      alt: `${alt}. ${c.label}`,
+      size,
+      contentType,
+    })),
+  ];
+}
+
+export default async function OG({
+  params,
+  id,
+}: {
+  params: Promise<{ slug: string }>;
+  id: Promise<string | number>;
+}) {
+  const { slug } = await params;
+  const rawId = await id;
+  const chainId = typeof rawId === "string" && rawId !== "default" ? rawId : null;
+  // Fetch the chain-filtered bench when a chain id is present so the
+  // leader (and the headline sentence) reflect that chain's measured
+  // baseline. Falls back to the unfiltered fetch when the chain is
+  // missing or unknown — that mirrors the page-level behaviour.
+  const b = chainId
+    ? (await loadBenchmark(slug, { chain: chainId })) ?? (await getBenchmark(slug))
+    : await getBenchmark(slug);
   if (!b) return new ImageResponse(<div />, { ...size });
 
   const top = leader(b);
   const headline = top ? `${top.name} leads at ${fmtUnit(top.value, b.unit)}` : "Awaiting first run";
   const sentence = headlineSentence(b);
   const catColor = CATEGORY_COLOR[b.category] ?? "#7a2e1f";
+  const chainLabel = chainId
+    ? b.dimensions?.chain?.find((c) => c.value === chainId)?.label ?? chainId
+    : null;
+  const titleText = chainLabel ? `${b.title} on ${chainLabel}` : b.title;
 
   return new ImageResponse(
     (
@@ -72,18 +121,19 @@ export default async function OG({
             }}
           >
             {b.metric}
+            {chainLabel ? ` · ${chainLabel}` : ""}
           </div>
           <div
             style={{
               display: "flex",
-              fontSize: b.title.length > 38 ? 76 : 92,
+              fontSize: titleText.length > 38 ? 76 : 92,
               fontWeight: 700,
               lineHeight: 0.98,
               letterSpacing: -2,
               maxWidth: 1080,
             }}
           >
-            {b.title}
+            {titleText}
           </div>
           <div
             style={{

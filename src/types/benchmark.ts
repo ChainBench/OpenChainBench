@@ -6,6 +6,11 @@
 
 export type ProviderType = "protocol" | "aggregator" | "intent" | "relay";
 
+/** Network-layer classification used by benches that mix L1 and L2 chains
+ *  in the same provider set (network-fees). Drives the L1/L2/All toggle
+ *  pill rendered above the ledger table. */
+export type ProviderLayer = "l1" | "l2";
+
 /**
  * Per-provider data availability. Drives whether the leaderboard renders
  * the numbers or a "currently unavailable" stub.
@@ -25,6 +30,10 @@ export type ProviderResult = {
   /** Architectural category. Drives the small badge next to the name so
    *  readers know whether comparisons are apples-to-apples. */
   type?: ProviderType;
+  /** Optional network-layer classification. When set on every provider of
+   *  a bench, the bench page renders an L1/L2/All toggle pill above the
+   *  ledger that filters rows by this field. */
+  layer?: ProviderLayer;
   ms: { p50: number; p90: number; p99: number; mean: number };
   /** Optional slot-level companion to ms. Used by Solana-native benches
    *  where confirmation is a slot-level event (~400 ms granularity).
@@ -57,15 +66,42 @@ export type RegionPoint = {
 
 export type Series24h = number[];
 
+export type MetricPanel = {
+  id: string;
+  label: string;
+  description?: string;
+  metric: string;
+  unit: "ms" | "s" | "pct" | "bps" | "count" | "slots" | "usd";
+  higherIsBetter: boolean;
+  /** Per-provider scalar values, keyed by provider slug. Providers with no
+   *  live data for this metric are omitted; the renderer renders them as
+   *  "no data" instead of zero. */
+  values: Record<string, number>;
+  /** Per-provider 24h time-series (72 points by default), keyed by
+   *  provider slug. Powers the multi-line chart view of the panel.
+   *  Providers with no Prom data for the query are absent from the map. */
+  seriesByProvider?: Record<string, number[]>;
+  /** Per-provider 7 day time-series (84 points by default). Used by the
+   *  chart's 7D range tab when a panel is active. */
+  seriesByProvider7d?: Record<string, number[]>;
+  /** Per-provider 30 day time-series (60 points by default). Used by the
+   *  chart's 30D range tab when a panel is active. */
+  seriesByProvider30d?: Record<string, number[]>;
+};
+
 export type ResultExtras = {
   /** 24h-window global series per provider. sparklines + default chart view. */
   series24h: Record<string, Series24h>;
   /** 7-day-window global series per provider. chart's "7d" range. */
   series7d?: Record<string, Series24h>;
+  /** 30-day-window global series per provider. chart's "30d" range. */
+  series30d?: Record<string, Series24h>;
   /** Per-region 24h series, when the spec defines region.series queries. */
   seriesByRegion24h?: Record<string, Record<string, Series24h>>;
   /** Per-region 7d series. */
   seriesByRegion7d?: Record<string, Record<string, Series24h>>;
+  /** Per-region 30d series. */
+  seriesByRegion30d?: Record<string, Record<string, Series24h>>;
   regions: Record<string, RegionPoint[]>;
 };
 
@@ -112,11 +148,40 @@ export type Benchmark = {
   dimensions?: {
     chain?: { value: string; label: string }[];
     region?: { value: string; label: string }[];
+    kind?: { value: string; label: string }[];
   };
   category: "Aggregators" | "Bridges" | "Blockchains" | "Trading" | "Wallets" | "RPCs";
   results: ProviderResult[];
+  /** Per-chain leader, computed only on the unfiltered ("All chains") view
+   *  when the spec declares `dimensions.chain`. Key = chain slug from the
+   *  YAML (e.g. "solana", "base", "bnb"); excludes "all". Value = the live
+   *  ProviderResult that leads on that chain.
+   *
+   *  Motivation: the unfiltered aggregate is biased by chain mix (e.g.
+   *  Solana 400 ms slots vs Base 2 s blocks make Solana-only providers
+   *  mechanically beat cross-chain ones on head-lag). Per-chain winners
+   *  are computed via extra Prom queries with `chain="<x>"` injected, so
+   *  headline copy / OG image / badge endpoint can call out the leader on
+   *  each chain instead of one biased global winner. */
+  bestPerChain?: Record<string, ProviderResult>;
+  /** Per-chain trailing provider, populated in lockstep with
+   *  `bestPerChain` (same key set, same population conditions). Powers
+   *  the `{{worst_name:chain:X}}` / `{{worst_p50:chain:X}}` editorial
+   *  placeholders. */
+  worstPerChain?: Record<string, ProviderResult>;
+  /** Set of provider slugs that returned live data on each chain. Same
+   *  key set as `bestPerChain`. Powers the per-chain rank chips on
+   *  /products/[slug] so chain-restricted providers (Solana-only like
+   *  GMGN) only get chips on chains they actually compete on, instead
+   *  of inheriting their aggregate position on every chain in the
+   *  bench. */
+  providersPerChain?: Record<string, string[]>;
   findings: string[];
   methodology: string[];
   source: string;
   extras: ResultExtras;
+  /** Optional companion metrics surfaced as switchable mini leaderboards
+   *  below the main table. Populated by the spec loader from
+   *  `metric_panels` in the YAML. */
+  metricPanels?: MetricPanel[];
 };

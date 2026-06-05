@@ -4,7 +4,7 @@ import { ArrowRight } from "lucide-react";
 import { getBenchmarks } from "@/data/benchmarks";
 import { HeroRadar } from "@/components/hero-radar";
 import { HomeBenchTable } from "@/components/home-bench-table";
-import { LiveDashboard } from "@/components/live-dashboard";
+import { LiveDashboard } from "@/components/live/dashboard";
 
 export const revalidate = 60;
 

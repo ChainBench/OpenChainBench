@@ -19,6 +19,7 @@ import { CATEGORY_COLOR } from "@/lib/category-colors";
 import { headlineSentence } from "@/lib/citation";
 import { SITE } from "@/data/site";
 import { buildFaqPageJsonLd, safeJsonLd } from "@/lib/jsonld";
+import { renderTemplate } from "@/lib/bench-template";
 import type { Benchmark } from "@/types/benchmark";
 
 // ISR with a 60 s revalidate window. The page is prerendered by
@@ -42,6 +43,14 @@ import type { Benchmark } from "@/types/benchmark";
 // the route still prerenders cleanly.
 export const revalidate = 60;
 
+// Cold start render does up to ~200 Prom calls (provider × percentiles ×
+// series queries) which can exceed Vercel's default 10s function timeout
+// on benches with 20+ providers. Once ISR warms, the page is cached and
+// fast — this only affects the first hit per revalidate window. Bumped
+// to 60s to absorb the slow cold path. The actual hot path latency is
+// served from the CDN cache so the user-facing P99 stays sub-second.
+export const maxDuration = 60;
+
 type Params = { slug: string };
 
 export async function generateStaticParams() {
@@ -51,13 +60,44 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: Promise<Params>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const b = await getBenchmark(slug);
-  if (!b) return {};
-  const metaTitle = b.seoTitle ?? b.title;
+  // Next 16 ships searchParams as a Promise. Reading it here would normally
+  // tip the segment into "dynamic", but generateMetadata is allowed to
+  // consume request data without affecting the parent page's static
+  // rendering — the page.tsx body still resolves searchParams client-side
+  // through BenchmarkBody.
+  const sp = (await searchParams) ?? {};
+  const rawChain = Array.isArray(sp.chain) ? sp.chain[0] : sp.chain;
+  // Always re-fetch unfiltered first — used for canonical fields and the
+  // default copy. When a chain is requested, fetch the filtered variant
+  // so headline sentence + template placeholders resolve against the
+  // chain-scoped leader rather than the cross-chain aggregate.
+  const baseBench = await getBenchmark(slug);
+  if (!baseBench) return {};
+  const chainOption = (baseBench.dimensions?.chain ?? []).find(
+    (c) => c.value.toLowerCase() === (rawChain ?? "").toLowerCase(),
+  );
+  const isChainScoped = Boolean(chainOption && chainOption.value !== "all");
+  const filteredBench = isChainScoped
+    ? (await getBenchmark(slug, { chain: chainOption!.value })) ?? baseBench
+    : baseBench;
+  // Use the filtered bench for headline + template substitutions so the
+  // OG/Twitter card and meta description reference the chain-specific
+  // leader rather than the cross-chain aggregate (the headline of the
+  // unfiltered bench is misleading when a single chain dominates the
+  // baseline — e.g. Solana skewing the "fastest data API" claim on the
+  // Bench-001 aggregate view).
+  const b = filteredBench;
+  const chainLabel = chainOption?.label ?? null;
+  const baseTitle = b.seoTitle ?? b.title;
+  const metaTitle = isChainScoped && chainLabel
+    ? `${baseTitle} on ${chainLabel}`
+    : baseTitle;
   // Description precedence (most-to-least specific):
   //   1. `seo_description` from the YAML - hand-crafted snippet with the
   //      long-tail query phrases we want to rank for.
@@ -65,14 +105,32 @@ export async function generateMetadata({
   //      from the current leader's measured value.
   //   3. Just `subtitle` - when the bench has no live data yet.
   const sentence = headlineSentence(b);
-  const description =
+  let description =
     b.seoDescription ?? (sentence ? `${sentence} ${b.subtitle}` : b.subtitle);
-  const url = `${SITE.url}/benchmarks/${b.slug}`;
+  // Resolve any template placeholders ({{best_name}}, {{best_p50}}, ...)
+  // against the (possibly chain-scoped) bench so editorial copy in the
+  // description renders with live, chain-honest numbers. seoDescription
+  // is the most common host for these placeholders.
+  if (description) description = renderTemplate(description, b);
+  // Canonical NEVER carries `?chain=...`. Per-chain variants share the
+  // same canonical URL so Google consolidates link signal on the hub
+  // page instead of treating each tab as a separate document. The OG
+  // url is the chain-scoped one so social previews don't all collapse
+  // to the same target.
+  const canonical = `${SITE.url}/benchmarks/${baseBench.slug}`;
+  const ogUrl = isChainScoped
+    ? `${canonical}?chain=${chainOption!.value}`
+    : canonical;
   return {
     title: metaTitle,
     description,
-    alternates: { canonical: url },
-    openGraph: { title: metaTitle, description, type: "article", url },
+    alternates: { canonical },
+    openGraph: {
+      title: metaTitle,
+      description,
+      type: "article",
+      url: ogUrl,
+    },
     twitter: { card: "summary_large_image", title: metaTitle, description },
   };
 }
@@ -96,33 +154,63 @@ export default async function BenchmarkPage({
   if (!aggregate) notFound();
   const chainOptions = aggregate.dimensions?.chain ?? [];
   const regionOptions = aggregate.dimensions?.region ?? [];
+  const kindOptions = aggregate.dimensions?.kind ?? [];
   const chain = chainOptions[0]?.value ?? null;
   const region = regionOptions[0]?.value ?? null;
+  const kind = kindOptions[0]?.value ?? null;
 
-  // Pre-fetch every (chain × region) variant in parallel so client flips
+  // Pre-fetch every (chain × region × kind) variant in parallel so client flips
   // are zero round-trip. unstable_cache dedupes each (slug, filters) combo
   // across users - first miss warms it, every later viewer gets it instant.
   // `all` is the "no filter" sentinel - same as the unscoped fetch.
   const chainsForFetch = chainOptions.length > 0 ? chainOptions.map((c) => c.value) : [null];
   const regionsForFetch = regionOptions.length > 0 ? regionOptions.map((r) => r.value) : [null];
+  const kindsForFetch = kindOptions.length > 0 ? kindOptions.map((k) => k.value) : [null];
 
   const variantPairs = chainsForFetch.flatMap((c) =>
-    regionsForFetch.map((r) => [c, r] as const)
+    regionsForFetch.flatMap((r) =>
+      kindsForFetch.map((k) => [c, r, k] as const)
+    )
   );
   const [variantList, all] = await Promise.all([
     Promise.all(
-      variantPairs.map(async ([c, r]) => {
-        const filters: { chain?: string; region?: string } = {};
+      variantPairs.map(async ([c, r, k]) => {
+        const filters: { chain?: string; region?: string; kind?: string } = {};
         if (c && c !== "all") filters.chain = c;
         if (r && r !== "all") filters.region = r;
+        if (k && k !== "all") filters.kind = k;
         const b = await getBenchmark(slug, filters);
-        return [variantKey(c, r), b ?? aggregate] as const;
+        return [variantKey(c, r, k), b ?? aggregate] as const;
       })
     ),
     getBenchmarks(),
   ]);
-  const variants: Record<string, Benchmark> = Object.fromEntries(variantList);
-  const benchmark = variants[variantKey(chain, region)] ?? aggregate;
+  // Variants only contribute chart / leaderboard / extras to the displayed
+  // bench (those legitimately differ per (chain, region) filter). Editorial
+  // copy (findings, faq, seoIntro, abstract, methodology) is the SAME on
+  // every tab and only resolves chain placeholders against the aggregate's
+  // bestPerChain/worstPerChain stash (computed unfiltered only), so we
+  // override these fields onto every variant. Without this, switching to
+  // a chain tab surfaces raw `{{best_name:chain:X}}` strings.
+  const variants: Record<string, Benchmark> = Object.fromEntries(
+    variantList.map(([key, v]) => [
+      key,
+      v === aggregate
+        ? v
+        : {
+            ...v,
+            findings: aggregate.findings,
+            faq: aggregate.faq,
+            seoIntro: aggregate.seoIntro,
+            abstract: aggregate.abstract,
+            methodology: aggregate.methodology,
+            perChainExplainer: aggregate.perChainExplainer,
+            bestPerChain: aggregate.bestPerChain,
+            worstPerChain: aggregate.worstPerChain,
+          },
+    ]),
+  );
+  const benchmark = variants[variantKey(chain, region, kind)] ?? aggregate;
 
   const isDraft = benchmark.status === "draft";
   const isAwaiting = isDraft && benchmark.editorialStatus === "live";
@@ -224,7 +312,7 @@ export default async function BenchmarkPage({
   const faqJsonLd = buildFaqPageJsonLd(benchmark.faq, benchmarkUrl);
 
   return (
-    <article className="mx-auto max-w-5xl px-4 sm:px-6 pt-10 sm:pt-14">
+    <article className="mx-auto max-w-5xl w-full px-4 sm:px-6 pt-10 sm:pt-14 overflow-x-clip min-w-0">
       <script
         type="application/ld+json"
         // biome-ignore lint/security/noDangerouslySetInnerHtml: serialized via safeJsonLd
@@ -241,9 +329,9 @@ export default async function BenchmarkPage({
           so Google can show the crumb above the URL in the SERP. */}
       <nav
         aria-label="Breadcrumb"
-        className="mb-3 text-[11px] font-medium uppercase tracking-[0.16em] text-ink-faint"
+        className="mb-3 text-[11px] font-medium uppercase tracking-[0.08em] sm:tracking-[0.16em] text-ink-faint"
       >
-        <ol className="flex flex-wrap items-center gap-1.5">
+        <ol className="flex flex-wrap items-center gap-1 sm:gap-1.5 min-w-0">
           <li>
             <Link href="/" className="hover:text-ink transition-colors">
               Home
@@ -256,7 +344,9 @@ export default async function BenchmarkPage({
             </Link>
           </li>
           <li aria-hidden>/</li>
-          <li className="text-ink-muted">{benchmark.title}</li>
+          <li className="text-ink-muted truncate max-w-[60vw] sm:max-w-none">
+            {benchmark.title}
+          </li>
         </ol>
       </nav>
 
@@ -282,7 +372,7 @@ export default async function BenchmarkPage({
       </div>
 
       {/* Bench identifier - minimal mono line, no SaaS-style pills. */}
-      <div className="mt-6 flex flex-wrap items-center gap-3 font-sans text-[11px] uppercase tracking-[0.18em] text-ink-muted font-medium">
+      <div className="mt-6 flex flex-wrap items-center gap-3 font-sans text-[11px] uppercase tracking-[0.1em] sm:tracking-[0.18em] text-ink-muted font-medium">
         <span style={{ color: catColor ?? "var(--color-ink-soft)" }}>
           {benchmark.category}
         </span>
@@ -299,10 +389,10 @@ export default async function BenchmarkPage({
       </div>
 
       {/* Title */}
-      <h1 className="mt-5 display text-3xl sm:text-4xl md:text-5xl tracking-tight text-ink">
+      <h1 className="mt-5 display text-3xl sm:text-4xl md:text-5xl tracking-tight text-ink break-words">
         {benchmark.title}
       </h1>
-      <p className="mt-4 max-w-3xl text-lg sm:text-xl text-ink-muted leading-snug">
+      <p className="mt-4 max-w-3xl text-lg sm:text-xl text-ink-muted leading-snug break-words">
         {benchmark.subtitle}
       </p>
 
@@ -325,11 +415,10 @@ export default async function BenchmarkPage({
           long-tail query phrases land in the first ~200 words crawlers
           weight heavily. Optional - omitted when the YAML doesn't set it. */}
       {benchmark.seoIntro && (
-        <div className="mt-6 max-w-3xl space-y-3 text-[15px] leading-relaxed text-ink-soft">
+        <div className="mt-6 max-w-3xl space-y-3 text-[15px] leading-relaxed text-ink-soft break-words">
           {benchmark.seoIntro
             .split(/\n\n+/)
             .map((para, i) => (
-              // eslint-disable-next-line react/no-array-index-key
               <p key={i}>{para.trim()}</p>
             ))}
         </div>
@@ -358,7 +447,7 @@ export default async function BenchmarkPage({
             />
           </summary>
           <div className="pb-4 pt-1">
-            <p className="text-sm leading-relaxed text-ink-soft max-w-3xl">
+            <p className="text-sm leading-relaxed text-ink-soft max-w-3xl break-words">
               {benchmark.abstract}
             </p>
           </div>
@@ -374,8 +463,10 @@ export default async function BenchmarkPage({
             variants={variants}
             chainOptions={chainOptions}
             regionOptions={regionOptions}
+            kindOptions={kindOptions}
             initialChain={chain ?? null}
             initialRegion={region ?? null}
+            initialKind={kind ?? null}
           />
         </Suspense>
       )}
@@ -418,11 +509,14 @@ export default async function BenchmarkPage({
         </section>
       )}
 
-      {/* Source code link. bottom of page */}
+      {/* Source code link. bottom of page. The URL goes 'github.com/Org/Repo/tree/main/harnesses/<slug>'
+          which can run to 80+ chars and overflows the viewport on mobile when uppercase + tracked.
+          `break-all` wraps it character-by-character (no natural word boundaries inside a path);
+          `max-w-full` clamps the inline anchor so flex parents don't blow out horizontally either. */}
       {!isDraft && (
-        <p className="mt-4 text-[11px] uppercase tracking-[0.16em] text-ink-muted">
+        <p className="mt-4 text-[11px] uppercase tracking-[0.16em] text-ink-muted break-all">
           Source code{" "}
-          <a className="lnk" href={benchmark.source}>
+          <a className="lnk inline max-w-full" href={benchmark.source}>
             {benchmark.source.replace("https://github.com/", "github.com/")}
             <ArrowUpRight size={12} strokeWidth={2} className="inline ml-1" />
           </a>
@@ -477,8 +571,12 @@ export default async function BenchmarkPage({
 /** Stable variant-map key. Mirrors what BenchmarkBody computes on every
  * filter change. Use `null` for "no dimension" and "all" / undefined as
  * the unscoped sentinel. */
-function variantKey(chain: string | null, region: string | null): string {
-  return `${chain ?? "__none"}|${region ?? "__none"}`;
+function variantKey(
+  chain: string | null,
+  region: string | null,
+  kind: string | null,
+): string {
+  return `${chain ?? "__none"}|${region ?? "__none"}|${kind ?? "__none"}`;
 }
 
 function DraftNotice({ source }: { source: string }) {

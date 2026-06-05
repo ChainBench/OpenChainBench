@@ -2,7 +2,7 @@
 
 ## Reporting a vulnerability
 
-Open a [private security advisory](https://github.com/OpenChainBench/OpenChainBench/security/advisories/new) on this repository. Do **not** open a public issue for a security report. the advisory mechanism keeps the disclosure private until a fix is in place.
+Open a [private security advisory](https://github.com/ChainBench/OpenChainBench/security/advisories/new) on this repository. Do **not** open a public issue for a security report. the advisory mechanism keeps the disclosure private until a fix is in place.
 
 If GitHub is not an option, email **security@openchainbench.com** with:
 

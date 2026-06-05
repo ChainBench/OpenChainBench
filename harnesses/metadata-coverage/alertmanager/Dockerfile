@@ -1,12 +1,15 @@
 FROM prom/alertmanager:latest
 
-# Copy AlertManager configuration
+# Config carries __SLACK_WEBHOOK_URL__; entrypoint.sh sed-substitutes
+# it from $SLACK_WEBHOOK_URL at container start. Keeps the real webhook
+# URL out of the repo and out of the image layer.
 COPY alertmanager.yml /etc/alertmanager/alertmanager.yml
+COPY entrypoint.sh /entrypoint.sh
 
-# Expose AlertManager port
+USER root
+RUN chmod +x /entrypoint.sh
+USER nobody
+
 EXPOSE 9093
 
-# Run AlertManager
-CMD ["--config.file=/etc/alertmanager/alertmanager.yml", \
-     "--storage.path=/alertmanager", \
-     "--log.level=debug"]
+ENTRYPOINT ["/entrypoint.sh"]

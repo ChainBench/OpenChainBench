@@ -51,6 +51,36 @@ func main() {
 	wg.Wait()
 }
 
+// lastFetchAt tracks the last successful (or attempted) fetch per chain slug.
+// Used to honor ChainConfig.MinIntervalSeconds — chains with an upstream API
+// quota (Cardano via Koios free tier) skip the global 10 s tick to avoid
+// burning the daily request budget. Mutex-protected; the global ticker fires
+// concurrent goroutines so the map read+write needs to be serialized.
+var (
+	lastFetchAt   = make(map[string]time.Time)
+	lastFetchAtMu sync.Mutex
+)
+
+func shouldSkip(ch ChainConfig, now time.Time) bool {
+	if ch.MinIntervalSeconds <= 0 {
+		return false
+	}
+	lastFetchAtMu.Lock()
+	defer lastFetchAtMu.Unlock()
+	last, ok := lastFetchAt[ch.Slug]
+	if !ok {
+		// first tick — let it through and stamp now so the next tick
+		// honors the per-chain minimum.
+		lastFetchAt[ch.Slug] = now
+		return false
+	}
+	if now.Sub(last) < time.Duration(ch.MinIntervalSeconds)*time.Second {
+		return true
+	}
+	lastFetchAt[ch.Slug] = now
+	return false
+}
+
 func runRefreshLoop(cfg *Config, stop <-chan struct{}) {
 	tick := time.NewTicker(cfg.Interval)
 	defer tick.Stop()
@@ -68,8 +98,12 @@ func runRefreshLoop(cfg *Config, stop <-chan struct{}) {
 }
 
 func fetchAll(cfg *Config) {
+	now := time.Now()
 	var wg sync.WaitGroup
 	for _, ch := range cfg.Chains {
+		if shouldSkip(ch, now) {
+			continue
+		}
 		ch := ch
 		wg.Add(1)
 		go func() {

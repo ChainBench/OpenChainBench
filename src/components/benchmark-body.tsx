@@ -11,6 +11,8 @@ import { RankedBarChart } from "@/components/ranked-bar-chart";
 import { DistributionChart } from "@/components/distribution-chart";
 import { DonutChart } from "@/components/donut-chart";
 import { RegionGrid } from "@/components/region-grid";
+import { MetricViewTabs } from "@/components/metric-view-tabs";
+import type { ProviderLayer } from "@/types/benchmark";
 import { CountLeaderboard } from "@/components/count-leaderboard";
 import { SummaryStat } from "@/components/summary-stat";
 import { ViewSwitcher } from "@/components/view-switcher";
@@ -97,8 +99,12 @@ function summarize(b: Benchmark | undefined): ChainMeta | null {
  * the whole point).
  */
 /** Stable variant-map key mirroring `page.tsx:variantKey`. */
-function variantKey(chain: string | null, region: string | null): string {
-  return `${chain ?? "__none"}|${region ?? "__none"}`;
+function variantKey(
+  chain: string | null,
+  region: string | null,
+  kind: string | null,
+): string {
+  return `${chain ?? "__none"}|${region ?? "__none"}|${kind ?? "__none"}`;
 }
 
 /** Region values that appear in extras.seriesByRegion24h. Used when the
@@ -125,16 +131,20 @@ export function BenchmarkBody({
   variants,
   chainOptions,
   regionOptions,
+  kindOptions = [],
   initialChain,
   initialRegion,
+  initialKind = null,
 }: {
   variants: Record<string, Benchmark>;
   chainOptions: ChainOption[];
   regionOptions: ChainOption[];
+  kindOptions?: ChainOption[];
   initialChain: string | null;
   initialRegion: string | null;
+  initialKind?: string | null;
 }) {
-  // Read ?chain= / ?region= client-side. The server can't read these any
+  // Read ?chain= / ?region= / ?kind= client-side. The server can't read these any
   // more (doing so would force /benchmarks/<slug> to render dynamic on
   // every visit) so URL-driven filter state is hydrated here. Falls back
   // to the server-rendered initial when the URL has no filter or a
@@ -142,46 +152,86 @@ export function BenchmarkBody({
   const searchParams = useSearchParams();
   const urlChain = searchParams.get("chain");
   const urlRegion = searchParams.get("region");
+  const urlKind = searchParams.get("kind");
+  const urlLayer = searchParams.get("layer");
   const resolvedInitialChain =
     (urlChain && chainOptions.find((c) => c.value === urlChain)?.value) ?? initialChain;
   const resolvedInitialRegion =
     (urlRegion && regionOptions.find((r) => r.value === urlRegion)?.value) ?? initialRegion;
+  const resolvedInitialKind =
+    (urlKind && kindOptions.find((k) => k.value === urlKind)?.value) ?? initialKind;
+  const resolvedInitialLayer: ProviderLayer =
+    urlLayer === "l2" ? "l2" : "l1";
 
   const [chain, setChain] = useState<string | null>(resolvedInitialChain);
   const [region, setRegion] = useState<string | null>(resolvedInitialRegion);
+  const [kind, setKind] = useState<string | null>(resolvedInitialKind);
+  const [layer, setLayer] = useState<ProviderLayer>(resolvedInitialLayer);
 
   useEffect(() => {
     const url = new URL(window.location.href);
     syncParam(url, "chain", chain, chainOptions);
     syncParam(url, "region", region, regionOptions);
+    syncParam(url, "kind", kind, kindOptions);
+    // Layer param: drop when default ("l1"), keep when user picked l2.
+    if (layer === "l1") url.searchParams.delete("layer");
+    else url.searchParams.set("layer", layer);
     const next = url.pathname + (url.search ? url.search : "");
     if (next !== window.location.pathname + window.location.search) {
       window.history.replaceState(null, "", next);
     }
-  }, [chain, region, chainOptions, regionOptions]);
+  }, [chain, region, kind, layer, chainOptions, regionOptions, kindOptions]);
 
   const fallbackChain = chainOptions[0]?.value ?? null;
   const fallbackRegion = regionOptions[0]?.value ?? null;
+  const fallbackKind = kindOptions[0]?.value ?? null;
   const effectiveChain = chainOptions.length > 0 ? (chain ?? fallbackChain) : null;
   const effectiveRegion = regionOptions.length > 0 ? (region ?? fallbackRegion) : null;
+  const effectiveKind = kindOptions.length > 0 ? (kind ?? fallbackKind) : null;
   const benchmark =
-    variants[variantKey(effectiveChain, effectiveRegion)] ??
-    variants[variantKey(null, null)] ??
+    variants[variantKey(effectiveChain, effectiveRegion, effectiveKind)] ??
+    variants[variantKey(null, null, null)] ??
     Object.values(variants)[0];
   if (!benchmark) return null;
 
-  const isDraft = benchmark.status === "draft";
+  // L1/L2 layer counts. When both > 0 the bench mixes L1 and L2 chains
+  // and we render a top-level Layer toggle that filters the entire page
+  // (chart + summary + ledger) to one layer at a time. Default is L1.
+  const layerCounts = useMemo(() => {
+    let l1 = 0;
+    let l2 = 0;
+    for (const r of benchmark.results) {
+      if (r.layer === "l1") l1++;
+      else if (r.layer === "l2") l2++;
+    }
+    return { all: benchmark.results.length, l1, l2 };
+  }, [benchmark.results]);
+  const hasLayerSplit = layerCounts.l1 > 0 && layerCounts.l2 > 0;
+
+  // Filter the benchmark to the active layer for the entire page. When
+  // hasLayerSplit is false the original benchmark is returned untouched
+  // so non-layer benches keep their existing behavior. The chart, the
+  // summary stats and the ledger all read from `viewBenchmark`.
+  const viewBenchmark = useMemo(() => {
+    if (!hasLayerSplit) return benchmark;
+    return {
+      ...benchmark,
+      results: benchmark.results.filter((r) => r.layer === layer),
+    };
+  }, [benchmark, hasLayerSplit, layer]);
+
+  const isDraft = viewBenchmark.status === "draft";
   const { fieldMin, fieldMedian, fieldMax, tailMin, tailMax, tailSpread } =
-    computeFieldStats(benchmark.results);
+    computeFieldStats(viewBenchmark.results);
 
   // View switcher state. Per-bench, persisted via localStorage. Default
   // mirrors the heuristic the page used before the switcher existed so
   // an anonymous user with no prior preference sees the same layout
   // they always saw.
-  const allowedViews = viewsForBenchmark(benchmark);
-  const defaultView = defaultViewFor(benchmark);
+  const allowedViews = viewsForBenchmark(viewBenchmark);
+  const defaultView = defaultViewFor(viewBenchmark);
   const [view, setView, viewMounted] = useViewPreference(
-    benchmark.slug,
+    viewBenchmark.slug,
     defaultView,
     allowedViews,
   );
@@ -208,6 +258,20 @@ export function BenchmarkBody({
   const chartRegions = chartOnlyRegions(benchmark);
   const showChartRegionRow = regionOptions.length === 0 && chartRegions.length > 1;
   const [chartRegion, setChartRegion] = useState<string>("all");
+
+  // Active companion-metric panel. null = main spec metric (default chart
+  // data, default unit, default header). When a panel id is set, the chart
+  // pulls its per-provider series from panel.seriesByProvider, swaps the
+  // header label to panel.label, and the Y-axis unit to panel.unit.
+  const [activePanelId, setActivePanelId] = useState<string | null>(null);
+  // Single Top-N value shared across every chart view AND the ledger
+  // so a reader who picks "Top 5" sees the same 5 providers in every
+  // surface. Each chart still computes its own option set off its own
+  // post-filter cohort, but the active value is parent-controlled.
+  const [topN, setTopN] = useState<number | null>(null);
+  const topNControl = useMemo(() => ({ topN, setTopN }), [topN]);
+  const activePanel =
+    benchmark.metricPanels?.find((p) => p.id === activePanelId) ?? null;
   const chartRegionOptions: ChainOption[] = useMemo(
     () => [
       { value: "all", label: "All" },
@@ -218,8 +282,40 @@ export function BenchmarkBody({
 
   return (
     <>
-      {(chainOptions.length > 0 || regionOptions.length > 0) && (
+      {(hasLayerSplit ||
+        chainOptions.length > 0 ||
+        regionOptions.length > 0 ||
+        kindOptions.length > 0) && (
         <div className="mt-8 space-y-3">
+          {hasLayerSplit && (
+            <DimensionRow
+              label="Layer"
+              options={[
+                { value: "l1", label: `L1 · ${layerCounts.l1}` },
+                { value: "l2", label: `L2 · ${layerCounts.l2}` },
+              ]}
+              selected={layer}
+              onSelect={(v) => setLayer(v as ProviderLayer)}
+            />
+          )}
+          {kindOptions.length > 0 && (
+            <DimensionRow
+              label="Kind"
+              options={kindOptions}
+              selected={kind ?? fallbackKind}
+              onSelect={setKind}
+              metaByValue={Object.fromEntries(
+                kindOptions
+                  .map((o) => [
+                    o.value,
+                    summarize(
+                      variants[variantKey(effectiveChain, effectiveRegion, o.value)],
+                    ),
+                  ])
+                  .filter(([, v]) => v !== null) as [string, ChainMeta][]
+              )}
+            />
+          )}
           {chainOptions.length > 0 && (
             <DimensionRow
               label="Chain"
@@ -230,7 +326,7 @@ export function BenchmarkBody({
                 chainOptions
                   .map((o) => [
                     o.value,
-                    summarize(variants[variantKey(o.value, effectiveRegion)]),
+                    summarize(variants[variantKey(o.value, effectiveRegion, effectiveKind)]),
                   ])
                   .filter(([, v]) => v !== null) as [string, ChainMeta][]
               )}
@@ -246,7 +342,7 @@ export function BenchmarkBody({
                 regionOptions
                   .map((o) => [
                     o.value,
-                    summarize(variants[variantKey(effectiveChain, o.value)]),
+                    summarize(variants[variantKey(effectiveChain, o.value, effectiveKind)]),
                   ])
                   .filter(([, v]) => v !== null) as [string, ChainMeta][]
               )}
@@ -263,31 +359,39 @@ export function BenchmarkBody({
         </div>
       )}
 
-      {!isDraft && benchmark.unit !== "count" && (
-        <dl className="mt-10 card rounded-xl grid grid-cols-2 sm:flex sm:flex-wrap divide-y divide-x sm:divide-y-0 divide-rule overflow-hidden">
-          <SummaryStat
-            label="Best"
-            value={`${fmtValue(fieldMin, benchmark.unit)}${unitSuffix(benchmark.unit)}`}
-          />
-          <SummaryStat
-            label="Median"
-            value={`${fmtValue(fieldMedian, benchmark.unit)}${unitSuffix(benchmark.unit)}`}
-          />
-          <SummaryStat
-            label="Worst"
-            value={`${fmtValue(fieldMax, benchmark.unit)}${unitSuffix(benchmark.unit)}`}
-          />
-          <SummaryStat
-            label="Spread"
-            value={tailSpread > 0 ? `${tailSpread.toFixed(1)}×` : "-"}
-            hint={
-              tailSpread > 0
-                ? `${fmtUnit(tailMin, benchmark.unit)} → ${fmtUnit(tailMax, benchmark.unit)}`
-                : undefined
-            }
-          />
-        </dl>
-      )}
+      {!isDraft && benchmark.unit !== "count" && (() => {
+        // For higher-is-better benches (e.g. HL frontends USD revenue), the
+        // "best" headline is the max value, not the min. Latency benches keep
+        // the original min=best mapping.
+        const higherIsBetter = benchmark.higherIsBetter === true;
+        const bestValue = higherIsBetter ? fieldMax : fieldMin;
+        const worstValue = higherIsBetter ? fieldMin : fieldMax;
+        return (
+          <dl className="mt-10 card rounded-xl grid grid-cols-2 sm:flex sm:flex-wrap divide-y divide-x sm:divide-y-0 divide-rule overflow-hidden">
+            <SummaryStat
+              label="Best"
+              value={`${fmtValue(bestValue, benchmark.unit)}${unitSuffix(benchmark.unit)}`}
+            />
+            <SummaryStat
+              label="Median"
+              value={`${fmtValue(fieldMedian, benchmark.unit)}${unitSuffix(benchmark.unit)}`}
+            />
+            <SummaryStat
+              label="Worst"
+              value={`${fmtValue(worstValue, benchmark.unit)}${unitSuffix(benchmark.unit)}`}
+            />
+            <SummaryStat
+              label="Spread"
+              value={tailSpread > 0 ? `${tailSpread.toFixed(1)}×` : "-"}
+              hint={
+                tailSpread > 0
+                  ? `${fmtUnit(tailMin, benchmark.unit)} → ${fmtUnit(tailMax, benchmark.unit)}`
+                  : undefined
+              }
+            />
+          </dl>
+        );
+      })()}
 
       {!isDraft && (
         <>
@@ -304,59 +408,100 @@ export function BenchmarkBody({
             >
               {view === "countLeaderboard" && (
                 <CountLeaderboard
-                  benchmark={benchmark}
+                  benchmark={viewBenchmark}
                   headerActions={<ViewSwitcher allowed={allowedViews} value={view} onChange={setView} />}
                 />
               )}
               {view === "rankedBar" && (
                 <RankedBarChart
-                  benchmark={benchmark}
+                  benchmark={viewBenchmark}
                   excluded={excluded}
                   onToggleExclude={toggleExclude}
                   onResetExcluded={resetExcluded}
+                  disableTopN={hasLayerSplit}
+                  topNControl={topNControl}
                   headerActions={<ViewSwitcher allowed={allowedViews} value={view} onChange={setView} />}
                 />
               )}
               {view === "distribution" && (
                 <DistributionChart
-                  benchmark={benchmark}
+                  benchmark={viewBenchmark}
                   excluded={excluded}
                   onToggleExclude={toggleExclude}
+                  onResetExcluded={resetExcluded}
+                  disableTopN={hasLayerSplit}
+                  topNControl={topNControl}
                   headerActions={<ViewSwitcher allowed={allowedViews} value={view} onChange={setView} />}
                 />
               )}
               {view === "donut" && (
                 <DonutChart
-                  benchmark={benchmark}
+                  benchmark={viewBenchmark}
                   excluded={excluded}
                   onToggleExclude={toggleExclude}
+                  disableTopN={hasLayerSplit}
+                  topNControl={topNControl}
                   headerActions={<ViewSwitcher allowed={allowedViews} value={view} onChange={setView} />}
                 />
               )}
               {view === "timeseries" && (
-                <TimeSeriesChart
-                  benchmark={benchmark}
-                  region={showChartRegionRow ? chartRegion : undefined}
-                  headerActions={<ViewSwitcher allowed={allowedViews} value={view} onChange={setView} />}
-                />
+                <>
+                  {benchmark.metricPanels && benchmark.metricPanels.length > 0 && (
+                    <MetricViewTabs
+                      panels={benchmark.metricPanels}
+                      mainLabel={benchmark.metric}
+                      activeId={activePanelId}
+                      onSelect={setActivePanelId}
+                    />
+                  )}
+                  <TimeSeriesChart
+                    benchmark={viewBenchmark}
+                    region={
+                      regionOptions.length > 0
+                        ? (region ?? fallbackRegion ?? undefined)
+                        : showChartRegionRow
+                          ? chartRegion
+                          : undefined
+                    }
+                    excluded={excluded}
+                    onToggleExclude={toggleExclude}
+                    onResetExcluded={resetExcluded}
+                    disableTopN={hasLayerSplit}
+                  topNControl={topNControl}
+                    headerActions={<ViewSwitcher allowed={allowedViews} value={view} onChange={setView} />}
+                    seriesOverride={activePanel?.seriesByProvider}
+                    seriesOverride7d={activePanel?.seriesByProvider7d}
+                    seriesOverride30d={activePanel?.seriesByProvider30d}
+                    metricLabelOverride={activePanel?.label}
+                    unitOverride={activePanel?.unit}
+                    higherIsBetterOverride={activePanel?.higherIsBetter}
+                  />
+                  {activePanel?.description && (
+                    <p className="mt-3 text-[12px] text-ink-muted max-w-2xl">
+                      {activePanel.description}
+                    </p>
+                  )}
+                </>
               )}
             </div>
           </div>
 
           <div className="mt-8 card-soft rounded-xl p-4 sm:p-6 lg:p-8">
             <p className="label-mono text-ink-faint mb-4">
-              {benchmark.unit === "count"
+              {viewBenchmark.unit === "count"
                 ? "Product ledger"
-                : "Product ledger · sorted by p50"}
+                : activePanel
+                  ? `Product ledger · sorted by ${activePanel.label}`
+                  : "Product ledger · sorted by p50"}
             </p>
-            <LedgerTable benchmark={benchmark} />
+            <LedgerTable benchmark={viewBenchmark} activePanel={activePanel} topN={topN} />
           </div>
 
-          {benchmark.unit !== "count" &&
+          {viewBenchmark.unit !== "count" &&
             Object.keys(benchmark.extras.regions).length > 0 && (
               <div className="mt-8 card-soft rounded-xl p-4 sm:p-6 lg:p-8">
                 <p className="label-mono text-ink-faint mb-4">By region</p>
-                <RegionGrid benchmark={benchmark} />
+                <RegionGrid benchmark={viewBenchmark} />
               </div>
             )}
         </>
