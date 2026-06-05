@@ -54,3 +54,4 @@ docs/*-cost-model.md
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+.claude/worktrees/

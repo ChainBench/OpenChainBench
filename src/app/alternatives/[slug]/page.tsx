@@ -76,6 +76,24 @@ export default async function AlternativePage({
 
   const url = `${SITE.url}/alternatives/${alt.slug}`;
   const benchUrl = `${SITE.url}/benchmarks/${bench.slug}`;
+
+  // Schema.org / Google Rich Results requires Dataset.description to be
+  // between 50 and 5000 chars (Search Console flags "Invalid string
+  // length" below 50). Most short alt.description fields ("Relay
+  // alternatives", ~40 chars) trip this. Pad with bench context until
+  // the threshold is met, then truncate at the 5000 ceiling.
+  const altDescriptionBase = alt.description ?? alt.intro.slice(0, 280);
+  const altDescriptionPadded = (() => {
+    if (altDescriptionBase.length >= 50) return altDescriptionBase.slice(0, 5000);
+    const altCount = topAlternatives.length;
+    const peers = altCount > 0
+      ? `${altCount} live alternative${altCount === 1 ? "" : "s"}`
+      : "live alternatives";
+    const pad = `. Open benchmark snapshot of ${alt.target_product} versus ${peers} on ${bench.metric}, measured continuously and published with full methodology.`;
+    const joined = `${altDescriptionBase}${pad}`;
+    return joined.slice(0, 5000);
+  })();
+
   const jsonLd = {
     "@context": "https://schema.org",
     "@graph": [
@@ -83,7 +101,7 @@ export default async function AlternativePage({
         "@type": "Dataset",
         "@id": `${url}#dataset`,
         name: `${alt.target_product} alternatives, benchmark snapshot`,
-        description: alt.description ?? alt.intro.slice(0, 280),
+        description: altDescriptionPadded,
         url,
         identifier: alt.slug,
         keywords: [
@@ -104,7 +122,7 @@ export default async function AlternativePage({
         "@type": "Article",
         "@id": `${url}#article`,
         headline: `${alt.target_product} alternatives`,
-        description: alt.description ?? alt.intro.slice(0, 280),
+        description: altDescriptionPadded,
         url,
         mainEntityOfPage: url,
         articleBody: alt.intro,
@@ -232,7 +250,7 @@ export default async function AlternativePage({
           <dl className="mt-10 grid grid-cols-2 sm:flex sm:flex-wrap items-baseline gap-x-8 gap-y-3 border-y border-rule py-4">
             <SummaryStat
               label="Best"
-              value={`${fmtValue(fieldMin, bench.unit)}${unitSuffix(bench.unit)}`}
+              value={`${fmtValue(bench.higherIsBetter ? fieldMax : fieldMin, bench.unit)}${unitSuffix(bench.unit)}`}
             />
             <SummaryStat
               label="Median"
@@ -240,7 +258,7 @@ export default async function AlternativePage({
             />
             <SummaryStat
               label="Worst"
-              value={`${fmtValue(fieldMax, bench.unit)}${unitSuffix(bench.unit)}`}
+              value={`${fmtValue(bench.higherIsBetter ? fieldMin : fieldMax, bench.unit)}${unitSuffix(bench.unit)}`}
             />
             <SummaryStat
               label="Spread"

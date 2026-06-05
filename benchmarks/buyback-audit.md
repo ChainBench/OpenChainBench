@@ -28,7 +28,7 @@ v2 will add Jupiter Litterbox Trust (50% of Jupiter fees → on-market JUP buyba
 A ratio well below 1.0 is not automatically under-delivery. Two regimes produce it:
 
 1. **Batched execution.** Sky's SBE accumulates surplus inside the Maker / Sky protocol and concentrates on-market SKY buys into irregular batches via Uniswap. A 7-day window taken mid-accumulation reads low; the long-run accrual to the destination address tracks closer to 1.0.
-2. **Sustained under-funding.** The promised share overstates what is actually being routed to the buyback program. This shows up as a 30-day ratio that stays well below 1.0 across multiple snapshots — the cadence signal in (1) damps out, the structural signal does not.
+2. **Sustained under-funding.** The promised share overstates what is actually being routed to the buyback program. This shows up as a 30-day ratio that stays well below 1.0 across multiple snapshots. The cadence signal in (1) damps out, the structural signal does not.
 
 The 7d vs 30d split is the cheapest tell for which regime is in play. Continuous executors (Hyperliquid AF) show 7d ≈ 30d; batched executors (Sky SBE) show 7d < 30d; structurally under-funded programs would show both windows low.
 

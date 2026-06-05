@@ -128,7 +128,7 @@ findings:
   - "{{best_name}} currently leads the leaderboard at {{best_p50}} (p50, 24 h) across {{count}} measured L1s. {{worst_name}} trails at {{worst_p50}}."
   - "Hedera's Hashgraph aBFT is designed to finalize in 3-5 s but is excluded from the live leaderboard because the mirror node only exposes finalized blocks, wall-clock measurement requires the Block Node service (HIP-1056), still in private preview."
 
-source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/l1-finality
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/l1-finality
 
 prometheus:
   window: 24h
@@ -150,7 +150,7 @@ prometheus:
 
 providers:
   - slug: bnb
-    name: BNB Smart Chain
+    name: BNB
     tag: Fast finality fork (BEP-126), measured via WS wall-clock
     formula: "Median wall-clock milliseconds between a BNB block first appearing as `latest` on WebSocket and crossing the BEP-126 finalized threshold, p50 over 24h."
     queries:
@@ -163,7 +163,7 @@ providers:
       series: l1_finality_wallclock_lag_milliseconds{chain="bnb"}
 
   - slug: avalanche
-    name: Avalanche C-Chain
+    name: Avalanche
     tag: Snowman++ consensus, measured via WS wall-clock
     formula: "Median wall-clock milliseconds between a C-Chain block emitting as `latest` and as `finalized` on a persistent WebSocket, p50 over 24h."
     queries:

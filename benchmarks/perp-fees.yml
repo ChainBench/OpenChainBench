@@ -59,7 +59,7 @@ findings:
   - "GMX position fee is variable: 4 bps on positive impact opens, 6 bps on negative impact. We report the negative branch (conservative upper bound). {{name:gmx}} clocks {{p50:gmx}} all-in (p50, 24 h)."
   - "{{worst_name}} trails at {{worst_p50}} all-in (p50, 24 h). The leaderboard reorders intra-day with spread volatility, so a venue cheap on the rack rate can still trail when its book thins out at a $1000 buy."
 
-source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/perp-fees
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/perp-fees
 
 prometheus:
   window: 24h

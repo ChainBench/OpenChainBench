@@ -41,8 +41,15 @@ export function fmtUnit(value: number, unit: string) {
   if (unit === "usd") {
     if (value === 0) return "$0";
     const abs = Math.abs(value);
-    if (abs < 0.01) return "~$0";
-    if (abs < 1) return `$${value.toFixed(2)}`;
+    // Fee-grade precision: network fees can be 6 decimals deep
+    // ($0.000001 Avalanche transfer), so we can't collapse anything
+    // sub-cent to "~$0". Pick decimals by magnitude so the digit count
+    // stays readable.
+    if (abs < 0.000001) return `$${value.toExponential(2)}`;
+    if (abs < 0.0001) return `$${value.toFixed(7)}`;
+    if (abs < 0.001) return `$${value.toFixed(6)}`;
+    if (abs < 0.01) return `$${value.toFixed(5)}`;
+    if (abs < 1) return `$${value.toFixed(4)}`;
     if (abs < 1000) return `$${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
     return `$${formatCompactCount(value)}`;
   }

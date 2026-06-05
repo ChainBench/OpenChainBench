@@ -98,6 +98,27 @@ body {
   background-image: radial-gradient(#23272f 1px, transparent 1px);
 }
 
+/* Mobile: soften the dot pattern so it doesn't fight thin body text.
+   Same density as desktop, but a small solid centre + feathered halo
+   gives the dots a "blurred" look while keeping them visible. */
+@media (max-width: 767px) {
+  body {
+    background-image: radial-gradient(rgba(229, 229, 229, 0.8) 0.7px, transparent 1.8px);
+  }
+  .dark body {
+    background-image: radial-gradient(rgba(35, 39, 47, 0.85) 0.7px, transparent 1.8px);
+  }
+}
+
+/* Masthead logo: hide the SVG fallback on desktop (real mouse + ≥ 768px)
+   so it never paints alongside the 3D sphere. Touch / small screens
+   ignore this and keep the SVG as the only logo. */
+@media (pointer: fine) and (min-width: 768px) {
+  .logo-touch-only {
+    display: none;
+  }
+}
+
 /* Tabular nums for everything that displays numbers */
 .tabular,
 .font-mono,
@@ -306,4 +327,28 @@ textarea:focus-visible {
 html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+}
+
+/* Safety net: clip horizontal overflow at the html (viewport) level only.
+   Do NOT apply overflow-x: clip to <body> — WebKit treats clip on <body>
+   as creating a containing block for position: fixed descendants, which
+   detaches the sticky/fixed header from the viewport and lets a 1-2 px
+   gap appear at the top during momentum scroll in Telegram WKWebView.
+   Per-component clipping (main, article) catches anything html misses. */
+html {
+  overflow-x: clip;
+}
+
+/* iOS in-app WebView (Telegram, Instagram, Facebook, Twitter, TikTok)
+   downgrade only: drop sticky on the site header so the iOS 26 WebKit
+   jitter bug (bugs.webkit.org/297779) cannot expose a gap at the top.
+   The `ios-webview` class is set by an inline script in layout.tsx
+   based on userAgent (iOS device with no `Safari/` token = WebView).
+   Regular mobile Safari / Chrome iOS keep sticky because the symptom
+   does not visibly trigger there. Desktop is sticky everywhere. */
+@media (max-width: 767px) {
+  html.ios-webview .site-header-root {
+    position: relative;
+    top: auto;
+  }
 }
