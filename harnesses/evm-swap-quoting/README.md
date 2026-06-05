@@ -16,6 +16,7 @@ single edge if a user only cares about one geography.
 | Bebop | none | ~380ms | `source: openchainbench` header. EIP-55 checksum addresses. Wrapped-native sell-side. |
 | LI.FI | none | ~840ms | Same-chain via `fromChain == toChain`. |
 | OpenOcean v4 | none | 0.8-1.3s | Numeric chainId in URL. Human-readable amount. |
+| CoW Protocol | none | ~3s | RFQ batch auction. Wraps native on both sides. Skips BSC (no settlement contract). |
 
 ## Providers that require additional keys (off by default)
 

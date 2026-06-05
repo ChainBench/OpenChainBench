@@ -143,3 +143,16 @@ providers:
       success: avg_over_time(evm_swap_quote_success{provider="openocean"}[24h])
       sample_size: sum(increase(evm_swap_quote_latency_ms_count{provider="openocean"}[24h]))
       series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="openocean"}[1h])) by (le))
+
+  - slug: cow
+    name: CoW Protocol
+    tag: No auth, RFQ batch auction, no BSC
+    formula: "p50 of evm_swap_quote_latency_ms{provider=cow} over the last 24 hours. BSC is skipped since CoW Settlement does not deploy there."
+    queries:
+      p50: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="cow"}[24h])) by (le))
+      p90: histogram_quantile(0.90, sum(rate(evm_swap_quote_latency_ms_bucket{provider="cow"}[24h])) by (le))
+      p99: histogram_quantile(0.99, sum(rate(evm_swap_quote_latency_ms_bucket{provider="cow"}[24h])) by (le))
+      mean: sum(rate(evm_swap_quote_latency_ms_sum{provider="cow"}[24h])) / sum(rate(evm_swap_quote_latency_ms_count{provider="cow"}[24h]))
+      success: avg_over_time(evm_swap_quote_success{provider="cow"}[24h])
+      sample_size: sum(increase(evm_swap_quote_latency_ms_count{provider="cow"}[24h]))
+      series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="cow"}[1h])) by (le))

@@ -11,7 +11,7 @@ import (
 func main() {
 	installLogCapture() // first — captures stdout into the ring buffer for /logs?tail=N
 	fmt.Println("=== EVM Swap Quoting Latency Monitor ===")
-	fmt.Println("Measures p50/p99 round-trip latency for 5 EVM aggregators on a rotating 5-pair basket.")
+	fmt.Println("Measures p50/p99 round-trip latency for EVM swap aggregators on a rotating 5-pair basket.")
 	fmt.Println("Press Ctrl+C to stop")
 	fmt.Println()
 
