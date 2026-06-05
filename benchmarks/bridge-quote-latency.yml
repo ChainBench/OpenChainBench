@@ -3,8 +3,8 @@
 slug: bridge-quote-latency
 number: "002"
 title: Fastest cross-chain bridge quote API
-seo_title: "Bridge quote API latency: Relay, LiFi, Debridge, Mobula ms"
-seo_description: "Live ms response time for every cross-chain bridge quote API. Relay, LiFi, Debridge, Mobula on identical USDC routes, p50/p90/p99 over 24h, refreshed every 5 min."
+seo_title: "Bridge quote API latency: Relay, LI.FI, deBridge, Mobula ms"
+seo_description: "Live ms response time for every cross-chain bridge quote API. Relay, LI.FI, deBridge, Mobula on identical USDC routes, p50/p90/p99 over 24h, refreshed every 5 min."
 subtitle: Time to receive a usable cross-chain quote, in milliseconds. Identical route, identical notional, every bridge.
 category: Bridges
 status: live
@@ -74,7 +74,7 @@ faq:
   - q: "Why does bridge quote latency matter for builders?"
     a: "Every product that integrates a bridge sits behind that API. Wallets, aggregators, intent layers, chat-app swap modals. A 1500 ms p99 forces a long loading spinner; a 5000 ms p99 forces a timeout fallback. The number controls perceived UX, time-to-first-quote in side-by-side comparators, and how aggressively the integrator has to parallelise calls across bridges to mask the slowest one."
   - q: "Are intent and relay bridges always faster than aggregators?"
-    a: "On a single-route query, usually. Intent layers like Relay quote against a pool of pre-positioned solvers, so the API is a thin price-discovery call. Aggregators like LiFi run a route-search graph over N underlying bridges per request, which adds 100 to 400 ms of irreducible work. On multi-hop or rare-corridor queries the aggregator advantage in coverage matters more than the latency gap, and the comparison flips."
+    a: "On a single-route query, usually. Intent layers like Relay quote against a pool of pre-positioned solvers, so the API is a thin price-discovery call. Aggregators like LI.FI run a route-search graph over N underlying bridges per request, which adds 100 to 400 ms of irreducible work. On multi-hop or rare-corridor queries the aggregator advantage in coverage matters more than the latency gap, and the comparison flips."
   - q: "How does OpenChainBench measure bridge quote latency?"
     a: "The harness issues identical quote requests against every bridge for the same route and notional, every five minutes, from a single eu-west origin. Each request times wall-clock duration from send to last byte received, then publishes a Prometheus histogram (50, 100, 200, 500, 1000, 2000, 5000, 10000 ms buckets). p50, p90 and p99 are derived via `histogram_quantile` over a rolling 24-hour window. Errored quotes (quote_failed, unsupported route, timeout) are excluded from the latency aggregate and counted toward success rate so a fast-but-broken bridge cannot game the headline."
   - q: "Does quote latency affect the price the user gets?"
@@ -115,9 +115,9 @@ providers:
       series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="relay"}[1h])))
 
   - slug: lifi
-    name: LiFi
+    name: LI.FI
     tag: Aggregator
-    formula: "Median wall-clock ms over 24h for LiFi's route-search API to return a usable USDC route across underlying bridges, sampled every 5 minutes across 4 routes and 3 notionals from eu-west."
+    formula: "Median wall-clock ms over 24h for LI.FI's route-search API to return a usable USDC route across underlying bridges, sampled every 5 minutes across 4 routes and 3 notionals from eu-west."
     queries:
       p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="lifi"}[24h])))
       p90: histogram_quantile(0.90, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="lifi"}[24h])))
@@ -128,9 +128,9 @@ providers:
       series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="lifi"}[1h])))
 
   - slug: debridge
-    name: Debridge
+    name: deBridge
     tag: Native-token fees
-    formula: "Median wall-clock ms over 24h for Debridge's direct-protocol quote API to return a single-route USDC quote, sampled every 5 minutes across 4 routes and 3 notionals from eu-west."
+    formula: "Median wall-clock ms over 24h for deBridge's direct-protocol quote API to return a single-route USDC quote, sampled every 5 minutes across 4 routes and 3 notionals from eu-west."
     queries:
       p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="debridge"}[24h])))
       p90: histogram_quantile(0.90, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="debridge"}[24h])))

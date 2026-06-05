@@ -64,7 +64,7 @@ source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/solana-
 prometheus:
   window: 24h
 
-# Region selector — tabs at the top of the page. Server-side injects
+# Region selector, tabs at the top of the page. Server-side injects
 # `region="X"` into every PromQL query for the active tab. The special
 # value `all` skips the filter and aggregates across every region.
 # Values match the raw harness labels emitted by the MONITOR_REGION env
