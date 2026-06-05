@@ -57,6 +57,8 @@ const QUERY_PROM_ALLOWED_METRIC_PREFIXES = [
   "wallet_labels_",
   // PM freshness bench
   "pm_",
+  // EVM swap quote latency bench (#033)
+  "evm_swap_quote_",
   // Perp fees + buyback + oracle + validator yield
   "perp_fees_",
   "ocb_buyback_",
