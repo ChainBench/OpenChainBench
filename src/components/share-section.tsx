@@ -16,14 +16,14 @@ const TEMPLATES: Template[] = [
   {
     id: "ranking",
     label: "Ranking",
-    description: "Vertical bars sorted ascending by p50, with provider names and p99 tails.",
-    pick: "none",
+    description: "Vertical bars sorted ascending by p50, with provider names and p99 tails. Toggle providers in or out of the ranking.",
+    pick: "multi",
   },
   {
     id: "leaderboard",
     label: "Leaderboard",
-    description: "Ranked rows with horizontal mini-bars in each provider's signature color.",
-    pick: "none",
+    description: "Ranked rows with horizontal mini-bars in each provider's signature color. Toggle providers in or out of the leaderboard.",
+    pick: "multi",
   },
   {
     id: "snapshot",
