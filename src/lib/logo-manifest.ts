@@ -44,6 +44,8 @@ const RAW: Record<string, string> = {
   mobula: "/logos/mobula.svg",
   codex: "/logos/codex.svg",
   polymarket: "/logos/polymarket.png",
+  bebop: "/logos/bebop.svg",
+  kyberswap: "/logos/kyberswap.svg",
   relay: "/logos/relay.svg",
   lifi: "/logos/lifi.png",
   geckoterminal: "/logos/geckoterminal.png",
