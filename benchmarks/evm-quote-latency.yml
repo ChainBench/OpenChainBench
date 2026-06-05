@@ -81,7 +81,7 @@ dimensions:
 providers:
   - slug: mobula
     name: Mobula
-    tag: Sponsor key required, dedicated edge
+    tag: API key required, dedicated edge
     formula: "p50 of evm_swap_quote_latency_ms{provider=mobula} over the last 24 hours, only successful 2xx responses with a non zero output amount."
     queries:
       p50: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="mobula"}[24h])) by (le))
