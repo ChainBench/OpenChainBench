@@ -208,6 +208,7 @@ const ALIASES: Record<string, string> = {
   eth: "ethereum",
   btc: "bitcoin",
   sol: "solana",
+  bsc: "bnb",
   "publicnode-feehistory": "publicnode",
 
   // Oracle-deviation bench exposes one provider per trading pair (e.g.
