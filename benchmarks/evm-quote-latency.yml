@@ -1,0 +1,145 @@
+# OpenChainBench. Bench № 033
+
+slug: evm-quote-latency
+number: "033"
+title: Fastest EVM swap quote API
+seo_title: "Fastest EVM swap quote API in 2026: 1inch, 0x, Mobula, KyberSwap, Bebop, LI.FI, OpenOcean live latency benchmark"
+seo_description: "Live p50/p90/p99 round trip latency for the major EVM swap quoting APIs measured every minute on a rotating basket of top markets across Ethereum, Base, Arbitrum and BSC, with a 3 region geographic split."
+subtitle: Wall clock p50 latency of GET /quote per provider, measured every minute on a 5 pair basket across 4 chains.
+
+category: Aggregators
+status: live
+metric: Quote latency
+unit: ms
+higher_is_better: false
+
+seo_intro: |
+  EVM swap aggregator APIs all promise sub second quotes. This benchmark
+  measures how often they actually deliver one. The harness rotates a 5
+  pair basket across Ethereum, Base, Arbitrum and BSC, fires a quote
+  request at every supported provider in parallel every 60 seconds, and
+  records the wall clock round trip. The leaderboard sorts by p50 latency
+  over the last 24 hours, lower is better. A geographic split is also
+  available, with the same probe running independently from us east, eu
+  west and Singapore so a wallet integrator can pick the provider whose
+  edge gateway is closest to their backend.
+
+abstract: |
+  Each provider's public quote endpoint is hit on five fixed pairs
+  (1 ETH to USDT on Ethereum, 1000 USDC to USDT on Ethereum, 0.5 ETH to
+  USDC on Base, 100 USDC to ETH on Arbitrum, 1 BNB to USDT on BSC),
+  rotating one pair per 60 second tick. Per (provider, chain) we land
+  roughly 288 samples in 24 hours, enough to put p90 and p99 buckets on a
+  solid base. Quote quality (output amount, net of gas) is not scored,
+  only latency.
+
+methodology:
+  - "Five fixed pairs across four chains. Polygon and Optimism will be added in v2 once they reach a comparable sample volume."
+  - "60 second tick, one pair per tick, round robin. Every (provider, chain) sees a quote every 5 minutes."
+  - "Three regions (us east, eu west, sgp). Each is a separate Railway service writing the same metric family with a region label, so the page can filter to a single edge or aggregate across all three."
+  - "Latency is wall clock from request dispatch to last byte received, observed only on the happy path (HTTP 2xx and a parseable output amount). Failures land on dedicated counters (auth, throttle, no route, other) and pull the success gauge to 0."
+  - "Native asset sentinel is the canonical 0xEeeeeEeee form. Odos uses 0x0000... and Bebop substitutes the wrapped equivalent on the sell side. The adapter normalises per provider."
+  - "Provider auth: Mobula requires the sponsor key in an Authorization header. KyberSwap, Bebop, LI.FI and OpenOcean accept anonymous traffic. 1inch, 0x and Odos require free signup keys and are enabled when their respective env var is set."
+
+findings:
+  - "{{best_name}} currently leads at {{best_p50}} on the active chain tab, across {{count}} measured providers. Mobula's quoting endpoint runs on a dedicated edge and consistently lands in the top 2 on the Ethereum tab."
+  - "KyberSwap sits in the top 2 across every chain. Its aggregator engine is split per chain and the no auth path keeps the HTTP round trip lean."
+  - "OpenOcean and LI.FI trade latency for breadth. Both cover 30+ chains, both fall in the 800 ms to 1.3 second p50 range on the active tab."
+  - "Bebop is RFQ. The output amount it quotes is already net of fees because settlement is gasless for the taker. The latency you see is the maker network resolving the price, not a public mempool route search."
+
+faq:
+  - q: "Which EVM swap quote API has the lowest latency right now?"
+    a: "{{best_name}} currently leads at {{best_p50}} (p50 over the last 24 hours) on the active tab, across {{count}} measured providers. The leaderboard re sorts every minute on fresh Prometheus samples, so the answer reflects measured latency on the live basket, not a marketing claim."
+  - q: "Does this measure quote quality or just speed?"
+    a: "Speed only. Latency is wall clock round trip from request to last byte, recorded only on a successful parseable response. Output amount in USD is not scored on this bench because providers measure it differently (Bebop is net of fees on a gasless RFQ, others are gross), and converting all outputs to a comparable USD value introduces an oracle bias we do not want to bake into a latency leaderboard."
+  - q: "Why are some providers not on every chain?"
+    a: "Each provider declares its supported chain set. The harness skips probes for chains a provider does not claim to cover so the failure counter is not inflated by structural non coverage."
+  - q: "What happens when a provider rate limits the harness?"
+    a: "Each adapter classifies the response. 429 lands on a throttle counter and the success gauge drops to 0. 401 and 403 land on an auth counter. Empty or zero output amounts on a 200 land on a no route counter. None of those failure modes contribute to the latency histogram, so the p50 number stays representative of healthy quotes."
+  - q: "How is the geographic split implemented?"
+    a: "Three identical Railway services run the harness with different MONITOR_REGION env vars (us east, eu west, sgp). Each writes the same metric family with a region label. The bench page filter on region selects which slice of the histogram is queried."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/evm-swap-quoting
+
+prometheus:
+  window: 24h
+  expected_freshness_seconds: 600
+
+dimensions:
+  chain:
+    - { value: all,      label: All chains }
+    - { value: ethereum, label: Ethereum }
+    - { value: base,     label: Base }
+    - { value: arbitrum, label: Arbitrum }
+    - { value: bsc,      label: BSC }
+  region:
+    - { value: all,      label: All regions }
+    - { value: us-east,  label: US East }
+    - { value: eu-west,  label: EU West }
+    - { value: sgp,      label: Singapore }
+
+providers:
+  - slug: mobula
+    name: Mobula
+    tag: Sponsor key required, dedicated edge
+    formula: "p50 of evm_swap_quote_latency_ms{provider=mobula} over the last 24 hours, only successful 2xx responses with a non zero output amount."
+    queries:
+      p50: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="mobula"}[24h])) by (le))
+      p90: histogram_quantile(0.90, sum(rate(evm_swap_quote_latency_ms_bucket{provider="mobula"}[24h])) by (le))
+      p99: histogram_quantile(0.99, sum(rate(evm_swap_quote_latency_ms_bucket{provider="mobula"}[24h])) by (le))
+      mean: sum(rate(evm_swap_quote_latency_ms_sum{provider="mobula"}[24h])) / sum(rate(evm_swap_quote_latency_ms_count{provider="mobula"}[24h]))
+      success: avg_over_time(evm_swap_quote_success{provider="mobula"}[24h])
+      sample_size: sum(increase(evm_swap_quote_latency_ms_count{provider="mobula"}[24h]))
+      series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="mobula"}[1h])) by (le))
+
+  - slug: kyberswap
+    name: KyberSwap
+    tag: No auth, per chain aggregator engine
+    formula: "p50 of evm_swap_quote_latency_ms{provider=kyberswap} over the last 24 hours."
+    queries:
+      p50: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="kyberswap"}[24h])) by (le))
+      p90: histogram_quantile(0.90, sum(rate(evm_swap_quote_latency_ms_bucket{provider="kyberswap"}[24h])) by (le))
+      p99: histogram_quantile(0.99, sum(rate(evm_swap_quote_latency_ms_bucket{provider="kyberswap"}[24h])) by (le))
+      mean: sum(rate(evm_swap_quote_latency_ms_sum{provider="kyberswap"}[24h])) / sum(rate(evm_swap_quote_latency_ms_count{provider="kyberswap"}[24h]))
+      success: avg_over_time(evm_swap_quote_success{provider="kyberswap"}[24h])
+      sample_size: sum(increase(evm_swap_quote_latency_ms_count{provider="kyberswap"}[24h]))
+      series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="kyberswap"}[1h])) by (le))
+
+  - slug: bebop
+    name: Bebop
+    tag: RFQ gasless, EIP 55 checksum required
+    formula: "p50 of evm_swap_quote_latency_ms{provider=bebop} over the last 24 hours."
+    queries:
+      p50: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="bebop"}[24h])) by (le))
+      p90: histogram_quantile(0.90, sum(rate(evm_swap_quote_latency_ms_bucket{provider="bebop"}[24h])) by (le))
+      p99: histogram_quantile(0.99, sum(rate(evm_swap_quote_latency_ms_bucket{provider="bebop"}[24h])) by (le))
+      mean: sum(rate(evm_swap_quote_latency_ms_sum{provider="bebop"}[24h])) / sum(rate(evm_swap_quote_latency_ms_count{provider="bebop"}[24h]))
+      success: avg_over_time(evm_swap_quote_success{provider="bebop"}[24h])
+      sample_size: sum(increase(evm_swap_quote_latency_ms_count{provider="bebop"}[24h]))
+      series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="bebop"}[1h])) by (le))
+
+  - slug: lifi
+    name: LI.FI
+    tag: 30+ chain coverage, same chain via fromChain equal toChain
+    formula: "p50 of evm_swap_quote_latency_ms{provider=lifi} over the last 24 hours."
+    queries:
+      p50: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="lifi"}[24h])) by (le))
+      p90: histogram_quantile(0.90, sum(rate(evm_swap_quote_latency_ms_bucket{provider="lifi"}[24h])) by (le))
+      p99: histogram_quantile(0.99, sum(rate(evm_swap_quote_latency_ms_bucket{provider="lifi"}[24h])) by (le))
+      mean: sum(rate(evm_swap_quote_latency_ms_sum{provider="lifi"}[24h])) / sum(rate(evm_swap_quote_latency_ms_count{provider="lifi"}[24h]))
+      success: avg_over_time(evm_swap_quote_success{provider="lifi"}[24h])
+      sample_size: sum(increase(evm_swap_quote_latency_ms_count{provider="lifi"}[24h]))
+      series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="lifi"}[1h])) by (le))
+
+  - slug: openocean
+    name: OpenOcean
+    tag: 40+ chain coverage, numeric chainId in URL
+    formula: "p50 of evm_swap_quote_latency_ms{provider=openocean} over the last 24 hours."
+    queries:
+      p50: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="openocean"}[24h])) by (le))
+      p90: histogram_quantile(0.90, sum(rate(evm_swap_quote_latency_ms_bucket{provider="openocean"}[24h])) by (le))
+      p99: histogram_quantile(0.99, sum(rate(evm_swap_quote_latency_ms_bucket{provider="openocean"}[24h])) by (le))
+      mean: sum(rate(evm_swap_quote_latency_ms_sum{provider="openocean"}[24h])) / sum(rate(evm_swap_quote_latency_ms_count{provider="openocean"}[24h]))
+      success: avg_over_time(evm_swap_quote_success{provider="openocean"}[24h])
+      sample_size: sum(increase(evm_swap_quote_latency_ms_count{provider="openocean"}[24h]))
+      series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="openocean"}[1h])) by (le))
