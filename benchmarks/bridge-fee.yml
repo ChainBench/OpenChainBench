@@ -3,7 +3,7 @@
 slug: bridge-fee
 number: "003"
 title: Cheapest cross-chain bridge
-seo_title: "Cheapest cross-chain bridge: Debridge, LiFi, Mobula, Relay"
+seo_title: "Cheapest cross-chain bridge: deBridge, LI.FI, Mobula, Relay"
 seo_description: "Live USDC bridge cost ranking: fees + slippage + destination gas at $300 notional, Solana/Base/Arbitrum corridors, p50/p99 over 24h, refreshed every 5 min."
 subtitle: Total cost as a percent of notional. Fees, slippage and destination gas combined, sampled at $300.
 category: Bridges
@@ -44,7 +44,7 @@ methodology:
   - "Cadence: full sweep every 5 minutes for 24 hours."
   - "Region: eu-west. Single point of measurement; multi-region requires running additional monitor instances."
   - "Failures (quote_failed, unsupported route) excluded from cost aggregates and counted toward success rate."
-  - "Provider types are surfaced as badges: direct protocols (Debridge) charge their own bridging fees; aggregators (LiFi) route through whichever underlying bridge is cheapest, so their effective fee includes that bridge's cost plus any aggregator markup; intent / relay layers (Mobula, Relay) bake cost into the spread of a settlement intent rather than charging an explicit fee."
+  - "Provider types are surfaced as badges: direct protocols (deBridge) charge their own bridging fees; aggregators (LI.FI) route through whichever underlying bridge is cheapest, so their effective fee includes that bridge's cost plus any aggregator markup; intent / relay layers (Mobula, Relay) bake cost into the spread of a settlement intent rather than charging an explicit fee."
 
 # Per-corridor leader rewrite deferred: this YAML does not yet declare
 # `dimensions:` for `from_chain`/`to_chain` / corridor. The underlying
@@ -69,7 +69,7 @@ faq:
   - q: "How much does it cost to bridge $300 USDC?"
     a: "Total cost varies between providers. The current p50 across {{count}} bridges spans from {{best_p50}} (leader) up to {{worst_p50}} (laggard) of the $300 notional. The figure already includes fees, slippage and destination gas because we report `bridge_cost_percent`, the all-in number that actually leaves the user's wallet, not the explicit fee field providers advertise."
   - q: "Why do bridge fees vary 10x between providers?"
-    a: "Three pricing architectures cohabit in this leaderboard. Direct protocols (Debridge) charge a native-token fee front-loaded into the quote. Aggregators (LiFi) pay an underlying bridge plus a thin markup. Intent layers (Mobula, Relay) compress all of it into a single spread quoted on a settlement intent. On small trades the fixed-fee component dominates and the gap stretches, on large trades the spread component dominates and the leaderboard re-orders."
+    a: "Three pricing architectures cohabit in this leaderboard. Direct protocols (deBridge) charge a native-token fee front-loaded into the quote. Aggregators (LI.FI) pay an underlying bridge plus a thin markup. Intent layers (Mobula, Relay) compress all of it into a single spread quoted on a settlement intent. On small trades the fixed-fee component dominates and the gap stretches, on large trades the spread component dominates and the leaderboard re-orders."
   - q: "Are bridge aggregators cheaper than direct bridges?"
     a: "Not consistently. Aggregators route through whichever underlying bridge is cheapest at quote time, but they add a markup on top and their best route is constrained to the bridges they have integrated. Intent layers can route to any solver willing to settle the intent, including aggregators themselves. On liquid USDC corridors intent layers usually lead this leaderboard, but aggregators win when a corridor has only one underlying bridge and that bridge is cheaper than every solver's quote."
   - q: "Why does OpenChainBench use $300 notional instead of $1000 or $10000?"
@@ -125,9 +125,9 @@ providers:
       series: avg_over_time(bridge_cost_percent{bridge="relay", amount_usd="300"}[1h])
 
   - slug: lifi
-    name: LiFi
+    name: LI.FI
     tag: Aggregator
-    formula: "Median over 24h of total cost percent (underlying bridge fee + slippage + destination gas + LiFi markup) on a $300 USDC quote, sampled every 5 minutes from eu-west."
+    formula: "Median over 24h of total cost percent (underlying bridge fee + slippage + destination gas + LI.FI markup) on a $300 USDC quote, sampled every 5 minutes from eu-west."
     type: aggregator
     queries:
       p50: quantile_over_time(0.50, bridge_cost_percent{bridge="lifi", amount_usd="300"}[24h])
@@ -139,9 +139,9 @@ providers:
       series: avg_over_time(bridge_cost_percent{bridge="lifi", amount_usd="300"}[1h])
 
   - slug: debridge
-    name: Debridge
+    name: deBridge
     tag: Native-token fees
-    formula: "Median over 24h of total cost percent (native-token protocol fee + slippage + destination gas) on a $300 USDC quote from Debridge's direct API, sampled every 5 minutes from eu-west."
+    formula: "Median over 24h of total cost percent (native-token protocol fee + slippage + destination gas) on a $300 USDC quote from deBridge's direct API, sampled every 5 minutes from eu-west."
     type: protocol
     queries:
       p50: quantile_over_time(0.50, bridge_cost_percent{bridge="debridge", amount_usd="300"}[24h])
