@@ -160,7 +160,7 @@ providers:
   - slug: enso
     name: Enso
     tag: Anonymous shared bucket, success rate capped near 80 percent
-    formula: "p50 of evm_swap_quote_latency_ms{provider=enso} over the last 24 hours. Enso enforces a global 1rps anonymous bucket, so roughly one in five probes lands on a 429 and is dropped from the latency histogram. The remaining samples are enough to keep p50 and p90 stable."
+    formula: "p50 of evm_swap_quote_latency_ms{provider=enso} over 24h. Enso uses a global 1rps anonymous bucket so roughly 20 percent of probes hit 429 and are dropped from the histogram. Remaining samples keep p50 and p90 stable."
     queries:
       p50: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="enso"}[24h])) by (le))
       p90: histogram_quantile(0.90, sum(rate(evm_swap_quote_latency_ms_bucket{provider="enso"}[24h])) by (le))
