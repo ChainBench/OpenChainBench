@@ -222,7 +222,11 @@ export const SpecSchema = z
     higher_is_better: z.boolean().default(false),
 
     /* Editorial copy */
-    abstract: z.string().min(40).max(4000),
+    // Capped at 980 so the runtime JSON-LD description (cap 990) never has to
+    // truncate mid-sentence. Google's Rich Results validator chokes above
+    // ~1000 chars and strips the page's rich snippets, which is what triggered
+    // the impressions cliff we hit on l1-finality. Keep abstracts tight.
+    abstract: z.string().min(40).max(980),
     methodology: z.array(z.string().max(500)).min(1).max(40),
     findings: z.array(z.string().max(500)).max(40).default([]),
     source: z.url(),
