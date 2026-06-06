@@ -8,6 +8,7 @@ import { LedgerTable } from "@/components/ledger-table";
 import { CountLeaderboard } from "@/components/count-leaderboard";
 import { fmtUnit, unitSuffix, fmtValue } from "@/lib/format";
 import { computeFieldStats } from "@/lib/stats";
+import { capDescription } from "@/lib/seo-text";
 import { SectionLabel, SummaryStat } from "@/components/summary-stat";
 import { SITE } from "@/data/site";
 import { loadAlternative, loadAlternativeSlugs } from "@/lib/alternatives";
@@ -101,7 +102,7 @@ export default async function AlternativePage({
         "@type": "Dataset",
         "@id": `${url}#dataset`,
         name: `${alt.target_product} alternatives, benchmark snapshot`,
-        description: altDescriptionPadded,
+        description: capDescription(altDescriptionPadded, 990),
         url,
         identifier: alt.slug,
         keywords: [
@@ -122,7 +123,7 @@ export default async function AlternativePage({
         "@type": "Article",
         "@id": `${url}#article`,
         headline: `${alt.target_product} alternatives`,
-        description: altDescriptionPadded,
+        description: capDescription(altDescriptionPadded, 990),
         url,
         mainEntityOfPage: url,
         articleBody: alt.intro,
