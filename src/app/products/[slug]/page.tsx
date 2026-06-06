@@ -6,6 +6,7 @@ import { getProvider, getProviderSlugs } from "@/lib/providers";
 import { ProviderLogo } from "@/components/provider-logo";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
 import { fmtUnit } from "@/lib/format";
+import { capDescription } from "@/lib/seo-text";
 import { SITE } from "@/data/site";
 import {
   getProviderRegistry,
@@ -74,14 +75,16 @@ export default async function ProviderPage({
         name: p.name,
         url: reg?.url ?? url,
         identifier: p.slug,
-        description:
+        description: capDescription(
           reg?.description ??
-          `Crypto-infrastructure provider tracked by OpenChainBench across ${p.appearances.length} live benchmarks.`,
+            `Crypto-infrastructure provider tracked by OpenChainBench across ${p.appearances.length} live benchmarks.`,
+          990,
+        ),
         ...(sameAs.length > 0 ? { sameAs } : {}),
         subjectOf: sorted.map((a) => ({
           "@type": "Dataset",
           name: a.benchmark.title,
-          description: a.benchmark.subtitle,
+          description: capDescription(a.benchmark.subtitle, 990),
           url: `${SITE.url}/benchmarks/${a.benchmark.slug}`,
           creator: { "@id": `${SITE.url}/#org` },
           license: "https://creativecommons.org/licenses/by/4.0/",
