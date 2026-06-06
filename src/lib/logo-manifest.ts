@@ -44,6 +44,8 @@ const RAW: Record<string, string> = {
   mobula: "/logos/mobula.svg",
   codex: "/logos/codex.svg",
   polymarket: "/logos/polymarket.png",
+  bebop: "/logos/bebop.svg",
+  kyberswap: "/logos/kyberswap.svg",
   relay: "/logos/relay.svg",
   lifi: "/logos/lifi.png",
   geckoterminal: "/logos/geckoterminal.png",
@@ -58,6 +60,8 @@ const RAW: Record<string, string> = {
   jupiter: "/logos/jupiter.png",
   raydium: "/logos/raydium.svg",
   openocean: "/logos/openocean.png",
+  cow: "/logos/cow.png",
+  enso: "/logos/enso.png",
   lighter: "/logos/lighter.svg",
   debridge: "/logos/debridge.svg",
 
@@ -205,6 +209,7 @@ const ALIASES: Record<string, string> = {
   eth: "ethereum",
   btc: "bitcoin",
   sol: "solana",
+  bsc: "bnb",
   "publicnode-feehistory": "publicnode",
 
   // Oracle-deviation bench exposes one provider per trading pair (e.g.

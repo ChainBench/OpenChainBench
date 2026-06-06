@@ -17,6 +17,7 @@ import { ShareSection } from "@/components/share-section";
 import { ReportSection } from "@/components/report-section";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
 import { headlineSentence } from "@/lib/citation";
+import { capDescription } from "@/lib/seo-text";
 import { SITE } from "@/data/site";
 import { buildFaqPageJsonLd, safeJsonLd } from "@/lib/jsonld";
 import { renderTemplate } from "@/lib/bench-template";
@@ -112,6 +113,10 @@ export async function generateMetadata({
   // description renders with live, chain-honest numbers. seoDescription
   // is the most common host for these placeholders.
   if (description) description = renderTemplate(description, b);
+  // Google truncates meta descriptions at ~155-160 chars in the SERP. Anything
+  // longer is cut mid-word which hurts CTR. Trim cleanly so we control the
+  // truncation rather than letting Google decide where to slice.
+  if (description) description = capDescription(description, 158);
   // Canonical NEVER carries `?chain=...`. Per-chain variants share the
   // same canonical URL so Google consolidates link signal on the hub
   // page instead of treating each tab as a separate document. The OG
@@ -237,7 +242,10 @@ export default async function BenchmarkPage({
         "@id": `${benchmarkUrl}#dataset`,
         name: benchmark.seoTitle ?? benchmark.title,
         alternateName: benchmark.title,
-        description: benchmark.abstract,
+        // Google Rich Results validator caps description at ~1000 chars even
+        // though schema.org Dataset allows up to 5000. Keep it under 990 to
+        // avoid the "Invalid string length" warning that strips rich snippets.
+        description: capDescription(benchmark.abstract, 990),
         url: benchmarkUrl,
         identifier: benchmark.slug,
         keywords: [
