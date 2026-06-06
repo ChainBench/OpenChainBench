@@ -580,8 +580,13 @@ function Chart({
       const isGap = (v: number) => !Number.isFinite(v) || (v === 0 && positiveMin > 1);
 
       const lastIdx = Math.max(0, l.values.length - 1);
+      // If Prom returned more points than the chart was sized for (off-by-one
+      // when start/end timestamps are both inclusive), fall back to the
+      // actual series length so the leftmost point lands at padL exactly
+      // instead of overflowing left of the chart frame.
+      const denom = Math.max(expected, lastIdx);
       const pts = l.values.map((v, i) => {
-        const offsetFromRight = (lastIdx - i) / expected;
+        const offsetFromRight = (lastIdx - i) / denom;
         const x = padL + innerW * (1 - offsetFromRight);
         const y = padT + innerH * (1 - (v - lo) / yRange);
         return { x, y, gap: isGap(v) } as const;
