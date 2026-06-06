@@ -6,8 +6,15 @@ import { loadAllAlternatives } from "@/lib/alternatives";
 import { getProviderSlugs } from "@/lib/providers";
 import { SITE } from "@/data/site";
 
-export const dynamic = "force-static";
-export const revalidate = false;
+// Was previously `force-static` + `revalidate: false`, which baked the
+// sitemap at build time and never refreshed it. That dropped freshly
+// added benches (l1-finality, network-fees, etc.) from the sitemap for
+// every subsequent crawl until someone redeployed, which produced an
+// impressions cliff in Search Console because Google deprioritized
+// every URL the sitemap stopped listing. Hourly ISR keeps the YAML
+// list, lastmod tags and chain variants accurate without paying a Prom
+// query on every Google crawler hit.
+export const revalidate = 3600;
 
 // Sitemap lastmod strategy. The previous version hardcoded one
 // SITE_LAST_EDIT constant for every editorial URL, which meant Google
