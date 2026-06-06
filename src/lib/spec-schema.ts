@@ -183,7 +183,12 @@ export const SpecSchema = z
     seo_title: seoText(1, 200).optional(),
     /** Optional SEO-tuned meta description. Tight cap so Google does not
      *  truncate the SERP snippet mid-word (Google cuts around 155-160 chars). */
-    seo_description: seoText(40, 170).optional(),
+    // SEO-tight cap is 158 (Google truncates SERP at ~155-160) but enforcement
+    // is at the metadata render layer via capDescription. Schema accepts up
+    // to 320 so existing copy that intentionally packs long-tail keywords does
+    // not fail Zod parse and break the bench page. capDescription trims to 158
+    // for the meta tag, so Google still gets a clean snippet either way.
+    seo_description: seoText(40, 320).optional(),
     /** Optional SSR-rendered intro paragraph displayed under the H1. Use it
      *  to spell out the exact long-tail phrases visitors search for ("time
      *  to finality", "sub-second finality", etc.) so the page ranks beyond
@@ -239,11 +244,12 @@ export const SpecSchema = z
     higher_is_better: z.boolean().default(false),
 
     /* Editorial copy */
-    // Capped at 980 so the runtime JSON-LD description (cap 990) never has to
-    // truncate mid-sentence. Google's Rich Results validator chokes above
-    // ~1000 chars and strips the page's rich snippets, which is what triggered
-    // the impressions cliff we hit on l1-finality. Keep abstracts tight.
-    abstract: seoText(40, 980),
+    // Schema accepts up to schema.org's Dataset description ceiling (5000) so
+    // existing rich abstracts do not fail Zod parse and break the bench page.
+    // Google's Rich Results validator caps the field at ~1000 chars, so the
+    // JSON-LD render path runs the abstract through capDescription(990) before
+    // emitting it. Plain prose readers see the full 4000 in the page body.
+    abstract: seoText(40, 4000),
     methodology: z.array(seoText(1, 500)).min(1).max(40),
     findings: z.array(seoText(1, 500)).max(40).default([]),
     source: z.url(),
