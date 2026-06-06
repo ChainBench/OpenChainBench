@@ -17,6 +17,7 @@ import { ShareSection } from "@/components/share-section";
 import { ReportSection } from "@/components/report-section";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
 import { headlineSentence } from "@/lib/citation";
+import { capDescription } from "@/lib/seo-text";
 import { SITE } from "@/data/site";
 import { buildFaqPageJsonLd, safeJsonLd } from "@/lib/jsonld";
 import { renderTemplate } from "@/lib/bench-template";
@@ -237,7 +238,10 @@ export default async function BenchmarkPage({
         "@id": `${benchmarkUrl}#dataset`,
         name: benchmark.seoTitle ?? benchmark.title,
         alternateName: benchmark.title,
-        description: benchmark.abstract,
+        // Google Rich Results validator caps description at ~1000 chars even
+        // though schema.org Dataset allows up to 5000. Keep it under 990 to
+        // avoid the "Invalid string length" warning that strips rich snippets.
+        description: capDescription(benchmark.abstract, 990),
         url: benchmarkUrl,
         identifier: benchmark.slug,
         keywords: [
