@@ -28,6 +28,10 @@ const (
 	ServiceNextBlock         Service = "nextblock"
 	ServiceAstralane         Service = "astralane"
 	ServiceSolanaVibeStation Service = "solanavibestation"
+	// Mobula swap-send. No dedicated tip wallets — Mobula relays internally
+	// to Jito/Nozomi/zeroslot via multi-RPC fan-out. Not observable via
+	// tip-wallet attribution (bench № 016); active-probe-only (bench № 027).
+	ServiceMobula Service = "mobula"
 )
 
 // walletToService maps every known tip address to its owning service.
