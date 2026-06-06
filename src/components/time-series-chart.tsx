@@ -580,8 +580,13 @@ function Chart({
       const isGap = (v: number) => !Number.isFinite(v) || (v === 0 && positiveMin > 1);
 
       const lastIdx = Math.max(0, l.values.length - 1);
+      // If Prom returned more points than the chart was sized for (off-by-one
+      // when start/end timestamps are both inclusive), fall back to the
+      // actual series length so the leftmost point lands at padL exactly
+      // instead of overflowing left of the chart frame.
+      const denom = Math.max(expected, lastIdx);
       const pts = l.values.map((v, i) => {
-        const offsetFromRight = (lastIdx - i) / expected;
+        const offsetFromRight = (lastIdx - i) / denom;
         const x = padL + innerW * (1 - offsetFromRight);
         const y = padT + innerH * (1 - (v - lo) / yRange);
         return { x, y, gap: isGap(v) } as const;
@@ -1122,13 +1127,26 @@ function pickSeries(
   const isAll = region === "all";
 
   if (!isAll) {
+    // For YAML specs that do not declare per-region `queries.regions[]`,
+    // the per-region map is empty. The top-level series (`series24h[slug]`)
+    // is still correctly region-filtered because `applyDimensionsToSpec`
+    // injects the region label into the spec's top-level `series` query
+    // before Prom is hit. Fall back to that instead of rendering empty.
     if (range === "30d") {
-      return benchmark.extras.seriesByRegion30d?.[slug]?.[region] ?? [];
+      const byRegion = benchmark.extras.seriesByRegion30d?.[slug]?.[region];
+      if (byRegion && byRegion.length > 0) return byRegion;
+      return benchmark.extras.series30d?.[slug] ?? [];
     }
     if (range === "7d") {
-      return benchmark.extras.seriesByRegion7d?.[slug]?.[region] ?? [];
+      const byRegion = benchmark.extras.seriesByRegion7d?.[slug]?.[region];
+      if (byRegion && byRegion.length > 0) return byRegion;
+      return benchmark.extras.series7d?.[slug] ?? [];
     }
-    const base = benchmark.extras.seriesByRegion24h?.[slug]?.[region] ?? [];
+    const baseRegion = benchmark.extras.seriesByRegion24h?.[slug]?.[region];
+    const base =
+      baseRegion && baseRegion.length > 0
+        ? baseRegion
+        : (benchmark.extras.series24h[slug] ?? []);
     if (range === "24h") return base;
     const ratio = RANGE_HOURS[range] / 24;
     const take = Math.max(2, Math.round(base.length * ratio));
