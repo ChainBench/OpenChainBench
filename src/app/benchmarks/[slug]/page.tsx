@@ -14,6 +14,7 @@ import { ChainHeadingsSummary } from "@/components/chain-headings-summary";
 import { CitationBar } from "@/components/citation-bar";
 import { LiveIndicator } from "@/components/live-indicator";
 import { ShareSection } from "@/components/share-section";
+import { ExportVideoSection } from "@/components/export-video-section";
 import { ReportSection } from "@/components/report-section";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
 import { headlineSentence } from "@/lib/citation";
@@ -373,6 +374,11 @@ export default async function BenchmarkPage({
               title={benchmark.title}
               benchmark={benchmark}
               chain={chain}
+            />
+            <ExportVideoSection
+              slug={benchmark.slug}
+              title={benchmark.title}
+              benchmark={benchmark}
             />
             <ReportSection slug={benchmark.slug} />
           </div>
