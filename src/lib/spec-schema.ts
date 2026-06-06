@@ -158,37 +158,54 @@ export const Category = z.enum([
   "RPCs",
 ]);
 
+// Em-dash (—) and en-dash (–) are the classic "AI tells" that hurt our brand
+// voice. The site is hand-authored, the YAMLs must read that way too. Plain
+// hyphens stay legal because compound words ("head-lag", "L1-finality") need
+// them. This refine runs on every copy field below.
+const noAiDashes = (s: string) =>
+  !s.includes("—") && !s.includes("–");
+const noAiDashesMsg =
+  "Avoid em or en dashes; use a comma, semicolon, or period instead";
+const seoText = (min: number, max: number) =>
+  z
+    .string()
+    .min(min)
+    .max(max)
+    .refine(noAiDashes, noAiDashesMsg);
+
 export const SpecSchema = z
   .object({
     /* Identity */
     slug,
     number: z.string().regex(/^\d{3}$/, "Number must be a 3-digit string, e.g. \"001\""),
-    title: z.string().min(1).max(200),
+    title: seoText(1, 200),
     /** Optional SEO-tuned page title (browser tab + meta). Falls back to `title`. */
-    seo_title: z.string().min(1).max(200).optional(),
-    /** Optional SEO-tuned meta description. Overrides the headline-sentence
-     *  fallback so we can pack query-phrase keywords into the SERP snippet. */
-    seo_description: z.string().min(40).max(320).optional(),
+    seo_title: seoText(1, 200).optional(),
+    /** Optional SEO-tuned meta description. Tight cap so Google does not
+     *  truncate the SERP snippet mid-word (Google cuts around 155-160 chars). */
+    seo_description: seoText(40, 170).optional(),
     /** Optional SSR-rendered intro paragraph displayed under the H1. Use it
      *  to spell out the exact long-tail phrases visitors search for ("time
      *  to finality", "sub-second finality", etc.) so the page ranks beyond
      *  its short title. */
-    seo_intro: z.string().min(40).max(2000).optional(),
+    seo_intro: seoText(40, 2000).optional(),
     /** Optional warning callout rendered as a visible card right under
      *  the H1, BEFORE the leaderboard. Use when the metric is easy to
      *  misread — e.g. on benches where "lower is better" hides a
      *  fundamental trade-off (gas oracle inclusion-confidence oracles
      *  show larger gaps by design). Kept short so it can be read at a
      *  glance; expand the long version in seo_intro / FAQ. */
-    disclaimer: z.string().min(20).max(500).optional(),
+    disclaimer: seoText(20, 500).optional(),
     /** Optional FAQ section. Each pair generates a FAQPage JSON-LD entry +
      *  a visible block on the page. Capped at 12 entries to keep the page
      *  reasonable. */
     faq: z
       .array(
         z.object({
-          q: z.string().min(1).max(200),
-          a: z.string().min(1).max(1000),
+          q: seoText(1, 200),
+          // Google FAQPage rich result caps answer text at ~999 chars; longer
+          // answers silently drop from the rich result.
+          a: seoText(1, 999),
         })
       )
       .max(12)
@@ -209,7 +226,7 @@ export const SpecSchema = z
       )
       .max(20)
       .optional(),
-    subtitle: z.string().min(1).max(400),
+    subtitle: seoText(1, 400),
     category: Category,
     status: z.enum(["live", "draft"]).default("live"),
 
@@ -226,9 +243,9 @@ export const SpecSchema = z
     // truncate mid-sentence. Google's Rich Results validator chokes above
     // ~1000 chars and strips the page's rich snippets, which is what triggered
     // the impressions cliff we hit on l1-finality. Keep abstracts tight.
-    abstract: z.string().min(40).max(980),
-    methodology: z.array(z.string().max(500)).min(1).max(40),
-    findings: z.array(z.string().max(500)).max(40).default([]),
+    abstract: seoText(40, 980),
+    methodology: z.array(seoText(1, 500)).min(1).max(40),
+    findings: z.array(seoText(1, 500)).max(40).default([]),
     source: z.url(),
 
     /* Data source. OpenChainBench is a federation: every contributor
