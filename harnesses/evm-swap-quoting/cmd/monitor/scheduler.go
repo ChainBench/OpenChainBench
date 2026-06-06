@@ -13,11 +13,13 @@ const (
 )
 
 // buildProviders returns the enabled provider list. Mobula requires its key
-// (already enforced in loadEnv). KyberSwap, Bebop, LI.FI, OpenOcean and
-// CoW are always on (no auth). 1inch, 0x and Odos require their free-tier
-// API keys — if absent we skip them so the metrics layer doesn't see ghost
+// (already enforced in loadEnv). KyberSwap, Bebop, LI.FI, OpenOcean, CoW
+// and Enso are always on (no auth). 0x and Odos require their free-tier
+// API keys, if absent we skip them so the metrics layer doesn't see ghost
 // providers. (Odos technically allows anonymous traffic but the IP bucket
 // is too tight for sustained probes, so we treat it as key-gated.)
+// Enso runs anonymously with a known ~80% success rate against the shared
+// 1rps bucket — ENSO_API_KEY widens the bucket when supplied.
 func buildProviders(cfg *Config) []Provider {
 	providers := []Provider{
 		NewMobulaProvider(cfg.MonitorRegion, cfg.MobulaAPIKey),
@@ -26,9 +28,7 @@ func buildProviders(cfg *Config) []Provider {
 		NewLiFiProvider(cfg.MonitorRegion),
 		NewOpenOceanProvider(cfg.MonitorRegion),
 		NewCoWProvider(cfg.MonitorRegion),
-	}
-	if cfg.OneInchAPIKey != "" {
-		providers = append(providers, NewOneInchProvider(cfg.MonitorRegion, cfg.OneInchAPIKey))
+		NewEnsoProvider(cfg.MonitorRegion, cfg.EnsoAPIKey),
 	}
 	if cfg.ZeroExAPIKey != "" {
 		providers = append(providers, NewZeroExProvider(cfg.MonitorRegion, cfg.ZeroExAPIKey))

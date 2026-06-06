@@ -61,6 +61,7 @@ const RAW: Record<string, string> = {
   raydium: "/logos/raydium.svg",
   openocean: "/logos/openocean.png",
   cow: "/logos/cow.png",
+  enso: "/logos/enso.png",
   lighter: "/logos/lighter.svg",
   debridge: "/logos/debridge.svg",
 

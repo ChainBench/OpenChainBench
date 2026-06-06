@@ -26,6 +26,7 @@ func main() {
 	fmt.Printf("1inch key set:    %v\n", cfg.OneInchAPIKey != "")
 	fmt.Printf("0x key set:       %v\n", cfg.ZeroExAPIKey != "")
 	fmt.Printf("Odos key set:     %v\n", cfg.OdosAPIKey != "")
+	fmt.Printf("Enso key set:     %v\n", cfg.EnsoAPIKey != "")
 	fmt.Println("Metrics on :2112/metrics, logs on :2112/logs (LOGS_TOKEN gated)")
 	fmt.Println()
 
