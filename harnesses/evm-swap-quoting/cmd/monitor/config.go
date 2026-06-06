@@ -15,10 +15,11 @@ type Config struct {
 	// API keys. Only Mobula is required (its endpoint is auth-gated).
 	// The other providers in V1 (KyberSwap, Bebop, LI.FI, OpenOcean) are
 	// no-key. 1inch and 0x will require keys when added.
-	MobulaAPIKey    string
-	OneInchAPIKey   string // optional, future
-	ZeroExAPIKey    string // optional, future
-	OdosAPIKey      string // optional, future
+	MobulaAPIKey  string
+	OneInchAPIKey string // optional, future
+	ZeroExAPIKey  string // optional, future
+	OdosAPIKey    string // optional, future
+	EnsoAPIKey    string // optional, widens the anonymous 1rps bucket when set
 }
 
 func loadEnv() (*Config, error) {
@@ -31,6 +32,7 @@ func loadEnv() (*Config, error) {
 		OneInchAPIKey: strings.TrimSpace(os.Getenv("ONEINCH_API_KEY")),
 		ZeroExAPIKey:  strings.TrimSpace(os.Getenv("ZEROX_API_KEY")),
 		OdosAPIKey:    strings.TrimSpace(os.Getenv("ODOS_API_KEY")),
+		EnsoAPIKey:    strings.TrimSpace(os.Getenv("ENSO_API_KEY")),
 	}
 	if c.MonitorRegion == "" {
 		c.MonitorRegion = "eu-west"
