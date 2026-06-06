@@ -17,10 +17,10 @@ single edge if a user only cares about one geography.
 | LI.FI | none | ~840ms | Same-chain via `fromChain == toChain`. |
 | OpenOcean v4 | none | 0.8-1.3s | Numeric chainId in URL. Human-readable amount. |
 | CoW Protocol | none | ~3s | RFQ batch auction. Wraps native on both sides. Skips BSC (no settlement contract). |
+| Enso | none (anonymous) | ~1.5s | Global anonymous 1rps bucket. Expect ~20 percent 429 throttle. Field `amountOut`. `ENSO_API_KEY` widens the bucket when present. |
 
 ## Providers that require additional keys (off by default)
 
-- **1inch v6** — free signup at `portal.1inch.dev`. Set `ONEINCH_API_KEY`.
 - **0x v2** — free signup at `dashboard.0x.org`. Set `ZEROX_API_KEY`.
 - **Odos v2** — anonymous works but rate-limits to ~3 calls per IP bucket. Free signup at `app.odos.xyz/api` widens the bucket. Set `ODOS_API_KEY`.
 
