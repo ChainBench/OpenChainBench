@@ -171,7 +171,7 @@ providers:
   - slug: relay-floor
     name: Relay (floor)
     tag: Solver wallet stablecoin balance delta, on-chain ground truth
-    formula: "Net stablecoin balance change of the Relay solver EOA 0xf70da97812CB96acDF810712Aa562db8dfA3dbEF over 24h, sampled from Mobula's wallet portfolio API every 5 minutes. Floor on Relay's take because what stays in the wallet is what the system actually captured, before any sweep to ops or solver rebates."
+    formula: "Net stablecoin balance change of the Relay solver EOA over 24h, sampled from Mobula's wallet portfolio every 5 min. Floor on captured margin: what stays in the wallet is what the system actually retained, before any sweep to ops."
     type: relay
     queries:
       p50: relay_solver_balance_delta_usd{kind="stables",window="24h"}
