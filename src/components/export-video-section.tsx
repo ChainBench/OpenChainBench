@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Video, X, Loader2, Download, Copy, Share2 } from "lucide-react";
 import type { Benchmark } from "@/types/benchmark";
 import { EXPORT_VIDEO_ENABLED } from "@/lib/export-video/config";
@@ -127,6 +128,13 @@ function ModalBody({
       return next;
     });
 
+  // Mirror the bench page's URL filters — chain=ethereum or region=eu-west
+  // — so a video exported from a chain-scoped tab uses the chain-scoped
+  // series rather than the (often empty) global view.
+  const searchParams = useSearchParams();
+  const chain = searchParams.get("chain");
+  const region = searchParams.get("region");
+
   const onRender = async () => {
     if (selected.size === 0) {
       setState({ status: "error", message: "Pick at least one provider" });
@@ -134,7 +142,7 @@ function ModalBody({
     }
     try {
       setState({ status: "loading_series" });
-      const full: BenchPayload = await fetchBenchSeries(slug, range);
+      const full: BenchPayload = await fetchBenchSeries(slug, range, { chain, region });
       const filtered: BenchPayload = {
         ...full,
         providers: full.providers.filter((p) => selected.has(p.slug)),
