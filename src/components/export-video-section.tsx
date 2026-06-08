@@ -94,7 +94,11 @@ function ModalBody({
 }: Props & { onClose: () => void }) {
   const [range, setRange] = useState<RangeId>("30d");
   const [view, setView] = useState<ViewId>("BarChartRace");
-  const [raceSeconds, setRaceSeconds] = useState(17);
+  // 12s default — long enough to land the trajectory, short enough to keep
+  // the first-render wall-clock under 30-40s on the standard VPS. User can
+  // bump via the slider when they want a longer race.
+  const [raceSeconds, setRaceSeconds] = useState(12);
+  const [skipIntro, setSkipIntro] = useState(false);
   // Default to the top 8 providers (sorted by p50). Each composition only
   // shows ~8 visible anyway (BarChartRace.VISIBLE_BARS = 8) and rendering
   // 50+ providers per frame on a 2-vCPU box pushes us past 2 minutes —
@@ -159,6 +163,7 @@ function ModalBody({
           datasetId: slug,
           viewId: view,
           raceSeconds,
+          skipIntro,
           bench: filtered,
         }),
       });
@@ -277,6 +282,16 @@ function ModalBody({
               <span>45s</span>
               <span>60s</span>
             </div>
+            <label className="mt-3 inline-flex items-center gap-2 text-[11px] text-ink-muted cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={skipIntro}
+                onChange={(e) => setSkipIntro(e.target.checked)}
+                disabled={isBusy}
+                className="accent-ink h-3.5 w-3.5"
+              />
+              Skip 3s OpenChainBench intro
+            </label>
           </div>
 
           {/* Providers */}
