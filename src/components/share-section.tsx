@@ -184,11 +184,13 @@ export function ShareSection({ slug, title, benchmark, chain }: Props) {
   return (
     <>
       <button
+        type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-2 rounded-md border border-ink bg-ink px-3.5 py-2 text-[11px] font-medium uppercase tracking-[0.18em] text-paper hover:bg-paper hover:text-ink transition-colors shadow-sm"
+        aria-label="Export image"
+        title="Export image"
+        className="inline-flex items-center justify-center rounded-md border border-ink bg-ink p-2.5 text-paper hover:bg-paper hover:text-ink transition-colors shadow-sm"
       >
         <ImageIcon size={14} strokeWidth={2} />
-        Export
       </button>
 
       {open && (
