@@ -94,9 +94,16 @@ function ModalBody({
   const [range, setRange] = useState<RangeId>("30d");
   const [view, setView] = useState<ViewId>("BarChartRace");
   const [raceSeconds, setRaceSeconds] = useState(17);
-  const [selected, setSelected] = useState<Set<string>>(
-    () => new Set(benchmark.results.map((r) => r.slug)),
-  );
+  // Default to the top 8 providers (sorted by p50). Each composition only
+  // shows ~8 visible anyway (BarChartRace.VISIBLE_BARS = 8) and rendering
+  // 50+ providers per frame on a 2-vCPU box pushes us past 2 minutes —
+  // outside the Vercel function ceiling. Power users can click "All".
+  const [selected, setSelected] = useState<Set<string>>(() => {
+    const sorted = [...benchmark.results].sort((a, b) =>
+      benchmark.higherIsBetter ? b.ms.p50 - a.ms.p50 : a.ms.p50 - b.ms.p50,
+    );
+    return new Set(sorted.slice(0, 8).map((r) => r.slug));
+  });
   const [state, setState] = useState<RenderState>({ status: "idle" });
   const [copied, setCopied] = useState(false);
 
@@ -267,7 +274,9 @@ function ModalBody({
           {/* Providers */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <Label>Providers</Label>
+              <Label>
+                Providers <em className="not-italic text-ink-faint normal-case tracking-normal">· {selected.size}/{providers.length} selected{selected.size > 12 && " · render will be slow"}</em>
+              </Label>
               <div className="flex gap-2">
                 <SmallLink
                   onClick={() => setSelected(new Set(providers.map((p) => p.slug)))}
