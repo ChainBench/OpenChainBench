@@ -65,7 +65,7 @@ export default async function ProviderPage({
   const sameAs: string[] = [];
   if (reg?.url) sameAs.push(reg.url);
   if (reg?.twitter) {
-    sameAs.push(`https://twitter.com/${reg.twitter.replace(/^@/, "")}`);
+    sameAs.push(`https://x.com/${reg.twitter.replace(/^@/, "")}`);
   }
   const jsonLd = {
     "@context": "https://schema.org",
@@ -230,7 +230,7 @@ export default async function ProviderPage({
               <li>
                 <a
                   className="lnk inline-flex items-center gap-1 font-sans text-[11px] uppercase tracking-[0.16em] font-medium text-ink-soft hover:text-ink"
-                  href={`https://twitter.com/${reg.twitter.replace(/^@/, "")}`}
+                  href={`https://x.com/${reg.twitter.replace(/^@/, "")}`}
                   rel="noopener"
                 >
                   {reg.twitter}

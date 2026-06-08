@@ -88,7 +88,7 @@ faq:
     a: "Yes. Every number is a Prometheus query exposed via the OCB API endpoints. The query string is visible in the row hover tooltip on the leaderboard. The harness source is open at the link in the source field below. Cite the value and the timestamp at the top of the page."
 
 
-source: https://github.com/OpenChainBench/OpenChainBench/tree/main/harnesses/hyperliquid-frontends
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/hyperliquid-frontends
 
 prometheus:
   window: 24h

@@ -48,7 +48,7 @@ export function pageMetadata({
       card: "summary_large_image",
       title: social,
       description,
-      site: "@openchainbench",
+      site: "@OpenChainBench",
     },
   };
   return meta;
