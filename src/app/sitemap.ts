@@ -4,6 +4,7 @@ import type { MetadataRoute } from "next";
 import { getBenchmarks } from "@/data/benchmarks";
 import { loadAllAlternatives } from "@/lib/alternatives";
 import { getProviderSlugs } from "@/lib/providers";
+import { RANKINGS } from "@/data/rankings";
 import { SITE } from "@/data/site";
 
 export const dynamic = "force-static";
@@ -141,10 +142,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.85,
   }));
 
+  // Keyword-optimized ranking pages. Each one mirrors a parent bench's
+  // lastmod since the leaderboard is rendered from the same Prom data.
+  const rankingRoutes: MetadataRoute.Sitemap = RANKINGS.map((r) => {
+    const parent = benchBySlug.get(r.benchmark);
+    return {
+      url: `${SITE.url}/rankings/${r.slug}`,
+      lastModified: parent?.lastRunAt ? new Date(parent.lastRunAt) : catalogLastRun,
+      changeFrequency: "daily" as const,
+      priority: 0.8,
+    };
+  });
+
   return [
     ...staticRoutes,
     ...benchmarkRoutes,
     ...providerRoutes,
     ...alternativeRoutes,
+    ...rankingRoutes,
   ];
 }
