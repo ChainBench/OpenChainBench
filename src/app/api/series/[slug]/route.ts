@@ -97,6 +97,14 @@ export async function GET(
 
   const colors = buildProviderColors(b.results);
 
+  // Logos are served from OCB's /public/logos/*. The video renderer is
+  // an external service that has no access to our public folder, so we
+  // emit absolute URLs against the requesting host. Headless Chromium
+  // fetches them over HTTPS during render, same as a browser would.
+  const reqUrl = new URL(req.url);
+  const origin = `${reqUrl.protocol}//${reqUrl.host}`;
+  const absolutize = (p: string) => (p.startsWith("http") ? p : `${origin}${p}`);
+
   const providers = b.results
     .filter((p) => seriesMap[p.slug] && seriesMap[p.slug].length > 0)
     .filter((p) => !allowedSlugs || allowedSlugs.has(p.slug))
@@ -107,7 +115,7 @@ export async function GET(
         slug: p.slug,
         name: p.name,
         color: colors.get(p.slug) ?? "#7f7f7f",
-        ...(logo ? { logo } : {}),
+        ...(logo ? { logo: absolutize(logo) } : {}),
         values,
       };
     });

@@ -7,6 +7,11 @@ import type { NextConfig } from "next";
 // XSS risk is bounded. Future hardening: move JSON-LD to <Script> with a
 // sha256 hash in script-src.
 const RELAY_WS = "wss://ocb-stream-relay-production.up.railway.app";
+// Origin of the standalone Remotion renderer that serves Export Video MP4s
+// (cached via sha256 at /v/<hash>.mp4). Allowed in media-src so the
+// modal's <video> tag can play the result, and in connect-src so the
+// proxy's success URL can be opportunistically pre-fetched.
+const VIDEO_RENDERER_ORIGIN = "https://video.openchainbench.com";
 const IS_DEV = process.env.NODE_ENV !== "production";
 // React dev mode needs 'unsafe-eval' for fast refresh / call stack reconstruction.
 // In prod we keep the lock-tight policy.
@@ -19,7 +24,8 @@ const CSP = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self' data:",
-  `connect-src 'self' ${RELAY_WS}`,
+  `connect-src 'self' ${RELAY_WS} ${VIDEO_RENDERER_ORIGIN}`,
+  `media-src 'self' ${VIDEO_RENDERER_ORIGIN}`,
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",
