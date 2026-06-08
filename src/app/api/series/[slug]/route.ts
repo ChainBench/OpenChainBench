@@ -58,7 +58,14 @@ export async function GET(
     ? new Set(providersFilter.split(",").map((s) => s.trim()).filter(Boolean))
     : null;
 
-  const b = await getBenchmark(slug);
+  // Honor the same dimensional filters the bench page itself supports
+  // (?chain=ethereum, ?region=eu-west). Without this, benches whose series
+  // only have data per-chain (e.g. network-fees) appear empty in the
+  // unfiltered global view even though the chain-scoped data is fine.
+  const chain = url.searchParams.get("chain") ?? undefined;
+  const region = url.searchParams.get("region") ?? undefined;
+
+  const b = await getBenchmark(slug, { chain, region });
   if (!b || b.editorialStatus !== "live") {
     return NextResponse.json(
       { error: "unknown_slug", slug },
