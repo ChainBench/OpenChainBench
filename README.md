@@ -338,7 +338,7 @@ Tracking the work to make benchmark pages rank for the queries they target.
 
 - Site. [openchainbench.com](https://openchainbench.com)
 - Live stream. folded into [openchainbench.com](https://openchainbench.com)
-- Twitter. [@openchainbench](https://twitter.com/openchainbench)
+- Twitter. [@OpenChainBench](https://x.com/OpenChainBench)
 - GitHub. [ChainBench/OpenChainBench](https://github.com/ChainBench/OpenChainBench)
 
 ## License
