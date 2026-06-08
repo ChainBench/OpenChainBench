@@ -687,7 +687,10 @@ async function tryLoadLive(
       const seriesByProvider30d: Record<string, number[]> = {};
       await Promise.all(
         spec.providers.map(async (p) => {
-          const q = `${panel.metric}{${panel.label_key}="${escapePromLabelValue(p.slug)}"}`;
+          const sel = `${panel.label_key}="${escapePromLabelValue(p.slug)}"`;
+          const q = panel.metric.includes("{")
+            ? panel.metric.replace("{", `{${sel},`)
+            : `${panel.metric}{${sel}}`;
           const [v, s24, s7, s30] = await Promise.all([
             prom.scalar(q),
             prom.series(q, winSec, 72),
