@@ -174,10 +174,10 @@ providers:
     formula: "Net stablecoin balance change of the Relay solver EOA over 24h, sampled from Mobula's wallet portfolio every 5 min. Floor on captured margin: what stays in the wallet is what the system actually retained, before any sweep to ops."
     type: relay
     queries:
-      p50: relay_solver_balance_delta_usd{kind="stables",window="24h"}
-      p90: relay_solver_balance_delta_usd{kind="stables",window="7d"}
-      p99: relay_solver_balance_delta_usd{kind="stables",window="30d"}
-      mean: relay_solver_balance_delta_usd{kind="stables",window="7d"} / 7
-      success: clamp_max(relay_solver_polls_total / (relay_solver_polls_total + relay_solver_poll_errors_total), 1)
-      sample_size: relay_solver_window_snapshots
-      series: relay_solver_balance_delta_usd{kind="stables",window="24h"}
+      p50: avg(relay_solver_balance_delta_usd{kind="stables",window="24h"})
+      p90: avg(relay_solver_balance_delta_usd{kind="stables",window="7d"})
+      p99: avg(relay_solver_balance_delta_usd{kind="stables",window="30d"})
+      mean: avg(relay_solver_balance_delta_usd{kind="stables",window="7d"}) / 7
+      success: avg(clamp_max(relay_solver_polls_total / (relay_solver_polls_total + relay_solver_poll_errors_total), 1))
+      sample_size: avg(relay_solver_window_snapshots)
+      series: avg(relay_solver_balance_delta_usd{kind="stables",window="24h"})
