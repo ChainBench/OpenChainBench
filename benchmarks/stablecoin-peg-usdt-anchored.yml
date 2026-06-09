@@ -2,10 +2,10 @@
 
 slug: stablecoin-peg-usdt-anchored
 number: "015"
-title: Cheapest stablecoin swap on Binance
-seo_title: "Cheapest USDT stablecoin swap on Binance in 2026: USDC, FDUSD, USDe live spread benchmark"
-seo_description: "Live Binance stablecoin pair spread leaderboard. Basis points you eat swapping between USDC/USDT, FDUSD/USDT and USDE/USDT on Binance, the deepest non-US CEX. p50, p90 and p99 over 24h, audited every 5 seconds. The honest swap-cost number, not a marketing claim."
-subtitle: Basis points you eat swapping inventory between stables on Binance. Spread of X/USDT mid-price from 1.0000 USDT, audited every 5 seconds.
+title: Cheapest USDT stablecoin swap on Binance, live USDC, FDUSD, USDe spread
+seo_title: "Cheapest stablecoin swap Binance 2026: USDC, FDUSD, USDe spread"
+seo_description: "Cheapest stablecoin swap on Binance ranked live. Basis points eaten on USDC/USDT, FDUSD/USDT, USDE/USDT pairs. p99 over 24h, audited every 5 seconds."
+subtitle: Basis points you eat swapping inventory between stables on Binance. Spread of each X/USDT mid-price from 1.0000 USDT, audited every 5 seconds.
 category: Trading
 status: live
 metric: USDT-pair spread
