@@ -42,6 +42,11 @@ const SECURITY_HEADERS = [
 ];
 
 const nextConfig: NextConfig = {
+  // Explicit non-trailing-slash URLs so /benchmarks and /benchmarks/ don't
+  // diverge into two indexable variants. Default is `false` already; we
+  // pin it so a future Next minor that flips defaults can't silently
+  // split bench rankings between the two surface URLs.
+  trailingSlash: false,
   turbopack: {
     root: __dirname,
   },
