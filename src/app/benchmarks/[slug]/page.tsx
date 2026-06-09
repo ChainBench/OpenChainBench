@@ -132,15 +132,21 @@ export async function generateMetadata({
     title: metaTitle,
     description,
     alternates: { canonical },
-    // Chain variants (?chain=ethereum, ?chain=base, …) point their
-    // canonical at the unfiltered hub so link signal consolidates there.
-    // We also noindex the variants directly — Google otherwise sees
-    // multiple competing URLs for the same canonical, which reads as
-    // duplicate-content gaming and waters down the hub's authority.
-    // `follow` stays on so chain pages are still discoverable.
-    robots: isChainScoped
-      ? { index: false, follow: true }
-      : { index: true, follow: true },
+    // Any URL with a filter query param (?chain=…, ?region=…) points its
+    // canonical at the unfiltered hub. We also noindex these variants
+    // directly — Google otherwise sees multiple competing URLs for the
+    // same canonical, which reads as duplicate-content gaming and waters
+    // down the hub's authority. `follow` stays on so chain pages are
+    // still discoverable via internal links.
+    //
+    // We check the RAW query params (not just `isChainScoped`) so that
+    // `?chain=foo` for an unknown chain is also noindexed — Google could
+    // otherwise stumble onto an out-of-scope chain via a stale internal
+    // link and treat the resulting page as a thin near-duplicate.
+    robots:
+      sp.chain !== undefined || sp.region !== undefined
+        ? { index: false, follow: true }
+        : { index: true, follow: true },
     openGraph: {
       title: metaTitle,
       description,
