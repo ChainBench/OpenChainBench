@@ -279,6 +279,11 @@ export default async function BenchmarkPage({
         url: benchmarkUrl,
         mainEntityOfPage: benchmarkUrl,
         articleBody: sentence,
+        // Article rich results recommend an `image` field. We reuse the
+        // dynamic OG card that already renders the leaderboard, so the
+        // schema image matches what Search Console, X and LinkedIn show.
+        // Clears the "Missing field image" warning in Rich Results Test.
+        image: `${SITE.url}/api/og/${benchmark.slug}`,
         dateModified: benchmark.lastRunAt,
         author: { "@id": `${SITE.url}/#org` },
         publisher: { "@id": `${SITE.url}/#org` },
