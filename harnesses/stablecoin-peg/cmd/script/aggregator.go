@@ -184,6 +184,48 @@ func (a *Aggregator) closeMinuteLocked(closedMinute time.Time) {
 		pegDeviationBps.WithLabelValues(stable).Set(devBps)
 		pegDeviationHist.WithLabelValues(stable).Observe(devBps)
 
+		// OHLC pass: compute open/high/low/close on the per-minute
+		// |price-1| series across every venue sample in the bucket,
+		// in chronological order. The median we computed above is
+		// what the bench reports as the "typical" value within the
+		// minute; the high (worst) is what a depeg detector or a
+		// stress-aware integrator needs to see. A 5-second print to
+		// $0.92 is invisible in the median, undeniable in the high.
+		var (
+			firstTime, lastTime time.Time
+			firstDev, lastDev   float64
+			maxDev              float64
+			minDev              = math.MaxFloat64
+			haveAny             bool
+		)
+		for _, samples := range byVenue {
+			for _, s := range samples {
+				dev := math.Abs(s.price-1.0) * 10000
+				if !haveAny || s.receivedAt.Before(firstTime) {
+					firstTime = s.receivedAt
+					firstDev = dev
+				}
+				if !haveAny || s.receivedAt.After(lastTime) {
+					lastTime = s.receivedAt
+					lastDev = dev
+				}
+				if dev > maxDev {
+					maxDev = dev
+				}
+				if dev < minDev {
+					minDev = dev
+				}
+				haveAny = true
+			}
+		}
+		if haveAny {
+			pegDeviationWorstBps.WithLabelValues(stable).Set(maxDev)
+			pegMinuteMaxBps.WithLabelValues(stable).Set(maxDev)
+			pegMinuteMinBps.WithLabelValues(stable).Set(minDev)
+			pegMinuteOpenBps.WithLabelValues(stable).Set(firstDev)
+			pegMinuteCloseBps.WithLabelValues(stable).Set(lastDev)
+		}
+
 		// Cross-venue gap = max - min in bps. Only meaningful with
 		// ≥2 venues in the same minute.
 		if len(venuePrices) >= 2 {
