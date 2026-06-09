@@ -91,6 +91,11 @@ const RAW: Record<string, string> = {
   // ─── L1 chains (additions) ───
   hedera: "/logos/hedera.svg",
 
+  // ─── Cosmos chains (token-deployment-cost bench) ───
+  osmosis: "/logos/osmosis.svg",
+  injective: "/logos/injective.svg",
+  neutron: "/logos/neutron.svg",
+
   // ─── Gas oracles ───
   etherscan: "/logos/etherscan.svg",
   owlracle: "/logos/owlracle.webp",
