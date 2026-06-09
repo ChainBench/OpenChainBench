@@ -154,7 +154,7 @@ export default function RootLayout({
         <SiteHeader />
         <main id="main-content" className="flex-1 w-full max-w-full overflow-x-clip min-w-0">{children}</main>
         <SiteFooter />
-        <Analytics />
+        {process.env.VERCEL_ENV === "production" && <Analytics />}
       </body>
     </html>
   );
