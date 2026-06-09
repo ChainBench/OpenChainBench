@@ -183,7 +183,7 @@ var (
 	pegSourceCallTotal = promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "peg_source_call_total",
-			Help: "Number of source polls broken down by result: ok, http_err, parse_err, stale, dropped (sample dropped by outlier rule).",
+			Help: "Number of source polls broken down by result. ok = sample accepted. http_err / parse_err / stale = source failure. dropped_sanity = sample >50% off peg (parser bug). dropped_isolated = sample >2% off peg with no corroborating venue in last 30s (single-venue glitch). kept_corroborated = sample >2% off peg confirmed by ≥1 other venue in last 30s (real depeg signal, sample kept).",
 		},
 		[]string{"stable", "venue", "result"},
 	)
