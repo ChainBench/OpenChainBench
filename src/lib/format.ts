@@ -57,10 +57,26 @@ export function fmtUnit(value: number, unit: string) {
   return `${value.toFixed(0)} ms`;
 }
 
-/** Just the unit suffix, with a leading space. used by BigNumber. */
-export function unitSuffix(unit: string) {
+/** Just the unit suffix, with a leading space. used by BigNumber.
+ *
+ * Accepts an optional `value` so callers that split number and suffix
+ * (e.g. share cards rendering the number in display size and the unit
+ * as a subscript) can mirror the auto-conversion `fmtUnit` already does.
+ * Without the value, sub-60s readings of seconds-unit benches will
+ * still render as "s" while `fmtUnit` flipped the number to minutes,
+ * producing nonsense like "15.9 s" for an Ethereum p50 that is actually
+ * 15.9 minutes.
+ */
+export function unitSuffix(unit: string, value?: number): string {
   if (unit === "pct" || unit === "bps") return " %";
-  if (unit === "s") return " s";
+  if (unit === "s") {
+    // Mirror fmtUnit: ms → s, with auto-flip to minutes at 60s.
+    if (value !== undefined && Number.isFinite(value)) {
+      const s = value / 1000;
+      if (s >= 60) return " min";
+    }
+    return " s";
+  }
   if (unit === "slots") return " slots";
   if (unit === "count") return "";
   if (unit === "usd") return "";
