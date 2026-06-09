@@ -37,6 +37,9 @@ const RAW: Record<string, string> = {
   blast: "/logos/blast.png",
   scroll: "/logos/scroll.png",
   zksync: "/logos/zksync.png",
+  celo: "/logos/celo.svg",
+  opbnb: "/logos/bnb.png",
+  aptos: "/logos/aptos.svg",
   sonic: "/logos/sonic.png",
   berachain: "/logos/berachain.png",
 
