@@ -686,7 +686,7 @@ async function renderRanking(
                         fontWeight: 500,
                       }}
                     >
-                      {unitSuffix(benchmark.unit).trim()}
+                      {unitSuffix(benchmark.unit, r.ms.p50).trim()}
                     </span>
                   </div>
                   <div
@@ -866,7 +866,7 @@ async function renderLeaderboard(
                           {fmtValue(r.ms.p50, benchmark.unit)}
                         </span>
                         <span style={{ fontSize: 16, color: INK_MUTED }}>
-                          {unitSuffix(benchmark.unit).trim()}
+                          {unitSuffix(benchmark.unit, r.ms.p50).trim()}
                         </span>
                       </span>
                     </div>
@@ -1155,7 +1155,7 @@ async function renderHeadline(
                 color: INK_SOFT,
               }}
             >
-              {unitSuffix(benchmark.unit).trim()}
+              {unitSuffix(benchmark.unit, winner?.ms.p50).trim()}
             </span>
           </div>
           <div
@@ -1268,7 +1268,7 @@ async function renderCompare(
               name={a.name}
               color={aColor}
               p50={fmtValue(a.ms.p50, benchmark.unit)}
-              unit={unitSuffix(benchmark.unit).trim()}
+              unit={unitSuffix(benchmark.unit, a.ms.p50).trim()}
               p99={fmtUnit(a.ms.p99, benchmark.unit)}
               n={a.sampleSize ?? 0}
             />
@@ -1342,7 +1342,7 @@ async function renderCompare(
               name={b.name}
               color={bColor}
               p50={fmtValue(b.ms.p50, benchmark.unit)}
-              unit={unitSuffix(benchmark.unit).trim()}
+              unit={unitSuffix(benchmark.unit, b.ms.p50).trim()}
               p99={fmtUnit(b.ms.p99, benchmark.unit)}
               n={b.sampleSize ?? 0}
             />
