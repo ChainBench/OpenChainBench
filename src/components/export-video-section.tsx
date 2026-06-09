@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Video, X, Loader2, Download, Copy, Share2 } from "lucide-react";
 import type { Benchmark } from "@/types/benchmark";
 import { EXPORT_VIDEO_ENABLED } from "@/lib/export-video/config";
@@ -93,10 +94,21 @@ function ModalBody({
 }: Props & { onClose: () => void }) {
   const [range, setRange] = useState<RangeId>("30d");
   const [view, setView] = useState<ViewId>("BarChartRace");
-  const [raceSeconds, setRaceSeconds] = useState(17);
-  const [selected, setSelected] = useState<Set<string>>(
-    () => new Set(benchmark.results.map((r) => r.slug)),
-  );
+  // 12s default — long enough to land the trajectory, short enough to keep
+  // the first-render wall-clock under 30-40s on the standard VPS. User can
+  // bump via the slider when they want a longer race.
+  const [raceSeconds, setRaceSeconds] = useState(12);
+  const [skipIntro, setSkipIntro] = useState(false);
+  // Default to the top 8 providers (sorted by p50). Each composition only
+  // shows ~8 visible anyway (BarChartRace.VISIBLE_BARS = 8) and rendering
+  // 50+ providers per frame on a 2-vCPU box pushes us past 2 minutes —
+  // outside the Vercel function ceiling. Power users can click "All".
+  const [selected, setSelected] = useState<Set<string>>(() => {
+    const sorted = [...benchmark.results].sort((a, b) =>
+      benchmark.higherIsBetter ? b.ms.p50 - a.ms.p50 : a.ms.p50 - b.ms.p50,
+    );
+    return new Set(sorted.slice(0, 8).map((r) => r.slug));
+  });
   const [state, setState] = useState<RenderState>({ status: "idle" });
   const [copied, setCopied] = useState(false);
 
@@ -120,6 +132,13 @@ function ModalBody({
       return next;
     });
 
+  // Mirror the bench page's URL filters — chain=ethereum or region=eu-west
+  // — so a video exported from a chain-scoped tab uses the chain-scoped
+  // series rather than the (often empty) global view.
+  const searchParams = useSearchParams();
+  const chain = searchParams.get("chain");
+  const region = searchParams.get("region");
+
   const onRender = async () => {
     if (selected.size === 0) {
       setState({ status: "error", message: "Pick at least one provider" });
@@ -127,7 +146,7 @@ function ModalBody({
     }
     try {
       setState({ status: "loading_series" });
-      const full: BenchPayload = await fetchBenchSeries(slug, range);
+      const full: BenchPayload = await fetchBenchSeries(slug, range, { chain, region });
       const filtered: BenchPayload = {
         ...full,
         providers: full.providers.filter((p) => selected.has(p.slug)),
@@ -144,6 +163,7 @@ function ModalBody({
           datasetId: slug,
           viewId: view,
           raceSeconds,
+          skipIntro,
           bench: filtered,
         }),
       });
@@ -262,12 +282,24 @@ function ModalBody({
               <span>45s</span>
               <span>60s</span>
             </div>
+            <label className="mt-3 inline-flex items-center gap-2 text-[11px] text-ink-muted cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={skipIntro}
+                onChange={(e) => setSkipIntro(e.target.checked)}
+                disabled={isBusy}
+                className="accent-ink h-3.5 w-3.5"
+              />
+              Skip 3s OpenChainBench intro
+            </label>
           </div>
 
           {/* Providers */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <Label>Providers</Label>
+              <Label>
+                Providers <em className="not-italic text-ink-faint normal-case tracking-normal">· {selected.size}/{providers.length} selected{selected.size > 12 && " · render will be slow"}</em>
+              </Label>
               <div className="flex gap-2">
                 <SmallLink
                   onClick={() => setSelected(new Set(providers.map((p) => p.slug)))}
