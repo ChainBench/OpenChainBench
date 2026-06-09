@@ -135,7 +135,12 @@ func runChainlink(ctx context.Context, specs []PairSpec) {
 				continue
 			}
 			c.failureCount[s.ChainlinkFeed] = 0
-			recordPrice(SourceChainlink, s.Pair, price)
+			// Pass Chainlink's on-chain updatedAt as the SourceTS so
+			// the time-aligned deviation calc can snap market prints
+			// to this moment instead of comparing against now-fresh
+			// values (which would tag Chainlink's heartbeat lag as
+			// "deviation" — that artifact is exactly what Fix C kills).
+			recordPriceAt(SourceChainlink, s.Pair, price, time.Unix(updatedAt, 0))
 			ageS := time.Since(time.Unix(updatedAt, 0)).Seconds()
 			if ageS < 0 {
 				ageS = 0
