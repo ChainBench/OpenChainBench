@@ -110,6 +110,40 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     twitter: "@CoinStats",
   },
 
+  // ─── EVM swap aggregators / RFQ / routers (bench 002) ─────────
+  kyberswap: {
+    url: "https://kyberswap.com",
+    description:
+      "EVM DEX aggregator by Kyber Network. Pathfinder routes across 420+ liquidity sources on 17+ EVM chains, splitting trades atomically for best net output after gas.",
+    twitter: "@KyberNetwork",
+  },
+  bebop: {
+    url: "https://bebop.xyz",
+    description:
+      "Gasless RFQ DEX aggregating onchain and offchain liquidity. Bebop Router and the JAM just-in-time auction model combine market-maker quotes with onchain pools across multiple EVM chains.",
+    twitter: "@bebop_dex",
+  },
+  cow: {
+    url: "https://cow.fi",
+    description:
+      "CoW Protocol settles trades via batch auctions with coincidence-of-wants matching, MEV protection, and solver competition. CoW Swap is the reference frontend; the protocol settles flow from many integrators.",
+    twitter: "@CoWSwap",
+  },
+  enso: {
+    url: "https://www.enso.build",
+    description:
+      "DeFi shared engine that maps onchain interactions into composable actions. The Route API computes optimal multi-step paths across protocols and chains, abstracting approvals, swaps, vault entries, and bridges into a single call.",
+    twitter: "@EnsoBuild",
+  },
+
+  // ─── Prediction markets (bench 028) ───────────────────────────
+  polymarket: {
+    url: "https://polymarket.com",
+    description:
+      "The largest crypto prediction market, settled on Polygon via UMA optimistic oracle. CLOB-style order book hosted on the Polymarket gateway with sub-second publish latency for live odds.",
+    twitter: "@Polymarket",
+  },
+
   // ─── Solana transaction landing services ──────────────────────
   jito: {
     url: "https://www.jito.wtf",
@@ -958,6 +992,12 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     description:
       "Open source Rust native production grade trading engine with a Hyperliquid integration for live perpetual futures execution.",
     twitter: "@NautilusTrader",
+  },
+  blink: {
+    url: "https://www.blink.trade",
+    description:
+      "High-performance spot and perpetuals exchange with colocated low-latency fiber and independently verifiable sequencing. Routes Hyperliquid perp orders via a registered builder code.",
+    twitter: "@Blink_Exchange",
   },
 };
 
