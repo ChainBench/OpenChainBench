@@ -76,6 +76,7 @@ const RAW: Record<string, string> = {
   nodies: "/logos/nodies.png",
   tenderly: "/logos/tenderly.svg",
   tonapi: "/logos/tonapi.png",
+  meowrpc: "/logos/meowrpc.jpg",
 
   // ─── MEV / private mempools (gas-estimation, RPC capabilities) ───
   flashbots: "/logos/flashbots.svg",
@@ -199,6 +200,7 @@ const RAW: Record<string, string> = {
   "tread-fi": "/logos/tread-fi.jpg",
   flowbot: "/logos/flowbot.jpg",
   "nautilus-trader": "/logos/nautilus-trader.png",
+  blink: "/logos/blink.png",
 };
 
 // Asset-symbol aliases used by perp-fees as chain dimension values.
