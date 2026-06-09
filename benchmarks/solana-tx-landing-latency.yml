@@ -4,7 +4,7 @@ slug: solana-tx-landing-latency
 number: "027"
 title: Fastest Solana RPC for tx landing, live slot delta benchmark
 seo_title: "Fastest Solana RPC 2026: Helius, Jito, Mobula slot delta ranked"
-seo_description: "Fastest Solana RPC for transaction landing, ranked live by slot delta. Helius, Jito, Astralane, Mobula, Nozomi submit identical signed mainnet probes every hour."
+seo_description: "{{best_name}} leads fastest Solana RPC for tx landing at {{best_p50}} (p50, 7d). Helius, Jito, Astralane, Mobula, Nozomi probed hourly with signed mainnet txs."
 subtitle: How fast each landing service gets a signed mainnet tx confirmed. Slot delta = number of Solana slots between submit and confirmed (1 slot is roughly 400 ms). Active probing every hour from us-east.
 category: Trading
 status: live
