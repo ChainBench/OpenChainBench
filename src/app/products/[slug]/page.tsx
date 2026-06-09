@@ -415,6 +415,14 @@ export default async function ProviderPage({
               const badgeUrl = `${SITE.url}${badgePath}`;
               const targetUrl = `${SITE.url}/benchmarks/${a.benchmark.slug}`;
               const html = `<a href="${targetUrl}"><img src="${badgeUrl}" alt="Ranked #1 on OpenChainBench: ${a.benchmark.title}" height="36" /></a>`;
+              const markdown = `[![Ranked #1 on OpenChainBench: ${a.benchmark.title}](${badgeUrl})](${targetUrl})`;
+              // Pre-baked X intent. Providers click → tweet draft opens
+              // with the ranking claim, the bench URL and the OCB handle
+              // already filled in. Removes the friction of writing the
+              // post themselves and gives us the canonical anchor text
+              // back as a tagged tweet on every share.
+              const tweetText = `Independently benchmarked #1 on ${a.benchmark.title} by @OpenChainBench.\n\nReproducible methodology, live data:`;
+              const tweetIntent = `https://x.com/intent/tweet?text=${encodeURIComponent(tweetText)}&url=${encodeURIComponent(targetUrl)}`;
               return (
                 <li key={`badge-${a.benchmark.slug}`} className="card-soft p-4">
                   <p className="text-xs font-sans font-medium uppercase tracking-[0.18em] text-ink-muted">
@@ -430,12 +438,31 @@ export default async function ProviderPage({
                       decoding="async"
                     />
                   </div>
+                  <div className="mt-3 flex flex-wrap items-center gap-3 text-[11px] font-sans font-medium uppercase tracking-[0.18em] text-ink-muted">
+                    <a
+                      href={tweetIntent}
+                      target="_blank"
+                      rel="noopener"
+                      className="inline-flex items-center gap-1 hover:text-ink"
+                    >
+                      Share on X
+                      <ArrowUpRight size={11} strokeWidth={2} />
+                    </a>
+                  </div>
                   <details className="mt-3">
                     <summary className="cursor-pointer text-[11px] font-sans font-medium uppercase tracking-[0.18em] text-ink-muted hover:text-ink">
                       Copy HTML
                     </summary>
                     <pre className="mt-2 overflow-x-auto rounded border border-rule bg-paper-soft p-2 text-[11px] leading-snug">
 {html}
+                    </pre>
+                  </details>
+                  <details className="mt-2">
+                    <summary className="cursor-pointer text-[11px] font-sans font-medium uppercase tracking-[0.18em] text-ink-muted hover:text-ink">
+                      Copy Markdown
+                    </summary>
+                    <pre className="mt-2 overflow-x-auto rounded border border-rule bg-paper-soft p-2 text-[11px] leading-snug">
+{markdown}
                     </pre>
                   </details>
                 </li>
