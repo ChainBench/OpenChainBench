@@ -403,7 +403,69 @@ export default async function ProviderPage({
             stays accurate without redeploying.
           </p>
           <ul className="mt-4 grid gap-3 sm:grid-cols-2">
-            {sorted.filter((a) => a.rank === 1).map((a) => {
+            {(() => {
+              // Generate the list of badge cards to render. For benches WITHOUT
+              // chain dimensions, the global aggregate badge is honest and we
+              // emit one card per #1 finish. For benches WITH chain dimensions
+              // we walk rankPerChain instead:
+              //   - If the provider leads on EVERY declared chain (and the
+              //     aggregate #1 confirms it), we keep a single global badge.
+              //     A true cross-chain leader gets the unscoped claim.
+              //   - Otherwise we emit one badge PER chain the provider leads
+              //     and SKIP the global aggregate badge entirely. Without this
+              //     guard a provider that wins one chain out of ten still
+              //     shows a misleading "#1 on Fastest free public RPC" badge
+              //     even though they trail elsewhere. Embedders broadcasting
+              //     that badge would be parroting an inaccurate claim, which
+              //     is the exact reputation hit we built the bench to avoid.
+              type BadgeCard = {
+                key: string;
+                title: string;
+                chain?: { value: string; label: string };
+                benchSlug: string;
+              };
+              const cards: BadgeCard[] = [];
+              for (const a of sorted) {
+                const chainDims = a.benchmark.chainDimensions ?? [];
+                const realChains = chainDims.filter((c) => c.value !== "all");
+                const perChain = a.rankPerChain ?? {};
+                const wonChains = realChains.filter(
+                  (c) => perChain[c.value]?.rank === 1,
+                );
+                const hasChainDims = realChains.length > 0;
+                const isGlobalNumberOne = a.rank === 1;
+                if (!hasChainDims) {
+                  if (isGlobalNumberOne) {
+                    cards.push({
+                      key: a.benchmark.slug,
+                      title: a.benchmark.title,
+                      benchSlug: a.benchmark.slug,
+                    });
+                  }
+                  continue;
+                }
+                const leadsAllChains =
+                  realChains.length > 0 &&
+                  wonChains.length === realChains.length;
+                if (isGlobalNumberOne && leadsAllChains) {
+                  cards.push({
+                    key: a.benchmark.slug,
+                    title: a.benchmark.title,
+                    benchSlug: a.benchmark.slug,
+                  });
+                  continue;
+                }
+                for (const c of wonChains) {
+                  cards.push({
+                    key: `${a.benchmark.slug}-${c.value}`,
+                    title: a.benchmark.title,
+                    chain: c,
+                    benchSlug: a.benchmark.slug,
+                  });
+                }
+              }
+              return cards;
+            })().map((card) => {
               // Absolute URL is the one shipped to embedders (it has to
               // work from any third-party origin), but the in-page preview
               // <img> uses a relative path so it loads under the current
@@ -411,28 +473,34 @@ export default async function ProviderPage({
               // shows the browser's broken-image glyph on every non-prod
               // origin (staging Preview URLs, Vercel branch previews, etc.)
               // because the CSP refuses the cross-origin fetch.
-              const badgePath = `/api/badge/${a.benchmark.slug}/${p.slug}`;
+              const qs = card.chain ? `?chain=${encodeURIComponent(card.chain.value)}` : "";
+              const badgePath = `/api/badge/${card.benchSlug}/${p.slug}${qs}`;
               const badgeUrl = `${SITE.url}${badgePath}`;
-              const targetUrl = `${SITE.url}/benchmarks/${a.benchmark.slug}`;
-              const html = `<a href="${targetUrl}"><img src="${badgeUrl}" alt="Ranked #1 on OpenChainBench: ${a.benchmark.title}" height="36" /></a>`;
-              const markdown = `[![Ranked #1 on OpenChainBench: ${a.benchmark.title}](${badgeUrl})](${targetUrl})`;
+              const targetUrl = `${SITE.url}/benchmarks/${card.benchSlug}${qs}`;
+              const scopeSuffix = card.chain ? ` on ${card.chain.label}` : "";
+              const cardTitle = card.chain
+                ? `${card.title} — ${card.chain.label}`
+                : card.title;
+              const altText = `Ranked #1 on OpenChainBench: ${card.title}${scopeSuffix}`;
+              const html = `<a href="${targetUrl}"><img src="${badgeUrl}" alt="${altText}" height="36" /></a>`;
+              const markdown = `[![${altText}](${badgeUrl})](${targetUrl})`;
               // Pre-baked X intent. Providers click → tweet draft opens
               // with the ranking claim, the bench URL and the OCB handle
               // already filled in. Removes the friction of writing the
               // post themselves and gives us the canonical anchor text
               // back as a tagged tweet on every share.
-              const tweetText = `Independently benchmarked #1 on ${a.benchmark.title} by @OpenChainBench.\n\nReproducible methodology, live data:`;
+              const tweetText = `Independently benchmarked #1 on ${card.title}${scopeSuffix} by @OpenChainBench.\n\nReproducible methodology, live data:`;
               const tweetIntent = `https://x.com/intent/tweet?text=${encodeURIComponent(tweetText)}&url=${encodeURIComponent(targetUrl)}`;
               return (
-                <li key={`badge-${a.benchmark.slug}`} className="card-soft p-4">
+                <li key={`badge-${card.key}`} className="card-soft p-4">
                   <p className="text-xs font-sans font-medium uppercase tracking-[0.18em] text-ink-muted">
-                    {a.benchmark.title}
+                    {cardTitle}
                   </p>
                   <div className="mt-3 flex items-center">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={badgePath}
-                      alt={`Ranked #1 on OpenChainBench: ${a.benchmark.title}`}
+                      alt={altText}
                       height={36}
                       loading="lazy"
                       decoding="async"
