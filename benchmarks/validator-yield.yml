@@ -2,10 +2,10 @@
 
 slug: validator-yield
 number: "026"
-title: Validator Net Yield Comparison
-seo_title: "Validator net yield 2026: Solana vs Hyperliquid live APR × uptime leaderboard"
-seo_description: "Live cross-chain validator yield benchmark. Median net yield (APR × uptime) in bps across Solana (top 200 by stake, Stakewiz total_apy, MEV folded in) and Hyperliquid (all active, predictedApr.day). Plus per-validator gross APR, commission, uptime, MEV share, stake, jailed status."
-subtitle: Median validator net yield (APR × uptime) in basis points, compared across chains. Solana top 200 by stake, all active Hyperliquid validators.
+title: Highest staking yield, live validator net APR across Solana and Hyperliquid
+seo_title: "Highest staking yield 2026: Solana vs Hyperliquid validator APR"
+seo_description: "Highest staking yield ranked live by net validator APR. Solana top 200 (Stakewiz total APY, MEV in) vs Hyperliquid active set. Uptime + commission + stake."
+subtitle: Median validator net yield (APR multiplied by uptime) in basis points, compared across chains. Solana top 200 by stake, all active Hyperliquid validators.
 category: Blockchains
 status: live
 metric: Net yield
