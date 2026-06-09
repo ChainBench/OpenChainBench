@@ -3,7 +3,11 @@ import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { EXPORT_VIDEO_ENABLED } from "@/lib/export-video/config";
 
 export const runtime = "nodejs";
-export const maxDuration = 120;
+// 300s = Vercel Pro Fluid Compute max. Big benches (50+ providers) take
+// 90-120s on the 2-vCPU VPS because each frame has to draw all providers.
+// 300s gives headroom; we'll move to async polling in v2 to drop this
+// requirement entirely.
+export const maxDuration = 300;
 
 /**
  * Server proxy for the OCB Export Video modal. Forwards POSTs to the
@@ -54,7 +58,7 @@ export async function POST(req: Request) {
       body: JSON.stringify(body),
       // Renderer's full pipeline takes ~30s worst case; allow 120s
       // before we abort and surface an error to the client.
-      signal: AbortSignal.timeout(120_000),
+      signal: AbortSignal.timeout(290_000),
     });
   } catch (e) {
     return NextResponse.json(
