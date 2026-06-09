@@ -17,6 +17,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.26.0",
     "@react-three/fiber": "^9.6.1",
+    "@vercel/analytics": "^2.0.1",
     "js-yaml": "^4.1.1",
     "lucide-react": "^1.11.0",
     "mcp-handler": "^1.1.0",
