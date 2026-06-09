@@ -26,7 +26,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "OpenChainBench. Open benchmarks for crypto infrastructure",
     description: DESCRIPTION,
-    site: "@openchainbench",
+    site: "@OpenChainBench",
   },
 };
 

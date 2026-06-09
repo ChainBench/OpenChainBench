@@ -2,10 +2,10 @@
 
 slug: oracle-deviation
 number: "025"
-title: Cross-oracle price deviation across 10 USD pairs
-seo_title: "Oracle deviation benchmark 2026: Chainlink, Pyth, Binance, Coinbase live cross-source price disagreement on BTC, ETH, SOL and 7 more"
-seo_description: "Live cross-oracle deviation leaderboard. Max pairwise price disagreement in bps across Chainlink, Pyth, Binance and Coinbase on 10 USD pairs (BTC, ETH, SOL, BNB, XRP, ADA, DOGE, AVAX, LINK, POL), polled every 30 s, p99 over 24 h. Includes Chainlink round-age signal."
-subtitle: Maximum pairwise price disagreement in basis points across Chainlink, Pyth, Binance and Coinbase, polled every 30 s.
+title: Chainlink vs Pyth vs Binance vs Coinbase, live oracle deviation
+seo_title: "Chainlink vs Pyth oracle deviation 2026: BTC, ETH, SOL ranked"
+seo_description: "Chainlink, Pyth, Binance, Coinbase oracle deviation ranked live on BTC, ETH, SOL, BNB, XRP, ADA, DOGE, AVAX, LINK, POL. Max pairwise bps, p99 over 24h."
+subtitle: Maximum pairwise price disagreement in basis points across Chainlink, Pyth, Binance and Coinbase, polled every 30 seconds on 10 USD pairs.
 category: Trading
 status: live
 metric: Max cross-oracle deviation
@@ -69,6 +69,7 @@ methodology:
   - "Chainlink round age. The on-chain `updatedAt` timestamp from `latestRoundData()` is published separately as `ocb_oracle_last_round_age_seconds{source=\"chainlink\", pair}`. Chainlink updates only on deviation (typically 0.25-0.5% for blue chips) or heartbeat (~1 h), so a 30-minute age on a quiet ETH minute is normal; a 2-hour age on SOL during a volatile minute is the actual signal."
   - "USDT ≈ USD assumption. Binance only quotes USDT pairs (BTCUSDT, etc.). We treat USDT as ≈ USD ± 10 bps drift, which is acceptable for a bench whose alert floor is ≥ 10 bps. A real USDT depeg would surface as Binance drifting from the other three sources for *every* pair simultaneously, exactly what we want this bench to flag, not hide."
   - "MATIC → POL migration. Polygon migrated MATIC → POL 1:1 on Sep 4 2024. The Chainlink mainnet feed contract is still named MATIC/USD but on-chain `description()` confirms it tracks the POL token; Pyth renamed the feed to POL/USD; Coinbase delisted MATIC-USD and only lists POL-USD; Binance kept MATICUSDT as a frozen historical pair AND lists POLUSDT. We point Binance at POLUSDT so all four sources track the same underlying asset. Bench label is kept as `pair=\"MATIC/USD\"` for query continuity."
+  - "Time-aligned deviation (canonical headline). For every pair of sources (a, b) we anchor on the more recent of their two SourceTSs (Chainlink's on-chain `updatedAt` for Chainlink, fetch time for the continuously-updating sources) and look up the older source's price in a 30-minute per-source rolling history at the anchor moment. The result is published as `ocb_oracle_deviation_at_oracle_ts_pct` and feeds the leaderboard headline `ocb_oracle_max_deviation_pct`. This eliminates the artifact where Chainlink's heartbeat lag inflates 'deviation' by the market's drift between its updates — a researcher grading oracle quality wants to compare Chainlink's price against the market at Chainlink's own updatedAt, not at the harness's fetch instant. The legacy fetch-time gauge (`ocb_oracle_deviation_pct`, aliased as `ocb_oracle_deviation_at_fetch_ts_pct`) is preserved unchanged for backward compatibility. Alignment misses (no history sample within ±10s of the anchor) are counted as `ocb_oracle_alignment_miss_total`. Methodology recommendation from Coinpaprika data team review; matches the convention published by Chaos Labs and Risk DAO oracle risk reports."
   - "Excluded by design. Redstone (push-pull, no continuous gauge to scrape without integration contract), Uniswap V3 TWAP (per-pool integration + derivation of same CEX prints), DIA (smaller footprint than the four kept), and aggregator-of-aggregators (CoinGecko, CMC, DefiLlama), re-aggregating already-aggregated data adds latency and hides per-source disagreement."
 
 findings:

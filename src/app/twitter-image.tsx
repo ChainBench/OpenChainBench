@@ -72,7 +72,7 @@ export default function TwitterImage() {
           }}
         >
           <span>openchainbench.com</span>
-          <span>@openchainbench</span>
+          <span>@OpenChainBench</span>
         </div>
       </div>
     ),

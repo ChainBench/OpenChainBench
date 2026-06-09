@@ -19,6 +19,7 @@ import { ReportSection } from "@/components/report-section";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
 import { headlineSentence } from "@/lib/citation";
 import { capDescription } from "@/lib/seo-text";
+import { getBenchCreatedAt } from "@/lib/seo/bench-dates";
 import { SITE } from "@/data/site";
 import { buildFaqPageJsonLd, safeJsonLd } from "@/lib/jsonld";
 import { renderTemplate } from "@/lib/bench-template";
@@ -131,6 +132,15 @@ export async function generateMetadata({
     title: metaTitle,
     description,
     alternates: { canonical },
+    // Chain variants (?chain=ethereum, ?chain=base, …) point their
+    // canonical at the unfiltered hub so link signal consolidates there.
+    // We also noindex the variants directly — Google otherwise sees
+    // multiple competing URLs for the same canonical, which reads as
+    // duplicate-content gaming and waters down the hub's authority.
+    // `follow` stays on so chain pages are still discoverable.
+    robots: isChainScoped
+      ? { index: false, follow: true }
+      : { index: true, follow: true },
     openGraph: {
       title: metaTitle,
       description,
@@ -260,6 +270,7 @@ export default async function BenchmarkPage({
         publisher: { "@id": `${SITE.url}/#org` },
         isAccessibleForFree: true,
         license: "https://creativecommons.org/licenses/by/4.0/",
+        datePublished: getBenchCreatedAt(benchmark.slug).toISOString(),
         dateModified: benchmark.lastRunAt,
         variableMeasured: benchmark.metric,
         distribution: [
@@ -279,6 +290,12 @@ export default async function BenchmarkPage({
         url: benchmarkUrl,
         mainEntityOfPage: benchmarkUrl,
         articleBody: sentence,
+        // Article rich results recommend an `image` field. We reuse the
+        // dynamic OG card that already renders the leaderboard, so the
+        // schema image matches what Search Console, X and LinkedIn show.
+        // Clears the "Missing field image" warning in Rich Results Test.
+        image: `${SITE.url}/api/og/${benchmark.slug}`,
+        datePublished: getBenchCreatedAt(benchmark.slug).toISOString(),
         dateModified: benchmark.lastRunAt,
         author: { "@id": `${SITE.url}/#org` },
         publisher: { "@id": `${SITE.url}/#org` },

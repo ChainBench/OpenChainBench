@@ -2,10 +2,10 @@
 
 slug: gas-estimation
 number: "013"
-title: Gas oracle vs realized percentile
-seo_title: "Gas oracle vs realized fee percentile: Blocknative, Etherscan, Owlracle, PublicNode feeHistory"
-seo_description: "Live gas oracle accuracy on Ethereum and Polygon. Absolute gwei gap between each oracle's p50 prediction and the realized priority fee in the next mined block. p50/p90/p99 over 24h."
-subtitle: Absolute gap in gwei between each oracle's predicted priority-fee tier and the realized percentile in the next mined block, per chain.
+title: Most accurate gas oracle, live gap vs realized priority fee
+seo_title: "Most accurate gas oracle 2026: Blocknative, Etherscan, Owlracle"
+seo_description: "Most accurate gas oracle ranked live on Ethereum and Polygon. Gwei gap between predicted p50 and realized priority fee in the next mined block. p50 over 24h."
+subtitle: Absolute gap in gwei between each oracle's predicted priority-fee tier and the realized percentile in the next mined block, measured per chain.
 category: RPCs
 status: live
 metric: Gap vs realized (gwei)

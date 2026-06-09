@@ -32,10 +32,30 @@ export async function generateMetadata({
   const p = await getProvider(slug);
   if (!p) return {};
   const reg = getProviderRegistry(p.slug);
-  const title = `${p.name} benchmark record`;
-  const description =
-    reg?.description ??
-    `Every OpenChainBench result for ${p.name}. Tracked across ${p.appearances.length} ${p.appearances.length === 1 ? "benchmark" : "benchmarks"}, ${p.wins} #1 ${p.wins === 1 ? "finish" : "finishes"}.`;
+
+  // Meta title carries the head-term shape people search for when
+  // evaluating a provider ("helius review", "is dRPC reliable",
+  // "mobula performance"). The product page is the canonical answer
+  // surface for those queries so we name it in the title directly
+  // rather than leaving the previous generic "benchmark record" phrasing.
+  const title = `${p.name} review and live performance benchmarks`;
+
+  // Description prefers the registry's curated one-liner, then falls back
+  // to a numeric one summarizing competitive footprint. Either way the
+  // first word is the provider name, which is what the SERP snippet keeps
+  // when it truncates.
+  const benchCount = p.appearances.length;
+  const benchWord = benchCount === 1 ? "benchmark" : "benchmarks";
+  const winWord = p.wins === 1 ? "first-place finish" : "first-place finishes";
+  const winSuffix = p.wins > 0 ? `, ${p.wins} ${winWord}` : "";
+  const fallbackDescription = `${p.name} reviewed across ${benchCount} live OpenChainBench ${benchWord}${winSuffix}. Reproducible measurements, open methodology, refreshed every minute.`;
+  // Some registry descriptions end with a period, others do not. Normalize
+  // before appending so the concatenated meta description never reads
+  // "...provider Live performance..." as a run-on sentence.
+  const description = reg?.description
+    ? `${reg.description.replace(/[.!?]?$/, ".")} Live performance across ${benchCount} OpenChainBench ${benchWord}${winSuffix}.`
+    : fallbackDescription;
+
   const url = `${SITE.url}/products/${p.slug}`;
   return {
     title,
@@ -65,7 +85,7 @@ export default async function ProviderPage({
   const sameAs: string[] = [];
   if (reg?.url) sameAs.push(reg.url);
   if (reg?.twitter) {
-    sameAs.push(`https://twitter.com/${reg.twitter.replace(/^@/, "")}`);
+    sameAs.push(`https://x.com/${reg.twitter.replace(/^@/, "")}`);
   }
   const jsonLd = {
     "@context": "https://schema.org",
@@ -165,6 +185,12 @@ export default async function ProviderPage({
                 <h1 className="display text-2xl sm:text-3xl md:text-4xl tracking-tight">
                   {p.name}
                 </h1>
+                <p className="mt-1 text-base text-ink-soft">
+                  {p.name} performance benchmarks, live across{" "}
+                  {p.appearances.length}{" "}
+                  {p.appearances.length === 1 ? "category" : "categories"}.
+                  Reproducible measurements, open methodology.
+                </p>
                 <p className="mt-2 font-sans text-[11px] uppercase tracking-[0.18em] text-ink-muted font-medium">
                   {p.appearances.length} {p.appearances.length === 1 ? "benchmark" : "benchmarks"}
                   {p.wins > 0 && (
@@ -230,7 +256,7 @@ export default async function ProviderPage({
               <li>
                 <a
                   className="lnk inline-flex items-center gap-1 font-sans text-[11px] uppercase tracking-[0.16em] font-medium text-ink-soft hover:text-ink"
-                  href={`https://twitter.com/${reg.twitter.replace(/^@/, "")}`}
+                  href={`https://x.com/${reg.twitter.replace(/^@/, "")}`}
                   rel="noopener"
                 >
                   {reg.twitter}
@@ -242,9 +268,33 @@ export default async function ProviderPage({
         </section>
       )}
 
-      <section className="mt-10">
+      {(() => {
+        // Most recent lastRunAt across every appearance is the truest
+        // "last measured" signal a Google freshness ranker, an AI citation
+        // engine or a researcher can pin on. Rendered as a visible <time>
+        // element so the page exposes its data freshness above the fold
+        // on the leaderboard.
+        const latest = sorted.reduce<string | null>((acc, a) => {
+          const t = a.benchmark.lastRunAt;
+          if (!t) return acc;
+          if (!acc || new Date(t) > new Date(acc)) return t;
+          return acc;
+        }, null);
+        if (!latest) return null;
+        const d = new Date(latest);
+        return (
+          <p className="mt-8 font-sans text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+            Last measured{" "}
+            <time dateTime={d.toISOString()} className="text-ink-soft">
+              {d.toUTCString().replace("GMT", "UTC")}
+            </time>
+          </p>
+        );
+      })()}
+
+      <section className="mt-6">
         <h2 className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted">
-          Benchmark record
+          Live benchmark results
         </h2>
         <ol className="mt-4 divide-y divide-rule border-y border-rule">
           {sorted.map((a) => {

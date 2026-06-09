@@ -24,7 +24,9 @@ export function BenchmarkCard({ benchmark }: { benchmark: Benchmark }) {
   );
   const leader = sorted[0];
   const headlineValue = !isDraft && leader ? fmtValue(leader.ms.p50, b.unit) : "n/a";
-  const headlineUnit = unitSuffix(b.unit).trim();
+  // Pass the leader's p50 so unitSuffix mirrors fmtUnit's auto-conversion
+  // (e.g. Ethereum finality renders as "15.9 min" not "15.9 s").
+  const headlineUnit = unitSuffix(b.unit, leader?.ms.p50).trim();
 
   // Top-right provider chips - first 3 results, single-letter circle badges.
   const chips = b.results.slice(0, 3);
