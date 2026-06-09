@@ -41,12 +41,18 @@ export function fmtUnit(value: number, unit: string) {
   if (unit === "usd") {
     if (value === 0) return "$0";
     const abs = Math.abs(value);
-    // Fee-grade precision: network fees can be 6 decimals deep
-    // ($0.000001 Avalanche transfer), so we can't collapse anything
-    // sub-cent to "~$0". Pick decimals by magnitude so the digit count
-    // stays readable.
-    if (abs < 0.000001) return `$${value.toExponential(2)}`;
-    if (abs < 0.0001) return `$${value.toFixed(7)}`;
+    // Fee-grade precision: network fees can be 10+ decimals deep on
+    // ultra-cheap chains (Neutron, sub-cent EVM L2s), so we can't
+    // collapse anything sub-cent to "~$0" and we never fall back to
+    // exponential notation (per UX audit: "4.49e-7" is unreadable).
+    // Instead, pick a decimal count large enough to surface the first
+    // non-zero digit + 2 significant digits.
+    if (abs < 0.0001) {
+      // Compute decimals so that abs × 10^decimals >= 10 (two sig figs).
+      const decimals = Math.min(15, Math.max(7, Math.ceil(-Math.log10(abs)) + 1));
+      const sign = value < 0 ? "-" : "";
+      return `${sign}$${abs.toFixed(decimals)}`;
+    }
     if (abs < 0.001) return `$${value.toFixed(6)}`;
     if (abs < 0.01) return `$${value.toFixed(5)}`;
     if (abs < 1) return `$${value.toFixed(4)}`;
