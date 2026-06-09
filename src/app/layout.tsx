@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Inter_Tight, JetBrains_Mono, Source_Serif_4 } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
@@ -153,6 +154,7 @@ export default function RootLayout({
         <SiteHeader />
         <main id="main-content" className="flex-1 w-full max-w-full overflow-x-clip min-w-0">{children}</main>
         <SiteFooter />
+        <Analytics />
       </body>
     </html>
   );
