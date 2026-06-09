@@ -2,9 +2,9 @@
 
 slug: buyback-audit
 number: "018"
-title: Token buyback execution audit
-seo_title: "Token buyback execution audit 2026: Hyperliquid HYPE, Sky SKY live executed-vs-promised ratio (7d, 30d)"
-seo_description: "Live audit of on-chain token buyback programs. Executed USD over promised USD, rolling 7d and 30d, for Hyperliquid Assistance Fund (97% of fees, HYPE spot buyback) and Sky Smart Burn Engine (100% surplus, SKY via Uniswap). Promised from DeFiLlama fees, executed from destination-wallet inflows priced at CoinGecko."
+title: DeFi token buyback tracker, live executed vs promised ratio
+seo_title: "DeFi buyback tracker 2026: Hyperliquid HYPE, Sky SKY live ratio"
+seo_description: "DeFi token buyback tracker ranked live by executed over promised ratio. Hyperliquid Assistance Fund (HYPE) and Sky Smart Burn Engine (SKY). 7d and 30d windows."
 subtitle: Executed USD over promised USD for live on-chain buyback programs, computed against destination-wallet inflows over rolling 7-day and 30-day windows.
 category: Trading
 status: live
