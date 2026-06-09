@@ -49,8 +49,11 @@ export async function generateMetadata({
   const winWord = p.wins === 1 ? "first-place finish" : "first-place finishes";
   const winSuffix = p.wins > 0 ? `, ${p.wins} ${winWord}` : "";
   const fallbackDescription = `${p.name} reviewed across ${benchCount} live OpenChainBench ${benchWord}${winSuffix}. Reproducible measurements, open methodology, refreshed every minute.`;
+  // Some registry descriptions end with a period, others do not. Normalize
+  // before appending so the concatenated meta description never reads
+  // "...provider Live performance..." as a run-on sentence.
   const description = reg?.description
-    ? `${reg.description} Live performance across ${benchCount} OpenChainBench ${benchWord}${winSuffix}.`
+    ? `${reg.description.replace(/[.!?]?$/, ".")} Live performance across ${benchCount} OpenChainBench ${benchWord}${winSuffix}.`
     : fallbackDescription;
 
   const url = `${SITE.url}/products/${p.slug}`;
@@ -291,7 +294,7 @@ export default async function ProviderPage({
 
       <section className="mt-6">
         <h2 className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted">
-          {p.name} live performance benchmarks
+          Live benchmark results
         </h2>
         <ol className="mt-4 divide-y divide-rule border-y border-rule">
           {sorted.map((a) => {
