@@ -2,10 +2,10 @@
 
 slug: oracle-deviation
 number: "025"
-title: Cross-oracle price deviation across 10 USD pairs
-seo_title: "Oracle deviation benchmark 2026: Chainlink, Pyth, Binance, Coinbase live cross-source price disagreement on BTC, ETH, SOL and 7 more"
-seo_description: "Live cross-oracle deviation leaderboard. Max pairwise price disagreement in bps across Chainlink, Pyth, Binance and Coinbase on 10 USD pairs (BTC, ETH, SOL, BNB, XRP, ADA, DOGE, AVAX, LINK, POL), polled every 30 s, p99 over 24 h. Includes Chainlink round-age signal."
-subtitle: Maximum pairwise price disagreement in basis points across Chainlink, Pyth, Binance and Coinbase, polled every 30 s.
+title: Chainlink vs Pyth vs Binance vs Coinbase, live oracle deviation
+seo_title: "Chainlink vs Pyth oracle deviation 2026: BTC, ETH, SOL ranked"
+seo_description: "Chainlink, Pyth, Binance, Coinbase oracle deviation ranked live on BTC, ETH, SOL, BNB, XRP, ADA, DOGE, AVAX, LINK, POL. Max pairwise bps, p99 over 24h."
+subtitle: Maximum pairwise price disagreement in basis points across Chainlink, Pyth, Binance and Coinbase, polled every 30 seconds on 10 USD pairs.
 category: Trading
 status: live
 metric: Max cross-oracle deviation
