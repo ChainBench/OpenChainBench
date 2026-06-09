@@ -352,6 +352,26 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     twitter: "@monero",
   },
 
+  // ─── Cosmos chains (token-deployment-cost bench) ──────────────
+  osmosis: {
+    url: "https://osmosis.zone",
+    description:
+      "Cosmos SDK appchain and the largest IBC-connected DEX. CometBFT consensus with deterministic finality per block, around 6-second block time. TokenFactory module exposes MsgCreateDenom with denom_creation_fee currently set to an empty list, so creating a new denom costs only gas.",
+    twitter: "@osmosiszone",
+  },
+  injective: {
+    url: "https://injective.com",
+    description:
+      "Cosmos SDK L1 with a native onchain orderbook and EVM compatibility layer. CometBFT consensus, sub-second block time, deterministic finality per block. TokenFactory MsgCreateDenom carries a flat 0.1 INJ governance fee on top of gas.",
+    twitter: "@injective",
+  },
+  neutron: {
+    url: "https://www.neutron.org",
+    description:
+      "CosmWasm smart-contract chain secured by Cosmos Hub via Interchain Security. CometBFT consensus with deterministic finality per block, around 2-second block time. TokenFactory denom_creation_fee is empty, so creating a new denom costs only gas.",
+    twitter: "@Neutron_org",
+  },
+
   // ─── Ethereum L2 rollups ──────────────────────────────────────
   arbitrum: {
     url: "https://arbitrum.io",
