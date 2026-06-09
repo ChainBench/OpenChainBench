@@ -2,10 +2,10 @@
 
 slug: pm-data-freshness
 number: "032"
-title: Best prediction market data API by freshness
-seo_title: "Fastest Polymarket data API in 2026: Mobula vs Codex vs Polymarket native WebSocket freshness benchmark"
-seo_description: "Live freshness leaderboard for prediction market data APIs. How many milliseconds each provider lags Polymarket's own CLOB WebSocket gateway when relaying the same trade. Mobula, Codex, and Polymarket native compared every minute on a rotating basket of top volume markets."
-subtitle: Per event delay between provider arrival and Polymarket gateway publish, measured every minute on the top markets by 24h volume.
+title: Fastest Polymarket data API, live freshness across Mobula and Codex
+seo_title: "Fastest Polymarket data API 2026: Mobula vs Codex freshness"
+seo_description: "Fastest prediction market data API ranked live by Polymarket freshness. Milliseconds Mobula and Codex lag the Polymarket CLOB WebSocket on top markets."
+subtitle: Per event delay between provider arrival and Polymarket gateway publish, measured every minute on the top markets by 24 hour volume.
 
 category: Aggregators
 status: live
