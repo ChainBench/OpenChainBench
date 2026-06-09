@@ -3,8 +3,8 @@
 slug: stablecoin-peg
 number: "014"
 title: Most stable stablecoin, live peg deviation across USDC, USDT and DAI
-seo_title: "Most stable stablecoin 2026: USDC, USDT, DAI live peg deviation ranking"
-seo_description: "Most stable USD stablecoin ranked live by peg deviation in basis points. USDC, USDT and DAI measured every minute via a liquidity-weighted median across Binance, Kraken, Bitstamp and Curve 3pool. p99 over 24h, plus cross-venue gap, time outside the band and an active depeg flag."
+seo_title: "Most stable stablecoin 2026: USDC, USDT, DAI live peg deviation"
+seo_description: "Most stable USD stablecoin ranked live by peg deviation. USDC, USDT, DAI via liquidity-weighted median across Binance, Kraken, Bitstamp, Curve. p99 over 24h."
 subtitle: Live peg deviation in basis points across USDC, USDT and DAI, computed every minute from a liquidity-weighted median across Binance, Kraken, Bitstamp and Curve.
 category: Trading
 status: live
