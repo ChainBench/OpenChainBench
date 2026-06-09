@@ -63,7 +63,10 @@ export async function generateMetadata({
       title,
       description,
       url,
-      type: "article",
+      // "website" matches the Dataset positioning in JSON-LD. "article"
+      // would announce editorial framing on FB/X cards, which collapses
+      // the anti-verdict execution this whole route is built around.
+      type: "website",
       siteName: SITE.name,
     },
     twitter: {

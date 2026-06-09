@@ -49,13 +49,11 @@ export const COMPARE_PAIRS: ComparePair[] = [
     benchmarks: ["l2-block-time"],
     publishedAt: "2026-06-09",
   },
-  {
-    slug: "chainlink-vs-pyth",
-    providerA: "chainlink",
-    providerB: "pyth",
-    benchmarks: ["oracle-deviation"],
-    publishedAt: "2026-06-09",
-  },
+  // chainlink-vs-pyth removed from v1. The oracle-deviation bench
+  // ranks USD pairs (BTC/USD, ETH/USD…) rather than oracle providers,
+  // so the intersection logic returns an empty set and the page would
+  // 404. Reintroduce once a per-source oracle bench lands (or we
+  // change oracle-deviation to surface providers as rows).
   {
     slug: "codex-vs-mobula",
     providerA: "codex",
