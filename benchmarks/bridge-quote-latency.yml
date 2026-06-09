@@ -4,7 +4,7 @@ slug: bridge-quote-latency
 number: "002"
 title: Fastest cross-chain bridge quote API, live ms ranking
 seo_title: "Fastest bridge quote API 2026: Mobula, deBridge, Relay, LI.FI"
-seo_description: "Fastest cross-chain bridge quote API ranked live by response time in ms. Mobula, deBridge, Relay, LI.FI on identical USDC routes. p50 over 24h, every 5 min."
+seo_description: "{{best_name}} leads fastest bridge quote API at {{best_p50}} (p50, 24h). Mobula, deBridge, Relay, LI.FI on identical USDC routes, refreshed every 5 minutes."
 subtitle: Time to receive a usable cross-chain quote, in milliseconds. Identical route and identical notional, measured every five minutes across Mobula, deBridge, Relay and LI.FI.
 category: Bridges
 status: live
