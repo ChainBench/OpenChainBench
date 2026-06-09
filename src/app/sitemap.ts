@@ -39,10 +39,19 @@ export const revalidate = 3600;
 //     underlying data refreshes the alternative does too.
 
 const BUILD_TIME = new Date();
+// Vercel's build container doesn't preserve git-checkout mtimes — every
+// file gets reset to the build-system default (Oct 20 2018), which leaks
+// into the sitemap as `<lastmod>2018-10-20T...</lastmod>` for editorial
+// hub pages and tells Google these pages haven't moved in years. Anything
+// pre-dating the codebase is garbage; fall back to BUILD_TIME so the
+// crawler sees a current timestamp and keeps the pages in the warm pool.
+const REAL_REPO_BIRTH = new Date("2024-01-01");
 
 function pageMtime(relPath: string): Date {
   try {
-    return statSync(path.join(process.cwd(), "src/app", relPath)).mtime;
+    const mtime = statSync(path.join(process.cwd(), "src/app", relPath)).mtime;
+    if (mtime < REAL_REPO_BIRTH) return BUILD_TIME;
+    return mtime;
   } catch {
     return BUILD_TIME;
   }
