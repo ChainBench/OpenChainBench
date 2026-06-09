@@ -2,10 +2,10 @@
 
 slug: rpc-capabilities
 number: "010"
-title: Fastest public RPC provider
-seo_title: "Fastest free public RPC in 2026 (Ethereum, Polygon, Arbitrum, Optimism, Base, BNB, Avalanche, Linea, Scroll, Mantle): PublicNode, dRPC, 1RPC, Tenderly, Nodies live latency benchmark"
-seo_description: "Live no-key public RPC latency leaderboard across 10 EVM chains. eth_blockNumber round-trip latency against 15 audited providers (PublicNode, dRPC, 1RPC, Tenderly, Nodies, Lava, Merkle, plus official endpoints). p50/p90/p99 over 24h + archive-depth support."
-subtitle: HTTP round-trip latency for eth_blockNumber against free, no-key public RPC endpoints, audited every 15 seconds.
+title: Fastest free public RPC for Ethereum, BNB, Polygon and 7 more EVM chains
+seo_title: "Fastest free public RPC 2026: dRPC, PublicNode, 1RPC, Tenderly"
+seo_description: "{{best_name}} leads fastest free public RPC at {{best_p50}} (eth_blockNumber p50, 24h). dRPC, PublicNode, 1RPC, Tenderly, Nodies and 10 more across 10 EVM chains."
+subtitle: HTTP round-trip latency for eth_blockNumber against free, no-key public RPC endpoints across 10 EVM chains, audited every 15 seconds.
 category: RPCs
 status: live
 metric: RPC latency

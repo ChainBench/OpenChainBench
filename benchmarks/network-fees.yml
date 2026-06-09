@@ -2,10 +2,10 @@
 
 slug: network-fees
 number: "031"
-title: Live blockchain transaction fee comparison across 20 L1 and L2 chains
-seo_title: "Cheapest blockchain transaction fee 2026 in USD: Ethereum, Solana, BNB, Avalanche, TRON, Arbitrum, Optimism, Base, zkSync live"
-seo_description: "Live USD cost of one native transaction on 20 chains. Layer 1: Ethereum, Solana, BNB, Avalanche, TRON, Cardano, Sui, TON, Stellar, Litecoin, Monero. Layer 2: Arbitrum, Optimism, Base, zkSync, Linea, Scroll, Blast, Mantle, Taiko. Slow, standard and fast tiers refreshed every 30 seconds."
-subtitle: "Current USD cost of one native token transaction on 20 Layer 1 and Layer 2 chains, refreshed every 30 seconds."
+title: Cheapest blockchain transaction fee, live across 20 L1 and L2 chains
+seo_title: "Cheapest crypto transaction fee 2026: Solana, Base, BNB live"
+seo_description: "Cheapest blockchain transaction fee in USD ranked live across 20 chains. Solana, Base, Arbitrum, Optimism, BNB, Ethereum and 14 more. Refreshed every 30 seconds."
+subtitle: "Live USD cost of one native token transaction on 20 Layer 1 and Layer 2 chains, refreshed every 30 seconds."
 
 seo_intro: |
   This page answers one question. How much does it cost in dollars to send one transaction on each major blockchain right now. We track 20 chains in parallel and refresh the number every 30 seconds. The eleven Layer 1 chains are Ethereum, Solana, BNB Chain, Avalanche, TRON, Cardano, Sui, TON, Stellar, Litecoin and Monero. The nine Layer 2 rollups are Arbitrum, Optimism, Base, zkSync Era, Linea, Scroll, Blast, Mantle and Taiko. For every chain we query its own fee market directly (eth_feeHistory for the EVM family, getRecentPrioritizationFees on Solana, koios epoch params on Cardano, fee_stats on Stellar, get_fee_estimate on Monero, the mempool oracle on Litecoin, getChainParameters on TRON, suix_getReferenceGasPrice on Sui), convert the result to the smallest native unit, then multiply by the live USD price of the chain's native token from Mobula. The output is the actual dollar amount a wallet user pays today. No gwei to lamport conversion, no marketing claim. Compare Ethereum gas now versus Solana fee in USD, see whether Arbitrum is still cheaper than Base today, find out which Layer 1 has the lowest transaction cost this minute.

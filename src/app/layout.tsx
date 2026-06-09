@@ -75,7 +75,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "OpenChainBench",
     description: "Open benchmarks for crypto infrastructure.",
-    site: "@openchainbench",
+    site: SITE.twitter,
   },
 };
 
@@ -91,7 +91,7 @@ const ORG_JSONLD = {
       description: SITE.description,
       sameAs: [
         SITE.github,
-        `https://twitter.com/${SITE.twitter.replace(/^@/, "")}`,
+        `https://x.com/${SITE.twitter.replace(/^@/, "")}`,
       ],
     },
     {

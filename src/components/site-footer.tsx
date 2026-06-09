@@ -47,7 +47,7 @@ export function SiteFooter() {
               { label: "Tutorial", href: "/contribute" },
               { label: "GitHub", href: "https://github.com/ChainBench/OpenChainBench" },
               { label: "Open an issue", href: "https://github.com/ChainBench/OpenChainBench/issues/new" },
-              { label: "@openchainbench", href: "https://twitter.com/openchainbench" },
+              { label: "@OpenChainBench", href: "https://x.com/OpenChainBench" },
               { label: "About", href: "/about" },
             ]}
           />

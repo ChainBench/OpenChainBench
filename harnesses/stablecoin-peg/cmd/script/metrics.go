@@ -42,7 +42,56 @@ var (
 	pegDeviationBps = promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "peg_deviation_bps",
-			Help: "Current absolute deviation from $1.00 in basis points, computed from the per-minute aggregated price. Drives p99 over 24h via quantile_over_time.",
+			Help: "Per-minute median absolute deviation from $1.00 in basis points (legacy headline, retained for backward compatibility). The new primary leaderboard ranks on peg_deviation_worst_bps which captures the per-minute MAX, not the median.",
+		},
+		[]string{"stable"},
+	)
+
+	// THE new primary headline. Per-minute MAX deviation across
+	// every venue's samples within the bucket — surfaces the worst
+	// case the bench observed during the minute. A 5-second depeg
+	// to $0.92 is invisible in the median (which averages it with
+	// 11 healthy samples in the same minute) but pops out in this
+	// gauge. Matches what TradFi reference rates publish as the
+	// "high" of an OHLC bar. Methodology recommendation from
+	// Coinpaprika data team.
+	pegDeviationWorstBps = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "peg_deviation_worst_bps",
+			Help: "Per-minute MAX |price - $1.00| across every venue sample within the bucket, in basis points. Captures sub-minute depeg wicks that the median smooths away. Primary leaderboard metric.",
+		},
+		[]string{"stable"},
+	)
+
+	// Companion OHLC gauges for the same per-minute bucket. open
+	// and close are deviation in bps of the first / last sample;
+	// max and min are the bucket's extremes. Together they expose
+	// the bar shape that a single median value collapses.
+	pegMinuteMaxBps = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "peg_minute_max_bps",
+			Help: "MAX |price - $1.00| in bps observed within the most-recently-closed 60s bucket across all venues. Identical to peg_deviation_worst_bps; exposed under both names for legibility.",
+		},
+		[]string{"stable"},
+	)
+	pegMinuteMinBps = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "peg_minute_min_bps",
+			Help: "MIN |price - $1.00| in bps observed within the most-recently-closed 60s bucket across all venues. Floor of the bar.",
+		},
+		[]string{"stable"},
+	)
+	pegMinuteOpenBps = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "peg_minute_open_bps",
+			Help: "|first_sample_price - $1.00| in bps for the most-recently-closed 60s bucket. Open of the bar.",
+		},
+		[]string{"stable"},
+	)
+	pegMinuteCloseBps = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "peg_minute_close_bps",
+			Help: "|last_sample_price - $1.00| in bps for the most-recently-closed 60s bucket. Close of the bar.",
 		},
 		[]string{"stable"},
 	)
@@ -134,7 +183,7 @@ var (
 	pegSourceCallTotal = promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "peg_source_call_total",
-			Help: "Number of source polls broken down by result: ok, http_err, parse_err, stale, dropped (sample dropped by outlier rule).",
+			Help: "Number of source polls broken down by result. ok = sample accepted. http_err / parse_err / stale = source failure. dropped_sanity = sample >50% off peg (parser bug). dropped_isolated = sample >2% off peg with no corroborating venue in last 30s (single-venue glitch). kept_corroborated = sample >2% off peg confirmed by ≥1 other venue in last 30s (real depeg signal, sample kept).",
 		},
 		[]string{"stable", "venue", "result"},
 	)

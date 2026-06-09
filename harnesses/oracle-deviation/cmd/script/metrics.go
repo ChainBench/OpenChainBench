@@ -24,7 +24,31 @@ var (
 	oracleDeviationPct = promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "ocb_oracle_deviation_pct",
-			Help: "Pairwise deviation between two sources for the same pair, expressed as percent of the midpoint: |a-b|/((a+b)/2)*100. One sample per (pair, source_a, source_b), source_a < source_b lexicographically to avoid double-counting.",
+			Help: "Legacy fetch-time pairwise deviation between two sources (alias of ocb_oracle_deviation_at_fetch_ts_pct, preserved for backward compat). Use ocb_oracle_deviation_at_oracle_ts_pct for the canonical time-aligned number.",
+		},
+		[]string{"pair", "source_a", "source_b"},
+	)
+
+	oracleDeviationAtFetchTSPct = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "ocb_oracle_deviation_at_fetch_ts_pct",
+			Help: "Fetch-time pairwise deviation. Each source's last-fetched price, regardless of when the source said the price was current. Includes Chainlink's heartbeat lag as 'deviation' (operational truth, not oracle-quality).",
+		},
+		[]string{"pair", "source_a", "source_b"},
+	)
+
+	oracleDeviationAtOracleTSPct = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "ocb_oracle_deviation_at_oracle_ts_pct",
+			Help: "Time-aligned pairwise deviation. Each source's price snapped to the more recent SourceTS of the pair (Chainlink's on-chain updatedAt for chainlink, fetch time for continuous sources), with the older source's price looked up from history. This is the canonical deviation: it answers 'do the oracles agree at the same moment in time' instead of 'do they agree at our fetch instant'.",
+		},
+		[]string{"pair", "source_a", "source_b"},
+	)
+
+	oracleAlignmentMiss = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "ocb_oracle_alignment_miss_total",
+			Help: "Pairwise computations where no history sample was within ±10s of the anchor SourceTS for at least one of the two sources. Pair is skipped on the at_oracle_ts gauge for that cycle.",
 		},
 		[]string{"pair", "source_a", "source_b"},
 	)
@@ -32,7 +56,7 @@ var (
 	oracleMaxDeviationPct = promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "ocb_oracle_max_deviation_pct",
-			Help: "Maximum pairwise deviation observed across all available source pairs for a given asset pair. The headline metric of this bench.",
+			Help: "Maximum pairwise deviation across all available source pairs for the asset. The headline metric. Ranks on the time-aligned variant (ocb_oracle_deviation_at_oracle_ts_pct) when at least one pair is alignable, falls back to fetch-time during cold start.",
 		},
 		[]string{"pair"},
 	)

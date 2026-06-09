@@ -2,10 +2,10 @@
 
 slug: metadata-coverage
 number: "004"
-title: Best onchain token metadata API
-seo_title: "Fresh-token metadata API: Codex, Jupiter, Mobula coverage"
-seo_description: "Live coverage of logo, description, twitter, website on fresh Solana, BNB and Base tokens. Mobula vs Codex vs Jupiter, audited per launch, p50/p90/p99 over 24h."
-subtitle: Share of metadata fields populated for fresh-launch tokens (logo, description, twitter, website).
+title: Best crypto data API for token metadata, live across Mobula, Codex, Jupiter
+seo_title: "Best crypto data API token metadata 2026: Mobula, Codex, Jupiter"
+seo_description: "Best crypto data API for token metadata ranked live. Share of logo, description, twitter populated on fresh Solana, BNB, Base tokens. Mobula, Codex, Jupiter."
+subtitle: Share of metadata fields (logo, description, twitter, website) populated for fresh-launch tokens, audited every launch on Solana, BNB and Base.
 category: Aggregators
 status: live
 metric: Field coverage

@@ -8,6 +8,7 @@ import { LedgerTable } from "@/components/ledger-table";
 import { CountLeaderboard } from "@/components/count-leaderboard";
 import { fmtUnit, unitSuffix, fmtValue } from "@/lib/format";
 import { computeFieldStats } from "@/lib/stats";
+import { getBenchCreatedAt } from "@/lib/seo/bench-dates";
 import { capDescription } from "@/lib/seo-text";
 import { SectionLabel, SummaryStat } from "@/components/summary-stat";
 import { SITE } from "@/data/site";
@@ -115,6 +116,7 @@ export default async function AlternativePage({
         publisher: { "@id": `${SITE.url}/#org` },
         isAccessibleForFree: true,
         license: "https://creativecommons.org/licenses/by/4.0/",
+        datePublished: getBenchCreatedAt(bench.slug).toISOString(),
         dateModified: bench.lastRunAt,
         variableMeasured: bench.metric,
         isBasedOn: benchUrl,
@@ -127,6 +129,7 @@ export default async function AlternativePage({
         url,
         mainEntityOfPage: url,
         articleBody: alt.intro,
+        datePublished: getBenchCreatedAt(bench.slug).toISOString(),
         dateModified: bench.lastRunAt,
         author: { "@id": `${SITE.url}/#org` },
         publisher: { "@id": `${SITE.url}/#org` },
@@ -221,7 +224,7 @@ export default async function AlternativePage({
                       {fmtValue(r.ms.p50, bench.unit)}
                     </span>
                     <span className="font-sans text-[11px] text-ink-muted">
-                      {unitSuffix(bench.unit).trim()}
+                      {unitSuffix(bench.unit, r.ms.p50).trim()}
                     </span>
                     <span className="w-full sm:w-auto sm:ml-auto text-[11px] text-ink-faint">
                       p99 {fmtUnit(r.ms.p99, bench.unit)}
@@ -251,15 +254,15 @@ export default async function AlternativePage({
           <dl className="mt-10 grid grid-cols-2 sm:flex sm:flex-wrap items-baseline gap-x-8 gap-y-3 border-y border-rule py-4">
             <SummaryStat
               label="Best"
-              value={`${fmtValue(bench.higherIsBetter ? fieldMax : fieldMin, bench.unit)}${unitSuffix(bench.unit)}`}
+              value={`${fmtValue(bench.higherIsBetter ? fieldMax : fieldMin, bench.unit)}${unitSuffix(bench.unit, bench.higherIsBetter ? fieldMax : fieldMin)}`}
             />
             <SummaryStat
               label="Median"
-              value={`${fmtValue(fieldMedian, bench.unit)}${unitSuffix(bench.unit)}`}
+              value={`${fmtValue(fieldMedian, bench.unit)}${unitSuffix(bench.unit, fieldMedian)}`}
             />
             <SummaryStat
               label="Worst"
-              value={`${fmtValue(bench.higherIsBetter ? fieldMin : fieldMax, bench.unit)}${unitSuffix(bench.unit)}`}
+              value={`${fmtValue(bench.higherIsBetter ? fieldMin : fieldMax, bench.unit)}${unitSuffix(bench.unit, bench.higherIsBetter ? fieldMin : fieldMax)}`}
             />
             <SummaryStat
               label="Spread"

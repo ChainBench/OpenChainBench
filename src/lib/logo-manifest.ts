@@ -37,6 +37,9 @@ const RAW: Record<string, string> = {
   blast: "/logos/blast.png",
   scroll: "/logos/scroll.png",
   zksync: "/logos/zksync.png",
+  celo: "/logos/celo.svg",
+  opbnb: "/logos/bnb.png",
+  aptos: "/logos/aptos.svg",
   sonic: "/logos/sonic.png",
   berachain: "/logos/berachain.png",
 
@@ -76,6 +79,7 @@ const RAW: Record<string, string> = {
   nodies: "/logos/nodies.png",
   tenderly: "/logos/tenderly.svg",
   tonapi: "/logos/tonapi.png",
+  meowrpc: "/logos/meowrpc.jpg",
 
   // ─── MEV / private mempools (gas-estimation, RPC capabilities) ───
   flashbots: "/logos/flashbots.svg",
@@ -89,6 +93,11 @@ const RAW: Record<string, string> = {
 
   // ─── L1 chains (additions) ───
   hedera: "/logos/hedera.svg",
+
+  // ─── Cosmos chains (token-deployment-cost bench) ───
+  osmosis: "/logos/osmosis.svg",
+  injective: "/logos/injective.svg",
+  neutron: "/logos/neutron.svg",
 
   // ─── Gas oracles ───
   etherscan: "/logos/etherscan.svg",
@@ -199,6 +208,7 @@ const RAW: Record<string, string> = {
   "tread-fi": "/logos/tread-fi.jpg",
   flowbot: "/logos/flowbot.jpg",
   "nautilus-trader": "/logos/nautilus-trader.png",
+  blink: "/logos/blink.png",
 };
 
 // Asset-symbol aliases used by perp-fees as chain dimension values.

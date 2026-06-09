@@ -2,10 +2,10 @@
 
 slug: stablecoin-peg
 number: "014"
-title: Most stable USD-pegged stablecoin
-seo_title: "Stablecoin peg stability 2026: USDC, USDT, DAI, FDUSD, USDe live deviation benchmark"
-seo_description: "Live stablecoin peg deviation leaderboard. Absolute deviation from $1.00 in basis points across USDC, USDT, DAI, FDUSD and USDe, computed from a liquidity-weighted median across Binance, Kraken, Bitstamp and Curve, p99 over the last 24h. Plus cross-venue gap, time outside ±50 bps and active depeg flag."
-subtitle: Absolute deviation from $1.00 in basis points, computed from a liquidity-weighted median across USD-quoted venues.
+title: Most stable stablecoin, live peg deviation across USDC, USDT and DAI
+seo_title: "Most stable stablecoin 2026: USDC, USDT, DAI live peg deviation"
+seo_description: "Most stable USD stablecoin ranked live by peg deviation. USDC, USDT, DAI via liquidity-weighted median across Binance, Kraken, Bitstamp, Curve. p99 over 24h."
+subtitle: Live peg deviation in basis points across USDC, USDT and DAI, computed every minute from a liquidity-weighted median across Binance, Kraken, Bitstamp and Curve.
 category: Trading
 status: live
 metric: Peg deviation
@@ -57,11 +57,13 @@ abstract: |
 methodology:
   - "Sources per stable, USDC: Binance USDC/USDT (USDT-anchored, secondary), Kraken USDCUSD, Bitstamp usdcusd. USDT: Kraken USDTUSD, Bitstamp usdtusd. FDUSD: Binance FDUSDUSDT (USDT-anchored, secondary). USDe: Binance USDEUSDT (USDT-anchored, secondary). DAI: Curve 3pool `get_dy` forward (USDC → DAI) and reverse (DAI → USDC)."
   - "Cadence: 5 seconds for CEX REST tickers, 12 seconds for Curve `get_dy` on-chain (matches Ethereum block time). Per-venue samples are grouped into 60-second buckets for the liquidity-weighted median aggregation."
-  - "Aggregation: per-minute liquidity-weighted median across USD-quoted venues (`Quote = QuoteUSD`). Weight is 24 h USD volume estimate. The aggregated price drives `peg_deviation_bps` and `peg_deviation_bps_histogram`; the percentile metric is computed on this series, not on raw per-venue samples."
+  - "Aggregation: per-minute liquidity-weighted median across USD-quoted venues (`Quote = QuoteUSD`). Weight is 24 h USD volume estimate. The aggregated price drives `peg_deviation_bps` (per-minute median, retained for backward compatibility) and `peg_deviation_bps_histogram`."
+  - "Primary headline: `peg_deviation_worst_bps` — the per-minute MAX |price − $1.00| across every venue sample in the 60-second bucket, in basis points. The leaderboard ranks stables on `quantile_over_time(0.99, peg_deviation_worst_bps[24h])`. Switching from per-minute median to per-minute max surfaces the sub-minute depeg wicks (e.g. a 5-second print to $0.92 on one venue) that the median would smooth into invisibility — matching the OHLC convention used by every TradFi reference rate. The companion gauges `peg_minute_min_bps`, `peg_minute_open_bps` and `peg_minute_close_bps` expose the full bar shape so consumers can reconstruct the within-minute distribution."
   - "Cross-venue gap (OCB-only number): `max(price across USD-quoted venues), min(price)`, per minute, in basis points. Surfaces the windows where Coinbase quotes $1.0003 while Kraken quotes $0.9978. Stored as `peg_cross_venue_gap_bps`."
   - "USDT-anchored secondary metric: Binance USDC/USDT, FDUSD/USDT and USDE/USDT are exposed on `peg_deviation_usdt_anchored_bps{venue}` separately so the USD-anchored primary leaderboard is not contaminated by USDT's own peg deviation."
   - "Time outside band: total seconds in the trailing 24 h during which the per-minute aggregated price fell outside [0.995, 1.005] (±50 bps). Split into `peg_time_below_peg_24h_seconds` (< 0.995) and `peg_time_above_peg_24h_seconds` (> 1.005) because Circle redemption only clears above-peg, so the direction tells you which failure mode is active."
   - "Depeg event flag: binary `peg_depeg_event_flag` set to 1 when the per-minute aggregated price has been outside [0.97, 1.03] for ≥5 consecutive minutes; cleared after 30 minutes back inside. Conservative so it does not flap during normal stress events."
+  - "Outlier rule (multi-venue consensus): a single sample more than 2% off peg is kept only when at least one OTHER venue has also been outside the same band in the same direction within the last 30 seconds. Single-venue glitches (one CEX returns a stale or fat-finger print while every other venue is at $1.00) are dropped as `dropped_isolated`. Multi-venue confirmation (Kraken AND Bitstamp both at $0.87 = real depeg) is kept as `kept_corroborated` so the percentile metric surfaces the event. Replaces the previous flat 20% drop / 10% cap which would have clipped USDC at $0.87 during the March 2023 SVB depeg to $0.90, erasing the event in the percentile metric. Sanity floor: anything more than 50% off peg is treated as a parser bug and dropped regardless. Methodology recommendation from Coinpaprika data team review."
   - "Excluded by design: aggregator-only prices (CoinGecko, Coinmarketcap, DefiLlama) because they are themselves liquidity-weighted medians of the venues we already poll directly. Algo-stables that have already failed (UST, USDR) are out of scope; the bench tracks live, currently-redeemable stables."
 
 findings:
@@ -94,7 +96,12 @@ prometheus:
 # Real metrics emitted by the stablecoin-peg harness:
 #   peg_raw_price{stable, venue, quote}                            gauge
 #   peg_aggregated_price_usd{stable}                               gauge
-#   peg_deviation_bps{stable}                                      gauge
+#   peg_deviation_bps{stable}                                      gauge (legacy median)
+#   peg_deviation_worst_bps{stable}                                gauge (PRIMARY, per-minute MAX)
+#   peg_minute_max_bps{stable}                                     gauge
+#   peg_minute_min_bps{stable}                                     gauge
+#   peg_minute_open_bps{stable}                                    gauge
+#   peg_minute_close_bps{stable}                                   gauge
 #   peg_deviation_bps_histogram{stable}                            histogram
 #   peg_cross_venue_gap_bps{stable}                                gauge
 #   peg_cross_venue_gap_bps_histogram{stable}                      histogram
@@ -118,39 +125,39 @@ providers:
     tag: Circle, USD-redeemed primary, audited on Kraken + Bitstamp
     formula: "Median |aggregated_price − $1.00| in bps, where aggregated_price is the per-minute liquidity-weighted median of USDCUSD ticks on Kraken and Bitstamp."
     queries:
-      p50: quantile_over_time(0.50, peg_deviation_bps{stable="usdc"}[24h])
-      p90: quantile_over_time(0.90, peg_deviation_bps{stable="usdc"}[24h])
-      p99: quantile_over_time(0.99, peg_deviation_bps{stable="usdc"}[24h])
-      mean: avg_over_time(peg_deviation_bps{stable="usdc"}[24h])
+      p50: quantile_over_time(0.50, peg_deviation_worst_bps{stable="usdc"}[24h])
+      p90: quantile_over_time(0.90, peg_deviation_worst_bps{stable="usdc"}[24h])
+      p99: quantile_over_time(0.99, peg_deviation_worst_bps{stable="usdc"}[24h])
+      mean: avg_over_time(peg_deviation_worst_bps{stable="usdc"}[24h])
       success: avg_over_time(peg_source_health{stable="usdc"}[24h])
       sample_size: sum(increase(peg_source_call_total{stable="usdc"}[24h]))
-      series: peg_deviation_bps{stable="usdc"}
+      series: peg_deviation_worst_bps{stable="usdc"}
 
   - slug: usdt
     name: USDT
     tag: Tether, dominant CEX pair currency, audited on Kraken + Bitstamp
     formula: "Median |aggregated_price − $1.00| in bps, where aggregated_price is the per-minute liquidity-weighted median of USDTUSD ticks on Kraken and Bitstamp."
     queries:
-      p50: quantile_over_time(0.50, peg_deviation_bps{stable="usdt"}[24h])
-      p90: quantile_over_time(0.90, peg_deviation_bps{stable="usdt"}[24h])
-      p99: quantile_over_time(0.99, peg_deviation_bps{stable="usdt"}[24h])
-      mean: avg_over_time(peg_deviation_bps{stable="usdt"}[24h])
+      p50: quantile_over_time(0.50, peg_deviation_worst_bps{stable="usdt"}[24h])
+      p90: quantile_over_time(0.90, peg_deviation_worst_bps{stable="usdt"}[24h])
+      p99: quantile_over_time(0.99, peg_deviation_worst_bps{stable="usdt"}[24h])
+      mean: avg_over_time(peg_deviation_worst_bps{stable="usdt"}[24h])
       success: avg_over_time(peg_source_health{stable="usdt"}[24h])
       sample_size: sum(increase(peg_source_call_total{stable="usdt"}[24h]))
-      series: peg_deviation_bps{stable="usdt"}
+      series: peg_deviation_worst_bps{stable="usdt"}
 
   - slug: dai
     name: DAI
     tag: MakerDAO, audited via Curve 3pool get_dy (on-chain only)
     formula: "Median |dai_price − $1.00| in bps, derived from Curve 3pool get_dy forward (USDC → DAI) and reverse (DAI → USDC) every 12s over 24h."
     queries:
-      p50: quantile_over_time(0.50, peg_deviation_bps{stable="dai"}[24h])
-      p90: quantile_over_time(0.90, peg_deviation_bps{stable="dai"}[24h])
-      p99: quantile_over_time(0.99, peg_deviation_bps{stable="dai"}[24h])
-      mean: avg_over_time(peg_deviation_bps{stable="dai"}[24h])
+      p50: quantile_over_time(0.50, peg_deviation_worst_bps{stable="dai"}[24h])
+      p90: quantile_over_time(0.90, peg_deviation_worst_bps{stable="dai"}[24h])
+      p99: quantile_over_time(0.99, peg_deviation_worst_bps{stable="dai"}[24h])
+      mean: avg_over_time(peg_deviation_worst_bps{stable="dai"}[24h])
       success: avg_over_time(peg_source_health{stable="dai"}[24h])
       sample_size: sum(increase(peg_source_call_total{stable="dai"}[24h]))
-      series: peg_deviation_bps{stable="dai"}
+      series: peg_deviation_worst_bps{stable="dai"}
 
 # FDUSD and USDe are USDT-anchored stables with no deep USD-quoted
 # venue, so they have no signal on the primary `peg_deviation_bps`

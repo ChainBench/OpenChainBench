@@ -119,7 +119,7 @@ function ValueCell({ b }: { b: Benchmark }) {
       <span className="display-num text-2xl sm:text-3xl text-ink">
         {fmtValue(v, b.unit)}
       </span>
-      <span className="ml-1 text-sm text-ink-muted">{unitSuffix(b.unit).trim()}</span>
+      <span className="ml-1 text-sm text-ink-muted">{unitSuffix(b.unit, v).trim()}</span>
     </p>
   );
 }
