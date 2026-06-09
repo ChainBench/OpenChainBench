@@ -4,6 +4,7 @@ import type { MetadataRoute } from "next";
 import { getBenchmarks } from "@/data/benchmarks";
 import { loadAllAlternatives } from "@/lib/alternatives";
 import { getProviderSlugs } from "@/lib/providers";
+import { COMPARE_PAIRS } from "@/data/compare-pairs";
 import { SITE } from "@/data/site";
 
 export const dynamic = "force-static";
@@ -141,10 +142,29 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.85,
   }));
 
+  // Head-to-head compare pages. Each pair pins one or more parent benches;
+  // we take the most recent lastRunAt across pinned benches as the lastmod.
+  const compareRoutes: MetadataRoute.Sitemap = COMPARE_PAIRS.map((pair) => {
+    const pinned = pair.benchmarks ?? [];
+    const latest = pinned.reduce<Date>((acc, slug) => {
+      const bench = benchBySlug.get(slug);
+      if (!bench?.lastRunAt) return acc;
+      const t = new Date(bench.lastRunAt);
+      return t > acc ? t : acc;
+    }, new Date(0));
+    return {
+      url: `${SITE.url}/compare/${pair.slug}`,
+      lastModified: latest.getTime() > 0 ? latest : catalogLastRun,
+      changeFrequency: "daily" as const,
+      priority: 0.75,
+    };
+  });
+
   return [
     ...staticRoutes,
     ...benchmarkRoutes,
     ...providerRoutes,
     ...alternativeRoutes,
+    ...compareRoutes,
   ];
 }
