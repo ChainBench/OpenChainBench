@@ -91,7 +91,7 @@ seo_intro: |
 abstract: |
   We measure the round-trip latency of a single, identical RPC call
   (`eth_blockNumber`) against every major no-key Ethereum-compatible
-  public RPC endpoint, on Ethereum mainnet, Base and BNB Chain. The
+  public RPC endpoint, across 10 EVM chains. The
   harness emits three metric families from one binary because they
   share the same (provider × chain) client matrix and same 15 s
   scrape interval: (a) `rpc_latency_milliseconds` for the speed

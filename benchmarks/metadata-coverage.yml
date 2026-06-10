@@ -46,7 +46,7 @@ abstract: |
 
   A value of 100% means every field was returned for every fresh token; a
   value of 50% means half the fields were missing on average. Sort order on
-  this page is ascending, so the lowest coverage shows first, which is the
+  this page is descending, so the highest coverage shows first, which is the
   inverse of latency benchmarks. Readers should compare the columns
   themselves; numerical p50 is the headline.
 

@@ -151,7 +151,7 @@ providers:
   - slug: mobula
     name: Mobula
     tag: Universal coverage, 90+ chains, API key required
-    formula: "Share of ~60 anchor addresses for which Mobula's /api/2/wallet/labels returns a non-generic entity name, computed as success_total ÷ checks_total over 24h."
+    formula: "Share of ~180 anchor addresses for which Mobula's /api/2/wallet/labels returns a non-generic entity name, computed as success_total ÷ checks_total over 24h."
     queries:
       p50: 100 * sum(increase(wallet_labels_success_total{provider="mobula"}[24h])) / sum(increase(wallet_labels_checks_total{provider="mobula"}[24h]))
       p90: 100 * sum(increase(wallet_labels_success_total{provider="mobula"}[24h])) / sum(increase(wallet_labels_checks_total{provider="mobula"}[24h]))

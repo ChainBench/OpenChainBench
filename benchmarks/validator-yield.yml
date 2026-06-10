@@ -51,8 +51,8 @@ abstract: |
   cardinality bounded (the full set is ~3000); Hyperliquid
   exposes all ~30 active. The per-chain leaderboard number is
   `ocb_chain_median_net_yield_bps{chain}`, the median across the
-  per-validator gauges. p90 / p99 over a 24h window via
-  `quantile_over_time` surface the right-tail validators (best
+  per-validator gauges. p90 / p99 via an instant
+  `quantile()` across the tracked validators surface the right tail (best
   net yield among those tracked). Caveats. (a) Solana's median is
   dragged below the modal value by ~42 validators currently
   emitting 0 APY, commission set to 100% or no leader slots this
