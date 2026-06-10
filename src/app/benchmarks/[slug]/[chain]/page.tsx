@@ -31,6 +31,10 @@ import type { Benchmark, ProviderResult } from "@/types/benchmark";
 //                  must never be presented as the global winner.
 export const revalidate = 60;
 
+// Dimension pages fan out to (chain x region) variant fetches; a cold
+// render can take a while when the unstable_cache is empty.
+export const maxDuration = 60;
+
 type Params = { slug: string; chain: string };
 
 function explainerChains(b: Benchmark): string[] {
@@ -45,11 +49,22 @@ function explainerChains(b: Benchmark): string[] {
     .filter((s) => resultSlugs.has(s) || chainValues.has(s));
 }
 
+// Only ROW-shaped pages prerender at build: they re-use the aggregate
+// bench fetch the parent page already warmed, so they're free. Dimension
+// pages are deliberately left out - each one fans out to chain + per-
+// region variant loads (~100 Prom queries x 10 chains for
+// rpc-capabilities), and prerendering them all hammered the Prom gateway
+// hard enough at build time that unrelated pages timed out and the
+// whole export failed. They render on demand instead (dynamicParams
+// default) and stay warm via ISR + the sitemap-driven crawl.
 export async function generateStaticParams() {
   const benchmarks = await getBenchmarks();
-  return benchmarks.flatMap((b) =>
-    explainerChains(b).map((chain) => ({ slug: b.slug, chain })),
-  );
+  return benchmarks.flatMap((b) => {
+    const resultSlugs = new Set(b.results.map((r) => r.slug));
+    return (b.perChainExplainer ?? [])
+      .filter((e) => resultSlugs.has(e.slug))
+      .map((e) => ({ slug: b.slug, chain: e.slug }));
+  });
 }
 
 type Explainer = { slug: string; h2: string; body: string };
