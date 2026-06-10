@@ -497,6 +497,11 @@ export default async function BenchmarkPage({
           phrases land in static HTML for crawlers to index. */}
       {!isDraft && <ChainHeadingsSummary benchmark={benchmark} />}
 
+      {/* Dimension benches (chains as filters, not rows) don't render
+          ChainHeadingsSummary, so the dedicated per-chain pages need
+          their own server-rendered discovery links here. */}
+      {!isDraft && <PerChainPagesNav benchmark={benchmark} />}
+
       {/* FAQ section - every question/answer mirrors a FAQPage JSON-LD
           entry above. Google requires the content to be visible on the
           page, so we render the same text here. */}
@@ -596,6 +601,41 @@ function variantKey(
   kind: string | null,
 ): string {
   return `${chain ?? "__none"}|${region ?? "__none"}|${kind ?? "__none"}`;
+}
+
+/** Links to /benchmarks/<slug>/<chain> pages for dimension-shaped
+ *  benches. Row-shaped benches (l1-finality) already link their pages
+ *  through the ChainHeadingsSummary headings, so this only renders
+ *  chains that exist as dimension values, not as result rows. */
+function PerChainPagesNav({ benchmark }: { benchmark: Benchmark }) {
+  const resultSlugs = new Set(benchmark.results.map((r) => r.slug));
+  const explainerSlugs = new Set(
+    (benchmark.perChainExplainer ?? []).map((e) => e.slug),
+  );
+  const chains = (benchmark.dimensions?.chain ?? []).filter(
+    (c) =>
+      c.value.toLowerCase() !== "all" &&
+      explainerSlugs.has(c.value) &&
+      !resultSlugs.has(c.value),
+  );
+  if (chains.length === 0) return null;
+  return (
+    <nav className="mt-12 max-w-3xl" aria-label="Per-chain pages">
+      <h2 className="label-mono text-ink-muted">Per-chain breakdowns</h2>
+      <ul className="mt-3 flex flex-wrap gap-2">
+        {chains.map((c) => (
+          <li key={c.value}>
+            <Link
+              href={`/benchmarks/${benchmark.slug}/${c.value}`}
+              className="inline-block rounded-md card-soft px-3 py-1.5 text-sm text-ink-soft hover:text-ink"
+            >
+              {c.label}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  );
 }
 
 function DraftNotice({ source }: { source: string }) {
