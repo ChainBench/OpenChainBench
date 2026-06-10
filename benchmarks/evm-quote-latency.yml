@@ -64,6 +64,7 @@ source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/evm-swa
 prometheus:
   window: 24h
   expected_freshness_seconds: 600
+  freshness_metric: evm_swap_quote_latency_ms_count
 
 dimensions:
   chain:
@@ -80,7 +81,7 @@ dimensions:
 
 # Exact per-cell (chain x region) rankings for scoped badges. One query,
 # one sample per (provider, chain, region) cell.
-rank_matrix_query: histogram_quantile(0.50, sum by (provider, chain, region, le) (rate(evm_swap_quote_latency_ms_bucket[24h])))
+rank_matrix_query: avg by (provider, chain, region) (ocb:evm_swap_quote_latency_ms:p50_24h)
 
 providers:
   - slug: mobula
@@ -88,12 +89,12 @@ providers:
     tag: API key required, dedicated edge
     formula: "p50 of evm_swap_quote_latency_ms{provider=mobula} over the last 24 hours, only successful 2xx responses with a non zero output amount."
     queries:
-      p50: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="mobula"}[24h])) by (le))
-      p90: histogram_quantile(0.90, sum(rate(evm_swap_quote_latency_ms_bucket{provider="mobula"}[24h])) by (le))
-      p99: histogram_quantile(0.99, sum(rate(evm_swap_quote_latency_ms_bucket{provider="mobula"}[24h])) by (le))
-      mean: sum(rate(evm_swap_quote_latency_ms_sum{provider="mobula"}[24h])) / sum(rate(evm_swap_quote_latency_ms_count{provider="mobula"}[24h]))
-      success: avg_over_time(evm_swap_quote_success{provider="mobula"}[24h])
-      sample_size: sum(increase(evm_swap_quote_latency_ms_count{provider="mobula"}[24h]))
+      p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="mobula"})
+      p90: avg(ocb:evm_swap_quote_latency_ms:p90_24h{provider="mobula"})
+      p99: avg(ocb:evm_swap_quote_latency_ms:p99_24h{provider="mobula"})
+      mean: sum(ocb:evm_swap_quote_latency_ms:sum_rate_24h{provider="mobula"}) / sum(ocb:evm_swap_quote_latency_ms:count_rate_24h{provider="mobula"})
+      success: avg(ocb:evm_swap_quote_success:avg_24h{provider="mobula"})
+      sample_size: sum(ocb:evm_swap_quote_latency_ms:count_increase_24h{provider="mobula"})
       series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="mobula"}[1h])) by (le))
 
   - slug: kyberswap
@@ -101,12 +102,12 @@ providers:
     tag: No auth, per chain aggregator engine
     formula: "p50 of evm_swap_quote_latency_ms{provider=kyberswap} over the last 24 hours."
     queries:
-      p50: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="kyberswap"}[24h])) by (le))
-      p90: histogram_quantile(0.90, sum(rate(evm_swap_quote_latency_ms_bucket{provider="kyberswap"}[24h])) by (le))
-      p99: histogram_quantile(0.99, sum(rate(evm_swap_quote_latency_ms_bucket{provider="kyberswap"}[24h])) by (le))
-      mean: sum(rate(evm_swap_quote_latency_ms_sum{provider="kyberswap"}[24h])) / sum(rate(evm_swap_quote_latency_ms_count{provider="kyberswap"}[24h]))
-      success: avg_over_time(evm_swap_quote_success{provider="kyberswap"}[24h])
-      sample_size: sum(increase(evm_swap_quote_latency_ms_count{provider="kyberswap"}[24h]))
+      p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="kyberswap"})
+      p90: avg(ocb:evm_swap_quote_latency_ms:p90_24h{provider="kyberswap"})
+      p99: avg(ocb:evm_swap_quote_latency_ms:p99_24h{provider="kyberswap"})
+      mean: sum(ocb:evm_swap_quote_latency_ms:sum_rate_24h{provider="kyberswap"}) / sum(ocb:evm_swap_quote_latency_ms:count_rate_24h{provider="kyberswap"})
+      success: avg(ocb:evm_swap_quote_success:avg_24h{provider="kyberswap"})
+      sample_size: sum(ocb:evm_swap_quote_latency_ms:count_increase_24h{provider="kyberswap"})
       series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="kyberswap"}[1h])) by (le))
 
   - slug: bebop
@@ -114,12 +115,12 @@ providers:
     tag: RFQ gasless, EIP 55 checksum required
     formula: "p50 of evm_swap_quote_latency_ms{provider=bebop} over the last 24 hours."
     queries:
-      p50: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="bebop"}[24h])) by (le))
-      p90: histogram_quantile(0.90, sum(rate(evm_swap_quote_latency_ms_bucket{provider="bebop"}[24h])) by (le))
-      p99: histogram_quantile(0.99, sum(rate(evm_swap_quote_latency_ms_bucket{provider="bebop"}[24h])) by (le))
-      mean: sum(rate(evm_swap_quote_latency_ms_sum{provider="bebop"}[24h])) / sum(rate(evm_swap_quote_latency_ms_count{provider="bebop"}[24h]))
-      success: avg_over_time(evm_swap_quote_success{provider="bebop"}[24h])
-      sample_size: sum(increase(evm_swap_quote_latency_ms_count{provider="bebop"}[24h]))
+      p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="bebop"})
+      p90: avg(ocb:evm_swap_quote_latency_ms:p90_24h{provider="bebop"})
+      p99: avg(ocb:evm_swap_quote_latency_ms:p99_24h{provider="bebop"})
+      mean: sum(ocb:evm_swap_quote_latency_ms:sum_rate_24h{provider="bebop"}) / sum(ocb:evm_swap_quote_latency_ms:count_rate_24h{provider="bebop"})
+      success: avg(ocb:evm_swap_quote_success:avg_24h{provider="bebop"})
+      sample_size: sum(ocb:evm_swap_quote_latency_ms:count_increase_24h{provider="bebop"})
       series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="bebop"}[1h])) by (le))
 
   - slug: lifi
@@ -127,12 +128,12 @@ providers:
     tag: 30+ chain coverage, same chain via fromChain equal toChain
     formula: "p50 of evm_swap_quote_latency_ms{provider=lifi} over the last 24 hours."
     queries:
-      p50: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="lifi"}[24h])) by (le))
-      p90: histogram_quantile(0.90, sum(rate(evm_swap_quote_latency_ms_bucket{provider="lifi"}[24h])) by (le))
-      p99: histogram_quantile(0.99, sum(rate(evm_swap_quote_latency_ms_bucket{provider="lifi"}[24h])) by (le))
-      mean: sum(rate(evm_swap_quote_latency_ms_sum{provider="lifi"}[24h])) / sum(rate(evm_swap_quote_latency_ms_count{provider="lifi"}[24h]))
-      success: avg_over_time(evm_swap_quote_success{provider="lifi"}[24h])
-      sample_size: sum(increase(evm_swap_quote_latency_ms_count{provider="lifi"}[24h]))
+      p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="lifi"})
+      p90: avg(ocb:evm_swap_quote_latency_ms:p90_24h{provider="lifi"})
+      p99: avg(ocb:evm_swap_quote_latency_ms:p99_24h{provider="lifi"})
+      mean: sum(ocb:evm_swap_quote_latency_ms:sum_rate_24h{provider="lifi"}) / sum(ocb:evm_swap_quote_latency_ms:count_rate_24h{provider="lifi"})
+      success: avg(ocb:evm_swap_quote_success:avg_24h{provider="lifi"})
+      sample_size: sum(ocb:evm_swap_quote_latency_ms:count_increase_24h{provider="lifi"})
       series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="lifi"}[1h])) by (le))
 
   - slug: openocean
@@ -140,12 +141,12 @@ providers:
     tag: 40+ chain coverage, numeric chainId in URL
     formula: "p50 of evm_swap_quote_latency_ms{provider=openocean} over the last 24 hours."
     queries:
-      p50: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="openocean"}[24h])) by (le))
-      p90: histogram_quantile(0.90, sum(rate(evm_swap_quote_latency_ms_bucket{provider="openocean"}[24h])) by (le))
-      p99: histogram_quantile(0.99, sum(rate(evm_swap_quote_latency_ms_bucket{provider="openocean"}[24h])) by (le))
-      mean: sum(rate(evm_swap_quote_latency_ms_sum{provider="openocean"}[24h])) / sum(rate(evm_swap_quote_latency_ms_count{provider="openocean"}[24h]))
-      success: avg_over_time(evm_swap_quote_success{provider="openocean"}[24h])
-      sample_size: sum(increase(evm_swap_quote_latency_ms_count{provider="openocean"}[24h]))
+      p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="openocean"})
+      p90: avg(ocb:evm_swap_quote_latency_ms:p90_24h{provider="openocean"})
+      p99: avg(ocb:evm_swap_quote_latency_ms:p99_24h{provider="openocean"})
+      mean: sum(ocb:evm_swap_quote_latency_ms:sum_rate_24h{provider="openocean"}) / sum(ocb:evm_swap_quote_latency_ms:count_rate_24h{provider="openocean"})
+      success: avg(ocb:evm_swap_quote_success:avg_24h{provider="openocean"})
+      sample_size: sum(ocb:evm_swap_quote_latency_ms:count_increase_24h{provider="openocean"})
       series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="openocean"}[1h])) by (le))
 
   - slug: cow
@@ -153,12 +154,12 @@ providers:
     tag: No auth, RFQ batch auction, no BSC
     formula: "p50 of evm_swap_quote_latency_ms{provider=cow} over the last 24 hours. BSC is skipped since CoW Settlement does not deploy there."
     queries:
-      p50: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="cow"}[24h])) by (le))
-      p90: histogram_quantile(0.90, sum(rate(evm_swap_quote_latency_ms_bucket{provider="cow"}[24h])) by (le))
-      p99: histogram_quantile(0.99, sum(rate(evm_swap_quote_latency_ms_bucket{provider="cow"}[24h])) by (le))
-      mean: sum(rate(evm_swap_quote_latency_ms_sum{provider="cow"}[24h])) / sum(rate(evm_swap_quote_latency_ms_count{provider="cow"}[24h]))
-      success: avg_over_time(evm_swap_quote_success{provider="cow"}[24h])
-      sample_size: sum(increase(evm_swap_quote_latency_ms_count{provider="cow"}[24h]))
+      p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="cow"})
+      p90: avg(ocb:evm_swap_quote_latency_ms:p90_24h{provider="cow"})
+      p99: avg(ocb:evm_swap_quote_latency_ms:p99_24h{provider="cow"})
+      mean: sum(ocb:evm_swap_quote_latency_ms:sum_rate_24h{provider="cow"}) / sum(ocb:evm_swap_quote_latency_ms:count_rate_24h{provider="cow"})
+      success: avg(ocb:evm_swap_quote_success:avg_24h{provider="cow"})
+      sample_size: sum(ocb:evm_swap_quote_latency_ms:count_increase_24h{provider="cow"})
       series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="cow"}[1h])) by (le))
 
   - slug: enso
@@ -166,10 +167,10 @@ providers:
     tag: Anonymous shared bucket, success rate capped near 80 percent
     formula: "p50 of evm_swap_quote_latency_ms{provider=enso} over 24h. Enso uses a global 1rps anonymous bucket so roughly 20 percent of probes hit 429 and are dropped from the histogram. Remaining samples keep p50 and p90 stable."
     queries:
-      p50: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="enso"}[24h])) by (le))
-      p90: histogram_quantile(0.90, sum(rate(evm_swap_quote_latency_ms_bucket{provider="enso"}[24h])) by (le))
-      p99: histogram_quantile(0.99, sum(rate(evm_swap_quote_latency_ms_bucket{provider="enso"}[24h])) by (le))
-      mean: sum(rate(evm_swap_quote_latency_ms_sum{provider="enso"}[24h])) / sum(rate(evm_swap_quote_latency_ms_count{provider="enso"}[24h]))
-      success: avg_over_time(evm_swap_quote_success{provider="enso"}[24h])
-      sample_size: sum(increase(evm_swap_quote_latency_ms_count{provider="enso"}[24h]))
+      p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="enso"})
+      p90: avg(ocb:evm_swap_quote_latency_ms:p90_24h{provider="enso"})
+      p99: avg(ocb:evm_swap_quote_latency_ms:p99_24h{provider="enso"})
+      mean: sum(ocb:evm_swap_quote_latency_ms:sum_rate_24h{provider="enso"}) / sum(ocb:evm_swap_quote_latency_ms:count_rate_24h{provider="enso"})
+      success: avg(ocb:evm_swap_quote_success:avg_24h{provider="enso"})
+      sample_size: sum(ocb:evm_swap_quote_latency_ms:count_increase_24h{provider="enso"})
       series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="enso"}[1h])) by (le))

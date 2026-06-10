@@ -63,6 +63,7 @@ source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/solana-
 
 prometheus:
   window: 24h
+  freshness_metric: solana_quote_latency_ms_count
 
 # Region selector, tabs at the top of the page. Server-side injects
 # `region="X"` into every PromQL query for the active tab. The special
@@ -78,7 +79,7 @@ dimensions:
 
 # Exact per-region rankings for scoped badges. One query, one sample per
 # (provider, region) cell.
-rank_matrix_query: histogram_quantile(0.50, sum by (provider, region, le) (rate(solana_quote_latency_ms_bucket[24h])))
+rank_matrix_query: avg by (provider, region) (ocb:solana_quote_latency_ms:p50_24h)
 
 faq:
   - q: "Which Solana DEX has the fastest quote API right now?"
@@ -102,22 +103,22 @@ providers:
     tag: DEX aggregator (REST)
     formula: "Median wallclock ms over 24h on Jupiter's `lite-api.jup.ag/swap/v1/quote` for 100 USDC → <rotating long-tail token> at 1% slippage. Recorded only on 200 + non-empty `outAmount`. No-route ticks excluded."
     queries:
-      p50: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="jupiter"}[24h])))
-      p90: histogram_quantile(0.90, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="jupiter"}[24h])))
-      p99: histogram_quantile(0.99, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="jupiter"}[24h])))
-      mean: sum(rate(solana_quote_latency_ms_sum{provider="jupiter"}[24h])) / sum(rate(solana_quote_latency_ms_count{provider="jupiter"}[24h]))
-      success: avg_over_time(solana_quote_success{provider="jupiter"}[24h])
-      sample_size: sum(increase(solana_quote_latency_ms_count{provider="jupiter"}[24h]))
+      p50: avg(ocb:solana_quote_latency_ms:p50_24h{provider="jupiter"})
+      p90: avg(ocb:solana_quote_latency_ms:p90_24h{provider="jupiter"})
+      p99: avg(ocb:solana_quote_latency_ms:p99_24h{provider="jupiter"})
+      mean: sum(ocb:solana_quote_latency_ms:sum_rate_24h{provider="jupiter"}) / sum(ocb:solana_quote_latency_ms:count_rate_24h{provider="jupiter"})
+      success: avg(ocb:solana_quote_success:avg_24h{provider="jupiter"})
+      sample_size: sum(ocb:solana_quote_latency_ms:count_increase_24h{provider="jupiter"})
       series: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="jupiter"}[1h])))
       regions:
         - region: us-east
-          p50: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="jupiter", region="us-east"}[24h])))
+          p50: avg(ocb:solana_quote_latency_ms:p50_24h{provider="jupiter", region="us-east"})
           series: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="jupiter", region="us-east"}[1h])))
         - region: eu-west
-          p50: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="jupiter", region="eu-west"}[24h])))
+          p50: avg(ocb:solana_quote_latency_ms:p50_24h{provider="jupiter", region="eu-west"})
           series: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="jupiter", region="eu-west"}[1h])))
         - region: sgp
-          p50: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="jupiter", region="sgp"}[24h])))
+          p50: avg(ocb:solana_quote_latency_ms:p50_24h{provider="jupiter", region="sgp"})
           series: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="jupiter", region="sgp"}[1h])))
 
   - slug: mobula
@@ -125,22 +126,22 @@ providers:
     tag: DEX aggregator (REST)
     formula: "Median wallclock ms over 24h on Mobula's `api.mobula.io/api/2/swap/quoting` for 100 USDC → <rotating long-tail token> at 1% slippage. Recorded only on 200 + non-empty `data.amountOutTokens`. No-route ticks excluded."
     queries:
-      p50: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="mobula"}[24h])))
-      p90: histogram_quantile(0.90, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="mobula"}[24h])))
-      p99: histogram_quantile(0.99, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="mobula"}[24h])))
-      mean: sum(rate(solana_quote_latency_ms_sum{provider="mobula"}[24h])) / sum(rate(solana_quote_latency_ms_count{provider="mobula"}[24h]))
-      success: avg_over_time(solana_quote_success{provider="mobula"}[24h])
-      sample_size: sum(increase(solana_quote_latency_ms_count{provider="mobula"}[24h]))
+      p50: avg(ocb:solana_quote_latency_ms:p50_24h{provider="mobula"})
+      p90: avg(ocb:solana_quote_latency_ms:p90_24h{provider="mobula"})
+      p99: avg(ocb:solana_quote_latency_ms:p99_24h{provider="mobula"})
+      mean: sum(ocb:solana_quote_latency_ms:sum_rate_24h{provider="mobula"}) / sum(ocb:solana_quote_latency_ms:count_rate_24h{provider="mobula"})
+      success: avg(ocb:solana_quote_success:avg_24h{provider="mobula"})
+      sample_size: sum(ocb:solana_quote_latency_ms:count_increase_24h{provider="mobula"})
       series: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="mobula"}[1h])))
       regions:
         - region: us-east
-          p50: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="mobula", region="us-east"}[24h])))
+          p50: avg(ocb:solana_quote_latency_ms:p50_24h{provider="mobula", region="us-east"})
           series: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="mobula", region="us-east"}[1h])))
         - region: eu-west
-          p50: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="mobula", region="eu-west"}[24h])))
+          p50: avg(ocb:solana_quote_latency_ms:p50_24h{provider="mobula", region="eu-west"})
           series: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="mobula", region="eu-west"}[1h])))
         - region: sgp
-          p50: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="mobula", region="sgp"}[24h])))
+          p50: avg(ocb:solana_quote_latency_ms:p50_24h{provider="mobula", region="sgp"})
           series: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="mobula", region="sgp"}[1h])))
 
   - slug: openocean
@@ -148,22 +149,22 @@ providers:
     tag: DEX aggregator (REST)
     formula: "Median wallclock ms over 24h on OpenOcean's `open-api.openocean.finance/v4/solana/quote` for 100 USDC → <rotating long-tail token> at 1% slippage. Recorded only when `data.outAmount > 0` and `dexId >= 0`. No-route ticks excluded."
     queries:
-      p50: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="openocean"}[24h])))
-      p90: histogram_quantile(0.90, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="openocean"}[24h])))
-      p99: histogram_quantile(0.99, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="openocean"}[24h])))
-      mean: sum(rate(solana_quote_latency_ms_sum{provider="openocean"}[24h])) / sum(rate(solana_quote_latency_ms_count{provider="openocean"}[24h]))
-      success: avg_over_time(solana_quote_success{provider="openocean"}[24h])
-      sample_size: sum(increase(solana_quote_latency_ms_count{provider="openocean"}[24h]))
+      p50: avg(ocb:solana_quote_latency_ms:p50_24h{provider="openocean"})
+      p90: avg(ocb:solana_quote_latency_ms:p90_24h{provider="openocean"})
+      p99: avg(ocb:solana_quote_latency_ms:p99_24h{provider="openocean"})
+      mean: sum(ocb:solana_quote_latency_ms:sum_rate_24h{provider="openocean"}) / sum(ocb:solana_quote_latency_ms:count_rate_24h{provider="openocean"})
+      success: avg(ocb:solana_quote_success:avg_24h{provider="openocean"})
+      sample_size: sum(ocb:solana_quote_latency_ms:count_increase_24h{provider="openocean"})
       series: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="openocean"}[1h])))
       regions:
         - region: us-east
-          p50: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="openocean", region="us-east"}[24h])))
+          p50: avg(ocb:solana_quote_latency_ms:p50_24h{provider="openocean", region="us-east"})
           series: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="openocean", region="us-east"}[1h])))
         - region: eu-west
-          p50: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="openocean", region="eu-west"}[24h])))
+          p50: avg(ocb:solana_quote_latency_ms:p50_24h{provider="openocean", region="eu-west"})
           series: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="openocean", region="eu-west"}[1h])))
         - region: sgp
-          p50: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="openocean", region="sgp"}[24h])))
+          p50: avg(ocb:solana_quote_latency_ms:p50_24h{provider="openocean", region="sgp"})
           series: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="openocean", region="sgp"}[1h])))
 
   - slug: raydium
@@ -171,20 +172,20 @@ providers:
     tag: AMM (single-venue Trade API)
     formula: "Median wallclock ms over 24h on Raydium's `transaction-v1.raydium.io/compute/swap-base-in` for 100 USDC → <rotating long-tail token>. Recorded only on `success: true`. Raydium is single-venue; ~30-50% no-route rate."
     queries:
-      p50: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="raydium"}[24h])))
-      p90: histogram_quantile(0.90, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="raydium"}[24h])))
-      p99: histogram_quantile(0.99, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="raydium"}[24h])))
-      mean: sum(rate(solana_quote_latency_ms_sum{provider="raydium"}[24h])) / sum(rate(solana_quote_latency_ms_count{provider="raydium"}[24h]))
-      success: avg_over_time(solana_quote_success{provider="raydium"}[24h])
-      sample_size: sum(increase(solana_quote_latency_ms_count{provider="raydium"}[24h]))
+      p50: avg(ocb:solana_quote_latency_ms:p50_24h{provider="raydium"})
+      p90: avg(ocb:solana_quote_latency_ms:p90_24h{provider="raydium"})
+      p99: avg(ocb:solana_quote_latency_ms:p99_24h{provider="raydium"})
+      mean: sum(ocb:solana_quote_latency_ms:sum_rate_24h{provider="raydium"}) / sum(ocb:solana_quote_latency_ms:count_rate_24h{provider="raydium"})
+      success: avg(ocb:solana_quote_success:avg_24h{provider="raydium"})
+      sample_size: sum(ocb:solana_quote_latency_ms:count_increase_24h{provider="raydium"})
       series: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="raydium"}[1h])))
       regions:
         - region: us-east
-          p50: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="raydium", region="us-east"}[24h])))
+          p50: avg(ocb:solana_quote_latency_ms:p50_24h{provider="raydium", region="us-east"})
           series: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="raydium", region="us-east"}[1h])))
         - region: eu-west
-          p50: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="raydium", region="eu-west"}[24h])))
+          p50: avg(ocb:solana_quote_latency_ms:p50_24h{provider="raydium", region="eu-west"})
           series: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="raydium", region="eu-west"}[1h])))
         - region: sgp
-          p50: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="raydium", region="sgp"}[24h])))
+          p50: avg(ocb:solana_quote_latency_ms:p50_24h{provider="raydium", region="sgp"})
           series: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="raydium", region="sgp"}[1h])))
