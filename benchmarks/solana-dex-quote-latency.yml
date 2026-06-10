@@ -76,6 +76,10 @@ dimensions:
     - { value: eu-west, label: EU-West }
     - { value: sgp,     label: Singapore }
 
+# Exact per-region rankings for scoped badges. One query, one sample per
+# (provider, region) cell.
+rank_matrix_query: histogram_quantile(0.50, sum by (provider, region, le) (rate(solana_quote_latency_ms_bucket[24h])))
+
 faq:
   - q: "Which Solana DEX has the fastest quote API right now?"
     a: "{{best_name}} currently returns quotes the fastest at {{best_p50}} (p50, 24 h) across {{count}} measured providers. The leaderboard re-sorts every 60 seconds against fresh samples and rotates the target token each tick so no provider can serve from edge cache. The answer reflects 24 hours of measured latency across us-east, eu-west and sgp, not a marketing-page claim."
