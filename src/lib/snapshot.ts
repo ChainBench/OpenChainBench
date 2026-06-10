@@ -94,35 +94,74 @@ function authHeader(): { Authorization: string } {
   return { Authorization: `Bearer ${process.env.KV_REST_API_TOKEN}` };
 }
 
+/** A fresher snapshot with MORE providers wins over a new render with
+ *  fewer. Window after which a bigger-but-aging snapshot stops blocking
+ *  writes, so a legitimately shrunk provider field (YAML removal, a
+ *  source dead for hours) can still refresh the snapshot. */
+const SNAPSHOT_GUARD_WINDOW_MS = 2 * 60 * 60 * 1000;
+
 /**
  * Best-effort save. Never throws, never blocks. Call without `await`
  * from inside a successful Prom path:
  *
  *   writeSnapshot(spec.slug, { results, extras, sampleSize, lastRunAt });
  *
- * Returns immediately; the network call resolves in the background.
+ * Returns immediately; the work resolves in the background.
+ *
+ * Degradation guards (both motivated by Prom brownouts, where a cycle
+ * can pass the 50% quorum yet still be worse than the snapshot it would
+ * replace):
+ *   - Coverage ratchet: if the existing snapshot is recent (< 2h) and
+ *     has MORE providers than this render, skip the write entirely.
+ *     Without this, repeated brownouts walk the snapshot down to the
+ *     quorum floor and a cold start then serves the degraded board.
+ *   - Stash carry-over: per-chain / per-cell stashes (bestPerChain,
+ *     cellRanks, ...) are computed by separate Prom queries that can
+ *     fail on an otherwise-healthy cycle. When the new render lacks one
+ *     and the existing snapshot has it, carry the old value forward so
+ *     scoped badges / placeholders don't 404 after a cold start.
  */
 export function writeSnapshot(slug: string, payload: SnapshotPayload): void {
   if (!isConfigured()) return;
-  const body = JSON.stringify({
-    _v: SCHEMA_VERSION,
-    savedAt: Date.now(),
-    ...payload,
-  });
-  // Upstash REST: POST /set/{key} with raw body = value.
-  fetch(`${kvUrl()}/set/${encodeURIComponent(KEY_PREFIX + slug)}`, {
-    method: "POST",
-    headers: { ...authHeader(), "Content-Type": "application/json" },
-    body,
-    // Server-side fetch is fine without keepalive; no browser limits.
-    cache: "no-store",
-  }).catch((err) => {
-    console.warn(
-      `snapshot.write failed for ${slug}: ${
-        err instanceof Error ? err.message : String(err)
-      }`,
-    );
-  });
+  void (async () => {
+    try {
+      const existing = await readSnapshotWithAge(slug);
+      const merged: SnapshotPayload = { ...payload };
+      if (existing) {
+        if (
+          existing.ageMs < SNAPSHOT_GUARD_WINDOW_MS &&
+          existing.payload.results.length > payload.results.length
+        ) {
+          console.warn(
+            `snapshot.write skipped for ${slug}: render has ${payload.results.length} providers, snapshot has ${existing.payload.results.length}`,
+          );
+          return;
+        }
+        merged.bestPerChain ??= existing.payload.bestPerChain;
+        merged.worstPerChain ??= existing.payload.worstPerChain;
+        merged.providersPerChain ??= existing.payload.providersPerChain;
+        merged.cellRanks ??= existing.payload.cellRanks;
+      }
+      const body = JSON.stringify({
+        _v: SCHEMA_VERSION,
+        savedAt: Date.now(),
+        ...merged,
+      });
+      // Upstash REST: POST /set/{key} with raw body = value.
+      await fetch(`${kvUrl()}/set/${encodeURIComponent(KEY_PREFIX + slug)}`, {
+        method: "POST",
+        headers: { ...authHeader(), "Content-Type": "application/json" },
+        body,
+        cache: "no-store",
+      });
+    } catch (err) {
+      console.warn(
+        `snapshot.write failed for ${slug}: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
+  })();
 }
 
 /**
@@ -139,6 +178,15 @@ export function writeSnapshot(slug: string, payload: SnapshotPayload): void {
 export async function readSnapshot(
   slug: string,
 ): Promise<SnapshotPayload | null> {
+  const hit = await readSnapshotWithAge(slug);
+  return hit ? hit.payload : null;
+}
+
+/** Same as readSnapshot but exposes the snapshot's age, used by the
+ *  write-path degradation guards. */
+async function readSnapshotWithAge(
+  slug: string,
+): Promise<{ payload: SnapshotPayload; ageMs: number } | null> {
   if (!isConfigured()) return null;
   try {
     const res = await fetch(
@@ -177,22 +225,25 @@ export async function readSnapshot(
       return null;
     }
     return {
-      results: parsed.data.results as ProviderResult[],
-      extras: parsed.data.extras as ResultExtras,
-      sampleSize: parsed.data.sampleSize,
-      lastRunAt: parsed.data.lastRunAt,
-      bestPerChain: parsed.data.bestPerChain as
-        | Record<string, ProviderResult>
-        | undefined,
-      worstPerChain: parsed.data.worstPerChain as
-        | Record<string, ProviderResult>
-        | undefined,
-      providersPerChain: parsed.data.providersPerChain as
-        | Record<string, string[]>
-        | undefined,
-      cellRanks: parsed.data.cellRanks as
-        | Record<string, CellRankEntry[]>
-        | undefined,
+      ageMs: age,
+      payload: {
+        results: parsed.data.results as ProviderResult[],
+        extras: parsed.data.extras as ResultExtras,
+        sampleSize: parsed.data.sampleSize,
+        lastRunAt: parsed.data.lastRunAt,
+        bestPerChain: parsed.data.bestPerChain as
+          | Record<string, ProviderResult>
+          | undefined,
+        worstPerChain: parsed.data.worstPerChain as
+          | Record<string, ProviderResult>
+          | undefined,
+        providersPerChain: parsed.data.providersPerChain as
+          | Record<string, string[]>
+          | undefined,
+        cellRanks: parsed.data.cellRanks as
+          | Record<string, CellRankEntry[]>
+          | undefined,
+      },
     };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
