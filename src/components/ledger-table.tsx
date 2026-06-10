@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import Link from "next/link";
 import type {
@@ -39,12 +39,6 @@ export function LedgerTable({ benchmark, activePanel, topN }: Props) {
   const { results, extras } = benchmark;
   const unit = activePanel?.unit ?? benchmark.unit;
   const higherIsBetter = activePanel?.higherIsBetter ?? benchmark.higherIsBetter;
-  // Single source of value per row — `r.ms.p50` for the headline metric,
-  // `panel.values[slug]` when a panel tab is active. Used for sort,
-  // filter, the inline data bar, and the displayed value in the p50
-  // column.
-  const pickValue = (r: ProviderResult): number =>
-    activePanel ? (activePanel.values[r.slug] ?? 0) : r.ms.p50;
   const panelActive = !!activePanel;
   // Custom column mode: benches that repurpose the p50/p90/p99/mean slots
   // (USD revenue leaderboards) declare ledger_columns in their YAML so
@@ -70,6 +64,37 @@ export function LedgerTable({ benchmark, activePanel, topN }: Props) {
   const colUnit = (col: LedgerColumn): string =>
     col.unit ??
     (col.panel ? (panelById.get(col.panel)?.unit ?? unit) : unit);
+
+  // Timeframe toggle. Columns that declare `windows` (7d/30d panel-id
+  // sources) flip to the selected window's values; columns without keep
+  // their 24h figure and the header says so. Rendered only when at least
+  // one column declares windows.
+  const [windowKey, setWindowKey] = useState<"24h" | "7d" | "30d">("24h");
+  const hasWindows = !!customCols?.some(
+    (c) => c.windows && Object.keys(c.windows).length > 0,
+  );
+  const colValueW = (r: ProviderResult, col: LedgerColumn): number | null => {
+    if (windowKey !== "24h" && col.windows?.[windowKey]) {
+      const v = panelById.get(col.windows[windowKey])?.values[r.slug];
+      return v != null && Number.isFinite(v) ? v : null;
+    }
+    return colValue(r, col);
+  };
+  const colLabel = (col: LedgerColumn): string => {
+    if (!hasWindows) return col.label;
+    const w = windowKey !== "24h" && col.windows?.[windowKey] ? windowKey : "24h";
+    return `${col.label} (${w})`;
+  };
+
+  // Single source of value per row — headline slot p50, the active
+  // window's first custom column, or `panel.values[slug]` when a panel
+  // tab is active. Used for sort, filter, the inline data bar, and the
+  // displayed value in the headline column.
+  const pickValue = (r: ProviderResult): number => {
+    if (activePanel) return activePanel.values[r.slug] ?? 0;
+    if (customCols) return colValueW(r, customCols[0]) ?? 0;
+    return r.ms.p50;
+  };
   // Detected from the first provider's results — if ANY provider declares
   // slot_p50/slot_p99 in its YAML queries, every row gets the column (with
   // "-" for providers that don't declare it). Used by Solana-native benches
@@ -131,6 +156,28 @@ export function LedgerTable({ benchmark, activePanel, topN }: Props) {
 
   return (
     <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
+      {hasWindows && (
+        <div className="mb-3 flex flex-wrap items-center gap-1">
+          <span className="mr-2 text-[10px] uppercase tracking-[0.16em] text-ink-faint">
+            Timeframe
+          </span>
+          {(["24h", "7d", "30d"] as const).map((w) => (
+            <button
+              key={w}
+              type="button"
+              onClick={() => setWindowKey(w)}
+              className={[
+                "rounded px-2.5 py-1 text-[11px] font-sans tabular uppercase tracking-[0.1em] font-medium transition-colors",
+                windowKey === w
+                  ? "bg-ink text-paper"
+                  : "text-ink-muted hover:text-ink hover:bg-paper-soft",
+              ].join(" ")}
+            >
+              {w}
+            </button>
+          ))}
+        </div>
+      )}
       <table className="ledger w-full min-w-full sm:min-w-[480px] md:min-w-0 border-collapse">
         <thead>
           <tr>
@@ -144,7 +191,7 @@ export function LedgerTable({ benchmark, activePanel, topN }: Props) {
               {customCols ? benchmark.metric : "Latency aggregates"}
             </th>
             <th className="border-y-2 border-ink py-2 px-3 text-right md:hidden">
-              {customCols ? customCols[0].label : "p50"}
+              {customCols ? colLabel(customCols[0]) : "p50"}
             </th>
             <th className="border-y-2 border-ink py-2 pl-3 text-right hidden md:table-cell">
               Reliability
@@ -174,7 +221,7 @@ export function LedgerTable({ benchmark, activePanel, topN }: Props) {
                   key={c.label}
                   className={`py-2 px-3 text-right ${idx === 0 ? "" : "hidden md:table-cell"}`}
                 >
-                  {c.label}
+                  {colLabel(c)}
                 </th>
               ))
             ) : (
@@ -216,7 +263,7 @@ export function LedgerTable({ benchmark, activePanel, topN }: Props) {
               hasSecondary={!!secondary}
               hasSlots={hasSlots}
               customCells={customCols?.map((c) => ({
-                v: colValue(r, c),
+                v: colValueW(r, c),
                 unit: colUnit(c),
               }))}
               series={
