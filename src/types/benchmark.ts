@@ -198,4 +198,21 @@ export type Benchmark = {
    *  below the main table. Populated by the spec loader from
    *  `metric_panels` in the YAML. */
   metricPanels?: MetricPanel[];
+  /** Optional per-bench relabeling of the ledger's aggregate columns.
+   *  Declared by benches whose unit has no percentile semantics (the
+   *  p50/p90/p99/mean slots are repurposed, e.g. USD revenue leaderboards)
+   *  so the table headers describe what each slot actually holds. The
+   *  first column is the headline (sort key, data bar, mobile column). */
+  ledgerColumns?: LedgerColumn[];
+};
+
+export type LedgerColumn = {
+  label: string;
+  /** Reads the provider's headline slot value. */
+  slot?: "p50" | "p90" | "p99" | "mean";
+  /** Reads the per-provider values of a metric_panels entry by id. */
+  panel?: string;
+  /** Display unit override; defaults to the panel's unit (panel columns)
+   *  or the bench unit (slot columns). */
+  unit?: "ms" | "s" | "pct" | "bps" | "count" | "slots" | "usd";
 };

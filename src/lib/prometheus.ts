@@ -163,6 +163,13 @@ export class Prometheus {
     // / metadata / ULA / CGNAT.
     await assertPublicHost(url);
 
+    // Global concurrency cap. At cold start / build every bench loads at
+    // once, which used to fire hundreds of 24h-window quantile queries
+    // within seconds and brown out the single Prom instance (providers
+    // timing out → partial leaderboards). Queueing here keeps the burst
+    // at a level Prom absorbs; total wall time barely moves because Prom
+    // was serializing on CPU anyway.
+    await acquireQuerySlot();
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
     try {
@@ -187,8 +194,31 @@ export class Prometheus {
       return json.data;
     } finally {
       clearTimeout(timeout);
+      releaseQuerySlot();
     }
   }
+}
+
+/** Module-level semaphore for fetchEnvelope. 8 concurrent queries keeps
+ *  a Railway-sized Prom responsive while ~30 benches load in parallel. */
+const MAX_CONCURRENT_QUERIES = 8;
+let activeQueries = 0;
+const queryWaiters: (() => void)[] = [];
+
+function acquireQuerySlot(): Promise<void> {
+  if (activeQueries < MAX_CONCURRENT_QUERIES) {
+    activeQueries++;
+    return Promise.resolve();
+  }
+  return new Promise((resolve) => queryWaiters.push(resolve));
+}
+
+function releaseQuerySlot(): void {
+  const next = queryWaiters.shift();
+  // Hand the slot directly to the next waiter (activeQueries unchanged)
+  // or free it when the queue is empty.
+  if (next) next();
+  else activeQueries--;
 }
 
 /** PromQL built-in functions and keywords we should skip when scanning
