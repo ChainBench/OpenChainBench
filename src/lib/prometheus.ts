@@ -199,9 +199,18 @@ export class Prometheus {
   }
 }
 
-/** Module-level semaphore for fetchEnvelope. 8 concurrent queries keeps
- *  a Railway-sized Prom responsive while ~30 benches load in parallel. */
-const MAX_CONCURRENT_QUERIES = 8;
+/** Module-level semaphore for fetchEnvelope.
+ *
+ *  Sizing matters more than it looks: at 8 slots a bench page that
+ *  pre-fetches its chain × region variants (~1500 queries on
+ *  rpc-capabilities) serializes past the Vercel function timeout, the
+ *  render dies every cycle and unstable_cache freezes the site on the
+ *  last value (observed 2026-06-10: staging stuck for 2h on the deploy
+ *  snapshot). 64 keeps burst pressure bounded (Prom's own
+ *  query.max-concurrency queues the rest) without starving large loads.
+ *  Revisit downward once the heavy benches read precomputed ocb:*
+ *  recording rules instead of raw 24h-window quantiles. */
+const MAX_CONCURRENT_QUERIES = 64;
 let activeQueries = 0;
 const queryWaiters: (() => void)[] = [];
 
