@@ -114,8 +114,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       },
     ];
     const resultSlugs = new Set(b.results.map((r) => r.slug));
+    const chainValues = new Set(
+      (b.dimensions?.chain ?? [])
+        .map((c) => c.value)
+        .filter((v) => v.toLowerCase() !== "all"),
+    );
     for (const e of b.perChainExplainer ?? []) {
-      if (!resultSlugs.has(e.slug)) continue;
+      if (!resultSlugs.has(e.slug) && !chainValues.has(e.slug)) continue;
       entries.push({
         url: `${SITE.url}/benchmarks/${b.slug}/${e.slug}`,
         lastModified: last,

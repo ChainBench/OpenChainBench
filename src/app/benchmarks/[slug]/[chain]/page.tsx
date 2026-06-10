@@ -17,51 +17,92 @@ import type { Benchmark, ProviderResult } from "@/types/benchmark";
 // duplicates of the parent bench. The parent's `?chain=` query filter
 // stays a client-side UI affordance; THIS route is the indexable,
 // self-canonical document targeting long-tail queries like "ethereum
-// finality time".
+// finality time" or "fastest free polygon rpc".
+//
+// Two bench shapes resolve here:
+//   - "row":       the chain IS a leaderboard row (l1-finality, where
+//                  results are chains). Page shows the chain's measured
+//                  value + rank against sibling chains.
+//   - "dimension": the chain is a filter dimension (rpc-capabilities,
+//                  where results are providers probed per chain). Page
+//                  shows the provider leaderboard scoped to that chain,
+//                  with per-region leaders called out when they differ -
+//                  a provider that wins on 6 of 10 chains in one region
+//                  must never be presented as the global winner.
 export const revalidate = 60;
 
 type Params = { slug: string; chain: string };
 
-export async function generateStaticParams() {
-  const benchmarks = await getBenchmarks();
-  return benchmarks.flatMap((b) => {
-    const resultSlugs = new Set(b.results.map((r) => r.slug));
-    return (b.perChainExplainer ?? [])
-      .filter((e) => resultSlugs.has(e.slug))
-      .map((e) => ({ slug: b.slug, chain: e.slug }));
-  });
+function explainerChains(b: Benchmark): string[] {
+  const resultSlugs = new Set(b.results.map((r) => r.slug));
+  const chainValues = new Set(
+    (b.dimensions?.chain ?? [])
+      .map((c) => c.value)
+      .filter((v) => v.toLowerCase() !== "all"),
+  );
+  return (b.perChainExplainer ?? [])
+    .map((e) => e.slug)
+    .filter((s) => resultSlugs.has(s) || chainValues.has(s));
 }
 
-type ChainPageData = {
+export async function generateStaticParams() {
+  const benchmarks = await getBenchmarks();
+  return benchmarks.flatMap((b) =>
+    explainerChains(b).map((chain) => ({ slug: b.slug, chain })),
+  );
+}
+
+type Explainer = { slug: string; h2: string; body: string };
+
+type RowShape = {
+  shape: "row";
   benchmark: Benchmark;
-  explainer: { slug: string; h2: string; body: string };
+  explainer: Explainer;
   result: ProviderResult;
   sorted: ProviderResult[];
   rank: number;
 };
 
+type DimensionShape = {
+  shape: "dimension";
+  benchmark: Benchmark;
+  explainer: Explainer;
+  chainLabel: string;
+  providers: ProviderResult[];
+  leader: ProviderResult | null;
+  regionLeaders: { region: string; leader: ProviderResult }[];
+};
+
+type ChainPageData = RowShape | DimensionShape;
+
 /** The spec loader's renderTemplate only resolves placeholders for
- *  providers that are "live" this cycle. When a chain's data is in a
- *  transient gap, raw `{{p50:ethereum}}` tokens would leak into the H1
- *  copy and the meta description. Resolve leftovers against the full
- *  results array (the row always exists - generateStaticParams gates on
- *  it), so the page degrades to the last scraped value instead of
- *  shipping template syntax to the SERP. */
+ *  providers that are "live" this cycle. When data is in a transient
+ *  gap, raw `{{p50:ethereum}}` / `{{best_name:chain:base}}` tokens
+ *  would leak into the H1 copy and the meta description. Resolve what
+ *  we can against the full results array, degrade the rest to neutral
+ *  copy so template syntax never ships to the SERP. */
 function resolveLeftoverPlaceholders(text: string, b: Benchmark): string {
-  return text.replace(
-    /\{\{\s*(p50|p90|p99|mean|name):([a-z0-9-]+)\s*\}\}/gi,
-    (whole, keyword: string, slug: string) => {
-      const row = b.results.find(
-        (r) => r.slug.toLowerCase() === slug.toLowerCase(),
-      );
-      const k = keyword.toLowerCase();
-      if (k === "name") return row ? row.name : whole;
-      const raw = row?.ms[k as "p50" | "p90" | "p99" | "mean"];
-      // Transient data gap: degrade to neutral copy ("... is measured
-      // live (p50, 24h)") rather than shipping template syntax.
-      if (!raw || raw <= 0) return "measured live";
-      return fmtUnit(raw, b.unit);
-    },
+  return text
+    .replace(
+      /\{\{\s*(p50|p90|p99|mean|name):([a-z0-9-]+)\s*\}\}/gi,
+      (whole, keyword: string, slug: string) => {
+        const row = b.results.find(
+          (r) => r.slug.toLowerCase() === slug.toLowerCase(),
+        );
+        const k = keyword.toLowerCase();
+        if (k === "name") return row ? row.name : whole;
+        const raw = row?.ms[k as "p50" | "p90" | "p99" | "mean"];
+        if (!raw || raw <= 0) return "measured live";
+        return fmtUnit(raw, b.unit);
+      },
+    )
+    .replace(/\{\{\s*(best_name|worst_name):chain:[a-z0-9_-]+\s*\}\}/gi, "the live leader")
+    .replace(/\{\{\s*(best_p50|worst_p50):chain:[a-z0-9_-]+\s*\}\}/gi, "measured live");
+}
+
+function sortLive(results: ProviderResult[], higherIsBetter: boolean) {
+  return [...liveResults(results)].sort((a, b) =>
+    higherIsBetter ? b.ms.p50 - a.ms.p50 : a.ms.p50 - b.ms.p50,
   );
 }
 
@@ -75,19 +116,59 @@ async function loadChainPage(
     (e) => e.slug === chain,
   );
   if (!found) return null;
-  const result = benchmark.results.find((r) => r.slug === chain);
-  if (!result) return null;
   const explainer = {
     ...found,
     h2: resolveLeftoverPlaceholders(found.h2, benchmark),
     body: resolveLeftoverPlaceholders(found.body, benchmark),
   };
-  const live = liveResults(benchmark.results);
-  const sorted = [...live].sort((a, b) =>
-    benchmark.higherIsBetter ? b.ms.p50 - a.ms.p50 : a.ms.p50 - b.ms.p50,
+
+  // Shape 1: the chain is a leaderboard row (l1-finality).
+  const result = benchmark.results.find((r) => r.slug === chain);
+  if (result) {
+    const sorted = sortLive(benchmark.results, benchmark.higherIsBetter);
+    const rank = sorted.findIndex((r) => r.slug === chain) + 1;
+    return { shape: "row", benchmark, explainer, result, sorted, rank };
+  }
+
+  // Shape 2: the chain is a filter dimension (rpc-capabilities).
+  const chainOption = (benchmark.dimensions?.chain ?? []).find(
+    (c) => c.value === chain && c.value.toLowerCase() !== "all",
   );
-  const rank = sorted.findIndex((r) => r.slug === chain) + 1;
-  return { benchmark, explainer, result, sorted, rank };
+  if (!chainOption) return null;
+  const scoped = (await getBenchmark(slug, { chain })) ?? benchmark;
+  const providers = sortLive(scoped.results, benchmark.higherIsBetter);
+  const leader = providers[0] ?? null;
+
+  // Per-region leaders on this chain. The cross-region scoped leaderboard
+  // is the headline, but when regional winners diverge the key-facts line
+  // says so explicitly instead of crowning one provider globally.
+  const regions = (benchmark.dimensions?.region ?? []).filter(
+    (r) => r.value.toLowerCase() !== "all",
+  );
+  const regionLeaders: { region: string; leader: ProviderResult }[] = [];
+  if (regions.length > 0) {
+    const variants = await Promise.all(
+      regions.map(async (r) => ({
+        label: r.label,
+        bench: await getBenchmark(slug, { chain, region: r.value }),
+      })),
+    );
+    for (const v of variants) {
+      if (!v.bench) continue;
+      const lead = sortLive(v.bench.results, benchmark.higherIsBetter)[0];
+      if (lead) regionLeaders.push({ region: v.label, leader: lead });
+    }
+  }
+
+  return {
+    shape: "dimension",
+    benchmark,
+    explainer,
+    chainLabel: chainOption.label,
+    providers,
+    leader,
+    regionLeaders,
+  };
 }
 
 /** Meta descriptions must not leak inline markdown from the YAML body
@@ -111,6 +192,76 @@ function asOfDate(lastRunAt: string | undefined): string {
   });
 }
 
+/** "dRPC in US-East and EU-West; PublicNode in Singapore." Groups
+ *  regions by their leading provider, preserving region order. */
+function regionLeaderSentence(
+  regionLeaders: { region: string; leader: ProviderResult }[],
+): string | null {
+  if (regionLeaders.length < 2) return null;
+  const names = new Set(regionLeaders.map((r) => r.leader.name));
+  if (names.size === 1) {
+    return `${regionLeaders[0].leader.name} leads in all ${regionLeaders.length} regions measured.`;
+  }
+  const byLeader = new Map<string, string[]>();
+  for (const r of regionLeaders) {
+    const list = byLeader.get(r.leader.name) ?? [];
+    list.push(r.region);
+    byLeader.set(r.leader.name, list);
+  }
+  const parts = [...byLeader.entries()].map(
+    ([name, regions]) => `${name} in ${regions.join(" and ")}`,
+  );
+  return `Regional leaders differ: ${parts.join("; ")}.`;
+}
+
+/** Mid-sentence metric phrase: "Finality time" -> "finality time" but
+ *  "RPC latency" stays as-is (leading acronym must not become "rpc"). */
+function metricPhrase(metric: string): string {
+  return /^[A-Z]{2}/.test(metric)
+    ? metric
+    : metric.charAt(0).toLowerCase() + metric.slice(1);
+}
+
+function buildKeyFacts(data: ChainPageData): string {
+  const b = data.benchmark;
+  const date = asOfDate(b.lastRunAt);
+  if (data.shape === "row") {
+    const { result, sorted, rank } = data;
+    const subject = `${result.name} ${metricPhrase(b.metric)}`;
+    if (result.ms.p50 <= 0) {
+      return `${subject} is measured continuously on this benchmark. Live numbers will appear here as soon as the harness reports fresh samples.`;
+    }
+    const p50 = fmtUnit(result.ms.p50, b.unit);
+    const p90 = fmtUnit(result.ms.p90, b.unit);
+    const p99 = fmtUnit(result.ms.p99, b.unit);
+    return (
+      `As of ${date}, ${subject} is ${p50} at the median (p50, 24h window), with ${p90} at p90 and ${p99} at p99.` +
+      (rank > 0
+        ? ` ${result.name} ranks #${rank} of ${sorted.length} chains measured on this benchmark.`
+        : "")
+    );
+  }
+  const { leader, providers, chainLabel, regionLeaders } = data;
+  if (!leader) {
+    return `${chainLabel} ${metricPhrase(b.metric)} is measured continuously on this benchmark. Live numbers will appear here as soon as the harness reports fresh samples.`;
+  }
+  const base = `As of ${date}, ${leader.name} leads ${chainLabel} ${metricPhrase(b.metric)} at ${fmtUnit(leader.ms.p50, b.unit)} (p50, 24h window), measured across ${providers.length} providers.`;
+  const regional = regionLeaderSentence(regionLeaders);
+  return regional ? `${base} ${regional}` : base;
+}
+
+function pageTitle(data: ChainPageData): string {
+  const b = data.benchmark;
+  if (data.shape === "row") {
+    return data.result.ms.p50 > 0
+      ? `${data.explainer.h2}: ${fmtUnit(data.result.ms.p50, b.unit)} p50 live`
+      : `${data.explainer.h2}: live benchmark`;
+  }
+  return data.leader
+    ? `${data.explainer.h2}: ${data.leader.name} leads at ${fmtUnit(data.leader.ms.p50, b.unit)}`
+    : `${data.explainer.h2}: live benchmark`;
+}
+
 export async function generateMetadata({
   params,
 }: {
@@ -119,17 +270,13 @@ export async function generateMetadata({
   const { slug, chain } = await params;
   const data = await loadChainPage(slug, chain);
   if (!data) return {};
-  const { benchmark, explainer, result } = data;
-  const hasData = result.ms.p50 > 0;
-  const title = hasData
-    ? `${explainer.h2}: ${fmtUnit(result.ms.p50, benchmark.unit)} p50 live`
-    : `${explainer.h2}: live benchmark`;
+  const title = pageTitle(data);
   const description = capDescription(
-    stripInlineMarkdown(explainer.body),
+    stripInlineMarkdown(data.explainer.body),
     158,
   );
-  const canonical = `${SITE.url}/benchmarks/${benchmark.slug}/${chain}`;
-  const ogImage = `${SITE.url}/api/og/${benchmark.slug}`;
+  const canonical = `${SITE.url}/benchmarks/${data.benchmark.slug}/${chain}`;
+  const ogImage = `${SITE.url}/api/og/${data.benchmark.slug}`;
   return {
     title,
     description,
@@ -158,29 +305,15 @@ export default async function BenchmarkChainPage({
   const { slug, chain } = await params;
   const data = await loadChainPage(slug, chain);
   if (!data) notFound();
-  const { benchmark, explainer, result, sorted, rank } = data;
+  const { benchmark, explainer } = data;
 
   const benchmarkUrl = `${SITE.url}/benchmarks/${benchmark.slug}`;
   const pageUrl = `${benchmarkUrl}/${chain}`;
   const catColor = CATEGORY_COLOR[benchmark.category];
-  const p50 = fmtUnit(result.ms.p50, benchmark.unit);
-  const p90 = fmtUnit(result.ms.p90, benchmark.unit);
-  const p99 = fmtUnit(result.ms.p99, benchmark.unit);
-  const explainerSlugs = new Set(
-    (benchmark.perChainExplainer ?? []).map((e) => e.slug),
-  );
-
-  // Dated, citable key-facts sentence. LLM crawlers and journalists quote
-  // stats that carry an explicit date + source; featured snippets prefer
-  // the same shape.
-  const hasData = result.ms.p50 > 0;
-  const subject = `${result.name} ${benchmark.metric.toLowerCase()}`;
-  const keyFacts = hasData
-    ? `As of ${asOfDate(benchmark.lastRunAt)}, ${subject} is ${p50} at the median (p50, 24h window), with ${p90} at p90 and ${p99} at p99.` +
-      (rank > 0
-        ? ` ${result.name} ranks #${rank} of ${sorted.length} chains measured on this benchmark.`
-        : "")
-    : `${subject} is measured continuously on this benchmark. Live numbers will appear here as soon as the harness reports fresh samples.`;
+  const crumbName =
+    data.shape === "row" ? data.result.name : data.chainLabel;
+  const keyFacts = buildKeyFacts(data);
+  const gatedChains = new Set(explainerChains(benchmark));
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -219,7 +352,7 @@ export default async function BenchmarkChainPage({
           {
             "@type": "ListItem",
             position: 4,
-            name: result.name,
+            name: crumbName,
             item: pageUrl,
           },
         ],
@@ -262,7 +395,7 @@ export default async function BenchmarkChainPage({
           </li>
           <li aria-hidden>/</li>
           <li className="text-ink-muted truncate max-w-[40vw] sm:max-w-none">
-            {result.name}
+            {crumbName}
           </li>
         </ol>
       </nav>
@@ -279,7 +412,7 @@ export default async function BenchmarkChainPage({
         <span style={{ color: catColor ?? "var(--color-ink-soft)" }}>
           {benchmark.category}
         </span>
-        <span className="text-ink-faint">{result.name}</span>
+        <span className="text-ink-faint">{crumbName}</span>
       </div>
 
       <h1 className="mt-5 display text-3xl sm:text-4xl md:text-5xl tracking-tight text-ink break-words">
@@ -298,63 +431,20 @@ export default async function BenchmarkChainPage({
         ))}
       </div>
 
-      {/* Cross-chain context table. Every sibling with its own explainer
-          links to its dedicated page (internal mesh); chains without one
-          deep-link to their anchor on the parent bench. */}
-      {sorted.length > 1 && (
-        <section className="mt-12 max-w-3xl">
-          <h2 className="display text-2xl tracking-tight text-ink">
-            How {result.name} compares
-          </h2>
-          <p className="mt-3 text-sm text-ink-muted">
-            Live p50 over the last 24 hours across every chain on this
-            benchmark, ranked{" "}
-            {benchmark.higherIsBetter ? "highest" : "lowest"} first.
-          </p>
-          <ol className="mt-6 space-y-1">
-            {sorted.map((r, i) => {
-              const isCurrent = r.slug === chain;
-              const href = explainerSlugs.has(r.slug)
-                ? `/benchmarks/${benchmark.slug}/${r.slug}`
-                : `/benchmarks/${benchmark.slug}#${r.slug}`;
-              const row = (
-                <span className="flex items-baseline justify-between gap-4">
-                  <span className="flex items-baseline gap-3 min-w-0">
-                    <span className="font-mono text-xs text-ink-faint w-6 shrink-0">
-                      #{i + 1}
-                    </span>
-                    <span
-                      className={
-                        isCurrent ? "font-semibold text-ink" : "text-ink-soft"
-                      }
-                    >
-                      {r.name}
-                    </span>
-                  </span>
-                  <span className="font-mono text-sm text-ink">
-                    {fmtUnit(r.ms.p50, benchmark.unit)}
-                  </span>
-                </span>
-              );
-              return (
-                <li
-                  key={r.slug}
-                  className={`rounded-md px-3 py-2 ${
-                    isCurrent ? "card-soft" : ""
-                  }`}
-                >
-                  {isCurrent ? (
-                    row
-                  ) : (
-                    <Link href={href} className="block hover:text-ink">
-                      {row}
-                    </Link>
-                  )}
-                </li>
-              );
-            })}
-          </ol>
-        </section>
+      {data.shape === "row" ? (
+        <RowComparison data={data} chain={chain} gatedChains={gatedChains} />
+      ) : (
+        <DimensionLeaderboard data={data} />
+      )}
+
+      {/* Sibling chain pages, for the dimension shape (the row shape's
+          comparison list already links siblings). */}
+      {data.shape === "dimension" && (
+        <SiblingChains
+          benchmark={benchmark}
+          current={chain}
+          gatedChains={gatedChains}
+        />
       )}
 
       <p className="mt-10 text-sm text-ink-muted">
@@ -370,5 +460,172 @@ export default async function BenchmarkChainPage({
         .
       </p>
     </article>
+  );
+}
+
+/** Row shape: cross-chain ranking with the current chain highlighted.
+ *  Every sibling with its own explainer links to its dedicated page
+ *  (internal mesh); chains without one deep-link to their anchor on the
+ *  parent bench. */
+function RowComparison({
+  data,
+  chain,
+  gatedChains,
+}: {
+  data: RowShape;
+  chain: string;
+  gatedChains: Set<string>;
+}) {
+  const { benchmark, result, sorted } = data;
+  if (sorted.length < 2) return null;
+  return (
+    <section className="mt-12 max-w-3xl">
+      <h2 className="display text-2xl tracking-tight text-ink">
+        How {result.name} compares
+      </h2>
+      <p className="mt-3 text-sm text-ink-muted">
+        Live p50 over the last 24 hours across every chain on this benchmark,
+        ranked {benchmark.higherIsBetter ? "highest" : "lowest"} first.
+      </p>
+      <ol className="mt-6 space-y-1">
+        {sorted.map((r, i) => {
+          const isCurrent = r.slug === chain;
+          const href = gatedChains.has(r.slug)
+            ? `/benchmarks/${benchmark.slug}/${r.slug}`
+            : `/benchmarks/${benchmark.slug}#${r.slug}`;
+          const row = (
+            <span className="flex items-baseline justify-between gap-4">
+              <span className="flex items-baseline gap-3 min-w-0">
+                <span className="font-mono text-xs text-ink-faint w-6 shrink-0">
+                  #{i + 1}
+                </span>
+                <span
+                  className={
+                    isCurrent ? "font-semibold text-ink" : "text-ink-soft"
+                  }
+                >
+                  {r.name}
+                </span>
+              </span>
+              <span className="font-mono text-sm text-ink">
+                {fmtUnit(r.ms.p50, benchmark.unit)}
+              </span>
+            </span>
+          );
+          return (
+            <li
+              key={r.slug}
+              className={`rounded-md px-3 py-2 ${isCurrent ? "card-soft" : ""}`}
+            >
+              {isCurrent ? (
+                row
+              ) : (
+                <Link href={href} className="block hover:text-ink">
+                  {row}
+                </Link>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+    </section>
+  );
+}
+
+/** Dimension shape: provider leaderboard scoped to this chain, plus the
+ *  per-region leader breakdown when the bench declares regions. */
+function DimensionLeaderboard({ data }: { data: DimensionShape }) {
+  const { benchmark, chainLabel, providers, regionLeaders } = data;
+  if (providers.length === 0) return null;
+  return (
+    <>
+      <section className="mt-12 max-w-3xl">
+        <h2 className="display text-2xl tracking-tight text-ink">
+          {chainLabel} leaderboard
+        </h2>
+        <p className="mt-3 text-sm text-ink-muted">
+          Live p50 over the last 24 hours, scoped to {chainLabel} only, ranked{" "}
+          {benchmark.higherIsBetter ? "highest" : "lowest"} first. Cross-region
+          average; the regional breakdown below shows where leaders diverge.
+        </p>
+        <ol className="mt-6 space-y-1">
+          {providers.map((r, i) => (
+            <li key={r.slug} className="rounded-md px-3 py-2">
+              <Link href={`/products/${r.slug}`} className="block hover:text-ink">
+                <span className="flex items-baseline justify-between gap-4">
+                  <span className="flex items-baseline gap-3 min-w-0">
+                    <span className="font-mono text-xs text-ink-faint w-6 shrink-0">
+                      #{i + 1}
+                    </span>
+                    <span className={i === 0 ? "font-semibold text-ink" : "text-ink-soft"}>
+                      {r.name}
+                    </span>
+                  </span>
+                  <span className="font-mono text-sm text-ink">
+                    {fmtUnit(r.ms.p50, benchmark.unit)}
+                  </span>
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      {regionLeaders.length > 1 && (
+        <section className="mt-10 max-w-3xl">
+          <h2 className="display text-xl tracking-tight text-ink">
+            Leader by region on {chainLabel}
+          </h2>
+          <ul className="mt-4 space-y-1">
+            {regionLeaders.map((r) => (
+              <li
+                key={r.region}
+                className="flex items-baseline justify-between gap-4 rounded-md px-3 py-2"
+              >
+                <span className="text-ink-soft">{r.region}</span>
+                <span className="font-mono text-sm text-ink">
+                  {r.leader.name} · {fmtUnit(r.leader.ms.p50, benchmark.unit)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </>
+  );
+}
+
+function SiblingChains({
+  benchmark,
+  current,
+  gatedChains,
+}: {
+  benchmark: Benchmark;
+  current: string;
+  gatedChains: Set<string>;
+}) {
+  const siblings = (benchmark.dimensions?.chain ?? []).filter(
+    (c) =>
+      c.value !== current &&
+      c.value.toLowerCase() !== "all" &&
+      gatedChains.has(c.value),
+  );
+  if (siblings.length === 0) return null;
+  return (
+    <nav className="mt-10 max-w-3xl" aria-label="Other chains">
+      <h2 className="label-mono text-ink-muted">Other chains</h2>
+      <ul className="mt-3 flex flex-wrap gap-2">
+        {siblings.map((c) => (
+          <li key={c.value}>
+            <Link
+              href={`/benchmarks/${benchmark.slug}/${c.value}`}
+              className="inline-block rounded-md card-soft px-3 py-1.5 text-sm text-ink-soft hover:text-ink"
+            >
+              {c.label}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </nav>
   );
 }
