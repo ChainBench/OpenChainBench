@@ -934,14 +934,28 @@ async function tryLoadLive(
     // its underlying metric. This is consistent across pages (Prom is the
     // single source of truth) and reflects real data freshness instead of
     // ISR cache age. Falls back to `now` only when extraction fails.
+    //
+    // Benches reading ocb:* recorded series MUST declare
+    // prometheus.freshness_metric (the raw harness metric): a recording
+    // rule keeps emitting fresh samples from its 24h window for a full
+    // day after the harness dies, so probing the recorded series would
+    // mask the outage.
     let lastRunAt = new Date().toISOString();
-    for (const p of spec.providers) {
-      const q = p.queries?.p50;
-      if (!q) continue;
-      const ageSec = await prom.dataAgeSec(q);
+    const freshnessMetric = spec.prometheus?.freshness_metric;
+    if (freshnessMetric) {
+      const ageSec = await prom.dataAgeSec(freshnessMetric);
       if (ageSec != null && Number.isFinite(ageSec) && ageSec >= 0) {
         lastRunAt = new Date(Date.now() - Math.floor(ageSec * 1000)).toISOString();
-        break;
+      }
+    } else {
+      for (const p of spec.providers) {
+        const q = p.queries?.p50;
+        if (!q) continue;
+        const ageSec = await prom.dataAgeSec(q);
+        if (ageSec != null && Number.isFinite(ageSec) && ageSec >= 0) {
+          lastRunAt = new Date(Date.now() - Math.floor(ageSec * 1000)).toISOString();
+          break;
+        }
       }
     }
 
