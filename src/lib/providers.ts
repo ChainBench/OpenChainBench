@@ -106,6 +106,15 @@ export type ProviderAppearance = {
      *  can compute per-chain rank for this provider without a full bench
      *  re-fetch. */
     bestPerChain?: Record<string, ProviderResult>;
+    /** Region dimension values from the spec, when present. Mirrors
+     *  `benchmark.dimensions.region`. */
+    regionDimensions?: { value: string; label: string }[];
+    /** Exact per-cell rankings from the bench's `rank_matrix_query`
+     *  (key = `<chain>|<region>`, "all" for an undeclared dimension or a
+     *  derived marginal). When present this is the authoritative source
+     *  for scoped leadership claims — per-chain ranks built from
+     *  cross-region averages hide region-restricted leaders. */
+    cellRanks?: Benchmark["cellRanks"];
   };
   result: ProviderResult;
   rank: number;
@@ -279,6 +288,8 @@ export const getProviders = cache(async (): Promise<ProviderProfile[]> => {
           lastRunAt: b.lastRunAt,
           chainDimensions: b.dimensions?.chain,
           bestPerChain: benchBestPerChain,
+          regionDimensions: b.dimensions?.region,
+          cellRanks: b.cellRanks,
         },
         result: r,
         rank: isRanked ? (idx as number) + 1 : 0,

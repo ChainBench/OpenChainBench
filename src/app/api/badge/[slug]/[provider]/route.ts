@@ -1,24 +1,27 @@
 /**
  * Embeddable SVG badge. One badge per (benchmark, provider).
  *
- * Endpoint shape: /api/badge/<benchmark-slug>/<provider-slug>?chain=<chain>
+ * Endpoint shape:
+ *   /api/badge/<benchmark-slug>/<provider-slug>?chain=<chain>&region=<region>
  *
  * Returns an SVG showing the provider's current rank + headline figure
  * on that bench. Cache-Control is short so the figure refreshes within
  * a few minutes of a new run.
  *
- * The optional `?chain=` query param scopes the rank computation to a
- * single chain (e.g. `?chain=solana`). When present, the badge:
- *   - computes rank within the providers that have a measurement on
- *     that chain (read from `benchmark.bestPerChain`).
- *   - prints the chain label as a subscript on the SVG so embedders
- *     don't mistakenly broadcast a chain-restricted "#1" as a global
- *     finish (e.g. a Solana-only provider being aggregate #1 mechanically
- *     on a cross-chain bench).
+ * The optional `?chain=` / `?region=` query params scope the rank
+ * computation. When the bench carries exact per-cell rankings (from its
+ * `rank_matrix_query`), the rank comes from the matching cell, including
+ * the combined scope `?chain=bnb&region=sgp`, and the scope labels are
+ * printed as a subscript on the SVG so embedders don't broadcast a
+ * chain- or region-restricted "#1" as a global finish (e.g. dRPC leading
+ * only from Singapore reading as the worldwide chain leader).
  *
- * When NO `chain` is provided, the badge falls back to the unfiltered
- * aggregate AND adds an "all chains" textual hint to the SVG so the
- * scope of the rank is visible at a glance.
+ * `?chain=` without cell data falls back to the legacy bestPerChain
+ * approximation. `?region=` requires cell data (404 otherwise).
+ *
+ * When NO scope is provided, the badge falls back to the unfiltered
+ * aggregate AND adds an "all chains" / "all regions" textual hint to the
+ * SVG so the scope of the rank is visible at a glance.
  */
 
 import { type NextRequest, NextResponse } from "next/server";
@@ -103,6 +106,27 @@ function rankOfChain(
   };
 }
 
+/**
+ * Exact scoped rank from the bench's per-cell rankings (populated by
+ * `rank_matrix_query` in the spec). Cell keys are `<chain>|<region>` with
+ * "all" standing in for an unscoped side (derived marginals included).
+ * Returns null when the bench has no cell data, the cell is empty this
+ * cycle, or the provider isn't ranked in it.
+ */
+function rankOfCell(
+  b: Benchmark,
+  providerSlug: string,
+  chain: string | null,
+  region: string | null,
+): { rank: number; total: number; value: number } | null {
+  const cell = b.cellRanks?.[`${chain ?? "all"}|${region ?? "all"}`];
+  if (!cell || cell.length === 0) return null;
+  const lower = providerSlug.toLowerCase();
+  const idx = cell.findIndex((e) => e.slug.toLowerCase() === lower);
+  if (idx === -1) return null;
+  return { rank: idx + 1, total: cell.length, value: cell[idx].p50 };
+}
+
 function valueSuffix(unit: string): string {
   if (unit === "count") return "(24h)";
   if (unit === "pct" || unit === "bps") return "(24h avg)";
@@ -117,6 +141,11 @@ function truncate(s: string, max: number): string {
 /** Returns the human label for a chain value from the bench's spec. */
 function chainLabel(b: Benchmark, chain: string): string {
   return b.dimensions?.chain?.find((c) => c.value === chain)?.label ?? chain;
+}
+
+/** Returns the human label for a region value from the bench's spec. */
+function regionLabel(b: Benchmark, region: string): string {
+  return b.dimensions?.region?.find((r) => r.value === region)?.label ?? region;
 }
 
 export async function GET(
@@ -141,44 +170,69 @@ export async function GET(
     });
   }
 
-  // Chain scoping. Query param is normalized to lowercase and validated
-  // against the bench's declared chain dimensions; an unknown chain is
-  // treated as a 400 rather than silently falling back to "all", so an
-  // embedder who mistypes can fix it instead of shipping a misleading
-  // unfiltered figure under a chain badge.
+  // Scope params are normalized to lowercase and validated against the
+  // bench's declared dimensions; an unknown value is treated as a 400
+  // rather than silently falling back to "all", so an embedder who
+  // mistypes can fix it instead of shipping a misleading unfiltered
+  // figure under a scoped badge. The canonical dimension value (not the
+  // raw param) feeds the cell lookup.
   const url = new URL(req.url);
-  const chainParam = url.searchParams.get("chain")?.toLowerCase().trim() || null;
-  if (chainParam) {
-    const known = b.dimensions?.chain?.some(
-      (c) => c.value.toLowerCase() === chainParam,
-    );
-    if (!known) {
-      return new NextResponse("unknown chain", {
-        status: 400,
-        headers: { "cache-control": "public, s-maxage=60" },
-      });
-    }
+  const rawChain = url.searchParams.get("chain")?.toLowerCase().trim() || null;
+  const rawRegion = url.searchParams.get("region")?.toLowerCase().trim() || null;
+  const chainParam = rawChain
+    ? (b.dimensions?.chain?.find((c) => c.value.toLowerCase() === rawChain)
+        ?.value ?? null)
+    : null;
+  const regionParam = rawRegion
+    ? (b.dimensions?.region?.find((d) => d.value.toLowerCase() === rawRegion)
+        ?.value ?? null)
+    : null;
+  if ((rawChain && !chainParam) || (rawRegion && !regionParam)) {
+    return new NextResponse(rawChain && !chainParam ? "unknown chain" : "unknown region", {
+      status: 400,
+      headers: { "cache-control": "public, s-maxage=60" },
+    });
   }
 
   let r: { rank: number; total: number; value: number } | null;
   let scopeLabel: string;
-  if (chainParam) {
-    const scoped = rankOfChain(b, provider, chainParam);
-    if (!scoped) {
+  if (chainParam || regionParam) {
+    const cell = rankOfCell(b, provider, chainParam, regionParam);
+    if (cell) {
+      r = cell;
+    } else if (chainParam && !regionParam) {
+      // Legacy approximation for chain-dimensioned benches without a
+      // rank_matrix_query in their spec.
+      const scoped = rankOfChain(b, provider, chainParam);
+      if (!scoped) {
+        return new NextResponse("not found", { status: 404 });
+      }
+      r = { rank: scoped.rank, total: scoped.total, value: scoped.value };
+    } else {
       return new NextResponse("not found", { status: 404 });
     }
-    r = { rank: scoped.rank, total: scoped.total, value: scoped.value };
-    scopeLabel = chainLabel(b, chainParam);
+    scopeLabel = [
+      chainParam ? chainLabel(b, chainParam) : null,
+      regionParam ? regionLabel(b, regionParam) : null,
+    ]
+      .filter(Boolean)
+      .join(" · ");
   } else {
     r = rankOf(b.results, provider, b.higherIsBetter);
     if (!r) return new NextResponse("not found", { status: 404 });
-    // Add an "all chains" hint when the bench declares chain dimensions so
-    // embedders can read the scope. Benches without chain dimensions get
-    // no scope label (it would be noise).
-    scopeLabel =
+    // Hint the aggregate scope when the bench declares dimensions so
+    // embedders can read it. Benches without dimensions get no scope
+    // label (it would be noise).
+    scopeLabel = [
       (b.dimensions?.chain?.filter((c) => c.value !== "all").length ?? 0) > 0
         ? "all chains"
-        : "";
+        : null,
+      (b.dimensions?.region?.filter((d) => d.value !== "all").length ?? 0) > 0
+        ? "all regions"
+        : null,
+    ]
+      .filter(Boolean)
+      .join(" · ");
   }
 
   // Colour signals rank. green for #1, dark ink for everyone else.

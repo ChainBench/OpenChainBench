@@ -124,6 +124,12 @@ dimensions:
     - { value: eu-west, label: EU-West }
     - { value: sgp,     label: Singapore }
 
+# One instant query feeding the exact per-cell (chain x region) rankings
+# behind scoped badges and leadership claims. Cross-region averages hide
+# region-restricted leaders (dRPC wins every chain from sgp only), so
+# badge scoping reads these cells instead of the aggregate ranks.
+rank_matrix_query: avg by (provider, chain, region) (quantile_over_time(0.50, rpc_latency_milliseconds[24h]))
+
 # Real metrics emitted by the rpc-capabilities harness:
 #   rpc_latency_milliseconds{provider, chain}                       gauge
 #   rpc_latency_milliseconds_histogram{provider, chain}             histogram

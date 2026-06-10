@@ -78,6 +78,10 @@ dimensions:
     - { value: eu-west,  label: EU West }
     - { value: sgp,      label: Singapore }
 
+# Exact per-cell (chain x region) rankings for scoped badges. One query,
+# one sample per (provider, chain, region) cell.
+rank_matrix_query: histogram_quantile(0.50, sum by (provider, chain, region, le) (rate(evm_swap_quote_latency_ms_bucket[24h])))
+
 providers:
   - slug: mobula
     name: Mobula

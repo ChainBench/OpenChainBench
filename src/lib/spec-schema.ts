@@ -318,6 +318,22 @@ export const SpecSchema = z
       })
       .optional(),
 
+    /* Optional single PromQL returning one instant sample per
+     * (provider[, chain][, region]) — e.g.
+     *   avg by (provider, chain, region) (quantile_over_time(0.50, m[24h]))
+     * Powers exact per-cell rankings (badge scoping, leadership claims)
+     * in ONE Prom roundtrip instead of a chains × regions query fan-out.
+     * Label values must match provider slugs / dimension values. */
+    rank_matrix_query: z
+      .string()
+      .min(1)
+      .max(2000)
+      .refine(
+        (q) => q.includes("provider"),
+        "rank_matrix_query must group by the provider label"
+      )
+      .optional(),
+
     providers: z.array(provider).min(1),
 
     /**
