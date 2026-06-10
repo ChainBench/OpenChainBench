@@ -164,7 +164,7 @@ providers:
       p90: relay_revenue_usd{window="7d"}
       p99: relay_revenue_usd{window="30d"}
       mean: relay_revenue_usd{window="7d"} / 7
-      success: relay_swaps_priced_total / (relay_swaps_priced_total + relay_swaps_unpriced_total)
+      success: sum(increase(relay_swaps_priced_total[24h])) / (sum(increase(relay_swaps_priced_total[24h])) + sum(increase(relay_swaps_unpriced_total[24h])))
       sample_size: relay_swap_count{window="24h"}
       series: relay_revenue_usd{window="24h"}
 

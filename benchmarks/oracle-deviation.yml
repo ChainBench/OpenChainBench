@@ -42,7 +42,7 @@ abstract: |
   We measure live oracle disagreement by polling four price oracles
   every 30 seconds for ten USD-quoted blue chips, then computing the
   full pairwise deviation matrix per pair. Deviation between two
-  sources is `|price_a, price_b| / ((price_a + price_b) / 2) * 100`
+  sources is `|price_a - price_b| / ((price_a + price_b) / 2) * 100`
   in percent; the bench surfaces it both per source-pair
   (`ocb_oracle_deviation_pct{source_a, source_b}`) and as the per-pair
   maximum across all source pairs (`ocb_oracle_max_deviation_pct`).
@@ -64,7 +64,7 @@ methodology:
   - "Sources. Chainlink AggregatorV3 via `eth_call(latestRoundData())` on Ethereum mainnet (no API key, public RPC with fallback), Pyth Network via Hermes REST `/api/latest_price_feeds` batch endpoint (no key), Binance REST `/api/v3/ticker/price` on USDT-quoted symbols (treated as ≈ USD), Coinbase REST `/products/<P>/ticker` on USD-quoted products. All four are free, no-auth, public endpoints."
   - "Pairs (10). BTC, ETH, SOL, BNB, AVAX, LINK and POL are tracked on all 4 sources. XRP, ADA, DOGE are tracked on 3 sources (Pyth + Binance + Coinbase) because the Chainlink mainnet AggregatorV3 contracts for these USD feeds are deprecated and no longer updated by node operators, the provider tag flags it."
   - "Cadence. 30 second polling interval per (source, pair). 4 sources × 10 pairs × 2/minute = 80 requests/minute total, comfortably under every free-tier ceiling (Binance 1200/min, Coinbase 10/s public, Pyth ~30/s soft, public RPC courteous). HTTP timeout is 8 s per request to match the gas-estimation harness."
-  - "Deviation formula. For every unordered pair of sources `(a, b)` that both have a fresh sample for the same pair: `deviation_pct = |price_a, price_b| / ((price_a + price_b) / 2) * 100`. With 4 sources we compute 6 pairwise deviations per asset; with 3 sources we compute 3. Per-pair headline is the max across all source-pairs (`ocb_oracle_max_deviation_pct`)."
+  - "Deviation formula. For every unordered pair of sources `(a, b)` that both have a fresh sample for the same pair: `deviation_pct = |price_a - price_b| / ((price_a + price_b) / 2) * 100`. With 4 sources we compute 6 pairwise deviations per asset; with 3 sources we compute 3. Per-pair headline is the max across all source-pairs (`ocb_oracle_max_deviation_pct`)."
   - "Stale-price guard. A source's sample is considered stale and excluded from the deviation calculation if its last successful update is older than `2 * pollInterval` (60 s). Prevents a dead Coinbase ticker from registering as a 0% deviation against itself by leaving the price gauge fossilized."
   - "Chainlink round age. The on-chain `updatedAt` timestamp from `latestRoundData()` is published separately as `ocb_oracle_last_round_age_seconds{source=\"chainlink\", pair}`. Chainlink updates only on deviation (typically 0.25-0.5% for blue chips) or heartbeat (~1 h), so a 30-minute age on a quiet ETH minute is normal; a 2-hour age on SOL during a volatile minute is the actual signal."
   - "USDT ≈ USD assumption. Binance only quotes USDT pairs (BTCUSDT, etc.). We treat USDT as ≈ USD ± 10 bps drift, which is acceptable for a bench whose alert floor is ≥ 10 bps. A real USDT depeg would surface as Binance drifting from the other three sources for *every* pair simultaneously, exactly what we want this bench to flag, not hide."

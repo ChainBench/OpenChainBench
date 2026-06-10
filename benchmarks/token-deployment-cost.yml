@@ -26,7 +26,7 @@ faq:
   - q: "Why is Cardano always similar?"
     a: "The Cardano min UTxO formula is deterministic. The coins_per_utxo_size protocol parameter is set by governance and moves rarely. A standard native asset bundle (32 byte policy hash plus short asset name) sits around 70 bytes, and the on chain mint transaction fee is a few cents of ADA. The USD figure on the leaderboard moves with ADA price, not with congestion."
   - q: "How does the L2 number include the L1 data fee?"
-    a: "Two paths depending on the rollup. Arbitrum Nitro: the chain bakes the L1 component into the returned gas via NodeInterface, so the plain eth_estimateGas figure already covers most of it (caveat: under L1 congestion the public RPC undercounts the L1 component by 10 to 50 percent and would need the explicit gasEstimateL1Component call). OP Stack rollups (Optimism, Base, Blast, Mantle, opBNB, Celo): eth_estimateGas returns L2 execution only, and we add the L1 data fee via OVM_GasPriceOracle.getL1Fee at 0x420000000000000000000000000000000000000F on the deploy calldata. Scroll, Linea and zkSync embed the data cost directly in their gas accounting."
+    a: "Two paths depending on the rollup. Arbitrum Nitro: the chain bakes the L1 component into the returned gas via NodeInterface, so the plain eth_estimateGas figure already covers most of it (caveat: under L1 congestion the public RPC undercounts the L1 component by 10 to 50 percent and would need the explicit gasEstimateL1Component call). OP Stack rollups (Optimism, Base, Blast, Mantle, opBNB, Celo): eth_estimateGas returns L2 execution only, and we add the L1 data fee via OVM_GasPriceOracle.getL1Fee at 0x420000000000000000000000000000000000000F on the deploy calldata. Scroll and Linea embed the data cost directly in their gas accounting."
   - q: "Where can I see the contract source?"
     a: "The canonical OpenZeppelin v5.0.2 ERC20 source and its compiled artifact (solc 0.8.24, optimizer runs 200) live in the harness directory under contracts/Token.sol and contracts/Token.json. The same bytecode is shipped to every EVM chain, so the cross chain gas comparison is on identical contract code. Reproduce locally with forge build and verify against the embedded constant in cmd/script/evm.go."
   - q: "Can I cite a value from this page?"
@@ -337,7 +337,7 @@ providers:
     name: Stellar
     layer: l1
     tag: Issuer + distribution + trustline, 2-account flow
-    formula: "3 × base_reserve_in_stroops + 2 × base_fee_in_stroops × XLM USD price."
+    formula: "(3 × base_reserve_in_stroops + 2 × base_fee_in_stroops) × XLM USD price."
     queries:
       p50: quantile_over_time(0.50, token_deployment_cost_usd{chain="stellar"}[24h])
       p90: quantile_over_time(0.90, token_deployment_cost_usd{chain="stellar"}[24h])

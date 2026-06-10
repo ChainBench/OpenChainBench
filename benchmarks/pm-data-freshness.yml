@@ -69,7 +69,7 @@ faq:
   - q: "Are these numbers comparable to Kalshi or Limitless?"
     a: "Not directly. This benchmark measures Polymarket as the underlying venue, since it's the largest and the one most providers proxy. Kalshi and Limitless are separate exchanges with separate data feeds, and providers that cover them often have a different ingestion path. We may add a Kalshi specific tab in a later phase. For now, treat the leaderboard as 'how fresh is your Polymarket data feed'."
   - q: "How does OpenChainBench measure freshness?"
-    a: "Three WebSocket clients run in parallel inside the harness, all subscribed to the same basket of top volume Polymarket markets. Every minute we refresh the basket from `gamma-api.polymarket.com`. For each trade event, we compute a signature `(conditionId, price rounded to 3 decimals, size in micros, 5 second time bucket)` and record the wall clock receive time on each provider. The freshness delta is `recv_provider - recv_polymarket` for the same signature. We export the histogram to Prometheus, the leaderboard reads the 24h p50."
+    a: "Three WebSocket clients run in parallel inside the harness, all subscribed to the same basket of top volume Polymarket markets. Every 5 minutes we refresh the basket from `gamma-api.polymarket.com`. For each trade event, we compute a signature `(conditionId, price rounded to 3 decimals, size in micros, 5 second time bucket)` and record the wall clock receive time on each provider. The freshness delta is `recv_provider - recv_polymarket` for the same signature. We export the histogram to Prometheus, the leaderboard reads the 24h p50."
 
 source: https://github.com/MobulaFi/mobula-monorepo/tree/main/miniapps/pm-freshness-bench
 
