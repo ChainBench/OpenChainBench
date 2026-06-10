@@ -33,11 +33,12 @@ export const revalidate = 300;
 
 type Params = { slug: string; provider: string };
 
-const H = 36;
+const H = 44;
 // Width is fixed but generous so most benchmark titles fit without
 // truncation. Anything over ~32 chars gets ellipsis.
 const W = 360;
-const LEFT_W = 78;
+// Text column starts right of the spinning logo sphere.
+const TEXT_X = 48;
 const TITLE_MAX = 32;
 
 function rankOf(
@@ -187,32 +188,55 @@ export async function GET(
   const suffix = valueSuffix(b.unit);
   const title = truncate(b.title, TITLE_MAX);
 
-  // Provider initials in the bottom-left corner. mirrors the brand
-  // chip the site uses internally.
-  const ocbBrand = "OCB";
-
-  // Scope marker: rendered as a small subscript next to the rank when
-  // present. Keeps the badge layout stable when absent (most benches).
+  // Scope marker: small caps tspan appended to the figure line, so the
+  // badge height stays constant whether or not a scope is present.
   const scopeAriaSuffix = scopeLabel ? ` (${scopeLabel})` : "";
-  const scopeSvg = scopeLabel
-    ? `<text x="${LEFT_W + 12}" y="38" fill="#9aa0a8" font-size="8" font-weight="600" letter-spacing="0.6">${escapeXml(scopeLabel.toUpperCase())}</text>`
+  const scopeTspan = scopeLabel
+    ? `<tspan dx="7" font-size="8" font-weight="600" fill="#9aa0a8" letter-spacing="0.6">${escapeXml(scopeLabel.toUpperCase())}</tspan>`
     : "";
-  // Bump the SVG canvas height when a scope label is rendered so the
-  // subscript doesn't clip outside the box on stricter image renderers.
-  const svgH = scopeLabel ? H + 8 : H;
 
+  // The spinning mark: the dark-mode brand sphere (near-black skin,
+  // light C-ring + grey corner markers, same geometry as site-logo.tsx)
+  // doing a continuous 360 around its vertical axis. The spin is a CSS
+  // coin-flip (scaleX 1 -> 0 -> 1); while scaleX is 0 the plain dark
+  // sphere shows, which is exactly what the back of the masthead sphere
+  // looks like. CSS animations inside SVG run in <img> embeds, and the
+  // reduced-motion media query freezes it for users who opted out.
+  // Static renderers without CSS support just show the un-rotated mark.
   const svg = `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${svgH}" viewBox="0 0 ${W} ${svgH}" role="img" aria-label="OpenChainBench: ${escapeXml(b.title)} ${rankLabel}${scopeAriaSuffix}, ${value}">
+<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="OpenChainBench: ${escapeXml(b.title)} ${rankLabel}${scopeAriaSuffix}, ${value}">
   <title>OpenChainBench. ${escapeXml(b.title)}. ${rankLabel}${scopeAriaSuffix}, ${value} ${suffix}</title>
-  <rect width="${W}" height="${svgH}" rx="4" fill="#F5F1E8"/>
-  <rect width="${LEFT_W}" height="${svgH}" rx="4" fill="${accent}"/>
-  <rect x="${LEFT_W - 4}" width="4" height="${svgH}" fill="${accent}"/>
+  <style>
+    @keyframes ocb-spin{0%{transform:scaleX(1);animation-timing-function:ease-in}35%{transform:scaleX(0)}65%{transform:scaleX(0);animation-timing-function:ease-out}100%{transform:scaleX(1)}}
+    .mark{animation:ocb-spin 2.6s infinite;transform-origin:24px 22px}
+    @media (prefers-reduced-motion:reduce){.mark{animation:none}}
+  </style>
+  <defs>
+    <radialGradient id="sphere" cx="35%" cy="30%" r="80%">
+      <stop offset="0%" stop-color="#2a2f38"/>
+      <stop offset="100%" stop-color="#0e1014"/>
+    </radialGradient>
+    <mask id="cmark">
+      <rect width="100" height="100" fill="#fff"/>
+      <ellipse cx="45" cy="50" rx="22" ry="40" fill="#000"/>
+      <rect x="45" y="38" width="55" height="24" fill="#000"/>
+    </mask>
+  </defs>
+  <rect width="${W}" height="${H}" rx="6" fill="#F5F1E8"/>
+  <rect x="0.5" y="0.5" width="${W - 1}" height="${H - 1}" rx="5.5" fill="none" stroke="#22272F" stroke-opacity="0.12"/>
+  <circle cx="24" cy="22" r="14" fill="url(#sphere)"/>
+  <g class="mark">
+    <g transform="translate(14.2 12.2) scale(0.196)">
+      <circle cx="45" cy="50" r="45" fill="#f8fafc" mask="url(#cmark)"/>
+      <path d="M65 0 L100 0 L100 35 Z" fill="#A0A0A0"/>
+      <path d="M65 100 L100 100 L100 65 Z" fill="#A0A0A0"/>
+    </g>
+  </g>
+  <ellipse cx="19" cy="16" rx="6" ry="3.5" fill="#fff" opacity="0.14" transform="rotate(-25 19 16)"/>
   <g font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace">
-    <text x="10" y="15" fill="#F5F1E8" font-size="9" font-weight="600" letter-spacing="1.6">${ocbBrand}</text>
-    <text x="10" y="28" fill="#F5F1E8" font-size="12" font-weight="700" letter-spacing="0.4">${rankLabel}</text>
-    <text x="${LEFT_W + 12}" y="15" fill="#22272F" font-size="11" font-weight="600">${escapeXml(title)}</text>
-    <text x="${LEFT_W + 12}" y="28" fill="#5A6068" font-size="10" font-weight="500">${value} <tspan fill="#9aa0a8">${suffix}</tspan></text>
-    ${scopeSvg}
+    <text x="${TEXT_X}" y="18" font-size="11"><tspan fill="${accent}" font-weight="700">${rankLabel}</tspan><tspan dx="7" fill="#22272F" font-weight="600">${escapeXml(title)}</tspan></text>
+    <text x="${TEXT_X}" y="33" fill="#5A6068" font-size="10" font-weight="500">${value} <tspan fill="#9aa0a8">${suffix}</tspan>${scopeTspan}</text>
+    <text x="${W - 10}" y="14" text-anchor="end" fill="#9aa0a8" font-size="7.5" font-weight="600" letter-spacing="1.4">OCB</text>
   </g>
 </svg>`;
 
