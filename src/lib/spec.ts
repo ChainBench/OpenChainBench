@@ -749,8 +749,11 @@ async function tryLoadLive(
       // transient Prom timeout under burst load (retry usually lands now
       // that the concurrency cap has drained the burst). This is the
       // difference between a provider flickering off the leaderboard for
-      // 60s and a stable board.
-      if ((p50 == null || p90 == null || p99 == null) && q.p50 && q.p90 && q.p99) {
+      // 60s and a stable board. Unfiltered view only: on chain/region
+      // tabs a null usually means the provider structurally isn't on
+      // that slice, and retrying every absent provider on every variant
+      // would triple the query bill for nothing.
+      if (!isFiltered && (p50 == null || p90 == null || p99 == null) && q.p50 && q.p90 && q.p99) {
         const [r50, r90, r99] = await Promise.all([
           p50 == null ? prom.scalar(q.p50) : Promise.resolve(p50),
           p90 == null ? prom.scalar(q.p90) : Promise.resolve(p90),
