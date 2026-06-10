@@ -102,7 +102,10 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // older cache entries for the all-benchmarks list didn't include the
   // new slug, so the bench was 404 on direct hit and absent from search
   // until the cache aged out.
-  ["bench-unfiltered-v5"],
+  // v6: added cellRanks (exact chain × region rankings from
+  // rank_matrix_query). Cached objects from v5 deploys lack the field,
+  // which made region-scoped badge URLs 404 after the deploy.
+  ["bench-unfiltered-v6"],
   { revalidate: 60, tags: ["benchmarks"] },
 );
 
@@ -163,7 +166,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // benchmark slice the products page reads. Without bumping this, the
   // outer cache can keep serving v5-era benchmarks (no providersPerChain)
   // even after the inner cache is fresh.
-  ["all-benchmarks-v7"],
+  // v8: bumped with bench-unfiltered-v6 (cellRanks) for the same reason.
+  ["all-benchmarks-v8"],
   { revalidate: 60, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
