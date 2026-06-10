@@ -3,7 +3,7 @@
 slug: evm-quote-latency
 number: "033"
 title: Fastest EVM swap quote API
-seo_title: "Fastest EVM swap quote API in 2026: 1inch, 0x, Mobula, KyberSwap, Bebop, LI.FI, OpenOcean live latency benchmark"
+seo_title: "Fastest EVM swap quote API in 2026: Mobula, KyberSwap, Bebop, CoW, Enso, LI.FI, OpenOcean live latency benchmark"
 seo_description: "Live p50/p90/p99 round trip latency for the major EVM swap quoting APIs measured every minute on a rotating basket of top markets across Ethereum, Base, Arbitrum and BSC, with a 3 region geographic split."
 subtitle: Wall clock p50 latency of GET /quote per provider, measured every minute on a 5 pair basket across 4 chains.
 

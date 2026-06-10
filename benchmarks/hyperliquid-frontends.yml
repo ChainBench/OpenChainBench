@@ -4,7 +4,7 @@ slug: hyperliquid-frontends
 number: "030"
 title: Hyperliquid frontends builder revenue leaderboard
 seo_title: "Hyperliquid frontends 2026: builder fee revenue USD live (Phantom Perps, MetaMask, Rabby, Insilico, Axiom, pvp.trade) over 24h, 7d, 30d"
-seo_description: "Live USD revenue collected by every Hyperliquid frontend via the on chain builder code field. Phantom Perps, MetaMask, Rabby, Insilico, based.app, OneKey, Axiom, pvp.trade and 50 others ranked by 24h, 7d and 30d builder fees. Data source is a local hl node tailing the Hyperliquid mainnet fill stream."
+seo_description: "Live USD revenue collected by every Hyperliquid frontend via the on chain builder code field. Phantom Perps, MetaMask, Rabby, Insilico, based.app, OneKey, Axiom, pvp.trade and 50+ others ranked by 24h, 7d and 30d builder fees. Data source is a local hl node tailing the Hyperliquid mainnet fill stream."
 subtitle: How much USD builder fee revenue each Hyperliquid frontend collected over the rolling 24h, 7 day and 30 day windows. Data from a local hl node tailing every fill on mainnet.
 category: Trading
 status: live
