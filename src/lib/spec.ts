@@ -14,7 +14,12 @@ import path from "node:path";
 import { cache } from "react";
 import { unstable_cache } from "next/cache";
 import yaml from "js-yaml";
-import type { Benchmark, MetricPanel, ProviderResult } from "@/types/benchmark";
+import type {
+  Benchmark,
+  CellRankEntry,
+  MetricPanel,
+  ProviderResult,
+} from "@/types/benchmark";
 import { Prometheus } from "@/lib/prometheus";
 import { SpecSchema, type Spec } from "@/lib/spec-schema";
 import { renderBenchmarkText } from "@/lib/bench-template";
@@ -455,6 +460,11 @@ async function specToBenchmark(
       if (Object.keys(providers).length > 0) providersPerChain = providers;
     }
 
+    // Exact per-cell rankings (chain × region) from the spec's single
+    // grouped matrix query. Failures are tolerated: badge/product
+    // surfaces fall back to the coarser bestPerChain path.
+    const cellRanks = !isFiltered ? await tryLoadCellRanks(spec) : undefined;
+
     // Resolve {{p50:slug}} / {{best_name}} / {{count}} etc. placeholders
     // against the freshly loaded numbers so editorial text (findings,
     // seo_intro, faq) never drifts from the displayed data.
@@ -464,6 +474,7 @@ async function specToBenchmark(
       bestPerChain,
       worstPerChain,
       providersPerChain,
+      cellRanks,
     });
     // Persist a snapshot of the runtime data so a future cold start
     // during a Prom blackout can still render this bench. Only the
@@ -484,6 +495,102 @@ function activeFilterLabels(opts: BenchmarkFilters): Record<string, string> {
     if (v && v !== "all") out[k] = v;
   }
   return out;
+}
+
+/**
+ * Run the spec's `rank_matrix_query` (one instant vector with a sample per
+ * (provider[, chain][, region])) and fold it into full per-cell rankings.
+ *
+ * Output keys are `<chain>|<region>` with "all" standing in for an
+ * undeclared dimension. When BOTH dimensions are declared, marginal cells
+ * (`<chain>|all`, `all|<region>`) are derived by averaging a provider's
+ * finest-cell values over the collapsed dimension — same semantics as the
+ * bench page's unscoped `avg(...)` headline queries.
+ *
+ * Samples whose provider label doesn't match a spec provider slug, or
+ * whose chain/region label isn't a declared dimension value, are dropped:
+ * the matrix is unfiltered PromQL, so stray series (retired providers,
+ * staging labels) must not leak into rankings.
+ */
+async function tryLoadCellRanks(
+  spec: Spec,
+): Promise<Record<string, CellRankEntry[]> | undefined> {
+  if (!spec.rank_matrix_query) return undefined;
+  const url = spec.prometheus?.url ?? process.env.PROMETHEUS_URL;
+  if (!url) return undefined;
+  try {
+    const prom = new Prometheus(url);
+    const res = await prom.query(spec.rank_matrix_query);
+    if (res.resultType !== "vector") return undefined;
+
+    const slugByLower = new Map(
+      spec.providers.map((p) => [p.slug.toLowerCase(), p.slug] as const),
+    );
+    const chainValues = new Set(
+      (spec.dimensions?.chain ?? []).map((c) => c.value).filter((v) => v !== "all"),
+    );
+    const regionValues = new Set(
+      (spec.dimensions?.region ?? []).map((r) => r.value).filter((v) => v !== "all"),
+    );
+
+    // key → provider slug → samples (averaged if the grouping left
+    // residual label splits, e.g. multiple replicas per region).
+    const acc = new Map<string, Map<string, number[]>>();
+    for (const sample of res.result) {
+      const slug = slugByLower.get((sample.metric.provider ?? "").toLowerCase());
+      if (!slug) continue;
+      const chain = chainValues.size > 0 ? sample.metric.chain : undefined;
+      const region = regionValues.size > 0 ? sample.metric.region : undefined;
+      if (chainValues.size > 0 && (!chain || !chainValues.has(chain))) continue;
+      if (regionValues.size > 0 && (!region || !regionValues.has(region))) continue;
+      const v = Number(sample.value[1]);
+      if (!Number.isFinite(v) || v <= 0) continue;
+      const key = `${chain ?? "all"}|${region ?? "all"}`;
+      const cell = acc.get(key) ?? new Map<string, number[]>();
+      const vals = cell.get(slug) ?? [];
+      vals.push(v);
+      cell.set(slug, vals);
+      acc.set(key, cell);
+    }
+    if (acc.size === 0) return undefined;
+
+    const mean = (vals: number[]) =>
+      vals.reduce((a, b) => a + b, 0) / vals.length;
+    const sortCell = (cell: Map<string, number[]>): CellRankEntry[] =>
+      [...cell.entries()]
+        .map(([slug, vals]) => ({ slug, p50: mean(vals) }))
+        .sort((a, b) =>
+          spec.higher_is_better ? b.p50 - a.p50 : a.p50 - b.p50,
+        );
+
+    const out: Record<string, CellRankEntry[]> = {};
+    for (const [key, cell] of acc) out[key] = sortCell(cell);
+
+    // Marginals, only when both dimensions exist in the finest cells.
+    if (chainValues.size > 0 && regionValues.size > 0) {
+      const marginal = new Map<string, Map<string, number[]>>();
+      for (const [key, cell] of acc) {
+        const [chain, region] = key.split("|");
+        for (const [slug, vals] of cell) {
+          const v = mean(vals);
+          for (const mKey of [`${chain}|all`, `all|${region}`]) {
+            const mCell = marginal.get(mKey) ?? new Map<string, number[]>();
+            const mVals = mCell.get(slug) ?? [];
+            mVals.push(v);
+            mCell.set(slug, mVals);
+            marginal.set(mKey, mCell);
+          }
+        }
+      }
+      for (const [key, cell] of marginal) out[key] = sortCell(cell);
+    }
+    return out;
+  } catch (e) {
+    console.warn(
+      `cellRanks skip: ${spec.slug} matrix query failed: ${e instanceof Error ? e.message : String(e)}`,
+    );
+    return undefined;
+  }
 }
 
 /** Inject every active `<label>="<value>"` into every PromQL label selector

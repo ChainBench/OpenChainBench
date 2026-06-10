@@ -59,6 +59,9 @@ export type ProviderResult = {
   formula?: string;
 };
 
+/** One provider's standing inside a (chain, region) ranking cell. */
+export type CellRankEntry = { slug: string; p50: number };
+
 export type RegionPoint = {
   region: "us-east" | "eu-west" | "ap-southeast" | "global";
   p50: number;
@@ -176,6 +179,17 @@ export type Benchmark = {
    *  of inheriting their aggregate position on every chain in the
    *  bench. */
   providersPerChain?: Record<string, string[]>;
+  /** Full per-cell rankings from the spec's `rank_matrix_query`, computed
+   *  only on the unfiltered view. Key = `<chain>|<region>` where a side is
+   *  "all" when the bench doesn't declare that dimension OR for derived
+   *  marginals (mean over the collapsed dimension). Value = providers
+   *  sorted best-first by the bench's direction.
+   *
+   *  Motivation: per-chain ranks built from cross-region averages hide
+   *  region-restricted leaders (dRPC winning from Singapore only still
+   *  read as the global chain leader). Cells make the honest claim
+   *  ("#1 on BNB Chain from Singapore") computable. */
+  cellRanks?: Record<string, CellRankEntry[]>;
   findings: string[];
   methodology: string[];
   source: string;
