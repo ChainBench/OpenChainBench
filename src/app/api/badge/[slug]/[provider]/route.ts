@@ -234,7 +234,12 @@ export async function GET(
       .join(" · ");
   } else {
     r = rankOf(b.results, provider, b.higherIsBetter);
-    if (!r) return new NextResponse("not found", { status: 404 });
+    if (!r) {
+      return new NextResponse("not found", {
+        status: 404,
+        headers: { "cache-control": "public, s-maxage=60" },
+      });
+    }
     // Hint the aggregate scope when the bench declares dimensions so
     // embedders can read it. Benches without dimensions get no scope
     // label (it would be noise).
@@ -281,7 +286,9 @@ export async function GET(
 
   // Scope marker: small caps tspan appended to the figure line, so the
   // badge height stays constant whether or not a scope is present.
-  const scopeAriaSuffix = scopeLabel ? ` (${scopeLabel})` : "";
+  // Escaped at construction: scopeLabel comes from YAML dimension labels
+  // and lands in XML attribute/text contexts below.
+  const scopeAriaSuffix = scopeLabel ? ` (${escapeXml(scopeLabel)})` : "";
   const scopeTspan = scopeLabel
     ? `<tspan dx="7" font-size="8" font-weight="600" fill="#9aa0a8" letter-spacing="0.6">${escapeXml(scopeLabel.toUpperCase())}</tspan>`
     : "";

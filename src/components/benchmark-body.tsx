@@ -492,7 +492,9 @@ export function BenchmarkBody({
                 ? "Product ledger"
                 : activePanel
                   ? `Product ledger · sorted by ${activePanel.label}`
-                  : "Product ledger · sorted by p50"}
+                  : viewBenchmark.ledgerColumns?.length
+                    ? `Product ledger · sorted by ${viewBenchmark.ledgerColumns[0].label}`
+                    : "Product ledger · sorted by p50"}
             </p>
             <LedgerTable benchmark={viewBenchmark} activePanel={activePanel} topN={topN} />
           </div>
