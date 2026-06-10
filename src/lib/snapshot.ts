@@ -33,7 +33,12 @@
  */
 
 import { z } from "zod";
-import type { Benchmark, ProviderResult, ResultExtras } from "@/types/benchmark";
+import type {
+  Benchmark,
+  CellRankEntry,
+  ProviderResult,
+  ResultExtras,
+} from "@/types/benchmark";
 
 /** Refuse snapshots older than this on read. 24 h matches the bench
  *  query window — a value older than that isn't meaningful as the
@@ -60,6 +65,7 @@ const SnapshotSchema = z.object({
   bestPerChain: z.record(z.string(), z.any()).optional(),
   worstPerChain: z.record(z.string(), z.any()).optional(),
   providersPerChain: z.record(z.string(), z.array(z.string())).optional(),
+  cellRanks: z.record(z.string(), z.any()).optional(),
 });
 
 export type SnapshotPayload = {
@@ -70,6 +76,7 @@ export type SnapshotPayload = {
   bestPerChain?: Record<string, ProviderResult>;
   worstPerChain?: Record<string, ProviderResult>;
   providersPerChain?: Record<string, string[]>;
+  cellRanks?: Record<string, CellRankEntry[]>;
 };
 
 function isConfigured(): boolean {
@@ -183,6 +190,9 @@ export async function readSnapshot(
       providersPerChain: parsed.data.providersPerChain as
         | Record<string, string[]>
         | undefined,
+      cellRanks: parsed.data.cellRanks as
+        | Record<string, CellRankEntry[]>
+        | undefined,
     };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -215,5 +225,6 @@ export function snapshotFromBenchmark(b: Benchmark): SnapshotPayload {
     worstPerChain: b.worstPerChain,
     providersPerChain: (b as { providersPerChain?: Record<string, string[]> })
       .providersPerChain,
+    cellRanks: b.cellRanks,
   };
 }
