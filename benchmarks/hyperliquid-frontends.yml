@@ -903,6 +903,201 @@ providers:
 # Companion metric panels surfaced as a switchable mini leaderboard below
 # the main p50/p90/p99 table. Each panel queries one Prom metric per
 # provider (builder label) and re-ranks the cohort under its direction.
+  - slug: "0x7cc0fd2b"
+    name: "0x7cc0…e781"
+    tag: Unidentified builder address, rename pending identification
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for this not yet identified builder address."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="0x7cc0fd2b"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="0x7cc0fd2b"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="0x7cc0fd2b"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="0x7cc0fd2b"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="0x7cc0fd2b"}
+      series: hl_frontend_fees_usd_24h_v2{builder="0x7cc0fd2b"}
+
+  - slug: "0x557edb25"
+    name: "0x557e…3c81"
+    tag: Unidentified builder address, rename pending identification
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for this not yet identified builder address."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="0x557edb25"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="0x557edb25"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="0x557edb25"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="0x557edb25"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="0x557edb25"}
+      series: hl_frontend_fees_usd_24h_v2{builder="0x557edb25"}
+
+  - slug: "0x446fbc72"
+    name: "0x446f…d6c6"
+    tag: Unidentified builder address, rename pending identification
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for this not yet identified builder address."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="0x446fbc72"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="0x446fbc72"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="0x446fbc72"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="0x446fbc72"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="0x446fbc72"}
+      series: hl_frontend_fees_usd_24h_v2{builder="0x446fbc72"}
+
+  - slug: "0xf85a6185"
+    name: "0xf85a…5688"
+    tag: Unidentified builder address, rename pending identification
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for this not yet identified builder address."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="0xf85a6185"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="0xf85a6185"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="0xf85a6185"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="0xf85a6185"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="0xf85a6185"}
+      series: hl_frontend_fees_usd_24h_v2{builder="0xf85a6185"}
+
+  - slug: "0xb290f2f3"
+    name: "0xb290…c34a"
+    tag: Unidentified builder address, rename pending identification
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for this not yet identified builder address."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="0xb290f2f3"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="0xb290f2f3"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="0xb290f2f3"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="0xb290f2f3"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="0xb290f2f3"}
+      series: hl_frontend_fees_usd_24h_v2{builder="0xb290f2f3"}
+
+  - slug: "0xa1fcd6e2"
+    name: "0xa1fc…bf4d"
+    tag: Unidentified builder address, rename pending identification
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for this not yet identified builder address."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="0xa1fcd6e2"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="0xa1fcd6e2"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="0xa1fcd6e2"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="0xa1fcd6e2"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="0xa1fcd6e2"}
+      series: hl_frontend_fees_usd_24h_v2{builder="0xa1fcd6e2"}
+
+  - slug: "0x53a19541"
+    name: "0x53a1…fcd1"
+    tag: Unidentified builder address, rename pending identification
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for this not yet identified builder address."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="0x53a19541"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="0x53a19541"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="0x53a19541"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="0x53a19541"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="0x53a19541"}
+      series: hl_frontend_fees_usd_24h_v2{builder="0x53a19541"}
+
+  - slug: "0xdbc27ea7"
+    name: "0xdbc2…97a6"
+    tag: Unidentified builder address, rename pending identification
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for this not yet identified builder address."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="0xdbc27ea7"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="0xdbc27ea7"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="0xdbc27ea7"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="0xdbc27ea7"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="0xdbc27ea7"}
+      series: hl_frontend_fees_usd_24h_v2{builder="0xdbc27ea7"}
+
+  - slug: "0xea2c82b5"
+    name: "0xea2c…75b3"
+    tag: Unidentified builder address, rename pending identification
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for this not yet identified builder address."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="0xea2c82b5"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="0xea2c82b5"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="0xea2c82b5"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="0xea2c82b5"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="0xea2c82b5"}
+      series: hl_frontend_fees_usd_24h_v2{builder="0xea2c82b5"}
+
+  - slug: "0x49791d46"
+    name: "0x4979…37b8"
+    tag: Unidentified builder address, rename pending identification
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for this not yet identified builder address."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="0x49791d46"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="0x49791d46"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="0x49791d46"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="0x49791d46"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="0x49791d46"}
+      series: hl_frontend_fees_usd_24h_v2{builder="0x49791d46"}
+
+  - slug: "0x9f83fe01"
+    name: "0x9f83…31d9"
+    tag: Unidentified builder address, rename pending identification
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for this not yet identified builder address."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="0x9f83fe01"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="0x9f83fe01"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="0x9f83fe01"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="0x9f83fe01"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="0x9f83fe01"}
+      series: hl_frontend_fees_usd_24h_v2{builder="0x9f83fe01"}
+
+  - slug: "0x42f32260"
+    name: "0x42f3…f992"
+    tag: Unidentified builder address, rename pending identification
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for this not yet identified builder address."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="0x42f32260"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="0x42f32260"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="0x42f32260"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="0x42f32260"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="0x42f32260"}
+      series: hl_frontend_fees_usd_24h_v2{builder="0x42f32260"}
+
+  - slug: "0xc95d92dc"
+    name: "0xc95d…1aca"
+    tag: Unidentified builder address, rename pending identification
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for this not yet identified builder address."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="0xc95d92dc"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="0xc95d92dc"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="0xc95d92dc"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="0xc95d92dc"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="0xc95d92dc"}
+      series: hl_frontend_fees_usd_24h_v2{builder="0xc95d92dc"}
+
+  - slug: "0xdf39721d"
+    name: "0xdf39…4750"
+    tag: Unidentified builder address, rename pending identification
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for this not yet identified builder address."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="0xdf39721d"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="0xdf39721d"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="0xdf39721d"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="0xdf39721d"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="0xdf39721d"}
+      series: hl_frontend_fees_usd_24h_v2{builder="0xdf39721d"}
+
+  - slug: "0x40e9d9fe"
+    name: "0x40e9…5260"
+    tag: Unidentified builder address, rename pending identification
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for this not yet identified builder address."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="0x40e9d9fe"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="0x40e9d9fe"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="0x40e9d9fe"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="0x40e9d9fe"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="0x40e9d9fe"}
+      series: hl_frontend_fees_usd_24h_v2{builder="0x40e9d9fe"}
+
 # All five metrics come from the local hl-node harness and update at the
 # same sub-minute cadence as the main headline.
 metric_panels:
@@ -954,16 +1149,29 @@ metric_panels:
     unit: usd
     higher_is_better: true
     tab: false
+  - id: users_7d
+    label: Users 7d
+    metric: hl_frontend_users_7d_v2
+    unit: count
+    higher_is_better: true
+    tab: false
+  - id: users_30d
+    label: Users 30d
+    metric: hl_frontend_users_30d_v2
+    unit: count
+    higher_is_better: true
+    tab: false
 
 # Honest column labels for the main table. The p50/p90/p99/mean slots are
 # repurposed on this bench (USD revenue, no percentile semantics), so the
 # ledger renders these labeled columns instead of latency headers, with
 # unique users surfaced inline from the users panel. `windows` wires the
-# 24h/7d/30d timeframe toggle to the data-only panels above; Users and
-# $ / user stay 24h (the harness only computes wallet uniqueness on the
-# 24h fill-level window) and their header says so on every timeframe.
+# 24h/7d/30d timeframe toggle to the data-only panels above. Users 7d/30d
+# come from per-UTC-day wallet sets in the harness (absent until its disk
+# backfill seeds them; the column shows a dash in that window). $ / user
+# stays 24h and its header says so on every timeframe.
 ledger_columns:
   - { label: "Revenue", slot: p50, windows: { 7d: revenue_7d, 30d: revenue_30d } }
   - { label: "Volume", slot: p90, windows: { 7d: volume_7d, 30d: volume_30d } }
-  - { label: "Users", panel: users }
+  - { label: "Users", panel: users, windows: { 7d: users_7d, 30d: users_30d } }
   - { label: "$ / user", slot: p99 }

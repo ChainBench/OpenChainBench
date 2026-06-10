@@ -378,7 +378,9 @@ export const SpecSchema = z
           tab: z.boolean().default(true),
         })
       )
-      .max(8)
+      // Cap covers visible tabs plus data-only window panels (revenue,
+      // volume and users each carry a 7d + 30d variant on the HL bench).
+      .max(12)
       .optional(),
 
     /**
