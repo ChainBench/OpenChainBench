@@ -278,6 +278,17 @@ export const SpecSchema = z
          * so one missed cycle is tolerated, two missed cycles fire.
          */
         expected_freshness_seconds: z.number().int().positive().optional(),
+        /**
+         * Raw harness metric to probe for data freshness (lastRunAt).
+         * REQUIRED in practice for benches whose queries read ocb:*
+         * recorded series: recording rules keep emitting from their 24h
+         * window long after a harness dies, so probing the recorded
+         * series would mask the outage.
+         */
+        freshness_metric: z
+          .string()
+          .regex(/^[a-zA-Z_:][a-zA-Z0-9_:]*$/, "Must be a bare metric name")
+          .optional(),
       })
       .optional(),
 
