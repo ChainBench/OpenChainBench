@@ -365,7 +365,24 @@ export const SpecSchema = z
       .max(8)
       .optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((spec, ctx) => {
+    // A region-dimensioned bench without exact cell rankings would fall
+    // back to cross-region-average badge logic, which is precisely the
+    // bias the matrix exists to fix (a provider winning from one region
+    // reads as the global leader). Refuse the spec instead.
+    const realRegions = (spec.dimensions?.region ?? []).filter(
+      (r) => r.value !== "all",
+    );
+    if (realRegions.length > 0 && !spec.rank_matrix_query) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["rank_matrix_query"],
+        message:
+          "Benches declaring dimensions.region must provide rank_matrix_query so badge claims are scoped per region",
+      });
+    }
+  });
 
 export type Spec = z.infer<typeof SpecSchema>;
 export type SpecProvider = z.infer<typeof provider>;
