@@ -249,26 +249,46 @@ export async function GET(
     ? `<tspan dx="7" font-size="8" font-weight="600" fill="#9aa0a8" letter-spacing="0.6">${escapeXml(scopeLabel.toUpperCase())}</tspan>`
     : "";
 
-  // The spinning mark: the dark-mode brand sphere (near-black skin,
-  // light C-ring + grey corner markers, same geometry as site-logo.tsx)
-  // doing a continuous 360 around its vertical axis. The spin is a CSS
-  // coin-flip (scaleX 1 -> 0 -> 1); while scaleX is 0 the plain dark
-  // sphere shows, which is exactly what the back of the masthead sphere
-  // looks like. CSS animations inside SVG run in <img> embeds, and the
-  // reduced-motion media query freezes it for users who opted out.
-  // Static renderers without CSS support just show the un-rotated mark.
+  // The spinning mark: the masthead's 3D brand sphere (site-logo-3d.tsx)
+  // faked in static SVG. Same texture geometry as the three.js canvas
+  // (C-ring + grey corner markers packed in the sphere's front face),
+  // dark skin, limb-darkening overlay and a specular highlight. The yaw
+  // animation is a true 360: the mark slides toward the right limb with
+  // cosine foreshortening, hides behind the sphere (plain dark back,
+  // exactly like the real sphere), then re-enters from the left limb.
+  // A background-colored cover ring hides the mark's overshoot past the
+  // sphere's silhouette (clip-path on animated content is unreliable in
+  // some <img> renderers; an opaque ring is not). CSS animations inside
+  // SVG run in <img> embeds; the reduced-motion media query freezes the
+  // mark front-and-center for users who opted out, which is also what
+  // static renderers without CSS support show.
   const svg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="OpenChainBench: ${escapeXml(b.title)} ${rankLabel}${scopeAriaSuffix}, ${value}">
   <title>OpenChainBench. ${escapeXml(b.title)}. ${rankLabel}${scopeAriaSuffix}, ${value} ${suffix}</title>
   <style>
-    @keyframes ocb-spin{0%{transform:scaleX(1);animation-timing-function:ease-in}35%{transform:scaleX(0)}65%{transform:scaleX(0);animation-timing-function:ease-out}100%{transform:scaleX(1)}}
-    .mark{animation:ocb-spin 2.6s infinite;transform-origin:24px 22px}
+    @keyframes ocb-yaw{
+      0%{transform:translateX(0) scaleX(1);opacity:1}
+      12.5%{transform:translateX(9.2px) scaleX(0.707);opacity:1}
+      24.9%{transform:translateX(13px) scaleX(0.04);opacity:1}
+      25%{opacity:0}
+      74.9%{transform:translateX(-13px) scaleX(0.04);opacity:0}
+      75%{transform:translateX(-13px) scaleX(0.04);opacity:1}
+      87.5%{transform:translateX(-9.2px) scaleX(0.707);opacity:1}
+      100%{transform:translateX(0) scaleX(1);opacity:1}
+    }
+    .mark{animation:ocb-yaw 3.2s linear infinite;transform-origin:24px 22px}
     @media (prefers-reduced-motion:reduce){.mark{animation:none}}
   </style>
   <defs>
-    <radialGradient id="sphere" cx="35%" cy="30%" r="80%">
-      <stop offset="0%" stop-color="#2a2f38"/>
-      <stop offset="100%" stop-color="#0e1014"/>
+    <radialGradient id="sphere" cx="38%" cy="30%" r="85%">
+      <stop offset="0%" stop-color="#2c323c"/>
+      <stop offset="55%" stop-color="#171a20"/>
+      <stop offset="100%" stop-color="#0a0c0f"/>
+    </radialGradient>
+    <radialGradient id="limb" cx="42%" cy="36%" r="70%">
+      <stop offset="0%" stop-color="#0a0c0f" stop-opacity="0"/>
+      <stop offset="66%" stop-color="#0a0c0f" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#0a0c0f" stop-opacity="0.8"/>
     </radialGradient>
     <mask id="cmark">
       <rect width="100" height="100" fill="#fff"/>
@@ -286,7 +306,9 @@ export async function GET(
       <path d="M65 100 L100 100 L100 65 Z" fill="#A0A0A0"/>
     </g>
   </g>
-  <ellipse cx="19" cy="16" rx="6" ry="3.5" fill="#fff" opacity="0.14" transform="rotate(-25 19 16)"/>
+  <circle cx="24" cy="22" r="17" fill="none" stroke="#F5F1E8" stroke-width="6"/>
+  <circle cx="24" cy="22" r="14" fill="url(#limb)"/>
+  <ellipse cx="18" cy="15" rx="5" ry="3" fill="#fff" opacity="0.35" transform="rotate(-25 18 15)"/>
   <g font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace">
     <text x="${TEXT_X}" y="18" font-size="11"><tspan fill="${accent}" font-weight="700">${rankLabel}</tspan><tspan dx="7" fill="#22272F" font-weight="600">${escapeXml(title)}</tspan></text>
     <text x="${TEXT_X}" y="33" fill="#5A6068" font-size="10" font-weight="500">${value} <tspan fill="#9aa0a8">${suffix}</tspan>${scopeTspan}</text>
