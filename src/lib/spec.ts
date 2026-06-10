@@ -102,7 +102,10 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // older cache entries for the all-benchmarks list didn't include the
   // new slug, so the bench was 404 on direct hit and absent from search
   // until the cache aged out.
-  ["bench-unfiltered-v5"],
+  // v6: added cellRanks (exact chain × region rankings from
+  // rank_matrix_query). Cached objects from v5 deploys lack the field,
+  // which made region-scoped badge URLs 404 after the deploy.
+  ["bench-unfiltered-v6"],
   { revalidate: 60, tags: ["benchmarks"] },
 );
 
@@ -163,7 +166,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // benchmark slice the products page reads. Without bumping this, the
   // outer cache can keep serving v5-era benchmarks (no providersPerChain)
   // even after the inner cache is fresh.
-  ["all-benchmarks-v7"],
+  // v8: bumped with bench-unfiltered-v6 (cellRanks) for the same reason.
+  ["all-benchmarks-v8"],
   { revalidate: 60, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -781,6 +785,27 @@ async function tryLoadLive(
 
     // No live numbers from anyone (every provider was skipped) → draft.
     if (liveResults.length === 0) return null;
+
+    // Quorum guard. Providers whose p50/p90/p99 come back null are
+    // silently skipped above, which is correct for a single flaky source
+    // but catastrophic under a Prom brownout: 14 of 15 providers timing
+    // out still yielded a "live" render with one bar on the leaderboard,
+    // which then got cached for 60s AND overwrote the KV snapshot with
+    // the degraded set. Treat a sub-quorum unfiltered render as a failed
+    // cycle instead: returning null makes the live-spec path throw, so
+    // unstable_cache keeps the last good render (or falls back to the KV
+    // snapshot on cold start). Filtered views are exempt — a chain tab
+    // legitimately has fewer providers than the spec declares.
+    if (!isFiltered) {
+      const declared = spec.providers.filter((p) => p.queries).length;
+      const quorum = Math.ceil(declared / 2);
+      if (liveResults.length < quorum) {
+        console.warn(
+          `bench quorum fail: ${spec.slug} live=${liveResults.length}/${declared} → keeping previous render`,
+        );
+        return null;
+      }
+    }
 
     // Optional companion metric panels. Each panel declares one Prometheus
     // metric; we query it per provider (`<metric>{<label_key>="<slug>"}`)

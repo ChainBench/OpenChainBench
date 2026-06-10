@@ -211,11 +211,20 @@ export async function GET(
       // rank_matrix_query in their spec.
       const scoped = rankOfChain(b, provider, chainParam);
       if (!scoped) {
-        return new NextResponse("not found", { status: 404 });
+        return new NextResponse("not found", {
+          status: 404,
+          // Short TTL: a scoped miss is usually transient (bench cache
+          // entry predating cellRanks, or a Prom hiccup on the matrix
+          // query), so don't let the CDN pin the 404 for long.
+          headers: { "cache-control": "public, s-maxage=60" },
+        });
       }
       r = { rank: scoped.rank, total: scoped.total, value: scoped.value };
     } else {
-      return new NextResponse("not found", { status: 404 });
+      return new NextResponse("not found", {
+        status: 404,
+        headers: { "cache-control": "public, s-maxage=60" },
+      });
     }
     scopeLabel = [
       chainParam ? chainLabel(b, chainParam) : null,
