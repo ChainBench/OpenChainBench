@@ -94,16 +94,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE.url}/press`, lastModified: pageMtime("press/page.tsx"), changeFrequency: "monthly", priority: 0.4 },
   ];
 
-  // Bench routes. The hub URL (no query string) is the canonical entry
-  // and ranks highest. Per-chain variants (`?chain=X`) are emitted as
-  // secondary URLs so Google's crawler discovers the chain-honest
-  // metadata / OG card pairs for each filter. We skip the "all" sentinel
-  // (which maps to the canonical hub) and any chain dimension whose
-  // value would collide with the hub after URL-encoding. Each variant
-  // shares the parent bench's `lastModified` because the chain filter
-  // doesn't change the underlying scrape cadence — they all refresh as
-  // a single Prom poll. Priority is dropped one tier on variants so
-  // Search Console reads the hub as the head of the cluster.
+  // Bench routes. The hub URL is the canonical entry and ranks highest.
+  // `?chain=X` query variants are deliberately NOT emitted: those URLs
+  // declare a canonical pointing at the unfiltered hub, so listing them
+  // told Google to index pages that self-identify as duplicates (GSC
+  // filed them under "Duplicate, Google chose different canonical").
+  // The indexable per-chain surface is the dedicated route
+  // `/benchmarks/<slug>/<chain>`, generated only for chains that carry a
+  // hand-written `per_chain_explainer` entry (unique editorial content,
+  // self-canonical). See src/app/benchmarks/[slug]/[chain]/page.tsx.
   const benchmarkRoutes: MetadataRoute.Sitemap = benchmarks.flatMap((b) => {
     const last = b.lastRunAt ? new Date(b.lastRunAt) : BUILD_TIME;
     const entries: MetadataRoute.Sitemap = [
@@ -114,15 +113,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.95,
       },
     ];
-    const chains = (b.dimensions?.chain ?? []).filter(
-      (c) => c.value && c.value.toLowerCase() !== "all",
-    );
-    for (const c of chains) {
+    const resultSlugs = new Set(b.results.map((r) => r.slug));
+    for (const e of b.perChainExplainer ?? []) {
+      if (!resultSlugs.has(e.slug)) continue;
       entries.push({
-        url: `${SITE.url}/benchmarks/${b.slug}?chain=${encodeURIComponent(c.value)}`,
+        url: `${SITE.url}/benchmarks/${b.slug}/${e.slug}`,
         lastModified: last,
         changeFrequency: "hourly",
-        priority: 0.8,
+        priority: 0.85,
       });
     }
     return entries;
