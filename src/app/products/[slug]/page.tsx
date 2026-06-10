@@ -131,7 +131,16 @@ export default async function ProviderPage({
             (k) => cellRanks[k][0]?.slug.toLowerCase() === me,
           ),
         );
-        if (wonKeys.size === finestKeys.length) {
+        // Collapsed claims require FULL declared coverage, not just the
+        // cells that happen to have data this cycle. Without this, a
+        // degraded matrix (one surviving cell) would mint an unscoped
+        // global "#1" from a single win.
+        const expectedCells =
+          Math.max(chainDims.length, 1) * regionDims.length;
+        if (
+          wonKeys.size === finestKeys.length &&
+          finestKeys.length === expectedCells
+        ) {
           badgeCards.push({ key: benchSlug, title, benchSlug });
           continue;
         }
@@ -141,7 +150,9 @@ export default async function ProviderPage({
         const covered = new Set<string>();
         for (const c of chainDims) {
           const row = finestKeys.filter((k) => chainOf(k) === c.value);
-          if (row.length === 0 || !row.every((k) => wonKeys.has(k))) continue;
+          // Row collapse only when every DECLARED region reported a cell
+          // for this chain and the provider won them all.
+          if (row.length !== regionDims.length || !row.every((k) => wonKeys.has(k))) continue;
           badgeCards.push({
             key: `${benchSlug}-${c.value}`,
             title,
@@ -152,7 +163,8 @@ export default async function ProviderPage({
         }
         for (const r of regionDims) {
           const col = finestKeys.filter((k) => regionOf(k) === r.value);
-          if (col.length === 0 || !col.every((k) => wonKeys.has(k))) continue;
+          const expectedCols = Math.max(chainDims.length, 1);
+          if (col.length !== expectedCols || !col.every((k) => wonKeys.has(k))) continue;
           if (col.every((k) => covered.has(k))) continue;
           badgeCards.push({
             key: `${benchSlug}-r-${r.value}`,

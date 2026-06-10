@@ -105,7 +105,8 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v6: added cellRanks (exact chain × region rankings from
   // rank_matrix_query). Cached objects from v5 deploys lack the field,
   // which made region-scoped badge URLs 404 after the deploy.
-  ["bench-unfiltered-v6"],
+  // v7: added ledgerColumns (per-bench ledger column relabeling).
+  ["bench-unfiltered-v7"],
   { revalidate: 60, tags: ["benchmarks"] },
 );
 
@@ -167,7 +168,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // outer cache can keep serving v5-era benchmarks (no providersPerChain)
   // even after the inner cache is fresh.
   // v8: bumped with bench-unfiltered-v6 (cellRanks) for the same reason.
-  ["all-benchmarks-v8"],
+  // v9: bumped with bench-unfiltered-v7 (ledgerColumns).
+  ["all-benchmarks-v9"],
   { revalidate: 60, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -210,7 +212,8 @@ const loadBenchmarkFiltered = unstable_cache(
     }
     return bench;
   },
-  ["bench-filters-v3"],
+  // v4: bumped with bench-unfiltered-v7 (ledgerColumns).
+  ["bench-filters-v4"],
   { revalidate: 60, tags: ["benchmarks"] }
 );
 
@@ -314,6 +317,7 @@ function buildEditorial(
     findings: spec.findings,
     source: spec.source,
     dimensions: spec.dimensions,
+    ledgerColumns: spec.ledger_columns,
   };
 }
 
@@ -530,11 +534,18 @@ async function tryLoadCellRanks(
     const slugByLower = new Map(
       spec.providers.map((p) => [p.slug.toLowerCase(), p.slug] as const),
     );
-    const chainValues = new Set(
-      (spec.dimensions?.chain ?? []).map((c) => c.value).filter((v) => v !== "all"),
+    // Canonical dimension value by lowercase, so a harness emitting
+    // `chain="Base"` still maps onto the declared `base` value instead
+    // of silently dropping the cell.
+    const chainByLower = new Map(
+      (spec.dimensions?.chain ?? [])
+        .filter((c) => c.value !== "all")
+        .map((c) => [c.value.toLowerCase(), c.value] as const),
     );
-    const regionValues = new Set(
-      (spec.dimensions?.region ?? []).map((r) => r.value).filter((v) => v !== "all"),
+    const regionByLower = new Map(
+      (spec.dimensions?.region ?? [])
+        .filter((r) => r.value !== "all")
+        .map((r) => [r.value.toLowerCase(), r.value] as const),
     );
 
     // key → provider slug → samples (averaged if the grouping left
@@ -543,10 +554,16 @@ async function tryLoadCellRanks(
     for (const sample of res.result) {
       const slug = slugByLower.get((sample.metric.provider ?? "").toLowerCase());
       if (!slug) continue;
-      const chain = chainValues.size > 0 ? sample.metric.chain : undefined;
-      const region = regionValues.size > 0 ? sample.metric.region : undefined;
-      if (chainValues.size > 0 && (!chain || !chainValues.has(chain))) continue;
-      if (regionValues.size > 0 && (!region || !regionValues.has(region))) continue;
+      const chain =
+        chainByLower.size > 0
+          ? chainByLower.get((sample.metric.chain ?? "").toLowerCase())
+          : undefined;
+      const region =
+        regionByLower.size > 0
+          ? regionByLower.get((sample.metric.region ?? "").toLowerCase())
+          : undefined;
+      if (chainByLower.size > 0 && !chain) continue;
+      if (regionByLower.size > 0 && !region) continue;
       const v = Number(sample.value[1]);
       if (!Number.isFinite(v) || v <= 0) continue;
       const key = `${chain ?? "all"}|${region ?? "all"}`;
@@ -571,22 +588,55 @@ async function tryLoadCellRanks(
     for (const [key, cell] of acc) out[key] = sortCell(cell);
 
     // Marginals, only when both dimensions exist in the finest cells.
-    if (chainValues.size > 0 && regionValues.size > 0) {
-      const marginal = new Map<string, Map<string, number[]>>();
-      for (const [key, cell] of acc) {
+    // A provider only enters a marginal if it covers EVERY cell of the
+    // collapsed dimension that exists for that row/column. Without this,
+    // a provider measured only from its fastest region wins the
+    // `<chain>|all` average by omission (Simpson's bias), and the badge
+    // for "leads chain X" disagrees with the per-cell wins that earned it.
+    if (chainByLower.size > 0 && regionByLower.size > 0) {
+      const regionsOfChain = new Map<string, Set<string>>();
+      const chainsOfRegion = new Map<string, Set<string>>();
+      for (const key of acc.keys()) {
         const [chain, region] = key.split("|");
-        for (const [slug, vals] of cell) {
-          const v = mean(vals);
-          for (const mKey of [`${chain}|all`, `all|${region}`]) {
-            const mCell = marginal.get(mKey) ?? new Map<string, number[]>();
-            const mVals = mCell.get(slug) ?? [];
-            mVals.push(v);
-            mCell.set(slug, mVals);
-            marginal.set(mKey, mCell);
-          }
-        }
+        (regionsOfChain.get(chain) ?? regionsOfChain.set(chain, new Set()).get(chain)!).add(region);
+        (chainsOfRegion.get(region) ?? chainsOfRegion.set(region, new Set()).get(region)!).add(chain);
       }
-      for (const [key, cell] of marginal) out[key] = sortCell(cell);
+      const marginalFor = (
+        groups: Map<string, Set<string>>,
+        keyOf: (group: string, member: string) => string,
+        mKeyOf: (group: string) => string,
+      ) => {
+        for (const [group, members] of groups) {
+          const cell = new Map<string, number[]>();
+          // Providers present in every member cell of the group.
+          let eligible: Set<string> | undefined;
+          for (const member of members) {
+            const slugs = new Set(acc.get(keyOf(group, member))?.keys() ?? []);
+            eligible = eligible
+              ? new Set([...eligible].filter((s) => slugs.has(s)))
+              : slugs;
+          }
+          for (const slug of eligible ?? []) {
+            const vals: number[] = [];
+            for (const member of members) {
+              const v = acc.get(keyOf(group, member))?.get(slug);
+              if (v) vals.push(mean(v));
+            }
+            if (vals.length > 0) cell.set(slug, [mean(vals)]);
+          }
+          if (cell.size > 0) out[mKeyOf(group)] = sortCell(cell);
+        }
+      };
+      marginalFor(
+        regionsOfChain,
+        (chain, region) => `${chain}|${region}`,
+        (chain) => `${chain}|all`,
+      );
+      marginalFor(
+        chainsOfRegion,
+        (region, chain) => `${chain}|${region}`,
+        (region) => `all|${region}`,
+      );
     }
     return out;
   } catch (e) {
@@ -681,16 +731,35 @@ async function tryLoadLive(
       const q = p.queries;
       if (!q) return null;
 
-      const [p50, p90, p99, mean, success, sampleSize, slotP50, slotP99] = await Promise.all([
+      let [p50, p90, p99] = await Promise.all([
         q.p50 ? prom.scalar(q.p50) : Promise.resolve(null),
         q.p90 ? prom.scalar(q.p90) : Promise.resolve(null),
         q.p99 ? prom.scalar(q.p99) : Promise.resolve(null),
+      ]);
+      const [mean, success, sampleSize, slotP50, slotP99] = await Promise.all([
         q.mean ? prom.scalar(q.mean) : Promise.resolve(null),
         q.success ? prom.scalar(q.success) : Promise.resolve(null),
         q.sample_size ? prom.scalar(q.sample_size) : Promise.resolve(null),
         q.slot_p50 ? prom.scalar(q.slot_p50) : Promise.resolve(null),
         q.slot_p99 ? prom.scalar(q.slot_p99) : Promise.resolve(null),
       ]);
+
+      // One retry on the load-bearing percentiles. A null here is either
+      // "provider has no data" (retry returns null again, harmless) or a
+      // transient Prom timeout under burst load (retry usually lands now
+      // that the concurrency cap has drained the burst). This is the
+      // difference between a provider flickering off the leaderboard for
+      // 60s and a stable board.
+      if ((p50 == null || p90 == null || p99 == null) && q.p50 && q.p90 && q.p99) {
+        const [r50, r90, r99] = await Promise.all([
+          p50 == null ? prom.scalar(q.p50) : Promise.resolve(p50),
+          p90 == null ? prom.scalar(q.p90) : Promise.resolve(p90),
+          p99 == null ? prom.scalar(q.p99) : Promise.resolve(p99),
+        ]);
+        p50 = r50;
+        p90 = r90;
+        p99 = r99;
+      }
 
       // If a provider has no data for the current filter (e.g. Jupiter on
       // BNB Chain when Jupiter is Solana-only), skip it instead of failing
@@ -798,7 +867,13 @@ async function tryLoadLive(
     // legitimately has fewer providers than the spec declares.
     if (!isFiltered) {
       const declared = spec.providers.filter((p) => p.queries).length;
-      const quorum = Math.ceil(declared / 2);
+      // Floor at 3 so a bench whose field is legitimately decimated (most
+      // declared providers dead for days) can still go live with its
+      // survivors instead of drafting forever once the KV snapshot ages
+      // out. 3 is still enough to make a leaderboard meaningful, and the
+      // brownout scenario this guards against (1-2 stragglers passing
+      // while the rest time out) stays caught.
+      const quorum = Math.min(Math.ceil(declared / 2), 3);
       if (liveResults.length < quorum) {
         console.warn(
           `bench quorum fail: ${spec.slug} live=${liveResults.length}/${declared} → keeping previous render`,
