@@ -786,6 +786,27 @@ async function tryLoadLive(
     // No live numbers from anyone (every provider was skipped) → draft.
     if (liveResults.length === 0) return null;
 
+    // Quorum guard. Providers whose p50/p90/p99 come back null are
+    // silently skipped above, which is correct for a single flaky source
+    // but catastrophic under a Prom brownout: 14 of 15 providers timing
+    // out still yielded a "live" render with one bar on the leaderboard,
+    // which then got cached for 60s AND overwrote the KV snapshot with
+    // the degraded set. Treat a sub-quorum unfiltered render as a failed
+    // cycle instead: returning null makes the live-spec path throw, so
+    // unstable_cache keeps the last good render (or falls back to the KV
+    // snapshot on cold start). Filtered views are exempt — a chain tab
+    // legitimately has fewer providers than the spec declares.
+    if (!isFiltered) {
+      const declared = spec.providers.filter((p) => p.queries).length;
+      const quorum = Math.ceil(declared / 2);
+      if (liveResults.length < quorum) {
+        console.warn(
+          `bench quorum fail: ${spec.slug} live=${liveResults.length}/${declared} → keeping previous render`,
+        );
+        return null;
+      }
+    }
+
     // Optional companion metric panels. Each panel declares one Prometheus
     // metric; we query it per provider (`<metric>{<label_key>="<slug>"}`)
     // and store the scalar values. Providers with no data for that metric
