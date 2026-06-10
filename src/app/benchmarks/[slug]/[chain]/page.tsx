@@ -40,18 +40,48 @@ type ChainPageData = {
   rank: number;
 };
 
+/** The spec loader's renderTemplate only resolves placeholders for
+ *  providers that are "live" this cycle. When a chain's data is in a
+ *  transient gap, raw `{{p50:ethereum}}` tokens would leak into the H1
+ *  copy and the meta description. Resolve leftovers against the full
+ *  results array (the row always exists - generateStaticParams gates on
+ *  it), so the page degrades to the last scraped value instead of
+ *  shipping template syntax to the SERP. */
+function resolveLeftoverPlaceholders(text: string, b: Benchmark): string {
+  return text.replace(
+    /\{\{\s*(p50|p90|p99|mean|name):([a-z0-9-]+)\s*\}\}/gi,
+    (whole, keyword: string, slug: string) => {
+      const row = b.results.find(
+        (r) => r.slug.toLowerCase() === slug.toLowerCase(),
+      );
+      const k = keyword.toLowerCase();
+      if (k === "name") return row ? row.name : whole;
+      const raw = row?.ms[k as "p50" | "p90" | "p99" | "mean"];
+      // Transient data gap: degrade to neutral copy ("... is measured
+      // live (p50, 24h)") rather than shipping template syntax.
+      if (!raw || raw <= 0) return "measured live";
+      return fmtUnit(raw, b.unit);
+    },
+  );
+}
+
 async function loadChainPage(
   slug: string,
   chain: string,
 ): Promise<ChainPageData | null> {
   const benchmark = await getBenchmark(slug);
   if (!benchmark) return null;
-  const explainer = (benchmark.perChainExplainer ?? []).find(
+  const found = (benchmark.perChainExplainer ?? []).find(
     (e) => e.slug === chain,
   );
-  if (!explainer) return null;
+  if (!found) return null;
   const result = benchmark.results.find((r) => r.slug === chain);
   if (!result) return null;
+  const explainer = {
+    ...found,
+    h2: resolveLeftoverPlaceholders(found.h2, benchmark),
+    body: resolveLeftoverPlaceholders(found.body, benchmark),
+  };
   const live = liveResults(benchmark.results);
   const sorted = [...live].sort((a, b) =>
     benchmark.higherIsBetter ? b.ms.p50 - a.ms.p50 : a.ms.p50 - b.ms.p50,
@@ -90,8 +120,10 @@ export async function generateMetadata({
   const data = await loadChainPage(slug, chain);
   if (!data) return {};
   const { benchmark, explainer, result } = data;
-  const value = fmtUnit(result.ms.p50, benchmark.unit);
-  const title = `${explainer.h2}: ${value} p50 live`;
+  const hasData = result.ms.p50 > 0;
+  const title = hasData
+    ? `${explainer.h2}: ${fmtUnit(result.ms.p50, benchmark.unit)} p50 live`
+    : `${explainer.h2}: live benchmark`;
   const description = capDescription(
     stripInlineMarkdown(explainer.body),
     158,
@@ -141,11 +173,14 @@ export default async function BenchmarkChainPage({
   // Dated, citable key-facts sentence. LLM crawlers and journalists quote
   // stats that carry an explicit date + source; featured snippets prefer
   // the same shape.
-  const keyFacts =
-    `As of ${asOfDate(benchmark.lastRunAt)}, ${explainer.h2.toLowerCase()} is ${p50} at the median (p50, 24h window), with ${p90} at p90 and ${p99} at p99.` +
-    (rank > 0
-      ? ` ${result.name} ranks #${rank} of ${sorted.length} chains measured on this benchmark.`
-      : "");
+  const hasData = result.ms.p50 > 0;
+  const subject = `${result.name} ${benchmark.metric.toLowerCase()}`;
+  const keyFacts = hasData
+    ? `As of ${asOfDate(benchmark.lastRunAt)}, ${subject} is ${p50} at the median (p50, 24h window), with ${p90} at p90 and ${p99} at p99.` +
+      (rank > 0
+        ? ` ${result.name} ranks #${rank} of ${sorted.length} chains measured on this benchmark.`
+        : "")
+    : `${subject} is measured continuously on this benchmark. Live numbers will appear here as soon as the harness reports fresh samples.`;
 
   const jsonLd = {
     "@context": "https://schema.org",
