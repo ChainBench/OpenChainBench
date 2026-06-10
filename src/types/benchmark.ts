@@ -76,6 +76,9 @@ export type MetricPanel = {
   metric: string;
   unit: "ms" | "s" | "pct" | "bps" | "count" | "slots" | "usd";
   higherIsBetter: boolean;
+  /** When false the panel is data-only (feeds ledger column window
+   *  variants) and renders no chart tab. */
+  tab?: boolean;
   /** Per-provider scalar values, keyed by provider slug. Providers with no
    *  live data for this metric are omitted; the renderer renders them as
    *  "no data" instead of zero. */
@@ -215,4 +218,8 @@ export type LedgerColumn = {
   /** Display unit override; defaults to the panel's unit (panel columns)
    *  or the bench unit (slot columns). */
   unit?: "ms" | "s" | "pct" | "bps" | "count" | "slots" | "usd";
+  /** Per-window value sources for the ledger's timeframe toggle: window
+   *  key to metric_panels id. Columns without a mapping keep their 24h
+   *  value when a longer window is selected. */
+  windows?: Partial<Record<"7d" | "30d", string>>;
 };
