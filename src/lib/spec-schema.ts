@@ -364,6 +364,34 @@ export const SpecSchema = z
       )
       .max(8)
       .optional(),
+
+    /**
+     * Optional relabeling of the ledger's aggregate columns. For benches
+     * whose unit has no percentile semantics (USD revenue leaderboards),
+     * the p50/p90/p99/mean slots are repurposed; declaring ledger_columns
+     * renders each column with an honest label and unit instead of the
+     * default latency headers. `slot` reads the provider's headline slot,
+     * `panel` reads the values of a metric_panels entry by id. The first
+     * column is the headline (sort key, data bar, mobile column).
+     */
+    ledger_columns: z
+      .array(
+        z
+          .object({
+            label: z.string().min(1).max(28),
+            slot: z.enum(["p50", "p90", "p99", "mean"]).optional(),
+            panel: z.string().min(1).max(40).optional(),
+            unit: z
+              .enum(["ms", "s", "pct", "bps", "count", "slots", "usd"])
+              .optional(),
+          })
+          .refine((c) => (c.slot != null) !== (c.panel != null), {
+            message: "ledger column must set exactly one of slot or panel",
+          }),
+      )
+      .min(1)
+      .max(6)
+      .optional(),
   })
   .strict()
   .superRefine((spec, ctx) => {
@@ -380,6 +408,30 @@ export const SpecSchema = z
         path: ["rank_matrix_query"],
         message:
           "Benches declaring dimensions.region must provide rank_matrix_query so badge claims are scoped per region",
+      });
+    }
+
+    // A ledger column referencing a panel id that doesn't exist would
+    // silently render "-" for every provider. Refuse at validate time.
+    const panelIds = new Set((spec.metric_panels ?? []).map((p) => p.id));
+    for (const [i, col] of (spec.ledger_columns ?? []).entries()) {
+      if (col.panel && !panelIds.has(col.panel)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["ledger_columns", i, "panel"],
+          message: `Unknown metric_panels id "${col.panel}"`,
+        });
+      }
+    }
+    // The ledger sorts, bars and badges off p50. The first displayed
+    // column must be that same number or the table reads as mis-sorted.
+    const firstCol = spec.ledger_columns?.[0];
+    if (firstCol && firstCol.slot !== "p50") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["ledger_columns", 0, "slot"],
+        message:
+          "First ledger column must be slot p50 (the headline the table sorts by)",
       });
     }
   });
