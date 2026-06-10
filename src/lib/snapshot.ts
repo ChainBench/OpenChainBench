@@ -32,6 +32,7 @@
  *     outage.
  */
 
+import { after } from "next/server";
 import { z } from "zod";
 import type {
   Benchmark,
@@ -123,17 +124,30 @@ const SNAPSHOT_GUARD_WINDOW_MS = 2 * 60 * 60 * 1000;
  */
 export function writeSnapshot(slug: string, payload: SnapshotPayload): void {
   if (!isConfigured()) return;
-  void (async () => {
+  const work = (async () => {
     try {
       const existing = await readSnapshotWithAge(slug);
+      // KV unreachable (as opposed to "no snapshot yet"): skip the write
+      // entirely. A degraded render slipping past the guards precisely
+      // when the infra is under stress is the scenario the guards exist
+      // for, and a healthy cycle lands 60s later anyway.
+      if (existing === "error") {
+        console.warn(`snapshot.write skipped for ${slug}: KV read failed`);
+        return;
+      }
       const merged: SnapshotPayload = { ...payload };
       if (existing) {
-        if (
-          existing.ageMs < SNAPSHOT_GUARD_WINDOW_MS &&
-          existing.payload.results.length > payload.results.length
-        ) {
+        // Compare actual live coverage, not array length: the rendered
+        // bench pads `results` with an "unavailable" row for every
+        // declared provider, so lengths are always equal by construction.
+        const liveCount = (rs: ProviderResult[]) =>
+          rs.filter((r) => r.availability !== "unavailable" && r.ms.p50 > 0)
+            .length;
+        const newLive = liveCount(payload.results);
+        const oldLive = liveCount(existing.payload.results);
+        if (existing.ageMs < SNAPSHOT_GUARD_WINDOW_MS && oldLive > newLive) {
           console.warn(
-            `snapshot.write skipped for ${slug}: render has ${payload.results.length} providers, snapshot has ${existing.payload.results.length}`,
+            `snapshot.write skipped for ${slug}: render has ${newLive} live providers, snapshot has ${oldLive}`,
           );
           return;
         }
@@ -162,6 +176,15 @@ export function writeSnapshot(slug: string, payload: SnapshotPayload): void {
       );
     }
   })();
+  // Vercel can freeze the lambda as soon as the response is sent; an
+  // unawaited promise then silently never completes. after() keeps the
+  // function alive until the write lands. Falls back to fire-and-forget
+  // outside a request scope (build-time prerender, tests).
+  try {
+    after(work);
+  } catch {
+    void work;
+  }
 }
 
 /**
@@ -179,14 +202,17 @@ export async function readSnapshot(
   slug: string,
 ): Promise<SnapshotPayload | null> {
   const hit = await readSnapshotWithAge(slug);
-  return hit ? hit.payload : null;
+  return hit && hit !== "error" ? hit.payload : null;
 }
 
-/** Same as readSnapshot but exposes the snapshot's age, used by the
- *  write-path degradation guards. */
+/** Same as readSnapshot but exposes the snapshot's age. Used by the
+ *  write-path degradation guards, which need to distinguish "no usable
+ *  snapshot exists" (null → write proceeds) from "KV is unreachable"
+ *  ("error" → write is skipped so a degraded render can't slip past the
+ *  guards while the infra is down). */
 async function readSnapshotWithAge(
   slug: string,
-): Promise<{ payload: SnapshotPayload; ageMs: number } | null> {
+): Promise<{ payload: SnapshotPayload; ageMs: number } | null | "error"> {
   if (!isConfigured()) return null;
   try {
     const res = await fetch(
@@ -202,7 +228,7 @@ async function readSnapshotWithAge(
     );
     if (!res.ok) {
       console.warn(`[DRAFT-TRACE] kv_http slug=${slug} status=${res.status}`);
-      return null;
+      return "error";
     }
     const env = (await res.json()) as { result?: string | null };
     if (!env.result) {
@@ -253,7 +279,7 @@ async function readSnapshotWithAge(
       ? "kv_timeout"
       : "kv_neterr";
     console.warn(`[DRAFT-TRACE] ${tag} slug=${slug} err=${msg}`);
-    return null;
+    return "error";
   }
 }
 
