@@ -87,7 +87,7 @@ providers:
   - slug: mobula
     name: Mobula
     tag: API key required, dedicated edge
-    formula: "p50 of evm_swap_quote_latency_ms{provider=mobula} over the last 24 hours, only successful 2xx responses with a non zero output amount."
+    formula: "Avg of per-(chain, region) 24h medians of evm_swap_quote_latency_ms{provider=mobula} over the last 24 hours, only successful 2xx responses with a non zero output amount."
     queries:
       p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="mobula"})
       p90: avg(ocb:evm_swap_quote_latency_ms:p90_24h{provider="mobula"})
@@ -100,7 +100,7 @@ providers:
   - slug: kyberswap
     name: KyberSwap
     tag: No auth, per chain aggregator engine
-    formula: "p50 of evm_swap_quote_latency_ms{provider=kyberswap} over the last 24 hours."
+    formula: "Avg of per-(chain, region) 24h medians of evm_swap_quote_latency_ms{provider=kyberswap} over the last 24 hours."
     queries:
       p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="kyberswap"})
       p90: avg(ocb:evm_swap_quote_latency_ms:p90_24h{provider="kyberswap"})
@@ -113,7 +113,7 @@ providers:
   - slug: bebop
     name: Bebop
     tag: RFQ gasless, EIP 55 checksum required
-    formula: "p50 of evm_swap_quote_latency_ms{provider=bebop} over the last 24 hours."
+    formula: "Avg of per-(chain, region) 24h medians of evm_swap_quote_latency_ms{provider=bebop} over the last 24 hours."
     queries:
       p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="bebop"})
       p90: avg(ocb:evm_swap_quote_latency_ms:p90_24h{provider="bebop"})
@@ -126,7 +126,7 @@ providers:
   - slug: lifi
     name: LI.FI
     tag: 30+ chain coverage, same chain via fromChain equal toChain
-    formula: "p50 of evm_swap_quote_latency_ms{provider=lifi} over the last 24 hours."
+    formula: "Avg of per-(chain, region) 24h medians of evm_swap_quote_latency_ms{provider=lifi} over the last 24 hours."
     queries:
       p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="lifi"})
       p90: avg(ocb:evm_swap_quote_latency_ms:p90_24h{provider="lifi"})
@@ -139,7 +139,7 @@ providers:
   - slug: openocean
     name: OpenOcean
     tag: 40+ chain coverage, numeric chainId in URL
-    formula: "p50 of evm_swap_quote_latency_ms{provider=openocean} over the last 24 hours."
+    formula: "Avg of per-(chain, region) 24h medians of evm_swap_quote_latency_ms{provider=openocean} over the last 24 hours."
     queries:
       p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="openocean"})
       p90: avg(ocb:evm_swap_quote_latency_ms:p90_24h{provider="openocean"})
@@ -152,7 +152,7 @@ providers:
   - slug: cow
     name: CoW Protocol
     tag: No auth, RFQ batch auction, no BSC
-    formula: "p50 of evm_swap_quote_latency_ms{provider=cow} over the last 24 hours. BSC is skipped since CoW Settlement does not deploy there."
+    formula: "Avg of per-(chain, region) 24h medians of evm_swap_quote_latency_ms{provider=cow} over the last 24 hours. BSC is skipped since CoW Settlement does not deploy there."
     queries:
       p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="cow"})
       p90: avg(ocb:evm_swap_quote_latency_ms:p90_24h{provider="cow"})
@@ -165,7 +165,7 @@ providers:
   - slug: enso
     name: Enso
     tag: Anonymous shared bucket, success rate capped near 80 percent
-    formula: "p50 of evm_swap_quote_latency_ms{provider=enso} over 24h. Enso uses a global 1rps anonymous bucket so roughly 20 percent of probes hit 429 and are dropped from the histogram. Remaining samples keep p50 and p90 stable."
+    formula: "Avg of per-(chain, region) 24h medians of evm_swap_quote_latency_ms{provider=enso}. Enso uses a global 1rps anonymous bucket so ~20% of probes hit 429 and are dropped. Remaining samples keep p50 and p90 stable."
     queries:
       p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="enso"})
       p90: avg(ocb:evm_swap_quote_latency_ms:p90_24h{provider="enso"})
