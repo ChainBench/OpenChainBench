@@ -89,7 +89,7 @@ faq:
   - q: "Why does the bench rotate the target token instead of always quoting SOL → USDC?"
     a: "SOL → USDC is the most-cached pair on Solana: Jupiter's lite endpoint serves it from a CloudFront edge in 30-50 ms, but that measures cache hit, not routing. Rotating the target every tick, and rotating against the tokens that are *actually trending right now* via Mobula Pulse V2's bonded WebSocket feed, defeats every per-pair edge cache and forces each provider to actually run a routing search. The metric becomes a fair comparison of routing engines, not CDN configurations."
   - q: "How is quote latency measured on OpenChainBench?"
-    a: "A harness in each of three Railway regions (us-east, eu-west, sgp) ticks every 60 seconds: it picks one Solana token from a sliding 30-minute window of bonded tokens emitted by Mobula Pulse V2 over WebSocket, then asks each provider for a 100 USDC → tokenOut quote at 1% slippage in parallel. The HTTP client reuses TCP and TLS connections across ticks, so the recorded number is the steady-state round-trip a long-lived backend integration sees, not the one-off cold-start handshake. The wallclock from request dispatch to the first byte containing a usable quoted output amount is the recorded latency. p50, p90 and p99 are aggregated via Prometheus `histogram_quantile` over 24 hours."
+    a: "A harness in each of three Railway regions (us-east, eu-west, sgp) ticks every 60 seconds: it picks one Solana token from a sliding 30-minute window of bonded tokens emitted by Mobula Pulse V2 over WebSocket, then asks each provider for a 100 USDC → tokenOut quote at 1% slippage in parallel. The HTTP client reuses TCP and TLS connections across ticks, so the recorded number is the steady-state round-trip a long-lived backend integration sees, not the one-off cold-start handshake. The wallclock from request dispatch to the first byte containing a usable quoted output amount is the recorded latency. p50, p90 and p99 are computed per region via Prometheus `histogram_quantile` over 24 hours (precomputed recording rules), then averaged equal-weight across the 3 regions."
   - q: "What if a provider can't quote a particular long-tail token?"
     a: "It's counted as a no-route, not as a slow quote. Each provider has a recognisable 'I have no path for this pair' signal (Jupiter `NO_ROUTES_FOUND` / `TOKEN_NOT_TRADABLE`, Mobula `No route found` / `Token not found`, Raydium `INSUFFICIENT_LIQUIDITY` / `ROUTE_NOT_FOUND`, OpenOcean payload-level signal). When the harness sees it, the tick lands on `solana_quote_no_route_total` and is excluded from the latency histogram entirely, so providers that fail fast on coverage gaps aren't penalised on the percentiles. The success-rate column reflects the no-route rate honestly."
   - q: "Why does Raydium have a much lower success rate than the aggregators?"
@@ -101,7 +101,7 @@ providers:
   - slug: jupiter
     name: Jupiter
     tag: DEX aggregator (REST)
-    formula: "Median wallclock ms over 24h on Jupiter's `lite-api.jup.ag/swap/v1/quote` for 100 USDC → <rotating long-tail token> at 1% slippage. Recorded only on 200 + non-empty `outAmount`. No-route ticks excluded."
+    formula: "Avg of the 3 regional 24h median wallclock ms on Jupiter's `lite-api.jup.ag/swap/v1/quote` for 100 USDC → <rotating long-tail token> at 1% slippage. Recorded only on 200 + non-empty `outAmount`. No-route ticks excluded."
     queries:
       p50: avg(ocb:solana_quote_latency_ms:p50_24h{provider="jupiter"})
       p90: avg(ocb:solana_quote_latency_ms:p90_24h{provider="jupiter"})
@@ -124,7 +124,7 @@ providers:
   - slug: mobula
     name: Mobula
     tag: DEX aggregator (REST)
-    formula: "Median wallclock ms over 24h on Mobula's `api.mobula.io/api/2/swap/quoting` for 100 USDC → <rotating long-tail token> at 1% slippage. Recorded only on 200 + non-empty `data.amountOutTokens`. No-route ticks excluded."
+    formula: "Avg of the 3 regional 24h median wallclock ms on Mobula's `api.mobula.io/api/2/swap/quoting` for 100 USDC → <rotating long-tail token> at 1% slippage. Recorded only on 200 + non-empty `data.amountOutTokens`. No-route ticks excluded."
     queries:
       p50: avg(ocb:solana_quote_latency_ms:p50_24h{provider="mobula"})
       p90: avg(ocb:solana_quote_latency_ms:p90_24h{provider="mobula"})
@@ -147,7 +147,7 @@ providers:
   - slug: openocean
     name: OpenOcean
     tag: DEX aggregator (REST)
-    formula: "Median wallclock ms over 24h on OpenOcean's `open-api.openocean.finance/v4/solana/quote` for 100 USDC → <rotating long-tail token> at 1% slippage. Recorded only when `data.outAmount > 0` and `dexId >= 0`. No-route ticks excluded."
+    formula: "3-region avg of 24h median wallclock ms on OpenOcean's `open-api.openocean.finance/v4/solana/quote` for 100 USDC → <rotating long-tail token> at 1% slippage. Recorded only when `data.outAmount > 0` and `dexId >= 0`. No-route ticks excluded."
     queries:
       p50: avg(ocb:solana_quote_latency_ms:p50_24h{provider="openocean"})
       p90: avg(ocb:solana_quote_latency_ms:p90_24h{provider="openocean"})
@@ -170,7 +170,7 @@ providers:
   - slug: raydium
     name: Raydium
     tag: AMM (single-venue Trade API)
-    formula: "Median wallclock ms over 24h on Raydium's `transaction-v1.raydium.io/compute/swap-base-in` for 100 USDC → <rotating long-tail token>. Recorded only on `success: true`. Raydium is single-venue; ~30-50% no-route rate."
+    formula: "Avg of the 3 regional 24h median wallclock ms on Raydium's `transaction-v1.raydium.io/compute/swap-base-in` for 100 USDC → <rotating long-tail token>. Recorded only on `success: true`. Raydium is single-venue; ~30-50% no-route rate."
     queries:
       p50: avg(ocb:solana_quote_latency_ms:p50_24h{provider="raydium"})
       p90: avg(ocb:solana_quote_latency_ms:p90_24h{provider="raydium"})
