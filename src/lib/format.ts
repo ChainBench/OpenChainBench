@@ -50,7 +50,7 @@ export function fmtUnit(value: number, unit: string) {
     if (abs < 0.001) return `$${value.toFixed(6)}`;
     if (abs < 0.01) return `$${value.toFixed(5)}`;
     if (abs < 1) return `$${value.toFixed(4)}`;
-    if (abs < 1000) return `$${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+    if (abs < 1000) return `$${value.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
     return `$${formatCompactCount(value)}`;
   }
   if (value >= 1000) return `${(value / 1000).toFixed(2)} s`;
@@ -102,7 +102,9 @@ function formatCompactCount(value: number): string {
   if (abs >= 1e9) return `${(value / 1e9).toFixed(2)}B`;
   if (abs >= 1e6) return `${(value / 1e6).toFixed(2)}M`;
   if (abs >= 1e4) return `${(value / 1e3).toFixed(1)}K`;
-  return value.toLocaleString();
+  // Locale pinned: rendered both server-side and client-side ("use client"
+  // ledger). Browser-default locale produced "5 560,409" on fr-FR machines.
+  return value.toLocaleString("en-US", { maximumFractionDigits: 2 });
 }
 
 /** Smart-precision percent formatter. picks decimals based on magnitude

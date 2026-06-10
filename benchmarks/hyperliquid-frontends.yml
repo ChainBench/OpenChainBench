@@ -928,3 +928,28 @@ metric_panels:
     metric: hl_frontend_last_fill_age_seconds_v2
     unit: s
     description: "Seconds since this frontend's most recent attributed fill. An outage signal."
+  - id: revenue_7d
+    label: Revenue 7d
+    metric: hl_frontend_fees_usd_7d_v2
+    unit: usd
+    higher_is_better: true
+    description: "USD builder fees collected over the rolling 7 day window. Smooths promo cycles and one off campaigns; use for ranking stability."
+  - id: revenue_30d
+    label: Revenue 30d
+    metric: hl_frontend_fees_usd_30d_v2
+    unit: usd
+    higher_is_better: true
+    description: "USD builder fees collected over the rolling 30 day window."
+
+# Honest column labels for the main table. The p50/p90/p99/mean slots are
+# repurposed on this bench (USD revenue, no percentile semantics), so the
+# ledger renders these labeled columns instead of latency headers, with
+# unique users surfaced inline from the users panel. Matches the column
+# set of the reference builder-code dashboards (volume, users, $/user,
+# revenue) so readers can cross check without clicking through tabs.
+ledger_columns:
+  - { label: "Revenue (24h)", slot: p50 }
+  - { label: "Volume (24h)", slot: p90 }
+  - { label: "Users (24h)", panel: users }
+  - { label: "$ / user (24h)", slot: p99 }
+  - { label: "Rev / day (7d avg)", slot: mean }
