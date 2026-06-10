@@ -371,6 +371,11 @@ export const SpecSchema = z
           label_key: z.string().min(1).max(40).default("builder"),
           unit: z.enum(["ms", "s", "pct", "bps", "count", "slots", "usd"]),
           higher_is_better: z.boolean().default(false),
+          /** When false the panel is data-only: it is loaded and can feed
+           *  ledger_columns window variants, but renders no chart tab.
+           *  Used for 7d/30d gauges that power the ledger's timeframe
+           *  toggle without duplicating the headline metric as tabs. */
+          tab: z.boolean().default(true),
         })
       )
       .max(8)
@@ -394,6 +399,15 @@ export const SpecSchema = z
             panel: z.string().min(1).max(40).optional(),
             unit: z
               .enum(["ms", "s", "pct", "bps", "count", "slots", "usd"])
+              .optional(),
+            /** Per-window value sources for the ledger's timeframe toggle.
+             *  Maps a window key to a metric_panels id whose values hold
+             *  this column's figure over that window. Columns without a
+             *  mapping keep their 24h value (and are labeled as such)
+             *  when a longer window is selected. The toggle renders only
+             *  when at least one column declares windows. */
+            windows: z
+              .record(z.enum(["7d", "30d"]), z.string().min(1).max(40))
               .optional(),
           })
           .refine((c) => (c.slot != null) !== (c.panel != null), {
@@ -432,6 +446,15 @@ export const SpecSchema = z
           path: ["ledger_columns", i, "panel"],
           message: `Unknown metric_panels id "${col.panel}"`,
         });
+      }
+      for (const [w, panelId] of Object.entries(col.windows ?? {})) {
+        if (!panelIds.has(panelId)) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["ledger_columns", i, "windows", w],
+            message: `Unknown metric_panels id "${panelId}"`,
+          });
+        }
       }
     }
     // The ledger sorts, bars and badges off p50. The first displayed
