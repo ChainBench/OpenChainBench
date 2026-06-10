@@ -12,6 +12,52 @@ metric: RPC latency
 unit: ms
 higher_is_better: false
 
+# Per-chain landing pages (/benchmarks/rpc-capabilities/<chain>). Each
+# entry must keep its claims chain-scoped: the leader placeholder
+# resolves against bestPerChain, never the cross-chain aggregate, and
+# the page itself surfaces per-region leaders when they diverge.
+per_chain_explainer:
+  - slug: ethereum
+    h2: "Fastest free Ethereum RPC"
+    body: |
+      {{best_name:chain:ethereum}} currently leads the free, no-key Ethereum RPC field at {{best_p50:chain:ethereum}} (`eth_blockNumber` p50, 24h), measured against 9 providers, the largest cohort in this bench. Ethereum is also where the silent-failure analysis earns its keep: Cloudflare-eth answers HTTP 200 with a JSON-RPC error field on many methods, and Merkle is excluded after recurring Cloudflare lockouts. Probes run every 15 seconds from us-east, eu-west and Singapore.
+  - slug: base
+    h2: "Fastest free Base RPC"
+    body: |
+      Coinbase's own `mainnet.base.org` goes head-to-head with PublicNode, dRPC, Tenderly and Merkle on Base, an unusually clean comparison because the chain-official endpoint is operated by the same team that runs the sequencer. The current leader is {{best_name:chain:base}} at {{best_p50:chain:base}} (`eth_blockNumber` p50, 24h) across 6 providers, probed every 15 seconds from three regions with stale-head detection against the cross-provider tip.
+  - slug: bnb
+    h2: "Fastest free BNB Chain RPC"
+    body: |
+      Binance's `bsc-dataseed1` is the incumbent default on BNB Chain, but PublicNode, dRPC and Merkle have closed the latency gap from EU origins. The current leader is {{best_name:chain:bnb}} at {{best_p50:chain:bnb}} (`eth_blockNumber` p50, 24h) across 5 providers. Every endpoint is probed with the identical call every 15 seconds from us-east, eu-west and Singapore, so the ranking reflects sustained round-trip latency, not a one-off burst.
+  - slug: arbitrum
+    h2: "Fastest free Arbitrum RPC"
+    body: |
+      Arbitrum carries the second-largest cohort in this bench, 8 no-key providers, and is one of the few chains where Lava and MeowRPC compete alongside PublicNode and the Arbitrum Foundation's own endpoint. The current leader is {{best_name:chain:arbitrum}} at {{best_p50:chain:arbitrum}} (`eth_blockNumber` p50, 24h). Latency is sampled every 15 seconds from three regions; archive-depth checks flag endpoints that serve pruned state as non-archive.
+  - slug: optimism
+    h2: "Fastest free Optimism RPC"
+    body: |
+      Optimism's field pits the Optimism Foundation endpoint against 5 multi-chain gateways. The current leader is {{best_name:chain:optimism}} at {{best_p50:chain:optimism}} (`eth_blockNumber` p50, 24h) across 6 providers. As on every chain here, the harness classifies each response (`ok`, `http_err`, `jsonrpc_err`, `stale`, `timeout`) so an endpoint stuck on an old head is never ranked as fastest, and probes originate from us-east, eu-west and Singapore.
+  - slug: avalanche
+    h2: "Fastest free Avalanche RPC"
+    body: |
+      Avalanche's chain-official endpoint competes with 5 no-key multi-chain gateways for the C-Chain. The current leader is {{best_name:chain:avalanche}} at {{best_p50:chain:avalanche}} (`eth_blockNumber` p50, 24h) across 6 providers. The probe is the same single call every 15 seconds from three regions, with stale-head detection flagging any provider more than 20 blocks behind the cross-provider tip.
+  - slug: polygon
+    h2: "Fastest free Polygon RPC"
+    body: |
+      Polygon has no chain-official endpoint in this bench, so the comparison is purely between multi-chain no-key gateways. The current leader is {{best_name:chain:polygon}} at {{best_p50:chain:polygon}} (`eth_blockNumber` p50, 24h) across 5 providers. Each one answers the identical call every 15 seconds from us-east, eu-west and Singapore, and the result classification separates real latency from silent JSON-RPC failures behind an HTTP 200.
+  - slug: linea
+    h2: "Fastest free Linea RPC"
+    body: |
+      The no-key field thins out on Linea: 4 providers qualify, all multi-chain gateways. The current leader is {{best_name:chain:linea}} at {{best_p50:chain:linea}} (`eth_blockNumber` p50, 24h). Thinner competition makes the reliability columns matter more than raw speed, a fast endpoint with a high `stale` or `timeout` rate is a worse default than a slightly slower consistent one. Probes run every 15 seconds from three regions.
+  - slug: scroll
+    h2: "Fastest free Scroll RPC"
+    body: |
+      Scroll is one of the smallest cohorts in this bench, 4 no-key providers, all multi-chain gateways. The current leader is {{best_name:chain:scroll}} at {{best_p50:chain:scroll}} (`eth_blockNumber` p50, 24h). The harness runs the identical probe every 15 seconds from us-east, eu-west and Singapore, with stale-head detection against the cross-provider tip so a frozen endpoint cannot top the table.
+  - slug: mantle
+    h2: "Fastest free Mantle RPC"
+    body: |
+      Mantle rounds out the long tail with 4 qualifying no-key providers, all multi-chain gateways. The current leader is {{best_name:chain:mantle}} at {{best_p50:chain:mantle}} (`eth_blockNumber` p50, 24h). Like every chain in this bench the number is a sustained median, the same call every 15 seconds from three regions over a rolling 24 hours, not a marketing burst, and archive-depth support is audited separately.
+
 seo_intro: |
   This benchmark answers the question every developer reaching for a
   free public RPC asks before pasting a URL into their dapp. which
