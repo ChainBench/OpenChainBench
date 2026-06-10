@@ -37,12 +37,18 @@ export const revalidate = 300;
 type Params = { slug: string; provider: string };
 
 const H = 44;
-// Width is fixed but generous so most benchmark titles fit without
-// truncation. Anything over ~32 chars gets ellipsis.
-const W = 360;
 // Text column starts right of the spinning logo sphere.
 const TEXT_X = 48;
-const TITLE_MAX = 32;
+// The badge font is monospace, so line widths are predictable from the
+// character count: SF Mono / Menlo advance is ~0.6em. Width is computed
+// per request from the longest line so the full title always fits (no
+// ellipsis), bounded to keep a malicious-length spec from emitting a
+// billboard.
+const CH_11 = 6.8; // 11px line (rank + title)
+const CH_10 = 6.2; // 10px line (value + suffix)
+const CH_8 = 5.4; // 8px scope subscript (incl. 0.6 letter-spacing)
+const W_MIN = 300;
+const W_MAX = 760;
 
 function rankOf(
   results: { slug: string; ms: { p50: number } }[],
@@ -240,7 +246,29 @@ export async function GET(
   const rankLabel = `#${r.rank}/${r.total}`;
   const value = fmtUnit(r.value, b.unit);
   const suffix = valueSuffix(b.unit);
-  const title = truncate(b.title, TITLE_MAX);
+  // Full title by default; ellipsis only kicks in past the W_MAX bound
+  // (schema allows 200-char titles, the canvas does not).
+  const titleBudget = Math.floor(
+    (W_MAX - TEXT_X - rankLabel.length * CH_11 - 7 - 8 - 30) / CH_11,
+  );
+  const title = truncate(b.title, titleBudget);
+
+  // Size the canvas to the longest line. Line 1 ends before the OCB
+  // wordmark in the top-right corner (~30px incl. margin); line 2 is the
+  // figure plus the optional scope subscript.
+  const line1W =
+    TEXT_X +
+    rankLabel.length * CH_11 +
+    7 +
+    title.length * CH_11 +
+    8 +
+    30;
+  const line2W =
+    TEXT_X +
+    `${value} ${suffix}`.length * CH_10 +
+    (scopeLabel ? 7 + scopeLabel.length * CH_8 : 0) +
+    12;
+  const W = Math.ceil(Math.min(Math.max(W_MIN, line1W, line2W), W_MAX));
 
   // Scope marker: small caps tspan appended to the figure line, so the
   // badge height stays constant whether or not a scope is present.
