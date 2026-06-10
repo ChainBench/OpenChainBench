@@ -446,14 +446,19 @@ export function BenchmarkBody({
               )}
               {view === "timeseries" && (
                 <>
-                  {benchmark.metricPanels && benchmark.metricPanels.length > 0 && (
-                    <MetricViewTabs
-                      panels={benchmark.metricPanels}
-                      mainLabel={benchmark.metric}
-                      activeId={activePanelId}
-                      onSelect={setActivePanelId}
-                    />
-                  )}
+                  {(() => {
+                    const tabPanels = (benchmark.metricPanels ?? []).filter(
+                      (p) => p.tab !== false,
+                    );
+                    return tabPanels.length > 0 ? (
+                      <MetricViewTabs
+                        panels={tabPanels}
+                        mainLabel={benchmark.metric}
+                        activeId={activePanelId}
+                        onSelect={setActivePanelId}
+                      />
+                    ) : null;
+                  })()}
                   <TimeSeriesChart
                     benchmark={viewBenchmark}
                     region={

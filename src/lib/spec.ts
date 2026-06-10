@@ -920,6 +920,7 @@ async function tryLoadLive(
         metric: panel.metric,
         unit: panel.unit,
         higherIsBetter: panel.higher_is_better,
+        tab: panel.tab,
         values,
         seriesByProvider,
         seriesByProvider7d:
