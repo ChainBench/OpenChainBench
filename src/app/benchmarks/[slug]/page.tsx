@@ -62,44 +62,20 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({
   params,
-  searchParams,
 }: {
   params: Promise<Params>;
-  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  // Next 16 ships searchParams as a Promise. Reading it here would normally
-  // tip the segment into "dynamic", but generateMetadata is allowed to
-  // consume request data without affecting the parent page's static
-  // rendering — the page.tsx body still resolves searchParams client-side
-  // through BenchmarkBody.
-  const sp = (await searchParams) ?? {};
-  const rawChain = Array.isArray(sp.chain) ? sp.chain[0] : sp.chain;
-  // Always re-fetch unfiltered first — used for canonical fields and the
-  // default copy. When a chain is requested, fetch the filtered variant
-  // so headline sentence + template placeholders resolve against the
-  // chain-scoped leader rather than the cross-chain aggregate.
-  const baseBench = await getBenchmark(slug);
-  if (!baseBench) return {};
-  const chainOption = (baseBench.dimensions?.chain ?? []).find(
-    (c) => c.value.toLowerCase() === (rawChain ?? "").toLowerCase(),
-  );
-  const isChainScoped = Boolean(chainOption && chainOption.value !== "all");
-  const filteredBench = isChainScoped
-    ? (await getBenchmark(slug, { chain: chainOption!.value })) ?? baseBench
-    : baseBench;
-  // Use the filtered bench for headline + template substitutions so the
-  // OG/Twitter card and meta description reference the chain-specific
-  // leader rather than the cross-chain aggregate (the headline of the
-  // unfiltered bench is misleading when a single chain dominates the
-  // baseline — e.g. Solana skewing the "fastest data API" claim on the
-  // Bench-001 aggregate view).
-  const b = filteredBench;
-  const chainLabel = chainOption?.label ?? null;
-  const baseTitle = b.seoTitle ?? b.title;
-  const metaTitle = isChainScoped && chainLabel
-    ? `${baseTitle} on ${chainLabel}`
-    : baseTitle;
+  // DO NOT read searchParams here. Awaiting it in generateMetadata opts
+  // the whole route into dynamic rendering (`cache-control: no-store`,
+  // zero CDN caching) — measured at 43s TTFB on cold rpc-capabilities
+  // hits. Chain-scoped metadata lives on the dedicated
+  // /benchmarks/[slug]/[chain] pages; `?chain=` URLs on this route share
+  // the aggregate metadata and the canonical, which is what we want for
+  // link-signal consolidation anyway.
+  const b = await getBenchmark(slug);
+  if (!b) return {};
+  const metaTitle = b.seoTitle ?? b.title;
   // Description precedence (most-to-least specific):
   //   1. `seo_description` from the YAML - hand-crafted snippet with the
   //      long-tail query phrases we want to rank for.
@@ -118,15 +94,9 @@ export async function generateMetadata({
   // longer is cut mid-word which hurts CTR. Trim cleanly so we control the
   // truncation rather than letting Google decide where to slice.
   if (description) description = capDescription(description, 158);
-  // Canonical NEVER carries `?chain=...`. Per-chain variants share the
-  // same canonical URL so Google consolidates link signal on the hub
-  // page instead of treating each tab as a separate document. The OG
-  // url is the chain-scoped one so social previews don't all collapse
-  // to the same target.
-  const canonical = `${SITE.url}/benchmarks/${baseBench.slug}`;
-  const ogUrl = isChainScoped
-    ? `${canonical}?chain=${chainOption!.value}`
-    : canonical;
+  // Canonical NEVER carries `?chain=...`. Per-chain variants live on the
+  // dedicated /benchmarks/[slug]/[chain] pages with their own metadata.
+  const canonical = `${SITE.url}/benchmarks/${b.slug}`;
   return {
     title: metaTitle,
     description,
@@ -135,7 +105,7 @@ export async function generateMetadata({
       title: metaTitle,
       description,
       type: "article",
-      url: ogUrl,
+      url: canonical,
     },
     twitter: { card: "summary_large_image", title: metaTitle, description },
   };
