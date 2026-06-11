@@ -15,6 +15,7 @@ import { ReportSection } from "@/components/report-section";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
 import { headlineSentence } from "@/lib/citation";
 import { capDescription } from "@/lib/seo-text";
+import { getBenchCreatedAt } from "@/lib/seo/bench-dates";
 import { SITE } from "@/data/site";
 import { buildFaqPageJsonLd, safeJsonLd } from "@/lib/jsonld";
 import { renderTemplate } from "@/lib/bench-template";
@@ -105,6 +106,21 @@ export async function generateMetadata({
     title: metaTitle,
     description,
     alternates: { canonical },
+    // Any URL with a filter query param (?chain=…, ?region=…) points its
+    // canonical at the unfiltered hub. We also noindex these variants
+    // directly — Google otherwise sees multiple competing URLs for the
+    // same canonical, which reads as duplicate-content gaming and waters
+    // down the hub's authority. `follow` stays on so chain pages are
+    // still discoverable via internal links.
+    //
+    // We check the RAW query params (not just `isChainScoped`) so that
+    // `?chain=foo` for an unknown chain is also noindexed — Google could
+    // otherwise stumble onto an out-of-scope chain via a stale internal
+    // link and treat the resulting page as a thin near-duplicate.
+    robots:
+      sp.chain !== undefined || sp.region !== undefined
+        ? { index: false, follow: true }
+        : { index: true, follow: true },
     openGraph: {
       title: metaTitle,
       description,
@@ -197,6 +213,7 @@ export default async function BenchmarkPage({
         publisher: { "@id": `${SITE.url}/#org` },
         isAccessibleForFree: true,
         license: "https://creativecommons.org/licenses/by/4.0/",
+        datePublished: getBenchCreatedAt(benchmark.slug).toISOString(),
         dateModified: benchmark.lastRunAt,
         variableMeasured: benchmark.metric,
         distribution: [
@@ -221,6 +238,7 @@ export default async function BenchmarkPage({
         // schema image matches what Search Console, X and LinkedIn show.
         // Clears the "Missing field image" warning in Rich Results Test.
         image: `${SITE.url}/api/og/${benchmark.slug}`,
+        datePublished: getBenchCreatedAt(benchmark.slug).toISOString(),
         dateModified: benchmark.lastRunAt,
         author: { "@id": `${SITE.url}/#org` },
         publisher: { "@id": `${SITE.url}/#org` },

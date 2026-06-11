@@ -4,11 +4,17 @@ import type { MetadataRoute } from "next";
 import { getBenchmarks } from "@/data/benchmarks";
 import { loadAllAlternatives } from "@/lib/alternatives";
 import { getProviderSlugs } from "@/lib/providers";
-import { COMPARE_PAIRS } from "@/data/compare-pairs";
 import { SITE } from "@/data/site";
 
-export const dynamic = "force-static";
-export const revalidate = false;
+// Was previously `force-static` + `revalidate: false`, which baked the
+// sitemap at build time and never refreshed it. That dropped freshly
+// added benches (l1-finality, network-fees, etc.) from the sitemap for
+// every subsequent crawl until someone redeployed, which produced an
+// impressions cliff in Search Console because Google deprioritized
+// every URL the sitemap stopped listing. Hourly ISR keeps the YAML
+// list, lastmod tags and chain variants accurate without paying a Prom
+// query on every Google crawler hit.
+export const revalidate = 3600;
 
 // Sitemap lastmod strategy. The previous version hardcoded one
 // SITE_LAST_EDIT constant for every editorial URL, which meant Google
@@ -33,10 +39,19 @@ export const revalidate = false;
 //     underlying data refreshes the alternative does too.
 
 const BUILD_TIME = new Date();
+// Vercel's build container doesn't preserve git-checkout mtimes — every
+// file gets reset to the build-system default (Oct 20 2018), which leaks
+// into the sitemap as `<lastmod>2018-10-20T...</lastmod>` for editorial
+// hub pages and tells Google these pages haven't moved in years. Anything
+// pre-dating the codebase is garbage; fall back to BUILD_TIME so the
+// crawler sees a current timestamp and keeps the pages in the warm pool.
+const REAL_REPO_BIRTH = new Date("2024-01-01");
 
 function pageMtime(relPath: string): Date {
   try {
-    return statSync(path.join(process.cwd(), "src/app", relPath)).mtime;
+    const mtime = statSync(path.join(process.cwd(), "src/app", relPath)).mtime;
+    if (mtime < REAL_REPO_BIRTH) return BUILD_TIME;
+    return mtime;
   } catch {
     return BUILD_TIME;
   }
@@ -145,29 +160,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.85,
   }));
 
-  // Head-to-head compare pages. Each pair pins one or more parent benches;
-  // we take the most recent lastRunAt across pinned benches as the lastmod.
-  const compareRoutes: MetadataRoute.Sitemap = COMPARE_PAIRS.map((pair) => {
-    const pinned = pair.benchmarks ?? [];
-    const latest = pinned.reduce<Date>((acc, slug) => {
-      const bench = benchBySlug.get(slug);
-      if (!bench?.lastRunAt) return acc;
-      const t = new Date(bench.lastRunAt);
-      return t > acc ? t : acc;
-    }, new Date(0));
-    return {
-      url: `${SITE.url}/compare/${pair.slug}`,
-      lastModified: latest.getTime() > 0 ? latest : catalogLastRun,
-      changeFrequency: "daily" as const,
-      priority: 0.75,
-    };
-  });
-
   return [
     ...staticRoutes,
     ...benchmarkRoutes,
     ...providerRoutes,
     ...alternativeRoutes,
-    ...compareRoutes,
   ];
 }
