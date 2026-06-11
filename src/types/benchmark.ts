@@ -49,6 +49,12 @@ export type ProviderResult = {
    *  p99 queries so the UI can render a soft offline state instead of
    *  zero values. */
   availability?: ProviderAvailability;
+  /** Carry-forward bookkeeping written by the materialization worker:
+   *  observedAt = epoch ms of the last successful Prom read behind these
+   *  numbers; staleSince = first failed cycle after it. Absent on data
+   *  loaded live (always fresh by construction). Renderers derive
+   *  fresh/stale/dead from this at render time. */
+  meta?: { observedAt: number; staleSince?: number };
   /** The raw PromQL query that produced this provider's p50 value.
    *  Surfaced in the chart hover tooltip so readers can see exactly
    *  how the headline number was computed, not just trust it. */
@@ -83,6 +89,9 @@ export type MetricPanel = {
    *  live data for this metric are omitted; the renderer renders them as
    *  "no data" instead of zero. */
   values: Record<string, number>;
+  /** Carry-forward meta per provider slug, mirroring ProviderResult.meta
+   *  for panel values. Written by the materialization worker only. */
+  valuesMeta?: Record<string, { observedAt: number; staleSince?: number }>;
   /** Per-provider 24h time-series (72 points by default), keyed by
    *  provider slug. Powers the multi-line chart view of the panel.
    *  Providers with no Prom data for the query are absent from the map. */
@@ -114,6 +123,9 @@ export type ResultExtras = {
 export type Benchmark = {
   slug: string;
   number: string;
+  /** Epoch ms of the worker sweep that produced this snapshot. Absent on
+   *  live-loaded data. Powers the "data as of Xs ago" freshness pill. */
+  dataAsOf?: number;
   title: string;
   seoTitle?: string;
   /** Optional SEO-tuned meta description. Overrides the default headline
