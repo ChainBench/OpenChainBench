@@ -78,7 +78,7 @@ function titleCaseSlug(s: string): string {
 }
 
 /** Resolves a slug to its canonical (slug, display name) pair. */
-function canonicalize(slug: string): { slug: string; name: string } {
+export function canonicalize(slug: string): { slug: string; name: string } {
   const lc = slug.toLowerCase();
   const canon = PRODUCT_ALIASES[lc] ?? lc;
   return { slug: canon, name: CANONICAL_NAMES[canon] ?? titleCaseSlug(canon) };
