@@ -658,6 +658,17 @@ function applyDimensionsToSpec(spec: Spec, labels: Record<string, string>): Spec
   const inject = (q: string | undefined) => (q ? injectLabels(q, labels) : q);
   return {
     ...spec,
+    // Panels declare a bare metric name (or metric{sel}); normalize to the
+    // braced form so dimension labels (chain=..., region=...) reach them
+    // like every provider query. Without this a panel on a chain-dimensioned
+    // bench silently mixes every chain's series.
+    metric_panels: spec.metric_panels?.map((panel) => ({
+      ...panel,
+      metric: injectLabels(
+        panel.metric.includes("{") ? panel.metric : `${panel.metric}{}`,
+        labels,
+      ),
+    })),
     providers: spec.providers.map((p) => ({
       ...p,
       queries: p.queries
