@@ -106,7 +106,9 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // rank_matrix_query). Cached objects from v5 deploys lack the field,
   // which made region-scoped badge URLs 404 after the deploy.
   // v7: added ledgerColumns (per-bench ledger column relabeling).
-  ["bench-unfiltered-v7"],
+  // v8: outage panel unit s -> sec (true seconds); cached v7 objects keep
+  // the old unit and would render "0.0 s" via the ms-input formatter.
+  ["bench-unfiltered-v8"],
   { revalidate: 60, tags: ["benchmarks"] },
 );
 
@@ -169,7 +171,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // even after the inner cache is fresh.
   // v8: bumped with bench-unfiltered-v6 (cellRanks) for the same reason.
   // v9: bumped with bench-unfiltered-v7 (ledgerColumns).
-  ["all-benchmarks-v9"],
+  // v10: bumped with bench-unfiltered-v8 (sec unit).
+  ["all-benchmarks-v10"],
   { revalidate: 60, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -213,7 +216,8 @@ const loadBenchmarkFiltered = unstable_cache(
     return bench;
   },
   // v4: bumped with bench-unfiltered-v7 (ledgerColumns).
-  ["bench-filters-v4"],
+  // v5: bumped with bench-unfiltered-v8 (sec unit).
+  ["bench-filters-v5"],
   { revalidate: 60, tags: ["benchmarks"] }
 );
 
