@@ -3,11 +3,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ArrowUpRight, ChevronDown } from "lucide-react";
-import {
-  getBenchmark,
-  getBenchmarks,
-  getBenchmarkSlugs,
-} from "@/data/benchmarks";
+import { getBenchmark, getBenchmarks } from "@/data/benchmarks";
 import { Pill } from "@/components/pill";
 import { BenchmarkBody } from "@/components/benchmark-body";
 import { ChainHeadingsSummary } from "@/components/chain-headings-summary";
