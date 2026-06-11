@@ -37,6 +37,7 @@ import { z } from "zod";
 import type {
   Benchmark,
   CellRankEntry,
+  MetricPanel,
   ProviderResult,
   ResultExtras,
 } from "@/types/benchmark";
@@ -67,6 +68,7 @@ const SnapshotSchema = z.object({
   worstPerChain: z.record(z.string(), z.any()).optional(),
   providersPerChain: z.record(z.string(), z.array(z.string())).optional(),
   cellRanks: z.record(z.string(), z.any()).optional(),
+  metricPanels: z.array(z.any()).optional(),
 });
 
 export type SnapshotPayload = {
@@ -78,6 +80,10 @@ export type SnapshotPayload = {
   worstPerChain?: Record<string, ProviderResult>;
   providersPerChain?: Record<string, string[]>;
   cellRanks?: Record<string, CellRankEntry[]>;
+  /** Panel values (series stripped to keep the KV value small). Without
+   *  these a snapshot-served bench loses its chart view tabs and every
+   *  panel-backed ledger column renders "-". */
+  metricPanels?: MetricPanel[];
 };
 
 function isConfigured(): boolean {
@@ -155,6 +161,7 @@ export function writeSnapshot(slug: string, payload: SnapshotPayload): void {
         merged.worstPerChain ??= existing.payload.worstPerChain;
         merged.providersPerChain ??= existing.payload.providersPerChain;
         merged.cellRanks ??= existing.payload.cellRanks;
+        merged.metricPanels ??= existing.payload.metricPanels;
       }
       const body = JSON.stringify({
         _v: SCHEMA_VERSION,
@@ -269,6 +276,7 @@ async function readSnapshotWithAge(
         cellRanks: parsed.data.cellRanks as
           | Record<string, CellRankEntry[]>
           | undefined,
+        metricPanels: parsed.data.metricPanels as MetricPanel[] | undefined,
       },
     };
   } catch (err) {
@@ -303,5 +311,13 @@ export function snapshotFromBenchmark(b: Benchmark): SnapshotPayload {
     providersPerChain: (b as { providersPerChain?: Record<string, string[]> })
       .providersPerChain,
     cellRanks: b.cellRanks,
+    // Series stripped: 11 panels x 75 providers x 3 series would multiply
+    // the KV value size; values + labels are what the tabs strip and the
+    // panel-backed ledger columns need to survive a snapshot-served render.
+    metricPanels: b.metricPanels?.map(
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      ({ seriesByProvider, seriesByProvider7d, seriesByProvider30d, ...rest }) =>
+        rest,
+    ),
   };
 }
