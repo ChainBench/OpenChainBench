@@ -1121,7 +1121,7 @@ metric_panels:
   - id: outage
     label: Time since last fill
     metric: hl_frontend_last_fill_age_seconds_v2
-    unit: s
+    unit: sec
     description: "Seconds since this frontend's most recent attributed fill. An outage signal."
   # Data-only panels (tab: false): no chart tab, they feed the ledger's
   # 7d/30d timeframe toggle below.

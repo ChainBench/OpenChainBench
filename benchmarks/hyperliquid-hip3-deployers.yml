@@ -225,7 +225,7 @@ metric_panels:
     label: Time since last fill
     metric: hl_hip3_deployer_last_fill_age_seconds
     label_key: dex
-    unit: s
+    unit: sec
     description: "Seconds since this dex's most recent fill. An outage signal."
   # Data-only panels (tab: false): they feed the ledger's 7d/30d
   # timeframe toggle below.
