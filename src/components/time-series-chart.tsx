@@ -1275,6 +1275,12 @@ function fmtTick(v: number, unit: string) {
     if (abs >= 1e3) return `${(v / 1e3).toFixed(1)}K`;
     return `${Math.round(v)}`;
   }
+  if (unit === "sec") {
+    if (v >= 86400) return `${(v / 86400).toFixed(1)}d`;
+    if (v >= 3600) return `${(v / 3600).toFixed(1)}h`;
+    if (v >= 60) return `${(v / 60).toFixed(0)}m`;
+    return `${v.toFixed(v >= 10 ? 0 : 1)}s`;
+  }
   if (unit === "s") {
     const s = v / 1000;
     if (s >= 60) return `${(s / 60).toFixed(0)}m`;

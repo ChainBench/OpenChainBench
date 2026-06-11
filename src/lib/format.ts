@@ -5,6 +5,16 @@ export function fmtUnit(value: number, unit: string) {
     // Legacy: bps stored. Convert to percent for display.
     return formatPercent(value / 100);
   }
+  if (unit === "sec") {
+    // True seconds (unlike "s", whose input is ms by latency-bench
+    // convention). Used by gauges like hl_*_last_fill_age_seconds.
+    const s = value;
+    if (s >= 172800) return `${(s / 86400).toFixed(1)} d`;
+    if (s >= 3600) return `${(s / 3600).toFixed(s >= 36000 ? 0 : 1)} h`;
+    if (s >= 60) return `${(s / 60).toFixed(1)} min`;
+    if (s > 0 && s < 0.1) return "<0.1 s";
+    return `${s.toFixed(1)} s`;
+  }
   if (unit === "s") {
     const ms = value;
     const s = ms / 1000;
@@ -69,6 +79,14 @@ export function fmtUnit(value: number, unit: string) {
  */
 export function unitSuffix(unit: string, value?: number): string {
   if (unit === "pct" || unit === "bps") return " %";
+  if (unit === "sec") {
+    if (value !== undefined && Number.isFinite(value)) {
+      if (value >= 172800) return " d";
+      if (value >= 3600) return " h";
+      if (value >= 60) return " min";
+    }
+    return " s";
+  }
   if (unit === "s") {
     // Mirror fmtUnit: ms → s, with auto-flip to minutes at 60s.
     if (value !== undefined && Number.isFinite(value)) {
@@ -88,7 +106,7 @@ export function unitSuffix(unit: string, value?: number): string {
 export function fmtValue(value: number, unit: string): string {
   // Keep K/M/B suffixes and $ prefix — they are part of the number, not a
   // unit. Only strip trailing unit words that the caller renders separately.
-  return fmtUnit(value, unit).replace(/\s+(ms|s|min|slots?)$/, "").replace(/\s*%$/, "");
+  return fmtUnit(value, unit).replace(/\s+(ms|s|min|h|d|slots?)$/, "").replace(/\s*%$/, "");
 }
 
 /** Compact short-form for large counts so the home table's narrow value

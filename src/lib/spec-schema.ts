@@ -238,7 +238,7 @@ export const SpecSchema = z
     /* Metric */
     metric: z.string().min(1).max(100),
     /** ms / s for latencies; pct for fees as percent of notional; bps for basis points; slots for Solana slot delta. */
-    unit: z.enum(["ms", "s", "pct", "bps", "count", "slots", "usd"]),
+    unit: z.enum(["ms", "s", "sec", "pct", "bps", "count", "slots", "usd"]),
     /** True when bigger numbers are better (coverage, count). Default false:
      * latency, fees, drift. every existing bench is "lower is better". */
     higher_is_better: z.boolean().default(false),
@@ -369,7 +369,7 @@ export const SpecSchema = z
           /** The PromQL label that holds each provider's slug. Defaults to
            *  "builder"; other benches may use "provider", "venue", etc. */
           label_key: z.string().min(1).max(40).default("builder"),
-          unit: z.enum(["ms", "s", "pct", "bps", "count", "slots", "usd"]),
+          unit: z.enum(["ms", "s", "sec", "pct", "bps", "count", "slots", "usd"]),
           higher_is_better: z.boolean().default(false),
           /** When false the panel is data-only: it is loaded and can feed
            *  ledger_columns window variants, but renders no chart tab.
