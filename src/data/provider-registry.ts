@@ -1045,6 +1045,64 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Deployer fee collected via the on-chain deployerFee field",
     ],
   },
+  cash: {
+    url: "https://dreamcash.io",
+    description:
+      "Dreamcash operates the cash HIP-3 namespace on Hyperliquid, deploying tokenized equity and ETF perp markets that complement its mobile trading app (which also routes orders with a registered builder code).",
+    twitter: "@Dreamcash",
+    chains: ["hyperliquid"],
+    parent: "dreamcash",
+    features: [
+      "Tokenized equity and ETF perpetuals",
+      "HIP-3 namespace cash on HyperCore",
+      "Deployer fee collected via the on-chain deployerFee field",
+    ],
+  },
+  km: {
+    url: "https://kinetiq.xyz",
+    description:
+      "Markets by Kinetiq is the HIP-3 dex of Kinetiq, the Hyperliquid liquid staking protocol; it deploys equity and index basket perp markets under the km namespace.",
+    chains: ["hyperliquid"],
+    features: [
+      "Equity and index basket perpetuals",
+      "HIP-3 namespace km on HyperCore",
+      "Operated by the Kinetiq liquid staking team",
+    ],
+  },
+  hyna: {
+    url: "https://hyena.trade",
+    description:
+      "HyENA is a USDe-margined perp dex on Hyperliquid built by the Based team with Ethena support, running under the hyna HIP-3 namespace.",
+    chains: ["hyperliquid"],
+    features: [
+      "USDe collateral perpetual markets",
+      "HIP-3 namespace hyna on HyperCore",
+      "Built by the Based team with Ethena support",
+    ],
+  },
+  flx: {
+    url: "https://usefelix.xyz",
+    description:
+      "Felix Exchange is the HIP-3 dex of Felix, the Hyperliquid-native lending and stablecoin protocol; it deploys commodity and macro perp markets under the flx namespace.",
+    chains: ["hyperliquid"],
+    features: [
+      "Commodity and macro perpetuals",
+      "HIP-3 namespace flx on HyperCore",
+      "Operated by the Felix protocol team",
+    ],
+  },
+  para: {
+    url: "https://paragon.trade",
+    description:
+      "Paragon turns crypto-native indices (BTC dominance, TOTAL2, OTHERS) into perpetual futures on Hyperliquid under the para HIP-3 namespace, settled in USDC with cross-margin.",
+    twitter: "@tradeparagon",
+    chains: ["hyperliquid"],
+    features: [
+      "Crypto index perpetuals (BTC.D, TOTAL2, OTHERS)",
+      "HIP-3 namespace para on HyperCore",
+      "Deployer fee collected via the on-chain deployerFee field",
+    ],
+  },
 };
 
 /**
