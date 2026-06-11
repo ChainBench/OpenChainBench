@@ -156,6 +156,10 @@ const RAW: Record<string, string> = {
   dexari: "/logos/dexari.png",
   okto: "/logos/okto.png",
 
+  // ─── Hyperliquid HIP-3 deployers (bench № 035) ───
+  xyz: "/logos/xyz.png",
+  vntl: "/logos/vntl.png",
+
   // ─── Hyperliquid frontends registry expansion (8 → 60) ───
   "trust-wallet": "/logos/trust-wallet.png",
   sushi: "/logos/sushi.png",
