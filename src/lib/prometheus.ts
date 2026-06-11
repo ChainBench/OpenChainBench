@@ -100,13 +100,15 @@ export class Prometheus {
   async scalar(promql: string): Promise<number | null> {
     try {
       const res = await this.query(promql);
+      // 6 significant digits, same rationale as series(): full-precision
+      // tails bloat cached Benchmark objects toward the 2MB cache limit.
       if (res.resultType === "scalar") {
         const v = Number(res.result[1]);
-        return Number.isFinite(v) ? v : null;
+        return Number.isFinite(v) ? (v === 0 ? 0 : Number(v.toPrecision(6))) : null;
       }
       if (res.resultType === "vector" && res.result.length > 0) {
         const v = Number(res.result[0].value[1]);
-        return Number.isFinite(v) ? v : null;
+        return Number.isFinite(v) ? (v === 0 ? 0 : Number(v.toPrecision(6))) : null;
       }
       return null; // legitimately empty - not an error, not logged
     } catch (err) {
@@ -147,9 +149,17 @@ export class Prometheus {
         }
       }
 
-      // Average values per timestamp, ordered chronologically.
+      // Average values per timestamp, ordered chronologically. Rounded to
+      // 6 significant digits: raw averages carry 15+ digit tails that
+      // bloated the hyperliquid-frontends bench past unstable_cache's 2MB
+      // limit ("items over 2MB can not be cached"), so its cache NEVER
+      // persisted and every render redid the full Prom fan-out with no
+      // previous-value fallback.
       const ordered = Array.from(buckets.entries()).sort((a, b) => a[0] - b[0]);
-      const out = ordered.map(([, vs]) => vs.reduce((s, v) => s + v, 0) / vs.length);
+      const out = ordered.map(([, vs]) => {
+        const mean = vs.reduce((s, v) => s + v, 0) / vs.length;
+        return mean === 0 ? 0 : Number(mean.toPrecision(6));
+      });
       return out.length > 0 ? out : null;
     } catch {
       return null;
