@@ -59,6 +59,9 @@ export type ProviderResult = {
   formula?: string;
 };
 
+/** One provider's standing inside a (chain, region) ranking cell. */
+export type CellRankEntry = { slug: string; p50: number };
+
 export type RegionPoint = {
   region: "us-east" | "eu-west" | "ap-southeast" | "global";
   p50: number;
@@ -71,8 +74,11 @@ export type MetricPanel = {
   label: string;
   description?: string;
   metric: string;
-  unit: "ms" | "s" | "pct" | "bps" | "count" | "slots" | "usd";
+  unit: "ms" | "s" | "sec" | "pct" | "bps" | "count" | "slots" | "usd";
   higherIsBetter: boolean;
+  /** When false the panel is data-only (feeds ledger column window
+   *  variants) and renders no chart tab. */
+  tab?: boolean;
   /** Per-provider scalar values, keyed by provider slug. Providers with no
    *  live data for this metric are omitted; the renderer renders them as
    *  "no data" instead of zero. */
@@ -140,7 +146,7 @@ export type Benchmark = {
   sampleSize: number;
   abstract: string;
   metric: string;
-  unit: "ms" | "s" | "pct" | "bps" | "count" | "slots" | "usd";
+  unit: "ms" | "s" | "sec" | "pct" | "bps" | "count" | "slots" | "usd";
   higherIsBetter: boolean;
   /** Optional drill-down dimensions exposed by the bench. When set, the
    * bench page renders one tab selector per dimension and the queries get
@@ -176,6 +182,17 @@ export type Benchmark = {
    *  of inheriting their aggregate position on every chain in the
    *  bench. */
   providersPerChain?: Record<string, string[]>;
+  /** Full per-cell rankings from the spec's `rank_matrix_query`, computed
+   *  only on the unfiltered view. Key = `<chain>|<region>` where a side is
+   *  "all" when the bench doesn't declare that dimension OR for derived
+   *  marginals (mean over the collapsed dimension). Value = providers
+   *  sorted best-first by the bench's direction.
+   *
+   *  Motivation: per-chain ranks built from cross-region averages hide
+   *  region-restricted leaders (dRPC winning from Singapore only still
+   *  read as the global chain leader). Cells make the honest claim
+   *  ("#1 on BNB Chain from Singapore") computable. */
+  cellRanks?: Record<string, CellRankEntry[]>;
   findings: string[];
   methodology: string[];
   source: string;
@@ -184,4 +201,25 @@ export type Benchmark = {
    *  below the main table. Populated by the spec loader from
    *  `metric_panels` in the YAML. */
   metricPanels?: MetricPanel[];
+  /** Optional per-bench relabeling of the ledger's aggregate columns.
+   *  Declared by benches whose unit has no percentile semantics (the
+   *  p50/p90/p99/mean slots are repurposed, e.g. USD revenue leaderboards)
+   *  so the table headers describe what each slot actually holds. The
+   *  first column is the headline (sort key, data bar, mobile column). */
+  ledgerColumns?: LedgerColumn[];
+};
+
+export type LedgerColumn = {
+  label: string;
+  /** Reads the provider's headline slot value. */
+  slot?: "p50" | "p90" | "p99" | "mean";
+  /** Reads the per-provider values of a metric_panels entry by id. */
+  panel?: string;
+  /** Display unit override; defaults to the panel's unit (panel columns)
+   *  or the bench unit (slot columns). */
+  unit?: "ms" | "s" | "sec" | "pct" | "bps" | "count" | "slots" | "usd";
+  /** Per-window value sources for the ledger's timeframe toggle: window
+   *  key to metric_panels id. Columns without a mapping keep their 24h
+   *  value when a longer window is selected. */
+  windows?: Partial<Record<"7d" | "30d", string>>;
 };

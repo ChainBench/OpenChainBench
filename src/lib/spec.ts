@@ -14,7 +14,12 @@ import path from "node:path";
 import { cache } from "react";
 import { unstable_cache } from "next/cache";
 import yaml from "js-yaml";
-import type { Benchmark, MetricPanel, ProviderResult } from "@/types/benchmark";
+import type {
+  Benchmark,
+  CellRankEntry,
+  MetricPanel,
+  ProviderResult,
+} from "@/types/benchmark";
 import { Prometheus } from "@/lib/prometheus";
 import { SpecSchema, type Spec } from "@/lib/spec-schema";
 import { renderBenchmarkText } from "@/lib/bench-template";
@@ -97,7 +102,13 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // older cache entries for the all-benchmarks list didn't include the
   // new slug, so the bench was 404 on direct hit and absent from search
   // until the cache aged out.
-  ["bench-unfiltered-v5"],
+  // v6: added cellRanks (exact chain × region rankings from
+  // rank_matrix_query). Cached objects from v5 deploys lack the field,
+  // which made region-scoped badge URLs 404 after the deploy.
+  // v7: added ledgerColumns (per-bench ledger column relabeling).
+  // v8: outage panel unit s -> sec (true seconds); cached v7 objects keep
+  // the old unit and would render "0.0 s" via the ms-input formatter.
+  ["bench-unfiltered-v8"],
   { revalidate: 60, tags: ["benchmarks"] },
 );
 
@@ -158,7 +169,10 @@ const loadAllBenchmarksCached = unstable_cache(
   // benchmark slice the products page reads. Without bumping this, the
   // outer cache can keep serving v5-era benchmarks (no providersPerChain)
   // even after the inner cache is fresh.
-  ["all-benchmarks-v7"],
+  // v8: bumped with bench-unfiltered-v6 (cellRanks) for the same reason.
+  // v9: bumped with bench-unfiltered-v7 (ledgerColumns).
+  // v10: bumped with bench-unfiltered-v8 (sec unit).
+  ["all-benchmarks-v10"],
   { revalidate: 60, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -201,7 +215,9 @@ const loadBenchmarkFiltered = unstable_cache(
     }
     return bench;
   },
-  ["bench-filters-v3"],
+  // v4: bumped with bench-unfiltered-v7 (ledgerColumns).
+  // v5: bumped with bench-unfiltered-v8 (sec unit).
+  ["bench-filters-v5"],
   { revalidate: 60, tags: ["benchmarks"] }
 );
 
@@ -305,6 +321,7 @@ function buildEditorial(
     findings: spec.findings,
     source: spec.source,
     dimensions: spec.dimensions,
+    ledgerColumns: spec.ledger_columns,
   };
 }
 
@@ -455,6 +472,11 @@ async function specToBenchmark(
       if (Object.keys(providers).length > 0) providersPerChain = providers;
     }
 
+    // Exact per-cell rankings (chain × region) from the spec's single
+    // grouped matrix query. Failures are tolerated: badge/product
+    // surfaces fall back to the coarser bestPerChain path.
+    const cellRanks = !isFiltered ? await tryLoadCellRanks(spec) : undefined;
+
     // Resolve {{p50:slug}} / {{best_name}} / {{count}} etc. placeholders
     // against the freshly loaded numbers so editorial text (findings,
     // seo_intro, faq) never drifts from the displayed data.
@@ -464,6 +486,7 @@ async function specToBenchmark(
       bestPerChain,
       worstPerChain,
       providersPerChain,
+      cellRanks,
     });
     // Persist a snapshot of the runtime data so a future cold start
     // during a Prom blackout can still render this bench. Only the
@@ -484,6 +507,148 @@ function activeFilterLabels(opts: BenchmarkFilters): Record<string, string> {
     if (v && v !== "all") out[k] = v;
   }
   return out;
+}
+
+/**
+ * Run the spec's `rank_matrix_query` (one instant vector with a sample per
+ * (provider[, chain][, region])) and fold it into full per-cell rankings.
+ *
+ * Output keys are `<chain>|<region>` with "all" standing in for an
+ * undeclared dimension. When BOTH dimensions are declared, marginal cells
+ * (`<chain>|all`, `all|<region>`) are derived by averaging a provider's
+ * finest-cell values over the collapsed dimension — same semantics as the
+ * bench page's unscoped `avg(...)` headline queries.
+ *
+ * Samples whose provider label doesn't match a spec provider slug, or
+ * whose chain/region label isn't a declared dimension value, are dropped:
+ * the matrix is unfiltered PromQL, so stray series (retired providers,
+ * staging labels) must not leak into rankings.
+ */
+async function tryLoadCellRanks(
+  spec: Spec,
+): Promise<Record<string, CellRankEntry[]> | undefined> {
+  if (!spec.rank_matrix_query) return undefined;
+  const url = spec.prometheus?.url ?? process.env.PROMETHEUS_URL;
+  if (!url) return undefined;
+  try {
+    const prom = new Prometheus(url);
+    const res = await prom.query(spec.rank_matrix_query);
+    if (res.resultType !== "vector") return undefined;
+
+    const slugByLower = new Map(
+      spec.providers.map((p) => [p.slug.toLowerCase(), p.slug] as const),
+    );
+    // Canonical dimension value by lowercase, so a harness emitting
+    // `chain="Base"` still maps onto the declared `base` value instead
+    // of silently dropping the cell.
+    const chainByLower = new Map(
+      (spec.dimensions?.chain ?? [])
+        .filter((c) => c.value !== "all")
+        .map((c) => [c.value.toLowerCase(), c.value] as const),
+    );
+    const regionByLower = new Map(
+      (spec.dimensions?.region ?? [])
+        .filter((r) => r.value !== "all")
+        .map((r) => [r.value.toLowerCase(), r.value] as const),
+    );
+
+    // key → provider slug → samples (averaged if the grouping left
+    // residual label splits, e.g. multiple replicas per region).
+    const acc = new Map<string, Map<string, number[]>>();
+    for (const sample of res.result) {
+      const slug = slugByLower.get((sample.metric.provider ?? "").toLowerCase());
+      if (!slug) continue;
+      const chain =
+        chainByLower.size > 0
+          ? chainByLower.get((sample.metric.chain ?? "").toLowerCase())
+          : undefined;
+      const region =
+        regionByLower.size > 0
+          ? regionByLower.get((sample.metric.region ?? "").toLowerCase())
+          : undefined;
+      if (chainByLower.size > 0 && !chain) continue;
+      if (regionByLower.size > 0 && !region) continue;
+      const v = Number(sample.value[1]);
+      if (!Number.isFinite(v) || v <= 0) continue;
+      const key = `${chain ?? "all"}|${region ?? "all"}`;
+      const cell = acc.get(key) ?? new Map<string, number[]>();
+      const vals = cell.get(slug) ?? [];
+      vals.push(v);
+      cell.set(slug, vals);
+      acc.set(key, cell);
+    }
+    if (acc.size === 0) return undefined;
+
+    const mean = (vals: number[]) =>
+      vals.reduce((a, b) => a + b, 0) / vals.length;
+    const sortCell = (cell: Map<string, number[]>): CellRankEntry[] =>
+      [...cell.entries()]
+        .map(([slug, vals]) => ({ slug, p50: mean(vals) }))
+        .sort((a, b) =>
+          spec.higher_is_better ? b.p50 - a.p50 : a.p50 - b.p50,
+        );
+
+    const out: Record<string, CellRankEntry[]> = {};
+    for (const [key, cell] of acc) out[key] = sortCell(cell);
+
+    // Marginals, only when both dimensions exist in the finest cells.
+    // A provider only enters a marginal if it covers EVERY cell of the
+    // collapsed dimension that exists for that row/column. Without this,
+    // a provider measured only from its fastest region wins the
+    // `<chain>|all` average by omission (Simpson's bias), and the badge
+    // for "leads chain X" disagrees with the per-cell wins that earned it.
+    if (chainByLower.size > 0 && regionByLower.size > 0) {
+      const regionsOfChain = new Map<string, Set<string>>();
+      const chainsOfRegion = new Map<string, Set<string>>();
+      for (const key of acc.keys()) {
+        const [chain, region] = key.split("|");
+        (regionsOfChain.get(chain) ?? regionsOfChain.set(chain, new Set()).get(chain)!).add(region);
+        (chainsOfRegion.get(region) ?? chainsOfRegion.set(region, new Set()).get(region)!).add(chain);
+      }
+      const marginalFor = (
+        groups: Map<string, Set<string>>,
+        keyOf: (group: string, member: string) => string,
+        mKeyOf: (group: string) => string,
+      ) => {
+        for (const [group, members] of groups) {
+          const cell = new Map<string, number[]>();
+          // Providers present in every member cell of the group.
+          let eligible: Set<string> | undefined;
+          for (const member of members) {
+            const slugs = new Set(acc.get(keyOf(group, member))?.keys() ?? []);
+            eligible = eligible
+              ? new Set([...eligible].filter((s) => slugs.has(s)))
+              : slugs;
+          }
+          for (const slug of eligible ?? []) {
+            const vals: number[] = [];
+            for (const member of members) {
+              const v = acc.get(keyOf(group, member))?.get(slug);
+              if (v) vals.push(mean(v));
+            }
+            if (vals.length > 0) cell.set(slug, [mean(vals)]);
+          }
+          if (cell.size > 0) out[mKeyOf(group)] = sortCell(cell);
+        }
+      };
+      marginalFor(
+        regionsOfChain,
+        (chain, region) => `${chain}|${region}`,
+        (chain) => `${chain}|all`,
+      );
+      marginalFor(
+        chainsOfRegion,
+        (region, chain) => `${chain}|${region}`,
+        (region) => `all|${region}`,
+      );
+    }
+    return out;
+  } catch (e) {
+    console.warn(
+      `cellRanks skip: ${spec.slug} matrix query failed: ${e instanceof Error ? e.message : String(e)}`,
+    );
+    return undefined;
+  }
 }
 
 /** Inject every active `<label>="<value>"` into every PromQL label selector
@@ -570,16 +735,38 @@ async function tryLoadLive(
       const q = p.queries;
       if (!q) return null;
 
-      const [p50, p90, p99, mean, success, sampleSize, slotP50, slotP99] = await Promise.all([
+      let [p50, p90, p99] = await Promise.all([
         q.p50 ? prom.scalar(q.p50) : Promise.resolve(null),
         q.p90 ? prom.scalar(q.p90) : Promise.resolve(null),
         q.p99 ? prom.scalar(q.p99) : Promise.resolve(null),
+      ]);
+      const [mean, success, sampleSize, slotP50, slotP99] = await Promise.all([
         q.mean ? prom.scalar(q.mean) : Promise.resolve(null),
         q.success ? prom.scalar(q.success) : Promise.resolve(null),
         q.sample_size ? prom.scalar(q.sample_size) : Promise.resolve(null),
         q.slot_p50 ? prom.scalar(q.slot_p50) : Promise.resolve(null),
         q.slot_p99 ? prom.scalar(q.slot_p99) : Promise.resolve(null),
       ]);
+
+      // One retry on the load-bearing percentiles. A null here is either
+      // "provider has no data" (retry returns null again, harmless) or a
+      // transient Prom timeout under burst load (retry usually lands now
+      // that the concurrency cap has drained the burst). This is the
+      // difference between a provider flickering off the leaderboard for
+      // 60s and a stable board. Unfiltered view only: on chain/region
+      // tabs a null usually means the provider structurally isn't on
+      // that slice, and retrying every absent provider on every variant
+      // would triple the query bill for nothing.
+      if (!isFiltered && (p50 == null || p90 == null || p99 == null) && q.p50 && q.p90 && q.p99) {
+        const [r50, r90, r99] = await Promise.all([
+          p50 == null ? prom.scalar(q.p50) : Promise.resolve(p50),
+          p90 == null ? prom.scalar(q.p90) : Promise.resolve(p90),
+          p99 == null ? prom.scalar(q.p99) : Promise.resolve(p99),
+        ]);
+        p50 = r50;
+        p90 = r90;
+        p99 = r99;
+      }
 
       // If a provider has no data for the current filter (e.g. Jupiter on
       // BNB Chain when Jupiter is Solana-only), skip it instead of failing
@@ -675,6 +862,33 @@ async function tryLoadLive(
     // No live numbers from anyone (every provider was skipped) → draft.
     if (liveResults.length === 0) return null;
 
+    // Quorum guard. Providers whose p50/p90/p99 come back null are
+    // silently skipped above, which is correct for a single flaky source
+    // but catastrophic under a Prom brownout: 14 of 15 providers timing
+    // out still yielded a "live" render with one bar on the leaderboard,
+    // which then got cached for 60s AND overwrote the KV snapshot with
+    // the degraded set. Treat a sub-quorum unfiltered render as a failed
+    // cycle instead: returning null makes the live-spec path throw, so
+    // unstable_cache keeps the last good render (or falls back to the KV
+    // snapshot on cold start). Filtered views are exempt — a chain tab
+    // legitimately has fewer providers than the spec declares.
+    if (!isFiltered) {
+      const declared = spec.providers.filter((p) => p.queries).length;
+      // Floor at 3 so a bench whose field is legitimately decimated (most
+      // declared providers dead for days) can still go live with its
+      // survivors instead of drafting forever once the KV snapshot ages
+      // out. 3 is still enough to make a leaderboard meaningful, and the
+      // brownout scenario this guards against (1-2 stragglers passing
+      // while the rest time out) stays caught.
+      const quorum = Math.min(Math.ceil(declared / 2), 3);
+      if (liveResults.length < quorum) {
+        console.warn(
+          `bench quorum fail: ${spec.slug} live=${liveResults.length}/${declared} → keeping previous render`,
+        );
+        return null;
+      }
+    }
+
     // Optional companion metric panels. Each panel declares one Prometheus
     // metric; we query it per provider (`<metric>{<label_key>="<slug>"}`)
     // and store the scalar values. Providers with no data for that metric
@@ -710,6 +924,7 @@ async function tryLoadLive(
         metric: panel.metric,
         unit: panel.unit,
         higherIsBetter: panel.higher_is_better,
+        tab: panel.tab,
         values,
         seriesByProvider,
         seriesByProvider7d:
@@ -724,14 +939,28 @@ async function tryLoadLive(
     // its underlying metric. This is consistent across pages (Prom is the
     // single source of truth) and reflects real data freshness instead of
     // ISR cache age. Falls back to `now` only when extraction fails.
+    //
+    // Benches reading ocb:* recorded series MUST declare
+    // prometheus.freshness_metric (the raw harness metric): a recording
+    // rule keeps emitting fresh samples from its 24h window for a full
+    // day after the harness dies, so probing the recorded series would
+    // mask the outage.
     let lastRunAt = new Date().toISOString();
-    for (const p of spec.providers) {
-      const q = p.queries?.p50;
-      if (!q) continue;
-      const ageSec = await prom.dataAgeSec(q);
+    const freshnessMetric = spec.prometheus?.freshness_metric;
+    if (freshnessMetric) {
+      const ageSec = await prom.dataAgeSec(freshnessMetric);
       if (ageSec != null && Number.isFinite(ageSec) && ageSec >= 0) {
         lastRunAt = new Date(Date.now() - Math.floor(ageSec * 1000)).toISOString();
-        break;
+      }
+    } else {
+      for (const p of spec.providers) {
+        const q = p.queries?.p50;
+        if (!q) continue;
+        const ageSec = await prom.dataAgeSec(q);
+        if (ageSec != null && Number.isFinite(ageSec) && ageSec >= 0) {
+          lastRunAt = new Date(Date.now() - Math.floor(ageSec * 1000)).toISOString();
+          break;
+        }
       }
     }
 

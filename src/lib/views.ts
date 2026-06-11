@@ -28,6 +28,7 @@ const ALLOWED_BY_UNIT: Record<Benchmark["unit"], ViewType[]> = {
   // option behind the switcher gives the choice instead of guessing.
   ms: ["timeseries", "rankedBar", "distribution", "donut"],
   s: ["timeseries", "rankedBar", "distribution", "donut"],
+  sec: ["timeseries", "rankedBar", "distribution", "donut"],
   bps: ["timeseries", "rankedBar", "distribution", "donut"],
   pct: ["timeseries", "rankedBar", "distribution", "donut"],
   count: ["countLeaderboard", "rankedBar", "donut", "distribution", "timeseries"],

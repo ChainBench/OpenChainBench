@@ -1,9 +1,14 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import Link from "next/link";
-import type { Benchmark, MetricPanel, ProviderResult } from "@/types/benchmark";
+import type {
+  Benchmark,
+  LedgerColumn,
+  MetricPanel,
+  ProviderResult,
+} from "@/types/benchmark";
 import { ChainCoverageChip } from "@/components/chain-coverage-chip";
 import { Hint } from "@/components/hint";
 import { Sparkline } from "@/components/sparkline";
@@ -34,19 +39,67 @@ export function LedgerTable({ benchmark, activePanel, topN }: Props) {
   const { results, extras } = benchmark;
   const unit = activePanel?.unit ?? benchmark.unit;
   const higherIsBetter = activePanel?.higherIsBetter ?? benchmark.higherIsBetter;
-  // Single source of value per row — `r.ms.p50` for the headline metric,
-  // `panel.values[slug]` when a panel tab is active. Used for sort,
-  // filter, the inline data bar, and the displayed value in the p50
-  // column.
-  const pickValue = (r: ProviderResult): number =>
-    activePanel ? (activePanel.values[r.slug] ?? 0) : r.ms.p50;
   const panelActive = !!activePanel;
-  const secondary = results[0]?.secondary?.label;
+  // Custom column mode: benches that repurpose the p50/p90/p99/mean slots
+  // (USD revenue leaderboards) declare ledger_columns in their YAML so
+  // every column carries an honest label + unit, and panel-backed columns
+  // (e.g. unique users) surface inline instead of behind a tab click.
+  // Disabled while a panel tab is active — the panel sort already owns
+  // the table and the aggregate columns are dashed out.
+  const customCols = !panelActive ? benchmark.ledgerColumns : undefined;
+  const panelById = useMemo(
+    () => new Map((benchmark.metricPanels ?? []).map((p) => [p.id, p])),
+    [benchmark.metricPanels],
+  );
+  const secondary = customCols ? undefined : results[0]?.secondary?.label;
+
+  // Resolve one custom column's value for a row. Slot columns read the
+  // repurposed headline slots; panel columns read the panel's values map
+  // (null when the provider returned no data for that metric this cycle).
+  const colValue = (r: ProviderResult, col: LedgerColumn): number | null => {
+    if (col.slot) return r.ms[col.slot];
+    const v = panelById.get(col.panel ?? "")?.values[r.slug];
+    return v != null && Number.isFinite(v) ? v : null;
+  };
+  const colUnit = (col: LedgerColumn): string =>
+    col.unit ??
+    (col.panel ? (panelById.get(col.panel)?.unit ?? unit) : unit);
+
+  // Timeframe toggle. Columns that declare `windows` (7d/30d panel-id
+  // sources) flip to the selected window's values; columns without keep
+  // their 24h figure and the header says so. Rendered only when at least
+  // one column declares windows.
+  const [windowKey, setWindowKey] = useState<"24h" | "7d" | "30d">("24h");
+  const hasWindows = !!customCols?.some(
+    (c) => c.windows && Object.keys(c.windows).length > 0,
+  );
+  const colValueW = (r: ProviderResult, col: LedgerColumn): number | null => {
+    if (windowKey !== "24h" && col.windows?.[windowKey]) {
+      const v = panelById.get(col.windows[windowKey])?.values[r.slug];
+      return v != null && Number.isFinite(v) ? v : null;
+    }
+    return colValue(r, col);
+  };
+  const colLabel = (col: LedgerColumn): string => {
+    if (!hasWindows) return col.label;
+    const w = windowKey !== "24h" && col.windows?.[windowKey] ? windowKey : "24h";
+    return `${col.label} (${w})`;
+  };
+
+  // Single source of value per row — headline slot p50, the active
+  // window's first custom column, or `panel.values[slug]` when a panel
+  // tab is active. Used for sort, filter, the inline data bar, and the
+  // displayed value in the headline column.
+  const pickValue = (r: ProviderResult): number => {
+    if (activePanel) return activePanel.values[r.slug] ?? 0;
+    if (customCols) return colValueW(r, customCols[0]) ?? 0;
+    return r.ms.p50;
+  };
   // Detected from the first provider's results — if ANY provider declares
   // slot_p50/slot_p99 in its YAML queries, every row gets the column (with
   // "-" for providers that don't declare it). Used by Solana-native benches
   // where slot_delta is the canonical metric and ms is wall-clock derived.
-  const hasSlots = results.some((r) => r.slots != null);
+  const hasSlots = !customCols && results.some((r) => r.slots != null);
   // Drop unscored providers (availability=unavailable AND p50=0). They
   // stay in the underlying spec so /products/<slug> pages still resolve
   // and SEO coverage holds, but they're noise in a "ranked by performance"
@@ -103,6 +156,28 @@ export function LedgerTable({ benchmark, activePanel, topN }: Props) {
 
   return (
     <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
+      {hasWindows && (
+        <div className="mb-3 flex flex-wrap items-center gap-1">
+          <span className="mr-2 text-[10px] uppercase tracking-[0.16em] text-ink-faint">
+            Timeframe
+          </span>
+          {(["24h", "7d", "30d"] as const).map((w) => (
+            <button
+              key={w}
+              type="button"
+              onClick={() => setWindowKey(w)}
+              className={[
+                "rounded px-2.5 py-1 text-[11px] font-sans tabular uppercase tracking-[0.1em] font-medium transition-colors",
+                windowKey === w
+                  ? "bg-ink text-paper"
+                  : "text-ink-muted hover:text-ink hover:bg-paper-soft",
+              ].join(" ")}
+            >
+              {w}
+            </button>
+          ))}
+        </div>
+      )}
       <table className="ledger w-full min-w-full sm:min-w-[480px] md:min-w-0 border-collapse">
         <thead>
           <tr>
@@ -110,12 +185,18 @@ export function LedgerTable({ benchmark, activePanel, topN }: Props) {
               Product
             </th>
             <th
-              colSpan={5}
+              colSpan={customCols ? customCols.length + 1 : activePanel ? 2 : 5}
               className="border-y-2 border-ink py-2 px-3 text-center hidden md:table-cell"
             >
-              Latency aggregates
+              {customCols
+                ? benchmark.metric
+                : activePanel
+                  ? activePanel.label
+                  : "Latency aggregates"}
             </th>
-            <th className="border-y-2 border-ink py-2 px-3 text-right md:hidden">p50</th>
+            <th className="border-y-2 border-ink py-2 px-3 text-right md:hidden">
+              {customCols ? colLabel(customCols[0]) : activePanel ? "Value" : "p50"}
+            </th>
             <th className="border-y-2 border-ink py-2 pl-3 text-right hidden md:table-cell">
               Reliability
             </th>
@@ -138,10 +219,28 @@ export function LedgerTable({ benchmark, activePanel, topN }: Props) {
             <th className="py-2 pr-2 text-left w-2"></th>
             <th className="py-2 pr-3 text-left w-10">№</th>
             <th className="py-2 pr-3 text-left">Name</th>
-            <th className="py-2 px-3 text-right">p50</th>
-            <th className="py-2 px-3 text-right hidden md:table-cell">p90</th>
-            <th className="py-2 px-3 text-right hidden md:table-cell">p99</th>
-            <th className="py-2 px-3 text-right hidden md:table-cell">Mean</th>
+            {customCols ? (
+              customCols.map((c, idx) => (
+                <th
+                  key={c.label}
+                  className={`py-2 px-3 text-right ${idx === 0 ? "" : "hidden md:table-cell"}`}
+                >
+                  {colLabel(c)}
+                </th>
+              ))
+            ) : panelActive ? (
+              // Panel sort owns the table: a single honest "Value" column
+              // instead of p50/p90/p99/Mean headers over dashed-out cells
+              // (a USD volume sort labeled "p50" reads as a bug).
+              <th className="py-2 px-3 text-right">Value</th>
+            ) : (
+              <>
+                <th className="py-2 px-3 text-right">p50</th>
+                <th className="py-2 px-3 text-right hidden md:table-cell">p90</th>
+                <th className="py-2 px-3 text-right hidden md:table-cell">p99</th>
+                <th className="py-2 px-3 text-right hidden md:table-cell">Mean</th>
+              </>
+            )}
             <th className="py-2 px-3 text-right hidden md:table-cell">Δ field</th>
             <th className="py-2 px-3 text-right hidden md:table-cell">Success</th>
             <th className="py-2 pl-3 text-right">24h</th>
@@ -150,7 +249,11 @@ export function LedgerTable({ benchmark, activePanel, topN }: Props) {
           </tr>
           <tr className="border-b border-ink">
             <th
-              colSpan={10 + (hasSlots ? 1 : 0) + (secondary ? 1 : 0)}
+              colSpan={
+                (customCols ? 6 + customCols.length : panelActive ? 7 : 10) +
+                (hasSlots ? 1 : 0) +
+                (secondary ? 1 : 0)
+              }
               className="h-px p-0"
             />
           </tr>
@@ -168,6 +271,10 @@ export function LedgerTable({ benchmark, activePanel, topN }: Props) {
               panelActive={panelActive}
               hasSecondary={!!secondary}
               hasSlots={hasSlots}
+              customCells={customCols?.map((c) => ({
+                v: colValueW(r, c),
+                unit: colUnit(c),
+              }))}
               series={
                 activePanel
                   ? (activePanel.seriesByProvider?.[r.slug] ?? [])
@@ -195,6 +302,7 @@ function Row({
   panelActive,
   hasSecondary,
   hasSlots,
+  customCells,
   series,
   sparkMin,
   sparkMax,
@@ -210,6 +318,9 @@ function Row({
   panelActive: boolean;
   hasSecondary: boolean;
   hasSlots: boolean;
+  /** Custom-column mode (benchmark.ledgerColumns): one pre-resolved
+   *  {value, unit} per declared column, replacing p50/p90/p99/Mean. */
+  customCells?: { v: number | null; unit: string }[];
   series: number[];
   sparkMin: number;
   sparkMax: number;
@@ -294,14 +405,18 @@ function Row({
       </td>
       {isOffline ? (
         <td
-          colSpan={7 + (hasSlots ? 1 : 0) + (hasSecondary ? 1 : 0)}
+          colSpan={
+            (customCells ? customCells.length + 3 : 7) +
+            (hasSlots ? 1 : 0) +
+            (hasSecondary ? 1 : 0)
+          }
           className="py-2.5 px-3 text-right text-ink-faint italic text-[12px]"
         >
           Awaiting next successful scrape
         </td>
       ) : (
         <>
-          {/* p50 with inline data bar */}
+          {/* Headline column with inline data bar */}
           <td className="py-2.5 px-3 text-right whitespace-nowrap">
             <span className="inline-flex items-center gap-2 justify-end">
               <span
@@ -314,19 +429,36 @@ function Row({
                 aria-hidden
               />
               <span className="text-ink whitespace-nowrap">
-                {fmtUnit(value, unit)}
+                {customCells
+                  ? customCells[0].v != null
+                    ? fmtUnit(customCells[0].v, customCells[0].unit)
+                    : "-"
+                  : fmtUnit(value, unit)}
               </span>
             </span>
           </td>
-          <td className="py-2.5 px-3 text-right text-ink-soft whitespace-nowrap hidden md:table-cell">
-            {panelActive ? "—" : fmtUnit(r.ms.p90, unit)}
-          </td>
-          <td className="py-2.5 px-3 text-right text-ink-soft whitespace-nowrap hidden md:table-cell">
-            {panelActive ? "—" : fmtUnit(r.ms.p99, unit)}
-          </td>
-          <td className="py-2.5 px-3 text-right text-ink-soft whitespace-nowrap hidden md:table-cell">
-            {panelActive ? "—" : fmtUnit(r.ms.mean, unit)}
-          </td>
+          {customCells ? (
+            customCells.slice(1).map((c, idx) => (
+              <td
+                key={idx}
+                className="py-2.5 px-3 text-right text-ink-soft whitespace-nowrap hidden md:table-cell"
+              >
+                {c.v != null ? fmtUnit(c.v, c.unit) : "-"}
+              </td>
+            ))
+          ) : panelActive ? null : (
+            <>
+              <td className="py-2.5 px-3 text-right text-ink-soft whitespace-nowrap hidden md:table-cell">
+                {fmtUnit(r.ms.p90, unit)}
+              </td>
+              <td className="py-2.5 px-3 text-right text-ink-soft whitespace-nowrap hidden md:table-cell">
+                {fmtUnit(r.ms.p99, unit)}
+              </td>
+              <td className="py-2.5 px-3 text-right text-ink-soft whitespace-nowrap hidden md:table-cell">
+                {fmtUnit(r.ms.mean, unit)}
+              </td>
+            </>
+          )}
           <td className="py-2.5 px-3 text-right text-ink-muted whitespace-nowrap hidden md:table-cell">
             {fieldValue > 0 ? `${deltaSign}${Math.abs(deltaPct).toFixed(0)}%` : "-"}
           </td>

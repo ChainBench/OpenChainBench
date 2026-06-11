@@ -238,7 +238,7 @@ export const SpecSchema = z
     /* Metric */
     metric: z.string().min(1).max(100),
     /** ms / s for latencies; pct for fees as percent of notional; bps for basis points; slots for Solana slot delta. */
-    unit: z.enum(["ms", "s", "pct", "bps", "count", "slots", "usd"]),
+    unit: z.enum(["ms", "s", "sec", "pct", "bps", "count", "slots", "usd"]),
     /** True when bigger numbers are better (coverage, count). Default false:
      * latency, fees, drift. every existing bench is "lower is better". */
     higher_is_better: z.boolean().default(false),
@@ -278,6 +278,17 @@ export const SpecSchema = z
          * so one missed cycle is tolerated, two missed cycles fire.
          */
         expected_freshness_seconds: z.number().int().positive().optional(),
+        /**
+         * Raw harness metric to probe for data freshness (lastRunAt).
+         * REQUIRED in practice for benches whose queries read ocb:*
+         * recorded series: recording rules keep emitting from their 24h
+         * window long after a harness dies, so probing the recorded
+         * series would mask the outage.
+         */
+        freshness_metric: z
+          .string()
+          .regex(/^[a-zA-Z_:][a-zA-Z0-9_:]*$/, "Must be a bare metric name")
+          .optional(),
       })
       .optional(),
 
@@ -318,6 +329,22 @@ export const SpecSchema = z
       })
       .optional(),
 
+    /* Optional single PromQL returning one instant sample per
+     * (provider[, chain][, region]) — e.g.
+     *   avg by (provider, chain, region) (quantile_over_time(0.50, m[24h]))
+     * Powers exact per-cell rankings (badge scoping, leadership claims)
+     * in ONE Prom roundtrip instead of a chains × regions query fan-out.
+     * Label values must match provider slugs / dimension values. */
+    rank_matrix_query: z
+      .string()
+      .min(1)
+      .max(2000)
+      .refine(
+        (q) => q.includes("provider"),
+        "rank_matrix_query must group by the provider label"
+      )
+      .optional(),
+
     providers: z.array(provider).min(1),
 
     /**
@@ -342,14 +369,108 @@ export const SpecSchema = z
           /** The PromQL label that holds each provider's slug. Defaults to
            *  "builder"; other benches may use "provider", "venue", etc. */
           label_key: z.string().min(1).max(40).default("builder"),
-          unit: z.enum(["ms", "s", "pct", "bps", "count", "slots", "usd"]),
+          unit: z.enum(["ms", "s", "sec", "pct", "bps", "count", "slots", "usd"]),
           higher_is_better: z.boolean().default(false),
+          /** When false the panel is data-only: it is loaded and can feed
+           *  ledger_columns window variants, but renders no chart tab.
+           *  Used for 7d/30d gauges that power the ledger's timeframe
+           *  toggle without duplicating the headline metric as tabs. */
+          tab: z.boolean().default(true),
         })
       )
-      .max(8)
+      // Cap covers visible tabs plus data-only window panels (revenue,
+      // volume and users each carry a 7d + 30d variant on the HL bench).
+      .max(12)
+      .optional(),
+
+    /**
+     * Optional relabeling of the ledger's aggregate columns. For benches
+     * whose unit has no percentile semantics (USD revenue leaderboards),
+     * the p50/p90/p99/mean slots are repurposed; declaring ledger_columns
+     * renders each column with an honest label and unit instead of the
+     * default latency headers. `slot` reads the provider's headline slot,
+     * `panel` reads the values of a metric_panels entry by id. The first
+     * column is the headline (sort key, data bar, mobile column).
+     */
+    ledger_columns: z
+      .array(
+        z
+          .object({
+            label: z.string().min(1).max(28),
+            slot: z.enum(["p50", "p90", "p99", "mean"]).optional(),
+            panel: z.string().min(1).max(40).optional(),
+            unit: z
+              .enum(["ms", "s", "pct", "bps", "count", "slots", "usd"])
+              .optional(),
+            /** Per-window value sources for the ledger's timeframe toggle.
+             *  Maps a window key to a metric_panels id whose values hold
+             *  this column's figure over that window. Columns without a
+             *  mapping keep their 24h value (and are labeled as such)
+             *  when a longer window is selected. The toggle renders only
+             *  when at least one column declares windows. */
+            windows: z
+              .record(z.enum(["7d", "30d"]), z.string().min(1).max(40))
+              .optional(),
+          })
+          .refine((c) => (c.slot != null) !== (c.panel != null), {
+            message: "ledger column must set exactly one of slot or panel",
+          }),
+      )
+      .min(1)
+      .max(6)
       .optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((spec, ctx) => {
+    // A region-dimensioned bench without exact cell rankings would fall
+    // back to cross-region-average badge logic, which is precisely the
+    // bias the matrix exists to fix (a provider winning from one region
+    // reads as the global leader). Refuse the spec instead.
+    const realRegions = (spec.dimensions?.region ?? []).filter(
+      (r) => r.value !== "all",
+    );
+    if (realRegions.length > 0 && !spec.rank_matrix_query) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["rank_matrix_query"],
+        message:
+          "Benches declaring dimensions.region must provide rank_matrix_query so badge claims are scoped per region",
+      });
+    }
+
+    // A ledger column referencing a panel id that doesn't exist would
+    // silently render "-" for every provider. Refuse at validate time.
+    const panelIds = new Set((spec.metric_panels ?? []).map((p) => p.id));
+    for (const [i, col] of (spec.ledger_columns ?? []).entries()) {
+      if (col.panel && !panelIds.has(col.panel)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["ledger_columns", i, "panel"],
+          message: `Unknown metric_panels id "${col.panel}"`,
+        });
+      }
+      for (const [w, panelId] of Object.entries(col.windows ?? {})) {
+        if (!panelIds.has(panelId)) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["ledger_columns", i, "windows", w],
+            message: `Unknown metric_panels id "${panelId}"`,
+          });
+        }
+      }
+    }
+    // The ledger sorts, bars and badges off p50. The first displayed
+    // column must be that same number or the table reads as mis-sorted.
+    const firstCol = spec.ledger_columns?.[0];
+    if (firstCol && firstCol.slot !== "p50") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["ledger_columns", 0, "slot"],
+        message:
+          "First ledger column must be slot p50 (the headline the table sorts by)",
+      });
+    }
+  });
 
 export type Spec = z.infer<typeof SpecSchema>;
 export type SpecProvider = z.infer<typeof provider>;

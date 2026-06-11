@@ -32,8 +32,15 @@
  *     outage.
  */
 
+import { after } from "next/server";
 import { z } from "zod";
-import type { Benchmark, ProviderResult, ResultExtras } from "@/types/benchmark";
+import type {
+  Benchmark,
+  CellRankEntry,
+  MetricPanel,
+  ProviderResult,
+  ResultExtras,
+} from "@/types/benchmark";
 
 /** Refuse snapshots older than this on read. 24 h matches the bench
  *  query window — a value older than that isn't meaningful as the
@@ -60,6 +67,8 @@ const SnapshotSchema = z.object({
   bestPerChain: z.record(z.string(), z.any()).optional(),
   worstPerChain: z.record(z.string(), z.any()).optional(),
   providersPerChain: z.record(z.string(), z.array(z.string())).optional(),
+  cellRanks: z.record(z.string(), z.any()).optional(),
+  metricPanels: z.array(z.any()).optional(),
 });
 
 export type SnapshotPayload = {
@@ -70,6 +79,11 @@ export type SnapshotPayload = {
   bestPerChain?: Record<string, ProviderResult>;
   worstPerChain?: Record<string, ProviderResult>;
   providersPerChain?: Record<string, string[]>;
+  cellRanks?: Record<string, CellRankEntry[]>;
+  /** Panel values (series stripped to keep the KV value small). Without
+   *  these a snapshot-served bench loses its chart view tabs and every
+   *  panel-backed ledger column renders "-". */
+  metricPanels?: MetricPanel[];
 };
 
 function isConfigured(): boolean {
@@ -87,35 +101,97 @@ function authHeader(): { Authorization: string } {
   return { Authorization: `Bearer ${process.env.KV_REST_API_TOKEN}` };
 }
 
+/** A fresher snapshot with MORE providers wins over a new render with
+ *  fewer. Window after which a bigger-but-aging snapshot stops blocking
+ *  writes, so a legitimately shrunk provider field (YAML removal, a
+ *  source dead for hours) can still refresh the snapshot. */
+const SNAPSHOT_GUARD_WINDOW_MS = 2 * 60 * 60 * 1000;
+
 /**
  * Best-effort save. Never throws, never blocks. Call without `await`
  * from inside a successful Prom path:
  *
  *   writeSnapshot(spec.slug, { results, extras, sampleSize, lastRunAt });
  *
- * Returns immediately; the network call resolves in the background.
+ * Returns immediately; the work resolves in the background.
+ *
+ * Degradation guards (both motivated by Prom brownouts, where a cycle
+ * can pass the 50% quorum yet still be worse than the snapshot it would
+ * replace):
+ *   - Coverage ratchet: if the existing snapshot is recent (< 2h) and
+ *     has MORE providers than this render, skip the write entirely.
+ *     Without this, repeated brownouts walk the snapshot down to the
+ *     quorum floor and a cold start then serves the degraded board.
+ *   - Stash carry-over: per-chain / per-cell stashes (bestPerChain,
+ *     cellRanks, ...) are computed by separate Prom queries that can
+ *     fail on an otherwise-healthy cycle. When the new render lacks one
+ *     and the existing snapshot has it, carry the old value forward so
+ *     scoped badges / placeholders don't 404 after a cold start.
  */
 export function writeSnapshot(slug: string, payload: SnapshotPayload): void {
   if (!isConfigured()) return;
-  const body = JSON.stringify({
-    _v: SCHEMA_VERSION,
-    savedAt: Date.now(),
-    ...payload,
-  });
-  // Upstash REST: POST /set/{key} with raw body = value.
-  fetch(`${kvUrl()}/set/${encodeURIComponent(KEY_PREFIX + slug)}`, {
-    method: "POST",
-    headers: { ...authHeader(), "Content-Type": "application/json" },
-    body,
-    // Server-side fetch is fine without keepalive; no browser limits.
-    cache: "no-store",
-  }).catch((err) => {
-    console.warn(
-      `snapshot.write failed for ${slug}: ${
-        err instanceof Error ? err.message : String(err)
-      }`,
-    );
-  });
+  const work = (async () => {
+    try {
+      const existing = await readSnapshotWithAge(slug);
+      // KV unreachable (as opposed to "no snapshot yet"): skip the write
+      // entirely. A degraded render slipping past the guards precisely
+      // when the infra is under stress is the scenario the guards exist
+      // for, and a healthy cycle lands 60s later anyway.
+      if (existing === "error") {
+        console.warn(`snapshot.write skipped for ${slug}: KV read failed`);
+        return;
+      }
+      const merged: SnapshotPayload = { ...payload };
+      if (existing) {
+        // Compare actual live coverage, not array length: the rendered
+        // bench pads `results` with an "unavailable" row for every
+        // declared provider, so lengths are always equal by construction.
+        const liveCount = (rs: ProviderResult[]) =>
+          rs.filter((r) => r.availability !== "unavailable" && r.ms.p50 > 0)
+            .length;
+        const newLive = liveCount(payload.results);
+        const oldLive = liveCount(existing.payload.results);
+        if (existing.ageMs < SNAPSHOT_GUARD_WINDOW_MS && oldLive > newLive) {
+          console.warn(
+            `snapshot.write skipped for ${slug}: render has ${newLive} live providers, snapshot has ${oldLive}`,
+          );
+          return;
+        }
+        merged.bestPerChain ??= existing.payload.bestPerChain;
+        merged.worstPerChain ??= existing.payload.worstPerChain;
+        merged.providersPerChain ??= existing.payload.providersPerChain;
+        merged.cellRanks ??= existing.payload.cellRanks;
+        merged.metricPanels ??= existing.payload.metricPanels;
+      }
+      const body = JSON.stringify({
+        _v: SCHEMA_VERSION,
+        savedAt: Date.now(),
+        ...merged,
+      });
+      // Upstash REST: POST /set/{key} with raw body = value.
+      await fetch(`${kvUrl()}/set/${encodeURIComponent(KEY_PREFIX + slug)}`, {
+        method: "POST",
+        headers: { ...authHeader(), "Content-Type": "application/json" },
+        body,
+        cache: "no-store",
+      });
+    } catch (err) {
+      console.warn(
+        `snapshot.write failed for ${slug}: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
+  })();
+  // Vercel can freeze the lambda as soon as the response is sent; an
+  // unawaited promise then silently never completes. after() keeps the
+  // function alive until the write lands. Falls back to fire-and-forget
+  // outside a request scope (build-time prerender, tests).
+  try {
+    after(work);
+  } catch {
+    void work;
+  }
 }
 
 /**
@@ -132,6 +208,18 @@ export function writeSnapshot(slug: string, payload: SnapshotPayload): void {
 export async function readSnapshot(
   slug: string,
 ): Promise<SnapshotPayload | null> {
+  const hit = await readSnapshotWithAge(slug);
+  return hit && hit !== "error" ? hit.payload : null;
+}
+
+/** Same as readSnapshot but exposes the snapshot's age. Used by the
+ *  write-path degradation guards, which need to distinguish "no usable
+ *  snapshot exists" (null → write proceeds) from "KV is unreachable"
+ *  ("error" → write is skipped so a degraded render can't slip past the
+ *  guards while the infra is down). */
+async function readSnapshotWithAge(
+  slug: string,
+): Promise<{ payload: SnapshotPayload; ageMs: number } | null | "error"> {
   if (!isConfigured()) return null;
   try {
     const res = await fetch(
@@ -147,7 +235,7 @@ export async function readSnapshot(
     );
     if (!res.ok) {
       console.warn(`[DRAFT-TRACE] kv_http slug=${slug} status=${res.status}`);
-      return null;
+      return "error";
     }
     const env = (await res.json()) as { result?: string | null };
     if (!env.result) {
@@ -170,19 +258,26 @@ export async function readSnapshot(
       return null;
     }
     return {
-      results: parsed.data.results as ProviderResult[],
-      extras: parsed.data.extras as ResultExtras,
-      sampleSize: parsed.data.sampleSize,
-      lastRunAt: parsed.data.lastRunAt,
-      bestPerChain: parsed.data.bestPerChain as
-        | Record<string, ProviderResult>
-        | undefined,
-      worstPerChain: parsed.data.worstPerChain as
-        | Record<string, ProviderResult>
-        | undefined,
-      providersPerChain: parsed.data.providersPerChain as
-        | Record<string, string[]>
-        | undefined,
+      ageMs: age,
+      payload: {
+        results: parsed.data.results as ProviderResult[],
+        extras: parsed.data.extras as ResultExtras,
+        sampleSize: parsed.data.sampleSize,
+        lastRunAt: parsed.data.lastRunAt,
+        bestPerChain: parsed.data.bestPerChain as
+          | Record<string, ProviderResult>
+          | undefined,
+        worstPerChain: parsed.data.worstPerChain as
+          | Record<string, ProviderResult>
+          | undefined,
+        providersPerChain: parsed.data.providersPerChain as
+          | Record<string, string[]>
+          | undefined,
+        cellRanks: parsed.data.cellRanks as
+          | Record<string, CellRankEntry[]>
+          | undefined,
+        metricPanels: parsed.data.metricPanels as MetricPanel[] | undefined,
+      },
     };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -192,7 +287,7 @@ export async function readSnapshot(
       ? "kv_timeout"
       : "kv_neterr";
     console.warn(`[DRAFT-TRACE] ${tag} slug=${slug} err=${msg}`);
-    return null;
+    return "error";
   }
 }
 
@@ -215,5 +310,14 @@ export function snapshotFromBenchmark(b: Benchmark): SnapshotPayload {
     worstPerChain: b.worstPerChain,
     providersPerChain: (b as { providersPerChain?: Record<string, string[]> })
       .providersPerChain,
+    cellRanks: b.cellRanks,
+    // Series stripped: 11 panels x 75 providers x 3 series would multiply
+    // the KV value size; values + labels are what the tabs strip and the
+    // panel-backed ledger columns need to survive a snapshot-served render.
+    metricPanels: b.metricPanels?.map(
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      ({ seriesByProvider, seriesByProvider7d, seriesByProvider30d, ...rest }) =>
+        rest,
+    ),
   };
 }

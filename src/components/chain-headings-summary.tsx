@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Benchmark } from "@/types/benchmark";
 import { liveResults } from "@/lib/provider-filters";
 import { fmtUnit } from "@/lib/format";
@@ -69,7 +70,19 @@ export function ChainHeadingsSummary({ benchmark }: { benchmark: Benchmark }) {
           return (
             <article key={r.slug} id={r.slug} className="scroll-mt-20">
               <h2 className="display text-xl tracking-tight text-ink">
-                {heading}
+                {/* Chains with an explainer have a dedicated landing page
+                    (/benchmarks/<slug>/<chain>); the heading links there so
+                    crawlers discover the per-chain documents from the hub. */}
+                {explainer ? (
+                  <Link
+                    href={`/benchmarks/${benchmark.slug}/${r.slug}`}
+                    className="hover:underline underline-offset-4"
+                  >
+                    {heading}
+                  </Link>
+                ) : (
+                  heading
+                )}
               </h2>
               <p className="mt-2 text-base leading-relaxed text-ink-soft">
                 <span className="font-semibold text-ink">

@@ -12,7 +12,7 @@ import { getBenchCreatedAt } from "@/lib/seo/bench-dates";
 import { capDescription } from "@/lib/seo-text";
 import { SectionLabel, SummaryStat } from "@/components/summary-stat";
 import { SITE } from "@/data/site";
-import { loadAlternative, loadAlternativeSlugs } from "@/lib/alternatives";
+import { loadAlternative } from "@/lib/alternatives";
 import { safeJsonLd } from "@/lib/jsonld";
 import { ProviderLogo } from "@/components/provider-logo";
 import { ProviderTypeBadge } from "@/components/provider-type-badge";
@@ -20,11 +20,17 @@ import { isRegion } from "@/lib/brand";
 
 export const revalidate = 60;
 
+// Same budget as /products/[slug]: on-demand renders span the whole bench
+// catalog and the 60s default killed them mid-flight.
+export const maxDuration = 300;
+
 type Params = { slug: string };
 
-export async function generateStaticParams() {
-  const slugs = await loadAlternativeSlugs();
-  return slugs.map((slug) => ({ slug }));
+// Rendered ON DEMAND (first request, then ISR-cached), same reasoning as
+// /products/[slug]: prerendering these at build multiplies the full
+// multi-bench Prom load per build worker and blew the page budget.
+export async function generateStaticParams(): Promise<{ slug: string }[]> {
+  return [];
 }
 
 export async function generateMetadata({
