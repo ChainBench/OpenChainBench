@@ -3,11 +3,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ArrowUpRight, ChevronDown } from "lucide-react";
-import {
-  getBenchmark,
-  getBenchmarks,
-  getBenchmarkSlugs,
-} from "@/data/benchmarks";
+import { getBenchmark, getBenchmarks } from "@/data/benchmarks";
 import { Pill } from "@/components/pill";
 import { BenchmarkBody } from "@/components/benchmark-body";
 import { ChainHeadingsSummary } from "@/components/chain-headings-summary";
@@ -46,61 +42,45 @@ import type { Benchmark } from "@/types/benchmark";
 // the route still prerenders cleanly.
 export const revalidate = 60;
 
-// Cold start render does up to ~200 Prom calls (provider × percentiles ×
-// series queries) which can exceed Vercel's default 10s function timeout
-// on benches with 20+ providers. Once ISR warms, the page is cached and
-// fast — this only affects the first hit per revalidate window. Bumped
-// to 60s to absorb the slow cold path. The actual hot path latency is
-// served from the CDN cache so the user-facing P99 stays sub-second.
-export const maxDuration = 60;
+// Cold start render does thousands of Prom calls on the heaviest benches
+// (hyperliquid-frontends: 75 providers × 7 queries + 11 panels × values +
+// series), serialized through the Prom client's concurrency cap. At 60s
+// the ISR regeneration itself was killed ("Vercel Runtime Timeout Error:
+// Task timed out after 60 seconds"), so the cache could NEVER replace a
+// build-time render that had failed its panel queries — staging served
+// empty panel values for hours (2026-06-11). 300s gives the regeneration
+// room to finish; the hot path is CDN-cached and stays sub-second.
+export const maxDuration = 300;
 
 type Params = { slug: string };
 
-export async function generateStaticParams() {
-  const slugs = await getBenchmarkSlugs();
-  return slugs.map((slug) => ({ slug }));
+// Rendered ON DEMAND (first request, then ISR-cached). Prerendering the
+// 25+ bench pages at build pushed the full multi-bench Prom load through
+// the CI runner, whose DNS resolver throttles under hundreds of lookups;
+// observed 2026-06-11: /benchmarks/pm-data-freshness failing 3×60s
+// export attempts and killing the deploy. Without the embedded variant
+// matrix an on-demand first render is a few seconds once per deploy per
+// slug, then the CDN serves it.
+export async function generateStaticParams(): Promise<{ slug: string }[]> {
+  return [];
 }
 
 export async function generateMetadata({
   params,
-  searchParams,
 }: {
   params: Promise<Params>;
-  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  // Next 16 ships searchParams as a Promise. Reading it here would normally
-  // tip the segment into "dynamic", but generateMetadata is allowed to
-  // consume request data without affecting the parent page's static
-  // rendering — the page.tsx body still resolves searchParams client-side
-  // through BenchmarkBody.
-  const sp = (await searchParams) ?? {};
-  const rawChain = Array.isArray(sp.chain) ? sp.chain[0] : sp.chain;
-  // Always re-fetch unfiltered first — used for canonical fields and the
-  // default copy. When a chain is requested, fetch the filtered variant
-  // so headline sentence + template placeholders resolve against the
-  // chain-scoped leader rather than the cross-chain aggregate.
-  const baseBench = await getBenchmark(slug);
-  if (!baseBench) return {};
-  const chainOption = (baseBench.dimensions?.chain ?? []).find(
-    (c) => c.value.toLowerCase() === (rawChain ?? "").toLowerCase(),
-  );
-  const isChainScoped = Boolean(chainOption && chainOption.value !== "all");
-  const filteredBench = isChainScoped
-    ? (await getBenchmark(slug, { chain: chainOption!.value })) ?? baseBench
-    : baseBench;
-  // Use the filtered bench for headline + template substitutions so the
-  // OG/Twitter card and meta description reference the chain-specific
-  // leader rather than the cross-chain aggregate (the headline of the
-  // unfiltered bench is misleading when a single chain dominates the
-  // baseline — e.g. Solana skewing the "fastest data API" claim on the
-  // Bench-001 aggregate view).
-  const b = filteredBench;
-  const chainLabel = chainOption?.label ?? null;
-  const baseTitle = b.seoTitle ?? b.title;
-  const metaTitle = isChainScoped && chainLabel
-    ? `${baseTitle} on ${chainLabel}`
-    : baseTitle;
+  // DO NOT read searchParams here. Awaiting it in generateMetadata opts
+  // the whole route into dynamic rendering (`cache-control: no-store`,
+  // zero CDN caching) — measured at 43s TTFB on cold rpc-capabilities
+  // hits. Chain-scoped metadata lives on the dedicated
+  // /benchmarks/[slug]/[chain] pages; `?chain=` URLs on this route share
+  // the aggregate metadata and the canonical, which is what we want for
+  // link-signal consolidation anyway.
+  const b = await getBenchmark(slug);
+  if (!b) return {};
+  const metaTitle = b.seoTitle ?? b.title;
   // Description precedence (most-to-least specific):
   //   1. `seo_description` from the YAML - hand-crafted snippet with the
   //      long-tail query phrases we want to rank for.
@@ -119,15 +99,9 @@ export async function generateMetadata({
   // longer is cut mid-word which hurts CTR. Trim cleanly so we control the
   // truncation rather than letting Google decide where to slice.
   if (description) description = capDescription(description, 158);
-  // Canonical NEVER carries `?chain=...`. Per-chain variants share the
-  // same canonical URL so Google consolidates link signal on the hub
-  // page instead of treating each tab as a separate document. The OG
-  // url is the chain-scoped one so social previews don't all collapse
-  // to the same target.
-  const canonical = `${SITE.url}/benchmarks/${baseBench.slug}`;
-  const ogUrl = isChainScoped
-    ? `${canonical}?chain=${chainOption!.value}`
-    : canonical;
+  // Canonical NEVER carries `?chain=...`. Per-chain variants live on the
+  // dedicated /benchmarks/[slug]/[chain] pages with their own metadata.
+  const canonical = `${SITE.url}/benchmarks/${b.slug}`;
   return {
     title: metaTitle,
     description,
@@ -151,7 +125,7 @@ export async function generateMetadata({
       title: metaTitle,
       description,
       type: "article",
-      url: ogUrl,
+      url: canonical,
     },
     twitter: { card: "summary_large_image", title: metaTitle, description },
   };
@@ -181,58 +155,21 @@ export default async function BenchmarkPage({
   const region = regionOptions[0]?.value ?? null;
   const kind = kindOptions[0]?.value ?? null;
 
-  // Pre-fetch every (chain × region × kind) variant in parallel so client flips
-  // are zero round-trip. unstable_cache dedupes each (slug, filters) combo
-  // across users - first miss warms it, every later viewer gets it instant.
-  // `all` is the "no filter" sentinel - same as the unscoped fetch.
-  const chainsForFetch = chainOptions.length > 0 ? chainOptions.map((c) => c.value) : [null];
-  const regionsForFetch = regionOptions.length > 0 ? regionOptions.map((r) => r.value) : [null];
-  const kindsForFetch = kindOptions.length > 0 ? kindOptions.map((k) => k.value) : [null];
-
-  const variantPairs = chainsForFetch.flatMap((c) =>
-    regionsForFetch.flatMap((r) =>
-      kindsForFetch.map((k) => [c, r, k] as const)
-    )
-  );
-  const [variantList, all] = await Promise.all([
-    Promise.all(
-      variantPairs.map(async ([c, r, k]) => {
-        const filters: { chain?: string; region?: string; kind?: string } = {};
-        if (c && c !== "all") filters.chain = c;
-        if (r && r !== "all") filters.region = r;
-        if (k && k !== "all") filters.kind = k;
-        const b = await getBenchmark(slug, filters);
-        return [variantKey(c, r, k), b ?? aggregate] as const;
-      })
-    ),
-    getBenchmarks(),
-  ]);
-  // Variants only contribute chart / leaderboard / extras to the displayed
-  // bench (those legitimately differ per (chain, region) filter). Editorial
-  // copy (findings, faq, seoIntro, abstract, methodology) is the SAME on
-  // every tab and only resolves chain placeholders against the aggregate's
-  // bestPerChain/worstPerChain stash (computed unfiltered only), so we
-  // override these fields onto every variant. Without this, switching to
-  // a chain tab surfaces raw `{{best_name:chain:X}}` strings.
-  const variants: Record<string, Benchmark> = Object.fromEntries(
-    variantList.map(([key, v]) => [
-      key,
-      v === aggregate
-        ? v
-        : {
-            ...v,
-            findings: aggregate.findings,
-            faq: aggregate.faq,
-            seoIntro: aggregate.seoIntro,
-            abstract: aggregate.abstract,
-            methodology: aggregate.methodology,
-            perChainExplainer: aggregate.perChainExplainer,
-            bestPerChain: aggregate.bestPerChain,
-            worstPerChain: aggregate.worstPerChain,
-          },
-    ]),
-  );
-  const benchmark = variants[variantKey(chain, region, kind)] ?? aggregate;
+  // Variants (chain × region × kind) are NOT embedded anymore. The old
+  // pre-fetch awaited every variant (rpc-capabilities: 39 full provider
+  // loads) on EVERY ISR regeneration and shipped them all in the page
+  // payload — regenerations took 30-60 s, and any visitor landing on a
+  // blocking render path (post-deploy, cache eviction) ate that wait.
+  // BenchmarkBody now fetches a variant on demand from
+  // /api/bench/[slug]/variant when a tab is flipped (per-variant
+  // unstable_cache keeps that at one cheap Prom roundtrip per 60 s
+  // across all users), and renders the aggregate while it loads.
+  const all = await getBenchmarks();
+  const variants: Record<string, Benchmark> = {
+    [variantKey(chain, region, kind)]: aggregate,
+    [variantKey(null, null, null)]: aggregate,
+  };
+  const benchmark = aggregate;
 
   const isDraft = benchmark.status === "draft";
   const isAwaiting = isDraft && benchmark.editorialStatus === "live";
@@ -515,6 +452,11 @@ export default async function BenchmarkPage({
           phrases land in static HTML for crawlers to index. */}
       {!isDraft && <ChainHeadingsSummary benchmark={benchmark} />}
 
+      {/* Dimension benches (chains as filters, not rows) don't render
+          ChainHeadingsSummary, so the dedicated per-chain pages need
+          their own server-rendered discovery links here. */}
+      {!isDraft && <PerChainPagesNav benchmark={benchmark} />}
+
       {/* FAQ section - every question/answer mirrors a FAQPage JSON-LD
           entry above. Google requires the content to be visible on the
           page, so we render the same text here. */}
@@ -614,6 +556,41 @@ function variantKey(
   kind: string | null,
 ): string {
   return `${chain ?? "__none"}|${region ?? "__none"}|${kind ?? "__none"}`;
+}
+
+/** Links to /benchmarks/<slug>/<chain> pages for dimension-shaped
+ *  benches. Row-shaped benches (l1-finality) already link their pages
+ *  through the ChainHeadingsSummary headings, so this only renders
+ *  chains that exist as dimension values, not as result rows. */
+function PerChainPagesNav({ benchmark }: { benchmark: Benchmark }) {
+  const resultSlugs = new Set(benchmark.results.map((r) => r.slug));
+  const explainerSlugs = new Set(
+    (benchmark.perChainExplainer ?? []).map((e) => e.slug),
+  );
+  const chains = (benchmark.dimensions?.chain ?? []).filter(
+    (c) =>
+      c.value.toLowerCase() !== "all" &&
+      explainerSlugs.has(c.value) &&
+      !resultSlugs.has(c.value),
+  );
+  if (chains.length === 0) return null;
+  return (
+    <nav className="mt-12 max-w-3xl" aria-label="Per-chain pages">
+      <h2 className="label-mono text-ink-muted">Per-chain breakdowns</h2>
+      <ul className="mt-3 flex flex-wrap gap-2">
+        {chains.map((c) => (
+          <li key={c.value}>
+            <Link
+              href={`/benchmarks/${benchmark.slug}/${c.value}`}
+              className="inline-block rounded-md card-soft px-3 py-1.5 text-sm text-ink-soft hover:text-ink"
+            >
+              {c.label}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  );
 }
 
 function DraftNotice({ source }: { source: string }) {

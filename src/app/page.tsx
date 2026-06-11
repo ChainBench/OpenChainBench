@@ -42,8 +42,9 @@ export default async function HomePage() {
             Open-source KPIs from onchain products.
           </h1>
           <p className="mt-5 max-w-xl text-base text-ink-soft leading-snug">
-            State of the art across the most challenging benchmarks for crypto
-            infrastructure, data providers, and bridge nodes.
+            OpenChainBench measures the state of the art across the most
+            challenging benchmarks for crypto infrastructure, data providers,
+            and bridge nodes.
           </p>
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <Link

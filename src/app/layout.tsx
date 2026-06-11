@@ -92,6 +92,10 @@ const ORG_JSONLD = {
       sameAs: [
         SITE.github,
         `https://x.com/${SITE.twitter.replace(/^@/, "")}`,
+        // Wikidata entity: anchors the OpenChainBench brand in the
+        // Knowledge Graph so the brand query resolves to this domain
+        // instead of the unrelated "OpenBench" homonyms.
+        "https://www.wikidata.org/wiki/Q140172649",
       ],
     },
     {

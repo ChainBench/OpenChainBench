@@ -50,6 +50,14 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: __dirname,
   },
+  // Build-time page budget. The Prom client serializes queries through a
+  // global concurrency cap (src/lib/prometheus.ts); the FIRST page each
+  // build worker prerenders pays the whole multi-bench Prom load and can
+  // exceed the default 60 s budget (observed 2026-06-10: staging build
+  // failing on /products/<slug> + OG-image routes after the cap landed).
+  // Later pages reuse the worker cache and render in milliseconds, so
+  // only that first-page budget needs headroom.
+  staticPageGenerationTimeout: 240,
   // Tree-shake lucide-react down to just the icons we actually import.
   // Without this hint Next's App Router can include the full barrel
   // (~1k icons, ~25 KB gzipped) on routes that touch lucide indirectly.

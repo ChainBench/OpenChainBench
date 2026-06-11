@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ArrowUpRight } from "lucide-react";
-import { getProvider, getProviderSlugs } from "@/lib/providers";
+import { getProvider } from "@/lib/providers";
 import { ProviderLogo } from "@/components/provider-logo";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
 import { fmtUnit } from "@/lib/format";
@@ -16,11 +16,24 @@ import { safeJsonLd } from "@/lib/jsonld";
 
 export const revalidate = 60;
 
+// On-demand first render loads every bench (provider profile spans the
+// whole catalog). 60s default killed cold renders and ISR regenerations
+// mid-flight, freezing stale caches (observed on /benchmarks 2026-06-11:
+// "Vercel Runtime Timeout Error: Task timed out after 60 seconds" on
+// every regeneration, page stuck on build-time data for hours).
+export const maxDuration = 300;
+
 type Params = { slug: string };
 
-export async function generateStaticParams() {
-  const slugs = await getProviderSlugs();
-  return slugs.map((slug) => ({ slug }));
+// Rendered ON DEMAND (first request, then ISR-cached). Prerendering the
+// ~200 product pages at build forced every build worker through the full
+// multi-bench Prom load and blew the per-page budget once the HL bench
+// grew past 60 providers (observed 2026-06-11: builds failing on
+// /products/<slug> after 240s). The empty params list keeps the route
+// statically optimized; dynamicParams (default true) renders each slug
+// on first hit, and the OG image route follows the same behavior.
+export async function generateStaticParams(): Promise<{ slug: string }[]> {
+  return [];
 }
 
 export async function generateMetadata({
@@ -80,6 +93,142 @@ export default async function ProviderPage({
     if (a.rank !== b.rank) return a.rank - b.rank;
     return a.benchmark.title.localeCompare(b.benchmark.title);
   });
+
+  // Embeddable badge cards. Scope rules, most exact source first:
+  //
+  // 1. Benches with a `rank_matrix_query` AND region dimensions use the
+  //    exact per-cell rankings (chain × region). The per-chain ranks the
+  //    legacy path relies on are cross-region averages: a provider that
+  //    only wins from Singapore (dRPC) still reads as the chain leader
+  //    because one fast region drags the mean down. Cells fix that:
+  //      - leads EVERY cell → one unscoped global badge.
+  //      - leads a full chain row (all regions) → one "on <chain>" badge.
+  //      - leads a full region column (all chains) → one "from <region>"
+  //        badge (skipped when its cells are already claimed by rows).
+  //      - leftover isolated cells → "on <chain> from <region>" badges.
+  // 2. Benches with chain dimensions but no cell data keep the per-chain
+  //    logic: global badge only for a true cross-chain leader, otherwise
+  //    one badge per chain led.
+  // 3. Benches without dimensions: one global badge per aggregate #1.
+  type BadgeCard = {
+    key: string;
+    title: string;
+    chain?: { value: string; label: string };
+    region?: { value: string; label: string };
+    benchSlug: string;
+  };
+  const badgeCards: BadgeCard[] = [];
+  for (const a of sorted) {
+    const chainDims = (a.benchmark.chainDimensions ?? []).filter(
+      (c) => c.value !== "all",
+    );
+    const regionDims = (a.benchmark.regionDimensions ?? []).filter(
+      (r) => r.value !== "all",
+    );
+    const cellRanks = a.benchmark.cellRanks;
+    const me = a.result.slug.toLowerCase();
+    const benchSlug = a.benchmark.slug;
+    const title = a.benchmark.title;
+
+    let handledByCells = false;
+    if (cellRanks && regionDims.length > 0) {
+      const finestKeys = Object.keys(cellRanks).filter((k) => {
+        const [c, r] = k.split("|");
+        const chainOk = chainDims.length > 0 ? c !== "all" : c === "all";
+        return chainOk && r !== "all";
+      });
+      if (finestKeys.length > 0) {
+        handledByCells = true;
+        const wonKeys = new Set(
+          finestKeys.filter(
+            (k) => cellRanks[k][0]?.slug.toLowerCase() === me,
+          ),
+        );
+        // Collapsed claims require FULL declared coverage, not just the
+        // cells that happen to have data this cycle. Without this, a
+        // degraded matrix (one surviving cell) would mint an unscoped
+        // global "#1" from a single win.
+        const expectedCells =
+          Math.max(chainDims.length, 1) * regionDims.length;
+        if (
+          wonKeys.size === finestKeys.length &&
+          finestKeys.length === expectedCells
+        ) {
+          badgeCards.push({ key: benchSlug, title, benchSlug });
+          continue;
+        }
+        if (wonKeys.size === 0) continue;
+        const chainOf = (k: string) => k.split("|")[0];
+        const regionOf = (k: string) => k.split("|")[1];
+        const covered = new Set<string>();
+        for (const c of chainDims) {
+          const row = finestKeys.filter((k) => chainOf(k) === c.value);
+          // Row collapse only when every DECLARED region reported a cell
+          // for this chain and the provider won them all.
+          if (row.length !== regionDims.length || !row.every((k) => wonKeys.has(k))) continue;
+          badgeCards.push({
+            key: `${benchSlug}-${c.value}`,
+            title,
+            chain: c,
+            benchSlug,
+          });
+          for (const k of row) covered.add(k);
+        }
+        for (const r of regionDims) {
+          const col = finestKeys.filter((k) => regionOf(k) === r.value);
+          const expectedCols = Math.max(chainDims.length, 1);
+          if (col.length !== expectedCols || !col.every((k) => wonKeys.has(k))) continue;
+          if (col.every((k) => covered.has(k))) continue;
+          badgeCards.push({
+            key: `${benchSlug}-r-${r.value}`,
+            title,
+            region: r,
+            benchSlug,
+          });
+          for (const k of col) covered.add(k);
+        }
+        for (const k of wonKeys) {
+          if (covered.has(k)) continue;
+          const chain = chainDims.find((c) => c.value === chainOf(k));
+          const region = regionDims.find((r) => r.value === regionOf(k));
+          if (!region) continue;
+          badgeCards.push({
+            key: `${benchSlug}-${chainOf(k)}-${regionOf(k)}`,
+            title,
+            ...(chain ? { chain } : {}),
+            region,
+            benchSlug,
+          });
+        }
+        continue;
+      }
+    }
+    if (handledByCells) continue;
+
+    const perChain = a.rankPerChain ?? {};
+    const wonChains = chainDims.filter((c) => perChain[c.value]?.rank === 1);
+    const isGlobalNumberOne = a.rank === 1;
+    if (chainDims.length === 0) {
+      if (isGlobalNumberOne) {
+        badgeCards.push({ key: benchSlug, title, benchSlug });
+      }
+      continue;
+    }
+    const leadsAllChains =
+      chainDims.length > 0 && wonChains.length === chainDims.length;
+    if (isGlobalNumberOne && leadsAllChains) {
+      badgeCards.push({ key: benchSlug, title, benchSlug });
+      continue;
+    }
+    for (const c of wonChains) {
+      badgeCards.push({
+        key: `${benchSlug}-${c.value}`,
+        title,
+        chain: c,
+        benchSlug,
+      });
+    }
+  }
 
   const url = `${SITE.url}/products/${p.slug}`;
   const sameAs: string[] = [];
@@ -392,7 +541,7 @@ export default async function ProviderPage({
         </ol>
       </section>
 
-      {p.wins > 0 && (
+      {badgeCards.length > 0 && (
         <section className="mt-12">
           <h2 className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted">
             Embeddable badges
@@ -403,7 +552,7 @@ export default async function ProviderPage({
             stays accurate without redeploying.
           </p>
           <ul className="mt-4 grid gap-3 sm:grid-cols-2">
-            {sorted.filter((a) => a.rank === 1).map((a) => {
+            {badgeCards.map((card) => {
               // Absolute URL is the one shipped to embedders (it has to
               // work from any third-party origin), but the in-page preview
               // <img> uses a relative path so it loads under the current
@@ -411,24 +560,55 @@ export default async function ProviderPage({
               // shows the browser's broken-image glyph on every non-prod
               // origin (staging Preview URLs, Vercel branch previews, etc.)
               // because the CSP refuses the cross-origin fetch.
-              const badgePath = `/api/badge/${a.benchmark.slug}/${p.slug}`;
+              const scopeParams = new URLSearchParams();
+              if (card.chain) scopeParams.set("chain", card.chain.value);
+              if (card.region) scopeParams.set("region", card.region.value);
+              const qs = scopeParams.size > 0 ? `?${scopeParams.toString()}` : "";
+              const badgePath = `/api/badge/${card.benchSlug}/${p.slug}${qs}`;
               const badgeUrl = `${SITE.url}${badgePath}`;
-              const targetUrl = `${SITE.url}/benchmarks/${a.benchmark.slug}`;
-              const html = `<a href="${targetUrl}"><img src="${badgeUrl}" alt="Ranked #1 on OpenChainBench: ${a.benchmark.title}" height="36" /></a>`;
+              const targetUrl = `${SITE.url}/benchmarks/${card.benchSlug}${qs}`;
+              const scopeSuffix = `${card.chain ? ` on ${card.chain.label}` : ""}${card.region ? ` from ${card.region.label}` : ""}`;
+              const scopeLabels = [card.chain?.label, card.region?.label]
+                .filter(Boolean)
+                .join(" · ");
+              const cardTitle = scopeLabels
+                ? `${card.title} — ${scopeLabels}`
+                : card.title;
+              const altText = `Ranked #1 on OpenChainBench: ${card.title}${scopeSuffix}`;
+              const html = `<a href="${targetUrl}"><img src="${badgeUrl}" alt="${altText}" height="44" /></a>`;
+              const markdown = `[![${altText}](${badgeUrl})](${targetUrl})`;
+              // Pre-baked X intent. Providers click → tweet draft opens
+              // with the ranking claim, the bench URL and the OCB handle
+              // already filled in. Removes the friction of writing the
+              // post themselves and gives us the canonical anchor text
+              // back as a tagged tweet on every share.
+              const tweetText = `Independently benchmarked #1 on ${card.title}${scopeSuffix} by @OpenChainBench.\n\nReproducible methodology, live data:`;
+              const tweetIntent = `https://x.com/intent/tweet?text=${encodeURIComponent(tweetText)}&url=${encodeURIComponent(targetUrl)}`;
               return (
-                <li key={`badge-${a.benchmark.slug}`} className="card-soft p-4">
+                <li key={`badge-${card.key}`} className="card-soft p-4">
                   <p className="text-xs font-sans font-medium uppercase tracking-[0.18em] text-ink-muted">
-                    {a.benchmark.title}
+                    {cardTitle}
                   </p>
                   <div className="mt-3 flex items-center">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={badgePath}
-                      alt={`Ranked #1 on OpenChainBench: ${a.benchmark.title}`}
-                      height={36}
+                      alt={altText}
+                      height={44}
                       loading="lazy"
                       decoding="async"
                     />
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-center gap-3 text-[11px] font-sans font-medium uppercase tracking-[0.18em] text-ink-muted">
+                    <a
+                      href={tweetIntent}
+                      target="_blank"
+                      rel="noopener"
+                      className="inline-flex items-center gap-1 hover:text-ink"
+                    >
+                      Share on X
+                      <ArrowUpRight size={11} strokeWidth={2} />
+                    </a>
                   </div>
                   <details className="mt-3">
                     <summary className="cursor-pointer text-[11px] font-sans font-medium uppercase tracking-[0.18em] text-ink-muted hover:text-ink">
@@ -436,6 +616,14 @@ export default async function ProviderPage({
                     </summary>
                     <pre className="mt-2 overflow-x-auto rounded border border-rule bg-paper-soft p-2 text-[11px] leading-snug">
 {html}
+                    </pre>
+                  </details>
+                  <details className="mt-2">
+                    <summary className="cursor-pointer text-[11px] font-sans font-medium uppercase tracking-[0.18em] text-ink-muted hover:text-ink">
+                      Copy Markdown
+                    </summary>
+                    <pre className="mt-2 overflow-x-auto rounded border border-rule bg-paper-soft p-2 text-[11px] leading-snug">
+{markdown}
                     </pre>
                   </details>
                 </li>

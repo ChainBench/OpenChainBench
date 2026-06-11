@@ -12,6 +12,52 @@ metric: RPC latency
 unit: ms
 higher_is_better: false
 
+# Per-chain landing pages (/benchmarks/rpc-capabilities/<chain>). Each
+# entry must keep its claims chain-scoped: the leader placeholder
+# resolves against bestPerChain, never the cross-chain aggregate, and
+# the page itself surfaces per-region leaders when they diverge.
+per_chain_explainer:
+  - slug: ethereum
+    h2: "Fastest free Ethereum RPC"
+    body: |
+      {{best_name:chain:ethereum}} currently leads the free, no-key Ethereum RPC field at {{best_p50:chain:ethereum}} (`eth_blockNumber` p50, 24h), measured against 9 providers, the largest cohort in this bench. Ethereum is also where the silent-failure analysis earns its keep: Cloudflare-eth answers HTTP 200 with a JSON-RPC error field on many methods, and Merkle is excluded after recurring Cloudflare lockouts. Probes run every 15 seconds from us-east, eu-west and Singapore.
+  - slug: base
+    h2: "Fastest free Base RPC"
+    body: |
+      Coinbase's own `mainnet.base.org` goes head-to-head with PublicNode, dRPC, Tenderly and Merkle on Base, an unusually clean comparison because the chain-official endpoint is operated by the same team that runs the sequencer. The current leader is {{best_name:chain:base}} at {{best_p50:chain:base}} (`eth_blockNumber` p50, 24h) across 6 providers, probed every 15 seconds from three regions with stale-head detection against the cross-provider tip.
+  - slug: bnb
+    h2: "Fastest free BNB Chain RPC"
+    body: |
+      Binance's `bsc-dataseed1` is the incumbent default on BNB Chain, but PublicNode, dRPC and Merkle have closed the latency gap from EU origins. The current leader is {{best_name:chain:bnb}} at {{best_p50:chain:bnb}} (`eth_blockNumber` p50, 24h) across 5 providers. Every endpoint is probed with the identical call every 15 seconds from us-east, eu-west and Singapore, so the ranking reflects sustained round-trip latency, not a one-off burst.
+  - slug: arbitrum
+    h2: "Fastest free Arbitrum RPC"
+    body: |
+      Arbitrum carries the second-largest cohort in this bench, 8 no-key providers, and is one of the few chains where Lava and MeowRPC compete alongside PublicNode and the Arbitrum Foundation's own endpoint. The current leader is {{best_name:chain:arbitrum}} at {{best_p50:chain:arbitrum}} (`eth_blockNumber` p50, 24h). Latency is sampled every 15 seconds from three regions; archive-depth checks flag endpoints that serve pruned state as non-archive.
+  - slug: optimism
+    h2: "Fastest free Optimism RPC"
+    body: |
+      Optimism's field pits the Optimism Foundation endpoint against 5 multi-chain gateways. The current leader is {{best_name:chain:optimism}} at {{best_p50:chain:optimism}} (`eth_blockNumber` p50, 24h) across 6 providers. As on every chain here, the harness classifies each response (`ok`, `http_err`, `jsonrpc_err`, `stale`, `timeout`) so an endpoint stuck on an old head is never ranked as fastest, and probes originate from us-east, eu-west and Singapore.
+  - slug: avalanche
+    h2: "Fastest free Avalanche RPC"
+    body: |
+      Avalanche's chain-official endpoint competes with 5 no-key multi-chain gateways for the C-Chain. The current leader is {{best_name:chain:avalanche}} at {{best_p50:chain:avalanche}} (`eth_blockNumber` p50, 24h) across 6 providers. The probe is the same single call every 15 seconds from three regions, with stale-head detection flagging any provider more than 20 blocks behind the cross-provider tip.
+  - slug: polygon
+    h2: "Fastest free Polygon RPC"
+    body: |
+      Polygon has no chain-official endpoint in this bench, so the comparison is purely between multi-chain no-key gateways. The current leader is {{best_name:chain:polygon}} at {{best_p50:chain:polygon}} (`eth_blockNumber` p50, 24h) across 5 providers. Each one answers the identical call every 15 seconds from us-east, eu-west and Singapore, and the result classification separates real latency from silent JSON-RPC failures behind an HTTP 200.
+  - slug: linea
+    h2: "Fastest free Linea RPC"
+    body: |
+      The no-key field thins out on Linea: 4 providers qualify, all multi-chain gateways. The current leader is {{best_name:chain:linea}} at {{best_p50:chain:linea}} (`eth_blockNumber` p50, 24h). Thinner competition makes the reliability columns matter more than raw speed, a fast endpoint with a high `stale` or `timeout` rate is a worse default than a slightly slower consistent one. Probes run every 15 seconds from three regions.
+  - slug: scroll
+    h2: "Fastest free Scroll RPC"
+    body: |
+      Scroll is one of the smallest cohorts in this bench, 4 no-key providers, all multi-chain gateways. The current leader is {{best_name:chain:scroll}} at {{best_p50:chain:scroll}} (`eth_blockNumber` p50, 24h). The harness runs the identical probe every 15 seconds from us-east, eu-west and Singapore, with stale-head detection against the cross-provider tip so a frozen endpoint cannot top the table.
+  - slug: mantle
+    h2: "Fastest free Mantle RPC"
+    body: |
+      Mantle rounds out the long tail with 4 qualifying no-key providers, all multi-chain gateways. The current leader is {{best_name:chain:mantle}} at {{best_p50:chain:mantle}} (`eth_blockNumber` p50, 24h). Like every chain in this bench the number is a sustained median, the same call every 15 seconds from three regions over a rolling 24 hours, not a marketing burst, and archive-depth support is audited separately.
+
 seo_intro: |
   This benchmark answers the question every developer reaching for a
   free public RPC asks before pasting a URL into their dapp. which
@@ -45,7 +91,7 @@ seo_intro: |
 abstract: |
   We measure the round-trip latency of a single, identical RPC call
   (`eth_blockNumber`) against every major no-key Ethereum-compatible
-  public RPC endpoint, on Ethereum mainnet, Base and BNB Chain. The
+  public RPC endpoint, across 10 EVM chains. The
   harness emits three metric families from one binary because they
   share the same (provider × chain) client matrix and same 15 s
   scrape interval: (a) `rpc_latency_milliseconds` for the speed
@@ -96,6 +142,7 @@ source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-cap
 
 prometheus:
   window: 24h
+  freshness_metric: rpc_latency_milliseconds
 
 # Chain selector. tabs at the top of the page. Server injects
 # `chain="X"` into every PromQL query for the active tab. The special
@@ -124,6 +171,12 @@ dimensions:
     - { value: eu-west, label: EU-West }
     - { value: sgp,     label: Singapore }
 
+# One instant query feeding the exact per-cell (chain x region) rankings
+# behind scoped badges and leadership claims. Cross-region averages hide
+# region-restricted leaders (dRPC wins every chain from sgp only), so
+# badge scoping reads these cells instead of the aggregate ranks.
+rank_matrix_query: avg by (provider, chain, region) (ocb:rpc_latency_milliseconds:p50_24h)
+
 # Real metrics emitted by the rpc-capabilities harness:
 #   rpc_latency_milliseconds{provider, chain}                       gauge
 #   rpc_latency_milliseconds_histogram{provider, chain}             histogram
@@ -143,22 +196,22 @@ providers:
     tag: Allnodes-operated, 70+ chains, archive on most
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to PublicNode's no-key endpoint."
     queries:
-      p50: avg(quantile_over_time(0.50, rpc_latency_milliseconds{provider="publicnode"}[24h]))
-      p90: avg(quantile_over_time(0.90, rpc_latency_milliseconds{provider="publicnode"}[24h]))
-      p99: avg(quantile_over_time(0.99, rpc_latency_milliseconds{provider="publicnode"}[24h]))
-      mean: avg(avg_over_time(rpc_latency_milliseconds{provider="publicnode"}[24h]))
-      success: sum(rate(rpc_call_total{provider="publicnode", result="ok"}[24h])) / sum(rate(rpc_call_total{provider="publicnode"}[24h]))
-      sample_size: sum(increase(rpc_call_total{provider="publicnode"}[24h]))
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="publicnode"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="publicnode"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="publicnode"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="publicnode"}) / sum(ocb:rpc_call:rate_24h{provider="publicnode"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="publicnode"})
       series: avg(avg_over_time(rpc_latency_milliseconds{provider="publicnode"}[1h]))
       regions:
         - region: us-east
-          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="publicnode", region="us-east"}[24h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", region="us-east"})
           series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", region="us-east"}[1h])
         - region: eu-west
-          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="publicnode", region="eu-west"}[24h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", region="eu-west"})
           series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", region="eu-west"}[1h])
         - region: ap-southeast
-          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="publicnode", region="sgp"}[24h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", region="sgp"}[1h])
 
   - slug: drpc
@@ -166,22 +219,22 @@ providers:
     tag: Decentralized RPC mesh, consensus-checked
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to dRPC's decentralized mesh."
     queries:
-      p50: avg(quantile_over_time(0.50, rpc_latency_milliseconds{provider="drpc"}[24h]))
-      p90: avg(quantile_over_time(0.90, rpc_latency_milliseconds{provider="drpc"}[24h]))
-      p99: avg(quantile_over_time(0.99, rpc_latency_milliseconds{provider="drpc"}[24h]))
-      mean: avg(avg_over_time(rpc_latency_milliseconds{provider="drpc"}[24h]))
-      success: sum(rate(rpc_call_total{provider="drpc", result="ok"}[24h])) / sum(rate(rpc_call_total{provider="drpc"}[24h]))
-      sample_size: sum(increase(rpc_call_total{provider="drpc"}[24h]))
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="drpc"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="drpc"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="drpc"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="drpc"}) / sum(ocb:rpc_call:rate_24h{provider="drpc"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="drpc"})
       series: avg(avg_over_time(rpc_latency_milliseconds{provider="drpc"}[1h]))
       regions:
         - region: us-east
-          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="drpc", region="us-east"}[24h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", region="us-east"})
           series: avg_over_time(rpc_latency_milliseconds{provider="drpc", region="us-east"}[1h])
         - region: eu-west
-          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="drpc", region="eu-west"}[24h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", region="eu-west"})
           series: avg_over_time(rpc_latency_milliseconds{provider="drpc", region="eu-west"}[1h])
         - region: ap-southeast
-          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="drpc", region="sgp"}[24h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="drpc", region="sgp"}[1h])
 
   - slug: 1rpc
@@ -189,22 +242,22 @@ providers:
     tag: Privacy-preserving gateway by Automata Network
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to 1RPC's Automata gateway."
     queries:
-      p50: avg(quantile_over_time(0.50, rpc_latency_milliseconds{provider="1rpc"}[24h]))
-      p90: avg(quantile_over_time(0.90, rpc_latency_milliseconds{provider="1rpc"}[24h]))
-      p99: avg(quantile_over_time(0.99, rpc_latency_milliseconds{provider="1rpc"}[24h]))
-      mean: avg(avg_over_time(rpc_latency_milliseconds{provider="1rpc"}[24h]))
-      success: sum(rate(rpc_call_total{provider="1rpc", result="ok"}[24h])) / sum(rate(rpc_call_total{provider="1rpc"}[24h]))
-      sample_size: sum(increase(rpc_call_total{provider="1rpc"}[24h]))
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="1rpc"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="1rpc"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="1rpc"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="1rpc"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="1rpc"}) / sum(ocb:rpc_call:rate_24h{provider="1rpc"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="1rpc"})
       series: avg(avg_over_time(rpc_latency_milliseconds{provider="1rpc"}[1h]))
       regions:
         - region: us-east
-          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="1rpc", region="us-east"}[24h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="1rpc", region="us-east"})
           series: avg_over_time(rpc_latency_milliseconds{provider="1rpc", region="us-east"}[1h])
         - region: eu-west
-          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="1rpc", region="eu-west"}[24h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="1rpc", region="eu-west"})
           series: avg_over_time(rpc_latency_milliseconds{provider="1rpc", region="eu-west"}[1h])
         - region: ap-southeast
-          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="1rpc", region="sgp"}[24h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="1rpc", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="1rpc", region="sgp"}[1h])
 
   - slug: meowrpc
@@ -212,22 +265,22 @@ providers:
     tag: Free public RPC, no registration
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to MeowRPC's no-key endpoint."
     queries:
-      p50: avg(quantile_over_time(0.50, rpc_latency_milliseconds{provider="meowrpc"}[24h]))
-      p90: avg(quantile_over_time(0.90, rpc_latency_milliseconds{provider="meowrpc"}[24h]))
-      p99: avg(quantile_over_time(0.99, rpc_latency_milliseconds{provider="meowrpc"}[24h]))
-      mean: avg(avg_over_time(rpc_latency_milliseconds{provider="meowrpc"}[24h]))
-      success: sum(rate(rpc_call_total{provider="meowrpc", result="ok"}[24h])) / sum(rate(rpc_call_total{provider="meowrpc"}[24h]))
-      sample_size: sum(increase(rpc_call_total{provider="meowrpc"}[24h]))
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="meowrpc"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="meowrpc"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="meowrpc"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="meowrpc"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="meowrpc"}) / sum(ocb:rpc_call:rate_24h{provider="meowrpc"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="meowrpc"})
       series: avg(avg_over_time(rpc_latency_milliseconds{provider="meowrpc"}[1h]))
       regions:
         - region: us-east
-          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="meowrpc", region="us-east"}[24h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="meowrpc", region="us-east"})
           series: avg_over_time(rpc_latency_milliseconds{provider="meowrpc", region="us-east"}[1h])
         - region: eu-west
-          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="meowrpc", region="eu-west"}[24h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="meowrpc", region="eu-west"})
           series: avg_over_time(rpc_latency_milliseconds{provider="meowrpc", region="eu-west"}[1h])
         - region: ap-southeast
-          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="meowrpc", region="sgp"}[24h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="meowrpc", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="meowrpc", region="sgp"}[1h])
 
   - slug: flashbots
@@ -235,22 +288,22 @@ providers:
     tag: Private-mempool RPC, anti-sandwich
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to the Flashbots Protect read proxy."
     queries:
-      p50: avg(quantile_over_time(0.50, rpc_latency_milliseconds{provider="flashbots"}[24h]))
-      p90: avg(quantile_over_time(0.90, rpc_latency_milliseconds{provider="flashbots"}[24h]))
-      p99: avg(quantile_over_time(0.99, rpc_latency_milliseconds{provider="flashbots"}[24h]))
-      mean: avg(avg_over_time(rpc_latency_milliseconds{provider="flashbots"}[24h]))
-      success: sum(rate(rpc_call_total{provider="flashbots", result="ok"}[24h])) / sum(rate(rpc_call_total{provider="flashbots"}[24h]))
-      sample_size: sum(increase(rpc_call_total{provider="flashbots"}[24h]))
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="flashbots"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="flashbots"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="flashbots"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="flashbots"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="flashbots"}) / sum(ocb:rpc_call:rate_24h{provider="flashbots"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="flashbots"})
       series: avg(avg_over_time(rpc_latency_milliseconds{provider="flashbots"}[1h]))
       regions:
         - region: us-east
-          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="flashbots", region="us-east"}[24h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="flashbots", region="us-east"})
           series: avg_over_time(rpc_latency_milliseconds{provider="flashbots", region="us-east"}[1h])
         - region: eu-west
-          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="flashbots", region="eu-west"}[24h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="flashbots", region="eu-west"})
           series: avg_over_time(rpc_latency_milliseconds{provider="flashbots", region="eu-west"}[1h])
         - region: ap-southeast
-          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="flashbots", region="sgp"}[24h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="flashbots", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="flashbots", region="sgp"}[1h])
 
   - slug: cloudflare
@@ -258,22 +311,22 @@ providers:
     tag: Permissioned-mode for many JSON-RPC methods
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to cloudflare-eth (check success column for jsonrpc_err share)."
     queries:
-      p50: avg(quantile_over_time(0.50, rpc_latency_milliseconds{provider="cloudflare"}[24h]))
-      p90: avg(quantile_over_time(0.90, rpc_latency_milliseconds{provider="cloudflare"}[24h]))
-      p99: avg(quantile_over_time(0.99, rpc_latency_milliseconds{provider="cloudflare"}[24h]))
-      mean: avg(avg_over_time(rpc_latency_milliseconds{provider="cloudflare"}[24h]))
-      success: sum(rate(rpc_call_total{provider="cloudflare", result="ok"}[24h])) / sum(rate(rpc_call_total{provider="cloudflare"}[24h]))
-      sample_size: sum(increase(rpc_call_total{provider="cloudflare"}[24h]))
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="cloudflare"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="cloudflare"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="cloudflare"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="cloudflare"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="cloudflare"}) / sum(ocb:rpc_call:rate_24h{provider="cloudflare"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="cloudflare"})
       series: avg(avg_over_time(rpc_latency_milliseconds{provider="cloudflare"}[1h]))
       regions:
         - region: us-east
-          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="cloudflare", region="us-east"}[24h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="cloudflare", region="us-east"})
           series: avg_over_time(rpc_latency_milliseconds{provider="cloudflare", region="us-east"}[1h])
         - region: eu-west
-          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="cloudflare", region="eu-west"}[24h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="cloudflare", region="eu-west"})
           series: avg_over_time(rpc_latency_milliseconds{provider="cloudflare", region="eu-west"}[1h])
         - region: ap-southeast
-          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="cloudflare", region="sgp"}[24h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="cloudflare", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="cloudflare", region="sgp"}[1h])
 
   - slug: base-official
@@ -281,22 +334,22 @@ providers:
     tag: Coinbase-operated, Base mainnet RPC
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to Coinbase's `mainnet.base.org` endpoint."
     queries:
-      p50: avg(quantile_over_time(0.50, rpc_latency_milliseconds{provider="base-official"}[24h]))
-      p90: avg(quantile_over_time(0.90, rpc_latency_milliseconds{provider="base-official"}[24h]))
-      p99: avg(quantile_over_time(0.99, rpc_latency_milliseconds{provider="base-official"}[24h]))
-      mean: avg(avg_over_time(rpc_latency_milliseconds{provider="base-official"}[24h]))
-      success: sum(rate(rpc_call_total{provider="base-official", result="ok"}[24h])) / sum(rate(rpc_call_total{provider="base-official"}[24h]))
-      sample_size: sum(increase(rpc_call_total{provider="base-official"}[24h]))
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="base-official"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="base-official"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="base-official"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="base-official"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="base-official"}) / sum(ocb:rpc_call:rate_24h{provider="base-official"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="base-official"})
       series: avg(avg_over_time(rpc_latency_milliseconds{provider="base-official"}[1h]))
       regions:
         - region: us-east
-          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="base-official", region="us-east"}[24h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="base-official", region="us-east"})
           series: avg_over_time(rpc_latency_milliseconds{provider="base-official", region="us-east"}[1h])
         - region: eu-west
-          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="base-official", region="eu-west"}[24h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="base-official", region="eu-west"})
           series: avg_over_time(rpc_latency_milliseconds{provider="base-official", region="eu-west"}[1h])
         - region: ap-southeast
-          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="base-official", region="sgp"}[24h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="base-official", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="base-official", region="sgp"}[1h])
 
   - slug: binance
@@ -304,22 +357,22 @@ providers:
     tag: BNB Chain dataseed RPC, Binance-operated
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to Binance's `bsc-dataseed1.binance.org` endpoint."
     queries:
-      p50: avg(quantile_over_time(0.50, rpc_latency_milliseconds{provider="binance"}[24h]))
-      p90: avg(quantile_over_time(0.90, rpc_latency_milliseconds{provider="binance"}[24h]))
-      p99: avg(quantile_over_time(0.99, rpc_latency_milliseconds{provider="binance"}[24h]))
-      mean: avg(avg_over_time(rpc_latency_milliseconds{provider="binance"}[24h]))
-      success: sum(rate(rpc_call_total{provider="binance", result="ok"}[24h])) / sum(rate(rpc_call_total{provider="binance"}[24h]))
-      sample_size: sum(increase(rpc_call_total{provider="binance"}[24h]))
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="binance"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="binance"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="binance"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="binance"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="binance"}) / sum(ocb:rpc_call:rate_24h{provider="binance"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="binance"})
       series: avg(avg_over_time(rpc_latency_milliseconds{provider="binance"}[1h]))
       regions:
         - region: us-east
-          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="binance", region="us-east"}[24h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="binance", region="us-east"})
           series: avg_over_time(rpc_latency_milliseconds{provider="binance", region="us-east"}[1h])
         - region: eu-west
-          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="binance", region="eu-west"}[24h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="binance", region="eu-west"})
           series: avg_over_time(rpc_latency_milliseconds{provider="binance", region="eu-west"}[1h])
         - region: ap-southeast
-          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="binance", region="sgp"}[24h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="binance", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="binance", region="sgp"}[1h])
 
   - slug: tenderly
@@ -327,22 +380,22 @@ providers:
     tag: Multi-chain public gateway, 9 chains, no key
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to `gateway.tenderly.co/public/<slug>`."
     queries:
-      p50: avg(quantile_over_time(0.50, rpc_latency_milliseconds{provider="tenderly"}[24h]))
-      p90: avg(quantile_over_time(0.90, rpc_latency_milliseconds{provider="tenderly"}[24h]))
-      p99: avg(quantile_over_time(0.99, rpc_latency_milliseconds{provider="tenderly"}[24h]))
-      mean: avg(avg_over_time(rpc_latency_milliseconds{provider="tenderly"}[24h]))
-      success: sum(rate(rpc_call_total{provider="tenderly", result="ok"}[24h])) / sum(rate(rpc_call_total{provider="tenderly"}[24h]))
-      sample_size: sum(increase(rpc_call_total{provider="tenderly"}[24h]))
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tenderly"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="tenderly"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="tenderly"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="tenderly"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="tenderly"}) / sum(ocb:rpc_call:rate_24h{provider="tenderly"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="tenderly"})
       series: avg(avg_over_time(rpc_latency_milliseconds{provider="tenderly"}[1h]))
       regions:
         - region: us-east
-          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="tenderly", region="us-east"}[24h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tenderly", region="us-east"})
           series: avg_over_time(rpc_latency_milliseconds{provider="tenderly", region="us-east"}[1h])
         - region: eu-west
-          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="tenderly", region="eu-west"}[24h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tenderly", region="eu-west"})
           series: avg_over_time(rpc_latency_milliseconds{provider="tenderly", region="eu-west"}[1h])
         - region: ap-southeast
-          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="tenderly", region="sgp"}[24h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tenderly", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="tenderly", region="sgp"}[1h])
 
   - slug: nodies
@@ -350,22 +403,22 @@ providers:
     tag: POKT Network's decentralized public RPC successor, 7+ chains
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to Nodies' `*-pokt.nodies.app` endpoint."
     queries:
-      p50: avg(quantile_over_time(0.50, rpc_latency_milliseconds{provider="nodies"}[24h]))
-      p90: avg(quantile_over_time(0.90, rpc_latency_milliseconds{provider="nodies"}[24h]))
-      p99: avg(quantile_over_time(0.99, rpc_latency_milliseconds{provider="nodies"}[24h]))
-      mean: avg(avg_over_time(rpc_latency_milliseconds{provider="nodies"}[24h]))
-      success: sum(rate(rpc_call_total{provider="nodies", result="ok"}[24h])) / sum(rate(rpc_call_total{provider="nodies"}[24h]))
-      sample_size: sum(increase(rpc_call_total{provider="nodies"}[24h]))
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="nodies"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="nodies"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="nodies"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="nodies"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="nodies"}) / sum(ocb:rpc_call:rate_24h{provider="nodies"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="nodies"})
       series: avg(avg_over_time(rpc_latency_milliseconds{provider="nodies"}[1h]))
       regions:
         - region: us-east
-          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="nodies", region="us-east"}[24h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="nodies", region="us-east"})
           series: avg_over_time(rpc_latency_milliseconds{provider="nodies", region="us-east"}[1h])
         - region: eu-west
-          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="nodies", region="eu-west"}[24h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="nodies", region="eu-west"})
           series: avg_over_time(rpc_latency_milliseconds{provider="nodies", region="eu-west"}[1h])
         - region: ap-southeast
-          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="nodies", region="sgp"}[24h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="nodies", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="nodies", region="sgp"}[1h])
 
   - slug: lava
@@ -373,22 +426,22 @@ providers:
     tag: Decentralized permissionless RPC mesh (ETH + Arbitrum no-key)
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to Lava Network's no-key mesh endpoint."
     queries:
-      p50: avg(quantile_over_time(0.50, rpc_latency_milliseconds{provider="lava"}[24h]))
-      p90: avg(quantile_over_time(0.90, rpc_latency_milliseconds{provider="lava"}[24h]))
-      p99: avg(quantile_over_time(0.99, rpc_latency_milliseconds{provider="lava"}[24h]))
-      mean: avg(avg_over_time(rpc_latency_milliseconds{provider="lava"}[24h]))
-      success: sum(rate(rpc_call_total{provider="lava", result="ok"}[24h])) / sum(rate(rpc_call_total{provider="lava"}[24h]))
-      sample_size: sum(increase(rpc_call_total{provider="lava"}[24h]))
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="lava"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="lava"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="lava"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="lava"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="lava"}) / sum(ocb:rpc_call:rate_24h{provider="lava"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="lava"})
       series: avg(avg_over_time(rpc_latency_milliseconds{provider="lava"}[1h]))
       regions:
         - region: us-east
-          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="lava", region="us-east"}[24h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="lava", region="us-east"})
           series: avg_over_time(rpc_latency_milliseconds{provider="lava", region="us-east"}[1h])
         - region: eu-west
-          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="lava", region="eu-west"}[24h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="lava", region="eu-west"})
           series: avg_over_time(rpc_latency_milliseconds{provider="lava", region="eu-west"}[1h])
         - region: ap-southeast
-          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="lava", region="sgp"}[24h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="lava", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="lava", region="sgp"}[1h])
 
   - slug: merkle
@@ -396,22 +449,22 @@ providers:
     tag: Base + BSC public no-key gateway (Ethereum hit by Cloudflare 20-min lockout, excluded)
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to Merkle's Base/BSC no-key gateway."
     queries:
-      p50: avg(quantile_over_time(0.50, rpc_latency_milliseconds{provider="merkle"}[24h]))
-      p90: avg(quantile_over_time(0.90, rpc_latency_milliseconds{provider="merkle"}[24h]))
-      p99: avg(quantile_over_time(0.99, rpc_latency_milliseconds{provider="merkle"}[24h]))
-      mean: avg(avg_over_time(rpc_latency_milliseconds{provider="merkle"}[24h]))
-      success: sum(rate(rpc_call_total{provider="merkle", result="ok"}[24h])) / sum(rate(rpc_call_total{provider="merkle"}[24h]))
-      sample_size: sum(increase(rpc_call_total{provider="merkle"}[24h]))
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="merkle"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="merkle"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="merkle"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="merkle"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="merkle"}) / sum(ocb:rpc_call:rate_24h{provider="merkle"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="merkle"})
       series: avg(avg_over_time(rpc_latency_milliseconds{provider="merkle"}[1h]))
       regions:
         - region: us-east
-          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="merkle", region="us-east"}[24h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="merkle", region="us-east"})
           series: avg_over_time(rpc_latency_milliseconds{provider="merkle", region="us-east"}[1h])
         - region: eu-west
-          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="merkle", region="eu-west"}[24h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="merkle", region="eu-west"})
           series: avg_over_time(rpc_latency_milliseconds{provider="merkle", region="eu-west"}[1h])
         - region: ap-southeast
-          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="merkle", region="sgp"}[24h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="merkle", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="merkle", region="sgp"}[1h])
 
   - slug: arbitrum-official
@@ -419,22 +472,22 @@ providers:
     tag: Arbitrum Foundation public RPC, Arbitrum One only
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to the Arbitrum Foundation's `arb1.arbitrum.io/rpc`."
     queries:
-      p50: avg(quantile_over_time(0.50, rpc_latency_milliseconds{provider="arbitrum-official"}[24h]))
-      p90: avg(quantile_over_time(0.90, rpc_latency_milliseconds{provider="arbitrum-official"}[24h]))
-      p99: avg(quantile_over_time(0.99, rpc_latency_milliseconds{provider="arbitrum-official"}[24h]))
-      mean: avg(avg_over_time(rpc_latency_milliseconds{provider="arbitrum-official"}[24h]))
-      success: sum(rate(rpc_call_total{provider="arbitrum-official", result="ok"}[24h])) / sum(rate(rpc_call_total{provider="arbitrum-official"}[24h]))
-      sample_size: sum(increase(rpc_call_total{provider="arbitrum-official"}[24h]))
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="arbitrum-official"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="arbitrum-official"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="arbitrum-official"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="arbitrum-official"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="arbitrum-official"}) / sum(ocb:rpc_call:rate_24h{provider="arbitrum-official"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="arbitrum-official"})
       series: avg(avg_over_time(rpc_latency_milliseconds{provider="arbitrum-official"}[1h]))
       regions:
         - region: us-east
-          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="arbitrum-official", region="us-east"}[24h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="arbitrum-official", region="us-east"})
           series: avg_over_time(rpc_latency_milliseconds{provider="arbitrum-official", region="us-east"}[1h])
         - region: eu-west
-          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="arbitrum-official", region="eu-west"}[24h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="arbitrum-official", region="eu-west"})
           series: avg_over_time(rpc_latency_milliseconds{provider="arbitrum-official", region="eu-west"}[1h])
         - region: ap-southeast
-          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="arbitrum-official", region="sgp"}[24h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="arbitrum-official", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="arbitrum-official", region="sgp"}[1h])
 
   - slug: optimism-official
@@ -442,22 +495,22 @@ providers:
     tag: Optimism Foundation public RPC, Optimism mainnet only
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to the Optimism Foundation's `mainnet.optimism.io`."
     queries:
-      p50: avg(quantile_over_time(0.50, rpc_latency_milliseconds{provider="optimism-official"}[24h]))
-      p90: avg(quantile_over_time(0.90, rpc_latency_milliseconds{provider="optimism-official"}[24h]))
-      p99: avg(quantile_over_time(0.99, rpc_latency_milliseconds{provider="optimism-official"}[24h]))
-      mean: avg(avg_over_time(rpc_latency_milliseconds{provider="optimism-official"}[24h]))
-      success: sum(rate(rpc_call_total{provider="optimism-official", result="ok"}[24h])) / sum(rate(rpc_call_total{provider="optimism-official"}[24h]))
-      sample_size: sum(increase(rpc_call_total{provider="optimism-official"}[24h]))
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="optimism-official"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="optimism-official"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="optimism-official"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="optimism-official"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="optimism-official"}) / sum(ocb:rpc_call:rate_24h{provider="optimism-official"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="optimism-official"})
       series: avg(avg_over_time(rpc_latency_milliseconds{provider="optimism-official"}[1h]))
       regions:
         - region: us-east
-          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="optimism-official", region="us-east"}[24h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="optimism-official", region="us-east"})
           series: avg_over_time(rpc_latency_milliseconds{provider="optimism-official", region="us-east"}[1h])
         - region: eu-west
-          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="optimism-official", region="eu-west"}[24h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="optimism-official", region="eu-west"})
           series: avg_over_time(rpc_latency_milliseconds{provider="optimism-official", region="eu-west"}[1h])
         - region: ap-southeast
-          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="optimism-official", region="sgp"}[24h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="optimism-official", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="optimism-official", region="sgp"}[1h])
 
   - slug: avalanche-official
@@ -465,20 +518,20 @@ providers:
     tag: Ava Labs C-Chain public RPC, Avalanche C-Chain only
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to Ava Labs' `api.avax.network/ext/bc/C/rpc`."
     queries:
-      p50: avg(quantile_over_time(0.50, rpc_latency_milliseconds{provider="avalanche-official"}[24h]))
-      p90: avg(quantile_over_time(0.90, rpc_latency_milliseconds{provider="avalanche-official"}[24h]))
-      p99: avg(quantile_over_time(0.99, rpc_latency_milliseconds{provider="avalanche-official"}[24h]))
-      mean: avg(avg_over_time(rpc_latency_milliseconds{provider="avalanche-official"}[24h]))
-      success: sum(rate(rpc_call_total{provider="avalanche-official", result="ok"}[24h])) / sum(rate(rpc_call_total{provider="avalanche-official"}[24h]))
-      sample_size: sum(increase(rpc_call_total{provider="avalanche-official"}[24h]))
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="avalanche-official"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="avalanche-official"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="avalanche-official"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="avalanche-official"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="avalanche-official"}) / sum(ocb:rpc_call:rate_24h{provider="avalanche-official"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="avalanche-official"})
       series: avg(avg_over_time(rpc_latency_milliseconds{provider="avalanche-official"}[1h]))
       regions:
         - region: us-east
-          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="avalanche-official", region="us-east"}[24h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="avalanche-official", region="us-east"})
           series: avg_over_time(rpc_latency_milliseconds{provider="avalanche-official", region="us-east"}[1h])
         - region: eu-west
-          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="avalanche-official", region="eu-west"}[24h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="avalanche-official", region="eu-west"})
           series: avg_over_time(rpc_latency_milliseconds{provider="avalanche-official", region="eu-west"}[1h])
         - region: ap-southeast
-          p50: quantile_over_time(0.50, rpc_latency_milliseconds{provider="avalanche-official", region="sgp"}[24h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="avalanche-official", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="avalanche-official", region="sgp"}[1h])

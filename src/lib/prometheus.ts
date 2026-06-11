@@ -100,13 +100,15 @@ export class Prometheus {
   async scalar(promql: string): Promise<number | null> {
     try {
       const res = await this.query(promql);
+      // 6 significant digits, same rationale as series(): full-precision
+      // tails bloat cached Benchmark objects toward the 2MB cache limit.
       if (res.resultType === "scalar") {
         const v = Number(res.result[1]);
-        return Number.isFinite(v) ? v : null;
+        return Number.isFinite(v) ? (v === 0 ? 0 : Number(v.toPrecision(6))) : null;
       }
       if (res.resultType === "vector" && res.result.length > 0) {
         const v = Number(res.result[0].value[1]);
-        return Number.isFinite(v) ? v : null;
+        return Number.isFinite(v) ? (v === 0 ? 0 : Number(v.toPrecision(6))) : null;
       }
       return null; // legitimately empty - not an error, not logged
     } catch (err) {
@@ -147,9 +149,17 @@ export class Prometheus {
         }
       }
 
-      // Average values per timestamp, ordered chronologically.
+      // Average values per timestamp, ordered chronologically. Rounded to
+      // 6 significant digits: raw averages carry 15+ digit tails that
+      // bloated the hyperliquid-frontends bench past unstable_cache's 2MB
+      // limit ("items over 2MB can not be cached"), so its cache NEVER
+      // persisted and every render redid the full Prom fan-out with no
+      // previous-value fallback.
       const ordered = Array.from(buckets.entries()).sort((a, b) => a[0] - b[0]);
-      const out = ordered.map(([, vs]) => vs.reduce((s, v) => s + v, 0) / vs.length);
+      const out = ordered.map(([, vs]) => {
+        const mean = vs.reduce((s, v) => s + v, 0) / vs.length;
+        return mean === 0 ? 0 : Number(mean.toPrecision(6));
+      });
       return out.length > 0 ? out : null;
     } catch {
       return null;
@@ -163,6 +173,13 @@ export class Prometheus {
     // / metadata / ULA / CGNAT.
     await assertPublicHost(url);
 
+    // Global concurrency cap. At cold start / build every bench loads at
+    // once, which used to fire hundreds of 24h-window quantile queries
+    // within seconds and brown out the single Prom instance (providers
+    // timing out → partial leaderboards). Queueing here keeps the burst
+    // at a level Prom absorbs; total wall time barely moves because Prom
+    // was serializing on CPU anyway.
+    await acquireQuerySlot();
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
     try {
@@ -187,8 +204,40 @@ export class Prometheus {
       return json.data;
     } finally {
       clearTimeout(timeout);
+      releaseQuerySlot();
     }
   }
+}
+
+/** Module-level semaphore for fetchEnvelope.
+ *
+ *  Sizing matters more than it looks: at 8 slots a bench page that
+ *  pre-fetches its chain × region variants (~1500 queries on
+ *  rpc-capabilities) serializes past the Vercel function timeout, the
+ *  render dies every cycle and unstable_cache freezes the site on the
+ *  last value (observed 2026-06-10: staging stuck for 2h on the deploy
+ *  snapshot). 64 keeps burst pressure bounded (Prom's own
+ *  query.max-concurrency queues the rest) without starving large loads.
+ *  Revisit downward once the heavy benches read precomputed ocb:*
+ *  recording rules instead of raw 24h-window quantiles. */
+const MAX_CONCURRENT_QUERIES = 64;
+let activeQueries = 0;
+const queryWaiters: (() => void)[] = [];
+
+function acquireQuerySlot(): Promise<void> {
+  if (activeQueries < MAX_CONCURRENT_QUERIES) {
+    activeQueries++;
+    return Promise.resolve();
+  }
+  return new Promise((resolve) => queryWaiters.push(resolve));
+}
+
+function releaseQuerySlot(): void {
+  const next = queryWaiters.shift();
+  // Hand the slot directly to the next waiter (activeQueries unchanged)
+  // or free it when the queue is empty.
+  if (next) next();
+  else activeQueries--;
 }
 
 /** PromQL built-in functions and keywords we should skip when scanning
@@ -319,6 +368,12 @@ async function dnsLookupWithTimeout(host: string): Promise<{ address: string }[]
 type HostCheckEntry = { ok: boolean; reason?: string; expiresAt: number };
 const HOST_CHECK_TTL_MS = 60_000;
 const hostCheckCache = new Map<string, HostCheckEntry>();
+// Single-flight guard. When the 60s entry expires mid-burst, every query
+// in flight (up to the full concurrency cap) used to fire its OWN
+// dns.lookup for the same hostname simultaneously; under build/regen load
+// that herd is what produced the "dns: timeout resolving <prom-host>"
+// failure storms. First caller does the lookup, the rest await it.
+const hostCheckInFlight = new Map<string, Promise<void>>();
 
 async function assertPublicHost(url: URL): Promise<void> {
   // hostname keeps brackets for IPv6 literals; strip them so isIP can
@@ -333,6 +388,16 @@ async function assertPublicHost(url: URL): Promise<void> {
     return;
   }
 
+  const inFlight = hostCheckInFlight.get(host);
+  if (inFlight) return inFlight;
+  const check = doAssertPublicHost(host, now).finally(() => {
+    hostCheckInFlight.delete(host);
+  });
+  hostCheckInFlight.set(host, check);
+  return check;
+}
+
+async function doAssertPublicHost(host: string, now: number): Promise<void> {
   try {
     if (isIP(host)) {
       if (isPrivateAddress(host)) {
