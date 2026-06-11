@@ -5,6 +5,17 @@ export function fmtUnit(value: number, unit: string) {
     // Legacy: bps stored. Convert to percent for display.
     return formatPercent(value / 100);
   }
+  if (unit === "bp") {
+    // Basis points displayed AS basis points (signed). Funding-style
+    // figures (fractions of a bp per day) become unreadable through the
+    // bps->percent conversion above: -0.74 bp rendered "-0.0074%".
+    const abs = Math.abs(value);
+    if (value === 0) return "0 bps";
+    if (abs < 0.005) return "~0 bps";
+    if (abs < 10) return `${value.toFixed(2)} bps`;
+    if (abs < 100) return `${value.toFixed(1)} bps`;
+    return `${value.toFixed(0)} bps`;
+  }
   if (unit === "sec") {
     // True seconds (unlike "s", whose input is ms by latency-bench
     // convention). Used by gauges like hl_*_last_fill_age_seconds.
@@ -79,6 +90,7 @@ export function fmtUnit(value: number, unit: string) {
  */
 export function unitSuffix(unit: string, value?: number): string {
   if (unit === "pct" || unit === "bps") return " %";
+  if (unit === "bp") return " bps";
   if (unit === "sec") {
     if (value !== undefined && Number.isFinite(value)) {
       if (value >= 172800) return " d";
@@ -106,7 +118,7 @@ export function unitSuffix(unit: string, value?: number): string {
 export function fmtValue(value: number, unit: string): string {
   // Keep K/M/B suffixes and $ prefix — they are part of the number, not a
   // unit. Only strip trailing unit words that the caller renders separately.
-  return fmtUnit(value, unit).replace(/\s+(ms|s|min|h|d|slots?)$/, "").replace(/\s*%$/, "");
+  return fmtUnit(value, unit).replace(/\s+(ms|s|min|h|d|bps|slots?)$/, "").replace(/\s*%$/, "");
 }
 
 /** Compact short-form for large counts so the home table's narrow value
