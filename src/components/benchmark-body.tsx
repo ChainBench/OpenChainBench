@@ -188,10 +188,42 @@ export function BenchmarkBody({
   const effectiveChain = chainOptions.length > 0 ? (chain ?? fallbackChain) : null;
   const effectiveRegion = regionOptions.length > 0 ? (region ?? fallbackRegion) : null;
   const effectiveKind = kindOptions.length > 0 ? (kind ?? fallbackKind) : null;
-  const benchmark =
-    variants[variantKey(effectiveChain, effectiveRegion, effectiveKind)] ??
-    variants[variantKey(null, null, null)] ??
-    Object.values(variants)[0];
+
+  // The page ships ONLY the aggregate view (embedding every variant made
+  // ISR regenerations take 30-60 s). Filtered variants are fetched here
+  // on demand; while one loads, the aggregate keeps rendering so the tab
+  // flip never blanks the page. Failed fetches keep the aggregate (the
+  // tab still works, numbers stay cross-dimension) and may retry on the
+  // next flip.
+  const [variantMap, setVariantMap] = useState<Record<string, Benchmark>>(variants);
+  const activeKey = variantKey(effectiveChain, effectiveRegion, effectiveKind);
+  const aggregateBench =
+    variants[variantKey(null, null, null)] ?? Object.values(variants)[0];
+  useEffect(() => {
+    if (variantMap[activeKey] || !aggregateBench) return;
+    const isAll = (v: string | null) => !v || v === "all";
+    if (isAll(effectiveChain) && isAll(effectiveRegion) && isAll(effectiveKind)) {
+      setVariantMap((m) => ({ ...m, [activeKey]: aggregateBench }));
+      return;
+    }
+    const qs = new URLSearchParams();
+    if (!isAll(effectiveChain)) qs.set("chain", effectiveChain!);
+    if (!isAll(effectiveRegion)) qs.set("region", effectiveRegion!);
+    if (!isAll(effectiveKind)) qs.set("kind", effectiveKind!);
+    let cancelled = false;
+    fetch(`/api/bench/${aggregateBench.slug}/variant?${qs.toString()}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((v: Benchmark | null) => {
+        if (!cancelled && v) setVariantMap((m) => ({ ...m, [activeKey]: v }));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeKey]);
+
+  const benchmark = variantMap[activeKey] ?? aggregateBench;
   if (!benchmark) return null;
 
   // L1/L2 layer counts. When both > 0 the bench mixes L1 and L2 chains
@@ -309,7 +341,7 @@ export function BenchmarkBody({
                   .map((o) => [
                     o.value,
                     summarize(
-                      variants[variantKey(effectiveChain, effectiveRegion, o.value)],
+                      variantMap[variantKey(effectiveChain, effectiveRegion, o.value)],
                     ),
                   ])
                   .filter(([, v]) => v !== null) as [string, ChainMeta][]
@@ -326,7 +358,7 @@ export function BenchmarkBody({
                 chainOptions
                   .map((o) => [
                     o.value,
-                    summarize(variants[variantKey(o.value, effectiveRegion, effectiveKind)]),
+                    summarize(variantMap[variantKey(o.value, effectiveRegion, effectiveKind)]),
                   ])
                   .filter(([, v]) => v !== null) as [string, ChainMeta][]
               )}
@@ -342,7 +374,7 @@ export function BenchmarkBody({
                 regionOptions
                   .map((o) => [
                     o.value,
-                    summarize(variants[variantKey(effectiveChain, o.value, effectiveKind)]),
+                    summarize(variantMap[variantKey(effectiveChain, o.value, effectiveKind)]),
                   ])
                   .filter(([, v]) => v !== null) as [string, ChainMeta][]
               )}
