@@ -139,15 +139,25 @@ export default async function BenchmarkPage({
   // are zero round-trip. unstable_cache dedupes each (slug, filters) combo
   // across users - first miss warms it, every later viewer gets it instant.
   // `all` is the "no filter" sentinel - same as the unscoped fetch.
+  //
+  // SKIPPED during `next build`: a dimensioned bench multiplies its full
+  // provider fan-out by chains × regions (evm-quote-latency: 20 variants),
+  // which blew the 240s per-page budget and failed deploys. The first ISR
+  // revalidation (60s after deploy) runs off-band with no page budget and
+  // repopulates the full variant map; until then client flips fall back to
+  // the aggregate view, which benchmark-body already handles.
+  const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build";
   const chainsForFetch = chainOptions.length > 0 ? chainOptions.map((c) => c.value) : [null];
   const regionsForFetch = regionOptions.length > 0 ? regionOptions.map((r) => r.value) : [null];
   const kindsForFetch = kindOptions.length > 0 ? kindOptions.map((k) => k.value) : [null];
 
-  const variantPairs = chainsForFetch.flatMap((c) =>
-    regionsForFetch.flatMap((r) =>
-      kindsForFetch.map((k) => [c, r, k] as const)
-    )
-  );
+  const variantPairs = isBuildPhase
+    ? []
+    : chainsForFetch.flatMap((c) =>
+        regionsForFetch.flatMap((r) =>
+          kindsForFetch.map((k) => [c, r, k] as const)
+        )
+      );
   const [variantList, all] = await Promise.all([
     Promise.all(
       variantPairs.map(async ([c, r, k]) => {
