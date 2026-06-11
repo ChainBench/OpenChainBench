@@ -55,3 +55,9 @@ docs/*-cost-model.md
 *.tsbuildinfo
 next-env.d.ts
 .claude/worktrees/
+
+# compiled harness binaries (go build artifacts)
+harnesses/*/script
+harnesses/*/monitor
+harnesses/*/cmd/script/script
+harnesses/*/cmd/monitor/monitor
