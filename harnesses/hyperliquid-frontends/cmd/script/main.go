@@ -99,6 +99,7 @@ func main() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	go runFundingLoop(ctx, time.Minute)
 	go func() {
 		t := time.NewTicker(*tickEvery)
 		defer t.Stop()
