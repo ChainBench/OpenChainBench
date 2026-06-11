@@ -1,14 +1,16 @@
 import { ImageResponse } from "next/og";
-import { getProvider, getProviderSlugs } from "@/lib/providers";
+import { getProvider } from "@/lib/providers";
 
 export const runtime = "nodejs";
 export const alt = "OpenChainBench. Open benchmarks for crypto infrastructure";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-export async function generateStaticParams() {
-  const slugs = await getProviderSlugs();
-  return slugs.map((slug) => ({ slug }));
+// Rendered ON DEMAND, same reasoning as the product page: prerendering
+// ~200 OG images at build multiplies the full Prom load per build worker
+// and was the last route standing in failed builds.
+export async function generateStaticParams(): Promise<{ slug: string }[]> {
+  return [];
 }
 
 export default async function OG({
