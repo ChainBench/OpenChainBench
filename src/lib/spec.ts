@@ -28,10 +28,36 @@ import {
   snapshotFromBenchmark,
   writeSnapshot,
 } from "@/lib/snapshot";
+import { readMaterialized } from "@/lib/materialize/store";
 
 export type { Spec } from "@/lib/spec-schema";
 export type { BenchmarkFilters } from "@/lib/materialize/load";
 export { bestForChain, injectLabels } from "@/lib/materialize/load";
+
+// ─── Materialized read path (phase 1, flag-gated) ────────────────────
+// When READ_FROM_STORE=1, benches are served from the worker-published
+// snapshots (complete, carry-forward, ~60s fresh) instead of querying
+// Prom at render time. The live path below stays as fallback: store
+// miss, parse failure, or a snapshot older than STORE_MAX_AGE_MS (worker
+// down) all fall through to the old behavior. Rollback = unset the flag.
+const READ_FROM_STORE = process.env.READ_FROM_STORE === "1";
+const STORE_MAX_AGE_MS = 30 * 60_000;
+
+async function benchFromStore(
+  slug: string,
+  sig: string,
+): Promise<Benchmark | null> {
+  if (!READ_FROM_STORE) return null;
+  const snap = await readMaterialized(slug, sig);
+  if (!snap) return null;
+  if (Date.now() - snap.builtAt > STORE_MAX_AGE_MS) {
+    console.warn(
+      `[materialize] snapshot for ${slug}/${sig || "all"} is ${Math.round((Date.now() - snap.builtAt) / 60000)}min old, falling back to live`,
+    );
+    return null;
+  }
+  return snap.bench;
+}
 
 // Per-bench unfiltered cache. ONE unstable_cache entry per slug so a
 // transient Prom hiccup on bench A doesn't poison the cache for benches
@@ -47,6 +73,8 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
     const specs = await loadSpecs();
     const spec = specs.find((s) => s.slug === slug);
     if (!spec) return undefined;
+    const stored = await benchFromStore(slug, "");
+    if (stored) return stored;
     const promStart = Date.now();
     const bench = await specToBenchmark(spec, {}, {
       onRendered: (rendered) =>
@@ -197,6 +225,8 @@ const loadBenchmarkFiltered = unstable_cache(
     const specs = await loadSpecs();
     const spec = specs.find((s) => s.slug === slug);
     if (!spec) return undefined;
+    const stored = await benchFromStore(slug, sig);
+    if (stored) return stored;
     const bench = await specToBenchmark(spec, parseFilterSig(sig));
     // Same stale-while-revalidate as loadAllBenchmarks: if Prom drops the
     // single bench we just queried to draft, throw so unstable_cache keeps
