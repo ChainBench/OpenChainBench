@@ -1,5 +1,5 @@
 import { ImageResponse } from "next/og";
-import { getBenchmark, getBenchmarkSlugs } from "@/data/benchmarks";
+import { getBenchmark } from "@/data/benchmarks";
 import { headlineSentence, leader } from "@/lib/citation";
 import { fmtUnit } from "@/lib/format";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
@@ -10,9 +10,12 @@ export const alt = "OpenChainBench. Open benchmarks for crypto infrastructure";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
+// On demand only. Returning slugs here feeds static params to the whole
+// [slug] segment, so the PAGE gets prerendered at build too (240s+
+// timeouts on heavy benches killed deploys on 2026-06-11) even though
+// page.tsx itself returns [].
 export async function generateStaticParams() {
-  const slugs = await getBenchmarkSlugs();
-  return slugs.map((slug) => ({ slug }));
+  return [];
 }
 
 // Emit one OG image per (slug, chain) combo so social shares of
