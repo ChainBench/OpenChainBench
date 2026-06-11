@@ -30,6 +30,7 @@ const ALLOWED_BY_UNIT: Record<Benchmark["unit"], ViewType[]> = {
   s: ["timeseries", "rankedBar", "distribution", "donut"],
   sec: ["timeseries", "rankedBar", "distribution", "donut"],
   bps: ["timeseries", "rankedBar", "distribution", "donut"],
+  bp: ["timeseries", "rankedBar", "distribution", "donut"],
   pct: ["timeseries", "rankedBar", "distribution", "donut"],
   count: ["countLeaderboard", "rankedBar", "donut", "distribution", "timeseries"],
   // slots: integer-ish gauge values (Solana slot delta). Same view set as
