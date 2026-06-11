@@ -1019,6 +1019,32 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "High-performance spot and perpetuals exchange with colocated low-latency fiber and independently verifiable sequencing. Routes Hyperliquid perp orders via a registered builder code.",
     twitter: "@Blink_Exchange",
   },
+
+  // ─── Hyperliquid HIP-3 deployers (bench № 035) ─────────────────────
+  xyz: {
+    url: "https://trade.xyz",
+    description:
+      "trade.xyz operates the largest HIP-3 builder-deployed dex on Hyperliquid: 70+ tokenized US equity, index, and commodity perp markets under the xyz namespace, collecting a deployer fee on every fill.",
+    chains: ["hyperliquid"],
+    features: [
+      "Tokenized US equity perps (AAPL, TSLA, NVDA and 70+ markets)",
+      "Index and commodity perpetuals",
+      "HIP-3 namespace xyz on HyperCore",
+      "Deployer fee collected via the on-chain deployerFee field",
+    ],
+  },
+  vntl: {
+    url: "https://ventuals.com",
+    description:
+      "Ventuals runs pre-IPO valuation perpetuals on Hyperliquid under the vntl HIP-3 namespace: traders price private company valuations (MAG7-style baskets and single names) rather than listed stock.",
+    twitter: "@ventuals",
+    chains: ["hyperliquid"],
+    features: [
+      "Pre-IPO valuation perpetual markets",
+      "HIP-3 namespace vntl on HyperCore",
+      "Deployer fee collected via the on-chain deployerFee field",
+    ],
+  },
 };
 
 /**
