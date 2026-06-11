@@ -60,6 +60,7 @@ func normalizeRailwayRegion(raw string) string {
 }
 
 func main() {
+	installLogCapture() // capture stdout into /logs ring buffer
 	fmt.Println("=== RPC Capabilities Harness ===")
 	fmt.Println("OpenChainBench - public RPC latency, reliability, and archive depth.")
 	fmt.Printf("Region: %s (set via $REGION env)\n", currentRegion)

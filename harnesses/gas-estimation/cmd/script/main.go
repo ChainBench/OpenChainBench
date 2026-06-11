@@ -18,6 +18,7 @@ import (
 // l2-block-time (see mobula-api commit 833026a719).
 
 func main() {
+	installLogCapture() // capture stdout into /logs ring buffer
 	fmt.Println("=== Gas Estimation Accuracy Harness ===")
 	fmt.Println("OpenChainBench - multi-chain gas oracle prediction error.")
 	fmt.Println()

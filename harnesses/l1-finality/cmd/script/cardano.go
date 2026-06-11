@@ -10,8 +10,11 @@ import (
 	"time"
 )
 
-// Cardano: Koios free public API. Probabilistic finality with strong
-// settlement after ~50 blocks (~17 minutes at 20 s slot times).
+// Cardano: Koios free public API. Probabilistic finality. We measure
+// the gap at the practical-settlement convention used by major
+// exchanges (Coinbase = 10 confs, Kraken = 15) — the depth defined in
+// config.go (currently 15). Theoretical Ouroboros Praos full settlement
+// is k = 2160 blocks (~12 h) but no production actor waits that long.
 
 // Koios: /tip is fast, /blocks?block_height=eq.X also fast.
 // /blocks with order+limit is broken under load. Use /tip + a specific

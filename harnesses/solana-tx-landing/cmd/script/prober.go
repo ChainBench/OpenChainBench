@@ -86,8 +86,8 @@ func runProber(ctx context.Context) {
 		solanaLandingProbeEnabled.WithLabelValues(envDefault("SOLANA_PROBE_REGION", "us-east")).Set(0)
 		return
 	}
-	fmt.Printf("[prober] enabled — region=%s interval=%s services=%d\n",
-		cfg.Region, cfg.Interval, len(cfg.Probes))
+	fmt.Printf("[prober] enabled — region=%s wallet=%s interval=%s services=%d\n",
+		cfg.Region, cfg.Keypair.PublicKey().String(), cfg.Interval, len(cfg.Probes))
 	for _, p := range cfg.Probes {
 		fmt.Printf("  · %-12s mode=%-12s tip=%d lamports endpoint=%s\n",
 			p.Service, p.Mode, p.TipLamports, sanitizeEndpoint(p.Endpoint))

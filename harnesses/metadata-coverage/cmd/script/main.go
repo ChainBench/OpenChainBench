@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	installLogCapture() // must be first — captures all subsequent stdout into ring buffer for /logs
+	installLogCapture() // capture stdout into /logs ring buffer
 	fmt.Println("=== Aggregator Indexation Lag Monitor ===")
 	fmt.Println("Measuring real-time indexation lag (head lag) for blockchain data APIs")
 	fmt.Println("Press Ctrl+C to stop")

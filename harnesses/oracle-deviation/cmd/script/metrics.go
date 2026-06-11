@@ -21,6 +21,11 @@ var (
 		[]string{"source", "pair"},
 	)
 
+	// Legacy fetch-time pairwise deviation. Each (source_a, source_b)
+	// is compared at whatever time we last fetched them, ignoring
+	// each source's own update timestamp. Preserved as the original
+	// gauge name for backward compatibility with anyone consuming
+	// the bench's PromQL surface today.
 	oracleDeviationPct = promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "ocb_oracle_deviation_pct",
@@ -29,6 +34,10 @@ var (
 		[]string{"pair", "source_a", "source_b"},
 	)
 
+	// Explicit fetch-time variant: same value as the legacy gauge,
+	// renamed so dashboards can disambiguate from the at_oracle_ts
+	// canonical metric. Both are kept so people who built on the
+	// legacy name don't break.
 	oracleDeviationAtFetchTSPct = promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "ocb_oracle_deviation_at_fetch_ts_pct",
@@ -37,6 +46,13 @@ var (
 		[]string{"pair", "source_a", "source_b"},
 	)
 
+	// THE canonical headline-feeding gauge. Each (source_a, source_b)
+	// compared at the more recent of their two SourceTSs (Chainlink's
+	// on-chain updatedAt for chainlink, fetch time for the others).
+	// The OTHER source's price is looked up in a 30 min rolling
+	// history buffer at the anchor moment via lookupNearest. When the
+	// anchor falls outside the history window the pair is skipped
+	// for this update and oracleAlignmentMiss is incremented.
 	oracleDeviationAtOracleTSPct = promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "ocb_oracle_deviation_at_oracle_ts_pct",
@@ -45,6 +61,12 @@ var (
 		[]string{"pair", "source_a", "source_b"},
 	)
 
+	// Counter for pairs where the time-aligned calc couldn't find a
+	// history sample within alignTolerance of the anchor. Expected to
+	// fire during cold start (first 5 min after deploy) and when a
+	// Chainlink updatedAt lands further back than historyDepth (60
+	// samples × 30s ≈ 30 min). A persistently high miss rate flags
+	// a source whose history isn't being kept dense enough.
 	oracleAlignmentMiss = promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "ocb_oracle_alignment_miss_total",
@@ -94,6 +116,7 @@ var (
 func StartMetricsServer(addr string) error {
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", promhttp.Handler())
+	mux.Handle("/logs", logsHandler())
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte("ok"))
 	})

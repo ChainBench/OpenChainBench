@@ -73,7 +73,6 @@ func fetchCodex(cfg *Config) ProviderResult {
 
 	if resp.StatusCode != 200 {
 		res.Err = fmt.Sprintf("status_%d", resp.StatusCode)
-		recordDebugRaw("codex", string(respBody))
 		return res
 	}
 
@@ -84,7 +83,6 @@ func fetchCodex(cfg *Config) ProviderResult {
 	}
 	if len(parsed.Errors) > 0 {
 		res.Err = "graphql_error: " + parsed.Errors[0].Message
-		recordDebugRaw("codex", string(respBody))
 		return res
 	}
 
@@ -96,11 +94,6 @@ func fetchCodex(cfg *Config) ProviderResult {
 		})
 	}
 
-	if len(respBody) > 400 {
-		recordDebugRaw("codex", string(respBody[:400]))
-	} else {
-		recordDebugRaw("codex", string(respBody))
-	}
 	return res
 }
 

@@ -162,7 +162,7 @@ func recordDebugSnapshot(s FinalitySample) {
 func StartMetricsServer(addr string) error {
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", promhttp.Handler())
-	setupLogsEndpoint(mux)
+	mux.Handle("/logs", logsHandler())
 	setupFinalityDebugEndpoint(mux)
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte("OK")) })
 	return http.ListenAndServe(addr, mux)
