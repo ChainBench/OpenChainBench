@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ArrowUpRight } from "lucide-react";
-import { getProvider, getProviderSlugs } from "@/lib/providers";
+import { getProvider } from "@/lib/providers";
 import { ProviderLogo } from "@/components/provider-logo";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
 import { fmtUnit } from "@/lib/format";
@@ -18,9 +18,15 @@ export const revalidate = 60;
 
 type Params = { slug: string };
 
-export async function generateStaticParams() {
-  const slugs = await getProviderSlugs();
-  return slugs.map((slug) => ({ slug }));
+// Rendered ON DEMAND (first request, then ISR-cached). Prerendering the
+// ~200 product pages at build forced every build worker through the full
+// multi-bench Prom load and blew the per-page budget once the HL bench
+// grew past 60 providers (observed 2026-06-11: builds failing on
+// /products/<slug> after 240s). The empty params list keeps the route
+// statically optimized; dynamicParams (default true) renders each slug
+// on first hit, and the OG image route follows the same behavior.
+export async function generateStaticParams(): Promise<{ slug: string }[]> {
+  return [];
 }
 
 export async function generateMetadata({
