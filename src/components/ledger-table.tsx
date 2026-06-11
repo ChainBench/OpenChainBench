@@ -185,13 +185,17 @@ export function LedgerTable({ benchmark, activePanel, topN }: Props) {
               Product
             </th>
             <th
-              colSpan={customCols ? customCols.length + 1 : 5}
+              colSpan={customCols ? customCols.length + 1 : activePanel ? 2 : 5}
               className="border-y-2 border-ink py-2 px-3 text-center hidden md:table-cell"
             >
-              {customCols ? benchmark.metric : "Latency aggregates"}
+              {customCols
+                ? benchmark.metric
+                : activePanel
+                  ? activePanel.label
+                  : "Latency aggregates"}
             </th>
             <th className="border-y-2 border-ink py-2 px-3 text-right md:hidden">
-              {customCols ? colLabel(customCols[0]) : "p50"}
+              {customCols ? colLabel(customCols[0]) : activePanel ? "Value" : "p50"}
             </th>
             <th className="border-y-2 border-ink py-2 pl-3 text-right hidden md:table-cell">
               Reliability
@@ -224,6 +228,11 @@ export function LedgerTable({ benchmark, activePanel, topN }: Props) {
                   {colLabel(c)}
                 </th>
               ))
+            ) : panelActive ? (
+              // Panel sort owns the table: a single honest "Value" column
+              // instead of p50/p90/p99/Mean headers over dashed-out cells
+              // (a USD volume sort labeled "p50" reads as a bug).
+              <th className="py-2 px-3 text-right">Value</th>
             ) : (
               <>
                 <th className="py-2 px-3 text-right">p50</th>
@@ -241,7 +250,7 @@ export function LedgerTable({ benchmark, activePanel, topN }: Props) {
           <tr className="border-b border-ink">
             <th
               colSpan={
-                (customCols ? 6 + customCols.length : 10) +
+                (customCols ? 6 + customCols.length : panelActive ? 7 : 10) +
                 (hasSlots ? 1 : 0) +
                 (secondary ? 1 : 0)
               }
@@ -437,16 +446,16 @@ function Row({
                 {c.v != null ? fmtUnit(c.v, c.unit) : "-"}
               </td>
             ))
-          ) : (
+          ) : panelActive ? null : (
             <>
               <td className="py-2.5 px-3 text-right text-ink-soft whitespace-nowrap hidden md:table-cell">
-                {panelActive ? "—" : fmtUnit(r.ms.p90, unit)}
+                {fmtUnit(r.ms.p90, unit)}
               </td>
               <td className="py-2.5 px-3 text-right text-ink-soft whitespace-nowrap hidden md:table-cell">
-                {panelActive ? "—" : fmtUnit(r.ms.p99, unit)}
+                {fmtUnit(r.ms.p99, unit)}
               </td>
               <td className="py-2.5 px-3 text-right text-ink-soft whitespace-nowrap hidden md:table-cell">
-                {panelActive ? "—" : fmtUnit(r.ms.mean, unit)}
+                {fmtUnit(r.ms.mean, unit)}
               </td>
             </>
           )}
