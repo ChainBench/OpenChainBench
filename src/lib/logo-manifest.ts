@@ -159,6 +159,11 @@ const RAW: Record<string, string> = {
   // ─── Hyperliquid HIP-3 deployers (bench № 035) ───
   xyz: "/logos/xyz.png",
   vntl: "/logos/vntl.png",
+  cash: "/logos/dreamcash.png",
+  km: "/logos/km.svg",
+  hyna: "/logos/hyna.svg",
+  flx: "/logos/flx.png",
+  para: "/logos/para.jpg",
 
   // ─── Hyperliquid frontends registry expansion (8 → 60) ───
   "trust-wallet": "/logos/trust-wallet.png",
