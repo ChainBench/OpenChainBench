@@ -358,6 +358,12 @@ async function dnsLookupWithTimeout(host: string): Promise<{ address: string }[]
 type HostCheckEntry = { ok: boolean; reason?: string; expiresAt: number };
 const HOST_CHECK_TTL_MS = 60_000;
 const hostCheckCache = new Map<string, HostCheckEntry>();
+// Single-flight guard. When the 60s entry expires mid-burst, every query
+// in flight (up to the full concurrency cap) used to fire its OWN
+// dns.lookup for the same hostname simultaneously; under build/regen load
+// that herd is what produced the "dns: timeout resolving <prom-host>"
+// failure storms. First caller does the lookup, the rest await it.
+const hostCheckInFlight = new Map<string, Promise<void>>();
 
 async function assertPublicHost(url: URL): Promise<void> {
   // hostname keeps brackets for IPv6 literals; strip them so isIP can
@@ -372,6 +378,16 @@ async function assertPublicHost(url: URL): Promise<void> {
     return;
   }
 
+  const inFlight = hostCheckInFlight.get(host);
+  if (inFlight) return inFlight;
+  const check = doAssertPublicHost(host, now).finally(() => {
+    hostCheckInFlight.delete(host);
+  });
+  hostCheckInFlight.set(host, check);
+  return check;
+}
+
+async function doAssertPublicHost(host: string, now: number): Promise<void> {
   try {
     if (isIP(host)) {
       if (isPrivateAddress(host)) {

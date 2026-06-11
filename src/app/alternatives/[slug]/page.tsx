@@ -19,6 +19,10 @@ import { isRegion } from "@/lib/brand";
 
 export const revalidate = 60;
 
+// Same budget as /products/[slug]: on-demand renders span the whole bench
+// catalog and the 60s default killed them mid-flight.
+export const maxDuration = 300;
+
 type Params = { slug: string };
 
 // Rendered ON DEMAND (first request, then ISR-cached), same reasoning as

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ArrowUpRight } from "lucide-react";
-import { getBenchmark, getBenchmarks } from "@/data/benchmarks";
+import { getBenchmark } from "@/data/benchmarks";
 import { liveResults } from "@/lib/provider-filters";
 import { fmtUnit } from "@/lib/format";
 import { capDescription } from "@/lib/seo-text";
@@ -33,7 +33,7 @@ export const revalidate = 60;
 
 // Dimension pages fan out to (chain x region) variant fetches; a cold
 // render can take a while when the unstable_cache is empty.
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 type Params = { slug: string; chain: string };
 
