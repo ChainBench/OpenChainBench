@@ -108,7 +108,8 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v7: added ledgerColumns (per-bench ledger column relabeling).
   // v8: outage panel unit s -> sec (true seconds); cached v7 objects keep
   // the old unit and would render "0.0 s" via the ms-input formatter.
-  ["bench-unfiltered-v8"],
+  // v9: perp-funding unit bps -> bp (true basis points display).
+  ["bench-unfiltered-v9"],
   { revalidate: 60, tags: ["benchmarks"] },
 );
 
@@ -172,7 +173,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v8: bumped with bench-unfiltered-v6 (cellRanks) for the same reason.
   // v9: bumped with bench-unfiltered-v7 (ledgerColumns).
   // v10: bumped with bench-unfiltered-v8 (sec unit).
-  ["all-benchmarks-v10"],
+  // v11: bumped with bench-unfiltered-v9 (bp unit).
+  ["all-benchmarks-v11"],
   { revalidate: 60, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -217,7 +219,8 @@ const loadBenchmarkFiltered = unstable_cache(
   },
   // v4: bumped with bench-unfiltered-v7 (ledgerColumns).
   // v5: bumped with bench-unfiltered-v8 (sec unit).
-  ["bench-filters-v5"],
+  // v6: bumped with bench-unfiltered-v9 (bp unit).
+  ["bench-filters-v6"],
   { revalidate: 60, tags: ["benchmarks"] }
 );
 
@@ -658,6 +661,17 @@ function applyDimensionsToSpec(spec: Spec, labels: Record<string, string>): Spec
   const inject = (q: string | undefined) => (q ? injectLabels(q, labels) : q);
   return {
     ...spec,
+    // Panels declare a bare metric name (or metric{sel}); normalize to the
+    // braced form so dimension labels (chain=..., region=...) reach them
+    // like every provider query. Without this a panel on a chain-dimensioned
+    // bench silently mixes every chain's series.
+    metric_panels: spec.metric_panels?.map((panel) => ({
+      ...panel,
+      metric: injectLabels(
+        panel.metric.includes("{") ? panel.metric : `${panel.metric}{}`,
+        labels,
+      ),
+    })),
     providers: spec.providers.map((p) => ({
       ...p,
       queries: p.queries
