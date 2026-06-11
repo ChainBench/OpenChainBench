@@ -45,19 +45,27 @@ import type { Benchmark } from "@/types/benchmark";
 // the route still prerenders cleanly.
 export const revalidate = 60;
 
-// Cold start render does up to ~200 Prom calls (provider × percentiles ×
-// series queries) which can exceed Vercel's default 10s function timeout
-// on benches with 20+ providers. Once ISR warms, the page is cached and
-// fast — this only affects the first hit per revalidate window. Bumped
-// to 60s to absorb the slow cold path. The actual hot path latency is
-// served from the CDN cache so the user-facing P99 stays sub-second.
-export const maxDuration = 60;
+// Cold start render does thousands of Prom calls on the heaviest benches
+// (hyperliquid-frontends: 75 providers × 7 queries + 11 panels × values +
+// series), serialized through the Prom client's concurrency cap. At 60s
+// the ISR regeneration itself was killed ("Vercel Runtime Timeout Error:
+// Task timed out after 60 seconds"), so the cache could NEVER replace a
+// build-time render that had failed its panel queries — staging served
+// empty panel values for hours (2026-06-11). 300s gives the regeneration
+// room to finish; the hot path is CDN-cached and stays sub-second.
+export const maxDuration = 300;
 
 type Params = { slug: string };
 
-export async function generateStaticParams() {
-  const slugs = await getBenchmarkSlugs();
-  return slugs.map((slug) => ({ slug }));
+// Rendered ON DEMAND (first request, then ISR-cached). Prerendering the
+// 25+ bench pages at build pushed the full multi-bench Prom load through
+// the CI runner, whose DNS resolver throttles under hundreds of lookups;
+// observed 2026-06-11: /benchmarks/pm-data-freshness failing 3×60s
+// export attempts and killing the deploy. Without the embedded variant
+// matrix an on-demand first render is a few seconds once per deploy per
+// slug, then the CDN serves it.
+export async function generateStaticParams(): Promise<{ slug: string }[]> {
+  return [];
 }
 
 export async function generateMetadata({
