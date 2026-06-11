@@ -9,7 +9,7 @@ subtitle: Funding cost in basis points to hold a long position for 24 hours at t
 category: Trading
 status: live
 metric: Funding cost to hold a long 24h
-unit: bps
+unit: bp
 higher_is_better: false
 
 disclaimer: |
@@ -203,19 +203,19 @@ metric_panels:
     label: Per-hour rate (ETH)
     metric: perp_funding_rate_hourly_bps{asset="ETH"}
     label_key: venue
-    unit: bps
+    unit: bp
     description: "Live ETH funding normalized to a per hour basis, in bps. The snapshot behind the smoothed headline."
   - id: btc_hold
     label: BTC hold 24h
     metric: perp_funding_hold_24h_bps{asset="BTC"}
     label_key: venue
-    unit: bps
+    unit: bp
     description: "Cost in bps of holding a BTC long for 24 hours at the current rate."
   - id: sol_hold
     label: SOL hold 24h
     metric: perp_funding_hold_24h_bps{asset="SOL"}
     label_key: venue
-    unit: bps
+    unit: bp
     description: "Cost in bps of holding a SOL long for 24 hours at the current rate."
   # Data-only panels (tab: false): they feed the ledger's 7d/30d
   # timeframe toggle below.
@@ -223,37 +223,37 @@ metric_panels:
     label: ETH hold 7d avg
     metric: avg_over_time(perp_funding_hold_24h_bps{asset="ETH"}[7d])
     label_key: venue
-    unit: bps
+    unit: bp
     tab: false
   - id: eth_hold_30d
     label: ETH hold 30d avg
     metric: avg_over_time(perp_funding_hold_24h_bps{asset="ETH"}[30d])
     label_key: venue
-    unit: bps
+    unit: bp
     tab: false
   - id: btc_hold_7d
     label: BTC hold 7d avg
     metric: avg_over_time(perp_funding_hold_24h_bps{asset="BTC"}[7d])
     label_key: venue
-    unit: bps
+    unit: bp
     tab: false
   - id: btc_hold_30d
     label: BTC hold 30d avg
     metric: avg_over_time(perp_funding_hold_24h_bps{asset="BTC"}[30d])
     label_key: venue
-    unit: bps
+    unit: bp
     tab: false
   - id: sol_hold_7d
     label: SOL hold 7d avg
     metric: avg_over_time(perp_funding_hold_24h_bps{asset="SOL"}[7d])
     label_key: venue
-    unit: bps
+    unit: bp
     tab: false
   - id: sol_hold_30d
     label: SOL hold 30d avg
     metric: avg_over_time(perp_funding_hold_24h_bps{asset="SOL"}[30d])
     label_key: venue
-    unit: bps
+    unit: bp
     tab: false
   - id: interval
     label: Funding interval h
