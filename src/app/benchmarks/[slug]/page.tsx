@@ -135,68 +135,21 @@ export default async function BenchmarkPage({
   const region = regionOptions[0]?.value ?? null;
   const kind = kindOptions[0]?.value ?? null;
 
-  // Pre-fetch every (chain × region × kind) variant in parallel so client flips
-  // are zero round-trip. unstable_cache dedupes each (slug, filters) combo
-  // across users - first miss warms it, every later viewer gets it instant.
-  // `all` is the "no filter" sentinel - same as the unscoped fetch.
-  //
-  // SKIPPED during `next build`: a dimensioned bench multiplies its full
-  // provider fan-out by chains × regions (evm-quote-latency: 20 variants),
-  // which blew the 240s per-page budget and failed deploys. The first ISR
-  // revalidation (60s after deploy) runs off-band with no page budget and
-  // repopulates the full variant map; until then client flips fall back to
-  // the aggregate view, which benchmark-body already handles.
-  const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build";
-  const chainsForFetch = chainOptions.length > 0 ? chainOptions.map((c) => c.value) : [null];
-  const regionsForFetch = regionOptions.length > 0 ? regionOptions.map((r) => r.value) : [null];
-  const kindsForFetch = kindOptions.length > 0 ? kindOptions.map((k) => k.value) : [null];
-
-  const variantPairs = isBuildPhase
-    ? []
-    : chainsForFetch.flatMap((c) =>
-        regionsForFetch.flatMap((r) =>
-          kindsForFetch.map((k) => [c, r, k] as const)
-        )
-      );
-  const [variantList, all] = await Promise.all([
-    Promise.all(
-      variantPairs.map(async ([c, r, k]) => {
-        const filters: { chain?: string; region?: string; kind?: string } = {};
-        if (c && c !== "all") filters.chain = c;
-        if (r && r !== "all") filters.region = r;
-        if (k && k !== "all") filters.kind = k;
-        const b = await getBenchmark(slug, filters);
-        return [variantKey(c, r, k), b ?? aggregate] as const;
-      })
-    ),
-    getBenchmarks(),
-  ]);
-  // Variants only contribute chart / leaderboard / extras to the displayed
-  // bench (those legitimately differ per (chain, region) filter). Editorial
-  // copy (findings, faq, seoIntro, abstract, methodology) is the SAME on
-  // every tab and only resolves chain placeholders against the aggregate's
-  // bestPerChain/worstPerChain stash (computed unfiltered only), so we
-  // override these fields onto every variant. Without this, switching to
-  // a chain tab surfaces raw `{{best_name:chain:X}}` strings.
-  const variants: Record<string, Benchmark> = Object.fromEntries(
-    variantList.map(([key, v]) => [
-      key,
-      v === aggregate
-        ? v
-        : {
-            ...v,
-            findings: aggregate.findings,
-            faq: aggregate.faq,
-            seoIntro: aggregate.seoIntro,
-            abstract: aggregate.abstract,
-            methodology: aggregate.methodology,
-            perChainExplainer: aggregate.perChainExplainer,
-            bestPerChain: aggregate.bestPerChain,
-            worstPerChain: aggregate.worstPerChain,
-          },
-    ]),
-  );
-  const benchmark = variants[variantKey(chain, region, kind)] ?? aggregate;
+  // Variants (chain × region × kind) are NOT embedded anymore. The old
+  // pre-fetch awaited every variant (rpc-capabilities: 39 full provider
+  // loads) on EVERY ISR regeneration and shipped them all in the page
+  // payload — regenerations took 30-60 s, and any visitor landing on a
+  // blocking render path (post-deploy, cache eviction) ate that wait.
+  // BenchmarkBody now fetches a variant on demand from
+  // /api/bench/[slug]/variant when a tab is flipped (per-variant
+  // unstable_cache keeps that at one cheap Prom roundtrip per 60 s
+  // across all users), and renders the aggregate while it loads.
+  const all = await getBenchmarks();
+  const variants: Record<string, Benchmark> = {
+    [variantKey(chain, region, kind)]: aggregate,
+    [variantKey(null, null, null)]: aggregate,
+  };
+  const benchmark = aggregate;
 
   const isDraft = benchmark.status === "draft";
   const isAwaiting = isDraft && benchmark.editorialStatus === "live";
