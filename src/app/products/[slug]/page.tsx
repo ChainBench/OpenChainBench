@@ -16,6 +16,13 @@ import { safeJsonLd } from "@/lib/jsonld";
 
 export const revalidate = 60;
 
+// On-demand first render loads every bench (provider profile spans the
+// whole catalog). 60s default killed cold renders and ISR regenerations
+// mid-flight, freezing stale caches (observed on /benchmarks 2026-06-11:
+// "Vercel Runtime Timeout Error: Task timed out after 60 seconds" on
+// every regeneration, page stuck on build-time data for hours).
+export const maxDuration = 300;
+
 type Params = { slug: string };
 
 // Rendered ON DEMAND (first request, then ISR-cached). Prerendering the
