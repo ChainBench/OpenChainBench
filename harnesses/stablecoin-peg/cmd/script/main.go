@@ -10,6 +10,7 @@ import (
 )
 
 func main() {
+	installLogCapture() // capture stdout into /logs ring buffer
 	fmt.Println("=== Stablecoin Peg Deviation Harness ===")
 	fmt.Println("OpenChainBench - live peg deviation vs $1.00 across CEX + on-chain venues.")
 	fmt.Println()

@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	installLogCapture()
+	installLogCapture() // capture stdout into /logs ring buffer
 	fmt.Println("=== L1 Finality Lag Monitor ===")
 	fmt.Println("Bench № 006 — measures wall-clock distance between latest and finalized blocks per chain.")
 	fmt.Println()
