@@ -12,6 +12,7 @@ import (
 )
 
 func main() {
+	installLogCapture() // capture stdout into /logs ring buffer
 	_ = godotenv.Load() // optional .env for local dev. NEVER commit it.
 
 	cfg := loadConfig()
@@ -21,8 +22,6 @@ func main() {
 		runIntegrationTest(cfg, providers)
 		return
 	}
-
-	installLogCapture()
 
 	q := newQueue(cfg.QueueSize)
 
@@ -75,7 +74,7 @@ func statsLoop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-t.C:
-			appendLog(buildStatsSnapshot())
+			fmt.Println(buildStatsSnapshot())
 		}
 	}
 }

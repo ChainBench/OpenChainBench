@@ -8,6 +8,7 @@ import (
 )
 
 func main() {
+	installLogCapture() // capture stdout into /logs ring buffer
 	fmt.Println("=== L2 Block Time Monitor ===")
 	fmt.Println("Bench № 009 — measures live wall-clock interval between newHeads events on each L2 sequencer.")
 	fmt.Println()

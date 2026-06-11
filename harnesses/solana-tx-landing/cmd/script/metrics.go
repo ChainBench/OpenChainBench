@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -73,6 +74,7 @@ var (
 func StartMetricsServer(addr string) error {
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", promhttp.Handler())
+	mux.Handle("/logs", logsHandler())
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte("ok"))
 	})
@@ -84,9 +86,19 @@ func StartMetricsServer(addr string) error {
 }
 
 // diagHandler does a TCP connect from inside the container to the given
-// host and returns the elapsed time. Read-only network probe - cannot
-// be abused for data exfiltration (no payload is sent or received).
+// host and returns the elapsed time. Fail-secure: requires X-Logs-Token
+// header match. Without this gate /diag becomes an SSRF-style port
+// scanner of the Railway internal mesh (any *.railway.internal:* port).
 func diagHandler(w http.ResponseWriter, r *http.Request) {
+	expectedToken := os.Getenv("LOGS_TOKEN")
+	if expectedToken == "" {
+		http.NotFound(w, r)
+		return
+	}
+	if r.Header.Get("X-Logs-Token") != expectedToken {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
 	host := r.URL.Query().Get("host")
 	if host == "" {
 		http.Error(w, "usage: /diag?host=example.com:443 (port optional, defaults to 443)", http.StatusBadRequest)

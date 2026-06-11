@@ -415,8 +415,7 @@ func StartMetricsServer(addr string) error {
 	setupCleanupEndpoint(mux)
 
 	// Debug: tail of in-memory log ring
-	setupLogsEndpoint(mux)
-
+	mux.Handle("/logs", logsHandler())
 	// Debug: last N Codex GraphQL calls (status, body sample, JWT state)
 	setupCodexDebugEndpoint(mux)
 
