@@ -1,5 +1,5 @@
 import { ImageResponse } from "next/og";
-import { getBenchmark, getBenchmarkSlugs } from "@/data/benchmarks";
+import { getBenchmark } from "@/data/benchmarks";
 import { headlineSentence, leader } from "@/lib/citation";
 import { fmtUnit } from "@/lib/format";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
@@ -10,9 +10,10 @@ export const alt = "OpenChainBench. Open benchmarks for crypto infrastructure";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
+// On demand only, same trap as opengraph-image.tsx: non-empty params
+// here force build-time prerender of the [slug] page segment.
 export async function generateStaticParams() {
-  const slugs = await getBenchmarkSlugs();
-  return slugs.map((slug) => ({ slug }));
+  return [];
 }
 
 // Mirror opengraph-image: emit one Twitter card per (slug, chain) combo
