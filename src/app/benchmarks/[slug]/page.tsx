@@ -149,8 +149,13 @@ export default async function BenchmarkPage({
   // unstable_cache keeps that at one cheap Prom roundtrip per 60 s
   // across all users), and renders the aggregate while it loads.
   const all = await getBenchmarks();
+  // Seed ONLY the unfiltered key. Seeding the initially-selected
+  // chain/region/kind combo with the aggregate made the client believe
+  // it already had that variant, so it never fetched the real one: the
+  // first tab (e.g. ?chain=bnb) silently rendered global data labeled
+  // as per-chain. The client renders the aggregate as a placeholder
+  // while the true variant loads from /api/bench/[slug]/variant.
   const variants: Record<string, Benchmark> = {
-    [variantKey(chain, region, kind)]: aggregate,
     [variantKey(null, null, null)]: aggregate,
   };
   const benchmark = aggregate;
