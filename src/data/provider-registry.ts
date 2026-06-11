@@ -1020,6 +1020,32 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     twitter: "@Blink_Exchange",
   },
 
+  // ─── Perp funding venues (bench № 036) ─────────────────────────────
+  bybit: {
+    url: "https://www.bybit.com",
+    description:
+      "Bybit is one of the largest centralized derivatives exchanges, with USDT-margined linear perpetuals on hundreds of pairs and funding settled on 8 hour (some pairs 4 hour) periods.",
+    twitter: "@Bybit_Official",
+  },
+  okx: {
+    url: "https://www.okx.com",
+    description:
+      "OKX is a major centralized exchange whose USDT-margined perpetual swaps settle funding on variable periods (typically 8 hours), with rates capped per instrument.",
+    twitter: "@okx",
+  },
+  paradex: {
+    url: "https://www.paradex.trade",
+    description:
+      "Paradex is a perps-focused L2 exchange built on Starknet tech, with USD-settled perpetuals and funding accrued continuously over an 8 hour period.",
+    twitter: "@paradex",
+  },
+  aster: {
+    url: "https://www.asterdex.com",
+    description:
+      "Aster is a decentralized perps exchange (ex-ApolloX, backed by YZi Labs) on BNB Chain and other EVM networks, with a Binance-compatible API and 8 hour funding periods.",
+    twitter: "@Aster_DEX",
+  },
+
   // ─── Hyperliquid HIP-3 deployers (bench № 035) ─────────────────────
   xyz: {
     url: "https://trade.xyz",

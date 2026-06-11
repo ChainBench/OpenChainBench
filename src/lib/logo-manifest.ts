@@ -156,6 +156,12 @@ const RAW: Record<string, string> = {
   dexari: "/logos/dexari.png",
   okto: "/logos/okto.png",
 
+  // ─── Perp funding venues (bench № 036) ───
+  bybit: "/logos/bybit.jpg",
+  okx: "/logos/okx.jpg",
+  paradex: "/logos/paradex.jpg",
+  aster: "/logos/aster.jpg",
+
   // ─── Hyperliquid HIP-3 deployers (bench № 035) ───
   xyz: "/logos/xyz.png",
   vntl: "/logos/vntl.png",
