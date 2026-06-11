@@ -110,6 +110,6 @@ func StartMetricsServer(addr string) error {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
 	})
-	setupLogsEndpoint(mux)
+	mux.Handle("/logs", logsHandler())
 	return http.ListenAndServe(addr, mux)
 }

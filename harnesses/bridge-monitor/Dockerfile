@@ -9,10 +9,7 @@ RUN go mod download
 # Copy source code
 COPY . .
 
-# Build the monitor binary (continuous quote loop + execution scheduler
-# that emits all the Prometheus metrics consumed by bridge-quote-latency
-# and bridge-fee). The rebalance utility lives at ./cmd/rebalance and can
-# be built separately with `go build ./cmd/rebalance`.
+# Build the binary
 RUN CGO_ENABLED=0 GOOS=linux go build -o /bridge-monitor ./cmd/monitor
 
 # Final stage

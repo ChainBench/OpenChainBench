@@ -14,6 +14,7 @@ import (
 // $PORT injection so Prometheus can scrape on the expected port.
 
 func main() {
+	installLogCapture() // capture stdout into /logs ring buffer
 	fmt.Println("=== Solana TX Landing Harness ===")
 	fmt.Println("OpenChainBench — observational market share + active landing latency.")
 	fmt.Println()

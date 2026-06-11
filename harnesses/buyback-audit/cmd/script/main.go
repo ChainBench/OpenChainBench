@@ -17,6 +17,7 @@ import (
 // listener away from the address Prometheus expects.
 
 func main() {
+	installLogCapture() // capture stdout into /logs ring buffer
 	fmt.Println("=== Buyback Execution Audit Harness (OCB #018) ===")
 	fmt.Println("Measures executed_USD / promised_USD on-chain per protocol over 7d & 30d.")
 	fmt.Println()

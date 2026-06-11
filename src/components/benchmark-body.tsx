@@ -225,6 +225,17 @@ export function BenchmarkBody({
 
   const benchmark = variantMap[activeKey] ?? aggregateBench;
   if (!benchmark) return null;
+  // True while the selected chain/region/kind variant is still loading:
+  // the page shows the aggregate as a placeholder, which without a
+  // visible signal reads as "the filter does nothing" (cold variant
+  // fetches take 5-15s+). Dim the data sections and say so.
+  const variantPending = !variantMap[activeKey];
+  const pendingCls = variantPending
+    ? " opacity-40 animate-pulse pointer-events-none"
+    : "";
+  const pendingLabel = [effectiveChain, effectiveRegion, effectiveKind]
+    .filter((v): v is string => !!v && v !== "all")
+    .join(" · ");
 
   // L1/L2 layer counts. When both > 0 the bench mixes L1 and L2 chains
   // and we render a top-level Layer toggle that filters the entire page
@@ -388,6 +399,13 @@ export function BenchmarkBody({
               onSelect={setChartRegion}
             />
           )}
+          {variantPending && (
+            <div className="flex items-center gap-2 text-[12px] text-ink-muted" role="status">
+              <span className="inline-block h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+              Loading {pendingLabel || "filtered"} data, showing the
+              all-chains aggregate meanwhile
+            </div>
+          )}
         </div>
       )}
 
@@ -399,7 +417,7 @@ export function BenchmarkBody({
         const bestValue = higherIsBetter ? fieldMax : fieldMin;
         const worstValue = higherIsBetter ? fieldMin : fieldMax;
         return (
-          <dl className="mt-10 card rounded-xl grid grid-cols-2 sm:flex sm:flex-wrap divide-y divide-x sm:divide-y-0 divide-rule overflow-hidden">
+          <dl className={"mt-10 card rounded-xl grid grid-cols-2 sm:flex sm:flex-wrap divide-y divide-x sm:divide-y-0 divide-rule overflow-hidden" + pendingCls}>
             <SummaryStat
               label="Best"
               value={fmtUnit(bestValue, benchmark.unit)}
@@ -427,7 +445,7 @@ export function BenchmarkBody({
 
       {!isDraft && (
         <>
-          <div className="mt-8 card-soft rounded-xl p-4 sm:p-6 lg:p-8">
+          <div className={"mt-8 card-soft rounded-xl p-4 sm:p-6 lg:p-8" + pendingCls}>
             {/* Each chart owns its header row and accepts a headerActions
                 slot. We pass the ViewSwitcher there so the control sits
                 on the same baseline as the chart's own title text -
@@ -523,7 +541,7 @@ export function BenchmarkBody({
             </div>
           </div>
 
-          <div className="mt-8 card-soft rounded-xl p-4 sm:p-6 lg:p-8">
+          <div className={"mt-8 card-soft rounded-xl p-4 sm:p-6 lg:p-8" + pendingCls}>
             <p className="label-mono text-ink-faint mb-4">
               {viewBenchmark.unit === "count"
                 ? "Product ledger"
@@ -538,7 +556,7 @@ export function BenchmarkBody({
 
           {viewBenchmark.unit !== "count" &&
             Object.keys(benchmark.extras.regions).length > 0 && (
-              <div className="mt-8 card-soft rounded-xl p-4 sm:p-6 lg:p-8">
+              <div className={"mt-8 card-soft rounded-xl p-4 sm:p-6 lg:p-8" + pendingCls}>
                 <p className="label-mono text-ink-faint mb-4">By region</p>
                 <RegionGrid benchmark={viewBenchmark} />
               </div>

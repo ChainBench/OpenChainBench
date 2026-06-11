@@ -157,7 +157,7 @@ func recordDebugSnapshot(s PerpSample) {
 func StartMetricsServer(addr string) error {
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", promhttp.Handler())
-	setupLogsEndpoint(mux)
+	mux.Handle("/logs", logsHandler())
 	setupDebugEndpoint(mux)
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte("OK")) })
 	return http.ListenAndServe(addr, mux)

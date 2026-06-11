@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	installLogCapture() // must be first — captures all subsequent stdout into ring buffer for /logs
+	installLogCapture() // capture stdout into /logs ring buffer
 	fmt.Println("=== Solana Quote Latency Monitor (v2 — rotating long-tail tokens) ===")
 	fmt.Println("Measuring USDC -> <rotating long-tail token> quote latency every 60s")
 	fmt.Println("Token rotation defeats per-pair CDN caches; we measure routing search.")
