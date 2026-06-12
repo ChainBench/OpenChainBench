@@ -12,6 +12,9 @@ metric: Coverage rate
 unit: pct
 higher_is_better: true
 
+disclaimer: |
+  Coverage means the provider returned a non-empty label for the probed address, it says nothing about label quality or correctness. Read the EOA vs contract split before concluding: a provider can look strong overall while only labeling contracts (verified-source names) and missing every wallet. The Success column is fetch reliability (share of API calls that did not error), not labeling accuracy.
+
 seo_intro: |
   This benchmark answers the question that decides whether a wallet
   labeling API is worth integrating. given a publicly-known address,
@@ -157,7 +160,7 @@ providers:
       p90: 100 * sum(increase(wallet_labels_success_total{provider="mobula"}[24h])) / sum(increase(wallet_labels_checks_total{provider="mobula"}[24h]))
       p99: 100 * sum(increase(wallet_labels_success_total{provider="mobula"}[24h])) / sum(increase(wallet_labels_checks_total{provider="mobula"}[24h]))
       mean: 100 * sum(increase(wallet_labels_success_total{provider="mobula"}[24h])) / sum(increase(wallet_labels_checks_total{provider="mobula"}[24h]))
-      success: clamp_max(sum(rate(wallet_labels_checks_total{provider="mobula"}[24h])) / scalar(sum(rate(wallet_labels_checks_total{provider="mobula"}[24h]))), 1)
+      success: clamp_min(1 - (sum(increase(wallet_labels_fetch_errors_total{provider="mobula"}[24h])) or vector(0)) / clamp_min(sum(increase(wallet_labels_checks_total{provider="mobula"}[24h])), 1), 0)
       sample_size: sum(increase(wallet_labels_checks_total{provider="mobula"}[24h]))
       series: 100 * sum(rate(wallet_labels_success_total{provider="mobula"}[1h])) / sum(rate(wallet_labels_checks_total{provider="mobula"}[1h]))
 
@@ -170,7 +173,7 @@ providers:
       p90: 100 * sum(increase(wallet_labels_success_total{provider="helius"}[24h])) / sum(increase(wallet_labels_checks_total{provider="helius"}[24h]))
       p99: 100 * sum(increase(wallet_labels_success_total{provider="helius"}[24h])) / sum(increase(wallet_labels_checks_total{provider="helius"}[24h]))
       mean: 100 * sum(increase(wallet_labels_success_total{provider="helius"}[24h])) / sum(increase(wallet_labels_checks_total{provider="helius"}[24h]))
-      success: clamp_max(sum(rate(wallet_labels_checks_total{provider="helius"}[24h])) / scalar(sum(rate(wallet_labels_checks_total{provider="helius"}[24h]))), 1)
+      success: clamp_min(1 - (sum(increase(wallet_labels_fetch_errors_total{provider="helius"}[24h])) or vector(0)) / clamp_min(sum(increase(wallet_labels_checks_total{provider="helius"}[24h])), 1), 0)
       sample_size: sum(increase(wallet_labels_checks_total{provider="helius"}[24h]))
       series: 100 * sum(rate(wallet_labels_success_total{provider="helius"}[1h])) / sum(rate(wallet_labels_checks_total{provider="helius"}[1h]))
 
@@ -183,7 +186,7 @@ providers:
       p90: 100 * sum(increase(wallet_labels_success_total{provider="moralis"}[24h])) / sum(increase(wallet_labels_checks_total{provider="moralis"}[24h]))
       p99: 100 * sum(increase(wallet_labels_success_total{provider="moralis"}[24h])) / sum(increase(wallet_labels_checks_total{provider="moralis"}[24h]))
       mean: 100 * sum(increase(wallet_labels_success_total{provider="moralis"}[24h])) / sum(increase(wallet_labels_checks_total{provider="moralis"}[24h]))
-      success: clamp_max(sum(rate(wallet_labels_checks_total{provider="moralis"}[24h])) / scalar(sum(rate(wallet_labels_checks_total{provider="moralis"}[24h]))), 1)
+      success: clamp_min(1 - (sum(increase(wallet_labels_fetch_errors_total{provider="moralis"}[24h])) or vector(0)) / clamp_min(sum(increase(wallet_labels_checks_total{provider="moralis"}[24h])), 1), 0)
       sample_size: sum(increase(wallet_labels_checks_total{provider="moralis"}[24h]))
       series: 100 * sum(rate(wallet_labels_success_total{provider="moralis"}[1h])) / sum(rate(wallet_labels_checks_total{provider="moralis"}[1h]))
 
@@ -196,7 +199,7 @@ providers:
       p90: 100 * sum(increase(wallet_labels_success_total{provider="blockscout"}[24h])) / sum(increase(wallet_labels_checks_total{provider="blockscout"}[24h]))
       p99: 100 * sum(increase(wallet_labels_success_total{provider="blockscout"}[24h])) / sum(increase(wallet_labels_checks_total{provider="blockscout"}[24h]))
       mean: 100 * sum(increase(wallet_labels_success_total{provider="blockscout"}[24h])) / sum(increase(wallet_labels_checks_total{provider="blockscout"}[24h]))
-      success: clamp_max(sum(rate(wallet_labels_checks_total{provider="blockscout"}[24h])) / scalar(sum(rate(wallet_labels_checks_total{provider="blockscout"}[24h]))), 1)
+      success: clamp_min(1 - (sum(increase(wallet_labels_fetch_errors_total{provider="blockscout"}[24h])) or vector(0)) / clamp_min(sum(increase(wallet_labels_checks_total{provider="blockscout"}[24h])), 1), 0)
       sample_size: sum(increase(wallet_labels_checks_total{provider="blockscout"}[24h]))
       series: 100 * sum(rate(wallet_labels_success_total{provider="blockscout"}[1h])) / sum(rate(wallet_labels_checks_total{provider="blockscout"}[1h]))
 
@@ -209,7 +212,7 @@ providers:
       p90: 100 * sum(increase(wallet_labels_success_total{provider="oli"}[24h])) / sum(increase(wallet_labels_checks_total{provider="oli"}[24h]))
       p99: 100 * sum(increase(wallet_labels_success_total{provider="oli"}[24h])) / sum(increase(wallet_labels_checks_total{provider="oli"}[24h]))
       mean: 100 * sum(increase(wallet_labels_success_total{provider="oli"}[24h])) / sum(increase(wallet_labels_checks_total{provider="oli"}[24h]))
-      success: clamp_max(sum(rate(wallet_labels_checks_total{provider="oli"}[24h])) / scalar(sum(rate(wallet_labels_checks_total{provider="oli"}[24h]))), 1)
+      success: clamp_min(1 - (sum(increase(wallet_labels_fetch_errors_total{provider="oli"}[24h])) or vector(0)) / clamp_min(sum(increase(wallet_labels_checks_total{provider="oli"}[24h])), 1), 0)
       sample_size: sum(increase(wallet_labels_checks_total{provider="oli"}[24h]))
       series: 100 * sum(rate(wallet_labels_success_total{provider="oli"}[1h])) / sum(rate(wallet_labels_checks_total{provider="oli"}[1h]))
 
@@ -222,7 +225,7 @@ providers:
       p90: 100 * sum(increase(wallet_labels_success_total{provider="tonapi"}[24h])) / sum(increase(wallet_labels_checks_total{provider="tonapi"}[24h]))
       p99: 100 * sum(increase(wallet_labels_success_total{provider="tonapi"}[24h])) / sum(increase(wallet_labels_checks_total{provider="tonapi"}[24h]))
       mean: 100 * sum(increase(wallet_labels_success_total{provider="tonapi"}[24h])) / sum(increase(wallet_labels_checks_total{provider="tonapi"}[24h]))
-      success: clamp_max(sum(rate(wallet_labels_checks_total{provider="tonapi"}[24h])) / scalar(sum(rate(wallet_labels_checks_total{provider="tonapi"}[24h]))), 1)
+      success: clamp_min(1 - (sum(increase(wallet_labels_fetch_errors_total{provider="tonapi"}[24h])) or vector(0)) / clamp_min(sum(increase(wallet_labels_checks_total{provider="tonapi"}[24h])), 1), 0)
       sample_size: sum(increase(wallet_labels_checks_total{provider="tonapi"}[24h]))
       series: 100 * sum(rate(wallet_labels_success_total{provider="tonapi"}[1h])) / sum(rate(wallet_labels_checks_total{provider="tonapi"}[1h]))
 
@@ -235,7 +238,7 @@ providers:
       p90: 100 * sum(increase(wallet_labels_success_total{provider="stellarexpert"}[24h])) / sum(increase(wallet_labels_checks_total{provider="stellarexpert"}[24h]))
       p99: 100 * sum(increase(wallet_labels_success_total{provider="stellarexpert"}[24h])) / sum(increase(wallet_labels_checks_total{provider="stellarexpert"}[24h]))
       mean: 100 * sum(increase(wallet_labels_success_total{provider="stellarexpert"}[24h])) / sum(increase(wallet_labels_checks_total{provider="stellarexpert"}[24h]))
-      success: clamp_max(sum(rate(wallet_labels_checks_total{provider="stellarexpert"}[24h])) / scalar(sum(rate(wallet_labels_checks_total{provider="stellarexpert"}[24h]))), 1)
+      success: clamp_min(1 - (sum(increase(wallet_labels_fetch_errors_total{provider="stellarexpert"}[24h])) or vector(0)) / clamp_min(sum(increase(wallet_labels_checks_total{provider="stellarexpert"}[24h])), 1), 0)
       sample_size: sum(increase(wallet_labels_checks_total{provider="stellarexpert"}[24h]))
       series: 100 * sum(rate(wallet_labels_success_total{provider="stellarexpert"}[1h])) / sum(rate(wallet_labels_checks_total{provider="stellarexpert"}[1h]))
 
@@ -248,7 +251,7 @@ providers:
       p90: 100 * sum(increase(wallet_labels_success_total{provider="xrpscan"}[24h])) / sum(increase(wallet_labels_checks_total{provider="xrpscan"}[24h]))
       p99: 100 * sum(increase(wallet_labels_success_total{provider="xrpscan"}[24h])) / sum(increase(wallet_labels_checks_total{provider="xrpscan"}[24h]))
       mean: 100 * sum(increase(wallet_labels_success_total{provider="xrpscan"}[24h])) / sum(increase(wallet_labels_checks_total{provider="xrpscan"}[24h]))
-      success: clamp_max(sum(rate(wallet_labels_checks_total{provider="xrpscan"}[24h])) / scalar(sum(rate(wallet_labels_checks_total{provider="xrpscan"}[24h]))), 1)
+      success: clamp_min(1 - (sum(increase(wallet_labels_fetch_errors_total{provider="xrpscan"}[24h])) or vector(0)) / clamp_min(sum(increase(wallet_labels_checks_total{provider="xrpscan"}[24h])), 1), 0)
       sample_size: sum(increase(wallet_labels_checks_total{provider="xrpscan"}[24h]))
       series: 100 * sum(rate(wallet_labels_success_total{provider="xrpscan"}[1h])) / sum(rate(wallet_labels_checks_total{provider="xrpscan"}[1h]))
 
@@ -261,6 +264,6 @@ providers:
       p90: 100 * sum(increase(wallet_labels_success_total{provider="walletexplorer"}[24h])) / sum(increase(wallet_labels_checks_total{provider="walletexplorer"}[24h]))
       p99: 100 * sum(increase(wallet_labels_success_total{provider="walletexplorer"}[24h])) / sum(increase(wallet_labels_checks_total{provider="walletexplorer"}[24h]))
       mean: 100 * sum(increase(wallet_labels_success_total{provider="walletexplorer"}[24h])) / sum(increase(wallet_labels_checks_total{provider="walletexplorer"}[24h]))
-      success: clamp_max(sum(rate(wallet_labels_checks_total{provider="walletexplorer"}[24h])) / scalar(sum(rate(wallet_labels_checks_total{provider="walletexplorer"}[24h]))), 1)
+      success: clamp_min(1 - (sum(increase(wallet_labels_fetch_errors_total{provider="walletexplorer"}[24h])) or vector(0)) / clamp_min(sum(increase(wallet_labels_checks_total{provider="walletexplorer"}[24h])), 1), 0)
       sample_size: sum(increase(wallet_labels_checks_total{provider="walletexplorer"}[24h]))
       series: 100 * sum(rate(wallet_labels_success_total{provider="walletexplorer"}[1h])) / sum(rate(wallet_labels_checks_total{provider="walletexplorer"}[1h]))
