@@ -3,8 +3,8 @@
 slug: hyperliquid-hip3-deployers
 number: "035"
 title: Hyperliquid HIP-3 deployer revenue leaderboard
-seo_title: "Hyperliquid HIP-3 dexes 2026: deployer fee revenue USD live (trade.xyz, Ventuals, Felix, HyENA, Kinetiq, Dreamcash, Paragon)"
-seo_description: "Live USD revenue collected by every HIP-3 builder-deployed dex on Hyperliquid via the on chain deployerFee field. trade.xyz, Ventuals, Dreamcash, Kinetiq, HyENA, Felix and Paragon ranked by 24h, 7d and 30d fees, with volume, unique traders and market counts, from a local hl node tailing the mainnet fill stream."
+seo_title: "Hyperliquid HIP-3 dexes 2026: deployer fee revenue USD live (trade.xyz, Ventuals and 5 others) over 24h, 7d, 30d"
+seo_description: "Live USD revenue collected by every HIP-3 builder-deployed dex on Hyperliquid via the on chain deployerFee field. trade.xyz, Ventuals and 5 other deployers ranked by 24h, 7d and 30d fees, with volume, unique traders and market counts. Data source is a local hl node tailing the mainnet fill stream."
 subtitle: How much USD deployer fee revenue each HIP-3 builder-deployed dex collected over the rolling 24h, 7 day and 30 day windows. Data from a local hl node tailing every fill on mainnet.
 category: Trading
 status: live
@@ -13,7 +13,7 @@ unit: usd
 higher_is_better: true
 
 disclaimer: |
-  Ranking is by raw deployer fee revenue in USD, not by value for traders. Bigger number means more fees collected via the on chain deployerFee field on the dex's namespaced markets. For the trader cost perspective, switch to the Effective fee bps companion tab. Core Hyperliquid markets (no namespace) carry no deployer fee and are excluded. Every namespace is matched to its operating team via the on chain perpDexs registry (deployer address and full name are public).
+  Ranking is by raw deployer fee revenue in USD, not by value for traders. Bigger number means more fees collected via the on chain deployerFee field on the dex's namespaced markets. For the trader cost perspective, switch to the Effective fee bps companion tab. Core Hyperliquid markets (no namespace) carry no deployer fee and are excluded. Some dex namespaces are not yet matched to a public brand; they are listed under their on chain namespace until identified.
 
 seo_intro: |
   This page answers one question. Which HIP-3 builder-deployed dex on
@@ -54,7 +54,7 @@ abstract: |
 
 methodology:
   - "Data source. A local hl node operated on OCB infrastructure tails the Hyperliquid mainnet and writes every block of fills to node_fills_by_block hourly YYYYMMDD HH on local disk. Each line is one JSON block, the events array carries one entry per fill, and every fill on a HIP-3 market includes the dex namespaced coin (xyz:AAPL) plus the deployerFee in USDC."
-  - "Attribution. A fill belongs to a HIP-3 dex when its coin carries a namespace prefix (xyz:AAPL belongs to xyz). Namespaces are unique on chain by construction, so no hand curated registry is needed; the harness starts tracking a new deployer with its first observed fill, and the namespace is added to this page on the next spec review. Core Hyperliquid markets carry no namespace and no deployer fee, they are excluded."
+  - "Attribution. A fill belongs to a HIP-3 dex when its coin carries a namespace prefix (xyz:AAPL belongs to xyz). Namespaces are unique on chain by construction, so no hand curated registry is needed; a new deployer appears on the leaderboard with its first observed fill. Core Hyperliquid markets carry no namespace and no deployer fee, they are excluded."
   - "Cadence. The Go harness re reads the current and previous hourly files every 30 seconds, parses appended lines, and updates per dex hourly buckets keyed by the UTC hour floor of the fill timestamp. Prometheus scrapes the metrics every 30 seconds via a Caddy reverse proxy with basic auth. End to end staleness from fill landing on chain to bench page render is typically under one minute."
   - "Headline calculation. For each dex over the last 24 rolling hours we sum the deployerFee USD values of every fill on its namespaced markets. The 7 day and 30 day figures sum the same field over the last 168 and 720 hourly buckets, so the metric is consistent across the three ranges."
   - "Volume companion. hl_hip3_deployer_volume_usd_24h, _7d and _30d are computed the same way on the px times sz product of every fill. They feed the Volume column and tab."
@@ -63,7 +63,7 @@ methodology:
   - "Effective fee bps. Deployer fees divided by notional volume, times ten thousand, over the rolling 24h window. The trader perspective on what a representative dollar of flow paid the dex operator."
   - "Window mechanics. Hourly buckets per dex go back 30 days in memory and are pruned on every publish. Per fill state is never retained; the largest dex clears about 4 million fills per day, so the bench aggregates at ingestion time instead of keeping fill level granularity."
   - "30 day caveat. The node retains hourly fill files for a bounded horizon and the harness backfill reads what exists on disk. Until 30 full days of history accumulate, the 30d figures cover the available horizon and grow toward the full window."
-  - "Naming. Every namespace is resolved against the on chain perpDexs registry, which publishes the deployer address and full name: xyz is trade.xyz, vntl is Ventuals, cash is Dreamcash, km is Markets by Kinetiq, hyna is HyENA by the Based team, flx is Felix Exchange, para is Paragon. Attribution is by namespace prefix either way, so the numbers do not depend on naming."
+  - "Naming. xyz is trade.xyz and vntl is Ventuals, both publicly documented. Other namespaces (cash, km, hyna, flx, para) are listed under their on chain prefix until the operating team is identified; the attribution and the numbers are exact either way."
   - "Reproducibility. Harness source is open in the OCB harness tree. Anyone running their own hl node can clone, point the data flag at their node_fills_by_block hourly root, run the binary against a Prometheus scraper, and reproduce these metrics."
   - "Failures. Any read error on the hourly files leaves the previous gauge values in place. Hourly bucket pruning is idempotent. Restarts replay the warmup window from disk before going live tail, and reseed the user sets from history in the background."
 
@@ -83,7 +83,7 @@ faq:
   - q: "Where does the data come from?"
     a: "A local hl node operated on OCB infrastructure tails the Hyperliquid mainnet. The node writes every block of fills to disk; a Go harness running on the same host reads these files continuously, attributes namespaced fills to their dex, and aggregates per hour. No third party API, no internal Mobula service."
   - q: "How are dexes identified?"
-    a: "By their on chain coin namespace. Every HIP-3 market trades under a prefix (xyz:AAPL, vntl:MAG7, km:US500) that is unique to its deployer. The harness discovers the set dynamically from the fill stream and starts metering a brand new deployer with its first fill; the page lists each new namespace after a short spec review. Operating teams are resolved from the on chain perpDexs registry, which publishes each namespace deployer address and full name."
+    a: "By their on chain coin namespace. Every HIP-3 market trades under a prefix (xyz:AAPL, vntl:MAG7, km:US500) that is unique to its deployer. The set is discovered dynamically from the fill stream, so a brand new deployer appears on the leaderboard with its first fill. Namespaces not yet matched to a public brand are listed under the raw prefix."
   - q: "Why is trade.xyz so far ahead?"
     a: "It operates the deepest tokenized equity and commodity catalog on Hyperliquid, more than 70 markets including the large cap US names, and captures the bulk of HIP-3 open interest. Deployer revenue is volume times fee policy, and xyz leads on both breadth and notional."
   - q: "What does the Effective fee bps column tell me?"
@@ -116,8 +116,8 @@ providers:
       series: hl_hip3_deployer_fees_usd_24h{dex="xyz"}
 
   - slug: cash
-    name: Dreamcash
-    tag: Tokenized equities and ETFs under the cash namespace, by Dreamcash
+    name: cash
+    tag: HIP-3 namespace, equities and ETFs, full name pending identification
     formula: "USD deployer fees collected over the rolling 24h window, summed across every fill on cash namespaced markets in the local hl-node stream."
     queries:
       p50: hl_hip3_deployer_fees_usd_24h{dex="cash"}
@@ -129,8 +129,8 @@ providers:
       series: hl_hip3_deployer_fees_usd_24h{dex="cash"}
 
   - slug: km
-    name: Markets by Kinetiq
-    tag: Equity and index basket perps under the km namespace, by Kinetiq
+    name: km
+    tag: HIP-3 namespace, equities and index baskets, full name pending identification
     formula: "USD deployer fees collected over the rolling 24h window, summed across every fill on km namespaced markets in the local hl-node stream."
     queries:
       p50: hl_hip3_deployer_fees_usd_24h{dex="km"}
@@ -155,8 +155,8 @@ providers:
       series: hl_hip3_deployer_fees_usd_24h{dex="vntl"}
 
   - slug: hyna
-    name: HyENA
-    tag: USDe margined perps under the hyna namespace, by the Based team
+    name: hyna
+    tag: HIP-3 namespace, full name pending identification
     formula: "USD deployer fees collected over the rolling 24h window, summed across every fill on hyna namespaced markets in the local hl-node stream."
     queries:
       p50: hl_hip3_deployer_fees_usd_24h{dex="hyna"}
@@ -168,8 +168,8 @@ providers:
       series: hl_hip3_deployer_fees_usd_24h{dex="hyna"}
 
   - slug: flx
-    name: Felix Exchange
-    tag: Commodity and macro perps under the flx namespace, by Felix
+    name: flx
+    tag: HIP-3 namespace, commodities, full name pending identification
     formula: "USD deployer fees collected over the rolling 24h window, summed across every fill on flx namespaced markets in the local hl-node stream."
     queries:
       p50: hl_hip3_deployer_fees_usd_24h{dex="flx"}
@@ -181,8 +181,8 @@ providers:
       series: hl_hip3_deployer_fees_usd_24h{dex="flx"}
 
   - slug: para
-    name: Paragon
-    tag: Crypto index perps (BTC.D, TOTAL2, OTHERS) under the para namespace
+    name: para
+    tag: HIP-3 namespace, full name pending identification
     formula: "USD deployer fees collected over the rolling 24h window, summed across every fill on para namespaced markets in the local hl-node stream."
     queries:
       p50: hl_hip3_deployer_fees_usd_24h{dex="para"}
