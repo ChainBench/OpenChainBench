@@ -66,9 +66,16 @@ function contentHash(s: string): string {
   return (h >>> 0).toString(16);
 }
 
-const BLOB_TTL_SEC = 24 * 3600;
+// Short safety-net TTL only. Every sweep produces a new hash (dataAsOf
+// changes), so blobs MUST be deleted on pointer swap: with a 24h TTL the
+// per-minute tier-A cadence accumulated ~4300 orphan blobs in one night
+// and blew the Upstash 256MB quota, turning every write into an http 400
+// (worker looked alive, store silently froze).
+const BLOB_TTL_SEC = 2 * 3600;
 
-/** Atomic publish: blob first, pointer swap second. */
+/** Atomic publish: blob first, pointer swap second, then delete the
+ *  previously-pointed blob (readers that already fetched the old hash
+ *  finish their GET; new readers see the new pointer). */
 export async function publishSnapshot(
   snap: MaterializedSnapshot,
 ): Promise<void> {
@@ -76,8 +83,15 @@ export async function publishSnapshot(
   const hash = contentHash(json);
   const blobKey = matKeys.blob(snap.slug, snap.sig, hash);
   const ptrKey = matKeys.pointer(snap.slug, snap.sig);
+  const prevHash = await redis(["GET", ptrKey], 5_000).catch(() => null);
   await redis(["SET", blobKey, json, "EX", BLOB_TTL_SEC], 15_000);
   await redis(["SET", ptrKey, hash], 8_000);
+  if (typeof prevHash === "string" && prevHash && prevHash !== hash) {
+    await redis(
+      ["DEL", matKeys.blob(snap.slug, snap.sig, prevHash)],
+      5_000,
+    ).catch(() => {});
+  }
 }
 
 export async function heartbeat(now = Date.now()): Promise<void> {
