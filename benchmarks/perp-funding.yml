@@ -112,7 +112,7 @@ providers:
       mean: avg_over_time(perp_funding_annualized_pct{venue="hyperliquid",asset="ETH"}[24h])
       success: (perp_funding_venue_ok_unix{venue="hyperliquid"} > bool (time() - 300))
       sample_size: count(perp_funding_rate_hourly_bps{venue="hyperliquid"})
-      series: perp_funding_hold_24h_bps{venue="hyperliquid",asset="ETH"}
+      series: avg_over_time(perp_funding_hold_24h_bps{venue="hyperliquid",asset="ETH"}[24h])
 
   - slug: binance
     name: Binance
@@ -125,7 +125,7 @@ providers:
       mean: avg_over_time(perp_funding_annualized_pct{venue="binance",asset="ETH"}[24h])
       success: (perp_funding_venue_ok_unix{venue="binance"} > bool (time() - 300))
       sample_size: count(perp_funding_rate_hourly_bps{venue="binance"})
-      series: perp_funding_hold_24h_bps{venue="binance",asset="ETH"}
+      series: avg_over_time(perp_funding_hold_24h_bps{venue="binance",asset="ETH"}[24h])
 
   - slug: bybit
     name: Bybit
@@ -138,7 +138,7 @@ providers:
       mean: avg_over_time(perp_funding_annualized_pct{venue="bybit",asset="ETH"}[24h])
       success: (perp_funding_venue_ok_unix{venue="bybit"} > bool (time() - 300))
       sample_size: count(perp_funding_rate_hourly_bps{venue="bybit"})
-      series: perp_funding_hold_24h_bps{venue="bybit",asset="ETH"}
+      series: avg_over_time(perp_funding_hold_24h_bps{venue="bybit",asset="ETH"}[24h])
 
   - slug: okx
     name: OKX
@@ -151,7 +151,7 @@ providers:
       mean: avg_over_time(perp_funding_annualized_pct{venue="okx",asset="ETH"}[24h])
       success: (perp_funding_venue_ok_unix{venue="okx"} > bool (time() - 300))
       sample_size: count(perp_funding_rate_hourly_bps{venue="okx"})
-      series: perp_funding_hold_24h_bps{venue="okx",asset="ETH"}
+      series: avg_over_time(perp_funding_hold_24h_bps{venue="okx",asset="ETH"}[24h])
 
   - slug: dydx
     name: dYdX v4
@@ -164,7 +164,7 @@ providers:
       mean: avg_over_time(perp_funding_annualized_pct{venue="dydx",asset="ETH"}[24h])
       success: (perp_funding_venue_ok_unix{venue="dydx"} > bool (time() - 300))
       sample_size: count(perp_funding_rate_hourly_bps{venue="dydx"})
-      series: perp_funding_hold_24h_bps{venue="dydx",asset="ETH"}
+      series: avg_over_time(perp_funding_hold_24h_bps{venue="dydx",asset="ETH"}[24h])
 
   - slug: paradex
     name: Paradex
@@ -177,7 +177,7 @@ providers:
       mean: avg_over_time(perp_funding_annualized_pct{venue="paradex",asset="ETH"}[24h])
       success: (perp_funding_venue_ok_unix{venue="paradex"} > bool (time() - 300))
       sample_size: count(perp_funding_rate_hourly_bps{venue="paradex"})
-      series: perp_funding_hold_24h_bps{venue="paradex",asset="ETH"}
+      series: avg_over_time(perp_funding_hold_24h_bps{venue="paradex",asset="ETH"}[24h])
 
   - slug: aster
     name: Aster
@@ -190,7 +190,7 @@ providers:
       mean: avg_over_time(perp_funding_annualized_pct{venue="aster",asset="ETH"}[24h])
       success: (perp_funding_venue_ok_unix{venue="aster"} > bool (time() - 300))
       sample_size: count(perp_funding_rate_hourly_bps{venue="aster"})
-      series: perp_funding_hold_24h_bps{venue="aster",asset="ETH"}
+      series: avg_over_time(perp_funding_hold_24h_bps{venue="aster",asset="ETH"}[24h])
 
 metric_panels:
   - id: annualized

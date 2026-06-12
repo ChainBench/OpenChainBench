@@ -47,7 +47,7 @@ methodology:
   - "Regions: us-east, eu-west, sgp."
   - "Latency definition: wallclock from HTTP request dispatch to the first byte of a response body that includes the quoted output amount (Jupiter `outAmount`, Mobula `data.amountOutTokens`, OpenOcean `data.outAmount`, Raydium `data.outputAmount`). The HTTP client reuses TCP + TLS connections across ticks (warm-path), matching how a long-running backend integration actually consumes the API. The bench measures steady-state round-trip cost, not the first-request cold-start penalty."
   - "Failure classes. Each non-success outcome lands on exactly one counter and is excluded from the latency histogram: `solana_quote_throttled_total` (HTTP 429), `solana_quote_auth_error_total` (401/403), `solana_quote_no_route_total` (provider can't route the picked token), `solana_quote_other_error_total` (network/timeout/parse). Each provider's no-route signal is verified: Jupiter NO_ROUTES_FOUND, Mobula 'No route found', Raydium INSUFFICIENT_LIQUIDITY, OpenOcean payload-level."
-  - "Raydium scope. Raydium's compute API is single-venue (Raydium AMM v4 / CPMM / CLMM only) and does not multi-hop via SOL like Jupiter or Mobula. On Pulse-fed bonded tokens (mostly Pump.fun graduates living on PumpSwap, plus Meteora and Orca pools) it returns no-route ~80% of the time. That's an honest coverage signal and surfaces on the success-rate column, not as latency outliers."
+  - "Raydium scope. Raydium's compute API is single-venue (Raydium AMM v4 / CPMM / CLMM only) and does not multi-hop via SOL like Jupiter or Mobula. On Pulse-fed bonded tokens (mostly Pump.fun graduates living on PumpSwap, plus Meteora and Orca pools) it returns no-route a large and variable share of the time (30% to 100% depending on the rotation set). That's an honest coverage signal and surfaces on the success-rate column, not as latency outliers."
   - "Direct egress from Railway, no residential proxy. The bench measures backend-to-backend latency as a real integration would see it."
   - "Histogram buckets: 10, 25, 50, 100, 200, 500, 1000, 2000, 5000 ms."
 
@@ -170,7 +170,7 @@ providers:
   - slug: raydium
     name: Raydium
     tag: AMM (single-venue Trade API)
-    formula: "Avg of the 3 regional 24h median wallclock ms on Raydium's `transaction-v1.raydium.io/compute/swap-base-in` for 100 USDC → <rotating long-tail token>. Recorded only on `success: true`. Raydium is single-venue; ~30-50% no-route rate."
+    formula: "Avg of the 3 regional 24h median wallclock ms on Raydium's compute/swap-base-in for 100 USDC → <rotating token>, recorded only on success. Single-venue; no-route rate varies with the rotation, up to 100% (then it drops off the board)."
     queries:
       p50: avg(ocb:solana_quote_latency_ms:p50_24h{provider="raydium"})
       p90: avg(ocb:solana_quote_latency_ms:p90_24h{provider="raydium"})
