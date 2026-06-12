@@ -223,6 +223,60 @@ export function BenchmarkBody({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeKey]);
 
+  // Background prefetch of the adjacent variants: every chain at the
+  // current region/kind plus every region at the current chain. The
+  // first fetch of a combo costs 1-7s server-side (function cold start
+  // + first render), which the user otherwise eats as a long dimmed
+  // state after clicking a tab. Warming them right after mount turns
+  // tab flips into in-memory swaps. Staggered 400ms apart to stay
+  // gentle; the variant API dedupes across users via its 60s cache,
+  // and re-runs when the user settles on a new axis value so the
+  // cross-axis re-warms.
+  useEffect(() => {
+    if (!aggregateBench) return;
+    const isAll = (v: string | null) => !v || v === "all";
+    const combos: [string | null, string | null, string | null][] = [
+      ...chainOptions.map(
+        (c) => [c.value, effectiveRegion, effectiveKind] as [string | null, string | null, string | null],
+      ),
+      ...regionOptions.map(
+        (r) => [effectiveChain, r.value, effectiveKind] as [string | null, string | null, string | null],
+      ),
+    ];
+    let cancelled = false;
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    let i = 0;
+    for (const [c, r, k] of combos) {
+      if (isAll(c) && isAll(r) && isAll(k)) continue;
+      const key = variantKey(c, r, k);
+      if (variantMap[key]) continue;
+      const qs = new URLSearchParams();
+      if (!isAll(c)) qs.set("chain", c!);
+      if (!isAll(r)) qs.set("region", r!);
+      if (!isAll(k)) qs.set("kind", k!);
+      timers.push(
+        setTimeout(() => {
+          if (cancelled) return;
+          fetch(`/api/bench/${aggregateBench.slug}/variant?${qs.toString()}`)
+            .then((res) => (res.ok ? res.json() : null))
+            .then((v: Benchmark | null) => {
+              if (!cancelled && v) {
+                setVariantMap((m) => (m[key] ? m : { ...m, [key]: v }));
+              }
+            })
+            .catch(() => {});
+        }, 400 * i++),
+      );
+    }
+    return () => {
+      cancelled = true;
+      timers.forEach(clearTimeout);
+    };
+    // variantMap intentionally omitted: presence is re-checked inside the
+    // functional setState, a duplicate in-flight fetch is harmless.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effectiveChain, effectiveRegion, effectiveKind, aggregateBench]);
+
   const benchmark = variantMap[activeKey] ?? aggregateBench;
   if (!benchmark) return null;
   // True while the selected chain/region/kind variant is still loading:
