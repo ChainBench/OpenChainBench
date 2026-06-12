@@ -4,7 +4,7 @@ slug: hyperliquid-frontends
 number: "030"
 title: Hyperliquid frontends builder revenue leaderboard
 seo_title: "Hyperliquid frontends 2026: builder fee revenue USD live (Phantom Perps, MetaMask, Rabby, Insilico, Axiom, pvp.trade) over 24h, 7d, 30d"
-seo_description: "Live USD revenue collected by every Hyperliquid frontend via the on chain builder code field. Phantom Perps, MetaMask, Rabby, Insilico, based.app, OneKey, Axiom, pvp.trade and 50+ others ranked by 24h, 7d and 30d builder fees. Data source is a local hl node tailing the Hyperliquid mainnet fill stream."
+seo_description: "Live USD revenue collected by every Hyperliquid frontend via the on chain builder code field. Phantom Perps, MetaMask, Rabby, Insilico, based.app, OneKey, Axiom, pvp.trade and 95+ others ranked by 24h, 7d and 30d builder fees. Data source is a local hl node tailing the Hyperliquid mainnet fill stream."
 subtitle: How much USD builder fee revenue each Hyperliquid frontend collected over the rolling 24h, 7 day and 30 day windows. Data from a local hl node tailing every fill on mainnet.
 category: Trading
 status: live
@@ -17,11 +17,11 @@ disclaimer: |
 
 
 seo_intro: |
-  This page answers one question. Which Hyperliquid frontend collected the most builder fee revenue in USD over the last 24 hours, 7 days and 30 days. Every Hyperliquid order can attach an optional on chain builder field. Frontends like Phantom Perps, MetaMask, Rabby, Insilico, based dot app, OneKey, Axiom and pvp dot trade write their wallet address into this field on every fill they route, then collect a share of the taker fee as their own rebate (capped at 100 basis points on perps, 1000 on spot). The bench ranks 60 frontends by the dollar amount each one collected through this mechanism, surfacing the real revenue scale of the Hyperliquid frontend ecosystem rather than a percentage ratio that hides the actual numbers. Data comes from a local hl node operated on OCB infrastructure tailing the Hyperliquid mainnet fill stream. A Go harness reads every block of attributed fills, aggregates per builder over rolling 24h, 7 day and 30 day windows in memory, and exposes Prometheus gauges that this page consumes. End to end staleness from fill landing on chain to page render is typically under one minute. Companion tabs surface volume routed, unique users, the trader perspective effective fee in basis points, and an outage detector.
+  This page answers one question. Which Hyperliquid frontend collected the most builder fee revenue in USD over the last 24 hours, 7 days and 30 days. Every Hyperliquid order can attach an optional on chain builder field. Frontends like Phantom Perps, MetaMask, Rabby, Insilico, based dot app, OneKey, Axiom and pvp dot trade write their wallet address into this field on every fill they route, then collect a share of the taker fee as their own rebate (capped at 100 basis points on perps, 1000 on spot). The bench ranks 104 frontends by the dollar amount each one collected through this mechanism, surfacing the real revenue scale of the Hyperliquid frontend ecosystem rather than a percentage ratio that hides the actual numbers. Data comes from a local hl node operated on OCB infrastructure tailing the Hyperliquid mainnet fill stream. A Go harness reads every block of attributed fills, aggregates per builder over rolling 24h, 7 day and 30 day windows in memory, and exposes Prometheus gauges that this page consumes. End to end staleness from fill landing on chain to page render is typically under one minute. Companion tabs surface volume routed, unique users, the trader perspective effective fee in basis points, and an outage detector.
 
 
 abstract: |
-  The bench ranks 60 Hyperliquid frontends by the USD value of builder
+  The bench ranks 104 Hyperliquid frontends by the USD value of builder
   fees they collected over rolling 24 hour, 7 day and 30 day windows.
   Source data is a local hl node operated on OCB infrastructure that
   writes every block of fills to disk as one JSON line. A Go harness
@@ -33,7 +33,7 @@ abstract: |
   _30d_v2), and this page reads the gauges every 30 seconds. The
   registry of tracked builder addresses lives at
   miniapps hyperliquid frontends local builders dot json in the
-  open mobula api repo, currently 60 entries seeded from DefiLlama
+  open mobula api repo, currently 104 entries seeded from DefiLlama
   dimension adapters plus a behavioral cross reference pass on the
   top unidentified addresses. New builders ship via public PR. The
   bench does not place trades, does not touch private keys, and does
@@ -44,12 +44,12 @@ methodology:
   - "Data source. A local hl node operated on OCB infrastructure tails the Hyperliquid mainnet and writes every block of attributed fills to node_fills_by_block hourly YYYYMMDD HH on local disk. Each line is one JSON block, the events array carries one entry per fill, and every fill that opted into the builder code attribution system includes the builder address plus builderFee in USDC."
   - "Cadence. The Go harness re reads the current and previous hourly files every 30 seconds, parses appended lines, and updates per builder hourly buckets keyed by the UTC hour floor of the fill timestamp. Prometheus scrapes the metrics every 30 seconds via a Caddy reverse proxy with basic auth. End to end staleness from fill landing on chain to bench page render is typically under one minute."
   - "Headline calculation. For each builder over the last 24 rolling hours, we sum the builderFee USD values of every attributed fill. The figure is the raw amount of USDC the frontend collected through the builder code field. The 7 day and 30 day figures sum the same field over the last 168 and 720 hourly buckets respectively, so the metric is consistent across the three ranges."
-  - "Window mechanics. The harness keeps a small in memory hourly bucket map per builder going back 30 days. Memory footprint is about 350 KB total for 60 builders. Older buckets are pruned on every publish. This is cheaper than keeping fill level granularity for 30 days and lets the bench expose the three ranges without expanding the live fill window."
+  - "Window mechanics. The harness keeps a small in memory hourly bucket map per builder going back 30 days. Memory footprint is about 600 KB total for 104 builders. Older buckets are pruned on every publish. This is cheaper than keeping fill level granularity for 30 days and lets the bench expose the three ranges without expanding the live fill window."
   - "Volume companion. hl_frontend_volume_usd_24h_v2, _7d_v2 and _30d_v2 are computed the same way on the px times sz product of every fill. They feed the Volume tabs."
   - "Users 24h. Count of unique wallet addresses that placed at least one attributed fill on this builder in the last 24 hours. Computed on the fill level window, not the hourly buckets, because uniqueness requires the full set."
   - "Effective fee bps companion. Volume weighted ratio computed as sum of builder fees divided by sum of notional, times ten thousand, over the rolling 24h window. Surfaces the trader perspective on cost. Volume share dashboards rank frontends by raw notional, this column ranks them by what a representative dollar of flow paid them."
   - "Time since last fill. Seconds elapsed since this builder's most recent attributed fill. During active hours the cohort baseline runs under one minute, so anything above a few minutes is a real anomaly. Catches frontends whose routing pipeline is down and frontends that quietly stopped operating but still have their builder code in circulation."
-  - "Builder registry. miniapps hyperliquid frontends local builders dot json is a hand curated array of slug, name, address and notes for every tracked frontend, currently 60 entries. New addresses ship via public PR. Builder addresses outside the registry remain visible in the raw node stream but stay off the leaderboard until added."
+  - "Builder registry. miniapps hyperliquid frontends local builders dot json is a hand curated array of slug, name, address and notes for every tracked frontend, currently 104 entries. New addresses ship via public PR. Builder addresses outside the registry remain visible in the raw node stream but stay off the leaderboard until added."
   - "Exclusions. Native Hyperliquid UI orders carry no builder code and are not user attributable by this method. Roughly 95 percent of Hyperliquid fills land without a builder field. The 5 percent that do are the frontend ecosystem this bench measures."
   - "Reproducibility. Harness source at miniapps hyperliquid frontends local in the mobula api repo, written in Go. Anyone running their own hl node can clone, point the data flag at their node_fills_by_block hourly root, run the binary against a Prometheus scraper, and reproduce these metrics."
   - "Failures. Any read error on the hourly files leaves the previous gauge values in place. Hourly bucket pruning is idempotent. Restarts replay the warmup window from disk before going live tail."
@@ -73,7 +73,7 @@ faq:
   - q: "Where does the data come from?"
     a: "A local hl node operated on OCB infrastructure tails the Hyperliquid mainnet. The node writes every block of fills to disk as one JSON line under node_fills_by_block hourly YYYYMMDD HH. A Go harness running on the same host reads these files continuously, parses each fill, and increments per builder hourly aggregates. No third party API, no daily CSV bucket dependency, no internal Mobula service. Source code is in miniapps hyperliquid frontends local in the open mobula api repo."
   - q: "How are the 7 day and 30 day numbers built?"
-    a: "The harness keeps a small in memory map of per builder hourly buckets going back 30 days. Each bucket stores the sum of builderFee values and the sum of notional values for fills that landed in that hour. The 7 day figure is the sum of the recent 168 buckets, the 30 day figure is the sum of the recent 720 buckets. Memory footprint is about 350 KB total for all 60 tracked frontends. Buckets older than 30 days are dropped on every publish."
+    a: "The harness keeps a small in memory map of per builder hourly buckets going back 30 days. Each bucket stores the sum of builderFee values and the sum of notional values for fills that landed in that hour. The 7 day figure is the sum of the recent 168 buckets, the 30 day figure is the sum of the recent 720 buckets. Memory footprint is about 350 KB total for all 104 tracked frontends. Buckets older than 30 days are dropped on every publish."
   - q: "How is the 24 hour figure built?"
     a: "Same hourly bucket logic, last 24 buckets. The harness also keeps a separate fill level window for the 24h companions that require per fill granularity (unique users, taker share, slippage proxy)."
   - q: "Which frontends are tracked?"
@@ -1100,6 +1100,384 @@ providers:
 
 # All five metrics come from the local hl-node harness and update at the
 # same sub-minute cadence as the main headline.
+
+  - slug: dextrabot
+    name: Dextrabot
+    tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Dextrabot's builder address."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="dextrabot"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="dextrabot"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="dextrabot"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="dextrabot"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="dextrabot"}
+      series: hl_frontend_fees_usd_24h_v2{builder="dextrabot"}
+
+  - slug: kinto
+    name: Kinto
+    tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Kinto's builder address."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="kinto"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="kinto"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="kinto"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="kinto"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="kinto"}
+      series: hl_frontend_fees_usd_24h_v2{builder="kinto"}
+
+  - slug: hypersignals
+    name: HyperSignals
+    tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for HyperSignals's builder address."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="hypersignals"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="hypersignals"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="hypersignals"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="hypersignals"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="hypersignals"}
+      series: hl_frontend_fees_usd_24h_v2{builder="hypersignals"}
+
+  - slug: ccxt
+    name: CCXT
+    tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for CCXT's builder address."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="ccxt"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="ccxt"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="ccxt"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="ccxt"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="ccxt"}
+      series: hl_frontend_fees_usd_24h_v2{builder="ccxt"}
+
+  - slug: vibeliquid
+    name: VibeLiquid
+    tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for VibeLiquid's builder address."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="vibeliquid"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="vibeliquid"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="vibeliquid"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="vibeliquid"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="vibeliquid"}
+      series: hl_frontend_fees_usd_24h_v2{builder="vibeliquid"}
+
+  - slug: splash
+    name: Splash
+    tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Splash's builder address."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="splash"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="splash"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="splash"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="splash"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="splash"}
+      series: hl_frontend_fees_usd_24h_v2{builder="splash"}
+
+  - slug: vooi
+    name: VOOI
+    tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for VOOI's builder address."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="vooi"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="vooi"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="vooi"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="vooi"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="vooi"}
+      series: hl_frontend_fees_usd_24h_v2{builder="vooi"}
+
+  - slug: hyperx
+    name: HyperX
+    tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for HyperX's builder address."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="hyperx"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="hyperx"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="hyperx"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="hyperx"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="hyperx"}
+      series: hl_frontend_fees_usd_24h_v2{builder="hyperx"}
+
+  - slug: miracle
+    name: Miracle
+    tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Miracle's builder address."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="miracle"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="miracle"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="miracle"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="miracle"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="miracle"}
+      series: hl_frontend_fees_usd_24h_v2{builder="miracle"}
+
+  - slug: xbit
+    name: XBIT
+    tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for XBIT's builder address."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="xbit"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="xbit"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="xbit"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="xbit"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="xbit"}
+      series: hl_frontend_fees_usd_24h_v2{builder="xbit"}
+
+  - slug: tuleep-trade
+    name: Tuleep.trade
+    tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Tuleep.trade's builder address."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="tuleep-trade"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="tuleep-trade"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="tuleep-trade"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="tuleep-trade"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="tuleep-trade"}
+      series: hl_frontend_fees_usd_24h_v2{builder="tuleep-trade"}
+
+  - slug: slash
+    name: Slash
+    tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Slash's builder address."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="slash"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="slash"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="slash"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="slash"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="slash"}
+      series: hl_frontend_fees_usd_24h_v2{builder="slash"}
+
+  - slug: shax
+    name: SHAX
+    tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for SHAX's builder address."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="shax"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="shax"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="shax"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="shax"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="shax"}
+      series: hl_frontend_fees_usd_24h_v2{builder="shax"}
+
+  - slug: aura-money
+    name: Aura.money
+    tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Aura.money's builder address."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="aura-money"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="aura-money"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="aura-money"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="aura-money"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="aura-money"}
+      series: hl_frontend_fees_usd_24h_v2{builder="aura-money"}
+
+  - slug: cro-trade
+    name: cro.trade
+    tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for cro.trade's builder address."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="cro-trade"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="cro-trade"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="cro-trade"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="cro-trade"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="cro-trade"}
+      series: hl_frontend_fees_usd_24h_v2{builder="cro-trade"}
+
+  - slug: owlyfi
+    name: Owlyfi
+    tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Owlyfi's builder address."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="owlyfi"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="owlyfi"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="owlyfi"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="owlyfi"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="owlyfi"}
+      series: hl_frontend_fees_usd_24h_v2{builder="owlyfi"}
+
+  - slug: topdog
+    name: TopDog
+    tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for TopDog's builder address."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="topdog"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="topdog"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="topdog"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="topdog"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="topdog"}
+      series: hl_frontend_fees_usd_24h_v2{builder="topdog"}
+
+  - slug: liquid8
+    name: Liquid8
+    tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Liquid8's builder address."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="liquid8"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="liquid8"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="liquid8"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="liquid8"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="liquid8"}
+      series: hl_frontend_fees_usd_24h_v2{builder="liquid8"}
+
+  - slug: goodcryptox
+    name: GoodCryptoX
+    tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for GoodCryptoX's builder address."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="goodcryptox"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="goodcryptox"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="goodcryptox"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="goodcryptox"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="goodcryptox"}
+      series: hl_frontend_fees_usd_24h_v2{builder="goodcryptox"}
+
+  - slug: markets-mobile
+    name: Markets Mobile
+    tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Markets Mobile's builder address."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="markets-mobile"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="markets-mobile"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="markets-mobile"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="markets-mobile"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="markets-mobile"}
+      series: hl_frontend_fees_usd_24h_v2{builder="markets-mobile"}
+
+  - slug: origami-tech
+    name: Origami Tech
+    tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Origami Tech's builder address."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="origami-tech"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="origami-tech"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="origami-tech"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="origami-tech"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="origami-tech"}
+      series: hl_frontend_fees_usd_24h_v2{builder="origami-tech"}
+
+  - slug: cwallet
+    name: Cwallet
+    tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Cwallet's builder address."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="cwallet"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="cwallet"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="cwallet"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="cwallet"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="cwallet"}
+      series: hl_frontend_fees_usd_24h_v2{builder="cwallet"}
+
+  - slug: cipher
+    name: Cipher
+    tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Cipher's builder address."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="cipher"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="cipher"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="cipher"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="cipher"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="cipher"}
+      series: hl_frontend_fees_usd_24h_v2{builder="cipher"}
+
+  - slug: stryx
+    name: STRYX
+    tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for STRYX's builder address."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="stryx"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="stryx"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="stryx"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="stryx"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="stryx"}
+      series: hl_frontend_fees_usd_24h_v2{builder="stryx"}
+
+  - slug: perpswld
+    name: PerpsWLD
+    tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for PerpsWLD's builder address."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="perpswld"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="perpswld"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="perpswld"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="perpswld"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="perpswld"}
+      series: hl_frontend_fees_usd_24h_v2{builder="perpswld"}
+
+  - slug: onchaincc
+    name: OnchainCC
+    tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for OnchainCC's builder address."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="onchaincc"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="onchaincc"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="onchaincc"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="onchaincc"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="onchaincc"}
+      series: hl_frontend_fees_usd_24h_v2{builder="onchaincc"}
+
+  - slug: kucoin-web3
+    name: KuCoin Web3
+    tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for KuCoin Web3's builder address."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="kucoin-web3"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="kucoin-web3"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="kucoin-web3"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="kucoin-web3"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="kucoin-web3"}
+      series: hl_frontend_fees_usd_24h_v2{builder="kucoin-web3"}
+
+  - slug: vergex
+    name: VergeX
+    tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for VergeX's builder address."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="vergex"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="vergex"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="vergex"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="vergex"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="vergex"}
+      series: hl_frontend_fees_usd_24h_v2{builder="vergex"}
+
+  - slug: nsn
+    name: NSN
+    tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for NSN's builder address."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="nsn"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="nsn"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="nsn"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="nsn"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="nsn"}
+      series: hl_frontend_fees_usd_24h_v2{builder="nsn"}
+
 metric_panels:
   - id: volume
     label: Volume routed
