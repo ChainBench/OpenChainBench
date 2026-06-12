@@ -105,6 +105,8 @@ function ModalBody({
   // Ambient soundtrack muxed server-side: cut to the exact video length
   // with a 2.5s fade-out. Off by default.
   const [audio, setAudio] = useState(false);
+  // Story beats: lead-change banners during the race. Off by default.
+  const [beats, setBeats] = useState(false);
   // Default to the top 8 providers (sorted by p50). Each composition only
   // shows ~8 visible anyway (BarChartRace.VISIBLE_BARS = 8) and rendering
   // 50+ providers per frame on a 2-vCPU box pushes us past 2 minutes —
@@ -172,6 +174,7 @@ function ModalBody({
           skipIntro,
           format,
           audio,
+          beats,
           bench: filtered,
         }),
       });
@@ -330,6 +333,16 @@ function ModalBody({
                 className="accent-ink h-3.5 w-3.5"
               />
               Ambient soundtrack (fades out at the end)
+            </label>
+            <label className="mt-2 ml-4 inline-flex items-center gap-2 text-[11px] text-ink-muted cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={beats}
+                onChange={(e) => setBeats(e.target.checked)}
+                disabled={isBusy}
+                className="accent-ink h-3.5 w-3.5"
+              />
+              Story beats: lead-change callouts (beta)
             </label>
           </div>
 
