@@ -126,7 +126,11 @@ export function LedgerTable({ benchmark, activePanel, topN }: Props) {
         const v = activePanel.values[r.slug];
         return v != null && Number.isFinite(v) && v !== 0;
       }
-      return r.ms.p50 > 0 || r.ms.p90 > 0 || r.ms.p99 > 0;
+      // Prune only all-zero rows (dead latency providers emit 0s).
+      // Comparing with > 0 dropped legitimately NEGATIVE rows on signed
+      // benches: perp-funding's OKX (paid on ETH, BTC and SOL, all three
+      // slots negative) vanished from the ledger while leading the chart.
+      return r.ms.p50 !== 0 || r.ms.p90 !== 0 || r.ms.p99 !== 0;
     })
     .sort((a, b) => {
       const av = pickValue(a);
