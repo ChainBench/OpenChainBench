@@ -199,13 +199,16 @@ export function BenchmarkBody({
   const activeKey = variantKey(effectiveChain, effectiveRegion, effectiveKind);
   const aggregateBench =
     variants[variantKey(null, null, null)] ?? Object.values(variants)[0];
+  const isAllSelection =
+    (!effectiveChain || effectiveChain === "all") &&
+    (!effectiveRegion || effectiveRegion === "all") &&
+    (!effectiveKind || effectiveKind === "all");
   useEffect(() => {
     if (variantMap[activeKey] || !aggregateBench) return;
+    // The all/all/all selection IS the aggregate: derived at render time,
+    // nothing to fetch.
+    if (isAllSelection) return;
     const isAll = (v: string | null) => !v || v === "all";
-    if (isAll(effectiveChain) && isAll(effectiveRegion) && isAll(effectiveKind)) {
-      setVariantMap((m) => ({ ...m, [activeKey]: aggregateBench }));
-      return;
-    }
     const qs = new URLSearchParams();
     if (!isAll(effectiveChain)) qs.set("chain", effectiveChain!);
     if (!isAll(effectiveRegion)) qs.set("region", effectiveRegion!);
@@ -278,18 +281,13 @@ export function BenchmarkBody({
   }, [effectiveChain, effectiveRegion, effectiveKind, aggregateBench]);
 
   const benchmark = variantMap[activeKey] ?? aggregateBench;
-  if (!benchmark) return null;
   // True while the selected chain/region/kind variant is still loading:
   // the page shows the aggregate as a placeholder, which without a
   // visible signal reads as "the filter does nothing" (cold variant
-  // fetches take 5-15s+). Dim the data sections and say so.
-  const variantPending = !variantMap[activeKey];
-  const pendingCls = variantPending
-    ? " opacity-40 animate-pulse pointer-events-none"
-    : "";
-  const pendingLabel = [effectiveChain, effectiveRegion, effectiveKind]
-    .filter((v): v is string => !!v && v !== "all")
-    .join(" · ");
+  // fetches take 5-15s+). Dim the data sections and say so. The
+  // all/all/all selection renders the aggregate by definition, so it is
+  // never pending.
+  const variantPending = !variantMap[activeKey] && !isAllSelection;
 
   // L1/L2 layer counts. When both > 0 the bench mixes L1 and L2 chains
   // and we render a top-level Layer toggle that filters the entire page
@@ -297,12 +295,13 @@ export function BenchmarkBody({
   const layerCounts = useMemo(() => {
     let l1 = 0;
     let l2 = 0;
-    for (const r of benchmark.results) {
+    const results = benchmark?.results ?? [];
+    for (const r of results) {
       if (r.layer === "l1") l1++;
       else if (r.layer === "l2") l2++;
     }
-    return { all: benchmark.results.length, l1, l2 };
-  }, [benchmark.results]);
+    return { all: results.length, l1, l2 };
+  }, [benchmark]);
   const hasLayerSplit = layerCounts.l1 > 0 && layerCounts.l2 > 0;
 
   // Filter the benchmark to the active layer for the entire page. When
@@ -310,25 +309,21 @@ export function BenchmarkBody({
   // so non-layer benches keep their existing behavior. The chart, the
   // summary stats and the ledger all read from `viewBenchmark`.
   const viewBenchmark = useMemo(() => {
-    if (!hasLayerSplit) return benchmark;
+    if (!benchmark || !hasLayerSplit) return benchmark;
     return {
       ...benchmark,
       results: benchmark.results.filter((r) => r.layer === layer),
     };
   }, [benchmark, hasLayerSplit, layer]);
 
-  const isDraft = viewBenchmark.status === "draft";
-  const { fieldMin, fieldMedian, fieldMax, tailMin, tailMax, tailSpread } =
-    computeFieldStats(viewBenchmark.results);
-
   // View switcher state. Per-bench, persisted via localStorage. Default
   // mirrors the heuristic the page used before the switcher existed so
   // an anonymous user with no prior preference sees the same layout
   // they always saw.
-  const allowedViews = viewsForBenchmark(viewBenchmark);
-  const defaultView = defaultViewFor(viewBenchmark);
+  const allowedViews = viewBenchmark ? viewsForBenchmark(viewBenchmark) : [];
+  const defaultView = viewBenchmark ? defaultViewFor(viewBenchmark) : "timeseries";
   const [view, setView, viewMounted] = useViewPreference(
-    viewBenchmark.slug,
+    viewBenchmark?.slug ?? "",
     defaultView,
     allowedViews,
   );
@@ -352,7 +347,10 @@ export function BenchmarkBody({
   // doesn't declare `dimensions.region`. Keeping the affordance at the top
   // alongside Chain so both filters live in one visual block instead of
   // being split between the dimension row and the chart toolbar.
-  const chartRegions = chartOnlyRegions(benchmark);
+  const chartRegions = useMemo(
+    () => (benchmark ? chartOnlyRegions(benchmark) : []),
+    [benchmark],
+  );
   const showChartRegionRow = regionOptions.length === 0 && chartRegions.length > 1;
   const [chartRegion, setChartRegion] = useState<string>("all");
 
@@ -367,8 +365,6 @@ export function BenchmarkBody({
   // post-filter cohort, but the active value is parent-controlled.
   const [topN, setTopN] = useState<number | null>(null);
   const topNControl = useMemo(() => ({ topN, setTopN }), [topN]);
-  const activePanel =
-    benchmark.metricPanels?.find((p) => p.id === activePanelId) ?? null;
   const chartRegionOptions: ChainOption[] = useMemo(
     () => [
       { value: "all", label: "All" },
@@ -376,6 +372,20 @@ export function BenchmarkBody({
     ],
     [chartRegions],
   );
+
+  if (!benchmark || !viewBenchmark) return null;
+
+  const pendingCls = variantPending
+    ? " opacity-40 animate-pulse pointer-events-none"
+    : "";
+  const pendingLabel = [effectiveChain, effectiveRegion, effectiveKind]
+    .filter((v): v is string => !!v && v !== "all")
+    .join(" · ");
+  const isDraft = viewBenchmark.status === "draft";
+  const { fieldMin, fieldMedian, fieldMax, tailMin, tailMax, tailSpread } =
+    computeFieldStats(viewBenchmark.results);
+  const activePanel =
+    benchmark.metricPanels?.find((p) => p.id === activePanelId) ?? null;
 
   return (
     <>
