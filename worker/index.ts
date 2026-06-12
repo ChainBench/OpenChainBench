@@ -37,6 +37,7 @@ import {
   publishSnapshot,
   readMaterialized,
   storeConfigured,
+  touchSnapshot,
 } from "@/lib/materialize/store";
 import type { Benchmark, MetricPanel } from "@/types/benchmark";
 import type { Spec } from "@/lib/spec-schema";
@@ -160,6 +161,10 @@ async function materializeOne(
     // the previous snapshot simply ages (staleness surfaces it).
     if (prev) {
       console.warn(`[worker] ${spec.slug}/${sig || "all"} collapsed, keeping previous snapshot`);
+      // Keep the kept snapshot alive: refresh its safety-net TTL so a
+      // bench that stays broken does not lose its carried data when the
+      // blob would otherwise expire.
+      await touchSnapshot(spec.slug, sig).catch(() => {});
       return;
     }
     // No previous snapshot: publish the draft honestly (first boot during
@@ -209,6 +214,42 @@ async function inBatches<T>(items: T[], n: number, fn: (t: T) => Promise<void>) 
   }
 }
 
+// ─── Self-alerting ───────────────────────────────────────────────────
+// The worker is the only writer; if its writes start failing (store
+// full, creds rotated, Upstash down) the site silently falls back to
+// the live path and NOBODY notices — that exact failure ran 10 hours
+// unnoticed on 2026-06-12 (quota blowout). Ping Slack after 3
+// consecutive failed heartbeats, then hourly reminders while broken.
+let writeFailStreak = 0;
+async function slackPing(text: string): Promise<void> {
+  const webhook = process.env.SLACK_WEBHOOK_URL?.trim();
+  if (!webhook) return;
+  await fetch(webhook, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text }),
+    signal: AbortSignal.timeout(8000),
+  }).catch((e) => console.warn(`[worker] slack ping failed: ${e.message}`));
+}
+async function noteHeartbeat(ok: boolean, err?: unknown): Promise<void> {
+  if (ok) {
+    if (writeFailStreak >= 3) {
+      await slackPing("✅ OCB materialize worker: store writes recovered");
+    }
+    writeFailStreak = 0;
+    return;
+  }
+  writeFailStreak++;
+  const detail = err instanceof Error ? err.message : String(err);
+  console.warn(`[worker] heartbeat: ${detail}`);
+  // Fire on the 3rd consecutive failure, then every ~60 sweeps (~1h).
+  if (writeFailStreak === 3 || writeFailStreak % 60 === 0) {
+    await slackPing(
+      `🔴 OCB materialize worker: store writes failing for ${writeFailStreak} sweeps — site is serving the slow live fallback. Last error: ${detail.slice(0, 300)}`,
+    );
+  }
+}
+
 async function sweep(iteration: number): Promise<void> {
   const specs = await loadSpecsUncached();
   const t0 = Date.now();
@@ -221,7 +262,10 @@ async function sweep(iteration: number): Promise<void> {
     }
   });
   console.log(`[worker] tierA done in ${((Date.now() - t0) / 1000).toFixed(1)}s (${specs.length} benches)`);
-  await heartbeat().catch((e) => console.warn(`[worker] heartbeat: ${e.message}`));
+  await heartbeat().then(
+    () => noteHeartbeat(true),
+    (e) => noteHeartbeat(false, e),
+  );
 
   if (iteration % VARIANT_EVERY === 0) {
     const tB0 = Date.now();
