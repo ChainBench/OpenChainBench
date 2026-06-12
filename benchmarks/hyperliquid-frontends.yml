@@ -1232,9 +1232,9 @@ providers:
       series: hl_frontend_fees_usd_24h_v2{builder="xbit"}
 
   - slug: tuleep-trade
-    name: Tuleep.trade
+    name: tuleep.trade
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Tuleep.trade's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for tuleep.trade's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="tuleep-trade"}
       p90: hl_frontend_volume_usd_24h_v2{builder="tuleep-trade"}
@@ -1271,9 +1271,9 @@ providers:
       series: hl_frontend_fees_usd_24h_v2{builder="shax"}
 
   - slug: aura-money
-    name: Aura.money
+    name: Aura
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Aura.money's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Aura's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="aura-money"}
       p90: hl_frontend_volume_usd_24h_v2{builder="aura-money"}
@@ -1297,9 +1297,9 @@ providers:
       series: hl_frontend_fees_usd_24h_v2{builder="cro-trade"}
 
   - slug: owlyfi
-    name: Owlyfi
+    name: Owly.fi
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Owlyfi's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Owly.fi's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="owlyfi"}
       p90: hl_frontend_volume_usd_24h_v2{builder="owlyfi"}
@@ -1336,9 +1336,9 @@ providers:
       series: hl_frontend_fees_usd_24h_v2{builder="liquid8"}
 
   - slug: goodcryptox
-    name: GoodCryptoX
+    name: goodcryptoX
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for GoodCryptoX's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for goodcryptoX's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="goodcryptox"}
       p90: hl_frontend_volume_usd_24h_v2{builder="goodcryptox"}
@@ -1427,9 +1427,9 @@ providers:
       series: hl_frontend_fees_usd_24h_v2{builder="perpswld"}
 
   - slug: onchaincc
-    name: OnchainCC
+    name: Onchain.cc
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for OnchainCC's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Onchain.cc's builder address."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="onchaincc"}
       p90: hl_frontend_volume_usd_24h_v2{builder="onchaincc"}
@@ -1465,18 +1465,18 @@ providers:
       sample_size: hl_frontend_fills_total_24h_v2{builder="vergex"}
       series: hl_frontend_fees_usd_24h_v2{builder="vergex"}
 
-  - slug: nsn
-    name: NSN
+  - slug: nansen
+    name: Nansen
     tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for NSN's builder address."
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Nansen's builder address."
     queries:
-      p50: hl_frontend_fees_usd_24h_v2{builder="nsn"}
-      p90: hl_frontend_volume_usd_24h_v2{builder="nsn"}
-      p99: hl_frontend_fees_per_user_usd_v2{builder="nsn"}
-      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="nsn"}[7d])
+      p50: hl_frontend_fees_usd_24h_v2{builder="nansen"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="nansen"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="nansen"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="nansen"}[7d])
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
-      sample_size: hl_frontend_fills_total_24h_v2{builder="nsn"}
-      series: hl_frontend_fees_usd_24h_v2{builder="nsn"}
+      sample_size: hl_frontend_fills_total_24h_v2{builder="nansen"}
+      series: hl_frontend_fees_usd_24h_v2{builder="nansen"}
 
 metric_panels:
   - id: volume

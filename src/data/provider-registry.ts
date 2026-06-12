@@ -803,6 +803,131 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "FOMO is a social trading app on Telegram, iOS and Android that surfaces signals from consistently profitable Hyperliquid traders and routes perp orders via a registered builder code.",
     twitter: "@tryfomo",
   },
+  dextrabot: {
+    url: "https://dextrabot.com",
+    description:
+      "Dextrabot is a copy trading platform and Telegram bot that discovers, analyzes and auto copies top Hyperliquid perp wallets, routing orders via a registered builder code.",
+    twitter: "@dextrabot",
+  },
+  kinto: {
+    url: "https://kinto.xyz",
+    description:
+      "Kinto was a non custodial smart wallet modular exchange that routed perps trading into Hyperliquid via a registered builder code. The project announced its shutdown in September 2025; its builder address remains on chain.",
+    twitter: "@KintoXYZ",
+  },
+  hypersignals: {
+    url: "https://hypersignals.ai",
+    description:
+      "HyperSignals (formerly Nomy) is a social and copy trading platform with trader analytics built on Hyperliquid, executing perp orders via a registered builder code.",
+    twitter: "@HyperSignals_ai",
+  },
+  ccxt: {
+    url: "https://ccxt.com",
+    description:
+      "CCXT is the open source multi exchange trading library. Its Hyperliquid integration attaches the CCXT builder code to orders by default, making it one of the largest programmatic flow routers on HL.",
+    twitter: "@ccxt_official",
+  },
+  splash: {
+    url: "https://splashwallet.xyz",
+    description:
+      "Splash is a self custodial iOS wallet built for trading Hyperliquid perps from mobile, routing orders via a registered builder code.",
+    twitter: "@splashOS",
+  },
+  vooi: {
+    url: "https://vooi.io",
+    description:
+      "VOOI is a cross chain perp DEX aggregator with gasless unified balances that charges a small builder fee on orders routed into Hyperliquid.",
+    twitter: "@vooi_io",
+  },
+  hyperx: {
+    url: "https://hyperx.trade",
+    description:
+      "HyperX is a Hyperliquid copy trading and smart money analytics platform with a web dashboard and Telegram bot, executing via a registered builder code.",
+    twitter: "@hyperx_trade",
+  },
+  miracle: {
+    url: "https://miracletrade.com",
+    description:
+      "Miracle is a mobile native multi venue perps app (Hyperliquid, Extended, Nado) with unified balances and lossback on liquidations, routing HL orders via a registered builder code.",
+    twitter: "@miracletrade",
+  },
+  xbit: {
+    url: "https://xbit.com",
+    description:
+      "XBIT is a decentralized aggregated trading platform with embedded wallets whose perp orders route into Hyperliquid via a registered builder code.",
+    twitter: "@XBITDEX",
+  },
+  "tuleep-trade": {
+    url: "https://tuleep.trade",
+    description:
+      "tuleep.trade is a multi exchange trading terminal focused on news trading; its Hyperliquid orders carry a registered builder code.",
+    twitter: "@tuleep_trade",
+  },
+  "aura-money": {
+    url: "https://aura.money",
+    description:
+      "Aura is a mobile first app for trading Hyperliquid perps, spot and HIP 3 markets plus Polymarket predictions, with social groups, routing orders via a registered builder code.",
+    twitter: "@auramoney",
+  },
+  "cro-trade": {
+    url: "https://cro.trade",
+    description:
+      "cro.trade is a Cronos ecosystem trading app whose perps trading routes through Hyperliquid via a registered builder code.",
+    twitter: "@crotrade",
+  },
+  owlyfi: {
+    url: "https://owly.fi",
+    description:
+      "Owly.fi is a non custodial AI powered copy trading and asset management terminal on Hyperliquid, executing perp orders via a registered builder code.",
+    twitter: "@owlyfi",
+  },
+  topdog: {
+    url: "https://topdog.gg",
+    description:
+      "TopDog is a Discord signal bot delivering real time trade alerts from top performing Hyperliquid wallets, with execution routed via a registered builder code.",
+  },
+  goodcryptox: {
+    url: "https://goodcrypto.app",
+    description:
+      "goodcryptoX is a multi exchange DEX trading bot platform (grid, DCA, copy trading) that charges a Hyperliquid builder fee on perp trades.",
+    twitter: "@GoodCryptoApp",
+  },
+  "origami-tech": {
+    url: "https://origami.tech",
+    description:
+      "Origami Tech is a cloud trading bot terminal automating spot and perps across CEXes and Hyperliquid, including HIP 3 markets, via a registered builder code.",
+    twitter: "@origamitech_",
+  },
+  cwallet: {
+    url: "https://cwallet.com",
+    description:
+      "Cwallet is a multi chain wallet offering spot and futures trading positioned as a gateway to Hyperliquid markets, routing perp orders via a registered builder code.",
+    twitter: "@CwalletOfficial",
+  },
+  onchaincc: {
+    url: "https://onchain.cc",
+    description:
+      "Onchain.cc is a Bitso built self custodial trading terminal aggregating spot, memecoins and perps; its perpetuals execute on Hyperliquid via a registered builder code.",
+    twitter: "@Onchaincc",
+  },
+  "kucoin-web3": {
+    url: "https://www.kucoin.com/web3",
+    description:
+      "KuCoin Web3 Wallet is KuCoin's self custody wallet with native in wallet perps routed through Hyperliquid, including HIP 3 markets.",
+    twitter: "@KuCoin_Web3",
+  },
+  vergex: {
+    url: "https://vergex.trade",
+    description:
+      "VergeX is an AI trading layer built on the open source NoFx engine, running automated strategies on exchanges including Hyperliquid via a registered builder code.",
+    twitter: "@vergex_ai",
+  },
+  nansen: {
+    url: "https://www.nansen.ai",
+    description:
+      "Nansen is the onchain analytics platform; its perps trading product routes orders into Hyperliquid and earns builder fees under the NSN builder code.",
+    twitter: "@nansen_ai",
+  },
   gemwallet: {
     url: "https://gemwallet.com",
     description:
