@@ -108,13 +108,24 @@ func runStellarSSE(cursor string, lastSeen *time.Time, lastSeq *int64) (string, 
 				// those polluted p50/p90 down to 0ms even though the
 				// real SCP cadence is 5-7s. Compare event `closed_at`
 				// against now: if it's older than ~6s the event is
-				// historical and we drop it. We also reset lastSeen so
-				// the next live event doesn't measure lag against a
-				// stale pre-disconnect baseline.
+				// historical and we drop it.
+				//
+				// We DO NOT reset lastSeen here. The previous version
+				// did `*lastSeen = time.Time{}`, which combined with the
+				// `!lastSeen.IsZero()` guard below caused the first
+				// live event after every reconnect to be silently
+				// skipped. Since Horizon force-closes every ~10s and the
+				// SCP cadence is ~5-7s, we'd typically see only 1-2 live
+				// events between reconnects — losing the first one left
+				// the gauge mostly empty (Prom dashboard showed Stellar
+				// as silent). With the reset removed, the first live
+				// event after each reconnect contributes a sample using
+				// the lastSeen baseline that survived from the previous
+				// connection cycle. The 30 s sanity bound below filters
+				// the natural reconnect outlier so it doesn't skew p50.
 				closedAt, perr := time.Parse(time.RFC3339, ev.ClosedAt)
 				isLive := perr == nil && time.Since(closedAt) < 6*time.Second
 				if !isLive {
-					*lastSeen = time.Time{}
 					*lastSeq = ev.Sequence
 					continue
 				}
@@ -122,7 +133,11 @@ func runStellarSSE(cursor string, lastSeen *time.Time, lastSeq *int64) (string, 
 				now := time.Now()
 				if !lastSeen.IsZero() && *lastSeq > 0 && ev.Sequence > *lastSeq {
 					lagMs := float64(now.Sub(*lastSeen).Milliseconds())
-					if lagMs >= 0 {
+					// Real SCP cadence is 5-7 s; anything > 30 s is a
+					// reconnect artifact (we crossed a 10 s SSE close +
+					// a few seconds of replay catch-up) and should not
+					// pollute the distribution.
+					if lagMs >= 0 && lagMs < 30_000 {
 						wallClockLagGauge.WithLabelValues("stellar").Set(lagMs)
 						wallClockLagSum.WithLabelValues("stellar").Observe(lagMs)
 						wallClockSampleCtr.WithLabelValues("stellar").Inc()

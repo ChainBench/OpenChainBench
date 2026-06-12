@@ -43,7 +43,6 @@ func fetchMobula(cfg *Config) ProviderResult {
 
 	if resp.StatusCode != 200 {
 		res.Err = fmt.Sprintf("status_%d", resp.StatusCode)
-		recordDebugRaw("mobula", string(body))
 		return res
 	}
 
@@ -61,10 +60,5 @@ func fetchMobula(cfg *Config) ProviderResult {
 		})
 	}
 
-	if len(body) > 400 {
-		recordDebugRaw("mobula", string(body[:400]))
-	} else {
-		recordDebugRaw("mobula", string(body))
-	}
 	return res
 }

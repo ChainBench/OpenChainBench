@@ -16,6 +16,7 @@ import (
 // Same pattern as gas-estimation / l2-block-time.
 
 func main() {
+	installLogCapture() // capture stdout into /logs ring buffer
 	fmt.Println("=== Validator Economics Harness ===")
 	fmt.Println("OpenChainBench bench #026 — net yield = gross APR + MEV − downtime")
 	fmt.Println("Scope v1: Solana + Hyperliquid (Ethereum deferred to v2)")
