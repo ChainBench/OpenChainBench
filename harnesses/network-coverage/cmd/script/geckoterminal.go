@@ -30,7 +30,6 @@ func fetchGeckoTerminal(_ *Config) ProviderResult {
 	res := ProviderResult{Provider: "geckoterminal"}
 	allNetworks := []Network{}
 
-	var rawFirst string
 	for page := 1; page <= 10; page++ {
 		url := geckoTerminalNetworksURL + "?page=" + strconv.Itoa(page)
 		req, _ := http.NewRequest("GET", url, nil)
@@ -43,10 +42,6 @@ func fetchGeckoTerminal(_ *Config) ProviderResult {
 		}
 		body, _ := io.ReadAll(resp.Body)
 		resp.Body.Close()
-
-		if page == 1 {
-			rawFirst = string(body)
-		}
 
 		if resp.StatusCode != 200 {
 			res.Err = fmt.Sprintf("status_%d", resp.StatusCode)
@@ -78,10 +73,5 @@ func fetchGeckoTerminal(_ *Config) ProviderResult {
 	}
 
 	res.Networks = allNetworks
-	if len(rawFirst) > 400 {
-		recordDebugRaw("geckoterminal", rawFirst[:400])
-	} else {
-		recordDebugRaw("geckoterminal", rawFirst)
-	}
 	return res
 }

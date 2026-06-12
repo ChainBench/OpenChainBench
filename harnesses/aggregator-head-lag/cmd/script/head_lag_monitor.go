@@ -28,10 +28,16 @@ type HeadLagPool struct {
 // Pools to monitor - high activity pools for accurate lag measurement
 var headLagPools = []HeadLagPool{
 	{
+		// Switched 2026-05-29 to the Raydium SOL/USDC ($8.7M liq, $2.6M
+		// vol24h vs the previous Orca pool 7qbRF6Y… at $206K / $46K).
+		// This is the only Solana pool GMGN pushes per-pair events for,
+		// so all 4 providers measure the same reference pool → true
+		// apples-to-apples instead of GMGN-on-slot-heartbeat vs others-
+		// on-per-swap. Bonus: much higher event rate tightens stats.
 		Name:       "SOL/USDC Raydium",
 		Blockchain: "solana",
 		NetworkID:  1399811149,
-		Address:    "7qbRF6YsyGuLUVs6Y1q64bdVrfe4ZcUUz1JRdoVNUJnm",
+		Address:    "58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2",
 		ChainName:  "solana",
 	},
 	{
@@ -42,10 +48,17 @@ var headLagPools = []HeadLagPool{
 		ChainName:  "base",
 	},
 	{
-		Name:       "WBNB/BUSD PancakeSwap",
+		// Switched 2026-05-29 off the WBNB/BUSD pool ($104K vol24h —
+		// BUSD was deprecated by Binance in 2023 so swap events on it
+		// are too sparse for percentile stats: the bench was reporting
+		// zero BNB samples across all 3 regions). New pool is
+		// PancakeSwap V3 WBNB/USDT 0.01% with $17M liq + $100M vol24h —
+		// ~1000x event rate, the canonical BNB pair every aggregator
+		// indexes.
+		Name:       "WBNB/USDT PancakeSwap V3",
 		Blockchain: "evm:56",
 		NetworkID:  56,
-		Address:    "0x58f876857a02d6762e0101bb5c46a8c1ed44dc16",
+		Address:    "0x172fcd41e0913e95784454622d1c3724f546f849",
 		ChainName:  "bnb",
 	},
 }

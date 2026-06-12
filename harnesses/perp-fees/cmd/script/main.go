@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	installLogCapture()
+	installLogCapture() // capture stdout into /logs ring buffer
 	fmt.Println("=== Perp Fees Monitor ===")
 	fmt.Println("Bench № 007 — measures all-in opening cost on perp venues from public APIs only.")
 	fmt.Println()

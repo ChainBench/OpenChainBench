@@ -99,6 +99,9 @@ function ModalBody({
   // bump via the slider when they want a longer race.
   const [raceSeconds, setRaceSeconds] = useState(12);
   const [skipIntro, setSkipIntro] = useState(false);
+  // "short" renders natively at 1080x1920 (TikTok / Reels / Shorts); the
+  // renderer overrides the Remotion canvas, no crop or scale involved.
+  const [format, setFormat] = useState<"landscape" | "short">("landscape");
   // Default to the top 8 providers (sorted by p50). Each composition only
   // shows ~8 visible anyway (BarChartRace.VISIBLE_BARS = 8) and rendering
   // 50+ providers per frame on a 2-vCPU box pushes us past 2 minutes —
@@ -164,6 +167,7 @@ function ModalBody({
           viewId: view,
           raceSeconds,
           skipIntro,
+          format,
           bench: filtered,
         }),
       });
@@ -256,6 +260,27 @@ function ModalBody({
                   {VIEW_LABEL[id]}
                 </SegmentButton>
               ))}
+            </Segment>
+          </div>
+
+          {/* Format */}
+          <div>
+            <Label>Format</Label>
+            <Segment>
+              <SegmentButton
+                active={format === "landscape"}
+                onClick={() => setFormat("landscape")}
+                disabled={isBusy}
+              >
+                Landscape 16:9
+              </SegmentButton>
+              <SegmentButton
+                active={format === "short"}
+                onClick={() => setFormat("short")}
+                disabled={isBusy}
+              >
+                Short 9:16
+              </SegmentButton>
             </Segment>
           </div>
 
@@ -382,7 +407,11 @@ function ModalBody({
                 muted
                 playsInline
                 controls
-                className="w-full rounded-md bg-black aspect-video"
+                className={
+                  format === "short"
+                    ? "rounded-md bg-black object-contain aspect-[9/16] max-h-[60vh] mx-auto"
+                    : "w-full rounded-md bg-black object-contain aspect-video"
+                }
               />
               <div className="flex flex-wrap gap-2">
                 <a

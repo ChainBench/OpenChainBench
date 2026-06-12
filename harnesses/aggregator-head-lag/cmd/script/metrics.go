@@ -411,11 +411,11 @@ func StartMetricsServer(addr string) error {
 	// Prometheus metrics endpoint
 	mux.Handle("/metrics", promhttp.Handler())
 
+	mux.Handle("/logs", logsHandler())
 	// Admin cleanup endpoint
 	setupCleanupEndpoint(mux)
 
-	// Debug: tail of in-memory log ring
-	setupLogsEndpoint(mux)
+	// Debug: tail of in-memory log ring (shared loghub package)
 
 	return http.ListenAndServe(addr, mux)
 }

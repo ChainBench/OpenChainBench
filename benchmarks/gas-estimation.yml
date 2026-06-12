@@ -4,8 +4,8 @@ slug: gas-estimation
 number: "013"
 title: Most accurate gas oracle, live gap vs realized priority fee
 seo_title: "Most accurate gas oracle 2026: Blocknative, Etherscan, Owlracle"
-seo_description: "Most accurate gas oracle ranked live on Ethereum and Polygon. Gwei gap between predicted p50 and realized priority fee in the next mined block. p50 over 24h."
-subtitle: Absolute gap in gwei between each oracle's predicted priority-fee tier and the realized percentile in the next mined block, measured per chain.
+seo_description: "Most accurate gas oracle ranked live on Ethereum and Polygon. Gwei gap between predicted and realized priority fee in the next mined block. Ranked on the p99 gap over 24h."
+subtitle: Absolute gap in gwei between each oracle's predicted priority-fee tier and the realized percentile in the next mined block, measured per chain. Ranked on the p99 gap, the worst 1% of blocks, because that is where gas spikes hurt integrations.
 category: RPCs
 status: live
 metric: Gap vs realized (gwei)
@@ -13,7 +13,7 @@ unit: count
 higher_is_better: false
 
 disclaimer: |
-  Lower gap is NOT the same as "best oracle". Inclusion-confidence oracles (Blocknative, Etherscan) deliberately over-predict to guarantee next-block inclusion and show larger gaps here by design. Percentile-tracking oracles (PublicNode feeHistory, Owlracle) mirror the realized rewards distribution and hug the realized number by construction. Read this column as "distance from realized percentile", not "recommended for production".
+  Lower gap is NOT the same as "best oracle". Inclusion-confidence oracles (Blocknative, Etherscan) over-predict by design to guarantee inclusion; percentile trackers (PublicNode, Owlracle) hug the realized number by construction. The table therefore ranks on the p99 gap (typical p50 gaps are micro-gwei noise) and pairs it with the covered column: share of time the prediction sat at or above the realized p50, the inclusion-side risk a gap alone cannot show.
 
 seo_intro: |
   This benchmark answers the question wallets, swap routers and
@@ -24,16 +24,21 @@ seo_intro: |
   We normalize each oracle's tiers onto a unified p25 / p50 / p75 /
   p90 / p99 scheme, take the predicted priority fee in gwei, then
   compare it against the realized percentile computed directly from
-  the actual transactions in the next mined block. The absolute
-  error (|predicted, realized|, in gwei) is the headline. Coverage.
+  the actual transactions in the next mined block. The headline is
+  the p99 of the absolute error (|predicted, realized|, in gwei)
+  over 24h, the worst 1% of blocks, because typical-minute errors
+  are micro-gwei noise while gas spikes are where predictions
+  actually diverge. A covered-rate column shows the share of time
+  each prediction sat at or above the realized p50 (the
+  inclusion-side risk an absolute gap cannot show). Coverage.
   Ethereum mainnet (Blocknative + PublicNode feeHistory + Owlracle +
   Etherscan v2) and Polygon (same four). Use the chain tab above to
   slice the leaderboard. Avalanche C-Chain was dropped because its
   auto-tuning fee market drives the priority fee to ~0 by design,
   which collapses prediction-error to ~0 across all oracles and makes
   the bench non-informative. What this bench does NOT capture. (a)
-  inclusion latency (an oracle that under-predicts by 0.05 gwei
-  looks "accurate" but the user's tx waits one extra block); (b)
+  measured inclusion latency (the covered-rate column is a proxy
+  for under-bidding risk, not an observed wait time); (b)
   over-pay cost in USD (depends on gas_used and ETH price); (c)
   fundamental oracle reliability outside the priority-fee dimension.
   Read this number as "how close to the realized percentile, in
@@ -74,23 +79,29 @@ methodology:
   - "Realized base fee. Recorded for completeness as `gas_realized_base_gwei{chain}` and per-oracle baseFee error as `gas_error_base_gwei{oracle, chain}`. Not the ranking signal since every EIP-1559 oracle inherits this from `eth_feeHistory` and converges."
   - "Pending buffer. Per (oracle, chain) in-memory map of predictions waiting on a realized block. TTL is ~25 blocks (~5 minutes on Ethereum, ~50 seconds on Polygon due to faster blocks). Beyond that, predictions are dropped as no-longer-informative. Buffer growth surfaces via `gas_pending_buffer_size{oracle, chain}`."
   - "Polling result classification. `ok`, `http_err`, `parse_err`, `throttled` (HTTP 429 or oracle-specific quota message), `timeout`. Counter `gas_oracle_call_total{oracle, result, chain}` powers the reliability column."
+  - "Ranking metric. The table ranks on the p99 of the absolute gap over 24h, not the p50. At current fee levels the typical-minute gaps are fractions of a micro-gwei apart across oracles (ranking noise); the p99 captures behaviour during the volatile minutes where a wrong prediction either overpays or misses the block. The typical p50 and p90 gaps stay visible as secondary columns."
+  - "Covered rate. Share of time (24h) each oracle's posted p50-tier prediction was at or above the realized p50 priority fee, recorded as `ocb:gas_p50_covered:pct_24h` via a recording rule. Same-instant gauge comparison (current prediction vs latest realized block), a proxy pending a harness-side matched counter. High = errs on the side of inclusion; low = under-bids vs the block's realized median."
   - "Excluded by design. (a) BNB Chain (not EIP-1559). (b) L2 OP Stack chains (Optimism, Base, Arbitrum), priority fee ≈ 0 there because sequencer is centralised, the relevant cost is L1 data fee which is a different metric and belongs in a separate bench. (c) Rough median oracles that publish only a single number (no tier breakdown). (d) Solana, different fee model entirely (lamports per CU, MEV via Jito), separate bench needed."
 
 findings:
-  - "{{best_name}} currently leads at {{best_p50}} (absolute error in gwei, p50, 24 h) on the active chain tab, across {{count}} measured oracles. The number is the typical absolute gap between the oracle's predicted p50 priority fee and the realized p50 priority fee in the next mined block."
-  - "{{name:blocknative}} returns {{p50:blocknative}}. Blocknative publishes a probability-of-inclusion model per tier (70 / 80 / 90 / 95 / 99% confidence) which we map onto the unified p25 / p50 / p75 / p90 / p99 scheme; the same parser works for every chain via the `?chainid=<N>` query parameter."
-  - "{{name:publicnode-feehistory}} returns {{p50:publicnode-feehistory}}. PublicNode's `eth_feeHistory` predictor is a thin wrapper over the EIP-1559 spec's reward percentiles, so it tends to agree closely with the realized percentile by construction. the gap is mostly the difference between the rolling lookback window and the next-block reality."
-  - "{{name:owlracle}} returns {{p50:owlracle}}. Owlracle aggregates several upstream oracles into a recommendation, which compresses tail risk but adds polling latency at the 60s cadence required by the free quota."
-  - "{{name:etherscan}} returns {{p50:etherscan}}. The most-visited gas tracker on the web; its tiering (`SafeGasPrice` / `ProposeGasPrice` / `FastGasPrice`) was originally designed for the pre-EIP-1559 single-price world. Audited on Ethereum + Polygon, both supported by Etherscan v2's free tier."
-  - "{{worst_name}} trails at {{worst_p50}} (gwei, p50, 24 h) on the active tier. The gap between leader and laggard is small on quiet blocks and balloons on volatile minutes. the p99 column is the integration-grade number for products that cannot afford to silently overpay or under-bid during gas spikes."
+  - "{{best_name}} currently leads at {{best_p50}} (absolute error in gwei, p99, 24 h) on the active chain tab, across {{count}} measured oracles. The ranking uses the p99 gap, the worst 1% of blocks, because typical-minute gaps sit within fractions of a micro-gwei of each other (economically indistinguishable noise) while gas spikes are where a wrong prediction actually costs money."
+  - "{{name:blocknative}} shows a p99 gap of {{p50:blocknative}}. Blocknative publishes a probability-of-inclusion model per tier (70 / 80 / 90 / 95 / 99% confidence) which we map onto the unified p25 / p50 / p75 / p90 / p99 scheme; the same parser works for every chain via the `?chainid=<N>` query parameter."
+  - "{{name:publicnode-feehistory}} shows a p99 gap of {{p50:publicnode-feehistory}}. PublicNode's `eth_feeHistory` predictor is a thin wrapper over the EIP-1559 spec's reward percentiles, so it tends to agree closely with the realized percentile by construction. the gap is mostly the difference between the rolling lookback window and the next-block reality."
+  - "{{name:owlracle}} shows a p99 gap of {{p50:owlracle}}. Owlracle aggregates several upstream oracles into a recommendation, which compresses tail risk but adds polling latency at the 60s cadence required by the free quota."
+  - "{{name:etherscan}} shows a p99 gap of {{p50:etherscan}}. The most-visited gas tracker on the web; its tiering (`SafeGasPrice` / `ProposeGasPrice` / `FastGasPrice`) was originally designed for the pre-EIP-1559 single-price world. Audited on Ethereum + Polygon, both supported by Etherscan v2's free tier."
+  - "{{worst_name}} trails at {{worst_p50}} (gwei, p99, 24 h). Absolute gap alone cannot separate over-prediction (overpay, harmless) from under-prediction (the tx misses its block); the covered column closes that blind spot by showing the share of time each oracle's prediction sat at or above the realized p50."
 
 faq:
   - q: "What does this benchmark actually measure?"
-    a: "The absolute difference, in gwei, between each gas oracle's predicted p50 priority fee and the realized p50 priority fee in the next mined block. Lower error = closer prediction. {{best_name}} currently leads the active chain tab at {{best_p50}} gwei. What it does NOT measure. inclusion latency (an oracle that under-predicts looks 'accurate' but the user's tx waits longer), USD over-pay cost (depends on gas_used × ETH price), or fundamental oracle reliability beyond priority-fee accuracy."
+    a: "The absolute difference, in gwei, between each gas oracle's predicted p50 priority fee and the realized p50 priority fee in the next mined block, ranked on the p99 of that gap over 24h (the worst 1% of blocks, where gas spikes actually cost money). {{best_name}} currently leads the active chain tab at {{best_p50}} gwei. The covered column adds the inclusion-side view: the share of time the prediction sat at or above the realized p50. What it does NOT measure. USD over-pay cost (depends on gas_used × ETH price) or fundamental oracle reliability beyond priority-fee accuracy."
+  - q: "Why rank on the p99 gap instead of the typical p50 gap?"
+    a: "Because at current fee levels the p50 gaps are fractions of a micro-gwei apart across oracles, on a 100k-gas transaction a 0.001 gwei error is about a thousandth of a cent, so a p50 ranking orders economically indistinguishable noise. The p99 gap captures the volatile minutes (mempool spikes, NFT mints, MEV bursts) where predictions genuinely diverge and a wrong number either overpays or misses the block. The typical p50 and p90 gaps remain visible as secondary columns."
+  - q: "What is the covered rate column?"
+    a: "The share of time over 24h that the oracle's posted p50-tier prediction was at or above the realized p50 priority fee of the latest mined block. Absolute gap treats over-prediction and under-prediction the same, but they are not symmetric for users: over-predicting means slightly overpaying, under-predicting means a transaction paying exactly the predicted fee would have ranked below the block's median and risks waiting. Inclusion-confidence oracles (Blocknative, Etherscan) should score high here by design; percentile trackers sit near 50% by construction. Read gap and covered together: low p99 gap + high covered is the sweet spot."
   - q: "Why these specific chains (Ethereum, Polygon)?"
     a: "Both are EIP-1559 with a proper dynamic base fee, which makes 'priority-fee prediction error' an apples-to-apples comparable metric across them. Avalanche C-Chain was dropped because its auto-tuning fee market collapses the priority fee to ~0 by design, which makes the prediction-error metric uniformly ~0 across all oracles and non-informative. BNB Chain is excluded because it isn't EIP-1559 (effective fee = gasPrice only, priority is structural noise). Optimism / Base / Arbitrum and other L2 OP Stack rollups are excluded because their priority fee is ~0 (centralised sequencer, no MEV) and the relevant cost is L1 data fee, a different metric that belongs in a separate bench. Solana uses lamports per CU with Jito MEV, different fee model entirely."
   - q: "Which oracle should I pick for my wallet?"
-    a: "Read both p50 (typical minute) AND p99 (worst 1% of minutes) for the chain your product runs on. A low p50 means the oracle is usually accurate; a low p99 means it doesn't blow out during gas spikes. {{best_name}} currently leads the active tab at {{best_p50}} gwei but the right oracle for your integration depends on whether you optimise for typical or tail behaviour, whether you can tolerate over-pay (then prefer a slightly higher-tier prediction), and whether the oracle's free quota fits your call volume. The bench gives you the live numbers. it cannot tell you which trade-off your product wants."
+    a: "Read the p99 gap (does it blow out during spikes?) together with the covered rate (does it err on the side of inclusion or under-bid?) for the chain your product runs on. {{best_name}} currently leads the active tab at {{best_p50}} gwei (p99) but the right oracle depends on whether you can tolerate over-pay (then prefer high covered), whether you optimise for tail behaviour, and whether the oracle's free quota fits your call volume. The bench gives you the live numbers. it cannot tell you which trade-off your product wants."
   - q: "What about gas prediction on Optimism / Base / Arbitrum?"
     a: "L2 OP Stack chains have priority fee ≈ 0 because the sequencer is centralised (no MEV competition, no public mempool). The actually meaningful cost on an L2 is the L1 data fee, what the sequencer pays Ethereum mainnet to post the batch, which is a different prediction problem. We're considering a separate `l2-data-fee-prediction` bench for that. Including L2s in this bench would silently produce flat ~0 numbers that pollute the comparison."
   - q: "How is gas prediction error measured here, technically?"
@@ -134,15 +145,34 @@ dimensions:
 # is deferred until the spec schema gains a generic `dimensions.tier`
 # slot, the current schema is restricted to `chain` and `region`.
 
+# Slot note: the p50 SLOT carries the p99-gap query because the ledger
+# sorts, draws bars and computes badges off slot p50. ledger_columns
+# below relabels every column honestly. The p99 slot carries the
+# typical (median) gap, the p90 slot keeps the p90 gap.
+ledger_columns:
+  - { label: "Gap p99 (24h)", slot: p50, unit: count }
+  - { label: "Gap p90", slot: p90, unit: count }
+  - { label: "Gap p50 (typical)", slot: p99, unit: count }
+  - { label: "Covered p50", panel: covered_rate, unit: pct }
+
+metric_panels:
+  - id: covered_rate
+    label: Realized p50 covered
+    description: Share of time (24h) the oracle's posted p50-tier prediction was at or above the realized p50 priority fee. High = errs on the side of inclusion; low = under-bids.
+    metric: ocb:gas_p50_covered:pct_24h
+    label_key: oracle
+    unit: pct
+    higher_is_better: true
+
 providers:
   - slug: blocknative
     name: Blocknative
     tag: Probability-of-inclusion model, EIP-1559 tiered
-    formula: "Median over 24h of |Blocknative's predicted p50-tier priority fee − realized p50 priority fee| in gwei, computed per next-mined block on the active chain."
+    formula: "p99 over 24h of |Blocknative's predicted p50-tier priority fee − realized p50 priority fee| in gwei, computed per next-mined block on the active chain."
     queries:
-      p50: quantile_over_time(0.50, gas_error_priority_gwei{oracle="blocknative", tier="p50"}[24h])
+      p50: quantile_over_time(0.99, gas_error_priority_gwei{oracle="blocknative", tier="p50"}[24h])
       p90: quantile_over_time(0.90, gas_error_priority_gwei{oracle="blocknative", tier="p50"}[24h])
-      p99: quantile_over_time(0.99, gas_error_priority_gwei{oracle="blocknative", tier="p50"}[24h])
+      p99: quantile_over_time(0.50, gas_error_priority_gwei{oracle="blocknative", tier="p50"}[24h])
       mean: avg_over_time(gas_error_priority_gwei{oracle="blocknative", tier="p50"}[24h])
       success: sum(rate(gas_oracle_call_total{oracle="blocknative", result="ok"}[24h])) / sum(rate(gas_oracle_call_total{oracle="blocknative"}[24h]))
       sample_size: sum(increase(gas_oracle_call_total{oracle="blocknative"}[24h]))
@@ -151,11 +181,11 @@ providers:
   - slug: publicnode-feehistory
     name: PublicNode
     tag: Thin wrapper over EIP-1559 reward percentiles
-    formula: "Median over 24h of |PublicNode eth_feeHistory p50 reward − realized p50 priority fee| in gwei, computed per next-mined block on the active chain."
+    formula: "p99 over 24h of |PublicNode eth_feeHistory p50 reward − realized p50 priority fee| in gwei, computed per next-mined block on the active chain."
     queries:
-      p50: quantile_over_time(0.50, gas_error_priority_gwei{oracle="publicnode-feehistory", tier="p50"}[24h])
+      p50: quantile_over_time(0.99, gas_error_priority_gwei{oracle="publicnode-feehistory", tier="p50"}[24h])
       p90: quantile_over_time(0.90, gas_error_priority_gwei{oracle="publicnode-feehistory", tier="p50"}[24h])
-      p99: quantile_over_time(0.99, gas_error_priority_gwei{oracle="publicnode-feehistory", tier="p50"}[24h])
+      p99: quantile_over_time(0.50, gas_error_priority_gwei{oracle="publicnode-feehistory", tier="p50"}[24h])
       mean: avg_over_time(gas_error_priority_gwei{oracle="publicnode-feehistory", tier="p50"}[24h])
       success: sum(rate(gas_oracle_call_total{oracle="publicnode-feehistory", result="ok"}[24h])) / sum(rate(gas_oracle_call_total{oracle="publicnode-feehistory"}[24h]))
       sample_size: sum(increase(gas_oracle_call_total{oracle="publicnode-feehistory"}[24h]))
@@ -164,11 +194,11 @@ providers:
   - slug: owlracle
     name: Owlracle
     tag: Multi-oracle aggregator, free tier 100/h
-    formula: "Median over 24h of |Owlracle's aggregated p50-tier prediction − realized p50 priority fee| in gwei, polled every 60s and matched to the next-mined block on the active chain."
+    formula: "p99 over 24h of |Owlracle's aggregated p50-tier prediction − realized p50 priority fee| in gwei, polled every 60s and matched to the next-mined block on the active chain."
     queries:
-      p50: quantile_over_time(0.50, gas_error_priority_gwei{oracle="owlracle", tier="p50"}[24h])
+      p50: quantile_over_time(0.99, gas_error_priority_gwei{oracle="owlracle", tier="p50"}[24h])
       p90: quantile_over_time(0.90, gas_error_priority_gwei{oracle="owlracle", tier="p50"}[24h])
-      p99: quantile_over_time(0.99, gas_error_priority_gwei{oracle="owlracle", tier="p50"}[24h])
+      p99: quantile_over_time(0.50, gas_error_priority_gwei{oracle="owlracle", tier="p50"}[24h])
       mean: avg_over_time(gas_error_priority_gwei{oracle="owlracle", tier="p50"}[24h])
       success: sum(rate(gas_oracle_call_total{oracle="owlracle", result="ok"}[24h])) / sum(rate(gas_oracle_call_total{oracle="owlracle"}[24h]))
       sample_size: sum(increase(gas_oracle_call_total{oracle="owlracle"}[24h]))
@@ -177,11 +207,11 @@ providers:
   - slug: etherscan
     name: Etherscan
     tag: Most-visited gas tracker, Ethereum + Polygon
-    formula: "Median over 24h of |Etherscan's ProposeGasPrice mapped to p50-tier − realized p50 priority fee| in gwei, polled every 15s and matched to the next-mined block on the active chain."
+    formula: "p99 over 24h of |Etherscan's ProposeGasPrice mapped to p50-tier − realized p50 priority fee| in gwei, polled every 15s and matched to the next-mined block on the active chain."
     queries:
-      p50: quantile_over_time(0.50, gas_error_priority_gwei{oracle="etherscan", tier="p50"}[24h])
+      p50: quantile_over_time(0.99, gas_error_priority_gwei{oracle="etherscan", tier="p50"}[24h])
       p90: quantile_over_time(0.90, gas_error_priority_gwei{oracle="etherscan", tier="p50"}[24h])
-      p99: quantile_over_time(0.99, gas_error_priority_gwei{oracle="etherscan", tier="p50"}[24h])
+      p99: quantile_over_time(0.50, gas_error_priority_gwei{oracle="etherscan", tier="p50"}[24h])
       mean: avg_over_time(gas_error_priority_gwei{oracle="etherscan", tier="p50"}[24h])
       success: sum(rate(gas_oracle_call_total{oracle="etherscan", result="ok"}[24h])) / sum(rate(gas_oracle_call_total{oracle="etherscan"}[24h]))
       sample_size: sum(increase(gas_oracle_call_total{oracle="etherscan"}[24h]))

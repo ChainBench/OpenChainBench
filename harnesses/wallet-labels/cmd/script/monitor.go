@@ -2,14 +2,16 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 )
 
 // Wallet sample queued for label lookup.
 type sample struct {
-	address     string
-	chain       string
+	address      string
+	chain        string
+	kind         string // "contract" | "eoa" — carried into Prom labels so the bench can split by anchor kind
 	discoveredAt time.Time
 }
 
@@ -94,7 +96,7 @@ func lookupAll(ctx context.Context, providers []Provider, s sample) {
 	any := false
 	compact := ""
 	for r := range results {
-		recordCheck(r.Provider, r.Chain, r.HasLabel, float64(r.LatencyMs), r.Err)
+		recordCheck(r.Provider, r.Chain, s.kind, r.HasLabel, float64(r.LatencyMs), r.Err)
 		recordDebug(debugEntry{
 			Provider: r.Provider, Chain: r.Chain, Address: r.Address,
 			HasLabel: r.HasLabel, LatencyMs: r.LatencyMs,
@@ -108,7 +110,7 @@ func lookupAll(ctx context.Context, providers []Provider, s sample) {
 		compact += " " + abbrev(r.Provider) + ":" + mark
 	}
 	if any {
-		appendLog("[WL] %s/%s |%s", trim(s.address, 14), s.chain, compact)
+		fmt.Printf("[WL] %s/%s |%s\n", trim(s.address, 14), s.chain, compact)
 	}
 }
 

@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"net/http"
+	"os"
 	"sort"
 )
 
@@ -11,7 +12,16 @@ type debugResp struct {
 }
 
 func setupDebugEndpoint(mux *http.ServeMux) {
+	expectedToken := os.Getenv("LOGS_TOKEN")
 	mux.HandleFunc("/debug/perp", func(w http.ResponseWriter, r *http.Request) {
+		if expectedToken == "" {
+			http.NotFound(w, r)
+			return
+		}
+		if r.Header.Get("X-Logs-Token") != expectedToken {
+			http.Error(w, "forbidden", http.StatusForbidden)
+			return
+		}
 		debugMu.Lock()
 		out := make([]PerpSample, 0, len(debugSnapshots))
 		for _, s := range debugSnapshots {

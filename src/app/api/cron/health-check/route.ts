@@ -2,6 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { getBenchmarkSlugs } from "@/data/benchmarks";
 import { getSpecs, loadAllBenchmarks } from "@/lib/spec";
+import { readHeartbeat, storeConfigured } from "@/lib/materialize/store";
 import { extractMetricName, Prometheus } from "@/lib/prometheus";
 
 export const runtime = "nodejs";
@@ -214,6 +215,37 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // Materialization freshness watchdog. The worker SETs a heartbeat key
+  // after every tier-A sweep (60s cadence); silence means the worker is
+  // dead or its writes are failing, and the site is quietly serving the
+  // slow live fallback. Alert when stale > 5 min; the age windowing
+  // (first detection + hourly reminders) avoids a message every 5 min
+  // for the whole outage. Complements the worker's own write-failure
+  // pings, which cannot fire when the worker process itself is dead.
+  let matHeartbeatAgeSec: number | null = null;
+  if (storeConfigured()) {
+    try {
+      const hb = await readHeartbeat();
+      matHeartbeatAgeSec = hb ? Math.floor(Date.now() / 1000 - hb) : null;
+      const age = matHeartbeatAgeSec;
+      const stale = age === null || age > 300;
+      const firstDetection = age !== null && age <= 1200;
+      const hourlyReminder = age !== null && age % 3600 < 300;
+      if (webhook && stale && (age === null || firstDetection || hourlyReminder)) {
+        const ageTxt = age === null ? "no heartbeat key at all" : `${Math.round(age / 60)} min old`;
+        await fetch(webhook, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            text: `🔴 OCB materialize worker heartbeat is stale (${ageTxt}) — pages are on the slow live fallback. Check the Railway service ocb-materialize-worker.`,
+          }),
+        }).catch((err) => console.error("slack heartbeat alert failed:", err));
+      }
+    } catch (err) {
+      console.error("materialize heartbeat check failed:", err);
+    }
+  }
+
   // Pre-warm the per-bench unstable_cache + KV snapshot layer. This
   // single call is what spares an unlucky cold-start user a draft render
   // when Prom is slow: it keeps each bench's runtime-cache entry fresh
@@ -233,6 +265,7 @@ export async function GET(req: NextRequest) {
     checked: liveSpecs.length,
     transitions: transitions.length,
     sent: sent.length,
+    matHeartbeatAgeSec,
     dryRun: !webhook,
     transitionsList: transitions,
     prewarm: { count: prewarmCount, err: prewarmErr },
