@@ -8,6 +8,7 @@ import { LedgerTable } from "@/components/ledger-table";
 import { CountLeaderboard } from "@/components/count-leaderboard";
 import { fmtUnit, unitSuffix, fmtValue } from "@/lib/format";
 import { computeFieldStats } from "@/lib/stats";
+import { getBenchCreatedAt } from "@/lib/seo/bench-dates";
 import { capDescription } from "@/lib/seo-text";
 import { SectionLabel, SummaryStat } from "@/components/summary-stat";
 import { SITE } from "@/data/site";
@@ -121,6 +122,7 @@ export default async function AlternativePage({
         publisher: { "@id": `${SITE.url}/#org` },
         isAccessibleForFree: true,
         license: "https://creativecommons.org/licenses/by/4.0/",
+        datePublished: getBenchCreatedAt(bench.slug).toISOString(),
         dateModified: bench.lastRunAt,
         variableMeasured: bench.metric,
         isBasedOn: benchUrl,
@@ -133,6 +135,7 @@ export default async function AlternativePage({
         url,
         mainEntityOfPage: url,
         articleBody: alt.intro,
+        datePublished: getBenchCreatedAt(bench.slug).toISOString(),
         dateModified: bench.lastRunAt,
         author: { "@id": `${SITE.url}/#org` },
         publisher: { "@id": `${SITE.url}/#org` },
