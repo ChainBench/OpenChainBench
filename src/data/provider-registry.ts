@@ -143,6 +143,30 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "The largest crypto prediction market, settled on Polygon via UMA optimistic oracle. CLOB-style order book hosted on the Polymarket gateway with sub-second publish latency for live odds.",
     twitter: "@Polymarket",
   },
+  kalshi: {
+    url: "https://kalshi.com",
+    description:
+      "CFTC-regulated US prediction market exchange. REST trade API (trade-api/v2) with documented per-tier rate limits; the market data WebSocket requires authentication.",
+    twitter: "@Kalshi",
+  },
+  limitless: {
+    url: "https://limitless.exchange",
+    description:
+      "Prediction market on Base mixing CLOB and AMM markets, from 5-minute crypto markets to long-dated events. Public REST API, rate limits undocumented.",
+    twitter: "@trylimitless",
+  },
+  manifold: {
+    url: "https://manifold.markets",
+    description:
+      "Play-money prediction market with AMM-based binary and multiple-choice markets. Documented public API at 500 requests per minute per IP, bots explicitly welcome.",
+    twitter: "@ManifoldMarkets",
+  },
+  myriad: {
+    url: "https://myriad.markets",
+    description:
+      "AMM prediction market with a keyless public REST API budgeted at 30 requests per 10 seconds. No order book endpoint and no public WebSocket.",
+    twitter: "@MyriadMarkets",
+  },
 
   // ─── Solana transaction landing services ──────────────────────
   jito: {
