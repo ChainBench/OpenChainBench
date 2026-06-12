@@ -262,6 +262,17 @@ export const loadBenchmark = cache(async function loadBenchmark(
 ): Promise<Benchmark | undefined> {
   const sig = filterSig(options);
   if (!sig) {
+    // Per-slug read first: rebuilding the all-benchmarks aggregate on
+    // cache expiry pulls EVERY bench's snapshot (~28 store blobs, 5-7s
+    // measured), and the callers here (variant API, OG images, per-chain
+    // pages) need only this one bench. The aggregate list stays as
+    // fallback for the draft-placeholder path.
+    try {
+      const one = await loadBenchmarkUnfilteredCached(slug);
+      if (one) return one;
+    } catch {
+      // live spec collapsed with no cached value — placeholder below
+    }
     const all = await loadAllBenchmarks();
     return all.find((b) => b.slug === slug);
   }
