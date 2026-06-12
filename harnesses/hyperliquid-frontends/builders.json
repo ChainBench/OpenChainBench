@@ -600,7 +600,7 @@
   },
   {
     "slug": "tuleep-trade",
-    "name": "Tuleep.trade",
+    "name": "tuleep.trade",
     "address": "0x00000000617c4307d352e8c1720a9f29d01c3d62",
     "valid_from": "2025-05-28",
     "notes": "Source: HyperTracker public builder registry (refCode TULEEPTRADE, joined 2025-05-28). Batch coverage audit 2026-06-12 against local node fills."
@@ -621,7 +621,7 @@
   },
   {
     "slug": "aura-money",
-    "name": "Aura.money",
+    "name": "Aura",
     "address": "0xee41f05496bc30dbd29c96bc31283c7e9f062192",
     "valid_from": "2025-07-09",
     "notes": "Source: HyperTracker public builder registry (refCode AURADOTMONEY, joined 2025-07-09). Batch coverage audit 2026-06-12 against local node fills."
@@ -635,7 +635,7 @@
   },
   {
     "slug": "owlyfi",
-    "name": "Owlyfi",
+    "name": "Owly.fi",
     "address": "0x2e2e7c7696134f740aea7242a55b55d5cf769fab",
     "valid_from": "2025-12-17",
     "notes": "Source: HyperTracker public builder registry (refCode OWLYFI, joined 2025-12-17). Batch coverage audit 2026-06-12 against local node fills."
@@ -656,7 +656,7 @@
   },
   {
     "slug": "goodcryptox",
-    "name": "GoodCryptoX",
+    "name": "goodcryptoX",
     "address": "0xff09853a49dde85a8e7eab58abf94018fbe76116",
     "valid_from": "2025-10-15",
     "notes": "Source: HyperTracker public builder registry (refCode GOODCRYPTOX, joined 2025-10-15). Batch coverage audit 2026-06-12 against local node fills."
@@ -705,7 +705,7 @@
   },
   {
     "slug": "onchaincc",
-    "name": "OnchainCC",
+    "name": "Onchain.cc",
     "address": "0x64c06812904d342367ad155d7a8f3b7c7fb27f5f",
     "valid_from": "2026-03-13",
     "notes": "Source: HyperTracker public builder registry (refCode ONCHAINCC, joined 2026-03-13). Batch coverage audit 2026-06-12 against local node fills."
@@ -725,10 +725,10 @@
     "notes": "Source: HyperTracker public builder registry (refCode VergeX, joined 2025-11-12). Batch coverage audit 2026-06-12 against local node fills."
   },
   {
-    "slug": "nsn",
-    "name": "NSN",
+    "slug": "nansen",
+    "name": "Nansen",
     "address": "0x93053f1e7a5efeda532fe69cbbe43cbec3a0f13f",
     "valid_from": "2026-05-06",
-    "notes": "Source: HyperTracker public builder registry (refCode NSN, joined 2026-05-06). Batch coverage audit 2026-06-12 against local node fills."
+    "notes": "Nansen perps (refCode NSN on HyperTracker; nansen-perps in DefiLlama factory/hyperliquid.ts, start 2026-05-04). Identified during 2026-06-12 metadata audit."
   }
 ]
