@@ -45,7 +45,10 @@ async function redis(
     signal: AbortSignal.timeout(timeoutMs),
   });
   if (!res.ok) {
-    throw new Error(`materialize store: redis http ${res.status}`);
+    const detail = await res.text().catch(() => "");
+    throw new Error(
+      `materialize store: redis http ${res.status}: ${detail.slice(0, 200)}`,
+    );
   }
   const body = (await res.json()) as { result?: unknown; error?: string };
   if (body.error) throw new Error(`materialize store: ${body.error}`);
