@@ -6,6 +6,8 @@ import { ArrowLeft, ArrowUpRight, ChevronDown } from "lucide-react";
 import { getBenchmark, getBenchmarks } from "@/data/benchmarks";
 import { Pill } from "@/components/pill";
 import { BenchmarkBody } from "@/components/benchmark-body";
+import { BenchmarkBodySkeleton } from "@/components/benchmark-body-skeleton";
+import { Breadcrumb } from "@/components/breadcrumb";
 import { ChainHeadingsSummary } from "@/components/chain-headings-summary";
 import { CitationBar } from "@/components/citation-bar";
 import { LiveIndicator } from "@/components/live-indicator";
@@ -16,7 +18,7 @@ import { CATEGORY_COLOR } from "@/lib/category-colors";
 import { headlineSentence } from "@/lib/citation";
 import { capDescription } from "@/lib/seo-text";
 import { SITE } from "@/data/site";
-import { buildFaqPageJsonLd, safeJsonLd } from "@/lib/jsonld";
+import { buildBreadcrumbJsonLd, buildFaqPageJsonLd, safeJsonLd } from "@/lib/jsonld";
 import { renderTemplate } from "@/lib/bench-template";
 import type { Benchmark } from "@/types/benchmark";
 
@@ -231,29 +233,11 @@ export default async function BenchmarkPage({
         publisher: { "@id": `${SITE.url}/#org` },
         about: { "@id": `${benchmarkUrl}#dataset` },
       },
-      {
-        "@type": "BreadcrumbList",
-        itemListElement: [
-          {
-            "@type": "ListItem",
-            position: 1,
-            name: "Home",
-            item: SITE.url,
-          },
-          {
-            "@type": "ListItem",
-            position: 2,
-            name: "Benchmarks",
-            item: `${SITE.url}/benchmarks`,
-          },
-          {
-            "@type": "ListItem",
-            position: 3,
-            name: benchmark.title,
-            item: benchmarkUrl,
-          },
-        ],
-      },
+      buildBreadcrumbJsonLd([
+        { name: "Home", item: SITE.url },
+        { name: "Benchmarks", item: `${SITE.url}/benchmarks` },
+        { name: benchmark.title, item: benchmarkUrl },
+      ]),
     ],
   };
 
@@ -283,28 +267,13 @@ export default async function BenchmarkPage({
       )}
       {/* Visible breadcrumb trail - duplicates the JSON-LD BreadcrumbList
           so Google can show the crumb above the URL in the SERP. */}
-      <nav
-        aria-label="Breadcrumb"
-        className="mb-3 text-[11px] font-medium uppercase tracking-[0.08em] sm:tracking-[0.16em] text-ink-faint"
-      >
-        <ol className="flex flex-wrap items-center gap-1 sm:gap-1.5 min-w-0">
-          <li>
-            <Link href="/" className="hover:text-ink transition-colors">
-              Home
-            </Link>
-          </li>
-          <li aria-hidden>/</li>
-          <li>
-            <Link href="/benchmarks" className="hover:text-ink transition-colors">
-              Benchmarks
-            </Link>
-          </li>
-          <li aria-hidden>/</li>
-          <li className="text-ink-muted truncate max-w-[60vw] sm:max-w-none">
-            {benchmark.title}
-          </li>
-        </ol>
-      </nav>
+      <Breadcrumb
+        items={[
+          { label: "Home", href: "/" },
+          { label: "Benchmarks", href: "/benchmarks" },
+          { label: benchmark.title },
+        ]}
+      />
 
       <div className="flex flex-wrap items-center gap-3">
         <Link
@@ -419,7 +388,7 @@ export default async function BenchmarkPage({
           chain variant pre-fetched server-side. flipping a tab swaps which
           variant is rendered, instantly, no network round-trip. */}
       {!isDraft && (
-        <Suspense fallback={null}>
+        <Suspense fallback={<BenchmarkBodySkeleton />}>
           <BenchmarkBody
             variants={variants}
             chainOptions={chainOptions}

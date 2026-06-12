@@ -3,11 +3,12 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ArrowUpRight } from "lucide-react";
 import { getBenchmark } from "@/data/benchmarks";
+import { Breadcrumb } from "@/components/breadcrumb";
 import { liveResults } from "@/lib/provider-filters";
 import { fmtUnit } from "@/lib/format";
 import { capDescription } from "@/lib/seo-text";
 import { SITE } from "@/data/site";
-import { safeJsonLd } from "@/lib/jsonld";
+import { buildBreadcrumbJsonLd, safeJsonLd } from "@/lib/jsonld";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
 
@@ -339,30 +340,12 @@ export default async function BenchmarkChainPage({
         about: { "@id": `${benchmarkUrl}#dataset` },
         isPartOf: { "@id": `${benchmarkUrl}#article` },
       },
-      {
-        "@type": "BreadcrumbList",
-        itemListElement: [
-          { "@type": "ListItem", position: 1, name: "Home", item: SITE.url },
-          {
-            "@type": "ListItem",
-            position: 2,
-            name: "Benchmarks",
-            item: `${SITE.url}/benchmarks`,
-          },
-          {
-            "@type": "ListItem",
-            position: 3,
-            name: benchmark.title,
-            item: benchmarkUrl,
-          },
-          {
-            "@type": "ListItem",
-            position: 4,
-            name: crumbName,
-            item: pageUrl,
-          },
-        ],
-      },
+      buildBreadcrumbJsonLd([
+        { name: "Home", item: SITE.url },
+        { name: "Benchmarks", item: `${SITE.url}/benchmarks` },
+        { name: benchmark.title, item: benchmarkUrl },
+        { name: crumbName, item: pageUrl },
+      ]),
     ],
   };
 
@@ -374,37 +357,15 @@ export default async function BenchmarkChainPage({
         dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
       />
 
-      <nav
-        aria-label="Breadcrumb"
-        className="mb-3 text-[11px] font-medium uppercase tracking-[0.08em] sm:tracking-[0.16em] text-ink-faint"
-      >
-        <ol className="flex flex-wrap items-center gap-1 sm:gap-1.5 min-w-0">
-          <li>
-            <Link href="/" className="hover:text-ink transition-colors">
-              Home
-            </Link>
-          </li>
-          <li aria-hidden>/</li>
-          <li>
-            <Link href="/benchmarks" className="hover:text-ink transition-colors">
-              Benchmarks
-            </Link>
-          </li>
-          <li aria-hidden>/</li>
-          <li>
-            <Link
-              href={`/benchmarks/${benchmark.slug}`}
-              className="hover:text-ink transition-colors"
-            >
-              {benchmark.title}
-            </Link>
-          </li>
-          <li aria-hidden>/</li>
-          <li className="text-ink-muted truncate max-w-[40vw] sm:max-w-none">
-            {crumbName}
-          </li>
-        </ol>
-      </nav>
+      <Breadcrumb
+        compactLast
+        items={[
+          { label: "Home", href: "/" },
+          { label: "Benchmarks", href: "/benchmarks" },
+          { label: benchmark.title, href: `/benchmarks/${benchmark.slug}` },
+          { label: crumbName },
+        ]}
+      />
 
       <Link
         href={`/benchmarks/${benchmark.slug}`}
