@@ -1019,6 +1019,116 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "High-performance spot and perpetuals exchange with colocated low-latency fiber and independently verifiable sequencing. Routes Hyperliquid perp orders via a registered builder code.",
     twitter: "@Blink_Exchange",
   },
+
+  // ─── Perp funding venues (bench № 036) ─────────────────────────────
+  bybit: {
+    url: "https://www.bybit.com",
+    description:
+      "Bybit is one of the largest centralized derivatives exchanges, with USDT-margined linear perpetuals on hundreds of pairs and funding settled on 8 hour (some pairs 4 hour) periods.",
+    twitter: "@Bybit_Official",
+  },
+  okx: {
+    url: "https://www.okx.com",
+    description:
+      "OKX is a major centralized exchange whose USDT-margined perpetual swaps settle funding on variable periods (typically 8 hours), with rates capped per instrument.",
+    twitter: "@okx",
+  },
+  paradex: {
+    url: "https://www.paradex.trade",
+    description:
+      "Paradex is a perps-focused L2 exchange built on Starknet tech, with USD-settled perpetuals and funding accrued continuously over an 8 hour period.",
+    twitter: "@paradex",
+  },
+  aster: {
+    url: "https://www.asterdex.com",
+    description:
+      "Aster is a decentralized perps exchange (ex-ApolloX, backed by YZi Labs) on BNB Chain and other EVM networks, with a Binance-compatible API and 8 hour funding periods.",
+    twitter: "@Aster_DEX",
+  },
+
+  // ─── Hyperliquid HIP-3 deployers (bench № 035) ─────────────────────
+  xyz: {
+    url: "https://trade.xyz",
+    description:
+      "trade.xyz operates the largest HIP-3 builder-deployed dex on Hyperliquid: 70+ tokenized US equity, index, and commodity perp markets under the xyz namespace, collecting a deployer fee on every fill.",
+    chains: ["hyperliquid"],
+    features: [
+      "Tokenized US equity perps (AAPL, TSLA, NVDA and 70+ markets)",
+      "Index and commodity perpetuals",
+      "HIP-3 namespace xyz on HyperCore",
+      "Deployer fee collected via the on-chain deployerFee field",
+    ],
+  },
+  vntl: {
+    url: "https://ventuals.com",
+    description:
+      "Ventuals runs pre-IPO valuation perpetuals on Hyperliquid under the vntl HIP-3 namespace: traders price private company valuations (MAG7-style baskets and single names) rather than listed stock.",
+    twitter: "@ventuals",
+    chains: ["hyperliquid"],
+    features: [
+      "Pre-IPO valuation perpetual markets",
+      "HIP-3 namespace vntl on HyperCore",
+      "Deployer fee collected via the on-chain deployerFee field",
+    ],
+  },
+  cash: {
+    url: "https://dreamcash.io",
+    description:
+      "Dreamcash operates the cash HIP-3 namespace on Hyperliquid, deploying tokenized equity and ETF perp markets that complement its mobile trading app (which also routes orders with a registered builder code).",
+    twitter: "@Dreamcash",
+    chains: ["hyperliquid"],
+    parent: "dreamcash",
+    features: [
+      "Tokenized equity and ETF perpetuals",
+      "HIP-3 namespace cash on HyperCore",
+      "Deployer fee collected via the on-chain deployerFee field",
+    ],
+  },
+  km: {
+    url: "https://kinetiq.xyz",
+    description:
+      "Markets by Kinetiq is the HIP-3 dex of Kinetiq, the Hyperliquid liquid staking protocol; it deploys equity and index basket perp markets under the km namespace.",
+    chains: ["hyperliquid"],
+    features: [
+      "Equity and index basket perpetuals",
+      "HIP-3 namespace km on HyperCore",
+      "Operated by the Kinetiq liquid staking team",
+    ],
+  },
+  hyna: {
+    url: "https://hyena.trade",
+    description:
+      "HyENA is a USDe-margined perp dex on Hyperliquid built by the Based team with Ethena support, running under the hyna HIP-3 namespace.",
+    chains: ["hyperliquid"],
+    features: [
+      "USDe collateral perpetual markets",
+      "HIP-3 namespace hyna on HyperCore",
+      "Built by the Based team with Ethena support",
+    ],
+  },
+  flx: {
+    url: "https://usefelix.xyz",
+    description:
+      "Felix Exchange is the HIP-3 dex of Felix, the Hyperliquid-native lending and stablecoin protocol; it deploys commodity and macro perp markets under the flx namespace.",
+    chains: ["hyperliquid"],
+    features: [
+      "Commodity and macro perpetuals",
+      "HIP-3 namespace flx on HyperCore",
+      "Operated by the Felix protocol team",
+    ],
+  },
+  para: {
+    url: "https://paragon.trade",
+    description:
+      "Paragon turns crypto-native indices (BTC dominance, TOTAL2, OTHERS) into perpetual futures on Hyperliquid under the para HIP-3 namespace, settled in USDC with cross-margin.",
+    twitter: "@tradeparagon",
+    chains: ["hyperliquid"],
+    features: [
+      "Crypto index perpetuals (BTC.D, TOTAL2, OTHERS)",
+      "HIP-3 namespace para on HyperCore",
+      "Deployer fee collected via the on-chain deployerFee field",
+    ],
+  },
 };
 
 /**

@@ -277,9 +277,10 @@ func buildAstralaneProbe(tip solana.PublicKey) serviceProbe {
 	}
 	host := envDefault("ASTRALANE_ENDPOINT", "https://ny.gateway.astralane.io/iris")
 	url := host + "?api-key=" + key
-	// Astralane raised their min tip floor 500_000 → 1_000_000 lamports
-	// (observed 2026-05-26 via prober alerts). Default to the new floor;
-	// the ASTRALANE_TIP_LAMPORTS env var still overrides.
+	// Astralane raised their min tip from 500_000 to 1_000_000 lamports
+	// (observed in prober alerts 2026-05-26, "transaction tip is less than
+	// min tip [1000000]"). Default to the new floor; ASTRALANE_TIP_LAMPORTS
+	// env var still overrides for future bumps.
 	tipLamports := uint64(envInt("ASTRALANE_TIP_LAMPORTS", 1_000_000))
 
 	return serviceProbe{

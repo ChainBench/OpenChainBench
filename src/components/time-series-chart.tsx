@@ -1240,7 +1240,12 @@ function niceTicks(
   else if (norm <= 5) niceStep = 5;
   else niceStep = 10;
   niceStep *= mag;
-  const lo = Math.max(0, Math.floor(dataMin / niceStep) * niceStep);
+  // Clamp the floor to zero only for non-negative data: latency-style
+  // charts shouldn't waste space below zero, but signed series (funding
+  // rates) must plot negative values inside the frame, not below the
+  // x-axis (observed: Binance/OKX rendered under the axis line).
+  const flooredLo = Math.floor(dataMin / niceStep) * niceStep;
+  const lo = dataMin >= 0 ? Math.max(0, flooredLo) : flooredLo;
   const hi = Math.ceil(dataMax / niceStep) * niceStep;
   const yTicks: number[] = [];
   for (let v = lo; v <= hi + niceStep / 2; v += niceStep) yTicks.push(v);
@@ -1274,6 +1279,10 @@ function fmtTick(v: number, unit: string) {
     if (abs >= 1e6) return `${(v / 1e6).toFixed(1)}M`;
     if (abs >= 1e3) return `${(v / 1e3).toFixed(1)}K`;
     return `${Math.round(v)}`;
+  }
+  if (unit === "bp") {
+    const abs = Math.abs(v);
+    return `${v.toFixed(abs < 10 ? 2 : abs < 100 ? 1 : 0)}bps`;
   }
   if (unit === "sec") {
     if (v >= 86400) return `${(v / 86400).toFixed(1)}d`;

@@ -2,7 +2,7 @@
   "name": "openchainbench",
   "version": "0.1.0",
   "private": true,
-  "description": "Open benchmarks for crypto infrastructure — aggregators, bridges, price feeds.",
+  "description": "Open benchmarks for crypto infrastructure \u2014 aggregators, bridges, price feeds.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -12,7 +12,8 @@
     "typecheck": "tsc --noEmit",
     "validate": "tsx scripts/validate-specs.ts",
     "spec:dry-run": "tsx scripts/dry-run-spec.ts",
-    "check": "pnpm validate && pnpm typecheck && pnpm lint && pnpm test"
+    "check": "pnpm validate && pnpm typecheck && pnpm lint && pnpm test",
+    "worker": "tsx worker/index.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.26.0",
