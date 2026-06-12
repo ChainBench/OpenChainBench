@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { appendSwapToBuckets, cumulativePerChain, niceCeil } from "@/lib/live/buckets";
 import { type ChainMeta, chainMeta } from "@/lib/live/chains";
 import {
@@ -94,6 +94,12 @@ function isRelayMessage(v: unknown): v is RelayMessage {
   return false;
 }
 
+const emptySubscribe = () => () => {};
+
+// Stable empty set so the derived hiddenChains keeps a constant identity
+// before any stored or in-session selection exists.
+const EMPTY_HIDDEN: Set<string> = new Set();
+
 function emptySeries(): SeriesByRange {
   return {
     "10m": { windowMs: 10 * 60 * 1000, bucketMs: 5 * 1000, buckets: [] },
@@ -108,74 +114,95 @@ export function LiveDashboard() {
   const [connected, setConnected] = useState(false);
   const [series, setSeries] = useState<SeriesByRange>(emptySeries);
   const [pops, setPops] = useState<ChartPop[]>([]);
-  const [hiddenChains, setHiddenChains] = useState<Set<string>>(new Set());
   const [serverOffsetMs, setServerOffsetMs] = useState(0);
-  const [expanded, setExpanded] = useState(false);
   const [range, setRange] = useState<RangeKey>(DEFAULT_RANGE);
+
+  // localStorage-backed prefs. The stored value is read through
+  // useSyncExternalStore (server snapshot null, client snapshot the raw
+  // string) so SSR markup matches and the saved prefs apply in the
+  // post-hydration render without a setState-in-effect cascade. The
+  // override state holds in-session changes and shadows the stored value.
+  const storedHiddenRaw = useSyncExternalStore(
+    emptySubscribe,
+    () => {
+      try {
+        return window.localStorage.getItem(STORAGE_HIDDEN_CHAINS);
+      } catch {
+        return null;
+      }
+    },
+    () => null,
+  );
+  const storedHidden = useMemo(() => {
+    if (!storedHiddenRaw) return null;
+    try {
+      const arr = JSON.parse(storedHiddenRaw);
+      return Array.isArray(arr) ? new Set<string>(arr) : null;
+    } catch {
+      return null;
+    }
+  }, [storedHiddenRaw]);
+  const [hiddenOverride, setHiddenOverride] = useState<Set<string> | null>(null);
+  const hiddenChains = hiddenOverride ?? storedHidden ?? EMPTY_HIDDEN;
+
+  const storedExpandedRaw = useSyncExternalStore(
+    emptySubscribe,
+    () => {
+      try {
+        return window.localStorage.getItem(STORAGE_LIVE_EXPANDED);
+      } catch {
+        return null;
+      }
+    },
+    () => null,
+  );
+  const [expandedOverride, setExpandedOverride] = useState<boolean | null>(null);
+  const expanded = expandedOverride ?? storedExpandedRaw === "1";
 
   const serverOffsetRef = useRef(0);
   const hiddenChainsRef = useRef<Set<string>>(new Set());
   const popIdRef = useRef(0);
   const reconnectTimer = useRef<number | null>(null);
   const reconnectAttempts = useRef(0);
-  const hiddenHydratedRef = useRef(false);
-  const expandedHydratedRef = useRef(false);
 
-  const toggleChain = useCallback((key: string) => {
-    setHiddenChains((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  }, []);
+  const toggleChain = useCallback(
+    (key: string) => {
+      setHiddenOverride((prev) => {
+        const next = new Set(prev ?? storedHidden ?? []);
+        if (next.has(key)) next.delete(key);
+        else next.add(key);
+        return next;
+      });
+    },
+    [storedHidden],
+  );
 
-  const toggleExpanded = useCallback(() => setExpanded((v) => !v), []);
-
-  useEffect(() => {
-    try {
-      const saved = window.localStorage.getItem(STORAGE_HIDDEN_CHAINS);
-      if (saved) {
-        const arr = JSON.parse(saved);
-        if (Array.isArray(arr)) setHiddenChains(new Set(arr));
-      }
-    } catch {
-      // ignore
-    }
-    hiddenHydratedRef.current = true;
-  }, []);
+  const toggleExpanded = useCallback(
+    () => setExpandedOverride((v) => !(v ?? storedExpandedRaw === "1")),
+    [storedExpandedRaw],
+  );
 
   useEffect(() => {
     hiddenChainsRef.current = hiddenChains;
-    if (!hiddenHydratedRef.current) return;
+    if (!hiddenOverride) return;
     try {
       window.localStorage.setItem(
         STORAGE_HIDDEN_CHAINS,
-        JSON.stringify(Array.from(hiddenChains)),
+        JSON.stringify(Array.from(hiddenOverride)),
       );
     } catch {
       // ignore
     }
-  }, [hiddenChains]);
+  }, [hiddenChains, hiddenOverride]);
 
   useEffect(() => {
+    if (expandedOverride == null) return;
     try {
-      const saved = window.localStorage.getItem(STORAGE_LIVE_EXPANDED);
-      if (saved === "1") setExpanded(true);
+      window.localStorage.setItem(STORAGE_LIVE_EXPANDED, expandedOverride ? "1" : "0");
     } catch {
       // ignore
     }
-    expandedHydratedRef.current = true;
-  }, []);
-
-  useEffect(() => {
-    if (!expandedHydratedRef.current) return;
-    try {
-      window.localStorage.setItem(STORAGE_LIVE_EXPANDED, expanded ? "1" : "0");
-    } catch {
-      // ignore
-    }
-  }, [expanded]);
+  }, [expandedOverride]);
 
   useEffect(() => {
     let stopped = false;
