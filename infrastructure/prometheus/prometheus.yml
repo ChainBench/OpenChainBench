@@ -126,6 +126,24 @@ scrape_configs:
           benchmark: pm-freshness
           host: mobula
 
+  # ─ PM venue rate limits + latency ────────────────────────────────────
+  # Probes the public APIs of 5 prediction-market venues (Polymarket,
+  # Kalshi, Limitless, Manifold, Myriad): warm/cold latency on book,
+  # price and list classes, plus a daily rate-limit ramp. One Railway
+  # service per region, scraped over internal DNS like pm-freshness.
+  # Service names must match these targets when deploying.
+  - job_name: pm-rate-limits
+    metrics_path: /metrics
+    scheme: http
+    static_configs:
+      - targets:
+          - pm-rate-limits-us.railway.internal:2112
+          - pm-rate-limits-eu.railway.internal:2112
+          - pm-rate-limits-sgp.railway.internal:2112
+        labels:
+          benchmark: pm-rate-limits
+          host: mobula
+
   # ─ Self-scrape ────────────────────────────────────────────────────────
   # Surfaces Prometheus's own health (scrape error rates, target up/down)
   # in the same UI used to debug harnesses.
