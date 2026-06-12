@@ -49,14 +49,15 @@ methodology:
   - "Failure classes. Each non-success outcome lands on exactly one counter and is excluded from the latency histogram: `solana_quote_throttled_total` (HTTP 429), `solana_quote_auth_error_total` (401/403), `solana_quote_no_route_total` (provider can't route the picked token), `solana_quote_other_error_total` (network/timeout/parse). Each provider's no-route signal is verified: Jupiter NO_ROUTES_FOUND, Mobula 'No route found', Raydium INSUFFICIENT_LIQUIDITY, OpenOcean payload-level."
   - "Raydium scope. Raydium's compute API is single-venue (Raydium AMM v4 / CPMM / CLMM only) and does not multi-hop via SOL like Jupiter or Mobula. On Pulse-fed bonded tokens (mostly Pump.fun graduates living on PumpSwap, plus Meteora and Orca pools) it returns no-route a large and variable share of the time (30% to 100% depending on the rotation set). That's an honest coverage signal and surfaces on the success-rate column, not as latency outliers."
   - "Direct egress from Railway, no residential proxy. The bench measures backend-to-backend latency as a real integration would see it."
+  - "Jupiter serves quotes from regional pods behind CloudFront (observed `x-region: eu-central-1` from EU, `x-pod-name: jupiter-core-*`), so each probe region reaches a nearby replica and its cross-region spread is flat by infrastructure, not by caching. Repeated identical requests return `x-cache: Miss` every time; CloudFront does not cache this endpoint. The other providers answer from a single origin, which is why their per-region tabs spread with geography."
   - "Histogram buckets: 10, 25, 50, 100, 200, 500, 1000, 2000, 5000 ms."
 
 findings:
   - "{{best_name}} leads at {{best_p50}} (p50, 24 h) across {{count}} measured Solana DEX quote APIs. The headline is the cross-region median across a rotating long-tail token target; the per-region tabs below show where each provider's infrastructure actually sits."
-  - "{{name:jupiter}} returns quotes in {{p50:jupiter}} (p50, 24 h). Without an SOL ↔ USDC edge-cache shortcut to lean on, Jupiter's lite endpoint is doing the real routing search every tick. That's the steady-state number a long-running backend integration would actually see."
+  - "{{name:jupiter}} returns quotes in {{p50:jupiter}} (p50, 24 h). The number looks impossible until you see the response headers: Jupiter runs regional pods behind CloudFront (`x-region` matches the probe region), so a Railway us-east probe reaches a us-east replica in single-digit RTT and the in-memory route engine adds a few ms. It is a real routing search on every tick (`x-cache: Miss` on repeats), served close."
   - "{{name:mobula}} returns quotes in {{p50:mobula}} (p50, 24 h). Mobula's quote API runs a live multi-DEX routing search per request, no per-pair body caching, so the gap to providers that historically cached the canonical 1 SOL → USDC pair closes once the bench rotates targets."
   - "{{name:openocean}} returns quotes in {{p50:openocean}} (p50, 24 h). OpenOcean's v4 Solana endpoint runs a separate multi-DEX path engine; the routing search dominates the latency curve on long-tail tokens."
-  - "{{name:raydium}} returns quotes in {{p50:raydium}} (p50, 24 h). Raydium's Trade API is a single-venue compute endpoint (Raydium pools only). It cannot multi-hop via SOL, so it no-routes on long-tail tokens whose dominant liquidity lives elsewhere (Pump.fun, Meteora, Orca). Latency below is the conditional p50 on the subset of tokens it does cover."
+  - "{{name:raydium}} is a single-venue compute endpoint (Raydium pools only). It cannot multi-hop via SOL, so on the Pulse-fed rotation it no-routes nearly everything (thousands of no-routes per day against a handful of successes). Below 50 successful quotes in 24h its latency cells go blank rather than reporting a percentile computed on single-digit samples; the success-rate column is its honest score."
   - "p99 is the integration-grade number. {{p99:jupiter}} / {{p99:mobula}} / {{p99:openocean}} / {{p99:raydium}} is what a swap UI feels when a region spikes or a provider's route engine churns."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/solana-quote-latency
@@ -172,10 +173,10 @@ providers:
     tag: AMM (single-venue Trade API)
     formula: "Avg of the 3 regional 24h median wallclock ms on Raydium's compute/swap-base-in for 100 USDC → <rotating token>, recorded only on success. Single-venue; no-route rate varies with the rotation, up to 100% (then it drops off the board)."
     queries:
-      p50: avg(ocb:solana_quote_latency_ms:p50_24h{provider="raydium"})
-      p90: avg(ocb:solana_quote_latency_ms:p90_24h{provider="raydium"})
-      p99: avg(ocb:solana_quote_latency_ms:p99_24h{provider="raydium"})
-      mean: sum(ocb:solana_quote_latency_ms:sum_rate_24h{provider="raydium"}) / sum(ocb:solana_quote_latency_ms:count_rate_24h{provider="raydium"})
+      p50: avg(ocb:solana_quote_latency_ms:p50_24h{provider="raydium"}) and on() (sum(ocb:solana_quote_latency_ms:count_increase_24h{provider="raydium"}) > 50)
+      p90: avg(ocb:solana_quote_latency_ms:p90_24h{provider="raydium"}) and on() (sum(ocb:solana_quote_latency_ms:count_increase_24h{provider="raydium"}) > 50)
+      p99: avg(ocb:solana_quote_latency_ms:p99_24h{provider="raydium"}) and on() (sum(ocb:solana_quote_latency_ms:count_increase_24h{provider="raydium"}) > 50)
+      mean: (sum(ocb:solana_quote_latency_ms:sum_rate_24h{provider="raydium"}) / sum(ocb:solana_quote_latency_ms:count_rate_24h{provider="raydium"})) and on() (sum(ocb:solana_quote_latency_ms:count_increase_24h{provider="raydium"}) > 50)
       success: avg(ocb:solana_quote_success:avg_24h{provider="raydium"})
       sample_size: sum(ocb:solana_quote_latency_ms:count_increase_24h{provider="raydium"})
       series: histogram_quantile(0.50, sum by (le) (rate(solana_quote_latency_ms_bucket{provider="raydium"}[1h])))

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 /**
  * Shared Top-N selector state for chart views. Sized off the count
@@ -38,10 +38,10 @@ export function useTopN(
   const [topNLocal, setTopNLocal] = useState<number | null>(initial);
   const topN = external ? external.topN : topNLocal;
   const setTopN = external ? external.setTopN : setTopNLocal;
-  useEffect(() => {
-    if (external) return;
-    if (topNLocal == null) return;
-    if (!topNOptions.includes(topNLocal)) setTopNLocal(null);
-  }, [topNOptions, topNLocal, external]);
+  // A stale local value (option set shrank under it) resets during
+  // render rather than via a setState-in-effect cascade.
+  if (!external && topNLocal != null && !topNOptions.includes(topNLocal)) {
+    setTopNLocal(null);
+  }
   return { topN, setTopN, topNOptions };
 }
