@@ -1,20 +1,28 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { Moon, Sun } from "lucide-react";
 
-export function ThemeToggle() {
-  const [mounted, setMounted] = useState(false);
-  const [isDark, setIsDark] = useState(false);
+const emptySubscribe = () => () => {};
 
-  useEffect(() => {
-    setIsDark(document.documentElement.classList.contains("dark"));
-    setMounted(true);
-  }, []);
+export function ThemeToggle() {
+  // false during SSR + hydration, true once the client can read the DOM.
+  const mounted = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false,
+  );
+  const domDark = useSyncExternalStore(
+    emptySubscribe,
+    () => document.documentElement.classList.contains("dark"),
+    () => false,
+  );
+  const [override, setOverride] = useState<boolean | null>(null);
+  const isDark = override ?? domDark;
 
   function toggle() {
     const next = !isDark;
-    setIsDark(next);
+    setOverride(next);
     const root = document.documentElement;
     if (next) {
       root.classList.add("dark");
