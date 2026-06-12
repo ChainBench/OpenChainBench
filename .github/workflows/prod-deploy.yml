@@ -1,0 +1,68 @@
+name: Vercel prod deploy
+
+# Auto-deploy to Vercel Production on every push to main. Triggered by the
+# openbench-monitoring control plane after it merges a promote / rollback PR
+# (or by any direct merge to main). Same VERCEL_TOKEN as the staging workflow.
+#
+# Required GitHub secrets (Settings → Secrets and variables → Actions):
+#   VERCEL_TOKEN       — vercel.com/account/tokens, scope = mobula-labs
+#   VERCEL_ORG_ID      — already set for staging-deploy.yml
+#   VERCEL_PROJECT_ID  — already set for staging-deploy.yml
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: vercel-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Enable pnpm via corepack
+        run: |
+          corepack enable
+          corepack prepare pnpm@10 --activate
+          pnpm --version
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel@latest
+
+      - name: Pull Vercel env (Production)
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Build
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy to Production
+        id: deploy
+        run: |
+          url=$(vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }})
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "Production deployed at $url"
+
+      - name: Summary
+        run: |
+          {
+            echo "## Vercel prod deploy ✓"
+            echo ""
+            echo "**Live:** https://openchainbench.com"
+            echo ""
+            echo "**Deploy URL:** ${{ steps.deploy.outputs.url }}"
+            echo ""
+            echo "Commit: \`${{ github.sha }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
