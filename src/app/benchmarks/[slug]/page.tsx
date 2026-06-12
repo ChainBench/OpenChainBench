@@ -17,6 +17,7 @@ import { ReportSection } from "@/components/report-section";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
 import { headlineSentence } from "@/lib/citation";
 import { capDescription } from "@/lib/seo-text";
+import { getBenchCreatedAt } from "@/lib/seo/bench-dates";
 import { SITE } from "@/data/site";
 import { buildBreadcrumbJsonLd, buildFaqPageJsonLd, safeJsonLd } from "@/lib/jsonld";
 import { renderTemplate } from "@/lib/bench-template";
@@ -204,6 +205,7 @@ export default async function BenchmarkPage({
         publisher: { "@id": `${SITE.url}/#org` },
         isAccessibleForFree: true,
         license: "https://creativecommons.org/licenses/by/4.0/",
+        datePublished: getBenchCreatedAt(benchmark.slug).toISOString(),
         dateModified: benchmark.lastRunAt,
         variableMeasured: benchmark.metric,
         distribution: [
@@ -228,6 +230,7 @@ export default async function BenchmarkPage({
         // schema image matches what Search Console, X and LinkedIn show.
         // Clears the "Missing field image" warning in Rich Results Test.
         image: `${SITE.url}/api/og/${benchmark.slug}`,
+        datePublished: getBenchCreatedAt(benchmark.slug).toISOString(),
         dateModified: benchmark.lastRunAt,
         author: { "@id": `${SITE.url}/#org` },
         publisher: { "@id": `${SITE.url}/#org` },

@@ -1,0 +1,218 @@
+# OpenChainBench. Bench № 037
+
+slug: pm-rate-limits
+number: "037"
+title: Prediction market API rate limits, tested with a daily ramp
+seo_title: "Prediction market API rate limits 2026: Polymarket, Kalshi, Limitless, Manifold tested daily"
+seo_description: "Prediction market API rate limits measured live. A daily request ramp against Polymarket, Kalshi, Limitless, Manifold and Myriad records added latency, 429 onset and queueing behaviour at each tier, plus warm and cold endpoint latency from three regions."
+subtitle: Warm latency on book, price and list endpoints of five prediction market venue APIs, plus a daily rate limit ramp that records added latency and throttle onset per request tier.
+
+category: Trading
+status: live
+metric: Warm book latency
+unit: ms
+higher_is_better: false
+
+seo_intro: |
+  Every prediction market venue documents its API rate limits differently,
+  and some not at all. Polymarket publishes per endpoint budgets but fronts
+  its CLOB with Cloudflare, which queues bursts instead of rejecting them.
+  Kalshi documents a token bucket per access tier. Manifold publishes a
+  per IP budget and explicitly welcomes bots. Limitless documents nothing.
+  Builders sizing a polling loop or a trading bot against these APIs need
+  two numbers nobody publishes: the real latency of the hot endpoints at a
+  polite request rate, and what actually happens as the request rate climbs.
+  This benchmark measures both. A harness in three regions probes the book,
+  price and list endpoints of each venue continuously over warm connections,
+  and once a day per venue it runs a short ramp, 60 seconds per tier at
+  rising request rates, recording added latency versus the same hour
+  baseline and any 429 or 5xx onset. The leaderboard sorts by warm book
+  endpoint p50, the ramp results render as companion panels.
+
+abstract: |
+  Each venue is probed on three endpoint classes: book (the order book of a
+  pinned market, or its closest equivalent), price (a single market quote)
+  and list (the venue's market listing). Probes run every 5 to 7 seconds
+  over a warm keep alive pool, with a separate cold connect probe once a
+  minute that forces a fresh TCP and TLS handshake. Every sample records
+  full round trip, time to first byte and a CDN cache flag taken from the
+  response headers, because some venues serve part of their API from an
+  edge cache and a cached read says nothing about the API origin. The
+  pinned market is re selected daily at 00:00 UTC, most liquid, near the
+  money, expiring more than 24 hours out, and immediately re pinned when a
+  venue starts answering with errors that are really our pin's fault, such
+  as a market that resolved intraday. Those samples are classified
+  probe_invalid and never count against the venue. The daily ramp fires
+  from one region at a time on disjoint UTC hours, 60 seconds per tier at
+  rates that stay well inside documented budgets where they exist, and
+  aborts the moment throttled plus server errors exceed 1 percent of a 10
+  second window.
+
+methodology:
+  - "Endpoint classes per venue. Polymarket: CLOB `/book`, `/midpoint`, Gamma `/markets`. Kalshi: `/markets/{ticker}/orderbook`, `/markets/{ticker}`, `/markets`. Limitless: `/markets/{slug}/orderbook`, `/markets/{slug}`, `/markets/active`. Manifold: `/v0/bets`, `/v0/market/{id}`, `/v0/markets`. Myriad: `/markets/{slug}`, `/markets`. Myriad exposes no order book endpoint; that absence is reported, not worked around."
+  - "Pinned market per venue: most liquid, near the money (price between 0.15 and 0.85), expiring more than 24h out. Re pinned daily at 00:00 UTC and immediately on probe_invalid. A degenerate 0.99 book has a latency profile that does not represent real usage."
+  - "Warm probes every 5s (7s on Manifold, whose entire API sits behind max-age=5 plus stale-while-revalidate=10; tighter spacing would only measure the cache). Cold connect probe once per minute with keep alives disabled, TCP plus TLS handshake recorded separately."
+  - "Every sample records a cache flag from cf-cache-status, x-cache and age headers. Kalshi's market list is served from CloudFront with max-age=15, so its list latency measures the edge, not the API. Edge served samples (cache=hit) are excluded from every latency aggregate and reported through the cache label, so no venue ranks on its CDN."
+  - "Outcome classification: ok, timeout (8s), http_4xx, http_5xx, throttled (429), probe_invalid, net_error. Latency aggregates include successful requests only; failures count toward the success rate. probe_invalid covers stale pins, e.g. Limitless serves a CDN cached 400 for four hours once a market expires. Those are our fault, never the venue's."
+  - "Daily ramp: 60s per tier at rising requests per 10s window against the book endpoint, one venue at a time, one region at a time on disjoint UTC hours (02:00 us-east, 04:00 eu-west, 06:00 sgp)."
+  - "Ramp tier clamps: Polymarket and Kalshi 25/50/100 per 10s (at most 7 percent of Polymarket's documented 1500 per 10s book budget), Manifold 15/30/60 (500 req/min per IP documented), Limitless 10/20/40 (limits undocumented, so conservative). Kalshi stops at the first 429 since its token bucket is documented. Myriad is excluded: its keyless budget is 30 req per 10s and ramping it would only measure our own quota."
+  - "Ramp abort guard: the run stops the moment throttled plus 5xx responses exceed 1 percent of any 10 second window. The headline ramp metric is p50 latency during the tier minus the warm baseline p50 of the previous hour in the same region, because venues behind Cloudflare queue bursts without ever returning 429, and added latency is the only honest throttle signal there."
+  - "WebSocket panel covers venues with a public market WebSocket, which today means Polymarket only. Kalshi requires authentication for WS, Manifold and Myriad have none, Limitless uses socket.io. Absence is shown, not penalized."
+  - "Myriad's origin is a single region US East deployment behind Heroku. Latency from eu-west and sgp is geography, reported as measured."
+  - "All probes hit documented public developer APIs with the identifying User-Agent `OpenChainBench/1.0 (+https://openchainbench.com/methodology; contact@mobula.io)`. We publish latency measurements only, never order book contents or prices, in line with venue data redistribution terms (Kalshi's in particular, applied to all venues equally)."
+  - "Regions: us-east, eu-west, sgp (Railway). Histogram buckets 25ms to 10s."
+
+findings:
+  - "{{name:polymarket}} answers its book endpoint at {{p50:polymarket}} p50 over warm connections. Cloudflare in front of the CLOB queues our ramp tiers instead of returning 429, so its throttle behaviour shows up as added latency in the ramp panel rather than as errors."
+  - "{{name:kalshi}} is the only venue in the cohort with a documented token bucket, and the only one whose market list is CDN cached (CloudFront, max-age=15). Its single market and order book endpoints go to origin on every request."
+  - "{{name:limitless}} documents no rate limits and caches error responses at the CDN for four hours, so one expired market turns into hours of misleading 400s for a naive client. The harness classifies those as probe_invalid and re pins instead of counting them against the venue."
+  - "Server reported data age exists on two venues only: Polymarket embeds a millisecond timestamp in every book response and Manifold exposes lastUpdatedTime per market. Kalshi, Limitless and Myriad return order data with no timestamp at all, so a consumer cannot tell how old it is."
+  - "{{name:myriad}} has no order book endpoint and no WebSocket; its API is a single region Heroku deployment, so latency from Europe and Asia is dominated by geography."
+
+disclaimer: "Ramp tiers stay well inside documented budgets where they exist, at most 7 percent of Polymarket's published book allowance, and every run aborts at the first sign of sustained errors. This benchmark measures throttle onset behaviour at polite request rates, not maximum venue throughput."
+
+faq:
+  - q: "What is the Polymarket API rate limit?"
+    a: "Polymarket documents per endpoint budgets for the CLOB API, on the order of 1500 requests per 10 seconds for the book endpoint at the time of writing. In practice the CLOB sits behind Cloudflare, which queues bursts rather than rejecting them: at our daily ramp tiers (up to 100 requests per 10s) we observe added latency instead of 429 responses. The ramp panel above shows the measured added latency per tier, refreshed daily."
+  - q: "What happens if you exceed prediction market API rate limits?"
+    a: "It depends on the venue's architecture. Kalshi runs a documented token bucket and returns 429 when the bucket is empty. Polymarket's Cloudflare front queues requests, so you see rising latency before you ever see an error. Manifold documents 500 requests per minute per IP and asks bots to stay on one IP. Limitless documents nothing. The daily ramp records which of these behaviours each venue actually exhibits at each tier."
+  - q: "What is the Kalshi API rate limit?"
+    a: "Kalshi documents tiered rate limits per access level, with the basic read tier around 20 requests per second at the time of writing. It is the only venue in this cohort with a documented token bucket. Our ramp stops at the first 429 on Kalshi out of respect for that documented contract, and the tier where it happens (or does not) is recorded in the ramp panel."
+  - q: "Which prediction market has the fastest API?"
+    a: "{{best_name}} currently has the lowest warm book endpoint latency at {{best_p50}} (p50 over the last 24h). Note what this does and does not measure: it is the latency of the venue's own public API over a warm connection at a polite request rate, per region. It is not data freshness via third party providers, which is a separate benchmark (pm-data-freshness)."
+  - q: "Does Manifold have an API rate limit?"
+    a: "Yes, 500 requests per minute per IP, documented, and Manifold explicitly welcomes bots as long as they stay on a single IP. Be aware that the whole API is served behind a cache with max-age=5 and stale-while-revalidate=10, so polling faster than every 6 seconds mostly returns cached responses. Our probes space out to 7 seconds per URL and label every sample that still comes back from cache."
+  - q: "What are the Limitless API rate limits?"
+    a: "Limitless does not document rate limits. Our ramp therefore uses the most conservative tiers in the cohort (10/20/40 requests per 10s) with an automatic abort. One measured behaviour worth knowing: error responses are CDN cached for four hours, so a request for an expired market keeps returning the same cached 400 long after the market resolved. A client that does not handle this will misread the API's state for hours."
+  - q: "How do you test rate limits without abusing the APIs?"
+    a: "Four guardrails. Tiers stay well inside documented budgets where they exist (at most 7 percent of Polymarket's book allowance). Every run aborts as soon as throttled plus server errors exceed 1 percent of a 10 second window, and Kalshi stops at the first 429. Only one region ramps a venue at a time, on disjoint UTC hours. And every request carries an identifying User-Agent with a contact address, so a venue can reach us or filter us selectively. The measurement is throttle onset, not stress to failure."
+  - q: "Why measure the venue APIs directly instead of a data provider?"
+    a: "They answer different questions. If you build directly on a venue, its native API latency and throttle behaviour set your floor, and that is what this benchmark measures. If you consume the venue through a data provider such as Mobula or Codex, what matters is how fresh the provider's relay is, which is measured separately in the pm-data-freshness benchmark. Both pages link each other so you can compare the paths."
+
+per_chain_explainer:
+  - slug: polymarket
+    h2: Polymarket API rate limits and latency
+    body: "Polymarket's CLOB API documents per endpoint budgets (around 1500 requests per 10s for the book endpoint) and sits behind Cloudflare. At our ramp tiers it queues instead of returning 429, so the honest throttle signal is added latency, shown in the ramp panel. The book endpoint embeds a millisecond timestamp, making Polymarket one of only two venues here whose data age is verifiable. Warm book p50: {{p50:polymarket}}."
+  - slug: kalshi
+    h2: Kalshi API rate limits and latency
+    body: "Kalshi documents a token bucket per access tier, around 20 requests per second for basic read access. Its order book and single market endpoints go to origin on every request, but the market list is served from CloudFront with max-age=15, so list reads measure the edge. The WebSocket requires authentication, so Kalshi is absent from the WS panel. Our ramp stops at the first 429. Warm book p50: {{p50:kalshi}}."
+  - slug: limitless
+    h2: Limitless API rate limits and latency
+    body: "Limitless documents no rate limits, so it gets the most conservative ramp in the cohort (10/20/40 per 10s, auto abort). Measured quirk: error responses are CDN cached for four hours, so one expired market keeps answering with the same 400 long after resolution. The harness treats those as probe_invalid and re pins rather than counting them against the venue. Warm book p50: {{p50:limitless}}."
+  - slug: manifold
+    h2: Manifold API rate limits and latency
+    body: "Manifold documents 500 requests per minute per IP and explicitly welcomes bots on a single IP. The entire API is served behind max-age=5 plus stale-while-revalidate=10, so any client polling faster than every 6 seconds mostly reads cache; our probes space to 7 seconds and label residual cache hits. Manifold is an AMM, so the book class probes the bets feed, and lastUpdatedTime makes its data age verifiable. Warm p50: {{p50:manifold}}."
+  - slug: myriad
+    h2: Myriad API rate limits and latency
+    body: "Myriad's keyless budget is 30 requests per 10 seconds, the tightest in the cohort, which is why it is excluded from the ramp: ramping it would measure our own quota, not the API. There is no order book endpoint and no WebSocket. The origin is a single region Heroku deployment in US East, so latency from Europe and Asia reflects geography, reported as measured. Warm price endpoint p50: {{p50:myriad}}."
+
+source: https://github.com/MobulaFi/mobula-monorepo/tree/main/miniapps/pm-rate-limits
+
+prometheus:
+  window: 24h
+  expected_freshness_seconds: 300
+
+rank_matrix_query: 1000 * label_replace(histogram_quantile(0.50, sum by (venue, region, le) (rate(pmapi_request_duration_seconds_bucket{cache!="hit",conn="warm",class="book"}[24h]) or rate(pmapi_request_duration_seconds_bucket{cache!="hit",conn="warm",class="price",venue="myriad"}[24h]))), "provider", "$1", "venue", "(.+)")
+
+dimensions:
+  region:
+    - { value: all, label: All regions }
+    - { value: us-east, label: US East }
+    - { value: eu-west, label: EU West }
+    - { value: sgp, label: Singapore }
+
+metric_panels:
+  - id: ramp_added_latency
+    label: Ramp added latency
+    description: "Worst tier of the daily ramp: p50 latency during the burst minus the warm baseline p50 of the previous hour, same region. Venues that queue under load instead of returning 429 show up here."
+    metric: 1000 * max(max_over_time(pmapi_ramp_added_latency_seconds{}[24h]))
+    label_key: venue
+    unit: ms
+    higher_is_better: false
+  - id: cold_connect_p50
+    label: Cold connect
+    description: "TCP plus TLS handshake time on the once a minute cold probe with keep alives disabled. What a new client pays before its first byte."
+    metric: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_connect_seconds_bucket{}[24h])) by (le))
+    label_key: venue
+    unit: ms
+    higher_is_better: false
+  - id: ws_snapshot_p50
+    label: WS connect to snapshot
+    description: "Time from WebSocket dial to first market data frame. Only venues with a public market WebSocket appear; today that is Polymarket alone."
+    metric: 1000 * histogram_quantile(0.50, sum(rate(pmapi_ws_connect_to_snapshot_seconds_bucket{}[24h])) by (le))
+    label_key: venue
+    unit: ms
+    higher_is_better: false
+  - id: book_staleness
+    label: Server reported data age
+    description: "Now minus the timestamp the venue embeds in its own payload. Polymarket stamps every book response; Manifold exposes lastUpdatedTime, which reflects the last market update. The other venues embed no timestamp at all."
+    metric: avg(avg_over_time(pmapi_book_staleness_seconds{}[24h]))
+    label_key: venue
+    unit: s
+    higher_is_better: false
+
+providers:
+  - slug: polymarket
+    name: Polymarket
+    tag: CLOB behind Cloudflare, documented per endpoint budgets, queues under load
+    formula: "p50 of warm full round trips against the CLOB book endpoint for the pinned market, successful requests only, 24h window."
+    queries:
+      p50: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="polymarket",class="book",conn="warm"}[24h])) by (le))
+      p90: 1000 * histogram_quantile(0.90, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="polymarket",class="book",conn="warm"}[24h])) by (le))
+      p99: 1000 * histogram_quantile(0.99, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="polymarket",class="book",conn="warm"}[24h])) by (le))
+      mean: 1000 * sum(rate(pmapi_request_duration_seconds_sum{cache!="hit",venue="polymarket",class="book",conn="warm"}[24h])) / sum(rate(pmapi_request_duration_seconds_count{cache!="hit",venue="polymarket",class="book",conn="warm"}[24h]))
+      success: clamp_max(sum(rate(pmapi_requests_total{venue="polymarket",class="book",conn="warm",outcome="ok"}[24h])) / sum(rate(pmapi_requests_total{venue="polymarket",class="book",conn="warm",outcome!="probe_invalid"}[24h])), 1)
+      sample_size: sum(increase(pmapi_requests_total{venue="polymarket",class="book",conn="warm",outcome!="probe_invalid"}[24h]))
+      series: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="polymarket",class="book",conn="warm"}[1h])) by (le))
+
+  - slug: kalshi
+    name: Kalshi
+    tag: Documented token bucket, book and market go to origin, list is CloudFront cached
+    formula: "p50 of warm full round trips against the order book endpoint for the pinned ticker, successful requests only, 24h window. The CDN cached list endpoint is reported separately and never feeds this number."
+    queries:
+      p50: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="kalshi",class="book",conn="warm"}[24h])) by (le))
+      p90: 1000 * histogram_quantile(0.90, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="kalshi",class="book",conn="warm"}[24h])) by (le))
+      p99: 1000 * histogram_quantile(0.99, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="kalshi",class="book",conn="warm"}[24h])) by (le))
+      mean: 1000 * sum(rate(pmapi_request_duration_seconds_sum{cache!="hit",venue="kalshi",class="book",conn="warm"}[24h])) / sum(rate(pmapi_request_duration_seconds_count{cache!="hit",venue="kalshi",class="book",conn="warm"}[24h]))
+      success: clamp_max(sum(rate(pmapi_requests_total{venue="kalshi",class="book",conn="warm",outcome="ok"}[24h])) / sum(rate(pmapi_requests_total{venue="kalshi",class="book",conn="warm",outcome!="probe_invalid"}[24h])), 1)
+      sample_size: sum(increase(pmapi_requests_total{venue="kalshi",class="book",conn="warm",outcome!="probe_invalid"}[24h]))
+      series: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="kalshi",class="book",conn="warm"}[1h])) by (le))
+
+  - slug: limitless
+    name: Limitless
+    tag: Undocumented limits, errors CDN cached 4h, CLOB order book
+    formula: "p50 of warm full round trips against the order book endpoint for the pinned CLOB market, successful requests only, 24h window. CDN cached error responses on stale pins are classified probe_invalid and excluded."
+    queries:
+      p50: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="limitless",class="book",conn="warm"}[24h])) by (le))
+      p90: 1000 * histogram_quantile(0.90, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="limitless",class="book",conn="warm"}[24h])) by (le))
+      p99: 1000 * histogram_quantile(0.99, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="limitless",class="book",conn="warm"}[24h])) by (le))
+      mean: 1000 * sum(rate(pmapi_request_duration_seconds_sum{cache!="hit",venue="limitless",class="book",conn="warm"}[24h])) / sum(rate(pmapi_request_duration_seconds_count{cache!="hit",venue="limitless",class="book",conn="warm"}[24h]))
+      success: clamp_max(sum(rate(pmapi_requests_total{venue="limitless",class="book",conn="warm",outcome="ok"}[24h])) / sum(rate(pmapi_requests_total{venue="limitless",class="book",conn="warm",outcome!="probe_invalid"}[24h])), 1)
+      sample_size: sum(increase(pmapi_requests_total{venue="limitless",class="book",conn="warm",outcome!="probe_invalid"}[24h]))
+      series: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="limitless",class="book",conn="warm"}[1h])) by (le))
+
+  - slug: manifold
+    name: Manifold
+    tag: AMM, 500 req/min per IP documented, whole API behind a 5s cache
+    formula: "p50 of warm round trips against the bets feed (the AMM book equivalent), successful requests only, 24h window. Edge cache hits are excluded; the number reflects origin reads only."
+    queries:
+      p50: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="manifold",class="book",conn="warm"}[24h])) by (le))
+      p90: 1000 * histogram_quantile(0.90, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="manifold",class="book",conn="warm"}[24h])) by (le))
+      p99: 1000 * histogram_quantile(0.99, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="manifold",class="book",conn="warm"}[24h])) by (le))
+      mean: 1000 * sum(rate(pmapi_request_duration_seconds_sum{cache!="hit",venue="manifold",class="book",conn="warm"}[24h])) / sum(rate(pmapi_request_duration_seconds_count{cache!="hit",venue="manifold",class="book",conn="warm"}[24h]))
+      success: clamp_max(sum(rate(pmapi_requests_total{venue="manifold",class="book",conn="warm",outcome="ok"}[24h])) / sum(rate(pmapi_requests_total{venue="manifold",class="book",conn="warm",outcome!="probe_invalid"}[24h])), 1)
+      sample_size: sum(increase(pmapi_requests_total{venue="manifold",class="book",conn="warm",outcome!="probe_invalid"}[24h]))
+      series: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="manifold",class="book",conn="warm"}[1h])) by (le))
+
+  - slug: myriad
+    name: Myriad
+    tag: No order book endpoint, no WebSocket, single region Heroku origin, keyless 30 req/10s
+    formula: "p50 of warm full round trips against the single market endpoint (Myriad exposes no order book, so the price class is its hot path), successful requests only, 24h window. Cross region latency reflects the single US East origin."
+    queries:
+      p50: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="myriad",class="price",conn="warm"}[24h])) by (le))
+      p90: 1000 * histogram_quantile(0.90, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="myriad",class="price",conn="warm"}[24h])) by (le))
+      p99: 1000 * histogram_quantile(0.99, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="myriad",class="price",conn="warm"}[24h])) by (le))
+      mean: 1000 * sum(rate(pmapi_request_duration_seconds_sum{cache!="hit",venue="myriad",class="price",conn="warm"}[24h])) / sum(rate(pmapi_request_duration_seconds_count{cache!="hit",venue="myriad",class="price",conn="warm"}[24h]))
+      success: clamp_max(sum(rate(pmapi_requests_total{venue="myriad",class="price",conn="warm",outcome="ok"}[24h])) / sum(rate(pmapi_requests_total{venue="myriad",class="price",conn="warm",outcome!="probe_invalid"}[24h])), 1)
+      sample_size: sum(increase(pmapi_requests_total{venue="myriad",class="price",conn="warm",outcome!="probe_invalid"}[24h]))
+      series: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="myriad",class="price",conn="warm"}[1h])) by (le))

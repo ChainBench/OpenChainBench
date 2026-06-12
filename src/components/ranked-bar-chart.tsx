@@ -112,8 +112,16 @@ export function RankedBarChart({
 
   const excludedCount = excluded.size;
   // Visible-row ranking - excluded rows lose their #N badge so the
-  // remaining list reads as a clean leaderboard.
+  // remaining list reads as a clean leaderboard. Precomputed so the JSX
+  // map stays mutation-free.
+  const rankBySlug = new Map<string, number>();
   let visibleRank = 0;
+  for (const r of rows) {
+    if (!excluded.has(r.slug)) {
+      visibleRank += 1;
+      rankBySlug.set(r.slug, visibleRank);
+    }
+  }
 
   return (
     <figure className="my-2">
@@ -144,8 +152,7 @@ export function RankedBarChart({
           const w = isOff ? 0 : project(r.value);
           const hasFormula = Boolean(r.formula);
           const isHovered = hoveredSlug === r.slug;
-          if (!isOff) visibleRank += 1;
-          const rank = isOff ? null : visibleRank;
+          const rank = rankBySlug.get(r.slug) ?? null;
           return (
             <li
               key={r.slug}

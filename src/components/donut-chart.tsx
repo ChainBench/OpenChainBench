@@ -97,15 +97,19 @@ export function DonutChart({
   const cy = 100;
   const rOuter = 92;
   const rInner = 68; // ring width 24 = ~26% of radius, sits in the canonical 20-25% band
+  const slices = sorted.map((r) => ({
+    r,
+    share: r.ms.p50 / total,
+    a0: 0,
+    a1: 0,
+    color: colors.get(r.slug) ?? "var(--color-ink-soft)",
+  }));
   let currentAngle = -Math.PI / 2;
-  const slices = sorted.map((r) => {
-    const share = r.ms.p50 / total;
-    const sweep = share * Math.PI * 2;
-    const a0 = currentAngle;
-    const a1 = currentAngle + sweep;
-    currentAngle = a1;
-    return { r, share, a0, a1, color: colors.get(r.slug) ?? "var(--color-ink-soft)" };
-  });
+  for (const s of slices) {
+    s.a0 = currentAngle;
+    s.a1 = currentAngle + s.share * Math.PI * 2;
+    currentAngle = s.a1;
+  }
 
   // Inner-ring centre label. Uses the bench's higherIsBetter setting to
   // pick the actual best provider — on lower-is-better latency / fee
