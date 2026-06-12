@@ -52,7 +52,7 @@ methodology:
   - "Endpoint classes per venue. Polymarket: CLOB `/book`, `/midpoint`, Gamma `/markets`. Kalshi: `/markets/{ticker}/orderbook`, `/markets/{ticker}`, `/markets`. Limitless: `/markets/{slug}/orderbook`, `/markets/{slug}`, `/markets/active`. Manifold: `/v0/bets`, `/v0/market/{id}`, `/v0/markets`. Myriad: `/markets/{slug}`, `/markets`. Myriad exposes no order book endpoint; that absence is reported, not worked around."
   - "Pinned market per venue: most liquid, near the money (price between 0.15 and 0.85), expiring more than 24h out. Re pinned daily at 00:00 UTC and immediately on probe_invalid. A degenerate 0.99 book has a latency profile that does not represent real usage."
   - "Warm probes every 5s (7s on Manifold, whose entire API sits behind max-age=5 plus stale-while-revalidate=10; tighter spacing would only measure the cache). Cold connect probe once per minute with keep alives disabled, TCP plus TLS handshake recorded separately."
-  - "Every sample records a cache flag from cf-cache-status, x-cache and age headers. Kalshi's market list is served from CloudFront with max-age=15, so its list latency measures the edge, not the API. Disclosed here and labeled on every sample."
+  - "Every sample records a cache flag from cf-cache-status, x-cache and age headers. Kalshi's market list is served from CloudFront with max-age=15, so its list latency measures the edge, not the API. Edge served samples (cache=hit) are excluded from every latency aggregate and reported through the cache label, so no venue ranks on its CDN."
   - "Outcome classification: ok, timeout (8s), http_4xx, http_5xx, throttled (429), probe_invalid, net_error. Latency aggregates include successful requests only; failures count toward the success rate. probe_invalid covers stale pins, e.g. Limitless serves a CDN cached 400 for four hours once a market expires. Those are our fault, never the venue's."
   - "Daily ramp: 60s per tier at rising requests per 10s window against the book endpoint, one venue at a time, one region at a time on disjoint UTC hours (02:00 us-east, 04:00 eu-west, 06:00 sgp)."
   - "Ramp tier clamps: Polymarket and Kalshi 25/50/100 per 10s (at most 7 percent of Polymarket's documented 1500 per 10s book budget), Manifold 15/30/60 (500 req/min per IP documented), Limitless 10/20/40 (limits undocumented, so conservative). Kalshi stops at the first 429 since its token bucket is documented. Myriad is excluded: its keyless budget is 30 req per 10s and ramping it would only measure our own quota."
@@ -112,7 +112,7 @@ prometheus:
   window: 24h
   expected_freshness_seconds: 300
 
-rank_matrix_query: 1000 * label_replace(histogram_quantile(0.50, sum by (venue, region, le) (rate(pmapi_request_duration_seconds_bucket{conn="warm",class="book"}[24h]) or rate(pmapi_request_duration_seconds_bucket{conn="warm",class="price",venue="myriad"}[24h]))), "provider", "$1", "venue", "(.+)")
+rank_matrix_query: 1000 * label_replace(histogram_quantile(0.50, sum by (venue, region, le) (rate(pmapi_request_duration_seconds_bucket{cache!="hit",conn="warm",class="book"}[24h]) or rate(pmapi_request_duration_seconds_bucket{cache!="hit",conn="warm",class="price",venue="myriad"}[24h]))), "provider", "$1", "venue", "(.+)")
 
 dimensions:
   region:
@@ -157,62 +157,62 @@ providers:
     tag: CLOB behind Cloudflare, documented per endpoint budgets, queues under load
     formula: "p50 of warm full round trips against the CLOB book endpoint for the pinned market, successful requests only, 24h window."
     queries:
-      p50: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{venue="polymarket",class="book",conn="warm"}[24h])) by (le))
-      p90: 1000 * histogram_quantile(0.90, sum(rate(pmapi_request_duration_seconds_bucket{venue="polymarket",class="book",conn="warm"}[24h])) by (le))
-      p99: 1000 * histogram_quantile(0.99, sum(rate(pmapi_request_duration_seconds_bucket{venue="polymarket",class="book",conn="warm"}[24h])) by (le))
-      mean: 1000 * sum(rate(pmapi_request_duration_seconds_sum{venue="polymarket",class="book",conn="warm"}[24h])) / sum(rate(pmapi_request_duration_seconds_count{venue="polymarket",class="book",conn="warm"}[24h]))
+      p50: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="polymarket",class="book",conn="warm"}[24h])) by (le))
+      p90: 1000 * histogram_quantile(0.90, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="polymarket",class="book",conn="warm"}[24h])) by (le))
+      p99: 1000 * histogram_quantile(0.99, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="polymarket",class="book",conn="warm"}[24h])) by (le))
+      mean: 1000 * sum(rate(pmapi_request_duration_seconds_sum{cache!="hit",venue="polymarket",class="book",conn="warm"}[24h])) / sum(rate(pmapi_request_duration_seconds_count{cache!="hit",venue="polymarket",class="book",conn="warm"}[24h]))
       success: clamp_max(sum(rate(pmapi_requests_total{venue="polymarket",class="book",conn="warm",outcome="ok"}[24h])) / sum(rate(pmapi_requests_total{venue="polymarket",class="book",conn="warm",outcome!="probe_invalid"}[24h])), 1)
       sample_size: sum(increase(pmapi_requests_total{venue="polymarket",class="book",conn="warm",outcome!="probe_invalid"}[24h]))
-      series: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{venue="polymarket",class="book",conn="warm"}[1h])) by (le))
+      series: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="polymarket",class="book",conn="warm"}[1h])) by (le))
 
   - slug: kalshi
     name: Kalshi
     tag: Documented token bucket, book and market go to origin, list is CloudFront cached
     formula: "p50 of warm full round trips against the order book endpoint for the pinned ticker, successful requests only, 24h window. The CDN cached list endpoint is reported separately and never feeds this number."
     queries:
-      p50: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{venue="kalshi",class="book",conn="warm"}[24h])) by (le))
-      p90: 1000 * histogram_quantile(0.90, sum(rate(pmapi_request_duration_seconds_bucket{venue="kalshi",class="book",conn="warm"}[24h])) by (le))
-      p99: 1000 * histogram_quantile(0.99, sum(rate(pmapi_request_duration_seconds_bucket{venue="kalshi",class="book",conn="warm"}[24h])) by (le))
-      mean: 1000 * sum(rate(pmapi_request_duration_seconds_sum{venue="kalshi",class="book",conn="warm"}[24h])) / sum(rate(pmapi_request_duration_seconds_count{venue="kalshi",class="book",conn="warm"}[24h]))
+      p50: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="kalshi",class="book",conn="warm"}[24h])) by (le))
+      p90: 1000 * histogram_quantile(0.90, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="kalshi",class="book",conn="warm"}[24h])) by (le))
+      p99: 1000 * histogram_quantile(0.99, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="kalshi",class="book",conn="warm"}[24h])) by (le))
+      mean: 1000 * sum(rate(pmapi_request_duration_seconds_sum{cache!="hit",venue="kalshi",class="book",conn="warm"}[24h])) / sum(rate(pmapi_request_duration_seconds_count{cache!="hit",venue="kalshi",class="book",conn="warm"}[24h]))
       success: clamp_max(sum(rate(pmapi_requests_total{venue="kalshi",class="book",conn="warm",outcome="ok"}[24h])) / sum(rate(pmapi_requests_total{venue="kalshi",class="book",conn="warm",outcome!="probe_invalid"}[24h])), 1)
       sample_size: sum(increase(pmapi_requests_total{venue="kalshi",class="book",conn="warm",outcome!="probe_invalid"}[24h]))
-      series: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{venue="kalshi",class="book",conn="warm"}[1h])) by (le))
+      series: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="kalshi",class="book",conn="warm"}[1h])) by (le))
 
   - slug: limitless
     name: Limitless
     tag: Undocumented limits, errors CDN cached 4h, CLOB order book
     formula: "p50 of warm full round trips against the order book endpoint for the pinned CLOB market, successful requests only, 24h window. CDN cached error responses on stale pins are classified probe_invalid and excluded."
     queries:
-      p50: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{venue="limitless",class="book",conn="warm"}[24h])) by (le))
-      p90: 1000 * histogram_quantile(0.90, sum(rate(pmapi_request_duration_seconds_bucket{venue="limitless",class="book",conn="warm"}[24h])) by (le))
-      p99: 1000 * histogram_quantile(0.99, sum(rate(pmapi_request_duration_seconds_bucket{venue="limitless",class="book",conn="warm"}[24h])) by (le))
-      mean: 1000 * sum(rate(pmapi_request_duration_seconds_sum{venue="limitless",class="book",conn="warm"}[24h])) / sum(rate(pmapi_request_duration_seconds_count{venue="limitless",class="book",conn="warm"}[24h]))
+      p50: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="limitless",class="book",conn="warm"}[24h])) by (le))
+      p90: 1000 * histogram_quantile(0.90, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="limitless",class="book",conn="warm"}[24h])) by (le))
+      p99: 1000 * histogram_quantile(0.99, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="limitless",class="book",conn="warm"}[24h])) by (le))
+      mean: 1000 * sum(rate(pmapi_request_duration_seconds_sum{cache!="hit",venue="limitless",class="book",conn="warm"}[24h])) / sum(rate(pmapi_request_duration_seconds_count{cache!="hit",venue="limitless",class="book",conn="warm"}[24h]))
       success: clamp_max(sum(rate(pmapi_requests_total{venue="limitless",class="book",conn="warm",outcome="ok"}[24h])) / sum(rate(pmapi_requests_total{venue="limitless",class="book",conn="warm",outcome!="probe_invalid"}[24h])), 1)
       sample_size: sum(increase(pmapi_requests_total{venue="limitless",class="book",conn="warm",outcome!="probe_invalid"}[24h]))
-      series: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{venue="limitless",class="book",conn="warm"}[1h])) by (le))
+      series: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="limitless",class="book",conn="warm"}[1h])) by (le))
 
   - slug: manifold
     name: Manifold
     tag: AMM, 500 req/min per IP documented, whole API behind a 5s cache
-    formula: "p50 of warm round trips against the bets feed (the AMM book equivalent) for the pinned market, successful requests only, 24h window. Probes space to 7s to look past the max-age=5 cache; residual hits carry cache=hit."
+    formula: "p50 of warm round trips against the bets feed (the AMM book equivalent), successful requests only, 24h window. Edge cache hits are excluded; the number reflects origin reads only."
     queries:
-      p50: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{venue="manifold",class="book",conn="warm"}[24h])) by (le))
-      p90: 1000 * histogram_quantile(0.90, sum(rate(pmapi_request_duration_seconds_bucket{venue="manifold",class="book",conn="warm"}[24h])) by (le))
-      p99: 1000 * histogram_quantile(0.99, sum(rate(pmapi_request_duration_seconds_bucket{venue="manifold",class="book",conn="warm"}[24h])) by (le))
-      mean: 1000 * sum(rate(pmapi_request_duration_seconds_sum{venue="manifold",class="book",conn="warm"}[24h])) / sum(rate(pmapi_request_duration_seconds_count{venue="manifold",class="book",conn="warm"}[24h]))
+      p50: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="manifold",class="book",conn="warm"}[24h])) by (le))
+      p90: 1000 * histogram_quantile(0.90, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="manifold",class="book",conn="warm"}[24h])) by (le))
+      p99: 1000 * histogram_quantile(0.99, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="manifold",class="book",conn="warm"}[24h])) by (le))
+      mean: 1000 * sum(rate(pmapi_request_duration_seconds_sum{cache!="hit",venue="manifold",class="book",conn="warm"}[24h])) / sum(rate(pmapi_request_duration_seconds_count{cache!="hit",venue="manifold",class="book",conn="warm"}[24h]))
       success: clamp_max(sum(rate(pmapi_requests_total{venue="manifold",class="book",conn="warm",outcome="ok"}[24h])) / sum(rate(pmapi_requests_total{venue="manifold",class="book",conn="warm",outcome!="probe_invalid"}[24h])), 1)
       sample_size: sum(increase(pmapi_requests_total{venue="manifold",class="book",conn="warm",outcome!="probe_invalid"}[24h]))
-      series: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{venue="manifold",class="book",conn="warm"}[1h])) by (le))
+      series: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="manifold",class="book",conn="warm"}[1h])) by (le))
 
   - slug: myriad
     name: Myriad
     tag: No order book endpoint, no WebSocket, single region Heroku origin, keyless 30 req/10s
     formula: "p50 of warm full round trips against the single market endpoint (Myriad exposes no order book, so the price class is its hot path), successful requests only, 24h window. Cross region latency reflects the single US East origin."
     queries:
-      p50: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{venue="myriad",class="price",conn="warm"}[24h])) by (le))
-      p90: 1000 * histogram_quantile(0.90, sum(rate(pmapi_request_duration_seconds_bucket{venue="myriad",class="price",conn="warm"}[24h])) by (le))
-      p99: 1000 * histogram_quantile(0.99, sum(rate(pmapi_request_duration_seconds_bucket{venue="myriad",class="price",conn="warm"}[24h])) by (le))
-      mean: 1000 * sum(rate(pmapi_request_duration_seconds_sum{venue="myriad",class="price",conn="warm"}[24h])) / sum(rate(pmapi_request_duration_seconds_count{venue="myriad",class="price",conn="warm"}[24h]))
+      p50: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="myriad",class="price",conn="warm"}[24h])) by (le))
+      p90: 1000 * histogram_quantile(0.90, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="myriad",class="price",conn="warm"}[24h])) by (le))
+      p99: 1000 * histogram_quantile(0.99, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="myriad",class="price",conn="warm"}[24h])) by (le))
+      mean: 1000 * sum(rate(pmapi_request_duration_seconds_sum{cache!="hit",venue="myriad",class="price",conn="warm"}[24h])) / sum(rate(pmapi_request_duration_seconds_count{cache!="hit",venue="myriad",class="price",conn="warm"}[24h]))
       success: clamp_max(sum(rate(pmapi_requests_total{venue="myriad",class="price",conn="warm",outcome="ok"}[24h])) / sum(rate(pmapi_requests_total{venue="myriad",class="price",conn="warm",outcome!="probe_invalid"}[24h])), 1)
       sample_size: sum(increase(pmapi_requests_total{venue="myriad",class="price",conn="warm",outcome!="probe_invalid"}[24h]))
-      series: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{venue="myriad",class="price",conn="warm"}[1h])) by (le))
+      series: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="myriad",class="price",conn="warm"}[1h])) by (le))
