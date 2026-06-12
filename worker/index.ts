@@ -250,6 +250,56 @@ async function noteHeartbeat(ok: boolean, err?: unknown): Promise<void> {
   }
 }
 
+// ─── Site warming ────────────────────────────────────────────────────
+// Low-traffic reality: almost every human visitor is the first visitor,
+// and every deploy resets the site's ISR cache, so pages and variant
+// combos are cold most of the time (1-7s renders behind a dimmed UI).
+// After publishing fresh snapshots the worker pings the corresponding
+// site URLs so the CDN always holds a warm copy. Gating is structural:
+// if the worker dies, the pings die with it — the live fallback can
+// never be stampeded by the warmer. Configure WARM_SITE_URLS with a
+// comma-separated list (e.g. staging now, prod after the cutover).
+const WARM_SITE_URLS = (process.env.WARM_SITE_URLS ?? "")
+  .split(",")
+  .map((s) => s.trim().replace(/\/$/, ""))
+  .filter(Boolean);
+
+async function warmUrls(paths: string[], label: string): Promise<void> {
+  if (WARM_SITE_URLS.length === 0 || paths.length === 0) return;
+  const t0 = Date.now();
+  let ok = 0;
+  let failed = 0;
+  const urls = WARM_SITE_URLS.flatMap((base) => paths.map((p) => base + p));
+  for (let i = 0; i < urls.length; i += 3) {
+    await Promise.all(
+      urls.slice(i, i + 3).map(async (url) => {
+        try {
+          const res = await fetch(url, {
+            signal: AbortSignal.timeout(20_000),
+            headers: { "User-Agent": "OpenChainBench-warmer/1.0" },
+          });
+          res.ok ? ok++ : failed++;
+          // Drain so keep-alive sockets are reusable.
+          await res.arrayBuffer().catch(() => {});
+        } catch {
+          failed++;
+        }
+      }),
+    );
+  }
+  console.log(
+    `[worker] warm ${label}: ${ok}/${urls.length} ok${failed ? ` (${failed} failed)` : ""} in ${((Date.now() - t0) / 1000).toFixed(1)}s`,
+  );
+}
+
+function variantPath(slug: string, f: BenchmarkFilters): string {
+  const qs = new URLSearchParams();
+  if (f.chain) qs.set("chain", f.chain);
+  if (f.region) qs.set("region", f.region);
+  if (f.kind) qs.set("kind", f.kind);
+  return `/api/bench/${slug}/variant${qs.size ? `?${qs.toString()}` : ""}`;
+}
+
 async function sweep(iteration: number): Promise<void> {
   const specs = await loadSpecsUncached();
   const t0 = Date.now();
@@ -267,6 +317,14 @@ async function sweep(iteration: number): Promise<void> {
     (e) => noteHeartbeat(false, e),
   );
 
+  // Keep the bench pages warm on every cycle: ISR revalidate is 60s, so
+  // a ping per sweep means the CDN always serves a fresh-enough copy
+  // instantly to real visitors.
+  await warmUrls(
+    specs.map((s) => `/benchmarks/${s.slug}`),
+    "pages",
+  );
+
   if (iteration % VARIANT_EVERY === 0) {
     const tB0 = Date.now();
     const jobs: { spec: Spec; filters: BenchmarkFilters }[] = [];
@@ -281,6 +339,10 @@ async function sweep(iteration: number): Promise<void> {
       }
     });
     console.log(`[worker] tierB done in ${((Date.now() - tB0) / 1000).toFixed(1)}s (${jobs.length} variants)`);
+    await warmUrls(
+      jobs.map(({ spec, filters }) => variantPath(spec.slug, filters)),
+      "variants",
+    );
   }
 }
 
