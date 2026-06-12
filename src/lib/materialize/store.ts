@@ -94,6 +94,17 @@ export async function publishSnapshot(
   }
 }
 
+/** Refresh the current blob's safety-net TTL without rewriting it.
+ *  Called when the worker decides to KEEP the previous snapshot (bench
+ *  collapsed this sweep): without this, a bench that stays broken for
+ *  longer than BLOB_TTL_SEC would silently lose its carried-forward
+ *  data when the blob expires, defeating "the data is always there". */
+export async function touchSnapshot(slug: string, sig: string): Promise<void> {
+  const hash = await redis(["GET", matKeys.pointer(slug, sig)], 5_000);
+  if (typeof hash !== "string" || !hash) return;
+  await redis(["EXPIRE", matKeys.blob(slug, sig, hash), BLOB_TTL_SEC], 5_000);
+}
+
 export async function heartbeat(now = Date.now()): Promise<void> {
   await redis(["SET", matKeys.heartbeat, String(Math.floor(now / 1000))]);
 }
