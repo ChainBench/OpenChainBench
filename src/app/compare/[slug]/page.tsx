@@ -12,7 +12,8 @@ import { getProviderRegistry } from "@/data/provider-registry";
 import { ProviderLogo } from "@/components/provider-logo";
 import { fmtUnit } from "@/lib/format";
 import { capDescription } from "@/lib/seo-text";
-import { safeJsonLd } from "@/lib/jsonld";
+import { Breadcrumb } from "@/components/breadcrumb";
+import { buildBreadcrumbJsonLd, safeJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
 
 /**
@@ -208,22 +209,11 @@ export default async function ComparePage({
 
   const breadcrumbJsonLd = {
     "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: [
-      { "@type": "ListItem", position: 1, name: "Home", item: SITE.url },
-      {
-        "@type": "ListItem",
-        position: 2,
-        name: "Compare",
-        item: `${SITE.url}/compare`,
-      },
-      {
-        "@type": "ListItem",
-        position: 3,
-        name: `${a.name} vs ${b.name}`,
-        item: url,
-      },
-    ],
+    ...buildBreadcrumbJsonLd([
+      { name: "Home", item: SITE.url },
+      { name: "Compare", item: `${SITE.url}/compare` },
+      { name: `${a.name} vs ${b.name}`, item: url },
+    ]),
   };
 
   return (
@@ -235,6 +225,15 @@ export default async function ComparePage({
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumbJsonLd) }}
+      />
+
+      {/* Visible breadcrumb trail - mirrors the BreadcrumbList JSON-LD above. */}
+      <Breadcrumb
+        items={[
+          { label: "Home", href: "/" },
+          { label: "Compare", href: "/compare" },
+          { label: `${a.name} vs ${b.name}` },
+        ]}
       />
 
       <nav className="mb-6 flex items-center gap-3 text-sm text-ink-soft">

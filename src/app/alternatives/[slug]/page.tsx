@@ -13,7 +13,8 @@ import { capDescription } from "@/lib/seo-text";
 import { SectionLabel, SummaryStat } from "@/components/summary-stat";
 import { SITE } from "@/data/site";
 import { loadAlternative } from "@/lib/alternatives";
-import { safeJsonLd } from "@/lib/jsonld";
+import { Breadcrumb } from "@/components/breadcrumb";
+import { buildBreadcrumbJsonLd, safeJsonLd } from "@/lib/jsonld";
 import { ProviderLogo } from "@/components/provider-logo";
 import { ProviderTypeBadge } from "@/components/provider-type-badge";
 import { isRegion } from "@/lib/brand";
@@ -141,18 +142,11 @@ export default async function AlternativePage({
         publisher: { "@id": `${SITE.url}/#org` },
         about: { "@id": `${url}#dataset` },
       },
-      {
-        "@type": "BreadcrumbList",
-        itemListElement: [
-          { "@type": "ListItem", position: 1, name: "Home", item: SITE.url },
-          {
-            "@type": "ListItem",
-            position: 2,
-            name: `${alt.target_product} alternatives`,
-            item: url,
-          },
-        ],
-      },
+      buildBreadcrumbJsonLd([
+        { name: "Home", item: SITE.url },
+        { name: "Alternatives", item: `${SITE.url}/alternatives` },
+        { name: `${alt.target_product} alternatives`, item: url },
+      ]),
     ],
   };
 
@@ -162,6 +156,15 @@ export default async function AlternativePage({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
       />
+      {/* Visible breadcrumb trail - mirrors the BreadcrumbList JSON-LD above. */}
+      <Breadcrumb
+        items={[
+          { label: "Home", href: "/" },
+          { label: "Alternatives", href: "/alternatives" },
+          { label: `${alt.target_product} alternatives` },
+        ]}
+      />
+
       <Link
         href="/#latest"
         className="inline-flex items-center gap-1.5 text-sm text-ink-muted hover:text-ink"

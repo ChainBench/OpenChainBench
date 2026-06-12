@@ -56,6 +56,7 @@ function Tab({
       type="button"
       onClick={onClick}
       title={title}
+      aria-pressed={active}
       className={[
         "rounded px-2.5 py-1 text-[11px] font-sans tabular uppercase tracking-[0.1em] font-medium transition-colors",
         active
