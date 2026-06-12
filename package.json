@@ -2,7 +2,7 @@
   "name": "openchainbench",
   "version": "0.1.0",
   "private": true,
-  "description": "Open benchmarks for crypto infrastructure \u2014 aggregators, bridges, price feeds.",
+  "description": "Open benchmarks for crypto infrastructure — aggregators, bridges, price feeds.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -19,6 +19,7 @@
     "@modelcontextprotocol/sdk": "^1.26.0",
     "@react-three/fiber": "^9.6.1",
     "@vercel/analytics": "^2.0.1",
+    "ioredis": "^5.11.1",
     "js-yaml": "^4.1.1",
     "lucide-react": "^1.11.0",
     "mcp-handler": "^1.1.0",

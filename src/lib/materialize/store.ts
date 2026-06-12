@@ -16,8 +16,21 @@ import {
   type MaterializedSnapshot,
 } from "./schema";
 
+// Transport selection. OCB_REDIS_URL (or REDIS_URL) → plain Redis over
+// TCP via ioredis: the Railway Redis next to the worker, no request
+// quotas (the Upstash free tier's 500k commands/month died in 1.5 days
+// under this architecture's ~300k commands/day). Falls back to the
+// Upstash REST creds when no TCP URL is set. Reads from Vercel cross
+// the public Railway TCP proxy (~50-100ms) — amortized to ~1/min/key by
+// the ISR layer above, so latency is a non-issue; the payload is public
+// benchmark data and the password is rotatable.
+const TCP_ENV = ["OCB_REDIS_URL", "REDIS_URL"] as const;
 const URL_ENV = ["KV_REST_API_URL", "UPSTASH_REDIS_REST_URL"] as const;
 const TOKEN_ENV = ["KV_REST_API_TOKEN", "UPSTASH_REDIS_REST_TOKEN"] as const;
+
+function tcpUrl(): string | null {
+  return TCP_ENV.map((k) => process.env[k]).find(Boolean) ?? null;
+}
 
 function creds(): { url: string; token: string } | null {
   const url = URL_ENV.map((k) => process.env[k]).find(Boolean);
@@ -26,15 +39,44 @@ function creds(): { url: string; token: string } | null {
 }
 
 export function storeConfigured(): boolean {
-  return creds() !== null;
+  return tcpUrl() !== null || creds() !== null;
+}
+
+// Lazy ioredis singleton: one connection per runtime instance, reused
+// across invocations (Vercel Fluid keeps instances warm; the worker is
+// a long-lived process anyway).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let tcpClient: any | null = null;
+async function tcp(): Promise<any> {
+  if (tcpClient) return tcpClient;
+  const { default: Redis } = await import("ioredis");
+  tcpClient = new Redis(tcpUrl()!, {
+    lazyConnect: true,
+    maxRetriesPerRequest: 2,
+    connectTimeout: 5000,
+    enableOfflineQueue: true,
+  });
+  return tcpClient;
 }
 
 async function redis(
   cmd: (string | number)[],
   timeoutMs = 4000,
 ): Promise<unknown> {
+  if (tcpUrl()) {
+    const client = await tcp();
+    const [name, ...args] = cmd.map(String);
+    const result = client.call(name, ...args);
+    const timeout = new Promise((_, reject) =>
+      setTimeout(
+        () => reject(new Error(`materialize store: redis tcp timeout ${name}`)),
+        timeoutMs,
+      ),
+    );
+    return Promise.race([result, timeout]);
+  }
   const c = creds();
-  if (!c) throw new Error("materialize store: KV_REST_API_* not configured");
+  if (!c) throw new Error("materialize store: no redis configured");
   const res = await fetch(c.url, {
     method: "POST",
     headers: {
