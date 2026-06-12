@@ -66,6 +66,26 @@ function stripFaqMarkdown(input: string): string {
 
 type FaqItem = { q: string; a: string };
 
+type CrumbItem = { name: string; item?: string };
+
+/**
+ * Build a BreadcrumbList JSON-LD node from ordered crumbs. Returns the
+ * bare object (no @context) so it can be embedded in an @graph or
+ * wrapped by the caller for standalone emission. Positions are derived
+ * from array order so call sites can't skew them.
+ */
+export function buildBreadcrumbJsonLd(items: CrumbItem[]): Record<string, unknown> {
+  return {
+    "@type": "BreadcrumbList",
+    itemListElement: items.map((c, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      name: c.name,
+      ...(c.item ? { item: c.item } : {}),
+    })),
+  };
+}
+
 /**
  * Normalise a chain value into a JSON-LD-safe @id suffix. Lowercased,
  * letters/digits/hyphens only — strips anything that would need URL
