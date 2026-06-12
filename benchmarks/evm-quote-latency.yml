@@ -39,12 +39,12 @@ methodology:
   - "Three regions (us east, eu west, sgp). Each is a separate Railway service writing the same metric family with a region label, so the page can filter to a single edge or aggregate across all three."
   - "Latency is wall clock from request dispatch to last byte received, observed only on the happy path (HTTP 2xx and a parseable output amount). Failures land on dedicated counters (auth, throttle, no route, other) and pull the success gauge to 0."
   - "Native asset sentinel is the canonical 0xEeeeeEeee form. Odos uses 0x0000... and Bebop substitutes the wrapped equivalent on the sell side. The adapter normalises per provider."
-  - "Provider auth: Mobula requires the sponsor key in an Authorization header. KyberSwap, Bebop, LI.FI and OpenOcean accept anonymous traffic. 1inch, 0x and Odos require free signup keys and are enabled when their respective env var is set."
+  - "Provider auth: Mobula requires the sponsor key in an Authorization header. KyberSwap, Bebop, LI.FI and OpenOcean accept anonymous traffic."
 
 findings:
-  - "{{best_name}} currently leads at {{best_p50}} on the active chain tab, across {{count}} measured providers. Mobula's quoting endpoint runs on a dedicated edge and consistently lands in the top 2 on the Ethereum tab."
-  - "KyberSwap sits in the top 2 across every chain. Its aggregator engine is split per chain and the no auth path keeps the HTTP round trip lean."
-  - "OpenOcean and LI.FI trade latency for breadth. Both cover 30+ chains, both fall in the 800 ms to 1.3 second p50 range on the active tab."
+  - "{{best_name}} currently leads at {{best_p50}} on the active chain tab, across {{count}} measured providers. Rankings shift per chain tab: a provider's edge placement and per-chain engine split matter more than its global average."
+  - "{{name:kyberswap}} returns {{p50:kyberswap}} (p50, 24 h). Its aggregator engine is split per chain and the no-auth path keeps the HTTP round trip lean."
+  - "{{name:openocean}} ({{p50:openocean}}) and {{name:lifi}} ({{p50:lifi}}) trade latency for breadth: both cover 30+ chains, and the route search across many underlying venues dominates their latency curve."
   - "Bebop is RFQ. The output amount it quotes is already net of fees because settlement is gasless for the taker. The latency you see is the maker network resolving the price, not a public mempool route search."
 
 faq:
