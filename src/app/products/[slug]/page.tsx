@@ -12,7 +12,8 @@ import {
   getProviderRegistry,
   PROVIDER_REGISTRY,
 } from "@/data/provider-registry";
-import { safeJsonLd } from "@/lib/jsonld";
+import { Breadcrumb } from "@/components/breadcrumb";
+import { buildBreadcrumbJsonLd, safeJsonLd } from "@/lib/jsonld";
 
 export const revalidate = 60;
 
@@ -273,29 +274,11 @@ export default async function ProviderPage({
         ...(sameAs.length > 0 ? { sameAs } : {}),
         creator: { "@id": `${SITE.url}/#org` },
       },
-      {
-        "@type": "BreadcrumbList",
-        itemListElement: [
-          {
-            "@type": "ListItem",
-            position: 1,
-            name: "Home",
-            item: SITE.url,
-          },
-          {
-            "@type": "ListItem",
-            position: 2,
-            name: "Products",
-            item: `${SITE.url}/products`,
-          },
-          {
-            "@type": "ListItem",
-            position: 3,
-            name: p.name,
-            item: url,
-          },
-        ],
-      },
+      buildBreadcrumbJsonLd([
+        { name: "Home", item: SITE.url },
+        { name: "Products", item: `${SITE.url}/products` },
+        { name: p.name, item: url },
+      ]),
     ],
   };
 
@@ -304,6 +287,15 @@ export default async function ProviderPage({
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
+      />
+
+      {/* Visible breadcrumb trail - mirrors the BreadcrumbList JSON-LD above. */}
+      <Breadcrumb
+        items={[
+          { label: "Home", href: "/" },
+          { label: "Products", href: "/products" },
+          { label: p.name },
+        ]}
       />
 
       <div className="flex flex-wrap items-center gap-3">
