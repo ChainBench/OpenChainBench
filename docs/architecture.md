@@ -9,10 +9,17 @@ benchmarks/<slug>.yml          ← editorial + queries (one source of truth)
 src/lib/spec-schema.ts         ← Zod contract
         │
         ▼
-src/lib/spec.ts                ← reads YAML, hits Prometheus, returns Benchmark
+worker/index.ts                ← materialization worker (Railway), sweeps
+        │                        every bench against Prometheus every 60s
         │                            ↑
         │                  src/lib/prometheus.ts (HTTP client)
         ▼
+Redis snapshot store           ← atomic per-(bench, variant) snapshots,
+        │                        per-provider carry-forward + staleness
+        ▼
+src/lib/spec.ts                ← reads snapshots (READ_FROM_STORE=1), falls
+        │                        back to live Prometheus when a snapshot is
+        ▼                        missing or too old
 src/data/benchmarks.ts         ← async getters used by pages
         │
         ▼
@@ -21,6 +28,17 @@ Next.js App Router pages       ← ISR, revalidate every 60s
         ▼
 Paper-styled report at /benchmarks/<slug>
 ```
+
+**Materialized, not rendered live.** The site does not query Prometheus at
+request time anymore. The worker (`worker/index.ts`, a Railway service next
+to the Prom) runs the same spec loader in a loop, merges each sweep with
+carry-forward state (a provider whose queries fail keeps its last good
+values, marked `staleSince`), and publishes complete snapshots to a Redis
+store. Pages read snapshots only: readers never see partially-failed
+leaderboards, and a worker outage degrades to frozen-but-complete data
+instead of errors. One operational consequence: a provider-list change in a
+spec reaches the site only after the worker image is rebuilt (its Docker
+build clones the OCB `dev` branch fresh).
 
 ## Why this shape
 
@@ -41,7 +59,9 @@ Paper-styled report at /benchmarks/<slug>
 | `src/types/benchmark.ts`     | Wire shape consumed by every renderer                    |
 | `src/lib/spec-schema.ts`     | Zod schema + derived TS types                            |
 | `src/lib/prometheus.ts`      | Minimal HTTP client (instant + range queries)            |
-| `src/lib/spec.ts`            | YAML loader, Prometheus overlay, draft fallback          |
+| `src/lib/spec.ts`            | YAML loader, snapshot read path, live-Prom fallback      |
+| `src/lib/materialize/`       | Worker-shared loader, snapshot schema, Redis store I/O   |
+| `worker/index.ts`            | Materialization loop (Railway service)                   |
 | `src/data/benchmarks.ts`     | Async getters (used by every page)                       |
 | `src/components/`            | Pure render. receives `Benchmark`, no fetching          |
 | `scripts/validate-specs.ts`  | CI-callable lint                                         |
@@ -49,9 +69,10 @@ Paper-styled report at /benchmarks/<slug>
 
 ## Known constraints
 
-- Prometheus must be reachable over HTTPS from the build runner and the ISR worker.
-- Build time grows linearly with the number of providers (one Prometheus call per provider per benchmark). At ~6 providers × 5 benchmarks × 24 ticks for series, expect ~150 round-trips per build. The HTTP client times out at 4s; total build should stay under 10s.
-- `generateStaticParams` reads the YAML filenames directly so the route table is stable even when Prometheus is offline.
+- Prometheus must be reachable from the materialization worker; the site only needs the Redis store (plus Prometheus for the live fallback path).
+- Worker sweep cost grows linearly with providers (one Prometheus call per provider per metric per benchmark) — the heaviest bench, hyperliquid-frontends, declares 100+ providers. The Prom client bounds concurrency with a global query semaphore.
+- `generateStaticParams` reads the YAML filenames directly so the route table is stable even when Prometheus or the store is offline.
+- Spec changes that alter a bench's provider list require a worker image rebuild to show up on the site (the worker bakes its OCB checkout at build time).
 
 ## The live dashboard on /
 
