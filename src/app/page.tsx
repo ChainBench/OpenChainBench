@@ -9,7 +9,7 @@ import { LiveDashboard } from "@/components/live/dashboard";
 export const revalidate = 60;
 
 const DESCRIPTION =
-  "State of the art across the most challenging benchmarks for crypto infrastructure, data providers, and bridge nodes.";
+  "Live benchmarks for crypto infrastructure: RPC latency, bridge fees, L2 finality and price feed accuracy. Open methodology, updated continuously.";
 
 export const metadata: Metadata = {
   title: "OpenChainBench. Open benchmarks for crypto infrastructure",
@@ -39,12 +39,12 @@ export default async function HomePage() {
       <section className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,420px)] gap-8 lg:gap-12 items-center lg:pr-12">
         <div>
           <h1 className="display text-3xl sm:text-4xl md:text-5xl text-ink leading-[1.05]">
-            Open-source KPIs from onchain products.
+            Open benchmarks for RPC latency, bridge fees and L2 finality.
           </h1>
           <p className="mt-5 max-w-xl text-base text-ink-soft leading-snug">
-            OpenChainBench measures the state of the art across the most
-            challenging benchmarks for crypto infrastructure, data providers,
-            and bridge nodes.
+            OpenChainBench runs continuous, reproducible benchmarks on crypto
+            infrastructure: RPC providers, bridges, price feeds and data APIs.
+            Open methodology, open harnesses, live data.
           </p>
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <Link

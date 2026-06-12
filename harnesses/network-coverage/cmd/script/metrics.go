@@ -121,8 +121,6 @@ func recordResult(provider string, res ProviderResult, dur time.Duration) {
 		}
 	}
 	currentSeries[provider] = next
-
-	recordDebugSnapshot(provider, res, dur)
 }
 
 func classifyError(msg string) string {
@@ -152,8 +150,7 @@ func contains(s, sub string) bool {
 func StartMetricsServer(addr string) error {
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", promhttp.Handler())
-	setupLogsEndpoint(mux)
-	setupNetworksDebugEndpoint(mux)
+	mux.Handle("/logs", logsHandler())
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte("OK")) })
 	return http.ListenAndServe(addr, mux)
 }

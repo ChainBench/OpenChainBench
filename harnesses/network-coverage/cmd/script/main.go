@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	installLogCapture()
+	installLogCapture() // capture stdout into /logs ring buffer
 	fmt.Println("=== Network Coverage Monitor ===")
 	fmt.Println("Counts the chains/networks each onchain data provider officially supports.")
 	fmt.Println("Bench № 005 (network-coverage) — exposes /metrics on :2112.")

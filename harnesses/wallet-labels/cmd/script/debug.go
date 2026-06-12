@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 )
@@ -42,7 +43,16 @@ func recordDebug(e debugEntry) {
 }
 
 func setupDebugEndpoint(mux *http.ServeMux) {
+	expectedToken := os.Getenv("LOGS_TOKEN")
 	mux.HandleFunc("/debug/wallet-labels", func(w http.ResponseWriter, r *http.Request) {
+		if expectedToken == "" {
+			http.NotFound(w, r)
+			return
+		}
+		if r.Header.Get("X-Logs-Token") != expectedToken {
+			http.Error(w, "forbidden", http.StatusForbidden)
+			return
+		}
 		debugMu.Lock()
 		out := make(map[string][]debugEntry, len(debugBuf))
 		for k, v := range debugBuf {

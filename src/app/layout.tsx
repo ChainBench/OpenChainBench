@@ -60,13 +60,14 @@ export const metadata: Metadata = {
     template: "%s · OpenChainBench",
   },
   description:
-    "Open, reproducible benchmarks for the multichain stack. aggregators, bridges, RPCs, price feeds.",
+    "Live benchmarks for crypto infrastructure: RPC latency, bridge fees, L2 finality and price feed accuracy. Open methodology, updated continuously.",
   ...(IS_STAGING && {
     robots: { index: false, follow: false, googleBot: { index: false, follow: false } },
   }),
   openGraph: {
     title: "OpenChainBench",
-    description: "Open, reproducible benchmarks for the multichain stack.",
+    description:
+      "Live benchmarks for crypto infrastructure: RPC latency, bridge fees, L2 finality and price feed accuracy.",
     type: "website",
     url: "https://openchainbench.com",
     siteName: "OpenChainBench",

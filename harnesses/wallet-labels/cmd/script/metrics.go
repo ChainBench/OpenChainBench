@@ -16,15 +16,15 @@ var commonLabels = prometheus.Labels{"benchmark": "wallet-labels"}
 var (
 	checksTotal = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name:        "wallet_labels_checks_total",
-		Help:        "Total label checks attempted per provider/chain.",
+		Help:        "Total label checks attempted per provider/chain/kind.",
 		ConstLabels: commonLabels,
-	}, []string{"provider", "chain"})
+	}, []string{"provider", "chain", "kind"})
 
 	successTotal = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name:        "wallet_labels_success_total",
 		Help:        "Checks where the provider returned a non-generic entity label.",
 		ConstLabels: commonLabels,
-	}, []string{"provider", "chain"})
+	}, []string{"provider", "chain", "kind"})
 
 	apiLatency = promauto.NewHistogramVec(prometheus.HistogramOpts{
 		Name:        "wallet_labels_api_latency_milliseconds",
@@ -52,8 +52,11 @@ var (
 	})
 )
 
-func recordCheck(provider, chain string, hasLabel bool, latencyMs float64, err error) {
-	checksTotal.WithLabelValues(provider, chain).Inc()
+func recordCheck(provider, chain, kind string, hasLabel bool, latencyMs float64, err error) {
+	if kind == "" {
+		kind = "unknown"
+	}
+	checksTotal.WithLabelValues(provider, chain, kind).Inc()
 	apiLatency.WithLabelValues(provider).Observe(latencyMs)
 	if err != nil {
 		fetchErrors.WithLabelValues(provider, classifyErr(err)).Inc()
@@ -62,7 +65,7 @@ func recordCheck(provider, chain string, hasLabel bool, latencyMs float64, err e
 	}
 	health.WithLabelValues(provider).Set(1)
 	if hasLabel {
-		successTotal.WithLabelValues(provider, chain).Inc()
+		successTotal.WithLabelValues(provider, chain, kind).Inc()
 	}
 }
 
@@ -95,10 +98,10 @@ func contains(s, sub string) bool {
 }
 
 // startMetricsServer exposes /metrics, /logs, /debug/wallet-labels.
-func startMetricsServer(addr, logsToken string) error {
+func startMetricsServer(addr, _ string) error {
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", promhttp.Handler())
-	setupLogsEndpoint(mux, logsToken)
+	mux.Handle("/logs", logsHandler())
 	setupDebugEndpoint(mux)
 	return http.ListenAndServe(addr, mux)
 }

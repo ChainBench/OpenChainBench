@@ -107,6 +107,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE.url}/contribute`, lastModified: pageMtime("contribute/page.tsx"), changeFrequency: "monthly", priority: 0.7 },
     { url: `${SITE.url}/about`, lastModified: pageMtime("about/page.tsx"), changeFrequency: "monthly", priority: 0.5 },
     { url: `${SITE.url}/press`, lastModified: pageMtime("press/page.tsx"), changeFrequency: "monthly", priority: 0.4 },
+    { url: `${SITE.url}/compare`, lastModified: pageMtime("compare/page.tsx"), changeFrequency: "weekly", priority: 0.6 },
   ];
 
   // Bench routes. The hub URL is the canonical entry and ranks highest.
@@ -153,12 +154,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.85,
   }));
 
-  const alternativeRoutes: MetadataRoute.Sitemap = alternatives.map((alt) => ({
-    url: `${SITE.url}/alternatives/${alt.slug}`,
-    lastModified: alternativeLastRun.get(alt.slug) ?? catalogLastRun,
-    changeFrequency: "daily",
-    priority: 0.85,
-  }));
+  // Only list alternatives whose parent bench exists on this branch. Some
+  // benches are deliberately held out of main (deleted YAMLs, 410 route),
+  // and /alternatives/<slug> 404s when its bench is missing — emitting the
+  // URL anyway feeds Google a sitemap entry that dead-ends.
+  const alternativeRoutes: MetadataRoute.Sitemap = alternatives
+    .filter((alt) => benchBySlug.has(alt.benchmark))
+    .map((alt) => ({
+      url: `${SITE.url}/alternatives/${alt.slug}`,
+      lastModified: alternativeLastRun.get(alt.slug) ?? catalogLastRun,
+      changeFrequency: "daily",
+      priority: 0.85,
+    }));
 
   return [
     ...staticRoutes,
