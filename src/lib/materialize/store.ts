@@ -16,6 +16,9 @@ import {
   type MaterializedSnapshot,
 } from "./schema";
 
+// Type-only: erased at build time, ioredis itself stays a dynamic import.
+type RedisClient = import("ioredis").Redis;
+
 // Transport selection. OCB_REDIS_URL (or REDIS_URL) → plain Redis over
 // TCP via ioredis: the Railway Redis next to the worker, no request
 // quotas (the Upstash free tier's 500k commands/month died in 1.5 days
@@ -45,9 +48,8 @@ export function storeConfigured(): boolean {
 // Lazy ioredis singleton: one connection per runtime instance, reused
 // across invocations (Vercel Fluid keeps instances warm; the worker is
 // a long-lived process anyway).
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let tcpClient: any | null = null;
-async function tcp(): Promise<any> {
+let tcpClient: RedisClient | null = null;
+async function tcp(): Promise<RedisClient> {
   if (tcpClient) return tcpClient;
   const { default: Redis } = await import("ioredis");
   tcpClient = new Redis(tcpUrl()!, {
