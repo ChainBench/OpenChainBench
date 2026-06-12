@@ -426,11 +426,14 @@ export function ShareSection({ slug, title, benchmark, chain }: Props) {
 function SharePreview({ src, alt }: { src: string; alt: string }) {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
-
-  useEffect(() => {
+  // Reset during render when src changes (the documented "adjust state
+  // when a prop changes" pattern) instead of a setState-in-effect.
+  const [prevSrc, setPrevSrc] = useState(src);
+  if (prevSrc !== src) {
+    setPrevSrc(src);
     setLoaded(false);
     setError(false);
-  }, [src]);
+  }
 
   return (
     <div className="relative border border-rule rounded overflow-hidden bg-paper-soft aspect-[1200/630]">
