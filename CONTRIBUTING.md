@@ -34,7 +34,7 @@ OpenChainBench is a federation. Each harness is hosted by whoever wrote it. the 
 3. **Build the harness** at `harnesses/<slug>/`. A harness is a data producer only. it exposes `/metrics` over HTTPS with the metric names and labels your spec references. See [`harnesses/README.md`](./harnesses/README.md) for the contract and the existing Go harnesses as reference implementations.
 4. **Deploy the harness** on whatever infra fits. Railway, Fly, Cloud Run, a VPS. Expose `/metrics` over HTTPS at a stable public URL. You own the runtime, the secrets and the budget. The maintainers never see your API keys.
 5. **Append a scrape job** to [`infrastructure/prometheus/prometheus.yml`](./infrastructure/prometheus/prometheus.yml) pointing at your public URL so the shared Prometheus picks up your harness. Format documented in [`infrastructure/README.md`](./infrastructure/README.md).
-6. **Open a PR** referencing the issue (`Closes #N`). CI runs `pnpm validate` (schema lint), `pnpm typecheck`, `pnpm lint`, and `pnpm build`. Once green and reviewed, a maintainer merges and redeploys the central Prometheus to apply the new scrape job. site picks up the spec on next ISR cycle (≤ 60 s).
+6. **Open a PR** referencing the issue (`Closes #N`). CI runs `pnpm validate` (schema lint), `pnpm typecheck`, `pnpm lint`, and `pnpm build`. Once green and reviewed, a maintainer merges, redeploys the central Prometheus to apply the new scrape job, and rebuilds the materialization worker (its image bakes the spec list at build time). The site serves the new bench on the next worker sweep + ISR cycle (≤ 2 min).
 
 ## Local development
 
