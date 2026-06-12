@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Globe } from "lucide-react";
 import type { Benchmark } from "@/types/benchmark";
 import { brandColor } from "@/lib/brand";
@@ -119,9 +119,12 @@ export function TimeSeriesChart({
   // Chart's internal re-renders. Reset to null when range or region
   // changes (the data shape is different, the old zoom doesn't apply).
   const [zoom, setZoom] = useState<{ startFrac: number; endFrac: number } | null>(null);
-  useEffect(() => {
+  const zoomScopeKey = `${range}|${region}`;
+  const [prevZoomScopeKey, setPrevZoomScopeKey] = useState(zoomScopeKey);
+  if (prevZoomScopeKey !== zoomScopeKey) {
+    setPrevZoomScopeKey(zoomScopeKey);
     setZoom(null);
-  }, [range, region]);
+  }
 
   const has7d =
     !!benchmark.extras.series7d &&
@@ -468,6 +471,7 @@ function Chart({
     idx: number;
     xPx: number;
     yPx: number;
+    containerW: number;
   } | null>(null);
 
   // Drag-to-zoom state. `dragFrac` is the [start, current] pair while
@@ -522,7 +526,7 @@ function Chart({
     const dataOffsetFromLast = offsetFromRight * expected;
     const lastIdx = numPoints - 1;
     const idx = Math.max(0, Math.min(lastIdx, Math.round(lastIdx - dataOffsetFromLast)));
-    setHover({ idx, xPx, yPx });
+    setHover({ idx, xPx, yPx, containerW: rect.width });
   };
 
   const onDown = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -971,7 +975,7 @@ function Chart({
         <Tooltip
           xPx={hover.xPx}
           yPx={hover.yPx}
-          containerW={wrapRef.current?.getBoundingClientRect().width ?? 1}
+          containerW={hover.containerW || 1}
           hoursAgo={hoverHoursAgo}
           windowHours={windowHours}
           unit={unit}

@@ -16,18 +16,27 @@ export function useAnimatedDomain(targetLo: number, targetHi: number) {
   const [displayed, setDisplayed] = useState({ lo: targetLo, hi: targetHi });
   const rafRef = useRef<number | null>(null);
 
-  useEffect(() => {
-    const targetRange = Math.max(targetHi - targetLo, 1);
-    const currentRange = Math.max(displayed.hi - displayed.lo, 1);
-    const hiDelta = Math.abs(targetHi - displayed.hi) / Math.max(currentRange, 1);
-    const loDelta = Math.abs(targetLo - displayed.lo) / Math.max(currentRange, 1);
-    const rangeDelta = Math.abs(targetRange - currentRange) / currentRange;
-    const significant = hiDelta > 0.2 || loDelta > 0.2 || rangeDelta > 0.2;
+  const targetRange = Math.max(targetHi - targetLo, 1);
+  const currentRange = Math.max(displayed.hi - displayed.lo, 1);
+  const hiDelta = Math.abs(targetHi - displayed.hi) / Math.max(currentRange, 1);
+  const loDelta = Math.abs(targetLo - displayed.lo) / Math.max(currentRange, 1);
+  const rangeDelta = Math.abs(targetRange - currentRange) / currentRange;
+  const significant = hiDelta > 0.2 || loDelta > 0.2 || rangeDelta > 0.2;
 
+  // Insignificant shifts snap during render (the documented "adjust
+  // state when a prop changes" pattern) - only when the TARGET moved,
+  // so an in-flight animation closing in on its target is never cut
+  // short by an early snap.
+  const [prevTarget, setPrevTarget] = useState({ lo: targetLo, hi: targetHi });
+  if (prevTarget.lo !== targetLo || prevTarget.hi !== targetHi) {
+    setPrevTarget({ lo: targetLo, hi: targetHi });
     if (!significant) {
       setDisplayed({ lo: targetLo, hi: targetHi });
-      return;
     }
+  }
+
+  useEffect(() => {
+    if (!significant) return;
 
     const from = displayed;
     const to = { lo: targetLo, hi: targetHi };
