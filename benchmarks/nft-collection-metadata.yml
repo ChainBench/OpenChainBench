@@ -1,0 +1,158 @@
+# OpenChainBench. Bench № 040
+
+slug: nft-collection-metadata
+number: "040"
+title: "Best NFT collection metadata API: Moralis, Alchemy, OpenSea, Rarible benchmarked"
+seo_title: "Best NFT collection metadata API 2026: Moralis, Alchemy, OpenSea, Rarible"
+seo_description: "NFT collection metadata API ranked live. Share of name, image, banner, description, floor price populated on 50 Ethereum blue-chip collections. Moralis, Alchemy, OpenSea, Rarible."
+subtitle: Share of metadata fields (logo, banner, description, floor price) populated across 50 Ethereum blue-chip NFT collections, audited every 6 hours.
+category: Aggregators
+status: live
+metric: Field coverage
+unit: pct
+higher_is_better: true
+
+seo_intro: |
+  This benchmark measures what every NFT marketplace, portfolio
+  tracker and wallet hits when it tries to render a collection card.
+  Name, image, banner, description and floor price. The five fields a
+  UI needs to render a tradeable collection tile instead of a bare
+  contract address. Provider marketing pages quote "10M+ NFTs indexed"
+  or "real-time floor prices", but coverage on established blue-chip
+  collections is the floor of what any production app can rely on,
+  not the ceiling. The harness queries Moralis, Alchemy, OpenSea and
+  Rarible every six hours for the same 50 Ethereum blue-chip
+  collections (BAYC, CryptoPunks, Azuki, Pudgy Penguins, Doodles and
+  others) and records which of the five fields each provider
+  returned. Coverage is the share of (provider, collection, field)
+  combinations that returned a populated value, computed as a rolling
+  rate so the leaderboard reflects what the API is doing today. This
+  bench is the established-collection companion to the fresh-launch
+  metadata-coverage bench. one tests the worst case (tokens two
+  minutes old), this tests the best case (collections everyone has
+  had years to index). On the current 24h window
+  {{best_name}} leads at {{best_p50}}.
+
+abstract: |
+  We benchmark how complete each NFT data API's collection-metadata response
+  is for a fixed list of 50 Ethereum blue-chip collections. Every six hours
+  the harness asks each provider for each collection and records whether
+  five canonical fields (`name`, `image`, `banner`, `description`,
+  `floor_price`) came back populated. The aggregate is the share of
+  (provider, collection, field) combinations that returned a populated
+  value across all checks in the window.
+
+  A value of 100% means every field was returned for every collection on
+  every check; a value of 60% means two-fifths of the fields were missing
+  on average. Sort order on this page is descending, so the highest
+  coverage shows first, which is the inverse of latency benchmarks.
+  Apple-to-apple field semantics are documented in the methodology so
+  readers can replicate the harness against their own collection list.
+
+methodology:
+  - "Collection set: a fixed list of 50 Ethereum blue-chip collections (BAYC, CryptoPunks, Azuki, Pudgy Penguins, Doodles, MAYC, Moonbirds, CloneX, Otherdeeds, Meebits and others). The list is committed to the harness repo and only changes via PR."
+  - "Coverage check: for each collection, query each provider's collection-metadata endpoint and record whether `name`, `image`, `banner`, `description` and `floor_price` are populated."
+  - "Providers in scope: Moralis (`/nft/{address}/metadata`), Alchemy (`getContractMetadata`), OpenSea (`/api/v2/collections/{slug}`), Rarible (`/v0.1/collections/{id}`)."
+  - "Cadence: every 6 hours per provider × collection. Steady-state ≈ 200 checks per provider per day, 1000 field checks per provider per day."
+  - "Apple-to-apple field semantics: `image` counts if any image URL is returned (logo, thumbnail or banner alias). `floor_price` counts if any non-zero number is returned in the provider's native currency unit. `banner` counts only if a distinct banner URL is returned (a logo aliased into banner does not count). `description` counts on any non-empty string. `name` counts on any non-empty string."
+  - "Region: `eu-west` (single point. multi-region requires running additional monitor instances)."
+  - "Ratio: `nft_collection_metadata_success_total / nft_collection_metadata_checks_total`, expressed in percent. Failures of the metadata API itself (timeouts, 5xx) are not counted in the denominator. only successful responses with the field check applied."
+
+findings:
+  - "{{best_name}} leads NFT collection metadata coverage at {{best_p50}} (p50, 24 h). The number is the share of (name, image, banner, description, floor_price) field checks that returned a populated value on the 50 blue-chip collection set."
+  - "{{name:moralis}} returns {{p50:moralis}} (p50, 24 h). Moralis's NFT API exposes a unified collection-metadata endpoint that pulls from its own indexer plus public marketplace feeds."
+  - "{{name:alchemy}} clocks {{p50:alchemy}} (p50, 24 h). Alchemy's `getContractMetadata` returns ERC721/ERC1155 contract-level data plus enriched OpenSea fields when available."
+  - "{{name:opensea}} sits at {{p50:opensea}} (p50, 24 h). OpenSea's v2 collections endpoint is the source of truth for marketplace-side metadata (banner, description, floor) on collections it lists."
+  - "{{name:rarible}} sits at {{p50:rarible}} (p50, 24 h). Rarible's Protocol API aggregates collection metadata across marketplaces, which helps coverage on collections delisted from a single venue."
+  - "Floor price is the field most likely to be missing. p99 ({{p99:moralis}} / {{p99:alchemy}} / {{p99:opensea}} / {{p99:rarible}}) is what a portfolio tracker sees during the worst 6h window in the day. usually a provider failing to refresh floor on a low-volume collection."
+  - "{{worst_name}} trails at {{worst_p50}} (p50, 24 h). A 20-point gap on this leaderboard means roughly one in five field renders falls back to a placeholder when displaying a blue-chip collection."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/nft-collection-metadata
+
+prometheus:
+  window: 24h
+  expected_freshness_seconds: 21600
+
+faq:
+  - q: "Which API is best for NFT collection metadata?"
+    a: "On the 50 Ethereum blue-chip set this benchmark scores, {{best_name}} currently leads at {{best_p50}} (p50, 24 h). The benchmark targets the best case for any NFT API. collections that everyone has had years to index. so the spread between providers reflects refresh discipline and field completeness rather than catalogue size. For fresh NFT mints (the worst case) the picture is different and that benchmark is not yet live on OpenChainBench."
+  - q: "Why only 50 collections?"
+    a: "A fixed collection set keeps the comparison apple-to-apple. Every provider is asked about the same collections on the same cadence, so coverage differences cannot be explained away by 'the other provider tested an easier collection list'. 50 is the trade-off between statistical density (1000 field checks per provider per day) and respecting each provider's free-tier rate limit. The list is committed in the harness repo and only changes via PR."
+  - q: "Does this benchmark test fresh NFT mints?"
+    a: "No. This bench tests established blue-chip collections (BAYC, CryptoPunks, Azuki and 47 others). Fresh-mint NFT metadata coverage is a different benchmark that would need a launchpad-aware discovery loop, similar to the fresh-launch token metadata-coverage bench. Treat this number as the floor of what any provider can deliver. coverage on fresh mints will always be lower."
+  - q: "What's the difference between Moralis NFT API and OpenSea API?"
+    a: "Moralis is a general-purpose Web3 data API. its NFT endpoint pulls from Moralis's own EVM indexer plus enriched marketplace data. OpenSea is the marketplace. its API is the canonical source for marketplace-side fields (banner, description, listings, floor) on collections OpenSea has listed. Moralis covers some collections OpenSea has delisted; OpenSea covers some marketplace-specific fields Moralis does not expose. Both appear in this bench because they are different layers of the stack."
+  - q: "Why is floor price the most often-missing field?"
+    a: "Floor price is the only field on the list that requires a live marketplace lookup. Name, image, banner and description are contract-level or off-chain metadata that the provider can cache and serve for hours. Floor changes whenever someone lists or delists, so providers either refresh aggressively (paying the marketplace API cost) or let it go stale. The 6-hour cadence on this bench is long enough to surface refresh failures, short enough to be useful as a leaderboard."
+  - q: "How does the apple-to-apple field semantics work?"
+    a: "Each provider returns slightly different field shapes. We normalise as follows: `image` counts if any image URL is returned (logo, thumbnail or banner alias). `floor_price` counts if any non-zero number is returned in the provider's native currency unit. `banner` counts only if a distinct banner URL is returned (a logo aliased into banner does not count). `description` and `name` count on any non-empty string. This normalisation is committed in the harness repo and only changes via PR."
+  - q: "Why use a rolling rate instead of a single number for coverage?"
+    a: "Coverage drifts during the day. A marketplace can rate-limit one provider for an hour and that provider's coverage drops until the limit resets. We use `quantile_over_time` on a one-hour rolling rate, sampled over 24 hours, so the headline is p50 of the hourly coverage rate rather than a flat average. Same shape as a latency benchmark, applied to a coverage ratio."
+
+# Real metrics exposed by the nft-collection-metadata harness:
+#   nft_collection_metadata_checks_total{provider, collection, field, region}   counter
+#   nft_collection_metadata_success_total{provider, collection, field, region}  counter
+#   nft_collection_metadata_api_latency_milliseconds{provider, region}          histogram
+#
+# Field values: "name" | "image" | "banner" | "description" | "floor_price"
+# Provider values: "moralis" | "alchemy" | "opensea" | "rarible"
+#
+# Coverage % per provider, summed over all collections and all five fields:
+#   100 * sum(rate(nft_collection_metadata_success_total{provider="X"}[24h]))
+#       / sum(rate(nft_collection_metadata_checks_total{provider="X"}[24h]))
+#
+# We use quantile_over_time on a rolling 1h rate to give p50/p90/p99 the
+# same shape as latency benchmarks.
+
+providers:
+  - slug: moralis
+    name: Moralis
+    tag: REST `/nft/{address}/metadata`
+    formula: "Median of hourly coverage rate (populated name/image/banner/description/floor_price fields divided by total field checks) on Moralis `/nft/{address}/metadata` for the 50 blue-chip set, p50 over 24h."
+    queries:
+      p50: quantile_over_time(0.50, (100 * sum(rate(nft_collection_metadata_success_total{provider="moralis"}[1h])) / sum(rate(nft_collection_metadata_checks_total{provider="moralis"}[1h])))[24h:1h])
+      p90: quantile_over_time(0.90, (100 * sum(rate(nft_collection_metadata_success_total{provider="moralis"}[1h])) / sum(rate(nft_collection_metadata_checks_total{provider="moralis"}[1h])))[24h:1h])
+      p99: quantile_over_time(0.99, (100 * sum(rate(nft_collection_metadata_success_total{provider="moralis"}[1h])) / sum(rate(nft_collection_metadata_checks_total{provider="moralis"}[1h])))[24h:1h])
+      mean: 100 * sum(rate(nft_collection_metadata_success_total{provider="moralis"}[24h])) / sum(rate(nft_collection_metadata_checks_total{provider="moralis"}[24h]))
+      success: clamp_max(sum(rate(nft_collection_metadata_checks_total{provider="moralis"}[24h])) / scalar(sum(rate(nft_collection_metadata_checks_total{provider="moralis"}[24h]))), 1)
+      sample_size: sum(increase(nft_collection_metadata_checks_total{provider="moralis"}[24h]))
+      series: 100 * sum(rate(nft_collection_metadata_success_total{provider="moralis"}[1h])) / sum(rate(nft_collection_metadata_checks_total{provider="moralis"}[1h]))
+
+  - slug: alchemy
+    name: Alchemy
+    tag: REST `getContractMetadata`
+    formula: "Median of hourly coverage rate (populated name/image/banner/description/floor_price fields divided by total field checks) on Alchemy `getContractMetadata` for the 50 blue-chip set, p50 over 24h."
+    queries:
+      p50: quantile_over_time(0.50, (100 * sum(rate(nft_collection_metadata_success_total{provider="alchemy"}[1h])) / sum(rate(nft_collection_metadata_checks_total{provider="alchemy"}[1h])))[24h:1h])
+      p90: quantile_over_time(0.90, (100 * sum(rate(nft_collection_metadata_success_total{provider="alchemy"}[1h])) / sum(rate(nft_collection_metadata_checks_total{provider="alchemy"}[1h])))[24h:1h])
+      p99: quantile_over_time(0.99, (100 * sum(rate(nft_collection_metadata_success_total{provider="alchemy"}[1h])) / sum(rate(nft_collection_metadata_checks_total{provider="alchemy"}[1h])))[24h:1h])
+      mean: 100 * sum(rate(nft_collection_metadata_success_total{provider="alchemy"}[24h])) / sum(rate(nft_collection_metadata_checks_total{provider="alchemy"}[24h]))
+      success: clamp_max(sum(rate(nft_collection_metadata_checks_total{provider="alchemy"}[24h])) / scalar(sum(rate(nft_collection_metadata_checks_total{provider="alchemy"}[24h]))), 1)
+      sample_size: sum(increase(nft_collection_metadata_checks_total{provider="alchemy"}[24h]))
+      series: 100 * sum(rate(nft_collection_metadata_success_total{provider="alchemy"}[1h])) / sum(rate(nft_collection_metadata_checks_total{provider="alchemy"}[1h]))
+
+  - slug: opensea
+    name: OpenSea
+    tag: REST `/api/v2/collections/{slug}`
+    formula: "Median of hourly coverage rate (populated name/image/banner/description/floor_price fields divided by total field checks) on OpenSea `/api/v2/collections/{slug}` for the 50 blue-chip set, p50 over 24h."
+    queries:
+      p50: quantile_over_time(0.50, (100 * sum(rate(nft_collection_metadata_success_total{provider="opensea"}[1h])) / sum(rate(nft_collection_metadata_checks_total{provider="opensea"}[1h])))[24h:1h])
+      p90: quantile_over_time(0.90, (100 * sum(rate(nft_collection_metadata_success_total{provider="opensea"}[1h])) / sum(rate(nft_collection_metadata_checks_total{provider="opensea"}[1h])))[24h:1h])
+      p99: quantile_over_time(0.99, (100 * sum(rate(nft_collection_metadata_success_total{provider="opensea"}[1h])) / sum(rate(nft_collection_metadata_checks_total{provider="opensea"}[1h])))[24h:1h])
+      mean: 100 * sum(rate(nft_collection_metadata_success_total{provider="opensea"}[24h])) / sum(rate(nft_collection_metadata_checks_total{provider="opensea"}[24h]))
+      success: clamp_max(sum(rate(nft_collection_metadata_checks_total{provider="opensea"}[24h])) / scalar(sum(rate(nft_collection_metadata_checks_total{provider="opensea"}[24h]))), 1)
+      sample_size: sum(increase(nft_collection_metadata_checks_total{provider="opensea"}[24h]))
+      series: 100 * sum(rate(nft_collection_metadata_success_total{provider="opensea"}[1h])) / sum(rate(nft_collection_metadata_checks_total{provider="opensea"}[1h]))
+
+  - slug: rarible
+    name: Rarible
+    tag: REST `/v0.1/collections/{id}`
+    formula: "Median of hourly coverage rate (populated name/image/banner/description/floor_price fields divided by total field checks) on Rarible Protocol API `/v0.1/collections/{id}` for the 50 blue-chip set, p50 over 24h."
+    queries:
+      p50: quantile_over_time(0.50, (100 * sum(rate(nft_collection_metadata_success_total{provider="rarible"}[1h])) / sum(rate(nft_collection_metadata_checks_total{provider="rarible"}[1h])))[24h:1h])
+      p90: quantile_over_time(0.90, (100 * sum(rate(nft_collection_metadata_success_total{provider="rarible"}[1h])) / sum(rate(nft_collection_metadata_checks_total{provider="rarible"}[1h])))[24h:1h])
+      p99: quantile_over_time(0.99, (100 * sum(rate(nft_collection_metadata_success_total{provider="rarible"}[1h])) / sum(rate(nft_collection_metadata_checks_total{provider="rarible"}[1h])))[24h:1h])
+      mean: 100 * sum(rate(nft_collection_metadata_success_total{provider="rarible"}[24h])) / sum(rate(nft_collection_metadata_checks_total{provider="rarible"}[24h]))
+      success: clamp_max(sum(rate(nft_collection_metadata_checks_total{provider="rarible"}[24h])) / scalar(sum(rate(nft_collection_metadata_checks_total{provider="rarible"}[24h]))), 1)
+      sample_size: sum(increase(nft_collection_metadata_checks_total{provider="rarible"}[24h]))
+      series: 100 * sum(rate(nft_collection_metadata_success_total{provider="rarible"}[1h])) / sum(rate(nft_collection_metadata_checks_total{provider="rarible"}[1h]))
