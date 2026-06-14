@@ -107,6 +107,17 @@ export function unitSuffix(unit: string, value?: number): string {
     }
     return " s";
   }
+  if (unit === "ms") {
+    // Mirror fmtUnit's fallback: ms-in, auto-flip to s at 1000 and min
+    // at 60000. Without this, share cards on benches like l2-block-time
+    // render "2.00 ms" for a 2000ms p50 because fmtValue strips the "s"
+    // that fmtUnit added and unitSuffix slapped " ms" back on.
+    if (value !== undefined && Number.isFinite(value)) {
+      if (value >= 60000) return " min";
+      if (value >= 1000) return " s";
+    }
+    return " ms";
+  }
   if (unit === "slots") return " slots";
   if (unit === "count") return "";
   if (unit === "usd") return "";
