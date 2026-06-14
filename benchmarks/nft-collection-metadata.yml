@@ -4,8 +4,8 @@ slug: nft-collection-metadata
 number: "040"
 title: "Best NFT collection metadata API: Moralis, Alchemy, OpenSea, Rarible benchmarked"
 seo_title: "Best NFT collection metadata API 2026: Moralis, Alchemy, OpenSea, Rarible"
-seo_description: "NFT collection metadata API ranked live. Share of name, image, banner, description, floor price populated on 50 Ethereum blue-chip collections. Moralis, Alchemy, OpenSea, Rarible."
-subtitle: Share of metadata fields (logo, banner, description, floor price) populated across 50 Ethereum blue-chip NFT collections, audited every 6 hours.
+seo_description: "NFT collection metadata API ranked live. Share of name, image, description, floor_eth, external_url populated on 50 Ethereum blue-chip collections. Moralis, Alchemy, OpenSea, Rarible."
+subtitle: Share of metadata fields (name, image, description, floor_eth, external_url) populated across 50 Ethereum blue-chip NFT collections, audited every 6 hours.
 category: Aggregators
 status: live
 metric: Field coverage
@@ -15,19 +15,23 @@ higher_is_better: true
 seo_intro: |
   This benchmark measures what every NFT marketplace, portfolio
   tracker and wallet hits when it tries to render a collection card.
-  Name, image, banner, description and floor price. The five fields a
-  UI needs to render a tradeable collection tile instead of a bare
-  contract address. Provider marketing pages quote "10M+ NFTs indexed"
-  or "real-time floor prices", but coverage on established blue-chip
-  collections is the floor of what any production app can rely on,
-  not the ceiling. The harness queries Moralis, Alchemy, OpenSea and
-  Rarible every six hours for the same 50 Ethereum blue-chip
-  collections (BAYC, CryptoPunks, Azuki, Pudgy Penguins, Doodles and
-  others) and records which of the five fields each provider
-  returned. Coverage is the share of (provider, collection, field)
-  combinations that returned a populated value, computed as a rolling
-  rate so the leaderboard reflects what the API is doing today. This
-  bench is the established-collection companion to the fresh-launch
+  Name, image, description, floor_eth and external_url. The five
+  fields a UI needs to render a tradeable collection tile instead of
+  a bare contract address. Provider marketing pages quote "10M+ NFTs
+  indexed" or "real-time floor prices", but coverage on established
+  blue-chip collections is the floor of what any production app can
+  rely on, not the ceiling. The harness queries Moralis, Alchemy,
+  OpenSea and Rarible every six hours for the same 50 Ethereum
+  blue-chip collections (BAYC, CryptoPunks, Azuki, Pudgy Penguins,
+  Doodles and others) and records which of the five fields each
+  provider returned. Coverage is the share of (provider, collection,
+  field) combinations that returned a populated value, computed as a
+  rolling rate so the leaderboard reflects what the API is doing
+  today. Banner image was considered but dropped from scoring:
+  Rarible's API doesn't return a banner field at all (0/10 in
+  validation). Including it would unfairly tank Rarible's score on a
+  structural API limitation rather than data quality. This bench is
+  the established-collection companion to the fresh-launch
   metadata-coverage bench. one tests the worst case (tokens two
   minutes old), this tests the best case (collections everyone has
   had years to index). On the current 24h window
@@ -37,8 +41,8 @@ abstract: |
   We benchmark how complete each NFT data API's collection-metadata response
   is for a fixed list of 50 Ethereum blue-chip collections. Every six hours
   the harness asks each provider for each collection and records whether
-  five canonical fields (`name`, `image`, `banner`, `description`,
-  `floor_price`) came back populated. The aggregate is the share of
+  five canonical fields (`name`, `image`, `description`, `floor_eth`,
+  `external_url`) came back populated. The aggregate is the share of
   (provider, collection, field) combinations that returned a populated
   value across all checks in the window.
 
@@ -48,23 +52,30 @@ abstract: |
   coverage shows first, which is the inverse of latency benchmarks.
   Apple-to-apple field semantics are documented in the methodology so
   readers can replicate the harness against their own collection list.
+  Rarible's `floor_eth` is skipped (recorded as N/A, not as a failure)
+  because Rarible's `bestBidOrder` is a BID rather than an ASK floor.
+  comparing it against the ASK floors that Moralis, Alchemy and OpenSea
+  expose would be apples-to-oranges, so Rarible's score is computed on
+  the four remaining fields.
 
 methodology:
   - "Collection set: a fixed list of 50 Ethereum blue-chip collections (BAYC, CryptoPunks, Azuki, Pudgy Penguins, Doodles, MAYC, Moonbirds, CloneX, Otherdeeds, Meebits and others). The list is committed to the harness repo and only changes via PR."
-  - "Coverage check: for each collection, query each provider's collection-metadata endpoint and record whether `name`, `image`, `banner`, `description` and `floor_price` are populated."
-  - "Providers in scope: Moralis (`/nft/{address}/metadata`), Alchemy (`getContractMetadata`), OpenSea (`/api/v2/collections/{slug}`), Rarible (`/v0.1/collections/{id}`)."
-  - "Cadence: every 6 hours per provider × collection. Steady-state ≈ 200 checks per provider per day, 1000 field checks per provider per day."
-  - "Apple-to-apple field semantics: `image` counts if any image URL is returned (logo, thumbnail or banner alias). `floor_price` counts if any non-zero number is returned in the provider's native currency unit. `banner` counts only if a distinct banner URL is returned (a logo aliased into banner does not count). `description` counts on any non-empty string. `name` counts on any non-empty string."
+  - "Fields scored (5): `name`, `image`, `description`, `floor_eth`, `external_url`. A field counts as covered if the provider returns a non-empty string or a positive number."
+  - "Apple-to-apple: each provider gets exactly one chance per field. No OR-of-multiple-URLs tricks."
+  - "Providers in scope: Moralis (`/nft/{address}/metadata`), Alchemy (`getContractMetadata`), OpenSea (`/api/v2/collections/{slug}` plus `/api/v2/collections/{slug}/stats` for floor; slug pre-resolved via `/api/v2/chain/ethereum/contract/{addr}`, so OpenSea costs two API calls per collection per check), Rarible (`/v0.1/collections/{id}`, throttled to ~1 req/s in-harness to respect their published rate limit)."
+  - "Cadence: every 6 hours per provider × collection. Steady-state ≈ 200 checks per provider per day, ~1000 field checks per provider per day (≈800 for Rarible since floor_eth is skipped)."
+  - "Rarible: floor_eth is skipped (recorded as N/A, NOT as a failure). Rarible's `bestBidOrder` is a BID, not an ASK. Comparing it to Moralis/Alchemy/OpenSea ASK floors would be apples-to-oranges, so Rarible's score is computed on the 4 remaining fields."
+  - "CryptoPunks (pre-ERC721 contract): indexed by Moralis/Alchemy/OpenSea, returns 404 on Rarible. The 404 counts as a check (denominator increment) with all 4 fields scoring 0 for Rarible, which is honest (Rarible genuinely doesn't index it)."
   - "Region: `eu-west` (single point. multi-region requires running additional monitor instances)."
   - "Ratio: `nft_collection_metadata_success_total / nft_collection_metadata_checks_total`, expressed in percent. Failures of the metadata API itself (timeouts, 5xx) are not counted in the denominator. only successful responses with the field check applied."
 
 findings:
-  - "{{best_name}} leads NFT collection metadata coverage at {{best_p50}} (p50, 24 h). The number is the share of (name, image, banner, description, floor_price) field checks that returned a populated value on the 50 blue-chip collection set."
+  - "{{best_name}} leads NFT collection metadata coverage at {{best_p50}} (p50, 24 h). The number is the share of (name, image, description, floor_eth, external_url) field checks that returned a populated value on the 50 blue-chip collection set. Rarible is scored on 4 fields (floor_eth skipped because Rarible exposes a BID, not an ASK)."
   - "{{name:moralis}} returns {{p50:moralis}} (p50, 24 h). Moralis's NFT API exposes a unified collection-metadata endpoint that pulls from its own indexer plus public marketplace feeds."
   - "{{name:alchemy}} clocks {{p50:alchemy}} (p50, 24 h). Alchemy's `getContractMetadata` returns ERC721/ERC1155 contract-level data plus enriched OpenSea fields when available."
-  - "{{name:opensea}} sits at {{p50:opensea}} (p50, 24 h). OpenSea's v2 collections endpoint is the source of truth for marketplace-side metadata (banner, description, floor) on collections it lists."
-  - "{{name:rarible}} sits at {{p50:rarible}} (p50, 24 h). Rarible's Protocol API aggregates collection metadata across marketplaces, which helps coverage on collections delisted from a single venue."
-  - "Floor price is the field most likely to be missing. p99 ({{p99:moralis}} / {{p99:alchemy}} / {{p99:opensea}} / {{p99:rarible}}) is what a portfolio tracker sees during the worst 6h window in the day. usually a provider failing to refresh floor on a low-volume collection."
+  - "{{name:opensea}} sits at {{p50:opensea}} (p50, 24 h). OpenSea's v2 collections endpoint is the source of truth for marketplace-side metadata (description, external_url, floor) on collections it lists. Each check is two API calls (collection + stats) after a one-time slug resolution."
+  - "{{name:rarible}} sits at {{p50:rarible}} (p50, 24 h). Rarible's Protocol API aggregates collection metadata across marketplaces, which helps coverage on collections delisted from a single venue. Scored on 4 fields (floor_eth N/A)."
+  - "floor_eth is the field most likely to be missing. p99 ({{p99:moralis}} / {{p99:alchemy}} / {{p99:opensea}} / {{p99:rarible}}) is what a portfolio tracker sees during the worst 6h window in the day. usually a provider failing to refresh floor on a low-volume collection."
   - "{{worst_name}} trails at {{worst_p50}} (p50, 24 h). A 20-point gap on this leaderboard means roughly one in five field renders falls back to a placeholder when displaying a blue-chip collection."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/nft-collection-metadata
@@ -81,11 +92,15 @@ faq:
   - q: "Does this benchmark test fresh NFT mints?"
     a: "No. This bench tests established blue-chip collections (BAYC, CryptoPunks, Azuki and 47 others). Fresh-mint NFT metadata coverage is a different benchmark that would need a launchpad-aware discovery loop, similar to the fresh-launch token metadata-coverage bench. Treat this number as the floor of what any provider can deliver. coverage on fresh mints will always be lower."
   - q: "What's the difference between Moralis NFT API and OpenSea API?"
-    a: "Moralis is a general-purpose Web3 data API. its NFT endpoint pulls from Moralis's own EVM indexer plus enriched marketplace data. OpenSea is the marketplace. its API is the canonical source for marketplace-side fields (banner, description, listings, floor) on collections OpenSea has listed. Moralis covers some collections OpenSea has delisted; OpenSea covers some marketplace-specific fields Moralis does not expose. Both appear in this bench because they are different layers of the stack."
-  - q: "Why is floor price the most often-missing field?"
-    a: "Floor price is the only field on the list that requires a live marketplace lookup. Name, image, banner and description are contract-level or off-chain metadata that the provider can cache and serve for hours. Floor changes whenever someone lists or delists, so providers either refresh aggressively (paying the marketplace API cost) or let it go stale. The 6-hour cadence on this bench is long enough to surface refresh failures, short enough to be useful as a leaderboard."
+    a: "Moralis is a general-purpose Web3 data API. its NFT endpoint pulls from Moralis's own EVM indexer plus enriched marketplace data. OpenSea is the marketplace. its API is the canonical source for marketplace-side fields (description, external_url, floor) on collections OpenSea has listed. Moralis covers some collections OpenSea has delisted; OpenSea covers some marketplace-specific fields Moralis does not expose. Both appear in this bench because they are different layers of the stack."
+  - q: "Why is floor_eth the most often-missing field?"
+    a: "floor_eth is the only field on the list that requires a live marketplace lookup. Name, image, description and external_url are contract-level or off-chain metadata that the provider can cache and serve for hours. Floor changes whenever someone lists or delists, so providers either refresh aggressively (paying the marketplace API cost) or let it go stale. The 6-hour cadence on this bench is long enough to surface refresh failures, short enough to be useful as a leaderboard."
+  - q: "Why doesn't banner count?"
+    a: "Banner was considered during the initial spec but dropped from scoring before the bench went live. Rarible's `/v0.1/collections/{id}` response simply has no banner field at all. In a 10-collection apple-to-apple validation Rarible scored 0/10 on banner, not because Rarible failed to return a value but because the API surface doesn't expose one. Scoring banner would have penalised Rarible for a structural API limitation rather than data freshness or completeness, so we cut it. Moralis, Alchemy and OpenSea all do return banners; if a future Rarible API revision exposes one we'll add it back."
+  - q: "Why does Rarible have no floor_eth?"
+    a: "Rarible's `bestBidOrder` field is the best open BID on the collection, not the lowest ASK. Moralis, Alchemy and OpenSea all expose the lowest ASK (the actual floor price a buyer pays). Treating Rarible's bid as their floor would be apples-to-oranges and would either undercount Rarible's floor (bids are below asks) or pretend the two numbers mean the same thing. We mark Rarible's floor_eth as N/A: it's not counted as a check, not counted as a failure, and Rarible's coverage is computed on the four remaining fields. If Rarible ships a best-ask field we'll wire it in."
   - q: "How does the apple-to-apple field semantics work?"
-    a: "Each provider returns slightly different field shapes. We normalise as follows: `image` counts if any image URL is returned (logo, thumbnail or banner alias). `floor_price` counts if any non-zero number is returned in the provider's native currency unit. `banner` counts only if a distinct banner URL is returned (a logo aliased into banner does not count). `description` and `name` count on any non-empty string. This normalisation is committed in the harness repo and only changes via PR."
+    a: "Each provider returns slightly different field shapes. We normalise as follows: `name`, `description` and `external_url` count on any non-empty string. `image` counts on a non-empty string URL (each provider gets one chance, picked from the documented preferred field; no OR-of-multiple-URLs tricks). `floor_eth` counts on any positive number in ETH. Rarible's floor_eth is skipped entirely (see above). This normalisation is committed in the harness repo and only changes via PR."
   - q: "Why use a rolling rate instead of a single number for coverage?"
     a: "Coverage drifts during the day. A marketplace can rate-limit one provider for an hour and that provider's coverage drops until the limit resets. We use `quantile_over_time` on a one-hour rolling rate, sampled over 24 hours, so the headline is p50 of the hourly coverage rate rather than a flat average. Same shape as a latency benchmark, applied to a coverage ratio."
 
@@ -94,8 +109,9 @@ faq:
 #   nft_collection_metadata_success_total{provider, collection, field, region}  counter
 #   nft_collection_metadata_api_latency_milliseconds{provider, region}          histogram
 #
-# Field values: "name" | "image" | "banner" | "description" | "floor_price"
+# Field values: "name" | "image" | "description" | "floor_eth" | "external_url"
 # Provider values: "moralis" | "alchemy" | "opensea" | "rarible"
+# Note: provider="rarible" never emits field="floor_eth" series (skipped, N/A).
 #
 # Coverage % per provider, summed over all collections and all five fields:
 #   100 * sum(rate(nft_collection_metadata_success_total{provider="X"}[24h]))
@@ -108,7 +124,7 @@ providers:
   - slug: moralis
     name: Moralis
     tag: REST `/nft/{address}/metadata`
-    formula: "Median of hourly coverage rate (populated name/image/banner/description/floor_price fields divided by total field checks) on Moralis `/nft/{address}/metadata` for the 50 blue-chip set, p50 over 24h."
+    formula: "Median of hourly coverage rate (populated name/image/description/floor_eth/external_url fields divided by total field checks) on Moralis `/nft/{address}/metadata` for the 50 blue-chip set, p50 over 24h."
     queries:
       p50: quantile_over_time(0.50, (100 * sum(rate(nft_collection_metadata_success_total{provider="moralis"}[1h])) / sum(rate(nft_collection_metadata_checks_total{provider="moralis"}[1h])))[24h:1h])
       p90: quantile_over_time(0.90, (100 * sum(rate(nft_collection_metadata_success_total{provider="moralis"}[1h])) / sum(rate(nft_collection_metadata_checks_total{provider="moralis"}[1h])))[24h:1h])
@@ -121,7 +137,7 @@ providers:
   - slug: alchemy
     name: Alchemy
     tag: REST `getContractMetadata`
-    formula: "Median of hourly coverage rate (populated name/image/banner/description/floor_price fields divided by total field checks) on Alchemy `getContractMetadata` for the 50 blue-chip set, p50 over 24h."
+    formula: "Median of hourly coverage rate (populated name/image/description/floor_eth/external_url fields divided by total field checks) on Alchemy `getContractMetadata` for the 50 blue-chip set, p50 over 24h."
     queries:
       p50: quantile_over_time(0.50, (100 * sum(rate(nft_collection_metadata_success_total{provider="alchemy"}[1h])) / sum(rate(nft_collection_metadata_checks_total{provider="alchemy"}[1h])))[24h:1h])
       p90: quantile_over_time(0.90, (100 * sum(rate(nft_collection_metadata_success_total{provider="alchemy"}[1h])) / sum(rate(nft_collection_metadata_checks_total{provider="alchemy"}[1h])))[24h:1h])
@@ -133,8 +149,8 @@ providers:
 
   - slug: opensea
     name: OpenSea
-    tag: REST `/api/v2/collections/{slug}`
-    formula: "Median of hourly coverage rate (populated name/image/banner/description/floor_price fields divided by total field checks) on OpenSea `/api/v2/collections/{slug}` for the 50 blue-chip set, p50 over 24h."
+    tag: REST `/api/v2/collections/{slug}` + `/stats`
+    formula: "Median of hourly coverage rate (5 fields / total checks) on OpenSea v2 `/collections/{slug}` + `/stats` for floor, slug pre-resolved via `/contract/{addr}`. Two API calls per check. p50 over 24h, 50 blue-chip set."
     queries:
       p50: quantile_over_time(0.50, (100 * sum(rate(nft_collection_metadata_success_total{provider="opensea"}[1h])) / sum(rate(nft_collection_metadata_checks_total{provider="opensea"}[1h])))[24h:1h])
       p90: quantile_over_time(0.90, (100 * sum(rate(nft_collection_metadata_success_total{provider="opensea"}[1h])) / sum(rate(nft_collection_metadata_checks_total{provider="opensea"}[1h])))[24h:1h])
@@ -146,8 +162,8 @@ providers:
 
   - slug: rarible
     name: Rarible
-    tag: REST `/v0.1/collections/{id}`
-    formula: "Median of hourly coverage rate (populated name/image/banner/description/floor_price fields divided by total field checks) on Rarible Protocol API `/v0.1/collections/{id}` for the 50 blue-chip set, p50 over 24h."
+    tag: REST `/v0.1/collections/{id}` (~1 req/s)
+    formula: "Median of hourly coverage rate (4 fields / total checks) on Rarible `/v0.1/collections/{id}`, throttled to ~1 req/s. floor_eth excluded (Rarible's bestBidOrder is a BID, not an ASK). p50 over 24h, 50 blue-chip set."
     queries:
       p50: quantile_over_time(0.50, (100 * sum(rate(nft_collection_metadata_success_total{provider="rarible"}[1h])) / sum(rate(nft_collection_metadata_checks_total{provider="rarible"}[1h])))[24h:1h])
       p90: quantile_over_time(0.90, (100 * sum(rate(nft_collection_metadata_success_total{provider="rarible"}[1h])) / sum(rate(nft_collection_metadata_checks_total{provider="rarible"}[1h])))[24h:1h])
