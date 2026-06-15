@@ -110,6 +110,20 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     twitter: "@CoinStats",
   },
 
+  // ─── NFT data APIs (bench 040) ────────────────────────────────
+  alchemy: {
+    url: "https://www.alchemy.com",
+    description:
+      "Web3 infrastructure provider offering NFT API, RPC nodes, and blockchain data APIs. Multi-chain EVM coverage.",
+    twitter: "@AlchemyPlatform",
+  },
+  opensea: {
+    url: "https://opensea.io",
+    description:
+      "NFT marketplace and data API. Multi-chain support for ERC721/ERC1155 collection metadata and trading data.",
+    twitter: "@opensea",
+  },
+
   // ─── EVM swap aggregators / RFQ / routers (bench 002) ─────────
   kyberswap: {
     url: "https://kyberswap.com",
