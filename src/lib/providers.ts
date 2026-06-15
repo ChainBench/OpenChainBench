@@ -68,6 +68,13 @@ const CANONICAL_NAMES: Record<string, string> = {
   arbitrum: "Arbitrum",
   base: "Base",
   optimism: "Optimism",
+  // NFT bench 040 providers — explicit brand casing.
+  opensea: "OpenSea",
+  // Other brand casings frequently referenced.
+  geckoterminal: "GeckoTerminal",
+  coinpaprika: "CoinPaprika",
+  coingecko: "CoinGecko",
+  coinstats: "CoinStats",
 };
 
 function titleCaseSlug(s: string): string {
