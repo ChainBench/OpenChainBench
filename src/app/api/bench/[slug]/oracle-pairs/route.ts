@@ -76,8 +76,12 @@ export async function GET(
 
   // One instant query returns every (pair, source_a, source_b) series.
   // quantile_over_time matches the leaderboard's p50/24h semantics.
+  // No "* 100" here: the harness stores the gauge directly in percent
+  // (e.g. 0.0608 = 0.0608% deviation), so the value flows straight to
+  // the UI as a percent number. The leaderboard's YAML uses "* 100" to
+  // present in bps with a different formatter — we want raw % here.
   const query =
-    "quantile_over_time(0.5, ocb_oracle_deviation_at_oracle_ts_pct[24h]) * 100";
+    "quantile_over_time(0.5, ocb_oracle_deviation_at_oracle_ts_pct[24h])";
   let result;
   try {
     result = await prom.query(query);
