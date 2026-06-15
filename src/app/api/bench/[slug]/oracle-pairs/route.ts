@@ -18,6 +18,8 @@ import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 export const runtime = "nodejs";
 export const revalidate = 60;
 
+type Params = { slug: string };
+
 type OraclePairRow = {
   asset: string;
   cells: Record<string, number | null>;
@@ -36,9 +38,23 @@ function orderPair(a: string, b: string): string {
   return [a, b].sort().join("-");
 }
 
-export async function GET(req: Request) {
+export async function GET(
+  req: Request,
+  { params }: { params: Promise<Params> },
+) {
   const r = rateLimit(clientKey(req, "oracle-pairs"), 60, 60);
   if (!r.ok) return tooManyRequests(r.retryAfterSec);
+
+  const { slug } = await params;
+  // The breakdown only exists for the oracle-deviation bench. Other
+  // slugs 404 so a stray fetch (eg. a copy-pasted URL on a different
+  // bench) doesn't pull unrelated metrics from Prom.
+  if (slug !== "oracle-deviation") {
+    return new NextResponse("not found", {
+      status: 404,
+      headers: { "cache-control": "public, s-maxage=60" },
+    });
+  }
 
   const promUrl = process.env.PROMETHEUS_URL?.trim();
   if (!promUrl) {
