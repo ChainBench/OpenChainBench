@@ -37,6 +37,10 @@ function prettyPair(key: string): { short: string; long: string } {
   };
 }
 
+/**
+ * v is a percent value (e.g. 0.06 for 0.06%). Same convention as the
+ * leaderboard's headline cards on the same page.
+ */
 function fmtPct(v: number | null): string {
   if (v == null) return "—";
   if (v === 0) return "0%";
