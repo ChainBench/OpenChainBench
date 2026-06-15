@@ -7,6 +7,7 @@ import { getBenchmark, getBenchmarks } from "@/data/benchmarks";
 import { Pill } from "@/components/pill";
 import { BenchmarkBody } from "@/components/benchmark-body";
 import { ChainHeadingsSummary } from "@/components/chain-headings-summary";
+import { OraclePairMatrix } from "@/components/oracle-pair-matrix";
 import { CitationBar } from "@/components/citation-bar";
 import { LiveIndicator } from "@/components/live-indicator";
 import { ShareSection } from "@/components/share-section";
@@ -436,6 +437,12 @@ export default async function BenchmarkPage({
       )}
 
       {isDraft && <DraftNotice source={benchmark.source} />}
+
+      {/* Bench-specific pivot view. oracle-deviation ranks assets by
+          MAX deviation across all source pairs; this panel reveals
+          which source pair drives each row so a tweet like "Chainlink
+          SOL is 0.8% off Binance" maps to a visible cell on the page. */}
+      {!isDraft && benchmark.slug === "oracle-deviation" && <OraclePairMatrix />}
 
       {/* SEO-friendly per-chain H2 block. Renders server-side so the
           long-tail "Ethereum finality time", "Solana finality time"
