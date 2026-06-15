@@ -78,7 +78,9 @@ export function OraclePairMatrix() {
     if (!open || data || inFlightRef.current) return;
     inFlightRef.current = true;
     let cancelled = false;
-    fetch("/api/bench/oracle-deviation/oracle-pairs")
+    fetch("/api/bench/oracle-deviation/oracle-pairs", {
+      cache: "no-store",
+    })
       .then((r) =>
         r.ok ? r.json() : Promise.reject(new Error(`http ${r.status}`)),
       )
