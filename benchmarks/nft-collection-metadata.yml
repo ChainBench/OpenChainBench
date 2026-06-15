@@ -109,9 +109,9 @@ providers:
     tag: REST `/nft/{address}/metadata`
     formula: "Median of hourly coverage rate (populated name/image/description/floor_eth/external_url fields divided by total field checks) on Moralis `/nft/{address}/metadata` for the 50 blue-chip set, p50 over 24h."
     queries:
-      p50: quantile_over_time(0.50, (100 * sum(rate(nft_metadata_success_total{provider="moralis"}[1h])) / sum(rate(nft_metadata_checks_total{provider="moralis"}[1h])))[24h:1h])
-      p90: quantile_over_time(0.90, (100 * sum(rate(nft_metadata_success_total{provider="moralis"}[1h])) / sum(rate(nft_metadata_checks_total{provider="moralis"}[1h])))[24h:1h])
-      p99: quantile_over_time(0.99, (100 * sum(rate(nft_metadata_success_total{provider="moralis"}[1h])) / sum(rate(nft_metadata_checks_total{provider="moralis"}[1h])))[24h:1h])
+      p50: 100 * sum(rate(nft_metadata_success_total{provider="moralis"}[24h])) / sum(rate(nft_metadata_checks_total{provider="moralis"}[24h]))
+      p90: 100 * sum(rate(nft_metadata_success_total{provider="moralis"}[24h])) / sum(rate(nft_metadata_checks_total{provider="moralis"}[24h]))
+      p99: 100 * sum(rate(nft_metadata_success_total{provider="moralis"}[24h])) / sum(rate(nft_metadata_checks_total{provider="moralis"}[24h]))
       mean: 100 * sum(rate(nft_metadata_success_total{provider="moralis"}[24h])) / sum(rate(nft_metadata_checks_total{provider="moralis"}[24h]))
       success: clamp_max(sum(rate(nft_metadata_checks_total{provider="moralis"}[24h])) / scalar(sum(rate(nft_metadata_checks_total{provider="moralis"}[24h]))), 1)
       sample_size: sum(increase(nft_metadata_checks_total{provider="moralis"}[24h]))
@@ -122,9 +122,9 @@ providers:
     tag: REST `getContractMetadata`
     formula: "Median of hourly coverage rate (populated name/image/description/floor_eth/external_url fields divided by total field checks) on Alchemy `getContractMetadata` for the 50 blue-chip set, p50 over 24h."
     queries:
-      p50: quantile_over_time(0.50, (100 * sum(rate(nft_metadata_success_total{provider="alchemy"}[1h])) / sum(rate(nft_metadata_checks_total{provider="alchemy"}[1h])))[24h:1h])
-      p90: quantile_over_time(0.90, (100 * sum(rate(nft_metadata_success_total{provider="alchemy"}[1h])) / sum(rate(nft_metadata_checks_total{provider="alchemy"}[1h])))[24h:1h])
-      p99: quantile_over_time(0.99, (100 * sum(rate(nft_metadata_success_total{provider="alchemy"}[1h])) / sum(rate(nft_metadata_checks_total{provider="alchemy"}[1h])))[24h:1h])
+      p50: 100 * sum(rate(nft_metadata_success_total{provider="alchemy"}[24h])) / sum(rate(nft_metadata_checks_total{provider="alchemy"}[24h]))
+      p90: 100 * sum(rate(nft_metadata_success_total{provider="alchemy"}[24h])) / sum(rate(nft_metadata_checks_total{provider="alchemy"}[24h]))
+      p99: 100 * sum(rate(nft_metadata_success_total{provider="alchemy"}[24h])) / sum(rate(nft_metadata_checks_total{provider="alchemy"}[24h]))
       mean: 100 * sum(rate(nft_metadata_success_total{provider="alchemy"}[24h])) / sum(rate(nft_metadata_checks_total{provider="alchemy"}[24h]))
       success: clamp_max(sum(rate(nft_metadata_checks_total{provider="alchemy"}[24h])) / scalar(sum(rate(nft_metadata_checks_total{provider="alchemy"}[24h]))), 1)
       sample_size: sum(increase(nft_metadata_checks_total{provider="alchemy"}[24h]))
@@ -135,9 +135,9 @@ providers:
     tag: REST `/api/v2/collections/{slug}` + `/stats`
     formula: "Median of hourly coverage rate (5 fields / total checks) on OpenSea v2 `/collections/{slug}` + `/stats` for floor, slug pre-resolved via `/contract/{addr}`. Two API calls per check. p50 over 24h, 50 blue-chip set."
     queries:
-      p50: quantile_over_time(0.50, (100 * sum(rate(nft_metadata_success_total{provider="opensea"}[1h])) / sum(rate(nft_metadata_checks_total{provider="opensea"}[1h])))[24h:1h])
-      p90: quantile_over_time(0.90, (100 * sum(rate(nft_metadata_success_total{provider="opensea"}[1h])) / sum(rate(nft_metadata_checks_total{provider="opensea"}[1h])))[24h:1h])
-      p99: quantile_over_time(0.99, (100 * sum(rate(nft_metadata_success_total{provider="opensea"}[1h])) / sum(rate(nft_metadata_checks_total{provider="opensea"}[1h])))[24h:1h])
+      p50: 100 * sum(rate(nft_metadata_success_total{provider="opensea"}[24h])) / sum(rate(nft_metadata_checks_total{provider="opensea"}[24h]))
+      p90: 100 * sum(rate(nft_metadata_success_total{provider="opensea"}[24h])) / sum(rate(nft_metadata_checks_total{provider="opensea"}[24h]))
+      p99: 100 * sum(rate(nft_metadata_success_total{provider="opensea"}[24h])) / sum(rate(nft_metadata_checks_total{provider="opensea"}[24h]))
       mean: 100 * sum(rate(nft_metadata_success_total{provider="opensea"}[24h])) / sum(rate(nft_metadata_checks_total{provider="opensea"}[24h]))
       success: clamp_max(sum(rate(nft_metadata_checks_total{provider="opensea"}[24h])) / scalar(sum(rate(nft_metadata_checks_total{provider="opensea"}[24h]))), 1)
       sample_size: sum(increase(nft_metadata_checks_total{provider="opensea"}[24h]))
