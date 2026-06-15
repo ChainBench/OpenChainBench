@@ -141,6 +141,7 @@ const RAW: Record<string, string> = {
   bitquery: "/logos/bitquery.png",
   coingecko: "/logos/coingecko.webp",
   dune: "/logos/dune.png",
+  opensea: "/logos/opensea.svg",
   "pump-portal": "/logos/pump-portal.svg",
   quicknode: "/logos/quicknode.svg",
   "the-graph": "/logos/the-graph.svg",
