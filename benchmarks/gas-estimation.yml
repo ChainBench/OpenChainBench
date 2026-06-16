@@ -6,6 +6,17 @@ title: Most accurate gas oracle, live gap vs realized priority fee
 seo_title: "Most accurate gas oracle 2026: Blocknative, Etherscan, Owlracle"
 seo_description: "Most accurate gas oracle ranked live on Ethereum and Polygon. Gwei gap between predicted and realized priority fee in the next mined block. Ranked on the p99 gap over 24h."
 subtitle: Absolute gap in gwei between each oracle's predicted priority-fee tier and the realized percentile in the next mined block, measured per chain. Ranked on the p99 gap, the worst 1% of blocks, because that is where gas spikes hurt integrations.
+
+per_chain_explainer:
+  - slug: ethereum
+    h2: "Most accurate Ethereum gas oracle"
+    body: |
+      {{best_name:chain:ethereum}} currently leads the Ethereum gas-oracle field at {{best_p50:chain:ethereum}} (gwei, p99 absolute gap, 24h) across 4 oracles. Ethereum's EIP-1559 base fee adjusts by up to 12.5 percent per block based on prior gas usage, so percentile trackers (PublicNode `eth_feeHistory`) hug the realized priority fee by construction while inclusion-confidence oracles (Blocknative, Etherscan) deliberately over-predict. Realized priority percentiles are computed per next-mined block from actual `maxPriorityFeePerGas` values.
+  - slug: polygon
+    h2: "Most accurate Polygon gas oracle"
+    body: |
+      {{best_name:chain:polygon}} currently leads the Polygon gas-oracle field at {{best_p50:chain:polygon}} (gwei, p99 absolute gap, 24h). Polygon PoS runs EIP-1559 with a 2 s Bor block target, and its priority-fee distribution is structurally more volatile than Ethereum's: validator-set churn and MATIC-denominated tip auctions push priority spikes higher and more often, which is where inclusion-confidence oracles widen their gap against percentile trackers. The harness compares predicted versus realized p50 priority fees block by block.
+
 category: RPCs
 status: live
 metric: Gap vs realized (gwei)
