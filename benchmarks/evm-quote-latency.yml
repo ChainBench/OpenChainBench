@@ -7,6 +7,24 @@ seo_title: "Fastest EVM swap quote API in 2026: Mobula, KyberSwap, Bebop, CoW, E
 seo_description: "Live p50/p90/p99 round trip latency for the major EVM swap quoting APIs measured every minute on a rotating basket of top markets across Ethereum, Base, Arbitrum and BSC, with a 3 region geographic split."
 subtitle: Wall clock p50 latency of GET /quote per provider, measured every minute on a 5 pair basket across 4 chains.
 
+per_chain_explainer:
+  - slug: ethereum
+    h2: "Fastest Ethereum swap quote API"
+    body: |
+      {{best_name:chain:ethereum}} currently leads the Ethereum swap-quote field at {{best_p50:chain:ethereum}} (p50, 24h) across the 7 measured providers. Ethereum mainnet holds the deepest EVM liquidity (Uniswap v3 tick-range pools, Curve stable pools, Maker PSM), so route-search complexity is the dominant component of quote latency: aggregators trading off depth-of-search against time-to-first-byte show their architecture here more than on any other chain. Probes run every 60 seconds on a 5-pair basket from us-east, eu-west and Singapore.
+  - slug: base
+    h2: "Fastest Base swap quote API"
+    body: |
+      {{best_name:chain:base}} currently leads the Base swap-quote field at {{best_p50:chain:base}} (p50, 24h). Base liquidity is dominated by Aerodrome's ve(3,3) gauges and Uniswap v3, with a thinner long tail than Ethereum, so quote engines that pre-warm a per-chain pool graph (KyberSwap, Mobula) have a structural edge against bridge-first aggregators that re-resolve routes per request. Probes run from us-east, eu-west and Singapore on a 0.5 ETH to USDC pair.
+  - slug: arbitrum
+    h2: "Fastest Arbitrum swap quote API"
+    body: |
+      {{best_name:chain:arbitrum}} currently leads the Arbitrum swap-quote field at {{best_p50:chain:arbitrum}} (p50, 24h). Arbitrum One concentrates liquidity in Camelot v3, Uniswap v3 and Curve, with sub-second sequencer blocks that let quote engines using `eth_call` simulation refresh their price source between every probe. Bebop's RFQ model resolves price through a maker network rather than via on-chain simulation. Probes run every 60s on a 100 USDC to ETH pair from three regions.
+  - slug: bsc
+    h2: "Fastest BSC swap quote API"
+    body: |
+      {{best_name:chain:bsc}} currently leads the BSC swap-quote field at {{best_p50:chain:bsc}} (p50, 24h). BSC liquidity is concentrated in PancakeSwap v2 and v3, with a long memecoin tail that pushes aggregators toward exhaustive route enumeration. CoW Protocol is absent because CoW Settlement does not deploy on BSC. Probes fire every 60 seconds on a 1 BNB to USDT pair from us-east, eu-west and Singapore against the public sequencer RPC.
+
 category: Aggregators
 status: live
 metric: Quote latency
