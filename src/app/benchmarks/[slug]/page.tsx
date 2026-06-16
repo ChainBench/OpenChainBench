@@ -114,8 +114,14 @@ export async function generateMetadata({
       description,
       type: "article",
       url: canonical,
+      siteName: SITE.name,
     },
-    twitter: { card: "summary_large_image", title: metaTitle, description },
+    twitter: {
+      card: "summary_large_image",
+      site: SITE.twitter,
+      title: metaTitle,
+      description,
+    },
   };
 }
 

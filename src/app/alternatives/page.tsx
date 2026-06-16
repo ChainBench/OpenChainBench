@@ -4,22 +4,19 @@ import { ArrowUpRight } from "lucide-react";
 import { loadAllAlternatives } from "@/lib/alternatives";
 import { SITE } from "@/data/site";
 import { safeJsonLd } from "@/lib/jsonld";
+import { pageMetadata } from "@/lib/page-metadata";
 
 const DESCRIPTION =
   "Alternatives to crypto infrastructure products, ranked by live OpenChainBench measurements. Same benchmark data, reframed per product, no verdict.";
 
-export const metadata: Metadata = {
+// Same as /compare: go through pageMetadata so the Twitter Card and OG
+// image fall back to the branded root cards instead of emitting a
+// generic "OpenChainBench" twitter:title and no og:image.
+export const metadata: Metadata = pageMetadata({
+  path: "/alternatives",
   title: "Alternatives by the numbers",
   description: DESCRIPTION,
-  alternates: { canonical: `${SITE.url}/alternatives` },
-  openGraph: {
-    title: "Alternatives by the numbers · OpenChainBench",
-    description: DESCRIPTION,
-    type: "website",
-    url: `${SITE.url}/alternatives`,
-    siteName: SITE.name,
-  },
-};
+});
 
 export default async function AlternativesPage() {
   const alternatives = await loadAllAlternatives();

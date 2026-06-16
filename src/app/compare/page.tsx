@@ -5,22 +5,20 @@ import { COMPARE_PAIRS } from "@/data/compare-pairs";
 import { canonicalize } from "@/lib/providers";
 import { SITE } from "@/data/site";
 import { safeJsonLd } from "@/lib/jsonld";
+import { pageMetadata } from "@/lib/page-metadata";
 
 const DESCRIPTION =
   "Head-to-head benchmark data for crypto infrastructure providers. Every pair measured side by side on shared OpenChainBench benchmarks. Live data, no verdict.";
 
-export const metadata: Metadata = {
+// Go through pageMetadata so the Twitter Card and OG image fall back to
+// the branded root cards. Without this, /compare emitted a generic
+// twitter:title ("OpenChainBench") and no og:image, so every X share
+// previewed as a blank.
+export const metadata: Metadata = pageMetadata({
+  path: "/compare",
   title: "Compare providers head to head",
   description: DESCRIPTION,
-  alternates: { canonical: `${SITE.url}/compare` },
-  openGraph: {
-    title: "Compare providers head to head · OpenChainBench",
-    description: DESCRIPTION,
-    type: "website",
-    url: `${SITE.url}/compare`,
-    siteName: SITE.name,
-  },
-};
+});
 
 export default function ComparePage() {
   const pairs = [...COMPARE_PAIRS].sort((a, b) =>
