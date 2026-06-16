@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { loadAllAlternatives } from "@/lib/alternatives";
+import { ProviderLogo } from "@/components/provider-logo";
 import { SITE } from "@/data/site";
 import { safeJsonLd } from "@/lib/jsonld";
 import { pageMetadata } from "@/lib/page-metadata";
@@ -48,7 +49,7 @@ export default async function AlternativesPage() {
         methodology, no editorial verdict.
       </p>
 
-      <section className="mt-12">
+      <section className="mt-14">
         <h2 className="text-lg sm:text-xl font-bold tracking-tight text-ink">
           All product alternatives
         </h2>
@@ -56,25 +57,31 @@ export default async function AlternativesPage() {
           {alternatives.length} pages reframing OpenChainBench benchmarks
           around a single product, ranked by live measurement.
         </p>
-        <ul className="mt-6 divide-y divide-rule border-y border-rule">
+        <ul className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-3">
           {alternatives.map((alt) => (
             <li key={alt.slug}>
               <Link
                 href={`/alternatives/${alt.slug}`}
-                className="group flex items-center justify-between gap-4 py-4 hover:bg-surface transition-colors"
+                className="card-soft rounded-xl p-4 flex items-center gap-4 h-full hover:border-ink/40 transition-colors group"
               >
-                <span className="min-w-0">
-                  <span className="block text-lg text-ink font-semibold">
+                <ProviderLogo
+                  slug={alt.slug}
+                  name={alt.target_product}
+                  size={40}
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="display text-base sm:text-lg tracking-tight text-ink leading-tight truncate">
                     {alt.target_product} alternatives
-                  </span>
-                  <span className="mt-0.5 block text-sm text-ink-muted truncate">
+                  </p>
+                  <p className="mt-1 text-sm text-ink-muted line-clamp-2 leading-snug">
                     {alt.description}
-                  </span>
-                </span>
-                <span className="inline-flex shrink-0 items-center gap-1 text-sm uppercase tracking-wide text-ink-soft group-hover:text-ink transition-colors">
-                  View data
-                  <ArrowUpRight size={14} strokeWidth={2} />
-                </span>
+                  </p>
+                </div>
+                <ArrowUpRight
+                  size={16}
+                  strokeWidth={2}
+                  className="text-ink-faint group-hover:text-ink shrink-0 transition-colors"
+                />
               </Link>
             </li>
           ))}
