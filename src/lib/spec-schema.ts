@@ -156,6 +156,7 @@ export const Category = z.enum([
   "Trading",
   "Wallets",
   "RPCs",
+  "NFT APIs",
 ]);
 
 // Em-dash (—) and en-dash (–) are the classic "AI tells" that hurt our brand
