@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowLeft, ArrowUpRight } from "lucide-react";
 import { loadAnswer, loadAllAnswers } from "@/lib/answers";
 import { renderTemplate } from "@/lib/bench-template";
+import { cleanLeftoverTokens } from "@/lib/answers-template";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { Pill } from "@/components/pill";
 import { ProviderLogo } from "@/components/provider-logo";
@@ -80,15 +81,16 @@ export default async function AnswerPage({
   const benchUrl = `${SITE.url}/benchmarks/${bench.slug}`;
 
   // Render template placeholders against the live bench so the answer
-  // surfaces real numbers, not raw `{{best_name}}` tokens.
-  const shortAnswer = renderTemplate(ans.short_answer, bench);
-  const intro = renderTemplate(ans.intro, bench);
-  const methodology = renderTemplate(ans.methodology, bench);
-  const limitations = ans.limitations.map((l) => renderTemplate(l, bench));
-  const faq = ans.faq.map((f) => ({
-    q: renderTemplate(f.q, bench),
-    a: renderTemplate(f.a, bench),
-  }));
+  // surfaces real numbers, not raw `{{best_name}}` tokens. Tokens that
+  // renderTemplate can't resolve (draft bench, no live data, typo in a
+  // YAML's slug reference) fall through to a neutral fallback via
+  // cleanLeftoverTokens so a placeholder string never reaches the SERP.
+  const render = (s: string) => cleanLeftoverTokens(renderTemplate(s, bench));
+  const shortAnswer = render(ans.short_answer);
+  const intro = render(ans.intro);
+  const methodology = render(ans.methodology);
+  const limitations = ans.limitations.map(render);
+  const faq = ans.faq.map((f) => ({ q: render(f.q), a: render(f.a) }));
 
   // Top results from the referenced bench, mirroring the alternatives
   // top-N section: surfaces the answer visually for skim readers + gives
