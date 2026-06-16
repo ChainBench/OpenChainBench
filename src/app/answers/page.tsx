@@ -66,29 +66,38 @@ export default async function AnswersHubPage() {
           No answers published yet. Check back soon.
         </p>
       ) : (
-        <ul className="mt-10 divide-y divide-rule border-y border-rule">
-          {answers.map((a) => (
-            <li key={a.slug}>
-              <Link
-                href={`/answers/${a.slug}`}
-                className="group flex items-center justify-between gap-4 py-4 hover:bg-surface transition-colors"
-              >
-                <span className="min-w-0">
-                  <span className="block text-lg text-ink font-semibold">
-                    {a.question}
+        <section className="mt-12">
+          <h2 className="text-lg sm:text-xl font-bold tracking-tight text-ink">
+            All answers
+          </h2>
+          <p className="mt-2 max-w-2xl text-sm text-ink-soft leading-snug">
+            {answers.length} questions answered with live OpenChainBench
+            data, each with its own methodology and limitations.
+          </p>
+          <ul className="mt-6 divide-y divide-rule border-y border-rule">
+            {answers.map((a) => (
+              <li key={a.slug}>
+                <Link
+                  href={`/answers/${a.slug}`}
+                  className="group flex items-center justify-between gap-4 py-4 hover:bg-surface transition-colors"
+                >
+                  <span className="min-w-0">
+                    <span className="block text-lg text-ink font-semibold">
+                      {a.question}
+                    </span>
+                    <span className="mt-0.5 block text-sm text-ink-muted line-clamp-2">
+                      {a.short_answer}
+                    </span>
                   </span>
-                  <span className="mt-0.5 block text-sm text-ink-muted line-clamp-2">
-                    {a.short_answer}
+                  <span className="inline-flex shrink-0 items-center gap-1 text-sm uppercase tracking-wide text-ink-soft group-hover:text-ink transition-colors">
+                    Read
+                    <ArrowUpRight size={14} strokeWidth={2} />
                   </span>
-                </span>
-                <span className="inline-flex shrink-0 items-center gap-1 text-sm uppercase tracking-wide text-ink-soft group-hover:text-ink transition-colors">
-                  Read
-                  <ArrowUpRight size={14} strokeWidth={2} />
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
     </article>
   );
