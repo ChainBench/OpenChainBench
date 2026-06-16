@@ -151,6 +151,16 @@ metric_panels:
     unit: s
     higher_is_better: false
 
+# Surface the throttle signal in the ledger itself so a visitor reading
+# the table understands at a glance what makes this bench different from
+# pm-api-latency (which ranks the same warm-endpoint latency on a sibling
+# class). The dedicated tabs above stay as the deep-dive view.
+ledger_columns:
+  - { label: "Warm book p50", slot: p50 }
+  - { label: "p99", slot: p99 }
+  - { label: "Ramp peak added", panel: ramp_added_latency }
+  - { label: "Server data age", panel: book_staleness }
+
 providers:
   - slug: polymarket
     name: Polymarket
