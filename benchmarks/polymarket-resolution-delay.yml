@@ -112,6 +112,17 @@ metric_panels:
     unit: count
     higher_is_better: false
 
+# Surface the two LIVE signals in the ledger so the page reads as a UMA
+# state dashboard, not just a historical characterization. The p50 is
+# statistically stable (cumulative histogram), so the live answers are
+# what shifts day to day: how many markets are stuck waiting, and how
+# many have hit UMA's dispute process.
+ledger_columns:
+  - { label: "p50 (median delay)", slot: p50 }
+  - { label: "p99", slot: p99 }
+  - { label: "Pending", panel: pending_backlog }
+  - { label: "Disputes", panel: disputes }
+
 providers:
   - slug: all-markets
     name: All markets
