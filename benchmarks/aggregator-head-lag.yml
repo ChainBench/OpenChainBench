@@ -6,6 +6,21 @@ title: Fastest crypto price API, live head lag across Mobula, Codex, GeckoTermin
 seo_title: "Fastest crypto price API 2026: Mobula, Codex, GeckoTerminal"
 seo_description: "{{best_name}} leads fastest crypto price API at {{best_p50}} (p50, 24h). Mobula WebSocket, Codex GraphQL, GeckoTerminal REST live across Base, BNB, Solana."
 subtitle: Wall-clock head lag in seconds from on-chain swap event to API emission, measured live for Mobula, Codex and GeckoTerminal on Base, BNB Chain and Solana.
+
+per_chain_explainer:
+  - slug: base
+    h2: "Lowest Base price feed head lag"
+    body: |
+      {{best_name:chain:base}} currently leads Base head lag at {{best_p50:chain:base}} (p50, 24h) across the 3 measured providers. Base targets a 2 s sequencer cadence on the OP Stack, so the chain itself sets a roughly 2 s floor below which no provider can publish: any latency you see beyond that floor is pipeline work (indexer, fan-out, edge). Measured by holding archive-node `eth_subscribe("newHeads")` and timestamping each provider's emission of the same swap event from us-east, eu-west and Singapore.
+  - slug: bnb
+    h2: "Lowest BNB Chain price feed head lag"
+    body: |
+      {{best_name:chain:bnb}} currently leads BNB Chain head lag at {{best_p50:chain:bnb}} (p50, 24h). BNB Smart Chain runs a Parlia PoSA consensus with 21 active validators on a fixed 3 s slot (recently tightened toward 0.75 s under BEP-524 testing), which sets the structural floor for any price-feed provider; the spread between leader and trailer reflects indexer pipeline depth, not chain speed. Cross-region samples taken every 15 seconds.
+  - slug: solana
+    h2: "Lowest Solana price feed head lag"
+    body: |
+      {{best_name:chain:solana}} currently leads Solana head lag at {{best_p50:chain:solana}} (p50, 24h). Solana runs a 400 ms slot under Proof of History with confirmed status at typically 1-2 slots, so any second-scale provider latency lives entirely in the indexer pipeline rather than in the chain. Providers that subscribe to Yellowstone gRPC streams of confirmed blocks beat REST-pollers by definition. Measured against a canonical archive node from us-east, eu-west and Singapore.
+
 category: Aggregators
 status: live
 metric: Head lag

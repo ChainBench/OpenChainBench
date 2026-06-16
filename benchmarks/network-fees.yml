@@ -34,6 +34,88 @@ faq:
   - q: "Can I cite a value from this page?"
     a: "Yes. Every number is a Prometheus query over a 24h window. The query string is shown in the row's hover tooltip. The harness source is open at the link in the source field below. Cite the value and the timestamp at the top of the page."
 
+per_chain_explainer:
+  - slug: ethereum
+    h2: "Ethereum transaction fee"
+    body: |
+      Ethereum native transfer fee is {{p50:ethereum}} (p50, 24h). Fees follow EIP-1559: the base fee adjusts by up to 12.5 percent per block from the previous block's gas usage, plus a priority tip set by the user; a plain ETH transfer is 21000 gas. During congested periods (NFT mints, MEV bursts) standard transfers can cost several dollars, while quiet weekends drop the median under 20 cents. Computed as (base + p50 priority) times 21000 gas times live ETH price.
+  - slug: bnb
+    h2: "BNB Chain transaction fee"
+    body: |
+      BNB Chain native transfer fee is {{p50:bnb}} (p50, 24h). BNB Smart Chain runs a Parlia PoSA consensus with 21 active validators and a fixed 3 s block; fee market is EIP-1559-style but the base fee has historically hovered near a 1 gwei floor enforced by validators, which is why a native BNB transfer typically stays under one cent. Computed as (base + p50 priority) times 21000 gas times live BNB price.
+  - slug: avalanche
+    h2: "Avalanche transaction fee"
+    body: |
+      Avalanche native transfer fee is {{p50:avalanche}} (p50, 24h). The C-Chain runs an EVM under Avalanche's Snowman consensus with sub-second finality and a dynamic fee mechanism where the base fee target adjusts every 10 seconds; a native AVAX transfer is 21000 gas and sits in the low-cent range when blocks are not saturated by subnet bridge or NFT activity. Computed via `eth_feeHistory` percentile-25/50/90 times live AVAX price.
+  - slug: solana
+    h2: "Solana transaction fee"
+    body: |
+      Solana native transfer fee is {{p50:solana}} (p50, 24h). Solana charges a hard 5000 lamports per signature base, plus an optional priority fee priced in micro-lamports per compute unit; a SOL transfer consumes around 200 CUs, so the priority component is usually dwarfed by the base. At current SOL prices the headline fee sits well under one cent on non-congested blocks. Measured via `getRecentPrioritizationFees` percentiles.
+  - slug: tron
+    h2: "TRON transaction fee"
+    body: |
+      TRON native transfer fee is {{p50:tron}} (p50, 24h). TRON uses a bandwidth and energy resource model rather than a gas auction: a TRX transfer is roughly 268 bytes, billed at the published bandwidth rate (currently 1000 sun per byte via `getChainParameters`), and free if the sender has enough free daily bandwidth or staked TRX. The single-tier figure reflects the on-chain rate parameter times typical transfer size times TRX price.
+  - slug: cardano
+    h2: "Cardano transaction fee"
+    body: |
+      Cardano native transfer fee is {{p50:cardano}} (p50, 24h). Cardano fees are protocol-deterministic: min_fee_a per byte plus a flat min_fee_b base, both set by governance and updated rarely; a typical ADA transfer is ~250 bytes, so the lovelace cost is essentially fixed until the next parameter vote. The USD figure only moves because ADA price moves. Computed from live koios epoch_params times 250 bytes times ADA price.
+  - slug: sui
+    h2: "Sui transaction fee"
+    body: |
+      Sui native transfer fee is {{p50:sui}} (p50, 24h). Sui uses a reference-gas-price model where validators agree on a per-epoch gas price via DPoS auction; a `Coin::transfer` consumes around 76000 computation units, so the per-transfer cost stays in the sub-cent range even on busy epochs. Sui has separate computation and storage fees, with the latter rebated when objects are deleted. Computed via `suix_getReferenceGasPrice` times 76000 gas times SUI price.
+  - slug: ton
+    h2: "TON transaction fee"
+    body: |
+      TON native transfer fee is {{p50:ton}} (p50, 24h). TON has no clean fee-estimate RPC because its fee model uses a Bag-of-Cells emulation that accounts for storage, gas, forward and import fees separately per workchain and shard; a typical Wallet v4 transfer settles around 0.005 TON. We publish that conservative observed value times live TON price as a single deterministic tier.
+  - slug: stellar
+    h2: "Stellar transaction fee"
+    body: |
+      Stellar native transfer fee is {{p50:stellar}} (p50, 24h). The Stellar base fee is 100 stroops (0.00001 XLM) per operation network-wide, surging only when the ledger fills above its capacity threshold; a native XLM payment is one operation, so the fee sits at fractions of a cent except during surge windows. Computed from `horizon fee_stats.last_ledger_base_fee` times one operation times live XLM price.
+  - slug: litecoin
+    h2: "Litecoin transaction fee"
+    body: |
+      Litecoin native transfer fee is {{p50:litecoin}} (p50, 24h). Litecoin inherits Bitcoin's UTXO fee market priced in litoshi per virtual byte; a SegWit P2WPKH single-input single-output transfer is around 225 vBytes, so even at fastest-tier mempool rates the headline cost stays in the low-cent range, an order of magnitude under Bitcoin. Computed from litecoinspace.org recommended fee tiers times 225 vBytes times live LTC price.
+  - slug: monero
+    h2: "Monero transaction fee"
+    body: |
+      Monero native transfer fee is {{p50:monero}} (p50, 24h). Monero uses RingCT transactions with a dynamic block-size penalty: a 1-input 2-output transfer is roughly 1500 bytes, and the per-byte rate from `get_fee_estimate` rises sharply when miners are filling blocks above the median size. The fee covers both anonymity-set inflation and ring-signature footprint, which is why XMR fees sit above most L1s. Computed via the daemon's three-tier `get_fee_estimate` times 1500 bytes times XMR price.
+  - slug: arbitrum
+    h2: "Arbitrum transaction fee"
+    body: |
+      Arbitrum One native transfer fee is {{p50:arbitrum}} (p50, 24h). Arbitrum Nitro runs an EIP-1559 fee market against the sequencer at sub-second cadence; native ETH transfers are 21000 gas and sit at fractions of a cent because the sequencer's priority fee is near-zero by design. The L1 data-posting component (Ethereum blobs since Dencun) is not yet included in this figure, only L2 execution cost. Computed via `eth_feeHistory` on the Arbitrum sequencer RPC times live ETH price.
+  - slug: optimism
+    h2: "Optimism transaction fee"
+    body: |
+      Optimism native transfer fee is {{p50:optimism}} (p50, 24h). Optimism uses an OP Stack EIP-1559 fee market with priority fee near-zero because the sequencer is centralized and there is no public mempool to bid against; a native ETH transfer is 21000 gas and L2 execution cost sits well under a cent. The L1 blob-posting cost (separate from this figure) is the dominant wallet-visible component during expensive blob windows. Computed via `eth_feeHistory` on the Optimism sequencer RPC.
+  - slug: base
+    h2: "Base transaction fee"
+    body: |
+      Base native transfer fee is {{p50:base}} (p50, 24h). Base is Coinbase's OP Stack rollup with the same priority-fee-near-zero pattern as Optimism; native ETH transfers settle at fractions of a cent on L2 execution alone. Base posts batches to Ethereum via EIP-4844 blobs, and the L1 data fee (not in this figure) tracks the blob fee market. Computed via `eth_feeHistory` on the Base sequencer RPC times live ETH price.
+  - slug: zksync
+    h2: "zkSync Era transaction fee"
+    body: |
+      zkSync Era native transfer fee is {{p50:zksync}} (p50, 24h). zkSync Era uses a custom fee model where the gas figure bundles execution, pubdata and prover cost into a single price published by the sequencer; native ETH transfers cost more than OP Stack chains because prover work is amortized into the per-transaction fee rather than billed separately at batch time. Computed via `eth_feeHistory` on the zkSync sequencer RPC.
+  - slug: linea
+    h2: "Linea transaction fee"
+    body: |
+      Linea native transfer fee is {{p50:linea}} (p50, 24h). Linea is the Consensys zkEVM and exposes a standard EIP-1559 fee surface to wallets; the sequencer's posted base fee tracks zk-prover-batch economics rather than mempool congestion, so native ETH transfers sit in the sub-cent range even when Ethereum L1 is congested. L1 data-posting cost (blob calldata) is excluded from this figure. Computed via `eth_feeHistory` on the Linea sequencer RPC.
+  - slug: scroll
+    h2: "Scroll transaction fee"
+    body: |
+      Scroll native transfer fee is {{p50:scroll}} (p50, 24h). Scroll's bytecode-equivalent zkEVM exposes a 1-to-1 EIP-1559 surface so wallets can submit transactions unchanged; the L2 base fee is set by the sequencer to cover Halo2 prover work plus blob-posting, but a native ETH transfer's L2 execution cost still sits in the sub-cent range. Computed via `eth_feeHistory` on the Scroll sequencer RPC times live ETH price.
+  - slug: blast
+    h2: "Blast transaction fee"
+    body: |
+      Blast native transfer fee is {{p50:blast}} (p50, 24h). Blast is an OP Stack fork with auto-rebasing native ETH yield; the fee market mirrors Optimism's (EIP-1559, near-zero priority, single sequencer), and a 21000-gas native transfer sits at fractions of a cent on L2 execution. The L1 blob posting fee is the dominant wallet cost during congested blob periods but is excluded from this figure. Computed via `eth_feeHistory` on the Blast sequencer RPC.
+  - slug: mantle
+    h2: "Mantle transaction fee"
+    body: |
+      Mantle native transfer fee is {{p50:mantle}} (p50, 24h). Mantle is an OP Stack fork that uses EigenDA for data availability instead of Ethereum blob calldata, which lowers the L1-posting component substantially; the L2 fee market still follows EIP-1559 against a centralized sequencer, and native ETH transfers sit in the sub-cent range. Computed via `eth_feeHistory` on the Mantle sequencer RPC times live ETH price.
+  - slug: taiko
+    h2: "Taiko transaction fee"
+    body: |
+      Taiko native transfer fee is {{p50:taiko}} (p50, 24h). Taiko is a based rollup sequenced by Ethereum L1 validators, so its block cadence is bounded by Ethereum's 12 s slot and its fee market reflects the L1 priority surface; native ETH transfers cost slightly more than OP Stack peers because there is no separate cheap L2 sequencer pricing. Computed via `eth_feeHistory` on the Taiko RPC times live ETH price.
+
 category: Blockchains
 status: live
 metric: Native transfer fee USD
