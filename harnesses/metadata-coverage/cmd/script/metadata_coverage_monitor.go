@@ -722,10 +722,15 @@ func checkTokenMetadata(token TokenToCheck, config *Config) {
 		jupiterLogo = boolToIcon(jupiterResult.HasLogo)
 	}
 
-	fmt.Printf("[META] %s/%s | M:%s%s%s | C:%s%s%s | J:%s\n",
-		token.Symbol, chainName,
-		boolToIcon(mobulaResult.HasLogo), boolToIcon(mobulaResult.HasDescription), boolToIcon(mobulaResult.HasTwitter),
-		boolToIcon(codexResult.HasLogo), boolToIcon(codexResult.HasDescription), boolToIcon(codexResult.HasTwitter),
+	// Adds the contract address to the condensed line so a divergence
+	// (M:✓✗✗ vs C:✓✓✓ etc.) is directly verifiable in the provider's UI
+	// without cross-referencing logs. Address goes after symbol; 4 boolean
+	// columns per provider so website is visible alongside logo/desc/twitter
+	// (the page renders 4 fields, the prior 3-column line hid that one).
+	fmt.Printf("[META] %s/%s %s | M:%s%s%s%s | C:%s%s%s%s | J:%s\n",
+		token.Symbol, chainName, token.Address,
+		boolToIcon(mobulaResult.HasLogo), boolToIcon(mobulaResult.HasDescription), boolToIcon(mobulaResult.HasTwitter), boolToIcon(mobulaResult.HasWebsite),
+		boolToIcon(codexResult.HasLogo), boolToIcon(codexResult.HasDescription), boolToIcon(codexResult.HasTwitter), boolToIcon(codexResult.HasWebsite),
 		jupiterLogo)
 
 	// Print stats every 50 checks (reduced from 10)
