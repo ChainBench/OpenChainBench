@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { loadAllAnswers } from "@/lib/answers";
+import { loadBenchmark } from "@/lib/spec";
+import { renderTemplate } from "@/lib/bench-template";
 import { SITE } from "@/data/site";
 import { safeJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import { pageMetadata } from "@/lib/page-metadata";
@@ -17,6 +19,21 @@ export const metadata: Metadata = pageMetadata({
 
 export default async function AnswersHubPage() {
   const answers = await loadAllAnswers();
+
+  // Resolve template placeholders ({{best_name}}, {{best_p50}}, ...) on
+  // the hub itself, otherwise raw tokens leak into the visible
+  // short_answer preview. Each YAML's `short_answer` is authored against
+  // its referenced bench, so we load that bench and run renderTemplate
+  // before the JSX touches the string.
+  const rendered = await Promise.all(
+    answers.map(async (a) => {
+      const bench = await loadBenchmark(a.benchmark, { chain: a.chain });
+      const shortAnswer = bench
+        ? renderTemplate(a.short_answer, bench)
+        : a.short_answer;
+      return { ...a, shortAnswer };
+    }),
+  );
 
   const itemList = {
     "@context": "https://schema.org",
@@ -75,7 +92,7 @@ export default async function AnswersHubPage() {
             data, each with its own methodology and limitations.
           </p>
           <ul className="mt-6 divide-y divide-rule border-y border-rule">
-            {answers.map((a) => (
+            {rendered.map((a) => (
               <li key={a.slug}>
                 <Link
                   href={`/answers/${a.slug}`}
@@ -86,7 +103,7 @@ export default async function AnswersHubPage() {
                       {a.question}
                     </span>
                     <span className="mt-0.5 block text-sm text-ink-muted line-clamp-2">
-                      {a.short_answer}
+                      {a.shortAnswer}
                     </span>
                   </span>
                   <span className="inline-flex shrink-0 items-center gap-1 text-sm uppercase tracking-wide text-ink-soft group-hover:text-ink transition-colors">

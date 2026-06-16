@@ -59,6 +59,33 @@ async function benchFromStore(
   return snap.bench;
 }
 
+/**
+ * Overlay the live spec's editorial fields onto a bench loaded from the
+ * materialise store. Without this, an editorial-only change in the YAML
+ * (new per_chain_explainer entries, FAQ tweak, seo_intro rewrite) does
+ * not surface until the materialise worker re-syncs the snapshot, which
+ * makes new chain routes 404 against perChainExplainer values that exist
+ * in the YAML but not in the stored bench. Numeric / Prom-derived
+ * fields (results, sampleSize, lastRunAt, extras, bestPerChain) are
+ * preserved from the store so the snapshot's measurement payload is
+ * untouched.
+ */
+function overlayEditorial(stored: Benchmark, spec: Spec): Benchmark {
+  return {
+    ...stored,
+    seoTitle: spec.seo_title ?? stored.seoTitle,
+    seoDescription: spec.seo_description ?? stored.seoDescription,
+    seoIntro: spec.seo_intro ?? stored.seoIntro,
+    faq: spec.faq ?? stored.faq,
+    perChainExplainer: spec.per_chain_explainer ?? stored.perChainExplainer,
+    abstract: spec.abstract ?? stored.abstract,
+    methodology: spec.methodology ?? stored.methodology,
+    findings: spec.findings ?? stored.findings,
+    disclaimer: spec.disclaimer ?? stored.disclaimer,
+    subtitle: spec.subtitle ?? stored.subtitle,
+  };
+}
+
 // Per-bench unfiltered cache. ONE unstable_cache entry per slug so a
 // transient Prom hiccup on bench A doesn't poison the cache for benches
 // B, C, ...Z. Inside: if a spec marked `status: live` collapses to a
@@ -74,7 +101,7 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
     const spec = specs.find((s) => s.slug === slug);
     if (!spec) return undefined;
     const stored = await benchFromStore(slug, "");
-    if (stored) return stored;
+    if (stored) return overlayEditorial(stored, spec);
     const promStart = Date.now();
     const bench = await specToBenchmark(spec, {}, {
       onRendered: (rendered) =>
@@ -226,7 +253,7 @@ const loadBenchmarkFiltered = unstable_cache(
     const spec = specs.find((s) => s.slug === slug);
     if (!spec) return undefined;
     const stored = await benchFromStore(slug, sig);
-    if (stored) return stored;
+    if (stored) return overlayEditorial(stored, spec);
     const bench = await specToBenchmark(spec, parseFilterSig(sig));
     // Same stale-while-revalidate as loadAllBenchmarks: if Prom drops the
     // single bench we just queried to draft, throw so unstable_cache keeps
@@ -284,7 +311,11 @@ export const loadBenchmark = cache(async function loadBenchmark(
   // and fall back to the unfiltered "All" view so the page still renders
   // (sitemap, build, products pages all rely on this never throwing).
   try {
-    return await loadBenchmarkFiltered(slug, sig);
+    const result = await loadBenchmarkFiltered(slug, sig);
+    if (!result) return result;
+    const specs = await loadSpecs();
+    const spec = specs.find((s) => s.slug === slug);
+    return spec ? overlayEditorial(result, spec) : result;
   } catch {
     const all = await loadAllBenchmarks();
     return all.find((b) => b.slug === slug);
