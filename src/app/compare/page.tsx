@@ -52,28 +52,38 @@ export default function ComparePage() {
         providers, side by side, with no verdict.
       </p>
 
-      <ul className="mt-10 divide-y divide-rule border-y border-rule">
-        {pairs.map((pair) => {
-          const a = canonicalize(pair.providerA).name;
-          const b = canonicalize(pair.providerB).name;
-          return (
-            <li key={pair.slug}>
-              <Link
-                href={`/compare/${pair.slug}`}
-                className="group flex items-center justify-between gap-4 py-4 hover:bg-surface transition-colors"
-              >
-                <span className="text-lg text-ink font-semibold">
-                  {a} <span className="text-ink-soft font-normal">vs</span> {b}
-                </span>
-                <span className="inline-flex items-center gap-1 text-sm uppercase tracking-wide text-ink-soft group-hover:text-ink transition-colors">
-                  View data
-                  <ArrowUpRight size={14} strokeWidth={2} />
-                </span>
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
+      <section className="mt-12">
+        <h2 className="text-lg sm:text-xl font-bold tracking-tight text-ink">
+          All featured comparisons
+        </h2>
+        <p className="mt-2 max-w-2xl text-sm text-ink-soft leading-snug">
+          {pairs.length} hand-picked head-to-heads between providers that
+          appear in at least one common benchmark.
+        </p>
+        <ul className="mt-6 divide-y divide-rule border-y border-rule">
+          {pairs.map((pair) => {
+            const a = canonicalize(pair.providerA).name;
+            const b = canonicalize(pair.providerB).name;
+            return (
+              <li key={pair.slug}>
+                <Link
+                  href={`/compare/${pair.slug}`}
+                  className="group flex items-center justify-between gap-4 py-4 hover:bg-surface transition-colors"
+                >
+                  <span className="text-lg text-ink font-semibold">
+                    {a}{" "}
+                    <span className="text-ink-soft font-normal">vs</span> {b}
+                  </span>
+                  <span className="inline-flex items-center gap-1 text-sm uppercase tracking-wide text-ink-soft group-hover:text-ink transition-colors">
+                    View data
+                    <ArrowUpRight size={14} strokeWidth={2} />
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
     </article>
   );
 }

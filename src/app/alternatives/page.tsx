@@ -48,29 +48,38 @@ export default async function AlternativesPage() {
         methodology, no editorial verdict.
       </p>
 
-      <ul className="mt-10 divide-y divide-rule border-y border-rule">
-        {alternatives.map((alt) => (
-          <li key={alt.slug}>
-            <Link
-              href={`/alternatives/${alt.slug}`}
-              className="group flex items-center justify-between gap-4 py-4 hover:bg-surface transition-colors"
-            >
-              <span className="min-w-0">
-                <span className="block text-lg text-ink font-semibold">
-                  {alt.target_product} alternatives
+      <section className="mt-12">
+        <h2 className="text-lg sm:text-xl font-bold tracking-tight text-ink">
+          All product alternatives
+        </h2>
+        <p className="mt-2 max-w-2xl text-sm text-ink-soft leading-snug">
+          {alternatives.length} pages reframing OpenChainBench benchmarks
+          around a single product, ranked by live measurement.
+        </p>
+        <ul className="mt-6 divide-y divide-rule border-y border-rule">
+          {alternatives.map((alt) => (
+            <li key={alt.slug}>
+              <Link
+                href={`/alternatives/${alt.slug}`}
+                className="group flex items-center justify-between gap-4 py-4 hover:bg-surface transition-colors"
+              >
+                <span className="min-w-0">
+                  <span className="block text-lg text-ink font-semibold">
+                    {alt.target_product} alternatives
+                  </span>
+                  <span className="mt-0.5 block text-sm text-ink-muted truncate">
+                    {alt.description}
+                  </span>
                 </span>
-                <span className="mt-0.5 block text-sm text-ink-muted truncate">
-                  {alt.description}
+                <span className="inline-flex shrink-0 items-center gap-1 text-sm uppercase tracking-wide text-ink-soft group-hover:text-ink transition-colors">
+                  View data
+                  <ArrowUpRight size={14} strokeWidth={2} />
                 </span>
-              </span>
-              <span className="inline-flex shrink-0 items-center gap-1 text-sm uppercase tracking-wide text-ink-soft group-hover:text-ink transition-colors">
-                View data
-                <ArrowUpRight size={14} strokeWidth={2} />
-              </span>
-            </Link>
-          </li>
-        ))}
-      </ul>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
     </article>
   );
 }
