@@ -3,6 +3,7 @@ import path from "node:path";
 import type { MetadataRoute } from "next";
 import { getBenchmarks } from "@/data/benchmarks";
 import { loadAllAlternatives } from "@/lib/alternatives";
+import { loadAllAnswers } from "@/lib/answers";
 import { getProviderSlugs } from "@/lib/providers";
 import { SITE } from "@/data/site";
 
@@ -58,9 +59,10 @@ function pageMtime(relPath: string): Date {
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [benchmarks, alternatives, providerSlugs] = await Promise.all([
+  const [benchmarks, alternatives, answers, providerSlugs] = await Promise.all([
     getBenchmarks(),
     loadAllAlternatives(),
+    loadAllAnswers(),
     getProviderSlugs(),
   ]);
 
@@ -109,6 +111,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE.url}/press`, lastModified: pageMtime("press/page.tsx"), changeFrequency: "monthly", priority: 0.4 },
     { url: `${SITE.url}/compare`, lastModified: pageMtime("compare/page.tsx"), changeFrequency: "weekly", priority: 0.6 },
     { url: `${SITE.url}/alternatives`, lastModified: pageMtime("alternatives/page.tsx"), changeFrequency: "weekly", priority: 0.6 },
+    { url: `${SITE.url}/answers`, lastModified: catalogLastRun, changeFrequency: "weekly", priority: 0.7 },
   ];
 
   // Bench routes. The hub URL is the canonical entry and ranks highest.
@@ -168,10 +171,28 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.85,
     }));
 
+  // Same guard as alternatives: drop answers whose referenced bench is
+  // not on this branch so we never feed Google a sitemap entry that
+  // 404s. lastmod follows the bench so a fresh measurement bumps the
+  // answer's timestamp too.
+  const answerRoutes: MetadataRoute.Sitemap = answers
+    .filter((a) => benchBySlug.has(a.benchmark))
+    .map((a) => {
+      const bench = benchBySlug.get(a.benchmark);
+      const last = bench?.lastRunAt ? new Date(bench.lastRunAt) : catalogLastRun;
+      return {
+        url: `${SITE.url}/answers/${a.slug}`,
+        lastModified: last,
+        changeFrequency: "daily" as const,
+        priority: 0.85,
+      };
+    });
+
   return [
     ...staticRoutes,
     ...benchmarkRoutes,
     ...providerRoutes,
     ...alternativeRoutes,
+    ...answerRoutes,
   ];
 }
