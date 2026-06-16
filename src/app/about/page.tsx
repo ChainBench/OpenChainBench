@@ -52,26 +52,17 @@ export default function AboutPage() {
         13 live benchmarks. ~150 (provider × chain) probe pairs. Every metric is queryable on the public Prometheus and reproducible from the harness source.
       </p>
 
-      <SectionRule label="Independence and disclosure" number="iii" />
+      <SectionRule label="How we stay honest" number="iii" />
       <p className="text-base leading-relaxed text-ink-soft">
-        OpenChainBench is funded by <a className="lnk" href="https://mobula.io" rel="noopener">Mobula</a> because we needed honest infrastructure benchmark data internally and saw no neutral source existed. The site is open-sourced because the industry needs it.
-      </p>
-      <p className="mt-4 text-base leading-relaxed text-ink-soft">
-        <strong>Mobula competes in five live benchmarks</strong>: aggregator head lag, bridge fee, bridge quote latency, network coverage and metadata coverage. Mobula currently leads aggregator head lag and bridge quote latency. This is a real conflict of interest and we want it visible above the fold, not buried.
-      </p>
-      <p className="mt-4 text-base leading-relaxed text-ink-soft">
-        Three safeguards stand against the conflict:
+        Numbers on the site can be reproduced from public data and public code. Three structural safeguards keep the project verifiable:
       </p>
       <ul className="mt-3 space-y-3 text-base leading-relaxed text-ink-soft">
-        <li className="flex gap-3"><span className="text-ink-faint">·</span><span><strong>Open Prometheus data</strong>. Every number on the site is a literal <code>quantile_over_time</code> query. Anyone can hit our <Link className="lnk" href="/api/citable">/api/citable</Link> or <code>/api/stat/&lt;slug&gt;</code> endpoint and re-derive the leaderboard with their own aggregation. If Mobula were inflating its rank, the raw data would show it.</span></li>
+        <li className="flex gap-3"><span className="text-ink-faint">·</span><span><strong>Open Prometheus data</strong>. Every number on the site is a literal <code>quantile_over_time</code> query. Anyone can hit our <Link className="lnk" href="/api/citable">/api/citable</Link> or <code>/api/stat/&lt;slug&gt;</code> endpoint and re-derive the leaderboard with their own aggregation. The raw data is the source of truth.</span></li>
         <li className="flex gap-3"><span className="text-ink-faint">·</span><span><strong>Open harness source</strong>. Every harness is on <a className="lnk" href="https://github.com/ChainBench/OpenChainBench/tree/main/harnesses" rel="noopener">GitHub under harnesses/</a>. Clone, run <code>docker compose up</code>, your <code>/metrics</code> endpoint emits the same numbers ours does within 30 seconds.</span></li>
-        <li className="flex gap-3"><span className="text-ink-faint">·</span><span><strong>Public methodology review</strong>. We invite external review and ship the fixes publicly. In June 2026 the Coinpaprika data team flagged four issues on the stablecoin peg and oracle deviation benches. We shipped three of them in pull requests <a className="lnk" href="https://github.com/ChainBench/OpenChainBench/pull/349" rel="noopener">#349</a>, <a className="lnk" href="https://github.com/ChainBench/OpenChainBench/pull/352" rel="noopener">#352</a> and <a className="lnk" href="https://github.com/ChainBench/OpenChainBench/pull/353" rel="noopener">#353</a> within twenty-four hours and pushed back on the fourth with citations to CME, Chainlink and CoinGecko convention.</span></li>
+        <li className="flex gap-3"><span className="text-ink-faint">·</span><span><strong>Public methodology review</strong>. We invite external review and ship the fixes publicly. In June 2026 four issues were flagged on the stablecoin peg and oracle deviation benches; three were shipped in pull requests <a className="lnk" href="https://github.com/ChainBench/OpenChainBench/pull/349" rel="noopener">#349</a>, <a className="lnk" href="https://github.com/ChainBench/OpenChainBench/pull/352" rel="noopener">#352</a> and <a className="lnk" href="https://github.com/ChainBench/OpenChainBench/pull/353" rel="noopener">#353</a> within twenty-four hours; the fourth was answered with citations to CME, Chainlink and CoinGecko convention.</span></li>
       </ul>
       <p className="mt-4 text-base leading-relaxed text-ink-soft">
-        We do not run a paid tier. We do not sell ranking slots. We do not take provider sponsorship in exchange for inclusion. There is no token. If you spot any deviation from this policy, file a <a className="lnk" href="https://github.com/ChainBench/OpenChainBench/security/advisories/new" rel="noopener">private security advisory</a> and we will treat it as the integrity incident it would be.
-      </p>
-      <p className="mt-4 text-base leading-relaxed text-ink-soft">
-        Hosting and infrastructure costs are paid by Mobula. The site runs on Vercel; harnesses run on Railway. We are open to grant funding that preserves editorial independence, but we will not accept funding from any party we benchmark.
+        No paid tier. No sold ranking slots. No provider sponsorship in exchange for inclusion. No token. If you spot any deviation from this policy, file a <a className="lnk" href="https://github.com/ChainBench/OpenChainBench/security/advisories/new" rel="noopener">private security advisory</a> and we will treat it as the integrity incident it would be.
       </p>
 
       <SectionRule label="How it works" number="iv" />
