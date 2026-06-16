@@ -4,6 +4,7 @@ import { ArrowUpRight } from "lucide-react";
 import { loadAllAnswers } from "@/lib/answers";
 import { loadBenchmark } from "@/lib/spec";
 import { renderTemplate } from "@/lib/bench-template";
+import { cleanLeftoverTokens } from "@/lib/answers-template";
 import { SITE } from "@/data/site";
 import { safeJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import { pageMetadata } from "@/lib/page-metadata";
@@ -25,12 +26,19 @@ export default async function AnswersHubPage() {
   // short_answer preview. Each YAML's `short_answer` is authored against
   // its referenced bench, so we load that bench and run renderTemplate
   // before the JSX touches the string.
+  //
+  // Tokens that renderTemplate can't resolve get a neutral fallback so
+  // a draft / awaiting-data bench (e.g. solana-tx-landing-latency mid-soak
+  // with every provider's p50 still at 0) never surfaces raw `{{best_name}}`
+  // to the SERP. Same pattern as resolveLeftoverPlaceholders on the
+  // per-chain bench page.
   const rendered = await Promise.all(
     answers.map(async (a) => {
       const bench = await loadBenchmark(a.benchmark, { chain: a.chain });
-      const shortAnswer = bench
+      const partial = bench
         ? renderTemplate(a.short_answer, bench)
         : a.short_answer;
+      const shortAnswer = cleanLeftoverTokens(partial);
       return { ...a, shortAnswer };
     }),
   );
