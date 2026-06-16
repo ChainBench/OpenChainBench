@@ -1,0 +1,40 @@
+slug: which-blockchain-has-cheapest-transaction-fees
+question: "Which blockchain has the cheapest transaction fees in 2026?"
+short_answer: |
+  {{best_name}} currently posts the lowest median native transfer fee at {{best_p50}}, measured live across 20 L1 and L2 chains over the last 24 hours.
+
+benchmark: network-fees
+
+intro: |
+  Wallet UX, micropayments, on-chain agents and gaming all break the same way: a five dollar transfer fee makes the use case impossible. This page answers one question with live data. Which chain is actually the cheapest to send a native transfer on right now, measured in dollars, not in gwei or lamports or stroops or sun. The OpenChainBench network-fees harness queries every chain's own fee market directly (eth_feeHistory for the EVM family, getRecentPrioritizationFees on Solana, koios epoch params on Cardano, fee_stats on Stellar, get_fee_estimate on Monero, Bag-of-Cells emulation on TON, getChainParameters on TRON, suix_getReferenceGasPrice on Sui), converts the result to the chain's smallest native unit, then multiplies by the live USD price of the native token. The output is the dollar amount a wallet user actually pays today. No marketing claim, no protocol-deterministic baseline that ignores priority bidding, no MATIC at peak gas reframed as the median.
+
+methodology: |
+  Each chain is queried on its own fee surface every 30 seconds, never normalised to a synthetic gas estimate. The harness multiplies the chain's published fee parameter by a canonical transfer size for that chain (21000 gas for EVM native transfers, 5000 lamports base plus typical priority on Solana, 225 vBytes for a SegWit Litecoin transfer, 1500 bytes for a one-input two-output Monero RingCT transfer, 250 bytes for ADA, etc.), then converts to USD using Mobula's live price feed. The leaderboard ranks by 24h p50, so a single congestion spike does not move the headline number. Chains where the fee model is protocol-deterministic (Cardano, Stellar, TRON) are shown at the published rate parameter, which moves only when the parameter itself moves through on-chain governance.
+
+limitations:
+  - "Native transfers are the cheapest possible transaction on each chain. Smart-contract calls (token transfer, swap, NFT mint) cost more, often by an order of magnitude on the EVM family because of storage writes."
+  - "L2 figures cover L2 execution cost only. The L1 data-posting component (Ethereum blob calldata, EigenDA for Mantle) is not yet included, so the actual user-visible cost during expensive blob windows is higher than this leaderboard shows."
+  - "TON publishes a conservative observed value because TON has no clean fee-estimate RPC; the real fee can fluctuate by workchain and shard."
+  - "Native currency price volatility moves the USD figure independently of any change in the chain's fee market. A 20 percent ETH move shifts every Ethereum-denominated L1 and L2 transfer fee by the same percent."
+
+faq:
+  - q: "Why is Solana cheaper than Ethereum?"
+    a: "Solana charges a hard 5000 lamports per signature base fee plus an optional priority fee priced in micro-lamports per compute unit; a SOL transfer consumes around 200 compute units, so the priority component is usually dwarfed by the base. Ethereum's EIP-1559 base fee adjusts by up to 12.5 percent per block based on prior gas usage, and a plain ETH transfer is 21000 gas, which puts the floor at a much higher dollar amount whenever ETH is over a few hundred dollars."
+  - q: "Which L2 has the lowest fees right now?"
+    a: "OP Stack chains (Optimism, Base, Blast) and Arbitrum One all run priority fees near zero by design because the sequencer is centralized and there is no public mempool to bid against. Among these, the leader shifts day-to-day depending on which sequencer has the lower base fee posted. The live leaderboard above shows the current ranking."
+  - q: "Is the fee figure the same as gas?"
+    a: "No. Gas is a chain-specific abstraction (gas units on EVM, compute units on Solana, computation cost on Sui, etc.) that must still be multiplied by a per-unit price and by the chain's native token USD price to get a real wallet cost. The leaderboard here is the USD output, not the gas input, so a chain with cheap gas but an expensive native token can still rank below a chain with expensive gas but a cheap native token."
+  - q: "Does this include MEV or sequencer surcharges?"
+    a: "It does not. The figure is the fee posted to the public mempool or sequencer for a plain transfer, before any MEV bidding for inclusion in a specific block position. On chains where the sequencer is private (every centralized rollup sequencer) the user does not pay a priority fee at all because there is no public auction to bid into, and the headline number reflects that."
+  - q: "How often is the leaderboard refreshed?"
+    a: "Every 30 seconds. The harness polls each chain's fee surface continuously and publishes a rolling 24h p50, p90 and p99. A single congestion spike on one chain does not move the headline number; a sustained shift does."
+  - q: "Can I cite a value from this page?"
+    a: "Yes. Every number is a Prometheus query over a 24h window. The query string is shown in the row's hover tooltip on the bench page. The harness source is open on GitHub. Cite the value and the timestamp at the top of the page."
+
+related:
+  - which-l1-has-the-fastest-finality
+  - which-solana-rpc-lands-the-most-transactions
+
+seo_title: "Which blockchain has the cheapest transaction fees in 2026?"
+seo_description: "{{best_name}} posts the lowest median native transfer fee at {{best_p50}} across 20 L1 and L2 chains, measured live by OpenChainBench. Methodology and limitations on this page."
+status: live
