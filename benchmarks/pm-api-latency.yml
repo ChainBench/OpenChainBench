@@ -125,6 +125,14 @@ metric_panels:
     label_key: venue
     unit: pct
     higher_is_better: true
+  - id: uptime_30d
+    label: Uptime 30d
+    description: "Same health gauge averaged over 30 days. Feeds the ledger's 30d window toggle so a one-hour outage that's already aged out of the 24h panel still shows up in the table over a month."
+    metric: 100 * avg(avg_over_time(pmapi_health{}[30d]))
+    label_key: venue
+    unit: pct
+    higher_is_better: true
+    tab: false
   - id: cold_connect_p50
     label: Cold connect
     description: "TCP plus TLS handshake time on the once a minute cold probe with keep alives disabled. The startup cost a brand new client pays before its first request."
@@ -132,6 +140,14 @@ metric_panels:
     label_key: venue
     unit: ms
     higher_is_better: false
+
+# Surface uptime in the ledger so the bench's "is this API up right now"
+# promise is visible without clicking the panel tab. The 24h/7d windows
+# live on the same column via the timeframe toggle below the table.
+ledger_columns:
+  - { label: "Warm price p50", slot: p50 }
+  - { label: "p99", slot: p99 }
+  - { label: "Uptime 24h", panel: uptime_24h, windows: { 7d: uptime_7d, 30d: uptime_30d } }
 
 providers:
   - slug: polymarket
