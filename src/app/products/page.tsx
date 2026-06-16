@@ -76,7 +76,20 @@ export default async function ProvidersIndex() {
           Sorted by number of #1 finishes, then by reach across categories.
         </p>
       </header>
-      <ProvidersTable providers={rows} />
+
+      <section>
+        <h2 className="text-lg sm:text-xl font-bold tracking-tight text-ink">
+          All tracked products
+        </h2>
+        <p className="mt-2 max-w-2xl text-sm text-ink-soft leading-snug">
+          {providers.length} crypto infrastructure providers ranked across
+          the full OpenChainBench surface. Click a row for the provider&apos;s
+          live benchmark record.
+        </p>
+        <div className="mt-6">
+          <ProvidersTable providers={rows} />
+        </div>
+      </section>
     </article>
   );
 }
