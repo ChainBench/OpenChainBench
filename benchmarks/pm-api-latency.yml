@@ -1,0 +1,216 @@
+# OpenChainBench. Bench № 038
+
+slug: pm-api-latency
+number: "038"
+title: Best prediction market API, ranked by live latency and uptime
+seo_title: "Best prediction market API 2026: Polymarket, Kalshi, Limitless, Manifold latency and uptime, live"
+seo_description: "Is the Polymarket API up right now? Live uptime and price endpoint latency for the Polymarket, Kalshi, Limitless, Manifold and Myriad APIs, probed every 5 seconds from three regions, with per venue status pages and outage history."
+subtitle: Warm price endpoint latency of five prediction market venue APIs from three regions, plus a live uptime panel that answers whether each API is up right now.
+
+category: Trading
+status: live
+metric: API latency (price endpoint)
+unit: ms
+higher_is_better: false
+
+seo_intro: |
+  When the Polymarket API stops answering, the only pages that notice are
+  downdetector clones aggregating complaints. None of them actually probe
+  the API. This benchmark does. A harness in three regions requests the
+  price endpoint of Polymarket, Kalshi, Limitless, Manifold and Myriad
+  every 5 seconds over warm connections, records every round trip, and
+  publishes two things venue status pages do not: a latency leaderboard
+  ranking the best prediction market API by measured p50, and a per venue
+  uptime panel computed from the same probes. If you are here to check
+  whether the Polymarket API is up right now, the uptime panel below is a
+  direct measurement, refreshed continuously, not a complaint counter.
+  If you are choosing which venue API to build on, the leaderboard ranks
+  them by the latency of the one endpoint every integration hits hardest,
+  the single market price quote.
+
+abstract: |
+  Each venue's price endpoint, the single market quote that every bot,
+  dashboard and integration polls hardest, is probed every 5 seconds (7 on
+  Manifold) from us-east, eu-west and Singapore over a warm keep alive
+  pool. Every sample records full round trip, time to first byte and a CDN
+  cache flag from the response headers. Latency aggregates exclude CDN
+  cache hits, because a cached read measures the edge, not the API, and
+  Manifold's entire API sits behind a 5 second cache. The headline is the
+  24h p50 of warm, non cached price requests. Uptime per venue is the 24h
+  and 7d average of a health gauge derived from the same probes, so "is
+  this API up" is answered by direct measurement from three regions rather
+  than by user reports. Samples that fail because our pinned market
+  expired are classified probe_invalid and never count against the venue.
+
+methodology:
+  - "Price endpoint per venue. Polymarket: CLOB `/midpoint`. Kalshi: `/markets/{ticker}`. Limitless: `/markets/{slug}`. Manifold: `/v0/market/{id}`. Myriad: `/markets/{slug}`. This is the hot path of real integrations: one market, one quote, polled in a loop."
+  - "Warm probes every 5s (7s on Manifold, whose API sits behind max-age=5 plus stale-while-revalidate=10) from us-east, eu-west and sgp over a keep alive pool. A separate cold connect probe once per minute records the TCP plus TLS handshake a brand new client pays."
+  - "Every sample carries a cache flag read from cf-cache-status, x-cache and age headers. Latency aggregates exclude cache hits: a CDN hit measures the nearest edge, not the venue's API, and including Manifold's residual cache hits would flatter it by design."
+  - "Uptime is the average of a per venue, per region health gauge (pmapi_health) computed by the harness from probe outcomes. 100 percent means every probe cycle in the window succeeded from that region. The 24h and 7d panels below are the live answer to whether each API is up."
+  - "Outcome classification: ok, timeout (8s), http_4xx, http_5xx, throttled, probe_invalid, net_error. probe_invalid covers failures that are our pin's fault, such as a market that resolved intraday; those are excluded from both latency and uptime. The pinned market is re selected daily at 00:00 UTC and immediately on probe_invalid."
+  - "Division of labor with the sibling benches: how each venue behaves as request rates climb, including throttle onset and 429 handling, is measured in pm-rate-limits (bench 037). How fresh third party data providers relay Polymarket data is measured in pm-data-freshness (bench 032). This bench ranks the venues' own APIs on latency and uptime at a polite request rate."
+  - "Myriad's origin is a single region US East deployment behind Heroku, so its latency from eu-west and sgp is dominated by geography. Reported as measured, called out per region."
+  - "All five venues are probed by the same open source harness as bench 037, from the same processes, so the two benches share one probe budget and one identifying User-Agent: `OpenChainBench/1.0 (+https://openchainbench.com/methodology; contact@mobula.io)`. We publish latency and uptime measurements only, never market data."
+  - "Regions: us-east, eu-west, sgp (Railway). Histogram buckets 25ms to 10s."
+
+findings:
+  - "{{best_name}} currently has the lowest warm price endpoint latency at {{best_p50}} p50 over the last 24h, making it the fastest prediction market API in the cohort by direct measurement."
+  - "All five venue APIs typically sit above 99 percent measured uptime; the gaps that do appear are short and regional, which is exactly what a complaint based status page cannot tell you. The uptime panels show the live 24h and 7d figures per venue."
+  - "{{name:manifold}} would look faster than it is if cache hits counted: its whole API sits behind a 5 second CDN cache. With cache hits excluded its origin answers at {{p50:manifold}} p50, an honest number a trading bot polling fresh quotes will actually see."
+  - "{{name:myriad}} serves every region from a single US East origin, so its cohort worst p50 of {{p50:myriad}} is mostly geography. Switch the region dimension to us-east to see the API itself rather than the speed of light."
+  - "{{name:polymarket}} answers its midpoint endpoint at {{p50:polymarket}} p50. Because we probe it every 5 seconds from three regions, the uptime panel doubles as a Polymarket API status check that updates continuously instead of waiting for user reports."
+
+disclaimer: "Uptime here means our probes succeeded from three specific regions at a polite request rate. A venue can be up for us and degraded for you, especially during regional network incidents, and a brief blip between probe cycles can go unrecorded. Treat the panel as a measured signal, not a guarantee."
+
+faq:
+  - q: "Is the Polymarket API up right now?"
+    a: "Check the uptime panel above, it is a direct measurement, not a complaint counter. Our harness requests Polymarket's CLOB midpoint endpoint every 5 seconds from three regions (US East, EU West, Singapore) and computes a health gauge from the outcomes. The 24h uptime figure shown for Polymarket is the average of that gauge, so 100 percent means every probe cycle in the last 24 hours succeeded from every region. If Polymarket is having a partial outage, you will usually see it first as a dip in one region's health or a spike in the latency series before it shows as a hard failure."
+  - q: "What is the best prediction market API?"
+    a: "By measured latency, {{best_name}} currently leads with a {{best_p50}} p50 on its price endpoint over warm connections in the last 24h. But best depends on what you need: Polymarket has the deepest CLOB and a public WebSocket, Kalshi is the regulated US venue with a documented API contract, Manifold explicitly welcomes bots, Limitless is a CLOB with no API documentation to speak of, and Myriad has the smallest API surface. This leaderboard gives you the one number none of their docs publish, real latency and uptime measured continuously from three regions."
+  - q: "Does Kalshi have a public API?"
+    a: "Yes. Kalshi exposes a public REST API for market data, including the single market endpoint we probe, without authentication. Trading and the WebSocket feed require an account and API credentials. It is also the only venue in this cohort with a documented request budget per access tier. Its measured latency and uptime are on this page; how it behaves under rising request rates is covered in the pm-rate-limits benchmark."
+  - q: "How do you measure Polymarket API status and outage history?"
+    a: "Every 5 seconds, from three regions, the harness requests the midpoint of a pinned liquid market over a warm connection and classifies the outcome (ok, timeout, 4xx, 5xx, network error). The health gauge derived from those outcomes feeds the 24h and 7d uptime panels, and the latency time series keeps the shape of past incidents: an outage shows up as a gap or a spike you can scroll back to. Failures caused by our own pin going stale, for example a market that resolved intraday, are classified probe_invalid and excluded from both uptime and latency."
+  - q: "Why is the Myriad API slower from Europe and Asia?"
+    a: "Geography. Myriad's origin is a single region Heroku deployment in US East, with no multi region presence and no order book or WebSocket endpoints. From eu-west and Singapore every request pays a transatlantic or transpacific round trip before the API does any work. Use the region selector to compare venues from your own region; from us-east, Myriad's API is much closer to the rest of the cohort."
+  - q: "Why do latency numbers exclude CDN cache hits?"
+    a: "Because a cache hit measures the distance to the nearest edge node, not the venue's API. Manifold serves its entire API behind a 5 second cache and Kalshi's market list sits on CloudFront, so a naive average would mostly rank CDN proximity. Every sample carries a cache flag read from the response headers, and the headline aggregates only non cached, successful requests. The number you see is what a client polling for fresh quotes actually experiences at the origin."
+  - q: "Does this benchmark cover throttling or data providers?"
+    a: "No, deliberately. What happens to each venue's API as request rates climb, including 429 onset and queueing behaviour, is its own benchmark, pm-rate-limits, which runs a careful daily ramp. And if you consume venue data through a provider such as Mobula or Codex rather than calling the venue directly, the relevant number is relay freshness, measured in pm-data-freshness. This page answers two narrower questions: which venue API is fastest at a polite request rate, and is it up right now."
+
+per_chain_explainer:
+  - slug: polymarket
+    h2: Polymarket API latency and status
+    body: "Polymarket's CLOB answers its midpoint endpoint at {{p50:polymarket}} p50 over warm connections (24h). The API fronts Cloudflare, so brief origin trouble often appears here as a latency spike before it ever becomes an error, which makes the latency series a useful early status signal. The uptime panel above is a live Polymarket API status check, computed from probes fired every 5 seconds from three regions, so it reacts within seconds of a real outage instead of waiting for user reports. For how the CLOB behaves under bursts, see the pm-rate-limits bench."
+  - slug: kalshi
+    h2: Kalshi API latency and status
+    body: "Kalshi's public single market endpoint goes to origin on every request and currently answers at {{p50:kalshi}} p50 warm (24h). That makes its uptime figure here a clean origin measurement, unlike its CDN cached market list. Kalshi is the regulated US venue and the only one in the cohort with a documented API contract, so an unexplained dip in its health gauge is more notable than elsewhere. If Kalshi's API seems down for you, compare the per region figures: a single region dip usually means a network issue, not a venue outage."
+  - slug: limitless
+    h2: Limitless API latency and status
+    body: "Limitless answers its market endpoint at {{p50:limitless}} p50 warm (24h). One measured behaviour matters for anyone checking whether the Limitless API is down: its CDN caches error responses for four hours, so a request for an expired or resolved market keeps returning the same 400 long after the fact. A client seeing persistent errors on one market while this page shows healthy uptime is almost certainly holding a stale market reference, not witnessing an outage. Our harness re pins immediately and excludes those samples."
+  - slug: manifold
+    h2: Manifold API latency and status
+    body: "Manifold's API sits entirely behind a CDN cache (max-age=5 plus stale-while-revalidate=10), which complicates both latency and status measurement: a cached 200 can mask a struggling origin for a few seconds. Our probes space to 7 seconds, label every residual cache hit, and the {{p50:manifold}} p50 shown here counts origin responses only. For uptime this cuts the other way, the cache absorbs brief origin blips, so Manifold's measured availability is high and its real failure mode is stale data rather than errors."
+  - slug: myriad
+    h2: Myriad API latency and status
+    body: "Myriad's API is a single region Heroku deployment in US East with no order book endpoint and no WebSocket. Its cohort worst {{p50:myriad}} p50 (24h, all regions) is mostly geography: from eu-west and Singapore every request crosses an ocean first. When checking whether the Myriad API is down, look at the us-east region figure, since a global latency rise that spares us-east is network weather, not a venue incident. Myriad also runs the tightest keyless request budget in the cohort, covered in the pm-rate-limits bench."
+
+source: https://github.com/MobulaFi/mobula-monorepo/tree/main/miniapps/pm-rate-limits
+
+prometheus:
+  window: 24h
+  expected_freshness_seconds: 300
+
+rank_matrix_query: 1000 * label_replace(histogram_quantile(0.50, sum by (venue, region, le) (rate(pmapi_request_duration_seconds_bucket{conn="warm",class="price",cache!="hit"}[24h]))), "provider", "$1", "venue", "(.+)")
+
+dimensions:
+  region:
+    - { value: all, label: All regions }
+    - { value: us-east, label: US East }
+    - { value: eu-west, label: EU West }
+    - { value: sgp, label: Singapore }
+
+metric_panels:
+  - id: uptime_24h
+    label: Uptime 24h
+    description: "Share of probe cycles that succeeded over the last 24 hours, averaged across the three probe regions. 100 percent means every 5 second probe of the venue's API came back healthy."
+    metric: 100 * avg(avg_over_time(pmapi_health{}[24h]))
+    label_key: venue
+    unit: pct
+    higher_is_better: true
+  - id: uptime_7d
+    label: Uptime 7d
+    description: "Same health gauge averaged over 7 days. Short outages that vanish from the 24h figure stay visible here for a week."
+    metric: 100 * avg(avg_over_time(pmapi_health{}[7d]))
+    label_key: venue
+    unit: pct
+    higher_is_better: true
+  - id: uptime_30d
+    label: Uptime 30d
+    description: "Same health gauge averaged over 30 days. Feeds the ledger's 30d window toggle so a one-hour outage that's already aged out of the 24h panel still shows up in the table over a month."
+    metric: 100 * avg(avg_over_time(pmapi_health{}[30d]))
+    label_key: venue
+    unit: pct
+    higher_is_better: true
+    tab: false
+  - id: cold_connect_p50
+    label: Cold connect
+    description: "TCP plus TLS handshake time on the once a minute cold probe with keep alives disabled. The startup cost a brand new client pays before its first request."
+    metric: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_connect_seconds_bucket{}[24h])) by (le))
+    label_key: venue
+    unit: ms
+    higher_is_better: false
+
+# Surface uptime in the ledger so the bench's "is this API up right now"
+# promise is visible without clicking the panel tab. The 24h/7d windows
+# live on the same column via the timeframe toggle below the table.
+ledger_columns:
+  - { label: "Warm price p50", slot: p50 }
+  - { label: "p99", slot: p99 }
+  - { label: "Uptime 24h", panel: uptime_24h, windows: { 7d: uptime_7d, 30d: uptime_30d } }
+
+providers:
+  - slug: polymarket
+    name: Polymarket
+    tag: CLOB midpoint endpoint behind Cloudflare, public WebSocket, deepest books
+    formula: "p50 of warm, non CDN cached round trips against the CLOB midpoint endpoint for the pinned market, successful requests only, 24h window."
+    queries:
+      p50: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{venue="polymarket",class="price",conn="warm",cache!="hit"}[24h])) by (le))
+      p90: 1000 * histogram_quantile(0.90, sum(rate(pmapi_request_duration_seconds_bucket{venue="polymarket",class="price",conn="warm",cache!="hit"}[24h])) by (le))
+      p99: 1000 * histogram_quantile(0.99, sum(rate(pmapi_request_duration_seconds_bucket{venue="polymarket",class="price",conn="warm",cache!="hit"}[24h])) by (le))
+      mean: 1000 * sum(rate(pmapi_request_duration_seconds_sum{venue="polymarket",class="price",conn="warm",cache!="hit"}[24h])) / sum(rate(pmapi_request_duration_seconds_count{venue="polymarket",class="price",conn="warm",cache!="hit"}[24h]))
+      success: clamp_max(sum(rate(pmapi_requests_total{venue="polymarket",class="price",conn="warm",outcome="ok"}[24h])) / sum(rate(pmapi_requests_total{venue="polymarket",class="price",conn="warm",outcome!="probe_invalid"}[24h])), 1)
+      sample_size: sum(increase(pmapi_requests_total{venue="polymarket",class="price",conn="warm",outcome!="probe_invalid"}[24h]))
+      series: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{venue="polymarket",class="price",conn="warm",cache!="hit"}[1h])) by (le))
+
+  - slug: kalshi
+    name: Kalshi
+    tag: Regulated US venue, single market endpoint goes to origin on every request
+    formula: "p50 of warm, non CDN cached round trips against the single market endpoint for the pinned ticker, successful requests only, 24h window."
+    queries:
+      p50: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{venue="kalshi",class="price",conn="warm",cache!="hit"}[24h])) by (le))
+      p90: 1000 * histogram_quantile(0.90, sum(rate(pmapi_request_duration_seconds_bucket{venue="kalshi",class="price",conn="warm",cache!="hit"}[24h])) by (le))
+      p99: 1000 * histogram_quantile(0.99, sum(rate(pmapi_request_duration_seconds_bucket{venue="kalshi",class="price",conn="warm",cache!="hit"}[24h])) by (le))
+      mean: 1000 * sum(rate(pmapi_request_duration_seconds_sum{venue="kalshi",class="price",conn="warm",cache!="hit"}[24h])) / sum(rate(pmapi_request_duration_seconds_count{venue="kalshi",class="price",conn="warm",cache!="hit"}[24h]))
+      success: clamp_max(sum(rate(pmapi_requests_total{venue="kalshi",class="price",conn="warm",outcome="ok"}[24h])) / sum(rate(pmapi_requests_total{venue="kalshi",class="price",conn="warm",outcome!="probe_invalid"}[24h])), 1)
+      sample_size: sum(increase(pmapi_requests_total{venue="kalshi",class="price",conn="warm",outcome!="probe_invalid"}[24h]))
+      series: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{venue="kalshi",class="price",conn="warm",cache!="hit"}[1h])) by (le))
+
+  - slug: limitless
+    name: Limitless
+    tag: CLOB venue, undocumented API, errors CDN cached for 4 hours
+    formula: "p50 of warm, non CDN cached round trips against the single market endpoint, successful requests only, 24h window. Stale pin errors are probe_invalid and excluded."
+    queries:
+      p50: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{venue="limitless",class="price",conn="warm",cache!="hit"}[24h])) by (le))
+      p90: 1000 * histogram_quantile(0.90, sum(rate(pmapi_request_duration_seconds_bucket{venue="limitless",class="price",conn="warm",cache!="hit"}[24h])) by (le))
+      p99: 1000 * histogram_quantile(0.99, sum(rate(pmapi_request_duration_seconds_bucket{venue="limitless",class="price",conn="warm",cache!="hit"}[24h])) by (le))
+      mean: 1000 * sum(rate(pmapi_request_duration_seconds_sum{venue="limitless",class="price",conn="warm",cache!="hit"}[24h])) / sum(rate(pmapi_request_duration_seconds_count{venue="limitless",class="price",conn="warm",cache!="hit"}[24h]))
+      success: clamp_max(sum(rate(pmapi_requests_total{venue="limitless",class="price",conn="warm",outcome="ok"}[24h])) / sum(rate(pmapi_requests_total{venue="limitless",class="price",conn="warm",outcome!="probe_invalid"}[24h])), 1)
+      sample_size: sum(increase(pmapi_requests_total{venue="limitless",class="price",conn="warm",outcome!="probe_invalid"}[24h]))
+      series: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{venue="limitless",class="price",conn="warm",cache!="hit"}[1h])) by (le))
+
+  - slug: manifold
+    name: Manifold
+    tag: AMM, bot friendly, whole API behind a 5s CDN cache, hits excluded here
+    formula: "p50 of warm round trips against the single market endpoint, origin responses only (CDN cache hits excluded), successful requests, 24h window."
+    queries:
+      p50: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{venue="manifold",class="price",conn="warm",cache!="hit"}[24h])) by (le))
+      p90: 1000 * histogram_quantile(0.90, sum(rate(pmapi_request_duration_seconds_bucket{venue="manifold",class="price",conn="warm",cache!="hit"}[24h])) by (le))
+      p99: 1000 * histogram_quantile(0.99, sum(rate(pmapi_request_duration_seconds_bucket{venue="manifold",class="price",conn="warm",cache!="hit"}[24h])) by (le))
+      mean: 1000 * sum(rate(pmapi_request_duration_seconds_sum{venue="manifold",class="price",conn="warm",cache!="hit"}[24h])) / sum(rate(pmapi_request_duration_seconds_count{venue="manifold",class="price",conn="warm",cache!="hit"}[24h]))
+      success: clamp_max(sum(rate(pmapi_requests_total{venue="manifold",class="price",conn="warm",outcome="ok"}[24h])) / sum(rate(pmapi_requests_total{venue="manifold",class="price",conn="warm",outcome!="probe_invalid"}[24h])), 1)
+      sample_size: sum(increase(pmapi_requests_total{venue="manifold",class="price",conn="warm",outcome!="probe_invalid"}[24h]))
+      series: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{venue="manifold",class="price",conn="warm",cache!="hit"}[1h])) by (le))
+
+  - slug: myriad
+    name: Myriad
+    tag: Single region US East Heroku origin, smallest API surface in the cohort
+    formula: "p50 of warm, non CDN cached round trips against the single market endpoint, successful requests only, 24h window. Cross region latency reflects the single US East origin."
+    queries:
+      p50: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{venue="myriad",class="price",conn="warm",cache!="hit"}[24h])) by (le))
+      p90: 1000 * histogram_quantile(0.90, sum(rate(pmapi_request_duration_seconds_bucket{venue="myriad",class="price",conn="warm",cache!="hit"}[24h])) by (le))
+      p99: 1000 * histogram_quantile(0.99, sum(rate(pmapi_request_duration_seconds_bucket{venue="myriad",class="price",conn="warm",cache!="hit"}[24h])) by (le))
+      mean: 1000 * sum(rate(pmapi_request_duration_seconds_sum{venue="myriad",class="price",conn="warm",cache!="hit"}[24h])) / sum(rate(pmapi_request_duration_seconds_count{venue="myriad",class="price",conn="warm",cache!="hit"}[24h]))
+      success: clamp_max(sum(rate(pmapi_requests_total{venue="myriad",class="price",conn="warm",outcome="ok"}[24h])) / sum(rate(pmapi_requests_total{venue="myriad",class="price",conn="warm",outcome!="probe_invalid"}[24h])), 1)
+      sample_size: sum(increase(pmapi_requests_total{venue="myriad",class="price",conn="warm",outcome!="probe_invalid"}[24h]))
+      series: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{venue="myriad",class="price",conn="warm",cache!="hit"}[1h])) by (le))

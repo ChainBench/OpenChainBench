@@ -47,6 +47,19 @@ const RAW: Record<string, string> = {
   mobula: "/logos/mobula.svg",
   codex: "/logos/codex.svg",
   polymarket: "/logos/polymarket.png",
+  kalshi: "/logos/kalshi.jpg",
+  limitless: "/logos/limitless.png",
+  manifold: "/logos/manifold.svg",
+  myriad: "/logos/myriad.png",
+
+  // ─── Prediction market categories (polymarket-resolution-delay) ───
+  // Bench rows are category buckets, not products, so these stay
+  // unregistered in PROVIDER_REGISTRY (no product page link).
+  "all-markets": "/logos/all-markets.svg",
+  sports: "/logos/sports.svg",
+  crypto: "/logos/crypto.svg",
+  politics: "/logos/politics.svg",
+  other: "/logos/other.svg",
   bebop: "/logos/bebop.svg",
   kyberswap: "/logos/kyberswap.svg",
   relay: "/logos/relay.svg",
