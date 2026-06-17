@@ -14,6 +14,11 @@ import {
 } from "@/data/provider-registry";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { buildBreadcrumbJsonLd, safeJsonLd } from "@/lib/jsonld";
+import {
+  fetchHlBuilderStats,
+  isHlBuilderSlug,
+} from "@/lib/hl-builder-stats";
+import { HlBuilderDashboard } from "@/components/hl-builder-dashboard";
 
 export const revalidate = 60;
 
@@ -89,6 +94,15 @@ export default async function ProviderPage({
   const p = await getProvider(slug);
   if (!p) notFound();
   const reg = getProviderRegistry(p.slug);
+
+  // HyperTracker-parity dashboard for the 104 Hyperliquid frontends. The
+  // strip renders inline between the product header and the bench
+  // appearances list, only when the slug actually maps to a builder the
+  // on-node harness has data for. Cheap (6 Prom scalars in parallel) and
+  // gracefully degrades to a hidden section when Prom is unreachable or
+  // the slug isn't an HL builder.
+  const isHlBuilder = await isHlBuilderSlug(p.slug);
+  const hlStats = isHlBuilder ? await fetchHlBuilderStats(p.slug) : null;
 
   const sorted = [...p.appearances].sort((a, b) => {
     if (a.rank !== b.rank) return a.rank - b.rank;
@@ -376,6 +390,8 @@ export default async function ProviderPage({
           </>
         );
       })()}
+
+      {hlStats && <HlBuilderDashboard stats={hlStats} name={p.name} />}
 
       {reg && (
         <section className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-8">
