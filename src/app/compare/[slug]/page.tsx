@@ -80,11 +80,12 @@ async function resolveAdHocPair(slug: string): Promise<ComparePair | null> {
     getProvider(second),
   ]);
   if (!a || !b) return null;
-  const aBenchSlugs = new Set(a.appearances.map((x) => x.benchmark.slug));
-  const shareAtLeastOne = b.appearances.some((x) =>
-    aBenchSlugs.has(x.benchmark.slug),
-  );
-  if (!shareAtLeastOne) return null;
+  // No share check here: it was rejecting some valid pairs (provider
+  // slug normalisation mismatched between getProvider and
+  // p.appearances[].benchmark.slug in a few edge cases). If they truly
+  // don't share, buildSharedBenches downstream returns [] and the page
+  // 404s naturally with shared.length === 0. Same outcome, fewer false
+  // negatives at the entry.
   return {
     slug,
     providerA: first,
