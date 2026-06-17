@@ -3,7 +3,9 @@ import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { COMPARE_PAIRS } from "@/data/compare-pairs";
 import { canonicalize } from "@/lib/providers";
+import { buildCompareGraph } from "@/lib/compare-pairing";
 import { ProviderLogo } from "@/components/provider-logo";
+import { CompareSelector } from "@/components/compare-selector";
 import { SITE } from "@/data/site";
 import { safeJsonLd } from "@/lib/jsonld";
 import { pageMetadata } from "@/lib/page-metadata";
@@ -21,10 +23,11 @@ export const metadata: Metadata = pageMetadata({
   description: DESCRIPTION,
 });
 
-export default function ComparePage() {
+export default async function ComparePage() {
   const pairs = [...COMPARE_PAIRS].sort((a, b) =>
     a.slug.localeCompare(b.slug),
   );
+  const graph = await buildCompareGraph();
 
   const jsonld = {
     "@context": "https://schema.org",
@@ -53,7 +56,14 @@ export default function ComparePage() {
         providers, side by side, with no verdict.
       </p>
 
-      <section className="mt-14">
+      <div className="mt-10">
+        <CompareSelector
+          providers={graph.providers}
+          shared={graph.shared}
+        />
+      </div>
+
+      <section>
         <h2 className="text-lg sm:text-xl font-bold tracking-tight text-ink">
           All featured comparisons
         </h2>
