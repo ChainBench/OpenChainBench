@@ -1,0 +1,13 @@
+slug: gmx
+target_product: GMX
+target_url: https://gmx.io
+description: Oracle-priced perpetuals exchange settling against synthetic pools
+benchmark: perp-fees
+
+intro: |
+  GMX v2 is an oracle-priced perpetuals venue on Arbitrum that settles against synthetic pools rather than a central orderbook, with a position fee split into a positive-impact branch (4 basis points, reduces venue skew) and a negative-impact branch (6 basis points, adds to skew). Which branch fires depends on open interest at the moment of trade, not on user input, so the worst-case open is the right conservative figure to compare against an orderbook venue's all-in cost. This benchmark measures the live all-in cost of opening a $1000 ETH long 10x position across major perpetual venues, every five minutes, by reading the variable position fee from the synthetics-arbitrum subgraph (`positionFeeFactorForNegativeImpact`) and computing the all-in figure in basis points. No transactions are sent. The same harness queries Hyperliquid (`userFees` plus `l2Book`), dYdX v4 (Cosmos REST plus indexer), Lighter (`/orderBookDetails` plus `/orderBookOrders`), and gains.trade on Base where the fee is read directly on-chain via `eth_call pairs(N)` and `fees(feeIndex).openFeeP`. Because GMX is oracle-priced, the all-in number has no orderbook spread component; the rack rate effectively becomes the figure, which differs structurally from Hyperliquid and Lighter where the half-spread plus impact at $1000 notional gets layered on top of the taker fee. Funding rate is published separately (`perp_fees_funding_rate_per_hour_bps`) because it accrues per hour held, not at open. The asset tab at the top of the page swaps between ETH, BTC and SOL.
+
+seo_title: GMX alternatives. Live all-in perp fee benchmark on a $1000 ETH 10x long
+seo_description: Compare GMX v2 against Hyperliquid, dYdX, Lighter and gains.trade on live taker fee plus spread crossed at $1000 notional, refreshed every five minutes.
+
+status: live

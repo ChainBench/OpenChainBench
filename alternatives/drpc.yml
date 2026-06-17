@@ -1,0 +1,13 @@
+slug: drpc
+target_product: dRPC
+target_url: https://drpc.org
+description: Decentralized RPC mesh routing requests across third-party node providers
+benchmark: rpc-capabilities
+
+intro: |
+  dRPC is a decentralized RPC mesh that routes each JSON-RPC request across third-party node providers with consensus checks, exposing a no-key public tier on every major EVM network. Picking a default endpoint for a dapp comes down to a per-chain question: which free public RPC is actually fast and reliable on the chain my product runs on, right now, not according to a marketing page. This benchmark answers it directly. The harness sends an identical `eth_blockNumber` POST every 15 seconds against 15 audited no-key public RPC providers across 10 EVM chains (Ethereum, Arbitrum, Base, Optimism, Avalanche, BNB, Polygon, Linea, Scroll, Mantle), from three Railway regions (us-east, eu-west, sgp). p50, p90 and p99 are computed via Prometheus `quantile_over_time` over the last 24 hours, and a five-class result label (`ok`, `http_err`, `jsonrpc_err`, `stale`, `timeout`) lets the success-rate column catch endpoints that return HTTP 200 with a JSON-RPC error body (the Cloudflare-eth trap). An archive-depth probe runs every 5 minutes against five depths so a fast endpoint that silently serves pruned state is not ranked as a viable archive source. The cohort competing with dRPC includes PublicNode, 1RPC, MeowRPC, Tenderly Gateway, Nodies, Lava, Merkle, Flashbots Protect and Cloudflare, plus the chain-official foundation endpoints on Base, BNB, Arbitrum, Optimism and Avalanche. The chain tab filters every query so the leader is reported per network rather than as a cross-chain aggregate that rewards whichever single-chain endpoint happens to be fastest on its one chain.
+
+seo_title: dRPC alternatives. Live free public RPC benchmark across EVM chains
+seo_description: Compare dRPC alternatives on eth_blockNumber p50 latency. PublicNode, 1RPC, Tenderly, Nodies, Lava and chain-official endpoints measured every 15 seconds from 3 regions.
+
+status: live

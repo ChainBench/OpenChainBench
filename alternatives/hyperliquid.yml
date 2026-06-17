@@ -1,0 +1,13 @@
+slug: hyperliquid
+target_product: Hyperliquid
+target_url: https://hyperliquid.xyz
+description: HyperBFT L1 perpetuals exchange with an on-chain orderbook
+benchmark: perp-fees
+
+intro: |
+  Hyperliquid is an L1 perpetuals exchange running on HyperBFT consensus, with an on-chain orderbook and a published base taker fee of 4.5 basis points. Its book is among the deepest of any decentralized venue, which means the spread crossed at market and the impact eaten at $1000 notional usually stay compressed and the all-in cost tracks the rack rate closely. This benchmark measures the live all-in cost of opening a $1000 ETH long 10x position across major perpetual venues, every five minutes, by reading taker fees from each venue's own API and walking each orderbook for $1000 of buy-side notional. No transactions are sent. Hyperliquid is queried via `POST /info {type: l2Book}` for asks, `{type: userFees, user: 0x000...000}` for taker fee and `{type: metaAndAssetCtxs}` for funding. The same harness queries Lighter (`/orderBookDetails` plus `/orderBookOrders`), dYdX v4 (indexer plus Cosmos REST), GMX v2 (synthetics-arbitrum subgraph for `positionFeeFactor`), and gains.trade on Base (fee read directly on-chain via `eth_call`). All-in cost equals taker fee plus half-spread plus impact, all in basis points, with both components emitted as separate Prometheus gauges for transparency. Funding rate is published separately (`perp_fees_funding_rate_per_hour_bps`) because it accrues per hour held rather than at open, so a trader sizing a multi-hour position can layer it on top of the open cost. The dimension tab at the top of the page swaps the underlying asset between ETH, BTC and SOL, with the leaderboard re-sorting on each switch.
+
+seo_title: Hyperliquid alternatives. Live all-in perp fee on a $1000 ETH 10x long
+seo_description: Compare Hyperliquid against Lighter, dYdX, GMX v2 and gains.trade on live taker fee plus spread crossed at $1000 notional, refreshed every five minutes.
+
+status: live
