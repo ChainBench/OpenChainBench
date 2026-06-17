@@ -10,6 +10,7 @@ import {
 import { fmtUnit } from "@/lib/format";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { Pill } from "@/components/pill";
+import { ProviderLogo } from "@/components/provider-logo";
 import { SITE } from "@/data/site";
 import { buildBreadcrumbJsonLd, safeJsonLd } from "@/lib/jsonld";
 import { capDescription } from "@/lib/seo-text";
@@ -149,9 +150,12 @@ export default async function ChainPage({
         </span>
       </div>
 
-      <h1 className="mt-5 display text-2xl sm:text-3xl md:text-4xl tracking-tight leading-tight">
-        {chain.label} live benchmarks
-      </h1>
+      <header className="mt-5 flex items-center gap-4">
+        <ProviderLogo slug={chain.slug} name={chain.label} size={56} />
+        <h1 className="display text-2xl sm:text-3xl md:text-4xl tracking-tight leading-tight">
+          {chain.label} live benchmarks
+        </h1>
+      </header>
 
       <p className="mt-4 max-w-3xl text-base leading-relaxed text-ink-soft">
         {chain.description} Below, every OpenChainBench measurement that
