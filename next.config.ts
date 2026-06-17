@@ -88,6 +88,42 @@ const nextConfig: NextConfig = {
     ];
   },
   async redirects() {
+    // Chains live at /chains/<slug> per the new chain hub route family.
+    // Many of these slugs also resolve under /products/<slug> because
+    // the bench loader treats row shape benches (l1-finality,
+    // l2-block-time, network-fees) as if the chains were providers. We
+    // 301 the products surface to the chains surface so Google
+    // consolidates rank signal on the chains canonical and so any old
+    // bench page link that pointed at /products/<chain> lands on the
+    // richer chain hub.
+    const CHAIN_REDIRECT_SLUGS = [
+      "ethereum",
+      "solana",
+      "bnb",
+      "avalanche",
+      "sui",
+      "ton",
+      "stellar",
+      "tron",
+      "cardano",
+      "litecoin",
+      "monero",
+      "polygon",
+      "arbitrum",
+      "optimism",
+      "base",
+      "zksync",
+      "linea",
+      "scroll",
+      "blast",
+      "mantle",
+      "taiko",
+    ];
+    const chainRedirects = CHAIN_REDIRECT_SLUGS.map((slug) => ({
+      source: `/products/${slug}`,
+      destination: `/chains/${slug}`,
+      permanent: true,
+    }));
     return [
       { source: "/live", destination: "/", permanent: true },
       { source: "/networks", destination: "/", permanent: true },
@@ -98,6 +134,7 @@ const nextConfig: NextConfig = {
         destination: "/benchmarks/rpc-capabilities",
         permanent: true,
       },
+      ...chainRedirects,
     ];
   },
 };

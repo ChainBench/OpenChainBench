@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { CHAINS, getBenchmarksForChain, type ChainEntry } from "@/lib/chains";
+import { ProviderLogo } from "@/components/provider-logo";
 import { SITE } from "@/data/site";
 import { safeJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import { pageMetadata } from "@/lib/page-metadata";
@@ -84,27 +85,28 @@ export default async function ChainsHubPage() {
             <h2 className="text-lg sm:text-xl font-bold tracking-tight text-ink">
               {category}
             </h2>
-            <ul className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <ul className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {list.map((c) => (
                 <li key={c.slug}>
                   <Link
                     href={`/chains/${c.slug}`}
-                    className="card-soft rounded-xl p-4 flex flex-col gap-1 h-full hover:border-ink/40 transition-colors group"
+                    className="card-soft rounded-xl p-4 flex items-center gap-3 h-full hover:border-ink/40 transition-colors group"
                   >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="display text-base sm:text-lg tracking-tight text-ink leading-tight">
+                    <ProviderLogo slug={c.slug} name={c.label} size={40} />
+                    <div className="min-w-0 flex-1">
+                      <p className="display text-base sm:text-lg tracking-tight text-ink leading-tight truncate">
                         {c.label}
-                      </span>
-                      <ArrowUpRight
-                        size={14}
-                        strokeWidth={2}
-                        className="text-ink-faint group-hover:text-ink shrink-0"
-                      />
+                      </p>
+                      <p className="mt-0.5 text-[10px] uppercase tracking-[0.16em] text-ink-faint">
+                        {c.benchCount} live benchmark
+                        {c.benchCount === 1 ? "" : "s"}
+                      </p>
                     </div>
-                    <span className="text-[11px] uppercase tracking-[0.16em] text-ink-faint">
-                      {c.benchCount} live benchmark
-                      {c.benchCount === 1 ? "" : "s"}
-                    </span>
+                    <ArrowUpRight
+                      size={14}
+                      strokeWidth={2}
+                      className="text-ink-faint group-hover:text-ink shrink-0 transition-colors"
+                    />
                   </Link>
                 </li>
               ))}
