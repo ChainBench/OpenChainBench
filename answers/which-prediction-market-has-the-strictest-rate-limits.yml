@@ -1,0 +1,44 @@
+slug: which-prediction-market-has-the-strictest-rate-limits
+question: "Which prediction market API has the strictest rate limits?"
+short_answer: |
+  {{best_name}} currently posts the lowest warm book endpoint latency at {{best_p50}} (p50, 24h) across Polymarket, Kalshi, Limitless, Manifold and Myriad, measured live by OpenChainBench with a daily throttle ramp from 3 regions.
+
+benchmark: pm-rate-limits
+
+intro: |
+  Every prediction market venue documents its API rate limits differently, and some not at all. Polymarket publishes per endpoint budgets but fronts its CLOB with Cloudflare, which queues bursts instead of rejecting them. Kalshi documents a token bucket per access tier. Manifold publishes a 500 requests per minute per IP budget and explicitly welcomes bots. Limitless documents nothing. Myriad's keyless budget is 30 requests per 10 seconds, the tightest in the cohort. Builders sizing a polling loop or a trading bot against these APIs need two numbers nobody publishes: the real latency of the hot endpoints at a polite request rate, and what actually happens as the request rate climbs. This page answers both. A harness in three regions (us-east, eu-west, sgp) probes the book, price and list endpoints of each venue continuously over warm connections, and once a day per venue it runs a short ramp at rising request rates per tier, recording added latency versus the same hour baseline and any 429 or 5xx onset. The leaderboard sorts by warm book endpoint p50, the ramp results render as companion panels.
+
+methodology: |
+  Each venue is probed on three endpoint classes: book (the order book of a pinned market or its closest equivalent), price (a single market quote) and list (the venue's market listing). Warm probes fire every 5 seconds (7 seconds on Manifold whose API sits behind `max-age=5` plus `stale-while-revalidate=10`). Cold connect probes fire once a minute with keep alives disabled. Every sample records a cache flag from `cf-cache-status`, `x-cache` and `age` headers; edge served samples (cache=hit) are excluded from every latency aggregate. Outcomes are classified as ok, timeout (8s), http_4xx, http_5xx, throttled (429), probe_invalid or net_error. The daily ramp runs at 60 seconds per tier at rising rates against the book endpoint, one venue at a time, one region at a time on disjoint UTC hours (02:00 us-east, 04:00 eu-west, 06:00 sgp). Tier clamps stay well inside documented budgets where they exist (at most 7% of Polymarket's documented 1500 requests per 10s book budget). Every run aborts the moment throttled plus 5xx responses exceed 1% of any 10 second window.
+
+limitations:
+  - "Throttle onset behaviour at polite rates only, not maximum venue throughput. The ramp tiers are conservative by design; reaching the true 429 ceiling on Polymarket would require rates beyond the bench's safety guard."
+  - "Cloudflare in front of Polymarket queues bursts rather than returning 429, so the throttle signal on that venue surfaces as added latency in the ramp panel rather than as error responses. A naive client polling fast will see slower responses, not error codes."
+  - "Server reported data age exists on only two venues. Polymarket embeds a millisecond timestamp in every book response; Manifold exposes `lastUpdatedTime` per market. Kalshi, Limitless and Myriad return order data with no timestamp at all, so a consumer cannot tell how old it is from the response alone."
+  - "Myriad's origin is a single region US East Heroku deployment with no order book endpoint and no WebSocket. Latency from eu-west and sgp reflects geography rather than infrastructure quality; the price class is its hot path."
+  - "Pinned market re-selection happens daily at 00:00 UTC. A market that resolves intraday gets re-pinned on the first `probe_invalid` and those samples never count against the venue, but a venue with frequent stale pins shows transient warm latency artefacts in the window before re-pin."
+
+faq:
+  - q: "What is the Polymarket API rate limit?"
+    a: "Polymarket documents per endpoint budgets for the CLOB API, on the order of 1500 requests per 10 seconds for the book endpoint at the time of writing. In practice the CLOB sits behind Cloudflare, which queues bursts rather than rejecting them: at the daily ramp tiers (up to 100 requests per 10s) the bench observes added latency instead of 429 responses. The ramp panel shows the measured added latency per tier, refreshed daily."
+  - q: "What happens if you exceed prediction market API rate limits?"
+    a: "It depends on the venue's architecture. Kalshi runs a documented token bucket and returns 429 when the bucket is empty. Polymarket's Cloudflare front queues requests, so you see rising latency before you ever see an error. Manifold documents 500 requests per minute per IP and asks bots to stay on one IP. Limitless documents nothing. The daily ramp records which of these behaviours each venue actually exhibits at each tier."
+  - q: "What is the Kalshi API rate limit?"
+    a: "Kalshi documents tiered rate limits per access level, with the basic read tier around 20 requests per second at the time of writing. It is the only venue in this cohort with a documented token bucket. The bench's ramp stops at the first 429 on Kalshi out of respect for that documented contract, and the tier where it happens (or does not) is recorded in the ramp panel."
+  - q: "Which prediction market has the fastest API right now?"
+    a: "{{best_name}} currently has the lowest warm book endpoint latency at {{best_p50}} (p50 over the last 24h). The number is the latency of the venue's own public API over a warm connection at a polite request rate, per region. It is not data freshness via third party providers, which is a separate benchmark."
+  - q: "Does Manifold have an API rate limit?"
+    a: "Yes, 500 requests per minute per IP, documented, and Manifold explicitly welcomes bots as long as they stay on a single IP. The whole API is served behind a cache with `max-age=5` and `stale-while-revalidate=10`, so polling faster than every 6 seconds mostly returns cached responses. The bench's probes space to 7 seconds per URL and label every sample that still comes back from cache."
+  - q: "What are the Limitless API rate limits?"
+    a: "Limitless does not document rate limits. The bench's ramp therefore uses the most conservative tiers in the cohort (10, 20, 40 requests per 10s) with an automatic abort. One measured behaviour worth knowing: error responses are CDN cached for four hours, so a request for an expired market keeps returning the same cached 400 long after resolution. A client that does not handle this will misread the API's state for hours."
+  - q: "How do you test rate limits without abusing the APIs?"
+    a: "Four guardrails. Tiers stay well inside documented budgets where they exist (at most 7% of Polymarket's book allowance). Every run aborts as soon as throttled plus server errors exceed 1% of any 10 second window, and Kalshi stops at the first 429. Only one region ramps a venue at a time, on disjoint UTC hours. And every request carries an identifying `User-Agent` with a contact address, so a venue can reach the bench or filter it selectively."
+
+related:
+  - which-crypto-price-api-is-the-fastest
+  - which-hyperliquid-frontend-has-the-most-builder-revenue
+  - which-perp-dex-has-the-lowest-fees
+
+seo_title: "Which prediction market API has the strictest rate limits in 2026?"
+seo_description: "{{best_name}} posts the lowest warm book endpoint latency at {{best_p50}} (p50, 24h) across Polymarket, Kalshi, Limitless, Manifold and Myriad. Daily throttle ramp from 3 regions."
+status: live
