@@ -303,6 +303,14 @@ function variantPath(slug: string, f: BenchmarkFilters): string {
 async function sweep(iteration: number): Promise<void> {
   const specs = await loadSpecsUncached();
   const t0 = Date.now();
+  // Heartbeat at sweep START so a long tier-B run (113+ variants × HL
+  // frontends 104 builders, 2-4 min) doesn't make the watchdog scream
+  // "stale" while the worker is healthy. The freshness watchdog now
+  // means "worker hasn't started a sweep in N min".
+  await heartbeat().then(
+    () => noteHeartbeat(true),
+    (e) => noteHeartbeat(false, e),
+  );
 
   await inBatches(specs, BENCH_CONCURRENCY, async (spec) => {
     try {
