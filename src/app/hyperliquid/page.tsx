@@ -90,6 +90,23 @@ export default async function HyperliquidHubPage() {
           every fill, refreshed every 30 seconds. Click any row for the
           builder&apos;s full performance dashboard.
         </p>
+        <div className="mt-4 flex flex-wrap items-center gap-2 text-[12px]">
+          <Link
+            href="/benchmarks/hyperliquid-frontends"
+            className="inline-flex items-center gap-1.5 rounded-full border border-ink/15 px-3 py-1 hover:bg-paper-soft/60"
+          >
+            <span className="label-mono text-ink-faint text-[10px]">
+              Methodology
+            </span>
+            <span className="text-ink">hyperliquid-frontends bench →</span>
+          </Link>
+          <Link
+            href="/methodology"
+            className="inline-flex items-center gap-1.5 rounded-full border border-ink/10 px-3 py-1 text-ink-soft hover:text-ink"
+          >
+            How OpenChainBench measures
+          </Link>
+        </div>
       </header>
 
       {cohort ? (
