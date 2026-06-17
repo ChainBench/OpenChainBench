@@ -1,4 +1,5 @@
 import type { HlBuilderStats } from "@/lib/hl-builder-stats";
+import { HlPerformanceChart } from "@/components/hl-performance-chart";
 
 /**
  * KPI strip + milestones row for one Hyperliquid frontend on its
@@ -55,6 +56,8 @@ export function HlBuilderDashboard({
           tip="Share of the 104 tracked builders' 24h notional volume"
         />
       </div>
+
+      <HlPerformanceChart slug={stats.slug} />
 
       {(stats.biggestDayRevenue > 0 ||
         stats.milestoneDays["10k"] >= 0 ||
