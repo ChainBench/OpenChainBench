@@ -103,7 +103,27 @@ dimensions:
     - { value: base,   label: Base }
     - { value: bnb,    label: BNB Chain }
     - { value: solana, label: Solana }
-# Region filter intentionally not declared here: the chart already exposes
+  # Region values match the raw harness labels (REGION env on each
+  # Railway probe: us-east / eu-west / sgp). Declared so the
+  # /compare/[slug] page can render a per chain x per region matrix
+  # for pairs that compete in this bench. The bench page chart owns
+  # its own inline region picker; both stay in sync because they hit
+  # the same Prom queries with the same region label.
+  region:
+    - { value: all,     label: All regions }
+    - { value: us-east, label: US-East }
+    - { value: eu-west, label: EU-West }
+    - { value: sgp,     label: Singapore }
+
+# Rank matrix query gates the per-region badge claims. The bench
+# metric uses the `aggregator` label (legacy harness naming); we use
+# label_replace to alias it to `provider` so the cross-bench badge
+# infra (which assumes a `provider` label) lines up. Validator only
+# checks the query string carries the `provider` token; the actual
+# Prom evaluation runs identically against either label.
+rank_matrix_query: avg by (provider, chain, region) (label_replace(quantile_over_time(0.5, head_lag_seconds[24h]), "provider", "$1", "aggregator", "(.+)"))
+
+# Legacy comment (resolved by the region block above):
 # a region selector inline (TimeSeriesChart's built-in switch), which is a
 # better-placed affordance. The top-level dimensions framework still
 # supports it generically if any other bench wants two-axis filtering.

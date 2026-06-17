@@ -106,6 +106,20 @@ dimensions:
   chain:
     - { value: solana, label: Solana }
     - { value: bnb,    label: BNB Chain }
+  # Region values match the raw harness labels. Declared so the
+  # /compare/[slug] page can render a chain x region matrix when
+  # both providers compete in this bench.
+  region:
+    - { value: all,     label: All regions }
+    - { value: us-east, label: US-East }
+    - { value: eu-west, label: EU-West }
+    - { value: sgp,     label: Singapore }
+
+# Rank matrix query gates the per-region badge scoping. Coverage is a
+# success-rate ratio; metric labels already carry the `provider` token
+# natively (metadata_coverage_success_total{provider, chain, field,
+# region}) so no label_replace required.
+rank_matrix_query: avg by (provider, chain, region) (rate(metadata_coverage_success_total[24h]) / clamp_min(rate(metadata_coverage_checks_total[24h]), 0.001))
 
 # Real metrics exposed by the aggregator-head-lag harness:
 #   metadata_coverage_checks_total{provider, chain, field, region}   counter
