@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, ArrowUpRight } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, ChevronRight } from "lucide-react";
 import { getProvider } from "@/lib/providers";
 import { loadBenchmark } from "@/lib/spec";
 import {
@@ -98,6 +98,14 @@ type BreakdownRow = {
   bWins: boolean;
 };
 
+/** One chain entry inside a chain x region matrix. Carries the chain
+ *  aggregate row plus the per region sub-rows scoped to that chain.
+ *  Rendered as a collapsible disclosure: chain row always visible, the
+ *  region rows reveal on click via native <details>. */
+type ChainRegionEntry = BreakdownRow & {
+  regionRows: BreakdownRow[];
+};
+
 type SharedBench = {
   slug: string;
   title: string;
@@ -116,6 +124,12 @@ type SharedBench = {
   chainBreakdown: BreakdownRow[];
   /** Per region side by side rows, same gating as chainBreakdown. */
   regionBreakdown: BreakdownRow[];
+  /** Chain x region matrix, populated only for benches that expose
+   *  BOTH `dimensions.chain` and `dimensions.region`. When present, the
+   *  renderer uses this nested structure (collapsible per chain) and
+   *  drops the flat chainBreakdown + regionBreakdown so the side by
+   *  side stays compact instead of stacking two separate tables. */
+  chainRegionMatrix: ChainRegionEntry[];
 };
 
 /** Sort comparator that respects `higherIsBetter`. Returns:
@@ -168,6 +182,85 @@ async function loadBreakdown(
     }),
   );
   return rows.filter((r): r is BreakdownRow => r !== null);
+}
+
+/** Loads a chain x region matrix for one bench, scoped to the two
+ *  providers. For each chain value (excluding "all"), we load the
+ *  chain aggregate AND every region variant within that chain via the
+ *  combined `{ chain, region }` filter. Rows where either provider has
+ *  no live data are dropped at every level so the rendered table never
+ *  surfaces "0 vs 0" cells. Returns [] when either dimension is empty.
+ */
+async function loadChainRegionMatrix(
+  benchSlug: string,
+  chainOpts: { value: string; label: string }[],
+  regionOpts: { value: string; label: string }[],
+  providerA: string,
+  providerB: string,
+  higherIsBetter: boolean,
+): Promise<ChainRegionEntry[]> {
+  const chains = chainOpts.filter((c) => c.value.toLowerCase() !== "all");
+  const regions = regionOpts.filter((r) => r.value.toLowerCase() !== "all");
+  if (chains.length === 0 || regions.length === 0) return [];
+
+  const entries = await Promise.all(
+    chains.map(async (c) => {
+      const chainVariant = await loadBenchmark(benchSlug, {
+        chain: c.value,
+      });
+      if (!chainVariant) return null;
+      const aChain = chainVariant.results.find((r) => r.slug === providerA);
+      const bChain = chainVariant.results.find((r) => r.slug === providerB);
+      if (!aChain || !bChain) return null;
+      if (aChain.ms.p50 <= 0 || bChain.ms.p50 <= 0) return null;
+      const chainWinner = decideWinner(
+        aChain.ms.p50,
+        bChain.ms.p50,
+        higherIsBetter,
+      );
+
+      const regionRows = await Promise.all(
+        regions.map(async (r) => {
+          const variant = await loadBenchmark(benchSlug, {
+            chain: c.value,
+            region: r.value,
+          });
+          if (!variant) return null;
+          const aRes = variant.results.find((x) => x.slug === providerA);
+          const bRes = variant.results.find((x) => x.slug === providerB);
+          if (!aRes || !bRes) return null;
+          if (aRes.ms.p50 <= 0 || bRes.ms.p50 <= 0) return null;
+          const winner = decideWinner(
+            aRes.ms.p50,
+            bRes.ms.p50,
+            higherIsBetter,
+          );
+          return {
+            value: r.value,
+            label: r.label,
+            aP50: aRes.ms.p50,
+            bP50: bRes.ms.p50,
+            aWins: winner === "a",
+            bWins: winner === "b",
+          } satisfies BreakdownRow;
+        }),
+      );
+      const cleanRegionRows = regionRows.filter(
+        (r): r is BreakdownRow => r !== null,
+      );
+
+      return {
+        value: c.value,
+        label: c.label,
+        aP50: aChain.ms.p50,
+        bP50: bChain.ms.p50,
+        aWins: chainWinner === "a",
+        bWins: chainWinner === "b",
+        regionRows: cleanRegionRows,
+      } satisfies ChainRegionEntry;
+    }),
+  );
+  return entries.filter((e): e is ChainRegionEntry => e !== null);
 }
 
 /** Resolves the intersection of two providers' bench appearances, then
@@ -227,24 +320,48 @@ async function buildSharedBenches(
         higherIsBetter,
       );
 
-      const [chainBreakdown, regionBreakdown] = await Promise.all([
-        loadBreakdown(
-          benchSlug,
-          "chain",
-          fullBench.dimensions?.chain ?? [],
-          aAppearances.slug,
-          bAppearances.slug,
-          higherIsBetter,
-        ),
-        loadBreakdown(
-          benchSlug,
-          "region",
-          fullBench.dimensions?.region ?? [],
-          aAppearances.slug,
-          bAppearances.slug,
-          higherIsBetter,
-        ),
-      ]);
+      const chainOpts = fullBench.dimensions?.chain ?? [];
+      const regionOpts = fullBench.dimensions?.region ?? [];
+      const hasBothDims =
+        chainOpts.filter((c) => c.value.toLowerCase() !== "all").length > 0 &&
+        regionOpts.filter((r) => r.value.toLowerCase() !== "all").length > 0;
+
+      const [chainBreakdown, regionBreakdown, chainRegionMatrix] =
+        await Promise.all([
+          // When both dimensions exist the renderer uses the nested
+          // matrix; skip the flat chain breakdown so we don't double
+          // fetch.
+          hasBothDims
+            ? Promise.resolve<BreakdownRow[]>([])
+            : loadBreakdown(
+                benchSlug,
+                "chain",
+                chainOpts,
+                aAppearances.slug,
+                bAppearances.slug,
+                higherIsBetter,
+              ),
+          hasBothDims
+            ? Promise.resolve<BreakdownRow[]>([])
+            : loadBreakdown(
+                benchSlug,
+                "region",
+                regionOpts,
+                aAppearances.slug,
+                bAppearances.slug,
+                higherIsBetter,
+              ),
+          hasBothDims
+            ? loadChainRegionMatrix(
+                benchSlug,
+                chainOpts,
+                regionOpts,
+                aAppearances.slug,
+                bAppearances.slug,
+                higherIsBetter,
+              )
+            : Promise.resolve<ChainRegionEntry[]>([]),
+        ]);
 
       return {
         slug: fullBench.slug,
@@ -257,6 +374,7 @@ async function buildSharedBenches(
         aResult: aPanel,
         bResult: bPanel,
         aggregateWinner,
+        chainRegionMatrix,
         chainBreakdown,
         regionBreakdown,
       } satisfies SharedBench;
@@ -521,23 +639,34 @@ function BenchCard({
         />
       </div>
 
-      {bench.chainBreakdown.length > 0 && (
-        <BreakdownTable
-          title="Per chain"
-          rows={bench.chainBreakdown}
+      {bench.chainRegionMatrix.length > 0 ? (
+        <ChainRegionMatrixTable
+          entries={bench.chainRegionMatrix}
           aName={aName}
           bName={bName}
           unit={bench.unit}
         />
-      )}
-      {bench.regionBreakdown.length > 0 && (
-        <BreakdownTable
-          title="Per region"
-          rows={bench.regionBreakdown}
-          aName={aName}
-          bName={bName}
-          unit={bench.unit}
-        />
+      ) : (
+        <>
+          {bench.chainBreakdown.length > 0 && (
+            <BreakdownTable
+              title="Per chain"
+              rows={bench.chainBreakdown}
+              aName={aName}
+              bName={bName}
+              unit={bench.unit}
+            />
+          )}
+          {bench.regionBreakdown.length > 0 && (
+            <BreakdownTable
+              title="Per region"
+              rows={bench.regionBreakdown}
+              aName={aName}
+              bName={bName}
+              unit={bench.unit}
+            />
+          )}
+        </>
       )}
 
       <footer className="mt-5 border-t border-rule pt-3 flex flex-wrap items-center justify-between gap-2 text-[10px] uppercase tracking-[0.16em] text-ink-faint">
@@ -626,6 +755,93 @@ function AggregatePanel({
       ) : (
         <p className="text-sm text-ink-faint">No data in window</p>
       )}
+    </div>
+  );
+}
+
+/** Nested per chain x per region grid used when a bench exposes both
+ *  dimensions. Each chain row is a native <details> disclosure: the
+ *  chain summary is always visible, click the chevron to reveal the
+ *  region sub-rows scoped to that chain. CSS grid with `display:
+ *  contents` on <details> + <summary> keeps the columns aligned
+ *  through the disclosure structure with zero JS. */
+function ChainRegionMatrixTable({
+  entries,
+  aName,
+  bName,
+  unit,
+}: {
+  entries: ChainRegionEntry[];
+  aName: string;
+  bName: string;
+  unit: Benchmark["unit"];
+}) {
+  return (
+    <div className="mt-6 border-t border-rule pt-4">
+      <p className="text-[11px] uppercase tracking-[0.18em] text-ink-muted font-medium mb-3">
+        Per chain · click to expand regions
+      </p>
+      <div className="grid grid-cols-[1fr_auto_auto] gap-x-3 text-sm tabular">
+        <div className="text-[10px] uppercase tracking-[0.16em] text-ink-faint pb-2 border-b border-rule">
+          Chain
+        </div>
+        <div className="text-[10px] uppercase tracking-[0.16em] text-ink-faint pb-2 border-b border-rule text-right">
+          {aName}
+        </div>
+        <div className="text-[10px] uppercase tracking-[0.16em] text-ink-faint pb-2 border-b border-rule text-right">
+          {bName}
+        </div>
+        {entries.map((entry) => (
+          <details
+            key={entry.value}
+            className="contents [&>summary>.chev]:transition-transform [&[open]>summary>.chev]:rotate-90"
+          >
+            <summary className="contents cursor-pointer marker:hidden [&::-webkit-details-marker]:hidden">
+              <div className="py-2 text-ink-soft flex items-center gap-1.5 hover:text-ink border-b border-rule/40">
+                <ChevronRight
+                  size={12}
+                  strokeWidth={2}
+                  className="chev text-ink-faint shrink-0"
+                />
+                <span>{entry.label}</span>
+                {entry.regionRows.length > 0 && (
+                  <span className="text-[10px] text-ink-faint normal-case tracking-normal ml-1">
+                    ({entry.regionRows.length} region
+                    {entry.regionRows.length === 1 ? "" : "s"})
+                  </span>
+                )}
+              </div>
+              <div
+                className={`py-2 text-right border-b border-rule/40 ${entry.aWins ? "text-good font-medium" : entry.bWins ? "text-bad" : "text-ink"}`}
+              >
+                {fmtUnit(entry.aP50, unit)}
+              </div>
+              <div
+                className={`py-2 text-right border-b border-rule/40 ${entry.bWins ? "text-good font-medium" : entry.aWins ? "text-bad" : "text-ink"}`}
+              >
+                {fmtUnit(entry.bP50, unit)}
+              </div>
+            </summary>
+            {entry.regionRows.map((r) => (
+              <div key={r.value} className="contents">
+                <div className="py-1.5 pl-7 text-xs text-ink-muted border-b border-rule/20">
+                  {r.label}
+                </div>
+                <div
+                  className={`py-1.5 text-right text-xs border-b border-rule/20 ${r.aWins ? "text-good" : r.bWins ? "text-bad" : "text-ink-muted"}`}
+                >
+                  {fmtUnit(r.aP50, unit)}
+                </div>
+                <div
+                  className={`py-1.5 text-right text-xs border-b border-rule/20 ${r.bWins ? "text-good" : r.aWins ? "text-bad" : "text-ink-muted"}`}
+                >
+                  {fmtUnit(r.bP50, unit)}
+                </div>
+              </div>
+            ))}
+          </details>
+        ))}
+      </div>
     </div>
   );
 }
