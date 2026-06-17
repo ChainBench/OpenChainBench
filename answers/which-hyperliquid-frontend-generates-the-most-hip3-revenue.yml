@@ -1,0 +1,44 @@
+slug: which-hyperliquid-frontend-generates-the-most-hip3-revenue
+question: "Which Hyperliquid HIP-3 deployer generates the most revenue in 2026?"
+short_answer: |
+  {{best_name}} currently leads the HIP-3 deployer revenue leaderboard at {{best_p50}} in USD deployer fees collected over the last 24 hours, measured live across trade.xyz, Dreamcash, Markets by Kinetiq, Ventuals, HyENA, Felix Exchange and Paragon from a local hl node tailing the Hyperliquid mainnet fill stream.
+
+benchmark: hyperliquid-hip3-deployers
+
+intro: |
+  HIP-3 (Hyperliquid Improvement Proposal 3) opens HyperCore market deployment to outside teams. Stake 500,000 HYPE, deploy perpetual markets under a dedicated namespace (xyz:AAPL, vntl:MAG7, km:US500), set the fee policy for those markets, collect a deployer cut on every fill. The mechanism powers the tokenized equity, index and commodity perps wave that now represents a large share of Hyperliquid notional. This page answers one question with live on chain data. Which HIP-3 builder deployed dex collected the most USD revenue over the last 24 hours, 7 days and 30 days, and what does the per dex breakdown of volume, unique traders and live market count look like behind that number. The OpenChainBench hyperliquid-hip3-deployers harness reads every fill on mainnet from a local hl node, attributes namespaced fills to their dex by coin prefix, sums the on chain `deployerFee` field per hour, and exposes rolling 24 h, 7 d and 30 d totals through Prometheus. End to end staleness from a fill landing on chain to the page rendering is typically under one minute.
+
+methodology: |
+  A local hl node operated on OCB infrastructure tails the Hyperliquid mainnet and writes every block of fills to `node_fills_by_block_hourly/YYYYMMDD/HH` on local disk. Each line is one JSON block; the events array carries one entry per fill, and every HIP-3 fill includes the namespaced coin (xyz:AAPL belongs to xyz) plus the `deployerFee` value in USDC. A Go harness on the same host re reads the current and previous hourly files every 30 seconds, parses appended lines, and updates per dex hourly buckets keyed by the UTC hour floor of the fill timestamp. The headline is `hl_hip3_deployer_fees_usd_24h{dex="X"}`, the sum of `deployerFee` USD values over the last 24 rolling hours per namespace. The 7 d and 30 d figures sum the same field over 168 and 720 hourly buckets. Volume, unique trader count (union of per UTC day wallet sets), live market count and effective fee bps (deployer fees divided by notional volume, times ten thousand) are companion gauges on the same scrape. Namespaces are resolved against the on chain `perpDexs` registry which publishes each deployer address and full name, so attribution does not depend on the harness picking the right team label.
+
+limitations:
+  - "Ranking is by raw USD deployer fee revenue, not by value for traders. A dex with a wider fee policy can outrank a dex with double the volume on a tighter fee schedule; the Effective fee bps companion column makes that trade off visible on the same row."
+  - "30 day figures grow toward the full window as history accumulates. The node retains hourly fill files for a bounded horizon and the harness backfills what exists on disk; until 30 full days of history have accumulated behind a dex, its 30 d figure covers the available horizon."
+  - "Core Hyperliquid markets carry no namespace and no deployer fee; they are excluded by construction. The bench measures HIP-3 deployer revenue only, not total Hyperliquid platform revenue. The hyperliquid-frontends bench covers the builder code rebate market separately."
+  - "Pre IPO valuation perps (Ventuals) and crypto index perps (Paragon) are structurally distinct products from tokenized equity perps (trade.xyz, Dreamcash). Direct USD revenue comparison treats them on the same axis; readers comparing product viability should pair the Revenue column with the Markets and Users companion panels."
+  - "Attribution is by on chain namespace prefix only. A brand new HIP-3 deployer is metered from its first observed fill and the namespace is added to the page on the next spec review; until that review lands, a freshly deployed dex is collected by the harness but not yet listed in the headline."
+
+faq:
+  - q: "Which HIP-3 dex generates the most deployer revenue right now?"
+    a: "{{best_name}} currently leads at {{best_p50}} in USD deployer fees collected over the rolling 24 hours, across the 7 measured namespaces. The leaderboard refreshes every 30 seconds at the harness and scrape level; the page itself uses incremental static regeneration with a 60 second window, so headline values are at most 90 seconds stale plus chain propagation delay. The 7 d and 30 d tabs at the top of the bench page reorder the leaderboard on the longer windows."
+  - q: "What is HIP-3 and how does deployer revenue work?"
+    a: "Hyperliquid Improvement Proposal 3 lets any team that stakes 500,000 HYPE deploy its own perpetual markets on HyperCore under a dedicated namespace, set the fee policy for those markets, and collect a deployer cut on every fill. The on chain `deployerFee` field on each fill records the USDC value collected by the namespace operator; this bench sums that field per dex over rolling windows. It powers the tokenized stock, index and commodity perps on Hyperliquid, which represent a large share of platform volume."
+  - q: "Why is trade.xyz so far ahead of the other deployers?"
+    a: "trade.xyz operates the deepest tokenized equity and commodity catalog on Hyperliquid (more than 70 markets including the large cap US names) and captures the bulk of HIP-3 open interest. Deployer revenue is volume times fee policy, and xyz leads on both breadth and notional. The other deployers occupy structurally narrower niches: Ventuals on pre IPO valuation perps, Paragon on crypto index baskets, HyENA on USDe margined products, Felix on commodities and macro, Markets by Kinetiq on equity and index baskets, Dreamcash on tokenized equities and ETFs."
+  - q: "How does HIP-3 revenue compare to Hyperliquid builder code rebates?"
+    a: "Different layers of the same product stack. Builder codes are a per fill rebate paid to whoever brought the user (covered by the hyperliquid-frontends bench), HIP-3 deployer fees are paid by every fill on a namespaced market to the team that deployed the market itself. A frontend can collect builder rebates on every fill it routes regardless of which dex the fill hits; a HIP-3 deployer collects fees only on its own namespaced markets but on every fill on those markets regardless of which frontend routed them."
+  - q: "How does OpenChainBench measure HIP-3 revenue?"
+    a: "A local hl node operated on OCB infrastructure tails the Hyperliquid mainnet and writes every block of fills to disk; a Go harness on the same host reads these files continuously, attributes namespaced fills to their dex by coin prefix, and aggregates per hour. No third party API, no internal Mobula service, every value on the page corresponds to a Prometheus gauge backed by the on chain `deployerFee` field. End to end staleness from fill landing on chain to bench page render is typically under one minute."
+  - q: "Why do 30 day figures look low for some deployers?"
+    a: "The node keeps hourly fill files for a bounded horizon and the harness backfills what exists on disk. Until 30 full days of history accumulate behind a dex (which is the case for newer namespaces like Paragon or Felix that launched more recently), the 30 d figure covers the available horizon and grows toward the full window. The 24 h and 7 d views are complete for every namespace."
+  - q: "What is the Effective fee bps column?"
+    a: "Deployer fees divided by notional volume, times ten thousand. The trader perspective on cost: what a representative dollar of flow paid the dex operator. Two dexes with the same revenue can have very different fee rates if one routes ten times the volume; the column surfaces that asymmetry on the same row as the headline number."
+
+related:
+  - which-hyperliquid-frontend-has-the-most-builder-revenue
+  - which-perp-dex-has-the-lowest-fees
+  - which-prediction-market-data-api-is-the-freshest
+
+seo_title: "Which Hyperliquid HIP-3 deployer generates the most revenue in 2026?"
+seo_description: "{{best_name}} leads at {{best_p50}} (USD, 24h) across trade.xyz, Dreamcash, Markets by Kinetiq, Ventuals, HyENA, Felix Exchange and Paragon, measured live from a local hl node by OpenChainBench."
+status: live

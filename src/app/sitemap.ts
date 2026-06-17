@@ -4,6 +4,7 @@ import type { MetadataRoute } from "next";
 import { getBenchmarks } from "@/data/benchmarks";
 import { loadAllAlternatives } from "@/lib/alternatives";
 import { loadAllAnswers } from "@/lib/answers";
+import { CHAINS, getBenchmarksForChain } from "@/lib/chains";
 import { getProviderSlugs } from "@/lib/providers";
 import { SITE } from "@/data/site";
 
@@ -112,6 +113,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE.url}/compare`, lastModified: pageMtime("compare/page.tsx"), changeFrequency: "weekly", priority: 0.6 },
     { url: `${SITE.url}/alternatives`, lastModified: pageMtime("alternatives/page.tsx"), changeFrequency: "weekly", priority: 0.6 },
     { url: `${SITE.url}/answers`, lastModified: catalogLastRun, changeFrequency: "weekly", priority: 0.7 },
+    { url: `${SITE.url}/chains`, lastModified: catalogLastRun, changeFrequency: "weekly", priority: 0.7 },
   ];
 
   // Bench routes. The hub URL is the canonical entry and ranks highest.
@@ -188,11 +190,35 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       };
     });
 
+  // Chain hub pages. Skip any registered chain that doesn't actually
+  // surface in any bench so we never feed Google a sitemap entry that
+  // 404s on the chain detail page's empty-bench guard.
+  const chainRoutes: MetadataRoute.Sitemap = (
+    await Promise.all(
+      CHAINS.map(async (c) => {
+        const benches = await getBenchmarksForChain(c.slug);
+        if (benches.length === 0) return null;
+        const last = benches.reduce<Date>((acc, b) => {
+          if (!b.lastRunAt) return acc;
+          const t = new Date(b.lastRunAt);
+          return t > acc ? t : acc;
+        }, new Date(0));
+        return {
+          url: `${SITE.url}/chains/${c.slug}`,
+          lastModified: last.getTime() > 0 ? last : catalogLastRun,
+          changeFrequency: "daily" as const,
+          priority: 0.85,
+        };
+      }),
+    )
+  ).filter((r): r is NonNullable<typeof r> => r !== null);
+
   return [
     ...staticRoutes,
     ...benchmarkRoutes,
     ...providerRoutes,
     ...alternativeRoutes,
     ...answerRoutes,
+    ...chainRoutes,
   ];
 }

@@ -1,0 +1,44 @@
+slug: which-l2-has-the-fastest-block-time
+question: "Which Ethereum L2 has the fastest block time in 2026?"
+short_answer: |
+  {{best_name}} currently posts the fastest L2 block time at {{best_p50}} (p50, 24h), measured by holding a persistent `eth_subscribe("newHeads")` WebSocket on each sequencer and recording wall clock deltas between consecutive head events across 9 major Ethereum L2s.
+
+benchmark: l2-block-time
+
+intro: |
+  L2 block time is the cadence at which a sequencer commits a new block, and it sets the floor on how snappy a swap UI, a wallet confirmation toast or a perp orderbook can feel on a given chain. Marketing pages quote nominal slots (2 s on OP Stack, 250 ms on Arbitrum Nitro, "2 s target" on Linea) without showing what the median actually looks like once prover batching, idle gaps and sequencer hiccups are factored in. This page answers one question with live data. Which L2 sequencer commits blocks fastest right now, measured the same way for every chain (one persistent WebSocket per L2, one timestamp per head event, one inter arrival delta per sample). The OpenChainBench l2-block-time harness holds a `newHeads` subscription on Arbitrum One, Optimism, Base, Blast, Mantle, zkSync Era, Linea, Scroll and Taiko, sanitises reconnect artefacts (any sample above 5 minutes is dropped as a dial event, not a real block time), and publishes p50, p90 and p99 over the last 24 hours per chain.
+
+methodology: |
+  One persistent WebSocket per L2 holds the `eth_subscribe("newHeads")` subscription continuously on the chain's public sequencer endpoint (publicnode.com for most chains, `era.zksync.io/ws` for zkSync). Each new head event is timestamped on receipt; the sample is `T_recv(N) minus T_recv(N minus 1)` in milliseconds, no polling, no synthetic block time approximation. Block number duplicates from the same connection are filtered. Any single sample above 5 minutes is dropped as a reconnect artefact, never a real block cadence; the harness exposes per chain `l2_block_time_reconnects_total` for instability alerting. A client side ping every 30 s defends against idle close, and exponential backoff between 2 s and 60 s handles dial errors. The leaderboard ranks by p50 over the rolling 24 h window via Prometheus `quantile_over_time`; the same query yields p90 and p99 for the tail columns. Polygon zkEVM and Mode are excluded (no public no key WebSocket), Starknet is excluded (Cairo stack, different RPC shape).
+
+limitations:
+  - "Block time is not finality. The L2 sequencer can produce a block every 250 ms (Arbitrum Nitro) but the L1 anchor batch on Ethereum is not final until 12 to 18 minutes later (block posting plus Casper finality) for optimistic stacks, longer under contestation. The L1 finality bench measures that separately."
+  - "zk rollup cadence (zkSync Era, Linea, Scroll) is batched by prover throughput, not by a fixed sequencer interval. p50 can sit at 3 to 6 s while p99 balloons to 15 to 30 s during idle periods because the sequencer waits to fill a batch before generating the validity proof. The nominal slot a chain advertises is the within burst figure."
+  - "Sub second blocks on Arbitrum One are soft confirmations from a single Offchain Labs sequencer. A user reading a 250 ms toast is reading the sequencer's commit, not an L1 confirmation; the sequencer remains a single point of trust until permissionless sequencer rotations ship."
+  - "Polygon zkEVM, Mode and Starknet are not on the leaderboard. The first two do not expose a public no key WebSocket, the third uses a different RPC shape (Cairo). A v2 expansion will add them via contributor endpoints."
+  - "Base advertises Flashblocks pre confirmations near 200 ms but the canonical `newHeads` stream still emits one block every 2 s. The bench measures what the public RPC publishes, which is the cadence wallets and integrators actually observe."
+
+faq:
+  - q: "Which L2 has the fastest block time right now?"
+    a: "{{best_name}} currently leads at {{best_p50}} (p50, 24h) across 9 measured L2s. The leaderboard reads a fresh p50 every minute from the Prometheus quantile over the 24 hour window, so the headline is sustained, not a single lucky head. Arbitrum One's Nitro stack runs a 250 ms sequencer interval by default, which is roughly 8x faster than the OP Stack 2 s convention used by Optimism, Base, Blast and Mantle."
+  - q: "Why are Base and Optimism block times nearly identical?"
+    a: "Both run the OP Stack with the same default sequencer cadence (2 s). Blast and Mantle are also OP Stack forks and cluster at the same number; this is by design because OP Stack is a turnkey rollup framework where the sequencer interval is a configuration constant, not a chain specific design choice. The leaderboard makes the architectural family visible at a glance."
+  - q: "Is zkSync Era really slower than Arbitrum?"
+    a: "On a wall clock basis as measured here, yes. zkSync Era's p50 sits around 3 to 6 s because the Matter Labs sequencer batches transactions to feed a SNARK prover before finalising on Ethereum. Within a busy burst blocks land near 1 s, but the median across 24 hours stretches because the sequencer waits to fill a batch during idle minutes. Linea and Scroll show the same shape for the same reason."
+  - q: "Is L2 block time the same as L2 finality?"
+    a: "No. Block time is the cadence at which the sequencer produces a soft confirmation; it can be reversed if the sequencer decides to (it almost never does, but the model permits it). Finality is when the L1 anchor batch is final on Ethereum, which takes 12 to 18 minutes at best on optimistic stacks and 7 days under contestation. The l1 finality bench covers that question."
+  - q: "What about Taiko, why is it slower than the OP Stack cohort?"
+    a: "Taiko is a based rollup: there is no centralised sequencer. Ethereum L1 validators sequence Taiko blocks directly by including L2 proposals in L1 blocks, which means Taiko's effective slot is bounded below by Ethereum's 12 s slot. The architecture trades raw L2 cadence for inheriting Ethereum's liveness and censorship resistance, a fundamentally different trade off from Arbitrum or OP Stack."
+  - q: "How is the leaderboard updated?"
+    a: "Continuously at the WebSocket level. Each new head event is timestamped on receipt and the inter arrival delta is pushed to Prometheus. The page reads a rolling 24 hour p50, p90 and p99 every minute. A single reconnect cannot move the headline because samples above 5 minutes are filtered as dial artefacts."
+  - q: "Can I cite a value from this page?"
+    a: "Yes. Every number is a Prometheus query over a 24 hour window, the query string is in the row hover tooltip on the bench page, and the harness source is open on GitHub. Cite the value alongside the page timestamp."
+
+related:
+  - which-l1-has-the-fastest-finality
+  - which-blockchain-has-cheapest-transaction-fees
+  - which-gas-oracle-is-the-most-accurate
+
+seo_title: "Which Ethereum L2 has the fastest block time in 2026?"
+seo_description: "{{best_name}} leads at {{best_p50}} (p50, 24h) across Arbitrum, Optimism, Base, Blast, Mantle, zkSync, Linea, Scroll and Taiko, measured live via `newHeads` WebSocket by OpenChainBench."
+status: live
