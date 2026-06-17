@@ -190,25 +190,40 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       };
     });
 
-  // Chain hub pages. Skip any registered chain that doesn't actually
-  // surface in any bench so we never feed Google a sitemap entry that
-  // 404s on the chain detail page's empty-bench guard.
+  // Chain hub pages. Wrapped in try/catch per chain so a transient KV
+  // hiccup on a single bench load can't fail the whole sitemap build.
+  // On error we still emit the chain URL with catalogLastRun, keeping
+  // the page crawlable; the empty-bench filter only fires when the
+  // load actually succeeds and returns an empty list (which means the
+  // chain genuinely has no benches yet).
   const chainRoutes: MetadataRoute.Sitemap = (
     await Promise.all(
       CHAINS.map(async (c) => {
-        const benches = await getBenchmarksForChain(c.slug);
-        if (benches.length === 0) return null;
-        const last = benches.reduce<Date>((acc, b) => {
-          if (!b.lastRunAt) return acc;
-          const t = new Date(b.lastRunAt);
-          return t > acc ? t : acc;
-        }, new Date(0));
-        return {
-          url: `${SITE.url}/chains/${c.slug}`,
-          lastModified: last.getTime() > 0 ? last : catalogLastRun,
-          changeFrequency: "daily" as const,
-          priority: 0.85,
-        };
+        try {
+          const benches = await getBenchmarksForChain(c.slug);
+          if (benches.length === 0) return null;
+          const last = benches.reduce<Date>((acc, b) => {
+            if (!b.lastRunAt) return acc;
+            const t = new Date(b.lastRunAt);
+            return t > acc ? t : acc;
+          }, new Date(0));
+          return {
+            url: `${SITE.url}/chains/${c.slug}`,
+            lastModified: last.getTime() > 0 ? last : catalogLastRun,
+            changeFrequency: "daily" as const,
+            priority: 0.85,
+          };
+        } catch {
+          // KV blackout. Surface the URL anyway so we don't dropdown
+          // entries from the sitemap between deploys; the page route
+          // has its own empty-bench guard.
+          return {
+            url: `${SITE.url}/chains/${c.slug}`,
+            lastModified: catalogLastRun,
+            changeFrequency: "daily" as const,
+            priority: 0.85,
+          };
+        }
       }),
     )
   ).filter((r): r is NonNullable<typeof r> => r !== null);
