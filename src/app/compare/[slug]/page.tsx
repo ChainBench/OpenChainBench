@@ -114,11 +114,17 @@ function intersectAppearances(
     bAppearances.appearances.map((x) => [x.benchmark.slug, x] as const),
   );
 
-  // If the pair explicitly pinned benchmarks we respect that list,
-  // otherwise we take the natural intersection.
-  const sharedSlugs = pair.benchmarks
+  // Bench selection order:
+  //   1. If `benchmarks` whitelist is set, take that list as the
+  //      candidate set (legacy editorial pin).
+  //   2. Otherwise take the natural intersection of both providers'
+  //      appearances (the default for any new pair).
+  //   3. In both cases, subtract anything in `excludeBenchmarks`.
+  const candidateSlugs = pair.benchmarks
     ? pair.benchmarks.filter((s) => aByBench.has(s) && bByBench.has(s))
     : Array.from(aByBench.keys()).filter((s) => bByBench.has(s));
+  const excluded = new Set(pair.excludeBenchmarks ?? []);
+  const sharedSlugs = candidateSlugs.filter((s) => !excluded.has(s));
 
   const out: SharedBench[] = [];
   for (const benchSlug of sharedSlugs) {
