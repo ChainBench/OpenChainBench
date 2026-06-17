@@ -1,0 +1,13 @@
+slug: chainlink
+target_product: Chainlink
+target_url: https://chain.link
+description: Decentralized price feed network publishing on-chain oracle data
+benchmark: oracle-deviation
+
+intro: |
+  Chainlink publishes on-chain price feeds via AggregatorV3 contracts deployed on Ethereum mainnet and most major EVM chains, with node operators posting new rounds on either a deviation trigger (typically 0.25 to 0.5 percent for blue chips) or a heartbeat interval. Every on-chain product that settles in fiat (perp DEXes, lending markets, derivatives, stablecoin issuers) picks one oracle and inherits its drift, which is why the practical question is how aligned the major feeds actually are at the moment a settlement happens. This benchmark polls four oracles every 30 seconds for ten USD-quoted blue chips, computes the pairwise deviation `|a-b|/avg * 100` across every source pair, and publishes the per-pair maximum as a Prometheus gauge in basis points. Sources include Chainlink AggregatorV3 (via `eth_call` against the canonical mainnet contracts), Pyth Network's Hermes REST feed, Binance and Coinbase REST tickers. Pairs are BTC, ETH, SOL, BNB, AVAX, LINK and POL on all four sources, plus XRP, ADA and DOGE on three sources because the Chainlink mainnet feeds for those USD pairs are deprecated. A stale-price guard skips samples older than 60 seconds so a dead poller cannot artificially flatten the deviation, and the companion gauge `ocb_oracle_last_round_age_seconds{source="chainlink"}` surfaces Chainlink's on-chain update gap separately so a wide deviation can be attributed to the right cause. The headline leaderboard ranks the ten pairs by p99 of the max deviation over 24 hours, lower meaning tighter cross-oracle alignment.
+
+seo_title: Chainlink alternatives. Live oracle deviation benchmark in basis points
+seo_description: Compare Chainlink against Pyth, Binance and Coinbase on live oracle deviation. Max pairwise gap on 10 USD pairs, polled every 30 seconds, p99 over 24 hours.
+
+status: live

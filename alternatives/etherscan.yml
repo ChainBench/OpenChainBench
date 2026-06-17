@@ -1,0 +1,13 @@
+slug: etherscan
+target_product: Etherscan
+target_url: https://etherscan.io
+description: Block explorer and gas tracker covering Ethereum and Polygon
+benchmark: gas-estimation
+
+intro: |
+  Etherscan is the most-visited block explorer on the web and publishes a gas tracker exposing `SafeGasPrice`, `ProposeGasPrice` and `FastGasPrice` via the v2 API on Ethereum and Polygon (free tier). The tiering was originally designed for the pre-EIP-1559 single-price world and is now mapped onto a priority-fee comparison alongside dedicated oracles. The question every wallet, swap router and bridge UI faces before sending a transaction is which gas oracle actually matches what the next block will charge on the chain their product runs on, rather than what a marketing page claims. This benchmark polls each oracle at its tier-tolerant cadence (Etherscan every 15 seconds with a global rate-gate enforcing at least 6 seconds between any two Etherscan requests across chains, because the no-key limit is 1 req per 5 s per IP shared), buffers the prediction with the predicted block height, and when that block is mined pulls the full block via `eth_getBlockByNumber(.., true)` on the chain's PublicNode RPC. Realized percentiles are computed from actual `maxPriorityFeePerGas` values, and the absolute error per (oracle, tier, chain) lands on both a gauge and a histogram. The ranking metric is the p99 gap over 24 hours, the worst 1 percent of blocks, because typical-minute gaps sit within fractions of a micro-gwei (economically indistinguishable noise) while gas spikes are where a wrong prediction either overpays or misses the block. A covered-rate column shows the share of time each prediction sat at or above the realized p50, the inclusion-side risk an absolute gap cannot show. The cohort competing with Etherscan includes Blocknative (probability-of-inclusion model), PublicNode `eth_feeHistory` (thin wrapper over EIP-1559 reward percentiles) and Owlracle (multi-oracle aggregator).
+
+seo_title: Etherscan alternatives. Live gas oracle accuracy benchmark
+seo_description: Compare Etherscan against Blocknative, PublicNode feeHistory and Owlracle on gwei gap between predicted and realized priority fee, ranked on p99 over 24h.
+
+status: live
