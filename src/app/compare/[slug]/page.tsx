@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ArrowUpRight, ChevronRight } from "lucide-react";
 import { getProvider } from "@/lib/providers";
@@ -44,13 +44,76 @@ async function loadPairProviders(pair: ComparePair) {
   return { a, b };
 }
 
+/** Split a `<a>-vs-<b>` slug. Provider slugs can themselves contain
+ *  hyphens (`helius-sender`, `phantom-perps`, etc.), so we split on the
+ *  exact `-vs-` delimiter, not on `-`. Returns null when the delimiter
+ *  is missing or either side is empty. */
+function parseAdHocSlug(slug: string): { a: string; b: string } | null {
+  const idx = slug.indexOf("-vs-");
+  if (idx <= 0) return null;
+  const a = slug.slice(0, idx);
+  const b = slug.slice(idx + "-vs-".length);
+  if (!a || !b || a === b) return null;
+  return { a, b };
+}
+
+/** Try to materialise a non-curated pair from any `<a>-vs-<b>` slug.
+ *  Steps:
+ *    1. Parse the slug into `a` and `b`.
+ *    2. Reject if the canonical order (alphabetical) doesn't match the
+ *       slug. Non-canonical URLs are redirected to the canonical form
+ *       at the route layer so the slug stays the single source of truth.
+ *    3. Verify both providers exist via getProvider.
+ *    4. Verify they share at least one bench in their appearances, so
+ *       the page renders something meaningful and not a "0 shared"
+ *       empty state.
+ *  Returns a synthetic ComparePair so the rest of the route works
+ *  unchanged. Returns null when any of those checks fail.
+ */
+async function resolveAdHocPair(slug: string): Promise<ComparePair | null> {
+  const parsed = parseAdHocSlug(slug);
+  if (!parsed) return null;
+  const [first, second] = [parsed.a, parsed.b].sort();
+  if (slug !== `${first}-vs-${second}`) return null;
+  const [a, b] = await Promise.all([
+    getProvider(first),
+    getProvider(second),
+  ]);
+  if (!a || !b) return null;
+  const aBenchSlugs = new Set(a.appearances.map((x) => x.benchmark.slug));
+  const shareAtLeastOne = b.appearances.some((x) =>
+    aBenchSlugs.has(x.benchmark.slug),
+  );
+  if (!shareAtLeastOne) return null;
+  return {
+    slug,
+    providerA: first,
+    providerB: second,
+    publishedAt: "2026-06-17",
+  };
+}
+
+/** If the URL slug is `<a>-vs-<b>` but not alphabetical, send the
+ *  visitor to the canonical form. Keeps a single canonical URL per
+ *  pair from Google's perspective and matches the selector's
+ *  `canonicalPairSlug` output. Returns the canonical slug when a
+ *  redirect is needed, null when the slug is already canonical or not
+ *  a valid pair shape. */
+function canonicalisationTarget(slug: string): string | null {
+  const parsed = parseAdHocSlug(slug);
+  if (!parsed) return null;
+  const [first, second] = [parsed.a, parsed.b].sort();
+  const canonical = `${first}-vs-${second}`;
+  return canonical === slug ? null : canonical;
+}
+
 export async function generateMetadata({
   params,
 }: {
   params: Promise<Params>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const pair = getComparePair(slug);
+  const pair = getComparePair(slug) ?? (await resolveAdHocPair(slug));
   if (!pair) return {};
   const { a, b } = await loadPairProviders(pair);
   if (!a || !b) return {};
@@ -394,7 +457,16 @@ export default async function ComparePage({
   params: Promise<Params>;
 }) {
   const { slug } = await params;
-  const pair = getComparePair(slug);
+  // Non-canonical slug (e.g. `bnb-vs-aptos`) gets 308 to the
+  // alphabetical canonical (`aptos-vs-bnb`) before we do any rendering
+  // so the selector and any backwards typed URL converge on the same
+  // canonical for indexing.
+  const canonicalTarget = canonicalisationTarget(slug);
+  if (canonicalTarget) redirect(`/compare/${canonicalTarget}`);
+  // Curated pairs in COMPARE_PAIRS win. Anything else falls through to
+  // resolveAdHocPair which validates the providers exist and share at
+  // least one bench before rendering. notFound otherwise.
+  const pair = getComparePair(slug) ?? (await resolveAdHocPair(slug));
   if (!pair) return notFound();
 
   const { a, b } = await loadPairProviders(pair);
