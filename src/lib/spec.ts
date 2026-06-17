@@ -83,6 +83,13 @@ function overlayEditorial(stored: Benchmark, spec: Spec): Benchmark {
     findings: spec.findings ?? stored.findings,
     disclaimer: spec.disclaimer ?? stored.disclaimer,
     subtitle: spec.subtitle ?? stored.subtitle,
+    // Dimensions are YAML editorial config (chain / region / kind
+    // value sets the bench page surfaces as filters). Overlay them
+    // too so newly added dimension values (e.g. region opts added to
+    // an existing bench) surface immediately on the compare matrix
+    // and the bench page filters without waiting on the materialise
+    // worker to rewrite the snapshot.
+    dimensions: spec.dimensions ?? stored.dimensions,
   };
 }
 
