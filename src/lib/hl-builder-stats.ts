@@ -180,6 +180,121 @@ export async function fetchHlBuilderStats(
   };
 }
 
+export type HlCohortRow = {
+  slug: string;
+  name: string;
+  revenue30d: number;
+  volume30d: number;
+  users30d: number;
+  cohortVolumeShare24h: number;
+};
+
+export type HlCohortSummary = {
+  rows: HlCohortRow[];
+  totalRevenue30d: number;
+  totalVolume30d: number;
+  totalUsers30d: number;
+  asOf: number;
+};
+
+/**
+ * Fetch a leaderboard-ready slice of every tracked HL builder, in 4
+ * vector queries instead of 4 × 104 scalar fan-out. Used by the
+ * `/hyperliquid` hub page. Returns null when Prom is unavailable so
+ * the route can render a configuration banner instead of an empty
+ * leaderboard.
+ *
+ * Volume share is summed naively across the row set rather than read
+ * from the gauge; the gauge denominator is the full cohort already,
+ * so the two agree. We re-compute it here so the leaderboard total
+ * stays internally consistent if some builders drop out of the
+ * filtered set.
+ */
+export async function fetchHlCohort(): Promise<HlCohortSummary | null> {
+  const url = promUrl();
+  if (!url) return null;
+  let prom: Prometheus;
+  try {
+    prom = new Prometheus(url);
+  } catch {
+    return null;
+  }
+
+  const specs = await getSpecs();
+  const hl = specs.find((s) => s.slug === "hyperliquid-frontends");
+  const providers = hl?.providers ?? [];
+  const nameBySlug = new Map(providers.map((p) => [p.slug, p.name]));
+
+  const [feesRaw, volumeRaw, usersRaw, shareRaw] = await Promise.all([
+    queryVector(prom, `hl_frontend_fees_usd_30d_v2`),
+    queryVector(prom, `hl_frontend_volume_usd_30d_v2`),
+    queryVector(prom, `hl_frontend_users_30d_v2`),
+    queryVector(prom, `hl_frontend_global_volume_share_24h_v2`),
+  ]);
+
+  if (feesRaw === null && volumeRaw === null && usersRaw === null) {
+    return null;
+  }
+
+  const byBuilder = new Map<
+    string,
+    { revenue: number; volume: number; users: number; share: number }
+  >();
+  const ensure = (slug: string) => {
+    let r = byBuilder.get(slug);
+    if (!r) {
+      r = { revenue: 0, volume: 0, users: 0, share: 0 };
+      byBuilder.set(slug, r);
+    }
+    return r;
+  };
+  for (const s of feesRaw ?? []) {
+    const b = s.labels.builder;
+    if (b) ensure(b).revenue = s.value;
+  }
+  for (const s of volumeRaw ?? []) {
+    const b = s.labels.builder;
+    if (b) ensure(b).volume = s.value;
+  }
+  for (const s of usersRaw ?? []) {
+    const b = s.labels.builder;
+    if (b) ensure(b).users = s.value;
+  }
+  for (const s of shareRaw ?? []) {
+    const b = s.labels.builder;
+    if (b) ensure(b).share = s.value;
+  }
+
+  const rows: HlCohortRow[] = [];
+  let totalRevenue30d = 0;
+  let totalVolume30d = 0;
+  let totalUsers30d = 0;
+  for (const [slug, v] of byBuilder.entries()) {
+    if (!nameBySlug.has(slug)) continue;
+    if (v.revenue <= 0 && v.volume <= 0 && v.users <= 0) continue;
+    rows.push({
+      slug,
+      name: nameBySlug.get(slug) ?? slug,
+      revenue30d: v.revenue,
+      volume30d: v.volume,
+      users30d: v.users,
+      cohortVolumeShare24h: v.share,
+    });
+    totalRevenue30d += v.revenue;
+    totalVolume30d += v.volume;
+    totalUsers30d += v.users;
+  }
+  rows.sort((a, b) => b.revenue30d - a.revenue30d);
+
+  return {
+    rows,
+    totalRevenue30d,
+    totalVolume30d,
+    totalUsers30d,
+    asOf: Math.floor(Date.now() / 1000),
+  };
+}
+
 /**
  * Tiny vector helper. Returns `[{ labels, value }]` from an instant
  * vector query, or empty on error/empty result. Kept local to this
