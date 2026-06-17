@@ -39,7 +39,7 @@ export default async function HomePage() {
       <section className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,420px)] gap-8 lg:gap-12 items-center lg:pr-12">
         <div>
           <h1 className="display text-3xl sm:text-4xl md:text-5xl text-ink leading-[1.05]">
-            Open benchmarks for RPC latency, bridge fees and L2 finality.
+            Open-source KPIs from onchain products.
           </h1>
           <p className="mt-5 max-w-xl text-base text-ink-soft leading-snug">
             OpenChainBench runs continuous, reproducible benchmarks on crypto
