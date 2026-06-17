@@ -173,7 +173,13 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v8: outage panel unit s -> sec (true seconds); cached v7 objects keep
   // the old unit and would render "0.0 s" via the ms-input formatter.
   // v9: perp-funding unit bps -> bp (true basis points display).
-  ["bench-unfiltered-v9"],
+  // v10: bumped after adding `dimensions` to overlayEditorial (PR #506).
+  // Prior cached values were written with the stored snapshot's
+  // pre-overlay dimensions, so the new region opts on agg-head-lag
+  // and metadata-coverage stayed invisible until the next cold cache
+  // window. Bumping the key forces every read to regenerate against
+  // the post-overlay shape immediately on deploy.
+  ["bench-unfiltered-v10"],
   { revalidate: 60, tags: ["benchmarks"] },
 );
 
@@ -238,7 +244,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v9: bumped with bench-unfiltered-v7 (ledgerColumns).
   // v10: bumped with bench-unfiltered-v8 (sec unit).
   // v11: bumped with bench-unfiltered-v9 (bp unit).
-  ["all-benchmarks-v11"],
+  // v12: bumped with bench-unfiltered-v10 (dimensions overlay).
+  ["all-benchmarks-v12"],
   { revalidate: 60, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -281,7 +288,8 @@ const loadBenchmarkFiltered = unstable_cache(
   // v4: bumped with bench-unfiltered-v7 (ledgerColumns).
   // v5: bumped with bench-unfiltered-v8 (sec unit).
   // v6: bumped with bench-unfiltered-v9 (bp unit).
-  ["bench-filters-v6"],
+  // v7: bumped with bench-unfiltered-v10 (dimensions overlay).
+  ["bench-filters-v7"],
   { revalidate: 60, tags: ["benchmarks"] }
 );
 
