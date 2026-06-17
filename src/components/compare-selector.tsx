@@ -4,7 +4,10 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 import { ProviderLogo } from "@/components/provider-logo";
-import { canonicalPairSlug, type CompareCandidate } from "@/lib/compare-pairing";
+import {
+  canonicalPairSlug,
+  type CompareCandidate,
+} from "@/lib/compare-pairing-shared";
 
 /**
  * Two combobox selector that lets a visitor build any compatible head

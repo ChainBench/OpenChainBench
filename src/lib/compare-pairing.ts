@@ -17,11 +17,10 @@
 
 import { cache } from "react";
 import { getProviders } from "@/lib/providers";
+import type { CompareCandidate } from "@/lib/compare-pairing-shared";
 
-export type CompareCandidate = {
-  slug: string;
-  name: string;
-};
+export type { CompareCandidate };
+export { canonicalPairSlug } from "@/lib/compare-pairing-shared";
 
 export type CompareGraph = {
   providers: CompareCandidate[];
@@ -69,9 +68,3 @@ export const buildCompareGraph = cache(async function buildCompareGraph(): Promi
   return { providers, shared };
 });
 
-/** Canonical slug for a head to head pair. Forces alphabetical order
- *  so /compare/a-vs-b is the same as /compare/b-vs-a from the URL side. */
-export function canonicalPairSlug(a: string, b: string): string {
-  const [first, second] = [a, b].sort();
-  return `${first}-vs-${second}`;
-}
