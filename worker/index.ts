@@ -253,6 +253,15 @@ async function noteHeartbeat(ok: boolean, err?: unknown): Promise<void> {
 async function sweep(iteration: number): Promise<void> {
   const specs = await loadSpecsUncached();
   const t0 = Date.now();
+  // Heartbeat at sweep START, not just at tierA end. A long tierB run
+  // (113+ variants × HL frontends 104 builders) routinely takes 2-4 min;
+  // without this, the heartbeat would go stale through tierB even though
+  // the worker is healthy. "Stale > N min" should mean "worker hasn't
+  // started a sweep in N min", not "tier completion has been slow".
+  await heartbeat().then(
+    () => noteHeartbeat(true),
+    (e) => noteHeartbeat(false, e),
+  );
 
   await inBatches(specs, BENCH_CONCURRENCY, async (spec) => {
     try {

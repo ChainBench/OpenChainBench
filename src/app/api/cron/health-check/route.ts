@@ -216,21 +216,21 @@ export async function GET(req: NextRequest) {
   }
 
   // Materialization freshness watchdog. The worker SETs a heartbeat key
-  // after every tier-A sweep (60s cadence); silence means the worker is
-  // dead or its writes are failing, and the site is quietly serving the
-  // slow live fallback. Alert when stale > 5 min; the age windowing
-  // (first detection + hourly reminders) avoids a message every 5 min
-  // for the whole outage. Complements the worker's own write-failure
-  // pings, which cannot fire when the worker process itself is dead.
+  // at the START of every sweep (~60s cadence on tier-A only ticks, up to
+  // ~5 min when a tier-B variant sweep runs and chains the next tick).
+  // Silence means the worker is dead or its writes are failing, and the
+  // site is quietly serving the slow live fallback. Alert at > 10 min
+  // (two missed sweep starts) to avoid noise from long tier-B runs on
+  // HL frontends (104 builders × 113 variants ≈ 3-4 min sweeps).
   let matHeartbeatAgeSec: number | null = null;
   if (storeConfigured()) {
     try {
       const hb = await readHeartbeat();
       matHeartbeatAgeSec = hb ? Math.floor(Date.now() / 1000 - hb) : null;
       const age = matHeartbeatAgeSec;
-      const stale = age === null || age > 300;
-      const firstDetection = age !== null && age <= 1200;
-      const hourlyReminder = age !== null && age % 3600 < 300;
+      const stale = age === null || age > 600;
+      const firstDetection = age !== null && age <= 1800;
+      const hourlyReminder = age !== null && age % 3600 < 600;
       if (webhook && stale && (age === null || firstDetection || hourlyReminder)) {
         const ageTxt = age === null ? "no heartbeat key at all" : `${Math.round(age / 60)} min old`;
         await fetch(webhook, {
