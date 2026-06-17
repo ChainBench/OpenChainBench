@@ -1,0 +1,42 @@
+slug: which-stablecoin-is-the-most-stable
+question: "Which stablecoin has the smallest peg deviation in 2026?"
+short_answer: |
+  {{best_name}} currently holds its peg tightest at {{best_p50}} (median per minute worst deviation in bps, 24h) across USDC, USDT and DAI, measured live by OpenChainBench on USD quoted venues.
+
+benchmark: stablecoin-peg
+
+intro: |
+  Most stablecoin tracker sites display aggregator averages from CoinGecko or CoinMarketCap refreshed every few minutes. That smooths out the venue level discrepancies that actually matter for any product holding stablecoin inventory: the USDC briefly quoting $0.9978 on Kraken while $1.0003 on Coinbase, the USDe flash to $0.65 on Binance the night of October 10 2025, the DAI Curve 3pool forward and reverse swap rates diverging. This page answers the question every treasury, market maker and trading desk asks before parking a position. Which stablecoin actually holds its $1 peg the tightest, on which venue, and for how long. OpenChainBench polls Binance, Kraken and Bitstamp REST tickers every 5 seconds and the Curve 3pool `get_dy` on chain every 12 seconds (matching Ethereum block time), aggregates per venue prices into a per minute liquidity weighted median per USD quoted stable, and surfaces five live numbers per stable: instantaneous deviation in basis points, cross venue gap, time outside the 50 bps band over 24h, time below vs above peg, and a depeg event flag.
+
+methodology: |
+  Per venue samples are grouped into 60 second buckets and aggregated into a liquidity weighted median per stablecoin, weighted by 24h USD volume. The aggregated price drives `peg_deviation_worst_bps`, the per minute MAX of `|price − $1.00|` across venue samples in the bucket. The leaderboard ranks stables by `quantile_over_time(0.99, peg_deviation_worst_bps[24h])` (lower is better). Per minute MAX surfaces sub minute depeg wicks that a median would smooth away. USDT quoted pairs (Binance USDC/USDT, FDUSD/USDT, USDE/USDT) are exposed on a separate `peg_deviation_usdt_anchored_bps` metric because USDT's own peg deviation would contaminate the USD anchored primary measurement. DAI's CEX coverage is dead in 2026 (Binance zero book, Kraken thin, Bitstamp dead), so the only honest signal is on chain via Curve 3pool forward (USDC to DAI) and reverse (DAI to USDC) `get_dy` reads. A multi venue consensus outlier rule keeps corroborated depegs (Kraken AND Bitstamp both at $0.87) and drops isolated single venue glitches.
+
+limitations:
+  - "DAI is measured on Curve 3pool only because USD CEX coverage is essentially dead in 2026. The number reflects on chain peg stability against USDC and USDT in the pool, which is the honest available signal but not directly comparable to a CEX measured stable."
+  - "FDUSD and USDe are USDT anchored on Binance (no deep USD quoted venue exists) and live on the companion bench `stablecoin-peg-usdt-anchored`. Mixing them into a USD anchored leaderboard would compare against USDT's own drift, which is why this page excludes them."
+  - "The depeg event flag fires only after a stable has been outside [$0.97, $1.03] for at least 5 consecutive minutes and clears after 30 minutes back inside. Conservative so it does not flap on normal stress, but it intentionally misses sub 5 minute wicks (those still show in the per minute MAX and the cross venue gap)."
+  - "USDT quoted Binance prices are exposed on the secondary metric, not the primary leaderboard. A real USDT depeg would surface there before it shows in the USD anchored primary."
+  - "Aggregator only prices (CoinGecko, CoinMarketCap, DefiLlama) are excluded by design. They are themselves liquidity weighted medians of the venues this bench already polls directly, re aggregating them would add latency and hide the venue level cross spread that matters during stress."
+
+faq:
+  - q: "Which stablecoin is the most stable right now?"
+    a: "{{best_name}} currently leads the leaderboard at {{best_p50}} (median per minute worst deviation, 24h) across {{count}} measured stablecoins on USD quoted venues. The leaderboard refreshes every minute against fresh Prometheus samples; the 24h window smooths a single off market tick so the headline reflects sustained peg stability."
+  - q: "What is stablecoin peg deviation in basis points?"
+    a: "Peg deviation is the absolute distance between a stablecoin's price and $1.00, expressed in basis points where 1 bp equals 0.01%. A stablecoin at $0.9978 has 22 bps of deviation; at $1.0050 it has 50 bps. Tens of bps is normal noise, hundreds of bps is stress, thousands of bps is a depeg event. The bench records both per minute deviation and the worst 1% tail (p99) over 24h, the integration grade number for any product holding inventory in the stable."
+  - q: "How does USDC compare to USDT on stability?"
+    a: "{{name:usdc}} returns {{p99:usdc}} (p99 deviation, 24h) on USD quoted venues. {{name:usdt}} returns {{p99:usdt}} on the same venues. USDC's peg is anchored by Circle's same day USD redemption with US banks; USDT's by Tether's larger but slower clearing redemption window. The leaderboard surfaces the live gap and the cross venue spread per minute."
+  - q: "Did USDe really depeg to $0.65 in October 2025?"
+    a: "Yes, on Binance USDEUSDT specifically, the night of October 10 2025. Ethena's USDe is anchored by a delta neutral basis trade rather than fiat reserves, and a sharp liquidation cascade on perp positions briefly cleared the orderbook on Binance well below peg. The bench exposes this kind of event live via `peg_depeg_event_flag` (set when a stable has been outside [$0.97, $1.03] for at least 5 consecutive minutes) and via the USDT anchored secondary metric."
+  - q: "Why ignore CoinGecko or CoinMarketCap stablecoin prices?"
+    a: "Aggregator prices (CoinGecko, CoinMarketCap, DefiLlama) are themselves liquidity weighted medians of the venues this bench already polls directly, refreshed every 1 to 5 minutes. Re aggregating them adds latency, hides the venue level cross spread that matters during stress, and inherits whatever venue selection the aggregator chose. Going to the source venues directly makes the cross venue gap visible and lets the depeg event flag fire within 5 minutes of the price actually breaking the band."
+  - q: "How is DAI measured if its CEX coverage is dead?"
+    a: "Via Curve 3pool `get_dy` on chain, polled every 12 seconds (matches Ethereum block time). The harness reads the pool both forward (USDC to DAI) and reverse (DAI to USDC), so a directional asymmetry between the two rates surfaces an arbitrage gap that a single CEX read would miss. The aggregated DAI price is the pool implied mid, the deviation is its distance from $1."
+
+related:
+  - which-crypto-oracle-is-the-most-accurate
+  - which-blockchain-has-cheapest-transaction-fees
+  - which-perp-dex-has-the-lowest-fees
+
+seo_title: "Which stablecoin has the smallest peg deviation in 2026?"
+seo_description: "{{best_name}} holds its peg tightest at {{best_p50}} (median per minute worst deviation, 24h) across USDC, USDT and DAI. Measured live by OpenChainBench on USD quoted venues."
+status: live

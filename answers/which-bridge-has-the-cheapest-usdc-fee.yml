@@ -1,0 +1,42 @@
+slug: which-bridge-has-the-cheapest-usdc-fee
+question: "Which cross-chain bridge has the cheapest USDC transfer fee in 2026?"
+short_answer: |
+  {{best_name}} currently posts the lowest all in bridging cost at {{best_p50}} (p50, 24h) on a $300 USDC notional across the Solana, Base and Arbitrum corridors measured live by OpenChainBench.
+
+benchmark: bridge-fee
+
+intro: |
+  Bridge fee comparisons in the wild quote rack rates at $1000 or $10000 notionals where fixed costs dilute into the percentage, then publish a single advertised fee per bridge. The reality every retail user faces is different. At small ticket sizes the destination gas, the base protocol fee and the solver spread combine into one number that often exceeds the advertised "0.05% fee" by an order of magnitude. This page answers the only question that matters before signing a bridge transaction. What does a $300 USDC transfer actually cost, all in, on each major venue, right now. OpenChainBench polls deBridge (direct protocol with a native token fee), LI.FI (aggregator routing through underlying bridges), Mobula (intent layer compressing cost into a settlement spread) and Relay (cross chain relay) every five minutes for a $300 USDC quote on Solana, Base and Arbitrum corridors. The reported figure is `bridge_cost_percent`, the full bottom line (fees plus slippage plus destination gas), not the explicit fee field most providers advertise. The 24h p50 sets the leaderboard, so a single favourable quote cannot crown a winner.
+
+methodology: |
+  Each bridge is queried every five minutes from a single eu-west origin on the same set of USDC corridors (Solana, Base, Arbitrum) at $300 notional. The harness records `bridge_cost_percent`, which sums the explicit fee, the price impact (slippage) and the destination gas component returned by each provider's quote endpoint. Quotes that error (unsupported route, quote_failed, timeout) are excluded from the cost aggregate and counted toward the success rate so a fast but broken provider cannot game the headline. The 24h p50 of `bridge_cost_percent{bridge="X", amount_usd="300"}` is the headline number; p90 and p99 capture the worst minutes. Provider types are surfaced as badges because each pricing architecture (direct protocol, aggregator, intent layer) absorbs cost differently and they do not converge under the same query.
+
+limitations:
+  - "Reported costs aggregate over Solana, Base and Arbitrum corridors. A solver with deep inventory on one route can lead overall yet trail on a specific corridor, the per corridor split lands once `dimensions:` for `from_chain` and `to_chain` are wired into the bench page."
+  - "Sampled at $300 USDC notional. At $5000 or $10000 the fixed gas and base fee components dilute into the percentage and the leaderboard re-orders; intent layers usually keep their lead but the gap to direct protocols compresses sharply."
+  - "Single point of measurement in eu-west. A bridge whose solver pool sits in us-east can post a different quote there; multi-region requires running additional monitor instances of the bridge-monitor harness."
+  - "The number is the quote cost at request time, not the realised cost after settlement. On volatile corridors the underlying spot can drift between quote and signing, intent layers re-quote at signing time, aggregators usually pass through a slippage parameter."
+  - "USDC bridging only. Long-tail token corridors (memecoins, wrapped assets, RWAs) have very different fee dynamics that this leaderboard does not capture."
+
+faq:
+  - q: "What is the cheapest cross-chain bridge for USDC right now?"
+    a: "{{best_name}} currently leads at {{best_p50}} (p50, 24h) for $300 USDC transfers across the measured Solana, Base and Arbitrum corridors. The leaderboard refreshes every five minutes against fresh Prometheus samples; the 24h p50 smooths a single favourable quote so the ranking reflects sustained competitiveness. Per corridor leaders can diverge from this aggregate when one solver has deep inventory on a specific route, that breakdown is on the roadmap."
+  - q: "Why use $300 USDC instead of $1000 or $10000?"
+    a: "Most published bridge comparisons quote at $1000 or $10000 where fixed fee components (destination gas, base protocol fee) dilute into the percentage. At $300 the fixed component becomes the dominant share of the cost, matching the regime real retail users actually face. The harness records $5, $50, $300, $1000 and $10000 buckets; the $300 bucket is the most representative of small ticket flows where intent layers compress costs hardest and aggregator markups become visible."
+  - q: "How is bridge cost calculated, fee or all in?"
+    a: "All in. The headline metric is `bridge_cost_percent`, which sums the explicit fee, the slippage (price impact on the underlying liquidity) and the destination gas paid by the user. The narrower `bridge_fees_percent` would let aggregators with implicit pricing render as 0% while still charging the user through the spread, which is the comparison failure most articles fall into. The bottom line that leaves the wallet is the right metric, and it is what this page surfaces."
+  - q: "Are bridge aggregators always cheaper than direct bridges?"
+    a: "Not consistently. Aggregators like LI.FI route through whichever underlying bridge is cheapest at quote time and add a markup; their best route is constrained to the bridges they have integrated. Intent layers like Mobula route to any solver willing to settle the intent. Direct protocols like deBridge front load a native token fee that dominates on small trades because the fixed component does not scale with notional. On liquid USDC corridors intent layers usually lead; aggregators can win on corridors with a single dominant underlying bridge."
+  - q: "How often is the leaderboard refreshed?"
+    a: "Every five minutes. The bridge-monitor harness polls each provider's quote endpoint at that cadence across the measured corridors, publishes `bridge_cost_percent` to Prometheus, and the page reads a rolling 24h p50, p90 and p99. The number you see on the headline cannot be moved by a single off-market quote."
+  - q: "Does the figure include destination gas?"
+    a: "Yes. `bridge_cost_percent` is the all in number that actually leaves the user's wallet, so the destination gas (the cost of receiving the USDC on Solana, Base or Arbitrum) is included. On a $300 transfer to a chain in a high gas window, destination gas can be a multi basis point share of the all in cost on its own, which is why this metric matters more than the rack rate."
+
+related:
+  - which-bridge-has-the-fastest-quote-api
+  - which-blockchain-has-cheapest-transaction-fees
+  - which-evm-aggregator-has-the-fastest-quote
+
+seo_title: "Which cross-chain bridge has the cheapest USDC fee in 2026?"
+seo_description: "{{best_name}} posts the lowest all in $300 USDC bridging cost at {{best_p50}} (p50, 24h) across Solana, Base and Arbitrum, measured live by OpenChainBench. Methodology and limitations on this page."
+status: live
