@@ -103,13 +103,11 @@ function Picker({
   const selected = providers.find((p) => p.slug === value);
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return providers.slice(0, 80);
-    return providers
-      .filter(
-        (p) =>
-          p.name.toLowerCase().includes(q) || p.slug.toLowerCase().includes(q),
-      )
-      .slice(0, 80);
+    if (!q) return providers;
+    return providers.filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) || p.slug.toLowerCase().includes(q),
+    );
   }, [providers, query]);
 
   return (
@@ -153,7 +151,8 @@ function Picker({
                 type="search"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Type a name"
+                placeholder="Type to filter"
+                autoFocus
                 className="w-full text-sm bg-transparent text-ink placeholder:text-ink-faint focus:outline-none"
               />
             </div>
