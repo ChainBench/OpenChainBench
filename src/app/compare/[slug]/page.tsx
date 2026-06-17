@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
+import { Fragment } from "react";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, ArrowUpRight, ChevronRight } from "lucide-react";
+import { ArrowLeft, ArrowUpRight } from "lucide-react";
 import { getProvider } from "@/lib/providers";
 import { loadBenchmark } from "@/lib/spec";
 import {
@@ -164,8 +165,8 @@ type BreakdownRow = {
 
 /** One chain entry inside a chain x region matrix. Carries the chain
  *  aggregate row plus the per region sub-rows scoped to that chain.
- *  Rendered as a collapsible disclosure: chain row always visible, the
- *  region rows reveal on click via native <details>. */
+ *  Rendered as two side by side rows (one per provider) with a column
+ *  per region plus the chain aggregate column on the right. */
 type ChainRegionEntry = BreakdownRow & {
   regionRows: BreakdownRow[];
 };
@@ -190,9 +191,9 @@ type SharedBench = {
   regionBreakdown: BreakdownRow[];
   /** Chain x region matrix, populated only for benches that expose
    *  BOTH `dimensions.chain` and `dimensions.region`. When present, the
-   *  renderer uses this nested structure (collapsible per chain) and
-   *  drops the flat chainBreakdown + regionBreakdown so the side by
-   *  side stays compact instead of stacking two separate tables. */
+   *  renderer uses this nested structure as a single 2D table and
+   *  drops the flat chainBreakdown + regionBreakdown so we don't stack
+   *  three tables for the same data. */
   chainRegionMatrix: ChainRegionEntry[];
 };
 
@@ -713,7 +714,7 @@ function BenchCard({
       </div>
 
       {bench.chainRegionMatrix.length > 0 ? (
-        <ChainRegionMatrixTable
+        <ChainRegionMatrix
           entries={bench.chainRegionMatrix}
           aName={aName}
           bName={bName}
@@ -832,13 +833,13 @@ function AggregatePanel({
   );
 }
 
-/** Nested per chain x per region grid used when a bench exposes both
- *  dimensions. Each chain row is a native <details> disclosure: the
- *  chain summary is always visible, click the chevron to reveal the
- *  region sub-rows scoped to that chain. CSS grid with `display:
- *  contents` on <details> + <summary> keeps the columns aligned
- *  through the disclosure structure with zero JS. */
-function ChainRegionMatrixTable({
+/** Single flat 2D matrix used when a bench exposes both `chain` and
+ *  `region` dimensions. Rows are grouped per chain (rowspan on the chain
+ *  cell), two sub-rows per chain (one per provider). Columns expand
+ *  across every region observed for the pair plus an aggregate column on
+ *  the right. Each value cell is colored by the per-cell winner so the
+ *  table reads as a heatmap: green = leads here, red = trails. */
+function ChainRegionMatrix({
   entries,
   aName,
   bName,
@@ -849,71 +850,128 @@ function ChainRegionMatrixTable({
   bName: string;
   unit: Benchmark["unit"];
 }) {
+  const regionMap = new Map<string, string>();
+  for (const entry of entries) {
+    for (const r of entry.regionRows) {
+      if (!regionMap.has(r.value)) regionMap.set(r.value, r.label);
+    }
+  }
+  const regions = Array.from(regionMap.entries()).map(([value, label]) => ({
+    value,
+    label,
+  }));
+
+  const valueCell = (win: boolean, lose: boolean, isAggregate = false) => {
+    const color = win
+      ? "text-good font-medium"
+      : lose
+        ? "text-bad"
+        : "text-ink";
+    return `py-2 px-2 text-right whitespace-nowrap ${isAggregate ? "border-l border-rule" : ""} ${color}`;
+  };
+  const emptyCell = (isAggregate = false) =>
+    `py-2 px-2 text-right text-ink-faint ${isAggregate ? "border-l border-rule" : ""}`;
+
   return (
     <div className="mt-6 border-t border-rule pt-4">
       <p className="text-[11px] uppercase tracking-[0.18em] text-ink-muted font-medium mb-3">
-        Per chain · click to expand regions
+        Per chain · per region
       </p>
-      <div className="grid grid-cols-[1fr_auto_auto] gap-x-3 text-sm tabular">
-        <div className="text-[10px] uppercase tracking-[0.16em] text-ink-faint pb-2 border-b border-rule">
-          Chain
-        </div>
-        <div className="text-[10px] uppercase tracking-[0.16em] text-ink-faint pb-2 border-b border-rule text-right">
-          {aName}
-        </div>
-        <div className="text-[10px] uppercase tracking-[0.16em] text-ink-faint pb-2 border-b border-rule text-right">
-          {bName}
-        </div>
-        {entries.map((entry) => (
-          <details
-            key={entry.value}
-            className="contents [&>summary>.chev]:transition-transform [&[open]>summary>.chev]:rotate-90"
-          >
-            <summary className="contents cursor-pointer marker:hidden [&::-webkit-details-marker]:hidden">
-              <div className="py-2 text-ink-soft flex items-center gap-1.5 hover:text-ink border-b border-rule/40">
-                <ChevronRight
-                  size={12}
-                  strokeWidth={2}
-                  className="chev text-ink-faint shrink-0"
-                />
-                <span>{entry.label}</span>
-                {entry.regionRows.length > 0 && (
-                  <span className="text-[10px] text-ink-faint normal-case tracking-normal ml-1">
-                    ({entry.regionRows.length} region
-                    {entry.regionRows.length === 1 ? "" : "s"})
-                  </span>
-                )}
-              </div>
-              <div
-                className={`py-2 text-right border-b border-rule/40 ${entry.aWins ? "text-good font-medium" : entry.bWins ? "text-bad" : "text-ink"}`}
+      <div className="overflow-x-auto -mx-5 sm:-mx-6 px-5 sm:px-6">
+        <table className="w-full text-sm tabular border-collapse">
+          <thead>
+            <tr className="text-[10px] uppercase tracking-[0.16em] text-ink-faint border-b border-rule">
+              <th
+                scope="col"
+                className="text-left font-medium py-2 pr-3 sticky left-0 bg-bg z-10"
               >
-                {fmtUnit(entry.aP50, unit)}
-              </div>
-              <div
-                className={`py-2 text-right border-b border-rule/40 ${entry.bWins ? "text-good font-medium" : entry.aWins ? "text-bad" : "text-ink"}`}
-              >
-                {fmtUnit(entry.bP50, unit)}
-              </div>
-            </summary>
-            {entry.regionRows.map((r) => (
-              <div key={r.value} className="contents">
-                <div className="py-1.5 pl-7 text-xs text-ink-muted border-b border-rule/20">
+                Chain
+              </th>
+              <th scope="col" className="text-left font-medium py-2 px-3">
+                Provider
+              </th>
+              {regions.map((r) => (
+                <th
+                  key={r.value}
+                  scope="col"
+                  className="text-right font-medium py-2 px-2"
+                >
                   {r.label}
-                </div>
-                <div
-                  className={`py-1.5 text-right text-xs border-b border-rule/20 ${r.aWins ? "text-good" : r.bWins ? "text-bad" : "text-ink-muted"}`}
-                >
-                  {fmtUnit(r.aP50, unit)}
-                </div>
-                <div
-                  className={`py-1.5 text-right text-xs border-b border-rule/20 ${r.bWins ? "text-good" : r.aWins ? "text-bad" : "text-ink-muted"}`}
-                >
-                  {fmtUnit(r.bP50, unit)}
-                </div>
-              </div>
-            ))}
-          </details>
-        ))}
+                </th>
+              ))}
+              <th
+                scope="col"
+                className="text-right font-medium py-2 pl-3 pr-1 border-l border-rule"
+              >
+                Aggregate
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {entries.map((entry) => {
+              const byRegion = new Map(
+                entry.regionRows.map((r) => [r.value, r] as const),
+              );
+              return (
+                <Fragment key={entry.value}>
+                  <tr className="border-t border-rule">
+                    <th
+                      scope="rowgroup"
+                      rowSpan={2}
+                      className="py-2 pr-3 text-left text-ink-soft font-medium align-top sticky left-0 bg-bg border-r border-rule/60"
+                    >
+                      {entry.label}
+                    </th>
+                    <td className="py-2 px-3 text-[11px] uppercase tracking-[0.14em] text-ink-muted">
+                      {aName}
+                    </td>
+                    {regions.map((r) => {
+                      const row = byRegion.get(r.value);
+                      return row ? (
+                        <td
+                          key={r.value}
+                          className={valueCell(row.aWins, row.bWins)}
+                        >
+                          {fmtUnit(row.aP50, unit)}
+                        </td>
+                      ) : (
+                        <td key={r.value} className={emptyCell()}>
+                          —
+                        </td>
+                      );
+                    })}
+                    <td className={valueCell(entry.aWins, entry.bWins, true)}>
+                      {fmtUnit(entry.aP50, unit)}
+                    </td>
+                  </tr>
+                  <tr className="border-b border-rule">
+                    <td className="py-2 px-3 text-[11px] uppercase tracking-[0.14em] text-ink-muted">
+                      {bName}
+                    </td>
+                    {regions.map((r) => {
+                      const row = byRegion.get(r.value);
+                      return row ? (
+                        <td
+                          key={r.value}
+                          className={valueCell(row.bWins, row.aWins)}
+                        >
+                          {fmtUnit(row.bP50, unit)}
+                        </td>
+                      ) : (
+                        <td key={r.value} className={emptyCell()}>
+                          —
+                        </td>
+                      );
+                    })}
+                    <td className={valueCell(entry.bWins, entry.aWins, true)}>
+                      {fmtUnit(entry.bP50, unit)}
+                    </td>
+                  </tr>
+                </Fragment>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
     </div>
   );
