@@ -103,18 +103,7 @@ dimensions:
     - { value: base,   label: Base }
     - { value: bnb,    label: BNB Chain }
     - { value: solana, label: Solana }
-  # Region values match the raw harness labels (REGION env on each
-  # Railway probe: us-east / eu-west / sgp). Declared at YAML level so
-  # the /compare/[slug] page can surface a per chain x per region
-  # matrix when both providers compete in this bench. The bench page
-  # chart still owns its own inline region picker; both stay in sync
-  # because they hit the same Prom queries with the same region label.
-  region:
-    - { value: all,     label: All regions }
-    - { value: us-east, label: US-East }
-    - { value: eu-west, label: EU-West }
-    - { value: sgp,     label: Singapore }
-# Legacy comment (now resolved by the region block above):
+# Region filter intentionally not declared here: the chart already exposes
 # a region selector inline (TimeSeriesChart's built-in switch), which is a
 # better-placed affordance. The top-level dimensions framework still
 # supports it generically if any other bench wants two-axis filtering.

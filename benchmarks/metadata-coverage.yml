@@ -106,14 +106,6 @@ dimensions:
   chain:
     - { value: solana, label: Solana }
     - { value: bnb,    label: BNB Chain }
-  # Region values match the raw harness labels (REGION env on each
-  # Railway probe). Declared so the /compare/[slug] page can render
-  # a chain x region matrix for pairs that compete in this bench.
-  region:
-    - { value: all,     label: All regions }
-    - { value: us-east, label: US-East }
-    - { value: eu-west, label: EU-West }
-    - { value: sgp,     label: Singapore }
 
 # Real metrics exposed by the aggregator-head-lag harness:
 #   metadata_coverage_checks_total{provider, chain, field, region}   counter
