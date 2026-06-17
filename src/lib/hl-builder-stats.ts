@@ -9,6 +9,12 @@
 import { Prometheus } from "@/lib/prometheus";
 import { getSpecs } from "@/lib/spec";
 
+export type CoinShare = { coin: string; share: number };
+export type PercentileBucket = {
+  bucket: "top1" | "p1_5" | "p5_10" | "p10_25" | "p25_50" | "rest";
+  share: number;
+};
+
 export type HlBuilderStats = {
   slug: string;
   /** USD builder-fee revenue collected over the rolling 30d. */
@@ -34,6 +40,14 @@ export type HlBuilderStats = {
   /** Days from first observed fill until first cumulative revenue crossing
    *  for each threshold. -1 = not yet reached. */
   milestoneDays: { "10k": number; "100k": number; "1m": number };
+  /** Top-15 coins by 24h notional + "other" bucket. Empty if the gauge
+   *  hasn't been populated yet. */
+  coinShares24h: CoinShare[];
+  /** Volume share by trader-rank percentile, 30d window. Same fixed 6
+   *  buckets as HyperTracker. Empty if the gauge isn't populated. */
+  percentileShares30d: PercentileBucket[];
+  /** Fraction of 30d-active users with realized PnL > 0 (0..1). */
+  profitableUserPct30d: number;
 };
 
 /**
@@ -55,11 +69,20 @@ function promUrl(): string | null {
   return process.env.PROMETHEUS_URL?.trim() || null;
 }
 
+const PERCENTILE_ORDER: PercentileBucket["bucket"][] = [
+  "top1",
+  "p1_5",
+  "p5_10",
+  "p10_25",
+  "p25_50",
+  "rest",
+];
+
 /**
- * Fetch the 6 KPI values for the strip. Each query is bounded by a
- * sane abort signal; one missing gauge returns 0 rather than
- * propagating an error — the page still renders, the affected card
- * shows a long-dash placeholder which is honest about what's missing.
+ * Fetch the 6 KPI values for the strip + the Sprint-2 distribution
+ * vectors. Each query is bounded by a sane abort signal; one missing
+ * gauge returns 0/empty rather than propagating — the page still
+ * renders, the affected section is hidden cleanly.
  */
 export async function fetchHlBuilderStats(
   slug: string,
@@ -85,6 +108,9 @@ export async function fetchHlBuilderStats(
     milestone10k,
     milestone100k,
     milestone1m,
+    profitableUserPct30d,
+    coinSharesRaw,
+    percentileSharesRaw,
   ] = await Promise.all([
     prom.scalar(`hl_frontend_fees_usd_30d_v2${sel}`),
     prom.scalar(`hl_frontend_revenue_delta_pct_v2{builder="${slug}",window="30d"}`),
@@ -96,12 +122,11 @@ export async function fetchHlBuilderStats(
     prom.scalar(`hl_frontend_milestone_revenue_days_v2{builder="${slug}",threshold="10k"}`),
     prom.scalar(`hl_frontend_milestone_revenue_days_v2{builder="${slug}",threshold="100k"}`),
     prom.scalar(`hl_frontend_milestone_revenue_days_v2{builder="${slug}",threshold="1m"}`),
+    prom.scalar(`hl_frontend_profitable_user_pct_30d_v2${sel}`),
+    queryVector(prom, `hl_frontend_coin_volume_share_24h_v2${sel}`),
+    queryVector(prom, `hl_frontend_volume_by_percentile_30d_v2${sel}`),
   ]);
 
-  // A builder that has no series at all (= the bench Prom hasn't seen
-  // it under the slug=label, e.g. brand-new add) should fall through to
-  // the page's normal product layout rather than render a useless empty
-  // dashboard.
   if (
     revenue30d === null &&
     volume30d === null &&
@@ -112,6 +137,27 @@ export async function fetchHlBuilderStats(
 
   const rev = revenue30d ?? 0;
   const usr = users30d ?? 0;
+
+  const coinShares24h: CoinShare[] = (coinSharesRaw ?? [])
+    .map((s) => ({ coin: s.labels.coin ?? "?", share: s.value }))
+    .filter((s) => s.share > 0)
+    .sort((a, b) => {
+      // "other" sinks to the bottom no matter the share so the donut
+      // legend always reads top coins → other.
+      if (a.coin === "other") return 1;
+      if (b.coin === "other") return -1;
+      return b.share - a.share;
+    });
+
+  const byBucket = new Map<string, number>();
+  for (const s of percentileSharesRaw ?? []) {
+    const b = s.labels.bucket;
+    if (b) byBucket.set(b, s.value);
+  }
+  const percentileShares30d: PercentileBucket[] = PERCENTILE_ORDER.map(
+    (b) => ({ bucket: b, share: byBucket.get(b) ?? 0 }),
+  );
+
   return {
     slug,
     revenue30d: rev,
@@ -128,5 +174,36 @@ export async function fetchHlBuilderStats(
       "100k": milestone100k ?? -1,
       "1m": milestone1m ?? -1,
     },
+    coinShares24h,
+    percentileShares30d,
+    profitableUserPct30d: profitableUserPct30d ?? 0,
   };
+}
+
+/**
+ * Tiny vector helper. Returns `[{ labels, value }]` from an instant
+ * vector query, or empty on error/empty result. Kept local to this
+ * module because Sprint 2 is the only consumer; the broader Prometheus
+ * client only needs scalars.
+ */
+async function queryVector(
+  prom: Prometheus,
+  promql: string,
+): Promise<{ labels: Record<string, string>; value: number }[] | null> {
+  try {
+    const res = await prom.query(promql);
+    if (res.resultType !== "vector") return [];
+    return res.result
+      .map((r) => ({
+        labels: r.metric,
+        value: Number(r.value[1]),
+      }))
+      .filter((r) => Number.isFinite(r.value));
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err);
+    console.warn(
+      `prom.queryVector failed (${reason}) for query: ${promql.slice(0, 200)}`,
+    );
+    return null;
+  }
 }

@@ -1,14 +1,25 @@
+import Link from "next/link";
 import type { HlBuilderStats } from "@/lib/hl-builder-stats";
 import { HlPerformanceChart } from "@/components/hl-performance-chart";
+import { HlCoinDistribution } from "@/components/hl-coin-distribution";
+import { HlUserPercentile } from "@/components/hl-user-percentile";
+import { HlTopUsersTable } from "@/components/hl-top-users-table";
 
 /**
- * KPI strip + milestones row for one Hyperliquid frontend on its
- * /products/[slug] page. Server-rendered against the Sprint-1 Prom
- * gauges that hl-frontends-local exposes on the on-node harness.
+ * Per-builder HyperTracker-parity dashboard on /products/[slug].
  *
- * Layout target = HyperTracker's per-builder page header (Revenue /
- * Volume / Users with delta arrows + Annualised + $/user + cohort
- * share + a milestones row). Charts and tables ship in later phases.
+ * Layout (top → bottom):
+ *  1. KPI strip (Revenue / Volume / Users / $-per-user / Annualised /
+ *     cohort share)
+ *  2. Performance chart (30d daily revenue bars + users line)
+ *  3. Distribution row: coin donut + user percentile bar
+ *  4. Milestones row (biggest day, $10k/$100k/$1m crossings)
+ *  5. Top-traders leaderboard (paginated, 30d window)
+ *
+ * Server-rendered against the Sprint-1+2 Prom gauges exposed by the
+ * on-node harness. Charts that depend on the harness JSON endpoints
+ * (`daily-series`, `top-users`) are client components and degrade
+ * silently when the upstream is unreachable.
  */
 
 export function HlBuilderDashboard({
@@ -18,6 +29,10 @@ export function HlBuilderDashboard({
   stats: HlBuilderStats;
   name: string;
 }) {
+  const hasDistribution =
+    stats.coinShares24h.length > 0 ||
+    stats.percentileShares30d.some((b) => b.share > 0);
+
   return (
     <section className="mt-8 mb-12">
       <p className="label-mono text-ink-faint mb-3">
@@ -57,7 +72,24 @@ export function HlBuilderDashboard({
         />
       </div>
 
-      <HlPerformanceChart slug={stats.slug} />
+      <HlPerformanceChart
+        slug={stats.slug}
+        biggestDayUnix={stats.biggestDayUnix}
+      />
+
+      {hasDistribution && (
+        <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {stats.coinShares24h.length > 0 && (
+            <HlCoinDistribution shares={stats.coinShares24h} />
+          )}
+          {stats.percentileShares30d.some((b) => b.share > 0) && (
+            <HlUserPercentile
+              shares={stats.percentileShares30d}
+              profitablePct={stats.profitableUserPct30d}
+            />
+          )}
+        </div>
+      )}
 
       {(stats.biggestDayRevenue > 0 ||
         stats.milestoneDays["10k"] >= 0 ||
@@ -101,12 +133,14 @@ export function HlBuilderDashboard({
         </div>
       )}
 
+      <HlTopUsersTable slug={stats.slug} />
+
       <p className="mt-4 text-[11px] text-ink-faint italic">
         Source: local hl node tailing every fill on Hyperliquid mainnet for{" "}
-        {name}'s builder address. Refresh every 30s. Methodology:{" "}
-        <a href="/benchmarks/hyperliquid-frontends" className="underline">
+        {name}&apos;s builder address. Refresh every 30s. Methodology:{" "}
+        <Link href="/benchmarks/hyperliquid-frontends" className="underline">
           hyperliquid-frontends bench page
-        </a>
+        </Link>
         .
       </p>
     </section>
