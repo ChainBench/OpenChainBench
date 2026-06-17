@@ -1,18 +1,31 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 /**
- * Performance chart for a single Hyperliquid frontend: 30 daily revenue
- * bars + a unique-users line overlay. Mirrors the HyperTracker
- * "Performance" panel that ships above the builder's trader leaderboard.
- * Pure SVG (no recharts/D3 dependency) — the shape is fixed and the data
- * set is small (60 numbers).
+ * Per-builder Performance chart: 30 daily revenue bars + a unique-users
+ * line overlay. Matches HyperTracker's "Performance" panel but with the
+ * OpenChainBench palette and a tighter editorial feel.
  *
- * Client component: the data fetch hits /api/builder/<slug>/daily-series
- * after hydration so the server-side product page render stays fast. The
- * chart hides silently if the upstream node isn't reachable yet —
- * graceful degradation, not a broken section.
+ * Visual choices, in case a future refactor wants to revisit:
+ *   - Purple (#9d65ff) bars with a vertical gradient (lighter top), 3 px
+ *     rounded corners — reads as "revenue" without needing a legend
+ *     label hovering above each bar.
+ *   - Orange (#ff8a3d) users line over a soft area fill so the trend is
+ *     immediately readable as the secondary measure, even when the bars
+ *     are tall.
+ *   - Two-color glow dots (white outer ring, orange fill) — they stay
+ *     visible on hover without an opaque tooltip stealing focus.
+ *   - Biggest-day vertical guide rendered from the harness'
+ *     `biggest_day_unix` so the milestone story is visible right inside
+ *     the canvas, not just in the milestone row below.
+ *   - Crosshair + floating tooltip on hover. Pure React state.
+ *   - Stays a single SVG — no recharts/D3 — the shape is fixed and we
+ *     are rendering 60 numbers.
+ *
+ * Client component because the data fetch hits the on-node harness
+ * after hydration. Hides silently if the upstream isn't reachable
+ * (graceful degradation, not a broken section).
  */
 
 type Point = {
@@ -30,10 +43,17 @@ type Payload = {
   points: Point[];
 };
 
-const BAR_COLOR = "var(--color-accent, #7a2e1f)";
-const LINE_COLOR = "#3b82f6";
+const REVENUE_COLOR = "#9d65ff";
+const REVENUE_COLOR_TOP = "#bca0ff";
+const USERS_COLOR = "#ff8a3d";
 
-export function HlPerformanceChart({ slug }: { slug: string }) {
+export function HlPerformanceChart({
+  slug,
+  biggestDayUnix,
+}: {
+  slug: string;
+  biggestDayUnix?: number;
+}) {
   const [data, setData] = useState<Payload | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -63,45 +83,71 @@ export function HlPerformanceChart({ slug }: { slug: string }) {
   }
   if (!data) {
     return (
-      <div className="mt-6 card-soft rounded-lg p-4 border border-ink/10 h-[300px] animate-pulse" />
+      <div className="mt-6 card-soft rounded-xl p-4 border border-ink/10 h-[340px] animate-pulse" />
     );
   }
   if (data.points.length === 0) return null;
 
-  return <ChartCanvas data={data} />;
+  return <ChartCanvas data={data} biggestDayUnix={biggestDayUnix} />;
 }
 
-function ChartCanvas({ data }: { data: Payload }) {
+function ChartCanvas({
+  data,
+  biggestDayUnix,
+}: {
+  data: Payload;
+  biggestDayUnix?: number;
+}) {
   const W = 1100;
-  const H = 320;
-  const PAD_L = 56;
-  const PAD_R = 56;
-  const PAD_T = 24;
-  const PAD_B = 48;
+  const H = 340;
+  const PAD_L = 60;
+  const PAD_R = 60;
+  const PAD_T = 28;
+  const PAD_B = 56;
 
   const plotW = W - PAD_L - PAD_R;
   const plotH = H - PAD_T - PAD_B;
   const n = data.points.length;
 
-  const maxFees = Math.max(...data.points.map((p) => p.fees_usd), 0);
-  const maxUsers = Math.max(...data.points.map((p) => p.users), 0);
+  const maxFees = useMemo(
+    () => Math.max(...data.points.map((p) => p.fees_usd), 0),
+    [data.points],
+  );
+  const maxUsers = useMemo(
+    () => Math.max(...data.points.map((p) => p.users), 0),
+    [data.points],
+  );
 
-  const totalFees30d = data.points.reduce((a, p) => a + p.fees_usd, 0);
-  const peakUsers = Math.max(...data.points.map((p) => p.users));
-
-  const barW = Math.max(4, plotW / n - 4);
-  const xFor = (i: number) => PAD_L + (plotW * i) / Math.max(n - 1, 1);
-  const yBar = (v: number) =>
-    PAD_T + plotH - (maxFees > 0 ? (v / maxFees) * plotH : 0);
-  const yLine = (v: number) =>
-    PAD_T + plotH - (maxUsers > 0 ? (v / maxUsers) * plotH : 0);
+  const totalFees30d = useMemo(
+    () => data.points.reduce((a, p) => a + p.fees_usd, 0),
+    [data.points],
+  );
+  const totalVol30d = useMemo(
+    () => data.points.reduce((a, p) => a + p.volume_usd, 0),
+    [data.points],
+  );
+  const peakUsers = useMemo(
+    () => Math.max(...data.points.map((p) => p.users)),
+    [data.points],
+  );
 
   const niceMaxFees = niceMax(maxFees);
   const niceMaxUsers = niceMax(maxUsers);
+
+  const barW = Math.max(6, plotW / n - 6);
+  const xFor = (i: number) => PAD_L + (plotW * (i + 0.5)) / n;
+  const yBar = (v: number) =>
+    PAD_T + plotH - (niceMaxFees > 0 ? (v / niceMaxFees) * plotH : 0);
+  const yLine = (v: number) =>
+    PAD_T + plotH - (niceMaxUsers > 0 ? (v / niceMaxUsers) * plotH : 0);
+
   const ticks = [0, 0.25, 0.5, 0.75, 1.0];
+  const xLabelEvery = Math.max(1, Math.ceil(n / 7));
 
-  const xLabelEvery = Math.max(1, Math.ceil(n / 6));
-
+  // Smooth-ish poly-line over discrete daily samples. We keep straight
+  // segments rather than cardinal splines so the line never overshoots
+  // and never implies an interpolation that didn't happen — but we use
+  // a subtle stroke-linejoin "round" for visual cohesion.
   const linePath = data.points
     .map(
       (p, i) =>
@@ -109,41 +155,115 @@ function ChartCanvas({ data }: { data: Payload }) {
     )
     .join(" ");
 
+  // Area path: same poly-line, closed back to the baseline.
+  const areaPath = `${linePath} L ${xFor(n - 1).toFixed(1)} ${(PAD_T + plotH).toFixed(1)} L ${xFor(0).toFixed(1)} ${(PAD_T + plotH).toFixed(1)} Z`;
+
+  // Biggest day annotation. Falls back to scanning the series if the
+  // server didn't tell us (e.g. partial backfill, gauge not populated).
+  const biggestIdx = useMemo(() => {
+    if (biggestDayUnix && biggestDayUnix > 0) {
+      const found = data.points.findIndex(
+        (p) => Math.abs(p.day_unix - biggestDayUnix) < 86400,
+      );
+      if (found >= 0) return found;
+    }
+    let bestI = -1;
+    let bestV = 0;
+    for (let i = 0; i < data.points.length; i++) {
+      if (data.points[i].fees_usd > bestV) {
+        bestV = data.points[i].fees_usd;
+        bestI = i;
+      }
+    }
+    return bestI;
+  }, [data.points, biggestDayUnix]);
+
+  // Hover state. We track the index of the hovered bar (the bar a
+  // pointer x-coord falls into) and the bounding rect to position the
+  // floating tooltip. SVG -> screen coords is done with getBoundingClientRect.
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [hover, setHover] = useState<number | null>(null);
+
+  const onMove: React.PointerEventHandler<SVGSVGElement> = (e) => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const rect = svg.getBoundingClientRect();
+    const xRatio = (e.clientX - rect.left) / rect.width;
+    const px = xRatio * W;
+    if (px < PAD_L || px > W - PAD_R) {
+      setHover(null);
+      return;
+    }
+    const i = Math.min(n - 1, Math.max(0, Math.floor(((px - PAD_L) / plotW) * n)));
+    setHover(i);
+  };
+
   return (
-    <div className="mt-6 card-soft rounded-lg p-4 sm:p-6 border border-ink/10">
-      <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
+    <div
+      className="mt-6 rounded-xl p-4 sm:p-6 border border-ink/10"
+      style={{
+        background:
+          "linear-gradient(180deg, rgba(157,101,255,0.05), rgba(157,101,255,0.01) 60%, transparent)",
+        boxShadow:
+          "0 1px 0 rgba(0,0,0,0.02), 0 8px 24px -16px rgba(60,40,110,0.18)",
+      }}
+    >
+      <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
         <div>
           <p className="label-mono text-[10px] text-ink-faint">
             Performance · last 30d
           </p>
           <p className="text-sm text-ink-faint mt-0.5">
-            Daily revenue + unique users
+            Daily builder revenue and unique active users
           </p>
         </div>
         <div className="flex items-center gap-4 text-[11px]">
           <span className="flex items-center gap-1.5">
             <span
-              className="inline-block w-3 h-3 rounded-sm"
-              style={{ background: BAR_COLOR }}
+              className="inline-block w-3 h-3 rounded-[3px]"
+              style={{
+                background: `linear-gradient(180deg, ${REVENUE_COLOR_TOP}, ${REVENUE_COLOR})`,
+              }}
             />
-            Revenue
+            <span className="font-medium text-ink">Revenue</span>
           </span>
           <span className="flex items-center gap-1.5">
             <span
-              className="inline-block w-3 h-0.5"
-              style={{ background: LINE_COLOR }}
+              className="inline-block w-3 h-3 rounded-full border border-paper"
+              style={{
+                background: USERS_COLOR,
+                boxShadow: `0 0 0 1.5px ${USERS_COLOR}33`,
+              }}
             />
-            Users
+            <span className="font-medium text-ink">Users</span>
           </span>
         </div>
       </div>
 
-      <div className="w-full overflow-x-auto">
+      <div className="relative w-full overflow-hidden">
         <svg
+          ref={svgRef}
           viewBox={`0 0 ${W} ${H}`}
-          className="w-full h-[300px] sm:h-[320px]"
+          className="w-full h-[300px] sm:h-[340px] block"
           preserveAspectRatio="none"
+          onPointerMove={onMove}
+          onPointerLeave={() => setHover(null)}
         >
+          <defs>
+            <linearGradient id="hl-rev-grad" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stopColor={REVENUE_COLOR_TOP} stopOpacity={0.95} />
+              <stop offset="100%" stopColor={REVENUE_COLOR} stopOpacity={0.85} />
+            </linearGradient>
+            <linearGradient id="hl-rev-grad-hover" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stopColor="#d6c2ff" stopOpacity={1} />
+              <stop offset="100%" stopColor={REVENUE_COLOR} stopOpacity={1} />
+            </linearGradient>
+            <linearGradient id="hl-users-area" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stopColor={USERS_COLOR} stopOpacity={0.28} />
+              <stop offset="100%" stopColor={USERS_COLOR} stopOpacity={0} />
+            </linearGradient>
+          </defs>
+
           {ticks.map((t) => {
             const y = PAD_T + plotH * (1 - t);
             const valFees = niceMaxFees * t;
@@ -156,22 +276,25 @@ function ChartCanvas({ data }: { data: Payload }) {
                   y1={y}
                   y2={y}
                   stroke="currentColor"
-                  className="text-ink/10"
+                  className="text-ink/8"
                   strokeWidth={1}
+                  strokeDasharray={t === 0 ? "0" : "2 4"}
                 />
                 <text
-                  x={PAD_L - 6}
+                  x={PAD_L - 8}
                   y={y + 3}
                   textAnchor="end"
-                  className="fill-ink-faint text-[10px]"
+                  style={{ fontFamily: "var(--font-mono, monospace)" }}
+                  className="fill-ink-faint text-[10px] tabular-nums"
                 >
                   {fmtUSDShort(valFees)}
                 </text>
                 <text
-                  x={W - PAD_R + 6}
+                  x={W - PAD_R + 8}
                   y={y + 3}
                   textAnchor="start"
-                  className="fill-ink-faint text-[10px]"
+                  style={{ fontFamily: "var(--font-mono, monospace)" }}
+                  className="fill-ink-faint text-[10px] tabular-nums"
                 >
                   {fmtCountShort(valUsers)}
                 </text>
@@ -179,10 +302,42 @@ function ChartCanvas({ data }: { data: Payload }) {
             );
           })}
 
+          <path d={areaPath} fill="url(#hl-users-area)" />
+
+          {biggestIdx >= 0 && (
+            <g>
+              <line
+                x1={xFor(biggestIdx)}
+                x2={xFor(biggestIdx)}
+                y1={PAD_T - 4}
+                y2={PAD_T + plotH}
+                stroke={REVENUE_COLOR}
+                strokeWidth={1}
+                strokeDasharray="3 3"
+                opacity={0.55}
+              />
+              <text
+                x={xFor(biggestIdx)}
+                y={PAD_T - 8}
+                textAnchor="middle"
+                style={{
+                  fontFamily: "var(--font-mono, monospace)",
+                  fontSize: 9.5,
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  fill: REVENUE_COLOR,
+                }}
+              >
+                ★ biggest day
+              </text>
+            </g>
+          )}
+
           {data.points.map((p, i) => {
             const x = xFor(i) - barW / 2;
             const y = yBar(p.fees_usd);
             const h = PAD_T + plotH - y;
+            const isHovered = hover === i;
             return (
               <rect
                 key={p.day_unix}
@@ -190,8 +345,11 @@ function ChartCanvas({ data }: { data: Payload }) {
                 y={y}
                 width={barW}
                 height={Math.max(1, h)}
-                fill={BAR_COLOR}
-                opacity={0.85}
+                rx={Math.min(3, barW / 2)}
+                ry={Math.min(3, barW / 2)}
+                fill={isHovered ? "url(#hl-rev-grad-hover)" : "url(#hl-rev-grad)"}
+                opacity={hover === null ? 1 : isHovered ? 1 : 0.55}
+                style={{ transition: "opacity 120ms ease-out" }}
               />
             );
           })}
@@ -199,51 +357,203 @@ function ChartCanvas({ data }: { data: Payload }) {
           <path
             d={linePath}
             fill="none"
-            stroke={LINE_COLOR}
-            strokeWidth={2}
+            stroke={USERS_COLOR}
+            strokeWidth={2.25}
+            strokeLinecap="round"
+            strokeLinejoin="round"
           />
-          {data.points.map((p, i) => (
-            <circle
-              key={p.day_unix}
-              cx={xFor(i)}
-              cy={yLine(p.users)}
-              r={2.5}
-              fill={LINE_COLOR}
+          {data.points.map((p, i) => {
+            const isHovered = hover === i;
+            return (
+              <g key={p.day_unix}>
+                <circle
+                  cx={xFor(i)}
+                  cy={yLine(p.users)}
+                  r={isHovered ? 5 : 3.2}
+                  fill="var(--color-paper, #fff)"
+                  opacity={hover === null || isHovered ? 1 : 0.7}
+                />
+                <circle
+                  cx={xFor(i)}
+                  cy={yLine(p.users)}
+                  r={isHovered ? 3.4 : 2}
+                  fill={USERS_COLOR}
+                />
+              </g>
+            );
+          })}
+
+          {hover !== null && (
+            <line
+              x1={xFor(hover)}
+              x2={xFor(hover)}
+              y1={PAD_T}
+              y2={PAD_T + plotH}
+              stroke="currentColor"
+              className="text-ink/25"
+              strokeWidth={1}
+              strokeDasharray="2 2"
             />
-          ))}
+          )}
 
           {data.points.map((p, i) =>
             i % xLabelEvery === 0 || i === n - 1 ? (
               <text
                 key={p.day_unix}
                 x={xFor(i)}
-                y={H - PAD_B + 14}
+                y={H - PAD_B + 18}
                 textAnchor="middle"
-                className="fill-ink-faint text-[10px]"
+                style={{ fontFamily: "var(--font-mono, monospace)" }}
+                className="fill-ink-faint text-[10px] tabular-nums"
+                transform={`rotate(-12 ${xFor(i)} ${H - PAD_B + 18})`}
               >
                 {fmtShortDate(p.date)}
               </text>
             ) : null,
           )}
         </svg>
+
+        {hover !== null && (
+          <Tooltip
+            point={data.points[hover]}
+            isBiggest={hover === biggestIdx}
+            xFrac={xFor(hover) / W}
+            yFrac={Math.min(yBar(data.points[hover].fees_usd), yLine(data.points[hover].users)) / H}
+          />
+        )}
       </div>
 
-      <div className="mt-3 flex items-center justify-between text-xs text-ink-faint flex-wrap gap-x-4">
-        <span>
-          Σ Revenue 30d:{" "}
-          <span className="text-ink font-semibold">{fmtUSD(totalFees30d)}</span>
+      <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-[12px]">
+        <Stat
+          label="Revenue 30d"
+          value={fmtUSD(totalFees30d)}
+          accent={REVENUE_COLOR}
+        />
+        <Stat label="Volume 30d" value={fmtUSD(totalVol30d)} />
+        <Stat
+          label="Peak users / day"
+          value={fmtCountShort(peakUsers)}
+          accent={USERS_COLOR}
+        />
+        <Stat
+          label="As of"
+          value={new Date(data.as_of * 1000).toUTCString().slice(5, 25) + " UTC"}
+          mono
+        />
+      </div>
+    </div>
+  );
+}
+
+function Tooltip({
+  point,
+  isBiggest,
+  xFrac,
+  yFrac,
+}: {
+  point: Point;
+  isBiggest: boolean;
+  xFrac: number;
+  yFrac: number;
+}) {
+  // Position over the canvas in % units — keeps it sticky as the svg
+  // scales responsively. Clamp so the card doesn't run off either edge.
+  const left = Math.max(4, Math.min(96, xFrac * 100));
+  const top = Math.max(6, yFrac * 100 - 6);
+  const flipX = left > 70;
+  return (
+    <div
+      className="pointer-events-none absolute z-10 rounded-lg border border-ink/15 bg-paper shadow-lg px-3 py-2 text-[11.5px]"
+      style={{
+        left: `${left}%`,
+        top: `${top}%`,
+        transform: `translate(${flipX ? "-100%" : "0%"}, -100%) translateX(${flipX ? -8 : 8}px) translateY(-6px)`,
+        minWidth: 168,
+      }}
+    >
+      <div className="flex items-center justify-between gap-3 mb-1">
+        <span
+          className="label-mono text-[10px] text-ink-faint"
+          style={{ fontFamily: "var(--font-mono, monospace)" }}
+        >
+          {point.date}
         </span>
-        <span>
-          Peak users in a day:{" "}
-          <span className="text-ink font-semibold">
-            {fmtCountShort(peakUsers)}
+        {isBiggest && (
+          <span
+            className="text-[9px] uppercase tracking-wide font-semibold rounded px-1.5 py-0.5"
+            style={{ background: `${REVENUE_COLOR}22`, color: REVENUE_COLOR }}
+          >
+            ★ biggest
           </span>
+        )}
+      </div>
+      <div className="flex items-center justify-between gap-3 leading-tight">
+        <span className="flex items-center gap-1.5">
+          <span
+            className="inline-block w-2.5 h-2.5 rounded-sm"
+            style={{
+              background: `linear-gradient(180deg, ${REVENUE_COLOR_TOP}, ${REVENUE_COLOR})`,
+            }}
+          />
+          <span className="text-ink-faint">Revenue</span>
         </span>
-        <span>
-          Data as of{" "}
-          {new Date(data.as_of * 1000).toUTCString().slice(17, 25)} UTC
+        <span className="font-semibold tabular-nums">
+          {fmtUSD(point.fees_usd)}
         </span>
       </div>
+      <div className="flex items-center justify-between gap-3 leading-tight mt-0.5">
+        <span className="flex items-center gap-1.5">
+          <span
+            className="inline-block w-2.5 h-2.5 rounded-full"
+            style={{ background: USERS_COLOR }}
+          />
+          <span className="text-ink-faint">Users</span>
+        </span>
+        <span className="font-semibold tabular-nums">
+          {fmtCountShort(point.users)}
+        </span>
+      </div>
+      <div className="flex items-center justify-between gap-3 leading-tight mt-0.5">
+        <span className="text-ink-faint">Volume</span>
+        <span className="font-semibold tabular-nums">
+          {fmtUSD(point.volume_usd)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function Stat({
+  label,
+  value,
+  accent,
+  mono,
+}: {
+  label: string;
+  value: string;
+  accent?: string;
+  mono?: boolean;
+}) {
+  return (
+    <div className="rounded-md border border-ink/8 bg-paper/60 px-3 py-2">
+      <p
+        className="label-mono text-[9.5px] text-ink-faint uppercase tracking-wide flex items-center gap-1.5"
+        style={{ fontFamily: "var(--font-mono, monospace)" }}
+      >
+        {accent && (
+          <span
+            className="inline-block w-2 h-2 rounded-full"
+            style={{ background: accent }}
+          />
+        )}
+        {label}
+      </p>
+      <p
+        className={`mt-0.5 text-sm font-semibold tabular-nums ${mono ? "" : ""}`}
+        style={mono ? { fontFamily: "var(--font-mono, monospace)" } : undefined}
+      >
+        {value}
+      </p>
     </div>
   );
 }
