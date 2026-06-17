@@ -9,14 +9,22 @@ import { getProviderSlugs } from "@/lib/providers";
 import { SITE } from "@/data/site";
 
 // Was previously `force-static` + `revalidate: false`, which baked the
-// sitemap at build time and never refreshed it. That dropped freshly
-// added benches (l1-finality, network-fees, etc.) from the sitemap for
-// every subsequent crawl until someone redeployed, which produced an
-// impressions cliff in Search Console because Google deprioritized
-// every URL the sitemap stopped listing. Hourly ISR keeps the YAML
-// list, lastmod tags and chain variants accurate without paying a Prom
-// query on every Google crawler hit.
-export const revalidate = 3600;
+// sitemap at build time and never refreshed it (dropped freshly added
+// benches from the sitemap until someone redeployed, impressions cliff
+// in Search Console).
+//
+// Then we used `revalidate: 3600` — until the sitemap grew past 2.4 MB
+// once the HL frontends bench shipped 104 builders × multiple route
+// variants. Next's Data Cache (unstable_cache) hard-caps at 2 MB per
+// item, and every staging+prod build failed with "items over 2MB can
+// not be cached … Failed to build /sitemap.xml/route after 3 attempts".
+//
+// Switch to `force-dynamic`: the route runs at request time, never goes
+// through the 2 MB Data Cache, and the explicit Cache-Control header
+// emitted below tells Vercel's CDN to hold the output for an hour
+// edge-side (s-maxage 3600 + stale-while-revalidate). Crawlers see the
+// same freshness contract as before, builds stop crashing.
+export const dynamic = "force-dynamic";
 
 // Sitemap lastmod strategy. The previous version hardcoded one
 // SITE_LAST_EDIT constant for every editorial URL, which meant Google
