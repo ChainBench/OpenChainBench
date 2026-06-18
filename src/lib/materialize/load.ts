@@ -13,7 +13,6 @@ import path from "node:path";
 import yaml from "js-yaml";
 import type {
   Benchmark,
-  CellRankEntry,
   MetricPanel,
   ProviderResult,
 } from "@/types/benchmark";
@@ -26,6 +25,24 @@ import {
   SECONDS_PER_HOUR,
   SECONDS_PER_MINUTE,
 } from "@/lib/time-constants";
+import {
+  activeFilterLabels,
+  filterSig,
+  parseFilterSig,
+  type BenchmarkFilters,
+} from "@/lib/materialize/filters";
+import {
+  applyDimensionsToSpec,
+  escapePromLabelValue,
+  injectLabels,
+  parseDurationSec,
+} from "@/lib/materialize/prom-queries";
+import {
+  buildEditorial,
+  draftBenchmark,
+  draftPlaceholderForSpec,
+} from "@/lib/materialize/editorial";
+import { tryLoadCellRanks } from "@/lib/materialize/cell-ranks";
 
 /** Overridable so the worker can run with a different cwd. */
 const SPECS_DIR =
@@ -39,32 +56,17 @@ export type LoadHooks = {
   onRendered?: (b: Benchmark) => void;
 };
 
-export type BenchmarkFilters = {
-  chain?: string;
-  region?: string;
-  kind?: string;
+// Re-exports: spec.ts and other call sites import these from
+// "@/lib/materialize/load". Keep the surface stable.
+export {
+  buildEditorial,
+  draftPlaceholderForSpec,
+  filterSig,
+  injectLabels,
+  parseFilterSig,
 };
+export type { BenchmarkFilters };
 
-export function filterSig(f: BenchmarkFilters): string {
-  // Stable ordering, ignore "all" / undefined which mean "no filter".
-  const parts: string[] = [];
-  for (const k of Object.keys(f).sort()) {
-    const v = (f as Record<string, string | undefined>)[k];
-    if (v && v !== "all") parts.push(`${k}=${v}`);
-  }
-  return parts.join("&");
-}
-export function parseFilterSig(sig: string): BenchmarkFilters {
-  const out: BenchmarkFilters = {};
-  if (!sig) return out;
-  for (const kv of sig.split("&")) {
-    const [k, v] = kv.split("=");
-    if (k && v && (k === "chain" || k === "region" || k === "kind")) {
-      out[k as "chain" | "region" | "kind"] = v;
-    }
-  }
-  return out;
-}
 export async function loadSpecsUncached(): Promise<Spec[]> {
   let files: string[] = [];
   try {
@@ -87,42 +89,6 @@ export async function loadSpecsUncached(): Promise<Spec[]> {
     })
   );
   return parsed.filter((s): s is Spec => s !== null);
-}
-
-export function buildEditorial(
-  spec: Spec,
-): Omit<Benchmark, "results" | "extras" | "sampleSize" | "lastRunAt"> {
-  return {
-    slug: spec.slug,
-    number: spec.number,
-    title: spec.title,
-    seoTitle: spec.seo_title,
-    seoDescription: spec.seo_description,
-    seoIntro: spec.seo_intro,
-    disclaimer: spec.disclaimer,
-    faq: spec.faq,
-    perChainExplainer: spec.per_chain_explainer,
-    subtitle: spec.subtitle,
-    category: spec.category,
-    status: spec.status,
-    editorialStatus: spec.status,
-    metric: spec.metric,
-    unit: spec.unit,
-    higherIsBetter: spec.higher_is_better,
-    abstract: spec.abstract,
-    methodology: spec.methodology,
-    findings: spec.findings,
-    source: spec.source,
-    dimensions: spec.dimensions,
-    ledgerColumns: spec.ledger_columns,
-  };
-}
-
-// Used by the per-bench cache aggregator when a single bench fully fails
-// (cold start + Prom blackout, no previous cache to preserve). Renders a
-// draft placeholder so the page still works.
-export function draftPlaceholderForSpec(spec: Spec): Benchmark {
-  return draftBenchmark(spec, buildEditorial(spec));
 }
 
 export async function specToBenchmark(
@@ -291,225 +257,6 @@ export async function specToBenchmark(
     return rendered;
   }
   return draftBenchmark(spec, editorial);
-}
-
-function activeFilterLabels(opts: BenchmarkFilters): Record<string, string> {
-  const out: Record<string, string> = {};
-  for (const [k, v] of Object.entries(opts)) {
-    if (v && v !== "all") out[k] = v;
-  }
-  return out;
-}
-
-/**
- * Run the spec's `rank_matrix_query` (one instant vector with a sample per
- * (provider[, chain][, region])) and fold it into full per-cell rankings.
- *
- * Output keys are `<chain>|<region>` with "all" standing in for an
- * undeclared dimension. When BOTH dimensions are declared, marginal cells
- * (`<chain>|all`, `all|<region>`) are derived by averaging a provider's
- * finest-cell values over the collapsed dimension — same semantics as the
- * bench page's unscoped `avg(...)` headline queries.
- *
- * Samples whose provider label doesn't match a spec provider slug, or
- * whose chain/region label isn't a declared dimension value, are dropped:
- * the matrix is unfiltered PromQL, so stray series (retired providers,
- * staging labels) must not leak into rankings.
- */
-async function tryLoadCellRanks(
-  spec: Spec,
-): Promise<Record<string, CellRankEntry[]> | undefined> {
-  if (!spec.rank_matrix_query) return undefined;
-  const url = spec.prometheus?.url ?? process.env.PROMETHEUS_URL;
-  if (!url) return undefined;
-  try {
-    const prom = getPrometheus(url);
-    const res = await prom.query(spec.rank_matrix_query);
-    if (res.resultType !== "vector") return undefined;
-
-    const slugByLower = new Map(
-      spec.providers.map((p) => [p.slug.toLowerCase(), p.slug] as const),
-    );
-    // Canonical dimension value by lowercase, so a harness emitting
-    // `chain="Base"` still maps onto the declared `base` value instead
-    // of silently dropping the cell.
-    const chainByLower = new Map(
-      (spec.dimensions?.chain ?? [])
-        .filter((c) => c.value !== "all")
-        .map((c) => [c.value.toLowerCase(), c.value] as const),
-    );
-    const regionByLower = new Map(
-      (spec.dimensions?.region ?? [])
-        .filter((r) => r.value !== "all")
-        .map((r) => [r.value.toLowerCase(), r.value] as const),
-    );
-
-    // key → provider slug → samples (averaged if the grouping left
-    // residual label splits, e.g. multiple replicas per region).
-    const acc = new Map<string, Map<string, number[]>>();
-    for (const sample of res.result) {
-      const slug = slugByLower.get((sample.metric.provider ?? "").toLowerCase());
-      if (!slug) continue;
-      const chain =
-        chainByLower.size > 0
-          ? chainByLower.get((sample.metric.chain ?? "").toLowerCase())
-          : undefined;
-      const region =
-        regionByLower.size > 0
-          ? regionByLower.get((sample.metric.region ?? "").toLowerCase())
-          : undefined;
-      if (chainByLower.size > 0 && !chain) continue;
-      if (regionByLower.size > 0 && !region) continue;
-      const v = Number(sample.value[1]);
-      if (!Number.isFinite(v) || v <= 0) continue;
-      const key = `${chain ?? "all"}|${region ?? "all"}`;
-      const cell = acc.get(key) ?? new Map<string, number[]>();
-      const vals = cell.get(slug) ?? [];
-      vals.push(v);
-      cell.set(slug, vals);
-      acc.set(key, cell);
-    }
-    if (acc.size === 0) return undefined;
-
-    const mean = (vals: number[]) =>
-      vals.reduce((a, b) => a + b, 0) / vals.length;
-    const sortCell = (cell: Map<string, number[]>): CellRankEntry[] =>
-      [...cell.entries()]
-        .map(([slug, vals]) => ({ slug, p50: mean(vals) }))
-        .sort((a, b) =>
-          spec.higher_is_better ? b.p50 - a.p50 : a.p50 - b.p50,
-        );
-
-    const out: Record<string, CellRankEntry[]> = {};
-    for (const [key, cell] of acc) out[key] = sortCell(cell);
-
-    // Marginals, only when both dimensions exist in the finest cells.
-    // A provider only enters a marginal if it covers EVERY cell of the
-    // collapsed dimension that exists for that row/column. Without this,
-    // a provider measured only from its fastest region wins the
-    // `<chain>|all` average by omission (Simpson's bias), and the badge
-    // for "leads chain X" disagrees with the per-cell wins that earned it.
-    if (chainByLower.size > 0 && regionByLower.size > 0) {
-      const regionsOfChain = new Map<string, Set<string>>();
-      const chainsOfRegion = new Map<string, Set<string>>();
-      for (const key of acc.keys()) {
-        const [chain, region] = key.split("|");
-        (regionsOfChain.get(chain) ?? regionsOfChain.set(chain, new Set()).get(chain)!).add(region);
-        (chainsOfRegion.get(region) ?? chainsOfRegion.set(region, new Set()).get(region)!).add(chain);
-      }
-      const marginalFor = (
-        groups: Map<string, Set<string>>,
-        keyOf: (group: string, member: string) => string,
-        mKeyOf: (group: string) => string,
-      ) => {
-        for (const [group, members] of groups) {
-          const cell = new Map<string, number[]>();
-          // Providers present in every member cell of the group.
-          let eligible: Set<string> | undefined;
-          for (const member of members) {
-            const slugs = new Set(acc.get(keyOf(group, member))?.keys() ?? []);
-            eligible = eligible
-              ? new Set([...eligible].filter((s) => slugs.has(s)))
-              : slugs;
-          }
-          for (const slug of eligible ?? []) {
-            const vals: number[] = [];
-            for (const member of members) {
-              const v = acc.get(keyOf(group, member))?.get(slug);
-              if (v) vals.push(mean(v));
-            }
-            if (vals.length > 0) cell.set(slug, [mean(vals)]);
-          }
-          if (cell.size > 0) out[mKeyOf(group)] = sortCell(cell);
-        }
-      };
-      marginalFor(
-        regionsOfChain,
-        (chain, region) => `${chain}|${region}`,
-        (chain) => `${chain}|all`,
-      );
-      marginalFor(
-        chainsOfRegion,
-        (region, chain) => `${chain}|${region}`,
-        (region) => `all|${region}`,
-      );
-    }
-    return out;
-  } catch (e) {
-    console.warn(
-      `cellRanks skip: ${spec.slug} matrix query failed: ${e instanceof Error ? e.message : String(e)}`,
-    );
-    return undefined;
-  }
-}
-
-/** Inject every active `<label>="<value>"` into every PromQL label selector
- * across the spec's provider queries (including per-region subqueries).
- * Skips selectors that already filter by a given label. */
-function applyDimensionsToSpec(spec: Spec, labels: Record<string, string>): Spec {
-  const inject = (q: string | undefined) => (q ? injectLabels(q, labels) : q);
-  return {
-    ...spec,
-    // Panels declare a bare metric name (or metric{sel}); normalize to the
-    // braced form so dimension labels (chain=..., region=...) reach them
-    // like every provider query. Without this a panel on a chain-dimensioned
-    // bench silently mixes every chain's series.
-    metric_panels: spec.metric_panels?.map((panel) => ({
-      ...panel,
-      metric: injectLabels(
-        panel.metric.includes("{") ? panel.metric : `${panel.metric}{}`,
-        labels,
-      ),
-    })),
-    providers: spec.providers.map((p) => ({
-      ...p,
-      queries: p.queries
-        ? {
-            ...p.queries,
-            p50: inject(p.queries.p50),
-            p90: inject(p.queries.p90),
-            p99: inject(p.queries.p99),
-            mean: inject(p.queries.mean),
-            success: inject(p.queries.success),
-            sample_size: inject(p.queries.sample_size),
-            series: inject(p.queries.series),
-            regions: p.queries.regions?.map((r) => ({
-              ...r,
-              p50: inject(r.p50),
-              series: inject(r.series),
-            })),
-          }
-        : p.queries,
-    })),
-  };
-}
-
-export function injectLabels(query: string, labels: Record<string, string>): string {
-  return query.replace(/\{([^}]*)\}/g, (_, inside: string) => {
-    const additions: string[] = [];
-    for (const [k, v] of Object.entries(labels)) {
-      const present = new RegExp(`\\b${escapeRe(k)}\\s*=`).test(inside);
-      if (!present) additions.push(`${k}="${escapePromLabelValue(v)}"`);
-    }
-    if (additions.length === 0) return `{${inside}}`;
-    const trimmed = inside.trim();
-    if (trimmed === "") return `{${additions.join(",")}}`;
-    return `{${inside.replace(/\s*$/, "")},${additions.join(",")}}`;
-  });
-}
-
-function escapeRe(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-/** PromQL label values are double-quoted strings. Escape backslash and
- *  double-quote so a URL-supplied filter value can never break out of the
- *  selector and inject extra label matchers. Newlines stripped for safety. */
-function escapePromLabelValue(v: string): string {
-  return v
-    .replace(/\\/g, "\\\\")
-    .replace(/"/g, '\\"')
-    .replace(/[\r\n]/g, "");
 }
 
 async function tryLoadLive(
@@ -789,40 +536,3 @@ async function tryLoadLive(
     return null;
   }
 }
-
-function draftBenchmark(
-  spec: Spec,
-  editorial: Omit<Benchmark, "results" | "extras" | "sampleSize" | "lastRunAt">
-): Benchmark {
-  // Render the page even when Prometheus has no data yet. the editorial
-  // metadata is still useful, and the results section shows "awaiting first
-  // run" so readers know what's happening.
-  const results: ProviderResult[] = spec.providers.map((p) => ({
-    name: p.name,
-    slug: p.slug,
-    tag: p.tag,
-    type: p.type,
-    layer: p.layer,
-    ms: { p50: 0, p90: 0, p99: 0, mean: 0 },
-    successRate: 0,
-    secondary: p.secondary,
-    formula: p.formula,
-  }));
-  return {
-    ...editorial,
-    status: "draft",
-    results,
-    extras: { series24h: {}, regions: {} },
-    sampleSize: 0,
-    lastRunAt: new Date().toISOString(),
-  };
-}
-
-function parseDurationSec(d: string): number | null {
-  const m = /^(\d+)([smhd])$/.exec(d.trim());
-  if (!m) return null;
-  const n = Number(m[1]);
-  const unit = m[2];
-  return n * { s: 1, m: SECONDS_PER_MINUTE, h: SECONDS_PER_HOUR, d: SECONDS_PER_DAY }[unit as "s" | "m" | "h" | "d"];
-}
-

@@ -7,7 +7,7 @@ import { Breadcrumb } from "@/components/breadcrumb";
 import { liveResults } from "@/lib/provider-filters";
 import { rankResults } from "@/lib/ranking";
 import { fmtUnit } from "@/lib/format";
-import { capDescription } from "@/lib/seo-text";
+import { capDescription, stripInlineMarkdown } from "@/lib/seo-text";
 import { SITE } from "@/data/site";
 import { pageMetadata } from "@/lib/page-metadata";
 import { buildBreadcrumbJsonLd, safeJsonLd } from "@/lib/jsonld";
@@ -176,18 +176,6 @@ async function loadChainPage(
     leader,
     regionLeaders,
   };
-}
-
-/** Meta descriptions must not leak inline markdown from the YAML body
- *  (backticks around RPC method names, bold, links). */
-function stripInlineMarkdown(text: string): string {
-  return text
-    .replace(/`([^`]*)`/g, "$1")
-    .replace(/\*\*([^*]*)\*\*/g, "$1")
-    .replace(/\*([^*]*)\*/g, "$1")
-    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
-    .replace(/\s+/g, " ")
-    .trim();
 }
 
 function asOfDate(lastRunAt: string | undefined): string {
