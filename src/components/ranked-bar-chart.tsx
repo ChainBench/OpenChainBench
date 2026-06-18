@@ -6,6 +6,7 @@ import { fmtUnit } from "@/lib/format";
 import { buildProviderColors } from "@/lib/series-colors";
 import { useChartExclusion } from "@/hooks/use-chart-exclusion";
 import { useTopN } from "@/hooks/use-top-n";
+import { rankResults } from "@/lib/ranking";
 import { LiveDot } from "@/components/live-dot";
 import { ProviderLogo } from "@/components/provider-logo";
 import { TopNSelector } from "@/components/top-n-selector";
@@ -61,9 +62,7 @@ export function RankedBarChart({
     const scored = benchmark.results.filter(
       (r) => r.ms.p50 > 0 || r.ms.p90 > 0 || r.ms.p99 > 0
     );
-    const sorted = scored.sort((a, b) =>
-      benchmark.higherIsBetter ? b.ms.p50 - a.ms.p50 : a.ms.p50 - b.ms.p50
-    );
+    const sorted = rankResults(scored, benchmark.higherIsBetter);
     return sorted.map((r) => ({
       slug: r.slug,
       name: r.name,

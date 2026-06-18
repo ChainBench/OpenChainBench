@@ -13,12 +13,14 @@ import { capDescription } from "@/lib/seo-text";
 import { SectionLabel, SummaryStat } from "@/components/summary-stat";
 import { SITE } from "@/data/site";
 import { loadAlternative } from "@/lib/alternatives";
+import { pageMetadata } from "@/lib/page-metadata";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { buildBreadcrumbJsonLd, safeJsonLd } from "@/lib/jsonld";
 import { ProviderLogo } from "@/components/provider-logo";
 import { ProviderTypeBadge } from "@/components/provider-type-badge";
 import { LogoCardLink } from "@/components/logo-card-link";
 import { isRegion } from "@/lib/brand";
+import { rankResults } from "@/lib/ranking";
 
 export const revalidate = 60;
 
@@ -47,13 +49,12 @@ export async function generateMetadata({
     alt.seo_title ??
     `${alt.target_product} alternatives. live benchmark · OpenChainBench`;
   const description = alt.seo_description ?? alt.intro.slice(0, 200);
-  const url = `${SITE.url}/alternatives/${alt.slug}`;
-  return {
+  return pageMetadata({
+    path: `/alternatives/${alt.slug}`,
     title,
     description,
-    alternates: { canonical: url },
-    openGraph: { title, description, type: "article", url },
-  };
+    type: "article",
+  });
 }
 
 export default async function AlternativePage({
@@ -75,13 +76,11 @@ export default async function AlternativePage({
   // at build time renders p50=0 for every provider - drop those instead of
   // showing "0%" cards).
   const targetSlug = alt.target_product.toLowerCase().replace(/\s+/g, "-");
-  const sortedResults = [...bench.results]
+  const filteredResults = bench.results
     .filter((r) => !isRegion(r.slug))
     .filter((r) => r.slug.toLowerCase() !== targetSlug)
-    .filter((r) => r.ms.p50 > 0 || r.ms.p99 > 0)
-    .sort((a, b) =>
-      bench.higherIsBetter ? b.ms.p50 - a.ms.p50 : a.ms.p50 - b.ms.p50,
-    );
+    .filter((r) => r.ms.p50 > 0 || r.ms.p99 > 0);
+  const sortedResults = rankResults(filteredResults, bench.higherIsBetter);
   const topAlternatives = sortedResults.slice(0, 5);
 
   const url = `${SITE.url}/alternatives/${alt.slug}`;

@@ -29,6 +29,7 @@ import { getBenchmark } from "@/data/benchmarks";
 import { fmtUnit } from "@/lib/format";
 import { readBestPerChain } from "@/lib/per-chain-contract";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
+import { rankResults } from "@/lib/ranking";
 import { PROVIDER_RE, SLUG_RE } from "@/lib/slug";
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
 
@@ -57,9 +58,7 @@ function rankOf(
 ): { rank: number; total: number; value: number } | null {
   const live = results.filter((r) => r.ms.p50 > 0);
   if (live.length === 0) return null;
-  const sorted = [...live].sort((a, b) =>
-    higherIsBetter ? b.ms.p50 - a.ms.p50 : a.ms.p50 - b.ms.p50,
-  );
+  const sorted = rankResults(live, higherIsBetter);
   const idx = sorted.findIndex(
     (r) => r.slug.toLowerCase() === providerSlug.toLowerCase(),
   );
@@ -95,9 +94,7 @@ function rankOfChain(
   const others = live.filter(
     (r) => r.slug.toLowerCase() !== leader.slug.toLowerCase(),
   );
-  const sortedOthers = [...others].sort((a, c) =>
-    b.higherIsBetter ? c.ms.p50 - a.ms.p50 : a.ms.p50 - c.ms.p50,
-  );
+  const sortedOthers = rankResults(others, b.higherIsBetter);
   const total = live.length;
   if (leader.slug.toLowerCase() === lower) {
     return { rank: 1, total, value: leader.ms.p50, leader };

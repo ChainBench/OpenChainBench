@@ -2,30 +2,19 @@ import type { Metadata } from "next";
 import { getBenchmarks } from "@/data/benchmarks";
 import { BenchmarkGrid } from "@/components/benchmark-grid";
 import { safeJsonLd, buildItemListJsonLd } from "@/lib/jsonld";
+import { SITE } from "@/data/site";
+import { pageMetadata } from "@/lib/page-metadata";
 
 export const revalidate = 60;
 
 const DESCRIPTION =
   "Comprehensive registry of open, reproducible benchmarks running across major protocols, bridges and indexers.";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
+  path: "/benchmarks",
   title: "All benchmarks",
   description: DESCRIPTION,
-  alternates: { canonical: "https://openchainbench.com/benchmarks" },
-  openGraph: {
-    title: "All benchmarks · OpenChainBench",
-    description: DESCRIPTION,
-    url: "https://openchainbench.com/benchmarks",
-    type: "website",
-    siteName: "OpenChainBench",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "All benchmarks · OpenChainBench",
-    description: DESCRIPTION,
-    site: "@OpenChainBench",
-  },
-};
+});
 
 export default async function BenchmarksPage() {
   const benchmarks = await getBenchmarks();
@@ -36,15 +25,15 @@ export default async function BenchmarksPage() {
   // citation by the LLM tier the rest of the site already optimises for).
   const jsonLd = buildItemListJsonLd({
     name: "OpenChainBench benchmarks",
-    url: "https://openchainbench.com/benchmarks",
+    url: `${SITE.url}/benchmarks`,
     description: DESCRIPTION,
     items: benchmarks.map((b) => ({
       name: b.title,
-      url: `https://openchainbench.com/benchmarks/${b.slug}`,
+      url: `${SITE.url}/benchmarks/${b.slug}`,
     })),
     breadcrumb: [
-      { name: "Home", url: "https://openchainbench.com/" },
-      { name: "All benchmarks", url: "https://openchainbench.com/benchmarks" },
+      { name: "Home", url: `${SITE.url}/` },
+      { name: "All benchmarks", url: `${SITE.url}/benchmarks` },
     ],
   });
 

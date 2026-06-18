@@ -8,6 +8,7 @@ import { CATEGORY_COLOR } from "@/lib/category-colors";
 import { fmtUnit } from "@/lib/format";
 import { capDescription } from "@/lib/seo-text";
 import { SITE } from "@/data/site";
+import { pageMetadata } from "@/lib/page-metadata";
 import {
   getProviderRegistry,
   PROVIDER_REGISTRY,
@@ -76,14 +77,12 @@ export async function generateMetadata({
     ? `${reg.description.replace(/[.!?]?$/, ".")} Live performance across ${benchCount} OpenChainBench ${benchWord}${winSuffix}.`
     : fallbackDescription;
 
-  const url = `${SITE.url}/products/${p.slug}`;
-  return {
+  return pageMetadata({
+    path: `/products/${p.slug}`,
     title,
     description,
-    alternates: { canonical: url },
-    openGraph: { title, description, type: "profile", url },
-    twitter: { card: "summary_large_image", title, description },
-  };
+    type: "profile",
+  });
 }
 
 export default async function ProviderPage({

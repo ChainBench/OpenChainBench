@@ -2,6 +2,7 @@ import { getProviders } from "@/lib/providers";
 import { ProvidersTable } from "@/components/providers-table";
 import { pageMetadata } from "@/lib/page-metadata";
 import { safeJsonLd, buildItemListJsonLd } from "@/lib/jsonld";
+import { SITE } from "@/data/site";
 
 export const metadata: import("next").Metadata = pageMetadata({
   path: "/products",
@@ -25,16 +26,16 @@ export default async function ProvidersIndex() {
 
   const jsonLd = buildItemListJsonLd({
     name: "OpenChainBench products",
-    url: "https://openchainbench.com/products",
+    url: `${SITE.url}/products`,
     description:
       "Every product that appears in at least one OpenChainBench benchmark.",
     items: providers.map((p) => ({
       name: p.name,
-      url: `https://openchainbench.com/products/${p.slug}`,
+      url: `${SITE.url}/products/${p.slug}`,
     })),
     breadcrumb: [
-      { name: "Home", url: "https://openchainbench.com/" },
-      { name: "Products", url: "https://openchainbench.com/products" },
+      { name: "Home", url: `${SITE.url}/` },
+      { name: "Products", url: `${SITE.url}/products` },
     ],
   });
 

@@ -11,6 +11,8 @@ import { ProviderLogo } from "@/components/provider-logo";
 import { LogoCardLink } from "@/components/logo-card-link";
 import { fmtValue, fmtUnit, unitSuffix } from "@/lib/format";
 import { isRegion } from "@/lib/brand";
+import { rankResults } from "@/lib/ranking";
+import { pageMetadata } from "@/lib/page-metadata";
 import { SITE } from "@/data/site";
 import {
   buildBreadcrumbJsonLd,
@@ -41,7 +43,6 @@ export async function generateMetadata({
   const { slug } = await params;
   const ans = await loadAnswer(slug);
   if (!ans) return {};
-  const url = `${SITE.url}/answers/${ans.slug}`;
   const title = ans.seo_title ?? ans.question;
   const descSource = ans.seo_description ?? ans.short_answer;
   // Clean leftover tokens AFTER renderTemplate so a draft bench
@@ -52,24 +53,12 @@ export async function generateMetadata({
     cleanLeftoverTokens(renderTemplate(descSource, ans.bench)),
     158,
   );
-  return {
+  return pageMetadata({
+    path: `/answers/${ans.slug}`,
     title,
     description,
-    alternates: { canonical: url },
-    openGraph: {
-      title,
-      description,
-      type: "article",
-      url,
-      siteName: SITE.name,
-    },
-    twitter: {
-      card: "summary_large_image",
-      site: SITE.twitter,
-      title,
-      description,
-    },
-  };
+    type: "article",
+  });
 }
 
 export default async function AnswerPage({
@@ -100,12 +89,10 @@ export default async function AnswerPage({
   // Top results from the referenced bench, mirroring the alternatives
   // top-N section: surfaces the answer visually for skim readers + gives
   // crawlers concrete provider names + numbers in the SSR HTML.
-  const sortedResults = [...bench.results]
+  const filteredResults = bench.results
     .filter((r) => !isRegion(r.slug))
-    .filter((r) => r.ms.p50 > 0 || r.ms.p99 > 0)
-    .sort((a, b) =>
-      bench.higherIsBetter ? b.ms.p50 - a.ms.p50 : a.ms.p50 - b.ms.p50,
-    );
+    .filter((r) => r.ms.p50 > 0 || r.ms.p99 > 0);
+  const sortedResults = rankResults(filteredResults, bench.higherIsBetter);
   const topResults = sortedResults.slice(0, 5);
 
   const allAnswers = await loadAllAnswers();

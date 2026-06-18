@@ -38,6 +38,7 @@
 
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
 import { liveResults } from "@/lib/provider-filters";
+import { rankResults } from "@/lib/ranking";
 import { fmtUnit } from "@/lib/format";
 
 // Keyword allows digits ({{p50:slug}}, {{best_p50}}, {{worst_p99}}) and
@@ -66,9 +67,7 @@ function worstForChain(b: Benchmark, chain: string): ProviderResult | undefined 
 export function renderTemplate(text: string, benchmark: Benchmark): string {
   if (!text || text.indexOf("{{") === -1) return text;
   const live = liveResults(benchmark.results);
-  const sorted = [...live].sort((a, b) =>
-    benchmark.higherIsBetter ? b.ms.p50 - a.ms.p50 : a.ms.p50 - b.ms.p50
-  );
+  const sorted = rankResults(live, benchmark.higherIsBetter);
   const best = sorted[0];
   const worst = sorted[sorted.length - 1];
 
