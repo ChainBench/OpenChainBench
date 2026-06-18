@@ -19,7 +19,11 @@ import type { ChainTvlHistory } from "@/lib/chain-kpis";
  */
 
 type Range = "7D" | "30D" | "90D" | "1Y" | "All";
-const RANGES: Range[] = ["7D", "30D", "90D", "1Y", "All"];
+// Display order: longest-first (All → 7D), reading left-to-right gets
+// you from "the long story" down to "the latest move". Matches how
+// finance dashboards (TradingView's history slider, DefiLlama's own
+// "1m 1y all" pills) frame the period selector.
+const RANGES: Range[] = ["All", "1Y", "90D", "30D", "7D"];
 const RANGE_DAYS: Record<Range, number | null> = {
   "7D": 7,
   "30D": 30,
@@ -264,15 +268,22 @@ function Tooltip({
   point: { date: number; tvl: number };
 }) {
   const left = Math.max(4, Math.min(96, xFrac * 100));
-  const top = Math.max(8, yFrac * 100 - 8);
+  const top = yFrac * 100;
   const flipX = left > 70;
+  // When the data point sits in the upper third of the canvas, flipping
+  // the tooltip BELOW the point keeps it away from the chart header
+  // ("TVL · last 30D" + delta %) which would otherwise overlap it.
+  // Anywhere below stays the original "above the point" placement.
+  const flipY = top < 33;
+  const dyPct = flipY ? 0 : -100;
+  const dyPx = flipY ? 14 : -10;
   return (
     <div
       className="pointer-events-none absolute z-10 rounded-md border border-ink/15 bg-paper shadow-lg px-3 py-1.5 text-[11.5px]"
       style={{
         left: `${left}%`,
         top: `${top}%`,
-        transform: `translate(${flipX ? "-100%" : "0%"}, -100%) translateX(${flipX ? -8 : 8}px) translateY(-8px)`,
+        transform: `translate(${flipX ? "-100%" : "0%"}, ${dyPct}%) translateX(${flipX ? -8 : 8}px) translateY(${dyPx}px)`,
         minWidth: 140,
       }}
     >
