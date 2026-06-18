@@ -197,6 +197,32 @@ export type HlCohortSummary = {
   asOf: number;
 };
 
+export type HlHip3Row = {
+  slug: string;
+  name: string;
+  fees24h: number;
+  fees7d: number;
+  fees30d: number;
+  volume24h: number;
+  volume7d: number;
+  volume30d: number;
+  users24h: number;
+  users7d: number;
+  users30d: number;
+  fills24h: number;
+  markets24h: number;
+  effectiveFeeBps: number;
+};
+
+export type HlHip3Summary = {
+  rows: HlHip3Row[];
+  totalFees24h: number;
+  totalFees30d: number;
+  totalVolume24h: number;
+  totalUsers24h: number;
+  asOf: number;
+};
+
 /**
  * Fetch a leaderboard-ready slice of every tracked HL builder, in 4
  * vector queries instead of 4 × 104 scalar fan-out. Used by the
@@ -291,6 +317,134 @@ export async function fetchHlCohort(): Promise<HlCohortSummary | null> {
     totalRevenue30d,
     totalVolume30d,
     totalUsers30d,
+    asOf: Math.floor(Date.now() / 1000),
+  };
+}
+
+/**
+ * Same shape as fetchHlCohort but for the HIP-3 deployer cohort
+ * (markets-deployment-permissionless side of Hyperliquid). Powers the
+ * "HIP-3 dexes" tab on `/hyperliquid`. Vector queries on the
+ * `hl_hip3_deployer_*` gauges that the on-node harness exposes —
+ * cardinality is naturally low (one label value per staked deployer,
+ * currently 7) so a single fetch covers the whole cohort.
+ *
+ * Dex names come from the hyperliquid-hip3-deployers spec's providers
+ * list; an unknown dex slug surfaces under its raw namespace.
+ */
+export async function fetchHlHip3Cohort(): Promise<HlHip3Summary | null> {
+  const url = promUrl();
+  if (!url) return null;
+  let prom: Prometheus;
+  try {
+    prom = new Prometheus(url);
+  } catch {
+    return null;
+  }
+
+  const specs = await getSpecs();
+  const hip3Spec = specs.find((s) => s.slug === "hyperliquid-hip3-deployers");
+  const nameBySlug = new Map(
+    (hip3Spec?.providers ?? []).map((p) => [p.slug, p.name]),
+  );
+
+  const [
+    fees24h,
+    fees7d,
+    fees30d,
+    vol24h,
+    vol7d,
+    vol30d,
+    users24h,
+    users7d,
+    users30d,
+    fills24h,
+    markets24h,
+    effFeeBps,
+  ] = await Promise.all([
+    queryVector(prom, `hl_hip3_deployer_fees_usd_24h`),
+    queryVector(prom, `hl_hip3_deployer_fees_usd_7d`),
+    queryVector(prom, `hl_hip3_deployer_fees_usd_30d`),
+    queryVector(prom, `hl_hip3_deployer_volume_usd_24h`),
+    queryVector(prom, `hl_hip3_deployer_volume_usd_7d`),
+    queryVector(prom, `hl_hip3_deployer_volume_usd_30d`),
+    queryVector(prom, `hl_hip3_deployer_users_24h`),
+    queryVector(prom, `hl_hip3_deployer_users_7d`),
+    queryVector(prom, `hl_hip3_deployer_users_30d`),
+    queryVector(prom, `hl_hip3_deployer_fills_24h`),
+    queryVector(prom, `hl_hip3_deployer_markets_24h`),
+    queryVector(prom, `hl_hip3_deployer_effective_fee_bps`),
+  ]);
+
+  if (fees24h === null && vol24h === null) return null;
+
+  const byDex = new Map<string, HlHip3Row>();
+  const ensure = (dex: string): HlHip3Row => {
+    let r = byDex.get(dex);
+    if (!r) {
+      r = {
+        slug: dex,
+        name: nameBySlug.get(dex) ?? dex,
+        fees24h: 0,
+        fees7d: 0,
+        fees30d: 0,
+        volume24h: 0,
+        volume7d: 0,
+        volume30d: 0,
+        users24h: 0,
+        users7d: 0,
+        users30d: 0,
+        fills24h: 0,
+        markets24h: 0,
+        effectiveFeeBps: 0,
+      };
+      byDex.set(dex, r);
+    }
+    return r;
+  };
+  const apply = (
+    series: { labels: Record<string, string>; value: number }[] | null,
+    key: keyof Omit<HlHip3Row, "slug" | "name">,
+  ) => {
+    for (const s of series ?? []) {
+      const d = s.labels.dex;
+      if (d) ensure(d)[key] = s.value;
+    }
+  };
+  apply(fees24h, "fees24h");
+  apply(fees7d, "fees7d");
+  apply(fees30d, "fees30d");
+  apply(vol24h, "volume24h");
+  apply(vol7d, "volume7d");
+  apply(vol30d, "volume30d");
+  apply(users24h, "users24h");
+  apply(users7d, "users7d");
+  apply(users30d, "users30d");
+  apply(fills24h, "fills24h");
+  apply(markets24h, "markets24h");
+  apply(effFeeBps, "effectiveFeeBps");
+
+  const rows = [...byDex.values()]
+    .filter((r) => r.fees24h > 0 || r.volume24h > 0 || r.users24h > 0)
+    .sort((a, b) => b.fees24h - a.fees24h);
+
+  let totalFees24h = 0;
+  let totalFees30d = 0;
+  let totalVolume24h = 0;
+  let totalUsers24h = 0;
+  for (const r of rows) {
+    totalFees24h += r.fees24h;
+    totalFees30d += r.fees30d;
+    totalVolume24h += r.volume24h;
+    totalUsers24h += r.users24h;
+  }
+
+  return {
+    rows,
+    totalFees24h,
+    totalFees30d,
+    totalVolume24h,
+    totalUsers24h,
     asOf: Math.floor(Date.now() / 1000),
   };
 }
