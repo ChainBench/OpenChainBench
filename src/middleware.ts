@@ -42,7 +42,6 @@ const CANONICAL_NO_QUERY = new Set([
 const REMOVED_BENCH_SLUGS = new Set([
   "bridge-revenue",
   "evm-quote-latency",
-  "wallet-labels-coverage",
 ]);
 
 const BENCH_PATH = /^\/benchmarks\/([a-z0-9][a-z0-9-]{0,79})\/?$/;
