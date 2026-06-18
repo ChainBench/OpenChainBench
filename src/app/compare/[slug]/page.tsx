@@ -26,16 +26,20 @@ import {
 
 /**
  * Compare pages reuse the parent benchmarks' Prom data, so freshness
- * inherits 1:1 from the underlying benches. ISR window is 5 minutes,
- * aligned with the health-check cron warmup so each cron tick refreshes
- * the cached HTML exactly when ISR would expire. Between ticks the
- * visitor lands on the edge cache (~10 ms) instead of paying SSR.
+ * inherits 1:1 from the underlying benches. ISR window is 10 minutes,
+ * deliberately set to 2x the cron warmup cadence (every 5 min). That
+ * way each cron tick refreshes the cached HTML well BEFORE ISR would
+ * expire, leaving zero gap where a visitor could land between an
+ * expired cache and an in-flight warmup. Earlier attempt at 300 s left
+ * a 30 to 45 s window per cycle where the parallel fetch fan out from
+ * cron hadn't finished yet.
  *
- * Why 300 s on compare vs 60 s on /benchmarks: a comparison page is a
- * summary view, not a live monitor. Rankings rarely flip within 5 min
- * (bench windows are rolling 24 h). Trade off accepted.
+ * The underlying data layer (getProviders 60 s, alternatives reverse
+ * map 60 s, materialize worker per-minute) keeps refreshing on its own
+ * windows, so freshness stays sub minute at the data level even with a
+ * 10 min HTML cache.
  */
-export const revalidate = 300;
+export const revalidate = 600;
 // Per-dimension variant fetches fan out N chain + N region loadBenchmark
 // calls per shared bench. Cached, but cold ISR regeneration needs head
 // room above the 60 s default to avoid mid-flight timeouts on a pair
