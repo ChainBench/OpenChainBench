@@ -4,12 +4,12 @@
  * Hybrid masthead logo: 2D SVG on touch / small screens, interactive 3D
  * sphere on desktop.
  *
- * The 3D component is imported statically (not via next/dynamic) so the
- * sphere mounts as soon as the main JS executes — no separate chunk to
- * download. Trade-off: the three.js code ends up in the shared client
- * bundle (~150 KB gz), which mobile users also fetch even though they
- * never mount the component. Worth it because the previous dynamic
- * setup left a visible blank slot while the chunk loaded.
+ * The 3D component is loaded via `next/dynamic` with `ssr: false` so the
+ * three.js + @react-three/fiber payload is never sent to mobile / touch
+ * users (the desktop media query has to match before the chunk is even
+ * requested). The SSR fallback is the 2D SVG, which paints immediately
+ * and stays visible underneath until the 3D chunk hydrates on top — so
+ * the masthead never shows a blank slot.
  *
  * Layering:
  *  - `<SiteLogo>` (logo-touch-only) — the full brand SVG with corner
@@ -23,8 +23,13 @@
  */
 
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { SiteLogo } from "@/components/site-logo";
-import { SiteLogo3D } from "@/components/site-logo-3d";
+
+const SiteLogo3D = dynamic(
+  () => import("@/components/site-logo-3d").then((m) => m.SiteLogo3D),
+  { ssr: false, loading: () => null },
+);
 
 const DESKTOP_MQ = "(pointer: fine) and (min-width: 768px)";
 

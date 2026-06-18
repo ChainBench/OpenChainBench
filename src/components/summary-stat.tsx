@@ -1,5 +1,8 @@
-"use client";
-
+// Server component. Pure rendering of a label + value pair — no hooks,
+// no state, no browser globals. Safe to import from either a server or
+// a client parent. Keeping it on the server moves it out of every
+// client bundle that pulls in a benchmark page (alternatives + bench
+// detail).
 import type { ReactNode } from "react";
 
 /** Mono uppercase section label rendered above tables and charts. */

@@ -1,5 +1,3 @@
-import { createMcpHandler } from "mcp-handler";
-import { ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { getBenchmark, getBenchmarks } from "@/data/benchmarks";
 import { SITE } from "@/data/site";
@@ -184,7 +182,33 @@ function isQueryAllowed(q: string): { ok: true } | { ok: false; reason: string }
   return { ok: true };
 }
 
-const mcpHandler = createMcpHandler(
+// Lazily-built MCP handler. The `mcp-handler` + `@modelcontextprotocol/sdk`
+// pair pulls in a few hundred KB of JSON-RPC + zod-to-json-schema plumbing
+// at module-evaluation time. By deferring those imports until the first
+// `/api/mcp/*` request, the cost stays out of unrelated Node bundles (the
+// route segment still ships the deps, but they no longer eagerly load on
+// every cold start that happens to touch this file).
+let mcpHandlerPromise: Promise<(req: Request) => Promise<Response> | Response> | null = null;
+async function getMcpHandler(): Promise<(req: Request) => Promise<Response> | Response> {
+  if (mcpHandlerPromise) return mcpHandlerPromise;
+  mcpHandlerPromise = (async () => {
+    const [{ createMcpHandler }, { ResourceTemplate }] = await Promise.all([
+      import("mcp-handler"),
+      import("@modelcontextprotocol/sdk/server/mcp.js"),
+    ]);
+    return buildMcpHandler(createMcpHandler, ResourceTemplate);
+  })();
+  return mcpHandlerPromise;
+}
+
+type CreateMcpHandler = typeof import("mcp-handler").createMcpHandler;
+type ResourceTemplateCtor = typeof import("@modelcontextprotocol/sdk/server/mcp.js").ResourceTemplate;
+
+function buildMcpHandler(
+  createMcpHandler: CreateMcpHandler,
+  ResourceTemplate: ResourceTemplateCtor,
+): (req: Request) => Promise<Response> | Response {
+  return createMcpHandler(
   (server) => {
     server.registerTool(
       "list_benchmarks",
@@ -542,6 +566,7 @@ const mcpHandler = createMcpHandler(
     maxDuration: 60,
   },
 );
+}
 
 /** Per-IP rate limit at the transport level. The MCP handler is a single
  *  endpoint for all tool calls, so this bucket caps total MCP RPS for a
@@ -626,6 +651,7 @@ async function wrapped(req: Request): Promise<Response> {
   if (limited) return limited;
   const { response, cloned } = await rejectBatchOrTooBig(req);
   if (response) return response;
+  const mcpHandler = await getMcpHandler();
   return mcpHandler(cloned);
 }
 
