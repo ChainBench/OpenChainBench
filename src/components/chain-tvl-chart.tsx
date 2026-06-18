@@ -18,13 +18,20 @@ import type { ChainTvlHistory } from "@/lib/chain-kpis";
  * convention used on every other live ticker on the site.
  */
 
-type Range = "7D" | "30D" | "90D" | "1Y" | "All";
-// Display order: longest-first (All → 7D), reading left-to-right gets
+type Range = "1D" | "7D" | "30D" | "90D" | "1Y" | "All";
+// Display order: longest-first (All → 1D), reading left-to-right gets
 // you from "the long story" down to "the latest move". Matches how
 // finance dashboards (TradingView's history slider, DefiLlama's own
 // "1m 1y all" pills) frame the period selector.
-const RANGES: Range[] = ["All", "1Y", "90D", "30D", "7D"];
+//
+// Note: DefiLlama's historicalChainTvl returns ONE point per UTC day,
+// so 1D renders as the last 2 samples (yesterday + today). It's the
+// smallest meaningful window on a daily-granularity series — surfacing
+// "today's TVL change" as a single segment vs trying to interpolate
+// intraday data we don't have.
+const RANGES: Range[] = ["All", "1Y", "90D", "30D", "7D", "1D"];
 const RANGE_DAYS: Record<Range, number | null> = {
+  "1D": 2,
   "7D": 7,
   "30D": 30,
   "90D": 90,

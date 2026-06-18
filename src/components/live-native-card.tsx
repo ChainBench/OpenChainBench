@@ -8,6 +8,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
  *   • 2 s polling against /api/chain/<slug>/live-prices
  *   • Flash background green/red on price up/down, fades over 600 ms
  *   • Direction chevron ↗ / ↘ on the most recent move
+ *   • Pop-in delta badge ("+$0.30" / "-$4.20") that fades in/out so the
+ *     reader sees the absolute move even when the headline value is
+ *     rounded ("$1.7K" hides cent-level changes)
  *   • Mini sparkline of the last 30 ticks (≈ 60 s)
  *   • LIVE dot pulse + tooltip surfacing freshness
  *
@@ -18,6 +21,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 const POLL_MS = 2000;
 const TICK_BUFFER = 30; // ~60 s of history at 2 s polling
 const FLASH_MS = 600;
+const DELTA_MS = 1800;
 
 type LiveResp = {
   symbol: string | null;
@@ -26,6 +30,8 @@ type LiveResp = {
   volume24h: number | null;
   ts: number;
 };
+
+type DeltaPop = { id: number; amount: number };
 
 export function LiveNativeCard({
   slug,
@@ -43,6 +49,7 @@ export function LiveNativeCard({
   const [value, setValue] = useState<number | null>(initialValue);
   const [direction, setDirection] = useState<"up" | "down" | "flat">("flat");
   const [stale, setStale] = useState(false);
+  const [delta, setDelta] = useState<DeltaPop | null>(null);
   // Seed the ticks buffer empty — the first useEffect poll stamps the
   // initial timestamp + value, keeping render pure (no Date.now during
   // component body).
@@ -50,6 +57,8 @@ export function LiveNativeCard({
 
   const prevRef = useRef<number | null>(initialValue);
   const flashTimer = useRef<number | null>(null);
+  const deltaTimer = useRef<number | null>(null);
+  const deltaIdRef = useRef<number>(0);
   // 0 sentinel = "not yet seen"; real timestamp gets stamped inside
   // useEffect to avoid the impure-Date.now-during-render lint rule.
   const lastOkRef = useRef<number>(0);
@@ -89,15 +98,23 @@ export function LiveNativeCard({
           ].slice(-TICK_BUFFER);
           return next;
         });
-        if (prev != null && Number.isFinite(prev)) {
-          if (incoming > prev) setDirection("up");
-          else if (incoming < prev) setDirection("down");
-          if (incoming !== prev) {
-            if (flashTimer.current) window.clearTimeout(flashTimer.current);
-            flashTimer.current = window.setTimeout(() => {
-              setDirection("flat");
-            }, FLASH_MS) as unknown as number;
-          }
+        if (prev != null && Number.isFinite(prev) && incoming !== prev) {
+          setDirection(incoming > prev ? "up" : "down");
+          if (flashTimer.current) window.clearTimeout(flashTimer.current);
+          flashTimer.current = window.setTimeout(() => {
+            setDirection("flat");
+          }, FLASH_MS) as unknown as number;
+
+          // Pop-in delta badge: surface the absolute move so a user
+          // sees +$0.30 even when the headline rounds to the same
+          // abbreviated number ($1.7K stays $1.7K through cents-level
+          // ticks).
+          const id = ++deltaIdRef.current;
+          setDelta({ id, amount: incoming - prev });
+          if (deltaTimer.current) window.clearTimeout(deltaTimer.current);
+          deltaTimer.current = window.setTimeout(() => {
+            setDelta((cur) => (cur && cur.id === id ? null : cur));
+          }, DELTA_MS) as unknown as number;
         }
         prevRef.current = incoming;
       } catch {
@@ -121,6 +138,7 @@ export function LiveNativeCard({
       window.clearInterval(interval);
       window.clearInterval(staleWatcher);
       if (flashTimer.current) window.clearTimeout(flashTimer.current);
+      if (deltaTimer.current) window.clearTimeout(deltaTimer.current);
     };
   }, [slug, kind]);
 
@@ -139,6 +157,11 @@ export function LiveNativeCard({
       : direction === "down"
         ? "text-red-600 dark:text-red-400"
         : "";
+
+  // Price gets full-precision rendering ("$1,723.45") so the reader can
+  // see cents-level moves; market cap gets the abbreviated form
+  // because the value is too big to read in full digits.
+  const fmtValue = kind === "price" ? fmtUSDPrecise : fmtUSDShort;
 
   return (
     <div
@@ -163,17 +186,56 @@ export function LiveNativeCard({
         <LiveDot stale={stale} />
       </div>
       <p className="mt-auto text-lg sm:text-xl font-semibold tabular-nums leading-tight relative flex items-baseline gap-1.5">
-        <span>{value != null ? fmtUSD(value) : "—"}</span>
+        <span>{value != null ? fmtValue(value) : "—"}</span>
         {chevron && (
           <span className={`text-xs ${chevronColor} transition-opacity`}>
             {chevron}
           </span>
         )}
       </p>
+      {delta && <DeltaBadge key={delta.id} amount={delta.amount} kind={kind} />}
       {ticks.length >= 3 && (
         <Sparkline ticks={ticks} direction={direction} />
       )}
     </div>
+  );
+}
+
+function DeltaBadge({
+  amount,
+  kind,
+}: {
+  amount: number;
+  kind: "price" | "mcap";
+}) {
+  const up = amount > 0;
+  const tone = up
+    ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
+    : "bg-red-500/15 text-red-700 dark:text-red-300 border-red-500/30";
+  const sign = up ? "+" : "−";
+  const abs = Math.abs(amount);
+  const formatted = kind === "price" ? fmtUSDPrecise(abs) : fmtUSDShort(abs);
+  return (
+    <span
+      aria-live="polite"
+      className={`absolute top-2 right-2 inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10.5px] font-semibold tabular-nums chain-delta-pop ${tone}`}
+      style={{ fontFamily: "var(--font-mono, monospace)" }}
+    >
+      {sign}
+      {formatted}
+      <style>{`
+        @keyframes chain-delta-pop-kf {
+          0%   { opacity: 0; transform: translateY(-4px) scale(0.94); }
+          15%  { opacity: 1; transform: translateY(0)    scale(1.04); }
+          25%  { transform: translateY(0) scale(1); }
+          80%  { opacity: 1; }
+          100% { opacity: 0; transform: translateY(-2px) scale(0.97); }
+        }
+        .chain-delta-pop {
+          animation: chain-delta-pop-kf 1.8s ease-out both;
+        }
+      `}</style>
+    </span>
   );
 }
 
@@ -238,7 +300,27 @@ function Sparkline({
   );
 }
 
-function fmtUSD(v: number): string {
+// Full-precision USD with commas. Used for price cards so cents-level
+// moves are readable ($1,723.45 instead of $1.7K). Decimals adapt to
+// the magnitude: fewer digits for big numbers, more for sub-dollar.
+function fmtUSDPrecise(v: number): string {
+  if (!Number.isFinite(v) || v === 0) return "$0";
+  const abs = Math.abs(v);
+  if (abs >= 1) {
+    return `$${v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
+  if (abs >= 0.01) {
+    return `$${v.toLocaleString("en-US", { minimumFractionDigits: 4, maximumFractionDigits: 4 })}`;
+  }
+  if (abs >= 0.0001) {
+    return `$${v.toLocaleString("en-US", { minimumFractionDigits: 6, maximumFractionDigits: 6 })}`;
+  }
+  return `$${v.toExponential(2)}`;
+}
+
+// Compact USD used for market cap cards (where full digits don't fit and
+// readers expect "$207.43B" anyway). Same scale as fmtUSD elsewhere.
+function fmtUSDShort(v: number): string {
   if (!Number.isFinite(v) || v === 0) return "$0";
   const abs = Math.abs(v);
   if (abs >= 1_000_000_000_000) return `$${(v / 1_000_000_000_000).toFixed(2)}T`;
