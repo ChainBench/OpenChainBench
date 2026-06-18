@@ -39,6 +39,7 @@ export function SiteFooter() {
           <FooterCol
             title="Developers"
             links={[
+              { label: "Partners + embeds", href: "/partners" },
               { label: "MCP server", href: "/mcp" },
               { label: "OpenAPI spec", href: "/api/openapi.json" },
               { label: "JSON citation", href: "/api/citable" },
