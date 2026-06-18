@@ -29,8 +29,12 @@ export type ChainKpis = {
   nativePrice: number | null;
   /** Mobula native token circulating market cap in USD. */
   nativeMcap: number | null;
-  /** Mobula's tokens-indexed-on-chain count (proxy for Mobula coverage). */
-  mobulaTokensIndexed: number | null;
+};
+
+/** TVL daily samples for the sparkline chart. Last 30 days, oldest first. */
+export type ChainTvlHistory = {
+  slug: string;
+  points: { date: number; tvl: number }[];
 };
 
 function promUrl(): string | null {
@@ -57,14 +61,13 @@ export async function fetchChainKpis(slug: string): Promise<ChainKpis | null> {
   }
 
   const sel = `{chain="${slug}"}`;
-  const [tvl, dexVolume24h, stablesMcap, nativePrice, nativeMcap, mobulaTokensIndexed] =
+  const [tvl, dexVolume24h, stablesMcap, nativePrice, nativeMcap] =
     await Promise.all([
       prom.scalar(`chain_tvl_usd${sel}`),
       prom.scalar(`chain_dex_volume_24h_usd${sel}`),
       prom.scalar(`chain_stables_mcap_usd${sel}`),
       prom.scalar(`chain_native_price_usd${sel}`),
       prom.scalar(`chain_native_mcap_usd${sel}`),
-      prom.scalar(`chain_mobula_tokens_indexed${sel}`),
     ]);
 
   return {
@@ -74,7 +77,6 @@ export async function fetchChainKpis(slug: string): Promise<ChainKpis | null> {
     stablesMcap,
     nativePrice,
     nativeMcap,
-    mobulaTokensIndexed,
   };
 }
 
@@ -90,7 +92,75 @@ export function hasAnyKpi(k: ChainKpis | null): boolean {
     k.dexVolume24h != null ||
     k.stablesMcap != null ||
     k.nativePrice != null ||
-    k.nativeMcap != null ||
-    k.mobulaTokensIndexed != null
+    k.nativeMcap != null
   );
+}
+
+/**
+ * DefiLlama chain-name mapping. Mirrors the harness `Registry` in
+ * `mobula-monorepo/miniapps/chain-kpis/cmd/script/registry.go`. Kept
+ * inline here (rather than imported from a shared package) because the
+ * site has no Go interop and the list is small + rarely-changing. Out of
+ * sync = the TVL chart hides for that chain (graceful), so a stale entry
+ * here can never poison user data. Empty = chain not tracked by DefiLlama.
+ */
+const DEFILLAMA_CHAIN_NAME: Record<string, string> = {
+  ethereum: "Ethereum",
+  solana: "Solana",
+  bnb: "BSC",
+  avalanche: "Avalanche",
+  sui: "Sui",
+  ton: "TON",
+  stellar: "Stellar",
+  tron: "Tron",
+  cardano: "Cardano",
+  litecoin: "Litecoin",
+  monero: "",
+  polygon: "Polygon",
+  arbitrum: "Arbitrum",
+  optimism: "Optimism",
+  base: "Base",
+  zksync: "ZKsync Era",
+  linea: "Linea",
+  scroll: "Scroll",
+  blast: "Blast",
+  mantle: "Mantle",
+  taiko: "Taiko",
+};
+
+/**
+ * Fetch the last `days` daily TVL samples from DefiLlama's
+ * `/v2/historicalChainTvl/<name>` endpoint. Renders the sparkline below
+ * the KPI cards on /chains/[slug]. Bypasses the harness on purpose:
+ * DefiLlama exposes the full history in one ~50 KB JSON, no need to fan
+ * it through Prom (which is for instant-scalar metrics, not series).
+ *
+ * Network failure / unsupported chain / empty body → returns null and
+ * the chart is hidden. Same graceful-degradation model as the KPI cards.
+ */
+export async function fetchChainTvlHistory(
+  slug: string,
+  days = 30,
+): Promise<ChainTvlHistory | null> {
+  const dllamaName = DEFILLAMA_CHAIN_NAME[slug];
+  if (!dllamaName) return null;
+  try {
+    const res = await fetch(
+      `https://api.llama.fi/v2/historicalChainTvl/${encodeURIComponent(dllamaName)}`,
+      {
+        next: { revalidate: 900 }, // 15 min, same cadence as the harness
+        headers: { "user-agent": "OCB-site/1.0" },
+      },
+    );
+    if (!res.ok) return null;
+    const arr = (await res.json()) as { date: number; tvl: number }[];
+    if (!Array.isArray(arr) || arr.length === 0) return null;
+    const tail = arr.slice(-days);
+    return { slug, points: tail };
+  } catch (err) {
+    if (typeof console !== "undefined") {
+      console.warn(`fetchChainTvlHistory ${slug} failed:`, err);
+    }
+    return null;
+  }
 }
