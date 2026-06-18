@@ -42,7 +42,6 @@ const CANONICAL_NO_QUERY = new Set([
 const REMOVED_BENCH_SLUGS = new Set([
   "bridge-revenue",
   "evm-quote-latency",
-  "hyperliquid-frontends",
   "wallet-labels-coverage",
 ]);
 
