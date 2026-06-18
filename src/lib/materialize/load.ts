@@ -21,6 +21,11 @@ import { getPrometheus } from "@/lib/prometheus";
 import { SpecSchema, type Spec } from "@/lib/spec-schema";
 import { renderBenchmarkText } from "@/lib/bench-template";
 import { liveResults as liveProviderResults } from "@/lib/provider-filters";
+import {
+  SECONDS_PER_DAY,
+  SECONDS_PER_HOUR,
+  SECONDS_PER_MINUTE,
+} from "@/lib/time-constants";
 
 /** Overridable so the worker can run with a different cwd. */
 const SPECS_DIR =
@@ -514,7 +519,7 @@ async function tryLoadLive(
   const url = spec.prometheus?.url ?? process.env.PROMETHEUS_URL;
   if (!url) return null;
   const prom = getPrometheus(url);
-  const winSec = parseDurationSec(spec.prometheus?.window ?? "24h") ?? 86_400;
+  const winSec = parseDurationSec(spec.prometheus?.window ?? "24h") ?? SECONDS_PER_DAY;
 
   try {
     const liveResults: ProviderResult[] = [];
@@ -526,8 +531,8 @@ async function tryLoadLive(
     const seriesByRegion30d: Record<string, Record<string, number[]>> = {};
     const regions: Record<string, { region: string; p50: number }[]> = {};
     let totalSamples = 0;
-    const sevenDaysSec = 7 * 86_400;
-    const thirtyDaysSec = 30 * 86_400;
+    const sevenDaysSec = 7 * SECONDS_PER_DAY;
+    const thirtyDaysSec = 30 * SECONDS_PER_DAY;
 
     for (const p of spec.providers) {
       const q = p.queries;
@@ -818,6 +823,6 @@ function parseDurationSec(d: string): number | null {
   if (!m) return null;
   const n = Number(m[1]);
   const unit = m[2];
-  return n * { s: 1, m: 60, h: 3600, d: 86_400 }[unit as "s" | "m" | "h" | "d"];
+  return n * { s: 1, m: SECONDS_PER_MINUTE, h: SECONDS_PER_HOUR, d: SECONDS_PER_DAY }[unit as "s" | "m" | "h" | "d"];
 }
 

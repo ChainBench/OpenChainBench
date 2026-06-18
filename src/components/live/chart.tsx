@@ -21,12 +21,13 @@ import type {
   RangeKey,
   SwapEvent,
 } from "@/lib/live/types";
+import { MS_PER_MINUTE } from "@/lib/time-constants";
 import { CompactFeed } from "./compact-feed";
 
 const RANGE_ORDER: RangeKey[] = ["10m", "1h", "24h"];
 
 function fmtSpan(ms: number): string {
-  const min = Math.max(1, Math.round(ms / 60_000));
+  const min = Math.max(1, Math.round(ms / MS_PER_MINUTE));
   if (min < 60) return `${min} min ago`;
   const h = Math.round(min / 60);
   return `${h} h ago`;
@@ -693,7 +694,7 @@ function computeChart(
       break;
     }
   }
-  const actualSpan = Math.max(60_000, nowMs - firstDataTs);
+  const actualSpan = Math.max(MS_PER_MINUTE, nowMs - firstDataTs);
   // Always fit the x-axis to the data extent so the polyline starts
   // flush against the left edge of the chart. The label below the
   // chart reflects this actual span (e.g. "53 min ago") so the axis

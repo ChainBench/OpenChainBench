@@ -1,3 +1,9 @@
+import {
+  MS_PER_MINUTE,
+  SECONDS_PER_DAY,
+  SECONDS_PER_HOUR,
+} from "@/lib/time-constants";
+
 export function fmtUnit(value: number, unit: string) {
   if (!Number.isFinite(value)) return "-";
   if (unit === "pct") return formatPercent(value);
@@ -20,8 +26,8 @@ export function fmtUnit(value: number, unit: string) {
     // True seconds (unlike "s", whose input is ms by latency-bench
     // convention). Used by gauges like hl_*_last_fill_age_seconds.
     const s = value;
-    if (s >= 172800) return `${(s / 86400).toFixed(1)} d`;
-    if (s >= 3600) return `${(s / 3600).toFixed(s >= 36000 ? 0 : 1)} h`;
+    if (s >= 172800) return `${(s / SECONDS_PER_DAY).toFixed(1)} d`;
+    if (s >= SECONDS_PER_HOUR) return `${(s / SECONDS_PER_HOUR).toFixed(s >= 36000 ? 0 : 1)} h`;
     if (s >= 60) return `${(s / 60).toFixed(1)} min`;
     if (s > 0 && s < 0.1) return "<0.1 s";
     return `${s.toFixed(1)} s`;
@@ -94,7 +100,7 @@ export function unitSuffix(unit: string, value?: number): string {
   if (unit === "sec") {
     if (value !== undefined && Number.isFinite(value)) {
       if (value >= 172800) return " d";
-      if (value >= 3600) return " h";
+      if (value >= SECONDS_PER_HOUR) return " h";
       if (value >= 60) return " min";
     }
     return " s";
@@ -113,7 +119,7 @@ export function unitSuffix(unit: string, value?: number): string {
     // render "2.00 ms" for a 2000ms p50 because fmtValue strips the "s"
     // that fmtUnit added and unitSuffix slapped " ms" back on.
     if (value !== undefined && Number.isFinite(value)) {
-      if (value >= 60000) return " min";
+      if (value >= MS_PER_MINUTE) return " min";
       if (value >= 1000) return " s";
     }
     return " ms";

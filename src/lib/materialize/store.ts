@@ -15,6 +15,7 @@ import {
   parseSnapshot,
   type MaterializedSnapshot,
 } from "./schema";
+import { SECONDS_PER_HOUR } from "@/lib/time-constants";
 
 // Type-only: erased at build time, ioredis itself stays a dynamic import.
 type RedisClient = import("ioredis").Redis;
@@ -115,7 +116,7 @@ function contentHash(s: string): string {
 // per-minute tier-A cadence accumulated ~4300 orphan blobs in one night
 // and blew the Upstash 256MB quota, turning every write into an http 400
 // (worker looked alive, store silently froze).
-const BLOB_TTL_SEC = 2 * 3600;
+const BLOB_TTL_SEC = 2 * SECONDS_PER_HOUR;
 
 /** Atomic publish: blob first, pointer swap second, then delete the
  *  previously-pointed blob (readers that already fetched the old hash

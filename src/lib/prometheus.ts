@@ -5,6 +5,7 @@
 
 import { promises as dns } from "node:dns";
 import { isIP } from "node:net";
+import { MS_PER_MINUTE } from "@/lib/time-constants";
 
 type PromVector = { metric: Record<string, string>; value: [number, string] };
 export type PromMatrix = { metric: Record<string, string>; values: [number, string][] };
@@ -383,7 +384,7 @@ async function dnsLookupWithTimeout(host: string): Promise<{ address: string }[]
 // per spec - they'd still need to flip DNS through the cache miss to
 // reach a private IP.
 type HostCheckEntry = { ok: boolean; reason?: string; expiresAt: number };
-const HOST_CHECK_TTL_MS = 60_000;
+const HOST_CHECK_TTL_MS = MS_PER_MINUTE;
 const hostCheckCache = new Map<string, HostCheckEntry>();
 // Single-flight guard. When the 60s entry expires mid-burst, every query
 // in flight (up to the full concurrency cap) used to fire its OWN

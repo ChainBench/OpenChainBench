@@ -10,6 +10,7 @@
 
 import { z } from "zod";
 import type { Benchmark } from "@/types/benchmark";
+import { MS_PER_HOUR, MS_PER_MINUTE } from "@/lib/time-constants";
 
 export const MAT_SCHEMA_VERSION = 1;
 
@@ -38,8 +39,8 @@ export type StalenessMeta = z.infer<typeof StalenessMetaSchema>;
  *  fresh: < 5 min since observedAt — normal render, ranked.
  *  stale: 5 min - 6 h — dimmed row, "as of HH:MM" tooltip, still ranked.
  *  dead:  > 6 h — pinned to bottom, unranked, never deleted. */
-const FRESH_MAX_MS = 5 * 60_000;
-const STALE_MAX_MS = 6 * 3600_000;
+const FRESH_MAX_MS = 5 * MS_PER_MINUTE;
+const STALE_MAX_MS = 6 * MS_PER_HOUR;
 type Freshness = "fresh" | "stale" | "dead";
 function freshnessOf(meta: StalenessMeta | undefined, now = Date.now()): Freshness {
   if (!meta) return "fresh"; // legacy data without meta renders as before
