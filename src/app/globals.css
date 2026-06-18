@@ -251,7 +251,8 @@ table {
    * leading). Centralised so a copy-edit to the page-title scale
    * lands in one place instead of every list landing route. */
   .h1-hero {
-    @apply display text-3xl sm:text-4xl text-ink leading-[1.05];
+    font-family: var(--font-display);
+    @apply text-3xl sm:text-4xl text-ink leading-[1.05];
   }
 }
 
