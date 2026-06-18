@@ -87,9 +87,34 @@ const ORG_JSONLD = {
       "@type": "Organization",
       "@id": `${SITE.url}/#org`,
       name: SITE.name,
+      alternateName: ["OCB", "Open Chain Bench"],
       url: SITE.url,
-      logo: `${SITE.url}/logo.png`,
+      // Logo must be an ImageObject with explicit width and height to be
+      // eligible for the Google Logo / Knowledge Panel rich result. A
+      // bare URL string is accepted by schema.org but ignored by Google.
+      // The same node is referenced as `publisher.logo` by every
+      // TechArticle / Dataset on the site, so this single fix unblocks
+      // Article rich results sitewide.
+      logo: {
+        "@type": "ImageObject",
+        url: `${SITE.url}/logo.png`,
+        width: 512,
+        height: 512,
+      },
       description: SITE.description,
+      foundingDate: "2026-04-28",
+      email: SITE.email,
+      contactPoint: {
+        "@type": "ContactPoint",
+        contactType: "editorial",
+        email: SITE.email,
+        availableLanguage: ["English"],
+      },
+      parentOrganization: {
+        "@type": "Organization",
+        name: "Mobula",
+        url: "https://mobula.io",
+      },
       sameAs: [
         SITE.github,
         `https://x.com/${SITE.twitter.replace(/^@/, "")}`,

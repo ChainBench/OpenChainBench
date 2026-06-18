@@ -1,0 +1,44 @@
+slug: which-perp-dex-has-the-lowest-fees
+question: "Which perpetual DEX has the lowest all in fees on ETH?"
+short_answer: |
+  {{best_name}} currently leads the cheapest perp DEX leaderboard at {{best_p50}} all in (24h avg) on a $1000 ETH long 10x position, measured live by OpenChainBench across Lighter, Hyperliquid, dYdX, GMX and gains.trade.
+
+benchmark: perp-fees
+
+intro: |
+  Perp DEX comparison articles publish rack rate tables (Lighter 0 bps taker, Hyperliquid 4.5 bps, dYdX 5 bps, GMX 6 bps) and stop there. The rack rate is half the story. The other half is the spread the trader crosses at market and the price impact eaten at notional, both of which are missing from every roundup currently ranking for "best perp DEX". On a thin book a 5 bps rack rate can clock 15 to 30 bps all in once the orderbook is walked at $1000, on a deep book the all in stays within a basis point of the rack rate. This page answers the question every trader sizing a position asks. What does a $1000 ETH long 10x actually cost to open on each major decentralized perp venue right now, all in. OpenChainBench reads taker fees live from each venue's own API (no hardcoded schedules), walks the orderbook for $1000 of buy side notional to compute spread plus impact, and sums the two into a single basis point figure refreshed every 5 minutes.
+
+methodology: |
+  Every 5 minutes the harness probes each venue's public API in parallel. Taker fee comes from each venue's own endpoint: Hyperliquid `userFees`, dYdX Cosmos REST `/feetiers/perpetual_fee_params`, GMX v2 Subsquid `positionFeeFactor` (negative impact branch, conservative upper bound), Lighter `/orderBookDetails`, and gains.trade via on-chain `eth_call fees(feeIndex).openFeeP` on Base. Spread comes from walking each venue's orderbook for $1000 of buy side notional (Hyperliquid `l2Book`, dYdX indexer `/orderbooks/perpetualMarket/ETH-USD`, Lighter `/orderBookOrders`); GMX v2 is oracle priced so no spread component, gains.trade reads `pairs(N).spreadP` on chain. The all in formula is `all_in_bps = taker_fee_bps + spread_bps`. Failures (5xx, timeouts, rate limits) leave the previous gauge in place and increment a per venue `fetch_errors_total` counter. The leaderboard ranks by 24h average of `perp_fees_all_in_bps{venue="X", asset="ETH"}`.
+
+limitations:
+  - "Open cost only. Funding rates are paid every hour you hold, not at open, so bundling them into a one number leaderboard would conflate two fee mechanics. The harness still records `perp_fees_funding_rate_per_hour_bps` per venue, traders sizing a multi-hour hold should layer that signed rate on top."
+  - "GMX v2 reports the negative impact branch (6 bps, conservative). Positive impact opens (when the trade reduces venue open interest skew) fire at 4 bps; which branch hits is not predictable from the user's side and depends on live open interest at the moment of the trade."
+  - "The $1000 size is the small ticket regime. At $50000 notional the spread component dominates on thinner books and the leaderboard re-orders; venues that keep a deep ETH book at $1000 can lose their edge as size scales."
+  - "All measurements are public API reads, no transactions are sent. Slippage protection and partial fills that a real trader would experience are not modelled; the spread metric is the half spread plus impact walked through the visible book at quote time."
+  - "Lighter shows 0 bps taker live via `/orderBookDetails`, but the all in figure includes the residual half spread and impact at $1000, which is not zero. Comparing a Lighter all in number against a competitor's rack rate is the apples to oranges comparison this benchmark is designed to eliminate."
+
+faq:
+  - q: "What is the cheapest perpetual DEX right now?"
+    a: "{{best_name}} currently leads the leaderboard at {{best_p50}} all in (24h avg) for opening a $1000 ETH long 10x position. The leaderboard re-sorts every 5 minutes against fresh Prometheus samples; the 24h window smooths intraday spread volatility so the headline reflects sustained competitiveness."
+  - q: "Is Lighter really zero fees on perp trading?"
+    a: "The taker fee on Lighter is 0 bps, confirmed live via `/orderBookDetails` rather than a marketing page. The all in cost is not zero, however, because every market order still crosses the half spread and eats price impact at notional. The Lighter line on this leaderboard shows what that residual cost actually is at $1000, which is the right number to compare against a paid venue's all in figure."
+  - q: "Why include spread and impact instead of just the taker fee?"
+    a: "Rack rate taker fee is what every comparison article quotes, and it is also what every trader stops being able to read off a marketing page the second they place a market order. Spread plus impact at notional is the rest of the bill. On a tight book the gap is small, on a thin book it can dominate a 5 bps taker. Bundling both into one number is the only way to make a fair across venue ranking that survives contact with a $1000 trade."
+  - q: "How do Hyperliquid fees compare to dYdX or Lighter in practice?"
+    a: "Hyperliquid quotes 4.5 bps taker on a HyperBFT orderbook among the deepest of any decentralized venue, so the spread component stays compressed and the all in usually clocks close to the rack rate. dYdX v4 sits at 5 bps taker with a comparably tight book; Lighter starts from 0 bps taker but pays for it in slightly wider spreads on smaller markets. The leaderboard shows the resulting one number comparison live."
+  - q: "How does GMX v2 fee work and why does this benchmark show the higher number?"
+    a: "GMX v2 splits the position fee into a positive impact branch (4 bps, when the trade reduces venue open interest skew) and a negative impact branch (6 bps, when it adds to the skew). Which branch fires depends on the current open interest at trade time and is not predictable from the user's side. The benchmark reports the negative branch as the conservative upper bound."
+  - q: "Does this benchmark include funding rates?"
+    a: "Open cost only. Funding is paid every hour you hold, not at open, so bundling it into a one number leaderboard would conflate two different fee mechanics. The harness still records `perp_fees_funding_rate_per_hour_bps` (signed) per venue so a trader can read both numbers and compute their own time adjusted cost for a longer hold."
+  - q: "How often is the leaderboard refreshed?"
+    a: "Every 5 minutes. The harness probes each venue's public API at that cadence in parallel, publishes `perp_fees_all_in_bps` to Prometheus, and the page reads a 24h rolling average. ETH, BTC and SOL tabs at the top of the bench page each carry their own ranking because the harness emits per asset metrics."
+
+related:
+  - which-stablecoin-is-the-most-stable
+  - which-crypto-oracle-is-the-most-accurate
+  - which-hyperliquid-frontend-has-the-most-builder-revenue
+
+seo_title: "Which perpetual DEX has the lowest all in fees on ETH in 2026?"
+seo_description: "{{best_name}} leads the cheapest perp DEX leaderboard at {{best_p50}} all in (24h avg) on a $1000 ETH 10x long. Lighter, Hyperliquid, dYdX, GMX and gains.trade ranked live by OpenChainBench."
+status: live

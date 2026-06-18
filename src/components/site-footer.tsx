@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { SiteLogo } from "@/components/site-logo";
+import { SITE } from "@/data/site";
 
 export function SiteFooter() {
   return (
@@ -27,6 +28,10 @@ export function SiteFooter() {
             links={[
               { label: "Benchmarks", href: "/benchmarks" },
               { label: "Products", href: "/products" },
+              { label: "Chains", href: "/chains" },
+              { label: "Compare", href: "/compare" },
+              { label: "Alternatives", href: "/alternatives" },
+              { label: "Answers", href: "/answers" },
               { label: "Methodology", href: "/methodology" },
               { label: "Press kit", href: "/press" },
             ]}
@@ -48,6 +53,7 @@ export function SiteFooter() {
               { label: "GitHub", href: "https://github.com/ChainBench/OpenChainBench" },
               { label: "Open an issue", href: "https://github.com/ChainBench/OpenChainBench/issues/new" },
               { label: "@OpenChainBench", href: "https://x.com/OpenChainBench" },
+              { label: "Email", href: `mailto:${SITE.email}` },
               { label: "About", href: "/about" },
             ]}
           />
@@ -55,9 +61,9 @@ export function SiteFooter() {
 
         <div className="mt-10 flex flex-wrap items-center justify-between gap-2 text-[11px] uppercase tracking-[0.16em] text-ink-muted border-t border-rule pt-6">
           <span>© {new Date().getFullYear()} OpenChainBench · MIT License</span>
-          <Link href="/about" className="hover:text-ink transition-colors">
-            About
-          </Link>
+          <a href={`mailto:${SITE.email}`} className="hover:text-ink transition-colors normal-case tracking-normal">
+            {SITE.email}
+          </a>
         </div>
       </div>
     </footer>

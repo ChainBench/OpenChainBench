@@ -8,7 +8,8 @@ import { pageMetadata } from "@/lib/page-metadata";
 export const metadata: Metadata = pageMetadata({
   path: "/about",
   title: "About",
-  description: "Why OpenChainBench exists and how it stays honest.",
+  description:
+    "OpenChainBench publishes open, reproducible benchmarks for crypto infrastructure: RPC latency, bridge fees, L2 finality and oracle deviation. Funded by Mobula, MIT licensed.",
 });
 
 export default function AboutPage() {
@@ -89,6 +90,8 @@ export default function AboutPage() {
         <a className="lnk" href="https://github.com/ChainBench/OpenChainBench/issues/new/choose">
           data-quality issue or a provider correction
         </a>
+        . For press, partnerships or anything else, reach us at{" "}
+        <a className="lnk" href="mailto:openchainbench@gmail.com">openchainbench@gmail.com</a>
         . Material errors are corrected in place with a dated note on the affected report.
       </p>
     </article>

@@ -9,6 +9,7 @@
  */
 
 import { cache } from "react";
+import { unstable_cache } from "next/cache";
 import { getBenchmarks } from "@/data/benchmarks";
 import { liveResults } from "@/lib/provider-filters";
 import { readBestPerChain } from "@/lib/per-chain-contract";
@@ -221,7 +222,7 @@ function rankPerChainForBench(
   return out;
 }
 
-export const getProviders = cache(async (): Promise<ProviderProfile[]> => {
+async function buildProviders(): Promise<ProviderProfile[]> {
   const benches = await getBenchmarks();
   const byKey = new Map<string, ProviderProfile>();
 
@@ -352,7 +353,23 @@ export const getProviders = cache(async (): Promise<ProviderProfile[]> => {
     return a.name.localeCompare(b.name);
   });
   return profiles;
-});
+}
+
+/** Cross-request cache. The expensive part isn't `getBenchmarks()`
+ *  itself (already wrapped in unstable_cache) but the per-provider
+ *  ranking + wins + per-chain aggregation post-processing on top. A 60
+ *  s revalidate aligns with the bench level ISR window and the standard
+ *  `benchmarks` tag so any `revalidateTag('benchmarks')` clears this
+ *  along with the rest of the data layer. */
+const buildProvidersCached = unstable_cache(
+  buildProviders,
+  ["providers-v1"],
+  { revalidate: 60, tags: ["benchmarks"] },
+);
+
+export const getProviders = cache(
+  async (): Promise<ProviderProfile[]> => buildProvidersCached(),
+);
 
 export async function getProviderSlugs(): Promise<string[]> {
   const profiles = await getProviders();

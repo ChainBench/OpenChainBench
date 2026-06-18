@@ -1,0 +1,42 @@
+slug: which-crypto-oracle-is-the-most-accurate
+question: "Which crypto price oracle is the most accurate in 2026?"
+short_answer: |
+  {{best_name}} currently shows the tightest cross oracle agreement at {{best_p50}} (p99 max pairwise deviation in bps, 24h) across Chainlink, Pyth, Binance and Coinbase on 10 USD pairs, measured live by OpenChainBench.
+
+benchmark: oracle-deviation
+
+intro: |
+  Every on chain product that settles in fiat (perp DEX, lending market, derivatives venue, stablecoin issuer) picks one oracle and inherits its drift. If a lending market uses Chainlink ETH/USD and the on chain price lags the CEX print by 30 bps during a fast move, every liquidation triggered in that window over or under pays the keeper by 30 bps, which is the difference between a healthy liquidation engine and a bad debt spiral. This page answers the question every protocol designer asks before wiring an oracle into a settlement contract. How aligned are the major price feeds in reality, not in marketing, on the exact pair the protocol is settling at this exact second. OpenChainBench polls Chainlink AggregatorV3 (eth_call on Ethereum mainnet), Pyth Hermes REST, Binance ticker (USDT quoted, treated as approximately USD) and Coinbase ticker (USD quoted) every 30 seconds on BTC, ETH, SOL, BNB, AVAX, LINK and POL (4 sources each), plus XRP, ADA and DOGE (3 sources, Chainlink USD feeds for these are deprecated on Ethereum mainnet).
+
+methodology: |
+  Every 30 seconds the harness queries each (source, pair) tuple: Chainlink via `eth_call(latestRoundData())` on the canonical mainnet contract, Pyth via the Hermes `latest_price_feeds` batch endpoint, Binance and Coinbase via REST tickers. For every unordered pair of sources `(a, b)` that both have a fresh sample for the same asset, the harness computes `deviation_pct = |price_a − price_b| / ((price_a + price_b) / 2) * 100`. With 4 sources it computes 6 pairwise deviations per asset; with 3 sources it computes 3. The per pair headline is the max across all source pairs, published as `ocb_oracle_max_deviation_pct`. The leaderboard ranks by p99 over 24h via Prometheus `quantile_over_time`, multiplied by 100 to surface in basis points. A stale price guard excludes any sample older than 60 seconds (`2 * pollInterval`) so a dead poller does not artificially flatten the deviation. The companion gauge `ocb_oracle_last_round_age_seconds{source="chainlink"}` surfaces the on chain update gap separately, so a high deviation can be attributed to the right cause (lagging Chainlink heartbeat vs CEX outlier).
+
+limitations:
+  - "Lower deviation is better, but a non zero floor of roughly 5 to 20 bps is normal. Ticker last traded prices carry micro jitter and Chainlink updates only on a deviation trigger (typically 0.25 to 0.5%) or hourly heartbeat, so a small gap to continuously published Pyth or CEX feeds is structural, not a failure mode."
+  - "XRP, ADA and DOGE are measured on 3 sources only because the Chainlink mainnet AggregatorV3 contracts for those USD feeds are deprecated. The harness drops Chainlink from the deviation matrix for these pairs and computes the disagreement across Pyth, Binance and Coinbase; the provider tag flags the asymmetry."
+  - "Binance is USDT quoted (BTCUSDT, etc.) treated as approximately USD with up to 10 bps of normal USDT drift. A real USDT depeg would surface as Binance drifting from the other three sources for every pair simultaneously, exactly what this bench is designed to flag."
+  - "Redstone (push pull, no continuous gauge to scrape without an integration contract), Uniswap V3 TWAP (derivation of the same CEX prints) and DIA (smaller footprint) are excluded by design. The bench compares the four widely used continuous publishers a protocol would integrate directly."
+  - "MATIC and POL: Polygon migrated MATIC to POL 1:1 on September 4 2024. The Chainlink mainnet contract still answers to the legacy MATIC/USD name but tracks POL, the bench resolves all four sources to POL and keeps `pair=\"MATIC/USD\"` for query continuity."
+
+faq:
+  - q: "What is oracle deviation and why does it matter?"
+    a: "Oracle deviation is the basis point gap between two oracles' reported price for the same asset at the same moment. It matters because every on chain product that settles in fiat picks one oracle and inherits its drift. If a lending market uses Chainlink ETH/USD and the price lags the CEX by 30 bps during a fast move, every liquidation in that window over or under pays the keeper by 30 bps. The bench measures the gap live so a protocol team can size the risk before shipping the integration."
+  - q: "Why is SOL deviation so much higher than BTC?"
+    a: "Two reasons, both structural. Chainlink's SOL/USD mainnet feed is configured with a 0.5% deviation trigger and a 1 hour heartbeat, so during fast SOL moves the on chain price legitimately lags the live CEX print until the trigger fires. SOL is also more volatile per unit time than BTC, so there is more price travel between updates. The companion gauge `ocb_oracle_last_round_age_seconds{pair=\"SOL/USD\"}` regularly shows thousands of seconds, the on chain confirmation that the deviation is Chainlink lag, not a CEX outlier."
+  - q: "Does Chainlink break when it lags?"
+    a: "Chainlink doesn't break, it intentionally doesn't push every tick. On chain updates cost gas; node operators post a new round only when the off chain aggregated price has drifted past the deviation trigger or the heartbeat interval has elapsed. Between updates the on chain value is the last pushed one, so during fast moves the on chain price can lag the live market by 1 trigger width for as long as the next round takes to land. The bench's round age gauge surfaces the gap directly."
+  - q: "Which oracle should a perp DEX integrate for liquidations?"
+    a: "Depends on the asset and the trader experience the protocol is willing to accept. For BTC and ETH, all four oracles in the bench typically agree within single digit bps, so Chainlink's economic security model is the dominant factor. For SOL, settling on Chainlink alone inherits the multi minute lag as trader slippage during liquidations; protocols often combine Chainlink with Pyth or a pull oracle to reduce that. The bench surfaces the actual gap live so the integration decision is grounded in measured data."
+  - q: "Why these four oracles and not Redstone, Uniswap TWAP or DIA?"
+    a: "Two filters: free no auth public endpoint and continuous gauge. Chainlink, Pyth Hermes, Binance and Coinbase all expose continuously updating price feeds via REST or `eth_call` with no API key. Redstone is push pull (on demand pulled into a transaction via signed off chain quote), so there is no continuous gauge to scrape without deploying an integration contract. Uniswap V3 TWAP is a derivation of the CEX prints already polled directly. DIA has smaller deployment footprint than the four kept."
+  - q: "How often is each oracle polled?"
+    a: "Every 30 seconds per (source, pair). 4 sources times 10 pairs times 2 requests per minute equals 80 requests per minute total, comfortably under every free tier ceiling. 30 seconds is fast enough to catch every Chainlink round within roughly half a heartbeat of its on chain landing while keeping total request volume polite for the public endpoints."
+
+related:
+  - which-crypto-price-api-is-the-fastest
+  - which-stablecoin-is-the-most-stable
+  - which-perp-dex-has-the-lowest-fees
+
+seo_title: "Which crypto price oracle is the most accurate in 2026?"
+seo_description: "{{best_name}} leads cross oracle agreement at {{best_p50}} (p99 max pairwise deviation, 24h) across Chainlink, Pyth, Binance and Coinbase on 10 USD pairs. Methodology and limitations included."
+status: live

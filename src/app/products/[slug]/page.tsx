@@ -12,7 +12,14 @@ import {
   getProviderRegistry,
   PROVIDER_REGISTRY,
 } from "@/data/provider-registry";
-import { safeJsonLd } from "@/lib/jsonld";
+import { Breadcrumb } from "@/components/breadcrumb";
+import { buildBreadcrumbJsonLd, safeJsonLd } from "@/lib/jsonld";
+import {
+  fetchHlBuilderStats,
+  isHlBuilderSlug,
+} from "@/lib/hl-builder-stats";
+import { HlBuilderDashboard } from "@/components/hl-builder-dashboard";
+import { RelatedProvidersSection } from "@/components/related-providers-section";
 
 export const revalidate = 60;
 
@@ -88,6 +95,15 @@ export default async function ProviderPage({
   const p = await getProvider(slug);
   if (!p) notFound();
   const reg = getProviderRegistry(p.slug);
+
+  // HyperTracker-parity dashboard for the 104 Hyperliquid frontends. The
+  // strip renders inline between the product header and the bench
+  // appearances list, only when the slug actually maps to a builder the
+  // on-node harness has data for. Cheap (6 Prom scalars in parallel) and
+  // gracefully degrades to a hidden section when Prom is unreachable or
+  // the slug isn't an HL builder.
+  const isHlBuilder = await isHlBuilderSlug(p.slug);
+  const hlStats = isHlBuilder ? await fetchHlBuilderStats(p.slug) : null;
 
   const sorted = [...p.appearances].sort((a, b) => {
     if (a.rank !== b.rank) return a.rank - b.rank;
@@ -273,29 +289,11 @@ export default async function ProviderPage({
         ...(sameAs.length > 0 ? { sameAs } : {}),
         creator: { "@id": `${SITE.url}/#org` },
       },
-      {
-        "@type": "BreadcrumbList",
-        itemListElement: [
-          {
-            "@type": "ListItem",
-            position: 1,
-            name: "Home",
-            item: SITE.url,
-          },
-          {
-            "@type": "ListItem",
-            position: 2,
-            name: "Products",
-            item: `${SITE.url}/products`,
-          },
-          {
-            "@type": "ListItem",
-            position: 3,
-            name: p.name,
-            item: url,
-          },
-        ],
-      },
+      buildBreadcrumbJsonLd([
+        { name: "Home", item: SITE.url },
+        { name: "Products", item: `${SITE.url}/products` },
+        { name: p.name, item: url },
+      ]),
     ],
   };
 
@@ -304,6 +302,15 @@ export default async function ProviderPage({
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
+      />
+
+      {/* Visible breadcrumb trail - mirrors the BreadcrumbList JSON-LD above. */}
+      <Breadcrumb
+        items={[
+          { label: "Home", href: "/" },
+          { label: "Products", href: "/products" },
+          { label: p.name },
+        ]}
       />
 
       <div className="flex flex-wrap items-center gap-3">
@@ -384,6 +391,8 @@ export default async function ProviderPage({
           </>
         );
       })()}
+
+      {hlStats && <HlBuilderDashboard stats={hlStats} name={p.name} />}
 
       {reg && (
         <section className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-8">
@@ -541,6 +550,8 @@ export default async function ProviderPage({
         </ol>
       </section>
 
+      <RelatedProvidersSection providerSlug={p.slug} providerName={p.name} />
+
       {badgeCards.length > 0 && (
         <section className="mt-12">
           <h2 className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted">
@@ -600,15 +611,22 @@ export default async function ProviderPage({
                     />
                   </div>
                   <div className="mt-3 flex flex-wrap items-center gap-3 text-[11px] font-sans font-medium uppercase tracking-[0.18em] text-ink-muted">
-                    <a
-                      href={tweetIntent}
-                      target="_blank"
-                      rel="noopener"
-                      className="inline-flex items-center gap-1 hover:text-ink"
-                    >
-                      Share on X
-                      <ArrowUpRight size={11} strokeWidth={2} />
-                    </a>
+                    {/* Hide the Share on X CTA on /products/mobula. OCB
+                        is built by Mobula, so a pre-filled tweet praising
+                        Mobula posted from a visitor account reads as a
+                        self-promo loop. Every other provider keeps the
+                        share link. */}
+                    {p.slug !== "mobula" && (
+                      <a
+                        href={tweetIntent}
+                        target="_blank"
+                        rel="noopener"
+                        className="inline-flex items-center gap-1 hover:text-ink"
+                      >
+                        Share on X
+                        <ArrowUpRight size={11} strokeWidth={2} />
+                      </a>
+                    )}
                   </div>
                   <details className="mt-3">
                     <summary className="cursor-pointer text-[11px] font-sans font-medium uppercase tracking-[0.18em] text-ink-muted hover:text-ink">

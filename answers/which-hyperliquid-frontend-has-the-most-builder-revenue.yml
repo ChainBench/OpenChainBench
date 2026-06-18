@@ -1,0 +1,44 @@
+slug: which-hyperliquid-frontend-has-the-most-builder-revenue
+question: "Which Hyperliquid frontend generates the most builder revenue?"
+short_answer: |
+  {{best_name}} currently leads the Hyperliquid frontends leaderboard at {{best_p50}} in 24h builder fee revenue, measured live by OpenChainBench from a local hl node tailing every attributed fill on Hyperliquid mainnet.
+
+benchmark: hyperliquid-frontends
+
+intro: |
+  Every Hyperliquid order can attach an optional on chain builder code field. Frontends like Phantom Perps, MetaMask, Rabby, Insilico, based.app, OneKey, Axiom and pvp.trade write their wallet address into this field on every fill they route, then collect a share of the taker fee as their own rebate (capped at 100 basis points on perps, 1000 on spot). This page answers the question every Hyperliquid frontend operator, builder and DeFi researcher tracks. Which frontend collected the most builder fee revenue in USD over the last 24 hours, 7 days and 30 days, the real revenue scale of the Hyperliquid frontend ecosystem rather than a ratio that hides the actual numbers. OpenChainBench ranks 104 tracked frontends by raw USD revenue. Data comes from a local hl node operated on OCB infrastructure tailing the Hyperliquid mainnet fill stream; a Go harness reads every block of attributed fills, aggregates per builder over rolling 24h, 7d and 30d windows in memory, and exposes Prometheus gauges this page consumes. End to end staleness from fill landing on chain to page render is typically under one minute.
+
+methodology: |
+  A local hl node tails the Hyperliquid mainnet and writes every block of fills to disk as JSON lines under `node_fills_by_block_hourly_YYYYMMDD_HH`. A Go harness on the same host re-reads the current and previous hourly files every 30 seconds, parses appended lines, and updates per builder hourly buckets keyed by the UTC hour floor of the fill timestamp. The 24h figure sums the recent 24 hourly buckets, the 7d sums 168, the 30d sums 720. The headline metric is `hl_frontend_fees_usd_24h_v2{builder="X"}`, the raw USD value of `builderFee` summed across every attributed fill in the rolling window. Companion gauges expose volume routed (`hl_frontend_volume_usd_24h_v2`), unique users (`hl_frontend_users_24h`), and the trader perspective effective fee in basis points. Memory footprint is roughly 600 KB total for the 104 tracked frontends; older buckets are pruned on every publish.
+
+limitations:
+  - "Ranking is by raw USD builder fee revenue, not by value for users. A bigger number means more fees collected via the on chain builder code field, not necessarily a better trader experience. The effective fee bps companion tab is the trader cost view."
+  - "Native Hyperliquid UI orders carry no builder code and are excluded by construction. Roughly 95 percent of Hyperliquid fills land without a builder field; the 5 percent that do are the frontend ecosystem this bench measures."
+  - "Builder addresses outside the curated registry remain visible in the raw node stream but stay off the leaderboard until added via public PR. A new frontend that ships a builder code today appears once it is added to `builders.json`."
+  - "USD figures move with both volume and effective fee. A frontend can climb the leaderboard by routing more notional or by widening its fee; the companion volume and effective fee bps tabs separate the two drivers."
+  - "The 24h view is reactive to promo cycles and one off campaigns. Use the 7d and 30d ranges for ranking stability, the 24h view for current activity."
+
+faq:
+  - q: "What does this benchmark measure?"
+    a: "The USD value of builder fees each Hyperliquid frontend collected over rolling 24 hour, 7 day and 30 day windows. A builder fee is the optional rebate the frontend writes into the builder field on every Hyperliquid order it routes. The on chain protocol caps this at 100 basis points on perps and 1000 on spot. The bench sums every fill's `builderFee` value attributed to a known frontend address and publishes the total per timeframe."
+  - q: "Why USD revenue instead of effective fee in basis points?"
+    a: "Effective fee in basis points answers the trader question of cost per dollar routed. USD revenue answers the operator question of size and revenue scale, the same way CoinMarketMan and ASXN dashboards present builder leaderboards. Both views are useful; the effective fee bps view is available as a companion tab."
+  - q: "Where does the data come from?"
+    a: "A local hl node operated on OCB infrastructure tails the Hyperliquid mainnet and writes every block of fills to disk as one JSON line. A Go harness on the same host reads these files continuously, parses each fill, and increments per builder hourly aggregates. No third party API, no daily CSV bucket dependency, no internal Mobula service. End to end staleness from fill landing on chain to bench page render is typically under one minute."
+  - q: "Which frontends are tracked?"
+    a: "104 Hyperliquid frontends with a known builder address. The cohort spans consumer wallets (Phantom Perps, MetaMask, Rabby, OneKey, Trust Wallet), pro terminals (Insilico, Axiom, Pear, Lit Trade), social and PvP UIs (pvp.trade, Senpi, FOMO), bots and signal apps (FlowBot, Tread.fi, Moonbot, Hyperdash), based.app, defi.app and HIP-3 deployers. The registry is curated and new addresses ship via public PR."
+  - q: "Why are some frontends at zero?"
+    a: "Three reasons. The frontend stopped operating or has not routed any attributed fills in the window. The frontend never enabled the builder code attribution system. The frontend uses a builder address not yet in the registry. The 'time since last fill' companion separates these cases: a frontend with hours of inactivity is in the first bucket, a frontend with consistent zero across all timeframes is in the second or third."
+  - q: "Why does Phantom Perps usually lead?"
+    a: "Consumer wallets integrate Hyperliquid trading directly inside the wallet UI. Their effective fee is typically in the 5 to 10 basis point range and the user base is large. The combination of wide reach times a moderate fee produces the highest absolute revenue. Pro terminals sit below because they charge less per dollar routed by design, even though their notional volume can be comparable."
+  - q: "How often does the page refresh?"
+    a: "Every 30 seconds. The harness re-reads the local hl node hourly file every 30 seconds and Prometheus scrapes the gauges on the same cadence. The page itself uses incremental static regeneration with a 60 second window, so headline values are at most 90 seconds stale plus chain propagation delay."
+
+related:
+  - which-perp-dex-has-the-lowest-fees
+  - which-prediction-market-has-the-strictest-rate-limits
+  - which-l1-has-the-fastest-finality
+
+seo_title: "Which Hyperliquid frontend generates the most builder revenue in 2026?"
+seo_description: "{{best_name}} leads Hyperliquid frontends at {{best_p50}} in 24h builder fee revenue across 104 tracked frontends. Live data from a local hl node on the Hyperliquid mainnet fill stream."
+status: live

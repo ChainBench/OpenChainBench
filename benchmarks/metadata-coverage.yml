@@ -6,6 +6,17 @@ title: Best crypto data API for token metadata, live across Mobula, Codex, Jupit
 seo_title: "Best crypto data API token metadata 2026: Mobula, Codex, Jupiter"
 seo_description: "Best crypto data API for token metadata ranked live. Share of logo, description, twitter populated on fresh Solana, BNB, Base tokens. Mobula, Codex, Jupiter."
 subtitle: Share of metadata fields (logo, description, twitter, website) populated for fresh-launch tokens, audited every launch on Solana, BNB and Base.
+
+per_chain_explainer:
+  - slug: solana
+    h2: "Best Solana token metadata coverage"
+    body: |
+      {{best_name:chain:solana}} currently leads Solana token metadata coverage at {{best_p50:chain:solana}} (p50 of hourly rate, 24h) across 3 providers including Solana-native Jupiter. Coverage measures the share of (logo, description, twitter, website) field checks that return a populated value on tokens within minutes of mint, sampled via Mobula Pulse V2 on pump.fun, Meteora DBC, Raydium CPMM and Moonshot launchpads. The Solana memecoin volume creates the hardest indexer load in the bench.
+  - slug: bnb
+    h2: "Best BNB Chain token metadata coverage"
+    body: |
+      {{best_name:chain:bnb}} currently leads BNB Chain token metadata coverage at {{best_p50:chain:bnb}} (p50 of hourly rate, 24h). BNB is the cleaner read on indexer quality because Jupiter does not cover EVM, so the matchup is decided between Mobula and Codex on the same footing on Four.meme and PancakeSwap launches. Coverage tests the same four canonical fields (logo, description, twitter, website) on tokens within minutes of mint, queried through each provider's metadata endpoint.
+
 category: Aggregators
 status: live
 metric: Field coverage
@@ -95,6 +106,20 @@ dimensions:
   chain:
     - { value: solana, label: Solana }
     - { value: bnb,    label: BNB Chain }
+  # Region values match the raw harness labels. Declared so the
+  # /compare/[slug] page can render a chain x region matrix when
+  # both providers compete in this bench.
+  region:
+    - { value: all,     label: All regions }
+    - { value: us-east, label: US-East }
+    - { value: eu-west, label: EU-West }
+    - { value: sgp,     label: Singapore }
+
+# Rank matrix query gates the per-region badge scoping. Coverage is a
+# success-rate ratio; metric labels already carry the `provider` token
+# natively (metadata_coverage_success_total{provider, chain, field,
+# region}) so no label_replace required.
+rank_matrix_query: avg by (provider, chain, region) (rate(metadata_coverage_success_total[24h]) / clamp_min(rate(metadata_coverage_checks_total[24h]), 0.001))
 
 # Real metrics exposed by the aggregator-head-lag harness:
 #   metadata_coverage_checks_total{provider, chain, field, region}   counter

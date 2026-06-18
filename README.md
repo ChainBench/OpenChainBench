@@ -9,26 +9,28 @@ The project is community-run, MIT-licensed, and accepts PRs from any party inclu
 ## What's inside
 
 ```
-benchmarks/                 Spec files. one YAML per published benchmark
+benchmarks/                 Spec files. one YAML per published benchmark (30 and counting)
 ├── aggregator-head-lag.yml     №001 · onchain data provider latency
 ├── bridge-quote-latency.yml    №002 · cross-chain bridge quote latency
-├── bridge-fee.yml              №003 · cross-chain bridge effective fee
-├── metadata-coverage.yml       №004 · token metadata coverage
-├── network-coverage.yml        №005 · networks supported (count)
-├── perp-fees.yml               №006 · perp DEX taker fees
-├── wallet-labels-coverage.yml  №007 · wallet-labels coverage
-├── l1-finality.yml             №008 · L1 finality latency
+├── hyperliquid-frontends.yml   №030 · HL builder-code revenue (100+ frontends)
+├── perp-funding.yml            №036 · perp funding rates across venues
+├── pm-rate-limits.yml          №037 · prediction-market API rate limits
+├── …                           (run `ls benchmarks/` for the full list)
 └── README.md                   Spec format reference + submission guide
 
-harnesses/                  The runners that produce the metrics
+harnesses/                  The runners that produce the metrics (18 dirs)
 ├── aggregator-head-lag/    Go service: WebSocket monitor (:2112/metrics)
 ├── bridge-monitor/         Go service: 4-bridge quote loop + execution (:9090/metrics)
-├── network-coverage/       Go service: counts each provider's supported networks (:2112/metrics)
-├── metadata-coverage/      Go service: per-token metadata coverage probe
-├── perp-fees/              Go service: perp-DEX taker fee + funding scrape
-├── wallet-labels/          Go service: wallet-labels coverage probe
+├── hyperliquid-frontends/  Go service: tails a local hl-node fill stream;
+│                           feeds benches №030/№036 + HIP-3 deployers,
+│                           builder registry in builders.json (100+ entries)
 ├── l1-finality/            Go service: per-chain finality latency probe
+├── …                       (oracle-deviation, solana-tx-landing, validator-yield, …)
 └── README.md               Contract for new harnesses
+
+worker/                     Materialization worker (Railway): sweeps every bench
+                            against Prometheus every 60s, publishes snapshots
+                            to the Redis store the site reads
 
 alternatives/               YAML-driven /alternatives/<slug> SEO landing pages
 └── README.md               Format for "Pump Portal alternatives", "Relay alternatives", …
@@ -56,7 +58,7 @@ src/                        Next.js 16 site (App Router, ISR, Tailwind v4)
 │   ├── time-series-chart, ledger-table, region-grid, chain-tabs, …
 │   └── live/                Live page: dashboard, ticker, chart, compact-feed
 ├── data/
-│   ├── benchmarks.ts        Spec loader (YAML → Prometheus → Benchmark[])
+│   ├── benchmarks.ts        Spec loader (YAML + materialized snapshots → Benchmark[])
 │   └── provider-registry.ts Per-provider description, URL, Twitter handle
 └── lib/
     ├── prometheus.ts        Prometheus HTTP client + spec/formatting helpers
@@ -168,12 +170,12 @@ OpenChainBench is a federation of independently-hosted harnesses. Each spec decl
 
 Each harness is run by whoever wrote it. Mobula for the existing aggregator and bridge benchmarks, independent contributors for any future ones, providers for self-benchmarks of their own services. They never share API keys with the project. They expose `/metrics` over HTTPS to **their own** Prometheus, and that Prom's read API is what the site queries.
 
-The site queries the Prometheus URL declared in each YAML spec via the standard HTTP API (`/api/v1/query`, `/api/v1/query_range`). Resilience against transient Prometheus failures is built in four layers:
+Prometheus is queried by a **materialization worker** (`worker/index.ts`, a Railway service colocated with the Prom), not by the site at request time. The worker sweeps every bench every 60 s via the standard HTTP API (`/api/v1/query`, `/api/v1/query_range`), applies per-provider carry-forward (a provider whose queries fail this sweep keeps its last good values, marked with a `staleSince` timestamp), and publishes complete, atomic snapshots to a Redis store. The site reads snapshots only (`READ_FROM_STORE=1`). Resilience layers, in order:
 
-1. **Per-bench `unstable_cache` revalidate 60 s.** One isolated cache entry per benchmark slug, so a transient failure on bench A does not poison bench B. If Prom returns nothing for an editorially-live bench, the cache throws to preserve the previous good value instead of writing a draft snapshot.
-2. **Persistent KV snapshot fallback.** On cold start during a Prometheus blackout (no in-memory cache to preserve), the last successful render is restored from Vercel KV / Upstash. Editorial metadata is rebuilt fresh from YAML on every read, so snapshot age never bleeds into stale copy. Set `KV_REST_API_URL` + `KV_REST_API_TOKEN` to enable; without them the layer is a silent no-op and the site behaves identically to before.
-3. **`unstable_cache` revalidate 5 s** for the lightweight `/api/freshness` probe consumed by the on-page "Live" indicator.
-4. **Vercel edge cache** (`s-maxage` + `stale-while-revalidate`) on every public route. Bench detail pages use ISR with `revalidate: 60`, so the "More benchmarks" rail stays fresh without waiting for a redeploy.
+1. **Carry-forward in the worker.** Transient per-provider query failures never produce holes in a leaderboard — last good values are served with honest staleness metadata instead.
+2. **Snapshot freshness gate with live fallback.** If a snapshot is missing or older than the acceptance window (worker down), the site falls back to the original live-Prometheus loader for that render.
+3. **Per-bench `unstable_cache` revalidate 60 s + ISR** on top of the store read, so a Redis blip on bench A does not poison bench B and pages stay static-fast.
+4. **Vercel edge cache** (`s-maxage` + `stale-while-revalidate`) on every public route. A worker heartbeat key surfaces sweep staleness for ops.
 
 A spec's Prometheus URL goes through a two-layer SSRF guard: a schema-time rejection of non-HTTPS / RFC1918 / link-local / metadata IPs at PR-validate time (`pnpm validate`), and a runtime DNS resolution that refuses if the hostname currently lands on a private address. Plus `redirect: "manual"` on every Prom fetch so a 3xx into a private host gets blocked too.
 
@@ -205,8 +207,10 @@ Single Railway box, in-memory fan-out. Cost stays flat regardless of viewer coun
 
 | Layer | Where it runs | Notes |
 |---|---|---|
-| Site (Next.js 16, ISR) | Vercel | Bench detail pages on `revalidate: 60`, static hubs. Per-bench `unstable_cache` + KV snapshot fallback for Prom downtime. Zero secrets, only queries the public Prom URL. |
-| Prometheus | A small Railway service | The only piece of shared OpenChainBench infrastructure. Open access (read-only public API). |
+| Site (Next.js 16, ISR) | Vercel | Bench detail pages on `revalidate: 60`, static hubs. Reads materialized snapshots from the Redis store (`READ_FROM_STORE=1`) with a live-Prom fallback. Zero secrets beyond the store URL. |
+| Materialization worker | Railway (`ocb-materialize-worker`) | Sweeps every bench against Prometheus every 60 s, applies per-provider carry-forward, publishes atomic snapshots to Redis. Its image clones OCB `dev` at build — rebuild it after spec provider-list changes. |
+| Snapshot store | Railway Redis | Atomic per-(bench, variant) snapshot blobs + heartbeat key. |
+| Prometheus | A small Railway service | Shared OpenChainBench time-series store. Open access (read-only public API). |
 | Harnesses | Wherever the contributor wants to host them | Railway, Fly, Cloud Run, a VPS. each contributor owns their own runtime, secrets, and budget. |
 | Live-stream relay | Mobula's Railway | Holds the Mobula API key, fans out Mobula fast-trade events to browsers. Not in this repo. |
 
@@ -221,7 +225,7 @@ pnpm install
 pnpm dev              # http://localhost:3000
 ```
 
-The site reads every `benchmarks/*.yml` at request time. Specs whose Prometheus URL the runtime can't reach render as drafts (no numbers, methodology only).
+The site reads every `benchmarks/*.yml` at request time. Locally (no Redis store configured) it falls back to live Prometheus queries; specs whose data source the runtime can't reach render as drafts (no numbers, methodology only).
 
 ```bash
 pnpm validate            # schema-lint every spec in benchmarks/

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Globe } from "lucide-react";
 import type { Benchmark } from "@/types/benchmark";
 import { brandColor } from "@/lib/brand";
@@ -119,9 +119,12 @@ export function TimeSeriesChart({
   // Chart's internal re-renders. Reset to null when range or region
   // changes (the data shape is different, the old zoom doesn't apply).
   const [zoom, setZoom] = useState<{ startFrac: number; endFrac: number } | null>(null);
-  useEffect(() => {
+  const zoomScopeKey = `${range}|${region}`;
+  const [prevZoomScopeKey, setPrevZoomScopeKey] = useState(zoomScopeKey);
+  if (prevZoomScopeKey !== zoomScopeKey) {
+    setPrevZoomScopeKey(zoomScopeKey);
     setZoom(null);
-  }, [range, region]);
+  }
 
   const has7d =
     !!benchmark.extras.series7d &&
@@ -468,6 +471,7 @@ function Chart({
     idx: number;
     xPx: number;
     yPx: number;
+    containerW: number;
   } | null>(null);
 
   // Drag-to-zoom state. `dragFrac` is the [start, current] pair while
@@ -516,13 +520,17 @@ function Chart({
     // of "now"; converting to a data-index means scaling by EXPECTED
     // (the step density spec.ts requests) and subtracting from the
     // last index. If the cursor sits in the empty left region beyond
-    // actual data, idx clamps to 0 (oldest available point).
-    const expected = Math.max(1, expectedPoints - 1);
-    const offsetFromRight = 1 - ratio;
-    const dataOffsetFromLast = offsetFromRight * expected;
+    // actual data, idx clamps to 0 (oldest available point). When
+    // zoomed, the visible series fills the chart — so the cursor
+    // ratio maps directly to the sliced index range, not the original
+    // expectedPoints scale. Mirror the same switch used in drawn().
     const lastIdx = numPoints - 1;
+    const expected = Math.max(1, expectedPoints - 1);
+    const denom = zoom ? Math.max(1, lastIdx) : expected;
+    const offsetFromRight = 1 - ratio;
+    const dataOffsetFromLast = offsetFromRight * denom;
     const idx = Math.max(0, Math.min(lastIdx, Math.round(lastIdx - dataOffsetFromLast)));
-    setHover({ idx, xPx, yPx });
+    setHover({ idx, xPx, yPx, containerW: rect.width });
   };
 
   const onDown = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -572,6 +580,13 @@ function Chart({
     // unfilled left side stays empty instead of stretching a sparse
     // line across the whole range — which used to imply we had data
     // we did not.
+    // When the user drag-zooms, the lines should stretch to fill the
+    // chart width so the zoomed segment actually reads as zoomed-in. We
+    // achieve that by switching the X-axis denominator from the original
+    // expectedPoints (which keeps short data anchored to the right) to
+    // the sliced lastIdx itself. Without this switch, a 50 % zoom kept
+    // the line at 50 % of chart width, anchored right — the user saw
+    // their selection compressed into a corner instead of magnified.
     const expected = Math.max(1, expectedPoints - 1);
     return slicedLines.map((l) => {
       const color = l.color;
@@ -583,8 +598,11 @@ function Chart({
       // If Prom returned more points than the chart was sized for (off-by-one
       // when start/end timestamps are both inclusive), fall back to the
       // actual series length so the leftmost point lands at padL exactly
-      // instead of overflowing left of the chart frame.
-      const denom = Math.max(expected, lastIdx);
+      // instead of overflowing left of the chart frame. When zoomed, the
+      // sliced view should always fill the chart — use lastIdx alone so
+      // the leftmost sliced sample maps to padL and the rightmost to
+      // padL+innerW.
+      const denom = zoom ? Math.max(1, lastIdx) : Math.max(expected, lastIdx);
       const pts = l.values.map((v, i) => {
         const offsetFromRight = (lastIdx - i) / denom;
         const x = padL + innerW * (1 - offsetFromRight);
@@ -647,9 +665,11 @@ function Chart({
   // Hover line position: mirror the right-anchored placement used by drawn().
   // hover.idx is in [0, numPoints-1]; we map it to the visible chart via the
   // same offsetFromRight = (last - i) / EXPECTED so the vertical hairline
-  // sits exactly on the data point under the cursor.
-  const hoverExpected = Math.max(1, expectedPoints - 1);
+  // sits exactly on the data point under the cursor. When zoomed, the
+  // sliced view spans the full chart width — match the denom switch used
+  // in drawn() so the hairline lands on the data point under the cursor.
   const hoverLast = Math.max(1, numPoints - 1);
+  const hoverExpected = zoom ? hoverLast : Math.max(1, expectedPoints - 1);
   const hoverOffsetFromRight = hover ? (hoverLast - hover.idx) / hoverExpected : 0;
   const hoverFraction = hover ? 1 - hoverOffsetFromRight : 0;
   const hoverX = hover ? padL + innerW * hoverFraction : null;
@@ -971,7 +991,7 @@ function Chart({
         <Tooltip
           xPx={hover.xPx}
           yPx={hover.yPx}
-          containerW={wrapRef.current?.getBoundingClientRect().width ?? 1}
+          containerW={hover.containerW || 1}
           hoursAgo={hoverHoursAgo}
           windowHours={windowHours}
           unit={unit}

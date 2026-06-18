@@ -33,6 +33,11 @@ export function pageMetadata({
   const canonical = `${SITE_ORIGIN}${path}`;
   const socialUrl = chain && chain !== "all" ? `${canonical}?chain=${chain}` : canonical;
   const social = title.includes("OpenChainBench") ? title : `${title} · OpenChainBench`;
+  // Fallback to the root /opengraph-image and /twitter-image when a hub
+  // doesn't ship a dedicated card. Without this, Next.js treats the
+  // per-page `openGraph` block as a full override and drops the
+  // file-based root image, so /compare and /alternatives end up sharing
+  // unbranded blank cards on every social embed.
   const meta: Metadata = {
     title,
     description,
@@ -43,12 +48,14 @@ export function pageMetadata({
       url: socialUrl,
       type: "website",
       siteName: "OpenChainBench",
+      images: [{ url: `${SITE_ORIGIN}/opengraph-image`, width: 1200, height: 630 }],
     },
     twitter: {
       card: "summary_large_image",
       title: social,
       description,
       site: "@OpenChainBench",
+      images: [`${SITE_ORIGIN}/twitter-image`],
     },
   };
   return meta;

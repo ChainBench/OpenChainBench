@@ -1,0 +1,13 @@
+slug: tenderly
+target_product: Tenderly
+target_url: https://tenderly.co
+description: EVM developer platform with a multi-chain public RPC gateway
+benchmark: rpc-capabilities
+
+intro: |
+  Tenderly runs a multi-chain public RPC gateway at `gateway.tenderly.co/public/<slug>` alongside its simulation and observability stack. The free, no-key tier covers nine EVM networks and gets pulled into the same dapps that pick PublicNode or dRPC as their default fallback endpoint. The question every developer faces before pasting a URL into a wallet config or a backend service is whether that endpoint is actually fast and reliable on the chain their product runs on, not whether the vendor's homepage says it is. This benchmark probes `eth_blockNumber` every 15 seconds against 15 audited no-key public RPC providers across 10 EVM chains (Ethereum, Arbitrum, Base, Optimism, Avalanche, BNB, Polygon, Linea, Scroll, Mantle), from three Railway regions (us-east, eu-west, sgp). Each provider gets the same identical JSON-RPC POST every cycle, so the recorded p50/p90/p99 reflects sustained round-trip latency rather than a marketing burst. The harness also classifies every response as `ok`, `http_err`, `jsonrpc_err`, `stale` or `timeout` and exposes archive-depth support for five historical depths (300 to 5,000,000 blocks). The cohort competing with Tenderly's gateway includes PublicNode, dRPC, 1RPC, MeowRPC, Nodies, Lava, Merkle, Flashbots Protect and Cloudflare, plus the chain-official foundation endpoints on Base, BNB, Arbitrum, Optimism and Avalanche. The leaderboard re-sorts every 15 seconds against fresh Prometheus samples, and the chain tab at the top of the page filters every query so the comparison stays per chain rather than smeared across an aggregate that mechanically favours single-chain endpoints.
+
+seo_title: Tenderly alternatives. Live RPC latency benchmark across 10 EVM chains
+seo_description: Compare Tenderly Gateway alternatives on eth_blockNumber p50 latency. PublicNode, dRPC, 1RPC, Nodies, Lava and chain-official endpoints probed every 15 seconds from 3 regions.
+
+status: live

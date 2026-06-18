@@ -1,0 +1,274 @@
+# OpenChainBench. Bench № 036
+
+slug: perp-funding
+number: "036"
+title: Cheapest perp venue to hold a position, live funding normalized
+seo_title: "Perp funding rates live 2026: Hyperliquid, Binance, Bybit, OKX, dYdX, Paradex, Aster normalized and ranked"
+seo_description: "Live funding rates across Hyperliquid, Binance, Bybit, OKX, dYdX, Paradex and Aster, normalized to the same time base (venues settle on 1h, 4h or 8h periods). Ranked by the cost of holding a $1,000 ETH long for 24 hours, with BTC and SOL columns, annualized rates and 7d/30d averages."
+subtitle: Funding cost in basis points to hold a long position for 24 hours at the current rate, normalized across venues that settle funding on 1 hour, 4 hour and 8 hour periods. Negative means longs get paid.
+category: Trading
+status: live
+metric: Funding cost to hold a long 24h
+unit: bp
+higher_is_better: false
+
+disclaimer: |
+  Funding is signed. Positive means longs pay shorts, negative means longs get paid to hold. Venues settle on different native periods (1h for Hyperliquid and dYdX, 4h or 8h elsewhere); every figure is normalized from the venue's own quoted rate and interval before ranking. Funding is only the holding cost. Opening costs (taker fee, spread, impact) are the companion bench perp-fees.
+
+seo_intro: |
+  This page answers one question. On which perp venue is it cheapest,
+  right now, to hold a position once it is open. Perpetual futures
+  charge funding between longs and shorts to keep the contract pinned
+  to spot, and on a position held for hours or days this funding flow
+  usually dwarfs the opening fee. Comparing it across venues is
+  genuinely hard because everyone quotes a different native period:
+  Hyperliquid and dYdX settle every hour, Binance and Bybit quote per
+  8 hours with some pairs moved to 4 hours, OKX, Paradex and Aster
+  quote per 8 hours. A raw rate comparison is meaningless. The bench
+  polls each venue's public funding endpoint every minute, reads the
+  venue's own settlement interval alongside the rate, normalizes
+  everything to a per hour basis, and ranks venues by the cost in
+  basis points of holding a $1,000 ETH long for 24 hours at the
+  current rate, with BTC and SOL columns, annualized equivalents and
+  7 and 30 day averages for the carry trade perspective. Negative
+  numbers mean the long side is being paid to hold. Funding spreads
+  between venues are the raw material of the funding arbitrage trade:
+  short the perp where funding is most positive, long it where it is
+  most negative or hold spot, and collect the difference.
+
+abstract: |
+  The bench polls the public funding endpoint of seven perpetual
+  venues every 60 seconds: Hyperliquid (metaAndAssetCtxs), Binance
+  and Aster (premiumIndex plus fundingInfo for per pair intervals),
+  Bybit (v5 tickers plus instruments-info), OKX (public funding-rate,
+  interval derived from settlement timestamps), dYdX v4 (indexer
+  perpetualMarkets) and Paradex (markets summary). For each venue and
+  each of BTC, ETH and SOL it records the quoted rate and the venue's
+  native settlement interval, then publishes Prometheus gauges
+  normalized to a per hour basis: rate per hour in bps, cost to hold
+  a long for 24 hours in bps, and the annualized percentage. Sign is
+  preserved everywhere, positive means longs pay shorts. The 7 day
+  and 30 day figures are time averages of the normalized series, so
+  they reflect what holding actually cost over the window rather than
+  a single snapshot. A venue that fails to respond keeps its previous
+  values and its freshness timestamp goes stale, which the
+  reliability column surfaces.
+
+methodology:
+  - "Sources. One public, unauthenticated endpoint per venue: Hyperliquid info metaAndAssetCtxs (live 1h rate), Binance fapi premiumIndex plus fundingInfo for per pair intervals, Bybit v5 tickers plus instruments-info (interval in minutes), OKX public funding-rate (interval from settlement timestamps), dYdX v4 indexer perpetualMarkets (per hour rate), Paradex markets summary (8h period), Aster premiumIndex (Binance compatible)."
+  - "Normalization. Every venue quotes a rate for its own settlement period. The harness divides the quoted rate by the venue's interval in hours to get a per hour rate, then publishes per hour bps (rate times 10000), 24 hour hold cost (per hour times 24) and annualized percent (per hour times 24 times 365 times 100). A 0.01 percent per 8h rate and a 0.00125 percent per 1h rate are the same number on this page."
+  - "Sign convention. Positive means longs pay shorts, negative means longs are paid to hold. Signs are preserved through every column; the ranking treats negative as cheaper, so a venue where the long side is being paid ranks first."
+  - "Headline. Cost in bps of notional to hold an ETH long for 24 hours, averaged over the last 24 hours of one minute samples. The instantaneous rate moves every settlement; the 24 hour average is what a position opened yesterday actually paid. BTC and SOL columns are computed identically."
+  - "Windows. The 7 day and 30 day columns are avg_over_time of the normalized hold cost series, the carry trader's view. A venue with attractive funding for one hour and brutal funding the rest of the week ranks accordingly on the longer windows."
+  - "Cadence. The harness polls all venues in parallel every 60 seconds with a 10 second timeout per request; Prometheus scrapes every 30 seconds. End to end staleness is under two minutes in normal operation."
+  - "Failures. A venue that errors or times out keeps its previous gauge values and its perp_funding_venue_ok_unix timestamp stops advancing; the Success column turns red after 5 minutes of silence. No value on this page is ever interpolated or guessed."
+  - "Scope. BTC, ETH and SOL are the assets every venue in the cohort lists. GMX is excluded because its borrow fee model has no comparable funding rate. Lighter is excluded until the interval semantics of its public funding endpoint are documented; it joins the cohort once its numbers can be normalized honestly."
+  - "Funding versus fees. This bench prices holding. Its companion perp-fees prices opening (taker fee plus spread plus impact on a $1000 ETH long). Read both to know the all in cost of a trade you intend to hold."
+  - "Reproducibility. The harness source is open in the OCB harness tree (funding.go in the hyperliquid-frontends harness). Point it at the same public endpoints and you reproduce every number on this page."
+
+findings:
+  - "{{best_name}} is currently the cheapest venue to hold an ETH long, at {{best_p50}} of notional per 24 hours (24h average, negative means longs get paid)."
+  - "{{name:hyperliquid}} settles funding every hour at a rate equivalent to {{p50:hyperliquid}} per 24h held. Hourly settlement means the quoted rate reacts to skew faster than the 8 hour venues."
+  - "{{name:binance}} sits at {{p50:binance}} per 24h held on ETH. As the deepest perp book in the market it tends to anchor the field; persistent spreads against it are the funding arbitrage signal."
+  - "Funding spreads between venues are tradeable. Short the perp where funding is most positive and long it where it is most negative (or hold spot), and the difference accrues to you at every settlement."
+  - "The sign flips with market regime. In sustained uptrends every venue goes positive (longs pay), in washouts funding goes negative and the table inverts. The 7d and 30d toggles smooth single-settlement noise."
+  - "Interval normalization matters more than it looks. A naive comparison of quoted rates overstates 1 hour venues by 8x against 8 hour venues; every figure here is normalized to the same time base before ranking."
+
+faq:
+  - q: "What does this benchmark measure?"
+    a: "The funding cost of holding a perp long, normalized across venues. Headline ranking is the cost in basis points of holding a $1,000 ETH long for 24 hours at the current rate, averaged over the last 24 hours. BTC and SOL columns, annualized equivalents and 7d/30d averages are alongside. Positive means longs pay shorts, negative means longs get paid to hold."
+  - q: "What is a funding rate?"
+    a: "Perpetual futures never expire, so to keep the contract price pinned to spot, the side that is crowding the trade periodically pays the other side. When perps trade above spot, longs pay shorts; below spot, shorts pay longs. The payment is the funding rate, charged on position notional at each settlement."
+  - q: "Why does normalization matter?"
+    a: "Venues quote funding for their own settlement period: Hyperliquid and dYdX per hour, Binance and Bybit per 8 hours with some pairs on 4 hours, OKX, Paradex and Aster per 8 hours. Comparing quoted rates directly overstates hourly venues by 8x. This page divides every rate by its venue's interval first, so all columns share a per hour time base."
+  - q: "What does a negative number mean?"
+    a: "The long side is being paid to hold. Funding is a transfer between traders, not a fee to the venue, so when shorts crowd the book the sign flips and holding a long becomes income. The ranking treats negative as cheapest."
+  - q: "What is funding rate arbitrage?"
+    a: "Collecting the spread between venues or against spot. The classic carry: hold spot (or a long where funding is negative) and short the perp where funding is most positive; each settlement pays you the difference without directional exposure. The 7d and 30d columns show whether a spread persists long enough to cover execution costs."
+  - q: "Why is the 24h average the headline instead of the live rate?"
+    a: "The instantaneous rate can spike for a single settlement and revert. A position opened 24 hours ago paid the average, not the snapshot, so the headline is avg_over_time over 24 hours of one minute samples. The Per-hour rate tab shows the live normalized rate if you want the snapshot."
+  - q: "Why are GMX and Lighter not in the cohort?"
+    a: "GMX prices borrowing per side against pool utilization; there is no funding rate comparable to the order book venues, and pretending otherwise would be dishonest. Lighter publishes funding data but the interval semantics of its public endpoint are not documented; it joins once its numbers can be normalized with confidence."
+  - q: "How fresh are these numbers?"
+    a: "The harness polls every venue in parallel every 60 seconds and Prometheus scrapes every 30 seconds, so figures are at most about two minutes behind the venue APIs. A venue that stops responding keeps its last values and its Success column turns red after five minutes."
+  - q: "Can I cite a value from this page?"
+    a: "Yes. Every number is a Prometheus query over gauges the open source harness publishes from public venue endpoints. Cite the value and the timestamp at the top of the page; the harness source link is in the source field below."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/hyperliquid-frontends
+
+prometheus:
+  window: 24h
+  expected_freshness_seconds: 3600
+
+providers:
+  - slug: hyperliquid
+    name: Hyperliquid
+    tag: Onchain order book perps, funding settled hourly
+    formula: "Quoted hourly funding rate from info metaAndAssetCtxs, normalized to bps per hour and extrapolated to a 24h hold; headline is the 24h time average on ETH."
+    queries:
+      p50: avg_over_time(perp_funding_hold_24h_bps{venue="hyperliquid",asset="ETH"}[24h])
+      p90: avg_over_time(perp_funding_hold_24h_bps{venue="hyperliquid",asset="BTC"}[24h])
+      p99: avg_over_time(perp_funding_hold_24h_bps{venue="hyperliquid",asset="SOL"}[24h])
+      mean: avg_over_time(perp_funding_annualized_pct{venue="hyperliquid",asset="ETH"}[24h])
+      success: (perp_funding_venue_ok_unix{venue="hyperliquid"} > bool (time() - 300))
+      sample_size: count(perp_funding_rate_hourly_bps{venue="hyperliquid"})
+      series: avg_over_time(perp_funding_hold_24h_bps{venue="hyperliquid",asset="ETH"}[24h])
+
+  - slug: binance
+    name: Binance
+    tag: Largest CEX perp book, 8h funding (4h on some pairs)
+    formula: "lastFundingRate from fapi premiumIndex divided by the pair's funding interval (fundingInfo, default 8h), normalized to bps per hour and a 24h hold; headline is the 24h time average on ETH."
+    queries:
+      p50: avg_over_time(perp_funding_hold_24h_bps{venue="binance",asset="ETH"}[24h])
+      p90: avg_over_time(perp_funding_hold_24h_bps{venue="binance",asset="BTC"}[24h])
+      p99: avg_over_time(perp_funding_hold_24h_bps{venue="binance",asset="SOL"}[24h])
+      mean: avg_over_time(perp_funding_annualized_pct{venue="binance",asset="ETH"}[24h])
+      success: (perp_funding_venue_ok_unix{venue="binance"} > bool (time() - 300))
+      sample_size: count(perp_funding_rate_hourly_bps{venue="binance"})
+      series: avg_over_time(perp_funding_hold_24h_bps{venue="binance",asset="ETH"}[24h])
+
+  - slug: bybit
+    name: Bybit
+    tag: USDT linear perps, funding interval per instrument
+    formula: "fundingRate from v5 market tickers divided by the instrument's fundingInterval (instruments-info, minutes), normalized to bps per hour and a 24h hold; headline is the 24h time average on ETH."
+    queries:
+      p50: avg_over_time(perp_funding_hold_24h_bps{venue="bybit",asset="ETH"}[24h])
+      p90: avg_over_time(perp_funding_hold_24h_bps{venue="bybit",asset="BTC"}[24h])
+      p99: avg_over_time(perp_funding_hold_24h_bps{venue="bybit",asset="SOL"}[24h])
+      mean: avg_over_time(perp_funding_annualized_pct{venue="bybit",asset="ETH"}[24h])
+      success: (perp_funding_venue_ok_unix{venue="bybit"} > bool (time() - 300))
+      sample_size: count(perp_funding_rate_hourly_bps{venue="bybit"})
+      series: avg_over_time(perp_funding_hold_24h_bps{venue="bybit",asset="ETH"}[24h])
+
+  - slug: okx
+    name: OKX
+    tag: USDT swaps, interval derived from settlement timestamps
+    formula: "fundingRate from the public funding-rate endpoint divided by the interval between fundingTime and nextFundingTime, normalized to bps per hour and a 24h hold; headline is the 24h time average on ETH."
+    queries:
+      p50: avg_over_time(perp_funding_hold_24h_bps{venue="okx",asset="ETH"}[24h])
+      p90: avg_over_time(perp_funding_hold_24h_bps{venue="okx",asset="BTC"}[24h])
+      p99: avg_over_time(perp_funding_hold_24h_bps{venue="okx",asset="SOL"}[24h])
+      mean: avg_over_time(perp_funding_annualized_pct{venue="okx",asset="ETH"}[24h])
+      success: (perp_funding_venue_ok_unix{venue="okx"} > bool (time() - 300))
+      sample_size: count(perp_funding_rate_hourly_bps{venue="okx"})
+      series: avg_over_time(perp_funding_hold_24h_bps{venue="okx",asset="ETH"}[24h])
+
+  - slug: dydx
+    name: dYdX v4
+    tag: Appchain order book perps, funding settled hourly
+    formula: "nextFundingRate (per hour) from the v4 indexer perpetualMarkets endpoint, normalized to bps per hour and extrapolated to a 24h hold; headline is the 24h time average on ETH."
+    queries:
+      p50: avg_over_time(perp_funding_hold_24h_bps{venue="dydx",asset="ETH"}[24h])
+      p90: avg_over_time(perp_funding_hold_24h_bps{venue="dydx",asset="BTC"}[24h])
+      p99: avg_over_time(perp_funding_hold_24h_bps{venue="dydx",asset="SOL"}[24h])
+      mean: avg_over_time(perp_funding_annualized_pct{venue="dydx",asset="ETH"}[24h])
+      success: (perp_funding_venue_ok_unix{venue="dydx"} > bool (time() - 300))
+      sample_size: count(perp_funding_rate_hourly_bps{venue="dydx"})
+      series: avg_over_time(perp_funding_hold_24h_bps{venue="dydx",asset="ETH"}[24h])
+
+  - slug: paradex
+    name: Paradex
+    tag: Starknet L2 perps, 8h funding accrued continuously
+    formula: "funding_rate from markets summary (8 hour period), normalized to bps per hour and a 24h hold; headline is the 24h time average on ETH."
+    queries:
+      p50: avg_over_time(perp_funding_hold_24h_bps{venue="paradex",asset="ETH"}[24h])
+      p90: avg_over_time(perp_funding_hold_24h_bps{venue="paradex",asset="BTC"}[24h])
+      p99: avg_over_time(perp_funding_hold_24h_bps{venue="paradex",asset="SOL"}[24h])
+      mean: avg_over_time(perp_funding_annualized_pct{venue="paradex",asset="ETH"}[24h])
+      success: (perp_funding_venue_ok_unix{venue="paradex"} > bool (time() - 300))
+      sample_size: count(perp_funding_rate_hourly_bps{venue="paradex"})
+      series: avg_over_time(perp_funding_hold_24h_bps{venue="paradex",asset="ETH"}[24h])
+
+  - slug: aster
+    name: Aster
+    tag: BNB Chain perps DEX, Binance compatible API, 8h funding
+    formula: "lastFundingRate from the Binance compatible premiumIndex endpoint divided by the pair's funding interval (default 8h), normalized to bps per hour and a 24h hold; headline is the 24h time average on ETH."
+    queries:
+      p50: avg_over_time(perp_funding_hold_24h_bps{venue="aster",asset="ETH"}[24h])
+      p90: avg_over_time(perp_funding_hold_24h_bps{venue="aster",asset="BTC"}[24h])
+      p99: avg_over_time(perp_funding_hold_24h_bps{venue="aster",asset="SOL"}[24h])
+      mean: avg_over_time(perp_funding_annualized_pct{venue="aster",asset="ETH"}[24h])
+      success: (perp_funding_venue_ok_unix{venue="aster"} > bool (time() - 300))
+      sample_size: count(perp_funding_rate_hourly_bps{venue="aster"})
+      series: avg_over_time(perp_funding_hold_24h_bps{venue="aster",asset="ETH"}[24h])
+
+metric_panels:
+  - id: annualized
+    label: Annualized (ETH)
+    metric: perp_funding_annualized_pct{asset="ETH"}
+    label_key: venue
+    unit: pct
+    description: "Current ETH funding rate annualized, in percent. Positive means longs pay; the carry trade collects the spread between venues."
+  - id: hourly
+    label: Per-hour rate (ETH)
+    metric: perp_funding_rate_hourly_bps{asset="ETH"}
+    label_key: venue
+    unit: bp
+    description: "Live ETH funding normalized to a per hour basis, in bps. The snapshot behind the smoothed headline."
+  - id: btc_hold
+    label: BTC hold 24h
+    metric: perp_funding_hold_24h_bps{asset="BTC"}
+    label_key: venue
+    unit: bp
+    description: "Cost in bps of holding a BTC long for 24 hours at the current rate."
+  - id: sol_hold
+    label: SOL hold 24h
+    metric: perp_funding_hold_24h_bps{asset="SOL"}
+    label_key: venue
+    unit: bp
+    description: "Cost in bps of holding a SOL long for 24 hours at the current rate."
+  # Data-only panels (tab: false): they feed the ledger's 7d/30d
+  # timeframe toggle below.
+  - id: eth_hold_7d
+    label: ETH hold 7d avg
+    metric: avg_over_time(perp_funding_hold_24h_bps{asset="ETH"}[7d])
+    label_key: venue
+    unit: bp
+    tab: false
+  - id: eth_hold_30d
+    label: ETH hold 30d avg
+    metric: avg_over_time(perp_funding_hold_24h_bps{asset="ETH"}[30d])
+    label_key: venue
+    unit: bp
+    tab: false
+  - id: btc_hold_7d
+    label: BTC hold 7d avg
+    metric: avg_over_time(perp_funding_hold_24h_bps{asset="BTC"}[7d])
+    label_key: venue
+    unit: bp
+    tab: false
+  - id: btc_hold_30d
+    label: BTC hold 30d avg
+    metric: avg_over_time(perp_funding_hold_24h_bps{asset="BTC"}[30d])
+    label_key: venue
+    unit: bp
+    tab: false
+  - id: sol_hold_7d
+    label: SOL hold 7d avg
+    metric: avg_over_time(perp_funding_hold_24h_bps{asset="SOL"}[7d])
+    label_key: venue
+    unit: bp
+    tab: false
+  - id: sol_hold_30d
+    label: SOL hold 30d avg
+    metric: avg_over_time(perp_funding_hold_24h_bps{asset="SOL"}[30d])
+    label_key: venue
+    unit: bp
+    tab: false
+  - id: interval
+    label: Funding interval h
+    metric: perp_funding_interval_hours{asset="ETH"}
+    label_key: venue
+    unit: count
+    tab: false
+
+# Honest column labels: the p50/p90/p99/mean slots are repurposed
+# (signed funding costs, no percentile semantics). ETH, BTC and SOL
+# follow the 24h/7d/30d timeframe toggle via the data-only panels above;
+# Annualized and Interval are current figures on every timeframe.
+ledger_columns:
+  - { label: "ETH hold 24h", slot: p50, windows: { 7d: eth_hold_7d, 30d: eth_hold_30d } }
+  - { label: "BTC", slot: p90, windows: { 7d: btc_hold_7d, 30d: btc_hold_30d } }
+  - { label: "SOL", slot: p99, windows: { 7d: sol_hold_7d, 30d: sol_hold_30d } }
+  - { label: "Annualized", slot: mean, unit: pct }
+  - { label: "Interval h", panel: interval }
