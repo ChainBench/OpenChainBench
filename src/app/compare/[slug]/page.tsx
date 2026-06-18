@@ -255,6 +255,13 @@ async function loadBreakdown(
  *  combined `{ chain, region }` filter. Rows where either provider has
  *  no live data are dropped at every level so the rendered table never
  *  surfaces "0 vs 0" cells. Returns [] when either dimension is empty.
+ *
+ *  Fan out shape: every chain aggregate AND every (chain, region) tuple
+ *  is dispatched in the same tick via one flat Promise.all. The previous
+ *  shape awaited each chain aggregate before kicking off its region
+ *  children, which serialised one extra round trip per chain on top of
+ *  the actual fan out. With three chains x three regions that was
+ *  roughly 500 ms to 1 s of avoidable wall clock on a cold ad hoc pair.
  */
 async function loadChainRegionMatrix(
   benchSlug: string,
@@ -268,64 +275,78 @@ async function loadChainRegionMatrix(
   const regions = regionOpts.filter((r) => r.value.toLowerCase() !== "all");
   if (chains.length === 0 || regions.length === 0) return [];
 
-  const entries = await Promise.all(
-    chains.map(async (c) => {
-      const chainVariant = await loadBenchmark(benchSlug, {
-        chain: c.value,
-      });
-      if (!chainVariant) return null;
-      const aChain = chainVariant.results.find((r) => r.slug === providerA);
-      const bChain = chainVariant.results.find((r) => r.slug === providerB);
-      if (!aChain || !bChain) return null;
-      if (aChain.ms.p50 <= 0 || bChain.ms.p50 <= 0) return null;
-      const chainWinner = decideWinner(
-        aChain.ms.p50,
-        bChain.ms.p50,
-        higherIsBetter,
-      );
-
-      const regionRows = await Promise.all(
-        regions.map(async (r) => {
-          const variant = await loadBenchmark(benchSlug, {
-            chain: c.value,
-            region: r.value,
-          });
-          if (!variant) return null;
-          const aRes = variant.results.find((x) => x.slug === providerA);
-          const bRes = variant.results.find((x) => x.slug === providerB);
-          if (!aRes || !bRes) return null;
-          if (aRes.ms.p50 <= 0 || bRes.ms.p50 <= 0) return null;
-          const winner = decideWinner(
-            aRes.ms.p50,
-            bRes.ms.p50,
-            higherIsBetter,
-          );
-          return {
-            value: r.value,
-            label: r.label,
-            aP50: aRes.ms.p50,
-            bP50: bRes.ms.p50,
-            aWins: winner === "a",
-            bWins: winner === "b",
-          } satisfies BreakdownRow;
-        }),
-      );
-      const cleanRegionRows = regionRows.filter(
-        (r): r is BreakdownRow => r !== null,
-      );
-
-      return {
-        value: c.value,
-        label: c.label,
-        aP50: aChain.ms.p50,
-        bP50: bChain.ms.p50,
-        aWins: chainWinner === "a",
-        bWins: chainWinner === "b",
-        regionRows: cleanRegionRows,
-      } satisfies ChainRegionEntry;
-    }),
+  const chainTasks = chains.map((c) =>
+    loadBenchmark(benchSlug, { chain: c.value }),
   );
-  return entries.filter((e): e is ChainRegionEntry => e !== null);
+  const regionTasks = chains.flatMap((c) =>
+    regions.map((r) =>
+      loadBenchmark(benchSlug, {
+        chain: c.value,
+        region: r.value,
+      }).then((variant) => ({ chain: c.value, region: r.value, variant })),
+    ),
+  );
+  const [chainVariants, regionVariants] = await Promise.all([
+    Promise.all(chainTasks),
+    Promise.all(regionTasks),
+  ]);
+
+  // Group region results by chain. Insertion order matches `chains` then
+  // `regions` because flatMap walks in that order and Promise.all
+  // preserves index order, so the rendered table keeps its column order.
+  const regionsByChain = new Map<string, typeof regionVariants>();
+  for (const rv of regionVariants) {
+    const list = regionsByChain.get(rv.chain) ?? [];
+    list.push(rv);
+    regionsByChain.set(rv.chain, list);
+  }
+
+  const entries: ChainRegionEntry[] = [];
+  for (let i = 0; i < chains.length; i += 1) {
+    const c = chains[i];
+    const chainVariant = chainVariants[i];
+    if (!chainVariant) continue;
+    const aChain = chainVariant.results.find((r) => r.slug === providerA);
+    const bChain = chainVariant.results.find((r) => r.slug === providerB);
+    if (!aChain || !bChain) continue;
+    if (aChain.ms.p50 <= 0 || bChain.ms.p50 <= 0) continue;
+    const chainWinner = decideWinner(
+      aChain.ms.p50,
+      bChain.ms.p50,
+      higherIsBetter,
+    );
+
+    const regionRows: BreakdownRow[] = [];
+    for (const rv of regionsByChain.get(c.value) ?? []) {
+      if (!rv.variant) continue;
+      const aRes = rv.variant.results.find((x) => x.slug === providerA);
+      const bRes = rv.variant.results.find((x) => x.slug === providerB);
+      if (!aRes || !bRes) continue;
+      if (aRes.ms.p50 <= 0 || bRes.ms.p50 <= 0) continue;
+      const regionMeta = regions.find((r) => r.value === rv.region);
+      if (!regionMeta) continue;
+      const winner = decideWinner(aRes.ms.p50, bRes.ms.p50, higherIsBetter);
+      regionRows.push({
+        value: regionMeta.value,
+        label: regionMeta.label,
+        aP50: aRes.ms.p50,
+        bP50: bRes.ms.p50,
+        aWins: winner === "a",
+        bWins: winner === "b",
+      });
+    }
+
+    entries.push({
+      value: c.value,
+      label: c.label,
+      aP50: aChain.ms.p50,
+      bP50: bChain.ms.p50,
+      aWins: chainWinner === "a",
+      bWins: chainWinner === "b",
+      regionRows,
+    });
+  }
+  return entries;
 }
 
 /** Resolves the intersection of two providers' bench appearances, then
