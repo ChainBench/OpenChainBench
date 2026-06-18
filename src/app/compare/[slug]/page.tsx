@@ -26,10 +26,16 @@ import {
 
 /**
  * Compare pages reuse the parent benchmarks' Prom data, so freshness
- * inherits 1:1 from the underlying benches. ISR window matches the
- * /products/[slug] page because the same provider appearances back both.
+ * inherits 1:1 from the underlying benches. ISR window is 5 minutes,
+ * aligned with the health-check cron warmup so each cron tick refreshes
+ * the cached HTML exactly when ISR would expire. Between ticks the
+ * visitor lands on the edge cache (~10 ms) instead of paying SSR.
+ *
+ * Why 300 s on compare vs 60 s on /benchmarks: a comparison page is a
+ * summary view, not a live monitor. Rankings rarely flip within 5 min
+ * (bench windows are rolling 24 h). Trade off accepted.
  */
-export const revalidate = 60;
+export const revalidate = 300;
 // Per-dimension variant fetches fan out N chain + N region loadBenchmark
 // calls per shared bench. Cached, but cold ISR regeneration needs head
 // room above the 60 s default to avoid mid-flight timeouts on a pair

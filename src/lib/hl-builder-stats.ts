@@ -6,6 +6,7 @@
  * Prom-coupled and only matters for the /products page that consumes it.
  */
 
+import { unstable_cache } from "next/cache";
 import { Prometheus } from "@/lib/prometheus";
 import { getSpecs } from "@/lib/spec";
 
@@ -84,7 +85,7 @@ const PERCENTILE_ORDER: PercentileBucket["bucket"][] = [
  * gauge returns 0/empty rather than propagating — the page still
  * renders, the affected section is hidden cleanly.
  */
-export async function fetchHlBuilderStats(
+async function fetchHlBuilderStatsRaw(
   slug: string,
 ): Promise<HlBuilderStats | null> {
   const url = promUrl();
@@ -178,6 +179,23 @@ export async function fetchHlBuilderStats(
     percentileShares30d,
     profitableUserPct30d: profitableUserPct30d ?? 0,
   };
+}
+
+/** Cross-request cache. The raw fn fans out 13 Prom queries per builder
+ *  page render — without this, every cold visitor on a /products/<hl
+ *  builder> page paid 200 to 500 ms of Prom round trips. Tagged
+ *  `benchmarks` so any `revalidateTag('benchmarks')` clears alongside
+ *  the rest of the bench data layer. */
+const fetchHlBuilderStatsCached = unstable_cache(
+  fetchHlBuilderStatsRaw,
+  ["hl-builder-stats-v1"],
+  { revalidate: 60, tags: ["benchmarks"] },
+);
+
+export async function fetchHlBuilderStats(
+  slug: string,
+): Promise<HlBuilderStats | null> {
+  return fetchHlBuilderStatsCached(slug);
 }
 
 export type HlCohortRow = {
