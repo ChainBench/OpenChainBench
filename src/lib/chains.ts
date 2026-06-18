@@ -22,6 +22,16 @@ export type ChainEntry = {
   label: string;
   category: ChainCategory;
   description: string;
+  /**
+   * Optional native token symbol. When set, the /chains/[slug] page surfaces
+   * the Native price + mcap KPI cards via the Mobula `/market/data?symbol=…`
+   * gauge series sourced by the chain-kpis harness. Empty / undefined =
+   * the page won't render those cards. 100% coverage today across the
+   * 21 chains in this registry; declared explicitly so a new chain that
+   * forgets to set it just hides the cards rather than rendering a wrong
+   * symbol.
+   */
+  nativeSymbol?: string;
 };
 
 export const CHAINS: ChainEntry[] = [
@@ -29,6 +39,7 @@ export const CHAINS: ChainEntry[] = [
     slug: "ethereum",
     label: "Ethereum",
     category: "L1",
+    nativeSymbol: "ETH",
     description:
       "EVM Layer 1. EIP-1559 fee market, Casper FFG finalization across 32-slot epochs (12.8-minute target).",
   },
@@ -36,6 +47,7 @@ export const CHAINS: ChainEntry[] = [
     slug: "solana",
     label: "Solana",
     category: "L1",
+    nativeSymbol: "SOL",
     description:
       "Proof of History timestamps + Tower BFT consensus, 400 ms slot, parallel transaction execution.",
   },
@@ -43,6 +55,7 @@ export const CHAINS: ChainEntry[] = [
     slug: "bnb",
     label: "BNB Chain",
     category: "L1",
+    nativeSymbol: "BNB",
     description:
       "Parlia PoSA consensus with 21 active validators, 3 s block, EVM compatible, BEP-126 fast finality.",
   },
@@ -50,6 +63,7 @@ export const CHAINS: ChainEntry[] = [
     slug: "avalanche",
     label: "Avalanche",
     category: "L1",
+    nativeSymbol: "AVAX",
     description:
       "Snowman consensus, sub-second finality, EVM C-Chain with dynamic fee target adjusting every 10 s.",
   },
@@ -57,6 +71,7 @@ export const CHAINS: ChainEntry[] = [
     slug: "sui",
     label: "Sui",
     category: "L1",
+    nativeSymbol: "SUI",
     description:
       "Mysticeti DAG-BFT consensus, reference gas price model, deterministic sub-second finality.",
   },
@@ -64,6 +79,7 @@ export const CHAINS: ChainEntry[] = [
     slug: "ton",
     label: "TON",
     category: "L1",
+    nativeSymbol: "TON",
     description:
       "BAG consensus, masterchain + workchains, deterministic finality under one second on the masterchain commit.",
   },
@@ -71,6 +87,7 @@ export const CHAINS: ChainEntry[] = [
     slug: "stellar",
     label: "Stellar",
     category: "L1",
+    nativeSymbol: "XLM",
     description:
       "Stellar Consensus Protocol (SCP), roughly 5 s ledger close, deterministic finality on every close.",
   },
@@ -78,6 +95,7 @@ export const CHAINS: ChainEntry[] = [
     slug: "tron",
     label: "TRON",
     category: "L1",
+    nativeSymbol: "TRX",
     description:
       "20-block solidity confirmation, bandwidth + energy resource model, no priority fee market for native transfers.",
   },
@@ -85,6 +103,7 @@ export const CHAINS: ChainEntry[] = [
     slug: "cardano",
     label: "Cardano",
     category: "L1",
+    nativeSymbol: "ADA",
     description:
       "Ouroboros Proof of Stake, deterministic protocol fees set by governance, EUTXO accounting model.",
   },
@@ -92,6 +111,7 @@ export const CHAINS: ChainEntry[] = [
     slug: "litecoin",
     label: "Litecoin",
     category: "L1",
+    nativeSymbol: "LTC",
     description:
       "Bitcoin fork, 2.5-minute target block, SegWit support, UTXO fee market priced in litoshi per virtual byte.",
   },
@@ -99,6 +119,7 @@ export const CHAINS: ChainEntry[] = [
     slug: "monero",
     label: "Monero",
     category: "L1",
+    nativeSymbol: "XMR",
     description:
       "RingCT privacy transactions, dynamic block-size penalty, 2-minute target block, three-tier fee estimate RPC.",
   },
@@ -106,6 +127,7 @@ export const CHAINS: ChainEntry[] = [
     slug: "polygon",
     label: "Polygon PoS",
     category: "L1",
+    nativeSymbol: "POL",
     description:
       "Bor block 2 s target, EIP-1559 fee market, validator-rotated tip auctions, MATIC-denominated priority fees.",
   },
@@ -113,6 +135,7 @@ export const CHAINS: ChainEntry[] = [
     slug: "arbitrum",
     label: "Arbitrum One",
     category: "L2",
+    nativeSymbol: "ETH",
     description:
       "Optimistic rollup on the Nitro stack with a single Offchain Labs sequencer, 250 ms block target, batches posted to Ethereum.",
   },
@@ -120,6 +143,7 @@ export const CHAINS: ChainEntry[] = [
     slug: "optimism",
     label: "Optimism",
     category: "L2",
+    nativeSymbol: "ETH",
     description:
       "OP Stack reference rollup, 2 s sequencer cadence, EIP-4844 blob calldata settlement on Ethereum.",
   },
@@ -127,6 +151,7 @@ export const CHAINS: ChainEntry[] = [
     slug: "base",
     label: "Base",
     category: "L2",
+    nativeSymbol: "ETH",
     description:
       "Coinbase OP Stack rollup, 2 s sequencer, blob calldata settlement, Flashblocks pre-confirmation path in test.",
   },
@@ -134,6 +159,7 @@ export const CHAINS: ChainEntry[] = [
     slug: "zksync",
     label: "zkSync Era",
     category: "L2",
+    nativeSymbol: "ETH",
     description:
       "Matter Labs zk-rollup with SNARK prover batching, custom bundled gas model covering execution, pubdata and prover cost.",
   },
@@ -141,6 +167,7 @@ export const CHAINS: ChainEntry[] = [
     slug: "linea",
     label: "Linea",
     category: "L2",
+    nativeSymbol: "ETH",
     description:
       "Consensys zkEVM with PLONK-family proofs, 2 s nominal slot, sequencer-set base fee tracking prover batch economics.",
   },
@@ -148,6 +175,7 @@ export const CHAINS: ChainEntry[] = [
     slug: "scroll",
     label: "Scroll",
     category: "L2",
+    nativeSymbol: "ETH",
     description:
       "Bytecode-equivalent zkEVM with Halo2 prover, 3 s nominal block target, centralized sequencer batching for prover.",
   },
@@ -155,6 +183,7 @@ export const CHAINS: ChainEntry[] = [
     slug: "blast",
     label: "Blast",
     category: "L2",
+    nativeSymbol: "ETH",
     description:
       "OP Stack fork with native ETH yield auto-rebasing against L1 staking + T-bill yields, 2 s sequencer.",
   },
@@ -162,6 +191,7 @@ export const CHAINS: ChainEntry[] = [
     slug: "mantle",
     label: "Mantle",
     category: "L2",
+    nativeSymbol: "MNT",
     description:
       "OP Stack fork using EigenDA for data availability instead of Ethereum blob calldata, 2 s sequencer.",
   },
@@ -169,6 +199,7 @@ export const CHAINS: ChainEntry[] = [
     slug: "taiko",
     label: "Taiko",
     category: "L2",
+    nativeSymbol: "ETH",
     description:
       "Based rollup. Ethereum L1 validators sequence Taiko blocks directly, inheriting L1 liveness and censorship resistance.",
   },
