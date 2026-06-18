@@ -73,7 +73,6 @@ func fetchAll(cfg *Config) {
 		{"codex", fetchCodex},
 		{"coinpaprika", fetchCoinPaprika},
 		{"dune", fetchSimDune},
-		{"covalent", fetchCovalent},
 		{"coinstats", fetchCoinStats},
 	}
 
