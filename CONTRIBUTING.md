@@ -34,7 +34,7 @@ OpenChainBench is a federation. Each harness is hosted by whoever wrote it. the 
 3. **Build the harness** at `harnesses/<slug>/`. A harness is a data producer only. it exposes `/metrics` over HTTPS with the metric names and labels your spec references. See [`harnesses/README.md`](./harnesses/README.md) for the contract and the existing Go harnesses as reference implementations.
 4. **Deploy the harness** on whatever infra fits. Railway, Fly, Cloud Run, a VPS. Expose `/metrics` over HTTPS at a stable public URL. You own the runtime, the secrets and the budget. The maintainers never see your API keys.
 5. **Append a scrape job** to [`infrastructure/prometheus/prometheus.yml`](./infrastructure/prometheus/prometheus.yml) pointing at your public URL so the shared Prometheus picks up your harness. Format documented in [`infrastructure/README.md`](./infrastructure/README.md).
-6. **Open a PR** referencing the issue (`Closes #N`). CI runs `pnpm validate` (schema lint), `pnpm typecheck`, `pnpm lint`, and `pnpm build`. Once green and reviewed, a maintainer merges, redeploys the central Prometheus to apply the new scrape job, and rebuilds the materialization worker (its image bakes the spec list at build time). The site serves the new bench on the next worker sweep + ISR cycle (≤ 2 min).
+6. **Open a PR against `dev`** referencing the issue (`Closes #N`). The repo uses a two-branch workflow (`dev` staging, `main` prod) — feature branches PR to `dev`, see [`AGENTS.md`](./AGENTS.md). CI runs `pnpm check` (validate + typecheck + lint + test). Once green and reviewed, a maintainer merges, redeploys the central Prometheus to apply the new scrape job, and rebuilds the materialization worker (its image bakes the spec list at build time). The site serves the new bench on the next worker sweep + ISR cycle (≤ 2 min).
 
 ## Local development
 
@@ -43,8 +43,15 @@ pnpm install
 pnpm validate            # schema-lint every spec in benchmarks/
 pnpm spec:dry-run <slug> # query Prometheus and print numbers without rendering
 pnpm dev                 # http://localhost:3000
+pnpm test                # unit tests (bun test src/)
+pnpm typecheck           # tsc --noEmit
+pnpm lint                # eslint
+pnpm check               # full pre-PR gate (validate + typecheck + lint + test)
 pnpm build               # production build
+pnpm worker              # run the materialization worker locally
 ```
+
+Tests run under [Bun](https://bun.sh) (`bun test src/`); everything else uses pnpm + Node. The materialize layer at [`src/lib/materialize/`](./src/lib/materialize/) is shared between `worker/index.ts` and the request-time loader in `src/lib/spec.ts` — each helper is colocated with a `*.test.ts`. Duration constants live in [`src/lib/time-constants.ts`](./src/lib/time-constants.ts); use those instead of magic numbers like `86_400_000`.
 
 ## Editorial conventions
 
