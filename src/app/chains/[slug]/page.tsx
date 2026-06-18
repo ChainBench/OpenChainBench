@@ -8,6 +8,8 @@ import {
   getBenchmarksForChain,
 } from "@/lib/chains";
 import { fmtUnit } from "@/lib/format";
+import { fetchChainKpis, hasAnyKpi } from "@/lib/chain-kpis";
+import { ChainKpiStrip } from "@/components/chain-kpi-strip";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { Pill } from "@/components/pill";
 import { ProviderLogo } from "@/components/provider-logo";
@@ -82,6 +84,11 @@ export default async function ChainPage({
   if (!chain) notFound();
   const benches = await getBenchmarksForChain(slug);
   if (benches.length === 0) notFound();
+
+  // KPI strip data flows from the `chain-kpis` harness on Railway.
+  // A null return (Prom unreachable, chain has no published series)
+  // hides the strip silently; the benches list below still renders.
+  const kpis = await fetchChainKpis(slug);
 
   const byCategory = groupByCategory(benches);
   const url = `${SITE.url}/chains/${slug}`;
@@ -162,6 +169,12 @@ export default async function ChainPage({
         touches {chain.label}, grouped by category, with a direct link to
         the chain scoped bench page when one exists.
       </p>
+
+      {kpis && hasAnyKpi(kpis) && (
+        <div className="mt-10">
+          <ChainKpiStrip kpis={kpis} nativeSymbol={chain.nativeSymbol} />
+        </div>
+      )}
 
       <div className="mt-12 space-y-12">
         {Array.from(byCategory.entries()).map(([category, list]) => (
