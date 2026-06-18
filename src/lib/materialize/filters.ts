@@ -6,10 +6,12 @@
  * or next/* dependencies.
  */
 
+import { isAll, type DimensionValue } from "@/lib/dimensions";
+
 export type BenchmarkFilters = {
-  chain?: string;
-  region?: string;
-  kind?: string;
+  chain?: DimensionValue;
+  region?: DimensionValue;
+  kind?: DimensionValue;
 };
 
 export function filterSig(f: BenchmarkFilters): string {
@@ -17,7 +19,7 @@ export function filterSig(f: BenchmarkFilters): string {
   const parts: string[] = [];
   for (const k of Object.keys(f).sort()) {
     const v = (f as Record<string, string | undefined>)[k];
-    if (v && v !== "all") parts.push(`${k}=${v}`);
+    if (v && !isAll(v)) parts.push(`${k}=${v}`);
   }
   return parts.join("&");
 }
@@ -37,7 +39,7 @@ export function parseFilterSig(sig: string): BenchmarkFilters {
 export function activeFilterLabels(opts: BenchmarkFilters): Record<string, string> {
   const out: Record<string, string> = {};
   for (const [k, v] of Object.entries(opts)) {
-    if (v && v !== "all") out[k] = v;
+    if (v && !isAll(v)) out[k] = v;
   }
   return out;
 }

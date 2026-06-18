@@ -11,6 +11,7 @@
 import { cache } from "react";
 import { unstable_cache } from "next/cache";
 import { getBenchmarks } from "@/data/benchmarks";
+import { isAll } from "@/lib/dimensions";
 import { liveResults } from "@/lib/provider-filters";
 import { readBestPerChain } from "@/lib/per-chain-contract";
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
@@ -193,7 +194,7 @@ function rankPerChainForBench(
   const providersPerChain = (b as { providersPerChain?: Record<string, string[]> })
     .providersPerChain;
   for (const chain of b.dimensions.chain) {
-    if (chain.value === "all") continue;
+    if (isAll(chain.value)) continue;
     const leader = bestPerChain[chain.value];
     if (!leader) continue;
     const presentSet = providersPerChain?.[chain.value]
@@ -243,7 +244,7 @@ async function buildProviders(): Promise<ProviderProfile[]> {
     const perChainRanks = b.status === "live" ? rankPerChainForBench(b) : {};
     const benchBestPerChain = readBestPerChain(b);
     const hasChainDimensions =
-      (b.dimensions?.chain?.filter((c) => c.value !== "all").length ?? 0) > 0;
+      (b.dimensions?.chain?.filter((c) => !isAll(c.value)).length ?? 0) > 0;
 
     b.results.forEach((r) => {
       const canon = canonicalize(r.slug);

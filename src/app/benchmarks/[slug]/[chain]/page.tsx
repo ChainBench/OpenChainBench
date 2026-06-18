@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { BackLink } from "@/components/back-link";
-import { nonAllValues } from "@/lib/dimensions";
+import { isAll, nonAllValues } from "@/lib/dimensions";
 import { getBenchmark } from "@/data/benchmarks";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { liveResults } from "@/lib/provider-filters";
@@ -47,7 +47,7 @@ function explainerChains(b: Benchmark): string[] {
   const chainValues = new Set(
     (b.dimensions?.chain ?? [])
       .map((c) => c.value)
-      .filter((v) => v.toLowerCase() !== "all"),
+      .filter((v) => !isAll(v)),
   );
   return (b.perChainExplainer ?? [])
     .map((e) => e.slug)
@@ -141,7 +141,7 @@ async function loadChainPage(
 
   // Shape 2: the chain is a filter dimension (rpc-capabilities).
   const chainOption = (benchmark.dimensions?.chain ?? []).find(
-    (c) => c.value === chain && c.value.toLowerCase() !== "all",
+    (c) => c.value === chain && !isAll(c.value),
   );
   if (!chainOption) return null;
   const scoped = (await getBenchmark(slug, { chain })) ?? benchmark;

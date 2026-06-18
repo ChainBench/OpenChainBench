@@ -12,6 +12,7 @@
  * Cheap insurance against a future regression that lets user input reach
  * any of these blocks.
  */
+import { isAll } from "./dimensions";
 import { stripInlineMarkdown } from "./seo-text";
 
 const LS = new RegExp("\\u2028", "g");
@@ -58,7 +59,7 @@ export function buildBreadcrumbJsonLd(items: CrumbItem[]): Record<string, unknow
 function chainIdFragment(chain?: string | null): string | null {
   if (!chain) return null;
   const trimmed = chain.trim().toLowerCase();
-  if (!trimmed || trimmed === "all") return null;
+  if (!trimmed || isAll(trimmed)) return null;
   const cleaned = trimmed.replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "");
   return cleaned || null;
 }

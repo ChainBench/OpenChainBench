@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { SITE } from "@/data/site";
+import { isAll } from "@/lib/dimensions";
 
 const SITE_ORIGIN = SITE.url;
 
@@ -52,7 +53,7 @@ export function pageMetadata({
   canonical?: string;
 }): Metadata {
   const canonical = canonicalOverride ?? `${SITE_ORIGIN}${path}`;
-  const socialUrl = chain && chain !== "all" ? `${canonical}?chain=${chain}` : canonical;
+  const socialUrl = chain && !isAll(chain) ? `${canonical}?chain=${chain}` : canonical;
   const social = title.includes("OpenChainBench") ? title : `${title} · OpenChainBench`;
   // Fallback to the root /opengraph-image and /twitter-image when a hub
   // doesn't ship a dedicated card. Without this, Next.js treats the

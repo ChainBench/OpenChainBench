@@ -5,6 +5,7 @@ import { getBenchmarks } from "@/data/benchmarks";
 import { loadAllAlternatives } from "@/lib/alternatives";
 import { loadAllAnswers } from "@/lib/answers";
 import { CHAINS, getBenchmarksForChain } from "@/lib/chains";
+import { isAll } from "@/lib/dimensions";
 import { getProviderSlugs } from "@/lib/providers";
 import { SITE } from "@/data/site";
 import type { Benchmark } from "@/types/benchmark";
@@ -177,7 +178,7 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
     const chainValues = new Set(
       (b.dimensions?.chain ?? [])
         .map((c) => c.value)
-        .filter((v) => v.toLowerCase() !== "all"),
+        .filter((v) => !isAll(v)),
     );
     for (const e of b.perChainExplainer ?? []) {
       if (!resultSlugs.has(e.slug) && !chainValues.has(e.slug)) continue;
