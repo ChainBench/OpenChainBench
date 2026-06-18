@@ -10,6 +10,7 @@ import { BenchmarkBodySkeleton } from "@/components/benchmark-body-skeleton";
 import { OraclePairMatrix } from "@/components/oracle-pair-matrix";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { ChainHeadingsSummary } from "@/components/chain-headings-summary";
+import { OraclePairMatrix } from "@/components/oracle-pair-matrix";
 import { CitationBar } from "@/components/citation-bar";
 import { LiveIndicator } from "@/components/live-indicator";
 import { ShareSection } from "@/components/share-section";
