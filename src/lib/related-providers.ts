@@ -20,6 +20,7 @@
 import { cache } from "react";
 import { unstable_cache } from "next/cache";
 import { canonicalize, getProviders } from "@/lib/providers";
+import { CACHE_TAGS, cacheKey } from "@/lib/cache-tags";
 import { canonicalPairSlug } from "@/lib/compare-pairing-shared";
 import { loadAllAlternatives } from "@/lib/alternatives";
 import { loadBenchmark } from "@/lib/spec";
@@ -135,15 +136,35 @@ async function buildAlternativesReverseMap(): Promise<
   return map;
 }
 
-/** Cross-request cache. Tags with `benchmarks` so any bench update via
- *  `revalidateTag('benchmarks')` rebuilds the map. */
+/**
+ * Cross-request cache.
+ *
+ * PILOT: this is the first call site using the centralised cache-tags
+ * helpers (`src/lib/cache-tags.ts`, see `docs/cache-migration.md`):
+ *
+ *   - `cacheKey("alternatives-reverse-map")` folds the deploy SHA into
+ *     the keyParts. Shape drift across deploys can no longer surface a
+ *     stale envelope — every deploy starts a fresh cache. This replaces
+ *     the old manual `-v1`, `-v2`, … bump dance that caused 10+
+ *     historical regressions on `src/lib/spec.ts` when the bump was
+ *     forgotten.
+ *   - `CACHE_TAGS.benchmarks` is the single typed source for the tag
+ *     literal. `revalidateTag(CACHE_TAGS.benchmarks)` from a Server
+ *     Action or Route Handler invalidates this map alongside the rest
+ *     of the bench data layer.
+ *
+ * TODO(cache-migration): nothing currently calls
+ * `revalidateTag(CACHE_TAGS.benchmarks)`. Wire it from the materialise
+ * worker / health-check cron once the writer side ships — see
+ * `docs/cache-migration.md` for the call site list.
+ */
 const buildAlternativesReverseMapCached = unstable_cache(
   async (): Promise<Array<[string, AlternativeFeature[]]>> => {
     const map = await buildAlternativesReverseMap();
     return Array.from(map.entries());
   },
-  ["alternatives-reverse-map-v1"],
-  { revalidate: 60, tags: ["benchmarks"] },
+  cacheKey("alternatives-reverse-map"),
+  { revalidate: 60, tags: [CACHE_TAGS.benchmarks] },
 );
 
 /**
