@@ -10,13 +10,25 @@ import type { Benchmark, ProviderResult } from "@/types/benchmark";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { SLUG_RE } from "@/lib/slug";
 
-/** Best → worst, depending on whether higher numbers are better. */
+/** Best → worst, depending on whether higher numbers are better. Drops
+ *  rows with missing `ms` or non-positive p50, mirroring /api/stat. Those
+ *  zero-value placeholders blow up the bar layout (NaN heights from a
+ *  divide-by-zero maxP50, ratios > 1) which makes Satori reject the JSX
+ *  with an opaque "Spread syntax" error mid-stream. */
 function sortByP50(b: Benchmark): ProviderResult[] {
-  return [...b.results].sort(
-    b.higherIsBetter
-      ? (a, c) => c.ms.p50 - a.ms.p50
-      : (a, c) => a.ms.p50 - c.ms.p50,
-  );
+  return [...b.results]
+    .filter(
+      (r): r is ProviderResult =>
+        !!r &&
+        !!r.ms &&
+        Number.isFinite(r.ms.p50) &&
+        r.ms.p50 > 0,
+    )
+    .sort(
+      b.higherIsBetter
+        ? (a, c) => c.ms.p50 - a.ms.p50
+        : (a, c) => a.ms.p50 - c.ms.p50,
+    );
 }
 
 /** Compact label for the share-card bar chart. Long multi-word names

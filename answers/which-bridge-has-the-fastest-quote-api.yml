@@ -1,0 +1,42 @@
+slug: which-bridge-has-the-fastest-quote-api
+question: "Which cross-chain bridge has the fastest quote API in 2026?"
+short_answer: |
+  {{best_name}} currently returns USDC bridge quotes the fastest at {{best_p50}} (p50, 24h), measured live across Mobula, deBridge, Relay and LI.FI on identical USDC routes by OpenChainBench.
+
+benchmark: bridge-quote-latency
+
+intro: |
+  Every wallet, aggregator UI and chat app swap module that integrates a bridge sits behind the provider's quote API. A 200 ms p99 lets the integration render a price the moment the user changes the input. A 5000 ms p99 forces a long loading spinner or a timeout fallback that masks the slow path with a stale quote. This page answers the question integrators ask before pasting a quote endpoint into production. Which cross chain bridge API actually returns a usable quote the fastest, measured in wall clock milliseconds from request dispatch to last byte received, on identical USDC routes. OpenChainBench cycles a 5 minute sweep across 4 routes (USDC pairs spanning Solana, Base and Arbitrum) and 3 notional sizes ($5, $50, $300) against every supported bridge from a single eu-west origin. Errored quotes (quote_failed, unsupported route, timeout) are excluded from the latency aggregate and counted toward a separate success rate so a fast but broken bridge cannot game the headline number.
+
+methodology: |
+  The bridge-monitor harness issues identical quote requests against every measured bridge for the same route and notional, every 5 minutes, from a single eu-west origin. Each request times wall clock duration from send to last byte received, then publishes a Prometheus histogram with buckets at 50, 100, 200, 500, 1000, 2000, 5000 and 10000 ms. p50, p90 and p99 are derived via `histogram_quantile(sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="X"}[24h])))` over the rolling 24 hour window. Errored quotes land on the `bridge_errors_total` counter by error type (quote_failed, execution_failed, unsupported route) and are excluded from the latency aggregate; they feed the success rate column instead.
+
+limitations:
+  - "Single eu-west point of measurement. Bridges with solver pools or relayer infrastructure closer to other regions (us-east, sgp) will look slower from eu-west than a real backend integration sitting next to their origin would observe."
+  - "Quote latency is decoupled from bridge fill time. A bridge can quote in 100 ms and take 30 seconds to settle on the destination chain, or quote in 2 seconds and settle in 5 seconds. This leaderboard measures the quote half, the realised cost is on the `/benchmarks/bridge-fee` page."
+  - "Cross corridor aggregate. Every bridge is queried on the same 4 USDC routes but per corridor leaders can diverge when one provider's solver pool is closer to a specific destination chain. The per corridor breakdown lands once dimension labels for `from_chain` and `to_chain` are surfaced in the page UI."
+  - "Failure responses are excluded from the latency aggregate. A bridge that times out in 500 ms on an unsupported corridor will not appear faster than one that returns a real quote in 800 ms; the success rate column carries the failure signal separately."
+  - "USDC only. Long tail token corridors (wrapped assets, memecoins, RWAs) have different route search complexity and the latency curves do not generalise."
+
+faq:
+  - q: "Which cross-chain bridge has the lowest API latency right now?"
+    a: "{{best_name}} currently leads at {{best_p50}} (p50, 24h) across {{count}} measured bridges, averaged over the 4 USDC routes and 3 notional sizes the harness sweeps. The leaderboard refreshes every 5 minutes against fresh Prometheus samples; the 24h window smooths a single fast cold start so the ranking reflects sustained API performance."
+  - q: "What is the difference between quote latency and bridge fill time?"
+    a: "Quote latency is the wall clock time the bridge API takes to return a price. Fill time is the wall clock time the funds take to land on the destination chain after the user signs. They are decoupled: a bridge can quote in 100 ms and take 30 seconds to settle, or quote in 2 seconds and settle in 5 seconds. This benchmark measures the quote half because that is the part a wallet, an aggregator or an embedded swap UI feels first and tunes its UX around."
+  - q: "Why does bridge quote latency matter for builders?"
+    a: "Every product that integrates a bridge sits behind its API. Wallets, aggregators, intent layers, chat app swap modules. A 1500 ms p99 forces a long loading spinner; a 5000 ms p99 forces a timeout fallback that masks the slow path with a stale quote. The number controls perceived UX, time to first quote in side by side comparators, and how aggressively the integrator has to parallelise calls across bridges to mask the slowest one."
+  - q: "Are intent and relay bridges faster than aggregators?"
+    a: "On a single route query, usually. Intent layers and relays like Relay or Mobula query a pool of pre positioned solvers, so the API is a thin price discovery call. Aggregators like LI.FI run a route search graph over N underlying bridges per request, which adds 100 to 400 ms of irreducible work. On multi hop or rare corridor queries the aggregator advantage in coverage matters more than the latency gap, and the comparison flips."
+  - q: "Are timeouts counted as slow quotes?"
+    a: "No. Timeouts, 5xx responses and `unsupported route` errors are excluded from the latency histogram. They are recorded in the `bridge_errors_total` counter by error type and surface in the success rate column. A bridge that fails fast on an unsupported corridor is not credited with low latency; it loses success rate instead, which is the honest signal."
+  - q: "Does quote latency affect the price the user gets?"
+    a: "Indirectly. A slower quote API leaves a larger window between the moment the price is quoted and the moment the user signs. On volatile corridors the underlying spot can drift in that window, which surfaces as a quoted vs realised gap. Intent layers compensate by re quoting at signing time; aggregators usually pass through a slippage parameter. The fee benchmark measures the realised cost; this page measures the latency half of the same flow."
+
+related:
+  - which-bridge-has-the-cheapest-usdc-fee
+  - which-evm-aggregator-has-the-fastest-quote
+  - which-solana-dex-aggregator-is-the-fastest
+
+seo_title: "Which cross-chain bridge has the fastest quote API in 2026?"
+seo_description: "{{best_name}} leads bridge quote latency at {{best_p50}} (p50, 24h) across Mobula, deBridge, Relay and LI.FI on identical USDC routes, measured live by OpenChainBench. Methodology and limitations included."
+status: live

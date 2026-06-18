@@ -1,0 +1,13 @@
+slug: jito
+target_product: Jito
+target_url: https://jito.network
+description: Solana block engine with atomic bundles and tip auction
+benchmark: solana-tx-landing-latency
+
+intro: |
+  Jito operates a Solana block engine with atomic bundles and a tip auction, live since 2022, and acts as the baseline that every premium landing service must beat: Helius default mode, Astralane and Nozomi all internally route some flow through Jito, so a same-slot result against the Jito control on a given cycle means the suspect service is essentially using Jito as its inclusion path. The only question that matters when picking a landing service is how many slots a signed mainnet transaction takes to reach the confirmed state on chain, because Solana confirmation is a slot-level event and a 1-slot difference is roughly 400 ms (enough for a MEV bot to front-run a competitor). This benchmark probes five services from a us-east Railway region, once per hour, by submitting an identical signed mainnet transaction in parallel. The payload is a compute-budget instruction pair, a 1-lamport self-transfer, the per-service tip transfer at a pre-registered floor and an OCB-prefixed memo. Jito is probed at `ny.mainnet.block-engine.jito.wtf/api/v1/transactions` with a 10,000-lamport tip floor. The headline metric is slot delta (`land_slot` minus `submit_slot`) read from the `signatureSubscribe` notification's `context.slot` at commitment confirmed; wall-clock ms is published alongside as a derived approximation. p50 and p99 slot delta are computed over a rolling 7-day window (168 samples per service per cell). The cohort includes Helius Sender in `swqos_only` mode (isolated own-path), Astralane Iris (tip-refund mechanism), Nozomi by Temporal Labs (1M-lamport hard floor) and the Mobula multi-RPC fan-out aggregator. Each probe carries the same blockhash and a comparable tip so the slot delta column reads as a direct routing comparison rather than a tip-auction wallclock race.
+
+seo_title: Jito alternatives. Live Solana tx landing slot delta benchmark
+seo_description: Compare Jito against Helius Sender, Astralane, Nozomi and Mobula on slot delta from submit to confirmed. Signed mainnet probes every hour from us-east, 7-day window.
+
+status: live

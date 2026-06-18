@@ -57,6 +57,19 @@ jobs:
             --token=${{ secrets.VERCEL_TOKEN }} \
             --scope=${{ secrets.VERCEL_ORG_ID }}
 
+      # Each deployment starts with an empty ISR cache; until the
+      # materialize worker's next sweep (≤5 min) every page hit is a
+      # cold render. Warming here closes that window so a deploy never
+      # ships a slow first impression.
+      - name: Warm bench pages
+        run: |
+          base="https://staging-openchainbench.vercel.app"
+          curl -sf --max-time 30 "$base/sitemap.xml" \
+            | grep -o 'https://[^<]*/benchmarks/[a-z0-9-]*' \
+            | sed "s|https://[^/]*|$base|" | sort -u \
+            | xargs -P 4 -I{} curl -s -o /dev/null -w "%{http_code} %{time_total}s {}\n" --max-time 120 {} \
+            || echo "warm-up failed (non-blocking)"
+
       - name: Comment summary
         run: |
           {

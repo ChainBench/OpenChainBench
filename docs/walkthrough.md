@@ -216,7 +216,7 @@ Prometheus reloads its config file (which now has Alex's new scrape job), starts
 
 ## Phase 8. Live (Day 3, ≤ 60 s after the reload)
 
-The site's ISR cache for `/benchmarks/wallet-portfolio-latency` expires (default 60 s). The next visitor's request triggers a re-render: the Next.js server queries the central Prometheus, gets fresh data, renders the page with the new numbers.
+The materialization worker's next sweep (every 60 s) picks up the bench, queries the central Prometheus, and publishes a snapshot to the Redis store. The site's ISR cache for `/benchmarks/wallet-portfolio-latency` expires (default 60 s) and the next visitor's request re-renders the page from that snapshot with the new numbers. (Since the worker bakes its OCB checkout at image build time, a new bench or a provider-list change also needs a worker rebuild to be picked up.)
 
 Alex's benchmark is live. The roadmap card moves to `Live`. The maintainer pings the original issue:
 

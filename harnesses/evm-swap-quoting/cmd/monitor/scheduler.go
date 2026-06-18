@@ -14,12 +14,18 @@ const (
 
 // buildProviders returns the enabled provider list. Mobula requires its key
 // (already enforced in loadEnv). KyberSwap, Bebop, LI.FI, OpenOcean, CoW
-// and Enso are always on (no auth). 0x and Odos require their free-tier
-// API keys, if absent we skip them so the metrics layer doesn't see ghost
-// providers. (Odos technically allows anonymous traffic but the IP bucket
-// is too tight for sustained probes, so we treat it as key-gated.)
-// Enso runs anonymously with a known ~80% success rate against the shared
-// 1rps bucket — ENSO_API_KEY widens the bucket when supplied.
+// and Enso are always on (no auth required, but Enso benefits from
+// ENSO_API_KEY which widens the otherwise tight anonymous 1rps bucket).
+// Odos requires its free-tier API key — anonymous traffic gets rate-
+// limited too aggressively for sustained probes.
+//
+// 0x was previously in the list, gated by ZEROX_API_KEY. Their team
+// suspended our account because a benchmark issues quote requests
+// without ever submitting fills — that ratio is their TOS-defined
+// abuse signal and re-enabling requires a custom plan negotiation.
+// Until/unless that contract exists, calling 0x just burns ticks on
+// guaranteed auth errors that bloat the error counters; safer to
+// drop the provider entirely.
 func buildProviders(cfg *Config) []Provider {
 	providers := []Provider{
 		NewMobulaProvider(cfg.MonitorRegion, cfg.MobulaAPIKey),
@@ -29,9 +35,6 @@ func buildProviders(cfg *Config) []Provider {
 		NewOpenOceanProvider(cfg.MonitorRegion),
 		NewCoWProvider(cfg.MonitorRegion),
 		NewEnsoProvider(cfg.MonitorRegion, cfg.EnsoAPIKey),
-	}
-	if cfg.ZeroExAPIKey != "" {
-		providers = append(providers, NewZeroExProvider(cfg.MonitorRegion, cfg.ZeroExAPIKey))
 	}
 	if cfg.OdosAPIKey != "" {
 		providers = append(providers, NewOdosProvider(cfg.MonitorRegion, cfg.OdosAPIKey))

@@ -146,9 +146,9 @@
   {
     "slug": "fomo",
     "name": "FOMO",
-    "address": "0xb838e4d1c8bcf71fa8e63299d5aa3258c83d6adb",
+    "address": "0x2a2b6b093a9813fbd8cddae800c3d17d46460d17",
     "valid_from": "2026-06-02",
-    "notes": "FOMO perps. Source: DefiLlama dimension-adapters factory/hyperliquid.ts."
+    "notes": "FOMO social trading app (relaunched HL builder, joined 2026-06-02). Address corrected 2026-06-12: the previous 0xb838e4d1 address from DefiLlama belongs to an older unrelated FOMO perps product. Verified against local node fills ($3.5K builder fees on 2026-06-12) + HyperTracker registry."
   },
   {
     "slug": "gemwallet",
@@ -527,5 +527,208 @@
     "address": "0x40e9d9feba3df27e1fb9a924264bf775230d5260",
     "valid_from": "2026-06-11",
     "notes": "Unidentified active builder address, surfaced by a 24h node-fill scan on 2026-06-10 (~$513/24h fees, 13 unique users). Not labeled by DefiLlama dimension-adapters, Dwellir or ASXN at add time. Rename when the operating frontend is identified."
+  },
+  {
+    "slug": "dextrabot",
+    "name": "Dextrabot",
+    "address": "0x49ae63056b3a0be0b166813ee687309ab653c07c",
+    "valid_from": "2025-02-19",
+    "notes": "Source: HyperTracker public builder registry (refCode Dextrabot, joined 2025-02-19). Batch coverage audit 2026-06-12 against local node fills."
+  },
+  {
+    "slug": "kinto",
+    "name": "Kinto",
+    "address": "0xc1f4d15c16a1f3555e0a5f7aefd1e17ad4aaf40b",
+    "valid_from": "2024-12-25",
+    "notes": "Source: HyperTracker public builder registry (refCode Kinto, joined 2024-12-25). Batch coverage audit 2026-06-12 against local node fills."
+  },
+  {
+    "slug": "hypersignals",
+    "name": "HyperSignals",
+    "address": "0x8af3545a3988b7a46f96f9f1ae40c0e64fa493c2",
+    "valid_from": "2025-06-18",
+    "notes": "Source: HyperTracker public builder registry (refCode HyperSignals, joined 2025-06-18). Batch coverage audit 2026-06-12 against local node fills."
+  },
+  {
+    "slug": "ccxt",
+    "name": "CCXT",
+    "address": "0x6530512a6c89c7cfcebc3ba7fcd9ada5f30827a6",
+    "valid_from": "2025-07-16",
+    "notes": "Source: HyperTracker public builder registry (refCode CCXT1, joined 2025-07-16). Batch coverage audit 2026-06-12 against local node fills."
+  },
+  {
+    "slug": "vibeliquid",
+    "name": "VibeLiquid",
+    "address": "0x4c13d871aa1862a3c60407bb9e01b20bf1e2fede",
+    "valid_from": "2026-02-11",
+    "notes": "Source: HyperTracker public builder registry (refCode VibeLiquid, joined 2026-02-11). Batch coverage audit 2026-06-12 against local node fills."
+  },
+  {
+    "slug": "splash",
+    "name": "Splash",
+    "address": "0x3f24962739e6d703942dc2456e7c51c8d0ca4b70",
+    "valid_from": "2025-06-04",
+    "notes": "Source: HyperTracker public builder registry (refCode Splash, joined 2025-06-04). Batch coverage audit 2026-06-12 against local node fills."
+  },
+  {
+    "slug": "vooi",
+    "name": "VOOI",
+    "address": "0xbe622f92438ae55b12908b01eeace15d98ed1eec",
+    "valid_from": "2024-10-30",
+    "notes": "Source: HyperTracker public builder registry (refCode VOOI, joined 2024-10-30). Batch coverage audit 2026-06-12 against local node fills."
+  },
+  {
+    "slug": "hyperx",
+    "name": "HyperX",
+    "address": "0xc74812f67eddaf2f3aed6e061eaa9168b36d7ea1",
+    "valid_from": "2025-04-16",
+    "notes": "Source: HyperTracker public builder registry (refCode HyperX, joined 2025-04-16). Batch coverage audit 2026-06-12 against local node fills."
+  },
+  {
+    "slug": "miracle",
+    "name": "Miracle",
+    "address": "0x5eb46bfbf7c6004b59d67e56749e89e83c2caf82",
+    "valid_from": "2025-09-03",
+    "notes": "Source: HyperTracker public builder registry (refCode Miracle, joined 2025-09-03). Batch coverage audit 2026-06-12 against local node fills."
+  },
+  {
+    "slug": "xbit",
+    "name": "XBIT",
+    "address": "0x0c322f69ab8d0544be3cfd54424762a4251806c5",
+    "valid_from": "2025-08-16",
+    "notes": "Source: HyperTracker public builder registry (refCode XBIT, joined 2025-08-16). Batch coverage audit 2026-06-12 against local node fills."
+  },
+  {
+    "slug": "tuleep-trade",
+    "name": "tuleep.trade",
+    "address": "0x00000000617c4307d352e8c1720a9f29d01c3d62",
+    "valid_from": "2025-05-28",
+    "notes": "Source: HyperTracker public builder registry (refCode TULEEPTRADE, joined 2025-05-28). Batch coverage audit 2026-06-12 against local node fills."
+  },
+  {
+    "slug": "slash",
+    "name": "Slash",
+    "address": "0xaf69b1587b87c78409e5a20c3fd5f1ca386fd350",
+    "valid_from": "2025-02-12",
+    "notes": "Source: HyperTracker public builder registry (refCode SLASH, joined 2025-02-12). Batch coverage audit 2026-06-12 against local node fills."
+  },
+  {
+    "slug": "shax",
+    "name": "SHAX",
+    "address": "0x046a3ae662e8603d5eaeb74910c74e57a3ccd7ec",
+    "valid_from": "2026-04-08",
+    "notes": "Source: HyperTracker public builder registry (refCode SHAX, joined 2026-04-08). Batch coverage audit 2026-06-12 against local node fills."
+  },
+  {
+    "slug": "aura-money",
+    "name": "Aura",
+    "address": "0xee41f05496bc30dbd29c96bc31283c7e9f062192",
+    "valid_from": "2025-07-09",
+    "notes": "Source: HyperTracker public builder registry (refCode AURADOTMONEY, joined 2025-07-09). Batch coverage audit 2026-06-12 against local node fills."
+  },
+  {
+    "slug": "cro-trade",
+    "name": "cro.trade",
+    "address": "0x008adf65b8c404e8bba73f18671306066643761f",
+    "valid_from": "2026-03-18",
+    "notes": "Source: HyperTracker public builder registry (refCode cro.trade, joined 2026-03-18). Batch coverage audit 2026-06-12 against local node fills."
+  },
+  {
+    "slug": "owlyfi",
+    "name": "Owly.fi",
+    "address": "0x2e2e7c7696134f740aea7242a55b55d5cf769fab",
+    "valid_from": "2025-12-17",
+    "notes": "Source: HyperTracker public builder registry (refCode OWLYFI, joined 2025-12-17). Batch coverage audit 2026-06-12 against local node fills."
+  },
+  {
+    "slug": "topdog",
+    "name": "TopDog",
+    "address": "0xaef63e8441987a5e9bf1d37ebb61d8855f405a98",
+    "valid_from": "2025-04-09",
+    "notes": "Source: HyperTracker public builder registry (refCode TopDog, joined 2025-04-09). Batch coverage audit 2026-06-12 against local node fills."
+  },
+  {
+    "slug": "liquid8",
+    "name": "Liquid8",
+    "address": "0x7151a036313eee8aa9bc45d0969ca0e1637aad3c",
+    "valid_from": "2025-03-05",
+    "notes": "Source: HyperTracker public builder registry (refCode LIQUID8, joined 2025-03-05). Batch coverage audit 2026-06-12 against local node fills."
+  },
+  {
+    "slug": "goodcryptox",
+    "name": "goodcryptoX",
+    "address": "0xff09853a49dde85a8e7eab58abf94018fbe76116",
+    "valid_from": "2025-10-15",
+    "notes": "Source: HyperTracker public builder registry (refCode GOODCRYPTOX, joined 2025-10-15). Batch coverage audit 2026-06-12 against local node fills."
+  },
+  {
+    "slug": "markets-mobile",
+    "name": "Markets Mobile",
+    "address": "0x2af94a24e1f744a8e251b4996283ffb4657e915d",
+    "valid_from": "2025-12-03",
+    "notes": "Source: HyperTracker public builder registry (refCode Markets Mobile, joined 2025-12-03). Batch coverage audit 2026-06-12 against local node fills."
+  },
+  {
+    "slug": "origami-tech",
+    "name": "Origami Tech",
+    "address": "0x9b451f8941240db8bedc99bff8917a2ed9550074",
+    "valid_from": "2025-11-07",
+    "notes": "Source: HyperTracker public builder registry (refCode Origami Tech, joined 2025-11-07). Batch coverage audit 2026-06-12 against local node fills."
+  },
+  {
+    "slug": "cwallet",
+    "name": "Cwallet",
+    "address": "0xb977b6625dfe3d26eefa4ac6f99ada6546586962",
+    "valid_from": "2025-08-13",
+    "notes": "Source: HyperTracker public builder registry (refCode Cwallet, joined 2025-08-13). Batch coverage audit 2026-06-12 against local node fills."
+  },
+  {
+    "slug": "cipher",
+    "name": "Cipher",
+    "address": "0x32f6940795d6d484a6d29b6b628ebaff80a0c779",
+    "valid_from": "2025-04-16",
+    "notes": "Source: HyperTracker public builder registry (refCode Cipher, joined 2025-04-16). Batch coverage audit 2026-06-12 against local node fills."
+  },
+  {
+    "slug": "stryx",
+    "name": "STRYX",
+    "address": "0x60bce92a6f6685a8e7cc721ed025c7b848dd52c2",
+    "valid_from": "2026-03-04",
+    "notes": "Source: HyperTracker public builder registry (refCode STRYX, joined 2026-03-04). Batch coverage audit 2026-06-12 against local node fills."
+  },
+  {
+    "slug": "perpswld",
+    "name": "PerpsWLD",
+    "address": "0xbeef9cf5b817b1fb533b278f9a8754ec2b3745be",
+    "valid_from": "2025-12-10",
+    "notes": "Source: HyperTracker public builder registry (refCode PERPSWLD, joined 2025-12-10). Batch coverage audit 2026-06-12 against local node fills."
+  },
+  {
+    "slug": "onchaincc",
+    "name": "Onchain.cc",
+    "address": "0x64c06812904d342367ad155d7a8f3b7c7fb27f5f",
+    "valid_from": "2026-03-13",
+    "notes": "Source: HyperTracker public builder registry (refCode ONCHAINCC, joined 2026-03-13). Batch coverage audit 2026-06-12 against local node fills."
+  },
+  {
+    "slug": "kucoin-web3",
+    "name": "KuCoin Web3",
+    "address": "0x17e133500905dc6e85d9802c9e9b9120966aba27",
+    "valid_from": "2025-11-18",
+    "notes": "Source: HyperTracker public builder registry (refCode KUCOINWEB3, joined 2025-11-18). Batch coverage audit 2026-06-12 against local node fills."
+  },
+  {
+    "slug": "vergex",
+    "name": "VergeX",
+    "address": "0x891dc6f05ad47a3c1a05da55e7a7517971faaf0d",
+    "valid_from": "2025-11-12",
+    "notes": "Source: HyperTracker public builder registry (refCode VergeX, joined 2025-11-12). Batch coverage audit 2026-06-12 against local node fills."
+  },
+  {
+    "slug": "nansen",
+    "name": "Nansen",
+    "address": "0x93053f1e7a5efeda532fe69cbbe43cbec3a0f13f",
+    "valid_from": "2026-05-06",
+    "notes": "Nansen perps (refCode NSN on HyperTracker; nansen-perps in DefiLlama factory/hyperliquid.ts, start 2026-05-04). Identified during 2026-06-12 metadata audit."
   }
 ]

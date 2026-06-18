@@ -4,6 +4,9 @@ import { getBenchmarkSlugs } from "@/data/benchmarks";
 import { getSpecs, loadAllBenchmarks } from "@/lib/spec";
 import { readHeartbeat, storeConfigured } from "@/lib/materialize/store";
 import { extractMetricName, Prometheus } from "@/lib/prometheus";
+import { COMPARE_PAIRS } from "@/data/compare-pairs";
+import { SITE } from "@/data/site";
+import { getProviders } from "@/lib/providers";
 
 export const runtime = "nodejs";
 // Always read live state from prom. ISR cache here would defeat the
@@ -261,6 +264,70 @@ export async function GET(req: NextRequest) {
     prewarmErr = err instanceof Error ? err.message : String(err);
   }
 
+  // Pre-warm every curated /compare/<pair> AND every /products/<slug>.
+  // Each fetch triggers its route handler which:
+  //   - /compare: builds SharedBench[], writes to KV via compare-cache,
+  //     refreshes ISR HTML cache for the pair
+  //   - /products: warms getProviders + the alternatives reverse map +
+  //     the related providers compare-graph lookup
+  //
+  // Without this, an unlucky first visitor in each 60 s ISR window pays
+  // the full upstream cost (10 to 14 s observed on staging for a cold
+  // /products/<slug>, ~7 s for a /compare/<pair>).
+  //
+  // 5 minute cron cadence vs 60 s ISR window: ISR can still serve a
+  // cold render between cron ticks, but the underlying KV + unstable_cache
+  // entries stay warm so the regen is sub-second instead of multi-second.
+  // Ad hoc compare pairs aren't warmed because the URL space is open
+  // ended; the long tail accepts a cold first hit.
+  //
+  // Self fetch with a UA header so future cron-gated middleware can
+  // attribute the traffic. AbortSignal caps each call at 20 s; failures
+  // are counted but never fail the cron.
+  const warmHeaders = { "user-agent": "ocb-warmup-cron/1" };
+  const warmFetch = (path: string) =>
+    fetch(`${SITE.url}${path}`, {
+      method: "GET",
+      headers: warmHeaders,
+      cache: "no-store",
+      signal: AbortSignal.timeout(20_000),
+    })
+      .then((res) => (res.ok ? "ok" : "fail"))
+      .catch(() => "fail");
+
+  let pairsWarmed = 0;
+  let pairsFailed = 0;
+  let productsWarmed = 0;
+  let productsFailed = 0;
+
+  const pairWork = Promise.all(
+    COMPARE_PAIRS.map(async (pair) => {
+      const r = await warmFetch(`/compare/${pair.slug}`);
+      if (r === "ok") pairsWarmed += 1;
+      else pairsFailed += 1;
+    }),
+  );
+
+  const productWork = (async () => {
+    let slugs: string[] = [];
+    try {
+      const profiles = await getProviders();
+      slugs = profiles.map((p) => p.slug);
+    } catch {
+      // getProviders failed — skip product warm but keep pair warm running
+      return;
+    }
+    await Promise.all(
+      slugs.map(async (slug) => {
+        const r = await warmFetch(`/products/${slug}`);
+        if (r === "ok") productsWarmed += 1;
+        else productsFailed += 1;
+      }),
+    );
+  })();
+
+  await Promise.all([pairWork, productWork]);
+
   return NextResponse.json({
     checked: liveSpecs.length,
     transitions: transitions.length,
@@ -269,6 +336,10 @@ export async function GET(req: NextRequest) {
     dryRun: !webhook,
     transitionsList: transitions,
     prewarm: { count: prewarmCount, err: prewarmErr },
+    comparePairsWarmed: pairsWarmed,
+    comparePairsFailed: pairsFailed,
+    productsWarmed,
+    productsFailed,
   });
 }
 

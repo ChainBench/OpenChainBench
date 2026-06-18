@@ -1,0 +1,13 @@
+slug: pyth
+target_product: Pyth
+target_url: https://pyth.network
+description: Pull-based price oracle with publisher-signed feeds delivered via Hermes
+benchmark: oracle-deviation
+
+intro: |
+  Pyth Network is a pull-based price oracle with publisher-signed feeds delivered through the Hermes REST endpoint and on-chain via wormhole-attested updates. Unlike Chainlink's push model with a deviation trigger, Pyth refreshes continuously off-chain, which means the off-chain quote available to a protocol team is usually fresher but the on-chain inscription of that quote still depends on when an integrator submits the update. The question every protocol designer picking an oracle asks is how aligned the major feeds actually are at the moment a settlement happens, not what each vendor's whitepaper claims. This benchmark polls four oracles every 30 seconds for ten USD-quoted blue chips, computes the pairwise deviation `|a-b|/avg * 100` across every source pair, and publishes the per-pair maximum as a Prometheus gauge in basis points. Sources are Chainlink AggregatorV3 (via `eth_call`), Pyth Hermes (batched `latest_price_feeds`), Binance REST ticker (USDT quoted, treated as approximately USD) and Coinbase REST ticker. Pairs are BTC, ETH, SOL, BNB, AVAX, LINK and POL on all four sources, plus XRP, ADA and DOGE on three sources because the Chainlink mainnet feeds for those USD pairs are deprecated. A 60-second stale-price guard excludes any source whose last sample is older than two poll intervals, so a dead poller cannot register a false zero deviation against itself. The leaderboard ranks the ten pairs by p99 of the max deviation over 24 hours; lower means tighter cross-oracle alignment.
+
+seo_title: Pyth alternatives. Live oracle deviation benchmark in basis points
+seo_description: Compare Pyth against Chainlink, Binance and Coinbase on live oracle deviation. Max pairwise gap on 10 USD pairs, polled every 30 seconds, p99 over 24 hours.
+
+status: live

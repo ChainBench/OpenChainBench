@@ -1,0 +1,44 @@
+slug: which-crypto-data-api-covers-the-most-blockchains
+question: "Which crypto data API covers the most blockchains in 2026?"
+short_answer: |
+  {{best_name}} currently leads the network coverage leaderboard at {{best_p50}} unique mainnets supported, measured live every 6 hours from each provider's own supported networks endpoint across GeckoTerminal, Codex, Mobula, CoinPaprika, CoinStats and Dune (via Sim API).
+
+benchmark: network-coverage
+
+intro: |
+  Every onchain product roadmap eventually hits the same gate: which data provider do we integrate so the SDK speaks every chain we need without us rolling a custom indexer per network. Marketing pages quote round numbers (250+, 100+, 50+ chains) without a list a reader can verify, and the gap between a claimed count and the actual queryable surface is where integration timelines slip. This page answers one question with live data. How many mainnets does each major crypto data API officially support today, read directly from each provider's own supported networks endpoint and deduplicated by chain id. The OpenChainBench network-coverage harness polls GeckoTerminal's `/api/v2/networks`, Codex GraphQL `getNetworks`, Mobula's `/api/1/blockchains`, CoinPaprika's `/v1/contracts`, CoinStats's `/wallet/blockchains` and Dune's Sim API `/v1/evm/supported-chains` every 6 hours, counts the unique chain ids returned, and publishes the result as the Prometheus gauge `networks_supported_total{provider}`. Mainnets only, testnets are filtered server side because providers list them inconsistently and a builder shipping to production needs the production count.
+
+methodology: |
+  Each provider is polled at its public supported networks endpoint every 6 hours from a single eu-west origin. GeckoTerminal pagination is followed through every page of `/api/v2/networks` (no auth required). Codex's GraphQL `getNetworks` query runs against `https://graph.codex.io/graphql` with an official API key. Mobula reads `/api/1/blockchains` with an Authorization header. CoinPaprika lists supported platforms through the public `/v1/contracts` endpoint (no auth). CoinStats reads `/wallet/blockchains` with `X-API-KEY`. Dune (via the Sim API) reads `/v1/evm/supported-chains` no auth, EVM only, mainnets filtered via the `mainnet` tag. Counting is the same shape for every provider: one count per unique chain id per response, mainnet only. Failures (network errors, rate limits, auth errors) leave the previous count in place and increment `fetch_errors_total`; the page falls back to its last successful sample so a transient outage does not silently drop a provider off the leaderboard.
+
+limitations:
+  - "Breadth is one dimension of a data provider's product, not a ranking on quality. A provider with 200 chains and shallow per chain depth can rank above one with 80 chains and full DEX, metadata and event coverage on each. Use this benchmark for the breadth question; head lag (aggregator-head-lag) and metadata completeness (metadata-coverage) answer the depth question. A serious integration decision reads all three."
+  - "Mainnet only. Testnet listings are inconsistent across providers (some list every devnet ever spun up, others list none), and the production count is the one builders integrate against. The harness filters server side using each provider's own testnet flag where available."
+  - "Dune coverage is EVM only via the Sim API endpoint. Non EVM chains a Dune integration could reach through other product surfaces are not on the gauge because the `/v1/evm/supported-chains` endpoint is scoped to EVM by construction."
+  - "CoinPaprika is counted by platform slugs returned by `/v1/contracts`, which lists platforms supported for contract lookup. That is the closest comparable to a supported networks count for CoinPaprika's product surface but it is not identical in shape to the dedicated `getNetworks` style endpoints other providers expose."
+  - "A provider can technically reach a chain through a custom integration without listing it on the public supported networks endpoint. This bench measures what each API officially publishes as queryable, which is what a builder evaluating the SDK actually sees, not the absolute coverage envelope including private integrations."
+
+faq:
+  - q: "Which crypto data API supports the most blockchains right now?"
+    a: "{{best_name}} currently leads at {{best_p50}} unique mainnets across the 6 measured providers. The count is read every 6 hours directly from each provider's own supported networks endpoint and deduplicated by chain id, so the leaderboard reflects what each API actually publishes as queryable, not a claim from a marketing page. The headline value updates as providers add chains in production."
+  - q: "Does Mobula support more chains than GeckoTerminal or Codex?"
+    a: "On this benchmark the three have different coverage philosophies. Mobula indexes EVM, Solana, Bitcoin and a long tail of non EVM chains under a single API. GeckoTerminal grows alongside CoinGecko's DEX rollout, which is deep on the major chains and slower on niche L2s. Codex (Defined.fi) historically prioritises depth on EVM and Solana DEX coverage rather than breadth across niche chains, which surfaces as a tighter count with stronger per chain DEX data than a raw breadth ranking implies. Read the live numbers from the leaderboard plus the head lag and metadata benches to compare full product surface."
+  - q: "Why exclude testnets from the count?"
+    a: "Testnet listings are inconsistent across providers. Some publish every devnet the engineering team ever spun up, others publish none, and a tool that ranked providers on a testnet inflated number would penalise the providers with disciplined network registries. Mainnets are what a builder shipping to production actually integrates against, so the comparison is restricted to mainnets only and filtered server side using each provider's own testnet flag."
+  - q: "Is having more chains always better?"
+    a: "Breadth and depth are independent dimensions. A provider with 200 chains might only index price ticks on most of them and full DEX swap history on a dozen. A provider with 60 chains might cover every chain end to end (pools, swaps, holders, metadata). Use this benchmark for the breadth question; head lag answers how fresh the data is on each chain, metadata coverage answers how complete the per token surface is. A serious integration decision reads all three."
+  - q: "How is a mainnet counted?"
+    a: "Any chain a provider lists as a queryable production environment, identified by a unique chain id. Ethereum mainnet, Solana mainnet, Base, Arbitrum, BNB Chain, Bitcoin and so on each count once regardless of how the provider labels them internally. Bridged variants of a token on different chains are not the same chain. The chain id is the deduplication key, which is why a provider cannot game the count by listing wrapped representations."
+  - q: "How often does the leaderboard refresh?"
+    a: "Every 6 hours. The harness hits each provider's supported networks endpoint, parses the response, deduplicates by chain id and updates the `networks_supported_total{provider}` gauge. Failures (network errors, rate limits, auth errors) leave the previous count in place and increment `fetch_errors_total`, so a temporary outage does not silently drop a provider off the leaderboard."
+  - q: "Where does Dune fit on this list and why is it EVM only?"
+    a: "Dune is included via the Sim API, which exposes a `/v1/evm/supported-chains` endpoint scoped to EVM by construction. Non EVM chains a Dune integration could reach through other product surfaces are not on the gauge because the bench measures one canonical supported networks endpoint per provider. The EVM only label is surfaced honestly on the Dune row so a reader does not mistake a narrower scope for a smaller integration footprint."
+
+related:
+  - which-crypto-price-api-is-the-fastest
+  - which-prediction-market-data-api-is-the-freshest
+  - which-crypto-oracle-is-the-most-accurate
+
+seo_title: "Which crypto data API covers the most blockchains in 2026?"
+seo_description: "{{best_name}} leads at {{best_p50}} unique mainnets across GeckoTerminal, Codex, Mobula, CoinPaprika, CoinStats and Dune, audited every 6 hours by OpenChainBench."
+status: live

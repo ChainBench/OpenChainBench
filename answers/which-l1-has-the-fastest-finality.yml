@@ -1,0 +1,38 @@
+slug: which-l1-has-the-fastest-finality
+question: "Which L1 blockchain has the fastest finality time?"
+short_answer: |
+  {{best_name}} reaches finality at {{best_p50}} (p50, 24h), the lowest deterministic settlement time measured across 11 L1 chains by OpenChainBench.
+
+benchmark: l1-finality
+
+intro: |
+  Finality is the point at which a confirmed transaction cannot be reversed without breaking the protocol's security assumptions. It is the right number to look at for cross-chain settlement, exchange withdrawal thresholds, bridge unlock conditions and any system that needs to know "is this real now or can it still be undone." This page answers one question with live measurement. Which L1 chain actually finalizes the fastest in wall-clock seconds, not in slot counts or in marketing claims. OpenChainBench measures every L1 against its own native finality definition: deterministic for BFT chains (Ethereum Casper FFG, Stellar SCP, Hedera Hashgraph, SUI Mysticeti, TON BAG) and convention-based for probabilistic chains (Bitcoin and similar by confirmation depth). The leaderboard ranks by 24h p50 wall-clock seconds.
+
+methodology: |
+  Two methods are used, picked per chain. For chains whose finality is much longer than our 10 second poll interval (Ethereum, Solana, TRON, Litecoin, Monero) the harness compares `latest` and `finalized` block timestamps from the chain RPCs and takes the delta. For chains whose finality is faster than the poll interval (BNB, Avalanche, SUI, TON, Stellar) the harness maintains a persistent WebSocket or SSE subscription, recording wall-clock time T1 when block N is first seen as `latest` and T2 when it becomes `finalized`, with millisecond precision. The WS path is the only honest way to measure sub-poll-cadence finality; comparing two pointers at a single instant collapses to zero when finalization catches up to the head. Probabilistic chains (Litecoin, Monero) are measured against their conventional confirmation depth, not against a uniform depth across all chains.
+
+limitations:
+  - "Hedera's documented 3 to 5 second Hashgraph aBFT finality is not on the live leaderboard. Hedera mirror nodes only expose already-final blocks, so wall-clock measurement is impossible from public endpoints; re-enables once Block Nodes (HIP-1056) leave private preview."
+  - "Probabilistic chains (Litecoin, Monero) settle on a confirmation-depth convention. The reported value is the time to that depth, which is the exchange-style settlement threshold, not a strict protocol-level finality."
+  - "XRP is excluded by design: ledger_current has no close-time field, so wall-clock measurement requires a WS subscription to the ledger stream which is not yet implemented."
+  - "Sub-second finalities on TON and SUI are real because both chains expose millisecond-precision timestamps. Sub-second finalities claimed by chains without millisecond timestamps would be a measurement artifact, not a protocol property."
+
+faq:
+  - q: "What is blockchain finality?"
+    a: "Blockchain finality is the point at which a confirmed transaction cannot be reversed without breaking the protocol's security assumptions. Two finality models exist. Deterministic finality (Ethereum Casper FFG, Stellar SCP, Hedera Hashgraph) reaches an explicit consensus commitment that the network treats as irreversible. Probabilistic finality (Bitcoin, Litecoin, Monero, Cardano) leaves a non-zero reorg probability that decreases exponentially with confirmation depth."
+  - q: "Is Solana finality really 400 milliseconds?"
+    a: "No. Solana exposes two commitments. Processed is optimistic and lands sub-second, typically under 500 milliseconds. Finalized requires 32 confirmed slots and clocks closer to 13 seconds in practice. The headline value here is finalized, the stricter guarantee. Sub-second Solana finality is real but only at the processed commitment level."
+  - q: "Why is Ethereum finality 12.8 minutes?"
+    a: "Ethereum uses Casper FFG which finalizes a checkpoint two epochs after it is justified. Each epoch is 32 slots of 12 seconds, giving 12.8 minutes as the documented target. Reorgs of unfinalized blocks remain possible inside the two-epoch window, but a finalized block is treated as irreversible by every Ethereum client."
+  - q: "How is TON able to finalize so fast?"
+    a: "TON's BAG consensus pushes masterchain finality under one second by separating state across a masterchain and many workchains. The number reported here is the masterchain commit, which is the canonical reference for cross-chain settlement. Workchain blocks are also finalized but only after the masterchain commit references them."
+  - q: "Can I trust a sub-second L1 finality for cross-chain settlement?"
+    a: "It depends on what you are settling. For bridges and exchanges with their own deeper confirmation thresholds, sub-second native finality means you reach those internal thresholds faster, not that you can skip them. For protocols that consume finality directly (e.g. LayerZero finality oracle, IBC client), the native value is what matters and the sub-second chains genuinely settle in under a second."
+
+related:
+  - which-blockchain-has-cheapest-transaction-fees
+  - which-solana-rpc-lands-the-most-transactions
+
+seo_title: "Which L1 blockchain has the fastest finality time in 2026?"
+seo_description: "{{best_name}} finalizes in {{best_p50}} (p50, 24h), the lowest deterministic finality across 11 L1 chains measured live by OpenChainBench. Methodology + limitations included."
+status: live

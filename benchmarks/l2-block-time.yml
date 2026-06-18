@@ -6,6 +6,45 @@ title: Fastest L2 block time, live across Arbitrum, Base, Optimism and 6 more
 seo_title: "Fastest L2 block time 2026: Arbitrum, Base, Optimism, zkSync"
 seo_description: "Fastest L2 sequencer block time ranked live. Wall-clock newHeads interval for Arbitrum, Blast, Optimism, Base, zkSync, Linea, Scroll, Mantle and Taiko. p50 over 24h."
 subtitle: Wall-clock interval in milliseconds between two consecutive newHeads events on each L2 sequencer, refreshed continuously.
+
+per_chain_explainer:
+  - slug: arbitrum
+    h2: "Arbitrum One block time"
+    body: |
+      Arbitrum One block time is {{p50:arbitrum}} (p50, 24h). Arbitrum Nitro defaults to a 250 ms sequencer interval, by far the most aggressive cadence in the L2 cohort, made possible because the Nitro stack decouples block production from L1 anchoring and runs a single Offchain Labs sequencer that posts batches to Ethereum asynchronously. Measured by holding an `eth_subscribe("newHeads")` WebSocket on the public Arbitrum RPC and recording wall-clock deltas between consecutive head events.
+  - slug: optimism
+    h2: "Optimism block time"
+    body: |
+      Optimism block time is {{p50:optimism}} (p50, 24h). The OP Stack ships with a hard-coded 2 second sequencer interval, which is what the Optimism Foundation sequencer commits to; the L2 only produces a new block when that timer fires, even on empty traffic. Settlement is on Ethereum via blob calldata after Dencun. Measured by holding a persistent `newHeads` WebSocket against the public Optimism sequencer RPC and reporting the inter-arrival delta.
+  - slug: base
+    h2: "Base block time"
+    body: |
+      Base block time is {{p50:base}} (p50, 24h). Base is operated by Coinbase on the OP Stack and inherits its 2 second sequencer cadence; Coinbase has publicly tested a Flashblocks pre-confirmation path at 200 ms but the canonical `newHeads` stream still emits one block every 2 s. Settlement posts to Ethereum via EIP-4844 blobs. Measured live by subscribing to `newHeads` on the public Base sequencer WebSocket and computing T(N+1) minus T(N) in milliseconds.
+  - slug: zksync
+    h2: "zkSync Era block time"
+    body: |
+      zkSync Era block time is {{p50:zksync}} (p50, 24h). zkSync Era is a zk-rollup with a Matter Labs-operated sequencer; block production is batched because the prover must generate a SNARK before the batch is finalized on Ethereum, so within a busy burst blocks land near 1 s but the median drifts up during quiet periods when the sequencer waits to fill a batch. Measured via the `era.zksync.io/ws` WebSocket and `newHeads` inter-arrival deltas.
+  - slug: linea
+    h2: "Linea block time"
+    body: |
+      Linea block time is {{p50:linea}} (p50, 24h). Linea is a Consensys-operated zkEVM with a single sequencer feeding a prover that produces PLONK-family proofs posted to Ethereum; the documented target is a 2 s slot but observed cadence is governed by prover throughput, so idle windows stretch into multi-second gaps that lift the median above the nominal slot time. Measured by holding `newHeads` on the public Linea RPC.
+  - slug: scroll
+    h2: "Scroll block time"
+    body: |
+      Scroll block time is {{p50:scroll}} (p50, 24h). Scroll is a bytecode-equivalent zkEVM running a centralized sequencer that batches transactions for a Halo2-based prover; the nominal block target is 3 s but the practical floor is driven by the prover-batch cadence, identical in shape to Linea and zkSync, with a long idle tail when traffic is sparse. Measured via the public Scroll WebSocket and `newHeads` deltas.
+  - slug: blast
+    h2: "Blast block time"
+    body: |
+      Blast block time is {{p50:blast}} (p50, 24h). Blast is an OP Stack fork operated by the Blast team with the same 2 s sequencer default as Optimism and Base, layered with native yield on ETH and USDB deposits that auto-rebase against L1 staking and T-bill yields. Settlement is on Ethereum via blob calldata. Measured live by holding a `newHeads` WebSocket against the Blast sequencer RPC.
+  - slug: mantle
+    h2: "Mantle block time"
+    body: |
+      Mantle block time is {{p50:mantle}} (p50, 24h). Mantle is an OP Stack fork with a Mantle Foundation sequencer at the OP Stack 2 s default, but it swaps Ethereum calldata for EigenDA as the data-availability layer, which decouples DA cost from L1 blob price without changing the L2 block cadence the user sees. Measured via `newHeads` inter-arrival on the public Mantle sequencer WebSocket.
+  - slug: taiko
+    h2: "Taiko block time"
+    body: |
+      Taiko block time is {{p50:taiko}} (p50, 24h). Taiko is a based rollup: there is no centralized sequencer; Ethereum L1 validators sequence Taiko blocks directly by including L2 proposals in L1 blocks, which means Taiko's effective slot is bounded below by Ethereum's 12 s slot. The architecture trades raw L2 cadence for inheriting Ethereum's liveness and censorship-resistance. Measured via `newHeads` on the public Taiko WebSocket.
+
 category: Blockchains
 status: live
 metric: Block time
