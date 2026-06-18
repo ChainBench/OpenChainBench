@@ -27,8 +27,6 @@ import { unstable_cache } from "next/cache";
 import { getProviders } from "@/lib/providers";
 import type { CompareCandidate } from "@/lib/compare-pairing-shared";
 
-export type { CompareCandidate };
-export { canonicalPairSlug } from "@/lib/compare-pairing-shared";
 
 export type CompareGraph = {
   providers: CompareCandidate[];

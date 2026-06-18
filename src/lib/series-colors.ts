@@ -24,7 +24,7 @@ const PALETTE = [
 ];
 
 /** Return a color for the i-th unbranded line. */
-export function lineColor(i: number): string {
+function lineColor(i: number): string {
   return PALETTE[i % PALETTE.length];
 }
 

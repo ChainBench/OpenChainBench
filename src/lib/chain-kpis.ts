@@ -163,15 +163,3 @@ export async function fetchChainTvlFullHistory(
   }
 }
 
-/**
- * Legacy 30-day helper used by other call sites. Thin wrapper that
- * slices the full history. Kept for backward compat.
- */
-export async function fetchChainTvlHistory(
-  slug: string,
-  days = 30,
-): Promise<ChainTvlHistory | null> {
-  const full = await fetchChainTvlFullHistory(slug);
-  if (!full) return null;
-  return { slug: full.slug, points: full.points.slice(-days) };
-}

@@ -12,14 +12,6 @@ import { cache } from "react";
 import type { Benchmark } from "@/types/benchmark";
 import { loadAllBenchmarks, loadBenchmark } from "@/lib/spec";
 
-export type {
-  Benchmark,
-  ProviderResult,
-  ResultExtras,
-  RegionPoint,
-  Series24h,
-} from "@/types/benchmark";
-
 export const getBenchmarks = cache(loadAllBenchmarks);
 
 export async function getBenchmark(
@@ -27,19 +19,6 @@ export async function getBenchmark(
   options: { chain?: string; region?: string } = {}
 ): Promise<Benchmark | undefined> {
   return loadBenchmark(slug, options);
-}
-
-export async function getBenchmarksByCategory(): Promise<
-  Array<[Benchmark["category"], Benchmark[]]>
-> {
-  const all = await getBenchmarks();
-  const map = new Map<Benchmark["category"], Benchmark[]>();
-  for (const b of all) {
-    const list = map.get(b.category) ?? [];
-    list.push(b);
-    map.set(b.category, list);
-  }
-  return Array.from(map.entries());
 }
 
 const SPECS_DIR = path.join(process.cwd(), "benchmarks");
