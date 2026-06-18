@@ -21,7 +21,15 @@ import {
 import { HlBuilderDashboard } from "@/components/hl-builder-dashboard";
 import { RelatedProvidersSection } from "@/components/related-providers-section";
 
-export const revalidate = 60;
+// ISR window aligned with the health-check cron warmup (every 5 min).
+// Each cron tick fetches every /products/<slug>, refreshing the cached
+// HTML right when ISR expires. Between ticks visitors land on the edge
+// cache (~10 ms) instead of paying the full SSR cost. Under the hood
+// the data layer (getProviders, buildAlternativesReverseMap) revalidates
+// independently on its own 60 s unstable_cache windows, so freshness
+// stays sub minute at the data level even if the rendered HTML is 5
+// min old.
+export const revalidate = 300;
 
 // On-demand first render loads every bench (provider profile spans the
 // whole catalog). 60s default killed cold renders and ISR regenerations
@@ -611,15 +619,22 @@ export default async function ProviderPage({
                     />
                   </div>
                   <div className="mt-3 flex flex-wrap items-center gap-3 text-[11px] font-sans font-medium uppercase tracking-[0.18em] text-ink-muted">
-                    <a
-                      href={tweetIntent}
-                      target="_blank"
-                      rel="noopener"
-                      className="inline-flex items-center gap-1 hover:text-ink"
-                    >
-                      Share on X
-                      <ArrowUpRight size={11} strokeWidth={2} />
-                    </a>
+                    {/* Hide the Share on X CTA on /products/mobula. OCB
+                        is built by Mobula, so a pre-filled tweet praising
+                        Mobula posted from a visitor account reads as a
+                        self-promo loop. Every other provider keeps the
+                        share link. */}
+                    {p.slug !== "mobula" && (
+                      <a
+                        href={tweetIntent}
+                        target="_blank"
+                        rel="noopener"
+                        className="inline-flex items-center gap-1 hover:text-ink"
+                      >
+                        Share on X
+                        <ArrowUpRight size={11} strokeWidth={2} />
+                      </a>
+                    )}
                   </div>
                   <details className="mt-3">
                     <summary className="cursor-pointer text-[11px] font-sans font-medium uppercase tracking-[0.18em] text-ink-muted hover:text-ink">
