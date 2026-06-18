@@ -42,6 +42,122 @@ import type {
   ResultExtras,
 } from "@/types/benchmark";
 
+// Shared zod primitives that mirror the TS types in `@/types/benchmark`.
+// Keep these in sync with that file; the `AssertEqual` lines at the
+// bottom of this block force a compile error if the inferred zod type
+// drifts from the canonical TS type.
+const UnitSchema = z.enum([
+  "ms",
+  "s",
+  "sec",
+  "pct",
+  "bps",
+  "bp",
+  "count",
+  "slots",
+  "usd",
+]);
+
+const StalenessMetaSchema = z.object({
+  observedAt: z.number(),
+  staleSince: z.number().optional(),
+});
+
+const ProviderResultSchema = z.object({
+  name: z.string(),
+  slug: z.string(),
+  tag: z.string().optional(),
+  type: z.enum(["protocol", "aggregator", "intent", "relay"]).optional(),
+  layer: z.enum(["l1", "l2"]).optional(),
+  ms: z.object({
+    p50: z.number(),
+    p90: z.number(),
+    p99: z.number(),
+    mean: z.number(),
+  }),
+  slots: z.object({ p50: z.number(), p99: z.number() }).optional(),
+  successRate: z.number(),
+  sampleSize: z.number().optional(),
+  secondary: z.object({ label: z.string(), value: z.string() }).optional(),
+  availability: z.enum(["live", "unavailable"]).optional(),
+  meta: StalenessMetaSchema.optional(),
+  query: z.string().optional(),
+  formula: z.string().optional(),
+});
+
+const RegionPointSchema = z.object({
+  region: z.enum(["us-east", "eu-west", "ap-southeast", "global"]),
+  p50: z.number(),
+});
+
+const Series24hSchema = z.array(z.number());
+
+const ResultExtrasSchema = z.object({
+  series24h: z.record(z.string(), Series24hSchema),
+  series7d: z.record(z.string(), Series24hSchema).optional(),
+  series30d: z.record(z.string(), Series24hSchema).optional(),
+  seriesByRegion24h: z
+    .record(z.string(), z.record(z.string(), Series24hSchema))
+    .optional(),
+  seriesByRegion7d: z
+    .record(z.string(), z.record(z.string(), Series24hSchema))
+    .optional(),
+  seriesByRegion30d: z
+    .record(z.string(), z.record(z.string(), Series24hSchema))
+    .optional(),
+  regions: z.record(z.string(), z.array(RegionPointSchema)),
+});
+
+const MetricPanelSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  description: z.string().optional(),
+  metric: z.string(),
+  unit: UnitSchema,
+  higherIsBetter: z.boolean(),
+  tab: z.boolean().optional(),
+  values: z.record(z.string(), z.number()),
+  valuesMeta: z.record(z.string(), StalenessMetaSchema).optional(),
+  seriesByProvider: z.record(z.string(), z.array(z.number())).optional(),
+  seriesByProvider7d: z.record(z.string(), z.array(z.number())).optional(),
+  seriesByProvider30d: z.record(z.string(), z.array(z.number())).optional(),
+});
+
+const CellRankEntrySchema = z.object({
+  slug: z.string(),
+  p50: z.number(),
+});
+
+// Compile-time guard rail: each inferred zod type must be assignable to
+// the canonical TS type, and vice versa. Drift between this file and
+// `@/types/benchmark` becomes a build error instead of a runtime parse
+// failure. `AssertEqual` resolves to `true` when both directions hold.
+type AssertEqual<A, B> = [A] extends [B]
+  ? [B] extends [A]
+    ? true
+    : false
+  : false;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _providerResultMatches: AssertEqual<
+  z.infer<typeof ProviderResultSchema>,
+  ProviderResult
+> = true;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _resultExtrasMatches: AssertEqual<
+  z.infer<typeof ResultExtrasSchema>,
+  ResultExtras
+> = true;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _metricPanelMatches: AssertEqual<
+  z.infer<typeof MetricPanelSchema>,
+  MetricPanel
+> = true;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _cellRankEntryMatches: AssertEqual<
+  z.infer<typeof CellRankEntrySchema>,
+  CellRankEntry
+> = true;
+
 /** Refuse snapshots older than this on read. 24 h matches the bench
  *  query window — a value older than that isn't meaningful as the
  *  "current" leaderboard, so a draft placeholder is more honest. */
@@ -62,13 +178,13 @@ const SnapshotSchema = z.object({
   savedAt: z.number().int().positive(),
   lastRunAt: z.string(),
   sampleSize: z.number(),
-  results: z.array(z.any()),
-  extras: z.any(),
-  bestPerChain: z.record(z.string(), z.any()).optional(),
-  worstPerChain: z.record(z.string(), z.any()).optional(),
+  results: z.array(ProviderResultSchema),
+  extras: ResultExtrasSchema,
+  bestPerChain: z.record(z.string(), ProviderResultSchema).optional(),
+  worstPerChain: z.record(z.string(), ProviderResultSchema).optional(),
   providersPerChain: z.record(z.string(), z.array(z.string())).optional(),
-  cellRanks: z.record(z.string(), z.any()).optional(),
-  metricPanels: z.array(z.any()).optional(),
+  cellRanks: z.record(z.string(), z.array(CellRankEntrySchema)).optional(),
+  metricPanels: z.array(MetricPanelSchema).optional(),
 });
 
 export type SnapshotPayload = {
@@ -260,23 +376,15 @@ async function readSnapshotWithAge(
     return {
       ageMs: age,
       payload: {
-        results: parsed.data.results as ProviderResult[],
-        extras: parsed.data.extras as ResultExtras,
+        results: parsed.data.results,
+        extras: parsed.data.extras,
         sampleSize: parsed.data.sampleSize,
         lastRunAt: parsed.data.lastRunAt,
-        bestPerChain: parsed.data.bestPerChain as
-          | Record<string, ProviderResult>
-          | undefined,
-        worstPerChain: parsed.data.worstPerChain as
-          | Record<string, ProviderResult>
-          | undefined,
-        providersPerChain: parsed.data.providersPerChain as
-          | Record<string, string[]>
-          | undefined,
-        cellRanks: parsed.data.cellRanks as
-          | Record<string, CellRankEntry[]>
-          | undefined,
-        metricPanels: parsed.data.metricPanels as MetricPanel[] | undefined,
+        bestPerChain: parsed.data.bestPerChain,
+        worstPerChain: parsed.data.worstPerChain,
+        providersPerChain: parsed.data.providersPerChain,
+        cellRanks: parsed.data.cellRanks,
+        metricPanels: parsed.data.metricPanels,
       },
     };
   } catch (err) {

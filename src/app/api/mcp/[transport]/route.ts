@@ -556,14 +556,15 @@ function buildMcpHandler(
       },
     );
   },
-  // The mcp-handler package supports `disableSse` at runtime but its
-  // TypeScript types don't declare it (as of 1.1.0). Cast keeps the
-  // option set so SSE GETs return 404 instead of hanging while waiting
-  // for a Redis we don't run.
-  { disableSse: true } as unknown as Record<string, never>,
+  // No server-level options; everything goes in the handler config below.
+  {},
   {
     basePath: "/api/mcp",
     maxDuration: 60,
+    // Disable SSE so GETs return 404 instead of hanging while waiting
+    // for a Redis we don't run. SSE has been deprecated by the MCP
+    // spec (https://modelcontextprotocol.io/specification/2025-03-26).
+    disableSse: true,
   },
 );
 }
