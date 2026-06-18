@@ -1,6 +1,4 @@
-"use client";
-
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode } from "react";
 import Link from "next/link";
 
 import type { Benchmark } from "@/types/benchmark";
@@ -15,6 +13,11 @@ import { ProviderLogo } from "@/components/provider-logo";
  * collapses to a flat line. Renders a podium + a horizontal comparison
  * bar instead. the two visualizations that actually carry information
  * for this metric shape.
+ *
+ * Server component. The hover formula tooltip relies on CSS `group-hover`
+ * — there is no client state to render the leaderboard. Two consumers:
+ *   • alternatives/[slug]/page.tsx (server) — now stays server-only
+ *   • benchmark-body.tsx (client) — still works, no boundary change there
  */
 export function CountLeaderboard({
   benchmark,
@@ -25,8 +28,7 @@ export function CountLeaderboard({
 }) {
   const ranked = rankResults(benchmark.results, benchmark.higherIsBetter);
   const max = Math.max(...ranked.map((r) => r.ms.p50)) || 1;
-  const colors = useMemo(() => buildProviderColors(benchmark.results), [benchmark.results]);
-  const [hoveredSlug, setHoveredSlug] = useState<string | null>(null);
+  const colors = buildProviderColors(benchmark.results);
 
   const leader = ranked[0];
   const trailer = ranked[ranked.length - 1];
@@ -77,13 +79,10 @@ export function CountLeaderboard({
             const pct = (r.ms.p50 / max) * 100;
             const color = colors.get(r.slug) ?? "var(--color-ink-soft)";
             const hasFormula = Boolean(r.formula);
-            const isHovered = hoveredSlug === r.slug;
             return (
               <li
                 key={r.slug}
-                className={`relative ${isHovered ? "z-40" : ""}`}
-                onMouseEnter={() => setHoveredSlug(r.slug)}
-                onMouseLeave={() => setHoveredSlug(null)}
+                className="group relative hover:z-40"
               >
                 <div className="flex items-baseline justify-between gap-3 mb-1.5">
                   <div className="flex items-center gap-3 min-w-0">
@@ -117,10 +116,10 @@ export function CountLeaderboard({
                     }}
                   />
                 </div>
-                {hasFormula && isHovered && (
+                {hasFormula && (
                   <div
                     role="tooltip"
-                    className="pointer-events-none absolute left-8 top-full z-50 mt-1 w-[min(28rem,90vw)] rounded-md border border-rule bg-paper px-3 py-2 shadow-xl"
+                    className="pointer-events-none absolute left-8 top-full z-50 mt-1 w-[min(28rem,90vw)] rounded-md border border-rule bg-paper px-3 py-2 shadow-xl opacity-0 group-hover:opacity-100 transition-opacity"
                   >
                     <p className="text-xs leading-snug text-ink-soft">
                       <span className="font-medium" style={{ color }}>
