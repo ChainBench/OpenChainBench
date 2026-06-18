@@ -1,5 +1,7 @@
-"use client";
-
+// Server component. The block itself is pure markup; the only interactive
+// bit lives in <CopyButton>, which is already a `"use client"` island. By
+// keeping AiBriefBlock on the server we avoid sending this card's static
+// HTML through the client bundle of `/contribute` (a server page).
 import { CopyButton } from "@/components/copy-button";
 
 /**
