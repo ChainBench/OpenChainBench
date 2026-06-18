@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, ArrowUpRight } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
+import { BackLink } from "@/components/back-link";
+import { nonAllValues } from "@/lib/dimensions";
 import { getProvider } from "@/lib/providers";
 import { ProviderLogo } from "@/components/provider-logo";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
@@ -134,12 +136,8 @@ export default async function ProviderPage({
   };
   const badgeCards: BadgeCard[] = [];
   for (const a of sorted) {
-    const chainDims = (a.benchmark.chainDimensions ?? []).filter(
-      (c) => c.value !== "all",
-    );
-    const regionDims = (a.benchmark.regionDimensions ?? []).filter(
-      (r) => r.value !== "all",
-    );
+    const chainDims = nonAllValues(a.benchmark.chainDimensions ?? []);
+    const regionDims = nonAllValues(a.benchmark.regionDimensions ?? []);
     const cellRanks = a.benchmark.cellRanks;
     const me = a.result.slug.toLowerCase();
     const benchSlug = a.benchmark.slug;
@@ -313,13 +311,7 @@ export default async function ProviderPage({
       />
 
       <div className="flex flex-wrap items-center gap-3">
-        <Link
-          href="/products"
-          className="inline-flex items-center gap-1.5 text-sm text-ink-muted hover:text-ink"
-        >
-          <ArrowLeft size={14} strokeWidth={2} />
-          All products
-        </Link>
+        <BackLink href="/products" label="All products" />
       </div>
 
       {(() => {
@@ -465,8 +457,7 @@ export default async function ProviderPage({
             // provider can't be passed off as a free cross-chain #1.
             const chainRanks =
               a.rankPerChain && a.benchmark.chainDimensions
-                ? a.benchmark.chainDimensions
-                    .filter((c) => c.value !== "all")
+                ? nonAllValues(a.benchmark.chainDimensions)
                     .map((c) => ({ chain: c, entry: a.rankPerChain?.[c.value] }))
                     .filter(
                       (

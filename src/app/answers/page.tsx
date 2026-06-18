@@ -63,7 +63,7 @@ export default async function AnswersHubPage() {
         // biome-ignore lint/security/noDangerouslySetInnerHtml: serialized via safeJsonLd
         dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
       />
-      <h1 className="display text-3xl sm:text-4xl text-ink leading-[1.05]">
+      <h1 className="h1-hero">
         Answers, backed by live benchmarks.
       </h1>
       <p className="mt-4 max-w-2xl text-base text-ink-soft leading-snug">

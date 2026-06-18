@@ -4,6 +4,7 @@ import { headlineSentence, leader } from "@/lib/citation";
 import { fmtUnit } from "@/lib/format";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
 import { loadBenchmark } from "@/lib/spec";
+import { nonAllValues } from "@/lib/dimensions";
 
 export const runtime = "nodejs";
 export const alt = "OpenChainBench. Open benchmarks for crypto infrastructure";
@@ -27,9 +28,7 @@ export async function generateImageMetadata({
 }) {
   const { slug } = await params;
   const b = await getBenchmark(slug);
-  const chains = (b?.dimensions?.chain ?? []).filter(
-    (c) => c.value !== "all",
-  );
+  const chains = nonAllValues(b?.dimensions?.chain ?? []);
   return [
     {
       id: "default",

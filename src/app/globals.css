@@ -244,6 +244,15 @@ table {
   .label-mono-lg {
     @apply text-xs uppercase tracking-[0.18em] text-ink-muted font-medium;
   }
+
+  /* Page-level H1 hero treatment. Matches the dominant inline class
+   * string shared by index / answers / compare / alternatives /
+   * chains landing pages (display + 3xl-4xl ramp + ink + tight
+   * leading). Centralised so a copy-edit to the page-title scale
+   * lands in one place instead of every list landing route. */
+  .h1-hero {
+    @apply display text-3xl sm:text-4xl text-ink leading-[1.05];
+  }
 }
 
 /* Chart pop animations */

@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, ArrowUpRight } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
+import { BackLink } from "@/components/back-link";
 import {
   CHAINS,
   CHAIN_BY_SLUG,
@@ -139,13 +140,7 @@ export default async function ChainPage({
         ]}
       />
 
-      <Link
-        href="/chains"
-        className="inline-flex items-center gap-1.5 text-sm text-ink-muted hover:text-ink"
-      >
-        <ArrowLeft size={14} strokeWidth={2} />
-        All chains
-      </Link>
+      <BackLink href="/chains" label="All chains" />
 
       <div className="mt-6 flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2">
         <Pill variant="category">{chain.category}</Pill>

@@ -37,7 +37,7 @@ export default async function AlternativesPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonld) }}
       />
-      <h1 className="display text-3xl sm:text-4xl text-ink leading-[1.05]">
+      <h1 className="h1-hero">
         Alternatives by the numbers.
       </h1>
       <p className="mt-4 max-w-2xl text-base text-ink-soft leading-snug">
