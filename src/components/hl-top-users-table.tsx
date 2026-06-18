@@ -166,7 +166,11 @@ export function HlTopUsersTable({ slug }: { slug: string }) {
           {Math.min((page + 1) * PAGE_SIZE, sorted.length)} of {sorted.length}
         </span>
         <div className="flex items-center gap-1">
-          <PageBtn disabled={page === 0} onClick={() => setPage(0)}>
+          <PageBtn
+            disabled={page === 0}
+            onClick={() => setPage(0)}
+            aria-label="First page"
+          >
             «
           </PageBtn>
           <PageBtn disabled={page === 0} onClick={() => setPage((p) => p - 1)}>
@@ -187,6 +191,7 @@ export function HlTopUsersTable({ slug }: { slug: string }) {
           <PageBtn
             disabled={page >= pageCount - 1}
             onClick={() => setPage(pageCount - 1)}
+            aria-label="Last page"
           >
             »
           </PageBtn>
@@ -271,16 +276,19 @@ function PageBtn({
   children,
   onClick,
   disabled,
+  "aria-label": ariaLabel,
 }: {
   children: React.ReactNode;
   onClick: () => void;
   disabled?: boolean;
+  "aria-label"?: string;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
+      aria-label={ariaLabel}
       className="px-2 py-1 rounded border border-ink/10 hover:bg-paper-soft/60 disabled:opacity-30 disabled:cursor-not-allowed"
     >
       {children}

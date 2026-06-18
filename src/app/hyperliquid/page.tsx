@@ -3,6 +3,7 @@ import { fetchHlCohort, fetchHlHip3Cohort } from "@/lib/hl-builder-stats";
 import { HlHubTabs } from "@/components/hl-hub-tabs";
 import { pageMetadata } from "@/lib/page-metadata";
 import { safeJsonLd } from "@/lib/jsonld";
+import { SITE } from "@/data/site";
 
 /**
  * Hub landing page for the Hyperliquid revenue cohorts. SSR'd straight
@@ -46,13 +47,13 @@ export default async function HyperliquidHubPage() {
         "@type": "ListItem",
         position: 1,
         name: "Home",
-        item: "https://openchainbench.com/",
+        item: `${SITE.url}/`,
       },
       {
         "@type": "ListItem",
         position: 2,
         name: "Hyperliquid",
-        item: "https://openchainbench.com/hyperliquid",
+        item: `${SITE.url}/hyperliquid`,
       },
     ],
   };
@@ -73,7 +74,7 @@ export default async function HyperliquidHubPage() {
         itemListElement: frontends.rows.slice(0, 100).map((r, i) => ({
           "@type": "ListItem",
           position: i + 1,
-          url: `https://openchainbench.com/products/${r.slug}`,
+          url: `${SITE.url}/products/${r.slug}`,
           name: r.name,
         })),
       }

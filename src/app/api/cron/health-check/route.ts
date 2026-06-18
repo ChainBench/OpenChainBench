@@ -189,7 +189,7 @@ export async function GET(req: NextRequest) {
     for (const t of transitions) {
       const emoji = t.isLive ? "✅" : "🔴";
       const verb = t.isLive ? "back online" : "offline";
-      const text = `${emoji} *${t.providerName}* ${verb} on \`${t.benchSlug}\`\nbench: <https://openchainbench.com/benchmarks/${t.benchSlug}|${t.benchTitle}>`;
+      const text = `${emoji} *${t.providerName}* ${verb} on \`${t.benchSlug}\`\nbench: <${SITE.url}/benchmarks/${t.benchSlug}|${t.benchTitle}>`;
       try {
         const res = await fetch(webhook, {
           method: "POST",

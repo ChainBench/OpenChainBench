@@ -54,7 +54,7 @@ const IS_STAGING =
   !!process.env.VERCEL_ENV && process.env.VERCEL_ENV !== "production";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://openchainbench.com"),
+  metadataBase: new URL(SITE.url),
   title: {
     default: "OpenChainBench. Open benchmarks for crypto infrastructure",
     template: "%s · OpenChainBench",
@@ -69,7 +69,7 @@ export const metadata: Metadata = {
     description:
       "Live benchmarks for crypto infrastructure: RPC latency, bridge fees, L2 finality and price feed accuracy.",
     type: "website",
-    url: "https://openchainbench.com",
+    url: SITE.url,
     siteName: "OpenChainBench",
   },
   twitter: {

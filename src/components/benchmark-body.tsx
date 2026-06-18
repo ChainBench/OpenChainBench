@@ -219,7 +219,11 @@ export function BenchmarkBody({
       .then((v: Benchmark | null) => {
         if (!cancelled && v) setVariantMap((m) => ({ ...m, [activeKey]: v }));
       })
-      .catch(() => {});
+      .catch((err) => {
+        if (process.env.NODE_ENV !== "production") {
+          console.debug("[bench-variant] active fetch failed", err);
+        }
+      });
     return () => {
       cancelled = true;
     };
@@ -267,7 +271,11 @@ export function BenchmarkBody({
                 setVariantMap((m) => (m[key] ? m : { ...m, [key]: v }));
               }
             })
-            .catch(() => {});
+            .catch((err) => {
+              if (process.env.NODE_ENV !== "production") {
+                console.debug("[bench-variant] prefetch failed", err);
+              }
+            });
         }, 400 * i++),
       );
     }

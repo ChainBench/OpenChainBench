@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { Check, Copy } from "lucide-react";
 import type { Benchmark } from "@/types/benchmark";
+import { SITE } from "@/data/site";
 
-const ORIGIN = "https://openchainbench.com";
+const ORIGIN = SITE.url;
 
 /**
  * Single citation affordance rendered under the bench title: a "Copy API

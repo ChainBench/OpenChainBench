@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
+import { SITE } from "@/data/site";
 
-const SITE_ORIGIN = "https://openchainbench.com";
+const SITE_ORIGIN = SITE.url;
 
 type OgType = "website" | "article" | "profile";
 

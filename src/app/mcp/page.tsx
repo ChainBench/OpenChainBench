@@ -5,8 +5,9 @@ import { getBenchmarks } from "@/data/benchmarks";
 import { mcpPageLd } from "@/lib/hub-jsonld";
 import { safeJsonLd } from "@/lib/jsonld";
 import { pageMetadata } from "@/lib/page-metadata";
+import { SITE } from "@/data/site";
 
-const MCP_URL = "https://openchainbench.com/api/mcp/mcp";
+const MCP_URL = `${SITE.url}/api/mcp/mcp`;
 
 const CLAUDE_DESKTOP_CONFIG = JSON.stringify(
   {

@@ -6,7 +6,9 @@
  * + WebSite + SearchAction across every route, so we don't repeat those here.
  */
 
-const ORIGIN = "https://openchainbench.com";
+import { SITE } from "@/data/site";
+
+const ORIGIN = SITE.url;
 
 function breadcrumb(name: string, path: string) {
   return {
