@@ -185,15 +185,15 @@ export function LiveNativeCard({
         </p>
         <LiveDot stale={stale} />
       </div>
-      <p className="mt-auto text-lg sm:text-xl font-semibold tabular-nums leading-tight relative flex items-baseline gap-1.5">
+      <p className="mt-auto text-lg sm:text-xl font-semibold tabular-nums leading-tight relative flex items-baseline gap-1.5 flex-wrap">
         <span>{value != null ? fmtValue(value) : "—"}</span>
         {chevron && (
           <span className={`text-xs ${chevronColor} transition-opacity`}>
             {chevron}
           </span>
         )}
+        {delta && <DeltaBadge key={delta.id} amount={delta.amount} kind={kind} />}
       </p>
-      {delta && <DeltaBadge key={delta.id} amount={delta.amount} kind={kind} />}
       {/* Sparkline slot is ALWAYS rendered (even empty) so the card
           height never changes once ticks start arriving — keeps the
           whole KPI strip aligned with the static DefiLlama cards. */}
@@ -218,10 +218,15 @@ function DeltaBadge({
   const sign = up ? "+" : "−";
   const abs = Math.abs(amount);
   const formatted = kind === "price" ? fmtUSDPrecise(abs) : fmtUSDShort(abs);
+  // Inline next to the value (after the direction chevron). Positioned
+  // here on purpose — putting it absolutely in the top-right corner
+  // collided with the LIVE pulse dot; sitting inline with the value
+  // keeps the move tied visually to the number it modifies and avoids
+  // any layout shift on the rest of the card.
   return (
     <span
       aria-live="polite"
-      className={`absolute top-2 right-2 inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10.5px] font-semibold tabular-nums chain-delta-pop ${tone}`}
+      className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10.5px] font-semibold tabular-nums chain-delta-pop ${tone}`}
       style={{ fontFamily: "var(--font-mono, monospace)" }}
     >
       {sign}
