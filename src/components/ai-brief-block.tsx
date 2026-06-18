@@ -3,6 +3,7 @@
 // keeping AiBriefBlock on the server we avoid sending this card's static
 // HTML through the client bundle of `/contribute` (a server page).
 import { CopyButton } from "@/components/copy-button";
+import { SITE } from "@/data/site";
 
 /**
  * AI-assist tiles for /contribute. Two paths, same skill content.
@@ -15,7 +16,7 @@ export function AiBriefBlock() {
         tag="any LLM"
         title="Web brief"
         desc="Plain markdown. Paste into ChatGPT, Claude, Cursor, Aider, Codex, Continue or any chat-based agent."
-        action={<CopyButton value="https://openchainbench.com/contribute/ai-brief.md" label="Copy brief URL" />}
+        action={<CopyButton value={`${SITE.url}/contribute/ai-brief.md`} label="Copy brief URL" />}
         link={{ label: "View raw", href: "/contribute/ai-brief.md" }}
       />
       <Tile

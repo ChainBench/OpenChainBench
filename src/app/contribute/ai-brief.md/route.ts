@@ -10,6 +10,7 @@
 
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { SITE } from "@/data/site";
 
 export const dynamic = "force-static";
 export const revalidate = 3600;
@@ -39,7 +40,7 @@ export async function GET() {
     "Paste this entire document into your AI tool of choice. Then ask",
     "for help drafting a spec, a harness, or a PR.",
     "",
-    "Source: https://openchainbench.com/contribute/ai-brief.md",
+    `Source: ${SITE.url}/contribute/ai-brief.md`,
     "Repo:   https://github.com/ChainBench/OpenChainBench",
     "",
     "---",

@@ -5,6 +5,7 @@ import { getBenchmarks } from "@/data/benchmarks";
 import { HeroRadar } from "@/components/hero-radar";
 import { HomeBenchTable } from "@/components/home-bench-table";
 import { LiveDashboard } from "@/components/live/dashboard";
+import { SITE } from "@/data/site";
 
 export const revalidate = 60;
 
@@ -14,11 +15,11 @@ const DESCRIPTION =
 export const metadata: Metadata = {
   title: "OpenChainBench. Open benchmarks for crypto infrastructure",
   description: DESCRIPTION,
-  alternates: { canonical: "https://openchainbench.com/" },
+  alternates: { canonical: `${SITE.url}/` },
   openGraph: {
     title: "OpenChainBench. Open benchmarks for crypto infrastructure",
     description: DESCRIPTION,
-    url: "https://openchainbench.com/",
+    url: `${SITE.url}/`,
     type: "website",
     siteName: "OpenChainBench",
   },
