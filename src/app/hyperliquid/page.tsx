@@ -1,32 +1,42 @@
 import Link from "next/link";
-import { fetchHlCohort } from "@/lib/hl-builder-stats";
-import { HlCohortLeaderboard } from "@/components/hl-cohort-leaderboard";
+import { fetchHlCohort, fetchHlHip3Cohort } from "@/lib/hl-builder-stats";
+import { HlHubTabs } from "@/components/hl-hub-tabs";
 import { pageMetadata } from "@/lib/page-metadata";
 import { safeJsonLd } from "@/lib/jsonld";
 
 /**
- * Hub landing page for the 104 tracked Hyperliquid frontends. SSR'd
- * straight against the on-node harness' Prom gauges so the first paint
- * is the populated leaderboard (great for SEO and TTFB) and the client
- * bundle only handles sort + search interactions.
+ * Hub landing page for the Hyperliquid revenue cohorts. SSR'd straight
+ * against the on-node harness' Prom gauges so the first paint is the
+ * populated leaderboard (great for SEO and TTFB), with a client-side
+ * tab swap between the two cohorts (no second network round-trip).
  *
- * Sits next to the per-builder pages (`/products/<slug>`), it doesn't
- * replace them. Backlinks to /products/ stay canonical, the hub is
- * the new entry point for cohort-level intent ("hyperliquid frontends
- * leaderboard").
+ * Two cohorts share the page because they describe complementary
+ * revenue streams on the same chain:
+ *   1. Frontends: builder-code routers (Phantom, Axiom, ...) collecting
+ *      a builder fee on every routed perp fill (~104 tracked)
+ *   2. HIP-3 dexes: builder-deployed perp markets (trade.xyz, Dreamcash,
+ *      ...) collecting a deployer fee on every fill on their namespaced
+ *      markets
+ *
+ * Per-frontend dashboards live at `/products/<slug>` (Hyperliquid
+ * builders only). HIP-3 dexes have no per-dex page yet; the leaderboard
+ * is the canonical surface.
  */
 
 export const metadata: import("next").Metadata = pageMetadata({
   path: "/hyperliquid",
-  title: "Hyperliquid Frontends Leaderboard",
+  title: "Hyperliquid Frontends + HIP-3 Dexes Leaderboard",
   description:
-    "Live revenue, volume, users and cohort share for every Hyperliquid frontend. Server-side data straight from a local hl node tailing every fill on mainnet.",
+    "Live revenue, volume and users for every Hyperliquid frontend and HIP-3 deployer. Server-side data straight from a local hl node tailing every fill on mainnet.",
 });
 
 export const revalidate = 60;
 
 export default async function HyperliquidHubPage() {
-  const cohort = await fetchHlCohort();
+  const [frontends, hip3] = await Promise.all([
+    fetchHlCohort(),
+    fetchHlHip3Cohort(),
+  ]);
 
   const breadcrumbLd = {
     "@context": "https://schema.org",
@@ -47,15 +57,20 @@ export default async function HyperliquidHubPage() {
     ],
   };
 
-  const itemListLd = cohort
+  // ItemList JSON-LD covers the frontends cohort (the canonical leaderboard
+  // for SEO intent "hyperliquid frontends leaderboard"). HIP-3 dex names
+  // are referenced in the page's plain prose and stayed out of this list
+  // intentionally; mixing two ItemLists with overlapping naming would
+  // confuse Search Console's rich-results validator more than it helps.
+  const itemListLd = frontends
     ? {
         "@context": "https://schema.org",
         "@type": "ItemList",
         name: "Hyperliquid frontends leaderboard",
         description:
           "Hyperliquid frontends tracked by OpenChainBench, ranked by 30-day builder revenue.",
-        numberOfItems: cohort.rows.length,
-        itemListElement: cohort.rows.slice(0, 100).map((r, i) => ({
+        numberOfItems: frontends.rows.length,
+        itemListElement: frontends.rows.slice(0, 100).map((r, i) => ({
           "@type": "ListItem",
           position: i + 1,
           url: `https://openchainbench.com/products/${r.slug}`,
@@ -82,23 +97,39 @@ export default async function HyperliquidHubPage() {
       <header className="mb-8">
         <p className="label-mono text-ink-faint mb-2">Hyperliquid</p>
         <h1 className="display text-4xl sm:text-5xl text-ink">
-          Hyperliquid frontends leaderboard
+          Hyperliquid revenue leaderboards
         </h1>
         <p className="mt-4 max-w-2xl text-base sm:text-lg text-ink-soft leading-snug">
-          Every frontend routing builder fills on Hyperliquid mainnet, ranked
-          by 30-day builder revenue. Data flows from a local hl node tailing
-          every fill, refreshed every 30 seconds. Click any row for the
-          builder&apos;s full performance dashboard.
+          Two complementary cohorts: builder-code frontends routing perp
+          fills (Phantom, Axiom, ...) and HIP-3 deployer dexes running
+          their own namespaced markets (trade.xyz, Dreamcash, ...). Data
+          flows from a local hl node tailing every fill on mainnet,
+          refreshed every 30 seconds.
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-2 text-[12px]">
           <Link
             href="/benchmarks/hyperliquid-frontends"
             className="inline-flex items-center gap-1.5 rounded-full border border-ink/15 px-3 py-1 hover:bg-paper-soft/60"
           >
-            <span className="label-mono text-ink-faint text-[10px]">
+            <span
+              className="label-mono text-ink-faint text-[10px]"
+              style={{ fontFamily: "var(--font-mono, monospace)" }}
+            >
               Methodology
             </span>
             <span className="text-ink">hyperliquid-frontends bench →</span>
+          </Link>
+          <Link
+            href="/benchmarks/hyperliquid-hip3-deployers"
+            className="inline-flex items-center gap-1.5 rounded-full border border-ink/15 px-3 py-1 hover:bg-paper-soft/60"
+          >
+            <span
+              className="label-mono text-ink-faint text-[10px]"
+              style={{ fontFamily: "var(--font-mono, monospace)" }}
+            >
+              Methodology
+            </span>
+            <span className="text-ink">hyperliquid-hip3-deployers bench →</span>
           </Link>
           <Link
             href="/methodology"
@@ -109,109 +140,39 @@ export default async function HyperliquidHubPage() {
         </div>
       </header>
 
-      {cohort ? (
+      {frontends || hip3 ? (
         <>
-          <section className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-            <SummaryCard
-              label="Tracked builders"
-              value={cohort.rows.length.toLocaleString("en-US")}
-              accent="#9d65ff"
-            />
-            <SummaryCard
-              label="Cohort revenue 30d"
-              value={fmtUSD(cohort.totalRevenue30d)}
-            />
-            <SummaryCard
-              label="Cohort volume 30d"
-              value={fmtUSD(cohort.totalVolume30d)}
-            />
-            <SummaryCard
-              label="Cumulative users 30d"
-              value={fmtCount(cohort.totalUsers30d)}
-              tip="Sum across builders. A wallet active on two frontends is counted twice (HyperTracker uses the same convention)."
-            />
-          </section>
-
-          <HlCohortLeaderboard rows={cohort.rows} />
+          <HlHubTabs frontends={frontends} hip3={hip3} />
 
           <p className="mt-4 text-[11px] text-ink-faint italic">
-            Source: a local hl node tailing every fill on Hyperliquid mainnet
-            for the {cohort.rows.length} tracked builder addresses. Methodology
-            and per-builder formulas:{" "}
-            <Link
-              href="/benchmarks/hyperliquid-frontends"
-              className="underline"
-            >
-              hyperliquid-frontends bench page
-            </Link>
-            .
+            Source: a local hl node tailing every fill on Hyperliquid
+            mainnet. Frontends cohort attributes fills via the on-chain
+            builder address; HIP-3 cohort attributes fills via the dex
+            namespace prefix on the coin field (xyz:AAPL → xyz). Both
+            cohorts publish to the same Prom; the bench pages document
+            the per-row formulas.
           </p>
         </>
       ) : (
         <p className="text-sm text-ink-faint italic">
-          Cohort data is temporarily unavailable. The bench page is still
+          Cohort data is temporarily unavailable. The bench pages are still
           live at{" "}
           <Link
             href="/benchmarks/hyperliquid-frontends"
             className="underline"
           >
             /benchmarks/hyperliquid-frontends
+          </Link>{" "}
+          and{" "}
+          <Link
+            href="/benchmarks/hyperliquid-hip3-deployers"
+            className="underline"
+          >
+            /benchmarks/hyperliquid-hip3-deployers
           </Link>
           .
         </p>
       )}
     </article>
   );
-}
-
-function SummaryCard({
-  label,
-  value,
-  accent,
-  tip,
-}: {
-  label: string;
-  value: string;
-  accent?: string;
-  tip?: string;
-}) {
-  return (
-    <div
-      className="card-soft rounded-lg p-3 sm:p-4 border border-ink/15"
-      title={tip}
-    >
-      <p
-        className="label-mono text-[10px] text-ink-faint mb-1 flex items-center gap-1.5"
-        style={{ fontFamily: "var(--font-mono, monospace)" }}
-      >
-        {accent && (
-          <span
-            className="inline-block w-2 h-2 rounded-full"
-            style={{ background: accent }}
-          />
-        )}
-        {label}
-      </p>
-      <p className="text-lg sm:text-2xl font-semibold tabular-nums leading-tight">
-        {value}
-      </p>
-    </div>
-  );
-}
-
-function fmtUSD(v: number): string {
-  if (!Number.isFinite(v) || v === 0) return "$0";
-  const abs = Math.abs(v);
-  if (abs >= 1_000_000_000) return `$${(v / 1_000_000_000).toFixed(2)}B`;
-  if (abs >= 1_000_000) return `$${(v / 1_000_000).toFixed(2)}M`;
-  if (abs >= 1_000) return `$${(v / 1_000).toFixed(1)}K`;
-  return `$${v.toFixed(0)}`;
-}
-
-function fmtCount(v: number): string {
-  if (!Number.isFinite(v) || v === 0) return "0";
-  const abs = Math.abs(v);
-  if (abs >= 1_000_000) return `${(v / 1_000_000).toFixed(2)}M`;
-  if (abs >= 1_000) return `${(v / 1_000).toFixed(1)}K`;
-  return Math.round(v).toLocaleString("en-US");
 }
