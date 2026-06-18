@@ -15,7 +15,7 @@
  * encoded as every field null (the page hides the strip entirely).
  */
 
-import { Prometheus } from "@/lib/prometheus";
+import { getPrometheus, type Prometheus } from "@/lib/prometheus";
 
 export type ChainKpis = {
   slug: string;
@@ -55,7 +55,7 @@ export async function fetchChainKpis(slug: string): Promise<ChainKpis | null> {
   if (!url) return null;
   let prom: Prometheus;
   try {
-    prom = new Prometheus(url);
+    prom = getPrometheus(url);
   } catch {
     return null;
   }

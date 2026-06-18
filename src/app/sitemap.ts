@@ -49,6 +49,15 @@ function pageMtime(relPath: string): Date {
   }
 }
 
+/** Parse an ISO timestamp safely. Malformed input → fallback instead of
+ *  silently emitting `new Date(NaN)` (which serialises to epoch 0 and
+ *  poisons every sitemap entry it touches with `<lastmod>1970-01-01</lastmod>`). */
+function safeDate(iso: string | null | undefined, fallback: Date): Date {
+  if (!iso) return fallback;
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? fallback : d;
+}
+
 async function safeLoad<T>(
   label: string,
   loader: () => Promise<T>,
@@ -128,7 +137,7 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
   const providerLastRun = new Map<string, Date>();
   for (const b of benchmarks) {
     if (!b.lastRunAt) continue;
-    const runAt = new Date(b.lastRunAt);
+    const runAt = safeDate(b.lastRunAt, BUILD_TIME);
     for (const r of b.results) {
       const k = r.slug.toLowerCase();
       const cur = providerLastRun.get(k);
@@ -138,7 +147,7 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
 
   const catalogLastRun = benchmarks.reduce<Date>((acc, b) => {
     if (!b.lastRunAt) return acc;
-    const t = new Date(b.lastRunAt);
+    const t = safeDate(b.lastRunAt, new Date(0));
     return t > acc ? t : acc;
   }, new Date(0));
   const catalogTs = catalogLastRun.getTime() > 0 ? catalogLastRun : BUILD_TIME;
@@ -148,14 +157,14 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
   for (const alt of alternatives) {
     const bench = benchBySlug.get(alt.benchmark);
     if (bench?.lastRunAt) {
-      alternativeLastRun.set(alt.slug, new Date(bench.lastRunAt));
+      alternativeLastRun.set(alt.slug, safeDate(bench.lastRunAt, catalogTs));
     }
   }
 
   const staticRoutes = staticHubRoutes(catalogTs);
 
   const benchmarkRoutes: MetadataRoute.Sitemap = benchmarks.flatMap((b) => {
-    const last = b.lastRunAt ? new Date(b.lastRunAt) : BUILD_TIME;
+    const last = safeDate(b.lastRunAt, BUILD_TIME);
     const entries: MetadataRoute.Sitemap = [
       {
         url: `${SITE.url}/benchmarks/${b.slug}`,
@@ -202,7 +211,7 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
     .filter((a) => benchBySlug.has(a.benchmark))
     .map((a) => {
       const bench = benchBySlug.get(a.benchmark);
-      const last = bench?.lastRunAt ? new Date(bench.lastRunAt) : catalogTs;
+      const last = safeDate(bench?.lastRunAt, catalogTs);
       return {
         url: `${SITE.url}/answers/${a.slug}`,
         lastModified: last,
@@ -222,7 +231,7 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
           if (benches.length === 0) return null;
           const last = benches.reduce<Date>((acc, b) => {
             if (!b.lastRunAt) return acc;
-            const t = new Date(b.lastRunAt);
+            const t = safeDate(b.lastRunAt, new Date(0));
             return t > acc ? t : acc;
           }, new Date(0));
           return {

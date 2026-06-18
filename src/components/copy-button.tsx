@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Copy } from "lucide-react";
+import { Check, Copy, X } from "lucide-react";
 
 /**
  * Inline "Copy to clipboard" button. Toggles to "Copied" for 1.5 s after
@@ -18,15 +18,23 @@ export function CopyButton({
   mono?: boolean;
 }) {
   const [copied, setCopied] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   return (
     <button
       type="button"
       onClick={() => {
-        navigator.clipboard.writeText(value).then(() => {
-          setCopied(true);
-          window.setTimeout(() => setCopied(false), 1500);
-        });
+        navigator.clipboard
+          .writeText(value)
+          .then(() => {
+            setCopied(true);
+            window.setTimeout(() => setCopied(false), 1500);
+          })
+          .catch((err) => {
+            console.warn("[copy-button] clipboard write failed:", err);
+            setFailed(true);
+            window.setTimeout(() => setFailed(false), 1500);
+          });
       }}
       className={`inline-flex items-center justify-center gap-2 min-h-[44px] sm:min-h-0 border border-ink/70 hover:bg-ink hover:text-paper transition-colors px-3 py-1.5 ${
         mono ? "font-mono text-[11px]" : "font-sans text-[11px] uppercase tracking-[0.16em] font-medium"
@@ -36,6 +44,11 @@ export function CopyButton({
         <>
           <Check size={12} strokeWidth={2.5} />
           Copied
+        </>
+      ) : failed ? (
+        <>
+          <X size={12} strokeWidth={2.5} />
+          Failed to copy
         </>
       ) : (
         <>
