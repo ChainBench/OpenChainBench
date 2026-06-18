@@ -145,7 +145,11 @@ export async function readPairCache<T>(
   pairSlug: string,
   expectedInputsHash: string,
 ): Promise<T[] | null> {
-  if (!isEnabled()) return null;
+  if (!isEnabled()) {
+    console.warn(`[CMP-CACHE] read skip pair=${pairSlug} reason=disabled`);
+    return null;
+  }
+  const t0 = Date.now();
   try {
     const res = await fetch(
       `${kvUrl()}/get/${encodeURIComponent(KEY_PREFIX + pairSlug)}`,
@@ -156,15 +160,41 @@ export async function readPairCache<T>(
         signal: AbortSignal.timeout(2_000),
       },
     );
-    if (!res.ok) return null;
+    const ms = Date.now() - t0;
+    if (!res.ok) {
+      console.warn(
+        `[CMP-CACHE] read fail pair=${pairSlug} status=${res.status} ms=${ms}`,
+      );
+      return null;
+    }
     const env = (await res.json()) as { result?: string | null };
-    if (!env.result) return null;
+    if (!env.result) {
+      console.warn(`[CMP-CACHE] read miss pair=${pairSlug} ms=${ms} (no entry)`);
+      return null;
+    }
     const raw = JSON.parse(env.result);
     const parsed = EnvelopeSchema.safeParse(raw);
-    if (!parsed.success) return null;
-    if (parsed.data.inputsHash !== expectedInputsHash) return null;
+    if (!parsed.success) {
+      console.warn(
+        `[CMP-CACHE] read miss pair=${pairSlug} ms=${ms} reason=shape_drift`,
+      );
+      return null;
+    }
+    if (parsed.data.inputsHash !== expectedInputsHash) {
+      console.warn(
+        `[CMP-CACHE] read miss pair=${pairSlug} ms=${ms} reason=hash_mismatch stored=${parsed.data.inputsHash} expected=${expectedInputsHash}`,
+      );
+      return null;
+    }
+    console.warn(
+      `[CMP-CACHE] read HIT pair=${pairSlug} ms=${ms} entries=${parsed.data.shared.length}`,
+    );
     return parsed.data.shared as T[];
-  } catch {
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn(
+      `[CMP-CACHE] read err pair=${pairSlug} ms=${Date.now() - t0} err=${msg}`,
+    );
     return null;
   }
 }
@@ -175,8 +205,12 @@ export function writePairCache(
   inputsHash: string,
   shared: unknown[],
 ): void {
-  if (!isEnabled()) return;
+  if (!isEnabled()) {
+    console.warn(`[CMP-CACHE] write skip pair=${pairSlug} reason=disabled`);
+    return;
+  }
   const work = (async () => {
+    const t0 = Date.now();
     try {
       const body = JSON.stringify({
         _v: SCHEMA_VERSION,
@@ -184,8 +218,9 @@ export function writePairCache(
         inputsHash,
         shared,
       });
+      const bodyBytes = body.length;
       // Upstash REST: POST /set/{key}?EX={seconds} writes with TTL.
-      await fetch(
+      const res = await fetch(
         `${kvUrl()}/set/${encodeURIComponent(
           KEY_PREFIX + pairSlug,
         )}?EX=${TTL_SECONDS}`,
@@ -196,9 +231,19 @@ export function writePairCache(
           cache: "no-store",
         },
       );
+      const ms = Date.now() - t0;
+      if (res.ok) {
+        console.warn(
+          `[CMP-CACHE] write OK pair=${pairSlug} ms=${ms} bytes=${bodyBytes} entries=${shared.length}`,
+        );
+      } else {
+        console.warn(
+          `[CMP-CACHE] write fail pair=${pairSlug} ms=${ms} status=${res.status} bytes=${bodyBytes}`,
+        );
+      }
     } catch (err) {
       console.warn(
-        `compare-cache.write failed for ${pairSlug}: ${
+        `[CMP-CACHE] write err pair=${pairSlug} ms=${Date.now() - t0} err=${
           err instanceof Error ? err.message : String(err)
         }`,
       );
