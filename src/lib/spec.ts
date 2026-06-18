@@ -32,7 +32,7 @@ import { readMaterialized } from "@/lib/materialize/store";
 
 export type { Spec } from "@/lib/spec-schema";
 export type { BenchmarkFilters } from "@/lib/materialize/load";
-export { bestForChain, injectLabels } from "@/lib/materialize/load";
+export { injectLabels } from "@/lib/materialize/load";
 
 // ─── Materialized read path (phase 1, flag-gated) ────────────────────
 // When READ_FROM_STORE=1, benches are served from the worker-published

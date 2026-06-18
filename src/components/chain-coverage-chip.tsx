@@ -1,5 +1,4 @@
 import type { Benchmark } from "@/types/benchmark";
-import { liveResults } from "@/lib/provider-filters";
 import { readBestPerChain } from "@/lib/per-chain-contract";
 
 type Props = {
@@ -103,44 +102,5 @@ export function ChainCoverageChip({
       ))}
     </span>
   );
-}
-
-/**
- * Compute per-chain rank for a provider against the subset of providers
- * whose bestPerChain entry exists on that chain. Used by both the badge
- * endpoint and the products page to express "rank on chain X" without
- * pretending we have a full leaderboard per chain (we only know the
- * leader per chain via the precomputed extra-query roundtrip).
- *
- * Semantics:
- *   - If the provider IS the leader on `chain`, returns rank 1.
- *   - Otherwise, falls back to the provider's aggregate p50 rank within
- *     the providers that have results on this bench (best-effort).
- *
- * Note: this is a soft signal — full per-chain leaderboards live on the
- * bench page chain tabs and call into Prom directly with the chain label.
- */
-export function rankOnChain(
-  benchmark: Benchmark,
-  chain: string,
-  providerSlug: string,
-): { rank: number; totalRanked: number } | null {
-  const bestPerChain = readBestPerChain(benchmark);
-  if (!bestPerChain) return null;
-  const leader = bestPerChain[chain];
-  if (!leader) return null;
-  const lower = providerSlug.toLowerCase();
-  const live = liveResults(benchmark.results);
-  if (live.length === 0) return null;
-  if (leader.slug.toLowerCase() === lower) {
-    return { rank: 1, totalRanked: live.length };
-  }
-  // Fallback rank: sort live results by p50 in the bench's direction.
-  const sorted = [...live].sort((a, b) =>
-    benchmark.higherIsBetter ? b.ms.p50 - a.ms.p50 : a.ms.p50 - b.ms.p50,
-  );
-  const idx = sorted.findIndex((r) => r.slug.toLowerCase() === lower);
-  if (idx === -1) return null;
-  return { rank: idx + 1, totalRanked: sorted.length };
 }
 

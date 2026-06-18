@@ -15,7 +15,7 @@ import { cache } from "react";
 import { getBenchmarks } from "@/data/benchmarks";
 import type { Benchmark } from "@/types/benchmark";
 
-export type ChainCategory = "L1" | "L2";
+type ChainCategory = "L1" | "L2";
 
 export type ChainEntry = {
   slug: string;

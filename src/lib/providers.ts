@@ -92,7 +92,7 @@ export function canonicalize(slug: string): { slug: string; name: string } {
   return { slug: canon, name: CANONICAL_NAMES[canon] ?? titleCaseSlug(canon) };
 }
 
-export type ProviderAppearance = {
+type ProviderAppearance = {
   benchmark: Pick<
     Benchmark,
     | "slug"

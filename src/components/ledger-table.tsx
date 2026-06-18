@@ -162,7 +162,7 @@ export function LedgerTable({ benchmark, activePanel, topN }: Props) {
     <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
       {hasWindows && (
         <div className="mb-3 flex flex-wrap items-center gap-1">
-          <span className="mr-2 text-[10px] uppercase tracking-[0.16em] text-ink-faint">
+          <span className="mr-2 label-mono-xs">
             Timeframe
           </span>
           {(["24h", "7d", "30d"] as const).map((w) => (

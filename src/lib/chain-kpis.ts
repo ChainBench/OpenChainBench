@@ -15,7 +15,7 @@
  * encoded as every field null (the page hides the strip entirely).
  */
 
-import { Prometheus } from "@/lib/prometheus";
+import { getPrometheus, type Prometheus } from "@/lib/prometheus";
 
 export type ChainKpis = {
   slug: string;
@@ -55,7 +55,7 @@ export async function fetchChainKpis(slug: string): Promise<ChainKpis | null> {
   if (!url) return null;
   let prom: Prometheus;
   try {
-    prom = new Prometheus(url);
+    prom = getPrometheus(url);
   } catch {
     return null;
   }
@@ -163,15 +163,3 @@ export async function fetchChainTvlFullHistory(
   }
 }
 
-/**
- * Legacy 30-day helper used by other call sites. Thin wrapper that
- * slices the full history. Kept for backward compat.
- */
-export async function fetchChainTvlHistory(
-  slug: string,
-  days = 30,
-): Promise<ChainTvlHistory | null> {
-  const full = await fetchChainTvlFullHistory(slug);
-  if (!full) return null;
-  return { slug: full.slug, points: full.points.slice(-days) };
-}

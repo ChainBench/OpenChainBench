@@ -17,7 +17,7 @@ import type {
   MetricPanel,
   ProviderResult,
 } from "@/types/benchmark";
-import { Prometheus } from "@/lib/prometheus";
+import { getPrometheus } from "@/lib/prometheus";
 import { SpecSchema, type Spec } from "@/lib/spec-schema";
 import { renderBenchmarkText } from "@/lib/bench-template";
 import { liveResults as liveProviderResults } from "@/lib/provider-filters";
@@ -318,7 +318,7 @@ async function tryLoadCellRanks(
   const url = spec.prometheus?.url ?? process.env.PROMETHEUS_URL;
   if (!url) return undefined;
   try {
-    const prom = new Prometheus(url);
+    const prom = getPrometheus(url);
     const res = await prom.query(spec.rank_matrix_query);
     if (res.resultType !== "vector") return undefined;
 
@@ -513,7 +513,7 @@ async function tryLoadLive(
 ): Promise<Pick<Benchmark, "results" | "extras" | "sampleSize" | "lastRunAt" | "metricPanels"> | null> {
   const url = spec.prometheus?.url ?? process.env.PROMETHEUS_URL;
   if (!url) return null;
-  const prom = new Prometheus(url);
+  const prom = getPrometheus(url);
   const winSec = parseDurationSec(spec.prometheus?.window ?? "24h") ?? 86_400;
 
   try {
@@ -821,20 +821,3 @@ function parseDurationSec(d: string): number | null {
   return n * { s: 1, m: 60, h: 3600, d: 86_400 }[unit as "s" | "m" | "h" | "d"];
 }
 
-/**
- * Lookup helper for the per-chain leader stash. Returns the ProviderResult
- * that leads on `chain` (e.g. "solana"), or undefined when the bench
- * doesn't declare chain dimensions, when the chain isn't in the spec, or
- * when no live data was collected for that chain this cycle.
- *
- * Consumed by the chain-aware template placeholders (bench-template.ts),
- * the chain-aware OG image / badge endpoints (SEO + API surfaces), and
- * the products pages that want to call out a chain-specific winner
- * instead of the biased unfiltered aggregate.
- */
-export function bestForChain(
-  b: Benchmark,
-  chain: string,
-): ProviderResult | undefined {
-  return b.bestPerChain?.[chain];
-}

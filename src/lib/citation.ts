@@ -33,7 +33,7 @@ export function leader(b: Benchmark): { name: string; slug: string; value: numbe
 /** Honest window wording per unit. "(p50, 24h)" is only true for latency
  *  style benches; USD revenue and count benches repurpose the p50 slot as
  *  a plain rolling-window figure and percentile wording would mislead. */
-export function windowSuffix(unit: string): string {
+function windowSuffix(unit: string): string {
   if (unit === "usd" || unit === "count") return "(24h)";
   if (unit === "pct" || unit === "bps") return "(24h avg)";
   return "(p50, 24h)";

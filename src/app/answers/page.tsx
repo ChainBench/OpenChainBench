@@ -6,7 +6,7 @@ import { loadBenchmark } from "@/lib/spec";
 import { renderTemplate } from "@/lib/bench-template";
 import { cleanLeftoverTokens } from "@/lib/answers-template";
 import { SITE } from "@/data/site";
-import { safeJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
+import { buildItemListJsonLd, safeJsonLd } from "@/lib/jsonld";
 import { pageMetadata } from "@/lib/page-metadata";
 
 const DESCRIPTION =
@@ -43,38 +43,25 @@ export default async function AnswersHubPage() {
     }),
   );
 
-  const itemList = {
-    "@context": "https://schema.org",
-    "@type": "ItemList",
+  const jsonLd = buildItemListJsonLd({
     name: "OpenChainBench answers",
-    numberOfItems: answers.length,
-    itemListElement: answers.map((a, i) => ({
-      "@type": "ListItem",
-      position: i + 1,
+    url: `${SITE.url}/answers`,
+    items: answers.map((a) => ({
       name: a.question,
       url: `${SITE.url}/answers/${a.slug}`,
     })),
-  };
-
-  const breadcrumb = {
-    "@context": "https://schema.org",
-    ...buildBreadcrumbJsonLd([
-      { name: "Home", item: SITE.url },
-      { name: "Answers", item: `${SITE.url}/answers` },
-    ]),
-  };
+    breadcrumb: [
+      { name: "Home", url: SITE.url },
+      { name: "Answers", url: `${SITE.url}/answers` },
+    ],
+  });
 
   return (
     <article className="mx-auto max-w-[900px] px-4 sm:px-6 py-10 sm:py-14">
       <script
         type="application/ld+json"
         // biome-ignore lint/security/noDangerouslySetInnerHtml: serialized via safeJsonLd
-        dangerouslySetInnerHTML={{ __html: safeJsonLd(itemList) }}
-      />
-      <script
-        type="application/ld+json"
-        // biome-ignore lint/security/noDangerouslySetInnerHtml: serialized via safeJsonLd
-        dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumb) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
       />
       <h1 className="display text-3xl sm:text-4xl text-ink leading-[1.05]">
         Answers, backed by live benchmarks.

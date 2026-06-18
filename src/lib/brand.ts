@@ -11,7 +11,7 @@
  * up automatically.
  */
 
-export type Brand = {
+type Brand = {
   color: string;
   /** Whether the brand color is dark - picked by Logo to flip its text color. */
   dark?: boolean;

@@ -20,7 +20,7 @@ export type SwapEvent = {
   receivedMs: number;
 };
 
-export type ChainBreakdown = {
+type ChainBreakdown = {
   name: string;
   vol24h: number;
   trades24h: number;
@@ -38,7 +38,7 @@ export type GlobalView = {
   mcapAt: number;
 };
 
-export type StatsTick = {
+type StatsTick = {
   type: "stats";
   global: GlobalView;
   live: { swaps: number; vol: number; chains: number };
@@ -59,7 +59,7 @@ export type ChartSeries = {
   buckets: Bucket[];
 };
 
-export type SnapshotMsg = {
+type SnapshotMsg = {
   type: "snapshot";
   series: Record<RangeKey, ChartSeries>;
   nowMs: number;

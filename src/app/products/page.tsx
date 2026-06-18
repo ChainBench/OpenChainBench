@@ -1,7 +1,7 @@
 import { getProviders } from "@/lib/providers";
 import { ProvidersTable } from "@/components/providers-table";
 import { pageMetadata } from "@/lib/page-metadata";
-import { safeJsonLd } from "@/lib/jsonld";
+import { safeJsonLd, buildItemListJsonLd } from "@/lib/jsonld";
 
 export const metadata: import("next").Metadata = pageMetadata({
   path: "/products",
@@ -23,51 +23,27 @@ export default async function ProvidersIndex() {
     categories: p.categories,
   }));
 
-  const itemListLd = {
-    "@context": "https://schema.org",
-    "@type": "ItemList",
+  const jsonLd = buildItemListJsonLd({
     name: "OpenChainBench products",
+    url: "https://openchainbench.com/products",
     description:
       "Every product that appears in at least one OpenChainBench benchmark.",
-    numberOfItems: providers.length,
-    itemListElement: providers.map((p, i) => ({
-      "@type": "ListItem",
-      position: i + 1,
-      url: `https://openchainbench.com/products/${p.slug}`,
+    items: providers.map((p) => ({
       name: p.name,
+      url: `https://openchainbench.com/products/${p.slug}`,
     })),
-  };
-
-  const breadcrumbLd = {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: [
-      {
-        "@type": "ListItem",
-        position: 1,
-        name: "Home",
-        item: "https://openchainbench.com/",
-      },
-      {
-        "@type": "ListItem",
-        position: 2,
-        name: "Products",
-        item: "https://openchainbench.com/products",
-      },
+    breadcrumb: [
+      { name: "Home", url: "https://openchainbench.com/" },
+      { name: "Products", url: "https://openchainbench.com/products" },
     ],
-  };
+  });
 
   return (
     <article className="mx-auto max-w-[1400px] px-4 sm:px-6 py-12 sm:py-16">
       <script
         type="application/ld+json"
         // biome-ignore lint/security/noDangerouslySetInnerHtml: serialized via safeJsonLd
-        dangerouslySetInnerHTML={{ __html: safeJsonLd(itemListLd) }}
-      />
-      <script
-        type="application/ld+json"
-        // biome-ignore lint/security/noDangerouslySetInnerHtml: serialized via safeJsonLd
-        dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumbLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
       />
       <header className="mb-10">
         <h1 className="display text-4xl sm:text-5xl text-ink">Products</h1>

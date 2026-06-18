@@ -20,7 +20,7 @@ export function TopNSelector({
   if (options.length === 0) return null;
   return (
     <div className={`flex items-center gap-1 ${className}`}>
-      <span className="mr-2 text-[10px] uppercase tracking-[0.16em] text-ink-faint">
+      <span className="mr-2 label-mono-xs">
         Show
       </span>
       {options.map((n) => {

@@ -21,7 +21,7 @@ export type ProviderLayer = "l1" | "l2";
  *                    samples right now. Numbers are zero placeholders -
  *                    show a soft offline pill, not 0 ms.
  */
-export type ProviderAvailability = "live" | "unavailable";
+type ProviderAvailability = "live" | "unavailable";
 
 export type ProviderResult = {
   name: string;

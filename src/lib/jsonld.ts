@@ -102,6 +102,57 @@ function chainIdFragment(chain?: string | null): string | null {
 }
 
 /**
+ * Build an ItemList JSON-LD graph for a hub/index page, optionally
+ * including a BreadcrumbList in the same `@graph`. Centralises the
+ * inline-object pattern that every hub page hand-rolls (products,
+ * benchmarks, alternatives, compare, answers, chains, ...), so the
+ * shape stays consistent across the site and a future addition (e.g.
+ * `itemListOrder`, per-item `description`) lands in one place instead
+ * of ~7 nearly-identical literals.
+ *
+ * Output stays content-equivalent to the previous literals: an
+ * `ItemList` with `numberOfItems` + per-item `ListItem` { position, name,
+ * url, optional description }, plus an optional `BreadcrumbList`
+ * delegated to `buildBreadcrumbJsonLd` (no duplicate `position` logic).
+ */
+export function buildItemListJsonLd(params: {
+  name: string;
+  url: string;
+  description?: string;
+  items: Array<{ name: string; url: string; description?: string }>;
+  breadcrumb?: Array<{ name: string; url: string }>;
+}): Record<string, unknown> {
+  const itemList: Record<string, unknown> = {
+    "@type": "ItemList",
+    name: params.name,
+    url: params.url,
+    numberOfItems: params.items.length,
+    itemListElement: params.items.map((item, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      name: item.name,
+      url: item.url,
+      ...(item.description ? { description: item.description } : {}),
+    })),
+  };
+  if (params.description) itemList.description = params.description;
+
+  const graph: Array<Record<string, unknown>> = [itemList];
+  if (params.breadcrumb && params.breadcrumb.length > 0) {
+    graph.push(
+      buildBreadcrumbJsonLd(
+        params.breadcrumb.map((c) => ({ name: c.name, item: c.url })),
+      ),
+    );
+  }
+
+  return {
+    "@context": "https://schema.org",
+    "@graph": graph,
+  };
+}
+
+/**
  * Build a top-level FAQPage JSON-LD object per https://schema.org/FAQPage.
  *
  * Emitted as its own `<script type="application/ld+json">` block on the

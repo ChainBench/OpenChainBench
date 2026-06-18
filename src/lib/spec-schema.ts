@@ -107,7 +107,7 @@ const queries = z
  *  numbers compare like-for-like. Used heavily on bridge benches where
  *  aggregators (LiFi) and single protocols (Debridge) are inherently
  *  not apples-to-apples on latency. */
-export const ProviderType = z.enum([
+const ProviderType = z.enum([
   "protocol",   // single bridge / single data feed (Debridge, Codex)
   "aggregator", // queries N underlying providers (LiFi, Mobula's aggregator side)
   "intent",     // intent / settlement layer (Mobula intents, Mayan)
@@ -118,7 +118,7 @@ export const ProviderType = z.enum([
  *  in the same provider set (e.g. network-fees). Powers the L1/L2/All
  *  toggle pill on the bench page so readers can split the leaderboard
  *  by execution layer without leaving the page. */
-export const ProviderLayer = z.enum(["l1", "l2"]);
+const ProviderLayer = z.enum(["l1", "l2"]);
 
 const provider = z.object({
   /** Stable identifier. also used as the metric label. */
@@ -149,7 +149,7 @@ const window = z
   .string()
   .regex(/^\d+[smhd]$/, "Window must look like '24h', '1d', '15m', '600s'");
 
-export const Category = z.enum([
+const Category = z.enum([
   "Aggregators",
   "Bridges",
   "Blockchains",
@@ -474,4 +474,4 @@ export const SpecSchema = z
   });
 
 export type Spec = z.infer<typeof SpecSchema>;
-export type SpecProvider = z.infer<typeof provider>;
+type SpecProvider = z.infer<typeof provider>;

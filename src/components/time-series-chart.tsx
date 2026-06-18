@@ -304,7 +304,7 @@ export function TimeSeriesChart({
 
         {showRegionTabs && (
           <div className="flex items-center gap-1">
-            <span className="mr-2 text-[10px] uppercase tracking-[0.16em] text-ink-faint">
+            <span className="mr-2 label-mono-xs">
               Region
             </span>
             <RegionTab

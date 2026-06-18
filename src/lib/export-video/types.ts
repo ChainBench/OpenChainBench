@@ -4,7 +4,7 @@
  * — kept in sync so renderer requests are a flat JSON pass-through.
  */
 
-export type ProviderSeries = {
+type ProviderSeries = {
   slug: string;
   name: string;
   /** Brand color hex (e.g. "#22c55e"). */
