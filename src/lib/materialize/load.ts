@@ -20,11 +20,7 @@ import { getPrometheus } from "@/lib/prometheus";
 import { SpecSchema, type Spec } from "@/lib/spec-schema";
 import { renderBenchmarkText } from "@/lib/bench-template";
 import { liveResults as liveProviderResults } from "@/lib/provider-filters";
-import {
-  SECONDS_PER_DAY,
-  SECONDS_PER_HOUR,
-  SECONDS_PER_MINUTE,
-} from "@/lib/time-constants";
+import { SECONDS_PER_DAY } from "@/lib/time-constants";
 import {
   activeFilterLabels,
   filterSig,

@@ -55,6 +55,7 @@ docs/*-cost-model.md
 *.tsbuildinfo
 next-env.d.ts
 .claude/worktrees/
+.claude/scheduled_tasks.lock
 
 # compiled harness binaries (go build artifacts)
 harnesses/*/script
