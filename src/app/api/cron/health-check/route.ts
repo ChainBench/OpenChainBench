@@ -7,6 +7,7 @@ import { extractMetricName, Prometheus } from "@/lib/prometheus";
 import { COMPARE_PAIRS } from "@/data/compare-pairs";
 import { SITE } from "@/data/site";
 import { getProviders } from "@/lib/providers";
+import { SECONDS_PER_HOUR } from "@/lib/time-constants";
 
 export const runtime = "nodejs";
 // Always read live state from prom. ISR cache here would defeat the
@@ -233,7 +234,7 @@ export async function GET(req: NextRequest) {
       const age = matHeartbeatAgeSec;
       const stale = age === null || age > 600;
       const firstDetection = age !== null && age <= 1800;
-      const hourlyReminder = age !== null && age % 3600 < 600;
+      const hourlyReminder = age !== null && age % SECONDS_PER_HOUR < 600;
       if (webhook && stale && (age === null || firstDetection || hourlyReminder)) {
         const ageTxt = age === null ? "no heartbeat key at all" : `${Math.round(age / 60)} min old`;
         await fetch(webhook, {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { SECONDS_PER_DAY } from "@/lib/time-constants";
 
 /**
  * Per-builder Performance chart: 30 daily revenue bars + a unique-users
@@ -185,7 +186,7 @@ function ChartCanvas({
     if (bestI >= 0) return bestI;
     if (biggestDayUnix && biggestDayUnix > 0) {
       const found = data.points.findIndex(
-        (p) => Math.abs(p.day_unix - biggestDayUnix) < 86400,
+        (p) => Math.abs(p.day_unix - biggestDayUnix) < SECONDS_PER_DAY,
       );
       if (found >= 0) return found;
     }

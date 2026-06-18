@@ -10,6 +10,11 @@
  */
 
 import type { Spec } from "@/lib/spec-schema";
+import {
+  SECONDS_PER_DAY,
+  SECONDS_PER_HOUR,
+  SECONDS_PER_MINUTE,
+} from "@/lib/time-constants";
 
 export function injectLabels(query: string, labels: Record<string, string>): string {
   return query.replace(/\{([^}]*)\}/g, (_, inside: string) => {
@@ -85,5 +90,5 @@ export function parseDurationSec(d: string): number | null {
   if (!m) return null;
   const n = Number(m[1]);
   const unit = m[2];
-  return n * { s: 1, m: 60, h: 3600, d: 86_400 }[unit as "s" | "m" | "h" | "d"];
+  return n * { s: 1, m: SECONDS_PER_MINUTE, h: SECONDS_PER_HOUR, d: SECONDS_PER_DAY }[unit as "s" | "m" | "h" | "d"];
 }

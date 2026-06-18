@@ -29,6 +29,7 @@ import {
   writeSnapshot,
 } from "@/lib/snapshot";
 import { readMaterialized } from "@/lib/materialize/store";
+import { MS_PER_MINUTE } from "@/lib/time-constants";
 
 export type { Spec } from "@/lib/spec-schema";
 export type { BenchmarkFilters } from "@/lib/materialize/load";
@@ -41,7 +42,7 @@ export { injectLabels } from "@/lib/materialize/load";
 // miss, parse failure, or a snapshot older than STORE_MAX_AGE_MS (worker
 // down) all fall through to the old behavior. Rollback = unset the flag.
 const READ_FROM_STORE = process.env.READ_FROM_STORE === "1";
-const STORE_MAX_AGE_MS = 30 * 60_000;
+const STORE_MAX_AGE_MS = 30 * MS_PER_MINUTE;
 
 async function benchFromStore(
   slug: string,
@@ -52,7 +53,7 @@ async function benchFromStore(
   if (!snap) return null;
   if (Date.now() - snap.builtAt > STORE_MAX_AGE_MS) {
     console.warn(
-      `[materialize] snapshot for ${slug}/${sig || "all"} is ${Math.round((Date.now() - snap.builtAt) / 60000)}min old, falling back to live`,
+      `[materialize] snapshot for ${slug}/${sig || "all"} is ${Math.round((Date.now() - snap.builtAt) / MS_PER_MINUTE)}min old, falling back to live`,
     );
     return null;
   }

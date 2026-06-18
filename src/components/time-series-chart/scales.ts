@@ -1,4 +1,5 @@
 import type { Benchmark } from "@/types/benchmark";
+import { SECONDS_PER_DAY, SECONDS_PER_HOUR } from "@/lib/time-constants";
 
 export type Range = "1h" | "6h" | "24h" | "7d" | "30d";
 
@@ -217,8 +218,8 @@ export function fmtTick(v: number, unit: string) {
     return `${v.toFixed(abs < 10 ? 2 : abs < 100 ? 1 : 0)}bps`;
   }
   if (unit === "sec") {
-    if (v >= 86400) return `${(v / 86400).toFixed(1)}d`;
-    if (v >= 3600) return `${(v / 3600).toFixed(1)}h`;
+    if (v >= SECONDS_PER_DAY) return `${(v / SECONDS_PER_DAY).toFixed(1)}d`;
+    if (v >= SECONDS_PER_HOUR) return `${(v / SECONDS_PER_HOUR).toFixed(1)}h`;
     if (v >= 60) return `${(v / 60).toFixed(0)}m`;
     return `${v.toFixed(v >= 10 ? 0 : 1)}s`;
   }

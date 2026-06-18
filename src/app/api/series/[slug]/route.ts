@@ -4,6 +4,7 @@ import { buildProviderColors } from "@/lib/series-colors";
 import { logoPath } from "@/lib/logo-manifest";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { SLUG_RE } from "@/lib/slug";
+import { MS_PER_HOUR } from "@/lib/time-constants";
 
 export const runtime = "nodejs";
 export const revalidate = 60;
@@ -22,9 +23,9 @@ export const revalidate = 60;
  */
 
 const RANGE_CONFIG = {
-  "24h": { windowMs: 24 * 3600 * 1000, points: 72 },
-  "7d": { windowMs: 7 * 24 * 3600 * 1000, points: 84 },
-  "30d": { windowMs: 30 * 24 * 3600 * 1000, points: 60 },
+  "24h": { windowMs: 24 * MS_PER_HOUR, points: 72 },
+  "7d": { windowMs: 7 * 24 * MS_PER_HOUR, points: 84 },
+  "30d": { windowMs: 30 * 24 * MS_PER_HOUR, points: 60 },
 } as const;
 
 type RangeKey = keyof typeof RANGE_CONFIG;
