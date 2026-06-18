@@ -209,6 +209,23 @@ export class Prometheus {
   }
 }
 
+/** Lazy per-URL singleton for `Prometheus`. Most callers reach for
+ *  `new Prometheus(process.env.PROMETHEUS_URL)` from a route or loader
+ *  module; constructing a fresh instance every time is harmless today
+ *  (state lives in module-level globals here), but it makes it easy to
+ *  miss a misconfigured URL on a hot path. Cache by URL string so any
+ *  future per-instance state stays consistent within a process. Tests
+ *  in `prometheus.test.ts` keep using `new Prometheus()` directly so
+ *  each case gets a fresh instance. */
+const promCache = new Map<string, Prometheus>();
+export function getPrometheus(baseUrl: string): Prometheus {
+  const cached = promCache.get(baseUrl);
+  if (cached) return cached;
+  const instance = new Prometheus(baseUrl);
+  promCache.set(baseUrl, instance);
+  return instance;
+}
+
 /** Module-level semaphore for fetchEnvelope.
  *
  *  Sizing matters more than it looks: at 8 slots a bench page that

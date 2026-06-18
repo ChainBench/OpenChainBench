@@ -17,7 +17,7 @@ import type {
   MetricPanel,
   ProviderResult,
 } from "@/types/benchmark";
-import { Prometheus } from "@/lib/prometheus";
+import { getPrometheus } from "@/lib/prometheus";
 import { SpecSchema, type Spec } from "@/lib/spec-schema";
 import { renderBenchmarkText } from "@/lib/bench-template";
 import { liveResults as liveProviderResults } from "@/lib/provider-filters";
@@ -318,7 +318,7 @@ async function tryLoadCellRanks(
   const url = spec.prometheus?.url ?? process.env.PROMETHEUS_URL;
   if (!url) return undefined;
   try {
-    const prom = new Prometheus(url);
+    const prom = getPrometheus(url);
     const res = await prom.query(spec.rank_matrix_query);
     if (res.resultType !== "vector") return undefined;
 
@@ -513,7 +513,7 @@ async function tryLoadLive(
 ): Promise<Pick<Benchmark, "results" | "extras" | "sampleSize" | "lastRunAt" | "metricPanels"> | null> {
   const url = spec.prometheus?.url ?? process.env.PROMETHEUS_URL;
   if (!url) return null;
-  const prom = new Prometheus(url);
+  const prom = getPrometheus(url);
   const winSec = parseDurationSec(spec.prometheus?.window ?? "24h") ?? 86_400;
 
   try {
