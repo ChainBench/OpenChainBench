@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { COMPARE_PAIRS } from "@/data/compare-pairs";
 import { canonicalize } from "@/lib/providers";
 import { buildCompareGraph } from "@/lib/compare-pairing";
 import { ProviderLogo } from "@/components/provider-logo";
+import { LogoCardLink } from "@/components/logo-card-link";
 import { CompareSelector } from "@/components/compare-selector";
 import { SITE } from "@/data/site";
-import { buildItemListJsonLd, safeJsonLd } from "@/lib/jsonld";
+import { safeJsonLd } from "@/lib/jsonld";
 import { pageMetadata } from "@/lib/page-metadata";
 
 const DESCRIPTION =
@@ -29,14 +29,17 @@ export default async function ComparePage() {
   );
   const graph = await buildCompareGraph();
 
-  const jsonld = buildItemListJsonLd({
+  const jsonld = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
     name: "Provider comparisons on OpenChainBench",
-    url: `${SITE.url}/compare`,
-    items: pairs.map((pair) => ({
+    itemListElement: pairs.map((pair, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
       name: `${canonicalize(pair.providerA).name} vs ${canonicalize(pair.providerB).name}`,
       url: `${SITE.url}/compare/${pair.slug}`,
     })),
-  });
+  };
 
   return (
     <article className="mx-auto max-w-[900px] px-4 sm:px-6 py-10 sm:py-14">
@@ -74,30 +77,35 @@ export default async function ComparePage() {
             const b = canonicalize(pair.providerB);
             return (
               <li key={pair.slug}>
-                <Link
+                <LogoCardLink
                   href={`/compare/${pair.slug}`}
-                  className="card-soft rounded-xl p-4 flex items-center gap-4 h-full hover:border-ink/40 transition-colors group"
-                >
-                  <div className="flex items-center -space-x-2 shrink-0">
-                    <ProviderLogo slug={a.slug} name={a.name} size={36} />
-                    <ProviderLogo slug={b.slug} name={b.name} size={36} />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="display text-base sm:text-lg tracking-tight text-ink leading-tight truncate">
+                  variant="compact"
+                  title={
+                    <>
                       {a.name}{" "}
                       <span className="text-ink-faint font-normal">vs</span>{" "}
                       {b.name}
-                    </p>
-                    <p className="mt-0.5 font-sans label-mono-xs">
+                    </>
+                  }
+                  subtitle={
+                    <p className="mt-0.5 font-sans text-[10px] uppercase tracking-[0.16em] text-ink-faint">
                       Head to head
                     </p>
-                  </div>
-                  <ArrowUpRight
-                    size={16}
-                    strokeWidth={2}
-                    className="text-ink-faint group-hover:text-ink shrink-0 transition-colors"
-                  />
-                </Link>
+                  }
+                  logo={
+                    <div className="flex items-center -space-x-2">
+                      <ProviderLogo slug={a.slug} name={a.name} size={36} />
+                      <ProviderLogo slug={b.slug} name={b.name} size={36} />
+                    </div>
+                  }
+                  rightSlot={
+                    <ArrowUpRight
+                      size={16}
+                      strokeWidth={2}
+                      className="text-ink-faint group-hover:text-ink transition-colors"
+                    />
+                  }
+                />
               </li>
             );
           })}

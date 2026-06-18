@@ -8,6 +8,7 @@ import { cleanLeftoverTokens } from "@/lib/answers-template";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { Pill } from "@/components/pill";
 import { ProviderLogo } from "@/components/provider-logo";
+import { LogoCardLink } from "@/components/logo-card-link";
 import { fmtValue, fmtUnit, unitSuffix } from "@/lib/format";
 import { isRegion } from "@/lib/brand";
 import { SITE } from "@/data/site";
@@ -199,21 +200,13 @@ export default async function AnswerPage({
           <ol className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {topResults.map((r, i) => (
               <li key={r.slug}>
-                <Link
+                <LogoCardLink
                   href={`/products/${r.slug}`}
-                  className="card-soft rounded-xl p-4 flex flex-col gap-2 h-full hover:border-ink/40 transition-colors"
+                  variant="stack"
+                  title={r.name}
+                  subtitle={`#${i + 1} · ${bench.metric}`}
+                  logo={<ProviderLogo slug={r.slug} name={r.name} size={32} />}
                 >
-                  <div className="flex items-center gap-3">
-                    <ProviderLogo slug={r.slug} name={r.name} size={32} />
-                    <div className="min-w-0 flex-1">
-                      <p className="font-semibold text-ink leading-tight truncate">
-                        {r.name}
-                      </p>
-                      <p className="font-sans label-mono-xs font-medium">
-                        #{i + 1} · {bench.metric}
-                      </p>
-                    </div>
-                  </div>
                   <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-ink">
                     <span className="font-sans tabular text-lg font-semibold">
                       {fmtValue(r.ms.p50, bench.unit)}
@@ -225,7 +218,7 @@ export default async function AnswerPage({
                       p99 {fmtUnit(r.ms.p99, bench.unit)}
                     </span>
                   </div>
-                </Link>
+                </LogoCardLink>
               </li>
             ))}
           </ol>

@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { loadAllAlternatives } from "@/lib/alternatives";
 import { ProviderLogo } from "@/components/provider-logo";
+import { LogoCardLink } from "@/components/logo-card-link";
 import { SITE } from "@/data/site";
 import { buildItemListJsonLd, safeJsonLd } from "@/lib/jsonld";
 import { pageMetadata } from "@/lib/page-metadata";
@@ -57,29 +57,26 @@ export default async function AlternativesPage() {
         <ul className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-3">
           {alternatives.map((alt) => (
             <li key={alt.slug}>
-              <Link
+              <LogoCardLink
                 href={`/alternatives/${alt.slug}`}
-                className="card-soft rounded-xl p-4 flex items-center gap-4 h-full hover:border-ink/40 transition-colors group"
-              >
-                <ProviderLogo
-                  slug={alt.slug}
-                  name={alt.target_product}
-                  size={40}
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="display text-base sm:text-lg tracking-tight text-ink leading-tight truncate">
-                    {alt.target_product} alternatives
-                  </p>
-                  <p className="mt-1 text-sm text-ink-muted line-clamp-2 leading-snug">
-                    {alt.description}
-                  </p>
-                </div>
-                <ArrowUpRight
-                  size={16}
-                  strokeWidth={2}
-                  className="text-ink-faint group-hover:text-ink shrink-0 transition-colors"
-                />
-              </Link>
+                variant="compact"
+                title={`${alt.target_product} alternatives`}
+                subtitle={alt.description}
+                logo={
+                  <ProviderLogo
+                    slug={alt.slug}
+                    name={alt.target_product}
+                    size={40}
+                  />
+                }
+                rightSlot={
+                  <ArrowUpRight
+                    size={16}
+                    strokeWidth={2}
+                    className="text-ink-faint group-hover:text-ink transition-colors"
+                  />
+                }
+              />
             </li>
           ))}
         </ul>
