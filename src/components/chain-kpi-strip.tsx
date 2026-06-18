@@ -117,7 +117,11 @@ function KpiCard({ card }: { card: CardDef }) {
     <div
       className="card-soft rounded-lg p-3 sm:p-4 border border-ink/15 flex flex-col"
       title={card.tip}
-      style={{ minHeight: 96 }}
+      // Height matches the live cards (label + value + sparkline slot)
+      // so the strip stays aligned once the sparkline appears on the
+      // Mobula cards after a few ticks. Cards without a sparkline keep
+      // the bottom slot empty.
+      style={{ minHeight: 132 }}
     >
       <p
         className="label-mono text-[10px] text-ink-faint uppercase tracking-wide leading-snug"
@@ -131,6 +135,9 @@ function KpiCard({ card }: { card: CardDef }) {
       <p className="mt-auto text-lg sm:text-xl font-semibold tabular-nums leading-tight">
         {fmtUSD(card.value!)}
       </p>
+      {/* Empty slot mirrors the live-card sparkline space so static and
+          live KpiCards share the exact same baseline geometry. */}
+      <div className="mt-1.5 h-[24px]" aria-hidden />
     </div>
   );
 }
