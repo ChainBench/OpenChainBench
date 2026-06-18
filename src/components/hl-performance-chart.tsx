@@ -158,15 +158,22 @@ function ChartCanvas({
   // Area path: same poly-line, closed back to the baseline.
   const areaPath = `${linePath} L ${xFor(n - 1).toFixed(1)} ${(PAD_T + plotH).toFixed(1)} L ${xFor(0).toFixed(1)} ${(PAD_T + plotH).toFixed(1)} Z`;
 
-  // Biggest day annotation. Falls back to scanning the series if the
-  // server didn't tell us (e.g. partial backfill, gauge not populated).
+  // Biggest day annotation. ALWAYS computed from the displayed series,
+  // never from the server-rendered `biggestDayUnix` prop alone. The two
+  // sources race: the page server-renders biggestDayUnix from a Prom
+  // scalar cached for the ISR window (60-300 s) while the chart fetches
+  // /api/builder/<slug>/daily-series at hydration time and gets the
+  // fresh JSON straight from the harness. When a new biggest day rolls
+  // in between those two reads, the marker stops landing on the tallest
+  // bar (it points to the previous biggest, which is still in the
+  // series but no longer the max).
+  //
+  // The server prop is kept as a tiebreaker: if it falls inside the
+  // displayed series and the series is uniformly zero (cold start,
+  // never observed a fill), surface its UTC day so the marker still
+  // shows up. In every other case the series tells us which bar is the
+  // tallest, which is exactly what the marker is supposed to point at.
   const biggestIdx = useMemo(() => {
-    if (biggestDayUnix && biggestDayUnix > 0) {
-      const found = data.points.findIndex(
-        (p) => Math.abs(p.day_unix - biggestDayUnix) < 86400,
-      );
-      if (found >= 0) return found;
-    }
     let bestI = -1;
     let bestV = 0;
     for (let i = 0; i < data.points.length; i++) {
@@ -175,7 +182,14 @@ function ChartCanvas({
         bestI = i;
       }
     }
-    return bestI;
+    if (bestI >= 0) return bestI;
+    if (biggestDayUnix && biggestDayUnix > 0) {
+      const found = data.points.findIndex(
+        (p) => Math.abs(p.day_unix - biggestDayUnix) < 86400,
+      );
+      if (found >= 0) return found;
+    }
+    return -1;
   }, [data.points, biggestDayUnix]);
 
   // Hover state. We track the index of the hovered bar (the bar a
