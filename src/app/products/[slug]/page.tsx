@@ -19,6 +19,7 @@ import {
   isHlBuilderSlug,
 } from "@/lib/hl-builder-stats";
 import { HlBuilderDashboard } from "@/components/hl-builder-dashboard";
+import { RelatedProvidersSection } from "@/components/related-providers-section";
 
 export const revalidate = 60;
 
@@ -548,6 +549,8 @@ export default async function ProviderPage({
           })}
         </ol>
       </section>
+
+      <RelatedProvidersSection providerSlug={p.slug} providerName={p.name} />
 
       {badgeCards.length > 0 && (
         <section className="mt-12">
