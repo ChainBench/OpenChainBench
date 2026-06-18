@@ -21,17 +21,7 @@ import {
 import { HlBuilderDashboard } from "@/components/hl-builder-dashboard";
 import { RelatedProvidersSection } from "@/components/related-providers-section";
 
-// ISR window set to 2x the cron warmup cadence (every 5 min). With ISR
-// at 600 s, every cron tick re-warms the HTML well before it would
-// expire, leaving zero gap. Earlier attempt at 300 s left a 30 to 45 s
-// window per cycle where the parallel fetch fan out from cron hadn't
-// finished yet, and visitors landing in that window paid full SSR.
-//
-// The data layer (getProviders, buildAlternativesReverseMap, materialize
-// worker) revalidates on its own 60 s unstable_cache windows, so
-// freshness stays sub minute at the data level even with a 10 min HTML
-// cache.
-export const revalidate = 600;
+export const revalidate = 60;
 
 // On-demand first render loads every bench (provider profile spans the
 // whole catalog). 60s default killed cold renders and ISR regenerations
