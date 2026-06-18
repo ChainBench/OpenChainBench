@@ -16,6 +16,7 @@ import { capDescription } from "@/lib/seo-text";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { buildBreadcrumbJsonLd, safeJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
+import { pageMetadata } from "@/lib/page-metadata";
 import type { Benchmark } from "@/types/benchmark";
 import {
   buildSharedBenches,
@@ -111,31 +112,17 @@ export async function generateMetadata({
   const { a, b } = await loadPairProviders(pair);
   if (!a || !b) return {};
 
-  const url = `${SITE.url}/compare/${pair.slug}`;
   const title = `${a.name} vs ${b.name}: live OpenChainBench benchmark data`;
   const description = capDescription(
     `${a.name} vs ${b.name} side by side on every shared OpenChainBench benchmark. Live measurements, identical layout, no verdict.`,
     158,
   );
 
-  return {
+  return pageMetadata({
+    path: `/compare/${pair.slug}`,
     title,
     description,
-    alternates: { canonical: url },
-    openGraph: {
-      title,
-      description,
-      url,
-      type: "website",
-      siteName: SITE.name,
-    },
-    twitter: {
-      card: "summary_large_image",
-      title,
-      description,
-      site: SITE.twitter,
-    },
-  };
+  });
 }
 
 export default async function ComparePage({

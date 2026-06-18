@@ -18,6 +18,7 @@ import { Breadcrumb } from "@/components/breadcrumb";
 import { Pill } from "@/components/pill";
 import { ProviderLogo } from "@/components/provider-logo";
 import { SITE } from "@/data/site";
+import { pageMetadata } from "@/lib/page-metadata";
 import { buildBreadcrumbJsonLd, safeJsonLd } from "@/lib/jsonld";
 import { capDescription } from "@/lib/seo-text";
 import type { Benchmark } from "@/types/benchmark";
@@ -40,30 +41,16 @@ export async function generateMetadata({
   const chain = CHAIN_BY_SLUG.get(slug);
   if (!chain) return {};
   const benches = await getBenchmarksForChain(slug);
-  const url = `${SITE.url}/chains/${slug}`;
   const title = `${chain.label} live benchmarks: finality, fees, RPC, infrastructure`;
   const description = capDescription(
     `${benches.length} live OpenChainBench measurements covering ${chain.label}. ${chain.description}`,
     158,
   );
-  return {
+  return pageMetadata({
+    path: `/chains/${slug}`,
     title,
     description,
-    alternates: { canonical: url },
-    openGraph: {
-      title,
-      description,
-      type: "website",
-      url,
-      siteName: SITE.name,
-    },
-    twitter: {
-      card: "summary_large_image",
-      site: SITE.twitter,
-      title,
-      description,
-    },
-  };
+  });
 }
 
 function groupByCategory(

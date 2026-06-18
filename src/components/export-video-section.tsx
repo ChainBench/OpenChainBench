@@ -6,6 +6,7 @@ import { Video, X, Loader2, Download, Copy, Share2 } from "lucide-react";
 import type { Benchmark } from "@/types/benchmark";
 import { EXPORT_VIDEO_ENABLED } from "@/lib/export-video/config";
 import { fetchBenchSeries } from "@/lib/export-video/fetch-series";
+import { rankResults } from "@/lib/ranking";
 import {
   RANGE_IDS,
   RANGE_LABEL,
@@ -112,9 +113,7 @@ function ModalBody({
   // 50+ providers per frame on a 2-vCPU box pushes us past 2 minutes —
   // outside the Vercel function ceiling. Power users can click "All".
   const [selected, setSelected] = useState<Set<string>>(() => {
-    const sorted = [...benchmark.results].sort((a, b) =>
-      benchmark.higherIsBetter ? b.ms.p50 - a.ms.p50 : a.ms.p50 - b.ms.p50,
-    );
+    const sorted = rankResults(benchmark.results, benchmark.higherIsBetter);
     return new Set(sorted.slice(0, 8).map((r) => r.slug));
   });
   const [state, setState] = useState<RenderState>({ status: "idle" });
@@ -124,11 +123,10 @@ function ModalBody({
   // multi-select (same order share-section.tsx uses).
   const providers = useMemo(
     () =>
-      [...benchmark.results]
-        .sort((a, b) =>
-          benchmark.higherIsBetter ? b.ms.p50 - a.ms.p50 : a.ms.p50 - b.ms.p50,
-        )
-        .map((r) => ({ slug: r.slug, name: r.name })),
+      rankResults(benchmark.results, benchmark.higherIsBetter).map((r) => ({
+        slug: r.slug,
+        name: r.name,
+      })),
     [benchmark],
   );
 

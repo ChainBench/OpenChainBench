@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Benchmark } from "@/types/benchmark";
 import { liveResults } from "@/lib/provider-filters";
+import { rankResults } from "@/lib/ranking";
 import { fmtUnit } from "@/lib/format";
 
 /**
@@ -31,9 +32,7 @@ export function ChainHeadingsSummary({ benchmark }: { benchmark: Benchmark }) {
   if (benchmark.category !== "Blockchains") return null;
 
   // Sort by p50: best-first when lower-is-better, worst-first otherwise.
-  const sorted = [...live].sort((a, b) =>
-    benchmark.higherIsBetter ? b.ms.p50 - a.ms.p50 : a.ms.p50 - b.ms.p50
-  );
+  const sorted = rankResults(live, benchmark.higherIsBetter);
 
   // Look up per-chain explainer by slug. Map for O(1) access from the
   // sort loop. When present, the slug's body is rendered as a second

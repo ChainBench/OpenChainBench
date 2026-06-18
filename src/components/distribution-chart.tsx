@@ -3,6 +3,7 @@
 import { type ReactNode, useMemo } from "react";
 import type { Benchmark } from "@/types/benchmark";
 import { liveResults } from "@/lib/provider-filters";
+import { rankResults } from "@/lib/ranking";
 import { Hint } from "@/components/hint";
 import { ProviderLogo } from "@/components/provider-logo";
 import { fmtUnit } from "@/lib/format";
@@ -82,10 +83,7 @@ export function DistributionChart({
   // Sort once; sort order does NOT depend on the excluded set, so a
   // row stays in its slot when toggled and the rank #N is stable.
   const sortedAll = useMemo(
-    () =>
-      [...live].sort((a, b) =>
-        higherIsBetter ? b.ms.p50 - a.ms.p50 : a.ms.p50 - b.ms.p50,
-      ),
+    () => rankResults(live, higherIsBetter),
     [live, higherIsBetter],
   );
   // Top-N selector — shared shape with the other chart views so the

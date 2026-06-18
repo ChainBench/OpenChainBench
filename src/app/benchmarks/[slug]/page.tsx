@@ -20,6 +20,7 @@ import { headlineSentence } from "@/lib/citation";
 import { capDescription } from "@/lib/seo-text";
 import { getBenchCreatedAt } from "@/lib/seo/bench-dates";
 import { SITE } from "@/data/site";
+import { pageMetadata } from "@/lib/page-metadata";
 import { buildBreadcrumbJsonLd, buildFaqPageJsonLd, safeJsonLd } from "@/lib/jsonld";
 import { renderTemplate } from "@/lib/bench-template";
 import type { Benchmark } from "@/types/benchmark";
@@ -104,25 +105,12 @@ export async function generateMetadata({
   if (description) description = capDescription(description, 158);
   // Canonical NEVER carries `?chain=...`. Per-chain variants live on the
   // dedicated /benchmarks/[slug]/[chain] pages with their own metadata.
-  const canonical = `${SITE.url}/benchmarks/${b.slug}`;
-  return {
+  return pageMetadata({
+    path: `/benchmarks/${b.slug}`,
     title: metaTitle,
     description,
-    alternates: { canonical },
-    openGraph: {
-      title: metaTitle,
-      description,
-      type: "article",
-      url: canonical,
-      siteName: SITE.name,
-    },
-    twitter: {
-      card: "summary_large_image",
-      site: SITE.twitter,
-      title: metaTitle,
-      description,
-    },
-  };
+    type: "article",
+  });
 }
 
 export default async function BenchmarkPage({

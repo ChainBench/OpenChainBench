@@ -5,9 +5,11 @@ import { ArrowLeft, ArrowUpRight } from "lucide-react";
 import { getBenchmark } from "@/data/benchmarks";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { liveResults } from "@/lib/provider-filters";
+import { rankResults } from "@/lib/ranking";
 import { fmtUnit } from "@/lib/format";
 import { capDescription } from "@/lib/seo-text";
 import { SITE } from "@/data/site";
+import { pageMetadata } from "@/lib/page-metadata";
 import { buildBreadcrumbJsonLd, safeJsonLd } from "@/lib/jsonld";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
@@ -108,9 +110,7 @@ function resolveLeftoverPlaceholders(text: string, b: Benchmark): string {
 }
 
 function sortLive(results: ProviderResult[], higherIsBetter: boolean) {
-  return [...liveResults(results)].sort((a, b) =>
-    higherIsBetter ? b.ms.p50 - a.ms.p50 : a.ms.p50 - b.ms.p50,
-  );
+  return rankResults(liveResults(results), higherIsBetter);
 }
 
 async function loadChainPage(
@@ -282,26 +282,14 @@ export async function generateMetadata({
     stripInlineMarkdown(data.explainer.body),
     158,
   );
-  const canonical = `${SITE.url}/benchmarks/${data.benchmark.slug}/${chain}`;
   const ogImage = `${SITE.url}/api/og/${data.benchmark.slug}`;
-  return {
+  return pageMetadata({
+    path: `/benchmarks/${data.benchmark.slug}/${chain}`,
     title,
     description,
-    alternates: { canonical },
-    openGraph: {
-      title,
-      description,
-      type: "article",
-      url: canonical,
-      images: [ogImage],
-    },
-    twitter: {
-      card: "summary_large_image",
-      title,
-      description,
-      images: [ogImage],
-    },
-  };
+    type: "article",
+    ogImage,
+  });
 }
 
 export default async function BenchmarkChainPage({
