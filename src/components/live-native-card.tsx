@@ -166,7 +166,7 @@ export function LiveNativeCard({
   return (
     <div
       className="card-soft rounded-lg p-3 sm:p-4 border border-ink/15 flex flex-col relative overflow-hidden"
-      style={{ minHeight: 96 }}
+      style={{ minHeight: 132 }}
       title={tip}
     >
       <div
@@ -194,9 +194,12 @@ export function LiveNativeCard({
         )}
       </p>
       {delta && <DeltaBadge key={delta.id} amount={delta.amount} kind={kind} />}
-      {ticks.length >= 3 && (
-        <Sparkline ticks={ticks} direction={direction} />
-      )}
+      {/* Sparkline slot is ALWAYS rendered (even empty) so the card
+          height never changes once ticks start arriving — keeps the
+          whole KPI strip aligned with the static DefiLlama cards. */}
+      <div className="relative mt-1.5 h-[24px]" aria-hidden>
+        {ticks.length >= 3 && <Sparkline ticks={ticks} direction={direction} />}
+      </div>
     </div>
   );
 }
@@ -291,7 +294,7 @@ function Sparkline({
   return (
     <svg
       viewBox="0 0 200 28"
-      className="relative mt-1.5 w-full h-[24px]"
+      className="absolute inset-0 w-full h-full"
       preserveAspectRatio="none"
       aria-hidden
     >
