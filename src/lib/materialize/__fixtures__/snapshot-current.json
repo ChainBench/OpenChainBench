@@ -1,0 +1,42 @@
+{
+  "v": 1,
+  "slug": "test-bench",
+  "sig": "chain=ethereum",
+  "builtAt": 1718712000000,
+  "sweepMs": 1234,
+  "bench": {
+    "slug": "test-bench",
+    "number": "001",
+    "title": "Test bench",
+    "subtitle": "Test subtitle",
+    "lastRunAt": "2026-06-18T12:00:00.000Z",
+    "status": "live",
+    "editorialStatus": "live",
+    "sampleSize": 42,
+    "abstract": "Abstract",
+    "metric": "Latency",
+    "unit": "ms",
+    "higherIsBetter": false,
+    "category": "RPCs",
+    "results": [],
+    "findings": [],
+    "methodology": [],
+    "source": "https://example.com",
+    "extras": { "series24h": {}, "regions": {} }
+  },
+  "state": {
+    "providers": {
+      "alchemy": { "observedAt": 1718711000000 },
+      "infura": { "observedAt": 1718711000000, "staleSince": 1718710000000 }
+    },
+    "rings": {
+      "alchemy": {
+        "24h": {
+          "startEpoch": 1718000000000,
+          "stepSec": 1200,
+          "points": [1.0, 2.0, null, 3.5]
+        }
+      }
+    }
+  }
+}
