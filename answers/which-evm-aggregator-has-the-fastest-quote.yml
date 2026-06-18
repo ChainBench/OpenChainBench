@@ -1,0 +1,42 @@
+slug: which-evm-aggregator-has-the-fastest-quote
+question: "Which EVM swap quote API is the fastest in 2026?"
+short_answer: |
+  {{best_name}} currently returns EVM swap quotes the fastest at {{best_p50}} (p50, 24h) across Mobula, KyberSwap, Bebop, CoW, Enso, LI.FI and OpenOcean on Ethereum, Base, Arbitrum and BSC, measured live by OpenChainBench from 3 regions.
+
+benchmark: evm-quote-latency
+
+intro: |
+  EVM swap aggregator APIs all promise sub second quotes. This page measures how often they actually deliver one. Every wallet integration, intent layer and routing front end is bound by the quote API it sits behind, and the gap between a 200 ms and a 1500 ms p99 is the difference between a swap UI that feels native and one that needs a loading spinner on every input change. OpenChainBench rotates a 5 pair basket across Ethereum, Base, Arbitrum and BSC (1 ETH to USDT on Ethereum, 1000 USDC to USDT on Ethereum, 0.5 ETH to USDC on Base, 100 USDC to ETH on Arbitrum, 1 BNB to USDT on BSC), fires a quote request at every supported provider in parallel every 60 seconds, and records the wall clock round trip. The leaderboard sorts by p50 latency over the last 24 hours. A geographic split is available with the same probe running independently from us-east, eu-west and Singapore, so an integrator can pick the provider whose edge gateway is closest to their backend.
+
+methodology: |
+  Each provider's public quote endpoint is hit on the 5 fixed pairs above, rotating one pair per 60 second tick. Per (provider, chain) the bench lands roughly 288 samples in 24 hours per region, enough to put p90 and p99 buckets on a solid base. Latency is wall clock from request dispatch to last byte received, observed only on the happy path (HTTP 2xx with a parseable output amount). Failures land on dedicated counters by class (auth via 401/403, throttle via 429, no route via empty or zero output amount on 200, other for everything else) and pull the success gauge to 0. Native asset sentinel is the canonical `0xEeeeeEeee` form; Odos uses the all zero form and Bebop substitutes the wrapped equivalent on the sell side, the adapter normalises per provider. The three regions are separate Railway services writing the same metric family with a `region` label, so the page can filter to a single edge or aggregate across all three.
+
+limitations:
+  - "Speed only, quote quality is not scored. Two providers can return the same time to first byte while one quotes a noticeably worse price. Converting all outputs to a comparable USD value introduces an oracle bias the leaderboard does not want to bake into a latency ranking. The fee benchmark measures realised cost separately."
+  - "Each provider declares its supported chain set. CoW Protocol skips BSC because CoW Settlement does not deploy there; the harness skips probes for chains a provider does not claim to cover so the failure counter is not inflated by structural non coverage."
+  - "Enso uses a global anonymous bucket at roughly 1 request per second, so about 20% of probes hit 429 and are dropped. Remaining samples keep p50 and p90 stable but the success rate is capped near 80%, which the leaderboard surfaces honestly."
+  - "The 5 pair basket favours liquid USDC and ETH routes. A long tail token route (low cap memecoin, RWA, niche bridge wrapper) has different route search complexity and the latency curves on this leaderboard do not generalise to those cases."
+  - "Polygon and Optimism are slated for a v2 expansion once they reach a comparable sample volume; the current Ethereum, Base, Arbitrum and BSC coverage is the integration grade core."
+
+faq:
+  - q: "Which EVM swap quote API has the lowest latency right now?"
+    a: "{{best_name}} currently leads at {{best_p50}} (p50 over the last 24 hours) on the active tab, across {{count}} measured providers. The leaderboard re-sorts every minute on fresh Prometheus samples, so the answer reflects measured latency on the live basket, not a marketing claim. Per chain leaders can differ from the cross chain aggregate; the chain tabs at the top of the bench page show each ranking separately."
+  - q: "Does this measure quote quality or just speed?"
+    a: "Speed only. Latency is wall clock round trip from request to last byte, recorded only on a successful parseable response. Output amount in USD is not scored on this bench because providers measure it differently (Bebop is net of fees on a gasless RFQ, others are gross), and converting all outputs to a comparable USD value introduces an oracle bias the leaderboard does not want to bake into a latency comparison."
+  - q: "Why are some providers not on every chain?"
+    a: "Each provider declares its supported chain set. The harness skips probes for chains a provider does not claim to cover so the failure counter is not inflated by structural non coverage. CoW skips BSC because CoW Settlement does not deploy there; LI.FI and OpenOcean cover 30+ chains each. The per chain tab on the bench page shows which providers actually run on each chain."
+  - q: "What happens when a provider rate limits the harness?"
+    a: "Each adapter classifies the response. 429 lands on a throttle counter and the success gauge drops to 0. 401 and 403 land on an auth counter. Empty or zero output amounts on a 200 land on a no route counter. None of those failure modes contribute to the latency histogram, so the p50 number stays representative of healthy quotes."
+  - q: "How is the geographic split implemented?"
+    a: "Three identical Railway services run the harness with different `MONITOR_REGION` env vars (us-east, eu-west, sgp). Each writes the same metric family with a `region` label. The bench page region filter selects which slice of the histogram is queried; the per chain x per region grid shows a 4 chain by 3 region cell ranking for each provider."
+  - q: "Why does Bebop sometimes win on latency despite being RFQ?"
+    a: "Bebop's RFQ model resolves price through a maker network rather than via on chain simulation. The output amount it quotes is already net of fees because settlement is gasless for the taker. The latency the bench measures is the maker network resolving the price, not a public mempool route search; on liquid pairs that path can clock comparably to or below pre warmed aggregator graphs."
+
+related:
+  - which-solana-dex-aggregator-is-the-fastest
+  - which-bridge-has-the-fastest-quote-api
+  - which-crypto-price-api-is-the-fastest
+
+seo_title: "Which EVM swap quote API is the fastest in 2026?"
+seo_description: "{{best_name}} leads EVM swap quote latency at {{best_p50}} (p50, 24h) across Mobula, KyberSwap, Bebop, CoW, Enso, LI.FI and OpenOcean on Ethereum, Base, Arbitrum and BSC."
+status: live
