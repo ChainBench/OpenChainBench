@@ -28,17 +28,13 @@ declare module "@/types/benchmark" {
 
 /**
  * Read-only accessor for `bestPerChain` that tolerates the field being
- * absent (e.g. during the merge window when Agent 1's branch hasn't
- * landed yet). Returns undefined when the bench doesn't expose
- * per-chain data, never throws.
+ * absent. Returns undefined when the bench doesn't expose per-chain
+ * data, never throws.
  */
 export function readBestPerChain(
   b: Benchmark,
 ): Record<string, ProviderResult> | undefined {
-  // The field is optional on the type once Agent 1's PR lands; until then
-  // the structural access is the safe path.
-  const v = (b as unknown as { bestPerChain?: Record<string, ProviderResult> })
-    .bestPerChain;
+  const v = b.bestPerChain;
   return v && typeof v === "object" ? v : undefined;
 }
 

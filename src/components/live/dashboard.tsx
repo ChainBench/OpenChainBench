@@ -266,15 +266,14 @@ export function LiveDashboard() {
           // Forward-compat with the multi-resolution relay AND backward-compat
           // with the legacy `buckets`-only shape during deploy interleaving.
           const fallback = emptySeries();
-          const legacy = (msg as unknown as { buckets?: Bucket[] }).buckets;
           const next: SeriesByRange = msg.series
             ? {
                 "10m": msg.series["10m"] ?? fallback["10m"],
                 "1h": msg.series["1h"] ?? fallback["1h"],
                 "24h": msg.series["24h"] ?? fallback["24h"],
               }
-            : legacy
-              ? { ...fallback, "10m": { ...fallback["10m"], buckets: legacy } }
+            : msg.buckets
+              ? { ...fallback, "10m": { ...fallback["10m"], buckets: msg.buckets } }
               : fallback;
           setSeries(next);
           // Clamp the relay's reported clock so an extreme nowMs (compromised

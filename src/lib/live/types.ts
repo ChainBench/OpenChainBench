@@ -61,7 +61,13 @@ export type ChartSeries = {
 
 type SnapshotMsg = {
   type: "snapshot";
-  series: Record<RangeKey, ChartSeries>;
+  /** Multi-resolution series keyed by range. Optional during deploy
+   *  interleaving against the legacy `buckets`-only relay shape. */
+  series?: Partial<Record<RangeKey, ChartSeries>>;
+  /** Legacy 10m-only payload from the pre-multi-resolution relay. The
+   *  dashboard treats this as the `10m` slot when `series` is absent.
+   *  Remove once every deployed relay emits `series`. */
+  buckets?: Bucket[];
   nowMs: number;
 };
 
