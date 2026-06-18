@@ -18,6 +18,7 @@
  */
 
 import { cache } from "react";
+import { unstable_cache } from "next/cache";
 import { canonicalize, getProviders } from "@/lib/providers";
 import { canonicalPairSlug } from "@/lib/compare-pairing-shared";
 import { loadAllAlternatives } from "@/lib/alternatives";
@@ -90,6 +91,62 @@ export const getCompareCandidates = cache(async function getCompareCandidates(
 });
 
 /**
+ * Reverse map from provider canonical slug to the list of alternatives
+ * pages where that provider is featured. Built once per cache window by
+ * walking every alternatives YAML, loading its parent bench, and
+ * collecting the featured providers per page.
+ *
+ * Wrapped with `unstable_cache` so the 26 alternatives YAML walks +
+ * loadBenchmark calls run at most once per 60 s window. The previous
+ * shape re-ran the full walk on every product page render, which on a
+ * cold lambda was 10 to 14 s and the visible "products page is slow"
+ * symptom.
+ */
+async function buildAlternativesReverseMap(): Promise<
+  Map<string, AlternativeFeature[]>
+> {
+  const alternatives = await loadAllAlternatives();
+  const benches = await Promise.all(
+    alternatives.map((alt) =>
+      loadBenchmark(alt.benchmark, { chain: alt.chain }).then((bench) => ({
+        alt,
+        bench,
+      })),
+    ),
+  );
+  const map = new Map<string, AlternativeFeature[]>();
+  for (const { alt, bench } of benches) {
+    if (!bench) continue;
+    const altTargetSlug = alt.target_product
+      .toLowerCase()
+      .replace(/\s+/g, "-");
+    const seen = new Set<string>();
+    for (const r of bench.results) {
+      if (r.ms.p50 <= 0) continue;
+      const canon = canonicalize(r.slug).slug.toLowerCase();
+      if (canon === altTargetSlug) continue;
+      if (seen.has(canon)) continue;
+      seen.add(canon);
+      const list = map.get(canon) ?? [];
+      list.push({ slug: alt.slug, targetProduct: alt.target_product });
+      map.set(canon, list);
+    }
+  }
+  return map;
+}
+
+/** Cross-request cache. Tags with `benchmarks` so any bench update via
+ *  `revalidateTag('benchmarks')` rebuilds the map. */
+const buildAlternativesReverseMapCached = unstable_cache(
+  async (): Promise<Array<[string, AlternativeFeature[]]>> => {
+    const map = await buildAlternativesReverseMap();
+    return Array.from(map.entries());
+  },
+  ["alternatives-reverse-map-v1"],
+  { revalidate: 60, tags: ["benchmarks"] },
+);
+
+/**
  * Returns the alternatives pages whose underlying benchmark features
  * the given provider with non-zero p50 data. Capped at the top
  * {@link ALTERNATIVES_CAP} entries by alternatives target name.
@@ -103,30 +160,11 @@ export const getAlternativesFeaturing = cache(
     providerSlug: string,
   ): Promise<AlternativeFeature[]> {
     const me = providerSlug.toLowerCase();
-    const alternatives = await loadAllAlternatives();
-    const checks = await Promise.all(
-      alternatives.map(async (alt) => {
-        // Skip the alternatives page that targets this exact product so we
-        // never link a provider back at its own page (e.g. /products/lifi
-        // pointing at /alternatives/lifi).
-        const altTargetSlug = alt.target_product.toLowerCase().replace(/\s+/g, "-");
-        if (altTargetSlug === me) return null;
-        const bench = await loadBenchmark(alt.benchmark, { chain: alt.chain });
-        if (!bench) return null;
-        // Match by canonical slug so aliases (helius-sender -> helius,
-        // eth-usd -> ethereum, ...) light up the corresponding product
-        // page. Without this, `helius` would never find itself in the
-        // sender-bench leaderboard.
-        const featured = bench.results.some((r) => {
-          if (r.ms.p50 <= 0) return false;
-          return canonicalize(r.slug).slug.toLowerCase() === me;
-        });
-        if (!featured) return null;
-        return { slug: alt.slug, targetProduct: alt.target_product };
-      }),
+    const entries = await buildAlternativesReverseMapCached();
+    const features = entries.find(([slug]) => slug === me)?.[1] ?? [];
+    const sorted = [...features].sort((a, b) =>
+      a.targetProduct.localeCompare(b.targetProduct),
     );
-    const features = checks.filter((x): x is AlternativeFeature => x !== null);
-    features.sort((a, b) => a.targetProduct.localeCompare(b.targetProduct));
-    return features.slice(0, ALTERNATIVES_CAP);
+    return sorted.slice(0, ALTERNATIVES_CAP);
   },
 );
