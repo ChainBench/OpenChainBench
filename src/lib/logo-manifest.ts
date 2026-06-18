@@ -157,7 +157,6 @@ const RAW: Record<string, string> = {
 
   // ─── network-coverage bench providers (bench № 005 expansion) ───
   coinpaprika: "/logos/coinpaprika.svg",
-  covalent: "/logos/covalent.svg",
   coinstats: "/logos/coinstats.svg",
 
   // ─── Hyperliquid frontends (bench № 030) ───

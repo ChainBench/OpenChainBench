@@ -97,12 +97,6 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Independent crypto market data API. Token prices, OHLCV, exchange tickers, and contract/platform lookups across 300+ supported chains. Public free tier with no auth.",
     twitter: "@coinpaprika",
   },
-  covalent: {
-    url: "https://goldrush.dev",
-    description:
-      "Multichain onchain data API by GoldRush (formerly Covalent). Unified REST endpoints for wallet balances, transactions, NFTs, and pricing across 100+ EVM chains.",
-    twitter: "@goldrushdev",
-  },
   coinstats: {
     url: "https://coinstats.app",
     description:
