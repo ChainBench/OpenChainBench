@@ -4,7 +4,6 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ArrowUpRight } from "lucide-react";
 import { getProvider } from "@/lib/providers";
-import { loadBenchmark } from "@/lib/spec";
 import {
   getComparePair,
   getComparePairSlugs,
@@ -19,10 +18,16 @@ import { buildBreadcrumbJsonLd, safeJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
 import type { Benchmark } from "@/types/benchmark";
 import {
-  computeInputsHash,
-  readPairCache,
-  writePairCache,
-} from "@/lib/compare-cache";
+  buildSharedBenches,
+  canonicalisationTarget,
+  fmtTs,
+  latestIso,
+  parseAdHocSlug,
+  type BreakdownRow,
+  type ChainRegionEntry,
+  type Panel,
+  type SharedBench,
+} from "@/lib/compare-compute";
 
 /**
  * Compare pages reuse the parent benchmarks' Prom data, so freshness
@@ -55,19 +60,6 @@ async function loadPairProviders(pair: ComparePair) {
     getProvider(pair.providerA),
     getProvider(pair.providerB),
   ]);
-  return { a, b };
-}
-
-/** Split a `<a>-vs-<b>` slug. Provider slugs can themselves contain
- *  hyphens (`helius-sender`, `phantom-perps`, etc.), so we split on the
- *  exact `-vs-` delimiter, not on `-`. Returns null when the delimiter
- *  is missing or either side is empty. */
-function parseAdHocSlug(slug: string): { a: string; b: string } | null {
-  const idx = slug.indexOf("-vs-");
-  if (idx <= 0) return null;
-  const a = slug.slice(0, idx);
-  const b = slug.slice(idx + "-vs-".length);
-  if (!a || !b || a === b) return null;
   return { a, b };
 }
 
@@ -108,20 +100,6 @@ async function resolveAdHocPair(slug: string): Promise<ComparePair | null> {
   };
 }
 
-/** If the URL slug is `<a>-vs-<b>` but not alphabetical, send the
- *  visitor to the canonical form. Keeps a single canonical URL per
- *  pair from Google's perspective and matches the selector's
- *  `canonicalPairSlug` output. Returns the canonical slug when a
- *  redirect is needed, null when the slug is already canonical or not
- *  a valid pair shape. */
-function canonicalisationTarget(slug: string): string | null {
-  const parsed = parseAdHocSlug(slug);
-  if (!parsed) return null;
-  const [first, second] = [parsed.a, parsed.b].sort();
-  const canonical = `${first}-vs-${second}`;
-  return canonical === slug ? null : canonical;
-}
-
 export async function generateMetadata({
   params,
 }: {
@@ -160,350 +138,6 @@ export async function generateMetadata({
   };
 }
 
-type Panel = {
-  rank: number;
-  p50: number;
-  p99: number;
-  sampleSize?: number;
-};
-
-type BreakdownRow = {
-  value: string;
-  label: string;
-  aP50: number;
-  bP50: number;
-  aWins: boolean;
-  bWins: boolean;
-};
-
-/** One chain entry inside a chain x region matrix. Carries the chain
- *  aggregate row plus the per region sub-rows scoped to that chain.
- *  Rendered as two side by side rows (one per provider) with a column
- *  per region plus the chain aggregate column on the right. */
-type ChainRegionEntry = BreakdownRow & {
-  regionRows: BreakdownRow[];
-};
-
-type SharedBench = {
-  slug: string;
-  title: string;
-  category: Benchmark["category"];
-  unit: Benchmark["unit"];
-  metric: string;
-  higherIsBetter: boolean;
-  lastRunAt: Benchmark["lastRunAt"];
-  aResult: Panel;
-  bResult: Panel;
-  /** Aggregate winner side. "tie" when p50 are equal. */
-  aggregateWinner: "a" | "b" | "tie";
-  /** Per chain side by side rows, populated only for benches with
-   *  `dimensions.chain` and where both providers have positive p50 in
-   *  the filtered variant. */
-  chainBreakdown: BreakdownRow[];
-  /** Per region side by side rows, same gating as chainBreakdown. */
-  regionBreakdown: BreakdownRow[];
-  /** Chain x region matrix, populated only for benches that expose
-   *  BOTH `dimensions.chain` and `dimensions.region`. When present, the
-   *  renderer uses this nested structure as a single 2D table and
-   *  drops the flat chainBreakdown + regionBreakdown so we don't stack
-   *  three tables for the same data. */
-  chainRegionMatrix: ChainRegionEntry[];
-};
-
-/** Sort comparator that respects `higherIsBetter`. Returns:
- *    "a" if A leads, "b" if B leads, "tie" if both equal. */
-function decideWinner(
-  aP50: number,
-  bP50: number,
-  higherIsBetter: boolean,
-): "a" | "b" | "tie" {
-  if (aP50 === bP50) return "tie";
-  if (higherIsBetter) return aP50 > bP50 ? "a" : "b";
-  return aP50 < bP50 ? "a" : "b";
-}
-
-/** Load the per-dimension breakdown for one shared bench against one
- *  axis. Resolves each dimension value to a filtered Benchmark via
- *  loadBenchmark, then picks both providers' results. Drops rows where
- *  either provider lacks live data so we never render "0 vs 0" panels. */
-async function loadBreakdown(
-  benchSlug: string,
-  axis: "chain" | "region",
-  options: { value: string; label: string }[],
-  providerA: string,
-  providerB: string,
-  higherIsBetter: boolean,
-): Promise<BreakdownRow[]> {
-  const filtered = options.filter(
-    (o) => o.value.toLowerCase() !== "all",
-  );
-  if (filtered.length === 0) return [];
-  const rows = await Promise.all(
-    filtered.map(async (opt) => {
-      const variant = await loadBenchmark(benchSlug, {
-        [axis]: opt.value,
-      });
-      if (!variant) return null;
-      const aRes = variant.results.find((r) => r.slug === providerA);
-      const bRes = variant.results.find((r) => r.slug === providerB);
-      if (!aRes || !bRes) return null;
-      if (aRes.ms.p50 <= 0 || bRes.ms.p50 <= 0) return null;
-      const winner = decideWinner(aRes.ms.p50, bRes.ms.p50, higherIsBetter);
-      return {
-        value: opt.value,
-        label: opt.label,
-        aP50: aRes.ms.p50,
-        bP50: bRes.ms.p50,
-        aWins: winner === "a",
-        bWins: winner === "b",
-      } satisfies BreakdownRow;
-    }),
-  );
-  return rows.filter((r): r is BreakdownRow => r !== null);
-}
-
-/** Loads a chain x region matrix for one bench, scoped to the two
- *  providers. For each chain value (excluding "all"), we load the
- *  chain aggregate AND every region variant within that chain via the
- *  combined `{ chain, region }` filter. Rows where either provider has
- *  no live data are dropped at every level so the rendered table never
- *  surfaces "0 vs 0" cells. Returns [] when either dimension is empty.
- *
- *  Fan out shape: every chain aggregate AND every (chain, region) tuple
- *  is dispatched in the same tick via one flat Promise.all. The previous
- *  shape awaited each chain aggregate before kicking off its region
- *  children, which serialised one extra round trip per chain on top of
- *  the actual fan out. With three chains x three regions that was
- *  roughly 500 ms to 1 s of avoidable wall clock on a cold ad hoc pair.
- */
-async function loadChainRegionMatrix(
-  benchSlug: string,
-  chainOpts: { value: string; label: string }[],
-  regionOpts: { value: string; label: string }[],
-  providerA: string,
-  providerB: string,
-  higherIsBetter: boolean,
-): Promise<ChainRegionEntry[]> {
-  const chains = chainOpts.filter((c) => c.value.toLowerCase() !== "all");
-  const regions = regionOpts.filter((r) => r.value.toLowerCase() !== "all");
-  if (chains.length === 0 || regions.length === 0) return [];
-
-  const chainTasks = chains.map((c) =>
-    loadBenchmark(benchSlug, { chain: c.value }),
-  );
-  const regionTasks = chains.flatMap((c) =>
-    regions.map((r) =>
-      loadBenchmark(benchSlug, {
-        chain: c.value,
-        region: r.value,
-      }).then((variant) => ({ chain: c.value, region: r.value, variant })),
-    ),
-  );
-  const [chainVariants, regionVariants] = await Promise.all([
-    Promise.all(chainTasks),
-    Promise.all(regionTasks),
-  ]);
-
-  // Group region results by chain. Insertion order matches `chains` then
-  // `regions` because flatMap walks in that order and Promise.all
-  // preserves index order, so the rendered table keeps its column order.
-  const regionsByChain = new Map<string, typeof regionVariants>();
-  for (const rv of regionVariants) {
-    const list = regionsByChain.get(rv.chain) ?? [];
-    list.push(rv);
-    regionsByChain.set(rv.chain, list);
-  }
-
-  const entries: ChainRegionEntry[] = [];
-  for (let i = 0; i < chains.length; i += 1) {
-    const c = chains[i];
-    const chainVariant = chainVariants[i];
-    if (!chainVariant) continue;
-    const aChain = chainVariant.results.find((r) => r.slug === providerA);
-    const bChain = chainVariant.results.find((r) => r.slug === providerB);
-    if (!aChain || !bChain) continue;
-    if (aChain.ms.p50 <= 0 || bChain.ms.p50 <= 0) continue;
-    const chainWinner = decideWinner(
-      aChain.ms.p50,
-      bChain.ms.p50,
-      higherIsBetter,
-    );
-
-    const regionRows: BreakdownRow[] = [];
-    for (const rv of regionsByChain.get(c.value) ?? []) {
-      if (!rv.variant) continue;
-      const aRes = rv.variant.results.find((x) => x.slug === providerA);
-      const bRes = rv.variant.results.find((x) => x.slug === providerB);
-      if (!aRes || !bRes) continue;
-      if (aRes.ms.p50 <= 0 || bRes.ms.p50 <= 0) continue;
-      const regionMeta = regions.find((r) => r.value === rv.region);
-      if (!regionMeta) continue;
-      const winner = decideWinner(aRes.ms.p50, bRes.ms.p50, higherIsBetter);
-      regionRows.push({
-        value: regionMeta.value,
-        label: regionMeta.label,
-        aP50: aRes.ms.p50,
-        bP50: bRes.ms.p50,
-        aWins: winner === "a",
-        bWins: winner === "b",
-      });
-    }
-
-    entries.push({
-      value: c.value,
-      label: c.label,
-      aP50: aChain.ms.p50,
-      bP50: bChain.ms.p50,
-      aWins: chainWinner === "a",
-      bWins: chainWinner === "b",
-      regionRows,
-    });
-  }
-  return entries;
-}
-
-/** Resolves the intersection of two providers' bench appearances, then
- *  enriches each shared bench with aggregate + per chain + per region
- *  breakdowns. Honors the pair's `benchmarks` whitelist (when set) and
- *  `excludeBenchmarks` blacklist. */
-async function buildSharedBenches(
-  pair: ComparePair,
-  aAppearances: Awaited<ReturnType<typeof getProvider>>,
-  bAppearances: Awaited<ReturnType<typeof getProvider>>,
-): Promise<SharedBench[]> {
-  if (!aAppearances || !bAppearances) return [];
-
-  const aByBench = new Map(
-    aAppearances.appearances.map((x) => [x.benchmark.slug, x] as const),
-  );
-  const bByBench = new Map(
-    bAppearances.appearances.map((x) => [x.benchmark.slug, x] as const),
-  );
-
-  // Bench selection order:
-  //   1. If `benchmarks` whitelist is set, take that list as the
-  //      candidate set (legacy editorial pin).
-  //   2. Otherwise take the natural intersection of both providers'
-  //      appearances (the default for any new pair).
-  //   3. In both cases, subtract anything in `excludeBenchmarks`.
-  const candidateSlugs = pair.benchmarks
-    ? pair.benchmarks.filter((s) => aByBench.has(s) && bByBench.has(s))
-    : Array.from(aByBench.keys()).filter((s) => bByBench.has(s));
-  const excluded = new Set(pair.excludeBenchmarks ?? []);
-  const sharedSlugs = candidateSlugs.filter((s) => !excluded.has(s));
-
-  // KV cache lookup before the fan out. Hash mixes provider slugs, the
-  // shared bench list and the deploy SHA so any drift (new bench, new
-  // appearance, new deploy) auto invalidates. Returns null on any
-  // failure path so the build below is always reachable.
-  const inputsHash = computeInputsHash({
-    providerA: aAppearances.slug,
-    providerB: bAppearances.slug,
-    benchSlugs: sharedSlugs,
-  });
-  const cached = await readPairCache<SharedBench>(pair.slug, inputsHash);
-  if (cached) return cached;
-
-  const built = await Promise.all(
-    sharedSlugs.map(async (benchSlug) => {
-      const aEntry = aByBench.get(benchSlug);
-      const bEntry = bByBench.get(benchSlug);
-      if (!aEntry || !bEntry) return null;
-      const fullBench = await loadBenchmark(benchSlug);
-      if (!fullBench) return null;
-
-      const higherIsBetter = fullBench.higherIsBetter === true;
-      const aPanel: Panel = {
-        rank: aEntry.rank,
-        p50: aEntry.result.ms.p50,
-        p99: aEntry.result.ms.p99,
-        sampleSize: aEntry.result.sampleSize,
-      };
-      const bPanel: Panel = {
-        rank: bEntry.rank,
-        p50: bEntry.result.ms.p50,
-        p99: bEntry.result.ms.p99,
-        sampleSize: bEntry.result.sampleSize,
-      };
-      const aggregateWinner = decideWinner(
-        aPanel.p50,
-        bPanel.p50,
-        higherIsBetter,
-      );
-
-      const chainOpts = fullBench.dimensions?.chain ?? [];
-      const regionOpts = fullBench.dimensions?.region ?? [];
-      const hasBothDims =
-        chainOpts.filter((c) => c.value.toLowerCase() !== "all").length > 0 &&
-        regionOpts.filter((r) => r.value.toLowerCase() !== "all").length > 0;
-
-      const [chainBreakdown, regionBreakdown, chainRegionMatrix] =
-        await Promise.all([
-          // When both dimensions exist the renderer uses the nested
-          // matrix; skip the flat chain breakdown so we don't double
-          // fetch.
-          hasBothDims
-            ? Promise.resolve<BreakdownRow[]>([])
-            : loadBreakdown(
-                benchSlug,
-                "chain",
-                chainOpts,
-                aAppearances.slug,
-                bAppearances.slug,
-                higherIsBetter,
-              ),
-          hasBothDims
-            ? Promise.resolve<BreakdownRow[]>([])
-            : loadBreakdown(
-                benchSlug,
-                "region",
-                regionOpts,
-                aAppearances.slug,
-                bAppearances.slug,
-                higherIsBetter,
-              ),
-          hasBothDims
-            ? loadChainRegionMatrix(
-                benchSlug,
-                chainOpts,
-                regionOpts,
-                aAppearances.slug,
-                bAppearances.slug,
-                higherIsBetter,
-              )
-            : Promise.resolve<ChainRegionEntry[]>([]),
-        ]);
-
-      return {
-        slug: fullBench.slug,
-        title: fullBench.title,
-        category: fullBench.category,
-        unit: fullBench.unit,
-        metric: fullBench.metric,
-        higherIsBetter,
-        lastRunAt: fullBench.lastRunAt,
-        aResult: aPanel,
-        bResult: bPanel,
-        aggregateWinner,
-        chainRegionMatrix,
-        chainBreakdown,
-        regionBreakdown,
-      } satisfies SharedBench;
-    }),
-  );
-  const result = built.filter((b): b is SharedBench => b !== null);
-  // Write the freshly built result back to KV via `after()` so the
-  // response isn't blocked. Subsequent visitors within the TTL window
-  // skip the entire fan out above.
-  writePairCache(pair.slug, inputsHash, result);
-  return result;
-}
-
-function fmtTs(iso?: string): string | null {
-  if (!iso) return null;
-  return new Date(iso).toUTCString().replace("GMT", "UTC");
-}
-
 export default async function ComparePage({
   params,
 }: {
@@ -532,11 +166,7 @@ export default async function ComparePage({
   const regB = getProviderRegistry(b.slug);
 
   const url = `${SITE.url}/compare/${pair.slug}`;
-  const latestTs = shared.reduce<string | null>((acc, s) => {
-    if (!s.lastRunAt) return acc;
-    if (!acc || new Date(s.lastRunAt) > new Date(acc)) return s.lastRunAt;
-    return acc;
-  }, null);
+  const latestTs = latestIso(shared, (s) => s.lastRunAt);
 
   const datasetJsonLd = {
     "@context": "https://schema.org",
