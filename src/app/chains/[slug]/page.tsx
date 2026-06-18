@@ -10,7 +10,7 @@ import {
 import { fmtUnit } from "@/lib/format";
 import {
   fetchChainKpis,
-  fetchChainTvlHistory,
+  fetchChainTvlFullHistory,
   hasAnyKpi,
 } from "@/lib/chain-kpis";
 import { ChainKpiStrip } from "@/components/chain-kpi-strip";
@@ -92,12 +92,12 @@ export default async function ChainPage({
   // KPI strip data flows from the `chain-kpis` harness on Railway.
   // A null return (Prom unreachable, chain has no published series)
   // hides the strip silently; the benches list below still renders.
-  // TVL history is fetched directly from DefiLlama (single 50 KB call,
-  // revalidated every 15 min to match the harness cadence), since a
-  // 30-day series isn't worth fanning through Prom.
+  // TVL full history is fetched directly from DefiLlama (single ~50 KB
+  // call, revalidated every 15 min). Client renders the active range
+  // (7D/30D/90D/1Y/All) without extra network round-trips.
   const [kpis, tvlHistory] = await Promise.all([
     fetchChainKpis(slug),
-    fetchChainTvlHistory(slug, 30),
+    fetchChainTvlFullHistory(slug),
   ]);
 
   const byCategory = groupByCategory(benches);
@@ -183,9 +183,11 @@ export default async function ChainPage({
       {kpis && hasAnyKpi(kpis) && (
         <div className="mt-10">
           <ChainKpiStrip
+            slug={slug}
             kpis={kpis}
             nativeSymbol={chain.nativeSymbol}
             tvlHistory={tvlHistory}
+            chainLabel={chain.label}
           />
         </div>
       )}
