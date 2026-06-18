@@ -347,7 +347,7 @@ export default async function ProviderPage({
                   {p.appearances.length === 1 ? "category" : "categories"}.
                   Reproducible measurements, open methodology.
                 </p>
-                <p className="mt-2 font-sans text-[11px] uppercase tracking-[0.18em] text-ink-muted font-medium">
+                <p className="mt-2 label-mono-sm">
                   {p.appearances.length} {p.appearances.length === 1 ? "benchmark" : "benchmarks"}
                   {p.wins > 0 && (
                     <>
@@ -497,7 +497,7 @@ export default async function ProviderPage({
                         </span>
                       </>
                     ) : (
-                      <span className="block text-[10px] uppercase tracking-[0.16em] text-ink-faint italic font-normal">
+                      <span className="block label-mono-xs italic font-normal">
                         awaiting
                       </span>
                     )}
@@ -538,7 +538,7 @@ export default async function ProviderPage({
                         </p>
                       </>
                     ) : (
-                      <p className="font-sans text-[10px] uppercase tracking-[0.16em] text-ink-faint italic font-medium">
+                      <p className="font-sans label-mono-xs italic font-medium">
                         data warming up
                       </p>
                     )}

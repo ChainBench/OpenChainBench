@@ -222,7 +222,7 @@ export default async function AlternativePage({
                       <p className="font-semibold text-ink leading-tight truncate">
                         {r.name}
                       </p>
-                      <p className="font-sans text-[10px] uppercase tracking-[0.16em] text-ink-faint font-medium">
+                      <p className="font-sans label-mono-xs font-medium">
                         #{i + 1} · {bench.metric}
                       </p>
                     </div>

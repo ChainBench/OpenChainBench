@@ -742,7 +742,7 @@ function BenchCard({
             {bench.title}
           </Link>
         </h3>
-        <span className="text-[10px] uppercase tracking-[0.16em] text-ink-faint shrink-0">
+        <span className="label-mono-xs shrink-0">
           {bench.category}
         </span>
       </header>
@@ -794,7 +794,7 @@ function BenchCard({
         </>
       )}
 
-      <footer className="mt-5 border-t border-rule pt-3 flex flex-wrap items-center justify-between gap-2 text-[10px] uppercase tracking-[0.16em] text-ink-faint">
+      <footer className="mt-5 border-t border-rule pt-3 flex flex-wrap items-center justify-between gap-2 label-mono-xs">
         <span>Rolling 24h · {bench.metric}</span>
         <Link
           href={`/api/stat/${bench.slug}`}
@@ -931,7 +931,7 @@ function ChainRegionMatrix({
       <div className="overflow-x-auto -mx-5 sm:-mx-6 px-5 sm:px-6">
         <table className="w-full text-sm tabular border-collapse">
           <thead>
-            <tr className="text-[10px] uppercase tracking-[0.16em] text-ink-faint border-b border-rule">
+            <tr className="label-mono-xs border-b border-rule">
               <th
                 scope="col"
                 className="text-left font-medium py-2 pr-3 sticky left-0 bg-bg z-10"
@@ -1049,7 +1049,7 @@ function BreakdownTable({
       <div className="overflow-x-auto">
         <table className="w-full text-sm tabular">
           <thead>
-            <tr className="text-[10px] uppercase tracking-[0.16em] text-ink-faint border-b border-rule">
+            <tr className="label-mono-xs border-b border-rule">
               <th className="text-left font-medium pb-2 pr-3">
                 {title === "Per region" ? "Region" : "Chain"}
               </th>

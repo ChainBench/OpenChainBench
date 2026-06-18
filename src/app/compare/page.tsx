@@ -7,7 +7,7 @@ import { buildCompareGraph } from "@/lib/compare-pairing";
 import { ProviderLogo } from "@/components/provider-logo";
 import { CompareSelector } from "@/components/compare-selector";
 import { SITE } from "@/data/site";
-import { safeJsonLd } from "@/lib/jsonld";
+import { buildItemListJsonLd, safeJsonLd } from "@/lib/jsonld";
 import { pageMetadata } from "@/lib/page-metadata";
 
 const DESCRIPTION =
@@ -29,17 +29,14 @@ export default async function ComparePage() {
   );
   const graph = await buildCompareGraph();
 
-  const jsonld = {
-    "@context": "https://schema.org",
-    "@type": "ItemList",
+  const jsonld = buildItemListJsonLd({
     name: "Provider comparisons on OpenChainBench",
-    itemListElement: pairs.map((pair, i) => ({
-      "@type": "ListItem",
-      position: i + 1,
+    url: `${SITE.url}/compare`,
+    items: pairs.map((pair) => ({
       name: `${canonicalize(pair.providerA).name} vs ${canonicalize(pair.providerB).name}`,
       url: `${SITE.url}/compare/${pair.slug}`,
     })),
-  };
+  });
 
   return (
     <article className="mx-auto max-w-[900px] px-4 sm:px-6 py-10 sm:py-14">
@@ -91,7 +88,7 @@ export default async function ComparePage() {
                       <span className="text-ink-faint font-normal">vs</span>{" "}
                       {b.name}
                     </p>
-                    <p className="mt-0.5 font-sans text-[10px] uppercase tracking-[0.16em] text-ink-faint">
+                    <p className="mt-0.5 font-sans label-mono-xs">
                       Head to head
                     </p>
                   </div>
