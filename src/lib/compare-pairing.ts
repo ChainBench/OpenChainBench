@@ -10,12 +10,20 @@
  *              the user can only pick a comparable second provider.
  *
  * Heavy work is upfront on the server (O(N^2) over the provider list,
- * roughly 100 providers today, fast enough at build time). The shape
- * is intentionally light so the JSON payload shipped to the client
- * stays small.
+ * roughly 100 providers today). `getProviders()` loads every provider
+ * profile with full appearance lists, which is the actual bottleneck
+ * on a cold render of the /compare hub.
+ *
+ * The result is the same for every visitor between deploys and barely
+ * changes between revalidation windows, so it is wrapped in
+ * `unstable_cache` with a 5 minute revalidate and the standard
+ * `benchmarks` tag for cross-request cross-instance reuse. The inner
+ * `cache()` is kept as well so multiple component subtrees in the same
+ * render still dedupe.
  */
 
 import { cache } from "react";
+import { unstable_cache } from "next/cache";
 import { getProviders } from "@/lib/providers";
 import type { CompareCandidate } from "@/lib/compare-pairing-shared";
 
@@ -29,7 +37,7 @@ export type CompareGraph = {
   shared: Record<string, string[]>;
 };
 
-export const buildCompareGraph = cache(async function buildCompareGraph(): Promise<CompareGraph> {
+async function buildCompareGraphRaw(): Promise<CompareGraph> {
   const profiles = await getProviders();
   const benchSetByProvider = new Map<string, Set<string>>();
   for (const p of profiles) {
@@ -66,5 +74,22 @@ export const buildCompareGraph = cache(async function buildCompareGraph(): Promi
     .map((p) => ({ slug: p.slug, name: p.name }))
     .sort((a, b) => a.name.localeCompare(b.name));
   return { providers, shared };
-});
+}
+
+/** Cross-request cache. Bump the key when the CompareGraph shape
+ *  changes so deploys carrying a new field don't deserialize old
+ *  entries. The 5 minute revalidate is well above the provider profile
+ *  ISR window (60 s) yet still under the bench rolling window so any
+ *  new provider or appearance flows in within minutes of being live. */
+const buildCompareGraphCached = unstable_cache(
+  buildCompareGraphRaw,
+  ["compare-graph-v1"],
+  { revalidate: 300, tags: ["benchmarks"] },
+);
+
+export const buildCompareGraph = cache(
+  async function buildCompareGraph(): Promise<CompareGraph> {
+    return buildCompareGraphCached();
+  },
+);
 
