@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, ArrowUpRight } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
+import { BackLink } from "@/components/back-link";
 import { loadAnswer, loadAllAnswers } from "@/lib/answers";
 import { renderTemplate } from "@/lib/bench-template";
 import { cleanLeftoverTokens } from "@/lib/answers-template";
@@ -152,13 +153,7 @@ export default async function AnswerPage({
         ]}
       />
 
-      <Link
-        href="/answers"
-        className="inline-flex items-center gap-1.5 text-sm text-ink-muted hover:text-ink"
-      >
-        <ArrowLeft size={14} strokeWidth={2} />
-        All answers
-      </Link>
+      <BackLink href="/answers" label="All answers" />
 
       <div className="mt-6 flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2">
         <Pill variant="category">Answer</Pill>

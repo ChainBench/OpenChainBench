@@ -14,9 +14,12 @@ import {
   readPairCache,
   writePairCache,
 } from "@/lib/compare-cache";
+import { nonAllValues } from "@/lib/dimensions";
 import type { ComparePair } from "@/data/compare-pairs";
 import type { getProvider } from "@/lib/providers";
 import type { Benchmark } from "@/types/benchmark";
+
+export { nonAllValues };
 
 export type Panel = {
   rank: number;
@@ -70,13 +73,6 @@ export type SharedBench = {
 
 /** Dimension option shape used by Benchmark.dimensions.* */
 type DimensionOption = { value: string; label: string };
-
-/** Drop the synthetic "all" entry that benches put on each dimension
- *  axis. The aggregate is loaded separately, so for breakdowns we only
- *  want concrete chain/region values. */
-export function nonAllValues<T extends { value: string }>(options: T[]): T[] {
-  return options.filter((o) => o.value.toLowerCase() !== "all");
-}
 
 /** Reduce a list of items to the most recent ISO timestamp.
  *  `pick(item)` returns the candidate ISO string (or null/undefined to skip).

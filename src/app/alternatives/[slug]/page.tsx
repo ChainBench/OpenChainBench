@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, ArrowUpRight } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
+import { BackLink } from "@/components/back-link";
 import { Pill } from "@/components/pill";
 import { TimeSeriesChart } from "@/components/time-series-chart";
 import { LedgerTable } from "@/components/ledger-table";
@@ -165,13 +166,7 @@ export default async function AlternativePage({
         ]}
       />
 
-      <Link
-        href="/#latest"
-        className="inline-flex items-center gap-1.5 text-sm text-ink-muted hover:text-ink"
-      >
-        <ArrowLeft size={14} strokeWidth={2} />
-        All benchmarks
-      </Link>
+      <BackLink href="/#latest" label="All benchmarks" />
 
       <div className="mt-6 flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2">
         <Pill variant="category">Alternatives</Pill>

@@ -1,5 +1,6 @@
 import type { Benchmark } from "@/types/benchmark";
 import { readBestPerChain } from "@/lib/per-chain-contract";
+import { nonAllValues } from "@/lib/dimensions";
 
 type Props = {
   /** Provider slug as it appears in `benchmark.results` (case-insensitive match). */
@@ -54,8 +55,7 @@ export function ChainCoverageChip({
   // to the providers that *appear* on that chain via bestPerChain leadership.
   // This is intentionally a soft signal — the bench page's chain tab shows
   // the precise per-chain ranking; this chip is a quick scan aid.
-  const chips = chainOptions
-    .filter((c) => c.value !== "all")
+  const chips = nonAllValues(chainOptions)
     .map((c) => {
       const leader = bestPerChain[c.value];
       if (!leader) return null;

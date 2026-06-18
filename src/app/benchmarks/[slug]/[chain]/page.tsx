@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, ArrowUpRight } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
+import { BackLink } from "@/components/back-link";
+import { nonAllValues } from "@/lib/dimensions";
 import { getBenchmark } from "@/data/benchmarks";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { liveResults } from "@/lib/provider-filters";
@@ -149,9 +151,7 @@ async function loadChainPage(
   // Per-region leaders on this chain. The cross-region scoped leaderboard
   // is the headline, but when regional winners diverge the key-facts line
   // says so explicitly instead of crowning one provider globally.
-  const regions = (benchmark.dimensions?.region ?? []).filter(
-    (r) => r.value.toLowerCase() !== "all",
-  );
+  const regions = nonAllValues(benchmark.dimensions?.region ?? []);
   const regionLeaders: { region: string; leader: ProviderResult }[] = [];
   if (regions.length > 0) {
     const variants = await Promise.all(
@@ -343,13 +343,10 @@ export default async function BenchmarkChainPage({
         ]}
       />
 
-      <Link
+      <BackLink
         href={`/benchmarks/${benchmark.slug}`}
-        className="inline-flex items-center gap-1.5 text-sm text-ink-muted hover:text-ink"
-      >
-        <ArrowLeft size={14} strokeWidth={2} />
-        Full benchmark: {benchmark.title}
-      </Link>
+        label={`Full benchmark: ${benchmark.title}`}
+      />
 
       <div className="mt-6 flex flex-wrap items-center gap-3 font-sans text-[11px] uppercase tracking-[0.1em] sm:tracking-[0.18em] text-ink-muted font-medium">
         <span style={{ color: catColor ?? "var(--color-ink-soft)" }}>
@@ -547,11 +544,8 @@ function SiblingChains({
   current: string;
   gatedChains: Set<string>;
 }) {
-  const siblings = (benchmark.dimensions?.chain ?? []).filter(
-    (c) =>
-      c.value !== current &&
-      c.value.toLowerCase() !== "all" &&
-      gatedChains.has(c.value),
+  const siblings = nonAllValues(benchmark.dimensions?.chain ?? []).filter(
+    (c) => c.value !== current && gatedChains.has(c.value),
   );
   if (siblings.length === 0) return null;
   return (

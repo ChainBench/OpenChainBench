@@ -2,7 +2,9 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, ArrowUpRight, ChevronDown } from "lucide-react";
+import { ArrowUpRight, ChevronDown } from "lucide-react";
+import { BackLink } from "@/components/back-link";
+import { nonAllValues } from "@/lib/dimensions";
 import { getBenchmark, getBenchmarks } from "@/data/benchmarks";
 import { Pill } from "@/components/pill";
 import { BenchmarkBody } from "@/components/benchmark-body";
@@ -274,13 +276,7 @@ export default async function BenchmarkPage({
       />
 
       <div className="flex flex-wrap items-center gap-3">
-        <Link
-          href="/#latest"
-          className="inline-flex items-center gap-1.5 text-sm text-ink-muted hover:text-ink"
-        >
-          <ArrowLeft size={14} strokeWidth={2} />
-          All benchmarks
-        </Link>
+        <BackLink href="/#latest" label="All benchmarks" />
         {!isDraft && (
           <div className="ml-auto flex flex-wrap items-center gap-2">
             <ShareSection
@@ -567,11 +563,8 @@ function PerChainPagesNav({ benchmark }: { benchmark: Benchmark }) {
   const explainerSlugs = new Set(
     (benchmark.perChainExplainer ?? []).map((e) => e.slug),
   );
-  const chains = (benchmark.dimensions?.chain ?? []).filter(
-    (c) =>
-      c.value.toLowerCase() !== "all" &&
-      explainerSlugs.has(c.value) &&
-      !resultSlugs.has(c.value),
+  const chains = nonAllValues(benchmark.dimensions?.chain ?? []).filter(
+    (c) => explainerSlugs.has(c.value) && !resultSlugs.has(c.value),
   );
   if (chains.length === 0) return null;
   return (
