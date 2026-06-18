@@ -17,6 +17,7 @@ import { Breadcrumb } from "@/components/breadcrumb";
 import { buildBreadcrumbJsonLd, safeJsonLd } from "@/lib/jsonld";
 import { ProviderLogo } from "@/components/provider-logo";
 import { ProviderTypeBadge } from "@/components/provider-type-badge";
+import { LogoCardLink } from "@/components/logo-card-link";
 import { isRegion } from "@/lib/brand";
 
 export const revalidate = 60;
@@ -212,22 +213,14 @@ export default async function AlternativePage({
           <ol className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {topAlternatives.map((r, i) => (
               <li key={r.slug}>
-                <Link
+                <LogoCardLink
                   href={`/products/${r.slug}`}
-                  className="card-soft rounded-xl p-4 flex flex-col gap-2 h-full hover:border-ink/40 transition-colors"
+                  variant="stack"
+                  title={r.name}
+                  subtitle={`#${i + 1} · ${bench.metric}`}
+                  logo={<ProviderLogo slug={r.slug} name={r.name} size={32} />}
+                  rightSlot={r.type ? <ProviderTypeBadge type={r.type} /> : undefined}
                 >
-                  <div className="flex items-center gap-3">
-                    <ProviderLogo slug={r.slug} name={r.name} size={32} />
-                    <div className="min-w-0 flex-1">
-                      <p className="font-semibold text-ink leading-tight truncate">
-                        {r.name}
-                      </p>
-                      <p className="font-sans text-[10px] uppercase tracking-[0.16em] text-ink-faint font-medium">
-                        #{i + 1} · {bench.metric}
-                      </p>
-                    </div>
-                    {r.type && <ProviderTypeBadge type={r.type} />}
-                  </div>
                   <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-ink">
                     <span className="font-sans tabular text-lg font-semibold">
                       {fmtValue(r.ms.p50, bench.unit)}
@@ -239,7 +232,7 @@ export default async function AlternativePage({
                       p99 {fmtUnit(r.ms.p99, bench.unit)}
                     </span>
                   </div>
-                </Link>
+                </LogoCardLink>
               </li>
             ))}
           </ol>

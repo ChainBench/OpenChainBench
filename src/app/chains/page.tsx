@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { CHAINS, getBenchmarksForChain, type ChainEntry } from "@/lib/chains";
 import { ProviderLogo } from "@/components/provider-logo";
+import { LogoCardLink } from "@/components/logo-card-link";
 import { SITE } from "@/data/site";
 import { safeJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import { pageMetadata } from "@/lib/page-metadata";
@@ -88,26 +88,27 @@ export default async function ChainsHubPage() {
             <ul className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {list.map((c) => (
                 <li key={c.slug}>
-                  <Link
+                  <LogoCardLink
                     href={`/chains/${c.slug}`}
-                    className="card-soft rounded-xl p-4 flex items-center gap-3 h-full hover:border-ink/40 transition-colors group"
-                  >
-                    <ProviderLogo slug={c.slug} name={c.label} size={40} />
-                    <div className="min-w-0 flex-1">
-                      <p className="display text-base sm:text-lg tracking-tight text-ink leading-tight truncate">
-                        {c.label}
-                      </p>
+                    variant="compact"
+                    title={c.label}
+                    subtitle={
                       <p className="mt-0.5 text-[10px] uppercase tracking-[0.16em] text-ink-faint">
                         {c.benchCount} live benchmark
                         {c.benchCount === 1 ? "" : "s"}
                       </p>
-                    </div>
-                    <ArrowUpRight
-                      size={14}
-                      strokeWidth={2}
-                      className="text-ink-faint group-hover:text-ink shrink-0 transition-colors"
-                    />
-                  </Link>
+                    }
+                    logo={
+                      <ProviderLogo slug={c.slug} name={c.label} size={40} />
+                    }
+                    rightSlot={
+                      <ArrowUpRight
+                        size={14}
+                        strokeWidth={2}
+                        className="text-ink-faint group-hover:text-ink transition-colors"
+                      />
+                    }
+                  />
                 </li>
               ))}
             </ul>
