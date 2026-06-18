@@ -26,20 +26,18 @@ import {
 
 /**
  * Compare pages reuse the parent benchmarks' Prom data, so freshness
- * inherits 1:1 from the underlying benches. ISR window is 10 minutes,
- * deliberately set to 2x the cron warmup cadence (every 5 min). That
- * way each cron tick refreshes the cached HTML well BEFORE ISR would
- * expire, leaving zero gap where a visitor could land between an
- * expired cache and an in-flight warmup. Earlier attempt at 300 s left
- * a 30 to 45 s window per cycle where the parallel fetch fan out from
- * cron hadn't finished yet.
+ * inherits 1:1 from the underlying benches. ISR window matches the
+ * /products/[slug] page because the same provider appearances back both.
  *
- * The underlying data layer (getProviders 60 s, alternatives reverse
- * map 60 s, materialize worker per-minute) keeps refreshing on its own
- * windows, so freshness stays sub minute at the data level even with a
- * 10 min HTML cache.
+ * 60 s is enough in production because Vercel edge cache serves STALE
+ * HTML while ISR regenerates in the background, so a visitor never
+ * waits for SSR even when the window expires. Earlier attempts at
+ * 300 s and 600 s were calibrated for the staging Preview env where
+ * Vercel sets `cache-control: no-store` and disables ISR entirely; on
+ * production that constraint disappears so the larger window only
+ * traded freshness for nothing.
  */
-export const revalidate = 600;
+export const revalidate = 60;
 // Per-dimension variant fetches fan out N chain + N region loadBenchmark
 // calls per shared bench. Cached, but cold ISR regeneration needs head
 // room above the 60 s default to avoid mid-flight timeouts on a pair
