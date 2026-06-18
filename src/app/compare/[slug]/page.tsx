@@ -18,6 +18,11 @@ import { Breadcrumb } from "@/components/breadcrumb";
 import { buildBreadcrumbJsonLd, safeJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
 import type { Benchmark } from "@/types/benchmark";
+import {
+  computeInputsHash,
+  readPairCache,
+  writePairCache,
+} from "@/lib/compare-cache";
 
 /**
  * Compare pages reuse the parent benchmarks' Prom data, so freshness
@@ -358,6 +363,18 @@ async function buildSharedBenches(
   const excluded = new Set(pair.excludeBenchmarks ?? []);
   const sharedSlugs = candidateSlugs.filter((s) => !excluded.has(s));
 
+  // KV cache lookup before the fan out. Hash mixes provider slugs, the
+  // shared bench list and the deploy SHA so any drift (new bench, new
+  // appearance, new deploy) auto invalidates. Returns null on any
+  // failure path so the build below is always reachable.
+  const inputsHash = computeInputsHash({
+    providerA: aAppearances.slug,
+    providerB: bAppearances.slug,
+    benchSlugs: sharedSlugs,
+  });
+  const cached = await readPairCache<SharedBench>(pair.slug, inputsHash);
+  if (cached) return cached;
+
   const built = await Promise.all(
     sharedSlugs.map(async (benchSlug) => {
       const aEntry = aByBench.get(benchSlug);
@@ -445,7 +462,12 @@ async function buildSharedBenches(
       } satisfies SharedBench;
     }),
   );
-  return built.filter((b): b is SharedBench => b !== null);
+  const result = built.filter((b): b is SharedBench => b !== null);
+  // Write the freshly built result back to KV via `after()` so the
+  // response isn't blocked. Subsequent visitors within the TTL window
+  // skip the entire fan out above.
+  writePairCache(pair.slug, inputsHash, result);
+  return result;
 }
 
 function fmtTs(iso?: string): string | null {
