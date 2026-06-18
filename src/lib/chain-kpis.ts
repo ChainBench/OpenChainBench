@@ -129,18 +129,17 @@ const DEFILLAMA_CHAIN_NAME: Record<string, string> = {
 };
 
 /**
- * Fetch the last `days` daily TVL samples from DefiLlama's
- * `/v2/historicalChainTvl/<name>` endpoint. Renders the sparkline below
- * the KPI cards on /chains/[slug]. Bypasses the harness on purpose:
- * DefiLlama exposes the full history in one ~50 KB JSON, no need to fan
- * it through Prom (which is for instant-scalar metrics, not series).
+ * Fetch the FULL TVL history from DefiLlama. Returns daily samples going
+ * back to chain genesis (or as far as DefiLlama has indexed). Used by
+ * the interactive chart on /chains/[slug], which lets the user toggle
+ * ranges client-side without re-fetching.
  *
- * Network failure / unsupported chain / empty body → returns null and
- * the chart is hidden. Same graceful-degradation model as the KPI cards.
+ * The JSON is ~50 KB even for old chains (Ethereum 5+ years), revalidate
+ * every 15 min mirrors the harness cadence. Network failure / unsupported
+ * chain / empty body → null, chart is hidden gracefully.
  */
-export async function fetchChainTvlHistory(
+export async function fetchChainTvlFullHistory(
   slug: string,
-  days = 30,
 ): Promise<ChainTvlHistory | null> {
   const dllamaName = DEFILLAMA_CHAIN_NAME[slug];
   if (!dllamaName) return null;
@@ -148,19 +147,31 @@ export async function fetchChainTvlHistory(
     const res = await fetch(
       `https://api.llama.fi/v2/historicalChainTvl/${encodeURIComponent(dllamaName)}`,
       {
-        next: { revalidate: 900 }, // 15 min, same cadence as the harness
+        next: { revalidate: 900 },
         headers: { "user-agent": "OCB-site/1.0" },
       },
     );
     if (!res.ok) return null;
     const arr = (await res.json()) as { date: number; tvl: number }[];
     if (!Array.isArray(arr) || arr.length === 0) return null;
-    const tail = arr.slice(-days);
-    return { slug, points: tail };
+    return { slug, points: arr };
   } catch (err) {
     if (typeof console !== "undefined") {
-      console.warn(`fetchChainTvlHistory ${slug} failed:`, err);
+      console.warn(`fetchChainTvlFullHistory ${slug} failed:`, err);
     }
     return null;
   }
+}
+
+/**
+ * Legacy 30-day helper used by other call sites. Thin wrapper that
+ * slices the full history. Kept for backward compat.
+ */
+export async function fetchChainTvlHistory(
+  slug: string,
+  days = 30,
+): Promise<ChainTvlHistory | null> {
+  const full = await fetchChainTvlFullHistory(slug);
+  if (!full) return null;
+  return { slug: full.slug, points: full.points.slice(-days) };
 }
