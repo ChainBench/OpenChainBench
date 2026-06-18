@@ -821,20 +821,3 @@ function parseDurationSec(d: string): number | null {
   return n * { s: 1, m: 60, h: 3600, d: 86_400 }[unit as "s" | "m" | "h" | "d"];
 }
 
-/**
- * Lookup helper for the per-chain leader stash. Returns the ProviderResult
- * that leads on `chain` (e.g. "solana"), or undefined when the bench
- * doesn't declare chain dimensions, when the chain isn't in the spec, or
- * when no live data was collected for that chain this cycle.
- *
- * Consumed by the chain-aware template placeholders (bench-template.ts),
- * the chain-aware OG image / badge endpoints (SEO + API surfaces), and
- * the products pages that want to call out a chain-specific winner
- * instead of the biased unfiltered aggregate.
- */
-export function bestForChain(
-  b: Benchmark,
-  chain: string,
-): ProviderResult | undefined {
-  return b.bestPerChain?.[chain];
-}

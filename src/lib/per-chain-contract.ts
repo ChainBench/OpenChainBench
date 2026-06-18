@@ -42,13 +42,3 @@ export function readBestPerChain(
   return v && typeof v === "object" ? v : undefined;
 }
 
-/**
- * Mirrors Agent 1's `bestForChain` helper. Pure lookup with no Prom call;
- * the per-chain leaders are precomputed at spec-load time.
- */
-export function bestForChain(
-  b: Benchmark,
-  chain: string,
-): ProviderResult | undefined {
-  return readBestPerChain(b)?.[chain];
-}

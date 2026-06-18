@@ -75,11 +75,6 @@ export const loadAllAlternatives = cache(async (): Promise<Alternative[]> => {
     .sort((a, b) => a.target_product.localeCompare(b.target_product));
 });
 
-export async function loadAlternativeSlugs(): Promise<string[]> {
-  const all = await loadAllAlternatives();
-  return all.map((a) => a.slug);
-}
-
 export async function loadAlternative(
   slug: string
 ): Promise<AlternativeWithBench | undefined> {

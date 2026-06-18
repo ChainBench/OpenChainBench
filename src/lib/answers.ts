@@ -88,11 +88,6 @@ export const loadAllAnswers = cache(async (): Promise<Answer[]> => {
     .sort((a, b) => a.slug.localeCompare(b.slug));
 });
 
-export async function loadAnswerSlugs(): Promise<string[]> {
-  const all = await loadAllAnswers();
-  return all.map((a) => a.slug);
-}
-
 export async function loadAnswer(
   slug: string,
 ): Promise<AnswerWithBench | undefined> {

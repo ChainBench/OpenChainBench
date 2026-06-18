@@ -6,7 +6,7 @@
 import { promises as dns } from "node:dns";
 import { isIP } from "node:net";
 
-export type PromVector = { metric: Record<string, string>; value: [number, string] };
+type PromVector = { metric: Record<string, string>; value: [number, string] };
 export type PromMatrix = { metric: Record<string, string>; values: [number, string][] };
 export type PromInstantResult =
   | { resultType: "vector"; result: PromVector[] }
