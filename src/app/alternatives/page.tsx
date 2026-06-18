@@ -4,7 +4,7 @@ import { ArrowUpRight } from "lucide-react";
 import { loadAllAlternatives } from "@/lib/alternatives";
 import { ProviderLogo } from "@/components/provider-logo";
 import { SITE } from "@/data/site";
-import { safeJsonLd } from "@/lib/jsonld";
+import { buildItemListJsonLd, safeJsonLd } from "@/lib/jsonld";
 import { pageMetadata } from "@/lib/page-metadata";
 
 const DESCRIPTION =
@@ -22,17 +22,14 @@ export const metadata: Metadata = pageMetadata({
 export default async function AlternativesPage() {
   const alternatives = await loadAllAlternatives();
 
-  const jsonld = {
-    "@context": "https://schema.org",
-    "@type": "ItemList",
+  const jsonld = buildItemListJsonLd({
     name: "Product alternatives on OpenChainBench",
-    itemListElement: alternatives.map((alt, i) => ({
-      "@type": "ListItem",
-      position: i + 1,
+    url: `${SITE.url}/alternatives`,
+    items: alternatives.map((alt) => ({
       name: `${alt.target_product} alternatives`,
       url: `${SITE.url}/alternatives/${alt.slug}`,
     })),
-  };
+  });
 
   return (
     <article className="mx-auto max-w-[900px] px-4 sm:px-6 py-10 sm:py-14">

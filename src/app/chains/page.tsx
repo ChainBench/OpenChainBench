@@ -4,7 +4,7 @@ import { ArrowUpRight } from "lucide-react";
 import { CHAINS, getBenchmarksForChain, type ChainEntry } from "@/lib/chains";
 import { ProviderLogo } from "@/components/provider-logo";
 import { SITE } from "@/data/site";
-import { safeJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
+import { buildItemListJsonLd, safeJsonLd } from "@/lib/jsonld";
 import { pageMetadata } from "@/lib/page-metadata";
 
 const DESCRIPTION =
@@ -32,26 +32,18 @@ export default async function ChainsHubPage() {
   // never sends a crawler to an empty `/chains/<slug>` page.
   const visible = enriched.filter((c) => c.benchCount > 0);
 
-  const itemList = {
-    "@context": "https://schema.org",
-    "@type": "ItemList",
+  const jsonLd = buildItemListJsonLd({
     name: "OpenChainBench chains",
-    numberOfItems: visible.length,
-    itemListElement: visible.map((c, i) => ({
-      "@type": "ListItem",
-      position: i + 1,
+    url: `${SITE.url}/chains`,
+    items: visible.map((c) => ({
       name: c.label,
       url: `${SITE.url}/chains/${c.slug}`,
     })),
-  };
-
-  const breadcrumb = {
-    "@context": "https://schema.org",
-    ...buildBreadcrumbJsonLd([
-      { name: "Home", item: SITE.url },
-      { name: "Chains", item: `${SITE.url}/chains` },
-    ]),
-  };
+    breadcrumb: [
+      { name: "Home", url: SITE.url },
+      { name: "Chains", url: `${SITE.url}/chains` },
+    ],
+  });
 
   const byCategory = new Map<string, EnrichedChain[]>();
   for (const c of visible) {
@@ -65,12 +57,7 @@ export default async function ChainsHubPage() {
       <script
         type="application/ld+json"
         // biome-ignore lint/security/noDangerouslySetInnerHtml: serialized via safeJsonLd
-        dangerouslySetInnerHTML={{ __html: safeJsonLd(itemList) }}
-      />
-      <script
-        type="application/ld+json"
-        // biome-ignore lint/security/noDangerouslySetInnerHtml: serialized via safeJsonLd
-        dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumb) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
       />
       <h1 className="display text-3xl sm:text-4xl text-ink leading-[1.05]">
         Chains tracked by OpenChainBench.
@@ -97,7 +84,7 @@ export default async function ChainsHubPage() {
                       <p className="display text-base sm:text-lg tracking-tight text-ink leading-tight truncate">
                         {c.label}
                       </p>
-                      <p className="mt-0.5 text-[10px] uppercase tracking-[0.16em] text-ink-faint">
+                      <p className="mt-0.5 label-mono-xs">
                         {c.benchCount} live benchmark
                         {c.benchCount === 1 ? "" : "s"}
                       </p>

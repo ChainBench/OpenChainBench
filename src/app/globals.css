@@ -219,13 +219,31 @@ table {
 
 /* Editorial section labels - sans-serif with wide tracking + uppercase
  * for a Bloomberg-style tech-editorial feel, instead of the developer-tool
- * vibe that monospace gives off when used on body / UI labels. */
+ * vibe that monospace gives off when used on body / UI labels.
+ *
+ * `.label-mono` remains for backward compat. The three sized variants below
+ * harmonise the three near-identical Tailwind class strings repeated ~133
+ * times across `src/**/*.tsx` (text-[10px]/[11px]/xs + 0.16em/0.18em + the
+ * matching ink ramp colour). Centralising them here means a copy-edit to
+ * the tracking or color ramp lands in one place instead of every call site. */
 .label-mono {
   font-family: var(--font-sans);
   font-size: 10px;
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.18em;
+}
+
+@layer components {
+  .label-mono-xs {
+    @apply text-[10px] uppercase tracking-[0.16em] text-ink-faint;
+  }
+  .label-mono-sm {
+    @apply text-[11px] uppercase tracking-[0.18em] text-ink-muted font-medium font-sans;
+  }
+  .label-mono-lg {
+    @apply text-xs uppercase tracking-[0.18em] text-ink-muted font-medium;
+  }
 }
 
 /* Chart pop animations */

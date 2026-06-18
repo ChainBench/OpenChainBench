@@ -23,7 +23,7 @@ export function MetricViewTabs({
 }) {
   return (
     <div className="mb-3 flex flex-wrap items-center gap-1">
-      <span className="mr-2 text-[10px] uppercase tracking-[0.16em] text-ink-faint">
+      <span className="mr-2 label-mono-xs">
         View
       </span>
       <Tab label={mainLabel} active={activeId == null} onClick={() => onSelect(null)} />

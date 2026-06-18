@@ -62,7 +62,7 @@ export async function RelatedProvidersSection({
                       <p className="font-semibold text-ink leading-tight truncate">
                         {c.name}
                       </p>
-                      <p className="font-sans text-[10px] uppercase tracking-[0.16em] text-ink-faint font-medium">
+                      <p className="font-sans label-mono-xs font-medium">
                         {c.sharedCount} shared{" "}
                         {c.sharedCount === 1 ? "benchmark" : "benchmarks"}
                       </p>
