@@ -4,6 +4,8 @@ import { getBenchmarkSlugs } from "@/data/benchmarks";
 import { getSpecs, loadAllBenchmarks } from "@/lib/spec";
 import { readHeartbeat, storeConfigured } from "@/lib/materialize/store";
 import { extractMetricName, Prometheus } from "@/lib/prometheus";
+import { COMPARE_PAIRS } from "@/data/compare-pairs";
+import { SITE } from "@/data/site";
 
 export const runtime = "nodejs";
 // Always read live state from prom. ISR cache here would defeat the
@@ -261,6 +263,40 @@ export async function GET(req: NextRequest) {
     prewarmErr = err instanceof Error ? err.message : String(err);
   }
 
+  // Pre-warm every curated /compare/<pair>. Each fetch triggers the
+  // route handler which builds SharedBench[], writes the result to KV
+  // via compare-cache, and lets Next.js refresh its ISR HTML cache for
+  // the pair. Without this, an unlucky first visitor in each 60 s ISR
+  // window pays the full upstream fan out (~7 s observed on staging).
+  //
+  // 5 minute cron cadence vs 60 s ISR window: ISR can still serve a
+  // cold render between cron ticks, but the underlying KV cache stays
+  // warm so the regen is sub-second instead of multi-second. Ad hoc
+  // pairs aren't warmed because the URL space is open ended; the long
+  // tail accepts a cold first hit.
+  //
+  // Self fetch with the CRON_SECRET so any future cron-gated middleware
+  // doesn't reject. AbortSignal caps each call at 20 s; failures are
+  // counted but never fail the cron.
+  let pairsWarmed = 0;
+  let pairsFailed = 0;
+  await Promise.all(
+    COMPARE_PAIRS.map(async (pair) => {
+      try {
+        const res = await fetch(`${SITE.url}/compare/${pair.slug}`, {
+          method: "GET",
+          headers: { "user-agent": "ocb-warmup-cron/1" },
+          cache: "no-store",
+          signal: AbortSignal.timeout(20_000),
+        });
+        if (res.ok) pairsWarmed += 1;
+        else pairsFailed += 1;
+      } catch {
+        pairsFailed += 1;
+      }
+    }),
+  );
+
   return NextResponse.json({
     checked: liveSpecs.length,
     transitions: transitions.length,
@@ -269,6 +305,8 @@ export async function GET(req: NextRequest) {
     dryRun: !webhook,
     transitionsList: transitions,
     prewarm: { count: prewarmCount, err: prewarmErr },
+    comparePairsWarmed: pairsWarmed,
+    comparePairsFailed: pairsFailed,
   });
 }
 
