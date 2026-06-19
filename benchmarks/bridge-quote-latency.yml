@@ -3,9 +3,9 @@
 slug: bridge-quote-latency
 number: "002"
 title: Fastest cross-chain bridge quote API, live ms ranking
-seo_title: "Fastest bridge quote API 2026: Mobula, deBridge, Relay, LI.FI"
-seo_description: "{{best_name}} leads fastest bridge quote API at {{best_p50}} (p50, 24h). Mobula, deBridge, Relay, LI.FI on identical USDC routes, refreshed every 5 minutes."
-subtitle: Time to receive a usable cross-chain quote, in milliseconds. Identical route and identical notional, measured every five minutes across Mobula, deBridge, Relay and LI.FI.
+seo_title: "Fastest bridge quote API 2026: Mobula, deBridge, Relay, LI.FI, Near Intents"
+seo_description: "{{best_name}} leads fastest bridge quote API at {{best_p50}} (p50, 24h). Mobula, deBridge, Relay, LI.FI, Near Intents on identical USDC routes, refreshed every 5 minutes."
+subtitle: Time to receive a usable cross-chain quote, in milliseconds. Identical route and identical notional, measured every five minutes across Mobula, deBridge, Relay, LI.FI and Near Intents.
 category: Bridges
 status: live
 metric: Quote latency
@@ -139,3 +139,16 @@ providers:
       success: avg(avg_over_time(bridge_quote_success{bridge="debridge"}[24h]))
       sample_size: sum(increase(bridge_quote_latency_ms_count{bridge="debridge"}[24h]))
       series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="debridge"}[1h])))
+
+  - slug: near-intents
+    name: Near Intents
+    tag: Intent layer (NEAR)
+    formula: "Median wall-clock ms over 24h for Near Intents 1Click API to return a usable USDC quote via the solver auction bus, sampled every 5 minutes across the supported routes and 3 notionals from eu-west."
+    queries:
+      p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="near-intents"}[24h])))
+      p90: histogram_quantile(0.90, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="near-intents"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="near-intents"}[24h])))
+      mean: sum(rate(bridge_quote_latency_ms_sum{bridge="near-intents"}[24h])) / sum(rate(bridge_quote_latency_ms_count{bridge="near-intents"}[24h]))
+      success: avg(avg_over_time(bridge_quote_success{bridge="near-intents"}[24h]))
+      sample_size: sum(increase(bridge_quote_latency_ms_count{bridge="near-intents"}[24h]))
+      series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="near-intents"}[1h])))
