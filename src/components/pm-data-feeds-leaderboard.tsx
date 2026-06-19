@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { ProviderLogo } from "@/components/provider-logo";
 import type { PmDataFeedRow } from "@/lib/pm-stats";
 
@@ -15,6 +16,7 @@ import type { PmDataFeedRow } from "@/lib/pm-stats";
 type SortKey = "freshnessP50Ms" | "freshnessP99Ms" | "uptime24h";
 
 export function PmDataFeedsLeaderboard({ rows }: { rows: PmDataFeedRow[] }) {
+  const router = useRouter();
   const [sortKey, setSortKey] = useState<SortKey>("freshnessP50Ms");
   const [sortDir, setSortDir] = useState<"desc" | "asc">("asc");
   const [q, setQ] = useState("");
@@ -106,7 +108,8 @@ export function PmDataFeedsLeaderboard({ rows }: { rows: PmDataFeedRow[] }) {
             {filtered.map((r, i) => (
               <tr
                 key={r.slug}
-                className="border-t border-ink/5 hover:bg-paper-soft/40 transition-colors"
+                onClick={() => router.push(`/products/${r.slug}`)}
+                className="border-t border-ink/5 hover:bg-paper-soft/40 transition-colors cursor-pointer"
               >
                 <Td muted mono>
                   {i + 1}
