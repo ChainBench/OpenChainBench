@@ -175,6 +175,21 @@ export default async function AlternativePage({
         </span>
       </div>
 
+      {/* Cross-link to the prediction-markets hub for the two PM
+          alternatives pages (polymarket, kalshi). Thin pill, breadcrumb-
+          adjacent, mirrors the HL companion treatment on the bench page. */}
+      {(alt.slug === "polymarket" || alt.slug === "kalshi") && (
+        <p className="mt-3 text-[11px] uppercase tracking-[0.16em] text-ink-muted">
+          Part of OpenChainBench{" "}
+          <Link
+            href={`/prediction-markets#${alt.slug}`}
+            className="text-ink-soft hover:text-ink transition-colors underline underline-offset-2"
+          >
+            prediction markets coverage
+          </Link>
+        </p>
+      )}
+
       <h1 className="mt-5 display text-2xl sm:text-3xl md:text-4xl tracking-tight">
         {alt.target_product} alternatives
       </h1>
