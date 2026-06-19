@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Download, Loader2, X } from "lucide-react";
+import { Download, Loader2, Share2, X } from "lucide-react";
 import type { Benchmark } from "@/types/benchmark";
+import { headlineSentence } from "@/lib/citation";
 
 type Template = {
   id: string;
@@ -176,6 +177,30 @@ export default function ShareSectionModal({
     }
     return base;
   };
+
+  // Pre-filled X (Twitter) and LinkedIn intent URLs. Pure URL composition,
+  // no fetch, safe on server render. Falls back to a generic sentence if
+  // `headlineSentence` returns a placeholder (status != live).
+  const tweetText = useMemo(() => {
+    const fallback = `${benchmark.title} live ranking on OpenChainBench`;
+    if (benchmark.status !== "live") return fallback;
+    const s = headlineSentence(benchmark);
+    return s && s.trim().length > 0 ? s : fallback;
+  }, [benchmark]);
+
+  // Canonical bench URL. Read live on the client so chain filter etc. flows
+  // through; on the server render we fall back to the bare bench path.
+  const canonicalUrl =
+    typeof window !== "undefined"
+      ? window.location.href
+      : `/benchmarks/${slug}`;
+
+  const tweetIntentUrl = `https://x.com/intent/tweet?text=${encodeURIComponent(
+    tweetText
+  )}&url=${encodeURIComponent(canonicalUrl)}`;
+  const linkedinIntentUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(
+    canonicalUrl
+  )}`;
 
   async function handleDownload(templateId: string) {
     const url = cardSrc(templateId);
@@ -403,6 +428,24 @@ export default function ShareSectionModal({
                     <Download size={14} strokeWidth={2.2} />
                     Download PNG
                   </button>
+                  <a
+                    href={tweetIntentUrl}
+                    target="_blank"
+                    rel="noopener"
+                    className="inline-flex items-center gap-1.5 rounded-md border border-ink px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-ink hover:bg-ink hover:text-paper transition-colors"
+                  >
+                    <Share2 size={14} strokeWidth={2.2} />
+                    Tweet this
+                  </a>
+                  <a
+                    href={linkedinIntentUrl}
+                    target="_blank"
+                    rel="noopener"
+                    className="inline-flex items-center gap-1.5 rounded-md border border-ink px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-ink hover:bg-ink hover:text-paper transition-colors"
+                  >
+                    <Share2 size={14} strokeWidth={2.2} />
+                    Share on LinkedIn
+                  </a>
                   <a
                     href={cardSrc(t.id)}
                     target="_blank"
