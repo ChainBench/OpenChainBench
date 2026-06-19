@@ -23,6 +23,9 @@ import {
 } from "@/lib/benches/hyperliquid/builder-stats";
 import { HlBuilderDashboard } from "@/components/benches/hyperliquid/builder-dashboard";
 import { RelatedProvidersSection } from "@/components/related-providers-section";
+import { getPmVenueContext } from "@/lib/pm-venue-context";
+import { PmVenueSection } from "@/components/pm-venue-section";
+import { PmDataFeedSection } from "@/components/pm-data-feed-section";
 
 export const revalidate = 60;
 
@@ -105,6 +108,11 @@ export default async function ProviderPage({
   // the slug isn't an HL builder.
   const isHlBuilder = await isHlBuilderSlug(p.slug);
   const hlStats = isHlBuilder ? await fetchHlBuilderStats(p.slug) : null;
+
+  // Prediction-market cohort dashboard. Cheap when the slug isn't a PM
+  // venue (just a map lookup, no Prom round-trip); when it is, reuses
+  // the same fetchPmCohort cache the hub page warms.
+  const pmContext = await getPmVenueContext(p.slug);
 
   const sorted = [...p.appearances].sort((a, b) => {
     if (a.rank !== b.rank) return a.rank - b.rank;
@@ -407,6 +415,26 @@ export default async function ProviderPage({
       })()}
 
       {hlStats && <HlBuilderDashboard stats={hlStats} name={p.name} />}
+
+      {pmContext?.kind === "venue" && (
+        <PmVenueSection
+          slug={pmContext.slug}
+          name={pmContext.name}
+          chainLabel={pmContext.chainLabel}
+          externalUrl={pmContext.externalUrl}
+          venueType={pmContext.venueType}
+          benchRows={pmContext.benchRows}
+        />
+      )}
+      {pmContext?.kind === "feed" && (
+        <PmDataFeedSection
+          slug={pmContext.slug}
+          name={pmContext.name}
+          logoSrc={pmContext.logoSrc}
+          externalUrl={pmContext.externalUrl}
+          benchRows={pmContext.benchRows}
+        />
+      )}
 
       {reg && (
         <section className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-8">
