@@ -117,6 +117,7 @@ export async function fetchPmCohort(): Promise<PmCohortSummary | null> {
     resolutionDelayP50,
     freshnessP50,
     freshnessP99,
+    uptime24h,
   ] = await Promise.all([
     queryVector(prom, `pm_venue_volume_30d_usd`),
     queryVector(prom, `pm_venue_volume_24h_usd`),
@@ -138,8 +139,18 @@ export async function fetchPmCohort(): Promise<PmCohortSummary | null> {
       prom,
       `histogram_quantile(0.5, sum by (le) (rate(pmres_resolution_delay_seconds_bucket[30d])))`,
     ),
-    queryVector(prom, `pm_freshness_p50_ms`),
-    queryVector(prom, `pm_freshness_p99_ms`),
+    queryVector(
+      prom,
+      `histogram_quantile(0.5, sum by (provider, le) (rate(pm_freshness_delta_ms_bucket{venue="polymarket",provider!="polymarket"}[1h])))`,
+    ),
+    queryVector(
+      prom,
+      `histogram_quantile(0.99, sum by (provider, le) (rate(pm_freshness_delta_ms_bucket{venue="polymarket",provider!="polymarket"}[1h])))`,
+    ),
+    queryVector(
+      prom,
+      `avg_over_time(pm_health{venue="polymarket",provider!="polymarket"}[24h])`,
+    ),
   ]);
 
   // Map raw vectors onto the venue rows. Order of the seed list is kept
@@ -202,23 +213,25 @@ export async function fetchPmCohort(): Promise<PmCohortSummary | null> {
   // claims a 0 ms freshness lead over itself.
   const freshnessP50By = new Map<string, number>();
   const freshnessP99By = new Map<string, number>();
+  const uptimeBy = new Map<string, number>();
   for (const s of freshnessP50 ?? []) {
-    const r = s.labels.relay;
+    const r = s.labels.provider;
     if (r) freshnessP50By.set(r, s.value);
   }
   for (const s of freshnessP99 ?? []) {
-    const r = s.labels.relay;
+    const r = s.labels.provider;
     if (r) freshnessP99By.set(r, s.value);
   }
-  // Uptime for the relays themselves isn't a published gauge yet, so we
-  // leave it null. When the freshness harness ships an uptime gauge,
-  // wire it here.
+  for (const s of uptime24h ?? []) {
+    const r = s.labels.provider;
+    if (r) uptimeBy.set(r, s.value);
+  }
   const dataFeeds: PmDataFeedRow[] = PM_DATA_FEEDS.map((f) => ({
     slug: f.slug,
     name: f.name,
     freshnessP50Ms: f.isReference ? null : (freshnessP50By.get(f.slug) ?? null),
     freshnessP99Ms: f.isReference ? null : (freshnessP99By.get(f.slug) ?? null),
-    uptime24h: null,
+    uptime24h: f.isReference ? null : (uptimeBy.get(f.slug) ?? null),
     coverage: f.coverage,
     isReference: f.isReference,
   }));
