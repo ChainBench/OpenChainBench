@@ -1,11 +1,11 @@
 /**
- * On-demand bench variant for the client-side chain/region/kind tabs.
+ * On-demand bench variant for the client-side chain/region/kind/venue tabs.
  *
- * GET /api/bench/<slug>/variant?chain=<c>&region=<r>&kind=<k>
+ * GET /api/bench/<slug>/variant?chain=<c>&region=<r>&kind=<k>&venue=<v>
  *
  * Returns the filtered Benchmark as JSON. Exists so the bench page can
  * ship ONLY the aggregate view (the old embedded variant map multiplied
- * every ISR regeneration by chains × regions × kinds full provider
+ * every ISR regeneration by chains × regions × kinds × venues full provider
  * loads). Each (slug, filters) combo is deduped across users by the
  * per-variant unstable_cache in the spec loader, so the first tab flip
  * per minute pays one Prom roundtrip and everyone else gets cache hits.
@@ -46,8 +46,8 @@ export async function GET(
   // Validate every filter against the declared dimensions and use the
   // canonical value: these end up in PromQL label selectors downstream.
   const url = new URL(req.url);
-  const filters: { chain?: string; region?: string; kind?: string } = {};
-  for (const dim of ["chain", "region", "kind"] as const) {
+  const filters: { chain?: string; region?: string; kind?: string; venue?: string } = {};
+  for (const dim of ["chain", "region", "kind", "venue"] as const) {
     const raw = url.searchParams.get(dim)?.toLowerCase().trim();
     if (!raw || isAll(raw)) continue;
     const known = (aggregate.dimensions?.[dim] ?? []).find(

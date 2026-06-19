@@ -295,7 +295,7 @@ export const SpecSchema = z
 
     /* Optional drill-down dimensions. When set, the bench page renders
      * a tab selector for the dimension; queries get the corresponding
-     * label filter injected server-side. Supported: chain, region.
+     * label filter injected server-side. Supported: chain, region, kind, venue.
      *
      * Values are constrained to a safe label-value alphabet because they
      * end up in PromQL selectors. escapePromLabelValue handles the wire
@@ -320,6 +320,14 @@ export const SpecSchema = z
           )
           .optional(),
         kind: z
+          .array(
+            z.object({
+              value: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/),
+              label: z.string().min(1).max(64),
+            })
+          )
+          .optional(),
+        venue: z
           .array(
             z.object({
               value: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/),
@@ -474,4 +482,3 @@ export const SpecSchema = z
   });
 
 export type Spec = z.infer<typeof SpecSchema>;
-type SpecProvider = z.infer<typeof provider>;

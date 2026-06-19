@@ -135,9 +135,11 @@ export default async function BenchmarkPage({
   const chainOptions = aggregate.dimensions?.chain ?? [];
   const regionOptions = aggregate.dimensions?.region ?? [];
   const kindOptions = aggregate.dimensions?.kind ?? [];
+  const venueOptions = aggregate.dimensions?.venue ?? [];
   const chain = chainOptions[0]?.value ?? null;
   const region = regionOptions[0]?.value ?? null;
   const kind = kindOptions[0]?.value ?? null;
+  const venue = venueOptions[0]?.value ?? null;
 
   // Variants (chain × region × kind) are NOT embedded anymore. The old
   // pre-fetch awaited every variant (rpc-capabilities: 39 full provider
@@ -156,7 +158,7 @@ export default async function BenchmarkPage({
   // as per-chain. The client renders the aggregate as a placeholder
   // while the true variant loads from /api/bench/[slug]/variant.
   const variants: Record<string, Benchmark> = {
-    [variantKey(null, null, null)]: aggregate,
+    [variantKey(null, null, null, null)]: aggregate,
   };
   const benchmark = aggregate;
 
@@ -480,9 +482,11 @@ export default async function BenchmarkPage({
             chainOptions={chainOptions}
             regionOptions={regionOptions}
             kindOptions={kindOptions}
+            venueOptions={venueOptions}
             initialChain={chain ?? null}
             initialRegion={region ?? null}
             initialKind={kind ?? null}
+            initialVenue={venue ?? null}
           />
         </Suspense>
       )}
@@ -605,8 +609,9 @@ function variantKey(
   chain: string | null,
   region: string | null,
   kind: string | null,
+  venue: string | null = null,
 ): string {
-  return `${chain ?? "__none"}|${region ?? "__none"}|${kind ?? "__none"}`;
+  return `${chain ?? "__none"}|${region ?? "__none"}|${kind ?? "__none"}|${venue ?? "__none"}`;
 }
 
 /** Links to /benchmarks/<slug>/<chain> pages for dimension-shaped
