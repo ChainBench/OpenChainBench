@@ -363,6 +363,29 @@ export default async function ProviderPage({
                       </Link>
                     </>
                   )}
+                  {/* Prediction-markets hub pill. Surfaces a one-click
+                      jump from a venue/data provider product page to the
+                      PM coverage hub. Hard-coded slug list, same shape
+                      as the HL companion treatment elsewhere. */}
+                  {(
+                    p.slug === "polymarket" ||
+                    p.slug === "kalshi" ||
+                    p.slug === "limitless" ||
+                    p.slug === "manifold" ||
+                    p.slug === "myriad" ||
+                    p.slug === "mobula" ||
+                    p.slug === "codex"
+                  ) && (
+                    <>
+                      <span className="text-ink-faint"> · </span>
+                      <Link
+                        href="/prediction-markets"
+                        className="hover:text-ink transition-colors underline underline-offset-2 decoration-rule"
+                      >
+                        View on /prediction-markets
+                      </Link>
+                    </>
+                  )}
                 </p>
               </div>
             </header>

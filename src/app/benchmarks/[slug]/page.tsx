@@ -360,6 +360,46 @@ export default async function BenchmarkPage({
         </div>
       )}
 
+      {/* PM companion hub callout. Same shape as the HL one above,
+          hard-coded by slug. The four PM benches all sit next to the
+          /prediction-markets editorial hub which compares venue APIs
+          + data aggregators. Keeps the bench page surgical, no spec
+          field needed. */}
+      {(benchmark.slug === "pm-rate-limits" ||
+        benchmark.slug === "pm-api-latency" ||
+        benchmark.slug === "pm-data-freshness" ||
+        benchmark.slug === "polymarket-resolution-delay") && (
+        <div
+          className="mt-6 max-w-3xl rounded-lg border border-ink/15 px-4 py-3 flex items-start gap-3 flex-wrap"
+          style={{
+            background:
+              "linear-gradient(180deg, rgba(157,101,255,0.06), rgba(157,101,255,0.01))",
+          }}
+        >
+          <span
+            className="mt-0.5 inline-block w-2 h-2 rounded-full shrink-0"
+            style={{ background: "#9d65ff" }}
+            aria-hidden
+          />
+          <div className="min-w-0 flex-1">
+            <p className="label-mono text-[10px] text-ink-faint mb-0.5">
+              Companion page
+            </p>
+            <p className="text-sm text-ink leading-snug">
+              Cross-bench comparison of prediction market venue APIs and
+              data aggregators?{" "}
+              <Link
+                href="/prediction-markets"
+                className="font-semibold underline underline-offset-2"
+                style={{ color: "#7a47db" }}
+              >
+                Open the prediction markets hub →
+              </Link>
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Disclaimer callout, rendered before the SEO intro so it
           catches the eye BEFORE the reader scrolls to the leaderboard.
           Optional, used on benches where the metric is easy to misread
