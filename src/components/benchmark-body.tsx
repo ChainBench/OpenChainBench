@@ -622,7 +622,14 @@ export function BenchmarkBody({
                     ? `Product ledger · sorted by ${viewBenchmark.ledgerColumns[0].label}`
                     : "Product ledger · sorted by p50"}
             </p>
-            <LedgerTable benchmark={viewBenchmark} activePanel={activePanel} topN={topN} />
+            <LedgerTable
+              benchmark={viewBenchmark}
+              activePanel={activePanel}
+              topN={topN}
+              scopeChain={effectiveChain}
+              scopeRegion={effectiveRegion}
+              scopeKind={effectiveKind}
+            />
           </div>
 
           {viewBenchmark.unit !== "count" &&

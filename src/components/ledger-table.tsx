@@ -10,6 +10,7 @@ import type {
   ProviderResult,
 } from "@/types/benchmark";
 import { ChainCoverageChip } from "@/components/chain-coverage-chip";
+import { EmbedBadgeButton } from "@/components/embed-badge-button";
 import { Hint } from "@/components/hint";
 import { Sparkline } from "@/components/sparkline";
 import { ProviderLogo } from "@/components/provider-logo";
@@ -17,6 +18,7 @@ import { ProviderTypeBadge } from "@/components/provider-type-badge";
 import { fmtUnit } from "@/lib/format";
 import { buildProviderColors } from "@/lib/series-colors";
 import { isRegion } from "@/lib/brand";
+import { isAll } from "@/lib/dimensions";
 
 type Props = {
   benchmark: Benchmark;
@@ -26,6 +28,12 @@ type Props = {
    *  the headline p50 metric. */
   activePanel?: MetricPanel | null;
   topN?: number | null;
+  /** Active dimension filters on the bench page. Passed through to the
+   *  per-row Embed CTA so the generated snippet/badge stay scoped to what
+   *  the reader is looking at. "all" sentinels are normalized to null. */
+  scopeChain?: string | null;
+  scopeRegion?: string | null;
+  scopeKind?: string | null;
 };
 
 /**
@@ -35,8 +43,20 @@ type Props = {
  * to recognition; sort order remains mechanical (ascending p50) and no
  * row is highlighted as the "winner".
  */
-export function LedgerTable({ benchmark, activePanel, topN }: Props) {
+export function LedgerTable({
+  benchmark,
+  activePanel,
+  topN,
+  scopeChain = null,
+  scopeRegion = null,
+  scopeKind = null,
+}: Props) {
   const { results, extras } = benchmark;
+  // Drop "all" sentinels so the snippet/badge URL stays unscoped instead
+  // of carrying ?chain=all (which the badge route 400s on).
+  const embedChain = scopeChain && !isAll(scopeChain) ? scopeChain : null;
+  const embedRegion = scopeRegion && !isAll(scopeRegion) ? scopeRegion : null;
+  const embedKind = scopeKind && !isAll(scopeKind) ? scopeKind : null;
   const unit = activePanel?.unit ?? benchmark.unit;
   const higherIsBetter = activePanel?.higherIsBetter ?? benchmark.higherIsBetter;
   const panelActive = !!activePanel;
@@ -288,6 +308,9 @@ export function LedgerTable({ benchmark, activePanel, topN }: Props) {
               sparkMax={sparkMax}
               color={colors.get(r.slug) ?? "var(--color-ink-soft)"}
               benchmark={benchmark}
+              embedChain={embedChain}
+              embedRegion={embedRegion}
+              embedKind={embedKind}
             />
           ))}
         </tbody>
@@ -312,6 +335,9 @@ function Row({
   sparkMax,
   color,
   benchmark,
+  embedChain,
+  embedRegion,
+  embedKind,
 }: {
   r: ProviderResult;
   i: number;
@@ -330,6 +356,9 @@ function Row({
   sparkMax: number;
   color: string;
   benchmark: Benchmark;
+  embedChain: string | null;
+  embedRegion: string | null;
+  embedKind: string | null;
 }) {
   const isOffline = r.availability === "unavailable";
   const deltaPct = fieldValue > 0 ? ((value - fieldValue) / fieldValue) * 100 : 0;
@@ -388,6 +417,19 @@ function Row({
             {r.type && !isOffline && (
               <span className="hidden md:inline-flex">
                 <ProviderTypeBadge type={r.type} />
+              </span>
+            )}
+            {!isOffline && !isRegion(r.slug) && (
+              <span className="ml-auto pl-2 shrink-0">
+                <EmbedBadgeButton
+                  benchSlug={benchmark.slug}
+                  benchTitle={benchmark.title}
+                  providerSlug={r.slug}
+                  providerName={r.name}
+                  chain={embedChain}
+                  region={embedRegion}
+                  kind={embedKind}
+                />
               </span>
             )}
           </span>
