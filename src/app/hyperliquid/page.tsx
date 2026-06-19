@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { fetchHlCohort, fetchHlHip3Cohort } from "@/lib/hl-builder-stats";
-import { HlHubTabs } from "@/components/hl-hub-tabs";
+import { fetchHlCohort, fetchHlHip3Cohort } from "@/lib/benches/hyperliquid/builder-stats";
+import { HlHubTabs } from "@/components/benches/hyperliquid/hub-tabs";
 import { pageMetadata } from "@/lib/page-metadata";
 import { safeJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";

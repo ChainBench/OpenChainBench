@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { HlCohortLeaderboard } from "@/components/hl-cohort-leaderboard";
-import { HlHip3Leaderboard } from "@/components/hl-hip3-leaderboard";
+import { HlCohortLeaderboard } from "@/components/benches/hyperliquid/cohort-leaderboard";
+import { HlHip3Leaderboard } from "@/components/benches/hyperliquid/hip3-leaderboard";
 import type {
   HlCohortSummary,
   HlHip3Summary,
-} from "@/lib/hl-builder-stats";
+} from "@/lib/benches/hyperliquid/builder-stats";
 
 /**
  * Tab wrapper for the `/hyperliquid` hub. Swaps between the frontends

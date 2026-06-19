@@ -1,4 +1,4 @@
-import type { PercentileBucket } from "@/lib/hl-builder-stats";
+import type { PercentileBucket } from "@/lib/benches/hyperliquid/builder-stats";
 
 /**
  * Volume share by trader-rank percentile, 30d window. Renders as a

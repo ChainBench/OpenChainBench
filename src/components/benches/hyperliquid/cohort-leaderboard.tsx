@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ProviderLogo } from "@/components/provider-logo";
-import type { HlCohortRow } from "@/lib/hl-builder-stats";
+import type { HlCohortRow } from "@/lib/benches/hyperliquid/builder-stats";
 
 /**
  * Sortable + searchable leaderboard of every tracked Hyperliquid
