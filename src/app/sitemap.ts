@@ -5,6 +5,7 @@ import { getBenchmarks } from "@/data/benchmarks";
 import { loadAllAlternatives } from "@/lib/alternatives";
 import { loadAllAnswers } from "@/lib/answers";
 import { CHAINS, getBenchmarksForChain } from "@/lib/chains";
+import { CATEGORIES } from "@/lib/categories";
 import { isAll } from "@/lib/dimensions";
 import { getProviderSlugs } from "@/lib/providers";
 import { SITE } from "@/data/site";
@@ -111,6 +112,14 @@ async function buildStaticFallback(): Promise<MetadataRoute.Sitemap> {
       lastModified: BUILD_TIME,
       changeFrequency: "daily" as const,
       priority: 0.85,
+    })),
+    // Category hubs are filesystem-driven (no KV / no Prom) so they belong
+    // in the static fallback alongside chain hubs and answers.
+    ...CATEGORIES.map((c) => ({
+      url: `${SITE.url}/benchmarks/category/${c.slug}`,
+      lastModified: BUILD_TIME,
+      changeFrequency: "daily" as const,
+      priority: 0.8,
     })),
     ...answers.map((a) => ({
       url: `${SITE.url}/answers/${a.slug}`,
@@ -254,6 +263,26 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
     )
   ).filter((r): r is NonNullable<typeof r> => r !== null);
 
+  // Category hub pages. Mirror the chain hub pattern: lastmod = max
+  // lastRunAt across the benches in the category so freshly run data
+  // bumps the per-category URL too. Categories that currently have zero
+  // live benches drop from the sitemap (the page route 404s them too).
+  const categoryRoutes: MetadataRoute.Sitemap = CATEGORIES.map((c) => {
+    const inCategory = benchmarks.filter((b) => b.category === c.label);
+    if (inCategory.length === 0) return null;
+    const last = inCategory.reduce<Date>((acc, b) => {
+      if (!b.lastRunAt) return acc;
+      const t = safeDate(b.lastRunAt, new Date(0));
+      return t > acc ? t : acc;
+    }, new Date(0));
+    return {
+      url: `${SITE.url}/benchmarks/category/${c.slug}`,
+      lastModified: last.getTime() > 0 ? last : catalogTs,
+      changeFrequency: "daily" as const,
+      priority: 0.8,
+    };
+  }).filter((r): r is NonNullable<typeof r> => r !== null);
+
   return [
     ...staticRoutes,
     ...benchmarkRoutes,
@@ -261,6 +290,7 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
     ...alternativeRoutes,
     ...answerRoutes,
     ...chainRoutes,
+    ...categoryRoutes,
   ];
 }
 
