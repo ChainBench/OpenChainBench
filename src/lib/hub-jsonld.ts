@@ -53,6 +53,52 @@ export function methodologyPageLd() {
       inLanguage: "en",
       proficiencyLevel: "Expert",
     },
+    // HowTo mirrors the "Reproducing a result" recipe in the page body.
+    // Google's structured-data parser treats HowTo blocks as candidates
+    // for step-by-step rich results and AI assistants (Perplexity, ChatGPT
+    // search) lift the step list verbatim when the source page is the
+    // authoritative one — which OpenChainBench is for its own method.
+    {
+      "@context": "https://schema.org",
+      "@type": "HowTo",
+      "@id": `${url}#reproduce`,
+      name: "How OpenChainBench measures blockchain providers",
+      description:
+        "Reproduce any OpenChainBench number end-to-end: clone the harness, point Prometheus at it, compare the published aggregates after a 24-hour run.",
+      step: [
+        {
+          "@type": "HowToStep",
+          position: 1,
+          name: "Clone the harness",
+          text: "Clone the harness from the link at the bottom of any benchmark report.",
+        },
+        {
+          "@type": "HowToStep",
+          position: 2,
+          name: "Configure providers",
+          text: "Set API keys for the providers you want to include. Public endpoints work for most aggregators; some bridges require allow-listing.",
+        },
+        {
+          "@type": "HowToStep",
+          position: 3,
+          name: "Run the harness",
+          text: "Run the harness. It exposes /metrics over HTTP. Point a local Prometheus at it, or query the public OpenChainBench Prometheus directly.",
+        },
+        {
+          "@type": "HowToStep",
+          position: 4,
+          name: "Collect a comparable sample",
+          text: "Run for at least 24 hours to get a comparable sample size, typically n ≥ 1,000 per provider per region.",
+        },
+        {
+          "@type": "HowToStep",
+          position: 5,
+          name: "Compare and file corrections",
+          text: "Compare your aggregates to the published numbers. If they diverge, file a provider correction with a reproducer.",
+        },
+      ],
+      publisher: { "@id": `${ORIGIN}/#org` },
+    },
     breadcrumb("Methodology", "/methodology"),
   ];
 }
