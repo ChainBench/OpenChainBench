@@ -104,8 +104,9 @@ function variantKey(
   chain: string | null,
   region: string | null,
   kind: string | null,
+  venue: string | null = null,
 ): string {
-  return `${chain ?? "__none"}|${region ?? "__none"}|${kind ?? "__none"}`;
+  return `${chain ?? "__none"}|${region ?? "__none"}|${kind ?? "__none"}|${venue ?? "__none"}`;
 }
 
 /** Region values that appear in extras.seriesByRegion24h. Used when the
@@ -133,27 +134,32 @@ export function BenchmarkBody({
   chainOptions,
   regionOptions,
   kindOptions = [],
+  venueOptions = [],
   initialChain,
   initialRegion,
   initialKind = null,
+  initialVenue = null,
 }: {
   variants: Record<string, Benchmark>;
   chainOptions: ChainOption[];
   regionOptions: ChainOption[];
   kindOptions?: ChainOption[];
+  venueOptions?: ChainOption[];
   initialChain: string | null;
   initialRegion: string | null;
   initialKind?: string | null;
+  initialVenue?: string | null;
 }) {
-  // Read ?chain= / ?region= / ?kind= client-side. The server can't read these any
-  // more (doing so would force /benchmarks/<slug> to render dynamic on
-  // every visit) so URL-driven filter state is hydrated here. Falls back
-  // to the server-rendered initial when the URL has no filter or a
-  // value that doesn't match the spec's dimensions.
+  // Read ?chain= / ?region= / ?kind= / ?venue= client-side. The server can't
+  // read these any more (doing so would force /benchmarks/<slug> to render
+  // dynamic on every visit) so URL-driven filter state is hydrated here.
+  // Falls back to the server-rendered initial when the URL has no filter or
+  // a value that doesn't match the spec's dimensions.
   const searchParams = useSearchParams();
   const urlChain = searchParams.get("chain");
   const urlRegion = searchParams.get("region");
   const urlKind = searchParams.get("kind");
+  const urlVenue = searchParams.get("venue");
   const urlLayer = searchParams.get("layer");
   const resolvedInitialChain =
     (urlChain && chainOptions.find((c) => c.value === urlChain)?.value) ?? initialChain;
@@ -161,12 +167,15 @@ export function BenchmarkBody({
     (urlRegion && regionOptions.find((r) => r.value === urlRegion)?.value) ?? initialRegion;
   const resolvedInitialKind =
     (urlKind && kindOptions.find((k) => k.value === urlKind)?.value) ?? initialKind;
+  const resolvedInitialVenue =
+    (urlVenue && venueOptions.find((v) => v.value === urlVenue)?.value) ?? initialVenue;
   const resolvedInitialLayer: ProviderLayer =
     urlLayer === "l2" ? "l2" : "l1";
 
   const [chain, setChain] = useState<string | null>(resolvedInitialChain);
   const [region, setRegion] = useState<string | null>(resolvedInitialRegion);
   const [kind, setKind] = useState<string | null>(resolvedInitialKind);
+  const [venue, setVenue] = useState<string | null>(resolvedInitialVenue);
   const [layer, setLayer] = useState<ProviderLayer>(resolvedInitialLayer);
 
   useEffect(() => {
@@ -174,6 +183,7 @@ export function BenchmarkBody({
     syncParam(url, "chain", chain, chainOptions);
     syncParam(url, "region", region, regionOptions);
     syncParam(url, "kind", kind, kindOptions);
+    syncParam(url, "venue", venue, venueOptions);
     // Layer param: drop when default ("l1"), keep when user picked l2.
     if (layer === "l1") url.searchParams.delete("layer");
     else url.searchParams.set("layer", layer);
@@ -181,14 +191,16 @@ export function BenchmarkBody({
     if (next !== window.location.pathname + window.location.search) {
       window.history.replaceState(null, "", next);
     }
-  }, [chain, region, kind, layer, chainOptions, regionOptions, kindOptions]);
+  }, [chain, region, kind, venue, layer, chainOptions, regionOptions, kindOptions, venueOptions]);
 
   const fallbackChain = chainOptions[0]?.value ?? null;
   const fallbackRegion = regionOptions[0]?.value ?? null;
   const fallbackKind = kindOptions[0]?.value ?? null;
+  const fallbackVenue = venueOptions[0]?.value ?? null;
   const effectiveChain = chainOptions.length > 0 ? (chain ?? fallbackChain) : null;
   const effectiveRegion = regionOptions.length > 0 ? (region ?? fallbackRegion) : null;
   const effectiveKind = kindOptions.length > 0 ? (kind ?? fallbackKind) : null;
+  const effectiveVenue = venueOptions.length > 0 ? (venue ?? fallbackVenue) : null;
 
   // The page ships ONLY the aggregate view (embedding every variant made
   // ISR regenerations take 30-60 s). Filtered variants are fetched here
@@ -197,13 +209,14 @@ export function BenchmarkBody({
   // tab still works, numbers stay cross-dimension) and may retry on the
   // next flip.
   const [variantMap, setVariantMap] = useState<Record<string, Benchmark>>(variants);
-  const activeKey = variantKey(effectiveChain, effectiveRegion, effectiveKind);
+  const activeKey = variantKey(effectiveChain, effectiveRegion, effectiveKind, effectiveVenue);
   const aggregateBench =
-    variants[variantKey(null, null, null)] ?? Object.values(variants)[0];
+    variants[variantKey(null, null, null, null)] ?? Object.values(variants)[0];
   const isAllSelection =
     isAllDim(effectiveChain) &&
     isAllDim(effectiveRegion) &&
-    isAllDim(effectiveKind);
+    isAllDim(effectiveKind) &&
+    isAllDim(effectiveVenue);
   useEffect(() => {
     if (variantMap[activeKey] || !aggregateBench) return;
     // The all/all/all selection IS the aggregate: derived at render time,
@@ -213,6 +226,7 @@ export function BenchmarkBody({
     if (!isAllDim(effectiveChain)) qs.set("chain", effectiveChain!);
     if (!isAllDim(effectiveRegion)) qs.set("region", effectiveRegion!);
     if (!isAllDim(effectiveKind)) qs.set("kind", effectiveKind!);
+    if (!isAllDim(effectiveVenue)) qs.set("venue", effectiveVenue!);
     let cancelled = false;
     fetch(`/api/bench/${aggregateBench.slug}/variant?${qs.toString()}`)
       .then((r) => (r.ok ? r.json() : null))
@@ -241,25 +255,29 @@ export function BenchmarkBody({
   // cross-axis re-warms.
   useEffect(() => {
     if (!aggregateBench) return;
-    const combos: [string | null, string | null, string | null][] = [
+    const combos: [string | null, string | null, string | null, string | null][] = [
       ...chainOptions.map(
-        (c) => [c.value, effectiveRegion, effectiveKind] as [string | null, string | null, string | null],
+        (c) => [c.value, effectiveRegion, effectiveKind, effectiveVenue] as [string | null, string | null, string | null, string | null],
       ),
       ...regionOptions.map(
-        (r) => [effectiveChain, r.value, effectiveKind] as [string | null, string | null, string | null],
+        (r) => [effectiveChain, r.value, effectiveKind, effectiveVenue] as [string | null, string | null, string | null, string | null],
+      ),
+      ...venueOptions.map(
+        (v) => [effectiveChain, effectiveRegion, effectiveKind, v.value] as [string | null, string | null, string | null, string | null],
       ),
     ];
     let cancelled = false;
     const timers: ReturnType<typeof setTimeout>[] = [];
     let i = 0;
-    for (const [c, r, k] of combos) {
-      if (isAllDim(c) && isAllDim(r) && isAllDim(k)) continue;
-      const key = variantKey(c, r, k);
+    for (const [c, r, k, v] of combos) {
+      if (isAllDim(c) && isAllDim(r) && isAllDim(k) && isAllDim(v)) continue;
+      const key = variantKey(c, r, k, v);
       if (variantMap[key]) continue;
       const qs = new URLSearchParams();
       if (!isAllDim(c)) qs.set("chain", c!);
       if (!isAllDim(r)) qs.set("region", r!);
       if (!isAllDim(k)) qs.set("kind", k!);
+      if (!isAllDim(v)) qs.set("venue", v!);
       timers.push(
         setTimeout(() => {
           if (cancelled) return;
@@ -285,7 +303,7 @@ export function BenchmarkBody({
     // variantMap intentionally omitted: presence is re-checked inside the
     // functional setState, a duplicate in-flight fetch is harmless.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [effectiveChain, effectiveRegion, effectiveKind, aggregateBench]);
+  }, [effectiveChain, effectiveRegion, effectiveKind, effectiveVenue, aggregateBench]);
 
   const benchmark = variantMap[activeKey] ?? aggregateBench;
   // True while the selected chain/region/kind variant is still loading:
@@ -385,7 +403,7 @@ export function BenchmarkBody({
   const pendingCls = variantPending
     ? " opacity-40 animate-pulse pointer-events-none"
     : "";
-  const pendingLabel = [effectiveChain, effectiveRegion, effectiveKind]
+  const pendingLabel = [effectiveChain, effectiveRegion, effectiveKind, effectiveVenue]
     .filter((v): v is string => !!v && !isAllDim(v))
     .join(" · ");
   const isDraft = viewBenchmark.status === "draft";
@@ -399,7 +417,8 @@ export function BenchmarkBody({
       {(hasLayerSplit ||
         chainOptions.length > 0 ||
         regionOptions.length > 0 ||
-        kindOptions.length > 0) && (
+        kindOptions.length > 0 ||
+        venueOptions.length > 0) && (
         <div className="mt-8 space-y-3">
           {hasLayerSplit && (
             <DimensionRow
@@ -410,6 +429,24 @@ export function BenchmarkBody({
               ]}
               selected={layer}
               onSelect={(v) => setLayer(v as ProviderLayer)}
+            />
+          )}
+          {venueOptions.length > 0 && (
+            <DimensionRow
+              label="Venue"
+              options={venueOptions}
+              selected={venue ?? fallbackVenue}
+              onSelect={setVenue}
+              metaByValue={Object.fromEntries(
+                venueOptions
+                  .map((o) => [
+                    o.value,
+                    summarize(
+                      variantMap[variantKey(effectiveChain, effectiveRegion, effectiveKind, o.value)],
+                    ),
+                  ])
+                  .filter(([, v]) => v !== null) as [string, ChainMeta][]
+              )}
             />
           )}
           {kindOptions.length > 0 && (
@@ -423,7 +460,7 @@ export function BenchmarkBody({
                   .map((o) => [
                     o.value,
                     summarize(
-                      variantMap[variantKey(effectiveChain, effectiveRegion, o.value)],
+                      variantMap[variantKey(effectiveChain, effectiveRegion, o.value, effectiveVenue)],
                     ),
                   ])
                   .filter(([, v]) => v !== null) as [string, ChainMeta][]
@@ -440,7 +477,7 @@ export function BenchmarkBody({
                 chainOptions
                   .map((o) => [
                     o.value,
-                    summarize(variantMap[variantKey(o.value, effectiveRegion, effectiveKind)]),
+                    summarize(variantMap[variantKey(o.value, effectiveRegion, effectiveKind, effectiveVenue)]),
                   ])
                   .filter(([, v]) => v !== null) as [string, ChainMeta][]
               )}
@@ -456,7 +493,7 @@ export function BenchmarkBody({
                 regionOptions
                   .map((o) => [
                     o.value,
-                    summarize(variantMap[variantKey(effectiveChain, o.value, effectiveKind)]),
+                    summarize(variantMap[variantKey(effectiveChain, o.value, effectiveKind, effectiveVenue)]),
                   ])
                   .filter(([, v]) => v !== null) as [string, ChainMeta][]
               )}
