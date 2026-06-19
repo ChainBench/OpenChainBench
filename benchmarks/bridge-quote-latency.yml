@@ -97,7 +97,7 @@ providers:
       p90: histogram_quantile(0.90, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="mobula"}[24h])))
       p99: histogram_quantile(0.99, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="mobula"}[24h])))
       mean: sum(rate(bridge_quote_latency_ms_sum{bridge="mobula"}[24h])) / sum(rate(bridge_quote_latency_ms_count{bridge="mobula"}[24h]))
-      success: avg_over_time(bridge_quote_success{bridge="mobula"}[24h])
+      success: avg(avg_over_time(bridge_quote_success{bridge="mobula"}[24h]))
       sample_size: sum(increase(bridge_quote_latency_ms_count{bridge="mobula"}[24h]))
       series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="mobula"}[1h])))
 
@@ -110,7 +110,7 @@ providers:
       p90: histogram_quantile(0.90, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="relay"}[24h])))
       p99: histogram_quantile(0.99, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="relay"}[24h])))
       mean: sum(rate(bridge_quote_latency_ms_sum{bridge="relay"}[24h])) / sum(rate(bridge_quote_latency_ms_count{bridge="relay"}[24h]))
-      success: avg_over_time(bridge_quote_success{bridge="relay"}[24h])
+      success: avg(avg_over_time(bridge_quote_success{bridge="relay"}[24h]))
       sample_size: sum(increase(bridge_quote_latency_ms_count{bridge="relay"}[24h]))
       series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="relay"}[1h])))
 
@@ -123,7 +123,7 @@ providers:
       p90: histogram_quantile(0.90, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="lifi"}[24h])))
       p99: histogram_quantile(0.99, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="lifi"}[24h])))
       mean: sum(rate(bridge_quote_latency_ms_sum{bridge="lifi"}[24h])) / sum(rate(bridge_quote_latency_ms_count{bridge="lifi"}[24h]))
-      success: avg_over_time(bridge_quote_success{bridge="lifi"}[24h])
+      success: avg(avg_over_time(bridge_quote_success{bridge="lifi"}[24h]))
       sample_size: sum(increase(bridge_quote_latency_ms_count{bridge="lifi"}[24h]))
       series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="lifi"}[1h])))
 
@@ -136,6 +136,6 @@ providers:
       p90: histogram_quantile(0.90, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="debridge"}[24h])))
       p99: histogram_quantile(0.99, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="debridge"}[24h])))
       mean: sum(rate(bridge_quote_latency_ms_sum{bridge="debridge"}[24h])) / sum(rate(bridge_quote_latency_ms_count{bridge="debridge"}[24h]))
-      success: avg_over_time(bridge_quote_success{bridge="debridge"}[24h])
+      success: avg(avg_over_time(bridge_quote_success{bridge="debridge"}[24h]))
       sample_size: sum(increase(bridge_quote_latency_ms_count{bridge="debridge"}[24h]))
       series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="debridge"}[1h])))
