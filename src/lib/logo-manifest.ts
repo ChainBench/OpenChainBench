@@ -80,6 +80,7 @@ const RAW: Record<string, string> = {
   enso: "/logos/enso.png",
   lighter: "/logos/lighter.svg",
   debridge: "/logos/debridge.svg",
+  "near-intents": "/logos/near-intents.svg",
 
   // ─── Public RPC providers ───
   publicnode: "/logos/publicnode.avif",

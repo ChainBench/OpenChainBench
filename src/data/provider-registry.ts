@@ -246,6 +246,15 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Cross-chain intent protocol using the DLN solver network. Liquidity is filled by solvers on the destination chain, no wrapped assets or LP pools.",
     twitter: "@deBridgeFinance",
   },
+  "near-intents": {
+    url: "https://near-intents.org",
+    description:
+      "Cross-chain intent layer from NEAR Protocol. The 1Click API runs a solver auction bus, signed quotes are settled by the winning market maker. Quote latency reflects bid arrival, not route search across LPs.",
+    twitter: "@NEARProtocol",
+    longDescription:
+      "Near Intents abstracts cross-chain transfers behind a single solver auction. The client submits an intent (source asset, destination asset, amount, recipient) and a 1Click coordinator polls a pool of market makers for sealed bids. The winning bid is returned as a signed quote that the client can execute by sending funds to a one-time deposit address. Asset coverage is NEP-141 wrapped on the NEAR omni-bridge for EVM and SVM chains, with HyperCore as a destination-only target.",
+    docs: "https://docs.near-intents.org",
+  },
 
   // ─── Perp DEX ─────────────────────────────────────────────────
   lighter: {
