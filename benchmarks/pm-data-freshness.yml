@@ -99,36 +99,35 @@ providers:
     tag: Native gateway WebSocket, no auth, sub 50ms publish latency
     formula: "Polymarket gateway publish time is the canonical T0 on the Polymarket tab. The near zero row is the network round trip from the harness to the gateway, not a comparison against another source."
     queries:
-      # Polymarket is T0 by construction on the Polymarket tab. Delta vs
-      # itself is zero. Use a sub millisecond floor (0.5 ms) so the row
-      # and the chart line are visible on a linear y axis next to the
-      # multi second Codex value. Pure vector(0) gets clipped to the
-      # axis baseline and disappears. The venue label filter is injected
-      # at runtime by the dimensions framework; on the Kalshi tab this
-      # provider has no data and is naturally hidden.
-      p50: vector(0.5)
-      p90: vector(0.5)
-      p99: vector(0.5)
-      mean: vector(0.5)
+      # Polymarket is T0 by construction on the Polymarket tab. Multiply
+      # the 0.5 ms floor by pm_health{provider="polymarket"} so the
+      # dimension framework's injected venue label gates the row:
+      # pm_health{provider="polymarket", venue="polymarket"} = 1 -> 0.5,
+      # pm_health{provider="polymarket", venue="kalshi"} = 0 -> 0,
+      # and the leaderboard hides empty rows.
+      p50: pm_health{provider="polymarket"} * 0.5
+      p90: pm_health{provider="polymarket"} * 0.5
+      p99: pm_health{provider="polymarket"} * 0.5
+      mean: pm_health{provider="polymarket"} * 0.5
       success: avg_over_time(pm_health{provider="polymarket"}[24h])
       sample_size: sum(increase(pm_events_total{provider="polymarket"}[24h]))
-      series: vector(0.5)
+      series: pm_health{provider="polymarket"} * 0.5
 
   - slug: kalshi
     name: Kalshi
-    tag: Native venue WebSocket, msg.ts_ms is canonical T0
-    formula: "Kalshi gateway publish time is the canonical T0 on the Kalshi tab. The near zero row is the network round trip from the harness to the Kalshi WebSocket, not a comparison against another source."
+    tag: Native venue REST, create_date is canonical T0
+    formula: "Kalshi gateway publish time is the canonical T0 on the Kalshi tab. The near zero row is the network round trip from the harness to the Kalshi endpoint, not a comparison against another source."
     queries:
-      # Symmetric to the Polymarket row: on the Kalshi tab Kalshi is T0
-      # by construction. Floor at 0.5 ms for chart visibility. On the
-      # Polymarket tab this provider has no data and is hidden.
-      p50: vector(0.5)
-      p90: vector(0.5)
-      p99: vector(0.5)
-      mean: vector(0.5)
+      # Symmetric to the Polymarket row, gated by pm_health{provider="kalshi"}
+      # so the venue label injected at runtime zeros out the row on the
+      # Polymarket tab.
+      p50: pm_health{provider="kalshi"} * 0.5
+      p90: pm_health{provider="kalshi"} * 0.5
+      p99: pm_health{provider="kalshi"} * 0.5
+      mean: pm_health{provider="kalshi"} * 0.5
       success: avg_over_time(pm_health{provider="kalshi"}[24h])
       sample_size: sum(increase(pm_events_total{provider="kalshi"}[24h]))
-      series: vector(0.5)
+      series: pm_health{provider="kalshi"} * 0.5
 
   - slug: mobula
     name: Mobula
