@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { ProviderLogo } from "@/components/provider-logo";
 import type { PmVenueRow } from "@/lib/pm-stats";
 
@@ -24,6 +25,7 @@ type SortKey =
   | "marketsAbove1m";
 
 export function PmVenuesLeaderboard({ rows }: { rows: PmVenueRow[] }) {
+  const router = useRouter();
   const [sortKey, setSortKey] = useState<SortKey>("volume30d");
   const [sortDir, setSortDir] = useState<"desc" | "asc">("desc");
   const [q, setQ] = useState("");
@@ -130,7 +132,8 @@ export function PmVenuesLeaderboard({ rows }: { rows: PmVenueRow[] }) {
             {filtered.map((r, i) => (
               <tr
                 key={r.slug}
-                className="border-t border-ink/5 hover:bg-paper-soft/40 transition-colors"
+                onClick={() => router.push(`/products/${r.slug}`)}
+                className="border-t border-ink/5 hover:bg-paper-soft/40 transition-colors cursor-pointer"
               >
                 <Td muted mono>
                   {i + 1}
