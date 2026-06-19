@@ -46,12 +46,13 @@ abstract: |
 
 methodology:
   - "Polymarket T0. `wss://ws-subscriptions-clob.polymarket.com/ws/market` is public, no auth, sub 50ms gateway publish latency from EU West. Cross correlation uses (conditionId, priceUSD rounded to 3 decimals, sizeUSD micros, 5s time bucket)."
-  - "Kalshi T0. `wss://external-api-ws.kalshi.com/trade-api/ws/v2`, channel `trade`. The harness reads `msg.ts_ms` as the canonical publish timestamp, then matches on (ticker, yes_price, count, 5s bucket)."
+  - "Kalshi T0. `https://api.elections.kalshi.com/v1/social/trades` (REST), polled every 5s with cursor pagination. Every trade carries `create_date` at microsecond precision; that timestamp is the canonical T0. Poll cadence affects only correlation timing, not the freshness number. The official Kalshi WebSocket needs RSA PSS signed headers from a US KYC account and 403s from non US IPs, not viable for a public benchmark."
   - "Mobula PM WebSocket. `wss://pm-api-prod-eu.mobula.io`. Auth via API key in the subscribe payload. Cloudflare on the gateway requires a browser User Agent on the upgrade request, default Go HTTP UA is silently filtered. Covers Polymarket today, Kalshi coverage is not yet shipped."
   - "Codex GraphQL subscriptions. `wss://graph.codex.io/graphql` with the `graphql-transport-ws` subprotocol. Firehose `onPredictionTradesCreated` subscription filtered client side to the venue's marketIds. Covers both Polymarket and Kalshi."
   - "Basket. Top 20 active markets by 24h volume per venue, refreshed every 5 minutes. Polymarket pulls from `gamma-api.polymarket.com`, Kalshi pulls from `api.elections.kalshi.com/trade-api/v2/markets`."
   - "Histogram buckets: 10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000, 30000, 60000 ms. The venue's own arrivals always land in the smallest bucket because by construction we measure other providers against it."
   - "Region. `eu-west` (Railway europe-west4). Both venue gateways are geographically distributed; deltas reflect EU client to EU gateway latency."
+  - "Venue clock asymmetry. Polymarket CLOB trades carry no venue timestamp so T0 is when our harness receives the WS event; the Polymarket-to-harness RTT cancels inside the Codex delta. Kalshi's REST `create_date` is venue-side so the Codex Kalshi delta includes a Codex-to-harness RTT (50 to 100 ms) the Polymarket math cancels out. Kalshi rows are slightly stricter for the same provider, not more favorable; the gap is small versus the multi-second deltas the chart highlights."
 
 findings:
   - "Each venue's own gateway is by definition the freshest source on the leaderboard for that venue. The lag versus its own publish time is on the order of the network round trip from the harness to the gateway, typically below 100 ms p50 from EU West."
