@@ -13,13 +13,12 @@ import { OraclePairMatrix } from "@/components/oracle-pair-matrix";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { ChainHeadingsSummary } from "@/components/chain-headings-summary";
 import { CitationBar } from "@/components/citation-bar";
-import { CiteBlock } from "@/components/cite-block";
 import { LiveIndicator } from "@/components/live-indicator";
 import { ShareSection } from "@/components/share-section";
 import { ExportVideoSection } from "@/components/export-video-section";
 import { ReportSection } from "@/components/report-section";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
-import { citeBundle, headlineSentence } from "@/lib/citation";
+import { headlineSentence } from "@/lib/citation";
 import { capDescription } from "@/lib/seo-text";
 import { getBenchCreatedAt } from "@/lib/seo/bench-dates";
 import { SITE } from "@/data/site";
@@ -178,10 +177,6 @@ export default async function BenchmarkPage({
 
   const benchmarkUrl = `${SITE.url}/benchmarks/${benchmark.slug}`;
   const sentence = headlineSentence(benchmark);
-  // Three pre-formatted citation strings (Plain / BibTeX / APA). Computed
-  // here so the canonical wording lands in the initial server-rendered
-  // HTML — crawlers and pasteboard users never wait for client hydration.
-  const cite = citeBundle(benchmark, SITE.url);
   const jsonLd = {
     "@context": "https://schema.org",
     "@graph": [
@@ -437,13 +432,7 @@ export default async function BenchmarkPage({
           the page to a pasteable quote or a JSON endpoint. */}
       {!isDraft && <CitationBar benchmark={benchmark} />}
 
-      {/* Pre-formatted Plain / BibTeX / APA citation block. Renders
-          server-side so the canonical URL is in the initial HTML for
-          crawlers and so journalists can right-click → copy without
-          waiting for hydration. */}
-      {!isDraft && <CiteBlock cite={cite} />}
-
-      {/* Methodology - expanded by default so readers can verify the
+{/* Methodology - expanded by default so readers can verify the
           measurement before reading the numbers. Collapsible for repeat
           visitors who already know the harness. */}
       {!isDraft && (
