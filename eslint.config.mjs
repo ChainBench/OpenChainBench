@@ -19,6 +19,15 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Vercel build artifacts (lint shouldn't crawl them during `vercel dev`).
+    ".vercel/**",
+    // The Railway materialize worker is a long-lived Node process, not
+    // part of the Next bundle. Linting it under the same Next config
+    // surfaces false positives for `eslint-plugin-react` etc., and the
+    // worker is tested via `tsc --noEmit` like the rest of the repo.
+    "worker/**",
+    // CLI scripts run via `tsx`, never bundled into Next pages.
+    "scripts/**",
   ]),
 ]);
 
