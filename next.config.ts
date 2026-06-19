@@ -1,11 +1,17 @@
 import type { NextConfig } from "next";
 
-// Content-Security-Policy. `'unsafe-inline'` for scripts is needed because
-// three pages emit JSON-LD via `dangerouslySetInnerHTML` (layout.tsx,
-// providers/[slug]/page.tsx, benchmarks/[slug]/page.tsx). The blocks are
-// JSON.stringify of editor-controlled data, no user input, so the residual
-// XSS risk is bounded. Future hardening: move JSON-LD to <Script> with a
-// sha256 hash in script-src.
+// Content-Security-Policy. `'unsafe-inline'` for scripts is needed
+// because ~27 pages emit JSON-LD via `dangerouslySetInnerHTML` plus two
+// short bootstrap scripts in layout.tsx (theme + iOS-webview detection).
+// Most of the JSON-LD content is dynamic per slug/dataset, so a fixed
+// sha256 whitelist isn't viable; the static bootstrap pair could be
+// hashed but would lock layout.tsx and shift CSP to a build-time codegen
+// step. Inputs are always editor-controlled (specs, providers, chain
+// data), `safeJsonLd()` escapes `<`, `>`, `&` and the U+2028/U+2029
+// breakers, and there's no user input touching these payloads, so the
+// residual XSS surface is bounded. Style-src 'unsafe-inline' is needed
+// for Tailwind + Next style injection; that's not removable without
+// dropping framework features.
 const RELAY_WS = "wss://ocb-stream-relay-production.up.railway.app";
 // Origin of the standalone Remotion renderer that serves Export Video MP4s
 // (cached via sha256 at /v/<hash>.mp4). Allowed in media-src so the
