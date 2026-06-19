@@ -1,9 +1,33 @@
 import Link from "next/link";
-import { fetchPmCohort } from "@/lib/pm-stats";
+import { fetchPmCohort, type PmCohortSummary, type PmVenueRow, type PmDataFeedRow } from "@/lib/pm-stats";
 import { PmHubTabs } from "@/components/pm-hub-tabs";
+import { PmVenueSection } from "@/components/pm-venue-section";
+import { PmDataFeedSection } from "@/components/pm-data-feed-section";
+import type { PmVenueBenchRow } from "@/components/pm-venue-bench-cards";
 import { pageMetadata } from "@/lib/page-metadata";
 import { safeJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
+
+/**
+ * Mapping from registry venue slug → external homepage URL + display
+ * chain label. Drives the per-venue anchored section heading + the
+ * "View on X" external link. Hardcoded because the venue set is small
+ * and rarely-changing; same shape as the harness Registry over in
+ * mobula-monorepo/miniapps/pm-cohort-stats/.
+ */
+const VENUE_META: Record<string, { url: string; chainLabel: string }> = {
+  polymarket: { url: "https://polymarket.com", chainLabel: "Polygon" },
+  kalshi: { url: "https://kalshi.com", chainLabel: "Offchain US" },
+  limitless: { url: "https://limitless.exchange", chainLabel: "Base" },
+  manifold: { url: "https://manifold.markets", chainLabel: "Offchain play money" },
+  myriad: { url: "https://myriad.markets", chainLabel: "Offchain multi chain" },
+};
+
+const FEED_META: Record<string, { url?: string; logoSrc?: string }> = {
+  "polymarket-clob": { url: "https://polymarket.com", logoSrc: "/logos/polymarket.png" },
+  mobula: { url: "https://mobula.io", logoSrc: "/logos/mobula.png" },
+  codex: { url: "https://codex.io", logoSrc: "/logos/codex.png" },
+};
 
 /**
  * Hub landing page for the prediction markets cohort. SSR'd against
@@ -191,6 +215,50 @@ export default async function PredictionMarketsHubPage() {
             (api latency, resolution delay, freshness). All gauges
             scraped from the public OCB Prom, refresh interval 60s.
           </p>
+
+          {/* Anchored deep-dive sections, one per venue then one per
+              data feed. Each section is reachable via the table row
+              link in the tabs above (clicking a venue scrolls to its
+              #slug section). Sections render gracefully when the
+              underlying KPI fetch returns null. */}
+          <div className="mt-12">
+            <p
+              className="label-mono text-[10px] text-ink-faint mb-2"
+              style={{ fontFamily: "var(--font-mono, monospace)" }}
+            >
+              Venues in depth
+            </p>
+            {cohort.venues.map((v) => (
+              <PmVenueSection
+                key={v.slug}
+                slug={v.slug}
+                name={v.name}
+                chainLabel={VENUE_META[v.slug]?.chainLabel ?? "Unknown"}
+                externalUrl={VENUE_META[v.slug]?.url ?? "#"}
+                venueType={v.type}
+                benchRows={benchRowsForVenue(cohort, v)}
+              />
+            ))}
+          </div>
+
+          <div className="mt-12">
+            <p
+              className="label-mono text-[10px] text-ink-faint mb-2"
+              style={{ fontFamily: "var(--font-mono, monospace)" }}
+            >
+              Data feeds in depth
+            </p>
+            {cohort.dataFeeds.map((f) => (
+              <PmDataFeedSection
+                key={f.slug}
+                slug={f.slug}
+                name={f.name}
+                logoSrc={FEED_META[f.slug]?.logoSrc}
+                externalUrl={FEED_META[f.slug]?.url}
+                benchRows={benchRowsForDataFeed(f)}
+              />
+            ))}
+          </div>
         </>
       ) : (
         <p className="text-sm text-ink-faint italic">
@@ -243,6 +311,98 @@ export default async function PredictionMarketsHubPage() {
       </footer>
     </article>
   );
+}
+
+/**
+ * Construct the bench-card rows for one venue from the cohort summary.
+ * The venue row already carries the per-bench numbers we want to show
+ * (median resolution delay from #039, p50 API latency from #038);
+ * everything else is null until the corresponding gauge is in scope.
+ */
+function benchRowsForVenue(
+  cohort: PmCohortSummary,
+  venue: PmVenueRow,
+): PmVenueBenchRow[] {
+  const cohortSize = cohort.venues.length;
+  return [
+    {
+      benchSlug: "pm-api-latency",
+      label: "API latency",
+      blurb: "Warm price endpoint, 24h p50 across 3 regions.",
+      rank: rankWithinCohort(cohort.venues, "p50ApiLatencyMs", venue.slug, false),
+      cohortSize,
+      value: fmtMs(venue.p50ApiLatencyMs),
+      vsMedian: null,
+      tone: "teal",
+    },
+    {
+      benchSlug: "polymarket-resolution-delay",
+      label: "Resolution delay",
+      blurb: "ProposePrice anchor to QuestionResolved block, median.",
+      rank: rankWithinCohort(cohort.venues, "medianResolutionDelayMin", venue.slug, false),
+      cohortSize,
+      value: fmtMinutes(venue.medianResolutionDelayMin),
+      vsMedian: null,
+      tone: "cyan",
+    },
+    {
+      benchSlug: "pm-data-freshness",
+      label: "Data freshness",
+      blurb: "Third party relays vs the venue's canonical T0 stream.",
+      rank: null,
+      cohortSize,
+      value: null,
+      vsMedian: null,
+      tone: "indigo",
+    },
+    {
+      benchSlug: "pm-rate-limits",
+      label: "Rate limits",
+      blurb: "Warm endpoint behavior under daily ramp tests.",
+      rank: null,
+      cohortSize,
+      value: null,
+      vsMedian: null,
+      tone: "violet",
+    },
+  ];
+}
+
+/**
+ * Construct the bench-card rows for one data feed. Data freshness is the
+ * relevant bench (032). The reference feed (Polymarket CLOB) is
+ * special-cased inside <PmDataFeedSection> to render a T0 badge.
+ */
+function benchRowsForDataFeed(feed: PmDataFeedRow): PmVenueBenchRow[] {
+  return [
+    {
+      benchSlug: "pm-data-freshness",
+      label: "Freshness vs T0",
+      blurb: "Lag between this relay and Polymarket CLOB T0.",
+      rank: null,
+      cohortSize: 0,
+      value: feed.isReference ? null : fmtMs(feed.freshnessP50Ms),
+      vsMedian: null,
+      tone: "indigo",
+    },
+  ];
+}
+
+function rankWithinCohort(
+  venues: PmVenueRow[],
+  key: "p50ApiLatencyMs" | "medianResolutionDelayMin",
+  slug: string,
+  higherIsBetter: boolean,
+): number | null {
+  const populated = venues
+    .map((r) => ({ slug: r.slug, v: r[key] }))
+    .filter((r) => r.v != null && Number.isFinite(r.v as number));
+  if (populated.length === 0) return null;
+  populated.sort((a, b) =>
+    higherIsBetter ? (b.v as number) - (a.v as number) : (a.v as number) - (b.v as number),
+  );
+  const idx = populated.findIndex((r) => r.slug === slug);
+  return idx >= 0 ? idx + 1 : null;
 }
 
 function SummaryCard({
