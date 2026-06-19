@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { ProviderLogo } from "@/components/provider-logo";
-import type { HlHip3Row } from "@/lib/hl-builder-stats";
+import type { HlHip3Row } from "@/lib/benches/hyperliquid/builder-stats";
 
 /**
  * Sortable leaderboard of HIP-3 builder-deployed dexes on Hyperliquid.

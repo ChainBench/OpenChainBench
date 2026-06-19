@@ -20,8 +20,8 @@ import { buildBreadcrumbJsonLd, safeJsonLd } from "@/lib/jsonld";
 import {
   fetchHlBuilderStats,
   isHlBuilderSlug,
-} from "@/lib/hl-builder-stats";
-import { HlBuilderDashboard } from "@/components/hl-builder-dashboard";
+} from "@/lib/benches/hyperliquid/builder-stats";
+import { HlBuilderDashboard } from "@/components/benches/hyperliquid/builder-dashboard";
 import { RelatedProvidersSection } from "@/components/related-providers-section";
 
 export const revalidate = 60;

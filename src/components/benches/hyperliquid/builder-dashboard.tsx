@@ -1,9 +1,9 @@
 import Link from "next/link";
-import type { HlBuilderStats } from "@/lib/hl-builder-stats";
-import { HlPerformanceChart } from "@/components/hl-performance-chart";
-import { HlCoinDistribution } from "@/components/hl-coin-distribution";
-import { HlUserPercentile } from "@/components/hl-user-percentile";
-import { HlTopUsersTable } from "@/components/hl-top-users-table";
+import type { HlBuilderStats } from "@/lib/benches/hyperliquid/builder-stats";
+import { HlPerformanceChart } from "@/components/benches/hyperliquid/performance-chart";
+import { HlCoinDistribution } from "@/components/benches/hyperliquid/coin-distribution";
+import { HlUserPercentile } from "@/components/benches/hyperliquid/user-percentile";
+import { HlTopUsersTable } from "@/components/benches/hyperliquid/top-users-table";
 
 /**
  * Per-builder HyperTracker-parity dashboard on /products/[slug].

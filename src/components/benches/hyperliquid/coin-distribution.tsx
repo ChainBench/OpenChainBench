@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { CoinShare } from "@/lib/hl-builder-stats";
+import type { CoinShare } from "@/lib/benches/hyperliquid/builder-stats";
 
 /**
  * 24h notional volume split by coin. Donut + legend, same idiom as the

@@ -12,7 +12,7 @@
 
 import { NextResponse } from "next/server";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
-import { isHlBuilderSlug } from "@/lib/hl-builder-stats";
+import { isHlBuilderSlug } from "@/lib/benches/hyperliquid/builder-stats";
 
 export const runtime = "nodejs";
 export const revalidate = 30;
