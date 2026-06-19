@@ -3,6 +3,7 @@ import { getBenchmark } from "@/data/benchmarks";
 import { SITE } from "@/data/site";
 import {
   citationQuote,
+  citeBundle,
   fieldValue,
   headlineSentence,
   leader,
@@ -69,6 +70,7 @@ export async function GET(
     asOf: b.lastRunAt,
     headline: headlineSentence(b),
     quote: citationQuote(b, SITE.url),
+    cite: citeBundle(b, SITE.url),
     pageUrl: `${SITE.url}/benchmarks/${b.slug}`,
     ogImage: `${SITE.url}/api/og/${b.slug}`,
     source: b.source,

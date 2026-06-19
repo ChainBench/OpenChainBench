@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getBenchmarks } from "@/data/benchmarks";
 import { SITE } from "@/data/site";
-import { fieldValue, leader, headlineSentence } from "@/lib/citation";
+import { citeBundle, fieldValue, leader, headlineSentence } from "@/lib/citation";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
@@ -39,6 +39,7 @@ export async function GET(req: Request) {
       ogImage: `${SITE.url}/api/og/${b.slug}`,
       source: b.source,
       license: "CC-BY-4.0",
+      cite: citeBundle(b, SITE.url),
     };
   });
 

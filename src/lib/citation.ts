@@ -53,6 +53,51 @@ export function citationQuote(b: Benchmark, origin: string): string {
   return `${sentence} Source: OpenChainBench (${origin}/benchmarks/${b.slug}).`;
 }
 
+/** Pre-formatted citation strings (Plain / BibTeX / APA) for the page
+ *  `<CiteBlock>` and the public JSON endpoints. Computed server-side so
+ *  the same canonical wording lands in HTML, in the API, and in whatever
+ *  an LLM scrapes. Date is computed from the current request time and
+ *  spelled out in ISO so journalists and BibTeX both stay happy. */
+export type CiteBundle = {
+  plain: string;
+  bibtex: string;
+  apa: string;
+};
+
+const MONTHS = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+
+export function citeBundle(
+  b: Pick<Benchmark, "slug" | "title">,
+  origin: string,
+  now: Date = new Date(),
+): CiteBundle {
+  const url = `${origin}/benchmarks/${b.slug}`;
+  const yyyy = now.getUTCFullYear();
+  const mm = String(now.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(now.getUTCDate()).padStart(2, "0");
+  const isoDate = `${yyyy}-${mm}-${dd}`;
+  const longDate = `${MONTHS[now.getUTCMonth()]} ${now.getUTCDate()}, ${yyyy}`;
+  const bibKey = `ocb_${b.slug.replace(/-/g, "_")}`;
+  return {
+    plain: `OpenChainBench. "${b.title}". Retrieved ${isoDate}. ${url}`,
+    bibtex: `@misc{${bibKey},\n  author = {OpenChainBench},\n  title  = {${b.title}},\n  year   = {${yyyy}},\n  url    = {${url}},\n  note   = {Retrieved ${isoDate}}\n}`,
+    apa: `OpenChainBench. (${yyyy}). ${b.title}. Retrieved ${longDate}, from ${url}`,
+  };
+}
+
 /** Compact sparkline (last N points, 24h) for the JSON payload. */
 export function sparklineFor(b: Benchmark, providerSlug?: string): number[] {
   const series = b.extras.series24h ?? {};
