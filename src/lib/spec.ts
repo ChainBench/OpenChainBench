@@ -72,7 +72,7 @@ async function benchFromStore(
  * untouched.
  */
 function overlayEditorial(stored: Benchmark, spec: Spec): Benchmark {
-  return {
+  const overlaid: Benchmark = {
     ...stored,
     seoTitle: spec.seo_title ?? stored.seoTitle,
     seoDescription: spec.seo_description ?? stored.seoDescription,
@@ -92,6 +92,15 @@ function overlayEditorial(stored: Benchmark, spec: Spec): Benchmark {
     // worker to rewrite the snapshot.
     dimensions: spec.dimensions ?? stored.dimensions,
   };
+  // Resolve `{{p50:slug}}`, `{{name:slug}}`, `{{best_name}}` etc. in the
+  // overlaid editorial text. Without this, a YAML edit that ships AHEAD
+  // of the next materialise sweep renders literal `{{p50:geckoterminal}}`
+  // tokens on the page because the stored snapshot was rendered against
+  // an older spec text (or never rendered at all on the fast path that
+  // hits overlayEditorial directly). The materialise sweep also passes
+  // its output through renderBenchmarkText; calling it here on the
+  // fallback path keeps the two paths consistent.
+  return renderBenchmarkText(overlaid);
 }
 
 // Per-bench unfiltered cache. ONE unstable_cache entry per slug so a
