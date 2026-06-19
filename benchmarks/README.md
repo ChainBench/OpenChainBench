@@ -8,33 +8,51 @@ One YAML file per benchmark, one source of truth.
 benchmarks/<slug>.yml
         │
         ▼
-src/lib/spec.ts ──► Prometheus HTTP API ──► live numbers
-        │                                          │
-        ▼                                          ▼
-src/data/benchmarks.ts (mock fallback)  ───► Benchmark[]
+src/lib/spec-schema.ts         ← Zod contract
         │
         ▼
-   Paper-styled report at /benchmarks/<slug>
+worker/index.ts (Railway)      ← materializer, sweeps Prom every 60s and
+        │                        writes per-(bench, variant) snapshots
+        ▼
+Redis snapshot store (Upstash)
+        │
+        ▼
+src/lib/spec.ts                ← reads snapshots, falls back to live Prom
+        │                        when a snapshot is missing or too old
+        ▼
+src/data/benchmarks.ts         ← async getters
+        │
+        ▼
+Next.js App Router (ISR 60s)
+        │
+        ▼
+Paper-styled report at /benchmarks/<slug>
 ```
 
-If Prometheus answers, the page renders live numbers. If it doesn't (network error, no metrics yet, missing labels), the page falls back to the mock entry of the same `slug` in `src/data/benchmarks.ts` so the report still ships.
+There is no mock fallback. If Prometheus has nothing (no harness yet, transient outage with no snapshot in store) the page renders in `draft` state with an "Awaiting first run" notice. Half-live data is worse than no data because readers can't tell which numbers to trust.
 
 ## Submitting a new benchmark
 
+The long-form contributor guide is [`/CONTRIBUTING.md`](../CONTRIBUTING.md). Short version:
+
 1. **Pick a slug.** Lowercase, hyphenated, e.g. `wallet-portfolio-latency`.
-2. **Add the editorial mock.** Append a new entry to `MOCK_BENCHMARKS` in `src/data/benchmarks.ts` with title, abstract, methodology, findings, providers and placeholder numbers. The mock is what readers see until the harness fills Prometheus.
-3. **Create the spec.** Drop a `benchmarks/<slug>.yml` in this directory with the Prometheus URL and the PromQL queries (see `aggregator-quote-latency.yml` for shape).
-4. **Open a PR.** The build picks the spec up automatically.
+2. **Open an issue** with the [Propose a benchmark template](https://github.com/ChainBench/OpenChainBench/issues/new?template=new-benchmark.yml). Get methodology feedback before writing code.
+3. **Create the spec** at `benchmarks/<slug>.yml`. Format below. Use `aggregator-head-lag.yml` as a reference.
+4. **Build and host the harness** (see [`harnesses/README.md`](../harnesses/README.md)).
+5. **Wire the scrape** in `infrastructure/prometheus/prometheus.yml`.
+6. **Open a PR against `dev`.** CI runs `pnpm check` (validate + typecheck + lint + test).
 
 ## Spec reference
 
 ```yaml
-slug: my-benchmark            # required, lowercase-hyphenated
-number: "006"                 # required, 3-digit string
+slug: my-benchmark            # required, lowercase-hyphenated, must match filename
+number: "006"                 # required, 3-digit string (read the highest existing
+                              #            number in benchmarks/ and increment)
 title: Short editorial title  # required, used as the H1
 seo_title: Long SEO title     # optional, browser tab + meta only. falls back to title
 subtitle: One-line dek        # required
-category: Data                # required: Aggregators | Bridges | Data | Wallets | RPCs
+category: Data                # required: Aggregators | Bridges | Blockchains |
+                              #           Data | Trading | Wallets | RPCs
 status: live                  # default: live; "draft" hides results, keeps editorial
 metric: Field coverage        # required, label rendered above the values
 unit: pct                     # required: ms | s | pct | bps | count
@@ -45,10 +63,12 @@ methodology:                  # required, ≥1 bullet
   - "First constraint"
   - "Second constraint"
 findings: []                  # optional, ordered list rendered after the data
-source: https://github.com/...  # required, link to the harness folder
+source: https://github.com/...  # required, link to the harness folder (or YAML
+                                #            for harnesses still in private repos)
 
 prometheus:
-  url: https://prom.example   # required for live data; else override via PROMETHEUS_URL env var
+  url: https://prom.openchainbench.com  # required, shared Prom URL (override per
+                                        # deploy via PROMETHEUS_URL env var)
   window: 24h                 # window for rate()/quantile aggregations. default 24h
 
 # Optional drill-down dimensions. When set, the bench page renders a
@@ -56,6 +76,7 @@ prometheus:
 # Currently supported: chain.
 dimensions:
   chain:
+    - { value: all,    label: All chains }
     - { value: solana, label: Solana }
     - { value: bnb,    label: BNB Chain }
 
@@ -63,6 +84,9 @@ providers:
   - slug: provider-slug       # required, kebab-case
     name: Provider Name       # required, display name
     tag: Short tagline        # optional, rendered next to the name
+    type: aggregator          # optional, architectural category for apples-to-
+                              #           apples framing (protocol | aggregator |
+                              #           intent | relay)
     queries:
       p50: <PromQL>            # required for live mode
       p90: <PromQL>            # required for live mode
@@ -83,38 +107,29 @@ providers:
           series: <PromQL>
 ```
 
-### Notes on the new fields
+### Notes on selected fields
 
 - **`unit: count`**. for benches that publish a single gauge (e.g. number of supported chains). The bench page swaps to a leaderboard layout (no p50/p90/p99 boxes, no 24-hour chart) since those are meaningless on a count.
 - **`higher_is_better`**. affects how the homepage card, ledger table, mini-chart legend and Compare share-card are sorted, and what label the Compare card prints (`Cheaper by` / `More expensive by` / `Covers more by` / `Slower by` etc.).
 - **`seo_title`**. the long, search-friendly title used in `<title>`, OpenGraph and Twitter cards. The H1 stays the shorter `title`.
-- **`dimensions.chain`**. when set, the bench page renders chain-tab pills above the chart. Picking a chain re-fetches Prom with `chain="<value>"` injected into every label selector. Cached separately per (slug, chain) tuple.
+- **`dimensions.chain`**. when set, the bench page renders chain-tab pills above the chart. Picking a chain re-fetches Prom with `chain="<value>"` injected into every label selector. Cached separately per (slug, chain) tuple. Your harness must emit the `chain` label for this to work.
+- **`providers[].type`**. used by bridge / aggregator benches so readers can tell whether the comparison is apples-to-apples (protocol vs intent vs aggregator). Reviewers will ask for it on benches that mix architectural categories.
 
-When `region.series` is set on every region, the time-series chart shows
-a "Region" selector (All · US-East · EU-West · …) so readers can slice the
-multi-line plot by region. The chart works the same way for every spec -
-single-region specs simply hide the selector.
+When `region.series` is set on every region, the time-series chart shows a "Region" selector (All · US-East · EU-West · …) so readers can slice the multi-line plot by region. The chart works the same way for every spec — single-region specs simply hide the selector.
 
 ## Failure modes
 
 | Situation                               | Result                                       |
 | --------------------------------------- | -------------------------------------------- |
-| No spec file                            | Mock data renders                            |
-| Spec found, Prometheus URL unset        | Mock data renders                            |
-| Spec found, queries time out / 500     | Mock data renders                            |
-| Any provider's `p50/p90/p99` is `null` | Mock data renders (we don't ship half-live)  |
-| Everything works                        | Live data renders, mock metadata layered in  |
+| Spec file missing                       | Route doesn't exist                          |
+| Spec parses but no Prometheus data yet  | Draft page: "Awaiting first run"             |
+| Spec OK, snapshot fresh                 | Live report                                  |
+| Spec OK, snapshot stale, live Prom OK   | Live report from fallback path               |
+| Per-provider query fails this sweep     | Provider keeps last good value with `staleSince` (carry-forward) |
+| Worker down beyond freshness window     | Site falls back to live-Prom loader          |
 
-This is intentionally conservative: half-live data is worse than mock data because readers can't tell which numbers to trust.
+This is intentionally conservative: half-live data is worse than no data because readers can't tell which numbers to trust.
 
-## Dev-only benches (prod holds)
+## Dev-only benches (held out of prod)
 
-The following specs ship on staging (dev) but are intentionally held out
-of production releases until cleared: hyperliquid-frontends, perp-funding,
-evm-quote-latency, solana-dex-quote-latency, solana-tx-landing,
-bridge-revenue, wallet-labels-coverage; plus pending edits to
-hyperliquid-hip3-deployers and gas-estimation. Publishing one = include
-its YAML in the next release branch to main. NEVER fast-forward dev from
-main: main's release branches delete these files and an ff would wipe
-them from dev (this note also exists to keep dev divergent so
-`merge --ff-only main` fails loudly instead).
+Specs that ship on staging (`dev`) but are intentionally held out of production releases until cleared. Publishing one = include its YAML in the next `dev → main` release branch. Do **not** fast-forward `dev` from `main`: the release branches strip these files and an ff would wipe them from dev. Current hold list lives in `release/dev-to-main` PR templates; check recent merge history for the canonical set.
