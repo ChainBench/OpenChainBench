@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { fetchPmCohort, type PmCohortSummary, type PmVenueRow, type PmDataFeedRow } from "@/lib/pm-stats";
 import { PmHubTabs } from "@/components/pm-hub-tabs";
+import { PmInDepthTabs } from "@/components/pm-in-depth-tabs";
 import { PmVenueSection } from "@/components/pm-venue-section";
 import { PmDataFeedSection } from "@/components/pm-data-feed-section";
 import type { PmVenueBenchRow } from "@/components/pm-venue-bench-cards";
@@ -228,17 +229,21 @@ export default async function PredictionMarketsHubPage() {
             >
               Venues in depth
             </p>
-            {cohort.venues.map((v) => (
-              <PmVenueSection
-                key={v.slug}
-                slug={v.slug}
-                name={v.name}
-                chainLabel={VENUE_META[v.slug]?.chainLabel ?? "Unknown"}
-                externalUrl={VENUE_META[v.slug]?.url ?? "#"}
-                venueType={v.type}
-                benchRows={benchRowsForVenue(cohort, v)}
-              />
-            ))}
+            <PmInDepthTabs
+              ariaLabel="Venues in depth"
+              tabs={cohort.venues.map((v) => ({ slug: v.slug, label: v.name }))}
+              panels={cohort.venues.map((v) => (
+                <PmVenueSection
+                  key={v.slug}
+                  slug={v.slug}
+                  name={v.name}
+                  chainLabel={VENUE_META[v.slug]?.chainLabel ?? "Unknown"}
+                  externalUrl={VENUE_META[v.slug]?.url ?? "#"}
+                  venueType={v.type}
+                  benchRows={benchRowsForVenue(cohort, v)}
+                />
+              ))}
+            />
           </div>
 
           <div className="mt-12">
@@ -248,16 +253,20 @@ export default async function PredictionMarketsHubPage() {
             >
               Data feeds in depth
             </p>
-            {cohort.dataFeeds.map((f) => (
-              <PmDataFeedSection
-                key={f.slug}
-                slug={f.slug}
-                name={f.name}
-                logoSrc={FEED_META[f.slug]?.logoSrc}
-                externalUrl={FEED_META[f.slug]?.url}
-                benchRows={benchRowsForDataFeed(f)}
-              />
-            ))}
+            <PmInDepthTabs
+              ariaLabel="Data feeds in depth"
+              tabs={cohort.dataFeeds.map((f) => ({ slug: f.slug, label: f.name }))}
+              panels={cohort.dataFeeds.map((f) => (
+                <PmDataFeedSection
+                  key={f.slug}
+                  slug={f.slug}
+                  name={f.name}
+                  logoSrc={FEED_META[f.slug]?.logoSrc}
+                  externalUrl={FEED_META[f.slug]?.url}
+                  benchRows={benchRowsForDataFeed(f)}
+                />
+              ))}
+            />
           </div>
         </>
       ) : (
