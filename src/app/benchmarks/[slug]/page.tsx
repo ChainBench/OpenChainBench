@@ -13,12 +13,13 @@ import { OraclePairMatrix } from "@/components/oracle-pair-matrix";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { ChainHeadingsSummary } from "@/components/chain-headings-summary";
 import { CitationBar } from "@/components/citation-bar";
+import { CiteBlock } from "@/components/cite-block";
 import { LiveIndicator } from "@/components/live-indicator";
 import { ShareSection } from "@/components/share-section";
 import { ExportVideoSection } from "@/components/export-video-section";
 import { ReportSection } from "@/components/report-section";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
-import { headlineSentence } from "@/lib/citation";
+import { citeBundle, headlineSentence } from "@/lib/citation";
 import { capDescription } from "@/lib/seo-text";
 import { getBenchCreatedAt } from "@/lib/seo/bench-dates";
 import { SITE } from "@/data/site";
@@ -177,6 +178,10 @@ export default async function BenchmarkPage({
 
   const benchmarkUrl = `${SITE.url}/benchmarks/${benchmark.slug}`;
   const sentence = headlineSentence(benchmark);
+  // Three pre-formatted citation strings (Plain / BibTeX / APA). Computed
+  // here so the canonical wording lands in the initial server-rendered
+  // HTML — crawlers and pasteboard users never wait for client hydration.
+  const cite = citeBundle(benchmark, SITE.url);
   const jsonLd = {
     "@context": "https://schema.org",
     "@graph": [
@@ -432,6 +437,12 @@ export default async function BenchmarkPage({
           the page to a pasteable quote or a JSON endpoint. */}
       {!isDraft && <CitationBar benchmark={benchmark} />}
 
+      {/* Pre-formatted Plain / BibTeX / APA citation block. Renders
+          server-side so the canonical URL is in the initial HTML for
+          crawlers and so journalists can right-click → copy without
+          waiting for hydration. */}
+      {!isDraft && <CiteBlock cite={cite} />}
+
       {/* Methodology - expanded by default so readers can verify the
           measurement before reading the numbers. Collapsible for repeat
           visitors who already know the harness. */}
@@ -456,6 +467,18 @@ export default async function BenchmarkPage({
             </p>
           </div>
         </details>
+      )}
+
+      {/* Stable deep-link anchor for the live leaderboard. External sites
+          (docs, articles, X posts) can link to
+          /benchmarks/<slug>#live-ranking and land exactly on the table. */}
+      {!isDraft && (
+        <h2
+          id="live-ranking"
+          className="mt-10 display text-2xl tracking-tight text-ink"
+        >
+          Live ranking
+        </h2>
       )}
 
       {/* Body: chain tabs + summary + chart + ledger + share. Receives every
@@ -498,8 +521,11 @@ export default async function BenchmarkPage({
           page, so we render the same text here. */}
       {!isDraft && benchmark.faq && benchmark.faq.length > 0 && (
         <section className="mt-16 max-w-3xl">
-          <h2 className="display text-2xl tracking-tight text-ink">
-            Frequently asked
+          <h2
+            id="faq"
+            className="display text-2xl tracking-tight text-ink"
+          >
+            {benchmark.title} FAQ
           </h2>
           <div className="mt-6 space-y-3">
             {benchmark.faq.map((item) => (
@@ -609,7 +635,9 @@ function PerChainPagesNav({ benchmark }: { benchmark: Benchmark }) {
   if (chains.length === 0) return null;
   return (
     <nav className="mt-12 max-w-3xl" aria-label="Per-chain pages">
-      <h2 className="label-mono text-ink-muted">Per-chain breakdowns</h2>
+      <h2 id="by-chain" className="label-mono text-ink-muted">
+        {benchmark.title} by chain
+      </h2>
       <ul className="mt-3 flex flex-wrap gap-2">
         {chains.map((c) => (
           <li key={c.value}>
