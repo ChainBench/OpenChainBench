@@ -26,6 +26,7 @@
 
 import { type NextRequest, NextResponse } from "next/server";
 import { getBenchmark } from "@/data/benchmarks";
+import { isAll } from "@/lib/dimensions";
 import { fmtUnit } from "@/lib/format";
 import { readBestPerChain } from "@/lib/per-chain-contract";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
@@ -241,10 +242,10 @@ export async function GET(
     // embedders can read it. Benches without dimensions get no scope
     // label (it would be noise).
     scopeLabel = [
-      (b.dimensions?.chain?.filter((c) => c.value !== "all").length ?? 0) > 0
+      (b.dimensions?.chain?.filter((c) => !isAll(c.value)).length ?? 0) > 0
         ? "all chains"
         : null,
-      (b.dimensions?.region?.filter((d) => d.value !== "all").length ?? 0) > 0
+      (b.dimensions?.region?.filter((d) => !isAll(d.value)).length ?? 0) > 0
         ? "all regions"
         : null,
     ]

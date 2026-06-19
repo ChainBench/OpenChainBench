@@ -31,6 +31,7 @@ import {
   parseFilterSig,
   type BenchmarkFilters,
 } from "@/lib/materialize/filters";
+import { isAll } from "@/lib/dimensions";
 import {
   applyDimensionsToSpec,
   escapePromLabelValue,
@@ -194,7 +195,7 @@ export async function specToBenchmark(
     if (!isFiltered && spec.dimensions?.chain && spec.dimensions.chain.length > 0) {
       const chainValues = spec.dimensions.chain
         .map((c) => c.value)
-        .filter((v) => v !== "all");
+        .filter((v) => !isAll(v));
       const perChainEntries = await Promise.all(
         chainValues.map(async (chain) => {
           const chainSpec = applyDimensionsToSpec(spec, { chain });

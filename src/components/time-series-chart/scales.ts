@@ -1,4 +1,5 @@
 import type { Benchmark } from "@/types/benchmark";
+import { isAll } from "@/lib/dimensions";
 import { SECONDS_PER_DAY, SECONDS_PER_HOUR } from "@/lib/time-constants";
 
 export type Range = "1h" | "6h" | "24h" | "7d" | "30d";
@@ -57,9 +58,9 @@ export function pickSeries(
   range: Range,
   region: string
 ): number[] {
-  const isAll = region === "all";
+  const allRegion = isAll(region);
 
-  if (!isAll) {
+  if (!allRegion) {
     // For YAML specs that do not declare per-region `queries.regions[]`,
     // the per-region map is empty. The top-level series (`series24h[slug]`)
     // is still correctly region-filtered because `applyDimensionsToSpec`

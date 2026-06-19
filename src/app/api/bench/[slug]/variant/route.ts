@@ -13,6 +13,7 @@
 
 import { type NextRequest, NextResponse } from "next/server";
 import { getBenchmark } from "@/data/benchmarks";
+import { isAll } from "@/lib/dimensions";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { SLUG_RE } from "@/lib/slug";
 
@@ -48,7 +49,7 @@ export async function GET(
   const filters: { chain?: string; region?: string; kind?: string } = {};
   for (const dim of ["chain", "region", "kind"] as const) {
     const raw = url.searchParams.get(dim)?.toLowerCase().trim();
-    if (!raw || raw === "all") continue;
+    if (!raw || isAll(raw)) continue;
     const known = (aggregate.dimensions?.[dim] ?? []).find(
       (d) => d.value.toLowerCase() === raw,
     );

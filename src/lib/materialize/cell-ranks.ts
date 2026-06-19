@@ -8,6 +8,7 @@
  */
 
 import type { CellRankEntry } from "@/types/benchmark";
+import { isAll } from "@/lib/dimensions";
 import { getPrometheus } from "@/lib/prometheus";
 import type { Spec } from "@/lib/spec-schema";
 
@@ -45,12 +46,12 @@ export async function tryLoadCellRanks(
     // of silently dropping the cell.
     const chainByLower = new Map(
       (spec.dimensions?.chain ?? [])
-        .filter((c) => c.value !== "all")
+        .filter((c) => !isAll(c.value))
         .map((c) => [c.value.toLowerCase(), c.value] as const),
     );
     const regionByLower = new Map(
       (spec.dimensions?.region ?? [])
-        .filter((r) => r.value !== "all")
+        .filter((r) => !isAll(r.value))
         .map((r) => [r.value.toLowerCase(), r.value] as const),
     );
 

@@ -16,6 +16,7 @@ import type { ProviderLayer } from "@/types/benchmark";
 import { CountLeaderboard } from "@/components/count-leaderboard";
 import { SummaryStat } from "@/components/summary-stat";
 import { ViewSwitcher } from "@/components/view-switcher";
+import { isAll as isAllDim } from "@/lib/dimensions";
 import { fmtUnit } from "@/lib/format";
 import { computeFieldStats } from "@/lib/stats";
 import { defaultViewFor, viewsForBenchmark } from "@/lib/views";
@@ -200,19 +201,18 @@ export function BenchmarkBody({
   const aggregateBench =
     variants[variantKey(null, null, null)] ?? Object.values(variants)[0];
   const isAllSelection =
-    (!effectiveChain || effectiveChain === "all") &&
-    (!effectiveRegion || effectiveRegion === "all") &&
-    (!effectiveKind || effectiveKind === "all");
+    isAllDim(effectiveChain) &&
+    isAllDim(effectiveRegion) &&
+    isAllDim(effectiveKind);
   useEffect(() => {
     if (variantMap[activeKey] || !aggregateBench) return;
     // The all/all/all selection IS the aggregate: derived at render time,
     // nothing to fetch.
     if (isAllSelection) return;
-    const isAll = (v: string | null) => !v || v === "all";
     const qs = new URLSearchParams();
-    if (!isAll(effectiveChain)) qs.set("chain", effectiveChain!);
-    if (!isAll(effectiveRegion)) qs.set("region", effectiveRegion!);
-    if (!isAll(effectiveKind)) qs.set("kind", effectiveKind!);
+    if (!isAllDim(effectiveChain)) qs.set("chain", effectiveChain!);
+    if (!isAllDim(effectiveRegion)) qs.set("region", effectiveRegion!);
+    if (!isAllDim(effectiveKind)) qs.set("kind", effectiveKind!);
     let cancelled = false;
     fetch(`/api/bench/${aggregateBench.slug}/variant?${qs.toString()}`)
       .then((r) => (r.ok ? r.json() : null))
@@ -241,7 +241,6 @@ export function BenchmarkBody({
   // cross-axis re-warms.
   useEffect(() => {
     if (!aggregateBench) return;
-    const isAll = (v: string | null) => !v || v === "all";
     const combos: [string | null, string | null, string | null][] = [
       ...chainOptions.map(
         (c) => [c.value, effectiveRegion, effectiveKind] as [string | null, string | null, string | null],
@@ -254,13 +253,13 @@ export function BenchmarkBody({
     const timers: ReturnType<typeof setTimeout>[] = [];
     let i = 0;
     for (const [c, r, k] of combos) {
-      if (isAll(c) && isAll(r) && isAll(k)) continue;
+      if (isAllDim(c) && isAllDim(r) && isAllDim(k)) continue;
       const key = variantKey(c, r, k);
       if (variantMap[key]) continue;
       const qs = new URLSearchParams();
-      if (!isAll(c)) qs.set("chain", c!);
-      if (!isAll(r)) qs.set("region", r!);
-      if (!isAll(k)) qs.set("kind", k!);
+      if (!isAllDim(c)) qs.set("chain", c!);
+      if (!isAllDim(r)) qs.set("region", r!);
+      if (!isAllDim(k)) qs.set("kind", k!);
       timers.push(
         setTimeout(() => {
           if (cancelled) return;
@@ -387,7 +386,7 @@ export function BenchmarkBody({
     ? " opacity-40 animate-pulse pointer-events-none"
     : "";
   const pendingLabel = [effectiveChain, effectiveRegion, effectiveKind]
-    .filter((v): v is string => !!v && v !== "all")
+    .filter((v): v is string => !!v && !isAllDim(v))
     .join(" · ");
   const isDraft = viewBenchmark.status === "draft";
   const { fieldMin, fieldMedian, fieldMax, tailMin, tailMax, tailSpread } =

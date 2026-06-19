@@ -8,6 +8,7 @@ import { logoPath } from "@/lib/logo-manifest";
 import { chipBackground, chipTextColor, initials } from "@/lib/brand";
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
+import { isAll } from "@/lib/dimensions";
 import { SLUG_RE } from "@/lib/slug";
 
 /** Best → worst, depending on whether higher numbers are better. Drops
@@ -524,8 +525,8 @@ export async function GET(
   // `all` is a synthetic option meaning "no chain filter" - same exception
   // as the bench detail page. Don't pass it down to the Prom loader or the
   // query labels won't match anything and every value reads 0.
-  const isAll = chainParam === "all";
-  const chainOption = isAll
+  const isAllChain = isAll(chainParam);
+  const chainOption = isAllChain
     ? null
     : chainOptions.find((c) => c.value === chainParam) ?? null;
   const benchmark = chainOption

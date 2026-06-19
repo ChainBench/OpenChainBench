@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { BackLink } from "@/components/back-link";
-import { nonAllValues } from "@/lib/dimensions";
+import { isAll, nonAllValues } from "@/lib/dimensions";
 import { getProvider } from "@/lib/providers";
 import { ProviderLogo } from "@/components/provider-logo";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
@@ -147,8 +147,8 @@ export default async function ProviderPage({
     if (cellRanks && regionDims.length > 0) {
       const finestKeys = Object.keys(cellRanks).filter((k) => {
         const [c, r] = k.split("|");
-        const chainOk = chainDims.length > 0 ? c !== "all" : c === "all";
-        return chainOk && r !== "all";
+        const chainOk = chainDims.length > 0 ? !isAll(c) : isAll(c);
+        return chainOk && !isAll(r);
       });
       if (finestKeys.length > 0) {
         handledByCells = true;
