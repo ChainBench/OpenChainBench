@@ -352,7 +352,20 @@ function Row({
       <td className="py-2.5 pr-3 text-ink-muted text-[12px]">
         {String(i + 1).padStart(2, "0")}
       </td>
-      <td className="py-2.5 pr-3 font-serif text-[14px] min-w-0">
+      {/* itemScope/itemType marks each row as a named entity so Google's
+          knowledge graph can link the leaderboard back to that provider.
+          For region rows (Solana, Base, …) the schema.org/Place type is
+          a better fit than Organization; everything else is a vendor and
+          gets Organization. itemProp="name" wraps the visible name. */}
+      <td
+        className="py-2.5 pr-3 font-serif text-[14px] min-w-0"
+        itemScope
+        itemType={
+          isRegion(r.slug)
+            ? "https://schema.org/Place"
+            : "https://schema.org/Organization"
+        }
+      >
         <div className="flex flex-col gap-1 min-w-0">
           <span className="flex items-center gap-2 min-w-0">
             <ProviderLogo slug={r.slug} name={r.name} size={20} />
@@ -360,6 +373,7 @@ function Row({
               <span
                 className="font-semibold truncate min-w-0"
                 style={{ color: isOffline ? "var(--color-ink-muted)" : color }}
+                itemProp="name"
               >
                 {r.name}
               </span>
@@ -368,8 +382,9 @@ function Row({
                 href={`/products/${r.slug}`}
                 className="font-semibold hover:underline underline-offset-2 truncate min-w-0"
                 style={{ color: isOffline ? "var(--color-ink-muted)" : color }}
+                itemProp="url"
               >
-                {r.name}
+                <span itemProp="name">{r.name}</span>
               </Link>
             )}
             {r.tag && !isOffline && (

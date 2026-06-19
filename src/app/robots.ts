@@ -42,13 +42,23 @@ export default function robots(): MetadataRoute.Robots {
     };
   }
 
+  // Spell out the llms convention files in every rule. They're already
+  // covered by `allow: "/"`, but AI crawlers like PerplexityBot and
+  // ClaudeBot consult robots.txt before fetching /llms.txt; an explicit
+  // Allow on those exact paths removes any ambiguity for crawlers that
+  // check the longest matching rule.
+  const LLMS_ALLOWS = ["/llms.txt", "/llms-full.txt"];
+
   return {
     rules: [
       // Every standard crawler welcome.
-      { userAgent: "*", allow: "/" },
+      { userAgent: "*", allow: ["/", ...LLMS_ALLOWS] },
       // Explicit allow for AI crawlers - they should index llms.txt and the
       // /api/ surface so they can cite us at answer time.
-      ...AI_CRAWLERS.map((userAgent) => ({ userAgent, allow: "/" })),
+      ...AI_CRAWLERS.map((userAgent) => ({
+        userAgent,
+        allow: ["/", ...LLMS_ALLOWS],
+      })),
     ],
     sitemap: `${SITE.url}/sitemap.xml`,
     host: SITE.url,
