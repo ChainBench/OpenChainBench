@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ChevronRight } from "lucide-react";
 import { ProviderLogo } from "@/components/provider-logo";
 import type { PmVenueRow } from "@/lib/pm-stats";
 
@@ -139,13 +141,21 @@ export function PmVenuesLeaderboard({ rows }: { rows: PmVenueRow[] }) {
                   {i + 1}
                 </Td>
                 <Td>
-                  <div className="flex items-center gap-2 min-w-0">
+                  <Link
+                    href={`/products/${r.slug}`}
+                    className="flex items-center gap-2 min-w-0 group"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <ProviderLogo slug={r.slug} name={r.name} size={18} />
-                    <span className="font-medium text-ink truncate">
+                    <span className="font-medium text-ink truncate group-hover:underline underline-offset-2">
                       {r.name}
                     </span>
                     <TypeBadge type={r.type} />
-                  </div>
+                    <ChevronRight
+                      size={14}
+                      className="text-ink-faint shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                    />
+                  </Link>
                 </Td>
                 <Td mono>{fmtUSD(r.volume30d)}</Td>
                 <Td mono>{fmtUSD(r.openInterest)}</Td>
