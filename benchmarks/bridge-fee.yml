@@ -11,6 +11,19 @@ status: live
 metric: Effective fee
 unit: pct
 
+# Per-destination breakdown. Same rationale as bridge-quote-latency:
+# bridges quote different cost structures per corridor (gas on the
+# destination dominates short hops, solver spread dominates long
+# auction routes), so an aggregate cross-corridor cost percent
+# obscures more than it reveals.
+dimensions:
+  chain:
+    - { value: all,       label: All destinations }
+    - { value: Solana,    label: To Solana }
+    - { value: Base,      label: To Base }
+    - { value: Arbitrum,  label: To Arbitrum }
+    - { value: HyperCore, label: To HyperCore }
+
 seo_intro: |
   This benchmark measures the cheapest cross-chain bridge live, refreshed
   every five minutes across the major USDC corridors. The headline figure
