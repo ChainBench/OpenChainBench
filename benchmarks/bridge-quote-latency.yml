@@ -20,7 +20,6 @@ unit: ms
 # tab keeps the aggregate view; the per-chain tabs reveal the truth.
 dimensions:
   chain:
-    - { value: all,       label: All routes }
     - { value: Base,      label: Sol to Base }
     - { value: Arbitrum,  label: Base to Arb }
     - { value: Solana,    label: Arb to Sol }
