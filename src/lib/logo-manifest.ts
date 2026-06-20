@@ -269,6 +269,7 @@ const ALIASES: Record<string, string> = {
   btc: "bitcoin",
   sol: "solana",
   bsc: "bnb",
+  hypercore: "hyperliquid", // HyperCore is the Hyperliquid trading engine, same brand
   "publicnode-feehistory": "publicnode",
 
   // Oracle-deviation bench exposes one provider per trading pair (e.g.
