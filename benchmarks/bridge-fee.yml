@@ -18,7 +18,6 @@ unit: pct
 # obscures more than it reveals.
 dimensions:
   chain:
-    - { value: all,       label: All routes }
     - { value: Base,      label: Sol to Base }
     - { value: Arbitrum,  label: Base to Arb }
     - { value: Solana,    label: Arb to Sol }
