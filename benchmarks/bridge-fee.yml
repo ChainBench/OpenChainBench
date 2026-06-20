@@ -18,11 +18,11 @@ unit: pct
 # obscures more than it reveals.
 dimensions:
   chain:
-    - { value: all,       label: All destinations }
-    - { value: Solana,    label: To Solana }
-    - { value: Base,      label: To Base }
-    - { value: Arbitrum,  label: To Arbitrum }
-    - { value: HyperCore, label: To HyperCore }
+    - { value: all,       label: All routes }
+    - { value: Base,      label: Sol to Base }
+    - { value: Arbitrum,  label: Base to Arb }
+    - { value: Solana,    label: Arb to Sol }
+    - { value: HyperCore, label: Arb to HyperCore }
 
 seo_intro: |
   This benchmark measures the cheapest cross-chain bridge live, refreshed
