@@ -51,6 +51,20 @@ methodology:
   - "All-in formula: `all_in_bps = taker_fee_bps + spread_bps`. Both components emitted as separate metrics for transparency."
   - "Failures (5xx, timeouts, rate limits) leave the previous gauge in place and increment a per-venue `fetch_errors_total` counter. The page falls back to the last successful sample."
 
+per_chain_explainer:
+  - slug: ETH
+    h2: "Cheapest perp DEX for ETH"
+    body: |
+      The cheapest perp DEX for ETH on this benchmark sits at {{best_p50:chain:ETH}} all-in (p50, 24h) for a $1000 ETH long 10x. ETH-PERP is the deepest pair on every venue measured (Hyperliquid, Lighter, dYdX v4, GMX v2, gains.trade), which means the rack-rate taker fee dominates the all-in number rather than the spread. Lighter quotes 0 bps taker, Hyperliquid 4.5 bps, dYdX 5 bps tier-0, GMX 4 or 6 bps on the impact branch, gains.trade reads the openFeeP slot live from the on-chain Gains v8 fees contract. Spread plus impact at $1000 notional is added on top via an orderbook walk.
+  - slug: BTC
+    h2: "Cheapest perp DEX for BTC"
+    body: |
+      The cheapest perp DEX for BTC on this benchmark sits at {{best_p50:chain:BTC}} all-in (p50, 24h) for a $1000 BTC long 10x. BTC-PERP carries the highest open interest across every venue in the cohort, so books are typically tighter than ETH on the same notional and the spread component compresses toward the rack rate. GMX v2 BTC uses the same positionFeeFactor schedule as ETH (4 bps positive impact, 6 bps negative); the bench reports the conservative negative branch. The leaderboard reorders intra-day with funding skew and orderbook depth.
+  - slug: SOL
+    h2: "Cheapest perp DEX for SOL"
+    body: |
+      The cheapest perp DEX for SOL on this benchmark sits at {{best_p50:chain:SOL}} all-in (p50, 24h) for a $1000 SOL long 10x. SOL-PERP books are thinner than ETH or BTC on every venue, so the spread plus impact component carries more weight in the all-in figure and a 5 bps taker venue can land above a 0 bps taker venue once the orderbook is walked. Lighter, Hyperliquid and dYdX v4 quote SOL-PERP natively; GMX v2 trades SOL as a synthetic on its Arbitrum deployment.
+
 findings:
   - "{{best_name}} currently leads the leaderboard at {{best_p50}} all-in (24 h average) across {{count}} measured perp venues. The number includes taker fee plus the spread crossed at $1000 notional, not the rack-rate taker fee alone."
   - "Lighter charges zero taker fees on ETH-PERP, confirmed live via their public API. {{name:lighter}} clocks {{p50:lighter}} all-in (24 h average), so the headline figure is essentially the half-spread plus orderbook impact crossed at $1000."

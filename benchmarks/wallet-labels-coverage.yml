@@ -81,6 +81,32 @@ methodology:
   - "Failures (timeouts, 5xx, auth errors) are counted as 'no label' and surfaced separately as `wallet_labels_fetch_errors_total`."
   - "Region: `eu-west` (single point)."
 
+per_chain_explainer:
+  - slug: solana
+    h2: "Best wallet labeling API on Solana"
+    body: |
+      The Solana wallet labeling leaderboard is driven by chain-specialist curation rather than universal coverage. Helius wins by default on this chain because its label graph is built directly against native Solana programs (Jito stake pools, Jupiter routers, Pump.fun creators, Magic Eden marketplace IDs) rather than translated from an EVM-shaped schema. Mobula audits Solana as part of its universal coverage and clocks {{p50:mobula}} on the active Kind tab. Blockscout does not index Solana, so the per-chain leaderboard here is between Solana-native APIs.
+  - slug: ton
+    h2: "Best wallet labeling API on TON"
+    body: |
+      TON wallet labeling is essentially a two-API conversation. TonAPI ships a curated entity directory covering core TON contracts (jettons, Telegram bot wallets, DEX routers like STON.fi and DeDust). Mobula audits TON as part of its universal coverage. Most EVM-centric providers (Moralis, Blockscout) do not index TON at all, so the per-chain leaderboard here surfaces the genuine specialist gap. Per the bench's coverage definition, generic categorical fillers like `EOA` or `Wallet` do not count toward a hit; only entity-grade names do.
+  - slug: stellar
+    h2: "Best wallet labeling API on Stellar"
+    body: |
+      Stellar wallet labeling is dominated by StellarExpert, whose `/explorer/directory/{addr}` endpoint is the curated entity graph the rest of the Stellar ecosystem cites. The directory covers anchor issuers (Circle USDC issuer, AnchorUSD), SDF accounts, DEX market makers and SDF grant recipients. Mobula audits Stellar as part of its universal coverage. EVM-centric providers (Moralis, Blockscout) do not index Stellar, so the per-chain leaderboard reflects a specialist-heavy field rather than a universal one.
+  - slug: bitcoin
+    h2: "Best wallet labeling API on Bitcoin"
+    body: |
+      Bitcoin wallet labeling is the hardest case in the benchmark because the chain has no smart contract layer to derive names from, every entity has to come from a curated graph. WalletExplorer maintains the canonical public clustering of Bitcoin addresses (exchanges, mixers, pools, OFAC SDN), and most downstream Bitcoin labeling products cite it directly. Mobula audits Bitcoin as part of its universal coverage. The Kind = Contract tab is essentially empty on Bitcoin (no verified-source contracts), so the EOA tab is the only honest comparison.
+  - slug: ethereum
+    h2: "Best wallet labeling API on Ethereum"
+    body: |
+      Ethereum is the chain where the EOA vs Contract split matters most. On the Contract tab Blockscout saturates near 100% because every Uniswap V3 router, WETH9 and Aave V3 pool ships a verified-source constructor name that the explorer reads for free. On the EOA tab the comparison flips to curated entity graphs: Mobula, Moralis and OLI on Base EAS each maintain their own directory of Binance hot wallets, Safe multisigs, OFAC SDN addresses and public figures. Switch the Kind tab at the top of the page to read the side you actually need.
+  - slug: base
+    h2: "Best wallet labeling API on Base"
+    body: |
+      Base wallet labeling is shaped by Coinbase's OP Stack rollup pattern. Most EVM-centric providers (Mobula, Moralis, Blockscout, OLI via Base EAS) advertise Base coverage and audit cleanly on contracts (Uniswap V4, Aerodrome, the Coinbase Wallet Smart Wallet factory). The EOA tab is the harder job here because Base wallets are dominated by retail Smart Wallets created through the Coinbase Wallet factory, which collapses to a single contract type that providers must distinguish from one another via deployment-time call data.
+
 findings:
   - "{{best_name}} currently leads coverage at {{best_p50}} (24 h) on the active tab, across {{count}} measured providers. The number is the share of curated anchor addresses for which the provider returns a non-generic entity name, audited every 30 minutes against ~180 publicly-known addresses split by kind (contract vs EOA)."
   - "The Kind toggle separates two distinct jobs. On the Contract tab any explorer that reads verified source code (Blockscout in particular) saturates near 100% because the contract's name is already in the bytecode metadata. On the EOA tab the score reflects how well the provider's curated entity graph covers plain wallets, the actually-hard job."
