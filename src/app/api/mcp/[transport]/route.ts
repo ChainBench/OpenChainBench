@@ -549,7 +549,7 @@ const mcpHandler = createMcpHandler(
  *  reject batches explicitly (see below). */
 function rateLimited(req: Request): Response | null {
   const key = clientKey(req, "mcp");
-  const r = rateLimit(key, 60, 60);
+  const r = rateLimit(key, 60, 60, req);
   if (!r.ok) return tooManyRequests(r.retryAfterSec);
   return null;
 }

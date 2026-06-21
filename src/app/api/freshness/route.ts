@@ -71,7 +71,7 @@ const computeFreshness = unstable_cache(
 );
 
 export async function GET(req: Request) {
-  const r = rateLimit(clientKey(req, "freshness"), 120, 60);
+  const r = rateLimit(clientKey(req, "freshness"), 120, 60, req);
   if (!r.ok) return tooManyRequests(r.retryAfterSec);
 
   // Resolve the spec list outside the cached function so its slug list
