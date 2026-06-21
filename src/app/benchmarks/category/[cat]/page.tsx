@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getBenchmarks } from "@/data/benchmarks";
+import { getBenchmarksSafe } from "@/data/benchmarks";
 import { BenchmarkGrid } from "@/components/benchmark-grid";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { safeJsonLd, buildItemListJsonLd } from "@/lib/jsonld";
@@ -57,7 +57,7 @@ export default async function BenchmarkCategoryPage({
   const entry = CATEGORY_BY_SLUG.get(cat);
   if (!entry) notFound();
 
-  const all = await getBenchmarks();
+  const all = await getBenchmarksSafe();
   const benchmarks = all.filter((b) => b.category === entry.label);
   // Empty-category guard: a category in the enum that has no live bench
   // yet returns 404 so the crawler doesn't land on a thin page. The

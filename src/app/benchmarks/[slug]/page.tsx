@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ArrowUpRight, ChevronDown } from "lucide-react";
 import { BackLink } from "@/components/back-link";
 import { nonAllValues } from "@/lib/dimensions";
-import { getBenchmark, getBenchmarks } from "@/data/benchmarks";
+import { getBenchmark, getBenchmarksSafe } from "@/data/benchmarks";
 import { Pill } from "@/components/pill";
 import { BenchmarkBody } from "@/components/benchmark-body";
 import { BenchmarkBodySkeleton } from "@/components/benchmark-body-skeleton";
@@ -150,7 +150,7 @@ export default async function BenchmarkPage({
   // /api/bench/[slug]/variant when a tab is flipped (per-variant
   // unstable_cache keeps that at one cheap Prom roundtrip per 60 s
   // across all users), and renders the aggregate while it loads.
-  const all = await getBenchmarks();
+  const all = await getBenchmarksSafe();
   // Seed ONLY the unfiltered key. Seeding the initially-selected
   // chain/region/kind combo with the aggregate made the client believe
   // it already had that variant, so it never fetched the real one: the
