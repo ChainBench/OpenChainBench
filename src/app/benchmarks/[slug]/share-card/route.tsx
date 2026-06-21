@@ -495,7 +495,7 @@ export async function GET(
   // benchmark loaders, each render is 50-200ms CPU. Without this an
   // attacker hitting random query-string variants would burn function
   // CPU even for unknown slugs.
-  const rl = rateLimit(clientKey(request, "share-card"), 60, 60);
+  const rl = rateLimit(clientKey(request, "share-card"), 60, 60, request);
   if (!rl.ok) return tooManyRequests(rl.retryAfterSec);
 
   const { slug } = await params;
