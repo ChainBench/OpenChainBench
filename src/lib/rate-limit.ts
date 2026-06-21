@@ -34,8 +34,12 @@ export type RateLimitResult = {
  *  many distinct human questions, not abuse. UA spoofing is possible
  *  but the affected endpoints are read-only and explicitly designed to
  *  be cited, so the worst case of a spoofer is what we already want. */
+// Keep in sync with robots.txt (src/app/robots.ts). Any UA explicitly
+// allowed there should bypass the per IP throttle here too, otherwise
+// AI engines we want citations from will get 429s when many independent
+// user queries share their small egress IP pool.
 const AI_CRAWLER_RE =
-  /GPTBot|ChatGPT-User|OAI-SearchBot|ClaudeBot|anthropic-ai|Claude-Web|PerplexityBot|Google-Extended|GoogleOther|CCBot|Bytespider|Applebot-Extended|Amazonbot|Diffbot|YouBot|DuckAssistBot/i;
+  /GPTBot|ChatGPT-User|OAI-SearchBot|ClaudeBot|anthropic-ai|Claude-Web|PerplexityBot|Perplexity-User|Google-Extended|GoogleOther|CCBot|Bytespider|Applebot-Extended|Meta-ExternalAgent|Meta-ExternalFetcher|cohere-ai|Amazonbot|Diffbot|YouBot|DuckAssistBot|AI2Bot|Ai2Bot-Dolma|Kagibot|FacebookBot|MistralAI-User|TimpiBot|Webzio-Extended/i;
 
 /** True when the given User-Agent matches a known AI crawler pattern. */
 export function isAiCrawler(userAgent: string | null | undefined): boolean {
