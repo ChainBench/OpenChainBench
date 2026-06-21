@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { getBenchmarks } from "@/data/benchmarks";
+import { getBenchmarksSafe } from "@/data/benchmarks";
 import { HeroRadar } from "@/components/hero-radar";
 import { HomeBenchTable } from "@/components/home-bench-table";
 import { LiveDashboard } from "@/components/live/dashboard";
@@ -32,7 +32,7 @@ export const metadata: Metadata = {
 };
 
 export default async function HomePage() {
-  const benchmarks = await getBenchmarks();
+  const benchmarks = await getBenchmarksSafe();
 
   return (
     <article className="mx-auto max-w-[1400px] px-4 sm:px-6 py-10 sm:py-14 space-y-14 sm:space-y-20">

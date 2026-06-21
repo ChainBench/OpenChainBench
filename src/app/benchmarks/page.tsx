@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getBenchmarks } from "@/data/benchmarks";
+import { getBenchmarksSafe } from "@/data/benchmarks";
 import { BenchmarkGrid } from "@/components/benchmark-grid";
 import { safeJsonLd, buildItemListJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
@@ -17,7 +17,7 @@ export const metadata: Metadata = pageMetadata({
 });
 
 export default async function BenchmarksPage() {
-  const benchmarks = await getBenchmarks();
+  const benchmarks = await getBenchmarksSafe();
 
   // ItemList + BreadcrumbList JSON-LD so search engines and LLMs see the
   // page as a structured registry (the data is already in the DOM but

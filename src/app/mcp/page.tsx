@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CopyButton } from "@/components/copy-button";
-import { getBenchmarks } from "@/data/benchmarks";
+import { getBenchmarksSafe } from "@/data/benchmarks";
 import { mcpPageLd } from "@/lib/hub-jsonld";
 import { safeJsonLd } from "@/lib/jsonld";
 import { pageMetadata } from "@/lib/page-metadata";
@@ -48,7 +48,7 @@ export const metadata: Metadata = pageMetadata({
 export const revalidate = 300;
 
 export default async function McpPage() {
-  const benches = (await getBenchmarks()).filter((b) => b.editorialStatus === "live");
+  const benches = (await getBenchmarksSafe()).filter((b) => b.editorialStatus === "live");
 
   return (
     <article className="mx-auto max-w-3xl px-4 sm:px-6 pt-12 pb-16">
