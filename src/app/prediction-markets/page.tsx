@@ -61,7 +61,7 @@ export default async function PredictionMarketsHubPage() {
           "@type": "ListItem",
           position: i + 1,
           name: r.name,
-          url: `${SITE.url}/benchmarks/pm-api-latency`,
+          url: `${SITE.url}/products/${r.slug}`,
         })),
       }
     : null;
@@ -186,11 +186,21 @@ export default async function PredictionMarketsHubPage() {
           <PmHubTabs cohort={cohort} />
 
           <p className="mt-4 text-[11px] text-ink-faint italic">
-            Source: pm-cohort-stats harness (volume, OI, active markets,
-            top market, markets &gt;$1M) plus the live PM bench fleet
-            (api latency, resolution delay, freshness). All gauges
-            scraped from the public OCB Prom, refresh interval 60s. Click
-            a venue or feed row above to open its dedicated product page.
+            Source:{" "}
+            <Link
+              href="https://github.com/MobulaFi/mobula-monorepo/tree/dev/miniapps/pm-cohort-stats"
+              className="underline hover:text-ink"
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              pm-cohort-stats harness
+            </Link>{" "}
+            (volume, OI, active markets, top market, markets &gt;$1M)
+            plus the live PM bench fleet (api latency, resolution delay,
+            freshness). All gauges scraped from the public OCB Prom,
+            refresh interval 60s. Click a venue or feed row above to
+            open its dedicated product page. Hover the dotted underline
+            on any value to see how it is computed.
           </p>
         </>
       ) : (
