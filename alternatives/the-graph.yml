@@ -5,7 +5,7 @@ description: Decentralised indexing protocol with subgraph queries
 benchmark: network-coverage
 
 intro: |
-  The Graph powers subgraph queries used by many dApps for indexed onchain data. If you are evaluating alternatives, the first dimension worth checking is the breadth of supported networks. how many chains does each major data provider officially cover? Below is the live count from each provider's public supported-networks endpoint, refreshed every six hours.
+  The Graph is a decentralised indexing protocol where each dataset (a subgraph) is written, deployed and queried independently rather than read off a pre-built schema. Queries are GQL against indexer nodes, billed in GRT, with a hosted gateway in front. The model means data shape is owned by whoever wrote the subgraph: a missing field, a stale index or a deprecated mapping is on the publisher, not on a central API team. Chain coverage tracks what indexers have chosen to support, which leans heavily EVM and lags on newer L2s and non-EVM networks until someone publishes a subgraph for them. The two reasons teams move off are the cost of running a private subgraph at production load, and the operational burden of debugging an indexer regression on a chain the public hosted service does not cover.
 
 seo_title: The Graph alternatives. live network coverage benchmark
 seo_description: Compare The Graph alternatives on the number of blockchains each major onchain data provider officially supports. Live data, refreshed every six hours.

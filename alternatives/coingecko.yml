@@ -5,7 +5,7 @@ description: Crypto price + market data API, multi-chain
 benchmark: network-coverage
 
 intro: |
-  CoinGecko offers a broad price + market data REST API used across thousands of crypto apps. The first axis people compare alternatives on is breadth. how many blockchains does each provider officially support? Below is the live count from each major onchain data API, scraped directly from their public supported-networks endpoint and refreshed every six hours.
+  CoinGecko is a coin-centric price and market data REST API built around a curated asset list (the `/coins` universe) rather than around on-chain events. Tokens are added through a listing process, prices land on the API after that process completes, and the free tier is famously throttled (around 30 requests per minute on the demo key) which pushes any real product onto a paid plan within days of integration. The on-chain DEX side ships as a separate `/onchain` namespace inherited from GeckoTerminal, with its own quotas. Teams usually leave CoinGecko at one of two points: when the launch cadence of the tokens they care about outpaces the listing pipeline, or when the per-minute cap on the free tier forces a migration before the product is monetised enough to justify the enterprise tier.
 
 seo_title: CoinGecko alternatives. live network coverage benchmark
 seo_description: Compare CoinGecko alternatives on the number of blockchains each major onchain data API officially supports. Live data, refreshed every six hours.
