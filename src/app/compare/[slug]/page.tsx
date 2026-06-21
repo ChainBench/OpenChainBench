@@ -122,6 +122,30 @@ function canonicalisationTarget(slug: string): string | null {
   return canonical === slug ? null : canonical;
 }
 
+/** Lightweight precheck: does this pair have at least one shared bench
+ *  after applying the whitelist + exclude rules? Pure set arithmetic on
+ *  the already-loaded provider appearances. No Prom calls, no KV
+ *  lookup, no fan out.
+ *
+ *  Mirrors the candidate-slug computation inside `buildSharedBenches`
+ *  so the two stay in lockstep. Called by `generateMetadata` so a pair
+ *  whose providers both exist but share zero benches notFound()s
+ *  before any HTML streams. */
+function hasSharedBenches(
+  pair: ComparePair,
+  aAppearances: Awaited<ReturnType<typeof getProvider>>,
+  bAppearances: Awaited<ReturnType<typeof getProvider>>,
+): boolean {
+  if (!aAppearances || !bAppearances) return false;
+  const aSlugs = new Set(aAppearances.appearances.map((x) => x.benchmark.slug));
+  const bSlugs = new Set(bAppearances.appearances.map((x) => x.benchmark.slug));
+  const candidateSlugs = pair.benchmarks
+    ? pair.benchmarks.filter((s) => aSlugs.has(s) && bSlugs.has(s))
+    : Array.from(aSlugs).filter((s) => bSlugs.has(s));
+  const excluded = new Set(pair.excludeBenchmarks ?? []);
+  return candidateSlugs.some((s) => !excluded.has(s));
+}
+
 export async function generateMetadata({
   params,
 }: {
@@ -129,18 +153,22 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   // Run the same gating logic as the page render so non-canonical and
-  // invalid slugs short-circuit at the metadata phase, BEFORE Next.js
-  // streams the loading.tsx fallback. Without this the SSR HTML ends
-  // up with the root layout's homepage title and description plus the
-  // skeleton body, which is exactly what crawlers index. Routing here
-  // produces a real 308 / 404 response from the route layer instead of
-  // a 200 wrapping the streamed skeleton.
+  // invalid slugs short-circuit at the metadata phase. Combined with
+  // the loading.tsx removal in this hotfix, notFound() here cleanly
+  // produces a real 308 / 404 response from the route layer instead
+  // of a 200 wrapping a streamed loading skeleton.
   const canonicalTarget = canonicalisationTarget(slug);
   if (canonicalTarget) redirect(`/compare/${canonicalTarget}`);
   const pair = getComparePair(slug) ?? (await resolveAdHocPair(slug));
   if (!pair) notFound();
   const { a, b } = await loadPairProviders(pair);
   if (!a || !b) notFound();
+  // Final SSR gate: an ad-hoc pair can have both providers resolved
+  // yet share zero benches (e.g. an RPC provider vs an oracle).
+  // Without this the page body's `shared.length === 0` check fires
+  // late and the response loses its chance to demote the status code.
+  // Cheap: only the appearance intersection, no Prom fan out.
+  if (!hasSharedBenches(pair, a, b)) notFound();
 
   const url = `${SITE.url}/compare/${pair.slug}`;
   const title = `${a.name} vs ${b.name}: live OpenChainBench benchmark data`;
