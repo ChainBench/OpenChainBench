@@ -151,14 +151,37 @@ export function PmVenuesLeaderboard({ rows }: { rows: PmVenueRow[] }) {
                       {r.name}
                     </span>
                     <TypeBadge type={r.type} />
+                    {r.slug === "manifold" && <PlayMoneyBadge />}
                     <ChevronRight
                       size={14}
                       className="text-ink-faint shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
                     />
                   </Link>
                 </Td>
-                <Td mono>{fmtUSD(r.volume30d)}</Td>
-                <Td mono>{fmtUSD(r.openInterest)}</Td>
+                <Td
+                  mono
+                  tip={
+                    r.slug === "kalshi"
+                      ? "Projection from 24h × 30; may over-estimate during burst-trade periods"
+                      : r.slug === "manifold"
+                      ? "Play-money: mana × charity rate 0.001, NOT a market USD price"
+                      : undefined
+                  }
+                >
+                  {fmtUSD(r.volume30d)}
+                </Td>
+                <Td
+                  mono
+                  tip={
+                    r.slug === "polymarket" || r.slug === "limitless"
+                      ? "Proxy: DefiLlama protocol TVL (Polymarket gamma openInterest is deprecated)"
+                      : r.slug === "manifold"
+                      ? "Play-money: totalLiquidity (mana) × charity rate 0.001"
+                      : undefined
+                  }
+                >
+                  {fmtUSD(r.openInterest)}
+                </Td>
                 <Td mono>{fmtCount(r.activeMarkets)}</Td>
                 <Td mono>{fmtMinutes(r.medianResolutionDelayMin)}</Td>
                 <Td mono>{fmtMs(r.p50ApiLatencyMs)}</Td>
@@ -179,6 +202,18 @@ export function PmVenuesLeaderboard({ rows }: { rows: PmVenueRow[] }) {
         </table>
       </div>
     </div>
+  );
+}
+
+function PlayMoneyBadge() {
+  return (
+    <span
+      className="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-700 border border-amber-500/30"
+      style={{ fontFamily: "var(--font-mono, monospace)" }}
+      title="Manifold uses play-money (mana). USD values are converted at the legacy charity rate (1000 mana = $1) and are NOT a market exchange rate."
+    >
+      Play-money
+    </span>
   );
 }
 
@@ -242,15 +277,18 @@ function Td({
   children,
   mono,
   muted,
+  tip,
 }: {
   children: React.ReactNode;
   mono?: boolean;
   muted?: boolean;
+  tip?: string;
 }) {
   return (
     <td
-      className={`px-3 py-2 tabular-nums ${muted ? "text-ink-faint" : ""}`}
+      className={`px-3 py-2 tabular-nums ${muted ? "text-ink-faint" : ""}${tip ? " underline decoration-dotted decoration-ink-faint/40 underline-offset-2" : ""}`}
       style={mono ? { fontFamily: "var(--font-mono, monospace)" } : undefined}
+      title={tip}
     >
       {children}
     </td>

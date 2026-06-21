@@ -1,11 +1,16 @@
 /**
  * Server-side helper for the /prediction-markets hub page. Reads the
  * `pm_venue_*` gauges exposed by the `pm-cohort-stats` harness, plus a
- * handful of cross-bench gauges already in prod:
+ * handful of cross-bench histograms already in prod:
  *   - pmapi_request_duration_seconds_bucket   (bench pm-api-latency)
- *   - pmapi_health                            (same bench, uptime side)
+ *   - pm_health                               (bench pm-data-freshness, uptime)
  *   - pmres_resolution_delay_seconds_bucket   (bench pm-resolution-delay)
- *   - pm_freshness_p50_ms                     (bench pm-data-freshness)
+ *   - pm_freshness_delta_ms_bucket            (bench pm-data-freshness)
+ *
+ * The freshness bench publishes a histogram keyed by
+ * `{provider, venue, kind}` (NOT a pre-aggregated p50/p99 gauge), so we
+ * compute the quantile client-side via `histogram_quantile()` and key
+ * the data-feed rows by the `provider` label.
  *
  * Shape mirrors `hl-builder-stats.ts` exactly so the page composes the
  * same way as /hyperliquid: one server fetch, one client tab swap.
@@ -207,9 +212,9 @@ export async function fetchPmCohort(): Promise<PmCohortSummary | null> {
   }
 
   // Data feeds. Coverage stays static (taken from the seed); the live
-  // values come from the freshness bench, which keys by relay. The T0
-  // reference renders a badge instead of a number so its row never
-  // claims a 0 ms freshness lead over itself.
+  // values come from the freshness bench, which keys by `provider`. The
+  // T0 reference (Polymarket CLOB) is excluded from PM_DATA_FEEDS since
+  // measuring it against itself would always yield zero lag.
   const freshnessP50By = new Map<string, number>();
   const freshnessP99By = new Map<string, number>();
   const uptimeBy = new Map<string, number>();
