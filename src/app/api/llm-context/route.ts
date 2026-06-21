@@ -1,5 +1,6 @@
 import { getBenchmarks } from "@/data/benchmarks";
 import { SITE } from "@/data/site";
+import { AllBenchmarksDraftError } from "@/lib/spec";
 import { fmtUnit } from "@/lib/format";
 import { fieldValue, headlineSentence, leader } from "@/lib/citation";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
@@ -26,7 +27,25 @@ export async function GET(req: Request) {
     return new Response(await tooMany.text(), { status: tooMany.status, headers: tooMany.headers });
   }
 
-  const benches = (await getBenchmarks()).filter((b) => b.editorialStatus === "live");
+  let benches;
+  try {
+    benches = (await getBenchmarks()).filter(
+      (b) => b.editorialStatus === "live",
+    );
+  } catch (err) {
+    if (err instanceof AllBenchmarksDraftError) {
+      return new Response("benchmarks_unavailable\n", {
+        status: 503,
+        headers: {
+          "content-type": "text/plain; charset=utf-8",
+          "cache-control": "no-store",
+          "retry-after": "60",
+          "access-control-allow-origin": "*",
+        },
+      });
+    }
+    throw err;
+  }
   const now = new Date().toISOString();
 
   const lines: string[] = [];

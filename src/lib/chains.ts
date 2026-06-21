@@ -12,7 +12,7 @@
  */
 
 import { cache } from "react";
-import { getBenchmarks } from "@/data/benchmarks";
+import { getBenchmarksSafe } from "@/data/benchmarks";
 import type { Benchmark } from "@/types/benchmark";
 
 export type ChainCategory = "L1" | "L2";
@@ -225,7 +225,7 @@ export const CHAIN_BY_SLUG = new Map(CHAINS.map((c) => [c.slug, c]));
 export const getBenchmarksForChain = cache(async function getBenchmarksForChain(
   chainSlug: string,
 ): Promise<Benchmark[]> {
-  const benches = await getBenchmarks();
+  const benches = await getBenchmarksSafe();
   return benches.filter((b) => {
     if (b.results.some((r) => r.slug === chainSlug)) return true;
     if (b.dimensions?.chain?.some((c) => c.value === chainSlug)) return true;

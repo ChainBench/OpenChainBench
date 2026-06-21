@@ -24,7 +24,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { loadAllBenchmarks } from "@/lib/spec";
+import { AllBenchmarksDraftError, loadAllBenchmarks } from "@/lib/spec";
 import { getBenchCreatedAt } from "@/lib/seo/bench-dates";
 import { headlineSentence } from "@/lib/citation";
 import { SITE } from "@/data/site";
@@ -59,7 +59,22 @@ function itemDescription(b: Benchmark): string {
 }
 
 export async function GET() {
-  const all = await loadAllBenchmarks();
+  let all;
+  try {
+    all = await loadAllBenchmarks();
+  } catch (err) {
+    if (err instanceof AllBenchmarksDraftError) {
+      return new Response("benchmarks_unavailable\n", {
+        status: 503,
+        headers: {
+          "content-type": "text/plain; charset=utf-8",
+          "cache-control": "no-store",
+          "retry-after": "60",
+        },
+      });
+    }
+    throw err;
+  }
   const live = all.filter((b) => b.editorialStatus === "live");
 
   const items = live

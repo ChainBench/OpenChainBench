@@ -1,5 +1,6 @@
 import { getBenchmarks } from "@/data/benchmarks";
 import { SITE } from "@/data/site";
+import { AllBenchmarksDraftError } from "@/lib/spec";
 import { headlineSentence } from "@/lib/citation";
 
 export const runtime = "nodejs";
@@ -13,7 +14,23 @@ export const revalidate = 300;
  * https://llmstxt.org for the spec.
  */
 export async function GET() {
-  const benches = await getBenchmarks();
+  let benches;
+  try {
+    benches = await getBenchmarks();
+  } catch (err) {
+    if (err instanceof AllBenchmarksDraftError) {
+      return new Response("benchmarks_unavailable\n", {
+        status: 503,
+        headers: {
+          "content-type": "text/plain; charset=utf-8",
+          "cache-control": "no-store",
+          "retry-after": "60",
+          "access-control-allow-origin": "*",
+        },
+      });
+    }
+    throw err;
+  }
 
   const lines: string[] = [];
   lines.push(`# OpenChainBench`);
