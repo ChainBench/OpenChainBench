@@ -10,7 +10,11 @@ import path from "node:path";
 import yaml from "js-yaml";
 import { cache } from "react";
 import type { Benchmark } from "@/types/benchmark";
-import { loadAllBenchmarks, loadBenchmark } from "@/lib/spec";
+import {
+  loadAllBenchmarks,
+  loadAllBenchmarksSafe,
+  loadBenchmark,
+} from "@/lib/spec";
 
 export type {
   Benchmark,
@@ -20,7 +24,21 @@ export type {
   Series24h,
 } from "@/types/benchmark";
 
+/**
+ * Strict loader. Throws AllBenchmarksDraftError when every bench has
+ * collapsed to draft (Prom blackout, cold start with no KV snapshot).
+ * Use this in API endpoints, feeds, and crons that should return 503
+ * rather than poison downstream consumers with an all-draft snapshot.
+ */
 export const getBenchmarks = cache(loadAllBenchmarks);
+
+/**
+ * Build-and-render safe loader. Catches the all-draft sentinel and
+ * returns the draft-placeholder list so `next build` and hub pages
+ * still render. Use this in pages enumerated by generateStaticParams
+ * or any UI surface that must always produce HTML.
+ */
+export const getBenchmarksSafe = cache(loadAllBenchmarksSafe);
 
 export async function getBenchmark(
   slug: string,
