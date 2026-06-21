@@ -22,6 +22,7 @@ import {
   buildSharedBenches,
   canonicalisationTarget,
   fmtTs,
+  hasSharedBenches,
   latestIso,
   parseAdHocSlug,
   type BreakdownRow,
@@ -120,6 +121,14 @@ export async function generateMetadata({
   if (!pair) notFound();
   const { a, b } = await loadPairProviders(pair);
   if (!a || !b) notFound();
+  // Final SSR gate: an ad-hoc pair can have both providers resolved yet
+  // share zero benches (e.g. an RPC provider vs an oracle). Without
+  // this notFound() the page body's `shared.length === 0` check fires
+  // after loading.tsx has already streamed the shell, so the response
+  // ships HTTP 200 + skeleton + a noindex meta from not-found.tsx —
+  // exactly what crawlers indexed before this fix. Cheap: only the
+  // appearance intersection, no Prom fan out.
+  if (!hasSharedBenches(pair, a, b)) notFound();
 
   const title = `${a.name} vs ${b.name}: live OpenChainBench benchmark data`;
   const description = capDescription(
