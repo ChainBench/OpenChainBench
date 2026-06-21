@@ -34,7 +34,7 @@ function unavailable(): NextResponse {
  * cite without needing to read the footer of every page.
  */
 export async function GET(req: Request) {
-  const r = rateLimit(clientKey(req, "citable"), 60, 60);
+  const r = rateLimit(clientKey(req, "citable"), 60, 60, req);
   if (!r.ok) return tooManyRequests(r.retryAfterSec);
 
   let benches;
