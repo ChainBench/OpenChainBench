@@ -53,6 +53,17 @@ const nextConfig: NextConfig = {
   // pin it so a future Next minor that flips defaults can't silently
   // split bench rankings between the two surface URLs.
   trailingSlash: false,
+  // Inject a build-time timestamp so the sitemap can emit a stable
+  // <lastmod> per deploy instead of `new Date()` at request time. The
+  // sitemap runs on force-dynamic (to bypass Next's 2 MB Data Cache
+  // limit), which means `new Date()` at module init evaluates anew on
+  // every Google crawl. Result: every URL in the sitemap got a freshly
+  // updated lastmod each visit, Google flagged the signal as unreliable
+  // and stopped using it to prioritise recrawls. This baking pins the
+  // value at build time so it changes only when a new deploy ships.
+  env: {
+    NEXT_PUBLIC_BUILD_TIME: new Date().toISOString(),
+  },
   turbopack: {
     root: __dirname,
   },
