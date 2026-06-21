@@ -107,6 +107,15 @@ func runChainlink(ctx context.Context, specs []PairSpec) {
 
 	tick := func() {
 		for _, s := range specs {
+			// An empty ChainlinkFeed means the spec author declared
+			// "no Chainlink source for this pair" — Chainlink retired
+			// the mainnet aggregator (XRP/ADA/DOGE since 2025). Skip
+			// silently: no round-trip, no error counter, no stale
+			// chainlink line on the bench. Pyth/Binance/Coinbase
+			// still feed the deviation calc for this pair.
+			if s.ChainlinkFeed == "" {
+				continue
+			}
 			if c.unsupported[s.ChainlinkFeed] {
 				// Mark error every cycle so the deviation calc skips
 				// stale values, but skip the network round-trip.
