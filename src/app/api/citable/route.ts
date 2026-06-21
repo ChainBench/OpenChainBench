@@ -1,15 +1,33 @@
 import { NextResponse } from "next/server";
 import { getBenchmarks } from "@/data/benchmarks";
 import { SITE } from "@/data/site";
+import { AllBenchmarksDraftError } from "@/lib/spec";
 import { fieldValue, leader, headlineSentence } from "@/lib/citation";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const revalidate = 60;
 
+/** Short 503 with a Retry-After hint, served when the aggregator has
+ *  no live snapshot to surface (Prom blackout + cold KV). Beats serving
+ *  an all-draft index that downstream LLM agents would treat as truth. */
+function unavailable(): NextResponse {
+  return NextResponse.json(
+    { error: "benchmarks_unavailable", retryAfterSec: 60 },
+    {
+      status: 503,
+      headers: {
+        "cache-control": "no-store",
+        "retry-after": "60",
+        "access-control-allow-origin": "*",
+      },
+    },
+  );
+}
+
 /**
  * Flat machine-readable index of every citable benchmark. Designed to be
- * the **first** endpoint an AI agent or journalist crawls - gives them
+ * the **first** endpoint an AI agent or journalist crawls. Gives them
  * everything they need to decide whether to deep-link to a specific bench.
  *
  * License is intentionally surfaced per-row so downstream agents can
@@ -19,7 +37,15 @@ export async function GET(req: Request) {
   const r = rateLimit(clientKey(req, "citable"), 60, 60);
   if (!r.ok) return tooManyRequests(r.retryAfterSec);
 
-  const benches = (await getBenchmarks()).filter((b) => b.editorialStatus === "live");
+  let benches;
+  try {
+    benches = (await getBenchmarks()).filter(
+      (b) => b.editorialStatus === "live",
+    );
+  } catch (err) {
+    if (err instanceof AllBenchmarksDraftError) return unavailable();
+    throw err;
+  }
   const data = benches.map((b) => {
     const top = leader(b);
     return {

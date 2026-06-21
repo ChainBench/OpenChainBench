@@ -10,7 +10,7 @@
 
 import { cache } from "react";
 import { unstable_cache } from "next/cache";
-import { getBenchmarks } from "@/data/benchmarks";
+import { getBenchmarksSafe } from "@/data/benchmarks";
 import { liveResults } from "@/lib/provider-filters";
 import { readBestPerChain } from "@/lib/per-chain-contract";
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
@@ -223,7 +223,7 @@ function rankPerChainForBench(
 }
 
 async function buildProviders(): Promise<ProviderProfile[]> {
-  const benches = await getBenchmarks();
+  const benches = await getBenchmarksSafe();
   const byKey = new Map<string, ProviderProfile>();
 
   for (const b of benches) {

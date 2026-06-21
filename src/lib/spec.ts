@@ -192,57 +192,94 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   { revalidate: 60, tags: ["benchmarks"] },
 );
 
+// Sentinel thrown by the aggregator when EVERY bench collapses to
+// draft. Catchable by name at call sites that want to fall back to
+// placeholders (page rendering) vs. propagate as 503 (APIs and feeds).
+//
+// Why an explicit error type: returning the draft set from the cached
+// path poisons unstable_cache (Upstash KV) with an all-draft snapshot
+// that then serves as "truth" to every downstream consumer for the
+// rest of the revalidate window. /api/citable was the visible symptom.
+// Throwing instead makes unstable_cache keep the previous good value
+// and skip writing the bad one.
+export class AllBenchmarksDraftError extends Error {
+  readonly slugCount: number;
+  constructor(slugCount: number) {
+    super(
+      `loadAllBenchmarks: every bench (${slugCount}) collapsed to draft. ` +
+        "Refusing to cache the all-draft set. Likely Prom blackout or " +
+        "cold start with no KV snapshot.",
+    );
+    this.name = "AllBenchmarksDraftError";
+    this.slugCount = slugCount;
+  }
+}
+
+/**
+ * Pure aggregation step. Exported for tests. Given a spec list and a
+ * per-bench loader (real or mocked), fans out in parallel, substitutes
+ * a draft placeholder for any per-bench throw, and throws
+ * AllBenchmarksDraftError when literally every bench resolves to draft.
+ *
+ * Kept separate from the unstable_cache wrapper below so the test
+ * suite can exercise the error path without standing up Prometheus or
+ * the Next cache backend.
+ */
+export async function aggregateBenchmarks(
+  specs: Spec[],
+  loadOne: (slug: string) => Promise<Benchmark | undefined>,
+): Promise<Benchmark[]> {
+  const settled = await Promise.allSettled(specs.map((s) => loadOne(s.slug)));
+  const benchmarks: Benchmark[] = [];
+  for (let i = 0; i < specs.length; i++) {
+    const spec = specs[i];
+    const r = settled[i];
+    if (r.status === "fulfilled" && r.value) {
+      benchmarks.push(r.value);
+    } else {
+      // Per-bench throw fired with no previous cache to fall back to.
+      // Surface a placeholder so the page still renders rather than
+      // dropping the bench from the list (which would break the sitemap,
+      // the products pages, and the "More benchmarks" rail).
+      // [DRAFT-TRACE] this path produces a visible "draft" render. Log
+      // so we can correlate with KV / Prom state.
+      const reason =
+        r.status === "rejected"
+          ? r.reason instanceof Error
+            ? r.reason.message
+            : String(r.reason)
+          : "no_value";
+      console.warn(
+        `[DRAFT-TRACE] placeholder_used slug=${spec.slug} reason=${reason}`,
+      );
+      benchmarks.push(draftPlaceholderForSpec(spec));
+    }
+  }
+  const live = benchmarks.filter((b) => b.status === "live");
+  if (benchmarks.length > 0 && live.length === 0) {
+    // Throw so unstable_cache keeps the previous good value during a
+    // Prom blackout. Previously we returned the all-draft set with a
+    // warning, which got cached for 60s and made /api/citable, sitemap,
+    // and hub pages all report every bench as draft while the per-slug
+    // /api/stat/<slug> path returned live data. Build-time callers wrap
+    // in try/catch (see loadAllBenchmarksSafe).
+    console.warn(
+      `[DRAFT-TRACE] all_draft slug_count=${benchmarks.length} throwing to preserve previous cache value`,
+    );
+    throw new AllBenchmarksDraftError(benchmarks.length);
+  }
+  return benchmarks.sort((a, b) => a.number.localeCompare(b.number));
+}
+
 // Aggregator: fan out to N per-bench caches in parallel via
 // Promise.allSettled so a single bench's transient throw doesn't bring
-// down the whole list. For specs whose per-bench cache is empty AND the
-// fresh fetch threw (cold-start blackout case), we fall back to a draft
-// placeholder so the page renders. The OG "all benches draft" safety
-// throw is preserved: if literally every bench resolves to draft we
-// throw to keep the previous all-benches cache intact.
+// down the whole list. See aggregateBenchmarks for the actual logic.
+// This wrapper layers unstable_cache on top so the result is shared
+// across requests with 60s revalidate.
 const loadAllBenchmarksCached = unstable_cache(
   async (): Promise<Benchmark[]> => {
     const specs = await loadSpecs();
-    const settled = await Promise.allSettled(
-      specs.map((s) => loadBenchmarkUnfilteredCached(s.slug)),
-    );
-    const benchmarks: Benchmark[] = [];
-    for (let i = 0; i < specs.length; i++) {
-      const spec = specs[i];
-      const r = settled[i];
-      if (r.status === "fulfilled" && r.value) {
-        benchmarks.push(r.value);
-      } else {
-        // The per-bench throw fired with no previous cache to fall back
-        // to. Surface a placeholder so the page still renders rather
-        // than dropping the bench from the list (which would break the
-        // sitemap, the products pages, and the "More benchmarks" rail).
-        // [DRAFT-TRACE] this is the path that produces a visible "draft"
-        // render to the user — log so we can correlate with KV / prom state.
-        const reason =
-          r.status === "rejected" ? (r.reason instanceof Error ? r.reason.message : String(r.reason)) : "no_value";
-        console.warn(
-          `[DRAFT-TRACE] placeholder_used slug=${spec.slug} reason=${reason}`,
-        );
-        benchmarks.push(draftPlaceholderForSpec(spec));
-      }
-    }
-    const live = benchmarks.filter((b) => b.status === "live");
-    if (benchmarks.length > 0 && live.length === 0) {
-      // Previously this threw to make unstable_cache keep the previous
-      // value during a Prom blackout. The throw, however, propagates
-      // unhandled into the BUILD-time page-generation path (no previous
-      // cache there) and crashes `next build` with "Error: every bench
-      // draft". With the snapshot/KV fallback + 10s Prom timeout + cron
-      // pre-warm now in place, this safety net mostly fires during the
-      // build window of a cold deploy. Warn loudly and return the
-      // draft set — the page renders with placeholders and recovers on
-      // the next revalidate cycle. Avoids deploy crashes.
-      console.warn(
-        "[DRAFT-TRACE] all_draft slug_count=" + benchmarks.length +
-          " — Prom blackout during build/cold-start, returning placeholders",
-      );
-    }
-    return benchmarks.sort((a, b) => a.number.localeCompare(b.number));
+    return aggregateBenchmarks(specs, loadBenchmarkUnfilteredCached);
   },
   // v6: aggregate cache. Bumped together with bench-unfiltered-v4 so
   // the per-bench providersPerChain field actually propagates into the
@@ -254,10 +291,47 @@ const loadAllBenchmarksCached = unstable_cache(
   // v10: bumped with bench-unfiltered-v8 (sec unit).
   // v11: bumped with bench-unfiltered-v9 (bp unit).
   // v12: bumped with bench-unfiltered-v10 (dimensions overlay).
-  ["all-benchmarks-v12"],
+  // v13: bumped to flush any poisoned all-draft snapshot written by the
+  // pre-fix code path during a Prom blackout. The fix throws on
+  // all-draft so unstable_cache no longer caches the bad set, but any
+  // already-stored v12 snapshot in Upstash KV would still serve for up
+  // to 60s after deploy. Bumping the key sidesteps that window.
+  ["all-benchmarks-v13"],
   { revalidate: 60, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
+
+/**
+ * Safe wrapper for build-time and page-render callers that must produce
+ * SOMETHING even during a full Prom blackout. Catches the all-draft
+ * sentinel and substitutes a draft-placeholder list built directly from
+ * the specs. Does not cache the fallback (so the next call hits the
+ * cached path again and recovers as soon as Prom is back).
+ *
+ * Use this for: pages rendered at build time (`next build` enumerates
+ * generateStaticParams over benches; a throw there crashes the build),
+ * and for hub pages that should degrade gracefully to placeholders.
+ *
+ * Do NOT use this for: /api/citable, /api/llm-context, /llms.txt,
+ * /rss.xml, /api/cron/*. Those callers should let the throw surface and
+ * return 503 so downstream consumers (LLM agents, RSS readers, crons)
+ * don't silently treat the placeholder set as ground truth.
+ */
+export const loadAllBenchmarksSafe = cache(
+  async (): Promise<Benchmark[]> => {
+    try {
+      return await loadAllBenchmarksCached();
+    } catch (err) {
+      if (err instanceof AllBenchmarksDraftError) {
+        const specs = await loadSpecs();
+        return specs
+          .map((s) => draftPlaceholderForSpec(s))
+          .sort((a, b) => a.number.localeCompare(b.number));
+      }
+      throw err;
+    }
+  },
+);
 
 
 /**
