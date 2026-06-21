@@ -128,10 +128,19 @@ export async function generateMetadata({
   params: Promise<Params>;
 }): Promise<Metadata> {
   const { slug } = await params;
+  // Run the same gating logic as the page render so non-canonical and
+  // invalid slugs short-circuit at the metadata phase, BEFORE Next.js
+  // streams the loading.tsx fallback. Without this the SSR HTML ends
+  // up with the root layout's homepage title and description plus the
+  // skeleton body, which is exactly what crawlers index. Routing here
+  // produces a real 308 / 404 response from the route layer instead of
+  // a 200 wrapping the streamed skeleton.
+  const canonicalTarget = canonicalisationTarget(slug);
+  if (canonicalTarget) redirect(`/compare/${canonicalTarget}`);
   const pair = getComparePair(slug) ?? (await resolveAdHocPair(slug));
-  if (!pair) return {};
+  if (!pair) notFound();
   const { a, b } = await loadPairProviders(pair);
-  if (!a || !b) return {};
+  if (!a || !b) notFound();
 
   const url = `${SITE.url}/compare/${pair.slug}`;
   const title = `${a.name} vs ${b.name}: live OpenChainBench benchmark data`;
