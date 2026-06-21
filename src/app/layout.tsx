@@ -161,11 +161,21 @@ export default function RootLayout({
             own URL-bar overlay animates the layout viewport on top of the
             WebKit regression. CSS below downgrades the site header to
             non-sticky only when this class is present. Inline so the class
-            is on the html element before React hydrates — no flash. */}
+            is on the html element before React hydrates (no flash). */}
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var ua=navigator.userAgent;if(/iPhone|iPad|iPod/.test(ua)&&!/Safari\\//.test(ua))document.documentElement.classList.add('ios-webview');}catch(e){}})();`,
           }}
+        />
+        {/* Site-wide Organization + WebSite JSON-LD. Lives inside <head>
+            (not body) so stricter parsers (some AI search crawlers, schema
+            validators) that only scan <head> for structured data pick it
+            up. Google parses both head and body, so this is a pure
+            placement change with no schema-content delta. */}
+        <script
+          type="application/ld+json"
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: serialized via safeJsonLd
+          dangerouslySetInnerHTML={{ __html: safeJsonLd(ORG_JSONLD) }}
         />
       </head>
       {/* grid (not flex) so position: sticky on <SiteHeader> works reliably
@@ -174,10 +184,6 @@ export default function RootLayout({
           containing block for position: fixed descendants and the header
           ends up scrolling with the body. Clip is on html + main + article. */}
       <body className="min-h-full grid grid-rows-[auto_1fr_auto]">
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: safeJsonLd(ORG_JSONLD) }}
-        />
         <a href="#main-content" className="skip-link">
           Skip to main content
         </a>
