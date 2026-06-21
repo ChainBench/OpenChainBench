@@ -248,6 +248,38 @@ export async function loadChainRegionMatrix(
   return entries;
 }
 
+/** Lightweight precheck: does this pair have at least one shared bench
+ *  after applying the whitelist + exclude rules? Pure set arithmetic on
+ *  the already-loaded provider appearances. No Prom calls, no KV
+ *  lookup, no fan out.
+ *
+ *  Used by `generateMetadata` so the route can `notFound()` BEFORE
+ *  Next.js streams the loading.tsx fallback. Without this, an
+ *  unresolvable ad-hoc pair (two real providers that share zero benches,
+ *  e.g. an RPC provider vs an oracle) ships HTTP 200 + the loading
+ *  skeleton + `<title>Page not found</title>` because the
+ *  `shared.length === 0` check inside the page body fires after the
+ *  Suspense boundary has already streamed the shell. The result was
+ *  Google indexing the skeleton with `robots: noindex` for the entire
+ *  /compare ad-hoc surface.
+ *
+ *  Mirrors the candidate-slug computation inside `buildSharedBenches`
+ *  so the two stay in lockstep. */
+export function hasSharedBenches(
+  pair: ComparePair,
+  aAppearances: Awaited<ReturnType<typeof getProvider>>,
+  bAppearances: Awaited<ReturnType<typeof getProvider>>,
+): boolean {
+  if (!aAppearances || !bAppearances) return false;
+  const aSlugs = new Set(aAppearances.appearances.map((x) => x.benchmark.slug));
+  const bSlugs = new Set(bAppearances.appearances.map((x) => x.benchmark.slug));
+  const candidateSlugs = pair.benchmarks
+    ? pair.benchmarks.filter((s) => aSlugs.has(s) && bSlugs.has(s))
+    : Array.from(aSlugs).filter((s) => bSlugs.has(s));
+  const excluded = new Set(pair.excludeBenchmarks ?? []);
+  return candidateSlugs.some((s) => !excluded.has(s));
+}
+
 /** Resolves the intersection of two providers' bench appearances, then
  *  enriches each shared bench with aggregate + per chain + per region
  *  breakdowns. Honors the pair's `benchmarks` whitelist (when set) and
