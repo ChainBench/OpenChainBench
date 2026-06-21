@@ -24,7 +24,7 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<Params> },
 ) {
-  const rl = rateLimit(clientKey(req, "variant"), 120, 60);
+  const rl = rateLimit(clientKey(req, "variant"), 120, 60, req);
   if (!rl.ok) return tooManyRequests(rl.retryAfterSec);
 
   const { slug } = await params;

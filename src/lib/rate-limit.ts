@@ -26,17 +26,57 @@ export type RateLimitResult = {
   retryAfterSec: number;
 };
 
+/** Known AI crawler User-Agent substrings. Matched case-insensitively.
+ *  Requests from these agents bypass the per-IP throttle on read-only
+ *  endpoints because the crawlers route many independent user queries
+ *  through a small pool of shared egress IPs (PerplexityBot,
+ *  ChatGPT-User, ClaudeBot, etc.). A burst from one IP usually means
+ *  many distinct human questions, not abuse. UA spoofing is possible
+ *  but the affected endpoints are read-only and explicitly designed to
+ *  be cited, so the worst case of a spoofer is what we already want. */
+const AI_CRAWLER_RE =
+  /GPTBot|ChatGPT-User|OAI-SearchBot|ClaudeBot|anthropic-ai|Claude-Web|PerplexityBot|Google-Extended|GoogleOther|CCBot|Bytespider|Applebot-Extended|Amazonbot|Diffbot|YouBot|DuckAssistBot/i;
+
+/** True when the given User-Agent matches a known AI crawler pattern. */
+export function isAiCrawler(userAgent: string | null | undefined): boolean {
+  if (!userAgent) return false;
+  return AI_CRAWLER_RE.test(userAgent);
+}
+
+/** Open-ended success used when bypassing the bucket for an AI crawler.
+ *  Same shape every caller already handles. */
+function aiBypassResult(): RateLimitResult {
+  return { ok: true, remaining: Number.POSITIVE_INFINITY, retryAfterSec: 0 };
+}
+
 /**
  * Check & consume a token for `key`. Returns ok:false when the bucket is
  * empty, with retryAfterSec hint for clients.
  *
  * Bucket refills linearly: `capacity` tokens over `windowSec` seconds.
+ *
+ * Optional `req`: when provided, the request's User-Agent is inspected
+ * and a match against the AI crawler allowlist short-circuits the bucket
+ * (no token consumed). Pass it on read-only endpoints meant to be cited
+ * (citable, llm-context, stat, mcp, etc.). Omit on write endpoints or
+ * anywhere UA-based bypass is undesired.
  */
 export function rateLimit(
   key: string,
   capacity: number,
   windowSec: number,
+  req?: Request,
 ): RateLimitResult {
+  if (req) {
+    const ua = req.headers.get("user-agent");
+    if (isAiCrawler(ua)) {
+      if (process.env.AI_BYPASS_DEBUG === "true") {
+        // Trimmed to keep noisy UA blobs out of the log line.
+        console.log(`[ai-bypass] granted to ${(ua ?? "").slice(0, 80)}`);
+      }
+      return aiBypassResult();
+    }
+  }
   if (capacity <= 0 || windowSec <= 0) {
     // Defensive: a misconfigured caller would otherwise produce Infinity
     // retry-after via /0 below. Treat as "denied with finite backoff".
