@@ -30,7 +30,15 @@ import type { Answer } from "@/lib/answers";
 // succeeds; the next ISR refresh recovers automatically.
 export const dynamic = "force-dynamic";
 
-const BUILD_TIME = new Date();
+// Stable per deploy, not per request. process.env.NEXT_PUBLIC_BUILD_TIME
+// is injected in next.config.ts at build time. Falling back to new Date()
+// keeps local dev working. Critical: must NOT be `new Date()` at request
+// time because the sitemap runs on force-dynamic (see header comment) so
+// every Google crawl would otherwise see a fresh lastmod on every URL
+// and Google would discard the signal as unreliable sitewide.
+const BUILD_TIME = process.env.NEXT_PUBLIC_BUILD_TIME
+  ? new Date(process.env.NEXT_PUBLIC_BUILD_TIME)
+  : new Date();
 // Vercel's build container doesn't preserve git-checkout mtimes — every
 // file gets reset to the build-system default (Oct 20 2018), which leaks
 // into the sitemap as `<lastmod>2018-10-20T...</lastmod>` for editorial
