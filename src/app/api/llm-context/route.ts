@@ -21,7 +21,7 @@ export const revalidate = 60;
  *    per-region breakdown) but covers all 8 benches in one round-trip.
  */
 export async function GET(req: Request) {
-  const r = rateLimit(clientKey(req, "llm-context"), 30, 60);
+  const r = rateLimit(clientKey(req, "llm-context"), 30, 60, req);
   if (!r.ok) {
     const tooMany = tooManyRequests(r.retryAfterSec);
     return new Response(await tooMany.text(), { status: tooMany.status, headers: tooMany.headers });
