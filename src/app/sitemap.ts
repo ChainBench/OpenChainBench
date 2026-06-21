@@ -7,7 +7,7 @@ import { loadAllAnswers } from "@/lib/answers";
 import { CHAINS, getBenchmarksForChain } from "@/lib/chains";
 import { CATEGORIES } from "@/lib/categories";
 import { isAll } from "@/lib/dimensions";
-import { getProviderSlugs } from "@/lib/providers";
+import { getProvider, getProviderSlugs } from "@/lib/providers";
 import { SITE } from "@/data/site";
 import type { Benchmark } from "@/types/benchmark";
 import type { Answer } from "@/lib/answers";
@@ -210,7 +210,23 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
     return entries;
   });
 
-  const providerRoutes: MetadataRoute.Sitemap = providerSlugs.map((slug) => ({
+  // Validate every slug against getProvider() so the sitemap can never
+  // ship a /products/<slug> URL that the page would 404 on. The page
+  // calls `getProvider(slug)` and renders notFound() when it returns
+  // undefined, so this is the exact filter generateStaticParams would
+  // need to apply if it were prerendering the route. Without this
+  // guard, Google indexed soft 404s for slugs the sitemap claimed
+  // existed (quicknode, coingecko, infura, ankr were all flagged).
+  const validatedSlugs = (
+    await Promise.all(
+      providerSlugs.map(async (slug) => {
+        const p = await getProvider(slug);
+        return p ? slug : null;
+      }),
+    )
+  ).filter((s): s is string => s !== null);
+
+  const providerRoutes: MetadataRoute.Sitemap = validatedSlugs.map((slug) => ({
     url: `${SITE.url}/products/${slug}`,
     lastModified: providerLastRun.get(slug.toLowerCase()) ?? catalogTs,
     changeFrequency: "daily",
