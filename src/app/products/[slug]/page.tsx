@@ -20,6 +20,9 @@ import {
 } from "@/lib/hl-builder-stats";
 import { HlBuilderDashboard } from "@/components/hl-builder-dashboard";
 import { RelatedProvidersSection } from "@/components/related-providers-section";
+import { getPmVenueContext } from "@/lib/pm-venue-context";
+import { PmVenueSection } from "@/components/pm-venue-section";
+import { PmDataFeedSection } from "@/components/pm-data-feed-section";
 
 export const revalidate = 60;
 
@@ -104,6 +107,12 @@ export default async function ProviderPage({
   // the slug isn't an HL builder.
   const isHlBuilder = await isHlBuilderSlug(p.slug);
   const hlStats = isHlBuilder ? await fetchHlBuilderStats(p.slug) : null;
+
+  // Prediction-market deep-dive: if the slug is a tracked PM venue or
+  // data feed, getPmVenueContext returns the per-venue / per-feed
+  // section payload. Returns null for everything else, so non-PM pages
+  // pay one cached fetch and render nothing.
+  const pmContext = await getPmVenueContext(p.slug);
 
   const sorted = [...p.appearances].sort((a, b) => {
     if (a.rank !== b.rank) return a.rank - b.rank;
@@ -372,6 +381,30 @@ export default async function ProviderPage({
                       </Link>
                     </>
                   )}
+                  {/* Prediction-markets hub pill. Surfaces a one-click
+                      jump from a venue/data provider product page to the
+                      PM coverage hub. Hard-coded slug list, same shape
+                      as the HL companion treatment elsewhere. */}
+                  {(
+                    p.slug === "polymarket" ||
+                    p.slug === "kalshi" ||
+                    p.slug === "limitless" ||
+                    p.slug === "manifold" ||
+                    p.slug === "myriad" ||
+                    p.slug === "mobula" ||
+                    p.slug === "codex" ||
+                    p.slug === "predexon"
+                  ) && (
+                    <>
+                      <span className="text-ink-faint"> · </span>
+                      <Link
+                        href="/prediction-markets"
+                        className="hover:text-ink transition-colors underline underline-offset-2 decoration-rule"
+                      >
+                        View on /prediction-markets
+                      </Link>
+                    </>
+                  )}
                 </p>
               </div>
             </header>
@@ -393,6 +426,26 @@ export default async function ProviderPage({
       })()}
 
       {hlStats && <HlBuilderDashboard stats={hlStats} name={p.name} />}
+
+      {pmContext?.kind === "venue" && (
+        <PmVenueSection
+          slug={pmContext.slug}
+          name={pmContext.name}
+          chainLabel={pmContext.chainLabel}
+          externalUrl={pmContext.externalUrl}
+          venueType={pmContext.venueType}
+          benchRows={pmContext.benchRows}
+        />
+      )}
+      {pmContext?.kind === "feed" && (
+        <PmDataFeedSection
+          slug={pmContext.slug}
+          name={pmContext.name}
+          logoSrc={pmContext.logoSrc}
+          externalUrl={pmContext.externalUrl}
+          benchRows={pmContext.benchRows}
+        />
+      )}
 
       {reg && (
         <section className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-8">

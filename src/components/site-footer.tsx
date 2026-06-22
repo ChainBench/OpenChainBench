@@ -29,6 +29,7 @@ export function SiteFooter() {
               { label: "Benchmarks", href: "/benchmarks" },
               { label: "Products", href: "/products" },
               { label: "Chains", href: "/chains" },
+              { label: "Prediction markets", href: "/prediction-markets" },
               { label: "Compare", href: "/compare" },
               { label: "Alternatives", href: "/alternatives" },
               { label: "Answers", href: "/answers" },
