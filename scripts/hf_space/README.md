@@ -9,7 +9,7 @@ python_version: "3.11"
 app_file: app.py
 license: cc-by-4.0
 pinned: false
-short_description: Interactive leaderboard for OpenChainBench crypto infra benchmarks
+short_description: Live leaderboard for OpenChainBench benchmarks
 ---
 
 # OpenChainBench leaderboard
