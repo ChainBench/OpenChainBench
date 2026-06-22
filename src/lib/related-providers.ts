@@ -49,6 +49,23 @@ const COMPARE_CAP = 12;
 const ALTERNATIVES_CAP = 8;
 
 /**
+ * Zombie slugs from pre-PR #647 pm-api-latency, when each aggregator was
+ * split per venue (codex-kalshi, codex-polymarket, predexon-*). The bench
+ * now collapses everything into the parent provider slug (codex,
+ * predexon) but the materialize worker's per-slug Redis blobs survive
+ * for the TTL window after each schema change, and old slugs leak into
+ * compare candidates / alternatives links until they expire. Filtering
+ * here keeps the UI clean across the eventual-consistency gap.
+ */
+const DEAD_COMPOSITE_SLUGS = new Set([
+  "codex-kalshi",
+  "codex-polymarket",
+  "predexon-kalshi",
+  "predexon-limitless",
+  "predexon-polymarket",
+]);
+
+/**
  * Returns the providers that share at least one live benchmark with the
  * given product, sorted by shared-bench count descending then by name.
  * Capped at the top {@link COMPARE_CAP} entries.
@@ -70,6 +87,7 @@ export const getCompareCandidates = cache(async function getCompareCandidates(
   const out: CompareCandidate[] = [];
   for (const other of profiles) {
     if (other.slug.toLowerCase() === me) continue;
+    if (DEAD_COMPOSITE_SLUGS.has(other.slug.toLowerCase())) continue;
     let shared = 0;
     for (const a of other.appearances) {
       if (myBenches.has(a.benchmark.slug)) shared += 1;
@@ -125,6 +143,7 @@ async function buildAlternativesReverseMap(): Promise<
       if (r.ms.p50 <= 0) continue;
       const canon = canonicalize(r.slug).slug.toLowerCase();
       if (canon === altTargetSlug) continue;
+      if (DEAD_COMPOSITE_SLUGS.has(canon)) continue;
       if (seen.has(canon)) continue;
       seen.add(canon);
       const list = map.get(canon) ?? [];
