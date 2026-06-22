@@ -42,6 +42,17 @@ export async function PmDataFeedSection({
   const kpis = await fetchPmDataFeedKpis(slug);
   const productSlug = methodologySlug ?? slug;
 
+  // Hide the entire deep-dive when nothing is actually measured. The
+  // previous shape rendered a "Data feed not live yet for X" card plus
+  // a "Not measured yet" bench row, which read as a half-broken page on
+  // /products/<slug> for feeds whose probes have not landed. Reference
+  // feeds (Polymarket CLOB T0) still render because their badge is the
+  // payload.
+  const measuredRows = benchRows.filter(
+    (r) => r.value !== null && r.rank !== null,
+  );
+  if (!kpis && measuredRows.length === 0) return null;
+
   return (
     <section
       id={slug}
@@ -86,7 +97,7 @@ export async function PmDataFeedSection({
         )}
       </header>
 
-      {kpis ? (
+      {kpis && (
         <div className="mb-6">
           <p
             className="label-mono text-[10px] text-ink-faint mb-3"
@@ -96,13 +107,9 @@ export async function PmDataFeedSection({
           </p>
           <DataFeedKpiStrip kpis={kpis} />
         </div>
-      ) : (
-        <div className="mb-6 card-soft rounded-xl p-4 border border-ink/10 text-sm text-ink-faint italic">
-          Data feed not live yet for {name}.
-        </div>
       )}
 
-      {benchRows.length > 0 && (
+      {measuredRows.length > 0 && (
         <div className="mb-6">
           <p
             className="label-mono text-[10px] text-ink-faint mb-3"
@@ -110,7 +117,7 @@ export async function PmDataFeedSection({
           >
             OpenChainBench measurements
           </p>
-          <PmVenueBenchCards rows={benchRows} />
+          <PmVenueBenchCards rows={measuredRows} />
         </div>
       )}
 
