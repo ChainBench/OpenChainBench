@@ -1,0 +1,36 @@
+cff-version: 1.2.0
+title: "OpenChainBench: Live On-Chain Benchmarks Dataset"
+message: "If you use this dataset, please cite it using the metadata below."
+type: dataset
+authors:
+  - family-names: Tapponnier
+    given-names: Florent
+    affiliation: Mobula
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.20800312
+    description: Concept DOI (always resolves to the latest version)
+repository-code: https://github.com/ChainBench/OpenChainBench
+url: https://openchainbench.com
+abstract: >-
+  OpenChainBench publishes live, reproducible benchmarks for crypto
+  infrastructure: data aggregators, bridges, RPC providers, price feeds,
+  prediction-market data APIs, L2 networks, oracles, and more. Each
+  benchmark ships with the script that produces its data so anyone can
+  audit the methodology, add a provider, or contribute a metric. Live
+  values refresh every minute on the public site.
+keywords:
+  - open-data
+  - blockchain
+  - cryptocurrency
+  - benchmarks
+  - prediction-markets
+  - polymarket
+  - kalshi
+  - rpc
+  - l2
+  - oracle
+  - web3
+license: MIT
+version: "1.0.1"
+date-released: 2026-06-22

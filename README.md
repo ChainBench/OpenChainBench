@@ -1,5 +1,7 @@
 # OpenChainBench
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20800312.svg)](https://doi.org/10.5281/zenodo.20800312)
+
 > Open, reproducible benchmarks for crypto infrastructure. aggregators, bridges, RPCs, price feeds. Same metric, same conditions, every provider. Live at [openchainbench.com](https://openchainbench.com).
 
 OpenChainBench publishes one benchmark at a time, each one shipping with the script that produces its data. The goal is to make performance an observable property of crypto infra. measured in the open, by anyone who wants to add a provider or a metric.
