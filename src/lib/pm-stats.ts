@@ -84,8 +84,9 @@ const PM_VENUES: VenueSeed[] = [
 ];
 
 const PM_DATA_FEEDS: DataFeedSeed[] = [
-  { slug: "mobula", name: "Mobula", coverage: ["polymarket"], isReference: false },
-  { slug: "codex",  name: "Codex",  coverage: ["polymarket"], isReference: false },
+  { slug: "mobula",   name: "Mobula",   coverage: ["polymarket"], isReference: false },
+  { slug: "codex",    name: "Codex",    coverage: ["polymarket", "kalshi"], isReference: false },
+  { slug: "predexon", name: "Predexon", coverage: ["polymarket", "kalshi", "limitless"], isReference: false },
 ];
 
 function promUrl(): string | null {
