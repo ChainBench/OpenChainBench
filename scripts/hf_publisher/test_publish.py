@@ -260,24 +260,57 @@ class TimeseriesTests(unittest.TestCase):
 
 
 class ChainLeadersTests(unittest.TestCase):
-    def test_empty_with_canonical_columns(self):
-        df = build_chain_leaders(_citable_fixture(), _snap())
-        # Empty for now: spec API does not expose bestPerChain yet.
+    EXPECTED_COLS = {
+        "snapshot_date",
+        "captured_at",
+        "bench_slug",
+        "chain",
+        "leader_name",
+        "leader_slug",
+        "leader_value",
+        "worst_name",
+        "worst_slug",
+        "worst_value",
+        "schema_version",
+    }
+
+    def test_empty_when_no_chain_dimension(self):
+        # Stats with no bestPerChain produce zero rows but keep schema.
+        df = build_chain_leaders([_stat_fixture()], _snap())
         self.assertEqual(len(df), 0)
-        expected_cols = {
-            "snapshot_date",
-            "captured_at",
-            "bench_slug",
-            "chain",
-            "leader_name",
-            "leader_slug",
-            "leader_value",
-            "worst_name",
-            "worst_slug",
-            "worst_value",
-            "schema_version",
+        self.assertEqual(set(df.columns), self.EXPECTED_COLS)
+
+    def test_populates_from_best_and_worst_per_chain(self):
+        stat = _stat_fixture(slug="bridge-quote-latency")
+        stat["bestPerChain"] = {
+            "ethereum": {
+                "name": "Mobula",
+                "slug": "mobula",
+                "ms": {"p50": 280.5, "p90": 600.0, "p99": 1100.0},
+            },
+            "solana": {
+                "name": "Codex",
+                "slug": "codex",
+                "ms": {"p50": 410.0, "p90": 800.0, "p99": 1500.0},
+            },
         }
-        self.assertEqual(set(df.columns), expected_cols)
+        stat["worstPerChain"] = {
+            "ethereum": {
+                "name": "GeckoTerminal",
+                "slug": "geckoterminal",
+                "ms": {"p50": 980.0, "p90": 2000.0, "p99": 4000.0},
+            },
+        }
+        df = build_chain_leaders([stat], _snap())
+        self.assertEqual(len(df), 2)
+        eth = df[df["chain"] == "ethereum"].iloc[0]
+        sol = df[df["chain"] == "solana"].iloc[0]
+        self.assertEqual(eth["leader_slug"], "mobula")
+        self.assertEqual(eth["worst_slug"], "geckoterminal")
+        self.assertEqual(eth["leader_value"], 280.5)
+        self.assertEqual(sol["leader_slug"], "codex")
+        # Solana has no worst entry: worst columns are null.
+        self.assertTrue(sol[["worst_name", "worst_slug", "worst_value"]].isna().all())
 
 
 class PartitioningTests(unittest.TestCase):
