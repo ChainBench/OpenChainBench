@@ -460,6 +460,15 @@ def build_kaggle_metadata(
     licenses = meta.get("licenses") or []
     if not isinstance(licenses, list) or not licenses:
         raise PublisherError("kaggle metadata missing `licenses`")
+    # Kaggle enforces a 20-80 char subtitle. Surfacing the constraint here
+    # turns a remote API 400 into a local PublisherError with a precise
+    # location, which the next contributor can fix without hunting through
+    # the kaggle CLI output.
+    subtitle = meta.get("subtitle") or ""
+    if not isinstance(subtitle, str) or not 20 <= len(subtitle) <= 80:
+        raise PublisherError(
+            f"kaggle subtitle must be 20 to 80 chars, got {len(subtitle)}"
+        )
     return meta
 
 

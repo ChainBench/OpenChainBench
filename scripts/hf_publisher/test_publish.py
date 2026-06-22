@@ -354,7 +354,7 @@ class SchemaVersionTests(unittest.TestCase):
 KAGGLE_TEMPLATE = """{
   "id": "placeholder/will-be-overridden",
   "title": "OCB",
-  "subtitle": "snap {{snapshot_date}}",
+  "subtitle": "Daily benchmarks for snap {{snapshot_date}}",
   "description": "captured {{captured_at}} schema v{{schema_version}}",
   "isPrivate": false,
   "licenses": [{"name": "CC-BY-4.0"}],
@@ -375,7 +375,7 @@ class KaggleMetadataTests(unittest.TestCase):
                 tmpl, _snap("2026-06-22"), "alice/ocb-bench"
             )
             self.assertEqual(meta["id"], "alice/ocb-bench")
-            self.assertEqual(meta["subtitle"], "snap 2026-06-22")
+            self.assertEqual(meta["subtitle"], "Daily benchmarks for snap 2026-06-22")
             self.assertIn("2026-06-22T00:00:00+00:00", meta["description"])
             self.assertIn(f"schema v{SCHEMA_VERSION}", meta["description"])
 
@@ -399,6 +399,21 @@ class KaggleMetadataTests(unittest.TestCase):
 
     def test_rejects_template_without_licenses(self):
         bad = '{"id": "x/y", "licenses": []}'
+        with TemporaryDirectory() as raw:
+            tmpl = self._write_template(Path(raw), body=bad)
+            with self.assertRaises(PublisherError):
+                build_kaggle_metadata(tmpl, _snap())
+
+    def test_rejects_subtitle_too_short(self):
+        bad = '{"id": "x/y", "title": "OCB", "subtitle": "too short", "licenses": [{"name": "CC-BY-4.0"}]}'
+        with TemporaryDirectory() as raw:
+            tmpl = self._write_template(Path(raw), body=bad)
+            with self.assertRaises(PublisherError):
+                build_kaggle_metadata(tmpl, _snap())
+
+    def test_rejects_subtitle_too_long(self):
+        long = "x" * 100
+        bad = f'{{"id": "x/y", "title": "OCB", "subtitle": "{long}", "licenses": [{{"name": "CC-BY-4.0"}}]}}'
         with TemporaryDirectory() as raw:
             tmpl = self._write_template(Path(raw), body=bad)
             with self.assertRaises(PublisherError):
