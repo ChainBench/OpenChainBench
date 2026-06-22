@@ -17,19 +17,24 @@ export type PmVenueType = "onchain" | "offchain";
 type Card = { label: string; value: string; tip?: string };
 
 export function PmVenueKpiStrip({
+  slug,
   kpis,
   venueType,
 }: {
+  slug: string;
   kpis: PmVenueKpis;
   venueType: PmVenueType;
 }) {
   const cards: Card[] = [];
 
   if (kpis.volume30d != null) {
+    const isProjected = slug === "kalshi";
     cards.push({
       label: "Volume 30d",
-      value: fmtUSD(kpis.volume30d),
-      tip: "USD notional traded over the rolling 30 day window.",
+      value: `${isProjected ? "~" : ""}${fmtUSD(kpis.volume30d)}`,
+      tip: isProjected
+        ? "Estimate: 24h × 30. Kalshi exposes no native 30-day field; figure is a projection from the measured 24h volume over open events."
+        : "USD notional traded over the rolling 30 day window.",
     });
   }
 

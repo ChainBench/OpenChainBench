@@ -162,12 +162,13 @@ export function PmVenuesLeaderboard({ rows }: { rows: PmVenueRow[] }) {
                   mono
                   tip={
                     r.slug === "kalshi"
-                      ? "Projection from 24h × 30; may over-estimate during burst-trade periods"
+                      ? "Estimate: 24h × 30. Kalshi exposes no native 30-day field; figure is a projection from the measured 24h volume over open events."
                       : r.slug === "manifold"
                       ? "Play-money: mana × charity rate 0.001, NOT a market USD price"
                       : undefined
                   }
                 >
+                  {r.slug === "kalshi" && r.volume30d != null ? "~" : ""}
                   {fmtUSD(r.volume30d)}
                 </Td>
                 <Td

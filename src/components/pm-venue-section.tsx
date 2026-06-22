@@ -97,7 +97,7 @@ export async function PmVenueSection({
           >
             Live KPIs
           </p>
-          <PmVenueKpiStrip kpis={kpis} venueType={venueType} />
+          <PmVenueKpiStrip slug={slug} kpis={kpis} venueType={venueType} />
         </div>
       ) : (
         <div className="mb-6 card-soft rounded-xl p-4 border border-ink/10 text-sm text-ink-faint italic">
