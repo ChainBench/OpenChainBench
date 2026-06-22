@@ -413,7 +413,12 @@ export const loadBenchmark = cache(async function loadBenchmark(
     } catch {
       // live spec collapsed with no cached value — placeholder below
     }
-    const all = await loadAllBenchmarks();
+    // Safe fallback. The strict aggregator throws AllBenchmarksDraftError
+    // when the quorum guard trips, which would crash `next build` and any
+    // page that calls getBenchmark during a Prom blackout. The safe
+    // wrapper catches that throw and substitutes draft placeholders so
+    // the page still renders.
+    const all = await loadAllBenchmarksSafe();
     return all.find((b) => b.slug === slug);
   }
   // The filtered cache throws when a live spec collapses to draft so the
@@ -430,7 +435,12 @@ export const loadBenchmark = cache(async function loadBenchmark(
     const spec = specs.find((s) => s.slug === slug);
     return spec ? overlayEditorial(result, spec) : result;
   } catch {
-    const all = await loadAllBenchmarks();
+    // Safe fallback. The strict aggregator throws AllBenchmarksDraftError
+    // when the quorum guard trips, which would crash `next build` and any
+    // page that calls getBenchmark during a Prom blackout. The safe
+    // wrapper catches that throw and substitutes draft placeholders so
+    // the page still renders.
+    const all = await loadAllBenchmarksSafe();
     return all.find((b) => b.slug === slug);
   }
 });
