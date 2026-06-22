@@ -21,6 +21,10 @@ import { SpecSchema, type Spec } from "@/lib/spec-schema";
 import { renderBenchmarkText } from "@/lib/bench-template";
 import { liveResults as liveProviderResults } from "@/lib/provider-filters";
 import {
+  aggregateConfidence,
+  classifyHealth,
+} from "@/lib/sample-health";
+import {
   SECONDS_PER_DAY,
   SECONDS_PER_HOUR,
   SECONDS_PER_MINUTE,
@@ -108,6 +112,23 @@ export async function specToBenchmark(
     // Mark live entries explicitly so a missing `availability` reads as
     // "unknown" everywhere else in the code.
     for (const r of live.results) r.availability = "live";
+
+    // Per-provider sample-health classification. When the spec declares
+    // expected_n, every live provider gets `dataConfidence` (healthy /
+    // low / insufficient) + `sampleHealth` (raw ratio) so the renderer
+    // can badge undersized rows and the citable APIs can refuse to
+    // assert a winner from a degraded field. Specs without expected_n
+    // leave the fields undefined and the renderer behaves as before.
+    const expectedN = spec.expected_n;
+    if (expectedN) {
+      for (const r of live.results) {
+        const h = classifyHealth(r.sampleSize, expectedN);
+        if (h) {
+          r.dataConfidence = h.confidence;
+          r.sampleHealth = h.ratio;
+        }
+      }
+    }
 
     // Augment with spec-declared providers that didn't return data this
     // cycle, but only on the *unfiltered* view. When the reader has
@@ -238,6 +259,13 @@ export async function specToBenchmark(
     // surfaces fall back to the coarser bestPerChain path.
     const cellRanks = !isFiltered ? await tryLoadCellRanks(spec) : undefined;
 
+    // Bench-wide sample-health aggregate. Median of the per-provider
+    // ratios, classified into the same healthy/low/insufficient bands.
+    // Drives the citable APIs and the headline sentence: an "insufficient"
+    // aggregate makes /api/citable + /api/stat report value=null + leader=null
+    // rather than asserting a winner from a degraded field.
+    const agg = aggregateConfidence(live.results, spec.expected_n);
+
     // Resolve {{p50:slug}} / {{best_name}} / {{count}} etc. placeholders
     // against the freshly loaded numbers so editorial text (findings,
     // seo_intro, faq) never drifts from the displayed data.
@@ -248,6 +276,7 @@ export async function specToBenchmark(
       worstPerChain,
       providersPerChain,
       cellRanks,
+      dataConfidence: agg?.confidence,
     });
     // Persistence is the caller's concern (site: KV snapshot write,
     // worker: store publish). Only the unfiltered "All" view of a live

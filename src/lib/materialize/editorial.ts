@@ -37,6 +37,7 @@ export function buildEditorial(
     source: spec.source,
     dimensions: spec.dimensions,
     ledgerColumns: spec.ledger_columns,
+    expectedN: spec.expected_n,
   };
 }
 

@@ -78,6 +78,8 @@ const ProviderResultSchema = z.object({
   slots: z.object({ p50: z.number(), p99: z.number() }).optional(),
   successRate: z.number(),
   sampleSize: z.number().optional(),
+  dataConfidence: z.enum(["healthy", "low", "insufficient"]).optional(),
+  sampleHealth: z.number().optional(),
   secondary: z.object({ label: z.string(), value: z.string() }).optional(),
   availability: z.enum(["live", "unavailable"]).optional(),
   meta: StalenessMetaSchema.optional(),
@@ -169,7 +171,7 @@ const KEY_PREFIX = "ocb:snap:v1:";
  *  new field don't try to deserialize old-shape values. The Zod schema
  *  below would also reject those, but the version prefix lets us
  *  invalidate without writing strict-mode parsers. */
-const SCHEMA_VERSION = 3 as const;
+const SCHEMA_VERSION = 4 as const;
 
 // Minimal runtime payload. Editorial metadata isn't snapshotted because
 // it lives in YAML and is rebuilt from the spec on every read.
@@ -178,6 +180,8 @@ const SnapshotSchema = z.object({
   savedAt: z.number().int().positive(),
   lastRunAt: z.string(),
   sampleSize: z.number(),
+  expectedN: z.number().optional(),
+  dataConfidence: z.enum(["healthy", "low", "insufficient"]).optional(),
   results: z.array(ProviderResultSchema),
   extras: ResultExtrasSchema,
   bestPerChain: z.record(z.string(), ProviderResultSchema).optional(),
@@ -191,6 +195,8 @@ export type SnapshotPayload = {
   results: ProviderResult[];
   extras: ResultExtras;
   sampleSize: number;
+  expectedN?: number;
+  dataConfidence?: "healthy" | "low" | "insufficient";
   lastRunAt: string;
   bestPerChain?: Record<string, ProviderResult>;
   worstPerChain?: Record<string, ProviderResult>;
@@ -379,6 +385,8 @@ async function readSnapshotWithAge(
         results: parsed.data.results,
         extras: parsed.data.extras,
         sampleSize: parsed.data.sampleSize,
+        expectedN: parsed.data.expectedN,
+        dataConfidence: parsed.data.dataConfidence,
         lastRunAt: parsed.data.lastRunAt,
         bestPerChain: parsed.data.bestPerChain,
         worstPerChain: parsed.data.worstPerChain,
@@ -407,6 +415,8 @@ export function snapshotFromBenchmark(b: Benchmark): SnapshotPayload {
     results: b.results,
     extras: b.extras,
     sampleSize: b.sampleSize,
+    expectedN: b.expectedN,
+    dataConfidence: b.dataConfidence,
     lastRunAt: b.lastRunAt,
     // Persist per-chain leader stash so the snapshot-recovery path
     // (loadBenchmarkUnfilteredCached's KV fallback in spec.ts) can
