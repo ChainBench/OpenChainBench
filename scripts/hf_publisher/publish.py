@@ -107,6 +107,14 @@ def fetch_json(url: str, timeout: float = 30.0) -> dict[str, Any]:
         raise PublisherError(f"GET {url} returned HTTP {e.code}") from e
     except urllib.error.URLError as e:
         raise PublisherError(f"GET {url} failed: {e.reason}") from e
+    # socket-level read timeouts surface as bare TimeoutError on py3.10+
+    # (subclass of OSError, not URLError). Catch explicitly so callers like
+    # fetch_series can swallow per-URL timeouts via PublisherError instead
+    # of aborting the whole snapshot.
+    except TimeoutError as e:
+        raise PublisherError(f"GET {url} timed out after {timeout}s") from e
+    except OSError as e:
+        raise PublisherError(f"GET {url} socket error: {e}") from e
     try:
         return json.loads(payload)
     except json.JSONDecodeError as e:
@@ -410,13 +418,15 @@ def stage_static_assets(out_root: Path, template_root: Path, snap: Snapshot) -> 
 
 def fetch_series(api_base: str, slug: str) -> dict[str, dict[str, Any]]:
     """Fetch /api/series/<slug>?range=<w> for every supported window.
-    Returns a dict {window: payload}. Windows that 404 (no data for
-    range) are skipped silently."""
+    Returns a dict {window: payload}. Windows that 404, time out, or hit a
+    socket error are skipped silently so one slow bench cannot abort the
+    whole snapshot. The 30d window is the most likely to time out on a
+    cold cache."""
     out: dict[str, dict[str, Any]] = {}
     for window in TIMESERIES_WINDOWS:
         url = f"{api_base}/api/series/{slug}?range={window}"
         try:
-            out[window] = fetch_json(url)
+            out[window] = fetch_json(url, timeout=60.0)
         except PublisherError as e:
             logger.info("skip series %s @ %s: %s", slug, window, e)
     return out
