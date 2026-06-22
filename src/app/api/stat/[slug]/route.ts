@@ -70,6 +70,9 @@ export async function GET(
     ? b.results.map((r) => ({
         name: r.name,
         slug: r.slug,
+        type: r.type ?? null,
+        layer: r.layer ?? null,
+        tag: r.tag ?? null,
         ms: { p50: null, p90: null, p99: null, mean: null },
         successRate: r.successRate,
         sampleSize: r.sampleSize ?? null,
@@ -82,6 +85,9 @@ export async function GET(
         .map((r) => ({
           name: r.name,
           slug: r.slug,
+          type: r.type ?? null,
+          layer: r.layer ?? null,
+          tag: r.tag ?? null,
           ms: r.ms,
           successRate: r.successRate,
           sampleSize: r.sampleSize,

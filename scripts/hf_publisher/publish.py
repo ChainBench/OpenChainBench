@@ -3,18 +3,22 @@ Daily snapshot publisher for the Hugging Face dataset
 `OpenChainBench/benchmarks`.
 
 Reads the live citable JSON API plus per-bench detail, projects it into
-three Hive-partitioned Parquet tables (headlines, providers, timeseries)
-keyed by snapshot_date, and pushes the new partitions to the HF dataset
-repo.
+four Hive-partitioned Parquet tables (headlines, providers, timeseries,
+chain_leaders) keyed by snapshot_date, and pushes the new partitions to
+the HF dataset repo.
 
-Why three tables and not one wide table:
-  headlines  - 1 row per (slug, date). Light. The "who leads" feed used
-               by LLM agents and journalists. Cheap to scan.
-  providers  - 1 row per (slug, provider, date). Detailed per-provider
-               ranking with p50/p90/p99. Used by devs comparing options.
-  timeseries - 1 row per (slug, point_index, date) holding the 24h
-               sparkline. Useful for analytical workloads. Separated so
-               consumers can ignore it if they only want headlines.
+Why multiple tables and not one wide table:
+  headlines     1 row per (slug, date). Light. The "who leads" feed used
+                by LLM agents and journalists. Cheap to scan.
+  providers     1 row per (slug, provider, date). Detailed per-provider
+                ranking with p50/p90/p99 plus type/layer/tag classification.
+  timeseries    1 row per (slug, point_index, window, date) holding the
+                24h / 7d / 30d trajectories. Separated so consumers can
+                ignore it if they only want headlines.
+  chain_leaders 1 row per (slug, chain, date) holding per-chain leader
+                and worst provider. Empty for benches without a chain
+                dimension. Currently a placeholder pending /api/citable
+                or /api/stat exposing bestPerChain.
 
 Quorum guard: refuses to publish if /api/citable returns fewer than half
 its declared count as live. The previous good snapshot stays as truth
@@ -22,7 +26,7 @@ on HF instead of being overwritten by a degraded one.
 
 Schema versioning: each table embeds a `schema_version` int column.
 Bump it when adding columns. Never remove columns. Never rename. The
-HF dataset is a long-lived public artifact - downstream consumers will
+HF dataset is a long-lived public artifact, downstream consumers will
 write queries that assume column names are stable.
 
 Idempotency: same snapshot_date overwrites itself. Re-running the cron
@@ -50,13 +54,24 @@ import pyarrow.parquet as pq
 logger = logging.getLogger("hf_publisher")
 
 # Bump together with any additive schema change in the row builders below.
-# Never decrement. Never re-use a version for a breaking change - if a
+# Never decrement. Never re-use a version for a breaking change. If a
 # breaking change is unavoidable, ship a parallel `headlines_v2/` folder
 # while keeping the v1 partitions readable for old consumers.
-SCHEMA_VERSION = 1
+#
+# v1 (2026-06-22): initial release. 3 tables (headlines, providers,
+#                  timeseries). `sample_size` ambiguously named.
+# v2 (2026-06-22): adds `higher_is_better` to headlines, renames
+#                  `sample_size` to `bench_sample_size` (headlines) and
+#                  `provider_sample_size` (providers), adds
+#                  `provider_type`, `provider_layer`, `provider_tag` to
+#                  providers, extends timeseries with 7d / 30d windows
+#                  and a `provider_slug` column, and adds the
+#                  `chain_leaders` table (empty until bestPerChain is
+#                  exposed via the public API).
+SCHEMA_VERSION = 2
 
 # Minimum count of live benches in /api/citable to allow publishing. The
-# bench registry sits around 26; a snapshot with <50% live is considered
+# bench registry sits around 26, a snapshot with <50% live is considered
 # degraded and refused. Floor of 8 avoids tripping during early-stage
 # dev where the registry is intentionally small.
 QUORUM_MIN_LIVE = 8
@@ -64,7 +79,13 @@ QUORUM_MIN_RATIO = 0.5
 
 DEFAULT_API_BASE = "https://openchainbench.com"
 DEFAULT_REPO_ID = "OpenChainBench/benchmarks"
-USER_AGENT = "ocb-hf-publisher/1.0 (+https://openchainbench.com)"
+USER_AGENT = "ocb-hf-publisher/2.0 (+https://openchainbench.com)"
+
+# Time-series windows fetched per bench. `/api/series/<slug>?range=<k>`
+# returns one series per provider in the leaderboard at that range. We
+# fold each provider's series into the parquet so consumers can compute
+# trajectories without re-hitting the live API.
+TIMESERIES_WINDOWS = ("24h", "7d", "30d")
 
 
 class PublisherError(Exception):
@@ -110,25 +131,35 @@ def validate_quorum(citable: dict[str, Any]) -> None:
 def build_headlines(
     citable: dict[str, Any],
     snap: Snapshot,
+    higher_is_better_by_slug: dict[str, bool] | None = None,
 ) -> pd.DataFrame:
+    """Build the headlines table. The `higher_is_better_by_slug` map is
+    sourced from the per-slug /api/stat fetches done by `run()`. /api/citable
+    does not surface this field today, so we backfill from the stat
+    payloads. Benches whose stat fetch failed get a null entry, which is
+    intentional since we cannot interpret their leader without it.
+    """
+    higher_is_better_by_slug = higher_is_better_by_slug or {}
     rows: list[dict[str, Any]] = []
     for b in citable.get("benchmarks", []):
         leader = b.get("leader") or {}
+        slug = b.get("slug")
         rows.append(
             {
                 "snapshot_date": snap.date,
                 "captured_at": snap.captured_at,
-                "slug": b.get("slug"),
+                "slug": slug,
                 "title": b.get("title"),
                 "category": b.get("category"),
                 "metric": b.get("metric"),
                 "unit": b.get("unit"),
                 "status": b.get("status"),
                 "value": _f(b.get("value")),
+                "higher_is_better": higher_is_better_by_slug.get(slug),
                 "leader_name": leader.get("name"),
                 "leader_slug": leader.get("slug"),
                 "leader_value": _f(leader.get("value")),
-                "sample_size": _f(b.get("sampleSize")),
+                "bench_sample_size": _f(b.get("sampleSize")),
                 "as_of": b.get("asOf"),
                 "citation_url": b.get("url"),
                 "stat_api_url": b.get("api"),
@@ -157,12 +188,15 @@ def build_providers(
                     "bench_slug": slug,
                     "provider_name": r.get("name"),
                     "provider_slug": r.get("slug"),
+                    "provider_type": r.get("type"),
+                    "provider_layer": r.get("layer"),
+                    "provider_tag": r.get("tag"),
                     "p50": _f(ms.get("p50")),
                     "p90": _f(ms.get("p90")),
                     "p99": _f(ms.get("p99")),
                     "mean": _f(ms.get("mean")),
                     "success_rate": _f(r.get("successRate")),
-                    "sample_size": _f(r.get("sampleSize")),
+                    "provider_sample_size": _f(r.get("sampleSize")),
                     "is_leader": r.get("slug") == leader_slug,
                     "schema_version": SCHEMA_VERSION,
                 }
@@ -172,27 +206,109 @@ def build_providers(
 
 def build_timeseries(
     stats: Iterable[dict[str, Any]],
+    series_by_slug: dict[str, dict[str, dict[str, Any]]],
     snap: Snapshot,
 ) -> pd.DataFrame:
+    """Build the timeseries table from /api/series payloads.
+
+    `series_by_slug[slug][window]` is the JSON payload from
+    /api/series/<slug>?range=<window>. The 24h window also falls back
+    to the sparkline embedded in /api/stat when /api/series 404s, so
+    timeseries stays populated for benches whose series endpoint has no
+    data yet. The 7d / 30d windows have no such fallback. The bench
+    silently emits zero rows for them if /api/series said no_data.
+    """
     rows: list[dict[str, Any]] = []
-    for stat in stats:
-        slug = stat.get("slug")
-        spark = stat.get("sparkline") or []
-        for idx, value in enumerate(spark):
-            if value is None:
-                continue
-            rows.append(
-                {
-                    "snapshot_date": snap.date,
-                    "captured_at": snap.captured_at,
-                    "bench_slug": slug,
-                    "point_index": idx,
-                    "value": _f(value),
-                    "window": "24h",
-                    "schema_version": SCHEMA_VERSION,
-                }
-            )
+    stats_by_slug = {s.get("slug"): s for s in stats if s.get("slug")}
+
+    def _payload_has_data(payload: dict[str, Any] | None) -> bool:
+        if not payload:
+            return False
+        for prov in payload.get("providers") or []:
+            values = prov.get("values") or []
+            if any(v is not None for v in values):
+                return True
+        return False
+
+    for slug, by_window in series_by_slug.items():
+        for window, payload in by_window.items():
+            providers = payload.get("providers") or []
+            for prov in providers:
+                provider_slug = prov.get("slug")
+                values = prov.get("values") or []
+                for idx, value in enumerate(values):
+                    if value is None:
+                        continue
+                    rows.append(
+                        {
+                            "snapshot_date": snap.date,
+                            "captured_at": snap.captured_at,
+                            "bench_slug": slug,
+                            "provider_slug": provider_slug,
+                            "point_index": idx,
+                            "value": _f(value),
+                            "window": window,
+                            "schema_version": SCHEMA_VERSION,
+                        }
+                    )
+        # Fallback for 24h: use the sparkline from /api/stat when
+        # /api/series returned nothing or only empty providers for the
+        # 24h range. Avoids losing historical 24h coverage on benches
+        # whose /api/series endpoint hasn't been wired up yet.
+        if not _payload_has_data(by_window.get("24h")):
+            stat = stats_by_slug.get(slug) or {}
+            spark = stat.get("sparkline") or []
+            leader_slug = (stat.get("leader") or {}).get("slug")
+            for idx, value in enumerate(spark):
+                if value is None:
+                    continue
+                rows.append(
+                    {
+                        "snapshot_date": snap.date,
+                        "captured_at": snap.captured_at,
+                        "bench_slug": slug,
+                        "provider_slug": leader_slug,
+                        "point_index": idx,
+                        "value": _f(value),
+                        "window": "24h",
+                        "schema_version": SCHEMA_VERSION,
+                    }
+                )
     return pd.DataFrame(rows)
+
+
+def build_chain_leaders(
+    citable: dict[str, Any],
+    snap: Snapshot,
+) -> pd.DataFrame:
+    """Build the chain_leaders table.
+
+    TODO: requires /api/citable or /api/stat extension to expose
+    bestPerChain / worstPerChain. Until then this table is intentionally
+    empty so the schema, partitions, and downstream queries can stabilize
+    against a real (zero-row) parquet. The schema is documented in
+    `schemas/chain_leaders.schema.json`.
+    """
+    rows: list[dict[str, Any]] = []
+    # No-op iteration kept for the day the API exposes the field.
+    for _b in citable.get("benchmarks", []):
+        pass
+    # Empty DataFrame with the canonical column order so the parquet
+    # carries its schema even when no rows are produced.
+    columns = [
+        "snapshot_date",
+        "captured_at",
+        "bench_slug",
+        "chain",
+        "leader_name",
+        "leader_slug",
+        "leader_value",
+        "worst_name",
+        "worst_slug",
+        "worst_value",
+        "schema_version",
+    ]
+    return pd.DataFrame(rows, columns=columns)
 
 
 def _f(v: Any) -> float | None:
@@ -290,6 +406,20 @@ def stage_static_assets(out_root: Path, template_root: Path, snap: Snapshot) -> 
             shutil.copy2(src, dst)
 
 
+def fetch_series(api_base: str, slug: str) -> dict[str, dict[str, Any]]:
+    """Fetch /api/series/<slug>?range=<w> for every supported window.
+    Returns a dict {window: payload}. Windows that 404 (no data for
+    range) are skipped silently."""
+    out: dict[str, dict[str, Any]] = {}
+    for window in TIMESERIES_WINDOWS:
+        url = f"{api_base}/api/series/{slug}?range={window}"
+        try:
+            out[window] = fetch_json(url)
+        except PublisherError as e:
+            logger.info("skip series %s @ %s: %s", slug, window, e)
+    return out
+
+
 def run(
     api_base: str,
     repo_id: str,
@@ -314,23 +444,37 @@ def run(
         if b.get("status") == "live" and b.get("slug")
     ]
     stats: list[dict[str, Any]] = []
+    series_by_slug: dict[str, dict[str, dict[str, Any]]] = {}
     for slug in live_slugs:
         try:
             stats.append(fetch_json(f"{api_base}/api/stat/{slug}"))
         except PublisherError as e:
             # One bad per-slug fetch shouldn't abort the run. Log and skip.
             logger.warning("skip per-slug fetch for %s: %s", slug, e)
+            continue
+        series_by_slug[slug] = fetch_series(api_base, slug)
 
-    headlines = build_headlines(citable, snap)
+    # /api/citable does not surface higherIsBetter today, /api/stat does.
+    # We backfill from the per-slug payloads so headlines carries the
+    # field. Slugs whose stat fetch failed get a null entry.
+    higher_is_better_by_slug = {
+        s.get("slug"): bool(s.get("higherIsBetter"))
+        for s in stats
+        if s.get("slug") and "higherIsBetter" in s
+    }
+
+    headlines = build_headlines(citable, snap, higher_is_better_by_slug)
     providers = build_providers(stats, snap)
-    timeseries = build_timeseries(stats, snap)
+    timeseries = build_timeseries(stats, series_by_slug, snap)
+    chain_leaders = build_chain_leaders(citable, snap)
 
     if headlines.empty:
-        raise PublisherError("empty headlines table - refusing to publish")
+        raise PublisherError("empty headlines table, refusing to publish")
 
     write_partition(headlines, out_root, "headlines", snap)
     write_partition(providers, out_root, "providers", snap)
     write_partition(timeseries, out_root, "timeseries", snap)
+    write_partition(chain_leaders, out_root, "chain_leaders", snap)
     stage_static_assets(out_root, template_root, snap)
 
     if dry_run:
@@ -340,13 +484,18 @@ def run(
     if not token:
         raise PublisherError("HF_TOKEN missing in non-dry-run mode")
 
-    commit_message = f"snapshot {snap.date} (rows: h={len(headlines)} p={len(providers)} ts={len(timeseries)})"
+    commit_message = (
+        f"snapshot {snap.date} "
+        f"(rows: h={len(headlines)} p={len(providers)} "
+        f"ts={len(timeseries)} cl={len(chain_leaders)})"
+    )
     oid = push_to_hf(out_root, repo_id, token, commit_message)
     logger.info("pushed to HF: %s commit=%s", repo_id, oid)
     post_slack(
         slack_webhook,
         f":white_check_mark: OCB HF snapshot {snap.date} published "
-        f"(h={len(headlines)}, p={len(providers)}, ts={len(timeseries)}) "
+        f"(h={len(headlines)}, p={len(providers)}, "
+        f"ts={len(timeseries)}, cl={len(chain_leaders)}) "
         f"https://huggingface.co/datasets/{repo_id}/tree/main",
     )
 

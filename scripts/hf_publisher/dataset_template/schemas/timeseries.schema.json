@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://huggingface.co/datasets/OpenChainBench/benchmarks/blob/main/schemas/timeseries.schema.json",
   "title": "OCB timeseries row",
-  "description": "One row per (bench, point_index, snapshot_date). 24h sparkline series.",
+  "description": "One row per (bench, provider, window, point_index, snapshot_date). 24h / 7d / 30d trajectories sourced from /api/series.",
   "type": "object",
   "required": [
     "snapshot_date",
@@ -17,6 +17,7 @@
     "snapshot_date":  { "type": "string", "format": "date" },
     "captured_at":    { "type": "string", "format": "date-time" },
     "bench_slug":     { "type": "string" },
+    "provider_slug":  { "type": ["string", "null"] },
     "point_index":    { "type": "integer", "minimum": 0 },
     "value":          { "type": "number" },
     "window":         { "type": "string", "enum": ["24h", "7d", "30d"] },
