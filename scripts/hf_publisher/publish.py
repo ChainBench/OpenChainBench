@@ -39,6 +39,7 @@ import argparse
 import json
 import logging
 import os
+import subprocess
 import sys
 import urllib.error
 import urllib.request
@@ -80,6 +81,13 @@ QUORUM_MIN_RATIO = 0.5
 DEFAULT_API_BASE = "https://openchainbench.com"
 DEFAULT_REPO_ID = "OpenChainBench/benchmarks"
 USER_AGENT = "ocb-hf-publisher/2.0 (+https://openchainbench.com)"
+
+# Kaggle mirror config. The dataset URL on Kaggle is
+# https://www.kaggle.com/datasets/<owner>/<slug>. The owner is also the
+# value of `KAGGLE_USERNAME` we authenticate with: the username has to
+# be the dataset owner, otherwise the CLI returns 403 on create / version.
+DEFAULT_KAGGLE_DATASET_ID = "openchainbench/benchmarks"
+KAGGLE_METADATA_FILENAME = "dataset-metadata.json"
 
 # Time-series windows fetched per bench. `/api/series/<slug>?range=<k>`
 # returns one series per provider in the leaderboard at that range. We
@@ -412,9 +420,149 @@ def push_to_hf(
     return info.oid if hasattr(info, "oid") else "unknown"
 
 
+def build_kaggle_metadata(
+    template_root: Path,
+    snap: Snapshot,
+    dataset_id: str = DEFAULT_KAGGLE_DATASET_ID,
+) -> dict[str, Any]:
+    """Load `dataset-metadata.json` from the template folder, substitute
+    placeholders (`{{snapshot_date}}`, `{{captured_at}}`,
+    `{{schema_version}}`), and override the `id` field with `dataset_id`.
+
+    The shape returned matches what the Kaggle CLI expects:
+    https://github.com/Kaggle/kaggle-api/blob/main/docs/dataset-metadata.json
+    """
+    src = template_root / KAGGLE_METADATA_FILENAME
+    if not src.is_file():
+        raise PublisherError(
+            f"kaggle metadata template missing at {src}"
+        )
+    text = src.read_text(encoding="utf-8")
+    text = (
+        text.replace("{{snapshot_date}}", snap.date)
+        .replace("{{captured_at}}", snap.captured_at)
+        .replace("{{schema_version}}", str(SCHEMA_VERSION))
+    )
+    try:
+        meta = json.loads(text)
+    except json.JSONDecodeError as e:
+        raise PublisherError(f"kaggle metadata is not valid JSON: {e}") from e
+
+    if not isinstance(meta, dict):
+        raise PublisherError("kaggle metadata must be a JSON object")
+    if "/" not in dataset_id:
+        raise PublisherError(
+            f"kaggle dataset id must be <owner>/<slug>, got {dataset_id!r}"
+        )
+    meta["id"] = dataset_id
+    # Kaggle requires `licenses` to be a non-empty list of objects with a
+    # `name` field. Guard the template against accidental edits.
+    licenses = meta.get("licenses") or []
+    if not isinstance(licenses, list) or not licenses:
+        raise PublisherError("kaggle metadata missing `licenses`")
+    return meta
+
+
+def _run_kaggle(args: list[str], cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
+    """Run the kaggle CLI and return the completed process. Capturing
+    stdout / stderr so we can branch on the error string for the first-push
+    case without spamming the GH Action log on the happy path."""
+    return subprocess.run(
+        ["kaggle", *args],
+        cwd=str(cwd) if cwd else None,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
+def push_to_kaggle(
+    out_root: Path,
+    template_root: Path,
+    snap: Snapshot,
+    dataset_id: str,
+    commit_message: str,
+) -> str:
+    """Mirror the staged parquet folder to Kaggle.
+
+    Writes a fresh `dataset-metadata.json` into `out_root`, then runs
+    `kaggle datasets version`. If the dataset does not exist yet on
+    Kaggle, the CLI returns a 404-ish error and we fall back to
+    `kaggle datasets create`. Returns the URL the dataset lands on.
+
+    Errors here MUST never propagate: HF is the canonical sink, Kaggle is
+    a best-effort mirror. The caller wraps this in try/except.
+    """
+    if not out_root.is_dir():
+        raise PublisherError(f"kaggle staging dir missing: {out_root}")
+
+    meta = build_kaggle_metadata(template_root, snap, dataset_id)
+    (out_root / KAGGLE_METADATA_FILENAME).write_text(
+        json.dumps(meta, indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+    # `--dir-mode zip` packs the Hive partition folders into the upload
+    # archive so the layout is preserved on Kaggle's side. Without it the
+    # CLI would only upload files at the top level of out_root.
+    version = _run_kaggle(
+        [
+            "datasets",
+            "version",
+            "-p",
+            str(out_root),
+            "-m",
+            commit_message,
+            "--dir-mode",
+            "zip",
+        ]
+    )
+    if version.returncode == 0:
+        logger.info("kaggle: pushed new version of %s", dataset_id)
+    else:
+        # The CLI emits "Dataset not found" / 404 when the dataset has
+        # never been created. In that case we bootstrap with `create`.
+        # Any other failure is propagated.
+        stderr = (version.stderr or "") + (version.stdout or "")
+        looks_missing = (
+            "404" in stderr
+            or "not found" in stderr.lower()
+            or "does not exist" in stderr.lower()
+        )
+        if not looks_missing:
+            raise PublisherError(
+                f"kaggle version failed (code={version.returncode}): {stderr.strip()}"
+            )
+        logger.info("kaggle: dataset %s missing, creating", dataset_id)
+        create = _run_kaggle(
+            [
+                "datasets",
+                "create",
+                "-p",
+                str(out_root),
+                "-u",
+                "--dir-mode",
+                "zip",
+            ]
+        )
+        if create.returncode != 0:
+            stderr = (create.stderr or "") + (create.stdout or "")
+            raise PublisherError(
+                f"kaggle create failed (code={create.returncode}): {stderr.strip()}"
+            )
+        logger.info("kaggle: created %s", dataset_id)
+
+    return f"https://www.kaggle.com/datasets/{dataset_id}"
+
+
 def stage_static_assets(out_root: Path, template_root: Path, snap: Snapshot) -> None:
     """Copy README.md + CITATION.cff + LICENSE + schemas + examples into
-    the upload folder. Templates may include `{{date}}` placeholders."""
+    the upload folder. Templates may include `{{date}}` placeholders.
+
+    `dataset-metadata.json` is deliberately skipped: it is a Kaggle-only
+    artifact and would just add noise to the HF repo if committed. It is
+    written into the staging folder later by `push_to_kaggle`.
+    """
     import shutil
 
     if not template_root.is_dir():
@@ -423,6 +571,8 @@ def stage_static_assets(out_root: Path, template_root: Path, snap: Snapshot) -> 
         if not src.is_file():
             continue
         rel = src.relative_to(template_root)
+        if rel.name == KAGGLE_METADATA_FILENAME:
+            continue
         dst = out_root / rel
         dst.parent.mkdir(parents=True, exist_ok=True)
         if src.suffix in {".md", ".cff", ".json", ".py", ".sql"}:
@@ -461,6 +611,9 @@ def run(
     template_root: Path,
     dry_run: bool,
     slack_webhook: str | None,
+    kaggle_dataset_id: str = DEFAULT_KAGGLE_DATASET_ID,
+    kaggle_username: str | None = None,
+    kaggle_key: str | None = None,
 ) -> None:
     snap = Snapshot(
         date=datetime.now(timezone.utc).strftime("%Y-%m-%d"),
@@ -512,6 +665,13 @@ def run(
 
     if dry_run:
         logger.info("dry-run: skipping HF push, files staged at %s", out_root)
+        if kaggle_username and kaggle_key:
+            logger.info(
+                "dry-run: skipping kaggle mirror (would push to %s)",
+                kaggle_dataset_id,
+            )
+        else:
+            logger.info("kaggle skip: secrets not set")
         return
 
     if not token:
@@ -532,6 +692,34 @@ def run(
         f"https://huggingface.co/datasets/{repo_id}/tree/main",
     )
 
+    # Best-effort Kaggle mirror. HF is the canonical sink; a Kaggle
+    # failure must not abort the run nor mark the HF push as failed.
+    if not (kaggle_username and kaggle_key):
+        logger.info("kaggle skip: secrets not set")
+        return
+
+    # The kaggle CLI reads `KAGGLE_USERNAME` / `KAGGLE_KEY` from the
+    # process env, so forwarding them in os.environ is sufficient. We
+    # only ensure they are visible to the subprocess.
+    os.environ["KAGGLE_USERNAME"] = kaggle_username
+    os.environ["KAGGLE_KEY"] = kaggle_key
+    try:
+        kaggle_url = push_to_kaggle(
+            out_root=out_root,
+            template_root=template_root,
+            snap=snap,
+            dataset_id=kaggle_dataset_id,
+            commit_message=commit_message,
+        )
+        logger.info("kaggle mirror ok: %s", kaggle_url)
+    except Exception as e:
+        logger.warning("kaggle mirror failed: %s", e)
+        post_slack(
+            slack_webhook,
+            f":warning: OCB Kaggle mirror failed for snapshot {snap.date} "
+            f"(HF push succeeded): {e}",
+        )
+
 
 def main() -> int:
     logging.basicConfig(
@@ -542,6 +730,11 @@ def main() -> int:
     p.add_argument("--api-base", default=os.environ.get("OCB_API", DEFAULT_API_BASE))
     p.add_argument("--repo-id", default=os.environ.get("HF_REPO_ID", DEFAULT_REPO_ID))
     p.add_argument("--out", default=os.environ.get("OCB_OUT", "/tmp/ocb-hf-staging"))
+    p.add_argument(
+        "--kaggle-dataset-id",
+        default=os.environ.get("KAGGLE_DATASET_ID", DEFAULT_KAGGLE_DATASET_ID),
+        help="Kaggle dataset id in <owner>/<slug> form. The owner must match KAGGLE_USERNAME.",
+    )
     p.add_argument(
         "--template",
         default=str(Path(__file__).parent / "dataset_template"),
@@ -556,6 +749,8 @@ def main() -> int:
 
     token = os.environ.get("HF_TOKEN")
     slack = os.environ.get("SLACK_WEBHOOK_URL")
+    kaggle_username = os.environ.get("KAGGLE_USERNAME")
+    kaggle_key = os.environ.get("KAGGLE_KEY")
     out_root = Path(args.out)
     out_root.mkdir(parents=True, exist_ok=True)
 
@@ -568,6 +763,9 @@ def main() -> int:
             template_root=Path(args.template),
             dry_run=args.dry_run,
             slack_webhook=slack,
+            kaggle_dataset_id=args.kaggle_dataset_id,
+            kaggle_username=kaggle_username,
+            kaggle_key=kaggle_key,
         )
         return 0
     except PublisherError as e:

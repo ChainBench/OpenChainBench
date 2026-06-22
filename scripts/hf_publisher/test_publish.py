@@ -8,16 +8,20 @@ regressions before they propagate to the public dataset.
 
 from __future__ import annotations
 
+import json
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from publish import (
+    DEFAULT_KAGGLE_DATASET_ID,
+    KAGGLE_METADATA_FILENAME,
     PublisherError,
     SCHEMA_VERSION,
     Snapshot,
     build_chain_leaders,
     build_headlines,
+    build_kaggle_metadata,
     build_providers,
     build_timeseries,
     stage_static_assets,
@@ -345,6 +349,88 @@ class SchemaVersionTests(unittest.TestCase):
     def test_schema_version_is_v2(self):
         # Guard: bumping the schema is intentional, never accidental.
         self.assertEqual(SCHEMA_VERSION, 2)
+
+
+KAGGLE_TEMPLATE = """{
+  "id": "placeholder/will-be-overridden",
+  "title": "OCB",
+  "subtitle": "snap {{snapshot_date}}",
+  "description": "captured {{captured_at}} schema v{{schema_version}}",
+  "isPrivate": false,
+  "licenses": [{"name": "CC-BY-4.0"}],
+  "keywords": ["crypto"]
+}
+"""
+
+
+class KaggleMetadataTests(unittest.TestCase):
+    def _write_template(self, tmp: Path, body: str = KAGGLE_TEMPLATE) -> Path:
+        (tmp / KAGGLE_METADATA_FILENAME).write_text(body, encoding="utf-8")
+        return tmp
+
+    def test_substitutes_placeholders_and_overrides_id(self):
+        with TemporaryDirectory() as raw:
+            tmpl = self._write_template(Path(raw))
+            meta = build_kaggle_metadata(
+                tmpl, _snap("2026-06-22"), "alice/ocb-bench"
+            )
+            self.assertEqual(meta["id"], "alice/ocb-bench")
+            self.assertEqual(meta["subtitle"], "snap 2026-06-22")
+            self.assertIn("2026-06-22T00:00:00+00:00", meta["description"])
+            self.assertIn(f"schema v{SCHEMA_VERSION}", meta["description"])
+
+    def test_default_id_is_openchainbench_benchmarks(self):
+        with TemporaryDirectory() as raw:
+            tmpl = self._write_template(Path(raw))
+            meta = build_kaggle_metadata(tmpl, _snap())
+            self.assertEqual(meta["id"], DEFAULT_KAGGLE_DATASET_ID)
+            self.assertEqual(DEFAULT_KAGGLE_DATASET_ID, "openchainbench/benchmarks")
+
+    def test_rejects_id_without_slash(self):
+        with TemporaryDirectory() as raw:
+            tmpl = self._write_template(Path(raw))
+            with self.assertRaises(PublisherError):
+                build_kaggle_metadata(tmpl, _snap(), "no-owner-here")
+
+    def test_rejects_missing_template(self):
+        with TemporaryDirectory() as raw:
+            with self.assertRaises(PublisherError):
+                build_kaggle_metadata(Path(raw), _snap())
+
+    def test_rejects_template_without_licenses(self):
+        bad = '{"id": "x/y", "licenses": []}'
+        with TemporaryDirectory() as raw:
+            tmpl = self._write_template(Path(raw), body=bad)
+            with self.assertRaises(PublisherError):
+                build_kaggle_metadata(tmpl, _snap())
+
+    def test_stage_static_assets_skips_kaggle_metadata(self):
+        # The HF dataset must not carry dataset-metadata.json: it is a
+        # Kaggle-only artifact and gets written into the staging dir by
+        # push_to_kaggle, not by stage_static_assets.
+        with TemporaryDirectory() as raw:
+            tmpl = Path(raw) / "tmpl"
+            tmpl.mkdir()
+            (tmpl / KAGGLE_METADATA_FILENAME).write_text(KAGGLE_TEMPLATE)
+            (tmpl / "README.md").write_text("hello {{snapshot_date}}")
+            out = Path(raw) / "out"
+            out.mkdir()
+            stage_static_assets(out, tmpl, _snap("2026-06-22"))
+            self.assertTrue((out / "README.md").exists())
+            self.assertFalse((out / KAGGLE_METADATA_FILENAME).exists())
+
+    def test_real_template_loads(self):
+        # The shipped dataset-metadata.json must parse and contain a
+        # valid <owner>/<slug> id once we override with the default. This
+        # catches accidental JSON syntax breakage in the template.
+        repo_template = Path(__file__).parent / "dataset_template"
+        meta = build_kaggle_metadata(repo_template, _snap())
+        self.assertEqual(meta["id"], DEFAULT_KAGGLE_DATASET_ID)
+        self.assertIn("licenses", meta)
+        self.assertTrue(meta["licenses"])
+        # snapshot_date / captured_at / schema_version must have been
+        # substituted: no raw `{{` placeholders should remain anywhere.
+        self.assertNotIn("{{", json.dumps(meta))
 
 
 if __name__ == "__main__":
