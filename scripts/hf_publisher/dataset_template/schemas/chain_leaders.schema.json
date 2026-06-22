@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://huggingface.co/datasets/OpenChainBench/benchmarks/blob/main/schemas/chain_leaders.schema.json",
+  "title": "OCB chain_leaders row",
+  "description": "One row per (bench, chain, snapshot_date). Per-chain leader and worst provider for benches whose spec declares a chain dimension. Empty until /api/citable or /api/stat exposes bestPerChain / worstPerChain.",
+  "type": "object",
+  "required": [
+    "snapshot_date",
+    "captured_at",
+    "bench_slug",
+    "chain",
+    "schema_version"
+  ],
+  "properties": {
+    "snapshot_date":  { "type": "string", "format": "date" },
+    "captured_at":    { "type": "string", "format": "date-time" },
+    "bench_slug":     { "type": "string" },
+    "chain":          { "type": "string" },
+    "leader_name":    { "type": ["string", "null"] },
+    "leader_slug":    { "type": ["string", "null"] },
+    "leader_value":   { "type": ["number", "null"] },
+    "worst_name":     { "type": ["string", "null"] },
+    "worst_slug":     { "type": ["string", "null"] },
+    "worst_value":    { "type": ["number", "null"] },
+    "schema_version": { "type": "integer", "minimum": 1 }
+  }
+}
