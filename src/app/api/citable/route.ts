@@ -2,7 +2,12 @@ import { NextResponse } from "next/server";
 import { getBenchmarks } from "@/data/benchmarks";
 import { SITE } from "@/data/site";
 import { AllBenchmarksDraftError } from "@/lib/spec";
-import { fieldValue, leader, headlineSentence } from "@/lib/citation";
+import {
+  fieldValue,
+  headlineSentence,
+  isInsufficient,
+  leader,
+} from "@/lib/citation";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
@@ -47,17 +52,21 @@ export async function GET(req: Request) {
     throw err;
   }
   const data = benches.map((b) => {
-    const top = leader(b);
+    const insufficient = isInsufficient(b);
+    const top = insufficient ? null : leader(b);
+    const status: "live" | "draft" | "insufficient" = insufficient
+      ? "insufficient"
+      : b.status;
     return {
       slug: b.slug,
       title: b.title,
       category: b.category,
       metric: b.metric,
       unit: b.unit,
-      status: b.status,
-      value: fieldValue(b),
+      status,
+      value: insufficient ? null : fieldValue(b),
       leader: top ? { name: top.name, slug: top.slug, value: top.value } : null,
-      sampleSize: b.sampleSize,
+      sampleSize: insufficient ? 0 : b.sampleSize,
       asOf: b.lastRunAt,
       headline: headlineSentence(b),
       url: `${SITE.url}/benchmarks/${b.slug}`,
