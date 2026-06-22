@@ -1,4 +1,9 @@
 gradio==4.44.1
+# gradio 4.44.1 leaves starlette/fastapi unpinned and recent versions
+# break the Jinja2 template path with a TypeError at app boot. Pin to
+# versions known to work with gradio 4.44.x.
+starlette<0.42
+fastapi<0.116
 polars>=1.41.0
 pandas==2.2.3
 pyarrow==17.0.0
