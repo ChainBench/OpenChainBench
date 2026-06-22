@@ -117,6 +117,13 @@ dimensions:
     - { value: us-east, label: US East }
     - { value: eu-west, label: EU West }
     - { value: sgp, label: Singapore }
+  venue:
+    - { value: all, label: All venues }
+    - { value: polymarket, label: Polymarket }
+    - { value: kalshi, label: Kalshi }
+    - { value: limitless, label: Limitless }
+    - { value: manifold, label: Manifold }
+    - { value: myriad, label: Myriad }
 
 metric_panels:
   - id: uptime_24h
@@ -227,82 +234,40 @@ providers:
     name: Mobula
     type: aggregator
     tag: Polymarket midpoint relay with USD denominated outcomes and bestBid bestAsk depth alongside the price.
-    formula: "Warm probes to Mobula's Polymarket price route, every 5 seconds from each region. Source label source=mobula isolates the relay from the direct venue probe."
+    formula: "Warm probes to Mobula's Polymarket price route, every 5 seconds from each region. The venue filter at the top of the page narrows this row to the venues Mobula actually covers (Polymarket today)."
     queries:
-      p50: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{venue="polymarket",source="mobula",class="price",conn="warm",cache!="hit"}[24h])) by (le))
-      p90: 1000 * histogram_quantile(0.90, sum(rate(pmapi_request_duration_seconds_bucket{venue="polymarket",source="mobula",class="price",conn="warm",cache!="hit"}[24h])) by (le))
-      p99: 1000 * histogram_quantile(0.99, sum(rate(pmapi_request_duration_seconds_bucket{venue="polymarket",source="mobula",class="price",conn="warm",cache!="hit"}[24h])) by (le))
-      mean: 1000 * sum(rate(pmapi_request_duration_seconds_sum{venue="polymarket",source="mobula",class="price",conn="warm",cache!="hit"}[24h])) / sum(rate(pmapi_request_duration_seconds_count{venue="polymarket",source="mobula",class="price",conn="warm",cache!="hit"}[24h]))
-      success: clamp_max(sum(rate(pmapi_requests_total{venue="polymarket",source="mobula",class="price",conn="warm",outcome="ok"}[24h])) / sum(rate(pmapi_requests_total{venue="polymarket",source="mobula",class="price",conn="warm",outcome!="probe_invalid"}[24h])), 1)
-      sample_size: sum(increase(pmapi_requests_total{venue="polymarket",source="mobula",class="price",conn="warm",outcome!="probe_invalid"}[24h]))
-      series: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{venue="polymarket",source="mobula",class="price",conn="warm",cache!="hit"}[1h])) by (le))
+      p50: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{source="mobula",class="price",conn="warm",cache!="hit"}[24h])) by (le))
+      p90: 1000 * histogram_quantile(0.90, sum(rate(pmapi_request_duration_seconds_bucket{source="mobula",class="price",conn="warm",cache!="hit"}[24h])) by (le))
+      p99: 1000 * histogram_quantile(0.99, sum(rate(pmapi_request_duration_seconds_bucket{source="mobula",class="price",conn="warm",cache!="hit"}[24h])) by (le))
+      mean: 1000 * sum(rate(pmapi_request_duration_seconds_sum{source="mobula",class="price",conn="warm",cache!="hit"}[24h])) / sum(rate(pmapi_request_duration_seconds_count{source="mobula",class="price",conn="warm",cache!="hit"}[24h]))
+      success: clamp_max(sum(rate(pmapi_requests_total{source="mobula",class="price",conn="warm",outcome="ok"}[24h])) / sum(rate(pmapi_requests_total{source="mobula",class="price",conn="warm",outcome!="probe_invalid"}[24h])), 1)
+      sample_size: sum(increase(pmapi_requests_total{source="mobula",class="price",conn="warm",outcome!="probe_invalid"}[24h]))
+      series: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{source="mobula",class="price",conn="warm",cache!="hit"}[1h])) by (le))
 
-  - slug: predexon-polymarket
-    name: Predexon (Polymarket)
+  - slug: predexon
+    name: Predexon
     type: aggregator
-    tag: Polymarket midpoint via Predexon's unified prediction market relay.
-    formula: "Warm probes to /v2/polymarket/market-price. Source label source=predexon, venue=polymarket."
+    tag: Unified relay covering Polymarket, Kalshi and Limitless under one REST surface.
+    formula: "Warm probes to Predexon's /v2 routes per venue. Use the venue filter at the top of the page to narrow to one of the three venues Predexon covers."
     queries:
-      p50: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{venue="polymarket",source="predexon",class="price",conn="warm",cache!="hit"}[24h])) by (le))
-      p90: 1000 * histogram_quantile(0.90, sum(rate(pmapi_request_duration_seconds_bucket{venue="polymarket",source="predexon",class="price",conn="warm",cache!="hit"}[24h])) by (le))
-      p99: 1000 * histogram_quantile(0.99, sum(rate(pmapi_request_duration_seconds_bucket{venue="polymarket",source="predexon",class="price",conn="warm",cache!="hit"}[24h])) by (le))
-      mean: 1000 * sum(rate(pmapi_request_duration_seconds_sum{venue="polymarket",source="predexon",class="price",conn="warm",cache!="hit"}[24h])) / sum(rate(pmapi_request_duration_seconds_count{venue="polymarket",source="predexon",class="price",conn="warm",cache!="hit"}[24h]))
-      success: clamp_max(sum(rate(pmapi_requests_total{venue="polymarket",source="predexon",class="price",conn="warm",outcome="ok"}[24h])) / sum(rate(pmapi_requests_total{venue="polymarket",source="predexon",class="price",conn="warm",outcome!="probe_invalid"}[24h])), 1)
-      sample_size: sum(increase(pmapi_requests_total{venue="polymarket",source="predexon",class="price",conn="warm",outcome!="probe_invalid"}[24h]))
-      series: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{venue="polymarket",source="predexon",class="price",conn="warm",cache!="hit"}[1h])) by (le))
+      p50: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{source="predexon",class="price",conn="warm",cache!="hit"}[24h])) by (le))
+      p90: 1000 * histogram_quantile(0.90, sum(rate(pmapi_request_duration_seconds_bucket{source="predexon",class="price",conn="warm",cache!="hit"}[24h])) by (le))
+      p99: 1000 * histogram_quantile(0.99, sum(rate(pmapi_request_duration_seconds_bucket{source="predexon",class="price",conn="warm",cache!="hit"}[24h])) by (le))
+      mean: 1000 * sum(rate(pmapi_request_duration_seconds_sum{source="predexon",class="price",conn="warm",cache!="hit"}[24h])) / sum(rate(pmapi_request_duration_seconds_count{source="predexon",class="price",conn="warm",cache!="hit"}[24h]))
+      success: clamp_max(sum(rate(pmapi_requests_total{source="predexon",class="price",conn="warm",outcome="ok"}[24h])) / sum(rate(pmapi_requests_total{source="predexon",class="price",conn="warm",outcome!="probe_invalid"}[24h])), 1)
+      sample_size: sum(increase(pmapi_requests_total{source="predexon",class="price",conn="warm",outcome!="probe_invalid"}[24h]))
+      series: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{source="predexon",class="price",conn="warm",cache!="hit"}[1h])) by (le))
 
-  - slug: predexon-kalshi
-    name: Predexon (Kalshi)
+  - slug: codex
+    name: Codex
     type: aggregator
-    tag: Kalshi last_price via Predexon's unified prediction market relay.
-    formula: "Warm probes to /v2/kalshi/markets last_price. Source label source=predexon, venue=kalshi."
+    tag: Polymarket and Kalshi prices via a single GraphQL endpoint, fed from a WebSocket cache.
+    formula: "Warm GraphQL POST to graph.codex.io with a JWT minted from a defined.fi session cookie. Use the venue filter at the top of the page to narrow to Polymarket or Kalshi."
     queries:
-      p50: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{venue="kalshi",source="predexon",class="price",conn="warm",cache!="hit"}[24h])) by (le))
-      p90: 1000 * histogram_quantile(0.90, sum(rate(pmapi_request_duration_seconds_bucket{venue="kalshi",source="predexon",class="price",conn="warm",cache!="hit"}[24h])) by (le))
-      p99: 1000 * histogram_quantile(0.99, sum(rate(pmapi_request_duration_seconds_bucket{venue="kalshi",source="predexon",class="price",conn="warm",cache!="hit"}[24h])) by (le))
-      mean: 1000 * sum(rate(pmapi_request_duration_seconds_sum{venue="kalshi",source="predexon",class="price",conn="warm",cache!="hit"}[24h])) / sum(rate(pmapi_request_duration_seconds_count{venue="kalshi",source="predexon",class="price",conn="warm",cache!="hit"}[24h]))
-      success: clamp_max(sum(rate(pmapi_requests_total{venue="kalshi",source="predexon",class="price",conn="warm",outcome="ok"}[24h])) / sum(rate(pmapi_requests_total{venue="kalshi",source="predexon",class="price",conn="warm",outcome!="probe_invalid"}[24h])), 1)
-      sample_size: sum(increase(pmapi_requests_total{venue="kalshi",source="predexon",class="price",conn="warm",outcome!="probe_invalid"}[24h]))
-      series: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{venue="kalshi",source="predexon",class="price",conn="warm",cache!="hit"}[1h])) by (le))
-
-  - slug: predexon-limitless
-    name: Predexon (Limitless)
-    type: aggregator
-    tag: Limitless outcome price via Predexon's unified prediction market relay.
-    formula: "Warm probes to /v2/limitless/markets outcome price. Source label source=predexon, venue=limitless."
-    queries:
-      p50: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{venue="limitless",source="predexon",class="price",conn="warm",cache!="hit"}[24h])) by (le))
-      p90: 1000 * histogram_quantile(0.90, sum(rate(pmapi_request_duration_seconds_bucket{venue="limitless",source="predexon",class="price",conn="warm",cache!="hit"}[24h])) by (le))
-      p99: 1000 * histogram_quantile(0.99, sum(rate(pmapi_request_duration_seconds_bucket{venue="limitless",source="predexon",class="price",conn="warm",cache!="hit"}[24h])) by (le))
-      mean: 1000 * sum(rate(pmapi_request_duration_seconds_sum{venue="limitless",source="predexon",class="price",conn="warm",cache!="hit"}[24h])) / sum(rate(pmapi_request_duration_seconds_count{venue="limitless",source="predexon",class="price",conn="warm",cache!="hit"}[24h]))
-      success: clamp_max(sum(rate(pmapi_requests_total{venue="limitless",source="predexon",class="price",conn="warm",outcome="ok"}[24h])) / sum(rate(pmapi_requests_total{venue="limitless",source="predexon",class="price",conn="warm",outcome!="probe_invalid"}[24h])), 1)
-      sample_size: sum(increase(pmapi_requests_total{venue="limitless",source="predexon",class="price",conn="warm",outcome!="probe_invalid"}[24h]))
-      series: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{venue="limitless",source="predexon",class="price",conn="warm",cache!="hit"}[1h])) by (le))
-
-  - slug: codex-polymarket
-    name: Codex (Polymarket)
-    type: aggregator
-    tag: Polymarket price via Codex GraphQL, served from a WebSocket fed cache.
-    formula: "Warm GraphQL POST to graph.codex.io with a JWT minted from a defined.fi session cookie. Source label source=codex, venue=polymarket."
-    queries:
-      p50: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{venue="polymarket",source="codex",class="price",conn="warm",cache!="hit"}[24h])) by (le))
-      p90: 1000 * histogram_quantile(0.90, sum(rate(pmapi_request_duration_seconds_bucket{venue="polymarket",source="codex",class="price",conn="warm",cache!="hit"}[24h])) by (le))
-      p99: 1000 * histogram_quantile(0.99, sum(rate(pmapi_request_duration_seconds_bucket{venue="polymarket",source="codex",class="price",conn="warm",cache!="hit"}[24h])) by (le))
-      mean: 1000 * sum(rate(pmapi_request_duration_seconds_sum{venue="polymarket",source="codex",class="price",conn="warm",cache!="hit"}[24h])) / sum(rate(pmapi_request_duration_seconds_count{venue="polymarket",source="codex",class="price",conn="warm",cache!="hit"}[24h]))
-      success: clamp_max(sum(rate(pmapi_requests_total{venue="polymarket",source="codex",class="price",conn="warm",outcome="ok"}[24h])) / sum(rate(pmapi_requests_total{venue="polymarket",source="codex",class="price",conn="warm",outcome!="probe_invalid"}[24h])), 1)
-      sample_size: sum(increase(pmapi_requests_total{venue="polymarket",source="codex",class="price",conn="warm",outcome!="probe_invalid"}[24h]))
-      series: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{venue="polymarket",source="codex",class="price",conn="warm",cache!="hit"}[1h])) by (le))
-
-  - slug: codex-kalshi
-    name: Codex (Kalshi)
-    type: aggregator
-    tag: Kalshi price via Codex GraphQL, served from a WebSocket fed cache.
-    formula: "Warm GraphQL POST to graph.codex.io with a JWT minted from a defined.fi session cookie. Source label source=codex, venue=kalshi."
-    queries:
-      p50: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{venue="kalshi",source="codex",class="price",conn="warm",cache!="hit"}[24h])) by (le))
-      p90: 1000 * histogram_quantile(0.90, sum(rate(pmapi_request_duration_seconds_bucket{venue="kalshi",source="codex",class="price",conn="warm",cache!="hit"}[24h])) by (le))
-      p99: 1000 * histogram_quantile(0.99, sum(rate(pmapi_request_duration_seconds_bucket{venue="kalshi",source="codex",class="price",conn="warm",cache!="hit"}[24h])) by (le))
-      mean: 1000 * sum(rate(pmapi_request_duration_seconds_sum{venue="kalshi",source="codex",class="price",conn="warm",cache!="hit"}[24h])) / sum(rate(pmapi_request_duration_seconds_count{venue="kalshi",source="codex",class="price",conn="warm",cache!="hit"}[24h]))
-      success: clamp_max(sum(rate(pmapi_requests_total{venue="kalshi",source="codex",class="price",conn="warm",outcome="ok"}[24h])) / sum(rate(pmapi_requests_total{venue="kalshi",source="codex",class="price",conn="warm",outcome!="probe_invalid"}[24h])), 1)
-      sample_size: sum(increase(pmapi_requests_total{venue="kalshi",source="codex",class="price",conn="warm",outcome!="probe_invalid"}[24h]))
-      series: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{venue="kalshi",source="codex",class="price",conn="warm",cache!="hit"}[1h])) by (le))
+      p50: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{source="codex",class="price",conn="warm",cache!="hit"}[24h])) by (le))
+      p90: 1000 * histogram_quantile(0.90, sum(rate(pmapi_request_duration_seconds_bucket{source="codex",class="price",conn="warm",cache!="hit"}[24h])) by (le))
+      p99: 1000 * histogram_quantile(0.99, sum(rate(pmapi_request_duration_seconds_bucket{source="codex",class="price",conn="warm",cache!="hit"}[24h])) by (le))
+      mean: 1000 * sum(rate(pmapi_request_duration_seconds_sum{source="codex",class="price",conn="warm",cache!="hit"}[24h])) / sum(rate(pmapi_request_duration_seconds_count{source="codex",class="price",conn="warm",cache!="hit"}[24h]))
+      success: clamp_max(sum(rate(pmapi_requests_total{source="codex",class="price",conn="warm",outcome="ok"}[24h])) / sum(rate(pmapi_requests_total{source="codex",class="price",conn="warm",outcome!="probe_invalid"}[24h])), 1)
+      sample_size: sum(increase(pmapi_requests_total{source="codex",class="price",conn="warm",outcome!="probe_invalid"}[24h]))
+      series: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{source="codex",class="price",conn="warm",cache!="hit"}[1h])) by (le))
