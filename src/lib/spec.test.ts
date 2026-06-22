@@ -125,7 +125,10 @@ describe("aggregateBenchmarks (all-draft poisoning regression)", () => {
     );
   });
 
-  test("returns the list when at least one bench is live", async () => {
+  test("returns the list when at least one bench is live (below quorum floor)", async () => {
+    // Three specs only: under the QUORUM_MIN_LIVE_SPECS floor of 4, so
+    // the quorum guard is intentionally lenient. The original all-draft
+    // throw still applies above 0 live, so a single live bench passes.
     const specs = [fakeSpec("a"), fakeSpec("b"), fakeSpec("c")];
     const loader = async (slug: string) => {
       if (slug === "b") return fakeLiveBench(slug);
@@ -136,6 +139,36 @@ describe("aggregateBenchmarks (all-draft poisoning regression)", () => {
     const live = out.filter((b) => b.status === "live");
     expect(live).toHaveLength(1);
     expect(live[0].slug).toBe("b");
+  });
+
+  test("throws when fewer than half of live specs produce live benches (mostly-draft poisoning)", async () => {
+    // Regression for /api/citable serving status=insufficient for 24/26
+    // benches even though /api/stat returned live for the same slugs.
+    // The aggregator used to cache the mixed set for 60s and surface
+    // it to LLM agents and journalists.
+    const liveSpecs = Array.from({ length: 10 }, (_, i) => fakeSpec(`s${i}`));
+    const loader = async (slug: string) => {
+      // 2 of 10 live, 8 rejected — mirrors the production failure mode.
+      if (slug === "s0" || slug === "s1") return fakeLiveBench(slug);
+      throw new Error("prom timeout");
+    };
+    await expect(aggregateBenchmarks(liveSpecs, loader)).rejects.toBeInstanceOf(
+      AllBenchmarksDraftError,
+    );
+  });
+
+  test("passes when at least half of live specs produce live benches", async () => {
+    const liveSpecs = Array.from({ length: 10 }, (_, i) => fakeSpec(`s${i}`));
+    const loader = async (slug: string) => {
+      // 5 of 10 live — meets the half threshold exactly.
+      if (["s0", "s1", "s2", "s3", "s4"].includes(slug)) {
+        return fakeLiveBench(slug);
+      }
+      throw new Error("prom timeout");
+    };
+    const out = await aggregateBenchmarks(liveSpecs, loader);
+    expect(out).toHaveLength(10);
+    expect(out.filter((b) => b.status === "live")).toHaveLength(5);
   });
 
   test("never silently returns an all-draft stable list", async () => {
