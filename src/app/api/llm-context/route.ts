@@ -2,7 +2,12 @@ import { getBenchmarks } from "@/data/benchmarks";
 import { SITE } from "@/data/site";
 import { AllBenchmarksDraftError } from "@/lib/spec";
 import { fmtUnit } from "@/lib/format";
-import { fieldValue, headlineSentence, leader } from "@/lib/citation";
+import {
+  fieldValue,
+  headlineSentence,
+  isInsufficient,
+  leader,
+} from "@/lib/citation";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
@@ -67,11 +72,15 @@ export async function GET(req: Request) {
     lines.push(`- Metric: ${b.metric} (${b.unit})`);
     lines.push(`- Page: ${SITE.url}/benchmarks/${b.slug}`);
     lines.push(`- JSON: ${SITE.url}/api/stat/${b.slug}`);
-    lines.push(`- Status: ${b.status}`);
+    const insufficient = isInsufficient(b);
+    const reportedStatus: "live" | "draft" | "insufficient" = insufficient
+      ? "insufficient"
+      : b.status;
+    lines.push(`- Status: ${reportedStatus}`);
 
     const v = fieldValue(b);
     const lead = leader(b);
-    if (v != null && lead) {
+    if (!insufficient && v != null && lead) {
       lines.push(`- Headline: ${headlineSentence(b)}`);
       lines.push("");
       lines.push(`**Rankings (p50, 24h):**`);
@@ -89,6 +98,12 @@ export async function GET(req: Request) {
           )}, success ${r.successRate.toFixed(1)}%, sample ${r.sampleSize ?? "n/a"})`,
         );
       }
+    } else if (insufficient) {
+      // Surface the same insufficient sentence the other citable surfaces
+      // emit, so an LLM that pastes this Markdown into context never sees
+      // a fabricated winner for a bench whose harness lacks data.
+      lines.push(`- Headline: ${headlineSentence(b)}`);
+      lines.push(`- Insufficient samples to rank providers yet.`);
     } else {
       lines.push(`- ${b.status === "draft" ? "Draft (no live data yet)" : "Awaiting samples"}.`);
     }
