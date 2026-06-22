@@ -1,0 +1,25 @@
+cff-version: 1.2.0
+title: OpenChainBench Benchmarks
+abstract: >-
+  Daily snapshots of every public benchmark on openchainbench.com -
+  open, reproducible measurements of crypto infrastructure (RPCs,
+  oracles, bridges, data APIs, Polymarket adapters, Hyperliquid
+  builders). Released as Hive-partitioned Parquet under CC-BY-4.0.
+authors:
+  - name: OpenChainBench Contributors
+    website: https://openchainbench.com
+type: dataset
+license: CC-BY-4.0
+repository-code: https://github.com/ChainBench/OpenChainBench
+url: https://huggingface.co/datasets/OpenChainBench/benchmarks
+date-released: "{{snapshot_date}}"
+keywords:
+  - blockchain
+  - crypto
+  - benchmarks
+  - infrastructure
+  - latency
+  - oracles
+  - bridges
+  - polymarket
+  - hyperliquid
