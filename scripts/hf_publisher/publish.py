@@ -290,9 +290,11 @@ def build_chain_leaders(
     `schemas/chain_leaders.schema.json`.
     """
     rows: list[dict[str, Any]] = []
-    # No-op iteration kept for the day the API exposes the field.
-    for _b in citable.get("benchmarks", []):
-        pass
+    # Reference snap.date so the param stays in the public signature
+    # while the body is a placeholder. Once /api/citable exposes
+    # bestPerChain, this block populates rows using snap.date in the
+    # partition column directly.
+    _ = (snap.date, citable.get("benchmarks", []))
     # Empty DataFrame with the canonical column order so the parquet
     # carries its schema even when no rows are produced.
     columns = [
@@ -457,10 +459,10 @@ def run(
     # /api/citable does not surface higherIsBetter today, /api/stat does.
     # We backfill from the per-slug payloads so headlines carries the
     # field. Slugs whose stat fetch failed get a null entry.
-    higher_is_better_by_slug = {
-        s.get("slug"): bool(s.get("higherIsBetter"))
+    higher_is_better_by_slug: dict[str, bool] = {
+        slug: bool(s.get("higherIsBetter"))
         for s in stats
-        if s.get("slug") and "higherIsBetter" in s
+        if (slug := s.get("slug")) and "higherIsBetter" in s
     }
 
     headlines = build_headlines(citable, snap, higher_is_better_by_slug)
