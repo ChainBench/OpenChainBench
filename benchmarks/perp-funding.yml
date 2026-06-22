@@ -96,6 +96,14 @@ faq:
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/hyperliquid-frontends
 
+# Healthy sample_size per venue is 3 (one perp_funding_rate_hourly_bps
+# series per asset across BTC, ETH and SOL). The sample_size query
+# counts distinct asset series per venue, so the n reported on the
+# leaderboard is the asset coverage count, not the 24h tick count. 3 is
+# full coverage; a venue dropping to 2 (one asset feed dead) reads as
+# 67 percent and earns the low-sample badge.
+expected_n: 3
+
 prometheus:
   window: 24h
   expected_freshness_seconds: 3600

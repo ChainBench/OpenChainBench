@@ -98,6 +98,15 @@ faq:
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/oracle-deviation
 
+# Healthy sample_size for this bench is the count of source series per
+# pair (4 for the 4-source pairs, 3 for XRP/ADA/DOGE where Chainlink is
+# deprecated). The sample_size query counts distinct sources, not 24h
+# data points, so the displayed n on the leaderboard tops out at 4. The
+# threshold here is set to 4 so the 4-source pairs render as healthy and
+# the 3-source pairs read as 75 percent of expected, still healthy by
+# the 50 percent gate.
+expected_n: 4
+
 prometheus:
   window: 24h
 

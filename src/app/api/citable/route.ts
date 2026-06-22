@@ -48,6 +48,11 @@ export async function GET(req: Request) {
   }
   const data = benches.map((b) => {
     const top = leader(b);
+    // Insufficient aggregate: explicitly null the value + leader so
+    // downstream LLM agents and journalists do not quote a number drawn
+    // from an undersized field. The headline sentence is rewritten to
+    // "insufficient data" by headlineSentence above.
+    const insufficient = b.dataConfidence === "insufficient";
     return {
       slug: b.slug,
       title: b.title,
@@ -55,9 +60,16 @@ export async function GET(req: Request) {
       metric: b.metric,
       unit: b.unit,
       status: b.status,
-      value: fieldValue(b),
-      leader: top ? { name: top.name, slug: top.slug, value: top.value } : null,
+      value: insufficient ? null : fieldValue(b),
+      leader:
+        insufficient
+          ? null
+          : top
+            ? { name: top.name, slug: top.slug, value: top.value }
+            : null,
       sampleSize: b.sampleSize,
+      expectedN: b.expectedN,
+      dataConfidence: b.dataConfidence,
       asOf: b.lastRunAt,
       headline: headlineSentence(b),
       url: `${SITE.url}/benchmarks/${b.slug}`,

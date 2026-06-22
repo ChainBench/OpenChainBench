@@ -255,6 +255,25 @@ export const SpecSchema = z
     findings: z.array(seoText(1, 500)).max(40).default([]),
     source: z.url(),
 
+    /**
+     * Expected sample count per provider over the bench's measurement
+     * window. Drives the bench page's sample-health badge: low cadence
+     * benches like perp-funding legitimately publish 3 samples per 24h,
+     * so a flat n threshold would falsely flag them as broken. By
+     * declaring expected_n in the YAML, the page computes
+     * health = sampleSize / expected_n per provider and tags rows
+     * below 50 percent as "low sample" or hides rankings below 10
+     * percent as "insufficient". Roughly equals
+     * cadence_per_minute * window_minutes * routes_per_provider.
+     * Optional. Benches without expected_n behave as before (no badge).
+     */
+    expected_n: z
+      .number()
+      .int()
+      .positive()
+      .optional()
+      .describe("Expected sample count per provider over the bench's measurement window. Used to badge undersized samples on the page. Roughly cadence_per_minute * window_minutes * routes_per_provider."),
+
     /* Data source. OpenChainBench is a federation: every contributor
      * declares the Prometheus their harness publishes to. Schema-time
      * isPublicHttpsUrl + runtime DNS-resolve guard in the Prom client

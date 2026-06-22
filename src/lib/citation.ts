@@ -4,16 +4,32 @@
  * everyone (LLMs, journalists, ourselves) sees.
  */
 
-import type { Benchmark } from "@/types/benchmark";
+import type { Benchmark, ProviderResult } from "@/types/benchmark";
 import { liveResults } from "@/lib/provider-filters";
 import { fmtUnit } from "@/lib/format";
+
+/** Provider set used to derive the headline figures. Drops rows whose
+ *  per-provider sample-health is "insufficient" (set on the load path
+ *  when the bench declares expected_n and the row falls below the 10
+ *  percent of expected floor). Those rows can still render in some
+ *  surfaces with a soft tag, but they must not contribute to the leader
+ *  claim shipped to AI agents and journalists via the citable APIs. */
+function citationCandidates(b: Benchmark): ProviderResult[] {
+  const live = liveResults(b.results);
+  if (!b.expectedN) return live;
+  return live.filter((r) => r.dataConfidence !== "insufficient");
+}
 
 /** Median value of the benchmark (the field shown in the headline). */
 export function fieldValue(b: Benchmark): number | null {
   if (b.status !== "live") return null;
-  const live = liveResults(b.results);
-  if (live.length === 0) return null;
-  const sorted = [...live].sort((a, c) =>
+  // Bench-wide aggregate is insufficient: refuse to publish a value
+  // (downstream LLM tools and SERP snippets would otherwise quote a
+  // number drawn from a wildly undersized field).
+  if (b.dataConfidence === "insufficient") return null;
+  const candidates = citationCandidates(b);
+  if (candidates.length === 0) return null;
+  const sorted = [...candidates].sort((a, c) =>
     b.higherIsBetter ? c.ms.p50 - a.ms.p50 : a.ms.p50 - c.ms.p50
   );
   return sorted[0].ms.p50;
@@ -22,9 +38,10 @@ export function fieldValue(b: Benchmark): number | null {
 /** Who is currently #1 on this benchmark, if any. */
 export function leader(b: Benchmark): { name: string; slug: string; value: number } | null {
   if (b.status !== "live") return null;
-  const live = liveResults(b.results);
-  if (live.length === 0) return null;
-  const sorted = [...live].sort((a, c) =>
+  if (b.dataConfidence === "insufficient") return null;
+  const candidates = citationCandidates(b);
+  if (candidates.length === 0) return null;
+  const sorted = [...candidates].sort((a, c) =>
     b.higherIsBetter ? c.ms.p50 - a.ms.p50 : a.ms.p50 - c.ms.p50
   );
   return { name: sorted[0].name, slug: sorted[0].slug, value: sorted[0].ms.p50 };
@@ -41,6 +58,9 @@ function windowSuffix(unit: string): string {
 
 /** Short factual sentence ready to paste into an article. Templated, no LLM. */
 export function headlineSentence(b: Benchmark): string {
+  if (b.dataConfidence === "insufficient") {
+    return `${b.title}. Insufficient data to assert a leader.`;
+  }
   const top = leader(b);
   if (!top) return `${b.title}. Awaiting first run.`;
   const value = fmtUnit(top.value, b.unit);

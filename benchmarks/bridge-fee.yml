@@ -91,6 +91,12 @@ faq:
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/bridge-monitor
 
+# sample_size queries filter to amount_usd="300", so the healthy floor
+# per bridge is 4 routes × 12 sweeps/hour × 24h ≈ 1152. Use 1000 as a
+# conservative round number; bridges that don't support all 4 routes
+# will land in the "low" band rather than insufficient.
+expected_n: 1000
+
 prometheus:
   url: https://prometheus-production-9ffe.up.railway.app
   window: 24h
