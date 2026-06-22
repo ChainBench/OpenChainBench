@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://huggingface.co/datasets/OpenChainBench/benchmarks/blob/main/schemas/providers.schema.json",
+  "title": "OCB providers row",
+  "description": "One row per (bench, provider, snapshot_date). Detailed ranking with percentiles.",
+  "type": "object",
+  "required": [
+    "snapshot_date",
+    "captured_at",
+    "bench_slug",
+    "provider_slug",
+    "schema_version"
+  ],
+  "properties": {
+    "snapshot_date":  { "type": "string", "format": "date" },
+    "captured_at":    { "type": "string", "format": "date-time" },
+    "bench_slug":     { "type": "string" },
+    "provider_name":  { "type": "string" },
+    "provider_slug":  { "type": "string" },
+    "p50":            { "type": ["number", "null"] },
+    "p90":            { "type": ["number", "null"] },
+    "p99":            { "type": ["number", "null"] },
+    "mean":           { "type": ["number", "null"] },
+    "success_rate":   { "type": ["number", "null"] },
+    "sample_size":    { "type": ["number", "null"] },
+    "is_leader":      { "type": "boolean" },
+    "schema_version": { "type": "integer", "minimum": 1 }
+  }
+}

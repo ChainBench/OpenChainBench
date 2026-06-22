@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://huggingface.co/datasets/OpenChainBench/benchmarks/blob/main/schemas/headlines.schema.json",
+  "title": "OCB headlines row",
+  "description": "One row per (slug, snapshot_date). Lightweight headline feed.",
+  "type": "object",
+  "required": [
+    "snapshot_date",
+    "captured_at",
+    "slug",
+    "title",
+    "category",
+    "metric",
+    "unit",
+    "status",
+    "schema_version"
+  ],
+  "properties": {
+    "snapshot_date": { "type": "string", "format": "date" },
+    "captured_at":  { "type": "string", "format": "date-time" },
+    "slug":         { "type": "string" },
+    "title":        { "type": "string" },
+    "category":     { "type": "string" },
+    "metric":       { "type": "string" },
+    "unit":         { "type": "string" },
+    "status":       { "type": "string", "enum": ["live", "draft", "insufficient"] },
+    "value":        { "type": ["number", "null"] },
+    "leader_name":  { "type": ["string", "null"] },
+    "leader_slug":  { "type": ["string", "null"] },
+    "leader_value": { "type": ["number", "null"] },
+    "sample_size":  { "type": ["number", "null"] },
+    "as_of":        { "type": ["string", "null"], "format": "date-time" },
+    "citation_url": { "type": "string", "format": "uri" },
+    "stat_api_url": { "type": "string", "format": "uri" },
+    "source_url":   { "type": ["string", "null"], "format": "uri" },
+    "license":      { "type": "string", "const": "CC-BY-4.0" },
+    "schema_version": { "type": "integer", "minimum": 1 }
+  }
+}
