@@ -6,6 +6,7 @@ import {
   type PmVenueType,
 } from "@/lib/pm-stats";
 import type { PmVenueBenchRow } from "@/components/pm-venue-bench-cards";
+import { logoPath } from "@/lib/logo-manifest";
 
 /**
  * Per-venue and per-feed metadata for the prediction-markets cohort.
@@ -25,10 +26,17 @@ export const PM_VENUE_META: Record<string, { url: string; chainLabel: string }> 
   myriad: { url: "https://myriad.markets", chainLabel: "Offchain multi chain" },
 };
 
-export const PM_FEED_META: Record<string, { url?: string; logoSrc?: string }> = {
-  "polymarket-clob": { url: "https://polymarket.com", logoSrc: "/logos/polymarket.png" },
-  mobula: { url: "https://mobula.io", logoSrc: "/logos/mobula.png" },
-  codex: { url: "https://codex.io", logoSrc: "/logos/codex.png" },
+// Logo paths come from the central manifest (`src/lib/logo-manifest.ts`)
+// so a slug whose file extension changes (e.g. predexon.svg → predexon.png)
+// only needs the manifest edit, not a parallel update here. The previous
+// shape hardcoded ".png" for slugs whose actual asset was ".svg" and the
+// header in PmDataFeedSection rendered a broken-image glyph for codex,
+// mobula, and predexon.
+export const PM_FEED_META: Record<string, { url?: string }> = {
+  "polymarket-clob": { url: "https://polymarket.com" },
+  mobula: { url: "https://mobula.io" },
+  codex: { url: "https://codex.io" },
+  predexon: { url: "https://predexon.com" },
 };
 
 export type PmVenueContext = {
@@ -85,7 +93,7 @@ export async function getPmVenueContext(
       kind: "feed",
       slug,
       name: feed.name,
-      logoSrc: meta?.logoSrc,
+      logoSrc: logoPath(slug) ?? undefined,
       externalUrl: meta?.url,
       benchRows: benchRowsForDataFeed(feed),
     };
