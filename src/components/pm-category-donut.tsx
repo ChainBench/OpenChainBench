@@ -85,10 +85,10 @@ export function PmCategoryDonut({
         </p>
       </div>
 
-      <div className="flex flex-col items-center md:flex-row md:items-center gap-5 md:gap-8">
+      <div className="flex flex-col items-center sm:flex-row sm:items-center sm:justify-center gap-4 sm:gap-6">
         <div
-          className="relative shrink-0 mx-auto md:mx-0"
-          style={{ width: "min(100%, 220px)", maxWidth: 220 }}
+          className="relative shrink-0 mx-auto sm:mx-0"
+          style={{ width: "min(100%, 180px)", maxWidth: 180 }}
         >
           <svg
             viewBox="0 0 200 200"
@@ -157,7 +157,7 @@ export function PmCategoryDonut({
           </svg>
         </div>
 
-        <ul className="flex-1 min-w-0 flex flex-col gap-1">
+        <ul className="w-full sm:w-auto sm:max-w-[200px] min-w-0 flex flex-col gap-1">
           {slices.map((s) => {
             const isHovered = hovered === s.category;
             return (
