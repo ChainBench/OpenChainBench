@@ -4,7 +4,7 @@ import type { Benchmark } from "@/types/benchmark";
 import { Hint } from "@/components/hint";
 import { MiniChart } from "@/components/mini-chart";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
-import { leader, fieldValue } from "@/lib/citation";
+import { fieldValue, isInsufficient, leader } from "@/lib/citation";
 import { fmtValue, unitSuffix } from "@/lib/format";
 
 /**
@@ -47,10 +47,12 @@ export function HomeBenchTable({ benchmarks }: { benchmarks: Benchmark[] }) {
             >
               <BenchTitleCell b={b} />
               <div className="hidden md:block min-w-0">
-                {b.status === "live" ? (
-                  <MiniChart benchmark={b} height={36} legend />
+                {isInsufficient(b) ? (
+                  <span className="text-xs text-ink-faint italic">
+                    {b.status === "live" ? "Insufficient samples" : "Awaiting samples"}
+                  </span>
                 ) : (
-                  <span className="text-xs text-ink-faint italic">Awaiting samples</span>
+                  <MiniChart benchmark={b} height={36} legend />
                 )}
               </div>
               <ValueCell b={b} />
