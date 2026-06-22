@@ -21,7 +21,7 @@ export type ProviderLayer = "l1" | "l2";
  *                    samples right now. Numbers are zero placeholders -
  *                    show a soft offline pill, not 0 ms.
  */
-export type ProviderAvailability = "live" | "unavailable";
+type ProviderAvailability = "live" | "unavailable";
 
 export type ProviderResult = {
   name: string;
@@ -43,6 +43,26 @@ export type ProviderResult = {
   successRate: number;
   /** Per-provider sample count over the run window. */
   sampleSize?: number;
+  /**
+   * Sample-health classification derived from sampleSize / expectedN.
+   *
+   *  - "healthy"     : sampleSize >= 0.5 × expectedN. Render normally.
+   *  - "low"         : 0.1 × expectedN <= sampleSize < 0.5 × expectedN.
+   *                    Row stays in the ranking with a "Low sample"
+   *                    pill and a tooltip explaining the gap.
+   *  - "insufficient": sampleSize < 0.1 × expectedN. Row drops out of
+   *                    the sorted ranking; aggregate citations should
+   *                    read "insufficient data" rather than assert a
+   *                    winner.
+   *
+   * Absent on benches whose spec does not declare `expected_n`, in
+   * which case no badge is rendered (legacy display behavior). */
+  dataConfidence?: "healthy" | "low" | "insufficient";
+  /** Sample-health ratio, 0..1+. Same source as `dataConfidence` but
+   *  exposed as the raw fraction for downstream consumers (citable /
+   *  stat APIs, dashboards, tooltips). Absent when the spec declares
+   *  no expected_n or when sampleSize itself is missing. */
+  sampleHealth?: number;
   secondary?: { label: string; value: string };
   /** Defaults to "live" when the provider returns numbers; the spec
    *  loader sets "unavailable" when prom has no data for the p50 / p90 /
@@ -156,6 +176,15 @@ export type Benchmark = {
    *  published-but-awaiting-data bench remains visible. */
   editorialStatus: "live" | "draft";
   sampleSize: number;
+  /** Spec-declared expected sample count per provider over the bench's
+   *  window. Drives the per-provider sample-health badge logic. Absent
+   *  when the spec author chose not to declare it (low cadence benches
+   *  whose healthy n cannot be computed deterministically). */
+  expectedN?: number;
+  /** Aggregate sample-health for the bench. Derived from the median of
+   *  the per-provider healths; "insufficient" silences the leader
+   *  assertion at every citable surface. Absent when expectedN is. */
+  dataConfidence?: "healthy" | "low" | "insufficient";
   abstract: string;
   metric: string;
   unit: "ms" | "s" | "sec" | "pct" | "bps" | "bp" | "count" | "slots" | "usd";
@@ -167,6 +196,7 @@ export type Benchmark = {
     chain?: { value: string; label: string }[];
     region?: { value: string; label: string }[];
     kind?: { value: string; label: string }[];
+    venue?: { value: string; label: string }[];
   };
   category: "Aggregators" | "Bridges" | "Blockchains" | "Trading" | "Wallets" | "RPCs" | "NFT APIs";
   results: ProviderResult[];

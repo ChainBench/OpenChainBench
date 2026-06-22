@@ -3,6 +3,7 @@ import { getBenchmark } from "@/data/benchmarks";
 import { SITE } from "@/data/site";
 import {
   citationQuote,
+  citeBundle,
   fieldValue,
   headlineSentence,
   leader,
@@ -43,6 +44,7 @@ export async function GET(
   }
 
   const top = leader(b);
+  const insufficient = b.dataConfidence === "insufficient";
   const payload = {
     slug: b.slug,
     title: b.title,
@@ -52,10 +54,19 @@ export async function GET(
     unit: b.unit,
     status: b.status,
     higherIsBetter: b.higherIsBetter,
-    value: fieldValue(b),
-    leader: top,
+    // Aggregate is "insufficient" (median per-provider sample health
+    // below 10 percent of expected_n): refuse to publish a value or
+    // leader; the headline is rewritten by headlineSentence so the
+    // agent / journalist reads "insufficient data" instead of quoting
+    // a number drawn from undersized samples.
+    value: insufficient ? null : fieldValue(b),
+    leader: insufficient ? null : top,
     rankings: b.results
       .filter((r) => r.ms.p50 > 0)
+      // Drop "insufficient" rows from the machine-readable ranking too:
+      // a row that the page hides from the leaderboard must not surface
+      // here either.
+      .filter((r) => r.dataConfidence !== "insufficient")
       .sort((a, c) => (b.higherIsBetter ? c.ms.p50 - a.ms.p50 : a.ms.p50 - c.ms.p50))
       .map((r) => ({
         name: r.name,
@@ -63,12 +74,17 @@ export async function GET(
         ms: r.ms,
         successRate: r.successRate,
         sampleSize: r.sampleSize,
+        sampleHealth: r.sampleHealth,
+        dataConfidence: r.dataConfidence,
       })),
     sparkline: sparklineFor(b, top?.slug),
     sampleSize: b.sampleSize,
+    expectedN: b.expectedN,
+    dataConfidence: b.dataConfidence,
     asOf: b.lastRunAt,
     headline: headlineSentence(b),
     quote: citationQuote(b, SITE.url),
+    cite: citeBundle(b, SITE.url),
     pageUrl: `${SITE.url}/benchmarks/${b.slug}`,
     ogImage: `${SITE.url}/api/og/${b.slug}`,
     source: b.source,

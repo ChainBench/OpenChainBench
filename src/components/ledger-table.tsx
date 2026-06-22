@@ -122,6 +122,12 @@ export function LedgerTable({ benchmark, activePanel, topN }: Props) {
   // lost — only the noisy ledger rows are pruned.
   const sortedAll = [...results]
     .filter((r) => {
+      // Sample-health gate. Rows tagged "insufficient" by the load path
+      // (sampleSize < 0.1 × expectedN) drop out of the ranking entirely
+      // so the leaderboard cannot assert a position from a wildly
+      // undersized field. "low" rows stay; the row renderer shows them
+      // with a soft pill instead.
+      if (r.dataConfidence === "insufficient") return false;
       if (activePanel) {
         const v = activePanel.values[r.slug];
         return v != null && Number.isFinite(v) && v !== 0;
@@ -382,6 +388,20 @@ function Row({
                 <span className="inline-flex items-center gap-1 shrink-0 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-muted">
                   <span className="inline-block w-1.5 h-1.5 rounded-full bg-[var(--color-warn,#c08a3c)]" aria-hidden />
                   Currently unavailable
+                </span>
+              </Hint>
+            )}
+            {!isOffline && r.dataConfidence === "low" && (
+              <Hint
+                label={
+                  r.sampleHealth != null
+                    ? `Sample count is below half of the expected per provider for this bench (${Math.round(r.sampleHealth * 100)}% of expected). The ranking still includes this provider; confidence in the headline number is lower than for healthy rows.`
+                    : "Sample count is below half of the expected per provider for this bench. The ranking still includes this provider; confidence in the headline number is lower than for healthy rows."
+                }
+              >
+                <span className="inline-flex items-center gap-1 shrink-0 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-muted">
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-[var(--color-warn,#c08a3c)]" aria-hidden />
+                  Low sample
                 </span>
               </Hint>
             )}

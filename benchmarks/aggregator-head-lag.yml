@@ -77,6 +77,13 @@ findings:
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/aggregator-head-lag
 
+# Methodology declares 5760 expected samples per (provider, chain,
+# region) per day at the 15 s cadence. The sample_size query sums
+# across the 3 chains and 3 regions, so the healthy floor is
+# 5760 × 9 ≈ 51840. Set conservative to absorb the 60 s scrape gaps
+# Prometheus introduces between probe and ingest.
+expected_n: 50000
+
 prometheus:
   window: 24h
 

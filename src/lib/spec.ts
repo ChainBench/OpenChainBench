@@ -90,6 +90,13 @@ function overlayEditorial(stored: Benchmark, spec: Spec): Benchmark {
     // and the bench page filters without waiting on the materialise
     // worker to rewrite the snapshot.
     dimensions: spec.dimensions ?? stored.dimensions,
+    // expected_n is a YAML editorial declaration too: drives the
+    // sample-health badge logic on the page + the citable APIs. A
+    // freshly added/edited value must take effect immediately, before
+    // the worker re-publishes the snapshot, otherwise a bench keeps
+    // ranking 3-sample providers as healthy through the materialise
+    // lag.
+    expectedN: spec.expected_n ?? stored.expectedN,
   };
   // Resolve `{{p50:slug}}`, `{{name:slug}}`, `{{best_name}}` etc. in the
   // overlaid editorial text. Without this, a YAML edit that ships AHEAD
@@ -188,7 +195,11 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // and metadata-coverage stayed invisible until the next cold cache
   // window. Bumping the key forces every read to regenerate against
   // the post-overlay shape immediately on deploy.
-  ["bench-unfiltered-v10"],
+  // v11: added per-provider dataConfidence + sampleHealth + bench-wide
+  // expectedN + dataConfidence aggregate. Cached v10 entries lack
+  // these fields, so the sample-health badge would not render on
+  // existing benches until the cache aged out.
+  ["bench-unfiltered-v11"],
   { revalidate: 60, tags: ["benchmarks"] },
 );
 
@@ -296,7 +307,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // all-draft so unstable_cache no longer caches the bad set, but any
   // already-stored v12 snapshot in Upstash KV would still serve for up
   // to 60s after deploy. Bumping the key sidesteps that window.
-  ["all-benchmarks-v13"],
+  // v14: bumped with bench-unfiltered-v11 (sample-health badges).
+  ["all-benchmarks-v14"],
   { revalidate: 60, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -372,7 +384,8 @@ const loadBenchmarkFiltered = unstable_cache(
   // v5: bumped with bench-unfiltered-v8 (sec unit).
   // v6: bumped with bench-unfiltered-v9 (bp unit).
   // v7: bumped with bench-unfiltered-v10 (dimensions overlay).
-  ["bench-filters-v7"],
+  // v8: bumped with bench-unfiltered-v11 (sample-health badges).
+  ["bench-filters-v8"],
   { revalidate: 60, tags: ["benchmarks"] }
 );
 

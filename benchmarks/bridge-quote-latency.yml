@@ -75,6 +75,12 @@ findings:
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/bridge-monitor
 
+# 4 routes × 3 notional sizes swept every 5 min × 24h ≈ 3456 expected
+# quote attempts per bridge per day. Conservative 3000 to absorb the
+# routes that a given bridge does not support (those return early as
+# unsupported and are excluded from the histogram count).
+expected_n: 3000
+
 prometheus:
   url: https://prometheus-production-9ffe.up.railway.app
   window: 24h

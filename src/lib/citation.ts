@@ -4,16 +4,32 @@
  * everyone (LLMs, journalists, ourselves) sees.
  */
 
-import type { Benchmark } from "@/types/benchmark";
+import type { Benchmark, ProviderResult } from "@/types/benchmark";
 import { liveResults } from "@/lib/provider-filters";
 import { fmtUnit } from "@/lib/format";
+
+/** Provider set used to derive the headline figures. Drops rows whose
+ *  per-provider sample-health is "insufficient" (set on the load path
+ *  when the bench declares expected_n and the row falls below the 10
+ *  percent of expected floor). Those rows can still render in some
+ *  surfaces with a soft tag, but they must not contribute to the leader
+ *  claim shipped to AI agents and journalists via the citable APIs. */
+function citationCandidates(b: Benchmark): ProviderResult[] {
+  const live = liveResults(b.results);
+  if (!b.expectedN) return live;
+  return live.filter((r) => r.dataConfidence !== "insufficient");
+}
 
 /** Median value of the benchmark (the field shown in the headline). */
 export function fieldValue(b: Benchmark): number | null {
   if (b.status !== "live") return null;
-  const live = liveResults(b.results);
-  if (live.length === 0) return null;
-  const sorted = [...live].sort((a, c) =>
+  // Bench-wide aggregate is insufficient: refuse to publish a value
+  // (downstream LLM tools and SERP snippets would otherwise quote a
+  // number drawn from a wildly undersized field).
+  if (b.dataConfidence === "insufficient") return null;
+  const candidates = citationCandidates(b);
+  if (candidates.length === 0) return null;
+  const sorted = [...candidates].sort((a, c) =>
     b.higherIsBetter ? c.ms.p50 - a.ms.p50 : a.ms.p50 - c.ms.p50
   );
   return sorted[0].ms.p50;
@@ -22,9 +38,10 @@ export function fieldValue(b: Benchmark): number | null {
 /** Who is currently #1 on this benchmark, if any. */
 export function leader(b: Benchmark): { name: string; slug: string; value: number } | null {
   if (b.status !== "live") return null;
-  const live = liveResults(b.results);
-  if (live.length === 0) return null;
-  const sorted = [...live].sort((a, c) =>
+  if (b.dataConfidence === "insufficient") return null;
+  const candidates = citationCandidates(b);
+  if (candidates.length === 0) return null;
+  const sorted = [...candidates].sort((a, c) =>
     b.higherIsBetter ? c.ms.p50 - a.ms.p50 : a.ms.p50 - c.ms.p50
   );
   return { name: sorted[0].name, slug: sorted[0].slug, value: sorted[0].ms.p50 };
@@ -33,7 +50,7 @@ export function leader(b: Benchmark): { name: string; slug: string; value: numbe
 /** Honest window wording per unit. "(p50, 24h)" is only true for latency
  *  style benches; USD revenue and count benches repurpose the p50 slot as
  *  a plain rolling-window figure and percentile wording would mislead. */
-export function windowSuffix(unit: string): string {
+function windowSuffix(unit: string): string {
   if (unit === "usd" || unit === "count") return "(24h)";
   if (unit === "pct" || unit === "bps") return "(24h avg)";
   return "(p50, 24h)";
@@ -41,6 +58,9 @@ export function windowSuffix(unit: string): string {
 
 /** Short factual sentence ready to paste into an article. Templated, no LLM. */
 export function headlineSentence(b: Benchmark): string {
+  if (b.dataConfidence === "insufficient") {
+    return `${b.title}. Insufficient data to assert a leader.`;
+  }
   const top = leader(b);
   if (!top) return `${b.title}. Awaiting first run.`;
   const value = fmtUnit(top.value, b.unit);
@@ -51,6 +71,51 @@ export function headlineSentence(b: Benchmark): string {
 export function citationQuote(b: Benchmark, origin: string): string {
   const sentence = headlineSentence(b);
   return `${sentence} Source: OpenChainBench (${origin}/benchmarks/${b.slug}).`;
+}
+
+/** Pre-formatted citation strings (Plain / BibTeX / APA) for the page
+ *  `<CiteBlock>` and the public JSON endpoints. Computed server-side so
+ *  the same canonical wording lands in HTML, in the API, and in whatever
+ *  an LLM scrapes. Date is computed from the current request time and
+ *  spelled out in ISO so journalists and BibTeX both stay happy. */
+export type CiteBundle = {
+  plain: string;
+  bibtex: string;
+  apa: string;
+};
+
+const MONTHS = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+
+export function citeBundle(
+  b: Pick<Benchmark, "slug" | "title">,
+  origin: string,
+  now: Date = new Date(),
+): CiteBundle {
+  const url = `${origin}/benchmarks/${b.slug}`;
+  const yyyy = now.getUTCFullYear();
+  const mm = String(now.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(now.getUTCDate()).padStart(2, "0");
+  const isoDate = `${yyyy}-${mm}-${dd}`;
+  const longDate = `${MONTHS[now.getUTCMonth()]} ${now.getUTCDate()}, ${yyyy}`;
+  const bibKey = `ocb_${b.slug.replace(/-/g, "_")}`;
+  return {
+    plain: `OpenChainBench. "${b.title}". Retrieved ${isoDate}. ${url}`,
+    bibtex: `@misc{${bibKey},\n  author = {OpenChainBench},\n  title  = {${b.title}},\n  year   = {${yyyy}},\n  url    = {${url}},\n  note   = {Retrieved ${isoDate}}\n}`,
+    apa: `OpenChainBench. (${yyyy}). ${b.title}. Retrieved ${longDate}, from ${url}`,
+  };
 }
 
 /** Compact sparkline (last N points, 24h) for the JSON payload. */

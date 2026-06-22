@@ -107,7 +107,7 @@ const queries = z
  *  numbers compare like-for-like. Used heavily on bridge benches where
  *  aggregators (LiFi) and single protocols (Debridge) are inherently
  *  not apples-to-apples on latency. */
-export const ProviderType = z.enum([
+const ProviderType = z.enum([
   "protocol",   // single bridge / single data feed (Debridge, Codex)
   "aggregator", // queries N underlying providers (LiFi, Mobula's aggregator side)
   "intent",     // intent / settlement layer (Mobula intents, Mayan)
@@ -118,7 +118,7 @@ export const ProviderType = z.enum([
  *  in the same provider set (e.g. network-fees). Powers the L1/L2/All
  *  toggle pill on the bench page so readers can split the leaderboard
  *  by execution layer without leaving the page. */
-export const ProviderLayer = z.enum(["l1", "l2"]);
+const ProviderLayer = z.enum(["l1", "l2"]);
 
 const provider = z.object({
   /** Stable identifier. also used as the metric label. */
@@ -149,7 +149,7 @@ const window = z
   .string()
   .regex(/^\d+[smhd]$/, "Window must look like '24h', '1d', '15m', '600s'");
 
-export const Category = z.enum([
+const Category = z.enum([
   "Aggregators",
   "Bridges",
   "Blockchains",
@@ -255,6 +255,25 @@ export const SpecSchema = z
     findings: z.array(seoText(1, 500)).max(40).default([]),
     source: z.url(),
 
+    /**
+     * Expected sample count per provider over the bench's measurement
+     * window. Drives the bench page's sample-health badge: low cadence
+     * benches like perp-funding legitimately publish 3 samples per 24h,
+     * so a flat n threshold would falsely flag them as broken. By
+     * declaring expected_n in the YAML, the page computes
+     * health = sampleSize / expected_n per provider and tags rows
+     * below 50 percent as "low sample" or hides rankings below 10
+     * percent as "insufficient". Roughly equals
+     * cadence_per_minute * window_minutes * routes_per_provider.
+     * Optional. Benches without expected_n behave as before (no badge).
+     */
+    expected_n: z
+      .number()
+      .int()
+      .positive()
+      .optional()
+      .describe("Expected sample count per provider over the bench's measurement window. Used to badge undersized samples on the page. Roughly cadence_per_minute * window_minutes * routes_per_provider."),
+
     /* Data source. OpenChainBench is a federation: every contributor
      * declares the Prometheus their harness publishes to. Schema-time
      * isPublicHttpsUrl + runtime DNS-resolve guard in the Prom client
@@ -295,7 +314,7 @@ export const SpecSchema = z
 
     /* Optional drill-down dimensions. When set, the bench page renders
      * a tab selector for the dimension; queries get the corresponding
-     * label filter injected server-side. Supported: chain, region.
+     * label filter injected server-side. Supported: chain, region, kind, venue.
      *
      * Values are constrained to a safe label-value alphabet because they
      * end up in PromQL selectors. escapePromLabelValue handles the wire
@@ -320,6 +339,14 @@ export const SpecSchema = z
           )
           .optional(),
         kind: z
+          .array(
+            z.object({
+              value: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/),
+              label: z.string().min(1).max(64),
+            })
+          )
+          .optional(),
+        venue: z
           .array(
             z.object({
               value: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/),
@@ -474,4 +501,3 @@ export const SpecSchema = z
   });
 
 export type Spec = z.infer<typeof SpecSchema>;
-export type SpecProvider = z.infer<typeof provider>;
