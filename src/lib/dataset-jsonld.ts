@@ -23,6 +23,12 @@ import { SITE } from "@/data/site";
 export const HF_DATASET_URL =
   "https://huggingface.co/datasets/OpenChainBench/benchmarks";
 
+/** Concept DOI for the dataset on Zenodo. Always resolves to the latest
+ *  version. New version DOIs are minted automatically when we push a
+ *  new git tag of the form `vX.Y.Z-dataset`. */
+export const ZENODO_CONCEPT_DOI = "10.5281/zenodo.20800311";
+export const ZENODO_CONCEPT_URL = `https://doi.org/${ZENODO_CONCEPT_DOI}`;
+
 /** Latest parquet headlines snapshot. `LATEST` is the convention used by
  *  the HF publisher pipeline so downstream consumers can pin to a date or
  *  follow head. */
@@ -71,8 +77,8 @@ export const GLOBAL_DATASET_JSONLD = {
   description:
     "Daily open benchmarks of crypto infrastructure: RPC latency, bridge fees, L2 finality, price feed accuracy, oracle deviation and more. Continuously measured by reproducible harnesses, surfaced as JSON via /api/citable and mirrored to Hugging Face as daily parquet snapshots.",
   url: SITE.url,
-  identifier: SITE.url,
-  sameAs: [HF_DATASET_URL, SITE.github],
+  identifier: [SITE.url, ZENODO_CONCEPT_DOI, ZENODO_CONCEPT_URL],
+  sameAs: [HF_DATASET_URL, SITE.github, ZENODO_CONCEPT_URL],
   license: DATASET_LICENSE,
   creator: CREATOR_PUBLISHER,
   publisher: CREATOR_PUBLISHER,
@@ -129,7 +135,7 @@ export function buildBenchDatasetJsonLd(
     description: input.description,
     url: input.url,
     identifier: input.slug,
-    sameAs: [statApi, HF_DATASET_URL],
+    sameAs: [statApi, HF_DATASET_URL, ZENODO_CONCEPT_URL],
     keywords: [
       input.category,
       ...KEYWORDS,

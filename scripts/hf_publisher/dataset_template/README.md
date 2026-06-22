@@ -1,5 +1,6 @@
 ---
 license: cc-by-4.0
+doi: 10.5281/zenodo.20800311
 language:
   - en
 language_creators:
@@ -526,22 +527,30 @@ Apache 2.0.
 
 ### Citation Information
 
+The dataset is archived on Zenodo with a permanent DOI. Use the concept
+DOI when citing the dataset in general (it always resolves to the latest
+version). Use the version DOI when citing a specific snapshot for
+reproducibility.
+
+- Concept DOI: [10.5281/zenodo.20800311](https://doi.org/10.5281/zenodo.20800311)
+- v1.0.1 version DOI: [10.5281/zenodo.20800312](https://doi.org/10.5281/zenodo.20800312)
+
 Suggested attribution string:
 
 > OpenChainBench. (2026). OpenChainBench Crypto Infrastructure Benchmarks
-> [Data set]. Hugging Face.
-> https://huggingface.co/datasets/OpenChainBench/benchmarks
+> [Data set]. Zenodo. https://doi.org/10.5281/zenodo.20800311
 
 BibTeX:
 
 ```bibtex
 @dataset{openchainbench_2026,
-  author = {{OpenChainBench Contributors}},
-  title  = {OpenChainBench Benchmarks},
-  year   = {2026},
-  publisher = {Hugging Face},
-  url = {https://huggingface.co/datasets/OpenChainBench/benchmarks},
-  note = {Daily snapshots; DOI minted post-Zenodo sync}
+  author    = {{OpenChainBench Contributors}},
+  title     = {OpenChainBench Crypto Infrastructure Benchmarks},
+  year      = {2026},
+  publisher = {Zenodo},
+  doi       = {10.5281/zenodo.20800311},
+  url       = {https://doi.org/10.5281/zenodo.20800311},
+  note      = {Live mirror at https://huggingface.co/datasets/OpenChainBench/benchmarks}
 }
 ```
 
