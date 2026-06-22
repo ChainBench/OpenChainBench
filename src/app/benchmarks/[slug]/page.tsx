@@ -16,7 +16,7 @@ import { ShareSection } from "@/components/share-section";
 import { ExportVideoSection } from "@/components/export-video-section";
 import { ReportSection } from "@/components/report-section";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
-import { headlineSentence } from "@/lib/citation";
+import { headlineSentence, isInsufficient } from "@/lib/citation";
 import { capDescription } from "@/lib/seo-text";
 import { getBenchCreatedAt } from "@/lib/seo/bench-dates";
 import { SITE } from "@/data/site";
@@ -172,6 +172,10 @@ export default async function BenchmarkPage({
 
   const isDraft = benchmark.status === "draft";
   const isAwaiting = isDraft && benchmark.editorialStatus === "live";
+  // Insufficient: editorially live, runtime might say "live" too, but the
+  // shared predicate decided no provider has a usable p50. Drives the
+  // pill above the H1 and the headline degradation downstream.
+  const insufficient = isInsufficient(benchmark);
   // Cap the "more benchmarks" rail at 6 items so it doesn't turn into
   // an endless single-column scroll on mobile (with 18 benches the old
   // unlimited list rendered 17 full cards stacked). Prefer same-category
@@ -321,7 +325,10 @@ export default async function BenchmarkPage({
             {isAwaiting ? "awaiting samples" : "draft"}
           </span>
         )}
-        {!isDraft && (
+        {!isDraft && insufficient && (
+          <span className="text-ink-faint">insufficient samples</span>
+        )}
+        {!isDraft && !insufficient && (
           <span className="ml-auto">
             <LiveIndicator lastRunAt={benchmark.lastRunAt} slug={benchmark.slug} />
           </span>

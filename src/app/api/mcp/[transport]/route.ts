@@ -7,6 +7,7 @@ import {
   citationQuote,
   fieldValue,
   headlineSentence,
+  isInsufficient,
   leader,
   sparklineFor,
 } from "@/lib/citation";
@@ -208,15 +209,19 @@ const mcpHandler = createMcpHandler(
       async () => {
         const benches = (await getBenchmarks()).filter((b) => b.editorialStatus === "live");
         const rows = benches.map((b) => {
-          const top = leader(b);
+          const insufficient = isInsufficient(b);
+          const top = insufficient ? null : leader(b);
+          const status: "live" | "draft" | "insufficient" = insufficient
+            ? "insufficient"
+            : b.status;
           return {
             slug: b.slug,
             title: b.title,
             category: b.category,
             metric: b.metric,
             unit: b.unit,
-            status: b.status,
-            value: fieldValue(b),
+            status,
+            value: insufficient ? null : fieldValue(b),
             leader: top,
             headline: headlineSentence(b),
             url: `${SITE.url}/benchmarks/${b.slug}`,
@@ -279,25 +284,39 @@ const mcpHandler = createMcpHandler(
             isError: true,
           };
         }
-        const top = leader(b);
+        const insufficient = isInsufficient(b);
+        const top = insufficient ? null : leader(b);
+        const status: "live" | "draft" | "insufficient" = insufficient
+          ? "insufficient"
+          : b.status;
+        const rankings = insufficient
+          ? b.results.map((r) => ({
+              name: r.name,
+              slug: r.slug,
+              ms: { p50: null, p90: null, p99: null, mean: null },
+              successRate: r.successRate,
+            }))
+          : b.results
+              .filter((r) => r.ms.p50 > 0)
+              .sort((a, c) =>
+                b.higherIsBetter ? c.ms.p50 - a.ms.p50 : a.ms.p50 - c.ms.p50,
+              )
+              .map((r) => ({
+                name: r.name,
+                slug: r.slug,
+                ms: r.ms,
+                successRate: r.successRate,
+              }));
         const payload = {
           slug: b.slug,
           title: b.title,
           metric: b.metric,
           unit: b.unit,
-          status: b.status,
-          value: fieldValue(b),
+          status,
+          value: insufficient ? null : fieldValue(b),
           leader: top,
-          rankings: b.results
-            .filter((r) => r.ms.p50 > 0)
-            .sort((a, c) => (b.higherIsBetter ? c.ms.p50 - a.ms.p50 : a.ms.p50 - c.ms.p50))
-            .map((r) => ({
-              name: r.name,
-              slug: r.slug,
-              ms: r.ms,
-              successRate: r.successRate,
-            })),
-          sparkline: sparklineFor(b, top?.slug),
+          rankings,
+          sparkline: insufficient ? [] : sparklineFor(b, top?.slug),
           headline: headlineSentence(b),
           quote: citationQuote(b, SITE.url),
           pageUrl: `${SITE.url}/benchmarks/${b.slug}`,
@@ -458,10 +477,15 @@ const mcpHandler = createMcpHandler(
             ],
           };
         }
-        const top = leader(b);
-        const ranked = b.results
-          .filter((r) => r.ms.p50 > 0)
-          .sort((a, c) => (b.higherIsBetter ? c.ms.p50 - a.ms.p50 : a.ms.p50 - c.ms.p50));
+        const insufficient = isInsufficient(b);
+        const top = insufficient ? null : leader(b);
+        const ranked = insufficient
+          ? []
+          : b.results
+              .filter((r) => r.ms.p50 > 0)
+              .sort((a, c) =>
+                b.higherIsBetter ? c.ms.p50 - a.ms.p50 : a.ms.p50 - c.ms.p50,
+              );
 
         const md: string[] = [];
         md.push(`# ${b.title}`);
@@ -501,21 +525,33 @@ const mcpHandler = createMcpHandler(
 
         // We attach both Markdown (default rendering) and JSON (structured
         // access) so clients can pick whichever matches their context.
+        const status: "live" | "draft" | "insufficient" = insufficient
+          ? "insufficient"
+          : b.status;
         const payload = {
           slug: b.slug,
           title: b.title,
           metric: b.metric,
           unit: b.unit,
-          value: fieldValue(b),
+          status,
+          value: insufficient ? null : fieldValue(b),
           leader: top,
-          rankings: ranked.map((r) => ({
-            name: r.name,
-            slug: r.slug,
-            ms: r.ms,
-            successRate: r.successRate,
-            sampleSize: r.sampleSize,
-          })),
-          sparkline: sparklineFor(b, top?.slug),
+          rankings: insufficient
+            ? b.results.map((r) => ({
+                name: r.name,
+                slug: r.slug,
+                ms: { p50: null, p90: null, p99: null, mean: null },
+                successRate: r.successRate,
+                sampleSize: r.sampleSize ?? null,
+              }))
+            : ranked.map((r) => ({
+                name: r.name,
+                slug: r.slug,
+                ms: r.ms,
+                successRate: r.successRate,
+                sampleSize: r.sampleSize,
+              })),
+          sparkline: insufficient ? [] : sparklineFor(b, top?.slug),
           headline: headlineSentence(b),
           quote: citationQuote(b, SITE.url),
           pageUrl: `${SITE.url}/benchmarks/${b.slug}`,

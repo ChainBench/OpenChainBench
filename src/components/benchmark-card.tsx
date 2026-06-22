@@ -3,18 +3,24 @@ import type { Benchmark } from "@/types/benchmark";
 import { Hint } from "@/components/hint";
 import { MiniChart } from "@/components/mini-chart";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
+import { isInsufficient } from "@/lib/citation";
 import { fmtValue, unitSuffix } from "@/lib/format";
 
 /**
  * Card tile for the All Benchmarks grid. Self-contained - renders the
  * category badge, title, headline KPI (field-composite p50), a compact
  * MiniChart preview, and a 3-column footer (providers / samples / updated).
- * Drafts render the same skeleton with an "Awaiting first run" placeholder
- * in place of the chart and an em-dash where the headline number would be.
+ *
+ * Three visual states:
+ *  - Draft: spec not published. "Draft" pill + chart placeholder.
+ *  - Insufficient samples: published but the harness has no usable p50
+ *    yet. "Insufficient samples" pill, greyed-out value, chart skipped.
+ *  - Live: standard rendering, leader p50 in display style.
  */
 export function BenchmarkCard({ benchmark }: { benchmark: Benchmark }) {
   const b = benchmark;
   const isDraft = b.status === "draft";
+  const insufficient = !isDraft && isInsufficient(b);
   const catColor = CATEGORY_COLOR[b.category] ?? "var(--color-ink-muted)";
 
   // Field composite p50: best-of-class (or worst if higher-is-better is
@@ -23,7 +29,8 @@ export function BenchmarkCard({ benchmark }: { benchmark: Benchmark }) {
     b.higherIsBetter ? (a, x) => x.ms.p50 - a.ms.p50 : (a, x) => a.ms.p50 - x.ms.p50,
   );
   const leader = sorted[0];
-  const headlineValue = !isDraft && leader ? fmtValue(leader.ms.p50, b.unit) : "n/a";
+  const headlineValue =
+    !isDraft && !insufficient && leader ? fmtValue(leader.ms.p50, b.unit) : "n/a";
   // Pass the leader's p50 so unitSuffix mirrors fmtUnit's auto-conversion
   // (e.g. Ethereum finality renders as "15.9 min" not "15.9 s").
   const headlineUnit = unitSuffix(b.unit, leader?.ms.p50).trim();
@@ -50,6 +57,11 @@ export function BenchmarkCard({ benchmark }: { benchmark: Benchmark }) {
               Draft
             </span>
           )}
+          {insufficient && (
+            <span className="pill" data-active="false">
+              Insufficient samples
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-1 shrink-0">
           {chips.map((r) => (
@@ -71,20 +83,26 @@ export function BenchmarkCard({ benchmark }: { benchmark: Benchmark }) {
       {/* Big number row */}
       <div className="flex items-baseline justify-between gap-3">
         <div className="flex items-baseline gap-1.5 min-w-0">
-          <span className="display-num text-4xl sm:text-5xl text-ink tabular">
+          <span
+            className={`display-num text-4xl sm:text-5xl tabular ${
+              isDraft || insufficient ? "text-ink-faint" : "text-ink"
+            }`}
+          >
             {headlineValue}
           </span>
-          {headlineUnit && (
+          {headlineUnit && !isDraft && !insufficient && (
             <span className="text-xl text-ink-muted tabular">{headlineUnit}</span>
           )}
         </div>
         <span className="label-mono text-ink-faint shrink-0">24H</span>
       </div>
 
-      {/* Chart preview - or draft placeholder */}
+      {/* Chart preview - or draft / insufficient placeholder */}
       <div className="min-h-[48px] flex items-center">
         {isDraft ? (
           <p className="label-mono text-ink-faint">Awaiting first run</p>
+        ) : insufficient ? (
+          <p className="label-mono text-ink-faint">Insufficient samples to rank</p>
         ) : (
           <MiniChart benchmark={b} height={48} legend className="opacity-90 w-full" />
         )}

@@ -8,9 +8,48 @@ import type { Benchmark } from "@/types/benchmark";
 import { liveResults } from "@/lib/provider-filters";
 import { fmtUnit } from "@/lib/format";
 
+/**
+ * Canonical "this bench cannot be ranked right now" predicate, shared by
+ * every citable surface (api/stat, api/citable, api/llm-context, llms.txt,
+ * /answers, bench page hero, OG image, MCP).
+ *
+ * A benchmark is insufficient when ANY of:
+ *  - editorialStatus is draft (the spec author has not published)
+ *  - runtime status flipped to draft (the materialize layer fell back to
+ *    draftPlaceholderForSpec because every Prom query came back empty)
+ *  - aggregate sampleSize is exactly 0 (harness ran but emitted no
+ *    samples; the headline number is then a rolling aggregate over an
+ *    empty window and must not be cited)
+ *  - no live provider has a usable, finite, positive p50
+ *
+ * Why both bench.sampleSize and the per-provider p50 check matter:
+ *  /api/stat goes through the per-slug cache and routinely returns
+ *  status=live with a non-zero p50 even when the aggregator collapsed
+ *  the same bench to draft on /api/citable (per-bench throw, fallback
+ *  to draftPlaceholderForSpec). Aligning on bench.sampleSize === 0
+ *  closes that gap for the network-fees / token-deployment-cost class
+ *  of bench, where the harness emits a value but no samples.
+ *
+ * Notes:
+ *  - per-provider `sampleSize` is intentionally NOT used. Several
+ *    harnesses do not emit a per-provider count even when the rolling
+ *    headline is real, so making it a hard condition would mass-flag
+ *    healthy benches.
+ *  - Use this predicate BEFORE deriving leader / fieldValue / headline
+ *    for any externally-visible surface.
+ */
+export function isInsufficient(b: Benchmark): boolean {
+  if (b.editorialStatus !== "live") return true;
+  if (b.status !== "live") return true;
+  if (b.sampleSize === 0) return true;
+  const live = liveResults(b.results);
+  if (live.length === 0) return true;
+  return live.every((r) => !Number.isFinite(r.ms.p50) || r.ms.p50 <= 0);
+}
+
 /** Median value of the benchmark (the field shown in the headline). */
 export function fieldValue(b: Benchmark): number | null {
-  if (b.status !== "live") return null;
+  if (isInsufficient(b)) return null;
   const live = liveResults(b.results);
   if (live.length === 0) return null;
   const sorted = [...live].sort((a, c) =>
@@ -21,7 +60,7 @@ export function fieldValue(b: Benchmark): number | null {
 
 /** Who is currently #1 on this benchmark, if any. */
 export function leader(b: Benchmark): { name: string; slug: string; value: number } | null {
-  if (b.status !== "live") return null;
+  if (isInsufficient(b)) return null;
   const live = liveResults(b.results);
   if (live.length === 0) return null;
   const sorted = [...live].sort((a, c) =>
@@ -39,8 +78,22 @@ export function windowSuffix(unit: string): string {
   return "(p50, 24h)";
 }
 
-/** Short factual sentence ready to paste into an article. Templated, no LLM. */
+/** Short factual sentence ready to paste into an article. Templated, no LLM.
+ *
+ *  Three-state output, in priority order:
+ *    1. Insufficient data: harness has no usable sample (zero p50 across
+ *       every provider, draft status, etc). Refuse to assert a winner.
+ *    2. No provider but bench is live (transient edge case): generic
+ *       "awaiting first run" sentence.
+ *    3. Live with a leader: the standard headline assertion.
+ *
+ *  The insufficient branch is critical for /answers, /llms.txt,
+ *  /api/llm-context and /api/citable so an LLM consumer never reads a
+ *  fabricated leader for a bench whose harness has not produced data. */
 export function headlineSentence(b: Benchmark): string {
+  if (isInsufficient(b)) {
+    return `Insufficient data to rank providers. The harness for ${b.title} is awaiting sufficient samples.`;
+  }
   const top = leader(b);
   if (!top) return `${b.title}. Awaiting first run.`;
   const value = fmtUnit(top.value, b.unit);
