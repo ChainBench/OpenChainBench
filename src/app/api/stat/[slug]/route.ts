@@ -115,6 +115,12 @@ export async function GET(
     source: b.source,
     methodology: b.methodology,
     license: "CC-BY-4.0",
+    // Per-chain leader / worst. Empty for benches without a chain
+    // dimension. Used by the HF publisher to populate chain_leaders.
+    // Insufficient benches null both since the underlying rankings
+    // are not citable.
+    bestPerChain: insufficient ? null : (b.bestPerChain ?? null),
+    worstPerChain: insufficient ? null : (b.worstPerChain ?? null),
   };
 
   return NextResponse.json(payload, {

@@ -16,9 +16,9 @@ Why multiple tables and not one wide table:
                 24h / 7d / 30d trajectories. Separated so consumers can
                 ignore it if they only want headlines.
   chain_leaders 1 row per (slug, chain, date) holding per-chain leader
-                and worst provider. Empty for benches without a chain
-                dimension. Currently a placeholder pending /api/citable
-                or /api/stat exposing bestPerChain.
+                and worst provider, sourced from /api/stat's
+                bestPerChain / worstPerChain fields. Empty for benches
+                without a chain dimension (no chain-tagged Prom series).
 
 Quorum guard: refuses to publish if /api/citable returns fewer than half
 its declared count as live. The previous good snapshot stays as truth
@@ -278,25 +278,17 @@ def build_timeseries(
 
 
 def build_chain_leaders(
-    citable: dict[str, Any],
+    stats: Iterable[dict[str, Any]],
     snap: Snapshot,
 ) -> pd.DataFrame:
-    """Build the chain_leaders table.
-
-    TODO: requires /api/citable or /api/stat extension to expose
-    bestPerChain / worstPerChain. Until then this table is intentionally
-    empty so the schema, partitions, and downstream queries can stabilize
-    against a real (zero-row) parquet. The schema is documented in
-    `schemas/chain_leaders.schema.json`.
+    """Build the chain_leaders table. One row per (bench, chain) when
+    the per-bench /api/stat response declares a `bestPerChain` (and
+    optional `worstPerChain`) map. Benches without a chain dimension
+    (no chain-tagged Prom labels) emit zero rows. Empty across the
+    whole field is valid and surfaces as a zero-row parquet, so the
+    schema, partitions, and downstream queries stay stable.
     """
     rows: list[dict[str, Any]] = []
-    # Reference snap.date so the param stays in the public signature
-    # while the body is a placeholder. Once /api/citable exposes
-    # bestPerChain, this block populates rows using snap.date in the
-    # partition column directly.
-    _ = (snap.date, citable.get("benchmarks", []))
-    # Empty DataFrame with the canonical column order so the parquet
-    # carries its schema even when no rows are produced.
     columns = [
         "snapshot_date",
         "captured_at",
@@ -310,6 +302,35 @@ def build_chain_leaders(
         "worst_value",
         "schema_version",
     ]
+    for stat in stats:
+        bench_slug = stat.get("slug")
+        best = stat.get("bestPerChain") or {}
+        worst = stat.get("worstPerChain") or {}
+        if not isinstance(best, dict):
+            continue
+        for chain, leader in best.items():
+            if not isinstance(leader, dict):
+                continue
+            worst_row = worst.get(chain) if isinstance(worst, dict) else None
+            if not isinstance(worst_row, dict):
+                worst_row = {}
+            ms = leader.get("ms") or {}
+            worst_ms = worst_row.get("ms") or {}
+            rows.append(
+                {
+                    "snapshot_date": snap.date,
+                    "captured_at": snap.captured_at,
+                    "bench_slug": bench_slug,
+                    "chain": chain,
+                    "leader_name": leader.get("name"),
+                    "leader_slug": leader.get("slug"),
+                    "leader_value": _f(ms.get("p50")),
+                    "worst_name": worst_row.get("name"),
+                    "worst_slug": worst_row.get("slug"),
+                    "worst_value": _f(worst_ms.get("p50")),
+                    "schema_version": SCHEMA_VERSION,
+                }
+            )
     return pd.DataFrame(rows, columns=columns)
 
 
@@ -468,7 +489,7 @@ def run(
     headlines = build_headlines(citable, snap, higher_is_better_by_slug)
     providers = build_providers(stats, snap)
     timeseries = build_timeseries(stats, series_by_slug, snap)
-    chain_leaders = build_chain_leaders(citable, snap)
+    chain_leaders = build_chain_leaders(stats, snap)
 
     if headlines.empty:
         raise PublisherError("empty headlines table, refusing to publish")
