@@ -19,8 +19,11 @@
 import { unstable_cache } from "next/cache";
 import { Prometheus } from "@/lib/prometheus";
 
+// `include_tag=true` is required: without it gamma-api returns
+// `tags: null` for every market, every classifyCategory call falls
+// through to "Other" and the donut renders as a 100% Other slice.
 const GAMMA_TOP_MARKETS_URL =
-  "https://gamma-api.polymarket.com/markets?active=true&closed=false&order=volume24hr&ascending=false&limit=10";
+  "https://gamma-api.polymarket.com/markets?active=true&closed=false&order=volume24hr&ascending=false&limit=10&include_tag=true";
 
 /** A single market row from gamma-api (we keep only the fields we render). */
 export type PmTopMarket = {
@@ -202,7 +205,7 @@ async function fetchPmTopMarketsRaw(
 
 const fetchPmTopMarketsCached = unstable_cache(
   fetchPmTopMarketsRaw,
-  ["pm-top-markets-v1"],
+  ["pm-top-markets-v2-include-tag"],
   { revalidate: 300, tags: ["pm-markets"] },
 );
 
