@@ -256,15 +256,25 @@ export async function aggregateBenchmarks(
     }
   }
   const live = benchmarks.filter((b) => b.status === "live");
-  if (benchmarks.length > 0 && live.length === 0) {
-    // Throw so unstable_cache keeps the previous good value during a
-    // Prom blackout. Previously we returned the all-draft set with a
-    // warning, which got cached for 60s and made /api/citable, sitemap,
-    // and hub pages all report every bench as draft while the per-slug
-    // /api/stat/<slug> path returned live data. Build-time callers wrap
-    // in try/catch (see loadAllBenchmarksSafe).
+  const liveSpecs = specs.filter((s) => s.status === "live");
+  // Quorum guard. The previous "all-draft only" threshold let through
+  // mixed sets where 24 of 26 specs declared live had collapsed to
+  // placeholder while 2 trickled in live — that mostly-bad set then
+  // cached for 60s and made /api/citable report status=insufficient
+  // for benches whose per-slug /api/stat path returned live data. When
+  // most editorially live specs fail to produce a live bench in the
+  // current run, treat the cycle as a load failure and throw, so
+  // unstable_cache keeps the previous good value.
+  //
+  // Floor of 4 avoids tripping the guard on tiny dev fixtures with
+  // a single deliberately-failing bench in the test suite.
+  const QUORUM_MIN_LIVE_SPECS = 4;
+  const quorumLost =
+    liveSpecs.length >= QUORUM_MIN_LIVE_SPECS &&
+    live.length * 2 < liveSpecs.length;
+  if (benchmarks.length > 0 && (live.length === 0 || quorumLost)) {
     console.warn(
-      `[DRAFT-TRACE] all_draft slug_count=${benchmarks.length} throwing to preserve previous cache value`,
+      `[DRAFT-TRACE] aggregate_quorum_lost live=${live.length}/${liveSpecs.length} (total=${benchmarks.length}) throwing to preserve previous cache value`,
     );
     throw new AllBenchmarksDraftError(benchmarks.length);
   }
@@ -296,7 +306,12 @@ const loadAllBenchmarksCached = unstable_cache(
   // all-draft so unstable_cache no longer caches the bad set, but any
   // already-stored v12 snapshot in Upstash KV would still serve for up
   // to 60s after deploy. Bumping the key sidesteps that window.
-  ["all-benchmarks-v13"],
+  // v14: bumped to flush a mostly-draft snapshot (24/26 placeholders)
+  // that survived the v13 fix because the previous throw only fired
+  // on a literally all-draft set. The aggregateBenchmarks quorum guard
+  // now throws on any cycle where fewer than half of editorially live
+  // specs produce a live bench.
+  ["all-benchmarks-v14"],
   { revalidate: 60, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
