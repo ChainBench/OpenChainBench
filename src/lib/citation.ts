@@ -41,7 +41,12 @@ import { fmtUnit } from "@/lib/format";
 export function isInsufficient(b: Benchmark): boolean {
   if (b.editorialStatus !== "live") return true;
   if (b.status !== "live") return true;
-  if (b.sampleSize === 0) return true;
+  // Note: do NOT key on b.sampleSize === 0. The aggregator loader can
+  // fall back to a draft placeholder with sampleSize=0 even when the
+  // per-bench loader holds real data, which mass-flagged 25 of 26
+  // benches as insufficient on /api/citable while /api/stat returned
+  // live values for the same slug. The liveResults length and p50
+  // finiteness checks below already catch the genuine empty case.
   const live = liveResults(b.results);
   if (live.length === 0) return true;
   return live.every((r) => !Number.isFinite(r.ms.p50) || r.ms.p50 <= 0);
