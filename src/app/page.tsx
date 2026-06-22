@@ -5,6 +5,8 @@ import { getBenchmarksSafe } from "@/data/benchmarks";
 import { HeroRadar } from "@/components/hero-radar";
 import { HomeBenchTable } from "@/components/home-bench-table";
 import { LiveDashboard } from "@/components/live/dashboard";
+import { GLOBAL_DATASET_JSONLD } from "@/lib/dataset-jsonld";
+import { safeJsonLd } from "@/lib/jsonld";
 
 export const revalidate = 60;
 
@@ -35,6 +37,18 @@ export default async function HomePage() {
 
   return (
     <article className="mx-auto max-w-[1400px] px-4 sm:px-6 py-10 sm:py-14 space-y-14 sm:space-y-20">
+      {/* Site-wide schema.org/Dataset entry. Points Google Dataset Search,
+          Perplexity and other crawlers at the canonical /api/citable JSON
+          index and the Hugging Face parquet mirror. The Organization +
+          WebSite JSON-LD lives in <head> via layout.tsx; this Dataset
+          block is page-scoped so home is the only place that claims to be
+          the dataset landing page. */}
+      <script
+        type="application/ld+json"
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: serialized via safeJsonLd
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(GLOBAL_DATASET_JSONLD) }}
+      />
+
       {/* Hero */}
       <section className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,420px)] gap-8 lg:gap-12 items-center lg:pr-12">
         <div>

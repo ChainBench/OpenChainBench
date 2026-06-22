@@ -21,6 +21,7 @@ import { capDescription } from "@/lib/seo-text";
 import { getBenchCreatedAt } from "@/lib/seo/bench-dates";
 import { SITE } from "@/data/site";
 import { buildBreadcrumbJsonLd, buildFaqPageJsonLd, safeJsonLd } from "@/lib/jsonld";
+import { buildBenchDatasetJsonLd } from "@/lib/dataset-jsonld";
 import { renderTemplate } from "@/lib/bench-template";
 import type { Benchmark } from "@/types/benchmark";
 
@@ -191,43 +192,46 @@ export default async function BenchmarkPage({
 
   const benchmarkUrl = `${SITE.url}/benchmarks/${benchmark.slug}`;
   const sentence = headlineSentence(benchmark);
+  // variableMeasured ships as an array so Google's Dataset validator
+  // reports each statistical aggregate individually rather than as one
+  // opaque string. Order matches what /api/stat/<slug> returns per
+  // provider, so a crawler can map field names 1:1.
+  const variableMeasured = [
+    benchmark.metric,
+    `${benchmark.metric}_p50`,
+    `${benchmark.metric}_p90`,
+    `${benchmark.metric}_p99`,
+    "sample_size",
+  ];
+  const datasetNode = {
+    ...buildBenchDatasetJsonLd({
+      slug: benchmark.slug,
+      name: benchmark.seoTitle ?? benchmark.title,
+      alternateName: benchmark.title,
+      // Google Rich Results validator caps description at ~1000 chars even
+      // though schema.org Dataset allows up to 5000. Keep it under 990 to
+      // avoid the "Invalid string length" warning that strips rich snippets.
+      description: capDescription(benchmark.abstract, 990),
+      url: benchmarkUrl,
+      variableMeasured,
+      category: benchmark.category,
+      datePublished: getBenchCreatedAt(benchmark.slug).toISOString(),
+      dateModified: benchmark.lastRunAt,
+      measurementTechnique: benchmark.methodology.join(" "),
+    }),
+    // Re-bind creator + publisher to the global @id reference so the bench
+    // Dataset resolves to the same Organization node emitted by layout.tsx
+    // when crawlers stitch the site graph back together. The helper sets
+    // an inline Organization for standalone consumption; the page-level
+    // override is the more accurate shape on a site that already declares
+    // the Organization globally.
+    creator: { "@id": `${SITE.url}/#org` },
+    publisher: { "@id": `${SITE.url}/#org` },
+  };
   const jsonLd = {
     "@context": "https://schema.org",
     "@graph": [
-      {
-        "@type": "Dataset",
-        "@id": `${benchmarkUrl}#dataset`,
-        name: benchmark.seoTitle ?? benchmark.title,
-        alternateName: benchmark.title,
-        // Google Rich Results validator caps description at ~1000 chars even
-        // though schema.org Dataset allows up to 5000. Keep it under 990 to
-        // avoid the "Invalid string length" warning that strips rich snippets.
-        description: capDescription(benchmark.abstract, 990),
-        url: benchmarkUrl,
-        identifier: benchmark.slug,
-        keywords: [
-          benchmark.category,
-          benchmark.metric,
-          ...benchmark.results.map((r) => r.name),
-          "live benchmark",
-          "crypto infrastructure",
-        ].join(", "),
-        creator: { "@id": `${SITE.url}/#org` },
-        publisher: { "@id": `${SITE.url}/#org` },
-        isAccessibleForFree: true,
-        license: "https://creativecommons.org/licenses/by/4.0/",
-        datePublished: getBenchCreatedAt(benchmark.slug).toISOString(),
-        dateModified: benchmark.lastRunAt,
-        variableMeasured: benchmark.metric,
-        distribution: [
-          {
-            "@type": "DataDownload",
-            encodingFormat: "application/json",
-            contentUrl: `${SITE.url}/api/stat/${benchmark.slug}`,
-          },
-        ],
-        measurementTechnique: benchmark.methodology.join(" "),
-      },
+      datasetNode,
       {
         "@type": "TechArticle",
         "@id": `${benchmarkUrl}#article`,
