@@ -1,0 +1,82 @@
+name: HF Space deploy
+
+# Pushes scripts/hf_space/ to the HF Space at
+# https://huggingface.co/spaces/OpenChainBench/leaderboard.
+#
+# Trigger:
+#   - push to main that touches scripts/hf_space/**
+#   - workflow_dispatch for manual redeploys
+#
+# Required secrets:
+#   HF_TOKEN  write-scoped token for the Space repo (same token as the
+#             dataset publisher).
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/hf_space/**"
+      - ".github/workflows/hf-space-deploy.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: hf-space-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    env:
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      HF_SPACE_REPO_ID: OpenChainBench/leaderboard
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install huggingface_hub
+        run: pip install "huggingface_hub>=0.26"
+
+      - name: Upload to HF Space
+        env:
+          GIT_SHA: ${{ github.sha }}
+        run: |
+          python - <<'PY'
+          import os
+          from huggingface_hub import HfApi
+
+          token = os.environ["HF_TOKEN"]
+          repo_id = os.environ["HF_SPACE_REPO_ID"]
+          sha = os.environ.get("GIT_SHA", "manual")
+          api = HfApi(token=token)
+          api.create_repo(
+              repo_id=repo_id,
+              repo_type="space",
+              space_sdk="gradio",
+              exist_ok=True,
+              private=False,
+          )
+          info = api.upload_folder(
+              folder_path="scripts/hf_space",
+              repo_id=repo_id,
+              repo_type="space",
+              commit_message=f"deploy from {sha}",
+          )
+          print("uploaded:", getattr(info, "oid", "ok"))
+          PY
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "## HF Space deploy ${{ job.status }}"
+            echo ""
+            echo "**Space:** https://huggingface.co/spaces/${HF_SPACE_REPO_ID}"
+            echo "**Commit:** ${{ github.sha }}"
+            echo "**Time:** $(date -u +%FT%TZ)"
+          } >> "$GITHUB_STEP_SUMMARY"
