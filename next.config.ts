@@ -81,6 +81,24 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: ["lucide-react"],
   },
+  // YAML spec files live outside src and are loaded at runtime via
+  // fs.readFile(process.cwd() + "/benchmarks/..."). Next's default file
+  // tracer only follows static imports, so those YAML files were not
+  // making it into the Vercel build artifact and the prebuilt deployment
+  // kept serving a snapshot from whichever earlier build first cached
+  // them. outputFileTracingIncludes forces every YAML directory the
+  // spec loaders read at runtime to be packaged with the deployment so
+  // the page always reflects the dev HEAD of these specs.
+  outputFileTracingIncludes: {
+    "/**": [
+      "./benchmarks/**/*.yml",
+      "./benchmarks/**/*.yaml",
+      "./answers/**/*.yml",
+      "./answers/**/*.yaml",
+      "./alternatives/**/*.yml",
+      "./alternatives/**/*.yaml",
+    ],
+  },
   async headers() {
     return [
       {
