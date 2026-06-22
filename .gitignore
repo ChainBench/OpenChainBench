@@ -62,7 +62,8 @@ harnesses/*/monitor
 harnesses/*/cmd/script/script
 harnesses/*/cmd/monitor/monitor
 
-# Python venvs for the HF publisher (created locally for dry-runs)
+# Python venvs for the HF publisher and Space (created locally for dry-runs)
 scripts/hf_publisher/.venv/
+scripts/hf_space/.venv/
 **/__pycache__/
 *.pyc
