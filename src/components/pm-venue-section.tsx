@@ -106,17 +106,27 @@ export async function PmVenueSection({
         </div>
       )}
 
-      {benchRows.length > 0 && (
-        <div className="mb-6">
-          <p
-            className="label-mono text-[10px] text-ink-faint mb-3"
-            style={{ fontFamily: "var(--font-mono, monospace)" }}
-          >
-            OpenChainBench measurements
-          </p>
-          <PmVenueBenchCards rows={benchRows} />
-        </div>
-      )}
+      {(() => {
+        // Only render bench cards that actually have a measurement.
+        // Empty "Not measured yet" rows used to fill the section on
+        // venues whose probes had not landed and made the page read as
+        // half-broken.
+        const measured = benchRows.filter(
+          (r) => r.value !== null && r.rank !== null,
+        );
+        if (measured.length === 0) return null;
+        return (
+          <div className="mb-6">
+            <p
+              className="label-mono text-[10px] text-ink-faint mb-3"
+              style={{ fontFamily: "var(--font-mono, monospace)" }}
+            >
+              OpenChainBench measurements
+            </p>
+            <PmVenueBenchCards rows={measured} />
+          </div>
+        );
+      })()}
 
       {history && history.points.length >= 7 && (
         <div className="mb-6">
