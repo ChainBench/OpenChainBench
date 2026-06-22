@@ -106,10 +106,10 @@ providers:
     tag: Nitro fast-finality, sub-second sequencer
     formula: "Median wall-clock milliseconds between consecutive `newHeads` events from the Arbitrum One sequencer WebSocket, capturing Nitro's ~250ms cadence, p50 over 24h."
     queries:
-      p50: quantile_over_time(0.50, l2_block_time_milliseconds{chain="arbitrum"}[24h])
-      p90: quantile_over_time(0.90, l2_block_time_milliseconds{chain="arbitrum"}[24h])
-      p99: quantile_over_time(0.99, l2_block_time_milliseconds{chain="arbitrum"}[24h])
-      mean: avg_over_time(l2_block_time_milliseconds{chain="arbitrum"}[24h])
+      p50: histogram_quantile(0.50, sum(rate(l2_block_time_milliseconds_histogram_bucket{chain="arbitrum"}[24h])) by (le))
+      p90: histogram_quantile(0.90, sum(rate(l2_block_time_milliseconds_histogram_bucket{chain="arbitrum"}[24h])) by (le))
+      p99: histogram_quantile(0.99, sum(rate(l2_block_time_milliseconds_histogram_bucket{chain="arbitrum"}[24h])) by (le))
+      mean: sum(rate(l2_block_time_milliseconds_histogram_sum{chain="arbitrum"}[24h])) / sum(rate(l2_block_time_milliseconds_histogram_count{chain="arbitrum"}[24h]))
       success: avg_over_time(l2_block_time_health{chain="arbitrum"}[24h])
       sample_size: increase(l2_block_time_samples_total{chain="arbitrum"}[24h])
       series: l2_block_time_milliseconds{chain="arbitrum"}
@@ -119,10 +119,10 @@ providers:
     tag: OP Stack default, 2 s sequencer
     formula: "Median wall-clock milliseconds between consecutive `newHeads` events on the Optimism sequencer WebSocket, matching the OP Stack 2s default cadence, p50 over 24h."
     queries:
-      p50: quantile_over_time(0.50, l2_block_time_milliseconds{chain="optimism"}[24h])
-      p90: quantile_over_time(0.90, l2_block_time_milliseconds{chain="optimism"}[24h])
-      p99: quantile_over_time(0.99, l2_block_time_milliseconds{chain="optimism"}[24h])
-      mean: avg_over_time(l2_block_time_milliseconds{chain="optimism"}[24h])
+      p50: histogram_quantile(0.50, sum(rate(l2_block_time_milliseconds_histogram_bucket{chain="optimism"}[24h])) by (le))
+      p90: histogram_quantile(0.90, sum(rate(l2_block_time_milliseconds_histogram_bucket{chain="optimism"}[24h])) by (le))
+      p99: histogram_quantile(0.99, sum(rate(l2_block_time_milliseconds_histogram_bucket{chain="optimism"}[24h])) by (le))
+      mean: sum(rate(l2_block_time_milliseconds_histogram_sum{chain="optimism"}[24h])) / sum(rate(l2_block_time_milliseconds_histogram_count{chain="optimism"}[24h]))
       success: avg_over_time(l2_block_time_health{chain="optimism"}[24h])
       sample_size: increase(l2_block_time_samples_total{chain="optimism"}[24h])
       series: l2_block_time_milliseconds{chain="optimism"}
@@ -132,10 +132,10 @@ providers:
     tag: OP Stack, 2 s sequencer
     formula: "Median wall-clock milliseconds between consecutive `newHeads` events on the Base sequencer WebSocket, tracking the OP Stack 2s interval, p50 over 24h."
     queries:
-      p50: quantile_over_time(0.50, l2_block_time_milliseconds{chain="base"}[24h])
-      p90: quantile_over_time(0.90, l2_block_time_milliseconds{chain="base"}[24h])
-      p99: quantile_over_time(0.99, l2_block_time_milliseconds{chain="base"}[24h])
-      mean: avg_over_time(l2_block_time_milliseconds{chain="base"}[24h])
+      p50: histogram_quantile(0.50, sum(rate(l2_block_time_milliseconds_histogram_bucket{chain="base"}[24h])) by (le))
+      p90: histogram_quantile(0.90, sum(rate(l2_block_time_milliseconds_histogram_bucket{chain="base"}[24h])) by (le))
+      p99: histogram_quantile(0.99, sum(rate(l2_block_time_milliseconds_histogram_bucket{chain="base"}[24h])) by (le))
+      mean: sum(rate(l2_block_time_milliseconds_histogram_sum{chain="base"}[24h])) / sum(rate(l2_block_time_milliseconds_histogram_count{chain="base"}[24h]))
       success: avg_over_time(l2_block_time_health{chain="base"}[24h])
       sample_size: increase(l2_block_time_samples_total{chain="base"}[24h])
       series: l2_block_time_milliseconds{chain="base"}
@@ -145,10 +145,10 @@ providers:
     tag: zk-rollup, batched producer
     formula: "Median wall-clock milliseconds between consecutive `newHeads` events on the zkSync Era WebSocket, capturing batched zk-rollup cadence (within-burst vs idle gap), p50 over 24h."
     queries:
-      p50: quantile_over_time(0.50, l2_block_time_milliseconds{chain="zksync"}[24h])
-      p90: quantile_over_time(0.90, l2_block_time_milliseconds{chain="zksync"}[24h])
-      p99: quantile_over_time(0.99, l2_block_time_milliseconds{chain="zksync"}[24h])
-      mean: avg_over_time(l2_block_time_milliseconds{chain="zksync"}[24h])
+      p50: histogram_quantile(0.50, sum(rate(l2_block_time_milliseconds_histogram_bucket{chain="zksync"}[24h])) by (le))
+      p90: histogram_quantile(0.90, sum(rate(l2_block_time_milliseconds_histogram_bucket{chain="zksync"}[24h])) by (le))
+      p99: histogram_quantile(0.99, sum(rate(l2_block_time_milliseconds_histogram_bucket{chain="zksync"}[24h])) by (le))
+      mean: sum(rate(l2_block_time_milliseconds_histogram_sum{chain="zksync"}[24h])) / sum(rate(l2_block_time_milliseconds_histogram_count{chain="zksync"}[24h]))
       success: avg_over_time(l2_block_time_health{chain="zksync"}[24h])
       sample_size: increase(l2_block_time_samples_total{chain="zksync"}[24h])
       series: l2_block_time_milliseconds{chain="zksync"}
@@ -158,10 +158,10 @@ providers:
     tag: zk-rollup, prover-bound cadence
     formula: "Median wall-clock milliseconds between consecutive `newHeads` events on the Linea sequencer WebSocket, governed by prover-bound batching, p50 over 24h."
     queries:
-      p50: quantile_over_time(0.50, l2_block_time_milliseconds{chain="linea"}[24h])
-      p90: quantile_over_time(0.90, l2_block_time_milliseconds{chain="linea"}[24h])
-      p99: quantile_over_time(0.99, l2_block_time_milliseconds{chain="linea"}[24h])
-      mean: avg_over_time(l2_block_time_milliseconds{chain="linea"}[24h])
+      p50: histogram_quantile(0.50, sum(rate(l2_block_time_milliseconds_histogram_bucket{chain="linea"}[24h])) by (le))
+      p90: histogram_quantile(0.90, sum(rate(l2_block_time_milliseconds_histogram_bucket{chain="linea"}[24h])) by (le))
+      p99: histogram_quantile(0.99, sum(rate(l2_block_time_milliseconds_histogram_bucket{chain="linea"}[24h])) by (le))
+      mean: sum(rate(l2_block_time_milliseconds_histogram_sum{chain="linea"}[24h])) / sum(rate(l2_block_time_milliseconds_histogram_count{chain="linea"}[24h]))
       success: avg_over_time(l2_block_time_health{chain="linea"}[24h])
       sample_size: increase(l2_block_time_samples_total{chain="linea"}[24h])
       series: l2_block_time_milliseconds{chain="linea"}
@@ -171,10 +171,10 @@ providers:
     tag: zkEVM rollup, prover-bound cadence
     formula: "Median wall-clock milliseconds between consecutive `newHeads` events on the Scroll zkEVM sequencer WebSocket, with prover-bound batching driving the cadence, p50 over 24h."
     queries:
-      p50: quantile_over_time(0.50, l2_block_time_milliseconds{chain="scroll"}[24h])
-      p90: quantile_over_time(0.90, l2_block_time_milliseconds{chain="scroll"}[24h])
-      p99: quantile_over_time(0.99, l2_block_time_milliseconds{chain="scroll"}[24h])
-      mean: avg_over_time(l2_block_time_milliseconds{chain="scroll"}[24h])
+      p50: histogram_quantile(0.50, sum(rate(l2_block_time_milliseconds_histogram_bucket{chain="scroll"}[24h])) by (le))
+      p90: histogram_quantile(0.90, sum(rate(l2_block_time_milliseconds_histogram_bucket{chain="scroll"}[24h])) by (le))
+      p99: histogram_quantile(0.99, sum(rate(l2_block_time_milliseconds_histogram_bucket{chain="scroll"}[24h])) by (le))
+      mean: sum(rate(l2_block_time_milliseconds_histogram_sum{chain="scroll"}[24h])) / sum(rate(l2_block_time_milliseconds_histogram_count{chain="scroll"}[24h]))
       success: avg_over_time(l2_block_time_health{chain="scroll"}[24h])
       sample_size: increase(l2_block_time_samples_total{chain="scroll"}[24h])
       series: l2_block_time_milliseconds{chain="scroll"}
@@ -184,10 +184,10 @@ providers:
     tag: OP Stack fork, 2 s sequencer + native yield
     formula: "Median wall-clock milliseconds between consecutive `newHeads` events on the Blast sequencer WebSocket, tracking the OP Stack fork's 2s interval, p50 over 24h."
     queries:
-      p50: quantile_over_time(0.50, l2_block_time_milliseconds{chain="blast"}[24h])
-      p90: quantile_over_time(0.90, l2_block_time_milliseconds{chain="blast"}[24h])
-      p99: quantile_over_time(0.99, l2_block_time_milliseconds{chain="blast"}[24h])
-      mean: avg_over_time(l2_block_time_milliseconds{chain="blast"}[24h])
+      p50: histogram_quantile(0.50, sum(rate(l2_block_time_milliseconds_histogram_bucket{chain="blast"}[24h])) by (le))
+      p90: histogram_quantile(0.90, sum(rate(l2_block_time_milliseconds_histogram_bucket{chain="blast"}[24h])) by (le))
+      p99: histogram_quantile(0.99, sum(rate(l2_block_time_milliseconds_histogram_bucket{chain="blast"}[24h])) by (le))
+      mean: sum(rate(l2_block_time_milliseconds_histogram_sum{chain="blast"}[24h])) / sum(rate(l2_block_time_milliseconds_histogram_count{chain="blast"}[24h]))
       success: avg_over_time(l2_block_time_health{chain="blast"}[24h])
       sample_size: increase(l2_block_time_samples_total{chain="blast"}[24h])
       series: l2_block_time_milliseconds{chain="blast"}
@@ -197,10 +197,10 @@ providers:
     tag: OP Stack fork, modular DA, 2 s sequencer
     formula: "Median wall-clock milliseconds between consecutive `newHeads` events on the Mantle sequencer WebSocket, tracking the OP Stack fork's 2s interval, p50 over 24h."
     queries:
-      p50: quantile_over_time(0.50, l2_block_time_milliseconds{chain="mantle"}[24h])
-      p90: quantile_over_time(0.90, l2_block_time_milliseconds{chain="mantle"}[24h])
-      p99: quantile_over_time(0.99, l2_block_time_milliseconds{chain="mantle"}[24h])
-      mean: avg_over_time(l2_block_time_milliseconds{chain="mantle"}[24h])
+      p50: histogram_quantile(0.50, sum(rate(l2_block_time_milliseconds_histogram_bucket{chain="mantle"}[24h])) by (le))
+      p90: histogram_quantile(0.90, sum(rate(l2_block_time_milliseconds_histogram_bucket{chain="mantle"}[24h])) by (le))
+      p99: histogram_quantile(0.99, sum(rate(l2_block_time_milliseconds_histogram_bucket{chain="mantle"}[24h])) by (le))
+      mean: sum(rate(l2_block_time_milliseconds_histogram_sum{chain="mantle"}[24h])) / sum(rate(l2_block_time_milliseconds_histogram_count{chain="mantle"}[24h]))
       success: avg_over_time(l2_block_time_health{chain="mantle"}[24h])
       sample_size: increase(l2_block_time_samples_total{chain="mantle"}[24h])
       series: l2_block_time_milliseconds{chain="mantle"}
@@ -210,10 +210,10 @@ providers:
     tag: Based rollup, L1-sequenced by Ethereum validators
     formula: "Median wall-clock milliseconds between consecutive `newHeads` events on Taiko's based-rollup WebSocket, with Ethereum L1 validators driving sequencing, p50 over 24h."
     queries:
-      p50: quantile_over_time(0.50, l2_block_time_milliseconds{chain="taiko"}[24h])
-      p90: quantile_over_time(0.90, l2_block_time_milliseconds{chain="taiko"}[24h])
-      p99: quantile_over_time(0.99, l2_block_time_milliseconds{chain="taiko"}[24h])
-      mean: avg_over_time(l2_block_time_milliseconds{chain="taiko"}[24h])
+      p50: histogram_quantile(0.50, sum(rate(l2_block_time_milliseconds_histogram_bucket{chain="taiko"}[24h])) by (le))
+      p90: histogram_quantile(0.90, sum(rate(l2_block_time_milliseconds_histogram_bucket{chain="taiko"}[24h])) by (le))
+      p99: histogram_quantile(0.99, sum(rate(l2_block_time_milliseconds_histogram_bucket{chain="taiko"}[24h])) by (le))
+      mean: sum(rate(l2_block_time_milliseconds_histogram_sum{chain="taiko"}[24h])) / sum(rate(l2_block_time_milliseconds_histogram_count{chain="taiko"}[24h]))
       success: avg_over_time(l2_block_time_health{chain="taiko"}[24h])
       sample_size: increase(l2_block_time_samples_total{chain="taiko"}[24h])
       series: l2_block_time_milliseconds{chain="taiko"}
