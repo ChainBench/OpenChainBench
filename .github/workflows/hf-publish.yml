@@ -11,6 +11,12 @@ name: HF dataset publish
 # Required secrets:
 #   HF_TOKEN              write-scoped token for the dataset repo.
 #   SLACK_WEBHOOK_URL     optional, incoming-webhook URL for ops alerts.
+#   KAGGLE_USERNAME       optional, owner of the Kaggle mirror dataset.
+#   KAGGLE_KEY            optional, API key paired with KAGGLE_USERNAME.
+#
+# When both KAGGLE_USERNAME and KAGGLE_KEY are set, the publisher mirrors
+# the snapshot to kaggle.com/datasets/openchainbench/benchmarks right
+# after the HF push. A Kaggle-side failure never aborts the run.
 
 on:
   schedule:
@@ -35,8 +41,11 @@ jobs:
     env:
       HF_TOKEN: ${{ secrets.HF_TOKEN }}
       SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
+      KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
       OCB_API: https://openchainbench.com
       HF_REPO_ID: OpenChainBench/benchmarks
+      KAGGLE_DATASET_ID: openchainbench/benchmarks
     steps:
       - uses: actions/checkout@v4
 
