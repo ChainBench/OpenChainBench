@@ -162,7 +162,7 @@ export function HlTopUsersTable({ slug }: { slug: string }) {
 
       <div className="mt-3 flex items-center justify-between text-[11px] text-ink-faint flex-wrap gap-2">
         <span>
-          Showing {page * PAGE_SIZE + 1}–
+          Showing {page * PAGE_SIZE + 1} to{" "}
           {Math.min((page + 1) * PAGE_SIZE, sorted.length)} of {sorted.length}
         </span>
         <div className="flex items-center gap-1">

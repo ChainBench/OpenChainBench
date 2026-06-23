@@ -12,10 +12,10 @@ import type { PercentileBucket } from "@/lib/hl-builder-stats";
 
 const BUCKET_LABELS: Record<PercentileBucket["bucket"], string> = {
   top1: "Top 1%",
-  p1_5: "1–5%",
-  p5_10: "5–10%",
-  p10_25: "10–25%",
-  p25_50: "25–50%",
+  p1_5: "1 to 5%",
+  p5_10: "5 to 10%",
+  p10_25: "10 to 25%",
+  p25_50: "25 to 50%",
   rest: "Bottom 50%",
 };
 

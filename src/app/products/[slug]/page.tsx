@@ -636,7 +636,7 @@ export default async function ProviderPage({
                 .filter(Boolean)
                 .join(" · ");
               const cardTitle = scopeLabels
-                ? `${card.title} — ${scopeLabels}`
+                ? `${card.title} · ${scopeLabels}`
                 : card.title;
               const altText = `Ranked #1 on OpenChainBench: ${card.title}${scopeSuffix}`;
               const html = `<a href="${targetUrl}"><img src="${badgeUrl}" alt="${altText}" height="44" /></a>`;
