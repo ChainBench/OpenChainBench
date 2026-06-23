@@ -80,7 +80,7 @@ async function fetchPerpVenueKpisRaw(
     prom.scalar(`perp_venue_top_market_volume_24h_usd${sel}`),
     prom.scalar(`perp_venue_health${sel}`),
     prom.scalar(`avg_over_time(perp_fees_all_in_bps${feesSel}[24h])`),
-    prom.scalar(`avg_over_time(perp_funding_hold_24h_bps${feesSel}[24h])`),
+    prom.scalar(`avg_over_time(perp_venue_funding_24h_bps${feesSel}[24h]) or avg_over_time(perp_funding_hold_24h_bps${feesSel}[24h])`),
   ]);
 
   // If every probe returned null assume the venue is not wired yet.

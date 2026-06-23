@@ -3,7 +3,8 @@
  * gauges exposed by the cross-venue perp cohort harness, plus a handful
  * of cross-bench gauges already in prod:
  *   - perp_fees_all_in_bps{venue, asset}      (bench perp-fees, № 007)
- *   - perp_funding_hold_24h_bps{venue, asset} (bench perp-funding, № 036)
+ *   - perp_venue_funding_24h_bps{venue, asset}  (perp-cohort-stats harness, via Mobula funding aggregator, 12 venues)
+ *   - perp_funding_hold_24h_bps{venue, asset}   (bench perp-funding № 036, 7 venues, kept as fallback)
  *
  * The harness publishes one series per venue. Slugs that the harness
  * does not cover yet still render in the leaderboard with every numeric
@@ -63,6 +64,7 @@ export const PERP_VENUES: VenueSeed[] = [
   { slug: "hyperliquid", name: "Hyperliquid", chain: "Hyperliquid L1", venueType: "onchain" },
   { slug: "lighter",     name: "Lighter",     chain: "Lighter L2",    venueType: "onchain" },
   { slug: "gmx-v2",      name: "GMX v2",      chain: "Arbitrum",      venueType: "onchain" },
+  { slug: "gains",       name: "Gains Network", chain: "Arbitrum",    venueType: "onchain" },
   { slug: "dydx",        name: "dYdX v4",     chain: "Cosmos",        venueType: "onchain" },
   { slug: "drift",       name: "Drift",       chain: "Solana",        venueType: "onchain" },
   { slug: "vertex",      name: "Vertex",      chain: "Arbitrum",      venueType: "onchain" },
@@ -125,10 +127,13 @@ export async function fetchPerpCohort(): Promise<PerpCohortSummary | null> {
       prom,
       `avg_over_time(perp_fees_all_in_bps{asset="ETH"}[24h])`,
     ),
-    // 24h average of the perp-funding bench (036), ETH only.
+    // 24h average of the cross-venue funding feed (perp-cohort-stats
+    // harness via Mobula), ETH only. Covers 12 venues. Falls back to
+    // the perp-funding bench (036, 7 venues) via PromQL `or` so any
+    // venue the harness has not picked up yet still surfaces a value.
     queryVector(
       prom,
-      `avg_over_time(perp_funding_hold_24h_bps{asset="ETH"}[24h])`,
+      `avg_over_time(perp_venue_funding_24h_bps{asset="ETH"}[24h]) or avg_over_time(perp_funding_hold_24h_bps{asset="ETH"}[24h])`,
     ),
   ]);
 
