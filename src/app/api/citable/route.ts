@@ -89,7 +89,7 @@ export async function GET(req: Request) {
     },
     {
       headers: {
-        "cache-control": "public, s-maxage=60, stale-while-revalidate=300",
+        "cache-control": "public, s-maxage=300, stale-while-revalidate=900",
         "access-control-allow-origin": "*",
       },
     },

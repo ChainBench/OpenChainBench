@@ -200,8 +200,12 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // expectedN + dataConfidence aggregate. Cached v10 entries lack
   // these fields, so the sample-health badge would not render on
   // existing benches until the cache aged out.
-  ["bench-unfiltered-v11"],
-  { revalidate: 60, tags: ["benchmarks"] },
+  // v12: bumped with 60s→300s revalidate (egress reduction). Materialize
+  // worker writes snapshots every 60s, so the unstable_cache layer can
+  // be 5x slower without freshness loss. Also invalidates main's
+  // separately-bumped v11 from PR #664 so we converge on one schema.
+  ["bench-unfiltered-v12"],
+  { revalidate: 300, tags: ["benchmarks"] },
 );
 
 // Sentinel thrown by the aggregator when EVERY bench collapses to
@@ -309,8 +313,11 @@ const loadAllBenchmarksCached = unstable_cache(
   // already-stored v12 snapshot in Upstash KV would still serve for up
   // to 60s after deploy. Bumping the key sidesteps that window.
   // v14: bumped with bench-unfiltered-v11 (sample-health badges).
-  ["all-benchmarks-v14"],
-  { revalidate: 60, tags: ["benchmarks"] },
+  // v16: bumped with bench-unfiltered-v12 (60s→300s revalidate, egress
+  // reduction). Skips v15 which main set independently for the same
+  // reason; aligning on v16 converges the schema.
+  ["all-benchmarks-v16"],
+  { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
 
@@ -386,8 +393,11 @@ const loadBenchmarkFiltered = unstable_cache(
   // v6: bumped with bench-unfiltered-v9 (bp unit).
   // v7: bumped with bench-unfiltered-v10 (dimensions overlay).
   // v8: bumped with bench-unfiltered-v11 (sample-health badges).
-  ["bench-filters-v8"],
-  { revalidate: 60, tags: ["benchmarks"] }
+  // v9: bumped with bench-unfiltered-v12 (60s→300s revalidate, egress
+  // reduction). Converges with main's v8 which used the same number
+  // for a different reason.
+  ["bench-filters-v9"],
+  { revalidate: 300, tags: ["benchmarks"] }
 );
 
 
