@@ -240,7 +240,7 @@ export async function GET(req: NextRequest) {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            text: `🔴 OCB materialize worker heartbeat is stale (${ageTxt}) — pages are on the slow live fallback. Check the Railway service ocb-materialize-worker.`,
+            text: `🔴 OCB materialize worker heartbeat is stale (${ageTxt}). Pages are on the slow live fallback. Check the Railway service ocb-materialize-worker.`,
           }),
         }).catch((err) => console.error("slack heartbeat alert failed:", err));
       }
