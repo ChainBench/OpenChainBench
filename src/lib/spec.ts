@@ -188,8 +188,9 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // and metadata-coverage stayed invisible until the next cold cache
   // window. Bumping the key forces every read to regenerate against
   // the post-overlay shape immediately on deploy.
-  ["bench-unfiltered-v10"],
-  { revalidate: 60, tags: ["benchmarks"] },
+  // v11: bumped from v10 alongside 60s→300s revalidate (egress reduction).
+  ["bench-unfiltered-v11"],
+  { revalidate: 300, tags: ["benchmarks"] },
 );
 
 // Sentinel thrown by the aggregator when EVERY bench collapses to
@@ -311,8 +312,9 @@ const loadAllBenchmarksCached = unstable_cache(
   // on a literally all-draft set. The aggregateBenchmarks quorum guard
   // now throws on any cycle where fewer than half of editorially live
   // specs produce a live bench.
-  ["all-benchmarks-v14"],
-  { revalidate: 60, tags: ["benchmarks"] },
+  // v15: bumped with bench-unfiltered-v11 (egress reduction).
+  ["all-benchmarks-v15"],
+  { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
 
@@ -387,8 +389,9 @@ const loadBenchmarkFiltered = unstable_cache(
   // v5: bumped with bench-unfiltered-v8 (sec unit).
   // v6: bumped with bench-unfiltered-v9 (bp unit).
   // v7: bumped with bench-unfiltered-v10 (dimensions overlay).
-  ["bench-filters-v7"],
-  { revalidate: 60, tags: ["benchmarks"] }
+  // v8: bumped with bench-unfiltered-v11 (egress reduction).
+  ["bench-filters-v8"],
+  { revalidate: 300, tags: ["benchmarks"] }
 );
 
 

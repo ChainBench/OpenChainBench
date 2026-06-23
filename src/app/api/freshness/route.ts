@@ -67,7 +67,7 @@ const computeFreshness = unstable_cache(
     return { now: Date.now(), freshness };
   },
   ["freshness-v2"],
-  { revalidate: 2, tags: ["benchmarks", "freshness"] },
+  { revalidate: 30, tags: ["benchmarks", "freshness"] },
 );
 
 export async function GET(req: Request) {
@@ -84,10 +84,12 @@ export async function GET(req: Request) {
   const data = await computeFreshness(sortedLiveSlugs);
   return Response.json(data, {
     headers: {
-      // 2 s s-maxage matches the unstable_cache window above. Short swr
-      // because anything beyond a few seconds produces a stale asOf that
-      // would defeat the point of the polling counter.
-      "cache-control": "public, s-maxage=2, stale-while-revalidate=4",
+      // 30s s-maxage matches the unstable_cache window above and the
+      // Prom scrape floor (~15s). LiveIndicator polls at the same
+      // cadence; client-side counter still ticks every 1s for UX.
+      // Egress reduction: previously s-maxage=2 produced near-100% MISS
+      // rate on Vercel edge, sending every poll to Railway prom-gateway.
+      "cache-control": "public, s-maxage=30, stale-while-revalidate=60, max-age=30",
       "access-control-allow-origin": "*",
     },
   });
