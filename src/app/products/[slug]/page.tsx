@@ -27,7 +27,12 @@ import { getPmVenueContext } from "@/lib/pm-venue-context";
 import { PmVenueSection } from "@/components/pm-venue-section";
 import { PmDataFeedSection } from "@/components/pm-data-feed-section";
 
-export const revalidate = 60;
+// Bumped from 60s -> 300s after Railway egress audit (18 June 2026):
+// the previous 600s -> 60s revert correlated exactly with the 10x egress
+// spike. /products is editorial provider catalog content, not live
+// numbers; 5 min freshness is plenty and aligns with the unstable_cache
+// TTLs in src/lib/spec.ts.
+export const revalidate = 300;
 
 // On-demand first render loads every bench (provider profile spans the
 // whole catalog). 60s default killed cold renders and ISR regenerations

@@ -11,7 +11,9 @@ export const metadata: import("next").Metadata = pageMetadata({
     "Every product tracked by OpenChainBench, grouped by performance. Click a name for its full benchmark record.",
 });
 
-export const revalidate = 60;
+// Bumped from 60s -> 300s, see /products/[slug]/page.tsx for the
+// Railway egress rationale.
+export const revalidate = 300;
 
 export default async function ProvidersIndex() {
   const providers = await getProviders();

@@ -38,13 +38,16 @@ import {
  *
  * 60 s is enough in production because Vercel edge cache serves STALE
  * HTML while ISR regenerates in the background, so a visitor never
- * waits for SSR even when the window expires. Earlier attempts at
- * 300 s and 600 s were calibrated for the staging Preview env where
- * Vercel sets `cache-control: no-store` and disables ISR entirely; on
- * production that constraint disappears so the larger window only
- * traded freshness for nothing.
+ * waits for SSR even when the window expires.
+ *
+ * Bumped from 60s -> 300s after the Railway egress audit revealed the
+ * inflection point on 18 June matched exactly the previous 600s -> 60s
+ * revert: 10x more rebuilds = 10x more Prom queries from Vercel = 10x
+ * egress bill. /compare is editorial content, not live trading data;
+ * 5 min freshness is plenty and matches the unstable_cache TTLs in
+ * src/lib/spec.ts (bumped to 300s in the same effort).
  */
-export const revalidate = 60;
+export const revalidate = 300;
 // Per-dimension variant fetches fan out N chain + N region loadBenchmark
 // calls per shared bench. Cached, but cold ISR regeneration needs head
 // room above the 60 s default to avoid mid-flight timeouts on a pair
