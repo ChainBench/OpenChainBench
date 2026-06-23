@@ -42,7 +42,7 @@ function prettyPair(key: string): { short: string; long: string } {
  * leaderboard's headline cards on the same page.
  */
 function fmtPct(v: number | null): string {
-  if (v == null) return "—";
+  if (v == null) return "-";
   if (v === 0) return "0%";
   if (v < 0.001) return "<0.001%";
   if (v < 1) return `${v.toFixed(3)}%`;

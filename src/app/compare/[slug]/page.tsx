@@ -1024,7 +1024,7 @@ function ChainRegionMatrix({
                         </td>
                       ) : (
                         <td key={r.value} className={emptyCell()}>
-                          —
+                          -
                         </td>
                       );
                     })}
@@ -1047,7 +1047,7 @@ function ChainRegionMatrix({
                         </td>
                       ) : (
                         <td key={r.value} className={emptyCell()}>
-                          —
+                          -
                         </td>
                       );
                     })}

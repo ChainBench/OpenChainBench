@@ -186,7 +186,7 @@ export function LiveNativeCard({
         <LiveDot stale={stale} />
       </div>
       <p className="mt-auto text-lg sm:text-xl font-semibold tabular-nums leading-tight relative flex items-baseline gap-1.5">
-        <span>{value != null ? fmtValue(value) : "—"}</span>
+        <span>{value != null ? fmtValue(value) : "-"}</span>
         {chevron && (
           <span className={`text-xs ${chevronColor} transition-opacity`}>
             {chevron}
