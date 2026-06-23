@@ -61,11 +61,10 @@ export function LiveIndicator({
     }
 
     fetchOnce();
-    // Poll every 5 s. Must stay above the /api/freshness cache window
-    // (s-maxage=2 + swr=4) so consecutive polls don't keep hitting the
-    // same cached asOf - otherwise the counter visibly grows between
-    // refreshes instead of resetting cleanly each tick.
-    const id = setInterval(fetchOnce, 5_000);
+    // Poll every 30 s: matches the Prom scrape floor and /api/freshness
+    // s-maxage=30 so we avoid wasting Railway egress on duplicate cached
+    // responses. Client-side counter still ticks every 1s above for UX.
+    const id = setInterval(fetchOnce, 30_000);
     return () => {
       cancelled = true;
       clearInterval(id);
