@@ -1,0 +1,158 @@
+import {
+  fetchPerpCohort,
+  type PerpCohortSummary,
+  type PerpVenueRow,
+  type PerpVenueType,
+} from "@/lib/perp-stats";
+import type { PerpVenueBenchRow } from "@/components/perp-venue-bench-cards";
+
+/**
+ * Per-venue metadata for the perps cohort. Hardcoded because the venue
+ * set is small, curated, and shared with the bench specs (perp-fees and
+ * perp-funding live in `benchmarks/`, the cohort harness lives in the
+ * private mobula-api miniapps tree).
+ *
+ * Used by the /perps hub leaderboard (chain badge, external link) and
+ * by /products/<slug> to inject the perp venue dashboard when the slug
+ * matches a tracked venue.
+ *
+ * The product-page slug for some venues differs from the cohort slug:
+ *  - cohort "gmx-v2" maps to product slug "gmx" (entry in PROVIDER_REGISTRY)
+ * Other slugs (hyperliquid, lighter, dydx, paradex, aster) match 1:1.
+ */
+
+export const PERP_VENUE_META: Record<
+  string,
+  { url: string; chainLabel: string; productSlug?: string }
+> = {
+  hyperliquid: { url: "https://hyperliquid.xyz", chainLabel: "Hyperliquid L1" },
+  lighter:     { url: "https://lighter.xyz",     chainLabel: "Lighter L2" },
+  "gmx-v2":    { url: "https://gmx.io",          chainLabel: "Arbitrum", productSlug: "gmx" },
+  dydx:        { url: "https://dydx.trade",      chainLabel: "Cosmos" },
+  drift:       { url: "https://drift.trade",     chainLabel: "Solana" },
+  vertex:      { url: "https://vertexprotocol.com", chainLabel: "Arbitrum" },
+  paradex:     { url: "https://paradex.trade",   chainLabel: "Starknet" },
+  aster:       { url: "https://asterdex.com",    chainLabel: "BNB Chain" },
+  edgex:       { url: "https://pro.edgex.exchange", chainLabel: "zkSync" },
+  extended:    { url: "https://extended.exchange",  chainLabel: "Starknet" },
+  aevo:        { url: "https://aevo.xyz",        chainLabel: "OP Stack" },
+  pacifica:    { url: "https://pacifica.fi",     chainLabel: "Solana" },
+  variational: { url: "https://variational.io",  chainLabel: "Arbitrum" },
+  ostium:      { url: "https://ostium.app",      chainLabel: "Arbitrum" },
+  grvt:        { url: "https://grvt.io",         chainLabel: "zkSync" },
+};
+
+/**
+ * Slugs that surface the /perps pill on the product header (mirrors
+ * the /prediction-markets pattern). All cohort venues plus the GMX
+ * product slug, which the cohort tracks under gmx-v2.
+ */
+export const PERP_PRODUCT_PILL_SLUGS: ReadonlySet<string> = new Set([
+  ...Object.keys(PERP_VENUE_META),
+  "gmx", // PROVIDER_REGISTRY entry; cohort key is gmx-v2
+]);
+
+export type PerpVenueContext = {
+  kind: "venue";
+  slug: string;
+  cohortSlug: string;
+  name: string;
+  chainLabel: string;
+  externalUrl: string;
+  venueType: PerpVenueType;
+  benchRows: PerpVenueBenchRow[];
+};
+
+/**
+ * Resolve a provider slug to a perp venue context, or null if the
+ * slug is not in the cohort. Caller (product page) reuses the same
+ * fetchPerpCohort cache the hub warms.
+ */
+export async function getPerpVenueContext(
+  slug: string,
+): Promise<PerpVenueContext | null> {
+  // Map product slug to cohort slug for the few that differ. Today
+  // only GMX is split (PROVIDER_REGISTRY entry "gmx", cohort label
+  // "gmx-v2"); everything else lines up 1:1.
+  const cohortSlug =
+    slug === "gmx" ? "gmx-v2" : PERP_VENUE_META[slug] ? slug : null;
+  if (!cohortSlug) return null;
+
+  const meta = PERP_VENUE_META[cohortSlug];
+  if (!meta) return null;
+
+  const cohort = await fetchPerpCohort();
+  if (!cohort) return null;
+
+  const venue = cohort.venues.find((v) => v.slug === cohortSlug);
+  if (!venue) return null;
+
+  return {
+    kind: "venue",
+    slug,
+    cohortSlug,
+    name: venue.name,
+    chainLabel: meta.chainLabel,
+    externalUrl: meta.url,
+    venueType: venue.venueType,
+    benchRows: benchRowsForVenue(cohort, venue),
+  };
+}
+
+export function benchRowsForVenue(
+  cohort: PerpCohortSummary,
+  venue: PerpVenueRow,
+): PerpVenueBenchRow[] {
+  const cohortSize = cohort.venues.length;
+  return [
+    {
+      benchSlug: "perp-fees",
+      label: "All-in fee (ETH 10x)",
+      blurb:
+        "Taker fee plus half-spread plus impact on a $1000 ETH 10x long, 24h average.",
+      rank: rankWithinCohort(cohort.venues, "allInFeeBpsEth", venue.slug),
+      cohortSize,
+      value: fmtBps(venue.allInFeeBpsEth),
+      vsMedian: null,
+      tone: "teal",
+    },
+    {
+      benchSlug: "perp-funding",
+      label: "Funding cost (ETH 24h)",
+      blurb:
+        "Normalized funding cost to hold an ETH long for 24 hours, 24h average. Negative means longs get paid.",
+      rank: rankWithinCohort(cohort.venues, "funding24hBpsEth", venue.slug),
+      cohortSize,
+      value: fmtBpsSigned(venue.funding24hBpsEth),
+      vsMedian: null,
+      tone: "cyan",
+    },
+  ];
+}
+
+function rankWithinCohort(
+  venues: PerpVenueRow[],
+  key: "allInFeeBpsEth" | "funding24hBpsEth",
+  slug: string,
+): number | null {
+  const populated = venues
+    .map((r) => ({ slug: r.slug, v: r[key] }))
+    .filter((r) => r.v != null && Number.isFinite(r.v as number));
+  if (populated.length === 0) return null;
+  populated.sort((a, b) => (a.v as number) - (b.v as number));
+  const idx = populated.findIndex((r) => r.slug === slug);
+  return idx >= 0 ? idx + 1 : null;
+}
+
+function fmtBps(v: number | null): string | null {
+  if (v == null || !Number.isFinite(v)) return null;
+  if (Math.abs(v) >= 100) return `${v.toFixed(0)} bps`;
+  return `${v.toFixed(1)} bps`;
+}
+
+function fmtBpsSigned(v: number | null): string | null {
+  if (v == null || !Number.isFinite(v)) return null;
+  const sign = v > 0 ? "+" : "";
+  if (Math.abs(v) >= 100) return `${sign}${v.toFixed(0)} bps`;
+  return `${sign}${v.toFixed(1)} bps`;
+}
