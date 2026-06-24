@@ -59,12 +59,6 @@ export function SiteHeader() {
     return () => mql.removeEventListener("change", onChange);
   }, [open]);
 
-  // Close the mobile menu on route change so a tap on a nav item collapses
-  // the drawer without the consumer having to wire onClick on every link.
-  useEffect(() => {
-    setOpen(false);
-  }, [pathname]);
-
   return (
     <div
       // Sticky everywhere by default. Only iOS in-app WebViews (Telegram,
@@ -77,8 +71,8 @@ export function SiteHeader() {
       className="site-header-root sticky top-0 z-50 flex flex-col font-sans bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/80"
     >
       <header className="border-b border-rule px-4 sm:px-6 shrink-0 text-sm relative">
-        <div className="max-w-[1400px] mx-auto flex items-center justify-between gap-3 h-14 md:h-16">
-          <div className="flex items-center gap-2">
+        <div className="max-w-[1400px] mx-auto flex items-center gap-4 lg:gap-6 h-14 md:h-16">
+          <div className="flex items-center gap-2 shrink-0">
             <SiteLogoSwitcher size={22} />
             <Link
               href="/"
@@ -91,10 +85,10 @@ export function SiteHeader() {
             </Link>
           </div>
 
-          {/* Center nav - CMC-style: underline under the active section.
+          {/* Nav links - CMC-style: underline under the active section.
               Items keep a constant pb to avoid layout shift between
               active / inactive states. */}
-          <nav className="hidden md:flex items-center h-full gap-7 text-[15px] font-medium">
+          <nav className="hidden md:flex items-center h-full gap-5 lg:gap-7 text-[14px] lg:text-[15px] font-medium shrink-0">
             {NAV.map((item) => {
               const active = item.match(pathname);
               return (
@@ -103,7 +97,7 @@ export function SiteHeader() {
                   href={item.href}
                   aria-current={active ? "page" : undefined}
                   className={[
-                    "relative flex items-center h-full transition-colors",
+                    "relative flex items-center h-full transition-colors whitespace-nowrap",
                     active
                       ? "text-ink"
                       : "text-ink-muted hover:text-ink",
@@ -121,10 +115,14 @@ export function SiteHeader() {
             })}
           </nav>
 
-          {/* Right utilities - search + github + theme. No separator pipe;
-              the gap-based spacing handles visual grouping. */}
-          <div className="hidden md:flex items-center gap-5 text-ink-muted">
+          {/* Search takes the remaining horizontal space (flex-1) so it
+              reads as a real input and discoverable without keyboard. */}
+          <div className="hidden md:flex flex-1 min-w-0 justify-end lg:justify-center">
             <SearchTrigger variant="desktop" />
+          </div>
+
+          {/* Utilities - GitHub + theme, gap-spaced, no pipe. */}
+          <div className="hidden md:flex items-center gap-4 text-ink-muted shrink-0">
             <a
               href="https://github.com/ChainBench/OpenChainBench"
               className="inline-flex items-center hover:text-ink transition-colors"
