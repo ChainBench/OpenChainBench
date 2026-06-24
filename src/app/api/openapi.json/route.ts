@@ -85,7 +85,10 @@ export async function GET() {
             title: { type: "string" },
             metric: { type: "string" },
             unit: { type: "string" },
-            value: { type: "number", nullable: true },
+            // OpenAPI 3.1 / JSON Schema 2020-12: use multi-type array
+            // for nullable. The 3.0 `nullable: true` keyword is no
+            // longer recognised under 3.1.
+            value: { type: ["number", "null"] },
             headline: { type: "string" },
             url: { type: "string", format: "uri" },
             api: { type: "string", format: "uri" },
@@ -93,14 +96,37 @@ export async function GET() {
             asOf: { type: "string", format: "date-time" },
           },
         },
+        Ranking: {
+          type: "object",
+          properties: {
+            name: { type: "string" },
+            slug: { type: "string" },
+            ms: {
+              type: "object",
+              properties: {
+                p50: { type: "number" },
+                p90: { type: "number" },
+                p99: { type: "number" },
+                mean: { type: "number" },
+              },
+            },
+            successRate: { type: "number" },
+            sampleSize: { type: ["integer", "null"] },
+            sampleHealth: { type: ["number", "null"] },
+            dataConfidence: { type: ["string", "null"], enum: ["healthy", "low", "insufficient", null] },
+          },
+        },
         Stat: {
           type: "object",
           properties: {
             slug: { type: "string" },
             title: { type: "string" },
-            value: { type: "number", nullable: true },
+            value: { type: ["number", "null"] },
             unit: { type: "string" },
-            rankings: { type: "array" },
+            rankings: {
+              type: "array",
+              items: { $ref: "#/components/schemas/Ranking" },
+            },
             sparkline: { type: "array", items: { type: "number" } },
             headline: { type: "string" },
             quote: { type: "string" },
