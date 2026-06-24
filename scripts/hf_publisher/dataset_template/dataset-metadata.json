@@ -1,0 +1,33 @@
+{
+  "id": "openchainbench/benchmarks",
+  "title": "OpenChainBench Crypto Infrastructure Benchmarks",
+  "subtitle": "Daily Parquet benchmarks of crypto infrastructure: RPCs, oracles, bridges",
+  "description": "Daily snapshots of every public benchmark on openchainbench.com, released as Hive-partitioned Parquet under CC-BY-4.0.\n\nOpenChainBench measures latency, cost, coverage and accuracy of crypto infrastructure (RPCs, oracles, bridges, data APIs, Polymarket adapters, Hyperliquid builders). Every snapshot mirrors the /api/citable, /api/stat/<slug>, and /api/series/<slug> JSON feeds at the time of capture.\n\nLatest snapshot: {{snapshot_date}} (captured at {{captured_at}}, schema v{{schema_version}}).\n\nTables:\n  headlines      one row per (slug, date), the \"who leads\" feed used by LLM agents and journalists.\n  providers      one row per (slug, provider, date), full per-provider ranking with p50 / p90 / p99.\n  timeseries     one row per (slug, provider, window, point_index, date), 24h / 7d / 30d trajectories.\n  chain_leaders  one row per (slug, chain, date), per-chain best and worst provider.\n\nThis Kaggle dataset is a mirror of the canonical release at huggingface.co/datasets/OpenChainBench/benchmarks. Source code, schemas and the publishing pipeline are on GitHub at github.com/ChainBench/OpenChainBench (see scripts/hf_publisher/).\n\nData is released under Creative Commons Attribution 4.0. Cite as: OpenChainBench. (2026). OpenChainBench Crypto Infrastructure Benchmarks [Data set]. https://openchainbench.com.",
+  "isPrivate": false,
+  "licenses": [
+    {
+      "name": "CC-BY-4.0"
+    }
+  ],
+  "keywords": [
+    "crypto",
+    "blockchain",
+    "benchmarks",
+    "rpc",
+    "oracles",
+    "bridges",
+    "polymarket",
+    "infrastructure",
+    "latency",
+    "finance",
+    "defi",
+    "solana",
+    "ethereum",
+    "hyperliquid",
+    "tabular",
+    "time series",
+    "monitoring"
+  ],
+  "collaborators": [],
+  "data": []
+}
