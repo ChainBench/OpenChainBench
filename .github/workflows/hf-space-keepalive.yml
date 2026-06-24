@@ -1,0 +1,34 @@
+name: HF Space keepalive
+
+# Free HF Spaces fall asleep after a stretch of inactivity, and the
+# first visitor after a sleep waits 30 to 60 seconds for the container
+# to boot. That looks broken from a tweet. A light curl every 4 hours
+# keeps the Space warm without burning meaningful GH Actions minutes
+# (~6 runs per day, a few seconds each).
+
+on:
+  schedule:
+    - cron: "0 */4 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: hf-space-keepalive
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Wake leaderboard Space
+        run: |
+          code=$(curl -sLm 60 -o /dev/null -w "%{http_code}" \
+            "https://openchainbench-leaderboard.hf.space")
+          echo "leaderboard: $code"
+          # 200 is a hot hit. 503 means HF is still booting the
+          # container, which is exactly the case we are warming for, so
+          # don't fail the workflow on it.
+          case "$code" in
+            200|302|503) exit 0 ;;
+            *) exit 1 ;;
+          esac
