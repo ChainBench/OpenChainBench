@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import {
   fetchHlCohortFresh,
   fetchHlHip3CohortFresh,
-} from "@/lib/benches/hyperliquid/builder-stats";
+} from "@/lib/hl-builder-stats";
 import {
   cohortSnapshotConfigured,
   writeCohortSnapshot,
