@@ -614,5 +614,5 @@ stays as truth.
 ## Provenance
 
 - Source code (publisher + benchmark YAML specs): https://github.com/ChainBench/OpenChainBench
-- Live measurement APIs: https://openchainbench.com/api/citable, /api/stat, /api/series, /api/llm-context, /api/mcp
+- Live measurement APIs: https://openchainbench.com/api/citable, /api/stat, /api/series, /api/llm-context, /api/mcp/mcp
 - Issues / questions: https://github.com/ChainBench/OpenChainBench/issues

@@ -77,7 +77,10 @@ jobs:
       - name: Warm citable aggregate
         run: |
           base="https://openchainbench.com"
-          for ep in /api/citable /api/llm-context /api/mcp; do
+          # /api/mcp is the docs path under /mcp, the live JSON-RPC
+          # endpoint is /api/mcp/mcp (Streamable HTTP). Warm the real
+          # endpoint so the first agent request after deploy is hot.
+          for ep in /api/citable /api/llm-context /api/mcp/mcp; do
             code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 120 "$base$ep" || echo "000")
             echo "$code $base$ep"
           done
