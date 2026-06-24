@@ -135,6 +135,42 @@ export default async function PerpsHubPage() {
             <span className="text-ink">perp-funding</span>
           </Link>
           <Link
+            href="/benchmarks/perp-volume-share"
+            className="inline-flex items-center gap-1.5 rounded-full border border-teal-500/30 bg-teal-500/10 px-3 py-1 hover:bg-teal-500/15"
+          >
+            <span
+              className="label-mono text-ink-faint text-[10px]"
+              style={{ fontFamily: "var(--font-mono, monospace)" }}
+            >
+              Bench
+            </span>
+            <span className="text-ink">perp-volume-share</span>
+          </Link>
+          <Link
+            href="/benchmarks/perp-open-interest"
+            className="inline-flex items-center gap-1.5 rounded-full border border-teal-500/30 bg-teal-500/10 px-3 py-1 hover:bg-teal-500/15"
+          >
+            <span
+              className="label-mono text-ink-faint text-[10px]"
+              style={{ fontFamily: "var(--font-mono, monospace)" }}
+            >
+              Bench
+            </span>
+            <span className="text-ink">perp-open-interest</span>
+          </Link>
+          <Link
+            href="/benchmarks/perp-funding-stability"
+            className="inline-flex items-center gap-1.5 rounded-full border border-teal-500/30 bg-teal-500/10 px-3 py-1 hover:bg-teal-500/15"
+          >
+            <span
+              className="label-mono text-ink-faint text-[10px]"
+              style={{ fontFamily: "var(--font-mono, monospace)" }}
+            >
+              Bench
+            </span>
+            <span className="text-ink">perp-funding-stability</span>
+          </Link>
+          <Link
             href="/hyperliquid"
             className="inline-flex items-center gap-1.5 rounded-full border border-teal-500/30 bg-teal-500/10 px-3 py-1 hover:bg-teal-500/15"
           >
