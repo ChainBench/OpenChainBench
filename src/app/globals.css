@@ -330,6 +330,47 @@ textarea:focus-visible {
   border-radius: 4px;
 }
 
+/* Search dialog open/close animations. tailwindcss-animate isn't
+   installed; these handcrafted keyframes give us the fade + slight
+   slide-down on open and the inverse on close. Linear-style: snappy,
+   no scale bounce. */
+@keyframes ocb-search-overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes ocb-search-overlay-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+@keyframes ocb-search-card-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes ocb-search-card-out {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(-4px); }
+}
+.ocb-search-overlay-in {
+  animation: ocb-search-overlay-in 150ms ease-out;
+}
+.ocb-search-overlay-out {
+  animation: ocb-search-overlay-out 100ms ease-in forwards;
+}
+.ocb-search-card-in {
+  animation: ocb-search-card-in 150ms cubic-bezier(0.16, 0.84, 0.32, 1);
+}
+.ocb-search-card-out {
+  animation: ocb-search-card-out 100ms ease-in forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ocb-search-overlay-in,
+  .ocb-search-overlay-out,
+  .ocb-search-card-in,
+  .ocb-search-card-out {
+    animation: none !important;
+  }
+}
+
 /* cmdk command palette input — opts out of the universal focus ring.
    The dialog already provides visual focus context (modal backdrop +
    centered card); a hard accent outline on the input itself reads as
