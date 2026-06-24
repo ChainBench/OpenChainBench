@@ -17,12 +17,11 @@ For each gas oracle, capture the priority-fee + base-fee prediction at time T, w
 
 | Slug | Endpoint | Auth | Poll cadence | Tier mapping |
 |---|---|---|---|---|
-| `blocknative` | `api.blocknative.com/gasprices/blockprices` | no key (free tier) | 12 s | confidence 70/80/90/95/99 → p25/p50/p75/p90/p99 |
 | `publicnode-feehistory` | `ethereum-rpc.publicnode.com` `eth_feeHistory` | no key | 12 s | reward[..][0/1/2] → p25/p50/p90 |
 | `owlracle` | `api.owlracle.info/v4/eth/gas` | no key | 60 s (free quota 100/h) | acceptance 0.35/0.6/0.9/1.0 → p25/p50/p90/p99 |
 | `etherscan` | `api.etherscan.io/v2/api?chainid=1&module=gastracker&action=gasoracle` | no key (throttled 1/5s) | 15 s | Safe/Propose/Fast − suggestBaseFee → p25/p50/p90 |
 
-Two more oracles (Alchemy `eth_feeHistory`, Blocknative paid Gas Platform) require a free key signup — wired via env vars but disabled by default. See `config.go` for the `GAS_TOKEN_*` and `GAS_URL_*` overrides.
+Alchemy `eth_feeHistory` is wired via env vars but disabled by default; it requires a free key signup. See `config.go` for the `GAS_URL_*` overrides.
 
 The verification agent confirmed 5 candidates DEAD in 2026: Etherchain (Cloudflare 403), ethgas.watch (deprecated), ethgasstation (defunct), gasstation.network (404), api.ethgas.org / eth.gasprice.network / gastracker.io (DNS gone).
 
@@ -46,7 +45,7 @@ All effective priorities are sorted into a single series; p25/p50/p90 are simple
 ```
 +-----------------+        +-----------------+
 | oracle pollers  |  ---+  |   realizer      |
-|  (4 goroutines) |     |  | head every 12 s |
+|  (3 goroutines) |     |  | head every 12 s |
 +-----------------+     |  | catch-up ≤5 blk |
                         v  +-----------------+
                 +---------------+        |
@@ -110,8 +109,6 @@ go run ./cmd/script
 Optional env overrides:
 
 ```bash
-# Bump Blocknative to a paid key (5 RPS, 100k/day)
-GAS_TOKEN_BLOCKNATIVE=your-key-here \
 # Use Alchemy feeHistory instead of (or alongside) publicnode
 GAS_URL_PUBLICNODE_FEEHISTORY=https://eth-mainnet.g.alchemy.com/v2/your-key \
 go run ./cmd/script
@@ -123,9 +120,9 @@ Standard OCB-miniapp shape — multi-stage Dockerfile, port 2112, internal-only 
 
 ## Known limits
 
-- **Ethereum mainnet only**. Owlracle covers bsc/poly/avax/arbitrum, feeHistory works on every chain, Blocknative free is mainnet-only, Etherscan v2 free is mainnet-only. Multi-chain bench is a v2 build that swaps the realized RPC + adapts the URL templating.
-- **Blob fees not benchmarked**. Blocknative + feeHistory return `baseFeePerBlobGas` but the bench doesn't currently emit it. Add `fee_kind="blob"` axis in a v2 to surface blob predictions.
-- **p75/p99 realized values are approximated** — we compute exact p25/p50/p90 from block txs but interpolate p75 = (p50+p90)/2 and p99 = p90. Oracles that emit these tiers (Blocknative, Owlracle) get a comparator, but the bench page should footnote that these are noisier than p25/p50/p90.
+- **Ethereum mainnet only**. Owlracle covers bsc/poly/avax/arbitrum, feeHistory works on every chain, Etherscan v2 free is mainnet-only. Multi-chain bench is a v2 build that swaps the realized RPC + adapts the URL templating.
+- **Blob fees not benchmarked**. feeHistory returns `baseFeePerBlobGas` but the bench doesn't currently emit it. Add `fee_kind="blob"` axis in a v2 to surface blob predictions.
+- **p75/p99 realized values are approximated** — we compute exact p25/p50/p90 from block txs but interpolate p75 = (p50+p90)/2 and p99 = p90. Oracles that emit those tiers (Owlracle) get a comparator, but the bench page should footnote that these are noisier than p25/p50/p90.
 - **Etherscan no-key throttles at 1/5 s**. With our 15 s cadence we stay well within. If we ever go below 10 s, register a free key.
 - **Owlracle 100/h no-key quota**. At 60 s cadence we use 60 polls/h = 60% of quota. A free key bumps it to 1000/h.
 - **Startup window**: first few predictions during the first ~12 s aren't matched (realizer hasn't seen head yet). Owlracle skips buffering during this window; other oracles target an explicit block so are safe.
