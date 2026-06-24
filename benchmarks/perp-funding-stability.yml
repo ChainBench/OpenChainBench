@@ -4,7 +4,7 @@ slug: perp-funding-stability
 number: "043"
 title: Perp DEX funding stability, 7-day stddev of ETH funding ranked
 seo_title: "Perp DEX funding stability 2026: ETH funding stddev across 12 venues ranked"
-seo_description: "Live 7-day standard deviation of ETH perpetual futures funding rate in bps across 12 major venues. Lower means more stable funding for carry traders."
+seo_description: "Live 7-day standard deviation of ETH perpetual futures funding rate in bps across 12 major venues (Hyperliquid plus 11 CEX-style perp books). Lower means more stable funding for carry traders."
 subtitle: 7-day standard deviation of ETH funding rate, in basis points per 24h, across the Mobula funding cohort. Lower means funding stays in a tight band, the carry trader's preferred signal.
 category: Trading
 status: live
@@ -44,7 +44,7 @@ methodology:
   - "Source. Same upstream as perp-funding: each venue's public funding endpoint polled every 60 seconds, normalized to bps per hour and per 24h hold, sign preserved."
   - "Metric. stddev_over_time(perp_venue_funding_24h_bps{asset=\"ETH\"}[7d]) per venue. The 7d window smooths intraday noise but reacts to regime shifts within a week."
   - "Sign handling. The underlying series is signed (positive means longs pay). Stability measures the swing, so the ranking uses the unsigned stddev. Average direction and level are the perp-funding bench."
-  - "Cohort. 12 venues: Hyperliquid, Binance, Bybit, OKX, dYdX v4, Paradex, Aster on the CEX-plus-orderbook side; Drift, Vertex, EdgeX, Extended and Aevo on the onchain-perp side. All quote ETH funding with documented intervals."
+  - "Cohort. 12 venues from the Mobula funding aggregator: Hyperliquid (onchain), Binance, Bybit, OKX, Gate, Lighter, KuCoin, MEXC, Bitget, Kraken, Coinbase, Deribit. All publish normalized hourly ETH funding."
   - "Cadence. The upstream funding harness polls every 60 seconds; Prometheus scrapes every 30 seconds. The 7 day stddev refreshes on every scrape."
   - "Failures. A venue whose upstream funding feed errors keeps its last gauge value; the perp_venue_health gauge drops to 0 and the leaderboard tags the row stale."
   - "Reproducibility. The harness emits perp_venue_funding_24h_bps with labels venue and asset; the bench query is the stddev over 7d on that series with asset=ETH pinned."
