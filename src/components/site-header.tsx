@@ -3,6 +3,7 @@
 import { Menu, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { SearchTrigger } from "@/components/search/search-trigger";
 import { SiteLogoSwitcher } from "@/components/site-logo-switcher";
 import { ThemeToggle } from "@/components/theme-toggle";
 
@@ -73,6 +74,7 @@ export function SiteHeader() {
                 {item.label}
               </Link>
             ))}
+            <SearchTrigger variant="desktop" />
             <span className="text-rule-strong">|</span>
             <a
               href="https://github.com/ChainBench/OpenChainBench"
@@ -85,16 +87,19 @@ export function SiteHeader() {
             <ThemeToggle />
           </nav>
 
-          <button
-            type="button"
-            className="md:hidden inline-flex items-center justify-center min-h-[44px] min-w-[44px] -mr-2 rounded text-ink-muted hover:text-ink transition-colors"
-            aria-label={open ? "Close menu" : "Open menu"}
-            aria-expanded={open}
-            aria-controls="mobile-nav"
-            onClick={() => setOpen((v) => !v)}
-          >
-            {open ? <X size={20} /> : <Menu size={20} />}
-          </button>
+          <div className="md:hidden flex items-center -mr-2">
+            <SearchTrigger variant="mobile" />
+            <button
+              type="button"
+              className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] rounded text-ink-muted hover:text-ink transition-colors"
+              aria-label={open ? "Close menu" : "Open menu"}
+              aria-expanded={open}
+              aria-controls="mobile-nav"
+              onClick={() => setOpen((v) => !v)}
+            >
+              {open ? <X size={20} /> : <Menu size={20} />}
+            </button>
+          </div>
         </div>
 
         {open && (
