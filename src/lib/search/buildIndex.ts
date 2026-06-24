@@ -116,9 +116,19 @@ const STATIC_PAGES: Array<{ url: string; title: string; description: string; tag
   },
 ];
 
+/** Strip `{{best_name}}` / `{{best_p50}}` / `{{p50:slug}}` etc. tokens
+ *  from raw YAML editorial copy. The search index is built at build time
+ *  with no Prom data, so template tokens can't be resolved here. Leaving
+ *  them raw ships `{{best_name}} leads ...` into the search dialog
+ *  description preview, which reads as broken. */
+function stripTemplates(s: string): string {
+  return s.replace(/\{\{[^}]+\}\}/g, "").replace(/\s+/g, " ").trim();
+}
+
 function truncate(s: string | undefined, n = 150): string | undefined {
   if (!s) return undefined;
-  const clean = s.replace(/\s+/g, " ").trim();
+  const clean = stripTemplates(s);
+  if (!clean) return undefined;
   if (clean.length <= n) return clean;
   return `${clean.slice(0, n - 1).trimEnd()}…`;
 }
@@ -146,12 +156,18 @@ export const buildSearchIndex = cache(async function buildSearchIndex(): Promise
   // ── Benchmarks ──────────────────────────────────────────────────
   for (const spec of specs) {
     if (spec.status === "draft") continue;
+    // Prefer subtitle over seo_description when the latter contains
+    // template tokens. The index is built without Prom data so we can't
+    // resolve `{{best_name}}` here, and showing the YAML with the tokens
+    // stripped leaves a sentence with gaps ("leads ... at (p50, 24h)").
+    const hasTokens = spec.seo_description?.includes("{{");
+    const description = hasTokens ? spec.subtitle : (spec.seo_description ?? spec.subtitle);
     items.push({
       id: `bench:${spec.slug}`,
       kind: "Benchmark",
       title: spec.title,
       url: `/benchmarks/${spec.slug}`,
-      description: truncate(spec.seo_description ?? spec.subtitle),
+      description: truncate(description),
       tags: [spec.category, spec.slug],
     });
   }
