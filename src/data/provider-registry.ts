@@ -1304,7 +1304,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     twitter: "@DriftProtocol",
   },
   vertex: {
-    url: "https://vertexprotocol.com",
+    url: "https://www.nado.xyz",
     description:
       "Arbitrum perp and spot orderbook DEX with off-chain matching and on-chain settlement. Migrating to Ink Foundation.",
     twitter: "@vertex_protocol",
