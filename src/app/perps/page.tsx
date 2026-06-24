@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { fetchPerpCohort } from "@/lib/perp-stats";
+import { fetchPerpByAssetMatrix, fetchPerpCohort } from "@/lib/perp-stats";
 import { PerpHubTabs } from "@/components/perp-hub-tabs";
 import { pageMetadata } from "@/lib/page-metadata";
 import { safeJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
@@ -36,7 +36,14 @@ export const metadata: import("next").Metadata = pageMetadata({
 export const revalidate = 60;
 
 export default async function PerpsHubPage() {
-  const cohort = await fetchPerpCohort();
+  // Fetch cohort + per-asset matrix in parallel so the by-asset tab is
+  // hydrated on first paint, no second round-trip when the user flips
+  // the pill. Both helpers are wrapped in unstable_cache so concurrent
+  // requests collapse onto the same Prom roundtrip.
+  const [cohort, byAsset] = await Promise.all([
+    fetchPerpCohort(),
+    fetchPerpByAssetMatrix(),
+  ]);
 
   const breadcrumbLd = {
     "@context": "https://schema.org",
@@ -178,7 +185,7 @@ export default async function PerpsHubPage() {
             />
           </section>
 
-          <PerpHubTabs cohort={cohort} />
+          <PerpHubTabs cohort={cohort} byAsset={byAsset} />
 
           <p className="mt-4 text-[11px] text-ink-faint italic">
             Sources: live cohort harness perp-cohort-stats (volume, OI,
