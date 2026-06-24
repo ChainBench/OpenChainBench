@@ -330,6 +330,19 @@ textarea:focus-visible {
   border-radius: 4px;
 }
 
+/* cmdk command palette input — opts out of the universal focus ring.
+   The dialog already provides visual focus context (modal backdrop +
+   centered card); a hard accent outline on the input itself reads as
+   a validation error rather than a focus state, which is the look the
+   designer flagged as "pas pro". The input still receives focus and
+   keyboard nav, just without the harsh outline. */
+[cmdk-input]:focus,
+[cmdk-input]:focus-visible {
+  outline: none !important;
+  outline-offset: 0;
+  box-shadow: none !important;
+}
+
 /* Skip-link target. Hidden until keyboard focus brings it onto the
    page, then snaps to the top-left so a screen-reader / keyboard
    user can bypass the nav. */
