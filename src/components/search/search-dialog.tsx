@@ -64,24 +64,26 @@ const KIND_ICON: Record<SearchKind, typeof Search> = {
 /**
  * Hand-picked editorial leaders. Shown as horizontal "Live leaders" cards
  * when the query is empty. Live values (#1 provider + p50) come from
- * `/api/citable`, which is already edge-cached for 300s.
+ * `/api/citable`, which is already edge-cached for 300s. All slugs must
+ * appear in the citable response (editorialStatus === "live" + leader()
+ * non-null) — verified against prod before shipping.
  */
 const FEATURED_BENCH_SLUGS = [
   "pm-data-freshness",
   "aggregator-head-lag",
   "l1-finality",
   "rpc-capabilities",
-  "evm-quote-latency",
-  "solana-tx-landing-latency",
+  "perp-fees",
+  "bridge-quote-latency",
 ];
 
 const TRENDING_BENCH_SLUGS = [
-  "perp-fees",
   "stablecoin-peg-usdt-anchored",
-  "bridge-quote-latency",
   "metadata-coverage",
   "validator-yield",
   "network-fees",
+  "perp-funding",
+  "solana-tx-landing",
 ];
 
 type CitableLeader = {
@@ -408,43 +410,56 @@ export default function SearchDialog() {
                     />
                     <div className="px-3 pb-2">
                       <div className="flex gap-2.5 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden snap-x snap-mandatory -mx-1 px-1">
-                        {featured.map(({ item, live }) => (
-                          <button
-                            key={item.id}
-                            type="button"
-                            onClick={() => go(item.url, entryFromItem(item))}
-                            className="snap-start shrink-0 w-[220px] sm:w-[240px] text-left rounded-lg border border-rule bg-paper-soft hover:border-rule-strong hover:bg-paper transition-colors p-3"
-                          >
-                            <div className="flex items-center gap-2">
-                              <Trophy size={12} className="text-ink-faint" />
-                              <span className="text-[10px] uppercase tracking-[0.12em] text-ink-faint">
-                                Benchmark
-                              </span>
-                            </div>
-                            <div className="mt-1.5 text-[13px] font-medium text-ink leading-snug line-clamp-2">
-                              {item.title}
-                            </div>
-                            <div className="mt-2.5 flex items-center justify-between gap-2">
-                              {live?.leader ? (
-                                <div className="flex items-center gap-1.5 min-w-0">
-                                  <ProviderLogo
-                                    slug={live.leader.slug}
-                                    name={live.leader.name}
-                                    size={16}
-                                  />
-                                  <span className="text-xs text-ink-muted truncate">
-                                    {live.leader.name}
+                        {featured.map(({ item, live }) => {
+                          const category = item.tags?.[0] ?? "Benchmark";
+                          const isLoading = citable === null;
+                          return (
+                            <button
+                              key={item.id}
+                              type="button"
+                              onClick={() => go(item.url, entryFromItem(item))}
+                              className="snap-start shrink-0 w-[220px] sm:w-[240px] text-left rounded-lg border border-rule bg-paper-soft hover:border-rule-strong hover:bg-paper transition-colors p-3"
+                            >
+                              <div className="flex items-center gap-2">
+                                <Trophy size={12} className="text-ink-faint" />
+                                <span className="text-[10px] uppercase tracking-[0.12em] text-ink-faint">
+                                  {category}
+                                </span>
+                              </div>
+                              <div className="mt-1.5 text-[13px] font-medium text-ink leading-snug line-clamp-2">
+                                {item.title}
+                              </div>
+                              <div className="mt-2.5 flex items-center justify-between gap-2 h-4">
+                                {live?.leader ? (
+                                  <>
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                      <ProviderLogo
+                                        slug={live.leader.slug}
+                                        name={live.leader.name}
+                                        size={16}
+                                      />
+                                      <span className="text-xs text-ink-muted truncate">
+                                        {live.leader.name}
+                                      </span>
+                                    </div>
+                                    <span className="text-xs font-mono text-accent tabular-nums shrink-0">
+                                      {fmtUnit(live.value, live.unit)}
+                                    </span>
+                                  </>
+                                ) : isLoading ? (
+                                  <>
+                                    <span className="h-3.5 w-20 rounded bg-rule animate-pulse" />
+                                    <span className="h-3.5 w-12 rounded bg-rule animate-pulse" />
+                                  </>
+                                ) : (
+                                  <span className="text-xs text-ink-faint truncate">
+                                    View leaderboard →
                                   </span>
-                                </div>
-                              ) : (
-                                <span className="text-xs text-ink-faint">awaiting data</span>
-                              )}
-                              <span className="text-xs font-mono text-accent tabular-nums shrink-0">
-                                {live ? fmtUnit(live.value, live.unit) : "…"}
-                              </span>
-                            </div>
-                          </button>
-                        ))}
+                                )}
+                              </div>
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                   </section>
@@ -454,47 +469,53 @@ export default function SearchDialog() {
                   <section aria-label="Trending benchmarks">
                     <SectionHeader label="Trending" />
                     <Command.Group className="px-2">
-                      {trending.map(({ item, live }) => (
-                        <Command.Item
-                          key={item.id}
-                          value={`trending|${item.title}|${item.id}`}
-                          onSelect={() => go(item.url, entryFromItem(item))}
-                          className="group flex items-center gap-3 rounded-md px-2.5 py-2 cursor-pointer text-sm aria-selected:bg-paper-soft transition-colors"
-                        >
-                          {live?.leader ? (
-                            <ProviderLogo
-                              slug={live.leader.slug}
-                              name={live.leader.name}
-                              size={22}
+                      {trending.map(({ item, live }) => {
+                        const category = item.tags?.[0] ?? "Benchmark";
+                        const isLoading = citable === null;
+                        return (
+                          <Command.Item
+                            key={item.id}
+                            value={`trending|${item.title}|${item.id}`}
+                            onSelect={() => go(item.url, entryFromItem(item))}
+                            className="group flex items-center gap-3 rounded-md px-2.5 py-2 cursor-pointer text-sm aria-selected:bg-paper-soft transition-colors"
+                          >
+                            {live?.leader ? (
+                              <ProviderLogo
+                                slug={live.leader.slug}
+                                name={live.leader.name}
+                                size={22}
+                              />
+                            ) : (
+                              <div className="size-[22px] rounded-full bg-paper-soft inline-flex items-center justify-center">
+                                <Trophy size={12} className="text-ink-faint" />
+                              </div>
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="font-medium text-ink truncate">{item.title}</span>
+                              </div>
+                              <div className="text-xs text-ink-faint truncate">
+                                {live?.leader ? (
+                                  <>
+                                    #1 {live.leader.name} ·{" "}
+                                    <span className="font-mono tabular-nums text-ink-muted">
+                                      {fmtUnit(live.value, live.unit)}
+                                    </span>
+                                  </>
+                                ) : isLoading ? (
+                                  <span className="inline-block h-3 w-32 rounded bg-rule animate-pulse" />
+                                ) : (
+                                  category
+                                )}
+                              </div>
+                            </div>
+                            <ArrowRight
+                              size={14}
+                              className="text-ink-faint shrink-0 opacity-0 group-aria-selected:opacity-100 transition-opacity"
                             />
-                          ) : (
-                            <div className="size-[22px] rounded-full bg-paper-soft inline-flex items-center justify-center">
-                              <Trophy size={12} className="text-ink-faint" />
-                            </div>
-                          )}
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <span className="font-medium text-ink truncate">{item.title}</span>
-                            </div>
-                            <div className="text-xs text-ink-faint truncate">
-                              {live?.leader ? (
-                                <>
-                                  #1 {live.leader.name} ·{" "}
-                                  <span className="font-mono tabular-nums text-ink-muted">
-                                    {fmtUnit(live.value, live.unit)}
-                                  </span>
-                                </>
-                              ) : (
-                                live?.category ?? item.description
-                              )}
-                            </div>
-                          </div>
-                          <ArrowRight
-                            size={14}
-                            className="text-ink-faint shrink-0 opacity-0 group-aria-selected:opacity-100 transition-opacity"
-                          />
-                        </Command.Item>
-                      ))}
+                          </Command.Item>
+                        );
+                      })}
                     </Command.Group>
                   </section>
                 )}
