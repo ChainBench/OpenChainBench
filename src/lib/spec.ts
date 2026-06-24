@@ -204,7 +204,12 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // worker writes snapshots every 60s, so the unstable_cache layer can
   // be 5x slower without freshness loss. Also invalidates main's
   // separately-bumped v11 from PR #664 so we converge on one schema.
-  ["bench-unfiltered-v12"],
+  // v13: renderBenchmarkText now also resolves seoTitle / seoDescription /
+  // subtitle / methodology / disclaimer. Cached v12 entries kept the
+  // raw `{{best_name}}` token on those fields (visible in client RSC
+  // payload + leaked via /api/citable). Bump so the next read regenerates
+  // through the wider resolver.
+  ["bench-unfiltered-v13"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -316,7 +321,11 @@ const loadAllBenchmarksCached = unstable_cache(
   // v16: bumped with bench-unfiltered-v12 (60s→300s revalidate, egress
   // reduction). Skips v15 which main set independently for the same
   // reason; aligning on v16 converges the schema.
-  ["all-benchmarks-v16"],
+  // v17: bumped with bench-unfiltered-v13 (wider renderBenchmarkText
+  // coverage). Without bumping this, the products / citable / sitemap
+  // surfaces would keep serving v16 benches with raw `{{best_name}}` in
+  // seoDescription for up to 300s after deploy.
+  ["all-benchmarks-v17"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
