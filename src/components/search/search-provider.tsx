@@ -6,6 +6,9 @@ import type { SearchItem } from "@/lib/search/types";
 
 type Ctx = {
   open: () => void;
+  close: () => void;
+  isOpen: boolean;
+  items: SearchItem[];
 };
 
 const SearchCtx = createContext<Ctx | null>(null);
@@ -31,7 +34,7 @@ export function SearchProvider({ items, children }: ProviderProps) {
   const close = useCallback(() => setIsOpen(false), []);
 
   // Global keyboard shortcuts. Cmd+K (mac) / Ctrl+K (win/linux) toggle
-  // the dialog. `/` opens it the way GitHub does — but only when the
+  // the dialog. `/` opens it the way GitHub does, but only when the
   // active element is not already an input, so typing `/` in a search
   // box on a bench page doesn't fire twice.
   useEffect(() => {
@@ -54,12 +57,15 @@ export function SearchProvider({ items, children }: ProviderProps) {
     return () => window.removeEventListener("keydown", onKey);
   }, [isOpen]);
 
-  const value = useMemo<Ctx>(() => ({ open }), [open]);
+  const value = useMemo<Ctx>(
+    () => ({ open, close, isOpen, items }),
+    [open, close, isOpen, items],
+  );
 
   return (
     <SearchCtx.Provider value={value}>
       {children}
-      {isOpen && <SearchDialog items={items} onClose={close} />}
+      {isOpen && <SearchDialog />}
     </SearchCtx.Provider>
   );
 }
@@ -70,7 +76,7 @@ export function useSearch(): Ctx {
     // Soft fallback: when something tries to open the dialog outside
     // the provider (shouldn't happen, but cheap to guard) we make the
     // trigger inert rather than crash the page.
-    return { open: () => {} };
+    return { open: () => {}, close: () => {}, isOpen: false, items: [] };
   }
   return ctx;
 }

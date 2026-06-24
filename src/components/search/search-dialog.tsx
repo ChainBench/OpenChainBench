@@ -5,12 +5,8 @@ import Fuse from "fuse.js";
 import { Search, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearch } from "@/components/search/search-provider";
 import type { SearchItem, SearchKind } from "@/lib/search/types";
-
-type Props = {
-  items: SearchItem[];
-  onClose: () => void;
-};
 
 const KIND_ORDER: SearchKind[] = [
   "Benchmark",
@@ -34,7 +30,8 @@ const POPULAR_BENCH_SLUGS = [
   "rpc-capabilities",
 ];
 
-export default function SearchDialog({ items, onClose }: Props) {
+export default function SearchDialog() {
+  const { items, close: onClose } = useSearch();
   const router = useRouter();
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);

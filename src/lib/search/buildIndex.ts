@@ -6,7 +6,7 @@
  * emits one flat `SearchItem[]` for the client-side Fuse.js instance.
  *
  * Build-safe by design: only reads YAML specs and TypeScript registries.
- * Never touches Prometheus, KV, or any network — so calling this from
+ * Never touches Prometheus, KV, or any network, so calling this from
  * `app/layout.tsx` is cheap even on a cold build with no live data.
  */
 
