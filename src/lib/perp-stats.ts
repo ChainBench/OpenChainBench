@@ -17,6 +17,10 @@
 
 import { unstable_cache } from "next/cache";
 import { Prometheus } from "@/lib/prometheus";
+import {
+  readCohortSnapshot,
+  writeCohortSnapshot,
+} from "@/lib/cohort-snapshot";
 
 export type PerpVenueType = "onchain";
 
@@ -105,14 +109,24 @@ function promUrl(): string | null {
   return process.env.PROMETHEUS_URL?.trim() || null;
 }
 
+/** Upstash key under which the cron writer parks the live cohort snapshot.
+ *  Bumped any time the PerpCohortSummary shape changes so a stale-shape
+ *  blob from a previous deploy can never deserialize into a misaligned
+ *  payload. The cohort-snapshot module appends its own `:v1` suffix. */
+const PERP_COHORT_KEY = "perp-cohort";
+
 /**
  * Fetch the cohort in one Promise.all fan out. Returns null when Prom
  * is unreachable so the page can render a configuration banner instead
  * of a blank leaderboard. A reachable Prom with no series yet (harness
  * not yet deployed) returns a fully populated shape with every numeric
  * field nulled; the leaderboard shows dashes and the page still ships.
+ *
+ * Exported so the cron route can call the uncached Prom path directly
+ * before parking the result in Upstash; the public reader (fetchPerpCohort)
+ * goes through the snapshot layer + unstable_cache below.
  */
-export async function fetchPerpCohort(): Promise<PerpCohortSummary | null> {
+export async function fetchPerpCohortFresh(): Promise<PerpCohortSummary | null> {
   const url = promUrl();
   if (!url) return null;
   let prom: Prometheus;
@@ -278,6 +292,53 @@ export async function fetchPerpCohort(): Promise<PerpCohortSummary | null> {
     },
     asOf: Math.floor(Date.now() / 1000),
   };
+}
+
+/**
+ * Snapshot-first cohort reader. Order of preference:
+ *   1. Upstash blob written by the /api/cron/snapshot-perp-cohort writer.
+ *      A live blob (asOf within the 10 min window) is the fast path; this
+ *      is the common case once the cron is running.
+ *   2. Live Prom fetch via fetchPerpCohortFresh(). Used when the blob is
+ *      missing (first deploy, blob expired, creds unconfigured) or stale
+ *      (writer dead for > 10 min). On a successful live fetch we also
+ *      write the result back so the next reader on this lambda hits the
+ *      snapshot path instead of paying another Prom round-trip.
+ *   3. null. Returned only when both paths fail; the page already handles
+ *      this with a "data temporarily unavailable" banner.
+ *
+ * The whole thing is wrapped in unstable_cache below so concurrent
+ * requests in the same lambda collapse onto one Upstash GET / one Prom
+ * fan-out.
+ */
+async function fetchPerpCohortRaw(): Promise<PerpCohortSummary | null> {
+  const snapshot = await readCohortSnapshot<PerpCohortSummary>(
+    PERP_COHORT_KEY,
+  );
+  if (snapshot) return snapshot.data;
+  const fresh = await fetchPerpCohortFresh();
+  if (fresh) {
+    try {
+      await writeCohortSnapshot(PERP_COHORT_KEY, fresh);
+    } catch (err) {
+      console.warn(
+        `perp-cohort writeback failed: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
+  }
+  return fresh;
+}
+
+const fetchPerpCohortCached = unstable_cache(
+  fetchPerpCohortRaw,
+  ["perp-cohort-v1"],
+  { revalidate: 60, tags: ["perp-cohort"] },
+);
+
+export async function fetchPerpCohort(): Promise<PerpCohortSummary | null> {
+  return fetchPerpCohortCached();
 }
 
 /**
