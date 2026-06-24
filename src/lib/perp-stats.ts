@@ -154,6 +154,20 @@ export async function fetchPerpCohort(): Promise<PerpCohortSummary | null> {
     // harness via Mobula), ETH only. Covers 12 venues. Falls back to
     // the perp-funding bench (036, 7 venues) via PromQL `or` so any
     // venue the harness has not picked up yet still surfaces a value.
+    //
+    // Mask risk (P1, audit 2026-06): PromQL `or` hides any RHS series
+    // whose label set already appears on the LHS. Today the two series
+    // share only `{venue, asset}` labels, and `perp_venue_funding_24h_bps`
+    // is the authoritative source (12 venues) while `perp_funding_hold_24h_bps`
+    // covers a disjoint 7-venue subset published by bench 036. As long
+    // as the LHS stays the broader feed and the RHS keeps the same
+    // label keys, the `or` behaves as expected and the fallback only
+    // fires for venues missing on the LHS. If either harness ever emits
+    // an extra label that overlaps (e.g. `region` or `instance`), the
+    // mask will silently swallow the fallback. The clean fix is to
+    // deprecate `perp_funding_hold_24h_bps` once the cohort harness
+    // covers all 16 venues; until then keep the `or` and audit RHS
+    // visibility via /diag/perp-funding-coverage.
     queryVector(
       prom,
       `avg_over_time(perp_venue_funding_24h_bps{asset="ETH"}[24h]) or avg_over_time(perp_funding_hold_24h_bps{asset="ETH"}[24h])`,
