@@ -10,9 +10,9 @@ import (
 // Tier is the unified percentile label every oracle's prediction is
 // mapped onto. We chose p25/p50/p90 because every oracle in the bench
 // exposes at least three buckets that roughly align with this scheme;
-// finer buckets (p75/p99) exist on Blocknative and Owlracle and are
-// added back as `tier="p75"`/`tier="p99"` when the oracle supplies
-// them. The label is what the OCB site groups by, so the per-oracle
+// finer buckets (p75/p99) exist on Owlracle and are added back as
+// `tier="p75"`/`tier="p99"` when the oracle supplies them. The label
+// is what the OCB site groups by, so the per-oracle
 // "fast/standard/slow" names never leak into the public metric.
 type Tier string
 
@@ -28,26 +28,24 @@ const (
 // Add an entry to src/data/provider-registry.ts on the OCB side when
 // onboarding a new oracle.
 const (
-	OracleBlocknative Oracle = "blocknative"
-	OraclePublicNode  Oracle = "publicnode-feehistory"
-	OracleOwlracle    Oracle = "owlracle"
-	OracleEtherscan   Oracle = "etherscan"
+	OraclePublicNode Oracle = "publicnode-feehistory"
+	OracleOwlracle   Oracle = "owlracle"
+	OracleEtherscan  Oracle = "etherscan"
 )
 
 type Oracle string
 
 // Cadences pinned per oracle. Lifted directly from the verification
-// agent's findings: Blocknative tolerates 12 s no-key; PublicNode
-// feeHistory is fair-use at 5 req/s; Owlracle free tier is 100/hour,
-// so 60 s is the safe ceiling; Etherscan no-key throttles to 1/5 s,
-// so 15 s gives a comfortable margin. Cadences are per-chain too:
-// running the same oracle against 3 chains at 12 s = 0.25 req/s
-// per oracle, well inside every free-tier budget.
+// agent's findings: PublicNode feeHistory is fair-use at 5 req/s;
+// Owlracle free tier is 100/hour, so 60 s is the safe ceiling;
+// Etherscan no-key throttles to 1/5 s, so 15 s gives a comfortable
+// margin. Cadences are per-chain too: running the same oracle against
+// 3 chains at 12 s = 0.25 req/s per oracle, well inside every
+// free-tier budget.
 var pollIntervals = map[Oracle]time.Duration{
-	OracleBlocknative: 12 * time.Second,
-	OraclePublicNode:  12 * time.Second,
-	OracleOwlracle:    60 * time.Second,
-	OracleEtherscan:   15 * time.Second,
+	OraclePublicNode: 12 * time.Second,
+	OracleOwlracle:   60 * time.Second,
+	OracleEtherscan:  15 * time.Second,
 }
 
 // Realized-block poll cadence per chain. Picked close to each chain's
@@ -91,8 +89,8 @@ func chains() []Chain {
 			RealizedRPC:  envDefault("GAS_REALIZED_RPC_ETHEREUM", "https://ethereum-rpc.publicnode.com"),
 			OwlracleSlug: "eth",
 			BlockTimeSec: 12,
-			// Etherscan v2 free tier covers chainid=1. All four oracles work.
-			SupportedSet: []Oracle{OracleBlocknative, OraclePublicNode, OracleOwlracle, OracleEtherscan},
+			// Etherscan v2 free tier covers chainid=1. All three oracles work.
+			SupportedSet: []Oracle{OraclePublicNode, OracleOwlracle, OracleEtherscan},
 		},
 		{
 			Slug:         "polygon",
@@ -100,8 +98,8 @@ func chains() []Chain {
 			RealizedRPC:  envDefault("GAS_REALIZED_RPC_POLYGON", "https://polygon-bor-rpc.publicnode.com"),
 			OwlracleSlug: "poly",
 			BlockTimeSec: 2,
-			// Etherscan v2 free tier covers chainid=137 (verified). All four oracles work.
-			SupportedSet: []Oracle{OracleBlocknative, OraclePublicNode, OracleOwlracle, OracleEtherscan},
+			// Etherscan v2 free tier covers chainid=137 (verified). All three oracles work.
+			SupportedSet: []Oracle{OraclePublicNode, OracleOwlracle, OracleEtherscan},
 		},
 		{
 			Slug:         "avalanche",
@@ -110,8 +108,8 @@ func chains() []Chain {
 			OwlracleSlug: "avax",
 			BlockTimeSec: 2,
 			// Etherscan v2 returns "Free API access is not supported for this chain" on chainid=43114 — paid plan required.
-			// Three oracles only (Blocknative + PublicNode feeHistory + Owlracle).
-			SupportedSet: []Oracle{OracleBlocknative, OraclePublicNode, OracleOwlracle},
+			// Two oracles only (PublicNode feeHistory + Owlracle).
+			SupportedSet: []Oracle{OraclePublicNode, OracleOwlracle},
 		},
 	}
 }
@@ -120,13 +118,11 @@ func chains() []Chain {
 // override without a rebuild. The URL field is the BASE — per-chain
 // rewriting happens in endpointForChain() below.
 type OracleEndpoint struct {
-	URL        string
-	AuthHeader string
+	URL string
 }
 
 // endpointForChain builds the per-(oracle, chain) URL.
 //
-//   - Blocknative: same host, query param `?chainid=<N>`.
 //   - PublicNode feeHistory: per-chain RPC URL from the Chain struct.
 //   - Owlracle: per-chain path slug from the Chain struct.
 //   - Etherscan v2: same host, `?chainid=<N>&module=gastracker&action=gasoracle`.
@@ -139,14 +135,9 @@ func endpointForChain(o Oracle, c Chain) OracleEndpoint {
 		strings.ToUpper(c.Slug),
 	)
 	if override := envDefault(envKey, ""); override != "" {
-		return OracleEndpoint{URL: override, AuthHeader: oracleAuthHeader(o)}
+		return OracleEndpoint{URL: override}
 	}
 	switch o {
-	case OracleBlocknative:
-		return OracleEndpoint{
-			URL:        fmt.Sprintf("https://api.blocknative.com/gasprices/blockprices?chainid=%d", c.ChainID),
-			AuthHeader: envDefault("GAS_TOKEN_BLOCKNATIVE", ""),
-		}
 	case OraclePublicNode:
 		return OracleEndpoint{URL: c.RealizedRPC}
 	case OracleOwlracle:
@@ -159,15 +150,6 @@ func endpointForChain(o Oracle, c Chain) OracleEndpoint {
 		}
 	}
 	return OracleEndpoint{}
-}
-
-// oracleAuthHeader returns the optional Authorization header value
-// for the given oracle. Currently only Blocknative supports a token.
-func oracleAuthHeader(o Oracle) string {
-	if o == OracleBlocknative {
-		return envDefault("GAS_TOKEN_BLOCKNATIVE", "")
-	}
-	return ""
 }
 
 func envDefault(key, def string) string {
