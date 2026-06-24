@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { SearchTrigger } from "@/components/search/search-trigger";
 import { SiteLogoSwitcher } from "@/components/site-logo-switcher";
-import { SiteSubNav } from "@/components/site-sub-nav";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 function GithubIcon({ size = 15 }: { size?: number }) {
@@ -190,8 +189,6 @@ export function SiteHeader() {
           </nav>
         )}
       </header>
-
-      <SiteSubNav pathname={pathname} />
     </div>
   );
 }

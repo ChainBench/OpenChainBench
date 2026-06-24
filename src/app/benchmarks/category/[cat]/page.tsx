@@ -102,7 +102,11 @@ export default async function BenchmarkCategoryPage({
           {entry.description}
         </p>
       </header>
-      <BenchmarkGrid benchmarks={benchmarks} lockedCategory={entry.label} />
+      <BenchmarkGrid
+        benchmarks={benchmarks}
+        lockedCategory={entry.label}
+        allCategories={Array.from(new Set(all.map((b) => b.category)))}
+      />
     </article>
   );
 }
