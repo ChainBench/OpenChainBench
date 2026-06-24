@@ -22,6 +22,11 @@ import { HlBuilderDashboard } from "@/components/hl-builder-dashboard";
 import { RelatedProvidersSection } from "@/components/related-providers-section";
 import { getPmVenueContext } from "@/lib/pm-venue-context";
 import { PmVenueSection } from "@/components/pm-venue-section";
+import {
+  getPerpVenueContext,
+  PERP_PRODUCT_PILL_SLUGS,
+} from "@/lib/perp-venue-context";
+import { PerpVenueSection } from "@/components/perp-venue-section";
 import { PmDataFeedSection } from "@/components/pm-data-feed-section";
 
 export const revalidate = 60;
@@ -113,6 +118,9 @@ export default async function ProviderPage({
   // section payload. Returns null for everything else, so non-PM pages
   // pay one cached fetch and render nothing.
   const pmContext = await getPmVenueContext(p.slug);
+
+  // Perp DEX cohort dashboard. Same pattern as the PM context above.
+  const perpContext = await getPerpVenueContext(p.slug);
 
   const sorted = [...p.appearances].sort((a, b) => {
     if (a.rank !== b.rank) return a.rank - b.rank;
@@ -405,6 +413,20 @@ export default async function ProviderPage({
                       </Link>
                     </>
                   )}
+                  {/* Perpetuals hub pill. Same shape as the PM pill,
+                      driven by PERP_PRODUCT_PILL_SLUGS in
+                      lib/perp-venue-context. */}
+                  {PERP_PRODUCT_PILL_SLUGS.has(p.slug) && (
+                    <>
+                      <span className="text-ink-faint"> · </span>
+                      <Link
+                        href="/perps"
+                        className="hover:text-ink transition-colors underline underline-offset-2 decoration-rule"
+                      >
+                        View on /perps
+                      </Link>
+                    </>
+                  )}
                 </p>
               </div>
             </header>
@@ -444,6 +466,17 @@ export default async function ProviderPage({
           logoSrc={pmContext.logoSrc}
           externalUrl={pmContext.externalUrl}
           benchRows={pmContext.benchRows}
+        />
+      )}
+
+      {perpContext && (
+        <PerpVenueSection
+          slug={perpContext.slug}
+          cohortSlug={perpContext.cohortSlug}
+          name={perpContext.name}
+          chainLabel={perpContext.chainLabel}
+          externalUrl={perpContext.externalUrl}
+          benchRows={perpContext.benchRows}
         />
       )}
 
