@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronRight } from "lucide-react";
@@ -183,6 +183,7 @@ export function PerpVenuesLeaderboard({ rows }: { rows: PerpVenueRow[] }) {
                       <span className="font-medium text-ink truncate group-hover:underline underline-offset-2">
                         {r.name}
                       </span>
+                      <AgeBadge ts={r.lastRefreshUnix} />
                       <ChevronRight
                         size={14}
                         className="text-ink-faint shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -216,6 +217,81 @@ export function PerpVenuesLeaderboard({ rows }: { rows: PerpVenueRow[] }) {
       </div>
     </div>
   );
+}
+
+/**
+ * Tiny freshness pill that flags stale rows on the leaderboard. Hidden
+ * when the harness has not published a refresh stamp (ts === null) or
+ * when the row is younger than 2 minutes (within one Prom scrape).
+ * Amber between 2 and 10 minutes, red beyond. Renders inline with the
+ * venue name so the operator sees freeze/downtime at a glance without
+ * scanning a sidecar column.
+ */
+function AgeBadge({ ts }: { ts: number | null }) {
+  // Subscribe to a 30s wall-clock tick via `useSyncExternalStore`. The
+  // server snapshot returns null, which keeps SSR output empty and
+  // sidesteps any hydration mismatch from server-vs-client clock skew.
+  // The client subscription pushes a fresh `Date.now()` every 30s and
+  // satisfies React's react-hooks/set-state-in-effect rule because no
+  // setState ever runs inside an effect body.
+  const nowSec = useSyncExternalStore(
+    subscribeWallClock,
+    getClientNowSec,
+    getServerNowSec,
+  );
+  if (nowSec == null || ts == null || !Number.isFinite(ts)) return null;
+  const ageSec = nowSec - ts;
+  if (ageSec < 120) return null;
+  const ageMin = Math.floor(ageSec / 60);
+  const stale = ageSec >= 600;
+  const iso = new Date(ts * 1000).toISOString();
+  const label = stale ? `${ageMin}m stale` : `${ageMin}m ago`;
+  const color = stale ? "text-red-500" : "text-amber-500";
+  return (
+    <span
+      className={`label-mono text-[9.5px] uppercase tracking-wide shrink-0 ${color}`}
+      style={{ fontFamily: "var(--font-mono, monospace)" }}
+      title={`Data last refreshed by harness at ${iso}`}
+    >
+      {label}
+    </span>
+  );
+}
+
+/**
+ * Tiny wall-clock store consumed by AgeBadge through
+ * `useSyncExternalStore`. Updates every 30 seconds; one shared
+ * setInterval covers every mounted badge so a hundred rows do not
+ * spin up a hundred timers. Returns null on the server so SSR output
+ * stays free of clock-dependent text.
+ */
+let wallClockNowSec = Math.floor(Date.now() / 1000);
+const wallClockListeners = new Set<() => void>();
+let wallClockTimer: ReturnType<typeof setInterval> | null = null;
+
+function subscribeWallClock(cb: () => void): () => void {
+  wallClockListeners.add(cb);
+  if (wallClockTimer == null && typeof window !== "undefined") {
+    wallClockTimer = setInterval(() => {
+      wallClockNowSec = Math.floor(Date.now() / 1000);
+      for (const fn of wallClockListeners) fn();
+    }, 30_000);
+  }
+  return () => {
+    wallClockListeners.delete(cb);
+    if (wallClockListeners.size === 0 && wallClockTimer != null) {
+      clearInterval(wallClockTimer);
+      wallClockTimer = null;
+    }
+  };
+}
+
+function getClientNowSec(): number {
+  return wallClockNowSec;
+}
+
+function getServerNowSec(): null {
+  return null;
 }
 
 function VolOiCell({ ratio }: { ratio: number | null }) {

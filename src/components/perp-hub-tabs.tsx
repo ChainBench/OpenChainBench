@@ -2,23 +2,29 @@
 
 import { useState } from "react";
 import { PerpVenuesLeaderboard } from "@/components/perp-venues-leaderboard";
-import type { PerpCohortSummary } from "@/lib/perp-stats";
+import { PerpByAssetTable } from "@/components/perp-by-asset-table";
+import type { PerpAssetRow, PerpCohortSummary } from "@/lib/perp-stats";
 
 /**
  * Tab wrapper for the /perps hub. Mirrors PmHubTabs: pills that swap
- * the panel underneath without a second network round trip. The cohort
- * is fetched server side and passed in as one prop; the client owns
- * only the tab state.
+ * the panel underneath without a second network round trip. Both the
+ * cohort and the per-asset matrix are fetched server side and passed
+ * in as props; the client owns only the tab state.
  *
- * For v1 only the "DEX venues" tab is fully wired. The "By asset" tab
- * is a placeholder that hints at the planned per-asset cross-venue
- * breakdown (BTC, ETH, SOL volumes, OI, funding). Tab is selectable so
- * SEO crawlers see both pill labels in the markup.
+ * The "By asset" tab degrades to a "data warming up" placeholder when
+ * the harness has not yet published the per-asset funding matrix, so
+ * the tab is always selectable and never throws.
  */
 
 type Tab = "venues" | "by-asset";
 
-export function PerpHubTabs({ cohort }: { cohort: PerpCohortSummary }) {
+export function PerpHubTabs({
+  cohort,
+  byAsset,
+}: {
+  cohort: PerpCohortSummary;
+  byAsset: PerpAssetRow[];
+}) {
   const [tab, setTab] = useState<Tab>("venues");
 
   const venuesCount = cohort.venues.length;
@@ -40,24 +46,14 @@ export function PerpHubTabs({ cohort }: { cohort: PerpCohortSummary }) {
         <TabButton
           active={tab === "by-asset"}
           onClick={() => setTab("by-asset")}
-          count={3}
+          count={byAsset.length}
         >
           By asset
         </TabButton>
       </div>
 
       {tab === "venues" && <PerpVenuesLeaderboard rows={cohort.venues} />}
-      {tab === "by-asset" && (
-        <div className="mt-6 card-soft rounded-xl border border-ink/10 p-8 text-center">
-          <p className="text-[12.5px] text-ink-faint italic">
-            Per-asset breakdown (BTC, ETH, SOL volume, open interest and
-            funding spread across the cohort) ships in the next iteration.
-            Until then, the venue page (click a row above) carries the
-            per-asset all-in fee and funding from benchmarks perp-fees
-            and perp-funding.
-          </p>
-        </div>
-      )}
+      {tab === "by-asset" && <PerpByAssetTable rows={byAsset} />}
     </>
   );
 }

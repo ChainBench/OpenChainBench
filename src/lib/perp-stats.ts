@@ -15,6 +15,7 @@
  * as /prediction-markets: one server fetch, one client tab swap.
  */
 
+import { unstable_cache } from "next/cache";
 import { Prometheus } from "@/lib/prometheus";
 
 export type PerpVenueType = "onchain";
@@ -35,6 +36,27 @@ export type PerpVenueRow = {
   allInFeeBpsEth: number | null;
   /** Funding cost in bps to hold a $1000 ETH long 24h (from perp-funding bench). */
   funding24hBpsEth: number | null;
+  /** Unix seconds of the harness's last successful refresh for this venue.
+   *  Sourced from `perp_venue_last_refresh_unix` (max by venue). Null when
+   *  the gauge is absent so the UI can hide the age badge gracefully. */
+  lastRefreshUnix: number | null;
+};
+
+/**
+ * One row per venue for the "By asset" tab. Per-asset funding columns
+ * map to `perp_venue_funding_24h_bps{venue, asset}` and the fee column
+ * stays on the perp-fees bench (only published for ETH today, hence the
+ * single `feeEthBps` field). Any cell may be null when the harness has
+ * not published that venue/asset pair yet; the table renders "-" in
+ * that case.
+ */
+export type PerpAssetRow = {
+  slug: string;
+  name: string;
+  fundingBtc: number | null;
+  fundingEth: number | null;
+  fundingSol: number | null;
+  feeEthBps: number | null;
 };
 
 export type PerpCohortSummary = {
@@ -110,6 +132,7 @@ export async function fetchPerpCohort(): Promise<PerpCohortSummary | null> {
     health,
     allInFeeEth,
     funding24hEth,
+    lastRefresh,
   ] = await Promise.all([
     queryVector(prom, `perp_venue_volume_24h_usd`),
     queryVector(prom, `perp_venue_volume_30d_usd`),
@@ -135,6 +158,11 @@ export async function fetchPerpCohort(): Promise<PerpCohortSummary | null> {
       prom,
       `avg_over_time(perp_venue_funding_24h_bps{asset="ETH"}[24h]) or avg_over_time(perp_funding_hold_24h_bps{asset="ETH"}[24h])`,
     ),
+    // Latest harness-side refresh stamp per venue. `max by` collapses
+    // any duplicate scraper instances so a venue with two scrape jobs
+    // still surfaces a single freshness value. Used by the UI age badge
+    // on /perps to flag Prom freeze or harness downtime per row.
+    queryVector(prom, `max by (venue) (perp_venue_last_refresh_unix)`),
   ]);
 
   const byVenue = new Map<string, PerpVenueRow>();
@@ -153,6 +181,7 @@ export async function fetchPerpCohort(): Promise<PerpCohortSummary | null> {
       health: null,
       allInFeeBpsEth: null,
       funding24hBpsEth: null,
+      lastRefreshUnix: null,
     });
   }
 
@@ -198,6 +227,15 @@ export async function fetchPerpCohort(): Promise<PerpCohortSummary | null> {
     row.funding24hBpsEth = s.value;
   }
 
+  for (const s of lastRefresh ?? []) {
+    const venueLabel = s.labels.venue;
+    if (!venueLabel) continue;
+    const targetSlug = venueLabel === "gmx" ? "gmx-v2" : venueLabel;
+    const row = byVenue.get(targetSlug);
+    if (!row) continue;
+    row.lastRefreshUnix = s.value;
+  }
+
   const venues = [...byVenue.values()];
   let cohortVolume30d = 0;
   let cohortOpenInterest = 0;
@@ -226,6 +264,103 @@ export async function fetchPerpCohort(): Promise<PerpCohortSummary | null> {
     },
     asOf: Math.floor(Date.now() / 1000),
   };
+}
+
+/**
+ * Per-asset cross-venue funding matrix for the "By asset" tab on /perps.
+ * Pivots the harness gauge `perp_venue_funding_24h_bps{venue, asset}`
+ * into one row per venue with three funding columns (BTC, ETH, SOL)
+ * plus the perp-fees all-in ETH column from bench 007.
+ *
+ * Returns [] (never null) when Prom is unreachable or empty so the tab
+ * can render a "data warming up" placeholder without throwing. Wrapped
+ * in `unstable_cache` (tag `perp-by-asset`, 120s revalidate) so the
+ * three asset columns plus the fee column round-trip Prom at most once
+ * every two minutes regardless of page traffic.
+ */
+async function fetchPerpByAssetMatrixRaw(): Promise<PerpAssetRow[]> {
+  const url = promUrl();
+  if (!url) return [];
+  let prom: Prometheus;
+  try {
+    prom = new Prometheus(url);
+  } catch {
+    return [];
+  }
+
+  const [funding, feeEth] = await Promise.all([
+    // 24h average of the cross-venue funding feed, all assets in one
+    // shot. The harness publishes `{venue, asset}` so the pivot below
+    // splits BTC, ETH and SOL into separate columns. Falls back to the
+    // perp-funding bench (036) per venue/asset for cells the cohort
+    // harness has not picked up yet.
+    queryVector(
+      prom,
+      `avg_over_time(perp_venue_funding_24h_bps{asset=~"BTC|ETH|SOL"}[24h]) or avg_over_time(perp_funding_hold_24h_bps{asset=~"BTC|ETH|SOL"}[24h])`,
+    ),
+    // All-in fee column, ETH only (perp-fees publishes ETH today; BTC
+    // and SOL are on the roadmap). Mirrors the cohort fetcher's
+    // gmx → gmx-v2 alias treatment.
+    queryVector(
+      prom,
+      `avg_over_time(perp_fees_all_in_bps{asset="ETH"}[24h])`,
+    ),
+  ]);
+
+  const byVenue = new Map<string, PerpAssetRow>();
+  for (const v of PERP_VENUES) {
+    byVenue.set(v.slug, {
+      slug: v.slug,
+      name: v.name,
+      fundingBtc: null,
+      fundingEth: null,
+      fundingSol: null,
+      feeEthBps: null,
+    });
+  }
+
+  for (const s of funding ?? []) {
+    const venueLabel = s.labels.venue;
+    const assetLabel = s.labels.asset;
+    if (!venueLabel || !assetLabel) continue;
+    const targetSlug = venueLabel === "gmx" ? "gmx-v2" : venueLabel;
+    const row = byVenue.get(targetSlug);
+    if (!row) continue;
+    if (assetLabel === "BTC") row.fundingBtc = s.value;
+    else if (assetLabel === "ETH") row.fundingEth = s.value;
+    else if (assetLabel === "SOL") row.fundingSol = s.value;
+  }
+
+  for (const s of feeEth ?? []) {
+    const venueLabel = s.labels.venue;
+    if (!venueLabel) continue;
+    const targetSlug = venueLabel === "gmx" ? "gmx-v2" : venueLabel;
+    const row = byVenue.get(targetSlug);
+    if (!row) continue;
+    row.feeEthBps = s.value;
+  }
+
+  // Drop venues with no signal at all so the tab does not pad rows of
+  // dashes for venues the harness has not picked up yet. The cohort
+  // tab keeps the full list (it has chain + venueType to render even
+  // empty); the by-asset tab is denser and benefits from omission.
+  return [...byVenue.values()].filter(
+    (r) =>
+      r.fundingBtc != null ||
+      r.fundingEth != null ||
+      r.fundingSol != null ||
+      r.feeEthBps != null,
+  );
+}
+
+const fetchPerpByAssetMatrixCached = unstable_cache(
+  fetchPerpByAssetMatrixRaw,
+  ["perp-by-asset-matrix-v1"],
+  { revalidate: 120, tags: ["perp-by-asset"] },
+);
+
+export async function fetchPerpByAssetMatrix(): Promise<PerpAssetRow[]> {
+  return fetchPerpByAssetMatrixCached();
 }
 
 /**
