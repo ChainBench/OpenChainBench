@@ -53,6 +53,17 @@ const RAW: Record<string, string> = {
   manifold: "/logos/manifold.svg",
   myriad: "/logos/myriad.png",
 
+  // ─── Perp DEX cohort (perps hub /perps) ───
+  drift: "/logos/drift.svg",
+  vertex: "/logos/vertex.png",
+  edgex: "/logos/edgex.jpg",
+  extended: "/logos/extended.svg",
+  aevo: "/logos/aevo.svg",
+  pacifica: "/logos/pacifica.svg",
+  variational: "/logos/variational.png",
+  ostium: "/logos/ostium.png",
+  grvt: "/logos/grvt.jpg",
+
   // ─── Prediction market categories (polymarket-resolution-delay) ───
   // Bench rows are category buckets, not products, so these stay
   // unregistered in PROVIDER_REGISTRY (no product page link).
@@ -66,7 +77,7 @@ const RAW: Record<string, string> = {
   relay: "/logos/relay.svg",
   lifi: "/logos/lifi.png",
   geckoterminal: "/logos/geckoterminal.png",
-  gains: "/logos/gains.png",
+  gains: "/logos/gains.svg",
   blockscout: "/logos/blockscout.svg",
   gmx: "/logos/gmx.svg",
   hyperliquid: "/logos/hyperliquid.png",
@@ -174,8 +185,8 @@ const RAW: Record<string, string> = {
   // ─── Perp funding venues (bench № 036) ───
   bybit: "/logos/bybit.jpg",
   okx: "/logos/okx.jpg",
-  paradex: "/logos/paradex.jpg",
-  aster: "/logos/aster.jpg",
+  paradex: "/logos/paradex.svg",
+  aster: "/logos/aster.svg",
 
   // ─── Hyperliquid HIP-3 deployers (bench № 035) ───
   xyz: "/logos/xyz.png",
