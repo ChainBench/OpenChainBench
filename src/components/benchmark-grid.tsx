@@ -28,12 +28,17 @@ import { categorySlugFromLabel } from "@/lib/categories";
 export function BenchmarkGrid({
   benchmarks,
   lockedCategory = null,
+  allCategories,
 }: {
   benchmarks: Benchmark[];
-  /** When set, force the grid to this category and hide the filter pills.
-   *  Used by the per-category hub routes so the rendered DOM matches the
-   *  URL and the in-page filter UI doesn't conflict with the route. */
+  /** When set, force the grid to this category. The pill row still
+   *  renders so users can jump to other category hubs via the same UI
+   *  they had on the /benchmarks root. */
   lockedCategory?: string | null;
+  /** Full category list to show in the pills, used by the category hub
+   *  routes where the `benchmarks` prop is pre-filtered to a single
+   *  category. If unset, the grid derives pills from `benchmarks`. */
+  allCategories?: string[];
 }) {
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<string | null>(
@@ -43,6 +48,7 @@ export function BenchmarkGrid({
   const q = query.trim().toLowerCase();
 
   const categories = useMemo(() => {
+    if (allCategories && allCategories.length > 0) return allCategories;
     const seen = new Set<string>();
     const list: string[] = [];
     for (const b of benchmarks) {
@@ -52,7 +58,7 @@ export function BenchmarkGrid({
       }
     }
     return list;
-  }, [benchmarks]);
+  }, [benchmarks, allCategories]);
 
   const filtered = useMemo(() => {
     return benchmarks.filter((b) => {
@@ -71,48 +77,52 @@ export function BenchmarkGrid({
     });
   }, [benchmarks, q, activeCategory]);
 
-  const showFilterPills = !lockedCategory;
-
+  // Pills always render. When the grid is locked to a category route,
+  // pill clicks navigate (no preventDefault) so the user moves between
+  // /benchmarks/category/<slug> URLs. On the unlocked /benchmarks page
+  // they filter in place for a snappier UX without a navigation
+  // roundtrip.
   return (
     <div>
       {/* Filter row */}
       <div className="mb-8 flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3">
-        {showFilterPills && (
-          <ul className="-mx-4 px-4 sm:mx-0 sm:px-0 flex flex-nowrap sm:flex-wrap overflow-x-auto sm:overflow-visible items-center gap-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <li>
-              <Link
-                href="/benchmarks"
-                className="pill"
-                data-active={activeCategory === null}
-                onClick={(e) => {
-                  e.preventDefault();
-                  setActiveCategory(null);
-                }}
-              >
-                All
-              </Link>
-            </li>
-            {categories.map((c) => {
-              const slug = categorySlugFromLabel(c);
-              const href = slug ? `/benchmarks/category/${slug}` : "/benchmarks";
-              return (
-                <li key={c}>
-                  <Link
-                    href={href}
-                    className="pill"
-                    data-active={activeCategory === c}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setActiveCategory(activeCategory === c ? null : c);
-                    }}
-                  >
-                    {c}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        )}
+        <ul className="-mx-4 px-4 sm:mx-0 sm:px-0 flex flex-nowrap sm:flex-wrap overflow-x-auto sm:overflow-visible items-center gap-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <li>
+            <Link
+              href="/benchmarks"
+              className="pill"
+              data-active={!lockedCategory && activeCategory === null}
+              onClick={(e) => {
+                if (lockedCategory) return;
+                e.preventDefault();
+                setActiveCategory(null);
+              }}
+            >
+              All
+            </Link>
+          </li>
+          {categories.map((c) => {
+            const slug = categorySlugFromLabel(c);
+            const href = slug ? `/benchmarks/category/${slug}` : "/benchmarks";
+            const isActive = lockedCategory === c || (!lockedCategory && activeCategory === c);
+            return (
+              <li key={c}>
+                <Link
+                  href={href}
+                  className="pill"
+                  data-active={isActive}
+                  onClick={(e) => {
+                    if (lockedCategory) return;
+                    e.preventDefault();
+                    setActiveCategory(activeCategory === c ? null : c);
+                  }}
+                >
+                  {c}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
 
         <div className="sm:ml-auto flex items-center gap-3">
           {/* View toggle */}
