@@ -1,0 +1,120 @@
+# OpenChainBench. Bench № 041
+
+slug: perp-volume-share
+number: "041"
+title: Perp DEX volume share, live 30-day rolling notional ranked
+seo_title: "Perp DEX volume 2026: Hyperliquid, Lighter, GMX, gains.trade ranked by 30d notional"
+seo_description: "Live 30-day rolling perp DEX volume across Hyperliquid, Lighter, GMX v2 and gains.trade in USD notional. Public API sourced, refreshed every 5 minutes."
+subtitle: 30-day rolling perpetual futures notional volume in USD across major decentralized venues. Higher means more flow. Read live from each venue's public API.
+category: Trading
+status: draft
+metric: 30d perp volume
+unit: usd
+higher_is_better: true
+
+seo_intro: |
+  This benchmark ranks the major onchain perp venues by 30-day rolling
+  notional volume, in USD. Volume is the cleanest single-number proxy
+  for where perpetual futures flow actually lives today. We poll each
+  venue's public API every 5 minutes, sum the trailing 30 days of taker
+  notional in USD, and publish a single gauge per venue. Hyperliquid,
+  Lighter, GMX v2 and gains.trade are the cohort. Headline number is
+  the 24h average of the 30d rolling sum, so a single noisy print does
+  not move the ranking. The companion benches price the cost side
+  (perp-fees for opening, perp-funding for holding); this one prices
+  flow.
+
+abstract: |
+  The bench polls four perp DEX venues every 5 minutes for cumulative
+  taker notional and exposes a rolling 30 day USD sum per venue.
+  Sources: Hyperliquid info dayNtlVlm (per-asset day notional, summed
+  and rolled into 30d), Lighter public stats endpoint (24h volume per
+  market, rolled), GMX Subsquid synthetics-arbitrum (positionVolume by
+  day), gains.trade onchain reads aggregated by indexer. Each value
+  carries a freshness timestamp and a health gauge so a stale or
+  errored venue does not poison the leaderboard. Higher is better.
+
+methodology:
+  - "Cadence: every 5 minutes per venue in parallel, 10 second timeout per request."
+  - "Hyperliquid: info dayNtlVlm summed across all assets, rolled into a 30 day window via Prometheus sum_over_time on the daily gauge."
+  - "Lighter: public stats endpoint, 24h volume per market, summed across markets and rolled into 30 days the same way."
+  - "GMX v2: synthetics-arbitrum subgraph, positionVolume aggregated per day across all markets, rolled into 30 days."
+  - "gains.trade: onchain indexer over Gains v8 contracts on Base, taker notional summed per day and rolled."
+  - "Headline. avg_over_time of the rolling 30 day sum over the last 24 hours, so a one-print spike does not move the ranking. The Series tab plots the raw rolling sum."
+  - "Failures. A venue that errors or times out keeps its last gauge value and its perp_venue_health gauge drops to 0; the leaderboard tags it as stale."
+
+findings:
+  - "{{best_name}} currently leads the cohort at {{best_p50}} of 30d notional (24h average)."
+  - "{{name:hyperliquid}} sits at {{p50:hyperliquid}} of 30d notional, the deepest decentralized perp book in the field."
+  - "{{name:lighter}} clocks {{p50:lighter}} of 30d notional. Zero taker fee plus a fully onchain orderbook on zkSync."
+  - "{{name:gmx}} sits at {{p50:gmx}} of 30d notional. Pool-based execution on Arbitrum and Avalanche."
+  - "{{name:gains}} sits at {{p50:gains}} of 30d notional. Synthetic perps on Base with onchain fee reads."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/benchmarks/perp-volume-share.yml
+
+prometheus:
+  window: 24h
+  expected_freshness_seconds: 1800
+
+faq:
+  - q: "What does this benchmark measure?"
+    a: "The 30 day rolling notional volume of major perp DEX venues in USD. Headline is the 24h average of the rolling 30d sum so single prints do not skew the ranking."
+  - q: "Why 30 day rolling instead of daily?"
+    a: "Daily perp volume is too noisy for ranking, a single thin Sunday can flip positions. The 30 day window smooths the cycle and matches the cadence at which serious flow makers compare venues."
+  - q: "Why these four venues?"
+    a: "Hyperliquid, Lighter, GMX v2 and gains.trade are the cohort whose public APIs expose taker notional cleanly enough to compare without backfilling. Other venues join as their endpoints document the same series."
+  - q: "Is this the same as DeFiLlama volume?"
+    a: "Methodology is similar in spirit but each venue is queried directly here, not via an aggregator. Numbers should sit close to DeFiLlama on most days, divergences usually mean a downstream feed lagged."
+
+providers:
+  - slug: hyperliquid
+    name: Hyperliquid
+    tag: HyperBFT L1 perp DEX
+    formula: "Sum across all assets of Hyperliquid info dayNtlVlm, rolled into a 30 day window, headline is the 24h average."
+    queries:
+      p50: avg_over_time(perp_venue_volume_30d_usd{venue="hyperliquid"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_volume_30d_usd{venue="hyperliquid"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_volume_30d_usd{venue="hyperliquid"}[24h])
+      mean: avg_over_time(perp_venue_volume_30d_usd{venue="hyperliquid"}[24h])
+      success: avg_over_time(perp_venue_health{venue="hyperliquid"}[24h])
+      sample_size: count_over_time(perp_venue_volume_30d_usd{venue="hyperliquid"}[24h])
+      series: perp_venue_volume_30d_usd{venue="hyperliquid"}
+
+  - slug: lighter
+    name: Lighter
+    tag: zk-rollup, zero taker fee
+    formula: "Sum of 24h volume per market from the Lighter public stats endpoint, rolled into a 30 day window, headline is the 24h average."
+    queries:
+      p50: avg_over_time(perp_venue_volume_30d_usd{venue="lighter"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_volume_30d_usd{venue="lighter"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_volume_30d_usd{venue="lighter"}[24h])
+      mean: avg_over_time(perp_venue_volume_30d_usd{venue="lighter"}[24h])
+      success: avg_over_time(perp_venue_health{venue="lighter"}[24h])
+      sample_size: count_over_time(perp_venue_volume_30d_usd{venue="lighter"}[24h])
+      series: perp_venue_volume_30d_usd{venue="lighter"}
+
+  - slug: gmx
+    name: GMX v2
+    tag: Synthetics on Arbitrum, oracle-priced
+    formula: "positionVolume aggregated per day from the GMX synthetics-arbitrum subgraph, rolled into a 30 day window, headline is the 24h average."
+    queries:
+      p50: avg_over_time(perp_venue_volume_30d_usd{venue="gmx"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_volume_30d_usd{venue="gmx"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_volume_30d_usd{venue="gmx"}[24h])
+      mean: avg_over_time(perp_venue_volume_30d_usd{venue="gmx"}[24h])
+      success: avg_over_time(perp_venue_health{venue="gmx"}[24h])
+      sample_size: count_over_time(perp_venue_volume_30d_usd{venue="gmx"}[24h])
+      series: perp_venue_volume_30d_usd{venue="gmx"}
+
+  - slug: gains
+    name: gains.trade
+    tag: Synthetic perps on Base
+    formula: "Taker notional aggregated per day from the Gains v8 onchain indexer, rolled into a 30 day window, headline is the 24h average."
+    queries:
+      p50: avg_over_time(perp_venue_volume_30d_usd{venue="gains"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_volume_30d_usd{venue="gains"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_volume_30d_usd{venue="gains"}[24h])
+      mean: avg_over_time(perp_venue_volume_30d_usd{venue="gains"}[24h])
+      success: avg_over_time(perp_venue_health{venue="gains"}[24h])
+      sample_size: count_over_time(perp_venue_volume_30d_usd{venue="gains"}[24h])
+      series: perp_venue_volume_30d_usd{venue="gains"}
