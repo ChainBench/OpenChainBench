@@ -66,7 +66,7 @@ const RAW: Record<string, string> = {
   relay: "/logos/relay.svg",
   lifi: "/logos/lifi.png",
   geckoterminal: "/logos/geckoterminal.png",
-  gains: "/logos/gains.png",
+  gains: "/logos/gains.svg",
   blockscout: "/logos/blockscout.svg",
   gmx: "/logos/gmx.svg",
   hyperliquid: "/logos/hyperliquid.png",
@@ -174,8 +174,19 @@ const RAW: Record<string, string> = {
   // ─── Perp funding venues (bench № 036) ───
   bybit: "/logos/bybit.jpg",
   okx: "/logos/okx.jpg",
-  paradex: "/logos/paradex.jpg",
-  aster: "/logos/aster.jpg",
+  paradex: "/logos/paradex.svg",
+  aster: "/logos/aster.svg",
+
+  // ─── Perp DEX cohort (volume-share, open-interest, funding-stability) ───
+  drift: "/logos/drift.svg",
+  vertex: "/logos/vertex.png",
+  edgex: "/logos/edgex.jpg",
+  extended: "/logos/extended.svg",
+  aevo: "/logos/aevo.svg",
+  pacifica: "/logos/pacifica.svg",
+  variational: "/logos/variational.png",
+  ostium: "/logos/ostium.png",
+  grvt: "/logos/grvt.jpg",
 
   // ─── Hyperliquid HIP-3 deployers (bench № 035) ───
   xyz: "/logos/xyz.png",

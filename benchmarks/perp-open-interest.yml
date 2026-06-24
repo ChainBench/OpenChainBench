@@ -1,0 +1,119 @@
+# OpenChainBench. Bench № 042
+
+slug: perp-open-interest
+number: "042"
+title: Perp DEX open interest, live USD notional ranked
+seo_title: "Perp DEX open interest 2026: Hyperliquid, Lighter, GMX, gains.trade ranked"
+seo_description: "Live perpetual futures open interest in USD across Hyperliquid, Lighter, GMX v2 and gains.trade. Public API sourced, refreshed every 5 minutes."
+subtitle: Live aggregate open interest in USD across major decentralized perpetual futures venues. Higher means more notional sits open. Read live from each venue's public API.
+category: Trading
+status: draft
+metric: Open interest
+unit: usd
+higher_is_better: true
+
+seo_intro: |
+  This benchmark ranks the major onchain perp venues by aggregate open
+  interest, in USD. Open interest is the canonical depth-of-market
+  number for perpetual futures: it tells you how much notional sits
+  open right now, on every market, on a given venue. We poll each
+  venue's public API every 5 minutes, sum open interest across all
+  listed perps, and publish one gauge per venue. Hyperliquid, Lighter,
+  GMX v2 and gains.trade are the cohort. Headline number is the 24h
+  average of the live OI gauge so a single noisy print does not move
+  the ranking.
+
+abstract: |
+  The bench polls four perp DEX venues every 5 minutes for live open
+  interest and exposes a USD-aggregated gauge per venue. Sources:
+  Hyperliquid info metaAndAssetCtxs (openInterest per asset, summed in
+  USD), Lighter orderBookDetails (open interest per market), GMX
+  Subsquid synthetics-arbitrum (openInterest by market), gains.trade
+  onchain reads aggregated by indexer. Each value carries a freshness
+  timestamp and a health gauge so a stale or errored venue does not
+  poison the leaderboard. Higher is better.
+
+methodology:
+  - "Cadence: every 5 minutes per venue in parallel, 10 second timeout per request."
+  - "Hyperliquid: info metaAndAssetCtxs, openInterest summed across all assets and priced in USD using the venue's own mark price."
+  - "Lighter: orderBookDetails per market, open interest summed across markets in USD."
+  - "GMX v2: synthetics-arbitrum subgraph, openInterestUSD summed across markets."
+  - "gains.trade: onchain indexer over Gains v8 contracts on Base, open interest summed across pairs in USD."
+  - "Headline. avg_over_time of the live OI gauge over the last 24 hours, so a one-print spike does not move the ranking. The Series tab plots the raw gauge."
+  - "Failures. A venue that errors or times out keeps its last gauge value and its perp_venue_health gauge drops to 0; the leaderboard tags it as stale."
+
+findings:
+  - "{{best_name}} currently leads the cohort at {{best_p50}} of open interest (24h average)."
+  - "{{name:hyperliquid}} sits at {{p50:hyperliquid}} of open interest. HyperBFT orderbook is the deepest decentralized perp venue."
+  - "{{name:lighter}} clocks {{p50:lighter}} of open interest. Fully onchain orderbook on zkSync."
+  - "{{name:gmx}} sits at {{p50:gmx}} of open interest. Pool-based execution on Arbitrum and Avalanche."
+  - "{{name:gains}} sits at {{p50:gains}} of open interest. Synthetic perps on Base."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/benchmarks/perp-open-interest.yml
+
+prometheus:
+  window: 24h
+  expected_freshness_seconds: 1800
+
+faq:
+  - q: "What does this benchmark measure?"
+    a: "The live aggregate open interest of major perp DEX venues in USD. Headline is the 24h average of the live OI gauge so single prints do not skew the ranking."
+  - q: "How is open interest different from volume?"
+    a: "Volume counts every trade that crosses the book during a window. Open interest counts notional that currently sits open, regardless of when it was opened. A high-volume venue with high turnover can carry lower OI than a slower venue with sticky positions."
+  - q: "Why these four venues?"
+    a: "Hyperliquid, Lighter, GMX v2 and gains.trade are the cohort whose public APIs expose open interest cleanly enough to compare without backfilling. Other venues join as their endpoints document the same series."
+  - q: "Is OI a good proxy for venue health?"
+    a: "It is one of the cleanest. A venue can spike volume with wash trading or incentive programs, but real OI is harder to fake because it ties up margin. Compared against perp-volume-share, persistent OI dominance signals real position-holding flow rather than turnover."
+
+providers:
+  - slug: hyperliquid
+    name: Hyperliquid
+    tag: HyperBFT L1 perp DEX
+    formula: "Open interest from Hyperliquid info metaAndAssetCtxs, summed across all assets and priced in USD using the venue's mark price; headline is the 24h time average."
+    queries:
+      p50: avg_over_time(perp_venue_oi_usd{venue="hyperliquid"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_oi_usd{venue="hyperliquid"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_oi_usd{venue="hyperliquid"}[24h])
+      mean: avg_over_time(perp_venue_oi_usd{venue="hyperliquid"}[24h])
+      success: avg_over_time(perp_venue_health{venue="hyperliquid"}[24h])
+      sample_size: count_over_time(perp_venue_oi_usd{venue="hyperliquid"}[24h])
+      series: perp_venue_oi_usd{venue="hyperliquid"}
+
+  - slug: lighter
+    name: Lighter
+    tag: zk-rollup, zero taker fee
+    formula: "Open interest from Lighter orderBookDetails per market, summed across markets in USD; headline is the 24h time average."
+    queries:
+      p50: avg_over_time(perp_venue_oi_usd{venue="lighter"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_oi_usd{venue="lighter"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_oi_usd{venue="lighter"}[24h])
+      mean: avg_over_time(perp_venue_oi_usd{venue="lighter"}[24h])
+      success: avg_over_time(perp_venue_health{venue="lighter"}[24h])
+      sample_size: count_over_time(perp_venue_oi_usd{venue="lighter"}[24h])
+      series: perp_venue_oi_usd{venue="lighter"}
+
+  - slug: gmx
+    name: GMX v2
+    tag: Synthetics on Arbitrum, oracle-priced
+    formula: "openInterestUSD from the GMX synthetics-arbitrum subgraph summed across markets; headline is the 24h time average."
+    queries:
+      p50: avg_over_time(perp_venue_oi_usd{venue="gmx"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_oi_usd{venue="gmx"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_oi_usd{venue="gmx"}[24h])
+      mean: avg_over_time(perp_venue_oi_usd{venue="gmx"}[24h])
+      success: avg_over_time(perp_venue_health{venue="gmx"}[24h])
+      sample_size: count_over_time(perp_venue_oi_usd{venue="gmx"}[24h])
+      series: perp_venue_oi_usd{venue="gmx"}
+
+  - slug: gains
+    name: gains.trade
+    tag: Synthetic perps on Base
+    formula: "Open interest across Gains v8 pairs on Base, read onchain and summed in USD; headline is the 24h time average."
+    queries:
+      p50: avg_over_time(perp_venue_oi_usd{venue="gains"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_oi_usd{venue="gains"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_oi_usd{venue="gains"}[24h])
+      mean: avg_over_time(perp_venue_oi_usd{venue="gains"}[24h])
+      success: avg_over_time(perp_venue_health{venue="gains"}[24h])
+      sample_size: count_over_time(perp_venue_oi_usd{venue="gains"}[24h])
+      series: perp_venue_oi_usd{venue="gains"}
