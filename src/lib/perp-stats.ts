@@ -148,7 +148,7 @@ export async function fetchPerpCohort(): Promise<PerpCohortSummary | null> {
     // on the right leaderboard line.
     queryVector(
       prom,
-      `avg_over_time(perp_fees_all_in_bps{asset="ETH"}[24h])`,
+      `avg_over_time(perp_fees_all_in_bps{chain="ETH"}[24h])`,
     ),
     // 24h average of the cross-venue funding feed (perp-cohort-stats
     // harness via Mobula), ETH only. Covers 12 venues. Falls back to
@@ -303,7 +303,7 @@ async function fetchPerpByAssetMatrixRaw(): Promise<PerpAssetRow[]> {
     // gmx → gmx-v2 alias treatment.
     queryVector(
       prom,
-      `avg_over_time(perp_fees_all_in_bps{asset="ETH"}[24h])`,
+      `avg_over_time(perp_fees_all_in_bps{chain="ETH"}[24h])`,
     ),
   ]);
 
