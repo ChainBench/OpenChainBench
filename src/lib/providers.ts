@@ -399,10 +399,18 @@ const PERP_VENUE_SEED = [
  *  ranking + wins + per-chain aggregation post-processing on top. A 60
  *  s revalidate aligns with the bench level ISR window and the standard
  *  `benchmarks` tag so any `revalidateTag('benchmarks')` clears this
- *  along with the rest of the data layer. */
+ *  along with the rest of the data layer.
+ *
+ *  Key bump rationale (v1 to v2): adding PERP_VENUE_SEED changed the
+ *  shape of the cached profile list (new entries for drift, vertex,
+ *  edgex, extended, aevo, pacifica, variational, ostium, grvt). Without
+ *  bumping the cache key, Vercel ISR keeps serving the pre-seed profile
+ *  list until the `benchmarks` tag invalidates, which is what caused
+ *  /products/<perp-venue> to keep 404-ing after PR #683 shipped. Always
+ *  bump this key when the buildProviders() output shape changes. */
 const buildProvidersCached = unstable_cache(
   buildProviders,
-  ["providers-v1"],
+  ["providers-v2"],
   { revalidate: 60, tags: ["benchmarks"] },
 );
 
