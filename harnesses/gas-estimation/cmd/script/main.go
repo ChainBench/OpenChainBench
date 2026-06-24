@@ -116,7 +116,7 @@ func runOraclePoller(ctx context.Context, o Oracle, ep OracleEndpoint, interval 
 
 	// Stagger startup so all pollers across chains don't fire at t=0.
 	// Jitter folds in both the oracle name AND the chain slug so the
-	// 3 Blocknative pollers (one per chain) hit at different offsets.
+	// per-chain pollers for the same oracle hit at different offsets.
 	time.Sleep(jitterFor(string(o) + ":" + chain.Slug))
 	tick()
 	for {
