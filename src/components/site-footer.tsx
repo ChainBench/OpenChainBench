@@ -30,6 +30,7 @@ export function SiteFooter() {
               { label: "Products", href: "/products" },
               { label: "Chains", href: "/chains" },
               { label: "Prediction markets", href: "/prediction-markets" },
+              { label: "Perpetuals", href: "/perps" },
               { label: "Compare", href: "/compare" },
               { label: "Alternatives", href: "/alternatives" },
               { label: "Answers", href: "/answers" },
