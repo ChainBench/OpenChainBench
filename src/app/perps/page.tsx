@@ -24,7 +24,7 @@ import { SITE } from "@/data/site";
  */
 
 const DESCRIPTION =
-  "Live volume, open interest, fees, all-in cost and funding rate across 15 perpetual DEXes. Reproducible methodology, refreshed every minute, sources public.";
+  "Live volume, open interest, fees, all-in cost and funding rate across 16 perpetual DEXes. Reproducible methodology, refreshed every minute, sources public.";
 
 export const metadata: import("next").Metadata = pageMetadata({
   path: "/perps",

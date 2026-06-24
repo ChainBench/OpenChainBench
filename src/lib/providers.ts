@@ -345,6 +345,29 @@ async function buildProviders(): Promise<ProviderProfile[]> {
     });
   }
 
+  // Seed stub profiles for cohort venues that don't yet have a bench
+  // appearance. Without this, /products/<slug> renders 404 for every
+  // venue the harness tracks but no bench specifically ranks (e.g. the
+  // perp cohort venues drift, edgex, extended, aevo, pacifica,
+  // variational, ostium, grvt have no row in perp-fees or perp-funding,
+  // so getProvider() returned undefined). The stub carries name + type
+  // only; appearances stays empty so the product page still renders the
+  // PerpVenueSection from the cohort harness without falsely claiming
+  // bench coverage. PM cohort venues stay unaffected because every PM
+  // venue already appears in at least one PM bench.
+  for (const v of PERP_VENUE_SEED) {
+    const key = v.slug.toLowerCase();
+    if (byKey.has(key)) continue;
+    byKey.set(key, {
+      slug: v.slug,
+      name: v.name,
+      type: "protocol",
+      appearances: [],
+      wins: 0,
+      categories: [],
+    });
+  }
+
   const profiles = Array.from(byKey.values());
   profiles.sort((a, b) => {
     if (a.wins !== b.wins) return b.wins - a.wins;
@@ -355,6 +378,21 @@ async function buildProviders(): Promise<ProviderProfile[]> {
   });
   return profiles;
 }
+
+// Cohort venues that should have a /products/<slug> page even when no
+// bench in benchmarks/ ranks them. Imported as a flat list here to
+// avoid a build-time cycle with the perp-stats module.
+const PERP_VENUE_SEED = [
+  { slug: "drift", name: "Drift" },
+  { slug: "vertex", name: "Vertex" },
+  { slug: "edgex", name: "EdgeX" },
+  { slug: "extended", name: "Extended" },
+  { slug: "aevo", name: "Aevo" },
+  { slug: "pacifica", name: "Pacifica" },
+  { slug: "variational", name: "Variational" },
+  { slug: "ostium", name: "Ostium" },
+  { slug: "grvt", name: "GRVT" },
+];
 
 /** Cross-request cache. The expensive part isn't `getBenchmarks()`
  *  itself (already wrapped in unstable_cache) but the per-provider
