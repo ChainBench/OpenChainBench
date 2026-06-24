@@ -98,13 +98,13 @@ providers:
     tag: Synthetics on Arbitrum, oracle-priced
     formula: "positionVolume aggregated per day from the GMX synthetics-arbitrum subgraph, rolled into a 30 day window, headline is the 24h average."
     queries:
-      p50: avg_over_time(perp_venue_volume_30d_usd{venue="gmx"}[24h])
-      p90: quantile_over_time(0.90, perp_venue_volume_30d_usd{venue="gmx"}[24h])
-      p99: quantile_over_time(0.99, perp_venue_volume_30d_usd{venue="gmx"}[24h])
-      mean: avg_over_time(perp_venue_volume_30d_usd{venue="gmx"}[24h])
-      success: avg_over_time(perp_venue_health{venue="gmx"}[24h])
-      sample_size: count_over_time(perp_venue_volume_30d_usd{venue="gmx"}[24h])
-      series: perp_venue_volume_30d_usd{venue="gmx"}
+      p50: avg_over_time(perp_venue_volume_30d_usd{venue="gmx-v2"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_volume_30d_usd{venue="gmx-v2"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_volume_30d_usd{venue="gmx-v2"}[24h])
+      mean: avg_over_time(perp_venue_volume_30d_usd{venue="gmx-v2"}[24h])
+      success: avg_over_time(perp_venue_health{venue="gmx-v2"}[24h])
+      sample_size: count_over_time(perp_venue_volume_30d_usd{venue="gmx-v2"}[24h])
+      series: perp_venue_volume_30d_usd{venue="gmx-v2"}
 
   - slug: gains
     name: gains.trade
