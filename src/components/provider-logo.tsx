@@ -87,7 +87,6 @@ const NEEDS_LIGHT_CHIP = new Set([
   "debridge",
   "tonapi",
   "1rpc",
-  "blocknative",
   "lava",
   "tenderly",
   "merkle",

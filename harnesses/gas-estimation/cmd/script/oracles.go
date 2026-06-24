@@ -22,10 +22,9 @@ const (
 )
 
 // pollResult is what every oracle client returns. TargetBlock is the
-// block these predictions apply to (oracle-specific: Blocknative
-// gives an explicit next-block number, feeHistory returns the
-// projected baseFee for "the next block", Owlracle predicts the
-// upcoming few blocks).
+// block these predictions apply to (oracle-specific: feeHistory
+// returns the projected baseFee for "the next block", Etherscan
+// reports lastBlock+1, Owlracle predicts the upcoming few blocks).
 type pollResult struct {
 	TargetBlock uint64
 	Predictions []Prediction
@@ -42,8 +41,6 @@ type pollResult struct {
 // adapter.
 func pollOracle(ctx context.Context, o Oracle, ep OracleEndpoint) pollResult {
 	switch o {
-	case OracleBlocknative:
-		return pollBlocknative(ctx, ep)
 	case OraclePublicNode:
 		return pollFeeHistory(ctx, ep)
 	case OracleOwlracle:
@@ -53,74 +50,6 @@ func pollOracle(ctx context.Context, o Oracle, ep OracleEndpoint) pollResult {
 	default:
 		return pollResult{Err: fmt.Errorf("unknown oracle: %s", o)}
 	}
-}
-
-// ─── Blocknative ──────────────────────────────────────────────────
-
-type bnEstimatedPrice struct {
-	Confidence           int     `json:"confidence"`
-	Price                float64 `json:"price"`
-	MaxPriorityFeePerGas float64 `json:"maxPriorityFeePerGas"`
-	MaxFeePerGas         float64 `json:"maxFeePerGas"`
-}
-
-type bnBlockPrice struct {
-	BlockNumber           uint64             `json:"blockNumber"`
-	BaseFeePerGas         float64            `json:"baseFeePerGas"`
-	BlobBaseFeePerGas     float64            `json:"blobBaseFeePerGas"`
-	EstimatedTransactions int                `json:"estimatedTransactionCount"`
-	EstimatedPrices       []bnEstimatedPrice `json:"estimatedPrices"`
-}
-
-type bnResp struct {
-	System            string         `json:"system"`
-	CurrentBlock      uint64         `json:"currentBlockNumber"`
-	MsSinceLastBlock  int            `json:"msSinceLastBlock"`
-	BlockPrices       []bnBlockPrice `json:"blockPrices"`
-}
-
-func pollBlocknative(ctx context.Context, ep OracleEndpoint) pollResult {
-	req, _ := http.NewRequestWithContext(ctx, "GET", ep.URL, nil)
-	if ep.AuthHeader != "" {
-		req.Header.Set("Authorization", ep.AuthHeader)
-	}
-	body, status, err := httpDo(ctx, req)
-	if err != nil {
-		return pollResult{Err: err}
-	}
-	if status != 200 {
-		return pollResult{Err: fmt.Errorf("http %d", status)}
-	}
-	var r bnResp
-	if err := json.Unmarshal(body, &r); err != nil {
-		return pollResult{Err: fmt.Errorf("parse: %w", err)}
-	}
-	if len(r.BlockPrices) == 0 {
-		return pollResult{Err: fmt.Errorf("empty blockPrices")}
-	}
-	bp := r.BlockPrices[0]
-	// Confidence 70/80/90/95/99 → p25/p50/p75/p90/p99 per spec.
-	mapping := map[int]Tier{
-		70: TierP25,
-		80: TierP50,
-		90: TierP75,
-		95: TierP90,
-		99: TierP99,
-	}
-	out := pollResult{TargetBlock: bp.BlockNumber, BaseGwei: bp.BaseFeePerGas}
-	for _, e := range bp.EstimatedPrices {
-		tier, ok := mapping[e.Confidence]
-		if !ok {
-			continue
-		}
-		out.Predictions = append(out.Predictions, Prediction{
-			Oracle:       OracleBlocknative,
-			Tier:         tier,
-			PriorityGwei: e.MaxPriorityFeePerGas,
-			BaseGwei:     bp.BaseFeePerGas,
-		})
-	}
-	return out
 }
 
 // ─── eth_feeHistory (PublicNode, Alchemy share this shape) ────────

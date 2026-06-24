@@ -565,12 +565,6 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   },
 
   // ─── Gas oracles ──────────────────────────────────────────────
-  blocknative: {
-    url: "https://www.blocknative.com",
-    description:
-      "Mempool observability platform with a probability-of-inclusion gas oracle. EIP-1559 tier predictions exposed via the public /gasprices/blockprices endpoint, free tier without an API key.",
-    twitter: "@blocknative",
-  },
   "publicnode-feehistory": {
     url: "https://www.publicnode.com",
     description:
