@@ -298,12 +298,15 @@ function VolOiCell({ ratio }: { ratio: number | null }) {
   if (ratio == null || !Number.isFinite(ratio)) {
     return <Td mono>...</Td>;
   }
-  // Color bands: <50x normal (teal), 50-200x high (amber), >200x flag (red).
-  // The flagged band catches a wash-traded venue at a glance.
+  // Color bands: <80x normal (teal), 80-300x elevated (amber), >300x flag (red).
+  // Loosened from the original 50/200 thresholds because zero-fee venues
+  // (Lighter, ~115x today) and MM-heavy order books legitimately churn
+  // their OI multiple times per day without it being wash-traded. Only
+  // sustained ratios above 300x warrant a visual flag now.
   const band =
-    ratio < 50
+    ratio < 80
       ? { fg: "text-teal-700", bg: "bg-teal-500/10", border: "border-teal-500/30" }
-      : ratio <= 200
+      : ratio <= 300
         ? { fg: "text-amber-700", bg: "bg-amber-500/10", border: "border-amber-500/30" }
         : { fg: "text-red-700", bg: "bg-red-500/10", border: "border-red-500/30" };
   return (
@@ -311,11 +314,11 @@ function VolOiCell({ ratio }: { ratio: number | null }) {
       className="px-3 py-2 tabular-nums"
       style={{ fontFamily: "var(--font-mono, monospace)" }}
       title={
-        ratio < 50
-          ? "Vol / OI under 50x is typical for an active order-book venue."
-          : ratio <= 200
-            ? "Vol / OI between 50x and 200x is elevated; common for venues running incentive programs."
-            : "Vol / OI above 200x is a wash-trade signal worth a closer look."
+        ratio < 80
+          ? "Vol / OI under 80x is typical for an active order-book venue."
+          : ratio <= 300
+            ? "Vol / OI above 80x means high churn, common for zero-fee venues like Lighter or MM-heavy books running incentive programs."
+            : "Vol / OI above 300x typically indicates wash trading and is worth a closer look."
       }
     >
       <span
