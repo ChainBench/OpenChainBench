@@ -58,9 +58,10 @@ export function fmtUnit(value: number, unit: string) {
   if (unit === "count") {
     // Sub-unit values are common when a "count" bench is measuring an
     // error or gap that converges toward zero (e.g. gas-oracle prediction
-    // error in gwei — Blocknative's p50 sits around 1e-9, mathematically
-    // perfect). Default toLocaleString silently rounds those to "0", so
-    // the headline card reads as "no data" instead of "essentially zero".
+    // error in gwei — PublicNode feeHistory's p50 sits around 1e-9,
+    // mathematically perfect). Default toLocaleString silently rounds
+    // those to "0", so the headline card reads as "no data" instead of
+    // "essentially zero".
     if (value > 0 && value < 0.01) return "~0";
     if (value > 0 && value < 1) return value.toFixed(3);
     return formatCompactCount(value);

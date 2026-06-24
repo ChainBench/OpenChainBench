@@ -98,7 +98,6 @@ const RAW: Record<string, string> = {
 
   // ─── MEV / private mempools (gas-estimation, RPC capabilities) ───
   flashbots: "/logos/flashbots.svg",
-  blocknative: "/logos/blocknative.svg",
   merkle: "/logos/merkle.svg",
 
   // ─── Block explorers / address-label providers ───
