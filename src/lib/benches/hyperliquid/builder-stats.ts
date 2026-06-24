@@ -9,6 +9,10 @@
 import { unstable_cache } from "next/cache";
 import { Prometheus } from "@/lib/prometheus";
 import { getSpecs } from "@/lib/spec";
+import {
+  readCohortSnapshot,
+  writeCohortSnapshot,
+} from "@/lib/cohort-snapshot";
 
 export type CoinShare = { coin: string; share: number };
 export type PercentileBucket = {
@@ -241,6 +245,13 @@ export type HlHip3Summary = {
   asOf: number;
 };
 
+/** Upstash keys for the hub's two cohort blobs, written by
+ *  /api/cron/snapshot-hl-cohort. Bump the suffix here if either summary
+ *  shape changes so a stale-shape blob can never deserialize into a
+ *  misaligned payload. The cohort-snapshot module appends its own `:v1`. */
+const HL_FRONTENDS_KEY = "hl-frontends";
+const HL_HIP3_KEY = "hl-hip3";
+
 /**
  * Fetch a leaderboard-ready slice of every tracked HL builder, in 4
  * vector queries instead of 4 × 104 scalar fan-out. Used by the
@@ -253,8 +264,12 @@ export type HlHip3Summary = {
  * so the two agree. We re-compute it here so the leaderboard total
  * stays internally consistent if some builders drop out of the
  * filtered set.
+ *
+ * Exported so the cron route can call the uncached Prom path directly
+ * before parking the result in Upstash; the public reader (fetchHlCohort)
+ * goes through the snapshot layer + unstable_cache below.
  */
-export async function fetchHlCohort(): Promise<HlCohortSummary | null> {
+export async function fetchHlCohortFresh(): Promise<HlCohortSummary | null> {
   const url = promUrl();
   if (!url) return null;
   let prom: Prometheus;
@@ -349,8 +364,13 @@ export async function fetchHlCohort(): Promise<HlCohortSummary | null> {
  *
  * Dex names come from the hyperliquid-hip3-deployers spec's providers
  * list; an unknown dex slug surfaces under its raw namespace.
+ *
+ * Exported so the cron route can call the uncached Prom path directly
+ * before parking the result in Upstash; the public reader
+ * (fetchHlHip3Cohort) goes through the snapshot layer + unstable_cache
+ * below.
  */
-export async function fetchHlHip3Cohort(): Promise<HlHip3Summary | null> {
+export async function fetchHlHip3CohortFresh(): Promise<HlHip3Summary | null> {
   const url = promUrl();
   if (!url) return null;
   let prom: Prometheus;
@@ -465,6 +485,72 @@ export async function fetchHlHip3Cohort(): Promise<HlHip3Summary | null> {
     totalUsers24h,
     asOf: Math.floor(Date.now() / 1000),
   };
+}
+
+/**
+ * Snapshot-first reader for the frontends cohort. Same protocol as the
+ * /perps hub: Upstash blob → live Prom + writeback → null. The 60 s
+ * unstable_cache wrapper around this collapses concurrent requests; the
+ * cron writer keeps the Upstash blob fresh so the typical render never
+ * touches Prom.
+ */
+async function fetchHlCohortRaw(): Promise<HlCohortSummary | null> {
+  const snapshot = await readCohortSnapshot<HlCohortSummary>(HL_FRONTENDS_KEY);
+  if (snapshot) return snapshot.data;
+  const fresh = await fetchHlCohortFresh();
+  if (fresh) {
+    try {
+      await writeCohortSnapshot(HL_FRONTENDS_KEY, fresh);
+    } catch (err) {
+      console.warn(
+        `hl-frontends writeback failed: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
+  }
+  return fresh;
+}
+
+const fetchHlCohortCached = unstable_cache(
+  fetchHlCohortRaw,
+  ["hl-frontends-cohort-v1"],
+  { revalidate: 60, tags: ["hl-cohort"] },
+);
+
+export async function fetchHlCohort(): Promise<HlCohortSummary | null> {
+  return fetchHlCohortCached();
+}
+
+/** Snapshot-first reader for the HIP-3 cohort. Same shape as
+ *  fetchHlCohort, separate Upstash key so the two leaderboards refresh
+ *  independently and a brownout on one doesn't poison the other. */
+async function fetchHlHip3CohortRaw(): Promise<HlHip3Summary | null> {
+  const snapshot = await readCohortSnapshot<HlHip3Summary>(HL_HIP3_KEY);
+  if (snapshot) return snapshot.data;
+  const fresh = await fetchHlHip3CohortFresh();
+  if (fresh) {
+    try {
+      await writeCohortSnapshot(HL_HIP3_KEY, fresh);
+    } catch (err) {
+      console.warn(
+        `hl-hip3 writeback failed: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
+  }
+  return fresh;
+}
+
+const fetchHlHip3CohortCached = unstable_cache(
+  fetchHlHip3CohortRaw,
+  ["hl-hip3-cohort-v1"],
+  { revalidate: 60, tags: ["hl-cohort"] },
+);
+
+export async function fetchHlHip3Cohort(): Promise<HlHip3Summary | null> {
+  return fetchHlHip3CohortCached();
 }
 
 /**
