@@ -68,6 +68,23 @@ jobs:
             | xargs -P 4 -I{} curl -s -o /dev/null -w "%{http_code} %{time_total}s {}\n" --max-time 120 {} \
             || echo "warm-up failed (non-blocking)"
 
+      # Warm /api/citable explicitly: the aggregator cache is independent
+      # from per-bench caches, and the bench-page warm-up only populates
+      # the latter. Without this step, /api/citable's first hit after
+      # deploy runs 26 parallel Prom queries on a cold function instance,
+      # which has historically produced mostly-placeholder snapshots that
+      # cached for 60s and shipped status=insufficient to LLM agents.
+      - name: Warm citable aggregate
+        run: |
+          base="https://openchainbench.com"
+          # /api/mcp is the docs path under /mcp, the live JSON-RPC
+          # endpoint is /api/mcp/mcp (Streamable HTTP). Warm the real
+          # endpoint so the first agent request after deploy is hot.
+          for ep in /api/citable /api/llm-context /api/mcp/mcp; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 120 "$base$ep" || echo "000")
+            echo "$code $base$ep"
+          done
+
       - name: Summary
         run: |
           {
