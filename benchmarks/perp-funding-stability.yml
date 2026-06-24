@@ -7,7 +7,7 @@ seo_title: "Perp DEX funding stability 2026: ETH funding stddev across 12 venues
 seo_description: "Live 7-day standard deviation of ETH perpetual futures funding rate in bps across 12 major venues. Lower means more stable funding for carry traders."
 subtitle: 7-day standard deviation of ETH funding rate, in basis points per 24h, across the Mobula funding cohort. Lower means funding stays in a tight band, the carry trader's preferred signal.
 category: Trading
-status: draft
+status: live
 metric: 7d ETH funding stddev
 unit: bps
 higher_is_better: false

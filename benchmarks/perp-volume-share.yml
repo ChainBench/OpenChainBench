@@ -7,7 +7,7 @@ seo_title: "Perp DEX volume 2026: Hyperliquid, Lighter, GMX, gains.trade ranked 
 seo_description: "Live 30-day rolling perp DEX volume across Hyperliquid, Lighter, GMX v2 and gains.trade in USD notional. Public API sourced, refreshed every 5 minutes."
 subtitle: 30-day rolling perpetual futures notional volume in USD across major decentralized venues. Higher means more flow. Read live from each venue's public API.
 category: Trading
-status: draft
+status: live
 metric: 30d perp volume
 unit: usd
 higher_is_better: true
