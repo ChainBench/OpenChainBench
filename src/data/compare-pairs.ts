@@ -158,15 +158,6 @@ export const COMPARE_PAIRS: ComparePair[] = [
     publishedAt: "2026-06-17",
   },
   {
-    // solana-tx-landing-latency exposes the Helius RPC sender under the
-    // slug `helius-sender`, not bare `helius`, so the pair canonical
-    // slug uses helius-sender to match the bench provider id.
-    slug: "helius-sender-vs-jito",
-    providerA: "helius-sender",
-    providerB: "jito",
-    publishedAt: "2026-06-09",
-  },
-  {
     slug: "hyperliquid-vs-lighter",
     providerA: "hyperliquid",
     providerB: "lighter",

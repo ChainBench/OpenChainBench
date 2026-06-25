@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { LayoutGrid, List, Search } from "lucide-react";
-import type { Benchmark } from "@/types/benchmark";
+import type { BenchmarkCardData } from "@/data/benchmarks";
 import { BenchmarkCard } from "@/components/benchmark-card";
 
 /**
@@ -11,7 +11,7 @@ import { BenchmarkCard } from "@/components/benchmark-card";
  * the only fully-implemented mode here - list view degrades to a single
  * column) and a search input with a ⌘K affordance.
  */
-export function BenchmarkGrid({ benchmarks }: { benchmarks: Benchmark[] }) {
+export function BenchmarkGrid({ benchmarks }: { benchmarks: BenchmarkCardData[] }) {
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [view, setView] = useState<"grid" | "list">("grid");
