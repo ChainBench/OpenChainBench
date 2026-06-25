@@ -110,7 +110,7 @@ const DEFILLAMA_CHAIN_NAME: Record<string, string> = {
   bnb: "BSC",
   avalanche: "Avalanche",
   sui: "Sui",
-  ton: "TON",
+  gram: "TON", // DefiLlama API still uses "TON" as the chain name (verified live)
   stellar: "Stellar",
   tron: "Tron",
   cardano: "Cardano",
