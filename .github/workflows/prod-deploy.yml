@@ -85,12 +85,39 @@ jobs:
             echo "$code $base$ep"
           done
 
+      # Indexability smoke test runs AFTER the warm-up steps so cold
+      # renders cannot false-fail. If any sitemap URL returns non-200 or
+      # carries a noindex hint (X-Robots-Tag header OR <meta name=robots>),
+      # the next step auto-rolls back the prod alias to the previous good
+      # deploy. This catches the class of bug that bled SEO on 2026-06-25
+      # (bench page 404 + noindex while still in the sitemap).
+      - name: Sitemap indexability smoke
+        id: smoke
+        continue-on-error: true
+        run: node scripts/sitemap-smoke.mjs https://openchainbench.com
+
+      - name: Auto-rollback on smoke failure
+        if: steps.smoke.outcome == 'failure'
+        run: |
+          echo "::error::Sitemap smoke failed. Rolling back prod alias to the previous deploy."
+          vercel rollback --token=${{ secrets.VERCEL_TOKEN }} --yes
+          # Re-fail the job so the rollback is visible in the workflow
+          # status (a red X on the commit + an email).
+          exit 1
+
       - name: Summary
+        if: always()
         run: |
           {
-            echo "## Vercel prod deploy ✓"
-            echo ""
-            echo "**Live:** https://openchainbench.com"
+            if [ "${{ steps.smoke.outcome }}" = "failure" ]; then
+              echo "## Vercel prod deploy ✗ rolled back"
+              echo ""
+              echo "**Reason:** sitemap smoke test failed. Prod alias was reverted to the previous deploy."
+            else
+              echo "## Vercel prod deploy ✓"
+              echo ""
+              echo "**Live:** https://openchainbench.com"
+            fi
             echo ""
             echo "**Deploy URL:** ${{ steps.deploy.outputs.url }}"
             echo ""
