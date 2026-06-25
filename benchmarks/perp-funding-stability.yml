@@ -2,13 +2,13 @@
 
 slug: perp-funding-stability
 number: "043"
-title: Perp DEX funding stability, 7-day stddev of ETH funding ranked
+title: Perp DEX funding stability, 24h stddev of ETH funding ranked
 seo_title: "Perp DEX funding stability 2026: ETH funding stddev across 7 venues ranked"
-seo_description: "Live 7-day standard deviation of ETH perpetual futures funding rate in bps across 7 major venues (Hyperliquid, Binance, Bybit, OKX, dYdX v4, Paradex, Aster). Lower means more stable funding for carry traders."
-subtitle: 7-day standard deviation of ETH funding rate, in basis points per 24h, across the perp-funding cohort. Lower means funding stays in a tight band, the carry trader's preferred signal.
+seo_description: "Live 24h standard deviation of ETH perpetual futures funding rate in bps across 7 major venues (Hyperliquid, Binance, Bybit, OKX, dYdX v4, Paradex, Aster). Lower means more stable funding for carry traders."
+subtitle: 24h standard deviation of ETH funding rate, in basis points per 24h, across the perp-funding cohort. Lower means funding stays in a tight band, the carry trader's preferred signal.
 category: Trading
 status: live
-metric: 7d ETH funding stddev
+metric: 24h ETH funding stddev
 unit: bps
 higher_is_better: false
 
@@ -23,7 +23,7 @@ seo_intro: |
   trade than one that holds within 3 bps even if both average the
   same number. The bench reads the same normalized series as
   perp-funding (per-venue hold cost in bps per 24h) and exposes
-  stddev_over_time of that series on a 7 day window for ETH.
+  stddev_over_time of that series on a 24 hour window for ETH.
   Cohort is the 7 venues with documented interval semantics:
   Hyperliquid, Binance, Bybit, OKX, dYdX v4, Paradex, Aster. Lower
   is better.
@@ -40,7 +40,7 @@ abstract: |
 
 methodology:
   - "Source. Same upstream as perp-funding: each venue's public funding endpoint polled every 60 seconds, normalized to bps per hour and per 24h hold, sign preserved."
-  - "Metric. stddev_over_time(perp_funding_hold_24h_bps{asset=\"ETH\"}[7d]) per venue. The 7d window smooths intraday noise but reacts to regime shifts within a week."
+  - "Metric. stddev_over_time(perp_funding_hold_24h_bps{asset=\"ETH\"}[24h]) per venue. The 7d window smooths intraday noise but reacts to regime shifts within a week."
   - "Sign handling. The underlying series is signed (positive means longs pay). Stability measures the swing, so the ranking uses the unsigned stddev. Average direction and level are the perp-funding bench."
   - "Cohort. 7 venues from the perp-funding bench: Hyperliquid (onchain), Binance, Bybit, OKX, dYdX v4 (Cosmos appchain), Paradex (Starknet L2), Aster (BNB Chain). All publish documented funding intervals."
   - "Cadence. The upstream funding harness polls every 60 seconds; Prometheus scrapes every 30 seconds. The 7 day stddev refreshes on every scrape."
@@ -48,28 +48,28 @@ methodology:
   - "Reproducibility. The harness emits perp_funding_hold_24h_bps with labels venue and asset; the bench query is the stddev over 7d on that series with asset=ETH pinned."
 
 findings:
-  - "{{best_name}} currently has the tightest ETH funding band at {{best_p50}} stddev (7d)."
-  - "{{name:hyperliquid}} sits at {{p50:hyperliquid}} stddev (7d) on ETH. Hourly settlement means rapid reaction to skew but tight clustering once the book is calm."
-  - "{{name:binance}} sits at {{p50:binance}} stddev (7d). Deepest book in the field anchors the rate."
+  - "{{best_name}} currently has the tightest ETH funding band at {{best_p50}} stddev (24h)."
+  - "{{name:hyperliquid}} sits at {{p50:hyperliquid}} stddev (24h) on ETH. Hourly settlement means rapid reaction to skew but tight clustering once the book is calm."
+  - "{{name:binance}} sits at {{p50:binance}} stddev (24h). Deepest book in the field anchors the rate."
   - "Outliers on this bench are the venues to watch for funding arbitrage: a wider band means larger spreads to harvest against the cohort median."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/benchmarks/perp-funding-stability.yml
 
 prometheus:
-  window: 7d
+  window: 24h
   expected_freshness_seconds: 3600
 
 faq:
   - q: "What does funding stability measure?"
-    a: "It is the 7 day standard deviation of each venue's ETH funding rate, expressed in basis points per 24 hour hold. The metric measures how tightly funding clusters around its own 7 day mean, ignoring whether the rate sits positive or negative. A low value means traders carrying a position on that venue paid (or received) a predictable number every settlement; a high value means the rate swung a lot over the week."
+    a: "It is the 24 hour standard deviation of each venue's ETH funding rate, expressed in basis points per 24 hour hold. The metric measures how tightly funding clusters around its own 7 day mean, ignoring whether the rate sits positive or negative. A low value means traders carrying a position on that venue paid (or received) a predictable number every settlement; a high value means the rate swung a lot over the week."
   - q: "Why is lower better?"
     a: "Carry trades, basis trades and funding-rate arbitrage all assume the rate behaves predictably over the holding window. A venue with a noisy funding curve forces wider stop-losses and reduces the achievable Sharpe even when the average rate looks attractive. Stability is the second-order property that turns an average rate into a trade you can size."
   - q: "How does this differ from perp-funding (bench 036)?"
-    a: "perp-funding ranks venues by the current normalized 24h funding cost on ETH; it answers 'who is cheapest to hold right now'. perp-funding-stability ranks venues by the 7 day standard deviation of that same series; it answers 'whose rate is most predictable'. The two are complementary: a cheap-but-noisy venue is still risky to carry; a stable-but-expensive venue is honest about its cost."
+    a: "perp-funding ranks venues by the current normalized 24h funding cost on ETH; it answers 'who is cheapest to hold right now'. perp-funding-stability ranks venues by the 24 hour standard deviation of that same series; it answers 'whose rate is most predictable'. The two are complementary: a cheap-but-noisy venue is still risky to carry; a stable-but-expensive venue is honest about its cost."
   - q: "Why ETH only?"
     a: "ETH is the deepest contract on every venue in the cohort, so the funding series has the strongest signal-to-noise ratio for cross-venue comparison. BTC and SOL are also published by the upstream harness as gauges; future revisions of this bench may expand the dimension."
   - q: "How fresh are the numbers?"
-    a: "The upstream funding gauge is scraped every 30 seconds. The stddev refreshes on every Prom evaluation, so the leaderboard reflects the most recent 7 day window minus at most 30 seconds of lag."
+    a: "The upstream funding gauge is scraped every 30 seconds. The stddev refreshes on every Prom evaluation, so the leaderboard reflects the most recent 24 hour window minus at most 30 seconds of lag."
 
 dimensions: {}
 
@@ -79,74 +79,74 @@ providers:
     tag: Onchain order book perps, funding settled hourly
     formula: "stddev_over_time of perp_funding_hold_24h_bps{venue=\"hyperliquid\",asset=\"ETH\"} over a 7d window."
     queries:
-      p50: stddev_over_time(perp_funding_hold_24h_bps{venue="hyperliquid",asset="ETH"}[7d])
-      mean: stddev_over_time(perp_funding_hold_24h_bps{venue="hyperliquid",asset="ETH"}[7d])
+      p50: stddev_over_time(perp_funding_hold_24h_bps{venue="hyperliquid",asset="ETH"}[24h])
+      mean: stddev_over_time(perp_funding_hold_24h_bps{venue="hyperliquid",asset="ETH"}[24h])
       success: clamp_max(count_over_time(perp_funding_hold_24h_bps{venue="hyperliquid",asset="ETH"}[1h]), 1)
       sample_size: count_over_time(perp_funding_hold_24h_bps{venue="hyperliquid",asset="ETH"}[24h])
-      series: stddev_over_time(perp_funding_hold_24h_bps{venue="hyperliquid",asset="ETH"}[7d])
+      series: stddev_over_time(perp_funding_hold_24h_bps{venue="hyperliquid",asset="ETH"}[24h])
 
   - slug: binance
     name: Binance
     tag: Largest CEX perp book, 8h funding (4h on some pairs)
     formula: "stddev_over_time of perp_funding_hold_24h_bps{venue=\"binance\",asset=\"ETH\"} over a 7d window."
     queries:
-      p50: stddev_over_time(perp_funding_hold_24h_bps{venue="binance",asset="ETH"}[7d])
-      mean: stddev_over_time(perp_funding_hold_24h_bps{venue="binance",asset="ETH"}[7d])
+      p50: stddev_over_time(perp_funding_hold_24h_bps{venue="binance",asset="ETH"}[24h])
+      mean: stddev_over_time(perp_funding_hold_24h_bps{venue="binance",asset="ETH"}[24h])
       success: clamp_max(count_over_time(perp_funding_hold_24h_bps{venue="binance",asset="ETH"}[1h]), 1)
       sample_size: count_over_time(perp_funding_hold_24h_bps{venue="binance",asset="ETH"}[24h])
-      series: stddev_over_time(perp_funding_hold_24h_bps{venue="binance",asset="ETH"}[7d])
+      series: stddev_over_time(perp_funding_hold_24h_bps{venue="binance",asset="ETH"}[24h])
 
   - slug: bybit
     name: Bybit
     tag: USDT linear perps, funding interval per instrument
     formula: "stddev_over_time of perp_funding_hold_24h_bps{venue=\"bybit\",asset=\"ETH\"} over a 7d window."
     queries:
-      p50: stddev_over_time(perp_funding_hold_24h_bps{venue="bybit",asset="ETH"}[7d])
-      mean: stddev_over_time(perp_funding_hold_24h_bps{venue="bybit",asset="ETH"}[7d])
+      p50: stddev_over_time(perp_funding_hold_24h_bps{venue="bybit",asset="ETH"}[24h])
+      mean: stddev_over_time(perp_funding_hold_24h_bps{venue="bybit",asset="ETH"}[24h])
       success: clamp_max(count_over_time(perp_funding_hold_24h_bps{venue="bybit",asset="ETH"}[1h]), 1)
       sample_size: count_over_time(perp_funding_hold_24h_bps{venue="bybit",asset="ETH"}[24h])
-      series: stddev_over_time(perp_funding_hold_24h_bps{venue="bybit",asset="ETH"}[7d])
+      series: stddev_over_time(perp_funding_hold_24h_bps{venue="bybit",asset="ETH"}[24h])
 
   - slug: okx
     name: OKX
     tag: USDT swaps, interval derived from settlement timestamps
     formula: "stddev_over_time of perp_funding_hold_24h_bps{venue=\"okx\",asset=\"ETH\"} over a 7d window."
     queries:
-      p50: stddev_over_time(perp_funding_hold_24h_bps{venue="okx",asset="ETH"}[7d])
-      mean: stddev_over_time(perp_funding_hold_24h_bps{venue="okx",asset="ETH"}[7d])
+      p50: stddev_over_time(perp_funding_hold_24h_bps{venue="okx",asset="ETH"}[24h])
+      mean: stddev_over_time(perp_funding_hold_24h_bps{venue="okx",asset="ETH"}[24h])
       success: clamp_max(count_over_time(perp_funding_hold_24h_bps{venue="okx",asset="ETH"}[1h]), 1)
       sample_size: count_over_time(perp_funding_hold_24h_bps{venue="okx",asset="ETH"}[24h])
-      series: stddev_over_time(perp_funding_hold_24h_bps{venue="okx",asset="ETH"}[7d])
+      series: stddev_over_time(perp_funding_hold_24h_bps{venue="okx",asset="ETH"}[24h])
 
   - slug: dydx
     name: dYdX v4
     tag: Appchain order book perps, funding settled hourly
     formula: "stddev_over_time of perp_funding_hold_24h_bps{venue=\"dydx\",asset=\"ETH\"} over a 7d window."
     queries:
-      p50: stddev_over_time(perp_funding_hold_24h_bps{venue="dydx",asset="ETH"}[7d])
-      mean: stddev_over_time(perp_funding_hold_24h_bps{venue="dydx",asset="ETH"}[7d])
+      p50: stddev_over_time(perp_funding_hold_24h_bps{venue="dydx",asset="ETH"}[24h])
+      mean: stddev_over_time(perp_funding_hold_24h_bps{venue="dydx",asset="ETH"}[24h])
       success: clamp_max(count_over_time(perp_funding_hold_24h_bps{venue="dydx",asset="ETH"}[1h]), 1)
       sample_size: count_over_time(perp_funding_hold_24h_bps{venue="dydx",asset="ETH"}[24h])
-      series: stddev_over_time(perp_funding_hold_24h_bps{venue="dydx",asset="ETH"}[7d])
+      series: stddev_over_time(perp_funding_hold_24h_bps{venue="dydx",asset="ETH"}[24h])
 
   - slug: paradex
     name: Paradex
     tag: Starknet L2 perps, 8h funding accrued continuously
     formula: "stddev_over_time of perp_funding_hold_24h_bps{venue=\"paradex\",asset=\"ETH\"} over a 7d window."
     queries:
-      p50: stddev_over_time(perp_funding_hold_24h_bps{venue="paradex",asset="ETH"}[7d])
-      mean: stddev_over_time(perp_funding_hold_24h_bps{venue="paradex",asset="ETH"}[7d])
+      p50: stddev_over_time(perp_funding_hold_24h_bps{venue="paradex",asset="ETH"}[24h])
+      mean: stddev_over_time(perp_funding_hold_24h_bps{venue="paradex",asset="ETH"}[24h])
       success: clamp_max(count_over_time(perp_funding_hold_24h_bps{venue="paradex",asset="ETH"}[1h]), 1)
       sample_size: count_over_time(perp_funding_hold_24h_bps{venue="paradex",asset="ETH"}[24h])
-      series: stddev_over_time(perp_funding_hold_24h_bps{venue="paradex",asset="ETH"}[7d])
+      series: stddev_over_time(perp_funding_hold_24h_bps{venue="paradex",asset="ETH"}[24h])
 
   - slug: aster
     name: Aster
     tag: BNB Chain perps DEX, Binance compatible API, 8h funding
     formula: "stddev_over_time of perp_funding_hold_24h_bps{venue=\"aster\",asset=\"ETH\"} over a 7d window."
     queries:
-      p50: stddev_over_time(perp_funding_hold_24h_bps{venue="aster",asset="ETH"}[7d])
-      mean: stddev_over_time(perp_funding_hold_24h_bps{venue="aster",asset="ETH"}[7d])
+      p50: stddev_over_time(perp_funding_hold_24h_bps{venue="aster",asset="ETH"}[24h])
+      mean: stddev_over_time(perp_funding_hold_24h_bps{venue="aster",asset="ETH"}[24h])
       success: clamp_max(count_over_time(perp_funding_hold_24h_bps{venue="aster",asset="ETH"}[1h]), 1)
       sample_size: count_over_time(perp_funding_hold_24h_bps{venue="aster",asset="ETH"}[24h])
-      series: stddev_over_time(perp_funding_hold_24h_bps{venue="aster",asset="ETH"}[7d])
+      series: stddev_over_time(perp_funding_hold_24h_bps{venue="aster",asset="ETH"}[24h])
