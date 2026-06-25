@@ -90,7 +90,7 @@ func loadConfig() *Config {
 			//
 			// SUI moved to high-frequency HTTP polling wall-clock — see
 			// sui_ws.go. Same methodology mismatch as before fixed.
-			// TON removed from HTTP polling — same issue as BNB/Avalanche
+			// Gram (formerly TON) removed from HTTP polling — same issue as BNB/Avalanche
 			// (masterchain blocks finalize in ~0.5s, polling 10s = wrong
 			// methodology). Now measured via SSE wall-clock subscriber on
 			// tonapi.io's /v2/sse/blocks stream.

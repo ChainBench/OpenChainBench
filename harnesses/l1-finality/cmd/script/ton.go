@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-// TON: tonapi.io anonymous tier supports masterchain-head + blocks/{id}
+// Gram (formerly TON): tonapi.io anonymous tier supports masterchain-head + blocks/{id}
 // reads. Toncenter free has 1 rps which we burst past with two block
 // fetches per cycle; tonapi is friendlier. Switching there.
 

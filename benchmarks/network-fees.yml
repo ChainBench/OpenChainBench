@@ -8,17 +8,17 @@ seo_description: "Cheapest blockchain transaction fee in USD ranked live across 
 subtitle: "Live USD cost of one native token transaction on 20 Layer 1 and Layer 2 chains, refreshed every 30 seconds."
 
 seo_intro: |
-  This page answers one question. How much does it cost in dollars to send one transaction on each major blockchain right now. We track 20 chains in parallel and refresh the number every 30 seconds. The eleven Layer 1 chains are Ethereum, Solana, BNB Chain, Avalanche, TRON, Cardano, Sui, TON, Stellar, Litecoin and Monero. The nine Layer 2 rollups are Arbitrum, Optimism, Base, zkSync Era, Linea, Scroll, Blast, Mantle and Taiko. For every chain we query its own fee market directly (eth_feeHistory for the EVM family, getRecentPrioritizationFees on Solana, koios epoch params on Cardano, fee_stats on Stellar, get_fee_estimate on Monero, the mempool oracle on Litecoin, getChainParameters on TRON, suix_getReferenceGasPrice on Sui), convert the result to the smallest native unit, then multiply by the live USD price of the chain's native token from Mobula. The output is the actual dollar amount a wallet user pays today. No gwei to lamport conversion, no marketing claim. Compare Ethereum gas now versus Solana fee in USD, see whether Arbitrum is still cheaper than Base today, find out which Layer 1 has the lowest transaction cost this minute.
+  This page answers one question. How much does it cost in dollars to send one transaction on each major blockchain right now. We track 20 chains in parallel and refresh the number every 30 seconds. The eleven Layer 1 chains are Ethereum, Solana, BNB Chain, Avalanche, TRON, Cardano, Sui, Gram (formerly TON), Stellar, Litecoin and Monero. The nine Layer 2 rollups are Arbitrum, Optimism, Base, zkSync Era, Linea, Scroll, Blast, Mantle and Taiko. For every chain we query its own fee market directly (eth_feeHistory for the EVM family, getRecentPrioritizationFees on Solana, koios epoch params on Cardano, fee_stats on Stellar, get_fee_estimate on Monero, the mempool oracle on Litecoin, getChainParameters on TRON, suix_getReferenceGasPrice on Sui), convert the result to the smallest native unit, then multiply by the live USD price of the chain's native token from Mobula. The output is the actual dollar amount a wallet user pays today. No gwei to lamport conversion, no marketing claim. Compare Ethereum gas now versus Solana fee in USD, see whether Arbitrum is still cheaper than Base today, find out which Layer 1 has the lowest transaction cost this minute.
 
 faq:
   - q: "What does this benchmark measure?"
     a: "The USD cost of one native token transaction on each of the 20 tracked chains, refreshed every 30 seconds. A native transaction is the simplest action on a chain. Send ETH on Ethereum, SOL on Solana, ADA on Cardano, XLM on Stellar, and so on. We do not yet measure ERC 20 transfers, DEX swaps or smart contract deployments. Those will ship as companion metrics in a later phase."
   - q: "Which chains are tracked?"
-    a: "Eleven Layer 1 chains on the L1 tab. Ethereum, Solana, BNB Chain, Avalanche, TRON, Cardano, Sui, TON, Stellar, Litecoin and Monero. Nine Layer 2 rollups on the L2 tab. Arbitrum, Optimism, Base, zkSync Era, Linea, Scroll, Blast, Mantle and Taiko. The list matches the L1 finality and L2 block time benches so you can read cost and speed side by side."
+    a: "Eleven Layer 1 chains on the L1 tab. Ethereum, Solana, BNB Chain, Avalanche, TRON, Cardano, Sui, Gram (formerly TON), Stellar, Litecoin and Monero. Nine Layer 2 rollups on the L2 tab. Arbitrum, Optimism, Base, zkSync Era, Linea, Scroll, Blast, Mantle and Taiko. The list matches the L1 finality and L2 block time benches so you can read cost and speed side by side."
   - q: "Why USD instead of gas price in gwei?"
     a: "Gas price in gwei on Ethereum cannot be compared to lamports per compute unit on Solana, stroops per operation on Stellar or sun per byte on TRON. The only honest cross chain unit is the dollar cost of a user facing action, computed at scrape time using a live USD price for each native token. Mobula's market API delivers the prices we multiply by."
   - q: "What do slow, standard and fast tiers mean?"
-    a: "Tiers exist on chains with a priority market where users can pay more for faster inclusion. Slow targets the 25th percentile of recent priority bids, standard the 50th, fast the 90th. Chains with deterministic or near deterministic fees (Cardano, Stellar, TON, TRON native transfer) emit a single tier because there is no priority market to bid into."
+    a: "Tiers exist on chains with a priority market where users can pay more for faster inclusion. Slow targets the 25th percentile of recent priority bids, standard the 50th, fast the 90th. Chains with deterministic or near deterministic fees (Cardano, Stellar, Gram, TRON native transfer) emit a single tier because there is no priority market to bid into."
   - q: "Why is the Solana fee so low?"
     a: "Solana charges 5000 lamports per signature as a hard base, plus an optional priority fee priced in micro lamports per compute unit. A simple SOL transfer uses around 200 compute units, so the priority component is typically dwarfed by the base. At current SOL prices the headline fee sits well under one cent on non congested blocks."
   - q: "Why is the Cardano fee always similar?"
@@ -26,11 +26,11 @@ faq:
   - q: "Are the L2 numbers complete?"
     a: "Not yet. The figure for each Layer 2 reflects L2 execution cost only (the wallet visible gas price times 21000 gas times the ETH price). The L1 data posting fee (blob market for EIP 4844 rollups like Arbitrum, Optimism and Base after Dencun, calldata for the rest) is a separate component that varies block to block and is currently excluded. A blended total cost figure will ship in a later phase. For now use the L1 view for true wallet cost comparison, and read the L2 view as the execution component only."
   - q: "Which Layer 1 chain has the cheapest transaction fee right now?"
-    a: "Open the page. The leaderboard refreshes every 30 seconds and is sorted by cost. As a general pattern, Stellar, Avalanche, Litecoin, Solana, BNB Chain and TON cluster below one cent, Ethereum and Cardano around three to five cents, and TRON and Monero in the ten cent range. Sui sits in the low one cent range. Exact ordering depends on congestion and native token price at the moment of read."
+    a: "Open the page. The leaderboard refreshes every 30 seconds and is sorted by cost. As a general pattern, Stellar, Avalanche, Litecoin, Solana, BNB Chain and Gram cluster below one cent, Ethereum and Cardano around three to five cents, and TRON and Monero in the ten cent range. Sui sits in the low one cent range. Exact ordering depends on congestion and native token price at the moment of read."
   - q: "How often does the page refresh?"
     a: "Every 30 seconds. The harness re queries each chain's fee oracle and Mobula's price API on the same cadence, so headline values are at most 30 seconds stale plus chain RPC latency (typically under one second)."
   - q: "Why are some chains showing one tier instead of three?"
-    a: "Cardano fees are protocol deterministic. Stellar's base fee is 100 stroops per operation network wide. TON's typical fee is a conservative observed value because TON has no clean fee estimate RPC. TRON native transfers consume bandwidth at the published rate per byte. None of these chains expose a priority market a user can bid into for a TRX, ADA, XLM or TON transfer, so emitting a single tier is more honest than fabricating three identical values."
+    a: "Cardano fees are protocol deterministic. Stellar's base fee is 100 stroops per operation network wide. Gram's typical fee is a conservative observed value because the Gram chain has no clean fee estimate RPC. TRON native transfers consume bandwidth at the published rate per byte. None of these chains expose a priority market a user can bid into for a TRX, ADA, XLM or GRAM transfer, so emitting a single tier is more honest than fabricating three identical values."
   - q: "Can I cite a value from this page?"
     a: "Yes. Every number is a Prometheus query over a 24h window. The query string is shown in the row's hover tooltip. The harness source is open at the link in the source field below. Cite the value and the timestamp at the top of the page."
 
@@ -64,9 +64,9 @@ per_chain_explainer:
     body: |
       Sui native transfer fee is {{p50:sui}} (p50, 24h). Sui uses a reference-gas-price model where validators agree on a per-epoch gas price via DPoS auction; a `Coin::transfer` consumes around 76000 computation units, so the per-transfer cost stays in the sub-cent range even on busy epochs. Sui has separate computation and storage fees, with the latter rebated when objects are deleted. Computed via `suix_getReferenceGasPrice` times 76000 gas times SUI price.
   - slug: ton
-    h2: "TON transaction fee"
+    h2: "Gram transaction fee"
     body: |
-      TON native transfer fee is {{p50:ton}} (p50, 24h). TON has no clean fee-estimate RPC because its fee model uses a Bag-of-Cells emulation that accounts for storage, gas, forward and import fees separately per workchain and shard; a typical Wallet v4 transfer settles around 0.005 TON. We publish that conservative observed value times live TON price as a single deterministic tier.
+      Gram (formerly TON) native transfer fee is {{p50:ton}} (p50, 24h). The Gram chain has no clean fee-estimate RPC because its fee model uses a Bag-of-Cells emulation that accounts for storage, gas, forward and import fees separately per workchain and shard; a typical Wallet v4 transfer settles around 0.005 GRAM. We publish that conservative observed value times live GRAM price as a single deterministic tier.
   - slug: stellar
     h2: "Stellar transaction fee"
     body: |
@@ -145,7 +145,7 @@ methodology:
   - "Cardano. koios epoch_params.min_fee_a and min_fee_b, times 250 bytes for a typical native transfer. Deterministic by protocol, refreshes only when on chain parameters change."
   - "Stellar. horizon fee_stats.last_ledger_base_fee times 1 operation. Single tier."
   - "Sui. suix_getReferenceGasPrice times 76000 gas (typical observed for a Coin::transfer call). Single standard tier."
-  - "TON. Hardcoded 0.005 TON, the typical observed wallet v4 transfer. TON's fee model uses Bag of Cells emulation and has no clean fee estimate RPC."
+  - "Gram (formerly TON). Hardcoded 0.005 GRAM, the typical observed wallet v4 transfer. The Gram fee model uses Bag of Cells emulation and has no clean fee estimate RPC."
   - "Litecoin. litecoinspace.org /api/v1/fees/recommended (hour, half hour and fastest fees in litoshi per vByte) times 225 vBytes for a typical 1 input 1 output P2WPKH transfer."
   - "Monero. monero rpc get_fee_estimate.fees[0..2] times 1500 bytes for a typical 1 input 2 output RingCT transaction."
   - "USD prices. api.mobula.io/api/1/market/multi-data polled every 30 seconds for all 20 native tokens in one call."
@@ -266,10 +266,10 @@ providers:
       series: tx_fee_native_transfer_usd{chain="sui",tier="std"}
 
   - slug: ton
-    name: TON
+    name: Gram
     layer: l1
-    tag: Hardcoded 0.005 TON typical wallet v4 transfer
-    formula: "Conservative typical observed cost of a TON wallet transfer × TON USD price. TON has no fee estimate RPC; this is the observed median."
+    tag: Hardcoded 0.005 GRAM typical wallet v4 transfer
+    formula: "Conservative typical observed cost of a Gram (formerly TON) wallet transfer × GRAM USD price. Gram has no fee estimate RPC; this is the observed median."
     queries:
       p50: quantile_over_time(0.50, tx_fee_native_transfer_usd{chain="ton",tier="single"}[24h])
       p90: quantile_over_time(0.90, tx_fee_native_transfer_usd{chain="ton",tier="single"}[24h])

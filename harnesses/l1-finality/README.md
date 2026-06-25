@@ -18,7 +18,7 @@ This works for: **Ethereum, Solana, TRON, Stellar, Hedera, SUI, Litecoin, Monero
 
 For chains where finality is faster than our poll interval, comparing two pointers at one instant doesn't measure finalization time — it measures the gap-at-instant, which collapses to zero when finalization catches up to head. The honest path is to subscribe to a push stream, record `T1 = time.Now()` when block N is first observed, and `T2 = time.Now()` when N becomes finalized. `lag = T2 − T1`, with millisecond precision, independent of chain timestamp resolution.
 
-This works for: **BNB, Avalanche, TON**.
+This works for: **BNB, Avalanche, Gram**.
 
 ## Per-chain methodology
 
@@ -32,7 +32,7 @@ This works for: **BNB, Avalanche, TON**.
 | **Stellar** | HTTP poll | Horizon `/ledgers?order=desc&limit=2` | 1 ledger back (SCP-final) | Circle = 1, deterministic SCP |
 | **Hedera** | HTTP poll | Mirror `/api/v1/blocks?order=desc&limit=2` | 1 block back. Timestamps parsed at ns precision | Hashgraph aBFT deterministic |
 | **SUI** | HTTP poll | `sui_getLatestCheckpointSequenceNumber` + `sui_getCheckpoint` | 1 checkpoint back | Circle USDC = 1, Mysticeti finalizes in 1 |
-| **TON** | SSE wall-clock | `tonapi.io/v2/sse/blocks?workchain=-1` (masterchain only) | Time between consecutive masterchain blocks | TON docs: a tx is final once included in a masterchain block, so block_N is final when block_N+1 commits |
+| **Gram** | SSE wall-clock | `tonapi.io/v2/sse/blocks?workchain=-1` (masterchain only) | Time between consecutive masterchain blocks | Gram (formerly TON) docs: a tx is final once included in a masterchain block, so block_N is final when block_N+1 commits |
 | **Litecoin** | HTTP poll (probabilistic) | blockchair `/stats.best_block_height` and `/dashboards/block/{height}.block.time` | 12 confirmations | Coinbase deposit standard, post-April-2026 13-block MWEB reorg |
 | **Monero** | HTTP poll (probabilistic) | monero-rpc `get_info` + `get_block_header_by_height` (with cakewallet/sethforprivacy/monerujo failover) | 10 confirmations | Wallet protocol unlock period |
 | **Cardano** | HTTP poll (probabilistic) | koios `/tip` + `/blocks?block_height=eq.<height>` | 15 confirmations | Above Coinbase 10 / Kraken 15. Far below the academic k=2160 (~12 h) |
@@ -56,7 +56,7 @@ l1_finality_last_refresh_timestamp_seconds{chain}
 l1_finality_fetch_errors_total{chain, error_type}
 l1_finality_health{chain}                       # 1 if last sample succeeded
 
-# Wall-clock-measured chains (BNB, Avalanche, TON)
+# Wall-clock-measured chains (BNB, Avalanche, Gram)
 l1_finality_wallclock_lag_milliseconds{chain}        # ms-precise gauge
 l1_finality_wallclock_lag_milliseconds_histogram     # histogram for tail latency
 l1_finality_wallclock_health{chain}                  # 1 if WS/SSE connected
@@ -74,7 +74,7 @@ l1_finality_wallclock_samples_total{chain}           # cumulative count
 | Hedera | High | Hashgraph aBFT + ns-precision timestamps |
 | SUI | High | 1 checkpoint = Circle USDC standard |
 | Stellar | High | SCP deterministic, Circle = 1 |
-| TON | High (after SSE refactor) | tonapi `workchain=-1` SSE stream, ms-precise |
+| Gram | High (after SSE refactor) | tonapi `workchain=-1` SSE stream, ms-precise |
 | Cardano | Medium | 15-conf compromise between Coinbase 10 and Kraken 15. Academic k=2160 is theoretical; no actor uses it |
 | Litecoin | Medium | 12-conf post-April-2026 reorg; standard is evolving |
 | TRON | Medium | CEX confirmation counts vary 19–30; we use the 19-block protocol minimum |
@@ -106,7 +106,7 @@ Deploy from this directory. No required env vars — public defaults work. Optio
 | `REFRESH_INTERVAL_SECONDS` | HTTP-poll cadence | Default 10, min 5. Doesn't affect WS-measured chains |
 | `LOGS_TOKEN` | Bearer token gating `/logs` | Optional |
 
-The WS/SSE subscribers connect with hard-coded public endpoints (publicnode for BNB/Avalanche, tonapi.io for TON) — no auth required.
+The WS/SSE subscribers connect with hard-coded public endpoints (publicnode for BNB/Avalanche, tonapi.io for Gram) — no auth required.
 
 ## Adding a chain
 
@@ -118,7 +118,7 @@ The WS/SSE subscribers connect with hard-coded public endpoints (publicnode for 
 
 ### Wall-clock-measured chain
 
-1. Add a goroutine that maintains the WS/SSE subscription. See `evm_ws.go` (BNB/Avalanche) or `ton_ws.go` (TON) for the pattern.
+1. Add a goroutine that maintains the WS/SSE subscription. See `evm_ws.go` (BNB/Avalanche) or `ton_ws.go` (Gram) for the pattern. The file is still named `ton_ws.go` after the chain's pre-rebrand identifier; rename safely once the harness is redeployed.
 2. Record `firstSeen[height] = time.Now()` on each new-block event.
 3. On finality observation (either an explicit finalized-tag advance or "next block referenced this one"), emit the lag via `wallClockLagGauge.WithLabelValues(slug).Set(lagMs)`.
 4. Don't add the chain to the polled `Chains` config list — wall-clock chains run as separate goroutines.
