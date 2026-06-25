@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { Benchmark } from "@/types/benchmark";
+import type { BenchmarkCardData } from "@/data/benchmarks";
 import { Hint } from "@/components/hint";
 import { MiniChart } from "@/components/mini-chart";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
@@ -11,8 +11,12 @@ import { fmtValue, unitSuffix } from "@/lib/format";
  * MiniChart preview, and a 3-column footer (providers / samples / updated).
  * Drafts render the same skeleton with an "Awaiting first run" placeholder
  * in place of the chart and an em-dash where the headline number would be.
+ *
+ * Prop is the slim `BenchmarkCardData` projection, not the full
+ * Benchmark. Keeps the RSC payload for `/benchmarks` to the fields the
+ * card actually reads.
  */
-export function BenchmarkCard({ benchmark }: { benchmark: Benchmark }) {
+export function BenchmarkCard({ benchmark }: { benchmark: BenchmarkCardData }) {
   const b = benchmark;
   const isDraft = b.status === "draft";
   const catColor = CATEGORY_COLOR[b.category] ?? "var(--color-ink-muted)";

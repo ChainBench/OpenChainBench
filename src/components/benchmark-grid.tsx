@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { LayoutGrid, List, Search } from "lucide-react";
-import type { Benchmark } from "@/types/benchmark";
+import type { BenchmarkCardData } from "@/data/benchmarks";
 import { BenchmarkCard } from "@/components/benchmark-card";
 import { categorySlugFromLabel } from "@/lib/categories";
 
@@ -30,7 +30,7 @@ export function BenchmarkGrid({
   lockedCategory = null,
   allCategories,
 }: {
-  benchmarks: Benchmark[];
+  benchmarks: BenchmarkCardData[];
   /** When set, force the grid to this category. The pill row still
    *  renders so users can jump to other category hubs via the same UI
    *  they had on the /benchmarks root. */

@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import type { Benchmark } from "@/types/benchmark";
 import { buildProviderColors } from "@/lib/series-colors";
 
 /**
@@ -7,10 +6,21 @@ import { buildProviderColors } from "@/lib/series-colors";
  * full TimeSeriesChart on the bench detail page. every provider gets a
  * line in their signature color. but stripped of axes, hover and tabs.
  * Reads `series24h` from the benchmark's `extras` payload.
+ *
+ * Structural prop type: accepts the full `Benchmark` (home table) and
+ * the slim `BenchmarkCardData` projection (hub grid) so the hub doesn't
+ * need to ship the full Benchmark shape (series7d, series30d,
+ * metricPanels, editorial copy, ...) per card in the RSC payload.
  */
 
+type MiniChartBenchmark = {
+  results: { slug: string; name: string; ms: { p50: number } }[];
+  higherIsBetter: boolean;
+  extras: { series24h: Record<string, number[]> };
+};
+
 type Props = {
-  benchmark: Benchmark;
+  benchmark: MiniChartBenchmark;
   /** Internal viewBox width used for path math. Visual width is 100% of parent. */
   viewBoxWidth?: number;
   height?: number;
