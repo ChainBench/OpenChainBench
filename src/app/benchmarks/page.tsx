@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getBenchmarksSafe } from "@/data/benchmarks";
+import { getBenchmarksSafe, toBenchmarkCardData } from "@/data/benchmarks";
 import { BenchmarkGrid } from "@/components/benchmark-grid";
 import { safeJsonLd } from "@/lib/jsonld";
 
@@ -86,7 +86,7 @@ export default async function BenchmarksPage() {
           {DESCRIPTION}
         </p>
       </header>
-      <BenchmarkGrid benchmarks={benchmarks} />
+      <BenchmarkGrid benchmarks={benchmarks.map(toBenchmarkCardData)} />
     </article>
   );
 }

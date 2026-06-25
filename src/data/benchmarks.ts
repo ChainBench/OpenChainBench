@@ -25,6 +25,63 @@ export type {
 } from "@/types/benchmark";
 
 /**
+ * Card-shaped projection used by the hub grid and category pages. The
+ * full Benchmark object carries ~30 fields per bench (extras.series7d,
+ * series30d, seriesByRegion*, metricPanels, methodology, abstract, faq,
+ * findings, perChainExplainer, seoIntro, bestPerChain, worstPerChain,
+ * cellRanks, providersPerChain, ...) that the card never reads. Passing
+ * the full shape to `<BenchmarkGrid />` (a client component) baked the
+ * whole thing into the RSC payload — 3.2 MB of HTML for 37 cards, which
+ * is what made `/benchmarks` feel like an 8 s page even though the
+ * server TTFB is sub-second.
+ *
+ * Project once at the page boundary so the wire payload only carries
+ * what the card + the grid's search/filter use.
+ */
+export type BenchmarkCardData = {
+  slug: string;
+  title: string;
+  subtitle: string;
+  category: Benchmark["category"];
+  status: Benchmark["status"];
+  unit: Benchmark["unit"];
+  higherIsBetter: boolean;
+  sampleSize: number;
+  lastRunAt: string;
+  metric: string;
+  results: {
+    slug: string;
+    name: string;
+    ms: { p50: number };
+  }[];
+  extras: { series24h: Record<string, number[]> };
+};
+
+/** Strip a Benchmark to the fields the hub card actually renders. Keeps
+ *  `results` in its original sort order so the card's own sort
+ *  (best-leader heuristic) stays correct. */
+export function toBenchmarkCardData(b: Benchmark): BenchmarkCardData {
+  return {
+    slug: b.slug,
+    title: b.title,
+    subtitle: b.subtitle,
+    category: b.category,
+    status: b.status,
+    unit: b.unit,
+    higherIsBetter: b.higherIsBetter,
+    sampleSize: b.sampleSize,
+    lastRunAt: b.lastRunAt,
+    metric: b.metric,
+    results: b.results.map((r) => ({
+      slug: r.slug,
+      name: r.name,
+      ms: { p50: r.ms.p50 },
+    })),
+    extras: { series24h: b.extras?.series24h ?? {} },
+  };
+}
+
+/**
  * Strict loader. Throws AllBenchmarksDraftError when every bench has
  * collapsed to draft (Prom blackout, cold start with no KV snapshot).
  * Use this in API endpoints, feeds, and crons that should return 503
