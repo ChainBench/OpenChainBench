@@ -30,6 +30,11 @@ const PRODUCT_ALIASES: Record<string, string> = {
   // Sub-products → parent brand
   "helius-sender": "helius",
   "publicnode-feehistory": "publicnode",
+  // TON → Gram rebrand (June 2026). Stale inbound references to slug
+  // "ton" resolve to canonical "gram" so older links, search hits, and
+  // any external citation that still says ton/Toncoin lands on the
+  // correct page.
+  ton: "gram",
   // Chain official RPC → chain brand
   "arbitrum-official": "arbitrum",
   "avalanche-official": "avalanche",
@@ -76,6 +81,12 @@ const CANONICAL_NAMES: Record<string, string> = {
   coinpaprika: "CoinPaprika",
   coingecko: "CoinGecko",
   coinstats: "CoinStats",
+  // Gram (formerly Toncoin). Without explicit casing, the title-case
+  // fallback would render the slug-renamed entry as "Gram" already, but
+  // the API surface for TonAPI (the provider, NOT the chain) keeps its
+  // brand casing.
+  gram: "Gram",
+  tonapi: "TonAPI",
 };
 
 function titleCaseSlug(s: string): string {

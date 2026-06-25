@@ -344,7 +344,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Move-based L1 using Mysticeti BFT consensus over a DAG. Owned-object transactions bypass consensus via Fast Path. Deterministic finality under one second.",
     twitter: "@SuiNetwork",
   },
-  ton: {
+  gram: {
     url: "https://ton.org",
     description:
       "Gram (formerly Toncoin, ticker renamed to GRAM in June 2026). BFT Proof-of-Stake L1 with a sharded masterchain and workchain architecture. Deterministic finality within a few seconds. Block time near 5 seconds.",
