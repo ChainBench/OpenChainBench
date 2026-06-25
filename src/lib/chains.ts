@@ -14,6 +14,12 @@
 import { cache } from "react";
 import { getBenchmarksSafe } from "@/data/benchmarks";
 import type { Benchmark } from "@/types/benchmark";
+import {
+  CHAIN_SLUG_ALIASES,
+  canonicalChainSlug,
+} from "@/lib/chain-aliases";
+
+export { CHAIN_SLUG_ALIASES, canonicalChainSlug };
 
 export type ChainCategory = "L1" | "L2";
 
@@ -207,43 +213,14 @@ export const CHAINS: ChainEntry[] = [
 
 export const CHAIN_BY_SLUG = new Map(CHAINS.map((c) => [c.slug, c]));
 
-/**
- * Legacy chain slugs that should resolve to a current canonical chain.
- *
- * Necessary because a slug rename (e.g. TON token rebrand to Gram in
- * June 2026) leaves stale identifiers in three places that don't all
- * roll over at the same time:
- *   - YAML provider entries that haven't been edited yet
- *   - Cached Benchmark snapshots in Upstash KV (populated by the
- *     materialize worker before the rename, results[].slug = old)
- *   - Harness Prom labels still emitting the old chain label
- *
- * `getBenchmarksForChain` honours these aliases so the new canonical
- * /chains/<gram> URL still surfaces benches whose results[].slug is the
- * old "ton" until everything downstream catches up. ChainHeadingsSummary
- * and any other component reading r.slug uses `chainLabelForSlug` to
- * resolve the alias to the registry's display label, so a stale "TON"
- * row reads as "Gram" anywhere the chain registry can override it.
- *
- * Add a new alias when a chain rebrands; remove an alias once the
- * caches and harnesses have rotated past it.
- */
-export const CHAIN_SLUG_ALIASES: Record<string, string> = {
-  ton: "gram",
-};
-
-/** Map any slug to its canonical chain slug. Identity for known slugs,
- *  resolves a legacy slug to its current canonical via CHAIN_SLUG_ALIASES,
- *  returns the input lowercased for anything unknown. */
-export function canonicalChainSlug(slug: string): string {
-  const lc = slug.toLowerCase();
-  return CHAIN_SLUG_ALIASES[lc] ?? lc;
-}
-
 /** Display label for a slug, resolving aliases against the chain
  *  registry. Returns null when neither the canonical nor the raw slug
  *  is registered, so callers can fall back to whatever local data they
- *  have (e.g. the bench result's own name field). */
+ *  have (e.g. the bench result's own name field). Lives here (not in
+ *  chain-aliases.ts) because it depends on the CHAIN_BY_SLUG registry
+ *  which IS in this module. Callers inside the spec/data layer that
+ *  would create a circular import should use `canonicalChainSlug`
+ *  from `@/lib/chain-aliases` directly. */
 export function chainLabelForSlug(slug: string): string | null {
   const canon = canonicalChainSlug(slug);
   return CHAIN_BY_SLUG.get(canon)?.label ?? null;

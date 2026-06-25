@@ -13,7 +13,11 @@ import { cache } from "react";
 import { unstable_cache } from "next/cache";
 import type { Benchmark } from "@/types/benchmark";
 import type { Spec } from "@/lib/spec-schema";
-import { canonicalChainSlug } from "@/lib/chains";
+// Imported from the isolated alias module (NOT @/lib/chains) to avoid
+// a circular import: chains.ts → @/data/benchmarks → @/lib/spec. The
+// cycle fails at module-eval time with "Cannot access 'X' before
+// initialization" because both ends touch each other during ESM load.
+import { canonicalChainSlug } from "@/lib/chain-aliases";
 import { renderBenchmarkText } from "@/lib/bench-template";
 import {
   buildEditorial,
