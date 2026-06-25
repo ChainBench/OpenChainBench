@@ -78,9 +78,11 @@ providers:
   - slug: binance
     name: Binance
     tag: Largest CEX perp book, 8h funding (4h on some pairs)
-    formula: "stddev_over_time of perp_funding_hold_24h_bps{venue=\"binance\",asset=\"ETH\"} over a 24h window."
+    formula: "stddev_over_time of perp_funding_hold_24h_bps{venue=\"binance\",asset=\"ETH\"} over a 24h window. p90/p99 columns reuse the same query on BTC and SOL to stay within the standard provider shape."
     queries:
       p50: stddev_over_time(perp_funding_hold_24h_bps{venue="binance",asset="ETH"}[24h])
+      p90: stddev_over_time(perp_funding_hold_24h_bps{venue="binance",asset="BTC"}[24h])
+      p99: stddev_over_time(perp_funding_hold_24h_bps{venue="binance",asset="SOL"}[24h])
       mean: stddev_over_time(perp_funding_hold_24h_bps{venue="binance",asset="ETH"}[24h])
       success: (perp_funding_venue_ok_unix{venue="binance"} > bool (time() - 300))
       sample_size: count_over_time(perp_funding_hold_24h_bps{venue="binance",asset="ETH"}[24h])
@@ -89,9 +91,11 @@ providers:
   - slug: okx
     name: OKX
     tag: USDT swaps, interval derived from settlement timestamps
-    formula: "stddev_over_time of perp_funding_hold_24h_bps{venue=\"okx\",asset=\"ETH\"} over a 24h window."
+    formula: "stddev_over_time of perp_funding_hold_24h_bps{venue=\"okx\",asset=\"ETH\"} over a 24h window. p90/p99 columns reuse the same query on BTC and SOL to stay within the standard provider shape."
     queries:
       p50: stddev_over_time(perp_funding_hold_24h_bps{venue="okx",asset="ETH"}[24h])
+      p90: stddev_over_time(perp_funding_hold_24h_bps{venue="okx",asset="BTC"}[24h])
+      p99: stddev_over_time(perp_funding_hold_24h_bps{venue="okx",asset="SOL"}[24h])
       mean: stddev_over_time(perp_funding_hold_24h_bps{venue="okx",asset="ETH"}[24h])
       success: (perp_funding_venue_ok_unix{venue="okx"} > bool (time() - 300))
       sample_size: count_over_time(perp_funding_hold_24h_bps{venue="okx",asset="ETH"}[24h])
@@ -100,9 +104,11 @@ providers:
   - slug: paradex
     name: Paradex
     tag: Starknet L2 perps, 8h funding accrued continuously
-    formula: "stddev_over_time of perp_funding_hold_24h_bps{venue=\"paradex\",asset=\"ETH\"} over a 24h window."
+    formula: "stddev_over_time of perp_funding_hold_24h_bps{venue=\"paradex\",asset=\"ETH\"} over a 24h window. p90/p99 columns reuse the same query on BTC and SOL to stay within the standard provider shape."
     queries:
       p50: stddev_over_time(perp_funding_hold_24h_bps{venue="paradex",asset="ETH"}[24h])
+      p90: stddev_over_time(perp_funding_hold_24h_bps{venue="paradex",asset="BTC"}[24h])
+      p99: stddev_over_time(perp_funding_hold_24h_bps{venue="paradex",asset="SOL"}[24h])
       mean: stddev_over_time(perp_funding_hold_24h_bps{venue="paradex",asset="ETH"}[24h])
       success: (perp_funding_venue_ok_unix{venue="paradex"} > bool (time() - 300))
       sample_size: count_over_time(perp_funding_hold_24h_bps{venue="paradex",asset="ETH"}[24h])
@@ -111,9 +117,11 @@ providers:
   - slug: aster
     name: Aster
     tag: BNB Chain perps DEX, Binance compatible API, 8h funding
-    formula: "stddev_over_time of perp_funding_hold_24h_bps{venue=\"aster\",asset=\"ETH\"} over a 24h window."
+    formula: "stddev_over_time of perp_funding_hold_24h_bps{venue=\"aster\",asset=\"ETH\"} over a 24h window. p90/p99 columns reuse the same query on BTC and SOL to stay within the standard provider shape."
     queries:
       p50: stddev_over_time(perp_funding_hold_24h_bps{venue="aster",asset="ETH"}[24h])
+      p90: stddev_over_time(perp_funding_hold_24h_bps{venue="aster",asset="BTC"}[24h])
+      p99: stddev_over_time(perp_funding_hold_24h_bps{venue="aster",asset="SOL"}[24h])
       mean: stddev_over_time(perp_funding_hold_24h_bps{venue="aster",asset="ETH"}[24h])
       success: (perp_funding_venue_ok_unix{venue="aster"} > bool (time() - 300))
       sample_size: count_over_time(perp_funding_hold_24h_bps{venue="aster",asset="ETH"}[24h])
