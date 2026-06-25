@@ -108,9 +108,16 @@ prometheus:
   window: 24h
   expected_freshness_seconds: 300
 
-rank_matrix_query: 1000 * label_replace(histogram_quantile(0.50, sum by (venue, region, le) (rate(pmapi_request_duration_seconds_bucket{source="direct",conn="warm",class="price",cache!="hit"}[24h]))), "provider", "$1", "venue", "(.+)")
+rank_matrix_query: 1000 * label_replace(histogram_quantile(0.50, sum by (venue, region, le) (rate(pmapi_request_duration_seconds_bucket{source="direct",venue=~"polymarket|kalshi|limitless|manifold|myriad",conn="warm",class="price",cache!="hit"}[24h]))), "provider", "$1", "venue", "(.+)")
 
 dimensions:
+  venue:
+    - { value: all, label: All venues }
+    - { value: polymarket, label: Polymarket }
+    - { value: kalshi, label: Kalshi }
+    - { value: limitless, label: Limitless }
+    - { value: manifold, label: Manifold }
+    - { value: myriad, label: Myriad }
   region:
     - { value: all, label: All regions }
     - { value: us-east, label: US East }
@@ -121,21 +128,21 @@ metric_panels:
   - id: uptime_24h
     label: Uptime 24h
     description: "Share of probe cycles that succeeded over the last 24 hours, averaged across the three probe regions. 100 percent means every 5 second probe of the venue's API came back healthy."
-    metric: 100 * avg(avg_over_time(pmapi_health{source="direct"}[24h]))
+    metric: 100 * avg(avg_over_time(pmapi_health{source="direct",venue=~"polymarket|kalshi|limitless|manifold|myriad"}[24h]))
     label_key: venue
     unit: pct
     higher_is_better: true
   - id: uptime_7d
     label: Uptime 7d
     description: "Same health gauge averaged over 7 days. Short outages that vanish from the 24h figure stay visible here for a week."
-    metric: 100 * avg(avg_over_time(pmapi_health{source="direct"}[7d]))
+    metric: 100 * avg(avg_over_time(pmapi_health{source="direct",venue=~"polymarket|kalshi|limitless|manifold|myriad"}[7d]))
     label_key: venue
     unit: pct
     higher_is_better: true
   - id: uptime_30d
     label: Uptime 30d
     description: "Same health gauge averaged over 30 days. Feeds the ledger's 30d window toggle so a one-hour outage that's already aged out of the 24h panel still shows up in the table over a month."
-    metric: 100 * avg(avg_over_time(pmapi_health{source="direct"}[30d]))
+    metric: 100 * avg(avg_over_time(pmapi_health{source="direct",venue=~"polymarket|kalshi|limitless|manifold|myriad"}[30d]))
     label_key: venue
     unit: pct
     higher_is_better: true
@@ -143,7 +150,7 @@ metric_panels:
   - id: cold_connect_p50
     label: Cold connect
     description: "TCP plus TLS handshake time on the once a minute cold probe with keep alives disabled. The startup cost a brand new client pays before its first request."
-    metric: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_connect_seconds_bucket{source="direct"}[24h])) by (le))
+    metric: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_connect_seconds_bucket{source="direct",venue=~"polymarket|kalshi|limitless|manifold|myriad"}[24h])) by (le))
     label_key: venue
     unit: ms
     higher_is_better: false
