@@ -11,10 +11,12 @@ import (
 	"time"
 )
 
-// TON wall-clock finality measurement via tonapi.io SSE stream.
+// Gram (formerly TON) wall-clock finality measurement via tonapi.io SSE stream.
+// Function/type names and the TON_API_KEY env var keep their pre-rebrand
+// identifiers so the deployed harness keeps booting without ops coordination.
 //
 // The tonapi `/v2/sse/blocks?workchain=-1` endpoint pushes one event per
-// masterchain block (~0.4-0.7 s cadence). Per the TON payment-processor
+// masterchain block (~0.4-0.7 s cadence). Per the Gram (formerly TON) payment-processor
 // docs, "a transaction is finalized once included in a masterchain
 // block" — so the wall-clock interval between block N and block N+1 is
 // the time the network needs to finalize block N. Recording the first
@@ -38,7 +40,7 @@ type tonSSEMessage struct {
 	FileHash  string `json:"file_hash"`
 }
 
-// StartTONWallClock launches a persistent SSE subscriber for TON
+// StartTONWallClock launches a persistent SSE subscriber for Gram (formerly TON)
 // masterchain. Reconnects with exponential backoff on error. When the
 // SSE stream is unavailable (tonapi gated it behind auth in 2026-06 and
 // deprecated it in favor of webhooks), falls back to fast-polling the
@@ -90,7 +92,7 @@ func pollTONWallClock(window time.Duration) {
 			wallClockHealth.WithLabelValues("ton").Set(1)
 			healthy = true
 		}
-		// Cap at 2 s in poll mode: TON masterchain cadence is 0.4-0.7 s,
+		// Cap at 2 s in poll mode: Gram masterchain cadence is 0.4-0.7 s,
 		// so a multi-second "lag" here is poll aliasing (429 backoff
 		// stretching the cadence), not finality. Observed pre-cap: 10.6 s
 		// garbage samples polluting the 24h histogram.

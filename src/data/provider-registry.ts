@@ -304,7 +304,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   tonapi: {
     url: "https://tonapi.io",
     description:
-      "REST API for the TON blockchain. Returns account metadata, known entity names, and address book labels for TON wallets.",
+      "REST API for the Gram (TON) blockchain. Returns account metadata, known entity names, and address book labels for Gram wallets.",
     twitter: "@tonapi_io",
   },
   stellarexpert: {
@@ -347,7 +347,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   ton: {
     url: "https://ton.org",
     description:
-      "BFT Proof-of-Stake L1 with a sharded masterchain and workchain architecture. Deterministic finality within a few seconds. Block time near 5 seconds.",
+      "Gram (formerly Toncoin, ticker renamed to GRAM in June 2026). BFT Proof-of-Stake L1 with a sharded masterchain and workchain architecture. Deterministic finality within a few seconds. Block time near 5 seconds.",
     twitter: "@ton_blockchain",
   },
   stellar: {

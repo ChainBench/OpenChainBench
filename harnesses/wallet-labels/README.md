@@ -15,7 +15,7 @@ Emits Prometheus metrics consumed by openchainbench.com.
 | Helius | API key | Solana |
 | Blockscout | none | ethereum, base, optimism, polygon, gnosis |
 | OLI (Open Labels Initiative) | none | EVM via Base EAS |
-| TonAPI | none | TON |
+| TonAPI | none | Gram (formerly TON) |
 | StellarExpert | none | Stellar |
 | XRPScan | none | XRP |
 | WalletExplorer | none | Bitcoin |
