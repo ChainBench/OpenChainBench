@@ -63,10 +63,10 @@ per_chain_explainer:
     h2: "Sui transaction fee"
     body: |
       Sui native transfer fee is {{p50:sui}} (p50, 24h). Sui uses a reference-gas-price model where validators agree on a per-epoch gas price via DPoS auction; a `Coin::transfer` consumes around 76000 computation units, so the per-transfer cost stays in the sub-cent range even on busy epochs. Sui has separate computation and storage fees, with the latter rebated when objects are deleted. Computed via `suix_getReferenceGasPrice` times 76000 gas times SUI price.
-  - slug: ton
+  - slug: gram
     h2: "Gram transaction fee"
     body: |
-      Gram (formerly TON) native transfer fee is {{p50:ton}} (p50, 24h). The Gram chain has no clean fee-estimate RPC because its fee model uses a Bag-of-Cells emulation that accounts for storage, gas, forward and import fees separately per workchain and shard; a typical Wallet v4 transfer settles around 0.005 GRAM. We publish that conservative observed value times live GRAM price as a single deterministic tier.
+      Gram (formerly TON) native transfer fee is {{p50:gram}} (p50, 24h). The Gram chain has no clean fee-estimate RPC because its fee model uses a Bag-of-Cells emulation that accounts for storage, gas, forward and import fees separately per workchain and shard; a typical Wallet v4 transfer settles around 0.005 GRAM. We publish that conservative observed value times live GRAM price as a single deterministic tier.
   - slug: stellar
     h2: "Stellar transaction fee"
     body: |
@@ -265,18 +265,21 @@ providers:
       success: avg_over_time(tx_fee_health{chain="sui"}[24h])
       series: tx_fee_native_transfer_usd{chain="sui",tier="std"}
 
-  - slug: ton
+  - slug: gram
     name: Gram
     layer: l1
     tag: Hardcoded 0.005 GRAM typical wallet v4 transfer
     formula: "Conservative typical observed cost of a Gram (formerly TON) wallet transfer × GRAM USD price. Gram has no fee estimate RPC; this is the observed median."
+    # Straddle the ton/gram chain label during the harness relabel
+    # window. The harness Railway service currently emits chain="ton";
+    # the regex keeps matching once it redeploys with chain="gram".
     queries:
-      p50: quantile_over_time(0.50, tx_fee_native_transfer_usd{chain="ton",tier="single"}[24h])
-      p90: quantile_over_time(0.90, tx_fee_native_transfer_usd{chain="ton",tier="single"}[24h])
-      p99: quantile_over_time(0.99, tx_fee_native_transfer_usd{chain="ton",tier="single"}[24h])
-      mean: avg_over_time(tx_fee_native_transfer_usd{chain="ton",tier="single"}[24h])
-      success: avg_over_time(tx_fee_health{chain="ton"}[24h])
-      series: tx_fee_native_transfer_usd{chain="ton",tier="single"}
+      p50: quantile_over_time(0.50, tx_fee_native_transfer_usd{chain=~"ton|gram",tier="single"}[24h])
+      p90: quantile_over_time(0.90, tx_fee_native_transfer_usd{chain=~"ton|gram",tier="single"}[24h])
+      p99: quantile_over_time(0.99, tx_fee_native_transfer_usd{chain=~"ton|gram",tier="single"}[24h])
+      mean: avg_over_time(tx_fee_native_transfer_usd{chain=~"ton|gram",tier="single"}[24h])
+      success: avg_over_time(tx_fee_health{chain=~"ton|gram"}[24h])
+      series: tx_fee_native_transfer_usd{chain=~"ton|gram",tier="single"}
 
   - slug: stellar
     name: Stellar

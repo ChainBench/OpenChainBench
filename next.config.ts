@@ -131,7 +131,7 @@ const nextConfig: NextConfig = {
       "bnb",
       "avalanche",
       "sui",
-      "ton",
+      "gram",
       "stellar",
       "tron",
       "cardano",
@@ -161,6 +161,26 @@ const nextConfig: NextConfig = {
       {
         source: "/benchmarks/rpc-latency",
         destination: "/benchmarks/rpc-capabilities",
+        permanent: true,
+      },
+      // TON → Gram token rebrand (June 2026). Chain slug renamed
+      // ton → gram across CHAINS, PROVIDER_REGISTRY, per_chain_explainer
+      // and bench provider entries. Pin permanent 308 redirects from the
+      // old paths so inbound links + Google SERP entries land on the new
+      // canonical without losing rank signal.
+      {
+        source: "/chains/ton",
+        destination: "/chains/gram",
+        permanent: true,
+      },
+      {
+        source: "/products/ton",
+        destination: "/chains/gram",
+        permanent: true,
+      },
+      {
+        source: "/benchmarks/:slug/ton",
+        destination: "/benchmarks/:slug/gram",
         permanent: true,
       },
       ...chainRedirects,
