@@ -182,6 +182,20 @@ export default async function RootLayout({
           // biome-ignore lint/security/noDangerouslySetInnerHtml: serialized via safeJsonLd
           dangerouslySetInnerHTML={{ __html: safeJsonLd(ORG_JSONLD) }}
         />
+        {/* Ahrefs Web Analytics. Privacy-friendly (no cookies, no PII),
+            loaded async so it never blocks paint. Key is exposed at
+            NEXT_PUBLIC_AHREFS_KEY so it ships with the static bundle
+            (the key is public by design — it identifies the property,
+            not an account secret). Skipped entirely when env unset so
+            staging/preview deploys do not pollute the analytics graph. */}
+        {process.env.NEXT_PUBLIC_AHREFS_KEY && (
+          // eslint-disable-next-line @next/next/no-sync-scripts
+          <script
+            src="https://analytics.ahrefs.com/analytics.js"
+            data-key={process.env.NEXT_PUBLIC_AHREFS_KEY}
+            async
+          />
+        )}
       </head>
       {/* grid (not flex) so position: sticky on <SiteHeader> works reliably
           on iOS Safari — sticky inside a flex column has known quirks.
