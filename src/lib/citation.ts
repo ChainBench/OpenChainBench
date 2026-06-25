@@ -38,7 +38,17 @@ import { fmtUnit } from "@/lib/format";
  *  - Use this predicate BEFORE deriving leader / fieldValue / headline
  *    for any externally-visible surface.
  */
-export function isInsufficient(b: Benchmark): boolean {
+/** Structural subset accepted by `isInsufficient`. Lets the hub card
+ *  call this with the slim BenchmarkCardData shape (which omits the
+ *  full Benchmark fields the predicate does not read) without breaking
+ *  the existing full-Benchmark call sites. */
+export type InsufficientCheckInput = {
+  editorialStatus: Benchmark["editorialStatus"];
+  status: Benchmark["status"];
+  results: { ms: { p50: number }; availability?: "live" | "unavailable" }[];
+};
+
+export function isInsufficient(b: InsufficientCheckInput): boolean {
   if (b.editorialStatus !== "live") return true;
   if (b.status !== "live") return true;
   // Note: do NOT key on b.sampleSize === 0. The aggregator loader can
@@ -47,7 +57,9 @@ export function isInsufficient(b: Benchmark): boolean {
   // benches as insufficient on /api/citable while /api/stat returned
   // live values for the same slug. The liveResults length and p50
   // finiteness checks below already catch the genuine empty case.
-  const live = liveResults(b.results);
+  const live = b.results.filter(
+    (r) => r.availability !== "unavailable" && r.ms.p50 > 0,
+  );
   if (live.length === 0) return true;
   return live.every((r) => !Number.isFinite(r.ms.p50) || r.ms.p50 <= 0);
 }

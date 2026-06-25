@@ -44,6 +44,7 @@ export type BenchmarkCardData = {
   subtitle: string;
   category: Benchmark["category"];
   status: Benchmark["status"];
+  editorialStatus: Benchmark["editorialStatus"];
   unit: Benchmark["unit"];
   higherIsBetter: boolean;
   sampleSize: number;
@@ -52,6 +53,7 @@ export type BenchmarkCardData = {
   results: {
     slug: string;
     name: string;
+    availability?: "live" | "unavailable";
     ms: { p50: number };
   }[];
   extras: { series24h: Record<string, number[]> };
@@ -67,6 +69,7 @@ export function toBenchmarkCardData(b: Benchmark): BenchmarkCardData {
     subtitle: b.subtitle,
     category: b.category,
     status: b.status,
+    editorialStatus: b.editorialStatus,
     unit: b.unit,
     higherIsBetter: b.higherIsBetter,
     sampleSize: b.sampleSize,
@@ -75,6 +78,7 @@ export function toBenchmarkCardData(b: Benchmark): BenchmarkCardData {
     results: b.results.map((r) => ({
       slug: r.slug,
       name: r.name,
+      availability: r.availability,
       ms: { p50: r.ms.p50 },
     })),
     extras: { series24h: b.extras?.series24h ?? {} },
