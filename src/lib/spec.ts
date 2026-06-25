@@ -13,6 +13,7 @@ import { cache } from "react";
 import { unstable_cache } from "next/cache";
 import type { Benchmark } from "@/types/benchmark";
 import type { Spec } from "@/lib/spec-schema";
+import { canonicalChainSlug } from "@/lib/chains";
 import { renderBenchmarkText } from "@/lib/bench-template";
 import {
   buildEditorial,
@@ -71,8 +72,28 @@ async function benchFromStore(
  * untouched.
  */
 function overlayEditorial(stored: Benchmark, spec: Spec): Benchmark {
+  // Reconcile stale provider entries in the stored snapshot against the
+  // current spec. The materialize worker may have written a snapshot
+  // BEFORE a chain rename rolled through the YAMLs (e.g. ton → gram).
+  // For each stored result whose slug is a known legacy alias, look up
+  // the spec provider for the canonical slug and rewrite the result's
+  // `slug` + `name` so downstream surfaces (leaderboard table, chain
+  // hub matching, search dialog) read the new identity without having
+  // to wait on the worker's next sweep.
+  const providerByCanonSlug = new Map(
+    (spec.providers ?? []).map((p) => [canonicalChainSlug(p.slug), p]),
+  );
+  const reconciledResults = stored.results.map((r) => {
+    const canon = canonicalChainSlug(r.slug);
+    if (canon === r.slug) return r;
+    const specProvider = providerByCanonSlug.get(canon);
+    if (!specProvider) return r;
+    return { ...r, slug: canon, name: specProvider.name };
+  });
+
   const overlaid: Benchmark = {
     ...stored,
+    results: reconciledResults,
     seoTitle: spec.seo_title ?? stored.seoTitle,
     seoDescription: spec.seo_description ?? stored.seoDescription,
     seoIntro: spec.seo_intro ?? stored.seoIntro,
@@ -195,7 +216,12 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // in client RSC payload + leaked via /api/citable → search dialog
   // description previews). Bump so the next read regenerates through
   // the wider resolver.
-  ["bench-unfiltered-v12"],
+  // v13: overlayEditorial now reconciles stale provider slugs in stored
+  // snapshots against the current spec (e.g. legacy "ton" → canonical
+  // "gram" after the June 2026 rebrand). Without bumping, a v12 entry
+  // would keep serving result.slug = "ton" + result.name = "TON" until
+  // the materialize worker rewrites the snapshot.
+  ["bench-unfiltered-v13"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -323,7 +349,10 @@ const loadAllBenchmarksCached = unstable_cache(
   // coverage, search-bar PR). Without bumping this, products / citable /
   // sitemap surfaces would keep serving v15 benches with raw
   // `{{best_name}}` in seoDescription for up to 300s after deploy.
-  ["all-benchmarks-v16"],
+  // v17: bumped with bench-unfiltered-v13 (slug reconciliation in
+  // overlayEditorial). Without this, /api/citable and the products
+  // page would keep serving v16 benches with stale "ton" results.
+  ["all-benchmarks-v17"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);

@@ -2,6 +2,10 @@ import Link from "next/link";
 import type { Benchmark } from "@/types/benchmark";
 import { liveResults } from "@/lib/provider-filters";
 import { fmtUnit } from "@/lib/format";
+import {
+  canonicalChainSlug,
+  chainLabelForSlug,
+} from "@/lib/chains";
 
 /**
  * Server-rendered per-provider H2 block. Each chain on a chain-shaped
@@ -35,11 +39,14 @@ export function ChainHeadingsSummary({ benchmark }: { benchmark: Benchmark }) {
     benchmark.higherIsBetter ? b.ms.p50 - a.ms.p50 : a.ms.p50 - b.ms.p50
   );
 
-  // Look up per-chain explainer by slug. Map for O(1) access from the
-  // sort loop. When present, the slug's body is rendered as a second
-  // paragraph below the live p50 line.
+  // Look up per-chain explainer by slug. Keyed by canonical slug so a
+  // stale result.slug ("ton") still finds the renamed explainer ("gram")
+  // during a rebrand transition.
   const explainerBySlug = new Map(
-    (benchmark.perChainExplainer ?? []).map((e) => [e.slug, e])
+    (benchmark.perChainExplainer ?? []).map((e) => [
+      canonicalChainSlug(e.slug),
+      e,
+    ])
   );
 
   return (
@@ -59,23 +66,27 @@ export function ChainHeadingsSummary({ benchmark }: { benchmark: Benchmark }) {
 
       <div className="mt-8 space-y-8">
         {sorted.map((r) => {
-          const explainer = explainerBySlug.get(r.slug);
-          // Heading: prefer the YAML-declared H2 string when present (it
-          // can phrase the heading more naturally than the default
-          // "{name} {metric}" template). Each heading gets an id={slug}
-          // so URLs like /benchmarks/l1-finality#ethereum land at the
-          // exact section, which directly answers GSC long-tail queries.
+          // Resolve a stale result.slug ("ton") to its current canonical
+          // ("gram") for anchor id, link URL, and explainer lookup.
+          // Display name prefers the chain registry's label over the
+          // bench result's own name field, so a stale "TON" row reads
+          // as "Gram" the moment chains.ts is updated — no need to wait
+          // for the materialize snapshot to refresh.
+          const canonSlug = canonicalChainSlug(r.slug);
+          const explainer = explainerBySlug.get(canonSlug);
+          const displayName = chainLabelForSlug(r.slug) ?? r.name;
           const heading =
-            explainer?.h2 ?? `${r.name} ${benchmark.metric.toLowerCase()}`;
+            explainer?.h2 ??
+            `${displayName} ${benchmark.metric.toLowerCase()}`;
           return (
-            <article key={r.slug} id={r.slug} className="scroll-mt-20">
+            <article key={canonSlug} id={canonSlug} className="scroll-mt-20">
               <h2 className="display text-xl tracking-tight text-ink">
                 {/* Chains with an explainer have a dedicated landing page
                     (/benchmarks/<slug>/<chain>); the heading links there so
                     crawlers discover the per-chain documents from the hub. */}
                 {explainer ? (
                   <Link
-                    href={`/benchmarks/${benchmark.slug}/${r.slug}`}
+                    href={`/benchmarks/${benchmark.slug}/${canonSlug}`}
                     className="hover:underline underline-offset-4"
                   >
                     {heading}

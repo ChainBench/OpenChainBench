@@ -208,6 +208,48 @@ export const CHAINS: ChainEntry[] = [
 export const CHAIN_BY_SLUG = new Map(CHAINS.map((c) => [c.slug, c]));
 
 /**
+ * Legacy chain slugs that should resolve to a current canonical chain.
+ *
+ * Necessary because a slug rename (e.g. TON token rebrand to Gram in
+ * June 2026) leaves stale identifiers in three places that don't all
+ * roll over at the same time:
+ *   - YAML provider entries that haven't been edited yet
+ *   - Cached Benchmark snapshots in Upstash KV (populated by the
+ *     materialize worker before the rename, results[].slug = old)
+ *   - Harness Prom labels still emitting the old chain label
+ *
+ * `getBenchmarksForChain` honours these aliases so the new canonical
+ * /chains/<gram> URL still surfaces benches whose results[].slug is the
+ * old "ton" until everything downstream catches up. ChainHeadingsSummary
+ * and any other component reading r.slug uses `chainLabelForSlug` to
+ * resolve the alias to the registry's display label, so a stale "TON"
+ * row reads as "Gram" anywhere the chain registry can override it.
+ *
+ * Add a new alias when a chain rebrands; remove an alias once the
+ * caches and harnesses have rotated past it.
+ */
+export const CHAIN_SLUG_ALIASES: Record<string, string> = {
+  ton: "gram",
+};
+
+/** Map any slug to its canonical chain slug. Identity for known slugs,
+ *  resolves a legacy slug to its current canonical via CHAIN_SLUG_ALIASES,
+ *  returns the input lowercased for anything unknown. */
+export function canonicalChainSlug(slug: string): string {
+  const lc = slug.toLowerCase();
+  return CHAIN_SLUG_ALIASES[lc] ?? lc;
+}
+
+/** Display label for a slug, resolving aliases against the chain
+ *  registry. Returns null when neither the canonical nor the raw slug
+ *  is registered, so callers can fall back to whatever local data they
+ *  have (e.g. the bench result's own name field). */
+export function chainLabelForSlug(slug: string): string | null {
+  const canon = canonicalChainSlug(slug);
+  return CHAIN_BY_SLUG.get(canon)?.label ?? null;
+}
+
+/**
  * Returns the list of benchmarks that surface this chain in some way:
  *
  *   1. Row shape benches (l1-finality, l2-block-time, network-fees):
@@ -226,9 +268,20 @@ export const getBenchmarksForChain = cache(async function getBenchmarksForChain(
   chainSlug: string,
 ): Promise<Benchmark[]> {
   const benches = await getBenchmarksSafe();
+  // Build the set of slugs that should resolve as this chain: the input
+  // itself plus any legacy slug that aliases TO it. This lets the new
+  // canonical /chains/<gram> URL still find benches whose results or
+  // dimensions still carry the legacy "ton" slug while the YAMLs +
+  // materialize snapshots + harness labels rotate over.
+  const canon = canonicalChainSlug(chainSlug);
+  const accept = new Set<string>([canon]);
+  for (const [legacy, target] of Object.entries(CHAIN_SLUG_ALIASES)) {
+    if (target === canon) accept.add(legacy);
+  }
   return benches.filter((b) => {
-    if (b.results.some((r) => r.slug === chainSlug)) return true;
-    if (b.dimensions?.chain?.some((c) => c.value === chainSlug)) return true;
+    if (b.results.some((r) => accept.has(r.slug.toLowerCase()))) return true;
+    if (b.dimensions?.chain?.some((c) => accept.has(c.value.toLowerCase())))
+      return true;
     return false;
   });
 });
