@@ -46,10 +46,10 @@ export async function generateMetadata({
   if (!ans) return {};
   const title = ans.seo_title ?? ans.question;
   const descSource = ans.seo_description ?? ans.short_answer;
-  // Clean leftover tokens AFTER renderTemplate so a draft bench
-  // (e.g. solana-tx-landing-latency mid-soak) never leaks a literal
-  // `{{best_name}}` into the meta description, og:description or
-  // twitter:description, all of which feed the SERP and social previews.
+  // Clean leftover tokens AFTER renderTemplate so a draft bench never
+  // leaks a literal `{{best_name}}` into the meta description,
+  // og:description or twitter:description, all of which feed the SERP
+  // and social previews.
   const description = capDescription(
     cleanLeftoverTokens(renderTemplate(descSource, ans.bench)),
     158,
