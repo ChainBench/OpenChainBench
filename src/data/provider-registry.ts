@@ -287,60 +287,6 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Perp DEX on Polygon, Arbitrum, Base and Solana. Pool-based execution against the gToken vaults, oracle-priced trades with synthetic leverage.",
     twitter: "@GainsNetwork_io",
   },
-  drift: {
-    url: "https://drift.trade",
-    description:
-      "Solana perp DEX with hybrid AMM/orderbook model, sub-second matching via Anchor program.",
-    twitter: "@DriftProtocol",
-  },
-  vertex: {
-    url: "https://www.nado.xyz",
-    description:
-      "Arbitrum perp + spot orderbook DEX with off-chain matching and on-chain settlement. Migrating to Ink Foundation.",
-    twitter: "@vertex_protocol",
-  },
-  edgex: {
-    url: "https://edgex.exchange",
-    description:
-      "zkSync-based perp DEX with low taker fees and a documented public REST API.",
-    twitter: "@edgex_exchange",
-  },
-  extended: {
-    url: "https://extended.exchange",
-    description:
-      "Starknet perp DEX (formerly X10) with order book matching and instant withdrawals via STARK proofs.",
-    twitter: "@ExtendedExchange",
-  },
-  aevo: {
-    url: "https://aevo.xyz",
-    description:
-      "OP Stack perp DEX with deep options support, event-driven flow.",
-    twitter: "@aevoxyz",
-  },
-  pacifica: {
-    url: "https://pacifica.fi",
-    description:
-      "Solana perp DEX optimized for high-frequency trading, oracle-anchored funding.",
-    twitter: "@pacifica_fi",
-  },
-  variational: {
-    url: "https://variational.io",
-    description:
-      "Arbitrum P2P derivatives venue with pre-computed quote sizes for institutional flow.",
-    twitter: "@variational_io",
-  },
-  ostium: {
-    url: "https://ostium.app",
-    description:
-      "Arbitrum-based perp DEX specialized in RWA exposure including FX, commodities and indices.",
-    twitter: "@ostium_app",
-  },
-  grvt: {
-    url: "https://grvt.io",
-    description:
-      "zkSync hybrid CEX/DEX perp venue with privacy-preserving order matching.",
-    twitter: "@grvt_io",
-  },
 
   // ─── Wallet labels / explorers ────────────────────────────────
   blockscout: {
@@ -358,7 +304,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   tonapi: {
     url: "https://tonapi.io",
     description:
-      "REST API for the TON blockchain. Returns account metadata, known entity names, and address book labels for TON wallets.",
+      "REST API for the Gram (TON) blockchain. Returns account metadata, known entity names, and address book labels for Gram wallets.",
     twitter: "@tonapi_io",
   },
   stellarexpert: {
@@ -401,7 +347,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   ton: {
     url: "https://ton.org",
     description:
-      "BFT Proof-of-Stake L1 with a sharded masterchain and workchain architecture. Deterministic finality within a few seconds. Block time near 5 seconds.",
+      "Gram (formerly Toncoin, ticker renamed to GRAM in June 2026). BFT Proof-of-Stake L1 with a sharded masterchain and workchain architecture. Deterministic finality within a few seconds. Block time near 5 seconds.",
     twitter: "@ton_blockchain",
   },
   stellar: {
@@ -1342,6 +1288,62 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "HIP-3 namespace para on HyperCore",
       "Deployer fee collected via the on-chain deployerFee field",
     ],
+  },
+
+  // ─── Perp DEX cohort (perps hub /perps) ───
+  drift: {
+    url: "https://drift.trade",
+    description:
+      "Solana perp DEX with hybrid AMM/orderbook model, sub-second matching via Anchor program.",
+    twitter: "@DriftProtocol",
+  },
+  vertex: {
+    url: "https://www.nado.xyz",
+    description:
+      "Arbitrum perp and spot orderbook DEX with off-chain matching and on-chain settlement. Migrating to Ink Foundation.",
+    twitter: "@vertex_protocol",
+  },
+  edgex: {
+    url: "https://edgex.exchange",
+    description:
+      "zkSync-based perp DEX with low taker fees and a documented public REST API.",
+    twitter: "@edgex_exchange",
+  },
+  extended: {
+    url: "https://extended.exchange",
+    description:
+      "Starknet perp DEX (formerly X10) with order book matching and instant withdrawals via STARK proofs.",
+    twitter: "@ExtendedExchange",
+  },
+  aevo: {
+    url: "https://aevo.xyz",
+    description:
+      "OP Stack perp DEX with deep options support, event-driven flow.",
+    twitter: "@aevoxyz",
+  },
+  pacifica: {
+    url: "https://pacifica.fi",
+    description:
+      "Solana perp DEX optimized for high-frequency trading, oracle-anchored funding.",
+    twitter: "@pacifica_fi",
+  },
+  variational: {
+    url: "https://variational.io",
+    description:
+      "Arbitrum P2P derivatives venue with pre-computed quote sizes for institutional flow.",
+    twitter: "@variational_io",
+  },
+  ostium: {
+    url: "https://ostium.app",
+    description:
+      "Arbitrum-based perp DEX specialized in RWA exposure including FX, commodities and indices.",
+    twitter: "@ostium_app",
+  },
+  grvt: {
+    url: "https://grvt.io",
+    description:
+      "zkSync hybrid CEX/DEX perp venue with privacy-preserving order matching.",
+    twitter: "@grvt_io",
   },
 };
 

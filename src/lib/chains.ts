@@ -15,7 +15,7 @@ import { cache } from "react";
 import { getBenchmarksSafe } from "@/data/benchmarks";
 import type { Benchmark } from "@/types/benchmark";
 
-type ChainCategory = "L1" | "L2";
+export type ChainCategory = "L1" | "L2";
 
 export type ChainEntry = {
   slug: string;
@@ -77,11 +77,11 @@ export const CHAINS: ChainEntry[] = [
   },
   {
     slug: "ton",
-    label: "TON",
+    label: "Gram",
     category: "L1",
-    nativeSymbol: "TON",
+    nativeSymbol: "GRAM",
     description:
-      "BAG consensus, masterchain + workchains, deterministic finality under one second on the masterchain commit.",
+      "Gram (formerly TON / Toncoin). BAG consensus, masterchain + workchains, deterministic finality under one second on the masterchain commit. Native token renamed Toncoin → Gram in June 2026.",
   },
   {
     slug: "stellar",

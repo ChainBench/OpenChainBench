@@ -21,7 +21,7 @@ const RAW: Record<string, string> = {
   tron: "/logos/tron.png",
   sui: "/logos/sui.png",
   stellar: "/logos/stellar.png",
-  ton: "/logos/ton.png",
+  ton: "/logos/ton.svg",
   cardano: "/logos/cardano.png",
   litecoin: "/logos/litecoin.png",
   monero: "/logos/monero.png",
@@ -52,6 +52,17 @@ const RAW: Record<string, string> = {
   limitless: "/logos/limitless.png",
   manifold: "/logos/manifold.svg",
   myriad: "/logos/myriad.png",
+
+  // ─── Perp DEX cohort (perps hub /perps) ───
+  drift: "/logos/drift.svg",
+  vertex: "/logos/vertex.png",
+  edgex: "/logos/edgex.jpg",
+  extended: "/logos/extended.svg",
+  aevo: "/logos/aevo.svg",
+  pacifica: "/logos/pacifica.svg",
+  variational: "/logos/variational.png",
+  ostium: "/logos/ostium.png",
+  grvt: "/logos/grvt.jpg",
 
   // ─── Prediction market categories (polymarket-resolution-delay) ───
   // Bench rows are category buckets, not products, so these stay
@@ -175,17 +186,6 @@ const RAW: Record<string, string> = {
   okx: "/logos/okx.jpg",
   paradex: "/logos/paradex.svg",
   aster: "/logos/aster.svg",
-
-  // ─── Perp DEX cohort (volume-share, open-interest, funding-stability) ───
-  drift: "/logos/drift.svg",
-  vertex: "/logos/vertex.png",
-  edgex: "/logos/edgex.jpg",
-  extended: "/logos/extended.svg",
-  aevo: "/logos/aevo.svg",
-  pacifica: "/logos/pacifica.svg",
-  variational: "/logos/variational.png",
-  ostium: "/logos/ostium.png",
-  grvt: "/logos/grvt.jpg",
 
   // ─── Hyperliquid HIP-3 deployers (bench № 035) ───
   xyz: "/logos/xyz.png",
