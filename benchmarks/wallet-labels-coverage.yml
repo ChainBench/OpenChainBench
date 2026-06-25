@@ -86,7 +86,7 @@ per_chain_explainer:
     h2: "Best wallet labeling API on Solana"
     body: |
       The Solana wallet labeling leaderboard is driven by chain-specialist curation rather than universal coverage. Helius wins by default on this chain because its label graph is built directly against native Solana programs (Jito stake pools, Jupiter routers, Pump.fun creators, Magic Eden marketplace IDs) rather than translated from an EVM-shaped schema. Mobula audits Solana as part of its universal coverage and clocks {{p50:mobula}} on the active Kind tab. Blockscout does not index Solana, so the per-chain leaderboard here is between Solana-native APIs.
-  - slug: ton
+  - slug: gram
     h2: "Best wallet labeling API on Gram"
     body: |
       Gram (formerly TON) wallet labeling is essentially a two-API conversation. TonAPI ships a curated entity directory covering core Gram contracts (jettons, Telegram bot wallets, DEX routers like STON.fi and DeDust). Mobula audits Gram as part of its universal coverage. Most EVM-centric providers (Moralis, Blockscout) do not index Gram at all, so the per-chain leaderboard here surfaces the genuine specialist gap. Per the bench's coverage definition, generic categorical fillers like `EOA` or `Wallet` do not count toward a hit; only entity-grade names do.
@@ -163,6 +163,10 @@ dimensions:
     - { value: arbitrum, label: Arbitrum }
     - { value: polygon,  label: Polygon }
     - { value: optimism, label: Optimism }
+    # Dimension value kept as `ton` (the Prom label the wallet-labels
+    # harness emits). The dropdown shows "Gram" via label. Once the
+    # harness redeploys with chain="gram", flip value to `gram` and add
+    # the straddle to every selector in this file.
     - { value: ton,      label: Gram }
     - { value: stellar,  label: Stellar }
     - { value: xrp,      label: XRP }

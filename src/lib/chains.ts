@@ -76,7 +76,7 @@ export const CHAINS: ChainEntry[] = [
       "Mysticeti DAG-BFT consensus, reference gas price model, deterministic sub-second finality.",
   },
   {
-    slug: "ton",
+    slug: "gram",
     label: "Gram",
     category: "L1",
     nativeSymbol: "GRAM",

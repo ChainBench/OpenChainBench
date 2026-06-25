@@ -21,7 +21,7 @@ faq:
   - q: "What is SUI finality time?"
     a: "SUI clocks {{p50:sui}} (p50, 24h) on this benchmark via the Mysticeti DAG-BFT consensus protocol. The chain exposes millisecond-precision timestamps so the measurement is genuinely sub-second. Mysticeti's two-vote commitment pattern reaches deterministic finality without the multi-block confirmation depth used by classical Byzantine fault tolerant chains."
   - q: "What is Gram finality time?"
-    a: "Gram's BAG consensus (the network formerly branded TON, with native token renamed Toncoin → Gram in June 2026) pushes masterchain finality to {{p50:ton}} (p50, 24h), one of the lowest deterministic finalities measured on this leaderboard. Gram's design splits state across a masterchain and many workchains. The figure here is the masterchain commit, the canonical reference for cross-chain settlement."
+    a: "Gram's BAG consensus (the network formerly branded TON, with native token renamed Toncoin → Gram in June 2026) pushes masterchain finality to {{p50:gram}} (p50, 24h), one of the lowest deterministic finalities measured on this leaderboard. Gram's design splits state across a masterchain and many workchains. The figure here is the masterchain commit, the canonical reference for cross-chain settlement."
   - q: "What is Stellar finality time?"
     a: "Stellar uses the Stellar Consensus Protocol, a federated Byzantine agreement that reaches deterministic finality at every ledger close, roughly every 5 seconds, no probabilistic confirmation needed. p50 sits at {{p50:stellar}} (24h). The benchmark records wall-clock time between a new ledger appearing on the Horizon stream and its SCP-final commit."
   - q: "What is Hedera finality time?"
@@ -54,10 +54,10 @@ per_chain_explainer:
     h2: "SUI finality time"
     body: |
       SUI clocks {{p50:sui}} (p50, 24h) on this benchmark via the Mysticeti DAG-BFT consensus protocol. The chain exposes millisecond-precision timestamps, so the measurement is genuinely sub-second. Mysticeti's two-vote commitment pattern reaches deterministic finality without the multi-block confirmation depth used by classical Byzantine fault tolerant chains. Measured via `sui_getLatestCheckpointSequenceNumber` minus a 5-checkpoint lookback.
-  - slug: ton
+  - slug: gram
     h2: "Gram finality time"
     body: |
-      Gram's BAG consensus (the chain formerly branded TON, native token renamed Toncoin → Gram in June 2026) pushes masterchain finality to {{p50:ton}} (p50, 24h), one of the lowest deterministic finalities measured on this leaderboard. Gram's design splits state across a masterchain and many workchains; the figure reported here is the masterchain commit, the canonical reference for cross-chain settlement. Measured via the tonapi.io `/blockchain/masterchain-head` endpoint with a 3-seqno lookback.
+      Gram's BAG consensus (the chain formerly branded TON, native token renamed Toncoin → Gram in June 2026) pushes masterchain finality to {{p50:gram}} (p50, 24h), one of the lowest deterministic finalities measured on this leaderboard. Gram's design splits state across a masterchain and many workchains; the figure reported here is the masterchain commit, the canonical reference for cross-chain settlement. Measured via the tonapi.io `/blockchain/masterchain-head` endpoint with a 3-seqno lookback.
   - slug: bnb
     h2: "BNB Chain finality time"
     body: |
@@ -187,18 +187,22 @@ providers:
       sample_size: increase(l1_finality_wallclock_samples_total{chain="sui"}[24h])
       series: l1_finality_wallclock_lag_milliseconds{chain="sui"}
 
-  - slug: ton
+  - slug: gram
     name: Gram
     tag: Masterchain commit, polled via tonapi.io
     formula: "Median wall-clock milliseconds for a Gram (formerly TON) masterchain block to commit under BAG consensus, polled via tonapi.io with a 3-seqno lookback, p50 over 24h."
+    # Prom selectors straddle ton|gram during the harness relabel window.
+    # The harness on Railway still emits chain="ton"; once it redeploys
+    # with chain="gram", the regex keeps matching both. Drop the ton
+    # branch after ~7 days of clean gram-labelled data.
     queries:
-      p50: quantile_over_time(0.50, l1_finality_wallclock_lag_milliseconds{chain="ton"}[24h])
-      p90: quantile_over_time(0.90, l1_finality_wallclock_lag_milliseconds{chain="ton"}[24h])
-      p99: quantile_over_time(0.99, l1_finality_wallclock_lag_milliseconds{chain="ton"}[24h])
-      mean: avg_over_time(l1_finality_wallclock_lag_milliseconds{chain="ton"}[24h])
-      success: avg_over_time(l1_finality_wallclock_health{chain="ton"}[24h])
-      sample_size: increase(l1_finality_wallclock_samples_total{chain="ton"}[24h])
-      series: l1_finality_wallclock_lag_milliseconds{chain="ton"}
+      p50: quantile_over_time(0.50, l1_finality_wallclock_lag_milliseconds{chain=~"ton|gram"}[24h])
+      p90: quantile_over_time(0.90, l1_finality_wallclock_lag_milliseconds{chain=~"ton|gram"}[24h])
+      p99: quantile_over_time(0.99, l1_finality_wallclock_lag_milliseconds{chain=~"ton|gram"}[24h])
+      mean: avg_over_time(l1_finality_wallclock_lag_milliseconds{chain=~"ton|gram"}[24h])
+      success: avg_over_time(l1_finality_wallclock_health{chain=~"ton|gram"}[24h])
+      sample_size: increase(l1_finality_wallclock_samples_total{chain=~"ton|gram"}[24h])
+      series: l1_finality_wallclock_lag_milliseconds{chain=~"ton|gram"}
 
   - slug: stellar
     name: Stellar
