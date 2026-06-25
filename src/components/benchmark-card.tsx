@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { Benchmark } from "@/types/benchmark";
+import type { BenchmarkCardData } from "@/data/benchmarks";
 import { Hint } from "@/components/hint";
 import { MiniChart } from "@/components/mini-chart";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
@@ -16,8 +16,12 @@ import { fmtValue, unitSuffix } from "@/lib/format";
  *  - Insufficient samples: published but the harness has no usable p50
  *    yet. "Insufficient samples" pill, greyed-out value, chart skipped.
  *  - Live: standard rendering, leader p50 in display style.
+ *
+ * Prop is the slim `BenchmarkCardData` projection, not the full
+ * Benchmark. Keeps the RSC payload for `/benchmarks` to the fields the
+ * card actually reads.
  */
-export function BenchmarkCard({ benchmark }: { benchmark: Benchmark }) {
+export function BenchmarkCard({ benchmark }: { benchmark: BenchmarkCardData }) {
   const b = benchmark;
   const isDraft = b.status === "draft";
   const insufficient = !isDraft && isInsufficient(b);

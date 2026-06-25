@@ -16,9 +16,8 @@ import (
 //   • landing_rate  = success_total / (success_total + dropped{reason=timeout})
 //   • p50 / p99     derived in Prom from the *_histogram series
 //
-// Methodology pinned at docs/methodology/solana-tx-landing-active.md
-// (OpenChainBench repo). Any label / metric change is a methodology PR
-// with the 14-day comment window.
+// Label / metric shape is stable; any change should ship as a public PR
+// with a 14-day comment window before redeploy.
 
 var (
 	// One increment per landed (confirmed) probe. Headline numerator of

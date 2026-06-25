@@ -22,8 +22,7 @@ import (
 
 // Active prober — submits a synthetic mainnet tx through each landing
 // service every cycle, then polls confirmation. Headline metrics =
-// landing_rate + p50/p99 latency per service. Methodology pinned at
-// OpenChainBench/docs/methodology/solana-tx-landing-active.md.
+// landing_rate + p50/p99 latency per service.
 //
 // The prober is OPT-IN. It only runs when SOLANA_PROBE_KEYPAIR_BASE58
 // is set; absence keeps the harness in pure observational mode.
