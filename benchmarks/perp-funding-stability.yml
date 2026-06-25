@@ -81,7 +81,7 @@ providers:
     queries:
       p50: stddev_over_time(perp_venue_funding_24h_bps{venue="hyperliquid",asset="ETH"}[7d])
       mean: stddev_over_time(perp_venue_funding_24h_bps{venue="hyperliquid",asset="ETH"}[7d])
-      success: avg_over_time(perp_venue_health{venue="hyperliquid"}[24h])
+      success: clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="hyperliquid",asset="ETH"}[1h]), 1)
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="hyperliquid",asset="ETH"}[24h])
       series: stddev_over_time(perp_venue_funding_24h_bps{venue="hyperliquid",asset="ETH"}[7d])
 
@@ -92,7 +92,7 @@ providers:
     queries:
       p50: stddev_over_time(perp_venue_funding_24h_bps{venue="binance",asset="ETH"}[7d])
       mean: stddev_over_time(perp_venue_funding_24h_bps{venue="binance",asset="ETH"}[7d])
-      success: avg_over_time(perp_venue_health{venue="binance"}[24h])
+      success: clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="binance",asset="ETH"}[1h]), 1)
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="binance",asset="ETH"}[24h])
       series: stddev_over_time(perp_venue_funding_24h_bps{venue="binance",asset="ETH"}[7d])
 
@@ -103,7 +103,7 @@ providers:
     queries:
       p50: stddev_over_time(perp_venue_funding_24h_bps{venue="bybit",asset="ETH"}[7d])
       mean: stddev_over_time(perp_venue_funding_24h_bps{venue="bybit",asset="ETH"}[7d])
-      success: avg_over_time(perp_venue_health{venue="bybit"}[24h])
+      success: clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="bybit",asset="ETH"}[1h]), 1)
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="bybit",asset="ETH"}[24h])
       series: stddev_over_time(perp_venue_funding_24h_bps{venue="bybit",asset="ETH"}[7d])
 
@@ -114,94 +114,94 @@ providers:
     queries:
       p50: stddev_over_time(perp_venue_funding_24h_bps{venue="okx",asset="ETH"}[7d])
       mean: stddev_over_time(perp_venue_funding_24h_bps{venue="okx",asset="ETH"}[7d])
-      success: avg_over_time(perp_venue_health{venue="okx"}[24h])
+      success: clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="okx",asset="ETH"}[1h]), 1)
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="okx",asset="ETH"}[24h])
       series: stddev_over_time(perp_venue_funding_24h_bps{venue="okx",asset="ETH"}[7d])
 
   - slug: gate
     name: Gate
-    tag: Appchain order book perps, hourly funding
-    formula: "stddev_over_time of perp_venue_funding_24h_bps{venue=\"dydx\",asset=\"ETH\"} over a 7d window."
+    tag: Gate.io USDT perps, 8h funding
+    formula: "stddev_over_time of perp_venue_funding_24h_bps{venue=\"gate\",asset=\"ETH\"} over a 7d window."
     queries:
       p50: stddev_over_time(perp_venue_funding_24h_bps{venue="gate",asset="ETH"}[7d])
       mean: stddev_over_time(perp_venue_funding_24h_bps{venue="gate",asset="ETH"}[7d])
-      success: avg_over_time(perp_venue_health{venue="gate"}[24h])
+      success: clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="gate",asset="ETH"}[1h]), 1)
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="gate",asset="ETH"}[24h])
       series: stddev_over_time(perp_venue_funding_24h_bps{venue="gate",asset="ETH"}[7d])
 
   - slug: lighter
     name: Lighter
-    tag: Starknet L2 perps, 8h funding
-    formula: "stddev_over_time of perp_venue_funding_24h_bps{venue=\"paradex\",asset=\"ETH\"} over a 7d window."
+    tag: zk rollup perp DEX, zero taker fee
+    formula: "stddev_over_time of perp_venue_funding_24h_bps{venue=\"lighter\",asset=\"ETH\"} over a 7d window."
     queries:
       p50: stddev_over_time(perp_venue_funding_24h_bps{venue="lighter",asset="ETH"}[7d])
       mean: stddev_over_time(perp_venue_funding_24h_bps{venue="lighter",asset="ETH"}[7d])
-      success: avg_over_time(perp_venue_health{venue="lighter"}[24h])
+      success: clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="lighter",asset="ETH"}[1h]), 1)
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="lighter",asset="ETH"}[24h])
       series: stddev_over_time(perp_venue_funding_24h_bps{venue="lighter",asset="ETH"}[7d])
 
   - slug: kucoin
     name: KuCoin
-    tag: BNB Chain perps, Binance compatible API
-    formula: "stddev_over_time of perp_venue_funding_24h_bps{venue=\"aster\",asset=\"ETH\"} over a 7d window."
+    tag: KuCoin USDT futures, 8h funding
+    formula: "stddev_over_time of perp_venue_funding_24h_bps{venue=\"kucoin\",asset=\"ETH\"} over a 7d window."
     queries:
       p50: stddev_over_time(perp_venue_funding_24h_bps{venue="kucoin",asset="ETH"}[7d])
       mean: stddev_over_time(perp_venue_funding_24h_bps{venue="kucoin",asset="ETH"}[7d])
-      success: avg_over_time(perp_venue_health{venue="kucoin"}[24h])
+      success: clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="kucoin",asset="ETH"}[1h]), 1)
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="kucoin",asset="ETH"}[24h])
       series: stddev_over_time(perp_venue_funding_24h_bps{venue="kucoin",asset="ETH"}[7d])
 
   - slug: mexc
     name: MEXC
-    tag: Solana perp DEX, hybrid AMM and orderbook
-    formula: "stddev_over_time of perp_venue_funding_24h_bps{venue=\"drift\",asset=\"ETH\"} over a 7d window."
+    tag: MEXC USDT futures, 8h funding
+    formula: "stddev_over_time of perp_venue_funding_24h_bps{venue=\"mexc\",asset=\"ETH\"} over a 7d window."
     queries:
       p50: stddev_over_time(perp_venue_funding_24h_bps{venue="mexc",asset="ETH"}[7d])
       mean: stddev_over_time(perp_venue_funding_24h_bps{venue="mexc",asset="ETH"}[7d])
-      success: avg_over_time(perp_venue_health{venue="mexc"}[24h])
+      success: clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="mexc",asset="ETH"}[1h]), 1)
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="mexc",asset="ETH"}[24h])
       series: stddev_over_time(perp_venue_funding_24h_bps{venue="mexc",asset="ETH"}[7d])
 
   - slug: bitget
     name: Bitget
-    tag: Arbitrum perp and spot orderbook
-    formula: "stddev_over_time of perp_venue_funding_24h_bps{venue=\"vertex\",asset=\"ETH\"} over a 7d window."
+    tag: Bitget USDT perps, 8h funding
+    formula: "stddev_over_time of perp_venue_funding_24h_bps{venue=\"bitget\",asset=\"ETH\"} over a 7d window."
     queries:
       p50: stddev_over_time(perp_venue_funding_24h_bps{venue="bitget",asset="ETH"}[7d])
       mean: stddev_over_time(perp_venue_funding_24h_bps{venue="bitget",asset="ETH"}[7d])
-      success: avg_over_time(perp_venue_health{venue="bitget"}[24h])
+      success: clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="bitget",asset="ETH"}[1h]), 1)
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="bitget",asset="ETH"}[24h])
       series: stddev_over_time(perp_venue_funding_24h_bps{venue="bitget",asset="ETH"}[7d])
 
   - slug: kraken
     name: Kraken
-    tag: zkSync perp DEX
-    formula: "stddev_over_time of perp_venue_funding_24h_bps{venue=\"edgex\",asset=\"ETH\"} over a 7d window."
+    tag: Kraken Pro perps, 1h funding
+    formula: "stddev_over_time of perp_venue_funding_24h_bps{venue=\"kraken\",asset=\"ETH\"} over a 7d window."
     queries:
       p50: stddev_over_time(perp_venue_funding_24h_bps{venue="kraken",asset="ETH"}[7d])
       mean: stddev_over_time(perp_venue_funding_24h_bps{venue="kraken",asset="ETH"}[7d])
-      success: avg_over_time(perp_venue_health{venue="kraken"}[24h])
+      success: clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="kraken",asset="ETH"}[1h]), 1)
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="kraken",asset="ETH"}[24h])
       series: stddev_over_time(perp_venue_funding_24h_bps{venue="kraken",asset="ETH"}[7d])
 
   - slug: coinbase
     name: Coinbase
-    tag: Starknet perp DEX (formerly X10)
-    formula: "stddev_over_time of perp_venue_funding_24h_bps{venue=\"extended\",asset=\"ETH\"} over a 7d window."
+    tag: Coinbase International INTX perps, 1h funding
+    formula: "stddev_over_time of perp_venue_funding_24h_bps{venue=\"coinbase\",asset=\"ETH\"} over a 7d window."
     queries:
       p50: stddev_over_time(perp_venue_funding_24h_bps{venue="coinbase",asset="ETH"}[7d])
       mean: stddev_over_time(perp_venue_funding_24h_bps{venue="coinbase",asset="ETH"}[7d])
-      success: avg_over_time(perp_venue_health{venue="coinbase"}[24h])
+      success: clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="coinbase",asset="ETH"}[1h]), 1)
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="coinbase",asset="ETH"}[24h])
       series: stddev_over_time(perp_venue_funding_24h_bps{venue="coinbase",asset="ETH"}[7d])
 
   - slug: deribit
     name: Deribit
-    tag: OP Stack perp DEX with options
-    formula: "stddev_over_time of perp_venue_funding_24h_bps{venue=\"aevo\",asset=\"ETH\"} over a 7d window."
+    tag: Deribit perps, 8h funding
+    formula: "stddev_over_time of perp_venue_funding_24h_bps{venue=\"deribit\",asset=\"ETH\"} over a 7d window."
     queries:
       p50: stddev_over_time(perp_venue_funding_24h_bps{venue="deribit",asset="ETH"}[7d])
       mean: stddev_over_time(perp_venue_funding_24h_bps{venue="deribit",asset="ETH"}[7d])
-      success: avg_over_time(perp_venue_health{venue="deribit"}[24h])
+      success: clamp_max(count_over_time(perp_venue_funding_24h_bps{venue="deribit",asset="ETH"}[1h]), 1)
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="deribit",asset="ETH"}[24h])
       series: stddev_over_time(perp_venue_funding_24h_bps{venue="deribit",asset="ETH"}[7d])
