@@ -1,9 +1,10 @@
 # solana-tx-landing harness
 
-Source for two OpenChainBench benches that share a single binary:
+Source for the OpenChainBench bench:
 
 - [`solana-tx-landing`](https://openchainbench.com/benchmarks/solana-tx-landing) — observational market-share view of Solana transaction landing services (Jito, Helius Sender, Nozomi, Astralane, 0slot, etc.) measured via on-chain tip-wallet attribution.
-- [`solana-tx-landing-latency`](https://openchainbench.com/benchmarks/solana-tx-landing-latency) — active probing: a synthetic 1-lamport self-transfer submitted through each service, timing the slot delta to confirmation. See [`docs/methodology/solana-tx-landing-active.md`](../../docs/methodology/solana-tx-landing-active.md) for the pre-registered methodology.
+
+The binary also embeds an opt-in active prober (slot-delta latency), kept around for re-enablement but not currently wired to a public bench page on OCB.
 
 Exposes Prometheus metrics on `:2112/metrics` (OCB Railway convention).
 
@@ -56,7 +57,7 @@ curl localhost:2112/metrics | grep solana_landing
 | `LOGS_TOKEN` | (unset) | Optional, gates `/logs?tail=N` |
 | `SLACK_WEBHOOK_URL` | (unset) | Optional, posts probe failures + low-balance alerts |
 
-See [`docs/methodology/solana-tx-landing-active.md`](../../docs/methodology/solana-tx-landing-active.md) for the exact probe payload, tip floors per service, and statistical thresholds.
+The probe payload, tip floors per service, and statistical thresholds are documented inline in `cmd/script/prober.go` and `cmd/script/senders.go`.
 
 ## Reproducibility
 

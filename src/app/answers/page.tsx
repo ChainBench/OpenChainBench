@@ -28,10 +28,9 @@ export default async function AnswersHubPage() {
   // before the JSX touches the string.
   //
   // Tokens that renderTemplate can't resolve get a neutral fallback so
-  // a draft / awaiting-data bench (e.g. solana-tx-landing-latency mid-soak
-  // with every provider's p50 still at 0) never surfaces raw `{{best_name}}`
-  // to the SERP. Same pattern as resolveLeftoverPlaceholders on the
-  // per-chain bench page.
+  // a draft / awaiting-data bench (every provider's p50 still at 0)
+  // never surfaces raw `{{best_name}}` to the SERP. Same pattern as
+  // resolveLeftoverPlaceholders on the per-chain bench page.
   const rendered = await Promise.all(
     answers.map(async (a) => {
       const bench = await loadBenchmark(a.benchmark, { chain: a.chain });

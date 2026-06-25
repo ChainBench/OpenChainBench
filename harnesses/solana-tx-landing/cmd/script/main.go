@@ -53,7 +53,6 @@ func main() {
 	go runSubscriber(ctx, wsURL)
 
 	// Active prober (opt-in: requires SOLANA_PROBE_KEYPAIR_BASE58).
-	// Methodology: docs/methodology/solana-tx-landing-active.md
 	go runProber(ctx)
 
 	sig := make(chan os.Signal, 1)
