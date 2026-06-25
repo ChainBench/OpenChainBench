@@ -3,11 +3,11 @@
 slug: l1-finality
 number: "006"
 title: Fastest L1 blockchain finality, live across 11 chains
-seo_title: "Fastest L1 finality 2026: TON, SUI, Stellar, Solana, Ethereum"
-seo_description: "Fastest L1 blockchain finality, measured live for 11 chains. TON, SUI and Hedera in seconds, Solana ~13 s, Ethereum ~12.8 min. Live percentiles over 24h, open methodology."
-subtitle: Wall-clock seconds from latest block to the finalized block on Ethereum, Solana, TON, SUI, Stellar and 5 more chains, refreshed every 10 seconds.
+seo_title: "Fastest L1 finality 2026: Gram, SUI, Stellar, Solana, Ethereum"
+seo_description: "Fastest L1 blockchain finality, measured live for 11 chains. Gram (formerly TON), SUI and Hedera in seconds, Solana ~13 s, Ethereum ~12.8 min. Live percentiles over 24h, open methodology."
+subtitle: Wall-clock seconds from latest block to the finalized block on Ethereum, Solana, Gram, SUI, Stellar and 5 more chains, refreshed every 10 seconds.
 seo_intro: |
-  This page measures L1 finality time live for every major Layer-1 blockchain, with p50 / p90 / p99 refreshed every 10 seconds. Stellar finality time is ~5 seconds, the close interval the Stellar Consensus Protocol locks in via federated Byzantine agreement. Solana finality time goes from sub-second on the processed commitment to ~12.8 s on finalized after 32 confirmed slots. Ethereum finality time is ~12.8 minutes, the 2-epoch Casper FFG window. Hedera finality time clears in 3-5 seconds via Hashgraph aBFT. SUI finality time and TON finality time both sit under one second via Mysticeti DAG-BFT and BAG consensus. BNB and Avalanche finality time land near two seconds through fast-finality forks. Probabilistic chains (Litecoin, Monero) settle on a confirmation-depth convention measured here in minutes.
+  This page measures L1 finality time live for every major Layer-1 blockchain, with p50 / p90 / p99 refreshed every 10 seconds. Stellar finality time is ~5 seconds, the close interval the Stellar Consensus Protocol locks in via federated Byzantine agreement. Solana finality time goes from sub-second on the processed commitment to ~12.8 s on finalized after 32 confirmed slots. Ethereum finality time is ~12.8 minutes, the 2-epoch Casper FFG window. Hedera finality time clears in 3-5 seconds via Hashgraph aBFT. SUI finality time and Gram finality time (formerly TON) both sit under one second via Mysticeti DAG-BFT and BAG consensus. BNB and Avalanche finality time land near two seconds through fast-finality forks. Probabilistic chains (Litecoin, Monero) settle on a confirmation-depth convention measured here in minutes.
 
 faq:
   - q: "What is blockchain finality?"
@@ -20,8 +20,8 @@ faq:
     a: "Solana exposes two commitments. Processed is optimistic and lands sub-second, typically under 500 ms. Finalized requires 32 confirmed slots and clocks {{p50:solana}} (24h average). The leaderboard value is finalized, the stricter guarantee. Sub-second Solana finality is real but only at the processed commitment level, not finalized."
   - q: "What is SUI finality time?"
     a: "SUI clocks {{p50:sui}} (p50, 24h) on this benchmark via the Mysticeti DAG-BFT consensus protocol. The chain exposes millisecond-precision timestamps so the measurement is genuinely sub-second. Mysticeti's two-vote commitment pattern reaches deterministic finality without the multi-block confirmation depth used by classical Byzantine fault tolerant chains."
-  - q: "What is TON finality time?"
-    a: "TON's BAG consensus pushes masterchain finality to {{p50:ton}} (p50, 24h), one of the lowest deterministic finalities measured on this leaderboard. TON's design splits state across a masterchain and many workchains. The figure here is the masterchain commit, the canonical reference for cross-chain settlement."
+  - q: "What is Gram finality time?"
+    a: "Gram's BAG consensus (the network formerly branded TON, with native token renamed Toncoin → Gram in June 2026) pushes masterchain finality to {{p50:ton}} (p50, 24h), one of the lowest deterministic finalities measured on this leaderboard. Gram's design splits state across a masterchain and many workchains. The figure here is the masterchain commit, the canonical reference for cross-chain settlement."
   - q: "What is Stellar finality time?"
     a: "Stellar uses the Stellar Consensus Protocol, a federated Byzantine agreement that reaches deterministic finality at every ledger close, roughly every 5 seconds, no probabilistic confirmation needed. p50 sits at {{p50:stellar}} (24h). The benchmark records wall-clock time between a new ledger appearing on the Horizon stream and its SCP-final commit."
   - q: "What is Hedera finality time?"
@@ -29,9 +29,9 @@ faq:
   - q: "What is BNB Chain finality time?"
     a: "BNB Smart Chain finalizes via the BEP-126 fast-finality fork, dropping the confirmation depth that legacy probabilistic chains require. p50 sits at {{p50:bnb}} (24h), measured via persistent WebSocket subscription that records T1 when block N first appears as latest and T2 when it crosses the finalized threshold."
   - q: "Which blockchain has the fastest finality time?"
-    a: "Sub-second BFT chains lead. TON and SUI both clock under one second on this live benchmark. BNB and Avalanche sit around one to two seconds via their fast-finality forks. Solana finalized lands around 12.8 s, Ethereum at 12.8 min, and probabilistic chains (Litecoin, Monero) trail at 15 to 30 minutes by confirmation-depth convention."
+    a: "Sub-second BFT chains lead. Gram and SUI both clock under one second on this live benchmark. BNB and Avalanche sit around one to two seconds via their fast-finality forks. Solana finalized lands around 12.8 s, Ethereum at 12.8 min, and probabilistic chains (Litecoin, Monero) trail at 15 to 30 minutes by confirmation-depth convention."
   - q: "How is L1 finality time measured on this page?"
-    a: "Two methods, picked per chain. RPC pollers compare latest vs finalized block timestamps every 10 seconds, used for Ethereum, Solana, TRON, Stellar, SUI, TON, Litecoin, Monero. WebSocket subscribers record wall-clock time T1 when a block first appears on the head stream and T2 when it crosses the finality threshold, giving millisecond-precision lag for sub-poll chains (BNB, Avalanche)."
+    a: "Two methods, picked per chain. RPC pollers compare latest vs finalized block timestamps every 10 seconds, used for Ethereum, Solana, TRON, Stellar, SUI, Gram, Litecoin, Monero. WebSocket subscribers record wall-clock time T1 when a block first appears on the head stream and T2 when it crosses the finality threshold, giving millisecond-precision lag for sub-poll chains (BNB, Avalanche)."
 
 per_chain_explainer:
   - slug: ethereum
@@ -55,9 +55,9 @@ per_chain_explainer:
     body: |
       SUI clocks {{p50:sui}} (p50, 24h) on this benchmark via the Mysticeti DAG-BFT consensus protocol. The chain exposes millisecond-precision timestamps, so the measurement is genuinely sub-second. Mysticeti's two-vote commitment pattern reaches deterministic finality without the multi-block confirmation depth used by classical Byzantine fault tolerant chains. Measured via `sui_getLatestCheckpointSequenceNumber` minus a 5-checkpoint lookback.
   - slug: ton
-    h2: "TON finality time"
+    h2: "Gram finality time"
     body: |
-      TON's BAG consensus pushes masterchain finality to {{p50:ton}} (p50, 24h), one of the lowest deterministic finalities measured on this leaderboard. TON's design splits state across a masterchain and many workchains; the figure reported here is the masterchain commit, the canonical reference for cross-chain settlement. Measured via the tonapi.io `/blockchain/masterchain-head` endpoint with a 3-seqno lookback.
+      Gram's BAG consensus (the chain formerly branded TON, native token renamed Toncoin → Gram in June 2026) pushes masterchain finality to {{p50:ton}} (p50, 24h), one of the lowest deterministic finalities measured on this leaderboard. Gram's design splits state across a masterchain and many workchains; the figure reported here is the masterchain commit, the canonical reference for cross-chain settlement. Measured via the tonapi.io `/blockchain/masterchain-head` endpoint with a 3-seqno lookback.
   - slug: bnb
     h2: "BNB Chain finality time"
     body: |
@@ -91,7 +91,7 @@ abstract: |
   chains with finality much longer than our 10 s poll interval we read
   `latest.timestamp, finalized.timestamp` from the chain RPCs (Ethereum,
   Solana, TRON, Litecoin, Monero). For chains whose finality
-  is faster than the poll interval (BNB, Avalanche, SUI, TON, Stellar)
+  is faster than the poll interval (BNB, Avalanche, SUI, Gram, Stellar)
   we maintain a persistent WebSocket / SSE subscription, recording
   wall-clock time T1 when block N is first seen as `latest` and T2
   when it becomes `finalized`. lag = T2 − T1 with millisecond
@@ -111,7 +111,7 @@ methodology:
   - "TRON: `/wallet/getnowblock` (head) minus `/walletsolidity/getnowblock` (solidity-confirmed)."
   - "Stellar (SSE wall-clock): Horizon `/ledgers?cursor=now&order=asc` event-stream records T1 on first sight of ledger N and T2 on the next ledger close (SCP-final at every close)."
   - "SUI: `sui_getLatestCheckpointSequenceNumber` minus 5 checkpoints back."
-  - "TON: tonapi.io `/blockchain/masterchain-head` minus 3 seqno."
+  - "Gram: tonapi.io `/blockchain/masterchain-head` minus 3 seqno."
   - "Litecoin (probabilistic): blockchair `/stats.best_block_height` minus 6 confirmations via `/dashboards/block/{height}.block.time`."
   - "Monero (probabilistic): monero-rpc `get_info` minus 10 confirmations via `get_block_header_by_height`."
   - "Hedera (planned, currently disabled): mirror-node `/api/v1/blocks` only exposes already-final blocks, so true wall-clock lag is impossible from public endpoints. Re-enables once Block Nodes (HIP-1056) leave private preview."
@@ -188,9 +188,9 @@ providers:
       series: l1_finality_wallclock_lag_milliseconds{chain="sui"}
 
   - slug: ton
-    name: TON
+    name: Gram
     tag: Masterchain commit, polled via tonapi.io
-    formula: "Median wall-clock milliseconds for a TON masterchain block to commit under BAG consensus, polled via tonapi.io with a 3-seqno lookback, p50 over 24h."
+    formula: "Median wall-clock milliseconds for a Gram (formerly TON) masterchain block to commit under BAG consensus, polled via tonapi.io with a 3-seqno lookback, p50 over 24h."
     queries:
       p50: quantile_over_time(0.50, l1_finality_wallclock_lag_milliseconds{chain="ton"}[24h])
       p90: quantile_over_time(0.90, l1_finality_wallclock_lag_milliseconds{chain="ton"}[24h])

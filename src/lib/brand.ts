@@ -11,7 +11,7 @@
  * up automatically.
  */
 
-type Brand = {
+export type Brand = {
   color: string;
   /** Whether the brand color is dark - picked by Logo to flip its text color. */
   dark?: boolean;
@@ -26,7 +26,7 @@ const BRANDS: Record<string, Brand> = {
   tron: { color: "#E50914" },
   sui: { color: "#4DA2FF" },
   stellar: { color: "#08B5E5" },
-  ton: { color: "#0098EA" },
+  ton: { color: "#30A1F5" },
   cardano: { color: "#0033AD", dark: true },
   litecoin: { color: "#345D9D", dark: true },
   monero: { color: "#FF6600" },
