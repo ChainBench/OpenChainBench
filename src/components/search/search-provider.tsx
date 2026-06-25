@@ -41,7 +41,14 @@ export function SearchProvider({ items, children }: ProviderProps) {
 
   const prefetchFeatured = useCallback(() => {
     if (fetchRef.current) return;
-    fetchRef.current = fetch("/api/search/featured", { cache: "force-cache" })
+    // Use the default cache mode so the browser honours the endpoint's
+    // Cache-Control headers (s-maxage=60, swr=300) instead of pinning a
+    // stale entry forever. The previous `force-cache` setting meant a
+    // user who had the page open during a chain rebrand kept seeing
+    // pre-rebrand leaders (e.g. "TON" instead of "Gram") until they
+    // hard-refreshed, because force-cache always returns a cached entry
+    // regardless of freshness.
+    fetchRef.current = fetch("/api/search/featured")
       .then((r) => (r.ok ? r.json() : null))
       .then((j) => {
         if (!j) return;
