@@ -219,13 +219,41 @@ table {
 
 /* Editorial section labels - sans-serif with wide tracking + uppercase
  * for a Bloomberg-style tech-editorial feel, instead of the developer-tool
- * vibe that monospace gives off when used on body / UI labels. */
+ * vibe that monospace gives off when used on body / UI labels.
+ *
+ * `.label-mono` remains for backward compat. The three sized variants below
+ * harmonise the three near-identical Tailwind class strings repeated ~133
+ * times across `src/**/*.tsx` (text-[10px]/[11px]/xs + 0.16em/0.18em + the
+ * matching ink ramp colour). Centralising them here means a copy-edit to
+ * the tracking or color ramp lands in one place instead of every call site. */
 .label-mono {
   font-family: var(--font-sans);
   font-size: 10px;
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.18em;
+}
+
+@layer components {
+  .label-mono-xs {
+    @apply text-[10px] uppercase tracking-[0.16em] text-ink-faint;
+  }
+  .label-mono-sm {
+    @apply text-[11px] uppercase tracking-[0.18em] text-ink-muted font-medium font-sans;
+  }
+  .label-mono-lg {
+    @apply text-xs uppercase tracking-[0.18em] text-ink-muted font-medium;
+  }
+
+  /* Page-level H1 hero treatment. Matches the dominant inline class
+   * string shared by index / answers / compare / alternatives /
+   * chains landing pages (display + 3xl-4xl ramp + ink + tight
+   * leading). Centralised so a copy-edit to the page-title scale
+   * lands in one place instead of every list landing route. */
+  .h1-hero {
+    font-family: var(--font-display);
+    @apply text-3xl sm:text-4xl text-ink leading-[1.05];
+  }
 }
 
 /* Chart pop animations */
@@ -300,6 +328,60 @@ textarea:focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
   border-radius: 4px;
+}
+
+/* Search dialog open/close animations. tailwindcss-animate isn't
+   installed; these handcrafted keyframes give us the fade + slight
+   slide-down on open and the inverse on close. Linear-style: snappy,
+   no scale bounce. */
+@keyframes ocb-search-overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes ocb-search-overlay-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+@keyframes ocb-search-card-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes ocb-search-card-out {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(-4px); }
+}
+.ocb-search-overlay-in {
+  animation: ocb-search-overlay-in 150ms ease-out;
+}
+.ocb-search-overlay-out {
+  animation: ocb-search-overlay-out 100ms ease-in forwards;
+}
+.ocb-search-card-in {
+  animation: ocb-search-card-in 150ms cubic-bezier(0.16, 0.84, 0.32, 1);
+}
+.ocb-search-card-out {
+  animation: ocb-search-card-out 100ms ease-in forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ocb-search-overlay-in,
+  .ocb-search-overlay-out,
+  .ocb-search-card-in,
+  .ocb-search-card-out {
+    animation: none !important;
+  }
+}
+
+/* cmdk command palette input — opts out of the universal focus ring.
+   The dialog already provides visual focus context (modal backdrop +
+   centered card); a hard accent outline on the input itself reads as
+   a validation error rather than a focus state, which is the look the
+   designer flagged as "pas pro". The input still receives focus and
+   keyboard nav, just without the harsh outline. */
+[cmdk-input]:focus,
+[cmdk-input]:focus-visible {
+  outline: none !important;
+  outline-offset: 0;
+  box-shadow: none !important;
 }
 
 /* Skip-link target. Hidden until keyboard focus brings it onto the
