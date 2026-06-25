@@ -5,6 +5,7 @@ import { getBenchmark } from "@/data/benchmarks";
 import { buildProviderColors } from "@/lib/series-colors";
 import { fmtUnit, fmtValue, unitSuffix } from "@/lib/format";
 import { logoPath } from "@/lib/logo-manifest";
+import { matchesChainSlug } from "@/lib/chain-aliases";
 import { chipBackground, chipTextColor, initials } from "@/lib/brand";
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
@@ -527,7 +528,7 @@ export async function GET(
   const isAll = chainParam === "all";
   const chainOption = isAll
     ? null
-    : chainOptions.find((c) => c.value === chainParam) ?? null;
+    : chainOptions.find((c) => matchesChainSlug(c.value, chainParam)) ?? null;
   const benchmark = chainOption
     ? (await getBenchmark(slug, { chain: chainOption.value })) ?? aggregate
     : aggregate;

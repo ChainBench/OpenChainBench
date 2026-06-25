@@ -30,6 +30,7 @@ import { fmtUnit } from "@/lib/format";
 import { readBestPerChain } from "@/lib/per-chain-contract";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { PROVIDER_RE, SLUG_RE } from "@/lib/slug";
+import { matchesChainSlug } from "@/lib/chain-aliases";
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
 
 export const revalidate = 300;
@@ -144,9 +145,14 @@ function truncate(s: string, max: number): string {
   return s.slice(0, max - 1).trimEnd() + "…";
 }
 
-/** Returns the human label for a chain value from the bench's spec. */
+/** Returns the human label for a chain value from the bench's spec.
+ *  Canonical-aware so a request with the new slug ("gram") still finds
+ *  the dimension entry whose value is the legacy "ton". */
 function chainLabel(b: Benchmark, chain: string): string {
-  return b.dimensions?.chain?.find((c) => c.value === chain)?.label ?? chain;
+  return (
+    b.dimensions?.chain?.find((c) => matchesChainSlug(c.value, chain))?.label ??
+    chain
+  );
 }
 
 /** Returns the human label for a region value from the bench's spec. */
@@ -185,8 +191,12 @@ export async function GET(
   const url = new URL(req.url);
   const rawChain = url.searchParams.get("chain")?.toLowerCase().trim() || null;
   const rawRegion = url.searchParams.get("region")?.toLowerCase().trim() || null;
+  // Resolve via the alias-aware matcher so /api/badge?chain=gram lands
+  // on the dimension whose YAML value is "ton" (kept to match the
+  // harness's Prom labels). Returns the actual dimension value so the
+  // downstream cell lookup hits the snapshot's storage key.
   const chainParam = rawChain
-    ? (b.dimensions?.chain?.find((c) => c.value.toLowerCase() === rawChain)
+    ? (b.dimensions?.chain?.find((c) => matchesChainSlug(c.value, rawChain))
         ?.value ?? null)
     : null;
   const regionParam = rawRegion

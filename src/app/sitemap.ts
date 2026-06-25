@@ -5,6 +5,7 @@ import { getBenchmarks } from "@/data/benchmarks";
 import { loadAllAlternatives } from "@/lib/alternatives";
 import { loadAllAnswers } from "@/lib/answers";
 import { CHAINS, getBenchmarksForChain } from "@/lib/chains";
+import { canonicalChainSlug } from "@/lib/chain-aliases";
 import { getProvider, getProviderSlugs } from "@/lib/providers";
 import { SITE } from "@/data/site";
 import type { Benchmark } from "@/types/benchmark";
@@ -174,16 +175,24 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.95,
       },
     ];
-    const resultSlugs = new Set(b.results.map((r) => r.slug));
+    // Canonicalize at insertion + check time so a chain rebrand window
+    // (where YAML dimension still has the legacy value "ton" while
+    // perChainExplainer + chain registry have moved to "gram") doesn't
+    // drop the new URLs from the sitemap. Emit the canonical URL so
+    // crawlers never index legacy /ton paths that 308 to /gram.
+    const resultSlugs = new Set(
+      b.results.map((r) => canonicalChainSlug(r.slug)),
+    );
     const chainValues = new Set(
       (b.dimensions?.chain ?? [])
-        .map((c) => c.value)
-        .filter((v) => v.toLowerCase() !== "all"),
+        .filter((c) => c.value.toLowerCase() !== "all")
+        .map((c) => canonicalChainSlug(c.value)),
     );
     for (const e of b.perChainExplainer ?? []) {
-      if (!resultSlugs.has(e.slug) && !chainValues.has(e.slug)) continue;
+      const canon = canonicalChainSlug(e.slug);
+      if (!resultSlugs.has(canon) && !chainValues.has(canon)) continue;
       entries.push({
-        url: `${SITE.url}/benchmarks/${b.slug}/${e.slug}`,
+        url: `${SITE.url}/benchmarks/${b.slug}/${canon}`,
         lastModified: last,
         changeFrequency: "hourly",
         priority: 0.85,

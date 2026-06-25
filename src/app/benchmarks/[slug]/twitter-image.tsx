@@ -3,6 +3,7 @@ import { getBenchmark } from "@/data/benchmarks";
 import { headlineSentence, leader } from "@/lib/citation";
 import { fmtUnit } from "@/lib/format";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
+import { matchesChainSlug } from "@/lib/chain-aliases";
 import { loadBenchmark } from "@/lib/spec";
 
 export const runtime = "nodejs";
@@ -66,7 +67,8 @@ export default async function TwitterImage({
   const sentence = headlineSentence(b);
   const catColor = CATEGORY_COLOR[b.category] ?? "#7a2e1f";
   const chainLabel = chainId
-    ? b.dimensions?.chain?.find((c) => c.value === chainId)?.label ?? chainId
+    ? b.dimensions?.chain?.find((c) => matchesChainSlug(c.value, chainId))
+        ?.label ?? chainId
     : null;
   const titleText = chainLabel ? `${b.title} on ${chainLabel}` : b.title;
 
