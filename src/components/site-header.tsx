@@ -2,7 +2,9 @@
 
 import { Menu, X } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { SearchTrigger } from "@/components/search/search-trigger";
 import { SiteLogoSwitcher } from "@/components/site-logo-switcher";
 import { ThemeToggle } from "@/components/theme-toggle";
 
@@ -14,16 +16,35 @@ function GithubIcon({ size = 15 }: { size?: number }) {
   );
 }
 
-const NAV = [
-  { href: "/benchmarks", label: "Benchmarks" },
-  { href: "/products", label: "Products" },
-  { href: "/methodology", label: "Methodology" },
-  { href: "/about", label: "About" },
-  { href: "/contribute", label: "Contribute" },
+type NavItem = { href: string; label: string; match: (p: string) => boolean };
+
+// Active-state predicates. Bench/product detail pages share the same
+// tab as the index, so `/benchmarks/aggregator-head-lag` highlights
+// the "Benchmarks" tab. `/` matches exact only — without that, every
+// route would inherit a "Home" highlight.
+const NAV: NavItem[] = [
+  {
+    href: "/benchmarks",
+    label: "Benchmarks",
+    match: (p) => p === "/benchmarks" || p.startsWith("/benchmarks/"),
+  },
+  {
+    href: "/products",
+    label: "Products",
+    match: (p) => p === "/products" || p.startsWith("/products/"),
+  },
+  {
+    href: "/methodology",
+    label: "Methodology",
+    match: (p) => p === "/methodology",
+  },
+  { href: "/about", label: "About", match: (p) => p === "/about" },
+  { href: "/contribute", label: "Contribute", match: (p) => p === "/contribute" },
 ];
 
 export function SiteHeader() {
   const [open, setOpen] = useState(false);
+  const pathname = usePathname() ?? "/";
 
   // Close the mobile menu when the viewport crosses md so the dropdown
   // doesn't stick around as the desktop nav reappears.
@@ -46,11 +67,11 @@ export function SiteHeader() {
       // not visible there in practice. Override lives in globals.css
       // (`html.ios-webview .site-header-root` rule) so the WebView-only
       // selector stays out of the Tailwind class soup here.
-      className="site-header-root sticky top-0 z-50 flex flex-col font-sans bg-surface"
+      className="site-header-root sticky top-0 z-50 flex flex-col font-sans bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/80"
     >
-      <header className="border-b border-rule py-4 md:py-5 px-4 sm:px-6 shrink-0 text-sm bg-surface relative">
-        <div className="max-w-[1400px] mx-auto flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
+      <header className="border-b border-rule px-4 sm:px-6 shrink-0 text-sm relative">
+        <div className="max-w-[1400px] mx-auto flex items-center gap-4 lg:gap-6 h-14 md:h-16">
+          <div className="flex items-center gap-2 shrink-0">
             <SiteLogoSwitcher size={22} />
             <Link
               href="/"
@@ -63,38 +84,67 @@ export function SiteHeader() {
             </Link>
           </div>
 
-          <nav className="hidden md:flex items-center gap-8 text-ink-muted font-medium">
-            {NAV.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="hover:text-ink transition-colors"
-              >
-                {item.label}
-              </Link>
-            ))}
-            <span className="text-rule-strong">|</span>
-            <a
-              href="https://github.com/ChainBench/OpenChainBench"
-              className="inline-flex items-center gap-1.5 hover:text-ink transition-colors"
-              aria-label="View source on GitHub"
-            >
-              <GithubIcon size={15} />
-              GitHub
-            </a>
-            <ThemeToggle />
+          {/* Nav links - CMC-style: underline under the active section.
+              Items keep a constant pb to avoid layout shift between
+              active / inactive states. */}
+          <nav className="hidden md:flex items-center h-full gap-5 lg:gap-7 text-[14px] lg:text-[15px] font-medium shrink-0">
+            {NAV.map((item) => {
+              const active = item.match(pathname);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  aria-current={active ? "page" : undefined}
+                  className={[
+                    "relative flex items-center h-full transition-colors whitespace-nowrap",
+                    active
+                      ? "text-ink"
+                      : "text-ink-muted hover:text-ink",
+                  ].join(" ")}
+                >
+                  {item.label}
+                  {active && (
+                    <span
+                      aria-hidden
+                      className="absolute inset-x-0 -bottom-px h-[2px] bg-accent"
+                    />
+                  )}
+                </Link>
+              );
+            })}
           </nav>
 
-          <button
-            type="button"
-            className="md:hidden inline-flex items-center justify-center min-h-[44px] min-w-[44px] -mr-2 rounded text-ink-muted hover:text-ink transition-colors"
-            aria-label={open ? "Close menu" : "Open menu"}
-            aria-expanded={open}
-            aria-controls="mobile-nav"
-            onClick={() => setOpen((v) => !v)}
-          >
-            {open ? <X size={20} /> : <Menu size={20} />}
-          </button>
+          {/* Search takes the remaining horizontal space (flex-1) so it
+              reads as a real input and discoverable without keyboard. */}
+          <div className="hidden md:flex flex-1 min-w-0 justify-end lg:justify-center">
+            <SearchTrigger variant="desktop" />
+          </div>
+
+          {/* Utilities - GitHub + theme, gap-spaced, no pipe. */}
+          <div className="hidden md:flex items-center gap-4 text-ink-muted shrink-0">
+            <a
+              href="https://github.com/ChainBench/OpenChainBench"
+              className="inline-flex items-center hover:text-ink transition-colors"
+              aria-label="View source on GitHub"
+            >
+              <GithubIcon size={16} />
+            </a>
+            <ThemeToggle />
+          </div>
+
+          <div className="md:hidden flex items-center -mr-2">
+            <SearchTrigger variant="mobile" />
+            <button
+              type="button"
+              className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] rounded text-ink-muted hover:text-ink transition-colors"
+              aria-label={open ? "Close menu" : "Open menu"}
+              aria-expanded={open}
+              aria-controls="mobile-nav"
+              onClick={() => setOpen((v) => !v)}
+            >
+              {open ? <X size={20} /> : <Menu size={20} />}
+            </button>
+          </div>
         </div>
 
         {open && (
@@ -103,17 +153,24 @@ export function SiteHeader() {
             className="md:hidden absolute left-0 right-0 top-full border-b border-rule bg-surface shadow-lg"
           >
             <ul className="max-w-[1400px] mx-auto px-4 sm:px-6 py-2 flex flex-col">
-              {NAV.map((item) => (
-                <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    className="flex items-center min-h-[44px] py-2 text-ink-muted hover:text-ink transition-colors"
-                    onClick={() => setOpen(false)}
-                  >
-                    {item.label}
-                  </Link>
-                </li>
-              ))}
+              {NAV.map((item) => {
+                const active = item.match(pathname);
+                return (
+                  <li key={item.href}>
+                    <Link
+                      href={item.href}
+                      aria-current={active ? "page" : undefined}
+                      className={[
+                        "flex items-center min-h-[44px] py-2 transition-colors",
+                        active ? "text-ink font-semibold" : "text-ink-muted hover:text-ink",
+                      ].join(" ")}
+                      onClick={() => setOpen(false)}
+                    >
+                      {item.label}
+                    </Link>
+                  </li>
+                );
+              })}
               <li className="border-t border-rule mt-1 pt-1 flex items-center gap-4">
                 <a
                   href="https://github.com/ChainBench/OpenChainBench"

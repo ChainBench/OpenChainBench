@@ -189,7 +189,13 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // window. Bumping the key forces every read to regenerate against
   // the post-overlay shape immediately on deploy.
   // v11: bumped from v10 alongside 60s→300s revalidate (egress reduction).
-  ["bench-unfiltered-v11"],
+  // v12: renderBenchmarkText now also resolves seoTitle / seoDescription /
+  // subtitle / methodology / disclaimer (search-bar PR). Cached v11
+  // entries keep the raw `{{best_name}}` token on those fields (visible
+  // in client RSC payload + leaked via /api/citable → search dialog
+  // description previews). Bump so the next read regenerates through
+  // the wider resolver.
+  ["bench-unfiltered-v12"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -313,7 +319,11 @@ const loadAllBenchmarksCached = unstable_cache(
   // now throws on any cycle where fewer than half of editorially live
   // specs produce a live bench.
   // v15: bumped with bench-unfiltered-v11 (egress reduction).
-  ["all-benchmarks-v15"],
+  // v16: bumped with bench-unfiltered-v12 (wider renderBenchmarkText
+  // coverage, search-bar PR). Without bumping this, products / citable /
+  // sitemap surfaces would keep serving v15 benches with raw
+  // `{{best_name}}` in seoDescription for up to 300s after deploy.
+  ["all-benchmarks-v16"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);

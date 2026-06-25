@@ -38,6 +38,7 @@
 
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
 import { liveResults } from "@/lib/provider-filters";
+import { rankResults } from "@/lib/ranking";
 import { fmtUnit } from "@/lib/format";
 
 // Keyword allows digits ({{p50:slug}}, {{best_p50}}, {{worst_p99}}) and
@@ -55,20 +56,39 @@ const CHAIN_TEMPLATE_RE =
 
 /** Per-chain leader / trailer lookups against the Benchmark stash
  *  populated by spec.ts. Inlined (not re-imported from spec.ts) to
- *  avoid a spec.ts → bench-template.ts → spec.ts circular import. */
+ *  avoid a spec.ts → bench-template.ts → spec.ts circular import.
+ *
+ *  Case-insensitive lookup: the stash is keyed by the raw YAML value
+ *  (`spec.dimensions.chain[*].value`), which authors write as either
+ *  `solana` or `BTC` depending on convention. Without the fold,
+ *  `{{best_p50:chain:BTC}}` on perp-fees (uppercase asset codes) misses
+ *  a stash whose only entry is keyed `BTC`, because the template
+ *  resolver lowercases `chain` before lookup.
+ */
+function findChainEntry<T>(
+  stash: Record<string, T> | undefined,
+  chain: string,
+): T | undefined {
+  if (!stash) return undefined;
+  const direct = stash[chain];
+  if (direct) return direct;
+  const lower = chain.toLowerCase();
+  for (const [k, v] of Object.entries(stash)) {
+    if (k.toLowerCase() === lower) return v;
+  }
+  return undefined;
+}
 function bestForChain(b: Benchmark, chain: string): ProviderResult | undefined {
-  return b.bestPerChain?.[chain];
+  return findChainEntry(b.bestPerChain, chain);
 }
 function worstForChain(b: Benchmark, chain: string): ProviderResult | undefined {
-  return b.worstPerChain?.[chain];
+  return findChainEntry(b.worstPerChain, chain);
 }
 
 export function renderTemplate(text: string, benchmark: Benchmark): string {
   if (!text || text.indexOf("{{") === -1) return text;
   const live = liveResults(benchmark.results);
-  const sorted = [...live].sort((a, b) =>
-    benchmark.higherIsBetter ? b.ms.p50 - a.ms.p50 : a.ms.p50 - b.ms.p50
-  );
+  const sorted = rankResults(live, benchmark.higherIsBetter);
   const best = sorted[0];
   const worst = sorted[sorted.length - 1];
 
@@ -78,21 +98,20 @@ export function renderTemplate(text: string, benchmark: Benchmark): string {
     CHAIN_TEMPLATE_RE,
     (whole, keyword: string, chain: string) => {
       const k = keyword.toLowerCase();
-      const chainKey = chain.toLowerCase();
       if (k === "best_name") {
-        const lead = bestForChain(benchmark, chainKey);
+        const lead = bestForChain(benchmark, chain);
         return lead ? lead.name : whole;
       }
       if (k === "best_p50") {
-        const lead = bestForChain(benchmark, chainKey);
+        const lead = bestForChain(benchmark, chain);
         return lead ? fmtUnit(lead.ms.p50, benchmark.unit) : whole;
       }
       if (k === "worst_name") {
-        const trailer = worstForChain(benchmark, chainKey);
+        const trailer = worstForChain(benchmark, chain);
         return trailer ? trailer.name : whole;
       }
       if (k === "worst_p50") {
-        const trailer = worstForChain(benchmark, chainKey);
+        const trailer = worstForChain(benchmark, chain);
         return trailer ? fmtUnit(trailer.ms.p50, benchmark.unit) : whole;
       }
       return whole;
@@ -132,12 +151,39 @@ export function renderTemplate(text: string, benchmark: Benchmark): string {
 }
 
 /** Apply renderTemplate to every editorial field that supports it. The
- *  Benchmark object is mutated in place and returned for convenience. */
+ *  Benchmark object is mutated in place and returned for convenience.
+ *
+ *  Fields covered:
+ *   - abstract, findings, seoIntro, faq, perChainExplainer: page body copy.
+ *   - seoTitle, seoDescription: meta tags + RSC props serialized to the
+ *     client. Without rendering these, a `{{best_name}}` token in
+ *     `seo_description` survives into the response payload (and was
+ *     visible in dev tools / view-source as raw template syntax). The
+ *     bench page's generateMetadata also rendered against `b` directly,
+ *     but anywhere else that read the field (the bench object passed
+ *     to client components, /api/citable downstream consumers) got the
+ *     raw token.
+ *   - subtitle, methodology, disclaimer: same risk, smaller blast
+ *     radius today but no reason to leave them unprocessed.
+ */
 export function renderBenchmarkText(benchmark: Benchmark): Benchmark {
   benchmark.abstract = renderTemplate(benchmark.abstract, benchmark);
   benchmark.findings = benchmark.findings.map((f) => renderTemplate(f, benchmark));
+  benchmark.methodology = benchmark.methodology.map((m) =>
+    renderTemplate(m, benchmark),
+  );
+  benchmark.subtitle = renderTemplate(benchmark.subtitle, benchmark);
+  if (benchmark.seoTitle) {
+    benchmark.seoTitle = renderTemplate(benchmark.seoTitle, benchmark);
+  }
+  if (benchmark.seoDescription) {
+    benchmark.seoDescription = renderTemplate(benchmark.seoDescription, benchmark);
+  }
   if (benchmark.seoIntro) {
     benchmark.seoIntro = renderTemplate(benchmark.seoIntro, benchmark);
+  }
+  if (benchmark.disclaimer) {
+    benchmark.disclaimer = renderTemplate(benchmark.disclaimer, benchmark);
   }
   if (benchmark.faq) {
     benchmark.faq = benchmark.faq.map((item) => ({

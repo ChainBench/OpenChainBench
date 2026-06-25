@@ -131,5 +131,19 @@ describe("renderTemplate", () => {
         "{{best_name:chain:solana}}",
       );
     });
+
+    test("matches chain key case-insensitively against the stash", () => {
+      // perp-fees declares dimensions.chain values as `ETH`, `BTC`, `SOL`
+      // (uppercase asset codes), so the stash ends up keyed `ETH` etc.
+      // Without case folding, `{{best_p50:chain:BTC}}` in an editorial
+      // line would fall through and render the raw token.
+      const upper = bench([r("alpha", "Alpha", 100), r("beta", "Beta", 200)]);
+      upper.bestPerChain = {
+        ETH: { name: "Alpha", slug: "alpha", ms: { p50: 100, p90: 0, p99: 0, mean: 100 }, successRate: 1 },
+        BTC: { name: "Beta", slug: "beta", ms: { p50: 200, p90: 0, p99: 0, mean: 200 }, successRate: 1 },
+      };
+      expect(renderTemplate("{{best_name:chain:BTC}}", upper)).toBe("Beta");
+      expect(renderTemplate("{{best_p50:chain:eth}}", upper)).toBe("100 ms");
+    });
   });
 });
