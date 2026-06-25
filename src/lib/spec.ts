@@ -13,7 +13,7 @@ import { cache } from "react";
 import { unstable_cache } from "next/cache";
 import type { Benchmark } from "@/types/benchmark";
 import type { Spec } from "@/lib/spec-schema";
-import { canonicalChainSlug } from "@/lib/chains";
+import { canonicalChainSlug } from "@/lib/chain-aliases";
 import { renderBenchmarkText } from "@/lib/bench-template";
 import {
   buildEditorial,
