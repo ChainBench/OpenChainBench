@@ -368,7 +368,9 @@ async function buildProviders(): Promise<ProviderProfile[]> {
     });
   }
 
-  const profiles = Array.from(byKey.values());
+  const profiles = Array.from(byKey.values()).filter(
+    (p) => !DEAD_COMPOSITE_SLUGS.has(p.slug),
+  );
   profiles.sort((a, b) => {
     if (a.wins !== b.wins) return b.wins - a.wins;
     if (a.appearances.length !== b.appearances.length) {
@@ -378,6 +380,20 @@ async function buildProviders(): Promise<ProviderProfile[]> {
   });
   return profiles;
 }
+
+// Zombie slugs from the pre-collapse pm-api-latency split. The bench
+// now ranks the parent provider only (codex, predexon), but stale
+// materialize-worker snapshots can recreate ghost /products/<slug>
+// pages with no data. Hard-block so getProvider() returns undefined and
+// the route 404s cleanly. Keep in sync with the same set in
+// related-providers.ts.
+const DEAD_COMPOSITE_SLUGS = new Set([
+  "codex-kalshi",
+  "codex-polymarket",
+  "predexon-kalshi",
+  "predexon-limitless",
+  "predexon-polymarket",
+]);
 
 // Cohort venues that should have a /products/<slug> page even when no
 // bench in benchmarks/ ranks them. Imported as a flat list here to
@@ -410,7 +426,7 @@ const PERP_VENUE_SEED = [
  *  bump this key when the buildProviders() output shape changes. */
 const buildProvidersCached = unstable_cache(
   buildProviders,
-  ["providers-v2"],
+  ["providers-v3"],
   { revalidate: 60, tags: ["benchmarks"] },
 );
 
