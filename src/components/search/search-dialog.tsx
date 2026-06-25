@@ -62,38 +62,13 @@ const KIND_ICON: Record<SearchKind, typeof Search> = {
 };
 
 /**
- * Hand-picked editorial leaders. Shown as horizontal "Live leaders" cards
- * when the query is empty. Live values (#1 provider + p50) come from
- * `/api/citable`, which is already edge-cached for 300s. All slugs must
- * appear in the citable response (editorialStatus === "live" + leader()
- * non-null) — verified against prod before shipping.
+ * The featured + trending lists themselves now live in
+ * `src/lib/search-featured.ts` (single source of truth used by the cron
+ * that warms the KV blob and by the public endpoint that serves it).
+ * The dialog consumes the pre-resolved blob from SearchProvider, which
+ * fetches `/api/search/featured` at mount + on trigger hover.
  */
-const FEATURED_BENCH_SLUGS = [
-  "pm-data-freshness",
-  "aggregator-head-lag",
-  "l1-finality",
-  "rpc-capabilities",
-  "perp-fees",
-  "bridge-quote-latency",
-];
-
-const TRENDING_BENCH_SLUGS = [
-  "stablecoin-peg-usdt-anchored",
-  "metadata-coverage",
-  "validator-yield",
-  "network-fees",
-  "perp-funding",
-  "solana-tx-landing",
-];
-
-type CitableLeader = {
-  slug: string;
-  title: string;
-  category: string;
-  value: number | null;
-  unit: string;
-  leader: { name: string; slug: string; value: number } | null;
-};
+import type { FeaturedCardData } from "@/lib/search-featured";
 
 function Kbd({ children }: { children: React.ReactNode }) {
   return (
@@ -139,32 +114,13 @@ function fmtUnit(value: number | null | undefined, unit: string): string {
 }
 
 export default function SearchDialog() {
-  const { items, close: onClose } = useSearch();
+  const { items, close: onClose, featured: featuredBlob } = useSearch();
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [isClosing, setIsClosing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const { recent, push: pushRecent, remove: removeRecent, clear: clearRecent } =
     useRecentSearches();
-
-  // Featured / trending live data. One fetch on mount, cached by browser
-  // since /api/citable ships s-maxage=300.
-  const [citable, setCitable] = useState<Map<string, CitableLeader> | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/citable")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((j) => {
-        if (cancelled || !j?.benchmarks) return;
-        const map = new Map<string, CitableLeader>();
-        for (const b of j.benchmarks as CitableLeader[]) map.set(b.slug, b);
-        setCitable(map);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   // One Fuse instance per dialog mount. The full corpus is ~400 docs
   // so build cost is sub-millisecond, no need to memoise across mounts.
@@ -222,27 +178,44 @@ export default function SearchDialog() {
     return map;
   }, [items]);
 
-  const featured = useMemo(() => {
-    return FEATURED_BENCH_SLUGS
-      .map((slug) => {
-        const item = benchItemBySlug.get(slug);
+  // Featured + trending lists arrive pre-resolved from SearchProvider
+  // (warmed by a cron + Upstash KV blob, served via /api/search/featured).
+  // We zip each card against the search index entry to inherit the URL
+  // and any extra item-level metadata. Missing search-index hits drop
+  // out silently so a stale slug never breaks the dialog.
+  const zip = (cards: FeaturedCardData[] | undefined) =>
+    (cards ?? [])
+      .map((card) => {
+        const item = benchItemBySlug.get(card.slug);
         if (!item) return null;
-        const live = citable?.get(slug);
-        return { item, live: live ?? null };
+        return { item, live: card };
       })
-      .filter((x): x is { item: SearchItem; live: CitableLeader | null } => Boolean(x));
-  }, [benchItemBySlug, citable]);
+      .filter((x): x is { item: SearchItem; live: FeaturedCardData } => Boolean(x));
 
-  const trending = useMemo(() => {
-    return TRENDING_BENCH_SLUGS
-      .map((slug) => {
-        const item = benchItemBySlug.get(slug);
-        if (!item) return null;
-        const live = citable?.get(slug);
-        return { item, live: live ?? null };
-      })
-      .filter((x): x is { item: SearchItem; live: CitableLeader | null } => Boolean(x));
-  }, [benchItemBySlug, citable]);
+  const featured = useMemo(
+    () => zip(featuredBlob?.featured),
+    // benchItemBySlug is stable for a given items array; zipping inside
+    // the memo keeps the array reference stable across renders.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [benchItemBySlug, featuredBlob?.featured],
+  );
+
+  const trending = useMemo(
+    () => zip(featuredBlob?.trending),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [benchItemBySlug, featuredBlob?.trending],
+  );
+
+  // Flat slug → card lookup for the search-results render. Any bench
+  // appearing in featured OR trending gets its leader logo on the row;
+  // others fall back to the trophy / kind icon. Avoids an extra fetch
+  // and keeps the dialog snappy.
+  const featuredBySlug = useMemo(() => {
+    const map = new Map<string, FeaturedCardData>();
+    for (const c of featuredBlob?.featured ?? []) map.set(c.slug, c);
+    for (const c of featuredBlob?.trending ?? []) map.set(c.slug, c);
+    return map;
+  }, [featuredBlob]);
 
   const results = useMemo<SearchItem[]>(() => {
     const q = query.trim();
@@ -400,7 +373,7 @@ export default function SearchDialog() {
                     <SectionHeader
                       label="Live leaders"
                       action={
-                        citable && (
+                        featuredBlob && (
                           <span className="inline-flex items-center gap-1.5 text-[10px] text-ink-faint">
                             <span className="size-1.5 rounded-full bg-good animate-pulse" />
                             live
@@ -412,7 +385,7 @@ export default function SearchDialog() {
                       <div className="flex gap-2.5 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden snap-x snap-mandatory -mx-1 px-1">
                         {featured.map(({ item, live }) => {
                           const category = item.tags?.[0] ?? "Benchmark";
-                          const isLoading = citable === null;
+                          const isLoading = featuredBlob === null;
                           return (
                             <button
                               key={item.id}
@@ -471,7 +444,7 @@ export default function SearchDialog() {
                     <Command.Group className="px-2">
                       {trending.map(({ item, live }) => {
                         const category = item.tags?.[0] ?? "Benchmark";
-                        const isLoading = citable === null;
+                        const isLoading = featuredBlob === null;
                         return (
                           <Command.Item
                             key={item.id}
@@ -545,9 +518,14 @@ export default function SearchDialog() {
                   >
                     {list.map((it) => {
                       const entry = entryFromItem(it);
+                      // For benchmark results, try to surface the current
+                      // leader's logo if the bench is in our warmed featured/
+                      // trending set. Otherwise fall through to the kind-icon
+                      // fallback — we deliberately don't fetch /api/citable
+                      // here to keep the dialog responsive.
                       const benchLive =
                         it.kind === "Benchmark" && entry.slug
-                          ? citable?.get(entry.slug)
+                          ? featuredBySlug.get(entry.slug)
                           : null;
                       const logoSlug =
                         it.kind === "Benchmark"
