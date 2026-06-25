@@ -20,6 +20,7 @@ import { ProviderLogo } from "@/components/provider-logo";
 import { SITE } from "@/data/site";
 import { buildBreadcrumbJsonLd, safeJsonLd } from "@/lib/jsonld";
 import { capDescription } from "@/lib/seo-text";
+import { matchesChainSlug } from "@/lib/chain-aliases";
 import type { Benchmark } from "@/types/benchmark";
 
 export const revalidate = 60;
@@ -200,12 +201,19 @@ export default async function ChainPage({
             </h2>
             <ul className="mt-4 divide-y divide-rule border-y border-rule">
               {list.map((b) => {
-                const ownResult = b.results.find((r) => r.slug === slug);
-                const chainOption = b.dimensions?.chain?.find(
-                  (c) => c.value === slug,
+                // Canonical-aware matches: the bench's results / dimensions /
+                // perChainExplainer might still carry the legacy slug ("ton")
+                // while the URL is the renamed "gram". The matcher resolves
+                // both sides to the canonical chain so all three lookups land.
+                const ownResult = b.results.find((r) =>
+                  matchesChainSlug(r.slug, slug),
                 );
-                const hasChainRoute =
-                  (b.perChainExplainer ?? []).some((e) => e.slug === slug);
+                const chainOption = b.dimensions?.chain?.find((c) =>
+                  matchesChainSlug(c.value, slug),
+                );
+                const hasChainRoute = (b.perChainExplainer ?? []).some((e) =>
+                  matchesChainSlug(e.slug, slug),
+                );
                 const href = hasChainRoute
                   ? `/benchmarks/${b.slug}/${slug}`
                   : `/benchmarks/${b.slug}`;

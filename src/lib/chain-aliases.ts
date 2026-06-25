@@ -26,3 +26,30 @@ export function canonicalChainSlug(slug: string): string {
   const lc = slug.toLowerCase();
   return CHAIN_SLUG_ALIASES[lc] ?? lc;
 }
+
+/** Returns every legacy slug that aliases to the given canonical, plus
+ *  the canonical itself. Use as a Set when filtering YAML dimensions /
+ *  result rows whose slug may still be in legacy form. */
+export function chainSlugSiblings(slug: string): Set<string> {
+  const canon = canonicalChainSlug(slug);
+  const set = new Set<string>([canon]);
+  for (const [legacy, target] of Object.entries(CHAIN_SLUG_ALIASES)) {
+    if (target === canon) set.add(legacy);
+  }
+  return set;
+}
+
+/** True when two slugs refer to the same chain — either both canonical,
+ *  one legacy that aliases to the other, or both legacy mapping to the
+ *  same canonical. The canonical chain-comparison helper used at every
+ *  site that previously did `=== chain` (route handlers, OG generators,
+ *  badge API, sitemap filters, etc.). Case-insensitive. Both args are
+ *  optional so callers with `string | null` URL params can pass without
+ *  an inline guard. */
+export function matchesChainSlug(
+  a: string | null | undefined,
+  b: string | null | undefined,
+): boolean {
+  if (!a || !b) return false;
+  return canonicalChainSlug(a) === canonicalChainSlug(b);
+}

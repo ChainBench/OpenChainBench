@@ -15,6 +15,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { getBenchmark } from "@/data/benchmarks";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { SLUG_RE } from "@/lib/slug";
+import { matchesChainSlug } from "@/lib/chain-aliases";
 
 export const revalidate = 60;
 
@@ -49,8 +50,13 @@ export async function GET(
   for (const dim of ["chain", "region", "kind"] as const) {
     const raw = url.searchParams.get(dim)?.toLowerCase().trim();
     if (!raw || raw === "all") continue;
-    const known = (aggregate.dimensions?.[dim] ?? []).find(
-      (d) => d.value.toLowerCase() === raw,
+    // Canonical-aware matching: the chain dimension may still hold the
+    // legacy slug ("ton") even though clients now request the canonical
+    // ("gram"). The matcher resolves both sides to canonical.
+    const known = (aggregate.dimensions?.[dim] ?? []).find((d) =>
+      dim === "chain"
+        ? matchesChainSlug(d.value, raw)
+        : d.value.toLowerCase() === raw,
     );
     if (!known) {
       return new NextResponse(`unknown ${dim}`, {
