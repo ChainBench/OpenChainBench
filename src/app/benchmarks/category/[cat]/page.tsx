@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getBenchmarksSafe } from "@/data/benchmarks";
+import { getBenchmarksSafe, toBenchmarkCardData } from "@/data/benchmarks";
 import { BenchmarkGrid } from "@/components/benchmark-grid";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { safeJsonLd, buildItemListJsonLd } from "@/lib/jsonld";
@@ -103,7 +103,7 @@ export default async function BenchmarkCategoryPage({
         </p>
       </header>
       <BenchmarkGrid
-        benchmarks={benchmarks}
+        benchmarks={benchmarks.map(toBenchmarkCardData)}
         lockedCategory={entry.label}
         allCategories={Array.from(new Set(all.map((b) => b.category)))}
       />
