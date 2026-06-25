@@ -40,7 +40,7 @@ seo_intro: |
   response is a meaningful name, generic fillers like "EOA",
   "Contract" or "Wallet" are excluded because they carry no entity
   signal. Coverage is also reported per chain so chain-specialists
-  (Helius on Solana, TonAPI on TON, StellarExpert on Stellar, XRPScan
+  (Helius on Solana, TonAPI on Gram, StellarExpert on Stellar, XRPScan
   on XRP, WalletExplorer on Bitcoin) are not unfairly penalised for
   chains they do not claim to cover. Universal providers (Mobula,
   Moralis, Blockscout, OLI) are scored on every chain they advertise.
@@ -66,7 +66,7 @@ abstract: |
   averaged into one number.
 
   Coverage is also shown per chain. Some providers cover 90+ chains (Mobula),
-  others are chain-specialists (Helius for Solana, TonAPI for TON, StellarExpert
+  others are chain-specialists (Helius for Solana, TonAPI for Gram, StellarExpert
   for Stellar, XRPScan for XRP, WalletExplorer for Bitcoin). Showing per-chain
   rather than aggregating prevents specialists from being unfairly penalized for
   chains they don't claim to cover.
@@ -87,9 +87,9 @@ per_chain_explainer:
     body: |
       The Solana wallet labeling leaderboard is driven by chain-specialist curation rather than universal coverage. Helius wins by default on this chain because its label graph is built directly against native Solana programs (Jito stake pools, Jupiter routers, Pump.fun creators, Magic Eden marketplace IDs) rather than translated from an EVM-shaped schema. Mobula audits Solana as part of its universal coverage and clocks {{p50:mobula}} on the active Kind tab. Blockscout does not index Solana, so the per-chain leaderboard here is between Solana-native APIs.
   - slug: ton
-    h2: "Best wallet labeling API on TON"
+    h2: "Best wallet labeling API on Gram"
     body: |
-      TON wallet labeling is essentially a two-API conversation. TonAPI ships a curated entity directory covering core TON contracts (jettons, Telegram bot wallets, DEX routers like STON.fi and DeDust). Mobula audits TON as part of its universal coverage. Most EVM-centric providers (Moralis, Blockscout) do not index TON at all, so the per-chain leaderboard here surfaces the genuine specialist gap. Per the bench's coverage definition, generic categorical fillers like `EOA` or `Wallet` do not count toward a hit; only entity-grade names do.
+      Gram (formerly TON) wallet labeling is essentially a two-API conversation. TonAPI ships a curated entity directory covering core Gram contracts (jettons, Telegram bot wallets, DEX routers like STON.fi and DeDust). Mobula audits Gram as part of its universal coverage. Most EVM-centric providers (Moralis, Blockscout) do not index Gram at all, so the per-chain leaderboard here surfaces the genuine specialist gap. Per the bench's coverage definition, generic categorical fillers like `EOA` or `Wallet` do not count toward a hit; only entity-grade names do.
   - slug: stellar
     h2: "Best wallet labeling API on Stellar"
     body: |
@@ -112,7 +112,7 @@ findings:
   - "The Kind toggle separates two distinct jobs. On the Contract tab any explorer that reads verified source code (Blockscout in particular) saturates near 100% because the contract's name is already in the bytecode metadata. On the EOA tab the score reflects how well the provider's curated entity graph covers plain wallets, the actually-hard job."
   - "{{name:mobula}} returns {{p50:mobula}}. Universal coverage providers score on every chain they advertise, so a single number summarizes how broad the underlying label graph actually is once chain-specialists are stripped out. Switch to the EOA tab to see the curated-entity comparison without contract names lifting every score."
   - "{{name:helius}} scores {{p50:helius}} on Solana. Chain-specialists tend to dominate their home chain because their label graph is curated against native protocols (Jito, Jupiter, Pump.fun, marketplace programs) rather than translated from an EVM-shaped schema."
-  - "{{name:moralis}} returns {{p50:moralis}}. EVM-centric providers usually trail on TON, Stellar, XRP and Bitcoin because their indexers and entity graphs were built for EVM patterns and ported chains afterwards."
+  - "{{name:moralis}} returns {{p50:moralis}}. EVM-centric providers usually trail on Gram, Stellar, XRP and Bitcoin because their indexers and entity graphs were built for EVM patterns and ported chains afterwards."
   - "{{name:blockscout}} sits at {{p50:blockscout}}. Explorer-derived labels rely on verified source code on the Contract tab and on public name tags on the EOA tab. Coverage on the Contract tab tracks how active each chain's Blockscout deployment is; on the EOA tab it tracks how curated each chain's `public_tags` table is, which is far less complete."
   - "{{worst_name}} trails at {{worst_p50}} on the active tab. The gap between leader and laggard is mostly which entities each provider's graph has been curated against: CEX hot wallets, OFAC SDN and Safe multisigs are easy hits; long-tail public figures and DEX routers separate the top tier."
 
@@ -124,7 +124,7 @@ faq:
   - q: "What does 'wallet labeling' mean in a crypto API?"
     a: "A wallet labeling API takes an address and returns an entity name. The CEX it belongs to (`Binance hot wallet 14`), the protocol (`Uniswap V3 router`), the multisig owner (`Safe: foundation treasury`), the sanctioned status (`OFAC SDN`), or a public-figure tag (`Vitalik Buterin`). Generic categorical labels like `EOA`, `Contract`, `Wallet` are not considered a hit on this benchmark because they carry no entity signal."
   - q: "Is Mobula's labels API better than Moralis or Helius?"
-    a: "It depends on the chain and on the kind. {{name:mobula}} is a universal provider audited on every chain it advertises and currently returns {{p50:mobula}} on the active tab. {{name:helius}} is Solana-only and dominates that chain because its label graph is curated against native Solana programs. {{name:moralis}} is EVM-centric and trails on TON, Stellar, XRP and Bitcoin. The Kind = EOA tab is where curated entity graphs (Mobula, Helius, chain specialists) actually compete; the Kind = Contract tab favours explorers like Blockscout because they read verified source code for free."
+    a: "It depends on the chain and on the kind. {{name:mobula}} is a universal provider audited on every chain it advertises and currently returns {{p50:mobula}} on the active tab. {{name:helius}} is Solana-only and dominates that chain because its label graph is curated against native Solana programs. {{name:moralis}} is EVM-centric and trails on Gram, Stellar, XRP and Bitcoin. The Kind = EOA tab is where curated entity graphs (Mobula, Helius, chain specialists) actually compete; the Kind = Contract tab favours explorers like Blockscout because they read verified source code for free."
   - q: "What is the alternative to Arkham or Nansen for builders?"
     a: "Arkham and Nansen own the consumer visualization layer (browse-the-web-of-onchain-money). The builder side of the question, the API integrated under the hood by wallets, portfolio trackers and AML flows, lives elsewhere. Mobula, Helius, Moralis, Blockscout, OLI, TonAPI, StellarExpert, XRPScan and WalletExplorer are the labeling APIs benchmarked here. Pick the one whose coverage matches the chains your product touches and whose response shape fits your integration latency budget."
   - q: "How does OpenChainBench measure wallet label coverage?"
@@ -163,7 +163,7 @@ dimensions:
     - { value: arbitrum, label: Arbitrum }
     - { value: polygon,  label: Polygon }
     - { value: optimism, label: Optimism }
-    - { value: ton,      label: TON }
+    - { value: ton,      label: Gram }
     - { value: stellar,  label: Stellar }
     - { value: xrp,      label: XRP }
     - { value: bitcoin,  label: Bitcoin }
@@ -244,8 +244,8 @@ providers:
 
   - slug: tonapi
     name: TonAPI
-    tag: TON specialist, native account graph, free tier
-    formula: "Share of TON anchor addresses for which TonAPI /v2/accounts/{addr} returns a non-generic entity name, success_total ÷ checks_total over 24h."
+    tag: Gram specialist, native account graph, free tier
+    formula: "Share of Gram anchor addresses for which TonAPI /v2/accounts/{addr} returns a non-generic entity name, success_total ÷ checks_total over 24h."
     queries:
       p50: 100 * sum(increase(wallet_labels_success_total{provider="tonapi"}[24h])) / sum(increase(wallet_labels_checks_total{provider="tonapi"}[24h]))
       p90: 100 * sum(increase(wallet_labels_success_total{provider="tonapi"}[24h])) / sum(increase(wallet_labels_checks_total{provider="tonapi"}[24h]))

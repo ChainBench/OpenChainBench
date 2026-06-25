@@ -77,11 +77,11 @@ export const CHAINS: ChainEntry[] = [
   },
   {
     slug: "ton",
-    label: "TON",
+    label: "Gram",
     category: "L1",
-    nativeSymbol: "TON",
+    nativeSymbol: "GRAM",
     description:
-      "BAG consensus, masterchain + workchains, deterministic finality under one second on the masterchain commit.",
+      "Gram (formerly TON / Toncoin). BAG consensus, masterchain + workchains, deterministic finality under one second on the masterchain commit. Native token renamed Toncoin → Gram in June 2026.",
   },
   {
     slug: "stellar",

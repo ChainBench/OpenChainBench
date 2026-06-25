@@ -26,7 +26,7 @@ var integrationCases = []testCase{
 	{"bnb", "0xF977814e90dA44bFA03b6295A0616a897441aceC", "Binance Hot 8 (BSC)"},
 	// Solana
 	{"solana", "5Q544fKrFoe6tsEbD7S8EmxGTJYAKtTVhAW5Q5pge4j1", "Raydium Authority"},
-	// TON
+	// Gram (formerly TON)
 	{"ton", "EQB3ncyBUTjZUA5EnFKR5_EnOMI9V1tTEAAPaiU71gc4TiUt", "STON.fi DEX"},
 	// Stellar
 	{"stellar", "GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A", "Binance"},
