@@ -4,6 +4,7 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import type { Benchmark } from "@/types/benchmark";
 import { liveResults } from "@/lib/provider-filters";
+import { matchesChainSlug } from "@/lib/chain-aliases";
 import { ChainTabs } from "@/components/chain-tabs";
 import { LedgerTable } from "@/components/ledger-table";
 import { TimeSeriesChart } from "@/components/time-series-chart";
@@ -154,8 +155,12 @@ export function BenchmarkBody({
   const urlRegion = searchParams.get("region");
   const urlKind = searchParams.get("kind");
   const urlLayer = searchParams.get("layer");
+  // Canonical-aware lookup: a URL with the new slug ("?chain=gram")
+  // still selects the dimension whose YAML value is the legacy "ton".
   const resolvedInitialChain =
-    (urlChain && chainOptions.find((c) => c.value === urlChain)?.value) ?? initialChain;
+    (urlChain &&
+      chainOptions.find((c) => matchesChainSlug(c.value, urlChain))?.value) ??
+    initialChain;
   const resolvedInitialRegion =
     (urlRegion && regionOptions.find((r) => r.value === urlRegion)?.value) ?? initialRegion;
   const resolvedInitialKind =

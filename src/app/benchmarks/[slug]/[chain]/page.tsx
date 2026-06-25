@@ -10,6 +10,10 @@ import { capDescription } from "@/lib/seo-text";
 import { SITE } from "@/data/site";
 import { buildBreadcrumbJsonLd, safeJsonLd } from "@/lib/jsonld";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
+import {
+  canonicalChainSlug,
+  matchesChainSlug,
+} from "@/lib/chain-aliases";
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
 
 // Dedicated per-chain landing pages. Only chains that have a hand-written
@@ -119,8 +123,12 @@ async function loadChainPage(
 ): Promise<ChainPageData | null> {
   const benchmark = await getBenchmark(slug);
   if (!benchmark) return null;
-  const found = (benchmark.perChainExplainer ?? []).find(
-    (e) => e.slug === chain,
+  // Canonical-aware lookups: a URL like /benchmarks/<bench>/gram must
+  // resolve when the bench's perChainExplainer / results / dimensions
+  // still carry the legacy slug ("ton") because YAMLs and the harness
+  // haven't all rotated past the rename yet.
+  const found = (benchmark.perChainExplainer ?? []).find((e) =>
+    matchesChainSlug(e.slug, chain),
   );
   if (!found) return null;
   const explainer = {
@@ -130,19 +138,24 @@ async function loadChainPage(
   };
 
   // Shape 1: the chain is a leaderboard row (l1-finality).
-  const result = benchmark.results.find((r) => r.slug === chain);
+  const result = benchmark.results.find((r) => matchesChainSlug(r.slug, chain));
   if (result) {
     const sorted = sortLive(benchmark.results, benchmark.higherIsBetter);
-    const rank = sorted.findIndex((r) => r.slug === chain) + 1;
+    const rank = sorted.findIndex((r) => matchesChainSlug(r.slug, chain)) + 1;
     return { shape: "row", benchmark, explainer, result, sorted, rank };
   }
 
   // Shape 2: the chain is a filter dimension (rpc-capabilities).
   const chainOption = (benchmark.dimensions?.chain ?? []).find(
-    (c) => c.value === chain && c.value.toLowerCase() !== "all",
+    (c) => matchesChainSlug(c.value, chain) && c.value.toLowerCase() !== "all",
   );
   if (!chainOption) return null;
-  const scoped = (await getBenchmark(slug, { chain })) ?? benchmark;
+  // Use the actual YAML value (not the canonical) when fetching the
+  // scoped variant — the Prom-label injection downstream expects the
+  // raw dimension value (e.g. "ton") so the regex straddle keeps
+  // matching the harness's current label.
+  const scoped =
+    (await getBenchmark(slug, { chain: chainOption.value })) ?? benchmark;
   const providers = sortLive(scoped.results, benchmark.higherIsBetter);
   const leader = providers[0] ?? null;
 
@@ -157,7 +170,10 @@ async function loadChainPage(
     const variants = await Promise.all(
       regions.map(async (r) => ({
         label: r.label,
-        bench: await getBenchmark(slug, { chain, region: r.value }),
+        bench: await getBenchmark(slug, {
+          chain: chainOption.value,
+          region: r.value,
+        }),
       })),
     );
     for (const v of variants) {
