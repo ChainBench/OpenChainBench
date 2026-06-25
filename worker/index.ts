@@ -191,17 +191,21 @@ function variantCombos(spec: Spec): BenchmarkFilters[] {
   const chains = (dims.chain ?? []).map((d) => d.value).filter((v) => v !== "all");
   const regions = (dims.region ?? []).map((d) => d.value).filter((v) => v !== "all");
   const kinds = (dims.kind ?? []).map((d) => d.value).filter((v) => v !== "all");
+  const venues = (dims.venue ?? []).map((d) => d.value).filter((v) => v !== "all");
   const opt = <T,>(xs: T[]): (T | undefined)[] => (xs.length ? [undefined, ...xs] : [undefined]);
   const combos: BenchmarkFilters[] = [];
   for (const chain of opt(chains)) {
     for (const region of opt(regions)) {
       for (const kind of opt(kinds)) {
-        if (!chain && !region && !kind) continue; // the aggregate is tier A
-        combos.push({
-          ...(chain ? { chain } : {}),
-          ...(region ? { region } : {}),
-          ...(kind ? { kind } : {}),
-        });
+        for (const venue of opt(venues)) {
+          if (!chain && !region && !kind && !venue) continue; // the aggregate is tier A
+          combos.push({
+            ...(chain ? { chain } : {}),
+            ...(region ? { region } : {}),
+            ...(kind ? { kind } : {}),
+            ...(venue ? { venue } : {}),
+          });
+        }
       }
     }
   }
@@ -297,6 +301,7 @@ function variantPath(slug: string, f: BenchmarkFilters): string {
   if (f.chain) qs.set("chain", f.chain);
   if (f.region) qs.set("region", f.region);
   if (f.kind) qs.set("kind", f.kind);
+  if (f.venue) qs.set("venue", f.venue);
   return `/api/bench/${slug}/variant${qs.size ? `?${qs.toString()}` : ""}`;
 }
 
