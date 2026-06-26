@@ -141,3 +141,49 @@ export function buildFaqPageJsonLd(
     })),
   };
 }
+
+/**
+ * Build a top-level ItemList JSON-LD object per https://schema.org/ItemList.
+ *
+ * Used by index pages (/benchmarks, /products, /chains, /alternatives,
+ * /answers, /compare) and category hubs to publish a structured listing
+ * that Google can ingest as a carousel rich result. Optionally
+ * accompanied by a breadcrumb block in the same @graph so the page
+ * surfaces both signals from a single script tag.
+ */
+export function buildItemListJsonLd(params: {
+  name: string;
+  url: string;
+  description?: string;
+  items: Array<{ name: string; url: string; description?: string }>;
+  breadcrumb?: Array<{ name: string; url: string }>;
+}): Record<string, unknown> {
+  const itemList: Record<string, unknown> = {
+    "@type": "ItemList",
+    name: params.name,
+    url: params.url,
+    numberOfItems: params.items.length,
+    itemListElement: params.items.map((item, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      name: item.name,
+      url: item.url,
+      ...(item.description ? { description: item.description } : {}),
+    })),
+  };
+  if (params.description) itemList.description = params.description;
+
+  const graph: Array<Record<string, unknown>> = [itemList];
+  if (params.breadcrumb && params.breadcrumb.length > 0) {
+    graph.push(
+      buildBreadcrumbJsonLd(
+        params.breadcrumb.map((c) => ({ name: c.name, item: c.url })),
+      ),
+    );
+  }
+
+  return {
+    "@context": "https://schema.org",
+    "@graph": graph,
+  };
+}
