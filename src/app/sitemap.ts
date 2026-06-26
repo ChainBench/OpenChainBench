@@ -4,7 +4,7 @@ import type { MetadataRoute } from "next";
 import { getBenchmarks } from "@/data/benchmarks";
 import { loadAllAlternatives } from "@/lib/alternatives";
 import { loadAllAnswers } from "@/lib/answers";
-import { CHAINS, getBenchmarksForChain } from "@/lib/chains";
+import { CHAIN_BY_SLUG, CHAINS, getBenchmarksForChain } from "@/lib/chains";
 import { canonicalChainSlug } from "@/lib/chain-aliases";
 import { getProvider, getProviderSlugs } from "@/lib/providers";
 import { SITE } from "@/data/site";
@@ -208,9 +208,16 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
   // need to apply if it were prerendering the route. Without this
   // guard, Google indexed soft 404s for slugs the sitemap claimed
   // existed (quicknode, coingecko, infura, ankr were all flagged).
+  //
+  // Also drop any slug that matches a chain in the registry. Those
+  // /products/<chain> URLs 308 to /chains/<chain> since the URL move,
+  // so listing them in the sitemap pollutes it with permanent
+  // redirects. The canonical /chains/<slug> URLs are emitted below
+  // by chainRoutes.
   const validatedSlugs = (
     await Promise.all(
       providerSlugs.map(async (slug) => {
+        if (CHAIN_BY_SLUG.has(slug)) return null;
         const p = await getProvider(slug);
         return p ? slug : null;
       }),
@@ -246,15 +253,15 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
       };
     });
 
-  // Chain hub pages. Each load wrapped so a single chain failure can't
-  // dropdown the whole batch. On error we still surface the URL because
-  // the page route has its own empty-bench guard.
+  // Chain hub pages. Emit one entry per chain in the registry, no
+  // bench-count gate: every /chains/<slug> route exists and renders
+  // its own empty-bench state, and these are the canonical URLs that
+  // replace the /products/<chain> 308s filtered out above.
   const chainRoutes: MetadataRoute.Sitemap = (
     await Promise.all(
       CHAINS.map(async (c) => {
         try {
           const benches = await getBenchmarksForChain(c.slug);
-          if (benches.length === 0) return null;
           const last = benches.reduce<Date>((acc, b) => {
             if (!b.lastRunAt) return acc;
             const t = new Date(b.lastRunAt);
