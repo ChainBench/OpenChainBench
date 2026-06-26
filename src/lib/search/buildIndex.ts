@@ -17,7 +17,7 @@ import { loadAllAnswers } from "@/lib/answers";
 import { CHAINS } from "@/lib/chains";
 import { COMPARE_PAIRS } from "@/data/compare-pairs";
 import { PROVIDER_REGISTRY } from "@/data/provider-registry";
-import { canonicalize } from "@/lib/providers";
+import { canonicalize, getProvider } from "@/lib/providers";
 import type { SearchItem } from "@/lib/search/types";
 
 /**
@@ -221,7 +221,23 @@ export const buildSearchIndex = cache(async function buildSearchIndex(): Promise
   }
 
   // ── Compare pairs ───────────────────────────────────────────────
-  for (const pair of COMPARE_PAIRS) {
+  // Mirror the filter applied by /compare/page.tsx: skip pairs where
+  // either side is unresolved (provider deregistered, never imported,
+  // or hex-blacklisted). Without this the search index keeps surfacing
+  // jupiter-vs-raydium et al even after the compare page itself stops
+  // rendering them, and Google / Ahrefs flag the embedded JSON as a
+  // dead internal link.
+  const resolvedPairs = await Promise.all(
+    COMPARE_PAIRS.map(async (pair) => {
+      const [a, b] = await Promise.all([
+        getProvider(pair.providerA),
+        getProvider(pair.providerB),
+      ]);
+      return a && b ? pair : null;
+    }),
+  );
+  for (const pair of resolvedPairs) {
+    if (!pair) continue;
     const a = providerNameFor(pair.providerA);
     const b = providerNameFor(pair.providerB);
     items.push({

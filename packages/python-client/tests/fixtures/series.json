@@ -1,0 +1,24 @@
+{
+  "slug": "bridge-fee",
+  "title": "Cheapest cross-chain bridge for USDC at $300 notional",
+  "metric": "Effective fee",
+  "unit": "pct",
+  "higherIsBetter": false,
+  "range": "24h",
+  "timestamps": [1782392316676, 1782393500238, 1782394683799, 1782395867361],
+  "providers": [
+    {
+      "slug": "mobula",
+      "name": "Mobula",
+      "color": "#FF6B35",
+      "logo": "https://openchainbench.com/logos/mobula.svg",
+      "values": [0.2747, 0.274, 0.2802, 0.3053]
+    },
+    {
+      "slug": "near-intents",
+      "name": "Near Intents",
+      "color": "#000000",
+      "values": [0.009, 0.0092, 0.0091, 0.0091]
+    }
+  ]
+}
