@@ -344,6 +344,14 @@ export const SpecSchema = z
             })
           )
           .optional(),
+        venue: z
+          .array(
+            z.object({
+              value: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/),
+              label: z.string().min(1).max(64),
+            })
+          )
+          .optional(),
       })
       .optional(),
 
