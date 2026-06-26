@@ -2,12 +2,7 @@ import { NextResponse } from "next/server";
 import { getBenchmarks } from "@/data/benchmarks";
 import { SITE } from "@/data/site";
 import { AllBenchmarksDraftError } from "@/lib/spec";
-import {
-  fieldValue,
-  headlineSentence,
-  isInsufficient,
-  leader,
-} from "@/lib/citation";
+import { citeBundle, fieldValue, leader, headlineSentence } from "@/lib/citation";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
@@ -52,21 +47,29 @@ export async function GET(req: Request) {
     throw err;
   }
   const data = benches.map((b) => {
-    const insufficient = isInsufficient(b);
-    const top = insufficient ? null : leader(b);
-    const status: "live" | "draft" | "insufficient" = insufficient
-      ? "insufficient"
-      : b.status;
+    const top = leader(b);
+    // Insufficient aggregate: explicitly null the value + leader so
+    // downstream LLM agents and journalists do not quote a number drawn
+    // from an undersized field. The headline sentence is rewritten to
+    // "insufficient data" by headlineSentence above.
+    const insufficient = b.dataConfidence === "insufficient";
     return {
       slug: b.slug,
       title: b.title,
       category: b.category,
       metric: b.metric,
       unit: b.unit,
-      status,
+      status: b.status,
       value: insufficient ? null : fieldValue(b),
-      leader: top ? { name: top.name, slug: top.slug, value: top.value } : null,
-      sampleSize: insufficient ? 0 : b.sampleSize,
+      leader:
+        insufficient
+          ? null
+          : top
+            ? { name: top.name, slug: top.slug, value: top.value }
+            : null,
+      sampleSize: b.sampleSize,
+      expectedN: b.expectedN,
+      dataConfidence: b.dataConfidence,
       asOf: b.lastRunAt,
       headline: headlineSentence(b),
       url: `${SITE.url}/benchmarks/${b.slug}`,
@@ -74,6 +77,7 @@ export async function GET(req: Request) {
       ogImage: `${SITE.url}/api/og/${b.slug}`,
       source: b.source,
       license: "CC-BY-4.0",
+      cite: citeBundle(b, SITE.url),
     };
   });
 
