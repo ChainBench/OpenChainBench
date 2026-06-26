@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
-import { COMPARE_PAIRS } from "@/data/compare-pairs";
-import { canonicalize } from "@/lib/providers";
+import { COMPARE_PAIRS, type ComparePair } from "@/data/compare-pairs";
+import { canonicalize, getProvider } from "@/lib/providers";
 import { buildCompareGraph } from "@/lib/compare-pairing";
 import { ProviderLogo } from "@/components/provider-logo";
 import { CompareSelector } from "@/components/compare-selector";
@@ -24,9 +24,22 @@ export const metadata: Metadata = pageMetadata({
 });
 
 export default async function ComparePage() {
-  const pairs = [...COMPARE_PAIRS].sort((a, b) =>
-    a.slug.localeCompare(b.slug),
+  // Filter out pairs whose providers don't resolve in the live registry
+  // (e.g. raydium has no bench appearances yet, so /compare/jupiter-vs-raydium
+  // 404s downstream). Without this, the hub leaks dead links into both
+  // the rendered list and the JSON-LD ItemList that Google ingests.
+  const resolved = await Promise.all(
+    COMPARE_PAIRS.map(async (pair) => {
+      const [a, b] = await Promise.all([
+        getProvider(pair.providerA),
+        getProvider(pair.providerB),
+      ]);
+      return a && b ? pair : null;
+    }),
   );
+  const pairs = resolved
+    .filter((p): p is ComparePair => p !== null)
+    .sort((a, b) => a.slug.localeCompare(b.slug));
   const graph = await buildCompareGraph();
 
   const jsonld = {

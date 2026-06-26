@@ -110,6 +110,14 @@ async function buildAlternativesReverseMap(): Promise<
   Map<string, AlternativeFeature[]>
 > {
   const alternatives = await loadAllAlternatives();
+  // Defensive: only ever emit /alternatives/<slug> for a slug we
+  // actually have a live YAML for. loadAllAlternatives() already
+  // filters to status=live, so today this is equivalent to the
+  // alternatives array, but the explicit Set makes the invariant
+  // local and survives any future refactor where alt-like records
+  // start flowing in from a different source (bench metadata,
+  // materialize worker, ...).
+  const liveSlugs = new Set(alternatives.map((a) => a.slug));
   const benches = await Promise.all(
     alternatives.map((alt) =>
       loadBenchmark(alt.benchmark, { chain: alt.chain }).then((bench) => ({
@@ -121,6 +129,7 @@ async function buildAlternativesReverseMap(): Promise<
   const map = new Map<string, AlternativeFeature[]>();
   for (const { alt, bench } of benches) {
     if (!bench) continue;
+    if (!liveSlugs.has(alt.slug)) continue;
     const altTargetSlug = alt.target_product
       .toLowerCase()
       .replace(/\s+/g, "-");

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { loadAlternativeSlugs } from "@/lib/alternatives";
 import { fetchPerpVenueKpis } from "@/lib/perp-venue-data";
 import { PerpVenueKpiStrip } from "@/components/perp-venue-kpi-strip";
 import {
@@ -50,8 +51,17 @@ export async function PerpVenueSection({
   cohortSlug,
   benchRows,
 }: PerpVenueSectionProps) {
-  const kpis = await fetchPerpVenueKpis(cohortSlug);
+  const [kpis, altSlugs] = await Promise.all([
+    fetchPerpVenueKpis(cohortSlug),
+    loadAlternativeSlugs(),
+  ]);
   const externalHost = safeHost(externalUrl);
+  // Only emit /alternatives/<slug> when the YAML actually exists for
+  // this venue. Most perp cohort venues (lighter, vertex, grvt, ostium,
+  // variational, pacifica, aevo, edgex, paradex, extended, aster, ...)
+  // ship without an alternatives page and the hardcoded link was
+  // leaking 404s into Google's crawl from /products/<slug>.
+  const hasAlternativesPage = altSlugs.includes(slug);
 
   const measured = benchRows.filter(
     (r) => r.value !== null && r.rank !== null,
@@ -121,13 +131,17 @@ export async function PerpVenueSection({
           All perp venues
         </Link>
         <span aria-hidden>·</span>
-        <Link
-          href={`/alternatives/${slug}`}
-          className="hover:text-ink underline underline-offset-2"
-        >
-          {name} alternatives
-        </Link>
-        <span aria-hidden>·</span>
+        {hasAlternativesPage && (
+          <>
+            <Link
+              href={`/alternatives/${slug}`}
+              className="hover:text-ink underline underline-offset-2"
+            >
+              {name} alternatives
+            </Link>
+            <span aria-hidden>·</span>
+          </>
+        )}
         <a
           href={externalUrl}
           target="_blank"
