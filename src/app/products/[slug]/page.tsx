@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ArrowUpRight } from "lucide-react";
 import { getProvider } from "@/lib/providers";
+import { CHAIN_BY_SLUG } from "@/lib/chains";
 import { ProviderLogo } from "@/components/provider-logo";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
 import { fmtUnit } from "@/lib/format";
@@ -84,12 +85,20 @@ export async function generateMetadata({
     ? `${reg.description.replace(/[.!?]?$/, ".")} Live performance across ${benchCount} OpenChainBench ${benchWord}${winSuffix}.`
     : fallbackDescription;
 
-  const url = `${SITE.url}/products/${p.slug}`;
+  // When the resolved provider slug is actually a chain (e.g. /products/eth-usd
+  // aliases to /products/ethereum which 308s to /chains/ethereum), point
+  // canonical straight to the final 200 surface. Otherwise Ahrefs + GSC
+  // flag "canonical points to redirect" and Google may split rank between
+  // source + final instead of consolidating.
+  const isChain = CHAIN_BY_SLUG.has(p.slug);
+  const canonicalUrl = isChain
+    ? `${SITE.url}/chains/${p.slug}`
+    : `${SITE.url}/products/${p.slug}`;
   return {
     title,
     description,
-    alternates: { canonical: url },
-    openGraph: { title, description, type: "profile", url },
+    alternates: { canonical: canonicalUrl },
+    openGraph: { title, description, type: "profile", url: canonicalUrl },
     twitter: { card: "summary_large_image", title, description },
   };
 }
