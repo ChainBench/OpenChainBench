@@ -10,6 +10,7 @@ import type {
   ProviderResult,
 } from "@/types/benchmark";
 import { ChainCoverageChip } from "@/components/chain-coverage-chip";
+import { EmbedBadgeButton } from "@/components/embed-badge-button";
 import { Hint } from "@/components/hint";
 import { Sparkline } from "@/components/sparkline";
 import { ProviderLogo } from "@/components/provider-logo";
@@ -17,6 +18,7 @@ import { ProviderTypeBadge } from "@/components/provider-type-badge";
 import { fmtUnit } from "@/lib/format";
 import { buildProviderColors } from "@/lib/series-colors";
 import { isRegion } from "@/lib/brand";
+import { isAll } from "@/lib/dimensions";
 
 type Props = {
   benchmark: Benchmark;
@@ -26,6 +28,12 @@ type Props = {
    *  the headline p50 metric. */
   activePanel?: MetricPanel | null;
   topN?: number | null;
+  /** Active dimension filters on the bench page. Passed through to the
+   *  per-row Embed CTA so the generated snippet/badge stay scoped to what
+   *  the reader is looking at. "all" sentinels are normalized to null. */
+  scopeChain?: string | null;
+  scopeRegion?: string | null;
+  scopeKind?: string | null;
 };
 
 /**
@@ -35,8 +43,20 @@ type Props = {
  * to recognition; sort order remains mechanical (ascending p50) and no
  * row is highlighted as the "winner".
  */
-export function LedgerTable({ benchmark, activePanel, topN }: Props) {
+export function LedgerTable({
+  benchmark,
+  activePanel,
+  topN,
+  scopeChain = null,
+  scopeRegion = null,
+  scopeKind = null,
+}: Props) {
   const { results, extras } = benchmark;
+  // Drop "all" sentinels so the snippet/badge URL stays unscoped instead
+  // of carrying ?chain=all (which the badge route 400s on).
+  const embedChain = scopeChain && !isAll(scopeChain) ? scopeChain : null;
+  const embedRegion = scopeRegion && !isAll(scopeRegion) ? scopeRegion : null;
+  const embedKind = scopeKind && !isAll(scopeKind) ? scopeKind : null;
   const unit = activePanel?.unit ?? benchmark.unit;
   const higherIsBetter = activePanel?.higherIsBetter ?? benchmark.higherIsBetter;
   const panelActive = !!activePanel;
@@ -122,6 +142,12 @@ export function LedgerTable({ benchmark, activePanel, topN }: Props) {
   // lost — only the noisy ledger rows are pruned.
   const sortedAll = [...results]
     .filter((r) => {
+      // Sample-health gate. Rows tagged "insufficient" by the load path
+      // (sampleSize < 0.1 × expectedN) drop out of the ranking entirely
+      // so the leaderboard cannot assert a position from a wildly
+      // undersized field. "low" rows stay; the row renderer shows them
+      // with a soft pill instead.
+      if (r.dataConfidence === "insufficient") return false;
       if (activePanel) {
         const v = activePanel.values[r.slug];
         return v != null && Number.isFinite(v) && v !== 0;
@@ -162,7 +188,7 @@ export function LedgerTable({ benchmark, activePanel, topN }: Props) {
     <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
       {hasWindows && (
         <div className="mb-3 flex flex-wrap items-center gap-1">
-          <span className="mr-2 text-[10px] uppercase tracking-[0.16em] text-ink-faint">
+          <span className="mr-2 label-mono-xs">
             Timeframe
           </span>
           {(["24h", "7d", "30d"] as const).map((w) => (
@@ -288,6 +314,9 @@ export function LedgerTable({ benchmark, activePanel, topN }: Props) {
               sparkMax={sparkMax}
               color={colors.get(r.slug) ?? "var(--color-ink-soft)"}
               benchmark={benchmark}
+              embedChain={embedChain}
+              embedRegion={embedRegion}
+              embedKind={embedKind}
             />
           ))}
         </tbody>
@@ -312,6 +341,9 @@ function Row({
   sparkMax,
   color,
   benchmark,
+  embedChain,
+  embedRegion,
+  embedKind,
 }: {
   r: ProviderResult;
   i: number;
@@ -330,6 +362,9 @@ function Row({
   sparkMax: number;
   color: string;
   benchmark: Benchmark;
+  embedChain: string | null;
+  embedRegion: string | null;
+  embedKind: string | null;
 }) {
   const isOffline = r.availability === "unavailable";
   const deltaPct = fieldValue > 0 ? ((value - fieldValue) / fieldValue) * 100 : 0;
@@ -352,7 +387,20 @@ function Row({
       <td className="py-2.5 pr-3 text-ink-muted text-[12px]">
         {String(i + 1).padStart(2, "0")}
       </td>
-      <td className="py-2.5 pr-3 font-serif text-[14px] min-w-0">
+      {/* itemScope/itemType marks each row as a named entity so Google's
+          knowledge graph can link the leaderboard back to that provider.
+          For region rows (Solana, Base, …) the schema.org/Place type is
+          a better fit than Organization; everything else is a vendor and
+          gets Organization. itemProp="name" wraps the visible name. */}
+      <td
+        className="py-2.5 pr-3 font-serif text-[14px] min-w-0"
+        itemScope
+        itemType={
+          isRegion(r.slug)
+            ? "https://schema.org/Place"
+            : "https://schema.org/Organization"
+        }
+      >
         <div className="flex flex-col gap-1 min-w-0">
           <span className="flex items-center gap-2 min-w-0">
             <ProviderLogo slug={r.slug} name={r.name} size={20} />
@@ -360,6 +408,7 @@ function Row({
               <span
                 className="font-semibold truncate min-w-0"
                 style={{ color: isOffline ? "var(--color-ink-muted)" : color }}
+                itemProp="name"
               >
                 {r.name}
               </span>
@@ -368,8 +417,9 @@ function Row({
                 href={`/products/${r.slug}`}
                 className="font-semibold hover:underline underline-offset-2 truncate min-w-0"
                 style={{ color: isOffline ? "var(--color-ink-muted)" : color }}
+                itemProp="url"
               >
-                {r.name}
+                <span itemProp="name">{r.name}</span>
               </Link>
             )}
             {r.tag && !isOffline && (
@@ -385,9 +435,36 @@ function Row({
                 </span>
               </Hint>
             )}
+            {!isOffline && r.dataConfidence === "low" && (
+              <Hint
+                label={
+                  r.sampleHealth != null
+                    ? `Sample count is below half of the expected per provider for this bench (${Math.round(r.sampleHealth * 100)}% of expected). The ranking still includes this provider; confidence in the headline number is lower than for healthy rows.`
+                    : "Sample count is below half of the expected per provider for this bench. The ranking still includes this provider; confidence in the headline number is lower than for healthy rows."
+                }
+              >
+                <span className="inline-flex items-center gap-1 shrink-0 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-muted">
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-[var(--color-warn,#c08a3c)]" aria-hidden />
+                  Low sample
+                </span>
+              </Hint>
+            )}
             {r.type && !isOffline && (
               <span className="hidden md:inline-flex">
                 <ProviderTypeBadge type={r.type} />
+              </span>
+            )}
+            {!isOffline && !isRegion(r.slug) && (
+              <span className="ml-auto pl-2 shrink-0">
+                <EmbedBadgeButton
+                  benchSlug={benchmark.slug}
+                  benchTitle={benchmark.title}
+                  providerSlug={r.slug}
+                  providerName={r.name}
+                  chain={embedChain}
+                  region={embedRegion}
+                  kind={embedKind}
+                />
               </span>
             )}
           </span>

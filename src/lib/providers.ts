@@ -379,7 +379,7 @@ async function buildProviders(): Promise<ProviderProfile[]> {
   }
 
   const profiles = Array.from(byKey.values()).filter(
-    (p) => !DEAD_COMPOSITE_SLUGS.has(p.slug),
+    (p) => !isBlacklistedSlug(p.slug),
   );
   profiles.sort((a, b) => {
     if (a.wins !== b.wins) return b.wins - a.wins;
@@ -395,15 +395,43 @@ async function buildProviders(): Promise<ProviderProfile[]> {
 // now ranks the parent provider only (codex, predexon), but stale
 // materialize-worker snapshots can recreate ghost /products/<slug>
 // pages with no data. Hard-block so getProvider() returns undefined and
-// the route 404s cleanly. Keep in sync with the same set in
-// related-providers.ts.
-const DEAD_COMPOSITE_SLUGS = new Set([
+// the route 404s cleanly.
+//
+// Exported as the single source of truth. related-providers.ts imports
+// this set instead of duplicating the literal — PR #728 originally
+// shipped two copies and they immediately drifted (composite URLs kept
+// leaking into sitemap.xml + /products listing even after the page
+// itself 404'd, see SEO audit 2026-06-24).
+export const DEAD_COMPOSITE_SLUGS = new Set([
   "codex-kalshi",
   "codex-polymarket",
   "predexon-kalshi",
   "predexon-limitless",
   "predexon-polymarket",
 ]);
+
+// Anonymous Hyperliquid builder addresses with no human-readable brand.
+// The hyperliquid-frontends bench tracks 104 builders, ~15 of which have
+// never been claimed by a frontend operator — they surface as raw
+// `0x40e9d9fe...` slugs. Each one mints a thin /products/<hex> page
+// titled "0x... review and live performance benchmarks", with no editorial
+// body and no inbound brand search demand. Google indexed the lot as
+// thin content and they were burning PageRank from the products hub.
+//
+// Filter at the profile and resolution layers so:
+//   - `getProviders()` drops them before /products/index renders the table
+//   - `getProviderSlugs()` drops them before sitemap.ts emits URLs
+//   - `getProvider()` returns undefined so the per-slug page 404s and
+//     Google deindexes via 404 signal
+// The HL bench page itself still lists every builder in its leaderboard
+// (that's the bench's job); only the dedicated /products/<hex> route is
+// suppressed.
+const HEX_ADDRESS_SLUG = /^0x[a-f0-9]+$/;
+
+function isBlacklistedSlug(slug: string): boolean {
+  const lc = slug.toLowerCase();
+  return DEAD_COMPOSITE_SLUGS.has(lc) || HEX_ADDRESS_SLUG.test(lc);
+}
 
 // Cohort venues that should have a /products/<slug> page even when no
 // bench in benchmarks/ ranks them. Imported as a flat list here to
@@ -436,7 +464,12 @@ const PERP_VENUE_SEED = [
  *  bump this key when the buildProviders() output shape changes. */
 const buildProvidersCached = unstable_cache(
   buildProviders,
-  ["providers-v3"],
+  // v4 bump: hex builder addresses + composite zombies are now filtered
+  // at buildProviders() exit. Without this bump, Vercel ISR would keep
+  // serving the v3 list (containing 0x... slugs) until the `benchmarks`
+  // tag fires, leaving thin /products/<hex> URLs in the sitemap for the
+  // next 60s window after deploy.
+  ["providers-v4"],
   { revalidate: 60, tags: ["benchmarks"] },
 );
 
@@ -450,6 +483,11 @@ export async function getProviderSlugs(): Promise<string[]> {
 }
 
 export async function getProvider(slug: string): Promise<ProviderProfile | undefined> {
+  // Early reject blacklisted slugs (dead composites + anonymous hex
+  // builder addresses) so /products/<slug> 404s cleanly even if a stale
+  // cache layer ever produces a profile. Mirrors the buildProviders()
+  // filter; cheap second guard against eventual-consistency leaks.
+  if (isBlacklistedSlug(slug)) return undefined;
   const profiles = await getProviders();
   // Aliased URLs (e.g. /products/helius-sender, /products/btc-usd) resolve
   // to the canonical profile so backward-compat links keep working.

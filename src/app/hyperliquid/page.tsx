@@ -62,6 +62,14 @@ export default async function HyperliquidHubPage() {
   // are referenced in the page's plain prose and stayed out of this list
   // intentionally; mixing two ItemLists with overlapping naming would
   // confuse Search Console's rich-results validator more than it helps.
+  // Drop anonymous builder addresses (raw 0x... slugs with no human
+  // brand) from the ItemList. Those /products/<hex> URLs now 404 per the
+  // SEO blacklist in @/lib/providers (thin auto-generated titles, no
+  // editorial body, no inbound brand demand) so emitting them in
+  // schema.org ItemList would point Search Console at known 404s.
+  const linkableFrontends = frontends
+    ? frontends.rows.filter((r) => !/^0x[a-f0-9]+$/.test(r.slug.toLowerCase()))
+    : [];
   const itemListLd = frontends
     ? {
         "@context": "https://schema.org",
@@ -69,8 +77,8 @@ export default async function HyperliquidHubPage() {
         name: "Hyperliquid frontends leaderboard",
         description:
           "Hyperliquid frontends tracked by OpenChainBench, ranked by 30-day builder revenue.",
-        numberOfItems: frontends.rows.length,
-        itemListElement: frontends.rows.slice(0, 100).map((r, i) => ({
+        numberOfItems: linkableFrontends.length,
+        itemListElement: linkableFrontends.slice(0, 100).map((r, i) => ({
           "@type": "ListItem",
           position: i + 1,
           url: `https://openchainbench.com/products/${r.slug}`,
