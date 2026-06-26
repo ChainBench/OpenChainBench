@@ -42,6 +42,124 @@ import type {
   ResultExtras,
 } from "@/types/benchmark";
 
+// Shared zod primitives that mirror the TS types in `@/types/benchmark`.
+// Keep these in sync with that file; the `AssertEqual` lines at the
+// bottom of this block force a compile error if the inferred zod type
+// drifts from the canonical TS type.
+const UnitSchema = z.enum([
+  "ms",
+  "s",
+  "sec",
+  "pct",
+  "bps",
+  "bp",
+  "count",
+  "slots",
+  "usd",
+]);
+
+const StalenessMetaSchema = z.object({
+  observedAt: z.number(),
+  staleSince: z.number().optional(),
+});
+
+const ProviderResultSchema = z.object({
+  name: z.string(),
+  slug: z.string(),
+  tag: z.string().optional(),
+  type: z.enum(["protocol", "aggregator", "intent", "relay"]).optional(),
+  layer: z.enum(["l1", "l2"]).optional(),
+  ms: z.object({
+    p50: z.number(),
+    p90: z.number(),
+    p99: z.number(),
+    mean: z.number(),
+  }),
+  slots: z.object({ p50: z.number(), p99: z.number() }).optional(),
+  successRate: z.number(),
+  sampleSize: z.number().optional(),
+  dataConfidence: z.enum(["healthy", "low", "insufficient"]).optional(),
+  sampleHealth: z.number().optional(),
+  secondary: z.object({ label: z.string(), value: z.string() }).optional(),
+  availability: z.enum(["live", "unavailable"]).optional(),
+  meta: StalenessMetaSchema.optional(),
+  query: z.string().optional(),
+  formula: z.string().optional(),
+});
+
+const RegionPointSchema = z.object({
+  region: z.enum(["us-east", "eu-west", "ap-southeast", "global"]),
+  p50: z.number(),
+});
+
+const Series24hSchema = z.array(z.number());
+
+const ResultExtrasSchema = z.object({
+  series24h: z.record(z.string(), Series24hSchema),
+  series7d: z.record(z.string(), Series24hSchema).optional(),
+  series30d: z.record(z.string(), Series24hSchema).optional(),
+  seriesByRegion24h: z
+    .record(z.string(), z.record(z.string(), Series24hSchema))
+    .optional(),
+  seriesByRegion7d: z
+    .record(z.string(), z.record(z.string(), Series24hSchema))
+    .optional(),
+  seriesByRegion30d: z
+    .record(z.string(), z.record(z.string(), Series24hSchema))
+    .optional(),
+  regions: z.record(z.string(), z.array(RegionPointSchema)),
+});
+
+const MetricPanelSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  description: z.string().optional(),
+  metric: z.string(),
+  unit: UnitSchema,
+  higherIsBetter: z.boolean(),
+  tab: z.boolean().optional(),
+  values: z.record(z.string(), z.number()),
+  valuesMeta: z.record(z.string(), StalenessMetaSchema).optional(),
+  seriesByProvider: z.record(z.string(), z.array(z.number())).optional(),
+  seriesByProvider7d: z.record(z.string(), z.array(z.number())).optional(),
+  seriesByProvider30d: z.record(z.string(), z.array(z.number())).optional(),
+});
+
+const CellRankEntrySchema = z.object({
+  slug: z.string(),
+  p50: z.number(),
+});
+
+// Compile-time guard rail: each inferred zod type must be assignable to
+// the canonical TS type, and vice versa. Drift between this file and
+// `@/types/benchmark` becomes a build error instead of a runtime parse
+// failure. `AssertEqual` resolves to `true` when both directions hold.
+type AssertEqual<A, B> = [A] extends [B]
+  ? [B] extends [A]
+    ? true
+    : false
+  : false;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _providerResultMatches: AssertEqual<
+  z.infer<typeof ProviderResultSchema>,
+  ProviderResult
+> = true;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _resultExtrasMatches: AssertEqual<
+  z.infer<typeof ResultExtrasSchema>,
+  ResultExtras
+> = true;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _metricPanelMatches: AssertEqual<
+  z.infer<typeof MetricPanelSchema>,
+  MetricPanel
+> = true;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _cellRankEntryMatches: AssertEqual<
+  z.infer<typeof CellRankEntrySchema>,
+  CellRankEntry
+> = true;
+
 /** Refuse snapshots older than this on read. 24 h matches the bench
  *  query window — a value older than that isn't meaningful as the
  *  "current" leaderboard, so a draft placeholder is more honest. */
@@ -53,7 +171,7 @@ const KEY_PREFIX = "ocb:snap:v1:";
  *  new field don't try to deserialize old-shape values. The Zod schema
  *  below would also reject those, but the version prefix lets us
  *  invalidate without writing strict-mode parsers. */
-const SCHEMA_VERSION = 3 as const;
+const SCHEMA_VERSION = 5 as const;
 
 // Minimal runtime payload. Editorial metadata isn't snapshotted because
 // it lives in YAML and is rebuilt from the spec on every read.
@@ -62,19 +180,23 @@ const SnapshotSchema = z.object({
   savedAt: z.number().int().positive(),
   lastRunAt: z.string(),
   sampleSize: z.number(),
-  results: z.array(z.any()),
-  extras: z.any(),
-  bestPerChain: z.record(z.string(), z.any()).optional(),
-  worstPerChain: z.record(z.string(), z.any()).optional(),
+  expectedN: z.number().optional(),
+  dataConfidence: z.enum(["healthy", "low", "insufficient"]).optional(),
+  results: z.array(ProviderResultSchema),
+  extras: ResultExtrasSchema,
+  bestPerChain: z.record(z.string(), ProviderResultSchema).optional(),
+  worstPerChain: z.record(z.string(), ProviderResultSchema).optional(),
   providersPerChain: z.record(z.string(), z.array(z.string())).optional(),
-  cellRanks: z.record(z.string(), z.any()).optional(),
-  metricPanels: z.array(z.any()).optional(),
+  cellRanks: z.record(z.string(), z.array(CellRankEntrySchema)).optional(),
+  metricPanels: z.array(MetricPanelSchema).optional(),
 });
 
 export type SnapshotPayload = {
   results: ProviderResult[];
   extras: ResultExtras;
   sampleSize: number;
+  expectedN?: number;
+  dataConfidence?: "healthy" | "low" | "insufficient";
   lastRunAt: string;
   bestPerChain?: Record<string, ProviderResult>;
   worstPerChain?: Record<string, ProviderResult>;
@@ -260,23 +382,17 @@ async function readSnapshotWithAge(
     return {
       ageMs: age,
       payload: {
-        results: parsed.data.results as ProviderResult[],
-        extras: parsed.data.extras as ResultExtras,
+        results: parsed.data.results,
+        extras: parsed.data.extras,
         sampleSize: parsed.data.sampleSize,
+        expectedN: parsed.data.expectedN,
+        dataConfidence: parsed.data.dataConfidence,
         lastRunAt: parsed.data.lastRunAt,
-        bestPerChain: parsed.data.bestPerChain as
-          | Record<string, ProviderResult>
-          | undefined,
-        worstPerChain: parsed.data.worstPerChain as
-          | Record<string, ProviderResult>
-          | undefined,
-        providersPerChain: parsed.data.providersPerChain as
-          | Record<string, string[]>
-          | undefined,
-        cellRanks: parsed.data.cellRanks as
-          | Record<string, CellRankEntry[]>
-          | undefined,
-        metricPanels: parsed.data.metricPanels as MetricPanel[] | undefined,
+        bestPerChain: parsed.data.bestPerChain,
+        worstPerChain: parsed.data.worstPerChain,
+        providersPerChain: parsed.data.providersPerChain,
+        cellRanks: parsed.data.cellRanks,
+        metricPanels: parsed.data.metricPanels,
       },
     };
   } catch (err) {
@@ -299,6 +415,8 @@ export function snapshotFromBenchmark(b: Benchmark): SnapshotPayload {
     results: b.results,
     extras: b.extras,
     sampleSize: b.sampleSize,
+    expectedN: b.expectedN,
+    dataConfidence: b.dataConfidence,
     lastRunAt: b.lastRunAt,
     // Persist per-chain leader stash so the snapshot-recovery path
     // (loadBenchmarkUnfilteredCached's KV fallback in spec.ts) can
