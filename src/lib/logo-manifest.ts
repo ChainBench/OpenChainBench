@@ -100,7 +100,7 @@ const RAW: Record<string, string> = {
   "1rpc": "/logos/1rpc.svg",
   cloudflare: "/logos/cloudflare.svg",
   "base-official": "/logos/base.jpeg",
-  binance: "/logos/bnb.png",
+  binance: "/logos/binance.svg",
   lava: "/logos/lava.webp",
   nodies: "/logos/nodies.png",
   tenderly: "/logos/tenderly.svg",
@@ -186,6 +186,16 @@ const RAW: Record<string, string> = {
   okx: "/logos/okx.jpg",
   paradex: "/logos/paradex.svg",
   aster: "/logos/aster.svg",
+
+  // ─── Perp funding stability cohort additions (bench № 043) ───
+  // Sourced via Mobula CEFI funding-rate aggregator.
+  bitget: "/logos/bitget.png",
+  coinbase: "/logos/coinbase.svg",
+  deribit: "/logos/deribit.png",
+  gate: "/logos/gate.png",
+  kraken: "/logos/kraken.png",
+  kucoin: "/logos/kucoin.svg",
+  mexc: "/logos/mexc.png",
 
   // ─── Hyperliquid HIP-3 deployers (bench № 035) ───
   xyz: "/logos/xyz.png",

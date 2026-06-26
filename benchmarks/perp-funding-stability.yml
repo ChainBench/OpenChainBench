@@ -3,8 +3,8 @@
 slug: perp-funding-stability
 number: "043"
 title: Perp DEX funding stability, 24h stddev of ETH funding ranked
-seo_title: "Perp funding stability 2026: ETH funding stddev across 7 venues ranked"
-seo_description: "Live 24h standard deviation of ETH perpetual futures funding rate in bps across Hyperliquid, Bybit, dYdX v4, Binance, OKX, Paradex and Aster. Lower means more stable funding for carry traders and basis arbitrageurs."
+seo_title: "Perp funding stability 2026: ETH funding stddev across 15 venues ranked"
+seo_description: "Live 24h standard deviation of ETH perpetual futures funding rate in bps across 15 major venues: Hyperliquid, Bybit, dYdX v4, Binance, OKX, Paradex, Aster, Bitget, Coinbase, Deribit, Gate, Kraken, KuCoin, Lighter, MEXC. Lower means more stable funding for carry traders and basis arbitrageurs."
 subtitle: 24h standard deviation of ETH funding rate, in basis points per 24h, across the perp-funding cohort. Lower means funding stays in a tight band, the carry trader's preferred signal.
 category: Trading
 status: live
@@ -24,10 +24,11 @@ seo_intro: |
   same number. The bench reads the same normalized series as
   perp-funding (per-venue hold cost in bps per 24h) and exposes
   stddev_over_time of that series on a 24 hour window for ETH.
-  Cohort is the 7 venues currently publishing the normalized
-  hold-24h gauge with the freshness signal: Hyperliquid (onchain),
-  Bybit, dYdX v4 (Cosmos appchain), Binance, OKX, Paradex (Starknet
-  L2), Aster (BNB Chain). Lower is better.
+  Cohort is 15 venues across two sources: 7 polled directly by the
+  harness (Hyperliquid onchain, Bybit, dYdX v4 Cosmos appchain,
+  Binance, OKX, Paradex Starknet L2, Aster BNB Chain) and 8 sourced
+  through Mobula's CEFI funding aggregator (Bitget, Coinbase,
+  Deribit, Gate, Kraken, KuCoin, Lighter, MEXC). Lower is better.
 
 abstract: |
   The bench reuses the normalized 24h ETH funding series from
@@ -43,7 +44,7 @@ methodology:
   - "Source. Same upstream as perp-funding: each venue's public funding endpoint polled every 60 seconds, normalized to bps per hour and per 24h hold, sign preserved."
   - "Metric. stddev_over_time(perp_funding_hold_24h_bps{asset=\"ETH\"}[24h]) per venue. The 7d window smooths intraday noise but reacts to regime shifts within a week."
   - "Sign handling. The underlying series is signed (positive means longs pay). Stability measures the swing, so the ranking uses the unsigned stddev. Average direction and level are the perp-funding bench."
-  - "Cohort. 7 venues from the perp-funding bench publishing the normalized hold-24h gauge with the freshness signal: Hyperliquid (onchain), Bybit, dYdX v4 (Cosmos appchain), Binance, OKX, Paradex (Starknet L2), Aster (BNB Chain)."
+  - "Cohort. 15 venues across two sources. 7 polled directly (perp_funding_hold_24h_bps): Hyperliquid, Bybit, dYdX v4, Binance, OKX, Paradex, Aster. 8 via Mobula CEFI aggregator (perp_venue_funding_24h_bps): Bitget, Coinbase, Deribit, Gate, Kraken, KuCoin, Lighter, MEXC. Both normalize to bps per 24h hold, sign preserved, so the unsigned stddev compares cleanly across the full cohort."
   - "Success. Same freshness signal as perp-funding: perp_funding_venue_ok_unix advancing within the last 5 minutes. A venue whose scrape stalls is tagged stale on the row."
   - "Cadence. The upstream funding harness polls every 60 seconds; Prometheus scrapes every 30 seconds. The 7 day stddev refreshes on every scrape."
   - "Failures. A venue whose upstream funding feed errors keeps its last gauge value; the leaderboard tags the row stale once the success gauge drops to 0."
@@ -166,3 +167,112 @@ providers:
       success: (perp_funding_venue_ok_unix{venue="aster"} > bool (time() - 300))
       sample_size: count_over_time(perp_funding_hold_24h_bps{venue="aster",asset="ETH"}[24h])
       series: stddev_over_time(perp_funding_hold_24h_bps{venue="aster",asset="ETH"}[24h])
+
+  # ── Mobula-sourced cohort (perp_venue_funding_24h_bps from perp-cohort-stats) ──
+  # Same metric semantics as perp_funding_hold_24h_bps but normalized
+  # via Mobula's CEFI funding-rate aggregator instead of direct venue
+  # polls. Freshness gauge is perp_venue_last_refresh_unix.
+
+  - slug: bitget
+    name: Bitget
+    tag: CEX, USDT perpetuals via Mobula aggregator, 8h funding
+    formula: "stddev_over_time of perp_venue_funding_24h_bps{venue=\"bitget\",asset=\"ETH\"} over a 24h window. Source: Mobula CEFI funding-rate aggregator."
+    queries:
+      p50: stddev_over_time(perp_venue_funding_24h_bps{venue="bitget",asset="ETH"}[24h])
+      p90: stddev_over_time(perp_venue_funding_24h_bps{venue="bitget",asset="BTC"}[24h])
+      p99: stddev_over_time(perp_venue_funding_24h_bps{venue="bitget",asset="SOL"}[24h])
+      mean: stddev_over_time(perp_venue_funding_24h_bps{venue="bitget",asset="ETH"}[24h])
+      success: (perp_venue_last_refresh_unix{venue="bitget"} > bool (time() - 300))
+      sample_size: count_over_time(perp_venue_funding_24h_bps{venue="bitget",asset="ETH"}[24h])
+      series: stddev_over_time(perp_venue_funding_24h_bps{venue="bitget",asset="ETH"}[24h])
+
+  - slug: coinbase
+    name: Coinbase
+    tag: Regulated US CEX, perpetuals via Mobula aggregator
+    formula: "stddev_over_time of perp_venue_funding_24h_bps{venue=\"coinbase\",asset=\"ETH\"} over a 24h window. Source: Mobula CEFI funding-rate aggregator."
+    queries:
+      p50: stddev_over_time(perp_venue_funding_24h_bps{venue="coinbase",asset="ETH"}[24h])
+      p90: stddev_over_time(perp_venue_funding_24h_bps{venue="coinbase",asset="BTC"}[24h])
+      p99: stddev_over_time(perp_venue_funding_24h_bps{venue="coinbase",asset="SOL"}[24h])
+      mean: stddev_over_time(perp_venue_funding_24h_bps{venue="coinbase",asset="ETH"}[24h])
+      success: (perp_venue_last_refresh_unix{venue="coinbase"} > bool (time() - 300))
+      sample_size: count_over_time(perp_venue_funding_24h_bps{venue="coinbase",asset="ETH"}[24h])
+      series: stddev_over_time(perp_venue_funding_24h_bps{venue="coinbase",asset="ETH"}[24h])
+
+  - slug: deribit
+    name: Deribit
+    tag: Options-focused CEX, ETH/BTC perpetuals via Mobula aggregator
+    formula: "stddev_over_time of perp_venue_funding_24h_bps{venue=\"deribit\",asset=\"ETH\"} over a 24h window. Source: Mobula CEFI funding-rate aggregator."
+    queries:
+      p50: stddev_over_time(perp_venue_funding_24h_bps{venue="deribit",asset="ETH"}[24h])
+      p90: stddev_over_time(perp_venue_funding_24h_bps{venue="deribit",asset="BTC"}[24h])
+      p99: stddev_over_time(perp_venue_funding_24h_bps{venue="deribit",asset="SOL"}[24h])
+      mean: stddev_over_time(perp_venue_funding_24h_bps{venue="deribit",asset="ETH"}[24h])
+      success: (perp_venue_last_refresh_unix{venue="deribit"} > bool (time() - 300))
+      sample_size: count_over_time(perp_venue_funding_24h_bps{venue="deribit",asset="ETH"}[24h])
+      series: stddev_over_time(perp_venue_funding_24h_bps{venue="deribit",asset="ETH"}[24h])
+
+  - slug: gate
+    name: Gate
+    tag: CEX, USDT perpetuals via Mobula aggregator, 8h funding
+    formula: "stddev_over_time of perp_venue_funding_24h_bps{venue=\"gate\",asset=\"ETH\"} over a 24h window. Source: Mobula CEFI funding-rate aggregator."
+    queries:
+      p50: stddev_over_time(perp_venue_funding_24h_bps{venue="gate",asset="ETH"}[24h])
+      p90: stddev_over_time(perp_venue_funding_24h_bps{venue="gate",asset="BTC"}[24h])
+      p99: stddev_over_time(perp_venue_funding_24h_bps{venue="gate",asset="SOL"}[24h])
+      mean: stddev_over_time(perp_venue_funding_24h_bps{venue="gate",asset="ETH"}[24h])
+      success: (perp_venue_last_refresh_unix{venue="gate"} > bool (time() - 300))
+      sample_size: count_over_time(perp_venue_funding_24h_bps{venue="gate",asset="ETH"}[24h])
+      series: stddev_over_time(perp_venue_funding_24h_bps{venue="gate",asset="ETH"}[24h])
+
+  - slug: kraken
+    name: Kraken
+    tag: Regulated CEX, perpetuals via Mobula aggregator
+    formula: "stddev_over_time of perp_venue_funding_24h_bps{venue=\"kraken\",asset=\"ETH\"} over a 24h window. Source: Mobula CEFI funding-rate aggregator."
+    queries:
+      p50: stddev_over_time(perp_venue_funding_24h_bps{venue="kraken",asset="ETH"}[24h])
+      p90: stddev_over_time(perp_venue_funding_24h_bps{venue="kraken",asset="BTC"}[24h])
+      p99: stddev_over_time(perp_venue_funding_24h_bps{venue="kraken",asset="SOL"}[24h])
+      mean: stddev_over_time(perp_venue_funding_24h_bps{venue="kraken",asset="ETH"}[24h])
+      success: (perp_venue_last_refresh_unix{venue="kraken"} > bool (time() - 300))
+      sample_size: count_over_time(perp_venue_funding_24h_bps{venue="kraken",asset="ETH"}[24h])
+      series: stddev_over_time(perp_venue_funding_24h_bps{venue="kraken",asset="ETH"}[24h])
+
+  - slug: kucoin
+    name: KuCoin
+    tag: CEX, USDT perpetuals via Mobula aggregator, 8h funding
+    formula: "stddev_over_time of perp_venue_funding_24h_bps{venue=\"kucoin\",asset=\"ETH\"} over a 24h window. Source: Mobula CEFI funding-rate aggregator."
+    queries:
+      p50: stddev_over_time(perp_venue_funding_24h_bps{venue="kucoin",asset="ETH"}[24h])
+      p90: stddev_over_time(perp_venue_funding_24h_bps{venue="kucoin",asset="BTC"}[24h])
+      p99: stddev_over_time(perp_venue_funding_24h_bps{venue="kucoin",asset="SOL"}[24h])
+      mean: stddev_over_time(perp_venue_funding_24h_bps{venue="kucoin",asset="ETH"}[24h])
+      success: (perp_venue_last_refresh_unix{venue="kucoin"} > bool (time() - 300))
+      sample_size: count_over_time(perp_venue_funding_24h_bps{venue="kucoin",asset="ETH"}[24h])
+      series: stddev_over_time(perp_venue_funding_24h_bps{venue="kucoin",asset="ETH"}[24h])
+
+  - slug: lighter
+    name: Lighter
+    tag: zkSync L2 perps DEX, native funding via Mobula aggregator
+    formula: "stddev_over_time of perp_venue_funding_24h_bps{venue=\"lighter\",asset=\"ETH\"} over a 24h window. Source: Mobula CEFI funding-rate aggregator."
+    queries:
+      p50: stddev_over_time(perp_venue_funding_24h_bps{venue="lighter",asset="ETH"}[24h])
+      p90: stddev_over_time(perp_venue_funding_24h_bps{venue="lighter",asset="BTC"}[24h])
+      p99: stddev_over_time(perp_venue_funding_24h_bps{venue="lighter",asset="SOL"}[24h])
+      mean: stddev_over_time(perp_venue_funding_24h_bps{venue="lighter",asset="ETH"}[24h])
+      success: (perp_venue_last_refresh_unix{venue="lighter"} > bool (time() - 300))
+      sample_size: count_over_time(perp_venue_funding_24h_bps{venue="lighter",asset="ETH"}[24h])
+      series: stddev_over_time(perp_venue_funding_24h_bps{venue="lighter",asset="ETH"}[24h])
+
+  - slug: mexc
+    name: MEXC
+    tag: CEX, USDT perpetuals via Mobula aggregator, 8h funding
+    formula: "stddev_over_time of perp_venue_funding_24h_bps{venue=\"mexc\",asset=\"ETH\"} over a 24h window. Source: Mobula CEFI funding-rate aggregator."
+    queries:
+      p50: stddev_over_time(perp_venue_funding_24h_bps{venue="mexc",asset="ETH"}[24h])
+      p90: stddev_over_time(perp_venue_funding_24h_bps{venue="mexc",asset="BTC"}[24h])
+      p99: stddev_over_time(perp_venue_funding_24h_bps{venue="mexc",asset="SOL"}[24h])
+      mean: stddev_over_time(perp_venue_funding_24h_bps{venue="mexc",asset="ETH"}[24h])
+      success: (perp_venue_last_refresh_unix{venue="mexc"} > bool (time() - 300))
+      sample_size: count_over_time(perp_venue_funding_24h_bps{venue="mexc",asset="ETH"}[24h])
+      series: stddev_over_time(perp_venue_funding_24h_bps{venue="mexc",asset="ETH"}[24h])
