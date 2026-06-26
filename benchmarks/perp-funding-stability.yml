@@ -3,8 +3,8 @@
 slug: perp-funding-stability
 number: "043"
 title: Perp DEX funding stability, 24h stddev of ETH funding ranked
-seo_title: "Perp DEX funding stability 2026: ETH funding stddev across 7 venues ranked"
-seo_description: "Live 24h standard deviation of ETH perpetual futures funding rate in bps across 7 major venues (Hyperliquid, Binance, Bybit, OKX, dYdX v4, Paradex, Aster). Lower means more stable funding for carry traders."
+seo_title: "Perp funding stability 2026: ETH funding stddev across 7 venues ranked"
+seo_description: "Live 24h standard deviation of ETH perpetual futures funding rate in bps across Hyperliquid, Bybit, dYdX v4, Binance, OKX, Paradex and Aster. Lower means more stable funding for carry traders and basis arbitrageurs."
 subtitle: 24h standard deviation of ETH funding rate, in basis points per 24h, across the perp-funding cohort. Lower means funding stays in a tight band, the carry trader's preferred signal.
 category: Trading
 status: live
@@ -24,9 +24,10 @@ seo_intro: |
   same number. The bench reads the same normalized series as
   perp-funding (per-venue hold cost in bps per 24h) and exposes
   stddev_over_time of that series on a 24 hour window for ETH.
-  Cohort is the 4 venues currently publishing the normalized
-  hold-24h gauge with the freshness signal: Binance, OKX, Paradex,
-  Aster. Lower is better.
+  Cohort is the 7 venues currently publishing the normalized
+  hold-24h gauge with the freshness signal: Hyperliquid (onchain),
+  Bybit, dYdX v4 (Cosmos appchain), Binance, OKX, Paradex (Starknet
+  L2), Aster (BNB Chain). Lower is better.
 
 abstract: |
   The bench reuses the normalized 24h ETH funding series from
@@ -42,7 +43,7 @@ methodology:
   - "Source. Same upstream as perp-funding: each venue's public funding endpoint polled every 60 seconds, normalized to bps per hour and per 24h hold, sign preserved."
   - "Metric. stddev_over_time(perp_funding_hold_24h_bps{asset=\"ETH\"}[24h]) per venue. The 7d window smooths intraday noise but reacts to regime shifts within a week."
   - "Sign handling. The underlying series is signed (positive means longs pay). Stability measures the swing, so the ranking uses the unsigned stddev. Average direction and level are the perp-funding bench."
-  - "Cohort. 4 venues from the perp-funding bench currently publishing the normalized hold-24h gauge with the freshness signal: Binance, OKX, Paradex (Starknet L2), Aster (BNB Chain). Hyperliquid, Bybit and dYdX v4 join as their upstream gauges land."
+  - "Cohort. 7 venues from the perp-funding bench publishing the normalized hold-24h gauge with the freshness signal: Hyperliquid (onchain), Bybit, dYdX v4 (Cosmos appchain), Binance, OKX, Paradex (Starknet L2), Aster (BNB Chain)."
   - "Success. Same freshness signal as perp-funding: perp_funding_venue_ok_unix advancing within the last 5 minutes. A venue whose scrape stalls is tagged stale on the row."
   - "Cadence. The upstream funding harness polls every 60 seconds; Prometheus scrapes every 30 seconds. The 7 day stddev refreshes on every scrape."
   - "Failures. A venue whose upstream funding feed errors keeps its last gauge value; the leaderboard tags the row stale once the success gauge drops to 0."
@@ -75,6 +76,45 @@ faq:
 dimensions: {}
 
 providers:
+  - slug: hyperliquid
+    name: Hyperliquid
+    tag: Onchain order book perps, funding settled hourly
+    formula: "stddev_over_time of perp_funding_hold_24h_bps{venue=\"hyperliquid\",asset=\"ETH\"} over a 24h window. p90/p99 columns reuse the same query on BTC and SOL to stay within the standard provider shape."
+    queries:
+      p50: stddev_over_time(perp_funding_hold_24h_bps{venue="hyperliquid",asset="ETH"}[24h])
+      p90: stddev_over_time(perp_funding_hold_24h_bps{venue="hyperliquid",asset="BTC"}[24h])
+      p99: stddev_over_time(perp_funding_hold_24h_bps{venue="hyperliquid",asset="SOL"}[24h])
+      mean: stddev_over_time(perp_funding_hold_24h_bps{venue="hyperliquid",asset="ETH"}[24h])
+      success: (perp_funding_venue_ok_unix{venue="hyperliquid"} > bool (time() - 300))
+      sample_size: count_over_time(perp_funding_hold_24h_bps{venue="hyperliquid",asset="ETH"}[24h])
+      series: stddev_over_time(perp_funding_hold_24h_bps{venue="hyperliquid",asset="ETH"}[24h])
+
+  - slug: bybit
+    name: Bybit
+    tag: USDT linear perps, funding interval per instrument
+    formula: "stddev_over_time of perp_funding_hold_24h_bps{venue=\"bybit\",asset=\"ETH\"} over a 24h window. p90/p99 columns reuse the same query on BTC and SOL to stay within the standard provider shape."
+    queries:
+      p50: stddev_over_time(perp_funding_hold_24h_bps{venue="bybit",asset="ETH"}[24h])
+      p90: stddev_over_time(perp_funding_hold_24h_bps{venue="bybit",asset="BTC"}[24h])
+      p99: stddev_over_time(perp_funding_hold_24h_bps{venue="bybit",asset="SOL"}[24h])
+      mean: stddev_over_time(perp_funding_hold_24h_bps{venue="bybit",asset="ETH"}[24h])
+      success: (perp_funding_venue_ok_unix{venue="bybit"} > bool (time() - 300))
+      sample_size: count_over_time(perp_funding_hold_24h_bps{venue="bybit",asset="ETH"}[24h])
+      series: stddev_over_time(perp_funding_hold_24h_bps{venue="bybit",asset="ETH"}[24h])
+
+  - slug: dydx
+    name: dYdX v4
+    tag: Cosmos appchain order book perps, funding settled hourly
+    formula: "stddev_over_time of perp_funding_hold_24h_bps{venue=\"dydx\",asset=\"ETH\"} over a 24h window. p90/p99 columns reuse the same query on BTC and SOL to stay within the standard provider shape."
+    queries:
+      p50: stddev_over_time(perp_funding_hold_24h_bps{venue="dydx",asset="ETH"}[24h])
+      p90: stddev_over_time(perp_funding_hold_24h_bps{venue="dydx",asset="BTC"}[24h])
+      p99: stddev_over_time(perp_funding_hold_24h_bps{venue="dydx",asset="SOL"}[24h])
+      mean: stddev_over_time(perp_funding_hold_24h_bps{venue="dydx",asset="ETH"}[24h])
+      success: (perp_funding_venue_ok_unix{venue="dydx"} > bool (time() - 300))
+      sample_size: count_over_time(perp_funding_hold_24h_bps{venue="dydx",asset="ETH"}[24h])
+      series: stddev_over_time(perp_funding_hold_24h_bps{venue="dydx",asset="ETH"}[24h])
+
   - slug: binance
     name: Binance
     tag: Largest CEX perp book, 8h funding (4h on some pairs)
