@@ -158,6 +158,7 @@ export default async function ProviderPage({
     chain?: { value: string; label: string };
     region?: { value: string; label: string };
     benchSlug: string;
+    providerSlug: string;
   };
   const badgeCards: BadgeCard[] = [];
   for (const a of sorted) {
@@ -171,6 +172,12 @@ export default async function ProviderPage({
     const me = a.result.slug.toLowerCase();
     const benchSlug = a.benchmark.slug;
     const title = a.benchmark.title;
+    // The bench knows the provider under its raw slug (e.g.
+    // "publicnode-feehistory" on gas-estimation, "matic-usd" on
+    // oracle-deviation), while `p.slug` is the canonical product slug
+    // from the URL (publicnode, polygon). The badge route is keyed by
+    // the raw slug, so use that for badge URLs to avoid 404s.
+    const providerSlug = a.result.slug;
 
     let handledByCells = false;
     if (cellRanks && regionDims.length > 0) {
@@ -196,7 +203,7 @@ export default async function ProviderPage({
           wonKeys.size === finestKeys.length &&
           finestKeys.length === expectedCells
         ) {
-          badgeCards.push({ key: benchSlug, title, benchSlug });
+          badgeCards.push({ key: benchSlug, title, benchSlug, providerSlug });
           continue;
         }
         if (wonKeys.size === 0) continue;
@@ -213,6 +220,7 @@ export default async function ProviderPage({
             title,
             chain: c,
             benchSlug,
+            providerSlug,
           });
           for (const k of row) covered.add(k);
         }
@@ -226,6 +234,7 @@ export default async function ProviderPage({
             title,
             region: r,
             benchSlug,
+            providerSlug,
           });
           for (const k of col) covered.add(k);
         }
@@ -240,6 +249,7 @@ export default async function ProviderPage({
             ...(chain ? { chain } : {}),
             region,
             benchSlug,
+            providerSlug,
           });
         }
         continue;
@@ -252,14 +262,14 @@ export default async function ProviderPage({
     const isGlobalNumberOne = a.rank === 1;
     if (chainDims.length === 0) {
       if (isGlobalNumberOne) {
-        badgeCards.push({ key: benchSlug, title, benchSlug });
+        badgeCards.push({ key: benchSlug, title, benchSlug, providerSlug });
       }
       continue;
     }
     const leadsAllChains =
       chainDims.length > 0 && wonChains.length === chainDims.length;
     if (isGlobalNumberOne && leadsAllChains) {
-      badgeCards.push({ key: benchSlug, title, benchSlug });
+      badgeCards.push({ key: benchSlug, title, benchSlug, providerSlug });
       continue;
     }
     for (const c of wonChains) {
@@ -268,6 +278,7 @@ export default async function ProviderPage({
         title,
         chain: c,
         benchSlug,
+        providerSlug,
       });
     }
   }
@@ -670,7 +681,7 @@ export default async function ProviderPage({
               if (card.chain) scopeParams.set("chain", card.chain.value);
               if (card.region) scopeParams.set("region", card.region.value);
               const qs = scopeParams.size > 0 ? `?${scopeParams.toString()}` : "";
-              const badgePath = `/api/badge/${card.benchSlug}/${p.slug}${qs}`;
+              const badgePath = `/api/badge/${card.benchSlug}/${card.providerSlug}${qs}`;
               const badgeUrl = `${SITE.url}${badgePath}`;
               const targetUrl = `${SITE.url}/benchmarks/${card.benchSlug}${qs}`;
               const scopeSuffix = `${card.chain ? ` on ${card.chain.label}` : ""}${card.region ? ` from ${card.region.label}` : ""}`;
