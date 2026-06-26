@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound, redirect } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ArrowUpRight } from "lucide-react";
 import { getBenchmark } from "@/data/benchmarks";
@@ -333,7 +333,10 @@ export default async function BenchmarkChainPage({
   // and Ahrefs flags the lowercase variants as orphans (parent links use
   // the YAML's uppercase value).
   const canon = canonicalChainSlug(chain);
-  if (canon !== chain) redirect(`/benchmarks/${slug}/${canon}`);
+  // permanentRedirect emits a 308 so Google consolidates rank signal on
+  // the canonical lowercase URL. redirect() defaults to 307 (temporary)
+  // which leaves the source URL in the index competing with the canonical.
+  if (canon !== chain) permanentRedirect(`/benchmarks/${slug}/${canon}`);
   const data = await loadChainPage(slug, chain);
   if (!data) notFound();
   const { benchmark, explainer } = data;
