@@ -1,0 +1,37 @@
+name: Python Client CI
+
+on:
+  pull_request:
+    paths:
+      - "packages/python-client/**"
+      - ".github/workflows/python-client-ci.yml"
+  push:
+    branches: [main, dev]
+    paths:
+      - "packages/python-client/**"
+      - ".github/workflows/python-client-ci.yml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+    env:
+      OCB_SKIP_INTEGRATION: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install package + dev deps
+        working-directory: packages/python-client
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+      - name: Run unit tests
+        working-directory: packages/python-client
+        run: python -m pytest tests -m "not integration"
+      - name: Build sdist + wheel
+        working-directory: packages/python-client
+        run: python -m build

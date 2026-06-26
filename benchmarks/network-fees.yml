@@ -270,16 +270,13 @@ providers:
     layer: l1
     tag: Hardcoded 0.005 GRAM typical wallet v4 transfer
     formula: "Conservative typical observed cost of a Gram (formerly TON) wallet transfer × GRAM USD price. Gram has no fee estimate RPC; this is the observed median."
-    # Straddle the ton/gram chain label during the harness relabel
-    # window. The harness Railway service currently emits chain="ton";
-    # the regex keeps matching once it redeploys with chain="gram".
     queries:
-      p50: quantile_over_time(0.50, tx_fee_native_transfer_usd{chain=~"ton|gram",tier="single"}[24h])
-      p90: quantile_over_time(0.90, tx_fee_native_transfer_usd{chain=~"ton|gram",tier="single"}[24h])
-      p99: quantile_over_time(0.99, tx_fee_native_transfer_usd{chain=~"ton|gram",tier="single"}[24h])
-      mean: avg_over_time(tx_fee_native_transfer_usd{chain=~"ton|gram",tier="single"}[24h])
-      success: avg_over_time(tx_fee_health{chain=~"ton|gram"}[24h])
-      series: tx_fee_native_transfer_usd{chain=~"ton|gram",tier="single"}
+      p50: quantile_over_time(0.50, tx_fee_native_transfer_usd{chain="gram",tier="single"}[24h])
+      p90: quantile_over_time(0.90, tx_fee_native_transfer_usd{chain="gram",tier="single"}[24h])
+      p99: quantile_over_time(0.99, tx_fee_native_transfer_usd{chain="gram",tier="single"}[24h])
+      mean: avg_over_time(tx_fee_native_transfer_usd{chain="gram",tier="single"}[24h])
+      success: avg_over_time(tx_fee_health{chain="gram"}[24h])
+      series: tx_fee_native_transfer_usd{chain="gram",tier="single"}
 
   - slug: stellar
     name: Stellar

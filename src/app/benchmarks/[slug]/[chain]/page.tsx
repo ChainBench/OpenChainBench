@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ArrowUpRight } from "lucide-react";
 import { getBenchmark } from "@/data/benchmarks";
@@ -326,6 +326,17 @@ export default async function BenchmarkChainPage({
   params: Promise<Params>;
 }) {
   const { slug, chain } = await params;
+  // 308 non-canonical casings + legacy aliases (e.g. /ETH → /eth, /ton →
+  // /gram) to the canonical lowercase slug so Google indexes one URL per
+  // chain. matchesChainSlug() is case-insensitive so both render before
+  // this redirect — without it, /perp-fees/ETH + /perp-fees/eth both 200
+  // and Ahrefs flags the lowercase variants as orphans (parent links use
+  // the YAML's uppercase value).
+  const canon = canonicalChainSlug(chain);
+  // permanentRedirect emits a 308 so Google consolidates rank signal on
+  // the canonical lowercase URL. redirect() defaults to 307 (temporary)
+  // which leaves the source URL in the index competing with the canonical.
+  if (canon !== chain) permanentRedirect(`/benchmarks/${slug}/${canon}`);
   const data = await loadChainPage(slug, chain);
   if (!data) notFound();
   const { benchmark, explainer } = data;
@@ -601,7 +612,7 @@ function SiblingChains({
         {siblings.map((c) => (
           <li key={c.value}>
             <Link
-              href={`/benchmarks/${benchmark.slug}/${c.value}`}
+              href={`/benchmarks/${benchmark.slug}/${canonicalChainSlug(c.value)}`}
               className="inline-block rounded-md card-soft px-3 py-1.5 text-sm text-ink-soft hover:text-ink"
             >
               {c.label}

@@ -191,18 +191,14 @@ providers:
     name: Gram
     tag: Masterchain commit, polled via tonapi.io
     formula: "Median wall-clock milliseconds for a Gram (formerly TON) masterchain block to commit under BAG consensus, polled via tonapi.io with a 3-seqno lookback, p50 over 24h."
-    # Prom selectors straddle ton|gram during the harness relabel window.
-    # The harness on Railway still emits chain="ton"; once it redeploys
-    # with chain="gram", the regex keeps matching both. Drop the ton
-    # branch after ~7 days of clean gram-labelled data.
     queries:
-      p50: quantile_over_time(0.50, l1_finality_wallclock_lag_milliseconds{chain=~"ton|gram"}[24h])
-      p90: quantile_over_time(0.90, l1_finality_wallclock_lag_milliseconds{chain=~"ton|gram"}[24h])
-      p99: quantile_over_time(0.99, l1_finality_wallclock_lag_milliseconds{chain=~"ton|gram"}[24h])
-      mean: avg_over_time(l1_finality_wallclock_lag_milliseconds{chain=~"ton|gram"}[24h])
-      success: avg_over_time(l1_finality_wallclock_health{chain=~"ton|gram"}[24h])
-      sample_size: increase(l1_finality_wallclock_samples_total{chain=~"ton|gram"}[24h])
-      series: l1_finality_wallclock_lag_milliseconds{chain=~"ton|gram"}
+      p50: quantile_over_time(0.50, l1_finality_wallclock_lag_milliseconds{chain="gram"}[24h])
+      p90: quantile_over_time(0.90, l1_finality_wallclock_lag_milliseconds{chain="gram"}[24h])
+      p99: quantile_over_time(0.99, l1_finality_wallclock_lag_milliseconds{chain="gram"}[24h])
+      mean: avg_over_time(l1_finality_wallclock_lag_milliseconds{chain="gram"}[24h])
+      success: avg_over_time(l1_finality_wallclock_health{chain="gram"}[24h])
+      sample_size: increase(l1_finality_wallclock_samples_total{chain="gram"}[24h])
+      series: l1_finality_wallclock_lag_milliseconds{chain="gram"}
 
   - slug: stellar
     name: Stellar
