@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { loadAlternativeSlugs } from "@/lib/alternatives";
 import {
   deriveCategoryShares,
   fetchPmTopMarkets,
@@ -53,11 +54,17 @@ export async function PmVenueSection({
   venueType,
   benchRows,
 }: PmVenueSectionProps) {
-  const [kpis, topMarkets, history] = await Promise.all([
+  const [kpis, topMarkets, history, altSlugs] = await Promise.all([
     fetchPmVenueKpis(slug),
     fetchPmTopMarkets(slug),
     fetchPmVenueHistory(slug, 90),
+    loadAlternativeSlugs(),
   ]);
+  // Only emit /alternatives/<slug> when the YAML actually exists for
+  // this venue. PM venues without an alternatives page (lighter,
+  // manifold, myriad, limitless, ...) would otherwise leak a 404 link
+  // into Google's crawl from /products/<slug>.
+  const hasAlternativesPage = altSlugs.includes(slug);
 
   const categoryShares = deriveCategoryShares(topMarkets);
   const externalHost = safeHost(externalUrl);
@@ -157,13 +164,17 @@ export async function PmVenueSection({
           {name} product page
         </Link>
         <span aria-hidden>·</span>
-        <Link
-          href={`/alternatives/${slug}`}
-          className="hover:text-ink underline underline-offset-2"
-        >
-          {name} alternatives
-        </Link>
-        <span aria-hidden>·</span>
+        {hasAlternativesPage && (
+          <>
+            <Link
+              href={`/alternatives/${slug}`}
+              className="hover:text-ink underline underline-offset-2"
+            >
+              {name} alternatives
+            </Link>
+            <span aria-hidden>·</span>
+          </>
+        )}
         <a
           href={externalUrl}
           target="_blank"
