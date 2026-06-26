@@ -84,9 +84,16 @@ function parseAdHocSlug(slug: string): { a: string; b: string } | null {
  *  Returns a synthetic ComparePair so the rest of the route works
  *  unchanged. Returns null when any of those checks fail.
  */
+// HL builder addresses (0x...) leak into the provider catalog because
+// the HL bench tracks builders by raw on-chain address. They have no
+// search demand as compare targets, only pollute crawl budget.
+// Drop them at the entry so /compare/0x...-vs-* 404s cleanly.
+const HEX_SLUG_RE = /^0x[0-9a-f]{4,}$/i;
+
 async function resolveAdHocPair(slug: string): Promise<ComparePair | null> {
   const parsed = parseAdHocSlug(slug);
   if (!parsed) return null;
+  if (HEX_SLUG_RE.test(parsed.a) || HEX_SLUG_RE.test(parsed.b)) return null;
   const [first, second] = [parsed.a, parsed.b].sort();
   if (slug !== `${first}-vs-${second}`) return null;
   const [a, b] = await Promise.all([
