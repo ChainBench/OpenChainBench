@@ -178,9 +178,24 @@ const nextConfig: NextConfig = {
         destination: "/chains/gram",
         permanent: true,
       },
+      // Scoped to the 3 benches that ship a gram (formerly ton)
+      // per_chain_explainer. The previous catch-all `/benchmarks/:slug/ton`
+      // fired for every bench, redirecting non-gram benches to a /gram
+      // path that 404s (e.g. aggregator-head-lag/ton → aggregator-head-lag/gram → 404),
+      // which Ahrefs and Google flag as a soft-404 redirect chain.
       {
-        source: "/benchmarks/:slug/ton",
-        destination: "/benchmarks/:slug/gram",
+        source: "/benchmarks/l1-finality/ton",
+        destination: "/benchmarks/l1-finality/gram",
+        permanent: true,
+      },
+      {
+        source: "/benchmarks/network-fees/ton",
+        destination: "/benchmarks/network-fees/gram",
+        permanent: true,
+      },
+      {
+        source: "/benchmarks/wallet-labels-coverage/ton",
+        destination: "/benchmarks/wallet-labels-coverage/gram",
         permanent: true,
       },
       ...chainRedirects,

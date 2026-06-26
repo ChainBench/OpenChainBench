@@ -1,0 +1,46 @@
+{
+  "site": {
+    "name": "OpenChainBench",
+    "url": "https://openchainbench.com",
+    "license": "CC-BY-4.0"
+  },
+  "count": 2,
+  "benchmarks": [
+    {
+      "slug": "bridge-fee",
+      "title": "Cheapest cross-chain bridge for USDC at $300 notional",
+      "category": "Bridges",
+      "metric": "Effective fee",
+      "unit": "pct",
+      "status": "live",
+      "value": 0.00916,
+      "leader": { "name": "Near Intents", "slug": "near-intents", "value": 0.00916 },
+      "sampleSize": 11520,
+      "asOf": "2026-06-22T10:00:00.000Z",
+      "headline": "Near Intents leads at 0.92 percent effective fee",
+      "url": "https://openchainbench.com/benchmarks/bridge-fee",
+      "api": "https://openchainbench.com/api/stat/bridge-fee",
+      "ogImage": "https://openchainbench.com/api/og/bridge-fee",
+      "source": { "type": "harness", "url": "https://github.com/ChainBench/OpenChainBench", "label": "OpenChainBench harness" },
+      "license": "CC-BY-4.0"
+    },
+    {
+      "slug": "metadata-coverage",
+      "title": "Token metadata coverage",
+      "category": "Data",
+      "metric": "Coverage",
+      "unit": "pct",
+      "status": "insufficient",
+      "value": null,
+      "leader": null,
+      "sampleSize": 0,
+      "asOf": null,
+      "headline": "Insufficient sample to declare a leader.",
+      "url": "https://openchainbench.com/benchmarks/metadata-coverage",
+      "api": "https://openchainbench.com/api/stat/metadata-coverage",
+      "ogImage": "https://openchainbench.com/api/og/metadata-coverage",
+      "source": null,
+      "license": "CC-BY-4.0"
+    }
+  ]
+}
