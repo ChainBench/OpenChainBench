@@ -21,6 +21,10 @@ import { Prometheus } from "@/lib/prometheus";
 import { SpecSchema, type Spec } from "@/lib/spec-schema";
 import { renderBenchmarkText } from "@/lib/bench-template";
 import { liveResults as liveProviderResults } from "@/lib/provider-filters";
+import {
+  classifyHealth,
+  aggregateConfidence,
+} from "@/lib/sample-health";
 
 /** Overridable so the worker can run with a different cwd. */
 const SPECS_DIR =
@@ -266,6 +270,26 @@ export async function specToBenchmark(
     // surfaces fall back to the coarser bestPerChain path.
     const cellRanks = !isFiltered ? await tryLoadCellRanks(spec) : undefined;
 
+    // Per-provider sample-health classification. When the spec declares
+    // expected_n, every live provider gets `dataConfidence` (healthy /
+    // low / insufficient) + `sampleHealth` (raw ratio) so the renderer
+    // can badge undersized rows and so citable APIs can refuse to crown
+    // a leader drawn from a degraded sample. Bench-wide aggregate is
+    // the median of the per-provider classifications.
+    const expectedN = spec.expected_n;
+    if (expectedN) {
+      for (const r of live.results) {
+        const h = classifyHealth(r.sampleSize, expectedN);
+        if (h) {
+          r.dataConfidence = h.confidence;
+          r.sampleHealth = h.ratio;
+        }
+      }
+    }
+    const agg = expectedN
+      ? aggregateConfidence(live.results, expectedN)
+      : undefined;
+
     // Resolve {{p50:slug}} / {{best_name}} / {{count}} etc. placeholders
     // against the freshly loaded numbers so editorial text (findings,
     // seo_intro, faq) never drifts from the displayed data.
@@ -276,6 +300,8 @@ export async function specToBenchmark(
       worstPerChain,
       providersPerChain,
       cellRanks,
+      expectedN,
+      dataConfidence: agg?.confidence,
     });
     // Persistence is the caller's concern (site: KV snapshot write,
     // worker: store publish). Only the unfiltered "All" view of a live
