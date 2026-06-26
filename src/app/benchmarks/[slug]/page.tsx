@@ -23,6 +23,7 @@ import { SITE } from "@/data/site";
 import { buildBreadcrumbJsonLd, buildFaqPageJsonLd, safeJsonLd } from "@/lib/jsonld";
 import { buildBenchDatasetJsonLd } from "@/lib/dataset-jsonld";
 import { renderTemplate } from "@/lib/bench-template";
+import { canonicalChainSlug } from "@/lib/chain-aliases";
 import type { Benchmark } from "@/types/benchmark";
 
 // ISR with a 60 s revalidate window. The page is prerendered by
@@ -604,7 +605,7 @@ function PerChainPagesNav({ benchmark }: { benchmark: Benchmark }) {
         {chains.map((c) => (
           <li key={c.value}>
             <Link
-              href={`/benchmarks/${benchmark.slug}/${c.value}`}
+              href={`/benchmarks/${benchmark.slug}/${canonicalChainSlug(c.value)}`}
               className="inline-block rounded-md card-soft px-3 py-1.5 text-sm text-ink-soft hover:text-ink"
             >
               {c.label}
