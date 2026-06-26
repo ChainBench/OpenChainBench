@@ -1,0 +1,49 @@
+{
+  "slug": "bridge-fee",
+  "title": "Cheapest cross-chain bridge for USDC at $300 notional",
+  "subtitle": "Total cost as a percent of notional.",
+  "category": "Bridges",
+  "metric": "Effective fee",
+  "unit": "pct",
+  "status": "live",
+  "higherIsBetter": false,
+  "value": 0.00916,
+  "leader": { "name": "Near Intents", "slug": "near-intents", "value": 0.00916 },
+  "rankings": [
+    {
+      "name": "Near Intents",
+      "slug": "near-intents",
+      "type": "intent",
+      "layer": null,
+      "tag": "Intent layer (NEAR)",
+      "ms": { "p50": 0.00916, "p90": 0.011, "p99": 0.011, "mean": 0.01006 },
+      "successRate": 89.06,
+      "sampleSize": 11520
+    },
+    {
+      "name": "Mobula",
+      "slug": "mobula",
+      "type": "intent",
+      "layer": null,
+      "tag": "Aggregator + intent layer",
+      "ms": { "p50": 0.0126, "p90": 0.01313, "p99": 0.1222, "mean": 0.01626 },
+      "successRate": 100.0,
+      "sampleSize": 28800
+    }
+  ],
+  "sparkline": [0.0571, 0.0572, 0.0573, 0.0571],
+  "sampleSize": 11520,
+  "asOf": "2026-06-22T10:00:00.000Z",
+  "headline": "Near Intents leads at 0.92 percent effective fee",
+  "quote": "On openchainbench.com, Near Intents leads at 0.92 percent effective fee.",
+  "pageUrl": "https://openchainbench.com/benchmarks/bridge-fee",
+  "ogImage": "https://openchainbench.com/api/og/bridge-fee",
+  "source": { "type": "harness", "url": "https://github.com/ChainBench/OpenChainBench", "label": "OpenChainBench harness" },
+  "methodology": [
+    "Sampled at $300 USDC across Solana, Base and Arbitrum corridors.",
+    "Costs include fees, slippage, and destination gas."
+  ],
+  "license": "CC-BY-4.0",
+  "bestPerChain": null,
+  "worstPerChain": null
+}
