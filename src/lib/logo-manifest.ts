@@ -187,6 +187,16 @@ const RAW: Record<string, string> = {
   paradex: "/logos/paradex.svg",
   aster: "/logos/aster.svg",
 
+  // ─── Perp funding stability cohort additions (bench № 043) ───
+  // Sourced via Mobula CEFI funding-rate aggregator.
+  bitget: "/logos/bitget.png",
+  coinbase: "/logos/coinbase.svg",
+  deribit: "/logos/deribit.png",
+  gate: "/logos/gate.png",
+  kraken: "/logos/kraken.png",
+  kucoin: "/logos/kucoin.svg",
+  mexc: "/logos/mexc.png",
+
   // ─── Hyperliquid HIP-3 deployers (bench № 035) ───
   xyz: "/logos/xyz.png",
   vntl: "/logos/vntl.png",
