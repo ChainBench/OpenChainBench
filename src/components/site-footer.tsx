@@ -42,6 +42,7 @@ export function SiteFooter() {
             title="Developers"
             links={[
               { label: "Partners + embeds", href: "/partners" },
+              { label: "Badges catalog", href: "/badges" },
               { label: "MCP server", href: "/mcp" },
               { label: "OpenAPI spec", href: "/api/openapi.json" },
               { label: "JSON citation", href: "/api/citable" },
