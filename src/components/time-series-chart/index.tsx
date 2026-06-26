@@ -1,0 +1,357 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { Globe } from "lucide-react";
+import type { Benchmark } from "@/types/benchmark";
+import { brandColor } from "@/lib/brand";
+import { buildProviderColors } from "@/lib/series-colors";
+import { useChartExclusion } from "@/hooks/use-chart-exclusion";
+import { useTopN } from "@/hooks/use-top-n";
+import { LiveDot } from "@/components/live-dot";
+import { TopNSelector } from "@/components/top-n-selector";
+import {
+  RANGES,
+  RANGE_HOURS,
+  RANGE_EXPECTED_POINTS,
+  RANGE_LABEL,
+  REGION_LABEL,
+  pickSeries,
+  mean,
+  type Range,
+  type LineWithColor,
+} from "./scales";
+import { Chart } from "./chart";
+
+type Props = {
+  benchmark: Benchmark;
+  /** Optional externally-controlled region. When provided, the chart
+   *  filters its lines by this value and hides its internal region tabs
+   *  (the parent component renders them in a shared dimension row). */
+  region?: string;
+  /** Optional controlled exclusion set shared with the other chart views
+   *  (ranked-bar, distribution, donut). Lets the reader hide a dominant
+   *  outlier here too — Y-axis re-zooms smoothly to fit the rest. */
+  excluded?: Set<string>;
+  onToggleExclude?: (slug: string) => void;
+  onResetExcluded?: () => void;
+  /** Optional slot rendered in the chart's header row, right-aligned. */
+  headerActions?: import("react").ReactNode;
+  /** Optional metric-panel override. When set, the chart pulls its per-
+   *  provider series from `seriesOverride[slug]` instead of
+   *  `benchmark.extras.series24h[slug]`, swaps the metric name in the
+   *  header, and switches the Y-axis unit. Used by the bench page when
+   *  the reader selects a companion metric from the panel tab row. */
+  seriesOverride?: Record<string, number[]>;
+  /** Optional 7 day and 30 day variants of the panel override. The chart
+   *  picks the matching one when the range tab is 7d or 30d. */
+  seriesOverride7d?: Record<string, number[]>;
+  seriesOverride30d?: Record<string, number[]>;
+  metricLabelOverride?: string;
+  unitOverride?: Benchmark["unit"];
+  /** Direction override for ranking when a metric panel is active. Bench
+   *  level higher_is_better doesn't apply to companion metrics with
+   *  inverse semantics (effective fee bps lower is better, time since
+   *  last fill lower is better). When set, the chart's Top N selector
+   *  picks the BEST N rather than the BIGGEST N. */
+  higherIsBetterOverride?: boolean;
+  topNControl?: { topN: number | null; setTopN: (n: number | null) => void };
+  disableTopN?: boolean;
+};
+
+export function TimeSeriesChart({
+  benchmark,
+  region: regionProp,
+  excluded: controlledExcluded,
+  onToggleExclude,
+  seriesOverride,
+  seriesOverride7d,
+  seriesOverride30d,
+  metricLabelOverride,
+  unitOverride,
+  higherIsBetterOverride,
+  onResetExcluded,
+  topNControl,
+  disableTopN,
+  headerActions,
+}: Props) {
+  const [range, setRange] = useState<Range>("24h");
+  const [regionLocal, setRegionLocal] = useState<string>("all");
+  const region = regionProp ?? regionLocal;
+  const setRegion = regionProp != null ? () => {} : setRegionLocal;
+  const { excluded, toggle, reset } = useChartExclusion(
+    controlledExcluded,
+    onToggleExclude,
+    onResetExcluded,
+  );
+  // Drag-to-zoom state. Fractions are 0..1 of the original visible range
+  // for the current Range tab. Lives in the parent so it survives the
+  // Chart's internal re-renders. Reset to null when range or region
+  // changes (the data shape is different, the old zoom doesn't apply).
+  const [zoom, setZoom] = useState<{ startFrac: number; endFrac: number } | null>(null);
+  const zoomScopeKey = `${range}|${region}`;
+  const [prevZoomScopeKey, setPrevZoomScopeKey] = useState(zoomScopeKey);
+  if (prevZoomScopeKey !== zoomScopeKey) {
+    setPrevZoomScopeKey(zoomScopeKey);
+    setZoom(null);
+  }
+
+  const has7d =
+    !!benchmark.extras.series7d &&
+    Object.keys(benchmark.extras.series7d).length > 0;
+
+  const has30d =
+    !!benchmark.extras.series30d &&
+    Object.keys(benchmark.extras.series30d).length > 0;
+
+  const availableRegions = useMemo(() => {
+    const set = new Set<string>();
+    const byRegion = benchmark.extras.seriesByRegion24h ?? {};
+    for (const slug of Object.keys(byRegion)) {
+      for (const r of Object.keys(byRegion[slug])) set.add(r);
+    }
+    return Array.from(set).sort();
+  }, [benchmark]);
+
+  // Internal region tabs are hidden when the parent controls the region -
+  // it renders a unified Chain + Region row above and passes the value down.
+  const showRegionTabs = regionProp == null && availableRegions.length > 1;
+
+  const colors = useMemo(
+    () => buildProviderColors(benchmark.results),
+    [benchmark.results]
+  );
+
+  // Build every provider's line up-front so the legend always lists the
+  // full set (excluded items stay visible there for re-enable). The
+  // `excluded` flag drives both opacity (CSS fade-out) and Y-axis math
+  // (excluded values are dropped from min/max so the remaining lines
+  // can spread out vertically when an outlier is hidden).
+  const allLines = useMemo(() => {
+    // Panel overrides ship in up to three variants: 24h (72 pts), 7d (84
+    // pts) and 30d (60 pts). When the chart range is 7d or 30d we pick
+    // the matching variant if it exists. Sub 24h tabs slice the 24h
+    // variant trailing edge. Long range tabs fall back to the 24h
+    // variant when the longer one is missing (older specs).
+    const pickPanel = (): Record<string, number[]> | undefined => {
+      if (range === "30d" && seriesOverride30d) return seriesOverride30d;
+      if (range === "7d" && seriesOverride7d) return seriesOverride7d;
+      return seriesOverride;
+    };
+    const panel = pickPanel();
+    const sliceOverride = (full: number[]): number[] => {
+      // Sub 24h ranges slice the 24h panel series trailing edge.
+      if (range === "24h" || range === "7d" || range === "30d") return full;
+      const ratio = RANGE_HOURS[range] / 24;
+      const take = Math.max(2, Math.round(full.length * ratio));
+      return full.slice(-take);
+    };
+    const built = benchmark.results
+      .map((r) => ({
+        slug: r.slug,
+        name: r.name,
+        color: colors.get(r.slug) ?? "var(--color-ink-soft)",
+        values: panel
+          ? sliceOverride(panel[r.slug] ?? [])
+          : pickSeries(benchmark, r.slug, range, region),
+        excluded: excluded.has(r.slug),
+      }))
+      .filter((l) => l.values.length > 0);
+
+    // Respect higher_is_better when ranking lines. For a panel like
+    // effective fee bps where lower means better, the Top N selector
+    // should surface the BEST N (smallest values), matching the ledger
+    // table below which sorts the same way. Without this the chart and
+    // ledger would disagree on what Top 5 means.
+    const higherIsBetter = higherIsBetterOverride ?? benchmark.higherIsBetter;
+    built.sort((a, b) => {
+      const av = mean(a.values.slice(-6));
+      const bv = mean(b.values.slice(-6));
+      return higherIsBetter ? bv - av : av - bv;
+    });
+    return built;
+  }, [benchmark, range, region, colors, excluded, seriesOverride, seriesOverride7d, seriesOverride30d, higherIsBetterOverride]);
+
+  // Top-N selector — sized off the post-filter line count via the
+  // shared `useTopN` hook so the option set agrees across every
+  // chart view on the bench page.
+  const { topN, setTopN, topNOptions } = useTopN(allLines.length, { external: topNControl, disabled: disableTopN });
+  const lines = useMemo(() => {
+    if (topN == null) return allLines;
+    return allLines.slice(0, topN);
+  }, [allLines, topN]);
+
+  // A key that flips when the data shape changes. used to retrigger
+  // the line-draw animation.
+  const seriesKey = `${range}::${region}::${metricLabelOverride ?? "default"}`;
+
+  // Format the zoomed-window label so the header tells the reader
+  // exactly which slice of the original range they're looking at, e.g.
+  // "head lag · −18 h → −12 h (6 h window)". Falls back to the normal
+  // range label when no zoom is active.
+  const totalWindowH = RANGE_HOURS[range];
+  const zoomLabel = zoom
+    ? (() => {
+        const startAgo = (1 - zoom.startFrac) * totalWindowH;
+        const endAgo = (1 - zoom.endFrac) * totalWindowH;
+        const spanH = startAgo - endAgo;
+        const fmt = (h: number) =>
+          h < 0.05
+            ? "now"
+            : h < 1
+              ? `−${Math.round(h * 60)} min`
+              : h < 48
+                ? `−${h.toFixed(h < 6 ? 1 : 0)} h`
+                : `−${(h / 24).toFixed(0)} d`;
+        const span =
+          spanH < 1
+            ? `${Math.round(spanH * 60)} min`
+            : spanH < 48
+              ? `${spanH.toFixed(spanH < 6 ? 1 : 0)} h`
+              : `${(spanH / 24).toFixed(0)} d`;
+        return `${fmt(startAgo)} → ${fmt(endAgo)} (${span} window)`;
+      })()
+    : RANGE_LABEL[range];
+
+  return (
+    <figure className="my-2">
+      <div className="mb-3 flex items-center justify-between gap-3 min-h-7">
+        <p className="inline-flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
+          <LiveDot />
+          <span>
+            {metricLabelOverride ?? benchmark.metric} · {zoomLabel}
+          </span>
+        </p>
+        <div className="flex items-center gap-3">
+          {zoom && (
+            <button
+              type="button"
+              onClick={() => setZoom(null)}
+              className="inline-flex items-center gap-1.5 rounded-md border border-ink/15 bg-paper px-2.5 py-1 text-[11px] font-sans font-medium uppercase tracking-[0.1em] text-ink shadow-sm transition-all hover:border-ink/40 hover:shadow-md"
+              aria-label="Reset chart zoom"
+              title="Show the full range again"
+            >
+              <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M3 8a5 5 0 1 0 1.5-3.5" />
+                <path d="M3 3v3h3" />
+              </svg>
+              Reset zoom
+            </button>
+          )}
+          {headerActions}
+        </div>
+      </div>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-1">
+          {RANGES.map((r) => {
+            const active = r === range;
+            const disabled =
+              (r === "7d" && !has7d) || (r === "30d" && !has30d);
+            return (
+              <button
+                key={r}
+                type="button"
+                onClick={() => !disabled && setRange(r)}
+                disabled={disabled}
+                className={[
+                  "rounded px-2.5 py-1 text-[11px] font-sans tabular uppercase tracking-[0.1em] font-medium transition-colors",
+                  active
+                    ? "bg-ink text-paper"
+                    : "text-ink-muted hover:text-ink hover:bg-paper-soft",
+                  disabled ? "opacity-40 cursor-not-allowed" : "",
+                ].join(" ")}
+                title={
+                  disabled
+                    ? `${r} retention not available yet`
+                    : undefined
+                }
+              >
+                {r}
+              </button>
+            );
+          })}
+        </div>
+
+        {showRegionTabs && (
+          <div className="flex items-center gap-1">
+            <span className="mr-2 label-mono-xs">
+              Region
+            </span>
+            <RegionTab
+              slug="all"
+              label="All"
+              active={region === "all"}
+              onClick={() => setRegion("all")}
+            />
+            {availableRegions.map((r) => (
+              <RegionTab
+                key={r}
+                slug={r}
+                label={REGION_LABEL[r] ?? r}
+                active={region === r}
+                onClick={() => setRegion(r)}
+              />
+            ))}
+          </div>
+        )}
+
+        <TopNSelector value={topN} options={topNOptions} onChange={setTopN} />
+      </div>
+
+      {lines.length === 0 ? (
+        <div className="border-y-2 border-ink py-12 text-center text-ink-muted text-sm">
+          No time-series data emitted for this range yet.
+        </div>
+      ) : (
+        <Chart
+          key={seriesKey}
+          lines={lines as LineWithColor[]}
+          unit={unitOverride ?? benchmark.unit}
+          windowHours={RANGE_HOURS[range]}
+          expectedPoints={RANGE_EXPECTED_POINTS[range]}
+          zoom={zoom}
+          onZoom={setZoom}
+          onToggleExclude={toggle}
+          onResetExcluded={excluded.size > 0 ? reset : undefined}
+        />
+      )}
+    </figure>
+  );
+}
+
+function RegionTab({
+  slug,
+  label,
+  active,
+  onClick,
+}: {
+  slug: string;
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  const accent = brandColor(slug);
+  const activeStyle = active
+    ? { background: accent ?? "var(--color-ink)", color: "var(--color-paper)" }
+    : undefined;
+  const className = active
+    ? "rounded-md px-3 py-1.5 text-xs font-medium uppercase tracking-[0.14em] shadow-sm transition-colors"
+    : "rounded-md px-3 py-1.5 text-xs font-medium uppercase tracking-[0.14em] border border-rule text-ink-muted hover:text-ink hover:bg-paper-soft transition-colors";
+  return (
+    <button type="button" onClick={onClick} style={activeStyle} className={className}>
+      <span className="inline-flex items-center gap-1.5">
+        <span
+          className="inline-flex items-center justify-center rounded-full"
+          style={{
+            width: 14,
+            height: 14,
+            background: active ? "rgba(255,255,255,0.18)" : (accent ?? "var(--color-ink-soft)"),
+            color: "var(--color-paper)",
+          }}
+        >
+          <Globe size={9} strokeWidth={2.2} />
+        </span>
+        {label}
+      </span>
+    </button>
+  );
+}
