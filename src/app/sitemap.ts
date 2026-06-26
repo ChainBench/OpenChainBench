@@ -2,6 +2,7 @@ import { statSync } from "node:fs";
 import path from "node:path";
 import type { MetadataRoute } from "next";
 import { getBenchmarks } from "@/data/benchmarks";
+import { COMPARE_PAIRS } from "@/data/compare-pairs";
 import { loadAllAlternatives } from "@/lib/alternatives";
 import { loadAllAnswers } from "@/lib/answers";
 import { CHAIN_BY_SLUG, CHAINS, getBenchmarksForChain } from "@/lib/chains";
@@ -286,6 +287,28 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
     )
   ).filter((r): r is NonNullable<typeof r> => r !== null);
 
+  // Curated compare pairs. Both providers are pre-validated to exist
+  // and share at least one bench (criteria documented in
+  // src/data/compare-pairs.ts). Defensive recheck via getProvider to
+  // skip any pair whose provider was removed since publication.
+  const compareRoutes: MetadataRoute.Sitemap = (
+    await Promise.all(
+      COMPARE_PAIRS.map(async (pair) => {
+        const [a, b] = await Promise.all([
+          getProvider(pair.providerA),
+          getProvider(pair.providerB),
+        ]);
+        if (!a || !b) return null;
+        return {
+          url: `${SITE.url}/compare/${pair.slug}`,
+          lastModified: catalogTs,
+          changeFrequency: "weekly" as const,
+          priority: 0.7,
+        };
+      }),
+    )
+  ).filter((r): r is NonNullable<typeof r> => r !== null);
+
   return [
     ...staticRoutes,
     ...benchmarkRoutes,
@@ -293,6 +316,7 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
     ...alternativeRoutes,
     ...answerRoutes,
     ...chainRoutes,
+    ...compareRoutes,
   ];
 }
 
