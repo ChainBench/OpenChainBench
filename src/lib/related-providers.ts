@@ -19,7 +19,10 @@
 
 import { cache } from "react";
 import { unstable_cache } from "next/cache";
-import { canonicalize, getProviders } from "@/lib/providers";
+// DEAD_COMPOSITE_SLUGS lives in providers.ts (the canonical source of
+// /products/<slug> eligibility); re-imported here so both modules share
+// one list and we never drift the two literals out of sync.
+import { canonicalize, DEAD_COMPOSITE_SLUGS, getProviders } from "@/lib/providers";
 import { canonicalPairSlug } from "@/lib/compare-pairing-shared";
 import { loadAllAlternatives } from "@/lib/alternatives";
 import { loadBenchmark } from "@/lib/spec";
@@ -47,23 +50,6 @@ const COMPARE_CAP = 12;
 
 /** Hard cap on how many alternatives lists we render. */
 const ALTERNATIVES_CAP = 8;
-
-/**
- * Zombie slugs from pre-PR #647 pm-api-latency, when each aggregator was
- * split per venue (codex-kalshi, codex-polymarket, predexon-*). The bench
- * now collapses everything into the parent provider slug (codex,
- * predexon) but the materialize worker's per-slug Redis blobs survive
- * for the TTL window after each schema change, and old slugs leak into
- * compare candidates / alternatives links until they expire. Filtering
- * here keeps the UI clean across the eventual-consistency gap.
- */
-const DEAD_COMPOSITE_SLUGS = new Set([
-  "codex-kalshi",
-  "codex-polymarket",
-  "predexon-kalshi",
-  "predexon-limitless",
-  "predexon-polymarket",
-]);
 
 /**
  * Returns the providers that share at least one live benchmark with the
