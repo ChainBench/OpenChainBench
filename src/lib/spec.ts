@@ -19,6 +19,7 @@ import type { Spec } from "@/lib/spec-schema";
 // initialization" because both ends touch each other during ESM load.
 import { canonicalChainSlug } from "@/lib/chain-aliases";
 import { renderBenchmarkText } from "@/lib/bench-template";
+import { MS_PER_MINUTE } from "@/lib/time-constants";
 import {
   buildEditorial,
   draftPlaceholderForSpec,
@@ -46,7 +47,7 @@ export { bestForChain, injectLabels } from "@/lib/materialize/load";
 // miss, parse failure, or a snapshot older than STORE_MAX_AGE_MS (worker
 // down) all fall through to the old behavior. Rollback = unset the flag.
 const READ_FROM_STORE = process.env.READ_FROM_STORE === "1";
-const STORE_MAX_AGE_MS = 30 * 60_000;
+const STORE_MAX_AGE_MS = 30 * MS_PER_MINUTE;
 
 async function benchFromStore(
   slug: string,
@@ -57,7 +58,7 @@ async function benchFromStore(
   if (!snap) return null;
   if (Date.now() - snap.builtAt > STORE_MAX_AGE_MS) {
     console.warn(
-      `[materialize] snapshot for ${slug}/${sig || "all"} is ${Math.round((Date.now() - snap.builtAt) / 60000)}min old, falling back to live`,
+      `[materialize] snapshot for ${slug}/${sig || "all"} is ${Math.round((Date.now() - snap.builtAt) / MS_PER_MINUTE)}min old, falling back to live`,
     );
     return null;
   }
@@ -236,7 +237,7 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // expectedN + dataConfidence aggregate (sample-health system). Cached
   // v13 entries lack these fields, so the sample-health badge would
   // not render on existing benches until the cache aged out.
-  ["bench-unfiltered-v14"],
+  ["bench-unfiltered-v15"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -371,7 +372,7 @@ const loadAllBenchmarksCached = unstable_cache(
   // Without this, /api/citable + products + sitemap surfaces would
   // keep serving v17 benches without the new dataConfidence /
   // sampleHealth / expectedN fields.
-  ["all-benchmarks-v18"],
+  ["all-benchmarks-v19"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
