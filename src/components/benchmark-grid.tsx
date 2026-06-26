@@ -1,23 +1,54 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { LayoutGrid, List, Search } from "lucide-react";
 import type { BenchmarkCardData } from "@/data/benchmarks";
 import { BenchmarkCard } from "@/components/benchmark-card";
+import { categorySlugFromLabel } from "@/lib/categories";
 
 /**
  * Client-side filter/search shell for the All Benchmarks card grid.
  * Hosts category pills (derived from data), a view-mode toggle (grid is
  * the only fully-implemented mode here - list view degrades to a single
  * column) and a search input with a ⌘K affordance.
+ *
+ * The category pills render as `<Link>` to `/benchmarks/category/<slug>`
+ * so crawlers see real hrefs and can follow them into the per-category
+ * hub pages (otherwise the category facet would only exist as
+ * client-only state and have no linkable URL). On click we still apply
+ * the in-place client filter and preventDefault so the user gets the
+ * snappy instant-filter UX without a navigation roundtrip.
+ *
+ * When `lockedCategory` is passed (e.g. by the `/benchmarks/category/<slug>`
+ * page) the grid renders pre-filtered, the search bar still works, and
+ * the category pills are hidden entirely so the page reads as a focused
+ * category hub instead of a partial filter UI.
  */
-export function BenchmarkGrid({ benchmarks }: { benchmarks: BenchmarkCardData[] }) {
+export function BenchmarkGrid({
+  benchmarks,
+  lockedCategory = null,
+  allCategories,
+}: {
+  benchmarks: BenchmarkCardData[];
+  /** When set, force the grid to this category. The pill row still
+   *  renders so users can jump to other category hubs via the same UI
+   *  they had on the /benchmarks root. */
+  lockedCategory?: string | null;
+  /** Full category list to show in the pills, used by the category hub
+   *  routes where the `benchmarks` prop is pre-filtered to a single
+   *  category. If unset, the grid derives pills from `benchmarks`. */
+  allCategories?: string[];
+}) {
   const [query, setQuery] = useState("");
-  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [activeCategory, setActiveCategory] = useState<string | null>(
+    lockedCategory,
+  );
   const [view, setView] = useState<"grid" | "list">("grid");
   const q = query.trim().toLowerCase();
 
   const categories = useMemo(() => {
+    if (allCategories && allCategories.length > 0) return allCategories;
     const seen = new Set<string>();
     const list: string[] = [];
     for (const b of benchmarks) {
@@ -27,7 +58,7 @@ export function BenchmarkGrid({ benchmarks }: { benchmarks: BenchmarkCardData[] 
       }
     }
     return list;
-  }, [benchmarks]);
+  }, [benchmarks, allCategories]);
 
   const filtered = useMemo(() => {
     return benchmarks.filter((b) => {
@@ -46,33 +77,51 @@ export function BenchmarkGrid({ benchmarks }: { benchmarks: BenchmarkCardData[] 
     });
   }, [benchmarks, q, activeCategory]);
 
+  // Pills always render. When the grid is locked to a category route,
+  // pill clicks navigate (no preventDefault) so the user moves between
+  // /benchmarks/category/<slug> URLs. On the unlocked /benchmarks page
+  // they filter in place for a snappier UX without a navigation
+  // roundtrip.
   return (
     <div>
       {/* Filter row */}
       <div className="mb-8 flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3">
         <ul className="-mx-4 px-4 sm:mx-0 sm:px-0 flex flex-nowrap sm:flex-wrap overflow-x-auto sm:overflow-visible items-center gap-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <li>
-            <button
-              type="button"
+            <Link
+              href="/benchmarks"
               className="pill"
-              data-active={activeCategory === null}
-              onClick={() => setActiveCategory(null)}
+              data-active={!lockedCategory && activeCategory === null}
+              onClick={(e) => {
+                if (lockedCategory) return;
+                e.preventDefault();
+                setActiveCategory(null);
+              }}
             >
               All
-            </button>
+            </Link>
           </li>
-          {categories.map((c) => (
-            <li key={c}>
-              <button
-                type="button"
-                className="pill"
-                data-active={activeCategory === c}
-                onClick={() => setActiveCategory(activeCategory === c ? null : c)}
-              >
-                {c}
-              </button>
-            </li>
-          ))}
+          {categories.map((c) => {
+            const slug = categorySlugFromLabel(c);
+            const href = slug ? `/benchmarks/category/${slug}` : "/benchmarks";
+            const isActive = lockedCategory === c || (!lockedCategory && activeCategory === c);
+            return (
+              <li key={c}>
+                <Link
+                  href={href}
+                  className="pill"
+                  data-active={isActive}
+                  onClick={(e) => {
+                    if (lockedCategory) return;
+                    e.preventDefault();
+                    setActiveCategory(activeCategory === c ? null : c);
+                  }}
+                >
+                  {c}
+                </Link>
+              </li>
+            );
+          })}
         </ul>
 
         <div className="sm:ml-auto flex items-center gap-3">
