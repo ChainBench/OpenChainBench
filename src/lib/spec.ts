@@ -115,6 +115,13 @@ function overlayEditorial(stored: Benchmark, spec: Spec): Benchmark {
     // and the bench page filters without waiting on the materialise
     // worker to rewrite the snapshot.
     dimensions: spec.dimensions ?? stored.dimensions,
+    // expected_n is a YAML editorial declaration too: drives the
+    // sample-health badge logic on the page + the citable APIs. A
+    // freshly added/edited value must take effect immediately, before
+    // the worker re-publishes the snapshot, otherwise a bench keeps
+    // ranking 3-sample providers as healthy through the materialise
+    // lag.
+    expectedN: spec.expected_n ?? stored.expectedN,
   };
   // Resolve `{{p50:slug}}`, `{{name:slug}}`, `{{best_name}}` etc. in the
   // overlaid editorial text. Without this, a YAML edit that ships AHEAD
@@ -225,7 +232,11 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // "gram" after the June 2026 rebrand). Without bumping, a v12 entry
   // would keep serving result.slug = "ton" + result.name = "TON" until
   // the materialize worker rewrites the snapshot.
-  ["bench-unfiltered-v13"],
+  // v14: per-provider dataConfidence + sampleHealth + bench-wide
+  // expectedN + dataConfidence aggregate (sample-health system). Cached
+  // v13 entries lack these fields, so the sample-health badge would
+  // not render on existing benches until the cache aged out.
+  ["bench-unfiltered-v14"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -356,7 +367,11 @@ const loadAllBenchmarksCached = unstable_cache(
   // v17: bumped with bench-unfiltered-v13 (slug reconciliation in
   // overlayEditorial). Without this, /api/citable and the products
   // page would keep serving v16 benches with stale "ton" results.
-  ["all-benchmarks-v17"],
+  // v18: bumped with bench-unfiltered-v14 (sample-health system).
+  // Without this, /api/citable + products + sitemap surfaces would
+  // keep serving v17 benches without the new dataConfidence /
+  // sampleHealth / expectedN fields.
+  ["all-benchmarks-v18"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
