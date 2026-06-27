@@ -88,13 +88,34 @@ function overlayEditorial(stored: Benchmark, spec: Spec): Benchmark {
   const providerByCanonSlug = new Map(
     (spec.providers ?? []).map((p) => [canonicalChainSlug(p.slug), p]),
   );
-  const reconciledResults = stored.results.map((r) => {
+  // Two-pass: rewrite legacy slugs to their canonical, then dedupe so a
+  // chain rename in flight (e.g. ton → gram) does not surface two rows
+  // for the same canonical until the 24h Prom window aged out the legacy
+  // series. When duplicates land, prefer the row whose original slug
+  // already matched the canonical (current harness emit) over the row
+  // rewritten via alias (historical samples). Stable insertion order
+  // preserves the leaderboard sort.
+  const seenSlugs = new Set<string>();
+  const reconciledResults: typeof stored.results = [];
+  for (const r of stored.results) {
     const canon = canonicalChainSlug(r.slug);
-    if (canon === r.slug) return r;
-    const specProvider = providerByCanonSlug.get(canon);
-    if (!specProvider) return r;
-    return { ...r, slug: canon, name: specProvider.name };
-  });
+    const isCanonical = canon === r.slug;
+    if (seenSlugs.has(canon)) {
+      if (!isCanonical) continue;
+      const existingIdx = reconciledResults.findIndex((x) => x.slug === canon);
+      if (existingIdx >= 0) reconciledResults[existingIdx] = r;
+      continue;
+    }
+    seenSlugs.add(canon);
+    if (isCanonical) {
+      reconciledResults.push(r);
+    } else {
+      const specProvider = providerByCanonSlug.get(canon);
+      reconciledResults.push(
+        specProvider ? { ...r, slug: canon, name: specProvider.name } : r,
+      );
+    }
+  }
 
   const overlaid: Benchmark = {
     ...stored,
