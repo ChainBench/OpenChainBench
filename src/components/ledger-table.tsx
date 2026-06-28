@@ -405,7 +405,13 @@ function Row({
         <div className="flex flex-col gap-1 min-w-0">
           <span className="flex items-center gap-2 min-w-0">
             <ProviderLogo slug={r.slug} name={r.name} size={20} />
-            {isRegion(r.slug) ? (
+            {isRegion(r.slug) || isHexAddressSlug(r.slug) ? (
+              // Hex builder addresses (HL frontends not yet in
+              // builders.json) have no /products/<slug> page — the
+              // route is blacklisted in providers.ts, so a link would
+              // 404. Render as plain text until the builder is added
+              // to the registry, at which point it gets a real slug
+              // and the link reappears automatically.
               <span
                 className="font-semibold truncate min-w-0"
                 style={{ color: isOffline ? "var(--color-ink-muted)" : color }}
