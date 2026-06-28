@@ -19,7 +19,17 @@ import { fmtUnit } from "@/lib/format";
 import { buildProviderColors } from "@/lib/series-colors";
 import { isRegion } from "@/lib/brand";
 import { isAll } from "@/lib/dimensions";
-import { isHexAddressSlug } from "@/lib/providers";
+
+// Hyperliquid frontends bench surfaces builder addresses that aren't
+// yet in /opt/hl-bench/builders.json with a raw hex slug. Mirrors the
+// HEX_ADDRESS_SLUG regex in src/lib/providers.ts (the /products route
+// blacklist) — kept inline because providers.ts is server-only (it
+// imports unstable_cache + the bench loaders) and pulling it into
+// this client component breaks the build.
+const HEX_ADDRESS_SLUG = /^0x[a-f0-9]+$/;
+function isHexAddressSlug(slug: string): boolean {
+  return HEX_ADDRESS_SLUG.test(slug.toLowerCase());
+}
 
 type Props = {
   benchmark: Benchmark;
