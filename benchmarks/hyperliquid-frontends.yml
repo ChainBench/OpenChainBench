@@ -1478,6 +1478,85 @@ providers:
       sample_size: hl_frontend_fills_total_24h_v2{builder="nansen"}
       series: hl_frontend_fees_usd_24h_v2{builder="nansen"}
 
+  # ─── Identified 2026-06-28 via on-chain HL referral code cross-reference ───
+  - slug: invo
+    name: Invo
+    tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Invo's builder address."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="invo"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="invo"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="invo"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="invo"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="invo"}
+      series: hl_frontend_fees_usd_24h_v2{builder="invo"}
+
+  - slug: bitget-wallet
+    name: Bitget Wallet
+    tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Bitget Wallet's builder address."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="bitget-wallet"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="bitget-wallet"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="bitget-wallet"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="bitget-wallet"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="bitget-wallet"}
+      series: hl_frontend_fees_usd_24h_v2{builder="bitget-wallet"}
+
+  - slug: defi-saver
+    name: DeFi Saver
+    tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for DeFi Saver's builder address."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="defi-saver"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="defi-saver"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="defi-saver"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="defi-saver"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="defi-saver"}
+      series: hl_frontend_fees_usd_24h_v2{builder="defi-saver"}
+
+  - slug: marsgo
+    name: MarsGO
+    tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for MarsGO's builder address."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="marsgo"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="marsgo"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="marsgo"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="marsgo"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="marsgo"}
+      series: hl_frontend_fees_usd_24h_v2{builder="marsgo"}
+
+  - slug: unitywallet
+    name: UnityWallet
+    tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for UnityWallet's builder address."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="unitywallet"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="unitywallet"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="unitywallet"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="unitywallet"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="unitywallet"}
+      series: hl_frontend_fees_usd_24h_v2{builder="unitywallet"}
+
+  - slug: metamask-alt
+    name: MetaMask (alt)
+    tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
+    formula: "USD builder fees collected over the rolling 24h window via MetaMask's secondary on-chain HL builder address (0xea2c…75b3, documented alongside the primary 0xe95a…53aa)."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="metamask-alt"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="metamask-alt"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="metamask-alt"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="metamask-alt"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="metamask-alt"}
+      series: hl_frontend_fees_usd_24h_v2{builder="metamask-alt"}
+
 metric_panels:
   - id: volume
     label: Volume routed
