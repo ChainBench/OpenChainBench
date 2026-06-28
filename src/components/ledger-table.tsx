@@ -20,6 +20,17 @@ import { buildProviderColors } from "@/lib/series-colors";
 import { isRegion } from "@/lib/brand";
 import { isAll } from "@/lib/dimensions";
 
+// Hyperliquid frontends bench surfaces builder addresses that aren't
+// yet in /opt/hl-bench/builders.json with a raw hex slug. Mirrors the
+// HEX_ADDRESS_SLUG regex in src/lib/providers.ts (the /products route
+// blacklist) — kept inline because providers.ts is server-only (it
+// imports unstable_cache + the bench loaders) and pulling it into
+// this client component breaks the build.
+const HEX_ADDRESS_SLUG = /^0x[a-f0-9]+$/;
+function isHexAddressSlug(slug: string): boolean {
+  return HEX_ADDRESS_SLUG.test(slug.toLowerCase());
+}
+
 type Props = {
   benchmark: Benchmark;
   /** When the bench page has a companion-panel tab selected on the
@@ -404,7 +415,13 @@ function Row({
         <div className="flex flex-col gap-1 min-w-0">
           <span className="flex items-center gap-2 min-w-0">
             <ProviderLogo slug={r.slug} name={r.name} size={20} />
-            {isRegion(r.slug) ? (
+            {isRegion(r.slug) || isHexAddressSlug(r.slug) ? (
+              // Hex builder addresses (HL frontends not yet in
+              // builders.json) have no /products/<slug> page — the
+              // route is blacklisted in providers.ts, so a link would
+              // 404. Render as plain text until the builder is added
+              // to the registry, at which point it gets a real slug
+              // and the link reappears automatically.
               <span
                 className="font-semibold truncate min-w-0"
                 style={{ color: isOffline ? "var(--color-ink-muted)" : color }}

@@ -428,6 +428,15 @@ export const DEAD_COMPOSITE_SLUGS = new Set([
 // suppressed.
 const HEX_ADDRESS_SLUG = /^0x[a-f0-9]+$/;
 
+/** True when the slug looks like a raw hex builder address (e.g. an
+ *  unidentified Hyperliquid frontend that hasn't been added to
+ *  builders.json yet). The /products/<hex> route is blacklisted so
+ *  these would 404 if linked. Used by ledger-table.tsx to render the
+ *  row name as plain text instead of an anchor. */
+export function isHexAddressSlug(slug: string): boolean {
+  return HEX_ADDRESS_SLUG.test(slug.toLowerCase());
+}
+
 function isBlacklistedSlug(slug: string): boolean {
   const lc = slug.toLowerCase();
   return DEAD_COMPOSITE_SLUGS.has(lc) || HEX_ADDRESS_SLUG.test(lc);
