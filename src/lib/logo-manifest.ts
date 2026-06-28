@@ -279,6 +279,16 @@ const RAW: Record<string, string> = {
   flowbot: "/logos/flowbot.jpg",
   "nautilus-trader": "/logos/nautilus-trader.png",
   blink: "/logos/blink.png",
+
+  // ─── Hyperliquid frontends registry expansion (60 → 66, 2026-06-28) ───
+  // Identified via on-chain HL referral codes + brand cross-reference
+  // (DFS, UNITYWALLET, INVO, MARSGO, BITGETWALLET). See builders.json
+  // notes on the HL node for the provenance trail per address.
+  "defi-saver": "/logos/defi-saver.svg",
+  unitywallet: "/logos/unitywallet.png",
+  invo: "/logos/invo.png",
+  marsgo: "/logos/marsgo.jpg",
+  "bitget-wallet": "/logos/bitget-wallet.png",
 };
 
 // Asset-symbol aliases used by perp-fees as chain dimension values.
@@ -292,6 +302,8 @@ const ALIASES: Record<string, string> = {
   bsc: "bnb",
   hypercore: "hyperliquid", // HyperCore is the Hyperliquid trading engine, same brand
   "publicnode-feehistory": "publicnode",
+  // Same brand split across two HL builder addresses; one logo is enough.
+  "metamask-alt": "metamask",
 
   // Oracle-deviation bench exposes one provider per trading pair (e.g.
   // `btc-usd`). The page describes the underlying asset, so alias each
