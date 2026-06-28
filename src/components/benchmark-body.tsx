@@ -7,6 +7,7 @@ import { liveResults } from "@/lib/provider-filters";
 import { matchesChainSlug } from "@/lib/chain-aliases";
 import { ChainTabs } from "@/components/chain-tabs";
 import { LedgerTable } from "@/components/ledger-table";
+import { HlHistoryToggle } from "@/components/hl-history-toggle";
 import { TimeSeriesChart } from "@/components/time-series-chart";
 import { RankedBarChart } from "@/components/ranked-bar-chart";
 import { DistributionChart } from "@/components/distribution-chart";
@@ -136,6 +137,7 @@ export function BenchmarkBody({
   initialChain,
   initialRegion,
   initialKind = null,
+  hasLongHistory = false,
 }: {
   variants: Record<string, Benchmark>;
   chainOptions: ChainOption[];
@@ -144,6 +146,10 @@ export function BenchmarkBody({
   initialChain: string | null;
   initialRegion: string | null;
   initialKind?: string | null;
+  /** When true, render the long-window archive toggle (24h..All time)
+   *  below the main ledger. Only set on benches whose harness ships a
+   *  long-window archive blob (currently: hyperliquid-frontends). */
+  hasLongHistory?: boolean;
 }) {
   // Read ?chain= / ?region= / ?kind= client-side. The server can't read these any
   // more (doing so would force /benchmarks/<slug> to render dynamic on
@@ -622,6 +628,15 @@ export function BenchmarkBody({
             </p>
             <LedgerTable benchmark={viewBenchmark} activePanel={activePanel} topN={topN} />
           </div>
+
+          {hasLongHistory && (
+            <HlHistoryToggle
+              knownProviders={viewBenchmark.results.map((r) => ({
+                slug: r.slug,
+                name: r.name,
+              }))}
+            />
+          )}
 
           {viewBenchmark.unit !== "count" &&
             Object.keys(benchmark.extras.regions).length > 0 && (
