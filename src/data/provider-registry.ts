@@ -1180,6 +1180,41 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     twitter: "@Blink_Exchange",
   },
 
+  // ─── Hyperliquid frontends registry expansion 60 → 65 (on-chain referral code cross-reference, 2026-06-28) ───
+  // Identified by matching each builder address's HL referral code to a
+  // public brand. Provenance lives in /opt/hl-bench/builders.json notes
+  // on the HL node.
+  "defi-saver": {
+    url: "https://defisaver.com",
+    description:
+      "DeFi Saver is a long-running DeFi management dashboard that added a Hyperliquid perps tab routing orders via a registered builder code (HL referral code DFS).",
+    twitter: "@DeFiSaver",
+  },
+  unitywallet: {
+    url: "https://unitywallet.com",
+    description:
+      "UnityWallet is a self-custodial wallet with an in-app Hyperliquid perps integration that routes orders through a registered builder code (HL referral code UNITYWALLET).",
+    twitter: "@unitywallet_",
+  },
+  invo: {
+    url: "https://invoapp.com",
+    description:
+      "Invo is a Hyperliquid-powered social trading mobile app supporting 170+ perp pairs with copy-trading and a registered builder code (HL referral code INVO, 25k+ referrals).",
+    twitter: "@invoapp",
+  },
+  marsgo: {
+    url: "https://t.me/marsgo_bot",
+    description:
+      "MarsGO is a Telegram mini-app for crypto trading that routes Hyperliquid perp orders through a registered builder code (HL referral code MARSGO).",
+    twitter: "@MarsGOBot",
+  },
+  "bitget-wallet": {
+    url: "https://web3.bitget.com",
+    description:
+      "Bitget Wallet is the self-custodial wallet by Bitget; its Hyperliquid perps integration launched Dec 2025 and routes orders through a registered builder code (HL referral code BITGETWALLET, 3.6k+ referrals).",
+    twitter: "@BitgetWallet",
+  },
+
   // ─── Perp funding venues (bench № 036) ─────────────────────────────
   bybit: {
     url: "https://www.bybit.com",

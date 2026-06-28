@@ -916,19 +916,6 @@ providers:
       sample_size: hl_frontend_fills_total_24h_v2{builder="0x7cc0fd2b"}
       series: hl_frontend_fees_usd_24h_v2{builder="0x7cc0fd2b"}
 
-  - slug: "0x557edb25"
-    name: "0x557e…3c81"
-    tag: Unidentified builder address, rename pending identification
-    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for this not yet identified builder address."
-    queries:
-      p50: hl_frontend_fees_usd_24h_v2{builder="0x557edb25"}
-      p90: hl_frontend_volume_usd_24h_v2{builder="0x557edb25"}
-      p99: hl_frontend_fees_per_user_usd_v2{builder="0x557edb25"}
-      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="0x557edb25"}[7d])
-      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
-      sample_size: hl_frontend_fills_total_24h_v2{builder="0x557edb25"}
-      series: hl_frontend_fees_usd_24h_v2{builder="0x557edb25"}
-
   - slug: "0x446fbc72"
     name: "0x446f…d6c6"
     tag: Unidentified builder address, rename pending identification
@@ -968,19 +955,6 @@ providers:
       sample_size: hl_frontend_fills_total_24h_v2{builder="0xb290f2f3"}
       series: hl_frontend_fees_usd_24h_v2{builder="0xb290f2f3"}
 
-  - slug: "0xa1fcd6e2"
-    name: "0xa1fc…bf4d"
-    tag: Unidentified builder address, rename pending identification
-    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for this not yet identified builder address."
-    queries:
-      p50: hl_frontend_fees_usd_24h_v2{builder="0xa1fcd6e2"}
-      p90: hl_frontend_volume_usd_24h_v2{builder="0xa1fcd6e2"}
-      p99: hl_frontend_fees_per_user_usd_v2{builder="0xa1fcd6e2"}
-      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="0xa1fcd6e2"}[7d])
-      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
-      sample_size: hl_frontend_fills_total_24h_v2{builder="0xa1fcd6e2"}
-      series: hl_frontend_fees_usd_24h_v2{builder="0xa1fcd6e2"}
-
   - slug: "0x53a19541"
     name: "0x53a1…fcd1"
     tag: Unidentified builder address, rename pending identification
@@ -1006,32 +980,6 @@ providers:
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
       sample_size: hl_frontend_fills_total_24h_v2{builder="0xdbc27ea7"}
       series: hl_frontend_fees_usd_24h_v2{builder="0xdbc27ea7"}
-
-  - slug: "0xea2c82b5"
-    name: "0xea2c…75b3"
-    tag: Unidentified builder address, rename pending identification
-    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for this not yet identified builder address."
-    queries:
-      p50: hl_frontend_fees_usd_24h_v2{builder="0xea2c82b5"}
-      p90: hl_frontend_volume_usd_24h_v2{builder="0xea2c82b5"}
-      p99: hl_frontend_fees_per_user_usd_v2{builder="0xea2c82b5"}
-      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="0xea2c82b5"}[7d])
-      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
-      sample_size: hl_frontend_fills_total_24h_v2{builder="0xea2c82b5"}
-      series: hl_frontend_fees_usd_24h_v2{builder="0xea2c82b5"}
-
-  - slug: "0x49791d46"
-    name: "0x4979…37b8"
-    tag: Unidentified builder address, rename pending identification
-    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for this not yet identified builder address."
-    queries:
-      p50: hl_frontend_fees_usd_24h_v2{builder="0x49791d46"}
-      p90: hl_frontend_volume_usd_24h_v2{builder="0x49791d46"}
-      p99: hl_frontend_fees_per_user_usd_v2{builder="0x49791d46"}
-      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="0x49791d46"}[7d])
-      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
-      sample_size: hl_frontend_fills_total_24h_v2{builder="0x49791d46"}
-      series: hl_frontend_fees_usd_24h_v2{builder="0x49791d46"}
 
   - slug: "0x9f83fe01"
     name: "0x9f83…31d9"
@@ -1071,32 +1019,6 @@ providers:
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
       sample_size: hl_frontend_fills_total_24h_v2{builder="0xc95d92dc"}
       series: hl_frontend_fees_usd_24h_v2{builder="0xc95d92dc"}
-
-  - slug: "0xdf39721d"
-    name: "0xdf39…4750"
-    tag: Unidentified builder address, rename pending identification
-    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for this not yet identified builder address."
-    queries:
-      p50: hl_frontend_fees_usd_24h_v2{builder="0xdf39721d"}
-      p90: hl_frontend_volume_usd_24h_v2{builder="0xdf39721d"}
-      p99: hl_frontend_fees_per_user_usd_v2{builder="0xdf39721d"}
-      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="0xdf39721d"}[7d])
-      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
-      sample_size: hl_frontend_fills_total_24h_v2{builder="0xdf39721d"}
-      series: hl_frontend_fees_usd_24h_v2{builder="0xdf39721d"}
-
-  - slug: "0x40e9d9fe"
-    name: "0x40e9…5260"
-    tag: Unidentified builder address, rename pending identification
-    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for this not yet identified builder address."
-    queries:
-      p50: hl_frontend_fees_usd_24h_v2{builder="0x40e9d9fe"}
-      p90: hl_frontend_volume_usd_24h_v2{builder="0x40e9d9fe"}
-      p99: hl_frontend_fees_per_user_usd_v2{builder="0x40e9d9fe"}
-      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="0x40e9d9fe"}[7d])
-      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
-      sample_size: hl_frontend_fills_total_24h_v2{builder="0x40e9d9fe"}
-      series: hl_frontend_fees_usd_24h_v2{builder="0x40e9d9fe"}
 
 # All five metrics come from the local hl-node harness and update at the
 # same sub-minute cadence as the main headline.
@@ -1477,6 +1399,85 @@ providers:
       success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
       sample_size: hl_frontend_fills_total_24h_v2{builder="nansen"}
       series: hl_frontend_fees_usd_24h_v2{builder="nansen"}
+
+  # ─── Identified 2026-06-28 via on-chain HL referral code cross-reference ───
+  - slug: invo
+    name: Invo
+    tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Invo's builder address."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="invo"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="invo"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="invo"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="invo"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="invo"}
+      series: hl_frontend_fees_usd_24h_v2{builder="invo"}
+
+  - slug: bitget-wallet
+    name: Bitget Wallet
+    tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Bitget Wallet's builder address."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="bitget-wallet"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="bitget-wallet"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="bitget-wallet"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="bitget-wallet"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="bitget-wallet"}
+      series: hl_frontend_fees_usd_24h_v2{builder="bitget-wallet"}
+
+  - slug: defi-saver
+    name: DeFi Saver
+    tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for DeFi Saver's builder address."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="defi-saver"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="defi-saver"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="defi-saver"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="defi-saver"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="defi-saver"}
+      series: hl_frontend_fees_usd_24h_v2{builder="defi-saver"}
+
+  - slug: marsgo
+    name: MarsGO
+    tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for MarsGO's builder address."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="marsgo"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="marsgo"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="marsgo"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="marsgo"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="marsgo"}
+      series: hl_frontend_fees_usd_24h_v2{builder="marsgo"}
+
+  - slug: unitywallet
+    name: UnityWallet
+    tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for UnityWallet's builder address."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="unitywallet"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="unitywallet"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="unitywallet"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="unitywallet"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="unitywallet"}
+      series: hl_frontend_fees_usd_24h_v2{builder="unitywallet"}
+
+  - slug: metamask-alt
+    name: MetaMask (alt)
+    tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
+    formula: "USD builder fees collected over the rolling 24h window via MetaMask's secondary on-chain HL builder address (0xea2c…75b3, documented alongside the primary 0xe95a…53aa)."
+    queries:
+      p50: hl_frontend_fees_usd_24h_v2{builder="metamask-alt"}
+      p90: hl_frontend_volume_usd_24h_v2{builder="metamask-alt"}
+      p99: hl_frontend_fees_per_user_usd_v2{builder="metamask-alt"}
+      mean: avg_over_time(hl_frontend_fees_usd_24h_v2{builder="metamask-alt"}[7d])
+      success: (hl_frontend_local_last_tick_unix_v2 > bool (time() - 120))
+      sample_size: hl_frontend_fills_total_24h_v2{builder="metamask-alt"}
+      series: hl_frontend_fees_usd_24h_v2{builder="metamask-alt"}
 
 metric_panels:
   - id: volume
