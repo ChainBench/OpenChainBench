@@ -459,6 +459,7 @@ export default async function BenchmarkPage({
             initialChain={chain ?? null}
             initialRegion={region ?? null}
             initialKind={kind ?? null}
+            hasLongHistory={benchmark.slug === "hyperliquid-frontends"}
           />
         </Suspense>
       )}
