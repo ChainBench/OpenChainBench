@@ -258,7 +258,9 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // expectedN + dataConfidence aggregate (sample-health system). Cached
   // v13 entries lack these fields, so the sample-health badge would
   // not render on existing benches until the cache aged out.
-  ["bench-unfiltered-v15"],
+  // v16: bumped to flush stale HL frontends snapshot after adding 6
+  // identified frontends in #772 (invo/bitget-wallet/etc.).
+  ["bench-unfiltered-v16"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -393,7 +395,9 @@ const loadAllBenchmarksCached = unstable_cache(
   // Without this, /api/citable + products + sitemap surfaces would
   // keep serving v17 benches without the new dataConfidence /
   // sampleHealth / expectedN fields.
-  ["all-benchmarks-v19"],
+  // v20: bumped with bench-unfiltered-v16 to flush the HL frontends
+  // snapshot that didn't include the 6 newly identified frontends.
+  ["all-benchmarks-v20"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);

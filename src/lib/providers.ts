@@ -478,7 +478,11 @@ const buildProvidersCached = unstable_cache(
   // serving the v3 list (containing 0x... slugs) until the `benchmarks`
   // tag fires, leaving thin /products/<hex> URLs in the sitemap for the
   // next 60s window after deploy.
-  ["providers-v4"],
+  // v5: bumped to flush the stale snapshot that didn't include the 6
+  // newly identified HL frontends (invo, bitget-wallet, defi-saver,
+  // unitywallet, marsgo, metamask-alt). Without the bump, /products/<slug>
+  // 404s for them even after the YAML + builders.json updates landed.
+  ["providers-v5"],
   { revalidate: 60, tags: ["benchmarks"] },
 );
 
