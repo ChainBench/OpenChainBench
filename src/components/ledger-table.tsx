@@ -19,6 +19,7 @@ import { fmtUnit } from "@/lib/format";
 import { buildProviderColors } from "@/lib/series-colors";
 import { isRegion } from "@/lib/brand";
 import { isAll } from "@/lib/dimensions";
+import { isHexAddressSlug } from "@/lib/providers";
 
 type Props = {
   benchmark: Benchmark;
