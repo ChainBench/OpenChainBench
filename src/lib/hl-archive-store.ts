@@ -1,18 +1,20 @@
 /**
  * Reader for the Hyperliquid long-window archive blob.
  *
- * The Go side (hl-archive on Railway) writes `ocb:hl-archive:v1` into
- * Upstash on every flush. This module is the only Next.js entry point
- * that touches that key — every UI/API consumer goes through `getArchive()`
- * so the parse + null-safety logic lives in one place.
+ * Reads directly from the hl-archive Go service on Railway via its
+ * public HTTPS API. We used to go through Upstash, but the shared
+ * free-tier KV hit its 500k/day request cap and pushes silently
+ * failed; the Railway service already exposes /v1/aggregates with
+ * the exact payload shape and lives on the same fly DuckDB, so a
+ * direct read removes one moving part. The Next.js `unstable_cache`
+ * wrapper still keeps the per-region request load to one call per
+ * 60s, which is what made the Upstash hop interesting in the first
+ * place.
  *
- * Failure protocol: every error path returns null. The bench page and
- * the history API then fall back to the live Prom snapshot for short
- * windows, and show a "backfill pending" affordance for long windows.
- * We never surface a Redis or JSON-shape error to the renderer.
- *
- * Credentials follow the same fallback pair as cohort-snapshot.ts so
- * local dev and Vercel work without extra wiring.
+ * Failure protocol: every error path returns null. The bench page
+ * and the history API fall back to the live Prom snapshot for short
+ * windows and show a "backfill pending" affordance for long windows.
+ * We never surface a network error to the renderer.
  */
 
 import { unstable_cache } from "next/cache";
@@ -25,36 +27,33 @@ import type {
 } from "@/types/hl-archive";
 import { HL_ARCHIVE_WINDOWS } from "@/types/hl-archive";
 
-const URL_ENV = ["KV_REST_API_URL", "UPSTASH_REDIS_REST_URL"] as const;
-const TOKEN_ENV = ["KV_REST_API_TOKEN", "UPSTASH_REDIS_REST_TOKEN"] as const;
+const URL_ENV = ["HL_ARCHIVE_API_URL"] as const;
+const KEY_ENV = ["HL_ARCHIVE_API_KEY"] as const;
 
+// Kept as the cache key suffix (was the Upstash key name). The constant
+// is exported because the history API route uses it as the
+// `unstable_cache` tag bump anchor when the upstream shape changes.
 export const HL_ARCHIVE_KEY = "ocb:hl-archive:v1";
 
-function creds(): { url: string; token: string } | null {
+function creds(): { url: string; key: string } | null {
   const url = URL_ENV.map((k) => process.env[k]?.trim()).find(Boolean);
-  const token = TOKEN_ENV.map((k) => process.env[k]?.trim()).find(Boolean);
-  return url && token ? { url: url.replace(/\/+$/, ""), token } : null;
+  const key = KEY_ENV.map((k) => process.env[k]?.trim()).find(Boolean);
+  return url && key ? { url: url.replace(/\/+$/, ""), key } : null;
 }
 
-async function redisGet(key: string, timeoutMs = 3_000): Promise<string | null> {
+async function fetchAggregates(timeoutMs = 5_000): Promise<string | null> {
   const c = creds();
   if (!c) return null;
-  const res = await fetch(c.url, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${c.token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(["GET", key]),
+  const res = await fetch(`${c.url}/v1/aggregates?window=all`, {
+    method: "GET",
+    headers: { "X-API-Key": c.key },
     signal: AbortSignal.timeout(timeoutMs),
     cache: "no-store",
   });
   if (!res.ok) {
     throw new Error(`hl-archive-store: http ${res.status}`);
   }
-  const body = (await res.json()) as { result?: unknown; error?: string };
-  if (body.error) throw new Error(`hl-archive-store: ${body.error}`);
-  return typeof body.result === "string" ? body.result : null;
+  return await res.text();
 }
 
 function isNumber(v: unknown): v is number {
@@ -125,7 +124,7 @@ function parseSnapshot(raw: string): ArchiveSnapshot | null {
 
 async function getArchiveRaw(): Promise<ArchiveSnapshot | null> {
   try {
-    const raw = await redisGet(HL_ARCHIVE_KEY);
+    const raw = await fetchAggregates();
     if (!raw) return null;
     return parseSnapshot(raw);
   } catch (err) {
