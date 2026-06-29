@@ -15,5 +15,6 @@ ENTRYPOINT ["/bin/sh", "-c", "exec /bin/prometheus \
   --storage.tsdb.path=/prometheus \
   --storage.tsdb.retention.time=${PROM_RETENTION} \
   --web.enable-lifecycle \
+  --web.enable-admin-api \
   --web.console.libraries=/usr/share/prometheus/console_libraries \
   --web.console.templates=/usr/share/prometheus/consoles"]
