@@ -50,7 +50,22 @@ var (
 		Help:        "Pending wallet checks in the queue.",
 		ConstLabels: commonLabels,
 	})
+
+	// skippedTotal counts provider self-throttles (currently only Moralis
+	// rate-limiting its own calls to fit the free-tier daily CU budget).
+	// Tracked separately from checks_total and fetch_errors_total so the
+	// success ratio stays statistically valid on the actually-issued
+	// subset and an SRE can still see whether the throttle is biting.
+	skippedTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name:        "wallet_labels_skipped_total",
+		Help:        "Provider self-throttled calls (not counted as checks or errors).",
+		ConstLabels: commonLabels,
+	}, []string{"provider", "chain"})
 )
+
+func recordSkipped(provider, chain string) {
+	skippedTotal.WithLabelValues(provider, chain).Inc()
+}
 
 func recordCheck(provider, chain, kind string, hasLabel bool, latencyMs float64, err error) {
 	if kind == "" {
