@@ -1,10 +1,35 @@
 import { NextResponse } from "next/server";
+import { unstable_cache } from "next/cache";
 import { getBenchmark } from "@/data/benchmarks";
 import { loadSpecsUncached, specToBenchmark } from "@/lib/materialize/load";
 import { buildProviderColors } from "@/lib/series-colors";
 import { logoPath } from "@/lib/logo-manifest";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { SLUG_RE } from "@/lib/slug";
+
+// Dedicated cache for the (slug, range, chain, region) → series map.
+// The full Benchmark is too big for unstable_cache's 2 MB limit (root
+// cause of the egress blowout — see slimBenchmarkForCache in spec.ts),
+// but the series map alone is at most ~100 KB even for 100-provider
+// benches. Caching here means the first cold-CDN miss pays one Prom
+// fan-out and the next 5 minutes are served instantly from the app
+// cache, no Prom touch.
+const getSeriesMapCached = unstable_cache(
+  async (
+    slug: string,
+    range: "7d" | "30d",
+    chain: string | undefined,
+    region: string | undefined,
+  ): Promise<Record<string, number[]> | null> => {
+    const specs = await loadSpecsUncached();
+    const spec = specs.find((s) => s.slug === slug);
+    if (!spec || spec.status !== "live") return null;
+    const b = await specToBenchmark(spec, { chain, region });
+    return (range === "7d" ? b.extras.series7d : b.extras.series30d) ?? null;
+  },
+  ["series-by-range-v1"],
+  { revalidate: 300, tags: ["benchmarks"] },
+);
 
 export const runtime = "nodejs";
 export const revalidate = 60;
@@ -66,39 +91,30 @@ export async function GET(
   const chain = url.searchParams.get("chain") ?? undefined;
   const region = url.searchParams.get("region") ?? undefined;
 
-  // For 7d / 30d ranges we bypass the unstable_cache (which strips those
-  // series to stay under 2 MB — see slimBenchmarkForCache in spec.ts)
-  // and query Prom directly. The route's HTTP cache-control headers
-  // below (60 s s-maxage + 300 s SWR) absorb the load at the Vercel
-  // CDN edge, so at most one Prom fan-out per (bench, range, scope)
-  // every 60 s regardless of concurrent visitor count.
-  let b;
+  // 24h is served from the slim cached Benchmark (cheap). 7d / 30d
+  // come from the dedicated getSeriesMapCached above (Prom fan-out the
+  // first time, then 5 min of free reads from unstable_cache). Loading
+  // a 100-KB series map is cheap enough that we still need the row
+  // metadata (name, color, logo) — fetch the cached bench for that
+  // separately so its slim ~50 KB payload reuses the existing cache.
+  let seriesMap: Record<string, number[]> | undefined | null;
+  let bench;
   if (rangeParam === "7d" || rangeParam === "30d") {
-    const specs = await loadSpecsUncached();
-    const spec = specs.find((s) => s.slug === slug);
-    if (!spec || spec.status !== "live") {
-      return NextResponse.json(
-        { error: "unknown_slug", slug },
-        { status: 404, headers: { "cache-control": "public, s-maxage=60" } },
-      );
-    }
-    b = await specToBenchmark(spec, { chain, region });
+    [seriesMap, bench] = await Promise.all([
+      getSeriesMapCached(slug, rangeParam, chain, region),
+      getBenchmark(slug, { chain, region }),
+    ]);
   } else {
-    b = await getBenchmark(slug, { chain, region });
+    bench = await getBenchmark(slug, { chain, region });
+    seriesMap = bench?.extras.series24h;
   }
+  const b = bench;
   if (!b || b.editorialStatus !== "live") {
     return NextResponse.json(
       { error: "unknown_slug", slug },
       { status: 404, headers: { "cache-control": "public, s-maxage=60" } },
     );
   }
-
-  const seriesMap =
-    rangeParam === "24h"
-      ? b.extras.series24h
-      : rangeParam === "7d"
-        ? b.extras.series7d
-        : b.extras.series30d;
 
   if (!seriesMap || Object.keys(seriesMap).length === 0) {
     return NextResponse.json(
