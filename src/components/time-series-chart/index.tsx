@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Globe } from "lucide-react";
 import type { Benchmark } from "@/types/benchmark";
 import { brandColor } from "@/lib/brand";
@@ -95,13 +95,56 @@ export function TimeSeriesChart({
     setZoom(null);
   }
 
-  const has7d =
-    !!benchmark.extras.series7d &&
-    Object.keys(benchmark.extras.series7d).length > 0;
+  // 7d / 30d series are no longer included in the server-rendered
+  // Benchmark — they were pushing heavy benches past unstable_cache's
+  // 2 MB ceiling, silently breaking the cache and forcing every render
+  // to re-query Prom. They are now lazy-fetched via /api/series on the
+  // first 7d or 30d tab click, then cached in component state for the
+  // rest of the session. CDN cache-control on /api/series (60 s
+  // s-maxage + 300 s SWR) absorbs concurrent visitors so Prom sees at
+  // most one fan-out per (bench, range) per minute.
+  const [lazySeries7d, setLazySeries7d] = useState<Record<string, number[]> | null>(null);
+  const [lazySeries30d, setLazySeries30d] = useState<Record<string, number[]> | null>(null);
 
-  const has30d =
-    !!benchmark.extras.series30d &&
-    Object.keys(benchmark.extras.series30d).length > 0;
+  useEffect(() => {
+    if (range !== "7d" && range !== "30d") return;
+    if (range === "7d" && lazySeries7d) return;
+    if (range === "30d" && lazySeries30d) return;
+    let cancelled = false;
+    const qs = new URLSearchParams({ range });
+    if (regionProp && regionProp !== "all") qs.set("region", regionProp);
+    fetch(`/api/series/${benchmark.slug}?${qs.toString()}`)
+      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+      .then((data: { providers: { slug: string; values: number[] }[] }) => {
+        if (cancelled) return;
+        const map: Record<string, number[]> = {};
+        for (const p of data.providers) map[p.slug] = p.values;
+        if (range === "7d") setLazySeries7d(map);
+        else setLazySeries30d(map);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        if (range === "7d") setLazySeries7d({});
+        else setLazySeries30d({});
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [range, regionProp, benchmark.slug, lazySeries7d, lazySeries30d]);
+
+  // Tab availability: 24h is always present (served from the cached
+  // Benchmark), 7d / 30d are always offered as tabs since they're
+  // lazy-fetchable. The fetch resolves to {} on no-data, which we still
+  // treat as "tab available" because the chart can render an empty
+  // state inline rather than hide the tab.
+  //
+  // Exception: when a metric panel is active (seriesOverride set), the
+  // panel's own 7d / 30d series are no longer cached either, so 7d /
+  // 30d tabs would show 24h data sliced wrong. Disable them in that
+  // case — readers must deactivate the panel to see longer ranges.
+  const panelActive = !!seriesOverride;
+  const has7d = !panelActive || !!seriesOverride7d;
+  const has30d = !panelActive || !!seriesOverride30d;
 
   const availableRegions = useMemo(() => {
     const set = new Set<string>();
@@ -145,6 +188,14 @@ export function TimeSeriesChart({
       const take = Math.max(2, Math.round(full.length * ratio));
       return full.slice(-take);
     };
+    // Bench-level 7d / 30d series are lazy-loaded (see useEffect above).
+    // Pick from the lazy map when in those ranges, fall back to
+    // pickSeries (which uses benchmark.extras.series24h) otherwise.
+    const pickBenchValues = (slug: string): number[] => {
+      if (range === "7d" && lazySeries7d) return lazySeries7d[slug] ?? [];
+      if (range === "30d" && lazySeries30d) return lazySeries30d[slug] ?? [];
+      return pickSeries(benchmark, slug, range, region);
+    };
     const built = benchmark.results
       .map((r) => ({
         slug: r.slug,
@@ -152,7 +203,7 @@ export function TimeSeriesChart({
         color: colors.get(r.slug) ?? "var(--color-ink-soft)",
         values: panel
           ? sliceOverride(panel[r.slug] ?? [])
-          : pickSeries(benchmark, r.slug, range, region),
+          : pickBenchValues(r.slug),
         excluded: excluded.has(r.slug),
       }))
       .filter((l) => l.values.length > 0);
@@ -169,7 +220,7 @@ export function TimeSeriesChart({
       return higherIsBetter ? bv - av : av - bv;
     });
     return built;
-  }, [benchmark, range, region, colors, excluded, seriesOverride, seriesOverride7d, seriesOverride30d, higherIsBetterOverride]);
+  }, [benchmark, range, region, colors, excluded, seriesOverride, seriesOverride7d, seriesOverride30d, higherIsBetterOverride, lazySeries7d, lazySeries30d]);
 
   // Top-N selector — sized off the post-filter line count via the
   // shared `useTopN` hook so the option set agrees across every
