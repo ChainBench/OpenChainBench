@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getBenchmark } from "@/data/benchmarks";
+import { loadSpecsUncached, specToBenchmark } from "@/lib/materialize/load";
 import { buildProviderColors } from "@/lib/series-colors";
 import { logoPath } from "@/lib/logo-manifest";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
@@ -65,7 +66,26 @@ export async function GET(
   const chain = url.searchParams.get("chain") ?? undefined;
   const region = url.searchParams.get("region") ?? undefined;
 
-  const b = await getBenchmark(slug, { chain, region });
+  // For 7d / 30d ranges we bypass the unstable_cache (which strips those
+  // series to stay under 2 MB — see slimBenchmarkForCache in spec.ts)
+  // and query Prom directly. The route's HTTP cache-control headers
+  // below (60 s s-maxage + 300 s SWR) absorb the load at the Vercel
+  // CDN edge, so at most one Prom fan-out per (bench, range, scope)
+  // every 60 s regardless of concurrent visitor count.
+  let b;
+  if (rangeParam === "7d" || rangeParam === "30d") {
+    const specs = await loadSpecsUncached();
+    const spec = specs.find((s) => s.slug === slug);
+    if (!spec || spec.status !== "live") {
+      return NextResponse.json(
+        { error: "unknown_slug", slug },
+        { status: 404, headers: { "cache-control": "public, s-maxage=60" } },
+      );
+    }
+    b = await specToBenchmark(spec, { chain, region });
+  } else {
+    b = await getBenchmark(slug, { chain, region });
+  }
   if (!b || b.editorialStatus !== "live") {
     return NextResponse.json(
       { error: "unknown_slug", slug },
