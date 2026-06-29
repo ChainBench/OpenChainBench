@@ -102,7 +102,7 @@ per_chain_explainer:
     h2: Myriad API latency and status
     body: "Myriad's API is a single region Heroku deployment in US East with no order book endpoint and no WebSocket. Its cohort worst {{p50:myriad}} p50 (24h, all regions) is mostly geography: from eu-west and Singapore every request crosses an ocean first. When checking whether the Myriad API is down, look at the us-east region figure, since a global latency rise that spares us-east is network weather, not a venue incident. Myriad also runs the tightest keyless request budget in the cohort, covered in the pm-rate-limits bench."
 
-source: https://github.com/MobulaFi/mobula-monorepo/tree/main/miniapps/pm-rate-limits
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/pm-rate-limits
 
 prometheus:
   window: 24h

@@ -78,7 +78,7 @@ faq:
   - q: "How does OpenChainBench measure freshness?"
     a: "Three WebSocket clients run in parallel inside the harness, all subscribed to the same basket of top volume markets on the active venue. Every 5 minutes we refresh the basket from the venue's own markets API. For each trade event, we compute a signature based on market id, price, size and a 5 second time bucket, and record the wall clock receive time on each provider. The freshness delta is `recv_provider - recv_venue` for the same signature. We export the histogram to Prometheus, the leaderboard reads the 24h p50."
 
-source: https://github.com/MobulaFi/mobula-monorepo/tree/main/miniapps/pm-freshness-bench
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/pm-freshness-bench
 
 prometheus:
   window: 24h

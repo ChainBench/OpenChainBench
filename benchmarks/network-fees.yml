@@ -159,7 +159,7 @@ findings:
   - "USD costs are computed at scrape time. A 10 percent intraday move in the native token's USD price shifts the headline by 10 percent even if the chain native fee is flat. We surface that intentionally because the dollar cost is what a wallet user actually pays."
   - "Layer 2 values currently capture L2 execution only. The L1 data posting component is excluded until the blended figure ships in a follow up phase."
 
-source: https://github.com/MobulaFi/mobula-monorepo/tree/main/miniapps/transaction-fee
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/transaction-fee
 
 prometheus:
   window: 24h
