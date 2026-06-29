@@ -106,31 +106,44 @@ export function TimeSeriesChart({
   const [lazySeries7d, setLazySeries7d] = useState<Record<string, number[]> | null>(null);
   const [lazySeries30d, setLazySeries30d] = useState<Record<string, number[]> | null>(null);
 
+  // Pre-fetch 7d AND 30d in the background as soon as the chart mounts,
+  // not just when the user clicks the tab. The fetches are non-blocking
+  // (24h renders synchronously from props) and the CDN dedupes
+  // concurrent visitors (60 s s-maxage + 300 s SWR on /api/series), so
+  // by the time the reader actually flips to a longer range the data is
+  // already in component state. Removes the 5–15 s cold-fetch lag that
+  // made the first tab click feel broken.
   useEffect(() => {
-    if (range !== "7d" && range !== "30d") return;
-    if (range === "7d" && lazySeries7d) return;
-    if (range === "30d" && lazySeries30d) return;
     let cancelled = false;
-    const qs = new URLSearchParams({ range });
-    if (regionProp && regionProp !== "all") qs.set("region", regionProp);
-    fetch(`/api/series/${benchmark.slug}?${qs.toString()}`)
-      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
-      .then((data: { providers: { slug: string; values: number[] }[] }) => {
-        if (cancelled) return;
-        const map: Record<string, number[]> = {};
-        for (const p of data.providers) map[p.slug] = p.values;
-        if (range === "7d") setLazySeries7d(map);
-        else setLazySeries30d(map);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        if (range === "7d") setLazySeries7d({});
-        else setLazySeries30d({});
-      });
+    const buildQs = (range: "7d" | "30d") => {
+      const qs = new URLSearchParams({ range });
+      if (regionProp && regionProp !== "all") qs.set("region", regionProp);
+      return qs.toString();
+    };
+    const fetchOne = (range: "7d" | "30d") => {
+      if (range === "7d" && lazySeries7d) return;
+      if (range === "30d" && lazySeries30d) return;
+      fetch(`/api/series/${benchmark.slug}?${buildQs(range)}`)
+        .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+        .then((data: { providers: { slug: string; values: number[] }[] }) => {
+          if (cancelled) return;
+          const map: Record<string, number[]> = {};
+          for (const p of data.providers) map[p.slug] = p.values;
+          if (range === "7d") setLazySeries7d(map);
+          else setLazySeries30d(map);
+        })
+        .catch(() => {
+          if (cancelled) return;
+          if (range === "7d") setLazySeries7d({});
+          else setLazySeries30d({});
+        });
+    };
+    fetchOne("7d");
+    fetchOne("30d");
     return () => {
       cancelled = true;
     };
-  }, [range, regionProp, benchmark.slug, lazySeries7d, lazySeries30d]);
+  }, [regionProp, benchmark.slug, lazySeries7d, lazySeries30d]);
 
   // Tab availability: 24h is always present (served from the cached
   // Benchmark), 7d / 30d are always offered as tabs since they're
