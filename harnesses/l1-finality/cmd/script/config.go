@@ -17,7 +17,7 @@ const (
 	KindStellar ChainKind = "stellar"
 	KindHedera  ChainKind = "hedera"
 	KindSui     ChainKind = "sui"
-	KindTon     ChainKind = "ton"
+	KindTon     ChainKind = "gram"
 	// PoW chains — "finalized" approximated by N confirmations.
 	KindBitcoinLike ChainKind = "bitcoin_like"
 	KindMonero      ChainKind = "monero"
@@ -90,7 +90,7 @@ func loadConfig() *Config {
 			//
 			// SUI moved to high-frequency HTTP polling wall-clock — see
 			// sui_ws.go. Same methodology mismatch as before fixed.
-			// Gram (formerly TON) removed from HTTP polling — same issue as BNB/Avalanche
+			// TON removed from HTTP polling — same issue as BNB/Avalanche
 			// (masterchain blocks finalize in ~0.5s, polling 10s = wrong
 			// methodology). Now measured via SSE wall-clock subscriber on
 			// tonapi.io's /v2/sse/blocks stream.

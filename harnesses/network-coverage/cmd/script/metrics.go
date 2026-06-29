@@ -89,6 +89,15 @@ func recordResult(provider string, res ProviderResult, dur time.Duration) {
 	networksFetchLatency.WithLabelValues(provider).Set(float64(dur.Milliseconds()))
 
 	if res.Err != "" {
+		// quota_exhausted (free-tier 402 on paid providers) is an expected
+		// monthly state, neither a fetch error nor an outage.
+		// Skipping recordResult entirely keeps the gauge at its last good
+		// value (Prom keeps scraping it from the still-running harness),
+		// so present_over_time stays >0 and the cron's "offline" alert
+		// never fires. Resumes naturally on the next successful fetch.
+		if res.Err == "quota_exhausted" {
+			return
+		}
 		errType := classifyError(res.Err)
 		networksFetchErrors.WithLabelValues(provider, errType).Inc()
 		return
