@@ -156,6 +156,43 @@ function overlayEditorial(stored: Benchmark, spec: Spec): Benchmark {
   return renderBenchmarkText(overlaid);
 }
 
+// Strip lazy-loadable series fields from the cached Benchmark to bring
+// it under Next.js's 2 MB unstable_cache item limit. Heavy benches
+// (hl-frontends with 104 providers, wallet-labels-coverage, etc.) were
+// blowing past that ceiling once series7d + series30d + per-panel
+// 7d/30d arrays were included, silently failing the cache write and
+// forcing every read to re-query Prom — root cause of the Railway
+// egress blowout (2026-06-29, ~150 GB/day).
+//
+// Kept in the cached object:
+//   - extras.series24h (hub cards, mini-charts, ledger sparklines, OG)
+//   - extras.seriesByRegion24h
+//   - metricPanels[].seriesByProvider (24h, ledger panel rescaling)
+//
+// Stripped (lazy-fetched via /api/series/[slug]?range=7d|30d on tab
+// click):
+//   - extras.series7d, extras.series30d
+//   - extras.seriesByRegion7d, extras.seriesByRegion30d
+//   - metricPanels[].seriesByProvider7d, seriesByProvider30d
+//
+// /api/series serves these on demand, CDN-cached (60 s s-maxage + 300 s
+// SWR) so the cache miss only hits Prom once per (bench, range) per
+// minute regardless of concurrent visitor count.
+function slimBenchmarkForCache(b: Benchmark): Benchmark {
+  const slimPanels = b.metricPanels?.map((panel) => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { seriesByProvider7d, seriesByProvider30d, ...rest } = panel;
+    return rest;
+  });
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { series7d, series30d, seriesByRegion7d, seriesByRegion30d, ...slimExtras } = b.extras;
+  return {
+    ...b,
+    extras: slimExtras,
+    ...(slimPanels ? { metricPanels: slimPanels } : {}),
+  };
+}
+
 // Per-bench unfiltered cache. ONE unstable_cache entry per slug so a
 // transient Prom hiccup on bench A doesn't poison the cache for benches
 // B, C, ...Z. Inside: if a spec marked `status: live` collapses to a
@@ -171,7 +208,7 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
     const spec = specs.find((s) => s.slug === slug);
     if (!spec) return undefined;
     const stored = await benchFromStore(slug, "");
-    if (stored) return overlayEditorial(stored, spec);
+    if (stored) return slimBenchmarkForCache(overlayEditorial(stored, spec));
     const promStart = Date.now();
     const bench = await specToBenchmark(spec, {}, {
       onRendered: (rendered) =>
@@ -206,7 +243,7 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
         for (const r of reconstructed.results) {
           if (!r.availability) r.availability = "live";
         }
-        return reconstructed;
+        return slimBenchmarkForCache(reconstructed);
       }
       console.warn(
         `[DRAFT-TRACE] kv_miss slug=${slug} kv_ms=${kvMs} → throwing to keep prev cache`,
@@ -215,7 +252,7 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
         `loadBenchmark(${slug}): live spec collapsed to draft, keeping prev cache`,
       );
     }
-    return bench;
+    return slimBenchmarkForCache(bench);
   },
   // Version key bumped when Benchmark shape changes so stale cache entries
   // from a previous deploy can't surface objects missing newer fields.
@@ -260,7 +297,14 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // not render on existing benches until the cache aged out.
   // v16: bumped to flush stale HL frontends snapshot after adding 6
   // identified frontends in #772 (invo/bitget-wallet/etc.).
-  ["bench-unfiltered-v16"],
+  // v17: strip series7d/series30d/seriesByRegion7d/seriesByRegion30d
+  // and metricPanels[].seriesByProvider7d/30d from cached objects. Was
+  // pushing heavy benches (hl-frontends, wallet-labels-coverage) past
+  // unstable_cache's 2 MB limit, silently failing the cache write and
+  // forcing every render to re-query Prom. Root cause of the 150 GB/day
+  // Railway egress blowout (2026-06-29). Series for 7d/30d are now
+  // lazy-fetched via /api/series/<slug>?range=7d|30d on tab click.
+  ["bench-unfiltered-v17"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -397,7 +441,9 @@ const loadAllBenchmarksCached = unstable_cache(
   // sampleHealth / expectedN fields.
   // v20: bumped with bench-unfiltered-v16 to flush the HL frontends
   // snapshot that didn't include the 6 newly identified frontends.
-  ["all-benchmarks-v20"],
+  // v21: bumped with bench-unfiltered-v17 (slim cached objects — strip
+  // 7d/30d series from extras + panels so the cache stays under 2 MB).
+  ["all-benchmarks-v21"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -451,7 +497,7 @@ const loadBenchmarkFiltered = unstable_cache(
     const spec = specs.find((s) => s.slug === slug);
     if (!spec) return undefined;
     const stored = await benchFromStore(slug, sig);
-    if (stored) return overlayEditorial(stored, spec);
+    if (stored) return slimBenchmarkForCache(overlayEditorial(stored, spec));
     const bench = await specToBenchmark(spec, parseFilterSig(sig));
     // Same stale-while-revalidate as loadAllBenchmarks: if Prom drops the
     // single bench we just queried to draft, throw so unstable_cache keeps
@@ -467,14 +513,15 @@ const loadBenchmarkFiltered = unstable_cache(
         `loadBenchmark(${slug}): live spec collapsed to draft, keeping prev cache`,
       );
     }
-    return bench;
+    return slimBenchmarkForCache(bench);
   },
   // v4: bumped with bench-unfiltered-v7 (ledgerColumns).
   // v5: bumped with bench-unfiltered-v8 (sec unit).
   // v6: bumped with bench-unfiltered-v9 (bp unit).
   // v7: bumped with bench-unfiltered-v10 (dimensions overlay).
   // v8: bumped with bench-unfiltered-v11 (egress reduction).
-  ["bench-filters-v8"],
+  // v9: bumped with bench-unfiltered-v17 (slim cached objects).
+  ["bench-filters-v9"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
