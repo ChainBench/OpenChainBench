@@ -79,7 +79,7 @@ findings:
   - "Solana headline includes the Metaplex metadata account for fair comparison against ERC20 which embeds name and symbol natively. The bare mint cost (no metadata) is roughly 2.5 times lower but produces a token invisible to wallets and DEXs."
   - "Sui canonical coin publish is the most expensive non Ethereum chain on the list, around 0.3 to 0.5 USD, because Move modules are larger than ERC20 bytecode and Sui charges per byte of storage even after the rebate."
 
-source: https://github.com/MobulaFi/mobula-monorepo/tree/main/miniapps/token-deployment-cost
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/token-deployment-cost
 
 prometheus:
   window: 24h
