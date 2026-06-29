@@ -96,6 +96,14 @@ func lookupAll(ctx context.Context, providers []Provider, s sample) {
 	any := false
 	compact := ""
 	for r := range results {
+		// Skipped calls (currently only Moralis self-throttle) don't go
+		// to recordCheck — they neither succeeded nor failed, so leaving
+		// them out keeps the success/checks ratio honest.
+		if r.Skipped {
+			recordSkipped(r.Provider, r.Chain)
+			compact += " " + abbrev(r.Provider) + ":-"
+			continue
+		}
 		recordCheck(r.Provider, r.Chain, s.kind, r.HasLabel, float64(r.LatencyMs), r.Err)
 		recordDebug(debugEntry{
 			Provider: r.Provider, Chain: r.Chain, Address: r.Address,

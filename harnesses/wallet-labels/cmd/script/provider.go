@@ -18,6 +18,12 @@ type LabelResult struct {
 	LatencyMs int64
 	Err       error
 	Raw       map[string]any
+	// Skipped is set when a provider chose to drop this call (rather
+	// than fail it) — currently only Moralis, which gates its own
+	// rate to stay under the free-tier daily compute-unit budget. A
+	// skipped call increments neither checks_total nor errors_total
+	// so the bench's success/checks ratio remains honest.
+	Skipped bool
 }
 
 // Provider is implemented by every label source. `Supports` lets us skip
