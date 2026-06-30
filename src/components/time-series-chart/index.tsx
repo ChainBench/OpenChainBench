@@ -145,18 +145,27 @@ export function TimeSeriesChart({
   // made the first tab click feel broken.
   useEffect(() => {
     let cancelled = false;
+    // Tracks per-range whether we've already landed data OR exhausted retries.
+    // The previous version put `lazySeries7d` in the effect's deps and used
+    // `if (lazySeries7d) return` as the skip guard, so an empty `{}` written
+    // on the first failed fetch was treated as "already fetched" forever —
+    // the chart stayed empty for the whole session even after the upstream
+    // recovered. Trigger: Prom returned 503 for ~30 min during a TSDB
+    // backfill; every chart that mounted in that window cached `{}` and
+    // never refetched.
+    const done: Record<"7d" | "30d", boolean> = { "7d": false, "30d": false };
     const buildQs = (range: "7d" | "30d") => {
       const qs = new URLSearchParams({ range });
       if (regionProp && regionProp !== "all") qs.set("region", regionProp);
       return qs.toString();
     };
-    const fetchOne = (range: "7d" | "30d") => {
-      if (range === "7d" && lazySeries7d) return;
-      if (range === "30d" && lazySeries30d) return;
+    const fetchOne = (range: "7d" | "30d", attempt = 0) => {
+      if (cancelled || done[range]) return;
       fetch(`/api/series/${benchmark.slug}?${buildQs(range)}`)
         .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
         .then((data: { providers: { slug: string; values: number[] }[] }) => {
           if (cancelled) return;
+          done[range] = true;
           const map: Record<string, number[]> = {};
           for (const p of data.providers) map[p.slug] = p.values;
           if (range === "7d") setLazySeries7d(map);
@@ -164,8 +173,17 @@ export function TimeSeriesChart({
         })
         .catch(() => {
           if (cancelled) return;
-          if (range === "7d") setLazySeries7d({});
-          else setLazySeries30d({});
+          // 2s → 4s backoff, ~6s total window. Covers a Prom hiccup,
+          // an in-flight ISR regen, or a Vercel cold-start lag without
+          // bothering the user. Past that we commit to the empty
+          // placeholder so the chart doesn't spin forever.
+          if (attempt < 2) {
+            setTimeout(() => fetchOne(range, attempt + 1), (attempt + 1) * 2000);
+          } else {
+            done[range] = true;
+            if (range === "7d") setLazySeries7d({});
+            else setLazySeries30d({});
+          }
         });
     };
     fetchOne("7d");
@@ -173,7 +191,7 @@ export function TimeSeriesChart({
     return () => {
       cancelled = true;
     };
-  }, [regionProp, benchmark.slug, lazySeries7d, lazySeries30d]);
+  }, [regionProp, benchmark.slug]);
 
   // Tab availability: 24h is always present (served from the cached
   // Benchmark), 7d / 30d are always offered as tabs since they're
