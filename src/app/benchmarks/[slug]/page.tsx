@@ -145,7 +145,30 @@ export default async function BenchmarkPage({
   const aggregate = await getBenchmark(slug);
   if (!aggregate) notFound();
   const chainOptions = aggregate.dimensions?.chain ?? [];
-  const regionOptions = aggregate.dimensions?.region ?? [];
+  // Drop declared regions that the harness doesn't actually emit data for
+  // (e.g. metadata-coverage lists sgp in the spec but only ever publishes
+  // region="unknown"). Without this the picker offers a tab that 404s on
+  // every click and the chart silently falls back to the previous variant,
+  // so two different region clicks render identical values.
+  const declaredRegions = aggregate.dimensions?.region ?? [];
+  const regionsWithData = new Set<string>();
+  for (const points of Object.values(aggregate.extras.regions ?? {})) {
+    for (const pt of points as Array<{ region: string }>) {
+      if (pt?.region) regionsWithData.add(pt.region);
+    }
+  }
+  const sbr = aggregate.extras.seriesByRegion24h ?? {};
+  for (const slug in sbr) {
+    for (const r in sbr[slug]) {
+      regionsWithData.add(r);
+    }
+  }
+  const regionOptions =
+    regionsWithData.size === 0
+      ? []
+      : declaredRegions.filter(
+          (r) => r.value === "all" || regionsWithData.has(r.value),
+        );
   const kindOptions = aggregate.dimensions?.kind ?? [];
   const chain = chainOptions[0]?.value ?? null;
   const region = regionOptions[0]?.value ?? null;
