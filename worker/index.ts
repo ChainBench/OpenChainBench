@@ -48,7 +48,7 @@ import {
   fetchHlCohortFresh,
   fetchHlHip3CohortFresh,
 } from "@/lib/hl-builder-stats";
-import { buildFeaturedLeaders } from "@/lib/search-featured";
+import { buildFeaturedLeadersFromStore } from "@/lib/search-featured";
 import type { Benchmark, MetricPanel } from "@/types/benchmark";
 import type { Spec } from "@/lib/spec-schema";
 
@@ -354,7 +354,7 @@ async function sweep(iteration: number): Promise<void> {
       { key: "perp-cohort", build: () => fetchPerpCohortFresh() },
       { key: "hl-frontends", build: () => fetchHlCohortFresh() },
       { key: "hl-hip3", build: () => fetchHlHip3CohortFresh() },
-      { key: "search-featured", build: () => buildFeaturedLeaders() },
+      { key: "search-featured", build: () => buildFeaturedLeadersFromStore() },
     ];
     const results = await Promise.allSettled(
       cohortJobs.map(async ({ key, build }) => {
