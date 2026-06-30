@@ -92,7 +92,7 @@ func chains() []Chain {
 			OwlracleSlug: "eth",
 			BlockTimeSec: 12,
 			// Etherscan v2 free tier covers chainid=1. All four oracles work.
-			SupportedSet: []Oracle{OracleBlocknative, OraclePublicNode, OracleOwlracle, OracleEtherscan},
+			SupportedSet: []Oracle{OraclePublicNode, OracleOwlracle, OracleEtherscan},
 		},
 		{
 			Slug:         "polygon",
@@ -101,7 +101,7 @@ func chains() []Chain {
 			OwlracleSlug: "poly",
 			BlockTimeSec: 2,
 			// Etherscan v2 free tier covers chainid=137 (verified). All four oracles work.
-			SupportedSet: []Oracle{OracleBlocknative, OraclePublicNode, OracleOwlracle, OracleEtherscan},
+			SupportedSet: []Oracle{OraclePublicNode, OracleOwlracle, OracleEtherscan},
 		},
 		{
 			Slug:         "avalanche",
@@ -111,7 +111,7 @@ func chains() []Chain {
 			BlockTimeSec: 2,
 			// Etherscan v2 returns "Free API access is not supported for this chain" on chainid=43114 — paid plan required.
 			// Three oracles only (Blocknative + PublicNode feeHistory + Owlracle).
-			SupportedSet: []Oracle{OracleBlocknative, OraclePublicNode, OracleOwlracle},
+			SupportedSet: []Oracle{OraclePublicNode, OracleOwlracle},
 		},
 	}
 }
