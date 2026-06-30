@@ -2,9 +2,23 @@ import type { Benchmark } from "@/types/benchmark";
 import { isAll } from "@/lib/dimensions";
 import { SECONDS_PER_DAY, SECONDS_PER_HOUR } from "@/lib/time-constants";
 
-export type Range = "1h" | "6h" | "24h" | "7d" | "30d";
+export type Range =
+  | "1h"
+  | "6h"
+  | "24h"
+  | "7d"
+  | "30d"
+  | "90d"
+  | "180d"
+  | "1y"
+  | "all";
 
 export const RANGES: Range[] = ["1h", "6h", "24h", "7d", "30d"];
+
+/** Long-range tabs that live behind a separate (archive-backed) data
+ *  source. Only rendered on benches that opt-in by passing
+ *  `longRangeSeries` to the chart. */
+export const LONG_RANGES: Range[] = ["90d", "180d", "1y", "all"];
 
 export const RANGE_HOURS: Record<Range, number> = {
   "1h": 1,
@@ -12,6 +26,15 @@ export const RANGE_HOURS: Record<Range, number> = {
   "24h": 24,
   "7d": 168,
   "30d": 720,
+  "90d": 2160,
+  "180d": 4320,
+  "1y": 8760,
+  // ALL is rendered with whatever data the archive returned. The chart
+  // sizes the X-axis off the longest series in `longRangeSeries`, but
+  // RANGE_HOURS is still referenced for label formatting / zoom math,
+  // so we ceiling it to ~3 years which is more than the current
+  // archive retention and avoids divide-by-zero down the path.
+  all: 26280,
 };
 
 // How many points spec.ts (src/lib/spec.ts:prom.series) requests for each
@@ -20,12 +43,21 @@ export const RANGE_HOURS: Record<Range, number> = {
 // provider went offline mid-window), we anchor the rightmost point to
 // "now" and step earlier points backwards by 1/EXPECTED of the chart
 // width. The unfilled left side is honest, not stretched.
+//
+// Long-range tabs (90d / 180d / 1y / all) are sourced from per-day
+// archive aggregates, so the expected point count equals the number of
+// days in the window. ALL uses a generous ceiling that never bites in
+// practice because the chart re-computes off the actual series length.
 export const RANGE_EXPECTED_POINTS: Record<Range, number> = {
   "1h": 3,
   "6h": 18,
   "24h": 72,
   "7d": 84,
   "30d": 60,
+  "90d": 90,
+  "180d": 180,
+  "1y": 365,
+  all: 1095,
 };
 
 export const RANGE_LABEL: Record<Range, string> = {
@@ -34,6 +66,10 @@ export const RANGE_LABEL: Record<Range, string> = {
   "24h": "last 24 hours",
   "7d": "last 7 days",
   "30d": "last 30 days",
+  "90d": "last 90 days",
+  "180d": "last 180 days",
+  "1y": "last year",
+  all: "all time",
 };
 
 export const REGION_LABEL: Record<string, string> = {

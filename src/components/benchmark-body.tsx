@@ -7,7 +7,14 @@ import { liveResults } from "@/lib/provider-filters";
 import { matchesChainSlug } from "@/lib/chain-aliases";
 import { ChainTabs } from "@/components/chain-tabs";
 import { LedgerTable } from "@/components/ledger-table";
+import { HlArchiveLeaderboard } from "@/components/hl-archive-leaderboard";
 import { TimeSeriesChart } from "@/components/time-series-chart";
+import type { Range as ChartRange } from "@/components/time-series-chart/scales";
+import { LONG_RANGES } from "@/components/time-series-chart/scales";
+import type {
+  HlArchiveHistoryResponse,
+  HlArchiveLongWindow,
+} from "@/types/hl-archive";
 import { RankedBarChart } from "@/components/ranked-bar-chart";
 import { DistributionChart } from "@/components/distribution-chart";
 import { DonutChart } from "@/components/donut-chart";
@@ -136,6 +143,7 @@ export function BenchmarkBody({
   initialChain,
   initialRegion,
   initialKind = null,
+  hasLongHistory = false,
 }: {
   variants: Record<string, Benchmark>;
   chainOptions: ChainOption[];
@@ -144,6 +152,10 @@ export function BenchmarkBody({
   initialChain: string | null;
   initialRegion: string | null;
   initialKind?: string | null;
+  /** When true, render the long-window archive toggle (24h..All time)
+   *  below the main ledger. Only set on benches whose harness ships a
+   *  long-window archive blob (currently: hyperliquid-frontends). */
+  hasLongHistory?: boolean;
 }) {
   // Read ?chain= / ?region= / ?kind= client-side. The server can't read these any
   // more (doing so would force /benchmarks/<slug> to render dynamic on
@@ -378,6 +390,111 @@ export function BenchmarkBody({
     [chartRegions],
   );
 
+  // Unified chart range. Default to the chart's own default ("24h") so
+  // short ranges keep the existing visual exactly. When the bench has
+  // long-window archive history, this state is also passed to the
+  // leaderboard below so chart pills + ledger source stay in sync.
+  const [chartRange, setChartRange] = useState<ChartRange>("24h");
+
+  // Per-window cache of the long-window archive payload. Populated lazily
+  // when the user clicks a 90d/180d/1y/all pill, and used both to feed
+  // the chart's `longRangeSeries` map and to replace the ledger rows
+  // with archive-sourced ranks. `error` entries stand in for "tried,
+  // failed" so we don't refetch on every render — the disabled-pill UX
+  // is driven off the first failure too.
+  const [hlArchiveCache, setHlArchiveCache] = useState<
+    Record<string, HlArchiveHistoryResponse | { error: string }>
+  >({});
+  const [hlArchiveDisabled, setHlArchiveDisabled] = useState(false);
+
+  // The 4 long-range chart pills are a strict subset of the archive's
+  // long-window enum, so we coerce once here and pass the narrower type
+  // down to the archive fetch + leaderboard. Keeps the rest of the file
+  // free of `as` casts at every consumer.
+  const longRangeKey: HlArchiveLongWindow | null = (
+    LONG_RANGES as readonly ChartRange[]
+  ).includes(chartRange)
+    ? (chartRange as HlArchiveLongWindow)
+    : null;
+
+  useEffect(() => {
+    if (!hasLongHistory) return;
+    if (!longRangeKey) return;
+    if (hlArchiveCache[longRangeKey]) return;
+    let cancelled = false;
+    fetch(
+      `/api/bench/hyperliquid-frontends/history?window=${encodeURIComponent(longRangeKey)}`,
+      { cache: "no-store" },
+    )
+      .then(async (res) => {
+        const body = (await res.json().catch(() => null)) as
+          | HlArchiveHistoryResponse
+          | { error: string }
+          | null;
+        if (cancelled) return;
+        if (!res.ok || !body) {
+          const err =
+            body && "error" in body ? body.error : `http_${res.status}`;
+          setHlArchiveCache((c) => ({ ...c, [longRangeKey]: { error: err } }));
+          setHlArchiveDisabled(true);
+          // Auto-revert the chart range so the user sees data instead of
+          // a dead frame. 30d is the longest live window.
+          setChartRange("30d");
+          return;
+        }
+        setHlArchiveCache((c) => ({ ...c, [longRangeKey]: body }));
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setHlArchiveCache((c) => ({
+          ...c,
+          [longRangeKey]: { error: "network" },
+        }));
+        setHlArchiveDisabled(true);
+        setChartRange("30d");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [hasLongHistory, longRangeKey, hlArchiveCache]);
+
+  // Derive the chart's `longRangeSeries` prop from the archive cache.
+  // Each entry maps `slug -> daily-fees array` because the HL bench
+  // headline metric is builder fees collected (USD). The leaderboard
+  // below independently shows volume + fees + fills, so the wire shape
+  // carries all three — only `fees` is fed to the chart Y-axis.
+  const hlLongRangeSeries = useMemo(() => {
+    if (!hasLongHistory) return undefined;
+    const map: Partial<Record<ChartRange, Record<string, number[]>>> = {};
+    for (const w of LONG_RANGES) {
+      const cached = hlArchiveCache[w];
+      if (!cached || "error" in cached) continue;
+      const ts = cached.timeseries_daily ?? {};
+      const perBuilder: Record<string, number[]> = {};
+      for (const [slug, days] of Object.entries(ts)) {
+        // Builder fees collected. If the metric mapping later grows to
+        // include companion charts (volume / fills), this branch picks
+        // the matching field per metric label.
+        perBuilder[slug] = days.map((d) => d.fees);
+      }
+      map[w] = perBuilder;
+    }
+    return map;
+  }, [hasLongHistory, hlArchiveCache]);
+
+  const hlActiveArchive: HlArchiveHistoryResponse | null = useMemo(() => {
+    if (!hasLongHistory || !longRangeKey) return null;
+    const cached = hlArchiveCache[longRangeKey];
+    if (!cached || "error" in cached) return null;
+    return cached;
+  }, [hasLongHistory, longRangeKey, hlArchiveCache]);
+
+  const hlArchiveLoading = !!(
+    hasLongHistory &&
+    longRangeKey &&
+    !hlArchiveCache[longRangeKey]
+  );
+
   if (!benchmark || !viewBenchmark) return null;
 
   const pendingCls = variantPending
@@ -599,6 +716,15 @@ export function BenchmarkBody({
                     metricLabelOverride={activePanel?.label}
                     unitOverride={activePanel?.unit}
                     higherIsBetterOverride={activePanel?.higherIsBetter}
+                    range={chartRange}
+                    onRangeChange={setChartRange}
+                    longRangeSeries={hasLongHistory ? hlLongRangeSeries : undefined}
+                    longRangeDisabled={hasLongHistory ? hlArchiveDisabled : undefined}
+                    longRangeDisabledTitle={
+                      hasLongHistory
+                        ? "Archive temporarily unavailable"
+                        : undefined
+                    }
                   />
                   {activePanel?.description && (
                     <p className="mt-3 text-[12px] text-ink-muted max-w-2xl">
@@ -611,16 +737,35 @@ export function BenchmarkBody({
           </div>
 
           <div className={"mt-8 card-soft rounded-xl p-4 sm:p-6 lg:p-8" + pendingCls}>
-            <p className="label-mono text-ink-faint mb-4">
-              {viewBenchmark.unit === "count"
-                ? "Product ledger"
-                : activePanel
-                  ? `Product ledger · sorted by ${activePanel.label}`
-                  : viewBenchmark.ledgerColumns?.length
-                    ? `Product ledger · sorted by ${viewBenchmark.ledgerColumns[0].label}`
-                    : "Product ledger · sorted by p50"}
-            </p>
-            <LedgerTable benchmark={viewBenchmark} activePanel={activePanel} topN={topN} />
+            {hasLongHistory && longRangeKey ? (
+              <>
+                <p className="label-mono text-ink-faint mb-4">
+                  Product ledger · {longRangeKey} archive
+                </p>
+                <HlArchiveLeaderboard
+                  window={longRangeKey}
+                  payload={hlActiveArchive}
+                  loading={hlArchiveLoading}
+                  knownProviders={viewBenchmark.results.map((r) => ({
+                    slug: r.slug,
+                    name: r.name,
+                  }))}
+                />
+              </>
+            ) : (
+              <>
+                <p className="label-mono text-ink-faint mb-4">
+                  {viewBenchmark.unit === "count"
+                    ? "Product ledger"
+                    : activePanel
+                      ? `Product ledger · sorted by ${activePanel.label}`
+                      : viewBenchmark.ledgerColumns?.length
+                        ? `Product ledger · sorted by ${viewBenchmark.ledgerColumns[0].label}`
+                        : "Product ledger · sorted by p50"}
+                </p>
+                <LedgerTable benchmark={viewBenchmark} activePanel={activePanel} topN={topN} />
+              </>
+            )}
           </div>
 
           {viewBenchmark.unit !== "count" &&
