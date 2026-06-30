@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { unstable_cache } from "next/cache";
 import { getBenchmark } from "@/data/benchmarks";
-import { loadSpecsUncached, specToBenchmark } from "@/lib/materialize/load";
+import { filterSig, loadSpecsUncached, specToBenchmark } from "@/lib/materialize/load";
+import { readMaterialized } from "@/lib/materialize/store";
 import { buildProviderColors } from "@/lib/series-colors";
 import { logoPath } from "@/lib/logo-manifest";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
@@ -11,9 +12,14 @@ import { SLUG_RE } from "@/lib/slug";
 // The full Benchmark is too big for unstable_cache's 2 MB limit (root
 // cause of the egress blowout — see slimBenchmarkForCache in spec.ts),
 // but the series map alone is at most ~100 KB even for 100-provider
-// benches. Caching here means the first cold-CDN miss pays one Prom
-// fan-out and the next 5 minutes are served instantly from the app
-// cache, no Prom touch.
+// benches.
+//
+// Read order: worker-published blob first (full bench, includes series7d
+// + series30d), then the live Prom fan-out as a last resort. Without the
+// blob lookup every cold CDN miss paid a 30-50 Prom-query roundtrip;
+// under load those would queue at the Prom concurrency cap and time out
+// the Vercel function. The blob is updated by the worker on each sweep
+// so reading it stays as fresh as our materialize cadence (~60 s).
 const getSeriesMapCached = unstable_cache(
   async (
     slug: string,
@@ -21,13 +27,25 @@ const getSeriesMapCached = unstable_cache(
     chain: string | undefined,
     region: string | undefined,
   ): Promise<Record<string, number[]> | null> => {
+    const sig = filterSig({ chain, region });
+    const stored = await readMaterialized(slug, sig);
+    if (stored) {
+      const fromBlob =
+        range === "7d"
+          ? stored.bench.extras.series7d
+          : stored.bench.extras.series30d;
+      if (fromBlob && Object.keys(fromBlob).length > 0) return fromBlob;
+    }
+    // Fallback: blob missing (newly deployed bench) or empty for this
+    // variant. Run the live build to seed something; the worker will
+    // overwrite on its next sweep.
     const specs = await loadSpecsUncached();
     const spec = specs.find((s) => s.slug === slug);
     if (!spec || spec.status !== "live") return null;
     const b = await specToBenchmark(spec, { chain, region });
     return (range === "7d" ? b.extras.series7d : b.extras.series30d) ?? null;
   },
-  ["series-by-range-v1"],
+  ["series-by-range-v2"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
