@@ -129,62 +129,62 @@ providers:
     tag: Every resolved market across categories
     formula: "Median seconds from first OO ProposePrice block to QuestionResolved block, cumulative histogram over the listener's window. The success column is the share resolved within 2 hours of proposal, the number the 93 percent claim pretends to be."
     queries:
-      p50: histogram_quantile(0.50, sum by (le) (pmres_resolution_delay_seconds_bucket))
-      p90: histogram_quantile(0.90, sum by (le) (pmres_resolution_delay_seconds_bucket))
-      p99: histogram_quantile(0.99, sum by (le) (pmres_resolution_delay_seconds_bucket))
+      p50: 1000 * histogram_quantile(0.50, sum by (le) (pmres_resolution_delay_seconds_bucket))
+      p90: 1000 * histogram_quantile(0.90, sum by (le) (pmres_resolution_delay_seconds_bucket))
+      p99: 1000 * histogram_quantile(0.99, sum by (le) (pmres_resolution_delay_seconds_bucket))
       mean: sum(pmres_resolution_delay_seconds_sum) / sum(pmres_resolution_delay_seconds_count)
       success: clamp_max(sum(pmres_resolution_delay_seconds_bucket{le="7200"}) / sum(pmres_resolution_delay_seconds_count), 1)
       sample_size: sum(pmres_resolutions_total)
-      series: histogram_quantile(0.50, sum by (le) (pmres_resolution_delay_seconds_bucket))
+      series: 1000 * histogram_quantile(0.50, sum by (le) (pmres_resolution_delay_seconds_bucket))
 
   - slug: sports
     name: Sports
     tag: Game and match markets, the volume majority
     formula: "Median seconds from first proposal to resolution for sports markets. Success column is the share within 2 hours of proposal."
     queries:
-      p50: histogram_quantile(0.50, sum by (le) (pmres_resolution_delay_seconds_bucket{category="sports"}))
-      p90: histogram_quantile(0.90, sum by (le) (pmres_resolution_delay_seconds_bucket{category="sports"}))
-      p99: histogram_quantile(0.99, sum by (le) (pmres_resolution_delay_seconds_bucket{category="sports"}))
+      p50: 1000 * histogram_quantile(0.50, sum by (le) (pmres_resolution_delay_seconds_bucket{category="sports"}))
+      p90: 1000 * histogram_quantile(0.90, sum by (le) (pmres_resolution_delay_seconds_bucket{category="sports"}))
+      p99: 1000 * histogram_quantile(0.99, sum by (le) (pmres_resolution_delay_seconds_bucket{category="sports"}))
       mean: sum(pmres_resolution_delay_seconds_sum{category="sports"}) / sum(pmres_resolution_delay_seconds_count{category="sports"})
       success: clamp_max(sum(pmres_resolution_delay_seconds_bucket{le="7200",category="sports"}) / sum(pmres_resolution_delay_seconds_count{category="sports"}), 1)
       sample_size: sum(pmres_resolutions_total{category="sports"})
-      series: histogram_quantile(0.50, sum by (le) (pmres_resolution_delay_seconds_bucket{category="sports"}))
+      series: 1000 * histogram_quantile(0.50, sum by (le) (pmres_resolution_delay_seconds_bucket{category="sports"}))
 
   - slug: crypto
     name: Crypto
     tag: Price markets, machine checkable outcomes
     formula: "Median seconds from first proposal to resolution for crypto price markets. Success column is the share within 2 hours of proposal."
     queries:
-      p50: histogram_quantile(0.50, sum by (le) (pmres_resolution_delay_seconds_bucket{category="crypto"}))
-      p90: histogram_quantile(0.90, sum by (le) (pmres_resolution_delay_seconds_bucket{category="crypto"}))
-      p99: histogram_quantile(0.99, sum by (le) (pmres_resolution_delay_seconds_bucket{category="crypto"}))
+      p50: 1000 * histogram_quantile(0.50, sum by (le) (pmres_resolution_delay_seconds_bucket{category="crypto"}))
+      p90: 1000 * histogram_quantile(0.90, sum by (le) (pmres_resolution_delay_seconds_bucket{category="crypto"}))
+      p99: 1000 * histogram_quantile(0.99, sum by (le) (pmres_resolution_delay_seconds_bucket{category="crypto"}))
       mean: sum(pmres_resolution_delay_seconds_sum{category="crypto"}) / sum(pmres_resolution_delay_seconds_count{category="crypto"})
       success: clamp_max(sum(pmres_resolution_delay_seconds_bucket{le="7200",category="crypto"}) / sum(pmres_resolution_delay_seconds_count{category="crypto"}), 1)
       sample_size: sum(pmres_resolutions_total{category="crypto"})
-      series: histogram_quantile(0.50, sum by (le) (pmres_resolution_delay_seconds_bucket{category="crypto"}))
+      series: 1000 * histogram_quantile(0.50, sum by (le) (pmres_resolution_delay_seconds_bucket{category="crypto"}))
 
   - slug: politics
     name: Politics
     tag: Election and policy markets, conservative windows
     formula: "Median seconds from first proposal to resolution for politics markets. Success column is the share within 2 hours of proposal."
     queries:
-      p50: histogram_quantile(0.50, sum by (le) (pmres_resolution_delay_seconds_bucket{category="politics"}))
-      p90: histogram_quantile(0.90, sum by (le) (pmres_resolution_delay_seconds_bucket{category="politics"}))
-      p99: histogram_quantile(0.99, sum by (le) (pmres_resolution_delay_seconds_bucket{category="politics"}))
+      p50: 1000 * histogram_quantile(0.50, sum by (le) (pmres_resolution_delay_seconds_bucket{category="politics"}))
+      p90: 1000 * histogram_quantile(0.90, sum by (le) (pmres_resolution_delay_seconds_bucket{category="politics"}))
+      p99: 1000 * histogram_quantile(0.99, sum by (le) (pmres_resolution_delay_seconds_bucket{category="politics"}))
       mean: sum(pmres_resolution_delay_seconds_sum{category="politics"}) / sum(pmres_resolution_delay_seconds_count{category="politics"})
       success: clamp_max(sum(pmres_resolution_delay_seconds_bucket{le="7200",category="politics"}) / sum(pmres_resolution_delay_seconds_count{category="politics"}), 1)
       sample_size: sum(pmres_resolutions_total{category="politics"})
-      series: histogram_quantile(0.50, sum by (le) (pmres_resolution_delay_seconds_bucket{category="politics"}))
+      series: 1000 * histogram_quantile(0.50, sum by (le) (pmres_resolution_delay_seconds_bucket{category="politics"}))
 
   - slug: other
     name: Other
     tag: Culture, weather, science and everything else
     formula: "Median seconds from first proposal to resolution for uncategorized markets. Success column is the share within 2 hours of proposal."
     queries:
-      p50: histogram_quantile(0.50, sum by (le) (pmres_resolution_delay_seconds_bucket{category="other"}))
-      p90: histogram_quantile(0.90, sum by (le) (pmres_resolution_delay_seconds_bucket{category="other"}))
-      p99: histogram_quantile(0.99, sum by (le) (pmres_resolution_delay_seconds_bucket{category="other"}))
+      p50: 1000 * histogram_quantile(0.50, sum by (le) (pmres_resolution_delay_seconds_bucket{category="other"}))
+      p90: 1000 * histogram_quantile(0.90, sum by (le) (pmres_resolution_delay_seconds_bucket{category="other"}))
+      p99: 1000 * histogram_quantile(0.99, sum by (le) (pmres_resolution_delay_seconds_bucket{category="other"}))
       mean: sum(pmres_resolution_delay_seconds_sum{category="other"}) / sum(pmres_resolution_delay_seconds_count{category="other"})
       success: clamp_max(sum(pmres_resolution_delay_seconds_bucket{le="7200",category="other"}) / sum(pmres_resolution_delay_seconds_count{category="other"}), 1)
       sample_size: sum(pmres_resolutions_total{category="other"})
-      series: histogram_quantile(0.50, sum by (le) (pmres_resolution_delay_seconds_bucket{category="other"}))
+      series: 1000 * histogram_quantile(0.50, sum by (le) (pmres_resolution_delay_seconds_bucket{category="other"}))
