@@ -18,6 +18,7 @@ import { getBenchmark } from "@/data/benchmarks";
 import { getArchive } from "@/lib/hl-archive-store";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import type {
+  HlArchiveDailyPoint,
   HlArchiveHistoryResponse,
   HlArchiveLongWindow,
   HlArchiveRankedRow,
@@ -148,6 +149,7 @@ export async function GET(req: NextRequest) {
   }
 
   const rows: Omit<HlArchiveRankedRow, "rank">[] = [];
+  const timeseriesBySlug: Record<string, HlArchiveDailyPoint[]> = {};
   for (const [addr, b] of Object.entries(archive.builders)) {
     const w = b.windows[window];
     if (!w) continue;
@@ -159,6 +161,9 @@ export async function GET(req: NextRequest) {
       fees_usd: w.fees_usd,
       fills: w.fills,
     });
+    if (b.timeseries_daily && b.timeseries_daily.length > 0) {
+      timeseriesBySlug[addr] = b.timeseries_daily;
+    }
   }
 
   const payload: HlArchiveHistoryResponse = {
@@ -166,6 +171,7 @@ export async function GET(req: NextRequest) {
     source: "archive",
     updated_at: archive.updated_at,
     rows: rank(rows),
+    timeseries_daily: timeseriesBySlug,
   };
   return NextResponse.json(payload, { headers: { "cache-control": CACHE_HEADER } });
 }

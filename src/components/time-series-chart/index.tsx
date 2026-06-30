@@ -11,6 +11,7 @@ import { LiveDot } from "@/components/live-dot";
 import { TopNSelector } from "@/components/top-n-selector";
 import {
   RANGES,
+  LONG_RANGES,
   RANGE_HOURS,
   RANGE_EXPECTED_POINTS,
   RANGE_LABEL,
@@ -56,6 +57,24 @@ type Props = {
   higherIsBetterOverride?: boolean;
   topNControl?: { topN: number | null; setTopN: (n: number | null) => void };
   disableTopN?: boolean;
+  /** Externally-controlled range. When provided, the chart relinquishes
+   *  its internal `range` state and lets the parent drive it (so a sister
+   *  component below — e.g. a leaderboard table — can stay in sync with
+   *  the pill selection). */
+  range?: Range;
+  onRangeChange?: (r: Range) => void;
+  /** Optional long-range tabs (90d / 180d / 1y / all). When set, the chart
+   *  renders these pills after the live ones AND reads per-provider series
+   *  from this map when the selected range is one of them. Each entry's
+   *  value array is plotted as-is — typically one sample per day from the
+   *  archive backend. Missing entries render an empty line. */
+  longRangeSeries?: Partial<Record<Range, Record<string, number[]>>>;
+  /** When true, the long-range pills render in a disabled state with a
+   *  "soon" hint. Used when the archive is unreachable. */
+  longRangeDisabled?: boolean;
+  /** Tooltip surfaced on disabled long-range pills (e.g. "Archive
+   *  temporarily unavailable"). */
+  longRangeDisabledTitle?: string;
 };
 
 export function TimeSeriesChart({
@@ -73,8 +92,19 @@ export function TimeSeriesChart({
   topNControl,
   disableTopN,
   headerActions,
+  range: rangeProp,
+  onRangeChange,
+  longRangeSeries,
+  longRangeDisabled,
+  longRangeDisabledTitle,
 }: Props) {
-  const [range, setRange] = useState<Range>("24h");
+  const [rangeLocal, setRangeLocal] = useState<Range>("24h");
+  const range = rangeProp ?? rangeLocal;
+  const setRange = (next: Range) => {
+    if (onRangeChange) onRangeChange(next);
+    if (rangeProp == null) setRangeLocal(next);
+  };
+  const isLongRange = (LONG_RANGES as readonly Range[]).includes(range);
   const [regionLocal, setRegionLocal] = useState<string>("all");
   const region = regionProp ?? regionLocal;
   const setRegion = regionProp != null ? () => {} : setRegionLocal;
@@ -202,9 +232,15 @@ export function TimeSeriesChart({
       return full.slice(-take);
     };
     // Bench-level 7d / 30d series are lazy-loaded (see useEffect above).
+    // Long-range series (90d / 180d / 1y / all) come from an external
+    // map populated by the parent — typically by fetching the
+    // long-window archive for the bench.
     // Pick from the lazy map when in those ranges, fall back to
     // pickSeries (which uses benchmark.extras.series24h) otherwise.
     const pickBenchValues = (slug: string): number[] => {
+      if (isLongRange) {
+        return longRangeSeries?.[range]?.[slug] ?? [];
+      }
       if (range === "7d" && lazySeries7d) return lazySeries7d[slug] ?? [];
       if (range === "30d" && lazySeries30d) return lazySeries30d[slug] ?? [];
       return pickSeries(benchmark, slug, range, region);
@@ -233,7 +269,7 @@ export function TimeSeriesChart({
       return higherIsBetter ? bv - av : av - bv;
     });
     return built;
-  }, [benchmark, range, region, colors, excluded, seriesOverride, seriesOverride7d, seriesOverride30d, higherIsBetterOverride, lazySeries7d, lazySeries30d]);
+  }, [benchmark, range, region, colors, excluded, seriesOverride, seriesOverride7d, seriesOverride30d, higherIsBetterOverride, lazySeries7d, lazySeries30d, isLongRange, longRangeSeries]);
 
   // Top-N selector — sized off the post-filter line count via the
   // shared `useTopN` hook so the option set agrees across every
@@ -305,7 +341,7 @@ export function TimeSeriesChart({
         </div>
       </div>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-1">
+        <div className="flex flex-wrap items-center gap-1">
           {RANGES.map((r) => {
             const active = r === range;
             const disabled =
@@ -333,6 +369,51 @@ export function TimeSeriesChart({
               </button>
             );
           })}
+          {longRangeSeries && (
+            <>
+              {/* Hairline separator between live (Prom) and archive
+                  ranges so the reader sees they come from a different
+                  data source — kept inside the same pill strip so the
+                  selection feels like one control. Panel tabs disable
+                  the archive ranges (panel data is not archived). */}
+              <span
+                aria-hidden
+                className="mx-1 inline-block h-4 w-px bg-rule"
+              />
+              {LONG_RANGES.map((r) => {
+                const active = r === range;
+                const disabled = longRangeDisabled || panelActive;
+                const title = panelActive
+                  ? "Switch off the metric panel to see long-range history"
+                  : longRangeDisabled
+                    ? (longRangeDisabledTitle ??
+                      "Archive temporarily unavailable")
+                    : undefined;
+                return (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => !disabled && setRange(r)}
+                    disabled={disabled}
+                    className={[
+                      "rounded px-2.5 py-1 text-[11px] font-sans tabular uppercase tracking-[0.1em] font-medium transition-colors",
+                      active
+                        ? "bg-ink text-paper"
+                        : disabled
+                          ? "text-ink-faint cursor-not-allowed"
+                          : "text-ink-muted hover:text-ink hover:bg-paper-soft",
+                    ].join(" ")}
+                    title={title}
+                  >
+                    {r}
+                    {disabled && !panelActive && (
+                      <span className="ml-1 text-[9px] text-ink-faint">soon</span>
+                    )}
+                  </button>
+                );
+              })}
+            </>
+          )}
         </div>
 
         {showRegionTabs && (
