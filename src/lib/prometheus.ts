@@ -37,7 +37,13 @@ export class Prometheus {
     } catch {
       throw new Error("Prometheus baseUrl is not a valid URL");
     }
-    if (u.protocol !== "https:") {
+    // Allow plain http only for explicit in-network hosts (worker → Prom
+    // over the docker bridge or local dev). Everything else (Vercel,
+    // production renders) must hit https to keep credentials off the
+    // wire and prevent accidental egress to a forged Prom.
+    const isInternalHost =
+      u.hostname === "ocb-prom" || u.hostname === "localhost" || u.hostname === "127.0.0.1";
+    if (u.protocol !== "https:" && !(isInternalHost && u.protocol === "http:")) {
       throw new Error("Prometheus baseUrl must be https://");
     }
     if (u.username || u.password) {
@@ -376,6 +382,20 @@ const hostCheckCache = new Map<string, HostCheckEntry>();
 const hostCheckInFlight = new Map<string, Promise<void>>();
 
 async function assertPublicHost(url: URL): Promise<void> {
+  // The worker on the VPS reaches Prometheus over the docker bridge by
+  // its container name (resolves to a private 172.18.0.0/16 address).
+  // Letting the SSRF guard reject those would force the worker through
+  // the public Caddy → Prom hop, which is exactly the failure mode that
+  // broke under load. The constructor in the Prometheus class already
+  // gates plain-http baseUrls to this same allow-list, so anything that
+  // reaches here over http with one of these hostnames is trusted.
+  if (
+    url.hostname === "ocb-prom" ||
+    url.hostname === "localhost" ||
+    url.hostname === "127.0.0.1"
+  ) {
+    return;
+  }
   // hostname keeps brackets for IPv6 literals; strip them so isIP can
   // recognise the address.
   let host = url.hostname;
