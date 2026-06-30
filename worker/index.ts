@@ -39,6 +39,16 @@ import {
   storeConfigured,
   touchSnapshot,
 } from "@/lib/materialize/store";
+import {
+  cohortSnapshotConfigured,
+  writeCohortSnapshot,
+} from "@/lib/cohort-snapshot";
+import { fetchPerpCohortFresh } from "@/lib/perp-stats";
+import {
+  fetchHlCohortFresh,
+  fetchHlHip3CohortFresh,
+} from "@/lib/hl-builder-stats";
+import { buildFeaturedLeaders } from "@/lib/search-featured";
 import type { Benchmark, MetricPanel } from "@/types/benchmark";
 import type { Spec } from "@/lib/spec-schema";
 
@@ -329,6 +339,43 @@ async function sweep(iteration: number): Promise<void> {
     () => noteHeartbeat(true),
     (e) => noteHeartbeat(false, e),
   );
+
+  // Cohort snapshots used by the hub pages and the search dialog. Each
+  // builder hits Prom directly (via the in-network http://ocb-prom:9090
+  // URL), so they don't add load on the public reverse proxy. Failures
+  // are isolated per blob — a bad perp fetch doesn't block the HL or
+  // featured-leaders writes.
+  if (cohortSnapshotConfigured()) {
+    const cohortStart = Date.now();
+    const cohortJobs: Array<{
+      key: string;
+      build: () => Promise<unknown>;
+    }> = [
+      { key: "perp-cohort", build: () => fetchPerpCohortFresh() },
+      { key: "hl-frontends", build: () => fetchHlCohortFresh() },
+      { key: "hl-hip3", build: () => fetchHlHip3CohortFresh() },
+      { key: "search-featured", build: () => buildFeaturedLeaders() },
+    ];
+    const results = await Promise.allSettled(
+      cohortJobs.map(async ({ key, build }) => {
+        const blob = await build();
+        if (!blob) throw new Error("builder returned null");
+        await writeCohortSnapshot(key, blob);
+        return key;
+      }),
+    );
+    const okCount = results.filter((r) => r.status === "fulfilled").length;
+    const failures = results
+      .map((r, i) =>
+        r.status === "rejected"
+          ? `${cohortJobs[i].key}: ${r.reason instanceof Error ? r.reason.message : r.reason}`
+          : null,
+      )
+      .filter(Boolean) as string[];
+    console.log(
+      `[worker] cohort done in ${((Date.now() - cohortStart) / 1000).toFixed(1)}s (${okCount}/${cohortJobs.length} ok)${failures.length ? `: ${failures.join("; ")}` : ""}`,
+    );
+  }
 
   // Keep the bench pages warm on every cycle: ISR revalidate is 60s, so
   // a ping per sweep means the CDN always serves a fresh-enough copy
