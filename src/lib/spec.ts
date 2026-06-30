@@ -19,35 +19,28 @@ import type { Spec } from "@/lib/spec-schema";
 // initialization" because both ends touch each other during ESM load.
 import { canonicalChainSlug } from "@/lib/chain-aliases";
 import { renderBenchmarkText } from "@/lib/bench-template";
-import { MS_PER_MINUTE } from "@/lib/time-constants";
 import {
-  buildEditorial,
   draftPlaceholderForSpec,
   filterSig,
   loadSpecsUncached,
-  parseFilterSig,
-  specToBenchmark,
   type BenchmarkFilters,
 } from "@/lib/materialize/load";
-import {
-  readSnapshot,
-  snapshotFromBenchmark,
-  writeSnapshot,
-} from "@/lib/snapshot";
 import { readMaterialized } from "@/lib/materialize/store";
 
 export type { Spec } from "@/lib/spec-schema";
 export type { BenchmarkFilters } from "@/lib/materialize/load";
 export { bestForChain, injectLabels } from "@/lib/materialize/load";
 
-// ─── Materialized read path (phase 1, flag-gated) ────────────────────
-// When READ_FROM_STORE=1, benches are served from the worker-published
-// snapshots (complete, carry-forward, ~60s fresh) instead of querying
-// Prom at render time. The live path below stays as fallback: store
-// miss, parse failure, or a snapshot older than STORE_MAX_AGE_MS (worker
-// down) all fall through to the old behavior. Rollback = unset the flag.
+// ─── Materialized read path (blob-only, no live Prom fallback) ────────
+// The worker is the sole Prom consumer; Vercel renders read the
+// worker-published snapshots and never query Prom at render time. A
+// stale snapshot is preferred over a render-time Prom fan-out — when
+// the worker stalls, the chart shows aged data with a freshness badge
+// instead of cascading a Vercel function into Prom's query queue, which
+// is what crashed Prom under load. The READ_FROM_STORE flag is
+// preserved as a kill switch (unset to disable blob reads entirely;
+// every render then returns undefined → draft placeholder).
 const READ_FROM_STORE = process.env.READ_FROM_STORE === "1";
-const STORE_MAX_AGE_MS = 30 * MS_PER_MINUTE;
 
 async function benchFromStore(
   slug: string,
@@ -56,12 +49,6 @@ async function benchFromStore(
   if (!READ_FROM_STORE) return null;
   const snap = await readMaterialized(slug, sig);
   if (!snap) return null;
-  if (Date.now() - snap.builtAt > STORE_MAX_AGE_MS) {
-    console.warn(
-      `[materialize] snapshot for ${slug}/${sig || "all"} is ${Math.round((Date.now() - snap.builtAt) / MS_PER_MINUTE)}min old, falling back to live`,
-    );
-    return null;
-  }
   return snap.bench;
 }
 
@@ -207,52 +194,14 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
     const specs = await loadSpecs();
     const spec = specs.find((s) => s.slug === slug);
     if (!spec) return undefined;
+    // Blob-only: serve whatever the worker last published. Missing or
+    // unparseable blobs fall through to the aggregator's draft
+    // placeholder instead of fanning out a Prom build at render time —
+    // that fan-out is what saturated Prom's query queue under Vercel
+    // ISR re-render bursts.
     const stored = await benchFromStore(slug, "");
     if (stored) return slimBenchmarkForCache(overlayEditorial(stored, spec));
-    const promStart = Date.now();
-    const bench = await specToBenchmark(spec, {}, {
-      onRendered: (rendered) =>
-        writeSnapshot(spec.slug, snapshotFromBenchmark(rendered)),
-    });
-    const promMs = Date.now() - promStart;
-    if (spec.status === "live" && bench.status === "draft") {
-      // Live spec, but Prom returned nothing this cycle. Try the
-      // persistent snapshot before giving up. This is the cold-start
-      // path: a fresh Vercel instance with no in-memory cache, called
-      // during a Prom blackout. With KV configured we serve the last
-      // good data; without KV we throw to preserve any previous cache
-      // value (or eventually fall through to the draft placeholder in
-      // the aggregator).
-      // [DRAFT-TRACE] temporary observability — remove once we've pinned
-      // the cause of intermittent draft renders.
-      console.warn(
-        `[DRAFT-TRACE] collapse slug=${slug} prom_ms=${promMs} → trying KV snapshot`,
-      );
-      const kvStart = Date.now();
-      const snap = await readSnapshot(slug);
-      const kvMs = Date.now() - kvStart;
-      if (snap) {
-        console.warn(
-          `[DRAFT-TRACE] kv_hit slug=${slug} kv_ms=${kvMs} → serving snapshot`,
-        );
-        const editorial = buildEditorial(spec);
-        const reconstructed = renderBenchmarkText({ ...editorial, ...snap });
-        // The reconstructed bench is live data, just sourced from KV
-        // instead of Prom. Mark providers as live (snapshot only
-        // captures providers that did return data).
-        for (const r of reconstructed.results) {
-          if (!r.availability) r.availability = "live";
-        }
-        return slimBenchmarkForCache(reconstructed);
-      }
-      console.warn(
-        `[DRAFT-TRACE] kv_miss slug=${slug} kv_ms=${kvMs} → throwing to keep prev cache`,
-      );
-      throw new Error(
-        `loadBenchmark(${slug}): live spec collapsed to draft, keeping prev cache`,
-      );
-    }
-    return slimBenchmarkForCache(bench);
+    return undefined;
   },
   // Version key bumped when Benchmark shape changes so stale cache entries
   // from a previous deploy can't surface objects missing newer fields.
@@ -496,24 +445,14 @@ const loadBenchmarkFiltered = unstable_cache(
     const specs = await loadSpecs();
     const spec = specs.find((s) => s.slug === slug);
     if (!spec) return undefined;
+    // Blob-only: variant blobs are published by the worker's tier-B
+    // sweep. A missing variant blob means the worker has not covered
+    // this filter combination yet — return undefined so the caller can
+    // fall back to the unfiltered "All" view rather than spinning up a
+    // render-time Prom build.
     const stored = await benchFromStore(slug, sig);
     if (stored) return slimBenchmarkForCache(overlayEditorial(stored, spec));
-    const bench = await specToBenchmark(spec, parseFilterSig(sig));
-    // Same stale-while-revalidate as loadAllBenchmarks: if Prom drops the
-    // single bench we just queried to draft, throw so unstable_cache keeps
-    // the previous live entry instead of overwriting with n/a.
-    //
-    // Bug fix: previously checked `editorialStatus !== "live"`, which is
-    // sourced from the YAML and never changes at runtime — so the throw
-    // never fired for editorially-live benches. Comparing runtime
-    // `bench.status` to editorial `spec.status` catches the real collapse
-    // case: spec says live, Prom returned nothing, runtime fell to draft.
-    if (spec.status === "live" && bench.status === "draft") {
-      throw new Error(
-        `loadBenchmark(${slug}): live spec collapsed to draft, keeping prev cache`,
-      );
-    }
-    return slimBenchmarkForCache(bench);
+    return undefined;
   },
   // v4: bumped with bench-unfiltered-v7 (ledgerColumns).
   // v5: bumped with bench-unfiltered-v8 (sec unit).
