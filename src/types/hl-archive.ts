@@ -79,4 +79,9 @@ export type HlArchiveHistoryResponse = {
   source: "prom" | "archive";
   updated_at: string;
   rows: HlArchiveRankedRow[];
+  /** Per-builder daily timeseries for the selected window, keyed by the
+   *  same slug used in `rows[]`. Only emitted on archive-sourced
+   *  responses (long windows: 90d/180d/1y/all). Powers the time-series
+   *  chart when the reader selects a long window. */
+  timeseries_daily?: Record<string, HlArchiveDailyPoint[]>;
 };
