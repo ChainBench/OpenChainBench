@@ -14,6 +14,7 @@
  */
 
 import { getBenchmarks } from "@/data/benchmarks";
+import { readMaterialized } from "@/lib/materialize/store";
 import { leader, fieldValue } from "@/lib/citation";
 
 const FEATURED_BENCH_SLUGS = [
@@ -87,3 +88,55 @@ export async function buildFeaturedLeaders(): Promise<FeaturedLeadersBlob> {
 
 /** Exported for the public endpoint + the dialog's TS type. */
 export const FEATURED_SLUGS = ALL_SLUGS;
+
+/**
+ * Worker-safe variant of `buildFeaturedLeaders`. Reads each of the 12
+ * featured/trending bench blobs directly from KV via `readMaterialized`
+ * instead of going through `getBenchmarks()`, which sits behind Next's
+ * `unstable_cache` + React `cache()` and throws
+ * `Invariant: incrementalCache missing` when invoked outside a
+ * Next request lifecycle (i.e. from the standalone worker tsx process).
+ *
+ * Same output shape as `buildFeaturedLeaders` — both write through the
+ * same `writeCohortSnapshot("search-featured", ...)` envelope.
+ */
+export async function buildFeaturedLeadersFromStore(): Promise<FeaturedLeadersBlob> {
+  const snapshots = await Promise.all(
+    ALL_SLUGS.map(async (slug) => {
+      try {
+        const snap = await readMaterialized(slug, "");
+        return snap ? snap.bench : null;
+      } catch {
+        return null;
+      }
+    }),
+  );
+  const bySlug = new Map(
+    snapshots
+      .filter((b): b is NonNullable<typeof b> => b !== null)
+      .map((b) => [b.slug, b]),
+  );
+
+  const card = (slug: string): FeaturedCardData | null => {
+    const b = bySlug.get(slug);
+    if (!b) return null;
+    const top = leader(b);
+    return {
+      slug: b.slug,
+      title: b.title,
+      category: b.category,
+      unit: b.unit,
+      value: fieldValue(b),
+      leader: top ? { name: top.name, slug: top.slug } : null,
+    };
+  };
+
+  return {
+    featured: FEATURED_BENCH_SLUGS.map(card).filter(
+      (x): x is FeaturedCardData => x !== null,
+    ),
+    trending: TRENDING_BENCH_SLUGS.map(card).filter(
+      (x): x is FeaturedCardData => x !== null,
+    ),
+  };
+}
