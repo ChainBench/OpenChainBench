@@ -19,7 +19,7 @@ import { safeJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
  */
 
 const DESCRIPTION =
-  "Live badges, share cards, citation snippets and public data APIs you can drop into your README, docs, or marketing site to surface live OpenChainBench measurements. CC-BY-4.0 licensed.";
+  "Live badges, share cards and data APIs to embed OpenChainBench measurements on your README, docs or site. CC-BY-4.0.";
 
 export const metadata: Metadata = pageMetadata({
   path: "/partners",
