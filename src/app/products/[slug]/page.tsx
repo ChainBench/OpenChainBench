@@ -63,11 +63,10 @@ export async function generateMetadata({
   const reg = getProviderRegistry(p.slug);
 
   // Meta title carries the head-term shape people search for when
-  // evaluating a provider ("helius review", "is dRPC reliable",
-  // "mobula performance"). The product page is the canonical answer
-  // surface for those queries so we name it in the title directly
-  // rather than leaving the previous generic "benchmark record" phrasing.
-  const title = `${p.name} review and live performance benchmarks`;
+  // evaluating a provider ("helius review", "is dRPC reliable"). Kept
+  // short so Google's ~60-char SERP truncation never cuts the brand
+  // suffix that Next's title template appends (" · OpenChainBench").
+  const title = `${p.name}: live benchmarks`;
 
   // Description prefers the registry's curated one-liner, then falls back
   // to a numeric one summarizing competitive footprint. Either way the
@@ -78,11 +77,22 @@ export async function generateMetadata({
   const winWord = p.wins === 1 ? "first-place finish" : "first-place finishes";
   const winSuffix = p.wins > 0 ? `, ${p.wins} ${winWord}` : "";
   const fallbackDescription = `${p.name} reviewed across ${benchCount} live OpenChainBench ${benchWord}${winSuffix}. Reproducible measurements, open methodology, refreshed every minute.`;
+  // Registry descriptions use markdown-flavour backticks for host names
+  // and code snippets (rendered as <code> in the product page body).
+  // Those leak into meta description and social previews as raw backticks
+  // — Google treats them as garbage characters. Strip inline code, bold,
+  // and italic markers before injecting into meta.
+  const stripInlineMarkdown = (s: string) =>
+    s
+      .replace(/`([^`]+)`/g, "$1")
+      .replace(/\*\*([^*]+)\*\*/g, "$1")
+      .replace(/\*([^*]+)\*/g, "$1")
+      .replace(/_([^_]+)_/g, "$1");
   // Some registry descriptions end with a period, others do not. Normalize
   // before appending so the concatenated meta description never reads
   // "...provider Live performance..." as a run-on sentence.
   const rawDescription = reg?.description
-    ? `${reg.description.replace(/[.!?]?$/, ".")} Live performance across ${benchCount} OpenChainBench ${benchWord}${winSuffix}.`
+    ? `${stripInlineMarkdown(reg.description).replace(/[.!?]?$/, ".")} Live performance across ${benchCount} OpenChainBench ${benchWord}${winSuffix}.`
     : fallbackDescription;
   // Google truncates meta description at ~155 chars in the SERP snippet.
   // Long registry descriptions plus the appended "Live performance ..."

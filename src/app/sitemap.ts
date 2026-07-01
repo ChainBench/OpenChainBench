@@ -312,29 +312,33 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
     priorityByPairSlug.set(pair.slug, 0.7);
   }
 
+  // Gate: a provider is "sitemap-eligible" as soon as it has ≥1 bench
+  // appearance. The initial pass required 2 live benches with p50>0 —
+  // way too strict because most cohort providers (HL builders, wallets,
+  // trading terminals) participate in a single bench (`hyperliquid-frontends`
+  // or a product-catalog listing) with rank data but no p50 latency.
+  // That filter dropped ~1500 valid pages Ahref had already indexed via
+  // internal cross-links, leaving them in "Indexed but not in sitemap"
+  // limbo. Relaxed: emit any pair with ≥1 shared bench appearance.
   const profiles = await safeLoad("providers", () => getProviders(), []);
-  const liveBenchesBySlug = new Map<string, Set<string>>();
+  const benchesBySlug = new Map<string, Set<string>>();
   for (const p of profiles) {
     if (HEX_SLUG_RE.test(p.slug)) continue;
     if (CHAIN_BY_SLUG.has(p.slug)) continue;
-    const liveBenches = new Set(
-      p.appearances
-        .filter((a) => a.result.ms.p50 > 0)
-        .map((a) => a.benchmark.slug),
-    );
-    if (liveBenches.size >= 2) liveBenchesBySlug.set(p.slug, liveBenches);
+    const benches = new Set(p.appearances.map((a) => a.benchmark.slug));
+    if (benches.size >= 1) benchesBySlug.set(p.slug, benches);
   }
 
-  const slugList = [...liveBenchesBySlug.keys()].sort();
+  const slugList = [...benchesBySlug.keys()].sort();
   for (let i = 0; i < slugList.length; i += 1) {
     const aSlug = slugList[i];
-    const aBenches = liveBenchesBySlug.get(aSlug)!;
+    const aBenches = benchesBySlug.get(aSlug)!;
     for (let j = i + 1; j < slugList.length; j += 1) {
       const bSlug = slugList[j];
-      const bBenches = liveBenchesBySlug.get(bSlug)!;
-      let sharedLive = 0;
-      for (const s of aBenches) if (bBenches.has(s)) sharedLive += 1;
-      if (sharedLive < 2) continue;
+      const bBenches = benchesBySlug.get(bSlug)!;
+      let shared = 0;
+      for (const s of aBenches) if (bBenches.has(s)) shared += 1;
+      if (shared < 1) continue;
       const pairSlug = `${aSlug}-vs-${bSlug}`;
       if (emittedPairSlugs.has(pairSlug)) continue;
       emittedPairSlugs.add(pairSlug);
