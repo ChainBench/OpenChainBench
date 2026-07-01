@@ -3,7 +3,7 @@
 slug: oracle-deviation
 number: "025"
 title: Chainlink vs Pyth vs Binance vs Coinbase, live oracle deviation
-seo_title: "Chainlink vs Pyth oracle deviation 2026: BTC, ETH, SOL ranked"
+seo_title: "Chainlink vs Pyth oracle deviation 2026"
 seo_description: "Chainlink, Pyth, Binance, Coinbase oracle deviation ranked live on BTC, ETH, SOL, BNB, XRP, ADA, DOGE, AVAX, LINK, POL. Max pairwise bps, p99 over 24h."
 subtitle: Maximum pairwise price disagreement in basis points across Chainlink, Pyth, Binance and Coinbase, polled every 30 seconds on 10 USD pairs.
 category: Trading

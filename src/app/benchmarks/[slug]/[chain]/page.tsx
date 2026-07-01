@@ -277,12 +277,12 @@ function pageTitle(data: ChainPageData): string {
   const b = data.benchmark;
   if (data.shape === "row") {
     return data.result.ms.p50 > 0
-      ? `${data.explainer.h2}: ${fmtUnit(data.result.ms.p50, b.unit)} p50 live`
-      : `${data.explainer.h2}: live benchmark`;
+      ? `${data.explainer.h2}: ${fmtUnit(data.result.ms.p50, b.unit)}`
+      : data.explainer.h2;
   }
   return data.leader
-    ? `${data.explainer.h2}: ${data.leader.name} leads at ${fmtUnit(data.leader.ms.p50, b.unit)}`
-    : `${data.explainer.h2}: live benchmark`;
+    ? `${data.explainer.h2}: ${data.leader.name} ${fmtUnit(data.leader.ms.p50, b.unit)}`
+    : data.explainer.h2;
 }
 
 export async function generateMetadata({
