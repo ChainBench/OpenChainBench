@@ -4,7 +4,7 @@ slug: polymarket-resolution-delay
 number: "039"
 title: Polymarket resolution time, measured onchain
 seo_title: "Polymarket resolution delay live 2026"
-seo_description: "Polymarket resolution time measured live from Polygon: median delay from outcome proposal to onchain resolution, by category (sports, politics, crypto), dispute rate and the pending backlog. The circulating claim that 93 percent of markets resolve within 2 hours is not supported by the data we measure."
+seo_description: "Polymarket resolution time live from Polygon: median delay from outcome proposal to onchain payout, sports vs politics vs crypto."
 subtitle: Seconds from the first onchain outcome proposal to UMA resolution, measured per category from Polygon logs, with dispute rate and the live backlog of unresolved markets.
 
 category: Trading

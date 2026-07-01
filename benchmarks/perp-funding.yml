@@ -4,7 +4,7 @@ slug: perp-funding
 number: "036"
 title: Cheapest perp venue to hold a position, live funding normalized
 seo_title: "Perp funding rates live 2026"
-seo_description: "Live funding rates across Hyperliquid, Binance, Bybit, OKX, dYdX, Paradex and Aster, normalized to the same time base (venues settle on 1h, 4h or 8h periods). Ranked by the cost of holding a $1,000 ETH long for 24 hours, with BTC and SOL columns, annualized rates and 7d/30d averages."
+seo_description: "Live perp funding rates across Hyperliquid, Binance, Bybit, OKX, dYdX, Paradex and Aster, normalized hourly."
 subtitle: Funding cost in basis points to hold a long position for 24 hours at the current rate, normalized across venues that settle funding on 1 hour, 4 hour and 8 hour periods. Negative means longs get paid.
 category: Trading
 status: live
