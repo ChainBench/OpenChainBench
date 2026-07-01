@@ -317,20 +317,13 @@ export default async function ProviderPage({
           license: "https://creativecommons.org/licenses/by/4.0/",
         })),
       },
-      {
-        "@type": "SoftwareApplication",
-        name: p.name,
-        identifier: p.slug,
-        url,
-        applicationCategory: "DeveloperApplication",
-        operatingSystem: "Cross-platform",
-        description:
-          reg?.description ??
-          `${p.name} is a crypto-infrastructure product measured by OpenChainBench across ${p.appearances.length} live benchmarks.`,
-        ...(reg?.url ? { downloadUrl: reg.url } : {}),
-        ...(sameAs.length > 0 ? { sameAs } : {}),
-        creator: { "@id": `${SITE.url}/#org` },
-      },
+      // NB: previously emitted a SoftwareApplication node here, but Google's
+      // rich result validator rejects it without `offers` and either
+      // `aggregateRating` or `review` (Ahref flagged 220+ product pages).
+      // We don't sell or rate the products we track — the honest schema is
+      // the Organization above plus the Dataset references it links to via
+      // `subjectOf`. Removing SoftwareApplication drops the failed rich
+      // result attempt without losing any real signal.
       buildBreadcrumbJsonLd([
         { name: "Home", item: SITE.url },
         { name: "Products", item: `${SITE.url}/products` },

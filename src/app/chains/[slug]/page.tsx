@@ -104,20 +104,22 @@ export default async function ChainPage({
   const byCategory = groupByCategory(benches);
   const url = `${SITE.url}/chains/${slug}`;
 
-  // CollectionPage references every measurement on this chain as part
-  // of the page's structured data. hasPart entries point back at the
-  // individual /benchmarks/<slug> pages so crawlers see the cluster.
+  // ItemList of Datasets, one entry per benchmark that touches this chain.
+  // Previously CollectionPage — Google's rich result validator doesn't
+  // recognise CollectionPage as a supported type and flagged every chain
+  // hub. ItemList is a documented Google rich result target and carries
+  // the same cluster signal (each item links back to /benchmarks/<slug>).
   const collectionLd = {
     "@context": "https://schema.org",
-    "@type": "CollectionPage",
-    "@id": `${url}#collection`,
+    "@type": "ItemList",
+    "@id": `${url}#datasets`,
     name: `${chain.label} live benchmarks`,
     description: chain.description,
     url,
-    isPartOf: { "@id": `${SITE.url}/#site` },
-    about: { "@type": "Thing", name: chain.label },
-    hasPart: benches.map((b) => ({
-      "@type": "Dataset",
+    numberOfItems: benches.length,
+    itemListElement: benches.map((b, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
       name: b.title,
       url: `${SITE.url}/benchmarks/${b.slug}`,
     })),
