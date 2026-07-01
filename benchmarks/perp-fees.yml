@@ -3,7 +3,7 @@
 slug: perp-fees
 number: "007"
 title: Cheapest perp DEX, live all-in fee on a $1000 ETH 10x long
-seo_title: "Cheapest perp DEX 2026: Lighter, Hyperliquid, dYdX, GMX ranked"
+seo_title: "Cheapest perp DEX 2026"
 seo_description: "{{best_name}} leads cheapest perp DEX at {{best_p50}} all-in (24h avg). $1000 ETH 10x long. Lighter, Hyperliquid, dYdX v4, GMX v2, gains.trade ranked live."
 subtitle: All-in cost in basis points to open a $1000 ETH long 10x position. Taker fee plus half-spread plus impact, measured live from public APIs across Lighter, Hyperliquid, dYdX, GMX and gains.trade.
 category: Trading

@@ -7,5 +7,5 @@ benchmark: network-coverage
 intro: |
   Bitquery is a GraphQL surface on top of indexed onchain data, with the schema as the actual product: queries declare exactly the fields needed across transfers, trades, DEX events and account state, and the indexer fans those out across chains. Pricing is point-based, with each field, filter and join consuming from a monthly point budget rather than from a flat request quota, which means a single dashboard with many panels can hit the ceiling well before request volume looks high. Chain coverage is broad but uneven in depth: some networks expose full DEX trade indexing, others only basic transfers. The team usually compared next is the one whose chain list either covers a long-tail network Bitquery does not, or covers the same network with a flatter pricing model that does not penalise wide GraphQL fragments on a per-field basis.
 
-seo_title: Bitquery alternatives. live network coverage benchmark
+seo_title: "Bitquery alternatives: live benchmark"
 seo_description: Compare Bitquery alternatives on the number of blockchains each major onchain data provider officially supports. Live data, refreshed every six hours.

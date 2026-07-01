@@ -3,7 +3,7 @@
 slug: pm-api-latency
 number: "038"
 title: Best prediction market API, ranked by live latency and uptime
-seo_title: "Best prediction market API 2026: Polymarket, Kalshi, Limitless, Manifold latency and uptime, live"
+seo_title: "Best prediction market API 2026"
 seo_description: "Is the Polymarket API up right now? Live uptime and price endpoint latency for the Polymarket, Kalshi, Limitless, Manifold and Myriad APIs, probed every 5 seconds from three regions, with per venue status pages and outage history."
 subtitle: Warm price endpoint latency of five prediction market venue APIs from three regions, plus a live uptime panel that answers whether each API is up right now.
 
@@ -87,19 +87,19 @@ faq:
 
 per_chain_explainer:
   - slug: polymarket
-    h2: Polymarket API latency and status
+    h2: Polymarket API latency
     body: "Polymarket's CLOB answers its midpoint endpoint at {{p50:polymarket}} p50 over warm connections (24h). The API fronts Cloudflare, so brief origin trouble often appears here as a latency spike before it ever becomes an error, which makes the latency series a useful early status signal. The uptime panel above is a live Polymarket API status check, computed from probes fired every 5 seconds from three regions, so it reacts within seconds of a real outage instead of waiting for user reports. For how the CLOB behaves under bursts, see the pm-rate-limits bench."
   - slug: kalshi
-    h2: Kalshi API latency and status
+    h2: Kalshi API latency
     body: "Kalshi's public single market endpoint goes to origin on every request and currently answers at {{p50:kalshi}} p50 warm (24h). That makes its uptime figure here a clean origin measurement, unlike its CDN cached market list. Kalshi is the regulated US venue and the only one in the cohort with a documented API contract, so an unexplained dip in its health gauge is more notable than elsewhere. If Kalshi's API seems down for you, compare the per region figures: a single region dip usually means a network issue, not a venue outage."
   - slug: limitless
-    h2: Limitless API latency and status
+    h2: Limitless API latency
     body: "Limitless answers its market endpoint at {{p50:limitless}} p50 warm (24h). One measured behaviour matters for anyone checking whether the Limitless API is down: its CDN caches error responses for four hours, so a request for an expired or resolved market keeps returning the same 400 long after the fact. A client seeing persistent errors on one market while this page shows healthy uptime is almost certainly holding a stale market reference, not witnessing an outage. Our harness re pins immediately and excludes those samples."
   - slug: manifold
-    h2: Manifold API latency and status
+    h2: Manifold API latency
     body: "Manifold's API sits entirely behind a CDN cache (max-age=5 plus stale-while-revalidate=10), which complicates both latency and status measurement: a cached 200 can mask a struggling origin for a few seconds. Our probes space to 7 seconds, label every residual cache hit, and the {{p50:manifold}} p50 shown here counts origin responses only. For uptime this cuts the other way, the cache absorbs brief origin blips, so Manifold's measured availability is high and its real failure mode is stale data rather than errors."
   - slug: myriad
-    h2: Myriad API latency and status
+    h2: Myriad API latency
     body: "Myriad's API is a single region Heroku deployment in US East with no order book endpoint and no WebSocket. Its cohort worst {{p50:myriad}} p50 (24h, all regions) is mostly geography: from eu-west and Singapore every request crosses an ocean first. When checking whether the Myriad API is down, look at the us-east region figure, since a global latency rise that spares us-east is network weather, not a venue incident. Myriad also runs the tightest keyless request budget in the cohort, covered in the pm-rate-limits bench."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/pm-rate-limits

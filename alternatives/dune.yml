@@ -7,5 +7,5 @@ benchmark: wallet-labels-coverage
 intro: |
   Dune lets analysts query indexed blockchain data with SQL, often via labelled wallet datasets contributed by the community. When sizing alternatives, one practical axis is wallet labelling depth. how many addresses does each provider have a label for, and how confident are those labels? Below is the live coverage from each major labelling provider, refreshed continuously against a shared sample of recently active wallets.
 
-seo_title: Dune alternatives. live wallet-labels coverage benchmark
+seo_title: "Dune alternatives: live benchmark"
 seo_description: Compare Dune alternatives on wallet labelling depth. Coverage of recently active addresses across major providers, measured continuously and published openly.

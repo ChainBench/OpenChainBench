@@ -7,5 +7,5 @@ benchmark: bridge-quote-latency
 intro: |
   Relay is an intent-based bridge: the user signs an order, a solver fronts the destination-chain funds and the cross-chain settlement happens off the user's critical path. The architecture compresses the user-felt latency because the quote does not have to scan many upstream venues; the solver inventory itself is the route. That same architecture exposes a different failure mode, which is solver depth: routes the solvers do not maintain inventory on either fail or fall back to a slower path, so coverage on long-tail pairs is narrower than a fan-out aggregator's. Fees are quoted inclusive of the solver spread rather than as a separate gas-plus-bridge breakdown. Teams that switch away usually do so for a chain pair the Relay solvers do not actively support, where a route that exists at all beats a fast quote that does not.
 
-seo_title: Relay alternatives. Debridge, Li.Fi & Mobula live quote latency benchmark
+seo_title: "Relay alternatives: live benchmark"
 seo_description: Compare Relay alternatives on cross-chain bridge quote latency. Debridge, Li.Fi and Mobula measured on identical routes, refreshed every five minutes.

@@ -7,5 +7,5 @@ benchmark: aggregator-head-lag
 intro: |
   QuickNode runs a multi-chain RPC business plus a Marketplace of paid add-ons (token API, NFT API, streams, Yellowstone for Solana) that bolt onto the base node subscription. The pricing model layers per-add-on fees on top of the per-method credit metering, so the bill scales with the breadth of features turned on rather than just request volume; teams running a single workload often discover that two add-ons cost more than the base plan. Chain coverage is broad across EVM and Solana, with regional endpoints in major cloud zones, but the streams product (filter-based push) lives behind a separate quota from the RPC. Real-time price and swap pipelines often end up offloading the head-of-chain stream to a dedicated provider so the QuickNode bill stays on the dapp-read side of the workload.
 
-seo_title: QuickNode alternatives. live head-lag benchmark across data providers
+seo_title: "QuickNode alternatives: live benchmark"
 seo_description: Compare QuickNode alternatives on real-time data freshness. Live head-lag against a canonical archive node, refreshed every minute and published openly.
