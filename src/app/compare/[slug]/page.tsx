@@ -178,7 +178,7 @@ export async function generateMetadata({
   if (!hasSharedBenches(pair, a, b)) notFound();
 
   const url = `${SITE.url}/compare/${pair.slug}`;
-  const title = `${a.name} vs ${b.name}: live OpenChainBench benchmark data`;
+  const title = `${a.name} vs ${b.name}: live benchmarks`;
   const description = capDescription(
     `${a.name} vs ${b.name} side by side on every shared OpenChainBench benchmark. Live measurements, identical layout, no verdict.`,
     158,

@@ -3,7 +3,7 @@
 slug: bridge-revenue
 number: "028"
 title: Cross-chain bridge implied protocol revenue
-seo_title: "Bridge revenue tracker 2026: cross-chain protocol implied margin USD per day, take rate bps, swap volume (Relay + comparable bridges)"
+seo_title: "Cross-chain bridge revenue tracker 2026"
 seo_description: "Live cross-chain bridge implied protocol revenue. (USD in − USD out − gas − app fees) summed over swaps in 24h / 7d / 30d. Upper bound on what each bridge + solvers keep. Relay tracked today; Across / Socket / deBridge to follow. Methodology pre-registered, harness OSS."
 subtitle: Implied margin in USD that each cross-chain bridge plus its solver network collectively retain per swap, summed over rolling 24h / 7d / 30d windows. Upper bound, not exact. Read methodology before citing.
 category: Bridges
