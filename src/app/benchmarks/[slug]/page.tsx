@@ -10,6 +10,7 @@ import { BenchmarkBodySkeleton } from "@/components/benchmark-body-skeleton";
 import { OraclePairMatrix } from "@/components/oracle-pair-matrix";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { ChainHeadingsSummary } from "@/components/chain-headings-summary";
+import { CompareThisBench } from "@/components/compare-this-bench";
 import { CitationBar } from "@/components/citation-bar";
 import { LiveIndicator } from "@/components/live-indicator";
 import { ShareSection } from "@/components/share-section";
@@ -504,6 +505,8 @@ export default async function BenchmarkPage({
           ChainHeadingsSummary, so the dedicated per-chain pages need
           their own server-rendered discovery links here. */}
       {!isDraft && <PerChainPagesNav benchmark={benchmark} />}
+
+      {!isDraft && <CompareThisBench benchmark={benchmark} />}
 
       {/* FAQ section - every question/answer mirrors a FAQPage JSON-LD
           entry above. Google requires the content to be visible on the
