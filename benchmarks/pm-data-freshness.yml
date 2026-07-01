@@ -3,7 +3,7 @@
 slug: pm-data-freshness
 number: "032"
 title: Fastest prediction market data API, live freshness across venues
-seo_title: "Fastest prediction market data API 2026: Polymarket + Kalshi freshness"
+seo_title: "Fastest prediction market data API 2026"
 seo_description: "Fastest prediction market data API ranked live across Polymarket and Kalshi. Milliseconds Mobula and Codex lag the venue gateway publish on top markets."
 subtitle: Per event delay between provider arrival and the venue gateway publish, measured every minute on the top markets by 24 hour volume across Polymarket and Kalshi.
 

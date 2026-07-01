@@ -3,7 +3,7 @@
 slug: perp-open-interest
 number: "042"
 title: Perp DEX open interest, live USD notional ranked
-seo_title: "Perp DEX open interest 2026: Hyperliquid, Lighter, GMX, gains.trade ranked"
+seo_title: "Perp DEX open interest 2026"
 seo_description: "Live perpetual futures open interest in USD across Hyperliquid, Lighter, GMX v2 and gains.trade. Public API sourced, refreshed every 5 minutes."
 subtitle: Live aggregate open interest in USD across major decentralized perpetual futures venues. Higher means more notional sits open. Read live from each venue's public API.
 category: Trading

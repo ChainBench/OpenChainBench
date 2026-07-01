@@ -3,7 +3,7 @@
 slug: network-coverage
 number: "005"
 title: Crypto data API with most blockchains supported, live coverage ranking
-seo_title: "Crypto data API most chains 2026: CoinPaprika, GeckoTerminal"
+seo_title: "Crypto data API most chains 2026"
 seo_description: "Crypto data API with the most blockchains supported, ranked live. {{best_name}} leads at {{best_p50}} networks; GeckoTerminal, CoinStats, Codex, Dune and Mobula compared. Audited every six hours."
 subtitle: Number of blockchains each major crypto data API officially supports, audited every six hours against each provider's public network endpoint.
 category: Aggregators
