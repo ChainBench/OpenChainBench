@@ -7,7 +7,8 @@ import { loadAllAlternatives } from "@/lib/alternatives";
 import { loadAllAnswers } from "@/lib/answers";
 import { CHAIN_BY_SLUG, CHAINS, getBenchmarksForChain } from "@/lib/chains";
 import { canonicalChainSlug } from "@/lib/chain-aliases";
-import { getProvider, getProviderSlugs } from "@/lib/providers";
+import { getProvider, getProviders, getProviderSlugs } from "@/lib/providers";
+import { CATEGORIES } from "@/lib/categories";
 import { SITE } from "@/data/site";
 import type { Benchmark } from "@/types/benchmark";
 import type { Answer } from "@/lib/answers";
@@ -287,27 +288,77 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
     )
   ).filter((r): r is NonNullable<typeof r> => r !== null);
 
-  // Curated compare pairs. Both providers are pre-validated to exist
-  // and share at least one bench (criteria documented in
-  // src/data/compare-pairs.ts). Defensive recheck via getProvider to
-  // skip any pair whose provider was removed since publication.
-  const compareRoutes: MetadataRoute.Sitemap = (
-    await Promise.all(
-      COMPARE_PAIRS.map(async (pair) => {
-        const [a, b] = await Promise.all([
-          getProvider(pair.providerA),
-          getProvider(pair.providerB),
-        ]);
-        if (!a || !b) return null;
-        return {
-          url: `${SITE.url}/compare/${pair.slug}`,
-          lastModified: catalogTs,
-          changeFrequency: "weekly" as const,
-          priority: 0.7,
-        };
-      }),
-    )
-  ).filter((r): r is NonNullable<typeof r> => r !== null);
+  // Compare pair sitemap. Combines curated pairs (editorial anchors)
+  // with ad-hoc pairs that clear a live-data gate: both providers share
+  // at least 2 benchmarks with p50 > 0. That gate keeps thin content
+  // (providers barely overlapping) out of the sitemap while surfacing
+  // genuinely comparable pairs Google was already crawling via internal
+  // "vs" cross-sell links but couldn't rank because no sitemap signal.
+  //
+  // HL builder hex slugs are excluded (they leak into the provider
+  // catalog but /compare/0x…-vs-… 404s at render). Chain slugs are
+  // excluded too — /compare pairs involving a chain still work but the
+  // chain hub is the canonical surface, and cross-listing dilutes.
+  const HEX_SLUG_RE = /^0x[0-9a-f]{4,}$/i;
+  const compareRoutes: MetadataRoute.Sitemap = [];
+  const emittedPairSlugs = new Set<string>();
+  const priorityByPairSlug = new Map<string, number>();
+
+  for (const pair of COMPARE_PAIRS) {
+    const p = await getProvider(pair.providerA);
+    const q = await getProvider(pair.providerB);
+    if (!p || !q) continue;
+    emittedPairSlugs.add(pair.slug);
+    priorityByPairSlug.set(pair.slug, 0.7);
+  }
+
+  const profiles = await safeLoad("providers", () => getProviders(), []);
+  const liveBenchesBySlug = new Map<string, Set<string>>();
+  for (const p of profiles) {
+    if (HEX_SLUG_RE.test(p.slug)) continue;
+    if (CHAIN_BY_SLUG.has(p.slug)) continue;
+    const liveBenches = new Set(
+      p.appearances
+        .filter((a) => a.result.ms.p50 > 0)
+        .map((a) => a.benchmark.slug),
+    );
+    if (liveBenches.size >= 2) liveBenchesBySlug.set(p.slug, liveBenches);
+  }
+
+  const slugList = [...liveBenchesBySlug.keys()].sort();
+  for (let i = 0; i < slugList.length; i += 1) {
+    const aSlug = slugList[i];
+    const aBenches = liveBenchesBySlug.get(aSlug)!;
+    for (let j = i + 1; j < slugList.length; j += 1) {
+      const bSlug = slugList[j];
+      const bBenches = liveBenchesBySlug.get(bSlug)!;
+      let sharedLive = 0;
+      for (const s of aBenches) if (bBenches.has(s)) sharedLive += 1;
+      if (sharedLive < 2) continue;
+      const pairSlug = `${aSlug}-vs-${bSlug}`;
+      if (emittedPairSlugs.has(pairSlug)) continue;
+      emittedPairSlugs.add(pairSlug);
+      priorityByPairSlug.set(pairSlug, 0.5);
+    }
+  }
+
+  for (const pairSlug of emittedPairSlugs) {
+    compareRoutes.push({
+      url: `${SITE.url}/compare/${pairSlug}`,
+      lastModified: catalogTs,
+      changeFrequency: "weekly" as const,
+      priority: priorityByPairSlug.get(pairSlug) ?? 0.5,
+    });
+  }
+
+  // Category hub pages. Closed enum from CATEGORIES; prerendered
+  // routes that group benches by domain (Blockchains, Bridges, …).
+  const categoryRoutes: MetadataRoute.Sitemap = CATEGORIES.map((c) => ({
+    url: `${SITE.url}/benchmarks/category/${c.slug}`,
+    lastModified: catalogTs,
+    changeFrequency: "weekly" as const,
+    priority: 0.6,
+  }));
 
   return [
     ...staticRoutes,
@@ -316,6 +367,7 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
     ...alternativeRoutes,
     ...answerRoutes,
     ...chainRoutes,
+    ...categoryRoutes,
     ...compareRoutes,
   ];
 }
