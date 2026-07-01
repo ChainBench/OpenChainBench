@@ -3,7 +3,7 @@
 slug: pm-rate-limits
 number: "037"
 title: Prediction market API rate limits, tested with a daily ramp
-seo_title: "Prediction market API rate limits 2026: Polymarket, Kalshi, Limitless, Manifold tested daily"
+seo_title: "Prediction market API rate limits 2026"
 seo_description: "Prediction market API rate limits measured live. A daily request ramp against Polymarket, Kalshi, Limitless, Manifold and Myriad records added latency, 429 onset and queueing behaviour at each tier, plus warm and cold endpoint latency from three regions."
 subtitle: Warm latency on book, price and list endpoints of five prediction market venue APIs, plus a daily rate limit ramp that records added latency and throttle onset per request tier.
 
@@ -91,19 +91,19 @@ faq:
 
 per_chain_explainer:
   - slug: polymarket
-    h2: Polymarket API rate limits and latency
+    h2: Polymarket API rate limits
     body: "Polymarket's CLOB API documents per endpoint budgets (around 1500 requests per 10s for the book endpoint) and sits behind Cloudflare. At our ramp tiers it queues instead of returning 429, so the honest throttle signal is added latency, shown in the ramp panel. The book endpoint embeds a millisecond timestamp, making Polymarket one of only two venues here whose data age is verifiable. Warm book p50: {{p50:polymarket}}."
   - slug: kalshi
-    h2: Kalshi API rate limits and latency
+    h2: Kalshi API rate limits
     body: "Kalshi documents a token bucket per access tier, around 20 requests per second for basic read access. Its order book and single market endpoints go to origin on every request, but the market list is served from CloudFront with max-age=15, so list reads measure the edge. The WebSocket requires authentication, so Kalshi is absent from the WS panel. Our ramp stops at the first 429. Warm book p50: {{p50:kalshi}}."
   - slug: limitless
-    h2: Limitless API rate limits and latency
+    h2: Limitless API rate limits
     body: "Limitless documents no rate limits, so it gets the most conservative ramp in the cohort (10/20/40 per 10s, auto abort). Measured quirk: error responses are CDN cached for four hours, so one expired market keeps answering with the same 400 long after resolution. The harness treats those as probe_invalid and re pins rather than counting them against the venue. Warm book p50: {{p50:limitless}}."
   - slug: manifold
-    h2: Manifold API rate limits and latency
+    h2: Manifold API rate limits
     body: "Manifold documents 500 requests per minute per IP and explicitly welcomes bots on a single IP. The entire API is served behind max-age=5 plus stale-while-revalidate=10, so any client polling faster than every 6 seconds mostly reads cache; our probes space to 7 seconds and label residual cache hits. Manifold is an AMM, so the book class probes the bets feed, and lastUpdatedTime makes its data age verifiable. Warm p50: {{p50:manifold}}."
   - slug: myriad
-    h2: Myriad API rate limits and latency
+    h2: Myriad API rate limits
     body: "Myriad's keyless budget is 30 requests per 10 seconds, the tightest in the cohort, which is why it is excluded from the ramp: ramping it would measure our own quota, not the API. There is no order book endpoint and no WebSocket. The origin is a single region Heroku deployment in US East, so latency from Europe and Asia reflects geography, reported as measured. Warm price endpoint p50: {{p50:myriad}}."
 
 source: https://github.com/MobulaFi/mobula-monorepo/tree/main/miniapps/pm-rate-limits

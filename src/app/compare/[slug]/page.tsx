@@ -38,6 +38,14 @@ import {
  * traded freshness for nothing.
  */
 export const revalidate = 60;
+// compare-cache.ts uses `cache: "no-store"` fetches to KV which Next.js
+// treats as a dynamic bail-out during static prerendering. Any pair
+// not in generateStaticParams (i.e. all ad-hoc pairs) crashed with
+// "Page changed from static to dynamic at runtime". Force-dynamic
+// bypasses the static→dynamic promotion path entirely; the KV cache
+// still short-circuits the fan-out, and Vercel's edge CDN caches the
+// response via the `Cache-Control: s-maxage=60` header on the route.
+export const dynamic = "force-dynamic";
 // Per-dimension variant fetches fan out N chain + N region loadBenchmark
 // calls per shared bench. Cached, but cold ISR regeneration needs head
 // room above the 60 s default to avoid mid-flight timeouts on a pair
@@ -178,7 +186,7 @@ export async function generateMetadata({
   if (!hasSharedBenches(pair, a, b)) notFound();
 
   const url = `${SITE.url}/compare/${pair.slug}`;
-  const title = `${a.name} vs ${b.name}: live OpenChainBench benchmark data`;
+  const title = `${a.name} vs ${b.name}: live benchmarks`;
   const description = capDescription(
     `${a.name} vs ${b.name} side by side on every shared OpenChainBench benchmark. Live measurements, identical layout, no verdict.`,
     158,

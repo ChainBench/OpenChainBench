@@ -7,5 +7,5 @@ benchmark: bridge-quote-latency
 intro: |
   Li.Fi is a cross-chain aggregator that stitches together third-party bridges (Stargate, Across, Connext, Hop and others) and DEX aggregators behind a single `/quote` endpoint. The quote response carries a full execution plan with calldata, approval steps and gas estimates, which is convenient for a wallet integration but means the latency reflects fan-out across many underlying providers plus the time to pick a winner. Each upstream has its own SLA, and a slow leg in the cohort drags the quote even when the chosen route is fast. The trade-off is breadth for tail-latency: Li.Fi covers a long tail of bridges that intent-routed competitors do not, but pays for that breadth on the p95 of its `/quote` call. Teams move off when the latency of the fastest route they actually use exceeds what a narrower router can return for the same pair.
 
-seo_title: Li.Fi alternatives. Debridge, Mobula & Relay live quote latency benchmark
+seo_title: "Li.Fi alternatives: quote latency benchmark"
 seo_description: Compare Li.Fi alternatives on cross-chain quote latency. Debridge, Mobula and Relay measured on identical routes, refreshed every five minutes.
