@@ -151,12 +151,18 @@ export async function readPairCache<T>(
   }
   const t0 = Date.now();
   try {
+    // `cache: "no-store"` triggers Next.js "dynamic server usage" bail on
+    // static/ISR renders, which crashed every non-curated compare page
+    // (see PR #810). Instead, opt into Next.js's fetch cache with a 60s
+    // window: the KV itself has a 15-minute TTL and the inputsHash is
+    // re-checked on every read, so a 60s cross-render fetch cache is
+    // both safe (hash mismatch = miss) and useful (dedups burst reads).
     const res = await fetch(
       `${kvUrl()}/get/${encodeURIComponent(KEY_PREFIX + pairSlug)}`,
       {
         method: "GET",
         headers: authHeader(),
-        cache: "no-store",
+        next: { revalidate: 60 },
         signal: AbortSignal.timeout(2_000),
       },
     );
@@ -220,6 +226,10 @@ export function writePairCache(
       });
       const bodyBytes = body.length;
       // Upstash REST: POST /set/{key}?EX={seconds} writes with TTL.
+      // No `cache: "no-store"` — same reason as the read path above:
+      // triggers a dynamic bail during ISR renders. POST responses are
+      // never cached by Next.js's fetch cache anyway, so omitting the
+      // option is a no-op semantically.
       const res = await fetch(
         `${kvUrl()}/set/${encodeURIComponent(
           KEY_PREFIX + pairSlug,
@@ -228,7 +238,6 @@ export function writePairCache(
           method: "POST",
           headers: { ...authHeader(), "Content-Type": "application/json" },
           body,
-          cache: "no-store",
         },
       );
       const ms = Date.now() - t0;
