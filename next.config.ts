@@ -6,7 +6,7 @@ import type { NextConfig } from "next";
 // JSON.stringify of editor-controlled data, no user input, so the residual
 // XSS risk is bounded. Future hardening: move JSON-LD to <Script> with a
 // sha256 hash in script-src.
-const RELAY_WS = "wss://ocb-stream-relay-production.up.railway.app";
+const RELAY_WS = "wss://stream.openchainbench.com";
 // Origin of the standalone Remotion renderer that serves Export Video MP4s
 // (cached via sha256 at /v/<hash>.mp4). Allowed in media-src so the
 // modal's <video> tag can play the result, and in connect-src so the
