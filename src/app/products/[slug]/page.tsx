@@ -81,9 +81,14 @@ export async function generateMetadata({
   // Some registry descriptions end with a period, others do not. Normalize
   // before appending so the concatenated meta description never reads
   // "...provider Live performance..." as a run-on sentence.
-  const description = reg?.description
+  const rawDescription = reg?.description
     ? `${reg.description.replace(/[.!?]?$/, ".")} Live performance across ${benchCount} OpenChainBench ${benchWord}${winSuffix}.`
     : fallbackDescription;
+  // Google truncates meta description at ~155 chars in the SERP snippet.
+  // Long registry descriptions plus the appended "Live performance ..."
+  // sentence routinely blew past 200 chars (Ahref flagged 130+ pages).
+  // Cap at 155 with word-boundary truncation.
+  const description = capDescription(rawDescription, 155);
 
   // When the resolved provider slug is actually a chain (e.g. /products/eth-usd
   // aliases to /products/ethereum which 308s to /chains/ethereum), point

@@ -4,7 +4,7 @@ slug: token-deployment-cost
 number: "034"
 title: Cheapest blockchain to deploy a token, live USD cost across 21 L1 and L2 chains
 seo_title: "Token deployment cost 2026: cheapest chain"
-seo_description: "Live USD cost to create a fungible token on 21 chains. Same canonical OZ v5 ERC20 via eth_estimateGas on every EVM chain, SPL mint plus Metaplex metadata on Solana, Move publish on Sui and Aptos, TokenFactory on Cosmos. Refreshed every 5 minutes."
+seo_description: "Live USD cost to deploy an ERC20 on 21 chains via eth_estimateGas on the same canonical OZ v5 contract."
 subtitle: "Live USD cost to bring a fungible token into existence on each chain, using that chain's canonical method. 21 chains, 5 minute refresh, no transactions broadcast."
 
 seo_intro: |

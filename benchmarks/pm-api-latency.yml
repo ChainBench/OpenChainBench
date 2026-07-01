@@ -4,7 +4,7 @@ slug: pm-api-latency
 number: "038"
 title: Best prediction market API, ranked by live latency and uptime
 seo_title: "Best prediction market API 2026"
-seo_description: "Is the Polymarket API up right now? Live uptime and price endpoint latency for the Polymarket, Kalshi, Limitless, Manifold and Myriad APIs, probed every 5 seconds from three regions, with per venue status pages and outage history."
+seo_description: "Is the Polymarket API up? Live uptime and latency for Polymarket, Kalshi, Limitless, Manifold, Myriad price endpoints."
 subtitle: Warm price endpoint latency of five prediction market venue APIs from three regions, plus a live uptime panel that answers whether each API is up right now.
 
 category: Trading
