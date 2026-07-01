@@ -4,7 +4,7 @@ slug: pm-rate-limits
 number: "037"
 title: Prediction market API rate limits, tested with a daily ramp
 seo_title: "Prediction market API rate limits 2026"
-seo_description: "Prediction market API rate limits measured live. A daily request ramp against Polymarket, Kalshi, Limitless, Manifold and Myriad records added latency, 429 onset and queueing behaviour at each tier, plus warm and cold endpoint latency from three regions."
+seo_description: "Prediction market API rate limits measured live: daily request ramp against Polymarket, Kalshi, Limitless, Manifold, Myriad."
 subtitle: Warm latency on book, price and list endpoints of five prediction market venue APIs, plus a daily rate limit ramp that records added latency and throttle onset per request tier.
 
 category: Trading

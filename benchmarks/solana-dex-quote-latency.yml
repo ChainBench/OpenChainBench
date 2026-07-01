@@ -4,7 +4,7 @@ slug: solana-dex-quote-latency
 number: "029"
 title: Fastest Solana DEX quote API
 seo_title: "Fastest Solana DEX quote API 2026"
-seo_description: "Live ms latency benchmark for Solana DEX aggregator quote APIs. Jupiter, Mobula, OpenOcean and Raydium probed every 60s from 3 regions, p50/p90/p99 over a 24h window."
+seo_description: "Live ms latency benchmark for Solana DEX aggregator quote APIs: Jupiter, Mobula, OpenOcean, Raydium ranked."
 subtitle: Wallclock milliseconds from quote request to usable quote response.
 category: Aggregators
 status: live

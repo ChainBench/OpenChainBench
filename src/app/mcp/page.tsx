@@ -41,7 +41,7 @@ export const metadata: Metadata = pageMetadata({
   path: "/mcp",
   title: "MCP server",
   description:
-    "Connect Claude Desktop, Cursor, ChatGPT or any MCP-capable agent to OpenChainBench. Live crypto-infra benchmarks become a first-class tool for your AI assistant.",
+    "Connect Claude Desktop, Cursor, ChatGPT or any MCP-capable agent to OpenChainBench live crypto-infra benchmarks.",
 });
 
 export const revalidate = 300;

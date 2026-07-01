@@ -25,7 +25,7 @@ import { SITE } from "@/data/site";
 export const revalidate = 600;
 
 const DESCRIPTION =
-  "Browse every live ranking badge published by OpenChainBench. Search by provider or category, preview the SVG, then copy a Markdown, HTML, URL or JSON snippet for your README, docs or marketing page. Free, CC-BY-4.0.";
+  "Every OpenChainBench ranking badge. Search, preview the SVG, copy Markdown, HTML, URL or JSON for your README or docs. CC-BY-4.0.";
 
 export const metadata: Metadata = pageMetadata({
   path: "/badges",
