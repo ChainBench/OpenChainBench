@@ -61,12 +61,14 @@ export async function generateMetadata({
       type: "article",
       url,
       siteName: SITE.name,
+      images: [{ url: `${SITE.url}/opengraph-image`, width: 1200, height: 630 }],
     },
     twitter: {
       card: "summary_large_image",
       site: SITE.twitter,
       title,
       description,
+      images: [`${SITE.url}/twitter-image`],
     },
   };
 }
