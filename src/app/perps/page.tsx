@@ -28,8 +28,7 @@ const DESCRIPTION =
 
 export const metadata: import("next").Metadata = pageMetadata({
   path: "/perps",
-  title:
-    "Perpetual DEX leaderboard: Hyperliquid, Lighter, GMX, dYdX, live cross-venue ranking",
+  title: "Perpetual DEX leaderboard 2026",
   description: DESCRIPTION,
 });
 

@@ -3,7 +3,7 @@
 slug: hyperliquid-hip3-deployers
 number: "035"
 title: Hyperliquid HIP-3 deployer revenue leaderboard
-seo_title: "Hyperliquid HIP-3 dexes 2026: deployer fee revenue USD live (trade.xyz, Ventuals, Felix, HyENA, Kinetiq, Dreamcash, Paragon)"
+seo_title: "Hyperliquid HIP-3 dex deployer fees 2026"
 seo_description: "Live USD revenue collected by every HIP-3 builder-deployed dex on Hyperliquid via the on chain deployerFee field. trade.xyz, Ventuals, Dreamcash, Kinetiq, HyENA, Felix and Paragon ranked by 24h, 7d and 30d fees, with volume, unique traders and market counts, from a local hl node tailing the mainnet fill stream."
 subtitle: How much USD deployer fee revenue each HIP-3 builder-deployed dex collected over the rolling 24h, 7 day and 30 day windows. Data from a local hl node tailing every fill on mainnet.
 category: Trading

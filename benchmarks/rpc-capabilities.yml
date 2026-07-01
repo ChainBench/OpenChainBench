@@ -3,7 +3,7 @@
 slug: rpc-capabilities
 number: "010"
 title: Fastest free public RPC for Ethereum, BNB, Polygon and 7 more EVM chains
-seo_title: "Fastest free public RPC 2026: dRPC, PublicNode, 1RPC, Tenderly"
+seo_title: "Fastest free public RPC 2026"
 seo_description: "{{best_name}} leads fastest free public RPC at {{best_p50}} (eth_blockNumber p50, 24h). dRPC, PublicNode, 1RPC, Tenderly, Nodies and 10 more across 10 EVM chains."
 subtitle: HTTP round-trip latency for eth_blockNumber against free, no-key public RPC endpoints across 10 EVM chains, audited every 15 seconds.
 category: RPCs

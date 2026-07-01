@@ -7,5 +7,5 @@ benchmark: aggregator-head-lag
 intro: |
   Alchemy is an EVM-first node and API provider whose surface is shaped by its enhanced endpoints (`alchemy_getAssetTransfers`, NFT API, webhooks, getTokenBalances, the simulation and debug suite, the account-abstraction bundler) rather than by a raw RPC tuned for edge latency. Pricing is metered in compute units, which charges more for an enhanced call than for a plain `eth_call`, so the ceiling shows up first on teams streaming high-cardinality events into a backend rather than on dapp front-ends issuing single reads. Solana coverage exists but sits on a stack built around Ethereum and its L2s. Teams that need a live view of trades on Base, BNB Chain or Solana usually leave Alchemy at the point where the enhanced API list stops mapping to what the product actually reads from chain.
 
-seo_title: Alchemy alternatives. live head-lag benchmark across data providers
+seo_title: "Alchemy alternatives: live benchmark"
 seo_description: Compare Alchemy alternatives on real-time data freshness. Live head-lag against a canonical archive node, refreshed every minute and published openly.

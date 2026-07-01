@@ -3,7 +3,7 @@
 slug: wallet-labels-coverage
 number: "008"
 title: Best wallet labeling API provider
-seo_title: "Best wallet labeling API in 2026: Blockscout, Helius, Mobula, Moralis, TonAPI live coverage audit"
+seo_title: "Best wallet labeling API 2026"
 seo_description: "Live wallet labeling API leaderboard split by address kind. EOA tab measures curated entity coverage on plain wallets (CEX hot wallets, OFAC SDN, public figures); Contract tab measures smart-contract name resolution. Audited every 30 minutes across 11 chains against ~180 anchors."
 subtitle: Share of well-known addresses each provider correctly labels with an entity (CEX, DEX, multisig, sanctioned, etc.), split by EOA vs contract.
 category: Aggregators
