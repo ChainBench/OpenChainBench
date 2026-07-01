@@ -5,7 +5,7 @@
 
 export const RELAY_WS_URL =
   process.env.NEXT_PUBLIC_RELAY_WS_URL ??
-  "wss://ocb-stream-relay-production.up.railway.app/ws";
+  "wss://stream.openchainbench.com/ws";
 
 /** Default range opened on the live chart. */
 export const DEFAULT_RANGE: import("./types").RangeKey = "10m";
