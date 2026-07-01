@@ -4,7 +4,7 @@ slug: l2-block-time
 number: "009"
 title: Fastest L2 block time, live across Arbitrum, Base, Optimism and 6 more
 seo_title: "Fastest L2 block time 2026"
-seo_description: "Fastest L2 sequencer block time ranked live. Wall-clock newHeads interval for Arbitrum, Blast, Optimism, Base, zkSync, Linea, Scroll, Mantle and Taiko. p50 over 24h."
+seo_description: "Fastest L2 sequencer block time live: Arbitrum, Blast, Optimism, Base, Linea and more ranked by newHeads interval."
 subtitle: Wall-clock interval in milliseconds between two consecutive newHeads events on each L2 sequencer, refreshed continuously.
 
 per_chain_explainer:

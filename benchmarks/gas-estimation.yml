@@ -4,7 +4,7 @@ slug: gas-estimation
 number: "013"
 title: Most accurate gas oracle, live gap vs realized priority fee
 seo_title: "Most accurate gas oracle 2026"
-seo_description: "Most accurate gas oracle ranked live on Ethereum and Polygon. Gwei gap between predicted and realized priority fee in the next mined block. Ranked on the p99 gap over 24h."
+seo_description: "Most accurate gas oracle live on Ethereum and Polygon: gwei gap between predicted and realized effective_gas_price."
 subtitle: Absolute gap in gwei between each oracle's predicted priority-fee tier and the realized percentile in the next mined block, measured per chain. Ranked on the p99 gap, the worst 1% of blocks, because that is where gas spikes hurt integrations.
 
 per_chain_explainer:

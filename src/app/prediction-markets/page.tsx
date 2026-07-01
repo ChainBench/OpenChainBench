@@ -23,7 +23,7 @@ import { SITE } from "@/data/site";
  */
 
 const DESCRIPTION =
-  "Live cross venue measurement of prediction markets: volume, open interest, resolution delay, API latency and data freshness. One leaderboard, one methodology, across Polymarket, Kalshi, Limitless, Manifold and Myriad.";
+  "Cross-venue prediction market leaderboard: volume, OI, resolution delay, API latency, freshness. Polymarket, Kalshi, Limitless, Manifold, Myriad.";
 
 export const metadata: import("next").Metadata = pageMetadata({
   path: "/prediction-markets",

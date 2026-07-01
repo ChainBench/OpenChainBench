@@ -9,7 +9,7 @@ export const metadata: Metadata = pageMetadata({
   path: "/about",
   title: "About",
   description:
-    "OpenChainBench publishes open, reproducible benchmarks for crypto infrastructure: RPC latency, bridge fees, L2 finality and oracle deviation. Funded by Mobula, MIT licensed.",
+    "Open, reproducible benchmarks for crypto infrastructure: RPC latency, bridge fees, L2 finality, oracle deviation. Funded by Mobula, MIT licensed.",
 });
 
 export default function AboutPage() {

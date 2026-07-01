@@ -4,7 +4,7 @@ slug: perp-funding-stability
 number: "043"
 title: Perp DEX funding stability, 24h stddev of ETH funding ranked
 seo_title: "Perp funding stability 2026: ETH stddev"
-seo_description: "Live 24h standard deviation of ETH perpetual futures funding rate in bps across 15 major venues: Hyperliquid, Bybit, dYdX v4, Binance, OKX, Paradex, Aster, Bitget, Coinbase, Deribit, Gate, Kraken, KuCoin, Lighter, MEXC. Lower means more stable funding for carry traders and basis arbitrageurs."
+seo_description: "Live 24h stddev of ETH perpetual funding rate in bps across 15 major venues. Deepest book = smoothest rate."
 subtitle: 24h standard deviation of ETH funding rate, in basis points per 24h, across the perp-funding cohort. Lower means funding stays in a tight band, the carry trader's preferred signal.
 category: Trading
 status: live
