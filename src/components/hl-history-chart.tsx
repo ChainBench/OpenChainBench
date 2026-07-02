@@ -103,7 +103,14 @@ export function HlHistoryChart({ history }: { history: HlHistorySummary }) {
             ) : null}
           </p>
         </div>
-        <div className="inline-flex rounded-md border border-ink/15 text-[11px] overflow-hidden">
+        <div className="flex items-center gap-2">
+          <span
+            className="label-mono text-[10px] rounded border border-ink/15 px-1.5 py-0.5 text-ink-soft bg-paper-soft/40"
+            title="Y axis uses log10 scale so long-tail frontends stay legible against $1M+ leaders."
+          >
+            log10 scale
+          </span>
+          <div className="inline-flex rounded-md border border-ink/15 text-[11px] overflow-hidden">
           <button
             type="button"
             onClick={() => setMetric("fees")}
@@ -126,6 +133,7 @@ export function HlHistoryChart({ history }: { history: HlHistorySummary }) {
           >
             Volume 30d
           </button>
+          </div>
         </div>
       </div>
 
@@ -226,16 +234,29 @@ function ChartCanvas({
         if (v !== null && v > m) m = v;
       }
     }
-    return niceMax(m);
+    return niceLogMax(m);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [topFrontends, tailFrontends, metric]);
+
+  // Log10 scale on the Y axis. We compress the value into log space via
+  // log10(v + 1) so v === 0 maps cleanly to 0 (no −∞) and the +1 offset
+  // is negligible once we hit even $10. Effective floor is 1 (log10(1+1)
+  // ≈ 0.30), which keeps sub-$1 noise off the axis. Long-tail frontends
+  // in the $100–$10k range now get vertical breathing room next to the
+  // $1M+ leaders instead of collapsing into the zero line.
+  const logMin = 0; // log10(0 + 1) = 0
+  const logMax = Math.log10(yMax + 1);
+  const logDen = logMax - logMin || 1;
 
   const xFor = (t: number) => {
     const span = tRange.tMax - tRange.tMin || 1;
     return PAD_L + ((t - tRange.tMin) / span) * plotW;
   };
-  const yFor = (v: number) =>
-    PAD_T + plotH - (yMax > 0 ? (v / yMax) * plotH : 0);
+  const yFor = (v: number) => {
+    const clamped = v > 0 ? v : 0;
+    const norm = (Math.log10(clamped + 1) - logMin) / logDen;
+    return PAD_T + plotH * (1 - norm);
+  };
 
   // Multi-segment path: break the line whenever we hit a null so the
   // chart shows gaps rather than a straight fall to zero + spike back.
@@ -257,7 +278,10 @@ function ChartCanvas({
     return parts.join(" ");
   };
 
-  const ticks = [0, 0.25, 0.5, 0.75, 1];
+  // Power-of-10 gridlines from $1 → yMax. Log axis needs decade ticks
+  // (not evenly spaced fractions) so the reader can eyeball orders of
+  // magnitude directly.
+  const yTicks = useMemo(() => buildLogTicks(yMax), [yMax]);
   const monthTicks = useMemo(
     () => buildMonthTicks(tRange.tMin, tRange.tMax),
     [tRange.tMin, tRange.tMax],
@@ -328,11 +352,11 @@ function ChartCanvas({
         onPointerMove={onMove}
         onPointerLeave={() => setHoverT(null)}
       >
-        {ticks.map((t) => {
-          const y = PAD_T + plotH * (1 - t);
-          const v = yMax * t;
+        {yTicks.map((v) => {
+          const y = yFor(v);
+          const isFloor = v <= 1;
           return (
-            <g key={t}>
+            <g key={v}>
               <line
                 x1={PAD_L}
                 x2={W - PAD_R}
@@ -341,7 +365,7 @@ function ChartCanvas({
                 stroke="currentColor"
                 className="text-ink/8"
                 strokeWidth={1}
-                strokeDasharray={t === 0 ? "0" : "2 4"}
+                strokeDasharray={isFloor ? "0" : "2 4"}
               />
               <text
                 x={PAD_L - 8}
@@ -490,14 +514,23 @@ function Tooltip({
   );
 }
 
-function niceMax(v: number): number {
-  if (v <= 0) return 1;
-  const exp = Math.pow(10, Math.floor(Math.log10(v)));
-  const f = v / exp;
-  if (f <= 1) return exp;
-  if (f <= 2) return 2 * exp;
-  if (f <= 5) return 5 * exp;
-  return 10 * exp;
+/** Round up to the next decade for a log-scale ceiling ($10, $100, $1k, …).
+ *  Guarantees the topmost gridline is a clean power of 10 so labels never
+ *  read `$1.7M` or `$3.4M`. */
+function niceLogMax(v: number): number {
+  if (!Number.isFinite(v) || v <= 10) return 10;
+  return Math.pow(10, Math.ceil(Math.log10(v)));
+}
+
+/** Decade gridlines from $1 up through niceLogMax. Small enough (≤ 8
+ *  entries for a $10M ceiling) that we don't need mid-decade ticks. */
+function buildLogTicks(max: number): number[] {
+  const topExp = Math.max(1, Math.ceil(Math.log10(Math.max(max, 10))));
+  const out: number[] = [1];
+  for (let e = 1; e <= topExp; e++) {
+    out.push(Math.pow(10, e));
+  }
+  return out;
 }
 
 function fmtUSDShort(v: number): string {
