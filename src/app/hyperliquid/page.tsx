@@ -5,8 +5,6 @@ import {
   fetchHlHistory,
 } from "@/lib/hl-builder-stats";
 import { HlHubTabs } from "@/components/hl-hub-tabs";
-import { HlHistoryChart } from "@/components/hl-history-chart";
-import { HlFrontendGrid } from "@/components/hl-frontend-grid";
 import { pageMetadata } from "@/lib/page-metadata";
 import { safeJsonLd } from "@/lib/jsonld";
 
@@ -24,9 +22,11 @@ import { safeJsonLd } from "@/lib/jsonld";
  *      ...) collecting a deployer fee on every fill on their namespaced
  *      markets
  *
- * Per-frontend dashboards live at `/products/<slug>` (Hyperliquid
- * builders only). HIP-3 dexes have no per-dex page yet; the leaderboard
- * is the canonical surface.
+ * Per-frontend detail pages live at `/hyperliquid/<slug>` (12-month
+ * history + focus chart + KPIs). HIP-3 dexes have no per-dex page yet;
+ * the leaderboard is the canonical surface. `/products/<slug>` for a
+ * tracked HL builder 308-redirects into the /hyperliquid subtree so the
+ * two hubs stop competing for the same rank signal.
  */
 
 export const metadata: import("next").Metadata = pageMetadata({
@@ -88,7 +88,7 @@ export default async function HyperliquidHubPage() {
         itemListElement: linkableFrontends.slice(0, 100).map((r, i) => ({
           "@type": "ListItem",
           position: i + 1,
-          url: `https://openchainbench.com/products/${r.slug}`,
+          url: `https://openchainbench.com/hyperliquid/${r.slug}`,
           name: r.name,
         })),
       }
@@ -157,7 +157,11 @@ export default async function HyperliquidHubPage() {
 
       {frontends || hip3 ? (
         <>
-          <HlHubTabs frontends={frontends} hip3={hip3} />
+          <HlHubTabs
+            frontends={frontends}
+            hip3={hip3}
+            history={history}
+          />
 
           <p className="mt-4 text-[11px] text-ink-faint italic">
             Source: a local hl node tailing every fill on Hyperliquid
@@ -165,35 +169,9 @@ export default async function HyperliquidHubPage() {
             builder address; HIP-3 cohort attributes fills via the dex
             namespace prefix on the coin field (xyz:AAPL → xyz). Both
             cohorts publish to the same Prom; the bench pages document
-            the per-row formulas.
+            the per-row formulas. The `12m trend` column mirrors the
+            same rolling-30d fees gauge, one point per UTC day.
           </p>
-
-          {history && history.frontends.length > 0 && (
-            <section className="mt-12">
-              <h2 className="text-2xl font-semibold mb-4 text-ink">
-                12-month evolution — {history.frontends.length} active frontends
-              </h2>
-              <p className="mb-4 max-w-2xl text-sm text-ink-soft">
-                Rolling 30d fees and volume per frontend, daily-stepped over
-                the last 365 days. Same Prom gauges as the leaderboard above,
-                sampled once per UTC day.
-              </p>
-              <HlHistoryChart history={history} />
-            </section>
-          )}
-
-          {history && history.frontends.length > 0 && (
-            <section className="mt-16">
-              <h2 className="text-2xl font-semibold mb-3">
-                All {history.frontends.length} frontends
-              </h2>
-              <p className="text-sm text-ink-soft mb-6 max-w-2xl">
-                Individual 12-month sparkline per frontend. Click any card
-                for the full timeline + KPIs.
-              </p>
-              <HlFrontendGrid history={history} />
-            </section>
-          )}
         </>
       ) : (
         <p className="text-sm text-ink-faint italic">
