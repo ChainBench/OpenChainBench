@@ -47,6 +47,7 @@ import { fetchPerpCohortFresh } from "@/lib/perp-stats";
 import {
   fetchHlCohortFresh,
   fetchHlHip3CohortFresh,
+  fetchHlHistoryFresh,
 } from "@/lib/hl-builder-stats";
 import { fetchPmCohortFresh } from "@/lib/pm-stats";
 import { fetchChainKpisFresh } from "@/lib/chain-kpis";
@@ -357,6 +358,7 @@ async function sweep(iteration: number): Promise<void> {
       { key: "perp-cohort", build: () => fetchPerpCohortFresh() },
       { key: "hl-frontends", build: () => fetchHlCohortFresh() },
       { key: "hl-hip3", build: () => fetchHlHip3CohortFresh() },
+      { key: "hl-history", build: () => fetchHlHistoryFresh() },
       { key: "pm-hub", build: () => fetchPmCohortFresh() },
       { key: "search-featured", build: () => buildFeaturedLeadersFromStore() },
       // One blob per chain slug so a stale reading on one chain doesn't

@@ -251,6 +251,31 @@ export type HlHip3Summary = {
  *  misaligned payload. The cohort-snapshot module appends its own `:v1`. */
 const HL_FRONTENDS_KEY = "hl-frontends";
 const HL_HIP3_KEY = "hl-hip3";
+const HL_HISTORY_KEY = "hl-history";
+
+/** One evenly-spaced point on a rolling-window history series. `v = null`
+ *  means the underlying gauge had no sample at that timestamp (harness
+ *  gap, pre-mainnet epoch, ...) — kept as a sentinel so a range's shape
+ *  is stable across frontends and the chart can draw a gap instead of
+ *  interpolating through zero. */
+export type HlHistoryPoint = { t: number; v: number | null };
+export type HlHistoryFrontend = {
+  slug: string;
+  name: string;
+  /** Rolling 30d USD builder-fee revenue, daily-stepped over ~12 months. */
+  fees30d: HlHistoryPoint[];
+  /** Rolling 30d USD notional volume, daily-stepped over ~12 months. */
+  volume30d: HlHistoryPoint[];
+};
+export type HlHistorySummary = {
+  /** Range fetched in ms (365d). */
+  windowMs: number;
+  /** Step between points in seconds (86400 = 1 day). */
+  step: number;
+  frontends: HlHistoryFrontend[];
+  /** Unix seconds when the summary was assembled. */
+  asOf: number;
+};
 
 /**
  * Fetch a leaderboard-ready slice of every tracked HL builder, in 4
@@ -554,11 +579,185 @@ export async function fetchHlHip3Cohort(): Promise<HlHip3Summary | null> {
 }
 
 /**
+ * Uncached fetch of the 12-month rolling fees + volume series for the
+ * top ~10 Hyperliquid frontends by current fees_30d. Two range queries
+ * per frontend (fees + volume) daily-stepped over 365d. Parallelised
+ * across frontends; the Prom client's global semaphore caps the burst.
+ *
+ * Ranks by an instant vector on `hl_frontend_fees_usd_30d_v2` first so
+ * we only pay for the range queries on frontends that actually made the
+ * cut, and the leaderboard on the chart stays in sync with the /hyperliquid
+ * cohort ordering. Returns null when Prom is unreachable so the reader
+ * can fall through to whatever snapshot Upstash has instead of poisoning
+ * the ISR cache with an empty chart.
+ *
+ * Exported so the worker can call the uncached Prom path directly before
+ * parking the result in Upstash; the public reader (fetchHlHistory) goes
+ * through the snapshot layer + unstable_cache below.
+ */
+export async function fetchHlHistoryFresh(): Promise<HlHistorySummary | null> {
+  const url = promUrl();
+  if (!url) return null;
+  let prom: Prometheus;
+  try {
+    prom = new Prometheus(url);
+  } catch {
+    return null;
+  }
+
+  const specs = await getSpecs();
+  const hl = specs.find((s) => s.slug === "hyperliquid-frontends");
+  const providers = hl?.providers ?? [];
+  const nameBySlug = new Map(providers.map((p) => [p.slug, p.name]));
+
+  const currentFees = await queryVector(prom, `hl_frontend_fees_usd_30d_v2`);
+  if (!currentFees || currentFees.length === 0) return null;
+
+  const sorted = currentFees
+    .filter((r) => Number.isFinite(r.value) && r.value > 0)
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 10);
+
+  const end = Math.floor(Date.now() / 1000);
+  const start = end - 365 * 86400;
+  const step = 86400;
+
+  const frontends = await Promise.all(
+    sorted.map(async (row) => {
+      const frontend = row.labels.builder;
+      if (!frontend) return null;
+      const [feesRange, volumeRange] = await Promise.all([
+        queryRange(
+          prom,
+          `hl_frontend_fees_usd_30d_v2{builder="${frontend}"}`,
+          start,
+          end,
+          step,
+        ),
+        queryRange(
+          prom,
+          `hl_frontend_volume_usd_30d_v2{builder="${frontend}"}`,
+          start,
+          end,
+          step,
+        ),
+      ]);
+      if (!feesRange && !volumeRange) return null;
+      return {
+        slug: frontend,
+        name: nameBySlug.get(frontend) ?? frontend,
+        fees30d: feesRange ?? [],
+        volume30d: volumeRange ?? [],
+      };
+    }),
+  );
+
+  const filtered = frontends.filter(
+    (f): f is HlHistoryFrontend => f !== null,
+  );
+  if (filtered.length === 0) return null;
+
+  return {
+    windowMs: 365 * 86400 * 1000,
+    step,
+    frontends: filtered,
+    asOf: Math.floor(Date.now() / 1000),
+  };
+}
+
+/** Snapshot-first reader for the 12-month history blob. Same Upstash
+ *  → live Prom + writeback → null protocol as the two cohort readers.
+ *  The historical data changes slowly (daily stepped), so the
+ *  unstable_cache TTL is 1h rather than 60 s — no need to fan out
+ *  20 range queries against Prom on every ISR cycle. */
+async function fetchHlHistoryRaw(): Promise<HlHistorySummary | null> {
+  const snapshot = await readCohortSnapshot<HlHistorySummary>(HL_HISTORY_KEY);
+  if (snapshot) return snapshot.data;
+  const fresh = await fetchHlHistoryFresh();
+  if (fresh) {
+    try {
+      await writeCohortSnapshot(HL_HISTORY_KEY, fresh);
+    } catch (err) {
+      console.warn(
+        `hl-history writeback failed: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
+  }
+  return fresh;
+}
+
+const fetchHlHistoryCached = unstable_cache(
+  fetchHlHistoryRaw,
+  ["hl-history-v1"],
+  { revalidate: 3600, tags: ["hl-cohort", "hl-history"] },
+);
+
+export async function fetchHlHistory(): Promise<HlHistorySummary | null> {
+  return fetchHlHistoryCached();
+}
+
+/**
  * Tiny vector helper. Returns `[{ labels, value }]` from an instant
  * vector query, or empty on error/empty result. Kept local to this
  * module because Sprint 2 is the only consumer; the broader Prometheus
  * client only needs scalars.
  */
+/** Range query helper: returns evenly-stepped `{ t, v }` points for a
+ *  single-series PromQL selector. If Prom returns multiple series (which
+ *  shouldn't happen when the selector pins one label value) they're
+ *  averaged per timestamp. Missing samples become `null` so the chart
+ *  can render a gap rather than interpolating through zero. Returns null
+ *  on network / Prom error so the caller can decide to skip the frontend. */
+async function queryRange(
+  prom: Prometheus,
+  promql: string,
+  startSec: number,
+  endSec: number,
+  stepSec: number,
+): Promise<HlHistoryPoint[] | null> {
+  try {
+    const res = await prom.queryRange(
+      promql,
+      new Date(startSec * 1000),
+      new Date(endSec * 1000),
+      stepSec,
+    );
+    if (res.result.length === 0) return [];
+    const buckets = new Map<number, number[]>();
+    for (const series of res.result) {
+      for (const [ts, raw] of series.values) {
+        const v = Number(raw);
+        if (!Number.isFinite(v)) continue;
+        const list = buckets.get(ts) ?? [];
+        list.push(v);
+        buckets.set(ts, list);
+      }
+    }
+    const points: HlHistoryPoint[] = [];
+    for (let ts = startSec; ts <= endSec; ts += stepSec) {
+      const vs = buckets.get(ts);
+      if (!vs || vs.length === 0) {
+        points.push({ t: ts * 1000, v: null });
+      } else {
+        const mean = vs.reduce((s, v) => s + v, 0) / vs.length;
+        points.push({
+          t: ts * 1000,
+          v: mean === 0 ? 0 : Number(mean.toPrecision(6)),
+        });
+      }
+    }
+    return points;
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err);
+    console.warn(
+      `prom.queryRange failed (${reason}) for query: ${promql.slice(0, 200)}`,
+    );
+    return null;
+  }
+}
+
 async function queryVector(
   prom: Prometheus,
   promql: string,
