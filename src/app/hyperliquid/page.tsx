@@ -170,7 +170,7 @@ export default async function HyperliquidHubPage() {
           {history && history.frontends.length > 0 && (
             <section className="mt-12">
               <h2 className="text-2xl font-semibold mb-4 text-ink">
-                12-month evolution — top {history.frontends.length} frontends by fees
+                12-month evolution — {history.frontends.length} active frontends
               </h2>
               <p className="mb-4 max-w-2xl text-sm text-ink-soft">
                 Rolling 30d fees and volume per frontend, daily-stepped over

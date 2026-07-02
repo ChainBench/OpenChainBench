@@ -257,22 +257,34 @@ const HL_HISTORY_KEY = "hl-history";
  *  means the underlying gauge had no sample at that timestamp (harness
  *  gap, pre-mainnet epoch, ...) — kept as a sentinel so a range's shape
  *  is stable across frontends and the chart can draw a gap instead of
- *  interpolating through zero. */
+ *  interpolating through zero.
+ *  Legacy shape, kept exported for external consumers; the KV blob now
+ *  ships the compact layout below. */
 export type HlHistoryPoint = { t: number; v: number | null };
-export type HlHistoryFrontend = {
+/** Compact per-frontend payload. Timestamps are reconstructed from the
+ *  outer `t0 + step * i`. `firstIdx` drops leading nulls (pre-launch
+ *  history for late builders); intermediate nulls stay so the chart can
+ *  still draw gaps. Values are rounded to nearest USD integer. */
+export type HlHistoryFrontendCompact = {
   slug: string;
   name: string;
-  /** Rolling 30d USD builder-fee revenue, daily-stepped over ~12 months. */
-  fees30d: HlHistoryPoint[];
-  /** Rolling 30d USD notional volume, daily-stepped over ~12 months. */
-  volume30d: HlHistoryPoint[];
+  /** Index in the shared time axis of the first non-null sample. */
+  firstIdx: number;
+  /** Rolling 30d USD builder-fee revenue, one value per step from
+   *  `t0 + step * firstIdx` onwards. */
+  fees: (number | null)[];
+  /** Rolling 30d USD notional volume, aligned with `fees`. */
+  volume: (number | null)[];
 };
 export type HlHistorySummary = {
   /** Range fetched in ms (365d). */
   windowMs: number;
   /** Step between points in seconds (86400 = 1 day). */
   step: number;
-  frontends: HlHistoryFrontend[];
+  /** First timestamp (ms) of the shared axis. Consumers rebuild
+   *  `t(i) = t0 + step * 1000 * i`. */
+  t0: number;
+  frontends: HlHistoryFrontendCompact[];
   /** Unix seconds when the summary was assembled. */
   asOf: number;
 };
@@ -579,17 +591,23 @@ export async function fetchHlHip3Cohort(): Promise<HlHip3Summary | null> {
 }
 
 /**
- * Uncached fetch of the 12-month rolling fees + volume series for the
- * top ~10 Hyperliquid frontends by current fees_30d. Two range queries
- * per frontend (fees + volume) daily-stepped over 365d. Parallelised
- * across frontends; the Prom client's global semaphore caps the burst.
+ * Uncached fetch of the 12-month rolling fees + volume series for every
+ * active Hyperliquid frontend (current `fees_30d > 0`, ~98 rows). Two
+ * range queries per frontend (fees + volume) daily-stepped over 365d,
+ * batched 20 at a time so Prom isn't hammered by ~200 concurrent range
+ * scans.
  *
- * Ranks by an instant vector on `hl_frontend_fees_usd_30d_v2` first so
- * we only pay for the range queries on frontends that actually made the
- * cut, and the leaderboard on the chart stays in sync with the /hyperliquid
- * cohort ordering. Returns null when Prom is unreachable so the reader
- * can fall through to whatever snapshot Upstash has instead of poisoning
- * the ISR cache with an empty chart.
+ * The output is written in compact form to fit under the ~300 KB blob
+ * budget (Redis/Upstash comfortable range): shared time axis via `t0`
+ * + `step`, per-frontend leading-null slice via `firstIdx`, rounded USD
+ * integers instead of full floats. Empty series are dropped.
+ *
+ * Ranks the input by an instant vector on `hl_frontend_fees_usd_30d_v2`
+ * so the chart's implicit "top-first" ordering matches the /hyperliquid
+ * leaderboard and the client can colour the top N in order. Returns
+ * null when Prom is unreachable so the reader can fall through to
+ * whatever snapshot Upstash has instead of poisoning the ISR cache
+ * with an empty chart.
  *
  * Exported so the worker can call the uncached Prom path directly before
  * parking the result in Upstash; the public reader (fetchHlHistory) goes
@@ -615,54 +633,96 @@ export async function fetchHlHistoryFresh(): Promise<HlHistorySummary | null> {
 
   const sorted = currentFees
     .filter((r) => Number.isFinite(r.value) && r.value > 0)
-    .sort((a, b) => b.value - a.value)
-    .slice(0, 10);
+    .sort((a, b) => b.value - a.value);
 
   const end = Math.floor(Date.now() / 1000);
   const start = end - 365 * 86400;
   const step = 86400;
+  const t0 = start * 1000;
 
-  const frontends = await Promise.all(
-    sorted.map(async (row) => {
-      const frontend = row.labels.builder;
-      if (!frontend) return null;
-      const [feesRange, volumeRange] = await Promise.all([
-        queryRange(
-          prom,
-          `hl_frontend_fees_usd_30d_v2{builder="${frontend}"}`,
-          start,
-          end,
-          step,
-        ),
-        queryRange(
-          prom,
-          `hl_frontend_volume_usd_30d_v2{builder="${frontend}"}`,
-          start,
-          end,
-          step,
-        ),
-      ]);
-      if (!feesRange && !volumeRange) return null;
-      return {
-        slug: frontend,
-        name: nameBySlug.get(frontend) ?? frontend,
-        fees30d: feesRange ?? [],
-        volume30d: volumeRange ?? [],
-      };
-    }),
-  );
+  // Batch to keep the Prom load bounded: ~98 frontends × 2 range queries
+  // = ~200 in flight if we naively Promise.all. Groups of 20 = 5 rounds
+  // at 40 concurrent range queries.
+  const BATCH = 20;
+  const compactAll: HlHistoryFrontendCompact[] = [];
+  for (let i = 0; i < sorted.length; i += BATCH) {
+    const chunk = sorted.slice(i, i + BATCH);
+    const results = await Promise.all(
+      chunk.map(async (row) => {
+        const frontend = row.labels.builder;
+        if (!frontend) return null;
+        const [feesRange, volumeRange] = await Promise.all([
+          queryRange(
+            prom,
+            `hl_frontend_fees_usd_30d_v2{builder="${frontend}"}`,
+            start,
+            end,
+            step,
+          ),
+          queryRange(
+            prom,
+            `hl_frontend_volume_usd_30d_v2{builder="${frontend}"}`,
+            start,
+            end,
+            step,
+          ),
+        ]);
+        if (!feesRange && !volumeRange) return null;
+        return toCompactFrontend(
+          frontend,
+          nameBySlug.get(frontend) ?? frontend,
+          feesRange ?? [],
+          volumeRange ?? [],
+        );
+      }),
+    );
+    for (const r of results) {
+      if (r) compactAll.push(r);
+    }
+  }
 
-  const filtered = frontends.filter(
-    (f): f is HlHistoryFrontend => f !== null,
-  );
-  if (filtered.length === 0) return null;
+  if (compactAll.length === 0) return null;
 
   return {
     windowMs: 365 * 86400 * 1000,
     step,
-    frontends: filtered,
+    t0,
+    frontends: compactAll,
     asOf: Math.floor(Date.now() / 1000),
   };
+}
+
+/** Drop leading nulls, round to integer USD, and skip the frontend
+ *  entirely if both series are all-null. Intermediate nulls stay so the
+ *  chart can render a gap instead of interpolating across a harness
+ *  outage. */
+function toCompactFrontend(
+  slug: string,
+  name: string,
+  fees: HlHistoryPoint[],
+  volume: HlHistoryPoint[],
+): HlHistoryFrontendCompact | null {
+  const n = Math.max(fees.length, volume.length);
+  if (n === 0) return null;
+  let firstIdx = -1;
+  for (let i = 0; i < n; i++) {
+    const f = fees[i]?.v ?? null;
+    const v = volume[i]?.v ?? null;
+    if (f !== null || v !== null) {
+      firstIdx = i;
+      break;
+    }
+  }
+  if (firstIdx < 0) return null;
+  const feesOut: (number | null)[] = [];
+  const volOut: (number | null)[] = [];
+  for (let i = firstIdx; i < n; i++) {
+    const f = fees[i]?.v ?? null;
+    const v = volume[i]?.v ?? null;
+    feesOut.push(f === null ? null : Math.round(f));
+    volOut.push(v === null ? null : Math.round(v));
+  }
+  return { slug, name, firstIdx, fees: feesOut, volume: volOut };
 }
 
 /** Snapshot-first reader for the 12-month history blob. Same Upstash
@@ -690,7 +750,7 @@ async function fetchHlHistoryRaw(): Promise<HlHistorySummary | null> {
 
 const fetchHlHistoryCached = unstable_cache(
   fetchHlHistoryRaw,
-  ["hl-history-v1"],
+  ["hl-history-v2-compact"],
   { revalidate: 3600, tags: ["hl-cohort", "hl-history"] },
 );
 
