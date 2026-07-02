@@ -6,6 +6,7 @@ import {
 } from "@/lib/hl-builder-stats";
 import { HlHubTabs } from "@/components/hl-hub-tabs";
 import { HlHistoryChart } from "@/components/hl-history-chart";
+import { HlFrontendGrid } from "@/components/hl-frontend-grid";
 import { pageMetadata } from "@/lib/page-metadata";
 import { safeJsonLd } from "@/lib/jsonld";
 
@@ -178,6 +179,19 @@ export default async function HyperliquidHubPage() {
                 sampled once per UTC day.
               </p>
               <HlHistoryChart history={history} />
+            </section>
+          )}
+
+          {history && history.frontends.length > 0 && (
+            <section className="mt-16">
+              <h2 className="text-2xl font-semibold mb-3">
+                All {history.frontends.length} frontends
+              </h2>
+              <p className="text-sm text-ink-soft mb-6 max-w-2xl">
+                Individual 12-month sparkline per frontend. Click any card
+                for the full timeline + KPIs.
+              </p>
+              <HlFrontendGrid history={history} />
             </section>
           )}
         </>
