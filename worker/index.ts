@@ -45,6 +45,7 @@ import {
 } from "@/lib/cohort-snapshot";
 import { fetchPerpCohortFresh } from "@/lib/perp-stats";
 import {
+  fetchHlBuilderStatsFresh,
   fetchHlCohortFresh,
   fetchHlHip3CohortFresh,
   fetchHlHistoryFresh,
@@ -351,12 +352,18 @@ async function sweep(iteration: number): Promise<void> {
   // featured-leaders writes.
   if (cohortSnapshotConfigured()) {
     const cohortStart = Date.now();
+    // Enumerate active HL builders once so per-builder dashboard jobs
+    // (biggest day, milestones, coin shares, ...) can be scheduled next
+    // to the cohort blob. Falls back to an empty list on brownout so a
+    // dead Prom doesn't tear down the whole cohort sweep.
+    const hlCohort = await fetchHlCohortFresh().catch(() => null);
+    const hlBuilders = hlCohort?.rows.map((r) => r.slug) ?? [];
     const cohortJobs: Array<{
       key: string;
       build: () => Promise<unknown>;
     }> = [
       { key: "perp-cohort", build: () => fetchPerpCohortFresh() },
-      { key: "hl-frontends", build: () => fetchHlCohortFresh() },
+      { key: "hl-frontends", build: () => Promise.resolve(hlCohort) },
       { key: "hl-hip3", build: () => fetchHlHip3CohortFresh() },
       { key: "hl-history", build: () => fetchHlHistoryFresh() },
       { key: "pm-hub", build: () => fetchPmCohortFresh() },
@@ -367,6 +374,14 @@ async function sweep(iteration: number): Promise<void> {
       ...CHAINS.map((c) => ({
         key: `chain-kpis:${c.slug}`,
         build: () => fetchChainKpisFresh(c.slug),
+      })),
+      // Per-builder dashboard payloads. Each fans out ~13 Prom queries,
+      // so ~91 builders × 13 = ~1200 queries; the Prom client's 64-slot
+      // global semaphore keeps the concurrency bounded and the whole
+      // batch typically completes in a few seconds.
+      ...hlBuilders.map((slug) => ({
+        key: `hl-builder:${slug}`,
+        build: () => fetchHlBuilderStatsFresh(slug),
       })),
     ];
     const results = await Promise.allSettled(
