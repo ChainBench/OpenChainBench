@@ -52,6 +52,11 @@ export type HlArchiveDailyPoint = {
 };
 
 export type HlArchiveBuilder = {
+  /** OCB provider slug (e.g. "phantom-perps"). Emitted by hl-archive from
+   *  its builders.json registry so the frontend can look up a builder
+   *  without maintaining its own address→slug map. Empty when the
+   *  registry entry has no slug set (should never happen in prod). */
+  slug: string;
   name: string;
   windows: Partial<Record<HlArchiveWindow, HlArchiveWindowTotals>>;
   timeseries_daily?: HlArchiveDailyPoint[];
