@@ -48,6 +48,9 @@ import {
   fetchHlCohortFresh,
   fetchHlHip3CohortFresh,
 } from "@/lib/hl-builder-stats";
+import { fetchPmCohortFresh } from "@/lib/pm-stats";
+import { fetchChainKpisFresh } from "@/lib/chain-kpis";
+import { CHAINS } from "@/lib/chains";
 import { buildFeaturedLeadersFromStore } from "@/lib/search-featured";
 import type { Benchmark, MetricPanel } from "@/types/benchmark";
 import type { Spec } from "@/lib/spec-schema";
@@ -354,7 +357,15 @@ async function sweep(iteration: number): Promise<void> {
       { key: "perp-cohort", build: () => fetchPerpCohortFresh() },
       { key: "hl-frontends", build: () => fetchHlCohortFresh() },
       { key: "hl-hip3", build: () => fetchHlHip3CohortFresh() },
+      { key: "pm-hub", build: () => fetchPmCohortFresh() },
       { key: "search-featured", build: () => buildFeaturedLeadersFromStore() },
+      // One blob per chain slug so a stale reading on one chain doesn't
+      // pollute the others. Small enough that the Promise.allSettled loop
+      // absorbs 20+ jobs without meaningful sweep-time overhead.
+      ...CHAINS.map((c) => ({
+        key: `chain-kpis:${c.slug}`,
+        build: () => fetchChainKpisFresh(c.slug),
+      })),
     ];
     const results = await Promise.allSettled(
       cohortJobs.map(async ({ key, build }) => {
