@@ -61,11 +61,31 @@ const TOP_COLORED = 20;
 
 type Metric = "fees" | "volume";
 
-export function HlHistoryChart({ history }: { history: HlHistorySummary }) {
+export function HlHistoryChart({
+  history,
+  focusSlugs,
+}: {
+  history: HlHistorySummary;
+  /** When provided, only these slugs render (all in colour, no grey
+   *  long-tail overlay, no top/tail split). Powers the per-frontend
+   *  detail page at `/hyperliquid/[slug]`. */
+  focusSlugs?: string[];
+}) {
   const [metric, setMetric] = useState<Metric>("fees");
   const [pinnedSlug, setPinnedSlug] = useState<string | null>(null);
 
-  const activeFrontends = history.frontends;
+  const focusSet = useMemo(
+    () => (focusSlugs && focusSlugs.length > 0 ? new Set(focusSlugs) : null),
+    [focusSlugs],
+  );
+
+  const activeFrontends = useMemo(
+    () =>
+      focusSet
+        ? history.frontends.filter((f) => focusSet.has(f.slug))
+        : history.frontends,
+    [history.frontends, focusSet],
+  );
   if (activeFrontends.length === 0) {
     return (
       <p className="text-sm text-ink-faint italic">
@@ -74,8 +94,11 @@ export function HlHistoryChart({ history }: { history: HlHistorySummary }) {
     );
   }
 
-  const topFrontends = activeFrontends.slice(0, TOP_COLORED);
-  const tailFrontends = activeFrontends.slice(TOP_COLORED);
+  // Focus mode: every requested slug gets a colour; skip the grey tail.
+  const topFrontends = focusSet
+    ? activeFrontends
+    : activeFrontends.slice(0, TOP_COLORED);
+  const tailFrontends = focusSet ? [] : activeFrontends.slice(TOP_COLORED);
 
   return (
     <div
