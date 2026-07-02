@@ -93,6 +93,11 @@ export function LedgerTable({
   const unit = activePanel?.unit ?? benchmark.unit;
   const higherIsBetter = activePanel?.higherIsBetter ?? benchmark.higherIsBetter;
   const panelActive = !!activePanel;
+  // Cost/percentage/count benches don't have a distribution to summarise —
+  // p50/p90/p99 collapse to the same number and the header "Latency
+  // aggregates" reads as a template bug on a USD leaderboard.
+  const isLatencyUnit = unit === "ms" || unit === "s" || unit === "sec" || unit === "slots";
+  const singleValueColumn = !isLatencyUnit && !panelActive;
   // Custom column mode: benches that repurpose the p50/p90/p99/mean slots
   // (USD revenue leaderboards) declare ledger_columns in their YAML so
   // every column carries an honest label + unit, and panel-backed columns
@@ -323,14 +328,22 @@ export function LedgerTable({
               Product
             </th>
             <th
-              colSpan={customCols ? customCols.length + 1 : activePanel ? 2 : 5}
+              colSpan={
+                customCols
+                  ? customCols.length + 1
+                  : activePanel || singleValueColumn
+                    ? 2
+                    : 5
+              }
               className="border-y-2 border-ink py-2 px-3 text-center hidden md:table-cell"
             >
               {customCols
                 ? benchmark.metric
                 : activePanel
                   ? activePanel.label
-                  : "Latency aggregates"}
+                  : singleValueColumn
+                    ? benchmark.metric
+                    : "Latency aggregates"}
             </th>
             <th className="border-y-2 border-ink py-2 px-3 text-right md:hidden">
               {customCols ? colLabel(customCols[0]) : activePanel ? "Value" : "p50"}
@@ -380,7 +393,7 @@ export function LedgerTable({
                   {colLabel(c)}
                 </SortableHeader>
               ))
-            ) : panelActive ? (
+            ) : panelActive || singleValueColumn ? (
               // Panel sort owns the table: a single honest "Value" column
               // instead of p50/p90/p99/Mean headers over dashed-out cells
               // (a USD volume sort labeled "p50" reads as a bug).
@@ -476,7 +489,11 @@ export function LedgerTable({
           <tr className="border-b border-ink">
             <th
               colSpan={
-                (customCols ? 6 + customCols.length : panelActive ? 7 : 10) +
+                (customCols
+                  ? 6 + customCols.length
+                  : panelActive || singleValueColumn
+                    ? 7
+                    : 10) +
                 (hasSlots ? 1 : 0) +
                 (secondary ? 1 : 0)
               }
@@ -495,6 +512,7 @@ export function LedgerTable({
               fieldValue={fieldValue}
               maxValue={maxValue}
               panelActive={panelActive}
+              singleValueColumn={singleValueColumn}
               hasSecondary={!!secondary}
               hasSlots={hasSlots}
               customCells={customCols?.map((c) => ({
@@ -529,6 +547,7 @@ function Row({
   fieldValue,
   maxValue,
   panelActive,
+  singleValueColumn,
   hasSecondary,
   hasSlots,
   customCells,
@@ -548,6 +567,7 @@ function Row({
   fieldValue: number;
   maxValue: number;
   panelActive: boolean;
+  singleValueColumn: boolean;
   hasSecondary: boolean;
   hasSlots: boolean;
   /** Custom-column mode (benchmark.ledgerColumns): one pre-resolved
@@ -729,7 +749,7 @@ function Row({
                 {c.v != null ? fmtUnit(c.v, c.unit) : "-"}
               </td>
             ))
-          ) : panelActive ? null : (
+          ) : panelActive || singleValueColumn ? null : (
             <>
               <td className="py-2.5 px-3 text-right text-ink-soft whitespace-nowrap hidden md:table-cell">
                 {fmtUnit(r.ms.p90, unit)}
