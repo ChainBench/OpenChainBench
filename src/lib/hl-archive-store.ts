@@ -85,6 +85,7 @@ function parseBuilder(raw: unknown): HlArchiveBuilder | null {
   if (!raw || typeof raw !== "object") return null;
   const r = raw as Record<string, unknown>;
   if (typeof r.name !== "string") return null;
+  const slug = typeof r.slug === "string" ? r.slug : "";
   const windowsRaw = r.windows;
   if (!windowsRaw || typeof windowsRaw !== "object") return null;
   const windows: Partial<Record<HlArchiveWindow, HlArchiveWindowTotals>> = {};
@@ -100,7 +101,7 @@ function parseBuilder(raw: unknown): HlArchiveBuilder | null {
       .map(parseDailyPoint)
       .filter((p): p is HlArchiveDailyPoint => p !== null);
   }
-  return { name: r.name, windows, timeseries_daily };
+  return { slug, name: r.name, windows, timeseries_daily };
 }
 
 function parseSnapshot(raw: string): ArchiveSnapshot | null {
@@ -143,6 +144,21 @@ const getArchiveCached = unstable_cache(
 
 export async function getArchive(): Promise<ArchiveSnapshot | null> {
   return getArchiveCached();
+}
+
+/** Returns the archive entry matching `slug`, or null if unknown. The
+ *  archive map is keyed by builder address, so we linear-scan the
+ *  ~100 rows once per hit — trivially cheap, and the caller wrapping
+ *  a per-slug route already hits `unstable_cache` upstream. */
+export async function getArchiveBuilderBySlug(
+  slug: string,
+): Promise<HlArchiveBuilder | null> {
+  const snap = await getArchive();
+  if (!snap) return null;
+  for (const b of Object.values(snap.builders)) {
+    if (b.slug === slug) return b;
+  }
+  return null;
 }
 
 export function hlArchiveConfigured(): boolean {
