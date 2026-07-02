@@ -3,18 +3,33 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ProviderLogo } from "@/components/provider-logo";
-import type { HlCohortRow } from "@/lib/hl-builder-stats";
+import { HlSparkline } from "@/components/hl-sparkline";
+import type {
+  HlCohortRow,
+  HlHistoryFrontendCompact,
+} from "@/lib/hl-builder-stats";
 
 /**
  * Sortable + searchable leaderboard of every tracked Hyperliquid
  * frontend. Data is passed in from the SSR pass so the initial paint
  * is fully populated (good for SEO and TTFB); the client only handles
  * interaction state.
+ *
+ * When a `historyBySlug` map is provided the row renders a compact
+ * 12-month sparkline in the trend column (matches the parent hub's
+ * per-frontend detail page). Slugs missing from the map render an
+ * em-dash so builders without a history sample don't blank the column.
  */
 
 type SortKey = "revenue30d" | "volume30d" | "users30d" | "cohortVolumeShare24h";
 
-export function HlCohortLeaderboard({ rows }: { rows: HlCohortRow[] }) {
+export function HlCohortLeaderboard({
+  rows,
+  historyBySlug,
+}: {
+  rows: HlCohortRow[];
+  historyBySlug?: Map<string, HlHistoryFrontendCompact>;
+}) {
   const [sortKey, setSortKey] = useState<SortKey>("revenue30d");
   const [sortDir, setSortDir] = useState<"desc" | "asc">("desc");
   const [q, setQ] = useState("");
@@ -92,47 +107,65 @@ export function HlCohortLeaderboard({ rows }: { rows: HlCohortRow[] }) {
               >
                 % cohort 24h
               </ThSort>
+              {historyBySlug && <Th>12m trend</Th>}
               <Th> </Th>
             </tr>
           </thead>
           <tbody>
-            {filtered.map((r, i) => (
-              <tr
-                key={r.slug}
-                className="border-t border-ink/5 hover:bg-paper-soft/40 transition-colors"
-              >
-                <Td muted mono>
-                  {i + 1}
-                </Td>
-                <Td>
-                  <Link
-                    href={`/products/${r.slug}`}
-                    className="flex items-center gap-2 min-w-0 hover:underline"
-                  >
-                    <ProviderLogo slug={r.slug} name={r.name} size={18} />
-                    <span className="font-medium text-ink truncate">
-                      {r.name}
-                    </span>
-                  </Link>
-                </Td>
-                <Td mono>{fmtUSD(r.revenue30d)}</Td>
-                <Td mono>{fmtUSD(r.volume30d)}</Td>
-                <Td mono>{fmtCount(r.users30d)}</Td>
-                <Td mono>{fmtPct(r.cohortVolumeShare24h)}</Td>
-                <Td>
-                  <Link
-                    href={`/products/${r.slug}`}
-                    className="text-[11px] text-ink-faint hover:text-ink"
-                  >
-                    Open →
-                  </Link>
-                </Td>
-              </tr>
-            ))}
+            {filtered.map((r, i) => {
+              const hist = historyBySlug?.get(r.slug);
+              return (
+                <tr
+                  key={r.slug}
+                  className="border-t border-ink/5 hover:bg-paper-soft/40 transition-colors"
+                >
+                  <Td muted mono>
+                    {i + 1}
+                  </Td>
+                  <Td>
+                    <Link
+                      href={`/hyperliquid/${r.slug}`}
+                      className="flex items-center gap-2 min-w-0 hover:underline"
+                    >
+                      <ProviderLogo slug={r.slug} name={r.name} size={18} />
+                      <span className="font-medium text-ink truncate">
+                        {r.name}
+                      </span>
+                    </Link>
+                  </Td>
+                  <Td mono>{fmtUSD(r.revenue30d)}</Td>
+                  <Td mono>{fmtUSD(r.volume30d)}</Td>
+                  <Td mono>{fmtCount(r.users30d)}</Td>
+                  <Td mono>{fmtPct(r.cohortVolumeShare24h)}</Td>
+                  {historyBySlug && (
+                    <Td>
+                      {hist ? (
+                        <HlSparkline values={hist.fees} width={160} height={24} />
+                      ) : (
+                        <span
+                          className="text-[11px] text-ink-faint"
+                          style={{ fontFamily: "var(--font-mono, monospace)" }}
+                        >
+                          —
+                        </span>
+                      )}
+                    </Td>
+                  )}
+                  <Td>
+                    <Link
+                      href={`/hyperliquid/${r.slug}`}
+                      className="text-[11px] text-ink-faint hover:text-ink"
+                    >
+                      Open →
+                    </Link>
+                  </Td>
+                </tr>
+              );
+            })}
             {filtered.length === 0 && (
               <tr>
                 <td
-                  colSpan={7}
+                  colSpan={historyBySlug ? 8 : 7}
                   className="px-3 py-8 text-center text-[12px] text-ink-faint"
                 >
                   No builder matches &ldquo;{q}&rdquo;.

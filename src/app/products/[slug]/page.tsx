@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ArrowUpRight } from "lucide-react";
 import { getProvider } from "@/lib/providers";
@@ -58,6 +58,17 @@ export async function generateMetadata({
   params: Promise<Params>;
 }): Promise<Metadata> {
   const { slug } = await params;
+  // Tracked Hyperliquid frontends live under /hyperliquid/<slug> now. The
+  // page component 308-redirects, but generateMetadata runs first for the
+  // <head> injection — return the canonical + redirect-safe metadata so
+  // crawlers that peek at the response before the 308 fires still see the
+  // right canonical target.
+  if (await isHlBuilderSlug(slug)) {
+    const canonicalUrl = `${SITE.url}/hyperliquid/${slug}`;
+    return {
+      alternates: { canonical: canonicalUrl },
+    };
+  }
   const p = await getProvider(slug);
   if (!p) return {};
   const reg = getProviderRegistry(p.slug);
@@ -124,6 +135,13 @@ export default async function ProviderPage({
   params: Promise<Params>;
 }) {
   const { slug } = await params;
+  // /hyperliquid/<slug> is the canonical detail surface for tracked HL
+  // frontends (12-month focus chart + peer group + KPI strip). Redirect
+  // /products/<hl-slug> straight there so backlinks + old SERP entries
+  // land on the richer hub without splitting rank signal across two URLs.
+  if (await isHlBuilderSlug(slug)) {
+    redirect(`/hyperliquid/${slug}`);
+  }
   const p = await getProvider(slug);
   if (!p) notFound();
   const reg = getProviderRegistry(p.slug);
