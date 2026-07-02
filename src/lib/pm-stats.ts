@@ -20,7 +20,12 @@
  * are rendered with null fields; the page degrades gracefully.
  */
 
+import { unstable_cache } from "next/cache";
 import { Prometheus } from "@/lib/prometheus";
+import {
+  readCohortSnapshot,
+  writeCohortSnapshot,
+} from "@/lib/cohort-snapshot";
 
 export type PmVenueType = "onchain" | "offchain";
 
@@ -93,6 +98,12 @@ function promUrl(): string | null {
   return process.env.PROMETHEUS_URL?.trim() || null;
 }
 
+/** Upstash key for the pm-hub cohort blob, written by the materialize
+ *  worker after every tierA sweep. Bump the suffix if the summary shape
+ *  changes so a stale-shape blob can never deserialize into a misaligned
+ *  payload. The cohort-snapshot module appends its own `:v1`. */
+const PM_HUB_KEY = "pm-hub";
+
 /**
  * Fetch the venue + data feed cohort in one Promise.all fan out. Returns
  * null when Prom is unreachable so the page renders a configuration
@@ -100,8 +111,12 @@ function promUrl(): string | null {
  * has no series yet (harness not yet deployed) returns a fully populated
  * shape with every numeric field nulled; the leaderboard then shows
  * dashes and the page stays useful.
+ *
+ * Exported so the materialize worker can call the uncached Prom path
+ * directly before parking the result in Upstash; the public reader
+ * (fetchPmCohort) goes through the snapshot layer + unstable_cache below.
  */
-export async function fetchPmCohort(): Promise<PmCohortSummary | null> {
+export async function fetchPmCohortFresh(): Promise<PmCohortSummary | null> {
   const url = promUrl();
   if (!url) return null;
   let prom: Prometheus;
@@ -268,6 +283,41 @@ export async function fetchPmCohort(): Promise<PmCohortSummary | null> {
     },
     asOf: Math.floor(Date.now() / 1000),
   };
+}
+
+/**
+ * Snapshot-first reader for the pm-hub cohort. Same protocol as the
+ * /hyperliquid and /perps hubs: Upstash blob → live Prom + writeback →
+ * null. The 60 s unstable_cache wrapper around this collapses concurrent
+ * requests; the worker keeps the Upstash blob fresh so the typical
+ * render never touches Prom.
+ */
+async function fetchPmCohortRaw(): Promise<PmCohortSummary | null> {
+  const snapshot = await readCohortSnapshot<PmCohortSummary>(PM_HUB_KEY);
+  if (snapshot) return snapshot.data;
+  const fresh = await fetchPmCohortFresh();
+  if (fresh) {
+    try {
+      await writeCohortSnapshot(PM_HUB_KEY, fresh);
+    } catch (err) {
+      console.warn(
+        `pm-hub writeback failed: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
+  }
+  return fresh;
+}
+
+const fetchPmCohortCached = unstable_cache(
+  fetchPmCohortRaw,
+  ["pm-hub-cohort-v1"],
+  { revalidate: 60, tags: ["pm-cohort"] },
+);
+
+export async function fetchPmCohort(): Promise<PmCohortSummary | null> {
+  return fetchPmCohortCached();
 }
 
 function median(values: number[]): number {
