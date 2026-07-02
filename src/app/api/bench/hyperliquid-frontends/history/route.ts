@@ -160,6 +160,7 @@ export async function GET(req: NextRequest) {
       volume_usd: w.volume_usd,
       fees_usd: w.fees_usd,
       fills: w.fills,
+      users: w.users,
     });
     if (b.timeseries_daily && b.timeseries_daily.length > 0) {
       timeseriesBySlug[addr] = b.timeseries_daily;
