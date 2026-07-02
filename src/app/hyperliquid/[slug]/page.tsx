@@ -2,24 +2,34 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
+  fetchHlBuilderStats,
   fetchHlCohort,
   fetchHlHistory,
   type HlHistoryFrontendCompact,
 } from "@/lib/hl-builder-stats";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { HlHistoryChart } from "@/components/hl-history-chart";
+import { HlBuilderDashboard } from "@/components/hl-builder-dashboard";
 import { pageMetadata } from "@/lib/page-metadata";
 import { safeJsonLd } from "@/lib/jsonld";
 
 /**
  * Per-frontend detail page for the Hyperliquid grid overview. Server
  * component rendering:
- *   - hero: name + current fees_30d
- *   - KPI strip: Fees 30d, Volume 30d, First day active, Peak fees all-time
- *   - full 12-month chart via `HlHistoryChart` in focus mode (this slug
- *     only, in colour)
+ *   - hero: name + current fees_30d + first-day / peak-fees badges
+ *   - rich `HlBuilderDashboard`: HyperTracker-parity KPI grid, 30d
+ *     performance chart with biggest-day marker, coin-share donut,
+ *     user-percentile bar, milestone cards, top-users leaderboard.
+ *     Ported from the legacy `/products/<hl-slug>` surface after the
+ *     301 redirect so nothing is lost on the canonical URL.
+ *   - full 12-month chart via `HlHistoryChart` in focus mode (long-term
+ *     context, complementary to the ~90d dashboard chart)
  *   - peer group: 5 frontends of similar current-fees magnitude, each a
  *     link back to its own detail page
+ *
+ * When Prom is unreachable (`hlStats === null`), the dashboard is
+ * skipped and the page falls back to the minimal 4-card KPI strip so
+ * the surface still renders something useful.
  *
  * `generateStaticParams` returns every slug the history blob knows about
  * so the page routes are pre-listed at build (dynamicParams stays true,
@@ -68,9 +78,10 @@ export default async function HlFrontendPage({
   params: Promise<Params>;
 }) {
   const { slug } = await params;
-  const [history, cohort] = await Promise.all([
+  const [history, cohort, hlStats] = await Promise.all([
     fetchHlHistory(),
     fetchHlCohort(),
+    fetchHlBuilderStats(slug),
   ]);
   if (!history) notFound();
   const frontend = history.frontends.find((f) => f.slug === slug);
@@ -143,17 +154,33 @@ export default async function HlFrontendPage({
           </span>
           <span className="text-sm text-ink-soft">rolling 30d builder fees</span>
         </div>
+        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-ink-faint">
+          <span>
+            First day active:{" "}
+            <span className="text-ink-soft">{firstDay}</span>
+          </span>
+          <span>
+            Peak fees (30d):{" "}
+            <span className="text-ink-soft tabular-nums">
+              {fmtUSDShort(peakFees)}
+            </span>
+          </span>
+        </div>
       </header>
 
-      <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-10">
-        <Kpi label="Fees 30d" value={fmtUSDShort(currentFees)} />
-        <Kpi label="Volume 30d" value={fmtUSDShort(currentVolume)} />
-        <Kpi label="First day active" value={firstDay} />
-        <Kpi label="Peak fees (all-time 30d)" value={fmtUSDShort(peakFees)} />
-      </section>
+      {hlStats ? (
+        <HlBuilderDashboard stats={hlStats} name={frontend.name} />
+      ) : (
+        <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-10">
+          <Kpi label="Fees 30d" value={fmtUSDShort(currentFees)} />
+          <Kpi label="Volume 30d" value={fmtUSDShort(currentVolume)} />
+          <Kpi label="First day active" value={firstDay} />
+          <Kpi label="Peak fees (all-time 30d)" value={fmtUSDShort(peakFees)} />
+        </section>
+      )}
 
-      <section className="mb-12">
-        <h2 className="text-2xl font-semibold mb-3">12-month history</h2>
+      <section className="mt-12 mb-12">
+        <h2 className="text-2xl font-semibold mb-3">12-month evolution</h2>
         <p className="text-sm text-ink-soft mb-4 max-w-2xl">
           Rolling 30d fees and volume for {frontend.name}, daily-stepped
           over the last 365 days. Same Prom gauge as the /hyperliquid
