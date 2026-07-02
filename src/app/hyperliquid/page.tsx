@@ -1,6 +1,11 @@
 import Link from "next/link";
-import { fetchHlCohort, fetchHlHip3Cohort } from "@/lib/hl-builder-stats";
+import {
+  fetchHlCohort,
+  fetchHlHip3Cohort,
+  fetchHlHistory,
+} from "@/lib/hl-builder-stats";
 import { HlHubTabs } from "@/components/hl-hub-tabs";
+import { HlHistoryChart } from "@/components/hl-history-chart";
 import { pageMetadata } from "@/lib/page-metadata";
 import { safeJsonLd } from "@/lib/jsonld";
 
@@ -33,9 +38,10 @@ export const metadata: import("next").Metadata = pageMetadata({
 export const revalidate = 60;
 
 export default async function HyperliquidHubPage() {
-  const [frontends, hip3] = await Promise.all([
+  const [frontends, hip3, history] = await Promise.all([
     fetchHlCohort(),
     fetchHlHip3Cohort(),
+    fetchHlHistory(),
   ]);
 
   const breadcrumbLd = {
@@ -160,6 +166,20 @@ export default async function HyperliquidHubPage() {
             cohorts publish to the same Prom; the bench pages document
             the per-row formulas.
           </p>
+
+          {history && history.frontends.length > 0 && (
+            <section className="mt-12">
+              <h2 className="text-2xl font-semibold mb-4 text-ink">
+                12-month evolution — top {history.frontends.length} frontends by fees
+              </h2>
+              <p className="mb-4 max-w-2xl text-sm text-ink-soft">
+                Rolling 30d fees and volume per frontend, daily-stepped over
+                the last 365 days. Same Prom gauges as the leaderboard above,
+                sampled once per UTC day.
+              </p>
+              <HlHistoryChart history={history} />
+            </section>
+          )}
         </>
       ) : (
         <p className="text-sm text-ink-faint italic">
