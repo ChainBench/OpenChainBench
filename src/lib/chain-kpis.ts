@@ -15,7 +15,12 @@
  * encoded as every field null (the page hides the strip entirely).
  */
 
+import { unstable_cache } from "next/cache";
 import { Prometheus } from "@/lib/prometheus";
+import {
+  readCohortSnapshot,
+  writeCohortSnapshot,
+} from "@/lib/cohort-snapshot";
 
 export type ChainKpis = {
   slug: string;
@@ -41,6 +46,12 @@ function promUrl(): string | null {
   return process.env.PROMETHEUS_URL?.trim() || null;
 }
 
+/** Upstash key prefix for the per-chain KPI blobs, written by the
+ *  materialize worker on every tierA sweep. One blob per chain slug keeps
+ *  the payload tiny and makes a stale entry on one chain independent from
+ *  the others. The cohort-snapshot module appends its own `:v1`. */
+const CHAIN_KPIS_KEY_PREFIX = "chain-kpis:";
+
 /**
  * Fetch the 6 chain KPI gauges in one Promise.all. Each is independent;
  * a failure on one query doesn't drop the others (graceful per-card
@@ -49,8 +60,14 @@ function promUrl(): string | null {
  * Returns null when Prom isn't configured at all (preview / dev without
  * the env var) so the caller can render an explicit "Live KPIs require
  * Prom" banner instead of a strip full of em-dashes.
+ *
+ * Exported so the materialize worker can call the uncached Prom path
+ * directly before parking the result in Upstash; the public reader
+ * (fetchChainKpis) goes through the snapshot layer + unstable_cache below.
  */
-export async function fetchChainKpis(slug: string): Promise<ChainKpis | null> {
+export async function fetchChainKpisFresh(
+  slug: string,
+): Promise<ChainKpis | null> {
   const url = promUrl();
   if (!url) return null;
   let prom: Prometheus;
@@ -78,6 +95,43 @@ export async function fetchChainKpis(slug: string): Promise<ChainKpis | null> {
     nativePrice,
     nativeMcap,
   };
+}
+
+/**
+ * Snapshot-first reader for a single chain's KPI blob. Same protocol as
+ * the hub cohorts: Upstash blob → live Prom + writeback → null. The
+ * worker keeps the blob fresh every 60 s so the typical render never
+ * touches Prom; on Vercel prod, Prom isn't even configured, so the
+ * writeback branch never runs there and null just falls through.
+ */
+async function fetchChainKpisRaw(slug: string): Promise<ChainKpis | null> {
+  const snapshot = await readCohortSnapshot<ChainKpis>(
+    CHAIN_KPIS_KEY_PREFIX + slug,
+  );
+  if (snapshot) return snapshot.data;
+  const fresh = await fetchChainKpisFresh(slug);
+  if (fresh) {
+    try {
+      await writeCohortSnapshot(CHAIN_KPIS_KEY_PREFIX + slug, fresh);
+    } catch (err) {
+      console.warn(
+        `chain-kpis writeback failed for ${slug}: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
+  }
+  return fresh;
+}
+
+const fetchChainKpisCached = unstable_cache(
+  fetchChainKpisRaw,
+  ["chain-kpis-v1"],
+  { revalidate: 60, tags: ["chain-kpis"] },
+);
+
+export async function fetchChainKpis(slug: string): Promise<ChainKpis | null> {
+  return fetchChainKpisCached(slug);
 }
 
 /**
