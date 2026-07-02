@@ -11,12 +11,10 @@ import (
 	"time"
 )
 
-// Gram (formerly TON) wall-clock finality measurement via tonapi.io SSE stream.
-// Function/type names and the TON_API_KEY env var keep their pre-rebrand
-// identifiers so the deployed harness keeps booting without ops coordination.
+// TON wall-clock finality measurement via tonapi.io SSE stream.
 //
 // The tonapi `/v2/sse/blocks?workchain=-1` endpoint pushes one event per
-// masterchain block (~0.4-0.7 s cadence). Per the Gram (formerly TON) payment-processor
+// masterchain block (~0.4-0.7 s cadence). Per the TON payment-processor
 // docs, "a transaction is finalized once included in a masterchain
 // block" — so the wall-clock interval between block N and block N+1 is
 // the time the network needs to finalize block N. Recording the first
@@ -40,7 +38,7 @@ type tonSSEMessage struct {
 	FileHash  string `json:"file_hash"`
 }
 
-// StartTONWallClock launches a persistent SSE subscriber for Gram (formerly TON)
+// StartTONWallClock launches a persistent SSE subscriber for TON
 // masterchain. Reconnects with exponential backoff on error. When the
 // SSE stream is unavailable (tonapi gated it behind auth in 2026-06 and
 // deprecated it in favor of webhooks), falls back to fast-polling the
@@ -53,7 +51,7 @@ func StartTONWallClock() {
 			err := runTONSSE()
 			if err != nil {
 				fmt.Printf("[L1][ton] SSE error: %v (reconnecting in %v)\n", err, backoff)
-				wallClockHealth.WithLabelValues("ton").Set(0)
+				wallClockHealth.WithLabelValues("gram").Set(0)
 				// Run the REST fallback for a window, then retry SSE
 				// (the key may have been provisioned + service restarted,
 				// or tonapi may have restored the stream).
@@ -89,17 +87,17 @@ func pollTONWallClock(window time.Duration) {
 			continue
 		}
 		if !healthy {
-			wallClockHealth.WithLabelValues("ton").Set(1)
+			wallClockHealth.WithLabelValues("gram").Set(1)
 			healthy = true
 		}
-		// Cap at 2 s in poll mode: Gram masterchain cadence is 0.4-0.7 s,
+		// Cap at 2 s in poll mode: TON masterchain cadence is 0.4-0.7 s,
 		// so a multi-second "lag" here is poll aliasing (429 backoff
 		// stretching the cadence), not finality. Observed pre-cap: 10.6 s
 		// garbage samples polluting the 24h histogram.
 		st.observeSeqno(head.Seqno, 2000)
 		time.Sleep(interval)
 	}
-	wallClockHealth.WithLabelValues("ton").Set(0)
+	wallClockHealth.WithLabelValues("gram").Set(0)
 }
 
 // observeSeqno records the first-seen time of a masterchain seqno and
@@ -120,9 +118,9 @@ func (st *tonState) observeSeqno(seqno int64, maxLagMs float64) {
 	if t, ok := st.firstSeen[prev]; ok && prev > st.lastSeen {
 		lagMs := float64(now.Sub(t).Milliseconds())
 		if lagMs >= 0 && (maxLagMs == 0 || lagMs <= maxLagMs) {
-			wallClockLagGauge.WithLabelValues("ton").Set(lagMs)
-			wallClockLagSum.WithLabelValues("ton").Observe(lagMs)
-			wallClockSampleCtr.WithLabelValues("ton").Inc()
+			wallClockLagGauge.WithLabelValues("gram").Set(lagMs)
+			wallClockLagSum.WithLabelValues("gram").Observe(lagMs)
+			wallClockSampleCtr.WithLabelValues("gram").Inc()
 			mode := ""
 			if maxLagMs > 0 {
 				mode = " (poll)"
@@ -168,7 +166,7 @@ func runTONSSE() error {
 		return fmt.Errorf("status_%d", resp.StatusCode)
 	}
 
-	wallClockHealth.WithLabelValues("ton").Set(1)
+	wallClockHealth.WithLabelValues("gram").Set(1)
 	fmt.Println("[L1][ton] SSE connected, listening for masterchain blocks")
 
 	st := &tonState{firstSeen: map[int64]time.Time{}}

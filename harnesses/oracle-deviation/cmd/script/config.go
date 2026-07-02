@@ -55,9 +55,19 @@ func pairs() []PairSpec {
 		{"ETH/USD", "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419", "0xff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace", "ETHUSDT", "ETH-USD"},
 		{"SOL/USD", "0x4ffC43a60e009B551865A93d232E33Fce9f01507", "0xef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d", "SOLUSDT", "SOL-USD"},
 		{"BNB/USD", "0x14e613AC84a31f709eadbdF89C6CC390fDc9540A", "0x2f95862b045670cd22bee3114c39763a4a08beeb663b145d283c31d7d1101c4f", "BNBUSDT", "BNB-USD"},
-		{"XRP/USD", "0xCed2660c6Dd1Ffd856A5A82C67f3482d88C50b12", "0xec5d399846a9209f3fe5881d70aae9268c94339ff9817e8d18ff19fa05eea1c8", "XRPUSDT", "XRP-USD"},
-		{"ADA/USD", "0xAE48c91dF1fE419994FFDa27da09D5aC69c30f55", "0x2a01deaec9e51a579277b34b122399984d0bbf57e2458a7e42fecd2829867a0d", "ADAUSDT", "ADA-USD"},
-		{"DOGE/USD", "0x2465CefD3b488BE410b941b1d4b2767088e2A028", "0xdcef50dd0a4cd2dcc17e45df1676dcb336a11a61c69df7a0299b0150c672d25c", "DOGEUSDT", "DOGE-USD"},
+		// XRP/ADA/DOGE: Chainlink retired the Ethereum mainnet
+		// AggregatorV3 contracts for these three pairs. eth_call
+		// against the previously-published proxies (0xCed266..., 0xAE48c9...,
+		// 0x2465Ce...) now reverts in 100% of cases, which spammed
+		// ocb_oracle_scrape_errors_total at ~2.9 k errors / pair / day.
+		// Pyth / Binance / Coinbase still publish these symbols, so we
+		// keep the pair with an empty ChainlinkFeed — the poller treats
+		// empty addresses as "no Chainlink source for this pair", skips
+		// the RPC round-trip and produces no error. Restore the address
+		// the day Chainlink re-publishes mainnet feeds for these pairs.
+		{"XRP/USD", "", "0xec5d399846a9209f3fe5881d70aae9268c94339ff9817e8d18ff19fa05eea1c8", "XRPUSDT", "XRP-USD"},
+		{"ADA/USD", "", "0x2a01deaec9e51a579277b34b122399984d0bbf57e2458a7e42fecd2829867a0d", "ADAUSDT", "ADA-USD"},
+		{"DOGE/USD", "", "0xdcef50dd0a4cd2dcc17e45df1676dcb336a11a61c69df7a0299b0150c672d25c", "DOGEUSDT", "DOGE-USD"},
 		{"AVAX/USD", "0xFF3EEb22B5E3dE6e705b44749C2559d704923FD7", "0x93da3352f9f1d105fdfe4971cfa80e9dd777bfc5d0f683ebb6e1294b92137bb7", "AVAXUSDT", "AVAX-USD"},
 		{"LINK/USD", "0x2c1d072e956AFFC0D435Cb7AC38EF18d24d9127c", "0x8ac0c70fff57e9aefdf5edf44b51d62c2d433653cbb2cf5cc06bb115af04d221", "LINKUSDT", "LINK-USD"},
 		// MATIC: Polygon migrated MATIC → POL 1:1 in Sep 2024. The
