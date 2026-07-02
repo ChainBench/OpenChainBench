@@ -42,6 +42,11 @@ export type HlArchiveWindowTotals = {
   volume_usd: number;
   fees_usd: number;
   fills: number;
+  /** Sum of daily distinct users over the window (user-days). Not the
+   *  true across-days unique-users because the archive DuckDB does not
+   *  retain per-day user sets — only cardinalities — to keep storage
+   *  bounded. Absent on responses served by an older harness build. */
+  users?: number;
 };
 
 export type HlArchiveDailyPoint = {
@@ -49,6 +54,10 @@ export type HlArchiveDailyPoint = {
   vol: number;
   fees: number;
   fills: number;
+  /** Distinct user addresses seen at (day, builder). A user who traded
+   *  multiple assets that day counts once. Absent on responses served
+   *  by an older harness build. */
+  users?: number;
 };
 
 export type HlArchiveBuilder = {
@@ -76,6 +85,11 @@ export type HlArchiveRankedRow = {
   volume_usd: number;
   fees_usd: number;
   fills: number;
+  /** Distinct-user rollup for the row's window. Same semantic as
+   *  HlArchiveWindowTotals.users (user-days for long windows, absent
+   *  for Prom-sourced short windows because the live snapshot does
+   *  not carry a users signal today). */
+  users?: number;
   rank: number;
 };
 

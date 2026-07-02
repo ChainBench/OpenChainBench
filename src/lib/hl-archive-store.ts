@@ -66,11 +66,13 @@ function parseTotals(raw: unknown): HlArchiveWindowTotals | null {
   if (!isNumber(r.volume_usd) || !isNumber(r.fees_usd) || !isNumber(r.fills)) {
     return null;
   }
-  return {
+  const out: HlArchiveWindowTotals = {
     volume_usd: r.volume_usd,
     fees_usd: r.fees_usd,
     fills: r.fills,
   };
+  if (isNumber(r.users)) out.users = r.users;
+  return out;
 }
 
 function parseDailyPoint(raw: unknown): HlArchiveDailyPoint | null {
@@ -78,7 +80,14 @@ function parseDailyPoint(raw: unknown): HlArchiveDailyPoint | null {
   const r = raw as Record<string, unknown>;
   if (typeof r.day !== "string") return null;
   if (!isNumber(r.vol) || !isNumber(r.fees) || !isNumber(r.fills)) return null;
-  return { day: r.day, vol: r.vol, fees: r.fees, fills: r.fills };
+  const out: HlArchiveDailyPoint = {
+    day: r.day,
+    vol: r.vol,
+    fees: r.fees,
+    fills: r.fills,
+  };
+  if (isNumber(r.users)) out.users = r.users;
+  return out;
 }
 
 function parseBuilder(raw: unknown): HlArchiveBuilder | null {
@@ -136,9 +145,12 @@ async function getArchiveRaw(): Promise<ArchiveSnapshot | null> {
   }
 }
 
+// Bump the key when the wire shape changes (e.g. new `users` field on
+// TimePoint/WindowAgg) so stale in-memory Next.js caches don't keep
+// serving snapshots with missing fields after a rollout.
 const getArchiveCached = unstable_cache(
   getArchiveRaw,
-  ["hl-archive-v1"],
+  ["hl-archive-v2-users"],
   { revalidate: 60, tags: ["hl-archive"] },
 );
 
