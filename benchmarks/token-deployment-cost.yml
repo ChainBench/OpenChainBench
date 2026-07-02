@@ -70,7 +70,7 @@ findings:
   - "Sui canonical coin publish is the most expensive tracked chain on the list, around 0.3 to 0.5 USD, because Move modules are larger than ERC20 bytecode and Sui charges per byte of storage even after the rebate."
   - "Cardano native asset creation is deterministic and stable in ADA terms. The USD figure moves purely with ADA price, not congestion."
 
-source: https://github.com/MobulaFi/mobula-monorepo/tree/main/miniapps/token-deployment-cost
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/token-deployment-cost
 
 prometheus:
   window: 24h

@@ -232,11 +232,11 @@ func processBlock(ctx context.Context, buf *Buffer, blockNum uint64, chain Chain
 	}
 
 	realized := map[Tier]float64{TierP25: p25, TierP50: p50, TierP90: p90}
-	// p75/p99 are emitted by Owlracle; we approximate realized p75 =
-	// (p50 + p90)/2 and p99 = p90 to give those tiers a comparator
-	// even though we don't compute them directly. Better than
-	// dropping the metric — but the realized side is noisy for tail
-	// tiers, so the bench page should footnote this.
+	// p75/p99 are emitted by Blocknative & Owlracle; we approximate
+	// realized p75 = (p50 + p90)/2 and p99 = p90 to give those
+	// tiers a comparator even though we don't compute them directly.
+	// Better than dropping the metric — but the realized side is
+	// noisy for tail tiers, so the bench page should footnote this.
 	realized[TierP75] = (p50 + p90) / 2
 	realized[TierP99] = p90
 

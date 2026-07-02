@@ -89,7 +89,7 @@ per_chain_explainer:
     h2: Polymarket crypto resolution
     body: "Crypto price markets resolve at {{p50:crypto}} median, the fastest category. The outcome is machine checkable against price feeds the moment the window closes, so proposals arrive promptly and short verification windows suffice. High frequency up or down markets recycle continuously, which is why crypto contributes a large share of total resolutions despite modest open interest per market."
 
-source: https://github.com/MobulaFi/mobula-monorepo/tree/main/miniapps/pm-resolution-delay
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/pm-resolution-delay
 
 prometheus:
   window: 24h
