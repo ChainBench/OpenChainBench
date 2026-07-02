@@ -88,8 +88,12 @@ const PERCENTILE_ORDER: PercentileBucket["bucket"][] = [
  * vectors. Each query is bounded by a sane abort signal; one missing
  * gauge returns 0/empty rather than propagating — the page still
  * renders, the affected section is hidden cleanly.
+ *
+ * Exported so the worker can call the uncached Prom path directly before
+ * parking the result in Upstash; the public reader (fetchHlBuilderStats)
+ * goes through the snapshot layer + unstable_cache below.
  */
-async function fetchHlBuilderStatsRaw(
+export async function fetchHlBuilderStatsFresh(
   slug: string,
 ): Promise<HlBuilderStats | null> {
   const url = promUrl();
@@ -183,6 +187,35 @@ async function fetchHlBuilderStatsRaw(
     percentileShares30d,
     profitableUserPct30d: profitableUserPct30d ?? 0,
   };
+}
+
+/**
+ * Snapshot-first reader for a single builder's dashboard payload. Same
+ * protocol as the cohort readers: Upstash blob → live Prom + writeback
+ * → null. Vercel prod has no Prom access post blob-only migration, so
+ * the snapshot path is the only working code path in prod; the live
+ * fallback exists for local dev and the worker's own recovery writes.
+ */
+async function fetchHlBuilderStatsRaw(
+  slug: string,
+): Promise<HlBuilderStats | null> {
+  const snapshot = await readCohortSnapshot<HlBuilderStats>(
+    `hl-builder:${slug}`,
+  );
+  if (snapshot) return snapshot.data;
+  const fresh = await fetchHlBuilderStatsFresh(slug);
+  if (fresh) {
+    try {
+      await writeCohortSnapshot(`hl-builder:${slug}`, fresh);
+    } catch (err) {
+      console.warn(
+        `hl-builder:${slug} writeback failed: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
+  }
+  return fresh;
 }
 
 /** Cross-request cache. The raw fn fans out 13 Prom queries per builder
