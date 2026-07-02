@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { HlCohortLeaderboard } from "@/components/hl-cohort-leaderboard";
 import { HlHip3Leaderboard } from "@/components/hl-hip3-leaderboard";
 import type {
   HlCohortSummary,
   HlHip3Summary,
+  HlHistoryFrontendCompact,
+  HlHistorySummary,
 } from "@/lib/hl-builder-stats";
 
 /**
@@ -25,9 +27,11 @@ type Tab = "frontends" | "hip3";
 export function HlHubTabs({
   frontends,
   hip3,
+  history,
 }: {
   frontends: HlCohortSummary | null;
   hip3: HlHip3Summary | null;
+  history?: HlHistorySummary | null;
 }) {
   const initialTab: Tab =
     frontends && frontends.rows.length > 0 ? "frontends" : "hip3";
@@ -35,6 +39,17 @@ export function HlHubTabs({
 
   const frontendsCount = frontends?.rows.length ?? 0;
   const hip3Count = hip3?.rows.length ?? 0;
+
+  // Index the compact history array by slug once so the leaderboard rows
+  // can pull their sparkline series in O(1). Rebuilds only when the blob
+  // changes (server-side refresh cycle) so client-side sort/filter stays
+  // free of the O(rows × frontends) scan.
+  const historyBySlug = useMemo(() => {
+    if (!history) return undefined;
+    const m = new Map<string, HlHistoryFrontendCompact>();
+    for (const f of history.frontends) m.set(f.slug, f);
+    return m;
+  }, [history]);
 
   return (
     <>
@@ -62,7 +77,7 @@ export function HlHubTabs({
       </div>
 
       {tab === "frontends" && frontends && (
-        <FrontendsView data={frontends} />
+        <FrontendsView data={frontends} historyBySlug={historyBySlug} />
       )}
       {tab === "hip3" && hip3 && <Hip3View data={hip3} />}
     </>
@@ -106,7 +121,13 @@ function TabButton({
   );
 }
 
-function FrontendsView({ data }: { data: HlCohortSummary }) {
+function FrontendsView({
+  data,
+  historyBySlug,
+}: {
+  data: HlCohortSummary;
+  historyBySlug?: Map<string, HlHistoryFrontendCompact>;
+}) {
   return (
     <>
       <section className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
@@ -129,7 +150,7 @@ function FrontendsView({ data }: { data: HlCohortSummary }) {
           tip="Sum across builders. A wallet active on two frontends is counted twice (HyperTracker uses the same convention)."
         />
       </section>
-      <HlCohortLeaderboard rows={data.rows} />
+      <HlCohortLeaderboard rows={data.rows} historyBySlug={historyBySlug} />
     </>
   );
 }
