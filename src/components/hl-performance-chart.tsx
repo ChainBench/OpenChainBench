@@ -186,11 +186,14 @@ function ChartCanvas({
 
   // Render mode: bars for the two shorter ranges (readable at
   // <=90 samples); line-area for 1y so ~365 daily samples don't collapse
-  // into a wall of 1-px bars. The 30d range is the only one that carries
-  // real per-day users data (hl-archive doesn't persist daily uniques),
-  // so the users overlay only lights up on 30d.
+  // into a wall of 1-px bars. The users overlay lights up whenever the
+  // active series carries real daily uniques (peakUsers > 0) — this is
+  // 30d today (live harness), but any range whose upstream starts serving
+  // per-day uniques will auto-surface the overlay too. Ranges without
+  // that data (90d/1y from hl-archive) collapse to a revenue-only render
+  // so we don't draw a misleading flat-zero users line.
   const isLine = range === "1y";
-  const showUsersOverlay = range === "30d" && maxUsers > 0;
+  const showUsersOverlay = peakUsers > 0;
 
   // Squeeze the inter-bar gap for the mid range so 90 bars still read
   // as a histogram; 30d keeps the original breathing room.
