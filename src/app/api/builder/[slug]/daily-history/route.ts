@@ -83,7 +83,7 @@ export async function GET(
     day_unix: Math.floor(new Date(`${p.day}T00:00:00Z`).getTime() / 1000),
     fees_usd: p.fees,
     volume_usd: p.vol,
-    users: 0,
+    users: p.users ?? 0,
   }));
 
   const asOf =
