@@ -93,6 +93,7 @@ function archive(): ArchiveSnapshot {
     updated_at: "2026-06-25T00:00:00.000Z",
     builders: {
       "0xphantom": {
+        slug: "phantom",
         name: "Phantom",
         windows: {
           "1y": { volume_usd: 9_000_000, fees_usd: 90_000, fills: 12_000 },
@@ -100,6 +101,7 @@ function archive(): ArchiveSnapshot {
         },
       },
       "0xmetamask": {
+        slug: "metamask",
         name: "MetaMask",
         windows: {
           "1y": { volume_usd: 4_500_000, fees_usd: 45_000, fills: 6_000 },
@@ -107,6 +109,7 @@ function archive(): ArchiveSnapshot {
         },
       },
       "0xempty": {
+        slug: "empty",
         name: "Empty",
         windows: {
           "1y": { volume_usd: 0, fees_usd: 0, fills: 0 },
