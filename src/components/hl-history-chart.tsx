@@ -2,29 +2,33 @@
 
 import { useMemo, useRef, useState } from "react";
 import type {
-  HlHistoryFrontend,
-  HlHistoryPoint,
+  HlHistoryFrontendCompact,
   HlHistorySummary,
 } from "@/lib/hl-builder-stats";
 
 /**
- * 12-month evolution chart for the top ~10 HL frontends. Two toggleable
- * metrics (fees / volume, both 30d rolling), one line per frontend.
- * Renders as a single SVG with a shared linear Y scale, so a viewer can
- * eyeball share-of-market swings without a legend hunt.
+ * 12-month evolution chart for every active HL frontend (~98). Two
+ * toggleable metrics (fees / volume, both 30d rolling). Top-N frontends
+ * are drawn in the OCB palette; the remaining "long tail" renders in a
+ * desaturated grey overlay so the eye still gets the shape of the
+ * cohort's overall scale without the legend blowing up.
+ *
+ * The input blob is the compact shape written by the worker:
+ *   - shared time axis `t0 + step*i`
+ *   - per-frontend `firstIdx` drops leading nulls
+ *   - values are pre-rounded to integer USD
  *
  * Design goals:
- *   - Stays a single SVG. No recharts / D3. Data volume is ~10 × 365
- *     points, well inside SVG's cheap-to-render window.
+ *   - Stays a single SVG. No recharts / D3. 98 × 365 int points renders
+ *     comfortably; grey tail lines share a single `<path>` styling.
  *   - Gaps: `v === null` points break the line rather than dropping to
  *     zero. Matches the harness' "no sample this UTC day" semantic and
  *     keeps early-history cohorts (post-launch) from starting from an
  *     artificial floor.
- *   - Colours: 10-slot OCB palette, cycled if the cohort ever grows past
- *     10. Hovered line lifts to full opacity; the rest dim.
- *   - Crosshair tooltip lists every frontend's value at the hovered
- *     timestamp, ranked by value so the top of the pack is always at
- *     eye level.
+ *   - Colours: 10-slot OCB palette, cycled if the top set grows past
+ *     10. Hovered / pinned line lifts to full opacity; the rest dim.
+ *   - Crosshair tooltip lists top-N + hovered tail entry so the reader
+ *     never chases a grey line without a label.
  */
 
 const COLORS = [
@@ -38,7 +42,22 @@ const COLORS = [
   "#a855f7", // fuchsia
   "#f97316", // deep orange
   "#0ea5e9", // blue
+  "#84cc16", // lime
+  "#ec4899", // pink
+  "#06b6d4", // cyan
+  "#f59e0b", // dark amber
+  "#10b981", // green
+  "#8b5cf6", // purple
+  "#ef4444", // red
+  "#3b82f6", // indigo
+  "#d946ef", // magenta
+  "#65a30d", // olive
 ];
+
+/** How many frontends get a colour + legend entry. The rest are drawn
+ *  as a desaturated grey overlay so the chart shows the full cohort's
+ *  scale without the legend collapsing under 98 chips. */
+const TOP_COLORED = 20;
 
 type Metric = "fees" | "volume";
 
@@ -54,6 +73,9 @@ export function HlHistoryChart({ history }: { history: HlHistorySummary }) {
       </p>
     );
   }
+
+  const topFrontends = activeFrontends.slice(0, TOP_COLORED);
+  const tailFrontends = activeFrontends.slice(TOP_COLORED);
 
   return (
     <div
@@ -71,8 +93,14 @@ export function HlHistoryChart({ history }: { history: HlHistorySummary }) {
             Last 12 months · rolling 30d
           </p>
           <p className="text-sm text-ink-faint mt-0.5">
-            Daily-stepped snapshot of the top {activeFrontends.length} HL
-            frontends
+            Daily-stepped snapshot of {activeFrontends.length} HL frontends
+            {tailFrontends.length > 0 ? (
+              <>
+                {" "}
+                — top {TOP_COLORED} highlighted, {tailFrontends.length} in the
+                grey long tail
+              </>
+            ) : null}
           </p>
         </div>
         <div className="inline-flex rounded-md border border-ink/15 text-[11px] overflow-hidden">
@@ -102,13 +130,15 @@ export function HlHistoryChart({ history }: { history: HlHistorySummary }) {
       </div>
 
       <ChartCanvas
-        frontends={activeFrontends}
+        history={history}
+        topFrontends={topFrontends}
+        tailFrontends={tailFrontends}
         metric={metric}
         pinnedSlug={pinnedSlug}
       />
 
       <div className="mt-4 flex flex-wrap gap-2">
-        {activeFrontends.map((f, i) => {
+        {topFrontends.map((f, i) => {
           const color = COLORS[i % COLORS.length];
           const pinned = pinnedSlug === f.slug;
           return (
@@ -136,11 +166,15 @@ export function HlHistoryChart({ history }: { history: HlHistorySummary }) {
 }
 
 function ChartCanvas({
-  frontends,
+  history,
+  topFrontends,
+  tailFrontends,
   metric,
   pinnedSlug,
 }: {
-  frontends: HlHistoryFrontend[];
+  history: HlHistorySummary;
+  topFrontends: HlHistoryFrontendCompact[];
+  tailFrontends: HlHistoryFrontendCompact[];
   metric: Metric;
   pinnedSlug: string | null;
 }) {
@@ -153,41 +187,48 @@ function ChartCanvas({
   const plotW = W - PAD_L - PAD_R;
   const plotH = H - PAD_T - PAD_B;
 
-  const seriesOf = (f: HlHistoryFrontend): HlHistoryPoint[] =>
-    metric === "fees" ? f.fees30d : f.volume30d;
+  const stepMs = history.step * 1000;
+  const t0 = history.t0;
 
-  // Shared time axis: derive from the longest series so a frontend that
-  // launched mid-window still lines up on the shared calendar. The
-  // fallback (used only when every frontend has an empty series) reads
-  // the max `t` we can infer from the first non-empty series; if
-  // everything is empty we degrade to a 0..1 span so the SVG still lays
-  // out without pulling Date.now() inside a render-time hook.
+  const seriesOf = (f: HlHistoryFrontendCompact): (number | null)[] =>
+    metric === "fees" ? f.fees : f.volume;
+
+  const timestampAt = (f: HlHistoryFrontendCompact, i: number): number =>
+    t0 + stepMs * (f.firstIdx + i);
+
+  // Shared time axis: derive from the compact envelope. Longest series =
+  // t0 → t0 + step*(maxFirstIdx + maxLen - 1). Fall back to (t0, t0+step)
+  // so the SVG still lays out on an empty payload.
   const tRange = useMemo(() => {
     let tMin = Number.POSITIVE_INFINITY;
     let tMax = Number.NEGATIVE_INFINITY;
-    for (const f of frontends) {
-      for (const p of seriesOf(f)) {
-        if (p.t < tMin) tMin = p.t;
-        if (p.t > tMax) tMax = p.t;
-      }
+    const all = [...topFrontends, ...tailFrontends];
+    for (const f of all) {
+      const s = seriesOf(f);
+      if (s.length === 0) continue;
+      const first = timestampAt(f, 0);
+      const last = timestampAt(f, s.length - 1);
+      if (first < tMin) tMin = first;
+      if (last > tMax) tMax = last;
     }
     if (!Number.isFinite(tMin) || !Number.isFinite(tMax) || tMin === tMax) {
-      return { tMin: 0, tMax: 1 };
+      return { tMin: t0, tMax: t0 + stepMs };
     }
     return { tMin, tMax };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [frontends, metric]);
+  }, [topFrontends, tailFrontends, metric, t0, stepMs]);
 
   const yMax = useMemo(() => {
     let m = 0;
-    for (const f of frontends) {
-      for (const p of seriesOf(f)) {
-        if (p.v !== null && p.v > m) m = p.v;
+    const all = [...topFrontends, ...tailFrontends];
+    for (const f of all) {
+      for (const v of seriesOf(f)) {
+        if (v !== null && v > m) m = v;
       }
     }
     return niceMax(m);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [frontends, metric]);
+  }, [topFrontends, tailFrontends, metric]);
 
   const xFor = (t: number) => {
     const span = tRange.tMax - tRange.tMin || 1;
@@ -198,16 +239,19 @@ function ChartCanvas({
 
   // Multi-segment path: break the line whenever we hit a null so the
   // chart shows gaps rather than a straight fall to zero + spike back.
-  const pathFor = (f: HlHistoryFrontend): string => {
+  const pathFor = (f: HlHistoryFrontendCompact): string => {
+    const s = seriesOf(f);
     const parts: string[] = [];
     let inSegment = false;
-    for (const p of seriesOf(f)) {
-      if (p.v === null) {
+    for (let i = 0; i < s.length; i++) {
+      const v = s[i];
+      if (v === null) {
         inSegment = false;
         continue;
       }
       const cmd = inSegment ? "L" : "M";
-      parts.push(`${cmd} ${xFor(p.t).toFixed(1)} ${yFor(p.v).toFixed(1)}`);
+      const t = timestampAt(f, i);
+      parts.push(`${cmd} ${xFor(t).toFixed(1)} ${yFor(v).toFixed(1)}`);
       inSegment = true;
     }
     return parts.join(" ");
@@ -238,36 +282,38 @@ function ChartCanvas({
   };
 
   // Snap hover to nearest sample per frontend for the tooltip readout.
+  // Only the coloured top-N surface in the tooltip; a 98-line list would
+  // be unreadable.
   const hoverRows = useMemo(() => {
     if (hoverT === null) return null;
     const rows: { slug: string; name: string; color: string; v: number | null }[] = [];
-    for (let i = 0; i < frontends.length; i++) {
-      const f = frontends[i];
+    for (let i = 0; i < topFrontends.length; i++) {
+      const f = topFrontends[i];
       const s = seriesOf(f);
       if (s.length === 0) {
         rows.push({ slug: f.slug, name: f.name, color: COLORS[i % COLORS.length], v: null });
         continue;
       }
-      let best = s[0];
-      let bestDist = Math.abs(best.t - hoverT);
-      for (const p of s) {
-        const d = Math.abs(p.t - hoverT);
+      let bestIdx = 0;
+      let bestDist = Math.abs(timestampAt(f, 0) - hoverT);
+      for (let j = 1; j < s.length; j++) {
+        const d = Math.abs(timestampAt(f, j) - hoverT);
         if (d < bestDist) {
           bestDist = d;
-          best = p;
+          bestIdx = j;
         }
       }
       rows.push({
         slug: f.slug,
         name: f.name,
         color: COLORS[i % COLORS.length],
-        v: best.v,
+        v: s[bestIdx] ?? null,
       });
     }
     rows.sort((a, b) => (b.v ?? -1) - (a.v ?? -1));
     return rows;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hoverT, frontends, metric]);
+  }, [hoverT, topFrontends, metric, t0, stepMs]);
 
   const hoverX = hoverT !== null ? xFor(hoverT) : null;
   const hoverDate = hoverT !== null ? formatDate(hoverT) : null;
@@ -337,7 +383,24 @@ function ChartCanvas({
           );
         })}
 
-        {frontends.map((f, i) => {
+        {/* Long-tail grey overlay. Drawn first so the coloured top-N
+             paints above it. Kept as one class + one stroke so the DOM
+             stays cheap even with ~80 extra paths. */}
+        {tailFrontends.map((f) => (
+          <path
+            key={f.slug}
+            d={pathFor(f)}
+            fill="none"
+            stroke="#9ca3af"
+            strokeWidth={1}
+            strokeOpacity={pinnedSlug ? 0.05 : 0.1}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{ transition: "stroke-opacity 120ms ease-out" }}
+          />
+        ))}
+
+        {topFrontends.map((f, i) => {
           const color = COLORS[i % COLORS.length];
           const dimmed = pinnedSlug !== null && pinnedSlug !== f.slug;
           return (
