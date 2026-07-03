@@ -156,8 +156,20 @@ export function LedgerTable({
   // The chart's panel tabs still surface those providers via
   // seriesByProvider when the reader switches metric, so coverage isn't
   // lost — only the noisy ledger rows are pruned.
+  // Unresponsive cohort members: probed every cycle, (nearly) every call
+  // fails, so no latency percentile exists in the current view. Rendered
+  // as unranked, muted rows pinned BELOW the ranked field — visible with
+  // their success rate instead of silently vanishing when Prom staleness
+  // drops the latency series — and excluded from ranks, the field mean,
+  // and the data-bar scale so they can't distort any claim above.
+  const unresponsiveRows = [...results]
+    .filter((r) => r.unresponsive)
+    .sort((a, b) => b.successRate - a.successRate);
+
   const sortedAll = [...results]
     .filter((r) => {
+      // Unresponsive rows render in their own unranked block below.
+      if (r.unresponsive) return false;
       // Sample-health gate. Rows tagged "insufficient" by the load path
       // (sampleSize < 0.1 × expectedN) drop out of the ranking entirely
       // so the leaderboard cannot assert a position from a wildly
@@ -348,6 +360,33 @@ export function LedgerTable({
               embedKind={embedKind}
             />
           ))}
+          {unresponsiveRows.map((r) => (
+            <Row
+              key={r.slug}
+              r={r}
+              i={-1}
+              unit={unit}
+              value={0}
+              fieldValue={fieldValue}
+              maxValue={maxValue}
+              panelActive={panelActive}
+              singleValueColumn={singleValueColumn}
+              hasSecondary={!!secondary}
+              hasSlots={hasSlots}
+              customCells={customCols?.map((c) => ({
+                v: null,
+                unit: colUnit(c),
+              }))}
+              series={[]}
+              sparkMin={sparkMin}
+              sparkMax={sparkMax}
+              color="var(--color-ink-faint)"
+              benchmark={benchmark}
+              embedChain={embedChain}
+              embedRegion={embedRegion}
+              embedKind={embedKind}
+            />
+          ))}
         </tbody>
       </table>
     </div>
@@ -397,13 +436,19 @@ function Row({
   embedRegion: string | null;
   embedKind: string | null;
 }) {
-  const isOffline = r.availability === "unavailable";
+  // Unresponsive: in the cohort, probed, everything fails — unranked row
+  // pinned below the field with its success rate and dashed-out latency.
+  // Distinct from isOffline ("no data at all this cycle"): the counters
+  // still prove the endpoint is being measured, so we show that story.
+  const isUnresponsive = !!r.unresponsive;
+  const isOffline = !isUnresponsive && r.availability === "unavailable";
+  const isMuted = isOffline || isUnresponsive;
   const deltaPct = fieldValue > 0 ? ((value - fieldValue) / fieldValue) * 100 : 0;
   const deltaSign = deltaPct > 0 ? "+" : deltaPct < 0 ? "−" : "±";
   const barPct = Math.max(2, (value / maxValue) * 100);
 
   return (
-    <tr className={`border-b border-rule transition-colors hover:bg-paper-soft/50 ${isOffline ? "opacity-65" : ""}`}>
+    <tr className={`border-b border-rule transition-colors hover:bg-paper-soft/50 ${isMuted ? "opacity-65" : ""}`}>
       {/* Color accent. left edge of row */}
       <td
         className="p-0 align-middle"
@@ -411,12 +456,15 @@ function Row({
       >
         <span
           className="block w-[3px] h-7 rounded-sm"
-          style={{ background: isOffline ? "var(--color-ink-faint)" : color }}
+          style={{ background: isMuted ? "var(--color-ink-faint)" : color }}
           aria-hidden
         />
       </td>
       <td className="py-2.5 pr-3 text-ink-muted text-[12px]">
-        {String(i + 1).padStart(2, "0")}
+        {/* Unresponsive rows never take a rank number: best/worst SEO
+            copy and badge claims are computed from healthy rows only,
+            and a numbered dead row would contradict them. */}
+        {isUnresponsive ? "—" : String(i + 1).padStart(2, "0")}
       </td>
       {/* itemScope/itemType marks each row as a named entity so Google's
           knowledge graph can link the leaderboard back to that provider.
@@ -444,7 +492,7 @@ function Row({
               // and the link reappears automatically.
               <span
                 className="font-semibold truncate min-w-0"
-                style={{ color: isOffline ? "var(--color-ink-muted)" : color }}
+                style={{ color: isMuted ? "var(--color-ink-muted)" : color }}
                 itemProp="name"
               >
                 {r.name}
@@ -453,13 +501,13 @@ function Row({
               <Link
                 href={`/products/${r.slug}`}
                 className="font-semibold hover:underline underline-offset-2 truncate min-w-0"
-                style={{ color: isOffline ? "var(--color-ink-muted)" : color }}
+                style={{ color: isMuted ? "var(--color-ink-muted)" : color }}
                 itemProp="url"
               >
                 <span itemProp="name">{r.name}</span>
               </Link>
             )}
-            {r.tag && !isOffline && (
+            {r.tag && !isMuted && (
               <span className="hidden sm:inline-block truncate max-w-[140px] md:max-w-[220px] font-sans text-[10px] uppercase tracking-[0.14em] text-ink-muted">
                 {r.tag}
               </span>
@@ -472,7 +520,15 @@ function Row({
                 </span>
               </Hint>
             )}
-            {!isOffline && r.dataConfidence === "low" && (
+            {isUnresponsive && (
+              <Hint label="No successful probes in the current window. The endpoint is still probed on schedule, but every call fails, so no latency percentile exists. Success rate comes from the call counters, which keep recording through the outage. The row rejoins the ranking as soon as calls succeed again.">
+                <span className="inline-flex items-center gap-1 shrink-0 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-muted">
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-[var(--color-danger,#b0402e)]" aria-hidden />
+                  Unresponsive
+                </span>
+              </Hint>
+            )}
+            {!isMuted && r.dataConfidence === "low" && (
               <Hint
                 label={
                   r.sampleHealth != null
@@ -486,12 +542,12 @@ function Row({
                 </span>
               </Hint>
             )}
-            {r.type && !isOffline && (
+            {r.type && !isMuted && (
               <span className="hidden md:inline-flex">
                 <ProviderTypeBadge type={r.type} />
               </span>
             )}
-            {!isOffline && !isRegion(r.slug) && (
+            {!isMuted && !isRegion(r.slug) && (
               <span className="ml-auto pl-2 shrink-0">
                 <EmbedBadgeButton
                   benchSlug={benchmark.slug}
@@ -510,7 +566,7 @@ function Row({
               ranking can't be misread as a global #1. Indented to align
               with the name (logo width + gap = 20 + 8 = 28 px). Renders
               nothing when the bench has no per-chain leader data. */}
-          {!isOffline && (
+          {!isMuted && (
             <span className="hidden md:flex flex-wrap items-center gap-1 pl-7">
               <ChainCoverageChip
                 providerSlug={r.slug}
@@ -532,6 +588,54 @@ function Row({
         >
           Awaiting next successful scrape
         </td>
+      ) : isUnresponsive ? (
+        // Latency cells dash out (no successful probe = no latency to
+        // report) but the Success column stays populated: the reliability
+        // number IS the finding for a dead endpoint.
+        <>
+          <td className="py-2.5 px-3 text-right text-ink-faint whitespace-nowrap">
+            —
+          </td>
+          {customCells ? (
+            customCells.slice(1).map((c, idx) => (
+              <td
+                key={idx}
+                className="py-2.5 px-3 text-right text-ink-faint whitespace-nowrap hidden md:table-cell"
+              >
+                —
+              </td>
+            ))
+          ) : panelActive || singleValueColumn ? null : (
+            <>
+              <td className="py-2.5 px-3 text-right text-ink-faint whitespace-nowrap hidden md:table-cell">
+                —
+              </td>
+              <td className="py-2.5 px-3 text-right text-ink-faint whitespace-nowrap hidden md:table-cell">
+                —
+              </td>
+              <td className="py-2.5 px-3 text-right text-ink-faint whitespace-nowrap hidden md:table-cell">
+                —
+              </td>
+            </>
+          )}
+          <td className="py-2.5 px-3 text-right text-ink-faint whitespace-nowrap hidden md:table-cell">
+            —
+          </td>
+          <td className="py-2.5 px-3 text-right text-ink-soft whitespace-nowrap hidden md:table-cell">
+            {r.successRate.toFixed(2)}%
+          </td>
+          <td className="py-2.5 pl-3 text-right text-ink-faint">—</td>
+          {hasSlots && (
+            <td className="py-2.5 pl-3 text-right text-ink-faint hidden md:table-cell">
+              -
+            </td>
+          )}
+          {hasSecondary && (
+            <td className="py-2.5 pl-3 text-right text-ink-faint hidden md:table-cell">
+              -
+            </td>
+          )}
+        </>
       ) : (
         <>
           {/* Headline column with inline data bar */}

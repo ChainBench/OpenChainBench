@@ -68,6 +68,10 @@ export type RpcHubChain = {
   /** Bench display title (spec.title). */
   benchTitle: string;
   providerCount: number;
+  /** Cohort providers currently flagged unresponsive on this chain
+   *  (probed, all calls failing, no latency). Never part of
+   *  best/fastest computations — display-only context. */
+  unresponsiveCount?: number;
   best: RpcRegionBest | null;
   /** Best provider per probe region. */
   regions: Partial<Record<RpcRegionKey, RpcRegionBest>>;
@@ -195,6 +199,10 @@ async function buildChain(spec: Spec): Promise<RpcHubChain | null> {
   const leader = rows[0];
   const chain = spec.slug.replace(/-rpc$/, "");
   const leaderSeries = bench.extras.series24h?.[leader.slug];
+  // Unresponsive rows are excluded from `rows` by liveRows (they carry
+  // availability="unavailable" and zero latency), so they can't touch
+  // best/fastest — surface only their count for the chains table.
+  const unresponsiveCount = bench.results.filter((r) => r.unresponsive).length;
 
   return {
     chain,
@@ -202,6 +210,7 @@ async function buildChain(spec: Spec): Promise<RpcHubChain | null> {
     name: chainLabelForSlug(chain) ?? chain,
     benchTitle: spec.title,
     providerCount: rows.length,
+    ...(unresponsiveCount > 0 ? { unresponsiveCount } : {}),
     best: { provider: leader.slug, providerName: leader.name, p50Ms: round1(leader.ms.p50) },
     regions,
     providers: rows.map((r) => ({
@@ -331,7 +340,8 @@ async function fetchRpcHubRaw(): Promise<RpcHubSnapshot | null> {
 
 const fetchRpcHubCached = unstable_cache(
   fetchRpcHubRaw,
-  ["rpc-hub-cohort-v1"],
+  // v2: chains gained unresponsiveCount (unresponsive provider rows).
+  ["rpc-hub-cohort-v2"],
   { revalidate: 60, tags: ["rpc-cohort"] },
 );
 
