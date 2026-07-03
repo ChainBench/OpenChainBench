@@ -69,6 +69,9 @@ export async function generateMetadata({
       alternates: { canonical: canonicalUrl },
     };
   }
+  if (slug === "hyperliquid-xyz") {
+    return { alternates: { canonical: `${SITE.url}/products/hyperliquid` } };
+  }
   const p = await getProvider(slug);
   if (!p) return {};
   const reg = getProviderRegistry(p.slug);
@@ -141,6 +144,9 @@ export default async function ProviderPage({
   // land on the richer hub without splitting rank signal across two URLs.
   if (await isHlBuilderSlug(slug)) {
     redirect(`/hyperliquid/${slug}`);
+  }
+  if (slug === "hyperliquid-xyz") {
+    redirect(`/products/hyperliquid`);
   }
   const p = await getProvider(slug);
   if (!p) notFound();

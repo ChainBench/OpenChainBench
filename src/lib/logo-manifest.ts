@@ -301,6 +301,7 @@ const ALIASES: Record<string, string> = {
   sol: "solana",
   bsc: "bnb",
   hypercore: "hyperliquid", // HyperCore is the Hyperliquid trading engine, same brand
+  "hyperliquid-xyz": "hyperliquid", // HIP-3 permissionless perp on Hyperliquid, same brand
   "publicnode-feehistory": "publicnode",
   // Same brand split across two HL builder addresses; one logo is enough.
   "metamask-alt": "metamask",
