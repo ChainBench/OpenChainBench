@@ -211,7 +211,21 @@ export function RpcChainsLeaderboard({ rows }: { rows: RpcHubChain[] }) {
                     </Td>
                   );
                 })}
-                <Td mono>{r.providerCount}</Td>
+                <Td
+                  mono
+                  tip={
+                    r.unresponsiveCount
+                      ? `${r.unresponsiveCount} cohort provider${r.unresponsiveCount > 1 ? "s" : ""} currently unresponsive on ${r.name} (probed, all calls failing). Not counted in best/fastest.`
+                      : undefined
+                  }
+                >
+                  {r.providerCount}
+                  {r.unresponsiveCount ? (
+                    <span className="ml-1.5 text-[10px] text-ink-faint">
+                      +{r.unresponsiveCount} down
+                    </span>
+                  ) : null}
+                </Td>
                 <Td>
                   {r.series && r.series.length > 1 ? (
                     <Sparkline
