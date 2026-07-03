@@ -1,0 +1,204 @@
+# OpenChainBench. Bench № 048
+
+slug: avalanche-rpc
+number: "048"
+title: Fastest free Avalanche RPC, live no-key endpoint latency
+seo_title: "Fastest free Avalanche RPC 2026"
+seo_description: "{{best_name}} leads free Avalanche RPC at {{best_p50}} (eth_blockNumber p50, 24h). 6 no-key providers measured every 15s from 3 regions."
+subtitle: HTTP round-trip latency for eth_blockNumber against every free, no-key public Avalanche RPC endpoint, audited every 15 seconds from 3 regions.
+
+category: RPCs
+status: live
+metric: RPC latency
+unit: ms
+higher_is_better: false
+
+seo_intro: |
+  Avalanche's C-Chain field combines Ava Labs' official `api.avax.network` with 5 no-key multi-chain gateways. The official endpoint shows one of the tightest distributions among foundation RPCs, a contrast with the best-effort profiles on Arbitrum and Optimism. Every provider answers the identical probe every 15 seconds from us-east, eu-west and Singapore, with stale-head detection flagging anything more than 20 blocks behind the cross-provider tip.
+
+abstract: |
+  Per-chain member of the RPC latency cluster. We measure the round-trip latency of a single, identical RPC call (`eth_blockNumber`) against every no-key public Avalanche endpoint that sustains continuous probing, 6 providers, every 15 seconds, from us-east, eu-west and Singapore. The harness also classifies every response (ok / http_err / jsonrpc_err / stale / timeout) and audits archive depth every 5 minutes, so the leaderboard rewards sustained, honest availability rather than a fast error message. The cross-chain view lives on the parent rpc-capabilities benchmark; this page is the Avalanche-scoped answer with per-region breakdowns as a first-class dimension.
+
+methodology:
+  - "Cadence: every 15 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus `avg(quantile_over_time(...))`; per-region breakdowns are first-class on this page via the region tabs."
+  - "Payload: `{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_blockNumber\",\"params\":[]}`. Plain HTTP POST, identical for every endpoint, no API key in any request."
+  - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms → 10 s), so percentiles are computed via Prometheus `quantile_over_time` over the last 24 hours."
+  - "Call-result classification: `ok` (HTTP 200 + non-empty result), `http_err`, `jsonrpc_err` (HTTP 200 carrying an error body), `stale` (more than 20 blocks behind the cross-provider tip), `timeout`. Latency without reliability is a misleading ranking signal."
+  - "Archive depth: every 5 minutes we issue `eth_getBalance` at (head − depth) for depths from Geth's default pruned cap up to 5M blocks, exposing which free endpoints actually serve historical state."
+  - "This page is part of the per-chain RPC cluster derived from the cross-chain [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities) benchmark; the identical harness, methodology and exclusion rules apply on every chain."
+  - "Chain scope: every query on this page is pinned to chain=\"avalanche\". Provider coverage: 6 no-key endpoints (PublicNode, dRPC, 1RPC, Tenderly, Nodies, Avalanche). Exclusions follow the cluster-wide rules documented on the parent benchmark."
+
+findings:
+  - "{{best_name}} currently leads free Avalanche RPC at {{best_p50}} (`eth_blockNumber` p50, 24h) across 6 measured providers."
+  - "Unlike the Arbitrum and Optimism foundation endpoints, `api.avax.network` keeps a tight p50-to-p99 ratio, an official endpoint that behaves like managed infrastructure rather than a best-effort courtesy."
+  - "{{name:publicnode}} ({{p50:publicnode}}) and {{name:drpc}} ({{p50:drpc}}) give the C-Chain the same reliable gateway floor they provide on every EVM chain we measure."
+
+faq:
+  - q: "What is the fastest free Avalanche RPC right now?"
+    a: "{{best_name}} currently leads at {{best_p50}} (`eth_blockNumber` p50 over the last 24h), measured against 6 no-key providers probed every 15 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples, so the answer on this page is the answer right now, not a quarterly snapshot. Use the region tabs to see the leader from the origin closest to your deployment."
+  - q: "Which Avalanche RPCs work without an API key?"
+    a: "The 6 providers on this page: PublicNode, dRPC, 1RPC, Tenderly, Nodies, Avalanche. Every (provider, chain) pair was live-verified no-key before inclusion, and anything that key-gates, region-blocks or rate-limits below our 15-second cadence is excluded rather than listed with an asterisk."
+  - q: "Does the fastest Avalanche RPC change by region?"
+    a: "Frequently. The headline number averages three probe origins (us-east, eu-west, Singapore), but per-region leaders regularly diverge, a gateway that wins from Virginia can lose from Singapore by multiples. The region tabs at the top of the page re-scope every number on the page to a single origin; pick the one closest to where your requests actually originate."
+  - q: "How is Avalanche RPC latency measured here?"
+    a: "One identical JSON-RPC POST (`eth_blockNumber`) every 15 seconds against each provider from each of 3 regions, with the same plain HTTP client. Wall-clock round-trip is recorded at millisecond precision; p50/p90/p99 are computed via Prometheus `quantile_over_time` over 24 hours. Responses are classified (`ok` / `http_err` / `jsonrpc_err` / `stale` / `timeout`) so an endpoint stuck on an old head or returning errors behind HTTP 200 is never ranked as fastest. The harness is open source and every number on this page is a public Prometheus query you can run yourself."
+  - q: "Is the official Avalanche RPC good enough for production reads?"
+    a: "Among chain-official endpoints it is one of the strongest we measure: tight latency distribution and a high success rate rather than the best-effort tail seen on some other foundation RPCs. The usual free-tier caveats still apply (shared rate limits, no SLA), but as a read path it holds up unusually well against the commercial gateways."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
+
+prometheus:
+  window: 24h
+  freshness_metric: rpc_latency_milliseconds
+
+# Per-cell (region) ranking matrix for scoped badge claims. Chain is
+# fixed for the whole bench, so cells key on region alone.
+rank_matrix_query: avg by (provider, region) (ocb:rpc_latency_milliseconds:p50_24h{chain="avalanche"})
+
+# Region is the only dimension: chain is baked into every query.
+dimensions:
+  region:
+    - { value: all,     label: All regions }
+    - { value: us-east, label: US-East }
+    - { value: eu-west, label: EU-West }
+    - { value: sgp,     label: Singapore }
+
+providers:
+  - slug: publicnode
+    name: PublicNode
+    tag: Allnodes-operated, 70+ chains, archive on most
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to PublicNode's no-key Avalanche endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="avalanche"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="publicnode", chain="avalanche"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="publicnode", chain="avalanche"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="publicnode", chain="avalanche"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="publicnode", chain="avalanche"}) / sum(ocb:rpc_call:rate_24h{provider="publicnode", chain="avalanche"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="publicnode", chain="avalanche"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="avalanche"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="avalanche", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="avalanche", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="avalanche", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="avalanche", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="avalanche", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="avalanche", region="sgp"}[1h])
+
+  - slug: drpc
+    name: dRPC
+    tag: Decentralized RPC mesh, consensus-checked
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key Avalanche endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="avalanche"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="drpc", chain="avalanche"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="drpc", chain="avalanche"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="drpc", chain="avalanche"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="drpc", chain="avalanche"}) / sum(ocb:rpc_call:rate_24h{provider="drpc", chain="avalanche"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="drpc", chain="avalanche"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="avalanche"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="avalanche", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="avalanche", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="avalanche", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="avalanche", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="avalanche", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="avalanche", region="sgp"}[1h])
+
+  - slug: 1rpc
+    name: 1RPC
+    tag: Privacy-preserving gateway by Automata Network
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to 1RPC's no-key Avalanche endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="1rpc", chain="avalanche"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="1rpc", chain="avalanche"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="1rpc", chain="avalanche"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="1rpc", chain="avalanche"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="1rpc", chain="avalanche"}) / sum(ocb:rpc_call:rate_24h{provider="1rpc", chain="avalanche"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="1rpc", chain="avalanche"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="1rpc", chain="avalanche"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="1rpc", chain="avalanche", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="1rpc", chain="avalanche", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="1rpc", chain="avalanche", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="1rpc", chain="avalanche", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="1rpc", chain="avalanche", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="1rpc", chain="avalanche", region="sgp"}[1h])
+
+  - slug: tenderly
+    name: Tenderly
+    tag: Multi-chain public gateway, 9 chains, no key
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to Tenderly's no-key Avalanche endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tenderly", chain="avalanche"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="tenderly", chain="avalanche"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="tenderly", chain="avalanche"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="tenderly", chain="avalanche"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="tenderly", chain="avalanche"}) / sum(ocb:rpc_call:rate_24h{provider="tenderly", chain="avalanche"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="tenderly", chain="avalanche"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="tenderly", chain="avalanche"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tenderly", chain="avalanche", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="tenderly", chain="avalanche", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tenderly", chain="avalanche", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="tenderly", chain="avalanche", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tenderly", chain="avalanche", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="tenderly", chain="avalanche", region="sgp"}[1h])
+
+  - slug: nodies
+    name: Nodies
+    tag: POKT Network's decentralized public RPC successor, 7+ chains
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to Nodies's no-key Avalanche endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="nodies", chain="avalanche"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="nodies", chain="avalanche"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="nodies", chain="avalanche"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="nodies", chain="avalanche"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="nodies", chain="avalanche"}) / sum(ocb:rpc_call:rate_24h{provider="nodies", chain="avalanche"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="nodies", chain="avalanche"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="nodies", chain="avalanche"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="nodies", chain="avalanche", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="nodies", chain="avalanche", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="nodies", chain="avalanche", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="nodies", chain="avalanche", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="nodies", chain="avalanche", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="nodies", chain="avalanche", region="sgp"}[1h])
+
+  - slug: avalanche-official
+    name: Avalanche
+    tag: Ava Labs C-Chain public RPC, Avalanche C-Chain only
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to Avalanche's no-key Avalanche endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="avalanche-official", chain="avalanche"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="avalanche-official", chain="avalanche"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="avalanche-official", chain="avalanche"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="avalanche-official", chain="avalanche"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="avalanche-official", chain="avalanche"}) / sum(ocb:rpc_call:rate_24h{provider="avalanche-official", chain="avalanche"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="avalanche-official", chain="avalanche"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="avalanche-official", chain="avalanche"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="avalanche-official", chain="avalanche", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="avalanche-official", chain="avalanche", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="avalanche-official", chain="avalanche", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="avalanche-official", chain="avalanche", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="avalanche-official", chain="avalanche", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="avalanche-official", chain="avalanche", region="sgp"}[1h])
+
