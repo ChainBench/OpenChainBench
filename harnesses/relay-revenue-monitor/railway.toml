@@ -1,0 +1,11 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+# No healthcheckPath: Railway probes the $PORT it injects, not :2112
+# where the OCB harness convention listens. The process is the liveness
+# signal; restart-on-failure plus the ALL of the running poller logs are
+# enough to know if something is wrong.
+[deploy]
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
