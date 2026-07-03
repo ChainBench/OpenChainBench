@@ -11,7 +11,13 @@
 import { z } from "zod";
 import type { Benchmark } from "@/types/benchmark";
 
-export const MAT_SCHEMA_VERSION = 1;
+// v2: ProviderResult gained `unresponsive` — cohort providers whose
+// latency series went Prom-stale (failed probes record no latency) but
+// whose call counters still return samples are published as unranked
+// rows instead of being carried forward with dead latency values.
+// Bumping republishes every blob under the new shape; deploy the worker
+// BEFORE the site so v2 blobs exist when readers start asking for them.
+export const MAT_SCHEMA_VERSION = 2;
 
 /** Key layout in the store (Upstash Redis, plain strings only: hash
  *  fields cap at 32KB while strings allow 10MB requests). */
