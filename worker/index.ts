@@ -51,6 +51,7 @@ import {
   fetchHlHistoryFresh,
 } from "@/lib/hl-builder-stats";
 import { fetchPmCohortFresh } from "@/lib/pm-stats";
+import { buildRpcHubSnapshotFresh } from "@/lib/rpc-hub-stats";
 import { fetchChainKpisFresh } from "@/lib/chain-kpis";
 import { CHAINS } from "@/lib/chains";
 import { buildFeaturedLeadersFromStore } from "@/lib/search-featured";
@@ -367,6 +368,10 @@ async function sweep(iteration: number): Promise<void> {
       { key: "hl-hip3", build: () => fetchHlHip3CohortFresh() },
       { key: "hl-history", build: () => fetchHlHistoryFresh() },
       { key: "pm-hub", build: () => fetchPmCohortFresh() },
+      // Cross-chain RPC hub (/rpc). Store-only builder: folds the
+      // `-rpc` bench blobs this sweep just published into one snapshot,
+      // so it must run AFTER the tier-A materialization above.
+      { key: "rpc-hub", build: () => buildRpcHubSnapshotFresh() },
       { key: "search-featured", build: () => buildFeaturedLeadersFromStore() },
       // One blob per chain slug so a stale reading on one chain doesn't
       // pollute the others. Small enough that the Promise.allSettled loop
