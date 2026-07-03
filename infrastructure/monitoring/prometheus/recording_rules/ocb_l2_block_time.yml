@@ -1,0 +1,15 @@
+# Recording rules for OCB bench 009 (l2-block-time).
+#
+# Histogram bench: per-chain percentiles precomputed so the bench page
+# reads cheap ocb:* series instead of evaluating histogram_quantile over
+# the full 24h bucket window every render.
+groups:
+  - name: ocb_l2_block_time
+    interval: 30s
+    rules:
+      - record: ocb:l2_block_time_milliseconds:p50_24h
+        expr: histogram_quantile(0.50, sum by (chain, le) (rate(l2_block_time_milliseconds_histogram_bucket[24h])))
+      - record: ocb:l2_block_time_milliseconds:p90_24h
+        expr: histogram_quantile(0.90, sum by (chain, le) (rate(l2_block_time_milliseconds_histogram_bucket[24h])))
+      - record: ocb:l2_block_time_milliseconds:p99_24h
+        expr: histogram_quantile(0.99, sum by (chain, le) (rate(l2_block_time_milliseconds_histogram_bucket[24h])))

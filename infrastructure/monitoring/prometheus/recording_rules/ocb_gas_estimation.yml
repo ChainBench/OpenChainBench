@@ -1,0 +1,14 @@
+# Recording rules for OCB bench 013 (gas-estimation).
+#
+# Covered rate: share of time each oracle's posted p50-tier prediction
+# sat at or above the realized p50 priority fee of the latest mined
+# block. Same-instant gauge comparison (a proxy for true per-block
+# matching, pending a harness-side matched counter). Subquery at 1m
+# steps over 24h; labels keep (oracle, chain, tier) so the site's
+# chain tab label-injection works against the recorded metric.
+groups:
+  - name: ocb_gas_estimation
+    interval: 60s
+    rules:
+      - record: ocb:gas_p50_covered:pct_24h
+        expr: 100 * avg_over_time((gas_predicted_priority_gwei{tier="p50"} >= bool on(chain, tier) group_left() gas_realized_priority_gwei{tier="p50"})[24h:1m])
