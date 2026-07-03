@@ -269,6 +269,12 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Onchain perp DEX on the Hyperliquid L1. Fully onchain orderbook with sub-second matching, no off-chain matching engine.",
     twitter: "@HyperliquidX",
   },
+  "hyperliquid-xyz": {
+    url: "https://hyperliquid.xyz",
+    description:
+      "HIP-3 permissionless perp markets on Hyperliquid L1. Third-party deployers stake HYPE to list their own perps under a `deployer:SYMBOL` coin (e.g. `xyz:BOT`), settled by the same HyperBFT orderbook infrastructure as native Hyperliquid perps.",
+    twitter: "@HyperliquidX",
+  },
   dydx: {
     url: "https://dydx.trade",
     description:
