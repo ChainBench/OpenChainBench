@@ -357,12 +357,20 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
 
   // Category hub pages. Closed enum from CATEGORIES; prerendered
   // routes that group benches by domain (Blockchains, Bridges, …).
-  const categoryRoutes: MetadataRoute.Sitemap = CATEGORIES.map((c) => ({
-    url: `${SITE.url}/benchmarks/category/${c.slug}`,
-    lastModified: catalogTs,
-    changeFrequency: "weekly" as const,
-    priority: 0.6,
-  }));
+  // Skip empty categories: the page component 404s when no bench matches,
+  // which fails the deploy-time sitemap smoke test and blocks every CI
+  // deploy on main (observed 2026-07-03 with the Wallets category when
+  // it had zero live benches). Empty categories stay in the enum so the
+  // route lights up automatically the moment a bench populates it.
+  const liveCategoryLabels = new Set(benchmarks.map((b) => b.category));
+  const categoryRoutes: MetadataRoute.Sitemap = CATEGORIES
+    .filter((c) => liveCategoryLabels.has(c.label))
+    .map((c) => ({
+      url: `${SITE.url}/benchmarks/category/${c.slug}`,
+      lastModified: catalogTs,
+      changeFrequency: "weekly" as const,
+      priority: 0.6,
+    }));
 
   return [
     ...staticRoutes,
