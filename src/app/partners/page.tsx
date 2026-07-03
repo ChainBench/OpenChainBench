@@ -190,8 +190,8 @@ export default function PartnersPage() {
       >
         <p className="text-sm text-ink-soft leading-relaxed">
           Email{" "}
-          <a className="lnk" href="mailto:openchainbench@gmail.com">
-            openchainbench@gmail.com
+          <a className="lnk" href="mailto:contact@openchainbench.com">
+            contact@openchainbench.com
           </a>{" "}
           or DM{" "}
           <a
