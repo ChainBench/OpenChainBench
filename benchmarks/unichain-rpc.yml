@@ -1,0 +1,182 @@
+# OpenChainBench. Bench № 059
+
+slug: unichain-rpc
+number: "059"
+title: Fastest free Unichain RPC, live no-key endpoint latency
+seo_title: "Fastest free Unichain RPC 2026"
+seo_description: "{{best_name}} leads free Unichain RPC at {{best_p50}} (eth_blockNumber p50, 24h). 5 no-key providers measured every 15s from 3 regions."
+subtitle: HTTP round-trip latency for eth_blockNumber against every free, no-key public Unichain RPC endpoint, audited every 15 seconds from 3 regions.
+
+category: RPCs
+status: live
+metric: RPC latency
+unit: ms
+higher_is_better: false
+
+seo_intro: |
+  Unichain, Uniswap Labs' OP Stack rollup, fields 5 no-key providers including the house `mainnet.unichain.org`. For a chain this young the gateway coverage is unusually complete, PublicNode, dRPC, 1RPC and Tenderly all sustain no-key probing at our 15-second cadence, so the official endpoint faces a full gateway tier from day one. Three regions, identical probes, stale-head detection.
+
+abstract: |
+  Per-chain member of the RPC latency cluster. We measure the round-trip latency of a single, identical RPC call (`eth_blockNumber`) against every no-key public Unichain endpoint that sustains continuous probing, 5 providers, every 15 seconds, from us-east, eu-west and Singapore. The harness also classifies every response (ok / http_err / jsonrpc_err / stale / timeout) and audits archive depth every 5 minutes, so the leaderboard rewards sustained, honest availability rather than a fast error message. The cross-chain view lives on the parent rpc-capabilities benchmark; this page is the Unichain-scoped answer with per-region breakdowns as a first-class dimension.
+
+methodology:
+  - "Cadence: every 15 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus `avg(quantile_over_time(...))`; per-region breakdowns are first-class on this page via the region tabs."
+  - "Payload: `{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_blockNumber\",\"params\":[]}`. Plain HTTP POST, identical for every endpoint, no API key in any request."
+  - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms → 10 s), so percentiles are computed via Prometheus `quantile_over_time` over the last 24 hours."
+  - "Call-result classification: `ok` (HTTP 200 + non-empty result), `http_err`, `jsonrpc_err` (HTTP 200 carrying an error body), `stale` (more than 20 blocks behind the cross-provider tip), `timeout`. Latency without reliability is a misleading ranking signal."
+  - "Archive depth: every 5 minutes we issue `eth_getBalance` at (head − depth) for depths from Geth's default pruned cap up to 5M blocks, exposing which free endpoints actually serve historical state."
+  - "This page is part of the per-chain RPC cluster derived from the cross-chain [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities) benchmark; the identical harness, methodology and exclusion rules apply on every chain."
+  - "Chain scope: every query on this page is pinned to chain=\"unichain\". Provider coverage: 5 no-key endpoints (PublicNode, dRPC, 1RPC, Tenderly, Unichain). Exclusions follow the cluster-wide rules documented on the parent benchmark."
+
+findings:
+  - "{{best_name}} currently leads free Unichain RPC at {{best_p50}} (`eth_blockNumber` p50, 24h) across 5 measured providers."
+  - "{{name:drpc}} ({{p50:drpc}}) treats Unichain like every other chain in the expansion, and that is the point: 10 of 12 long-tail wins on the 3-region average come from routing every probe to a nearby edge, chain age irrelevant."
+  - "The official sequencer-adjacent endpoint has the locational advantage on paper; the region tabs show whether it holds against gateways that terminate at the probe's nearest edge instead of one home region."
+  - "{{name:tenderly}} repeats its long-tail signature here, roughly 330 ms from all three origins at once, while remaining competitive on the majors, the clearest sign its public gateway routes small chains through a single origin."
+
+faq:
+  - q: "What is the fastest free Unichain RPC right now?"
+    a: "{{best_name}} currently leads at {{best_p50}} (`eth_blockNumber` p50 over the last 24h), measured against 5 no-key providers probed every 15 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples, so the answer on this page is the answer right now, not a quarterly snapshot. Use the region tabs to see the leader from the origin closest to your deployment."
+  - q: "Which Unichain RPCs work without an API key?"
+    a: "The 5 providers on this page: PublicNode, dRPC, 1RPC, Tenderly, Unichain. Every (provider, chain) pair was live-verified no-key before inclusion, and anything that key-gates, region-blocks or rate-limits below our 15-second cadence is excluded rather than listed with an asterisk."
+  - q: "Does the fastest Unichain RPC change by region?"
+    a: "Frequently. The headline number averages three probe origins (us-east, eu-west, Singapore), but per-region leaders regularly diverge, a gateway that wins from Virginia can lose from Singapore by multiples. The region tabs at the top of the page re-scope every number on the page to a single origin; pick the one closest to where your requests actually originate."
+  - q: "How is Unichain RPC latency measured here?"
+    a: "One identical JSON-RPC POST (`eth_blockNumber`) every 15 seconds against each provider from each of 3 regions, with the same plain HTTP client. Wall-clock round-trip is recorded at millisecond precision; p50/p90/p99 are computed via Prometheus `quantile_over_time` over 24 hours. Responses are classified (`ok` / `http_err` / `jsonrpc_err` / `stale` / `timeout`) so an endpoint stuck on an old head or returning errors behind HTTP 200 is never ranked as fastest. The harness is open source and every number on this page is a public Prometheus query you can run yourself."
+  - q: "Should I use mainnet.unichain.org or a gateway for Unichain?"
+    a: "Check the region tab nearest your deployment. Chain-official endpoints are typically a single origin, so they can only be close to one of our three probes, while anycast gateways answer everywhere. On the 3-region average the current leader is {{best_name}} at {{best_p50}}; a primary-plus-fallback pair from the top of this page is the resilient default for a chain this young."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
+
+prometheus:
+  window: 24h
+  freshness_metric: rpc_latency_milliseconds
+
+# Per-cell (region) ranking matrix for scoped badge claims. Chain is
+# fixed for the whole bench, so cells key on region alone.
+rank_matrix_query: avg by (provider, region) (ocb:rpc_latency_milliseconds:p50_24h{chain="unichain"})
+
+# Region is the only dimension: chain is baked into every query.
+dimensions:
+  region:
+    - { value: all,     label: All regions }
+    - { value: us-east, label: US-East }
+    - { value: eu-west, label: EU-West }
+    - { value: sgp,     label: Singapore }
+
+providers:
+  - slug: publicnode
+    name: PublicNode
+    tag: Allnodes-operated, 70+ chains, archive on most
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to PublicNode's no-key Unichain endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="unichain"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="publicnode", chain="unichain"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="publicnode", chain="unichain"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="publicnode", chain="unichain"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="publicnode", chain="unichain"}) / sum(ocb:rpc_call:rate_24h{provider="publicnode", chain="unichain"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="publicnode", chain="unichain"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="unichain"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="unichain", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="unichain", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="unichain", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="unichain", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="unichain", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="unichain", region="sgp"}[1h])
+
+  - slug: drpc
+    name: dRPC
+    tag: Decentralized RPC mesh, consensus-checked
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key Unichain endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="unichain"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="drpc", chain="unichain"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="drpc", chain="unichain"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="drpc", chain="unichain"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="drpc", chain="unichain"}) / sum(ocb:rpc_call:rate_24h{provider="drpc", chain="unichain"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="drpc", chain="unichain"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="unichain"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="unichain", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="unichain", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="unichain", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="unichain", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="unichain", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="unichain", region="sgp"}[1h])
+
+  - slug: 1rpc
+    name: 1RPC
+    tag: Privacy-preserving gateway by Automata Network
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to 1RPC's no-key Unichain endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="1rpc", chain="unichain"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="1rpc", chain="unichain"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="1rpc", chain="unichain"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="1rpc", chain="unichain"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="1rpc", chain="unichain"}) / sum(ocb:rpc_call:rate_24h{provider="1rpc", chain="unichain"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="1rpc", chain="unichain"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="1rpc", chain="unichain"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="1rpc", chain="unichain", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="1rpc", chain="unichain", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="1rpc", chain="unichain", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="1rpc", chain="unichain", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="1rpc", chain="unichain", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="1rpc", chain="unichain", region="sgp"}[1h])
+
+  - slug: tenderly
+    name: Tenderly
+    tag: Multi-chain public gateway, no key
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to Tenderly's no-key Unichain endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tenderly", chain="unichain"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="tenderly", chain="unichain"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="tenderly", chain="unichain"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="tenderly", chain="unichain"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="tenderly", chain="unichain"}) / sum(ocb:rpc_call:rate_24h{provider="tenderly", chain="unichain"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="tenderly", chain="unichain"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="tenderly", chain="unichain"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tenderly", chain="unichain", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="tenderly", chain="unichain", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tenderly", chain="unichain", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="tenderly", chain="unichain", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tenderly", chain="unichain", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="tenderly", chain="unichain", region="sgp"}[1h])
+
+  - slug: unichain-official
+    name: Unichain
+    tag: Uniswap Labs public RPC, Unichain mainnet only
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to Unichain's no-key Unichain endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="unichain-official", chain="unichain"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="unichain-official", chain="unichain"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="unichain-official", chain="unichain"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="unichain-official", chain="unichain"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="unichain-official", chain="unichain"}) / sum(ocb:rpc_call:rate_24h{provider="unichain-official", chain="unichain"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="unichain-official", chain="unichain"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="unichain-official", chain="unichain"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="unichain-official", chain="unichain", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="unichain-official", chain="unichain", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="unichain-official", chain="unichain", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="unichain-official", chain="unichain", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="unichain-official", chain="unichain", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="unichain-official", chain="unichain", region="sgp"}[1h])
+
