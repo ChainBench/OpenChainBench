@@ -232,7 +232,7 @@ providers:
   - slug: gains
     name: gains.trade
     tag: Synthetic perps across Arbitrum, Base, Polygon, ApeChain
-    formula: "Open interest from the gains.trade trading-variables endpoint per chain backend, per-collateral pairOis long+short summed, normalized by precision and multiplied by collateralPriceUsd, summed across all 4 chains; headline is the 24h time average."
+    formula: "Open interest from the gains.trade trading-variables endpoint per chain backend: per-collateral pairOis long+short, normalized by precision x collateralPriceUsd, summed across 4 chains; headline is the 24h time average."
     queries:
       p50: avg_over_time(perp_venue_oi_usd{venue="gains"}[24h])
       p90: quantile_over_time(0.90, perp_venue_oi_usd{venue="gains"}[24h])
