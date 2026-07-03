@@ -1,0 +1,159 @@
+# OpenChainBench. Bench № 061
+
+slug: taiko-rpc
+number: "061"
+title: Fastest free Taiko RPC, live no-key endpoint latency
+seo_title: "Fastest free Taiko RPC 2026"
+seo_description: "{{best_name}} leads free Taiko RPC at {{best_p50}} (eth_blockNumber p50, 24h). 4 no-key providers measured every 15s from 3 regions."
+subtitle: HTTP round-trip latency for eth_blockNumber against every free, no-key public Taiko RPC endpoint, audited every 15 seconds from 3 regions.
+
+category: RPCs
+status: live
+metric: RPC latency
+unit: ms
+higher_is_better: false
+
+seo_intro: |
+  Taiko, the based rollup where Ethereum validators sequence L2 blocks, fields 4 no-key providers. Our verification sweep caught one routing quirk worth encoding: Tenderly serves the chain only at the `taiko-mainnet` gateway slug, the plain `/taiko` path 404s. Probes run every 15 seconds from us-east, eu-west and Singapore with stale-head detection against the cross-provider tip.
+
+abstract: |
+  Per-chain member of the RPC latency cluster. We measure the round-trip latency of a single, identical RPC call (`eth_blockNumber`) against every no-key public Taiko endpoint that sustains continuous probing, 4 providers, every 15 seconds, from us-east, eu-west and Singapore. The harness also classifies every response (ok / http_err / jsonrpc_err / stale / timeout) and audits archive depth every 5 minutes, so the leaderboard rewards sustained, honest availability rather than a fast error message. The cross-chain view lives on the parent rpc-capabilities benchmark; this page is the Taiko-scoped answer with per-region breakdowns as a first-class dimension.
+
+methodology:
+  - "Cadence: every 15 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus `avg(quantile_over_time(...))`; per-region breakdowns are first-class on this page via the region tabs."
+  - "Payload: `{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_blockNumber\",\"params\":[]}`. Plain HTTP POST, identical for every endpoint, no API key in any request."
+  - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms → 10 s), so percentiles are computed via Prometheus `quantile_over_time` over the last 24 hours."
+  - "Call-result classification: `ok` (HTTP 200 + non-empty result), `http_err`, `jsonrpc_err` (HTTP 200 carrying an error body), `stale` (more than 20 blocks behind the cross-provider tip), `timeout`. Latency without reliability is a misleading ranking signal."
+  - "Archive depth: every 5 minutes we issue `eth_getBalance` at (head − depth) for depths from Geth's default pruned cap up to 5M blocks, exposing which free endpoints actually serve historical state."
+  - "This page is part of the per-chain RPC cluster derived from the cross-chain [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities) benchmark; the identical harness, methodology and exclusion rules apply on every chain."
+  - "Chain scope: every query on this page is pinned to chain=\"taiko\". Provider coverage: 4 no-key endpoints (PublicNode, dRPC, Tenderly, Taiko). Exclusions follow the cluster-wide rules documented on the parent benchmark."
+
+findings:
+  - "{{best_name}} currently leads free Taiko RPC at {{best_p50}} (`eth_blockNumber` p50, 24h) across 4 measured providers."
+  - "{{name:drpc}} ({{p50:drpc}}) brings the same anycast steadiness that carries it to 10 wins across the 12 expansion chains; based sequencing on the chain side changes nothing about who answers RPC reads fastest."
+  - "{{name:tenderly}} both qualifies and disappoints: reachable only at the `taiko-mainnet` slug, and once reached it shows the flat ~330 ms three-region signature of a single origin, while the same gateway is competitive on the majors."
+  - "A 4-provider field leaves little redundancy: one gateway incident visibly reshuffles the 24h board, which is why the success-rate column and region tabs matter more here than on the deep Ethereum cohort."
+
+faq:
+  - q: "What is the fastest free Taiko RPC right now?"
+    a: "{{best_name}} currently leads at {{best_p50}} (`eth_blockNumber` p50 over the last 24h), measured against 4 no-key providers probed every 15 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples, so the answer on this page is the answer right now, not a quarterly snapshot. Use the region tabs to see the leader from the origin closest to your deployment."
+  - q: "Which Taiko RPCs work without an API key?"
+    a: "The 4 providers on this page: PublicNode, dRPC, Tenderly, Taiko. Every (provider, chain) pair was live-verified no-key before inclusion, and anything that key-gates, region-blocks or rate-limits below our 15-second cadence is excluded rather than listed with an asterisk."
+  - q: "Does the fastest Taiko RPC change by region?"
+    a: "Frequently. The headline number averages three probe origins (us-east, eu-west, Singapore), but per-region leaders regularly diverge, a gateway that wins from Virginia can lose from Singapore by multiples. The region tabs at the top of the page re-scope every number on the page to a single origin; pick the one closest to where your requests actually originate."
+  - q: "How is Taiko RPC latency measured here?"
+    a: "One identical JSON-RPC POST (`eth_blockNumber`) every 15 seconds against each provider from each of 3 regions, with the same plain HTTP client. Wall-clock round-trip is recorded at millisecond precision; p50/p90/p99 are computed via Prometheus `quantile_over_time` over 24 hours. Responses are classified (`ok` / `http_err` / `jsonrpc_err` / `stale` / `timeout`) so an endpoint stuck on an old head or returning errors behind HTTP 200 is never ranked as fastest. The harness is open source and every number on this page is a public Prometheus query you can run yourself."
+  - q: "Which free Taiko RPC should production traffic use?"
+    a: "Start from {{best_name}} ({{best_p50}} on the 3-region average) and pair it with the runner-up as fallback; in a 4-provider field a single degradation reshuffles the board. If you configure Tenderly manually, note its gateway path is `taiko-mainnet`, the intuitive `/taiko` path 404s, a detail our probes encode but provider directories rarely do."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
+
+prometheus:
+  window: 24h
+  freshness_metric: rpc_latency_milliseconds
+
+# Per-cell (region) ranking matrix for scoped badge claims. Chain is
+# fixed for the whole bench, so cells key on region alone.
+rank_matrix_query: avg by (provider, region) (ocb:rpc_latency_milliseconds:p50_24h{chain="taiko"})
+
+# Region is the only dimension: chain is baked into every query.
+dimensions:
+  region:
+    - { value: all,     label: All regions }
+    - { value: us-east, label: US-East }
+    - { value: eu-west, label: EU-West }
+    - { value: sgp,     label: Singapore }
+
+providers:
+  - slug: publicnode
+    name: PublicNode
+    tag: Allnodes-operated, 70+ chains, archive on most
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to PublicNode's no-key Taiko endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="taiko"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="publicnode", chain="taiko"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="publicnode", chain="taiko"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="publicnode", chain="taiko"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="publicnode", chain="taiko"}) / sum(ocb:rpc_call:rate_24h{provider="publicnode", chain="taiko"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="publicnode", chain="taiko"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="taiko"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="taiko", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="taiko", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="taiko", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="taiko", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="taiko", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="taiko", region="sgp"}[1h])
+
+  - slug: drpc
+    name: dRPC
+    tag: Decentralized RPC mesh, consensus-checked
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key Taiko endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="taiko"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="drpc", chain="taiko"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="drpc", chain="taiko"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="drpc", chain="taiko"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="drpc", chain="taiko"}) / sum(ocb:rpc_call:rate_24h{provider="drpc", chain="taiko"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="drpc", chain="taiko"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="taiko"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="taiko", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="taiko", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="taiko", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="taiko", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="taiko", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="taiko", region="sgp"}[1h])
+
+  - slug: tenderly
+    name: Tenderly
+    tag: Multi-chain public gateway, no key
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to Tenderly's no-key Taiko endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tenderly", chain="taiko"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="tenderly", chain="taiko"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="tenderly", chain="taiko"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="tenderly", chain="taiko"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="tenderly", chain="taiko"}) / sum(ocb:rpc_call:rate_24h{provider="tenderly", chain="taiko"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="tenderly", chain="taiko"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="tenderly", chain="taiko"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tenderly", chain="taiko", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="tenderly", chain="taiko", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tenderly", chain="taiko", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="tenderly", chain="taiko", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tenderly", chain="taiko", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="tenderly", chain="taiko", region="sgp"}[1h])
+
+  - slug: taiko-official
+    name: Taiko
+    tag: Taiko Labs public RPC, Taiko mainnet only
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to Taiko's no-key Taiko endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="taiko-official", chain="taiko"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="taiko-official", chain="taiko"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="taiko-official", chain="taiko"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="taiko-official", chain="taiko"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="taiko-official", chain="taiko"}) / sum(ocb:rpc_call:rate_24h{provider="taiko-official", chain="taiko"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="taiko-official", chain="taiko"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="taiko-official", chain="taiko"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="taiko-official", chain="taiko", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="taiko-official", chain="taiko", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="taiko-official", chain="taiko", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="taiko-official", chain="taiko", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="taiko-official", chain="taiko", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="taiko-official", chain="taiko", region="sgp"}[1h])
+

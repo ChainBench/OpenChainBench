@@ -35,7 +35,9 @@ export type ChainEntry = {
    * the page won't render those cards. 100% coverage today across the
    * 21 chains in this registry; declared explicitly so a new chain that
    * forgets to set it just hides the cards rather than rendering a wrong
-   * symbol.
+   * symbol. Long-tail chains added with the 055-066 RPC cluster
+   * (2026-07-03) set their best-known symbol; cards stay hidden until
+   * the chain-kpis harness sources the series.
    */
   nativeSymbol?: string;
 };
@@ -208,6 +210,79 @@ export const CHAINS: ChainEntry[] = [
     nativeSymbol: "ETH",
     description:
       "Based rollup. Ethereum L1 validators sequence Taiko blocks directly, inheriting L1 liveness and censorship resistance.",
+  },
+  // ─── Long-tail chains added with the 055-066 RPC cluster (2026-07-03) ───
+  {
+    slug: "sonic",
+    label: "Sonic",
+    category: "L1",
+    nativeSymbol: "S",
+    description:
+      "EVM Layer 1 by Sonic Labs (Fantom lineage), sub-second finality, ~0.5 s blocks, fee-monetization revenue share for apps.",
+  },
+  {
+    slug: "gnosis",
+    label: "Gnosis",
+    category: "L1",
+    nativeSymbol: "GNO",
+    description:
+      "EVM Layer 1 with xDAI as the gas token, 5 s blocks, Gnosis Beacon Chain consensus mirroring Ethereum's PoS design.",
+  },
+  {
+    slug: "celo",
+    label: "Celo",
+    category: "L2",
+    nativeSymbol: "CELO",
+    description:
+      "Former L1 migrated to an Ethereum L2 (OP Stack) in 2025, 1 s blocks, gas payable in CELO and whitelisted stablecoins.",
+  },
+  {
+    slug: "moonbeam",
+    label: "Moonbeam",
+    category: "L1",
+    nativeSymbol: "GLMR",
+    description:
+      "Polkadot EVM parachain, ~6 s blocks under async backing, GLMR gas, unified Substrate + EVM account model.",
+  },
+  {
+    slug: "unichain",
+    label: "Unichain",
+    category: "L2",
+    nativeSymbol: "ETH",
+    description:
+      "Uniswap Labs OP Stack rollup, 1 s blocks with 250 ms Flashblocks pre-confirmations, DeFi-focused sequencing.",
+  },
+  {
+    slug: "berachain",
+    label: "Berachain",
+    category: "L1",
+    nativeSymbol: "BERA",
+    description:
+      "EVM Layer 1 on the BeaconKit stack with proof-of-liquidity consensus, ~2 s blocks, BERA gas + BGT governance split.",
+  },
+  {
+    slug: "cronos",
+    label: "Cronos",
+    category: "L1",
+    nativeSymbol: "CRO",
+    description:
+      "Crypto.com EVM chain built on Cosmos SDK + Ethermint, ~1 s blocks, IBC connectivity, CRO-denominated gas.",
+  },
+  {
+    slug: "fraxtal",
+    label: "Fraxtal",
+    category: "L2",
+    nativeSymbol: "FRAX",
+    description:
+      "Frax Finance OP Stack rollup, 2 s sequencer cadence, frxETH-denominated gas with FXTL incentive points.",
+  },
+  {
+    slug: "soneium",
+    label: "Soneium",
+    category: "L2",
+    nativeSymbol: "ETH",
+    description:
+      "Sony Block Solutions OP Stack rollup in the Optimism Superchain, 2 s blocks, consumer and entertainment focus.",
   },
 ];
 
