@@ -1,0 +1,51 @@
+{
+	# Caddy runs as a public-facing reverse proxy in front of Prometheus.
+	# Admin paths require X-Admin-Token; read paths are open.
+	auto_https off
+	admin off
+	log {
+		output stdout
+		format json
+		level INFO
+	}
+}
+
+:{$PORT:8080} {
+	# ---- Response compression ----
+	# Explicit Caddy-side compression so /api/v1/query_range JSON gets zstd
+	# (~15% smaller than gzip) regardless of Railway edge behaviour. Browsers
+	# negotiate the best supported encoding; clients with no Accept-Encoding
+	# still get an uncompressed response.
+	encode zstd gzip
+
+	# ---- Local health probe (Railway healthcheck hits this) ----
+	handle /healthz {
+		respond "ok" 200
+	}
+
+	# ---- Gated admin surface ----
+	# Anything that can mutate TSDB or kill the process must carry the token.
+	@admin {
+		path /api/v1/admin/* /-/reload /-/quit
+	}
+	handle @admin {
+		@authed header X-Admin-Token {env.PROM_ADMIN_TOKEN}
+		handle @authed {
+			reverse_proxy {env.PROM_UPSTREAM} {
+				header_up Host {upstream_hostport}
+			}
+		}
+		respond "forbidden" 403 {
+			close
+		}
+	}
+
+	# ---- Public read surface ----
+	# /api/v1/query, /api/v1/query_range, /api/v1/series, /api/v1/label,
+	# /api/v1/labels, /api/v1/targets, /metrics, /graph, etc.
+	handle {
+		reverse_proxy {env.PROM_UPSTREAM} {
+			header_up Host {upstream_hostport}
+		}
+	}
+}

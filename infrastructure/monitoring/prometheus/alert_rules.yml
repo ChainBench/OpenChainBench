@@ -1,0 +1,120 @@
+groups:
+  - name: aggregator_latency_alerts
+    interval: 30s
+    rules:
+      # NOTE: rules depending on rest_api_latency_* / rest_api_errors_total were
+      # removed when the binary was split — those metrics belong to a future
+      # bench (REST API latency) that doesn't exist yet. Reintroduce them when
+      # that harness ships.
+
+      # Head lag (WebSocket latency) alerts - per-chain thresholds
+      # NOTE: alerts use fixed-cardinality gauges now (no tx_hash label) to avoid stale-series spam.
+      # Sustained 30s window avoids single-spike firings (reconnect bursts, transient network jitter).
+      - alert: MobulaHeadLagSpikeBase
+        expr: mobula_head_lag_detailed_seconds{chain="base"} > 2.5
+        for: 30s
+        labels:
+          severity: warning
+          aggregator: mobula
+          alert_type: head_lag_spike
+          app: aggregator_latency_monitor
+          chain: base
+        annotations:
+          summary: '{{ if eq $externalLabels.environment "staging" }}[STAGING] {{ end }}Mobula head lag spike on Base'
+          description: |
+            **Mobula WebSocket Latency Spike - Base**
+
+            **Latency:** {{ $value }}s (threshold: 2.5s, sustained ≥30s)
+            • Mobula Processing: {{ with query (printf "mobula_processing_lag_seconds{chain=\"base\",region=\"%s\",pool_address=\"%s\"}" $labels.region $labels.pool_address) }}{{ . | first | value }}s{{ end }}
+            • Network: {{ with query (printf "mobula_network_lag_seconds{chain=\"base\",region=\"%s\",pool_address=\"%s\"}" $labels.region $labels.pool_address) }}{{ . | first | value }}s{{ end }}
+
+            • Pool: {{ $labels.pool_address }}
+            • Region: {{ $labels.region }}
+            • Latest tx: {{ with query (printf "mobula_last_tx_hash{chain=\"base\",region=\"%s\",pool_address=\"%s\"}" $labels.region $labels.pool_address) }}https://basescan.org/tx/{{ . | first | label "tx_hash" }}{{ end }}
+
+      - alert: MobulaHeadLagSpikeSolana
+        expr: mobula_head_lag_detailed_seconds{chain="solana"} > 2
+        for: 30s
+        labels:
+          severity: warning
+          aggregator: mobula
+          alert_type: head_lag_spike
+          app: aggregator_latency_monitor
+          chain: solana
+        annotations:
+          summary: '{{ if eq $externalLabels.environment "staging" }}[STAGING] {{ end }}Mobula head lag spike on Solana'
+          description: |
+            **Mobula WebSocket Latency Spike - Solana**
+
+            **Latency:** {{ $value }}s (threshold: 2s, sustained ≥30s)
+            • Mobula Processing: {{ with query (printf "mobula_processing_lag_seconds{chain=\"solana\",region=\"%s\",pool_address=\"%s\"}" $labels.region $labels.pool_address) }}{{ . | first | value }}s{{ end }}
+            • Network: {{ with query (printf "mobula_network_lag_seconds{chain=\"solana\",region=\"%s\",pool_address=\"%s\"}" $labels.region $labels.pool_address) }}{{ . | first | value }}s{{ end }}
+
+            • Pool: {{ $labels.pool_address }}
+            • Region: {{ $labels.region }}
+            • Latest tx: {{ with query (printf "mobula_last_tx_hash{chain=\"solana\",region=\"%s\",pool_address=\"%s\"}" $labels.region $labels.pool_address) }}https://solscan.io/tx/{{ . | first | label "tx_hash" }}{{ end }}
+
+      - alert: MobulaHeadLagSpikeBNB
+        expr: mobula_head_lag_detailed_seconds{chain="bnb"} > 2.5
+        for: 30s
+        labels:
+          severity: warning
+          aggregator: mobula
+          alert_type: head_lag_spike
+          app: aggregator_latency_monitor
+          chain: bnb
+        annotations:
+          summary: '{{ if eq $externalLabels.environment "staging" }}[STAGING] {{ end }}Mobula head lag spike on BNB Chain'
+          description: |
+            **Mobula WebSocket Latency Spike - BNB Chain**
+
+            **Latency:** {{ $value }}s (threshold: 2.5s, sustained ≥30s)
+            • Mobula Processing: {{ with query (printf "mobula_processing_lag_seconds{chain=\"bnb\",region=\"%s\",pool_address=\"%s\"}" $labels.region $labels.pool_address) }}{{ . | first | value }}s{{ end }}
+            • Network: {{ with query (printf "mobula_network_lag_seconds{chain=\"bnb\",region=\"%s\",pool_address=\"%s\"}" $labels.region $labels.pool_address) }}{{ . | first | value }}s{{ end }}
+
+            • Pool: {{ $labels.pool_address }}
+            • Region: {{ $labels.region }}
+            • Latest tx: {{ with query (printf "mobula_last_tx_hash{chain=\"bnb\",region=\"%s\",pool_address=\"%s\"}" $labels.region $labels.pool_address) }}https://bscscan.com/tx/{{ . | first | label "tx_hash" }}{{ end }}
+
+      # Missing head lag metrics (no data for 5 minutes = monitor down)
+      - alert: MissingHeadLagMetrics
+        expr: absent(head_lag_seconds)
+        for: 5m
+        labels:
+          severity: critical
+          alert_type: missing_head_lag
+          app: aggregator_latency_monitor
+        annotations:
+          summary: '{{ if eq $externalLabels.environment "staging" }}[STAGING] {{ end }}Head lag metrics missing'
+          description: "No head_lag_seconds metrics received for 5 minutes. Check if monitors are running."
+
+      # Per-aggregator staleness: fires when one provider stops pushing data
+      # (e.g. Codex WS disconnect) while others keep running — global absent()
+      # would NOT catch this.
+      - alert: AggregatorHeadLagStale
+        expr: (time() - timestamp(head_lag_seconds)) > 300
+        for: 1m
+        labels:
+          severity: warning
+          alert_type: head_lag_stale
+          app: aggregator_latency_monitor
+        annotations:
+          summary: '{{ if eq $externalLabels.environment "staging" }}[STAGING] {{ end }}{{ $labels.aggregator }} head_lag stale on {{ $labels.chain }} ({{ $labels.region }})'
+          description: |
+            **{{ $labels.aggregator }}** hasn't pushed a head_lag sample for **{{ $labels.chain }} / {{ $labels.region }}** in over 5 minutes.
+
+            Likely cause: WebSocket disconnected, JWT expired, proxy IP banned, or auth cookie rotated.
+
+            Check the monitor logs for `[HEAD-LAG][{{ $labels.aggregator | toUpper }}]` errors.
+
+      # Service availability
+      - alert: CodexServiceDown
+        expr: up{job="latency_monitor"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          alert_type: service_down
+          app: aggregator_latency_monitor
+        annotations:
+          summary: '{{ if eq $externalLabels.environment "staging" }}[STAGING] {{ end }}Latency monitor service is down'
+          description: "The aggregator latency monitor has been down for 2 minutes. No metrics are being collected."
