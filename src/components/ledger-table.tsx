@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 
 import Link from "next/link";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import type {
   Benchmark,
   LedgerColumn,
@@ -30,6 +31,37 @@ const HEX_ADDRESS_SLUG = /^0x[a-f0-9]+$/;
 function isHexAddressSlug(slug: string): boolean {
   return HEX_ADDRESS_SLUG.test(slug.toLowerCase());
 }
+
+/** Absolute count of failed probes in the 24h window, derived from the
+ *  fields the ledger already has (no new data): sample size × failure
+ *  rate. Null when the row has no sampleSize (bench doesn't report it),
+ *  rendered as "—" and sorted to the bottom. */
+function errorCount(r: ProviderResult): number | null {
+  if (r.sampleSize == null) return null;
+  return Math.round(r.sampleSize * (1 - r.successRate / 100));
+}
+
+/** Sort keys exposed by the header click handlers. `null` (the default)
+ *  means "use the bench's natural sort" — pickValue + higherIsBetter —
+ *  which is what callers, OG renders, and share cards depend on. Any
+ *  non-null key takes over and the comparator routes through
+ *  pickSortValue instead. Custom-column slots are keyed by their index
+ *  in benchmark.ledgerColumns to keep the type narrow without smuggling
+ *  the full column object through state. */
+type SortKey =
+  | "name"
+  | "p50"
+  | "p90"
+  | "p99"
+  | "mean"
+  | "value"
+  | "delta"
+  | "success"
+  | "errors"
+  | "slot_p50"
+  | `col_${number}`;
+
+type SortDir = "asc" | "desc";
 
 type Props = {
   benchmark: Benchmark;
@@ -101,6 +133,14 @@ export function LedgerTable({
     col.unit ??
     (col.panel ? (panelById.get(col.panel)?.unit ?? unit) : unit);
 
+  // Clickable column sort. Defaults to null so the natural per-bench
+  // ordering (pickValue + higherIsBetter) keeps driving the table — this
+  // is the order OG images, share cards, and snapshot tests all expect.
+  // A non-null sortKey takes over and routes the comparator through
+  // pickSortValue with the chosen direction.
+  const [sortKey, setSortKey] = useState<SortKey | null>(null);
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+
   // Timeframe toggle. Columns that declare `windows` (7d/30d panel-id
   // sources) flip to the selected window's values; columns without keep
   // their 24h figure and the header says so. Rendered only when at least
@@ -166,6 +206,60 @@ export function LedgerTable({
     .filter((r) => r.unresponsive)
     .sort((a, b) => b.successRate - a.successRate);
 
+  // Field-mean Δ — duplicated here so the sort comparator can rank by it
+  // without waiting on per-Row computation. Kept aligned with the same
+  // formula the Row uses for the displayed Δ% (see deltaPct below).
+  const fieldMeanRaw =
+    results.reduce((s, r) => s + pickValue(r), 0) /
+    Math.max(1, results.length);
+  const deltaForSort = (r: ProviderResult): number => {
+    if (fieldMeanRaw === 0) return 0;
+    return (pickValue(r) - fieldMeanRaw) / fieldMeanRaw;
+  };
+
+  // Map a sort key to a comparable scalar (or string for "name"). Numbers
+  // missing for a row sort to -Infinity / +Infinity depending on direction
+  // so empty cells consistently land at the bottom.
+  const pickSortValue = (
+    r: ProviderResult,
+    k: SortKey,
+  ): number | string => {
+    if (k === "name") return r.name.toLowerCase();
+    if (k === "value") {
+      const v = activePanel?.values[r.slug];
+      return v != null && Number.isFinite(v) ? v : -Infinity;
+    }
+    if (k === "p50") return r.ms.p50;
+    if (k === "p90") return r.ms.p90;
+    if (k === "p99") return r.ms.p99;
+    if (k === "mean") return r.ms.mean;
+    if (k === "delta") return deltaForSort(r);
+    if (k === "success") return r.successRate ?? 0;
+    if (k === "errors") return errorCount(r) ?? -Infinity;
+    if (k === "slot_p50") return r.slots?.p50 ?? Infinity;
+    if (k.startsWith("col_")) {
+      const idx = Number(k.slice(4));
+      const col = customCols?.[idx];
+      if (!col) return -Infinity;
+      const v = colValueW(r, col);
+      return v != null ? v : -Infinity;
+    }
+    return 0;
+  };
+
+  // Toggle direction on the active header, otherwise switch to the new
+  // header and default to descending. Descending is the more natural
+  // first-click read for nearly every column (largest revenue, slowest
+  // latency, highest success) — for ascending the reader clicks twice.
+  const handleHeaderClick = (k: SortKey) => {
+    if (sortKey === k) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(k);
+      setSortDir("desc");
+    }
+  };
+
   const sortedAll = [...results]
     .filter((r) => {
       // Unresponsive rows render in their own unranked block below.
@@ -187,9 +281,23 @@ export function LedgerTable({
       return r.ms.p50 !== 0 || r.ms.p90 !== 0 || r.ms.p99 !== 0;
     })
     .sort((a, b) => {
-      const av = pickValue(a);
-      const bv = pickValue(b);
-      return higherIsBetter ? bv - av : av - bv;
+      // Default branch: preserve the EXACT comparator that shipped before
+      // sortable columns. OG renders, share cards, and snapshot tests all
+      // pin against this ordering — diverging here breaks them silently.
+      if (sortKey == null) {
+        const av = pickValue(a);
+        const bv = pickValue(b);
+        return higherIsBetter ? bv - av : av - bv;
+      }
+      const av = pickSortValue(a, sortKey);
+      const bv = pickSortValue(b, sortKey);
+      const dir = sortDir === "asc" ? 1 : -1;
+      if (typeof av === "string" && typeof bv === "string") {
+        return av.localeCompare(bv) * dir;
+      }
+      const na = typeof av === "number" ? av : 0;
+      const nb = typeof bv === "number" ? bv : 0;
+      return (na - nb) * dir;
     });
   const sorted = topN == null ? sortedAll : sortedAll.slice(0, topN);
   const colors = useMemo(() => buildProviderColors(results), [results]);
@@ -263,7 +371,10 @@ export function LedgerTable({
             <th className="border-y-2 border-ink py-2 px-3 text-right md:hidden">
               {customCols ? colLabel(customCols[0]) : activePanel ? "Value" : "p50"}
             </th>
-            <th className="border-y-2 border-ink py-2 pl-3 text-right hidden md:table-cell">
+            <th
+              colSpan={2}
+              className="border-y-2 border-ink py-2 pl-3 text-right hidden md:table-cell"
+            >
               Reliability
             </th>
             <th className="border-y-2 border-ink py-2 pl-3 text-right">Trend</th>
@@ -284,43 +395,143 @@ export function LedgerTable({
           <tr>
             <th className="py-2 pr-2 text-left w-2"></th>
             <th className="py-2 pr-3 text-left w-10">№</th>
-            <th className="py-2 pr-3 text-left">Name</th>
+            <SortableHeader
+              sortKey="name"
+              activeKey={sortKey}
+              dir={sortDir}
+              onClick={handleHeaderClick}
+              align="left"
+              className="py-2 pr-3"
+            >
+              Name
+            </SortableHeader>
             {customCols ? (
               customCols.map((c, idx) => (
-                <th
+                <SortableHeader
                   key={c.label}
-                  className={`py-2 px-3 text-right ${idx === 0 ? "" : "hidden md:table-cell"}`}
+                  sortKey={`col_${idx}` as SortKey}
+                  activeKey={sortKey}
+                  dir={sortDir}
+                  onClick={handleHeaderClick}
+                  align="right"
+                  className={`py-2 px-3 ${idx === 0 ? "" : "hidden md:table-cell"}`}
                 >
                   {colLabel(c)}
-                </th>
+                </SortableHeader>
               ))
             ) : panelActive || singleValueColumn ? (
               // Panel sort owns the table: a single honest "Value" column
               // instead of p50/p90/p99/Mean headers over dashed-out cells
               // (a USD volume sort labeled "p50" reads as a bug).
-              <th className="py-2 px-3 text-right">Value</th>
+              <SortableHeader
+                sortKey="value"
+                activeKey={sortKey}
+                dir={sortDir}
+                onClick={handleHeaderClick}
+                align="right"
+                className="py-2 px-3"
+              >
+                Value
+              </SortableHeader>
             ) : (
               <>
-                <th className="py-2 px-3 text-right">p50</th>
-                <th className="py-2 px-3 text-right hidden md:table-cell">p90</th>
-                <th className="py-2 px-3 text-right hidden md:table-cell">p99</th>
-                <th className="py-2 px-3 text-right hidden md:table-cell">Mean</th>
+                <SortableHeader
+                  sortKey="p50"
+                  activeKey={sortKey}
+                  dir={sortDir}
+                  onClick={handleHeaderClick}
+                  align="right"
+                  className="py-2 px-3"
+                >
+                  p50
+                </SortableHeader>
+                <SortableHeader
+                  sortKey="p90"
+                  activeKey={sortKey}
+                  dir={sortDir}
+                  onClick={handleHeaderClick}
+                  align="right"
+                  className="py-2 px-3 hidden md:table-cell"
+                >
+                  p90
+                </SortableHeader>
+                <SortableHeader
+                  sortKey="p99"
+                  activeKey={sortKey}
+                  dir={sortDir}
+                  onClick={handleHeaderClick}
+                  align="right"
+                  className="py-2 px-3 hidden md:table-cell"
+                >
+                  p99
+                </SortableHeader>
+                <SortableHeader
+                  sortKey="mean"
+                  activeKey={sortKey}
+                  dir={sortDir}
+                  onClick={handleHeaderClick}
+                  align="right"
+                  className="py-2 px-3 hidden md:table-cell"
+                >
+                  Mean
+                </SortableHeader>
               </>
             )}
-            <th className="py-2 px-3 text-right hidden md:table-cell">Δ field</th>
-            <th className="py-2 px-3 text-right hidden md:table-cell">Success</th>
+            <SortableHeader
+              sortKey="delta"
+              activeKey={sortKey}
+              dir={sortDir}
+              onClick={handleHeaderClick}
+              align="right"
+              className="py-2 px-3 hidden md:table-cell"
+            >
+              Δ field
+            </SortableHeader>
+            <SortableHeader
+              sortKey="success"
+              activeKey={sortKey}
+              dir={sortDir}
+              onClick={handleHeaderClick}
+              align="right"
+              className="py-2 px-3 hidden md:table-cell"
+            >
+              Success
+            </SortableHeader>
+            <SortableHeader
+              sortKey="errors"
+              activeKey={sortKey}
+              dir={sortDir}
+              onClick={handleHeaderClick}
+              align="right"
+              className="py-2 px-3 hidden md:table-cell"
+            >
+              <Hint label="Failed probes in the last 24h across all regions: HTTP errors, JSON-RPC error bodies, timeouts and stale responses (block >20 behind the cross-provider tip). Derived from sample size × (1 − success rate).">
+                Errors (24h)
+              </Hint>
+            </SortableHeader>
             <th className="py-2 pl-3 text-right">24h</th>
-            {hasSlots && <th className="py-2 pl-3 text-right hidden md:table-cell">p50 / p99</th>}
+            {hasSlots && (
+              <SortableHeader
+                sortKey="slot_p50"
+                activeKey={sortKey}
+                dir={sortDir}
+                onClick={handleHeaderClick}
+                align="right"
+                className="py-2 pl-3 hidden md:table-cell"
+              >
+                p50 / p99
+              </SortableHeader>
+            )}
             {secondary && <th className="py-2 pl-3 text-right hidden md:table-cell">Value</th>}
           </tr>
           <tr className="border-b border-ink">
             <th
               colSpan={
                 (customCols
-                  ? 6 + customCols.length
+                  ? 7 + customCols.length
                   : panelActive || singleValueColumn
-                    ? 7
-                    : 10) +
+                    ? 8
+                    : 11) +
                 (hasSlots ? 1 : 0) +
                 (secondary ? 1 : 0)
               }
@@ -580,7 +791,7 @@ function Row({
       {isOffline ? (
         <td
           colSpan={
-            (customCells ? customCells.length + 3 : 7) +
+            (customCells ? customCells.length + 4 : 8) +
             (hasSlots ? 1 : 0) +
             (hasSecondary ? 1 : 0)
           }
@@ -623,6 +834,9 @@ function Row({
           </td>
           <td className="py-2.5 px-3 text-right text-ink-soft whitespace-nowrap hidden md:table-cell">
             {r.successRate.toFixed(2)}%
+          </td>
+          <td className="py-2.5 px-3 text-right text-ink-faint tabular-nums whitespace-nowrap hidden md:table-cell">
+            {errorCount(r)?.toLocaleString("en-US") ?? "—"}
           </td>
           <td className="py-2.5 pl-3 text-right text-ink-faint">—</td>
           {hasSlots && (
@@ -687,6 +901,9 @@ function Row({
           <td className="py-2.5 px-3 text-right text-ink-soft whitespace-nowrap hidden md:table-cell">
             {r.successRate.toFixed(2)}%
           </td>
+          <td className="py-2.5 px-3 text-right text-ink-faint tabular-nums whitespace-nowrap hidden md:table-cell">
+            {errorCount(r)?.toLocaleString("en-US") ?? "—"}
+          </td>
           <td className="py-2.5 pl-3 text-right">
             <span className="inline-flex items-center justify-end">
               <Sparkline
@@ -715,5 +932,75 @@ function Row({
         </>
       )}
     </tr>
+  );
+}
+
+/**
+ * Sortable column header. Renders a button-styled `<th>` that toggles
+ * the table's sort key on click and shows an up/down chevron next to
+ * the label when this header is the active sort. Hover lifts the label
+ * from ink-muted to ink to telegraph that it's clickable; the chevron
+ * itself stays ink-muted so it reads as a marker, not as emphasis.
+ *
+ * The button is the inner element (not the `<th>` itself) so the
+ * existing `<th>` className keeps controlling layout / responsive
+ * visibility, and the click target is a real focusable button.
+ */
+function SortableHeader({
+  sortKey,
+  activeKey,
+  dir,
+  onClick,
+  align,
+  className,
+  children,
+}: {
+  sortKey: SortKey;
+  activeKey: SortKey | null;
+  dir: SortDir;
+  onClick: (k: SortKey) => void;
+  align: "left" | "right";
+  className?: string;
+  children: React.ReactNode;
+}) {
+  const isActive = activeKey === sortKey;
+  const alignClass = align === "right" ? "text-right" : "text-left";
+  const justifyClass = align === "right" ? "justify-end" : "justify-start";
+  return (
+    <th
+      className={[alignClass, className].filter(Boolean).join(" ")}
+      aria-sort={
+        isActive ? (dir === "asc" ? "ascending" : "descending") : "none"
+      }
+    >
+      <button
+        type="button"
+        onClick={() => onClick(sortKey)}
+        className={[
+          "group inline-flex items-center gap-1 cursor-pointer transition-colors",
+          justifyClass,
+          isActive ? "text-ink" : "text-ink-muted hover:text-ink",
+        ].join(" ")}
+      >
+        <span>{children}</span>
+        {isActive ? (
+          dir === "asc" ? (
+            <ChevronUp
+              size={12}
+              strokeWidth={2.5}
+              className="text-ink-muted"
+              aria-hidden
+            />
+          ) : (
+            <ChevronDown
+              size={12}
+              strokeWidth={2.5}
+              className="text-ink-muted"
+              aria-hidden
+            />
+          )
+        ) : null}
+      </button>
+    </th>
   );
 }
