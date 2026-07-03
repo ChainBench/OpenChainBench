@@ -32,6 +32,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -58,6 +59,8 @@ next-env.d.ts
 
 # compiled harness binaries (go build artifacts)
 harnesses/*/script
+# hl-archive's script/ is a Go source package, not a binary
+!harnesses/hl-archive/script/
 harnesses/*/monitor
 harnesses/*/cmd/script/script
 harnesses/*/cmd/monitor/monitor

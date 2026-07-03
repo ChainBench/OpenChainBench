@@ -1,0 +1,28 @@
+{
+  "window": "30d",
+  "as_of_day": "2026-06-22",
+  "builders": [
+    {
+      "address": "0x1cc34f6af34653c515b47a83e1de70ba9b0cda1f",
+      "slug": "axiom",
+      "name": "Axiom",
+      "volume_usd": 254276.1,
+      "fees_usd": 125.74,
+      "fills": 18,
+      "unique_users": 9,
+      "effective_fee_bps": 4.9450,
+      "fees_per_user_usd": 13.9711
+    },
+    {
+      "address": "0xb84168cf3be63c6b8dad05ff5d755e97432ff80b",
+      "slug": "phantom-perps",
+      "name": "Phantom",
+      "volume_usd": 96147.5,
+      "fees_usd": 47.56,
+      "fills": 18,
+      "unique_users": 9,
+      "effective_fee_bps": 4.9466,
+      "fees_per_user_usd": 5.2844
+    }
+  ]
+}
