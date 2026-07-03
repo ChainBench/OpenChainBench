@@ -139,8 +139,11 @@ export async function specToBenchmark(
   const live = await tryLoadLive(filteredSpec, isFiltered);
   if (live) {
     // Mark live entries explicitly so a missing `availability` reads as
-    // "unknown" everywhere else in the code.
-    for (const r of live.results) r.availability = "live";
+    // "unknown" everywhere else in the code. Unresponsive rows keep
+    // their "unavailable" marker so no ranking surface counts them.
+    for (const r of live.results) {
+      if (!r.unresponsive) r.availability = "live";
+    }
 
     // Augment with spec-declared providers that didn't return data this
     // cycle, but only on the *unfiltered* view. When the reader has
@@ -191,6 +194,10 @@ export async function specToBenchmark(
       if (live.metricPanels && live.metricPanels.length > 0) {
         for (const r of live.results) {
           if (r.availability !== "unavailable") continue;
+          // Never promote unresponsive rows: their call counters ARE
+          // panel-shaped data on some benches, but a 0-2% success rate
+          // is exactly the condition the badge exists to surface.
+          if (r.unresponsive) continue;
           const slug = r.slug.toLowerCase();
           const hasPanelData = live.metricPanels.some((panel) => {
             const v = panel.values?.[r.slug] ?? panel.values?.[slug];
@@ -236,7 +243,9 @@ export async function specToBenchmark(
           if (!chainLive) {
             return [chain, undefined, undefined, [] as string[]] as const;
           }
-          for (const r of chainLive.results) r.availability = "live";
+          for (const r of chainLive.results) {
+            if (!r.unresponsive) r.availability = "live";
+          }
           const liveForChain = liveProviderResults(chainLive.results);
           const slugs = liveForChain.map((r) => r.slug);
           if (liveForChain.length === 0) {
@@ -280,6 +289,11 @@ export async function specToBenchmark(
     const expectedN = spec.expected_n;
     if (expectedN) {
       for (const r of live.results) {
+        // Unresponsive rows carry a full probe count (the calls run,
+        // they just fail) — classifying them "healthy" would read as a
+        // contradiction next to the badge, and aggregateConfidence
+        // already skips unavailable rows. Leave them unclassified.
+        if (r.unresponsive) continue;
         const h = classifyHealth(r.sampleSize, expectedN);
         if (h) {
           r.dataConfidence = h.confidence;
@@ -534,6 +548,61 @@ function escapePromLabelValue(v: string): string {
     .replace(/[\r\n]/g, "");
 }
 
+/** Success-rate ceiling (in percent) under which a latency-less cohort
+ *  member is classified "unresponsive" rather than transiently
+ *  unreadable. Latency percentiles come from the same probes as OK
+ *  results (the harness only records latency for successful calls), so
+ *  any real success share implies the latency series exists — a null
+ *  percentile next to a healthy success rate is a transient Prom read
+ *  failure, not a dead endpoint, and must not be badged. */
+const UNRESPONSIVE_MAX_SUCCESS_PCT = 5;
+
+/**
+ * Build the unranked "unresponsive" entry for a spec-declared provider
+ * whose latency percentiles returned nothing this cycle. Returns null
+ * when the provider wasn't provably probed in the current view (no
+ * success sample AND no call-count sample), which keeps the behavior
+ * scoped to specs that declare reliability queries (the RPC family):
+ * benches without `success` / `sample_size` queries never produce these
+ * rows, and chain/region variants only flag providers whose counters
+ * actually exist on that slice (a provider that simply doesn't cover
+ * the filtered chain stays absent, not fake-offline).
+ *
+ * Exported for unit tests.
+ */
+export function unresponsiveResult(
+  p: Spec["providers"][number],
+  probe: { success: number | null; sampleSize: number | null },
+): ProviderResult | null {
+  const probed =
+    (probe.sampleSize != null && probe.sampleSize > 0) || probe.success != null;
+  if (!probed) return null;
+  // Same ratio-vs-percent normalization as the live path. A missing
+  // success sample with live call counters means the ok-rate series is
+  // entirely absent (zero successful probes in the window) → 0%.
+  const successPct =
+    probe.success != null
+      ? probe.success > 1
+        ? probe.success
+        : probe.success * 100
+      : 0;
+  if (successPct >= UNRESPONSIVE_MAX_SUCCESS_PCT) return null;
+  return {
+    name: p.name,
+    slug: p.slug,
+    tag: p.tag,
+    type: p.type,
+    layer: p.layer,
+    ms: { p50: 0, p90: 0, p99: 0, mean: 0 },
+    successRate: successPct,
+    sampleSize: probe.sampleSize ?? undefined,
+    secondary: p.secondary,
+    availability: "unavailable",
+    unresponsive: true,
+    formula: p.formula,
+  };
+}
+
 async function tryLoadLive(
   spec: Spec,
   isFiltered = false
@@ -605,6 +674,22 @@ async function tryLoadLive(
       // unfiltered "All" view to avoid spamming logs on filtered views
       // where a missing provider is expected behavior.
       if (p50 == null || p90 == null || p99 == null) {
+        // Unresponsive cohort member: the latency series is gone from
+        // the window (failed probes record no latency, so a fully dead
+        // endpoint's percentiles go Prom-stale within 24h) but the call
+        // counters still prove probing continues. Keep the provider on
+        // the board as an unranked "unresponsive" row carrying its
+        // success rate + sample size instead of silently vanishing.
+        // Applies to filtered (region) variants too — the injected
+        // labels make the counters view-scoped, so a provider dead in
+        // only one region is flagged on that region's tab while ranking
+        // normally everywhere it still answers.
+        const unresponsive = unresponsiveResult(p, { success, sampleSize });
+        if (unresponsive) {
+          liveResults.push(unresponsive);
+          if (sampleSize) totalSamples += sampleSize;
+          continue;
+        }
         if (!isFiltered && spec.status === "live") {
           const missing = [
             p50 == null ? "p50" : null,
@@ -685,7 +770,13 @@ async function tryLoadLive(
     }
 
     // No live numbers from anyone (every provider was skipped) → draft.
-    if (liveResults.length === 0) return null;
+    // Unresponsive rows don't count: a board made ONLY of dead providers
+    // has no ranking to publish, and letting them satisfy the check
+    // would also let them satisfy the quorum guard below during a Prom
+    // brownout (counters often survive a partial outage that kills the
+    // heavier percentile queries).
+    const rankedCount = liveResults.filter((r) => !r.unresponsive).length;
+    if (rankedCount === 0) return null;
 
     // Quorum guard. Providers whose p50/p90/p99 come back null are
     // silently skipped above, which is correct for a single flaky source
@@ -706,9 +797,9 @@ async function tryLoadLive(
       // brownout scenario this guards against (1-2 stragglers passing
       // while the rest time out) stays caught.
       const quorum = Math.min(Math.ceil(declared / 2), 3);
-      if (liveResults.length < quorum) {
+      if (rankedCount < quorum) {
         console.warn(
-          `bench quorum fail: ${spec.slug} live=${liveResults.length}/${declared} → keeping previous render`,
+          `bench quorum fail: ${spec.slug} live=${rankedCount}/${declared} → keeping previous render`,
         );
         return null;
       }

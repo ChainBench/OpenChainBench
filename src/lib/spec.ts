@@ -256,7 +256,10 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v18: RPC per-chain cluster (044-053) + rpc-capabilities lost its
   // perChainExplainer. Bench SET changed; without the bump, cached v17
   // entries keep the removed explainer and miss the 10 new benches.
-  ["bench-unfiltered-v18"],
+  // v19: ProviderResult gained `unresponsive` (cohort providers with
+  // live call counters but no latency render as unranked badge rows).
+  // Cached v18 entries would silently drop dead providers instead.
+  ["bench-unfiltered-v19"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -400,7 +403,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // this, sitemap/citable/products kept emitting the removed
   // rpc-capabilities/<chain> variant URLs and missing the 10 new
   // <chain>-rpc benches after deploy.
-  ["all-benchmarks-v22"],
+  // v23: bumped with bench-unfiltered-v19 (unresponsive provider rows).
+  ["all-benchmarks-v23"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -469,7 +473,9 @@ const loadBenchmarkFiltered = unstable_cache(
   // v8: bumped with bench-unfiltered-v11 (egress reduction).
   // v9: bumped with bench-unfiltered-v17 (slim cached objects).
   // v10: bumped with bench-unfiltered-v18 (RPC per-chain cluster).
-  ["bench-filters-v10"],
+  // v11: bumped with bench-unfiltered-v19 (unresponsive provider rows;
+  // region variants flag providers dead on that slice).
+  ["bench-filters-v11"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
