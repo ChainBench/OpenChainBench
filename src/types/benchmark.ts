@@ -69,6 +69,17 @@ export type ProviderResult = {
    *  p99 queries so the UI can render a soft offline state instead of
    *  zero values. */
   availability?: ProviderAvailability;
+  /** True when the provider is part of the bench's declared cohort and
+   *  its reliability counters (spec `success` / `sample_size` queries,
+   *  rpc_call_total-backed) still return samples for the current view,
+   *  but no latency percentile exists — probes keep running and
+   *  (nearly) all fail, so the latency series went Prom-stale. Rendered
+   *  as an unranked, muted "unresponsive" row at the bottom of the
+   *  ledger carrying its success rate, instead of silently vanishing
+   *  from the leaderboard. Always paired with availability="unavailable"
+   *  so every ranking surface (liveResults, hub best/fastest, best_name
+   *  placeholders) keeps excluding it from winner claims. */
+  unresponsive?: boolean;
   /** Carry-forward bookkeeping written by the materialization worker:
    *  observedAt = epoch ms of the last successful Prom read behind these
    *  numbers; staleSince = first failed cycle after it. Absent on data
