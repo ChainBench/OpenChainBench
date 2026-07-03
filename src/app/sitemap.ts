@@ -8,6 +8,7 @@ import { loadAllAnswers } from "@/lib/answers";
 import { CHAIN_BY_SLUG, CHAINS, getBenchmarksForChain } from "@/lib/chains";
 import { canonicalChainSlug } from "@/lib/chain-aliases";
 import { getProvider, getProviders, getProviderSlugs } from "@/lib/providers";
+import { isHlBuilderSlug } from "@/lib/hl-builder-stats";
 import { CATEGORIES } from "@/lib/categories";
 import { SITE } from "@/data/site";
 import type { Benchmark } from "@/types/benchmark";
@@ -218,10 +219,17 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
   // so listing them in the sitemap pollutes it with permanent
   // redirects. The canonical /chains/<slug> URLs are emitted below
   // by chainRoutes.
+  //
+  // Same treatment for HL frontend slugs (PR #841): /products/<hl-slug>
+  // 307-redirects to /hyperliquid/<slug>. Emitting the /products URL
+  // in the sitemap makes the deploy-time smoke test fail on redirect,
+  // and search engines see a permanent-redirect chain instead of a
+  // clean canonical.
   const validatedSlugs = (
     await Promise.all(
       providerSlugs.map(async (slug) => {
         if (CHAIN_BY_SLUG.has(slug)) return null;
+        if (await isHlBuilderSlug(slug)) return null;
         const p = await getProvider(slug);
         return p ? slug : null;
       }),
