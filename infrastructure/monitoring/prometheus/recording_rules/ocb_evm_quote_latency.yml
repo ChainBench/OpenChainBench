@@ -1,0 +1,26 @@
+# Recording rules for OCB bench 033 (evm-quote-latency).
+#
+# Histogram bench: percentiles are recorded at full (provider, chain,
+# region) granularity so the site's chain/region tab label-injection
+# keeps working against one metric name. The site headline aggregates
+# cells with avg(), i.e. equal-weight per cell (documented in the bench
+# YAML formula text). Mean keeps exact ratio-of-sums semantics via the
+# recorded sum/count rate pair.
+groups:
+  - name: ocb_evm_quote_latency
+    interval: 60s
+    rules:
+      - record: ocb:evm_swap_quote_latency_ms:p50_24h
+        expr: histogram_quantile(0.50, sum by (provider, chain, region, le) (rate(evm_swap_quote_latency_ms_bucket[24h])))
+      - record: ocb:evm_swap_quote_latency_ms:p90_24h
+        expr: histogram_quantile(0.90, sum by (provider, chain, region, le) (rate(evm_swap_quote_latency_ms_bucket[24h])))
+      - record: ocb:evm_swap_quote_latency_ms:p99_24h
+        expr: histogram_quantile(0.99, sum by (provider, chain, region, le) (rate(evm_swap_quote_latency_ms_bucket[24h])))
+      - record: ocb:evm_swap_quote_latency_ms:sum_rate_24h
+        expr: sum by (provider, chain, region) (rate(evm_swap_quote_latency_ms_sum[24h]))
+      - record: ocb:evm_swap_quote_latency_ms:count_rate_24h
+        expr: sum by (provider, chain, region) (rate(evm_swap_quote_latency_ms_count[24h]))
+      - record: ocb:evm_swap_quote_latency_ms:count_increase_24h
+        expr: sum by (provider, chain, region) (increase(evm_swap_quote_latency_ms_count[24h]))
+      - record: ocb:evm_swap_quote_success:avg_24h
+        expr: avg_over_time(evm_swap_quote_success[24h])

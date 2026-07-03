@@ -1,0 +1,18 @@
+# Recording rules for OCB bench 037 (pm-rate-limits).
+#
+# Histogram bench: percentiles are recorded at full (venue, region,
+# endpoint) granularity so the bench page can label-inject without
+# fanning out across the ~1455 bucket series at query time. ttfb p50
+# included so the headline "first-byte" widget reads a single series.
+groups:
+  - name: ocb_pm_rate_limits
+    interval: 30s
+    rules:
+      - record: ocb:pmapi_request_duration_seconds:p50_24h
+        expr: histogram_quantile(0.50, sum by (venue, region, endpoint, le) (rate(pmapi_request_duration_seconds_bucket[24h])))
+      - record: ocb:pmapi_request_duration_seconds:p90_24h
+        expr: histogram_quantile(0.90, sum by (venue, region, endpoint, le) (rate(pmapi_request_duration_seconds_bucket[24h])))
+      - record: ocb:pmapi_request_duration_seconds:p99_24h
+        expr: histogram_quantile(0.99, sum by (venue, region, endpoint, le) (rate(pmapi_request_duration_seconds_bucket[24h])))
+      - record: ocb:pmapi_request_ttfb_seconds:p50_24h
+        expr: histogram_quantile(0.50, sum by (venue, region, endpoint, le) (rate(pmapi_request_ttfb_seconds_bucket[24h])))
