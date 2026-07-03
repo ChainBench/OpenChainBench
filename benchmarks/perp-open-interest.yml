@@ -4,8 +4,8 @@ slug: perp-open-interest
 number: "042"
 title: Perp DEX open interest, live USD notional ranked
 seo_title: "Perp DEX open interest 2026"
-seo_description: "Live perpetual futures open interest in USD across 11 major perp DEX venues: Hyperliquid, Aster, Lighter, GRVT, Extended, Ostium, Pacifica, Vertex, dYdX, Aevo, Paradex. Refreshed every 5 minutes."
-subtitle: Live aggregate open interest in USD across 11 major decentralized perpetual futures venues. Higher means more notional sits open. Read live from each venue's public API.
+seo_description: "Live perpetual futures open interest in USD across 12 major perp DEX venues: Hyperliquid, Aster, Lighter, GRVT, Extended, Ostium, Pacifica, Vertex, dYdX, Aevo, Paradex, gains.trade. Refreshed every 5 minutes."
+subtitle: Live aggregate open interest in USD across 12 major decentralized perpetual futures venues. Higher means more notional sits open. Read live from each venue's public API.
 category: Trading
 status: live
 metric: Open interest
@@ -18,21 +18,22 @@ seo_intro: |
   number for perpetual futures: it tells you how much notional sits
   open right now, on every market, on a given venue. We poll each
   venue's public API every 5 minutes, sum open interest across all
-  listed perps, and publish one gauge per venue. The cohort covers 11
+  listed perps, and publish one gauge per venue. The cohort covers 12
   venues: Hyperliquid, Aster, Lighter, GRVT, Extended, Ostium, Pacifica,
-  Vertex, dYdX v4, Aevo and Paradex. Headline number is the 24h average
+  Vertex, dYdX v4, Aevo, Paradex and gains.trade. Headline number is the 24h average
   of the live OI gauge so a single noisy print does not move the
   ranking.
 
 abstract: |
-  The bench polls 11 perp DEX venues every 5 minutes for live open
+  The bench polls 12 perp DEX venues every 5 minutes for live open
   interest and exposes a USD-aggregated gauge per venue. Each venue's
   public API is queried directly (Hyperliquid info metaAndAssetCtxs,
   Aster fapi openInterest, Lighter orderBookDetails, GRVT public
   markets, Extended API, Ostium subgraph, Pacifica onchain reads,
   Vertex indexer, dYdX v4 indexer, Aevo public markets, Paradex
-  markets summary) and the notional is summed in USD across all
-  listed perps. Each value carries a freshness timestamp and a health
+  markets summary, gains.trade trading-variables per collateral across
+  Arbitrum/Base/Polygon/ApeChain) and the notional is summed in USD
+  across all listed perps. Each value carries a freshness timestamp and a health
   gauge so a stale or errored venue does not poison the leaderboard.
   Higher is better.
 
@@ -49,11 +50,12 @@ methodology:
   - "dYdX v4: indexer perpetualMarkets, openInterest per market summed in USD."
   - "Aevo: public markets endpoint, open interest per instrument summed in USD."
   - "Paradex: markets summary endpoint on Starknet L2, open interest summed across perps."
+  - "gains.trade: trading-variables endpoint per chain backend (Arbitrum, Base, Polygon, ApeChain), per-collateral pairOis summed then multiplied by collateralPriceUsd, summed across all chains."
   - "Headline. avg_over_time of the live OI gauge over the last 24 hours, so a one-print spike does not move the ranking. The Series tab plots the raw gauge."
   - "Failures. A venue that errors or times out keeps its last gauge value and its perp_venue_health gauge drops toward 0; the leaderboard tags it as stale."
 
 findings:
-  - "{{best_name}} currently leads the cohort at {{best_p50}} of open interest (24h average) across 11 measured perp DEX venues."
+  - "{{best_name}} currently leads the cohort at {{best_p50}} of open interest (24h average) across 12 measured perp DEX venues."
   - "{{name:hyperliquid}} sits at {{p50:hyperliquid}} of open interest. HyperBFT orderbook is the deepest decentralized perp venue by a wide margin."
   - "{{name:lighter}} clocks {{p50:lighter}} of open interest. Fully onchain orderbook on zkSync with zero taker fee."
   - "{{name:aster}} sits at {{p50:aster}} of open interest. BNB Chain perps DEX with a Binance-compatible API surface."
@@ -65,6 +67,7 @@ findings:
   - "{{name:vertex}} sits at {{p50:vertex}} of open interest. Arbitrum orderbook plus AMM hybrid."
   - "{{name:paradex}} sits at {{p50:paradex}} of open interest. Starknet L2 perps."
   - "{{name:aevo}} sits at {{p50:aevo}} of open interest. Optimism L2 orderbook perps, options-focused history."
+  - "{{name:gains}} sits at {{p50:gains}} of open interest. Synthetic perps across Arbitrum, Base, Polygon and ApeChain."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/benchmarks/perp-open-interest.yml
 
@@ -74,11 +77,11 @@ prometheus:
 
 faq:
   - q: "What does this benchmark measure?"
-    a: "The live aggregate open interest of 11 major perp DEX venues in USD. Headline is the 24h average of the live OI gauge so single prints do not skew the ranking."
+    a: "The live aggregate open interest of 12 major perp DEX venues in USD. Headline is the 24h average of the live OI gauge so single prints do not skew the ranking."
   - q: "How is open interest different from volume?"
     a: "Volume counts every trade that crosses the book during a window. Open interest counts notional that currently sits open, regardless of when it was opened. A high-volume venue with high turnover can carry lower OI than a slower venue with sticky positions."
   - q: "Which venues are in the cohort?"
-    a: "Hyperliquid, Aster, Lighter, GRVT, Extended, Ostium, Pacifica, Vertex, dYdX v4, Aevo and Paradex, the 11 decentralized perp venues whose public APIs expose open interest cleanly enough to compare without backfilling. Other venues join as their endpoints document the same series."
+    a: "Hyperliquid, Aster, Lighter, GRVT, Extended, Ostium, Pacifica, Vertex, dYdX v4, Aevo, Paradex and gains.trade, the 12 decentralized perp venues whose public APIs expose open interest cleanly enough to compare without backfilling. Other venues join as their endpoints document the same series."
   - q: "Is OI a good proxy for venue health?"
     a: "It is one of the cleanest. A venue can spike volume with wash trading or incentive programs, but real OI is harder to fake because it ties up margin. Compared against perp-volume-share, persistent OI dominance signals real position-holding flow rather than turnover."
 
@@ -225,3 +228,16 @@ providers:
       success: avg_over_time(perp_venue_health{venue="paradex"}[24h])
       sample_size: count_over_time(perp_venue_oi_usd{venue="paradex"}[24h])
       series: perp_venue_oi_usd{venue="paradex"}
+
+  - slug: gains
+    name: gains.trade
+    tag: Synthetic perps across Arbitrum, Base, Polygon, ApeChain
+    formula: "Open interest from the gains.trade trading-variables endpoint per chain backend, per-collateral pairOis long+short summed, normalized by precision and multiplied by collateralPriceUsd, summed across all 4 chains; headline is the 24h time average."
+    queries:
+      p50: avg_over_time(perp_venue_oi_usd{venue="gains"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_oi_usd{venue="gains"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_oi_usd{venue="gains"}[24h])
+      mean: avg_over_time(perp_venue_oi_usd{venue="gains"}[24h])
+      success: avg_over_time(perp_venue_health{venue="gains"}[24h])
+      sample_size: count_over_time(perp_venue_oi_usd{venue="gains"}[24h])
+      series: perp_venue_oi_usd{venue="gains"}
