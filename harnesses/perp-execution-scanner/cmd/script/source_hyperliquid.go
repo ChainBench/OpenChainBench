@@ -63,7 +63,7 @@ func FetchHyperliquid(asset string, coin string) (*OrderBook, error) {
 		return nil, fmt.Errorf("bad_shape: levels len=%d", len(r.Levels))
 	}
 	book := &OrderBook{
-		Venue:    "hyperliquid-xyz",
+		Venue:    "hyperliquid",
 		Asset:    asset,
 		Bids:     parseHLSide(r.Levels[0]),
 		Asks:     parseHLSide(r.Levels[1]),

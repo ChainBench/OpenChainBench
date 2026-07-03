@@ -105,9 +105,9 @@ func sweep(cfg *Config) {
 			start := time.Now()
 			book, err := FetchHyperliquid(asset.Asset, asset.HyperliquidCoin)
 			if err != nil {
-				fetchErrorsCtr.WithLabelValues(asset.Asset, "hyperliquid-xyz", classifyError(err.Error())).Inc()
-				healthGauge.WithLabelValues(asset.Asset, "hyperliquid-xyz").Set(0)
-				fmt.Printf("[%s][hyperliquid-xyz] err: %v\n", asset.Asset, err)
+				fetchErrorsCtr.WithLabelValues(asset.Asset, "hyperliquid", classifyError(err.Error())).Inc()
+				healthGauge.WithLabelValues(asset.Asset, "hyperliquid").Set(0)
+				fmt.Printf("[%s][hyperliquid] err: %v\n", asset.Asset, err)
 				return
 			}
 			publish(book, cfg, time.Since(start))
