@@ -18,7 +18,7 @@ type Config struct {
 	ListenAddr   string
 
 	// Assets is the list of underlyings to track. Venue slugs are fixed
-	// (lighter, hyperliquid-xyz) and are wired to the corresponding
+	// (lighter, hyperliquid) and are wired to the corresponding
 	// fetcher in main.go via a switch.
 	Assets []AssetConfig
 
