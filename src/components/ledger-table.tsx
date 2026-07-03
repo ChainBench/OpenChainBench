@@ -32,6 +32,15 @@ function isHexAddressSlug(slug: string): boolean {
   return HEX_ADDRESS_SLUG.test(slug.toLowerCase());
 }
 
+/** Absolute count of failed probes in the 24h window, derived from the
+ *  fields the ledger already has (no new data): sample size × failure
+ *  rate. Null when the row has no sampleSize (bench doesn't report it),
+ *  rendered as "—" and sorted to the bottom. */
+function errorCount(r: ProviderResult): number | null {
+  if (r.sampleSize == null) return null;
+  return Math.round(r.sampleSize * (1 - r.successRate / 100));
+}
+
 /** Sort keys exposed by the header click handlers. `null` (the default)
  *  means "use the bench's natural sort" — pickValue + higherIsBetter —
  *  which is what callers, OG renders, and share cards depend on. Any
@@ -48,6 +57,7 @@ type SortKey =
   | "value"
   | "delta"
   | "success"
+  | "errors"
   | "slot_p50"
   | `col_${number}`;
 
@@ -215,6 +225,7 @@ export function LedgerTable({
     if (k === "mean") return r.ms.mean;
     if (k === "delta") return deltaForSort(r);
     if (k === "success") return r.successRate ?? 0;
+    if (k === "errors") return errorCount(r) ?? -Infinity;
     if (k === "slot_p50") return r.slots?.p50 ?? Infinity;
     if (k.startsWith("col_")) {
       const idx = Number(k.slice(4));
@@ -360,7 +371,10 @@ export function LedgerTable({
             <th className="border-y-2 border-ink py-2 px-3 text-right md:hidden">
               {customCols ? colLabel(customCols[0]) : activePanel ? "Value" : "p50"}
             </th>
-            <th className="border-y-2 border-ink py-2 pl-3 text-right hidden md:table-cell">
+            <th
+              colSpan={2}
+              className="border-y-2 border-ink py-2 pl-3 text-right hidden md:table-cell"
+            >
               Reliability
             </th>
             <th className="border-y-2 border-ink py-2 pl-3 text-right">Trend</th>
@@ -483,6 +497,18 @@ export function LedgerTable({
             >
               Success
             </SortableHeader>
+            <SortableHeader
+              sortKey="errors"
+              activeKey={sortKey}
+              dir={sortDir}
+              onClick={handleHeaderClick}
+              align="right"
+              className="py-2 px-3 hidden md:table-cell"
+            >
+              <Hint label="Failed probes in the last 24h across all regions: HTTP errors, JSON-RPC error bodies, timeouts and stale responses (block >20 behind the cross-provider tip). Derived from sample size × (1 − success rate).">
+                Errors (24h)
+              </Hint>
+            </SortableHeader>
             <th className="py-2 pl-3 text-right">24h</th>
             {hasSlots && (
               <SortableHeader
@@ -502,10 +528,10 @@ export function LedgerTable({
             <th
               colSpan={
                 (customCols
-                  ? 6 + customCols.length
+                  ? 7 + customCols.length
                   : panelActive || singleValueColumn
-                    ? 7
-                    : 10) +
+                    ? 8
+                    : 11) +
                 (hasSlots ? 1 : 0) +
                 (secondary ? 1 : 0)
               }
@@ -765,7 +791,7 @@ function Row({
       {isOffline ? (
         <td
           colSpan={
-            (customCells ? customCells.length + 3 : 7) +
+            (customCells ? customCells.length + 4 : 8) +
             (hasSlots ? 1 : 0) +
             (hasSecondary ? 1 : 0)
           }
@@ -808,6 +834,9 @@ function Row({
           </td>
           <td className="py-2.5 px-3 text-right text-ink-soft whitespace-nowrap hidden md:table-cell">
             {r.successRate.toFixed(2)}%
+          </td>
+          <td className="py-2.5 px-3 text-right text-ink-faint tabular-nums whitespace-nowrap hidden md:table-cell">
+            {errorCount(r)?.toLocaleString("en-US") ?? "—"}
           </td>
           <td className="py-2.5 pl-3 text-right text-ink-faint">—</td>
           {hasSlots && (
@@ -871,6 +900,9 @@ function Row({
           </td>
           <td className="py-2.5 px-3 text-right text-ink-soft whitespace-nowrap hidden md:table-cell">
             {r.successRate.toFixed(2)}%
+          </td>
+          <td className="py-2.5 px-3 text-right text-ink-faint tabular-nums whitespace-nowrap hidden md:table-cell">
+            {errorCount(r)?.toLocaleString("en-US") ?? "—"}
           </td>
           <td className="py-2.5 pl-3 text-right">
             <span className="inline-flex items-center justify-end">
