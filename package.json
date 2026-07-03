@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit",
     "validate": "tsx scripts/validate-specs.ts",
     "spec:dry-run": "tsx scripts/dry-run-spec.ts",
+    "rpc-hub:dry-run": "tsx scripts/dry-run-rpc-hub.ts",
     "check": "pnpm validate && pnpm typecheck && pnpm lint && pnpm test",
     "worker": "tsx worker/index.ts"
   },
