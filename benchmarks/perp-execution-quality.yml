@@ -56,7 +56,7 @@ methodology:
 findings:
   - "{{best_name}} currently leads at {{best_p50}} of slippage on a $10,000 $BOT buy (24 h average) between the {{count}} DEX venues listing $BOT."
   - "{{name:lighter}} sits at {{p50:lighter}} on the same $10,000 bucket. Fully onchain orderbook on zk-rollup, zero taker fee, so the number is essentially the crossed half-spread plus depth impact."
-  - "{{name:hyperliquid-xyz}} sits at {{p50:hyperliquid-xyz}} on the same $10,000 bucket. HIP-3 markets settle through the same HyperBFT orderbook engine as native Hyperliquid perps but liquidity is provided by the deployer-affiliated market maker, so depth can be thinner than on a native flagship pair."
+  - "{{name:hyperliquid}} sits at {{p50:hyperliquid}} on the same $10,000 bucket. HIP-3 markets settle through the same HyperBFT orderbook engine as native Hyperliquid perps but liquidity is provided by the deployer-affiliated market maker, so depth can be thinner than on a native flagship pair."
   - "Both venues publish additional size buckets ($100 up to $500,000, both sides). The full grid is exposed via the raw `perp_execution_slippage_bps` series with the `size_usd` and `side` labels."
   - "$BOT is not currently listed on any other decentralized perp venue with a public orderbook endpoint. New listings will show up here automatically once their `(asset, venue)` pair is added to the harness config."
 
@@ -96,15 +96,15 @@ providers:
       sample_size: count_over_time(perp_execution_slippage_bps{asset="BOT", venue="lighter", side="buy", size_usd="10000"}[24h])
       series: perp_execution_slippage_bps{asset="BOT", venue="lighter", side="buy", size_usd="10000"}
 
-  - slug: hyperliquid-xyz
+  - slug: hyperliquid
     name: Hyperliquid HIP-3 (xyz:BOT)
     tag: HIP-3 permissionless perp on Hyperliquid L1
     formula: "Average over 24h of the effective slippage in bps for a $10,000 buy on the Hyperliquid HIP-3 `xyz:BOT` orderbook, walked live every 30 seconds from `POST /info {type:l2Book, coin:\"xyz:BOT\"}`."
     queries:
-      p50: avg_over_time(perp_execution_slippage_bps{asset="BOT", venue="hyperliquid-xyz", side="buy", size_usd="10000"}[24h])
-      p90: quantile_over_time(0.90, perp_execution_slippage_bps{asset="BOT", venue="hyperliquid-xyz", side="buy", size_usd="10000"}[24h])
-      p99: quantile_over_time(0.99, perp_execution_slippage_bps{asset="BOT", venue="hyperliquid-xyz", side="buy", size_usd="10000"}[24h])
-      mean: avg_over_time(perp_execution_slippage_bps{asset="BOT", venue="hyperliquid-xyz", side="buy", size_usd="10000"}[24h])
-      success: avg_over_time(perp_execution_health{asset="BOT", venue="hyperliquid-xyz"}[24h])
-      sample_size: count_over_time(perp_execution_slippage_bps{asset="BOT", venue="hyperliquid-xyz", side="buy", size_usd="10000"}[24h])
-      series: perp_execution_slippage_bps{asset="BOT", venue="hyperliquid-xyz", side="buy", size_usd="10000"}
+      p50: avg_over_time(perp_execution_slippage_bps{asset="BOT", venue="hyperliquid", side="buy", size_usd="10000"}[24h])
+      p90: quantile_over_time(0.90, perp_execution_slippage_bps{asset="BOT", venue="hyperliquid", side="buy", size_usd="10000"}[24h])
+      p99: quantile_over_time(0.99, perp_execution_slippage_bps{asset="BOT", venue="hyperliquid", side="buy", size_usd="10000"}[24h])
+      mean: avg_over_time(perp_execution_slippage_bps{asset="BOT", venue="hyperliquid", side="buy", size_usd="10000"}[24h])
+      success: avg_over_time(perp_execution_health{asset="BOT", venue="hyperliquid"}[24h])
+      sample_size: count_over_time(perp_execution_slippage_bps{asset="BOT", venue="hyperliquid", side="buy", size_usd="10000"}[24h])
+      series: perp_execution_slippage_bps{asset="BOT", venue="hyperliquid", side="buy", size_usd="10000"}
