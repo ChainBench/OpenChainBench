@@ -91,7 +91,7 @@ export default function AboutPage() {
           data-quality issue or a provider correction
         </a>
         . For press, partnerships or anything else, reach us at{" "}
-        <a className="lnk" href="mailto:openchainbench@gmail.com">openchainbench@gmail.com</a>
+        <a className="lnk" href="mailto:contact@openchainbench.com">contact@openchainbench.com</a>
         . Material errors are corrected in place with a dated note on the affected report.
       </p>
     </article>
