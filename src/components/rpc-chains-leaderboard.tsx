@@ -114,7 +114,9 @@ export function RpcChainsLeaderboard({ rows }: { rows: RpcHubChain[] }) {
                 dir={sortDir}
                 onClick={() => setSort("bestP50")}
               >
-                Fastest provider
+                <span title="Lowest p50 averaged across the 3 probe regions. A provider can win overall without winning any single region: consistent everywhere beats fast in one region, slow elsewhere.">
+                  Best overall (3-region avg)
+                </span>
               </ThSort>
               {REGION_COLS.map((c) => (
                 <ThSort
