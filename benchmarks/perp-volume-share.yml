@@ -64,7 +64,7 @@ findings:
   - "{{name:paradex}} sits at {{p50:paradex}} of 24h notional. Starknet L2 perps."
   - "{{name:aevo}} sits at {{p50:aevo}} of 24h notional. Optimism L2 orderbook perps."
 
-source: https://github.com/ChainBench/OpenChainBench/tree/main/benchmarks/perp-volume-share.yml
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/perp-cohort-stats
 
 prometheus:
   window: 24h

@@ -1,0 +1,38 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  # Expanded at startup via --enable-feature=expand-external-labels.
+  # Unset => empty value => alert rule templates treat it as "not staging" and don't prefix.
+  external_labels:
+    environment: '${ENVIRONMENT}'
+
+# Load alert rules
+rule_files:
+  - '/etc/prometheus/alert_rules.yml'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager.railway.internal:9093']
+
+scrape_configs:
+  - job_name: 'monitor'
+    static_configs:
+      - targets:
+        - 'agg-eu-west.railway.internal:2112'
+        - 'alertmanager.railway.internal:2112'
+        - 'aggregator-east-usa.railway.internal:2112'
+        - 'agg-sgp.railway.internal:2112'
+    metrics_path: /metrics
+
+  # OpenChainBench bench №004 — runs the Pulse V2 feeder + metadata
+  # coverage worker. Internal-only Railway service; no public URL needed.
+  - job_name: 'metadata-coverage'
+    static_configs:
+      - targets:
+        - 'metadata-coverage.railway.internal:2112'
+        labels:
+          benchmark: metadata-coverage
+    metrics_path: /metrics
+

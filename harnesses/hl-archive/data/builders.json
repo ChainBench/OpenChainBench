@@ -1,0 +1,776 @@
+[
+  {
+    "slug": "phantom-perps",
+    "name": "Phantom",
+    "address": "0xb84168cf3be63c6b8dad05ff5d755e97432ff80b",
+    "valid_from": "2026-05-31",
+    "notes": "Phantom wallet's Hyperliquid perps integration. Verified via CoinMarketMan HyperTracker registry + 200 OK on the public fills bucket on 2026-05-29 and 2026-05-30."
+  },
+  {
+    "slug": "axiom",
+    "name": "Axiom",
+    "address": "0x1cc34f6af34653c515b47a83e1de70ba9b0cda1f",
+    "valid_from": "2026-05-31",
+    "notes": "Axiom trading terminal (Solana-native, expanding to HL). Verified via CMM registry + bucket 200 OK."
+  },
+  {
+    "slug": "pvp-trade",
+    "name": "pvp.trade",
+    "address": "0x0cbf655b0d22ae71fba3a674b0e1c0c7e7f975af",
+    "valid_from": "2026-05-31",
+    "notes": "Social PvP trading rooms. Verified via CMM registry + bucket 200 OK + CMM per-builder URL."
+  },
+  {
+    "slug": "insilico",
+    "name": "Insilico",
+    "address": "0x2868fc0d9786a740b491577a43502259efa78a39",
+    "valid_from": "2026-05-31",
+    "notes": "Insilico Terminal (institutional trading workstation). Verified via CMM registry + bucket 200 OK + CMM per-builder URL."
+  },
+  {
+    "slug": "defiapp",
+    "name": "Defiapp",
+    "address": "0x1922810825c90f4270048b96da7b1803cd8609ef",
+    "valid_from": "2026-05-31",
+    "notes": "Defiapp HL frontend. Verified via bucket 200 OK with real data (sample test: 133 fills, $164K notional, 5 bps eff, 2026-05-29)."
+  },
+  {
+    "slug": "metamask",
+    "name": "MetaMask",
+    "address": "0xe95a5e31904e005066614247d309e00d8ad753aa",
+    "valid_from": "2026-05-31",
+    "notes": "MetaMask HL integration (primary address). MetaMask is documented to operate a secondary address 0xea2c82b5aba243ab631c0ce151763d5e38df75b3 — aggregate manually if needed."
+  },
+  {
+    "slug": "dexari",
+    "name": "Dexari",
+    "address": "0x7975cafdff839ed5047244ed3a0dd82a89866081",
+    "valid_from": "2026-05-31",
+    "notes": "Dexari HL frontend (previously called Dexterity in our internal docs, naming corrected after Flowscan cross-reference). Verified via CMM registry."
+  },
+  {
+    "slug": "okto",
+    "name": "Okto",
+    "address": "0x05984fd37db96dc2a11a09519a8def556e80590b",
+    "valid_from": "2026-05-31",
+    "notes": "Okto HL integration. Tracks both documented builder addresses (primary + secondary). Either may receive routed flow depending on Okto's deployment state.",
+    "addresses": [
+      "0x05984fd37db96dc2a11a09519a8def556e80590b",
+      "0x4fe1141b9066f3777f4bd4d4ac9d216173031dc1"
+    ]
+  },
+  {
+    "slug": "trust-wallet",
+    "name": "Trust Wallet",
+    "address": "0x5af1b5f44207784dcb850bbb4143c5dcd1885f71",
+    "valid_from": "2026-06-02",
+    "notes": "Trust Wallet HL perps integration. Source: DefiLlama dimension-adapters factory/hyperliquid.ts dexsProtocols."
+  },
+  {
+    "slug": "sushi",
+    "name": "Sushi",
+    "address": "0x12ee177db3ceafedc639d023a29cc8588db3a4b9",
+    "valid_from": "2026-06-02",
+    "notes": "Sushi perps frontend. Source: DefiLlama dimension-adapters factory/hyperliquid.ts."
+  },
+  {
+    "slug": "dreamcash",
+    "name": "Dreamcash",
+    "address": "0x4950994884602d1b6c6d96e4fe30f58205c39395",
+    "valid_from": "2026-06-02",
+    "notes": "Dreamcash HL frontend. Source: DefiLlama dimension-adapters factory/hyperliquid.ts."
+  },
+  {
+    "slug": "based-app",
+    "name": "Based",
+    "address": "0x1924b8561eef20e70ede628a296175d358be80e5",
+    "valid_from": "2026-06-02",
+    "notes": "Based app HL frontend. Source: DefiLlama dimension-adapters factory/hyperliquid.ts."
+  },
+  {
+    "slug": "blink",
+    "name": "Blink",
+    "address": "0xc7bcb2eee9bbfbf875499960746bc52b2e1a75c6",
+    "valid_from": "2026-06-02",
+    "notes": "Blink perps. Source: DefiLlama dimension-adapters factory/hyperliquid.ts."
+  },
+  {
+    "slug": "perpmate",
+    "name": "Perpmate",
+    "address": "0xe4fea748eca48f44b1e042775f0c2363be1a2d80",
+    "valid_from": "2026-06-02",
+    "notes": "Perpmate HL frontend. Source: DefiLlama dimension-adapters factory/hyperliquid.ts."
+  },
+  {
+    "slug": "arena",
+    "name": "Arena",
+    "address": "0x7056a6bc0a962b6ca37bc5da4c4c5127c81b7af3",
+    "valid_from": "2026-06-02",
+    "notes": "Arena perps. Source: DefiLlama dimension-adapters factory/hyperliquid.ts."
+  },
+  {
+    "slug": "minaraai",
+    "name": "MinaraAI",
+    "address": "0x5a3bc60b0a99a7f4fbf0d15554fa5fe88e7628c2",
+    "valid_from": "2026-06-02",
+    "notes": "MinaraAI HL frontend. Source: DefiLlama dimension-adapters factory/hyperliquid.ts."
+  },
+  {
+    "slug": "apexliquid",
+    "name": "ApexLiquid",
+    "address": "0xe1f55f2f25884c2ddc86b6f7efa5f45b2ef04221",
+    "valid_from": "2026-06-02",
+    "notes": "ApexLiquid HL frontend. Source: DefiLlama dimension-adapters factory/hyperliquid.ts."
+  },
+  {
+    "slug": "coin98",
+    "name": "Coin98",
+    "address": "0x3342ee6851ef0ec3cf42658c2be3b28a905271aa",
+    "valid_from": "2026-06-02",
+    "notes": "Coin98 wallet HL perps. Source: DefiLlama dimension-adapters factory/hyperliquid.ts."
+  },
+  {
+    "slug": "coinpilot",
+    "name": "CoinPilot",
+    "address": "0xe9935bb291ab3603b4d7862e6f19315f759aa3a4",
+    "valid_from": "2026-06-02",
+    "notes": "CoinPilot HL frontend. Source: DefiLlama dimension-adapters factory/hyperliquid.ts. Note: same address listed for splashos-perps in DefiLlama config, likely a config bug there."
+  },
+  {
+    "slug": "echosync",
+    "name": "Echosync",
+    "address": "0x831ad7eb3e600a3ab8df851ce27df8d8dd6b5d9c",
+    "valid_from": "2026-06-02",
+    "notes": "Echosync HL frontend. Source: DefiLlama dimension-adapters factory/hyperliquid.ts."
+  },
+  {
+    "slug": "fomo",
+    "name": "FOMO",
+    "address": "0x2a2b6b093a9813fbd8cddae800c3d17d46460d17",
+    "valid_from": "2026-06-02",
+    "notes": "FOMO social trading app (relaunched HL builder, joined 2026-06-02). Address corrected 2026-06-12: the previous 0xb838e4d1 address from DefiLlama belongs to an older unrelated FOMO perps product. Verified against local node fills ($3.5K builder fees on 2026-06-12) + HyperTracker registry."
+  },
+  {
+    "slug": "gemwallet",
+    "name": "Gem Wallet",
+    "address": "0x0d9dab1a248f63b0a48965ba8435e4de7497a3dc",
+    "valid_from": "2026-06-02",
+    "notes": "Gem Wallet HL perps. Source: DefiLlama dimension-adapters factory/hyperliquid.ts."
+  },
+  {
+    "slug": "gtr-trade",
+    "name": "GTR Trade",
+    "address": "0x5ef4deeb76f87d979d0ddc8c51f5b4f65d1c972a",
+    "valid_from": "2026-06-02",
+    "notes": "GTR Trade HL frontend. Source: DefiLlama dimension-adapters factory/hyperliquid.ts."
+  },
+  {
+    "slug": "hyprearn",
+    "name": "Hyprearn",
+    "address": "0x70cf605bb180daf00c3e2f1ca3df5bb602664452",
+    "valid_from": "2026-06-02",
+    "notes": "Hyprearn HL frontend. Source: DefiLlama dimension-adapters factory/hyperliquid.ts."
+  },
+  {
+    "slug": "legend-trade",
+    "name": "Legend Trade",
+    "address": "0x4e65de9ca0abe3d36f7e3d7a7ce9f0dbe406a412",
+    "valid_from": "2026-06-02",
+    "notes": "Legend Trade HL frontend. Source: DefiLlama dimension-adapters factory/hyperliquid.ts."
+  },
+  {
+    "slug": "katoshi",
+    "name": "Katoshi",
+    "address": "0x274e3cdb7bdc4805f41a07e3348243ba3e7e5b72",
+    "valid_from": "2026-06-02",
+    "notes": "Katoshi perps. Source: DefiLlama dimension-adapters factory/hyperliquid.ts."
+  },
+  {
+    "slug": "metascalp",
+    "name": "Metascalp",
+    "address": "0xa9ab442f9dfe752dc74b666c41e7a0498baf8687",
+    "valid_from": "2026-06-02",
+    "notes": "Metascalp perps. Source: DefiLlama dimension-adapters factory/hyperliquid.ts."
+  },
+  {
+    "slug": "moontrader",
+    "name": "Moontrader",
+    "address": "0x38b176c674cd9a3b97a59b0a7045ba26a13783cb",
+    "valid_from": "2026-06-02",
+    "notes": "Moontrader HL frontend. Source: DefiLlama dimension-adapters factory/hyperliquid.ts."
+  },
+  {
+    "slug": "onekey",
+    "name": "OneKey",
+    "address": "0x9b12e858da780a96876e3018780cf0d83359b0bb",
+    "valid_from": "2026-06-02",
+    "notes": "OneKey wallet HL perps. Source: DefiLlama dimension-adapters factory/hyperliquid.ts."
+  },
+  {
+    "slug": "pear",
+    "name": "Pear",
+    "address": "0xa47d4d99191db54a4829cdf3de2417e527c3b042",
+    "valid_from": "2026-06-02",
+    "notes": "Pear interface. Source: DefiLlama dimension-adapters factory/hyperliquid.ts."
+  },
+  {
+    "slug": "rabby",
+    "name": "Rabby",
+    "address": "0xad9be64fd7a35d99a138b87cb212baefbcdcf045",
+    "valid_from": "2026-06-02",
+    "notes": "Rabby wallet HL perps. Source: DefiLlama dimension-adapters factory/hyperliquid.ts."
+  },
+  {
+    "slug": "ranger-finance",
+    "name": "Ranger Finance",
+    "address": "0xf5bc9107916b91a3ea5966cd2e51655d21b7eb02",
+    "valid_from": "2026-06-02",
+    "notes": "Ranger Finance perps. Source: DefiLlama dimension-adapters factory/hyperliquid.ts."
+  },
+  {
+    "slug": "senpi",
+    "name": "Senpi",
+    "address": "0x1368f4311db5807f7c7924d736adaeb83e47bafe",
+    "valid_from": "2026-06-02",
+    "notes": "Senpi perps. Source: DefiLlama dimension-adapters factory/hyperliquid.ts."
+  },
+  {
+    "slug": "superx",
+    "name": "SuperX",
+    "address": "0x4ecd58def11dc3cadf7deb09f27da69d5475acb3",
+    "valid_from": "2026-06-02",
+    "notes": "SuperX HL frontend. Source: DefiLlama dimension-adapters factory/hyperliquid.ts."
+  },
+  {
+    "slug": "supurr",
+    "name": "Supurr",
+    "address": "0x36be02a397e969e010ccbd7333f4169f66b8989f",
+    "valid_from": "2026-06-02",
+    "notes": "Supurr perps. Source: DefiLlama dimension-adapters factory/hyperliquid.ts."
+  },
+  {
+    "slug": "unigox",
+    "name": "Unigox",
+    "address": "0xf8ead1ecc72dfbb87cdd7bf78450f7cf68d046a3",
+    "valid_from": "2026-06-02",
+    "notes": "Unigox perps. Source: DefiLlama dimension-adapters factory/hyperliquid.ts."
+  },
+  {
+    "slug": "uxuy",
+    "name": "UXUY",
+    "address": "0x2e266a0f40e9f5bca48f5df1686aab10b1b68ec8",
+    "valid_from": "2026-06-02",
+    "notes": "UXUY HL frontend. Source: DefiLlama dimension-adapters factory/hyperliquid.ts."
+  },
+  {
+    "slug": "wunder",
+    "name": "Wunder",
+    "address": "0x75982eb8b734b24b653b39e308489a428041f162",
+    "valid_from": "2026-06-02",
+    "notes": "Wunder perps. Source: DefiLlama dimension-adapters factory/hyperliquid.ts."
+  },
+  {
+    "slug": "grider",
+    "name": "Grider",
+    "address": "0x0176337c97bb884b8ac4be2276a5c779ab1156b9",
+    "valid_from": "2026-06-02",
+    "notes": "Grider perps. Source: DefiLlama dimension-adapters factory/hyperliquid.ts."
+  },
+  {
+    "slug": "tradoor",
+    "name": "Tradoor",
+    "address": "0x92345453ce2000642d7d4ceeae4fccc6c2e41d23",
+    "valid_from": "2026-06-02",
+    "notes": "Tradoor perps. Source: DefiLlama dimension-adapters factory/hyperliquid.ts."
+  },
+  {
+    "slug": "bullpenfi",
+    "name": "BullpenFi",
+    "address": "0x4c8731897503f86a2643959cbaa1e075e84babb7",
+    "valid_from": "2026-06-02",
+    "notes": "BullpenFi perps. Source: DefiLlama dimension-adapters factory/hyperliquid.ts feesProtocols."
+  },
+  {
+    "slug": "dexly-trade",
+    "name": "Dexly Trade",
+    "address": "0x22047776933bc123d0602ed17aaf0d2f5647df0c",
+    "valid_from": "2026-06-02",
+    "notes": "Dexly Trade. Source: DefiLlama dimension-adapters factory/hyperliquid.ts feesProtocols."
+  },
+  {
+    "slug": "hyperdash",
+    "name": "Hyperdash",
+    "address": "0xe966a12bf7b93838096e4519a684519ab22df618",
+    "valid_from": "2026-06-02",
+    "notes": "Hyperdash HL frontend. Source: DefiLlama dimension-adapters factory/hyperliquid.ts feesProtocols."
+  },
+  {
+    "slug": "infinex",
+    "name": "Infinex",
+    "address": "0xcf56dd84ed85eb4929e0a76a0f2f04049b4ffc1a",
+    "valid_from": "2026-06-02",
+    "notes": "Infinex perps. Source: DefiLlama dimension-adapters factory/hyperliquid.ts feesProtocols."
+  },
+  {
+    "slug": "liminal",
+    "name": "Liminal",
+    "address": "0x7e1830b1796b01f2f6a7118d50d4d02491421f32",
+    "valid_from": "2026-06-02",
+    "notes": "Liminal perps. Source: DefiLlama dimension-adapters factory/hyperliquid.ts feesProtocols."
+  },
+  {
+    "slug": "liquid-perps",
+    "name": "Liquid Perps",
+    "address": "0x6d4e7f472e6a491b98cbeed327417e310ae8ce48",
+    "valid_from": "2026-06-02",
+    "notes": "Liquid Perps. Source: DefiLlama dimension-adapters factory/hyperliquid.ts feesProtocols."
+  },
+  {
+    "slug": "lit-trade",
+    "name": "Lit Trade",
+    "address": "0x24a747628494231347f4f6aead2ec14f50bcc8b7",
+    "valid_from": "2026-06-02",
+    "notes": "Lit Trade. Source: DefiLlama dimension-adapters factory/hyperliquid.ts feesProtocols."
+  },
+  {
+    "slug": "lootbase",
+    "name": "Lootbase",
+    "address": "0x3e0ef9ad4096c30acefbf7a996f4c19edd071286",
+    "valid_from": "2026-06-02",
+    "notes": "Lootbase HL frontend. Source: DefiLlama dimension-adapters factory/hyperliquid.ts feesProtocols."
+  },
+  {
+    "slug": "mass-dot-money",
+    "name": "Mass.money",
+    "address": "0xf944069b489f1ebff4c3c6a6014d58cbef7c7009",
+    "valid_from": "2026-06-02",
+    "notes": "Mass.money perps. Source: DefiLlama dimension-adapters factory/hyperliquid.ts feesProtocols."
+  },
+  {
+    "slug": "moonbot",
+    "name": "Moonbot",
+    "address": "0xb84c7fb41ee7d8781e2b0d59eed2accd2ae99533",
+    "valid_from": "2026-06-02",
+    "notes": "Moonbot. Source: DefiLlama dimension-adapters factory/hyperliquid.ts feesProtocols."
+  },
+  {
+    "slug": "rainbow",
+    "name": "Rainbow",
+    "address": "0x60dc8e3dad2e4e0738e813b9cb09b9c00b5e0fc9",
+    "valid_from": "2026-06-02",
+    "notes": "Rainbow wallet HL perps. Source: DefiLlama dimension-adapters factory/hyperliquid.ts feesProtocols."
+  },
+  {
+    "slug": "supercexy",
+    "name": "SuperCEXy",
+    "address": "0x0000000bfbf4c62c43c2e71ef0093f382bf7a7b4",
+    "valid_from": "2026-06-02",
+    "notes": "SuperCEXy. Source: DefiLlama dimension-adapters factory/hyperliquid.ts feesProtocols."
+  },
+  {
+    "slug": "superstack",
+    "name": "Superstack",
+    "address": "0xcdb943570bcb48a6f1d3228d0175598fea19e87b",
+    "valid_from": "2026-06-02",
+    "notes": "Superstack. Source: DefiLlama dimension-adapters factory/hyperliquid.ts feesProtocols."
+  },
+  {
+    "slug": "wallet-v",
+    "name": "Wallet V",
+    "address": "0x68c68ba58f50bdbe5c4a6faf0186b140eab2b764",
+    "valid_from": "2026-06-02",
+    "notes": "Wallet V. Source: DefiLlama dimension-adapters factory/hyperliquid.ts feesProtocols."
+  },
+  {
+    "slug": "xtrade-protocol",
+    "name": "xTrade Protocol",
+    "address": "0xa58d3d31f09d75bd92ae2ef277e785b2ebb83b77",
+    "valid_from": "2026-06-02",
+    "notes": "xTrade Protocol perps. Source: DefiLlama dimension-adapters factory/hyperliquid.ts feesProtocols."
+  },
+  {
+    "slug": "taco-trade",
+    "name": "Taco Trade",
+    "address": "0xf5b79dea3d8cf3efa95e8176ebd885634d869f51",
+    "valid_from": "2026-06-02",
+    "notes": "Taco Trade. Source: DefiLlama dimension-adapters factory/hyperliquid.ts feesProtocols."
+  },
+  {
+    "slug": "silhouette",
+    "name": "Silhouette",
+    "address": "0x5d2c2bd98f10616771d7b5124ad2090ba72aa43c",
+    "valid_from": "2026-06-02",
+    "notes": "Silhouette (silhouette-naked). Source: DefiLlama dimension-adapters factory/hyperliquid.ts feesProtocols."
+  },
+  {
+    "slug": "tread-fi",
+    "name": "Tread.fi",
+    "address": "0x999a4b5f268a8fbf33736feff360d462ad248dbf",
+    "valid_from": "2026-06-02",
+    "notes": "Tread.fi HL frontend. Source: DefiLlama dimension-adapters dexs/treadfi-perps.ts."
+  },
+  {
+    "slug": "flowbot",
+    "name": "FlowBot",
+    "address": "0xb5d19a1f92fcd5bfdd154d16793bb394f246cb36",
+    "valid_from": "2026-06-02",
+    "notes": "FlowBot HL frontend. Source: DefiLlama dimension-adapters dexs/flowbot-perps.ts."
+  },
+  {
+    "slug": "nautilus-trader",
+    "name": "Nautilus Trader",
+    "address": "0x0c8d970c462726e014ad36f6c5a63e99db48a8e7",
+    "valid_from": "2026-06-02",
+    "notes": "Nautilus Trader (Nautech Systems). Identified via behavioral pattern (heavy MU 85%, 0 builder fee, low user count) cross-referenced with GitHub code search."
+  },
+  {
+    "slug": "0x7cc0fd2b",
+    "name": "0x7cc0…e781",
+    "address": "0x7cc0fd2b76835ab96aa4a3501a9f65e75677e781",
+    "valid_from": "2026-06-11",
+    "notes": "Unidentified active builder address, surfaced by a 24h node-fill scan on 2026-06-10 (~$5703/24h fees, 2514 unique users). Not labeled by DefiLlama dimension-adapters, Dwellir or ASXN at add time. Rename when the operating frontend is identified."
+  },
+  {
+    "slug": "0x557edb25",
+    "name": "0x557e…3c81",
+    "address": "0x557edb253b1d7ed5f15b248a5a3fd919fa5d3c81",
+    "valid_from": "2026-06-11",
+    "notes": "Unidentified active builder address, surfaced by a 24h node-fill scan on 2026-06-10 (~$4157/24h fees, 2771 unique users). Not labeled by DefiLlama dimension-adapters, Dwellir or ASXN at add time. Rename when the operating frontend is identified."
+  },
+  {
+    "slug": "0x446fbc72",
+    "name": "0x446f…d6c6",
+    "address": "0x446fbc72549fdcf656a5165f97b354e5a0e7d6c6",
+    "valid_from": "2026-06-11",
+    "notes": "Unidentified active builder address, surfaced by a 24h node-fill scan on 2026-06-10 (~$1836/24h fees, 22 unique users). Not labeled by DefiLlama dimension-adapters, Dwellir or ASXN at add time. Rename when the operating frontend is identified."
+  },
+  {
+    "slug": "0xf85a6185",
+    "name": "0xf85a…5688",
+    "address": "0xf85a61857c0682b9b59d562310df106b4f785688",
+    "valid_from": "2026-06-11",
+    "notes": "Unidentified active builder address, surfaced by a 24h node-fill scan on 2026-06-10 (~$1805/24h fees, 24 unique users). Not labeled by DefiLlama dimension-adapters, Dwellir or ASXN at add time. Rename when the operating frontend is identified."
+  },
+  {
+    "slug": "0xb290f2f3",
+    "name": "0xb290…c34a",
+    "address": "0xb290f2f3fad4e540d0550985951cdad2711ac34a",
+    "valid_from": "2026-06-11",
+    "notes": "Unidentified active builder address, surfaced by a 24h node-fill scan on 2026-06-10 (~$1641/24h fees, 57 unique users). Not labeled by DefiLlama dimension-adapters, Dwellir or ASXN at add time. Rename when the operating frontend is identified."
+  },
+  {
+    "slug": "0xa1fcd6e2",
+    "name": "0xa1fc…bf4d",
+    "address": "0xa1fcd6e2356c445d38ec1e25eae634e1104abf4d",
+    "valid_from": "2026-06-11",
+    "notes": "Unidentified active builder address, surfaced by a 24h node-fill scan on 2026-06-10 (~$1181/24h fees, 28 unique users). Not labeled by DefiLlama dimension-adapters, Dwellir or ASXN at add time. Rename when the operating frontend is identified."
+  },
+  {
+    "slug": "0x53a19541",
+    "name": "0x53a1…fcd1",
+    "address": "0x53a1954188fc9bf2edb45b94450100507b92fcd1",
+    "valid_from": "2026-06-11",
+    "notes": "Unidentified active builder address, surfaced by a 24h node-fill scan on 2026-06-10 (~$1132/24h fees, 56 unique users). Not labeled by DefiLlama dimension-adapters, Dwellir or ASXN at add time. Rename when the operating frontend is identified."
+  },
+  {
+    "slug": "0xdbc27ea7",
+    "name": "0xdbc2…97a6",
+    "address": "0xdbc27ea7aa99274026404b2fa21114815d9997a6",
+    "valid_from": "2026-06-11",
+    "notes": "Unidentified active builder address, surfaced by a 24h node-fill scan on 2026-06-10 (~$938/24h fees, 123 unique users). Not labeled by DefiLlama dimension-adapters, Dwellir or ASXN at add time. Rename when the operating frontend is identified."
+  },
+  {
+    "slug": "0xea2c82b5",
+    "name": "0xea2c…75b3",
+    "address": "0xea2c82b5aba243ab631c0ce151763d5e38df75b3",
+    "valid_from": "2026-06-11",
+    "notes": "Unidentified active builder address, surfaced by a 24h node-fill scan on 2026-06-10 (~$880/24h fees, 121 unique users). Not labeled by DefiLlama dimension-adapters, Dwellir or ASXN at add time. Rename when the operating frontend is identified."
+  },
+  {
+    "slug": "0x49791d46",
+    "name": "0x4979…37b8",
+    "address": "0x49791d4667e310abe173bc4989aed4f0bed837b8",
+    "valid_from": "2026-06-11",
+    "notes": "Unidentified active builder address, surfaced by a 24h node-fill scan on 2026-06-10 (~$851/24h fees, 4 unique users). Not labeled by DefiLlama dimension-adapters, Dwellir or ASXN at add time. Rename when the operating frontend is identified."
+  },
+  {
+    "slug": "0x9f83fe01",
+    "name": "0x9f83…31d9",
+    "address": "0x9f83fe01f4a62d44e8ca471e2eeb42b5c05531d9",
+    "valid_from": "2026-06-11",
+    "notes": "Unidentified active builder address, surfaced by a 24h node-fill scan on 2026-06-10 (~$733/24h fees, 135 unique users). Not labeled by DefiLlama dimension-adapters, Dwellir or ASXN at add time. Rename when the operating frontend is identified."
+  },
+  {
+    "slug": "0x42f32260",
+    "name": "0x42f3…f992",
+    "address": "0x42f3226007290b02c5a0b15bccbb1ba6df04f992",
+    "valid_from": "2026-06-11",
+    "notes": "Unidentified active builder address, surfaced by a 24h node-fill scan on 2026-06-10 (~$690/24h fees, 99 unique users). Not labeled by DefiLlama dimension-adapters, Dwellir or ASXN at add time. Rename when the operating frontend is identified."
+  },
+  {
+    "slug": "0xc95d92dc",
+    "name": "0xc95d…1aca",
+    "address": "0xc95d92dc8ca672abcc8aaec49a94559bbf481aca",
+    "valid_from": "2026-06-11",
+    "notes": "Unidentified active builder address, surfaced by a 24h node-fill scan on 2026-06-10 (~$543/24h fees, 17 unique users). Not labeled by DefiLlama dimension-adapters, Dwellir or ASXN at add time. Rename when the operating frontend is identified."
+  },
+  {
+    "slug": "0xdf39721d",
+    "name": "0xdf39…4750",
+    "address": "0xdf39721d2c4fc0fedc92c68e3879ba594bb64750",
+    "valid_from": "2026-06-11",
+    "notes": "Unidentified active builder address, surfaced by a 24h node-fill scan on 2026-06-10 (~$525/24h fees, 84 unique users). Not labeled by DefiLlama dimension-adapters, Dwellir or ASXN at add time. Rename when the operating frontend is identified."
+  },
+  {
+    "slug": "0x40e9d9fe",
+    "name": "0x40e9…5260",
+    "address": "0x40e9d9feba3df27e1fb9a924264bf775230d5260",
+    "valid_from": "2026-06-11",
+    "notes": "Unidentified active builder address, surfaced by a 24h node-fill scan on 2026-06-10 (~$513/24h fees, 13 unique users). Not labeled by DefiLlama dimension-adapters, Dwellir or ASXN at add time. Rename when the operating frontend is identified."
+  },
+  {
+    "slug": "dextrabot",
+    "name": "Dextrabot",
+    "address": "0x49ae63056b3a0be0b166813ee687309ab653c07c",
+    "valid_from": "2025-02-19",
+    "notes": "Source: HyperTracker public builder registry (refCode Dextrabot, joined 2025-02-19). Batch coverage audit 2026-06-12 against local node fills."
+  },
+  {
+    "slug": "kinto",
+    "name": "Kinto",
+    "address": "0xc1f4d15c16a1f3555e0a5f7aefd1e17ad4aaf40b",
+    "valid_from": "2024-12-25",
+    "notes": "Source: HyperTracker public builder registry (refCode Kinto, joined 2024-12-25). Batch coverage audit 2026-06-12 against local node fills."
+  },
+  {
+    "slug": "hypersignals",
+    "name": "HyperSignals",
+    "address": "0x8af3545a3988b7a46f96f9f1ae40c0e64fa493c2",
+    "valid_from": "2025-06-18",
+    "notes": "Source: HyperTracker public builder registry (refCode HyperSignals, joined 2025-06-18). Batch coverage audit 2026-06-12 against local node fills."
+  },
+  {
+    "slug": "ccxt",
+    "name": "CCXT",
+    "address": "0x6530512a6c89c7cfcebc3ba7fcd9ada5f30827a6",
+    "valid_from": "2025-07-16",
+    "notes": "Source: HyperTracker public builder registry (refCode CCXT1, joined 2025-07-16). Batch coverage audit 2026-06-12 against local node fills."
+  },
+  {
+    "slug": "vibeliquid",
+    "name": "VibeLiquid",
+    "address": "0x4c13d871aa1862a3c60407bb9e01b20bf1e2fede",
+    "valid_from": "2026-02-11",
+    "notes": "Source: HyperTracker public builder registry (refCode VibeLiquid, joined 2026-02-11). Batch coverage audit 2026-06-12 against local node fills."
+  },
+  {
+    "slug": "splash",
+    "name": "Splash",
+    "address": "0x3f24962739e6d703942dc2456e7c51c8d0ca4b70",
+    "valid_from": "2025-06-04",
+    "notes": "Source: HyperTracker public builder registry (refCode Splash, joined 2025-06-04). Batch coverage audit 2026-06-12 against local node fills."
+  },
+  {
+    "slug": "vooi",
+    "name": "VOOI",
+    "address": "0xbe622f92438ae55b12908b01eeace15d98ed1eec",
+    "valid_from": "2024-10-30",
+    "notes": "Source: HyperTracker public builder registry (refCode VOOI, joined 2024-10-30). Batch coverage audit 2026-06-12 against local node fills."
+  },
+  {
+    "slug": "hyperx",
+    "name": "HyperX",
+    "address": "0xc74812f67eddaf2f3aed6e061eaa9168b36d7ea1",
+    "valid_from": "2025-04-16",
+    "notes": "Source: HyperTracker public builder registry (refCode HyperX, joined 2025-04-16). Batch coverage audit 2026-06-12 against local node fills."
+  },
+  {
+    "slug": "miracle",
+    "name": "Miracle",
+    "address": "0x5eb46bfbf7c6004b59d67e56749e89e83c2caf82",
+    "valid_from": "2025-09-03",
+    "notes": "Source: HyperTracker public builder registry (refCode Miracle, joined 2025-09-03). Batch coverage audit 2026-06-12 against local node fills."
+  },
+  {
+    "slug": "xbit",
+    "name": "XBIT",
+    "address": "0x0c322f69ab8d0544be3cfd54424762a4251806c5",
+    "valid_from": "2025-08-16",
+    "notes": "Source: HyperTracker public builder registry (refCode XBIT, joined 2025-08-16). Batch coverage audit 2026-06-12 against local node fills."
+  },
+  {
+    "slug": "tuleep-trade",
+    "name": "tuleep.trade",
+    "address": "0x00000000617c4307d352e8c1720a9f29d01c3d62",
+    "valid_from": "2025-05-28",
+    "notes": "Source: HyperTracker public builder registry (refCode TULEEPTRADE, joined 2025-05-28). Batch coverage audit 2026-06-12 against local node fills."
+  },
+  {
+    "slug": "slash",
+    "name": "Slash",
+    "address": "0xaf69b1587b87c78409e5a20c3fd5f1ca386fd350",
+    "valid_from": "2025-02-12",
+    "notes": "Source: HyperTracker public builder registry (refCode SLASH, joined 2025-02-12). Batch coverage audit 2026-06-12 against local node fills."
+  },
+  {
+    "slug": "shax",
+    "name": "SHAX",
+    "address": "0x046a3ae662e8603d5eaeb74910c74e57a3ccd7ec",
+    "valid_from": "2026-04-08",
+    "notes": "Source: HyperTracker public builder registry (refCode SHAX, joined 2026-04-08). Batch coverage audit 2026-06-12 against local node fills."
+  },
+  {
+    "slug": "aura-money",
+    "name": "Aura",
+    "address": "0xee41f05496bc30dbd29c96bc31283c7e9f062192",
+    "valid_from": "2025-07-09",
+    "notes": "Source: HyperTracker public builder registry (refCode AURADOTMONEY, joined 2025-07-09). Batch coverage audit 2026-06-12 against local node fills."
+  },
+  {
+    "slug": "cro-trade",
+    "name": "cro.trade",
+    "address": "0x008adf65b8c404e8bba73f18671306066643761f",
+    "valid_from": "2026-03-18",
+    "notes": "Source: HyperTracker public builder registry (refCode cro.trade, joined 2026-03-18). Batch coverage audit 2026-06-12 against local node fills."
+  },
+  {
+    "slug": "owlyfi",
+    "name": "Owly.fi",
+    "address": "0x2e2e7c7696134f740aea7242a55b55d5cf769fab",
+    "valid_from": "2025-12-17",
+    "notes": "Source: HyperTracker public builder registry (refCode OWLYFI, joined 2025-12-17). Batch coverage audit 2026-06-12 against local node fills."
+  },
+  {
+    "slug": "topdog",
+    "name": "TopDog",
+    "address": "0xaef63e8441987a5e9bf1d37ebb61d8855f405a98",
+    "valid_from": "2025-04-09",
+    "notes": "Source: HyperTracker public builder registry (refCode TopDog, joined 2025-04-09). Batch coverage audit 2026-06-12 against local node fills."
+  },
+  {
+    "slug": "liquid8",
+    "name": "Liquid8",
+    "address": "0x7151a036313eee8aa9bc45d0969ca0e1637aad3c",
+    "valid_from": "2025-03-05",
+    "notes": "Source: HyperTracker public builder registry (refCode LIQUID8, joined 2025-03-05). Batch coverage audit 2026-06-12 against local node fills."
+  },
+  {
+    "slug": "goodcryptox",
+    "name": "goodcryptoX",
+    "address": "0xff09853a49dde85a8e7eab58abf94018fbe76116",
+    "valid_from": "2025-10-15",
+    "notes": "Source: HyperTracker public builder registry (refCode GOODCRYPTOX, joined 2025-10-15). Batch coverage audit 2026-06-12 against local node fills."
+  },
+  {
+    "slug": "markets-mobile",
+    "name": "Markets Mobile",
+    "address": "0x2af94a24e1f744a8e251b4996283ffb4657e915d",
+    "valid_from": "2025-12-03",
+    "notes": "Source: HyperTracker public builder registry (refCode Markets Mobile, joined 2025-12-03). Batch coverage audit 2026-06-12 against local node fills."
+  },
+  {
+    "slug": "origami-tech",
+    "name": "Origami Tech",
+    "address": "0x9b451f8941240db8bedc99bff8917a2ed9550074",
+    "valid_from": "2025-11-07",
+    "notes": "Source: HyperTracker public builder registry (refCode Origami Tech, joined 2025-11-07). Batch coverage audit 2026-06-12 against local node fills."
+  },
+  {
+    "slug": "cwallet",
+    "name": "Cwallet",
+    "address": "0xb977b6625dfe3d26eefa4ac6f99ada6546586962",
+    "valid_from": "2025-08-13",
+    "notes": "Source: HyperTracker public builder registry (refCode Cwallet, joined 2025-08-13). Batch coverage audit 2026-06-12 against local node fills."
+  },
+  {
+    "slug": "cipher",
+    "name": "Cipher",
+    "address": "0x32f6940795d6d484a6d29b6b628ebaff80a0c779",
+    "valid_from": "2025-04-16",
+    "notes": "Source: HyperTracker public builder registry (refCode Cipher, joined 2025-04-16). Batch coverage audit 2026-06-12 against local node fills."
+  },
+  {
+    "slug": "stryx",
+    "name": "STRYX",
+    "address": "0x60bce92a6f6685a8e7cc721ed025c7b848dd52c2",
+    "valid_from": "2026-03-04",
+    "notes": "Source: HyperTracker public builder registry (refCode STRYX, joined 2026-03-04). Batch coverage audit 2026-06-12 against local node fills."
+  },
+  {
+    "slug": "perpswld",
+    "name": "PerpsWLD",
+    "address": "0xbeef9cf5b817b1fb533b278f9a8754ec2b3745be",
+    "valid_from": "2025-12-10",
+    "notes": "Source: HyperTracker public builder registry (refCode PERPSWLD, joined 2025-12-10). Batch coverage audit 2026-06-12 against local node fills."
+  },
+  {
+    "slug": "onchaincc",
+    "name": "Onchain.cc",
+    "address": "0x64c06812904d342367ad155d7a8f3b7c7fb27f5f",
+    "valid_from": "2026-03-13",
+    "notes": "Source: HyperTracker public builder registry (refCode ONCHAINCC, joined 2026-03-13). Batch coverage audit 2026-06-12 against local node fills."
+  },
+  {
+    "slug": "kucoin-web3",
+    "name": "KuCoin Web3",
+    "address": "0x17e133500905dc6e85d9802c9e9b9120966aba27",
+    "valid_from": "2025-11-18",
+    "notes": "Source: HyperTracker public builder registry (refCode KUCOINWEB3, joined 2025-11-18). Batch coverage audit 2026-06-12 against local node fills."
+  },
+  {
+    "slug": "vergex",
+    "name": "VergeX",
+    "address": "0x891dc6f05ad47a3c1a05da55e7a7517971faaf0d",
+    "valid_from": "2025-11-12",
+    "notes": "Source: HyperTracker public builder registry (refCode VergeX, joined 2025-11-12). Batch coverage audit 2026-06-12 against local node fills."
+  },
+  {
+    "slug": "nansen",
+    "name": "Nansen",
+    "address": "0x93053f1e7a5efeda532fe69cbbe43cbec3a0f13f",
+    "valid_from": "2026-05-06",
+    "notes": "Nansen perps (refCode NSN on HyperTracker; nansen-perps in DefiLlama factory/hyperliquid.ts, start 2026-05-04). Identified during 2026-06-12 metadata audit."
+  },
+  {
+    "slug": "defi-saver",
+    "name": "DeFi Saver",
+    "address": "0x40e9d9feba3df27e1fb9a924264bf775230d5260",
+    "valid_from": "2026-06-28",
+    "notes": "DeFi Saver HL perps integration. Verified via HL referral code DFS (53 referrals) + blog.defisaver.com 2026 announcement."
+  },
+  {
+    "slug": "unitywallet",
+    "name": "UnityWallet",
+    "address": "0x49791d4667e310abe173bc4989aed4f0bed837b8",
+    "valid_from": "2026-06-28",
+    "notes": "UnityWallet self-custodial wallet HL integration. Verified via HL referral code UNITYWALLET (58 referrals) + unitywallet.com."
+  },
+  {
+    "slug": "invo",
+    "name": "Invo",
+    "address": "0x557edb253b1d7ed5f15b248a5a3fd919fa5d3c81",
+    "valid_from": "2026-06-28",
+    "notes": "Invo social trading app (invoapp.com) on Hyperliquid. Verified via HL referral code INVO (25794 referrals)."
+  },
+  {
+    "slug": "marsgo",
+    "name": "MarsGO",
+    "address": "0xa1fcd6e2356c445d38ec1e25eae634e1104abf4d",
+    "valid_from": "2026-06-28",
+    "notes": "MarsGO Telegram crypto app HL integration. Verified via HL referral code MARSGO (89 referrals) + findmini.app/marsgo_bot listing."
+  },
+  {
+    "slug": "bitget-wallet",
+    "name": "Bitget Wallet",
+    "address": "0xdf39721d2c4fc0fedc92c68e3879ba594bb64750",
+    "valid_from": "2026-06-28",
+    "notes": "Bitget Wallet HL perps integration (Dec 2025 launch). Verified via HL referral code BITGETWALLET (3676 referrals)."
+  },
+  {
+    "slug": "metamask-alt",
+    "name": "MetaMask (alt)",
+    "address": "0xea2c82b5aba243ab631c0ce151763d5e38df75b3",
+    "valid_from": "2026-06-28",
+    "notes": "MetaMask secondary HL builder address, documented alongside primary 0xe95a5e31."
+  }
+]
