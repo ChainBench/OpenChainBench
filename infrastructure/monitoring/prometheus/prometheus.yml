@@ -1,0 +1,452 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  # Expanded at startup via --enable-feature=expand-external-labels.
+  # Unset => empty value => alert rule templates treat it as "not staging" and don't prefix.
+  external_labels:
+    environment: '${ENVIRONMENT}'
+
+# Load alert rules
+rule_files:
+  - '/etc/prometheus/alert_rules.yml'
+  # OCB recording rules: precomputed per-cell aggregates the bench site
+  # reads as cheap ocb:* selectors instead of 24h-window quantiles.
+  - '/etc/prometheus/recording_rules/*.yml'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager.railway.internal:9093']
+
+scrape_configs:
+  - job_name: 'monitor'
+    static_configs:
+      - targets:
+        - 'agg-eu-west.railway.internal:2112'
+        - 'alert-reflection.railway.internal:2112'
+        - 'aggregator-latency-benchmark.railway.internal:2112'
+    metrics_path: /metrics
+
+  # OpenChainBench bench №004 — runs the Pulse V2 feeder + metadata
+  # coverage worker. Internal-only Railway service; no public URL needed.
+  - job_name: 'metadata-coverage'
+    static_configs:
+      - targets:
+        - 'metadata-coverage.railway.internal:2112'
+        labels:
+          benchmark: metadata-coverage
+    metrics_path: /metrics
+
+  # OpenChainBench bench №040 — polls 4 NFT-metadata APIs (Moralis,
+  # Alchemy, OpenSea, Rarible) every 6h on a fixed list of 50 Ethereum
+  # blue-chip collections. 5 fields scored (name/image/description/
+  # floor_eth/external_url); Rarible's floor_eth is intentionally not
+  # recorded (BID vs ASK asymmetry, see bench spec). Internal-only.
+  - job_name: 'nft-metadata-coverage'
+    static_configs:
+      - targets:
+        - 'nft-metadata-coverage.railway.internal:2112'
+        labels:
+          benchmark: nft-collection-metadata
+    metrics_path: /metrics
+
+  # OpenChainBench bench №005 — counts the chains each onchain data
+  # provider officially supports (GeckoTerminal, Codex, Mobula).
+  - job_name: 'network-coverage'
+    static_configs:
+      - targets:
+        - 'network-coverage.railway.internal:2112'
+        labels:
+          benchmark: network-coverage
+    metrics_path: /metrics
+
+  # Per-chain KPI exporter — TVL/DEX/stables from DefiLlama, native
+  # price+mcap and Mobula-tokens-indexed from Mobula. Powers the KPI
+  # strip on /chains/<slug>. Not a bench, but exposes gauges read by
+  # the site SSR pass.
+  - job_name: 'chain-kpis'
+    static_configs:
+      - targets:
+        - 'chain-kpis.railway.internal:2112'
+        labels:
+          benchmark: chain-kpis
+    metrics_path: /metrics
+
+  # Per-venue prediction-market KPI exporter. Polls Polymarket gamma,
+  # Kalshi REST, DefiLlama for the /prediction-markets hub. Powers the
+  # cohort leaderboard + per-venue anchored sections. Not a bench, but
+  # exposes gauges read by the site SSR pass.
+  - job_name: 'pm-cohort-stats'
+    static_configs:
+      - targets:
+        - 'pm-cohort-stats.railway.internal:2112'
+        labels:
+          benchmark: pm-cohort-stats
+    metrics_path: /metrics
+
+  # Per-venue perpetual DEX cohort exporter. Multi-source adapter (HL
+  # native, Lighter native, DefiLlama HTML, Mobula funding + pairs)
+  # publishes perp_venue_* gauges read by the /perps hub leaderboard,
+  # PerpVenueKpiStrip and per-product PerpVenueSection. Tier 1 cohort:
+  # hyperliquid, lighter, gmx-v2, gains. Internal-only Railway service.
+  - job_name: 'perp-cohort-stats'
+    static_configs:
+      - targets:
+        - 'perp-cohort-stats.railway.internal:2112'
+        labels:
+          benchmark: perp-cohort-stats
+    metrics_path: /metrics
+
+  # OpenChainBench bench №006 — measures block-level finality lag across
+  # 13 L1 chains by reading latest vs finalized block every 10 s.
+  - job_name: 'l1-finality'
+    static_configs:
+      - targets:
+        - 'l1-finality.railway.internal:2112'
+        labels:
+          benchmark: l1-finality
+    metrics_path: /metrics
+
+  # OpenChainBench bench №007 — measures all-in opening cost across perp
+  # venues (Hyperliquid, dYdX, GMX, Lighter, Gains via Mobula). 5 min cadence.
+  - job_name: 'perp-fees'
+    static_configs:
+      - targets:
+        - 'perp-fee.railway.internal:2112'
+        labels:
+          benchmark: perp-fees
+    metrics_path: /metrics
+
+  # OpenChainBench bench №008 — wallet label coverage across 9 providers
+  # (Mobula, Moralis, Helius, Blockscout, OLI, TonAPI, StellarExpert, XRPScan,
+  # WalletExplorer) on 11 chains. Anchor sample of ~60 well-known addresses
+  # rotated every 30 min.
+  # Service is currently named `mobula-monorepo` on Railway (default repo
+  # name); when it gets renamed to `wallet-labels`, update this target.
+  - job_name: 'wallet-labels'
+    static_configs:
+      - targets:
+        - 'mobula-monorepo.railway.internal:2112'
+        labels:
+          benchmark: wallet-labels
+    metrics_path: /metrics
+
+  # OpenChainBench bench №009 — live sequencer block-time across 9 EVM L2s
+  # (Arbitrum, Optimism, Base, zkSync Era, Linea, Scroll, Blast, Mantle,
+  # Taiko). One persistent eth_subscribe(newHeads) WS per chain; metric
+  # is the wall-clock interval between two consecutive head events.
+  - job_name: 'l2-block-time'
+    static_configs:
+      - targets:
+        - 'l2-block-time.railway.internal:2112'
+        labels:
+          benchmark: l2-block-time
+    metrics_path: /metrics
+
+  # OpenChainBench bench №010 / 011 / 012 - public RPC capabilities.
+  # One Go binary probes (provider x chain) for: (a) eth_blockNumber
+  # latency p50/p90/p99, (b) error-rate broken into http/jsonrpc/stale/
+  # timeout buckets, (c) archive depth via eth_getBalance at multiple
+  # historical heights. Covers Ethereum, Base, BNB across publicnode,
+  # drpc, 1rpc, meowrpc, flashbots, cloudflare-eth + chain-official RPCs.
+  #
+  # Multi-region (since 2026-05-29): runs as 3 separate Railway services,
+  # one per region (us-east, eu-west, sgp). Each has its own internal
+  # DNS so Prom can scrape all three explicitly — the single-service +
+  # replicas approach didn't work because Railway's internal DNS is
+  # geo-sticky and always routed Prom to the closest replica.
+  #
+  # honor_labels: the harness self-attributes region/provider/chain
+  # via labels in its /metrics output (REGION env var on each service).
+  # We keep those as-is and only add the bench grouping label below.
+  - job_name: 'rpc-capabilities'
+    honor_labels: true
+    static_configs:
+      - targets:
+        - 'rpc-capabilities-bench.railway.internal:2112'   # sgp
+        - 'rpc-capabilities-eu.railway.internal:2112'      # eu-west
+        - 'rpc-capabilities-us.railway.internal:2112'      # us-east
+        labels:
+          benchmark: rpc-capabilities
+    metrics_path: /metrics
+
+  # OpenChainBench bench №013 - Ethereum gas oracle prediction accuracy.
+  # Polls Blocknative + PublicNode feeHistory + Owlracle + Etherscan v2,
+  # waits 2 blocks, computes realized p25/p50/p90 priority fee from the
+  # mined block's txs, emits |predicted - realized| per oracle per tier.
+  - job_name: 'gas-estimation'
+    static_configs:
+      - targets:
+        - 'gas-fee-estimation.railway.internal:2112'
+        labels:
+          benchmark: gas-estimation
+    metrics_path: /metrics
+
+  # OpenChainBench bench №014 - stablecoin peg deviation vs $1.00.
+  # Polls Binance, Kraken, Bitstamp REST + Curve 3pool eth_call,
+  # aggregates per-minute liquidity-weighted median across venues,
+  # emits absolute deviation in bps + the cross-venue gap (max-min)
+  # that nobody else publishes.
+  - job_name: 'stablecoin-peg'
+    static_configs:
+      - targets:
+        - 'stablecoin-peg-bench.railway.internal:2112'
+        labels:
+          benchmark: stablecoin-peg
+    metrics_path: /metrics
+
+  # OpenChainBench bench №016 - Solana tx landing services market share.
+  # Observational. Subscribes to mainnet-beta WS via logsSubscribe on
+  # ~72 known tip wallets and attributes each landed tx to its service
+  # (Jito, Helius Sender, Nozomi, bloXroute, 0slot, NextBlock,
+  # Astralane, SolanaVibeStation). Zero on-chain footprint.
+  - job_name: 'solana-tx-landing'
+    static_configs:
+      - targets:
+        - 'solana-tx-landing.railway.internal:2112'
+        labels:
+          benchmark: solana-tx-landing
+    metrics_path: /metrics
+
+  # OpenChainBench bench №018 - Buyback Execution Audit.
+  # Measures executed_USD / promised_USD on-chain per protocol over
+  # 7d & 30d windows. Hyperliquid Assistance Fund via HL info API,
+  # Sky SBE via Etherscan v2 tokentx (SKY inflows). Requires
+  # ETHERSCAN_API_KEY env var for Sky data.
+  - job_name: 'buyback-audit'
+    static_configs:
+      - targets:
+        - 'buyback-audit.railway.internal:2112'
+        labels:
+          benchmark: buyback-audit
+    metrics_path: /metrics
+
+  # OpenChainBench bench №025 - Oracle Deviation.
+  # 4 oracles × 10 USD pairs: Chainlink AggregatorV3 (eth_call),
+  # Pyth Hermes batch, Binance ticker, Coinbase ticker. 30s polling.
+  # Exposes per-source price, pairwise deviation, max deviation, latency.
+  - job_name: 'oracle-deviation'
+    static_configs:
+      - targets:
+        - 'oracle-deviation.railway.internal:2112'
+        labels:
+          benchmark: oracle-deviation
+    metrics_path: /metrics
+
+  # OpenChainBench bench №026 - Validator Net Yield Comparison.
+  # Solana via Stakewiz (total_apy, MEV-included) + Jito Kobe enrichment.
+  # Hyperliquid via /info validatorSummaries. Top-200 Solana by stake +
+  # all HL validators. MEV exposed for transparency but not subtracted
+  # (gross APR includes Jito by upstream design).
+  - job_name: 'validator-yield'
+    static_configs:
+      - targets:
+        - 'validator-yield.railway.internal:2112'
+        labels:
+          benchmark: validator-yield
+    metrics_path: /metrics
+
+  # OpenChainBench bench №028 - Relay.link Revenue (implied margin).
+  # Polls https://api.relay.link/requests every 60s, dedups by id,
+  # computes implied_margin_usd = usd_in - usd_out - sum(gas) - sum(appFees)
+  # per success swap, stores in SQLite, exposes rolling 24h/7d/30d
+  # revenue/volume/count + take_rate_bps gauges. This is the CEILING.
+  - job_name: 'relay-revenue'
+    static_configs:
+      - targets:
+        - 'relay-revenue.railway.internal:2112'
+        labels:
+          benchmark: relay-revenue
+    metrics_path: /metrics
+
+  # OpenChainBench bench №028 - Relay.link Revenue (FLOOR via solver wallet).
+  # Polls Mobula /wallet/portfolio every 5 min for the Relay solver EOA
+  # 0xf70da97812CB96acDF810712Aa562db8dfA3dbEF and tracks rolling balance
+  # delta over 24h/7d/30d as a ground-truth floor on captured margin.
+  # Stable-only delta strips ETH price-volatility noise.
+  - job_name: 'relay-revenue-floor'
+    static_configs:
+      - targets:
+        - 'relay-revenue-bn4b.railway.internal:2112'
+        labels:
+          benchmark: relay-revenue
+    metrics_path: /metrics
+
+  # OpenChainBench bench №029 - Solana DEX quote latency.
+  # Probes Jupiter / Mobula / OpenOcean / Raydium quote APIs every 60s
+  # for the canonical 1 SOL → USDC 50 bps quote from 3 regions, emits
+  # histogram solana_quote_latency_ms + success/throttle/auth counters.
+  # Each service self-labels via MONITOR_REGION env.
+  #
+  # Internal DNS suffixes (-jd9g-cwjh / -h888-za1j / -i105-ytds) were
+  # auto-assigned by Railway when the 3 services were provisioned.
+  - job_name: 'solana-quote-latency'
+    scrape_interval: 30s
+    scrape_timeout: 15s
+    static_configs:
+      - targets:
+        - 'solana-quote-us-east-jd9g-cwjh.railway.internal:2112'
+        - 'solana-quote-eu-west-h888-za1j.railway.internal:2112'
+        - 'solana-quote-sgp-i105-ytds.railway.internal:2112'
+        labels:
+          benchmark: solana-quote-latency
+    metrics_path: /metrics
+
+  # OpenChainBench bench №030 - Hyperliquid frontends user-cost benchmark.
+  # Pulls Hyperliquid's per-builder, per-day fills CSV dumps from
+  # stats-data.hyperliquid.xyz, aggregates 24h notional + builder_fee +
+  # unique users per builder address, exposes effective fee bps, $/user,
+  # volume share. The differentiator vs every other HL dashboard is
+  # D7/D30 cohort retention computed from a local SQLite state — the
+  # service runs with a persistent volume at /data so SQLite survives
+  # restarts. Single-region single-instance (no geo split needed for a
+  # CSV-poll bench), 1h cycle cadence (matches the upstream daily CSV
+  # rollover), allow a generous scrape_timeout in case the LZ4 decode
+  # of a busy builder's CSV takes longer than the default.
+  - job_name: 'hyperliquid-frontends'
+    scrape_interval: 30s
+    scrape_timeout: 15s
+    static_configs:
+      - targets:
+        - 'hyperliquid-frontends.railway.internal:2112'
+        labels:
+          benchmark: hyperliquid-frontends
+    metrics_path: /metrics
+
+  # OpenChainBench bench №030 v2 — same bench, different data source. Reads
+  # the local hl-node output on the OVH SGP server (15.235.224.14) at
+  # sub-minute freshness instead of the daily CSV bucket (24-48h lag). The
+  # harness binds 127.0.0.1:2113 on that host; Caddy fronts :8088 with
+  # basic_auth so only Prom with the credential can scrape. Metrics use a
+  # `_v2` suffix to coexist with v1 during A/B validation; after ~1 week of
+  # parity we'll deprecate v1 and drop the suffix.
+  - job_name: 'hyperliquid-frontends-local-v2'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+    static_configs:
+      - targets:
+        - '15.235.224.14:8088'
+        labels:
+          benchmark: hyperliquid-frontends
+          source: local-node
+    metrics_path: /metrics
+    basic_auth:
+      username: ocb_scraper
+      # Prometheus 2.x doesn't expand ${ENV} in arbitrary fields (only in
+      # external_labels). We use password_file pointing to a runtime-written
+      # secret created by the container entrypoint from $HL_BENCH_LOCAL_AUTH.
+      password_file: /etc/prometheus/secrets/hl_bench_local_auth
+
+  # OpenChainBench bench — current native-transfer transaction fee per L1
+  # chain, in USD. Same 11-chain list as the L1 finality bench so users can
+  # compare time-to-finality and cost head-to-head. One process samples all
+  # 11 chains, polls Mobula every 30s for native-token USD prices, and
+  # exposes tx_fee_native_transfer_usd{chain,tier} plus per-chain gauges
+  # for the underlying native amount and gas price (EVM only).
+  - job_name: 'transaction-fee'
+    scrape_interval: 30s
+    scrape_timeout: 15s
+    static_configs:
+      - targets:
+        - 'transaction-fee.railway.internal:2112'
+        labels:
+          benchmark: network-fees
+    metrics_path: /metrics
+
+  # OpenChainBench bench №032 - PM data freshness. Subscribes to the same
+  # basket of top-volume Polymarket markets on Polymarket CLOB (T0),
+  # Mobula Pulse PM, and Codex GraphQL simultaneously. Cross-correlates
+  # trades by (conditionId, price, 5s bucket) and reports per-provider ms
+  # lag versus the Polymarket gateway publish time.
+  - job_name: 'pm-freshness'
+    static_configs:
+      - targets:
+        - 'pm-freshness-bench-production.railway.internal:2112'
+        labels:
+          benchmark: pm-freshness
+    metrics_path: /metrics
+
+  # OpenChainBench bench №037 - PM venue API rate limits + latency. Probes
+  # the public developer APIs of 5 prediction-market venues (Polymarket,
+  # Kalshi, Limitless, Manifold, Myriad): warm/cold latency on book, price
+  # and list classes, Polymarket public WS, plus a daily rate-limit ramp
+  # (one venue at a time, one region at a time on disjoint UTC hours).
+  # Three regions write the same pmapi_* metric family with a `region`
+  # label - honor_labels keeps each replica's region intact.
+  - job_name: 'pm-rate-limits'
+    honor_labels: true
+    static_configs:
+      - targets:
+        - 'pm-rate-limits-us.railway.internal:2112'
+        - 'pm-rate-limits-eu.railway.internal:2112'
+        - 'pm-rate-limits-sgp.railway.internal:2112'
+        labels:
+          benchmark: pm-rate-limits
+    metrics_path: /metrics
+
+  # OpenChainBench bench - Polymarket resolution delay. Polls Gamma plus
+  # Polygon logs of the UMA CTF adapters (QuestionInitialized/Resolved,
+  # OO propose/dispute) and reports resolution delay anchored at the
+  # first onchain outcome proposal, dispute rate, and pending backlog.
+  # Single region service, pmres_* namespace.
+  - job_name: 'pm-resolution-delay'
+    static_configs:
+      - targets:
+        - 'pm-resolution-delay.railway.internal:2112'
+        labels:
+          benchmark: pm-resolution-delay
+    metrics_path: /metrics
+
+  # OpenChainBench bench №033 - EVM swap quote latency. Hits the public
+  # /quote endpoint of Mobula + KyberSwap + Bebop + LI.FI + OpenOcean
+  # (plus 1inch / 0x / Odos once their free-tier API keys are added)
+  # every 60s on a rotating 5-pair basket across Ethereum, Base, Arbitrum
+  # and BSC. Three regions write the same metric family with a `region`
+  # label - honor_labels keeps each replica's region intact so the bench
+  # page filter on region works.
+  - job_name: 'evm-quote-latency'
+    honor_labels: true
+    static_configs:
+      - targets:
+        - 'evm-quote-latency-us.railway.internal:2112'
+        - 'evm-quote-latency-eu.railway.internal:2112'
+        - 'evm-quote-latency-sgp.railway.internal:2112'
+        labels:
+          benchmark: evm-quote-latency
+    metrics_path: /metrics
+
+  # OpenChainBench bench №030 v3 — Hyperliquid historical archive. Reads
+  # the same upstream Hyperliquid CDN dumps as the v1 service but stores
+  # everything in a local DuckDB file so we can serve arbitrary date
+  # ranges (D90, D180, full-history cohort) via a small REST API in
+  # addition to the live Prom metrics. Runs a daily cron at 02:00 UTC to
+  # ingest the previous day's CSVs once the upstream bucket settles, then
+  # pushes a tiny snapshot to Upstash for the OCB site SSR. Single-region
+  # single-instance, persistent volume at /data for the DuckDB file.
+  - job_name: 'hl-archive'
+    scrape_interval: 30s
+    scrape_timeout: 15s
+    static_configs:
+      - targets:
+        - 'hl-archive.railway.internal:2114'
+        labels:
+          benchmark: hyperliquid-frontends
+          source: hl-archive
+    metrics_path: /metrics
+
+  # OpenChainBench bench — live USD cost to create a fungible token on
+  # each supported chain, using the canonical method per chain (ERC20
+  # deploy for EVM, SPL mint for Solana, TokenFactory denom for Cosmos,
+  # Move publish for Sui/Aptos, native asset/jetton for Cardano/Stellar).
+  # Read-only, no broadcast. 5-min cadence; bumped scrape_interval to 30s
+  # so Prom keeps up with the per-chain emit rate.
+  - job_name: 'token-deployment-cost'
+    scrape_interval: 30s
+    scrape_timeout: 15s
+    static_configs:
+      - targets:
+        - 'token-deployment-cost.railway.internal:2112'
+        labels:
+          benchmark: token-deployment-cost
+    metrics_path: /metrics
