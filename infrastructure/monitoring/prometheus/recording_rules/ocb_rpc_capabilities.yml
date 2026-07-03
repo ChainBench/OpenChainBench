@@ -1,0 +1,32 @@
+# Recording rules for OCB bench 010 (rpc-capabilities).
+#
+# Why: the bench page used to evaluate quantile_over_time(...[24h]) over
+# the raw gauge per provider per request. At Vercel cold start every
+# bench fires at once and the burst of 24h-window quantiles browns out
+# this Prom (providers time out -> partial leaderboards). These rules
+# precompute the heavy aggregates once a minute; the site then reads
+# them with cheap instant selectors (ocb:* series).
+#
+# Naming: ocb:<metric_family>:<stat>_<window>. Quantiles over the gauge
+# are per-series (labels provider/chain/region/instance preserved); the
+# site-side queries wrap them in avg()/sum by () as needed. Counter
+# ratios are recorded as numerator/denominator pairs so the site can
+# keep ratio-of-sums semantics.
+groups:
+  - name: ocb_rpc_capabilities
+    interval: 60s
+    rules:
+      - record: ocb:rpc_latency_milliseconds:p50_24h
+        expr: quantile_over_time(0.50, rpc_latency_milliseconds[24h])
+      - record: ocb:rpc_latency_milliseconds:p90_24h
+        expr: quantile_over_time(0.90, rpc_latency_milliseconds[24h])
+      - record: ocb:rpc_latency_milliseconds:p99_24h
+        expr: quantile_over_time(0.99, rpc_latency_milliseconds[24h])
+      - record: ocb:rpc_latency_milliseconds:mean_24h
+        expr: avg_over_time(rpc_latency_milliseconds[24h])
+      - record: ocb:rpc_call:ok_rate_24h
+        expr: sum by (provider, chain, region) (rate(rpc_call_total{result="ok"}[24h]))
+      - record: ocb:rpc_call:rate_24h
+        expr: sum by (provider, chain, region) (rate(rpc_call_total[24h]))
+      - record: ocb:rpc_call:increase_24h
+        expr: sum by (provider, chain, region) (increase(rpc_call_total[24h]))

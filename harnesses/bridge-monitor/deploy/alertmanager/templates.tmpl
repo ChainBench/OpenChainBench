@@ -1,0 +1,19 @@
+{{ define "slack.title" }}
+{{- if eq .Status "firing" -}}
+  [{{ .Status | toUpper }}] {{ .CommonLabels.alertname }}
+{{- else -}}
+  [RESOLVED] {{ .CommonLabels.alertname }}
+{{- end -}}
+{{ end }}
+
+{{ define "slack.text" }}
+{{ range .Alerts -}}
+*{{ .Annotations.summary }}*
+{{ .Annotations.description }}
+{{ if .Labels.bridge }}• bridge: `{{ .Labels.bridge }}`{{ end }}
+{{ if .Labels.from_chain }}• route: `{{ .Labels.from_chain }} → {{ .Labels.to_chain }}`{{ end }}
+{{ if .Labels.chain }}• chain: `{{ .Labels.chain }}`{{ end }}
+• severity: `{{ .Labels.severity }}`
+• started: {{ .StartsAt.Format "2006-01-02 15:04:05 UTC" }}
+{{ end }}
+{{ end }}
