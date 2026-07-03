@@ -259,7 +259,9 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v19: ProviderResult gained `unresponsive` (cohort providers with
   // live call counters but no latency render as unranked badge rows).
   // Cached v18 entries would silently drop dead providers instead.
-  ["bench-unfiltered-v19"],
+  // v20: +12 long-tail RPC benches 055-066 (sonic…soneium). Bench SET
+  // changed; cached v19 entries would miss the new chains.
+  ["bench-unfiltered-v20"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -404,7 +406,9 @@ const loadAllBenchmarksCached = unstable_cache(
   // rpc-capabilities/<chain> variant URLs and missing the 10 new
   // <chain>-rpc benches after deploy.
   // v23: bumped with bench-unfiltered-v19 (unresponsive provider rows).
-  ["all-benchmarks-v23"],
+  // v24: bumped with bench-unfiltered-v20 (+12 long-tail RPC benches
+  // 055-066; sitemap/citable/products must pick up the new slugs).
+  ["all-benchmarks-v24"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -475,7 +479,9 @@ const loadBenchmarkFiltered = unstable_cache(
   // v10: bumped with bench-unfiltered-v18 (RPC per-chain cluster).
   // v11: bumped with bench-unfiltered-v19 (unresponsive provider rows;
   // region variants flag providers dead on that slice).
-  ["bench-filters-v11"],
+  // v12: bumped with bench-unfiltered-v20 (+12 long-tail RPC benches
+  // 055-066).
+  ["bench-filters-v12"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
