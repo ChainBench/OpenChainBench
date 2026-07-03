@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""One-shot generator for the per-chain RPC benchmark cluster (044-053).
+"""Generator for the per-chain RPC benchmark cluster (044-053 majors,
+055-066 long-tail expansion of 2026-07-03).
 
 Reads provider metadata from benchmarks/rpc-capabilities.yml (the parent,
 which stays live as the cross-chain index) and emits one first-class
@@ -30,7 +31,53 @@ CHAINS = {
     "linea":     {"num": "051", "label": "Linea",     "providers": ["publicnode", "drpc", "1rpc", "tenderly"]},
     "scroll":    {"num": "052", "label": "Scroll",    "providers": ["publicnode", "drpc", "1rpc", "tenderly"]},
     "mantle":    {"num": "053", "label": "Mantle",    "providers": ["publicnode", "drpc", "1rpc", "tenderly"]},
+    # Long-tail expansion (2026-07-03 sweep, provider order mirrors
+    # harnesses/rpc-capabilities/cmd/script/config.go).
+    "sonic":     {"num": "055", "label": "Sonic",     "providers": ["publicnode", "drpc", "1rpc", "tenderly", "lava", "sonic-official"]},
+    "gnosis":    {"num": "056", "label": "Gnosis",    "providers": ["publicnode", "drpc", "1rpc", "tenderly", "nodies", "gnosis-official"]},
+    "celo":      {"num": "057", "label": "Celo",      "providers": ["publicnode", "drpc", "1rpc", "tenderly", "celo-official"]},
+    "moonbeam":  {"num": "058", "label": "Moonbeam",  "providers": ["publicnode", "drpc", "1rpc", "tenderly", "moonbeam-official"]},
+    "unichain":  {"num": "059", "label": "Unichain",  "providers": ["publicnode", "drpc", "1rpc", "tenderly", "unichain-official"]},
+    "blast":     {"num": "060", "label": "Blast",     "providers": ["publicnode", "drpc", "tenderly", "blast-official"]},
+    "taiko":     {"num": "061", "label": "Taiko",     "providers": ["publicnode", "drpc", "tenderly", "taiko-official"]},
+    "berachain": {"num": "062", "label": "Berachain", "providers": ["publicnode", "drpc", "tenderly", "berachain-official"]},
+    # seo_label keeps "Fastest free zkSync RPC 2026" inside the 26-31
+    # char window ("zkSync Era" pushes it to 32).
+    "zksync":    {"num": "063", "label": "zkSync Era", "seo_label": "zkSync", "providers": ["drpc", "1rpc", "tenderly", "zksync-official"]},
+    "cronos":    {"num": "064", "label": "Cronos",    "providers": ["publicnode", "drpc", "1rpc", "cronos-official"]},
+    "fraxtal":   {"num": "065", "label": "Fraxtal",   "providers": ["publicnode", "drpc", "tenderly", "fraxtal-official"]},
+    "soneium":   {"num": "066", "label": "Soneium",   "providers": ["publicnode", "drpc", "tenderly", "soneium-official"]},
 }
+
+# Provider metadata for endpoints that only exist on the long-tail
+# chains (slugs mirror config.go; the parent rpc-capabilities.yml only
+# carries the majors-era roster). Names follow the site convention for
+# chain-official endpoints: brand name, "official" lives in the tag.
+EXTRA_PROVIDERS = {
+    "sonic-official":     {"name": "Sonic Labs", "tag": "Sonic Labs public RPC, Sonic mainnet only"},
+    "gnosis-official":    {"name": "Gnosis",     "tag": "Gnosis chain-official RPC (rpc.gnosischain.com)"},
+    "celo-official":      {"name": "Celo (Forno)", "tag": "cLabs Forno public RPC, Celo mainnet only"},
+    "moonbeam-official":  {"name": "Moonbeam",   "tag": "Moonbeam Foundation public RPC, Moonbeam only"},
+    "unichain-official":  {"name": "Unichain",   "tag": "Uniswap Labs public RPC, Unichain mainnet only"},
+    "blast-official":     {"name": "Blast",      "tag": "Chain-official RPC, edge-terminated (see findings)"},
+    "taiko-official":     {"name": "Taiko",      "tag": "Taiko Labs public RPC, Taiko mainnet only"},
+    "berachain-official": {"name": "Berachain",  "tag": "Berachain Foundation public RPC, Berachain only"},
+    "zksync-official":    {"name": "zkSync",     "tag": "Matter Labs public RPC, zkSync Era only"},
+    "cronos-official":    {"name": "Cronos",     "tag": "Cronos Labs public RPC, Cronos EVM only"},
+    "fraxtal-official":   {"name": "Fraxtal",    "tag": "Frax-operated public RPC, Fraxtal mainnet only"},
+    "soneium-official":   {"name": "Soneium",    "tag": "Sony Block Solutions public RPC, Soneium mainnet only"},
+}
+
+# Per-(chain, provider) tag overrides. The parent-yml tags encode
+# majors-era facts (Tenderly "9 chains", Lava "ETH + Arbitrum no-key")
+# that are stale on the long-tail pages; existing 044-053 output must
+# stay byte-identical, so the corrections apply per chain here.
+TAG_OVERRIDES = {
+    ("sonic", "lava"): "Decentralized permissionless RPC mesh (sonic.lava.build, open no-key)",
+}
+for _c in ("sonic", "gnosis", "celo", "moonbeam", "unichain", "blast",
+           "taiko", "berachain", "zksync", "fraxtal", "soneium"):
+    TAG_OVERRIDES[(_c, "tenderly")] = "Multi-chain public gateway, no key"
 
 # Chain-specific editorial. Every string is unique to its chain so the
 # cluster never reads as one duplicated template.
@@ -137,6 +184,138 @@ EDITORIAL = {
         "faq_extra_q": "Are free Mantle RPCs reliable enough to build on?",
         "faq_extra_a": "The four qualifying gateways all maintain high measured success rates on Mantle, but a 4-provider field means less redundancy if one degrades. Use the current leader as primary and the runner-up as fallback, and re-check this page after incidents, the ranking is live and the honest answer moves.",
     },
+    "sonic": {
+        "intro": "Sonic ties Gnosis for the largest cohort in the long-tail expansion: 6 no-key providers, including Sonic Labs' own `rpc.soniclabs.com` and the only keyless Lava endpoint outside Ethereum and Arbitrum, `sonic.lava.build` answers no-key while every other Lava subdomain 403s without an API key. Every provider gets the identical `eth_blockNumber` probe every 15 seconds from us-east, eu-west and Singapore, with stale-head detection against the cross-provider tip.",
+        "findings": [
+            "{{best_name}} currently leads free Sonic RPC at {{best_p50}} (`eth_blockNumber` p50, 24h) across 6 measured providers.",
+            "{{name:drpc}} ({{p50:drpc}}) illustrates the long-tail pattern: it wins 10 of the 12 chains in this expansion on the 3-region average, not by posting the fastest single-region peak but by answering every origin from a nearby anycast edge.",
+            "{{name:tenderly}} tells the opposite story: roughly 330 ms in every region, the flat signature of single-origin routing. The same gateway is competitive on Ethereum and Base, so this is a per-chain routing decision, not a capacity problem.",
+            "{{name:lava}} makes Sonic a curiosity: `sonic.lava.build` is the only Lava subdomain that answers no-key outside eth1/arb1, so this page is the cluster's only long-tail read on the Lava mesh.",
+        ],
+        "faq_extra_q": "Why does Lava appear on Sonic but on no other long-tail chain?",
+        "faq_extra_a": "Lava publishes `*.lava.build` subdomains for many chains, but nearly all of them return 403 without an API key. `sonic.lava.build` is the exception: it passed our no-key verification (eth_chainId match plus sustained probing) and has held the 15-second cadence since. Every (provider, chain) pair in this cluster is admitted on measured behavior, not on a provider's published chain list.",
+    },
+    "gnosis": {
+        "intro": "Gnosis is the cluster's clearest proof that official does not mean fast: the chain-official `rpc.gnosischain.com` is the slowest endpoint we measure on the chain, around 433 ms p50 on the 3-region average, while five third-party gateways beat it, including Nodies, whose POKT-backed infrastructure reaches Gnosis as its only chain in this 12-chain expansion. 6 no-key providers, the same `eth_blockNumber` call every 15 seconds, three regions.",
+        "findings": [
+            "{{best_name}} currently leads free Gnosis RPC at {{best_p50}} (`eth_blockNumber` p50, 24h) across 6 measured providers.",
+            "The chain-official endpoint anchors the wrong end of the board: ~433 ms p50 with a similar profile from every region, slower than every gateway on this page. It is honest about its blocks; it is just slow.",
+            "{{name:nodies}} ({{p50:nodies}}) is the quiet story of the expansion: Gnosis is the only long-tail chain it qualifies on, and it serves the chain well, a POKT-routed gateway beating the house endpoint by a wide margin.",
+            "{{name:drpc}} ({{p50:drpc}}) shows its usual anycast consistency here, part of the pattern that has it leading 10 of the 12 long-tail chains on the 3-region average.",
+        ],
+        "faq_extra_q": "Should I use rpc.gnosischain.com as my Gnosis RPC?",
+        "faq_extra_a": "Only as a fallback. It is the slowest endpoint we measure on Gnosis, roughly 433 ms median across three regions, several times the gateway tier, though its reliability and head freshness are fine. The measured leaders above serve the same chain with a fraction of the round trip; keep the official endpoint in the rotation for redundancy rather than as primary.",
+    },
+    "celo": {
+        "intro": "Celo brings 5 no-key providers anchored by Forno (`forno.celo.org`), cLabs' public endpoint that predates most of the gateway industry. Since Celo's migration to an Ethereum L2 the RPC surface is standard EVM, so the multi-chain gateways (PublicNode, dRPC, 1RPC, Tenderly) compete directly with the house endpoint on the identical `eth_blockNumber` probe every 15 seconds from three regions.",
+        "findings": [
+            "{{best_name}} currently leads free Celo RPC at {{best_p50}} (`eth_blockNumber` p50, 24h) across 5 measured providers.",
+            "{{name:drpc}} ({{p50:drpc}}) extends its long-tail run here, 10 of the 12 expansion chains fall to it on the 3-region average, a consistency win built on anycast rather than any single-region record.",
+            "Forno remains a serviceable default years after launch, but it is one origin: at least two of our three probe regions always see it with an ocean in the path, which the region tabs make visible.",
+            "{{name:tenderly}} shows the same long-tail collapse measured across this expansion: ~330 ms flat in all three regions, single-origin routing behind a gateway that is genuinely fast on the majors.",
+        ],
+        "faq_extra_q": "Is Forno still the right default RPC for Celo?",
+        "faq_extra_a": "Forno is stable and honest, but it is a single origin, so at least two of our three probe regions always pay cross-ocean latency to reach it. The current leader above ({{best_name}} at {{best_p50}}) reflects the 3-region average; if your traffic is single-region, open that region's tab, Forno's ranking moves markedly by origin.",
+    },
+    "moonbeam": {
+        "intro": "Moonbeam, Polkadot's EVM parachain, fields 5 no-key providers including the Moonbeam Foundation's `rpc.api.moonbeam.network`. One integration trap surfaced in our verification sweep: 1RPC addresses the chain by its token code, so the working path is `1rpc.io/glmr` and the intuitive `/moonbeam` returns HTTP 400. Probes run every 15 seconds from three regions with full response classification.",
+        "findings": [
+            "{{best_name}} currently leads free Moonbeam RPC at {{best_p50}} (`eth_blockNumber` p50, 24h) across 5 measured providers.",
+            "{{name:drpc}} ({{p50:drpc}}) carries its anycast-consistency pattern onto a Polkadot parachain unchanged: same probe, same edge behavior, same 3-region steadiness that wins it 10 of the 12 long-tail chains.",
+            "{{name:1rpc}} is reachable only at the token-code path `1rpc.io/glmr`; the obvious `/moonbeam` URL 400s, the kind of detail no status page documents and this bench exists to encode.",
+            "{{name:tenderly}} posts the expansion's recurring flat ~330 ms in every region on Moonbeam too, single-origin routing rather than the edge network it runs for the major chains.",
+        ],
+        "faq_extra_q": "Why does 1RPC's Moonbeam endpoint use /glmr instead of /moonbeam?",
+        "faq_extra_a": "1RPC keys several chain paths on native-token tickers, and GLMR is Moonbeam's token, so the working endpoint is `1rpc.io/glmr` while `1rpc.io/moonbeam` returns HTTP 400. Our harness verified the chain identity behind the path (eth_chainId 1284) before admitting it, so the numbers above are guaranteed to be Moonbeam mainnet and not a lookalike.",
+    },
+    "unichain": {
+        "intro": "Unichain, Uniswap Labs' OP Stack rollup, fields 5 no-key providers including the house `mainnet.unichain.org`. For a chain this young the gateway coverage is unusually complete, PublicNode, dRPC, 1RPC and Tenderly all sustain no-key probing at our 15-second cadence, so the official endpoint faces a full gateway tier from day one. Three regions, identical probes, stale-head detection.",
+        "findings": [
+            "{{best_name}} currently leads free Unichain RPC at {{best_p50}} (`eth_blockNumber` p50, 24h) across 5 measured providers.",
+            "{{name:drpc}} ({{p50:drpc}}) treats Unichain like every other chain in the expansion, and that is the point: 10 of 12 long-tail wins on the 3-region average come from routing every probe to a nearby edge, chain age irrelevant.",
+            "The official sequencer-adjacent endpoint has the locational advantage on paper; the region tabs show whether it holds against gateways that terminate at the probe's nearest edge instead of one home region.",
+            "{{name:tenderly}} repeats its long-tail signature here, roughly 330 ms from all three origins at once, while remaining competitive on the majors, the clearest sign its public gateway routes small chains through a single origin.",
+        ],
+        "faq_extra_q": "Should I use mainnet.unichain.org or a gateway for Unichain?",
+        "faq_extra_a": "Check the region tab nearest your deployment. Chain-official endpoints are typically a single origin, so they can only be close to one of our three probes, while anycast gateways answer everywhere. On the 3-region average the current leader is {{best_name}} at {{best_p50}}; a primary-plus-fallback pair from the top of this page is the resilient default for a chain this young.",
+    },
+    "blast": {
+        "intro": "Blast is the expansion's measurement cautionary tale. The chain-official `rpc.blast.io` answers in roughly 2 ms from all three probe regions at once, which no single origin can do: Virginia, Amsterdam and Singapore are separated by 80+ ms round trips at the speed of light. The endpoint terminates at an edge network. Our stale-head detection confirms the blocks it serves are fresh, but a sub-5 ms number measures the edge handshake, not the chain. 4 no-key providers, identical probes, three regions.",
+        "findings": [
+            "{{best_name}} currently leads free Blast RPC at {{best_p50}} (`eth_blockNumber` p50, 24h) across 4 measured providers.",
+            "`rpc.blast.io` posts ~2 ms in every region simultaneously, physically impossible for one origin. Read it as an edge-terminated endpoint: heads are fresh per our stale detection, but the latency column measures CDN termination rather than a node round trip, the same class of caution we document for Cloudflare-eth.",
+            "{{name:drpc}} ({{p50:drpc}}) is the honest-infrastructure comparison point: anycast consistency across the three regions with real node round trips behind it, the profile that wins it 10 of the 12 expansion chains.",
+            "{{name:tenderly}} sits at the expansion's familiar flat ~330 ms in all regions on Blast, single-origin routing on a gateway that is genuinely quick on the major chains.",
+        ],
+        "faq_extra_q": "Is rpc.blast.io really that fast, or is something else going on?",
+        "faq_extra_a": "Something else. Two milliseconds simultaneously from Virginia, Amsterdam and Singapore is below the physical round-trip floor for any single origin, so the endpoint is answering at an anycast/CDN edge. Our stale-head detection shows the blocks it returns are current, so it is not serving a stale cache today, but edge termination means the latency figure describes the edge network, not node processing. We keep it ranked with the caveat documented, exactly as we do for Cloudflare's fast-but-permissioned Ethereum endpoint.",
+    },
+    "taiko": {
+        "intro": "Taiko, the based rollup where Ethereum validators sequence L2 blocks, fields 4 no-key providers. Our verification sweep caught one routing quirk worth encoding: Tenderly serves the chain only at the `taiko-mainnet` gateway slug, the plain `/taiko` path 404s. Probes run every 15 seconds from us-east, eu-west and Singapore with stale-head detection against the cross-provider tip.",
+        "findings": [
+            "{{best_name}} currently leads free Taiko RPC at {{best_p50}} (`eth_blockNumber` p50, 24h) across 4 measured providers.",
+            "{{name:drpc}} ({{p50:drpc}}) brings the same anycast steadiness that carries it to 10 wins across the 12 expansion chains; based sequencing on the chain side changes nothing about who answers RPC reads fastest.",
+            "{{name:tenderly}} both qualifies and disappoints: reachable only at the `taiko-mainnet` slug, and once reached it shows the flat ~330 ms three-region signature of a single origin, while the same gateway is competitive on the majors.",
+            "A 4-provider field leaves little redundancy: one gateway incident visibly reshuffles the 24h board, which is why the success-rate column and region tabs matter more here than on the deep Ethereum cohort.",
+        ],
+        "faq_extra_q": "Which free Taiko RPC should production traffic use?",
+        "faq_extra_a": "Start from {{best_name}} ({{best_p50}} on the 3-region average) and pair it with the runner-up as fallback; in a 4-provider field a single degradation reshuffles the board. If you configure Tenderly manually, note its gateway path is `taiko-mainnet`, the intuitive `/taiko` path 404s, a detail our probes encode but provider directories rarely do.",
+    },
+    "berachain": {
+        "intro": "Berachain's proof-of-liquidity L1 fields 4 no-key providers: the Foundation's `rpc.berachain.com` plus PublicNode, dRPC and Tenderly. A thin cohort is itself a signal, several sibling chains failed the cluster's four-keyless-provider bar entirely, so each endpoint that qualifies here carries more of the redundancy burden. Identical probes every 15 seconds, three regions, full response classification.",
+        "findings": [
+            "{{best_name}} currently leads free Berachain RPC at {{best_p50}} (`eth_blockNumber` p50, 24h) across 4 measured providers.",
+            "{{name:drpc}} ({{p50:drpc}}) extends its expansion-wide consistency run to Berachain, the anycast profile that takes 10 of the 12 long-tail chains on the 3-region average.",
+            "{{name:tenderly}} shows the long-tail single-origin signature again, roughly 330 ms from every region, a sharp contrast with its performance on the chains its edge network actually fronts.",
+            "The Foundation endpoint gives the chain a credible house baseline; whether it beats the gateways depends on your origin, which is exactly what the per-region tabs are for.",
+        ],
+        "faq_extra_q": "Are free Berachain RPCs ready for production traffic?",
+        "faq_extra_a": "The four qualifying endpoints all sustain our 15-second cadence with high measured success rates, which is the floor for production reads. The real constraint is redundancy: with 4 providers, one incident removes a quarter of your options, so run the current leader ({{best_name}}, {{best_p50}}) as primary with the runner-up wired as fallback and let this page arbitrate after incidents.",
+    },
+    "zksync": {
+        "intro": "zkSync Era is the only chain in our entire probe matrix with no PublicNode endpoint: both plausible subdomains 404, a genuine rarity for a provider that covers 70+ chains. That leaves dRPC, 1RPC, Tenderly and Matter Labs' own `mainnet.era.zksync.io` answering the identical `eth_blockNumber` probe every 15 seconds from three regions, with stale-head detection against the cross-provider tip.",
+        "findings": [
+            "{{best_name}} currently leads free zkSync Era RPC at {{best_p50}} (`eth_blockNumber` p50, 24h) across 4 measured providers.",
+            "No PublicNode is the structural headline: the near-universal default provider simply does not serve zkSync Era (both candidate subdomains 404), so dapps that template PublicNode URLs per chain need a different answer here.",
+            "{{name:drpc}} ({{p50:drpc}}) picks up the default-provider role instead, with the anycast consistency that wins it 10 of the 12 expansion chains on the 3-region average.",
+            "{{name:tenderly}} runs zkSync through the same single-origin path as the rest of the long tail, a flat ~330 ms from all three regions, despite marketing the chain as a first-class network.",
+        ],
+        "faq_extra_q": "Why is PublicNode not listed for zkSync Era?",
+        "faq_extra_a": "Because it does not serve the chain: both plausible PublicNode subdomains returned 404 in our 2026-07-03 verification sweep, making zkSync Era the only chain we probe without a PublicNode endpoint. The bench lists what actually answers, not what coverage pages claim, so the leaderboard has 4 providers and {{best_name}} ({{best_p50}}) currently leads them.",
+    },
+    "cronos": {
+        "intro": "Cronos fields 4 no-key providers and encodes two integration traps from our sweep: PublicNode serves the chain at `cronos-evm-rpc.publicnode.com` (the intuitive `cronos-rpc` subdomain resolves but returns non-JSON), and 1RPC uses the ticker path `1rpc.io/cro`. Tenderly's public gateway does not reach Cronos, making this one of the few pages in the cluster without it. Probes every 15 seconds from three regions.",
+        "findings": [
+            "{{best_name}} currently leads free Cronos RPC at {{best_p50}} (`eth_blockNumber` p50, 24h) across 4 measured providers.",
+            "{{name:publicnode}} ({{p50:publicnode}}) hides behind a naming trap: the working subdomain is `cronos-evm-rpc`, while `cronos-rpc` resolves and then returns non-JSON, a failure mode that looks like an outage if you guessed the URL.",
+            "{{name:drpc}} ({{p50:drpc}}) delivers its usual three-region steadiness, the anycast pattern behind its 10-of-12 record across this long-tail expansion.",
+            "MeowRPC, historically listed for Cronos in RPC directories, is absent by measurement: its long-tail DNS is gone and the provider appears defunct outside a handful of legacy chains.",
+        ],
+        "faq_extra_q": "Why isn't MeowRPC listed on Cronos?",
+        "faq_extra_a": "We tried it. MeowRPC's long-tail endpoints no longer resolve (DNS gone), and the provider appears defunct outside a few legacy chains, so it failed the live verification, eth_chainId match plus sustained probing, that gates admission to this cluster. Directories still listing it are copying stale metadata; this bench only ranks endpoints that answer.",
+    },
+    "fraxtal": {
+        "intro": "Fraxtal, Frax's OP Stack rollup, fields 4 no-key providers: PublicNode, dRPC, Tenderly and Frax's own `rpc.frax.com`. The four-provider floor it just clears is the cluster's deliberate admission bar, chains that could not field four keyless endpoints (Mode, Zora, Abstract) were left out of the expansion entirely rather than shipped as two-row leaderboards. Identical probes every 15 seconds, three regions.",
+        "findings": [
+            "{{best_name}} currently leads free Fraxtal RPC at {{best_p50}} (`eth_blockNumber` p50, 24h) across 4 measured providers.",
+            "{{name:drpc}} ({{p50:drpc}}) closes out its expansion pattern here, anycast consistency across us-east, eu-west and Singapore, the profile that wins it 10 of the 12 new chains on the 3-region average.",
+            "{{name:tenderly}} posts the recurring long-tail flat line, ~330 ms from every origin at once, single-origin routing on a gateway whose edge network clearly does not front Fraxtal.",
+            "Fraxtal sits exactly at the cluster's admission bar of 4 keyless providers, the fact that Mode, Zora and Abstract missed; a thin field makes the success-rate column the tiebreaker the median cannot show.",
+        ],
+        "faq_extra_q": "Why are chains like Mode, Zora or Sei missing from this cluster?",
+        "faq_extra_a": "Each failed a specific admission test. Mode, Zora and Abstract could not field 4 keyless providers, below the bar for a meaningful leaderboard. Sei was excluded because dRPC caches `eth_blockNumber` there, poisoning the exact probe we rank on. opBNB fell out because 1RPC returns 429 at our 15-second cadence, leaving only 3 solid providers. The cluster only ships chains where the comparison is honest.",
+    },
+    "soneium": {
+        "intro": "Soneium, Sony's OP Stack rollup, is the long-tail chain where the official endpoint actually wins: `rpc.soneium.org` leads at roughly 17 ms on the 3-region average, distributed official infrastructure that answers near every probe origin while keeping fresh heads in our stale detection. 4 no-key providers, the identical `eth_blockNumber` call every 15 seconds from us-east, eu-west and Singapore.",
+        "findings": [
+            "{{best_name}} currently leads free Soneium RPC at {{best_p50}} (`eth_blockNumber` p50, 24h) across 4 measured providers.",
+            "The official `rpc.soneium.org` is one of the expansion's two exceptions to the dRPC sweep: ~17 ms on the 3-region average with fresh heads throughout, a chain operator that fronts its RPC properly across regions instead of pointing DNS at one box.",
+            "{{name:drpc}} ({{p50:drpc}}) still posts its trademark three-region consistency here; it just meets the rare official endpoint built on the same playbook.",
+            "{{name:tenderly}} closes the pattern the expansion documents everywhere: roughly 330 ms flat in all three regions on Soneium, single-origin routing behind a gateway that is competitive on the majors.",
+        ],
+        "faq_extra_q": "Is the official Soneium RPC actually the best choice?",
+        "faq_extra_a": "Currently yes, and that is unusual: across the 12-chain long-tail expansion only two chains resist the gateway tier, and `rpc.soneium.org` is the clearest case, leading the 3-region average at around 17 ms while our stale-head checks stay clean. The usual free-tier caveats (no SLA, shared limits) still apply, so keep {{name:drpc}} or {{name:publicnode}} wired as fallback.",
+    },
 }
 
 SHARED_METHO = [
@@ -207,7 +386,8 @@ def gen_chain(chain, cfg, providers_meta):
     n = len(cfg["providers"])
 
     title = f"Fastest free {label} RPC, live no-key endpoint latency"
-    seo_title = f"Fastest free {label} RPC 2026"
+    seo_title = f"Fastest free {cfg.get('seo_label', label)} RPC 2026"
+    assert 26 <= len(seo_title) <= 31, f"{chain}: seo_title is {len(seo_title)} chars: {seo_title!r}"
     seo_desc = (
         f"{{{{best_name}}}} leads free {label} RPC at {{{{best_p50}}}} "
         f"(eth_blockNumber p50, 24h). {n} no-key providers measured every 15s from 3 regions."
@@ -293,13 +473,16 @@ def gen_chain(chain, cfg, providers_meta):
     out.append("")
     out.append("providers:")
     for p in cfg["providers"]:
-        out.append(provider_block(p, providers_meta[p], chain, label))
+        meta = dict(providers_meta[p])
+        if (chain, p) in TAG_OVERRIDES:
+            meta["tag"] = TAG_OVERRIDES[(chain, p)]
+        out.append(provider_block(p, meta, chain, label))
         out.append("")
     return "\n".join(out)
 
 
 def main():
-    providers_meta = parse_parent_providers()
+    providers_meta = {**parse_parent_providers(), **EXTRA_PROVIDERS}
     for chain, cfg in CHAINS.items():
         missing = [p for p in cfg["providers"] if p not in providers_meta]
         assert not missing, f"{chain}: missing provider meta {missing}"
