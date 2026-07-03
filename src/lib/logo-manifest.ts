@@ -328,6 +328,16 @@ const ALIASES: Record<string, string> = {
   "arbitrum-official": "arbitrum",
   "avalanche-official": "avalanche",
   "optimism-official": "optimism",
+  // Long-tail RPC cluster (055-066). Only chains with a registered
+  // brand mark are aliased; gnosis / moonbeam / unichain / cronos /
+  // fraxtal / soneium have no logo file yet and fall back to the
+  // initials chip in ProviderLogo.
+  "sonic-official": "sonic",
+  "celo-official": "celo",
+  "blast-official": "blast",
+  "taiko-official": "taiko",
+  "berachain-official": "berachain",
+  "zksync-official": "zksync",
 
 };
 
