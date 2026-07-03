@@ -69,7 +69,7 @@ findings:
   - "{{name:aevo}} sits at {{p50:aevo}} of open interest. Optimism L2 orderbook perps, options-focused history."
   - "{{name:gains}} sits at {{p50:gains}} of open interest. Synthetic perps across Arbitrum, Base, Polygon and ApeChain."
 
-source: https://github.com/ChainBench/OpenChainBench/tree/main/benchmarks/perp-open-interest.yml
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/perp-cohort-stats
 
 prometheus:
   window: 24h

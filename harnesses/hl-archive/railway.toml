@@ -1,0 +1,79 @@
+# hl-archive — Railway service config.
+#
+# Build context is the monorepo root so the Dockerfile can `COPY data/...`
+# from the miniapp tree without leaking sibling miniapps into the layer
+# cache (the Dockerfile's `COPY` paths are relative to the miniapp dir,
+# which is why `rootDirectory` points to the miniapp and `dockerfilePath`
+# is the full monorepo path). Matches the pattern used by other miniapps
+# with persistent volumes (ocb-stream-relay, hyperliquid-frontends).
+#
+# Healthcheck on /health hits the same :2114 the harness binds and the
+# shared OCB Prometheus scrapes. We set PORT=2114 in the env block below
+# so Railway's healthcheck probe and the harness agree on the port.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+rootDirectory = "miniapps/hl-archive"
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5
+
+# Persistent DuckDB file. Sized for ~50 MB cold start growing to ~1 GB
+# over a year of daily aggregates (one row per builder per day, plus
+# raw fills retention configured inside the service).
+[[deploy.volumes]]
+mountPath = "/data"
+name = "hl-archive-duckdb"
+
+# ----------------------------------------------------------------- env --
+# All values below are declarations only. Real values are set in the
+# Railway dashboard (or `railway variables set`). Secrets (API key,
+# Upstash token) MUST be flagged "Sensitive" in the dashboard.
+
+[deploy.envs]
+
+# --- service auth ---
+# Generate with: openssl rand -base64 32
+# REQUIRED. Mark as Sensitive in the Railway dashboard.
+HL_ARCHIVE_API_KEY = ""
+
+# --- storage ---
+# DuckDB file path. Lives on the /data volume so it survives redeploys.
+HL_ARCHIVE_DB_PATH = "/data/history.duckdb"
+
+# Path to the builders.json baked into the image (see Dockerfile COPY).
+HL_ARCHIVE_BUILDERS_FILE = "/app/data/builders.json"
+
+# --- Upstash snapshot push ---
+# REQUIRED. Same Upstash project used by the OCB site.
+UPSTASH_REDIS_REST_URL = ""
+
+# REQUIRED. Mark as Sensitive in the Railway dashboard.
+UPSTASH_REDIS_REST_TOKEN = ""
+
+# Versioned key for the published snapshot. Bump suffix when the shape
+# changes so the consumer can switch atomically.
+HL_ARCHIVE_UPSTASH_KEY = "ocb:hl-archive:v1"
+
+# --- ingestion ---
+# Earliest CDN day to backfill on first cold boot. The cron only fetches
+# new days after this point on subsequent runs.
+HL_ARCHIVE_BACKFILL_FROM = "2025-08-01"
+
+# Daily run anchor (UTC hour). The upstream CSV rollover is around
+# 01:00 UTC; we run at 02:00 to give the bucket time to settle.
+HL_ARCHIVE_CRON_HOUR = "2"
+
+# --- HTTP server ---
+# Harness binds 0.0.0.0:2114 hardcoded for the shared OCB Prom scrape
+# contract. Railway $PORT is forced to the same value below so the
+# platform healthcheck and the harness agree.
+HL_ARCHIVE_HTTP_ADDR = "0.0.0.0:2114"
+PORT = "2114"
+
+# --- observability ---
+LOG_LEVEL = "info"

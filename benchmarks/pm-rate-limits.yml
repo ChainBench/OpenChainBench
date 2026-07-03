@@ -106,7 +106,7 @@ per_chain_explainer:
     h2: Myriad API rate limits
     body: "Myriad's keyless budget is 30 requests per 10 seconds, the tightest in the cohort, which is why it is excluded from the ramp: ramping it would measure our own quota, not the API. There is no order book endpoint and no WebSocket. The origin is a single region Heroku deployment in US East, so latency from Europe and Asia reflects geography, reported as measured. Warm price endpoint p50: {{p50:myriad}}."
 
-source: https://github.com/MobulaFi/mobula-monorepo/tree/main/miniapps/pm-rate-limits
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/pm-rate-limits
 
 prometheus:
   window: 24h

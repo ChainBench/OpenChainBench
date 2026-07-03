@@ -56,7 +56,7 @@ findings:
   - "{{name:okx}} sits at {{p50:okx}} stddev (24h). 8h settlements smooth high-frequency noise but react to regime shifts within the window."
   - "Outliers on this bench are the venues to watch for funding arbitrage: a wider band means larger spreads to harvest against the cohort median."
 
-source: https://github.com/ChainBench/OpenChainBench/tree/main/benchmarks/perp-funding-stability.yml
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/perp-cohort-stats
 
 prometheus:
   window: 24h
