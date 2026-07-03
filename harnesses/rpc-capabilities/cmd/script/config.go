@@ -44,7 +44,15 @@ type Chain struct {
 // Merkle on Ethereum (1 req then 20-min Cloudflare lockout — keep
 // Merkle only for Base + BSC where it's stable), Lava on chains
 // other than Ethereum + Arbitrum (subdomains exist but return 403
-// without a key).
+// without a key; exception: sonic.lava.build is open no-key).
+//
+// Long-tail sweep 2026-07-03 (12 chains added, every endpoint
+// re-verified live: eth_chainId match + 4 consecutive probes).
+// Excluded by that sweep: MeowRPC on all long-tail chains (DNS gone,
+// provider appears defunct outside its legacy chains), Sei EVM
+// (drpc caches eth_blockNumber → only 2 clean providers), opBNB
+// (1rpc 429s at probe cadence, only 3 solid providers), Mode
+// (3 providers), Zora / Abstract / HyperEVM (≤2 keyless providers).
 func chains() []Chain {
 	return []Chain{
 		// ─── Ethereum mainnet (9 providers) ────────────────────────
@@ -175,6 +183,151 @@ func chains() []Chain {
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_MANTLE_DRPC", "https://mantle.drpc.org")},
 				{Slug: "1rpc", Name: "1RPC", URL: envDefault("RPC_URL_MANTLE_1RPC", "https://1rpc.io/mantle")},
 				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_MANTLE_TENDERLY", "https://gateway.tenderly.co/public/mantle")},
+			},
+		},
+		// ─── Sonic (6 providers) ────────────────────────────────────
+		{
+			Slug: "sonic",
+			Name: "Sonic",
+			Providers: []Provider{
+				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_SONIC_PUBLICNODE", "https://sonic-rpc.publicnode.com")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_SONIC_DRPC", "https://sonic.drpc.org")},
+				{Slug: "1rpc", Name: "1RPC", URL: envDefault("RPC_URL_SONIC_1RPC", "https://1rpc.io/sonic")},
+				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_SONIC_TENDERLY", "https://gateway.tenderly.co/public/sonic")},
+				{Slug: "lava", Name: "Lava Network", URL: envDefault("RPC_URL_SONIC_LAVA", "https://sonic.lava.build")},
+				{Slug: "sonic-official", Name: "Sonic Labs Official", URL: envDefault("RPC_URL_SONIC_OFFICIAL", "https://rpc.soniclabs.com")},
+			},
+		},
+		// ─── Gnosis (6 providers) ───────────────────────────────────
+		{
+			Slug: "gnosis",
+			Name: "Gnosis",
+			Providers: []Provider{
+				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_GNOSIS_PUBLICNODE", "https://gnosis-rpc.publicnode.com")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_GNOSIS_DRPC", "https://gnosis.drpc.org")},
+				{Slug: "1rpc", Name: "1RPC", URL: envDefault("RPC_URL_GNOSIS_1RPC", "https://1rpc.io/gnosis")},
+				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_GNOSIS_TENDERLY", "https://gateway.tenderly.co/public/gnosis")},
+				{Slug: "nodies", Name: "Nodies (POKT)", URL: envDefault("RPC_URL_GNOSIS_NODIES", "https://gnosis-pokt.nodies.app")},
+				{Slug: "gnosis-official", Name: "Gnosis Official", URL: envDefault("RPC_URL_GNOSIS_OFFICIAL", "https://rpc.gnosischain.com")},
+			},
+		},
+		// ─── Celo (5 providers) ─────────────────────────────────────
+		{
+			Slug: "celo",
+			Name: "Celo",
+			Providers: []Provider{
+				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_CELO_PUBLICNODE", "https://celo-rpc.publicnode.com")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_CELO_DRPC", "https://celo.drpc.org")},
+				{Slug: "1rpc", Name: "1RPC", URL: envDefault("RPC_URL_CELO_1RPC", "https://1rpc.io/celo")},
+				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_CELO_TENDERLY", "https://gateway.tenderly.co/public/celo")},
+				{Slug: "celo-official", Name: "Celo Official (Forno)", URL: envDefault("RPC_URL_CELO_OFFICIAL", "https://forno.celo.org")},
+			},
+		},
+		// ─── Blast (4 providers) ────────────────────────────────────
+		{
+			Slug: "blast",
+			Name: "Blast",
+			Providers: []Provider{
+				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_BLAST_PUBLICNODE", "https://blast-rpc.publicnode.com")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_BLAST_DRPC", "https://blast.drpc.org")},
+				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_BLAST_TENDERLY", "https://gateway.tenderly.co/public/blast")},
+				{Slug: "blast-official", Name: "Blast Official", URL: envDefault("RPC_URL_BLAST_OFFICIAL", "https://rpc.blast.io")},
+			},
+		},
+		// ─── Taiko (4 providers) ────────────────────────────────────
+		// Note: Tenderly uses slug `taiko-mainnet` (plain `taiko` 404s).
+		{
+			Slug: "taiko",
+			Name: "Taiko",
+			Providers: []Provider{
+				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_TAIKO_PUBLICNODE", "https://taiko-rpc.publicnode.com")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_TAIKO_DRPC", "https://taiko.drpc.org")},
+				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_TAIKO_TENDERLY", "https://gateway.tenderly.co/public/taiko-mainnet")},
+				{Slug: "taiko-official", Name: "Taiko Official", URL: envDefault("RPC_URL_TAIKO_OFFICIAL", "https://rpc.taiko.xyz")},
+			},
+		},
+		// ─── Moonbeam (5 providers) ─────────────────────────────────
+		// Note: 1RPC uses the token code `glmr` (`/moonbeam` 400s).
+		{
+			Slug: "moonbeam",
+			Name: "Moonbeam",
+			Providers: []Provider{
+				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_MOONBEAM_PUBLICNODE", "https://moonbeam-rpc.publicnode.com")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_MOONBEAM_DRPC", "https://moonbeam.drpc.org")},
+				{Slug: "1rpc", Name: "1RPC", URL: envDefault("RPC_URL_MOONBEAM_1RPC", "https://1rpc.io/glmr")},
+				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_MOONBEAM_TENDERLY", "https://gateway.tenderly.co/public/moonbeam")},
+				{Slug: "moonbeam-official", Name: "Moonbeam Official", URL: envDefault("RPC_URL_MOONBEAM_OFFICIAL", "https://rpc.api.moonbeam.network")},
+			},
+		},
+		// ─── Berachain (4 providers) ────────────────────────────────
+		{
+			Slug: "berachain",
+			Name: "Berachain",
+			Providers: []Provider{
+				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_BERACHAIN_PUBLICNODE", "https://berachain-rpc.publicnode.com")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_BERACHAIN_DRPC", "https://berachain.drpc.org")},
+				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_BERACHAIN_TENDERLY", "https://gateway.tenderly.co/public/berachain")},
+				{Slug: "berachain-official", Name: "Berachain Official", URL: envDefault("RPC_URL_BERACHAIN_OFFICIAL", "https://rpc.berachain.com")},
+			},
+		},
+		// ─── zkSync Era (4 providers) ───────────────────────────────
+		// Note: PublicNode does not serve zkSync (both subdomain
+		// guesses 404) — verified 2026-07-03.
+		{
+			Slug: "zksync",
+			Name: "zkSync Era",
+			Providers: []Provider{
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_ZKSYNC_DRPC", "https://zksync.drpc.org")},
+				{Slug: "1rpc", Name: "1RPC", URL: envDefault("RPC_URL_ZKSYNC_1RPC", "https://1rpc.io/zksync2-era")},
+				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_ZKSYNC_TENDERLY", "https://gateway.tenderly.co/public/zksync")},
+				{Slug: "zksync-official", Name: "zkSync Official", URL: envDefault("RPC_URL_ZKSYNC_OFFICIAL", "https://mainnet.era.zksync.io")},
+			},
+		},
+		// ─── Cronos (4 providers) ───────────────────────────────────
+		// Note: PublicNode subdomain is `cronos-evm-rpc` (`cronos-rpc`
+		// resolves but returns non-JSON).
+		{
+			Slug: "cronos",
+			Name: "Cronos",
+			Providers: []Provider{
+				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_CRONOS_PUBLICNODE", "https://cronos-evm-rpc.publicnode.com")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_CRONOS_DRPC", "https://cronos.drpc.org")},
+				{Slug: "1rpc", Name: "1RPC", URL: envDefault("RPC_URL_CRONOS_1RPC", "https://1rpc.io/cro")},
+				{Slug: "cronos-official", Name: "Cronos Official", URL: envDefault("RPC_URL_CRONOS_OFFICIAL", "https://evm.cronos.org")},
+			},
+		},
+		// ─── Fraxtal (4 providers) ──────────────────────────────────
+		{
+			Slug: "fraxtal",
+			Name: "Fraxtal",
+			Providers: []Provider{
+				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_FRAXTAL_PUBLICNODE", "https://fraxtal-rpc.publicnode.com")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_FRAXTAL_DRPC", "https://fraxtal.drpc.org")},
+				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_FRAXTAL_TENDERLY", "https://gateway.tenderly.co/public/fraxtal")},
+				{Slug: "fraxtal-official", Name: "Fraxtal Official", URL: envDefault("RPC_URL_FRAXTAL_OFFICIAL", "https://rpc.frax.com")},
+			},
+		},
+		// ─── Unichain (5 providers) ─────────────────────────────────
+		{
+			Slug: "unichain",
+			Name: "Unichain",
+			Providers: []Provider{
+				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_UNICHAIN_PUBLICNODE", "https://unichain-rpc.publicnode.com")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_UNICHAIN_DRPC", "https://unichain.drpc.org")},
+				{Slug: "1rpc", Name: "1RPC", URL: envDefault("RPC_URL_UNICHAIN_1RPC", "https://1rpc.io/unichain")},
+				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_UNICHAIN_TENDERLY", "https://gateway.tenderly.co/public/unichain")},
+				{Slug: "unichain-official", Name: "Unichain Official", URL: envDefault("RPC_URL_UNICHAIN_OFFICIAL", "https://mainnet.unichain.org")},
+			},
+		},
+		// ─── Soneium (4 providers) ──────────────────────────────────
+		{
+			Slug: "soneium",
+			Name: "Soneium",
+			Providers: []Provider{
+				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_SONEIUM_PUBLICNODE", "https://soneium-rpc.publicnode.com")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_SONEIUM_DRPC", "https://soneium.drpc.org")},
+				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_SONEIUM_TENDERLY", "https://gateway.tenderly.co/public/soneium")},
+				{Slug: "soneium-official", Name: "Soneium Official", URL: envDefault("RPC_URL_SONEIUM_OFFICIAL", "https://rpc.soneium.org")},
 			},
 		},
 	}
