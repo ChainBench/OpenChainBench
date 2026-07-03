@@ -136,8 +136,6 @@ func probeOne(ctx context.Context, c Chain, p Provider) {
 		probeCtx, cancel := context.WithTimeout(ctx, probeTimeout)
 		defer cancel()
 		block, result, latency, err := callBlockNumber(probeCtx, p.URL)
-		rpcLatency.WithLabelValues(p.Slug, c.Slug, currentRegion).Set(latency)
-		rpcLatencyHist.WithLabelValues(p.Slug, c.Slug, currentRegion).Observe(latency)
 
 		if result == "ok" {
 			tips.update(c.Slug, block)
@@ -148,9 +146,19 @@ func probeOne(ctx context.Context, c Chain, p Provider) {
 		}
 		rpcCallTotal.WithLabelValues(p.Slug, c.Slug, currentRegion, result).Inc()
 		if result == "ok" {
+			// Latency is recorded ONLY for fresh, valid responses. Error
+			// responses are often FASTER than real work (Cloudflare's dead
+			// eth endpoint 403s in ~20 ms and was topping the Ethereum
+			// leaderboard for a week), and a gauge set on failure freezes
+			// at that value forever. Deleting the series on failure lets
+			// Prom staleness kick in so dead providers age out of the
+			// p50 rankings instead of ranking on their last error's RTT.
+			rpcLatency.WithLabelValues(p.Slug, c.Slug, currentRegion).Set(latency)
+			rpcLatencyHist.WithLabelValues(p.Slug, c.Slug, currentRegion).Observe(latency)
 			rpcHealth.WithLabelValues(p.Slug, c.Slug, currentRegion).Set(1)
 			fmt.Printf("[%s/%s] block=%d latency=%.0fms\n", c.Slug, p.Slug, block, latency)
 		} else {
+			rpcLatency.DeleteLabelValues(p.Slug, c.Slug, currentRegion)
 			rpcHealth.WithLabelValues(p.Slug, c.Slug, currentRegion).Set(0)
 			fmt.Printf("[%s/%s] %s latency=%.0fms err=%v\n", c.Slug, p.Slug, result, latency, err)
 		}
