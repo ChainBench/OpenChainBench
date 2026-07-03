@@ -1,0 +1,11 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+# CMD defined in Dockerfile (./node_modules/.bin/next start). Don't override
+# here — Railway docs say startCommand on DOCKERFILE builder skips the
+# Dockerfile CMD entirely, so if we set it again we lose the absolute path
+# trick that made it actually find next.
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
