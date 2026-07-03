@@ -117,6 +117,29 @@ const nextConfig: NextConfig = {
     ];
   },
   async redirects() {
+    // RPC cluster promotion (2026-07): the per-chain RPC leaderboards
+    // graduated from variant pages under rpc-capabilities to first-class
+    // benches (044-053, slug "<chain>-rpc") with their own YAML, FAQ and
+    // region dimension. 301 the old variant URLs so Google transfers the
+    // "fastest <chain> rpc" rank signal to the dedicated pages.
+    const RPC_CLUSTER_CHAINS = [
+      "ethereum",
+      "arbitrum",
+      "base",
+      "optimism",
+      "avalanche",
+      "bnb",
+      "polygon",
+      "linea",
+      "scroll",
+      "mantle",
+    ];
+    const rpcClusterRedirects = RPC_CLUSTER_CHAINS.map((chain) => ({
+      source: `/benchmarks/rpc-capabilities/${chain}`,
+      destination: `/benchmarks/${chain}-rpc`,
+      permanent: true,
+    }));
+
     // Chains live at /chains/<slug> per the new chain hub route family.
     // Many of these slugs also resolve under /products/<slug> because
     // the bench loader treats row shape benches (l1-finality,
@@ -199,6 +222,7 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
       ...chainRedirects,
+      ...rpcClusterRedirects,
     ];
   },
 };
