@@ -378,8 +378,11 @@ export default async function BenchmarkPage({
           cohort-level leaderboard for the 104 tracked builders, plus
           per-builder dashboards on /products/<slug>. We surface it
           here so a reader landing on the bench from search has an
-          obvious next step. Hard-coded by slug intentionally: only
-          one bench needs it today, a spec field would be overkill. */}
+          obvious next step. Hard-coded by slug intentionally: the
+          match rules are trivial (one slug + one suffix), a spec
+          field would be overkill. The RPC cluster (rpc-capabilities
+          + every <chain>-rpc bench) gets the same treatment pointing
+          at the /rpc cross-chain matrix. */}
       {benchmark.slug === "hyperliquid-frontends" && (
         <div
           className="mt-6 max-w-3xl rounded-lg border border-ink/15 px-4 py-3 flex items-start gap-3 flex-wrap"
@@ -406,6 +409,37 @@ export default async function BenchmarkPage({
                 style={{ color: "#7a47db" }}
               >
                 Open the Hyperliquid frontends hub →
+              </Link>
+            </p>
+          </div>
+        </div>
+      )}
+      {(benchmark.slug.endsWith("-rpc") ||
+        benchmark.slug === "rpc-capabilities") && (
+        <div
+          className="mt-6 max-w-3xl rounded-lg border border-ink/15 px-4 py-3 flex items-start gap-3 flex-wrap"
+          style={{
+            background:
+              "linear-gradient(180deg, rgba(14,165,233,0.06), rgba(14,165,233,0.01))",
+          }}
+        >
+          <span
+            className="mt-0.5 inline-block w-2 h-2 rounded-full shrink-0"
+            style={{ background: "#0ea5e9" }}
+            aria-hidden
+          />
+          <div className="min-w-0 flex-1">
+            <p className="label-mono text-[10px] text-ink-faint mb-0.5">
+              Companion page
+            </p>
+            <p className="text-sm text-ink leading-snug">
+              Comparing free RPC endpoints across every chain we measure?{" "}
+              <Link
+                href="/rpc"
+                className="font-semibold underline underline-offset-2"
+                style={{ color: "#0284c7" }}
+              >
+                Open the cross-chain RPC matrix →
               </Link>
             </p>
           </div>
