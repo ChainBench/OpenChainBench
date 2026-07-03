@@ -253,7 +253,10 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // forcing every render to re-query Prom. Root cause of the 150 GB/day
   // Railway egress blowout (2026-06-29). Series for 7d/30d are now
   // lazy-fetched via /api/series/<slug>?range=7d|30d on tab click.
-  ["bench-unfiltered-v17"],
+  // v18: RPC per-chain cluster (044-053) + rpc-capabilities lost its
+  // perChainExplainer. Bench SET changed; without the bump, cached v17
+  // entries keep the removed explainer and miss the 10 new benches.
+  ["bench-unfiltered-v18"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -392,7 +395,12 @@ const loadAllBenchmarksCached = unstable_cache(
   // snapshot that didn't include the 6 newly identified frontends.
   // v21: bumped with bench-unfiltered-v17 (slim cached objects — strip
   // 7d/30d series from extras + panels so the cache stays under 2 MB).
-  ["all-benchmarks-v21"],
+  // v22: bumped with bench-unfiltered-v18 (RPC per-chain cluster
+  // 044-053; parent rpc-capabilities lost perChainExplainer). Without
+  // this, sitemap/citable/products kept emitting the removed
+  // rpc-capabilities/<chain> variant URLs and missing the 10 new
+  // <chain>-rpc benches after deploy.
+  ["all-benchmarks-v22"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -460,7 +468,8 @@ const loadBenchmarkFiltered = unstable_cache(
   // v7: bumped with bench-unfiltered-v10 (dimensions overlay).
   // v8: bumped with bench-unfiltered-v11 (egress reduction).
   // v9: bumped with bench-unfiltered-v17 (slim cached objects).
-  ["bench-filters-v9"],
+  // v10: bumped with bench-unfiltered-v18 (RPC per-chain cluster).
+  ["bench-filters-v10"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
