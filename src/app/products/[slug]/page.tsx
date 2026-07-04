@@ -29,6 +29,7 @@ import {
 } from "@/lib/perp-venue-context";
 import { PerpVenueSection } from "@/components/perp-venue-section";
 import { PmDataFeedSection } from "@/components/pm-data-feed-section";
+import { RpcProviderChainsSection } from "@/components/rpc-provider-chains-section";
 
 export const revalidate = 60;
 
@@ -681,6 +682,11 @@ export default async function ProviderPage({
           })}
         </ol>
       </section>
+
+      {/* Per-chain RPC deep-dive from the rpc-hub cohort snapshot.
+          Renders nothing for providers outside the free-RPC cluster
+          (the section fetches the cached snapshot and self-filters). */}
+      <RpcProviderChainsSection providerSlug={p.slug} providerName={p.name} />
 
       <RelatedProvidersSection providerSlug={p.slug} providerName={p.name} />
 
