@@ -58,6 +58,15 @@ export type RpcHubProvider = {
   regions: Partial<Record<RpcRegionKey, number>>;
 };
 
+export type RpcHubUnresponsiveProvider = {
+  provider: string;
+  name: string;
+  /** Success rate over 24h (%, 2 decimals). Call counters keep
+   *  recording through an outage, so this stays meaningful. */
+  successPct?: number;
+  sampleSize?: number;
+};
+
 export type RpcHubChain = {
   /** Chain slug, e.g. "ethereum". */
   chain: string;
@@ -72,6 +81,9 @@ export type RpcHubChain = {
    *  (probed, all calls failing, no latency). Never part of
    *  best/fastest computations — display-only context. */
   unresponsiveCount?: number;
+  /** The unresponsive rows themselves (never ranked). Additive optional
+   *  field: old blobs without it still parse. */
+  unresponsive?: RpcHubUnresponsiveProvider[];
   best: RpcRegionBest | null;
   /** Best provider per probe region. */
   regions: Partial<Record<RpcRegionKey, RpcRegionBest>>;
@@ -89,7 +101,17 @@ export type RpcHubPivotRow = {
   chainsCovered: number;
   medianRank: number;
   medianP50Ms: number;
-  chains: Record<string, { p50Ms: number; rank: number }>;
+  /** Median 24h success rate across covered chains (%, 2 decimals).
+   *  Optional: absent from older blobs and success-less rows. */
+  medianSuccessPct?: number;
+  /** Failed probes over 24h summed across covered chains:
+   *  Σ round(sampleSize × (1 − successPct/100)). Optional (needs
+   *  sampleSize; absent from older blobs). */
+  errors24h?: number;
+  chains: Record<
+    string,
+    { p50Ms: number; rank: number; successPct?: number; sampleSize?: number }
+  >;
 };
 
 export type RpcHubSnapshot = {
@@ -105,6 +127,7 @@ export type RpcHubSnapshot = {
 const RPC_HUB_KEY = "rpc-hub";
 
 const round1 = (v: number) => Math.round(v * 10) / 10;
+const round2 = (v: number) => Math.round(v * 100) / 100;
 
 function median(values: number[]): number {
   const sorted = [...values].sort((a, b) => a - b);
@@ -201,8 +224,9 @@ async function buildChain(spec: Spec): Promise<RpcHubChain | null> {
   const leaderSeries = bench.extras.series24h?.[leader.slug];
   // Unresponsive rows are excluded from `rows` by liveRows (they carry
   // availability="unavailable" and zero latency), so they can't touch
-  // best/fastest — surface only their count for the chains table.
-  const unresponsiveCount = bench.results.filter((r) => r.unresponsive).length;
+  // best/fastest — surface count + identity/success for display-only
+  // consumers (chains table, product pages).
+  const unresponsiveRows = bench.results.filter((r) => r.unresponsive);
 
   return {
     chain,
@@ -210,7 +234,21 @@ async function buildChain(spec: Spec): Promise<RpcHubChain | null> {
     name: chainLabelForSlug(chain) ?? chain,
     benchTitle: spec.title,
     providerCount: rows.length,
-    ...(unresponsiveCount > 0 ? { unresponsiveCount } : {}),
+    ...(unresponsiveRows.length > 0
+      ? {
+          unresponsiveCount: unresponsiveRows.length,
+          unresponsive: unresponsiveRows.map((r) => ({
+            provider: r.slug,
+            name: r.name,
+            ...(Number.isFinite(r.successRate)
+              ? { successPct: round2(r.successRate) }
+              : {}),
+            ...(r.sampleSize != null
+              ? { sampleSize: Math.round(r.sampleSize) }
+              : {}),
+          })),
+        }
+      : {}),
     best: { provider: leader.slug, providerName: leader.name, p50Ms: round1(leader.ms.p50) },
     regions,
     providers: rows.map((r) => ({
@@ -220,7 +258,7 @@ async function buildChain(spec: Spec): Promise<RpcHubChain | null> {
       p99Ms: Number.isFinite(r.ms.p99) && r.ms.p99 > 0 ? round1(r.ms.p99) : undefined,
       successPct:
         Number.isFinite(r.successRate) && r.successRate > 0
-          ? round1(r.successRate)
+          ? round2(r.successRate)
           : undefined,
       sampleSize: r.sampleSize != null ? Math.round(r.sampleSize) : undefined,
       regions: regionP50[r.slug] ?? {},
@@ -237,25 +275,48 @@ async function buildChain(spec: Spec): Promise<RpcHubChain | null> {
 function buildPivot(chains: RpcHubChain[]): RpcHubPivotRow[] {
   const acc = new Map<
     string,
-    { name: string; chains: Record<string, { p50Ms: number; rank: number }> }
+    { name: string; chains: RpcHubPivotRow["chains"] }
   >();
   for (const c of chains) {
     c.providers.forEach((p, i) => {
       const entry =
         acc.get(p.provider) ?? { name: p.name, chains: {} };
-      entry.chains[c.chain] = { p50Ms: p.p50Ms, rank: i + 1 };
+      entry.chains[c.chain] = {
+        p50Ms: p.p50Ms,
+        rank: i + 1,
+        ...(p.successPct != null ? { successPct: p.successPct } : {}),
+        ...(p.sampleSize != null ? { sampleSize: p.sampleSize } : {}),
+      };
       acc.set(p.provider, entry);
     });
   }
   const rows: RpcHubPivotRow[] = [...acc.entries()].map(
     ([provider, { name, chains: perChain }]) => {
       const cells = Object.values(perChain);
+      // Reliability aggregates over covered chains only. Success is a
+      // median (robust to one bad chain); errors are an absolute sum of
+      // failed probes, same derivation as the ledger's Errors column.
+      const successes = cells
+        .map((c) => c.successPct)
+        .filter((v): v is number => v != null);
+      const errorCells = cells.filter(
+        (c) => c.sampleSize != null && c.successPct != null,
+      );
+      const errors24h = errorCells.reduce(
+        (sum, c) =>
+          sum + Math.round((c.sampleSize as number) * (1 - (c.successPct as number) / 100)),
+        0,
+      );
       return {
         provider,
         name,
         chainsCovered: cells.length,
         medianRank: round1(median(cells.map((c) => c.rank))),
         medianP50Ms: round1(median(cells.map((c) => c.p50Ms))),
+        ...(successes.length > 0
+          ? { medianSuccessPct: round2(median(successes)) }
+          : {}),
+        ...(errorCells.length > 0 ? { errors24h } : {}),
         chains: perChain,
       };
     },
@@ -340,8 +401,10 @@ async function fetchRpcHubRaw(): Promise<RpcHubSnapshot | null> {
 
 const fetchRpcHubCached = unstable_cache(
   fetchRpcHubRaw,
+  // v3: pivot rows gained medianSuccessPct/errors24h + per-chain
+  // successPct/sampleSize; chains gained unresponsive[] rows.
   // v2: chains gained unresponsiveCount (unresponsive provider rows).
-  ["rpc-hub-cohort-v2"],
+  ["rpc-hub-cohort-v3"],
   { revalidate: 60, tags: ["rpc-cohort"] },
 );
 
