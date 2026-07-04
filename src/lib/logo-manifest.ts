@@ -139,6 +139,14 @@ const RAW: Record<string, string> = {
   // ─── L2 chains (additions) ───
   taiko: "/logos/taiko.png",
 
+  // ─── Long-tail RPC cluster chains (benches 055-066) ───
+  gnosis: "/logos/gnosis.png",
+  moonbeam: "/logos/moonbeam.png",
+  unichain: "/logos/unichain.png",
+  cronos: "/logos/cronos.png",
+  fraxtal: "/logos/fraxtal.png",
+  soneium: "/logos/soneium.png",
+
   // ─── Solana transaction landing services (bench 016) ───
   jito: "/logos/jito.svg",
   nozomi: "/logos/nozomi.svg",
@@ -328,16 +336,19 @@ const ALIASES: Record<string, string> = {
   "arbitrum-official": "arbitrum",
   "avalanche-official": "avalanche",
   "optimism-official": "optimism",
-  // Long-tail RPC cluster (055-066). Only chains with a registered
-  // brand mark are aliased; gnosis / moonbeam / unichain / cronos /
-  // fraxtal / soneium have no logo file yet and fall back to the
-  // initials chip in ProviderLogo.
+  // Long-tail RPC cluster (055-066).
   "sonic-official": "sonic",
   "celo-official": "celo",
   "blast-official": "blast",
   "taiko-official": "taiko",
   "berachain-official": "berachain",
   "zksync-official": "zksync",
+  "gnosis-official": "gnosis",
+  "moonbeam-official": "moonbeam",
+  "unichain-official": "unichain",
+  "cronos-official": "cronos",
+  "fraxtal-official": "fraxtal",
+  "soneium-official": "soneium",
 
 };
 
