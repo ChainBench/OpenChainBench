@@ -21,7 +21,19 @@ import type { RpcHubPivotRow } from "@/lib/rpc-hub-stats";
 
 type ChainRef = { chain: string; name: string; slug: string };
 
-type SortKey = "chainsCovered" | "medianRank" | "medianP50Ms";
+type SortKey =
+  | "chainsCovered"
+  | "medianRank"
+  | "medianP50Ms"
+  | "medianSuccessPct"
+  | "errors24h";
+
+/** Optional reliability fields (absent on old snapshots) resolve to
+ *  null so the comparator can pin them to the bottom either way. */
+function sortValue(r: RpcHubPivotRow, k: SortKey): number | null {
+  const v = r[k];
+  return v ?? null;
+}
 
 export function RpcProvidersPivot({
   rows,
@@ -46,8 +58,17 @@ export function RpcProvidersPivot({
       : rows;
     const factor = sortDir === "desc" ? -1 : 1;
     return [...out].sort((a, b) => {
-      const av = a[sortKey];
-      const bv = b[sortKey];
+      const av = sortValue(a, sortKey);
+      const bv = sortValue(b, sortKey);
+      // Rows without the metric (old snapshot, no sampleSize) sink to
+      // the bottom regardless of direction.
+      if (av == null && bv == null) {
+        return (
+          b.chainsCovered - a.chainsCovered || a.medianRank - b.medianRank
+        );
+      }
+      if (av == null) return 1;
+      if (bv == null) return -1;
       if (av === bv) {
         // Stable tie-breaks: coverage, then rank quality.
         return (
@@ -62,8 +83,11 @@ export function RpcProvidersPivot({
     if (k === sortKey) setSortDir((d) => (d === "desc" ? "asc" : "desc"));
     else {
       setSortKey(k);
-      // Coverage reads best descending; rank + latency ascending.
-      setSortDir(k === "chainsCovered" ? "desc" : "asc");
+      // Coverage + success read best descending; rank, latency and
+      // error counts ascending.
+      setSortDir(
+        k === "chainsCovered" || k === "medianSuccessPct" ? "desc" : "asc",
+      );
     }
   };
 
@@ -113,7 +137,37 @@ export function RpcProvidersPivot({
               >
                 Median p50
               </ThSort>
-              <Th>Per-chain rank</Th>
+              <ThSort
+                active={sortKey === "medianSuccessPct"}
+                dir={sortDir}
+                onClick={() => setSort("medianSuccessPct")}
+              >
+                Success
+              </ThSort>
+              <ThSort
+                active={sortKey === "errors24h"}
+                dir={sortDir}
+                onClick={() => setSort("errors24h")}
+              >
+                Errors (24h)
+              </ThSort>
+              {/* Chain logos double as column headers for the rank
+                  strip below: same 22px slots + gap as the cells, so
+                  each rank square reads under its chain mark. */}
+              <Th>
+                <span className="sr-only">Per-chain rank</span>
+                <span className="inline-flex items-center gap-1" aria-hidden>
+                  {chains.map((c) => (
+                    <span
+                      key={c.chain}
+                      title={c.name}
+                      className="inline-flex items-center justify-center w-[22px]"
+                    >
+                      <ProviderLogo slug={c.chain} name={c.name} size={15} />
+                    </span>
+                  ))}
+                </span>
+              </Th>
             </tr>
           </thead>
           <tbody>
@@ -169,6 +223,16 @@ export function RpcProvidersPivot({
                 </Td>
                 <Td mono>#{fmtRank(r.medianRank)}</Td>
                 <Td mono>{fmtMs(r.medianP50Ms)}</Td>
+                <Td mono>
+                  {r.medianSuccessPct != null
+                    ? `${r.medianSuccessPct.toFixed(2)}%`
+                    : "—"}
+                </Td>
+                <Td mono muted>
+                  {r.errors24h != null
+                    ? r.errors24h.toLocaleString("en-US")
+                    : "—"}
+                </Td>
                 <Td>
                   <span className="inline-flex items-center gap-1">
                     {chains.map((c) => {
@@ -199,7 +263,7 @@ export function RpcProvidersPivot({
             {filtered.length === 0 && (
               <tr>
                 <td
-                  colSpan={6}
+                  colSpan={8}
                   className="px-3 py-8 text-center text-[12px] text-ink-faint"
                 >
                   No provider matches &ldquo;{q}&rdquo;.
@@ -211,9 +275,10 @@ export function RpcProvidersPivot({
       </div>
 
       <p className="px-3 sm:px-4 py-2.5 border-t border-ink/8 text-[10.5px] text-ink-faint">
-        Per-chain cells show the provider&apos;s leaderboard rank on that
-        chain (24h p50, all regions). Cell order:{" "}
-        {chains.map((c) => c.name).join(", ")}.
+        Per-chain cells show the provider&apos;s leaderboard rank on the
+        chain marked by the logo above (24h p50, all regions). Success is
+        the median 24h success rate across covered chains; Errors (24h) is
+        the summed failed-probe count (sample size × failure rate).
       </p>
     </div>
   );
