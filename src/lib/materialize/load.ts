@@ -65,7 +65,27 @@ export function parseFilterSig(sig: string): BenchmarkFilters {
   }
   return out;
 }
-export async function loadSpecsUncached(): Promise<Spec[]> {
+// Module-level memo. Spec YAMLs are immutable for the lifetime of a
+// deployment (Vercel lambda) or worker container, but the React cache()
+// wrapper around this loader is a no-op inside unstable_cache callbacks
+// — so the catalog aggregate was re-reading all spec files once PER
+// BENCH, in parallel. At 57 specs that is ~57×57 concurrent opens and
+// the lambda dies with EMFILE ("too many open files"), collapsing
+// /api/citable and the sitemap to drafts (2026-07-04 incident, first
+// triggered by growing the catalog from 45 to 57 specs).
+let specsMemo: Promise<Spec[]> | null = null;
+
+export function loadSpecsUncached(): Promise<Spec[]> {
+  specsMemo ??= loadSpecsFromDisk().catch((err) => {
+    // Never memoize a failure: a transient fs error would otherwise
+    // poison every subsequent load for the lambda's lifetime.
+    specsMemo = null;
+    throw err;
+  });
+  return specsMemo;
+}
+
+async function loadSpecsFromDisk(): Promise<Spec[]> {
   let files: string[] = [];
   try {
     files = (await fs.readdir(SPECS_DIR)).filter(
