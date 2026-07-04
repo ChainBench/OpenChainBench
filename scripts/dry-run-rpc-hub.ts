@@ -69,8 +69,35 @@ async function main() {
   console.log("\nPIVOT (top 10 by coverage):");
   for (const r of snap.providersPivot.slice(0, 10)) {
     console.log(
-      `  ${r.provider.padEnd(14)} chains=${String(r.chainsCovered).padStart(2)}/${snap.totals.chains}  medianRank=#${r.medianRank}  medianP50=${r.medianP50Ms} ms`,
+      `  ${r.provider.padEnd(14)} chains=${String(r.chainsCovered).padStart(2)}/${snap.totals.chains}  medianRank=#${r.medianRank}  medianP50=${r.medianP50Ms} ms  success=${r.medianSuccessPct != null ? `${r.medianSuccessPct.toFixed(2)}%` : "—"}  errors24h=${r.errors24h?.toLocaleString("en-US") ?? "—"}`,
     );
+  }
+
+  // Product-page extract: the per-chain table /products/<slug> renders
+  // (rank among live rows, p50, success, derived error count). Override
+  // the provider with `--product=<slug>`.
+  const productArg = process.argv.find((a) => a.startsWith("--product="));
+  const product = productArg?.slice("--product=".length) ?? "drpc";
+  console.log(`\nPRODUCT TABLE · /products/${product}:`);
+  for (const c of snap.chains) {
+    const idx = c.providers.findIndex((p) => p.provider === product);
+    if (idx >= 0) {
+      const p = c.providers[idx];
+      const errors =
+        p.sampleSize != null && p.successPct != null
+          ? Math.round(p.sampleSize * (1 - p.successPct / 100))
+          : null;
+      console.log(
+        `  ${c.name.padEnd(14)} rank=#${idx + 1}/${c.providers.length}  p50=${String(p.p50Ms).padStart(7)} ms  success=${p.successPct != null ? `${p.successPct.toFixed(2)}%` : "—"}  errors24h=${errors?.toLocaleString("en-US") ?? "—"}`,
+      );
+      continue;
+    }
+    const dead = c.unresponsive?.find((u) => u.provider === product);
+    if (dead) {
+      console.log(
+        `  ${c.name.padEnd(14)} UNRESPONSIVE  p50=—  success=${dead.successPct != null ? `${dead.successPct.toFixed(2)}%` : "—"}  n=${dead.sampleSize ?? "—"}`,
+      );
+    }
   }
   console.log("");
 }
