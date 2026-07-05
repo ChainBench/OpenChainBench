@@ -175,6 +175,33 @@ export default async function ProviderPage({
     return a.benchmark.title.localeCompare(b.benchmark.title);
   });
 
+  // Data-driven prose summary of the provider's OCB standing. Replaces the
+  // identical templated intro paragraph that used to sit above the fold
+  // and made every /products/* page look near-duplicate to Bing (SEO audit
+  // 2026-07-05: only 2 of ~5000 pages indexed). Each sentence is derived
+  // from live measurements — no editorial claim.
+  const rankedAppearances = sorted.filter(
+    (a) => a.rank > 0 && a.result.ms.p50 > 0,
+  );
+  const topLines: string[] = [];
+  for (const a of rankedAppearances.slice(0, 4)) {
+    const p50Str = fmtUnit(a.result.ms.p50, a.benchmark.unit);
+    const rankStr = a.rank === 1 ? "ranks #1" : `ranks #${a.rank} of ${a.totalRanked}`;
+    topLines.push(`${a.benchmark.title} (${rankStr}, ${p50Str} p50)`);
+  }
+  const proseParts: string[] = [];
+  if (topLines.length > 0) {
+    proseParts.push(
+      `${p.name} ${topLines.length === 1 ? "is measured on" : "is measured across"} ${p.appearances.length} live OpenChainBench ${p.appearances.length === 1 ? "benchmark" : "benchmarks"}${p.wins > 0 ? `, with ${p.wins} #1 ${p.wins === 1 ? "finish" : "finishes"}` : ""}:`,
+    );
+    proseParts.push(`${topLines.join(", ")}.`);
+  } else {
+    proseParts.push(
+      `${p.name} performance benchmarks, live across ${p.appearances.length} ${p.appearances.length === 1 ? "category" : "categories"}. Reproducible measurements, open methodology.`,
+    );
+  }
+  const productProse = proseParts.join(" ");
+
   // Embeddable badge cards. Scope rules, most exact source first:
   //
   // 1. Benches with a `rank_matrix_query` AND region dimensions use the
@@ -411,10 +438,7 @@ export default async function ProviderPage({
                   {p.name}
                 </h1>
                 <p className="mt-1 text-base text-ink-soft">
-                  {p.name} performance benchmarks, live across{" "}
-                  {p.appearances.length}{" "}
-                  {p.appearances.length === 1 ? "category" : "categories"}.
-                  Reproducible measurements, open methodology.
+                  {productProse}
                 </p>
                 <p className="mt-2 font-sans text-[11px] uppercase tracking-[0.18em] text-ink-muted font-medium">
                   {p.appearances.length} {p.appearances.length === 1 ? "benchmark" : "benchmarks"}
