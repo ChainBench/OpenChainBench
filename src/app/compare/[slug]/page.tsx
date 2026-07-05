@@ -178,9 +178,33 @@ export async function generateMetadata({
   if (!hasSharedBenches(pair, a, b)) notFound();
 
   const url = `${SITE.url}/compare/${pair.slug}`;
-  const title = `${a.name} vs ${b.name}: live benchmarks`;
+
+  // SEO title carries the head-term shape ("X vs Y benchmark") plus
+  // current year (LLM extractability). Format leads with both provider
+  // names so Google's ~60-char SERP truncation keeps the intent-matching
+  // portion. The suffix "· OpenChainBench" is added by Next's title
+  // template so we don't spend chars on it here.
+  const currentYear = new Date().getUTCFullYear();
+  const title = `${a.name} vs ${b.name} Benchmark ${currentYear}`;
+
+  // Compute shared bench count from appearances (already loaded via
+  // hasSharedBenches above — cheap recomputation, avoids another Prom hit).
+  const aSlugs = new Set(a.appearances.map((x) => x.benchmark.slug));
+  const bSlugs = new Set(b.appearances.map((x) => x.benchmark.slug));
+  const excluded = new Set(pair.excludeBenchmarks ?? []);
+  const sharedSlugsForMeta = pair.benchmarks
+    ? pair.benchmarks.filter((s) => aSlugs.has(s) && bSlugs.has(s))
+    : Array.from(aSlugs).filter((s) => bSlugs.has(s));
+  const sharedCount = sharedSlugsForMeta.filter((s) => !excluded.has(s)).length;
+  const benchWord = sharedCount === 1 ? "benchmark" : "benchmarks";
+
+  // Meta description: unique per pair via the shared-count + provider
+  // names + date. Kills the identical duplicate-content signal that had
+  // Bing indexing 2 of 4938 compare pages. Also cites "as of DATE" for
+  // LLM citations.
+  const isoDate = new Date().toISOString().split("T")[0];
   const description = capDescription(
-    `${a.name} vs ${b.name} side by side on every shared OpenChainBench benchmark. Live measurements, identical layout, no verdict.`,
+    `${a.name} vs ${b.name} on ${sharedCount} shared OpenChainBench ${benchWord}. Live measurements, reproducible methodology. As of ${isoDate}.`,
     158,
   );
 
@@ -264,6 +288,63 @@ function decideWinner(
   if (aP50 === bP50) return "tie";
   if (higherIsBetter) return aP50 > bP50 ? "a" : "b";
   return aP50 < bP50 ? "a" : "b";
+}
+
+/** Build a data-driven prose summary of the head-to-head. Emitted above
+ *  the fold so Google/Bing get substantive, unique text per pair instead
+ *  of the identical template paragraph that used to sit here (which was
+ *  a big contributor to Bing indexing only 2 of ~5000 URLs — SEO audit
+ *  2026-07-05). Every sentence is derived from live measurements, no
+ *  editorial claim. Falls back to a minimal statement when p50 data is
+ *  missing (cold ISR, harness restart) so we never emit a lie. */
+function buildComparisonProse(
+  shared: SharedBench[],
+  aName: string,
+  bName: string,
+): string {
+  if (shared.length === 0) return "";
+  const aWinTitles: string[] = [];
+  const bWinTitles: string[] = [];
+  const aWinLines: string[] = [];
+  const bWinLines: string[] = [];
+  let ties = 0;
+
+  for (const s of shared) {
+    const aP50 = s.aResult.p50;
+    const bP50 = s.bResult.p50;
+    if (aP50 <= 0 || bP50 <= 0) continue;
+    const aVal = fmtUnit(aP50, s.unit);
+    const bVal = fmtUnit(bP50, s.unit);
+    if (s.aggregateWinner === "a") {
+      aWinTitles.push(s.title);
+      aWinLines.push(`${s.title} (${aVal} vs ${bVal})`);
+    } else if (s.aggregateWinner === "b") {
+      bWinTitles.push(s.title);
+      bWinLines.push(`${s.title} (${bVal} vs ${aVal})`);
+    } else {
+      ties += 1;
+    }
+  }
+
+  const total = aWinTitles.length + bWinTitles.length + ties;
+  if (total === 0) {
+    // No live data yet — return a neutral sentence rather than the old
+    // templated intro so the meta description + title remain the only
+    // duplicate-adjacent text on cold-cache pages.
+    return `${aName} vs ${bName} on ${shared.length} shared OpenChainBench ${shared.length === 1 ? "benchmark" : "benchmarks"}, awaiting live measurements.`;
+  }
+
+  const parts: string[] = [];
+  parts.push(
+    `${aName} leads on ${aWinTitles.length} of ${total} shared benchmarks, ${bName} on ${bWinTitles.length}${ties > 0 ? ` (${ties} tied)` : ""}.`,
+  );
+  if (aWinLines.length > 0) {
+    parts.push(`${aName} wins on ${aWinLines.slice(0, 4).join(", ")}.`);
+  }
+  if (bWinLines.length > 0) {
+    parts.push(`${bName} wins on ${bWinLines.slice(0, 4).join(", ")}.`);
+  }
+  return parts.join(" ");
 }
 
 /** Load the per-dimension breakdown for one shared bench against one
@@ -615,6 +696,8 @@ export default async function ComparePage({
     ]),
   };
 
+  const comparisonProse = buildComparisonProse(shared, a.name, b.name);
+
   return (
     <main className="mx-auto max-w-5xl px-6 pt-10 pb-16 sm:pt-14">
       <script
@@ -651,11 +734,8 @@ export default async function ComparePage({
           {b.name}
         </h1>
         <p className="mt-3 max-w-2xl text-base text-ink-soft leading-snug">
-          Side by side OpenChainBench measurements. Identical layout, no
-          editorial verdict, the live data leads. Each panel surfaces
-          the aggregate plus the chain and region breakdowns when the
-          underlying bench exposes them, straight from the Prometheus
-          queries that drive the parent benchmark pages.
+          {comparisonProse ||
+            `${a.name} vs ${b.name} on ${shared.length} shared OpenChainBench ${shared.length === 1 ? "benchmark" : "benchmarks"}. Live measurements, reproducible methodology, per-chain and per-region breakdowns straight from the Prometheus queries driving the parent benchmark pages.`}
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-4 text-xs text-ink-muted">
           <Link
