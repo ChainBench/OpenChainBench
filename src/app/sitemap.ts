@@ -323,6 +323,36 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
   const compareRoutes: MetadataRoute.Sitemap = [];
   const emittedPairSlugs = new Set<string>();
   const priorityByPairSlug = new Map<string, number>();
+  const lastModByPairSlug = new Map<string, Date>();
+
+  // Precompute the set of provider + chain slugs each benchmark touches.
+  // Used to derive per-pair <lastmod> from the max lastRunAt over their
+  // shared benchmarks (see per-URL lastmod SEO audit). One pass over
+  // benchmarks; per-pair lookup is then two Set.has() calls.
+  const benchToParticipants = new Map<string, Set<string>>();
+  for (const b of benchmarks) {
+    const participants = new Set<string>();
+    for (const r of b.results) participants.add(r.slug.toLowerCase());
+    for (const c of b.dimensions?.chain ?? []) {
+      const v = c.value.toLowerCase();
+      if (v !== "all") participants.add(v);
+    }
+    benchToParticipants.set(b.slug, participants);
+  }
+
+  const pairLastMod = (aSlug: string, bSlug: string): Date => {
+    const a = aSlug.toLowerCase();
+    const b = bSlug.toLowerCase();
+    let max = new Date(0);
+    for (const [benchSlug, participants] of benchToParticipants) {
+      if (!participants.has(a) || !participants.has(b)) continue;
+      const bench = benchBySlug.get(benchSlug);
+      if (!bench?.lastRunAt) continue;
+      const t = new Date(bench.lastRunAt);
+      if (t > max) max = t;
+    }
+    return max.getTime() > 0 ? max : catalogTs;
+  };
 
   for (const pair of COMPARE_PAIRS) {
     const p = await getProvider(pair.providerA);
@@ -330,6 +360,7 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
     if (!p || !q) continue;
     emittedPairSlugs.add(pair.slug);
     priorityByPairSlug.set(pair.slug, 0.7);
+    lastModByPairSlug.set(pair.slug, pairLastMod(pair.providerA, pair.providerB));
   }
 
   // Ad-hoc pair generation with hybrid threshold (SEO audit 2026-07-05):
@@ -370,13 +401,14 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
       if (emittedPairSlugs.has(pairSlug)) continue;
       emittedPairSlugs.add(pairSlug);
       priorityByPairSlug.set(pairSlug, 0.5);
+      lastModByPairSlug.set(pairSlug, pairLastMod(aSlug, bSlug));
     }
   }
 
   for (const pairSlug of emittedPairSlugs) {
     compareRoutes.push({
       url: `${SITE.url}/compare/${pairSlug}`,
-      lastModified: catalogTs,
+      lastModified: lastModByPairSlug.get(pairSlug) ?? catalogTs,
       changeFrequency: "weekly" as const,
       priority: priorityByPairSlug.get(pairSlug) ?? 0.5,
     });
@@ -389,15 +421,26 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
   // deploy on main (observed 2026-07-03 with the Wallets category when
   // it had zero live benches). Empty categories stay in the enum so the
   // route lights up automatically the moment a bench populates it.
+  // Per-URL <lastmod> = max lastRunAt of benches in the category.
+  // Benchmark.category is the display label ("Aggregators"), CATEGORIES
+  // entry has both label and slug — match on label.
   const liveCategoryLabels = new Set(benchmarks.map((b) => b.category));
   const categoryRoutes: MetadataRoute.Sitemap = CATEGORIES
     .filter((c) => liveCategoryLabels.has(c.label))
-    .map((c) => ({
-      url: `${SITE.url}/benchmarks/category/${c.slug}`,
-      lastModified: catalogTs,
-      changeFrequency: "weekly" as const,
-      priority: 0.6,
-    }));
+    .map((c) => {
+      const catBenches = benchmarks.filter((b) => b.category === c.label);
+      const last = catBenches.reduce<Date>((acc, b) => {
+        if (!b.lastRunAt) return acc;
+        const t = new Date(b.lastRunAt);
+        return t > acc ? t : acc;
+      }, new Date(0));
+      return {
+        url: `${SITE.url}/benchmarks/category/${c.slug}`,
+        lastModified: last.getTime() > 0 ? last : catalogTs,
+        changeFrequency: "weekly" as const,
+        priority: 0.6,
+      };
+    });
 
   return [
     ...staticRoutes,
