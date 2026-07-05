@@ -330,10 +330,28 @@ export const getBenchmarksForChain = cache(async function getBenchmarksForChain(
   for (const [legacy, target] of Object.entries(CHAIN_SLUG_ALIASES)) {
     if (target === canon) accept.add(legacy);
   }
+  // Per-chain benchmark slug conventions. A bench with slug matching one
+  // of these patterns for the canonical chain is treated as belonging to
+  // it even when it does not carry the chain in results[].slug or
+  // dimensions.chain[] (which is the case for chain-scoped RPC benches:
+  // `sonic-rpc`, `unichain-rpc`, etc. list providers as results, not the
+  // chain itself). Without this, 9 long-tail chains (sonic, gnosis, celo,
+  // moonbeam, unichain, soneium, berachain, fraxtal, cronos) drop out of
+  // the /chains/<slug> hub and had to be filtered from the sitemap by
+  // hand (see prior fix #910). New per-chain bench conventions land here.
+  const conventionSuffixes = ["-rpc"];
+  const acceptedSlugPatterns = new Set<string>();
+  for (const slug of accept) {
+    for (const suffix of conventionSuffixes) {
+      acceptedSlugPatterns.add(`${slug}${suffix}`);
+    }
+  }
+
   return benches.filter((b) => {
     if (b.results.some((r) => accept.has(r.slug.toLowerCase()))) return true;
     if (b.dimensions?.chain?.some((c) => accept.has(c.value.toLowerCase())))
       return true;
+    if (acceptedSlugPatterns.has(b.slug.toLowerCase())) return true;
     return false;
   });
 });
