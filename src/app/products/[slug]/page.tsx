@@ -75,10 +75,13 @@ export async function generateMetadata({
   const reg = getProviderRegistry(p.slug);
 
   // Meta title carries the head-term shape people search for when
-  // evaluating a provider ("helius review", "is dRPC reliable"). Kept
-  // short so Google's ~60-char SERP truncation never cuts the brand
-  // suffix that Next's title template appends (" · OpenChainBench").
-  const title = `${p.name}: live benchmarks`;
+  // evaluating a provider. Format leads with the provider name + head-term
+  // "Benchmark" + current year (LLM extractability signal — dated content
+  // is cited more by ChatGPT/Perplexity/Copilot). Kept short so Google's
+  // ~60-char SERP truncation never cuts the brand suffix that Next's
+  // title template appends (" · OpenChainBench").
+  const currentYear = new Date().getUTCFullYear();
+  const title = `${p.name} Benchmark ${currentYear} — Live Performance Data`;
 
   // Description prefers the registry's curated one-liner, then falls back
   // to a numeric one summarizing competitive footprint. Either way the
@@ -107,10 +110,12 @@ export async function generateMetadata({
     ? `${stripInlineMarkdown(reg.description).replace(/[.!?]?$/, ".")} Live performance across ${benchCount} OpenChainBench ${benchWord}${winSuffix}.`
     : fallbackDescription;
   // Google truncates meta description at ~155 chars in the SERP snippet.
-  // Long registry descriptions plus the appended "Live performance ..."
-  // sentence routinely blew past 200 chars (Ahref flagged 130+ pages).
-  // Cap at 155 with word-boundary truncation.
-  const description = capDescription(rawDescription, 155);
+  // Reserve ~22 chars for the ISO date suffix so the concatenated string
+  // stays inside the cap even after appending "As of YYYY-MM-DD."
+  // (LLM extractability: dated content is cited more by ChatGPT /
+  // Perplexity / Copilot, which drive most of our Bing query traffic).
+  const isoDate = new Date().toISOString().split("T")[0];
+  const description = `${capDescription(rawDescription, 130)} As of ${isoDate}.`;
 
   // When the resolved provider slug is actually a chain (e.g. /products/eth-usd
   // aliases to /products/ethereum which 308s to /chains/ethereum), point
@@ -169,6 +174,33 @@ export default async function ProviderPage({
     if (a.rank !== b.rank) return a.rank - b.rank;
     return a.benchmark.title.localeCompare(b.benchmark.title);
   });
+
+  // Data-driven prose summary of the provider's OCB standing. Replaces the
+  // identical templated intro paragraph that used to sit above the fold
+  // and made every /products/* page look near-duplicate to Bing (SEO audit
+  // 2026-07-05: only 2 of ~5000 pages indexed). Each sentence is derived
+  // from live measurements — no editorial claim.
+  const rankedAppearances = sorted.filter(
+    (a) => a.rank > 0 && a.result.ms.p50 > 0,
+  );
+  const topLines: string[] = [];
+  for (const a of rankedAppearances.slice(0, 4)) {
+    const p50Str = fmtUnit(a.result.ms.p50, a.benchmark.unit);
+    const rankStr = a.rank === 1 ? "ranks #1" : `ranks #${a.rank} of ${a.totalRanked}`;
+    topLines.push(`${a.benchmark.title} (${rankStr}, ${p50Str} p50)`);
+  }
+  const proseParts: string[] = [];
+  if (topLines.length > 0) {
+    proseParts.push(
+      `${p.name} ${topLines.length === 1 ? "is measured on" : "is measured across"} ${p.appearances.length} live OpenChainBench ${p.appearances.length === 1 ? "benchmark" : "benchmarks"}${p.wins > 0 ? `, with ${p.wins} #1 ${p.wins === 1 ? "finish" : "finishes"}` : ""}:`,
+    );
+    proseParts.push(`${topLines.join(", ")}.`);
+  } else {
+    proseParts.push(
+      `${p.name} performance benchmarks, live across ${p.appearances.length} ${p.appearances.length === 1 ? "category" : "categories"}. Reproducible measurements, open methodology.`,
+    );
+  }
+  const productProse = proseParts.join(" ");
 
   // Embeddable badge cards. Scope rules, most exact source first:
   //
@@ -406,10 +438,7 @@ export default async function ProviderPage({
                   {p.name}
                 </h1>
                 <p className="mt-1 text-base text-ink-soft">
-                  {p.name} performance benchmarks, live across{" "}
-                  {p.appearances.length}{" "}
-                  {p.appearances.length === 1 ? "category" : "categories"}.
-                  Reproducible measurements, open methodology.
+                  {productProse}
                 </p>
                 <p className="mt-2 font-sans text-[11px] uppercase tracking-[0.18em] text-ink-muted font-medium">
                   {p.appearances.length} {p.appearances.length === 1 ? "benchmark" : "benchmarks"}

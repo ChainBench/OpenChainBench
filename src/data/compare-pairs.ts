@@ -169,12 +169,10 @@ export const COMPARE_PAIRS: ComparePair[] = [
     providerB: "mobula",
     publishedAt: "2026-06-17",
   },
-  {
-    slug: "jupiter-vs-raydium",
-    providerA: "jupiter",
-    providerB: "raydium",
-    publishedAt: "2026-06-17",
-  },
+  // Removed 2026-07-05: raydium has zero bench appearances so the compare
+  // page 404s on hasSharedBenches. Re-add when raydium is measured in any
+  // OCB benchmark (Solana DEX aggregator or similar).
+  // { slug: "jupiter-vs-raydium", providerA: "jupiter", providerB: "raydium", publishedAt: "2026-06-17" },
   {
     slug: "lifi-vs-mobula",
     providerA: "lifi",

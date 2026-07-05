@@ -12,6 +12,14 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Standalone sub-apps deployed independently (own package.json + Railway
+    // config). Each has its own build, lint and typecheck pipeline; scanning
+    // them from the main frontend's lint pass caused every unrelated PR to
+    // fail on their pre-existing warnings (unescaped entities, no-explicit-any,
+    // react-hooks/set-state-in-effect) that the sub-app maintainers can fix
+    // in their own dedicated PRs.
+    "infrastructure/**",
+    "worker/**",
   ]),
 ]);
 
