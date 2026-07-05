@@ -3,6 +3,7 @@ import path from "node:path";
 import type { MetadataRoute } from "next";
 import { getBenchmarks } from "@/data/benchmarks";
 import { COMPARE_PAIRS } from "@/data/compare-pairs";
+import { BRAND_WHITELIST } from "@/lib/compare/brand-whitelist";
 import { loadAllAlternatives } from "@/lib/alternatives";
 import { loadAllAnswers } from "@/lib/answers";
 import { CHAIN_BY_SLUG, CHAINS, getBenchmarksForChain } from "@/lib/chains";
@@ -313,14 +314,19 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
     priorityByPairSlug.set(pair.slug, 0.7);
   }
 
-  // Gate: a provider is "sitemap-eligible" as soon as it has ≥1 bench
-  // appearance. The initial pass required 2 live benches with p50>0 —
-  // way too strict because most cohort providers (HL builders, wallets,
-  // trading terminals) participate in a single bench (`hyperliquid-frontends`
-  // or a product-catalog listing) with rank data but no p50 latency.
-  // That filter dropped ~1500 valid pages Ahref had already indexed via
-  // internal cross-links, leaving them in "Indexed but not in sitemap"
-  // limbo. Relaxed: emit any pair with ≥1 shared bench appearance.
+  // Ad-hoc pair generation with hybrid threshold (SEO audit 2026-07-05):
+  //
+  //   - Both providers in BRAND_WHITELIST → emit at ≥ 1 shared bench.
+  //   - Otherwise → emit only at ≥ 3 shared benches.
+  //
+  // Previous rule (≥ 1 for any pair) generated 4938 ad-hoc URLs, 97% of
+  // which were near-duplicate templates over obscure providers. Bing
+  // indexed 2 pages out of 5093 and penalised the whole domain via
+  // thin-content signal. The hybrid keeps every commercial "X vs Y"
+  // pair a user might actually search for (helius-vs-mobula,
+  // alchemy-vs-moralis, chain-vs-chain, perp-vs-perp — 223 pairs) and
+  // adds only genuinely rich non-brand pairs (3 with ≥ 3 shared).
+  // Total: 226 ad-hoc + 21 curated ≈ 247 URLs.
   const profiles = await safeLoad("providers", () => getProviders(), []);
   const benchesBySlug = new Map<string, Set<string>>();
   for (const p of profiles) {
@@ -339,7 +345,9 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
       const bBenches = benchesBySlug.get(bSlug)!;
       let shared = 0;
       for (const s of aBenches) if (bBenches.has(s)) shared += 1;
-      if (shared < 1) continue;
+      const bothBrand = BRAND_WHITELIST.has(aSlug) && BRAND_WHITELIST.has(bSlug);
+      const threshold = bothBrand ? 1 : 3;
+      if (shared < threshold) continue;
       const pairSlug = `${aSlug}-vs-${bSlug}`;
       if (emittedPairSlugs.has(pairSlug)) continue;
       emittedPairSlugs.add(pairSlug);
