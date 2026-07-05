@@ -266,15 +266,25 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
       };
     });
 
-  // Chain hub pages. Emit one entry per chain in the registry, no
-  // bench-count gate: every /chains/<slug> route exists and renders
-  // its own empty-bench state, and these are the canonical URLs that
-  // replace the /products/<chain> 308s filtered out above.
+  // Only emit /chains/<slug> in the sitemap when the page will actually
+  // render 200. The page 404s (chains/[slug]/page.tsx:91) when
+  // getBenchmarksForChain returns []; emitting an unrenderable URL fails
+  // the sitemap-smoke gate and rolls back every prod deploy.
+  //
+  // 9 long-tail chains (sonic, gnosis, celo, moonbeam, unichain, soneium,
+  // berachain, fraxtal, cronos) have per-chain RPC benches under distinct
+  // slugs (`sonic-rpc.yml`, etc.) but do NOT appear in any bench's
+  // `results[].slug` or `dimensions.chain[]`, so getBenchmarksForChain
+  // returns 0. Once those benches expose a chain dimension the URL will
+  // re-enter the sitemap automatically. On the transient throw path we
+  // still emit — a Prom outage should not disappear known-good chain
+  // hubs from the sitemap.
   const chainRoutes: MetadataRoute.Sitemap = (
     await Promise.all(
       CHAINS.map(async (c) => {
         try {
           const benches = await getBenchmarksForChain(c.slug);
+          if (benches.length === 0) return null;
           const last = benches.reduce<Date>((acc, b) => {
             if (!b.lastRunAt) return acc;
             const t = new Date(b.lastRunAt);
