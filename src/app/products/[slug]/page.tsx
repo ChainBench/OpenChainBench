@@ -75,10 +75,13 @@ export async function generateMetadata({
   const reg = getProviderRegistry(p.slug);
 
   // Meta title carries the head-term shape people search for when
-  // evaluating a provider ("helius review", "is dRPC reliable"). Kept
-  // short so Google's ~60-char SERP truncation never cuts the brand
-  // suffix that Next's title template appends (" · OpenChainBench").
-  const title = `${p.name}: live benchmarks`;
+  // evaluating a provider. Format leads with the provider name + head-term
+  // "Benchmark" + current year (LLM extractability signal — dated content
+  // is cited more by ChatGPT/Perplexity/Copilot). Kept short so Google's
+  // ~60-char SERP truncation never cuts the brand suffix that Next's
+  // title template appends (" · OpenChainBench").
+  const currentYear = new Date().getUTCFullYear();
+  const title = `${p.name} Benchmark ${currentYear} — Live Performance Data`;
 
   // Description prefers the registry's curated one-liner, then falls back
   // to a numeric one summarizing competitive footprint. Either way the
@@ -107,10 +110,12 @@ export async function generateMetadata({
     ? `${stripInlineMarkdown(reg.description).replace(/[.!?]?$/, ".")} Live performance across ${benchCount} OpenChainBench ${benchWord}${winSuffix}.`
     : fallbackDescription;
   // Google truncates meta description at ~155 chars in the SERP snippet.
-  // Long registry descriptions plus the appended "Live performance ..."
-  // sentence routinely blew past 200 chars (Ahref flagged 130+ pages).
-  // Cap at 155 with word-boundary truncation.
-  const description = capDescription(rawDescription, 155);
+  // Reserve ~22 chars for the ISO date suffix so the concatenated string
+  // stays inside the cap even after appending "As of YYYY-MM-DD."
+  // (LLM extractability: dated content is cited more by ChatGPT /
+  // Perplexity / Copilot, which drive most of our Bing query traffic).
+  const isoDate = new Date().toISOString().split("T")[0];
+  const description = `${capDescription(rawDescription, 130)} As of ${isoDate}.`;
 
   // When the resolved provider slug is actually a chain (e.g. /products/eth-usd
   // aliases to /products/ethereum which 308s to /chains/ethereum), point

@@ -178,9 +178,33 @@ export async function generateMetadata({
   if (!hasSharedBenches(pair, a, b)) notFound();
 
   const url = `${SITE.url}/compare/${pair.slug}`;
-  const title = `${a.name} vs ${b.name}: live benchmarks`;
+
+  // SEO title carries the head-term shape ("X vs Y benchmark") plus
+  // current year (LLM extractability). Format leads with both provider
+  // names so Google's ~60-char SERP truncation keeps the intent-matching
+  // portion. The suffix "· OpenChainBench" is added by Next's title
+  // template so we don't spend chars on it here.
+  const currentYear = new Date().getUTCFullYear();
+  const title = `${a.name} vs ${b.name} Benchmark ${currentYear}`;
+
+  // Compute shared bench count from appearances (already loaded via
+  // hasSharedBenches above — cheap recomputation, avoids another Prom hit).
+  const aSlugs = new Set(a.appearances.map((x) => x.benchmark.slug));
+  const bSlugs = new Set(b.appearances.map((x) => x.benchmark.slug));
+  const excluded = new Set(pair.excludeBenchmarks ?? []);
+  const sharedSlugsForMeta = pair.benchmarks
+    ? pair.benchmarks.filter((s) => aSlugs.has(s) && bSlugs.has(s))
+    : Array.from(aSlugs).filter((s) => bSlugs.has(s));
+  const sharedCount = sharedSlugsForMeta.filter((s) => !excluded.has(s)).length;
+  const benchWord = sharedCount === 1 ? "benchmark" : "benchmarks";
+
+  // Meta description: unique per pair via the shared-count + provider
+  // names + date. Kills the identical duplicate-content signal that had
+  // Bing indexing 2 of 4938 compare pages. Also cites "as of DATE" for
+  // LLM citations.
+  const isoDate = new Date().toISOString().split("T")[0];
   const description = capDescription(
-    `${a.name} vs ${b.name} side by side on every shared OpenChainBench benchmark. Live measurements, identical layout, no verdict.`,
+    `${a.name} vs ${b.name} on ${sharedCount} shared OpenChainBench ${benchWord}. Live measurements, reproducible methodology. As of ${isoDate}.`,
     158,
   );
 
