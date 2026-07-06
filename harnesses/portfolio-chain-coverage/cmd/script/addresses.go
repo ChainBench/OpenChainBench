@@ -172,6 +172,26 @@ var chainProbes = []chainProbe{
 // failures because the rejection may be on our side). Acala joined
 // the set once the ss58 treasury address format proved accepted.
 
+// evmProbeAddresses returns the deduplicated 20-byte 0x addresses
+// from the probe set (EVM long-tail funded wallets). Zerion's wallet
+// endpoint only accepts EVM addresses, one per call, so this is the
+// slice of the shared set it can fairly receive. 66-char 0x entries
+// (Aptos, Sui, Starknet, IOTA, Supra) are excluded: wrong address
+// space.
+func evmProbeAddresses() []string {
+	seen := map[string]bool{}
+	out := []string{}
+	for _, p := range chainProbes {
+		a := p.addr
+		if len(a) != 42 || a[:2] != "0x" || seen[a] {
+			continue
+		}
+		seen[a] = true
+		out = append(out, a)
+	}
+	return out
+}
+
 // uniqueProbeAddresses returns the deduplicated address list for
 // providers that take raw wallet addresses instead of chain keys
 // (same address can back several connectionIds, e.g. Terra 1/2).

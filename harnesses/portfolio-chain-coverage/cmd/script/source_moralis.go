@@ -62,6 +62,16 @@ var moralisDefaultChains = []string{
 	"0x8f",    // monad
 }
 
+// moralisChainWallet overrides the probe wallet for candidate chains
+// where the shared EVM address holds no balance: the funded probe
+// wallet for that chain (see addresses.go) is used instead, so a
+// working indexer verifies instead of reporting an empty net worth.
+var moralisChainWallet = map[string]string{
+	"0x7e4": "0xb32e9A84Ae0B55b8ab715e4Ac793a61B277bAFA3", // ronin
+	"0x171": "0xbE740c0c8b3C13b2B1Af763aC17a83797A948fe4", // pulsechain
+	"0x8f":  "0x14c25602353402d0be03b386a9aa3f107dd7e34c", // monad
+}
+
 func probeMoralis(key string) coverage {
 	base := envDefault("MORALIS_BASE_URL", moralisBaseDefault)
 	solBase := envDefault("MORALIS_SOL_BASE_URL", moralisSolBaseDefault)
@@ -139,11 +149,15 @@ func probeMoralis(key string) coverage {
 // vendor acknowledged the chain (listed), whether a real balance was
 // observed (verified), and the elapsed HTTP time.
 func probeMoralisChain(base string, hdr map[string]string, chain string) (accepted, verifiedOK bool, total time.Duration) {
+	wallet := evmTestAddress
+	if w, ok := moralisChainWallet[chain]; ok {
+		wallet = w
+	}
 	q := url.Values{}
 	q.Set("chains[0]", chain)
 	q.Set("exclude_spam", "true")
 	q.Set("exclude_unverified_contracts", "true")
-	u := fmt.Sprintf("%s/api/v2.2/wallets/%s/net-worth?%s", base, evmTestAddress, q.Encode())
+	u := fmt.Sprintf("%s/api/v2.2/wallets/%s/net-worth?%s", base, wallet, q.Encode())
 	raw, el, err := doCall("moralis", "GET", u, hdr, nil)
 	total += el
 
@@ -163,7 +177,7 @@ func probeMoralisChain(base string, hdr map[string]string, chain string) (accept
 		// the chain is acknowledged; net worth is just refused for
 		// whale wallets. Fall back to the native balance endpoint
 		// (no USD pricing there, shared native-amount rule applies).
-		u2 := fmt.Sprintf("%s/api/v2.2/%s/balance?chain=%s", base, evmTestAddress, url.QueryEscape(chain))
+		u2 := fmt.Sprintf("%s/api/v2.2/%s/balance?chain=%s", base, wallet, url.QueryEscape(chain))
 		raw2, el2, err2 := doCall("moralis", "GET", u2, hdr, nil)
 		total += el2
 		if err2 != nil {
