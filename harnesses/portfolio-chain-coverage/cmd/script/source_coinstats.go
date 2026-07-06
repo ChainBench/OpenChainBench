@@ -80,12 +80,16 @@ func probeCoinStats(key string) coverage {
 		raw, el, err := doCall("coinstats", "GET", url, hdr, nil)
 		total += el
 		if err != nil {
-			if status := httpStatus(err); status >= 400 && status < 500 {
-				// Definitive refusal of a funded address: counts as
-				// probed-but-not-verified, an honest indexer gap.
+			if status := httpStatus(err); status == 400 || status == 404 {
+				// Deterministic per-chain refusal of a funded
+				// address: probed-but-not-verified, an honest
+				// indexer gap. ONLY 400/404 qualify — quota, auth
+				// and throttle failures (401/402/403/406/429) say
+				// nothing about the chain and must never turn into
+				// a published zero (seen live: a 406 credit-limit
+				// day published verified=0 and wiped the gauges).
 				fmt.Printf("[coinstats] %s probe rejected (http %d), skipping\n", probe.connectionID, status)
 				answeredProbe[probe.connectionID] = true
-				anyProbeOK = true
 				continue
 			}
 			recordError("coinstats", err)

@@ -63,7 +63,7 @@ func probeMobula(key string) coverage {
 		total += el
 		if err != nil {
 			status := httpStatus(err)
-			if optional && status >= 400 && status < 500 {
+			if optional && (status == 400 || status == 404) {
 				// Expected when the endpoint does not index this
 				// wallet type; not a provider fault.
 				fmt.Printf("[mobula] optional wallet %s not supported (http %d), skipping\n", wallet, status)
