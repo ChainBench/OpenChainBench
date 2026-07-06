@@ -122,9 +122,12 @@ func TestParseZerionChains(t *testing.T) {
 		{"type":"chains","id":"base","attributes":{"name":"Base"}},
 		{"type":"chains","id":"arbitrum","attributes":{"name":"Arbitrum"}}
 	]}`
-	n, err := parseZerionChains([]byte(fixture))
+	n, ids, err := parseZerionChains([]byte(fixture))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+	if !ids["ethereum"] {
+		t.Fatal("normalized id set must contain ethereum")
 	}
 	if n != 3 {
 		t.Fatalf("listed = %d, want 3", n)
@@ -188,7 +191,7 @@ func TestParseZapperPortfolioGraphQLError(t *testing.T) {
 
 func TestParseMobulaBlockchainsWrapped(t *testing.T) {
 	fixture := `{"data":[{"name":"Ethereum"},{"name":"Base"},{"name":"Solana"},{"name":"Bitcoin"}]}`
-	n, err := parseMobulaBlockchains([]byte(fixture))
+	n, _, err := parseMobulaBlockchains([]byte(fixture))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -199,7 +202,7 @@ func TestParseMobulaBlockchainsWrapped(t *testing.T) {
 
 func TestParseMobulaBlockchainsBareArray(t *testing.T) {
 	fixture := `[{"name":"Ethereum"},{"name":"Base"}]`
-	n, err := parseMobulaBlockchains([]byte(fixture))
+	n, _, err := parseMobulaBlockchains([]byte(fixture))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -209,7 +212,7 @@ func TestParseMobulaBlockchainsBareArray(t *testing.T) {
 }
 
 func TestParseMobulaBlockchainsBadShape(t *testing.T) {
-	if _, err := parseMobulaBlockchains([]byte(`"nope"`)); err == nil {
+	if _, _, err := parseMobulaBlockchains([]byte(`"nope"`)); err == nil {
 		t.Fatal("expected error on unexpected shape")
 	}
 }

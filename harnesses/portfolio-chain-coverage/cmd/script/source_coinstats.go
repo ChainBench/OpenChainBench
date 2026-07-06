@@ -75,6 +75,13 @@ func probeCoinStats(key string) coverage {
 	// dropped from the catalog, address format rejected), not a
 	// provider fault, so it is logged but never error-bucketed.
 	for _, probe := range chainProbes {
+		if len(chainOf) > 0 {
+			if _, inCatalog := chainOf[probe.connectionID]; !inCatalog {
+				// The vendor does not list this chain: nothing to
+				// test, no call to spend, no miss to debit.
+				continue
+			}
+		}
 		time.Sleep(sweepSpacing)
 		url := fmt.Sprintf("%s/wallet/balance?address=%s&connectionId=%s", base, probe.addr, probe.connectionID)
 		raw, el, err := doCall("coinstats", "GET", url, hdr, nil)

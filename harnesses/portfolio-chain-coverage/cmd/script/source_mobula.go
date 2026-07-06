@@ -29,14 +29,16 @@ func probeMobula(key string) coverage {
 	// --- listed: self-declared chain catalog -----------------------
 	raw, el, err := doCall("mobula", "GET", base+"/api/1/blockchains", hdr, nil)
 	total += el
+	catalog := map[string]bool{}
 	if err != nil {
 		recordError("mobula", err)
 		fmt.Printf("[mobula] blockchains catalog failed: %v\n", err)
-	} else if n, perr := parseMobulaBlockchains(raw); perr != nil {
+	} else if n, names, perr := parseMobulaBlockchains(raw); perr != nil {
 		recordError("mobula", perr)
 		fmt.Printf("[mobula] blockchains parse failed: %v\n", perr)
 	} else {
 		cov.listed = n
+		catalog = names
 	}
 
 	// --- verified: portfolio probes ---------------------------------
@@ -53,6 +55,7 @@ func probeMobula(key string) coverage {
 	// wallets are best-effort: Mobula's endpoint takes raw addresses,
 	// so a 4xx just means it does not index that wallet type.
 	wallets := append([]string{evmTestAddress}, uniqueProbeAddresses()...)
+	namesByAddr := probeNamesByAddr()
 	for i, wallet := range wallets {
 		optional := i > 0 // non-EVM support is best-effort
 		if i > 0 {
@@ -83,9 +86,14 @@ func probeMobula(key string) coverage {
 		for _, c := range chains {
 			verified[c] = true
 		}
-		if optional && len(verified) == before {
-			// Funded wallet answered with nothing new: the chain it
-			// holds a real balance on is not indexed here.
+		if optional && len(verified) == before &&
+			anyNameInSet(catalog, namesByAddr[wallet]) {
+			// Funded wallet answered with nothing new AND its target
+			// chain is in the vendor's own catalog: a real indexer
+			// gap. Misses on chains the vendor never listed do not
+			// count (and when the catalog call failed, no miss is
+			// counted at all — probed degrades to the verified
+			// floor rather than guessing).
 			probedMisses++
 		}
 		anyProbeOK = true
@@ -99,20 +107,40 @@ func probeMobula(key string) coverage {
 	return cov
 }
 
-// parseMobulaBlockchains counts catalog entries, tolerating both
+// parseMobulaBlockchains counts catalog entries and returns the
+// normalized name set (for probe-miss intersection), tolerating both
 // {data:[...]} and a bare top-level array.
-func parseMobulaBlockchains(raw []byte) (int, error) {
+func parseMobulaBlockchains(raw []byte) (int, map[string]bool, error) {
 	var wrapped struct {
 		Data []json.RawMessage `json:"data"`
 	}
 	if err := json.Unmarshal(raw, &wrapped); err == nil && wrapped.Data != nil {
-		return len(wrapped.Data), nil
+		return len(wrapped.Data), mobulaNameSet(wrapped.Data), nil
 	}
 	var arr []json.RawMessage
 	if err := json.Unmarshal(raw, &arr); err == nil {
-		return len(arr), nil
+		return len(arr), mobulaNameSet(arr), nil
 	}
-	return 0, fmt.Errorf("parse blockchains: unexpected shape: %s", truncate(string(raw), 120))
+	return 0, nil, fmt.Errorf("parse blockchains: unexpected shape: %s", truncate(string(raw), 120))
+}
+
+func mobulaNameSet(rows []json.RawMessage) map[string]bool {
+	set := map[string]bool{}
+	for _, r := range rows {
+		var row struct {
+			Name  string `json:"name"`
+			Chain string `json:"chain"`
+		}
+		if json.Unmarshal(r, &row) != nil {
+			continue
+		}
+		for _, v := range []string{row.Name, row.Chain} {
+			if n := normalizeChainName(v); n != "" {
+				set[n] = true
+			}
+		}
+	}
+	return set
 }
 
 // parseMobulaPortfolio returns the distinct chain keys inside
