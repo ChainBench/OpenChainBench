@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -42,8 +43,19 @@ func probeZerion(key string) coverage {
 	}
 
 	// --- verified: one portfolio call for the EVM address ----------
+	// Zerion's dev tier throttles bursts on wallet endpoints: the
+	// portfolio call 429s when issued right after the chains call,
+	// while the same isolated request passes. Space the two calls,
+	// and give one long-backoff retry on 429 (429 is excluded from
+	// the generic retry to avoid hammering rate limits elsewhere).
+	time.Sleep(10 * time.Second)
 	url := fmt.Sprintf("%s/v1/wallets/%s/portfolio?currency=usd", base, evmTestAddress)
 	raw, el, err = doCall("GET", url, hdr, nil)
+	if err != nil && strings.Contains(err.Error(), "http 429") {
+		fmt.Printf("[zerion] portfolio 429, retrying once in 60s\n")
+		time.Sleep(60 * time.Second)
+		raw, el, err = doCall("GET", url, hdr, nil)
+	}
 	total += el
 	if err != nil {
 		recordError("zerion", err)
