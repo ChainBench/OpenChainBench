@@ -41,10 +41,6 @@ const (
 	moralisSolBaseDefault = "https://solana-gateway.moralis.io"
 )
 
-// moralisChainSpacing is the pause between per-chain net-worth calls
-// so ~18 quick GETs do not read as a burst client to Moralis's edge.
-const moralisChainSpacing = 1 * time.Second
-
 var moralisDefaultChains = []string{
 	"0x1",     // ethereum
 	"0x89",    // polygon
@@ -87,7 +83,7 @@ func probeMoralis(key string) coverage {
 	listed, verified := -1, -1
 	for i, c := range chains {
 		if i > 0 {
-			time.Sleep(moralisChainSpacing)
+			time.Sleep(sweepSpacing)
 		}
 		accepted, ok, el := probeMoralisChain(base, hdr, c)
 		total += el
@@ -108,7 +104,7 @@ func probeMoralis(key string) coverage {
 	// key's plan does not include the Solana gateway, which is an
 	// expected answer, not a fault.
 	solURL := fmt.Sprintf("%s/account/mainnet/%s/portfolio", solBase, solTestAddress)
-	raw, el, err := doCall("GET", solURL, hdr, nil)
+	raw, el, err := doCall("moralis", "GET", solURL, hdr, nil)
 	total += el
 	if err != nil {
 		if status := httpStatus(err); status >= 400 && status < 500 {
@@ -145,7 +141,7 @@ func probeMoralisChain(base string, hdr map[string]string, chain string) (accept
 	q.Set("exclude_spam", "true")
 	q.Set("exclude_unverified_contracts", "true")
 	u := fmt.Sprintf("%s/api/v2.2/wallets/%s/net-worth?%s", base, evmTestAddress, q.Encode())
-	raw, el, err := doCall("GET", u, hdr, nil)
+	raw, el, err := doCall("moralis", "GET", u, hdr, nil)
 	total += el
 
 	if err == nil {
@@ -165,7 +161,7 @@ func probeMoralisChain(base string, hdr map[string]string, chain string) (accept
 		// whale wallets. Fall back to the native balance endpoint
 		// (no USD pricing there, shared native-amount rule applies).
 		u2 := fmt.Sprintf("%s/api/v2.2/%s/balance?chain=%s", base, evmTestAddress, url.QueryEscape(chain))
-		raw2, el2, err2 := doCall("GET", u2, hdr, nil)
+		raw2, el2, err2 := doCall("moralis", "GET", u2, hdr, nil)
 		total += el2
 		if err2 != nil {
 			recordError("moralis", err2)

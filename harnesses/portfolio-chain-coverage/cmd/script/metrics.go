@@ -54,7 +54,20 @@ var (
 		},
 		[]string{"provider"},
 	)
+
+	portfolioProbeCalls = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "portfolio_probe_calls_total",
+			Help: "Total upstream HTTP calls issued per provider, retries included. Watch increase() over 30d against each vendor's monthly quota to catch credit-budget drift before it rate-limits the harness.",
+		},
+		[]string{"provider"},
+	)
 )
+
+// countCall tallies one upstream HTTP attempt for a provider.
+func countCall(provider string) {
+	portfolioProbeCalls.WithLabelValues(provider).Inc()
+}
 
 // classifyError buckets an error string into a small finite enum so
 // portfolio_probe_errors_total stays bounded in cardinality. Same
