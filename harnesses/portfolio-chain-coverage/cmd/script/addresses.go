@@ -160,6 +160,46 @@ var chainProbes = []chainProbe{
 	{"katana-wallet", "0xbE818E593E8B961c466523E8C1B7D3111B87Cca2", []string{"katana"}},
 	{"ronin-wallet", "0xb32e9A84Ae0B55b8ab715e4Ac793a61B277bAFA3", []string{"ronin"}},
 
+	// Mobula / Zerion catalog exotics. These chains are NOT in the
+	// CoinStats catalog (its sweep skips them via the catalog filter);
+	// they exist so wallet-sweep vendors get a funded probe on every
+	// sourceable chain of their OWN lists. Funding verified against
+	// each chain's explorer/RPC on 2026-07-06. Wrapped-native
+	// contracts (WETH predeploys, WASTR, WCFX, ...) are deliberate:
+	// on quiet chains they are the most drift-stable large holders.
+	{"astar", "0x37795FdD8C165CaB4D6c05771D564d80439CD093", []string{"astar"}},
+	{"bittorrent", "0xcBb9EDF6775e39748ea6483a7fa6a385cd7e9a4E", []string{"bittorrent", "bittorrentchain", "bttc"}},
+	{"conflux-espace", "0x14b2D3bC65e74DAE1030EAFd8ac30c533c976A9b", []string{"conflux", "confluxespace"}},
+	{"kcc", "0x4768B5168a8F2BfDD76dE03fAA834839Ccf75d9f", []string{"kucoin", "kcc"}},
+	{"oasis-emerald", "0x21C718C22D52d0F3a789b752D4c2fD5908a8A733", []string{"oasis", "oasisemerald"}},
+	{"oasis-sapphire", "0x8Bc2B030b299964eEfb5e1e0b36991352E56D2D3", []string{"oasissapphire"}},
+	{"shibarium", "0x0D0707963952f2fBA59dD06f2b425ace40b492Fe", []string{"shibarium"}},
+	{"smartbch", "0x3743eC0673453E5009310C727Ba4eaF7b3a1cc04", []string{"smartbch"}},
+	{"velas", "0x871ffe7577a567b7be81fe264dd7b592d180235a", []string{"velas"}},
+	{"wemix", "0x7D72b22a74A216Af4a002a1095C8C707d6eC1C5f", []string{"wemix"}},
+	{"xlayer", "0xe538905cf8410324e03A5A23C1c177a474D59b2b", []string{"xlayer", "okbchain", "okb"}},
+	{"alephium", "17R6Ptkz9i1LhiKyMhnitUMkgFygGeeQUFZvRx6GgV8Fc", []string{"alephium"}},
+	{"bahamut", "0x0D0707963952f2fBA59dD06f2b425ace40b492Fe", []string{"bahamut"}},
+	{"botanix", "0x0D2437F93Fed6EA64Ef01cCde385FB1263910C56", []string{"botanix"}},
+	{"dfk", "0xCCb93dABD71c8Dad03Fc4CE5559dC3D89F67a260", []string{"dfk", "dfksubnet", "defikingdoms"}},
+	{"graphlinq", "0x0D0707963952f2fBA59dD06f2b425ace40b492Fe", []string{"graphlinq"}},
+	{"matchain", "0x0D0707963952f2fBA59dD06f2b425ace40b492Fe", []string{"matchain"}},
+	{"shimmer-evm", "0xe93685f3bBA03016F02bD1828BaDD6195988D950", []string{"shimmer", "shimmerevm"}},
+	{"vanar", "0x0D0707963952f2fBA59dD06f2b425ace40b492Fe", []string{"vanar"}},
+	{"lisk", "0x4200000000000000000000000000000000000006", []string{"lisk"}},
+	{"tomochain", "0x7CB30740C7646afAA15295E6F2303e628Dd9e5e5", []string{"tomochain", "viction", "vic"}},
+	{"zklink-nova", "0x8280a4e7D5B3B658ec4580d3Bc30f5e50454F169", []string{"zklinknova", "zklink"}},
+	{"cyber", "0x4200000000000000000000000000000000000006", []string{"cyber"}},
+	{"rari", "0xf70da97812CB96acDF810712Aa562db8dfA3dbEF", []string{"rari", "rarichain"}},
+	{"somnia", "0xBe367d410D96E1cAeF68C0632251072CDf1b8250", []string{"somnia"}},
+	{"swellchain", "0x4200000000000000000000000000000000000006", []string{"swellchain", "swell"}},
+	{"gravity-alpha", "0x5f07826ce32a77E028819E17b7fB274d4B6f31c7", []string{"gravity", "gravityalpha"}},
+	{"lens", "0x6bDc36E20D267Ff0dd6097799f82e78907105e2F", []string{"lens"}},
+	{"zero-network", "0xAc98B49576B1C892ba6BFae08fE1BB0d80Cf599c", []string{"zero", "zeronetwork"}},
+	{"0g", "0x1Cd0690fF9a693f5EF2dD976660a8dAFc81A109c", []string{"0g", "zerogravity"}},
+	{"zkcandy", "0x053F171c0D0Cc9d76247D4d1CdDb280bf1131390", []string{"zkcandy"}},
+	{"cronos-zkevm", "0xC1bF55EE54E16229d9b369a5502Bfe5fC9F20b6d", []string{"cronoszkevm"}},
+
 	// Known-failing probes, kept DELIBERATELY: the address holds a
 	// large balance per the chain's own explorer, yet the vendor's
 	// probe returns empty. They count in probed but not verified,
@@ -168,6 +208,14 @@ var chainProbes = []chainProbe{
 	{"pepecoin-wallet", "PeU3PGXMGcFcteA4NjDcQsTiKQBdn7if84", []string{"pepecoin"}},
 }
 
+// Vendor-catalog chains with NO probe entry and why (audited
+// 2026-07-06, second pass): arthera (explorer + RPC dead), re-al
+// (block production halted 2025-06), wonder (domain gone, chain
+// defunct), tempo (no native gas token by design), polynomial
+// (explorer bot-gated, no reachable RPC), astar-zkevm (sunset
+// 2025-03-31), plus Mobula's 8 testnet entries (not probeable with
+// mainnet wallets).
+//
 // Chains with NO probe entry and why (audited 2026-07-06): heco,
 // redstone, nillion, duckchain (chains dead or explorer gone), evmos
 // x2 (chain ceased operations 2025), celsius (defunct custodian),
