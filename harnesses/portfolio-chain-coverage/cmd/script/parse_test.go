@@ -141,13 +141,17 @@ func TestParseZerionPortfolio(t *testing.T) {
 			"scroll":0
 		}
 	}}}`
-	n, err := parseZerionPortfolio([]byte(fixture))
+	chains, err := parseZerionPortfolio([]byte(fixture))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	// ethereum + base clear $1; polygon (=$0.20) and scroll (=$0) do not.
-	if n != 2 {
-		t.Fatalf("verified = %d, want 2", n)
+	if len(chains) != 2 {
+		t.Fatalf("verified = %v, want [base ethereum]", chains)
+	}
+	sort.Strings(chains)
+	if chains[0] != "base" || chains[1] != "ethereum" {
+		t.Fatalf("chains = %v, want [base ethereum]", chains)
 	}
 }
 
