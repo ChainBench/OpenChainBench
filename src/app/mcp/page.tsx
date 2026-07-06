@@ -37,6 +37,26 @@ const CURL_EXAMPLE = `curl -s -X POST ${MCP_URL} \\
   -H "Accept: application/json, text/event-stream" \\
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"get_benchmark","arguments":{"slug":"aggregator-head-lag","chain":"base"}}}'`;
 
+// Cursor supports MCP server installation via the anysphere-signed
+// deeplink scheme. Payload is a base64-encoded JSON matching the same
+// server config we'd write to ~/.cursor/mcp.json.
+// Docs: https://docs.cursor.com/context/model-context-protocol
+const CURSOR_DEEPLINK = (() => {
+  const configB64 = Buffer.from(
+    JSON.stringify({ url: MCP_URL }),
+  ).toString("base64");
+  return `cursor://anysphere.cursor-deeplink/mcp/install?name=openchainbench&config=${configB64}`;
+})();
+
+// VS Code (Copilot) supports MCP install via a redirect that pre-fills
+// the settings.json entry. Docs:
+// https://code.visualstudio.com/docs/copilot/chat/mcp-servers
+const VSCODE_DEEPLINK = (() => {
+  const config = { name: "openchainbench", url: MCP_URL };
+  const configEncoded = encodeURIComponent(JSON.stringify(config));
+  return `vscode:mcp/install?${configEncoded}`;
+})();
+
 export const metadata: Metadata = pageMetadata({
   path: "/mcp",
   title: "MCP server",
@@ -79,18 +99,63 @@ export default async function McpPage() {
         tool for your model.
       </p>
 
-      {/* The URL */}
+      {/* 1-click install buttons for clients that support MCP deeplinks.
+          Cursor + VS Code Copilot both accept a custom-scheme URL that
+          pre-fills their settings; Claude Desktop has no equivalent yet
+          so we surface the Settings path in a subheading instead. */}
       <section className="mt-10 border border-ink/80 bg-paper-soft/50 p-5">
         <p className="font-sans text-[10px] uppercase tracking-[0.18em] text-ink-faint font-medium">
-          Server URL
+          One-click install
         </p>
-        <div className="mt-2 flex flex-wrap items-center gap-3">
-          <code className="font-mono text-sm sm:text-base text-ink break-all">
-            {MCP_URL}
-          </code>
-          <CopyButton value={MCP_URL} label="Copy URL" />
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <a
+            href={CURSOR_DEEPLINK}
+            className="inline-flex items-center justify-between gap-3 border border-ink bg-ink text-paper px-4 py-3 no-underline hover:bg-ink-soft transition-colors"
+          >
+            <span className="font-sans text-sm font-semibold">
+              Add to Cursor
+            </span>
+            <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-paper-soft">
+              cursor://
+            </span>
+          </a>
+          <a
+            href={VSCODE_DEEPLINK}
+            className="inline-flex items-center justify-between gap-3 border border-ink bg-ink text-paper px-4 py-3 no-underline hover:bg-ink-soft transition-colors"
+          >
+            <span className="font-sans text-sm font-semibold">
+              Add to VS Code (Copilot)
+            </span>
+            <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-paper-soft">
+              vscode:mcp
+            </span>
+          </a>
         </div>
         <p className="mt-3 text-[11px] text-ink-muted">
+          One click opens your editor with the server pre-configured.
+          Click <em>Install</em> when the confirmation dialog appears.
+        </p>
+
+        <div className="mt-6 border-t border-rule pt-4">
+          <p className="font-sans text-[10px] uppercase tracking-[0.18em] text-ink-faint font-medium">
+            Claude Desktop
+          </p>
+          <p className="mt-2 text-sm text-ink-soft leading-relaxed">
+            No deeplink yet — the fastest path is{" "}
+            <strong className="text-ink">
+              Settings → Developer → Model Context Protocol → Add server
+            </strong>{" "}
+            and paste this URL:
+          </p>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <code className="font-mono text-sm text-ink break-all">
+              {MCP_URL}
+            </code>
+            <CopyButton value={MCP_URL} label="Copy URL" />
+          </div>
+        </div>
+
+        <p className="mt-6 pt-4 border-t border-rule text-[11px] text-ink-muted">
           Transport: streamable HTTP · Auth: none · Rate limit: 60 req/min/IP
         </p>
       </section>
