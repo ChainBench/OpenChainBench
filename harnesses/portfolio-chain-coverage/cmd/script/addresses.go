@@ -108,6 +108,7 @@ var chainProbes = []chainProbe{
 	{"minima-wallet", "MxG087AH0HPWAYJPQTQGYEMG03F1K2R1H43HVWYH19NB0RTW3SZWY7Q2F79810N"},
 	{"bittensor-wallet", "5Hd2ze5ug8n1bo3UCAcQsf66VNjKqGos8u6apNfzcU86pg4N"},
 	{"casper-wallet", "011c74ebfcc1b19bc3e578bec3ecfa2d484f2a00d7e9e8152c4c70f519f6a89f6a"},
+	{"acala-wallet", "23M5ttkmR6Kco7bReRDve6bQUSAcwqebatp3fWGJYb4hDSDJ"},
 
 	// EVM long-tail: the shared EVM sweep address holds no balance on
 	// these chains, so each gets its own funded public address
@@ -164,10 +165,12 @@ var chainProbes = []chainProbe{
 // redstone, nillion, duckchain (chains dead or explorer gone), evmos
 // x2 (chain ceased operations 2025), celsius (defunct custodian),
 // bnb_beacon (chain sunset), liquid (confidential balances, no rich
-// list exists), robinhood (no public mainnet explorer yet), acala /
-// xrpl-wallet / filecoin-wallet (every candidate address format got a
-// 400 from the probe endpoint; excluded rather than counted as vendor
-// failures because the rejection may be on our side).
+// list exists), robinhood (no public mainnet explorer yet),
+// xrpl-wallet / filecoin-wallet (every candidate address format,
+// including the vendor's own 0x form for Filecoin FEVM, got a 400
+// from the probe endpoint; excluded rather than counted as vendor
+// failures because the rejection may be on our side). Acala joined
+// the set once the ss58 treasury address format proved accepted.
 
 // uniqueProbeAddresses returns the deduplicated address list for
 // providers that take raw wallet addresses instead of chain keys
