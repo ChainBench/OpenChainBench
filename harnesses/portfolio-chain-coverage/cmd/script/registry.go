@@ -72,4 +72,6 @@ var Registry = []Provider{
 	{Slug: "zerion", Name: "Zerion", KeyEnv: "ZERION_API_KEY", Probe: probeZerion},
 	{Slug: "zapper", Name: "Zapper", KeyEnv: "ZAPPER_API_KEY", Probe: probeZapper},
 	{Slug: "mobula", Name: "Mobula", KeyEnv: "MOBULA_API_KEY", Probe: probeMobula},
+	{Slug: "dune", Name: "Dune", KeyEnv: "DUNE_SIM_API_KEY", Probe: probeDune},
+	{Slug: "moralis", Name: "Moralis", KeyEnv: "MORALIS_API_KEY", Probe: probeMoralis},
 }
