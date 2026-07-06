@@ -136,7 +136,7 @@ providers:
   - slug: dune
     name: Dune
     tag: Sim APIs
-    formula: "Distinct chains where Sim's /v1/evm/balances returned more than $1 for the shared EVM test address, spam tokens excluded (EVM only by API design, SVM balances still beta); listed is the count of chains flagged balances-supported in /v1/evm/supported-chains. Probed daily."
+    formula: "Distinct chains where Sim's /v1/evm/balances returned more than $1 for the shared EVM test address (EVM only by API design); listed counts balances-supported chains in /v1/evm/supported-chains. Probed daily."
     queries:
       p50: portfolio_chains_verified{provider="dune"}
       p90: portfolio_chains_listed{provider="dune"}
@@ -149,7 +149,7 @@ providers:
   - slug: moralis
     name: Moralis
     tag: Web3 data API
-    formula: "Distinct chains where Moralis /wallets/net-worth returned more than $1 for the shared EVM test address, plus Solana through its gateway portfolio probe; Moralis has no catalog endpoint, so listed counts the chains its API accepted this cycle (listed_source=probe). Probed daily."
+    formula: "Distinct chains where Moralis net-worth returned more than $1 for the shared EVM address, plus a Solana gateway probe; no catalog endpoint, so listed counts chains its API accepted (listed_source=probe). Probed daily."
     queries:
       p50: portfolio_chains_verified{provider="moralis"}
       p90: portfolio_chains_listed{provider="moralis"}
