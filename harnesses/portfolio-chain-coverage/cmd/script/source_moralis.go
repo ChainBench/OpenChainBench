@@ -16,24 +16,34 @@ import (
 // endpoint and every wallet call takes an explicit chains list, so
 // listed carries listed_source="probe" (same convention as Zapper):
 //
-//	listed   = chains the net-worth endpoint accepted this cycle out
-//	           of the candidate list below (accepted = echoed back in
-//	           the response chains array; rejected candidates land in
-//	           unsupported_chain_ids / unavailable_chains instead),
-//	           plus Solana when its separate gateway probe answers.
+//	listed   = candidate chains the net-worth endpoint accepted this
+//	           cycle, plus Solana when its separate gateway probe
+//	           answers. One call PER CHAIN: a multi-chain call fails
+//	           whole with "Wallet has too many ERC20 token balances
+//	           for <chain>" on the Binance 8 whale wallet (observed
+//	           on 0x38), which would collapse the entire EVM probe.
 //	verified = accepted chains whose networth_usd clears the shared
-//	           threshold, plus Solana on a native amount above 0 (the
-//	           Solana portfolio response carries no USD pricing).
+//	           threshold. When net-worth refuses the wallet's token
+//	           count on a chain, the chain is still acknowledged by
+//	           the vendor, so the probe falls back to the native
+//	           balance endpoint for that chain (no USD pricing there,
+//	           so the shared native-amount rule applies). Solana
+//	           verifies on a native amount above 0 for the same
+//	           reason.
 //
 // The candidate list mirrors docs.moralis.com/supported-chains (EVM
 // mainnets, checked 2026-07). Override without a rebuild via
-// MORALIS_CHAINS (comma-separated hex chain ids); drift is
-// self-healing because a chain Moralis drops just stops being echoed
-// back.
+// MORALIS_CHAINS (comma-separated hex chain ids); a candidate Moralis
+// rejects with a 4xx is an expected answer (not listed, not an error
+// bucket), so list drift is self-healing.
 const (
 	moralisBaseDefault    = "https://deep-index.moralis.io"
 	moralisSolBaseDefault = "https://solana-gateway.moralis.io"
 )
+
+// moralisChainSpacing is the pause between per-chain net-worth calls
+// so ~18 quick GETs do not read as a burst client to Moralis's edge.
+const moralisChainSpacing = 1 * time.Second
 
 var moralisDefaultChains = []string{
 	"0x1",     // ethereum
@@ -73,25 +83,24 @@ func probeMoralis(key string) coverage {
 		}
 	}
 
-	// --- EVM: one net-worth call across the candidate list ---------
-	q := url.Values{}
-	for i, c := range chains {
-		q.Set(fmt.Sprintf("chains[%d]", i), c)
-	}
-	q.Set("exclude_spam", "true")
-	q.Set("exclude_unverified_contracts", "true")
-	u := fmt.Sprintf("%s/api/v2.2/wallets/%s/net-worth?%s", base, evmTestAddress, q.Encode())
-	raw, el, err := doCall("GET", u, hdr, nil)
-	total += el
+	// --- EVM: one net-worth call per candidate chain ----------------
 	listed, verified := -1, -1
-	if err != nil {
-		recordError("moralis", err)
-		fmt.Printf("[moralis] net-worth probe failed: %v\n", err)
-	} else if l, v, perr := parseMoralisNetWorth(raw); perr != nil {
-		recordError("moralis", perr)
-		fmt.Printf("[moralis] net-worth parse failed: %v\n", perr)
-	} else {
-		listed, verified = l, v
+	for i, c := range chains {
+		if i > 0 {
+			time.Sleep(moralisChainSpacing)
+		}
+		accepted, ok, el := probeMoralisChain(base, hdr, c)
+		total += el
+		if !accepted {
+			continue
+		}
+		if listed < 0 {
+			listed, verified = 0, 0
+		}
+		listed++
+		if ok {
+			verified++
+		}
 	}
 
 	// --- Solana: separate gateway, best-effort ----------------------
@@ -99,7 +108,7 @@ func probeMoralis(key string) coverage {
 	// key's plan does not include the Solana gateway, which is an
 	// expected answer, not a fault.
 	solURL := fmt.Sprintf("%s/account/mainnet/%s/portfolio", solBase, solTestAddress)
-	raw, el, err = doCall("GET", solURL, hdr, nil)
+	raw, el, err := doCall("GET", solURL, hdr, nil)
 	total += el
 	if err != nil {
 		if status := httpStatus(err); status >= 400 && status < 500 {
@@ -113,13 +122,10 @@ func probeMoralis(key string) coverage {
 		fmt.Printf("[moralis] solana portfolio parse failed: %v\n", perr)
 	} else {
 		if listed < 0 {
-			listed = 0
+			listed, verified = 0, 0
 		}
 		listed++
 		if ok {
-			if verified < 0 {
-				verified = 0
-			}
 			verified++
 		}
 	}
@@ -128,6 +134,62 @@ func probeMoralis(key string) coverage {
 	cov.verified = verified
 	cov.latencyMs = float64(total.Milliseconds())
 	return cov
+}
+
+// probeMoralisChain measures one candidate chain. Returns whether the
+// vendor acknowledged the chain (listed), whether a real balance was
+// observed (verified), and the elapsed HTTP time.
+func probeMoralisChain(base string, hdr map[string]string, chain string) (accepted, verifiedOK bool, total time.Duration) {
+	q := url.Values{}
+	q.Set("chains[0]", chain)
+	q.Set("exclude_spam", "true")
+	q.Set("exclude_unverified_contracts", "true")
+	u := fmt.Sprintf("%s/api/v2.2/wallets/%s/net-worth?%s", base, evmTestAddress, q.Encode())
+	raw, el, err := doCall("GET", u, hdr, nil)
+	total += el
+
+	if err == nil {
+		l, v, perr := parseMoralisNetWorth(raw)
+		if perr != nil {
+			recordError("moralis", perr)
+			fmt.Printf("[moralis] net-worth parse failed for %s: %v\n", chain, perr)
+			return false, false, total
+		}
+		return l > 0, v > 0, total
+	}
+
+	status := httpStatus(err)
+	if status == 400 && strings.Contains(strings.ToLower(err.Error()), "too many") {
+		// The vendor knows the wallet's token count on this chain, so
+		// the chain is acknowledged; net worth is just refused for
+		// whale wallets. Fall back to the native balance endpoint
+		// (no USD pricing there, shared native-amount rule applies).
+		u2 := fmt.Sprintf("%s/api/v2.2/%s/balance?chain=%s", base, evmTestAddress, url.QueryEscape(chain))
+		raw2, el2, err2 := doCall("GET", u2, hdr, nil)
+		total += el2
+		if err2 != nil {
+			recordError("moralis", err2)
+			fmt.Printf("[moralis] native balance fallback failed for %s: %v\n", chain, err2)
+			return true, false, total
+		}
+		ok, perr := parseMoralisNativeBalance(raw2)
+		if perr != nil {
+			recordError("moralis", perr)
+			fmt.Printf("[moralis] native balance parse failed for %s: %v\n", chain, perr)
+			return true, false, total
+		}
+		return true, ok, total
+	}
+	if status >= 400 && status < 500 {
+		// Candidate not supported (anymore): expected answer, not a
+		// provider fault. Keeps the error counter honest when the
+		// documented chain list drifts.
+		fmt.Printf("[moralis] chain %s rejected (http %d), skipping\n", chain, status)
+		return false, false, total
+	}
+	recordError("moralis", err)
+	fmt.Printf("[moralis] net-worth probe failed for %s: %v\n", chain, err)
+	return false, false, total
 }
 
 // parseMoralisNetWorth returns (accepted chain count, chains whose
@@ -161,11 +223,27 @@ func parseMoralisNetWorth(raw []byte) (int, int, error) {
 	return listed, verified, nil
 }
 
+// parseMoralisNativeBalance reads the wei string from the native
+// balance endpoint. Any positive amount verifies the chain (no USD
+// pricing in this response, shared fallback rule).
+func parseMoralisNativeBalance(raw []byte) (bool, error) {
+	var resp struct {
+		Balance string `json:"balance"`
+	}
+	if err := json.Unmarshal(raw, &resp); err != nil {
+		return false, fmt.Errorf("parse native balance: %w", err)
+	}
+	if resp.Balance == "" {
+		return false, fmt.Errorf("parse native balance: no balance field: %s", truncate(string(raw), 120))
+	}
+	return resp.Balance != "0", nil
+}
+
 // parseMoralisSolPortfolio reports whether the Solana portfolio holds
 // anything. The response carries no USD pricing, so the shared
 // fallback applies: a native amount above 0 verifies the chain.
 func parseMoralisSolPortfolio(raw []byte) (bool, error) {
-	var resp struct {
+	var r struct {
 		NativeBalance struct {
 			Solana string `json:"solana"`
 		} `json:"nativeBalance"`
@@ -173,13 +251,13 @@ func parseMoralisSolPortfolio(raw []byte) (bool, error) {
 			Amount string `json:"amount"`
 		} `json:"tokens"`
 	}
-	if err := json.Unmarshal(raw, &resp); err != nil {
+	if err := json.Unmarshal(raw, &r); err != nil {
 		return false, fmt.Errorf("parse solana portfolio: %w", err)
 	}
-	if amt, err := strconv.ParseFloat(resp.NativeBalance.Solana, 64); err == nil && amt > 0 {
+	if amt, err := strconv.ParseFloat(r.NativeBalance.Solana, 64); err == nil && amt > 0 {
 		return true, nil
 	}
-	for _, t := range resp.Tokens {
+	for _, t := range r.Tokens {
 		if amt, err := strconv.ParseFloat(t.Amount, 64); err == nil && amt > 0 {
 			return true, nil
 		}
