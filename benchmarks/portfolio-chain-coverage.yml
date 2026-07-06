@@ -21,9 +21,9 @@ seo_intro: |
   probe-verified count). A chain is verified when the API returns a
   balance worth more than $1 on it. The gap between the two numbers is
   the story. a chain in a marketing list is not the same as a chain
-  where the balance indexer actually works, and on day one the gap
-  ranged from roughly 4x (CoinStats, 151 listed vs 32 verified) to
-  roughly 4x as well for Mobula (79 vs 20) and Zerion (65 vs 17).
+  where the balance indexer actually works. On the first full sweep of
+  the shared address set (2026-07-06), CoinStats demonstrated 94 of
+  its 151 listed chains, Mobula 27 of 79 and Zerion 17 of 65.
   Verified is an address-dependent lower bound. the test wallets do
   not hold assets on every chain in existence, so a provider can cover
   more chains than the probe observes, but every verified chain is one
@@ -53,7 +53,7 @@ methodology:
 
 findings:
   - "{{best_name}} currently leads at {{best_p50}} probe-verified chains across {{count}} measured providers. The number counts chains where the portfolio API returned a balance above $1 for the shared test addresses today, not chains that appear in a catalog or on a marketing page."
-  - "{{name:coinstats}} verifies {{p50:coinstats}} chains against a self-declared catalog of 151 on day one, notably more than the 120+ its marketing quotes. The roughly 4x gap between listed and verified is not unique to one vendor; Mobula listed 79 and Zerion 65 on the same day, each verifying about a quarter of their list."
+  - "{{name:coinstats}} verifies {{p50:coinstats}} chains against a self-declared catalog of 151, notably more than the 120+ its marketing quotes. No vendor demonstrates its full list: on the first full sweep CoinStats verified about two thirds of its catalog, Mobula and Zerion roughly a third and a quarter of theirs."
   - "{{name:mobula}} verifies {{p50:mobula}} chains and {{name:zerion}} verifies {{p50:zerion}}. Zerion's probe is EVM-only by API design (its portfolio endpoint takes one EVM address), while Mobula and CoinStats also accept the Solana and Bitcoin test addresses, which shapes what each verified count can include."
   - "Verified is a lower bound, not an exhaustive coverage audit. The test wallets hold balances on many chains but not all, so a provider can support chains the probe never observes. What the number guarantees is that every verified chain returned real balances for a real address through the public API today."
 
@@ -67,7 +67,7 @@ faq:
   - q: "Which portfolio API supports the most blockchains?"
     a: "{{best_name}} currently leads at {{best_p50}} probe-verified chains across {{count}} measured providers. Probe-verified means the provider's portfolio API returned a balance above $1 on that chain for identical public test addresses within the last daily cycle, so the leaderboard reflects chains where the balance indexer demonstrably works, not chains claimed in a catalog."
   - q: "Why publish both a listed and a verified chain count?"
-    a: "Because they answer different questions. listed is what the vendor self-declares through its own catalog endpoint and can be inflated by chains where indexing is partial or broken. verified is what the probe actually observed and is a conservative, address-dependent lower bound. On day one CoinStats listed 151 chains and verified 32, Mobula 79 and 20, Zerion 65 and 17. Reading both numbers together tells you how much weight a vendor's own list deserves."
+    a: "Because they answer different questions. listed is what the vendor self-declares through its own catalog endpoint and can be inflated by chains where indexing is partial or broken. verified is what the probe actually observed and is a conservative, address-dependent lower bound. On the first full sweep of the shared address set, CoinStats listed 151 chains and verified 94, Mobula 79 and 27, Zerion 65 and 17. Reading both numbers together tells you how much weight a vendor's own list deserves."
   - q: "Why are Zapper, DeBank, Dune and Codex not in the cohort?"
     a: "The cohort is limited to providers with free, reproducible API access so anyone can rerun the harness and get the same numbers. Zapper is excluded for now pending an API key. DeBank offers no free API tier. Codex gates its balances query behind the paid Growth plan. Dune's Sim API, the natural candidate for its wallet balances product, is sunsetting on August 1, 2026 per its own site banner, so it cannot be measured on an ongoing basis. Expansions are welcome; the harness already ships a Zapper source that activates as soon as a key is configured."
   - q: "How is Moralis measured without a chain catalog endpoint?"
