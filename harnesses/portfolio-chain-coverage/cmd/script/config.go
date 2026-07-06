@@ -14,7 +14,7 @@ type Config struct {
 	// provider cohort. Default is 24h and this is DELIBERATE: every
 	// probe call spends paid API credits on five commercial portfolio
 	// APIs, and chain-coverage numbers move on a weeks cadence, not
-	// minutes. One cycle is ~150-170 upstream calls total
+	// minutes. One cycle is ~230-260 upstream calls total
 	// (per-chain sweeps, 1.5s spacing), so keep the cadence daily. Override via
 	// PROBE_INTERVAL_HOURS, but never ship a lower default.
 	ProbeInterval time.Duration

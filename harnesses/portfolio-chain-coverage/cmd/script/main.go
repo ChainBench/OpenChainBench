@@ -12,7 +12,7 @@
 // the two is the story the bench tells.
 //
 // Probes run once per PROBE_INTERVAL_HOURS (default 24h — the calls
-// spend paid API credits, ~150-170 calls per cycle across the cohort,
+// spend paid API credits, ~230-260 calls per cycle across the cohort,
 // so never lower the default). Gauges are publish-then-leave: a failed
 // cycle for one provider carries the previous value forward via Prom
 // retention and buckets the failure in portfolio_probe_errors_total.
@@ -138,12 +138,16 @@ func publish(slug string, cov coverage) {
 		portfolioChainsVerified.WithLabelValues(slug).Set(float64(cov.verified))
 		published = true
 	}
+	if cov.probed >= 0 {
+		portfolioChainsProbed.WithLabelValues(slug).Set(float64(cov.probed))
+		published = true
+	}
 	if cov.latencyMs > 0 {
 		portfolioProbeLatencyMs.WithLabelValues(slug).Set(cov.latencyMs)
 	}
 	if published {
 		portfolioLastProbeTimestamp.WithLabelValues(slug).Set(float64(time.Now().Unix()))
 	}
-	fmt.Printf("[%s] listed=%d (source=%s) verified=%d latency_ms=%.0f\n",
-		slug, cov.listed, cov.listedSource, cov.verified, cov.latencyMs)
+	fmt.Printf("[%s] listed=%d (source=%s) probed=%d verified=%d latency_ms=%.0f\n",
+		slug, cov.listed, cov.listedSource, cov.probed, cov.verified, cov.latencyMs)
 }

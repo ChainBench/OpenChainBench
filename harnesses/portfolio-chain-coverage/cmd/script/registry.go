@@ -39,6 +39,17 @@ type coverage struct {
 	// addresses. -1 = unknown.
 	verified int
 
+	// probed is the number of distinct chains where the probe got a
+	// definitive answer from the API using an address KNOWN to hold a
+	// real balance there (funding validated when the address was
+	// pinned). verified/probed is therefore the indexer's demonstrable
+	// success rate; listed minus probed is the untestable residue (no
+	// funded public address available). Providers where funding
+	// cannot be established per chain (Zerion single-call EVM,
+	// Moralis candidates) report probed = verified, a conservative
+	// floor. -1 = unknown.
+	probed int
+
 	// latencyMs is the aggregate HTTP round-trip across every call
 	// made during the probe (including the one allowed retry).
 	latencyMs float64

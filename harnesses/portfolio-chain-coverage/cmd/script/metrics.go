@@ -55,6 +55,14 @@ var (
 		[]string{"provider"},
 	)
 
+	portfolioChainsProbed = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "portfolio_chains_probed",
+			Help: "Number of distinct chains probed with an address known to hold a real balance and answered definitively by the provider's API this cycle. verified/probed = demonstrable indexer success rate. Providers where per-chain funding cannot be established (Zerion, Moralis) report probed = verified.",
+		},
+		[]string{"provider"},
+	)
+
 	portfolioProbeCalls = promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "portfolio_probe_calls_total",
