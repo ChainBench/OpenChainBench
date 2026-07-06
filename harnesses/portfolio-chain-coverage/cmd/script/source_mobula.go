@@ -3,6 +3,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	neturl "net/url"
+	"strings"
 	"time"
 )
 
@@ -11,13 +13,21 @@ import (
 // listed:   GET /api/1/blockchains — catalog of supported chains. The
 //           response shape is tolerated both as {data:[...]} and as a
 //           bare top-level array.
-// verified: GET /api/1/wallet/portfolio?wallet=<EVM>&fetchAllChains=
-//           true — distinct chain keys inside
+// verified: GET /api/1/wallet/portfolio with EXPLICIT blockchains=
+//           targeting — distinct chain keys inside
 //           data.assets[].cross_chain_balances with value > $1.
-//           The SOL and BTC test addresses are attempted through the
-//           same endpoint once each; a 4xx there means the wallet
-//           type is unsupported and is tolerated silently (no retry,
-//           no error bucket — it is an expected answer, not a fault).
+//           Explicit targeting is used because it is the vendor's
+//           most precise documented invocation (mirroring the
+//           per-chain probes every other vendor gets) and because
+//           fetchAllChains=true was observed to silently skip ~25
+//           catalog chains that the explicit path returns perfectly
+//           (verified against on-chain RPCs, 2026-07-07). The main
+//           sweep wallet targets the whole catalog minus testnets;
+//           probe wallets target their own chains. fetchAllChains
+//           remains the fallback when the catalog call failed.
+//           4xx on a probe wallet means the wallet type is
+//           unsupported and is tolerated silently (expected answer,
+//           not a fault).
 const mobulaBaseDefault = "https://api.mobula.io"
 
 func probeMobula(key string) coverage {
@@ -30,15 +40,23 @@ func probeMobula(key string) coverage {
 	raw, el, err := doCall("mobula", "GET", base+"/api/1/blockchains", hdr, nil)
 	total += el
 	catalog := map[string]bool{}
+	var catalogRows []mobulaCatalogRow
 	if err != nil {
 		recordError("mobula", err)
 		fmt.Printf("[mobula] blockchains catalog failed: %v\n", err)
-	} else if n, names, perr := parseMobulaBlockchains(raw); perr != nil {
+	} else if n, rows, perr := parseMobulaBlockchains(raw); perr != nil {
 		recordError("mobula", perr)
 		fmt.Printf("[mobula] blockchains parse failed: %v\n", perr)
 	} else {
 		cov.listed = n
-		catalog = names
+		catalogRows = rows
+		for _, r := range rows {
+			for _, v := range []string{r.Name, r.Chain} {
+				if nn := normalizeChainName(v); nn != "" {
+					catalog[nn] = true
+				}
+			}
+		}
 	}
 
 	// --- verified: portfolio probes ---------------------------------
@@ -56,12 +74,51 @@ func probeMobula(key string) coverage {
 	// so a 4xx just means it does not index that wallet type.
 	wallets := append([]string{evmTestAddress}, uniqueProbeAddresses()...)
 	namesByAddr := probeNamesByAddr()
+	// Mainnet catalog names for explicit targeting. Testnets are
+	// excluded: they are unverifiable with mainnet whale wallets and
+	// must not inflate verified via priceless testnet gas balances.
+	var mainnetNames []string
+	normToRaw := map[string]string{}
+	for _, r := range catalogRows {
+		nn := normalizeChainName(r.Name)
+		if nn == "" || strings.Contains(nn, "testnet") || strings.Contains(nn, "bartio") {
+			continue
+		}
+		mainnetNames = append(mainnetNames, r.Name)
+		normToRaw[nn] = r.Name
+		if cn := normalizeChainName(r.Chain); cn != "" {
+			normToRaw[cn] = r.Name
+		}
+	}
+	fullCSV := neturl.QueryEscape(strings.Join(mainnetNames, ","))
 	for i, wallet := range wallets {
 		optional := i > 0 // non-EVM support is best-effort
 		if i > 0 {
 			time.Sleep(sweepSpacing)
 		}
-		url := fmt.Sprintf("%s/api/1/wallet/portfolio?wallet=%s&fetchAllChains=true", base, wallet)
+		// Explicit targeting: probe wallets ask for their own target
+		// chains, the main sweep wallet asks for the whole mainnet
+		// catalog. Fall back to fetchAllChains when the catalog call
+		// failed this cycle.
+		query := "fetchAllChains=true"
+		if len(mainnetNames) > 0 {
+			if i == 0 {
+				query = "blockchains=" + fullCSV
+			} else {
+				seen := map[string]bool{}
+				var targets []string
+				for _, n := range namesByAddr[wallet] {
+					if raw, ok := normToRaw[n]; ok && !seen[raw] {
+						seen[raw] = true
+						targets = append(targets, raw)
+					}
+				}
+				if len(targets) > 0 {
+					query = "blockchains=" + neturl.QueryEscape(strings.Join(targets, ","))
+				}
+			}
+		}
+		url := fmt.Sprintf("%s/api/1/wallet/portfolio?wallet=%s&%s", base, wallet, query)
 		raw, el, err := doCall("mobula", "GET", url, hdr, nil)
 		total += el
 		if err != nil {
@@ -107,40 +164,39 @@ func probeMobula(key string) coverage {
 	return cov
 }
 
-// parseMobulaBlockchains counts catalog entries and returns the
-// normalized name set (for probe-miss intersection), tolerating both
-// {data:[...]} and a bare top-level array.
-func parseMobulaBlockchains(raw []byte) (int, map[string]bool, error) {
+// mobulaCatalogRow is one catalog entry (raw names, used both for
+// probe-miss intersection and for explicit blockchains= targeting).
+type mobulaCatalogRow struct {
+	Name  string `json:"name"`
+	Chain string `json:"chain"`
+}
+
+// parseMobulaBlockchains counts catalog entries and returns the raw
+// rows, tolerating both {data:[...]} and a bare top-level array.
+func parseMobulaBlockchains(raw []byte) (int, []mobulaCatalogRow, error) {
 	var wrapped struct {
 		Data []json.RawMessage `json:"data"`
 	}
 	if err := json.Unmarshal(raw, &wrapped); err == nil && wrapped.Data != nil {
-		return len(wrapped.Data), mobulaNameSet(wrapped.Data), nil
+		return len(wrapped.Data), mobulaCatalogRows(wrapped.Data), nil
 	}
 	var arr []json.RawMessage
 	if err := json.Unmarshal(raw, &arr); err == nil {
-		return len(arr), mobulaNameSet(arr), nil
+		return len(arr), mobulaCatalogRows(arr), nil
 	}
 	return 0, nil, fmt.Errorf("parse blockchains: unexpected shape: %s", truncate(string(raw), 120))
 }
 
-func mobulaNameSet(rows []json.RawMessage) map[string]bool {
-	set := map[string]bool{}
+func mobulaCatalogRows(rows []json.RawMessage) []mobulaCatalogRow {
+	out := make([]mobulaCatalogRow, 0, len(rows))
 	for _, r := range rows {
-		var row struct {
-			Name  string `json:"name"`
-			Chain string `json:"chain"`
-		}
+		var row mobulaCatalogRow
 		if json.Unmarshal(r, &row) != nil {
 			continue
 		}
-		for _, v := range []string{row.Name, row.Chain} {
-			if n := normalizeChainName(v); n != "" {
-				set[n] = true
-			}
-		}
+		out = append(out, row)
 	}
-	return set
+	return out
 }
 
 // parseMobulaPortfolio returns the distinct chain keys inside
