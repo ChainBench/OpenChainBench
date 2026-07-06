@@ -21,6 +21,8 @@ The gap between listed and verified is the story: a chain in a marketing list is
 | Zerion | Basic auth (key as username, empty password) | `GET /v1/chains/` (`data[].id`) | `GET /v1/wallets/<EVM>/portfolio?currency=usd` → `positions_distribution_by_chain` (EVM only) |
 | Zapper | `x-zapper-api-key` header | none exists → probe-visible networks, exported with `listed_source="probe"` | `POST /graphql` `portfolioV2 → tokenBalances → byNetwork` (single call covers both numbers) |
 | Mobula | `Authorization` header | `GET /api/1/blockchains` | `GET /api/1/wallet/portfolio?wallet=<EVM>&fetchAllChains=true` → distinct `cross_chain_balances` keys; SOL/BTC attempted best-effort (4xx tolerated) |
+| Dune (Sim) | `X-Sim-Api-Key` header | `GET /v1/evm/supported-chains` (chains with `balances.supported`) | `GET /v1/evm/balances/<EVM>?exclude_spam_tokens=true`, paginated sweep, summed `value_usd` per chain (EVM only) |
+| Moralis | `X-API-Key` header | none exists → chains its net-worth call accepted, exported with `listed_source="probe"` | `GET /api/v2.2/wallets/<EVM>/net-worth?chains[]=…` (candidate list, see `MORALIS_CHAINS`) + Solana gateway `GET /account/mainnet/<SOL>/portfolio` best-effort (4xx tolerated) |
 
 A provider whose key env var is empty is **skipped gracefully** (logged once) — the harness runs with a partial cohort rather than failing.
 
@@ -31,7 +33,7 @@ A provider whose key env var is empty is **skipped gracefully** (logged once) �
   - Solana: `9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM`
   - Bitcoin: `34xp4vRoCGJym3xR7yCVPFHoCNxv4Twseo`
 - **Verified threshold: balance value > $1** per chain — filters dust/spam-token noise while staying far below the real balances these wallets hold. When a response carries no USD pricing at all, native token amount > 0 counts instead.
-- **listed vs verified are never mixed.** `listed` is what the vendor declares; `verified` is what the probe observed. Zapper has no standalone catalog endpoint, so its listed count comes from the probe and is labeled `listed_source="probe"` (vs `"declared"` for the others) so dashboards can qualify the comparison.
+- **listed vs verified are never mixed.** `listed` is what the vendor declares; `verified` is what the probe observed. Zapper and Moralis have no standalone catalog endpoint, so their listed counts come from the probe and are labeled `listed_source="probe"` (vs `"declared"` for the others) so dashboards can qualify the comparison.
 - **Same retry policy for everyone.** Per-call timeout 20s; one retry after 30s on 5xx/timeout only, never on 4xx.
 - **Publish-then-leave.** A failed cycle leaves the provider's previous gauge values in place (Prometheus retention carries them forward) and buckets the failure in the error counter; other providers are unaffected.
 
@@ -43,14 +45,16 @@ Probes spend paid API credits, so the cadence is deliberately daily:
 - Zerion: 2 calls
 - Zapper: 1 call
 - Mobula: 4 calls (1 catalog + 3 wallets, 2 of them best-effort)
+- Dune (Sim): 2-6 calls (1 catalog + 1-5 balance pages)
+- Moralis: 2 calls (1 net-worth + 1 Solana best-effort)
 
-Total ≈ 6-11 upstream calls/day for the full cohort (≈6 for the core listed+EVM path). One full cycle runs at startup, then every `PROBE_INTERVAL_HOURS` (default 24 — **never lower the default**). Providers run sequentially with 5s spacing.
+Total ≈ 11-19 upstream calls/day for the full cohort. One full cycle runs at startup, then every `PROBE_INTERVAL_HOURS` (default 24 — **never lower the default**). Providers run sequentially with 5s spacing.
 
 ## Metrics
 
 | Name | Type | Labels | Help |
 |---|---|---|---|
-| `portfolio_chains_listed` | gauge | provider, listed_source | Self-declared chain count. `listed_source` is `declared` (catalog endpoint) or `probe` (Zapper: probe-visible networks). |
+| `portfolio_chains_listed` | gauge | provider, listed_source | Self-declared chain count. `listed_source` is `declared` (catalog endpoint) or `probe` (Zapper, Moralis: probe-visible networks). |
 | `portfolio_chains_verified` | gauge | provider | Distinct chains with a real balance (> $1, or native amount > 0 when USD absent) for the canonical test addresses. |
 | `portfolio_probe_latency_ms` | gauge | provider | Aggregate HTTP round-trip across all calls of the last probe cycle. |
 | `portfolio_probe_errors_total` | counter | provider, kind | Probe failures bucketed as timeout / auth / rate_limit / server_error / not_found / parse / other. |
@@ -64,8 +68,11 @@ Total ≈ 6-11 upstream calls/day for the full cohort (≈6 for the core listed+
 | `ZERION_API_KEY` | no* | — | Zerion key. Empty = provider skipped. |
 | `ZAPPER_API_KEY` | no* | — | Zapper key. Empty = provider skipped. |
 | `MOBULA_API_KEY` | no* | — | Mobula key. Empty = provider skipped. |
+| `DUNE_SIM_API_KEY` | no* | — | Dune Sim key. Empty = provider skipped. |
+| `MORALIS_API_KEY` | no* | — | Moralis key. Empty = provider skipped. |
 | `PROBE_INTERVAL_HOURS` | no | `24` | Hours between probe cycles. Do not lower without a credit-budget reason. |
-| `COINSTATS_BASE_URL` / `ZERION_BASE_URL` / `ZAPPER_BASE_URL` / `MOBULA_BASE_URL` | no | vendor prod hosts | Override an API host without a rebuild. |
+| `COINSTATS_BASE_URL` / `ZERION_BASE_URL` / `ZAPPER_BASE_URL` / `MOBULA_BASE_URL` / `DUNE_SIM_BASE_URL` / `MORALIS_BASE_URL` / `MORALIS_SOL_BASE_URL` | no | vendor prod hosts | Override an API host without a rebuild. |
+| `MORALIS_CHAINS` | no | EVM mainnets per docs.moralis.com/supported-chains | Comma-separated hex chain ids for the Moralis net-worth candidate list. |
 | `LOGS_TOKEN` | no | — | Enables `GET /logs?tail=N` (header `X-Logs-Token`). Unset = endpoint disabled. |
 
 \* at least one key should be set for the harness to publish anything.

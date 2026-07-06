@@ -1,0 +1,11 @@
+slug: zerion
+target_product: Zerion
+target_url: https://zerion.io
+description: Wallet and portfolio API for EVM chains
+benchmark: portfolio-chain-coverage
+
+intro: |
+  Zerion powers wallets and portfolio trackers with a single API for balances, positions and transactions across EVM chains. When sizing alternatives, one practical axis is chain coverage that actually works. how many chains does each portfolio API return real balances on, versus how many it lists in its own catalog? Below is the live daily probe. identical public test addresses for every provider, a chain counts once the returned balance clears $1, and the vendor's self-declared list is published next to the verified number.
+
+seo_title: "Zerion alternatives: live benchmark"
+seo_description: "Zerion alternatives on portfolio API chain coverage. Probe-verified chains vs self-declared catalogs, refreshed daily."

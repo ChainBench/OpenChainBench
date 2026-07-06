@@ -12,8 +12,8 @@
 // the two is the story the bench tells.
 //
 // Probes run once per PROBE_INTERVAL_HOURS (default 24h — the calls
-// spend paid API credits, ~6 calls per cycle across the cohort, so
-// never lower the default). Gauges are publish-then-leave: a failed
+// spend paid API credits, ~11-19 calls per cycle across the cohort,
+// so never lower the default). Gauges are publish-then-leave: a failed
 // cycle for one provider carries the previous value forward via Prom
 // retention and buckets the failure in portfolio_probe_errors_total.
 //

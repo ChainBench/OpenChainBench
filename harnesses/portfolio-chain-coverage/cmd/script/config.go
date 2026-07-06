@@ -12,11 +12,11 @@ import (
 type Config struct {
 	// ProbeInterval is how often a full probe cycle runs across the
 	// provider cohort. Default is 24h and this is DELIBERATE: every
-	// probe call spends paid API credits on four commercial portfolio
+	// probe call spends paid API credits on six commercial portfolio
 	// APIs, and chain-coverage numbers move on a weeks cadence, not
-	// minutes. One cycle is ~6 upstream calls total, so the default
-	// budget is ~6 calls/day. Override via PROBE_INTERVAL_HOURS, but
-	// never ship a lower default.
+	// minutes. One cycle is ~11-19 upstream calls total, so the
+	// default budget stays around a dozen calls/day. Override via
+	// PROBE_INTERVAL_HOURS, but never ship a lower default.
 	ProbeInterval time.Duration
 }
 

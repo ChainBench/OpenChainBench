@@ -18,7 +18,7 @@ var (
 	portfolioChainsListed = promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "portfolio_chains_listed",
-			Help: "Number of chains the provider self-declares support for via a machine-readable catalog endpoint. listed_source=declared means a standalone chain-catalog endpoint (CoinStats /wallet/blockchains, Zerion /v1/chains/, Mobula /api/1/blockchains); listed_source=probe means no catalog endpoint exists and the count is the networks visible in the portfolio probe response (Zapper portfolioV2 byNetwork).",
+			Help: "Number of chains the provider self-declares support for via a machine-readable catalog endpoint. listed_source=declared means a standalone chain-catalog endpoint (CoinStats /wallet/blockchains, Zerion /v1/chains/, Mobula /api/1/blockchains); listed_source=probe means no catalog endpoint exists and the count is the networks visible in the portfolio probe response (Zapper portfolioV2 byNetwork, Moralis net-worth accepted chains).",
 		},
 		[]string{"provider", "listed_source"},
 	)
