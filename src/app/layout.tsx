@@ -91,16 +91,11 @@ export const metadata: Metadata = {
     description: "Open benchmarks for crypto infrastructure.",
     site: SITE.twitter,
   },
-  // <link rel="alternate" type="application/rss+xml"> so feed readers
-  // + AI crawlers (Perplexity, Bing News, Claude) auto-discover the
-  // RSS feed. Route: src/app/rss.xml/route.ts.
+  // The <link rel="alternate" type="application/rss+xml"> is emitted
+  // directly in the <head> JSX (layout render) because Next Metadata
+  // .alternates.types silently drops the entry in App Router.
   alternates: {
     canonical: SITE.url,
-    types: {
-      "application/rss+xml": [
-        { url: "/rss.xml", title: "OpenChainBench — new benchmarks" },
-      ],
-    },
   },
 };
 
@@ -177,6 +172,16 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <head>
+        {/* RSS feed auto-discovery. Next Metadata.alternates.types does
+            NOT render this in App Router (silently dropped); emit directly
+            in <head> so feed readers, AI crawlers (Perplexity, Bing News,
+            Claude), and browsers pick up /rss.xml. */}
+        <link
+          rel="alternate"
+          type="application/rss+xml"
+          title="OpenChainBench — new benchmarks"
+          href="/rss.xml"
+        />
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var t=localStorage.getItem('ocb-theme');var d=t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d)document.documentElement.classList.add('dark');}catch(e){}})();`,
