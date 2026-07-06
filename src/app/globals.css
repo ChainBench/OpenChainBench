@@ -223,7 +223,7 @@ table {
  *
  * `.label-mono` remains for backward compat. The three sized variants below
  * harmonise the three near-identical Tailwind class strings repeated ~133
- * times across `src/**/*.tsx` (text-[10px]/[11px]/xs + 0.16em/0.18em + the
+ * times across src TSX files (text-[10px]/[11px]/xs + 0.16em/0.18em + the
  * matching ink ramp colour). Centralising them here means a copy-edit to
  * the tracking or color ramp lands in one place instead of every call site. */
 .label-mono {
