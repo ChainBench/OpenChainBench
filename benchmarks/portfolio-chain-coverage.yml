@@ -105,12 +105,12 @@ providers:
     tag: Portfolio + market data
     formula: "Distinct chains where CoinStats returned a balance above $1 for the shared test addresses (EVM in one call, Solana and Bitcoin via connectionId probes); listed is the row count of its /wallet/blockchains catalog. Probed daily."
     queries:
-      p50: portfolio_chains_verified{provider="coinstats"}
-      p90: portfolio_chains_listed{provider="coinstats"}
-      p99: portfolio_chains_probed{provider="coinstats"}
-      mean: portfolio_chains_verified{provider="coinstats"}
-      success: clamp_max(portfolio_chains_verified{provider="coinstats"} > bool 0, 1)
-      sample_size: portfolio_chains_verified{provider="coinstats"}
+      p50: last_over_time(portfolio_chains_verified{provider="coinstats"}[48h])
+      p90: last_over_time(portfolio_chains_listed{provider="coinstats"}[48h])
+      p99: last_over_time(portfolio_chains_probed{provider="coinstats"}[48h])
+      mean: last_over_time(portfolio_chains_verified{provider="coinstats"}[48h])
+      success: clamp_max(last_over_time(portfolio_chains_verified{provider="coinstats"}[48h]) > bool 0, 1)
+      sample_size: last_over_time(portfolio_chains_verified{provider="coinstats"}[48h])
       series: portfolio_chains_verified{provider="coinstats"}
 
   - slug: zerion
@@ -118,12 +118,12 @@ providers:
     tag: Wallet + portfolio API
     formula: "Distinct chains with more than $1 in Zerion's positions_distribution_by_chain for the shared EVM test address (EVM only by API design); listed is the chain count of its /v1/chains/ catalog. Probed daily."
     queries:
-      p50: portfolio_chains_verified{provider="zerion"}
-      p90: portfolio_chains_listed{provider="zerion"}
-      p99: portfolio_chains_probed{provider="zerion"}
-      mean: portfolio_chains_verified{provider="zerion"}
-      success: clamp_max(portfolio_chains_verified{provider="zerion"} > bool 0, 1)
-      sample_size: portfolio_chains_verified{provider="zerion"}
+      p50: last_over_time(portfolio_chains_verified{provider="zerion"}[48h])
+      p90: last_over_time(portfolio_chains_listed{provider="zerion"}[48h])
+      p99: last_over_time(portfolio_chains_probed{provider="zerion"}[48h])
+      mean: last_over_time(portfolio_chains_verified{provider="zerion"}[48h])
+      success: clamp_max(last_over_time(portfolio_chains_verified{provider="zerion"}[48h]) > bool 0, 1)
+      sample_size: last_over_time(portfolio_chains_verified{provider="zerion"}[48h])
       series: portfolio_chains_verified{provider="zerion"}
 
   - slug: mobula
@@ -131,12 +131,12 @@ providers:
     tag: Aggregator + intent layer
     formula: "Distinct cross_chain_balances keys above $1 returned by Mobula's /wallet/portfolio with fetchAllChains for the shared test addresses; listed is the chain count of its /api/1/blockchains catalog. Probed daily."
     queries:
-      p50: portfolio_chains_verified{provider="mobula"}
-      p90: portfolio_chains_listed{provider="mobula"}
-      p99: portfolio_chains_probed{provider="mobula"}
-      mean: portfolio_chains_verified{provider="mobula"}
-      success: clamp_max(portfolio_chains_verified{provider="mobula"} > bool 0, 1)
-      sample_size: portfolio_chains_verified{provider="mobula"}
+      p50: last_over_time(portfolio_chains_verified{provider="mobula"}[48h])
+      p90: last_over_time(portfolio_chains_listed{provider="mobula"}[48h])
+      p99: last_over_time(portfolio_chains_probed{provider="mobula"}[48h])
+      mean: last_over_time(portfolio_chains_verified{provider="mobula"}[48h])
+      success: clamp_max(last_over_time(portfolio_chains_verified{provider="mobula"}[48h]) > bool 0, 1)
+      sample_size: last_over_time(portfolio_chains_verified{provider="mobula"}[48h])
       series: portfolio_chains_verified{provider="mobula"}
 
   - slug: moralis
@@ -144,10 +144,10 @@ providers:
     tag: Web3 data API
     formula: "Distinct chains where Moralis net-worth returned more than $1 for the shared EVM address, plus a Solana gateway probe; no catalog endpoint, so listed counts chains its API accepted (listed_source=probe). Probed daily."
     queries:
-      p50: portfolio_chains_verified{provider="moralis"}
-      p90: portfolio_chains_listed{provider="moralis"}
-      p99: portfolio_chains_probed{provider="moralis"}
-      mean: portfolio_chains_verified{provider="moralis"}
-      success: clamp_max(portfolio_chains_verified{provider="moralis"} > bool 0, 1)
-      sample_size: portfolio_chains_verified{provider="moralis"}
+      p50: last_over_time(portfolio_chains_verified{provider="moralis"}[48h])
+      p90: last_over_time(portfolio_chains_listed{provider="moralis"}[48h])
+      p99: last_over_time(portfolio_chains_probed{provider="moralis"}[48h])
+      mean: last_over_time(portfolio_chains_verified{provider="moralis"}[48h])
+      success: clamp_max(last_over_time(portfolio_chains_verified{provider="moralis"}[48h]) > bool 0, 1)
+      sample_size: last_over_time(portfolio_chains_verified{provider="moralis"}[48h])
       series: portfolio_chains_verified{provider="moralis"}
