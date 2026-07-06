@@ -191,24 +191,27 @@ groups:
           summary: '{{ if eq $externalLabels.environment "staging" }}[STAGING] {{ end }}Head lag metrics missing'
           description: "No head_lag_seconds metrics received for 5 minutes. Check if monitors are running."
 
-      # Per-aggregator staleness: fires when one provider stops pushing data
-      # (e.g. Codex WS disconnect) while others keep running — global absent()
-      # would NOT catch this.
-      - alert: AggregatorHeadLagStale
-        expr: (time() - timestamp(head_lag_seconds)) > 300
+      # Per-aggregator staleness — Mobula only. Historically the rule fired
+      # on every aggregator (gecko, codex, ...) but the operator only cares
+      # about Mobula health here; noise from third-party WS instability on
+      # low-volume BSC pools was spamming the channel every few hours
+      # (2026-07-06 feedback). Non-Mobula aggregator health is tracked via
+      # log tailing, not alerts.
+      - alert: MobulaHeadLagStale
+        expr: (time() - timestamp(head_lag_seconds{aggregator="mobula"})) > 300
         for: 1m
         labels:
           severity: warning
           alert_type: head_lag_stale
           app: aggregator_latency_monitor
         annotations:
-          summary: '{{ if eq $externalLabels.environment "staging" }}[STAGING] {{ end }}{{ $labels.aggregator }} head_lag stale on {{ $labels.chain }} ({{ $labels.region }})'
+          summary: '{{ if eq $externalLabels.environment "staging" }}[STAGING] {{ end }}Mobula head_lag stale on {{ $labels.chain }} ({{ $labels.region }})'
           description: |
-            **{{ $labels.aggregator }}** hasn't pushed a head_lag sample for **{{ $labels.chain }} / {{ $labels.region }}** in over 5 minutes.
+            **Mobula** hasn't pushed a head_lag sample for **{{ $labels.chain }} / {{ $labels.region }}** in over 5 minutes.
 
             Likely cause: WebSocket disconnected, JWT expired, proxy IP banned, or auth cookie rotated.
 
-            Check the monitor logs for `[HEAD-LAG][{{ $labels.aggregator | toUpper }}]` errors.
+            Check the monitor logs for `[HEAD-LAG][MOBULA]` errors.
 
       # Service availability
       - alert: CodexServiceDown
