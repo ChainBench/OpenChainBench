@@ -18,7 +18,7 @@ The gap between listed and verified is the story: a chain in a marketing list is
 | Provider | Auth | listed source | verified probe |
 |---|---|---|---|
 | CoinStats | `X-API-KEY` header | `GET /wallet/blockchains` (`connectionId` rows) | `GET /wallet/balances?networks=all` (all EVM in one call) + `GET /wallet/balance?connectionId=<chain>` for every entry in the shared non-EVM probe set (`addresses.go`, ~105 chains) |
-| Zerion | Basic auth (key as username, empty password) | `GET /v1/chains/` (`data[].id`) | `GET /v1/wallets/<EVM>/portfolio?currency=usd` → `positions_distribution_by_chain` (EVM only) |
+| Zerion | Basic auth (key as username, empty password) | `GET /v1/chains/` (`data[].id`) | `GET /v1/wallets/<addr>/portfolio?currency=usd` for the shared EVM address + every funded 20-byte 0x probe wallet → merged `positions_distribution_by_chain` (EVM only, 5s spacing, sweep aborts on a second 429) |
 | Zapper | `x-zapper-api-key` header | none exists → probe-visible networks, exported with `listed_source="probe"` | `POST /graphql` `portfolioV2 → tokenBalances → byNetwork` (single call covers both numbers) |
 | Mobula | `Authorization` header | `GET /api/1/blockchains` | `GET /api/1/wallet/portfolio?wallet=<addr>&fetchAllChains=true` for the EVM address + every deduped address in the shared non-EVM probe set, best-effort (4xx tolerated) |
 | Moralis | `X-API-Key` header | none exists → chains its net-worth call accepted, exported with `listed_source="probe"` | `GET /api/v2.2/wallets/<EVM>/net-worth?chains[]=…` (candidate list, see `MORALIS_CHAINS`) + Solana gateway `GET /account/mainnet/<SOL>/portfolio` best-effort (4xx tolerated) |
@@ -38,12 +38,12 @@ A provider whose key env var is empty is **skipped gracefully** (logged once) �
 Probes spend paid API credits, so the cadence is deliberately daily:
 
 - CoinStats: ~107 calls (1 catalog + 1 EVM sweep + ~105 per-chain probes)
-- Zerion: 2 calls
+- Zerion: ~38 calls (1 catalog + ~37 wallet sweeps, 5s spacing)
 - Zapper: 1 call
 - Mobula: ~100 calls (1 catalog + 1 EVM sweep + ~98 probe wallets best-effort)
 - Moralis: ~19-37 calls (1 net-worth per candidate chain + native-balance fallbacks + 1 Solana best-effort)
 
-Total ≈ 230-260 upstream calls/day for the full cohort (~8k/month, far below every vendor's monthly quota). Rate limits bite on bursts, not volume: every multi-chain sweep spaces calls by 1.5s (`sweepSpacing`), so a cycle takes a few minutes and no vendor ever sees more than ~40 requests/minute. `portfolio_probe_calls_total{provider}` counts every attempt (retries included) — watch `increase(...[30d])` against each vendor's quota to catch drift. One full cycle runs at startup, then every `PROBE_INTERVAL_HOURS` (default 24 — **never lower the default**). Providers run sequentially with 5s spacing.
+Total ≈ 265-300 upstream calls/day for the full cohort (~9k/month, far below every vendor's monthly quota). Rate limits bite on bursts, not volume: every multi-chain sweep spaces calls by 1.5s (`sweepSpacing`), so a cycle takes a few minutes and no vendor ever sees more than ~40 requests/minute. `portfolio_probe_calls_total{provider}` counts every attempt (retries included) — watch `increase(...[30d])` against each vendor's quota to catch drift. One full cycle runs at startup, then every `PROBE_INTERVAL_HOURS` (default 24 — **never lower the default**). Providers run sequentially with 5s spacing.
 
 ## Metrics
 
