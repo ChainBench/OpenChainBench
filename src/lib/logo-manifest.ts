@@ -179,6 +179,9 @@ const RAW: Record<string, string> = {
   coinpaprika: "/logos/coinpaprika.svg",
   coinstats: "/logos/coinstats.svg",
 
+  // ─── portfolio-chain-coverage bench providers (bench № 067) ───
+  zerion: "/logos/zerion.svg",
+
   // ─── Hyperliquid frontends (bench № 030) ───
   "phantom-perps": "/logos/phantom-perps.svg",
   axiom: "/logos/axiom.png",
