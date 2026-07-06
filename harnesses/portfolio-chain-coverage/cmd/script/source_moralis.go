@@ -117,7 +117,7 @@ func probeMoralis(key string) coverage {
 	raw, el, err := doCall("moralis", "GET", solURL, hdr, nil)
 	total += el
 	if err != nil {
-		if status := httpStatus(err); status >= 400 && status < 500 {
+		if status := httpStatus(err); status == 400 || status == 404 {
 			fmt.Printf("[moralis] optional solana portfolio not available (http %d), skipping\n", status)
 		} else {
 			recordError("moralis", err)
@@ -193,10 +193,11 @@ func probeMoralisChain(base string, hdr map[string]string, chain string) (accept
 		}
 		return true, ok, total
 	}
-	if status >= 400 && status < 500 {
+	if status == 400 || status == 404 {
 		// Candidate not supported (anymore): expected answer, not a
 		// provider fault. Keeps the error counter honest when the
-		// documented chain list drifts.
+		// documented chain list drifts. Quota/auth/throttle codes
+		// fall through to the error path instead.
 		fmt.Printf("[moralis] chain %s rejected (http %d), skipping\n", chain, status)
 		return false, false, total
 	}
