@@ -223,68 +223,6 @@ func TestParseMobulaPortfolio(t *testing.T) {
 	}
 }
 
-// ─── Dune (Sim) ─────────────────────────────────────────────────────
-
-func TestParseDuneSupportedChains(t *testing.T) {
-	fixture := `{"chains":[
-		{"name":"ethereum","chain_id":1,"balances":{"supported":true}},
-		{"name":"polygon","chain_id":137,"balances":{"supported":true}},
-		{"name":"weird","chain_id":999,"balances":{"supported":false}}
-	]}`
-	n, err := parseDuneSupportedChains([]byte(fixture))
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if n != 2 {
-		t.Fatalf("listed = %d, want 2 (balances-unsupported chain must not count)", n)
-	}
-}
-
-func TestParseDuneSupportedChainsBadShape(t *testing.T) {
-	if _, err := parseDuneSupportedChains([]byte(`{"error":"nope"}`)); err == nil {
-		t.Fatal("expected error on missing chains array")
-	}
-}
-
-func TestParseDuneBalancesPagination(t *testing.T) {
-	agg := map[string]*duneChainAgg{}
-	page1 := `{"balances":[
-		{"chain":"ethereum","amount":"1500000000000000000","price_usd":3000,"value_usd":4500},
-		{"chain":"polygon","amount":"9999","price_usd":0.00001,"value_usd":0.09},
-		{"chain":"nopriced","amount":"42"}
-	],"next_offset":"cursor-1"}`
-	next, err := parseDuneBalancesPage([]byte(page1), agg)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if next != "cursor-1" {
-		t.Fatalf("next = %q, want cursor-1", next)
-	}
-	// Page 2 pushes polygon over the threshold cumulatively.
-	page2 := `{"balances":[
-		{"chain":"polygon","amount":"5000000","price_usd":1,"value_usd":5},
-		{"chain":"empty","amount":"0"}
-	]}`
-	next, err = parseDuneBalancesPage([]byte(page2), agg)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if next != "" {
-		t.Fatalf("next = %q, want empty (sweep complete)", next)
-	}
-	// ethereum: $4500. polygon: $0.09 + $5 = $5.09. nopriced: native
-	// fallback. empty: zero amount, no pricing -> not verified.
-	if n := duneVerifiedCount(agg); n != 3 {
-		t.Fatalf("verified = %d, want 3", n)
-	}
-}
-
-func TestParseDuneBalancesBadShape(t *testing.T) {
-	if _, err := parseDuneBalancesPage([]byte(`{"error":"nope"}`), map[string]*duneChainAgg{}); err == nil {
-		t.Fatal("expected error on missing balances array")
-	}
-}
-
 // ─── Moralis ────────────────────────────────────────────────────────
 
 func TestParseMoralisNetWorth(t *testing.T) {

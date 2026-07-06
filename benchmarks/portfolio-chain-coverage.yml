@@ -2,8 +2,8 @@
 
 slug: portfolio-chain-coverage
 number: "067"
-title: Portfolio API chain coverage, listed vs probe-verified
-seo_title: "Best portfolio API chains 2026"
+title: Wallet portfolio API chain coverage, listed vs probe-verified
+seo_title: "Best wallet portfolio API chains 2026"
 seo_description: "Wallet portfolio APIs ranked by chains that actually return balances, probe-verified daily against the vendors' own claims."
 subtitle: Chains where each wallet-portfolio API actually returns balances for identical public test addresses, probed daily and published next to the vendor's own self-declared chain list.
 category: Aggregators
@@ -68,8 +68,8 @@ faq:
     a: "{{best_name}} currently leads at {{best_p50}} probe-verified chains across {{count}} measured providers. Probe-verified means the provider's portfolio API returned a balance above $1 on that chain for identical public test addresses within the last daily cycle, so the leaderboard reflects chains where the balance indexer demonstrably works, not chains claimed in a catalog."
   - q: "Why publish both a listed and a verified chain count?"
     a: "Because they answer different questions. listed is what the vendor self-declares through its own catalog endpoint and can be inflated by chains where indexing is partial or broken. verified is what the probe actually observed and is a conservative, address-dependent lower bound. On day one CoinStats listed 151 chains and verified 32, Mobula 79 and 20, Zerion 65 and 17. Reading both numbers together tells you how much weight a vendor's own list deserves."
-  - q: "Why are Zapper, DeBank and Codex not in the cohort?"
-    a: "The cohort is limited to providers with free, reproducible API access so anyone can rerun the harness and get the same numbers. Zapper is excluded for now pending an API key. DeBank offers no free API tier. Codex gates its balances query behind the paid Growth plan. Expansions are welcome; the harness already ships a Zapper source that activates as soon as a key is configured."
+  - q: "Why are Zapper, DeBank, Dune and Codex not in the cohort?"
+    a: "The cohort is limited to providers with free, reproducible API access so anyone can rerun the harness and get the same numbers. Zapper is excluded for now pending an API key. DeBank offers no free API tier. Codex gates its balances query behind the paid Growth plan. Dune's Sim API, the natural candidate for its wallet balances product, is sunsetting on August 1, 2026 per its own site banner, so it cannot be measured on an ongoing basis. Expansions are welcome; the harness already ships a Zapper source that activates as soon as a key is configured."
   - q: "How is Moralis measured without a chain catalog endpoint?"
     a: "Moralis exposes no machine-readable chain catalog and every wallet call takes an explicit chain list, so its listed count carries listed_source=probe: the chains its net-worth endpoint accepted this cycle out of a candidate list mirroring its own supported-chains documentation, plus Solana through its separate gateway. That makes Moralis's listed a floor on its acknowledged surface rather than a self-declared claim, and the label is published so the distinction stays visible."
   - q: "Does a low verified count mean the provider is bad?"
@@ -132,19 +132,6 @@ providers:
       success: clamp_max(portfolio_chains_verified{provider="mobula"} > bool 0, 1)
       sample_size: portfolio_chains_verified{provider="mobula"}
       series: portfolio_chains_verified{provider="mobula"}
-
-  - slug: dune
-    name: Dune
-    tag: Sim APIs
-    formula: "Distinct chains where Sim's /v1/evm/balances returned more than $1 for the shared EVM test address (EVM only by API design); listed counts balances-supported chains in /v1/evm/supported-chains. Probed daily."
-    queries:
-      p50: portfolio_chains_verified{provider="dune"}
-      p90: portfolio_chains_listed{provider="dune"}
-      p99: portfolio_chains_verified{provider="dune"}
-      mean: portfolio_chains_verified{provider="dune"}
-      success: clamp_max(portfolio_chains_verified{provider="dune"} > bool 0, 1)
-      sample_size: portfolio_chains_verified{provider="dune"}
-      series: portfolio_chains_verified{provider="dune"}
 
   - slug: moralis
     name: Moralis
