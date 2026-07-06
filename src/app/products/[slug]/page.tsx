@@ -435,7 +435,7 @@ export default async function ProviderPage({
               <ProviderLogo slug={p.slug} name={p.name} size={56} />
               <div className="min-w-0">
                 <h1 className="display text-2xl sm:text-3xl md:text-4xl tracking-tight">
-                  {p.name}
+                  {p.name} <span className="text-ink-soft font-normal">Benchmark</span>
                 </h1>
                 <p className="mt-1 text-base text-ink-soft">
                   {productProse}

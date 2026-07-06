@@ -696,6 +696,45 @@ export default async function ComparePage({
     ]),
   };
 
+  // FAQPage schema. Google + Bing both render rich FAQ dropdowns in the
+  // SERP snippet for pages emitting valid FAQPage. Every answer here is
+  // derived from live measurements — no editorial claim. Skipped when
+  // shared is empty (never actually reached because notFound() short-
+  // circuits above, but defensive).
+  const faqEntries: Array<{ q: string; a: string }> = [];
+  const aWinsBench = shared.find((s) => s.aggregateWinner === "a" && s.aResult.p50 > 0 && s.bResult.p50 > 0);
+  const bWinsBench = shared.find((s) => s.aggregateWinner === "b" && s.aResult.p50 > 0 && s.bResult.p50 > 0);
+  faqEntries.push({
+    q: `${a.name} vs ${b.name}: which one is better?`,
+    a: `${a.name} and ${b.name} are compared on ${shared.length} shared OpenChainBench benchmarks. ${aWinsBench ? `${a.name} leads on ${aWinsBench.title}.` : ""} ${bWinsBench ? `${b.name} leads on ${bWinsBench.title}.` : ""} See the live table on this page for every metric.`.trim(),
+  });
+  if (aWinsBench) {
+    faqEntries.push({
+      q: `Which is faster on ${aWinsBench.title.toLowerCase()}, ${a.name} or ${b.name}?`,
+      a: `On the ${aWinsBench.title} benchmark, ${a.name} leads with a ${aWinsBench.unit} value that beats ${b.name}. Live measurement is updated continuously by the OpenChainBench harness.`,
+    });
+  }
+  if (bWinsBench) {
+    faqEntries.push({
+      q: `Which is faster on ${bWinsBench.title.toLowerCase()}, ${a.name} or ${b.name}?`,
+      a: `On the ${bWinsBench.title} benchmark, ${b.name} leads with a ${bWinsBench.unit} value that beats ${a.name}. Live measurement is updated continuously by the OpenChainBench harness.`,
+    });
+  }
+  faqEntries.push({
+    q: `How is the ${a.name} vs ${b.name} comparison measured?`,
+    a: `Every benchmark on this page uses the same open methodology, published at ${SITE.url}/methodology. Data is CC-BY-4.0. Measurement harnesses are MIT-licensed.`,
+  });
+
+  const faqJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faqEntries.map((e) => ({
+      "@type": "Question",
+      name: e.q,
+      acceptedAnswer: { "@type": "Answer", text: e.a },
+    })),
+  };
+
   const comparisonProse = buildComparisonProse(shared, a.name, b.name);
 
   return (
@@ -709,6 +748,11 @@ export default async function ComparePage({
         type="application/ld+json"
         // biome-ignore lint/security/noDangerouslySetInnerHtml: serialized via safeJsonLd
         dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumbJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: serialized via safeJsonLd
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(faqJsonLd) }}
       />
 
       <Breadcrumb
