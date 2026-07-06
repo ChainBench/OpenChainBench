@@ -57,7 +57,7 @@ func probeZapper(key string) coverage {
 	}
 
 	var total time.Duration
-	raw, el, err := doCall("POST", base, hdr, body)
+	raw, el, err := doCall("zapper", "POST", base, hdr, body)
 	total += el
 	if err != nil {
 		recordError("zapper", err)

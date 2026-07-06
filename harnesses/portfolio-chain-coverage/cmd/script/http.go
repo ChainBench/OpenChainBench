@@ -19,6 +19,14 @@ const httpTimeout = 20 * time.Second
 // on a hot loop.
 const retryDelay = 30 * time.Second
 
+// sweepSpacing is the pause between two consecutive calls inside a
+// provider's multi-chain sweep (CoinStats connectionId probes, Mobula
+// wallet probes, Moralis per-chain net-worth). Rate limits bite on
+// bursts, not on daily volume, so a fixed 1.5s gap keeps a ~60-call
+// sweep well under any per-minute ceiling while adding only ~90s to a
+// daily cycle.
+const sweepSpacing = 1500 * time.Millisecond
+
 var httpClient = &http.Client{Timeout: httpTimeout}
 
 // httpError carries the status code so callers can branch on 4xx
@@ -46,12 +54,16 @@ func httpStatus(err error) int {
 // timeout/transport failure — never on 4xx (a 4xx is deterministic:
 // retrying burns credits without changing the answer). Returns the
 // response body, the total elapsed wall time across attempts, and an
-// error for any non-2xx outcome.
-func doCall(method, url string, headers map[string]string, body []byte) ([]byte, time.Duration, error) {
+// error for any non-2xx outcome. Every attempt (including the retry)
+// increments portfolio_probe_calls_total{provider} so monthly credit
+// consumption per vendor is observable in Prometheus.
+func doCall(provider, method, url string, headers map[string]string, body []byte) ([]byte, time.Duration, error) {
+	countCall(provider)
 	b, elapsed, err := doOnce(method, url, headers, body)
 	if err != nil && retryable(err) {
 		fmt.Printf("  [retry] %s %s failed (%v), retrying in %v\n", method, url, err, retryDelay)
 		time.Sleep(retryDelay)
+		countCall(provider)
 		b2, elapsed2, err2 := doOnce(method, url, headers, body)
 		return b2, elapsed + elapsed2, err2
 	}
