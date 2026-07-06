@@ -63,9 +63,20 @@ export const metadata: Metadata = {
   },
   description:
     "Live benchmarks for crypto infrastructure: RPC latency, bridge fees, L2 finality and price feed accuracy. Open methodology, updated continuously.",
-  ...(IS_STAGING && {
-    robots: { index: false, follow: false, googleBot: { index: false, follow: false } },
-  }),
+  robots: IS_STAGING
+    ? { index: false, follow: false, googleBot: { index: false, follow: false } }
+    : {
+        index: true,
+        follow: true,
+        // Grant full snippet + large image previews so Bing / Google SERP
+        // stops truncating our data-rich prose and stops suppressing the
+        // og:image. Default meta robots caps snippet ~155 chars + max-
+        // image-preview:none (invisible on SERP for AI-scraped queries).
+        // Next.js Metadata types: camelCase.
+        "max-snippet": -1,
+        "max-image-preview": "large",
+        "max-video-preview": -1,
+      } as Metadata["robots"],
   openGraph: {
     title: "OpenChainBench",
     description:
@@ -79,6 +90,17 @@ export const metadata: Metadata = {
     title: "OpenChainBench",
     description: "Open benchmarks for crypto infrastructure.",
     site: SITE.twitter,
+  },
+  // <link rel="alternate" type="application/rss+xml"> so feed readers
+  // + AI crawlers (Perplexity, Bing News, Claude) auto-discover the
+  // RSS feed. Route: src/app/rss.xml/route.ts.
+  alternates: {
+    canonical: SITE.url,
+    types: {
+      "application/rss+xml": [
+        { url: "/rss.xml", title: "OpenChainBench — new benchmarks" },
+      ],
+    },
   },
 };
 
