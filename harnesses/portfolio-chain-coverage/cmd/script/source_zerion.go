@@ -33,14 +33,16 @@ func probeZerion(key string) coverage {
 	// --- listed: self-declared chain catalog -----------------------
 	raw, el, err := doCall("zerion", "GET", base+"/v1/chains/", hdr, nil)
 	total += el
+	catalog := map[string]bool{}
 	if err != nil {
 		recordError("zerion", err)
 		fmt.Printf("[zerion] chains catalog failed: %v\n", err)
-	} else if n, perr := parseZerionChains(raw); perr != nil {
+	} else if n, ids, perr := parseZerionChains(raw); perr != nil {
 		recordError("zerion", perr)
 		fmt.Printf("[zerion] chains parse failed: %v\n", perr)
 	} else {
 		cov.listed = n
+		catalog = ids
 	}
 
 	// --- verified: one portfolio call per wallet in the EVM set ----
@@ -56,6 +58,7 @@ func probeZerion(key string) coverage {
 	anyOK := false
 	retried429 := false
 	wallets := append([]string{evmTestAddress}, evmProbeAddresses()...)
+	namesByAddr := probeNamesByAddr()
 	for i, wallet := range wallets {
 		time.Sleep(zerionSweepSpacing)
 		url := fmt.Sprintf("%s/v1/wallets/%s/portfolio?currency=usd", base, wallet)
@@ -88,9 +91,12 @@ func probeZerion(key string) coverage {
 		for _, c := range chains {
 			verified[c] = true
 		}
-		if i > 0 && len(verified) == before {
-			// Funded probe wallet answered with nothing new: its
-			// chain is not in Zerion's indexed surface.
+		if i > 0 && len(verified) == before &&
+			anyNameInSet(catalog, namesByAddr[wallet]) {
+			// Funded probe wallet answered with nothing new AND its
+			// target chain is in Zerion's own catalog: a real
+			// indexer gap. Chains Zerion never listed do not count,
+			// and a failed catalog call counts no miss at all.
 			probedMisses++
 		}
 		anyOK = true
@@ -103,23 +109,26 @@ func probeZerion(key string) coverage {
 	return cov
 }
 
-// parseZerionChains counts data[].id entries in the chain catalog.
-func parseZerionChains(raw []byte) (int, error) {
+// parseZerionChains counts data[].id entries in the chain catalog and
+// returns the normalized id set for probe-miss intersection.
+func parseZerionChains(raw []byte) (int, map[string]bool, error) {
 	var resp struct {
 		Data []struct {
 			ID string `json:"id"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(raw, &resp); err != nil {
-		return 0, fmt.Errorf("parse chains: %w", err)
+		return 0, nil, fmt.Errorf("parse chains: %w", err)
 	}
 	n := 0
+	set := map[string]bool{}
 	for _, c := range resp.Data {
 		if c.ID != "" {
 			n++
+			set[normalizeChainName(c.ID)] = true
 		}
 	}
-	return n, nil
+	return n, set, nil
 }
 
 // zerionSweepSpacing is wider than the shared sweepSpacing because
