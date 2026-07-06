@@ -41,6 +41,7 @@ status: live                            # optional, default live
 | `bitquery` | Bitquery | network-coverage |
 | `birdeye` | Birdeye | metadata-coverage (Solana only) |
 | `relay` | Relay | bridge-quote-latency |
+| `zerion` | Zerion | portfolio-chain-coverage |
 
 ## License
 
