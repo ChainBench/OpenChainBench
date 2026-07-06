@@ -66,7 +66,7 @@ func probeMoralis(key string) coverage {
 	base := envDefault("MORALIS_BASE_URL", moralisBaseDefault)
 	solBase := envDefault("MORALIS_SOL_BASE_URL", moralisSolBaseDefault)
 	hdr := map[string]string{"X-API-Key": key, "Accept": "application/json"}
-	cov := coverage{listed: -1, listedSource: "probe", verified: -1}
+	cov := coverage{listed: -1, listedSource: "probe", verified: -1, probed: -1}
 	var total time.Duration
 
 	chains := moralisDefaultChains
@@ -128,6 +128,9 @@ func probeMoralis(key string) coverage {
 
 	cov.listed = listed
 	cov.verified = verified
+	// Per-chain funding cannot be established for this provider's
+	// probe shape, so probed reports the conservative floor.
+	cov.probed = cov.verified
 	cov.latencyMs = float64(total.Milliseconds())
 	return cov
 }

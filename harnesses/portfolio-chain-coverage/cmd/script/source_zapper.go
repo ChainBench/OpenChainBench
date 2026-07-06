@@ -45,7 +45,7 @@ func probeZapper(key string) coverage {
 		"x-zapper-api-key": key,
 		"Content-Type":     "application/json",
 	}
-	cov := coverage{listed: -1, listedSource: "probe", verified: -1}
+	cov := coverage{listed: -1, listedSource: "probe", verified: -1, probed: -1}
 
 	body, err := json.Marshal(map[string]any{
 		"query":     zapperQuery,
@@ -70,6 +70,9 @@ func probeZapper(key string) coverage {
 		cov.verified = verified
 	}
 
+	// Single-call probe: per-network funding cannot be established,
+	// so probed reports the conservative floor.
+	cov.probed = cov.verified
 	cov.latencyMs = float64(total.Milliseconds())
 	return cov
 }

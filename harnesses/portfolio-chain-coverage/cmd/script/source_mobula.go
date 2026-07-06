@@ -23,7 +23,7 @@ const mobulaBaseDefault = "https://api.mobula.io"
 func probeMobula(key string) coverage {
 	base := envDefault("MOBULA_BASE_URL", mobulaBaseDefault)
 	hdr := map[string]string{"Authorization": key, "Accept": "application/json"}
-	cov := coverage{listed: -1, listedSource: "declared", verified: -1}
+	cov := coverage{listed: -1, listedSource: "declared", verified: -1, probed: -1}
 	var total time.Duration
 
 	// --- listed: self-declared chain catalog -----------------------
@@ -41,6 +41,11 @@ func probeMobula(key string) coverage {
 
 	// --- verified: portfolio probes ---------------------------------
 	verified := map[string]bool{}
+	// probed = verified chains + funded non-EVM wallets that answered
+	// but contributed no new chain (probed-but-failed). The EVM sweep
+	// itself only counts chains it verified (funding elsewhere is
+	// unknowable from one address).
+	probedMisses := 0
 	anyProbeOK := false
 
 	// EVM sweep first, then the shared non-EVM probe set (identical
@@ -74,14 +79,21 @@ func probeMobula(key string) coverage {
 			fmt.Printf("[mobula] portfolio parse failed for %s: %v\n", wallet, perr)
 			continue
 		}
+		before := len(verified)
 		for _, c := range chains {
 			verified[c] = true
+		}
+		if optional && len(verified) == before {
+			// Funded wallet answered with nothing new: the chain it
+			// holds a real balance on is not indexed here.
+			probedMisses++
 		}
 		anyProbeOK = true
 	}
 
 	if anyProbeOK {
 		cov.verified = len(verified)
+		cov.probed = len(verified) + probedMisses
 	}
 	cov.latencyMs = float64(total.Milliseconds())
 	return cov

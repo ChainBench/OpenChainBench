@@ -21,24 +21,35 @@ const coinstatsBaseDefault = "https://openapiv1.coinstats.app"
 func probeCoinStats(key string) coverage {
 	base := envDefault("COINSTATS_BASE_URL", coinstatsBaseDefault)
 	hdr := map[string]string{"X-API-KEY": key, "Accept": "application/json"}
-	cov := coverage{listed: -1, listedSource: "declared", verified: -1}
+	cov := coverage{listed: -1, listedSource: "declared", verified: -1, probed: -1}
 	var total time.Duration
 
 	// --- listed: self-declared chain catalog -----------------------
 	raw, el, err := doCall("coinstats", "GET", base+"/wallet/blockchains", hdr, nil)
 	total += el
+	chainOf := map[string]string{}
 	if err != nil {
 		recordError("coinstats", err)
 		fmt.Printf("[coinstats] blockchains catalog failed: %v\n", err)
-	} else if n, perr := parseCoinStatsBlockchains(raw); perr != nil {
+	} else if n, m, perr := parseCoinStatsBlockchains(raw); perr != nil {
 		recordError("coinstats", perr)
 		fmt.Printf("[coinstats] blockchains parse failed: %v\n", perr)
 	} else {
 		cov.listed = n
+		chainOf = m
 	}
 
 	// --- verified: balance probes -----------------------------------
-	verified := map[string]bool{}
+	// Two key namespaces are in play: the EVM sweep returns catalog
+	// chain keys (arbitrum-one, binance_smart, ...) while per-chain
+	// probes are keyed by connectionId (arbitrum-wallet, ...). The
+	// catalog's connectionId -> chain map bridges them so a chain
+	// verified by both paths never counts twice. connectionIds that
+	// share a chain key (terra-wallet / terra-wallet-2) stay distinct:
+	// they are different networks.
+	verifiedSweep := map[string]bool{}  // catalog chain keys
+	verifiedProbe := map[string]bool{}  // connectionIds
+	answeredProbe := map[string]bool{}  // connectionIds with a definitive reply
 	anyProbeOK := false
 
 	// All EVM chains in one call.
@@ -53,7 +64,7 @@ func probeCoinStats(key string) coverage {
 		fmt.Printf("[coinstats] EVM balances parse failed: %v\n", perr)
 	} else {
 		for _, c := range chains {
-			verified[c] = true
+			verifiedSweep[c] = true
 		}
 		anyProbeOK = true
 	}
@@ -70,7 +81,10 @@ func probeCoinStats(key string) coverage {
 		total += el
 		if err != nil {
 			if status := httpStatus(err); status >= 400 && status < 500 {
+				// Definitive refusal of a funded address: counts as
+				// probed-but-not-verified, an honest indexer gap.
 				fmt.Printf("[coinstats] %s probe rejected (http %d), skipping\n", probe.connectionID, status)
+				answeredProbe[probe.connectionID] = true
 				anyProbeOK = true
 				continue
 			}
@@ -84,14 +98,16 @@ func probeCoinStats(key string) coverage {
 			fmt.Printf("[coinstats] %s balance parse failed: %v\n", probe.connectionID, perr)
 			continue
 		}
+		answeredProbe[probe.connectionID] = true
 		if ok {
-			verified[probe.connectionID] = true
+			verifiedProbe[probe.connectionID] = true
 		}
 		anyProbeOK = true
 	}
 
 	if anyProbeOK {
-		cov.verified = len(verified)
+		cov.verified = countDeduped(verifiedSweep, verifiedProbe, chainOf)
+		cov.probed = countDeduped(verifiedSweep, answeredProbe, chainOf)
 	}
 	cov.latencyMs = float64(total.Milliseconds())
 	return cov
@@ -110,21 +126,43 @@ type coinStatsBalanceRow struct {
 func (r coinStatsBalanceRow) usd() float64 { return r.Amount * r.Price }
 
 // parseCoinStatsBlockchains counts catalog rows carrying a non-empty
-// connectionId (the vendor's stable chain identifier).
-func parseCoinStatsBlockchains(raw []byte) (int, error) {
+// connectionId (the vendor's stable chain identifier) and returns the
+// connectionId -> chain-key map used to reconcile per-connectionId
+// probes with the EVM sweep's chain keys.
+func parseCoinStatsBlockchains(raw []byte) (int, map[string]string, error) {
 	var rows []struct {
 		ConnectionID string `json:"connectionId"`
+		Chain        string `json:"chain"`
 	}
 	if err := json.Unmarshal(raw, &rows); err != nil {
-		return 0, fmt.Errorf("parse blockchains: %w", err)
+		return 0, nil, fmt.Errorf("parse blockchains: %w", err)
 	}
 	n := 0
+	chainOf := map[string]string{}
 	for _, r := range rows {
 		if r.ConnectionID != "" {
 			n++
+			if r.Chain != "" {
+				chainOf[r.ConnectionID] = r.Chain
+			}
 		}
 	}
-	return n, nil
+	return n, chainOf, nil
+}
+
+// countDeduped merges the EVM sweep (chain keys) with per-connectionId
+// probe results: a probe only adds to the count when its chain key is
+// not already covered by the sweep. Unknown connectionIds fall back to
+// counting as-is (worst case: one duplicate during a catalog outage).
+func countDeduped(sweep, probes map[string]bool, chainOf map[string]string) int {
+	n := len(sweep)
+	for cid := range probes {
+		if ck, okc := chainOf[cid]; okc && sweep[ck] {
+			continue
+		}
+		n++
+	}
+	return n
 }
 
 // parseCoinStatsMultiBalances handles the networks=all response: an

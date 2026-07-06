@@ -26,7 +26,7 @@ func probeZerion(key string) coverage {
 		"Authorization": "Basic " + base64.StdEncoding.EncodeToString([]byte(key+":")),
 		"Accept":        "application/json",
 	}
-	cov := coverage{listed: -1, listedSource: "declared", verified: -1}
+	cov := coverage{listed: -1, listedSource: "declared", verified: -1, probed: -1}
 	var total time.Duration
 
 	// --- listed: self-declared chain catalog -----------------------
@@ -67,6 +67,9 @@ func probeZerion(key string) coverage {
 		cov.verified = n
 	}
 
+	// Per-chain funding cannot be established for this provider's
+	// probe shape, so probed reports the conservative floor.
+	cov.probed = cov.verified
 	cov.latencyMs = float64(total.Milliseconds())
 	return cov
 }

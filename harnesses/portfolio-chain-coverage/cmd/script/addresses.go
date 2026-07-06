@@ -15,9 +15,12 @@ package main
 // address draining shows up as a verified-count dip the next cycle,
 // never as an error.
 //
-// EVM chains are NOT listed here: one shared EVM address covers every
-// EVM chain in a single sweep call per vendor (networks=all /
-// fetchAllChains), see evmTestAddress.
+// EVM MAJORS are not listed here: one shared EVM address covers them
+// in a single sweep call per vendor (networks=all / fetchAllChains),
+// see evmTestAddress. EVM LONG-TAIL chains where that shared address
+// holds no balance DO get their own funded entry below, so the sweep
+// blind spot stays testable. The harness reconciles the two paths via
+// the vendor's connectionId -> chain map so nothing counts twice.
 type chainProbe struct {
 	// connectionID is the CoinStats chain key for this probe.
 	connectionID string
@@ -103,7 +106,68 @@ var chainProbes = []chainProbe{
 	{"aleo-wallet", "aleo1tj0598jpstejk8yp7cldez3y4vekmzv482h8l6v59yqsw9kk6cxsc79p0f"},
 	{"supra-wallet", "0xd5699357c9e930472375d2709d4a9bae592ce7b0e1a05ba924bbde276f9db3bc"},
 	{"minima-wallet", "MxG087AH0HPWAYJPQTQGYEMG03F1K2R1H43HVWYH19NB0RTW3SZWY7Q2F79810N"},
+	{"bittensor-wallet", "5Hd2ze5ug8n1bo3UCAcQsf66VNjKqGos8u6apNfzcU86pg4N"},
+	{"casper-wallet", "011c74ebfcc1b19bc3e578bec3ecfa2d484f2a00d7e9e8152c4c70f519f6a89f6a"},
+
+	// EVM long-tail: the shared EVM sweep address holds no balance on
+	// these chains, so each gets its own funded public address
+	// (explorer rich-list heads, labeled exchange wallets, canonical
+	// bridge/treasury holders). Validated live on 2026-07-06.
+	{"celo-wallet", "0xA5c453BC33FD9C5C798Ac24F666fa2B49E0a87fe"},
+	{"boba-wallet", "0x2d02ce7eF2f359bdcF86E44f66345660725e5CcE"},
+	{"okx-wallet", "0x8F8526dbfd6E38E3D8307702cA8469Bae6C56C15"},
+	{"harmony-wallet", "0x0D0707963952f2fBA59dD06f2b425ace40b492Fe"},
+	{"aurora-wallet", "0xb0bD02F6a392aF548bDf1CfAeE5dFa0EefcC8EaB"},
+	{"canto-wallet", "0x0D0707963952f2fBA59dD06f2b425ace40b492Fe"},
+	{"zkevm-polygon-wallet", "0x2a3DD3EB832aF982ec71669E178424b10Dca2EDe"},
+	{"arbitrum-nova-wallet", "0xf89d7b9c864f589bbF53a82105107622B35EaA40"},
+	{"pulsechain-wallet", "0xbE740c0c8b3C13b2B1Af763aC17a83797A948fe4"},
+	{"zora-wallet", "0x82E51a8304156F96C6f01e4aE3C2554D0dE5d156"},
+	{"immutable-wallet", "0xb4C16FdC1963eDD6A91B580d27B520bd20AB85e0"},
+	{"rootstock-wallet", "0x0000000000000000000000000000000001000006"},
+	{"mode-wallet", "0x82E51a8304156F96C6f01e4aE3C2554D0dE5d156"},
+	{"karak-wallet", "0x4200000000000000000000000000000000000016"},
+	{"ink-wallet", "0x26317C59a67C289D38CC0FE9259d3C2a2784b9D8"},
+	{"bob-wallet", "0x4C18e3a2e35Ad4f324ecD34C88074271D0643edf"},
+	{"taiko-wallet", "0x1670000000000000000000000000000000000001"},
+	{"bitlayer-wallet", "0xfF204e2681A6fA0e2C3FaDe68a1B28fb90E4Fc5F"},
+	{"bsquared-wallet", "0xD0eC0DCCcbe38A5ABFD166d67e30D0880039Aa29"},
+	{"ailayer-wallet", "0x80931F1fD3E542A819c91E1696c8662171eA4A5A"},
+	{"soneium-wallet", "0x2F6F07CDcf3588944Bf4C42aC74ff24bF56e7590"},
+	{"abstract-wallet", "0xc882b111a75c0c657fc507c04fbfcd2cc984f071"},
+	{"unichain-wallet", "0x1F98400000000000000000000000000000000004"},
+	{"hyperevm-wallet", "0x2222222222222222222222222222222222222222"},
+	{"zetachain-wallet", "0x4feA76427B8345861e80A3540a8a9D936FD39391"},
+	{"meter-wallet", "0x0d0707963952f2fba59dd06f2b425ace40b492Fe"},
+	{"zircuit-wallet", "0x4200000000000000000000000000000000000006"},
+	{"story-wallet", "0x91c7FdA5E6b0af14bB007D9F02E4d5E3902CeCc9"},
+	{"orderly-wallet", "0x89E2Fa90350DA66dF92c9Fc02Ad33409a1017886"},
+	{"monad-wallet", "0x14c25602353402d0be03b386a9aa3f107dd7e34c"},
+	{"megaeth-wallet", "0xE71CbF47Fff309813bcea54f3ecF49a5F129264D"},
+	{"flare-wallet", "0x67FC6287f627614dc8dB353B331f9740955EC5d2"},
+	{"blast-wallet", "0x1ab4973a48dc892cd9971ece8e01dcc7688f8f23"},
+	{"kava-wallet", "0x24A4Fbb1fCe9b981cBfCeabD72AA6B2CD3E53CF5"},
+	{"beam-wallet", "0x0DC874Fb5260Bd8749e6e98fd95d161b7605774D"},
+	{"ape-wallet", "0x5228d45b7f99839f3d7087649bb167089a099422"},
+	{"katana-wallet", "0xbE818E593E8B961c466523E8C1B7D3111B87Cca2"},
+	{"ronin-wallet", "0xb32e9A84Ae0B55b8ab715e4Ac793a61B277bAFA3"},
+
+	// Known-failing probes, kept DELIBERATELY: the address holds a
+	// large balance per the chain's own explorer, yet the vendor's
+	// probe returns empty. They count in probed but not verified,
+	// which is exactly the indexer gap this bench exists to surface.
+	{"degen-wallet", "0xa3491e7361abAA631ab84Ee34d535CD9A0adE66F"},
+	{"pepecoin-wallet", "PeU3PGXMGcFcteA4NjDcQsTiKQBdn7if84"},
 }
+
+// Chains with NO probe entry and why (audited 2026-07-06): heco,
+// redstone, nillion, duckchain (chains dead or explorer gone), evmos
+// x2 (chain ceased operations 2025), celsius (defunct custodian),
+// bnb_beacon (chain sunset), liquid (confidential balances, no rich
+// list exists), robinhood (no public mainnet explorer yet), acala /
+// xrpl-wallet / filecoin-wallet (every candidate address format got a
+// 400 from the probe endpoint; excluded rather than counted as vendor
+// failures because the rejection may be on our side).
 
 // uniqueProbeAddresses returns the deduplicated address list for
 // providers that take raw wallet addresses instead of chain keys

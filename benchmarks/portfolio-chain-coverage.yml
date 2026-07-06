@@ -45,6 +45,7 @@ methodology:
   - "Identical test addresses for every provider: one shared EVM address (0xF977814e90dA44bFA03b6295A0616a897441aceC, Binance 8 hot wallet, covers every EVM chain in one sweep) plus a pinned set of ~63 public high-balance non-EVM addresses, one per chain (exchange cold wallets, protocol treasuries, Cosmos community-pool accounts). The full list and sourcing rules live in the harness source; every provider that accepts an address type receives the identical address."
   - "Verified threshold: a chain counts when the returned balance value exceeds $1; when a response carries no USD pricing at all, a native token amount above 0 counts instead. This filters dust and spam-token noise."
   - "listed = chains the vendor self-declares via its own machine-readable catalog endpoint. verified = chains where the probe observed a real balance. The two are never mixed; both are published because self-declared lists can be inflated and verified is an address-dependent lower bound."
+  - "probed = chains tested with an address known to hold a real balance (validated against the chain's own explorer when pinned) where the API answered definitively. verified/probed is the demonstrable indexer success rate; listed minus probed is the residue no public funded address could be found for. Providers whose probe shape hides per-chain funding (Zerion, Moralis) report probed = verified, a conservative floor."
   - "Providers without a catalog endpoint (Moralis) publish listed with listed_source=probe: the count of chains their portfolio API acknowledged during the probe, bounded by the harness candidate list. It is a floor on the vendor's surface, not a self-declared claim, and the metric label keeps the two comparable but distinguishable."
   - "Cadence: one probe cycle per day, roughly 150 upstream calls across the cohort. Multi-chain sweeps space calls by 1.5s so no vendor sees a burst; per-call timeout is 20s with a single retry after 30s on 5xx or timeout only, never on 4xx. A 4xx on one chain probe is treated as an expected answer, not an error."
   - "Failures (timeouts, rate limits, auth errors) leave the provider's previous gauges in place and increment portfolio_probe_errors_total, so a temporary outage does not silently drop a provider off the leaderboard."
@@ -68,6 +69,8 @@ faq:
     a: "{{best_name}} currently leads at {{best_p50}} probe-verified chains across {{count}} measured providers. Probe-verified means the provider's portfolio API returned a balance above $1 on that chain for identical public test addresses within the last daily cycle, so the leaderboard reflects chains where the balance indexer demonstrably works, not chains claimed in a catalog."
   - q: "Why publish both a listed and a verified chain count?"
     a: "Because they answer different questions. listed is what the vendor self-declares through its own catalog endpoint and can be inflated by chains where indexing is partial or broken. verified is what the probe actually observed and is a conservative, address-dependent lower bound. On the first full sweep of the shared address set, CoinStats listed 151 chains and verified 94, Mobula 79 and 27, Zerion 65 and 17. Reading both numbers together tells you how much weight a vendor's own list deserves."
+  - q: "What does the probed column add?"
+    a: "It splits the gap between listed and verified into its two honest parts. probed counts chains tested with an address that demonstrably holds a real balance per the chain's own explorer, where the API gave a definitive answer. So verified/probed is the indexer's real success rate on testable chains, and listed minus probed is the residue where no funded public address could be sourced, about which the bench stays silent. A chain that is probed but not verified is a documented indexer gap, not a guess."
   - q: "Why are Zapper, DeBank, Dune and Codex not in the cohort?"
     a: "The cohort is limited to providers with free, reproducible API access so anyone can rerun the harness and get the same numbers. Zapper is excluded for now pending an API key. DeBank offers no free API tier. Codex gates its balances query behind the paid Growth plan. Dune's Sim API, the natural candidate for its wallet balances product, is sunsetting on August 1, 2026 per its own site banner, so it cannot be measured on an ongoing basis. Expansions are welcome; the harness already ships a Zapper source that activates as soon as a key is configured."
   - q: "How is Moralis measured without a chain catalog endpoint?"
@@ -81,6 +84,8 @@ faq:
 #   portfolio_chains_verified{provider} -> gauge, distinct chains with a
 #     real balance (> $1, or native amount > 0 when USD absent) for the
 #     canonical test addresses. Headline (slot p50).
+#   portfolio_chains_probed{provider} -> gauge, chains tested with a
+#     known-funded address and answered definitively (slot p99).
 #   portfolio_chains_listed{provider, listed_source} -> gauge, the
 #     vendor's self-declared chain count from its catalog endpoint
 #     (listed_source="declared"). Secondary column (slot p90).
@@ -91,6 +96,7 @@ faq:
 
 ledger_columns:
   - { label: "Probe-verified chains", slot: p50, unit: count }
+  - { label: "Probed chains", slot: p99, unit: count }
   - { label: "Listed chains", slot: p90, unit: count }
 
 providers:
@@ -101,7 +107,7 @@ providers:
     queries:
       p50: portfolio_chains_verified{provider="coinstats"}
       p90: portfolio_chains_listed{provider="coinstats"}
-      p99: portfolio_chains_verified{provider="coinstats"}
+      p99: portfolio_chains_probed{provider="coinstats"}
       mean: portfolio_chains_verified{provider="coinstats"}
       success: clamp_max(portfolio_chains_verified{provider="coinstats"} > bool 0, 1)
       sample_size: portfolio_chains_verified{provider="coinstats"}
@@ -114,7 +120,7 @@ providers:
     queries:
       p50: portfolio_chains_verified{provider="zerion"}
       p90: portfolio_chains_listed{provider="zerion"}
-      p99: portfolio_chains_verified{provider="zerion"}
+      p99: portfolio_chains_probed{provider="zerion"}
       mean: portfolio_chains_verified{provider="zerion"}
       success: clamp_max(portfolio_chains_verified{provider="zerion"} > bool 0, 1)
       sample_size: portfolio_chains_verified{provider="zerion"}
@@ -127,7 +133,7 @@ providers:
     queries:
       p50: portfolio_chains_verified{provider="mobula"}
       p90: portfolio_chains_listed{provider="mobula"}
-      p99: portfolio_chains_verified{provider="mobula"}
+      p99: portfolio_chains_probed{provider="mobula"}
       mean: portfolio_chains_verified{provider="mobula"}
       success: clamp_max(portfolio_chains_verified{provider="mobula"} > bool 0, 1)
       sample_size: portfolio_chains_verified{provider="mobula"}
@@ -140,7 +146,7 @@ providers:
     queries:
       p50: portfolio_chains_verified{provider="moralis"}
       p90: portfolio_chains_listed{provider="moralis"}
-      p99: portfolio_chains_verified{provider="moralis"}
+      p99: portfolio_chains_probed{provider="moralis"}
       mean: portfolio_chains_verified{provider="moralis"}
       success: clamp_max(portfolio_chains_verified{provider="moralis"} > bool 0, 1)
       sample_size: portfolio_chains_verified{provider="moralis"}
