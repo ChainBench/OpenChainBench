@@ -40,9 +40,16 @@ var geckoTerminalPools = []struct {
 		Chain:   "base",
 	},
 	{
-		Name:    "WBNB/BUSD PancakeSwap",
+		// PancakeSwap V3 USDT/WBNB 0.01% — $130M+ 24h volume. Replaces the
+		// former WBNB/BUSD PancakeSwap V2 pool (pool_id "24") that went
+		// near-idle after Binance stopped issuing new BUSD in 2024,
+		// causing the head_lag alertmanager rule to fire on stale
+		// samples every few hours.
+		// Pool address: 0x172fcd41e0913e95784454622d1c3724f546f849
+		// Internal GT pool_id source: app.geckoterminal.com/api/p1/bsc/pools/<address>
+		Name:    "USDT/WBNB PancakeSwap V3",
 		Network: "bsc",
-		PoolID:  "24",
+		PoolID:  "160787671",
 		Chain:   "bnb",
 	},
 }
