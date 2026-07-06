@@ -9,23 +9,46 @@ import (
 
 func TestParseCoinStatsBlockchains(t *testing.T) {
 	fixture := `[
-		{"name":"Ethereum","connectionId":"ethereum"},
-		{"name":"Solana","connectionId":"solana"},
-		{"name":"Bitcoin","connectionId":"bitcoin"},
+		{"name":"Ethereum","connectionId":"ethereum","chain":"ethereum"},
+		{"name":"Solana","connectionId":"solana","chain":"solana"},
+		{"name":"Bitcoin","connectionId":"bitcoin","chain":"bitcoin"},
 		{"name":"Broken row"}
 	]`
-	n, err := parseCoinStatsBlockchains([]byte(fixture))
+	n, chainOf, err := parseCoinStatsBlockchains([]byte(fixture))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if n != 3 {
 		t.Fatalf("listed = %d, want 3 (row without connectionId must not count)", n)
 	}
+	if chainOf["solana"] != "solana" {
+		t.Fatalf("chainOf[solana] = %q, want solana", chainOf["solana"])
+	}
 }
 
 func TestParseCoinStatsBlockchainsBadShape(t *testing.T) {
-	if _, err := parseCoinStatsBlockchains([]byte(`{"error":"nope"}`)); err == nil {
+	if _, _, err := parseCoinStatsBlockchains([]byte(`{"error":"nope"}`)); err == nil {
 		t.Fatal("expected error on non-array shape")
+	}
+}
+
+func TestCountDeduped(t *testing.T) {
+	sweep := map[string]bool{"celo": true, "arbitrum-one": true}
+	probes := map[string]bool{
+		"celo-wallet":    true, // chain key already in sweep -> no double count
+		"solana":         true, // distinct chain
+		"terra-wallet":   true, // shares chain key with terra-wallet-2 but
+		"terra-wallet-2": true, // distinct networks -> both count
+		"mystery-wallet": true, // unknown connectionId -> counts as-is
+	}
+	chainOf := map[string]string{
+		"celo-wallet":    "celo",
+		"solana":         "solana",
+		"terra-wallet":   "terra",
+		"terra-wallet-2": "terra",
+	}
+	if got := countDeduped(sweep, probes, chainOf); got != 6 {
+		t.Fatalf("countDeduped = %d, want 6 (2 sweep + 4 probes, celo deduped)", got)
 	}
 }
 
