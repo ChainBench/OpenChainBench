@@ -73,6 +73,13 @@ func doOnce(method, url string, headers map[string]string, body []byte) ([]byte,
 	if body != nil && req.Header.Get("Content-Type") == "" {
 		req.Header.Set("Content-Type", "application/json")
 	}
+	// Go's default "Go-http-client/2.0" UA gets WAF-throttled by some
+	// providers (Zerion 429s the portfolio endpoint instantly on it
+	// while the identical curl request passes). Identify honestly.
+	req.Header.Set("User-Agent", "OpenChainBench-harness/1.0 (+https://openchainbench.com)")
+	if req.Header.Get("Accept") == "" {
+		req.Header.Set("Accept", "application/json")
+	}
 
 	start := time.Now()
 	resp, err := httpClient.Do(req)
