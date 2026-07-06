@@ -21,7 +21,6 @@ The gap between listed and verified is the story: a chain in a marketing list is
 | Zerion | Basic auth (key as username, empty password) | `GET /v1/chains/` (`data[].id`) | `GET /v1/wallets/<EVM>/portfolio?currency=usd` → `positions_distribution_by_chain` (EVM only) |
 | Zapper | `x-zapper-api-key` header | none exists → probe-visible networks, exported with `listed_source="probe"` | `POST /graphql` `portfolioV2 → tokenBalances → byNetwork` (single call covers both numbers) |
 | Mobula | `Authorization` header | `GET /api/1/blockchains` | `GET /api/1/wallet/portfolio?wallet=<EVM>&fetchAllChains=true` → distinct `cross_chain_balances` keys; SOL/BTC attempted best-effort (4xx tolerated) |
-| Dune (Sim) | `X-Sim-Api-Key` header | `GET /v1/evm/supported-chains` (chains with `balances.supported`) | `GET /v1/evm/balances/<EVM>?exclude_spam_tokens=true`, paginated sweep, summed `value_usd` per chain (EVM only) |
 | Moralis | `X-API-Key` header | none exists → chains its net-worth call accepted, exported with `listed_source="probe"` | `GET /api/v2.2/wallets/<EVM>/net-worth?chains[]=…` (candidate list, see `MORALIS_CHAINS`) + Solana gateway `GET /account/mainnet/<SOL>/portfolio` best-effort (4xx tolerated) |
 
 A provider whose key env var is empty is **skipped gracefully** (logged once) — the harness runs with a partial cohort rather than failing.
@@ -45,10 +44,9 @@ Probes spend paid API credits, so the cadence is deliberately daily:
 - Zerion: 2 calls
 - Zapper: 1 call
 - Mobula: 4 calls (1 catalog + 3 wallets, 2 of them best-effort)
-- Dune (Sim): 2-6 calls (1 catalog + 1-5 balance pages)
-- Moralis: 2 calls (1 net-worth + 1 Solana best-effort)
+- Moralis: ~19-37 calls (1 net-worth per candidate chain + native-balance fallbacks + 1 Solana best-effort)
 
-Total ≈ 11-19 upstream calls/day for the full cohort. One full cycle runs at startup, then every `PROBE_INTERVAL_HOURS` (default 24 — **never lower the default**). Providers run sequentially with 5s spacing.
+Total ≈ 30-45 upstream calls/day for the full cohort. One full cycle runs at startup, then every `PROBE_INTERVAL_HOURS` (default 24 — **never lower the default**). Providers run sequentially with 5s spacing.
 
 ## Metrics
 
@@ -68,10 +66,9 @@ Total ≈ 11-19 upstream calls/day for the full cohort. One full cycle runs at s
 | `ZERION_API_KEY` | no* | — | Zerion key. Empty = provider skipped. |
 | `ZAPPER_API_KEY` | no* | — | Zapper key. Empty = provider skipped. |
 | `MOBULA_API_KEY` | no* | — | Mobula key. Empty = provider skipped. |
-| `DUNE_SIM_API_KEY` | no* | — | Dune Sim key. Empty = provider skipped. |
 | `MORALIS_API_KEY` | no* | — | Moralis key. Empty = provider skipped. |
 | `PROBE_INTERVAL_HOURS` | no | `24` | Hours between probe cycles. Do not lower without a credit-budget reason. |
-| `COINSTATS_BASE_URL` / `ZERION_BASE_URL` / `ZAPPER_BASE_URL` / `MOBULA_BASE_URL` / `DUNE_SIM_BASE_URL` / `MORALIS_BASE_URL` / `MORALIS_SOL_BASE_URL` | no | vendor prod hosts | Override an API host without a rebuild. |
+| `COINSTATS_BASE_URL` / `ZERION_BASE_URL` / `ZAPPER_BASE_URL` / `MOBULA_BASE_URL` / `MORALIS_BASE_URL` / `MORALIS_SOL_BASE_URL` | no | vendor prod hosts | Override an API host without a rebuild. |
 | `MORALIS_CHAINS` | no | EVM mainnets per docs.moralis.com/supported-chains | Comma-separated hex chain ids for the Moralis net-worth candidate list. |
 | `LOGS_TOKEN` | no | — | Enables `GET /logs?tail=N` (header `X-Logs-Token`). Unset = endpoint disabled. |
 
