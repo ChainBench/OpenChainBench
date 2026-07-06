@@ -25,7 +25,7 @@ func probeCoinStats(key string) coverage {
 	var total time.Duration
 
 	// --- listed: self-declared chain catalog -----------------------
-	raw, el, err := doCall("GET", base+"/wallet/blockchains", hdr, nil)
+	raw, el, err := doCall("coinstats", "GET", base+"/wallet/blockchains", hdr, nil)
 	total += el
 	if err != nil {
 		recordError("coinstats", err)
@@ -43,7 +43,7 @@ func probeCoinStats(key string) coverage {
 
 	// All EVM chains in one call.
 	url := fmt.Sprintf("%s/wallet/balances?address=%s&networks=all", base, evmTestAddress)
-	raw, el, err = doCall("GET", url, hdr, nil)
+	raw, el, err = doCall("coinstats", "GET", url, hdr, nil)
 	total += el
 	if err != nil {
 		recordError("coinstats", err)
@@ -58,15 +58,22 @@ func probeCoinStats(key string) coverage {
 		anyProbeOK = true
 	}
 
-	// Non-EVM: one call per connectionId.
-	for _, probe := range []struct{ connectionID, addr string }{
-		{"solana", solTestAddress},
-		{"bitcoin", btcTestAddress},
-	} {
+	// Non-EVM: one call per connectionId over the shared probe set
+	// (see addresses.go), spaced so ~60 quick GETs never read as a
+	// burst. A 4xx on one chain is an expected answer (connectionId
+	// dropped from the catalog, address format rejected), not a
+	// provider fault, so it is logged but never error-bucketed.
+	for _, probe := range chainProbes {
+		time.Sleep(sweepSpacing)
 		url := fmt.Sprintf("%s/wallet/balance?address=%s&connectionId=%s", base, probe.addr, probe.connectionID)
-		raw, el, err := doCall("GET", url, hdr, nil)
+		raw, el, err := doCall("coinstats", "GET", url, hdr, nil)
 		total += el
 		if err != nil {
+			if status := httpStatus(err); status >= 400 && status < 500 {
+				fmt.Printf("[coinstats] %s probe rejected (http %d), skipping\n", probe.connectionID, status)
+				anyProbeOK = true
+				continue
+			}
 			recordError("coinstats", err)
 			fmt.Printf("[coinstats] %s balance probe failed: %v\n", probe.connectionID, err)
 			continue

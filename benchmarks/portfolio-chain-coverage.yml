@@ -16,9 +16,9 @@ seo_intro: |
   This benchmark measures how many blockchains each wallet-portfolio
   API actually covers, not how many it claims. Every provider gets the
   same daily probe. one call to its own machine-readable chain catalog
-  (the listed count) and one to three portfolio calls for identical
-  public test addresses that hold balances on many chains (the
-  probe-verified count). A chain is verified when the API returns a
+  (the listed count) and a portfolio sweep over a shared set of public
+  test addresses that hold balances on many chains, one per non-EVM
+  chain plus one EVM address (the probe-verified count). A chain is verified when the API returns a
   balance worth more than $1 on it. The gap between the two numbers is
   the story. a chain in a marketing list is not the same as a chain
   where the balance indexer actually works, and on day one the gap
@@ -42,11 +42,11 @@ abstract: |
   providers with free, reproducible API access; expansions are welcome.
 
 methodology:
-  - "Identical test addresses for every provider: EVM 0xF977814e90dA44bFA03b6295A0616a897441aceC (Binance 8 hot wallet), Solana 9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM, Bitcoin 34xp4vRoCGJym3xR7yCVPFHoCNxv4Twseo."
+  - "Identical test addresses for every provider: one shared EVM address (0xF977814e90dA44bFA03b6295A0616a897441aceC, Binance 8 hot wallet, covers every EVM chain in one sweep) plus a pinned set of ~63 public high-balance non-EVM addresses, one per chain (exchange cold wallets, protocol treasuries, Cosmos community-pool accounts). The full list and sourcing rules live in the harness source; every provider that accepts an address type receives the identical address."
   - "Verified threshold: a chain counts when the returned balance value exceeds $1; when a response carries no USD pricing at all, a native token amount above 0 counts instead. This filters dust and spam-token noise."
   - "listed = chains the vendor self-declares via its own machine-readable catalog endpoint. verified = chains where the probe observed a real balance. The two are never mixed; both are published because self-declared lists can be inflated and verified is an address-dependent lower bound."
   - "Providers without a catalog endpoint (Moralis) publish listed with listed_source=probe: the count of chains their portfolio API acknowledged during the probe, bounded by the harness candidate list. It is a floor on the vendor's surface, not a self-declared claim, and the metric label keeps the two comparable but distinguishable."
-  - "Cadence: one probe cycle per day, 2 to 4 upstream calls per provider. Providers run sequentially with 5s spacing; per-call timeout is 20s with a single retry after 30s on 5xx or timeout only, never on 4xx."
+  - "Cadence: one probe cycle per day, roughly 150 upstream calls across the cohort. Multi-chain sweeps space calls by 1.5s so no vendor sees a burst; per-call timeout is 20s with a single retry after 30s on 5xx or timeout only, never on 4xx. A 4xx on one chain probe is treated as an expected answer, not an error."
   - "Failures (timeouts, rate limits, auth errors) leave the provider's previous gauges in place and increment portfolio_probe_errors_total, so a temporary outage does not silently drop a provider off the leaderboard."
   - "Cohort limited to providers with free, reproducible API access; expansions welcome. Zapper is excluded pending an API key, DeBank offers no free tier, and Codex gates its balances query behind the paid Growth plan."
   - "Source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/portfolio-chain-coverage"
@@ -75,7 +75,7 @@ faq:
   - q: "Does a low verified count mean the provider is bad?"
     a: "No. verified is a lower bound that depends on where the shared test addresses hold balances. A provider can support chains the probe never observes, and Zerion's probe is EVM-only because its portfolio endpoint takes a single EVM address. What a low count does tell you is how much of the vendor's self-declared list was demonstrable with real addresses through the public API today."
   - q: "How often are the counts refreshed?"
-    a: "Once per day. Probes spend paid API credits, so the cadence is deliberately conservative, 2 to 4 upstream calls per provider per cycle. A failed cycle leaves the provider's previous gauge values in place and buckets the failure in portfolio_probe_errors_total, so a temporary outage never silently zeroes a provider's row."
+    a: "Once per day. Probes spend paid API credits, so the cadence is deliberately conservative, roughly 150 spaced calls across the whole cohort per cycle. A failed cycle leaves the provider's previous gauge values in place and buckets the failure in portfolio_probe_errors_total, so a temporary outage never silently zeroes a provider's row."
 
 # Real metrics exposed by the portfolio-chain-coverage harness:
 #   portfolio_chains_verified{provider} -> gauge, distinct chains with a

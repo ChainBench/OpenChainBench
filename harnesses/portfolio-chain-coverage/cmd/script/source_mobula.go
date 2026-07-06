@@ -27,7 +27,7 @@ func probeMobula(key string) coverage {
 	var total time.Duration
 
 	// --- listed: self-declared chain catalog -----------------------
-	raw, el, err := doCall("GET", base+"/api/1/blockchains", hdr, nil)
+	raw, el, err := doCall("mobula", "GET", base+"/api/1/blockchains", hdr, nil)
 	total += el
 	if err != nil {
 		recordError("mobula", err)
@@ -43,10 +43,18 @@ func probeMobula(key string) coverage {
 	verified := map[string]bool{}
 	anyProbeOK := false
 
-	for i, wallet := range []string{evmTestAddress, solTestAddress, btcTestAddress} {
-		optional := i > 0 // SOL/BTC support is best-effort
+	// EVM sweep first, then the shared non-EVM probe set (identical
+	// addresses to every other provider, see addresses.go). Non-EVM
+	// wallets are best-effort: Mobula's endpoint takes raw addresses,
+	// so a 4xx just means it does not index that wallet type.
+	wallets := append([]string{evmTestAddress}, uniqueProbeAddresses()...)
+	for i, wallet := range wallets {
+		optional := i > 0 // non-EVM support is best-effort
+		if i > 0 {
+			time.Sleep(sweepSpacing)
+		}
 		url := fmt.Sprintf("%s/api/1/wallet/portfolio?wallet=%s&fetchAllChains=true", base, wallet)
-		raw, el, err := doCall("GET", url, hdr, nil)
+		raw, el, err := doCall("mobula", "GET", url, hdr, nil)
 		total += el
 		if err != nil {
 			status := httpStatus(err)

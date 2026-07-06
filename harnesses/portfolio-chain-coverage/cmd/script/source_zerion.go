@@ -30,7 +30,7 @@ func probeZerion(key string) coverage {
 	var total time.Duration
 
 	// --- listed: self-declared chain catalog -----------------------
-	raw, el, err := doCall("GET", base+"/v1/chains/", hdr, nil)
+	raw, el, err := doCall("zerion", "GET", base+"/v1/chains/", hdr, nil)
 	total += el
 	if err != nil {
 		recordError("zerion", err)
@@ -50,11 +50,11 @@ func probeZerion(key string) coverage {
 	// the generic retry to avoid hammering rate limits elsewhere).
 	time.Sleep(10 * time.Second)
 	url := fmt.Sprintf("%s/v1/wallets/%s/portfolio?currency=usd", base, evmTestAddress)
-	raw, el, err = doCall("GET", url, hdr, nil)
+	raw, el, err = doCall("zerion", "GET", url, hdr, nil)
 	if err != nil && strings.Contains(err.Error(), "http 429") {
 		fmt.Printf("[zerion] portfolio 429, retrying once in 60s\n")
 		time.Sleep(60 * time.Second)
-		raw, el, err = doCall("GET", url, hdr, nil)
+		raw, el, err = doCall("zerion", "GET", url, hdr, nil)
 	}
 	total += el
 	if err != nil {
