@@ -343,3 +343,25 @@ func TestParseMoralisSolPortfolio(t *testing.T) {
 		t.Fatal("empty portfolio must not verify")
 	}
 }
+
+func TestParseMoralisNativeBalance(t *testing.T) {
+	ok, err := parseMoralisNativeBalance([]byte(`{"balance":"141326813691128959308262"}`))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !ok {
+		t.Fatal("positive wei balance should verify")
+	}
+
+	ok, err = parseMoralisNativeBalance([]byte(`{"balance":"0"}`))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if ok {
+		t.Fatal("zero balance must not verify")
+	}
+
+	if _, err := parseMoralisNativeBalance([]byte(`{"message":"nope"}`)); err == nil {
+		t.Fatal("expected error on missing balance field")
+	}
+}
