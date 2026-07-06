@@ -129,7 +129,7 @@ providers:
   - slug: mobula
     name: Mobula
     tag: Aggregator + intent layer
-    formula: "Distinct cross_chain_balances keys above $1 from Mobula's /wallet/portfolio, each wallet explicitly targeted via blockchains= over its own catalog (its most precise documented invocation); listed is its /api/1/blockchains count. Probed daily."
+    formula: "Distinct cross_chain_balances keys above $1 from /wallet/portfolio, each wallet explicitly targeted via blockchains= over Mobula's own catalog; listed is its /api/1/blockchains count. Probed daily."
     queries:
       p50: last_over_time(portfolio_chains_verified{provider="mobula"}[48h])
       p90: last_over_time(portfolio_chains_listed{provider="mobula"}[48h])
