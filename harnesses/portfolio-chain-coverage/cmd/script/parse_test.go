@@ -202,12 +202,15 @@ func TestParseMobulaBlockchainsWrapped(t *testing.T) {
 
 func TestParseMobulaBlockchainsBareArray(t *testing.T) {
 	fixture := `[{"name":"Ethereum"},{"name":"Base"}]`
-	n, _, err := parseMobulaBlockchains([]byte(fixture))
+	n, rows, err := parseMobulaBlockchains([]byte(fixture))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if n != 2 {
 		t.Fatalf("listed = %d, want 2", n)
+	}
+	if len(rows) != 2 || rows[0].Name != "Ethereum" {
+		t.Fatalf("rows = %v, want raw catalog names", rows)
 	}
 }
 
