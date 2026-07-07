@@ -128,6 +128,15 @@ func doOnce(client *http.Client, method, url string, headers map[string]string, 
 	return raw, elapsed, nil
 }
 
+// isQuotaStatus flags statuses that mean "the account, not the
+// chain": credit exhaustion, auth, throttling. A probe cycle that
+// hits one of these is truncated, not measured — publishing its
+// partial counts would clobber good gauges with an artifact (seen
+// live twice on 2026-07-06/07 with CoinStats 406 credit limits).
+func isQuotaStatus(s int) bool {
+	return s == 401 || s == 402 || s == 403 || s == 406 || s == 429
+}
+
 // retryable: only transport/timeout failures and 5xx. 4xx never.
 func retryable(err error) bool {
 	if status := httpStatus(err); status != 0 {

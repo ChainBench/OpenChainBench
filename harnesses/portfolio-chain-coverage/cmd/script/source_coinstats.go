@@ -23,12 +23,14 @@ func probeCoinStats(key string) coverage {
 	hdr := map[string]string{"X-API-KEY": key, "Accept": "application/json"}
 	cov := coverage{listed: -1, listedSource: "declared", verified: -1, probed: -1}
 	var total time.Duration
+	quotaHit := false
 
 	// --- listed: self-declared chain catalog -----------------------
 	raw, el, err := doCall("coinstats", "GET", base+"/wallet/blockchains", hdr, nil)
 	total += el
 	chainOf := map[string]string{}
 	if err != nil {
+		quotaHit = quotaHit || isQuotaStatus(httpStatus(err))
 		recordError("coinstats", err)
 		fmt.Printf("[coinstats] blockchains catalog failed: %v\n", err)
 	} else if n, m, perr := parseCoinStatsBlockchains(raw); perr != nil {
@@ -57,6 +59,7 @@ func probeCoinStats(key string) coverage {
 	raw, el, err = doCall("coinstats", "GET", url, hdr, nil)
 	total += el
 	if err != nil {
+		quotaHit = quotaHit || isQuotaStatus(httpStatus(err))
 		recordError("coinstats", err)
 		fmt.Printf("[coinstats] EVM balances probe failed: %v\n", err)
 	} else if chains, perr := parseCoinStatsMultiBalances(raw); perr != nil {
@@ -99,6 +102,7 @@ func probeCoinStats(key string) coverage {
 				answeredProbe[probe.connectionID] = true
 				continue
 			}
+			quotaHit = quotaHit || isQuotaStatus(httpStatus(err))
 			recordError("coinstats", err)
 			fmt.Printf("[coinstats] %s balance probe failed: %v\n", probe.connectionID, err)
 			continue
@@ -116,7 +120,13 @@ func probeCoinStats(key string) coverage {
 		anyProbeOK = true
 	}
 
-	if anyProbeOK {
+	if quotaHit {
+		// Truncated by credits/auth/throttle: the counts are an
+		// artifact of the outage, not a measurement. Publish nothing
+		// and let publish-then-leave carry the previous cycle.
+		fmt.Printf("[coinstats] quota-class failures during cycle, publishing nothing\n")
+		cov.listed, cov.verified, cov.probed = -1, -1, -1
+	} else if anyProbeOK {
 		cov.verified = countDeduped(verifiedSweep, verifiedProbe, chainOf)
 		cov.probed = countDeduped(verifiedSweep, answeredProbe, chainOf)
 	}
