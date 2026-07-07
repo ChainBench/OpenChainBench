@@ -7,7 +7,7 @@ seo_title: "Fastest free-tier RPC API 2026"
 seo_description: "Alchemy vs Infura vs Chainstack vs Ankr vs Helius: free-tier RPC latency measured live every 60s from 3 regions. Signup-gated endpoints, real node calls."
 subtitle: HTTP round-trip latency for eth_getBlockByNumber against the signup-gated free tiers of Alchemy, Infura, Chainstack, Ankr and Helius, probed every 60 seconds from 3 regions.
 category: RPCs
-status: draft
+status: live
 metric: RPC latency
 unit: ms
 higher_is_better: false
