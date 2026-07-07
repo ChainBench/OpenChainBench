@@ -61,11 +61,12 @@ func probeMobula(key string) coverage {
 
 	// --- verified: portfolio probes ---------------------------------
 	verified := map[string]bool{}
-	// probed = verified chains + funded non-EVM wallets that answered
-	// but contributed no new chain (probed-but-failed). The EVM sweep
-	// itself only counts chains it verified (funding elsewhere is
-	// unknowable from one address).
-	probedMisses := 0
+	// probed = verified chains + missed target CHAINS (deduped across
+	// wallets, intersected with the vendor's own catalog, excluding
+	// chains another wallet already verified). The EVM sweep itself
+	// only counts chains it verified (funding elsewhere is unknowable
+	// from one address).
+	missedChains := map[string]bool{}
 	anyProbeOK := false
 
 	// EVM sweep first, then the shared non-EVM probe set (identical
@@ -143,22 +144,34 @@ func probeMobula(key string) coverage {
 		for _, c := range chains {
 			verified[c] = true
 		}
-		if optional && len(verified) == before &&
-			anyNameInSet(catalog, namesByAddr[wallet]) {
-			// Funded wallet answered with nothing new AND its target
-			// chain is in the vendor's own catalog: a real indexer
-			// gap. Misses on chains the vendor never listed do not
-			// count (and when the catalog call failed, no miss is
-			// counted at all — probed degrades to the verified
-			// floor rather than guessing).
-			probedMisses++
+		if optional && len(verified) == before {
+			// Funded wallet answered with nothing new: each of its
+			// target chains that the vendor itself lists counts as a
+			// missed CHAIN, deduped across wallets. When the catalog
+			// call failed, no miss is counted at all — probed
+			// degrades to the verified floor rather than guessing.
+			for _, n := range namesByAddr[wallet] {
+				if catalog[n] {
+					missedChains[n] = true
+				}
+			}
 		}
 		anyProbeOK = true
 	}
 
 	if anyProbeOK {
+		verifiedNorm := map[string]bool{}
+		for ch := range verified {
+			verifiedNorm[normalizeChainName(ch)] = true
+		}
+		missed := 0
+		for n := range missedChains {
+			if !verifiedNorm[n] {
+				missed++
+			}
+		}
 		cov.verified = len(verified)
-		cov.probed = len(verified) + probedMisses
+		cov.probed = len(verified) + missed
 	}
 	cov.latencyMs = float64(total.Milliseconds())
 	return cov
