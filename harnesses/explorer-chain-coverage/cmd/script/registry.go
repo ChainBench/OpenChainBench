@@ -69,5 +69,10 @@ var Registry = []Provider{
 	{Slug: "etherscan", Name: "Etherscan", KeyEnv: "", Probe: probeEtherscan},
 	{Slug: "routescan", Name: "Routescan", KeyEnv: "", Probe: probeRoutescan},
 	{Slug: "blockchair", Name: "Blockchair", KeyEnv: "", Probe: probeBlockchair},
-	{Slug: "oklink", Name: "OKLink", KeyEnv: "OKLINK_API_KEY", Probe: probeOKLink},
 }
+
+// Families audited and excluded (2026-07-07): Subscan and OKLink both
+// hard-require account signups that proved impractical to complete;
+// the cohort rule is free REPRODUCIBLE access, and a bench nobody can
+// rerun is not reproducible. 3xpl needs a Discord-granted token.
+// Revisit if any of them ships self-serve keyless access.

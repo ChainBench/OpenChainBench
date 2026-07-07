@@ -158,27 +158,6 @@ func fmtInt(i int64) string {
 	return string(b[pos:])
 }
 
-// ─── OKLink ─────────────────────────────────────────────────────────
-
-func TestParseOKLinkSummary(t *testing.T) {
-	freshMs := time.Now().Add(-4 * time.Minute).UnixMilli()
-	staleMs := time.Now().Add(-5 * time.Hour).UnixMilli()
-	fixture := `{"code":"0","msg":"","data":[
-		{"chainShortName":"ETH","chainFullName":"Ethereum","lastBlockTime":"` + fmtInt(freshMs) + `"},
-		{"chainShortName":"BTC","chainFullName":"Bitcoin","lastBlockTime":"` + fmtInt(staleMs) + `"}
-	]}`
-	rows, err := parseOKLinkSummary([]byte(fixture))
-	if err != nil || len(rows) != 2 {
-		t.Fatalf("summary: %v %v", rows, err)
-	}
-	if !freshEnough(rows[0].lastBlock) || freshEnough(rows[1].lastBlock) {
-		t.Fatal("freshness gate mismatch on oklink rows")
-	}
-	if _, err := parseOKLinkSummary([]byte(`{"code":"50111","msg":"invalid key","data":[]}`)); err == nil {
-		t.Fatal("api error code must surface")
-	}
-}
-
 // ─── top50 ──────────────────────────────────────────────────────────
 
 func TestTop50Count(t *testing.T) {
