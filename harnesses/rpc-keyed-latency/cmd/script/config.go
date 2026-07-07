@@ -23,7 +23,7 @@ type Endpoint struct {
 
 // matrix declares which (provider, chain) cells we look for in env.
 // Kind is derived from the chain.
-var providers = []string{"infura", "alchemy", "chainstack", "ankr", "helius"}
+var providers = []string{"infura", "alchemy", "chainstack", "ankr", "helius", "quicknode"}
 var chainsEVM = []string{"ethereum", "base", "arbitrum", "optimism", "bnb", "polygon"}
 
 func endpoints() []Endpoint {
@@ -64,6 +64,10 @@ var defaultBudgets = map[string]int64{
 	"chainstack": 900_000,
 	"ankr":       300_000,
 	"helius":     300_000,
+	// quicknode: paid Mobula account (shared endpoints), budget covers
+	// 2 chains at 60s cadence with ample margin without eating the
+	// production credit pool.
+	"quicknode":  150_000,
 }
 
 func budgetFor(provider string) int64 {

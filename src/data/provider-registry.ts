@@ -470,6 +470,12 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   },
 
   // ─── Public RPC providers ─────────────────────────────────────
+  quicknode: {
+    url: "https://www.quicknode.com",
+    description:
+      "Keyed RPC infrastructure across 30+ chains. Endpoint-scoped API tokens; free and paid plans are served from the same shared fleet, dedicated clusters on higher tiers.",
+    twitter: "@QuickNode",
+  },
   infura: {
     url: "https://www.infura.io",
     description:

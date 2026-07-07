@@ -50,8 +50,9 @@ methodology:
   - "Authentication: each provider's standard free-tier key, obtained via normal signup, no credit card, no sales contact. Keys live in env vars on the probe services and never in the repo. Endpoint shapes: key-in-path (Alchemy `/v2/<key>`, Infura `/v3/<key>`, Chainstack, Ankr) or query param (Helius `?api-key=`)."
   - "Quota guard: each region gets 1/3 of a provider's audited monthly free quota; probing pauses at 90% of that budget until calendar-month rollover (`rpc_keyed_quota_used_ratio`, `rpc_call_total{result=\"quota_paused\"}`). Budgets target ≤2/3 of the real quota, so the bench can never exhaust a key."
   - "Call-result classification: `ok` (HTTP 200 + usable result), `http_err`, `jsonrpc_err` (HTTP 200 carrying an error body), `stale` (more than 20 blocks / 300 slots behind the cross-provider tip), `timeout`. Latency is recorded only for `ok` responses."
-  - "Cohort: Alchemy (6 EVM + Solana), Infura / MetaMask Developer (6 EVM), Ankr (5 EVM; Optimism pending chain enablement on the key), Chainstack (Ethereum only, the free plan deploys exactly one node), Helius (Solana only). Free-tier scope differences are disclosed, not hidden: a provider missing from a chain tab means its free tier does not cover that chain (or caps the node count), which is itself a finding."
-  - "Excluded by design: QuickNode (free plan = a single endpoint, one chain, too narrow to compare fairly), Tenderly (Node RPC excluded from the free plan), GetBlock (50k CU/day cannot sustain even one chain at probe cadence), Moralis (free plan capped at 2 node endpoints), Blast API (shut down Oct 2025). Each exclusion is quota math or plan scope, never editorial."
+  - "Cohort: Alchemy (6 EVM + Solana), Infura / MetaMask Developer (6 EVM), Ankr (5 EVM; Optimism pending chain enablement on the key), Chainstack (Ethereum only, the free plan deploys exactly one node), Helius (Solana only), QuickNode (BNB + Optimism, see plan disclosure below). Free-tier scope differences are disclosed, not hidden: a provider missing from a chain tab means its free tier does not cover that chain (or caps the node count), which is itself a finding."
+  - "Excluded by design: Tenderly (Node RPC excluded from the free plan), GetBlock (50k CU/day cannot sustain even one chain at probe cadence), Moralis (free plan capped at 2 node endpoints), Blast API (shut down Oct 2025). Each exclusion is quota math or plan scope, never editorial."
+  - "Plan disclosure: QuickNode is measured through standard shared (non-dedicated) endpoints of a paid account, because its free plan caps at a single endpoint; QuickNode routes free and paid keys to the same shared fleet, so the latency read is representative of both plans."
   - "Fair-play note: free tiers do not necessarily run on the provider's paid-tier infrastructure (e.g. dRPC routes free traffic to a separate provider pool; several providers serve free keys from shared clusters). This page measures exactly what a free signup gets, read it as the free-tier experience, not the provider's ceiling."
 
 findings:
@@ -212,3 +213,26 @@ providers:
         - region: ap-southeast
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="helius", region="sgp"})
           series: avg(avg_over_time(rpc_latency_milliseconds{provider="helius", tier="keyed", region="sgp"}[1h]))
+
+  - slug: quicknode
+    name: QuickNode
+    tag: Shared fleet, measured on BNB + Optimism, plan disclosed
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for the anti-cache probe sent every 60s from 3 regions to QuickNode shared endpoints."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="quicknode"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="quicknode"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="quicknode"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="quicknode"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="quicknode"}) / sum(ocb:rpc_call:rate_24h{provider="quicknode"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="quicknode"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="quicknode", tier="keyed"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="quicknode", region="us-east"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="quicknode", tier="keyed", region="us-east"}[1h]))
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="quicknode", region="eu-west"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="quicknode", tier="keyed", region="eu-west"}[1h]))
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="quicknode", region="sgp"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="quicknode", tier="keyed", region="sgp"}[1h]))
