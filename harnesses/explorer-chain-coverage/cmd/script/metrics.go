@@ -28,6 +28,14 @@ var (
 		[]string{"provider"},
 	)
 
+	explorerChainsVerifiedStrict = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "explorer_chains_verified_strict",
+			Help: "Registered mainnet chains whose latest indexed block was younger than 5 MINUTES at probe time (tight rung of the freshness ladder, same probes as explorer_chains_verified). Separates real-time indexers from batch pipelines.",
+		},
+		[]string{"provider"},
+	)
+
 	explorerChainsTop50 = promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "explorer_chains_top50",

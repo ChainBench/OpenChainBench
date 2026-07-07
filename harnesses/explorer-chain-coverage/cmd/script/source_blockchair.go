@@ -18,7 +18,7 @@ const blockchairBaseDefault = "https://api.blockchair.com"
 
 func probeBlockchair(_ string) coverage {
 	base := envDefault("BLOCKCHAIR_BASE_URL", blockchairBaseDefault)
-	cov := coverage{registered: -1, registeredSource: "registry", verified: -1, top50: -1}
+	cov := coverage{registered: -1, registeredSource: "registry", verified: -1, verifiedStrict: -1, top50: -1}
 	var total time.Duration
 
 	raw, el, err := doCall("blockchair", "GET", base+"/stats", map[string]string{"Accept": "application/json"}, nil)
@@ -40,6 +40,7 @@ func probeBlockchair(_ string) coverage {
 
 	nameLive := map[string]bool{}
 	verified := 0
+	strict := 0
 	anyOK := false
 	quotaHit := false
 	for _, chain := range chains {
@@ -59,6 +60,9 @@ func probeBlockchair(_ string) coverage {
 		anyOK = true
 		if perr == nil && freshEnough(ts) {
 			verified++
+			if freshStrict(ts) {
+				strict++
+			}
 			nameLive[normalizeChainName(chain)] = true
 			// blockchair keys are dashed names ("bitcoin-cash"); also
 			// index the undashed form for top-50 alias matching.
@@ -70,6 +74,7 @@ func probeBlockchair(_ string) coverage {
 		cov.registered, cov.verified, cov.top50 = -1, -1, -1
 	} else if anyOK {
 		cov.verified = verified
+		cov.verifiedStrict = strict
 		cov.top50 = top50Count(map[int64]bool{}, nameLive)
 	}
 	cov.latencyMs = float64(total.Milliseconds())

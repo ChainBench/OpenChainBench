@@ -40,8 +40,24 @@ type coverage struct {
 	// unknown.
 	top50 int
 
+	// verifiedStrict is the verified count under the 5-minute
+	// freshness window, computed from the SAME probe data. The
+	// 60m/5m ladder separates batch pipelines from real-time
+	// indexers at zero extra call cost. -1 = unknown.
+	verifiedStrict int
+
 	// latencyMs aggregates HTTP time across the probe cycle.
 	latencyMs float64
+}
+
+// freshWindowStrict is the tight rung of the freshness ladder.
+const freshWindowStrict = 5 * time.Minute
+
+func freshStrict(latest time.Time) bool {
+	if latest.IsZero() {
+		return false
+	}
+	return time.Since(latest) <= freshWindowStrict
 }
 
 // freshWindow is how recent the latest indexed block must be for a

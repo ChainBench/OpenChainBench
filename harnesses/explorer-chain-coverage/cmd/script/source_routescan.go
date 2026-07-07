@@ -17,7 +17,7 @@ const routescanBaseDefault = "https://api.routescan.io"
 
 func probeRoutescan(_ string) coverage {
 	base := envDefault("ROUTESCAN_BASE_URL", routescanBaseDefault)
-	cov := coverage{registered: -1, registeredSource: "registry", verified: -1, top50: -1}
+	cov := coverage{registered: -1, registeredSource: "registry", verified: -1, verifiedStrict: -1, top50: -1}
 	var total time.Duration
 
 	raw, el, err := doCall("routescan", "GET", base+"/v2/network/mainnet/evm/all/blockchains", map[string]string{"Accept": "application/json"}, nil)
@@ -40,6 +40,7 @@ func probeRoutescan(_ string) coverage {
 	evmLive := map[int64]bool{}
 	nameLive := map[string]bool{}
 	verified := 0
+	strict := 0
 	anyOK := false
 	quotaHit := false
 	for _, c := range chains {
@@ -61,6 +62,9 @@ func probeRoutescan(_ string) coverage {
 		anyOK = true
 		if perr == nil && freshEnough(ts) {
 			verified++
+			if freshStrict(ts) {
+				strict++
+			}
 			evmLive[c.id] = true
 			nameLive[normalizeChainName(c.name)] = true
 		}
@@ -71,6 +75,7 @@ func probeRoutescan(_ string) coverage {
 		cov.registered, cov.verified, cov.top50 = -1, -1, -1
 	} else if anyOK {
 		cov.verified = verified
+		cov.verifiedStrict = strict
 		cov.top50 = top50Count(evmLive, nameLive)
 	}
 	cov.latencyMs = float64(total.Milliseconds())

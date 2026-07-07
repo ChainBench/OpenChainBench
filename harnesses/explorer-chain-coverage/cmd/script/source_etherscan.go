@@ -21,11 +21,28 @@ import (
 //             3 calls/s, 100k/day — a cycle spends ~35 calls.
 const etherscanBaseDefault = "https://api.etherscan.io"
 
+// etherscanMainnets is the pinned allowlist of V2 mainnet chain ids
+// (audited 2026-07-07 against the keyless chainlist). Name-based
+// testnet filtering is a time bomb: historical Etherscan testnets
+// ("Amoy", "Fuji", "Chapel", "Moonbase Alpha") carry none of the
+// obvious tokens. Chainlist entries NOT in this set and not name-
+// flagged as testnets are EXCLUDED from registered and logged, so a
+// new listing never silently moves the number before a human
+// classifies it.
+var etherscanMainnets = map[int64]bool{
+	1: true, 56: true, 137: true, 8453: true, 42161: true, 59144: true,
+	81457: true, 10: true, 43114: true, 199: true, 42220: true, 252: true,
+	100: true, 5000: true, 4352: true, 1284: true, 1285: true, 204: true,
+	167000: true, 50: true, 33139: true, 480: true, 146: true, 130: true,
+	2741: true, 80094: true, 143: true, 999: true, 747474: true,
+	737373: true, 1329: true, 988: true, 9745: true, 4326: true,
+}
+
 func probeEtherscan(keyIgnored string) coverage {
 	key := envDefault("ETHERSCAN_API_KEY", "")
 	_ = keyIgnored
 	base := envDefault("ETHERSCAN_BASE_URL", etherscanBaseDefault)
-	cov := coverage{registered: -1, registeredSource: "registry", verified: -1, top50: -1}
+	cov := coverage{registered: -1, registeredSource: "registry", verified: -1, verifiedStrict: -1, top50: -1}
 	var total time.Duration
 	quotaHit := false
 
@@ -57,46 +74,55 @@ func probeEtherscan(keyIgnored string) coverage {
 	evmLive := map[int64]bool{}
 	nameLive := map[string]bool{}
 	verified := 0
+	strict := 0
 	anyOK := false
-	for _, c := range chains {
-		time.Sleep(sweepSpacing)
-		since := time.Now().Add(-freshWindow).Unix()
+	probeWindow := func(chainID int64, window time.Duration) (bool, bool) {
+		// returns (fresh, definitiveAnswer)
+		since := time.Now().Add(-window).Unix()
 		url := fmt.Sprintf("%s/v2/api?chainid=%d&module=block&action=getblocknobytime&timestamp=%d&closest=after&apikey=%s",
-			base, c.id, since, key)
+			base, chainID, since, key)
 		raw, el, err := doCall("etherscan", "GET", url, map[string]string{"Accept": "application/json"}, nil)
 		total += el
 		if err != nil {
 			quotaHit = quotaHit || isQuotaStatus(httpStatus(err))
 			recordError("etherscan", err)
-			continue
+			return false, false
 		}
 		fresh, perr := parseEtherscanBlockNoByTime(raw)
 		if perr != nil {
 			if strings.Contains(perr.Error(), "rate limit") {
-				// Their throttle answers HTTP 200 with an error
-				// string; treat like a 429.
 				quotaHit = true
-				recordError("etherscan", perr)
-				continue
 			}
-			// "No record found" style answers mean the index has no
-			// block in the window: stale, a definitive answer.
-			anyOK = true
+			recordError("etherscan", perr)
+			return false, false
+		}
+		return fresh, true
+	}
+	for _, c := range chains {
+		time.Sleep(sweepSpacing)
+		fresh, ok := probeWindow(c.id, freshWindow)
+		if !ok {
 			continue
 		}
 		anyOK = true
-		if fresh {
-			verified++
-			evmLive[c.id] = true
-			nameLive[normalizeChainName(c.name)] = true
+		if !fresh {
+			continue
+		}
+		verified++
+		evmLive[c.id] = true
+		nameLive[normalizeChainName(c.name)] = true
+		time.Sleep(sweepSpacing)
+		if s, ok2 := probeWindow(c.id, freshWindowStrict); ok2 && s {
+			strict++
 		}
 	}
 
 	if quotaHit {
 		fmt.Printf("[etherscan] quota-class failures during cycle, publishing nothing\n")
-		cov.registered, cov.verified, cov.top50 = -1, -1, -1
+		cov.registered, cov.verified, cov.verifiedStrict, cov.top50 = -1, -1, -1, -1
 	} else if anyOK {
 		cov.verified = verified
+		cov.verifiedStrict = strict
 		cov.top50 = top50Count(evmLive, nameLive)
 	}
 	cov.latencyMs = float64(total.Milliseconds())
@@ -124,19 +150,28 @@ func parseEtherscanChainlist(raw []byte) ([]etherscanChain, error) {
 		return nil, fmt.Errorf("parse chainlist: empty result")
 	}
 	var out []etherscanChain
+	unclassified := 0
 	for _, c := range resp.Result {
-		lc := strings.ToLower(c.ChainName)
-		if strings.Contains(lc, "testnet") || strings.Contains(lc, "sepolia") ||
-			strings.Contains(lc, "holesky") || strings.Contains(lc, "goerli") ||
-			strings.Contains(lc, "hoodi") {
-			continue
-		}
 		id, err := c.ChainID.Int64()
 		if err != nil || id == 0 {
 			continue
 		}
-		out = append(out, etherscanChain{id: id, name: c.ChainName})
+		if etherscanMainnets[id] {
+			out = append(out, etherscanChain{id: id, name: c.ChainName})
+			continue
+		}
+		lc := strings.ToLower(c.ChainName)
+		if strings.Contains(lc, "testnet") || strings.Contains(lc, "sepolia") ||
+			strings.Contains(lc, "holesky") || strings.Contains(lc, "goerli") ||
+			strings.Contains(lc, "hoodi") {
+			continue // known-testnet by name
+		}
+		// Neither allowlisted nor name-flagged: a NEW listing. Never
+		// silently counted; excluded until a human classifies it.
+		unclassified++
+		fmt.Printf("[etherscan] UNCLASSIFIED chainlist entry %d (%s): excluded until pinned\n", id, c.ChainName)
 	}
+	_ = unclassified
 	return out, nil
 }
 
