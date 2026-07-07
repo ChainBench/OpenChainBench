@@ -4,8 +4,8 @@ slug: zksync-rpc
 number: "063"
 title: Fastest free zkSync Era RPC, live no-key endpoint latency
 seo_title: "Fastest free zkSync RPC 2026"
-seo_description: "{{best_name}} leads free zkSync Era RPC at {{best_p50}} (eth_blockNumber p50, 24h). 4 no-key providers measured every 15s from 3 regions."
-subtitle: HTTP round-trip latency for eth_blockNumber against every free, no-key public zkSync Era RPC endpoint, audited every 15 seconds from 3 regions.
+seo_description: "{{best_name}} leads free zkSync Era RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). 4 no-key providers measured every 15s from 3 regions."
+subtitle: HTTP round-trip latency for eth_getBlockByNumber against every free, no-key public zkSync Era RPC endpoint, audited every 15 seconds from 3 regions.
 
 category: RPCs
 status: live
@@ -14,14 +14,14 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  zkSync Era is the only chain in our entire probe matrix with no PublicNode endpoint: both plausible subdomains 404, a genuine rarity for a provider that covers 70+ chains. That leaves dRPC, 1RPC, Tenderly and Matter Labs' own `mainnet.era.zksync.io` answering the identical `eth_blockNumber` probe every 15 seconds from three regions, with stale-head detection against the cross-provider tip.
+  zkSync Era is the only chain in our entire probe matrix with no PublicNode endpoint: both plausible subdomains 404, a genuine rarity for a provider that covers 70+ chains. That leaves dRPC, 1RPC, Tenderly and Matter Labs' own `mainnet.era.zksync.io` answering the identical `eth_getBlockByNumber` probe every 15 seconds from three regions, with stale-head detection against the cross-provider tip.
 
 abstract: |
-  Per-chain member of the RPC latency cluster. We measure the round-trip latency of a single, identical RPC call (`eth_blockNumber`) against every no-key public zkSync Era endpoint that sustains continuous probing, 4 providers, every 15 seconds, from us-east, eu-west and Singapore. The harness also classifies every response (ok / http_err / jsonrpc_err / stale / timeout) and audits archive depth every 5 minutes, so the leaderboard rewards sustained, honest availability rather than a fast error message. The cross-chain view lives on the parent rpc-capabilities benchmark; this page is the zkSync Era-scoped answer with per-region breakdowns as a first-class dimension.
+  Per-chain member of the RPC latency cluster. We measure the round-trip latency of a single, identical RPC call (`eth_getBlockByNumber`) against every no-key public zkSync Era endpoint that sustains continuous probing, 4 providers, every 15 seconds, from us-east, eu-west and Singapore. The harness also classifies every response (ok / http_err / jsonrpc_err / stale / timeout) and audits archive depth every 5 minutes, so the leaderboard rewards sustained, honest availability rather than a fast error message. The cross-chain view lives on the parent rpc-capabilities benchmark; this page is the zkSync Era-scoped answer with per-region breakdowns as a first-class dimension.
 
 methodology:
   - "Cadence: every 15 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus `avg(quantile_over_time(...))`; per-region breakdowns are first-class on this page via the region tabs."
-  - "Payload: `{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_blockNumber\",\"params\":[]}`. Plain HTTP POST, identical for every endpoint, no API key in any request."
+  - "Payload: `{\"jsonrpc\":\"2.0\",\"id\":<rotating>,\"method\":\"eth_getBlockByNumber\",\"params\":[\"latest\",false]}`. Plain HTTP POST, identical for every endpoint, no API key in any request. Non-cacheable by design: the latest-header fetch with a rotating id defeats edge caches that answer eth_blockNumber without touching a node."
   - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms → 10 s), so percentiles are computed via Prometheus `quantile_over_time` over the last 24 hours."
   - "Call-result classification: `ok` (HTTP 200 + non-empty result), `http_err`, `jsonrpc_err` (HTTP 200 carrying an error body), `stale` (more than 20 blocks behind the cross-provider tip), `timeout`. Latency without reliability is a misleading ranking signal."
   - "Archive depth: every 5 minutes we issue `eth_getBalance` at (head − depth) for depths from Geth's default pruned cap up to 5M blocks, exposing which free endpoints actually serve historical state."
@@ -29,20 +29,20 @@ methodology:
   - "Chain scope: every query on this page is pinned to chain=\"zksync\". Provider coverage: 4 no-key endpoints (dRPC, 1RPC, Tenderly, zkSync). Exclusions follow the cluster-wide rules documented on the parent benchmark."
 
 findings:
-  - "{{best_name}} currently leads free zkSync Era RPC at {{best_p50}} (`eth_blockNumber` p50, 24h) across 4 measured providers."
+  - "{{best_name}} currently leads free zkSync Era RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h) across 4 measured providers."
   - "No PublicNode is the structural headline: the near-universal default provider simply does not serve zkSync Era (both candidate subdomains 404), so dapps that template PublicNode URLs per chain need a different answer here."
   - "{{name:drpc}} ({{p50:drpc}}) picks up the default-provider role instead, with the anycast consistency that wins it 10 of the 12 expansion chains on the 3-region average."
   - "{{name:tenderly}} runs zkSync through the same single-origin path as the rest of the long tail, a flat ~330 ms from all three regions, despite marketing the chain as a first-class network."
 
 faq:
   - q: "What is the fastest free zkSync Era RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (`eth_blockNumber` p50 over the last 24h), measured against 4 no-key providers probed every 15 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples, so the answer on this page is the answer right now, not a quarterly snapshot. Use the region tabs to see the leader from the origin closest to your deployment."
+    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against 4 no-key providers probed every 15 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples, so the answer on this page is the answer right now, not a quarterly snapshot. Use the region tabs to see the leader from the origin closest to your deployment."
   - q: "Which zkSync Era RPCs work without an API key?"
     a: "The 4 providers on this page: dRPC, 1RPC, Tenderly, zkSync. Every (provider, chain) pair was live-verified no-key before inclusion, and anything that key-gates, region-blocks or rate-limits below our 15-second cadence is excluded rather than listed with an asterisk."
   - q: "Does the fastest zkSync Era RPC change by region?"
     a: "Frequently. The headline number averages three probe origins (us-east, eu-west, Singapore), but per-region leaders regularly diverge, a gateway that wins from Virginia can lose from Singapore by multiples. The region tabs at the top of the page re-scope every number on the page to a single origin; pick the one closest to where your requests actually originate."
   - q: "How is zkSync Era RPC latency measured here?"
-    a: "One identical JSON-RPC POST (`eth_blockNumber`) every 15 seconds against each provider from each of 3 regions, with the same plain HTTP client. Wall-clock round-trip is recorded at millisecond precision; p50/p90/p99 are computed via Prometheus `quantile_over_time` over 24 hours. Responses are classified (`ok` / `http_err` / `jsonrpc_err` / `stale` / `timeout`) so an endpoint stuck on an old head or returning errors behind HTTP 200 is never ranked as fastest. The harness is open source and every number on this page is a public Prometheus query you can run yourself."
+    a: "One identical JSON-RPC POST (`eth_getBlockByNumber`) every 15 seconds against each provider from each of 3 regions, with the same plain HTTP client. Wall-clock round-trip is recorded at millisecond precision; p50/p90/p99 are computed via Prometheus `quantile_over_time` over 24 hours. Responses are classified (`ok` / `http_err` / `jsonrpc_err` / `stale` / `timeout`) so an endpoint stuck on an old head or returning errors behind HTTP 200 is never ranked as fastest. The harness is open source and every number on this page is a public Prometheus query you can run yourself."
   - q: "Why is PublicNode not listed for zkSync Era?"
     a: "Because it does not serve the chain: both plausible PublicNode subdomains returned 404 in our 2026-07-03 verification sweep, making zkSync Era the only chain we probe without a PublicNode endpoint. The bench lists what actually answers, not what coverage pages claim, so the leaderboard has 4 providers and {{best_name}} ({{best_p50}}) currently leads them."
 
@@ -68,7 +68,7 @@ providers:
   - slug: drpc
     name: dRPC
     tag: Decentralized RPC mesh, consensus-checked
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key zkSync Era endpoint."
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key zkSync Era endpoint."
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="zksync"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="drpc", chain="zksync"})
@@ -91,7 +91,7 @@ providers:
   - slug: 1rpc
     name: 1RPC
     tag: Privacy-preserving gateway by Automata Network
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to 1RPC's no-key zkSync Era endpoint."
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to 1RPC's no-key zkSync Era endpoint."
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="1rpc", chain="zksync"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="1rpc", chain="zksync"})
@@ -114,7 +114,7 @@ providers:
   - slug: tenderly
     name: Tenderly
     tag: Multi-chain public gateway, no key
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to Tenderly's no-key zkSync Era endpoint."
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to Tenderly's no-key zkSync Era endpoint."
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tenderly", chain="zksync"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="tenderly", chain="zksync"})
@@ -137,7 +137,7 @@ providers:
   - slug: zksync-official
     name: zkSync
     tag: Matter Labs public RPC, zkSync Era only
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_blockNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to zkSync's no-key zkSync Era endpoint."
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to zkSync's no-key zkSync Era endpoint."
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="zksync-official", chain="zksync"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="zksync-official", chain="zksync"})
