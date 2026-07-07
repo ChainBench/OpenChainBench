@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"time"
 )
 
@@ -17,6 +18,30 @@ import (
 //           GET /wallet/balance?...&connectionId=solana and one
 //           ...&connectionId=bitcoin for the non-EVM chains.
 const coinstatsBaseDefault = "https://openapiv1.coinstats.app"
+
+// CoinStats budget mode. A full long-tail sweep costs ~105 calls at
+// ~45 credits each (~4.8k credits, measured 2026-07-07); a 20k/month
+// plan affords 3-4 of them. The sweep therefore reruns only every
+// COINSTATS_SWEEP_INTERVAL_HOURS (default 216h = 9 days, ~14.5k
+// credits/month) while every regular cycle spends just 2 cheap calls
+// (catalog + EVM networks=all) and merges the cached long-tail
+// results, so published verified/probed stay complete and fresh at
+// every cycle for ~1.4k credits/month more. A restart empties the
+// cache and the next cycle runs a full sweep.
+var coinstatsSweepCache struct {
+	when          time.Time
+	verifiedProbe map[string]bool
+	answeredProbe map[string]bool
+}
+
+func coinstatsSweepInterval() time.Duration {
+	if v := envDefault("COINSTATS_SWEEP_INTERVAL_HOURS", ""); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			return time.Duration(n) * time.Hour
+		}
+	}
+	return 216 * time.Hour
+}
 
 func probeCoinStats(key string) coverage {
 	base := envDefault("COINSTATS_BASE_URL", coinstatsBaseDefault)
@@ -77,7 +102,25 @@ func probeCoinStats(key string) coverage {
 	// burst. A 4xx on one chain is an expected answer (connectionId
 	// dropped from the catalog, address format rejected), not a
 	// provider fault, so it is logged but never error-bucketed.
+	// Budget mode: the sweep only reruns when the cache aged out;
+	// otherwise the previous sweep's results are merged below.
+	sweepDue := coinstatsSweepCache.verifiedProbe == nil ||
+		time.Since(coinstatsSweepCache.when) >= coinstatsSweepInterval()
+	if !sweepDue {
+		for k, v := range coinstatsSweepCache.verifiedProbe {
+			verifiedProbe[k] = v
+		}
+		for k, v := range coinstatsSweepCache.answeredProbe {
+			answeredProbe[k] = v
+		}
+		fmt.Printf("[coinstats] long-tail sweep cached (age %s, next in %s), 2-call pulse cycle\n",
+			time.Since(coinstatsSweepCache.when).Round(time.Hour),
+			(coinstatsSweepInterval() - time.Since(coinstatsSweepCache.when)).Round(time.Hour))
+	}
 	for _, probe := range chainProbes {
+		if !sweepDue {
+			break
+		}
 		if len(chainOf) > 0 {
 			if _, inCatalog := chainOf[probe.connectionID]; !inCatalog {
 				// The vendor does not list this chain: nothing to
@@ -127,6 +170,11 @@ func probeCoinStats(key string) coverage {
 		fmt.Printf("[coinstats] quota-class failures during cycle, publishing nothing\n")
 		cov.listed, cov.verified, cov.probed = -1, -1, -1
 	} else if anyProbeOK {
+		if sweepDue {
+			coinstatsSweepCache.when = time.Now()
+			coinstatsSweepCache.verifiedProbe = verifiedProbe
+			coinstatsSweepCache.answeredProbe = answeredProbe
+		}
 		cov.verified = countDeduped(verifiedSweep, verifiedProbe, chainOf)
 		cov.probed = countDeduped(verifiedSweep, answeredProbe, chainOf)
 	}
