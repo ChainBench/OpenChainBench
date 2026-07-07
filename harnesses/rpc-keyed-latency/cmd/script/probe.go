@@ -267,7 +267,14 @@ func probeOne(ctx context.Context, e Endpoint) {
 		} else {
 			rpcLatency.DeleteLabelValues(e.Provider, e.Chain, currentRegion, "keyed")
 			rpcHealth.WithLabelValues(e.Provider, e.Chain, currentRegion, "keyed").Set(0)
-			fmt.Printf("[%s/%s] %s latency=%.0fms err=%v\n", e.Chain, e.Provider, result, latency, err)
+			// Go http errors embed the full request URL, which carries the
+			// API key in the path/query for every provider here. Redact it
+			// before logging so keys never land in service logs.
+			msg := ""
+			if err != nil {
+				msg = strings.ReplaceAll(err.Error(), e.URL, "<"+e.Provider+"-endpoint>")
+			}
+			fmt.Printf("[%s/%s] %s latency=%.0fms err=%s\n", e.Chain, e.Provider, result, latency, msg)
 		}
 	}
 
