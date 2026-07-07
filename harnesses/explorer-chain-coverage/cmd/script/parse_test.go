@@ -135,25 +135,6 @@ func TestParseBlockchairBestBlockTime(t *testing.T) {
 	}
 }
 
-// ─── Subscan ────────────────────────────────────────────────────────
-
-func TestParseSubscanNetworks(t *testing.T) {
-	html := []byte(`docs: https://polkadot.api.subscan.io/api/scan/blocks and
-		kusama.api.subscan.io plus pro.api.subscan.io and polkadot.api.subscan.io again`)
-	nets := parseSubscanNetworks(html)
-	if len(nets) != 2 || nets[0] != "kusama" || nets[1] != "polkadot" {
-		t.Fatalf("networks = %v, want [kusama polkadot] deduped, pro filtered", nets)
-	}
-}
-
-func TestParseSubscanLatestBlock(t *testing.T) {
-	fresh := []byte(`{"data":{"blocks":[{"block_timestamp":` + timeNowUnixMinus(2*time.Minute) + `}]}}`)
-	ts, err := parseSubscanLatestBlock(fresh)
-	if err != nil || !freshEnough(ts) {
-		t.Fatalf("fresh block must pass: %v", err)
-	}
-}
-
 func timeNowUnixMinus(d time.Duration) string {
 	return timeToUnixStr(time.Now().Add(-d))
 }
