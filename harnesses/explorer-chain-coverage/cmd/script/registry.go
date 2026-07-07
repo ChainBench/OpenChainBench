@@ -63,9 +63,12 @@ func freshEnough(latest time.Time) bool {
 // Registry is the canonical cohort. Order = probe order (sequential).
 var Registry = []Provider{
 	{Slug: "blockscout", Name: "Blockscout", KeyEnv: "", Probe: probeBlockscout},
-	{Slug: "etherscan", Name: "Etherscan", KeyEnv: "ETHERSCAN_API_KEY", Probe: probeEtherscan},
+	// Etherscan and Subscan run KEYLESS for the registered count (their
+	// list surfaces need no auth) and add verified/top50 once their
+	// free key env is set — the probes handle the empty key themselves.
+	{Slug: "etherscan", Name: "Etherscan", KeyEnv: "", Probe: probeEtherscan},
 	{Slug: "routescan", Name: "Routescan", KeyEnv: "", Probe: probeRoutescan},
 	{Slug: "blockchair", Name: "Blockchair", KeyEnv: "", Probe: probeBlockchair},
-	{Slug: "subscan", Name: "Subscan", KeyEnv: "SUBSCAN_API_KEY", Probe: probeSubscan},
+	{Slug: "subscan", Name: "Subscan", KeyEnv: "", Probe: probeSubscan},
 	{Slug: "oklink", Name: "OKLink", KeyEnv: "OKLINK_API_KEY", Probe: probeOKLink},
 }

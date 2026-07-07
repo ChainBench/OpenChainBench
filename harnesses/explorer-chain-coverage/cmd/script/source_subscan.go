@@ -26,7 +26,9 @@ const (
 
 var subscanHostRe = regexp.MustCompile(`([a-z0-9-]+)\.api\.subscan\.io`)
 
-func probeSubscan(key string) coverage {
+func probeSubscan(keyIgnored string) coverage {
+	key := envDefault("SUBSCAN_API_KEY", "")
+	_ = keyIgnored
 	cov := coverage{registered: -1, registeredSource: "pinned", verified: -1, top50: -1}
 	var total time.Duration
 
@@ -46,6 +48,14 @@ func probeSubscan(key string) coverage {
 		return cov
 	}
 	cov.registered = len(nets)
+
+	if key == "" {
+		// Keyless mode: network enumeration needs no auth, data calls
+		// do. Publish registered, leave verified unknown.
+		fmt.Printf("[subscan] no SUBSCAN_API_KEY: publishing registered only (%d networks)\n", len(nets))
+		cov.latencyMs = float64(total.Milliseconds())
+		return cov
+	}
 
 	nameLive := map[string]bool{}
 	verified := 0
