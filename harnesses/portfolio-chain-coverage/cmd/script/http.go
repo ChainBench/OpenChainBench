@@ -29,6 +29,20 @@ const sweepSpacing = 1500 * time.Millisecond
 
 var httpClient = &http.Client{Timeout: httpTimeout}
 
+// zerionClient allows 45s: Zerion computes portfolios on demand and a
+// cold-cache wallet (first visit of a probe address) regularly needs
+// more than the shared 20s. The cost is bounded (max ~50 wallets per
+// cycle) and a slow answer beats a recorded timeout for a chain the
+// vendor actually covers.
+var zerionClient = &http.Client{Timeout: 45 * time.Second}
+
+func clientFor(provider string) *http.Client {
+	if provider == "zerion" {
+		return zerionClient
+	}
+	return httpClient
+}
+
 // httpError carries the status code so callers can branch on 4xx
 // (e.g. Mobula's optional SOL/BTC probes tolerate a 400).
 type httpError struct {
@@ -59,18 +73,19 @@ func httpStatus(err error) int {
 // consumption per vendor is observable in Prometheus.
 func doCall(provider, method, url string, headers map[string]string, body []byte) ([]byte, time.Duration, error) {
 	countCall(provider)
-	b, elapsed, err := doOnce(method, url, headers, body)
+	client := clientFor(provider)
+	b, elapsed, err := doOnce(client, method, url, headers, body)
 	if err != nil && retryable(err) {
 		fmt.Printf("  [retry] %s %s failed (%v), retrying in %v\n", method, url, err, retryDelay)
 		time.Sleep(retryDelay)
 		countCall(provider)
-		b2, elapsed2, err2 := doOnce(method, url, headers, body)
+		b2, elapsed2, err2 := doOnce(client, method, url, headers, body)
 		return b2, elapsed + elapsed2, err2
 	}
 	return b, elapsed, err
 }
 
-func doOnce(method, url string, headers map[string]string, body []byte) ([]byte, time.Duration, error) {
+func doOnce(client *http.Client, method, url string, headers map[string]string, body []byte) ([]byte, time.Duration, error) {
 	var rdr io.Reader
 	if body != nil {
 		rdr = bytes.NewReader(body)
@@ -94,7 +109,7 @@ func doOnce(method, url string, headers map[string]string, body []byte) ([]byte,
 	}
 
 	start := time.Now()
-	resp, err := httpClient.Do(req)
+	resp, err := client.Do(req)
 	elapsed := time.Since(start)
 	if err != nil {
 		return nil, elapsed, err
