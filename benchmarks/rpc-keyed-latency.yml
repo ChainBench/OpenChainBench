@@ -1,0 +1,214 @@
+# OpenChainBench. Bench № 069
+
+slug: rpc-keyed-latency
+number: "069"
+title: Fastest free-tier keyed RPC. Alchemy, Infura, Chainstack, Ankr, Helius
+seo_title: "Fastest free-tier RPC API 2026"
+seo_description: "Alchemy vs Infura vs Chainstack vs Ankr vs Helius: free-tier RPC latency measured live every 60s from 3 regions. Signup-gated endpoints, real node calls."
+subtitle: HTTP round-trip latency for eth_getBlockByNumber against the signup-gated free tiers of Alchemy, Infura, Chainstack, Ankr and Helius, probed every 60 seconds from 3 regions.
+category: RPCs
+status: draft
+metric: RPC latency
+unit: ms
+higher_is_better: false
+
+seo_intro: |
+  Every dapp that outgrows the no-key public RPCs asks the same
+  question next. which free tier do I sign up for. Alchemy, Infura,
+  Chainstack, Ankr and Helius all hand out a free API key with a
+  monthly quota; none of them publish comparable latency numbers.
+  This benchmark probes each provider's free-tier endpoint with the
+  same anti-cache call used on our no-key bench
+  (`eth_getBlockByNumber("latest")` with a rotating request id;
+  `getSlot` on Solana), every 60 seconds, from us-east, eu-west and
+  Singapore, staying far inside every provider's free quota. Chains
+  covered. Ethereum (5 providers), Base + Arbitrum + BNB + Polygon
+  (Alchemy, Infura, Ankr), Optimism (Alchemy, Infura), Solana
+  (Alchemy, Helius). Current leaders per the live data on this page.
+  The companion question, which RPC works with no signup at all, is
+  answered by the [rpc-capabilities](/benchmarks/rpc-capabilities)
+  bench with the identical methodology, so the keyed premium (or its
+  absence) is directly readable by comparing the two pages.
+
+abstract: |
+  We measure the round-trip latency of a single, identical RPC call
+  against the signup-gated free tier of every major keyed RPC
+  provider. The probe is the same anti-cache call as the no-key
+  bench, so the two tiers are directly comparable: full latest-header
+  fetch with a rotating JSON-RPC id on EVM chains, `getSlot` at
+  processed commitment on Solana. Responses are classified ok /
+  http_err / jsonrpc_err / stale / timeout against a cross-provider
+  tip, and a per-provider quota guard pauses probing at 90% of each
+  region's monthly budget so a free key can never be exhausted by the
+  bench itself. Free tier means the entry plan without a credit
+  card: what a developer gets in the first five minutes after signup,
+  not the provider's paid infrastructure.
+
+methodology:
+  - "Cadence: every 60 seconds per (provider, chain) pair, from each of 3 probe regions (us-east, eu-west, sgp), 4× slower than the no-key bench because keyed free tiers meter monthly quotas. Headline p50/p90/p99 aggregate across regions via Prometheus `avg(quantile_over_time(...))`."
+  - "Payload: identical to the no-key bench. EVM: `{\"jsonrpc\":\"2.0\",\"id\":<rotating>,\"method\":\"eth_getBlockByNumber\",\"params\":[\"latest\",false]}`. Solana: `getSlot` at processed commitment. Non-cacheable by design: the rotating id defeats body-keyed edge caches."
+  - "Authentication: each provider's standard free-tier key, obtained via normal signup, no credit card, no sales contact. Keys live in env vars on the probe services and never in the repo. Endpoint shapes: key-in-path (Alchemy `/v2/<key>`, Infura `/v3/<key>`, Chainstack, Ankr) or query param (Helius `?api-key=`)."
+  - "Quota guard: each region gets 1/3 of a provider's audited monthly free quota; probing pauses at 90% of that budget until calendar-month rollover (`rpc_keyed_quota_used_ratio`, `rpc_call_total{result=\"quota_paused\"}`). Budgets target ≤2/3 of the real quota, so the bench can never exhaust a key."
+  - "Call-result classification: `ok` (HTTP 200 + usable result), `http_err`, `jsonrpc_err` (HTTP 200 carrying an error body), `stale` (more than 20 blocks / 300 slots behind the cross-provider tip), `timeout`. Latency is recorded only for `ok` responses."
+  - "Cohort: Alchemy (6 EVM + Solana), Infura / MetaMask Developer (6 EVM), Ankr (5 EVM; Optimism pending chain enablement on the key), Chainstack (Ethereum only, the free plan deploys exactly one node), Helius (Solana only). Free-tier scope differences are disclosed, not hidden: a provider missing from a chain tab means its free tier does not cover that chain (or caps the node count), which is itself a finding."
+  - "Excluded by design: QuickNode (free plan = a single endpoint, one chain, too narrow to compare fairly), Tenderly (Node RPC excluded from the free plan), GetBlock (50k CU/day cannot sustain even one chain at probe cadence), Moralis (free plan capped at 2 node endpoints), Blast API (shut down Oct 2025). Each exclusion is quota math or plan scope, never editorial."
+  - "Fair-play note: free tiers do not necessarily run on the provider's paid-tier infrastructure (e.g. dRPC routes free traffic to a separate provider pool; several providers serve free keys from shared clusters). This page measures exactly what a free signup gets, read it as the free-tier experience, not the provider's ceiling."
+
+findings:
+  - "Ethereum is the only chain where all five EVM-capable providers meet: {{best_name:chain:ethereum}} currently leads at {{best_p50:chain:ethereum}} (p50, 24h)."
+  - "{{name:alchemy}} aggregates {{p50:alchemy}} across its 7 covered chains, the widest free-tier footprint in the cohort (6 EVM + Solana on one key)."
+  - "{{name:infura}} sits at {{p50:infura}} on the cross-chain aggregate. Its 2026 free tier meters 3M credits per day (80 credits per call), the tightest effective budget of the EVM cohort."
+  - "{{name:chainstack}} runs {{p50:chainstack}} on Ethereum, the single node its free plan allows, a plan-scope finding as much as a latency one."
+  - "On Solana, {{best_name:chain:solana}} leads at {{best_p50:chain:solana}} (p50, 24h) between Helius (Solana-native) and Alchemy."
+
+faq:
+  - q: "Which free RPC API tier is fastest in 2026?"
+    a: "Per chain, per the live leaderboard above: on Ethereum {{best_name:chain:ethereum}} at {{best_p50:chain:ethereum}} (p50 over 24h, averaged across us-east, eu-west and Singapore probes). The ranking re-sorts continuously against fresh Prometheus samples. Switch the chain tab for the network your product runs on, free-tier chain coverage differs per provider and that difference is part of the answer."
+  - q: "How is this different from the no-key public RPC benchmark?"
+    a: "Same probe, same classification, same regions, different tier. The [rpc-capabilities](/benchmarks/rpc-capabilities) bench measures endpoints that work with zero signup; this page measures what a free API key gets you after a five-minute signup (Alchemy, Infura, Chainstack, Ankr, Helius). Comparing the two pages answers whether the signup buys you anything on latency, and on some chains the no-key tier is genuinely competitive."
+  - q: "Do the probes stay inside each provider's free quota?"
+    a: "Yes, by design. One probe per 60 seconds per chain per region ≈ 131k requests/month/chain, against audited free budgets of 1M to 3M requests/month. A quota guard additionally pauses probing at 90% of each region's monthly budget, so the bench can never exhaust a key. Sample sizes per cell are published (`sample_size`), so the statistical cost of the slower cadence is visible."
+  - q: "Why are QuickNode, Tenderly, Moralis and GetBlock missing?"
+    a: "Quota math or plan scope, never editorial. QuickNode's free plan issues a single endpoint on one chain (too narrow to compare against multi-chain keys). Tenderly excludes Node RPC from its free plan. GetBlock's 50k CU/day cannot sustain one chain at probe cadence. Moralis caps the free plan at 2 node endpoints. Blast API shut down in October 2025. Providers can enter the cohort the day their free plan clears the bar, and the bar is published in the methodology."
+  - q: "Is the free tier representative of a provider's paid performance?"
+    a: "No, and this page does not claim it is. Several providers route free-tier traffic to shared or separate infrastructure pools. What this bench measures is the free-tier experience: the latency and reliability a developer actually gets from the key handed out at signup. Paid-tier SLAs, dedicated clusters and websocket performance are out of scope."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-keyed-latency
+
+prometheus:
+  window: 24h
+  freshness_metric: rpc_latency_milliseconds
+
+rank_matrix_query: avg by (provider, chain, region) (ocb:rpc_latency_milliseconds:p50_24h)
+
+dimensions:
+  chain:
+    - { value: all,      label: All chains }
+    - { value: ethereum, label: Ethereum }
+    - { value: base,     label: Base }
+    - { value: arbitrum, label: Arbitrum }
+    - { value: optimism, label: Optimism }
+    - { value: bnb,      label: BNB Chain }
+    - { value: polygon,  label: Polygon }
+    - { value: solana,   label: Solana }
+  region:
+    - { value: all,     label: All regions }
+    - { value: us-east, label: US-East }
+    - { value: eu-west, label: EU-West }
+    - { value: sgp,     label: Singapore }
+
+providers:
+  - slug: alchemy
+    name: Alchemy
+    tag: 30M CU/mo free, 6 EVM + Solana on one key
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for the anti-cache probe sent every 60s from 3 regions to Alchemy's free-tier keyed endpoints."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="alchemy"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="alchemy"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="alchemy"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="alchemy"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="alchemy"}) / sum(ocb:rpc_call:rate_24h{provider="alchemy"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="alchemy"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="alchemy", tier="keyed"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="alchemy", region="us-east"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="alchemy", tier="keyed", region="us-east"}[1h]))
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="alchemy", region="eu-west"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="alchemy", tier="keyed", region="eu-west"}[1h]))
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="alchemy", region="sgp"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="alchemy", tier="keyed", region="sgp"}[1h]))
+
+  - slug: infura
+    name: Infura
+    tag: MetaMask Developer, 3M credits/day, 6 EVM chains
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for the anti-cache probe sent every 60s from 3 regions to Infura's free-tier keyed endpoints."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="infura"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="infura"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="infura"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="infura"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="infura"}) / sum(ocb:rpc_call:rate_24h{provider="infura"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="infura"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="infura", tier="keyed"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="infura", region="us-east"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="infura", tier="keyed", region="us-east"}[1h]))
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="infura", region="eu-west"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="infura", tier="keyed", region="eu-west"}[1h]))
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="infura", region="sgp"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="infura", tier="keyed", region="sgp"}[1h]))
+
+  - slug: ankr
+    name: Ankr
+    tag: 200M credits/mo free, 5 EVM chains measured
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for the anti-cache probe sent every 60s from 3 regions to Ankr's free-tier keyed endpoints."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ankr"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="ankr"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="ankr"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="ankr"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="ankr"}) / sum(ocb:rpc_call:rate_24h{provider="ankr"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="ankr"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="ankr", tier="keyed"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ankr", region="us-east"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="ankr", tier="keyed", region="us-east"}[1h]))
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ankr", region="eu-west"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="ankr", tier="keyed", region="eu-west"}[1h]))
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ankr", region="sgp"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="ankr", tier="keyed", region="sgp"}[1h]))
+
+  - slug: chainstack
+    name: Chainstack
+    tag: 3M req/mo free, one node, measured on Ethereum
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for the anti-cache probe sent every 60s from 3 regions to Chainstack's free-tier Ethereum Global Node."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="chainstack"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="chainstack"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="chainstack"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="chainstack"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="chainstack"}) / sum(ocb:rpc_call:rate_24h{provider="chainstack"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="chainstack"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="chainstack", tier="keyed"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="chainstack", region="us-east"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="chainstack", tier="keyed", region="us-east"}[1h]))
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="chainstack", region="eu-west"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="chainstack", tier="keyed", region="eu-west"}[1h]))
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="chainstack", region="sgp"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="chainstack", tier="keyed", region="sgp"}[1h]))
+
+  - slug: helius
+    name: Helius
+    tag: Solana-native, 1M credits/mo free
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a `getSlot` probe sent every 60s from 3 regions to Helius's free-tier Solana endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="helius"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="helius"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="helius"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="helius"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="helius"}) / sum(ocb:rpc_call:rate_24h{provider="helius"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="helius"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="helius", tier="keyed"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="helius", region="us-east"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="helius", tier="keyed", region="us-east"}[1h]))
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="helius", region="eu-west"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="helius", tier="keyed", region="eu-west"}[1h]))
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="helius", region="sgp"})
+          series: avg(avg_over_time(rpc_latency_milliseconds{provider="helius", tier="keyed", region="sgp"}[1h]))
