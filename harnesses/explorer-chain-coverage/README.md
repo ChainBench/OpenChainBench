@@ -22,9 +22,8 @@ Registries rot, raw counts reward ghost rollups, marketing claims for the same v
 | Etherscan | free self-serve | keyless `/v2/chainlist` (testnets filtered by name) | `module=block&action=getblocknobytime&timestamp=now-window&closest=after` — queries their INDEX, unlike `module=proxy` |
 | Routescan | keyless | `/v2/network/mainnet/evm/all/blockchains` | `/v2/network/mainnet/evm/{id}/blocks?limit=1` → `items[0].timestamp` |
 | Blockchair | keyless | aggregate `/stats` chain keys | `/{chain}/stats` → `data.best_block_time` (UTC, no suffix) |
-| OKLink | free self-serve | `/api/v5/explorer/blockchain/summary` (one call = whole family) | same call, `lastBlockTime` (epoch ms). Deprecation risk: their data-API docs were pulled during the OKX OS migration |
 
-Keyed families are **skipped gracefully** without their env var (partial cohort).
+Etherscan's freshness probes activate with `ETHERSCAN_API_KEY` (free); everything else is keyless. Subscan and OKLink were audited and excluded: signup proved impractical, and the cohort rule is free REPRODUCIBLE access.
 
 ## Fairness rules
 
@@ -36,7 +35,7 @@ Keyed families are **skipped gracefully** without their env var (partial cohort)
 
 ## Probe budget
 
-All surfaces free. Per cycle: Blockscout ~460 (distinct hosts, worker pool), Etherscan ~36 (600ms spacing, 3 rps free), Routescan ~37, Blockchair ~15, OKLink 1. Total ≈ 550 calls/day. `explorer_probe_calls_total{provider}` guards volume drift.
+All surfaces free. Per cycle: Blockscout ~460 (distinct hosts, worker pool), Etherscan ~36 (600ms spacing, 3 rps free), Routescan ~37, Blockchair ~15. Total ≈ 550 calls/day. `explorer_probe_calls_total{provider}` guards volume drift.
 
 ## Metrics
 
