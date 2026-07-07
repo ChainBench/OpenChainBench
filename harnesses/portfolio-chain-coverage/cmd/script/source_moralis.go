@@ -59,7 +59,11 @@ var moralisDefaultChains = []string{
 	"0x46f",   // lisk
 	"0x171",   // pulsechain
 	"0x531",   // sei evm
-	"0x8f",    // monad
+	// monad (0x8f) removed: this key's plan gates it with 401 every
+	// cycle. A 2026-07-07 scan of 21 further candidate chain ids
+	// (moonriver, blast, zksync, mantle, scroll, zora, ...) returned
+	// 401 for all of them too — the list above IS this plan's full
+	// surface. Re-scan when the plan changes.
 }
 
 // moralisChainWallet overrides the probe wallet for candidate chains
