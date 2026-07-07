@@ -9,7 +9,7 @@ subtitle: Seconds between an organic transfer confirming on Base and the moment 
 category: Aggregators
 status: live
 metric: Indexing freshness
-unit: s
+unit: sec
 higher_is_better: false
 
 seo_intro: |
