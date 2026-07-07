@@ -54,7 +54,7 @@ func probeZerion(key string) coverage {
 	// than hammering the limit — publish-then-leave carries the
 	// previous gauges forward.
 	verified := map[string]bool{}
-	probedMisses := 0
+	missedChains := map[string]bool{}
 	anyOK := false
 	retried429 := false
 	wallets := append([]string{evmTestAddress}, evmProbeAddresses()...)
@@ -92,19 +92,34 @@ func probeZerion(key string) coverage {
 		for _, c := range chains {
 			verified[c] = true
 		}
-		if i > 0 && len(verified) == before &&
-			anyNameInSet(catalog, namesByAddr[wallet]) {
-			// Funded probe wallet answered with nothing new AND its
-			// target chain is in Zerion's own catalog: a real
-			// indexer gap. Chains Zerion never listed do not count,
-			// and a failed catalog call counts no miss at all.
-			probedMisses++
+		if i > 0 && len(verified) == before {
+			// Funded probe wallet answered with nothing new: each of
+			// its target chains that Zerion itself lists AND that no
+			// other wallet already verified counts as one missed
+			// CHAIN (deduped across wallets — counting wallets
+			// overcounted probed past listed). A failed catalog call
+			// counts no miss at all.
+			for _, n := range namesByAddr[wallet] {
+				if catalog[n] {
+					missedChains[n] = true
+				}
+			}
 		}
 		anyOK = true
 	}
 	if anyOK {
+		verifiedNorm := map[string]bool{}
+		for id := range verified {
+			verifiedNorm[normalizeChainName(id)] = true
+		}
+		missed := 0
+		for n := range missedChains {
+			if !verifiedNorm[n] {
+				missed++
+			}
+		}
 		cov.verified = len(verified)
-		cov.probed = len(verified) + probedMisses
+		cov.probed = len(verified) + missed
 	}
 	cov.latencyMs = float64(total.Milliseconds())
 	return cov
