@@ -55,6 +55,34 @@ type Chain struct {
 // (3 providers), Zora / Abstract / HyperEVM (≤2 keyless providers).
 func chains() []Chain {
 	return []Chain{
+		// ─── Monad mainnet (chain 143) — added 2026-07-08, all endpoints
+		// live-verified (eth_chainId=143 + anti-cache probe). Five official
+		// mirrors exist behind different infra vendors; we probe the primary
+		// rpc.monad.xyz as the chain-official plus the multi-chain gateways.
+		{
+			Slug: "monad",
+			Name: "Monad",
+			Providers: []Provider{
+				{Slug: "monad-official", Name: "Monad Official", URL: envDefault("RPC_URL_MONAD_OFFICIAL", "https://rpc.monad.xyz")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_MONAD_DRPC", "https://monad-mainnet.drpc.org")},
+				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_MONAD_TENDERLY", "https://monad.gateway.tenderly.co")},
+				{Slug: "bloxroute", Name: "bloXroute", URL: envDefault("RPC_URL_MONAD_BLOXROUTE", "https://monad.rpc.blxrbdn.com")},
+				{Slug: "onfinality", Name: "OnFinality", URL: envDefault("RPC_URL_MONAD_ONFINALITY", "https://monad-mainnet.api.onfinality.io/public")},
+			},
+		},
+		// ─── MegaETH mainnet (chain 4326) — added 2026-07-08, all endpoints
+		// live-verified. Official endpoint uses dynamic compute-unit limiting;
+		// 1 probe/30s/region stays far under it.
+		{
+			Slug: "megaeth",
+			Name: "MegaETH",
+			Providers: []Provider{
+				{Slug: "megaeth-official", Name: "MegaETH Official", URL: envDefault("RPC_URL_MEGAETH_OFFICIAL", "https://mainnet.megaeth.com/rpc")},
+				{Slug: "1rpc", Name: "1RPC", URL: envDefault("RPC_URL_MEGAETH_1RPC", "https://public.1rpc.io/megaeth")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_MEGAETH_DRPC", "https://megaeth.drpc.org")},
+				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_MEGAETH_TENDERLY", "https://megaeth.gateway.tenderly.co")},
+			},
+		},
 		// ─── Ethereum mainnet (9 providers) ────────────────────────
 		{
 			Slug: "ethereum",
