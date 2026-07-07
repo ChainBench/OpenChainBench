@@ -40,7 +40,7 @@ type chainscoutEntry struct {
 }
 
 func probeBlockscout(_ string) coverage {
-	cov := coverage{registered: -1, registeredSource: "registry", verified: -1, top50: -1}
+	cov := coverage{registered: -1, registeredSource: "registry", verified: -1, verifiedStrict: -1, top50: -1}
 	var total time.Duration
 
 	raw, el, err := doCall("blockscout", "GET", chainscoutURL, map[string]string{"Accept": "application/json"}, nil)
@@ -69,7 +69,7 @@ func probeBlockscout(_ string) coverage {
 	var mu sync.Mutex
 	evmLive := map[int64]bool{}
 	nameLive := map[string]bool{}
-	var liveCount, deadCount int64
+	var liveCount, deadCount, strictCount int64
 	var latAcc int64
 
 	var wg sync.WaitGroup
@@ -87,9 +87,23 @@ func probeBlockscout(_ string) coverage {
 					continue
 				}
 				ts, perr := parseBlockscoutLatestBlock(raw)
-				if perr != nil || !freshEnough(ts) {
+				if perr != nil {
 					atomic.AddInt64(&deadCount, 1)
 					continue
+				}
+				if !freshEnough(ts) {
+					// Quiet-chain second chance: on-demand block
+					// producers can be healthy yet silent for hours.
+					// The instance's own average_block_time decides:
+					// stale only when the age also exceeds 10x the
+					// chain's own cadence.
+					if !blockscoutQuietOK(j.url, ts) {
+						atomic.AddInt64(&deadCount, 1)
+						continue
+					}
+				}
+				if freshStrict(ts) {
+					atomic.AddInt64(&strictCount, 1)
 				}
 				atomic.AddInt64(&liveCount, 1)
 				mu.Lock()
@@ -114,12 +128,37 @@ func probeBlockscout(_ string) coverage {
 	wg.Wait()
 
 	cov.verified = int(liveCount)
+	cov.verifiedStrict = int(strictCount)
 	cov.top50 = top50Count(evmLive, nameLive)
 	total += time.Duration(latAcc) * time.Millisecond
 	fmt.Printf("[blockscout] sweep: %d live, %d dead/stale of %d registered mainnets\n",
 		liveCount, deadCount, len(mainnets))
 	cov.latencyMs = float64(total.Milliseconds())
 	return cov
+}
+
+// blockscoutQuietOK gives a stale-looking chain a second chance: it
+// reads the instance's own average_block_time from /api/v2/stats and
+// accepts the chain when the last block's age is under 10x its own
+// cadence (an on-demand rollup with hourly blocks is healthy at 60m
+// of silence; an Ethereum instance 60m behind is broken).
+func blockscoutQuietOK(url string, latest time.Time) bool {
+	raw, _, err := doCallOnce("blockscout", "GET", url+"/api/v2/stats", map[string]string{"Accept": "application/json"}, nil)
+	if err != nil {
+		return false
+	}
+	var resp struct {
+		AverageBlockTime float64 `json:"average_block_time"`
+	}
+	if json.Unmarshal(raw, &resp) != nil || resp.AverageBlockTime <= 0 {
+		return false
+	}
+	avg := time.Duration(resp.AverageBlockTime) * time.Millisecond
+	if resp.AverageBlockTime < 1000 {
+		// Some instances report seconds, not milliseconds.
+		avg = time.Duration(resp.AverageBlockTime * float64(time.Second))
+	}
+	return time.Since(latest) <= 10*avg
 }
 
 // pickBlockscoutURL prefers the Blockscout-hosted instance when one
