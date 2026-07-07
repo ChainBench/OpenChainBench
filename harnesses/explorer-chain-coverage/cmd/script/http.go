@@ -1,0 +1,157 @@
+package main
+
+import (
+	"bytes"
+	"fmt"
+	"io"
+	"net/http"
+	"strings"
+	"time"
+)
+
+// Per-call HTTP timeout. 20s is generous for portfolio APIs that fan
+// out to dozens of chain indexers server-side; anything slower is a
+// vendor problem worth surfacing as a timeout error.
+const httpTimeout = 20 * time.Second
+
+// retryDelay is the wait before the single allowed retry. 30s gives a
+// transient 5xx / edge timeout time to clear without burning credits
+// on a hot loop.
+const retryDelay = 30 * time.Second
+
+// sweepSpacing is the pause between two consecutive calls inside a
+// provider's per-chain sweep against ONE host (Etherscan, Routescan,
+// Subscan, Blockchair). Rate limits bite on bursts, not daily volume.
+// The Blockscout registry sweep talks to hundreds of DISTINCT hosts
+// and uses a small worker pool instead (no shared rate limit).
+const sweepSpacing = 600 * time.Millisecond
+
+var httpClient = &http.Client{Timeout: httpTimeout}
+
+func clientFor(provider string) *http.Client {
+	return httpClient
+}
+
+// httpError carries the status code so callers can branch on 4xx
+// (e.g. Mobula's optional SOL/BTC probes tolerate a 400).
+type httpError struct {
+	status int
+	body   string
+}
+
+func (e *httpError) Error() string {
+	return fmt.Sprintf("http %d: %s", e.status, e.body)
+}
+
+// httpStatus returns the HTTP status behind err, or 0 for transport
+// level failures (DNS, TLS, timeout).
+func httpStatus(err error) int {
+	if he, ok := err.(*httpError); ok {
+		return he.status
+	}
+	return 0
+}
+
+// doCall executes one HTTP request with the standard probe semantics:
+// per-call 20s timeout, single retry after 30s ONLY on 5xx or
+// timeout/transport failure — never on 4xx (a 4xx is deterministic:
+// retrying burns credits without changing the answer). Returns the
+// response body, the total elapsed wall time across attempts, and an
+// error for any non-2xx outcome. Every attempt (including the retry)
+// increments portfolio_probe_calls_total{provider} so monthly credit
+// consumption per vendor is observable in Prometheus.
+func doCall(provider, method, url string, headers map[string]string, body []byte) ([]byte, time.Duration, error) {
+	countCall(provider)
+	client := clientFor(provider)
+	b, elapsed, err := doOnce(client, method, url, headers, body)
+	if err != nil && retryable(err) {
+		fmt.Printf("  [retry] %s %s failed (%v), retrying in %v\n", method, url, err, retryDelay)
+		time.Sleep(retryDelay)
+		countCall(provider)
+		b2, elapsed2, err2 := doOnce(client, method, url, headers, body)
+		return b2, elapsed + elapsed2, err2
+	}
+	return b, elapsed, err
+}
+
+func doOnce(client *http.Client, method, url string, headers map[string]string, body []byte) ([]byte, time.Duration, error) {
+	var rdr io.Reader
+	if body != nil {
+		rdr = bytes.NewReader(body)
+	}
+	req, err := http.NewRequest(method, url, rdr)
+	if err != nil {
+		return nil, 0, err
+	}
+	for k, v := range headers {
+		req.Header.Set(k, v)
+	}
+	if body != nil && req.Header.Get("Content-Type") == "" {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	// Go's default "Go-http-client/2.0" UA gets WAF-throttled by some
+	// providers (Zerion 429s the portfolio endpoint instantly on it
+	// while the identical curl request passes). Identify honestly.
+	req.Header.Set("User-Agent", "OpenChainBench-harness/1.0 (+https://openchainbench.com)")
+	if req.Header.Get("Accept") == "" {
+		req.Header.Set("Accept", "application/json")
+	}
+
+	start := time.Now()
+	resp, err := client.Do(req)
+	elapsed := time.Since(start)
+	if err != nil {
+		return nil, elapsed, err
+	}
+	defer resp.Body.Close()
+
+	// 20MB cap: portfolio responses for a whale wallet can be large,
+	// but anything bigger than this is a runaway payload.
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, 20<<20))
+	if err != nil {
+		return nil, elapsed, fmt.Errorf("read body: %w", err)
+	}
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return raw, elapsed, &httpError{status: resp.StatusCode, body: truncate(string(raw), 200)}
+	}
+	return raw, elapsed, nil
+}
+
+// isQuotaStatus flags statuses that mean "the account, not the
+// chain": credit exhaustion, auth, throttling. A probe cycle that
+// hits one of these is truncated, not measured — publishing its
+// partial counts would clobber good gauges with an artifact (seen
+// live twice on 2026-07-06/07 with CoinStats 406 credit limits).
+func isQuotaStatus(s int) bool {
+	return s == 401 || s == 402 || s == 403 || s == 406 || s == 429
+}
+
+// doCallOnce is doCall without the retry. Used by registry sweeps
+// where a failure IS the measurement (dead registry entries): a 30s
+// retry per dead host would multiply the cycle length for nothing.
+func doCallOnce(provider, method, url string, headers map[string]string, body []byte) ([]byte, time.Duration, error) {
+	countCall(provider)
+	return doOnce(clientFor(provider), method, url, headers, body)
+}
+
+// retryable: only transport/timeout failures and 5xx. 4xx never.
+func retryable(err error) bool {
+	if status := httpStatus(err); status != 0 {
+		return status >= 500
+	}
+	// Transport-level: DNS, TLS, connection refused, context deadline.
+	msg := err.Error()
+	return strings.Contains(msg, "timeout") ||
+		strings.Contains(msg, "deadline") ||
+		strings.Contains(msg, "connection") ||
+		strings.Contains(msg, "EOF") ||
+		strings.Contains(msg, "no such host")
+}
+
+func truncate(s string, n int) string {
+	s = strings.ReplaceAll(s, "\n", " ")
+	if len(s) <= n {
+		return s
+	}
+	return s[:n] + "..."
+}
