@@ -144,6 +144,10 @@ func publish(slug string, cov coverage) {
 		explorerChainsVerified.WithLabelValues(slug).Set(float64(cov.verified))
 		published = true
 	}
+	if cov.verifiedStrict >= 0 {
+		explorerChainsVerifiedStrict.WithLabelValues(slug).Set(float64(cov.verifiedStrict))
+		published = true
+	}
 	if cov.top50 >= 0 {
 		explorerChainsTop50.WithLabelValues(slug).Set(float64(cov.top50))
 		published = true
@@ -154,6 +158,6 @@ func publish(slug string, cov coverage) {
 	if published {
 		explorerLastProbeTimestamp.WithLabelValues(slug).Set(float64(time.Now().Unix()))
 	}
-	fmt.Printf("[%s] registered=%d (source=%s) verified=%d top50=%d latency_ms=%.0f\n",
-		slug, cov.registered, cov.registeredSource, cov.verified, cov.top50, cov.latencyMs)
+	fmt.Printf("[%s] registered=%d (source=%s) verified=%d strict5m=%d top50=%d latency_ms=%.0f\n",
+		slug, cov.registered, cov.registeredSource, cov.verified, cov.verifiedStrict, cov.top50, cov.latencyMs)
 }
