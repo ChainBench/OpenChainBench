@@ -89,6 +89,7 @@ providers:
     queries:
       p50: histogram_quantile(0.5, sum by (le) (increase(indexing_freshness_seconds_histogram_bucket{provider="mobula"}[24h])))
       p90: histogram_quantile(0.9, sum by (le) (increase(indexing_freshness_seconds_histogram_bucket{provider="mobula"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (increase(indexing_freshness_seconds_histogram_bucket{provider="mobula"}[24h])))
       success: sum(increase(indexing_probe_total{provider="mobula", result="found"}[24h])) / sum(increase(indexing_probe_total{provider="mobula", result=~"found|missed"}[24h]))
       sample_size: sum(increase(indexing_probe_total{provider="mobula", result=~"found|missed"}[24h]))
       series: avg_over_time(indexing_freshness_seconds{provider="mobula"}[1h])
@@ -99,6 +100,7 @@ providers:
     queries:
       p50: histogram_quantile(0.5, sum by (le) (increase(indexing_freshness_seconds_histogram_bucket{provider="zerion"}[24h])))
       p90: histogram_quantile(0.9, sum by (le) (increase(indexing_freshness_seconds_histogram_bucket{provider="zerion"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (increase(indexing_freshness_seconds_histogram_bucket{provider="zerion"}[24h])))
       success: sum(increase(indexing_probe_total{provider="zerion", result="found"}[24h])) / sum(increase(indexing_probe_total{provider="zerion", result=~"found|missed"}[24h]))
       sample_size: sum(increase(indexing_probe_total{provider="zerion", result=~"found|missed"}[24h]))
       series: avg_over_time(indexing_freshness_seconds{provider="zerion"}[1h])
@@ -109,6 +111,7 @@ providers:
     queries:
       p50: histogram_quantile(0.5, sum by (le) (increase(indexing_freshness_seconds_histogram_bucket{provider="moralis"}[24h])))
       p90: histogram_quantile(0.9, sum by (le) (increase(indexing_freshness_seconds_histogram_bucket{provider="moralis"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (increase(indexing_freshness_seconds_histogram_bucket{provider="moralis"}[24h])))
       success: sum(increase(indexing_probe_total{provider="moralis", result="found"}[24h])) / sum(increase(indexing_probe_total{provider="moralis", result=~"found|missed"}[24h]))
       sample_size: sum(increase(indexing_probe_total{provider="moralis", result=~"found|missed"}[24h]))
       series: avg_over_time(indexing_freshness_seconds{provider="moralis"}[1h])
@@ -119,6 +122,7 @@ providers:
     queries:
       p50: histogram_quantile(0.5, sum by (le) (increase(indexing_freshness_seconds_histogram_bucket{provider="goldrush"}[24h])))
       p90: histogram_quantile(0.9, sum by (le) (increase(indexing_freshness_seconds_histogram_bucket{provider="goldrush"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (increase(indexing_freshness_seconds_histogram_bucket{provider="goldrush"}[24h])))
       success: sum(increase(indexing_probe_total{provider="goldrush", result="found"}[24h])) / sum(increase(indexing_probe_total{provider="goldrush", result=~"found|missed"}[24h]))
       sample_size: sum(increase(indexing_probe_total{provider="goldrush", result=~"found|missed"}[24h]))
       series: avg_over_time(indexing_freshness_seconds{provider="goldrush"}[1h])
@@ -129,6 +133,7 @@ providers:
     queries:
       p50: histogram_quantile(0.5, sum by (le) (increase(indexing_freshness_seconds_histogram_bucket{provider="allium"}[24h])))
       p90: histogram_quantile(0.9, sum by (le) (increase(indexing_freshness_seconds_histogram_bucket{provider="allium"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (increase(indexing_freshness_seconds_histogram_bucket{provider="allium"}[24h])))
       success: sum(increase(indexing_probe_total{provider="allium", result="found"}[24h])) / sum(increase(indexing_probe_total{provider="allium", result=~"found|missed"}[24h]))
       sample_size: sum(increase(indexing_probe_total{provider="allium", result=~"found|missed"}[24h]))
       series: avg_over_time(indexing_freshness_seconds{provider="allium"}[1h])
