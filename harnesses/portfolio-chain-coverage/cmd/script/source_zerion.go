@@ -67,7 +67,8 @@ func probeZerion(key string) coverage {
 		if err != nil && strings.Contains(err.Error(), "http 429") {
 			if retried429 {
 				recordError("zerion", err)
-				fmt.Printf("[zerion] second 429, aborting sweep at wallet %d/%d\n", i+1, len(wallets))
+				fmt.Printf("[zerion] second 429, aborting sweep at wallet %d/%d, publishing nothing\n", i+1, len(wallets))
+				anyOK = false
 				break
 			}
 			retried429 = true
