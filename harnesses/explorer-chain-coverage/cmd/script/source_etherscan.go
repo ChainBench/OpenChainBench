@@ -21,7 +21,9 @@ import (
 //             3 calls/s, 100k/day — a cycle spends ~35 calls.
 const etherscanBaseDefault = "https://api.etherscan.io"
 
-func probeEtherscan(key string) coverage {
+func probeEtherscan(keyIgnored string) coverage {
+	key := envDefault("ETHERSCAN_API_KEY", "")
+	_ = keyIgnored
 	base := envDefault("ETHERSCAN_BASE_URL", etherscanBaseDefault)
 	cov := coverage{registered: -1, registeredSource: "registry", verified: -1, top50: -1}
 	var total time.Duration
@@ -43,6 +45,14 @@ func probeEtherscan(key string) coverage {
 		return cov
 	}
 	cov.registered = len(chains)
+
+	if key == "" {
+		// Keyless mode: the chainlist needs no auth, the freshness
+		// probes do. Publish registered, leave verified unknown.
+		fmt.Printf("[etherscan] no ETHERSCAN_API_KEY: publishing registered only (%d mainnets)\n", len(chains))
+		cov.latencyMs = float64(total.Milliseconds())
+		return cov
+	}
 
 	evmLive := map[int64]bool{}
 	nameLive := map[string]bool{}
