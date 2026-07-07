@@ -262,7 +262,8 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v20: +12 long-tail RPC benches 055-066 (sonic…soneium). Bench SET
   // changed; cached v19 entries would miss the new chains.
   // v21: +bench 067 (portfolio-chain-coverage). Bench SET changed.
-  ["bench-unfiltered-v21"],
+  // v22: +bench 068 (explorer-chain-coverage) + Explorers category.
+  ["bench-unfiltered-v22"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -410,7 +411,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v24: bumped with bench-unfiltered-v20 (+12 long-tail RPC benches
   // 055-066; sitemap/citable/products must pick up the new slugs).
   // v25: bumped with bench-unfiltered-v21 (+bench 067 portfolio-chain-coverage).
-  ["all-benchmarks-v25"],
+  // v26: bumped with bench-unfiltered-v22 (+bench 068 explorer-chain-coverage).
+  ["all-benchmarks-v26"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -484,7 +486,8 @@ const loadBenchmarkFiltered = unstable_cache(
   // v12: bumped with bench-unfiltered-v20 (+12 long-tail RPC benches
   // 055-066).
   // v13: bumped with bench-unfiltered-v21 (+bench 067 portfolio-chain-coverage).
-  ["bench-filters-v13"],
+  // v14: bumped with bench-unfiltered-v22 (+bench 068 explorer-chain-coverage).
+  ["bench-filters-v14"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
