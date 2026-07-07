@@ -8,7 +8,7 @@ Three concerns, one process, one set of (provider × chain) clients:
 
 | Bench | Metric | How |
 |---|---|---|
-| №010 RPC latency | `eth_blockNumber` round-trip p50/p90/p99 per provider per chain | Probe every 30 s, observe latency, emit gauge + histogram |
+| №010 RPC latency | `eth_getBlockByNumber(latest)` round-trip p50/p90/p99 per provider per chain | Probe every 30 s, observe latency, emit gauge + histogram |
 | №011 RPC reliability | 24 h error rate per provider per chain, classified | Counter labeled by result: `ok / http_err / jsonrpc_err / stale / timeout` |
 | №012 Archive RPC coverage | Whether `eth_getBalance` resolves at depths {300, 7.2k, 216k, 1.3M, 5M} from head | One probe per depth per provider, run hourly |
 

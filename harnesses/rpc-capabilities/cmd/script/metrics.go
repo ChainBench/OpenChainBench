@@ -20,7 +20,7 @@ var (
 	rpcLatency = promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "rpc_latency_milliseconds",
-			Help: "Latest observed HTTP round-trip in milliseconds for `eth_blockNumber` against a public RPC endpoint.",
+			Help: "Latest observed HTTP round-trip in milliseconds for `eth_getBlockByNumber(latest)` against a public RPC endpoint.",
 		},
 		[]string{"provider", "chain", "region"},
 	)
@@ -28,7 +28,7 @@ var (
 	rpcLatencyHist = promauto.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Name:    "rpc_latency_milliseconds_histogram",
-			Help:    "Histogram of public RPC `eth_blockNumber` latencies — drives the p50/p90/p99 leaderboard via `histogram_quantile` / `quantile_over_time`.",
+			Help:    "Histogram of public RPC `eth_getBlockByNumber(latest)` latencies — drives the p50/p90/p99 leaderboard via `histogram_quantile` / `quantile_over_time`.",
 			Buckets: []float64{50, 100, 150, 200, 300, 500, 750, 1000, 1500, 2000, 3000, 5000, 10000},
 		},
 		[]string{"provider", "chain", "region"},
