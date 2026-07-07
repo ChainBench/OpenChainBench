@@ -171,6 +171,21 @@ scrape_configs:
           benchmark: rpc-capabilities
     metrics_path: /metrics
 
+  # OpenChainBench — keyed free-tier RPC latency (Alchemy, Infura,
+  # Chainstack, Ankr, Helius). Companion to rpc-capabilities: same
+  # metric names + tier="keyed" label, picked up by the shared
+  # ocb:rpc_latency_* recording rules with zero rule changes.
+  - job_name: 'rpc-keyed-latency'
+    honor_labels: true
+    static_configs:
+      - targets:
+        - 'rpc-keyed-us.railway.internal:2112'   # us-east
+        - 'rpc-keyed-eu.railway.internal:2112'   # eu-west
+        - 'rpc-keyed-sgp.railway.internal:2112'  # sgp
+        labels:
+          benchmark: rpc-keyed-latency
+    metrics_path: /metrics
+
   # OpenChainBench bench №013 - Ethereum gas oracle prediction accuracy.
   # Polls Blocknative + PublicNode feeHistory + Owlracle + Etherscan v2,
   # waits 2 blocks, computes realized p25/p50/p90 priority fee from the
