@@ -81,7 +81,16 @@ func runProbeLoop(cfg *Config, stop <-chan struct{}) {
 	tick := time.NewTicker(cfg.ProbeInterval)
 	defer tick.Stop()
 
-	runCycle()
+	// SKIP_INITIAL_CYCLE=1 suppresses the startup probe. Set it on
+	// deploy-storm days: every container restart otherwise runs a
+	// full cycle, and 7 redeploys in one day burned a month of
+	// CoinStats credits on 2026-07-07. Steady state leaves it unset
+	// so a normal deploy refreshes the gauges immediately.
+	if envDefault("SKIP_INITIAL_CYCLE", "") == "1" {
+		fmt.Println("[cycle] SKIP_INITIAL_CYCLE=1: waiting for the first tick")
+	} else {
+		runCycle()
+	}
 	for {
 		select {
 		case <-stop:
