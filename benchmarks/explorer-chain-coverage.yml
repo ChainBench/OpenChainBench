@@ -1,0 +1,162 @@
+# OpenChainBench. Bench № 068
+
+slug: explorer-chain-coverage
+number: "068"
+title: Block explorer chain coverage, registered vs fresh-indexed
+seo_title: "Best block explorer API chains 2026"
+seo_description: "Block explorer APIs ranked by chains with a working indexer, probe-verified daily against each vendor's own registry. Blockscout, Etherscan, Routescan, OKLink, Subscan, Blockchair."
+subtitle: Chains where each block explorer family serves a working indexer, probed daily against the vendor's own machine-readable registry, with a separate view over the 50 most active mainnets.
+category: Explorers
+status: live
+metric: Chain coverage
+unit: count
+higher_is_better: true
+
+seo_intro: |
+  This benchmark measures how many blockchains each block explorer
+  family actually serves, not how many its marketing page claims.
+  Every family gets the same daily probe. one call to its own
+  machine-readable registry (the registered count) and one freshness
+  probe per registered mainnet, where a chain only counts as verified
+  when the latest indexed block is younger than 60 minutes. A
+  reachable web server with a stalled indexer does not count. Raw
+  chain counts reward hosting ghost rollups, so a third number is
+  published alongside. coverage of the 50 most economically active
+  mainnets, which is the question integrators actually ask. Marketing
+  claims in this space disagree wildly, the same vendor is cited at
+  100+, 800+ or 3000+ chains depending on the page, and no other
+  source verifies any of these numbers on a live cadence.
+
+abstract: |
+  We benchmark block explorer APIs on three numbers per family, once
+  per day. registered, the mainnet count the vendor self-declares
+  through a machine-readable surface (Chainscout registry, Etherscan
+  chainlist, Routescan blockchains endpoint), verified, the number of
+  those chains whose explorer API returned a latest indexed block
+  younger than 60 minutes, and top-50, how many of the 50 most active
+  mainnets pass the same freshness gate. Registries rot and raw counts
+  can be inflated by ghost chains; the three numbers together separate
+  the claim, the catalog, and the working product. The cohort is
+  limited to explorers with free, reproducible API access.
+
+methodology:
+  - "registered = mainnet chains the vendor self-declares via a machine-readable surface: Blockscout's Chainscout registry, Etherscan's keyless chainlist, Routescan's blockchains endpoint, Blockchair's aggregate stats, OKLink's blockchain summary. Subscan publishes no machine list, so its network subdomains are extracted from its own API documentation (registered_source=pinned). Testnets are excluded everywhere."
+  - "verified = registered chains whose latest indexed block is younger than 60 minutes at probe time, read from each family's own API (Blockscout /api/v2/blocks, Routescan blocks, Etherscan getblocknobytime against its index, Blockchair best_block_time, Subscan scan/blocks, OKLink lastBlockTime). A 200 from a stalled indexer does not count: this measures working indexers, not reachable web servers."
+  - "top-50 = of the 50 most economically active mainnets (pinned quarterly from a DefiLlama TVL + fees blend, list in the harness source), how many pass the same freshness gate on this family. Raw chain counts reward hosting ghost rollups; this column answers what integrators actually ask and is the one where breadth leaders can lose."
+  - "Operator attribution: many Blockscout instances are run by the chain teams themselves, not by Blockscout. The registry's hostedBy field is preserved in the harness so the distinction stays auditable; the count measures the software family's working footprint, which is the claim its marketing makes."
+  - "Cadence: one probe cycle per day, ~600 spaced upstream calls, every surface free. Blockscout's sweep talks to hundreds of distinct hosts through a small worker pool; single-host families are spaced 600ms. Quota-truncated cycles publish nothing. Etherscan, Subscan and OKLink need free self-serve keys and are skipped gracefully without them."
+  - "Source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/explorer-chain-coverage"
+
+findings:
+  - "{{best_name}} currently serves {{best_p50}} fresh-indexed mainnet chains across {{count}} measured explorer families. Verified means the family's own API returned a block younger than 60 minutes on that chain today, not that a chain appears in a registry or on a pricing page."
+  - "{{name:blockscout}} verifies {{p50:blockscout}} chains against {{p90:blockscout}} registered in its own Chainscout registry. The gap is registry rot made visible: dead rollups, migrated chains and stalled indexers that a raw instance count would still be advertising."
+  - "{{name:etherscan}} verifies {{p50:etherscan}} chains. Its free tier no longer covers several of its highest-activity chains, which the top-50 column prices in: breadth and free access are different axes, and this bench publishes both."
+  - "The top-50 column is the anti-inflation view. A family can lead the raw count by hosting long-tail chains nobody uses and still trail where integrators live; reading the two columns together separates footprint from product."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/explorer-chain-coverage
+
+prometheus:
+  window: 24h
+  expected_freshness_seconds: 172800
+
+faq:
+  - q: "Which block explorer supports the most blockchains?"
+    a: "{{best_name}} currently leads at {{best_p50}} fresh-indexed mainnet chains across {{count}} measured families. Fresh-indexed means the explorer's own API returned a latest block younger than 60 minutes on that chain within the last daily cycle, so the leaderboard reflects working indexers rather than registry entries or marketing claims, which for the same vendor range from 100+ to 3000+ chains depending on the page."
+  - q: "Why three numbers per explorer?"
+    a: "Because they answer different questions. registered is what the vendor self-declares through its own machine-readable surface and rots as chains die or migrate. verified is what the daily probe demonstrated: a latest indexed block younger than 60 minutes. top-50 restricts the same gate to the 50 most economically active mainnets, because raw chain counts reward hosting ghost rollups and the integrator question is whether the chains people actually use are covered."
+  - q: "Does a Blockscout instance run by a chain team count for Blockscout?"
+    a: "Yes, with the distinction kept auditable. Blockscout is open source and most instances are operated by chain teams; the registry's hostedBy field is preserved by the harness so anyone can split vendor-run from chain-run. The count measures the software family's working footprint, which is exactly the claim being verified, and the same rule benefits every family equally: Routescan and Etherscan run their own indexers and get credit for every chain those serve."
+  - q: "Why is a reachable explorer not automatically verified?"
+    a: "Because the failure mode that matters is the silent one: a web server that answers 200 while its indexer stalled hours or weeks ago. The probe reads the timestamp of the latest indexed block from each family's own API and only counts chains where it is younger than 60 minutes. The window tolerates slow block producers while still catching stalled pipelines, and it can be tightened as the cohort matures."
+  - q: "How often are the counts refreshed?"
+    a: "Once per day, roughly 600 spaced calls across the cohort, all on free surfaces. A failed or quota-truncated cycle publishes nothing and the previous values carry forward, so a temporary outage never zeroes a family's row. Etherscan, Subscan and OKLink activate with free self-serve keys and are skipped gracefully without them."
+
+# Metrics exposed by the explorer-chain-coverage harness:
+#   explorer_chains_verified{provider} -> fresh-indexed mainnets (p50)
+#   explorer_chains_top50{provider} -> top-50 active mainnets covered (p99)
+#   explorer_chains_registered{provider, registered_source} -> self-declared (p90)
+#   explorer_probe_errors_total / explorer_probe_calls_total / explorer_last_probe_timestamp
+
+ledger_columns:
+  - { label: "Fresh-indexed chains", slot: p50, unit: count }
+  - { label: "Top-50 covered", slot: p99, unit: count }
+  - { label: "Registered chains", slot: p90, unit: count }
+
+providers:
+  - slug: blockscout
+    name: Blockscout
+    tag: Open-source explorer
+    formula: "Mainnets in its Chainscout registry whose instance returned a latest indexed block younger than 60 minutes; registered is the registry's mainnet count. Probed daily, keyless."
+    queries:
+      p50: last_over_time(explorer_chains_verified{provider="blockscout"}[48h])
+      p90: last_over_time(explorer_chains_registered{provider="blockscout"}[48h])
+      p99: last_over_time(explorer_chains_top50{provider="blockscout"}[48h])
+      mean: last_over_time(explorer_chains_verified{provider="blockscout"}[48h])
+      success: clamp_max(last_over_time(explorer_chains_verified{provider="blockscout"}[48h]) > bool 0, 1)
+      sample_size: last_over_time(explorer_chains_verified{provider="blockscout"}[48h])
+      series: explorer_chains_verified{provider="blockscout"}
+
+  - slug: etherscan
+    name: Etherscan
+    tag: Multichain explorer API
+    formula: "V2 chainlist mainnets where getblocknobytime found an indexed block in the last 60 minutes; registered is the keyless chainlist mainnet count. Probed daily with a free key."
+    queries:
+      p50: last_over_time(explorer_chains_verified{provider="etherscan"}[48h])
+      p90: last_over_time(explorer_chains_registered{provider="etherscan"}[48h])
+      p99: last_over_time(explorer_chains_top50{provider="etherscan"}[48h])
+      mean: last_over_time(explorer_chains_verified{provider="etherscan"}[48h])
+      success: clamp_max(last_over_time(explorer_chains_verified{provider="etherscan"}[48h]) > bool 0, 1)
+      sample_size: last_over_time(explorer_chains_verified{provider="etherscan"}[48h])
+      series: explorer_chains_verified{provider="etherscan"}
+
+  - slug: routescan
+    name: Routescan
+    tag: Multichain explorer
+    formula: "Chains in its public blockchains endpoint whose blocks API returned a latest block younger than 60 minutes. Fully keyless. Probed daily."
+    queries:
+      p50: last_over_time(explorer_chains_verified{provider="routescan"}[48h])
+      p90: last_over_time(explorer_chains_registered{provider="routescan"}[48h])
+      p99: last_over_time(explorer_chains_top50{provider="routescan"}[48h])
+      mean: last_over_time(explorer_chains_verified{provider="routescan"}[48h])
+      success: clamp_max(last_over_time(explorer_chains_verified{provider="routescan"}[48h]) > bool 0, 1)
+      sample_size: last_over_time(explorer_chains_verified{provider="routescan"}[48h])
+      series: explorer_chains_verified{provider="routescan"}
+
+  - slug: blockchair
+    name: Blockchair
+    tag: Multichain explorer
+    formula: "Chains in its aggregate stats whose best_block_time is younger than 60 minutes. Fully keyless. Probed daily."
+    queries:
+      p50: last_over_time(explorer_chains_verified{provider="blockchair"}[48h])
+      p90: last_over_time(explorer_chains_registered{provider="blockchair"}[48h])
+      p99: last_over_time(explorer_chains_top50{provider="blockchair"}[48h])
+      mean: last_over_time(explorer_chains_verified{provider="blockchair"}[48h])
+      success: clamp_max(last_over_time(explorer_chains_verified{provider="blockchair"}[48h]) > bool 0, 1)
+      sample_size: last_over_time(explorer_chains_verified{provider="blockchair"}[48h])
+      series: explorer_chains_verified{provider="blockchair"}
+
+  - slug: subscan
+    name: Subscan
+    tag: Substrate explorer
+    formula: "Network subdomains from its own API docs whose scan/blocks returned a latest block younger than 60 minutes; no machine registry exists, so registered carries registered_source=pinned. Probed daily with a free key."
+    queries:
+      p50: last_over_time(explorer_chains_verified{provider="subscan"}[48h])
+      p90: last_over_time(explorer_chains_registered{provider="subscan"}[48h])
+      p99: last_over_time(explorer_chains_top50{provider="subscan"}[48h])
+      mean: last_over_time(explorer_chains_verified{provider="subscan"}[48h])
+      success: clamp_max(last_over_time(explorer_chains_verified{provider="subscan"}[48h]) > bool 0, 1)
+      sample_size: last_over_time(explorer_chains_verified{provider="subscan"}[48h])
+      series: explorer_chains_verified{provider="subscan"}
+
+  - slug: oklink
+    name: OKLink
+    tag: Multichain explorer
+    formula: "Chains in its blockchain summary whose lastBlockTime is younger than 60 minutes; one aggregate call covers the family. Probed daily with a free key."
+    queries:
+      p50: last_over_time(explorer_chains_verified{provider="oklink"}[48h])
+      p90: last_over_time(explorer_chains_registered{provider="oklink"}[48h])
+      p99: last_over_time(explorer_chains_top50{provider="oklink"}[48h])
+      mean: last_over_time(explorer_chains_verified{provider="oklink"}[48h])
+      success: clamp_max(last_over_time(explorer_chains_verified{provider="oklink"}[48h]) > bool 0, 1)
+      sample_size: last_over_time(explorer_chains_verified{provider="oklink"}[48h])
+      series: explorer_chains_verified{provider="oklink"}
