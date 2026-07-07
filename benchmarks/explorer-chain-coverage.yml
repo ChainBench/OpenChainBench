@@ -4,7 +4,7 @@ slug: explorer-chain-coverage
 number: "068"
 title: Block explorer chain coverage, registered vs fresh-indexed
 seo_title: "Best block explorer API chains 2026"
-seo_description: "Block explorer APIs ranked by chains with a working indexer, probe-verified daily against each vendor's own registry. Blockscout, Etherscan, Routescan, OKLink, Subscan, Blockchair."
+seo_description: "Block explorer APIs ranked by chains with a working indexer, probe-verified daily against each vendor's own registry. Blockscout, Etherscan, Routescan, OKLink, Blockchair."
 subtitle: Chains where each block explorer family serves a working indexer, probed daily against the vendor's own machine-readable registry, with a separate view over the 50 most active mainnets.
 category: Explorers
 status: live
@@ -40,11 +40,11 @@ abstract: |
   limited to explorers with free, reproducible API access.
 
 methodology:
-  - "registered = mainnet chains the vendor self-declares via a machine-readable surface: Blockscout's Chainscout registry, Etherscan's keyless chainlist, Routescan's blockchains endpoint, Blockchair's aggregate stats, OKLink's blockchain summary. Subscan publishes no machine list, so its network subdomains are extracted from its own API documentation (registered_source=pinned). Testnets are excluded everywhere."
-  - "verified = registered chains whose latest indexed block is younger than 60 minutes at probe time, read from each family's own API (Blockscout /api/v2/blocks, Routescan blocks, Etherscan getblocknobytime against its index, Blockchair best_block_time, Subscan scan/blocks, OKLink lastBlockTime). A 200 from a stalled indexer does not count: this measures working indexers, not reachable web servers."
+  - "registered = mainnet chains the vendor self-declares via a machine-readable surface: Blockscout's Chainscout registry, Etherscan's keyless chainlist, Routescan's blockchains endpoint, Blockchair's aggregate stats, OKLink's blockchain summary. Testnets are excluded everywhere."
+  - "verified = registered chains whose latest indexed block is younger than 60 minutes at probe time, read from each family's own API (Blockscout /api/v2/blocks, Routescan blocks, Etherscan getblocknobytime against its index, Blockchair best_block_time, OKLink lastBlockTime). A 200 from a stalled indexer does not count: this measures working indexers, not reachable web servers."
   - "top-50 = of the 50 most economically active mainnets (pinned quarterly from a DefiLlama TVL + fees blend, list in the harness source), how many pass the same freshness gate on this family. Raw chain counts reward hosting ghost rollups; this column answers what integrators actually ask and is the one where breadth leaders can lose."
   - "Operator attribution: many Blockscout instances are run by the chain teams themselves, not by Blockscout. The registry's hostedBy field is preserved in the harness so the distinction stays auditable; the count measures the software family's working footprint, which is the claim its marketing makes."
-  - "Cadence: one probe cycle per day, ~600 spaced upstream calls, every surface free. Blockscout's sweep talks to hundreds of distinct hosts through a small worker pool; single-host families are spaced 600ms. Quota-truncated cycles publish nothing. Etherscan, Subscan and OKLink need free self-serve keys and are skipped gracefully without them."
+  - "Cadence: one probe cycle per day, ~600 spaced upstream calls, every surface free. Blockscout's sweep talks to hundreds of distinct hosts through a small worker pool; single-host families are spaced 600ms. Quota-truncated cycles publish nothing. OKLink needs a free self-serve key and is skipped gracefully without it; Etherscan's freshness probes need one too, its registered count stays keyless."
   - "Source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/explorer-chain-coverage"
 
 findings:
@@ -69,7 +69,7 @@ faq:
   - q: "Why is a reachable explorer not automatically verified?"
     a: "Because the failure mode that matters is the silent one: a web server that answers 200 while its indexer stalled hours or weeks ago. The probe reads the timestamp of the latest indexed block from each family's own API and only counts chains where it is younger than 60 minutes. The window tolerates slow block producers while still catching stalled pipelines, and it can be tightened as the cohort matures."
   - q: "How often are the counts refreshed?"
-    a: "Once per day, roughly 600 spaced calls across the cohort, all on free surfaces. A failed or quota-truncated cycle publishes nothing and the previous values carry forward, so a temporary outage never zeroes a family's row. Etherscan, Subscan and OKLink activate with free self-serve keys and are skipped gracefully without them."
+    a: "Once per day, roughly 600 spaced calls across the cohort, all on free surfaces. A failed or quota-truncated cycle publishes nothing and the previous values carry forward, so a temporary outage never zeroes a family's row. OKLink activates with a free self-serve key and is skipped gracefully without it."
 
 # Metrics exposed by the explorer-chain-coverage harness:
 #   explorer_chains_verified{provider} -> fresh-indexed mainnets (p50)
@@ -134,19 +134,6 @@ providers:
       success: clamp_max(last_over_time(explorer_chains_verified{provider="blockchair"}[48h]) > bool 0, 1)
       sample_size: last_over_time(explorer_chains_verified{provider="blockchair"}[48h])
       series: explorer_chains_verified{provider="blockchair"}
-
-  - slug: subscan
-    name: Subscan
-    tag: Substrate explorer
-    formula: "Network subdomains from its own API docs whose scan/blocks returned a latest block younger than 60 minutes; no machine registry exists, so registered carries registered_source=pinned. Probed daily with a free key."
-    queries:
-      p50: last_over_time(explorer_chains_verified{provider="subscan"}[48h])
-      p90: last_over_time(explorer_chains_registered{provider="subscan"}[48h])
-      p99: last_over_time(explorer_chains_top50{provider="subscan"}[48h])
-      mean: last_over_time(explorer_chains_verified{provider="subscan"}[48h])
-      success: clamp_max(last_over_time(explorer_chains_verified{provider="subscan"}[48h]) > bool 0, 1)
-      sample_size: last_over_time(explorer_chains_verified{provider="subscan"}[48h])
-      series: explorer_chains_verified{provider="subscan"}
 
   - slug: oklink
     name: OKLink
