@@ -184,6 +184,8 @@ const RAW: Record<string, string> = {
 
   // ─── portfolio-chain-coverage bench providers (bench № 067) ───
   zerion: "/logos/zerion.svg",
+  allium: "/logos/allium.png",
+  goldrush: "/logos/covalent.svg",
 
   // ─── explorer-chain-coverage bench providers (bench № 068) ───
   routescan: "/logos/routescan.png",
