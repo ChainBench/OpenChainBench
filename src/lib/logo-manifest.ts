@@ -182,6 +182,12 @@ const RAW: Record<string, string> = {
   // ─── portfolio-chain-coverage bench providers (bench № 067) ───
   zerion: "/logos/zerion.svg",
 
+  // ─── explorer-chain-coverage bench providers (bench № 068) ───
+  routescan: "/logos/routescan.png",
+  blockchair: "/logos/blockchair.png",
+  subscan: "/logos/subscan.png",
+  oklink: "/logos/oklink.png",
+
   // ─── Hyperliquid frontends (bench № 030) ───
   "phantom-perps": "/logos/phantom-perps.svg",
   axiom: "/logos/axiom.png",
