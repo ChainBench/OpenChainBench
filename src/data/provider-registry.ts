@@ -470,6 +470,24 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   },
 
   // ─── Public RPC providers ─────────────────────────────────────
+  infura: {
+    url: "https://www.infura.io",
+    description:
+      "RPC infrastructure by Consensys, now part of the MetaMask Developer platform. Keyed endpoints across 40+ networks; free tier meters 3M credits per day.",
+    twitter: "@infura_io",
+  },
+  ankr: {
+    url: "https://www.ankr.com/rpc/",
+    description:
+      "Multi-chain RPC service covering 65+ chains on the freemium tier. One API key across chains; some networks are premium-gated.",
+    twitter: "@ankr",
+  },
+  chainstack: {
+    url: "https://chainstack.com",
+    description:
+      "Managed blockchain node platform. Deploys dedicated Global Nodes per chain with keyed HTTPS/WSS endpoints; free plan includes one node and 3M requests per month.",
+    twitter: "@ChainstackHQ",
+  },
   publicnode: {
     url: "https://www.publicnode.com",
     description:

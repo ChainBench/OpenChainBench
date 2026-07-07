@@ -96,6 +96,9 @@ const RAW: Record<string, string> = {
 
   // ─── Public RPC providers ───
   publicnode: "/logos/publicnode.avif",
+  infura: "/logos/infura.png",
+  ankr: "/logos/ankr.png",
+  chainstack: "/logos/chainstack.svg",
   drpc: "/logos/drpc.webp",
   "1rpc": "/logos/1rpc.svg",
   cloudflare: "/logos/cloudflare.svg",
