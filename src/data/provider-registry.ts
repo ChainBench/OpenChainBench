@@ -85,6 +85,24 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Solana RPC and data provider. Enhanced transactions, webhooks, DAS API for assets, and standard JSON-RPC.",
     twitter: "@heliuslabs",
   },
+  zerion: {
+    url: "https://zerion.io/api",
+    description:
+      "Wallet data API behind the Zerion app. Transactions, balances, positions and portfolio across 25+ chains, sub-second indexing claims, free tier at 60k calls/month.",
+    twitter: "@zerion",
+  },
+  allium: {
+    url: "https://www.allium.so",
+    description:
+      "Enterprise blockchain data platform. Real-time wallet and activity APIs across 100+ chains, plus SQL analytics; serves institutional data teams.",
+    twitter: "@alliumlabs",
+  },
+  goldrush: {
+    url: "https://goldrush.dev",
+    description:
+      "Multi-chain wallet data API by Covalent. Transactions, balances and NFT data across 100+ chains with a unified schema; free tier at 100k credits/month.",
+    twitter: "@GoldRush_dev",
+  },
   dune: {
     url: "https://dune.com",
     description:
