@@ -3,7 +3,7 @@ import path from "node:path";
 import type { MetadataRoute } from "next";
 import { getBenchmarks } from "@/data/benchmarks";
 import { COMPARE_PAIRS } from "@/data/compare-pairs";
-import { BRAND_WHITELIST } from "@/lib/compare/brand-whitelist";
+import { adHocPairs } from "@/lib/compare/adhoc-pairs";
 import { REMOVED_BENCH_SLUGS } from "@/middleware";
 import { isHlBuilderSlug } from "@/lib/hl-builder-stats";
 import { loadAllAlternatives } from "@/lib/alternatives";
@@ -228,9 +228,7 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
   // Pre-warm the HL-builder slug cache with a single call so the
   // Promise.all below doesn't race 100 concurrent getSpecs() reads
   // (each awaits the same spec load before the cache initializes,
-  // exhausting the file-descriptor pool during buildFullSitemap and
-  // timing out /sitemap.xml on the deploy-time smoke fetch — observed
-  // 2026-07-08, DOMException [AbortError]: This operation was aborted).
+  // exhausting the file-descriptor pool and timing out on prod).
   //
   // Tracked Hyperliquid builder frontends live under /hyperliquid/<slug>;
   // /products/<slug> 307-redirects for these slugs (products/[slug]
@@ -328,11 +326,8 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
   // genuinely comparable pairs Google was already crawling via internal
   // "vs" cross-sell links but couldn't rank because no sitemap signal.
   //
-  // HL builder hex slugs are excluded (they leak into the provider
-  // catalog but /compare/0x…-vs-… 404s at render). Chain slugs are
-  // excluded too — /compare pairs involving a chain still work but the
-  // chain hub is the canonical surface, and cross-listing dilutes.
-  const HEX_SLUG_RE = /^0x[0-9a-f]{4,}$/i;
+  // HL hex slugs + chain slugs are excluded inside adHocPairs (shared
+  // enumeration in src/lib/compare/adhoc-pairs.ts).
   const compareRoutes: MetadataRoute.Sitemap = [];
   const emittedPairSlugs = new Set<string>();
   const priorityByPairSlug = new Map<string, number>();
@@ -389,33 +384,15 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
   // alchemy-vs-moralis, chain-vs-chain, perp-vs-perp — 223 pairs) and
   // adds only genuinely rich non-brand pairs (3 with ≥ 3 shared).
   // Total: 226 ad-hoc + 21 curated ≈ 247 URLs.
+  // Enumeration shared with /compare (src/lib/compare/adhoc-pairs.ts)
+  // so every advertised pair URL is also internally linked — sitemap-
+  // only pairs were flagged as orphan pages (Ahrefs, 2026-07-08).
   const profiles = await safeLoad("providers", () => getProviders(), []);
-  const benchesBySlug = new Map<string, Set<string>>();
-  for (const p of profiles) {
-    if (HEX_SLUG_RE.test(p.slug)) continue;
-    if (CHAIN_BY_SLUG.has(p.slug)) continue;
-    const benches = new Set(p.appearances.map((a) => a.benchmark.slug));
-    if (benches.size >= 1) benchesBySlug.set(p.slug, benches);
-  }
-
-  const slugList = [...benchesBySlug.keys()].sort();
-  for (let i = 0; i < slugList.length; i += 1) {
-    const aSlug = slugList[i];
-    const aBenches = benchesBySlug.get(aSlug)!;
-    for (let j = i + 1; j < slugList.length; j += 1) {
-      const bSlug = slugList[j];
-      const bBenches = benchesBySlug.get(bSlug)!;
-      let shared = 0;
-      for (const s of aBenches) if (bBenches.has(s)) shared += 1;
-      const bothBrand = BRAND_WHITELIST.has(aSlug) && BRAND_WHITELIST.has(bSlug);
-      const threshold = bothBrand ? 1 : 3;
-      if (shared < threshold) continue;
-      const pairSlug = `${aSlug}-vs-${bSlug}`;
-      if (emittedPairSlugs.has(pairSlug)) continue;
-      emittedPairSlugs.add(pairSlug);
-      priorityByPairSlug.set(pairSlug, 0.5);
-      lastModByPairSlug.set(pairSlug, pairLastMod(aSlug, bSlug));
-    }
+  for (const pair of adHocPairs(profiles)) {
+    if (emittedPairSlugs.has(pair.slug)) continue;
+    emittedPairSlugs.add(pair.slug);
+    priorityByPairSlug.set(pair.slug, 0.5);
+    lastModByPairSlug.set(pair.slug, pairLastMod(pair.a, pair.b));
   }
 
   for (const pairSlug of emittedPairSlugs) {

@@ -152,16 +152,26 @@ export default async function BenchmarkPage({
   // every click and the chart silently falls back to the previous variant,
   // so two different region clicks render identical values.
   const declaredRegions = aggregate.dimensions?.region ?? [];
+  // Snapshot region points are keyed by the spec entries' `region:` field
+  // (historically `ap-southeast`) while dimension values use `sgp`. Without
+  // canonicalizing, the data-presence filter below silently drops the
+  // Singapore tab on every bench (regression introduced with the filter:
+  // prod showed the tab before it shipped).
+  const REGION_KEY_ALIASES: Record<string, string> = {
+    "ap-southeast": "sgp",
+    sgp: "sgp",
+  };
+  const canonRegion = (r: string) => REGION_KEY_ALIASES[r] ?? r;
   const regionsWithData = new Set<string>();
   for (const points of Object.values(aggregate.extras.regions ?? {})) {
     for (const pt of points as Array<{ region: string }>) {
-      if (pt?.region) regionsWithData.add(pt.region);
+      if (pt?.region) regionsWithData.add(canonRegion(pt.region));
     }
   }
   const sbr = aggregate.extras.seriesByRegion24h ?? {};
   for (const slug in sbr) {
     for (const r in sbr[slug]) {
-      regionsWithData.add(r);
+      regionsWithData.add(canonRegion(r));
     }
   }
   const regionOptions =
