@@ -83,6 +83,7 @@ function mergeWithPrevious(
   fresh: Benchmark,
   prev: MaterializedSnapshot | null,
   now: number,
+  declaredSlugs?: Set<string>,
 ): { bench: Benchmark; state: WorkerState } {
   const state: WorkerState = { providers: {}, rings: {} };
   const prevState = prev?.state;
@@ -111,6 +112,10 @@ function mergeWithPrevious(
   if (prevBench) {
     for (const pr of prevBench.results) {
       if (liveSlugs.has(pr.slug)) continue;
+      // Deliberately delisted providers (removed from the spec) must NOT
+      // be carried: the staleness carry exists for transient query
+      // failures, not for editorial removals (1RPC ghost row, 2026-07-09).
+      if (declaredSlugs && !declaredSlugs.has(pr.slug)) continue;
       const prevMeta: StalenessMeta = prevState?.providers[pr.slug] ?? {
         observedAt: prev?.builtAt ?? now,
       };
@@ -188,7 +193,7 @@ async function materializeOne(
   }
 
   const now = Date.now();
-  const { bench, state } = mergeWithPrevious(fresh, prev, now);
+  const { bench, state } = mergeWithPrevious(fresh, prev, now, new Set(spec.providers.map((p) => p.slug)));
 
   const snap: MaterializedSnapshot = {
     v: MAT_SCHEMA_VERSION,
