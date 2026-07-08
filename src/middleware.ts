@@ -44,20 +44,12 @@ const CANONICAL_NO_QUERY = new Set([
   "/api/openapi.json",
 ]);
 
-/**
- * Bench slugs that existed on production at some point and were later
- * removed (or that were never on production but their dev path could
- * have leaked into the index via staging crawl). 410 on prod, normal
- * render on dev / preview.
- *
- * Also re-exported so the sitemap can exclude these routes on prod;
- * emitting them advertises URLs that middleware immediately 410s,
- * which fails the sitemap-smoke gate and rolls back every deploy.
- */
-export const REMOVED_BENCH_SLUGS = new Set([
-  "bridge-revenue",
-  "evm-quote-latency",
-]);
+// Single source of truth for prod-excluded bench slugs. Lives in its
+// own module (not here) so the spec loader and the materialize worker
+// can import it without pulling next/server. Re-exported for the
+// sitemap, which historically imports it from "@/middleware".
+import { REMOVED_BENCH_SLUGS } from "@/lib/removed-benches";
+export { REMOVED_BENCH_SLUGS };
 
 const BENCH_PATH = /^\/benchmarks\/([a-z0-9][a-z0-9-]{0,79})\/?$/;
 // `/compare/<a>-vs-<b>` with both sides as standard provider slug
