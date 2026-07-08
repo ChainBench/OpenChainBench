@@ -181,9 +181,11 @@ export default async function BenchmarkPage({
           (r) => r.value === "all" || regionsWithData.has(r.value),
         );
   const kindOptions = aggregate.dimensions?.kind ?? [];
+  const venueOptions = aggregate.dimensions?.venue ?? [];
   const chain = chainOptions[0]?.value ?? null;
   const region = regionOptions[0]?.value ?? null;
   const kind = kindOptions[0]?.value ?? null;
+  const venue = venueOptions[0]?.value ?? null;
 
   // Variants (chain × region × kind) are NOT embedded anymore. The old
   // pre-fetch awaited every variant (rpc-capabilities: 39 full provider
@@ -524,9 +526,11 @@ export default async function BenchmarkPage({
             chainOptions={chainOptions}
             regionOptions={regionOptions}
             kindOptions={kindOptions}
+            venueOptions={venueOptions}
             initialChain={chain ?? null}
             initialRegion={region ?? null}
             initialKind={kind ?? null}
+            initialVenue={venue ?? null}
             hasLongHistory={benchmark.slug === "hyperliquid-frontends"}
           />
         </Suspense>
