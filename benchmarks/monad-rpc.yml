@@ -1,0 +1,192 @@
+# OpenChainBench. Bench № 071
+
+slug: monad-rpc
+number: "071"
+title: Fastest free Monad RPC, live no-key endpoint latency
+seo_title: "Fastest free Monad RPC 2026"
+seo_description: "{{best_name}} leads free Monad RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). 5 no-key providers measured every 30s from 3 regions."
+subtitle: HTTP round-trip latency for eth_getBlockByNumber against every free, no-key public Monad RPC endpoint, audited every 30 seconds from 3 regions.
+
+category: RPCs
+status: live
+metric: RPC latency
+unit: ms
+higher_is_better: false
+
+seo_intro: |
+  Monad shipped its parallel-execution EVM mainnet in November 2025
+  with 400 ms blocks and MonadBFT finality around 800 ms, and its
+  free RPC story is unusually rich for a chain this young. the
+  Foundation runs five official mirrors behind different infra
+  vendors (QuickNode, Alchemy, Goldsky, Ankr and its own nodes), and
+  the multi-chain gateways followed within weeks. We probe the
+  primary official endpoint plus dRPC, Tenderly Gateway, bloXroute
+  and OnFinality, every 30 seconds from three regions, with the same
+  anti-cache payload as every chain in the cluster. If you are
+  building on Monad and pasting a free RPC URL into your dapp, this
+  page is the live answer to which one deserves it.
+
+abstract: |
+  We measure the round-trip latency of a single, identical RPC call
+  (`eth_getBlockByNumber`) against every no-key public Monad endpoint
+  that sustains continuous probing, 5 providers, every 30 seconds,
+  from us-east, eu-west and Singapore. The harness classifies every
+  response (ok / http_err / jsonrpc_err / stale / timeout) so the
+  leaderboard rewards sustained, honest availability rather than a
+  fast error message. The cross-chain view lives on the parent
+  rpc-capabilities benchmark; this page is the Monad-scoped answer
+  with per-region breakdowns as a first-class dimension.
+
+methodology:
+  - "Cadence: every 30 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus `avg(quantile_over_time(...))`; per-region breakdowns are first-class via the region tabs."
+  - "Payload: `{\"jsonrpc\":\"2.0\",\"id\":<rotating>,\"method\":\"eth_getBlockByNumber\",\"params\":[\"latest\",false]}`. Plain HTTP POST, identical for every endpoint, no API key in any request. Non-cacheable by design: the latest-header fetch with a rotating id defeats edge caches that answer eth_blockNumber without touching a node."
+  - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms to 10 s), so percentiles are computed via Prometheus `quantile_over_time` over the last 24 hours."
+  - "Call-result classification: `ok` (HTTP 200 + non-empty result), `http_err`, `jsonrpc_err` (HTTP 200 carrying an error body), `stale` (more than 20 blocks behind the cross-provider tip), `timeout`. Latency without reliability is a misleading ranking signal."
+  - "This page is part of the per-chain RPC cluster derived from the cross-chain [rpc-capabilities](/benchmarks/rpc-capabilities) benchmark; the identical harness, methodology and exclusion rules apply on every chain. Every endpoint on this page was live-verified (eth_chainId match + anti-cache probe) before inclusion on 2026-07-08."
+  - "Chain scope: every query on this page is pinned to chain=\"monad\" (chain id 143, mainnet since November 2025). Provider coverage: 5 no-key endpoints (Monad Official, dRPC, Tenderly Gateway, bloXroute, OnFinality). Exclusions follow the cluster-wide rules documented on the parent benchmark."
+
+findings:
+  - "{{best_name}} currently leads the free Monad RPC field at {{best_p50}} (p50, 24h) across 5 measured providers."
+  - "{{name:monad-official}} answers at {{p50:monad-official}}. The Foundation fronts its primary endpoint with QuickNode infrastructure and rate-limits at 25 rps, generous for development traffic."
+  - "{{name:drpc}} sits at {{p50:drpc}} and {{name:tenderly}} at {{p50:tenderly}}: the multi-chain gateways reached Monad within weeks of mainnet, but route through their global meshes rather than chain-local nodes."
+  - "{{name:bloxroute}} at {{p50:bloxroute}} is the outlier entry: a BDN operator exposing a keyless endpoint, unusual for a company whose core product is paid low-latency access."
+
+faq:
+  - q: "What is the fastest free Monad RPC right now?"
+    a: "{{best_name}} currently leads at {{best_p50}} (p50 over 24h), measured against 5 no-key providers probed every 30 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples, so this page is the answer right now, not a quarterly snapshot."
+  - q: "Which Monad RPCs work without an API key in 2026?"
+    a: "Five endpoints sustain continuous keyless probing: the official rpc.monad.xyz (QuickNode-backed, 25 rps; four sibling mirrors exist at rpc1-rpc3.monad.xyz and rpc-mainnet.monadinfra.com on Alchemy, Goldsky, Ankr and Foundation infra), dRPC, Tenderly Gateway, bloXroute and OnFinality. All were live-verified (eth_chainId 143 + anti-cache probe) before inclusion."
+  - q: "How is Monad RPC latency measured on OpenChainBench?"
+    a: "One identical JSON-RPC POST (eth_getBlockByNumber latest, rotating request id) every 30 seconds against each provider from each of 3 regions, with the same plain HTTP client. Wall-clock round-trip is recorded at millisecond precision; p50/p90/p99 are computed via Prometheus quantile_over_time over 24 hours. Responses are classified so an endpoint stuck on an old head or returning errors behind HTTP 200 is never ranked as fastest."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
+
+prometheus:
+  window: 24h
+  freshness_metric: rpc_latency_milliseconds
+
+rank_matrix_query: avg by (provider, region) (ocb:rpc_latency_milliseconds:p50_24h{chain="monad"})
+
+dimensions:
+  region:
+    - { value: all,     label: All regions }
+    - { value: us-east, label: US-East }
+    - { value: eu-west, label: EU-West }
+    - { value: sgp,     label: Singapore }
+
+providers:
+  - slug: monad-official
+    name: Monad
+    tag: Foundation endpoint (rpc.monad.xyz, QuickNode-backed, 25 rps)
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 30s from 3 regions (us-east + eu-west + sgp) to Monad Official's no-key Monad endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="monad-official", chain="monad"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="monad-official", chain="monad"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="monad-official", chain="monad"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="monad-official", chain="monad"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="monad-official", chain="monad"}) / sum(ocb:rpc_call:rate_24h{provider="monad-official", chain="monad"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="monad-official", chain="monad"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="monad-official", chain="monad"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="monad-official", chain="monad", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="monad-official", chain="monad", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="monad-official", chain="monad", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="monad-official", chain="monad", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="monad-official", chain="monad", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="monad-official", chain="monad", region="sgp"}[1h])
+
+  - slug: drpc
+    name: dRPC
+    tag: Decentralized RPC mesh, consensus-checked
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 30s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key Monad endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="monad"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="drpc", chain="monad"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="drpc", chain="monad"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="drpc", chain="monad"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="drpc", chain="monad"}) / sum(ocb:rpc_call:rate_24h{provider="drpc", chain="monad"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="drpc", chain="monad"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="monad"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="monad", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="monad", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="monad", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="monad", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="monad", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="monad", region="sgp"}[1h])
+
+  - slug: tenderly
+    name: Tenderly Gateway
+    tag: Public gateway by Tenderly
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 30s from 3 regions (us-east + eu-west + sgp) to Tenderly Gateway's no-key Monad endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tenderly", chain="monad"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="tenderly", chain="monad"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="tenderly", chain="monad"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="tenderly", chain="monad"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="tenderly", chain="monad"}) / sum(ocb:rpc_call:rate_24h{provider="tenderly", chain="monad"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="tenderly", chain="monad"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="tenderly", chain="monad"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tenderly", chain="monad", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="tenderly", chain="monad", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tenderly", chain="monad", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="tenderly", chain="monad", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tenderly", chain="monad", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="tenderly", chain="monad", region="sgp"}[1h])
+
+  - slug: bloxroute
+    name: bloXroute
+    tag: BDN operator's public Monad endpoint
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 30s from 3 regions (us-east + eu-west + sgp) to bloXroute's no-key Monad endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="bloxroute", chain="monad"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="bloxroute", chain="monad"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="bloxroute", chain="monad"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="bloxroute", chain="monad"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="bloxroute", chain="monad"}) / sum(ocb:rpc_call:rate_24h{provider="bloxroute", chain="monad"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="bloxroute", chain="monad"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="bloxroute", chain="monad"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="bloxroute", chain="monad", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="bloxroute", chain="monad", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="bloxroute", chain="monad", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="bloxroute", chain="monad", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="bloxroute", chain="monad", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="bloxroute", chain="monad", region="sgp"}[1h])
+
+  - slug: onfinality
+    name: OnFinality
+    tag: Public endpoint, 80+ networks
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 30s from 3 regions (us-east + eu-west + sgp) to OnFinality's no-key Monad endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="onfinality", chain="monad"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="onfinality", chain="monad"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="onfinality", chain="monad"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="onfinality", chain="monad"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="onfinality", chain="monad"}) / sum(ocb:rpc_call:rate_24h{provider="onfinality", chain="monad"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="onfinality", chain="monad"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="onfinality", chain="monad"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="onfinality", chain="monad", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="onfinality", chain="monad", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="onfinality", chain="monad", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="onfinality", chain="monad", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="onfinality", chain="monad", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="onfinality", chain="monad", region="sgp"}[1h])
+

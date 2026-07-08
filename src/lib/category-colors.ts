@@ -13,6 +13,7 @@ export const CATEGORY_COLOR: Record<string, string> = {
   Bridges: "var(--color-warn, #c08a3c)",
   Wallets: "#7a6db8",
   RPCs: "#5da0a3",
+  Explorers: "#7a6fa8",
   // NFT APIs: indigo, distinct from the warm orange/red accents already
   // in use. Picks up OpenSea/Alchemy/Moralis brand palettes which all
   // cluster around blues/purples.

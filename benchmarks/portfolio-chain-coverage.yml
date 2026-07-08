@@ -1,0 +1,156 @@
+# OpenChainBench. Bench № 067
+
+slug: portfolio-chain-coverage
+number: "067"
+title: Wallet portfolio API chain coverage, listed vs probe-verified
+seo_title: "Best wallet portfolio API chains 2026"
+seo_description: "Wallet portfolio APIs ranked by chains that actually return balances, probe-verified daily against the vendors' own claims."
+subtitle: Chains where each wallet-portfolio API actually returns balances for identical public test addresses, probed daily and published next to the vendor's own self-declared chain list.
+category: Aggregators
+status: live
+metric: Chain coverage
+unit: count
+higher_is_better: true
+
+seo_intro: |
+  This benchmark measures how many blockchains each wallet-portfolio
+  API actually covers, not how many it claims. Every provider gets the
+  same daily probe. one call to its own machine-readable chain catalog
+  (the listed count) and a portfolio sweep over a shared set of public
+  test addresses that hold balances on many chains, one per non-EVM
+  chain plus one EVM address (the probe-verified count). A chain is verified when the API returns a
+  balance worth more than $1 on it. The gap between the two numbers is
+  the story. a chain in a marketing list is not the same as a chain
+  where the balance indexer actually works. On the first full sweep of
+  the shared address set (2026-07-06), CoinStats demonstrated 94 of
+  its 151 listed chains, Mobula 27 of 79 and Zerion 17 of 65.
+  Verified is an address-dependent lower bound. the test wallets do
+  not hold assets on every chain in existence, so a provider can cover
+  more chains than the probe observes, but every verified chain is one
+  where the API demonstrably returned real balances today.
+
+abstract: |
+  We benchmark wallet-portfolio APIs on two numbers per provider, once
+  per day. listed, the chain count the vendor self-declares through its
+  own catalog endpoint, and probe-verified, the number of distinct
+  chains where the vendor's portfolio API returned a balance above $1
+  for canonical public test addresses (a Binance-labeled EVM hot
+  wallet plus fixed Solana and Bitcoin addresses, identical across
+  providers). Both numbers are published side by side because
+  self-declared lists can be inflated while verified is a conservative,
+  address-dependent lower bound. The cohort is currently limited to
+  providers with free, reproducible API access; expansions are welcome.
+
+methodology:
+  - "Identical test addresses for every provider: one shared EVM address (0xF977814e90dA44bFA03b6295A0616a897441aceC, Binance 8 hot wallet, covers every EVM chain in one sweep) plus a pinned set of ~63 public high-balance non-EVM addresses, one per chain (exchange cold wallets, protocol treasuries, Cosmos community-pool accounts). The full list and sourcing rules live in the harness source; every provider that accepts an address type receives the identical address."
+  - "Verified threshold: a chain counts when the returned balance value exceeds $1; when a response carries no USD pricing at all, a native token amount above 0 counts instead. This filters dust and spam-token noise."
+  - "listed = chains the vendor self-declares via its own machine-readable catalog endpoint. verified = chains where the probe observed a real balance. The two are never mixed; both are published because self-declared lists can be inflated and verified is an address-dependent lower bound."
+  - "probed = chains tested with an address known to hold a real balance (validated against the chain's own explorer when pinned) where the API answered definitively. A miss only counts against a vendor when the wallet's target chain appears in the vendor's OWN catalog, so nobody is debited for chains they never claimed. verified/probed is the demonstrable indexer success rate on the vendor's claimed surface; listed minus probed is the residue no funded public address could be sourced for."
+  - "Providers without a catalog endpoint (Moralis) publish listed with listed_source=probe: the count of chains their portfolio API acknowledged during the probe, bounded by the harness candidate list. It is a floor on the vendor's surface, not a self-declared claim, and the metric label keeps the two comparable but distinguishable."
+  - "Invocation policy: every vendor is probed through its most precise documented invocation, never a convenience shortcut. CoinStats gets one call per catalog connectionId, Mobula gets explicit blockchains= targeting over its own catalog, Zerion gets one portfolio call per EVM probe wallet (45s timeout: it computes on demand), Moralis gets one net-worth call per accepted chain. A vendor is never penalized for a weakness of the probe protocol."
+  - "Cadence: one probe cycle every one to two days. Multi-chain sweeps space calls by 1.5s so no vendor sees a burst; per-call timeout is 20s (45s for vendors that compute on demand) with a single retry on 5xx or timeout only, never on 4xx. CoinStats long-tail probes rerun every ~9 days to respect its credit budget; its catalog and EVM sweep refresh every cycle and cached long-tail results are merged, so published numbers stay complete each cycle."
+  - "Failures (timeouts, rate limits, auth errors) leave the provider's previous gauges in place and increment portfolio_probe_errors_total, so a temporary outage does not silently drop a provider off the leaderboard."
+  - "Cohort limited to providers with free, reproducible API access; expansions welcome. Zapper is excluded pending an API key, DeBank offers no free tier, and Codex gates its balances query behind the paid Growth plan."
+  - "Source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/portfolio-chain-coverage"
+
+findings:
+  - "{{best_name}} currently leads at {{best_p50}} probe-verified chains across {{count}} measured providers. The number counts chains where the portfolio API returned a balance above $1 for the shared test addresses today, not chains that appear in a catalog or on a marketing page."
+  - "{{name:coinstats}} verifies {{p50:coinstats}} chains against a self-declared catalog of 151, notably more than the 120+ its marketing quotes. No vendor demonstrates its full list: on the first full sweep CoinStats verified about two thirds of its catalog, Mobula and Zerion roughly a third and a quarter of theirs."
+  - "{{name:mobula}} verifies {{p50:mobula}} chains and {{name:zerion}} verifies {{p50:zerion}}. Zerion's probe is EVM-only by API design (its portfolio endpoint takes one EVM address), while Mobula and CoinStats also accept the Solana and Bitcoin test addresses, which shapes what each verified count can include."
+  - "Verified is a lower bound, not an exhaustive coverage audit. The test wallets hold balances on many chains but not all, so a provider can support chains the probe never observes. What the number guarantees is that every verified chain returned real balances for a real address through the public API today."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/portfolio-chain-coverage
+
+prometheus:
+  window: 24h
+  expected_freshness_seconds: 172800
+
+faq:
+  - q: "Which portfolio API supports the most blockchains?"
+    a: "{{best_name}} currently leads at {{best_p50}} probe-verified chains across {{count}} measured providers. Probe-verified means the provider's portfolio API returned a balance above $1 on that chain for identical public test addresses within the last daily cycle, so the leaderboard reflects chains where the balance indexer demonstrably works, not chains claimed in a catalog."
+  - q: "Why publish both a listed and a verified chain count?"
+    a: "Because they answer different questions. listed is what the vendor self-declares through its own catalog endpoint and can be inflated by chains where indexing is partial or broken. verified is what the probe actually observed and is a conservative, address-dependent lower bound. On the first full sweep of the shared address set, CoinStats listed 151 chains and verified 94, Mobula 79 and 27, Zerion 65 and 17. Reading both numbers together tells you how much weight a vendor's own list deserves."
+  - q: "What does the probed column add?"
+    a: "It splits the gap between listed and verified into its two honest parts. probed counts chains tested with an address that demonstrably holds a real balance per the chain's own explorer, where the API gave a definitive answer; a failed probe only counts when the target chain is in the vendor's own catalog, so nobody is debited for chains they never claimed. So verified/probed is the indexer's real success rate on testable chains, and listed minus probed is the residue where no funded public address could be sourced, about which the bench stays silent. A chain that is probed but not verified is a documented indexer gap, not a guess."
+  - q: "Why are Zapper, DeBank, Dune and Codex not in the cohort?"
+    a: "The cohort is limited to providers with free, reproducible API access so anyone can rerun the harness and get the same numbers. Zapper is excluded for now pending an API key. DeBank offers no free API tier. Codex gates its balances query behind the paid Growth plan. Dune's Sim API, the natural candidate for its wallet balances product, is sunsetting on August 1, 2026 per its own site banner, so it cannot be measured on an ongoing basis. Expansions are welcome; the harness already ships a Zapper source that activates as soon as a key is configured."
+  - q: "How is Moralis measured without a chain catalog endpoint?"
+    a: "Moralis exposes no machine-readable chain catalog and every wallet call takes an explicit chain list, so its listed count carries listed_source=probe: the chains its net-worth endpoint accepted this cycle out of a candidate list mirroring its own supported-chains documentation, plus Solana through its separate gateway. That makes Moralis's listed a floor on its acknowledged surface rather than a self-declared claim, and the label is published so the distinction stays visible."
+  - q: "Does a low verified count mean the provider is bad?"
+    a: "No. verified is a lower bound that depends on where the shared test addresses hold balances. A provider can support chains the probe never observes, and Zerion's probe is EVM-only because its portfolio endpoint takes a single EVM address. What a low count does tell you is how much of the vendor's self-declared list was demonstrable with real addresses through the public API today."
+  - q: "Why do the numbers move by a chain or two between days?"
+    a: "Three benign reasons. The test addresses are live wallets: a balance can cross the $1 threshold in either direction. Some vendors compute portfolios on demand and a cold-cache wallet can time out one cycle and answer the next; timeouts are recorded as errors, never as failures, so they cost at most one cycle of visibility. And vendor catalogs themselves drift as chains get added or retired. Structural changes look like steps that persist across cycles; single-cycle wiggles of one or two chains are noise by design."
+  - q: "How often are the counts refreshed?"
+    a: "Once per day. Probes spend paid API credits, so the cadence is deliberately conservative, roughly 150 spaced calls across the whole cohort per cycle. A failed cycle leaves the provider's previous gauge values in place and buckets the failure in portfolio_probe_errors_total, so a temporary outage never silently zeroes a provider's row."
+
+# Real metrics exposed by the portfolio-chain-coverage harness:
+#   portfolio_chains_verified{provider} -> gauge, distinct chains with a
+#     real balance (> $1, or native amount > 0 when USD absent) for the
+#     canonical test addresses. Headline (slot p50).
+#   portfolio_chains_probed{provider} -> gauge, chains tested with a
+#     known-funded address and answered definitively (slot p99).
+#   portfolio_chains_listed{provider, listed_source} -> gauge, the
+#     vendor's self-declared chain count from its catalog endpoint
+#     (listed_source="declared"). Secondary column (slot p90).
+#   portfolio_probe_errors_total{provider, kind} -> counter, probe
+#     failures bucketed by kind.
+#   portfolio_last_probe_timestamp{provider} -> staleness alarm for the
+#     daily cadence.
+
+ledger_columns:
+  - { label: "Probe-verified chains", slot: p50, unit: count }
+  - { label: "Probed chains", slot: p99, unit: count }
+  - { label: "Listed chains", slot: p90, unit: count }
+
+providers:
+  - slug: coinstats
+    name: CoinStats
+    tag: Portfolio + market data
+    formula: "Distinct chains where CoinStats returned a balance above $1 for the shared test addresses (EVM in one call, Solana and Bitcoin via connectionId probes); listed is the row count of its /wallet/blockchains catalog. Probed daily."
+    queries:
+      p50: last_over_time(portfolio_chains_verified{provider="coinstats"}[48h])
+      p90: last_over_time(portfolio_chains_listed{provider="coinstats"}[48h])
+      p99: last_over_time(portfolio_chains_probed{provider="coinstats"}[48h])
+      mean: last_over_time(portfolio_chains_verified{provider="coinstats"}[48h])
+      success: clamp_max(last_over_time(portfolio_chains_verified{provider="coinstats"}[48h]) > bool 0, 1)
+      sample_size: last_over_time(portfolio_chains_verified{provider="coinstats"}[48h])
+      series: portfolio_chains_verified{provider="coinstats"}
+
+  - slug: zerion
+    name: Zerion
+    tag: Wallet + portfolio API
+    formula: "Distinct chains with more than $1 in Zerion's positions_distribution_by_chain for the shared EVM test address (EVM only by API design); listed is the chain count of its /v1/chains/ catalog. Probed daily."
+    queries:
+      p50: last_over_time(portfolio_chains_verified{provider="zerion"}[48h])
+      p90: last_over_time(portfolio_chains_listed{provider="zerion"}[48h])
+      p99: last_over_time(portfolio_chains_probed{provider="zerion"}[48h])
+      mean: last_over_time(portfolio_chains_verified{provider="zerion"}[48h])
+      success: clamp_max(last_over_time(portfolio_chains_verified{provider="zerion"}[48h]) > bool 0, 1)
+      sample_size: last_over_time(portfolio_chains_verified{provider="zerion"}[48h])
+      series: portfolio_chains_verified{provider="zerion"}
+
+  - slug: mobula
+    name: Mobula
+    tag: Aggregator + intent layer
+    formula: "Distinct cross_chain_balances keys above $1 from /wallet/portfolio, each wallet explicitly targeted via blockchains= over Mobula's own catalog; listed is its /api/1/blockchains count. Probed daily."
+    queries:
+      p50: last_over_time(portfolio_chains_verified{provider="mobula"}[48h])
+      p90: last_over_time(portfolio_chains_listed{provider="mobula"}[48h])
+      p99: last_over_time(portfolio_chains_probed{provider="mobula"}[48h])
+      mean: last_over_time(portfolio_chains_verified{provider="mobula"}[48h])
+      success: clamp_max(last_over_time(portfolio_chains_verified{provider="mobula"}[48h]) > bool 0, 1)
+      sample_size: last_over_time(portfolio_chains_verified{provider="mobula"}[48h])
+      series: portfolio_chains_verified{provider="mobula"}
+
+  - slug: moralis
+    name: Moralis
+    tag: Web3 data API
+    formula: "Distinct chains where Moralis net-worth returned more than $1 for the shared EVM address, plus a Solana gateway probe; no catalog endpoint, so listed counts chains its API accepted (listed_source=probe). Probed daily."
+    queries:
+      p50: last_over_time(portfolio_chains_verified{provider="moralis"}[48h])
+      p90: last_over_time(portfolio_chains_listed{provider="moralis"}[48h])
+      p99: last_over_time(portfolio_chains_probed{provider="moralis"}[48h])
+      mean: last_over_time(portfolio_chains_verified{provider="moralis"}[48h])
+      success: clamp_max(last_over_time(portfolio_chains_verified{provider="moralis"}[48h]) > bool 0, 1)
+      sample_size: last_over_time(portfolio_chains_verified{provider="moralis"}[48h])
+      series: portfolio_chains_verified{provider="moralis"}

@@ -51,6 +51,10 @@ func (t *chainTips) get(chain string) uint64 {
 
 var tips = newChainTips()
 
+// rpcEnvelope keeps Result as a plain string; still used by archive.go
+// (eth_blockNumber head lookup + eth_getBalance probes both return hex
+// strings). The latency probe below parses an object result and has
+// its own envelope.
 type rpcEnvelope struct {
 	Result string `json:"result"`
 	Error  *struct {
@@ -59,11 +63,34 @@ type rpcEnvelope struct {
 	} `json:"error"`
 }
 
-// callBlockNumber issues `eth_blockNumber` and classifies the response
-// into one of: ok, http_err, jsonrpc_err, timeout. Staleness is added
-// by the caller because it requires the cross-provider tip context.
-func callBlockNumber(ctx context.Context, url string) (block uint64, result string, latencyMs float64, err error) {
-	body := []byte(`{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}`)
+type rpcBlockEnvelope struct {
+	Result json.RawMessage `json:"result"`
+	Error  *struct {
+		Code    int    `json:"code"`
+		Message string `json:"message"`
+	} `json:"error"`
+}
+
+type blockHeader struct {
+	Number string `json:"number"`
+}
+
+// callLatestBlock issues `eth_getBlockByNumber("latest", false)` and
+// classifies the response into one of: ok, http_err, jsonrpc_err,
+// timeout. Staleness is added by the caller because it requires the
+// cross-provider tip context.
+//
+// Anti-cache probe design. The previous probe (`eth_blockNumber`) is
+// served straight from some providers' edge caches without touching a
+// node, which let cache-fronted gateways top the latency leaderboard
+// on cache hits rather than real RPC work. Fetching the full latest
+// header with a rotating request id defeats body-keyed edge caches;
+// the header's `number` field keeps the staleness check intact.
+func callLatestBlock(ctx context.Context, url string) (block uint64, result string, latencyMs float64, err error) {
+	body := []byte(fmt.Sprintf(
+		`{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["latest",false],"id":%d}`,
+		time.Now().UnixNano(),
+	))
 	req, _ := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", "OpenChainBench/1.0 (+https://openchainbench.com)")
@@ -90,17 +117,24 @@ func callBlockNumber(ctx context.Context, url string) (block uint64, result stri
 	if err != nil {
 		return 0, "http_err", latencyMs, err
 	}
-	var r rpcEnvelope
+	var r rpcBlockEnvelope
 	if err := json.Unmarshal(raw, &r); err != nil {
 		return 0, "http_err", latencyMs, err
 	}
 	if r.Error != nil {
 		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("rpc -%d: %s", r.Error.Code, r.Error.Message)
 	}
-	if r.Result == "" {
+	if len(r.Result) == 0 || string(r.Result) == "null" {
 		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("empty result")
 	}
-	n, err := strconv.ParseUint(strings.TrimPrefix(r.Result, "0x"), 16, 64)
+	var hdr blockHeader
+	if err := json.Unmarshal(r.Result, &hdr); err != nil {
+		return 0, "jsonrpc_err", latencyMs, err
+	}
+	if hdr.Number == "" {
+		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("header missing number")
+	}
+	n, err := strconv.ParseUint(strings.TrimPrefix(hdr.Number, "0x"), 16, 64)
 	if err != nil {
 		return 0, "jsonrpc_err", latencyMs, err
 	}
@@ -135,7 +169,7 @@ func probeOne(ctx context.Context, c Chain, p Provider) {
 	tick := func() {
 		probeCtx, cancel := context.WithTimeout(ctx, probeTimeout)
 		defer cancel()
-		block, result, latency, err := callBlockNumber(probeCtx, p.URL)
+		block, result, latency, err := callLatestBlock(probeCtx, p.URL)
 
 		if result == "ok" {
 			tips.update(c.Slug, block)

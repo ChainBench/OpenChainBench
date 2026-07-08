@@ -16,6 +16,14 @@ import (
 // Measures indexation latency: time between on-chain event and WebSocket receipt
 // ============================================================================
 
+// Post-reconnect grace period: Mobula WS replays buffered/old trades right
+// after a (re)connect, which show up as multi-second "lag" that is NOT real
+// indexation latency. During this window we do NOT feed the alerting gauges
+// (mobula_head_lag_detailed_seconds & co) so #alerting-aggregator-latency
+// stays quiet on reconnect bursts. The head_lag_seconds bench gauge keeps
+// being fed (no spike alert on it; keeps AggregatorHeadLagStale happy).
+const reconnectGracePeriod = 10 * time.Second
+
 // Pool configurations for head lag monitoring
 type HeadLagPool struct {
 	Name       string // Human readable name
@@ -84,9 +92,11 @@ func runMobulaHeadLagMonitor(config *Config, stopChan <-chan struct{}, wg *sync.
 			return
 		default:
 			err := connectAndMonitorMobula(config, stopChan)
+			RecordWSConnected("mobula", config.MonitorRegion, false)
 			if err != nil {
-				log.Printf("[HEAD-LAG][MOBULA] Connection error: %v. Reconnecting in %v...", err, reconnectDelay)
-				
+				RecordWSReconnect("mobula", config.MonitorRegion)
+				log.Printf("[HEAD-LAG][MOBULA] 🔌 DISCONNECTED: %v. Reconnecting in %v...", err, reconnectDelay)
+
 				select {
 				case <-stopChan:
 					return
@@ -136,7 +146,9 @@ func connectAndMonitorMobula(config *Config, stopChan <-chan struct{}) error {
 		return fmt.Errorf("subscribe failed: %w", err)
 	}
 
-	fmt.Printf("[HEAD-LAG][MOBULA] Subscribed to %d pools\n", len(items))
+	connectedAt := time.Now()
+	RecordWSConnected("mobula", config.MonitorRegion, true)
+	log.Printf("[HEAD-LAG][MOBULA] ✅ CONNECTED — subscribed to %d pools (alert-gauge grace period: %v)", len(items), reconnectGracePeriod)
 
 	// Start ping goroutine
 	pingDone := make(chan struct{})
@@ -210,19 +222,28 @@ func connectAndMonitorMobula(config *Config, stopChan <-chan struct{}) error {
 			// Track latest tx per pool so alert annotations can link to it
 			RecordMobulaLastTx(chainName, config.MonitorRegion, trade.Pair, trade.Hash)
 
-			// Record detailed metric with breakdown
-			RecordMobulaHeadLagDetailed(
-				chainName,
-				config.MonitorRegion,
-				trade.Pair,
-				trade.Hash,
-				totalLagMs,
-				mobulaLagMs,
-				networkLagMs,
-				onChainTime.Format("2006-01-02T15:04:05Z"),
-				mobulaProcessTime.Format("2006-01-02T15:04:05Z"),
-				receiveTime.Format("2006-01-02T15:04:05Z"),
-			)
+			// Post-reconnect grace: don't feed the alerting gauges with
+			// replayed/buffered trades from the fresh connection.
+			if time.Since(connectedAt) < reconnectGracePeriod {
+				if totalLagMs > 2000 {
+					log.Printf("[HEAD-LAG][MOBULA][%s] ⏭️  GRACE: late trade %.2fs within %v of reconnect — alert gauge NOT updated | Tx: %s",
+						chainName, lagSeconds, reconnectGracePeriod, trade.Hash)
+				}
+			} else {
+				// Record detailed metric with breakdown
+				RecordMobulaHeadLagDetailed(
+					chainName,
+					config.MonitorRegion,
+					trade.Pair,
+					trade.Hash,
+					totalLagMs,
+					mobulaLagMs,
+					networkLagMs,
+					onChainTime.Format("2006-01-02T15:04:05Z"),
+					mobulaProcessTime.Format("2006-01-02T15:04:05Z"),
+					receiveTime.Format("2006-01-02T15:04:05Z"),
+				)
+			}
 
 			// Enhanced logging for spikes
 			if totalLagMs > 3000 {
@@ -325,7 +346,9 @@ func runCodexHeadLagMonitor(config *Config, stopChan <-chan struct{}, wg *sync.W
 			log.Printf("[HEAD-LAG][CODEX] 🔄 Connection attempt #%d (proxy rotation enabled)", attemptNum)
 
 			err := connectAndMonitorCodex(config, stopChan)
+			RecordWSConnected("codex", config.MonitorRegion, false)
 			if err != nil {
+				RecordWSReconnect("codex", config.MonitorRegion)
 				consecutiveFailures++
 				log.Printf("[HEAD-LAG][CODEX] ❌ Connection attempt #%d failed (%d consecutive): %v", attemptNum, consecutiveFailures, err)
 
@@ -492,6 +515,7 @@ func connectAndMonitorCodex(config *Config, stopChan <-chan struct{}) error {
 
 	log.Printf("[HEAD-LAG][CODEX] ✅ Subscribed to %d pools", len(headLagPools))
 	log.Printf("[HEAD-LAG][CODEX] 🎉 Connection fully established! Waiting for events...")
+	RecordWSConnected("codex", config.MonitorRegion, true)
 
 	// graphql-transport-ws keepalive: send {"type":"ping"} every 20s.
 	// Without this, the rotating proxy (or Codex itself) silently kills idle

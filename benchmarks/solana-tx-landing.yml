@@ -1,0 +1,218 @@
+# OpenChainBench. Bench № 016
+
+slug: solana-tx-landing
+number: "016"
+title: Solana transaction landing services market share
+seo_title: "Solana tx landing services benchmark 2026"
+seo_description: "Live observational benchmark of Solana tx landing services. Market share by tx count, attributed via tip wallets."
+subtitle: Share of tipped Solana transactions attributed to each landing service, counted via known on-chain tip wallets. Observational, no transactions sent.
+category: Trading
+status: live
+metric: Tx count (24h)
+unit: count
+higher_is_better: true
+
+disclaimer: |
+  Three caveats. (1) Market share, NOT landing rate, measuring success rates would require sending controlled tx, which costs SOL. (2) Jito is over-counted, other services (Helius Sender, Astralane, bloXroute) fan-out tips to Jito alongside their own wallet, inflating Jito's counter. (3) High share ≠ best, Nozomi has tiny share but charges 10x higher tips for guaranteed inclusion. Pick on latency / cost / reliability fit, not leaderboard position.
+
+seo_intro: |
+  This benchmark answers the question every Solana dev choosing a
+  transaction landing service asks. who actually carries the flow,
+  what does it cost, and is it growing or shrinking. Marketing
+  pages quote self-reported "99% landing rate" without methodology;
+  this page measures the reality on-chain by observing the known
+  tip wallets each service publishes in its docs. Every confirmed
+  Solana transaction that pays a tip to one of ~72 known landing-
+  service wallets is attributed to that service. Zero on-chain
+  footprint, we don't send tx ourselves, we watch the chain.
+  Coverage. 8 services with cleanly attributable tip wallets.
+  Jito Block Engine (the OG, 8 wallets), Helius Sender (10 wallets,
+  disjoint from Jito's pool), Nozomi by Temporal Labs (17 wallets
+  with `noz` vanity prefix), bloXroute Trader API (17 `bLx` wallets),
+  0slot.trade (10 wallets), NextBlock (8 wallets), Astralane Iris,
+  SolanaVibeStation Lightspeed. Blind spots. Syncro Sender (per-
+  customer tip wallets, undisclosed), Slipstream (pure router whose
+  tx land via underlying senders' wallets and get attributed to
+  those), and any direct-RPC tx that doesn't pay a tip (a large
+  share of total Solana traffic, but not what this bench measures).
+
+abstract: |
+  We attribute Solana transactions to their landing service by
+  watching the on-chain tip wallets each service documents publicly.
+  A single WebSocket connection to mainnet-beta subscribes via
+  `logsSubscribe(mentions=[tip_wallet], commitment=confirmed)` for
+  each of ~72 tip wallets across 8 services. Every confirmed
+  notification increments a per-service counter; signatures are
+  deduplicated against a 50k-entry LRU so reconnect replays don't
+  double-count. Failed transactions (Err != null) are excluded -
+  they didn't actually land. The headline metric is total
+  landed-and-tipped tx attributed to each service in the last 24
+  hours, surfaced as a leaderboard sorted by volume. This is the
+  observational counterpart to a controlled landing-rate benchmark.
+  it costs nothing to run (no tx sent, no SOL spent), provides
+  market-share signal that the controlled approach cannot (real
+  user behaviour, not synthetic probes), and stays neutral
+  (services can't fingerprint our probes, there are no probes).
+  Limitations. (a) Helius Sender fans some tx to Jito under the
+  hood; if Helius's own tip wallet is paid, attribution is clean,
+  but Helius's "dual-path" fallback to Jito-only payment would be
+  miscounted as Jito. (b) Services rotating tip wallets without
+  doc updates introduce silent under-counting until the new
+  addresses are added to the harness. The harness logs every
+  unattributable tip-pattern tx so the gap surfaces in operator
+  metrics.
+
+methodology:
+  - "Source: `wss://api.mainnet-beta.solana.com` public WebSocket, no API key. One `logsSubscribe({mentions:[wallet]}, {commitment:confirmed})` call per known tip wallet. Server-side filtered, bandwidth scales with matched traffic, not full firehose."
+  - "Attribution: 72 tip wallets across 8 services. Jito (8), Helius Sender (10), Nozomi (17), bloXroute (17), 0slot (10), NextBlock (8), Astralane (1), SolanaVibeStation (1). Every signature carries to exactly one service because the wallet sets are disjoint."
+  - "Dedup: 50,000-entry LRU keyed by signature. Reconnects can replay a few seconds of notifications, without dedup we'd double-count attribution. Memory cost ~4 MB."
+  - "Failed tx filter: notifications with `err != null` are dropped. The bench measures LANDED tx, not submission attempts. Failed-tx flow is its own measurement and lives outside this bench."
+  - "Reconnect: WebSocket disconnects (mainnet-beta is best-effort and kicks idle / overloaded clients) trigger exponential backoff 2s → 60s cap. Every (service, subscription) is re-established on reconnect; `solana_landing_reconnects_total` surfaces stability over the day."
+  - "Blind spots. Syncro Sender (P2P.org) uses per-customer tip wallets not publicly documented, invisible. Slipstream is a router that routes through underlying senders, so its tx are attributed to the underlying service (Jito/Nozomi/etc.). Direct-RPC tx that pay only a priority fee (no tip to a landing service) are not measured, they constitute the majority of Solana volume but they're not the subject of this bench."
+  - "Excluded by design: time-to-land, success rate per service, geographic latency. Those would require sending controlled tx (active probing) which costs SOL and risks services fingerprinting our probes. This bench is purely observational."
+
+findings:
+  - "{{best_name}} currently carries {{best_p50}} of attributed landed tx over the last 24 h, across {{count}} measured services. The current leader's position reflects default integrations: most Solana wallets and trading bots ship with one landing service preconfigured, so flow concentrates on whoever won the integration race rather than on per-tx merit."
+  - "{{name:helius-sender}} ships {{p50:helius-sender}}. Helius Sender's strength is the dual-path fan-out (Jito + SWQoS staked connections) which gives it second-place reach without owning the volume Jito does."
+  - "{{name:nozomi}} carries {{p50:nozomi}}. Nozomi has tiny share by volume but historically charges 10x higher tips per tx, used by serious traders who treat the higher tip as guaranteed-inclusion insurance rather than discretionary spend."
+  - "{{name:bloxroute}} sits at {{p50:bloxroute}}. bloXroute Trader API serves institutional flow with multi-path BDN propagation. Volume share is smaller than its revenue share because individual tips are higher."
+  - "{{worst_name}} trails at {{worst_p50}}. The long tail (NextBlock, Astralane, SolanaVibeStation, 0slot) collectively carries a few percent of attributed flow. These services compete on specific edges (regional co-location, validator stake size, tip floor) rather than universal coverage."
+
+faq:
+  - q: "Why are the p50 / p90 / p99 columns identical?"
+    a: "This bench has no latency dimension, so the percentile slots are repurposed: every aggregate column carries the same 24h attributed-tx count, and the Success column reports the harness's chain-subscription health rather than any per-service delivery rate. The ranking signal is the count itself (market share); the columns exist because the ledger layout is shared with latency benches."
+  - q: "What is a Solana landing service?"
+    a: "Solana has no traditional mempool. Transactions go directly to the current and next slot leader. During congestion, leaders drop transactions they can't process, they're simply lost, not queued. Landing services help your tx avoid being dropped via various tricks. direct connections to leaders (Nozomi, 0slot), stake-weighted QoS pools (Helius Sender, Triton Cascade), tip-based bundle auctions (Jito), multi-path propagation (bloXroute, Astralane). This bench measures which services actually carry the on-chain flow today."
+  - q: "Why observational? Why not measure landing rate directly?"
+    a: "Sending controlled tx through each service to measure landing rate costs real SOL (every tx = base fee + tip + compute units, all paid to validators, none recoverable). At a 30 s cadence across 8 services and 3 regions, that's ~$11,700/month. The observational approach costs $0 because we don't send anything, we watch the chain. Trade-off. observational tells you 'who is used' (market share, tip economics, growth); controlled tells you 'who lands best' (per-service success rate). Different questions, both useful. This is the observational answer."
+  - q: "How is each tx attributed to a service?"
+    a: "Each landing service publishes a list of known tip wallet addresses in its docs (Jito has 8, Nozomi has 17, etc.). When a user routes a tx through a service, the tx includes a transfer to that service's tip wallet. We watch all 72 tip wallets via `logsSubscribe(mentions=[wallet])` and attribute each notification to the owning service. Wallet sets are disjoint, no overlap between services, so attribution is unambiguous. The pattern is verified against real mainnet blocks: 95-97% of tip-paying tx attribute cleanly, zero multi-service overlaps observed."
+  - q: "Why does Jito have such dominant share?"
+    a: "Three reasons. (1) First-mover. Jito launched the tip+bundle pattern in 2022 and got every major wallet (Phantom, Backpack) + every major trading bot to integrate first. (2) Lowest tip floor, Jito accepts tips as low as 1,000 lamports versus 0.001 SOL minimums on most competitors. (3) Atomic bundles, only Jito offers the 5-tx atomic group that DEX aggregators (Jupiter, Raydium) use for sandwich-proof swaps. The result is structural: Jito carries the default flow even when competitors are technically faster on specific paths."
+  - q: "Why does Nozomi look small here?"
+    a: "Nozomi's share by tx count is small but its share by tip revenue is much larger. Nozomi targets serious traders who pay 0.001+ SOL per tx as guaranteed-inclusion insurance, while Jito averages ~0.0001 SOL per tx as casual usage. Blockworks Research's 'Solana Block Building Wars' (Feb 2026) documented Nozomi at ~$1M tips on 2M swaps vs Jito's $300k on 24M swaps, a 130x premium per swap. For 'who do serious traders use', track Nozomi. For 'who handles default flow', track Jito."
+  - q: "What about Syncro Sender and Slipstream?"
+    a: "Syncro Sender (P2P.org) uses per-customer tip wallets that aren't publicly documented, every customer gets a private address. We can't enumerate them, so Syncro flow is invisible to this bench. Estimated share: small (Syncro launched in 2025 and hasn't disclosed adoption metrics). Slipstream is a router that calls the underlying senders' SDKs, its tx land via Jito/Nozomi/0slot tip wallets and are attributed to those services. So Slipstream-originated flow shows up correctly counted, just under the underlying service's name. If you specifically want to know 'what % uses Slipstream as the router', this bench can't answer that, Slipstream itself doesn't add an identifying memo."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/solana-tx-landing
+
+prometheus:
+  window: 24h
+
+# Real metrics emitted by the solana-tx-landing harness:
+#   solana_landing_tx_total{service}              counter (attributed landed tx)
+#   solana_landing_subscription_health{service}   gauge (0|1)
+#   solana_landing_reconnects_total               counter
+#   solana_landing_last_slot{service}             gauge
+#
+# Each "provider" below is one landing service. The metric is
+# observed throughput (tx/24h), so `higher_is_better: true` -
+# the leader is the one carrying the most flow. p50/p90/p99
+# columns are filled with the 24h increase (single scalar) for
+# consistency with the OCB renderer; they're not statistical
+# distributions because each bench probe is a single counter.
+
+providers:
+  - slug: jito
+    name: Jito
+    tag: Block Engine, atomic bundles + tip auction, OG since 2022
+    formula: "Total count over the last 24h of confirmed mainnet txs that paid a tip to one of Jito's 8 documented tip wallets, deduped via 50k-entry LRU."
+    queries:
+      p50: sum(increase(solana_landing_tx_total{service="jito"}[24h]))
+      p90: sum(increase(solana_landing_tx_total{service="jito"}[24h]))
+      p99: sum(increase(solana_landing_tx_total{service="jito"}[24h]))
+      mean: sum(increase(solana_landing_tx_total{service="jito"}[24h]))
+      success: avg_over_time(solana_landing_subscription_health{service="jito"}[24h])
+      sample_size: sum(increase(solana_landing_tx_total{service="jito"}[24h]))
+      series: sum(rate(solana_landing_tx_total{service="jito"}[5m]))
+
+  - slug: helius-sender
+    name: Helius
+    tag: Dual-path fan-out (Jito + SWQoS staked connections), 7 regions
+    formula: "Total count over the last 24h of confirmed mainnet txs that paid a tip to one of Helius Sender's 10 documented tip wallets, deduped via 50k-entry LRU."
+    queries:
+      p50: sum(increase(solana_landing_tx_total{service="helius-sender"}[24h]))
+      p90: sum(increase(solana_landing_tx_total{service="helius-sender"}[24h]))
+      p99: sum(increase(solana_landing_tx_total{service="helius-sender"}[24h]))
+      mean: sum(increase(solana_landing_tx_total{service="helius-sender"}[24h]))
+      success: avg_over_time(solana_landing_subscription_health{service="helius-sender"}[24h])
+      sample_size: sum(increase(solana_landing_tx_total{service="helius-sender"}[24h]))
+      series: sum(rate(solana_landing_tx_total{service="helius-sender"}[5m]))
+
+  - slug: nozomi
+    name: Nozomi
+    tag: Temporal Labs, direct-to-leader, 9 co-located regions, premium tips
+    formula: "Total count over the last 24h of confirmed mainnet txs that paid a tip to one of Nozomi's 17 `noz`-prefixed tip wallets, deduped via 50k-entry LRU."
+    queries:
+      p50: sum(increase(solana_landing_tx_total{service="nozomi"}[24h]))
+      p90: sum(increase(solana_landing_tx_total{service="nozomi"}[24h]))
+      p99: sum(increase(solana_landing_tx_total{service="nozomi"}[24h]))
+      mean: sum(increase(solana_landing_tx_total{service="nozomi"}[24h]))
+      success: avg_over_time(solana_landing_subscription_health{service="nozomi"}[24h])
+      sample_size: sum(increase(solana_landing_tx_total{service="nozomi"}[24h]))
+      series: sum(rate(solana_landing_tx_total{service="nozomi"}[5m]))
+
+  - slug: bloxroute
+    name: bloXroute
+    tag: Multi-path BDN propagation, institutional flow
+    formula: "Total count over the last 24h of confirmed mainnet txs that paid a tip to one of bloXroute's 17 `bLx`-prefixed tip wallets, deduped via 50k-entry LRU."
+    queries:
+      p50: sum(increase(solana_landing_tx_total{service="bloxroute"}[24h]))
+      p90: sum(increase(solana_landing_tx_total{service="bloxroute"}[24h]))
+      p99: sum(increase(solana_landing_tx_total{service="bloxroute"}[24h]))
+      mean: sum(increase(solana_landing_tx_total{service="bloxroute"}[24h]))
+      success: avg_over_time(solana_landing_subscription_health{service="bloxroute"}[24h])
+      sample_size: sum(increase(solana_landing_tx_total{service="bloxroute"}[24h]))
+      series: sum(rate(solana_landing_tx_total{service="bloxroute"}[5m]))
+
+  - slug: 0slot
+    name: 0slot
+    tag: Premium QUIC leader-direct sender
+    formula: "Total count over the last 24h of confirmed mainnet txs that paid a tip to one of 0slot.trade's 10 documented tip wallets, deduped via 50k-entry LRU."
+    queries:
+      p50: sum(increase(solana_landing_tx_total{service="0slot"}[24h]))
+      p90: sum(increase(solana_landing_tx_total{service="0slot"}[24h]))
+      p99: sum(increase(solana_landing_tx_total{service="0slot"}[24h]))
+      mean: sum(increase(solana_landing_tx_total{service="0slot"}[24h]))
+      success: avg_over_time(solana_landing_subscription_health{service="0slot"}[24h])
+      sample_size: sum(increase(solana_landing_tx_total{service="0slot"}[24h]))
+      series: sum(rate(solana_landing_tx_total{service="0slot"}[5m]))
+
+  - slug: nextblock
+    name: NextBlock
+    tag: SWQoS sender, TX Stream API
+    formula: "Total count over the last 24h of confirmed mainnet txs that paid a tip to one of NextBlock's 8 documented tip wallets, deduped via 50k-entry LRU."
+    queries:
+      p50: sum(increase(solana_landing_tx_total{service="nextblock"}[24h]))
+      p90: sum(increase(solana_landing_tx_total{service="nextblock"}[24h]))
+      p99: sum(increase(solana_landing_tx_total{service="nextblock"}[24h]))
+      mean: sum(increase(solana_landing_tx_total{service="nextblock"}[24h]))
+      success: avg_over_time(solana_landing_subscription_health{service="nextblock"}[24h])
+      sample_size: sum(increase(solana_landing_tx_total{service="nextblock"}[24h]))
+      series: sum(rate(solana_landing_tx_total{service="nextblock"}[5m]))
+
+  - slug: astralane
+    name: Astralane
+    tag: Validator co-located, leader-schedule-aware routing
+    formula: "Total count over the last 24h of confirmed mainnet txs that paid a tip to Astralane Iris's documented tip wallet, deduped via 50k-entry LRU."
+    queries:
+      p50: sum(increase(solana_landing_tx_total{service="astralane"}[24h]))
+      p90: sum(increase(solana_landing_tx_total{service="astralane"}[24h]))
+      p99: sum(increase(solana_landing_tx_total{service="astralane"}[24h]))
+      mean: sum(increase(solana_landing_tx_total{service="astralane"}[24h]))
+      success: avg_over_time(solana_landing_subscription_health{service="astralane"}[24h])
+      sample_size: sum(increase(solana_landing_tx_total{service="astralane"}[24h]))
+      series: sum(rate(solana_landing_tx_total{service="astralane"}[5m]))
+
+  - slug: solanavibestation
+    name: SolanaVibeStation
+    tag: Lightspeed validator-pool tip-based sender
+    formula: "Total count over the last 24h of confirmed mainnet txs that paid a tip to SolanaVibeStation's documented Lightspeed tip wallet, deduped via 50k-entry LRU."
+    queries:
+      p50: sum(increase(solana_landing_tx_total{service="solanavibestation"}[24h]))
+      p90: sum(increase(solana_landing_tx_total{service="solanavibestation"}[24h]))
+      p99: sum(increase(solana_landing_tx_total{service="solanavibestation"}[24h]))
+      mean: sum(increase(solana_landing_tx_total{service="solanavibestation"}[24h]))
+      success: avg_over_time(solana_landing_subscription_health{service="solanavibestation"}[24h])
+      sample_size: sum(increase(solana_landing_tx_total{service="solanavibestation"}[24h]))
+      series: sum(rate(solana_landing_tx_total{service="solanavibestation"}[5m]))

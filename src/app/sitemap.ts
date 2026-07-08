@@ -9,7 +9,6 @@ import { loadAllAnswers } from "@/lib/answers";
 import { CHAIN_BY_SLUG, CHAINS, getBenchmarksForChain } from "@/lib/chains";
 import { canonicalChainSlug } from "@/lib/chain-aliases";
 import { getProvider, getProviders, getProviderSlugs } from "@/lib/providers";
-import { isHlBuilderSlug } from "@/lib/hl-builder-stats";
 import { CATEGORIES } from "@/lib/categories";
 import { SITE } from "@/data/site";
 import type { Benchmark } from "@/types/benchmark";
@@ -220,17 +219,10 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
   // so listing them in the sitemap pollutes it with permanent
   // redirects. The canonical /chains/<slug> URLs are emitted below
   // by chainRoutes.
-  //
-  // Same treatment for HL frontend slugs (PR #841): /products/<hl-slug>
-  // 307-redirects to /hyperliquid/<slug>. Emitting the /products URL
-  // in the sitemap makes the deploy-time smoke test fail on redirect,
-  // and search engines see a permanent-redirect chain instead of a
-  // clean canonical.
   const validatedSlugs = (
     await Promise.all(
       providerSlugs.map(async (slug) => {
         if (CHAIN_BY_SLUG.has(slug)) return null;
-        if (await isHlBuilderSlug(slug)) return null;
         const p = await getProvider(slug);
         return p ? slug : null;
       }),
@@ -416,31 +408,23 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
 
   // Category hub pages. Closed enum from CATEGORIES; prerendered
   // routes that group benches by domain (Blockchains, Bridges, …).
-  // Skip empty categories: the page component 404s when no bench matches,
-  // which fails the deploy-time sitemap smoke test and blocks every CI
-  // deploy on main (observed 2026-07-03 with the Wallets category when
-  // it had zero live benches). Empty categories stay in the enum so the
-  // route lights up automatically the moment a bench populates it.
   // Per-URL <lastmod> = max lastRunAt of benches in the category.
   // Benchmark.category is the display label ("Aggregators"), CATEGORIES
   // entry has both label and slug — match on label.
-  const liveCategoryLabels = new Set(benchmarks.map((b) => b.category));
-  const categoryRoutes: MetadataRoute.Sitemap = CATEGORIES
-    .filter((c) => liveCategoryLabels.has(c.label))
-    .map((c) => {
-      const catBenches = benchmarks.filter((b) => b.category === c.label);
-      const last = catBenches.reduce<Date>((acc, b) => {
-        if (!b.lastRunAt) return acc;
-        const t = new Date(b.lastRunAt);
-        return t > acc ? t : acc;
-      }, new Date(0));
-      return {
-        url: `${SITE.url}/benchmarks/category/${c.slug}`,
-        lastModified: last.getTime() > 0 ? last : catalogTs,
-        changeFrequency: "weekly" as const,
-        priority: 0.6,
-      };
-    });
+  const categoryRoutes: MetadataRoute.Sitemap = CATEGORIES.map((c) => {
+    const catBenches = benchmarks.filter((b) => b.category === c.label);
+    const last = catBenches.reduce<Date>((acc, b) => {
+      if (!b.lastRunAt) return acc;
+      const t = new Date(b.lastRunAt);
+      return t > acc ? t : acc;
+    }, new Date(0));
+    return {
+      url: `${SITE.url}/benchmarks/category/${c.slug}`,
+      lastModified: last.getTime() > 0 ? last : catalogTs,
+      changeFrequency: "weekly" as const,
+      priority: 0.6,
+    };
+  });
 
   return [
     ...staticRoutes,

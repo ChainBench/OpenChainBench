@@ -196,16 +196,6 @@ export function LedgerTable({
   // The chart's panel tabs still surface those providers via
   // seriesByProvider when the reader switches metric, so coverage isn't
   // lost — only the noisy ledger rows are pruned.
-  // Unresponsive cohort members: probed every cycle, (nearly) every call
-  // fails, so no latency percentile exists in the current view. Rendered
-  // as unranked, muted rows pinned BELOW the ranked field — visible with
-  // their success rate instead of silently vanishing when Prom staleness
-  // drops the latency series — and excluded from ranks, the field mean,
-  // and the data-bar scale so they can't distort any claim above.
-  const unresponsiveRows = [...results]
-    .filter((r) => r.unresponsive)
-    .sort((a, b) => b.successRate - a.successRate);
-
   // Field-mean Δ — duplicated here so the sort comparator can rank by it
   // without waiting on per-Row computation. Kept aligned with the same
   // formula the Row uses for the displayed Δ% (see deltaPct below).
@@ -259,6 +249,16 @@ export function LedgerTable({
       setSortDir("desc");
     }
   };
+
+  // Unresponsive cohort members: probed every cycle, (nearly) every call
+  // fails, so no latency percentile exists in the current view. Rendered
+  // as unranked, muted rows pinned BELOW the ranked field — visible with
+  // their success rate instead of silently vanishing when Prom staleness
+  // drops the latency series — and excluded from ranks, the field mean,
+  // and the data-bar scale so they can't distort any claim above.
+  const unresponsiveRows = [...results]
+    .filter((r) => r.unresponsive)
+    .sort((a, b) => b.successRate - a.successRate);
 
   const sortedAll = [...results]
     .filter((r) => {

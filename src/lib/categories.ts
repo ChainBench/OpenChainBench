@@ -29,7 +29,8 @@ export type Category =
   | "Trading"
   | "Wallets"
   | "RPCs"
-  | "NFT APIs";
+  | "NFT APIs"
+  | "Explorers";
 
 export type CategoryEntry = {
   /** URL slug. Lowercase, kebab-case, ASCII. */
@@ -84,6 +85,13 @@ export const CATEGORIES: readonly CategoryEntry[] = [
     heading: "RPC benchmarks",
     description:
       "Live OpenChainBench measurements for RPC and node providers. Compare capability coverage, transaction landing latency, and reliability across the endpoints that power production dApps.",
+  },
+  {
+    slug: "explorers",
+    label: "Explorers",
+    heading: "Explorer benchmarks",
+    description:
+      "Live measurements for block explorer APIs. Compare how many chains each family actually serves with a working indexer, probe-verified daily against the vendors' own registries.",
   },
   {
     slug: "nft-apis",

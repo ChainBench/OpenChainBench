@@ -49,6 +49,10 @@ var (
 	mobulaLastTxHash *prometheus.GaugeVec
 	mobulaLastTxMu   sync.Mutex
 	mobulaLastTxSeen = make(map[string]string) // key: "chain:pool_address" -> last tx_hash
+
+	// WebSocket connection lifecycle (deco/reco visibility in Grafana/Prom)
+	wsReconnects *prometheus.CounterVec
+	wsConnected  *prometheus.GaugeVec
 )
 
 func init() {
@@ -262,6 +266,38 @@ func init() {
 		[]string{"aggregator", "chain", "region", "pool_address", "tx_hash"},
 	)
 	prometheus.MustRegister(mobulaLastTxHash)
+
+	wsReconnects = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "ws_reconnects_total",
+			Help: "Total number of WebSocket reconnections per aggregator (increments on every disconnect, whatever the cause)",
+		},
+		[]string{"aggregator", "region"},
+	)
+	prometheus.MustRegister(wsReconnects)
+
+	wsConnected = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "ws_connected",
+			Help: "WebSocket connection state per aggregator (1 = connected, 0 = disconnected)",
+		},
+		[]string{"aggregator", "region"},
+	)
+	prometheus.MustRegister(wsConnected)
+}
+
+// RecordWSReconnect increments the reconnect counter for an aggregator's WebSocket.
+func RecordWSReconnect(aggregator string, region string) {
+	wsReconnects.WithLabelValues(aggregator, region).Inc()
+}
+
+// RecordWSConnected sets the connection state gauge for an aggregator's WebSocket.
+func RecordWSConnected(aggregator string, region string, connected bool) {
+	v := 0.0
+	if connected {
+		v = 1.0
+	}
+	wsConnected.WithLabelValues(aggregator, region).Set(v)
 }
 
 // RecordMobulaLastTx overwrites the single live series for (chain, pool_address)
