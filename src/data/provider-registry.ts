@@ -500,12 +500,6 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "MegaETH's official public RPC (mainnet.megaeth.com). Compute-unit and bandwidth limited; WebSocket endpoint exposes the 10 ms mini-block realtime API.",
     twitter: "@megaeth_labs",
   },
-  bloxroute: {
-    url: "https://bloxroute.com",
-    description:
-      "Blockchain distribution network (BDN) operator. Public keyless RPC on Monad plus paid low-latency trader APIs across major chains.",
-    twitter: "@bloXrouteLabs",
-  },
   onfinality: {
     url: "https://onfinality.io",
     description:
