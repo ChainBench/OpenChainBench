@@ -62,6 +62,18 @@ function DimensionRow({
   );
 }
 
+/** "2026-07-06 14:00 UTC" from the bench's lastRunAt ISO string. Fixed
+ *  UTC rendering so server and client HTML agree (no hydration drift)
+ *  and answer engines get an unambiguous freshness stamp. */
+function fmtAsOfUtc(iso: string): string | null {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(
+    d.getUTCDate(),
+  )} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())} UTC`;
+}
+
 /** Mutate `url.searchParams` to keep one dimension param in sync.
  *  Removes the param when the value is the first option (the implicit
  *  default) so canonical URLs stay short. */
@@ -764,6 +776,19 @@ export function BenchmarkBody({
                         : "Product ledger · sorted by p50"}
                 </p>
                 <LedgerTable benchmark={viewBenchmark} activePanel={activePanel} topN={topN} />
+                {/* Visible freshness stamp next to the numbers. Answer
+                    engines quote data far more readily when the page says
+                    when it was measured. Uses the harness's lastRunAt
+                    (real data timestamp), not build time. */}
+                {fmtAsOfUtc(benchmark.lastRunAt) && (
+                  <p className="mt-3 text-[11px] text-ink-faint">
+                    Data as of{" "}
+                    <time dateTime={benchmark.lastRunAt}>
+                      {fmtAsOfUtc(benchmark.lastRunAt)}
+                    </time>
+                    , refreshed continuously.
+                  </p>
+                )}
               </>
             )}
           </div>
