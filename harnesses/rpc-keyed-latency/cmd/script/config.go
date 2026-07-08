@@ -24,6 +24,19 @@ type Endpoint struct {
 // matrix declares which (provider, chain) cells we look for in env.
 // Kind is derived from the chain.
 var providers = []string{"infura", "alchemy", "chainstack", "ankr", "helius", "quicknode"}
+
+// Per-provider probe-interval multiplier. Infura's free tier 402s daily
+// at the shared 60s cadence (its real daily credit budget is below the
+// documented 3M); 3x (effective 180s) lands at ~0.69M credits/day,
+// safely under any plausible cap while keeping 480 samples/day/region.
+var intervalMult = map[string]int{"infura": 3}
+
+func intervalMultFor(provider string) int {
+	if m, ok := intervalMult[provider]; ok && m > 0 {
+		return m
+	}
+	return 1
+}
 var chainsEVM = []string{"ethereum", "base", "arbitrum", "optimism", "bnb", "polygon"}
 
 func endpoints() []Endpoint {
