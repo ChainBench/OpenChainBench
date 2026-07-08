@@ -35,7 +35,8 @@ type stellarLedgerEvent struct {
 
 func StartStellarWallClock() {
 	go func() {
-		backoff := 2 * time.Second
+		const baseBackoff = 1 * time.Second
+		backoff := baseBackoff
 		cursor := "now"
 		var lastSeen time.Time
 		var lastSeq int64
@@ -44,10 +45,28 @@ func StartStellarWallClock() {
 			if nextCursor != "" {
 				cursor = nextCursor
 			}
-			if err != nil {
-				fmt.Printf("[L1][stellar] SSE error: %v (reconnecting in %v)\n", err, backoff)
-				wallClockHealth.WithLabelValues("stellar").Set(0)
+			if err == nil {
+				// Graceful close. Horizon force-closes every SSE
+				// connection after ~10s with `event: close` and expects
+				// the client to reconnect using cursor=<last_id>. That is
+				// the protocol working as designed, not a failure.
+				// Reconnect quickly and keep the backoff at its floor.
+				//
+				// BUG HISTORY (why the Stellar row went dead): the
+				// previous loop treated every stream end as an error and
+				// doubled the backoff without ever resetting it, so
+				// within a minute of startup it slept 64s between ~10s
+				// connection windows. During each window the replayed
+				// ledgers failed the 6s liveness filter and the first
+				// live event exceeded the 30s sanity bound, so the gauge
+				// almost never received a sample and last_over_time on
+				// the page eventually returned nothing.
+				backoff = baseBackoff
+				time.Sleep(baseBackoff)
+				continue
 			}
+			fmt.Printf("[L1][stellar] SSE error: %v (reconnecting in %v)\n", err, backoff)
+			wallClockHealth.WithLabelValues("stellar").Set(0)
 			time.Sleep(backoff)
 			if backoff < 60*time.Second {
 				backoff *= 2
@@ -156,5 +175,7 @@ func runStellarSSE(cursor string, lastSeen *time.Time, lastSeq *int64) (string, 
 	if err := scanner.Err(); err != nil {
 		return lastID, fmt.Errorf("scan: %w", err)
 	}
-	return lastID, fmt.Errorf("stream closed")
+	// Clean EOF: Horizon's routine ~10s force-close. Not an error; the
+	// caller reconnects immediately with the returned cursor.
+	return lastID, nil
 }
