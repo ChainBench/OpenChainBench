@@ -21,7 +21,8 @@ import (
 // Diamond:    0x6cd5ac19a07518a8092eeffda4f1174c72704eeb (Base mainnet)
 // Functions:
 //   pairs(uint256)  -> struct, contains spreadP and feeIndex
-//   fees(uint256)   -> struct, openFeeP is the first uint256
+//   fees(uint256)   -> struct, first uint256 is totalPositionSizeFeeP
+//                      (the open fee; matches the backend fees[] array)
 //
 // Asset → pairIndex mapping is read from on-chain pair name strings
 // so we don't hardcode it either.
@@ -68,6 +69,11 @@ func ethCall(client *http.Client, to, data string) (string, error) {
 	}
 	defer resp.Body.Close()
 	respBody, _ := io.ReadAll(resp.Body)
+	// Surface HTTP-level failures (429 from public Base RPC, 5xx) as such
+	// instead of a generic JSON parse error, so classifyErr can bucket them.
+	if resp.StatusCode != 200 {
+		return "", fmt.Errorf("status_%d: %s", resp.StatusCode, truncate(string(respBody), 120))
+	}
 	var r rpcResp
 	if err := json.Unmarshal(respBody, &r); err != nil {
 		return "", fmt.Errorf("parse: %w", err)
@@ -130,12 +136,13 @@ func gainsReadPair(client *http.Client, pairIndex int) (*gainsPair, error) {
 	// to the start of the struct content.
 	from := extractAsciiString(res, fromOff+32)
 	to := extractAsciiString(res, toOff+32)
-	// Pair struct slot layout (verified against gains.trade UI 2026-05-07):
-	//   slot 7  → spreadP   (full bid-ask spread, 1e10 precision)
-	//   slot 9  → feeIndex  (the fees(N) tier — was wrongly read at 10 before)
-	//   slot 10 → groupIndex
-	// Reading slot 9 + applying half-spread (/2) gives the same numbers
-	// the gains.trade frontend displays for ETH and BTC.
+	// Pair struct slot layout (re-verified against the gains.trade backend
+	// /trading-variables on 2026-07-08):
+	//   slot 7 → spreadP    (full bid-ask spread, 1e10 precision)
+	//   slot 8 → groupIndex
+	//   slot 9 → feeIndex   (the fees(N) tier; ETH and BTC use 13, SOL 11)
+	// Reading slot 9 + applying half-spread (/2) matches the backend values
+	// exactly (ETH/BTC spreadP=1e8, SOL spreadP=0).
 	return &gainsPair{
 		From:     from,
 		To:       to,
@@ -154,11 +161,17 @@ func gainsReadFeeOpenP(client *http.Client, feeIndex int64) (*big.Int, error) {
 }
 
 var (
-	gainsPairCache     = map[string]*gainsPair{} // by uppercase asset name
-	gainsPairIdxCache  = map[string]int{}        // by uppercase asset name
-	gainsFeeCache      = map[int64]gainsFeeEntry{}
-	gainsCacheMu       sync.Mutex
+	gainsPairCache    = map[string]*gainsPair{} // by uppercase asset name
+	gainsPairIdxCache = map[string]int{}        // by uppercase asset name
+	gainsPairAt       = map[string]time.Time{}  // last on-chain read per asset
+	gainsFeeCache     = map[int64]gainsFeeEntry{}
+	gainsCacheMu      sync.Mutex
 )
+
+// Pair config (spreadP, feeIndex) changes only by governance, but caching it
+// forever would freeze the published spread until a process restart. Re-read
+// the known pair index every TTL so config changes surface within hours.
+const gainsPairTTL = 6 * time.Hour
 
 type gainsFeeEntry struct {
 	openFeeP *big.Int
@@ -173,11 +186,32 @@ func findGainsPair(client *http.Client, asset string) (*gainsPair, error) {
 	upper := strings.ToUpper(asset)
 
 	gainsCacheMu.Lock()
-	if p, ok := gainsPairCache[upper]; ok {
+	cached, ok := gainsPairCache[upper]
+	fresh := ok && time.Since(gainsPairAt[upper]) < gainsPairTTL
+	idx, hasIdx := gainsPairIdxCache[upper]
+	gainsCacheMu.Unlock()
+	if fresh {
+		return cached, nil
+	}
+
+	// Known index, stale cache: re-read that single pair instead of a full
+	// scan. On failure we return the error so the cycle skips publishing
+	// (visible via fetch_errors_total) rather than silently reusing config
+	// that may have changed on-chain.
+	if ok && hasIdx {
+		p, err := gainsReadPair(client, idx)
+		if err != nil {
+			return nil, fmt.Errorf("refresh pair %d: %w", idx, err)
+		}
+		if !strings.EqualFold(p.From, asset) || !strings.EqualFold(p.To, "USD") {
+			return nil, fmt.Errorf("pair %d is now %s/%s, expected %s/USD", idx, p.From, p.To, asset)
+		}
+		gainsCacheMu.Lock()
+		gainsPairCache[upper] = p
+		gainsPairAt[upper] = time.Now()
 		gainsCacheMu.Unlock()
 		return p, nil
 	}
-	gainsCacheMu.Unlock()
 
 	gainsScanMu.Lock()
 	defer gainsScanMu.Unlock()
@@ -185,7 +219,7 @@ func findGainsPair(client *http.Client, asset string) (*gainsPair, error) {
 	// Re-check after acquiring the scan lock — another goroutine may have
 	// just populated the cache while we waited.
 	gainsCacheMu.Lock()
-	if p, ok := gainsPairCache[upper]; ok {
+	if p, ok := gainsPairCache[upper]; ok && time.Since(gainsPairAt[upper]) < gainsPairTTL {
 		gainsCacheMu.Unlock()
 		return p, nil
 	}
@@ -195,6 +229,7 @@ func findGainsPair(client *http.Client, asset string) (*gainsPair, error) {
 	for i := 0; i < 60; i++ {
 		p, err := gainsReadPair(client, i)
 		if err != nil {
+			fmt.Printf("[PERP][gains] pair scan idx %d: %v\n", i, err)
 			consecutiveErrors++
 			if consecutiveErrors >= 3 && i > 5 {
 				break
@@ -208,6 +243,7 @@ func findGainsPair(client *http.Client, asset string) (*gainsPair, error) {
 		gainsCacheMu.Lock()
 		gainsPairCache[strings.ToUpper(p.From)] = p
 		gainsPairIdxCache[strings.ToUpper(p.From)] = i
+		gainsPairAt[strings.ToUpper(p.From)] = time.Now()
 		gainsCacheMu.Unlock()
 		if strings.EqualFold(p.From, asset) && strings.EqualFold(p.To, "USD") {
 			return p, nil

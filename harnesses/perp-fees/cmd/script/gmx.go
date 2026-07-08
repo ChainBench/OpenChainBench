@@ -20,8 +20,15 @@ import (
 const gmxSubsquid = "https://gmx.squids.live/gmx-synthetics-arbitrum/graphql"
 const gmxinfraBase = "https://arbitrum-api.gmxinfra.io"
 
-// ETH/USD market on Arbitrum mainnet (long/short ETH, USDC collateral)
-const gmxETHMarket = "0x70d95587d40A2caf56bd97485aB3Eec10Bee6336"
+// GMX v2 market token addresses on Arbitrum mainnet, one market per index
+// asset (USDC-collateral main markets). Verified against gmxinfra
+// /markets/info (marketToken ↔ indexToken symbol) and the Subsquid
+// marketInfos entities.
+var gmxMarkets = map[string]string{
+	"ETH": "0x70d95587d40A2caf56bd97485aB3Eec10Bee6336",
+	"BTC": "0x47c031236e19d024b42f8AE6780E44A573170703",
+	"SOL": "0x09400D9DB990D5ed3f35D7be61DfAEB900Af03C9",
+}
 
 type gmxGqlReq struct {
 	Query     string `json:"query"`
@@ -56,9 +63,16 @@ func fetchGMX(v VenueConfig) PerpSample {
 	start := time.Now()
 	client := &http.Client{Timeout: 10 * time.Second}
 
+	market, ok := gmxMarkets[v.Asset]
+	if !ok {
+		s.Err = "unsupported_asset"
+		s.FetchLatencyMs = time.Since(start).Milliseconds()
+		return s
+	}
+
 	// 1) Position fee from Subsquid (live on-chain factor)
 	q := gmxGqlReq{
-		Query: `query { marketInfos(where: {id_eq: "` + gmxETHMarket + `"}) {
+		Query: `query { marketInfos(where: {id_eq: "` + market + `"}) {
 			id positionFeeFactorForPositiveImpact positionFeeFactorForNegativeImpact
 		}}`,
 	}
@@ -106,7 +120,7 @@ func fetchGMX(v VenueConfig) PerpSample {
 		body2, _ := io.ReadAll(resp2.Body)
 		_ = json.Unmarshal(body2, &markets)
 		for _, mk := range markets.Markets {
-			if mk.MarketToken == gmxETHMarket {
+			if mk.MarketToken == market {
 				// fundingFactorPerSecondLong scaled by 1e30. Convert to per-hour bps.
 				perSec := factor1e30ToBps(mk.FundingFactorPerSecondLong)
 				s.FundingRatePerHrBps = perSec * 3600
