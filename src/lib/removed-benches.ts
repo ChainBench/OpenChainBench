@@ -15,6 +15,16 @@
  * Moving a bench to production = remove its slug here, bump the
  * bench-set cache keys in src/lib/spec.ts, ship dev to main.
  */
+/**
+ * Answer pages (answers/<slug>.yml) whose referenced benchmark is in
+ * REMOVED_BENCH_SLUGS. Same treatment: 410 on prod direct hits, dropped
+ * from the answers listing and sitemap on prod, normal on staging.
+ */
+export const REMOVED_ANSWER_SLUGS = new Set([
+  "which-evm-aggregator-has-the-fastest-quote",
+  "which-solana-rpc-lands-the-most-transactions",
+]);
+
 export const REMOVED_BENCH_SLUGS = new Set([
   // retired for good
   "bridge-revenue",
