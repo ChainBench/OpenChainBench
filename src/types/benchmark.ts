@@ -207,6 +207,7 @@ export type Benchmark = {
     chain?: { value: string; label: string }[];
     region?: { value: string; label: string }[];
     kind?: { value: string; label: string }[];
+    venue?: { value: string; label: string }[];
   };
   category: "Aggregators" | "Bridges" | "Blockchains" | "Trading" | "Wallets" | "RPCs" | "NFT APIs" | "Explorers";
   results: ProviderResult[];

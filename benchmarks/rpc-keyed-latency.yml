@@ -45,7 +45,7 @@ abstract: |
   not the provider's paid infrastructure.
 
 methodology:
-  - "Cadence: every 60 seconds per (provider, chain) pair, from each of 3 probe regions (us-east, eu-west, sgp), 4× slower than the no-key bench because keyed free tiers meter monthly quotas. Headline p50/p90/p99 aggregate across regions via Prometheus `avg(quantile_over_time(...))`."
+  - "Cadence: every 60 seconds per (provider, chain) pair (Infura: every 180 seconds; its free tier's real daily credit budget sits below the documented 3M and returned daily 402 brownouts at 60s, so the cadence is reduced and disclosed, sample sizes stay published), from each of 3 probe regions (us-east, eu-west, sgp), 4× slower than the no-key bench because keyed free tiers meter monthly quotas. Headline p50/p90/p99 aggregate across regions via Prometheus `avg(quantile_over_time(...))`."
   - "Payload: identical to the no-key bench. EVM: `{\"jsonrpc\":\"2.0\",\"id\":<rotating>,\"method\":\"eth_getBlockByNumber\",\"params\":[\"latest\",false]}`. Solana: `getSlot` at processed commitment. Non-cacheable by design: the rotating id defeats body-keyed edge caches."
   - "Authentication: each provider's standard free-tier key, obtained via normal signup, no credit card, no sales contact. Keys live in env vars on the probe services and never in the repo. Endpoint shapes: key-in-path (Alchemy `/v2/<key>`, Infura `/v3/<key>`, Chainstack, Ankr) or query param (Helius `?api-key=`)."
   - "Quota guard: each region gets 1/3 of a provider's audited monthly free quota; probing pauses at 90% of that budget until calendar-month rollover (`rpc_keyed_quota_used_ratio`, `rpc_call_total{result=\"quota_paused\"}`). Budgets target ≤2/3 of the real quota, so the bench can never exhaust a key."
