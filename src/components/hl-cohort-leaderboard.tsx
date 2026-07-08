@@ -114,6 +114,12 @@ export function HlCohortLeaderboard({
           <tbody>
             {filtered.map((r, i) => {
               const hist = historyBySlug?.get(r.slug);
+              // Only builders that have a `hist` entry actually have a
+              // detail page at /hyperliquid/<slug> (the page component
+              // 404s when the history blob has no matching frontend, see
+              // hyperliquid/[slug]/page.tsx). Skip the link so Ahrefs +
+              // Bing don't queue up crawl paths that dead-end at 404.
+              const hasDetailPage = historyBySlug ? !!hist : true;
               return (
                 <tr
                   key={r.slug}
@@ -123,15 +129,24 @@ export function HlCohortLeaderboard({
                     {i + 1}
                   </Td>
                   <Td>
-                    <Link
-                      href={`/hyperliquid/${r.slug}`}
-                      className="flex items-center gap-2 min-w-0 hover:underline"
-                    >
-                      <ProviderLogo slug={r.slug} name={r.name} size={18} />
-                      <span className="font-medium text-ink truncate">
-                        {r.name}
+                    {hasDetailPage ? (
+                      <Link
+                        href={`/hyperliquid/${r.slug}`}
+                        className="flex items-center gap-2 min-w-0 hover:underline"
+                      >
+                        <ProviderLogo slug={r.slug} name={r.name} size={18} />
+                        <span className="font-medium text-ink truncate">
+                          {r.name}
+                        </span>
+                      </Link>
+                    ) : (
+                      <span className="flex items-center gap-2 min-w-0">
+                        <ProviderLogo slug={r.slug} name={r.name} size={18} />
+                        <span className="font-medium text-ink truncate">
+                          {r.name}
+                        </span>
                       </span>
-                    </Link>
+                    )}
                   </Td>
                   <Td mono>{fmtUSD(r.revenue30d)}</Td>
                   <Td mono>{fmtUSD(r.volume30d)}</Td>
@@ -152,12 +167,16 @@ export function HlCohortLeaderboard({
                     </Td>
                   )}
                   <Td>
-                    <Link
-                      href={`/hyperliquid/${r.slug}`}
-                      className="text-[11px] text-ink-faint hover:text-ink"
-                    >
-                      Open →
-                    </Link>
+                    {hasDetailPage ? (
+                      <Link
+                        href={`/hyperliquid/${r.slug}`}
+                        className="text-[11px] text-ink-faint hover:text-ink"
+                      >
+                        Open →
+                      </Link>
+                    ) : (
+                      <span className="text-[11px] text-ink-faint">—</span>
+                    )}
                   </Td>
                 </tr>
               );

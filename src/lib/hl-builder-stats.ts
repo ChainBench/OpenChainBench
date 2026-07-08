@@ -70,6 +70,21 @@ export async function isHlBuilderSlug(slug: string): Promise<boolean> {
   return cachedSlugs.has(slug);
 }
 
+/**
+ * Same as `isHlBuilderSlug` but ALSO requires the slug to be present in
+ * the current history blob. Used before redirecting /products/<slug> to
+ * /hyperliquid/<slug> so we never send crawlers or users into a 404: a
+ * builder that's in the spec but not in the last-12-months history blob
+ * (dormant, new, or paused) would otherwise 404 at the redirect target.
+ * The 12-month history is the source of truth for what /hyperliquid/<slug>
+ * can actually render (see hyperliquid/[slug]/page.tsx:83-85).
+ */
+export async function isHlBuilderWithHistory(slug: string): Promise<boolean> {
+  if (!(await isHlBuilderSlug(slug))) return false;
+  const history = await fetchHlHistory();
+  return !!history?.frontends.some((f) => f.slug === slug);
+}
+
 function promUrl(): string | null {
   return process.env.PROMETHEUS_URL?.trim() || null;
 }
