@@ -4,6 +4,8 @@ import type { MetadataRoute } from "next";
 import { getBenchmarks } from "@/data/benchmarks";
 import { COMPARE_PAIRS } from "@/data/compare-pairs";
 import { BRAND_WHITELIST } from "@/lib/compare/brand-whitelist";
+import { REMOVED_BENCH_SLUGS } from "@/middleware";
+import { isHlBuilderSlug } from "@/lib/hl-builder-stats";
 import { loadAllAlternatives } from "@/lib/alternatives";
 import { loadAllAnswers } from "@/lib/answers";
 import { CHAIN_BY_SLUG, CHAINS, getBenchmarksForChain } from "@/lib/chains";
@@ -171,6 +173,10 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
   const staticRoutes = staticHubRoutes(catalogTs);
 
   const benchmarkRoutes: MetadataRoute.Sitemap = benchmarks.flatMap((b) => {
+    // Middleware returns 410 for these slugs on prod (see middleware.ts).
+    // Emitting them in the sitemap advertises URLs the middleware will
+    // then reject, failing the deploy-time sitemap-smoke gate.
+    if (REMOVED_BENCH_SLUGS.has(b.slug)) return [];
     const last = b.lastRunAt ? new Date(b.lastRunAt) : BUILD_TIME;
     const entries: MetadataRoute.Sitemap = [
       {
@@ -223,6 +229,15 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
     await Promise.all(
       providerSlugs.map(async (slug) => {
         if (CHAIN_BY_SLUG.has(slug)) return null;
+        // Tracked Hyperliquid builder frontends live under
+        // /hyperliquid/<slug>; the /products/<slug> route 307-redirects
+        // there for these slugs (products/[slug]/page.tsx). Emitting the
+        // /products/ variant advertises URLs that immediately redirect,
+        // and the deploy-time sitemap-smoke gate treats any 3xx as a
+        // rollback signal. The canonical /hyperliquid/<slug> URLs come
+        // from hyperliquid/[slug]/generateStaticParams via Next's
+        // automatic sitemap discovery, not from this file.
+        if (await isHlBuilderSlug(slug)) return null;
         const p = await getProvider(slug);
         return p ? slug : null;
       }),
@@ -411,20 +426,26 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
   // Per-URL <lastmod> = max lastRunAt of benches in the category.
   // Benchmark.category is the display label ("Aggregators"), CATEGORIES
   // entry has both label and slug — match on label.
-  const categoryRoutes: MetadataRoute.Sitemap = CATEGORIES.map((c) => {
-    const catBenches = benchmarks.filter((b) => b.category === c.label);
-    const last = catBenches.reduce<Date>((acc, b) => {
-      if (!b.lastRunAt) return acc;
-      const t = new Date(b.lastRunAt);
-      return t > acc ? t : acc;
-    }, new Date(0));
-    return {
-      url: `${SITE.url}/benchmarks/category/${c.slug}`,
-      lastModified: last.getTime() > 0 ? last : catalogTs,
-      changeFrequency: "weekly" as const,
-      priority: 0.6,
-    };
-  });
+  // Empty categories (currently "Wallets") 404 at the page component,
+  // which fails the sitemap-smoke gate. Filter them here so a category
+  // lit only by a spec status:draft doesn't leak into the sitemap.
+  const liveCategoryLabels = new Set(benchmarks.map((b) => b.category));
+  const categoryRoutes: MetadataRoute.Sitemap = CATEGORIES
+    .filter((c) => liveCategoryLabels.has(c.label))
+    .map((c) => {
+      const catBenches = benchmarks.filter((b) => b.category === c.label);
+      const last = catBenches.reduce<Date>((acc, b) => {
+        if (!b.lastRunAt) return acc;
+        const t = new Date(b.lastRunAt);
+        return t > acc ? t : acc;
+      }, new Date(0));
+      return {
+        url: `${SITE.url}/benchmarks/category/${c.slug}`,
+        lastModified: last.getTime() > 0 ? last : catalogTs,
+        changeFrequency: "weekly" as const,
+        priority: 0.6,
+      };
+    });
 
   return [
     ...staticRoutes,
