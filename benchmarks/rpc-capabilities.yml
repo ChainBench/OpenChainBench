@@ -13,14 +13,13 @@ unit: ms
 higher_is_better: false
 
 disclaimer: >
-  Latency here is conditional on success: the harness records latency
-  only for calls that return a valid, fresh block, so an endpoint that
-  fails most calls can still post a fast p50 from its rare successes.
-  Read the Success column with the ranking; treat rows below 50 percent
-  success as degraded, and providers under 5 percent success are
-  unranked. On the All chains tab each number is the mean of per chain,
-  per region 24h p50s, and single chain providers are measured on their
-  one chain only.
+  Latency is conditional on success: the harness times only calls that
+  return a valid, fresh block, so an endpoint failing most calls can
+  still post a fast p50 from its rare successes. Treat rows below 50
+  percent success as degraded. Providers whose probes stop succeeding
+  are pinned below the table as unresponsive. On the All chains tab
+  each number is the mean of per chain, per region 24h p50s; single
+  chain providers are measured on their one chain only.
 
 seo_intro: |
   This benchmark answers the question every developer reaching for a
