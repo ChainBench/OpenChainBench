@@ -17,6 +17,10 @@ import { cache } from "react";
 import yaml from "js-yaml";
 import { z } from "zod";
 import { loadBenchmark } from "@/lib/spec";
+import {
+  REMOVED_ANSWER_SLUGS,
+  REMOVED_BENCH_SLUGS,
+} from "@/lib/removed-benches";
 import type { Benchmark } from "@/types/benchmark";
 
 const ANSWERS_DIR = path.join(process.cwd(), "answers");
@@ -85,6 +89,15 @@ export const loadAllAnswers = cache(async (): Promise<Answer[]> => {
   );
   return parsed
     .filter((a): a is Answer => a !== null && a.status === "live")
+    // Prod-only gate: answers built on staging-pipeline benches never
+    // reach the prod listing, sitemap or tag clouds. Direct URL hits
+    // get a 410 from middleware.
+    .filter(
+      (a) =>
+        process.env.VERCEL_ENV !== "production" ||
+        (!REMOVED_ANSWER_SLUGS.has(a.slug) &&
+          !REMOVED_BENCH_SLUGS.has(a.benchmark)),
+    )
     .sort((a, b) => a.slug.localeCompare(b.slug));
 });
 

@@ -48,10 +48,14 @@ const CANONICAL_NO_QUERY = new Set([
 // own module (not here) so the spec loader and the materialize worker
 // can import it without pulling next/server. Re-exported for the
 // sitemap, which historically imports it from "@/middleware".
-import { REMOVED_BENCH_SLUGS } from "@/lib/removed-benches";
+import {
+  REMOVED_ANSWER_SLUGS,
+  REMOVED_BENCH_SLUGS,
+} from "@/lib/removed-benches";
 export { REMOVED_BENCH_SLUGS };
 
 const BENCH_PATH = /^\/benchmarks\/([a-z0-9][a-z0-9-]{0,79})\/?$/;
+const ANSWER_PATH = /^\/answers\/([a-z0-9][a-z0-9-]{0,79})\/?$/;
 // `/compare/<a>-vs-<b>` with both sides as standard provider slug
 // shapes (lowercase alphanumeric + hyphens). The `-vs-` delimiter is
 // matched literally; provider slugs themselves can contain hyphens
@@ -70,7 +74,11 @@ export function middleware(req: NextRequest) {
 
   if (process.env.VERCEL_ENV === "production") {
     const m = pathname.match(BENCH_PATH);
-    if (m && REMOVED_BENCH_SLUGS.has(m[1])) {
+    const a = pathname.match(ANSWER_PATH);
+    if (
+      (m && REMOVED_BENCH_SLUGS.has(m[1])) ||
+      (a && REMOVED_ANSWER_SLUGS.has(a[1]))
+    ) {
       return new NextResponse(
         `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>410 Gone</title><meta name="robots" content="noindex"></head><body><h1>410 Gone</h1><p>This benchmark has been retired. See the <a href="/benchmarks">current catalog</a>.</p></body></html>`,
         { status: 410, headers: { "Content-Type": "text/html; charset=utf-8" } },
@@ -111,6 +119,7 @@ export const config = {
     "/api/freshness",
     "/api/openapi.json",
     "/benchmarks/:slug*",
+    "/answers/:slug*",
     "/compare/:slug*",
   ],
 };
