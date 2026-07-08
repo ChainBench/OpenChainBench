@@ -4,7 +4,7 @@ slug: rpc-capabilities
 number: "010"
 title: Fastest free public RPC for Ethereum, BNB, Polygon and 7 more EVM chains
 seo_title: "Fastest free public RPC 2026"
-seo_description: "Fastest free public RPC live on eth_getBlockByNumber p50. dRPC, PublicNode, 1RPC, Tenderly, Nodies, Lava ranked."
+seo_description: "Fastest free public RPC live on eth_getBlockByNumber p50. dRPC, PublicNode, Tenderly, Nodies, Lava ranked."
 subtitle: HTTP round-trip latency for eth_getBlockByNumber against free, no-key public RPC endpoints across 10 EVM chains, audited every 60 seconds.
 category: RPCs
 status: live
@@ -29,7 +29,7 @@ seo_intro: |
   market; the free public side of the question lives elsewhere, in
   the RPC services dapps hit when a contributor's free quota is the
   budget. We probe `eth_getBlockByNumber` every 60 seconds against 15
-  audited providers across 10 EVM chains. PublicNode, dRPC, 1RPC,
+  audited providers across 10 EVM chains. PublicNode, dRPC,
   MeowRPC, Tenderly Gateway, Nodies (POKT), Lava Network, Merkle,
   Flashbots Protect, Cloudflare and 5 chain-official foundation
   endpoints (Base, Binance BSC, Avalanche, Arbitrum, Optimism).
@@ -79,7 +79,7 @@ methodology:
   - "Success gating: because failed probes record no latency, a mostly failing endpoint can post a fast p50 from its rare successes. The ledger pairs every latency figure with a Success column computed as ok calls over total calls in the same 24h window; read rows below 50 percent success as degraded. Providers with under 5 percent success lose their latency series to Prometheus staleness and are pinned below the table as unresponsive instead of being ranked."
   - "Archive depth: every 5 minutes we issue `eth_getBalance` at (head, depth) for `depth` in {300, 7200, 216_000, 1_296_000, 5_000_000}. Gauge `rpc_archive_depth_supported{depth}` is 1 when the response is non-pruned, 0 otherwise. The 300/7200 thresholds cover Geth's default pruned-cap range; 216k ≈ 1 month; 1.3M ≈ 6 months; 5M ≈ genesis-era full archive."
   - "Chain coverage: 10 EVM chains. Ethereum (9 providers), Arbitrum (8), Base (6), Optimism (6), Avalanche (6), BNB (5), Polygon (5), Linea (4), Scroll (4), Mantle (4). Provider matrix per chain is documented in `miniapps/rpc-capabilities/cmd/script/config.go`."
-  - "Excluded by design: Ankr (key-gated), gateway.fm (29 req/IP budget too tight for 15s polling), LlamaRPC + BlockPI + OmniaTech (Cloudflare 521 region-blocked), Alchemy demo (rate-limited dead), NodeReal + GetBlock + Chainstack (key-gated). Merkle on Ethereum + Lava on non-ETH/Arb + MeowRPC on non-ETH/Arb all excluded chain-by-chain. Every (provider, chain) was live-verified no-key before inclusion."
+  - "Excluded: 1RPC (delisted 2026-07-09, under 13% success even at two chains and one probe per minute), Ankr (key-gated), gateway.fm (29 req/IP budget too tight for 15s polling), LlamaRPC + BlockPI + OmniaTech (Cloudflare 521 region-blocked), Alchemy demo (rate-limited dead), NodeReal + GetBlock + Chainstack (key-gated). Merkle on Ethereum + Lava on non-ETH/Arb + MeowRPC on non-ETH/Arb all excluded chain-by-chain. Every (provider, chain) was live-verified no-key before inclusion."
 
 findings:
   - "Per-chain leaders, not a cross-chain crown. On Ethereum the current leader is {{best_name:chain:ethereum}} at {{best_p50:chain:ethereum}} (p50, 24 h) across 9 measured providers, the largest cohort in this bench. Ethereum is also the chain where Cloudflare-eth's `jsonrpc_err` traps the lazy reader."
@@ -95,7 +95,7 @@ faq:
   - q: "What is the fastest free public RPC right now?"
     a: "The question is per chain because several providers are single-chain by design (Base official, Binance, Arbitrum Foundation, Optimism Foundation, Avalanche) and a cross-chain aggregate mechanically rewards whichever single-chain endpoint happens to be fastest on its one chain. Current per-chain leaders. Ethereum {{best_name:chain:ethereum}} at {{best_p50:chain:ethereum}}, Base {{best_name:chain:base}} at {{best_p50:chain:base}}, BNB Chain {{best_name:chain:bnb}} at {{best_p50:chain:bnb}}, Arbitrum {{best_name:chain:arbitrum}} at {{best_p50:chain:arbitrum}}. The leaderboard re-sorts every 60 seconds against fresh Prometheus samples averaged across us-east, eu-west and sgp probes. Switch the chain tab to see the leader on the network your product runs on."
   - q: "Which public RPCs work without an API key in 2026?"
-    a: "15 audited providers across 10 EVM chains. Universal multi-chain (work on 4+ chains): PublicNode, dRPC, 1RPC, Tenderly Gateway (`gateway.tenderly.co/public/<slug>`), Nodies (POKT successor at `*-pokt.nodies.app`). Ethereum-specific or limited footprint: MeowRPC (ETH + Arbitrum only since 2025), Flashbots Protect, Cloudflare (read-degraded), Lava Network (ETH + Arbitrum no-key, other chains require key), Merkle (Base + BSC stable, ETH locked-out by Cloudflare). Chain-official foundation RPCs: Arbitrum (`arb1.arbitrum.io/rpc`), Optimism (`mainnet.optimism.io`), Base (`mainnet.base.org`), Avalanche (`api.avax.network`), BNB (`bsc-dataseed1.binance.org`). Excluded: Ankr (key-gated), gateway.fm (29 req/IP), LlamaRPC / BlockPI / OmniaTech (Cloudflare 521 region-blocked), Alchemy demo (rate-limited dead), NodeReal / GetBlock / Chainstack (key-gated)."
+    a: "15 audited providers across 10 EVM chains. Universal multi-chain (work on 4+ chains): PublicNode, dRPC, Tenderly Gateway (`gateway.tenderly.co/public/<slug>`), Nodies (POKT successor at `*-pokt.nodies.app`). Ethereum-specific or limited footprint: MeowRPC (ETH + Arbitrum only since 2025), Flashbots Protect, Cloudflare (read-degraded), Lava Network (ETH + Arbitrum no-key, other chains require key), Merkle (Base + BSC stable, ETH locked-out by Cloudflare). Chain-official foundation RPCs: Arbitrum (`arb1.arbitrum.io/rpc`), Optimism (`mainnet.optimism.io`), Base (`mainnet.base.org`), Avalanche (`api.avax.network`), BNB (`bsc-dataseed1.binance.org`). Excluded: Ankr (key-gated), gateway.fm (29 req/IP), LlamaRPC / BlockPI / OmniaTech (Cloudflare 521 region-blocked), Alchemy demo (rate-limited dead), NodeReal / GetBlock / Chainstack (key-gated)."
   - q: "Why is Cloudflare-eth returning errors?"
     a: "Cloudflare's public Ethereum gateway recently switched to a permissioned mode for many JSON-RPC methods. The endpoint still returns HTTP 200 quickly, but the body is increasingly a JSON-RPC error (`-32046 Cannot fulfill request`) rather than a block number. This benchmark catches the trap by classifying responses as `ok` only when both the HTTP status is 200 and the JSON-RPC body has a usable `result` field. Latency without reliability is a misleading ranking signal for a public RPC."
   - q: "Why can an RPC with a low success rate still show a fast latency?"

@@ -211,7 +211,7 @@ func StartProbeLoop(ctx context.Context) {
 }
 
 func probeOne(ctx context.Context, e Endpoint) {
-	interval := probeInterval()
+	interval := probeInterval() * time.Duration(intervalMultFor(e.Provider))
 	jitter := time.Duration(int64(interval) * urlJitter(e.URL+e.Chain) / 100)
 	select {
 	case <-ctx.Done():

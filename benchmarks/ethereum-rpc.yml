@@ -4,7 +4,7 @@ slug: ethereum-rpc
 number: "044"
 title: Fastest free Ethereum RPC, live no-key endpoint latency
 seo_title: "Fastest free Ethereum RPC 2026"
-seo_description: "{{best_name}} leads free Ethereum RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). 9 no-key providers measured every 60s from 3 regions."
+seo_description: "{{best_name}} leads free Ethereum RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). 8 no-key providers measured every 60s from 3 regions."
 subtitle: HTTP round-trip latency for eth_getBlockByNumber against every free, no-key public Ethereum RPC endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -14,7 +14,7 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Ethereum carries the largest free-RPC cohort we measure: 9 no-key providers answering the same `eth_getBlockByNumber` probe every 60 seconds from three regions. It is also the chain where reliability analysis earns its keep. Cloudflare-eth answers HTTP 200 in well under a second while an increasing share of calls resolve to a JSON-RPC error body (`-32046 Cannot fulfill request`), and Merkle is excluded outright after recurring Cloudflare lockouts that froze our probes for 20 minutes after a single request. If you paste a free RPC URL into an Ethereum dapp, this page is the live answer to which one deserves it.
+  Ethereum carries the largest free-RPC cohort we measure: 8 no-key providers answering the same `eth_getBlockByNumber` probe every 60 seconds from three regions. It is also the chain where reliability analysis earns its keep. Cloudflare-eth answers HTTP 200 in well under a second while an increasing share of calls resolve to a JSON-RPC error body (`-32046 Cannot fulfill request`), and Merkle is excluded outright after recurring Cloudflare lockouts that froze our probes for 20 minutes after a single request. If you paste a free RPC URL into an Ethereum dapp, this page is the live answer to which one deserves it.
 
 abstract: |
   Per-chain member of the RPC latency cluster. We measure the round-trip latency of a single, identical RPC call (`eth_getBlockByNumber`) against every no-key public Ethereum endpoint that sustains continuous probing, 9 providers, every 60 seconds, from us-east, eu-west and Singapore. The harness also classifies every response (ok / http_err / jsonrpc_err / stale / timeout) and audits archive depth every 5 minutes, so the leaderboard rewards sustained, honest availability rather than a fast error message. The cross-chain view lives on the parent rpc-capabilities benchmark; this page is the Ethereum-scoped answer with per-region breakdowns as a first-class dimension.
@@ -26,19 +26,18 @@ methodology:
   - "Call-result classification: `ok` (HTTP 200 + non-empty result), `http_err`, `jsonrpc_err` (HTTP 200 carrying an error body), `stale` (more than 20 blocks behind the cross-provider tip), `timeout`. Latency without reliability is a misleading ranking signal."
   - "Archive depth: every 5 minutes we issue `eth_getBalance` at (head − depth) for depths from Geth's default pruned cap up to 5M blocks, exposing which free endpoints actually serve historical state."
   - "This page is part of the per-chain RPC cluster derived from the cross-chain [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities) benchmark; the identical harness, methodology and exclusion rules apply on every chain."
-  - "Chain scope: every query on this page is pinned to chain=\"ethereum\". Provider coverage: 9 no-key endpoints (PublicNode, dRPC, 1RPC, Tenderly, Nodies, Lava, MeowRPC, Flashbots, Cloudflare). Exclusions follow the cluster-wide rules documented on the parent benchmark."
+  - "Chain scope: every query on this page is pinned to chain=\"ethereum\". Provider coverage: 9 no-key endpoints (PublicNode, dRPC, Tenderly, Nodies, Lava, MeowRPC, Flashbots, Cloudflare). Exclusions follow the cluster-wide rules documented on the parent benchmark."
 
 findings:
   - "{{best_name}} currently leads the free Ethereum RPC field at {{best_p50}} (`eth_getBlockByNumber` p50, 24h) across 9 measured providers, the largest cohort of any chain in the cluster."
   - "Cloudflare-eth is the resident cautionary tale: sub-second HTTP 200s that increasingly carry a JSON-RPC error instead of a block number. The success-rate column, not the latency column, tells the real story."
-  - "The p50-to-p99 spread separates the tiers. {{name:1rpc}} sits at {{p50:1rpc}} median but its p99 regularly runs an order of magnitude higher, while {{name:drpc}} ({{p50:drpc}}) keeps a much tighter distribution."
   - "Merkle is excluded on Ethereum by design: its endpoint sits behind an aggressive bot filter that locks out programmatic clients for ~20 minutes after one request, invisible on any status page."
 
 faq:
   - q: "What is the fastest free Ethereum RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against 9 no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples, so the answer on this page is the answer right now, not a quarterly snapshot. Use the region tabs to see the leader from the origin closest to your deployment."
+    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against 8 no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples, so the answer on this page is the answer right now, not a quarterly snapshot. Use the region tabs to see the leader from the origin closest to your deployment."
   - q: "Which Ethereum RPCs work without an API key?"
-    a: "The 9 providers on this page: PublicNode, dRPC, 1RPC, Tenderly, Nodies, Lava, MeowRPC, Flashbots, Cloudflare. Every (provider, chain) pair was live-verified no-key before inclusion, and anything that key-gates, region-blocks or rate-limits below our 15-second cadence is excluded rather than listed with an asterisk."
+    a: "The 9 providers on this page: PublicNode, dRPC, Tenderly, Nodies, Lava, MeowRPC, Flashbots, Cloudflare. Every (provider, chain) pair was live-verified no-key before inclusion, and anything that key-gates, region-blocks or rate-limits below our 15-second cadence is excluded rather than listed with an asterisk."
   - q: "Does the fastest Ethereum RPC change by region?"
     a: "Frequently. The headline number averages three probe origins (us-east, eu-west, Singapore), but per-region leaders regularly diverge, a gateway that wins from Virginia can lose from Singapore by multiples. The region tabs at the top of the page re-scope every number on the page to a single origin; pick the one closest to where your requests actually originate."
   - q: "How is Ethereum RPC latency measured here?"
@@ -110,29 +109,6 @@ providers:
         - region: ap-southeast
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="ethereum", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="ethereum", region="sgp"}[1h])
-
-  - slug: 1rpc
-    name: 1RPC
-    tag: Privacy-preserving gateway by Automata Network
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to 1RPC's no-key Ethereum endpoint."
-    queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="1rpc", chain="ethereum"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="1rpc", chain="ethereum"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="1rpc", chain="ethereum"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="1rpc", chain="ethereum"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="1rpc", chain="ethereum"}) / sum(ocb:rpc_call:rate_24h{provider="1rpc", chain="ethereum"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="1rpc", chain="ethereum"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="1rpc", chain="ethereum"}[1h]))
-      regions:
-        - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="1rpc", chain="ethereum", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="1rpc", chain="ethereum", region="us-east"}[1h])
-        - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="1rpc", chain="ethereum", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="1rpc", chain="ethereum", region="eu-west"}[1h])
-        - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="1rpc", chain="ethereum", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="1rpc", chain="ethereum", region="sgp"}[1h])
 
   - slug: tenderly
     name: Tenderly
