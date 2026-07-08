@@ -18,6 +18,8 @@ var (
 	fetchErrorsCtr      *prometheus.CounterVec
 	healthGauge         *prometheus.GaugeVec
 	lastRefreshGauge    *prometheus.GaugeVec
+	allInTierGauge      *prometheus.GaugeVec
+	tierSkippedCtr      *prometheus.CounterVec
 )
 
 func init() {
@@ -92,6 +94,29 @@ func init() {
 		[]string{"venue", "chain"},
 	)
 	prometheus.MustRegister(lastRefreshGauge)
+
+	// Notional-tier companion series. perp_fees_all_in_bps keeps its
+	// exact $1000 meaning (live dashboards + spec queries depend on it);
+	// the tiers live under a separate metric so no existing query can
+	// match them by accident. The notional="1000" tier duplicates the
+	// headline series under the default config.
+	allInTierGauge = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "perp_fees_all_in_bps_tier",
+			Help: "All-in opening cost at a given notional tier (taker fee + spread + impact), in bps. notional label is the USD trade size.",
+		},
+		[]string{"venue", "chain", "notional"},
+	)
+	prometheus.MustRegister(allInTierGauge)
+
+	tierSkippedCtr = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "perp_fees_tier_skipped_total",
+			Help: "Tier samples skipped because the fetched orderbook could not fill the tier notional. No extrapolation: thin books show as missing data.",
+		},
+		[]string{"venue", "chain", "notional"},
+	)
+	prometheus.MustRegister(tierSkippedCtr)
 }
 
 func recordSample(s PerpSample) {
@@ -107,6 +132,19 @@ func recordSample(s PerpSample) {
 	fetchLatencyGauge.WithLabelValues(s.Venue, s.Asset).Set(float64(s.FetchLatencyMs))
 	lastRefreshGauge.WithLabelValues(s.Venue, s.Asset).Set(float64(time.Now().Unix()))
 	healthGauge.WithLabelValues(s.Venue, s.Asset).Set(1)
+
+	for _, t := range s.Tiers {
+		allInTierGauge.WithLabelValues(s.Venue, s.Asset, t.Notional).Set(t.AllInBps)
+	}
+	// A skipped tier means the fetched book could not fill that notional.
+	// Unlike whole-venue failures (where we keep the previous gauge and rely
+	// on health/errors), a gauge here would keep republishing a stale spread
+	// as if the book were deep enough. Delete the series instead so the
+	// tier honestly shows as missing data, and count the skip.
+	for _, n := range s.SkippedTiers {
+		tierSkippedCtr.WithLabelValues(s.Venue, s.Asset, n).Inc()
+		allInTierGauge.DeleteLabelValues(s.Venue, s.Asset, n)
+	}
 }
 
 func classifyErr(msg string) string {
