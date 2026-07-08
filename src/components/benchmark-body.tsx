@@ -345,6 +345,8 @@ export function BenchmarkBody({
     };
   }, [benchmark, hasLayerSplit, layer]);
 
+  const asOfUtc = benchmark ? fmtAsOfUtc(benchmark.lastRunAt) : null;
+
   // View switcher state. Per-bench, persisted via localStorage. Default
   // mirrors the heuristic the page used before the switcher existed so
   // an anonymous user with no prior preference sees the same layout
@@ -780,13 +782,11 @@ export function BenchmarkBody({
                     engines quote data far more readily when the page says
                     when it was measured. Uses the harness's lastRunAt
                     (real data timestamp), not build time. */}
-                {fmtAsOfUtc(benchmark.lastRunAt) && (
+                {asOfUtc && (
                   <p className="mt-3 text-[11px] text-ink-faint">
                     Data as of{" "}
-                    <time dateTime={benchmark.lastRunAt}>
-                      {fmtAsOfUtc(benchmark.lastRunAt)}
-                    </time>
-                    , refreshed continuously.
+                    <time dateTime={benchmark.lastRunAt}>{asOfUtc}</time>,
+                    refreshed continuously.
                   </p>
                 )}
               </>

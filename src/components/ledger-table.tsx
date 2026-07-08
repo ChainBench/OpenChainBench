@@ -353,7 +353,7 @@ export function LedgerTable({
             table itself says what it measures. */}
         <caption className="sr-only">
           {benchmark.title} benchmark ledger. {benchmark.metric} per provider,
-          measured over the last 24 hours.
+          live measured data.
         </caption>
         <thead>
           <tr>
