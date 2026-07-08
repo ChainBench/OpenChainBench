@@ -41,6 +41,10 @@ const RAW: Record<string, string> = {
   opbnb: "/logos/bnb.png",
   aptos: "/logos/aptos.svg",
   sonic: "/logos/sonic.png",
+  monad: "/logos/monad.png",
+  megaeth: "/logos/megaeth.png",
+  bloxroute: "/logos/bloxroute.png",
+  onfinality: "/logos/onfinality.png",
   berachain: "/logos/berachain.png",
 
   // ─── Providers ───
@@ -352,6 +356,8 @@ const ALIASES: Record<string, string> = {
   "optimism-official": "optimism",
   // Long-tail RPC cluster (055-066).
   "sonic-official": "sonic",
+  "monad-official": "monad",
+  "megaeth-official": "megaeth",
   "celo-official": "celo",
   "blast-official": "blast",
   "taiko-official": "taiko",

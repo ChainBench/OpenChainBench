@@ -211,6 +211,23 @@ export const CHAINS: ChainEntry[] = [
     description:
       "Based rollup. Ethereum L1 validators sequence Taiko blocks directly, inheriting L1 liveness and censorship resistance.",
   },
+  // ─── Performance chains added 2026-07-08 (benches 071-072) ───
+  {
+    slug: "monad",
+    label: "Monad",
+    category: "L1",
+    nativeSymbol: "MON",
+    description:
+      "Parallel-execution EVM Layer 1 (mainnet Nov 2025). 400 ms blocks, MonadBFT finality in about 800 ms, full EVM bytecode compatibility.",
+  },
+  {
+    slug: "megaeth",
+    label: "MegaETH",
+    category: "L2",
+    nativeSymbol: "ETH",
+    description:
+      "Real-time Ethereum L2 (mainnet Feb 2026). 10 ms mini-blocks batched into 1 s EVM blocks, data availability on EigenDA, ZK fraud proofs via Kailua.",
+  },
   // ─── Long-tail chains added with the 055-066 RPC cluster (2026-07-03) ───
   {
     slug: "sonic",
