@@ -21,7 +21,7 @@ type Source struct {
 
 // Quote tags how a price should be interpreted.
 //
-//   - QuoteUSD     → genuine USD pair (Coinbase, Kraken USDCUSD, Bitstamp).
+//   - QuoteUSD     → genuine USD pair (Coinbase USDT-USD, Kraken USDCUSD, Bitstamp).
 //     Goes into the primary metric directly.
 //   - QuoteUSDT    → USDT-quoted (Binance USDC/USDT).
 //     **Excluded from primary** because USDT's own deviation would
@@ -82,9 +82,14 @@ func sources() []Source {
 		},
 
 		// ── USDT ────────────────────────────────────────────────
-		// Kraken + Bitstamp are the only no-key USD-quoted USDT
-		// markets with meaningful depth. Binance USDT is a quote
-		// asset, not a tradable pair vs USD.
+		// Coinbase + Kraken + Bitstamp are the no-key USD-quoted
+		// USDT markets with meaningful depth. Binance USDT is a
+		// quote asset, not a tradable pair vs USD.
+		{
+			Stable: "usdt", Venue: "coinbase", Pair: "USDT-USD", Quote: QuoteUSD,
+			URL:       envDefault("STABLE_URL_COINBASE_USDT", "https://api.exchange.coinbase.com/products/USDT-USD/ticker"),
+			Liquidity: 25_000_000,
+		},
 		{
 			Stable: "usdt", Venue: "kraken", Pair: "USDTUSD", Quote: QuoteUSD,
 			URL:       envDefault("STABLE_URL_KRAKEN_USDT", "https://api.kraken.com/0/public/Ticker?pair=USDTUSD"),
@@ -118,21 +123,20 @@ func sources() []Source {
 
 		// ── DAI ─────────────────────────────────────────────────
 		// CEX coverage for DAI is essentially dead in 2026
-		// (Binance zero book, Kraken thin, Bitstamp dead). The
-		// only honest signal is on-chain via Curve 3pool. We
-		// don't include Binance/Kraken/Bitstamp DAI pairs to
+		// (re-validated 2026-07-08: Kraken DAIUSD ~$145k/24h with
+		// a ~9 bps spread, Bitstamp daiusd zero volume, Coinbase
+		// DAI-USD delisted). The only honest signal is on-chain
+		// via Curve 3pool. We don't include thin CEX DAI pairs to
 		// avoid the thin-market noise contaminating the metric.
+		//
+		// The published price is the geometric mean of get_dy in
+		// both directions (see pollCurve3poolMid), which cancels
+		// the pool swap fee so the series is comparable to the
+		// CEX mid prices used for USDC/USDT.
 		{
-			Stable: "dai", Venue: "curve_3pool", Pair: "usdc->dai", Quote: QuotePool,
+			Stable: "dai", Venue: "curve_3pool", Pair: "usdc<->dai mid", Quote: QuotePool,
 			URL:       envDefault("STABLE_URL_CURVE_RPC", "https://ethereum-rpc.publicnode.com"),
 			Liquidity: 500_000_000, // 3pool TVL, approximate
-		},
-		// Convenience: also poll get_dy DAI->USDC to surface
-		// directional asymmetry; same pool but the reverse swap.
-		{
-			Stable: "dai", Venue: "curve_3pool_rev", Pair: "dai->usdc", Quote: QuotePool,
-			URL:       envDefault("STABLE_URL_CURVE_RPC", "https://ethereum-rpc.publicnode.com"),
-			Liquidity: 500_000_000,
 		},
 	}
 }
