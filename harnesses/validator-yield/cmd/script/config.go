@@ -29,6 +29,10 @@ var (
 	jitoKobeURL  = envDefault("VAL_ECON_JITO_KOBE_URL", "https://kobe.mainnet.jito.network/api/v1/validators")
 	hyperliqURL  = envDefault("VAL_ECON_HYPERLIQUID_URL", "https://api.hyperliquid.xyz/info")
 	coingeckoURL = envDefault("VAL_ECON_COINGECKO_URL", "https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd")
+
+	// Ethereum sources (see ethereum.go for the source-selection notes).
+	ultrasoundURL   = envDefault("VAL_ECON_ULTRASOUND_URL", "https://ultrasound.money/api/v2/fees/effective-balance-sum")
+	coingeckoEthURL = envDefault("VAL_ECON_COINGECKO_ETH_URL", "https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd")
 )
 
 func envDefault(key, def string) string {
