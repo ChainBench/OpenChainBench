@@ -78,7 +78,6 @@ func chains() []Chain {
 			Name: "MegaETH",
 			Providers: []Provider{
 				{Slug: "megaeth-official", Name: "MegaETH Official", URL: envDefault("RPC_URL_MEGAETH_OFFICIAL", "https://mainnet.megaeth.com/rpc")},
-				{Slug: "1rpc", Name: "1RPC", URL: envDefault("RPC_URL_MEGAETH_1RPC", "https://public.1rpc.io/megaeth")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_MEGAETH_DRPC", "https://megaeth.drpc.org")},
 				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_MEGAETH_TENDERLY", "https://megaeth.gateway.tenderly.co")},
 			},
@@ -106,7 +105,6 @@ func chains() []Chain {
 			Providers: []Provider{
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_POLYGON_PUBLICNODE", "https://polygon-bor-rpc.publicnode.com")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_POLYGON_DRPC", "https://polygon.drpc.org")},
-				{Slug: "1rpc", Name: "1RPC", URL: envDefault("RPC_URL_POLYGON_1RPC", "https://1rpc.io/matic")},
 				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_POLYGON_TENDERLY", "https://gateway.tenderly.co/public/polygon")},
 				{Slug: "nodies", Name: "Nodies (POKT)", URL: envDefault("RPC_URL_POLYGON_NODIES", "https://polygon-pokt.nodies.app")},
 			},
@@ -133,7 +131,6 @@ func chains() []Chain {
 			Providers: []Provider{
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_OPTIMISM_PUBLICNODE", "https://optimism-rpc.publicnode.com")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_OPTIMISM_DRPC", "https://optimism.drpc.org")},
-				{Slug: "1rpc", Name: "1RPC", URL: envDefault("RPC_URL_OPTIMISM_1RPC", "https://1rpc.io/op")},
 				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_OPTIMISM_TENDERLY", "https://gateway.tenderly.co/public/optimism")},
 				{Slug: "nodies", Name: "Nodies (POKT)", URL: envDefault("RPC_URL_OPTIMISM_NODIES", "https://op-pokt.nodies.app")},
 				{Slug: "optimism-official", Name: "Optimism Official", URL: envDefault("RPC_URL_OPTIMISM_OFFICIAL", "https://mainnet.optimism.io")},
@@ -173,7 +170,6 @@ func chains() []Chain {
 			Providers: []Provider{
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_AVALANCHE_PUBLICNODE", "https://avalanche-c-chain-rpc.publicnode.com")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_AVALANCHE_DRPC", "https://avalanche.drpc.org")},
-				{Slug: "1rpc", Name: "1RPC", URL: envDefault("RPC_URL_AVALANCHE_1RPC", "https://1rpc.io/avax/c")},
 				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_AVALANCHE_TENDERLY", "https://gateway.tenderly.co/public/avalanche")},
 				{Slug: "nodies", Name: "Nodies (POKT)", URL: envDefault("RPC_URL_AVALANCHE_NODIES", "https://avax-pokt.nodies.app/ext/bc/C/rpc")},
 				{Slug: "avalanche-official", Name: "Avalanche Official", URL: envDefault("RPC_URL_AVALANCHE_OFFICIAL", "https://api.avax.network/ext/bc/C/rpc")},
@@ -186,7 +182,6 @@ func chains() []Chain {
 			Providers: []Provider{
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_LINEA_PUBLICNODE", "https://linea-rpc.publicnode.com")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_LINEA_DRPC", "https://linea.drpc.org")},
-				{Slug: "1rpc", Name: "1RPC", URL: envDefault("RPC_URL_LINEA_1RPC", "https://1rpc.io/linea")},
 				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_LINEA_TENDERLY", "https://gateway.tenderly.co/public/linea")},
 			},
 		},
@@ -198,7 +193,6 @@ func chains() []Chain {
 			Providers: []Provider{
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_SCROLL_PUBLICNODE", "https://scroll-rpc.publicnode.com")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_SCROLL_DRPC", "https://scroll.drpc.org")},
-				{Slug: "1rpc", Name: "1RPC", URL: envDefault("RPC_URL_SCROLL_1RPC", "https://1rpc.io/scroll")},
 				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_SCROLL_TENDERLY", "https://gateway.tenderly.co/public/scroll-mainnet")},
 			},
 		},
@@ -209,7 +203,6 @@ func chains() []Chain {
 			Providers: []Provider{
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_MANTLE_PUBLICNODE", "https://mantle-rpc.publicnode.com")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_MANTLE_DRPC", "https://mantle.drpc.org")},
-				{Slug: "1rpc", Name: "1RPC", URL: envDefault("RPC_URL_MANTLE_1RPC", "https://1rpc.io/mantle")},
 				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_MANTLE_TENDERLY", "https://gateway.tenderly.co/public/mantle")},
 			},
 		},
@@ -220,7 +213,6 @@ func chains() []Chain {
 			Providers: []Provider{
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_SONIC_PUBLICNODE", "https://sonic-rpc.publicnode.com")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_SONIC_DRPC", "https://sonic.drpc.org")},
-				{Slug: "1rpc", Name: "1RPC", URL: envDefault("RPC_URL_SONIC_1RPC", "https://1rpc.io/sonic")},
 				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_SONIC_TENDERLY", "https://gateway.tenderly.co/public/sonic")},
 				{Slug: "lava", Name: "Lava Network", URL: envDefault("RPC_URL_SONIC_LAVA", "https://sonic.lava.build")},
 				{Slug: "sonic-official", Name: "Sonic Labs Official", URL: envDefault("RPC_URL_SONIC_OFFICIAL", "https://rpc.soniclabs.com")},
@@ -233,7 +225,6 @@ func chains() []Chain {
 			Providers: []Provider{
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_GNOSIS_PUBLICNODE", "https://gnosis-rpc.publicnode.com")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_GNOSIS_DRPC", "https://gnosis.drpc.org")},
-				{Slug: "1rpc", Name: "1RPC", URL: envDefault("RPC_URL_GNOSIS_1RPC", "https://1rpc.io/gnosis")},
 				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_GNOSIS_TENDERLY", "https://gateway.tenderly.co/public/gnosis")},
 				{Slug: "nodies", Name: "Nodies (POKT)", URL: envDefault("RPC_URL_GNOSIS_NODIES", "https://gnosis-pokt.nodies.app")},
 				{Slug: "gnosis-official", Name: "Gnosis Official", URL: envDefault("RPC_URL_GNOSIS_OFFICIAL", "https://rpc.gnosischain.com")},
@@ -246,7 +237,6 @@ func chains() []Chain {
 			Providers: []Provider{
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_CELO_PUBLICNODE", "https://celo-rpc.publicnode.com")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_CELO_DRPC", "https://celo.drpc.org")},
-				{Slug: "1rpc", Name: "1RPC", URL: envDefault("RPC_URL_CELO_1RPC", "https://1rpc.io/celo")},
 				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_CELO_TENDERLY", "https://gateway.tenderly.co/public/celo")},
 				{Slug: "celo-official", Name: "Celo Official (Forno)", URL: envDefault("RPC_URL_CELO_OFFICIAL", "https://forno.celo.org")},
 			},
@@ -282,7 +272,6 @@ func chains() []Chain {
 			Providers: []Provider{
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_MOONBEAM_PUBLICNODE", "https://moonbeam-rpc.publicnode.com")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_MOONBEAM_DRPC", "https://moonbeam.drpc.org")},
-				{Slug: "1rpc", Name: "1RPC", URL: envDefault("RPC_URL_MOONBEAM_1RPC", "https://1rpc.io/glmr")},
 				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_MOONBEAM_TENDERLY", "https://gateway.tenderly.co/public/moonbeam")},
 				{Slug: "moonbeam-official", Name: "Moonbeam Official", URL: envDefault("RPC_URL_MOONBEAM_OFFICIAL", "https://rpc.api.moonbeam.network")},
 			},
@@ -306,7 +295,6 @@ func chains() []Chain {
 			Name: "zkSync Era",
 			Providers: []Provider{
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_ZKSYNC_DRPC", "https://zksync.drpc.org")},
-				{Slug: "1rpc", Name: "1RPC", URL: envDefault("RPC_URL_ZKSYNC_1RPC", "https://1rpc.io/zksync2-era")},
 				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_ZKSYNC_TENDERLY", "https://gateway.tenderly.co/public/zksync")},
 				{Slug: "zksync-official", Name: "zkSync Official", URL: envDefault("RPC_URL_ZKSYNC_OFFICIAL", "https://mainnet.era.zksync.io")},
 			},
@@ -320,7 +308,6 @@ func chains() []Chain {
 			Providers: []Provider{
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_CRONOS_PUBLICNODE", "https://cronos-evm-rpc.publicnode.com")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_CRONOS_DRPC", "https://cronos.drpc.org")},
-				{Slug: "1rpc", Name: "1RPC", URL: envDefault("RPC_URL_CRONOS_1RPC", "https://1rpc.io/cro")},
 				{Slug: "cronos-official", Name: "Cronos Official", URL: envDefault("RPC_URL_CRONOS_OFFICIAL", "https://evm.cronos.org")},
 			},
 		},
@@ -342,7 +329,6 @@ func chains() []Chain {
 			Providers: []Provider{
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_UNICHAIN_PUBLICNODE", "https://unichain-rpc.publicnode.com")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_UNICHAIN_DRPC", "https://unichain.drpc.org")},
-				{Slug: "1rpc", Name: "1RPC", URL: envDefault("RPC_URL_UNICHAIN_1RPC", "https://1rpc.io/unichain")},
 				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_UNICHAIN_TENDERLY", "https://gateway.tenderly.co/public/unichain")},
 				{Slug: "unichain-official", Name: "Unichain Official", URL: envDefault("RPC_URL_UNICHAIN_OFFICIAL", "https://mainnet.unichain.org")},
 			},

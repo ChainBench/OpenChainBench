@@ -4,8 +4,8 @@ slug: blast-rpc
 number: "060"
 title: Fastest free Blast RPC, live no-key endpoint latency
 seo_title: "Fastest free Blast RPC 2026"
-seo_description: "{{best_name}} leads free Blast RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). 4 no-key providers measured every 15s from 3 regions."
-subtitle: HTTP round-trip latency for eth_getBlockByNumber against every free, no-key public Blast RPC endpoint, audited every 15 seconds from 3 regions.
+seo_description: "{{best_name}} leads free Blast RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). 4 no-key providers measured every 60s from 3 regions."
+subtitle: HTTP round-trip latency for eth_getBlockByNumber against every free, no-key public Blast RPC endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
 status: live
@@ -17,10 +17,10 @@ seo_intro: |
   Blast is the expansion's measurement cautionary tale. The chain-official `rpc.blast.io` answers in roughly 2 ms from all three probe regions at once, which no single origin can do: Virginia, Amsterdam and Singapore are separated by 80+ ms round trips at the speed of light. The endpoint terminates at an edge network. Our stale-head detection confirms the blocks it serves are fresh, but a sub-5 ms number measures the edge handshake, not the chain. 4 no-key providers, identical probes, three regions.
 
 abstract: |
-  Per-chain member of the RPC latency cluster. We measure the round-trip latency of a single, identical RPC call (`eth_getBlockByNumber`) against every no-key public Blast endpoint that sustains continuous probing, 4 providers, every 15 seconds, from us-east, eu-west and Singapore. The harness also classifies every response (ok / http_err / jsonrpc_err / stale / timeout) and audits archive depth every 5 minutes, so the leaderboard rewards sustained, honest availability rather than a fast error message. The cross-chain view lives on the parent rpc-capabilities benchmark; this page is the Blast-scoped answer with per-region breakdowns as a first-class dimension.
+  Per-chain member of the RPC latency cluster. We measure the round-trip latency of a single, identical RPC call (`eth_getBlockByNumber`) against every no-key public Blast endpoint that sustains continuous probing, 4 providers, every 60 seconds, from us-east, eu-west and Singapore. The harness also classifies every response (ok / http_err / jsonrpc_err / stale / timeout) and audits archive depth every 5 minutes, so the leaderboard rewards sustained, honest availability rather than a fast error message. The cross-chain view lives on the parent rpc-capabilities benchmark; this page is the Blast-scoped answer with per-region breakdowns as a first-class dimension.
 
 methodology:
-  - "Cadence: every 15 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus `avg(quantile_over_time(...))`; per-region breakdowns are first-class on this page via the region tabs."
+  - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus `avg(quantile_over_time(...))`; per-region breakdowns are first-class on this page via the region tabs."
   - "Payload: `{\"jsonrpc\":\"2.0\",\"id\":<rotating>,\"method\":\"eth_getBlockByNumber\",\"params\":[\"latest\",false]}`. Plain HTTP POST, identical for every endpoint, no API key in any request. Non-cacheable by design: the latest-header fetch with a rotating id defeats edge caches that answer eth_blockNumber without touching a node."
   - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms → 10 s), so percentiles are computed via Prometheus `quantile_over_time` over the last 24 hours."
   - "Call-result classification: `ok` (HTTP 200 + non-empty result), `http_err`, `jsonrpc_err` (HTTP 200 carrying an error body), `stale` (more than 20 blocks behind the cross-provider tip), `timeout`. Latency without reliability is a misleading ranking signal."
@@ -36,13 +36,13 @@ findings:
 
 faq:
   - q: "What is the fastest free Blast RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against 4 no-key providers probed every 15 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples, so the answer on this page is the answer right now, not a quarterly snapshot. Use the region tabs to see the leader from the origin closest to your deployment."
+    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against 4 no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples, so the answer on this page is the answer right now, not a quarterly snapshot. Use the region tabs to see the leader from the origin closest to your deployment."
   - q: "Which Blast RPCs work without an API key?"
     a: "The 4 providers on this page: PublicNode, dRPC, Tenderly, Blast. Every (provider, chain) pair was live-verified no-key before inclusion, and anything that key-gates, region-blocks or rate-limits below our 15-second cadence is excluded rather than listed with an asterisk."
   - q: "Does the fastest Blast RPC change by region?"
     a: "Frequently. The headline number averages three probe origins (us-east, eu-west, Singapore), but per-region leaders regularly diverge, a gateway that wins from Virginia can lose from Singapore by multiples. The region tabs at the top of the page re-scope every number on the page to a single origin; pick the one closest to where your requests actually originate."
   - q: "How is Blast RPC latency measured here?"
-    a: "One identical JSON-RPC POST (`eth_getBlockByNumber`) every 15 seconds against each provider from each of 3 regions, with the same plain HTTP client. Wall-clock round-trip is recorded at millisecond precision; p50/p90/p99 are computed via Prometheus `quantile_over_time` over 24 hours. Responses are classified (`ok` / `http_err` / `jsonrpc_err` / `stale` / `timeout`) so an endpoint stuck on an old head or returning errors behind HTTP 200 is never ranked as fastest. The harness is open source and every number on this page is a public Prometheus query you can run yourself."
+    a: "One identical JSON-RPC POST (`eth_getBlockByNumber`) every 60 seconds against each provider from each of 3 regions, with the same plain HTTP client. Wall-clock round-trip is recorded at millisecond precision; p50/p90/p99 are computed via Prometheus `quantile_over_time` over 24 hours. Responses are classified (`ok` / `http_err` / `jsonrpc_err` / `stale` / `timeout`) so an endpoint stuck on an old head or returning errors behind HTTP 200 is never ranked as fastest. The harness is open source and every number on this page is a public Prometheus query you can run yourself."
   - q: "Is rpc.blast.io really that fast, or is something else going on?"
     a: "Something else. Two milliseconds simultaneously from Virginia, Amsterdam and Singapore is below the physical round-trip floor for any single origin, so the endpoint is answering at an anycast/CDN edge. Our stale-head detection shows the blocks it returns are current, so it is not serving a stale cache today, but edge termination means the latency figure describes the edge network, not node processing. We keep it ranked with the caveat documented, exactly as we do for Cloudflare's fast-but-permissioned Ethereum endpoint."
 
@@ -68,7 +68,7 @@ providers:
   - slug: publicnode
     name: PublicNode
     tag: Allnodes-operated, 70+ chains, archive on most
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to PublicNode's no-key Blast endpoint."
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to PublicNode's no-key Blast endpoint."
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="blast"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="publicnode", chain="blast"})
@@ -91,7 +91,7 @@ providers:
   - slug: drpc
     name: dRPC
     tag: Decentralized RPC mesh, consensus-checked
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key Blast endpoint."
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key Blast endpoint."
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="blast"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="drpc", chain="blast"})
@@ -114,7 +114,7 @@ providers:
   - slug: tenderly
     name: Tenderly
     tag: Multi-chain public gateway, no key
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to Tenderly's no-key Blast endpoint."
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Tenderly's no-key Blast endpoint."
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tenderly", chain="blast"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="tenderly", chain="blast"})
@@ -137,7 +137,7 @@ providers:
   - slug: blast-official
     name: Blast
     tag: Chain-official RPC, edge-terminated (see findings)
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to Blast's no-key Blast endpoint."
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Blast's no-key Blast endpoint."
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="blast-official", chain="blast"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="blast-official", chain="blast"})
