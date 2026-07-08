@@ -4,8 +4,8 @@ slug: gnosis-rpc
 number: "056"
 title: Fastest free Gnosis RPC, live no-key endpoint latency
 seo_title: "Fastest free Gnosis RPC 2026"
-seo_description: "{{best_name}} leads free Gnosis RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). 6 no-key providers measured every 15s from 3 regions."
-subtitle: HTTP round-trip latency for eth_getBlockByNumber against every free, no-key public Gnosis RPC endpoint, audited every 15 seconds from 3 regions.
+seo_description: "{{best_name}} leads free Gnosis RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). 5 no-key providers measured every 60s from 3 regions."
+subtitle: HTTP round-trip latency for eth_getBlockByNumber against every free, no-key public Gnosis RPC endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
 status: live
@@ -14,35 +14,35 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Gnosis is the cluster's clearest proof that official does not mean fast: the chain-official `rpc.gnosischain.com` is the slowest endpoint we measure on the chain, around 433 ms p50 on the 3-region average, while five third-party gateways beat it, including Nodies, whose POKT-backed infrastructure reaches Gnosis as its only chain in this 12-chain expansion. 6 no-key providers, the same `eth_getBlockByNumber` call every 15 seconds, three regions.
+  Gnosis is the cluster's clearest proof that official does not mean fast: the chain-official `rpc.gnosischain.com` is the slowest endpoint we measure on the chain, around 433 ms p50 on the 3-region average, while five third-party gateways beat it, including Nodies, whose POKT-backed infrastructure reaches Gnosis as its only chain in this 12-chain expansion. 5 no-key providers, the same `eth_getBlockByNumber` call every 60 seconds, three regions.
 
 abstract: |
-  Per-chain member of the RPC latency cluster. We measure the round-trip latency of a single, identical RPC call (`eth_getBlockByNumber`) against every no-key public Gnosis endpoint that sustains continuous probing, 6 providers, every 15 seconds, from us-east, eu-west and Singapore. The harness also classifies every response (ok / http_err / jsonrpc_err / stale / timeout) and audits archive depth every 5 minutes, so the leaderboard rewards sustained, honest availability rather than a fast error message. The cross-chain view lives on the parent rpc-capabilities benchmark; this page is the Gnosis-scoped answer with per-region breakdowns as a first-class dimension.
+  Per-chain member of the RPC latency cluster. We measure the round-trip latency of a single, identical RPC call (`eth_getBlockByNumber`) against every no-key public Gnosis endpoint that sustains continuous probing, 6 providers, every 60 seconds, from us-east, eu-west and Singapore. The harness also classifies every response (ok / http_err / jsonrpc_err / stale / timeout) and audits archive depth every 5 minutes, so the leaderboard rewards sustained, honest availability rather than a fast error message. The cross-chain view lives on the parent rpc-capabilities benchmark; this page is the Gnosis-scoped answer with per-region breakdowns as a first-class dimension.
 
 methodology:
-  - "Cadence: every 15 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus `avg(quantile_over_time(...))`; per-region breakdowns are first-class on this page via the region tabs."
+  - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus `avg(quantile_over_time(...))`; per-region breakdowns are first-class on this page via the region tabs."
   - "Payload: `{\"jsonrpc\":\"2.0\",\"id\":<rotating>,\"method\":\"eth_getBlockByNumber\",\"params\":[\"latest\",false]}`. Plain HTTP POST, identical for every endpoint, no API key in any request. Non-cacheable by design: the latest-header fetch with a rotating id defeats edge caches that answer eth_blockNumber without touching a node."
   - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms → 10 s), so percentiles are computed via Prometheus `quantile_over_time` over the last 24 hours."
   - "Call-result classification: `ok` (HTTP 200 + non-empty result), `http_err`, `jsonrpc_err` (HTTP 200 carrying an error body), `stale` (more than 20 blocks behind the cross-provider tip), `timeout`. Latency without reliability is a misleading ranking signal."
   - "Archive depth: every 5 minutes we issue `eth_getBalance` at (head − depth) for depths from Geth's default pruned cap up to 5M blocks, exposing which free endpoints actually serve historical state."
   - "This page is part of the per-chain RPC cluster derived from the cross-chain [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities) benchmark; the identical harness, methodology and exclusion rules apply on every chain."
-  - "Chain scope: every query on this page is pinned to chain=\"gnosis\". Provider coverage: 6 no-key endpoints (PublicNode, dRPC, 1RPC, Tenderly, Nodies, Gnosis). Exclusions follow the cluster-wide rules documented on the parent benchmark."
+  - "Chain scope: every query on this page is pinned to chain=\"gnosis\". Provider coverage: 6 no-key endpoints (PublicNode, dRPC, Tenderly, Nodies, Gnosis). Exclusions follow the cluster-wide rules documented on the parent benchmark."
 
 findings:
-  - "{{best_name}} currently leads free Gnosis RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h) across 6 measured providers."
+  - "{{best_name}} currently leads free Gnosis RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h) across 5 measured providers."
   - "The chain-official endpoint anchors the wrong end of the board: ~433 ms p50 with a similar profile from every region, slower than every gateway on this page. It is honest about its blocks; it is just slow."
   - "{{name:nodies}} ({{p50:nodies}}) is the quiet story of the expansion: Gnosis is the only long-tail chain it qualifies on, and it serves the chain well, a POKT-routed gateway beating the house endpoint by a wide margin."
   - "{{name:drpc}} ({{p50:drpc}}) shows its usual anycast consistency here, part of the pattern that has it leading 10 of the 12 long-tail chains on the 3-region average."
 
 faq:
   - q: "What is the fastest free Gnosis RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against 6 no-key providers probed every 15 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples, so the answer on this page is the answer right now, not a quarterly snapshot. Use the region tabs to see the leader from the origin closest to your deployment."
+    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against 5 no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples, so the answer on this page is the answer right now, not a quarterly snapshot. Use the region tabs to see the leader from the origin closest to your deployment."
   - q: "Which Gnosis RPCs work without an API key?"
-    a: "The 6 providers on this page: PublicNode, dRPC, 1RPC, Tenderly, Nodies, Gnosis. Every (provider, chain) pair was live-verified no-key before inclusion, and anything that key-gates, region-blocks or rate-limits below our 15-second cadence is excluded rather than listed with an asterisk."
+    a: "The 6 providers on this page: PublicNode, dRPC, Tenderly, Nodies, Gnosis. Every (provider, chain) pair was live-verified no-key before inclusion, and anything that key-gates, region-blocks or rate-limits below our 15-second cadence is excluded rather than listed with an asterisk."
   - q: "Does the fastest Gnosis RPC change by region?"
     a: "Frequently. The headline number averages three probe origins (us-east, eu-west, Singapore), but per-region leaders regularly diverge, a gateway that wins from Virginia can lose from Singapore by multiples. The region tabs at the top of the page re-scope every number on the page to a single origin; pick the one closest to where your requests actually originate."
   - q: "How is Gnosis RPC latency measured here?"
-    a: "One identical JSON-RPC POST (`eth_getBlockByNumber`) every 15 seconds against each provider from each of 3 regions, with the same plain HTTP client. Wall-clock round-trip is recorded at millisecond precision; p50/p90/p99 are computed via Prometheus `quantile_over_time` over 24 hours. Responses are classified (`ok` / `http_err` / `jsonrpc_err` / `stale` / `timeout`) so an endpoint stuck on an old head or returning errors behind HTTP 200 is never ranked as fastest. The harness is open source and every number on this page is a public Prometheus query you can run yourself."
+    a: "One identical JSON-RPC POST (`eth_getBlockByNumber`) every 60 seconds against each provider from each of 3 regions, with the same plain HTTP client. Wall-clock round-trip is recorded at millisecond precision; p50/p90/p99 are computed via Prometheus `quantile_over_time` over 24 hours. Responses are classified (`ok` / `http_err` / `jsonrpc_err` / `stale` / `timeout`) so an endpoint stuck on an old head or returning errors behind HTTP 200 is never ranked as fastest. The harness is open source and every number on this page is a public Prometheus query you can run yourself."
   - q: "Should I use rpc.gnosischain.com as my Gnosis RPC?"
     a: "Only as a fallback. It is the slowest endpoint we measure on Gnosis, roughly 433 ms median across three regions, several times the gateway tier, though its reliability and head freshness are fine. The measured leaders above serve the same chain with a fraction of the round trip; keep the official endpoint in the rotation for redundancy rather than as primary."
 
@@ -68,7 +68,7 @@ providers:
   - slug: publicnode
     name: PublicNode
     tag: Allnodes-operated, 70+ chains, archive on most
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to PublicNode's no-key Gnosis endpoint."
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to PublicNode's no-key Gnosis endpoint."
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="gnosis"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="publicnode", chain="gnosis"})
@@ -91,7 +91,7 @@ providers:
   - slug: drpc
     name: dRPC
     tag: Decentralized RPC mesh, consensus-checked
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key Gnosis endpoint."
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key Gnosis endpoint."
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="gnosis"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="drpc", chain="gnosis"})
@@ -111,33 +111,10 @@ providers:
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="gnosis", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="gnosis", region="sgp"}[1h])
 
-  - slug: 1rpc
-    name: 1RPC
-    tag: Privacy-preserving gateway by Automata Network
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to 1RPC's no-key Gnosis endpoint."
-    queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="1rpc", chain="gnosis"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="1rpc", chain="gnosis"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="1rpc", chain="gnosis"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="1rpc", chain="gnosis"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="1rpc", chain="gnosis"}) / sum(ocb:rpc_call:rate_24h{provider="1rpc", chain="gnosis"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="1rpc", chain="gnosis"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="1rpc", chain="gnosis"}[1h]))
-      regions:
-        - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="1rpc", chain="gnosis", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="1rpc", chain="gnosis", region="us-east"}[1h])
-        - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="1rpc", chain="gnosis", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="1rpc", chain="gnosis", region="eu-west"}[1h])
-        - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="1rpc", chain="gnosis", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="1rpc", chain="gnosis", region="sgp"}[1h])
-
   - slug: tenderly
     name: Tenderly
     tag: Multi-chain public gateway, no key
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to Tenderly's no-key Gnosis endpoint."
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Tenderly's no-key Gnosis endpoint."
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tenderly", chain="gnosis"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="tenderly", chain="gnosis"})
@@ -160,7 +137,7 @@ providers:
   - slug: nodies
     name: Nodies
     tag: POKT Network's decentralized public RPC successor, 7+ chains
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to Nodies's no-key Gnosis endpoint."
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Nodies's no-key Gnosis endpoint."
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="nodies", chain="gnosis"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="nodies", chain="gnosis"})
@@ -183,7 +160,7 @@ providers:
   - slug: gnosis-official
     name: Gnosis
     tag: Gnosis chain-official RPC (rpc.gnosischain.com)
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to Gnosis's no-key Gnosis endpoint."
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Gnosis's no-key Gnosis endpoint."
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="gnosis-official", chain="gnosis"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="gnosis-official", chain="gnosis"})
