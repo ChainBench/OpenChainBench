@@ -306,6 +306,16 @@ func fetchGains(v VenueConfig, _ string) PerpSample {
 	s.TakerFeeBps = openFeeF
 	s.SpreadBps = spreadF
 	s.AllInBps = openFeeF + spreadF
+	// Notional tiers: Gains v8 fees are percentages of position size.
+	// totalPositionSizeFeeP and spreadP are both flat rates that do not
+	// change with notional (the fees(feeIndex) tier is per pair, not per
+	// trade size), so the bps figure is identical at $1k, $10k and $100k.
+	// Gains does apply dynamic price impact on pairs with spreadP=0 (SOL),
+	// but that value is computed inside the protocol at trade time and is
+	// not readable from the on-chain config this harness measures, so we
+	// publish the flat rate at every tier rather than invent an impact
+	// curve.
+	applyFlatTiers(&s)
 	s.FetchLatencyMs = time.Since(start).Milliseconds()
 	return s
 }

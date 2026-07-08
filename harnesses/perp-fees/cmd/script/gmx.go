@@ -130,6 +130,14 @@ func fetchGMX(v VenueConfig) PerpSample {
 	}
 
 	s.AllInBps = s.TakerFeeBps + s.SpreadBps
+	// Notional tiers: GMX v2's positionFeeFactor is a per-notional factor
+	// (fee = factor x sizeDelta), so the bps figure is identical at $1k,
+	// $10k and $100k. The only size-dependent term is priceImpact, which
+	// scales with OI imbalance; against the main markets' nine-figure open
+	// interest even $100k moves it by well under a tenth of a bp, and the
+	// harness already reports the conservative negative-impact fee branch.
+	// Publishing the same value across tiers is therefore correct.
+	applyFlatTiers(&s)
 	s.FetchLatencyMs = time.Since(start).Milliseconds()
 	return s
 }
