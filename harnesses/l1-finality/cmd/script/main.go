@@ -44,6 +44,7 @@ func main() {
 	StartTONWallClock()
 	StartSUIWallClock()
 	StartStellarWallClock()
+	StartBitcoinWallClock()
 
 	<-sigChan
 	fmt.Println("\nShutting down...")

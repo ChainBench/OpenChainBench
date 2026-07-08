@@ -230,6 +230,16 @@ func (n *NearIntentsBridge) TestRoute(route TestRoute, amount, amountUsd float64
 	// bridge_cost_usd and leave the breakdown buckets at 0 to make it obvious
 	// in the data that no per-component decomposition is available from this
 	// provider.
+	//
+	// Destination delivery IS included in this number. A 2026-07 audit
+	// flagged inUsd-outUsd as missing destination-chain gas; that is wrong.
+	// The 1Click OpenAPI documents the quote's `withdrawFee` (destination
+	// withdrawal fee, smallest unit of the destination asset) as "already
+	// accounted for in the final amountOut result", and live dry quotes
+	// (verified 2026-07-08, Base→Arb $300 USDC) return withdrawFee alongside
+	// the netted amountOut. So inUsd-outUsd is the same all-in definition as
+	// the other bridges (source fee + spread + destination delivery). Do NOT
+	// add a separate destination gas term on top: it would double count.
 	costUsd := inUsd - outUsd
 	if costUsd < 0 {
 		costUsd = 0

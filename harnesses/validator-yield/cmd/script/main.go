@@ -19,7 +19,7 @@ func main() {
 	installLogCapture() // capture stdout into /logs ring buffer
 	fmt.Println("=== Validator Economics Harness ===")
 	fmt.Println("OpenChainBench bench #026 — net yield = gross APR + MEV − downtime")
-	fmt.Println("Scope v1: Solana + Hyperliquid (Ethereum deferred to v2)")
+	fmt.Println("Scope: Solana + Hyperliquid + Ethereum (consensus-layer, network avg)")
 	fmt.Println()
 
 	go func() {
@@ -40,6 +40,7 @@ func main() {
 	// hit independent upstreams so there's no rate-limit interaction.
 	go runChainScraper(ctx, client, "solana", scrapeSolana)
 	go runChainScraper(ctx, client, "hyperliquid", scrapeHyperliquid)
+	go runChainScraper(ctx, client, "ethereum", scrapeEthereum)
 
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)

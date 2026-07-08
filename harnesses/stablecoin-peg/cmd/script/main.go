@@ -40,7 +40,7 @@ func main() {
 	for _, s := range srcs {
 		s := s
 		interval := cexPollInterval
-		if s.Venue == "curve_3pool" || s.Venue == "curve_3pool_rev" {
+		if s.Venue == "curve_3pool" {
 			interval = curvePollInterval
 		}
 		go runSourceLoop(ctx, s, interval, agg)

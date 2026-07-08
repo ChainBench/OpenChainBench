@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -29,14 +30,10 @@ func poll(ctx context.Context, s Source) (float64, error) {
 		return pollKraken(ctx, s.URL, s.Pair)
 	case "bitstamp":
 		return pollBitstamp(ctx, s.URL)
+	case "coinbase":
+		return pollCoinbase(ctx, s.URL)
 	case "curve_3pool":
-		// USDC (i=1) -> DAI (i=0) with input 1_000_000 (= $1).
-		// Returns price of DAI per USDC. Decimal: input 6 dec, output 18 dec.
-		return pollCurveGetDy(ctx, s.URL, curve3poolAddr, 1, 0, "0xf4240", 1e18)
-	case "curve_3pool_rev":
-		// DAI (i=0) -> USDC (i=1) with input 1e18 (= $1).
-		// Returns price of USDC per DAI. Decimal: input 18 dec, output 6 dec.
-		return pollCurveGetDy(ctx, s.URL, curve3poolAddr, 0, 1, "0xde0b6b3a7640000", 1e6)
+		return pollCurve3poolMid(ctx, s.URL)
 	default:
 		return 0, fmt.Errorf("unknown venue: %s", s.Venue)
 	}
@@ -143,9 +140,64 @@ func pollBitstamp(ctx context.Context, url string) (float64, error) {
 	return (bid + ask) / 2, nil
 }
 
+// ─── Coinbase Exchange ─────────────────────────────────────────────
+
+type cbTicker struct {
+	Bid string `json:"bid"`
+	Ask string `json:"ask"`
+}
+
+func pollCoinbase(ctx context.Context, url string) (float64, error) {
+	body, status, err := httpGet(ctx, url)
+	if err != nil {
+		return 0, err
+	}
+	if status != 200 {
+		return 0, fmt.Errorf("http %d", status)
+	}
+	var t cbTicker
+	if err := json.Unmarshal(body, &t); err != nil {
+		return 0, fmt.Errorf("parse: %w", err)
+	}
+	bid, e1 := strconv.ParseFloat(t.Bid, 64)
+	ask, e2 := strconv.ParseFloat(t.Ask, 64)
+	if e1 != nil || e2 != nil || bid <= 0 || ask <= 0 {
+		return 0, fmt.Errorf("invalid bid/ask: %q/%q", t.Bid, t.Ask)
+	}
+	return (bid + ask) / 2, nil
+}
+
 // ─── Curve onchain via eth_call get_dy(i, j, _dx) ──────────────────
 
 const curve3poolAddr = "0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7"
+
+// pollCurve3poolMid returns a fee-free implied DAI/USD price from the
+// Curve 3pool. `get_dy` embeds the pool's swap fee, so a single
+// directional quote systematically reads low regardless of where DAI
+// actually trades. Both directions carry the same (1 - fee) factor:
+//
+//	fwd = get_dy(USDC->DAI) ~= (1/p) * (1-fee)   DAI out per 1 USDC
+//	rev = get_dy(DAI->USDC) ~= p * (1-fee)       USDC out per 1 DAI
+//
+// so sqrt(rev/fwd) = p exactly. The fee cancels; only genuine pool
+// imbalance moves the number, which puts the DAI series in the same
+// class as a CEX mid price (no fee, no direction artifact).
+func pollCurve3poolMid(ctx context.Context, rpcURL string) (float64, error) {
+	// USDC (i=1) -> DAI (i=0), input 1_000_000 (= $1, 6 dec), output 18 dec.
+	fwd, err := pollCurveGetDy(ctx, rpcURL, curve3poolAddr, 1, 0, "0xf4240", 1e18)
+	if err != nil {
+		return 0, fmt.Errorf("fwd: %w", err)
+	}
+	// DAI (i=0) -> USDC (i=1), input 1e18 (= $1, 18 dec), output 6 dec.
+	rev, err := pollCurveGetDy(ctx, rpcURL, curve3poolAddr, 0, 1, "0xde0b6b3a7640000", 1e6)
+	if err != nil {
+		return 0, fmt.Errorf("rev: %w", err)
+	}
+	if fwd <= 0 || rev <= 0 {
+		return 0, fmt.Errorf("non-positive quote: fwd=%v rev=%v", fwd, rev)
+	}
+	return math.Sqrt(rev / fwd), nil
+}
 
 // pollCurveGetDy issues `get_dy(int128 i, int128 j, uint256 _dx)` on
 // the pool. We construct the calldata manually rather than depend on

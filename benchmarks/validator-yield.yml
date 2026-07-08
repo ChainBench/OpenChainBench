@@ -2,10 +2,10 @@
 
 slug: validator-yield
 number: "026"
-title: Highest staking yield, live validator net APR across Solana and Hyperliquid
-seo_title: "Highest staking yield 2026: SOL vs HYPE"
-seo_description: "Highest staking yield ranked live by net validator APR. Solana top 200 (Stakewiz total APY, MEV in) vs Hyperliquid active set. Uptime + commission + stake."
-subtitle: Median validator net yield (APR multiplied by uptime) in basis points, compared across chains. Solana top 200 by stake, all active Hyperliquid validators.
+title: Highest staking yield, live validator net APR across Solana, Hyperliquid and Ethereum
+seo_title: "Highest staking yield 2026: SOL vs HYPE vs ETH"
+seo_description: "Highest staking yield ranked live by net validator APR. Solana top 200 (Stakewiz total APY, MEV in), Hyperliquid active set, Ethereum consensus-layer solo validator APR (spec formula, MEV excluded). Uptime + commission + stake."
+subtitle: Median validator net yield (APR multiplied by uptime) in basis points, compared across chains. Solana top 200 by stake, all active Hyperliquid validators, Ethereum as one network-average consensus-layer solo validator figure.
 category: Blockchains
 status: live
 metric: Net yield
@@ -13,7 +13,7 @@ unit: bps
 higher_is_better: true
 
 disclaimer: |
-  Honest scope. (1) `net_yield = gross_apr × uptime`. NOT "yield net of MEV", Stakewiz `total_apy` already folds Jito MEV into gross, MEV is INCLUDED. `mev_share_bps` exists for transparency, not subtraction. (2) Solana median is dragged by ~42 vals at 0% APY (commission 100% or zero leader slots). (3) Hyperliquid: centralised sequencer, no separate MEV layer, ~30 vals only. (4) Ethereum deferred v2, requires beacon-node or MEV-Boost relay scraping.
+  Honest scope. (1) `net_yield = gross_apr × uptime`. NOT "yield net of MEV", Stakewiz `total_apy` already folds Jito MEV into gross, MEV is INCLUDED. `mev_share_bps` exists for transparency, not subtraction. (2) Solana median is dragged by ~42 vals at 0% APY (commission 100% or zero leader slots). (3) Hyperliquid: centralised sequencer, no separate MEV layer, ~30 vals only. (4) Ethereum: one network-average consensus-layer APR from the beacon spec formula, execution tips and MEV excluded.
 
 seo_intro: |
   This benchmark answers the question every staker asks when
@@ -22,11 +22,14 @@ seo_intro: |
   including MEV where the chain has it. Marketing pages quote
   "up to 7% APY" without specifying validator, uptime
   assumption, or whether MEV tips are folded in. This page
-  measures the reality on-chain across two yield surfaces with
+  measures the reality on-chain across three yield surfaces with
   fundamentally different economics: Solana's competitive,
   ~3000-validator, MEV-heavy stake market (top 200 tracked by
-  activated stake) and Hyperliquid's permissioned, ~30-validator,
-  no-MEV centralised-sequencer model. The headline number per
+  activated stake), Hyperliquid's permissioned, ~30-validator,
+  no-MEV centralised-sequencer model, and Ethereum's ~1M-validator
+  beacon chain, published as a single network-average
+  consensus-layer solo validator figure with execution tips and
+  MEV excluded. The headline number per
   chain is the median net yield in basis points, where 1% APY =
   100 bps. Per-validator gauges expose gross APR, commission,
   uptime, MEV share and dollar stake so the reader can drill from
@@ -46,7 +49,19 @@ abstract: |
   transparency gauge. For Hyperliquid, the source is
   `/info validatorSummaries` whose `predictedApr.day` is staking
   yield only (no MEV layer exists, Hyperliquid's centralised
-  sequencer captures order flow value upstream). Solana is capped
+  sequencer captures order flow value upstream). For Ethereum, the
+  source is the live total beacon-chain effective balance from
+  ultrasound.money (`/api/v2/fees/effective-balance-sum`), plugged
+  into the consensus spec reward formula (base reward factor 64)
+  to give the network-average nominal APR for a 32 ETH solo
+  validator. The Ethereum figure is consensus layer only:
+  attestation, proposer and sync committee rewards in expectation.
+  Execution tips and MEV are excluded, so it understates what a
+  MEV-Boost proposer realizes, and it is not a liquid staking APY.
+  Ethereum ships as one network-average series rather than
+  per-validator gauges: the active set is ~1M validator indices,
+  and consensus rewards are uniform per 32 ETH increment, so the
+  network average equals the solo validator number. Solana is capped
   to the top 200 validators by activated stake to keep Prometheus
   cardinality bounded (the full set is ~3000); Hyperliquid
   exposes all ~30 active. The per-chain leaderboard number is
@@ -71,8 +86,9 @@ methodology:
   - "Cap. Solana exposes ~3000 active validators across the full set; the bench caps to the top 200 by `activated_stake` (USD-weighted) to keep Prom cardinality at ~230 series total across the two chains. The top 200 represent ~90% of staked SOL by value, so the median is representative of where real stake sits, not of the long tail of <1k SOL validators. Hyperliquid exposes ~30 active validators total, all are tracked."
   - "Median (chain-level headline). `ocb_chain_median_net_yield_bps{chain}` is computed harness-side over the per-validator gauges every scrape, not derived from Prom. This includes the ~42 Solana validators currently at 0% APY (commission 100% or no leader slots), which materially pulls the Solana median down vs the modal active-validator yield. A reader who wants 'yield I would get if I picked a sane validator' should look at p75 or higher on the Solana distribution, not the chain median."
   - "MEV treatment. Solana: MEV tips from Jito are already folded into Stakewiz `total_apy`. `ocb_validator_mev_share_bps` is exposed for transparency (a reader sees 'Helius APR 600 bps of which 80 bps MEV') but NOT subtracted to produce a 'staking-only' figure. Hyperliquid: no separate MEV layer (centralised sequencer captures order-flow value at the protocol level), so the MEV gauge is 0 by convention."
+  - "Ethereum. Source: `GET ultrasound.money/api/v2/fees/effective-balance-sum` (free, no key), live total beacon-chain effective balance. APR = 64 × epochs_per_year / sqrt(total_gwei), the consensus spec reward formula at 100% participation (realized ~99.5%, under 2 bps of drift). One network-average series: consensus rewards are uniform per 32 ETH increment, so the average equals the solo validator nominal APR. Execution tips and MEV excluded. Price: CoinGecko (ETH/USD)."
   - "Jailed / inactive handling. Hyperliquid: `jailed=1` validators (currently 4) land in the dataset with `predictedApr=0`, so `net_yield_bps=0`. Solana: ~42 validators report `total_apy=0`. Live data shows two causes: commission 100% (operator routes everything to themselves, delegators get 0) or zero leader slots this epoch (no block-production rewards). Both legitimate transient states, both count toward total + median."
-  - "Excluded by design. Ethereum validator yield (deferred v2, beacon-node ~1 TB or MEV-Boost relay scraping required, neither is a 5-min poll). Lido / Rocket Pool / Coinbase staked-ETH are products with own fee structures, not validator yields (separate bench `liquid-staking-yield`, future). Cosmos, Polkadot, Avalanche out of scope v1, chain-specific sources would dilute focus."
+  - "Excluded by design. Per-validator Ethereum gauges (~1M active indices; needs beacon-node ingestion, deferred to v2). Ethereum execution tips and MEV (needs per-relay MEV-Boost scraping; the published figure is consensus only). Lido / Rocket Pool / Coinbase staked-ETH are products with own fee structures, not validator yields (separate bench `liquid-staking-yield`, future). Cosmos, Polkadot, Avalanche out of scope v1, chain-specific sources would dilute focus."
 
 findings:
   - "{{best_name}} currently leads at {{best_p50}} (median net yield, 24 h) across {{count}} measured chains. The cross-chain gap is structural: Solana's ~5.6% median reflects PoS inflation + Jito MEV tips minus average ~24% validator commission, while Hyperliquid's ~2.2% reflects staking-only rewards on a deflationary HYPE token with no MEV layer to top it up."
@@ -80,7 +96,7 @@ findings:
   - "{{name:hyperliquid}} returns {{p50:hyperliquid}} (median, 24 h) across all 31 active validators. 4 are currently jailed (consensus fault, `jailed=1`, `predictedApr=0`) which pulls the median; the active-set median is closer to 2.25% (top operators at ~225 bps cluster very tightly because Hyperliquid's reward model distributes evenly across non-jailed validators)."
   - "Top Solana validators by stake: Figment ($1.36B), Helius ($1.29B), Binance Staking ($1.16B), Jupiter ($1.10B), Ledger by Figment ($794M). These are the institutional and exchange validators where delegated stake concentrates; their individual net yields cluster around the chain modal, not the median."
   - "Top Hyperliquid validators by stake: the four Hyper Foundation validators (1-4) collectively control >$12.8B in staked HYPE, with Anchorage by Figment ($1.43B) and Nansen × HypurrCollective ($1.38B) the largest non-foundation operators. The foundation concentration is much higher than on Solana, a structural difference between a permissioned ~30-validator set and a permissionless ~3000-validator one."
-  - "Ethereum is deferred to v2. Honest validator-level APR requires beacon-node integration (storage cost) or per-relay MEV-Boost scraping (which only covers the proposer fraction of yield). Until the v2 ingestion lands, this bench compares Solana vs Hyperliquid only, two chains chosen because each exposes a clean, free, no-key public API for the full validator set."
+  - "{{name:ethereum}} publishes {{p50:ethereum}} as a single network-average consensus-layer APR, computed from the beacon spec reward formula on the live total effective balance (~40M ETH staked). The figure moves inversely with the square root of total stake and excludes execution tips and MEV, so a proposer running MEV-Boost realizes more in practice. It is a solo validator nominal APR, not a liquid staking APY: Lido or Rocket Pool quote lower because product fees are netted out."
 
 faq:
   - q: "What is validator net yield?"
@@ -93,8 +109,8 @@ faq:
     a: "MEV is INCLUDED in the gross APR figure, not subtracted from it. For Solana, Stakewiz's `total_apy` already folds Jito MEV tips into the headline APR by design, this bench inherits that aggregation rather than re-computing. The `ocb_validator_mev_share_bps` gauge is exposed separately for transparency (so you can see e.g. 'Helius's 600 bps APR is 80 bps MEV + 520 bps staking') but it does NOT get subtracted to produce a 'staking-only' number. For Hyperliquid, no separate MEV layer exists at validator level (the centralised sequencer captures value upstream), so the MEV gauge is reported as 0 by convention. This is the same `net_yield` definition every staking dashboard uses, Stakewiz, Solana Beach, Hyperliquid Stats, etc."
   - q: "Why are some Solana validators at 0% APY?"
     a: "Two legitimate causes, both visible in the live data. (1) Commission set to 100%: the validator operator has configured their vote account to route 100% of staking rewards to themselves, so delegators receive 0%. This is common for operators running their own treasury stake (Binance, exchange custody, etc.) where 'delegators' is a fiction, there's only the operator's own SOL. (2) Zero leader slots in the current epoch: Solana's leader schedule is stake-weighted but randomised per epoch, so a small validator can statistically draw zero slots in a given ~2-day epoch and earn zero block-production rewards. Both states are transient: commission can be lowered, leader slots cycle every epoch. The bench surfaces them as 0 rather than filtering because they ARE part of the live validator set."
-  - q: "Why is Ethereum missing from this benchmark?"
-    a: "Ethereum is deferred to v2. Honest validator-level APR on Ethereum requires either (a) running a beacon-node connection (~1 TB disk, ongoing sync cost) to read per-validator effective balance and attestation history, or (b) scraping every MEV-Boost relay's API for proposer-level payment data (Flashbots, BloXroute, Eden, Aestus, Manifold, etc., each with its own schema). Neither is a 5-minute HTTP poll like Stakewiz or Hyperliquid `/info`. The v1 scope was 'free no-key APIs that expose the full active validator set in one call'; Ethereum doesn't have that. v2 will add beacon-node ingestion or relay aggregation once the harness footprint can afford it."
+  - q: "What does the Ethereum number measure?"
+    a: "It is the network-average consensus-layer APR for a 32 ETH solo validator, computed from the beacon chain spec reward formula on the live total effective balance published by ultrasound.money. It covers attestation, proposer and sync committee rewards in expectation, at 100% participation (realized participation runs about 99.5%, a drift of under 2 bps). It EXCLUDES execution-layer tips and MEV, so a proposer running MEV-Boost earns more in practice. It is NOT a liquid staking APY: Lido or Coinbase quotes are product rates with their own fee schedules netted out. Ethereum ships as one aggregate series rather than per-validator gauges because the active set is about 1M validator indices and consensus rewards are uniform per 32 ETH increment, so the network average equals the solo validator nominal APR. Per-validator Ethereum gauges and MEV inclusion require beacon-node or relay ingestion and stay on the v2 roadmap."
   - q: "Where do Stakewiz and Jito Kobe data come from?"
     a: "Stakewiz (`api.stakewiz.com`) is a community-maintained Solana validator analytics service that ingests on-chain vote-account state, commission history, leader schedule and reward distribution, then publishes a clean `/validators` JSON with `total_apy` already computed as a 30-epoch trailing estimate. Jito Kobe (`kobe.mainnet.jito.network`) is Jito Labs' public API exposing per-validator MEV-tip earnings broken down by epoch. Both are free, key-less, and well-known in the Solana validator-ops community, this bench treats them as the canonical source for Solana validator APR the same way most Solana staking dashboards do (Solana Beach, Marinade UI, etc., all consume one or both)."
   - q: "Why cap Solana at the top 200 validators?"
@@ -152,10 +168,24 @@ providers:
       sample_size: ocb_chain_total_validators{chain="hyperliquid"}
       series: ocb_chain_median_net_yield_bps{chain="hyperliquid"}
 
-# Ethereum deferred to v2, requires beacon-node integration or
-# per-relay MEV-Boost scraping for honest validator-level APR.
-# The v1 scope was "free no-key public APIs exposing the full
-# active validator set in one HTTP call"; Ethereum doesn't fit
-# that constraint. When the v2 ingestion lands, Ethereum joins
-# this bench as a third provider on the same `ocb_chain_median_net_yield_bps`
-# metric without schema change.
+  - slug: ethereum
+    name: Ethereum
+    tag: Network avg · consensus spec APR, MEV excluded
+    formula: "Network-average consensus-layer APR in bps for a 32 ETH solo validator: APR = 64 × epochs_per_year / sqrt(total effective balance in gwei), with live total stake from ultrasound.money. Execution tips and MEV excluded."
+    queries:
+      p50: ocb_chain_median_net_yield_bps{chain="ethereum"}
+      p90: quantile(0.90, ocb_validator_net_yield_bps{chain="ethereum"})
+      p99: quantile(0.99, ocb_validator_net_yield_bps{chain="ethereum"})
+      mean: avg(ocb_validator_net_yield_bps{chain="ethereum"})
+      success: clamp_max(avg_over_time(ocb_validator_uptime_pct{chain="ethereum"}[24h]) / 100, 1)
+      sample_size: ocb_chain_total_validators{chain="ethereum"}
+      series: ocb_chain_median_net_yield_bps{chain="ethereum"}
+
+# Ethereum publishes ONE synthetic series (validator="beacon-network"),
+# the network-average consensus-layer nominal APR from the beacon spec
+# reward formula on the live total effective balance (ultrasound.money,
+# free, no key). Consensus rewards are uniform per 32 ETH increment, so
+# the network average IS the solo-validator number. Execution tips and
+# MEV are excluded; per-validator Ethereum gauges (beacon-node
+# ingestion) and MEV inclusion (per-relay MEV-Boost scraping) remain v2.
+# Source-selection notes live in harnesses/validator-yield/cmd/script/ethereum.go.

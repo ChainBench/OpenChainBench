@@ -66,7 +66,7 @@ methodology:
   - "Coverage check: for each fresh token, query each aggregator's metadata endpoint and record whether `logo`, `description`, `twitter` and `website` are populated."
   - "Aggregators in scope: Mobula (`/api/2/token/details`), Codex (GraphQL `token` query, JWT-authenticated), Jupiter (`/v6/tokens/<mint>`, Solana only)."
   - "Cadence: queue-driven; every newly-discovered token is checked once across the three aggregators. Steady-state ≈ several hundred checks per provider per hour."
-  - "Region: `eu-west` (single point. multi-region requires running additional monitor instances)."
+  - "Region: single probe origin (one monitor instance on our infrastructure). The bench intentionally declares no region dimension; multi-region would require additional monitor instances and is not currently planned."
   - "Ratio: `metadata_coverage_success_total / metadata_coverage_checks_total`, expressed in percent. Failures of the metadata API itself (timeouts, 5xx) are not counted in the denominator. only successful responses with the field check applied."
   - "Jupiter is Solana-only. it appears with zero coverage on EVM chains by construction; the cross-chain headline excludes Jupiter on chains it does not support."
 
@@ -106,20 +106,12 @@ dimensions:
   chain:
     - { value: solana, label: Solana }
     - { value: bnb,    label: BNB Chain }
-  # Region values match the raw harness labels. Declared so the
-  # /compare/[slug] page can render a chain x region matrix when
-  # both providers compete in this bench.
-  region:
-    - { value: all,     label: All regions }
-    - { value: us-east, label: US-East }
-    - { value: eu-west, label: EU-West }
-    - { value: sgp,     label: Singapore }
 
 # Rank matrix query gates the per-region badge scoping. Coverage is a
 # success-rate ratio; metric labels already carry the `provider` token
 # natively (metadata_coverage_success_total{provider, chain, field,
 # region}) so no label_replace required.
-rank_matrix_query: avg by (provider, chain, region) (rate(metadata_coverage_success_total[24h]) / clamp_min(rate(metadata_coverage_checks_total[24h]), 0.001))
+rank_matrix_query: avg by (provider, chain) (rate(metadata_coverage_success_total[24h]) / clamp_min(rate(metadata_coverage_checks_total[24h]), 0.001))
 
 # Real metrics exposed by the aggregator-head-lag harness:
 #   metadata_coverage_checks_total{provider, chain, field, region}   counter

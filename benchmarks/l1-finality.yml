@@ -4,10 +4,10 @@ slug: l1-finality
 number: "006"
 title: Fastest L1 blockchain finality, live across 11 chains
 seo_title: "Fastest L1 finality 2026"
-seo_description: "Fastest L1 finality live across 11 chains: Gram, SUI, Hedera, Stellar, Solana, Ethereum and more."
-subtitle: Wall-clock seconds from latest block to the finalized block on Ethereum, Solana, Gram, SUI, Stellar and 5 more chains, refreshed every 10 seconds.
+seo_description: "Fastest L1 finality live across 11 chains: Gram, SUI, Hedera, Stellar, Solana, Ethereum, Bitcoin and more."
+subtitle: Wall-clock seconds from latest block to the finalized block on Ethereum, Solana, Bitcoin, Gram, SUI, Stellar and 5 more chains, refreshed every 10 seconds.
 seo_intro: |
-  This page measures L1 finality time live for every major Layer-1 blockchain, with p50 / p90 / p99 refreshed every 10 seconds. Stellar finality time is ~5 seconds, the close interval the Stellar Consensus Protocol locks in via federated Byzantine agreement. Solana finality time goes from sub-second on the processed commitment to ~12.8 s on finalized after 32 confirmed slots. Ethereum finality time is ~12.8 minutes, the 2-epoch Casper FFG window. Hedera finality time clears in 3-5 seconds via Hashgraph aBFT. SUI finality time and Gram finality time (formerly TON) both sit under one second via Mysticeti DAG-BFT and BAG consensus. BNB and Avalanche finality time land near two seconds through fast-finality forks. Probabilistic chains (Litecoin, Monero) settle on a confirmation-depth convention measured here in minutes.
+  This page measures L1 finality time live for every major Layer-1 blockchain, with p50 / p90 / p99 refreshed every 10 seconds. Stellar finality time is ~5 seconds, the close interval the Stellar Consensus Protocol locks in via federated Byzantine agreement. Solana finality time goes from sub-second on the processed commitment to ~12.8 s on finalized after 32 confirmed slots. Ethereum finality time is about 12.8 minutes in the ideal case, the 2-epoch Casper FFG window; observed wall-clock finality runs longer, and the table below shows the live measurement. Hedera finality time clears in 3-5 seconds via Hashgraph aBFT. SUI finality time and Gram finality time (formerly TON) both sit under one second via Mysticeti DAG-BFT and BAG consensus. BNB and Avalanche finality time land near two seconds through fast-finality forks. Probabilistic chains (Bitcoin, Litecoin, Monero) settle on a confirmation-depth convention measured here in minutes. Bitcoin finality time is roughly one hour at the industry-standard 6 confirmations; the protocol itself never reaches absolute finality.
 
 faq:
   - q: "What is blockchain finality?"
@@ -15,7 +15,7 @@ faq:
   - q: "Probabilistic vs deterministic finality, what is the difference?"
     a: "Deterministic finality is a binary state. A block is either finalized or it is not, and finalized blocks cannot be reorganized. Probabilistic finality is a confidence curve: a block becomes more final with each confirmation that builds on top of it. Exchanges set a convention (Bitcoin 6, Litecoin 6, Monero 10, Cardano 15) past which they treat funds as settled, but the protocol itself never declares strict finality. This benchmark uses each chain's native convention rather than imposing a uniform depth across all chains."
   - q: "What is Ethereum finality time?"
-    a: "Ethereum finality time is {{p50:ethereum}} (p50, 24h). That is 2 epochs of 32 slots of 12 seconds each, the window Casper FFG needs to justify and finalize a checkpoint. The benchmark measures it live by polling eth_getBlockByNumber(\"latest\") and eth_getBlockByNumber(\"finalized\") every 10 seconds and taking the timestamp delta."
+    a: "Ethereum finality time measured live on this page is {{p50:ethereum}} (p50, 24h). Casper FFG finalizes a checkpoint two epochs after it is justified, where each epoch is 32 slots of 12 seconds, about 12.8 minutes in the ideal case. Observed wall-clock finality runs longer because a block lands mid-epoch and waits before the two-epoch countdown starts. The live table above shows the measured value. The benchmark polls eth_getBlockByNumber(\"latest\") and eth_getBlockByNumber(\"finalized\") every 10 seconds and reports the timestamp delta."
   - q: "What is Solana finality time?"
     a: "Solana exposes two commitments. Processed is optimistic and lands sub-second, typically under 500 ms. Finalized requires 32 confirmed slots and clocks {{p50:solana}} (24h average). The leaderboard value is finalized, the stricter guarantee. Sub-second Solana finality is real but only at the processed commitment level, not finalized."
   - q: "What is SUI finality time?"
@@ -29,7 +29,9 @@ faq:
   - q: "What is BNB Chain finality time?"
     a: "BNB Smart Chain finalizes via the BEP-126 fast-finality fork, dropping the confirmation depth that legacy probabilistic chains require. p50 sits at {{p50:bnb}} (24h), measured via persistent WebSocket subscription that records T1 when block N first appears as latest and T2 when it crosses the finalized threshold."
   - q: "Which blockchain has the fastest finality time?"
-    a: "Sub-second BFT chains lead. Gram and SUI both clock under one second on this live benchmark. BNB and Avalanche sit around one to two seconds via their fast-finality forks. Solana finalized lands around 12.8 s, Ethereum at 12.8 min, and probabilistic chains (Litecoin, Monero) trail at 15 to 30 minutes by confirmation-depth convention."
+    a: "Sub-second BFT chains lead. Gram and SUI both clock under one second on this live benchmark. BNB and Avalanche sit around one to two seconds via their fast-finality forks. Solana finalized lands around 12.8 s, Ethereum finalizes in minutes (about 12.8 in the ideal case, longer as observed; the live table shows the current p50), and probabilistic chains trail by confirmation-depth convention: Litecoin and Monero at 15 to 30 minutes, Bitcoin at roughly one hour for 6 confirmations."
+  - q: "What is Bitcoin finality time?"
+    a: "Bitcoin never reaches absolute finality. Nakamoto consensus gives probabilistic finality: any block can in principle be reorganized, with a probability that falls exponentially as more blocks are mined on top. The exchange-industry deposit convention is 6 confirmations, roughly one hour at the 10-minute target block interval, and that is what this benchmark measures: {{p50:bitcoin}} (p50, 24h) wall-clock from a block first appearing at the chain tip to reaching 6 confirmations, timed with the harness clock rather than miner-set block timestamps. Variance is high because block intervals are Poisson distributed; a lucky streak settles in about 30 minutes, an unlucky one takes well over 90. Six confirmations is a risk threshold, not a protocol guarantee, and deep reorgs remain possible with vanishing probability."
   - q: "How is L1 finality time measured on this page?"
     a: "Two methods, picked per chain. RPC pollers compare latest vs finalized block timestamps every 10 seconds, used for Ethereum, Solana, TRON, Stellar, SUI, Gram, Litecoin, Monero. WebSocket subscribers record wall-clock time T1 when a block first appears on the head stream and T2 when it crosses the finality threshold, giving millisecond-precision lag for sub-poll chains (BNB, Avalanche)."
 
@@ -37,7 +39,7 @@ per_chain_explainer:
   - slug: ethereum
     h2: "Ethereum finality time"
     body: |
-      Ethereum finality time is {{p50:ethereum}} (p50, 24h). Casper FFG finalizes a checkpoint two epochs after it is justified, where each epoch is 32 slots of 12 seconds, the documented 12.8-minute target. Finality is deterministic once reached, but reorgs of unfinalized blocks remain possible inside the two-epoch window. Measured by polling `eth_getBlockByNumber("finalized")` against `latest` every 10 seconds and reporting the timestamp delta.
+      Ethereum finality time is {{p50:ethereum}} (p50, 24h), measured live. Casper FFG finalizes a checkpoint two epochs after it is justified, where each epoch is 32 slots of 12 seconds, which puts the ideal case at about 12.8 minutes. Observed wall-clock finality runs longer because a block lands mid-epoch and waits before the two-epoch countdown starts. Finality is deterministic once reached, but reorgs of unfinalized blocks remain possible before finalization. Measured by polling `eth_getBlockByNumber("finalized")` against `latest` every 10 seconds and reporting the timestamp delta.
   - slug: solana
     h2: "Solana finality time"
     body: |
@@ -70,6 +72,10 @@ per_chain_explainer:
     h2: "TRON finality time"
     body: |
       TRON's solidity confirmation hovers around {{p50:tron}} (24h average), matching the documented 20-block delay at 3-second block intervals. The solidity flag in TRON consensus is the chain's equivalent of finalized: a block survives until 20 confirmations before being considered irreversible. Measured via `/wallet/getnowblock` (head) minus `/walletsolidity/getnowblock` (solidity-confirmed).
+  - slug: bitcoin
+    h2: "Bitcoin finality time"
+    body: |
+      Bitcoin is the reference probabilistic chain: Nakamoto consensus never declares a block final, confidence simply grows with confirmation depth. The exchange deposit convention is 6 confirmations, and this benchmark reports the wall-clock time to reach it, {{p50:bitcoin}} (p50, 24h). Bitcoin block timestamps are miner-set and may legally skew by up to two hours, so the harness does not trust them. It polls the mempool.space tip height every 30 seconds and uses its own clock: T1 when a block first appears at the tip, T2 when the tip is 6 blocks past it. Expect high variance; block intervals are Poisson, so the 6-confirmation wait ranges from about 30 minutes to well over 90. A block with 6 confirmations can still be reversed by a deeper reorg, with probability that vanishes as depth grows.
   - slug: litecoin
     h2: "Litecoin finality time"
     body: |
@@ -98,6 +104,12 @@ abstract: |
   precision. The WS path is the only honest way to measure
   sub-poll-cadence finality. Comparing two pointers at a single
   instant collapses to zero when finalization catches up to head.
+  Bitcoin uses the same own-clock idea over HTTP polling: T1 when a
+  block first appears at the mempool.space tip, T2 when it reaches the
+  6-confirmation exchange deposit convention. Miner-set Bitcoin block
+  timestamps (up to 2h skew is consensus-legal) are never trusted, and
+  Bitcoin never reaches absolute finality; the row reports the wall
+  clock to a conventional risk threshold, not a protocol commitment.
   Hedera is mentioned in the FAQ but not currently measured, its
   mirror node only exposes already-final blocks, which makes
   wall-clock lag impossible. Re-enabling is gated on Block Nodes
@@ -112,6 +124,7 @@ methodology:
   - "Stellar (SSE wall-clock): Horizon `/ledgers?cursor=now&order=asc` event-stream records T1 on first sight of ledger N and T2 on the next ledger close (SCP-final at every close)."
   - "SUI: `sui_getLatestCheckpointSequenceNumber` minus 5 checkpoints back."
   - "Gram: tonapi.io `/blockchain/masterchain-head` minus 3 seqno."
+  - "Bitcoin (probabilistic, own-clock): mempool.space `/blocks/tip/height` polled every 30 s. T1 = first poll where block N is the tip, T2 = first poll where tip − N ≥ 6 (the exchange deposit convention). lag = T2 − T1 on the harness clock; miner-set block timestamps (consensus allows 2h skew) are never used. The startup tip is not timed. On a tip regression, pending timers above the new tip are dropped; same-height reorgs are invisible to height polling, bounding error to about one block interval."
   - "Litecoin (probabilistic): blockchair `/stats.best_block_height` minus 6 confirmations via `/dashboards/block/{height}.block.time`."
   - "Monero (probabilistic): monero-rpc `get_info` minus 10 confirmations via `get_block_header_by_height`."
   - "Hedera (planned, currently disabled): mirror-node `/api/v1/blocks` only exposes already-final blocks, so true wall-clock lag is impossible from public endpoints. Re-enables once Block Nodes (HIP-1056) leave private preview."
@@ -121,9 +134,10 @@ methodology:
 
 findings:
   - "{{name:sui}} returns {{p50:sui}} (p50, 24 h), matching its Mysticeti DAG BFT design. The chain exposes ms timestamps so the measurement is genuinely sub-second."
-  - "{{name:ethereum}} sits at {{p50:ethereum}} (24 h average), aligned with the 2-epoch finalization spec (32 slots × 12 s × 2)."
+  - "{{name:ethereum}} sits at {{p50:ethereum}} (24 h average), consistent with the 2-epoch Casper FFG design (32 slots × 12 s × 2 = 12.8 min ideal) plus the mid-epoch wait before the countdown starts."
   - "{{name:tron}}'s solidity confirmation hovers around {{p50:tron}}, exactly the documented 20-block delay at 3 s blocks."
   - "{{name:litecoin}} and {{name:monero}} sit at {{p50:litecoin}} and {{p50:monero}} (24 h average) by construction, set by the chosen confirmation depth."
+  - "{{name:bitcoin}} reaches the 6-confirmation deposit convention in {{p50:bitcoin}} (p50, 24 h). This is a convention, not protocol finality: Bitcoin is probabilistic, never finalizes absolutely, and the reorg probability only vanishes with depth."
   - "{{best_name}} currently leads the leaderboard at {{best_p50}} (p50, 24 h) across {{count}} measured L1s. {{worst_name}} trails at {{worst_p50}}."
   - "Hedera's Hashgraph aBFT is designed to finalize in 3-5 s but is excluded from the live leaderboard because the mirror node only exposes finalized blocks, wall-clock measurement requires the Block Node service (HIP-1056), still in private preview."
 
@@ -242,7 +256,7 @@ providers:
   - slug: ethereum
     name: Ethereum
     tag: Casper FFG, 2-epoch finalization
-    formula: "Mean elapsed time (in ms) between `eth_getBlockByNumber(\"latest\")` and `eth_getBlockByNumber(\"finalized\")` timestamps, the 2-epoch Casper FFG window (~12.8 min), over 24h."
+    formula: "Mean elapsed time (in ms) between `eth_getBlockByNumber(\"latest\")` and `eth_getBlockByNumber(\"finalized\")` timestamps, the 2-epoch Casper FFG window plus intra-epoch wait, over 24h."
     queries:
       p50: avg_over_time(l1_finality_lag_seconds{chain="ethereum"}[24h]) * 1000
       p90: quantile_over_time(0.90, l1_finality_lag_seconds{chain="ethereum"}[24h]) * 1000
@@ -277,3 +291,16 @@ providers:
       success: avg_over_time(l1_finality_health{chain="monero"}[24h])
       sample_size: count_over_time(l1_finality_lag_seconds{chain="monero"}[24h])
       series: l1_finality_lag_seconds{chain="monero"} * 1000
+
+  - slug: bitcoin
+    name: Bitcoin
+    tag: Probabilistic, 6 confirmations, measured via own-clock polling
+    formula: "Median wall-clock milliseconds for a Bitcoin block to reach 6 confirmations (the exchange deposit convention, not absolute finality), timed with the harness clock from first sight at the mempool.space tip, p50 over 24h."
+    queries:
+      p50: quantile_over_time(0.50, l1_finality_wallclock_lag_milliseconds{chain="bitcoin"}[24h])
+      p90: quantile_over_time(0.90, l1_finality_wallclock_lag_milliseconds{chain="bitcoin"}[24h])
+      p99: quantile_over_time(0.99, l1_finality_wallclock_lag_milliseconds{chain="bitcoin"}[24h])
+      mean: avg_over_time(l1_finality_wallclock_lag_milliseconds{chain="bitcoin"}[24h])
+      success: avg_over_time(l1_finality_wallclock_health{chain="bitcoin"}[24h])
+      sample_size: increase(l1_finality_wallclock_samples_total{chain="bitcoin"}[24h])
+      series: l1_finality_wallclock_lag_milliseconds{chain="bitcoin"}

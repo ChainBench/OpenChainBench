@@ -344,10 +344,24 @@ export function LedgerTable({
           ))}
         </div>
       )}
-      <table className="ledger w-full min-w-full sm:min-w-[480px] md:min-w-0 border-collapse">
+      <table
+        className="ledger w-full min-w-full sm:min-w-[480px] md:min-w-0 border-collapse"
+        aria-label={`${benchmark.title} benchmark ledger`}
+      >
+        {/* Screen-reader / crawler caption naming the benchmark. Answer
+            engines extract tabular numbers far more reliably when the
+            table itself says what it measures. */}
+        <caption className="sr-only">
+          {benchmark.title} benchmark ledger. {benchmark.metric} per provider,
+          live measured data.
+        </caption>
         <thead>
           <tr>
-            <th colSpan={3} className="border-y-2 border-ink py-2 pr-3 text-left">
+            <th
+              colSpan={3}
+              scope="colgroup"
+              className="border-y-2 border-ink py-2 pr-3 text-left"
+            >
               Product
             </th>
             <th
@@ -358,6 +372,7 @@ export function LedgerTable({
                     ? 2
                     : 5
               }
+              scope="colgroup"
               className="border-y-2 border-ink py-2 px-3 text-center hidden md:table-cell"
             >
               {customCols
@@ -368,18 +383,25 @@ export function LedgerTable({
                     ? benchmark.metric
                     : "Latency aggregates"}
             </th>
-            <th className="border-y-2 border-ink py-2 px-3 text-right md:hidden">
+            <th
+              scope="col"
+              className="border-y-2 border-ink py-2 px-3 text-right md:hidden"
+            >
               {customCols ? colLabel(customCols[0]) : activePanel ? "Value" : "p50"}
             </th>
             <th
               colSpan={2}
+              scope="colgroup"
               className="border-y-2 border-ink py-2 pl-3 text-right hidden md:table-cell"
             >
               Reliability
             </th>
-            <th className="border-y-2 border-ink py-2 pl-3 text-right">Trend</th>
+            <th scope="col" className="border-y-2 border-ink py-2 pl-3 text-right">
+              Trend
+            </th>
             {hasSlots && (
               <th
+                scope="col"
                 className="border-y-2 border-ink py-2 pl-3 text-right hidden md:table-cell"
                 title="Slot delta = number of Solana slots between submit and confirmed. Canonical on-chain measurement (~400 ms per slot)."
               >
@@ -387,14 +409,21 @@ export function LedgerTable({
               </th>
             )}
             {secondary && (
-              <th className="border-y-2 border-ink py-2 pl-3 text-right hidden md:table-cell">
+              <th
+                scope="col"
+                className="border-y-2 border-ink py-2 pl-3 text-right hidden md:table-cell"
+              >
                 {secondary}
               </th>
             )}
           </tr>
           <tr>
-            <th className="py-2 pr-2 text-left w-2"></th>
-            <th className="py-2 pr-3 text-left w-10">№</th>
+            <th scope="col" className="py-2 pr-2 text-left w-2">
+              <span className="sr-only">Color</span>
+            </th>
+            <th scope="col" className="py-2 pr-3 text-left w-10">
+              №
+            </th>
             <SortableHeader
               sortKey="name"
               activeKey={sortKey}
@@ -509,7 +538,9 @@ export function LedgerTable({
                 Errors (24h)
               </Hint>
             </SortableHeader>
-            <th className="py-2 pl-3 text-right">24h</th>
+            <th scope="col" className="py-2 pl-3 text-right">
+              24h
+            </th>
             {hasSlots && (
               <SortableHeader
                 sortKey="slot_p50"
@@ -522,10 +553,17 @@ export function LedgerTable({
                 p50 / p99
               </SortableHeader>
             )}
-            {secondary && <th className="py-2 pl-3 text-right hidden md:table-cell">Value</th>}
+            {secondary && (
+              <th scope="col" className="py-2 pl-3 text-right hidden md:table-cell">
+                Value
+              </th>
+            )}
           </tr>
+          {/* Purely visual rule between the header block and the rows.
+              A td (not th) so assistive tech and crawlers don't read an
+              empty header spanning every column. */}
           <tr className="border-b border-ink">
-            <th
+            <td
               colSpan={
                 (customCols
                   ? 7 + customCols.length
@@ -808,7 +846,7 @@ function Row({
             —
           </td>
           {customCells ? (
-            customCells.slice(1).map((c, idx) => (
+            customCells.slice(1).map((_, idx) => (
               <td
                 key={idx}
                 className="py-2.5 px-3 text-right text-ink-faint whitespace-nowrap hidden md:table-cell"
@@ -968,6 +1006,7 @@ function SortableHeader({
   const justifyClass = align === "right" ? "justify-end" : "justify-start";
   return (
     <th
+      scope="col"
       className={[alignClass, className].filter(Boolean).join(" ")}
       aria-sort={
         isActive ? (dir === "asc" ? "ascending" : "descending") : "none"

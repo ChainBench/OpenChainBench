@@ -23,8 +23,10 @@ seo_intro: |
   of which are missing from every comparison roundup currently ranking
   for "best perp DEX". We read taker fees from each venue's own API
   (no hardcoded schedules), walk the orderbook for $1000 of buy-side
-  notional to compute spread plus impact, and sum the two into a single
-  basis-point figure refreshed every five minutes. Hyperliquid vs
+  notional to compute spread plus impact where a book exists (GMX and
+  gains.trade are oracle priced, so their spread terms come from
+  protocol parameters), and sum the two into a single basis-point
+  figure refreshed every five minutes. Hyperliquid vs
   Lighter vs dYdX vs GMX vs gains.trade is then a one-number
   comparison, not a five-tab spreadsheet.
 
@@ -36,19 +38,22 @@ abstract: |
   read live, no hardcoded fee schedules. Taker fees come from each
   venue's own API (Hyperliquid `userFees`, dYdX Cosmos REST
   `/feetiers/perpetual_fee_params`, GMX Subsquid `positionFeeFactor`,
-  Lighter `/orderBookDetails`). Spreads come from walking each venue's
-  orderbook for $1000 of buy-side notional. The bench refreshes every
-  5 minutes.
+  Lighter `/orderBookDetails`, Gains v8 on-chain `fees()`). On the
+  orderbook venues (Hyperliquid, dYdX, Lighter) the spread comes from
+  walking the book for $1000 of buy-side notional. GMX v2 is oracle
+  priced with no book, so its spread term is zero. gains.trade uses
+  half of the on-chain `spreadP`. The bench refreshes every 5 minutes.
 
 methodology:
   - "Cadence: every 5 minutes, in parallel across all venues."
   - "Trade simulated: ETH long 10x, $1000 notional ($100 collateral)."
   - "Hyperliquid: `POST /info {type: l2Book}` for asks + `{type: userFees, user: 0x000...000}` for taker fee + `{type: metaAndAssetCtxs}` for funding."
   - "dYdX v4: indexer `/orderbooks/perpetualMarket/ETH-USD` + `/perpetualMarkets` (funding) + Cosmos REST `/dydxprotocol/v4/feetiers/perpetual_fee_params` for tier-0 default fee."
-  - "GMX v2 (Arbitrum): Subsquid GraphQL on the synthetics-arbitrum subgraph for `positionFeeFactorForNegativeImpact` (worst-case open) + gmxinfra REST for funding."
+  - "GMX v2 (Arbitrum): Subsquid GraphQL on the synthetics-arbitrum subgraph for `positionFeeFactorForNegativeImpact` (worst-case open) on the ETH/USD, BTC/USD and SOL/USD markets + gmxinfra REST for funding. Oracle priced, no orderbook: the spread term is zero."
   - "Lighter: `/orderBookDetails` (taker fee per market) + `/orderBookOrders` (orderbook walk)."
-  - "gains.trade (Gains v8 on Base): we read the fee directly on-chain. `eth_call pairs(N)` to find the pair index for the asset and its `feeIndex`, then `eth_call fees(feeIndex).openFeeP` for the actual taker fee. Spread comes from `pairs(N).spreadP`. Both values in 1e10 precision per Gains v8 convention. Cached 1h to keep Base RPC quota low."
+  - "gains.trade (Gains v8 on Base): fees read directly on-chain. `eth_call pairs(N)` gives `spreadP` and `feeIndex`, then `eth_call fees(feeIndex)` gives the open fee (`totalPositionSizeFeeP`). The taker crosses one side of the book, so we charge half of `spreadP`. SOL has `spreadP` 0 on-chain (Gains prices that pair's spread dynamically), so its figure is the open fee alone. Values in 1e10 precision per Gains v8 convention. Fee tier cached 1h, pair config 6h."
   - "All-in formula: `all_in_bps = taker_fee_bps + spread_bps`. Both components emitted as separate metrics for transparency."
+  - "Notional tiers: the same measurement runs at $1,000, $10,000 and $100,000 by rewalking the already fetched book, published to `perp_fees_all_in_bps_tier{venue, chain, notional}`. The headline `perp_fees_all_in_bps` stays defined at $1,000. A tier the book cannot fill is skipped and counted in `perp_fees_tier_skipped_total`, never extrapolated. Oracle priced venues (GMX v2, gains.trade) charge a flat percentage of size, so their figure repeats across tiers."
   - "Failures (5xx, timeouts, rate limits) leave the previous gauge in place and increment a per-venue `fetch_errors_total` counter. The page falls back to the last successful sample."
 
 per_chain_explainer:
@@ -92,6 +97,8 @@ faq:
     a: "Rack-rate taker fee is what every comparison article quotes; it is also what every trader stops being able to read off a marketing page the second they place a market order. Spread plus impact at notional is the rest of the bill. On a tight book the gap is small, on a thin book it can dominate a 5 bps taker. Bundling both into one number is the only way to make a fair across-venue ranking that survives contact with a $1000 trade."
   - q: "How does GMX v2 fee work and why does this benchmark show the higher number?"
     a: "GMX v2 splits the position fee into a positive-impact branch (4 bps, when your trade reduces the venue's net open interest skew) and a negative-impact branch (6 bps, when it adds to the skew). Which branch fires depends on the current open interest at the moment of the trade and is not predictable from the user's side. We report the negative branch as the conservative upper bound; the positive branch is read by the harness as well and would lower the all-in number by 2 bps when it fires."
+  - q: "How do perp fees change with position size?"
+    a: "The taker fee does not change: every venue here charges a flat percentage of notional, so 4.5 bps on Hyperliquid costs 45 cents at $1,000 and $45 at $100,000, the same rate. What scales is the impact term: a bigger market order walks deeper into the book, so the effective price moves further from mid. On deep books like BTC on Hyperliquid the $100k figure sits within a fraction of a bp of the $1k figure; on thinner books like SOL the extra impact can exceed the entire taker fee. Oracle priced venues (GMX v2, gains.trade) quote the same bps at any size because there is no book to walk. The harness measures all three tiers every cycle and publishes them to `perp_fees_all_in_bps_tier` with a notional label of 1000, 10000 or 100000; the $10k and $100k panels on this page chart them live. When a book cannot fill a tier we skip the sample rather than extrapolate, so a missing tier is itself a depth signal."
   - q: "Does this benchmark include funding rates or only the open cost?"
     a: "Open cost only. Funding is paid every hour you hold, not at open, so bundling it into a one-number leaderboard would conflate two different fee mechanics. The harness still records funding rate per venue (`perp_fees_funding_rate_per_hour_bps`, signed) so a trader can read both numbers and compute their own time-adjusted cost for a longer hold."
 
@@ -115,12 +122,14 @@ dimensions:
 #   perp_fees_fetch_errors_total{venue, asset, error_type}  counter
 #   perp_fees_health{venue, asset}                        gauge (0|1)
 #   perp_fees_last_refresh_timestamp_seconds{venue, asset}
+#   perp_fees_all_in_bps_tier{venue, chain, notional}     gauge ($1k/$10k/$100k tiers; notional=1000 duplicates the headline)
+#   perp_fees_tier_skipped_total{venue, chain, notional}  counter (fetched book too thin to fill the tier, sample skipped)
 
 providers:
   - slug: lighter
     name: Lighter
     tag: zk-rollup, zero taker fee
-    formula: "Average over 24h of (taker fee from Lighter `/orderBookDetails` + half-spread plus impact from walking `/orderBookOrders` for $1000 of ETH buy notional), in bps."
+    formula: "Average over 24h of (taker fee from Lighter `/orderBookDetails` + half-spread plus impact from walking `/orderBookOrders` for $1000 of buy notional in the selected asset), in bps."
     queries:
       p50: avg_over_time(perp_fees_all_in_bps{venue="lighter"}[24h])
       p90: quantile_over_time(0.90, perp_fees_all_in_bps{venue="lighter"}[24h])
@@ -133,7 +142,7 @@ providers:
   - slug: hyperliquid
     name: Hyperliquid
     tag: HyperBFT L1 perp DEX
-    formula: "Average over 24h of (Hyperliquid `userFees` taker rate + half-spread plus impact from the `l2Book` asks side walked for $1000 of ETH buy notional), in bps."
+    formula: "Average over 24h of (Hyperliquid `userFees` taker rate + half-spread plus impact from the `l2Book` asks side walked for $1000 of buy notional in the selected asset), in bps."
     queries:
       p50: avg_over_time(perp_fees_all_in_bps{venue="hyperliquid"}[24h])
       p90: quantile_over_time(0.90, perp_fees_all_in_bps{venue="hyperliquid"}[24h])
@@ -146,7 +155,7 @@ providers:
   - slug: dydx
     name: dYdX v4
     tag: Cosmos-based decentralized perp
-    formula: "Average over 24h of (dYdX Cosmos REST tier-0 taker fee + half-spread plus impact from the indexer `/orderbooks/perpetualMarket/ETH-USD` walked at $1000 notional), in bps."
+    formula: "Average over 24h of (dYdX Cosmos REST tier-0 taker fee + half-spread plus impact from the indexer `/orderbooks/perpetualMarket/{ASSET}-USD` walked at $1000 notional), in bps."
     queries:
       p50: avg_over_time(perp_fees_all_in_bps{venue="dydx"}[24h])
       p90: quantile_over_time(0.90, perp_fees_all_in_bps{venue="dydx"}[24h])
@@ -159,7 +168,7 @@ providers:
   - slug: gmx
     name: GMX v2
     tag: Synthetics on Arbitrum, oracle-priced
-    formula: "Average over 24h of GMX v2 `positionFeeFactorForNegativeImpact` (worst-case open) from the synthetics-arbitrum subgraph, expressed in bps; oracle-priced so no spread component."
+    formula: "Average over 24h of GMX v2 `positionFeeFactorForNegativeImpact` (worst-case open) for the selected market (ETH, BTC or SOL) from the synthetics-arbitrum subgraph, in bps; oracle priced so no spread component."
     queries:
       p50: avg_over_time(perp_fees_all_in_bps{venue="gmx"}[24h])
       p90: quantile_over_time(0.90, perp_fees_all_in_bps{venue="gmx"}[24h])
@@ -172,7 +181,7 @@ providers:
   - slug: gains
     name: gains.trade
     tag: Synthetic perps on Base, fees read on-chain
-    formula: "Average over 24h of (Gains v8 `fees(feeIndex).openFeeP` taker rate + `pairs(N).spreadP` synthetic spread), both read on-chain via Base RPC and converted to bps."
+    formula: "Average over 24h of (Gains v8 `fees(feeIndex)` open fee + half of `pairs(N).spreadP`), both read on-chain via Base RPC and converted to bps."
     queries:
       p50: avg_over_time(perp_fees_all_in_bps{venue="gains"}[24h])
       p90: quantile_over_time(0.90, perp_fees_all_in_bps{venue="gains"}[24h])
@@ -181,3 +190,22 @@ providers:
       success: avg_over_time(perp_fees_health{venue="gains"}[24h])
       sample_size: count_over_time(perp_fees_all_in_bps{venue="gains"}[24h])
       series: perp_fees_all_in_bps{venue="gains"}
+
+# Notional-tier companion panels. Same pattern as perp-funding: the panel
+# metric pins the asset label so the unfiltered "All" view reads one series
+# per venue; on the BTC/SOL tabs the dimension injection skips chain=
+# because it is already set, so the panels stay ETH-scoped by design.
+# notional=1000 is not paneled: it duplicates the headline ledger.
+metric_panels:
+  - id: all_in_10k
+    label: "All-in at $10k (ETH)"
+    metric: perp_fees_all_in_bps_tier{chain="ETH",notional="10000"}
+    label_key: venue
+    unit: bps
+    description: "All-in opening cost measured at $10,000 notional on the ETH pair. Same formula as the headline (taker fee plus spread plus impact); only the orderbook walk depth changes."
+  - id: all_in_100k
+    label: "All-in at $100k (ETH)"
+    metric: perp_fees_all_in_bps_tier{chain="ETH",notional="100000"}
+    label_key: venue
+    unit: bps
+    description: "All-in opening cost at $100,000 notional on the ETH pair. Books that cannot fill the size are skipped by the harness rather than extrapolated, so a venue missing here is itself a depth signal."
