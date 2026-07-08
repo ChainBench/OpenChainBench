@@ -33,6 +33,7 @@ This works for: **BNB, Avalanche, Gram**.
 | **Hedera** | HTTP poll | Mirror `/api/v1/blocks?order=desc&limit=2` | 1 block back. Timestamps parsed at ns precision | Hashgraph aBFT deterministic |
 | **SUI** | HTTP poll | `sui_getLatestCheckpointSequenceNumber` + `sui_getCheckpoint` | 1 checkpoint back | Circle USDC = 1, Mysticeti finalizes in 1 |
 | **Gram** | SSE wall-clock | `tonapi.io/v2/sse/blocks?workchain=-1` (masterchain only) | Time between consecutive masterchain blocks | Gram (formerly TON) docs: a tx is final once included in a masterchain block, so block_N is final when block_N+1 commits |
+| **Bitcoin** | HTTP poll, own-clock wall-clock (probabilistic) | mempool.space `/blocks/tip/height` every 30 s, User-Agent `OpenChainBench-harness/1.0` | Wall-clock T1→T2 between block first seen at the tip and reaching 6 confirmations, harness clock only (miner timestamps allow ~2h skew) | Exchange deposit convention; Bitcoin never reaches absolute finality |
 | **Litecoin** | HTTP poll (probabilistic) | blockchair `/stats.best_block_height` and `/dashboards/block/{height}.block.time` | 12 confirmations | Coinbase deposit standard, post-April-2026 13-block MWEB reorg |
 | **Monero** | HTTP poll (probabilistic) | monero-rpc `get_info` + `get_block_header_by_height` (with cakewallet/sethforprivacy/monerujo failover) | 10 confirmations | Wallet protocol unlock period |
 | **Cardano** | HTTP poll (probabilistic) | koios `/tip` + `/blocks?block_height=eq.<height>` | 15 confirmations | Above Coinbase 10 / Kraken 15. Far below the academic k=2160 (~12 h) |
