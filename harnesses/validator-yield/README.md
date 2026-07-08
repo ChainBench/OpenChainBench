@@ -6,7 +6,9 @@ Ranks validators by net yield = `gross APR × uptime` (slashing treated
 as negligible in v1, MEV included in `gross APR` where the upstream
 already folds it in — see "Honest scope" below).
 
-Scope v1: **Solana** + **Hyperliquid** (Ethereum deferred to v2).
+Scope: **Solana** + **Hyperliquid** + **Ethereum** (Ethereum as one
+network-average consensus-layer series, `validator="beacon-network"`;
+per-validator Ethereum gauges and MEV inclusion stay v2).
 
 ## Honest scope (no marketing)
 
@@ -18,6 +20,15 @@ for transparency on the MEV-vs-stake split, but it is **not** subtracted
 from the gross figure. The number compared across validators is total
 APR × uptime, not "yield after MEV is removed".
 
+Ethereum is the inverse case: its figure is **consensus-layer only**
+(spec reward formula on live total effective balance from
+ultrasound.money), so execution tips and MEV are **excluded** and
+`mev_share_bps` is 0. It is a nominal solo-validator APR, not a
+liquid-staking product APY. Source-selection notes (and rejected
+candidates: beaconcha.in ethstore now keyed, Lido stETH APR is a
+product rate, DefiLlama pools are LST APYs) live in
+`cmd/script/ethereum.go`.
+
 ## Sources (all free, no API key)
 
 | Chain | Source | Endpoint |
@@ -25,7 +36,9 @@ APR × uptime, not "yield after MEV is removed".
 | Solana | Stakewiz | `GET https://api.stakewiz.com/validators` |
 | Solana (enrichment) | Jito Kobe | `GET https://kobe.mainnet.jito.network/api/v1/validators` |
 | Hyperliquid | Hyperliquid `/info` | `POST https://api.hyperliquid.xyz/info` body `{"type":"validatorSummaries"}` |
+| Ethereum | ultrasound.money | `GET https://ultrasound.money/api/v2/fees/effective-balance-sum` |
 | Prices (SOL) | CoinGecko | `GET https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd` |
+| Prices (ETH) | CoinGecko | `GET https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd` |
 | Prices (HYPE) | Hyperliquid `/info` | `POST` body `{"type":"metaAndAssetCtxs"}` |
 
 ## Cap
