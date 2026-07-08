@@ -76,7 +76,7 @@ dimensions:
 
 providers:
   - slug: monad-official
-    name: Monad Official
+    name: Monad
     tag: Foundation endpoint (rpc.monad.xyz, QuickNode-backed, 25 rps)
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 30s from 3 regions (us-east + eu-west + sgp) to Monad Official's no-key Monad endpoint."
     queries:
