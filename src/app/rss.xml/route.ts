@@ -15,8 +15,12 @@
  * Freshness model:
  *   - `pubDate` per item = the bench's first commit (stable, from
  *     `bench-dates.ts`).
- *   - `lastBuildDate` on the channel = the most recent bench's pubDate.
- *     Aggregators use this to decide whether to refetch the body.
+ *   - `lastBuildDate` on the channel = feed generation time. Item
+ *     descriptions embed live headline numbers, so the body genuinely
+ *     changes between renders. Deriving it from the newest item's
+ *     pubDate (the old behaviour) froze the channel whenever
+ *     `bench-dates.ts` lagged behind the benchmarks/ directory, and
+ *     aggregators stopped refetching.
  *
  * Cache: 5 min edge TTL so a brand new bench surfaces in aggregator
  * polls within minutes of being merged, without hammering the data
@@ -84,7 +88,12 @@ export async function GET() {
     }))
     .sort((a, c) => c.pubDate.getTime() - a.pubDate.getTime());
 
-  const latest = items[0]?.pubDate ?? new Date();
+  // Generation time, not the newest item's pubDate: item dates come from
+  // a committed static map that can lag new benches, which froze
+  // lastBuildDate (stuck at 2026-06-09) and made aggregators skip the
+  // refetch. The route revalidates every 5 min, so this moves with the
+  // cache, matching how often the live numbers in descriptions change.
+  const lastBuild = new Date();
   const self = `${SITE.url}/rss.xml`;
   const lines: string[] = [];
   lines.push('<?xml version="1.0" encoding="UTF-8"?>');
@@ -96,7 +105,7 @@ export async function GET() {
   lines.push(`    <link>${SITE.url}</link>`);
   lines.push(`    <description>${escapeXml(FEED_DESCRIPTION)}</description>`);
   lines.push("    <language>en</language>");
-  lines.push(`    <lastBuildDate>${toRfc822(latest)}</lastBuildDate>`);
+  lines.push(`    <lastBuildDate>${toRfc822(lastBuild)}</lastBuildDate>`);
   lines.push(
     `    <atom:link href="${self}" rel="self" type="application/rss+xml" />`,
   );
