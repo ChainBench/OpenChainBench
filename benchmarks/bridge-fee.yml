@@ -54,7 +54,7 @@ methodology:
   - "Reference notional: $300 USDC. Smaller sizes ($5, $50) are captured by the harness but excluded from this report."
   - "Cost: `bridge_cost_percent{amount_usd=\"300\"}`, in percent of notional. Includes fees + slippage + destination gas."
   - "Cadence: full sweep every 5 minutes for 24 hours."
-  - "Aggregation: the headline number is the average of per-corridor 24h medians over the corridors a provider actually quotes. The TRUMP to BRETT calibration route is excluded. Near Intents has no USDT legs, so its aggregate covers the Solana to Base and Arbitrum to HyperCore corridors only."
+  - "Aggregation: the headline number is the average of per-corridor 24h medians over the corridors a provider actually quotes. The TRUMP to BRETT calibration route is excluded. Near Intents has no USDT legs, so its aggregate covers the Solana to Base and Arbitrum to HyperCore corridors only. deBridge does not quote the Arbitrum to HyperCore corridor, so its aggregate covers the remaining three."
   - "Normalization: cost is quoted USD in minus quoted USD delivered, the same all-in definition for every provider. Near Intents bundles the destination chain withdrawal fee into its quoted amountOut (the 1Click API documents withdrawFee as already deducted), so no extra gas term is added on top."
   - "Region: eu-west. Single point of measurement; multi-region requires running additional monitor instances."
   - "Failures (quote_failed, unsupported route) excluded from cost aggregates and counted toward success rate."
