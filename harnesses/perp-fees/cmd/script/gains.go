@@ -251,7 +251,7 @@ func findGainsPair(client *http.Client, asset string) (*gainsPair, error) {
 		time.Sleep(150 * time.Millisecond)
 	}
 	gainsCacheMu.Lock()
-	if p, ok := gainsPairCache[upper]; ok {
+	if p, ok := gainsPairCache[upper]; ok && strings.EqualFold(p.To, "USD") {
 		gainsCacheMu.Unlock()
 		return p, nil
 	}
@@ -276,7 +276,7 @@ func fetchGains(v VenueConfig, _ string) PerpSample {
 	// Cache the openFeeP for 1h. Gains fee tiers change rarely (governance
 	// vote) so polling more often just burns RPC quota. Holding the mutex
 	// across the RPC call deduplicates concurrent fetches that share a
-	// feeIndex (ETH and BTC both use feeIndex 3).
+	// feeIndex (ETH and BTC both use feeIndex 13, SOL uses 11).
 	gainsCacheMu.Lock()
 	cached, ok := gainsFeeCache[pair.FeeIndex]
 	var openFeeP *big.Int
