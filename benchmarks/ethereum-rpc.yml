@@ -26,7 +26,7 @@ methodology:
   - "Call-result classification: `ok` (HTTP 200 + non-empty result), `http_err`, `jsonrpc_err` (HTTP 200 carrying an error body), `stale` (more than 20 blocks behind the cross-provider tip), `timeout`. Latency without reliability is a misleading ranking signal."
   - "Archive depth: every 5 minutes we issue `eth_getBalance` at (head − depth) for depths from Geth's default pruned cap up to 5M blocks, exposing which free endpoints actually serve historical state."
   - "This page is part of the per-chain RPC cluster derived from the cross-chain [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities) benchmark; the identical harness, methodology and exclusion rules apply on every chain."
-  - "Chain scope: every query on this page is pinned to chain=\"ethereum\". Provider coverage: 9 no-key endpoints (PublicNode, dRPC, Tenderly, Nodies, Lava, MeowRPC, Flashbots, Cloudflare). Exclusions follow the cluster-wide rules documented on the parent benchmark."
+  - "Chain scope: every query on this page is pinned to chain=\"ethereum\". Provider coverage: 8 no-key endpoints (PublicNode, dRPC, Tenderly, Nodies, Lava, MeowRPC, Flashbots, Cloudflare). Exclusions follow the cluster-wide rules documented on the parent benchmark."
 
 findings:
   - "{{best_name}} currently leads the free Ethereum RPC field at {{best_p50}} (`eth_getBlockByNumber` p50, 24h) across 9 measured providers, the largest cohort of any chain in the cluster."
@@ -37,7 +37,7 @@ faq:
   - q: "What is the fastest free Ethereum RPC right now?"
     a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against 8 no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples, so the answer on this page is the answer right now, not a quarterly snapshot. Use the region tabs to see the leader from the origin closest to your deployment."
   - q: "Which Ethereum RPCs work without an API key?"
-    a: "The 9 providers on this page: PublicNode, dRPC, Tenderly, Nodies, Lava, MeowRPC, Flashbots, Cloudflare. Every (provider, chain) pair was live-verified no-key before inclusion, and anything that key-gates, region-blocks or rate-limits below our 15-second cadence is excluded rather than listed with an asterisk."
+    a: "The 8 providers on this page: PublicNode, dRPC, Tenderly, Nodies, Lava, MeowRPC, Flashbots, Cloudflare. Every (provider, chain) pair was live-verified no-key before inclusion, and anything that key-gates, region-blocks or rate-limits below our 15-second cadence is excluded rather than listed with an asterisk."
   - q: "Does the fastest Ethereum RPC change by region?"
     a: "Frequently. The headline number averages three probe origins (us-east, eu-west, Singapore), but per-region leaders regularly diverge, a gateway that wins from Virginia can lose from Singapore by multiples. The region tabs at the top of the page re-scope every number on the page to a single origin; pick the one closest to where your requests actually originate."
   - q: "How is Ethereum RPC latency measured here?"
