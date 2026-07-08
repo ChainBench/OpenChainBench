@@ -17,29 +17,31 @@ Per stablecoin, every minute:
 
 ## Methodology in one paragraph
 
-For each stable, every venue's bid/ask is polled (5 s for CEX, 12 s for on-chain). Samples are bucketed per minute, median per venue per minute, then a **liquidity-weighted median across venues** gives the canonical per-stable price for that minute. Deviation = `|price - 1.00| × 10000` in bps. The primary metric uses **USD-quoted samples only** (Coinbase, Kraken, Bitstamp, on-chain pools relative to USDC) — USDT-quoted samples (Binance USDC/USDT) feed a secondary metric so USDT's own peg drift doesn't contaminate every other stable's number. Outliers > 20% off peg are dropped; 10-20% capped at 10% for percentile stability; stale samples (> 5 min old) excluded.
+For each stable, every venue's bid/ask is polled (5 s for CEX, 12 s for on-chain). Samples are bucketed per minute, median per venue per minute, then a **liquidity-weighted median across venues** gives the canonical per-stable price for that minute. Deviation = `|price - 1.00| × 10000` in bps. The primary metric uses **USD-quoted samples only** (Coinbase USDT-USD, Kraken, Bitstamp, plus the Curve 3pool for DAI) — USDT-quoted samples (Binance USDC/USDT) feed a secondary metric so USDT's own peg drift doesn't contaminate every other stable's number. Outlier rule is multi-venue consensus: a sample > 2% off peg is kept only when another venue corroborates it in the same direction within 30 s; > 50% off is treated as a parser bug and dropped.
 
-The bench page on openchainbench.com surfaces `quantile_over_time(0.99, peg_deviation_bps[24h])` as the headline "p99 24h deviation" per stable.
+The DAI price is the geometric mean of Curve 3pool `get_dy` quoted in both directions (USDC→DAI and DAI→USDC). Both directions embed the same pool swap fee, so the geometric mean cancels it exactly; only genuine pool imbalance moves the number, which keeps the DAI series comparable to CEX mid prices.
+
+The bench page on openchainbench.com sorts the ledger on `quantile_over_time(0.50, peg_deviation_worst_bps[24h])` (the 24 h median of the per-minute worst deviation); the p99 column shows `quantile_over_time(0.99, ...)`, the depeg-tail number.
 
 ## Stables and venues
 
 | Stable | Sources (quote) | Notes |
 |---|---|---|
 | USDC | Kraken USDCUSD ($63M), Bitstamp usdcusd ($2.6M), Binance USDCUSDT ($2.8B, secondary) | Deepest coverage, gold-standard reference |
-| USDT | Kraken USDTUSD ($184M), Bitstamp usdtusd ($12M) | The only no-key USD-quoted USDT markets with depth |
+| USDT | Coinbase USDT-USD ($25M), Kraken USDTUSD ($184M), Bitstamp usdtusd ($12M) | The no-key USD-quoted USDT markets with depth |
 | FDUSD | Binance FDUSDUSDT ($41M, secondary only) | USDT-only depth; primary metric blank — that's honest |
 | USDe | Binance USDEUSDT ($1.8M, secondary only) | The Oct 2025 depeg star; thin but watched |
-| DAI | Curve 3pool USDC→DAI + reverse | All CEX DAI markets are dead in 2026 (Binance zero book, Kraken thin, Bitstamp dead). On-chain is the only honest signal. |
+| DAI | Curve 3pool get_dy, geometric mean of both directions (fee cancels) | All CEX DAI markets are dead in 2026 (re-checked 2026-07-08: Kraken DAIUSD ~$145k/24h, ~9 bps spread; Bitstamp zero volume; Coinbase delisted). On-chain is the only honest signal. |
 
-## Source coverage matrix (live-validated 2026-05-20)
+## Source coverage matrix (live-validated 2026-05-20, DAI + Coinbase re-checked 2026-07-08)
 
-| Stable | Binance | Kraken | Bitstamp | Curve | Coverage verdict |
-|---|---|---|---|---|---|
-| USDT | (quote only) | ✅ $184M | ✅ $12M | indirect via 3pool | strong |
-| USDC | ✅ $2.8B (USDT) | ✅ $63M | ✅ $2.6M | ✅ 3pool | strongest |
-| DAI | dead | thin | dead | ✅ 3pool | on-chain only |
-| FDUSD | ✅ $41M (USDT) | - | - | - | USDT-only |
-| USDe | ✅ $1.8M (USDT) | - | - | - | USDT-only |
+| Stable | Binance | Coinbase | Kraken | Bitstamp | Curve | Coverage verdict |
+|---|---|---|---|---|---|---|
+| USDT | (quote only) | ✅ $25M | ✅ $184M | ✅ $12M | indirect via 3pool | strong |
+| USDC | ✅ $2.8B (USDT) | 404 (not listed) | ✅ $63M | ✅ $2.6M | ✅ 3pool | strongest |
+| DAI | dead | delisted | thin ($145k) | dead | ✅ 3pool | on-chain only |
+| FDUSD | ✅ $41M (USDT) | - | - | - | - | USDT-only |
+| USDe | ✅ $1.8M (USDT) | - | - | - | - | USDT-only |
 
 V2 candidates (need a free signup): Alchemy/Defillama price feeds, Curve crvUSD/USDC pool (crvUSD), GHO/USDC pool (GHO), Curve PYUSD/USDC pool (PYUSD), Sky PSM (USDS direct).
 
@@ -69,8 +71,11 @@ go run ./cmd/script
 ## PromQL recipes
 
 ```promql
-# 24h p99 deviation per stable (the headline leaderboard)
-quantile_over_time(0.99, peg_deviation_bps[24h])
+# 24h median of per-minute worst deviation (the ledger sort key)
+quantile_over_time(0.50, peg_deviation_worst_bps[24h])
+
+# 24h p99, the depeg-tail column
+quantile_over_time(0.99, peg_deviation_worst_bps[24h])
 
 # Cross-venue p99 gap (the bench's unique angle)
 quantile_over_time(0.99, peg_cross_venue_gap_bps[24h])
@@ -98,6 +103,6 @@ Standard OCB-miniapp shape - multi-stage Dockerfile, port 2112, internal-only on
 - **5 stables only in MVP** (USDC, USDT, FDUSD, USDe, DAI). Adding crvUSD/GHO/USDS/PYUSD is a v2 lift via more Curve pools.
 - **Ethereum mainnet only** for the on-chain source. Per-chain split (USDC-base, USDC-arbitrum, etc.) is a v2 build.
 - **Bridged variants** (USDC.e on Arbitrum, etc.) not included — they have a different risk profile (bridge inventory) and should never be rolled into the issuer's canonical metric.
-- **Coinbase Advanced Exchange API** (`api.exchange.coinbase.com`) was attempted but returns 404 / NotFound for USDC-USD as of May 2026 — Coinbase's public REST shape has shifted again. Reinclude once a stable endpoint is found.
+- **Coinbase Exchange API** (`api.exchange.coinbase.com`): USDT-USD ticker works and is polled (added 2026-07). USDC-USD returns 404 (USDC is not a listed product; Coinbase treats it as USD-equivalent) and DAI-USD is delisted, so Coinbase contributes USDT only.
 - **Liquidity weights are static** in config.go, sourced from a 2026-05-20 snapshot. Refresh quarterly or wire to a live $ vol fetcher.
 - **Histogram precision**: tier boundaries hardcoded for [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000] bps. Sub-1-bps deviations all bucket together — acceptable for the leaderboard's `bps integer` granularity.
