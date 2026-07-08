@@ -19,6 +19,7 @@ import type {
 } from "@/types/benchmark";
 import { Prometheus } from "@/lib/prometheus";
 import { SpecSchema, type Spec } from "@/lib/spec-schema";
+import { REMOVED_BENCH_SLUGS } from "@/lib/removed-benches";
 import { renderBenchmarkText } from "@/lib/bench-template";
 import { liveResults as liveProviderResults } from "@/lib/provider-filters";
 import {
@@ -106,7 +107,14 @@ async function loadSpecsFromDisk(): Promise<Spec[]> {
       return result.data;
     })
   );
-  return parsed.filter((s): s is Spec => s !== null);
+  const specs = parsed.filter((s): s is Spec => s !== null);
+  // Prod-only gate: staging-pipeline benches never reach the prod
+  // catalog, hubs, feeds or citable API. Direct URL hits get a 410
+  // from middleware. Staging/preview/dev render everything.
+  if (process.env.VERCEL_ENV === "production") {
+    return specs.filter((s) => !REMOVED_BENCH_SLUGS.has(s.slug));
+  }
+  return specs;
 }
 
 export function buildEditorial(

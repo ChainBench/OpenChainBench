@@ -69,7 +69,13 @@ func fetchHyperliquid(v VenueConfig) PerpSample {
 	s.MidPrice = mid
 
 	// Walk asks for v.NotionalUSD of buy
-	effective, err := walkAsksForNotional(asks, v.NotionalUSD)
+	levels := make([]bookLevel, 0, len(asks))
+	for _, a := range asks {
+		px, _ := strconv.ParseFloat(a.Px, 64)
+		sz, _ := strconv.ParseFloat(a.Sz, 64)
+		levels = append(levels, bookLevel{Px: px, Sz: sz})
+	}
+	effective, err := walkBookForNotional(levels, v.NotionalUSD)
 	if err != nil {
 		s.Err = fmt.Sprintf("walk: %v", err)
 		s.FetchLatencyMs = time.Since(start).Milliseconds()
@@ -100,17 +106,29 @@ func fetchHyperliquid(v VenueConfig) PerpSample {
 		}
 	}
 
-	// 3) Taker fee via userFees probe
+	// 3) Taker fee via userFees probe. Hard requirement: if this fails the
+	// all-in number would silently miss the fee component, so we error out
+	// and skip publishing this cycle instead.
 	var fees hlUserFees
 	if err := hlPost(client, map[string]any{
 		"type": "userFees",
 		"user": "0x0000000000000000000000000000000000000000",
-	}, &fees); err == nil && fees.FeeSchedule.Cross != "" {
-		cross, _ := strconv.ParseFloat(fees.FeeSchedule.Cross, 64)
-		s.TakerFeeBps = cross * 10000
+	}, &fees); err != nil {
+		s.Err = fmt.Sprintf("userFees: %v", err)
+		s.FetchLatencyMs = time.Since(start).Milliseconds()
+		return s
 	}
+	if fees.FeeSchedule.Cross == "" {
+		s.Err = "userFees_empty"
+		s.FetchLatencyMs = time.Since(start).Milliseconds()
+		return s
+	}
+	cross, _ := strconv.ParseFloat(fees.FeeSchedule.Cross, 64)
+	s.TakerFeeBps = cross * 10000
 
 	s.AllInBps = s.TakerFeeBps + s.SpreadBps
+	// Notional tiers: rewalk the already-fetched book at $1k/$10k/$100k.
+	applyBookTiers(&s, levels, mid)
 	s.FetchLatencyMs = time.Since(start).Milliseconds()
 	return s
 }
@@ -129,34 +147,4 @@ func hlPost(client *http.Client, body any, out any) error {
 		return fmt.Errorf("status_%d: %s", resp.StatusCode, truncate(string(respBody), 200))
 	}
 	return json.Unmarshal(respBody, out)
-}
-
-// walkAsksForNotional walks the ask side until $notional has been matched
-// and returns the size-weighted effective price.
-func walkAsksForNotional(asks []struct {
-	Px string `json:"px"`
-	Sz string `json:"sz"`
-}, notional float64) (float64, error) {
-	matched := 0.0
-	totalQty := 0.0
-	for _, a := range asks {
-		px, _ := strconv.ParseFloat(a.Px, 64)
-		sz, _ := strconv.ParseFloat(a.Sz, 64)
-		if px <= 0 || sz <= 0 {
-			continue
-		}
-		levelCost := px * sz
-		if matched+levelCost >= notional {
-			partial := (notional - matched) / px
-			totalQty += partial
-			matched = notional
-			break
-		}
-		matched += levelCost
-		totalQty += sz
-	}
-	if matched < notional*0.99 || totalQty == 0 {
-		return 0, fmt.Errorf("insufficient_depth: matched=%.2f of %.2f", matched, notional)
-	}
-	return notional / totalQty, nil
 }

@@ -75,6 +75,12 @@ func fetchAll(cfg *Config) {
 			} else {
 				fmt.Printf("[PERP][%s/%s] all_in=%.2fbps (taker=%.2f, spread=%.2f, funding=%.4fbps/h, mid=$%.2f) in %dms\n",
 					v.Slug, v.Asset, s.AllInBps, s.TakerFeeBps, s.SpreadBps, s.FundingRatePerHrBps, s.MidPrice, s.FetchLatencyMs)
+				for _, t := range s.Tiers {
+					fmt.Printf("[PERP][%s/%s]   tier $%s: all_in=%.2fbps (spread=%.2f)\n", v.Slug, v.Asset, t.Notional, t.AllInBps, t.SpreadBps)
+				}
+				for _, n := range s.SkippedTiers {
+					fmt.Printf("[PERP][%s/%s]   tier $%s: SKIPPED (book depth insufficient)\n", v.Slug, v.Asset, n)
+				}
 			}
 		}()
 	}
