@@ -846,7 +846,7 @@ function Row({
             —
           </td>
           {customCells ? (
-            customCells.slice(1).map((c, idx) => (
+            customCells.slice(1).map((_, idx) => (
               <td
                 key={idx}
                 className="py-2.5 px-3 text-right text-ink-faint whitespace-nowrap hidden md:table-cell"
