@@ -17,7 +17,7 @@ import { Breadcrumb } from "@/components/breadcrumb";
 import { buildBreadcrumbJsonLd, safeJsonLd } from "@/lib/jsonld";
 import {
   fetchHlBuilderStats,
-  isHlBuilderSlug,
+  isHlBuilderWithHistory,
 } from "@/lib/hl-builder-stats";
 import { HlBuilderDashboard } from "@/components/hl-builder-dashboard";
 import { RelatedProvidersSection } from "@/components/related-providers-section";
@@ -64,7 +64,7 @@ export async function generateMetadata({
   // <head> injection — return the canonical + redirect-safe metadata so
   // crawlers that peek at the response before the 308 fires still see the
   // right canonical target.
-  if (await isHlBuilderSlug(slug)) {
+  if (await isHlBuilderWithHistory(slug)) {
     const canonicalUrl = `${SITE.url}/hyperliquid/${slug}`;
     return {
       alternates: { canonical: canonicalUrl },
@@ -145,7 +145,7 @@ export default async function ProviderPage({
   // frontends (12-month focus chart + peer group + KPI strip). Redirect
   // /products/<hl-slug> straight there so backlinks + old SERP entries
   // land on the richer hub without splitting rank signal across two URLs.
-  if (await isHlBuilderSlug(slug)) {
+  if (await isHlBuilderWithHistory(slug)) {
     redirect(`/hyperliquid/${slug}`);
   }
   const p = await getProvider(slug);
@@ -158,7 +158,7 @@ export default async function ProviderPage({
   // on-node harness has data for. Cheap (6 Prom scalars in parallel) and
   // gracefully degrades to a hidden section when Prom is unreachable or
   // the slug isn't an HL builder.
-  const isHlBuilder = await isHlBuilderSlug(p.slug);
+  const isHlBuilder = await isHlBuilderWithHistory(p.slug);
   const hlStats = isHlBuilder ? await fetchHlBuilderStats(p.slug) : null;
 
   // Prediction-market deep-dive: if the slug is a tracked PM venue or
