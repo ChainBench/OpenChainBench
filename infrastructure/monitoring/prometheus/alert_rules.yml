@@ -118,3 +118,50 @@ groups:
         annotations:
           summary: '{{ if eq $externalLabels.environment "staging" }}[STAGING] {{ end }}Latency monitor service is down'
           description: "The aggregator latency monitor has been down for 2 minutes. No metrics are being collected."
+
+  - name: bench_coverage_alerts
+    interval: 60s
+    rules:
+      # RPC provider error-rate (no-key + keyed): the 1RPC/dRPC per-IP
+      # throttling incident (2026-07-08) ran for days unalerted. Fires
+      # when a (provider, chain) cell errors on >50% of calls for 1h.
+      - alert: RpcProviderErrorRate
+        expr: |
+          (
+            sum by (provider, chain) (rate(rpc_call_total{result!="ok"}[30m]))
+            / sum by (provider, chain) (rate(rpc_call_total[30m]))
+          ) > 0.5
+        for: 1h
+        labels:
+          severity: warning
+          alert_type: rpc_error_rate
+          app: rpc_benches
+        annotations:
+          summary: '{{ $labels.provider }} erroring on {{ $labels.chain }} ({{ $value | humanizePercentage }})'
+          description: "More than half of probes to {{ $labels.provider }} on {{ $labels.chain }} failed over the last 30m, sustained 1h. Rate limit, dead endpoint, or our own footprint (check probe cadence before blaming the provider)."
+
+      # Keyed free-tier quota guard approaching: the guard pauses at 90%,
+      # this warns at 85% so a human can react before data gaps appear.
+      - alert: KeyedQuotaNearExhaustion
+        expr: rpc_keyed_quota_used_ratio > 0.85
+        for: 10m
+        labels:
+          severity: warning
+          alert_type: quota
+          app: rpc_benches
+        annotations:
+          summary: 'Keyed RPC quota {{ $labels.provider }} at {{ $value | humanizePercentage }} of monthly budget'
+          description: "The 90% guard will pause probing soon; leaderboard gaps follow. Consider a cadence reduction or a bigger plan."
+
+      # Aggregator WS silently down: connection-state gauge from the
+      # reconnect instrumentation (PR #950).
+      - alert: AggregatorWSDisconnected
+        expr: ws_connected == 0
+        for: 10m
+        labels:
+          severity: warning
+          alert_type: ws_state
+          app: aggregator_latency_monitor
+        annotations:
+          summary: '{{ $labels.aggregator }} WebSocket disconnected ({{ $labels.region }})'
+          description: "ws_connected has been 0 for 10 minutes; reconnect loop is running but not succeeding. Check JWT/cookie/proxy for codex, API key for mobula."
