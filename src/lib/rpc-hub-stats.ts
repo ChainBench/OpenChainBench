@@ -28,6 +28,7 @@ import {
   filterSig,
   loadSpecsUncached,
 } from "@/lib/materialize/load";
+import { REMOVED_BENCH_SLUGS } from "@/lib/removed-benches";
 import { readMaterialized, storeConfigured } from "@/lib/materialize/store";
 import { chainLabelForSlug } from "@/lib/chains";
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
@@ -381,11 +382,40 @@ export async function buildRpcHubSnapshotFresh(): Promise<RpcHubSnapshot | null>
  * KV-only; the Vercel side never touches Prometheus. Null means the
  * page renders its "warming up" empty state.
  */
+/** Prod-only gate on the worker-written snapshot. The worker builds the
+ *  cohort blob from the FULL spec set (it runs outside Vercel, no
+ *  VERCEL_ENV), so staging-pipeline chains like monad-rpc reach the
+ *  shared KV; drop them at read time and recompute the pivot + totals
+ *  so provider aggregates only span the chains actually shown. */
+function gateSnapshotForProd(snap: RpcHubSnapshot): RpcHubSnapshot {
+  if (process.env.VERCEL_ENV !== "production") return snap;
+  const chains = snap.chains.filter((c) => !REMOVED_BENCH_SLUGS.has(c.slug));
+  if (chains.length === snap.chains.length) return snap;
+  const providersPivot = buildPivot(chains);
+  return {
+    ...snap,
+    chains,
+    providersPivot,
+    totals: {
+      ...snap.totals,
+      chains: chains.length,
+      uniqueProviders: providersPivot.length,
+    },
+  };
+}
+
 async function fetchRpcHubRaw(): Promise<RpcHubSnapshot | null> {
   const snapshot = await readCohortSnapshot<RpcHubSnapshot>(RPC_HUB_KEY);
-  if (snapshot) return snapshot.data;
+  if (snapshot) return gateSnapshotForProd(snapshot.data);
   const fresh = await buildRpcHubSnapshotFresh().catch(() => null);
-  if (fresh && cohortSnapshotConfigured()) {
+  // No writeback on production: fresh is built from the prod-gated spec
+  // set there, and the KV blob is shared with staging (worker + preview
+  // deployments own its full-set content).
+  if (
+    fresh &&
+    cohortSnapshotConfigured() &&
+    process.env.VERCEL_ENV !== "production"
+  ) {
     try {
       await writeCohortSnapshot(RPC_HUB_KEY, fresh);
     } catch (err) {
@@ -401,10 +431,12 @@ async function fetchRpcHubRaw(): Promise<RpcHubSnapshot | null> {
 
 const fetchRpcHubCached = unstable_cache(
   fetchRpcHubRaw,
+  // v4: prod-only gate drops staging-pipeline chains from the shared
+  // worker blob at read time; env in key since the set differs per env.
   // v3: pivot rows gained medianSuccessPct/errors24h + per-chain
   // successPct/sampleSize; chains gained unresponsive[] rows.
   // v2: chains gained unresponsiveCount (unresponsive provider rows).
-  ["rpc-hub-cohort-v3"],
+  ["rpc-hub-cohort-v4", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 60, tags: ["rpc-cohort"] },
 );
 
