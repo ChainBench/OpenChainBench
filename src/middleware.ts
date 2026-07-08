@@ -49,8 +49,12 @@ const CANONICAL_NO_QUERY = new Set([
  * removed (or that were never on production but their dev path could
  * have leaked into the index via staging crawl). 410 on prod, normal
  * render on dev / preview.
+ *
+ * Also re-exported so the sitemap can exclude these routes on prod;
+ * emitting them advertises URLs that middleware immediately 410s,
+ * which fails the sitemap-smoke gate and rolls back every deploy.
  */
-const REMOVED_BENCH_SLUGS = new Set([
+export const REMOVED_BENCH_SLUGS = new Set([
   "bridge-revenue",
   "evm-quote-latency",
 ]);
