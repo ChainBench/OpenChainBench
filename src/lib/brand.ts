@@ -75,6 +75,7 @@ const BRANDS: Record<string, Brand> = {
   debridge: { color: "#FFB347" },      // pumpkin
   lifi: { color: "#F5C518" },          // saturated yellow
   relay: { color: "#26D49B" },         // mint
+  across: { color: "#6CF9D8" },        // across aqua
 
   // ─── Trading / perps ───
   hyperliquid: { color: "#22D3EE" },   // cyan

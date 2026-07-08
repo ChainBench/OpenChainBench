@@ -53,6 +53,9 @@ func main() {
 		log.Println("⚠️  Li.Fi bridge initialized (no API key - rate limited to 75 req/2h)")
 	}
 
+	acrossBridge := NewAcrossBridge()
+	log.Println("✅ Across bridge initialized (no key needed)")
+
 	nearIntentsBridge := NewNearIntentsBridge(config.NearIntentsAPIKey)
 	if config.NearIntentsAPIKey != "" {
 		log.Println("✅ Near Intents bridge initialized (with partner JWT)")
@@ -220,7 +223,7 @@ func main() {
 	}
 
 	// Run quote tests immediately on startup (all routes)
-	runQuoteTests(mobulaBridge, relayBridge, debridgeBridge, lifiBridge, nearIntentsBridge, allRoutes, config.MonitorRegion, solAddress, evmAddress)
+	runQuoteTests(mobulaBridge, relayBridge, debridgeBridge, lifiBridge, acrossBridge, nearIntentsBridge, allRoutes, config.MonitorRegion, solAddress, evmAddress)
 
 	// If in dry-run mode, run a single dry-run test
 	if config.ExecutionMode == "dry-run" && executor != nil {
@@ -266,7 +269,7 @@ func main() {
 			done := make(chan struct{})
 			go func() {
 				defer close(done)
-				runQuoteTests(mobulaBridge, relayBridge, debridgeBridge, lifiBridge, nearIntentsBridge, GetTestRoutes(), config.MonitorRegion, solAddress, evmAddress)
+				runQuoteTests(mobulaBridge, relayBridge, debridgeBridge, lifiBridge, acrossBridge, nearIntentsBridge, GetTestRoutes(), config.MonitorRegion, solAddress, evmAddress)
 			}()
 			select {
 			case <-done:
@@ -453,6 +456,7 @@ func runQuoteTests(
 	relayBridge *RelayBridge,
 	debridgeBridge *DebridgeBridge,
 	lifiBridge *LiFiBridge,
+	acrossBridge *AcrossBridge,
 	nearIntentsBridge *NearIntentsBridge,
 	routes []TestRoute, region, solAddress, evmAddress string,
 ) {
@@ -484,6 +488,13 @@ func runQuoteTests(
 			}
 
 			lifiBridge.TestRoute(route, amount, amountUsd, rawUnits, region, solAddress, evmAddress)
+			time.Sleep(500 * time.Millisecond)
+
+			// Across covers the Sol/Base/Arb stablecoin corridors via the
+			// keyless Swap API (cross-asset legs included). HyperCore and the
+			// TRUMP calibration route return early inside TestRoute without
+			// emitting metrics, so coverage gaps stay honest.
+			acrossBridge.TestRoute(route, amount, amountUsd, rawUnits, region, solAddress, evmAddress)
 			time.Sleep(500 * time.Millisecond)
 
 			// Near Intents covers Sol/Base/Arb USDC bi-directionally and HyperCore
