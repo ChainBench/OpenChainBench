@@ -100,15 +100,25 @@ func fetchHyperliquid(v VenueConfig) PerpSample {
 		}
 	}
 
-	// 3) Taker fee via userFees probe
+	// 3) Taker fee via userFees probe. Hard requirement: if this fails the
+	// all-in number would silently miss the fee component, so we error out
+	// and skip publishing this cycle instead.
 	var fees hlUserFees
 	if err := hlPost(client, map[string]any{
 		"type": "userFees",
 		"user": "0x0000000000000000000000000000000000000000",
-	}, &fees); err == nil && fees.FeeSchedule.Cross != "" {
-		cross, _ := strconv.ParseFloat(fees.FeeSchedule.Cross, 64)
-		s.TakerFeeBps = cross * 10000
+	}, &fees); err != nil {
+		s.Err = fmt.Sprintf("userFees: %v", err)
+		s.FetchLatencyMs = time.Since(start).Milliseconds()
+		return s
 	}
+	if fees.FeeSchedule.Cross == "" {
+		s.Err = "userFees_empty"
+		s.FetchLatencyMs = time.Since(start).Milliseconds()
+		return s
+	}
+	cross, _ := strconv.ParseFloat(fees.FeeSchedule.Cross, 64)
+	s.TakerFeeBps = cross * 10000
 
 	s.AllInBps = s.TakerFeeBps + s.SpreadBps
 	s.FetchLatencyMs = time.Since(start).Milliseconds()

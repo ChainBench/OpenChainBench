@@ -99,14 +99,24 @@ func fetchDYdX(v VenueConfig) PerpSample {
 		}
 	}
 
-	// 3) Fee tier from chain REST
+	// 3) Fee tier from chain REST. Hard requirement: if this fails the
+	// all-in number would silently miss the taker fee, so we error out and
+	// skip publishing this cycle instead.
 	var feeParams dydxFeeParams
-	if err := dydxGet(client, dydxChainREST+"/dydxprotocol/v4/feetiers/perpetual_fee_params", &feeParams); err == nil && len(feeParams.Params.Tiers) > 0 {
-		// Tier 0 is the default for any user not in higher tiers
-		t0 := feeParams.Params.Tiers[0]
-		// ppm = parts per million; bps = ppm / 100
-		s.TakerFeeBps = float64(t0.TakerFeePpm) / 100.0
+	if err := dydxGet(client, dydxChainREST+"/dydxprotocol/v4/feetiers/perpetual_fee_params", &feeParams); err != nil {
+		s.Err = fmt.Sprintf("feetiers: %v", err)
+		s.FetchLatencyMs = time.Since(start).Milliseconds()
+		return s
 	}
+	if len(feeParams.Params.Tiers) == 0 {
+		s.Err = "feetiers_empty"
+		s.FetchLatencyMs = time.Since(start).Milliseconds()
+		return s
+	}
+	// Tier 0 is the default for any user not in higher tiers
+	t0 := feeParams.Params.Tiers[0]
+	// ppm = parts per million; bps = ppm / 100
+	s.TakerFeeBps = float64(t0.TakerFeePpm) / 100.0
 
 	s.AllInBps = s.TakerFeeBps + s.SpreadBps
 	s.FetchLatencyMs = time.Since(start).Milliseconds()

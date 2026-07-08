@@ -33,10 +33,10 @@ func loadConfig() *Config {
 		{slug: "hyperliquid", display: "Hyperliquid", assets: []string{"ETH", "BTC", "SOL"}},
 		{slug: "dydx", display: "dYdX v4", assets: []string{"ETH", "BTC", "SOL"}},
 		{slug: "lighter", display: "Lighter", assets: []string{"ETH", "BTC", "SOL"}},
-		// GMX v2 has separate market addresses per asset; only ETH wired up
-		// for now. BTC market address would need to be added to the gmx
-		// fetcher to support multi-asset.
-		{slug: "gmx", display: "GMX v2", assets: []string{"ETH"}},
+		// GMX v2 has separate market addresses per asset; the gmx fetcher
+		// maps asset → market address (gmxMarkets in gmx.go), verified
+		// against gmxinfra /markets/info.
+		{slug: "gmx", display: "GMX v2", assets: []string{"ETH", "BTC", "SOL"}},
 		// Gains v8 on Base — reads fees on-chain via Base RPC. Pair index
 		// for each asset is discovered by scanning the diamond's
 		// `pairs(N)` slot for the asset/USD name match (findGainsPair in
