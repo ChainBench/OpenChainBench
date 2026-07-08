@@ -53,6 +53,7 @@ methodology:
   - "Lighter: `/orderBookDetails` (taker fee per market) + `/orderBookOrders` (orderbook walk)."
   - "gains.trade (Gains v8 on Base): fees read directly on-chain. `eth_call pairs(N)` gives `spreadP` and `feeIndex`, then `eth_call fees(feeIndex)` gives the open fee (`totalPositionSizeFeeP`). The taker crosses one side of the book, so we charge half of `spreadP`. SOL has `spreadP` 0 on-chain (Gains prices that pair's spread dynamically), so its figure is the open fee alone. Values in 1e10 precision per Gains v8 convention. Fee tier cached 1h, pair config 6h."
   - "All-in formula: `all_in_bps = taker_fee_bps + spread_bps`. Both components emitted as separate metrics for transparency."
+  - "Notional tiers: the same measurement runs at $1,000, $10,000 and $100,000 by rewalking the already fetched book, published to `perp_fees_all_in_bps_tier{venue, chain, notional}`. The headline `perp_fees_all_in_bps` stays defined at $1,000. A tier the book cannot fill is skipped and counted in `perp_fees_tier_skipped_total`, never extrapolated. Oracle priced venues (GMX v2, gains.trade) charge a flat percentage of size, so their figure repeats across tiers."
   - "Failures (5xx, timeouts, rate limits) leave the previous gauge in place and increment a per-venue `fetch_errors_total` counter. The page falls back to the last successful sample."
 
 per_chain_explainer:
@@ -96,6 +97,8 @@ faq:
     a: "Rack-rate taker fee is what every comparison article quotes; it is also what every trader stops being able to read off a marketing page the second they place a market order. Spread plus impact at notional is the rest of the bill. On a tight book the gap is small, on a thin book it can dominate a 5 bps taker. Bundling both into one number is the only way to make a fair across-venue ranking that survives contact with a $1000 trade."
   - q: "How does GMX v2 fee work and why does this benchmark show the higher number?"
     a: "GMX v2 splits the position fee into a positive-impact branch (4 bps, when your trade reduces the venue's net open interest skew) and a negative-impact branch (6 bps, when it adds to the skew). Which branch fires depends on the current open interest at the moment of the trade and is not predictable from the user's side. We report the negative branch as the conservative upper bound; the positive branch is read by the harness as well and would lower the all-in number by 2 bps when it fires."
+  - q: "How do perp fees change with position size?"
+    a: "The taker fee does not change: every venue here charges a flat percentage of notional, so 4.5 bps on Hyperliquid costs 45 cents at $1,000 and $45 at $100,000, the same rate. What scales is the impact term: a bigger market order walks deeper into the book, so the effective price moves further from mid. On deep books like BTC on Hyperliquid the $100k figure sits within a fraction of a bp of the $1k figure; on thinner books like SOL the extra impact can exceed the entire taker fee. Oracle priced venues (GMX v2, gains.trade) quote the same bps at any size because there is no book to walk. The harness measures all three tiers every cycle and publishes them to `perp_fees_all_in_bps_tier` with a notional label of 1000, 10000 or 100000; the $10k and $100k panels on this page chart them live. When a book cannot fill a tier we skip the sample rather than extrapolate, so a missing tier is itself a depth signal."
   - q: "Does this benchmark include funding rates or only the open cost?"
     a: "Open cost only. Funding is paid every hour you hold, not at open, so bundling it into a one-number leaderboard would conflate two different fee mechanics. The harness still records funding rate per venue (`perp_fees_funding_rate_per_hour_bps`, signed) so a trader can read both numbers and compute their own time-adjusted cost for a longer hold."
 
@@ -119,6 +122,8 @@ dimensions:
 #   perp_fees_fetch_errors_total{venue, asset, error_type}  counter
 #   perp_fees_health{venue, asset}                        gauge (0|1)
 #   perp_fees_last_refresh_timestamp_seconds{venue, asset}
+#   perp_fees_all_in_bps_tier{venue, chain, notional}     gauge ($1k/$10k/$100k tiers; notional=1000 duplicates the headline)
+#   perp_fees_tier_skipped_total{venue, chain, notional}  counter (fetched book too thin to fill the tier, sample skipped)
 
 providers:
   - slug: lighter
@@ -185,3 +190,22 @@ providers:
       success: avg_over_time(perp_fees_health{venue="gains"}[24h])
       sample_size: count_over_time(perp_fees_all_in_bps{venue="gains"}[24h])
       series: perp_fees_all_in_bps{venue="gains"}
+
+# Notional-tier companion panels. Same pattern as perp-funding: the panel
+# metric pins the asset label so the unfiltered "All" view reads one series
+# per venue; on the BTC/SOL tabs the dimension injection skips chain=
+# because it is already set, so the panels stay ETH-scoped by design.
+# notional=1000 is not paneled: it duplicates the headline ledger.
+metric_panels:
+  - id: all_in_10k
+    label: "All-in at $10k (ETH)"
+    metric: perp_fees_all_in_bps_tier{chain="ETH",notional="10000"}
+    label_key: venue
+    unit: bps
+    description: "All-in opening cost measured at $10,000 notional on the ETH pair. Same formula as the headline (taker fee plus spread plus impact); only the orderbook walk depth changes."
+  - id: all_in_100k
+    label: "All-in at $100k (ETH)"
+    metric: perp_fees_all_in_bps_tier{chain="ETH",notional="100000"}
+    label_key: venue
+    unit: bps
+    description: "All-in opening cost at $100,000 notional on the ETH pair. Books that cannot fill the size are skipped by the harness rather than extrapolated, so a venue missing here is itself a depth signal."

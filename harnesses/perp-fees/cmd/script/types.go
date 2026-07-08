@@ -12,6 +12,19 @@ type PerpSample struct {
 	FetchLatencyMs   int64   `json:"fetch_latency_ms"`
 	At               string  `json:"at"`
 	Err              string  `json:"error,omitempty"`
+
+	// Notional tiers measured alongside the headline notional. Published to
+	// perp_fees_all_in_bps_tier{venue, chain, notional}; the headline series
+	// perp_fees_all_in_bps keeps its $1000 meaning untouched.
+	Tiers        []TierSample `json:"tiers,omitempty"`
+	SkippedTiers []string     `json:"skipped_tiers,omitempty"` // notional labels the book could not fill
+}
+
+// TierSample is the opening cost measured at one notional tier.
+type TierSample struct {
+	Notional  string  `json:"notional"` // "1000", "10000", "100000"
+	SpreadBps float64 `json:"spread_bps"`
+	AllInBps  float64 `json:"all_in_bps"`
 }
 
 // VenueConfig describes one venue × asset pair the harness should measure.

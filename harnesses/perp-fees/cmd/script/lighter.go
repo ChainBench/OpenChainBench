@@ -89,29 +89,25 @@ func fetchLighter(v VenueConfig) PerpSample {
 	s.MidPrice = mid
 
 	// Walk asks
-	matched, totalQty := 0.0, 0.0
+	levels := make([]bookLevel, 0, len(book.Asks))
 	for _, a := range book.Asks {
 		px, _ := strconv.ParseFloat(a.Price, 64)
 		sz, _ := strconv.ParseFloat(a.RemainingBaseAmount, 64)
-		levelCost := px * sz
-		if matched+levelCost >= v.NotionalUSD {
-			partial := (v.NotionalUSD - matched) / px
-			totalQty += partial
-			matched = v.NotionalUSD
-			break
-		}
-		matched += levelCost
-		totalQty += sz
+		levels = append(levels, bookLevel{Px: px, Sz: sz})
 	}
-	if matched < v.NotionalUSD*0.99 || totalQty == 0 {
-		s.Err = fmt.Sprintf("insufficient_depth: matched=%.2f", matched)
+	effective, err := walkBookForNotional(levels, v.NotionalUSD)
+	if err != nil {
+		s.Err = fmt.Sprintf("walk: %v", err)
 		s.FetchLatencyMs = time.Since(start).Milliseconds()
 		return s
 	}
-	effective := v.NotionalUSD / totalQty
 	s.SpreadBps = (effective - mid) / mid * 10000
 
 	s.AllInBps = s.TakerFeeBps + s.SpreadBps
+	// Notional tiers: rewalk the already-fetched book (top 50 levels) at
+	// $1k/$10k/$100k. Tiers the fetched depth cannot fill are skipped
+	// (counted), never extrapolated.
+	applyBookTiers(&s, levels, mid)
 	s.FetchLatencyMs = time.Since(start).Milliseconds()
 	return s
 }
