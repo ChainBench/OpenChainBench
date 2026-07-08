@@ -23,7 +23,12 @@ type Provider struct {
 var providers = []Provider{
 	{Slug: "mobula", EveryN: 1, Budget: 250_000},
 	{Slug: "zerion", EveryN: 1, Budget: 55_000},
-	{Slug: "moralis", EveryN: 1, Budget: 500_000},
+	// Moralis free tier: 40k CU/day; /wallets/{addr}/history costs 25 CU
+	// per call, so full participation (144 events × 16 polls = 2,304
+	// calls = 57.6k CU/day) blows the daily cap ~2/3 through the day
+	// (the API then 401s until the UTC midnight reset). EveryN 2 keeps
+	// it at ~28.8k CU/day. Budget = 40k/25 CU × 30 days in calls.
+	{Slug: "moralis", EveryN: 2, Budget: 48_000},
 	{Slug: "goldrush", EveryN: 1, Budget: 90_000},
 	// Allium free tier: 20k calls/month, aggressive per-second limits.
 	{Slug: "allium", EveryN: 3, Budget: 18_000},
