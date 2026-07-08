@@ -46,7 +46,11 @@ jobs:
       - name: Deploy Preview
         id: deploy
         run: |
-          url=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }})
+          # --archive=tgz uploads ONE tarball instead of thousands of
+          # files: the team's api-upload-paid quota (40k reqs / rolling
+          # 24h) was exhausted twice on busy merge days (2026-07-06/07),
+          # blocking every deploy for hours.
+          url=$(vercel deploy --prebuilt --archive=tgz --token=${{ secrets.VERCEL_TOKEN }})
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "Preview ready at $url"
 

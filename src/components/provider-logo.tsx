@@ -92,6 +92,7 @@ const NEEDS_LIGHT_CHIP = new Set([
   "merkle",
   "moralis",
   "nodies",
+  "zerion",
 ]);
 
 // White-on-transparent logos — invisible on a white chip. They get a

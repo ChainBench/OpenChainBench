@@ -41,6 +41,9 @@ const RAW: Record<string, string> = {
   opbnb: "/logos/bnb.png",
   aptos: "/logos/aptos.svg",
   sonic: "/logos/sonic.png",
+  monad: "/logos/monad.png",
+  megaeth: "/logos/megaeth.png",
+  onfinality: "/logos/onfinality.png",
   berachain: "/logos/berachain.png",
 
   // ─── Providers ───
@@ -96,6 +99,9 @@ const RAW: Record<string, string> = {
 
   // ─── Public RPC providers ───
   publicnode: "/logos/publicnode.avif",
+  infura: "/logos/infura.png",
+  ankr: "/logos/ankr.png",
+  chainstack: "/logos/chainstack.svg",
   drpc: "/logos/drpc.webp",
   "1rpc": "/logos/1rpc.svg",
   cloudflare: "/logos/cloudflare.svg",
@@ -178,6 +184,17 @@ const RAW: Record<string, string> = {
   // ─── network-coverage bench providers (bench № 005 expansion) ───
   coinpaprika: "/logos/coinpaprika.svg",
   coinstats: "/logos/coinstats.svg",
+
+  // ─── portfolio-chain-coverage bench providers (bench № 067) ───
+  zerion: "/logos/zerion.svg",
+  allium: "/logos/allium.png",
+  goldrush: "/logos/covalent.svg",
+
+  // ─── explorer-chain-coverage bench providers (bench № 068) ───
+  routescan: "/logos/routescan.png",
+  blockchair: "/logos/blockchair.png",
+  subscan: "/logos/subscan.png",
+  oklink: "/logos/oklink.png",
 
   // ─── Hyperliquid frontends (bench № 030) ───
   "phantom-perps": "/logos/phantom-perps.svg",
@@ -338,6 +355,8 @@ const ALIASES: Record<string, string> = {
   "optimism-official": "optimism",
   // Long-tail RPC cluster (055-066).
   "sonic-official": "sonic",
+  "monad-official": "monad",
+  "megaeth-official": "megaeth",
   "celo-official": "celo",
   "blast-official": "blast",
   "taiko-official": "taiko",

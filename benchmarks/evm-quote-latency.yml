@@ -1,0 +1,194 @@
+# OpenChainBench. Bench № 033
+
+slug: evm-quote-latency
+number: "033"
+title: Fastest EVM swap quote API
+seo_title: "Fastest EVM swap quote API 2026"
+seo_description: "Live p50/p90/p99 latency for major EVM swap quote APIs measured every minute on a rotating token basket."
+subtitle: Wall clock p50 latency of GET /quote per provider, measured every minute on a 5 pair basket across 4 chains.
+
+per_chain_explainer:
+  - slug: ethereum
+    h2: "Fastest Ethereum swap quote API"
+    body: |
+      {{best_name:chain:ethereum}} currently leads the Ethereum swap-quote field at {{best_p50:chain:ethereum}} (p50, 24h) across the 7 measured providers. Ethereum mainnet holds the deepest EVM liquidity (Uniswap v3 tick-range pools, Curve stable pools, Maker PSM), so route-search complexity is the dominant component of quote latency: aggregators trading off depth-of-search against time-to-first-byte show their architecture here more than on any other chain. Probes run every 60 seconds on a 5-pair basket from us-east, eu-west and Singapore.
+  - slug: base
+    h2: "Fastest Base swap quote API"
+    body: |
+      {{best_name:chain:base}} currently leads the Base swap-quote field at {{best_p50:chain:base}} (p50, 24h). Base liquidity is dominated by Aerodrome's ve(3,3) gauges and Uniswap v3, with a thinner long tail than Ethereum, so quote engines that pre-warm a per-chain pool graph (KyberSwap, Mobula) have a structural edge against bridge-first aggregators that re-resolve routes per request. Probes run from us-east, eu-west and Singapore on a 0.5 ETH to USDC pair.
+  - slug: arbitrum
+    h2: "Fastest Arbitrum swap quote API"
+    body: |
+      {{best_name:chain:arbitrum}} currently leads the Arbitrum swap-quote field at {{best_p50:chain:arbitrum}} (p50, 24h). Arbitrum One concentrates liquidity in Camelot v3, Uniswap v3 and Curve, with sub-second sequencer blocks that let quote engines using `eth_call` simulation refresh their price source between every probe. Bebop's RFQ model resolves price through a maker network rather than via on-chain simulation. Probes run every 60s on a 100 USDC to ETH pair from three regions.
+  - slug: bsc
+    h2: "Fastest BSC swap quote API"
+    body: |
+      {{best_name:chain:bsc}} currently leads the BSC swap-quote field at {{best_p50:chain:bsc}} (p50, 24h). BSC liquidity is concentrated in PancakeSwap v2 and v3, with a long memecoin tail that pushes aggregators toward exhaustive route enumeration. CoW Protocol is absent because CoW Settlement does not deploy on BSC. Probes fire every 60 seconds on a 1 BNB to USDT pair from us-east, eu-west and Singapore against the public sequencer RPC.
+
+category: Aggregators
+status: live
+metric: Quote latency
+unit: ms
+higher_is_better: false
+
+seo_intro: |
+  EVM swap aggregator APIs all promise sub second quotes. This benchmark
+  measures how often they actually deliver one. The harness rotates a 5
+  pair basket across Ethereum, Base, Arbitrum and BSC, fires a quote
+  request at every supported provider in parallel every 60 seconds, and
+  records the wall clock round trip. The leaderboard sorts by p50 latency
+  over the last 24 hours, lower is better. A geographic split is also
+  available, with the same probe running independently from us east, eu
+  west and Singapore so a wallet integrator can pick the provider whose
+  edge gateway is closest to their backend.
+
+abstract: |
+  Each provider's public quote endpoint is hit on five fixed pairs
+  (1 ETH to USDT on Ethereum, 1000 USDC to USDT on Ethereum, 0.5 ETH to
+  USDC on Base, 100 USDC to ETH on Arbitrum, 1 BNB to USDT on BSC),
+  rotating one pair per 60 second tick. Per (provider, chain) we land
+  roughly 288 samples in 24 hours, enough to put p90 and p99 buckets on a
+  solid base. Quote quality (output amount, net of gas) is not scored,
+  only latency.
+
+methodology:
+  - "Five fixed pairs across four chains. Polygon and Optimism will be added in v2 once they reach a comparable sample volume."
+  - "60 second tick, one pair per tick, round robin. Every (provider, chain) sees a quote every 5 minutes."
+  - "Three regions (us east, eu west, sgp). Each is a separate Railway service writing the same metric family with a region label, so the page can filter to a single edge or aggregate across all three."
+  - "Latency is wall clock from request dispatch to last byte received, observed only on the happy path (HTTP 2xx and a parseable output amount). Failures land on dedicated counters (auth, throttle, no route, other) and pull the success gauge to 0."
+  - "Native asset sentinel is the canonical 0xEeeeeEeee form. Odos uses 0x0000... and Bebop substitutes the wrapped equivalent on the sell side. The adapter normalises per provider."
+  - "Provider auth: Mobula requires the sponsor key in an Authorization header. KyberSwap, Bebop, LI.FI and OpenOcean accept anonymous traffic."
+
+findings:
+  - "{{best_name}} currently leads at {{best_p50}} on the active chain tab, across {{count}} measured providers. Rankings shift per chain tab: a provider's edge placement and per-chain engine split matter more than its global average."
+  - "{{name:kyberswap}} returns {{p50:kyberswap}} (p50, 24 h). Its aggregator engine is split per chain and the no-auth path keeps the HTTP round trip lean."
+  - "{{name:openocean}} ({{p50:openocean}}) and {{name:lifi}} ({{p50:lifi}}) trade latency for breadth: both cover 30+ chains, and the route search across many underlying venues dominates their latency curve."
+  - "Bebop is RFQ. The output amount it quotes is already net of fees because settlement is gasless for the taker. The latency you see is the maker network resolving the price, not a public mempool route search."
+
+faq:
+  - q: "Which EVM swap quote API has the lowest latency right now?"
+    a: "{{best_name}} currently leads at {{best_p50}} (p50 over the last 24 hours) on the active tab, across {{count}} measured providers. The leaderboard re sorts every minute on fresh Prometheus samples, so the answer reflects measured latency on the live basket, not a marketing claim."
+  - q: "Does this measure quote quality or just speed?"
+    a: "Speed only. Latency is wall clock round trip from request to last byte, recorded only on a successful parseable response. Output amount in USD is not scored on this bench because providers measure it differently (Bebop is net of fees on a gasless RFQ, others are gross), and converting all outputs to a comparable USD value introduces an oracle bias we do not want to bake into a latency leaderboard."
+  - q: "Why are some providers not on every chain?"
+    a: "Each provider declares its supported chain set. The harness skips probes for chains a provider does not claim to cover so the failure counter is not inflated by structural non coverage."
+  - q: "What happens when a provider rate limits the harness?"
+    a: "Each adapter classifies the response. 429 lands on a throttle counter and the success gauge drops to 0. 401 and 403 land on an auth counter. Empty or zero output amounts on a 200 land on a no route counter. None of those failure modes contribute to the latency histogram, so the p50 number stays representative of healthy quotes."
+  - q: "How is the geographic split implemented?"
+    a: "Three identical Railway services run the harness with different MONITOR_REGION env vars (us east, eu west, sgp). Each writes the same metric family with a region label. The bench page filter on region selects which slice of the histogram is queried."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/evm-swap-quoting
+
+prometheus:
+  window: 24h
+  expected_freshness_seconds: 600
+  freshness_metric: evm_swap_quote_latency_ms_count
+
+dimensions:
+  chain:
+    - { value: all,      label: All chains }
+    - { value: ethereum, label: Ethereum }
+    - { value: base,     label: Base }
+    - { value: arbitrum, label: Arbitrum }
+    - { value: bsc,      label: BSC }
+  region:
+    - { value: all,      label: All regions }
+    - { value: us-east,  label: US East }
+    - { value: eu-west,  label: EU West }
+    - { value: sgp,      label: Singapore }
+
+# Exact per-cell (chain x region) rankings for scoped badges. One query,
+# one sample per (provider, chain, region) cell.
+rank_matrix_query: avg by (provider, chain, region) (ocb:evm_swap_quote_latency_ms:p50_24h)
+
+providers:
+  - slug: mobula
+    name: Mobula
+    tag: API key required, dedicated edge
+    formula: "Avg of per-(chain, region) 24h medians of evm_swap_quote_latency_ms{provider=mobula} over the last 24 hours, only successful 2xx responses with a non zero output amount."
+    queries:
+      p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="mobula"})
+      p90: avg(ocb:evm_swap_quote_latency_ms:p90_24h{provider="mobula"})
+      p99: avg(ocb:evm_swap_quote_latency_ms:p99_24h{provider="mobula"})
+      mean: sum(ocb:evm_swap_quote_latency_ms:sum_rate_24h{provider="mobula"}) / sum(ocb:evm_swap_quote_latency_ms:count_rate_24h{provider="mobula"})
+      success: avg(ocb:evm_swap_quote_success:avg_24h{provider="mobula"})
+      sample_size: sum(ocb:evm_swap_quote_latency_ms:count_increase_24h{provider="mobula"})
+      series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="mobula"}[1h])) by (le))
+
+  - slug: kyberswap
+    name: KyberSwap
+    tag: No auth, per chain aggregator engine
+    formula: "Avg of per-(chain, region) 24h medians of evm_swap_quote_latency_ms{provider=kyberswap} over the last 24 hours."
+    queries:
+      p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="kyberswap"})
+      p90: avg(ocb:evm_swap_quote_latency_ms:p90_24h{provider="kyberswap"})
+      p99: avg(ocb:evm_swap_quote_latency_ms:p99_24h{provider="kyberswap"})
+      mean: sum(ocb:evm_swap_quote_latency_ms:sum_rate_24h{provider="kyberswap"}) / sum(ocb:evm_swap_quote_latency_ms:count_rate_24h{provider="kyberswap"})
+      success: avg(ocb:evm_swap_quote_success:avg_24h{provider="kyberswap"})
+      sample_size: sum(ocb:evm_swap_quote_latency_ms:count_increase_24h{provider="kyberswap"})
+      series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="kyberswap"}[1h])) by (le))
+
+  - slug: bebop
+    name: Bebop
+    tag: RFQ gasless, EIP 55 checksum required
+    formula: "Avg of per-(chain, region) 24h medians of evm_swap_quote_latency_ms{provider=bebop} over the last 24 hours."
+    queries:
+      p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="bebop"})
+      p90: avg(ocb:evm_swap_quote_latency_ms:p90_24h{provider="bebop"})
+      p99: avg(ocb:evm_swap_quote_latency_ms:p99_24h{provider="bebop"})
+      mean: sum(ocb:evm_swap_quote_latency_ms:sum_rate_24h{provider="bebop"}) / sum(ocb:evm_swap_quote_latency_ms:count_rate_24h{provider="bebop"})
+      success: avg(ocb:evm_swap_quote_success:avg_24h{provider="bebop"})
+      sample_size: sum(ocb:evm_swap_quote_latency_ms:count_increase_24h{provider="bebop"})
+      series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="bebop"}[1h])) by (le))
+
+  - slug: lifi
+    name: LI.FI
+    tag: 30+ chain coverage, same chain via fromChain equal toChain
+    formula: "Avg of per-(chain, region) 24h medians of evm_swap_quote_latency_ms{provider=lifi} over the last 24 hours."
+    queries:
+      p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="lifi"})
+      p90: avg(ocb:evm_swap_quote_latency_ms:p90_24h{provider="lifi"})
+      p99: avg(ocb:evm_swap_quote_latency_ms:p99_24h{provider="lifi"})
+      mean: sum(ocb:evm_swap_quote_latency_ms:sum_rate_24h{provider="lifi"}) / sum(ocb:evm_swap_quote_latency_ms:count_rate_24h{provider="lifi"})
+      success: avg(ocb:evm_swap_quote_success:avg_24h{provider="lifi"})
+      sample_size: sum(ocb:evm_swap_quote_latency_ms:count_increase_24h{provider="lifi"})
+      series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="lifi"}[1h])) by (le))
+
+  - slug: openocean
+    name: OpenOcean
+    tag: 40+ chain coverage, numeric chainId in URL
+    formula: "Avg of per-(chain, region) 24h medians of evm_swap_quote_latency_ms{provider=openocean} over the last 24 hours."
+    queries:
+      p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="openocean"})
+      p90: avg(ocb:evm_swap_quote_latency_ms:p90_24h{provider="openocean"})
+      p99: avg(ocb:evm_swap_quote_latency_ms:p99_24h{provider="openocean"})
+      mean: sum(ocb:evm_swap_quote_latency_ms:sum_rate_24h{provider="openocean"}) / sum(ocb:evm_swap_quote_latency_ms:count_rate_24h{provider="openocean"})
+      success: avg(ocb:evm_swap_quote_success:avg_24h{provider="openocean"})
+      sample_size: sum(ocb:evm_swap_quote_latency_ms:count_increase_24h{provider="openocean"})
+      series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="openocean"}[1h])) by (le))
+
+  - slug: cow
+    name: CoW Protocol
+    tag: No auth, RFQ batch auction, no BSC
+    formula: "Avg of per-(chain, region) 24h medians of evm_swap_quote_latency_ms{provider=cow} over the last 24 hours. BSC is skipped since CoW Settlement does not deploy there."
+    queries:
+      p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="cow"})
+      p90: avg(ocb:evm_swap_quote_latency_ms:p90_24h{provider="cow"})
+      p99: avg(ocb:evm_swap_quote_latency_ms:p99_24h{provider="cow"})
+      mean: sum(ocb:evm_swap_quote_latency_ms:sum_rate_24h{provider="cow"}) / sum(ocb:evm_swap_quote_latency_ms:count_rate_24h{provider="cow"})
+      success: avg(ocb:evm_swap_quote_success:avg_24h{provider="cow"})
+      sample_size: sum(ocb:evm_swap_quote_latency_ms:count_increase_24h{provider="cow"})
+      series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="cow"}[1h])) by (le))
+
+  - slug: enso
+    name: Enso
+    tag: Anonymous shared bucket, success rate capped near 80 percent
+    formula: "Avg of per-(chain, region) 24h medians of evm_swap_quote_latency_ms{provider=enso}. Enso uses a global 1rps anonymous bucket so ~20% of probes hit 429 and are dropped. Remaining samples keep p50 and p90 stable."
+    queries:
+      p50: avg(ocb:evm_swap_quote_latency_ms:p50_24h{provider="enso"})
+      p90: avg(ocb:evm_swap_quote_latency_ms:p90_24h{provider="enso"})
+      p99: avg(ocb:evm_swap_quote_latency_ms:p99_24h{provider="enso"})
+      mean: sum(ocb:evm_swap_quote_latency_ms:sum_rate_24h{provider="enso"}) / sum(ocb:evm_swap_quote_latency_ms:count_rate_24h{provider="enso"})
+      success: avg(ocb:evm_swap_quote_success:avg_24h{provider="enso"})
+      sample_size: sum(ocb:evm_swap_quote_latency_ms:count_increase_24h{provider="enso"})
+      series: histogram_quantile(0.50, sum(rate(evm_swap_quote_latency_ms_bucket{provider="enso"}[1h])) by (le))

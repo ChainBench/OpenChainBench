@@ -85,6 +85,24 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Solana RPC and data provider. Enhanced transactions, webhooks, DAS API for assets, and standard JSON-RPC.",
     twitter: "@heliuslabs",
   },
+  zerion: {
+    url: "https://zerion.io/api",
+    description:
+      "Wallet data API behind the Zerion app. Transactions, balances, positions and portfolio across 25+ chains, sub-second indexing claims, free tier at 60k calls/month.",
+    twitter: "@zerion",
+  },
+  allium: {
+    url: "https://www.allium.so",
+    description:
+      "Enterprise blockchain data platform. Real-time wallet and activity APIs across 100+ chains, plus SQL analytics; serves institutional data teams.",
+    twitter: "@alliumlabs",
+  },
+  goldrush: {
+    url: "https://goldrush.dev",
+    description:
+      "Multi-chain wallet data API by Covalent. Transactions, balances and NFT data across 100+ chains with a unified schema; free tier at 100k credits/month.",
+    twitter: "@GoldRush_dev",
+  },
   dune: {
     url: "https://dune.com",
     description:
@@ -470,6 +488,48 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   },
 
   // ─── Public RPC providers ─────────────────────────────────────
+  "monad-official": {
+    url: "https://docs.monad.xyz",
+    description:
+      "Monad Foundation's primary public RPC (rpc.monad.xyz, QuickNode-backed, 25 rps). Four additional official mirrors run on Alchemy, Goldsky, Ankr and Foundation infrastructure.",
+    twitter: "@monad_xyz",
+  },
+  "megaeth-official": {
+    url: "https://docs.megaeth.com",
+    description:
+      "MegaETH's official public RPC (mainnet.megaeth.com). Compute-unit and bandwidth limited; WebSocket endpoint exposes the 10 ms mini-block realtime API.",
+    twitter: "@megaeth_labs",
+  },
+  onfinality: {
+    url: "https://onfinality.io",
+    description:
+      "Multi-chain infrastructure provider. Public keyless endpoints on 80+ networks with generous daily limits, plus dedicated and API-key tiers.",
+    twitter: "@OnFinality",
+  },
+  quicknode: {
+    url: "https://www.quicknode.com",
+    description:
+      "Keyed RPC infrastructure across 30+ chains. Endpoint-scoped API tokens; free and paid plans are served from the same shared fleet, dedicated clusters on higher tiers.",
+    twitter: "@QuickNode",
+  },
+  infura: {
+    url: "https://www.infura.io",
+    description:
+      "RPC infrastructure by Consensys, now part of the MetaMask Developer platform. Keyed endpoints across 40+ networks; free tier meters 3M credits per day.",
+    twitter: "@infura_io",
+  },
+  ankr: {
+    url: "https://www.ankr.com/rpc/",
+    description:
+      "Multi-chain RPC service covering 65+ chains on the freemium tier. One API key across chains; some networks are premium-gated.",
+    twitter: "@ankr",
+  },
+  chainstack: {
+    url: "https://chainstack.com",
+    description:
+      "Managed blockchain node platform. Deploys dedicated Global Nodes per chain with keyed HTTPS/WSS endpoints; free plan includes one node and 3M requests per month.",
+    twitter: "@ChainstackHQ",
+  },
   publicnode: {
     url: "https://www.publicnode.com",
     description:
