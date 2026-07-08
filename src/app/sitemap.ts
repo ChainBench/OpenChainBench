@@ -225,18 +225,24 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
   // so listing them in the sitemap pollutes it with permanent
   // redirects. The canonical /chains/<slug> URLs are emitted below
   // by chainRoutes.
+  // Pre-warm the HL-builder slug cache with a single call so the
+  // Promise.all below doesn't race 100 concurrent getSpecs() reads
+  // (each awaits the same spec load before the cache initializes,
+  // exhausting the file-descriptor pool during buildFullSitemap and
+  // timing out /sitemap.xml on the deploy-time smoke fetch — observed
+  // 2026-07-08, DOMException [AbortError]: This operation was aborted).
+  //
+  // Tracked Hyperliquid builder frontends live under /hyperliquid/<slug>;
+  // /products/<slug> 307-redirects for these slugs (products/[slug]
+  // /page.tsx), and the deploy-time sitemap-smoke gate rolls back on
+  // any 3xx. The canonical /hyperliquid/<slug> URLs come from
+  // hyperliquid/[slug]/generateStaticParams via Next's automatic
+  // sitemap discovery, not from this file.
+  await isHlBuilderSlug("").catch(() => false);
   const validatedSlugs = (
     await Promise.all(
       providerSlugs.map(async (slug) => {
         if (CHAIN_BY_SLUG.has(slug)) return null;
-        // Tracked Hyperliquid builder frontends live under
-        // /hyperliquid/<slug>; the /products/<slug> route 307-redirects
-        // there for these slugs (products/[slug]/page.tsx). Emitting the
-        // /products/ variant advertises URLs that immediately redirect,
-        // and the deploy-time sitemap-smoke gate treats any 3xx as a
-        // rollback signal. The canonical /hyperliquid/<slug> URLs come
-        // from hyperliquid/[slug]/generateStaticParams via Next's
-        // automatic sitemap discovery, not from this file.
         if (await isHlBuilderSlug(slug)) return null;
         const p = await getProvider(slug);
         return p ? slug : null;
