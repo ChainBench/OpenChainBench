@@ -4,8 +4,8 @@ slug: cronos-rpc
 number: "064"
 title: Fastest free Cronos RPC, live no-key endpoint latency
 seo_title: "Fastest free Cronos RPC 2026"
-seo_description: "{{best_name}} leads free Cronos RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). 4 no-key providers measured every 15s from 3 regions."
-subtitle: HTTP round-trip latency for eth_getBlockByNumber against every free, no-key public Cronos RPC endpoint, audited every 15 seconds from 3 regions.
+seo_description: "{{best_name}} leads free Cronos RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). 3 no-key providers measured every 60s from 3 regions."
+subtitle: HTTP round-trip latency for eth_getBlockByNumber against every free, no-key public Cronos RPC endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
 status: live
@@ -14,19 +14,25 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Cronos fields 4 no-key providers and encodes two integration traps from our sweep: PublicNode serves the chain at `cronos-evm-rpc.publicnode.com` (the intuitive `cronos-rpc` subdomain resolves but returns non-JSON), and 1RPC uses the ticker path `1rpc.io/cro`. Tenderly's public gateway does not reach Cronos, making this one of the few pages in the cluster without it. Probes every 15 seconds from three regions.
+  Cronos fields 3 no-key providers and encodes an integration trap
+  from our sweep: PublicNode serves the chain at
+  `cronos-evm-rpc.publicnode.com` (the intuitive `cronos-rpc`
+  subdomain resolves but returns non-JSON). Tenderly's public gateway
+  does not reach Cronos, making this one of the few pages in the
+  Arbitrum after its keyless per-IP daily budget proved too tight for
+  continuous multi-chain probing. Probes every 60 seconds from three
+  regions with the cluster's anti-cache payload.
 
 abstract: |
-  Per-chain member of the RPC latency cluster. We measure the round-trip latency of a single, identical RPC call (`eth_getBlockByNumber`) against every no-key public Cronos endpoint that sustains continuous probing, 4 providers, every 15 seconds, from us-east, eu-west and Singapore. The harness also classifies every response (ok / http_err / jsonrpc_err / stale / timeout) and audits archive depth every 5 minutes, so the leaderboard rewards sustained, honest availability rather than a fast error message. The cross-chain view lives on the parent rpc-capabilities benchmark; this page is the Cronos-scoped answer with per-region breakdowns as a first-class dimension.
+  Per-chain member of the RPC latency cluster. We measure the round-trip latency of a single, identical RPC call (`eth_getBlockByNumber`) against every no-key public Cronos endpoint that sustains continuous probing, 4 providers, every 60 seconds, from us-east, eu-west and Singapore. The harness also classifies every response (ok / http_err / jsonrpc_err / stale / timeout) and audits archive depth every 5 minutes, so the leaderboard rewards sustained, honest availability rather than a fast error message. The cross-chain view lives on the parent rpc-capabilities benchmark; this page is the Cronos-scoped answer with per-region breakdowns as a first-class dimension.
 
 methodology:
-  - "Cadence: every 15 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus `avg(quantile_over_time(...))`; per-region breakdowns are first-class on this page via the region tabs."
+  - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus `avg(quantile_over_time(...))`; per-region breakdowns are first-class on this page via the region tabs."
   - "Payload: `{\"jsonrpc\":\"2.0\",\"id\":<rotating>,\"method\":\"eth_getBlockByNumber\",\"params\":[\"latest\",false]}`. Plain HTTP POST, identical for every endpoint, no API key in any request. Non-cacheable by design: the latest-header fetch with a rotating id defeats edge caches that answer eth_blockNumber without touching a node."
   - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms → 10 s), so percentiles are computed via Prometheus `quantile_over_time` over the last 24 hours."
   - "Call-result classification: `ok` (HTTP 200 + non-empty result), `http_err`, `jsonrpc_err` (HTTP 200 carrying an error body), `stale` (more than 20 blocks behind the cross-provider tip), `timeout`. Latency without reliability is a misleading ranking signal."
   - "Archive depth: every 5 minutes we issue `eth_getBalance` at (head − depth) for depths from Geth's default pruned cap up to 5M blocks, exposing which free endpoints actually serve historical state."
   - "This page is part of the per-chain RPC cluster derived from the cross-chain [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities) benchmark; the identical harness, methodology and exclusion rules apply on every chain."
-  - "Chain scope: every query on this page is pinned to chain=\"cronos\". Provider coverage: 4 no-key endpoints (PublicNode, dRPC, 1RPC, Cronos). Exclusions follow the cluster-wide rules documented on the parent benchmark."
 
 findings:
   - "{{best_name}} currently leads free Cronos RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h) across 4 measured providers."
@@ -36,13 +42,13 @@ findings:
 
 faq:
   - q: "What is the fastest free Cronos RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against 4 no-key providers probed every 15 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples, so the answer on this page is the answer right now, not a quarterly snapshot. Use the region tabs to see the leader from the origin closest to your deployment."
+    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against 3 no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples, so the answer on this page is the answer right now, not a quarterly snapshot. Use the region tabs to see the leader from the origin closest to your deployment."
   - q: "Which Cronos RPCs work without an API key?"
-    a: "The 4 providers on this page: PublicNode, dRPC, 1RPC, Cronos. Every (provider, chain) pair was live-verified no-key before inclusion, and anything that key-gates, region-blocks or rate-limits below our 15-second cadence is excluded rather than listed with an asterisk."
+    a: "Three endpoints sustain continuous keyless probing: PublicNode (at `cronos-evm-rpc.publicnode.com`, note the non-intuitive subdomain), dRPC, and the chain-linked public endpoint. Tenderly's public gateway does not reach Cronos, and 1RPC was descoped cluster-wide to Ethereum and Arbitrum because its keyless per-IP daily budget cannot sustain continuous multi-chain probing. Every listed endpoint was live-verified before inclusion."
   - q: "Does the fastest Cronos RPC change by region?"
     a: "Frequently. The headline number averages three probe origins (us-east, eu-west, Singapore), but per-region leaders regularly diverge, a gateway that wins from Virginia can lose from Singapore by multiples. The region tabs at the top of the page re-scope every number on the page to a single origin; pick the one closest to where your requests actually originate."
   - q: "How is Cronos RPC latency measured here?"
-    a: "One identical JSON-RPC POST (`eth_getBlockByNumber`) every 15 seconds against each provider from each of 3 regions, with the same plain HTTP client. Wall-clock round-trip is recorded at millisecond precision; p50/p90/p99 are computed via Prometheus `quantile_over_time` over 24 hours. Responses are classified (`ok` / `http_err` / `jsonrpc_err` / `stale` / `timeout`) so an endpoint stuck on an old head or returning errors behind HTTP 200 is never ranked as fastest. The harness is open source and every number on this page is a public Prometheus query you can run yourself."
+    a: "One identical JSON-RPC POST (`eth_getBlockByNumber`) every 60 seconds against each provider from each of 3 regions, with the same plain HTTP client. Wall-clock round-trip is recorded at millisecond precision; p50/p90/p99 are computed via Prometheus `quantile_over_time` over 24 hours. Responses are classified (`ok` / `http_err` / `jsonrpc_err` / `stale` / `timeout`) so an endpoint stuck on an old head or returning errors behind HTTP 200 is never ranked as fastest. The harness is open source and every number on this page is a public Prometheus query you can run yourself."
   - q: "Why isn't MeowRPC listed on Cronos?"
     a: "We tried it. MeowRPC's long-tail endpoints no longer resolve (DNS gone), and the provider appears defunct outside a few legacy chains, so it failed the live verification, eth_chainId match plus sustained probing, that gates admission to this cluster. Directories still listing it are copying stale metadata; this bench only ranks endpoints that answer."
 
@@ -68,7 +74,7 @@ providers:
   - slug: publicnode
     name: PublicNode
     tag: Allnodes-operated, 70+ chains, archive on most
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to PublicNode's no-key Cronos endpoint."
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to PublicNode's no-key Cronos endpoint."
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="cronos"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="publicnode", chain="cronos"})
@@ -91,7 +97,7 @@ providers:
   - slug: drpc
     name: dRPC
     tag: Decentralized RPC mesh, consensus-checked
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key Cronos endpoint."
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key Cronos endpoint."
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="cronos"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="drpc", chain="cronos"})
@@ -111,33 +117,10 @@ providers:
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="cronos", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="cronos", region="sgp"}[1h])
 
-  - slug: 1rpc
-    name: 1RPC
-    tag: Privacy-preserving gateway by Automata Network
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to 1RPC's no-key Cronos endpoint."
-    queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="1rpc", chain="cronos"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="1rpc", chain="cronos"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="1rpc", chain="cronos"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="1rpc", chain="cronos"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="1rpc", chain="cronos"}) / sum(ocb:rpc_call:rate_24h{provider="1rpc", chain="cronos"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="1rpc", chain="cronos"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="1rpc", chain="cronos"}[1h]))
-      regions:
-        - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="1rpc", chain="cronos", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="1rpc", chain="cronos", region="us-east"}[1h])
-        - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="1rpc", chain="cronos", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="1rpc", chain="cronos", region="eu-west"}[1h])
-        - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="1rpc", chain="cronos", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="1rpc", chain="cronos", region="sgp"}[1h])
-
   - slug: cronos-official
     name: Cronos
     tag: Cronos Labs public RPC, Cronos EVM only
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to Cronos's no-key Cronos endpoint."
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Cronos's no-key Cronos endpoint."
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="cronos-official", chain="cronos"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="cronos-official", chain="cronos"})

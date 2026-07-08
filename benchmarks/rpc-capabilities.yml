@@ -5,7 +5,7 @@ number: "010"
 title: Fastest free public RPC for Ethereum, BNB, Polygon and 7 more EVM chains
 seo_title: "Fastest free public RPC 2026"
 seo_description: "Fastest free public RPC live on eth_getBlockByNumber p50. dRPC, PublicNode, 1RPC, Tenderly, Nodies, Lava ranked."
-subtitle: HTTP round-trip latency for eth_getBlockByNumber against free, no-key public RPC endpoints across 10 EVM chains, audited every 15 seconds.
+subtitle: HTTP round-trip latency for eth_getBlockByNumber against free, no-key public RPC endpoints across 10 EVM chains, audited every 60 seconds.
 category: RPCs
 status: live
 metric: RPC latency
@@ -19,7 +19,7 @@ seo_intro: |
   chain my product runs on. Alchemy and Infura own the keyed-tier
   market; the free public side of the question lives elsewhere, in
   the RPC services dapps hit when a contributor's free quota is the
-  budget. We probe `eth_getBlockByNumber` every 15 seconds against 15
+  budget. We probe `eth_getBlockByNumber` every 60 seconds against 15
   audited providers across 10 EVM chains. PublicNode, dRPC, 1RPC,
   MeowRPC, Tenderly Gateway, Nodies (POKT), Lava Network, Merkle,
   Flashbots Protect, Cloudflare and 5 chain-official foundation
@@ -60,7 +60,7 @@ abstract: |
   as the fastest.
 
 methodology:
-  - "Cadence: every 15 seconds per (provider, chain) pair, from each of 3 Railway replicas (us-east Virginia, eu-west Amsterdam, sgp Singapore). The harness reads `$RAILWAY_REPLICA_REGION` at boot, normalizes it to the canonical 3-region set, and stamps a `region` label on every emitted metric. Headline p50/p90/p99 aggregate across all 3 regions via Prometheus `avg(quantile_over_time(...))`; per-region breakdowns are available on the time-series chart."
+  - "Cadence: every 60 seconds per (provider, chain) pair, from each of 3 Railway replicas (us-east Virginia, eu-west Amsterdam, sgp Singapore). The harness reads `$RAILWAY_REPLICA_REGION` at boot, normalizes it to the canonical 3-region set, and stamps a `region` label on every emitted metric. Headline p50/p90/p99 aggregate across all 3 regions via Prometheus `avg(quantile_over_time(...))`; per-region breakdowns are available on the time-series chart."
   - "Payload: `{\"jsonrpc\":\"2.0\",\"id\":<rotating>,\"method\":\"eth_getBlockByNumber\",\"params\":[\"latest\",false]}`. Plain HTTP POST, identical for every endpoint, no API key in any request. Non-cacheable by design: the latest-header fetch with a rotating id defeats edge caches that answer eth_blockNumber without touching a node."
   - "Latency: client-side `time.Now()` delta around the round-trip, in milliseconds. Exposed as both a gauge (`rpc_latency_milliseconds`) and a histogram (`rpc_latency_milliseconds_histogram`) with buckets 50 ms → 10 s, so p50/p90/p99 are computed via Prometheus `histogram_quantile` / `quantile_over_time`."
   - "Call-result classification: `ok` (HTTP 200 + non-empty result), `http_err` (status ≠ 200 or transport failure), `jsonrpc_err` (HTTP 200 with an `error` field, the Cloudflare-eth trap), `stale` (returned block more than 20 behind the cross-provider tip for that chain), `timeout`. Counter `rpc_call_total{result}` powers the reliability leaderboard."
@@ -80,7 +80,7 @@ findings:
 
 faq:
   - q: "What is the fastest free public RPC right now?"
-    a: "The question is per chain because several providers are single-chain by design (Base official, Binance, Arbitrum Foundation, Optimism Foundation, Avalanche) and a cross-chain aggregate mechanically rewards whichever single-chain endpoint happens to be fastest on its one chain. Current per-chain leaders. Ethereum {{best_name:chain:ethereum}} at {{best_p50:chain:ethereum}}, Base {{best_name:chain:base}} at {{best_p50:chain:base}}, BNB Chain {{best_name:chain:bnb}} at {{best_p50:chain:bnb}}, Arbitrum {{best_name:chain:arbitrum}} at {{best_p50:chain:arbitrum}}. The leaderboard re-sorts every 15 seconds against fresh Prometheus samples averaged across us-east, eu-west and sgp probes. Switch the chain tab to see the leader on the network your product runs on."
+    a: "The question is per chain because several providers are single-chain by design (Base official, Binance, Arbitrum Foundation, Optimism Foundation, Avalanche) and a cross-chain aggregate mechanically rewards whichever single-chain endpoint happens to be fastest on its one chain. Current per-chain leaders. Ethereum {{best_name:chain:ethereum}} at {{best_p50:chain:ethereum}}, Base {{best_name:chain:base}} at {{best_p50:chain:base}}, BNB Chain {{best_name:chain:bnb}} at {{best_p50:chain:bnb}}, Arbitrum {{best_name:chain:arbitrum}} at {{best_p50:chain:arbitrum}}. The leaderboard re-sorts every 60 seconds against fresh Prometheus samples averaged across us-east, eu-west and sgp probes. Switch the chain tab to see the leader on the network your product runs on."
   - q: "Which public RPCs work without an API key in 2026?"
     a: "15 audited providers across 10 EVM chains. Universal multi-chain (work on 4+ chains): PublicNode, dRPC, 1RPC, Tenderly Gateway (`gateway.tenderly.co/public/<slug>`), Nodies (POKT successor at `*-pokt.nodies.app`). Ethereum-specific or limited footprint: MeowRPC (ETH + Arbitrum only since 2025), Flashbots Protect, Cloudflare (read-degraded), Lava Network (ETH + Arbitrum no-key, other chains require key), Merkle (Base + BSC stable, ETH locked-out by Cloudflare). Chain-official foundation RPCs: Arbitrum (`arb1.arbitrum.io/rpc`), Optimism (`mainnet.optimism.io`), Base (`mainnet.base.org`), Avalanche (`api.avax.network`), BNB (`bsc-dataseed1.binance.org`). Excluded: Ankr (key-gated), gateway.fm (29 req/IP), LlamaRPC / BlockPI / OmniaTech (Cloudflare 521 region-blocked), Alchemy demo (rate-limited dead), NodeReal / GetBlock / Chainstack (key-gated)."
   - q: "Why is Cloudflare-eth returning errors?"
@@ -88,7 +88,7 @@ faq:
   - q: "Which free RPC supports Ethereum archive node calls?"
     a: "Most free public RPCs are state-pruned, so `eth_getBalance` at block (head, 5,000,000) returns an error rather than the historical balance. This benchmark probes five depths (300, 7,200, 216,000, 1,296,000, 5,000,000 blocks) every five minutes and exposes a gauge per provider per depth. The page surfaces a per-provider archive-depth badge: a green tick at the 5M tier means full historical state is available for free without a key. Anything pruned at 7200 confirms the endpoint is on a Geth default config and only serves the last ~24 hours."
   - q: "How is RPC latency measured on OpenChainBench?"
-    a: "The harness issues a single `eth_getBlockByNumber` JSON-RPC POST every 15 seconds against each (provider, chain) pair from each of 3 regions (us-east, eu-west, sgp), using the same plain HTTP client for every endpoint. Wall-clock delta around the round-trip is recorded with millisecond precision and pushed to both a gauge and a histogram. p50/p90/p99 are computed via Prometheus `quantile_over_time` over the last 24 hours. Stale-head detection compares each response against the cross-provider tip and flags anything more than 20 blocks behind as `stale`, so a dead endpoint stuck on yesterday's block cannot rank as the fastest."
+    a: "The harness issues a single `eth_getBlockByNumber` JSON-RPC POST every 60 seconds against each (provider, chain) pair from each of 3 regions (us-east, eu-west, sgp), using the same plain HTTP client for every endpoint. Wall-clock delta around the round-trip is recorded with millisecond precision and pushed to both a gauge and a histogram. p50/p90/p99 are computed via Prometheus `quantile_over_time` over the last 24 hours. Stale-head detection compares each response against the cross-provider tip and flags anything more than 20 blocks behind as `stale`, so a dead endpoint stuck on yesterday's block cannot rank as the fastest."
   - q: "Are public RPCs production-grade for a dapp?"
     a: "Read the success-rate column before deciding. A median latency under 100 ms is irrelevant if the endpoint silently returns a JSON-RPC error 5% of the time or stalls during an L1 reorg. Free public RPCs share rate-limit budgets with the entire internet and have no SLA. They are good for read-heavy demos, local development and fallback paths; production dapps usually graduate to a keyed tier (Alchemy, QuickNode, Infura) for `eth_sendRawTransaction`, websocket subscriptions and archive queries beyond Geth's pruned cap. This benchmark measures the no-key tier specifically because that is the unmeasured part of the market."
 
@@ -148,7 +148,7 @@ providers:
   - slug: publicnode
     name: PublicNode
     tag: Allnodes-operated, 70+ chains, archive on most
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to PublicNode's no-key endpoint."
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to PublicNode's no-key endpoint."
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="publicnode"})
@@ -171,7 +171,7 @@ providers:
   - slug: drpc
     name: dRPC
     tag: Decentralized RPC mesh, consensus-checked
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to dRPC's decentralized mesh."
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to dRPC's decentralized mesh."
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="drpc"})
@@ -194,7 +194,7 @@ providers:
   - slug: 1rpc
     name: 1RPC
     tag: Privacy-preserving gateway by Automata Network
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to 1RPC's Automata gateway."
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to 1RPC's Automata gateway."
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="1rpc"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="1rpc"})
@@ -217,7 +217,7 @@ providers:
   - slug: meowrpc
     name: MeowRPC
     tag: Free public RPC, no registration
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to MeowRPC's no-key endpoint."
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to MeowRPC's no-key endpoint."
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="meowrpc"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="meowrpc"})
@@ -240,7 +240,7 @@ providers:
   - slug: flashbots
     name: Flashbots
     tag: Private-mempool RPC, anti-sandwich
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to the Flashbots Protect read proxy."
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to the Flashbots Protect read proxy."
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="flashbots"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="flashbots"})
@@ -263,7 +263,7 @@ providers:
   - slug: cloudflare
     name: Cloudflare
     tag: Permissioned-mode for many JSON-RPC methods
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to cloudflare-eth (check success column for jsonrpc_err share)."
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to cloudflare-eth (check success column for jsonrpc_err share)."
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="cloudflare"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="cloudflare"})
@@ -286,7 +286,7 @@ providers:
   - slug: base-official
     name: Base
     tag: Coinbase-operated, Base mainnet RPC
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to Coinbase's `mainnet.base.org` endpoint."
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Coinbase's `mainnet.base.org` endpoint."
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="base-official"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="base-official"})
@@ -309,7 +309,7 @@ providers:
   - slug: binance
     name: Binance
     tag: BNB Chain dataseed RPC, Binance-operated
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to Binance's `bsc-dataseed1.binance.org` endpoint."
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Binance's `bsc-dataseed1.binance.org` endpoint."
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="binance"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="binance"})
@@ -332,7 +332,7 @@ providers:
   - slug: tenderly
     name: Tenderly
     tag: Multi-chain public gateway, 9 chains, no key
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to `gateway.tenderly.co/public/<slug>`."
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to `gateway.tenderly.co/public/<slug>`."
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tenderly"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="tenderly"})
@@ -355,7 +355,7 @@ providers:
   - slug: nodies
     name: Nodies
     tag: POKT Network's decentralized public RPC successor, 7+ chains
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to Nodies' `*-pokt.nodies.app` endpoint."
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Nodies' `*-pokt.nodies.app` endpoint."
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="nodies"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="nodies"})
@@ -378,7 +378,7 @@ providers:
   - slug: lava
     name: Lava
     tag: Decentralized permissionless RPC mesh (ETH + Arbitrum no-key)
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to Lava Network's no-key mesh endpoint."
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Lava Network's no-key mesh endpoint."
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="lava"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="lava"})
@@ -401,7 +401,7 @@ providers:
   - slug: merkle
     name: Merkle
     tag: Base + BSC public no-key gateway (Ethereum hit by Cloudflare 20-min lockout, excluded)
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to Merkle's Base/BSC no-key gateway."
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Merkle's Base/BSC no-key gateway."
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="merkle"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="merkle"})
@@ -424,7 +424,7 @@ providers:
   - slug: arbitrum-official
     name: Arbitrum
     tag: Arbitrum Foundation public RPC, Arbitrum One only
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to the Arbitrum Foundation's `arb1.arbitrum.io/rpc`."
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to the Arbitrum Foundation's `arb1.arbitrum.io/rpc`."
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="arbitrum-official"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="arbitrum-official"})
@@ -447,7 +447,7 @@ providers:
   - slug: optimism-official
     name: Optimism
     tag: Optimism Foundation public RPC, Optimism mainnet only
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to the Optimism Foundation's `mainnet.optimism.io`."
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to the Optimism Foundation's `mainnet.optimism.io`."
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="optimism-official"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="optimism-official"})
@@ -470,7 +470,7 @@ providers:
   - slug: avalanche-official
     name: Avalanche
     tag: Ava Labs C-Chain public RPC, Avalanche C-Chain only
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to Ava Labs' `api.avax.network/ext/bc/C/rpc`."
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Ava Labs' `api.avax.network/ext/bc/C/rpc`."
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="avalanche-official"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="avalanche-official"})

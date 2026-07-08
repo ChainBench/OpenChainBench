@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound, redirect } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ArrowUpRight } from "lucide-react";
 import { getProvider } from "@/lib/providers";
@@ -146,7 +146,12 @@ export default async function ProviderPage({
   // /products/<hl-slug> straight there so backlinks + old SERP entries
   // land on the richer hub without splitting rank signal across two URLs.
   if (await isHlBuilderWithHistory(slug)) {
-    redirect(`/hyperliquid/${slug}`);
+    // 308, not 307: this is a permanent migration. A temporary
+    // redirect tells Google to keep the old /products URL indexed and
+    // re-crawl it forever without transferring signals — Ahrefs showed
+    // all 95 HL product URLs stuck in "indexable became non-indexable"
+    // limbo under the 307 (2026-07-08).
+    permanentRedirect(`/hyperliquid/${slug}`);
   }
   const p = await getProvider(slug);
   if (!p) notFound();

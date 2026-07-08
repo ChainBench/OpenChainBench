@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { COMPARE_PAIRS, type ComparePair } from "@/data/compare-pairs";
+import { adHocPairs } from "@/lib/compare/adhoc-pairs";
+import { getProviders } from "@/lib/providers";
 import { canonicalize, getProvider } from "@/lib/providers";
 import { buildCompareGraph } from "@/lib/compare-pairing";
 import { ProviderLogo } from "@/components/provider-logo";
@@ -41,6 +43,19 @@ export default async function ComparePage() {
     .filter((p): p is ComparePair => p !== null)
     .sort((a, b) => a.slug.localeCompare(b.slug));
   const graph = await buildCompareGraph();
+
+  // Every ad-hoc pair the sitemap advertises must be internally linked
+  // somewhere or it surfaces as an orphan page in crawler audits. Same
+  // enumeration as sitemap.ts (shared lib), minus the curated pairs
+  // already rendered above.
+  const curatedSlugs = new Set(pairs.map((p) => p.slug));
+  const morePairs = adHocPairs(await getProviders())
+    .filter((p) => !curatedSlugs.has(p.slug))
+    .map((p) => ({
+      ...p,
+      label: `${canonicalize(p.a).name} vs ${canonicalize(p.b).name}`,
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label));
 
   const jsonld = {
     "@context": "https://schema.org",
@@ -119,6 +134,30 @@ export default async function ComparePage() {
           })}
         </ul>
       </section>
+
+      {morePairs.length > 0 && (
+        <section className="mt-12">
+          <h2 className="font-sans text-[11px] uppercase tracking-[0.18em] text-ink-muted font-medium">
+            All comparisons
+          </h2>
+          <p className="mt-2 text-sm text-ink-muted max-w-[640px]">
+            Every other provider pair with enough shared benchmarks to
+            compare head to head. Same live data, same methodology.
+          </p>
+          <ul className="mt-4 flex flex-wrap gap-x-4 gap-y-2">
+            {morePairs.map((p) => (
+              <li key={p.slug}>
+                <Link
+                  href={`/compare/${p.slug}`}
+                  className="text-sm text-ink-soft hover:text-ink lnk"
+                >
+                  {p.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </article>
   );
 }

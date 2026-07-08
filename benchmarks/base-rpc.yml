@@ -4,8 +4,8 @@ slug: base-rpc
 number: "046"
 title: Fastest free Base RPC, live no-key endpoint latency
 seo_title: "Fastest free Base RPC 2026"
-seo_description: "{{best_name}} leads free Base RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). 6 no-key providers measured every 15s from 3 regions."
-subtitle: HTTP round-trip latency for eth_getBlockByNumber against every free, no-key public Base RPC endpoint, audited every 15 seconds from 3 regions.
+seo_description: "{{best_name}} leads free Base RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). 6 no-key providers measured every 60s from 3 regions."
+subtitle: HTTP round-trip latency for eth_getBlockByNumber against every free, no-key public Base RPC endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
 status: live
@@ -14,13 +14,13 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Base offers the cleanest official-versus-gateway comparison in the cluster: Coinbase operates both the sequencer and the chain-official `mainnet.base.org`, so the house endpoint has every locational advantage, and it still has to beat PublicNode, dRPC, Tenderly, Nodies and Merkle on a level probe. 6 providers, the same `eth_getBlockByNumber` call every 15 seconds, three regions, stale-head detection against the cross-provider tip.
+  Base offers the cleanest official-versus-gateway comparison in the cluster: Coinbase operates both the sequencer and the chain-official `mainnet.base.org`, so the house endpoint has every locational advantage, and it still has to beat PublicNode, dRPC, Tenderly, Nodies and Merkle on a level probe. 6 providers, the same `eth_getBlockByNumber` call every 60 seconds, three regions, stale-head detection against the cross-provider tip.
 
 abstract: |
-  Per-chain member of the RPC latency cluster. We measure the round-trip latency of a single, identical RPC call (`eth_getBlockByNumber`) against every no-key public Base endpoint that sustains continuous probing, 6 providers, every 15 seconds, from us-east, eu-west and Singapore. The harness also classifies every response (ok / http_err / jsonrpc_err / stale / timeout) and audits archive depth every 5 minutes, so the leaderboard rewards sustained, honest availability rather than a fast error message. The cross-chain view lives on the parent rpc-capabilities benchmark; this page is the Base-scoped answer with per-region breakdowns as a first-class dimension.
+  Per-chain member of the RPC latency cluster. We measure the round-trip latency of a single, identical RPC call (`eth_getBlockByNumber`) against every no-key public Base endpoint that sustains continuous probing, 6 providers, every 60 seconds, from us-east, eu-west and Singapore. The harness also classifies every response (ok / http_err / jsonrpc_err / stale / timeout) and audits archive depth every 5 minutes, so the leaderboard rewards sustained, honest availability rather than a fast error message. The cross-chain view lives on the parent rpc-capabilities benchmark; this page is the Base-scoped answer with per-region breakdowns as a first-class dimension.
 
 methodology:
-  - "Cadence: every 15 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus `avg(quantile_over_time(...))`; per-region breakdowns are first-class on this page via the region tabs."
+  - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus `avg(quantile_over_time(...))`; per-region breakdowns are first-class on this page via the region tabs."
   - "Payload: `{\"jsonrpc\":\"2.0\",\"id\":<rotating>,\"method\":\"eth_getBlockByNumber\",\"params\":[\"latest\",false]}`. Plain HTTP POST, identical for every endpoint, no API key in any request. Non-cacheable by design: the latest-header fetch with a rotating id defeats edge caches that answer eth_blockNumber without touching a node."
   - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms → 10 s), so percentiles are computed via Prometheus `quantile_over_time` over the last 24 hours."
   - "Call-result classification: `ok` (HTTP 200 + non-empty result), `http_err`, `jsonrpc_err` (HTTP 200 carrying an error body), `stale` (more than 20 blocks behind the cross-provider tip), `timeout`. Latency without reliability is a misleading ranking signal."
@@ -35,13 +35,13 @@ findings:
 
 faq:
   - q: "What is the fastest free Base RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against 6 no-key providers probed every 15 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples, so the answer on this page is the answer right now, not a quarterly snapshot. Use the region tabs to see the leader from the origin closest to your deployment."
+    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against 6 no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples, so the answer on this page is the answer right now, not a quarterly snapshot. Use the region tabs to see the leader from the origin closest to your deployment."
   - q: "Which Base RPCs work without an API key?"
     a: "The 6 providers on this page: PublicNode, dRPC, Tenderly, Nodies, Merkle, Base. Every (provider, chain) pair was live-verified no-key before inclusion, and anything that key-gates, region-blocks or rate-limits below our 15-second cadence is excluded rather than listed with an asterisk."
   - q: "Does the fastest Base RPC change by region?"
     a: "Frequently. The headline number averages three probe origins (us-east, eu-west, Singapore), but per-region leaders regularly diverge, a gateway that wins from Virginia can lose from Singapore by multiples. The region tabs at the top of the page re-scope every number on the page to a single origin; pick the one closest to where your requests actually originate."
   - q: "How is Base RPC latency measured here?"
-    a: "One identical JSON-RPC POST (`eth_getBlockByNumber`) every 15 seconds against each provider from each of 3 regions, with the same plain HTTP client. Wall-clock round-trip is recorded at millisecond precision; p50/p90/p99 are computed via Prometheus `quantile_over_time` over 24 hours. Responses are classified (`ok` / `http_err` / `jsonrpc_err` / `stale` / `timeout`) so an endpoint stuck on an old head or returning errors behind HTTP 200 is never ranked as fastest. The harness is open source and every number on this page is a public Prometheus query you can run yourself."
+    a: "One identical JSON-RPC POST (`eth_getBlockByNumber`) every 60 seconds against each provider from each of 3 regions, with the same plain HTTP client. Wall-clock round-trip is recorded at millisecond precision; p50/p90/p99 are computed via Prometheus `quantile_over_time` over 24 hours. Responses are classified (`ok` / `http_err` / `jsonrpc_err` / `stale` / `timeout`) so an endpoint stuck on an old head or returning errors behind HTTP 200 is never ranked as fastest. The harness is open source and every number on this page is a public Prometheus query you can run yourself."
   - q: "Is Coinbase's official Base RPC faster than third-party gateways?"
     a: "Not consistently. Despite being operated by the same team that runs the sequencer, `mainnet.base.org` trades the lead with PublicNode, dRPC and Tenderly depending on which region the request originates from. Check the region tabs on this page for the origin closest to your deployment; the cross-region average hides these flips."
 
@@ -67,7 +67,7 @@ providers:
   - slug: publicnode
     name: PublicNode
     tag: Allnodes-operated, 70+ chains, archive on most
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to PublicNode's no-key Base endpoint."
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to PublicNode's no-key Base endpoint."
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="base"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="publicnode", chain="base"})
@@ -90,7 +90,7 @@ providers:
   - slug: drpc
     name: dRPC
     tag: Decentralized RPC mesh, consensus-checked
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key Base endpoint."
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key Base endpoint."
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="base"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="drpc", chain="base"})
@@ -113,7 +113,7 @@ providers:
   - slug: tenderly
     name: Tenderly
     tag: Multi-chain public gateway, 9 chains, no key
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to Tenderly's no-key Base endpoint."
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Tenderly's no-key Base endpoint."
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tenderly", chain="base"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="tenderly", chain="base"})
@@ -136,7 +136,7 @@ providers:
   - slug: nodies
     name: Nodies
     tag: POKT Network's decentralized public RPC successor, 7+ chains
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to Nodies's no-key Base endpoint."
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Nodies's no-key Base endpoint."
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="nodies", chain="base"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="nodies", chain="base"})
@@ -159,7 +159,7 @@ providers:
   - slug: merkle
     name: Merkle
     tag: Base + BSC public no-key gateway (Ethereum hit by Cloudflare 20-min lockout, excluded)
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to Merkle's no-key Base endpoint."
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Merkle's no-key Base endpoint."
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="merkle", chain="base"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="merkle", chain="base"})
@@ -182,7 +182,7 @@ providers:
   - slug: base-official
     name: Base
     tag: Coinbase-operated, Base mainnet RPC
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 15s from 3 regions (us-east + eu-west + sgp) to Base's no-key Base endpoint."
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Base's no-key Base endpoint."
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="base-official", chain="base"})
       p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="base-official", chain="base"})

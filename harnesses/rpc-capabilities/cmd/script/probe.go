@@ -14,7 +14,13 @@ import (
 )
 
 const (
-	probeInterval = 30 * time.Second
+	// 60s (was 30s): the cluster probes ~23 chains per provider from ONE
+	// IP per region. Keyless per-IP budgets (1RPC daily cap, dRPC CU/s)
+	// were saturated by our AGGREGATE load, publishing throttle-induced
+	// error rates as "reliability" — measuring our own footprint, not the
+	// provider. 60s halves per-IP pressure; sample size stays ample
+	// (1440/day/region).
+	probeInterval = 60 * time.Second
 	probeTimeout  = 8 * time.Second
 	// staleBlockGap: a returned block more than this far behind the
 	// cross-provider tip is classified as `stale`. 20 blocks ≈ 4 min
