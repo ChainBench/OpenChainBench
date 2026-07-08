@@ -198,7 +198,17 @@ func (r *RelayBridge) TestRoute(route TestRoute, amount, amountUsd float64, rawU
 	relayerGas, _ := strconv.ParseFloat(quote.Fees.RelayerGas.AmountUsd, 64)
 	relayerSvc, _ := strconv.ParseFloat(quote.Fees.RelayerService.AmountUsd, 64)
 
-	costUsd := -impact // impact is negative in Relay response
+	// details.totalImpact.usd is signed from the user's perspective:
+	// negative when the user loses USD value (the normal case, so -impact
+	// is the positive cost), positive when the quoted output is worth MORE
+	// than the input at oracle prices. The Base USDC → Arb USDT corridor
+	// sits in the second case whenever USDT trades above USDC (verified
+	// live 2026-07-08: totalImpact +$0.044 on $300), so this corridor's
+	// cost clamps to 0 below. That zero is a genuine "no USD value lost"
+	// quote under the all-in in-minus-out definition, not missing data.
+	// The bench spec aggregates across corridors so a single clamped
+	// corridor cannot render Relay's headline as a flat 0.000%.
+	costUsd := -impact
 	if costUsd == 0 {
 		costUsd = (inUsd - outUsd)
 	}
