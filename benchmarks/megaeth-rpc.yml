@@ -1,0 +1,169 @@
+# OpenChainBench. Bench № 072
+
+slug: megaeth-rpc
+number: "072"
+title: Fastest free MegaETH RPC, live no-key endpoint latency
+seo_title: "Fastest free MegaETH RPC 2026"
+seo_description: "{{best_name}} leads free MegaETH RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). 4 no-key providers measured every 30s from 3 regions."
+subtitle: HTTP round-trip latency for eth_getBlockByNumber against every free, no-key public MegaETH RPC endpoint, audited every 30 seconds from 3 regions.
+
+category: RPCs
+status: live
+metric: RPC latency
+unit: ms
+higher_is_better: false
+
+seo_intro: |
+  MegaETH markets itself as the real-time Ethereum L2. 10 ms
+  mini-blocks batched into 1 s EVM blocks, data availability on
+  EigenDA and ZK fraud proofs via Kailua, live on mainnet since
+  February 2026. Marketing aside, builders still reach it through
+  ordinary JSON-RPC, and the free tier of that surface is what this
+  page measures. the official mainnet.megaeth.com endpoint plus
+  1RPC, dRPC and Tenderly Gateway, probed every 30 seconds from
+  three regions with the cluster's anti-cache payload. The chain's
+  10 ms story lives on its WebSocket realtime API; the HTTP numbers
+  below are what a wallet, indexer or bot actually experiences when
+  polling.
+
+abstract: |
+  We measure the round-trip latency of a single, identical RPC call
+  (`eth_getBlockByNumber`) against every no-key public MegaETH
+  endpoint that sustains continuous probing, 4 providers, every 30
+  seconds, from us-east, eu-west and Singapore. The harness
+  classifies every response (ok / http_err / jsonrpc_err / stale /
+  timeout) so the leaderboard rewards sustained, honest availability
+  rather than a fast error message. The cross-chain view lives on
+  the parent rpc-capabilities benchmark; this page is the
+  MegaETH-scoped answer with per-region breakdowns first-class.
+
+methodology:
+  - "Cadence: every 30 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus `avg(quantile_over_time(...))`; per-region breakdowns are first-class via the region tabs."
+  - "Payload: `{\"jsonrpc\":\"2.0\",\"id\":<rotating>,\"method\":\"eth_getBlockByNumber\",\"params\":[\"latest\",false]}`. Plain HTTP POST, identical for every endpoint, no API key in any request. Non-cacheable by design: the latest-header fetch with a rotating id defeats edge caches that answer eth_blockNumber without touching a node."
+  - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms to 10 s), so percentiles are computed via Prometheus `quantile_over_time` over the last 24 hours."
+  - "Call-result classification: `ok` (HTTP 200 + non-empty result), `http_err`, `jsonrpc_err` (HTTP 200 carrying an error body), `stale` (more than 20 blocks behind the cross-provider tip), `timeout`. Latency without reliability is a misleading ranking signal."
+  - "This page is part of the per-chain RPC cluster derived from the cross-chain [rpc-capabilities](/benchmarks/rpc-capabilities) benchmark; the identical harness, methodology and exclusion rules apply on every chain. Every endpoint on this page was live-verified (eth_chainId match + anti-cache probe) before inclusion on 2026-07-08."
+  - "Chain scope: every query on this page is pinned to chain=\"megaeth\" (chain id 4326, mainnet since February 2026). Provider coverage: 4 no-key endpoints (MegaETH Official, 1RPC, dRPC, Tenderly Gateway). Exclusions follow the cluster-wide rules documented on the parent benchmark."
+
+findings:
+  - "{{best_name}} currently leads the free MegaETH RPC field at {{best_p50}} (p50, 24h) across 4 measured providers."
+  - "{{name:megaeth-official}} answers at {{p50:megaeth-official}}. The official endpoint applies dynamic compute-unit limiting rather than a fixed rps cap; our 1 probe/30s/region load never approaches it."
+  - "{{name:drpc}} at {{p50:drpc}}, {{name:tenderly}} at {{p50:tenderly}} and {{name:1rpc}} at {{p50:1rpc}} give MegaETH multi-gateway coverage months after mainnet, a faster third-party adoption curve than most 2025-class chains."
+  - "A 1 s EVM block time means the stale classification window (20 blocks) is only 20 seconds here, the tightest honesty gate in the cluster."
+
+faq:
+  - q: "What is the fastest free MegaETH RPC right now?"
+    a: "{{best_name}} currently leads at {{best_p50}} (p50 over 24h), measured against 4 no-key providers probed every 30 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples."
+  - q: "Which MegaETH RPCs work without an API key in 2026?"
+    a: "Four endpoints sustain continuous keyless probing: the official mainnet.megaeth.com/rpc (dynamic compute-unit limiting), 1RPC, dRPC and Tenderly Gateway. All were live-verified (eth_chainId 4326 + anti-cache probe) before inclusion. The 10 ms mini-block realtime API is WebSocket-only and out of scope for this HTTP latency page."
+  - q: "Does this page measure MegaETH's 10 ms real-time claim?"
+    a: "No, and deliberately so. The 10 ms figure refers to sequencer mini-blocks delivered over the WebSocket realtime API; this page measures the plain HTTP JSON-RPC surface that wallets, indexers and most tooling actually poll. Both numbers are real, they describe different transport layers. A WebSocket-level benchmark is a separate methodology."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
+
+prometheus:
+  window: 24h
+  freshness_metric: rpc_latency_milliseconds
+
+rank_matrix_query: avg by (provider, region) (ocb:rpc_latency_milliseconds:p50_24h{chain="megaeth"})
+
+dimensions:
+  region:
+    - { value: all,     label: All regions }
+    - { value: us-east, label: US-East }
+    - { value: eu-west, label: EU-West }
+    - { value: sgp,     label: Singapore }
+
+providers:
+  - slug: megaeth-official
+    name: MegaETH Official
+    tag: Foundation endpoint, compute-unit limited
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 30s from 3 regions (us-east + eu-west + sgp) to MegaETH Official's no-key MegaETH endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="megaeth-official", chain="megaeth"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="megaeth-official", chain="megaeth"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="megaeth-official", chain="megaeth"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="megaeth-official", chain="megaeth"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="megaeth-official", chain="megaeth"}) / sum(ocb:rpc_call:rate_24h{provider="megaeth-official", chain="megaeth"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="megaeth-official", chain="megaeth"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="megaeth-official", chain="megaeth"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="megaeth-official", chain="megaeth", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="megaeth-official", chain="megaeth", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="megaeth-official", chain="megaeth", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="megaeth-official", chain="megaeth", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="megaeth-official", chain="megaeth", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="megaeth-official", chain="megaeth", region="sgp"}[1h])
+
+  - slug: 1rpc
+    name: 1RPC
+    tag: Privacy-preserving gateway by Automata Network
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 30s from 3 regions (us-east + eu-west + sgp) to 1RPC's no-key MegaETH endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="1rpc", chain="megaeth"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="1rpc", chain="megaeth"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="1rpc", chain="megaeth"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="1rpc", chain="megaeth"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="1rpc", chain="megaeth"}) / sum(ocb:rpc_call:rate_24h{provider="1rpc", chain="megaeth"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="1rpc", chain="megaeth"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="1rpc", chain="megaeth"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="1rpc", chain="megaeth", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="1rpc", chain="megaeth", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="1rpc", chain="megaeth", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="1rpc", chain="megaeth", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="1rpc", chain="megaeth", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="1rpc", chain="megaeth", region="sgp"}[1h])
+
+  - slug: drpc
+    name: dRPC
+    tag: Decentralized RPC mesh, consensus-checked
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 30s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key MegaETH endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="megaeth"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="drpc", chain="megaeth"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="drpc", chain="megaeth"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="drpc", chain="megaeth"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="drpc", chain="megaeth"}) / sum(ocb:rpc_call:rate_24h{provider="drpc", chain="megaeth"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="drpc", chain="megaeth"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="megaeth"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="megaeth", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="megaeth", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="megaeth", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="megaeth", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="megaeth", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="megaeth", region="sgp"}[1h])
+
+  - slug: tenderly
+    name: Tenderly Gateway
+    tag: Public gateway by Tenderly
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 30s from 3 regions (us-east + eu-west + sgp) to Tenderly Gateway's no-key MegaETH endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tenderly", chain="megaeth"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="tenderly", chain="megaeth"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="tenderly", chain="megaeth"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="tenderly", chain="megaeth"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="tenderly", chain="megaeth"}) / sum(ocb:rpc_call:rate_24h{provider="tenderly", chain="megaeth"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="tenderly", chain="megaeth"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="tenderly", chain="megaeth"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tenderly", chain="megaeth", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="tenderly", chain="megaeth", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tenderly", chain="megaeth", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="tenderly", chain="megaeth", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tenderly", chain="megaeth", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="tenderly", chain="megaeth", region="sgp"}[1h])
+

@@ -488,6 +488,30 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   },
 
   // ─── Public RPC providers ─────────────────────────────────────
+  "monad-official": {
+    url: "https://docs.monad.xyz",
+    description:
+      "Monad Foundation's primary public RPC (rpc.monad.xyz, QuickNode-backed, 25 rps). Four additional official mirrors run on Alchemy, Goldsky, Ankr and Foundation infrastructure.",
+    twitter: "@monad_xyz",
+  },
+  "megaeth-official": {
+    url: "https://docs.megaeth.com",
+    description:
+      "MegaETH's official public RPC (mainnet.megaeth.com). Compute-unit and bandwidth limited; WebSocket endpoint exposes the 10 ms mini-block realtime API.",
+    twitter: "@megaeth_labs",
+  },
+  bloxroute: {
+    url: "https://bloxroute.com",
+    description:
+      "Blockchain distribution network (BDN) operator. Public keyless RPC on Monad plus paid low-latency trader APIs across major chains.",
+    twitter: "@bloXrouteLabs",
+  },
+  onfinality: {
+    url: "https://onfinality.io",
+    description:
+      "Multi-chain infrastructure provider. Public keyless endpoints on 80+ networks with generous daily limits, plus dedicated and API-key tiers.",
+    twitter: "@OnFinality",
+  },
   quicknode: {
     url: "https://www.quicknode.com",
     description:
