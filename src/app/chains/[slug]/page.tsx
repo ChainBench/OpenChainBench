@@ -42,7 +42,7 @@ export async function generateMetadata({
   if (!chain) return {};
   const benches = await getBenchmarksForChain(slug);
   const url = `${SITE.url}/chains/${slug}`;
-  const title = `${chain.label} live benchmarks: finality, fees, RPC, infrastructure`;
+  const title = `${chain.label} live benchmarks: finality, fees, RPC`;
   const description = capDescription(
     `${benches.length} live OpenChainBench measurements covering ${chain.label}. ${chain.description}`,
     158,
