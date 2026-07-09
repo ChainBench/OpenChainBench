@@ -6,12 +6,48 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
+	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 )
+
+// probeProxyClient returns a client routing through RPC_PROBE_PROXY_URL
+// (residential rotating proxy) for providers that block datacenter IPs.
+// Falls back to a direct client if the env is unset, which surfaces as a
+// visible 100% error rate rather than a silent measurement change.
+var proxyClientOnce sync.Once
+var proxyClientCached *http.Client
+
+func probeProxyClient() *http.Client {
+	proxyClientOnce.Do(func() {
+		raw := strings.TrimSpace(os.Getenv("RPC_PROBE_PROXY_URL"))
+		if raw == "" {
+			log.Printf("[PROBE] WARNING: ViaProxy provider configured but RPC_PROBE_PROXY_URL is unset; probing direct")
+			proxyClientCached = &http.Client{Timeout: probeTimeout}
+			return
+		}
+		u, err := url.Parse(raw)
+		if err != nil {
+			log.Printf("[PROBE] WARNING: invalid RPC_PROBE_PROXY_URL: %v; probing direct", err)
+			proxyClientCached = &http.Client{Timeout: probeTimeout}
+			return
+		}
+		proxyClientCached = &http.Client{
+			Timeout: probeTimeout,
+			Transport: &http.Transport{
+				Proxy:               http.ProxyURL(u),
+				DisableKeepAlives:   true, // fresh proxy IP per probe
+				MaxIdleConnsPerHost: 0,
+			},
+		}
+	})
+	return proxyClientCached
+}
 
 const (
 	// 60s (was 30s): the cluster probes ~23 chains per provider from ONE
@@ -92,7 +128,7 @@ type blockHeader struct {
 // on cache hits rather than real RPC work. Fetching the full latest
 // header with a rotating request id defeats body-keyed edge caches;
 // the header's `number` field keeps the staleness check intact.
-func callLatestBlock(ctx context.Context, url string) (block uint64, result string, latencyMs float64, err error) {
+func callLatestBlock(ctx context.Context, url string, viaProxy bool) (block uint64, result string, latencyMs float64, err error) {
 	body := []byte(fmt.Sprintf(
 		`{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["latest",false],"id":%d}`,
 		time.Now().UnixNano(),
@@ -101,6 +137,9 @@ func callLatestBlock(ctx context.Context, url string) (block uint64, result stri
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", "OpenChainBench/1.0 (+https://openchainbench.com)")
 	client := &http.Client{Timeout: probeTimeout}
+	if viaProxy {
+		client = probeProxyClient()
+	}
 
 	start := time.Now()
 	resp, err := client.Do(req)
@@ -175,7 +214,7 @@ func probeOne(ctx context.Context, c Chain, p Provider) {
 	tick := func() {
 		probeCtx, cancel := context.WithTimeout(ctx, probeTimeout)
 		defer cancel()
-		block, result, latency, err := callLatestBlock(probeCtx, p.URL)
+		block, result, latency, err := callLatestBlock(probeCtx, p.URL, p.ViaProxy)
 
 		if result == "ok" {
 			tips.update(c.Slug, block)
