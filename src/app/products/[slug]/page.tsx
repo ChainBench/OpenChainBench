@@ -81,7 +81,7 @@ export async function generateMetadata({
   // ~60-char SERP truncation never cuts the brand suffix that Next's
   // title template appends (" · OpenChainBench").
   const currentYear = new Date().getUTCFullYear();
-  const title = `${p.name} Benchmark ${currentYear} — Live Performance Data`;
+  const title = `${p.name} Live Benchmark ${currentYear}`;
 
   // Description prefers the registry's curated one-liner, then falls back
   // to a numeric one summarizing competitive footprint. Either way the
