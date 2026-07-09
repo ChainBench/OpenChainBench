@@ -510,6 +510,40 @@ func connectAndMonitorCodex(config *Config, stopChan <-chan struct{}) error {
 			return fmt.Errorf("subscribe to %s failed: %w", pool.Name, err)
 		}
 
+		// onUnconfirmedEventsCreated is deprecated (Codex changelog 2026-04-20)
+		// and already hard-killed for API-key auth since ~07-06. Subscribe the
+		// replacement (onEventsCreated + commitmentLevel Processed) in parallel:
+		// logs tell us which one actually delivers on the JWT path, and we keep
+		// data flowing whichever side Codex cuts next. Gauge takes last write,
+		// so double delivery is harmless.
+		if pool.ChainName == "solana" {
+			procMsg := map[string]interface{}{
+				"type": "subscribe",
+				"id":   fmt.Sprintf("headlag_proc_%d", i),
+				"payload": map[string]interface{}{
+					"query": `subscription OnPoolEvents($id: String!, $cl: [EventCommitmentLevel!]) {
+						onEventsCreated(id: $id, commitmentLevel: $cl) {
+							address
+							networkId
+							events {
+								blockNumber
+								timestamp
+								transactionHash
+								eventType
+							}
+						}
+					}`,
+					"variables": map[string]interface{}{
+						"id": fmt.Sprintf("%s:%d", pool.Address, pool.NetworkID),
+						"cl": []string{"Processed"},
+					},
+				},
+			}
+			if err := conn.WriteJSON(procMsg); err != nil {
+				return fmt.Errorf("processed subscribe to %s failed: %w", pool.Name, err)
+			}
+		}
+
 		time.Sleep(100 * time.Millisecond) // Small delay between subscriptions
 	}
 
@@ -532,6 +566,7 @@ func connectAndMonitorCodex(config *Config, stopChan <-chan struct{}) error {
 	// connection (the read loop errors out and the outer loop redials).
 	var lastEventMu sync.Mutex
 	lastEventByChain := make(map[string]time.Time)
+	firstEventBySub := make(map[string]bool)
 	for _, pool := range headLagPools {
 		lastEventByChain[pool.ChainName] = time.Now()
 	}
@@ -625,12 +660,26 @@ func connectAndMonitorCodex(config *Config, stopChan <-chan struct{}) error {
 			// Codex killed the Solana sub exactly this way. Force a full
 			// reconnect + resubscribe instead.
 			if wsMsg.Type == "complete" || wsMsg.Type == "error" {
+				// The experimental Processed sub failing must not tear down the
+				// legacy flow: log it and keep the connection alive.
+				if strings.HasPrefix(wsMsg.ID, "headlag_proc_") {
+					payloadStr, _ := json.Marshal(wsMsg.Payload)
+					log.Printf("[HEAD-LAG][CODEX] ⚠️ Processed sub %q terminated (type=%s payload=%s) — legacy sub continues", wsMsg.ID, wsMsg.Type, string(payloadStr))
+					continue
+				}
 				return fmt.Errorf("subscription %q terminated by server (type=%s)", wsMsg.ID, wsMsg.Type)
 			}
 
 			// Skip non-data messages
 			if wsMsg.Type != "next" || wsMsg.Payload == nil {
 				continue
+			}
+
+			// One-shot log per subscription id: tells us whether the legacy
+			// unconfirmed sub, the Processed sub, or both deliver on this tier.
+			if !firstEventBySub[wsMsg.ID] {
+				firstEventBySub[wsMsg.ID] = true
+				log.Printf("[HEAD-LAG][CODEX] 📬 First event on subscription %q", wsMsg.ID)
 			}
 
 			// Parse event data
