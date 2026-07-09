@@ -250,7 +250,11 @@ func scrapeHyperliquid(ctx context.Context, client *http.Client) {
 		validatorMevShareBps.WithLabelValues(hyperliquidChain, id, name).Set(mevBps)
 		validatorCommissionBps.WithLabelValues(hyperliquidChain, id, name).Set(commissionBps)
 		validatorUptimePct.WithLabelValues(hyperliquidChain, id, name).Set(uptimePct)
-		validatorStakeUSD.WithLabelValues(hyperliquidChain, id, name).Set(stakeUSD)
+		// Publish-then-leave: skip the USD write on a price-fetch
+		// failure instead of wiping the previous value with stake*0.
+		if hypePrice > 0 {
+			validatorStakeUSD.WithLabelValues(hyperliquidChain, id, name).Set(stakeUSD)
+		}
 		validatorJailed.WithLabelValues(hyperliquidChain, id, name).Set(jailed)
 
 		netYields = append(netYields, netBps)

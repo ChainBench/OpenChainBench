@@ -267,7 +267,13 @@ func scrapeSolana(ctx context.Context, client *http.Client) {
 		validatorMevShareBps.WithLabelValues(solanaChain, voteID, name).Set(mevBps)
 		validatorCommissionBps.WithLabelValues(solanaChain, voteID, name).Set(commissionBps)
 		validatorUptimePct.WithLabelValues(solanaChain, voteID, name).Set(uptimePct)
-		validatorStakeUSD.WithLabelValues(solanaChain, voteID, name).Set(stakeUSD)
+		// Publish-then-leave: on a CoinGecko failure solPrice is 0 and
+		// writing stake*0 would wipe the previous good USD value for
+		// every validator. Skip the write; the error counter above and
+		// the stale sample age tell the degradation story.
+		if solPrice > 0 {
+			validatorStakeUSD.WithLabelValues(solanaChain, voteID, name).Set(stakeUSD)
+		}
 		validatorJailed.WithLabelValues(solanaChain, voteID, name).Set(jailed)
 
 		netYields = append(netYields, netBps)
