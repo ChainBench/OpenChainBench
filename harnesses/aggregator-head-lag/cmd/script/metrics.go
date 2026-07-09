@@ -383,8 +383,12 @@ func RecordMetadataLatency(provider string, chain string, latencyMs float64, reg
 
 // RecordHeadLag records the head lag for an aggregator on a specific chain
 func RecordHeadLag(aggregator string, chain string, lagBlocks int64, lagSeconds float64, region string, txHash string) {
-	// Filter out aberrant values (> 30s likely means connection issues, not real lag)
-	if lagSeconds < 0 || lagSeconds > 30 {
+	// Filter out aberrant values. 120s matches the fast-trade filter: it
+	// keeps out reconnect replay backlogs (minutes-old events redelivered
+	// after a resubscribe) while letting real high lag through. The old 30s
+	// cap silently dropped every codex sample on Robinhood Chain (~45s real
+	// lag), showing "no data" instead of the honest bad number.
+	if lagSeconds < 0 || lagSeconds > 120 {
 		return
 	}
 
