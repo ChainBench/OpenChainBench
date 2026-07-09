@@ -5,7 +5,7 @@ number: "001"
 title: Fastest crypto price API, live head lag across Mobula, Codex, GeckoTerminal
 seo_title: "Fastest crypto price API 2026"
 seo_description: "{{best_name}} leads fastest crypto price API at {{best_p50}} (p50, 24h). Mobula WebSocket, Codex GraphQL, GeckoTerminal REST live across Base, BNB, Solana."
-subtitle: Wall-clock head lag in seconds from on-chain swap event to API emission, measured live for Mobula, Codex and GeckoTerminal on Base, BNB Chain and Solana.
+subtitle: Wall-clock head lag in seconds from on-chain swap event to API emission, measured live for Mobula, Codex and GeckoTerminal on Base, BNB Chain, Solana and Robinhood Chain.
 
 per_chain_explainer:
   - slug: base
@@ -20,6 +20,10 @@ per_chain_explainer:
     h2: "Lowest Solana price feed head lag"
     body: |
       {{best_name:chain:solana}} currently leads Solana head lag at {{best_p50:chain:solana}} (p50, 24h). Solana runs a 400 ms slot under Proof of History with confirmed status at typically 1-2 slots, so any second-scale provider latency lives entirely in the indexer pipeline rather than in the chain. Providers that subscribe to Yellowstone gRPC streams of confirmed blocks beat REST-pollers by definition. Measured against a canonical archive node from us-east, eu-west and Singapore.
+  - slug: robinhood
+    h2: "Lowest Robinhood Chain price feed head lag"
+    body: |
+      {{best_name:chain:robinhood}} currently leads Robinhood Chain head lag at {{best_p50:chain:robinhood}} (p50, 24h). Robinhood Chain is an Arbitrum Orbit L2 with sub-second block cadence, so nearly all of the latency you see here is provider pipeline (indexer, fan-out, edge) rather than chain time. It is also the youngest chain on this bench: indexer coverage is uneven across providers, which makes the leader-to-trailer spread wider than on mature chains. Measured on the highest-activity pool (USDG/WETH, about 40k swaps per day) from us-east, eu-west and Singapore.
 
 category: Aggregators
 status: live
@@ -35,7 +39,7 @@ seo_intro: |
   number. Mobula's WebSocket, Codex's GraphQL feed and GeckoTerminal's
   REST endpoint are watched from three regions (us-east, eu-west, sgp)
   against canonical-tip archive
-  nodes on Base, BNB Chain and Solana. Because each chain has its own
+  nodes on Base, BNB Chain, Solana and Robinhood Chain. Because each chain has its own
   base block cadence (Solana's ~400 ms slots vs Base/BNB's 2-3 s
   blocks), the headline winner shifts by chain. On Solana the leader
   is {{best_name:chain:solana}} at {{best_p50:chain:solana}}; on Base
@@ -51,19 +55,19 @@ seo_intro: |
 abstract: |
   We measure the gap between a transaction settling on chain and the same
   transaction appearing on each aggregator's data feed. The harness watches
-  reference pools across Base, BNB Chain and Solana from three regions
+  reference pools across Base, BNB Chain, Solana and Robinhood Chain from three regions
   (us-east, eu-west, sgp), records every new on-chain event with millisecond
   timestamps, and observes when each aggregator's WebSocket reflects the
   same event.
 
 methodology:
   - "Aggregators measured: Mobula, Codex, GeckoTerminal."
-  - "Chains: Base, BNB Chain, Solana."
+  - "Chains: Base, BNB Chain, Solana, Robinhood Chain."
   - "Regions: us-east, eu-west, sgp. Cross-region median reported in the headline."
   - "Reference: archive nodes per chain, validated against block hashes."
   - "Metric: gauge `head_lag_seconds`, sampled every 15 seconds. Aggregated over the 24-hour window using `quantile_over_time`."
   - "Success rate: presence ratio. Share of expected sampling slots where a value was actually emitted (5,760 expected per provider per day at the 15s cadence). 100% means the aggregator's feed was reachable for the full window."
-  - "Cardinality: 3 aggregators × 3 chains × 3 regions = 27 active series."
+  - "Cardinality: 3 aggregators × 4 chains × 3 regions = 36 active series."
 
 findings:
   - "Across the unfiltered cross-chain aggregate the leader is {{best_name}} at {{best_p50}} (p50, 24 h) over {{count}} measured providers, but that headline number mixes chains with very different baseline cadences (Solana 400 ms slots vs Base/BNB 2-3 s blocks) so the per-chain breakdown below is what to read for an integration decision."
@@ -90,7 +94,7 @@ faq:
   - q: "How fast does GeckoTerminal update prices?"
     a: "{{name:geckoterminal}} currently sits at {{p50:geckoterminal}} (p50, 24 h) head lag on this benchmark. REST endpoints update at the publisher's chosen cadence rather than the moment a swap lands, which is the architectural reason REST polling reads slower than WebSocket feeds for the same underlying chain data."
   - q: "How is head lag measured on OpenChainBench?"
-    a: "The harness holds a live WebSocket subscription to canonical-tip archive nodes on each chain (Base, BNB Chain, Solana). Every new on-chain swap is timestamped on receipt with millisecond precision. The harness then watches each provider's feed for the same event and computes the delta. p50, p90 and p99 are aggregated over 24 hours via Prometheus `quantile_over_time`. Errors and dropouts are tracked separately as a presence ratio so a fast feed that disappears does not silently rank above a slower feed that stays up."
+    a: "The harness holds a live WebSocket subscription to canonical-tip archive nodes on each chain (Base, BNB Chain, Solana, Robinhood Chain). Every new on-chain swap is timestamped on receipt with millisecond precision. The harness then watches each provider's feed for the same event and computes the delta. p50, p90 and p99 are aggregated over 24 hours via Prometheus `quantile_over_time`. Errors and dropouts are tracked separately as a presence ratio so a fast feed that disappears does not silently rank above a slower feed that stays up."
   - q: "Which data provider should I pick for a real-time trading interface?"
     a: "Read both the p50 and the p99 columns. p50 tells the typical experience, p99 tells the worst minute a user will see when a chain spikes or a region's path degrades. A 500 ms p50 with a 30 s p99 means most of the time the UI feels snappy and once per minute it stutters. The leaderboard splits both, plus the success rate column flags providers whose feed dropped during the measurement window."
 
@@ -99,10 +103,11 @@ faq:
 # every PromQL selector via lib/spec.ts:injectChainFilter.
 dimensions:
   chain:
-    - { value: all,    label: All chains }
-    - { value: base,   label: Base }
-    - { value: bnb,    label: BNB Chain }
-    - { value: solana, label: Solana }
+    - { value: all,       label: All chains }
+    - { value: base,      label: Base }
+    - { value: bnb,       label: BNB Chain }
+    - { value: solana,    label: Solana }
+    - { value: robinhood, label: Robinhood }
   # Region values match the raw harness labels (REGION env on each
   # Railway probe: us-east / eu-west / sgp). Declared so the
   # /compare/[slug] page can render a per chain x per region matrix
