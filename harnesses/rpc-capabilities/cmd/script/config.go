@@ -23,11 +23,6 @@ type Provider struct {
 	Slug string
 	Name string
 	URL  string
-	// ViaProxy routes probes through RPC_PROBE_PROXY_URL (residential
-	// rotating proxy). For providers that block datacenter IPs (merkle
-	// since 2026-07). Latency then includes proxy overhead; the spec
-	// discloses it on the row.
-	ViaProxy bool
 }
 
 type Chain struct {
@@ -148,7 +143,6 @@ func chains() []Chain {
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_BASE_DRPC", "https://base.drpc.org")},
 				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_BASE_TENDERLY", "https://gateway.tenderly.co/public/base")},
 				{Slug: "nodies", Name: "Nodies (POKT)", URL: envDefault("RPC_URL_BASE_NODIES", "https://base-pokt.nodies.app")},
-				{Slug: "merkle", Name: "Merkle", URL: envDefault("RPC_URL_BASE_MERKLE", "https://base.merkle.io"), ViaProxy: true},
 				{Slug: "base-official", Name: "Base Official", URL: envDefault("RPC_URL_BASE_OFFICIAL", "https://mainnet.base.org")},
 			},
 		},
@@ -160,7 +154,6 @@ func chains() []Chain {
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_BNB_PUBLICNODE", "https://bsc-rpc.publicnode.com")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_BNB_DRPC", "https://bsc.drpc.org")},
 				{Slug: "nodies", Name: "Nodies (POKT)", URL: envDefault("RPC_URL_BNB_NODIES", "https://bsc-pokt.nodies.app")},
-				{Slug: "merkle", Name: "Merkle", URL: envDefault("RPC_URL_BNB_MERKLE", "https://bsc.merkle.io"), ViaProxy: true},
 				{Slug: "binance", Name: "Binance Official", URL: envDefault("RPC_URL_BNB_OFFICIAL", "https://bsc-dataseed1.binance.org")},
 			},
 		},
