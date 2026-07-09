@@ -16,6 +16,14 @@ import (
 // Measures indexation latency: time between on-chain event and WebSocket receipt
 // ============================================================================
 
+// Post-reconnect grace period: Mobula WS replays buffered/old trades right
+// after a (re)connect, which show up as multi-second "lag" that is NOT real
+// indexation latency. During this window we do NOT feed the alerting gauges
+// (mobula_head_lag_detailed_seconds & co) so #alerting-aggregator-latency
+// stays quiet on reconnect bursts. The head_lag_seconds bench gauge keeps
+// being fed (no spike alert on it; keeps AggregatorHeadLagStale happy).
+const reconnectGracePeriod = 10 * time.Second
+
 // Pool configurations for head lag monitoring
 type HeadLagPool struct {
 	Name       string // Human readable name
@@ -28,16 +36,10 @@ type HeadLagPool struct {
 // Pools to monitor - high activity pools for accurate lag measurement
 var headLagPools = []HeadLagPool{
 	{
-		// Switched 2026-05-29 to the Raydium SOL/USDC ($8.7M liq, $2.6M
-		// vol24h vs the previous Orca pool 7qbRF6Y… at $206K / $46K).
-		// This is the only Solana pool GMGN pushes per-pair events for,
-		// so all 4 providers measure the same reference pool → true
-		// apples-to-apples instead of GMGN-on-slot-heartbeat vs others-
-		// on-per-swap. Bonus: much higher event rate tightens stats.
 		Name:       "SOL/USDC Raydium",
 		Blockchain: "solana",
 		NetworkID:  1399811149,
-		Address:    "58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2",
+		Address:    "7qbRF6YsyGuLUVs6Y1q64bdVrfe4ZcUUz1JRdoVNUJnm",
 		ChainName:  "solana",
 	},
 	{
@@ -48,17 +50,10 @@ var headLagPools = []HeadLagPool{
 		ChainName:  "base",
 	},
 	{
-		// Switched 2026-05-29 off the WBNB/BUSD pool ($104K vol24h —
-		// BUSD was deprecated by Binance in 2023 so swap events on it
-		// are too sparse for percentile stats: the bench was reporting
-		// zero BNB samples across all 3 regions). New pool is
-		// PancakeSwap V3 WBNB/USDT 0.01% with $17M liq + $100M vol24h —
-		// ~1000x event rate, the canonical BNB pair every aggregator
-		// indexes.
-		Name:       "WBNB/USDT PancakeSwap V3",
+		Name:       "WBNB/BUSD PancakeSwap",
 		Blockchain: "evm:56",
 		NetworkID:  56,
-		Address:    "0x172fcd41e0913e95784454622d1c3724f546f849",
+		Address:    "0x58f876857a02d6762e0101bb5c46a8c1ed44dc16",
 		ChainName:  "bnb",
 	},
 }
@@ -97,9 +92,11 @@ func runMobulaHeadLagMonitor(config *Config, stopChan <-chan struct{}, wg *sync.
 			return
 		default:
 			err := connectAndMonitorMobula(config, stopChan)
+			RecordWSConnected("mobula", config.MonitorRegion, false)
 			if err != nil {
-				log.Printf("[HEAD-LAG][MOBULA] Connection error: %v. Reconnecting in %v...", err, reconnectDelay)
-				
+				RecordWSReconnect("mobula", config.MonitorRegion)
+				log.Printf("[HEAD-LAG][MOBULA] 🔌 DISCONNECTED: %v. Reconnecting in %v...", err, reconnectDelay)
+
 				select {
 				case <-stopChan:
 					return
@@ -149,7 +146,9 @@ func connectAndMonitorMobula(config *Config, stopChan <-chan struct{}) error {
 		return fmt.Errorf("subscribe failed: %w", err)
 	}
 
-	fmt.Printf("[HEAD-LAG][MOBULA] Subscribed to %d pools\n", len(items))
+	connectedAt := time.Now()
+	RecordWSConnected("mobula", config.MonitorRegion, true)
+	log.Printf("[HEAD-LAG][MOBULA] ✅ CONNECTED — subscribed to %d pools (alert-gauge grace period: %v)", len(items), reconnectGracePeriod)
 
 	// Start ping goroutine
 	pingDone := make(chan struct{})
@@ -223,19 +222,28 @@ func connectAndMonitorMobula(config *Config, stopChan <-chan struct{}) error {
 			// Track latest tx per pool so alert annotations can link to it
 			RecordMobulaLastTx(chainName, config.MonitorRegion, trade.Pair, trade.Hash)
 
-			// Record detailed metric with breakdown
-			RecordMobulaHeadLagDetailed(
-				chainName,
-				config.MonitorRegion,
-				trade.Pair,
-				trade.Hash,
-				totalLagMs,
-				mobulaLagMs,
-				networkLagMs,
-				onChainTime.Format("2006-01-02T15:04:05Z"),
-				mobulaProcessTime.Format("2006-01-02T15:04:05Z"),
-				receiveTime.Format("2006-01-02T15:04:05Z"),
-			)
+			// Post-reconnect grace: don't feed the alerting gauges with
+			// replayed/buffered trades from the fresh connection.
+			if time.Since(connectedAt) < reconnectGracePeriod {
+				if totalLagMs > 2000 {
+					log.Printf("[HEAD-LAG][MOBULA][%s] ⏭️  GRACE: late trade %.2fs within %v of reconnect — alert gauge NOT updated | Tx: %s",
+						chainName, lagSeconds, reconnectGracePeriod, trade.Hash)
+				}
+			} else {
+				// Record detailed metric with breakdown
+				RecordMobulaHeadLagDetailed(
+					chainName,
+					config.MonitorRegion,
+					trade.Pair,
+					trade.Hash,
+					totalLagMs,
+					mobulaLagMs,
+					networkLagMs,
+					onChainTime.Format("2006-01-02T15:04:05Z"),
+					mobulaProcessTime.Format("2006-01-02T15:04:05Z"),
+					receiveTime.Format("2006-01-02T15:04:05Z"),
+				)
+			}
 
 			// Enhanced logging for spikes
 			if totalLagMs > 3000 {
@@ -338,7 +346,9 @@ func runCodexHeadLagMonitor(config *Config, stopChan <-chan struct{}, wg *sync.W
 			log.Printf("[HEAD-LAG][CODEX] 🔄 Connection attempt #%d (proxy rotation enabled)", attemptNum)
 
 			err := connectAndMonitorCodex(config, stopChan)
+			RecordWSConnected("codex", config.MonitorRegion, false)
 			if err != nil {
+				RecordWSReconnect("codex", config.MonitorRegion)
 				consecutiveFailures++
 				log.Printf("[HEAD-LAG][CODEX] ❌ Connection attempt #%d failed (%d consecutive): %v", attemptNum, consecutiveFailures, err)
 
@@ -505,6 +515,7 @@ func connectAndMonitorCodex(config *Config, stopChan <-chan struct{}) error {
 
 	log.Printf("[HEAD-LAG][CODEX] ✅ Subscribed to %d pools", len(headLagPools))
 	log.Printf("[HEAD-LAG][CODEX] 🎉 Connection fully established! Waiting for events...")
+	RecordWSConnected("codex", config.MonitorRegion, true)
 
 	// graphql-transport-ws keepalive: send {"type":"ping"} every 20s.
 	// Without this, the rotating proxy (or Codex itself) silently kills idle
@@ -512,6 +523,48 @@ func connectAndMonitorCodex(config *Config, stopChan <-chan struct{}) error {
 	// Writes to the websocket conn are serialized via writeMu since we now have
 	// two goroutines writing (this ping loop + the subscribe path on next reconnect).
 	var writeMu sync.Mutex
+
+	// Per-chain flow watchdog. A high-activity pool that goes silent for
+	// 10 minutes means the subscription is dead even if the connection
+	// looks healthy (pongs + other subs satisfy the read deadline). On
+	// trip: purge the frozen gauges for that chain so the bench page
+	// never shows a stale value, then force a reconnect by closing the
+	// connection (the read loop errors out and the outer loop redials).
+	var lastEventMu sync.Mutex
+	lastEventByChain := make(map[string]time.Time)
+	for _, pool := range headLagPools {
+		lastEventByChain[pool.ChainName] = time.Now()
+	}
+	const flowSilence = 10 * time.Minute
+	watchdogDone := make(chan struct{})
+	go func() {
+		t := time.NewTicker(time.Minute)
+		defer t.Stop()
+		for {
+			select {
+			case <-watchdogDone:
+				return
+			case <-t.C:
+				lastEventMu.Lock()
+				tripped := ""
+				for chain, last := range lastEventByChain {
+					if time.Since(last) > flowSilence {
+						tripped = chain
+						break
+					}
+				}
+				lastEventMu.Unlock()
+				if tripped != "" {
+					log.Printf("[HEAD-LAG][CODEX] 🪦 %s subscription silent for >%s — purging gauges and forcing reconnect", tripped, flowSilence)
+					DeleteHeadLagSeries("codex", tripped, config.MonitorRegion)
+					_ = conn.Close()
+					return
+				}
+			}
+		}
+	}()
+	defer close(watchdogDone)
+
 	pingDone := make(chan struct{})
 	go func() {
 		t := time.NewTicker(20 * time.Second)
@@ -564,6 +617,17 @@ func connectAndMonitorCodex(config *Config, stopChan <-chan struct{}) error {
 				continue
 			}
 
+			// graphql-transport-ws: the server terminates ONE subscription
+			// with {"type":"complete","id":...} or {"type":"error",...}.
+			// Swallowing these (the pre-2026-07-09 behaviour) leaves a dead
+			// subscription on a live connection: no read timeout (other
+			// subs keep the socket busy), frozen gauges, blind alerts.
+			// Codex killed the Solana sub exactly this way. Force a full
+			// reconnect + resubscribe instead.
+			if wsMsg.Type == "complete" || wsMsg.Type == "error" {
+				return fmt.Errorf("subscription %q terminated by server (type=%s)", wsMsg.ID, wsMsg.Type)
+			}
+
 			// Skip non-data messages
 			if wsMsg.Type != "next" || wsMsg.Payload == nil {
 				continue
@@ -610,6 +674,10 @@ func connectAndMonitorCodex(config *Config, stopChan <-chan struct{}) error {
 
 				// Get chain name
 				chainName := getChainNameFromNetworkID(networkID)
+
+				lastEventMu.Lock()
+				lastEventByChain[chainName] = time.Now()
+				lastEventMu.Unlock()
 
 				// Record metrics with tx hash
 				RecordHeadLag("codex", chainName, lagMs, lagSeconds, config.MonitorRegion, event.TransactionHash)

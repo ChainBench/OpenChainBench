@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"sync"
-
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -50,6 +49,10 @@ var (
 	mobulaLastTxHash *prometheus.GaugeVec
 	mobulaLastTxMu   sync.Mutex
 	mobulaLastTxSeen = make(map[string]string) // key: "chain:pool_address" -> last tx_hash
+
+	// WebSocket connection lifecycle (deco/reco visibility in Grafana/Prom)
+	wsReconnects *prometheus.CounterVec
+	wsConnected  *prometheus.GaugeVec
 )
 
 func init() {
@@ -263,6 +266,46 @@ func init() {
 		[]string{"aggregator", "chain", "region", "pool_address", "tx_hash"},
 	)
 	prometheus.MustRegister(mobulaLastTxHash)
+
+	wsReconnects = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "ws_reconnects_total",
+			Help: "Total number of WebSocket reconnections per aggregator (increments on every disconnect, whatever the cause)",
+		},
+		[]string{"aggregator", "region"},
+	)
+	prometheus.MustRegister(wsReconnects)
+
+	wsConnected = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "ws_connected",
+			Help: "WebSocket connection state per aggregator (1 = connected, 0 = disconnected)",
+		},
+		[]string{"aggregator", "region"},
+	)
+	prometheus.MustRegister(wsConnected)
+}
+
+// RecordWSReconnect increments the reconnect counter for an aggregator's WebSocket.
+func RecordWSReconnect(aggregator string, region string) {
+	wsReconnects.WithLabelValues(aggregator, region).Inc()
+}
+
+// DeleteHeadLagSeries removes the head-lag gauges for one (aggregator,
+// chain, region) so a dead subscription cannot keep publishing its last
+// value (frozen-gauge trap, Codex Solana 2026-07-09).
+func DeleteHeadLagSeries(aggregator, chain, region string) {
+	headLagSeconds.DeleteLabelValues(aggregator, chain, region)
+	headLagBlocks.DeleteLabelValues(aggregator, chain, region)
+}
+
+// RecordWSConnected sets the connection state gauge for an aggregator's WebSocket.
+func RecordWSConnected(aggregator string, region string, connected bool) {
+	v := 0.0
+	if connected {
+		v = 1.0
+	}
+	wsConnected.WithLabelValues(aggregator, region).Set(v)
 }
 
 // RecordMobulaLastTx overwrites the single live series for (chain, pool_address)
@@ -411,11 +454,11 @@ func StartMetricsServer(addr string) error {
 	// Prometheus metrics endpoint
 	mux.Handle("/metrics", promhttp.Handler())
 
-	mux.Handle("/logs", logsHandler())
 	// Admin cleanup endpoint
 	setupCleanupEndpoint(mux)
 
 	// Debug: tail of in-memory log ring (shared loghub package)
+	mux.Handle("/logs", logsHandler())
 
 	return http.ListenAndServe(addr, mux)
 }
