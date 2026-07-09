@@ -2,10 +2,15 @@ global:
   resolve_timeout: 5m
 
 route:
-  group_by: ['alertname', 'chain', 'aggregator']
-  group_wait: 10s
-  group_interval: 30s
-  repeat_interval: 5m
+  # Group by alertname ONLY: one Slack message listing every (provider,
+  # chain) pair instead of 7 parallel groups each re-notifying on its own
+  # clock. repeat_interval 5m -> 12h: a still-firing alert is a reminder,
+  # not a new event (2026-07-09: RpcProviderErrorRate spammed the channel
+  # every 5 minutes for hours).
+  group_by: ['alertname']
+  group_wait: 30s
+  group_interval: 15m
+  repeat_interval: 12h
   # Default: dedicated OCB Slack channel (direct incoming webhook).
   receiver: 'slack-direct'
   routes:
