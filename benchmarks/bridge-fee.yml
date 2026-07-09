@@ -96,7 +96,6 @@ faq:
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/bridge-monitor
 
 prometheus:
-  url: https://prometheus-production-9ffe.up.railway.app
   window: 24h
   expected_freshness_seconds: 1800
 
