@@ -8,7 +8,7 @@ export const metadata: Metadata = pageMetadata({
   path: "/contribute",
   title: "Contribute. Submit a benchmark",
   description:
-    "How to publish your own benchmark on OpenChainBench in six steps.",
+    "How to publish your own benchmark on OpenChainBench in six steps: spec format, harness contract, Prometheus wiring, validation and PR conventions.",
 });
 
 const STEPS = [

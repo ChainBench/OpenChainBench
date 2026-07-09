@@ -4,7 +4,7 @@ slug: buyback-audit
 number: "018"
 title: DeFi token buyback tracker, live executed vs promised ratio
 seo_title: "DeFi buyback tracker 2026"
-seo_description: "DeFi token buyback tracker: ratio of executed vs promised, live. Hyperliquid HYPE, Sky SKY ranked."
+seo_description: "DeFi token buyback tracker: executed vs promised ratio, verified onchain and live. Hyperliquid HYPE, Sky SKY and more protocols held accountable."
 subtitle: Executed USD over promised USD for live on-chain buyback programs, computed against destination-wallet inflows over rolling 7-day and 30-day windows.
 category: Trading
 status: live
