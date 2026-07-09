@@ -26,7 +26,7 @@ methodology:
   - "Call-result classification: `ok` (HTTP 200 + non-empty result), `http_err`, `jsonrpc_err` (HTTP 200 carrying an error body), `stale` (more than 20 blocks behind the cross-provider tip), `timeout`. Latency without reliability is a misleading ranking signal."
   - "Archive depth: every 5 minutes we issue `eth_getBalance` at (head − depth) for depths from Geth's default pruned cap up to 5M blocks, exposing which free endpoints actually serve historical state."
   - "This page is part of the per-chain RPC cluster derived from the cross-chain [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities) benchmark; the identical harness, methodology and exclusion rules apply on every chain."
-  - "Chain scope: every query on this page is pinned to chain=\"bnb\". Provider coverage: 4 no-key endpoints (PublicNode, dRPC, Nodies, Binance). Merkle was delisted 2026-07 under the cluster lockout rule: it blocks our datacenter probe IPs, the same behavior that already excludes it on Ethereum. Exclusions follow the cluster-wide rules documented on the parent benchmark."
+  - "Chain scope: every query on this page is pinned to chain=\"bnb\". Provider coverage: 5 no-key endpoints (PublicNode, dRPC, Nodies, Merkle, Binance). Merkle blocks datacenter IPs since 2026-07, so it is probed through a residential proxy; its latency includes proxy overhead and is flagged as such. Exclusions follow the cluster-wide rules documented on the parent benchmark."
 
 findings:
   - "{{best_name}} currently leads free BNB Chain RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h) across 5 measured providers."
@@ -36,7 +36,7 @@ faq:
   - q: "What is the fastest free BNB Chain RPC right now?"
     a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against 5 no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples, so the answer on this page is the answer right now, not a quarterly snapshot. Use the region tabs to see the leader from the origin closest to your deployment."
   - q: "Which BNB Chain RPCs work without an API key?"
-    a: "The 4 providers on this page: PublicNode, dRPC, Nodies, Binance. Merkle was delisted in July 2026: it blocks datacenter probe IPs, the same lockout behavior that already excludes it on Ethereum. Every (provider, chain) pair was live-verified no-key before inclusion, and anything that key-gates, region-blocks or rate-limits below our 15-second cadence is excluded rather than listed with an asterisk."
+    a: "The 5 providers on this page: PublicNode, dRPC, Nodies, Merkle, Binance. Merkle blocks datacenter IPs since July 2026, so its probes route through a residential proxy; the latency column includes that proxy overhead and the row is flagged accordingly. Every (provider, chain) pair was live-verified no-key before inclusion, and anything that key-gates, region-blocks or rate-limits below our 15-second cadence is excluded rather than listed with an asterisk."
   - q: "Does the fastest BNB Chain RPC change by region?"
     a: "Frequently. The headline number averages three probe origins (us-east, eu-west, Singapore), but per-region leaders regularly diverge, a gateway that wins from Virginia can lose from Singapore by multiples. The region tabs at the top of the page re-scope every number on the page to a single origin; pick the one closest to where your requests actually originate."
   - q: "How is BNB Chain RPC latency measured here?"
@@ -131,6 +131,29 @@ providers:
         - region: ap-southeast
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="nodies", chain="bnb", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="nodies", chain="bnb", region="sgp"}[1h])
+
+  - slug: merkle
+    name: Merkle
+    tag: Blocks datacenter IPs since 2026-07; probed via residential proxy, latency includes proxy overhead
+    formula: "50th percentile over 24h of round-trip latency (ms) for `eth_getBlockByNumber` every 60s from 3 regions via a residential proxy (Merkle blocks datacenter IPs since 2026-07); includes proxy overhead, not directly comparable."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="merkle", chain="bnb"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="merkle", chain="bnb"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="merkle", chain="bnb"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="merkle", chain="bnb"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="merkle", chain="bnb"}) / sum(ocb:rpc_call:rate_24h{provider="merkle", chain="bnb"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="merkle", chain="bnb"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="merkle", chain="bnb"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="merkle", chain="bnb", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="merkle", chain="bnb", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="merkle", chain="bnb", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="merkle", chain="bnb", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="merkle", chain="bnb", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="merkle", chain="bnb", region="sgp"}[1h])
 
   - slug: binance
     name: Binance
