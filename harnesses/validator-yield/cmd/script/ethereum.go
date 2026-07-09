@@ -208,7 +208,11 @@ func scrapeEthereum(ctx context.Context, client *http.Client) {
 	validatorMevShareBps.WithLabelValues(ethereumChain, id, name).Set(0)
 	validatorCommissionBps.WithLabelValues(ethereumChain, id, name).Set(0)
 	validatorUptimePct.WithLabelValues(ethereumChain, id, name).Set(uptimePct)
-	validatorStakeUSD.WithLabelValues(ethereumChain, id, name).Set(stakeUSD)
+	// Publish-then-leave: skip the USD write on a price-fetch failure
+	// instead of wiping the previous value with stake*0.
+	if ethPrice > 0 {
+		validatorStakeUSD.WithLabelValues(ethereumChain, id, name).Set(stakeUSD)
+	}
 	validatorJailed.WithLabelValues(ethereumChain, id, name).Set(0)
 
 	chainTotalValidators.WithLabelValues(ethereumChain).Set(1)

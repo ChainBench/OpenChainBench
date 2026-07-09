@@ -46,8 +46,8 @@ export async function GET(
   // Validate every filter against the declared dimensions and use the
   // canonical value: these end up in PromQL label selectors downstream.
   const url = new URL(req.url);
-  const filters: { chain?: string; region?: string; kind?: string } = {};
-  for (const dim of ["chain", "region", "kind"] as const) {
+  const filters: { chain?: string; region?: string; kind?: string; venue?: string } = {};
+  for (const dim of ["chain", "region", "kind", "venue"] as const) {
     const raw = url.searchParams.get(dim)?.toLowerCase().trim();
     if (!raw || raw === "all") continue;
     // Canonical-aware matching: the chain dimension may still hold the
