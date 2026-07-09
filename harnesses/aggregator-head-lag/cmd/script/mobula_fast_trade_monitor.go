@@ -45,6 +45,11 @@ var fastTradePools = []struct {
 		Address:    "0x58f876857a02d6762e0101bb5c46a8c1ed44dc16", // WBNB/BUSD PancakeSwap
 		ChainName:  "bnb",
 	},
+	{
+		Blockchain: "evm:4663",
+		Address:    "0x69bfaf19c9f377bb306a89aed9f6b07e2c1a8d9a", // USDG/WETH Robinhood
+		ChainName:  "robinhood",
+	},
 }
 
 func runMobulaFastTradeMonitor(config *Config, stopChan <-chan struct{}) {
@@ -219,6 +224,8 @@ func getChainNameFromBlockchainFastTrade(blockchain string) string {
 		return "base"
 	case "BNB Smart Chain (BEP20)", "BSC", "evm:56":
 		return "bnb"
+	case "Robinhood Chain", "evm:4663":
+		return "robinhood"
 	default:
 		return blockchain
 	}
