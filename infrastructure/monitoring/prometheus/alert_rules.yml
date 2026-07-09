@@ -92,7 +92,14 @@ groups:
       # (e.g. Codex WS disconnect) while others keep running — global absent()
       # would NOT catch this.
       - alert: AggregatorHeadLagStale
-        expr: (time() - timestamp(head_lag_seconds)) > 300
+        # changes() et non timestamp(): un gauge gelé (souscription morte,
+        # harness qui ré-expose la dernière valeur) a des samples frais à
+        # chaque scrape — timestamp() ne voit rien (Codex Solana 2026-07-09,
+        # 8h de 26.3s figés sans alerte). Un vrai flux a toujours du jitter.
+        # Scope mobula uniquement: un feed tiers (codex/gecko) qui meurt est
+        # leur histoire, le watchdog purge ses gauges et la page montre le
+        # trou. Pas de bruit Slack pour eux.
+        expr: changes(head_lag_seconds{aggregator="mobula"}[30m]) == 0
         for: 1m
         labels:
           severity: warning
@@ -156,7 +163,8 @@ groups:
       # Aggregator WS silently down: connection-state gauge from the
       # reconnect instrumentation (PR #950).
       - alert: AggregatorWSDisconnected
-        expr: ws_connected == 0
+        # mobula only, même logique que AggregatorHeadLagStale.
+        expr: ws_connected{aggregator="mobula"} == 0
         for: 10m
         labels:
           severity: warning

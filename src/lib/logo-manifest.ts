@@ -43,6 +43,7 @@ const RAW: Record<string, string> = {
   sonic: "/logos/sonic.png",
   monad: "/logos/monad.png",
   megaeth: "/logos/megaeth.png",
+  robinhood: "/logos/robinhood.png",
   onfinality: "/logos/onfinality.png",
   berachain: "/logos/berachain.png",
 
