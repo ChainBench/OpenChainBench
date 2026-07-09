@@ -8,7 +8,7 @@ import { pageMetadata } from "@/lib/page-metadata";
 export const metadata: Metadata = pageMetadata({
   path: "/press",
   title: "Press kit",
-  description: "Logos, boilerplate and contact details for journalists and partners.",
+  description: "Press kit for journalists and partners: logos, boilerplate, quick facts and contact details. All OpenChainBench data is citable under CC BY 4.0.",
 });
 
 export default function PressPage() {
