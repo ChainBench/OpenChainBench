@@ -92,7 +92,11 @@ groups:
       # (e.g. Codex WS disconnect) while others keep running — global absent()
       # would NOT catch this.
       - alert: AggregatorHeadLagStale
-        expr: (time() - timestamp(head_lag_seconds)) > 300
+        # changes() et non timestamp(): un gauge gelé (souscription morte,
+        # harness qui ré-expose la dernière valeur) a des samples frais à
+        # chaque scrape — timestamp() ne voit rien (Codex Solana 2026-07-09,
+        # 8h de 26.3s figés sans alerte). Un vrai flux a toujours du jitter.
+        expr: changes(head_lag_seconds[30m]) == 0
         for: 1m
         labels:
           severity: warning
