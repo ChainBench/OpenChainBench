@@ -52,6 +52,15 @@ var geckoTerminalPools = []struct {
 		PoolID:  "160787671",
 		Chain:   "bnb",
 	},
+	{
+		// Highest txn-frequency pool on Robinhood Chain (~40k swaps/24h).
+		// Internal GT pool_id source: app.geckoterminal.com/api/p1/robinhood/pools/<address>
+		// Pool address: 0x69bfaf19c9f377bb306a89aed9f6b07e2c1a8d9a
+		Name:    "USDG/WETH Robinhood",
+		Network: "robinhood",
+		PoolID:  "328167634",
+		Chain:   "robinhood",
+	},
 }
 
 // ActionCable message structures

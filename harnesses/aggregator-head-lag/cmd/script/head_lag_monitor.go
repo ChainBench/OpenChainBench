@@ -56,6 +56,14 @@ var headLagPools = []HeadLagPool{
 		Address:    "0x58f876857a02d6762e0101bb5c46a8c1ed44dc16",
 		ChainName:  "bnb",
 	},
+	{
+		// Highest txn-frequency pool on Robinhood Chain (~40k swaps/24h).
+		Name:       "USDG/WETH Robinhood",
+		Blockchain: "evm:4663",
+		NetworkID:  4663,
+		Address:    "0x69bfaf19c9f377bb306a89aed9f6b07e2c1a8d9a",
+		ChainName:  "robinhood",
+	},
 }
 
 // ============================================================================
@@ -277,6 +285,8 @@ func getChainNameFromBlockchain(blockchain string) string {
 		return "base"
 	case "BNB Smart Chain (BEP20)", "BSC", "evm:56":
 		return "bnb"
+	case "Robinhood Chain", "evm:4663":
+		return "robinhood"
 	default:
 		return blockchain
 	}
@@ -456,15 +466,18 @@ func connectAndMonitorCodex(config *Config, stopChan <-chan struct{}) error {
 
 		var subMsg map[string]interface{}
 
-		// Solana: use onUnconfirmedEventsCreated (pre-finalized, lowest latency)
+		// Solana: commitmentLevel Processed (pre-finalized, lowest latency).
+		// This replaces onUnconfirmedEventsCreated, deprecated by Codex on
+		// 2026-04-20 and enforcement-killed for API keys ~2026-07-06 (hard
+		// WS close 1006). Verified delivering on the JWT path 2026-07-09.
 		if pool.ChainName == "solana" {
 			poolID := fmt.Sprintf("%s:%d", pool.Address, pool.NetworkID)
 			subMsg = map[string]interface{}{
 				"type": "subscribe",
 				"id":   subID,
 				"payload": map[string]interface{}{
-					"query": `subscription OnPoolEvents($id: String!) {
-						onUnconfirmedEventsCreated(id: $id, quoteToken: token0) {
+					"query": `subscription OnPoolEvents($id: String!, $cl: [EventCommitmentLevel!]) {
+						onEventsCreated(id: $id, commitmentLevel: $cl) {
 							address
 							networkId
 							events {
@@ -477,6 +490,7 @@ func connectAndMonitorCodex(config *Config, stopChan <-chan struct{}) error {
 					}`,
 					"variables": map[string]interface{}{
 						"id": poolID,
+						"cl": []string{"Processed"},
 					},
 				},
 			}
@@ -508,40 +522,6 @@ func connectAndMonitorCodex(config *Config, stopChan <-chan struct{}) error {
 
 		if err := conn.WriteJSON(subMsg); err != nil {
 			return fmt.Errorf("subscribe to %s failed: %w", pool.Name, err)
-		}
-
-		// onUnconfirmedEventsCreated is deprecated (Codex changelog 2026-04-20)
-		// and already hard-killed for API-key auth since ~07-06. Subscribe the
-		// replacement (onEventsCreated + commitmentLevel Processed) in parallel:
-		// logs tell us which one actually delivers on the JWT path, and we keep
-		// data flowing whichever side Codex cuts next. Gauge takes last write,
-		// so double delivery is harmless.
-		if pool.ChainName == "solana" {
-			procMsg := map[string]interface{}{
-				"type": "subscribe",
-				"id":   fmt.Sprintf("headlag_proc_%d", i),
-				"payload": map[string]interface{}{
-					"query": `subscription OnPoolEvents($id: String!, $cl: [EventCommitmentLevel!]) {
-						onEventsCreated(id: $id, commitmentLevel: $cl) {
-							address
-							networkId
-							events {
-								blockNumber
-								timestamp
-								transactionHash
-								eventType
-							}
-						}
-					}`,
-					"variables": map[string]interface{}{
-						"id": fmt.Sprintf("%s:%d", pool.Address, pool.NetworkID),
-						"cl": []string{"Processed"},
-					},
-				},
-			}
-			if err := conn.WriteJSON(procMsg); err != nil {
-				return fmt.Errorf("processed subscribe to %s failed: %w", pool.Name, err)
-			}
 		}
 
 		time.Sleep(100 * time.Millisecond) // Small delay between subscriptions
@@ -660,13 +640,6 @@ func connectAndMonitorCodex(config *Config, stopChan <-chan struct{}) error {
 			// Codex killed the Solana sub exactly this way. Force a full
 			// reconnect + resubscribe instead.
 			if wsMsg.Type == "complete" || wsMsg.Type == "error" {
-				// The experimental Processed sub failing must not tear down the
-				// legacy flow: log it and keep the connection alive.
-				if strings.HasPrefix(wsMsg.ID, "headlag_proc_") {
-					payloadStr, _ := json.Marshal(wsMsg.Payload)
-					log.Printf("[HEAD-LAG][CODEX] ⚠️ Processed sub %q terminated (type=%s payload=%s) — legacy sub continues", wsMsg.ID, wsMsg.Type, string(payloadStr))
-					continue
-				}
 				return fmt.Errorf("subscription %q terminated by server (type=%s)", wsMsg.ID, wsMsg.Type)
 			}
 
@@ -762,6 +735,8 @@ func getChainNameFromNetworkID(networkID int) string {
 		return "base"
 	case 56:
 		return "bnb"
+	case 4663:
+		return "robinhood"
 	default:
 		return fmt.Sprintf("network_%d", networkID)
 	}
