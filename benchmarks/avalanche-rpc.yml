@@ -26,7 +26,7 @@ methodology:
   - "Call-result classification: `ok` (HTTP 200 + non-empty result), `http_err`, `jsonrpc_err` (HTTP 200 carrying an error body), `stale` (more than 20 blocks behind the cross-provider tip), `timeout`. Latency without reliability is a misleading ranking signal."
   - "Archive depth: every 5 minutes we issue `eth_getBalance` at (head − depth) for depths from Geth's default pruned cap up to 5M blocks, exposing which free endpoints actually serve historical state."
   - "This page is part of the per-chain RPC cluster derived from the cross-chain [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities) benchmark; the identical harness, methodology and exclusion rules apply on every chain."
-  - "Chain scope: every query on this page is pinned to chain=\"avalanche\". Provider coverage: 6 no-key endpoints (PublicNode, dRPC, Tenderly, Nodies, Avalanche). Exclusions follow the cluster-wide rules documented on the parent benchmark."
+  - "Chain scope: every query on this page is pinned to chain=\"avalanche\". Provider coverage: 5 no-key endpoints (PublicNode, dRPC, Tenderly, Avalanche). Nodies was delisted 2026-07 when its Avalanche endpoint moved behind a paid plan. Exclusions follow the cluster-wide rules documented on the parent benchmark."
 
 findings:
   - "{{best_name}} currently leads free Avalanche RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h) across 5 measured providers."
@@ -37,7 +37,7 @@ faq:
   - q: "What is the fastest free Avalanche RPC right now?"
     a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against 5 no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples, so the answer on this page is the answer right now, not a quarterly snapshot. Use the region tabs to see the leader from the origin closest to your deployment."
   - q: "Which Avalanche RPCs work without an API key?"
-    a: "The 6 providers on this page: PublicNode, dRPC, Tenderly, Nodies, Avalanche. Every (provider, chain) pair was live-verified no-key before inclusion, and anything that key-gates, region-blocks or rate-limits below our 15-second cadence is excluded rather than listed with an asterisk."
+    a: "The 5 providers on this page: PublicNode, dRPC, Tenderly, Avalanche. Nodies was delisted in July 2026 when its Avalanche endpoint moved behind a paid plan. Every (provider, chain) pair was live-verified no-key before inclusion, and anything that key-gates, region-blocks or rate-limits below our 15-second cadence is excluded rather than listed with an asterisk."
   - q: "Does the fastest Avalanche RPC change by region?"
     a: "Frequently. The headline number averages three probe origins (us-east, eu-west, Singapore), but per-region leaders regularly diverge, a gateway that wins from Virginia can lose from Singapore by multiples. The region tabs at the top of the page re-scope every number on the page to a single origin; pick the one closest to where your requests actually originate."
   - q: "How is Avalanche RPC latency measured here?"
@@ -132,29 +132,6 @@ providers:
         - region: ap-southeast
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tenderly", chain="avalanche", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="tenderly", chain="avalanche", region="sgp"}[1h])
-
-  - slug: nodies
-    name: Nodies
-    tag: POKT Network's decentralized public RPC successor, 7+ chains
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Nodies's no-key Avalanche endpoint."
-    queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="nodies", chain="avalanche"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="nodies", chain="avalanche"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="nodies", chain="avalanche"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="nodies", chain="avalanche"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="nodies", chain="avalanche"}) / sum(ocb:rpc_call:rate_24h{provider="nodies", chain="avalanche"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="nodies", chain="avalanche"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="nodies", chain="avalanche"}[1h]))
-      regions:
-        - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="nodies", chain="avalanche", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="nodies", chain="avalanche", region="us-east"}[1h])
-        - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="nodies", chain="avalanche", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="nodies", chain="avalanche", region="eu-west"}[1h])
-        - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="nodies", chain="avalanche", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="nodies", chain="avalanche", region="sgp"}[1h])
 
   - slug: avalanche-official
     name: Avalanche

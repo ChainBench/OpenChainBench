@@ -133,10 +133,13 @@ groups:
       # throttling incident (2026-07-08) ran for days unalerted. Fires
       # when a (provider, chain) cell errors on >50% of calls for 1h.
       - alert: RpcProviderErrorRate
+        # cloudflare exclu: mort documenté (permissioned mode, -32046 sur
+        # eth_getBlockByNumber) qu'on garde probé exprès comme cautionary
+        # tale sur la page ethereum-rpc. Pas besoin de rappel Slack.
         expr: |
           (
-            sum by (provider, chain) (rate(rpc_call_total{result!="ok"}[30m]))
-            / sum by (provider, chain) (rate(rpc_call_total[30m]))
+            sum by (provider, chain) (rate(rpc_call_total{result!="ok",provider!="cloudflare"}[30m]))
+            / sum by (provider, chain) (rate(rpc_call_total{provider!="cloudflare"}[30m]))
           ) > 0.5
         for: 1h
         labels:
