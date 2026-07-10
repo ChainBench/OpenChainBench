@@ -69,11 +69,11 @@ export async function generateMetadata({
   // crawlers that peek at the response before the 308 fires still see the
   // right canonical target.
   // Merkle rebranded to Blink Labs and went keyed-only; the provider was
-  // fully delisted 2026-07-10 from the keyless RPC benches. 308 to the
-  // Blink Labs product page (bench 074 lists them under the new name) so
-  // the old URL's link equity lands on the successor.
+  // fully delisted 2026-07-10 so this page has no data left. 308 to the
+  // capabilities bench for now; flip to /products/blinklabs in the same PR
+  // that removes mev-protect-rpc from REMOVED_BENCH_SLUGS.
   if (slug === "merkle") {
-    permanentRedirect("/products/blinklabs");
+    permanentRedirect("/benchmarks/rpc-capabilities");
   }
   if (await isHlBuilderWithHistory(slug)) {
     const canonicalUrl = `${SITE.url}/hyperliquid/${slug}`;
