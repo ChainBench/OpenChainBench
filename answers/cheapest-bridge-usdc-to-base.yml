@@ -1,0 +1,41 @@
+slug: cheapest-bridge-usdc-to-base
+question: "Which bridge is cheapest to move USDC to Base?"
+short_answer: |
+  {{best_name}} currently offers the lowest effective fee for a USDC bridge to Base at {{best_p50}} bps all in (24h avg), measured live by OpenChainBench across Across, Stargate, LI.FI, Squid, Socket, Relay and Near Intents on a $300 USDC probe.
+
+benchmark: bridge-fee
+
+intro: |
+  Bridge comparison articles publish rack rate fee schedules and stop there. The rack rate is one number in a bill that also includes destination gas, LP fees passed through as slippage, and the effective execution price the router actually delivers. On a $300 USDC bridge to Base, two providers quoting the same 5 bps headline can deliver very different real fees once the router walks the pool. This page answers the specific question retail and small-treasury movers actually search for: at $300 USDC notional, which bridge to Base is cheapest today. OpenChainBench queries the same USDC to Base intent against every major router every 5 minutes, computes the all-in effective fee including destination gas, and publishes the ranked leaderboard live.
+
+methodology: |
+  Every 5 minutes the harness sends the same intent (source: Ethereum mainnet USDC, destination: Base USDC, amount: $300 notional, receiver: probe wallet) to each router's quote API in parallel. Effective fee is computed as `(source_input_usd - destination_output_usd - destination_gas_usd) / source_input_usd` in basis points, so slippage, LP fees and gas are all inside the same number. Providers that fail to return a quote (5xx, rate limit, timeout) leave the previous gauge in place and increment a fetch_errors_total counter. The leaderboard ranks by 24h average of bridge_effective_fee_bps for the USDC to Base pair. The $300 size is the small ticket regime; sibling benches probe higher notional to expose where routers slip on size.
+
+limitations:
+  - "Quote fee only. This measures router-quoted effective fee, not settlement. Any router that quotes tighter than it settles would show a fast p50 with degraded real-world execution; the sibling bridge-quote-latency bench flags routers where quote-to-settle drift is measurable."
+  - "One size, one route. The $300 USDC to Base pair is the highest-search-volume small-ticket bridge query. At $50k notional the leaderboard re-orders because the spread and LP fee components dominate. Producers moving treasury size should read the per-size breakdown on the bench page."
+  - "Destination gas at quote time. Destination gas is included in the effective fee at the quoted receiver payout, not at a delayed execution instant. A destination gas spike between quote and settle would degrade the actual fee below what this leaderboard reports."
+  - "No canonical CCTP fast path. The USDC canonical bridge via Circle CCTP has different guarantees and speeds than the market-maker routers ranked here. The leaderboard measures the market-maker path (Across, LI.FI, Stargate, Squid, Socket, Relay, Near Intents) because it is the head-to-head every comparison article ranks."
+
+faq:
+  - q: "Which bridge is cheapest for a $300 USDC transfer to Base?"
+    a: "{{best_name}} leads the leaderboard at {{best_p50}} bps effective fee (24h avg) measured live on the same USDC to Base $300 probe. The full ranking including Across, Stargate, LI.FI, Squid, Socket, Relay and Near Intents re-sorts every 5 minutes against fresh Prometheus samples."
+  - q: "Why $300, and does the winner change at $10k or $100k?"
+    a: "$300 is the small-ticket regime that dominates retail search. At $10k the leaderboard shifts because LP-based routers (Stargate) start to lose ground to intent-based routers (Across, Near Intents) whose quotes are less size-dependent. At $100k the spread widens further and the choice becomes size-specific; the per-size tab on the bench page shows the leader at each notional."
+  - q: "Is Circle CCTP not on this ranking?"
+    a: "CCTP is Circle's canonical burn-and-mint path for USDC. It has different guarantees, speeds and a fixed protocol path, so it is not directly comparable to market-maker routers that price a swap through a pool. The bench measures the market-maker rankings because that is the choice retail actually makes; canonical CCTP is a separate decision users make once they know their maximum acceptable latency."
+  - q: "How is Across usually so cheap on this route?"
+    a: "Across runs an intent-based settlement model where relayers compete to fill from destination inventory. That model compresses the spread component to near zero on high-liquidity pairs like USDC Ethereum to Base. On less-liquid destinations Across loses its edge; that per-destination effect is why the leaderboard re-ranks by pair rather than emitting a single global cheapest bridge."
+  - q: "Is Stargate outdated for Base?"
+    a: "Stargate remains competitive on high-throughput pairs where its LP depth matters more than intent competition. On USDC to Base the pair-specific LP depth in 2026 has been narrower than intent-based competitors, which is why the leaderboard usually shows an intent router on top. Stargate wins on pairs where LP depth is the constraint."
+  - q: "How often is the leaderboard refreshed?"
+    a: "Every 5 minutes. The harness probes every router's quote API at that cadence, publishes bridge_effective_fee_bps to Prometheus, and the page reads a 24h rolling average. Because the recording rules re-aggregate every 30 seconds the on-screen ranking re-orders within a minute of any router changing quote behavior."
+
+related:
+  - which-bridge-has-the-fastest-quote-api
+  - which-bridge-has-the-cheapest-usdc-fee
+  - which-blockchain-has-cheapest-transaction-fees
+
+seo_title: "Cheapest bridge for USDC to Base 2026 live"
+seo_description: "{{best_name}} leads at {{best_p50}} bps effective fee on a $300 USDC to Base probe. Across, Stargate, LI.FI, Squid, Socket, Relay and Near Intents ranked live by OpenChainBench."
+status: live

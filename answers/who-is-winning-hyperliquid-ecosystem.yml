@@ -1,0 +1,41 @@
+slug: who-is-winning-hyperliquid-ecosystem
+question: "Who is winning the Hyperliquid ecosystem in 2026?"
+short_answer: |
+  {{best_name}} currently leads the Hyperliquid builder revenue leaderboard at {{best_p50}} (24h), measured live by OpenChainBench from a local Hyperliquid node tailing every fill onchain across all 104 tracked frontends.
+
+benchmark: hyperliquid-frontends
+
+intro: |
+  Hyperliquid is the derivatives narrative of 2026 but the frontend cohort question is systematically undercovered: which application actually owns the trader relationship and captures the revenue that comes with it. Aggregate volume figures from Hyperliquid itself do not decompose by frontend. Third-party dashboards vary in methodology and sometimes double-count builder code claims. OpenChainBench runs a local Hyperliquid node and tails every fill on mainnet, decomposes builder revenue by frontend, and publishes the full 104-frontend leaderboard live. This page answers the ecosystem-level question every HL observer eventually asks: who is winning, by how much, and how concentrated is the revenue.
+
+methodology: |
+  A local Hyperliquid node subscribes to the fills stream on mainnet and records every trade with its builder code, notional and fee. The harness aggregates builder fee revenue by frontend over rolling 24h, 7d and 30d windows. Wallet identities behind builder codes come from a hand-curated registry (openchainbench.com/hyperliquid) so the mapping from raw builder code to human-readable frontend is transparent and auditable. Rankings expose builder_revenue_usd per frontend as a Prometheus gauge; the leaderboard reads the 24h window and re-orders every scrape cycle.
+
+limitations:
+  - "Builder revenue only. Frontends also capture non-builder revenue (subscriptions, custody fees, off-platform monetization). This bench measures the onchain builder revenue slice because it is the only cross-frontend comparable public number. It is a lower bound on total frontend monetization."
+  - "104 tracked frontends. New frontends launch continuously; the harness adds them within a scrape cycle of their first builder-code fill hitting the wire. A frontend not on the leaderboard has zero measurable builder revenue in the window."
+  - "Concentration analysis is dominant. The top 5 frontends capture the overwhelming majority of ecosystem builder revenue. A long-tail frontend at rank 50 has revenue below what the median trader loses on funding in a bad week, so the ranking is honest but the tail is not comparable to the head on absolute terms."
+  - "Sibling HIP-3 deployers bench measures the same population from a different angle. HIP-3 deployers are ranked separately because the deployer-fee mechanic is architecturally distinct from builder-fee attribution."
+
+faq:
+  - q: "Who has the most Hyperliquid builder revenue right now?"
+    a: "{{best_name}} leads at {{best_p50}} (24h) on the OpenChainBench builder revenue leaderboard. The full 104-frontend ranking, plus rolling 7d and 30d windows and daily trend since HL launched, is available at openchainbench.com/hyperliquid."
+  - q: "Why does Phantom sit so high on Hyperliquid builder revenue?"
+    a: "Phantom is a Solana-native wallet that added Hyperliquid perp support and captured retail traders who preferred a wallet-integrated UX to a dedicated HL app. Because Phantom routes fills through its builder code, every trade on Hyperliquid originating from Phantom credits builder revenue to Phantom. The result is that a Solana-native wallet leads HL builder revenue on many days, which is a real story about how HL's frontend layer works."
+  - q: "How concentrated is Hyperliquid builder revenue among frontends?"
+    a: "Extremely concentrated. The top 5 frontends capture the overwhelming majority of daily ecosystem builder revenue; the remaining 99 tracked frontends share what is left. Distribution matches the pattern of most crypto attention markets (few winners take most of the pie) and the cumulative share chart on the hub page shows the honest curve."
+  - q: "What is a builder code and how is it credited?"
+    a: "Any application routing orders to Hyperliquid can attach a builder code to its trades. Hyperliquid's exchange settles a portion of the taker fee to the wallet designated by that builder code. OpenChainBench's harness reads the code from each fill onchain and aggregates by the mapping in the transparent frontend registry. That is why the ranking is reproducible: the raw data is public onchain."
+  - q: "Which frontends are gaining share in 2026?"
+    a: "The bench page publishes 7d and 30d trend windows alongside the 24h leaderboard. Watching the deltas reveals which frontends are compounding growth (usually the ones with mobile-first UX and a deep pre-existing user base) versus which are losing share to newer entrants. The trend-window ranks change more slowly than the 24h ranks; a frontend consistently in the 7d top 5 is winning the ecosystem in a way that a one-day spike is not."
+  - q: "How is this different from Hyperliquid's own volume dashboard?"
+    a: "Hyperliquid publishes aggregate volume, not builder revenue by frontend. Third-party dashboards attempt the decomposition but vary in methodology. OpenChainBench runs its own HL node, uses the onchain builder-code data as ground truth, and publishes the leaderboard under CC-BY-4.0 with an open registry. The result is a reproducible answer to the ecosystem-level question that Hyperliquid's own dashboard does not decompose."
+
+related:
+  - which-hyperliquid-frontend-has-the-most-builder-revenue
+  - which-hyperliquid-frontend-generates-the-most-hip3-revenue
+  - which-perp-dex-has-the-lowest-fees
+
+seo_title: "Who is winning the Hyperliquid ecosystem 2026, live"
+seo_description: "{{best_name}} leads at {{best_p50}} (24h) on the OpenChainBench Hyperliquid builder revenue leaderboard. 104 frontends tracked live from an onchain HL node."
+status: live

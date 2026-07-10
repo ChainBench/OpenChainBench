@@ -1,0 +1,38 @@
+{
+  "name": "OpenChainBench",
+  "url": "https://openchainbench.com",
+  "logo": "https://openchainbench.com/og-image.png",
+  "contact_email": "contact@openchainbench.com",
+  "correction_policy_url": "https://openchainbench.com/methodology#corrections",
+  "methodology_url": "https://openchainbench.com/methodology",
+  "license": "https://creativecommons.org/licenses/by/4.0/",
+  "license_short": "CC-BY-4.0",
+  "dataset_doi": "10.5281/zenodo.20800312",
+  "dataset_doi_url": "https://doi.org/10.5281/zenodo.20800312",
+  "wikidata_qid": "Q140172649",
+  "wikidata_url": "https://www.wikidata.org/wiki/Q140172649",
+  "publisher_type": "independent_data_publisher",
+  "editorial_governance": "Methodology for every benchmark ships as a public YAML in the repository and every measurement is reproducible from open-source harnesses. Numbers are computed by code, not by editors. Corrections are received via GitHub issues, reviewed publicly, and versioned in the harness commit history.",
+  "conflict_of_interest_disclosure": "OpenChainBench is funded by Mobula for operating cost. Mobula is measured on OpenChainBench alongside its direct competitors under identical methodology. This disclosure is repeated on every relevant page and at openchainbench.com/partners.",
+  "data_license": "CC-BY-4.0",
+  "code_license": "MIT",
+  "repository": "https://github.com/ChainBench/OpenChainBench",
+  "api_endpoints": {
+    "citable_json": "https://openchainbench.com/api/citable",
+    "llm_context_markdown": "https://openchainbench.com/api/llm-context",
+    "openapi_spec": "https://openchainbench.com/api/openapi.json",
+    "mcp_streamable_http": "https://openchainbench.com/api/mcp/mcp",
+    "llms_txt": "https://openchainbench.com/llms.txt",
+    "llms_full_txt": "https://openchainbench.com/llms-full.txt"
+  },
+  "primary_topics": [
+    "crypto infrastructure benchmarks",
+    "RPC latency",
+    "aggregator freshness",
+    "bridge fees",
+    "L2 finality",
+    "perp DEX fees",
+    "prediction market resolution",
+    "Hyperliquid frontends"
+  ]
+}

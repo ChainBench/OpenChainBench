@@ -1,0 +1,41 @@
+slug: polymarket-vs-kalshi-resolution-speed
+question: "Polymarket vs Kalshi, which resolves prediction markets faster?"
+short_answer: |
+  {{best_name}} currently resolves faster on the OpenChainBench harness at {{best_p50}} median resolution delay (24h), measured directly onchain for Polymarket and via official settlement events for Kalshi across sports, politics and crypto market categories.
+
+benchmark: polymarket-resolution-delay
+
+intro: |
+  Prediction market comparison articles publish rack rate resolution times ("Polymarket resolves in minutes") without measuring the tail. In practice, resolution speed depends on the venue's oracle stack, the category of the market and the dispute window. Polymarket runs on UMA's optimistic oracle with a variable liveness window; Kalshi settles through a CFTC-registered exchange oracle with fixed settlement rails. This page answers the head-to-head every prediction market trader eventually cares about at payout time: on the same market outcome trigger, from event confirmation to onchain payout on Polymarket or to account credit on Kalshi, which venue is faster and by how much. OpenChainBench measures both venues from their own settlement events, breaks out sports, politics and crypto categories separately, and publishes the ranked distribution live.
+
+methodology: |
+  For Polymarket the harness reads onchain events on Polygon: outcome proposal via UMA's OptimisticOracleV2, liveness window open, dispute or no-dispute, and payout claim. Resolution delay is the median duration from ProposePrice to onchain payout availability, computed per market category over a 24h rolling window. For Kalshi the harness reads the exchange's settlement events from Kalshi's official API: market close, settlement announcement, and account credit availability. Resolution delay is the median duration from settlement announcement to account credit. Both venues publish their own event timestamps as ground truth; the harness does not rely on secondary indexers. Categories are tagged by market metadata (sports, politics, crypto) so the comparison is category-honest.
+
+limitations:
+  - "Two different settlement models. Polymarket is fully onchain with a dispute window; Kalshi is offchain with fixed exchange rails. The comparison measures the user-facing latency on each venue, not the oracle security models, which are architecturally distinct."
+  - "Category matters more than venue on this metric. Sports resolve fast on both venues; politics and edge-case market categories take materially longer on Polymarket because the UMA liveness window is proportional to stakes. The head-to-head number is the aggregate; the per-category breakdown shows where the winner actually wins."
+  - "One-in-five long tail. On both venues, roughly one in five markets takes materially longer than the median for reasons that are venue-specific (Polymarket: contested UMA proposals; Kalshi: exchange-side settlement processes). The median under-reports the tail; the p90 column tells the honest story."
+  - "Payout availability, not payout claim. This measures when funds become claimable on Polymarket or credited on Kalshi. Users who do not claim promptly on Polymarket have to pay gas at the moment they claim; that cost is not part of the resolution delay figure."
+
+faq:
+  - q: "Polymarket vs Kalshi, which resolves faster right now?"
+    a: "{{best_name}} leads at {{best_p50}} median resolution delay (24h). The per-category breakdown at the top of the bench page shows the venue that wins on sports, politics and crypto separately, which is the honest way to answer a question that depends heavily on category."
+  - q: "Why is Polymarket resolution slower on politics than sports?"
+    a: "Polymarket runs on UMA's optimistic oracle. The liveness window (time between outcome proposal and dispute deadline) is proportional to stakes, and politics markets have both larger stakes and higher dispute probability than clean sports outcomes. The result is a category-specific delay that sports mostly avoid."
+  - q: "Is Kalshi always faster than Polymarket?"
+    a: "On aggregate median, usually yes for sports and equally-fast for crypto price outcomes. On politics and long-tail edge markets Polymarket sometimes wins because its UMA proposal-and-verify cycle can close before Kalshi's exchange-side settlement bureaucracy. The bench measures both and lets each win where it actually wins."
+  - q: "How does OpenChainBench measure Polymarket resolution when the API is sometimes misleading?"
+    a: "By reading UMA's OptimisticOracleV2 events directly on Polygon rather than relying on Polymarket's API. The onchain events are the ground truth for when a market becomes resolvable and when payout is claimable. This measurement approach fixes the API drift issue that affects other Polymarket dashboards."
+  - q: "How does Kalshi settlement work compared to Polymarket?"
+    a: "Kalshi is a CFTC-registered exchange with fixed settlement rails: market close, settlement committee reviews, credit issued. The whole cycle is offchain and fixed per market type. Polymarket is fully onchain with a variable-length dispute window; the same outcome can resolve in minutes on a clean market or hours on a contested one. Different models, different failure modes."
+  - q: "Does this include Polymarket's UMA disputes?"
+    a: "Yes. The median resolution delay includes disputed markets in the denominator. Disputes extend the liveness window and materially slow resolution; treating them as separate would misrepresent the user-facing latency. The p90 column captures the long tail where disputes dominate."
+
+related:
+  - which-prediction-market-data-api-is-the-freshest
+  - which-prediction-market-has-the-strictest-rate-limits
+  - which-hyperliquid-frontend-has-the-most-builder-revenue
+
+seo_title: "Polymarket vs Kalshi resolution speed 2026 live"
+seo_description: "{{best_name}} leads at {{best_p50}} median resolution delay (24h) on the OpenChainBench prediction market resolution benchmark. Polymarket and Kalshi ranked live across sports, politics, crypto."
+status: live

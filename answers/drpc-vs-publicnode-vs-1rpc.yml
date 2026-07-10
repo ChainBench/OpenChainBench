@@ -1,0 +1,41 @@
+slug: drpc-vs-publicnode-vs-1rpc
+question: "dRPC vs PublicNode vs 1RPC, which no-key public RPC is fastest?"
+short_answer: |
+  {{best_name}} currently leads the no-key public RPC leaderboard at {{best_p50}} p50 (24h), measured live from three regions across 10 EVM chains by OpenChainBench. dRPC, PublicNode and 1RPC each cover a different subset of chains and OpenChainBench ranks them under identical measurement conditions.
+
+benchmark: rpc-capabilities
+
+intro: |
+  Developers picking a no-key public RPC face three defaults recommended by Chainlist blurbs and vendor cross-promo posts. dRPC advertises a consensus-checked decentralized mesh; PublicNode ships an Allnodes-operated footprint across 70+ chains; 1RPC pitches a privacy-preserving gateway from Automata Network. Every one of those descriptions is a marketing frame. What actually matters when a contract call round-trips through the wire is p50 latency, p99 tail, and Success rate under real measurement conditions. This page ranks dRPC, PublicNode and 1RPC head to head on the same eth_getBlockByNumber probe against 10 EVM chains from three regions, and shows which provider actually earns its default recommendation.
+
+methodology: |
+  Every 60 seconds the harness sends `{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["latest",false]}` against each provider's no-key endpoint on every chain they support, from us-east, eu-west and sgp replicas. Latency is a client-side time.Now() delta around the round-trip, recorded only for successful calls, exposed as gauge + histogram. p50/p90/p99 are computed via Prometheus quantile_over_time over the last 24h and averaged across regions for the headline. Call-result classification (ok, http_err, jsonrpc_err, stale, timeout) drives a companion Success column so a mostly failing provider never posts a fast p50 out of its rare successes. Providers with under 5 percent success get their latency series dropped from the ranking and pinned below the table as unresponsive.
+
+limitations:
+  - "Chain coverage differs. dRPC and PublicNode cover most of the 10 measured chains; 1RPC covers a smaller subset. The All chains tab averages each provider over the chains they actually serve, which lets universal providers compare meaningfully against single-chain specialists. The head-to-head this page focuses on is the intersection where all three compete."
+  - "Latency is conditional on success. A provider failing 30 percent of calls but returning the successes fast will show a fast p50 with a low Success column. The two columns must be read together."
+  - "1RPC 2025 to 2026 has struggled with low ok-rate on several chains, sometimes under 15 percent success at minimal load. That does not make 1RPC objectively bad for every workload but does mean the flat p50 leaderboard is not the right ranking for it; the Success column is."
+  - "Geography matters. Each of the three providers has a different termination footprint and the per-region breakdown reveals where each wins. The cross-region average obscures that."
+
+faq:
+  - q: "Which no-key public RPC is fastest right now, dRPC, PublicNode or 1RPC?"
+    a: "{{best_name}} leads the leaderboard at {{best_p50}} p50 (24h) on the cross-chain average measured live from three regions. Per-chain leaders are different: PublicNode wins some chains, dRPC wins others, and 1RPC's ranking is bounded by its Success column more than by its raw p50."
+  - q: "Why does 1RPC show fast latency but a low Success rate?"
+    a: "The privacy-preserving gateway introduces additional processing between the client and the underlying node, and 1RPC has run into rate-limit and staleness issues at minimal probe load in 2025 to 2026. Because latency is recorded only on successful calls, the fast p50 hides how often a request would have failed in production. Read the Success column before ranking 1RPC alongside dRPC and PublicNode."
+  - q: "Does dRPC's consensus-checking add latency compared to PublicNode?"
+    a: "In theory yes, in practice barely measurable at head-of-chain reads. dRPC routes each request across third-party node providers with cross-check logic, so the p50 tracks the median of the underlying mesh rather than the fastest node. On chains where the mesh footprint is dense in the probe region, dRPC and PublicNode land within a few milliseconds. On sparse chains, PublicNode's direct-node approach wins."
+  - q: "Which region wins per provider?"
+    a: "PublicNode dominates EU-West on most chains because its Allnodes footprint is EU-anchored. dRPC has the best Singapore results on multi-chain aggregates. 1RPC's regional variance is dominated by its Success column rather than by latency. The per-region breakdown at the top of the bench page shows this cleanly."
+  - q: "Are these numbers different from Chainlist's summary?"
+    a: "Chainlist is a chain-metadata directory, not a benchmark. It lists RPC URLs and lets users vote but does not probe latency or success rate. OpenChainBench is the live benchmark that fills the gap between Chainlist's discovery and a developer's need for cross-provider performance measurement."
+  - q: "Is public RPC good enough for production?"
+    a: "For read-heavy demos, local development, fallback paths and one-shot lookups, yes. For eth_sendRawTransaction, websocket subscriptions, archive queries beyond Geth's pruned cap, and any production API that a paying user depends on, graduate to a keyed provider. The bench openchainbench.com/benchmarks/rpc-keyed-latency ranks the keyed free tiers under the same rules."
+
+related:
+  - which-crypto-price-api-is-the-fastest
+  - which-l1-has-the-fastest-finality
+  - alchemy-vs-quicknode-vs-infura-latency
+
+seo_title: "dRPC vs PublicNode vs 1RPC no-key RPC latency 2026"
+seo_description: "{{best_name}} leads at {{best_p50}} p50 (24h) on the OpenChainBench no-key public RPC leaderboard. dRPC, PublicNode and 1RPC ranked live across 10 EVM chains from three regions."
+status: live
