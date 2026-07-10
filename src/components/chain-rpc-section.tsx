@@ -119,12 +119,15 @@ function LeaderCard({
       >
         Fastest · 24h p50
       </p>
-      <div className="mt-2 flex items-center gap-2 min-w-0">
+      <Link
+        href={`/products/${best.provider}`}
+        className="mt-2 flex items-center gap-2 min-w-0 group"
+      >
         <ProviderLogo slug={best.provider} name={best.providerName} size={20} />
-        <span className="font-medium text-ink text-sm truncate">
+        <span className="font-medium text-ink text-sm truncate group-hover:underline underline-offset-2">
           {best.providerName}
         </span>
-      </div>
+      </Link>
       <p className="mt-1 text-2xl font-semibold text-ink tabular-nums leading-none">
         {fmtMs(best.p50Ms)}
       </p>
@@ -156,16 +159,19 @@ function RegionCard({
       </p>
       {best ? (
         <>
-          <div className="mt-2 flex items-center gap-2 min-w-0">
+          <Link
+            href={`/products/${best.provider}`}
+            className="mt-2 flex items-center gap-2 min-w-0 group"
+          >
             <ProviderLogo
               slug={best.provider}
               name={best.providerName}
               size={20}
             />
-            <span className="font-medium text-ink text-sm truncate">
+            <span className="font-medium text-ink text-sm truncate group-hover:underline underline-offset-2">
               {best.providerName}
             </span>
-          </div>
+          </Link>
           <p className="mt-1 text-xl font-semibold text-ink-soft tabular-nums leading-none">
             {fmtMs(best.p50Ms)}
           </p>
