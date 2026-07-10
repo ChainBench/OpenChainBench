@@ -210,7 +210,7 @@ const RAW: Record<string, string> = {
   // ─── Perp funding venues (bench № 036) ───
   bybit: "/logos/bybit.jpg",
   okx: "/logos/okx.jpg",
-  paradex: "/logos/paradex.svg",
+  paradex: "/logos/paradex.jpg",
   aster: "/logos/aster.svg",
 
   // ─── Perp funding stability cohort additions (bench № 043) ───
