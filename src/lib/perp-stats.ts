@@ -112,7 +112,7 @@ function promUrl(): string | null {
  *  Bumped any time the PerpCohortSummary shape changes so a stale-shape
  *  blob from a previous deploy can never deserialize into a misaligned
  *  payload. The cohort-snapshot module appends its own `:v1` suffix. */
-const PERP_COHORT_KEY = "perp-cohort";
+export const PERP_COHORT_KEY = "perp-cohort";
 
 /**
  * Fetch the cohort in one Promise.all fan out. Returns null when Prom
