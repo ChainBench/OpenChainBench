@@ -102,7 +102,7 @@ function promUrl(): string | null {
  *  worker after every tierA sweep. Bump the suffix if the summary shape
  *  changes so a stale-shape blob can never deserialize into a misaligned
  *  payload. The cohort-snapshot module appends its own `:v1`. */
-const PM_HUB_KEY = "pm-hub";
+export const PM_HUB_KEY = "pm-hub";
 
 /**
  * Fetch the venue + data feed cohort in one Promise.all fan out. Returns
