@@ -43,7 +43,8 @@ import {
   cohortSnapshotConfigured,
   writeCohortSnapshot,
 } from "@/lib/cohort-snapshot";
-import { fetchPerpCohortFresh } from "@/lib/perp-stats";
+import { fetchPerpCohortFresh,
+  fetchPerpByAssetMatrixFresh } from "@/lib/perp-stats";
 import {
   fetchHlBuilderStatsFresh,
   fetchHlCohortFresh,
@@ -369,6 +370,7 @@ async function sweep(iteration: number): Promise<void> {
       build: () => Promise<unknown>;
     }> = [
       { key: "perp-cohort", build: () => fetchPerpCohortFresh() },
+      { key: "perp-by-asset", build: () => fetchPerpByAssetMatrixFresh() },
       { key: "hl-frontends", build: () => Promise.resolve(hlCohort) },
       { key: "hl-hip3", build: () => fetchHlHip3CohortFresh() },
       { key: "hl-history", build: () => fetchHlHistoryFresh() },
