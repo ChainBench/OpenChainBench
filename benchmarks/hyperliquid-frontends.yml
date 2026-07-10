@@ -1245,9 +1245,9 @@ providers:
       series: hl_frontend_fees_usd_24h_v2{builder="topdog"}
 
   - slug: liquid8
-    name: Liquid8
-    tag: Hyperliquid builder code, USD revenue captured over rolling 24h window
-    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Liquid8's builder address."
+    name: Pocket Protector
+    tag: Telegram social trading bot, acquired by dYdX in 2025, inactive on Hyperliquid
+    formula: "USD builder fees collected over the rolling 24h window, summed across every attributed fill on the local hl-node stream for Pocket Protector's builder address (ref code LIQUID8)."
     queries:
       p50: hl_frontend_fees_usd_24h_v2{builder="liquid8"}
       p90: hl_frontend_volume_usd_24h_v2{builder="liquid8"}
