@@ -118,6 +118,72 @@ export type BenchDatasetInput = {
   measurementTechnique?: string;
 };
 
+/** Inputs for the per-bench StatisticalReport companion node. Wrapping
+ *  the single-leader claim as `StatisticalReport` + inline `Observation`
+ *  is the shape Google Dataset Search and Perplexity's grounding pipe
+ *  extract when they need "who currently leads X" as a structured fact,
+ *  distinct from the broader `Dataset` node that catalogs the collection
+ *  itself. Emit-nothing when the bench has no defensible leader (draft,
+ *  insufficient, awaiting first run) so we never publish a
+ *  StatisticalReport with a fabricated observation.
+ */
+export type BenchStatReportInput = {
+  slug: string;
+  benchTitle: string;
+  metric: string;
+  metricUnit: string;
+  leaderName: string;
+  leaderValue: number;
+  /** ISO 8601 interval, e.g. `2026-04-28T13:37:44Z/2026-07-10T13:59:44Z`. */
+  temporalCoverage: string;
+  /** ISO instant of the last successful scrape. */
+  observationDate: string;
+  url: string;
+  /** Human-readable one-sentence description of how the metric is
+   *  measured. Kept short so Rich Results snapshots don't drop it. */
+  measurementTechnique: string;
+  /** The canonical grounding-trace sentence (from `groundingTraceLine`)
+   *  so the same wording surfaces in the visible <p>, in the JSON-LD
+   *  description, and in /api/llm-context. */
+  description: string;
+};
+
+/**
+ * Build a per-bench StatisticalReport JSON-LD node. Companion to
+ * `buildBenchDatasetJsonLd`: the Dataset describes the collection, the
+ * StatisticalReport describes the single-leader finding published on
+ * this page today. Emitting both lets Perplexity, Gemini and Claude
+ * ground on the specific fact ("Mobula leads at 0.6 s") while still
+ * discovering the underlying dataset for methodology and download links.
+ */
+export function buildBenchStatReportJsonLd(
+  input: BenchStatReportInput,
+): Record<string, unknown> {
+  return {
+    "@type": "StatisticalReport",
+    "@id": `${input.url}#report`,
+    name: input.benchTitle,
+    description: input.description,
+    url: input.url,
+    about: { "@type": "Thing", name: input.metric },
+    measurementTechnique: input.measurementTechnique,
+    temporalCoverage: input.temporalCoverage,
+    creator: { "@id": `${SITE.url}/#org` },
+    publisher: { "@id": `${SITE.url}/#org` },
+    isBasedOn: { "@id": `${input.url}#dataset` },
+    license: DATASET_LICENSE,
+    isAccessibleForFree: true,
+    mainEntity: {
+      "@type": "Observation",
+      observationDate: input.observationDate,
+      measuredProperty: input.metric,
+      measuredValue: input.leaderValue,
+      unitText: input.metricUnit,
+      observedNode: { "@type": "Thing", name: input.leaderName },
+    },
+  };
+}
+
 /**
  * Build a per-bench Dataset JSON-LD object. Returns the bare node so the
  * call site can wrap it in an `@graph` alongside other types
