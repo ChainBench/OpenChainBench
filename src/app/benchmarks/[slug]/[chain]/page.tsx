@@ -276,7 +276,7 @@ function buildKeyFacts(data: ChainPageData): string {
 function pageTitle(data: ChainPageData): string {
   const b = data.benchmark;
   if (data.shape === "row") {
-    return data.result.ms.p50 > 0
+    return data.result.ms.p50 !== 0
       ? `${data.explainer.h2}: ${fmtUnit(data.result.ms.p50, b.unit)}`
       : data.explainer.h2;
   }
