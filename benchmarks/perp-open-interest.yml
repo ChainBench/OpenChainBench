@@ -99,6 +99,19 @@ providers:
       sample_size: count_over_time(perp_venue_oi_usd{venue="hyperliquid"}[24h])
       series: perp_venue_oi_usd{venue="hyperliquid"}
 
+  - slug: polymarket
+    name: Polymarket
+    tag: Polygon perps by Polymarket, launched 2026-07, public info API
+    formula: "open_interest (base units) times mark_price from the Polymarket perps tickers endpoint, summed across all listed instruments in USD; headline is the 24h time average."
+    queries:
+      p50: avg_over_time(perp_venue_oi_usd{venue="polymarket"}[24h])
+      p90: quantile_over_time(0.90, perp_venue_oi_usd{venue="polymarket"}[24h])
+      p99: quantile_over_time(0.99, perp_venue_oi_usd{venue="polymarket"}[24h])
+      mean: avg_over_time(perp_venue_oi_usd{venue="polymarket"}[24h])
+      success: avg_over_time(perp_venue_health{venue="polymarket"}[24h])
+      sample_size: count_over_time(perp_venue_oi_usd{venue="polymarket"}[24h])
+      series: perp_venue_oi_usd{venue="polymarket"}
+
   - slug: aster
     name: Aster
     tag: BNB Chain perps DEX, Binance-compatible API

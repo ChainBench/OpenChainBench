@@ -126,6 +126,19 @@ dimensions:
 #   perp_fees_tier_skipped_total{venue, chain, notional}  counter (fetched book too thin to fill the tier, sample skipped)
 
 providers:
+  - slug: polymarket
+    name: Polymarket
+    tag: Polygon perps by Polymarket, 4 bps base taker tier
+    formula: "Average over 24h of (base-tier taker rate from the Polymarket perps fees endpoint + half-spread plus impact from the book endpoint asks walked for $1000 of buy notional in the selected asset), in bps."
+    queries:
+      p50: avg_over_time(perp_fees_all_in_bps{venue="polymarket"}[24h])
+      p90: quantile_over_time(0.90, perp_fees_all_in_bps{venue="polymarket"}[24h])
+      p99: quantile_over_time(0.99, perp_fees_all_in_bps{venue="polymarket"}[24h])
+      mean: avg_over_time(perp_fees_all_in_bps{venue="polymarket"}[24h])
+      success: avg_over_time(perp_fees_health{venue="polymarket"}[24h])
+      sample_size: count_over_time(perp_fees_all_in_bps{venue="polymarket"}[24h])
+      series: perp_fees_all_in_bps{venue="polymarket"}
+
   - slug: lighter
     name: Lighter
     tag: zk-rollup, zero taker fee
