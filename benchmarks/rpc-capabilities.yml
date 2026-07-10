@@ -413,29 +413,6 @@ providers:
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="lava", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="lava", region="sgp"}[1h])
 
-  - slug: merkle
-    name: Blink
-    tag: Base + BSC public no-key gateway, rebranded from Merkle to Blink Labs in 2026 (Ethereum hit by Cloudflare 20-min lockout, excluded)
-    formula: "Mean over Base + BSC and 3 regions of per cell 24h p50 round-trip latency (ms) for `eth_getBlockByNumber` sent every 60s to Merkle's no-key gateway. Successful calls only; failures show in the Success column."
-    queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="merkle"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="merkle"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="merkle"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="merkle"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="merkle"}) / sum(ocb:rpc_call:rate_24h{provider="merkle"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="merkle"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="merkle"}[1h]))
-      regions:
-        - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="merkle", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="merkle", region="us-east"}[1h])
-        - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="merkle", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="merkle", region="eu-west"}[1h])
-        - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="merkle", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="merkle", region="sgp"}[1h])
-
   - slug: arbitrum-official
     name: Arbitrum
     tag: Arbitrum Foundation public RPC, Arbitrum One only
