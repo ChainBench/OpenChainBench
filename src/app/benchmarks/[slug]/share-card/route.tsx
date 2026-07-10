@@ -23,7 +23,7 @@ function sortByP50(b: Benchmark): ProviderResult[] {
         !!r &&
         !!r.ms &&
         Number.isFinite(r.ms.p50) &&
-        r.ms.p50 > 0,
+        r.ms.p50 !== 0,
     )
     .sort(
       b.higherIsBetter
@@ -1238,7 +1238,7 @@ async function renderCompare(
   const bRank = sorted.findIndex((r) => r.slug === b.slug) + 1;
 
   const delta = b.ms.p50 - a.ms.p50;
-  const deltaPct = a.ms.p50 > 0 ? (delta / a.ms.p50) * 100 : 0;
+  const deltaPct = a.ms.p50 !== 0 ? (delta / a.ms.p50) * 100 : 0;
 
   return new ImageResponse(
     (
