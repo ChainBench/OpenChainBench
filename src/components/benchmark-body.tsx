@@ -720,7 +720,7 @@ export function BenchmarkBody({
                     return tabPanels.length > 0 ? (
                       <MetricViewTabs
                         panels={tabPanels}
-                        mainLabel={benchmark.metric}
+                        mainLabel={benchmark.panelMainLabel ?? benchmark.metric}
                         activeId={activePanelId}
                         onSelect={setActivePanelId}
                       />
@@ -767,7 +767,7 @@ export function BenchmarkBody({
                     return tabPanels.length > 0 ? (
                       <MetricViewTabs
                         panels={tabPanels}
-                        mainLabel={benchmark.metric}
+                        mainLabel={benchmark.panelMainLabel ?? benchmark.metric}
                         activeId={activePanelId}
                         onSelect={setActivePanelId}
                       />
