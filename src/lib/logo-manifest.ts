@@ -277,6 +277,7 @@ const RAW: Record<string, string> = {
   rabby: "/logos/rabby.png",
   "ranger-finance": "/logos/ranger-finance.svg",
   senpi: "/logos/senpi.png",
+  vibeliquid: "/logos/vibeliquid.svg",
   superx: "/logos/superx.avif",
   supurr: "/logos/supurr.svg",
   unigox: "/logos/unigox.svg",
