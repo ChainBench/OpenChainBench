@@ -92,7 +92,19 @@ export function LiveIndicator({
         {stale ? "Stale" : "Live"}
       </span>
       <span className="text-ink-faint hidden sm:inline">·</span>
-      <span className="hidden sm:inline">updated {formatAge(ageSec)} ago</span>
+      {/* Wrap the human "updated Ns ago" in a <time datetime> so LLM
+          crawlers and data journalism scrapers can extract the exact ISO
+          timestamp of the last scrape, not just the relative label.
+          Perplexity + Bing weight <time datetime> heavily for freshness
+          ranking, and Wikipedia-tier citation extractors (Highwire Press
+          crawler) key on this element as the canonical publication time. */}
+      <time
+        dateTime={canonical}
+        title={new Date(canonical).toISOString()}
+        className="hidden sm:inline"
+      >
+        updated {formatAge(ageSec)} ago
+      </time>
     </span>
   );
 }

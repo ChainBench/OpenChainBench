@@ -308,6 +308,8 @@ const RAW: Record<string, string> = {
   flowbot: "/logos/flowbot.jpg",
   "nautilus-trader": "/logos/nautilus-trader.png",
   blink: "/logos/blink.png",
+  blinklabs: "/logos/blinklabs.svg",
+  mevblocker: "/logos/mevblocker.svg",
 
   // ─── Hyperliquid frontends registry expansion (60 → 66, 2026-06-28) ───
   // Identified via on-chain HL referral codes + brand cross-reference

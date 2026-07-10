@@ -1,0 +1,41 @@
+slug: best-rpc-for-indexer
+question: "Which RPC is best for indexers and high-throughput read workloads in 2026?"
+short_answer: |
+  {{best_name}} currently leads the free-tier keyed RPC leaderboard at {{best_p50}} p50 latency (24h avg) on eth_getBlockByNumber probes, and pairs it with archive-depth support across a wide chain footprint, measured live by OpenChainBench from three regions.
+
+benchmark: rpc-capabilities
+
+intro: |
+  Indexer workloads have a different failure mode from user-facing dApps. A subgraph or a custom indexer runs continuous eth_getLogs and eth_getBlockReceipts against a chain's history, hits archive-depth constraints on deep queries, and lives or dies by p99 stability rather than p50 headline latency. This page answers the specific question every indexer developer eventually asks: which RPC provider is actually built for high-read workloads, factoring in latency tail, method availability, archive depth and success rate. OpenChainBench probes the multi-chain footprint every 60 seconds and publishes both the flat latency leaderboard and the archive-depth matrix (300 blocks, 7200 blocks, 216k blocks, 1.3M blocks, 5M blocks) side by side so an indexer can pick on the axis that matters for its query pattern.
+
+methodology: |
+  The head-latency leaderboard is the same eth_getBlockByNumber probe every 60 seconds from three Railway replicas. The archive-depth matrix is a separate probe running every 5 minutes: eth_getBalance at (head, depth) for depth in {300, 7200, 216000, 1300000, 5000000}. rpc_archive_depth_supported{provider, chain, depth} is 1 when the response is non-pruned, 0 otherwise. The depths cover Geth's default pruned cap (5760 blocks), 1 month, 6 months, and full genesis-era archive. Success rate is computed as ok-rate over total-rate on the same window; providers under 5 percent success drop from the ranking and get pinned as unresponsive.
+
+limitations:
+  - "eth_getLogs is not the head-of-chain probe used here. This ranking uses eth_getBlockByNumber for the latency axis and eth_getBalance for the archive axis. Real indexer workloads issue eth_getLogs with topic filters and can exercise different code paths inside a provider's stack. The latency and archive leaderboards are correlated with but not identical to eth_getLogs performance."
+  - "Free-tier keyed and no-key. This ranks the two tiers a small-to-medium indexer would pick from. Paid enterprise plans get more capacity and priority queues; they are outside the free-and-keyed scope of this bench."
+  - "Archive depth is a binary support signal, not a latency figure. A provider that returns pruned responses at 5M block depth appears with a 0 in the matrix; a provider that returns non-pruned data with a 6-second latency also appears with a 1. Indexers doing deep historical scans should read the matrix and the sibling archive-latency notes together."
+  - "Chain coverage varies. Not every provider supports every chain. The multi-chain average rewards universal providers; the per-chain tab exposes the chain-specific leader."
+
+faq:
+  - q: "Which RPC provider is best for a subgraph or custom indexer?"
+    a: "{{best_name}} leads the head-latency leaderboard at {{best_p50}} p50 (24h). For indexers the ranking that matters is the intersection of the latency leaderboard and the archive-depth matrix: a provider that wins latency but fails at 5M depth is not indexer-viable. The bench page surfaces both, and the head-to-head leader among indexer-viable providers is the answer."
+  - q: "Why does eth_getBlockByNumber matter for indexers when the real workload is eth_getLogs?"
+    a: "Because eth_getBlockByNumber measures the head-of-chain read path that every provider must implement, it is the fair cross-vendor probe. Providers that misbehave on head reads reliably misbehave on eth_getLogs at higher magnitude. Providers that keep head reads tight and consistent tend to keep eth_getLogs tight and consistent too. The latency leaderboard is a lower bound on indexer-workload latency, and a provider that fails the lower bound is not worth benchmarking on the harder workload."
+  - q: "Which provider supports full archive access without a paid plan?"
+    a: "The archive-depth matrix shows exactly which providers return non-pruned responses at 5M blocks on which chain, without a paid plan. Most no-key public RPCs prune at Geth's default cap around 7200 blocks and stop there. Keyed free tiers vary: some grant archive access on their signup tier, some gate it behind paid plans. The matrix answers this per provider per chain rather than as a marketing claim."
+  - q: "Are there RPCs specifically designed for indexing?"
+    a: "Indexer-adjacent products like The Graph Node's chain-specific gateways, Chainstack Global Nodes, and Alchemy Supernode advertise indexer-tuned SLAs. On the free-and-keyed tier this bench measures, those products are represented by their base RPC endpoints. Paid enterprise indexer-specific plans are outside the scope of this leaderboard because their SLAs are not publicly probeable without contract."
+  - q: "How does dRPC compare on indexer workloads?"
+    a: "dRPC's decentralized mesh routes each request across underlying node providers with consensus checks. That model preserves latency on head reads (see the leaderboard) but adds one layer of orchestration for archive reads. For an indexer's head-of-chain workload dRPC competes on the same axis as any keyed provider; for deep archive scans the per-chain archive-depth matrix is the honest signal."
+  - q: "How often is the leaderboard refreshed?"
+    a: "Every 60 seconds for head latency, every 5 minutes for the archive-depth matrix. The bench page reads 24h rolling windows so intraday spikes smooth out; longer-term shifts in provider capability show up within hours."
+
+related:
+  - alchemy-vs-quicknode-vs-infura-latency
+  - drpc-vs-publicnode-vs-1rpc
+  - which-crypto-price-api-is-the-fastest
+
+seo_title: "Best RPC for indexers 2026 live rankings"
+seo_description: "{{best_name}} leads at {{best_p50}} p50 latency (24h avg) on the OpenChainBench keyed and no-key RPC leaderboards, ranked live from three regions with archive-depth matrix."
+status: live
