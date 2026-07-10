@@ -11,6 +11,8 @@
 
 import { unstable_cache } from "next/cache";
 import { Prometheus } from "@/lib/prometheus";
+import { readCohortSnapshot } from "@/lib/cohort-snapshot";
+import { PERP_COHORT_KEY, type PerpCohortSummary } from "@/lib/perp-stats";
 
 export type PerpVenueKpis = {
   /** USD 24h traded volume. */
@@ -47,9 +49,46 @@ function perpFeesLabel(slug: string): string {
   return slug === "gmx-v2" ? "gmx" : slug;
 }
 
+/**
+ * Snapshot-first venue KPIs. The materialize worker writes the
+ * perp-cohort blob to KV every minute; the Vercel site has no
+ * PROMETHEUS_URL, so the blob is the only data source that works in
+ * prod. Returns null when the blob is missing, stale, or has no usable
+ * row for the venue, and the caller falls through to Prom.
+ */
+async function fetchPerpVenueKpisFromSnapshot(
+  slug: string,
+): Promise<PerpVenueKpis | null> {
+  const snap = await readCohortSnapshot<PerpCohortSummary>(PERP_COHORT_KEY);
+  const row = snap?.data?.venues?.find((v) => v.slug === slug);
+  if (!row) return null;
+
+  const kpis: PerpVenueKpis = {
+    volume24h: row.volume24h ?? null,
+    volume30d: row.volume30d ?? null,
+    openInterest: row.openInterest ?? null,
+    fees30d: row.fees30d ?? null,
+    activeMarkets: row.activeMarkets ?? null,
+    topMarketVolume24h: row.topMarketVolume24h ?? null,
+    health: row.health ?? null,
+    allInFeeBpsEth: row.allInFeeBpsEth ?? null,
+    funding24hBpsEth: row.funding24hBpsEth ?? null,
+  };
+
+  // A row with every field null means the harness has not published
+  // this venue yet; let the Prom fallback take a shot instead.
+  const hasData = Object.values(kpis).some((v) => v !== null);
+  return hasData ? kpis : null;
+}
+
 async function fetchPerpVenueKpisRaw(
   slug: string,
 ): Promise<PerpVenueKpis | null> {
+  const fromSnapshot = await fetchPerpVenueKpisFromSnapshot(slug);
+  if (fromSnapshot) return fromSnapshot;
+
+  // Fallback: direct Prom probes. Only works where PROMETHEUS_URL is
+  // set (the materialize worker context), never on the Vercel site.
   const url = promUrl();
   if (!url) return null;
   let prom: Prometheus;
@@ -112,7 +151,8 @@ async function fetchPerpVenueKpisRaw(
 
 const fetchPerpVenueKpisCached = unstable_cache(
   fetchPerpVenueKpisRaw,
-  ["perp-venue-kpis-v1"],
+  // v2: snapshot-first (perp-cohort blob) with Prom fallback.
+  ["perp-venue-kpis-v2"],
   { revalidate: 120, tags: ["perp-venue"] },
 );
 

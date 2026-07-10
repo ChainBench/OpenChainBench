@@ -28,6 +28,7 @@ import {
   PERP_PRODUCT_PILL_SLUGS,
 } from "@/lib/perp-venue-context";
 import { PerpVenueSection } from "@/components/perp-venue-section";
+import { VenueKpiToggle } from "@/components/venue-kpi-toggle";
 import { PmDataFeedSection } from "@/components/pm-data-feed-section";
 import { RpcProviderChainsSection } from "@/components/rpc-provider-chains-section";
 
@@ -540,16 +541,48 @@ export default async function ProviderPage({
 
       {hlStats && <HlBuilderDashboard stats={hlStats} name={p.name} />}
 
-      {pmContext?.kind === "venue" && (
-        <PmVenueSection
-          slug={pmContext.slug}
-          name={pmContext.name}
-          chainLabel={pmContext.chainLabel}
-          externalUrl={pmContext.externalUrl}
-          venueType={pmContext.venueType}
-          benchRows={pmContext.benchRows}
-        />
-      )}
+      {(() => {
+        // Cohort sections. When a product belongs to BOTH the PM venue
+        // cohort and the perp cohort, wrap the two sections in a pill
+        // toggle so both stay reachable on the same page. With a single
+        // cohort the section renders directly, no toggle bar.
+        const pmVenueSection =
+          pmContext?.kind === "venue" ? (
+            <PmVenueSection
+              slug={pmContext.slug}
+              name={pmContext.name}
+              chainLabel={pmContext.chainLabel}
+              externalUrl={pmContext.externalUrl}
+              venueType={pmContext.venueType}
+              benchRows={pmContext.benchRows}
+            />
+          ) : null;
+        const perpVenueSection = perpContext ? (
+          <PerpVenueSection
+            slug={perpContext.slug}
+            cohortSlug={perpContext.cohortSlug}
+            name={perpContext.name}
+            chainLabel={perpContext.chainLabel}
+            externalUrl={perpContext.externalUrl}
+            benchRows={perpContext.benchRows}
+          />
+        ) : null;
+        if (pmVenueSection && perpVenueSection) {
+          return (
+            <VenueKpiToggle
+              sections={[
+                {
+                  id: "pm",
+                  label: "Prediction markets",
+                  content: pmVenueSection,
+                },
+                { id: "perp", label: "Perpetuals", content: perpVenueSection },
+              ]}
+            />
+          );
+        }
+        return pmVenueSection ?? perpVenueSection;
+      })()}
       {pmContext?.kind === "feed" && (
         <PmDataFeedSection
           slug={pmContext.slug}
@@ -557,17 +590,6 @@ export default async function ProviderPage({
           logoSrc={pmContext.logoSrc}
           externalUrl={pmContext.externalUrl}
           benchRows={pmContext.benchRows}
-        />
-      )}
-
-      {perpContext && (
-        <PerpVenueSection
-          slug={perpContext.slug}
-          cohortSlug={perpContext.cohortSlug}
-          name={perpContext.name}
-          chainLabel={perpContext.chainLabel}
-          externalUrl={perpContext.externalUrl}
-          benchRows={perpContext.benchRows}
         />
       )}
 
