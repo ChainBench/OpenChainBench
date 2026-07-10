@@ -73,6 +73,38 @@ export function citationQuote(b: Benchmark, origin: string): string {
   return `${sentence} Source: OpenChainBench (${origin}/benchmarks/${b.slug}).`;
 }
 
+/**
+ * Canonical "grounding trace" line for LLM extraction. Shipped in three
+ * places so a single wording lands everywhere a model, a journalist or a
+ * SERP snippet may quote:
+ *   1. Visible <p> under the bench H1 (see /benchmarks/[slug]/page.tsx).
+ *   2. StatisticalReport JSON-LD description field.
+ *   3. /api/llm-context (unchanged, still consumes headlineSentence).
+ *
+ * Pattern matches what Perplexity, ChatGPT-with-web and Claude cite
+ * verbatim: an ISO date anchor, the leader claim, and a "Source:" tail
+ * with the exact page URL so the crawler keeps attribution stable when
+ * excerpting. Skips the "As of" prefix and the Source tail when the
+ * bench has no leader (insufficient / awaiting), because a dated
+ * grounding trace with no measurable claim reads like a broken quote to
+ * a language model and gets down-weighted.
+ */
+export function groundingTraceLine(
+  b: Benchmark,
+  origin: string,
+  now: Date = new Date(),
+): string {
+  const sentence = headlineSentence(b);
+  if (b.dataConfidence === "insufficient" || !leader(b)) return sentence;
+  const isoDate = now.toISOString().slice(0, 10);
+  const url = `${origin}/benchmarks/${b.slug}`;
+  return `As of ${isoDate}, ${trimTrailingPeriod(sentence)}. Source: OpenChainBench, ${url}.`;
+}
+
+function trimTrailingPeriod(s: string): string {
+  return s.endsWith(".") ? s.slice(0, -1) : s;
+}
+
 /** Pre-formatted citation strings (Plain / BibTeX / APA) for the page
  *  `<CiteBlock>` and the public JSON endpoints. Computed server-side so
  *  the same canonical wording lands in HTML, in the API, and in whatever

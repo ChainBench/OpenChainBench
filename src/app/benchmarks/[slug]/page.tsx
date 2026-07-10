@@ -18,12 +18,20 @@ import { ShareSection } from "@/components/share-section";
 import { ExportVideoSection } from "@/components/export-video-section";
 import { ReportSection } from "@/components/report-section";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
-import { headlineSentence, isInsufficient } from "@/lib/citation";
+import {
+  groundingTraceLine,
+  headlineSentence,
+  isInsufficient,
+  leader,
+} from "@/lib/citation";
 import { capDescription } from "@/lib/seo-text";
 import { getBenchCreatedAt } from "@/lib/seo/bench-dates";
 import { SITE } from "@/data/site";
 import { buildBreadcrumbJsonLd, buildFaqPageJsonLd, safeJsonLd } from "@/lib/jsonld";
-import { buildBenchDatasetJsonLd } from "@/lib/dataset-jsonld";
+import {
+  buildBenchDatasetJsonLd,
+  buildBenchStatReportJsonLd,
+} from "@/lib/dataset-jsonld";
 import { renderTemplate } from "@/lib/bench-template";
 import { canonicalChainSlug } from "@/lib/chain-aliases";
 import type { Benchmark } from "@/types/benchmark";
@@ -238,6 +246,17 @@ export default async function BenchmarkPage({
 
   const benchmarkUrl = `${SITE.url}/benchmarks/${benchmark.slug}`;
   const sentence = headlineSentence(benchmark);
+  // Canonical grounding-trace line, computed once so the visible <p>
+  // under H1, the StatisticalReport JSON-LD description and any future
+  // LLM-facing endpoint quote identical wording. Skips its "As of ...
+  // Source: ..." wrapper on insufficient / awaiting benches (returns the
+  // bare status sentence) to avoid publishing a dated grounding trace
+  // with no measurable claim.
+  const groundingLine = groundingTraceLine(benchmark, SITE.url);
+  // Leader is null on draft / awaiting / insufficient. When null we
+  // deliberately omit the StatisticalReport node from the @graph so we
+  // never emit a structured "Observation" with a fabricated value.
+  const currentLeader = leader(benchmark);
   // variableMeasured ships as an array so Google's Dataset validator
   // reports each statistical aggregate individually rather than as one
   // opaque string. Order matches what /api/stat/<slug> returns per
@@ -274,10 +293,33 @@ export default async function BenchmarkPage({
     creator: { "@id": `${SITE.url}/#org` },
     publisher: { "@id": `${SITE.url}/#org` },
   };
+  // StatisticalReport companion. Only emitted when we have a defensible
+  // leader so the shape never publishes an Observation with a fabricated
+  // measured value. temporalCoverage uses the ISO 8601 interval form:
+  // <first-seen>/<last-scrape>, matching what schema.org expects.
+  const statReportNode = currentLeader
+    ? buildBenchStatReportJsonLd({
+        slug: benchmark.slug,
+        benchTitle: benchmark.seoTitle ?? benchmark.title,
+        metric: benchmark.metric,
+        metricUnit: benchmark.unit,
+        leaderName: currentLeader.name,
+        leaderValue: currentLeader.value,
+        temporalCoverage: `${getBenchCreatedAt(benchmark.slug).toISOString()}/${benchmark.lastRunAt}`,
+        observationDate: benchmark.lastRunAt,
+        url: benchmarkUrl,
+        // methodology[0] is the harness cadence line, which reads as a
+        // compact "how we measure this" one-liner. Falls back to the
+        // metric label so the field is never empty.
+        measurementTechnique: benchmark.methodology[0] ?? benchmark.metric,
+        description: groundingLine,
+      })
+    : null;
   const jsonLd = {
     "@context": "https://schema.org",
     "@graph": [
       datasetNode,
+      ...(statReportNode ? [statReportNode] : []),
       {
         "@type": "TechArticle",
         "@id": `${benchmarkUrl}#article`,
@@ -392,6 +434,30 @@ export default async function BenchmarkPage({
       <p className="mt-4 max-w-3xl text-lg sm:text-xl text-ink-muted leading-snug break-words">
         {benchmark.subtitle}
       </p>
+
+      {/* Visible grounding-trace TL;DR. Renders the same canonical line
+          that ships in the StatisticalReport JSON-LD description and in
+          /api/llm-context, so a language model summarising the page
+          quotes identical wording whether it read the DOM, the schema
+          block or the LLM-facing API. Only rendered when the bench has
+          a defensible leader; on draft / insufficient / awaiting rows
+          we omit the block entirely (the dated "As of ..." wrapper
+          would otherwise read as broken quote to a summariser). The
+          `data-llm-canonical` attribute is a soft signal some model
+          agents use as a preferred extraction anchor when picking a
+          quotable span. */}
+      {currentLeader && (
+        <section
+          id="tldr"
+          data-llm-canonical="true"
+          className="mt-6 max-w-3xl rounded-lg border border-ink/10 bg-paper-soft/40 px-4 py-3"
+        >
+          <p className="text-[13px] text-ink-muted leading-relaxed">
+            <span className="font-medium text-ink">TL;DR.</span>{" "}
+            {groundingLine}
+          </p>
+        </section>
+      )}
 
       {/* Companion hub callout. A handful of benches have a curated
           landing page that sits next to (not in place of) the bench
