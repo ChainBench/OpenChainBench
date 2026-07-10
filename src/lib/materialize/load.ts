@@ -135,6 +135,7 @@ export function buildEditorial(
     status: spec.status,
     editorialStatus: spec.status,
     metric: spec.metric,
+    panelMainLabel: spec.panel_main_label,
     unit: spec.unit,
     higherIsBetter: spec.higher_is_better,
     abstract: spec.abstract,

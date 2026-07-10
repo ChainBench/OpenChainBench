@@ -254,6 +254,7 @@ export type Benchmark = {
    *  below the main table. Populated by the spec loader from
    *  `metric_panels` in the YAML. */
   metricPanels?: MetricPanel[];
+  panelMainLabel?: string;
   /** Optional per-bench relabeling of the ledger's aggregate columns.
    *  Declared by benches whose unit has no percentile semantics (the
    *  p50/p90/p99/mean slots are repurposed, e.g. USD revenue leaderboards)

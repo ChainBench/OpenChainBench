@@ -249,6 +249,7 @@ providers:
 # paneled (it duplicates the headline) and $10k reads within noise of
 # $1k on every venue, so the panels show the two sizes where the story
 # changes: $100k and $1M.
+panel_main_label: All-in at $1k
 metric_panels:
   - id: all_in_100k
     label: All-in at $100k
