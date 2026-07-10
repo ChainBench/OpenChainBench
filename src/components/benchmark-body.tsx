@@ -535,6 +535,23 @@ export function BenchmarkBody({
     computeFieldStats(viewBenchmark.results);
   const activePanel =
     benchmark.metricPanels?.find((p) => p.id === activePanelId) ?? null;
+  // Value views (ranked bars) swap each provider's headline p50 for the
+  // active panel's scalar so the size tabs work on the default chart,
+  // not only on the timeseries view. Providers the panel has no value
+  // for (book could not fill the tier) drop out of the ranking, which
+  // is the skipped-not-extrapolated rule made visible.
+  const panelViewBenchmark = useMemo(() => {
+    if (!activePanel) return viewBenchmark;
+    const vals = activePanel.values ?? {};
+    return {
+      ...viewBenchmark,
+      metric: activePanel.label,
+      unit: activePanel.unit ?? viewBenchmark.unit,
+      results: viewBenchmark.results
+        .filter((r) => vals[r.slug] != null && Number.isFinite(vals[r.slug]))
+        .map((r) => ({ ...r, ms: { ...r.ms, p50: vals[r.slug] } })),
+    };
+  }, [viewBenchmark, activePanel]);
 
   return (
     <>
@@ -695,8 +712,22 @@ export function BenchmarkBody({
                 />
               )}
               {view === "rankedBar" && (
+                <>
+                  {(() => {
+                    const tabPanels = (benchmark.metricPanels ?? []).filter(
+                      (p) => p.tab !== false,
+                    );
+                    return tabPanels.length > 0 ? (
+                      <MetricViewTabs
+                        panels={tabPanels}
+                        mainLabel={benchmark.metric}
+                        activeId={activePanelId}
+                        onSelect={setActivePanelId}
+                      />
+                    ) : null;
+                  })()}
                 <RankedBarChart
-                  benchmark={viewBenchmark}
+                  benchmark={panelViewBenchmark}
                   excluded={excluded}
                   onToggleExclude={toggleExclude}
                   onResetExcluded={resetExcluded}
@@ -704,6 +735,7 @@ export function BenchmarkBody({
                   topNControl={topNControl}
                   headerActions={<ViewSwitcher allowed={allowedViews} value={view} onChange={setView} />}
                 />
+                </>
               )}
               {view === "distribution" && (
                 <DistributionChart
