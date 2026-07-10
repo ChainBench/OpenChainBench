@@ -101,6 +101,10 @@ func fetchOne(v VenueConfig, cfg *Config) PerpSample {
 		return fetchGains(v, cfg.MobulaAPIKey)
 	case "polymarket":
 		return fetchPolymarket(v)
+	case "paradex":
+		return fetchParadex(v)
+	case "extended":
+		return fetchExtended(v)
 	default:
 		return PerpSample{Venue: v.Slug, Asset: v.Asset, Err: "unsupported_venue"}
 	}
