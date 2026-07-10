@@ -414,8 +414,8 @@ providers:
           series: avg_over_time(rpc_latency_milliseconds{provider="lava", region="sgp"}[1h])
 
   - slug: merkle
-    name: Merkle
-    tag: Base + BSC public no-key gateway (Ethereum hit by Cloudflare 20-min lockout, excluded)
+    name: Blink
+    tag: Base + BSC public no-key gateway, rebranded from Merkle to Blink Labs in 2026 (Ethereum hit by Cloudflare 20-min lockout, excluded)
     formula: "Mean over Base + BSC and 3 regions of per cell 24h p50 round-trip latency (ms) for `eth_getBlockByNumber` sent every 60s to Merkle's no-key gateway. Successful calls only; failures show in the Success column."
     queries:
       p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="merkle"})
