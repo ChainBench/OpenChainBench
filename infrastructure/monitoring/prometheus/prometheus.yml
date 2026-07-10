@@ -175,6 +175,18 @@ scrape_configs:
   # Chainstack, Ankr, Helius). Companion to rpc-capabilities: same
   # metric names + tier="keyed" label, picked up by the shared
   # ocb:rpc_latency_* recording rules with zero rule changes.
+  # MEV-protect wallet RPC probes (bench 074): Flashbots Protect,
+  # MEV Blocker, Blink. Same 3-region layout as rpc-keyed-latency.
+  - job_name: 'mev-protect-rpc'
+    honor_labels: true
+    static_configs:
+      - targets:
+        - 'mev-protect-us.railway.internal:2112'   # us-east
+        - 'mev-protect-eu.railway.internal:2112'   # eu-west
+        - 'mev-protect-sgp.railway.internal:2112'  # sgp
+        labels:
+          benchmark: mev-protect-rpc
+
   - job_name: 'rpc-keyed-latency'
     honor_labels: true
     static_configs:
