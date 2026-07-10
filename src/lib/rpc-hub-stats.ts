@@ -443,3 +443,21 @@ const fetchRpcHubCached = unstable_cache(
 export async function fetchRpcHub(): Promise<RpcHubSnapshot | null> {
   return fetchRpcHubCached();
 }
+
+/**
+ * True when the provider would produce at least one row in
+ * RpcProviderChainsSection: present in any chain's live providers[] or
+ * its unresponsive[] rows. Reads the same cached snapshot the section
+ * itself reads (fetchRpcHub is unstable_cache'd), so calling this from
+ * a page that also renders the section costs no extra roundtrip. Used
+ * to decide upfront whether the RPC domain gets a KPI pill.
+ */
+export async function hasRpcProviderData(slug: string): Promise<boolean> {
+  const snapshot = await fetchRpcHub();
+  if (!snapshot) return false;
+  return snapshot.chains.some(
+    (c) =>
+      c.providers.some((p) => p.provider === slug) ||
+      c.unresponsive?.some((u) => u.provider === slug),
+  );
+}
