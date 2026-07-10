@@ -35,7 +35,13 @@ var Registry = []Chain{
 	{Slug: "bnb", DefiLlama: "BSC", Mobula: "BNB Smart Chain (BEP20)", NativeSymbol: "BNB"},
 	{Slug: "avalanche", DefiLlama: "Avalanche", Mobula: "Avalanche C-Chain", NativeSymbol: "AVAX"},
 	{Slug: "sui", DefiLlama: "Sui", Mobula: "Sui", NativeSymbol: "SUI"},
-	{Slug: "ton", DefiLlama: "TON", Mobula: "TON", NativeSymbol: "TON"},
+	// Site canonical slug is "gram" since the Toncoin to Gram rename; the
+	// old "ton" label made the Prom selector miss and the KV blob stay null.
+	// Mobula still serves the asset under symbol TON: symbol GRAM resolves
+	// to an unrelated "GRAM Token" (~$24M mcap), verified live 2026-07-08.
+	// The stats endpoint still accepts blockchain=TON even though it is
+	// absent from /api/1/blockchains.
+	{Slug: "gram", DefiLlama: "TON", Mobula: "TON", NativeSymbol: "TON"},
 	{Slug: "stellar", DefiLlama: "Stellar", Mobula: "", NativeSymbol: "XLM"},
 	{Slug: "tron", DefiLlama: "Tron", Mobula: "TRON", NativeSymbol: "TRX"},
 	{Slug: "cardano", DefiLlama: "Cardano", Mobula: "", NativeSymbol: "ADA"},
@@ -52,4 +58,28 @@ var Registry = []Chain{
 	{Slug: "blast", DefiLlama: "Blast", Mobula: "Blast", NativeSymbol: "ETH"},
 	{Slug: "mantle", DefiLlama: "Mantle", Mobula: "Mantle", NativeSymbol: "MNT"},
 	{Slug: "taiko", DefiLlama: "Taiko", Mobula: "Taiko", NativeSymbol: "ETH"},
+	// Chains added to the site registry after the original harness config
+	// was written; they published all-null KV blobs until this batch.
+	// Every DefiLlama name below verified live against /v2/chains,
+	// /overview/dexs/<name> and /stablecoincharts/<name> on 2026-07-08.
+	// Mobula blockchain names verified against /api/1/blockchains; empty
+	// means Mobula does not index the chain yet (only the tokens-indexed
+	// gauge is lost, the KPI strip does not read it).
+	{Slug: "monad", DefiLlama: "Monad", Mobula: "", NativeSymbol: "MON"},
+	{Slug: "megaeth", DefiLlama: "MegaETH", Mobula: "MegaETH", NativeSymbol: "ETH"},
+	{Slug: "sonic", DefiLlama: "Sonic", Mobula: "Sonic", NativeSymbol: "S"},
+	// Gnosis gas is xDAI but the site strip labels the native token GNO,
+	// so we publish GNO to match what the page displays. Mobula indexes
+	// the chain under its legacy XDAI name.
+	{Slug: "gnosis", DefiLlama: "Gnosis", Mobula: "XDAI", NativeSymbol: "GNO"},
+	{Slug: "celo", DefiLlama: "Celo", Mobula: "Celo", NativeSymbol: "CELO"},
+	{Slug: "moonbeam", DefiLlama: "Moonbeam", Mobula: "Moonbeam", NativeSymbol: "GLMR"},
+	{Slug: "unichain", DefiLlama: "Unichain", Mobula: "", NativeSymbol: "ETH"},
+	{Slug: "berachain", DefiLlama: "Berachain", Mobula: "Berachain", NativeSymbol: "BERA"},
+	{Slug: "cronos", DefiLlama: "Cronos", Mobula: "Cronos", NativeSymbol: "CRO"},
+	// Fraxtal gas is frxETH, so we follow the same gas-token convention as
+	// the ETH rollups. Mobula symbol FRAX resolves to the legacy Frax
+	// stablecoin (~$1), the wrong asset for a native-token card.
+	{Slug: "fraxtal", DefiLlama: "Fraxtal", Mobula: "", NativeSymbol: "FRXETH"},
+	{Slug: "soneium", DefiLlama: "Soneium", Mobula: "", NativeSymbol: "ETH"},
 }
