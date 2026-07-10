@@ -22,6 +22,9 @@ import {
 import { HlBuilderDashboard } from "@/components/hl-builder-dashboard";
 import { RelatedProvidersSection } from "@/components/related-providers-section";
 import { getPmVenueContext } from "@/lib/pm-venue-context";
+import { fetchPmDataFeedKpis } from "@/lib/pm-venue-data";
+import { fetchPerpVenueKpis } from "@/lib/perp-venue-data";
+import { hasRpcProviderData } from "@/lib/rpc-hub-stats";
 import { PmVenueSection } from "@/components/pm-venue-section";
 import {
   getPerpVenueContext,
@@ -185,6 +188,26 @@ export default async function ProviderPage({
 
   // Perp DEX cohort dashboard. Same pattern as the PM context above.
   const perpContext = await getPerpVenueContext(p.slug);
+
+  // KPI-domain availability, resolved upfront so the pill bar knows
+  // every domain before rendering. A pill must never open onto an empty
+  // section, so each check mirrors the section's own hide-if-empty
+  // rule. The KPI fetchers are the same unstable_cache entries the
+  // sections read, so none of this costs an extra roundtrip:
+  //  - perp: PerpVenueSection nulls when no KPI feed AND no measured row
+  //  - PM feed: PmDataFeedSection, same rule
+  //  - RPC: hasRpcProviderData reads the cached rpc-hub snapshot and
+  //    matches RpcProviderChainsSection's own row filter
+  const perpHasData = perpContext
+    ? perpContext.benchRows.some((r) => r.value !== null && r.rank !== null) ||
+      (await fetchPerpVenueKpis(perpContext.cohortSlug)) !== null
+    : false;
+  const pmFeedHasData =
+    pmContext?.kind === "feed"
+      ? pmContext.benchRows.some((r) => r.value !== null && r.rank !== null) ||
+        (await fetchPmDataFeedKpis(pmContext.slug)) !== null
+      : false;
+  const hasRpcData = await hasRpcProviderData(p.slug);
 
   const sorted = [...p.appearances].sort((a, b) => {
     if (a.rank !== b.rank) return a.rank - b.rank;
@@ -539,59 +562,84 @@ export default async function ProviderPage({
         );
       })()}
 
-      {hlStats && <HlBuilderDashboard stats={hlStats} name={p.name} />}
-
       {(() => {
-        // Cohort sections. When a product belongs to BOTH the PM venue
-        // cohort and the perp cohort, wrap the two sections in a pill
-        // toggle so both stay reachable on the same page. With a single
-        // cohort the section renders directly, no toggle bar.
-        const pmVenueSection =
-          pmContext?.kind === "venue" ? (
-            <PmVenueSection
-              slug={pmContext.slug}
-              name={pmContext.name}
-              chainLabel={pmContext.chainLabel}
-              externalUrl={pmContext.externalUrl}
-              venueType={pmContext.venueType}
-              benchRows={pmContext.benchRows}
-            />
-          ) : null;
-        const perpVenueSection = perpContext ? (
-          <PerpVenueSection
-            slug={perpContext.slug}
-            cohortSlug={perpContext.cohortSlug}
-            name={perpContext.name}
-            chainLabel={perpContext.chainLabel}
-            externalUrl={perpContext.externalUrl}
-            benchRows={perpContext.benchRows}
-          />
-        ) : null;
-        if (pmVenueSection && perpVenueSection) {
-          return (
-            <VenueKpiToggle
-              sections={[
-                {
-                  id: "pm",
-                  label: "Prediction markets",
-                  content: pmVenueSection,
-                },
-                { id: "perp", label: "Perpetuals", content: perpVenueSection },
-              ]}
-            />
-          );
+        // KPI domain sections. A product can belong to up to five KPI
+        // domains (perp venue, PM venue, PM data feed, HL builder, RPC
+        // provider). Every domain with data joins ONE pill bar so all
+        // stay reachable on the same page; the bar renders even for a
+        // single domain so the section is always labeled with its KPI
+        // family. Availability is resolved before render:
+        // perpContext / pmContext / hlStats above, hasRpcData for the
+        // rpc-hub snapshot.
+        const sections: { id: string; label: string; content: React.ReactNode }[] = [];
+        if (perpContext && perpHasData) {
+          sections.push({
+            id: "perp",
+            label: "Perpetuals",
+            content: (
+              <PerpVenueSection
+                slug={perpContext.slug}
+                cohortSlug={perpContext.cohortSlug}
+                name={perpContext.name}
+                chainLabel={perpContext.chainLabel}
+                externalUrl={perpContext.externalUrl}
+                benchRows={perpContext.benchRows}
+              />
+            ),
+          });
         }
-        return pmVenueSection ?? perpVenueSection;
+        if (pmContext?.kind === "venue") {
+          sections.push({
+            id: "pm",
+            label: "Prediction markets",
+            content: (
+              <PmVenueSection
+                slug={pmContext.slug}
+                name={pmContext.name}
+                chainLabel={pmContext.chainLabel}
+                externalUrl={pmContext.externalUrl}
+                venueType={pmContext.venueType}
+                benchRows={pmContext.benchRows}
+              />
+            ),
+          });
+        }
+        if (pmContext?.kind === "feed" && pmFeedHasData) {
+          sections.push({
+            id: "pm-feed",
+            label: "Data feeds",
+            content: (
+              <PmDataFeedSection
+                slug={pmContext.slug}
+                name={pmContext.name}
+                logoSrc={pmContext.logoSrc}
+                externalUrl={pmContext.externalUrl}
+                benchRows={pmContext.benchRows}
+              />
+            ),
+          });
+        }
+        if (hlStats) {
+          sections.push({
+            id: "hl",
+            label: "Hyperliquid",
+            content: <HlBuilderDashboard stats={hlStats} name={p.name} />,
+          });
+        }
+        if (hasRpcData) {
+          sections.push({
+            id: "rpc",
+            label: "RPC",
+            content: (
+              <RpcProviderChainsSection
+                providerSlug={p.slug}
+                providerName={p.name}
+              />
+            ),
+          });
+        }
+        return <VenueKpiToggle sections={sections} />;
       })()}
-      {pmContext?.kind === "feed" && (
-        <PmDataFeedSection
-          slug={pmContext.slug}
-          name={pmContext.name}
-          logoSrc={pmContext.logoSrc}
-          externalUrl={pmContext.externalUrl}
-          benchRows={pmContext.benchRows}
-        />
-      )}
 
       {reg && (
         <section className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-8">
@@ -748,11 +796,6 @@ export default async function ProviderPage({
           })}
         </ol>
       </section>
-
-      {/* Per-chain RPC deep-dive from the rpc-hub cohort snapshot.
-          Renders nothing for providers outside the free-RPC cluster
-          (the section fetches the cached snapshot and self-filters). */}
-      <RpcProviderChainsSection providerSlug={p.slug} providerName={p.name} />
 
       <RelatedProvidersSection providerSlug={p.slug} providerName={p.name} />
 
