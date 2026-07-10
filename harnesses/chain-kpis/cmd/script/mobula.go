@@ -33,8 +33,8 @@ func fetchAllMobula(cfg *Config) {
 		return
 	}
 
-	// Dedup native symbols. The 21 chains today flatten to 11 unique
-	// natives (every L2 = ETH).
+	// Dedup native symbols. The 32 chains today flatten to ~19 unique
+	// natives (every ETH gas rollup = ETH).
 	natives := map[string][]Chain{}
 	for _, c := range Registry {
 		if c.NativeSymbol == "" {
