@@ -9,10 +9,12 @@ import { useState } from "react";
  * components rendered by the page and passed in as ReactNode content,
  * so switching tabs costs zero network round trips.
  *
- * With a single section the content renders directly (a one-button
- * toggle bar would be noise); with none, nothing. Inactive sections
- * stay in the DOM under `hidden` so tab switches are instant and
- * anchors keep working.
+ * The bar renders whenever at least one section exists, so a single
+ * domain still shows its labeled pill: the label tells the reader which
+ * KPI family they are looking at, and additional pills appear the day
+ * the product gains data in another domain. Inactive sections stay in
+ * the DOM under `hidden` so tab switches are instant and anchors keep
+ * working.
  *
  * Pill styling mirrors PmHubTabs / PerpHubTabs.
  */
@@ -31,7 +33,6 @@ export function VenueKpiToggle({
   const [active, setActive] = useState(sections[0]?.id ?? "");
 
   if (sections.length === 0) return null;
-  if (sections.length === 1) return <>{sections[0].content}</>;
 
   return (
     <div className="mt-10">
