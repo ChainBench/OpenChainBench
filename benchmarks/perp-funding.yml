@@ -111,7 +111,7 @@ providers:
       p99: avg_over_time(perp_funding_hold_24h_bps{venue="hyperliquid",asset="SOL"}[24h])
       mean: avg_over_time(perp_funding_annualized_pct{venue="hyperliquid",asset="ETH"}[24h])
       success: (perp_funding_venue_ok_unix{venue="hyperliquid"} > bool (time() - 300))
-      sample_size: count(perp_funding_rate_hourly_bps{venue="hyperliquid"})
+      sample_size: count_over_time(perp_funding_hold_24h_bps{venue="hyperliquid",asset="ETH"}[24h])
       series: avg_over_time(perp_funding_hold_24h_bps{venue="hyperliquid",asset="ETH"}[24h])
 
   - slug: binance
@@ -124,7 +124,7 @@ providers:
       p99: avg_over_time(perp_funding_hold_24h_bps{venue="binance",asset="SOL"}[24h])
       mean: avg_over_time(perp_funding_annualized_pct{venue="binance",asset="ETH"}[24h])
       success: (perp_funding_venue_ok_unix{venue="binance"} > bool (time() - 300))
-      sample_size: count(perp_funding_rate_hourly_bps{venue="binance"})
+      sample_size: count_over_time(perp_funding_hold_24h_bps{venue="binance",asset="ETH"}[24h])
       series: avg_over_time(perp_funding_hold_24h_bps{venue="binance",asset="ETH"}[24h])
 
   - slug: bybit
@@ -137,7 +137,7 @@ providers:
       p99: avg_over_time(perp_funding_hold_24h_bps{venue="bybit",asset="SOL"}[24h])
       mean: avg_over_time(perp_funding_annualized_pct{venue="bybit",asset="ETH"}[24h])
       success: (perp_funding_venue_ok_unix{venue="bybit"} > bool (time() - 300))
-      sample_size: count(perp_funding_rate_hourly_bps{venue="bybit"})
+      sample_size: count_over_time(perp_funding_hold_24h_bps{venue="bybit",asset="ETH"}[24h])
       series: avg_over_time(perp_funding_hold_24h_bps{venue="bybit",asset="ETH"}[24h])
 
   - slug: okx
@@ -150,7 +150,7 @@ providers:
       p99: avg_over_time(perp_funding_hold_24h_bps{venue="okx",asset="SOL"}[24h])
       mean: avg_over_time(perp_funding_annualized_pct{venue="okx",asset="ETH"}[24h])
       success: (perp_funding_venue_ok_unix{venue="okx"} > bool (time() - 300))
-      sample_size: count(perp_funding_rate_hourly_bps{venue="okx"})
+      sample_size: count_over_time(perp_funding_hold_24h_bps{venue="okx",asset="ETH"}[24h])
       series: avg_over_time(perp_funding_hold_24h_bps{venue="okx",asset="ETH"}[24h])
 
   - slug: dydx
@@ -163,7 +163,7 @@ providers:
       p99: avg_over_time(perp_funding_hold_24h_bps{venue="dydx",asset="SOL"}[24h])
       mean: avg_over_time(perp_funding_annualized_pct{venue="dydx",asset="ETH"}[24h])
       success: (perp_funding_venue_ok_unix{venue="dydx"} > bool (time() - 300))
-      sample_size: count(perp_funding_rate_hourly_bps{venue="dydx"})
+      sample_size: count_over_time(perp_funding_hold_24h_bps{venue="dydx",asset="ETH"}[24h])
       series: avg_over_time(perp_funding_hold_24h_bps{venue="dydx",asset="ETH"}[24h])
 
   - slug: paradex
@@ -176,7 +176,7 @@ providers:
       p99: avg_over_time(perp_funding_hold_24h_bps{venue="paradex",asset="SOL"}[24h])
       mean: avg_over_time(perp_funding_annualized_pct{venue="paradex",asset="ETH"}[24h])
       success: (perp_funding_venue_ok_unix{venue="paradex"} > bool (time() - 300))
-      sample_size: count(perp_funding_rate_hourly_bps{venue="paradex"})
+      sample_size: count_over_time(perp_funding_hold_24h_bps{venue="paradex",asset="ETH"}[24h])
       series: avg_over_time(perp_funding_hold_24h_bps{venue="paradex",asset="ETH"}[24h])
 
   - slug: polymarket
@@ -189,7 +189,7 @@ providers:
       p99: avg_over_time(perp_funding_hold_24h_bps{venue="polymarket",asset="SOL"}[24h])
       mean: avg_over_time(perp_funding_annualized_pct{venue="polymarket",asset="ETH"}[24h])
       success: (perp_funding_venue_ok_unix{venue="polymarket"} > bool (time() - 300))
-      sample_size: count(perp_funding_rate_hourly_bps{venue="polymarket"})
+      sample_size: count_over_time(perp_funding_hold_24h_bps{venue="polymarket",asset="ETH"}[24h])
       series: avg_over_time(perp_funding_hold_24h_bps{venue="polymarket",asset="ETH"}[24h])
 
   - slug: aster
@@ -202,7 +202,7 @@ providers:
       p99: avg_over_time(perp_funding_hold_24h_bps{venue="aster",asset="SOL"}[24h])
       mean: avg_over_time(perp_funding_annualized_pct{venue="aster",asset="ETH"}[24h])
       success: (perp_funding_venue_ok_unix{venue="aster"} > bool (time() - 300))
-      sample_size: count(perp_funding_rate_hourly_bps{venue="aster"})
+      sample_size: count_over_time(perp_funding_hold_24h_bps{venue="aster",asset="ETH"}[24h])
       series: avg_over_time(perp_funding_hold_24h_bps{venue="aster",asset="ETH"}[24h])
 
 metric_panels:
