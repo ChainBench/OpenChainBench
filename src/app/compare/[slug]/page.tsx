@@ -702,7 +702,7 @@ export default async function ComparePage({
   // shared is empty (never actually reached because notFound() short-
   // circuits above, but defensive).
   const faqEntries: Array<{ q: string; a: string }> = [];
-  const aWinsBench = shared.find((s) => s.aggregateWinner === "a" && s.aResult.p50 > 0 && s.bResult.p50 > 0);
+  const aWinsBench = shared.find((s) => s.aggregateWinner === "a" && s.aResult.p50 !== 0 && s.bResult.p50 !== 0);
   const bWinsBench = shared.find((s) => s.aggregateWinner === "b" && s.aResult.p50 > 0 && s.bResult.p50 > 0);
   faqEntries.push({
     q: `${a.name} vs ${b.name}: which one is better?`,

@@ -103,7 +103,7 @@ export default async function AnswerPage({
   // crawlers concrete provider names + numbers in the SSR HTML.
   const sortedResults = [...bench.results]
     .filter((r) => !isRegion(r.slug))
-    .filter((r) => r.ms.p50 > 0 || r.ms.p99 > 0)
+    .filter((r) => r.ms.p50 !== 0 || r.ms.p99 !== 0)
     .sort((a, b) =>
       bench.higherIsBetter ? b.ms.p50 - a.ms.p50 : a.ms.p50 - b.ms.p50,
     );
