@@ -1,23 +1,24 @@
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
+import { ProviderLogo } from "@/components/provider-logo";
 import {
   fetchRpcHub,
   getRpcChainRow,
   RPC_REGION_KEYS,
   type RpcRegionKey,
+  type RpcRegionBest,
 } from "@/lib/rpc-hub-stats";
 
 /**
- * Compact RPC summary panel for /chains/<slug>: the chain centric cut of
- * the rpc-hub cohort snapshot (the provider centric cut lives in
- * RpcProviderChainsSection on product pages). Shows the 24h p50 leader,
- * the best provider per probe region, and links out to the full
- * <chain>-rpc bench page for the complete leaderboard.
+ * RPC summary panel for /chains/<slug>: the chain centric cut of the
+ * rpc-hub cohort snapshot (the provider centric cut lives in
+ * RpcProviderChainsSection on product pages). A leader card plus one
+ * card per probe region, in the same card language as the Live KPIs
+ * strip above it, then a link out to the full <chain>-rpc bench.
  *
  * Server component, snapshot only (fetchRpcHub reads the worker written
  * cohort blob via unstable_cache; zero Prometheus traffic). Returns null
- * when the chain has no rpc-hub row, so the page can render it
- * unconditionally, though the chain page gates the pill upfront via
+ * when the chain has no rpc-hub row; the page gates the pill upfront via
  * getRpcChainRow (same cached read, no extra roundtrip).
  */
 
@@ -49,10 +50,27 @@ export async function ChainRpcSection({ chainSlug }: { chainSlug: string }) {
 
   return (
     <section className="mt-6">
-      <h2 className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted">
+      <p
+        className="label-mono text-[10px] text-ink-faint mb-3"
+        style={{ fontFamily: "var(--font-mono, monospace)" }}
+      >
         Fastest public RPC on {row.name}
-      </h2>
-      <p className="mt-2 text-sm text-ink-soft leading-snug max-w-2xl">
+      </p>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <LeaderCard best={row.best} providerCount={row.providerCount} />
+        {RPC_REGION_KEYS.map((region) => (
+          <RegionCard
+            key={region}
+            label={REGION_LABELS[region]}
+            best={row.regions[region] ?? null}
+          />
+        ))}
+      </div>
+
+      {/* Quotable one liner kept as plain server rendered text: this is
+          the sentence answer engines lift, cards alone do not quote. */}
+      <p className="mt-3 text-[12.5px] text-ink-soft leading-snug max-w-2xl">
         The fastest public RPC endpoint on {row.name} right now is{" "}
         <span className="font-medium text-ink">{row.best.providerName}</span>{" "}
         at{" "}
@@ -63,32 +81,7 @@ export async function ChainRpcSection({ chainSlug }: { chainSlug: string }) {
         {row.providerCount} live provider
         {row.providerCount === 1 ? "" : "s"} measured from 3 probe regions.
       </p>
-      <dl className="mt-4 grid grid-cols-1 sm:grid-cols-3 border-y border-rule divide-y sm:divide-y-0 sm:divide-x divide-rule">
-        {RPC_REGION_KEYS.map((region) => {
-          const best = row.regions[region];
-          return (
-            <div key={region} className="py-3 sm:px-4 sm:first:pl-0">
-              <dt className="text-[10px] font-medium uppercase tracking-[0.16em] text-ink-muted">
-                {REGION_LABELS[region]}
-              </dt>
-              <dd className="mt-1 text-[12.5px]">
-                {best ? (
-                  <>
-                    <span className="font-medium text-ink">
-                      {best.providerName}
-                    </span>{" "}
-                    <span className="text-ink-soft tabular-nums">
-                      {fmtMs(best.p50Ms)}
-                    </span>
-                  </>
-                ) : (
-                  <span className="text-ink-faint">no data</span>
-                )}
-              </dd>
-            </div>
-          );
-        })}
-      </dl>
+
       <div className="mt-3 flex flex-wrap items-baseline gap-x-4 gap-y-1">
         <Link
           href={`/benchmarks/${row.slug}`}
@@ -98,9 +91,88 @@ export async function ChainRpcSection({ chainSlug }: { chainSlug: string }) {
           <ArrowUpRight size={14} strokeWidth={2} />
         </Link>
         {asOf && (
-          <span className="text-[10.5px] text-ink-faint">Data as of {asOf}</span>
+          <span className="text-[10.5px] text-ink-faint">
+            Data as of {asOf}
+          </span>
         )}
       </div>
     </section>
+  );
+}
+
+function LeaderCard({
+  best,
+  providerCount,
+}: {
+  best: RpcRegionBest;
+  providerCount: number;
+}) {
+  return (
+    <div
+      className="card-soft rounded-lg p-3 sm:p-4 border border-ink/15 flex flex-col"
+      title="Lowest p50 latency across all probe regions over the last 24 hours, successful calls only."
+      style={{ minHeight: 118 }}
+    >
+      <p
+        className="label-mono text-[10px] text-ink-faint uppercase tracking-wide leading-snug"
+        style={{ fontFamily: "var(--font-mono, monospace)" }}
+      >
+        Fastest · 24h p50
+      </p>
+      <div className="mt-2 flex items-center gap-2 min-w-0">
+        <ProviderLogo slug={best.provider} name={best.providerName} size={20} />
+        <span className="font-medium text-ink text-sm truncate">
+          {best.providerName}
+        </span>
+      </div>
+      <p className="mt-1 text-2xl font-semibold text-ink tabular-nums leading-none">
+        {fmtMs(best.p50Ms)}
+      </p>
+      <p className="mt-auto pt-2 text-[10.5px] text-ink-faint">
+        {providerCount} live provider{providerCount === 1 ? "" : "s"} measured
+      </p>
+    </div>
+  );
+}
+
+function RegionCard({
+  label,
+  best,
+}: {
+  label: string;
+  best: RpcRegionBest | null;
+}) {
+  return (
+    <div
+      className="card-soft rounded-lg p-3 sm:p-4 border border-ink/15 flex flex-col"
+      title={`Fastest provider probed from ${label}, p50 over the last 24 hours.`}
+      style={{ minHeight: 118 }}
+    >
+      <p
+        className="label-mono text-[10px] text-ink-faint uppercase tracking-wide leading-snug"
+        style={{ fontFamily: "var(--font-mono, monospace)" }}
+      >
+        {label}
+      </p>
+      {best ? (
+        <>
+          <div className="mt-2 flex items-center gap-2 min-w-0">
+            <ProviderLogo
+              slug={best.provider}
+              name={best.providerName}
+              size={20}
+            />
+            <span className="font-medium text-ink text-sm truncate">
+              {best.providerName}
+            </span>
+          </div>
+          <p className="mt-1 text-xl font-semibold text-ink-soft tabular-nums leading-none">
+            {fmtMs(best.p50Ms)}
+          </p>
+        </>
+      ) : (
+        <p className="mt-2 text-sm text-ink-faint italic">no data</p>
+      )}
+    </div>
   );
 }
