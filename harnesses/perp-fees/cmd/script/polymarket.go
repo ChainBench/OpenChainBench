@@ -82,7 +82,7 @@ func fetchPolymarket(v VenueConfig) PerpSample {
 
 	// 3) Orderbook
 	var book polymarketBook
-	if err := polymarketGet(client, fmt.Sprintf("%s/book?instrument_id=%d&depth=100", polymarketBase, instrumentID), &book); err != nil {
+	if err := polymarketGet(client, fmt.Sprintf("%s/book?instrument_id=%d&depth=500", polymarketBase, instrumentID), &book); err != nil {
 		s.Err = fmt.Sprintf("orderbook: %v", err)
 		s.FetchLatencyMs = time.Since(start).Milliseconds()
 		return s

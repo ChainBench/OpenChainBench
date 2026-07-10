@@ -41,6 +41,7 @@ abstract: |
   upstream funding scrape (60 second poll, 30 second Prom scrape).
 
 methodology:
+  - "Young venues read artificially stable at first: a venue whose funding has not moved since listing (Polymarket perps launched 2026-07-08 with a constant default rate) shows a stddev near zero until real funding history accrues. Read the sample count next to the rank."
   - "Source. Same upstream as perp-funding: each venue's public funding endpoint polled every 60 seconds, normalized to bps per hour and per 24h hold, sign preserved."
   - "Metric. stddev_over_time(perp_funding_hold_24h_bps{asset=\"ETH\"}[24h]) per venue. The 7d window smooths intraday noise but reacts to regime shifts within a week."
   - "Sign handling. The underlying series is signed (positive means longs pay). Stability measures the swing, so the ranking uses the unsigned stddev. Average direction and level are the perp-funding bench."
@@ -211,19 +212,6 @@ providers:
       success: (perp_venue_last_refresh_unix{venue="coinbase"} > bool (time() - 300))
       sample_size: count_over_time(perp_venue_funding_24h_bps{venue="coinbase",asset="ETH"}[24h])
       series: stddev_over_time(perp_venue_funding_24h_bps{venue="coinbase",asset="ETH"}[24h])
-
-  - slug: deribit
-    name: Deribit
-    tag: Options-focused CEX, ETH/BTC perpetuals via Mobula aggregator
-    formula: "stddev_over_time of perp_venue_funding_24h_bps{venue=\"deribit\",asset=\"ETH\"} over a 24h window. Source: Mobula CEFI funding-rate aggregator."
-    queries:
-      p50: stddev_over_time(perp_venue_funding_24h_bps{venue="deribit",asset="ETH"}[24h])
-      p90: stddev_over_time(perp_venue_funding_24h_bps{venue="deribit",asset="BTC"}[24h])
-      p99: stddev_over_time(perp_venue_funding_24h_bps{venue="deribit",asset="SOL"}[24h])
-      mean: stddev_over_time(perp_venue_funding_24h_bps{venue="deribit",asset="ETH"}[24h])
-      success: (perp_venue_last_refresh_unix{venue="deribit"} > bool (time() - 300))
-      sample_size: count_over_time(perp_venue_funding_24h_bps{venue="deribit",asset="ETH"}[24h])
-      series: stddev_over_time(perp_venue_funding_24h_bps{venue="deribit",asset="ETH"}[24h])
 
   - slug: gate
     name: Gate

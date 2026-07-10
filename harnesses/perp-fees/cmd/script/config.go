@@ -45,6 +45,10 @@ func loadConfig() *Config {
 		// Polymarket perps (2026-07-08 launch): public info API, base fee
 		// tier taker 4 bps. ETH/BTC/SOL all listed at launch.
 		{slug: "polymarket", display: "Polymarket", assets: []string{"ETH", "BTC", "SOL"}},
+		{slug: "paradex", display: "Paradex", assets: []string{"ETH", "BTC", "SOL"}},
+		// Extended's taker fee is documented (2.5 bps), not API-exposed;
+		// disclosed in the spec formula.
+		{slug: "extended", display: "Extended", assets: []string{"ETH", "BTC", "SOL"}},
 	}
 
 	venues := make([]VenueConfig, 0, len(defs)*3)
