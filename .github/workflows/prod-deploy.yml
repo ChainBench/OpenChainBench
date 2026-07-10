@@ -101,7 +101,7 @@ jobs:
         if: steps.smoke.outcome == 'failure'
         run: |
           echo "::error::Sitemap smoke failed. Rolling back prod alias to the previous deploy."
-          vercel rollback --token=${{ secrets.VERCEL_TOKEN }} --yes
+          vercel rollback --token=${{ secrets.VERCEL_TOKEN }} --scope=mobula-labs --yes
           # Re-fail the job so the rollback is visible in the workflow
           # status (a red X on the commit + an email).
           exit 1
