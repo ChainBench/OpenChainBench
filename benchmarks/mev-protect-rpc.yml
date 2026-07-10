@@ -84,7 +84,7 @@ dimensions:
 metric_panels:
   - id: coverage
     label: Method coverage
-    metric: avg(mev_rpc_methods_supported)
+    metric: avg(mev_rpc_methods_supported{benchmark="mev-protect-rpc"})
     label_key: provider
     unit: count
     higher_is_better: true
