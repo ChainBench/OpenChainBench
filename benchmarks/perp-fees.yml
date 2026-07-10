@@ -56,6 +56,8 @@ methodology:
   - "GMX v2 (Arbitrum): Subsquid GraphQL on the synthetics-arbitrum subgraph for `positionFeeFactorForNegativeImpact` (worst-case open) on the ETH/USD, BTC/USD and SOL/USD markets + gmxinfra REST for funding. Oracle priced, no orderbook: the spread term is zero."
   - "Lighter: `/orderBookDetails` (taker fee per market) + `/orderBookOrders` (orderbook walk)."
   - "gains.trade (Gains v8 on Base): fees read directly on-chain. `eth_call pairs(N)` gives `spreadP` and `feeIndex`, then `eth_call fees(feeIndex)` gives the open fee (`totalPositionSizeFeeP`). The taker crosses one side of the book, so we charge half of `spreadP`. SOL has `spreadP` 0 on-chain (Gains prices that pair's spread dynamically), so its figure is the open fee alone. Values in 1e10 precision per Gains v8 convention. Fee tier cached 1h, pair config 6h."
+  - "Paradex: `/markets` fee config for the api-tier taker rate + `/orderbook?depth=100` walk. The book endpoint caps at 100 levels (about $1M visible on majors), so the $1M tier can be skipped when the visible book thins."
+  - "Extended: full public book from `/info/markets/<m>/orderbook` + `/stats` funding (1h native). Its taker fee is not exposed by any public endpoint; the documented base rate of 2.5 bps is used and this is the one venue where the fee is not read live."
   - "All-in formula: `all_in_bps = taker_fee_bps + spread_bps`. Both components emitted as separate metrics for transparency."
   - "Notional tiers: the same measurement runs at $1,000, $10,000, $100,000 and $1,000,000 by rewalking the already fetched book, published to `perp_fees_all_in_bps_tier{venue, chain, notional}`. The headline `perp_fees_all_in_bps` stays defined at $1,000. A tier the book cannot fill is skipped and counted in `perp_fees_tier_skipped_total`, never extrapolated. Oracle priced venues (GMX v2, gains.trade) charge a flat percentage of size, so their figure repeats across tiers."
   - "Book depth for the $1M tier: Lighter is walked on its top 100 levels, dYdX on the full indexer book, Polymarket on up to 500 levels. Hyperliquid returns its 20 best raw levels; when those cannot absorb the tier the harness refetches with nSigFigs=5, the finest price aggregation the API offers, which extends coverage with negligible price rounding."
@@ -212,6 +214,32 @@ providers:
       success: avg_over_time(perp_fees_health{venue="gains"}[24h])
       sample_size: count_over_time(perp_fees_all_in_bps{venue="gains"}[24h])
       series: perp_fees_all_in_bps{venue="gains"}
+
+  - slug: paradex
+    name: Paradex
+    tag: Starknet appchain perps, 2 bps api taker tier
+    formula: "Average over 24h of (api-tier taker rate from the Paradex /markets fee config + half-spread plus impact from the /orderbook asks, depth 100, walked for $1000 of buy notional in the selected asset), in bps."
+    queries:
+      p50: avg_over_time(perp_fees_all_in_bps{venue="paradex"}[24h])
+      p90: quantile_over_time(0.90, perp_fees_all_in_bps{venue="paradex"}[24h])
+      p99: quantile_over_time(0.99, perp_fees_all_in_bps{venue="paradex"}[24h])
+      mean: avg_over_time(perp_fees_all_in_bps{venue="paradex"}[24h])
+      success: avg_over_time(perp_fees_health{venue="paradex"}[24h])
+      sample_size: count_over_time(perp_fees_all_in_bps{venue="paradex"}[24h])
+      series: perp_fees_all_in_bps{venue="paradex"}
+
+  - slug: extended
+    name: Extended
+    tag: Starknet perps, full public book, documented 2.5 bps taker
+    formula: "Average over 24h of (documented base taker rate of 2.5 bps, not exposed by Extended's public API, plus half-spread and impact from the full public orderbook walked for $1000 of buy notional in the selected asset), in bps."
+    queries:
+      p50: avg_over_time(perp_fees_all_in_bps{venue="extended"}[24h])
+      p90: quantile_over_time(0.90, perp_fees_all_in_bps{venue="extended"}[24h])
+      p99: quantile_over_time(0.99, perp_fees_all_in_bps{venue="extended"}[24h])
+      mean: avg_over_time(perp_fees_all_in_bps{venue="extended"}[24h])
+      success: avg_over_time(perp_fees_health{venue="extended"}[24h])
+      sample_size: count_over_time(perp_fees_all_in_bps{venue="extended"}[24h])
+      series: perp_fees_all_in_bps{venue="extended"}
 
 # Notional-tier companion panels. The panel metric leaves the chain label
 # unpinned and wraps the selector in avg(), so the ETH / BTC / SOL tab
