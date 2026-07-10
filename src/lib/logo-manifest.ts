@@ -58,7 +58,7 @@ const RAW: Record<string, string> = {
   myriad: "/logos/myriad.png",
 
   // ─── Perp DEX cohort (perps hub /perps) ───
-  drift: "/logos/drift.svg",
+  drift: "/logos/drift.png",
   vertex: "/logos/vertex.png",
   edgex: "/logos/edgex.jpg",
   extended: "/logos/extended.svg",
