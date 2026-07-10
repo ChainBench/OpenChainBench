@@ -1,0 +1,43 @@
+slug: alchemy-vs-quicknode-vs-infura-latency
+question: "Alchemy vs QuickNode vs Infura, which has the lowest RPC latency in 2026?"
+short_answer: |
+  {{best_name}} currently leads the keyed free-tier RPC leaderboard at {{best_p50}} p50 latency (24h avg), measured live from three regions by OpenChainBench against the keyed free tiers of Alchemy, QuickNode, Infura, Chainstack, Ankr and Helius on the same eth_getBlockByNumber probe.
+
+benchmark: rpc-keyed-latency
+
+intro: |
+  Every dApp that outgrows the no-key public RPCs asks the same question next: which paid free-tier provider actually delivers the fastest response, from which region, and at what success rate. Vendor blog posts recite selective numbers with no independent probe. Chainstack quotes its own p50, Alchemy quotes its own p99, and none disclose regional variance or measurement methodology in enough detail to reproduce. This page answers the head-to-head that developers actually search for: which of Alchemy, QuickNode and Infura wins today, measured live, from three regions, using the same call. OpenChainBench probes eth_getBlockByNumber every 60 seconds against each provider's signup-gated free tier from us-east, eu-west and singapore, records the round-trip latency only for successful responses, and publishes the full leaderboard with QuickNode, Alchemy, Helius, Chainstack, Ankr and Infura ranked side by side.
+
+methodology: |
+  Every 60 seconds the harness fires the identical JSON-RPC POST `{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["latest",false]}` against each provider's free-tier endpoint from three Railway replicas (us-east Virginia, eu-west Amsterdam, sgp Singapore). Latency is a client-side time.Now() delta around the round-trip, published to Prometheus as both a gauge and a histogram with buckets 50ms to 10s. p50/p90/p99 are computed via `quantile_over_time` over the last 24 hours per provider per region and averaged across regions for the headline. Only successful calls (HTTP 200 + non-empty result) enter the latency distribution, so a mostly failing provider never posts a spuriously fast p50 out of its rare successes. The Success column pairs every latency figure with the ok-rate over the same window, and providers below 5% success are pinned as unresponsive.
+
+limitations:
+  - "Free-tier probe only. Paid tiers have different rate limits, priority queues and archive access; the numbers here do not translate to paid usage. The keyed free tier is a lower bound on paid tier performance because paid tiers get more capacity, but variance can go either way at p99."
+  - "Latency is conditional on success. A provider that fails 40% of calls but returns the successes fast will show a fast p50 with a low Success column. Read both columns together before ranking."
+  - "Regional coverage varies by provider. Some vendors terminate close to their control plane and lose 40 to 80 ms when probed from a distant region. The per-region breakdown at the top of the bench page shows the geography-dependent leader."
+  - "No archive workload here. This bench measures head-of-chain read latency; archive queries (eth_getBalance at (head, 5M)) are on the sibling bench openchainbench.com/benchmarks/rpc-capabilities."
+
+faq:
+  - q: "Which free-tier RPC provider is fastest right now, Alchemy, QuickNode or Infura?"
+    a: "{{best_name}} leads at {{best_p50}} p50 (24h avg) on the free-tier keyed leaderboard measured across three regions. The full ranking including QuickNode, Alchemy, Helius, Chainstack, Ankr and Infura re-sorts every 60 seconds against fresh Prometheus samples."
+  - q: "Why does Infura sit lower on this leaderboard than Alchemy or QuickNode?"
+    a: "Infura's free-tier throughput has degraded in 2026 due to daily credit brownouts that turn into 429 responses. Because latency is only recorded on successful calls, Infura's p50 looks acceptable in isolation but the Success column reveals sub-95% ok-rate on the free tier. QuickNode and Alchemy pair fast latency with 99.9%+ success, which is why they sit above Infura in a fair ranking."
+  - q: "Are these numbers different from what Alchemy or QuickNode publish on their own marketing pages?"
+    a: "Yes. Every vendor cherry-picks the region and percentile that flatters its own footprint. This benchmark uses one identical call, three fixed regions, one 60s cadence, and publishes every provider under the same rules. That is why it produces cross-vendor rankings a vendor marketing page cannot."
+  - q: "Does this cover Chainstack, Ankr and Helius too?"
+    a: "Yes. The full leaderboard measures QuickNode, Alchemy, Helius (Solana keyed), Chainstack, Ankr and Infura under identical conditions. The head-to-head focus of this page is Alchemy vs QuickNode vs Infura because that is the highest-search-volume triangle, but the bench page ranks all six."
+  - q: "How is Helius even in this ranking, it is a Solana provider?"
+    a: "Helius offers keyed EVM-compatible endpoints for a subset of chains alongside its Solana product. The leaderboard measures Helius on the chains where it exposes a compatible eth_getBlockByNumber-style API. Cross-VM comparability is preserved because every provider is probed with the same call, and the per-chain tab surfaces where each provider actually competes."
+  - q: "Which region wins per provider?"
+    a: "QuickNode's mesh keeps its US-East p50 tight; Alchemy leads in EU-West on the majors; Chainstack has the best Singapore numbers on BNB and Polygon. The per-region breakdown at the top of the bench page shows the geography-dependent leader instead of hiding it in the cross-region average."
+  - q: "How often is the leaderboard refreshed?"
+    a: "Every 60 seconds the harness probes each provider from every region, publishes rpc_latency_milliseconds to Prometheus, and the page reads a 24h rolling average. Because the Prom recording rules aggregate every 30s the leaderboard on screen re-orders within a minute of any provider changing performance envelope."
+
+related:
+  - which-crypto-price-api-is-the-fastest
+  - which-l1-has-the-fastest-finality
+  - which-solana-rpc-lands-the-most-transactions
+
+seo_title: "Alchemy vs QuickNode vs Infura RPC latency, live 2026"
+seo_description: "{{best_name}} leads at {{best_p50}} p50 (24h avg) on the free-tier keyed RPC leaderboard. Alchemy, QuickNode, Infura, Chainstack, Ankr and Helius ranked live from three regions by OpenChainBench."
+status: live

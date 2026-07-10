@@ -7,6 +7,7 @@ import { ArrowLeft, ArrowUpRight, ChevronDown } from "lucide-react";
 import { getBenchmark, getBenchmarksSafe } from "@/data/benchmarks";
 import { Pill } from "@/components/pill";
 import { BenchmarkBody } from "@/components/benchmark-body";
+import { BenchInfobox } from "@/components/bench-infobox";
 import { BenchmarkBodySkeleton } from "@/components/benchmark-body-skeleton";
 import { OraclePairMatrix } from "@/components/oracle-pair-matrix";
 import { Breadcrumb } from "@/components/breadcrumb";
@@ -20,6 +21,7 @@ import { ReportSection } from "@/components/report-section";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
 import {
   groundingTraceLine,
+  groundingTraceParts,
   headlineSentence,
   isInsufficient,
   leader,
@@ -117,6 +119,17 @@ export async function generateMetadata({
   // Canonical NEVER carries `?chain=...`. Per-chain variants live on the
   // dedicated /benchmarks/[slug]/[chain] pages with their own metadata.
   const canonical = `${SITE.url}/benchmarks/${b.slug}`;
+  // Highwire Press citation_* meta tags. Used by Google Scholar, Bing /
+  // Copilot, Semantic Scholar and academic LLM tools to attach an
+  // authoritative citation record to the page. Cheap to emit (single
+  // digit KB) and materially boosts appearance in AI answer surfaces
+  // that key on scholarly-style citation metadata. citation_pdf_url is
+  // repurposed to point at the JSON stat endpoint since we do not ship
+  // PDFs; the "pdf_url" name is historic, tools that consume the tag
+  // accept any machine-readable representation.
+  const isoPubDate = b.lastRunAt
+    ? new Date(b.lastRunAt).toISOString().slice(0, 10)
+    : undefined;
   return {
     title: metaTitle,
     description,
@@ -133,6 +146,17 @@ export async function generateMetadata({
       site: SITE.twitter,
       title: metaTitle,
       description,
+    },
+    other: {
+      citation_title: metaTitle,
+      citation_author: "OpenChainBench",
+      citation_publisher: "OpenChainBench",
+      ...(isoPubDate ? { citation_publication_date: isoPubDate } : {}),
+      citation_doi: "10.5281/zenodo.20800312",
+      citation_pdf_url: `${SITE.url}/api/stat/${b.slug}`,
+      citation_public_url: canonical,
+      citation_language: "en",
+      citation_journal_title: "OpenChainBench",
     },
   };
 }
@@ -253,6 +277,10 @@ export default async function BenchmarkPage({
   // bare status sentence) to avoid publishing a dated grounding trace
   // with no measurable claim.
   const groundingLine = groundingTraceLine(benchmark, SITE.url);
+  // Same underlying computation, exposed as structured parts so the
+  // visible TL;DR can wrap the ISO date in <time dateTime> for Perplexity
+  // / Bing freshness ranking without recomputing the string.
+  const trace = groundingTraceParts(benchmark, SITE.url);
   // Leader is null on draft / awaiting / insufficient. When null we
   // deliberately omit the StatisticalReport node from the @graph so we
   // never emit a structured "Observation" with a fabricated value.
@@ -435,6 +463,14 @@ export default async function BenchmarkPage({
         {benchmark.subtitle}
       </p>
 
+      {/* Wikipedia-style infobox. Floats right on desktop next to the
+          TL;DR and the intro copy, stacks above on mobile. Table markup
+          + microdata make the key/value pairs extractable by LLM
+          crawlers verbatim (Perplexity, Gemini, ChatGPT-with-web all
+          hoist this format from Wikipedia pages when composing answers)
+          while giving readers a two second scan of the headline facts. */}
+      <BenchInfobox benchmark={benchmark} />
+
       {/* Visible grounding-trace TL;DR. Renders the same canonical line
           that ships in the StatisticalReport JSON-LD description and in
           /api/llm-context, so a language model summarising the page
@@ -446,15 +482,16 @@ export default async function BenchmarkPage({
           `data-llm-canonical` attribute is a soft signal some model
           agents use as a preferred extraction anchor when picking a
           quotable span. */}
-      {currentLeader && (
+      {currentLeader && trace && (
         <section
           id="tldr"
           data-llm-canonical="true"
           className="mt-6 max-w-3xl rounded-lg border border-ink/10 bg-paper-soft/40 px-4 py-3"
         >
           <p className="text-[13px] text-ink-muted leading-relaxed">
-            <span className="font-medium text-ink">TL;DR.</span>{" "}
-            {groundingLine}
+            <span className="font-medium text-ink">TL;DR.</span> As of{" "}
+            <time dateTime={trace.isoDate}>{trace.isoDate}</time>,{" "}
+            {trace.claim}. Source: OpenChainBench, {trace.url}.
           </p>
         </section>
       )}
