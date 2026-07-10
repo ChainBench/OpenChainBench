@@ -157,6 +157,16 @@ export default async function ProviderPage({
   if (!p) notFound();
   const reg = getProviderRegistry(p.slug);
 
+  // Degraded-read tripwire: a provider listed on several benches never
+  // loses EVERY rank in the same cycle — that signature means the store
+  // read failed mid-render (srh timeout, snapshot swap), not that data
+  // is warming up. Throwing here makes the ISR revalidation fail, so
+  // Vercel keeps serving the last good render instead of caching a page
+  // full of "data warming up" for the next 5 minutes.
+  if (p.appearances.length >= 3 && p.appearances.every((a) => a.rank === 0)) {
+    throw new Error(`degraded store read for /products/${slug}: ${p.appearances.length} appearances, all unranked`);
+  }
+
   // HyperTracker-parity dashboard for the 104 Hyperliquid frontends. The
   // strip renders inline between the product header and the bench
   // appearances list, only when the slug actually maps to a builder the
@@ -186,7 +196,7 @@ export default async function ProviderPage({
   // 2026-07-05: only 2 of ~5000 pages indexed). Each sentence is derived
   // from live measurements — no editorial claim.
   const rankedAppearances = sorted.filter(
-    (a) => a.rank > 0 && a.result.ms.p50 > 0,
+    (a) => a.rank > 0 && a.result.ms.p50 !== 0,
   );
   const topLines: string[] = [];
   for (const a of rankedAppearances.slice(0, 4)) {
@@ -624,7 +634,7 @@ export default async function ProviderPage({
         <ol className="mt-4 divide-y divide-rule border-y border-rule">
           {sorted.map((a) => {
             const catColor = CATEGORY_COLOR[a.benchmark.category];
-            const hasData = a.rank > 0 && a.result.ms.p50 > 0;
+            const hasData = a.rank > 0 && a.result.ms.p50 !== 0;
             const value = hasData ? fmtUnit(a.result.ms.p50, a.benchmark.unit) : null;
             // Per-chain rank chips. Rendered alongside the aggregate rank
             // when the bench declares chain dimensions and the provider has
