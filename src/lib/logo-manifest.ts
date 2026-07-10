@@ -310,7 +310,7 @@ const RAW: Record<string, string> = {
   // Identified via on-chain HL referral codes + brand cross-reference
   // (DFS, UNITYWALLET, INVO, MARSGO, BITGETWALLET). See builders.json
   // notes on the HL node for the provenance trail per address.
-  "defi-saver": "/logos/defi-saver.svg",
+  "defi-saver": "/logos/defi-saver.jpg",
   unitywallet: "/logos/unitywallet.png",
   invo: "/logos/invo.png",
   marsgo: "/logos/marsgo.jpg",
