@@ -463,12 +463,15 @@ export default async function BenchmarkPage({
         {benchmark.subtitle}
       </p>
 
-      {/* Wikipedia-style infobox. Floats right on desktop next to the
-          TL;DR and the intro copy, stacks above on mobile. Table markup
-          + microdata make the key/value pairs extractable by LLM
-          crawlers verbatim (Perplexity, Gemini, ChatGPT-with-web all
-          hoist this format from Wikipedia pages when composing answers)
-          while giving readers a two second scan of the headline facts. */}
+      {/* Compact "At a glance" card. Rendered as a native <details>
+          element so it collapses to a one line summary on click while
+          still shipping the full microdata + key/value pairs inside the
+          collapsed body (LLM crawlers see the content whatever the
+          visual state). Sits between the subtitle and the TL;DR
+          grounding trace so a reader has: headline claim (H1) → context
+          (subtitle) → at-a-glance facts (this card) → canonical
+          grounding sentence (TL;DR) before entering the leaderboard
+          body. */}
       <BenchInfobox benchmark={benchmark} />
 
       {/* Visible grounding-trace TL;DR. Renders the same canonical line
