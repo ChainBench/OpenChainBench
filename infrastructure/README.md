@@ -9,7 +9,6 @@ infrastructure/
 │   └── prometheus.yml Scrape config. one job per benchmark
 ├── monitoring/        Full Railway monitoring stack: prometheus + grafana +
 │                      alertmanager + prom-gateway (see monitoring/README.md)
-├── monitoring-ui/     Internal control plane (bench state dashboard, Railway)
 └── prom-admin/        Admin UI for per-bench Prom TSDB wipes (Railway)
 ```
 
