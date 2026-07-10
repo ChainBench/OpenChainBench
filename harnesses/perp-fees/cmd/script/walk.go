@@ -8,10 +8,10 @@ import (
 // Notional tiers measured on every venue in addition to the headline
 // notional. The headline series perp_fees_all_in_bps stays defined at the
 // configured notional (default $1000); the tier gauge
-// perp_fees_all_in_bps_tier{notional="1000"|"10000"|"100000"} is published
+// perp_fees_all_in_bps_tier{notional="1000"|"10000"|"100000"|"1000000"} is
 // alongside so existing dashboards and spec queries keep their meaning.
 // The $1000 tier duplicates the headline series under the default config.
-var tierNotionals = []float64{1000, 10000, 100000}
+var tierNotionals = []float64{1000, 10000, 100000, 1000000}
 
 func notionalLabel(n float64) string {
 	return strconv.FormatFloat(n, 'f', -1, 64)

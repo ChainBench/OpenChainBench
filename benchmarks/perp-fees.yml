@@ -4,8 +4,8 @@ slug: perp-fees
 number: "007"
 title: Cheapest perp DEX, live all-in fee on a $1000 ETH 10x long
 seo_title: "Cheapest perp DEX 2026"
-seo_description: "{{best_name}} leads cheapest perp DEX at {{best_p50}} all-in (24h avg). $1000 ETH 10x long. Lighter, Hyperliquid, dYdX v4, GMX v2, gains.trade ranked live."
-subtitle: All-in cost in basis points to open a $1000 ETH long 10x position. Taker fee plus half-spread plus impact, measured live from public APIs across Lighter, Hyperliquid, dYdX, GMX and gains.trade.
+seo_description: "{{best_name}} leads cheapest perp DEX at {{best_p50}} all-in (24h avg). $1000 ETH 10x long, plus $100k and $1M size panels. Lighter, Hyperliquid, Polymarket, dYdX v4, GMX v2, gains.trade ranked live."
+subtitle: All-in cost in basis points to open a $1000 ETH long 10x position, with companion panels at $100k and $1M where book depth takes over from fees. Taker fee plus half-spread plus impact, measured live from public APIs across Lighter, Hyperliquid, Polymarket, dYdX, GMX and gains.trade.
 category: Trading
 status: live
 metric: All-in cost
@@ -27,8 +27,12 @@ seo_intro: |
   gains.trade are oracle priced, so their spread terms come from
   protocol parameters), and sum the two into a single basis-point
   figure refreshed every five minutes. Hyperliquid vs
-  Lighter vs dYdX vs GMX vs gains.trade is then a one-number
-  comparison, not a five-tab spreadsheet.
+  Lighter vs Polymarket vs dYdX vs GMX vs gains.trade is then a
+  one-number comparison, not a six-tab spreadsheet. Size changes the
+  answer, so the board is complemented by two panels that rerun the
+  exact same measurement at $100,000 and $1,000,000 of notional. Small
+  orders reward the lowest fee schedule; a $1M market order rewards the
+  deepest book, and the ranking visibly flips between the two.
 
 abstract: |
   We measure the live all-in cost of opening a $1000 ETH long 10x perp
@@ -53,7 +57,8 @@ methodology:
   - "Lighter: `/orderBookDetails` (taker fee per market) + `/orderBookOrders` (orderbook walk)."
   - "gains.trade (Gains v8 on Base): fees read directly on-chain. `eth_call pairs(N)` gives `spreadP` and `feeIndex`, then `eth_call fees(feeIndex)` gives the open fee (`totalPositionSizeFeeP`). The taker crosses one side of the book, so we charge half of `spreadP`. SOL has `spreadP` 0 on-chain (Gains prices that pair's spread dynamically), so its figure is the open fee alone. Values in 1e10 precision per Gains v8 convention. Fee tier cached 1h, pair config 6h."
   - "All-in formula: `all_in_bps = taker_fee_bps + spread_bps`. Both components emitted as separate metrics for transparency."
-  - "Notional tiers: the same measurement runs at $1,000, $10,000 and $100,000 by rewalking the already fetched book, published to `perp_fees_all_in_bps_tier{venue, chain, notional}`. The headline `perp_fees_all_in_bps` stays defined at $1,000. A tier the book cannot fill is skipped and counted in `perp_fees_tier_skipped_total`, never extrapolated. Oracle priced venues (GMX v2, gains.trade) charge a flat percentage of size, so their figure repeats across tiers."
+  - "Notional tiers: the same measurement runs at $1,000, $10,000, $100,000 and $1,000,000 by rewalking the already fetched book, published to `perp_fees_all_in_bps_tier{venue, chain, notional}`. The headline `perp_fees_all_in_bps` stays defined at $1,000. A tier the book cannot fill is skipped and counted in `perp_fees_tier_skipped_total`, never extrapolated. Oracle priced venues (GMX v2, gains.trade) charge a flat percentage of size, so their figure repeats across tiers."
+  - "Book depth for the $1M tier: Lighter is walked on its top 100 levels, dYdX on the full indexer book, Polymarket on up to 500 levels. Hyperliquid returns its 20 best raw levels; when those cannot absorb the tier the harness refetches with nSigFigs=5, the finest price aggregation the API offers, which extends coverage with negligible price rounding."
   - "Failures (5xx, timeouts, rate limits) leave the previous gauge in place and increment a per-venue `fetch_errors_total` counter. The page falls back to the last successful sample."
 
 per_chain_explainer:
@@ -85,6 +90,10 @@ prometheus:
   expected_freshness_seconds: 1800
 
 faq:
+  - q: "Which perp DEX is cheapest for a $1M market order?"
+    a: "The venue with the deepest book, not the one with the lowest fee schedule. At $1,000,000 of notional the price impact from walking the book dwarfs the taker fee, so zero fee venues can lose to a 4 bps venue whose book absorbs the size better. The $1M panel on this page reruns the exact same measurement at that size, and the ranking regularly differs from the $1000 headline board. A venue that shows no data there means its visible book could not fill $1M at measurement time, which is a depth signal in itself."
+  - q: "Why does the ranking change with order size?"
+    a: "Two cost components move in opposite directions. The taker fee is a flat percentage, identical at any size. Price impact grows with size because a bigger order eats deeper into the book. Small orders are fee dominated, so zero fee venues win. Large orders are depth dominated, so the deepest book wins. The board at $1000 and the panels at $100k and $1M show all three regimes live."
   - q: "What is the cheapest perpetual futures DEX right now?"
     a: "{{best_name}} currently leads the leaderboard at {{best_p50}} all-in (24 h average) for opening a $1000 ETH long 10x position. The leaderboard re-sorts every five minutes against fresh Prometheus samples, so the answer reflects the last 24 hours of live data from each venue's public API, not a frozen rack-rate table."
   - q: "Is Lighter really zero fees on perpetual futures?"
@@ -204,21 +213,24 @@ providers:
       sample_size: count_over_time(perp_fees_all_in_bps{venue="gains"}[24h])
       series: perp_fees_all_in_bps{venue="gains"}
 
-# Notional-tier companion panels. Same pattern as perp-funding: the panel
-# metric pins the asset label so the unfiltered "All" view reads one series
-# per venue; on the BTC/SOL tabs the dimension injection skips chain=
-# because it is already set, so the panels stay ETH-scoped by design.
-# notional=1000 is not paneled: it duplicates the headline ledger.
+# Notional-tier companion panels. The panel metric leaves the chain label
+# unpinned and wraps the selector in avg(), so the ETH / BTC / SOL tab
+# filter is injected exactly like on the headline queries and the panels
+# follow the active tab; the unfiltered "All" view reads the cross-asset
+# average, same semantics as the headline ledger. notional=1000 is not
+# paneled (it duplicates the headline) and $10k reads within noise of
+# $1k on every venue, so the panels show the two sizes where the story
+# changes: $100k and $1M.
 metric_panels:
-  - id: all_in_10k
-    label: "All-in at $10k (ETH)"
-    metric: perp_fees_all_in_bps_tier{chain="ETH",notional="10000"}
-    label_key: venue
-    unit: bps
-    description: "All-in opening cost measured at $10,000 notional on the ETH pair. Same formula as the headline (taker fee plus spread plus impact); only the orderbook walk depth changes."
   - id: all_in_100k
-    label: "All-in at $100k (ETH)"
-    metric: perp_fees_all_in_bps_tier{chain="ETH",notional="100000"}
+    label: All-in at $100k
+    metric: avg(perp_fees_all_in_bps_tier{notional="100000"})
     label_key: venue
     unit: bps
-    description: "All-in opening cost at $100,000 notional on the ETH pair. Books that cannot fill the size are skipped by the harness rather than extrapolated, so a venue missing here is itself a depth signal."
+    description: "All-in opening cost at $100,000 notional. Same formula as the headline (taker fee plus spread plus impact); price impact starts separating the books here and the zero fee lead narrows."
+  - id: all_in_1m
+    label: All-in at $1M
+    metric: avg(perp_fees_all_in_bps_tier{notional="1000000"})
+    label_key: venue
+    unit: bps
+    description: "All-in opening cost at $1,000,000 notional. At this size book depth decides the ranking and fee schedules become secondary. A venue whose visible book cannot absorb $1M shows no data instead of an extrapolated figure, which is itself a depth signal."
