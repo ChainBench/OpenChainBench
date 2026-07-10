@@ -1,0 +1,41 @@
+slug: helius-vs-triton-vs-quicknode-solana
+question: "Helius vs Triton vs QuickNode, which lands the most Solana transactions?"
+short_answer: |
+  {{best_name}} currently lands the highest share of Solana transactions on the OpenChainBench active-probe harness at {{best_p50}} (24h), measured live from three regions by broadcasting identical transfers through each provider's mainnet RPC and confirming inclusion onchain.
+
+benchmark: solana-tx-landing
+
+intro: |
+  Every Solana app that touches user transactions asks the same question the moment congestion spikes: which RPC provider actually lands transactions and which one silently drops them into the void. Provider blog posts advertise self-reported landed-rate figures with no third-party probe, and public dashboards conflate confirmed with landed by treating any getSignatureStatuses response as success. This page answers the head-to-head developers actually search for: on the same transaction, sent through the same broadcast path, into the same current mempool state, which of Helius, Triton and QuickNode gets it included. OpenChainBench signs and broadcasts real base-fee transfers through each provider every measurement cycle, waits a bounded window for onchain confirmation, and publishes the landed rate, median slot delta, and per-provider failure taxonomy live.
+
+methodology: |
+  Every cycle the harness signs an identical SOL transfer from a probe keypair, broadcasts it in parallel through each provider's mainnet RPC using sendTransaction, and polls getSignatureStatuses until it either sees the signature in a confirmed block or crosses a landing deadline. Landed rate is confirmed-in-window / broadcast-total per provider over a rolling 24h window. Slot delta is the median number of slots between broadcast and inclusion on landed attempts only. Providers whose broadcast returns a network error before submission are excluded from the landed-rate denominator and counted separately in the fetch_errors_total counter so a network flake never masquerades as a landing failure. Regional coverage uses the same three Railway replicas (us-east, eu-west, sgp) so the same providers compete from the same geographies.
+
+limitations:
+  - "Small-value probe. Every broadcast is a minimal SOL transfer with base fee only. Providers running priority-lane routing (Helius Sender, QuickNode Bundler) may show a wider gap on real user traffic than on base-fee probes because their advantage kicks in on paying transactions."
+  - "One tx type. The harness tests base transfer; complex programs (Jupiter aggregated swaps, Kamino borrow flows) exercise different simulation and preflight paths per provider. The base-transfer landing rate is a floor, not a ceiling."
+  - "Regional footprint matters. A provider terminating close to a Solana leader schedule lands faster on that leader; the per-region breakdown surfaces which provider wins from which region rather than hiding the geography effect in a cross-region average."
+  - "Landing deadline is bounded. Transactions that do not land inside the window count as not landed even if they eventually confirm minutes later. The window is publicly documented and matches the deadline a typical user or wallet times out on."
+
+faq:
+  - q: "Which Solana RPC lands the most transactions right now, Helius, Triton or QuickNode?"
+    a: "{{best_name}} leads the OpenChainBench active-probe leaderboard at {{best_p50}} (24h) on real broadcasts confirmed onchain. The full ranking including Helius, Triton, QuickNode, Alchemy and public RPCs re-sorts every measurement cycle against fresh Prometheus samples."
+  - q: "Why measure landing rate instead of just latency?"
+    a: "On Solana under congestion, the failure mode that matters to users is dropped transactions, not slow responses. A provider can return a fast success ack from sendTransaction and never actually get the tx into a block. OpenChainBench confirms inclusion onchain by polling for the signature, so the landed rate reflects what a user actually experiences, not what the provider self-reports."
+  - q: "Is Helius Sender factored into this ranking?"
+    a: "The base bench measures the standard sendTransaction path. Helius Sender is a priority-lane product that competes against QuickNode Bundler and Jito bundle submission on paying transactions with tips. Sibling benches on the same harness cover the priority-lane comparison; the head-to-head on this page is the base-tier landing rate that developers on free or standard plans hit by default."
+  - q: "Are the numbers different from the self-reported vendor dashboards?"
+    a: "Yes and they should be. Vendors report their own success from their own retry logic, sometimes counting a preflight-passed tx as successful before it actually confirms. OpenChainBench uses the onchain signature as ground truth: if a slot did not contain the signature inside the deadline, it did not land, regardless of what the provider's dashboard reports."
+  - q: "How often is the leaderboard refreshed?"
+    a: "Every measurement cycle the harness re-broadcasts fresh probes, waits for confirmation, and publishes the landing metrics to Prometheus. The bench page reads a 24h rolling window so intraday congestion spikes smooth out; longer-term shifts in provider performance show up within hours."
+  - q: "Does public RPC still work for Solana in 2026?"
+    a: "Only in the sense that it accepts your broadcast. The landed rate on unpaid public endpoints under 2026 congestion is materially below every keyed provider on this leaderboard. Public RPC is fine for read paths and development; production tx submission needs a keyed provider whose landed rate is on this page, not a marketing claim."
+
+related:
+  - which-solana-rpc-lands-the-most-transactions
+  - which-solana-dex-aggregator-is-the-fastest
+  - which-crypto-price-api-is-the-fastest
+
+seo_title: "Helius vs Triton vs QuickNode Solana landing rate 2026"
+seo_description: "{{best_name}} leads at {{best_p50}} (24h) on the OpenChainBench active-probe Solana landing leaderboard. Helius, Triton, QuickNode ranked live by real onchain confirmation."
+status: live
