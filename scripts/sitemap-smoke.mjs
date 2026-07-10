@@ -51,7 +51,26 @@ async function getText(url, timeoutMs = TIMEOUT_MS) {
   }
 }
 
-const sitemapRes = await getText(sitemapUrl);
+// The first sitemap render after a fresh deploy is cold (full catalog
+// load) and can exceed a single request timeout. Retry with backoff so
+// a cold cache never fails the smoke and triggers a rollback of a
+// perfectly healthy deploy (observed 2026-07-10: AbortError at 20s,
+// sitemap healthy 30s later).
+async function getTextWithRetry(url, attempts = 3, timeoutMs = 60000) {
+  let lastErr;
+  for (let i = 1; i <= attempts; i++) {
+    try {
+      return await getText(url, timeoutMs);
+    } catch (err) {
+      lastErr = err;
+      console.warn(`[smoke] attempt ${i}/${attempts} failed: ${err}`);
+      if (i < attempts) await new Promise((r) => setTimeout(r, 10000 * i));
+    }
+  }
+  throw lastErr;
+}
+
+const sitemapRes = await getTextWithRetry(sitemapUrl);
 if (sitemapRes.res.status !== 200) {
   console.error(
     `[smoke] sitemap fetch failed: status=${sitemapRes.res.status}`,
