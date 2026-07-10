@@ -31,6 +31,7 @@ import {
 import { REMOVED_BENCH_SLUGS } from "@/lib/removed-benches";
 import { readMaterialized, storeConfigured } from "@/lib/materialize/store";
 import { chainLabelForSlug } from "@/lib/chains";
+import { matchesChainSlug } from "@/lib/chain-aliases";
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
 import type { Spec } from "@/lib/spec-schema";
 
@@ -452,6 +453,25 @@ export async function fetchRpcHub(): Promise<RpcHubSnapshot | null> {
  * a page that also renders the section costs no extra roundtrip. Used
  * to decide upfront whether the RPC domain gets a KPI pill.
  */
+/**
+ * Chain centric availability helper for /chains/<slug>: the hub row for
+ * a site chain slug, or null when the chain has no `<chain>-rpc` bench
+ * in the snapshot. Alias aware (matchesChainSlug), so a renamed site
+ * slug still lands on a hub row carrying the legacy slug. Reads the
+ * same cached snapshot as ChainRpcSection, so gating the RPC KPI pill
+ * costs no extra roundtrip.
+ */
+export async function getRpcChainRow(
+  siteChainSlug: string,
+): Promise<RpcHubChain | null> {
+  const snapshot = await fetchRpcHub();
+  if (!snapshot) return null;
+  return (
+    snapshot.chains.find((c) => matchesChainSlug(c.chain, siteChainSlug)) ??
+    null
+  );
+}
+
 export async function hasRpcProviderData(slug: string): Promise<boolean> {
   const snapshot = await fetchRpcHub();
   if (!snapshot) return false;
