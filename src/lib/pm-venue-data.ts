@@ -18,6 +18,8 @@
 
 import { unstable_cache } from "next/cache";
 import { Prometheus } from "@/lib/prometheus";
+import { readCohortSnapshot } from "@/lib/cohort-snapshot";
+import { PM_HUB_KEY, type PmCohortSummary } from "@/lib/pm-stats";
 
 // `include_tag=true` is required: without it gamma-api returns
 // `tags: null` for every market, every classifyCategory call falls
@@ -254,9 +256,51 @@ function promUrl(): string | null {
   return process.env.PROMETHEUS_URL?.trim() || null;
 }
 
+/**
+ * Snapshot-first venue KPIs. The materialize worker writes the pm-hub
+ * cohort blob to KV every minute; the Vercel site has no PROMETHEUS_URL,
+ * so the blob is the only data source that works in prod. The blob lacks
+ * the p99 / uptime / rate-limit fields, which stay null (the strip skips
+ * null cards). Returns null when the blob is missing, stale, or has no
+ * usable row for the venue, and the caller falls through to Prom.
+ */
+async function fetchPmVenueKpisFromSnapshot(
+  slug: string,
+): Promise<PmVenueKpis | null> {
+  const snap = await readCohortSnapshot<PmCohortSummary>(PM_HUB_KEY);
+  const row = snap?.data?.venues?.find((v) => v.slug === slug);
+  if (!row) return null;
+
+  const kpis: PmVenueKpis = {
+    volume30d: row.volume30d ?? null,
+    openInterest: row.openInterest ?? null,
+    activeMarkets: row.activeMarkets ?? null,
+    medianResolutionSec:
+      row.medianResolutionDelayMin != null
+        ? row.medianResolutionDelayMin * 60
+        : null,
+    apiP50Ms: row.p50ApiLatencyMs ?? null,
+    // Not in the cohort blob; the strip hides these cards.
+    apiP99Ms: null,
+    uptime24h: null,
+    rateLimitHeadroom: null,
+    marketsAbove1m: row.marketsAbove1m ?? null,
+  };
+
+  // A row with every field null means the harness has not published
+  // this venue yet; let the Prom fallback take a shot instead.
+  const hasData = Object.values(kpis).some((v) => v !== null);
+  return hasData ? kpis : null;
+}
+
 async function fetchPmVenueKpisRaw(
   slug: string,
 ): Promise<PmVenueKpis | null> {
+  const fromSnapshot = await fetchPmVenueKpisFromSnapshot(slug);
+  if (fromSnapshot) return fromSnapshot;
+
+  // Fallback: direct Prom probes. Only works where PROMETHEUS_URL is
+  // set (the materialize worker context), never on the Vercel site.
   const url = promUrl();
   if (!url) return null;
   let prom: Prometheus;
@@ -321,7 +365,8 @@ async function fetchPmVenueKpisRaw(
 
 const fetchPmVenueKpisCached = unstable_cache(
   fetchPmVenueKpisRaw,
-  ["pm-venue-kpis-v1"],
+  // v2: snapshot-first (pm-hub cohort blob) with Prom fallback.
+  ["pm-venue-kpis-v2"],
   { revalidate: 120, tags: ["pm-venue"] },
 );
 
