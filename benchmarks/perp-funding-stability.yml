@@ -155,6 +155,19 @@ providers:
       sample_size: count_over_time(perp_funding_hold_24h_bps{venue="paradex",asset="ETH"}[24h])
       series: stddev_over_time(perp_funding_hold_24h_bps{venue="paradex",asset="ETH"}[24h])
 
+  - slug: polymarket
+    name: Polymarket
+    tag: Polygon perps by Polymarket, 1h funding, public info API
+    formula: "stddev_over_time of perp_funding_hold_24h_bps{venue=\"polymarket\",asset=\"ETH\"} over a 24h window. p90/p99 columns reuse the same query on BTC and SOL to stay within the standard provider shape."
+    queries:
+      p50: stddev_over_time(perp_funding_hold_24h_bps{venue="polymarket",asset="ETH"}[24h])
+      p90: stddev_over_time(perp_funding_hold_24h_bps{venue="polymarket",asset="BTC"}[24h])
+      p99: stddev_over_time(perp_funding_hold_24h_bps{venue="polymarket",asset="SOL"}[24h])
+      mean: stddev_over_time(perp_funding_hold_24h_bps{venue="polymarket",asset="ETH"}[24h])
+      success: (perp_funding_venue_ok_unix{venue="polymarket"} > bool (time() - 300))
+      sample_size: count_over_time(perp_funding_hold_24h_bps{venue="polymarket",asset="ETH"}[24h])
+      series: stddev_over_time(perp_funding_hold_24h_bps{venue="polymarket",asset="ETH"}[24h])
+
   - slug: aster
     name: Aster
     tag: BNB Chain perps DEX, Binance compatible API, 8h funding
