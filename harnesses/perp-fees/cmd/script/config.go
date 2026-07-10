@@ -42,6 +42,9 @@ func loadConfig() *Config {
 		// `pairs(N)` slot for the asset/USD name match (findGainsPair in
 		// gains.go).
 		{slug: "gains", display: "Gains Network", assets: []string{"ETH", "BTC", "SOL"}},
+		// Polymarket perps (2026-07-08 launch): public info API, base fee
+		// tier taker 4 bps. ETH/BTC/SOL all listed at launch.
+		{slug: "polymarket", display: "Polymarket", assets: []string{"ETH", "BTC", "SOL"}},
 	}
 
 	venues := make([]VenueConfig, 0, len(defs)*3)
