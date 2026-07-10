@@ -73,7 +73,7 @@ func fetchLighter(v VenueConfig) PerpSample {
 
 	// 2) Orderbook for that market
 	var book lighterOrders
-	if err := lighterGet(client, fmt.Sprintf("%s/orderBookOrders?market_id=%d&limit=50", lighterBase, marketID), &book); err != nil {
+	if err := lighterGet(client, fmt.Sprintf("%s/orderBookOrders?market_id=%d&limit=100", lighterBase, marketID), &book); err != nil {
 		s.Err = fmt.Sprintf("orderbook: %v", err)
 		s.FetchLatencyMs = time.Since(start).Milliseconds()
 		return s
