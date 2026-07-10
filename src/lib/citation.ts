@@ -101,6 +101,35 @@ export function groundingTraceLine(
   return `As of ${isoDate}, ${trimTrailingPeriod(sentence)}. Source: OpenChainBench, ${url}.`;
 }
 
+/** Structured components of the grounding trace, so a JSX renderer can
+ *  wrap the ISO date in a <time dateTime> element while keeping the rest
+ *  of the sentence as plain text. Both this helper and
+ *  `groundingTraceLine` derive from the same `headlineSentence` +
+ *  `leader` primitives so the visible <p>, the schema.org description
+ *  and any downstream JSON blob stay word for word identical. Returns
+ *  null when the bench has no defensible leader (draft, insufficient,
+ *  awaiting): callers should fall back to the plain headline sentence
+ *  for those states. */
+export type GroundingTraceParts = {
+  isoDate: string;
+  claim: string;
+  url: string;
+};
+
+export function groundingTraceParts(
+  b: Benchmark,
+  origin: string,
+  now: Date = new Date(),
+): GroundingTraceParts | null {
+  if (b.dataConfidence === "insufficient" || !leader(b)) return null;
+  const sentence = headlineSentence(b);
+  return {
+    isoDate: now.toISOString().slice(0, 10),
+    claim: trimTrailingPeriod(sentence),
+    url: `${origin}/benchmarks/${b.slug}`,
+  };
+}
+
 function trimTrailingPeriod(s: string): string {
   return s.endsWith(".") ? s.slice(0, -1) : s;
 }

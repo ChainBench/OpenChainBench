@@ -184,8 +184,11 @@ export default function MethodologyPage() {
         </ol>
       </section>
 
-      {/* Section: Corrections. callout with a subtle pulsing accent dot */}
-      <section className="mt-16">
+      {/* Section: Corrections. callout with a subtle pulsing accent dot.
+          Anchored via id="corrections" so publisher.json and external
+          integrity policies (Perplexity Publisher Program, journalist
+          contact) can deep-link to this exact section. */}
+      <section id="corrections" className="mt-16 scroll-mt-24">
         <SectionHeader number="IV" label="Corrections" />
         <div
           className="mt-6 relative card-soft rounded-xl pl-6 pr-5 py-5 border-l-4"
