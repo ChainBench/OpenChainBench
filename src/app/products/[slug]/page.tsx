@@ -566,9 +566,9 @@ export default async function ProviderPage({
         // KPI domain sections. A product can belong to up to five KPI
         // domains (perp venue, PM venue, PM data feed, HL builder, RPC
         // provider). Every domain with data joins ONE pill bar so all
-        // stay reachable on the same page; with a single domain the
-        // section renders directly, no toggle bar (VenueKpiToggle
-        // handles both cases). Availability is resolved before render:
+        // stay reachable on the same page; the bar renders even for a
+        // single domain so the section is always labeled with its KPI
+        // family. Availability is resolved before render:
         // perpContext / pmContext / hlStats above, hasRpcData for the
         // rpc-hub snapshot.
         const sections: { id: string; label: string; content: React.ReactNode }[] = [];
