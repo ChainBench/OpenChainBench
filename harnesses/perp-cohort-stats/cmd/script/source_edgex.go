@@ -1,6 +1,8 @@
 package main
 
 import (
+	"net/url"
+	"os"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -41,9 +43,24 @@ type edgexTickerRow struct {
 	mark     float64
 }
 
+// edgexHTTPClient routes through COHORT_PROXY_URL when set. edgeX
+// rate-bans datacenter IPs (429 on every getTicker from the VPS since
+// 2026-07 while residential IPs pass), and volume/OI numbers are not
+// latency measurements, so a rotating residential proxy changes nothing
+// methodologically.
+func edgexHTTPClient() *http.Client {
+	c := &http.Client{Timeout: 15 * time.Second}
+	if raw := os.Getenv("COHORT_PROXY_URL"); raw != "" {
+		if u, err := url.Parse(raw); err == nil {
+			c.Transport = &http.Transport{Proxy: http.ProxyURL(u), DisableKeepAlives: true}
+		}
+	}
+	return c
+}
+
 func NewEdgexNativeSource() *EdgexNativeSource {
 	return &EdgexNativeSource{
-		client: &http.Client{Timeout: 15 * time.Second},
+		client: edgexHTTPClient(),
 		cache:  map[string]edgexTickerRow{},
 	}
 }
