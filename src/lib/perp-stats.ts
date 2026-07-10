@@ -352,7 +352,7 @@ export async function fetchPerpCohort(): Promise<PerpCohortSummary | null> {
  * three asset columns plus the fee column round-trip Prom at most once
  * every two minutes regardless of page traffic.
  */
-async function fetchPerpByAssetMatrixRaw(): Promise<PerpAssetRow[]> {
+export async function fetchPerpByAssetMatrixFresh(): Promise<PerpAssetRow[]> {
   const url = promUrl();
   if (!url) return [];
   let prom: Prometheus;
@@ -427,9 +427,34 @@ async function fetchPerpByAssetMatrixRaw(): Promise<PerpAssetRow[]> {
   );
 }
 
+const PERP_BY_ASSET_KEY = "perp-by-asset";
+
+// Snapshot-first, mirroring fetchPerpCohortRaw: Vercel has no
+// PROMETHEUS_URL (the VPS Prom is not public), so the live path only
+// works for the worker; readers get the worker-written blob.
+async function fetchPerpByAssetMatrixRaw(): Promise<PerpAssetRow[]> {
+  const snapshot = await readCohortSnapshot<PerpAssetRow[]>(PERP_BY_ASSET_KEY);
+  if (snapshot && Array.isArray(snapshot.data) && snapshot.data.length > 0) {
+    return snapshot.data;
+  }
+  const fresh = await fetchPerpByAssetMatrixFresh();
+  if (fresh.length > 0) {
+    try {
+      await writeCohortSnapshot(PERP_BY_ASSET_KEY, fresh);
+    } catch (err) {
+      console.warn(
+        `perp-by-asset writeback failed: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
+  }
+  return fresh;
+}
+
 const fetchPerpByAssetMatrixCached = unstable_cache(
   fetchPerpByAssetMatrixRaw,
-  ["perp-by-asset-matrix-v1"],
+  ["perp-by-asset-matrix-v2"],
   { revalidate: 120, tags: ["perp-by-asset"] },
 );
 
