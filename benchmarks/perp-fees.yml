@@ -65,7 +65,7 @@ per_chain_explainer:
   - slug: ETH
     h2: "Cheapest perp DEX for ETH"
     body: |
-      The cheapest perp DEX for ETH on this benchmark sits at {{best_p50:chain:ETH}} all-in (p50, 24h) for a $1000 ETH long 10x. ETH-PERP is the deepest pair on every venue measured (Hyperliquid, Lighter, dYdX v4, GMX v2, gains.trade), which means the rack-rate taker fee dominates the all-in number rather than the spread. Lighter quotes 0 bps taker, Hyperliquid 4.5 bps, dYdX 5 bps tier-0, GMX 4 or 6 bps on the impact branch, gains.trade reads the openFeeP slot live from the on-chain Gains v8 fees contract. Spread plus impact at $1000 notional is added on top via an orderbook walk.
+      The cheapest perp DEX for ETH on this benchmark sits at {{best_p50:chain:ETH}} all-in (p50, 24h) for a $1000 ETH long 10x. ETH-PERP is the deepest pair on every venue measured (Hyperliquid, Lighter, Polymarket, dYdX v4, GMX v2, gains.trade), which means the rack-rate taker fee dominates the all-in number rather than the spread. Lighter quotes 0 bps taker, Hyperliquid 4.5 bps, dYdX 5 bps tier-0, GMX 4 or 6 bps on the impact branch, gains.trade reads the openFeeP slot live from the on-chain Gains v8 fees contract. Spread plus impact at $1000 notional is added on top via an orderbook walk.
   - slug: BTC
     h2: "Cheapest perp DEX for BTC"
     body: |
