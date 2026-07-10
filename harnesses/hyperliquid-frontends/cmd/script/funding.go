@@ -311,6 +311,34 @@ func pollParadex(ctx context.Context) (map[string]fundingPoint, error) {
 	return out, nil
 }
 
+// ── Polymarket perps: public info API, funding_rate is per 1h period ──
+
+func pollPolymarket(ctx context.Context) (map[string]fundingPoint, error) {
+	var tickers []struct {
+		Symbol      string `json:"symbol"`
+		FundingRate string `json:"funding_rate"`
+	}
+	if err := fundingGetJSON(ctx, "https://api.perpetuals.polymarket.com/v1/info/tickers", &tickers); err != nil {
+		return nil, err
+	}
+	out := map[string]fundingPoint{}
+	for _, t := range tickers {
+		for _, a := range fundingAssets {
+			if t.Symbol == a+"-USD" {
+				r, err := parseRate(t.FundingRate)
+				if err != nil {
+					return nil, err
+				}
+				out[a] = fundingPoint{rate: r, intervalH: 1}
+			}
+		}
+	}
+	if len(out) == 0 {
+		return nil, fmt.Errorf("polymarket: no funding assets in tickers")
+	}
+	return out, nil
+}
+
 var fundingVenues = []fundingVenue{
 	{name: "hyperliquid", poll: pollHyperliquid},
 	{name: "binance", poll: pollBinanceLike("https://fapi.binance.com", "binance")},
@@ -319,6 +347,7 @@ var fundingVenues = []fundingVenue{
 	{name: "dydx", poll: pollDydx},
 	{name: "paradex", poll: pollParadex},
 	{name: "aster", poll: pollBinanceLike("https://fapi.asterdex.com", "aster")},
+	{name: "polymarket", poll: pollPolymarket},
 }
 
 func runFundingLoop(ctx context.Context, every time.Duration) {

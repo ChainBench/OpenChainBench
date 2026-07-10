@@ -103,6 +103,7 @@ export const PERP_VENUES: VenueSeed[] = [
   { slug: "variational", name: "Variational", chain: "Arbitrum",      venueType: "onchain" },
   { slug: "ostium",      name: "Ostium",      chain: "Arbitrum",      venueType: "onchain" },
   { slug: "grvt",        name: "GRVT",        chain: "zkSync",        venueType: "onchain" },
+  { slug: "polymarket",  name: "Polymarket",  chain: "Polygon",       venueType: "onchain" },
 ];
 
 function promUrl(): string | null {
