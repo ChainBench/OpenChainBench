@@ -128,7 +128,25 @@ func fetchHyperliquid(v VenueConfig) PerpSample {
 
 	s.AllInBps = s.TakerFeeBps + s.SpreadBps
 	// Notional tiers: rewalk the already-fetched book at $1k/$10k/$100k.
-	applyBookTiers(&s, levels, mid)
+	// The raw l2Book returns the top 20 price levels per side. On deep
+	// books (ETH ~$7M visible) that covers the $1M tier; on thinner ones
+	// (SOL ~$450k) it cannot. Refetch with nSigFigs=5, the finest price
+	// aggregation HL offers: same 20 levels but each bucket groups nearby
+	// prices, extending USD coverage with negligible price rounding.
+	tierLevels := levels
+	if _, err := walkBookForNotional(levels, tierNotionals[len(tierNotionals)-1]); err != nil {
+		var deep hlL2Book
+		if err := hlPost(client, map[string]any{"type": "l2Book", "coin": v.Asset, "nSigFigs": 5}, &deep); err == nil && len(deep.Levels) >= 2 && len(deep.Levels[1]) > 0 {
+			agg := make([]bookLevel, 0, len(deep.Levels[1]))
+			for _, a := range deep.Levels[1] {
+				px, _ := strconv.ParseFloat(a.Px, 64)
+				sz, _ := strconv.ParseFloat(a.Sz, 64)
+				agg = append(agg, bookLevel{Px: px, Sz: sz})
+			}
+			tierLevels = agg
+		}
+	}
+	applyBookTiers(&s, tierLevels, mid)
 	s.FetchLatencyMs = time.Since(start).Milliseconds()
 	return s
 }
