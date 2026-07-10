@@ -14,6 +14,12 @@ import {
   hasAnyKpi,
 } from "@/lib/chain-kpis";
 import { ChainKpiStrip } from "@/components/chain-kpi-strip";
+import { ChainRpcSection } from "@/components/chain-rpc-section";
+import {
+  VenueKpiToggle,
+  type VenueToggleSection,
+} from "@/components/venue-kpi-toggle";
+import { getRpcChainRow } from "@/lib/rpc-hub-stats";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { Pill } from "@/components/pill";
 import { ProviderLogo } from "@/components/provider-logo";
@@ -96,13 +102,45 @@ export default async function ChainPage({
   // TVL full history is fetched directly from DefiLlama (single ~50 KB
   // call, revalidated every 15 min). Client renders the active range
   // (7D/30D/90D/1Y/All) without extra network round-trips.
-  const [kpis, tvlHistory] = await Promise.all([
+  const [kpis, tvlHistory, rpcRow] = await Promise.all([
     fetchChainKpis(slug),
     fetchChainTvlFullHistory(slug),
+    getRpcChainRow(slug),
   ]);
 
   const byCategory = groupByCategory(benches);
   const url = `${SITE.url}/chains/${slug}`;
+
+  // KPI domain pill bar (same pattern as /products/<slug>): the existing
+  // Live KPIs strip (including the TVL chart) becomes the "Chain KPIs"
+  // section, and chains covered by a <chain>-rpc bench gain an "RPC"
+  // section. Chains without a hub row keep a single "Chain KPIs" pill;
+  // the strip's own gating (kpis && hasAnyKpi) is unchanged.
+  const kpiSections: VenueToggleSection[] = [];
+  if (kpis && hasAnyKpi(kpis)) {
+    kpiSections.push({
+      id: "chain-kpis",
+      label: "Chain KPIs",
+      content: (
+        <div className="mt-6">
+          <ChainKpiStrip
+            slug={slug}
+            kpis={kpis}
+            nativeSymbol={chain.nativeSymbol}
+            tvlHistory={tvlHistory}
+            chainLabel={chain.label}
+          />
+        </div>
+      ),
+    });
+  }
+  if (rpcRow) {
+    kpiSections.push({
+      id: "rpc",
+      label: "RPC",
+      content: <ChainRpcSection chainSlug={slug} />,
+    });
+  }
 
   // ItemList of Datasets, one entry per benchmark that touches this chain.
   // Previously CollectionPage — Google's rich result validator doesn't
@@ -183,17 +221,7 @@ export default async function ChainPage({
         the chain scoped bench page when one exists.
       </p>
 
-      {kpis && hasAnyKpi(kpis) && (
-        <div className="mt-10">
-          <ChainKpiStrip
-            slug={slug}
-            kpis={kpis}
-            nativeSymbol={chain.nativeSymbol}
-            tvlHistory={tvlHistory}
-            chainLabel={chain.label}
-          />
-        </div>
-      )}
+      <VenueKpiToggle sections={kpiSections} />
 
       <div className="mt-12 space-y-12">
         {Array.from(byCategory.entries()).map(([category, list]) => (
