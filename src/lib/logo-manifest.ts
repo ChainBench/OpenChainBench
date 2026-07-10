@@ -283,7 +283,7 @@ const RAW: Record<string, string> = {
   uxuy: "/logos/uxuy.svg",
   wunder: "/logos/wunder.png",
   grider: "/logos/grider.jpg",
-  tradoor: "/logos/tradoor.svg",
+  tradoor: "/logos/tradoor.png",
   bullpenfi: "/logos/bullpen.svg",
   "dexly-trade": "/logos/dexly-trade.svg",
   hyperdash: "/logos/hyperdash.jpg",
