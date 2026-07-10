@@ -12,8 +12,7 @@ import (
 // per chain that has a DefiLlama mapping:
 //   1. /v2/historicalChainTvl/<name>   — last sample = current TVL
 //   2. /overview/dexs/<name>           — total24h = aggregate DEX volume
-//   3. /stablecoincharts/<name>?stablecoin=1
-//                                      — last point's USD-pegged total
+//   3. /stablecoincharts/<name>        — last point's USD-pegged total
 //
 // Each endpoint is its own goroutine inside fetchDefillamaChain so a
 // stuck TVL request doesn't starve the stables fetch for the same chain.
@@ -113,20 +112,22 @@ func defillamaDexVolume24h(chainName string) (float64, error) {
 	return resp.Total24h, nil
 }
 
-// defillamaStablesMcap reads /stablecoincharts/<chain>?stablecoin=1 and
-// returns the last sample's USD-pegged total. The `stablecoin=1` filter
-// is required by the API though we don't filter by a specific stablecoin;
-// the response is the chain-wide aggregate when no specific id is given.
+// defillamaStablesMcap reads /stablecoincharts/<chain> and returns the
+// last sample's USD-pegged total. No `stablecoin=<id>` query param: that
+// param filters to ONE pegged asset (id 1 = USDT) and the API answers
+// 200 + empty body on chains where that specific asset has no recorded
+// issuance (Base, Blast, Stellar), which is what nulled their stables
+// card. The unfiltered call returns the chain-wide aggregate.
+// Chains DefiLlama tracks for TVL but not for stablecoins (Litecoin)
+// answer 404 and land in the not_found error bucket, gauge unpublished.
 func defillamaStablesMcap(chainName string) (float64, error) {
-	url := fmt.Sprintf("%s/stablecoincharts/%s?stablecoin=1", stablesLlamaBase, encodePath(chainName))
+	url := fmt.Sprintf("%s/stablecoincharts/%s", stablesLlamaBase, encodePath(chainName))
 	body, err := getJSON(httpClientDefillama, url)
 	if err != nil {
 		return 0, err
 	}
-	// DefiLlama returns 200 + empty body for chains it tracks but where no
-	// stablecoin issuance has been recorded (Stellar, Blast, Base at time
-	// of writing). Surface as a typed sentinel so the harness logs it as
-	// "not_tracked" rather than spamming parse_error.
+	// Typed sentinel so an empty 200 logs as "not_tracked" rather than
+	// spamming parse_error.
 	if len(body) == 0 {
 		return 0, fmt.Errorf("not_tracked")
 	}
