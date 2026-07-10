@@ -101,6 +101,7 @@ const (
 	srcPacificaNative    = "pacifica_native"
 	srcVariationalNative = "variational_native"
 	srcOstiumNative      = "ostium_native"
+	srcPolymarketNative  = "polymarket_native"
 	srcDefillama         = "defillama"
 	srcMobulaPairs   = "mobula_pairs"
 	srcMobulaFund    = "mobula_funding"
@@ -145,6 +146,8 @@ func priorityMap(venue, metric string) []string {
 			// Subgraph exposes OI but no 24h rolling volume; defer
 			// vol_24h to DefiLlama.
 			return []string{srcDefillama}
+		case "polymarket":
+			return []string{srcPolymarketNative}
 		}
 	case mVolume30d:
 		switch venue {
@@ -163,6 +166,10 @@ func priorityMap(venue, metric string) []string {
 			// No native 30d aggregate exposed on these venues; rely
 			// on DefiLlama for the trailing-window number.
 			return []string{srcDefillama}
+		case "polymarket":
+			// Day-2 venue: no native 30d aggregate and not on
+			// DefiLlama yet. Leave unset until either ships.
+			return nil
 		}
 	case mOI:
 		switch venue {
@@ -197,6 +204,8 @@ func priorityMap(venue, metric string) []string {
 		case "variational":
 			// Native REST blocked. DefiLlama is the only path.
 			return []string{srcDefillama}
+		case "polymarket":
+			return []string{srcPolymarketNative}
 		}
 	case mFees30d:
 		switch venue {
@@ -247,6 +256,8 @@ func priorityMap(venue, metric string) []string {
 			// hitting the same blocked APIs. Leave unset; carry-
 			// forward will keep the gauge empty until a source ships.
 			return nil
+		case "polymarket":
+			return []string{srcPolymarketNative}
 		}
 	case mTopVol24h:
 		switch venue {
@@ -276,6 +287,8 @@ func priorityMap(venue, metric string) []string {
 			// No top-market signal: Variational native is blocked, and
 			// the Ostium subgraph has no rolling 24h volume column.
 			return nil
+		case "polymarket":
+			return []string{srcPolymarketNative}
 		}
 	}
 	return nil
@@ -322,6 +335,7 @@ func NewRouter(cfg *Config) *Router {
 		NewPacificaNativeSource(),
 		NewVariationalNativeSource(),
 		NewOstiumNativeSource(),
+		NewPolymarketNativeSource(),
 		NewDefillamaScrapeSource(),
 	}
 	if cfg.MobulaAPIKey != "" {
