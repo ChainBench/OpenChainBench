@@ -382,6 +382,10 @@ export const SpecSchema = z
      * frontends bench to surface execution quality, outage signal, taker
      * share, etc. without changing the main p50 headline.
      */
+    /* Label for the headline tab of the metric panel switcher. Defaults
+     * to `metric`; set it when the panels are size/window variants and
+     * the headline needs its variant spelled out (e.g. "All-in at $1k"). */
+    panel_main_label: z.string().min(1).max(80).optional(),
     metric_panels: z
       .array(
         z.object({
