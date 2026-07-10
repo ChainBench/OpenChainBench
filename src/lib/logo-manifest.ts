@@ -265,7 +265,7 @@ const RAW: Record<string, string> = {
   "kucoin-web3": "/logos/kucoin-web3.jpg",
   vergex: "/logos/vergex.jpg",
   nansen: "/logos/nansen.jpg",
-  gemwallet: "/logos/gemwallet.svg",
+  gemwallet: "/logos/gemwallet.jpeg",
   "gtr-trade": "/logos/gtr-trade.png",
   hyprearn: "/logos/hyprearn.png",
   "legend-trade": "/logos/legend-trade.png",
