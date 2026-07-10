@@ -79,6 +79,7 @@ export function ProviderLogo({
 // Dark-tone (or dark-on-transparent) logos — get a WHITE chip with a
 // hairline shadow so they pop on both light and dark page backgrounds.
 const NEEDS_LIGHT_CHIP = new Set([
+  "aptos",
   "mobula",
   "lighter",
   "stellar",
