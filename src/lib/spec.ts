@@ -267,7 +267,7 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // level on VERCEL_ENV=production). Bench SET now differs per env, so
   // the env is part of the cache key to keep prod and preview entries
   // from colliding.
-  ["bench-unfiltered-v24", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  ["bench-unfiltered-v25", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -416,7 +416,7 @@ const loadAllBenchmarksCached = unstable_cache(
   // 055-066; sitemap/citable/products must pick up the new slugs).
   // v25: bumped with bench-unfiltered-v21 (+bench 067 portfolio-chain-coverage).
   // v26: bumped with bench-unfiltered-v22 (+bench 068 explorer-chain-coverage).
-  // v27: bumped with bench-unfiltered-v24 (prod-only bench gate); env in key.
+  // v27: bumped with bench-unfiltered-v25 (prod-only bench gate); env in key.
   ["all-benchmarks-v27", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
@@ -492,7 +492,7 @@ const loadBenchmarkFiltered = unstable_cache(
   // 055-066).
   // v13: bumped with bench-unfiltered-v21 (+bench 067 portfolio-chain-coverage).
   // v14: bumped with bench-unfiltered-v22 (+bench 068 explorer-chain-coverage).
-  // v15: bumped with bench-unfiltered-v24 (prod-only bench gate); env in key.
+  // v15: bumped with bench-unfiltered-v25 (prod-only bench gate); env in key.
   ["bench-filters-v15", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
