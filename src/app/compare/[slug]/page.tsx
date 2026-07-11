@@ -224,12 +224,15 @@ export async function generateMetadata({
   const liveSharedCount = sharedSlugsForMeta.filter(
     (s) => !excluded.has(s) && aLive.has(s) && bLive.has(s),
   ).length;
-  // Curated pairs (explicit benchmarks list in COMPARE_PAIRS) are
-  // hand-picked head-term targets like usdc-vs-usdt and carry editorial
-  // framing beyond the ledger, so they stay indexable even with a
-  // single live shared bench. The gate only applies to combinatorial
-  // ad hoc pairs.
-  const isCurated = !!pair.benchmarks;
+  // Curated pairs are hand-picked head-term targets like usdc-vs-usdt
+  // and carry editorial framing beyond the ledger, so they stay
+  // indexable even with a single live shared bench. Membership in
+  // COMPARE_PAIRS is the curation signal; `pair.benchmarks` is only an
+  // optional editorial override most curated entries do not set (the
+  // previous check on it noindexed usdc-vs-usdt and
+  // dydx-vs-hyperliquid in prod). The gate only applies to
+  // combinatorial ad hoc pairs.
+  const isCurated = getComparePair(pair.slug) !== undefined;
   const thin = !isCurated && liveSharedCount < 2;
 
   // Meta description: unique per pair via the shared-count + provider
