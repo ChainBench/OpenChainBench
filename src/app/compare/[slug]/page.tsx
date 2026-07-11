@@ -224,7 +224,13 @@ export async function generateMetadata({
   const liveSharedCount = sharedSlugsForMeta.filter(
     (s) => !excluded.has(s) && aLive.has(s) && bLive.has(s),
   ).length;
-  const thin = liveSharedCount < 2;
+  // Curated pairs (explicit benchmarks list in COMPARE_PAIRS) are
+  // hand-picked head-term targets like usdc-vs-usdt and carry editorial
+  // framing beyond the ledger, so they stay indexable even with a
+  // single live shared bench. The gate only applies to combinatorial
+  // ad hoc pairs.
+  const isCurated = !!pair.benchmarks;
+  const thin = !isCurated && liveSharedCount < 2;
 
   // Meta description: unique per pair via the shared-count + provider
   // names + date. Kills the identical duplicate-content signal that had
