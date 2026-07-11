@@ -64,9 +64,29 @@ const computeFreshness = unstable_cache(
     for (const [slug, asOf] of entries) {
       if (asOf != null) freshness[slug] = asOf;
     }
+    // Store fallback: the Vercel site has no PROMETHEUS_URL (Prom lives
+    // on a private VPS), so on prod every probe above fails and this
+    // map came back EMPTY since launch, blanking the LiveIndicator.
+    // The materialized blobs carry the worker's lastRunAt per bench,
+    // minute-grained instead of scrape-grained, which is honest and far
+    // better than nothing. Prom keeps priority when reachable (local
+    // dev, worker context).
+    if (Object.keys(freshness).length === 0) {
+      try {
+        const { loadAllBenchmarks } = await import("@/lib/spec");
+        const all = await loadAllBenchmarks();
+        for (const b of all) {
+          if (!liveSlugSet.has(b.slug)) continue;
+          const t = Date.parse(b.lastRunAt ?? "");
+          if (Number.isFinite(t)) freshness[b.slug] = t;
+        }
+      } catch {
+        // leave empty; the indicator degrades exactly as before
+      }
+    }
     return { now: Date.now(), freshness };
   },
-  ["freshness-v2"],
+  ["freshness-v3"],
   { revalidate: 30, tags: ["benchmarks", "freshness"] },
 );
 
