@@ -24,7 +24,7 @@ import type { ProviderLayer } from "@/types/benchmark";
 import { CountLeaderboard } from "@/components/count-leaderboard";
 import { SummaryStat } from "@/components/summary-stat";
 import { ViewSwitcher } from "@/components/view-switcher";
-import { fmtUnit } from "@/lib/format";
+import { fmtAsOfUtc, fmtUnit } from "@/lib/format";
 import { computeFieldStats } from "@/lib/stats";
 import { defaultViewFor, viewsForBenchmark } from "@/lib/views";
 import { useViewPreference } from "@/hooks/use-view-preference";
@@ -60,18 +60,6 @@ function DimensionRow({
       />
     </div>
   );
-}
-
-/** "2026-07-06 14:00 UTC" from the bench's lastRunAt ISO string. Fixed
- *  UTC rendering so server and client HTML agree (no hydration drift)
- *  and answer engines get an unambiguous freshness stamp. */
-function fmtAsOfUtc(iso: string): string | null {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return null;
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(
-    d.getUTCDate(),
-  )} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())} UTC`;
 }
 
 /** Mutate `url.searchParams` to keep one dimension param in sync.

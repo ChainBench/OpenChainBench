@@ -3,6 +3,7 @@ import { getBenchmarks } from "@/data/benchmarks";
 import { SITE } from "@/data/site";
 import { AllBenchmarksDraftError } from "@/lib/spec";
 import { citeBundle, fieldValue, leader, headlineSentence } from "@/lib/citation";
+import { valueInDeclaredUnit } from "@/lib/format";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
@@ -53,6 +54,11 @@ export async function GET(req: Request) {
     // from an undersized field. The headline sentence is rewritten to
     // "insufficient data" by headlineSentence above.
     const insufficient = b.dataConfidence === "insufficient";
+    // `value` and `leader.value` are published in the declared `unit`.
+    // Latency benches with unit "s" store ms internally (fmtUnit
+    // convention); valueInDeclaredUnit converts so the JSON never claims
+    // 645 seconds for a 645 ms head lag.
+    const raw = insufficient ? null : fieldValue(b);
     return {
       slug: b.slug,
       title: b.title,
@@ -60,12 +66,16 @@ export async function GET(req: Request) {
       metric: b.metric,
       unit: b.unit,
       status: b.status,
-      value: insufficient ? null : fieldValue(b),
+      value: raw == null ? null : valueInDeclaredUnit(raw, b.unit),
       leader:
         insufficient
           ? null
           : top
-            ? { name: top.name, slug: top.slug, value: top.value }
+            ? {
+                name: top.name,
+                slug: top.slug,
+                value: valueInDeclaredUnit(top.value, b.unit),
+              }
             : null,
       sampleSize: b.sampleSize,
       expectedN: b.expectedN,

@@ -8,7 +8,7 @@ import { cleanLeftoverTokens } from "@/lib/answers-template";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { Pill } from "@/components/pill";
 import { ProviderLogo } from "@/components/provider-logo";
-import { fmtValue, fmtUnit, unitSuffix } from "@/lib/format";
+import { fmtAsOfUtc, fmtValue, fmtUnit, unitSuffix } from "@/lib/format";
 import { isRegion } from "@/lib/brand";
 import { SITE } from "@/data/site";
 import {
@@ -92,6 +92,7 @@ export default async function AnswerPage({
   // YAML's slug reference) fall through to a neutral fallback via
   // cleanLeftoverTokens so a placeholder string never reaches the SERP.
   const render = (s: string) => cleanLeftoverTokens(renderTemplate(s, bench));
+  const asOfUtc = fmtAsOfUtc(bench.lastRunAt);
   const shortAnswer = render(ans.short_answer);
   const intro = render(ans.intro);
   const methodology = render(ans.methodology);
@@ -187,6 +188,17 @@ export default async function AnswerPage({
 
       <div className="mt-6 max-w-3xl border-y border-rule py-5 text-base sm:text-lg leading-relaxed text-ink">
         {shortAnswer}
+        {/* Dated freshness stamp right next to the quotable sentence,
+            mirroring the "Data as of ... UTC" line on the bench pages.
+            Answer engines quote a claim far more readily when the date
+            of measurement sits beside it. Uses the referenced bench's
+            lastRunAt (real data timestamp), not build time. */}
+        {asOfUtc && (
+          <p className="mt-3 text-[11px] text-ink-faint">
+            Data as of <time dateTime={bench.lastRunAt}>{asOfUtc}</time>,
+            refreshed continuously.
+          </p>
+        )}
       </div>
 
       <p className="mt-6 max-w-3xl text-base leading-relaxed text-ink-soft">

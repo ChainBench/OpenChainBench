@@ -14,8 +14,8 @@ export async function GET() {
     openapi: "3.1.0",
     info: {
       title: "OpenChainBench API",
-      version: "1.0.0",
-      description: SITE.description,
+      version: "1.1.0",
+      description: `${SITE.description} An MCP server (Streamable HTTP, POST only) is also available at ${SITE.url}/api/mcp/mcp exposing list_benchmarks, get_benchmark and query_prom tools; see ${SITE.url}/mcp for install instructions.`,
       license: { name: "CC-BY-4.0", url: "https://creativecommons.org/licenses/by/4.0/" },
     },
     servers: [{ url: SITE.url }],
@@ -67,6 +67,50 @@ export async function GET() {
           },
         },
       },
+      "/api/llm-context": {
+        get: {
+          summary:
+            "All benchmarks, rankings and methodology as one Markdown document, ready to paste into a system prompt.",
+          operationId: "get_llm_context",
+          responses: {
+            "200": {
+              description: "OK",
+              content: { "text/markdown": { schema: { type: "string" } } },
+            },
+            "503": { description: "Benchmarks temporarily unavailable" },
+          },
+        },
+      },
+      "/api/freshness": {
+        get: {
+          summary:
+            "Lightweight freshness probe: last resolved data timestamp (epoch ms) per benchmark slug.",
+          operationId: "get_freshness",
+          responses: {
+            "200": {
+              description: "OK",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/Freshness" },
+                },
+              },
+            },
+          },
+        },
+      },
+      "/api/search/featured": {
+        get: {
+          summary:
+            "Slim featured-leaders payload (live leaders + trending benches) that feeds the site search dialog.",
+          operationId: "get_featured_leaders",
+          responses: {
+            "200": {
+              description: "OK",
+              content: { "application/json": { schema: { type: "object" } } },
+            },
+          },
+        },
+      },
     },
     components: {
       schemas: {
@@ -85,7 +129,11 @@ export async function GET() {
             title: { type: "string" },
             metric: { type: "string" },
             unit: { type: "string" },
-            value: { type: "number", nullable: true },
+            value: {
+              type: "number",
+              nullable: true,
+              description: "Current leading value, expressed in `unit`.",
+            },
             headline: { type: "string" },
             url: { type: "string", format: "uri" },
             api: { type: "string", format: "uri" },
@@ -93,12 +141,27 @@ export async function GET() {
             asOf: { type: "string", format: "date-time" },
           },
         },
+        Freshness: {
+          type: "object",
+          properties: {
+            now: { type: "integer", description: "Server epoch ms at response time." },
+            freshness: {
+              type: "object",
+              additionalProperties: { type: "integer" },
+              description: "Benchmark slug to last data timestamp (epoch ms).",
+            },
+          },
+        },
         Stat: {
           type: "object",
           properties: {
             slug: { type: "string" },
             title: { type: "string" },
-            value: { type: "number", nullable: true },
+            value: {
+              type: "number",
+              nullable: true,
+              description: "Current leading value, expressed in `unit`.",
+            },
             unit: { type: "string" },
             rankings: { type: "array" },
             sparkline: { type: "array", items: { type: "number" } },
