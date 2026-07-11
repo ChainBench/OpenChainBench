@@ -371,19 +371,21 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
     lastModByPairSlug.set(pair.slug, pairLastMod(pair.providerA, pair.providerB));
   }
 
-  // Ad-hoc pair generation with hybrid threshold (SEO audit 2026-07-05):
+  // Ad-hoc pair generation with hybrid threshold (SEO audit 2026-07-08,
+  // tightened from 2026-07-05):
   //
-  //   - Both providers in BRAND_WHITELIST → emit at ≥ 1 shared bench.
-  //   - Otherwise → emit only at ≥ 3 shared benches.
+  //   - Both providers in BRAND_WHITELIST → emit at ≥ 2 shared benches
+  //     with live data for both.
+  //   - Otherwise → emit only at ≥ 3 live shared benches.
   //
-  // Previous rule (≥ 1 for any pair) generated 4938 ad-hoc URLs, 97% of
-  // which were near-duplicate templates over obscure providers. Bing
-  // indexed 2 pages out of 5093 and penalised the whole domain via
-  // thin-content signal. The hybrid keeps every commercial "X vs Y"
-  // pair a user might actually search for (helius-vs-mobula,
-  // alchemy-vs-moralis, chain-vs-chain, perp-vs-perp — 223 pairs) and
-  // adds only genuinely rich non-brand pairs (3 with ≥ 3 shared).
-  // Total: 226 ad-hoc + 21 curated ≈ 247 URLs.
+  // History: the original ≥ 1 for any pair generated 4938 ad-hoc URLs,
+  // 97% near-duplicate templates; Bing indexed 2 of 5093 and penalised
+  // the domain. The 07-05 hybrid (brand ≥ 1 structural) still emitted
+  // ~70 single-shared-bench pairs, many rendering "awaiting live
+  // measurements" (~2 KB). The ≥ 2 live floor matches the render-time
+  // noindex gate on /compare/[slug], so no sitemap URL is noindexed.
+  // Dropped pairs still render via the ad-hoc resolver (no 404s from
+  // bench-page or product-page cross links).
   // Enumeration shared with /compare (src/lib/compare/adhoc-pairs.ts)
   // so every advertised pair URL is also internally linked — sitemap-
   // only pairs were flagged as orphan pages (Ahrefs, 2026-07-08).

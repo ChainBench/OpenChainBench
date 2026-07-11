@@ -5,7 +5,7 @@ import { getBenchmarksSafe } from "@/data/benchmarks";
 import { HeroRadar } from "@/components/hero-radar";
 import { HomeBenchTable } from "@/components/home-bench-table";
 import { LiveDashboard } from "@/components/live/dashboard";
-import { GLOBAL_DATASET_JSONLD } from "@/lib/dataset-jsonld";
+import { buildGlobalDatasetJsonLd } from "@/lib/dataset-jsonld";
 import { safeJsonLd } from "@/lib/jsonld";
 
 export const revalidate = 60;
@@ -35,6 +35,15 @@ export const metadata: Metadata = {
 export default async function HomePage() {
   const benchmarks = await getBenchmarksSafe();
 
+  // Same timestamp source the bench pages use for Dataset.dateModified:
+  // the harness lastRunAt (real data timestamp, not build time). The
+  // newest one across the catalog dates the site-wide Dataset node.
+  const latestRunAt = benchmarks
+    .map((b) => b.lastRunAt)
+    .filter((iso) => iso && !Number.isNaN(new Date(iso).getTime()))
+    .sort()
+    .pop();
+
   return (
     <article className="mx-auto max-w-[1400px] px-4 sm:px-6 py-10 sm:py-14 space-y-14 sm:space-y-20">
       {/* Site-wide schema.org/Dataset entry. Points Google Dataset Search,
@@ -46,7 +55,9 @@ export default async function HomePage() {
       <script
         type="application/ld+json"
         // biome-ignore lint/security/noDangerouslySetInnerHtml: serialized via safeJsonLd
-        dangerouslySetInnerHTML={{ __html: safeJsonLd(GLOBAL_DATASET_JSONLD) }}
+        dangerouslySetInnerHTML={{
+          __html: safeJsonLd(buildGlobalDatasetJsonLd(latestRunAt)),
+        }}
       />
 
       {/* Hero */}

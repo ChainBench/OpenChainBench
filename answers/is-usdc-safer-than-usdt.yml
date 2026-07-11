@@ -1,0 +1,38 @@
+slug: is-usdc-safer-than-usdt
+question: "Is USDC safer than USDT?"
+short_answer: |
+  On measured peg stability, the live data is on this page: {{name:usdc}} currently shows {{p99:usdc}} worst case deviation (p99, 24h) versus {{p99:usdt}} for {{name:usdt}} on USD quoted venues, measured live by OpenChainBench. Peg tightness is the market's real time verdict, but safety is broader: reserve composition, redemption terms and regulatory posture differ between Circle and Tether, and none of those appear in a price feed.
+
+benchmark: stablecoin-peg
+
+intro: |
+  The USDC versus USDT safety debate usually argues reserves and regulation, which matter but move slowly and resolve only in a crisis. There is a second signal that updates every minute: how tightly each token actually holds $1.00 on real venues, right now. A stablecoin whose price wanders tens of basis points from peg under normal conditions is telling you something about its liquidity and redemption arbitrage that no attestation PDF will. OpenChainBench polls Binance, Coinbase, Kraken and Bitstamp REST tickers every 5 seconds, aggregates per venue prices into a per minute liquidity weighted median per USD quoted stablecoin, and surfaces the per minute worst deviation in basis points alongside the cross venue gap, time outside the 50 bps band, and a depeg event flag. This page reads that data for the two largest stables. The history is instructive in both directions: USDC broke to $0.87 in March 2023 when Silicon Valley Bank froze part of Circle's reserves, and USDT has traded at persistent small discounts during redemption stress episodes. Whichever way your prior leans, the measured peg is the part of the answer you can verify live.
+
+methodology: |
+  Per venue samples are grouped into 60 second buckets and aggregated into a liquidity weighted median per stablecoin, weighted by 24h USD volume. The primary metric is the per minute worst deviation, the MAX of the absolute distance from $1.00 across venue samples in each bucket, in basis points. The leaderboard sorts on the 24h median of that per minute worst deviation; the p99 column captures the worst 1% tail over the same window, which is the number that matters for anyone holding inventory. USDC is measured on Kraken and Bitstamp USD pairs, USDT on Coinbase, Kraken and Bitstamp. USDT quoted pairs live on a separate secondary metric so USDT's own drift cannot contaminate the USD anchored comparison. A multi venue consensus rule keeps corroborated depegs and drops isolated single venue glitches.
+
+limitations:
+  - "Peg deviation is not a reserve audit. This bench measures the market price of each token against $1.00; it says nothing about what backs the token, how fast redemptions clear, or what happens in a bank failure. Reserve risk and peg tightness usually correlate, but the correlation broke for USDC in March 2023 within hours."
+  - "Coverage is a subset of venues: Binance, Coinbase, Kraken, Bitstamp and Curve on chain. A depeg that starts on an unmeasured venue or in a specific regional market appears here only once it propagates to the measured books."
+  - "The 24h window smooths history. A stablecoin can post excellent numbers for months and still fail abruptly; past peg stability is evidence, not a guarantee. The depeg event flag exists precisely because tail events do not announce themselves in the median."
+  - "The depeg flag fires only after 5 consecutive minutes outside [$0.97, $1.03], so sub 5 minute wicks show in the per minute MAX but never trip the flag."
+  - "Legal and counterparty differences between Circle and Tether (jurisdiction, attestation cadence, redemption gating, banking partners) are out of scope. For a treasury decision, read this page as the live market signal and pair it with reserve diligence."
+
+faq:
+  - q: "Which is more stable right now, USDC or USDT?"
+    a: "The live leaderboard above holds the current answer: {{name:usdc}} at {{p99:usdc}} versus {{name:usdt}} at {{p99:usdt}} (p99 worst case deviation, 24h, on USD quoted venues). Both majors typically sit within tens of basis points of $1.00 in normal conditions, so the ranking between them can flip week to week on venue noise. The more durable signal is the tail: which token spends more time outside the 50 bps band and how wide its cross venue gap runs during stress, both surfaced on the benchmark page."
+  - q: "Has USDC ever depegged?"
+    a: "Yes. In March 2023, USDC traded as low as roughly $0.87 after Silicon Valley Bank failed while holding about $3.3B of Circle's reserves. The peg recovered within days once US regulators guaranteed SVB deposits and Circle confirmed redemption at par. The episode is the standard counterexample to reading peg history as safety: USDC's measured stability was excellent right up to the weekend it broke, because the risk lived in the reserve banking layer that no price feed can see in advance."
+  - q: "What happens if USDT depegs?"
+    a: "A sustained USDT depeg would propagate far beyond the token itself, because USDT is the quote currency for the deepest pairs on most crypto exchanges. Mechanically, this bench would surface it in stages: the cross venue gap widens first as venues disagree, the per minute worst deviation climbs, and the depeg event flag fires after 5 consecutive minutes outside the [$0.97, $1.03] band. Assets quoted in USDT would also show phantom price moves, which is why this bench measures USDT anchored pairs on a separate metric rather than mixing them into the USD anchored leaderboard."
+  - q: "Should I hold USDC or USDT?"
+    a: "This page will not pick for you, but it clarifies the trade. USDC offers same day USD redemption with US banks, monthly attestations and a US regulatory posture; its 2023 depeg came from that same US banking exposure. USDT offers the deepest liquidity in crypto and a longer track record of holding peg through stress, against a slower clearing redemption window and a longer history of reserve controversy. Many desks split inventory across both plus a non custodial option. Whatever the split, the live deviation and depeg flag on this page are the numbers to watch rather than a static safety ranking."
+
+related:
+  - which-stablecoin-is-the-most-stable
+  - which-crypto-oracle-is-the-most-accurate
+  - which-crypto-price-api-is-the-fastest
+
+seo_title: "Is USDC safer than USDT? Live peg data, not opinions"
+seo_description: "USDC vs USDT measured live: {{p99:usdc}} vs {{p99:usdt}} worst case peg deviation (p99, 24h) on USD quoted venues. What peg data can and cannot tell you about stablecoin safety."
+status: live

@@ -1,3 +1,27 @@
+/** Convert a stored value into the bench's declared unit for machine
+ *  readable payloads. Latency benches with unit "s" store milliseconds
+ *  by convention (see fmtUnit below, which divides by 1000 before
+ *  rendering). That convention must not leak into public JSON where
+ *  agents read `value` + `unit` literally: aggregator-head-lag shipped
+ *  {"value":645,"unit":"s"} while the headline said "0.6 s". Every
+ *  other unit stores exactly what it declares. */
+export function valueInDeclaredUnit(value: number, unit: string): number {
+  return unit === "s" ? value / 1000 : value;
+}
+
+/** "2026-07-06 14:00 UTC" from an ISO timestamp. Fixed UTC rendering so
+ *  server and client HTML agree (no hydration drift) and answer engines
+ *  get an unambiguous freshness stamp. Shared by benchmark-body and the
+ *  answers pages so the dated line reads identically everywhere. */
+export function fmtAsOfUtc(iso: string): string | null {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(
+    d.getUTCDate(),
+  )} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())} UTC`;
+}
+
 export function fmtUnit(value: number, unit: string) {
   if (!Number.isFinite(value)) return "-";
   if (unit === "pct") return formatPercent(value);

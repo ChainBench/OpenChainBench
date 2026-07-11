@@ -1,8 +1,16 @@
 import { timingSafeEqual } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { getBenchmarks } from "@/data/benchmarks";
-import { getProviderSlugs } from "@/lib/providers";
+import { getProvider, getProviders, getProviderSlugs } from "@/lib/providers";
 import { loadAllAlternatives } from "@/lib/alternatives";
+import { loadAllAnswers } from "@/lib/answers";
+import { adHocPairs } from "@/lib/compare/adhoc-pairs";
+import { COMPARE_PAIRS } from "@/data/compare-pairs";
+import { CATEGORIES } from "@/lib/categories";
+import { CHAIN_BY_SLUG, CHAINS, getBenchmarksForChain } from "@/lib/chains";
+import { canonicalChainSlug } from "@/lib/chain-aliases";
+import { isHlBuilderSlug } from "@/lib/hl-builder-stats";
+import { REMOVED_BENCH_SLUGS } from "@/lib/removed-benches";
 import { SITE } from "@/data/site";
 import { pingIndexNow } from "@/lib/indexnow";
 import {
@@ -12,6 +20,10 @@ import {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+// The map now fans out getProvider over every catalog slug plus
+// getBenchmarksForChain per chain (same shape of work the sitemap does).
+// Cold cache runs need head room above the 60 s function default.
+export const maxDuration = 300;
 
 /**
  * Hourly IndexNow ping, diff-based ("streaming" mode).
@@ -24,11 +36,28 @@ export const dynamic = "force-dynamic";
  * (the IndexNow spec asks for deleted urls too, so engines recrawl and
  * observe the 410/redirect).
  *
- * Fingerprint inputs per URL family:
+ * Fingerprint inputs per URL family (must mirror src/app/sitemap.ts —
+ * every family the sitemap emits is tracked here, with the same
+ * prod-gate exclusions, so IndexNow never advertises a URL the sitemap
+ * would hide and never misses one it publishes):
  *   - Bench pages: leader provider slug + rounded leader value + seoTitle
  *     ("the page's headline claim changed").
+ *   - Per-chain bench sub-pages (/benchmarks/<slug>/<chain>): the parent
+ *     bench's headline fingerprint. Resubmitted when the parent claim
+ *     moves, not on every scrape.
  *   - Product / alternative pages: membership only (they change rarely;
  *     add/remove is the signal).
+ *   - Compare pairs and answers: family membership hash. Every member
+ *     carries the hash of the sorted member list, so a new page is
+ *     submitted once (map diff: added) and the family is resubmitted
+ *     when the set changes (internal link lists on the sibling pages
+ *     changed too). Deliberately does NOT include the catalog lastRunAt
+ *     timestamp: that moves every scrape and would resubmit ~250 URLs
+ *     hourly, which is the batch-mode pattern this route avoids.
+ *   - Chain hubs (/chains/<slug>): hash of the sorted bench slugs
+ *     covering the chain (the page is a list of those benches).
+ *   - Category hubs (/benchmarks/category/<slug>): hash of the sorted
+ *     bench slugs in the category.
  *   - Static hubs: NEXT_PUBLIC_BUILD_TIME, so they are re-submitted once
  *     per deploy.
  *
@@ -84,17 +113,29 @@ function isAuthorized(req: NextRequest): boolean {
   return timingSafeEqual(Buffer.from(header), Buffer.from(expected));
 }
 
-async function buildFingerprintMap(): Promise<FingerprintMap> {
-  const [benches, alternatives, providerSlugs] = await Promise.all([
-    getBenchmarks(),
-    loadAllAlternatives(),
-    getProviderSlugs(),
-  ]);
+/** Family membership hash: same value stamped on every member URL of a
+ *  set-shaped family (compare pairs, answers). See the header comment
+ *  for why this deliberately excludes the catalog timestamp. */
+function setFingerprint(members: string[]): string {
+  return shortHash([...members].sort().join("\n"));
+}
+
+async function buildFingerprintMap(
+  prev: FingerprintMap,
+): Promise<FingerprintMap> {
+  const [benches, alternatives, answers, providerSlugs, profiles] =
+    await Promise.all([
+      getBenchmarks(),
+      loadAllAlternatives(),
+      loadAllAnswers(),
+      getProviderSlugs(),
+      getProviders(),
+    ]);
 
   const map: FingerprintMap = {};
 
   // Static hubs: fingerprinted on the deploy timestamp so each deploy
-  // re-submits them exactly once.
+  // re-submits them exactly once. Mirrors staticHubRoutes() in sitemap.ts.
   const deployFp = shortHash(process.env.NEXT_PUBLIC_BUILD_TIME ?? "static");
   const hubs = [
     "",
@@ -108,6 +149,13 @@ async function buildFingerprintMap(): Promise<FingerprintMap> {
     "/hyperliquid",
     "/perps",
     "/chains",
+    "/contribute",
+    "/partners",
+    "/badges",
+    "/press",
+    "/compare",
+    "/alternatives",
+    "/answers",
   ];
   for (const path of hubs) {
     map[`${SITE.url}${path}`] = deployFp;
@@ -116,22 +164,140 @@ async function buildFingerprintMap(): Promise<FingerprintMap> {
   // Bench pages: fingerprint = the headline claim (leader slug + rounded
   // leader p50 + seoTitle). Rounding to 0.1 units keeps sub-noise metric
   // wobble from triggering a resubmission every hour.
-  for (const b of benches) {
+  //
+  // REMOVED_BENCH_SLUGS is the same prod gate the sitemap applies: those
+  // slugs 410 on production, so submitting them would ask engines to
+  // crawl gated pages. The loader already drops them on prod, the
+  // explicit filter keeps staging/dev runs honest too.
+  // All non-gated benches, used for the "parent bench must exist" rule
+  // on alternatives / answers / categories (mirrors sitemap.ts, which
+  // keys those checks on the full loaded catalog, not editorial status).
+  const publishedBenches = benches.filter(
+    (b) => !REMOVED_BENCH_SLUGS.has(b.slug),
+  );
+  const publishedSlugs = new Set(publishedBenches.map((b) => b.slug));
+
+  for (const b of publishedBenches) {
     if (b.editorialStatus !== "live") continue;
     const leader = b.results[0];
     const fp = leader
       ? `${leader.slug}:${Math.round(leader.ms.p50 * 10)}:${b.seoTitle ?? ""}`
       : `no-leader:${b.seoTitle ?? ""}`;
-    map[`${SITE.url}/benchmarks/${b.slug}`] = shortHash(fp);
+    const benchFp = shortHash(fp);
+    map[`${SITE.url}/benchmarks/${b.slug}`] = benchFp;
+
+    // Per-chain sub-pages. Same enumeration as sitemap.ts: a
+    // perChainExplainer entry only yields a live URL when its canonical
+    // slug also appears in the bench's results or chain dimension.
+    // Fingerprint = the parent bench's headline fingerprint, so the
+    // sub-pages resubmit when the parent claim changes, not hourly.
+    const resultSlugs = new Set(
+      b.results.map((r) => canonicalChainSlug(r.slug)),
+    );
+    const chainValues = new Set(
+      (b.dimensions?.chain ?? [])
+        .filter((c) => c.value.toLowerCase() !== "all")
+        .map((c) => canonicalChainSlug(c.value)),
+    );
+    for (const e of b.perChainExplainer ?? []) {
+      const canon = canonicalChainSlug(e.slug);
+      if (!resultSlugs.has(canon) && !chainValues.has(canon)) continue;
+      map[`${SITE.url}/benchmarks/${b.slug}/${canon}`] = benchFp;
+    }
   }
+
+  // Product pages: validate each slug the same way the sitemap does so
+  // we never submit a /products/<slug> that 404s (unknown provider),
+  // 308s (chain slug moved to /chains) or 307s (HL builder frontend).
+  await isHlBuilderSlug("").catch(() => false);
+  const validatedSlugs = (
+    await Promise.all(
+      providerSlugs.map(async (slug) => {
+        if (CHAIN_BY_SLUG.has(slug)) return null;
+        if (await isHlBuilderSlug(slug)) return null;
+        const p = await getProvider(slug);
+        return p ? slug : null;
+      }),
+    )
+  ).filter((s): s is string => s !== null);
 
   // Product / alternative pages change rarely; membership add/remove is
   // the signal, so a constant fingerprint suffices.
-  for (const slug of providerSlugs) {
+  for (const slug of validatedSlugs) {
     map[`${SITE.url}/products/${slug}`] = "exists";
   }
   for (const alt of alternatives) {
+    if (!publishedSlugs.has(alt.benchmark)) continue;
     map[`${SITE.url}/alternatives/${alt.slug}`] = "exists";
+  }
+
+  // Answers: loadAllAnswers already applies the prod gate
+  // (REMOVED_ANSWER_SLUGS + removed parent benches on production); the
+  // publishedSlugs filter mirrors the sitemap's "parent bench must
+  // exist" rule. Family membership hash: see header comment.
+  const answerSlugs = answers
+    .filter((a) => publishedSlugs.has(a.benchmark))
+    .map((a) => a.slug);
+  const answersFp = setFingerprint(answerSlugs);
+  for (const slug of answerSlugs) {
+    map[`${SITE.url}/answers/${slug}`] = answersFp;
+  }
+
+  // Chain hubs: only chains whose page actually renders (the page 404s
+  // when getBenchmarksForChain returns []), same rule as the sitemap.
+  // Fingerprint = the sorted bench slugs covering the chain, so the hub
+  // resubmits when a bench enters or leaves its coverage.
+  await Promise.all(
+    CHAINS.map(async (c) => {
+      try {
+        const covering = await getBenchmarksForChain(c.slug);
+        if (covering.length === 0) return;
+        map[`${SITE.url}/chains/${c.slug}`] = setFingerprint(
+          covering.map((b) => b.slug),
+        );
+      } catch {
+        // Transient loader failure: carry the previous fingerprint over
+        // (when we have one) so the URL is neither resubmitted as
+        // changed nor advertised as removed. Mirrors the sitemap's
+        // "a Prom outage should not disappear known-good chain hubs".
+        const url = `${SITE.url}/chains/${c.slug}`;
+        if (prev[url]) map[url] = prev[url];
+      }
+    }),
+  );
+
+  // Category hubs: closed enum, page 404s on empty categories. Same
+  // filter as the sitemap (match on display label).
+  for (const c of CATEGORIES) {
+    const catBenches = publishedBenches.filter(
+      (b) => b.category === c.label,
+    );
+    if (catBenches.length === 0) continue;
+    map[`${SITE.url}/benchmarks/category/${c.slug}`] = setFingerprint(
+      catBenches.map((b) => b.slug),
+    );
+  }
+
+  // Compare pairs: curated pairs (provider-validated, like the sitemap)
+  // plus the shared ad-hoc enumeration from adhoc-pairs.ts. Family
+  // membership hash: a new pair is submitted once, the family resubmits
+  // when the pair set changes.
+  const pairSlugs = new Set<string>();
+  await Promise.all(
+    COMPARE_PAIRS.map(async (pair) => {
+      const [p, q] = await Promise.all([
+        getProvider(pair.providerA),
+        getProvider(pair.providerB),
+      ]);
+      if (p && q) pairSlugs.add(pair.slug);
+    }),
+  );
+  for (const pair of adHocPairs(profiles)) {
+    pairSlugs.add(pair.slug);
+  }
+  const compareFp = setFingerprint([...pairSlugs]);
+  for (const slug of pairSlugs) {
+    map[`${SITE.url}/compare/${slug}`] = compareFp;
   }
 
   return map;
@@ -142,13 +308,13 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  const [next, prevSnap] = await Promise.all([
-    buildFingerprintMap(),
-    readCohortSnapshot<FingerprintMap>(
-      FINGERPRINT_KEY,
-      FINGERPRINT_MAX_AGE_MS,
-    ),
-  ]);
+  // Read the previous map first: buildFingerprintMap needs it to carry
+  // fingerprints over on transient per-family loader failures.
+  const prevSnap = await readCohortSnapshot<FingerprintMap>(
+    FINGERPRINT_KEY,
+    FINGERPRINT_MAX_AGE_MS,
+  );
+  const next = await buildFingerprintMap(prevSnap?.data ?? {});
 
   // First run (no previous map in KV): submit NOTHING, just store the
   // map. Submitting here would be one final mega-batch of every url —

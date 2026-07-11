@@ -9,6 +9,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import yaml from "js-yaml";
 import { cache } from "react";
+import { downsample, MINI_CHART_POINTS } from "@/lib/downsample";
 import type { Benchmark } from "@/types/benchmark";
 import {
   loadAllBenchmarks,
@@ -81,7 +82,18 @@ export function toBenchmarkCardData(b: Benchmark): BenchmarkCardData {
       availability: r.availability,
       ms: { p50: r.ms.p50 },
     })),
-    extras: { series24h: b.extras?.series24h ?? {} },
+    // Downsample at the projection boundary: the card's MiniChart caps
+    // rendering at MINI_CHART_POINTS anyway, so shipping the raw 24h
+    // series (hundreds of points x providers x benches) only bloated
+    // the RSC payload without changing a single drawn pixel.
+    extras: {
+      series24h: Object.fromEntries(
+        Object.entries(b.extras?.series24h ?? {}).map(([slug, values]) => [
+          slug,
+          downsample(values, MINI_CHART_POINTS),
+        ])
+      ),
+    },
   };
 }
 
