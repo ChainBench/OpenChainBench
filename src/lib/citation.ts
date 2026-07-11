@@ -96,7 +96,14 @@ export function groundingTraceLine(
 ): string {
   const sentence = headlineSentence(b);
   if (b.dataConfidence === "insufficient" || !leader(b)) return sentence;
-  const isoDate = now.toISOString().slice(0, 10);
+  // Date the claim by the DATA timestamp (lastRunAt), not render time:
+  // a stale bench used to say "As of <today>" on yesterday's numbers,
+  // silently masking staleness for answer engines. Render time is only
+  // the fallback when the blob carries no timestamp.
+  const dataMs = Date.parse(b.lastRunAt ?? "");
+  const isoDate = (Number.isFinite(dataMs) ? new Date(dataMs) : now)
+    .toISOString()
+    .slice(0, 10);
   const url = `${origin}/benchmarks/${b.slug}`;
   return `As of ${isoDate}, ${trimTrailingPeriod(sentence)}. Source: OpenChainBench, ${url}.`;
 }
@@ -123,8 +130,12 @@ export function groundingTraceParts(
 ): GroundingTraceParts | null {
   if (b.dataConfidence === "insufficient" || !leader(b)) return null;
   const sentence = headlineSentence(b);
+  // Same data-timestamp rule as groundingTraceLine above.
+  const dataMs = Date.parse(b.lastRunAt ?? "");
   return {
-    isoDate: now.toISOString().slice(0, 10),
+    isoDate: (Number.isFinite(dataMs) ? new Date(dataMs) : now)
+      .toISOString()
+      .slice(0, 10),
     claim: trimTrailingPeriod(sentence),
     url: `${origin}/benchmarks/${b.slug}`,
   };
