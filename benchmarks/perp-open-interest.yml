@@ -38,6 +38,7 @@ abstract: |
   Higher is better.
 
 methodology:
+  - "Convention: open interest counts each contract once (one side), the standard used by CME, Binance and Coinglass, and the only convention comparable across venues. Aggregators can differ: DefiLlama doubles Lighter and Ostium (long plus short), folds 1,682 options markets into Paradex, and adds HIP-3 sub-dex OI to Hyperliquid. Where our number is about half of theirs, that is the convention gap, not missing data; five venues where conventions align match DefiLlama within 2 percent."
   - "Cadence: every 5 minutes per venue in parallel, 10 second timeout per request."
   - "Hyperliquid: info metaAndAssetCtxs, openInterest summed across all assets and priced in USD using the venue's own mark price."
   - "Aster: fapi openInterest endpoint per instrument, summed across all listed USDT perps."
