@@ -23,11 +23,11 @@ import { SITE } from "@/data/site";
  */
 
 const DESCRIPTION =
-  "Cross-venue prediction market leaderboard: volume, OI, resolution delay, API latency, freshness. Polymarket, Kalshi, Limitless, Manifold, Myriad.";
+  "Polymarket vs Kalshi plus Limitless, Manifold and Myriad on one cross-venue leaderboard: volume, OI, resolution delay, API latency, freshness.";
 
 export const metadata: import("next").Metadata = pageMetadata({
   path: "/prediction-markets",
-  title: "Prediction markets leaderboard",
+  title: "Prediction markets leaderboard 2026",
   description: DESCRIPTION,
 });
 

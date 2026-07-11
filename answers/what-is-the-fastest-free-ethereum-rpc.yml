@@ -1,0 +1,38 @@
+slug: what-is-the-fastest-free-ethereum-rpc
+question: "What is the fastest free Ethereum RPC?"
+short_answer: |
+  {{best_name}} is currently the fastest free Ethereum RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h), measured by OpenChainBench every 60 seconds against 8 no-key providers from us-east, eu-west and Singapore. The ranking re-sorts continuously, and the per region leader often differs from the global one, so check the region closest to your deployment.
+
+benchmark: ethereum-rpc
+
+intro: |
+  Every list of free Ethereum RPC URLs ranks endpoints by reputation or by a one-off ping from the author's laptop. Neither survives contact with production: public gateways change routing, add permissioned modes, or start returning fast HTTP 200 responses that carry a JSON-RPC error instead of a block. This page is the live answer. OpenChainBench probes every free, no-key public Ethereum endpoint that sustains continuous measurement (PublicNode, dRPC, Tenderly, Nodies, Lava, MeowRPC, Flashbots, Cloudflare) with an identical eth_getBlockByNumber call every 60 seconds from three regions, and classifies every response rather than trusting the status code. Cloudflare-eth is the standing example of why classification matters: it answers in well under a second, but a growing share of its responses resolve to a JSON-RPC error body, which only shows in the success column. Latency percentiles are computed from successful calls only and always read next to the success rate, so a fast but degraded endpoint cannot top the table. Archive depth is audited separately every 5 minutes, because a fast endpoint that serves only pruned recent state answers a different question than a free archive node.
+
+methodology: |
+  One identical JSON-RPC POST (eth_getBlockByNumber with a rotating request id, non cacheable by design) every 60 seconds against each provider from us-east, eu-west and Singapore, using the same plain HTTP client for every endpoint and no API key in any request. Wall clock round trip is recorded at millisecond precision; p50, p90 and p99 come from Prometheus quantile_over_time over 24 hours, averaged across the three origins for the headline. Responses are classified ok, http_err, jsonrpc_err, stale (more than 20 blocks behind the cross provider tip) or timeout, and only ok calls enter the latency distribution. Archive depth is probed every 5 minutes with eth_getBalance at five historical depths up to 5M blocks.
+
+limitations:
+  - "Latency is conditional on success. Failed calls never enter the percentile, so an endpoint failing most requests can still post a fast p50 from its rare successes; read every latency figure next to its success column, and treat rows under 50 percent success as degraded."
+  - "Three probe origins only (Virginia, Amsterdam, Singapore). An endpoint that terminates well in these regions can behave differently from South America, Africa or Australia, and per region leaders already diverge between the three measured origins."
+  - "One method probed for the headline. eth_getBlockByNumber is representative of read latency but says nothing about eth_sendRawTransaction behavior, websocket subscriptions or batched calls under load."
+  - "Free public endpoints share rate limit budgets with the entire internet and carry no SLA. The bench probes at a polite cadence; a dapp hammering the same endpoint at 100 requests per second will see throttling this page cannot predict."
+  - "Keyed free tiers (Alchemy, Infura, QuickNode and similar) are a different market with signup friction and quotas, measured separately on the rpc-keyed-latency benchmark with the identical probe, so the two tiers stay directly comparable."
+
+faq:
+  - q: "Which Ethereum RPC URL works without an API key?"
+    a: "Eight endpoints sustain continuous no-key probing on Ethereum mainnet and are ranked live above: PublicNode, dRPC, Tenderly Gateway, Nodies, Lava, MeowRPC, Flashbots Protect and Cloudflare. Every one was live verified before inclusion, and providers that key-gate, region block or rate limit below the probe cadence are excluded outright rather than listed with an asterisk. Note the success column before picking: Cloudflare in particular returns fast responses whose body is increasingly a JSON-RPC error rather than a block."
+  - q: "Is a free Ethereum RPC good enough for production?"
+    a: "For read heavy paths, often yes, if you read the success rate and not just the latency. The failure modes that hurt in production are the quiet ones this bench classifies: HTTP 200 responses carrying a JSON-RPC error body, stale heads more than 20 blocks behind tip, and throttling during activity spikes. Free endpoints carry no SLA and share capacity with everyone. The common production pattern is a free endpoint as primary or fallback for reads, with a keyed tier for transaction submission, websockets and archive queries."
+  - q: "Does the fastest Ethereum RPC depend on where my server runs?"
+    a: "Strongly. The headline number on this page averages three probe origins, but per region leaders regularly diverge, and a gateway that wins from Virginia can lose from Singapore by multiples because anycast routing and node placement differ per provider. The benchmark page has region tabs that re-scope every number to a single origin; pick the origin closest to where your requests actually come from before choosing an endpoint."
+  - q: "Do any free Ethereum RPCs support archive queries?"
+    a: "A few, and the benchmark audits it directly rather than trusting documentation. Every 5 minutes each provider gets an eth_getBalance probe at five historical depths, from Geth's default pruned range up to 5M blocks (genesis era). A provider passing the 5M tier serves full historical state for free without a key; one that fails at 7,200 blocks is on a default pruned configuration and only serves roughly the last day. The per provider archive depth badges on the benchmark page show the current audit result."
+
+related:
+  - drpc-vs-publicnode-vs-1rpc
+  - alchemy-vs-quicknode-vs-infura-latency
+  - best-rpc-for-indexer
+
+seo_title: "What is the fastest free Ethereum RPC? Live no-key latency ranking"
+seo_description: "{{best_name}} leads free Ethereum RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). 8 no-key endpoints probed every 60s from 3 regions, with success rates and archive depth audits."
+status: live

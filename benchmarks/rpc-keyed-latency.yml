@@ -2,10 +2,10 @@
 
 slug: rpc-keyed-latency
 number: "069"
-title: Fastest free-tier keyed RPC. Alchemy, Infura, Chainstack, Ankr, Helius
-seo_title: "Fastest free-tier RPC API 2026"
-seo_description: "Alchemy vs Infura vs Chainstack vs Ankr vs Helius: free-tier RPC latency measured live every 60s from 3 regions. Signup-gated endpoints, real node calls."
-subtitle: HTTP round-trip latency for eth_getBlockByNumber against the signup-gated free tiers of Alchemy, Infura, Chainstack, Ankr and Helius, probed every 60 seconds from 3 regions.
+title: Fastest RPC API with a free key. Alchemy, Infura, QuickNode, Ankr, Chainstack, Helius
+seo_title: "Fastest RPC API with a free key 2026: Alchemy, Infura, QuickNode compared"
+seo_description: "Fastest RPC API with a free key: the keyed developer tiers of Alchemy, Infura, QuickNode, Ankr, Chainstack and Helius measured live every 60s from 3 regions."
+subtitle: HTTP round-trip latency for eth_getBlockByNumber against keyed developer API tiers (Alchemy, Infura, QuickNode, Ankr, Chainstack, Helius), the signup-gated free plans, probed every 60 seconds from 3 regions.
 category: RPCs
 status: live
 metric: RPC latency
@@ -13,9 +13,13 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Every dapp that outgrows the no-key public RPCs asks the same
-  question next. which free tier do I sign up for. Alchemy, Infura,
-  Chainstack, Ankr and Helius all hand out a free API key with a
+  This bench ranks the keyed developer API tiers: the RPC you get
+  with a free API key after signup, as opposed to the no-key public
+  endpoints ranked on the companion
+  [rpc-capabilities](/benchmarks/rpc-capabilities) bench. Every dapp
+  that outgrows the public RPCs asks the same question next. which
+  free key do I sign up for. Alchemy, Infura, QuickNode, Ankr,
+  Chainstack and Helius all hand out a free API key with a
   monthly quota; none of them publish comparable latency numbers.
   This benchmark probes each provider's free-tier endpoint with the
   same anti-cache call used on our no-key bench
@@ -69,8 +73,8 @@ faq:
     a: "Same probe, same classification, same regions, different tier. The [rpc-capabilities](/benchmarks/rpc-capabilities) bench measures endpoints that work with zero signup; this page measures what a free API key gets you after a five-minute signup (Alchemy, Infura, Chainstack, Ankr, Helius). Comparing the two pages answers whether the signup buys you anything on latency, and on some chains the no-key tier is genuinely competitive."
   - q: "Do the probes stay inside each provider's free quota?"
     a: "Yes, by design. One probe per 60 seconds per chain per region ≈ 131k requests/month/chain, against audited free budgets of 1M to 3M requests/month. A quota guard additionally pauses probing at 90% of each region's monthly budget, so the bench can never exhaust a key. Sample sizes per cell are published (`sample_size`), so the statistical cost of the slower cadence is visible."
-  - q: "Why are QuickNode, Tenderly, Moralis and GetBlock missing?"
-    a: "Quota math or plan scope, never editorial. QuickNode's free plan issues a single endpoint on one chain (too narrow to compare against multi-chain keys). Tenderly excludes Node RPC from its free plan. GetBlock's 50k CU/day cannot sustain one chain at probe cadence. Moralis caps the free plan at 2 node endpoints. Blast API shut down in October 2025. Providers can enter the cohort the day their free plan clears the bar, and the bar is published in the methodology."
+  - q: "Why are Tenderly, Moralis and GetBlock missing?"
+    a: "Quota math or plan scope, never editorial. Tenderly excludes Node RPC from its free plan. GetBlock's 50k CU/day cannot sustain one chain at probe cadence. Moralis caps the free plan at 2 node endpoints. Blast API shut down in October 2025. QuickNode is in the cohort on BNB and Optimism via shared endpoints with the plan disclosed in the methodology, because its free plan issues a single endpoint on one chain. Providers can enter the cohort the day their free plan clears the bar, and the bar is published in the methodology."
   - q: "Is the free tier representative of a provider's paid performance?"
     a: "No, and this page does not claim it is. Several providers route free-tier traffic to shared or separate infrastructure pools. What this bench measures is the free-tier experience: the latency and reliability a developer actually gets from the key handed out at signup. Paid-tier SLAs, dedicated clusters and websocket performance are out of scope."
 

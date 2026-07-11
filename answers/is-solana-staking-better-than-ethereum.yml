@@ -1,0 +1,39 @@
+slug: is-solana-staking-better-than-ethereum
+question: "Is Solana staking better than Ethereum staking?"
+short_answer: |
+  On raw yield, currently yes: {{name:solana}} validators pay a median net {{p50:solana}} (24h) versus {{p50:ethereum}} for a network average Ethereum solo validator, measured live by OpenChainBench. The comparison carries caveats in both directions: the Ethereum figure excludes MEV and execution tips, and the Solana median is dragged down by validators currently paying 0%.
+
+benchmark: validator-yield
+
+intro: |
+  The SOL versus ETH staking debate usually runs on stale numbers: a Solana APY screenshot from one dashboard against an Ethereum rate from another, each computed differently and neither dated. This page puts both chains on one measured axis. OpenChainBench polls the top 200 Solana validators by stake through the Stakewiz API every 5 minutes (total APY with Jito MEV tips folded in, multiplied by uptime) and computes Ethereum's network average consensus layer APR from the beacon spec reward formula on the live total effective balance. The two numbers are honest but not symmetrical, and the differences matter more than the headline gap. Solana yield includes MEV tips because Solana has a validator level MEV market; the Ethereum figure excludes execution tips and MEV, so a proposer running MEV-Boost earns more than shown. Solana's median includes validators currently paying zero; Ethereum's number is uniform by construction because consensus rewards are equal per 32 ETH increment. Read the gap with both corrections in mind and it remains real: Solana's protocol inflation plus MEV structurally outpays Ethereum's post merge issuance at current stake levels.
+
+methodology: |
+  Both chains are measured as net yield in basis points: gross APR multiplied by validator uptime. Solana: Stakewiz total_apy (a 30 epoch trailing estimate including Jito MEV tips) per validator, top 200 by activated stake, roughly 90% of staked SOL by value; the chain number is the median across those validators. Ethereum: one network average consensus layer APR from the spec reward formula, APR = 64 x epochs_per_year / sqrt(total effective balance in gwei), with live total stake from ultrasound.money; consensus rewards are uniform per 32 ETH increment, so the network average equals the solo validator figure. Both are APR, not compounded APY. Refreshed every 5 minutes, headline numbers are 24h medians.
+
+limitations:
+  - "The Ethereum figure excludes execution tips and MEV. A proposer running MEV-Boost realizes materially more than the consensus layer number shown here, which narrows the real gap to Solana by an amount this bench does not yet measure."
+  - "The Solana median includes roughly 42 validators currently at 0% APY (commission set to 100% or no leader slots this epoch). A delegator who picks a sane validator earns closer to 6.0% than the chain median."
+  - "Yield is not risk. Solana staking has no slashing in production history but carries validator concentration and client diversity questions; Ethereum staking locks 32 ETH per validator with an exit queue. Neither risk profile appears in a bps number."
+  - "Liquid staking is out of scope. Lido, Jito SOL, Rocket Pool and exchange staking products net out their own fees and trade at their own market prices; this page compares native validator yield only."
+  - "Rewards are denominated in SOL and ETH respectively. Relative token price performance dominates the yield difference over any holding period longer than a few months, and this bench does not measure price."
+  - "Both figures are APR from trailing estimates, not forward guarantees. Solana's inflation schedule decays over time and Ethereum's rate falls as more ETH is staked."
+
+faq:
+  - q: "How much more does Solana staking pay than Ethereum?"
+    a: "Live numbers: {{name:solana}} median net yield is {{p50:solana}} versus {{p50:ethereum}} for {{name:ethereum}} (both 24h, in basis points where 100 bps equals 1%). The gap is structural: Solana pays protocol inflation plus Jito MEV tips minus an average validator commission near 24%, while Ethereum's consensus layer rate is set by a formula that decreases as total stake grows, with roughly 40M ETH currently staked. Check the leaderboard above for the number at the moment you read this."
+  - q: "Why is Solana staking APY higher than Ethereum?"
+    a: "Three reasons. Solana's protocol inflation is currently around 5% annually and flows to stakers, while Ethereum's post merge issuance is far lower by design. Solana has a validator level MEV market (Jito tips) that adds directly to staker APR, while Ethereum's equivalent (MEV-Boost) is excluded from the consensus layer figure measured here. And Ethereum's reward formula scales with the inverse square root of total stake, so its high staking participation mechanically lowers the rate for everyone."
+  - q: "Does Ethereum staking yield include MEV?"
+    a: "Not in this benchmark. The Ethereum figure is the consensus layer APR only: attestation, proposer and sync committee rewards from the beacon spec formula. Execution layer tips and MEV-Boost income are excluded because measuring them honestly requires per relay ingestion, which is on the roadmap. In practice a solo validator running MEV-Boost earns above the number shown, with high variance because MEV income is lumpy and proposal slots are rare for a single validator. The Solana figure does include MEV, because Stakewiz folds Jito tips into its APR."
+  - q: "Is Solana staking riskier than Ethereum staking?"
+    a: "Different risks rather than strictly more. Solana has never slashed in production and delegation is liquid at epoch granularity (roughly 2 days), but validator revenue concentrates around a smaller top set and about a fifth of the tracked top 200 currently pays 0%. Ethereum requires 32 ETH per solo validator, has slashing conditions for equivocation, and exits pass through a queue, but its validator set is near 1M indices and consensus rewards are uniform. On both chains the dominant practical risk for most holders is token price, not protocol failure."
+
+related:
+  - what-is-the-highest-crypto-staking-yield
+  - which-l1-has-the-fastest-finality
+  - which-l2-has-the-fastest-block-time
+
+seo_title: "Is Solana staking better than Ethereum? Live yield comparison 2026"
+seo_description: "Solana validators pay a median net {{p50:solana}} versus {{p50:ethereum}} for Ethereum (24h, live). What the gap includes, what it hides, and the risks on each side, measured by OpenChainBench."
+status: live
