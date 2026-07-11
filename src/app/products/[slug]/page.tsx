@@ -70,8 +70,8 @@ export async function generateMetadata({
   // right canonical target.
   // Merkle rebranded to Blink Labs and went keyed-only; the provider was
   // fully delisted 2026-07-10 so this page has no data left. 308 to the
-  // capabilities bench (whose exclusion note explains both names); will
-  // point at /products/blinklabs when bench 074 ships to production.
+  // capabilities bench for now; flip to /products/blinklabs in the same PR
+  // that removes mev-protect-rpc from REMOVED_BENCH_SLUGS.
   if (slug === "merkle") {
     permanentRedirect("/benchmarks/rpc-capabilities");
   }
