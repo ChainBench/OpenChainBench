@@ -120,11 +120,11 @@ providers:
     tag: Assistance Fund, 97% fees → HYPE spot buyback
     formula: "USD value of HYPE spot fills credited to the Assistance Fund 0xfefe…fefe over the rolling 7d window, divided by 97% of DeFiLlama's hyperliquid fees for the same window."
     queries:
-      p50: ocb_buyback_ratio{protocol="hyperliquid",window="7d"}
-      p90: ocb_buyback_ratio{protocol="hyperliquid",window="7d"}
-      p99: ocb_buyback_ratio{protocol="hyperliquid",window="7d"}
-      mean: ocb_buyback_ratio{protocol="hyperliquid",window="7d"}
-      success: clamp_min(clamp_max(1 - 300 * sum(rate(ocb_buyback_scrape_errors_total{protocol="hyperliquid"}[24h])), 1), 0)
+      p50: 100 * ocb_buyback_ratio{protocol="hyperliquid",window="7d"}
+      p90: 100 * ocb_buyback_ratio{protocol="hyperliquid",window="7d"}
+      p99: 100 * ocb_buyback_ratio{protocol="hyperliquid",window="7d"}
+      mean: 100 * ocb_buyback_ratio{protocol="hyperliquid",window="7d"}
+      success: (ocb_buyback_last_scrape_timestamp_seconds{protocol="hyperliquid"} > bool (time() - 7200))
       sample_size: ocb_buyback_executed_usd{protocol="hyperliquid",window="7d"}
       series: ocb_buyback_ratio{protocol="hyperliquid",window="7d"}
 
@@ -133,11 +133,11 @@ providers:
     tag: Smart Burn Engine, 100% surplus → SKY via Uniswap
     formula: "USD value of SKY ERC-20 inflows to the SBE 0xBE8E…98FB over 7d (Etherscan v2, priced at CoinGecko), divided by 100% of DeFiLlama's makerdao fees for the same window."
     queries:
-      p50: ocb_buyback_ratio{protocol="sky",window="7d"}
-      p90: ocb_buyback_ratio{protocol="sky",window="7d"}
-      p99: ocb_buyback_ratio{protocol="sky",window="7d"}
-      mean: ocb_buyback_ratio{protocol="sky",window="7d"}
-      success: clamp_min(clamp_max(1 - 300 * sum(rate(ocb_buyback_scrape_errors_total{protocol="sky"}[24h])), 1), 0)
+      p50: 100 * ocb_buyback_ratio{protocol="sky",window="7d"}
+      p90: 100 * ocb_buyback_ratio{protocol="sky",window="7d"}
+      p99: 100 * ocb_buyback_ratio{protocol="sky",window="7d"}
+      mean: 100 * ocb_buyback_ratio{protocol="sky",window="7d"}
+      success: (ocb_buyback_last_scrape_timestamp_seconds{protocol="sky"} > bool (time() - 7200))
       sample_size: ocb_buyback_executed_usd{protocol="sky",window="7d"}
       series: ocb_buyback_ratio{protocol="sky",window="7d"}
 
