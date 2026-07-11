@@ -111,7 +111,7 @@ export type MetricPanel = {
   label: string;
   description?: string;
   metric: string;
-  unit: "ms" | "s" | "sec" | "pct" | "bps" | "bp" | "count" | "slots" | "usd";
+  unit: "ms" | "s" | "sec" | "pct" | "bps" | "bp" | "count" | "slots" | "usd" | "gwei";
   higherIsBetter: boolean;
   /** When false the panel is data-only (feeds ledger column window
    *  variants) and renders no chart tab. */
@@ -198,7 +198,7 @@ export type Benchmark = {
   dataConfidence?: "healthy" | "low" | "insufficient";
   abstract: string;
   metric: string;
-  unit: "ms" | "s" | "sec" | "pct" | "bps" | "bp" | "count" | "slots" | "usd";
+  unit: "ms" | "s" | "sec" | "pct" | "bps" | "bp" | "count" | "slots" | "usd" | "gwei";
   higherIsBetter: boolean;
   /** Optional drill-down dimensions exposed by the bench. When set, the
    * bench page renders one tab selector per dimension and the queries get
@@ -271,7 +271,7 @@ export type LedgerColumn = {
   panel?: string;
   /** Display unit override; defaults to the panel's unit (panel columns)
    *  or the bench unit (slot columns). */
-  unit?: "ms" | "s" | "sec" | "pct" | "bps" | "bp" | "count" | "slots" | "usd";
+  unit?: "ms" | "s" | "sec" | "pct" | "bps" | "bp" | "count" | "slots" | "usd" | "gwei";
   /** Per-window value sources for the ledger's timeframe toggle: window
    *  key to metric_panels id. Columns without a mapping keep their 24h
    *  value when a longer window is selected. */

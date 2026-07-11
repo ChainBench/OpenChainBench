@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import {
   fetchHlBuilderStats,
   fetchHlCohort,
   fetchHlHistory,
+  isHlBuilderSlug,
   type HlHistoryFrontendCompact,
 } from "@/lib/hl-builder-stats";
 import { Breadcrumb } from "@/components/breadcrumb";
@@ -80,9 +81,17 @@ export default async function HlFrontendPage({
     fetchHlCohort(),
     fetchHlBuilderStats(slug),
   ]);
-  if (!history) notFound();
-  const frontend = history.frontends.find((f) => f.slug === slug);
-  if (!frontend) notFound();
+  // Data-outage guard: this page is the target of PERMANENT redirects
+  // from /products/<slug>, so it must never 404 on a runtime data gap
+  // (stale KV snapshot, Prom unreachable). Tracked builders without a
+  // resolvable history bounce temporarily (307) to the hub instead;
+  // crawlers keep the canonical URL and retry, users land somewhere
+  // useful. Unknown slugs still 404.
+  const frontend = history?.frontends.find((f) => f.slug === slug);
+  if (!history || !frontend) {
+    if (await isHlBuilderSlug(slug)) redirect("/hyperliquid");
+    notFound();
+  }
 
   const cohortRow = cohort?.rows.find((r) => r.slug === slug);
   const currentFees = cohortRow?.revenue30d ?? lastNonNull(frontend.fees);
