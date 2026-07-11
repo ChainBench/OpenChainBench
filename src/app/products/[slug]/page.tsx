@@ -152,6 +152,13 @@ export default async function ProviderPage({
   params: Promise<Params>;
 }) {
   const { slug } = await params;
+  // Merkle rebranded to Blink Labs; 308 to the successor product page.
+  // Duplicated from generateMetadata on purpose: the page component is
+  // the one whose result gets ISR-cached, and metadata-only redirects
+  // left a cached 404 behind (seen live 2026-07-11).
+  if (slug === "merkle") {
+    permanentRedirect("/products/blinklabs");
+  }
   // /hyperliquid/<slug> is the canonical detail surface for tracked HL
   // frontends (12-month focus chart + peer group + KPI strip). Redirect
   // /products/<hl-slug> straight there so backlinks + old SERP entries
