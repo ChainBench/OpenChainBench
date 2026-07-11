@@ -417,7 +417,10 @@ const loadAllBenchmarksCached = unstable_cache(
   // v25: bumped with bench-unfiltered-v21 (+bench 067 portfolio-chain-coverage).
   // v26: bumped with bench-unfiltered-v22 (+bench 068 explorer-chain-coverage).
   // v27: bumped with bench-unfiltered-v25 (prod-only bench gate); env in key.
-  ["all-benchmarks-v27", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v28: bumped with bench-unfiltered-v25->v25 ship of bench 074 (mev-protect-rpc
+  // ungated; the lockstep bump was missed in #1105 and prod kept serving the
+  // gated catalog to /products for 30+ min after the deploy).
+  ["all-benchmarks-v28", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -493,7 +496,8 @@ const loadBenchmarkFiltered = unstable_cache(
   // v13: bumped with bench-unfiltered-v21 (+bench 067 portfolio-chain-coverage).
   // v14: bumped with bench-unfiltered-v22 (+bench 068 explorer-chain-coverage).
   // v15: bumped with bench-unfiltered-v25 (prod-only bench gate); env in key.
-  ["bench-filters-v15", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v16: bumped with the bench 074 ship (lockstep rule, see all-benchmarks-v28).
+  ["bench-filters-v16", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
