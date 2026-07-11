@@ -46,7 +46,7 @@ export async function GET() {
   lines.push(`- [Citable index (JSON)](${SITE.url}/api/citable): flat list of all benchmarks with current values, ready for one-shot lookup.`);
   lines.push(`- [LLM context (Markdown)](${SITE.url}/api/llm-context): all ${benches.length} benchmarks + rankings + methodology in one Markdown blob, ready to paste into a system prompt.`);
   lines.push(`- [OpenAPI schema](${SITE.url}/api/openapi.json): full description of every endpoint.`);
-  lines.push(`- [MCP server](${SITE.url}/api/mcp/mcp): exposes \`list_benchmarks\`, \`get_benchmark\`, \`query_prom\` tools + \`openchainbench://benchmark/{slug}\` resources over Streamable HTTP. See [/mcp](${SITE.url}/mcp) for install instructions (Claude Desktop, Cursor, generic clients).`);
+  lines.push(`- [MCP server docs](${SITE.url}/mcp): install instructions (Claude Desktop, Cursor, generic clients) for the MCP server at ${SITE.url}/api/mcp/mcp, which exposes \`list_benchmarks\`, \`get_benchmark\`, \`query_prom\` tools + \`openchainbench://benchmark/{slug}\` resources over Streamable HTTP (JSON-RPC via POST; the endpoint is not browsable with GET).`);
   lines.push("");
   lines.push(`## Benchmarks`);
   lines.push("");
