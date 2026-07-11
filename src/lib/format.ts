@@ -108,6 +108,10 @@ export function fmtUnit(value: number, unit: string) {
     return `$${formatCompactCount(value)}`;
   }
   if (value >= 1000) return `${(value / 1000).toFixed(2)} s`;
+  // Sub-millisecond values keep one decimal: pm-data-freshness's 0.5 ms
+  // anchor rendered "1 ms", contradicting the 0.5 published by the
+  // citable API (2x apart, flagged by the coherence audit).
+  if (value > 0 && value < 1) return `${value.toFixed(1)} ms`;
   return `${value.toFixed(0)} ms`;
 }
 

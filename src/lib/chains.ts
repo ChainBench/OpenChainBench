@@ -289,7 +289,7 @@ export const CHAINS: ChainEntry[] = [
     slug: "fraxtal",
     label: "Fraxtal",
     category: "L2",
-    nativeSymbol: "FRAX",
+    nativeSymbol: "frxETH", // gas token; FRAX here mislabeled the frxETH price the harness measures
     description:
       "Frax Finance OP Stack rollup, 2 s sequencer cadence, frxETH-denominated gas with FXTL incentive points.",
   },
