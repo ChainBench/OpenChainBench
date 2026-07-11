@@ -26,6 +26,7 @@ import {
   isInsufficient,
   leader,
 } from "@/lib/citation";
+import { valueInDeclaredUnit } from "@/lib/format";
 import { capDescription } from "@/lib/seo-text";
 import { getBenchCreatedAt } from "@/lib/seo/bench-dates";
 import { SITE } from "@/data/site";
@@ -332,7 +333,9 @@ export default async function BenchmarkPage({
         metric: benchmark.metric,
         metricUnit: benchmark.unit,
         leaderName: currentLeader.name,
-        leaderValue: currentLeader.value,
+        // Observation.measuredValue must be in unitText. Unit "s" benches
+        // store ms internally; convert before publishing to JSON-LD.
+        leaderValue: valueInDeclaredUnit(currentLeader.value, benchmark.unit),
         temporalCoverage: `${getBenchCreatedAt(benchmark.slug).toISOString()}/${benchmark.lastRunAt}`,
         observationDate: benchmark.lastRunAt,
         url: benchmarkUrl,

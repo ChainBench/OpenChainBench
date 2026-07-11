@@ -9,6 +9,7 @@ import {
   leader,
   sparklineFor,
 } from "@/lib/citation";
+import { valueInDeclaredUnit } from "@/lib/format";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { SLUG_RE } from "@/lib/slug";
 
@@ -45,6 +46,9 @@ export async function GET(
 
   const top = leader(b);
   const insufficient = b.dataConfidence === "insufficient";
+  // Publish value + leader.value in the declared unit. Unit "s" benches
+  // store ms internally (fmtUnit convention); do not leak that here.
+  const raw = insufficient ? null : fieldValue(b);
   const payload = {
     slug: b.slug,
     title: b.title,
@@ -59,8 +63,11 @@ export async function GET(
     // leader; the headline is rewritten by headlineSentence so the
     // agent / journalist reads "insufficient data" instead of quoting
     // a number drawn from undersized samples.
-    value: insufficient ? null : fieldValue(b),
-    leader: insufficient ? null : top,
+    value: raw == null ? null : valueInDeclaredUnit(raw, b.unit),
+    leader:
+      insufficient || !top
+        ? null
+        : { ...top, value: valueInDeclaredUnit(top.value, b.unit) },
     rankings: b.results
       .filter((r) => r.ms.p50 > 0)
       // Drop "insufficient" rows from the machine-readable ranking too:
