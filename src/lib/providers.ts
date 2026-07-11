@@ -87,6 +87,31 @@ const CANONICAL_NAMES: Record<string, string> = {
   // brand casing.
   gram: "Gram",
   tonapi: "TonAPI",
+  // Brand casings the title-case fallback butchers ("Drpc", "Usdc",
+  // "Meowrpc" — SEO audit 2026-07-08). Profiles built from bench specs
+  // now inherit the spec's provider `name` field, but canonicalize() is
+  // also called with a bare slug (compare hub labels, OG images, search
+  // index) where no spec name is in scope, so the map stays the source
+  // of truth for these. Casing matches the bench spec `name` fields.
+  drpc: "dRPC",
+  "1rpc": "1RPC",
+  meowrpc: "MeowRPC",
+  usdc: "USDC",
+  usdt: "USDT",
+  dai: "DAI",
+  usde: "USDe",
+  fdusd: "FDUSD",
+  dydx: "dYdX",
+  okx: "OKX",
+  gmx: "GMX",
+  grvt: "GRVT",
+  cctp: "CCTP",
+  lifi: "LI.FI",
+  debridge: "deBridge",
+  zksync: "zkSync Era",
+  "near-intents": "NEAR Intents",
+  edgex: "edgeX",
+  sui: "Sui",
 };
 
 function titleCaseSlug(s: string): string {
@@ -101,6 +126,25 @@ export function canonicalize(slug: string): { slug: string; name: string } {
   const lc = slug.toLowerCase();
   const canon = PRODUCT_ALIASES[lc] ?? lc;
   return { slug: canon, name: CANONICAL_NAMES[canon] ?? titleCaseSlug(canon) };
+}
+
+/** Display name for a profile, in priority order:
+ *   1. CANONICAL_NAMES override (editorial, wins over everything).
+ *   2. The bench spec's provider `name` field — specs carry proper
+ *      brand casing (dRPC, 1RPC, USDC, dYdX v4) while the old
+ *      title-case fallback rendered "Drpc" / "Usdc" in every title,
+ *      H1, breadcrumb, and OG surface (SEO audit 2026-07-08). Only
+ *      trusted when the result's own slug IS the canonical slug; an
+ *      aliased sub-product (helius-sender) must not rename its parent.
+ *   3. Title-cased slug, last resort. */
+function profileDisplayName(
+  canonSlug: string,
+  r: ProviderResult,
+): string {
+  const override = CANONICAL_NAMES[canonSlug];
+  if (override) return override;
+  if (r.slug.toLowerCase() === canonSlug && r.name) return r.name;
+  return titleCaseSlug(canonSlug);
 }
 
 export type ProviderAppearance = {
@@ -329,6 +373,13 @@ async function buildProviders(): Promise<ProviderProfile[]> {
         }
         existing.wins += winsEarned;
         if (!existing.type && r.type) existing.type = r.type;
+        // Upgrade a title-case fallback name the moment any appearance
+        // supplies a proper spec name (first appearance can come from
+        // an alias, which never carries the canonical brand casing).
+        if (existing.name === titleCaseSlug(key)) {
+          const better = profileDisplayName(key, r);
+          if (better !== existing.name) existing.name = better;
+        }
         if (chainsLed.length > 0) {
           existing.chainWins = existing.chainWins ?? {};
           for (const c of chainsLed) {
@@ -338,7 +389,7 @@ async function buildProviders(): Promise<ProviderProfile[]> {
       } else {
         byKey.set(key, {
           slug: canon.slug,
-          name: canon.name,
+          name: profileDisplayName(canon.slug, r),
           type: r.type,
           appearances: [appearance],
           wins: winsEarned,
@@ -448,7 +499,7 @@ function isBlacklistedSlug(slug: string): boolean {
 const PERP_VENUE_SEED = [
   { slug: "drift", name: "Drift" },
   { slug: "vertex", name: "Vertex" },
-  { slug: "edgex", name: "EdgeX" },
+  { slug: "edgex", name: "edgeX" },
   { slug: "extended", name: "Extended" },
   { slug: "aevo", name: "Aevo" },
   { slug: "pacifica", name: "Pacifica" },
@@ -482,7 +533,10 @@ const buildProvidersCached = unstable_cache(
   // newly identified HL frontends (invo, bitget-wallet, defi-saver,
   // unitywallet, marsgo, metamask-alt). Without the bump, /products/<slug>
   // 404s for them even after the YAML + builders.json updates landed.
-  ["providers-v5"],
+  // v6: profile names now inherit bench spec casing (dRPC, USDC, dYdX)
+  // instead of title-cased slugs. Bump flushes stale "Drpc"/"Usdc"
+  // names from every title/H1/breadcrumb surface.
+  ["providers-v6"],
   { revalidate: 60, tags: ["benchmarks"] },
 );
 

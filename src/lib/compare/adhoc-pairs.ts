@@ -11,34 +11,54 @@ const HEX_SLUG_RE = /^0x[0-9a-f]{4,}$/i;
  * sitemap-only pairs (e.g. binance-vs-tenderly) as orphan pages when
  * the two generators drifted.
  *
- * Hybrid threshold (SEO audit 2026-07-05): both providers in
- * BRAND_WHITELIST → emit at >= 1 shared bench; otherwise >= 3. See the
- * sitemap for the thin-content rationale (Bing penalty, 2026-07-05).
+ * Hybrid threshold (SEO audit 2026-07-08, tightened from 2026-07-05):
+ * both providers in BRAND_WHITELIST → emit at >= 2 shared benches with
+ * LIVE data for both; otherwise >= 3. "Live" mirrors liveResults():
+ * availability !== "unavailable" and p50 > 0, read straight off the
+ * already-loaded appearance results (no extra Prom round trip).
+ *
+ * Rationale for the bump from >= 1 structural to >= 2 live: the old
+ * rule emitted ~70 pairs whose single shared bench often had no live
+ * data ("awaiting live measurements", ~2 KB body). The >= 2 live floor
+ * also matches the render-time noindex gate on /compare/[slug] (pairs
+ * resolving < 2 benches with values are noindexed), so the sitemap
+ * never advertises a URL the page itself marks noindex. Tradeoff: a
+ * brand pair with exactly one live shared bench (real data, one card)
+ * leaves the sitemap and internal link lists too. It still renders at
+ * its URL via the ad-hoc resolver, so nothing 404s; it just stops
+ * being advertised until a second shared bench goes live.
  */
 export type AdHocPair = { a: string; b: string; slug: string };
 
 export function adHocPairs(profiles: ProviderProfile[]): AdHocPair[] {
-  const benchesBySlug = new Map<string, Set<string>>();
+  // bench slug → live flag, per provider. A shared bench only counts
+  // toward the threshold when it is live for BOTH providers.
+  const liveBenchesBySlug = new Map<string, Set<string>>();
   for (const p of profiles) {
     if (HEX_SLUG_RE.test(p.slug)) continue;
     if (CHAIN_BY_SLUG.has(p.slug)) continue;
-    const benches = new Set(p.appearances.map((a) => a.benchmark.slug));
-    if (benches.size >= 1) benchesBySlug.set(p.slug, benches);
+    const live = new Set<string>();
+    for (const a of p.appearances) {
+      if (a.result.availability === "unavailable") continue;
+      if (a.result.ms.p50 <= 0) continue;
+      live.add(a.benchmark.slug);
+    }
+    if (live.size >= 1) liveBenchesBySlug.set(p.slug, live);
   }
 
   const out: AdHocPair[] = [];
-  const slugList = [...benchesBySlug.keys()].sort();
+  const slugList = [...liveBenchesBySlug.keys()].sort();
   for (let i = 0; i < slugList.length; i += 1) {
     const aSlug = slugList[i];
-    const aBenches = benchesBySlug.get(aSlug)!;
+    const aBenches = liveBenchesBySlug.get(aSlug)!;
     for (let j = i + 1; j < slugList.length; j += 1) {
       const bSlug = slugList[j];
-      const bBenches = benchesBySlug.get(bSlug)!;
-      let shared = 0;
-      for (const s of aBenches) if (bBenches.has(s)) shared += 1;
+      const bBenches = liveBenchesBySlug.get(bSlug)!;
+      let sharedLive = 0;
+      for (const s of aBenches) if (bBenches.has(s)) sharedLive += 1;
       const bothBrand = BRAND_WHITELIST.has(aSlug) && BRAND_WHITELIST.has(bSlug);
-      const threshold = bothBrand ? 1 : 3;
-      if (shared < threshold) continue;
+      const threshold = bothBrand ? 2 : 3;
+      if (sharedLive < threshold) continue;
       out.push({ a: aSlug, b: bSlug, slug: `${aSlug}-vs-${bSlug}` });
     }
   }
