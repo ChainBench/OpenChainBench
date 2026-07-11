@@ -198,6 +198,34 @@ export async function generateMetadata({
   const sharedCount = sharedSlugsForMeta.filter((s) => !excluded.has(s)).length;
   const benchWord = sharedCount === 1 ? "benchmark" : "benchmarks";
 
+  // Thin-content gate (SEO audit 2026-07-08): a pair whose shared
+  // benches carry live data for both providers on fewer than 2 of them
+  // renders either "awaiting live measurements" or a single card.
+  // Those pages stay reachable (internal links + stale index entries
+  // must not 404) but are marked noindex so direct hits stop counting
+  // against the domain. Mirrors the >= 2 live-shared emission floor in
+  // src/lib/compare/adhoc-pairs.ts so the sitemap never advertises a
+  // noindexed URL. Live rule matches liveResults(): not "unavailable"
+  // and p50 > 0, read off the already-loaded appearances.
+  const aLive = new Set(
+    a.appearances
+      .filter(
+        (x) => x.result.availability !== "unavailable" && x.result.ms.p50 > 0,
+      )
+      .map((x) => x.benchmark.slug),
+  );
+  const bLive = new Set(
+    b.appearances
+      .filter(
+        (x) => x.result.availability !== "unavailable" && x.result.ms.p50 > 0,
+      )
+      .map((x) => x.benchmark.slug),
+  );
+  const liveSharedCount = sharedSlugsForMeta.filter(
+    (s) => !excluded.has(s) && aLive.has(s) && bLive.has(s),
+  ).length;
+  const thin = liveSharedCount < 2;
+
   // Meta description: unique per pair via the shared-count + provider
   // names + date. Kills the identical duplicate-content signal that had
   // Bing indexing 2 of 4938 compare pages. Also cites "as of DATE" for
@@ -211,6 +239,9 @@ export async function generateMetadata({
   return {
     title,
     description,
+    // follow stays on so PageRank keeps flowing through the body links
+    // (both provider pages, parent benches) even while deindexed.
+    ...(thin ? { robots: { index: false, follow: true } } : {}),
     alternates: { canonical: url },
     openGraph: {
       title,
