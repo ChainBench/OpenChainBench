@@ -231,11 +231,13 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
   // exhausting the file-descriptor pool and timing out on prod).
   //
   // Tracked Hyperliquid builder frontends live under /hyperliquid/<slug>;
-  // /products/<slug> 307-redirects for these slugs (products/[slug]
+  // /products/<slug> 308-redirects for these slugs (products/[slug]
   // /page.tsx), and the deploy-time sitemap-smoke gate rolls back on
-  // any 3xx. The canonical /hyperliquid/<slug> URLs come from
-  // hyperliquid/[slug]/generateStaticParams via Next's automatic
-  // sitemap discovery, not from this file.
+  // any 3xx. The canonical /hyperliquid/<slug> URLs are emitted below
+  // from the hyperliquid-frontends spec providers (a previous comment
+  // claimed Next auto-discovers them from generateStaticParams; no such
+  // mechanism exists, which is why 92 builder pages were missing from
+  // the sitemap until 2026-07-12).
   await isHlBuilderSlug("").catch(() => false);
   const validatedSlugs = (
     await Promise.all(
@@ -254,6 +256,30 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
     changeFrequency: "daily",
     priority: 0.85,
   }));
+
+  // Hyperliquid builder detail pages. Emitted from the spec provider
+  // list (static per deploy, same source as the 308 gate in
+  // products/[slug]), minus raw hex-address builder slugs which have no
+  // durable page. These 90+ URLs were previously sitemap-orphans only
+  // reachable through the product redirects.
+  const HEX_BUILDER_SLUG = /^0x[a-f0-9]+$/;
+  const hlBuilderSlugs = (
+    await Promise.all(
+      providerSlugs.map(async (slug) =>
+        !HEX_BUILDER_SLUG.test(slug) && (await isHlBuilderSlug(slug))
+          ? slug
+          : null,
+      ),
+    )
+  ).filter((s): s is string => s !== null);
+  const hlBuilderRoutes: MetadataRoute.Sitemap = hlBuilderSlugs.map(
+    (slug) => ({
+      url: `${SITE.url}/hyperliquid/${slug}`,
+      lastModified: catalogTs,
+      changeFrequency: "daily",
+      priority: 0.7,
+    }),
+  );
 
   const alternativeRoutes: MetadataRoute.Sitemap = alternatives
     .filter((alt) => benchBySlug.has(alt.benchmark))
@@ -436,6 +462,7 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
     ...staticRoutes,
     ...benchmarkRoutes,
     ...providerRoutes,
+    ...hlBuilderRoutes,
     ...alternativeRoutes,
     ...answerRoutes,
     ...chainRoutes,

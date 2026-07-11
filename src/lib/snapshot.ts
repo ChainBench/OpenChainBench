@@ -56,6 +56,7 @@ const UnitSchema = z.enum([
   "count",
   "slots",
   "usd",
+  "gwei",
 ]);
 
 const StalenessMetaSchema = z.object({

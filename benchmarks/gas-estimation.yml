@@ -20,7 +20,7 @@ per_chain_explainer:
 category: RPCs
 status: live
 metric: Gap vs realized (gwei)
-unit: count
+unit: gwei
 higher_is_better: false
 
 disclaimer: |
@@ -160,9 +160,9 @@ dimensions:
 # below relabels every column honestly. The p99 slot carries the
 # typical (median) gap, the p90 slot keeps the p90 gap.
 ledger_columns:
-  - { label: "Gap p99 (24h)", slot: p50, unit: count }
-  - { label: "Gap p90", slot: p90, unit: count }
-  - { label: "Gap p50 (typical)", slot: p99, unit: count }
+  - { label: "Gap p99 (24h)", slot: p50, unit: gwei }
+  - { label: "Gap p90", slot: p90, unit: gwei }
+  - { label: "Gap p50 (typical)", slot: p99, unit: gwei }
   - { label: "Covered p50", panel: covered_rate, unit: pct }
 
 metric_panels:

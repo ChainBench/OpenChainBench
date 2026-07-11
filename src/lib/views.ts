@@ -33,6 +33,8 @@ const ALLOWED_BY_UNIT: Record<Benchmark["unit"], ViewType[]> = {
   bp: ["timeseries", "rankedBar", "distribution", "donut"],
   pct: ["timeseries", "rankedBar", "distribution", "donut"],
   count: ["countLeaderboard", "rankedBar", "donut", "distribution", "timeseries"],
+  // gwei behaves like count (gap magnitudes), unit carried for honesty.
+  gwei: ["countLeaderboard", "rankedBar", "donut", "distribution", "timeseries"],
   // slots: integer-ish gauge values (Solana slot delta). Same view set as
   // latency benches — timeseries shows step-function patterns over time
   // which is exactly what we want to surface (1 slot vs 2 slots = the
@@ -60,7 +62,7 @@ export function viewsForBenchmark(b: Benchmark): ViewType[] {
  * explicit preference change.
  */
 export function defaultViewFor(b: Benchmark): ViewType {
-  if (b.unit === "count" || b.unit === "usd") return "countLeaderboard";
+  if (b.unit === "count" || b.unit === "gwei" || b.unit === "usd") return "countLeaderboard";
   if (b.results.length >= 3 || b.unit === "bps" || b.unit === "pct") {
     return "rankedBar";
   }
