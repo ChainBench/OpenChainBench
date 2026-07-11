@@ -83,7 +83,8 @@ async function buildCompareGraphRaw(): Promise<CompareGraph> {
  *  new provider or appearance flows in within minutes of being live. */
 const buildCompareGraphCached = unstable_cache(
   buildCompareGraphRaw,
-  ["compare-graph-v1"],
+  // v2: provider names switched to spec brand casing (providers v6).
+  ["compare-graph-v2"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 

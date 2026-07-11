@@ -49,11 +49,20 @@ export default async function ComparePage() {
   // enumeration as sitemap.ts (shared lib), minus the curated pairs
   // already rendered above.
   const curatedSlugs = new Set(pairs.map((p) => p.slug));
-  const morePairs = adHocPairs(await getProviders())
+  const profiles = await getProviders();
+  // Prefer the profile display name (carries the bench spec's brand
+  // casing: dRPC, 1RPC, USDC) over the canonicalize() title-case
+  // fallback, which rendered "Drpc vs Tenderly" style labels here.
+  const nameBySlug = new Map(profiles.map((p) => [p.slug, p.name]));
+  const displayName = (slug: string): string => {
+    const canon = canonicalize(slug);
+    return nameBySlug.get(canon.slug) ?? canon.name;
+  };
+  const morePairs = adHocPairs(profiles)
     .filter((p) => !curatedSlugs.has(p.slug))
     .map((p) => ({
       ...p,
-      label: `${canonicalize(p.a).name} vs ${canonicalize(p.b).name}`,
+      label: `${displayName(p.a)} vs ${displayName(p.b)}`,
     }))
     .sort((a, b) => a.label.localeCompare(b.label));
 
@@ -64,7 +73,7 @@ export default async function ComparePage() {
     itemListElement: pairs.map((pair, i) => ({
       "@type": "ListItem",
       position: i + 1,
-      name: `${canonicalize(pair.providerA).name} vs ${canonicalize(pair.providerB).name}`,
+      name: `${displayName(pair.providerA)} vs ${displayName(pair.providerB)}`,
       url: `${SITE.url}/compare/${pair.slug}`,
     })),
   };
@@ -101,8 +110,14 @@ export default async function ComparePage() {
         </p>
         <ul className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-3">
           {pairs.map((pair) => {
-            const a = canonicalize(pair.providerA);
-            const b = canonicalize(pair.providerB);
+            const a = {
+              slug: canonicalize(pair.providerA).slug,
+              name: displayName(pair.providerA),
+            };
+            const b = {
+              slug: canonicalize(pair.providerB).slug,
+              name: displayName(pair.providerB),
+            };
             return (
               <li key={pair.slug}>
                 <Link

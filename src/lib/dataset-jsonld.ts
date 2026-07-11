@@ -29,11 +29,13 @@ export const HF_DATASET_URL =
 export const ZENODO_CONCEPT_DOI = "10.5281/zenodo.20800311";
 export const ZENODO_CONCEPT_URL = `https://doi.org/${ZENODO_CONCEPT_DOI}`;
 
-/** Latest parquet headlines snapshot. `LATEST` is the convention used by
- *  the HF publisher pipeline so downstream consumers can pin to a date or
- *  follow head. */
+/** Latest parquet headlines snapshot via Hugging Face's auto-converted
+ *  parquet API. The repo itself only holds dated partitions
+ *  (headlines/snapshot_date=YYYY-MM-DD/); the previously linked
+ *  snapshot_date=LATEST path never existed and 404'd. This endpoint
+ *  always tracks the head of main, so it stays valid without rebuilds. */
 export const HF_HEADLINES_LATEST =
-  "https://huggingface.co/datasets/OpenChainBench/benchmarks/resolve/main/headlines/snapshot_date=LATEST/part-0.parquet";
+  "https://huggingface.co/api/datasets/OpenChainBench/benchmarks/parquet/headlines/train/0.parquet";
 
 /** CC-BY-4.0 license URL. Matches the per-row license surfaced in
  *  /api/citable and the footer on every page. */
@@ -68,7 +70,20 @@ const CREATOR_PUBLISHER = {
  * Site-wide Dataset entry. Emitted on the home page so Google Dataset
  * Search and Perplexity have a single canonical record pointing at both
  * the live JSON index (/api/citable) and the parquet mirror on HF.
+ *
+ * `buildGlobalDatasetJsonLd` folds in `dateModified` from the newest
+ * bench lastRunAt so the home Dataset carries the same freshness signal
+ * the per-bench Dataset nodes already emit.
  */
+export function buildGlobalDatasetJsonLd(
+  dateModified?: string,
+): Record<string, unknown> {
+  return {
+    ...GLOBAL_DATASET_JSONLD,
+    ...(dateModified ? { dateModified } : {}),
+  };
+}
+
 export const GLOBAL_DATASET_JSONLD = {
   "@context": "https://schema.org",
   "@type": "Dataset",

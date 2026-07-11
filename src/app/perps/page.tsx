@@ -28,7 +28,7 @@ const DESCRIPTION =
 
 export const metadata: import("next").Metadata = pageMetadata({
   path: "/perps",
-  title: "Perpetual DEX leaderboard 2026",
+  title: "Best perp DEX 2026: perpetual DEX leaderboard",
   description: DESCRIPTION,
 });
 
@@ -102,7 +102,7 @@ export default async function PerpsHubPage() {
       <header className="mb-8">
         <p className="label-mono text-teal-600 mb-2">Perpetuals</p>
         <h1 className="display text-4xl sm:text-5xl text-ink">
-          Perpetual DEX leaderboard, measured neutrally.
+          Best perp DEX 2026, measured neutrally.
         </h1>
         <p className="mt-4 max-w-2xl text-base sm:text-lg text-ink-soft leading-snug">
           DefiLlama style ranking columns paired with the live execution
