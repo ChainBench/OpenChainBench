@@ -84,6 +84,14 @@ export function fmtUnit(value: number, unit: string) {
     if (value > 0 && value < 1) return value.toFixed(3);
     return formatCompactCount(value);
   }
+  if (unit === "gwei") {
+    // Same near-zero semantics as count (gas-estimation gaps converge
+    // toward zero), but the unit is carried so API consumers and the
+    // ledger say gwei instead of a bare number.
+    if (value > 0 && value < 0.01) return "~0 gwei";
+    if (value > 0 && value < 1) return `${value.toFixed(3)} gwei`;
+    return `${formatCompactCount(value)} gwei`;
+  }
   if (unit === "usd") {
     if (value === 0) return "$0";
     const abs = Math.abs(value);
@@ -145,6 +153,7 @@ export function unitSuffix(unit: string, value?: number): string {
   }
   if (unit === "slots") return " slots";
   if (unit === "count") return "";
+  if (unit === "gwei") return " gwei";
   if (unit === "usd") return "";
   return " ms";
 }
