@@ -45,6 +45,7 @@ abstract: |
   yet cover Kalshi venue data).
 
 methodology:
+  - "Anchor rows: on each venue tab the venue itself (Polymarket, Kalshi) is the canonical T0, so its row reads as the harness network round trip, near zero by construction. It is kept on the board to document the reference point, not as a competing feed; the comparison rows are the data providers measured against it."
   - "Polymarket T0. `wss://ws-subscriptions-clob.polymarket.com/ws/market` is public, no auth, sub 50ms gateway publish latency from EU West. Cross correlation uses (conditionId, priceUSD rounded to 3 decimals, sizeUSD micros, 5s time bucket)."
   - "Kalshi T0. `https://api.elections.kalshi.com/v1/social/trades` (REST), polled every 5s with cursor pagination. Every trade carries `create_date` at microsecond precision; that timestamp is the canonical T0. Poll cadence affects only correlation timing, not the freshness number. The official Kalshi WebSocket needs RSA PSS signed headers from a US KYC account and 403s from non US IPs, not viable for a public benchmark."
   - "Mobula PM WebSocket. `wss://pm-api-prod-eu.mobula.io`. Auth via API key in the subscribe payload. Cloudflare on the gateway requires a browser User Agent on the upgrade request, default Go HTTP UA is silently filtered. Covers Polymarket today, Kalshi coverage is not yet shipped."
