@@ -17,7 +17,7 @@ import { Breadcrumb } from "@/components/breadcrumb";
 import { buildBreadcrumbJsonLd, safeJsonLd } from "@/lib/jsonld";
 import {
   fetchHlBuilderStats,
-  isHlBuilderWithHistory,
+  isHlBuilderSlug,
 } from "@/lib/hl-builder-stats";
 import { HlBuilderDashboard } from "@/components/hl-builder-dashboard";
 import { RelatedProvidersSection } from "@/components/related-providers-section";
@@ -75,7 +75,7 @@ export async function generateMetadata({
   if (slug === "merkle") {
     permanentRedirect("/products/blinklabs");
   }
-  if (await isHlBuilderWithHistory(slug)) {
+  if (await isHlBuilderSlug(slug)) {
     const canonicalUrl = `${SITE.url}/hyperliquid/${slug}`;
     return {
       alternates: { canonical: canonicalUrl },
@@ -163,7 +163,7 @@ export default async function ProviderPage({
   // frontends (12-month focus chart + peer group + KPI strip). Redirect
   // /products/<hl-slug> straight there so backlinks + old SERP entries
   // land on the richer hub without splitting rank signal across two URLs.
-  if (await isHlBuilderWithHistory(slug)) {
+  if (await isHlBuilderSlug(slug)) {
     // 308, not 307: this is a permanent migration. A temporary
     // redirect tells Google to keep the old /products URL indexed and
     // re-crawl it forever without transferring signals — Ahrefs showed
@@ -191,7 +191,7 @@ export default async function ProviderPage({
   // on-node harness has data for. Cheap (6 Prom scalars in parallel) and
   // gracefully degrades to a hidden section when Prom is unreachable or
   // the slug isn't an HL builder.
-  const isHlBuilder = await isHlBuilderWithHistory(p.slug);
+  const isHlBuilder = await isHlBuilderSlug(p.slug);
   const hlStats = isHlBuilder ? await fetchHlBuilderStats(p.slug) : null;
 
   // Prediction-market deep-dive: if the slug is a tracked PM venue or
