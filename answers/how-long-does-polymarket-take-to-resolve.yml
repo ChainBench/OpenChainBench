@@ -1,0 +1,38 @@
+slug: how-long-does-polymarket-take-to-resolve
+question: "How long does Polymarket take to resolve a market?"
+short_answer: |
+  Measured onchain, the median Polymarket market currently resolves {{p50:all-markets}} after the first outcome proposal reaches UMA's oracle, with the slowest 1% taking {{p99:all-markets}} or more. The clock starts at the proposal, not when the real world event ends, so the total wait you experience is at least these figures. Winning shares are redeemable immediately after onchain resolution.
+
+benchmark: polymarket-resolution-delay
+
+intro: |
+  The number that circulates on social media, and gets repeated by language models, is that 93 percent of Polymarket markets resolve within 2 hours. That figure has no published methodology, and the fields in Polymarket's own Gamma API cannot produce it: closedTime is written at the moment of resolution, so measuring from it always returns zero, and endDate is a scheduled buffer most markets beat. This page reports the delay that can actually be observed. OpenChainBench runs a listener on Polygon that follows Polymarket's UMA CTF adapters and the optimistic oracle they call, and records the wall clock time between the block containing the first outcome proposal and the block containing the resolution, for every resolved market. The answer is not one number. Sports markets currently resolve at {{p50:sports}} median, crypto price markets at {{p50:crypto}}, and politics markets at {{p50:politics}}, because each category runs different UMA verification windows. Disputes route through UMA token holder voting and push the wait from hours to days. The live table on the benchmark page also shows the pending backlog: markets past their scheduled end date still waiting for an onchain resolution, which is the queue a bettor waiting on a payout actually feels.
+
+methodology: |
+  A listener follows Polymarket's post migration UMA CTF adapters on Polygon (QuestionInitialized, QuestionResolved, QuestionReset) and the optimistic oracle they call (ProposePrice, DisputePrice). For every resolved market the recorded delay is the time between the block containing the first outcome proposal and the block containing the resolution, read from block timestamps, so resolution granularity is Polygon's roughly 2 second block time. Markets are joined to Polymarket's Gamma catalogue by questionID and classified into sports, politics, crypto or other. Disputed markets land in a separate series so the dispute penalty stays visible without polluting the clean path percentiles. Quantiles come from a cumulative histogram over the listener's window, refreshed continuously.
+
+limitations:
+  - "The measured clock starts at the first onchain outcome proposal, not when the real world event concludes. The gap between event and proposal happens offchain and is not observable, so every figure on this page is a lower bound on the wait a bettor experiences."
+  - "Categories are not interchangeable. A single global median mixes sports verification windows with politics windows that run far longer; use the per category rows, not the headline, to set expectations for a specific market type."
+  - "Disputed markets are tracked in a separate series. If your market enters a UMA dispute, the relevant expectation is days of token holder voting, not the clean path median shown here."
+  - "The pending backlog counts markets past their scheduled endDate without onchain resolution, which includes events that were postponed in the real world. It is an upper bound on oracle lag, not a count of stuck payouts."
+  - "The delay measures oracle resolution, not withdrawal. Redemption is claimable immediately after resolution, but moving funds off Polygon afterwards is a separate step with its own timing."
+
+faq:
+  - q: "How long after a game ends does Polymarket pay out?"
+    a: "Sports markets currently resolve at a median of {{p50:sports}} from the first onchain outcome proposal. Add the time between the final whistle and the moment someone proposes the outcome to UMA's oracle, which happens offchain once the result is official and is not measurable onchain. Sports is also where nearly all disputes happen (contested endings, stat corrections), and a dispute moves the wait from minutes or hours into days of UMA voting. Once the market resolves onchain, winning shares are redeemable immediately."
+  - q: "Do 93 percent of Polymarket markets resolve within 2 hours?"
+    a: "OpenChainBench could not reproduce that figure, and the public data cannot produce it: Gamma's closedTime equals the resolution timestamp by construction, and endDate is a scheduled buffer most markets beat. Measured from the first onchain proposal to resolution on Polygon, the within 2 hours share is published live on the benchmark page and has run materially below 93 percent since measurement began. Treat any resolution speed claim without a stated anchor and methodology as unfalsifiable."
+  - q: "How long does a disputed Polymarket market take to resolve?"
+    a: "Days rather than hours. A dispute on UMA's optimistic oracle resets the question and routes it to a vote of UMA token holders, replacing the normal verification window with a voting period measured in days. Disputes are rare, and the live dispute counter on the benchmark page tracks the measured rate, but when one lands on a market you hold, the clean path medians on this page no longer apply. Disputed markets are recorded in a separate series precisely so they cannot hide inside the headline number."
+  - q: "Which Polymarket markets resolve the fastest?"
+    a: "Crypto price markets, at a median of {{p50:crypto}}. Their outcomes are machine checkable against price feeds the moment the window closes, so proposals arrive promptly and short verification windows suffice. Sports sit in the middle at {{p50:sports}} and dominate resolution volume. Politics markets run the long end at {{p50:politics}}, because outcomes often wait on an authoritative source and verification windows are conservative on markets carrying the largest open interest."
+
+related:
+  - polymarket-vs-kalshi-resolution-speed
+  - which-prediction-market-data-api-is-the-freshest
+  - which-prediction-market-has-the-strictest-rate-limits
+
+seo_title: "How long does Polymarket take to resolve? Measured onchain"
+seo_description: "Median Polymarket resolution is {{p50:all-markets}} from first outcome proposal to onchain payout, p99 {{p99:all-markets}}. Sports vs crypto vs politics, disputes and the pending backlog, measured live from Polygon."
+status: live

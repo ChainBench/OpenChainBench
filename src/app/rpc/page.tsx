@@ -24,7 +24,7 @@ const DESCRIPTION =
 
 export const metadata: import("next").Metadata = pageMetadata({
   path: "/rpc",
-  title: "RPC Node Benchmarks by Chain & Region",
+  title: "Fastest RPC Providers 2026, by Chain & Region",
   description: DESCRIPTION,
 });
 
@@ -105,7 +105,7 @@ export default async function RpcHubPage() {
       <header className="mb-8">
         <p className="label-mono text-sky-600 mb-2">RPC nodes</p>
         <h1 className="display text-4xl sm:text-5xl text-ink">
-          RPC Node Benchmarks
+          Fastest RPC providers, by chain and region
         </h1>
         <p className="mt-4 max-w-2xl text-base sm:text-lg text-ink-soft leading-snug">
           Every free, no-key public RPC endpoint, measured per chain with

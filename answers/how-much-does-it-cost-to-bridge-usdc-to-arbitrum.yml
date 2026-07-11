@@ -1,0 +1,38 @@
+slug: how-much-does-it-cost-to-bridge-usdc-to-arbitrum
+question: "How much does it cost to bridge USDC to Arbitrum?"
+short_answer: |
+  On a $300 USDC transfer, the cheapest measured provider currently lands at {{best_p50}} of notional all in ({{best_name}}, p50 over 24h) and the most expensive at {{worst_p50}}, measured live by OpenChainBench across USDC corridors spanning Solana, Base and Arbitrum, including the Base to Arbitrum route. All in means fees plus slippage plus destination gas, the number that actually leaves your wallet.
+
+benchmark: bridge-fee
+
+intro: |
+  Ask a bridge's landing page what it costs to move USDC to Arbitrum and you get the advertised fee, typically something like 0.05%. Sign the transaction and the bottom line is different: destination gas, the base protocol fee and the solver spread stack on top, and at retail ticket sizes they dominate. This page answers the question with a live measurement instead of a rack rate. OpenChainBench requests a $300 USDC quote from deBridge, LI.FI, Mobula, Relay, Across and Near Intents every five minutes on the same corridor set (Solana, Base and Arbitrum, including Base to Arbitrum), and records the full bottom line as a percent of notional: quoted USD in minus quoted USD delivered. The leaderboard sorts on the 24h median so a single favourable quote cannot crown a winner. The spread between providers is routinely several fold at this trade size, because three pricing architectures cohabit: direct protocols front load a fixed fee, aggregators pay an underlying bridge plus a markup, and intent layers compress everything into a solver spread. At $300, which architecture you pick matters more than which day you bridge.
+
+methodology: |
+  Each provider is queried every five minutes from a single eu-west origin for a $300 USDC quote on the same corridor set spanning Solana, Base and Arbitrum. The recorded metric is total cost as a percent of notional: the explicit fee, the price impact and the destination gas component summed, computed as quoted USD in minus quoted USD delivered so every provider is measured on the same all in definition regardless of how it structures pricing. Quotes that fail (unsupported route, timeout, error) are excluded from the cost aggregate and counted against the success rate. The headline per provider is the average of per corridor 24h medians over the corridors it actually quotes; p90 and p99 capture the worst minutes.
+
+limitations:
+  - "The headline aggregates over the Solana, Base and Arbitrum corridors each provider quotes, so it is not a pure to-Arbitrum number. A solver with deep Arbitrum side inventory can beat its own aggregate on the Base to Arbitrum route specifically; the per corridor split lands once corridor dimensions are wired into the bench page."
+  - "Sampled at $300 notional. At $5,000 or $10,000 the fixed components dilute into the percentage and the leaderboard re-orders; the harness records $5 to $10,000 buckets but this page surfaces the retail size."
+  - "The figure is the quote cost at request time, not the realised cost after settlement. Spot can drift between quote and signing on volatile moments; intent layers re-quote at signing, aggregators pass through a slippage tolerance."
+  - "Arbitrum's canonical bridge is not in the leaderboard. It mints canonical USDC with no protocol fee, but you pay L1 gas on deposit and its cost has no quoted delivered amount to compare on the same definition; it is also slow in the withdrawal direction (7 day challenge window without a liquidity provider)."
+  - "Single measurement origin in eu-west. A provider whose solver pool sits in us-east can quote differently there."
+
+faq:
+  - q: "What is the cheapest way to bridge USDC to Arbitrum?"
+    a: "At $300 notional, {{best_name}} currently leads the measured cohort at {{best_p50}} all in (p50, 24h, averaged across the corridors it quotes). Intent layers usually top this table at retail sizes because they compress fee, spread and destination gas into one solver quote, while direct protocols carry a fixed fee floor that hits hardest on small trades. The leaderboard refreshes every five minutes, and the corridor level leader can differ from the aggregate, so treat this as the live starting point rather than a permanent answer."
+  - q: "Why is bridging a small amount of USDC so expensive in percentage terms?"
+    a: "Because part of the cost is fixed. Destination gas and base protocol fees cost roughly the same whether you move $300 or $10,000, so at $300 they are the dominant share of the percentage, while at $10,000 they dilute to noise. This is why published comparisons quoting $10,000 rack rates understate what retail users pay: the current measured spread at $300 runs from {{best_p50}} to {{worst_p50}} across {{count}} providers, a gap driven mostly by how much fixed cost each architecture front loads rather than by spread efficiency."
+  - q: "Do I need ETH on Arbitrum to receive bridged USDC?"
+    a: "Not with the providers measured here. The quoted delivered amount already nets out destination gas: the solver or protocol pays the Arbitrum gas to deliver your USDC and charges it inside the all in cost this page measures. That convenience is part of why the percentage exceeds the advertised fee. You will need ETH (or a gas sponsoring wallet) for your own follow up transactions on Arbitrum, so consider bridging a small ETH amount alongside or picking a provider that offers gas top up on delivery."
+  - q: "Is the official Arbitrum bridge cheaper than third party bridges?"
+    a: "Sometimes on paper, rarely at $300 in practice. The canonical bridge charges no protocol fee, but a deposit costs L1 Ethereum gas, which on its own can exceed the all in cost of the intent layers measured here at retail size, and withdrawals back to Ethereum wait out a 7 day challenge window unless a liquidity provider fronts the exit. The canonical route matters when you need canonical minting guarantees or move very large size; for a $300 transfer the measured third party routes are usually cheaper and settle in minutes."
+
+related:
+  - which-bridge-has-the-cheapest-usdc-fee
+  - cheapest-bridge-usdc-to-base
+  - which-bridge-has-the-fastest-quote-api
+
+seo_title: "How much does it cost to bridge USDC to Arbitrum? Live all in fees"
+seo_description: "Bridging $300 of USDC costs from {{best_p50}} to {{worst_p50}} all in (p50, 24h) depending on provider. deBridge, LI.FI, Mobula, Relay, Across and Near Intents measured live by OpenChainBench."
+status: live
