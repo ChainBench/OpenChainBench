@@ -59,7 +59,7 @@ per_chain_explainer:
   - slug: gram
     h2: "Gram finality time"
     body: |
-      Gram's BAG consensus (the chain formerly branded TON, native token renamed Toncoin → Gram in June 2026) pushes masterchain finality to {{p50:gram}} (p50, 24h), one of the lowest deterministic finalities measured on this leaderboard. Gram's design splits state across a masterchain and many workchains; the figure reported here is the masterchain commit, the canonical reference for cross-chain settlement. Measured via the tonapi.io `/blockchain/masterchain-head` endpoint with a 3-seqno lookback.
+      Gram's BAG consensus (the chain formerly branded TON, native token renamed Toncoin → Gram in June 2026) pushes masterchain finality to {{p50:gram}} (p50, 24h), one of the lowest deterministic finalities measured on this leaderboard. Gram's design splits state across a masterchain and many workchains; the figure reported here is the masterchain commit, the canonical reference for cross-chain settlement. Measured as the wall-clock lag of the tonapi.io masterchain head: Gram masterchain blocks are BFT-final at production (validator-signed, no fork choice), so commit lag is finality. Post accelerated upgrade the masterchain produces a block about every 0.4s, verified empirically 2026-07-11.
   - slug: bnb
     h2: "BNB Chain finality time"
     body: |
@@ -123,7 +123,7 @@ methodology:
   - "TRON: `/wallet/getnowblock` (head) minus `/walletsolidity/getnowblock` (solidity-confirmed)."
   - "Stellar (SSE wall-clock): Horizon `/ledgers?cursor=now&order=asc` event-stream records T1 on first sight of ledger N and T2 on the next ledger close (SCP-final at every close)."
   - "SUI: `sui_getLatestCheckpointSequenceNumber` minus 5 checkpoints back."
-  - "Gram: tonapi.io `/blockchain/masterchain-head` minus 3 seqno."
+  - "Gram: wall-clock lag of the tonapi.io masterchain head. Masterchain blocks are BFT-final at production, so head commit lag is the finality figure; the chain produces a block about every 0.4s since the accelerated upgrade."
   - "Bitcoin (probabilistic, own-clock): mempool.space `/blocks/tip/height` polled every 30 s. T1 = first poll where block N is the tip, T2 = first poll where tip − N ≥ 6 (the exchange deposit convention). lag = T2 − T1 on the harness clock; miner-set block timestamps (consensus allows 2h skew) are never used. The startup tip is not timed. On a tip regression, pending timers above the new tip are dropped; same-height reorgs are invisible to height polling, bounding error to about one block interval."
   - "Litecoin (probabilistic): blockchair `/stats.best_block_height` minus 6 confirmations via `/dashboards/block/{height}.block.time`."
   - "Monero (probabilistic): monero-rpc `get_info` minus 10 confirmations via `get_block_header_by_height`."
