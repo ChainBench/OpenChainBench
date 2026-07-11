@@ -23,12 +23,17 @@ const interTight = Inter_Tight({
   display: "swap",
 });
 
+// preload: false on the serif + mono families: they style prose/labels
+// below the fold, and their 3 woff2 preloads competed with LCP-critical
+// Inter/Inter Tight for bandwidth on first paint. display: swap still
+// applies, so they load lazily without invisible text.
 const sourceSerif = Source_Serif_4({
   variable: "--font-source-serif",
   subsets: ["latin"],
   weight: ["400", "500", "600"],
   style: ["italic", "normal"],
   display: "swap",
+  preload: false,
 });
 
 const jetbrainsMono = JetBrains_Mono({
@@ -36,6 +41,7 @@ const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
   weight: ["400", "500"],
   display: "swap",
+  preload: false,
 });
 
 export const viewport: Viewport = {

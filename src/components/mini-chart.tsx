@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { downsample, MINI_CHART_POINTS } from "@/lib/downsample";
 import { buildProviderColors } from "@/lib/series-colors";
 
 /**
@@ -52,7 +53,7 @@ export function MiniChart({
     .map((r) => ({
       slug: r.slug,
       name: r.name,
-      values: downsample(benchmark.extras.series24h[r.slug] ?? [], 28),
+      values: downsample(benchmark.extras.series24h[r.slug] ?? [], MINI_CHART_POINTS),
       color: colors.get(r.slug) ?? "var(--color-ink-soft)",
     }))
     .filter((s) => s.values.length > 1);
@@ -103,21 +104,17 @@ export function MiniChart({
                 vectorEffect="non-scaling-stroke"
                 points={points}
               />
-              {/* Live pulse halo. animated outward */}
-              <circle cx={lastX} cy={lastY} r={2} fill={color} opacity={0.35}>
-                <animate
-                  attributeName="r"
-                  values="2;7;2"
-                  dur="1.8s"
-                  repeatCount="indefinite"
-                />
-                <animate
-                  attributeName="opacity"
-                  values="0.45;0;0.45"
-                  dur="1.8s"
-                  repeatCount="indefinite"
-                />
-              </circle>
+              {/* Live pulse halo. CSS keyframes (globals.css) instead of
+                  SMIL <animate>: with 37 benches x N providers on the hub
+                  grid the two <animate> children per halo added ~800
+                  elements of markup for an effect one shared class covers. */}
+              <circle
+                cx={lastX}
+                cy={lastY}
+                r={2}
+                fill={color}
+                className="mini-chart-pulse"
+              />
               {/* Solid endpoint */}
               <circle cx={lastX} cy={lastY} r={2.2} fill={color} />
             </g>
@@ -166,25 +163,3 @@ export function MiniChart({
   );
 }
 
-// 48-px-tall sparkline can't render >~30 distinct points anyway. Bucket
-// long series down so the rendered SVG path stays compact (each kept
-// point is the bucket mean, preserving the shape that drove the polyline
-// at full resolution). Cuts the /benchmarks HTML payload sharply when
-// the grid is showing every bench's series at once.
-function downsample(values: number[], target: number): number[] {
-  if (values.length <= target) return values;
-  const bucketSize = values.length / target;
-  const out: number[] = [];
-  for (let i = 0; i < target; i++) {
-    const start = Math.floor(i * bucketSize);
-    const end = Math.floor((i + 1) * bucketSize);
-    let sum = 0;
-    let n = 0;
-    for (let j = start; j < end && j < values.length; j++) {
-      sum += values[j];
-      n++;
-    }
-    if (n > 0) out.push(sum / n);
-  }
-  return out;
-}
