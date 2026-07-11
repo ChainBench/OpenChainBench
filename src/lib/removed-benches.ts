@@ -37,7 +37,6 @@ export const REMOVED_BENCH_SLUGS = new Set([
   "monad-rpc",
   "megaeth-rpc",
   "rpc-keyed-latency",
-  "mev-protect-rpc",
   "explorer-chain-coverage",
   "portfolio-chain-coverage",
 ]);
