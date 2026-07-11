@@ -110,7 +110,17 @@ export async function readCohortSnapshot<T>(
 ): Promise<{ data: T; asOfMs: number; ageMs: number } | null> {
   if (!isConfigured()) return null;
   try {
-    const raw = await redisCommand(["GET", blobKey(key)], 3_000);
+    // One retry on transient failure: a single timed-out KV GET during
+    // an ISR regeneration used to cache a degraded render for the whole
+    // revalidate window (KPI sections flapping in and out on product
+    // pages, coherence audit 2026-07-12). A missing key still returns
+    // null immediately; only the network path retries.
+    let raw: unknown;
+    try {
+      raw = await redisCommand(["GET", blobKey(key)], 3_000);
+    } catch {
+      raw = await redisCommand(["GET", blobKey(key)], 3_000);
+    }
     if (typeof raw !== "string" || !raw) return null;
     let parsed: unknown;
     try {
