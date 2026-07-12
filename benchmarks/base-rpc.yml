@@ -14,7 +14,7 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Base offers the cleanest official-versus-gateway comparison in the cluster: Coinbase operates both the sequencer and the chain-official `mainnet.base.org`, so the house endpoint has every locational advantage, and it still has to beat PublicNode, dRPC, Tenderly, Nodies and Merkle on a level probe. 6 providers, the same `eth_getBlockByNumber` call every 60 seconds, three regions, stale-head detection against the cross-provider tip.
+  Base offers the cleanest official-versus-gateway comparison in the cluster: Coinbase operates both the sequencer and the chain-official `mainnet.base.org`, so the house endpoint has every locational advantage, and it still has to beat PublicNode, dRPC, Tenderly and Nodies on a level probe. 5 providers, the same `eth_getBlockByNumber` call every 60 seconds, three regions, stale-head detection against the cross-provider tip.
 
 abstract: |
   Per-chain member of the RPC latency cluster. We measure the round-trip latency of a single, identical RPC call (`eth_getBlockByNumber`) against every no-key public Base endpoint that sustains continuous probing, 6 providers, every 60 seconds, from us-east, eu-west and Singapore. The harness also classifies every response (ok / http_err / jsonrpc_err / stale / timeout) and audits archive depth every 5 minutes, so the leaderboard rewards sustained, honest availability rather than a fast error message. The cross-chain view lives on the parent rpc-capabilities benchmark; this page is the Base-scoped answer with per-region breakdowns as a first-class dimension.

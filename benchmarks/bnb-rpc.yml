@@ -14,7 +14,7 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  BNB Chain is the incumbent's chain: Binance's `bsc-dataseed1.binance.org` has been the copy-paste default since 2020, and from some regions it is still the single fastest RPC response we measure anywhere in the cluster. The catch is that it serves exactly one chain, while PublicNode, dRPC, Nodies and Merkle bring multi-chain coverage with increasingly competitive latency from EU origins. 5 providers, identical probes, three regions.
+  BNB Chain is the incumbent's chain: Binance's `bsc-dataseed1.binance.org` has been the copy-paste default since 2020, and from some regions it is still the single fastest RPC response we measure anywhere in the cluster. The catch is that it serves exactly one chain, while PublicNode, dRPC and Nodies bring multi-chain coverage with increasingly competitive latency from EU origins. 4 providers, identical probes, three regions.
 
 abstract: |
   Per-chain member of the RPC latency cluster. We measure the round-trip latency of a single, identical RPC call (`eth_getBlockByNumber`) against every no-key public BNB Chain endpoint that sustains continuous probing, 5 providers, every 60 seconds, from us-east, eu-west and Singapore. The harness also classifies every response (ok / http_err / jsonrpc_err / stale / timeout) and audits archive depth every 5 minutes, so the leaderboard rewards sustained, honest availability rather than a fast error message. The cross-chain view lives on the parent rpc-capabilities benchmark; this page is the BNB Chain-scoped answer with per-region breakdowns as a first-class dimension.

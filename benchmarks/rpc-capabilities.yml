@@ -206,29 +206,6 @@ providers:
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="drpc", region="sgp"}[1h])
 
-  - slug: 1rpc
-    name: 1RPC
-    tag: Privacy-preserving gateway by Automata Network
-    formula: "Mean over its measured chains and 3 regions of per cell 24h p50 round-trip latency (ms) for `eth_getBlockByNumber` sent every 60s to 1RPC's Automata gateway. Successful calls only; failures show in the Success column."
-    queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="1rpc"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="1rpc"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="1rpc"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="1rpc"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="1rpc"}) / sum(ocb:rpc_call:rate_24h{provider="1rpc"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="1rpc"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="1rpc"}[1h]))
-      regions:
-        - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="1rpc", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="1rpc", region="us-east"}[1h])
-        - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="1rpc", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="1rpc", region="eu-west"}[1h])
-        - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="1rpc", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="1rpc", region="sgp"}[1h])
-
   - slug: meowrpc
     name: MeowRPC
     tag: Free public RPC, no registration
