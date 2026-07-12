@@ -29,6 +29,10 @@ type Chain struct {
 	Slug      string
 	Name      string
 	Providers []Provider
+	// Kind selects the probe path: "" (EVM, eth_getBlockByNumber) or
+	// "solana" (getSlot at processed commitment, slot-based staleness,
+	// no archive-depth loop).
+	Kind string
 }
 
 // chains is the source of truth for the (chain × provider) probe
@@ -55,6 +59,27 @@ type Chain struct {
 // (3 providers), Zora / Abstract / HyperEVM (≤2 keyless providers).
 func chains() []Chain {
 	return []Chain{
+		// ─── Solana mainnet — added 2026-07-12, all 5 endpoints keyless
+		// and live-verified (getSlot + getLatestBlockhash + getVersion,
+		// mutually consistent advancing slots). Excluded by that sweep:
+		// dRPC (Solana paid-only), Ankr (403 key required), OnFinality
+		// (shared public quota permanently 429), BlockPI (503 no public
+		// URL), Blast API + ExtrNode + AllThatNode (DNS dead), Triton
+		// free.rpcpool.com (403), OMNIA (521), Helius/Shyft/BlockEden
+		// (key-gated). LeoRPC uses a publicly documented FREE query key,
+		// disclosed in the bench methodology.
+		{
+			Slug: "solana",
+			Name: "Solana",
+			Kind: "solana",
+			Providers: []Provider{
+				{Slug: "solana-official", Name: "Solana Labs", URL: envDefault("RPC_URL_SOLANA_OFFICIAL", "https://api.mainnet-beta.solana.com")},
+				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_SOLANA_PUBLICNODE", "https://solana-rpc.publicnode.com")},
+				{Slug: "lava", Name: "Lava", URL: envDefault("RPC_URL_SOLANA_LAVA", "https://solana.lava.build")},
+				{Slug: "leorpc", Name: "LeoRPC", URL: envDefault("RPC_URL_SOLANA_LEORPC", "https://solana.leorpc.com/?api_key=FREE")},
+				{Slug: "solanavibestation", Name: "Solana Vibe Station", URL: envDefault("RPC_URL_SOLANA_SVS", "https://public.rpc.solanavibestation.com")},
+			},
+		},
 		// ─── Monad mainnet (chain 143) — added 2026-07-08, all endpoints
 		// live-verified (eth_chainId=143 + anti-cache probe). Five official
 		// mirrors exist behind different infra vendors; we probe the primary
