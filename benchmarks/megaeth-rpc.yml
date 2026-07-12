@@ -29,7 +29,7 @@ seo_intro: |
 abstract: |
   We measure the round-trip latency of a single, identical RPC call
   (`eth_getBlockByNumber`) against every no-key public MegaETH
-  endpoint that sustains continuous probing, 4 providers, every 30
+  endpoint that sustains continuous probing, 3 providers, every 30
   seconds, from us-east, eu-west and Singapore. The harness
   classifies every response (ok / http_err / jsonrpc_err / stale /
   timeout) so the leaderboard rewards sustained, honest availability
@@ -43,7 +43,7 @@ methodology:
   - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms to 10 s), so percentiles are computed via Prometheus `quantile_over_time` over the last 24 hours."
   - "Call-result classification: `ok` (HTTP 200 + non-empty result), `http_err`, `jsonrpc_err` (HTTP 200 carrying an error body), `stale` (more than 20 blocks behind the cross-provider tip), `timeout`. Latency without reliability is a misleading ranking signal."
   - "This page is part of the per-chain RPC cluster derived from the cross-chain [rpc-capabilities](/benchmarks/rpc-capabilities) benchmark; the identical harness, methodology and exclusion rules apply on every chain. Every endpoint on this page was live-verified (eth_chainId match + anti-cache probe) before inclusion on 2026-07-08."
-  - "Chain scope: every query on this page is pinned to chain=\"megaeth\" (chain id 4326, mainnet since February 2026). Provider coverage: 4 no-key endpoints (MegaETH Official, dRPC, Tenderly Gateway). Exclusions follow the cluster-wide rules documented on the parent benchmark."
+  - "Chain scope: every query on this page is pinned to chain=\"megaeth\" (chain id 4326, mainnet since February 2026). Provider coverage: 3 no-key endpoints (MegaETH Official, dRPC, Tenderly Gateway). Exclusions follow the cluster-wide rules documented on the parent benchmark."
 
 findings:
   - "{{best_name}} currently leads the free MegaETH RPC field at {{best_p50}} (p50, 24h) across 3 measured providers."

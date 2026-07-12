@@ -128,7 +128,7 @@ methodology:
   - "Litecoin (probabilistic): blockchair `/stats.best_block_height` minus 6 confirmations via `/dashboards/block/{height}.block.time`."
   - "Monero (probabilistic): monero-rpc `get_info` minus 10 confirmations via `get_block_header_by_height`."
   - "Hedera (planned, currently disabled): mirror-node `/api/v1/blocks` only exposes already-final blocks, so true wall-clock lag is impossible from public endpoints. Re-enables once Block Nodes (HIP-1056) leave private preview."
-  - "Result: `lag_seconds = headTimestamp, finalizedTimestamp`. We also record the block-height delta and per-chain fetch latency."
+  - "Result: `lag_seconds = headTimestamp - finalizedTimestamp`. We also record the block-height delta and per-chain fetch latency."
   - "Excluded by design: XRP (no close-time on `ledger_current`, wall-clock measurement requires WS subscribe to ledger stream, not yet implemented)."
   - "Failures (5xx, timeouts, rate limits) leave the previous gauge in place and increment a per-chain `fetch_errors_total` counter; the page falls back to the last successful sample."
 

@@ -36,7 +36,7 @@ seo_intro: |
   p90 / p99 scheme, take the predicted priority fee in gwei, then
   compare it against the realized percentile computed directly from
   the actual transactions in the next mined block. The headline is
-  the p99 of the absolute error (|predicted, realized|, in gwei)
+  the p99 of the absolute error (|predicted - realized|, in gwei)
   over 24h, the worst 1% of blocks, because typical-minute errors
   are micro-gwei noise while gas spikes are where predictions
   actually diverge. A covered-rate column shows the share of time
@@ -115,7 +115,7 @@ faq:
   - q: "What about gas prediction on Optimism / Base / Arbitrum?"
     a: "L2 OP Stack chains have priority fee ≈ 0 because the sequencer is centralised (no MEV competition, no public mempool). The actually meaningful cost on an L2 is the L1 data fee, what the sequencer pays Ethereum mainnet to post the batch, which is a different prediction problem. We're considering a separate `l2-data-fee-prediction` bench for that. Including L2s in this bench would silently produce flat ~0 numbers that pollute the comparison."
   - q: "How is gas prediction error measured here, technically?"
-    a: "Per chain, every oracle is polled at its tier-tolerant cadence and the predicted priority fee per tier is buffered with the predicted block height. When that block is mined, the harness pulls the full block via `eth_getBlockByNumber(.., true)` on the chain's PublicNode RPC and computes the realized percentile from the actual `maxPriorityFeePerGas` values across every included transaction. Absolute error (|predicted, realized|, in gwei) is recorded per (oracle, tier, chain) as both a gauge and a histogram. p50 / p90 / p99 are computed via Prometheus `quantile_over_time` over the last 24 h. Empty or low-tx blocks are flagged separately because the realized percentile is noisy when transaction count is near zero."
+    a: "Per chain, every oracle is polled at its tier-tolerant cadence and the predicted priority fee per tier is buffered with the predicted block height. When that block is mined, the harness pulls the full block via `eth_getBlockByNumber(.., true)` on the chain's PublicNode RPC and computes the realized percentile from the actual `maxPriorityFeePerGas` values across every included transaction. Absolute error (|predicted - realized|, in gwei) is recorded per (oracle, tier, chain) as both a gauge and a histogram. p50 / p90 / p99 are computed via Prometheus `quantile_over_time` over the last 24 h. Empty or low-tx blocks are flagged separately because the realized percentile is noisy when transaction count is near zero."
   - q: "Why is gas prediction so hard?"
     a: "EIP-1559 makes the base fee deterministic (it adjusts by ±12.5% per block based on the previous block's gas used), so every oracle agrees on base fee within a fraction of a gwei. The hard part is predicting the priority-fee distribution in the *next* block. Priority fees are set by users in response to mempool congestion, which shifts on swap activity, MEV bot deployments, NFT mints and DEX volume in a way no historical-lookback model can fully anticipate. The leaderboard surfaces which oracle's lookback / inference scheme tracks reality best per chain, sustained over 24 h."
 
