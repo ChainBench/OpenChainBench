@@ -309,6 +309,9 @@ const RAW: Record<string, string> = {
   "nautilus-trader": "/logos/nautilus-trader.png",
   blink: "/logos/blink.png",
   blinklabs: "/logos/blinklabs.svg",
+  blocksec: "/logos/blocksec.jpg",
+  "48club": "/logos/48club.png",
+  pancakeswap: "/logos/pancakeswap.png",
   mevblocker: "/logos/mevblocker.svg",
 
   // ─── Hyperliquid frontends registry expansion (60 → 66, 2026-06-28) ───
