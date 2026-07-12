@@ -67,8 +67,18 @@ export function Chart({
   // outlier (e.g. GeckoTerminal at 11s while the others sit under 1s)
   // lets the remaining lines spread out. If everything is excluded we
   // fall back to the full set so the axis doesn't collapse.
-  const visibleValues = slicedLines.filter((l) => !l.excluded).flatMap((l) => l.values);
-  const sourceValues = visibleValues.length > 0 ? visibleValues : slicedLines.flatMap((l) => l.values);
+  // Nulls are empty Prom buckets (gaps); they carry no magnitude and
+  // must not touch the Y domain (Math.min would coerce null to 0 and
+  // pin the axis floor).
+  const finiteOnly = (vs: (number | null)[]) =>
+    vs.filter((v): v is number => v != null && Number.isFinite(v));
+  const visibleValues = finiteOnly(
+    slicedLines.filter((l) => !l.excluded).flatMap((l) => l.values),
+  );
+  const sourceValues =
+    visibleValues.length > 0
+      ? visibleValues
+      : finiteOnly(slicedLines.flatMap((l) => l.values));
   const dataMin = Math.min(...sourceValues);
   const dataMax = Math.max(...sourceValues);
   const targetTicks = niceTicks(dataMin, dataMax, 4);
@@ -207,9 +217,12 @@ export function Chart({
     const expected = Math.max(1, expectedPoints - 1);
     return slicedLines.map((l) => {
       const color = l.color;
-      const positive = l.values.filter((v) => v > 0);
+      const positive = l.values.filter((v): v is number => v != null && v > 0);
       const positiveMin = positive.length > 0 ? Math.min(...positive) : 0;
-      const isGap = (v: number) => !Number.isFinite(v) || (v === 0 && positiveMin > 1);
+      // Null = empty Prom bucket, always a gap. The zero heuristic stays
+      // for pre-null blobs where an outage was recorded as hard zeroes.
+      const isGap = (v: number | null) =>
+        v == null || !Number.isFinite(v) || (v === 0 && positiveMin > 1);
 
       const lastIdx = Math.max(0, l.values.length - 1);
       // If Prom returned more points than the chart was sized for (off-by-one
@@ -223,7 +236,9 @@ export function Chart({
       const pts = l.values.map((v, i) => {
         const offsetFromRight = (lastIdx - i) / denom;
         const x = padL + innerW * (1 - offsetFromRight);
-        const y = padT + innerH * (1 - (v - lo) / yRange);
+        // Gap points are never drawn; anchor their y at the domain floor
+        // so the coordinate stays finite.
+        const y = padT + innerH * (1 - ((v ?? lo) - lo) / yRange);
         return { x, y, gap: isGap(v) } as const;
       });
 
@@ -269,7 +284,7 @@ export function Chart({
       if (lastDrawn) closeSegment(lastDrawn.x);
 
       // End-of-line label uses the last non-gap value.
-      const last = lastDrawn ? l.values[pts.indexOf(lastDrawn)] : 0;
+      const last = (lastDrawn ? l.values[pts.indexOf(lastDrawn)] : 0) ?? 0;
       const lastX = lastDrawn ? lastDrawn.x : padL + innerW;
       const lastY = lastDrawn ? lastDrawn.y : padT + innerH;
       // Expose isGap so the hover dot + tooltip can drop a sample that
@@ -325,7 +340,10 @@ export function Chart({
         const value = d.values[localIdx];
         return { ...d, value };
       })
-      .filter((d) => Number.isFinite(d.value) && !d.isGap(d.value))
+      .filter(
+        (d): d is (typeof d) & { value: number } =>
+          d.value != null && Number.isFinite(d.value) && !d.isGap(d.value),
+      )
       .sort((a, b) => b.value - a.value);
   }, [drawn, hover, numPoints]);
 

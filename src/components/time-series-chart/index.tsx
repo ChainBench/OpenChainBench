@@ -42,11 +42,11 @@ type Props = {
    *  `benchmark.extras.series24h[slug]`, swaps the metric name in the
    *  header, and switches the Y-axis unit. Used by the bench page when
    *  the reader selects a companion metric from the panel tab row. */
-  seriesOverride?: Record<string, number[]>;
+  seriesOverride?: Record<string, (number | null)[]>;
   /** Optional 7 day and 30 day variants of the panel override. The chart
    *  picks the matching one when the range tab is 7d or 30d. */
-  seriesOverride7d?: Record<string, number[]>;
-  seriesOverride30d?: Record<string, number[]>;
+  seriesOverride7d?: Record<string, (number | null)[]>;
+  seriesOverride30d?: Record<string, (number | null)[]>;
   metricLabelOverride?: string;
   unitOverride?: Benchmark["unit"];
   /** Direction override for ranking when a metric panel is active. Bench
@@ -133,8 +133,8 @@ export function TimeSeriesChart({
   // rest of the session. CDN cache-control on /api/series (60 s
   // s-maxage + 300 s SWR) absorbs concurrent visitors so Prom sees at
   // most one fan-out per (bench, range) per minute.
-  const [lazySeries7d, setLazySeries7d] = useState<Record<string, number[]> | null>(null);
-  const [lazySeries30d, setLazySeries30d] = useState<Record<string, number[]> | null>(null);
+  const [lazySeries7d, setLazySeries7d] = useState<Record<string, (number | null)[]> | null>(null);
+  const [lazySeries30d, setLazySeries30d] = useState<Record<string, (number | null)[]> | null>(null);
 
   // Pre-fetch 7d AND 30d in the background as soon as the chart mounts,
   // not just when the user clicks the tab. The fetches are non-blocking
@@ -163,10 +163,10 @@ export function TimeSeriesChart({
       if (cancelled || done[range]) return;
       fetch(`/api/series/${benchmark.slug}?${buildQs(range)}`)
         .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
-        .then((data: { providers: { slug: string; values: number[] }[] }) => {
+        .then((data: { providers: { slug: string; values: (number | null)[] }[] }) => {
           if (cancelled) return;
           done[range] = true;
-          const map: Record<string, number[]> = {};
+          const map: Record<string, (number | null)[]> = {};
           for (const p of data.providers) map[p.slug] = p.values;
           if (range === "7d") setLazySeries7d(map);
           else setLazySeries30d(map);
@@ -236,13 +236,13 @@ export function TimeSeriesChart({
     // the matching variant if it exists. Sub 24h tabs slice the 24h
     // variant trailing edge. Long range tabs fall back to the 24h
     // variant when the longer one is missing (older specs).
-    const pickPanel = (): Record<string, number[]> | undefined => {
+    const pickPanel = (): Record<string, (number | null)[]> | undefined => {
       if (range === "30d" && seriesOverride30d) return seriesOverride30d;
       if (range === "7d" && seriesOverride7d) return seriesOverride7d;
       return seriesOverride;
     };
     const panel = pickPanel();
-    const sliceOverride = (full: number[]): number[] => {
+    const sliceOverride = (full: (number | null)[]): (number | null)[] => {
       // Sub 24h ranges slice the 24h panel series trailing edge.
       if (range === "24h" || range === "7d" || range === "30d") return full;
       const ratio = RANGE_HOURS[range] / 24;
@@ -255,7 +255,7 @@ export function TimeSeriesChart({
     // long-window archive for the bench.
     // Pick from the lazy map when in those ranges, fall back to
     // pickSeries (which uses benchmark.extras.series24h) otherwise.
-    const pickBenchValues = (slug: string): number[] => {
+    const pickBenchValues = (slug: string): (number | null)[] => {
       if (isLongRange) {
         return longRangeSeries?.[range]?.[slug] ?? [];
       }

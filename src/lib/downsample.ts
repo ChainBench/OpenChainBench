@@ -5,8 +5,15 @@
  * BenchmarkCardData projection (server) so the hub can ship pre-shrunk
  * series over the RSC wire without changing what the chart draws.
  */
-export function downsample(values: number[], target: number): number[] {
-  if (values.length <= target) return values;
+export function downsample(values: (number | null)[], target: number): number[] {
+  // Dense series carry nulls for empty Prom buckets. Sparkline-scale
+  // charts cannot usefully render a gap, so nulls are dropped: within a
+  // bucket the mean is taken over real samples only, and buckets with
+  // no sample at all are omitted (same behavior the pre-null code had
+  // for empty buckets).
+  if (values.length <= target) {
+    return values.filter((v): v is number => v != null);
+  }
   const bucketSize = values.length / target;
   const out: number[] = [];
   for (let i = 0; i < target; i++) {
@@ -15,7 +22,9 @@ export function downsample(values: number[], target: number): number[] {
     let sum = 0;
     let n = 0;
     for (let j = start; j < end && j < values.length; j++) {
-      sum += values[j];
+      const v = values[j];
+      if (v == null) continue;
+      sum += v;
       n++;
     }
     if (n > 0) out.push(sum / n);

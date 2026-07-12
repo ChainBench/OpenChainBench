@@ -94,13 +94,17 @@ async function main() {
       }
       continue;
     }
-    const min = Math.min(...s);
-    const max = Math.max(...s);
-    const last = s[s.length - 1];
-    const meanV = s.reduce((a, b) => a + b, 0) / s.length;
+    // Dense series carry nulls for empty Prom buckets; stats read the
+    // real samples only, but report the gap count alongside.
+    const present = s.filter((v): v is number => v != null);
+    const gaps = s.length - present.length;
+    const min = Math.min(...present);
+    const max = Math.max(...present);
+    const last = present[present.length - 1];
+    const meanV = present.reduce((a, b) => a + b, 0) / Math.max(1, present.length);
     console.log(
       `  ${p.slug.padEnd(18)} ` +
-        `points=${s.length}  ` +
+        `points=${s.length}${gaps > 0 ? ` (${gaps} empty)` : ""}  ` +
         `min=${fmt(min)}  max=${fmt(max)}  mean=${fmt(meanV)}  last=${fmt(last)}`
     );
   }

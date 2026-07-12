@@ -223,7 +223,11 @@ async function buildChain(spec: Spec): Promise<RpcHubChain | null> {
 
   const leader = rows[0];
   const chain = spec.slug.replace(/-rpc$/, "");
-  const leaderSeries = bench.extras.series24h?.[leader.slug];
+  // Dense series carry nulls for empty Prom buckets; the hub sparkline
+  // blob stays numbers-only (48-pt cap, gap fidelity irrelevant there).
+  const leaderSeries = bench.extras.series24h?.[leader.slug]?.filter(
+    (v): v is number => v != null,
+  );
   // Unresponsive rows are excluded from `rows` by liveRows (they carry
   // availability="unavailable" and zero latency), so they can't touch
   // best/fastest — surface count + identity/success for display-only

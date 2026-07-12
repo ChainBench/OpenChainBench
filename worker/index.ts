@@ -67,7 +67,7 @@ const BENCH_CONCURRENCY = Number(process.env.BENCH_CONCURRENCY ?? 3);
 
 function ringFromSeries(
   window: keyof typeof RING_CADENCE,
-  series: number[],
+  series: (number | null)[],
   now: number,
 ): SeriesRing {
   const { stepSec } = RING_CADENCE[window];
