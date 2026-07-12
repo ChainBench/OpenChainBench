@@ -134,18 +134,6 @@ function ModalBody({
   const [state, setState] = useState<RenderState>({ status: "idle" });
   const [copied, setCopied] = useState(false);
 
-  // Sort the provider list by p50 so the leader sits at the top of the
-  // multi-select (same order share-section.tsx uses).
-  const providers = useMemo(
-    () =>
-      [...benchmark.results]
-        .sort((a, b) =>
-          benchmark.higherIsBetter ? b.ms.p50 - a.ms.p50 : a.ms.p50 - b.ms.p50,
-        )
-        .map((r) => ({ slug: r.slug, name: r.name })),
-    [benchmark],
-  );
-
   const toggleProvider = (s: string) =>
     setSelected((prev) => {
       const next = new Set(prev);
@@ -200,6 +188,84 @@ function ModalBody({
   );
   const chain = dims.chain ?? null;
   const region = dims.region ?? null;
+  const hasDims = activeDims.length > 0;
+
+  // Variant data. When any dimension filter is active, fetch the filtered
+  // Benchmark from the same on-demand route the bench page tabs use. The
+  // aggregate prop keeps serving the unfiltered view; a failed fetch
+  // leaves `variant` null and the preview reports the empty state rather
+  // than silently showing cross-dimension numbers.
+  const [variant, setVariant] = useState<Benchmark | null>(null);
+  const [variantLoading, setVariantLoading] = useState(false);
+  useEffect(() => {
+    if (!hasDims) {
+      setVariant(null);
+      setVariantLoading(false);
+      return;
+    }
+    const qs = new URLSearchParams();
+    for (const { dim, value } of activeDims) qs.set(dim, value);
+    let cancelled = false;
+    setVariantLoading(true);
+    fetch(`/api/bench/${encodeURIComponent(slug)}/variant?${qs.toString()}`)
+      .then((r) => (r.ok ? (r.json() as Promise<Benchmark>) : null))
+      .then((v) => {
+        if (cancelled) return;
+        setVariant(v ?? null);
+        setVariantLoading(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setVariant(null);
+        setVariantLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [slug, activeDims, hasDims]);
+
+  // The bench whose numbers the preview and the provider list reflect:
+  // the fetched variant when filters are active, the aggregate otherwise.
+  // Null while a variant is still in flight.
+  const effectiveBench = hasDims ? variant : benchmark;
+
+  // Providers with a live number in the current view. "unavailable"
+  // covers both offline and unresponsive rows; neither can appear in the
+  // video (their p50 is a zero placeholder, not a measurement).
+  const hasData = (r: Benchmark["results"][number]) =>
+    r.availability !== "unavailable";
+
+  // Live rows ranked by headline value (video order), dead rows last.
+  const rankedResults = useMemo(() => {
+    if (!effectiveBench) return [];
+    const cmp = (a: Benchmark["results"][number], b: Benchmark["results"][number]) =>
+      effectiveBench.higherIsBetter ? b.ms.p50 - a.ms.p50 : a.ms.p50 - b.ms.p50;
+    const live = effectiveBench.results.filter(hasData).sort(cmp);
+    const dead = effectiveBench.results.filter((r) => !hasData(r));
+    return [...live, ...dead];
+  }, [effectiveBench]);
+
+  // Whenever the variant changes, reset the selection to the view's top 8
+  // live providers. A selection carried across views could name providers
+  // that have no data in the new one.
+  useEffect(() => {
+    if (!effectiveBench) return;
+    const top = rankedResults.filter(hasData).slice(0, 8);
+    setSelected(new Set(top.map((r) => r.slug)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effectiveBench]);
+
+  // Row list for the picker, ranked order, dead rows flagged.
+  const providers = useMemo(
+    () =>
+      rankedResults.map((r) => ({
+        slug: r.slug,
+        name: r.name,
+        live: hasData(r),
+      })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [rankedResults],
+  );
 
   const onRender = async () => {
     if (selected.size === 0) {
@@ -435,7 +501,11 @@ function ModalBody({
               </Label>
               <div className="flex gap-2">
                 <SmallLink
-                  onClick={() => setSelected(new Set(providers.map((p) => p.slug)))}
+                  onClick={() =>
+                    setSelected(
+                      new Set(providers.filter((p) => p.live).map((p) => p.slug)),
+                    )
+                  }
                   disabled={isBusy}
                 >
                   All
