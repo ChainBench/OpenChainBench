@@ -17,7 +17,7 @@ import { buildProviderColors } from "@/lib/series-colors";
 type MiniChartBenchmark = {
   results: { slug: string; name: string; ms: { p50: number } }[];
   higherIsBetter: boolean;
-  extras: { series24h: Record<string, number[]> };
+  extras: { series24h: Record<string, (number | null)[]> };
 };
 
 type Props = {

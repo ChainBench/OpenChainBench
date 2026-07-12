@@ -84,7 +84,8 @@ export type LineWithColor = {
   slug: string;
   name: string;
   color: string;
-  values: number[];
+  /** Dense series; `null` marks an empty Prom bucket (rendered as a gap). */
+  values: (number | null)[];
   excluded: boolean;
 };
 
@@ -93,7 +94,7 @@ export function pickSeries(
   slug: string,
   range: Range,
   region: string
-): number[] {
+): (number | null)[] {
   const allRegion = isAll(region);
 
   if (!allRegion) {
@@ -134,9 +135,10 @@ export function pickSeries(
   return s24.slice(-take);
 }
 
-export function mean(xs: number[]): number {
-  if (!xs.length) return 0;
-  return xs.reduce((s, v) => s + v, 0) / xs.length;
+export function mean(xs: (number | null)[]): number {
+  const present = xs.filter((v): v is number => v != null);
+  if (!present.length) return 0;
+  return present.reduce((s, v) => s + v, 0) / present.length;
 }
 
 /**

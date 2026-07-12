@@ -309,7 +309,11 @@ export function LedgerTable({
   // min/max projects panel values wildly out of bounds and the trend
   // column renders vertical streaks running off the row.
   const sparkSource = activePanel?.seriesByProvider ?? extras.series24h;
-  const allSeries = Object.values(sparkSource).flat();
+  // Nulls (empty Prom buckets in dense series) carry no magnitude and
+  // must not touch the shared sparkline scale.
+  const allSeries = Object.values(sparkSource)
+    .flat()
+    .filter((v): v is number => v != null);
   const sparkMin = allSeries.length ? Math.min(...allSeries) : 0;
   const sparkMax = allSeries.length ? Math.max(...allSeries) : 1;
 
@@ -676,7 +680,7 @@ function Row({
   /** Custom-column mode (benchmark.ledgerColumns): one pre-resolved
    *  {value, unit} per declared column, replacing p50/p90/p99/Mean. */
   customCells?: { v: number | null; unit: string }[];
-  series: number[];
+  series: (number | null)[];
   sparkMin: number;
   sparkMax: number;
   color: string;
