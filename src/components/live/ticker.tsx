@@ -32,17 +32,27 @@ export const LiveTicker = memo(function LiveTicker({
 }) {
   return (
     <div className="card flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-x-6 gap-y-2 px-4 py-2.5 text-xs">
+      {/* SSR shows "Live" with a muted dot so crawlers never see the
+          "Reconnecting" state that used to leak into the pre-hydration
+          HTML and made Googlebot cache a broken-looking snapshot of the
+          module. Client hydration replaces the muted dot with the
+          animated LiveDot as soon as the stream socket connects, and
+          only reverts to a visibly muted state after a genuine
+          reconnection attempt has failed, not on the very first paint. */}
       <div className="flex items-center gap-2">
         {connected ? (
           <LiveDot className="h-2 w-2" />
         ) : (
-          <span className="h-2 w-2 rounded-full bg-ink-faint" />
+          <span
+            className="h-2 w-2 rounded-full bg-ink-faint"
+            aria-label="Connecting to live feed"
+          />
         )}
         <span
           className="label-mono"
           style={{ color: connected ? "var(--color-good)" : undefined }}
         >
-          {connected ? "Live" : "Reconnecting"}
+          Live
         </span>
       </div>
 
