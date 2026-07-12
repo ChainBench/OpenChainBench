@@ -775,33 +775,66 @@ function variantKey(
   return `${chain ?? "__none"}|${region ?? "__none"}|${kind ?? "__none"}`;
 }
 
-/** Links to /benchmarks/<slug>/<chain> pages for dimension-shaped
- *  benches. Row-shaped benches (l1-finality) already link their pages
- *  through the ChainHeadingsSummary headings, so this only renders
- *  chains that exist as dimension values, not as result rows. */
+/** Links to /benchmarks/<slug>/<sub> pages for every explainer entry
+ *  that has a resolvable target on the bench. Three shapes:
+ *    (a) Dimension chain — chain filter values that have an explainer.
+ *    (b) Row-shape non-Blockchains — result rows that have an
+ *        explainer but sit outside the "Blockchains" category (e.g.
+ *        polymarket-resolution-delay categories, pm-* venues). The
+ *        Blockchains category is already linked via
+ *        ChainHeadingsSummary above, so this branch skips it.
+ *    (c) Dimension venue — venue filter values with an explainer, for
+ *        benches whose sub-pages are per venue instead of per chain.
+ *  Without this the PM cluster sub-pages (pm-api-latency venues,
+ *  pm-rate-limits venues, polymarket-resolution-delay categories) shipped
+ *  as sitemap orphans with zero incoming anchors. */
 function PerChainPagesNav({ benchmark }: { benchmark: Benchmark }) {
   const resultSlugs = new Set(benchmark.results.map((r) => r.slug));
-  const explainerSlugs = new Set(
-    (benchmark.perChainExplainer ?? []).map((e) => e.slug),
-  );
-  const chains = (benchmark.dimensions?.chain ?? []).filter(
-    (c) =>
-      c.value.toLowerCase() !== "all" &&
-      explainerSlugs.has(c.value) &&
-      !resultSlugs.has(c.value),
-  );
-  if (chains.length === 0) return null;
+  const explainerEntries = benchmark.perChainExplainer ?? [];
+  if (explainerEntries.length === 0) return null;
+
+  const chainOptions = benchmark.dimensions?.chain ?? [];
+  const venueOptions = benchmark.dimensions?.venue ?? [];
+  const chainBySlug = new Map(chainOptions.map((c) => [c.value, c]));
+  const venueBySlug = new Map(venueOptions.map((v) => [v.value, v]));
+
+  const entries: { slug: string; label: string }[] = [];
+  const seen = new Set<string>();
+  for (const e of explainerEntries) {
+    const chainOpt = chainBySlug.get(e.slug);
+    if (chainOpt && chainOpt.value.toLowerCase() !== "all") {
+      const canonSlug = canonicalChainSlug(chainOpt.value);
+      if (seen.has(canonSlug)) continue;
+      seen.add(canonSlug);
+      entries.push({ slug: canonSlug, label: chainOpt.label });
+      continue;
+    }
+    const venueOpt = venueBySlug.get(e.slug);
+    if (venueOpt && venueOpt.value.toLowerCase() !== "all") {
+      if (seen.has(venueOpt.value)) continue;
+      seen.add(venueOpt.value);
+      entries.push({ slug: venueOpt.value, label: venueOpt.label });
+      continue;
+    }
+    if (resultSlugs.has(e.slug) && benchmark.category !== "Blockchains") {
+      if (seen.has(e.slug)) continue;
+      seen.add(e.slug);
+      const row = benchmark.results.find((r) => r.slug === e.slug);
+      entries.push({ slug: e.slug, label: row?.name ?? e.slug });
+    }
+  }
+  if (entries.length === 0) return null;
   return (
-    <nav className="mt-12 max-w-3xl" aria-label="Per-chain pages">
-      <h2 className="label-mono text-ink-muted">Per-chain breakdowns</h2>
+    <nav className="mt-12 max-w-3xl" aria-label="Per breakdown pages">
+      <h2 className="label-mono text-ink-muted">In-depth breakdowns</h2>
       <ul className="mt-3 flex flex-wrap gap-2">
-        {chains.map((c) => (
-          <li key={c.value}>
+        {entries.map((e) => (
+          <li key={e.slug}>
             <Link
-              href={`/benchmarks/${benchmark.slug}/${canonicalChainSlug(c.value)}`}
+              href={`/benchmarks/${benchmark.slug}/${e.slug}`}
               className="inline-block rounded-md card-soft px-3 py-1.5 text-sm text-ink-soft hover:text-ink"
             >
-              {c.label}
+              {e.label}
             </Link>
           </li>
         ))}
