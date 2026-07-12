@@ -363,10 +363,14 @@ function ModalBody({
   };
 
   const tweetIntent = (url: string) =>
-    `https://x.com/intent/tweet?text=${encodeURIComponent(`${title} · last ${range}`)}&url=${encodeURIComponent(url)}`;
+    `https://x.com/intent/tweet?text=${encodeURIComponent(`${videoTitle} · last ${range}`)}&url=${encodeURIComponent(url)}`;
 
   const isBusy =
     state.status === "loading_series" || state.status === "rendering";
+  // Nothing to render: the variant has no live providers (or every one
+  // was deselected). Disable the button instead of letting the POST fail.
+  const emptySelection = !variantLoading && liveCount === 0;
+  const canRender = !isBusy && !variantLoading && !emptySelection && selected.size > 0;
 
   return (
     <div
@@ -646,7 +650,7 @@ function ModalBody({
             <button
               type="button"
               onClick={onRender}
-              disabled={isBusy}
+              disabled={!canRender}
               className="inline-flex items-center gap-2 rounded-md border border-ink bg-ink px-4 py-2.5 text-[12px] font-medium uppercase tracking-[0.18em] text-paper hover:bg-paper hover:text-ink transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isBusy ? (
@@ -662,6 +666,16 @@ function ModalBody({
             </button>
             {state.status === "rendering" && (
               <span className="text-[11px] text-ink-muted">~10-30s first run · instant on rerun</span>
+            )}
+            {emptySelection && state.status === "idle" && (
+              <span className="text-[11px] text-ink-muted">
+                No providers report data for this selection. Pick another filter combination.
+              </span>
+            )}
+            {!emptySelection && selected.size === 0 && state.status === "idle" && (
+              <span className="text-[11px] text-ink-muted">
+                Include at least one provider.
+              </span>
             )}
             {state.status === "error" && (
               <span className="text-[11px] text-red-500">{state.message}</span>
