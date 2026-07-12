@@ -7,6 +7,7 @@ import { Breadcrumb } from "@/components/breadcrumb";
 import { liveResults } from "@/lib/provider-filters";
 import { fmtUnit } from "@/lib/format";
 import { capDescription } from "@/lib/seo-text";
+import { getBenchCreatedAt } from "@/lib/seo/bench-dates";
 import { SITE } from "@/data/site";
 import { buildBreadcrumbJsonLd, safeJsonLd } from "@/lib/jsonld";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
@@ -361,6 +362,7 @@ export default async function BenchmarkChainPage({
         mainEntityOfPage: pageUrl,
         articleBody: `${keyFacts} ${stripInlineMarkdown(explainer.body)}`,
         image: `${SITE.url}/api/og/${benchmark.slug}`,
+        datePublished: getBenchCreatedAt(benchmark.slug).toISOString(),
         dateModified: benchmark.lastRunAt,
         author: { "@id": `${SITE.url}/#org` },
         publisher: { "@id": `${SITE.url}/#org` },

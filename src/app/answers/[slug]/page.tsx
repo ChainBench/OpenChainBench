@@ -168,6 +168,7 @@ export default async function AnswerPage({
         dateModified: bench.lastRunAt,
         author: { "@id": `${SITE.url}/#org` },
         publisher: { "@id": `${SITE.url}/#org` },
+        image: `${SITE.url}/api/og/${bench.slug}`,
         isBasedOn: benchUrl,
       },
       buildBreadcrumbJsonLd([
