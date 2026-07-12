@@ -297,35 +297,45 @@ export default async function AnswerPage({
         </p>
       </section>
 
-      <section className="mt-12">
-        <h2 className="text-lg sm:text-xl font-bold tracking-tight text-ink">
-          What this number does not tell you
-        </h2>
-        <ul className="mt-3 space-y-3 text-base leading-relaxed text-ink-soft">
-          {limitations.map((l) => (
-            <li key={l} className="flex gap-3">
-              <span className="text-ink-faint">·</span>
-              <span>{l}</span>
-            </li>
-          ))}
-        </ul>
-      </section>
+      {/* Limitations and FAQ are omitted entirely on the pending-data
+          variant: the arrays are empty in that case (see the pending
+          swap above), and rendering an <h2> with no items below reads
+          as UI dead space to a human and as broken structured data to a
+          crawler. When the bench has live data both sections render
+          normally. */}
+      {limitations.length > 0 && (
+        <section className="mt-12">
+          <h2 className="text-lg sm:text-xl font-bold tracking-tight text-ink">
+            What this number does not tell you
+          </h2>
+          <ul className="mt-3 space-y-3 text-base leading-relaxed text-ink-soft">
+            {limitations.map((l) => (
+              <li key={l} className="flex gap-3">
+                <span className="text-ink-faint">·</span>
+                <span>{l}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
-      <section className="mt-12">
-        <h2 className="text-lg sm:text-xl font-bold tracking-tight text-ink">
-          Frequently asked questions
-        </h2>
-        <dl className="mt-4 space-y-6">
-          {faq.map((item) => (
-            <div key={item.q}>
-              <dt className="text-base font-semibold text-ink">{item.q}</dt>
-              <dd className="mt-2 text-base leading-relaxed text-ink-soft">
-                {item.a}
-              </dd>
-            </div>
-          ))}
-        </dl>
-      </section>
+      {faq.length > 0 && (
+        <section className="mt-12">
+          <h2 className="text-lg sm:text-xl font-bold tracking-tight text-ink">
+            Frequently asked questions
+          </h2>
+          <dl className="mt-4 space-y-6">
+            {faq.map((item) => (
+              <div key={item.q}>
+                <dt className="text-base font-semibold text-ink">{item.q}</dt>
+                <dd className="mt-2 text-base leading-relaxed text-ink-soft">
+                  {item.a}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      )}
 
       {relatedAnswers.length > 0 && (
         <section className="mt-12">
