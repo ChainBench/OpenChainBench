@@ -33,6 +33,12 @@ const DIM_LABEL: Record<DimId, string> = {
 type DimOption = { value: string; label: string };
 type DimState = Partial<Record<DimId, string | null>>;
 
+/** Providers with a live number in the current view. "unavailable"
+ *  covers both offline and unresponsive rows; neither can appear in the
+ *  video (their p50 is a zero placeholder, not a measurement). */
+const hasData = (r: Benchmark["results"][number]) =>
+  r.availability !== "unavailable";
+
 type Props = {
   slug: string;
   title: string;
@@ -104,7 +110,6 @@ function ExportVideoModal({ slug, title, benchmark }: Props) {
 
 function ModalBody({
   slug,
-  title,
   benchmark,
   onClose,
 }: Props & { onClose: () => void }) {
@@ -123,26 +128,8 @@ function ModalBody({
   const [audio, setAudio] = useState(false);
   // Story beats: lead-change banners during the race. Off by default.
   const [beats, setBeats] = useState(false);
-  // Default to the top 8 providers (sorted by p50). Each composition only
-  // shows ~8 visible anyway (BarChartRace.VISIBLE_BARS = 8) and rendering
-  // 50+ providers per frame on a 2-vCPU box pushes us past 2 minutes —
-  // outside the Vercel function ceiling. Power users can click "All".
-  const [selected, setSelected] = useState<Set<string>>(() => {
-    const sorted = [...benchmark.results].sort((a, b) =>
-      benchmark.higherIsBetter ? b.ms.p50 - a.ms.p50 : a.ms.p50 - b.ms.p50,
-    );
-    return new Set(sorted.slice(0, 8).map((r) => r.slug));
-  });
   const [state, setState] = useState<RenderState>({ status: "idle" });
   const [copied, setCopied] = useState(false);
-
-  const toggleProvider = (s: string) =>
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(s)) next.delete(s);
-      else next.add(s);
-      return next;
-    });
 
   // Dimension pickers. One pill row per dimension the spec declares
   // (chain, region, kind, venue), each with an "All" pill meaning no
@@ -192,48 +179,39 @@ function ModalBody({
 
   // Variant data. When any dimension filter is active, fetch the filtered
   // Benchmark from the same on-demand route the bench page tabs use. The
-  // aggregate prop keeps serving the unfiltered view; a failed fetch
-  // leaves `variant` null and the preview reports the empty state rather
-  // than silently showing cross-dimension numbers.
-  const [variant, setVariant] = useState<Benchmark | null>(null);
-  const [variantLoading, setVariantLoading] = useState(false);
+  // fetched bench is stored WITH the filter key it answers, so loading /
+  // stale states derive from a key comparison instead of extra setState
+  // calls; a failed fetch stores null and the preview reports the empty
+  // state rather than silently showing cross-dimension numbers.
+  const dimKey = activeDims.map((d) => `${d.dim}=${d.value}`).join("&");
+  const [variantState, setVariantState] = useState<{
+    key: string;
+    bench: Benchmark | null;
+  } | null>(null);
   useEffect(() => {
-    if (!hasDims) {
-      setVariant(null);
-      setVariantLoading(false);
-      return;
-    }
+    if (!hasDims) return; // the aggregate prop already covers "all"
     const qs = new URLSearchParams();
     for (const { dim, value } of activeDims) qs.set(dim, value);
     let cancelled = false;
-    setVariantLoading(true);
     fetch(`/api/bench/${encodeURIComponent(slug)}/variant?${qs.toString()}`)
       .then((r) => (r.ok ? (r.json() as Promise<Benchmark>) : null))
       .then((v) => {
-        if (cancelled) return;
-        setVariant(v ?? null);
-        setVariantLoading(false);
+        if (!cancelled) setVariantState({ key: dimKey, bench: v ?? null });
       })
       .catch(() => {
-        if (cancelled) return;
-        setVariant(null);
-        setVariantLoading(false);
+        if (!cancelled) setVariantState({ key: dimKey, bench: null });
       });
     return () => {
       cancelled = true;
     };
-  }, [slug, activeDims, hasDims]);
+  }, [slug, activeDims, hasDims, dimKey]);
+  const variant = variantState?.key === dimKey ? variantState.bench : null;
+  const variantLoading = hasDims && variantState?.key !== dimKey;
 
   // The bench whose numbers the preview and the provider list reflect:
   // the fetched variant when filters are active, the aggregate otherwise.
   // Null while a variant is still in flight.
   const effectiveBench = hasDims ? variant : benchmark;
-
-  // Providers with a live number in the current view. "unavailable"
-  // covers both offline and unresponsive rows; neither can appear in the
-  // video (their p50 is a zero placeholder, not a measurement).
-  const hasData = (r: Benchmark["results"][number]) =>
-    r.availability !== "unavailable";
 
   // Live rows ranked by headline value (video order), dead rows last.
   const rankedResults = useMemo(() => {
@@ -245,15 +223,33 @@ function ModalBody({
     return [...live, ...dead];
   }, [effectiveBench]);
 
-  // Whenever the variant changes, reset the selection to the view's top 8
-  // live providers. A selection carried across views could name providers
-  // that have no data in the new one.
-  useEffect(() => {
-    if (!effectiveBench) return;
-    const top = rankedResults.filter(hasData).slice(0, 8);
-    setSelected(new Set(top.map((r) => r.slug)));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [effectiveBench]);
+  // Selection. Default = the view's top 8 live providers (each composition
+  // only shows ~8 bars and rendering 50+ providers per frame on a 2-vCPU
+  // box blows past the Vercel function ceiling; power users can click
+  // "All"). A user override is stored WITH the bench it was made against,
+  // so a variant swap falls back to the new view's default automatically:
+  // a selection carried across views could name providers that have no
+  // data in the new one.
+  const defaultSelection = useMemo(
+    () => new Set(rankedResults.filter(hasData).slice(0, 8).map((r) => r.slug)),
+    [rankedResults],
+  );
+  const [selOverride, setSelOverride] = useState<{
+    bench: Benchmark | null;
+    sel: Set<string>;
+  } | null>(null);
+  const selected =
+    selOverride && selOverride.bench === effectiveBench
+      ? selOverride.sel
+      : defaultSelection;
+  const setSelected = (sel: Set<string>) =>
+    setSelOverride({ bench: effectiveBench, sel });
+  const toggleProvider = (s: string) => {
+    const next = new Set(selected);
+    if (next.has(s)) next.delete(s);
+    else next.add(s);
+    setSelected(next);
+  };
 
   // Exact title the video will display: the bench title plus the human
   // labels of the active filters, e.g. "RPC capabilities (Ethereum, EU
@@ -274,7 +270,6 @@ function ModalBody({
         name: r.name,
         live: hasData(r),
       })),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [rankedResults],
   );
   const liveCount = providers.filter((p) => p.live).length;
@@ -288,7 +283,6 @@ function ModalBody({
       const on = live && selected.has(r.slug);
       return { r, live, on, rank: on ? ++rank : null };
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rankedResults, selected]);
 
   const onRender = async () => {
