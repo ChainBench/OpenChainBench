@@ -7,8 +7,10 @@ import { buildProviderColors } from "@/lib/series-colors";
 import { logoPath } from "@/lib/logo-manifest";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { SLUG_RE } from "@/lib/slug";
+import { matchesChainSlug } from "@/lib/chain-aliases";
 
-// Dedicated cache for the (slug, range, chain, region) → series map.
+// Dedicated cache for the (slug, range, chain, region, kind, venue) →
+// series map.
 // The full Benchmark is too big for unstable_cache's 2 MB limit (root
 // cause of the egress blowout — see slimBenchmarkForCache in spec.ts),
 // but the series map alone is at most ~100 KB even for 100-provider
@@ -26,8 +28,10 @@ const getSeriesMapCached = unstable_cache(
     range: "7d" | "30d",
     chain: string | undefined,
     region: string | undefined,
+    kind: string | undefined,
+    venue: string | undefined,
   ): Promise<Record<string, number[]> | null> => {
-    const sig = filterSig({ chain, region });
+    const sig = filterSig({ chain, region, kind, venue });
     const stored = await readMaterialized(slug, sig);
     if (stored) {
       const fromBlob =
@@ -42,10 +46,10 @@ const getSeriesMapCached = unstable_cache(
     const specs = await loadSpecsUncached();
     const spec = specs.find((s) => s.slug === slug);
     if (!spec || spec.status !== "live") return null;
-    const b = await specToBenchmark(spec, { chain, region });
+    const b = await specToBenchmark(spec, { chain, region, kind, venue });
     return (range === "7d" ? b.extras.series7d : b.extras.series30d) ?? null;
   },
-  ["series-by-range-v2"],
+  ["series-by-range-v3"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -103,11 +107,43 @@ export async function GET(
     : null;
 
   // Honor the same dimensional filters the bench page itself supports
-  // (?chain=ethereum, ?region=eu-west). Without this, benches whose series
-  // only have data per-chain (e.g. network-fees) appear empty in the
-  // unfiltered global view even though the chain-scoped data is fine.
-  const chain = url.searchParams.get("chain") ?? undefined;
-  const region = url.searchParams.get("region") ?? undefined;
+  // (?chain=ethereum, ?region=eu-west, ?kind=..., ?venue=...). Without
+  // this, benches whose series only have data per-chain (e.g.
+  // network-fees) appear empty in the unfiltered global view even though
+  // the chain-scoped data is fine.
+  //
+  // Same validation/canonicalization as /api/bench/[slug]/variant: every
+  // filter is checked against the declared dimensions and replaced by the
+  // canonical value, since these end up in PromQL label selectors.
+  const aggregate = await getBenchmark(slug);
+  if (!aggregate || aggregate.editorialStatus !== "live") {
+    return NextResponse.json(
+      { error: "unknown_slug", slug },
+      { status: 404, headers: { "cache-control": "public, s-maxage=60" } },
+    );
+  }
+
+  const filters: { chain?: string; region?: string; kind?: string; venue?: string } = {};
+  for (const dim of ["chain", "region", "kind", "venue"] as const) {
+    const raw = url.searchParams.get(dim)?.toLowerCase().trim();
+    if (!raw || raw === "all") continue;
+    // Canonical-aware matching: the chain dimension may still hold the
+    // legacy slug ("ton") even though clients now request the canonical
+    // ("gram"). The matcher resolves both sides to canonical.
+    const known = (aggregate.dimensions?.[dim] ?? []).find((d) =>
+      dim === "chain"
+        ? matchesChainSlug(d.value, raw)
+        : d.value.toLowerCase() === raw,
+    );
+    if (!known) {
+      return NextResponse.json(
+        { error: `unknown_${dim}`, [dim]: raw },
+        { status: 400, headers: { "cache-control": "public, s-maxage=60" } },
+      );
+    }
+    filters[dim] = known.value;
+  }
+  const hasFilters = Object.keys(filters).length > 0;
 
   // 24h is served from the slim cached Benchmark (cheap). 7d / 30d
   // come from the dedicated getSeriesMapCached above (Prom fan-out the
@@ -119,20 +155,21 @@ export async function GET(
   let bench;
   if (rangeParam === "7d" || rangeParam === "30d") {
     [seriesMap, bench] = await Promise.all([
-      getSeriesMapCached(slug, rangeParam, chain, region),
-      getBenchmark(slug, { chain, region }),
+      getSeriesMapCached(
+        slug,
+        rangeParam,
+        filters.chain,
+        filters.region,
+        filters.kind,
+        filters.venue,
+      ),
+      hasFilters ? getBenchmark(slug, filters) : Promise.resolve(aggregate),
     ]);
   } else {
-    bench = await getBenchmark(slug, { chain, region });
+    bench = hasFilters ? await getBenchmark(slug, filters) : aggregate;
     seriesMap = bench?.extras.series24h;
   }
-  const b = bench;
-  if (!b || b.editorialStatus !== "live") {
-    return NextResponse.json(
-      { error: "unknown_slug", slug },
-      { status: 404, headers: { "cache-control": "public, s-maxage=60" } },
-    );
-  }
+  const b = bench ?? aggregate;
 
   if (!seriesMap || Object.keys(seriesMap).length === 0) {
     return NextResponse.json(
