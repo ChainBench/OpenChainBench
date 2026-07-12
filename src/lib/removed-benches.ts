@@ -34,8 +34,6 @@ export const REMOVED_BENCH_SLUGS = new Set([
   "solana-tx-landing-latency",
   // staging pipeline, held back until validated / announced
   "indexing-freshness",
-  "monad-rpc",
-  "megaeth-rpc",
   "rpc-keyed-latency",
   "explorer-chain-coverage",
   "portfolio-chain-coverage",
