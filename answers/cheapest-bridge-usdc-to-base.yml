@@ -1,7 +1,7 @@
 slug: cheapest-bridge-usdc-to-base
 question: "Which bridge is cheapest to move USDC to Base?"
 short_answer: |
-  {{best_name}} currently offers the lowest effective fee for a USDC bridge to Base at {{best_p50}} bps all in (24h avg), measured live by OpenChainBench across Across, Stargate, LI.FI, Squid, Socket, Relay and Near Intents on a $300 USDC probe.
+  OpenChainBench measures the all in cost of a $300 USDC bridge (fee plus slippage plus destination gas) across six routers: Mobula, Relay, LI.FI, deBridge, Across and Near Intents. Since the bench aggregates across the Solana, Base and Arbitrum corridors, the USDC-to-Base leader on a specific corridor is on the per corridor breakdown at openchainbench.com/benchmarks/bridge-fee.
 
 benchmark: bridge-fee
 
@@ -15,19 +15,19 @@ limitations:
   - "Quote fee only. This measures router-quoted effective fee, not settlement. Any router that quotes tighter than it settles would show a fast p50 with degraded real-world execution; the sibling bridge-quote-latency bench flags routers where quote-to-settle drift is measurable."
   - "One size, one route. The $300 USDC to Base pair is the highest-search-volume small-ticket bridge query. At $50k notional the leaderboard re-orders because the spread and LP fee components dominate. Producers moving treasury size should read the per-size breakdown on the bench page."
   - "Destination gas at quote time. Destination gas is included in the effective fee at the quoted receiver payout, not at a delayed execution instant. A destination gas spike between quote and settle would degrade the actual fee below what this leaderboard reports."
-  - "No canonical CCTP fast path. The USDC canonical bridge via Circle CCTP has different guarantees and speeds than the market-maker routers ranked here. The leaderboard measures the market-maker path (Across, LI.FI, Stargate, Squid, Socket, Relay, Near Intents) because it is the head-to-head every comparison article ranks."
+  - "No canonical CCTP fast path. The USDC canonical bridge via Circle CCTP has different guarantees and speeds than the market-maker routers ranked here. The leaderboard measures the market-maker path (Mobula, Relay, LI.FI, deBridge, Across, Near Intents) because it is the head-to-head every comparison article ranks."
 
 faq:
   - q: "Which bridge is cheapest for a $300 USDC transfer to Base?"
-    a: "{{best_name}} leads the leaderboard at {{best_p50}} bps effective fee (24h avg) measured live on the same USDC to Base $300 probe. The full ranking including Across, Stargate, LI.FI, Squid, Socket, Relay and Near Intents re-sorts every 5 minutes against fresh Prometheus samples."
+    a: "The bench-fee leaderboard on the Base corridor is at openchainbench.com/benchmarks/bridge-fee. Six routers compete on the same $300 USDC probe (Mobula, Relay, LI.FI, deBridge, Across and Near Intents) and the ranking re-sorts every 5 minutes against fresh Prometheus samples."
   - q: "Why $300, and does the winner change at $10k or $100k?"
-    a: "$300 is the small-ticket regime that dominates retail search. At $10k the leaderboard shifts because LP-based routers (Stargate) start to lose ground to intent-based routers (Across, Near Intents) whose quotes are less size-dependent. At $100k the spread widens further and the choice becomes size-specific; the per-size tab on the bench page shows the leader at each notional."
+    a: "$300 is the small-ticket regime that dominates retail search. At $10k the leaderboard shifts because aggregator markups compress against intent-based routers (Across, Near Intents, Mobula) whose quotes are less size-dependent. At $100k the spread widens further and the choice becomes size-specific; the per-size tab on the bench page shows the leader at each notional."
   - q: "Is Circle CCTP not on this ranking?"
     a: "CCTP is Circle's canonical burn-and-mint path for USDC. It has different guarantees, speeds and a fixed protocol path, so it is not directly comparable to market-maker routers that price a swap through a pool. The bench measures the market-maker rankings because that is the choice retail actually makes; canonical CCTP is a separate decision users make once they know their maximum acceptable latency."
   - q: "How is Across usually so cheap on this route?"
     a: "Across runs an intent-based settlement model where relayers compete to fill from destination inventory. That model compresses the spread component to near zero on high-liquidity pairs like USDC Ethereum to Base. On less-liquid destinations Across loses its edge; that per-destination effect is why the leaderboard re-ranks by pair rather than emitting a single global cheapest bridge."
-  - q: "Is Stargate outdated for Base?"
-    a: "Stargate remains competitive on high-throughput pairs where its LP depth matters more than intent competition. On USDC to Base the pair-specific LP depth in 2026 has been narrower than intent-based competitors, which is why the leaderboard usually shows an intent router on top. Stargate wins on pairs where LP depth is the constraint."
+  - q: "Which USDC routers are on this leaderboard?"
+    a: "Six routers: Mobula, Relay, LI.FI, deBridge, Across and Near Intents. LP-based venues (Stargate, Squid, Socket) are not measured on this bench because their $300 USDC quote APIs did not meet the harness's coverage or reliability threshold; those venues remain competitive on higher notionals where LP depth dominates the spread."
   - q: "How often is the leaderboard refreshed?"
     a: "Every 5 minutes. The harness probes every router's quote API at that cadence, publishes bridge_effective_fee_bps to Prometheus, and the page reads a 24h rolling average. Because the recording rules re-aggregate every 30 seconds the on-screen ranking re-orders within a minute of any router changing quote behavior."
 
@@ -37,5 +37,5 @@ related:
   - which-blockchain-has-cheapest-transaction-fees
 
 seo_title: "Cheapest bridge for USDC to Base 2026 live"
-seo_description: "{{best_name}} leads at {{best_p50}} bps effective fee on a $300 USDC to Base probe. Across, Stargate, LI.FI, Squid, Socket, Relay and Near Intents ranked live by OpenChainBench."
+seo_description: "OpenChainBench ranks six USDC routers (Mobula, Relay, LI.FI, deBridge, Across, Near Intents) on all in cost at $300 notional across Solana, Base and Arbitrum. Live per corridor breakdown on the bench page."
 status: live

@@ -17,7 +17,7 @@ seo_intro: |
   Optimism pits the Foundation's `mainnet.optimism.io` against 5 multi-chain no-key gateways. As on Arbitrum, the official endpoint is documented best-effort, and the measured tail confirms it, while the gateway tier (PublicNode, dRPC, Tenderly, Nodies) competes on tighter distributions. Probes run every 60 seconds from three regions with full response classification, so an endpoint stuck on an old head is flagged `stale` rather than ranked fast.
 
 abstract: |
-  Per-chain member of the RPC latency cluster. We measure the round-trip latency of a single, identical RPC call (`eth_getBlockByNumber`) against every no-key public Optimism endpoint that sustains continuous probing, 6 providers, every 60 seconds, from us-east, eu-west and Singapore. The harness also classifies every response (ok / http_err / jsonrpc_err / stale / timeout) and audits archive depth every 5 minutes, so the leaderboard rewards sustained, honest availability rather than a fast error message. The cross-chain view lives on the parent rpc-capabilities benchmark; this page is the Optimism-scoped answer with per-region breakdowns as a first-class dimension.
+  Per-chain member of the RPC latency cluster. We measure the round-trip latency of a single, identical RPC call (`eth_getBlockByNumber`) against every no-key public Optimism endpoint that sustains continuous probing, 5 providers, every 60 seconds, from us-east, eu-west and Singapore. The harness also classifies every response (ok / http_err / jsonrpc_err / stale / timeout) and audits archive depth every 5 minutes, so the leaderboard rewards sustained, honest availability rather than a fast error message. The cross-chain view lives on the parent rpc-capabilities benchmark; this page is the Optimism-scoped answer with per-region breakdowns as a first-class dimension.
 
 methodology:
   - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus `avg(quantile_over_time(...))`; per-region breakdowns are first-class on this page via the region tabs."
@@ -26,7 +26,7 @@ methodology:
   - "Call-result classification: `ok` (HTTP 200 + non-empty result), `http_err`, `jsonrpc_err` (HTTP 200 carrying an error body), `stale` (more than 20 blocks behind the cross-provider tip), `timeout`. Latency without reliability is a misleading ranking signal."
   - "Archive depth: every 5 minutes we issue `eth_getBalance` at (head − depth) for depths from Geth's default pruned cap up to 5M blocks, exposing which free endpoints actually serve historical state."
   - "This page is part of the per-chain RPC cluster derived from the cross-chain [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities) benchmark; the identical harness, methodology and exclusion rules apply on every chain."
-  - "Chain scope: every query on this page is pinned to chain=\"optimism\". Provider coverage: 6 no-key endpoints (PublicNode, dRPC, Tenderly, Nodies, Optimism). Exclusions follow the cluster-wide rules documented on the parent benchmark."
+  - "Chain scope: every query on this page is pinned to chain=\"optimism\". Provider coverage: 5 no-key endpoints (PublicNode, dRPC, Tenderly, Nodies, Optimism). Exclusions follow the cluster-wide rules documented on the parent benchmark."
 
 findings:
   - "{{best_name}} currently leads free Optimism RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h) across 5 measured providers."
@@ -37,7 +37,7 @@ faq:
   - q: "What is the fastest free Optimism RPC right now?"
     a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber` p50 over the last 24h), measured against 5 no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples, so the answer on this page is the answer right now, not a quarterly snapshot. Use the region tabs to see the leader from the origin closest to your deployment."
   - q: "Which Optimism RPCs work without an API key?"
-    a: "The 6 providers on this page: PublicNode, dRPC, Tenderly, Nodies, Optimism. Every (provider, chain) pair was live-verified no-key before inclusion, and anything that key-gates, region-blocks or rate-limits below our 15-second cadence is excluded rather than listed with an asterisk."
+    a: "The 5 providers on this page: PublicNode, dRPC, Tenderly, Nodies, Optimism. Every (provider, chain) pair was live-verified no-key before inclusion, and anything that key-gates, region-blocks or rate-limits below our 15-second cadence is excluded rather than listed with an asterisk."
   - q: "Does the fastest Optimism RPC change by region?"
     a: "Frequently. The headline number averages three probe origins (us-east, eu-west, Singapore), but per-region leaders regularly diverge, a gateway that wins from Virginia can lose from Singapore by multiples. The region tabs at the top of the page re-scope every number on the page to a single origin; pick the one closest to where your requests actually originate."
   - q: "How is Optimism RPC latency measured here?"

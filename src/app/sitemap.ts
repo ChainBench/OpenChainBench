@@ -5,7 +5,10 @@ import { getBenchmarks } from "@/data/benchmarks";
 import { COMPARE_PAIRS } from "@/data/compare-pairs";
 import { adHocPairs } from "@/lib/compare/adhoc-pairs";
 import { REMOVED_BENCH_SLUGS } from "@/middleware";
-import { isHlBuilderSlug } from "@/lib/hl-builder-stats";
+import {
+  isHlBuilderSlug,
+  isHlBuilderWithHistory,
+} from "@/lib/hl-builder-stats";
 import { loadAllAlternatives } from "@/lib/alternatives";
 import { loadAllAnswers } from "@/lib/answers";
 import { CHAIN_BY_SLUG, CHAINS, getBenchmarksForChain } from "@/lib/chains";
@@ -260,13 +263,17 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
   // Hyperliquid builder detail pages. Emitted from the spec provider
   // list (static per deploy, same source as the 308 gate in
   // products/[slug]), minus raw hex-address builder slugs which have no
-  // durable page. These 90+ URLs were previously sitemap-orphans only
-  // reachable through the product redirects.
+  // durable page. Also skip builders with no resolvable history — the
+  // page 307-redirects them to /hyperliquid (see
+  // hyperliquid/[slug]/page.tsx:92), which Google treats as soft-404
+  // and pollutes crawl budget. isHlBuilderWithHistory shares the same
+  // fetchHlHistory unstable_cache the page uses, so the two stay in
+  // lockstep.
   const HEX_BUILDER_SLUG = /^0x[a-f0-9]+$/;
   const hlBuilderSlugs = (
     await Promise.all(
       providerSlugs.map(async (slug) =>
-        !HEX_BUILDER_SLUG.test(slug) && (await isHlBuilderSlug(slug))
+        !HEX_BUILDER_SLUG.test(slug) && (await isHlBuilderWithHistory(slug))
           ? slug
           : null,
       ),
