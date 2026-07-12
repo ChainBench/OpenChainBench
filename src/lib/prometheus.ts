@@ -130,43 +130,36 @@ export class Prometheus {
   /** Convenience: an evenly-spaced numeric series for the last `windowSec` seconds.
    * Default 72 points = 20-min resolution over a 24h window.
    *
+   * The output is DENSE: one slot per query_range evaluation step
+   * (start + k*step), with `null` where Prom returned no sample. Prom
+   * silently omits empty evaluation buckets from the matrix, and the old
+   * bare-array output shifted every consumer that back-computes
+   * timestamps as `now - (N-1-i)*step` — a 19h outage on
+   * aggregator-head-lag 7d made the chart start at -6d6h instead of -7d
+   * and squeezed the gap out of view entirely.
+   *
    * If the query returns multiple series (e.g. one per route × token × region
    * for the same provider), the values are averaged at each timestamp so the
    * caller gets a single coherent line. Without this, providers with broader
    * coverage would silently drop because we used to keep only the first
    * matching series and that one was often sparse / NaN. */
-  async series(promql: string, windowSec: number, points = 72): Promise<number[] | null> {
+  async series(
+    promql: string,
+    windowSec: number,
+    points = 72,
+  ): Promise<(number | null)[] | null> {
     try {
       const end = new Date();
       const start = new Date(end.getTime() - windowSec * 1000);
       const step = Math.max(1, Math.floor(windowSec / points));
       const res = await this.queryRange(promql, start, end, step);
       if (res.result.length === 0) return null;
-
-      // Build a timestamp → [values] map across all returned series.
-      const buckets = new Map<number, number[]>();
-      for (const series of res.result) {
-        for (const [ts, raw] of series.values) {
-          const v = Number(raw);
-          if (!Number.isFinite(v)) continue;
-          const list = buckets.get(ts) ?? [];
-          list.push(v);
-          buckets.set(ts, list);
-        }
-      }
-
-      // Average values per timestamp, ordered chronologically. Rounded to
-      // 6 significant digits: raw averages carry 15+ digit tails that
-      // bloated the hyperliquid-frontends bench past unstable_cache's 2MB
-      // limit ("items over 2MB can not be cached"), so its cache NEVER
-      // persisted and every render redid the full Prom fan-out with no
-      // previous-value fallback.
-      const ordered = Array.from(buckets.entries()).sort((a, b) => a[0] - b[0]);
-      const out = ordered.map(([, vs]) => {
-        const mean = vs.reduce((s, v) => s + v, 0) / vs.length;
-        return mean === 0 ? 0 : Number(mean.toPrecision(6));
-      });
-      return out.length > 0 ? out : null;
+      return denseSeriesFromMatrix(
+        res.result,
+        start.getTime() / 1000,
+        end.getTime() / 1000,
+        step,
+      );
     } catch {
       return null;
     }
@@ -213,6 +206,53 @@ export class Prometheus {
       releaseQuerySlot();
     }
   }
+}
+
+/** Map a query_range matrix onto the dense evaluation grid
+ *  `startSec + k*stepSec` (k = 0..floor((endSec-startSec)/stepSec)) and
+ *  emit one entry per grid slot: the mean of every sample that landed in
+ *  that slot, or `null` when Prom emitted nothing there.
+ *
+ *  Values are rounded to 6 significant digits: raw averages carry 15+
+ *  digit tails that bloated the hyperliquid-frontends bench past
+ *  unstable_cache's 2MB limit ("items over 2MB can not be cached"), so
+ *  its cache NEVER persisted and every render redid the full Prom
+ *  fan-out with no previous-value fallback.
+ *
+ *  Returns null when no finite sample maps onto the grid at all (keeps
+ *  the caller's `null = no data` semantics).
+ *
+ *  Pure and exported for unit tests. */
+export function denseSeriesFromMatrix(
+  result: PromMatrix[],
+  startSec: number,
+  endSec: number,
+  stepSec: number,
+): (number | null)[] | null {
+  const slots = Math.floor((endSec - startSec) / stepSec) + 1;
+  if (slots <= 0) return null;
+  const buckets: number[][] = Array.from({ length: slots }, () => []);
+  for (const series of result) {
+    for (const [ts, raw] of series.values) {
+      const v = Number(raw);
+      if (!Number.isFinite(v)) continue;
+      const idx = Math.round((ts - startSec) / stepSec);
+      if (idx < 0 || idx >= slots) continue;
+      // Reject samples that don't sit on the grid (defensive: query_range
+      // only evaluates at grid timestamps, so anything off-grid means the
+      // caller's start/step don't match the response).
+      if (Math.abs(ts - (startSec + idx * stepSec)) > stepSec / 2) continue;
+      buckets[idx].push(v);
+    }
+  }
+  let any = false;
+  const out = buckets.map((vs) => {
+    if (vs.length === 0) return null;
+    any = true;
+    const mean = vs.reduce((s, v) => s + v, 0) / vs.length;
+    return mean === 0 ? 0 : Number(mean.toPrecision(6));
+  });
+  return any ? out : null;
 }
 
 /** Module-level semaphore for fetchEnvelope.
