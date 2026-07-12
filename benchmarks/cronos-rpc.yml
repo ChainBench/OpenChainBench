@@ -24,7 +24,7 @@ seo_intro: |
   regions with the cluster's anti-cache payload.
 
 abstract: |
-  Per-chain member of the RPC latency cluster. We measure the round-trip latency of a single, identical RPC call (`eth_getBlockByNumber`) against every no-key public Cronos endpoint that sustains continuous probing, 4 providers, every 60 seconds, from us-east, eu-west and Singapore. The harness also classifies every response (ok / http_err / jsonrpc_err / stale / timeout) and audits archive depth every 5 minutes, so the leaderboard rewards sustained, honest availability rather than a fast error message. The cross-chain view lives on the parent rpc-capabilities benchmark; this page is the Cronos-scoped answer with per-region breakdowns as a first-class dimension.
+  Per-chain member of the RPC latency cluster. We measure the round-trip latency of a single, identical RPC call (`eth_getBlockByNumber`) against every no-key public Cronos endpoint that sustains continuous probing, 3 providers, every 60 seconds, from us-east, eu-west and Singapore. The harness also classifies every response (ok / http_err / jsonrpc_err / stale / timeout) and audits archive depth every 5 minutes, so the leaderboard rewards sustained, honest availability rather than a fast error message. The cross-chain view lives on the parent rpc-capabilities benchmark; this page is the Cronos-scoped answer with per-region breakdowns as a first-class dimension.
 
 methodology:
   - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus `avg(quantile_over_time(...))`; per-region breakdowns are first-class on this page via the region tabs."
@@ -35,7 +35,7 @@ methodology:
   - "This page is part of the per-chain RPC cluster derived from the cross-chain [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities) benchmark; the identical harness, methodology and exclusion rules apply on every chain."
 
 findings:
-  - "{{best_name}} currently leads free Cronos RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h) across 4 measured providers."
+  - "{{best_name}} currently leads free Cronos RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h) across 3 measured providers."
   - "{{name:publicnode}} ({{p50:publicnode}}) hides behind a naming trap: the working subdomain is `cronos-evm-rpc`, while `cronos-rpc` resolves and then returns non-JSON, a failure mode that looks like an outage if you guessed the URL."
   - "{{name:drpc}} ({{p50:drpc}}) delivers its usual three-region steadiness, the anycast pattern behind its 10-of-12 record across this long-tail expansion."
   - "MeowRPC, historically listed for Cronos in RPC directories, is absent by measurement: its long-tail DNS is gone and the provider appears defunct outside a handful of legacy chains."

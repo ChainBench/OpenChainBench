@@ -13,7 +13,7 @@ unit: usd
 higher_is_better: true
 
 disclaimer: |
-  Ranking is by raw deployer fee revenue in USD, not by value for traders. Bigger number means more fees collected via the on chain deployerFee field on the dex's namespaced markets. For the trader cost perspective, switch to the Effective fee bps companion tab. Core Hyperliquid markets (no namespace) carry no deployer fee and are excluded. Every namespace is matched to its operating team via the on chain perpDexs registry (deployer address and full name are public).
+  Ranking is by raw deployer fee revenue in USD, not by value for traders. Bigger number means more fees collected via the on-chain deployerFee field on the dex's namespaced markets. For the trader cost perspective, switch to the Effective fee bps companion tab. Core Hyperliquid markets (no namespace) carry no deployer fee and are excluded. Every namespace is matched to its operating team via the on-chain perpDexs registry (deployer address and full name are public).
 
 seo_intro: |
   This page answers one question. Which HIP-3 builder-deployed dex on
@@ -26,13 +26,13 @@ seo_intro: |
   wave on Hyperliquid: trade.xyz alone routinely clears several billion
   dollars of daily notional across more than 70 equity and commodity
   markets. The bench ranks every namespace observed on mainnet by the
-  dollar amount its deployer collected through the on chain deployerFee
+  dollar amount its deployer collected through the on-chain deployerFee
   field, alongside routed volume, unique trader counts and the number
   of live markets. Data comes from a local hl node operated on OCB
   infrastructure tailing the Hyperliquid mainnet fill stream; a Go
-  harness aggregates per dex over rolling windows and exposes
-  Prometheus gauges that this page consumes. End to end staleness from
-  fill landing on chain to page render is typically under one minute.
+  harness aggregates per-dex over rolling windows and exposes
+  Prometheus gauges that this page consumes. End-to-end staleness from
+  fill landing on-chain to page render is typically under one minute.
 
 abstract: |
   The bench ranks HIP-3 builder-deployed dexes by the USD value of
@@ -41,7 +41,7 @@ abstract: |
   infrastructure that writes every block of fills to disk as one JSON
   line. A Go harness tails these files, attributes each fill carrying
   a namespaced coin (xyz:AAPL belongs to the xyz dex) and a deployerFee
-  value, and increments per dex hourly buckets keyed by the UTC hour
+  value, and increments per-dex hourly buckets keyed by the UTC hour
   floor of the fill timestamp. At publish time the harness sums the
   recent 24, 168 and 720 hourly buckets and exposes the totals as
   Prometheus gauges (hl_hip3_deployer_fees_usd_24h, _7d, _30d), plus
@@ -54,16 +54,16 @@ abstract: |
 
 methodology:
   - "Data source. A local hl node operated on OCB infrastructure tails the Hyperliquid mainnet and writes every block of fills to node_fills_by_block hourly YYYYMMDD HH on local disk. Each line is one JSON block, the events array carries one entry per fill, and every fill on a HIP-3 market includes the dex namespaced coin (xyz:AAPL) plus the deployerFee in USDC."
-  - "Attribution. A fill belongs to a HIP-3 dex when its coin carries a namespace prefix (xyz:AAPL belongs to xyz). Namespaces are unique on chain by construction, so no hand curated registry is needed; the harness starts tracking a new deployer with its first observed fill, and the namespace is added to this page on the next spec review. Core Hyperliquid markets carry no namespace and no deployer fee, they are excluded."
-  - "Cadence. The Go harness re reads the current and previous hourly files every 30 seconds, parses appended lines, and updates per dex hourly buckets keyed by the UTC hour floor of the fill timestamp. Prometheus scrapes the metrics every 30 seconds via a Caddy reverse proxy with basic auth. End to end staleness from fill landing on chain to bench page render is typically under one minute."
+  - "Attribution. A fill belongs to a HIP-3 dex when its coin carries a namespace prefix (xyz:AAPL belongs to xyz). Namespaces are unique on chain by construction, so no hand-curated registry is needed; the harness starts tracking a new deployer with its first observed fill, and the namespace is added to this page on the next spec review. Core Hyperliquid markets carry no namespace and no deployer fee, they are excluded."
+  - "Cadence. The Go harness re-reads the current and previous hourly files every 30 seconds, parses appended lines, and updates per-dex hourly buckets keyed by the UTC hour floor of the fill timestamp. Prometheus scrapes the metrics every 30 seconds via a Caddy reverse proxy with basic auth. End-to-end staleness from fill landing on-chain to bench page render is typically under one minute."
   - "Headline calculation. For each dex over the last 24 rolling hours we sum the deployerFee USD values of every fill on its namespaced markets. The 7 day and 30 day figures sum the same field over the last 168 and 720 hourly buckets, so the metric is consistent across the three ranges."
   - "Volume companion. hl_hip3_deployer_volume_usd_24h, _7d and _30d are computed the same way on the px times sz product of every fill. They feed the Volume column and tab."
   - "Users. Unique wallet addresses with at least one fill on the dex. The 24h figure is a union of per hour wallet sets over the rolling window; 7d and 30d are unions of per UTC day wallet sets. After a harness restart the day sets are reseeded from the on disk fill history before the 7d and 30d gauges publish, so they never lowball."
   - "Markets. Count of distinct namespaced coins traded on the dex in the last 24 hours. A dex with 70 active equity markets and a dex with one commodity market are different products; the column makes that visible next to the revenue number."
   - "Effective fee bps. Deployer fees divided by notional volume, times ten thousand, over the rolling 24h window. The trader perspective on what a representative dollar of flow paid the dex operator."
-  - "Window mechanics. Hourly buckets per dex go back 30 days in memory and are pruned on every publish. Per fill state is never retained; the largest dex clears about 4 million fills per day, so the bench aggregates at ingestion time instead of keeping fill level granularity."
+  - "Window mechanics. Hourly buckets per-dex go back 30 days in-memory and are pruned on every publish. Per fill state is never retained; the largest dex clears about 4 million fills per day, so the bench aggregates at ingestion time instead of keeping fill-level granularity."
   - "30 day caveat. The node retains hourly fill files for a bounded horizon and the harness backfill reads what exists on disk. Until 30 full days of history accumulate, the 30d figures cover the available horizon and grow toward the full window."
-  - "Naming. Every namespace is resolved against the on chain perpDexs registry, which publishes the deployer address and full name: xyz is trade.xyz, vntl is Ventuals, cash is Dreamcash, km is Markets by Kinetiq, hyna is HyENA by the Based team, flx is Felix Exchange, para is Paragon. Attribution is by namespace prefix either way, so the numbers do not depend on naming."
+  - "Naming. Every namespace is resolved against the on-chain perpDexs registry, which publishes the deployer address and full name: xyz is trade.xyz, vntl is Ventuals, cash is Dreamcash, km is Markets by Kinetiq, hyna is HyENA by the Based team, flx is Felix Exchange, para is Paragon. Attribution is by namespace prefix either way, so the numbers do not depend on naming."
   - "Reproducibility. Harness source is open in the OCB harness tree. Anyone running their own hl node can clone, point the data flag at their node_fills_by_block hourly root, run the binary against a Prometheus scraper, and reproduce these metrics."
   - "Failures. Any read error on the hourly files leaves the previous gauge values in place. Hourly bucket pruning is idempotent. Restarts replay the warmup window from disk before going live tail, and reseed the user sets from history in the background."
 
@@ -83,7 +83,7 @@ faq:
   - q: "Where does the data come from?"
     a: "A local hl node operated on OCB infrastructure tails the Hyperliquid mainnet. The node writes every block of fills to disk; a Go harness running on the same host reads these files continuously, attributes namespaced fills to their dex, and aggregates per hour. No third party API, no internal Mobula service."
   - q: "How are dexes identified?"
-    a: "By their on chain coin namespace. Every HIP-3 market trades under a prefix (xyz:AAPL, vntl:MAG7, km:US500) that is unique to its deployer. The harness discovers the set dynamically from the fill stream and starts metering a brand new deployer with its first fill; the page lists each new namespace after a short spec review. Operating teams are resolved from the on chain perpDexs registry, which publishes each namespace deployer address and full name."
+    a: "By their on-chain coin namespace. Every HIP-3 market trades under a prefix (xyz:AAPL, vntl:MAG7, km:US500) that is unique to its deployer. The harness discovers the set dynamically from the fill stream and starts metering a brand new deployer with its first fill; the page lists each new namespace after a short spec review. Operating teams are resolved from the on-chain perpDexs registry, which publishes each namespace deployer address and full name."
   - q: "Why is trade.xyz so far ahead?"
     a: "It operates the deepest tokenized equity and commodity catalog on Hyperliquid, more than 70 markets including the large cap US names, and captures the bulk of HIP-3 open interest. Deployer revenue is volume times fee policy, and xyz leads on both breadth and notional."
   - q: "What does the Effective fee bps column tell me?"

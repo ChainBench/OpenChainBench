@@ -217,7 +217,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   bloxroute: {
     url: "https://bloxroute.com",
     description:
-      "Solana Trader API over the bloXroute BDN. Multi-path leader-aware propagation across bare-metal RPCs, dedicated nodes, and SWQoS for institutional flow.",
+      "bloXroute Labs runs a low-latency blockchain distribution network for traders and validators. Its free Protect RPC routes Ethereum and BSC transactions away from the public mempool, and its Solana relay competes on transaction landing.",
     twitter: "@bloXrouteLabs",
   },
   "0slot": {
@@ -1244,12 +1244,6 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   // Identified by matching each builder address's HL referral code to a
   // public brand. Provenance lives in /opt/hl-bench/builders.json notes
   // on the HL node.
-  bloxroute: {
-    url: "https://bloxroute.com",
-    description:
-      "bloXroute Labs runs a low-latency blockchain distribution network for traders and validators. Its free Protect RPC routes Ethereum and BSC transactions away from the public mempool, and its Solana relay competes on transaction landing.",
-    twitter: "@bloXrouteLabs",
-  },
   blocksec: {
     url: "https://blocksec.com",
     description:

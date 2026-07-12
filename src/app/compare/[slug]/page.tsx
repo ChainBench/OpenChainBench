@@ -707,6 +707,7 @@ export default async function ComparePage({
     "@context": "https://schema.org",
     "@type": "Dataset",
     "@id": `${url}#dataset`,
+    identifier: url,
     name: `${a.name} vs ${b.name} OpenChainBench measurements`,
     description: `Side by side live measurements for ${a.name} and ${b.name} on ${shared.length} shared OpenChainBench benchmarks.`,
     url,
@@ -751,13 +752,13 @@ export default async function ComparePage({
   if (aWinsBench) {
     faqEntries.push({
       q: `Which is faster on ${aWinsBench.title.toLowerCase()}, ${a.name} or ${b.name}?`,
-      a: `On the ${aWinsBench.title} benchmark, ${a.name} leads with a ${aWinsBench.unit} value that beats ${b.name}. Live measurement is updated continuously by the OpenChainBench harness.`,
+      a: `On the ${aWinsBench.title} benchmark, ${a.name} leads at ${fmtUnit(aWinsBench.aResult.p50, aWinsBench.unit)} versus ${b.name} at ${fmtUnit(aWinsBench.bResult.p50, aWinsBench.unit)}. Live measurement is updated continuously by the OpenChainBench harness.`,
     });
   }
   if (bWinsBench) {
     faqEntries.push({
       q: `Which is faster on ${bWinsBench.title.toLowerCase()}, ${a.name} or ${b.name}?`,
-      a: `On the ${bWinsBench.title} benchmark, ${b.name} leads with a ${bWinsBench.unit} value that beats ${a.name}. Live measurement is updated continuously by the OpenChainBench harness.`,
+      a: `On the ${bWinsBench.title} benchmark, ${b.name} leads at ${fmtUnit(bWinsBench.bResult.p50, bWinsBench.unit)} versus ${a.name} at ${fmtUnit(bWinsBench.aResult.p50, bWinsBench.unit)}. Live measurement is updated continuously by the OpenChainBench harness.`,
     });
   }
   faqEntries.push({
