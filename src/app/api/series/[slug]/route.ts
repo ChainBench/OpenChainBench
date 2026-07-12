@@ -30,7 +30,7 @@ const getSeriesMapCached = unstable_cache(
     region: string | undefined,
     kind: string | undefined,
     venue: string | undefined,
-  ): Promise<Record<string, number[]> | null> => {
+  ): Promise<Record<string, (number | null)[]> | null> => {
     const sig = filterSig({ chain, region, kind, venue });
     const stored = await readMaterialized(slug, sig);
     if (stored) {
@@ -49,7 +49,10 @@ const getSeriesMapCached = unstable_cache(
     const b = await specToBenchmark(spec, { chain, region, kind, venue });
     return (range === "7d" ? b.extras.series7d : b.extras.series30d) ?? null;
   },
-  ["series-by-range-v3"],
+  // v4: dense series with explicit nulls for empty Prom buckets. v3
+  // entries hold the old hole-compressed arrays whose length no longer
+  // matches the dense timestamp grid emitted below.
+  ["series-by-range-v4"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -151,7 +154,7 @@ export async function GET(
   // a 100-KB series map is cheap enough that we still need the row
   // metadata (name, color, logo) — fetch the cached bench for that
   // separately so its slim ~50 KB payload reuses the existing cache.
-  let seriesMap: Record<string, number[]> | undefined | null;
+  let seriesMap: Record<string, (number | null)[]> | undefined | null;
   let bench;
   if (rangeParam === "7d" || rangeParam === "30d") {
     [seriesMap, bench] = await Promise.all([
@@ -179,15 +182,17 @@ export async function GET(
   }
 
   // Timestamps are not persisted with the series — reconstruct from the
-  // Prom window. We trust whatever length the series came back with
-  // (Prom may drop empty buckets) so each provider's values stay aligned
-  // with the timestamp array.
+  // Prom window. Series are DENSE (one slot per query_range evaluation
+  // step, null where Prom had no sample), so the grid spans the full
+  // window: timestamps[0] = now - window, last = now. Values with nulls
+  // stay index-aligned with this array; consumers see the outage as
+  // null slots instead of a silently shifted X-axis.
   const { windowMs, points: targetPoints } = RANGE_CONFIG[rangeParam];
   const firstSeries = Object.values(seriesMap).find((arr) => arr.length > 0);
   const actualPoints = firstSeries?.length ?? targetPoints;
-  const stepMs = windowMs / Math.max(1, actualPoints);
   const endMs = Date.now();
   const startMs = endMs - windowMs;
+  const stepMs = windowMs / Math.max(1, actualPoints - 1);
   const timestamps: number[] = [];
   for (let i = 0; i < actualPoints; i++) {
     timestamps.push(Math.round(startMs + i * stepMs));

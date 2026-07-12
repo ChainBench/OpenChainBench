@@ -194,10 +194,14 @@ export function citeBundle(
 export function sparklineFor(b: Benchmark, providerSlug?: string): number[] {
   const series = b.extras.series24h ?? {};
   const pick = providerSlug && series[providerSlug] ? series[providerSlug] : firstSeries(series);
-  return pick ?? [];
+  // Dense series carry nulls for empty Prom buckets; the citation JSON
+  // sparkline stays a plain number array for external consumers.
+  return (pick ?? []).filter((v): v is number => v != null);
 }
 
-function firstSeries(s: Record<string, number[]>): number[] | null {
+function firstSeries(
+  s: Record<string, (number | null)[]>,
+): (number | null)[] | null {
   for (const k of Object.keys(s)) {
     const v = s[k];
     if (v && v.length > 0) return v;
