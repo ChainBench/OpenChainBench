@@ -26,6 +26,10 @@ const (
 	// cross-provider tip is classified as `stale`. 20 blocks ≈ 4 min
 	// on Ethereum which generously covers cross-provider drift.
 	staleBlockGap uint64 = 20
+	// solanaStaleSlotGap: slots tick every ~400ms, so 300 slots is
+	// ~2 minutes behind the cross-provider tip - the same order of
+	// tolerance the EVM gap gives a 12s-block chain.
+	solanaStaleSlotGap uint64 = 300
 )
 
 // chainTips tracks the highest block seen for each chain across all
@@ -175,12 +179,24 @@ func probeOne(ctx context.Context, c Chain, p Provider) {
 	tick := func() {
 		probeCtx, cancel := context.WithTimeout(ctx, probeTimeout)
 		defer cancel()
-		block, result, latency, err := callLatestBlock(probeCtx, p.URL)
+		var block uint64
+		var result string
+		var latency float64
+		var err error
+		if c.Kind == "solana" {
+			block, result, latency, err = callLatestSlot(probeCtx, p.URL)
+		} else {
+			block, result, latency, err = callLatestBlock(probeCtx, p.URL)
+		}
 
 		if result == "ok" {
 			tips.update(c.Slug, block)
 			tip := tips.get(c.Slug)
-			if tip > 0 && block+staleBlockGap < tip {
+			gap := staleBlockGap
+			if c.Kind == "solana" {
+				gap = solanaStaleSlotGap
+			}
+			if tip > 0 && block+gap < tip {
 				result = "stale"
 			}
 		}
@@ -226,4 +242,57 @@ func urlJitter(s string) int64 {
 		sum = -sum
 	}
 	return sum
+}
+
+// callLatestSlot is the Solana probe path: getSlot at the processed
+// commitment with a rotating request id (same anti-cache rule as the
+// EVM header fetch). The result is a plain JSON number (the slot), so
+// the staleness comparison reuses the chainTips machinery with slots
+// in place of block numbers.
+func callLatestSlot(ctx context.Context, url string) (slot uint64, result string, latencyMs float64, err error) {
+	body := []byte(fmt.Sprintf(
+		`{"jsonrpc":"2.0","method":"getSlot","params":[{"commitment":"processed"}],"id":%d}`,
+		time.Now().UnixNano(),
+	))
+	req, _ := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", "OpenChainBench/1.0 (+https://openchainbench.com)")
+	client := &http.Client{Timeout: probeTimeout}
+
+	start := time.Now()
+	resp, err := client.Do(req)
+	latencyMs = float64(time.Since(start).Milliseconds())
+
+	if err != nil {
+		if ctx.Err() != nil || strings.Contains(err.Error(), "deadline exceeded") || strings.Contains(err.Error(), "Timeout") {
+			return 0, "timeout", latencyMs, err
+		}
+		return 0, "http_err", latencyMs, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		return 0, "http_err", latencyMs, fmt.Errorf("status %d", resp.StatusCode)
+	}
+
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 0, "http_err", latencyMs, err
+	}
+	var r rpcBlockEnvelope
+	if err := json.Unmarshal(raw, &r); err != nil {
+		return 0, "http_err", latencyMs, err
+	}
+	if r.Error != nil {
+		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("rpc -%d: %s", r.Error.Code, r.Error.Message)
+	}
+	if len(r.Result) == 0 || string(r.Result) == "null" {
+		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("empty result")
+	}
+	n, err := strconv.ParseUint(strings.TrimSpace(string(r.Result)), 10, 64)
+	if err != nil {
+		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("non-numeric slot: %s", string(r.Result)[:min(len(r.Result), 40)])
+	}
+	return n, "ok", latencyMs, nil
 }
