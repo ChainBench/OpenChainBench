@@ -8,7 +8,7 @@ export type DrawnLine = LineWithColor & {
   lastX: number;
   lastY: number;
   last: number;
-  isGap: (v: number) => boolean;
+  isGap: (v: number | null) => boolean;
 };
 
 type SeriesPathsProps = {
@@ -153,9 +153,10 @@ export function HoverMarkers({
         const t = fract - i0;
         const v0 = d.values[i0];
         const v1 = d.values[i1];
-        // If either bracketing sample is a gap, the line itself is
-        // broken here (drawn as `M` not `L`) — skip the dot so we
-        // don't paint over a missing segment.
+        // If either bracketing sample is a gap (null bucket included),
+        // the line itself is broken here (drawn as `M` not `L`) — skip
+        // the dot so we don't paint over a missing segment.
+        if (v0 == null || v1 == null) return null;
         if (!Number.isFinite(v0) || !Number.isFinite(v1)) return null;
         if (d.isGap(v0) || d.isGap(v1)) return null;
         const v = v0 + (v1 - v0) * t;
