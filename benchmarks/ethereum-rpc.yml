@@ -17,7 +17,7 @@ seo_intro: |
   Ethereum carries the largest free-RPC cohort we measure: 8 no-key providers answering the same `eth_getBlockByNumber` probe every 60 seconds from three regions. It is also the chain where reliability analysis earns its keep. Cloudflare-eth answers HTTP 200 in well under a second while an increasing share of calls resolve to a JSON-RPC error body (`-32046 Cannot fulfill request`), and Merkle is excluded outright after recurring Cloudflare lockouts that froze our probes for 20 minutes after a single request. If you paste a free RPC URL into an Ethereum dapp, this page is the live answer to which one deserves it.
 
 abstract: |
-  Per-chain member of the RPC latency cluster. We measure the round-trip latency of a single, identical RPC call (`eth_getBlockByNumber`) against every no-key public Ethereum endpoint that sustains continuous probing, 9 providers, every 60 seconds, from us-east, eu-west and Singapore. The harness also classifies every response (ok / http_err / jsonrpc_err / stale / timeout) and audits archive depth every 5 minutes, so the leaderboard rewards sustained, honest availability rather than a fast error message. The cross-chain view lives on the parent rpc-capabilities benchmark; this page is the Ethereum-scoped answer with per-region breakdowns as a first-class dimension.
+  Per-chain member of the RPC latency cluster. We measure the round-trip latency of a single, identical RPC call (`eth_getBlockByNumber`) against every no-key public Ethereum endpoint that sustains continuous probing, 8 providers, every 60 seconds, from us-east, eu-west and Singapore. The harness also classifies every response (ok / http_err / jsonrpc_err / stale / timeout) and audits archive depth every 5 minutes, so the leaderboard rewards sustained, honest availability rather than a fast error message. The cross-chain view lives on the parent rpc-capabilities benchmark; this page is the Ethereum-scoped answer with per-region breakdowns as a first-class dimension.
 
 methodology:
   - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus `avg(quantile_over_time(...))`; per-region breakdowns are first-class on this page via the region tabs."
@@ -29,7 +29,7 @@ methodology:
   - "Chain scope: every query on this page is pinned to chain=\"ethereum\". Provider coverage: 8 no-key endpoints (PublicNode, dRPC, Tenderly, Nodies, Lava, MeowRPC, Flashbots, Cloudflare). Exclusions follow the cluster-wide rules documented on the parent benchmark."
 
 findings:
-  - "{{best_name}} currently leads the free Ethereum RPC field at {{best_p50}} (`eth_getBlockByNumber` p50, 24h) across 9 measured providers, the largest cohort of any chain in the cluster."
+  - "{{best_name}} currently leads the free Ethereum RPC field at {{best_p50}} (`eth_getBlockByNumber` p50, 24h) across 8 measured providers, the largest cohort of any chain in the cluster."
   - "Cloudflare-eth is the resident cautionary tale: sub-second HTTP 200s that increasingly carry a JSON-RPC error instead of a block number. The success-rate column, not the latency column, tells the real story."
   - "Merkle is excluded on Ethereum by design: its endpoint sits behind an aggressive bot filter that locks out programmatic clients for ~20 minutes after one request, invisible on any status page."
 
