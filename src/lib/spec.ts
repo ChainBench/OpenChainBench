@@ -263,11 +263,13 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // changed; cached v19 entries would miss the new chains.
   // v21: +bench 067 (portfolio-chain-coverage). Bench SET changed.
   // v22: +bench 068 (explorer-chain-coverage) + Explorers category.
+  // v26: ship of benches monad-rpc + megaeth-rpc to prod (gate list
+  // shrank; prod bench SET changed).
   // v23: prod-only bench gate (REMOVED_BENCH_SLUGS filtered at loader
   // level on VERCEL_ENV=production). Bench SET now differs per env, so
   // the env is part of the cache key to keep prod and preview entries
   // from colliding.
-  ["bench-unfiltered-v25", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  ["bench-unfiltered-v26", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -420,7 +422,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v28: bumped with bench-unfiltered-v25->v25 ship of bench 074 (mev-protect-rpc
   // ungated; the lockstep bump was missed in #1105 and prod kept serving the
   // gated catalog to /products for 30+ min after the deploy).
-  ["all-benchmarks-v28", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v29: bumped with bench-unfiltered-v26 (monad-rpc + megaeth-rpc ship).
+  ["all-benchmarks-v29", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -497,7 +500,8 @@ const loadBenchmarkFiltered = unstable_cache(
   // v14: bumped with bench-unfiltered-v22 (+bench 068 explorer-chain-coverage).
   // v15: bumped with bench-unfiltered-v25 (prod-only bench gate); env in key.
   // v16: bumped with the bench 074 ship (lockstep rule, see all-benchmarks-v28).
-  ["bench-filters-v16", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v17: bumped with the monad-rpc + megaeth-rpc ship (lockstep rule).
+  ["bench-filters-v17", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
