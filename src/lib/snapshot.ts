@@ -93,7 +93,9 @@ const RegionPointSchema = z.object({
   p50: z.number(),
 });
 
-const Series24hSchema = z.array(z.number());
+// Nullable entries: dense series carry `null` for empty Prom buckets
+// (gap rendering). Pre-null blobs (bare number arrays) parse unchanged.
+const Series24hSchema = z.array(z.number().nullable());
 
 const ResultExtrasSchema = z.object({
   series24h: z.record(z.string(), Series24hSchema),
@@ -121,9 +123,9 @@ const MetricPanelSchema = z.object({
   tab: z.boolean().optional(),
   values: z.record(z.string(), z.number()),
   valuesMeta: z.record(z.string(), StalenessMetaSchema).optional(),
-  seriesByProvider: z.record(z.string(), z.array(z.number())).optional(),
-  seriesByProvider7d: z.record(z.string(), z.array(z.number())).optional(),
-  seriesByProvider30d: z.record(z.string(), z.array(z.number())).optional(),
+  seriesByProvider: z.record(z.string(), Series24hSchema).optional(),
+  seriesByProvider7d: z.record(z.string(), Series24hSchema).optional(),
+  seriesByProvider30d: z.record(z.string(), Series24hSchema).optional(),
 });
 
 const CellRankEntrySchema = z.object({
