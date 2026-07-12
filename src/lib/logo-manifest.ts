@@ -164,6 +164,7 @@ const RAW: Record<string, string> = {
   nextblock: "/logos/nextblock.png",
   astralane: "/logos/astralane.svg",
   solanavibestation: "/logos/solanavibestation.png",
+  leorpc: "/logos/leorpc.png",
 
   // ─── Buyback audit (bench 018) ───
   sky: "/logos/sky.svg",
@@ -365,6 +366,7 @@ const ALIASES: Record<string, string> = {
   // Long-tail RPC cluster (055-066).
   "sonic-official": "sonic",
   "monad-official": "monad",
+  "solana-official": "solana",
   "megaeth-official": "megaeth",
   "celo-official": "celo",
   "blast-official": "blast",
