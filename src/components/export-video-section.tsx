@@ -188,8 +188,6 @@ function ModalBody({
       }),
     [dims, dimOptions],
   );
-  const chain = dims.chain ?? null;
-  const region = dims.region ?? null;
   const hasDims = activeDims.length > 0;
 
   // Variant data. When any dimension filter is active, fetch the filtered
@@ -300,9 +298,20 @@ function ModalBody({
     }
     try {
       setState({ status: "loading_series" });
-      const full: BenchPayload = await fetchBenchSeries(slug, range, { chain, region });
+      // Same dims the preview shows; the series route validates and
+      // canonicalizes them exactly like the variant route did for the
+      // preview values. Title override: the renderer displays whatever
+      // the payload carries, so the parenthetical filter labels ride in
+      // here and the cache keys the variant separately for free.
+      const full: BenchPayload = await fetchBenchSeries(slug, range, {
+        chain: dims.chain,
+        region: dims.region,
+        kind: dims.kind,
+        venue: dims.venue,
+      });
       const filtered: BenchPayload = {
         ...full,
+        title: videoTitle,
         providers: full.providers.filter((p) => selected.has(p.slug)),
       };
       if (filtered.providers.length === 0) {
