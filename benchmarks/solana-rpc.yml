@@ -1,0 +1,190 @@
+# OpenChainBench. Bench № 075
+
+slug: solana-rpc
+number: "075"
+title: Fastest free Solana RPC, live no-key endpoint latency
+seo_title: "Fastest free Solana RPC 2026"
+seo_description: "{{best_name}} leads free Solana RPC at {{best_p50}} (getSlot p50, 24h). 5 no-key providers measured every 60s from 3 regions, keyless."
+subtitle: HTTP round-trip latency for getSlot at the processed commitment against every free, no-key public Solana RPC endpoint, audited every 60 seconds from 3 regions.
+
+category: RPCs
+status: live
+metric: RPC latency
+unit: ms
+higher_is_better: false
+
+seo_intro: |
+  Solana is the first non-EVM member of the RPC latency cluster, and the chain where the free-RPC question is asked most and answered worst: most "best Solana RPC" roundups list endpoints that key-gated or died years ago. This page probes the 5 endpoints that actually answer keyless today, including the Solana Labs official api.mainnet-beta.solana.com that every tutorial pastes, with the same rules as the 20 EVM chains in the cluster: one identical probe (getSlot at the processed commitment) every 60 seconds from us-east, eu-west and Singapore, stale-slot detection against the cross-provider tip, and result classification so a fast error never ranks as a fast answer. The candidates that failed the keyless audit are listed with their exact refusals: dRPC moved Solana to paid tiers, Ankr returns 403 without a key, OnFinality's shared public quota is permanently exhausted.
+
+abstract: |
+  Per-chain member of the RPC latency cluster and its first non-EVM
+  chain. We measure round-trip latency of a single identical JSON-RPC
+  call (getSlot at the processed commitment) against every no-key
+  public Solana endpoint that sustains continuous probing, 5 providers,
+  every 60 seconds, from us-east, eu-west and Singapore. Responses are
+  classified (ok / http_err / jsonrpc_err / stale / timeout) with
+  staleness measured in slots against the cross-provider tip. The
+  archive-depth audit run on EVM chains has no keyless Solana
+  equivalent and is not performed. The cross-chain view lives on the
+  parent rpc-capabilities benchmark; this page is the Solana-scoped
+  answer with per-region breakdowns as a first-class dimension.
+
+methodology:
+  - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus `avg(quantile_over_time(...))`; per-region breakdowns are first-class via the region tabs."
+  - "Payload: `{\"jsonrpc\":\"2.0\",\"id\":<rotating>,\"method\":\"getSlot\",\"params\":[{\"commitment\":\"processed\"}]}`. Plain HTTP POST, identical for every endpoint, no API key in any request; the rotating id defeats body-keyed edge caches."
+  - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram, percentiles computed via Prometheus `quantile_over_time` over the last 24 hours."
+  - "Call-result classification: `ok`, `http_err`, `jsonrpc_err`, `stale` (more than 300 slots, about 2 minutes, behind the cross-provider tip), `timeout`. Latency without reliability is a misleading ranking signal."
+  - "No archive-depth audit on Solana: the EVM chains probe `eth_getBalance` at historical heights, which has no equivalent on public Solana endpoints. Disclosed rather than faked."
+  - "LeoRPC disclosure: the endpoint uses a publicly documented FREE query key (solana.leorpc.com/?api_key=FREE). It is admitted as keyless in practice since no signup is required; flagged here for transparency."
+  - "This page is part of the per-chain RPC cluster derived from the cross-chain [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities) benchmark; identical harness and exclusion rules."
+  - "Chain scope: every query on this page is pinned to chain=\"solana\". Provider coverage: 5 no-key endpoints (Solana Labs, PublicNode, Lava, LeoRPC, Solana Vibe Station). Excluded with verified refusals 2026-07-12: dRPC (Solana is paid-tier only), Ankr (403 key required), OnFinality (shared quota permanently 429), BlockPI (no public URL), Triton free.rpcpool.com (403), Blast API + ExtrNode + AllThatNode (DNS dead), OMNIA (521), Helius + Shyft + BlockEden (key-gated)."
+
+findings:
+  - "{{best_name}} currently leads free Solana RPC at {{best_p50}} (getSlot p50, 24h) across 5 measured providers."
+  - "{{name:solana-official}} ({{p50:solana-official}}) is the endpoint every tutorial pastes. Solana Labs documents its limits at 100 requests per 10 seconds per IP, generous for development and exactly the kind of endpoint this bench exists to sanity-check."
+  - "{{name:publicnode}} ({{p50:publicnode}}) extends its EVM cluster footprint to Solana from the same Allnodes infrastructure, and arrives with the credibility of leading a large share of the EVM per-chain boards."
+  - "{{name:lava}} ({{p50:lava}}) routes through the Lava gateway mesh, the same architecture as its Ethereum and Arbitrum endpoints; expect higher variance than single-origin providers."
+  - "{{name:leorpc}} ({{p50:leorpc}}) and {{name:solanavibestation}} ({{p50:solanavibestation}}) are the community tier: smaller operations whose continued keyless availability this bench monitors live rather than assumes."
+
+faq:
+  - q: "What is the fastest free Solana RPC right now?"
+    a: "{{best_name}} currently leads at {{best_p50}} (getSlot p50 over the last 24h), measured against 5 no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples; use the region tabs to see the leader from the origin closest to your deployment."
+  - q: "Which Solana RPCs work without an API key?"
+    a: "The 5 providers on this page: Solana Labs (api.mainnet-beta.solana.com), PublicNode, Lava, LeoRPC (publicly documented FREE key) and Solana Vibe Station. Every endpoint was live-verified before inclusion. The famous names that do not work keyless anymore are listed in the methodology with their exact refusals: dRPC moved Solana to paid tiers, Ankr 403s, OnFinality's public quota is exhausted, Helius and Shyft are key-gated."
+  - q: "Is api.mainnet-beta.solana.com good enough for production?"
+    a: "For development, demos and light read workloads, yes: Solana Labs documents roughly 100 requests per 10 seconds per IP. For production trading, indexing or anything latency-sensitive, dedicated providers exist for a reason; this page measures the free tier so you know exactly what the default gets you before you decide."
+  - q: "How is Solana RPC latency measured here?"
+    a: "One identical JSON-RPC POST (getSlot at the processed commitment) every 60 seconds against each provider from each of 3 regions. Wall-clock round-trip is recorded at millisecond precision; p50/p90/p99 come from Prometheus quantile_over_time over 24 hours. Responses are classified so an endpoint stuck behind the cross-provider slot tip or erroring behind HTTP 200 is never ranked as fastest. The harness is open source."
+  - q: "Why is there no archive-depth column like the EVM pages?"
+    a: "The EVM cluster probes eth_getBalance at historical block heights to expose which free endpoints serve archive state. Public Solana endpoints expose no comparable keyless historical-state query, so the audit is disclosed as not applicable rather than approximated."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
+
+prometheus:
+  window: 24h
+  freshness_metric: rpc_latency_milliseconds
+
+rank_matrix_query: avg by (provider, region) (ocb:rpc_latency_milliseconds:p50_24h{provider=~"solana-official|publicnode|lava|leorpc|solanavibestation", chain="solana"})
+
+dimensions:
+  region:
+    - { value: all,     label: All regions }
+    - { value: us-east, label: US-East }
+    - { value: eu-west, label: EU-West }
+    - { value: sgp,     label: Singapore }
+
+providers:
+  - slug: solana-official
+    name: Solana Labs
+    tag: Chain-official api.mainnet-beta.solana.com, 100 req per 10s documented
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `getSlot` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to api.mainnet-beta.solana.com."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="solana-official", chain="solana"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="solana-official", chain="solana"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="solana-official", chain="solana"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="solana-official", chain="solana"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="solana-official", chain="solana"}) / sum(ocb:rpc_call:rate_24h{provider="solana-official", chain="solana"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="solana-official", chain="solana"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="solana-official", chain="solana"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="solana-official", chain="solana", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="solana-official", chain="solana", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="solana-official", chain="solana", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="solana-official", chain="solana", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="solana-official", chain="solana", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="solana-official", chain="solana", region="sgp"}[1h])
+
+  - slug: publicnode
+    name: PublicNode
+    tag: Allnodes-operated, same footprint as its EVM cluster entries
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `getSlot` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to solana-rpc.publicnode.com."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="solana"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="publicnode", chain="solana"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="publicnode", chain="solana"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="publicnode", chain="solana"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="publicnode", chain="solana"}) / sum(ocb:rpc_call:rate_24h{provider="publicnode", chain="solana"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="publicnode", chain="solana"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="solana"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="solana", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="solana", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="solana", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="solana", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="solana", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="solana", region="sgp"}[1h])
+
+  - slug: lava
+    name: Lava
+    tag: Gateway mesh, pooled per-IP quota
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `getSlot` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to solana.lava.build."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="lava", chain="solana"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="lava", chain="solana"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="lava", chain="solana"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="lava", chain="solana"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="lava", chain="solana"}) / sum(ocb:rpc_call:rate_24h{provider="lava", chain="solana"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="lava", chain="solana"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="lava", chain="solana"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="lava", chain="solana", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="lava", chain="solana", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="lava", chain="solana", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="lava", chain="solana", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="lava", chain="solana", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="lava", chain="solana", region="sgp"}[1h])
+
+  - slug: leorpc
+    name: LeoRPC
+    tag: Community endpoint, publicly documented FREE query key
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `getSlot` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to solana.leorpc.com."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="leorpc", chain="solana"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="leorpc", chain="solana"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="leorpc", chain="solana"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="leorpc", chain="solana"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="leorpc", chain="solana"}) / sum(ocb:rpc_call:rate_24h{provider="leorpc", chain="solana"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="leorpc", chain="solana"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="leorpc", chain="solana"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="leorpc", chain="solana", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="leorpc", chain="solana", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="leorpc", chain="solana", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="leorpc", chain="solana", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="leorpc", chain="solana", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="leorpc", chain="solana", region="sgp"}[1h])
+
+  - slug: solanavibestation
+    name: Solana Vibe Station
+    tag: Community endpoint, unpublished cap, churn monitored live
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `getSlot` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to public.rpc.solanavibestation.com."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="solanavibestation", chain="solana"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="solanavibestation", chain="solana"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="solanavibestation", chain="solana"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="solanavibestation", chain="solana"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="solanavibestation", chain="solana"}) / sum(ocb:rpc_call:rate_24h{provider="solanavibestation", chain="solana"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="solanavibestation", chain="solana"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="solanavibestation", chain="solana"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="solanavibestation", chain="solana", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="solanavibestation", chain="solana", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="solanavibestation", chain="solana", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="solanavibestation", chain="solana", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="solanavibestation", chain="solana", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="solanavibestation", chain="solana", region="sgp"}[1h])
