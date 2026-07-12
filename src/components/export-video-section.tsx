@@ -2,10 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Video, X, Loader2, Download, Copy, Share2 } from "lucide-react";
+import { Video, X, Check, Loader2, Download, Copy, Share2 } from "lucide-react";
 import type { Benchmark } from "@/types/benchmark";
 import { EXPORT_VIDEO_ENABLED } from "@/lib/export-video/config";
 import { fetchBenchSeries } from "@/lib/export-video/fetch-series";
+import { ProviderLogo } from "@/components/provider-logo";
+import { fmtUnit } from "@/lib/format";
 import {
   RANGE_IDS,
   RANGE_LABEL,
@@ -277,6 +279,19 @@ function ModalBody({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [rankedResults],
   );
+  const liveCount = providers.filter((p) => p.live).length;
+
+  // Preview rows: video rank (position among the selected live rows,
+  // which IS the order the race renders), live flag, inclusion flag.
+  const previewRows = useMemo(() => {
+    let rank = 0;
+    return rankedResults.map((r) => {
+      const live = hasData(r);
+      const on = live && selected.has(r.slug);
+      return { r, live, on, rank: on ? ++rank : null };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rankedResults, selected]);
 
   const onRender = async () => {
     if (selected.size === 0) {
@@ -504,13 +519,23 @@ function ModalBody({
             </label>
           </div>
 
-          {/* Providers */}
+          {/* Preview: exactly the names, values and order the video will
+              render. Rows toggle inclusion; rows without data in the
+              current view are muted and cannot be included. */}
           <div>
             <div className="flex items-center justify-between mb-2">
               <Label>
-                Providers <em className="not-italic text-ink-faint normal-case tracking-normal">· {selected.size}/{providers.length} selected{selected.size > 12 && " · render will be slow"}</em>
+                In this video <em className="not-italic text-ink-faint normal-case tracking-normal">· {selected.size}/{liveCount} providers{selected.size > 12 && " · render will be slow"}</em>
               </Label>
-              <div className="flex gap-2">
+              <div className="flex items-center gap-2">
+                {variantLoading && (
+                  <Loader2
+                    size={12}
+                    strokeWidth={2}
+                    className="animate-spin text-ink-muted"
+                    aria-label="Loading filtered data"
+                  />
+                )}
                 <SmallLink
                   onClick={() =>
                     setSelected(
@@ -526,25 +551,84 @@ function ModalBody({
                 </SmallLink>
               </div>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {providers.map((p) => {
-                const on = selected.has(p.slug);
-                return (
-                  <button
-                    key={p.slug}
-                    type="button"
-                    onClick={() => toggleProvider(p.slug)}
-                    disabled={isBusy}
-                    className={`px-3 py-1.5 rounded-md border text-[12px] font-medium transition-colors ${
-                      on
-                        ? "border-ink bg-ink text-paper"
-                        : "border-rule bg-paper text-ink-muted hover:text-ink hover:border-ink"
-                    } disabled:opacity-50 disabled:cursor-not-allowed`}
-                  >
-                    {p.name}
-                  </button>
-                );
-              })}
+            <div className="rounded-md border border-rule overflow-hidden">
+              <div className="flex items-baseline justify-between gap-3 border-b border-rule bg-paper-2 px-3 py-2">
+                <span className="font-serif text-[13px] text-ink truncate">{videoTitle}</span>
+                <span className="shrink-0 text-[10px] uppercase tracking-[0.18em] text-ink-faint">
+                  {RANGE_LABEL[range]}
+                </span>
+              </div>
+              {variantLoading ? (
+                <div className="flex items-center gap-2 px-3 py-6 text-[11px] text-ink-muted">
+                  <Loader2 size={14} strokeWidth={2} className="animate-spin" />
+                  Loading data for this selection
+                </div>
+              ) : previewRows.length === 0 ? (
+                <div className="px-3 py-6 text-[11px] text-ink-muted">
+                  No providers report data for this selection.
+                </div>
+              ) : (
+                <ul className="max-h-72 overflow-y-auto divide-y divide-rule">
+                  {previewRows.map(({ r, live, on, rank }) => {
+                    const isLeader = rank === 1;
+                    return (
+                      <li key={r.slug}>
+                        <button
+                          type="button"
+                          onClick={() => live && toggleProvider(r.slug)}
+                          disabled={isBusy || !live}
+                          aria-pressed={on}
+                          aria-label={
+                            live
+                              ? `${on ? "Exclude" : "Include"} ${r.name}`
+                              : `${r.name}: no data in this view`
+                          }
+                          className={`w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors ${
+                            !live
+                              ? "opacity-45 cursor-not-allowed"
+                              : on
+                                ? "hover:bg-paper-soft/50"
+                                : "opacity-55 hover:opacity-100"
+                          } ${isLeader ? "bg-paper-2" : ""}`}
+                        >
+                          <span
+                            aria-hidden
+                            className={`h-3.5 w-3.5 shrink-0 rounded-[3px] border flex items-center justify-center ${
+                              !live
+                                ? "invisible"
+                                : on
+                                  ? "border-ink bg-ink text-paper"
+                                  : "border-rule text-transparent"
+                            }`}
+                          >
+                            <Check size={10} strokeWidth={3} />
+                          </span>
+                          <span className="w-6 shrink-0 text-[11px] tabular-nums text-ink-muted">
+                            {rank ? String(rank).padStart(2, "0") : ""}
+                          </span>
+                          <ProviderLogo slug={r.slug} name={r.name} size={20} />
+                          <span className="min-w-0 flex-1 truncate font-serif text-[13px] text-ink">
+                            {r.name}
+                          </span>
+                          {live ? (
+                            <span
+                              className={`shrink-0 text-[12px] tabular-nums ${
+                                isLeader ? "font-semibold text-ink" : "text-ink-muted"
+                              }`}
+                            >
+                              {fmtUnit(r.ms.p50, effectiveBench?.unit ?? benchmark.unit)}
+                            </span>
+                          ) : (
+                            <span className="shrink-0 text-[10px] uppercase tracking-[0.18em] text-ink-faint">
+                              no data
+                            </span>
+                          )}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
             </div>
           </div>
 
