@@ -1,7 +1,7 @@
 slug: polymarket-vs-kalshi-resolution-speed
 question: "Polymarket vs Kalshi, which resolves prediction markets faster?"
 short_answer: |
-  {{best_name}} currently resolves faster on the OpenChainBench harness at {{best_p50}} median resolution delay (24h), measured directly onchain for Polymarket and via official settlement events for Kalshi across sports, politics and crypto market categories.
+  OpenChainBench measures Polymarket resolution delay directly onchain on Polygon: median across sports, politics and crypto categories is in the tens of minutes today, with crypto markets fastest and politics slowest by a wide margin. Kalshi settlement is offchain through a CFTC-registered exchange and is not yet in the harness; the venue-versus-venue head-to-head on this page will populate as soon as Kalshi settlement events are ingested. Live numbers per category at openchainbench.com/benchmarks/polymarket-resolution-delay.
 
 benchmark: polymarket-resolution-delay
 
@@ -19,7 +19,7 @@ limitations:
 
 faq:
   - q: "Polymarket vs Kalshi, which resolves faster right now?"
-    a: "{{best_name}} leads at {{best_p50}} median resolution delay (24h). The per-category breakdown at the top of the bench page shows the venue that wins on sports, politics and crypto separately, which is the honest way to answer a question that depends heavily on category."
+    a: "Only Polymarket is measured live in this benchmark today. Polymarket resolution delay is read directly from UMA OptimisticOracleV2 events on Polygon and broken out by market category (sports, politics, crypto). Kalshi settles offchain through its own CFTC-registered exchange and its settlement events are not yet ingested by the harness; the venue-versus-venue head-to-head cell on this page will populate as soon as they are. In the meantime, the per-category delays for Polymarket are on the bench page."
   - q: "Why is Polymarket resolution slower on politics than sports?"
     a: "Polymarket runs on UMA's optimistic oracle. The liveness window (time between outcome proposal and dispute deadline) is proportional to stakes, and politics markets have both larger stakes and higher dispute probability than clean sports outcomes. The result is a category-specific delay that sports mostly avoid."
   - q: "Is Kalshi always faster than Polymarket?"
@@ -37,5 +37,5 @@ related:
   - which-hyperliquid-frontend-has-the-most-builder-revenue
 
 seo_title: "Polymarket vs Kalshi resolution speed 2026 live"
-seo_description: "{{best_name}} leads at {{best_p50}} median resolution delay (24h) on the OpenChainBench prediction market resolution benchmark. Polymarket and Kalshi ranked live across sports, politics, crypto."
+seo_description: "OpenChainBench measures Polymarket resolution delay live onchain across sports, politics and crypto markets. Kalshi ingestion pending. Full per-category numbers at openchainbench.com."
 status: live

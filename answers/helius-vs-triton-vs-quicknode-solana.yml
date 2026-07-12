@@ -1,7 +1,7 @@
 slug: helius-vs-triton-vs-quicknode-solana
 question: "Helius vs Triton vs QuickNode, which lands the most Solana transactions?"
 short_answer: |
-  {{best_name}} currently lands the highest share of Solana transactions on the OpenChainBench active-probe harness at {{best_p50}} (24h), measured live from three regions by broadcasting identical transfers through each provider's mainnet RPC and confirming inclusion onchain.
+  OpenChainBench broadcasts identical Solana transfers through Helius, Triton and QuickNode every measurement cycle from three regions and confirms inclusion onchain, so the landed-rate head-to-head is measured live rather than self-reported. Jito bundle submission is also on the leaderboard as a separate priority-lane comparator. Full 24h landed-rate ranking for the three named providers is at openchainbench.com/benchmarks/solana-tx-landing.
 
 benchmark: solana-tx-landing
 
@@ -19,7 +19,7 @@ limitations:
 
 faq:
   - q: "Which Solana RPC lands the most transactions right now, Helius, Triton or QuickNode?"
-    a: "{{best_name}} leads the OpenChainBench active-probe leaderboard at {{best_p50}} (24h) on real broadcasts confirmed onchain. The full ranking including Helius, Triton, QuickNode, Alchemy and public RPCs re-sorts every measurement cycle against fresh Prometheus samples."
+    a: "The live 24h ranking for the three named providers is on openchainbench.com/benchmarks/solana-tx-landing. Each cycle the harness broadcasts an identical SOL transfer through Helius, Triton and QuickNode from three regions and polls the signature onchain until it is confirmed or crosses the landing deadline, so the ranking is reproducible from public data rather than derived from provider self-reports. Jito bundle submission is included on the same leaderboard as a separate priority-lane comparator, which is why an aggregate leader may name Jito rather than one of the three RPC providers in the question."
   - q: "Why measure landing rate instead of just latency?"
     a: "On Solana under congestion, the failure mode that matters to users is dropped transactions, not slow responses. A provider can return a fast success ack from sendTransaction and never actually get the tx into a block. OpenChainBench confirms inclusion onchain by polling for the signature, so the landed rate reflects what a user actually experiences, not what the provider self-reports."
   - q: "Is Helius Sender factored into this ranking?"
@@ -37,5 +37,5 @@ related:
   - which-crypto-price-api-is-the-fastest
 
 seo_title: "Helius vs Triton vs QuickNode Solana landing rate 2026"
-seo_description: "{{best_name}} leads at {{best_p50}} (24h) on the OpenChainBench active-probe Solana landing leaderboard. Helius, Triton, QuickNode ranked live by real onchain confirmation."
+seo_description: "Helius, Triton and QuickNode Solana landed-rate head-to-head measured live onchain from three regions. Live 24h ranking at openchainbench.com/benchmarks/solana-tx-landing."
 status: live
