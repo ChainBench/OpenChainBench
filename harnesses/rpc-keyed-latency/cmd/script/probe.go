@@ -127,7 +127,15 @@ func doPost(ctx context.Context, url string, body []byte) (raw []byte, latencyMs
 
 	start := time.Now()
 	resp, err := client.Do(req)
-	latencyMs = float64(time.Since(start).Milliseconds())
+	// Use nanoseconds and convert to a float millisecond so sub-1ms probes
+	// are recorded with real precision. time.Duration.Milliseconds() is an
+	// int64 and truncates every measurement under 1 ms to zero, which
+	// systematically under-reports latency for providers whose endpoint
+	// is peer-adjacent to the harness (e.g. QuickNode via the Mobula
+	// shared fleet: sub-millisecond round-trips truncated to 0 dragged
+	// the 24h aggregate down to a nonsensical 0 ms on the BNB + US-East
+	// cell, then rendered as "QuickNode leads at 0 ms" on the UI).
+	latencyMs = float64(time.Since(start).Nanoseconds()) / 1e6
 	if err != nil {
 		if ctx.Err() != nil || strings.Contains(err.Error(), "deadline exceeded") || strings.Contains(err.Error(), "Timeout") {
 			return nil, latencyMs, "timeout", err
