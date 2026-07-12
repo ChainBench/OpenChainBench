@@ -269,7 +269,11 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // level on VERCEL_ENV=production). Bench SET now differs per env, so
   // the env is part of the cache key to keep prod and preview entries
   // from colliding.
-  ["bench-unfiltered-v26", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v27: series arrays became dense with explicit nulls for empty Prom
+  // buckets (gap rendering fix). Cached v26 entries hold the old
+  // hole-compressed arrays whose indices no longer map onto the nominal
+  // step grid the chart back-computes timestamps from.
+  ["bench-unfiltered-v27", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -423,7 +427,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // ungated; the lockstep bump was missed in #1105 and prod kept serving the
   // gated catalog to /products for 30+ min after the deploy).
   // v29: bumped with bench-unfiltered-v26 (monad-rpc + megaeth-rpc ship).
-  ["all-benchmarks-v29", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v30: bumped with bench-unfiltered-v27 (dense series with nulls).
+  ["all-benchmarks-v30", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -501,7 +506,8 @@ const loadBenchmarkFiltered = unstable_cache(
   // v15: bumped with bench-unfiltered-v25 (prod-only bench gate); env in key.
   // v16: bumped with the bench 074 ship (lockstep rule, see all-benchmarks-v28).
   // v17: bumped with the monad-rpc + megaeth-rpc ship (lockstep rule).
-  ["bench-filters-v17", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v18: bumped with bench-unfiltered-v27 (dense series with nulls).
+  ["bench-filters-v18", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 

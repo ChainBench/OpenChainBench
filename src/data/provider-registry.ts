@@ -217,7 +217,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   bloxroute: {
     url: "https://bloxroute.com",
     description:
-      "Solana Trader API over the bloXroute BDN. Multi-path leader-aware propagation across bare-metal RPCs, dedicated nodes, and SWQoS for institutional flow.",
+      "bloXroute Labs runs a low-latency blockchain distribution network for traders and validators. Its free Protect RPC routes Ethereum and BSC transactions away from the public mempool, and its Solana relay competes on transaction landing.",
     twitter: "@bloXrouteLabs",
   },
   "0slot": {
@@ -1244,6 +1244,23 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   // Identified by matching each builder address's HL referral code to a
   // public brand. Provenance lives in /opt/hl-bench/builders.json notes
   // on the HL node.
+  blocksec: {
+    url: "https://blocksec.com",
+    description:
+      "BlockSec is a blockchain security company behind the Phalcon toolchain, audits and attack monitoring. Its Anti-MEV RPC applies private transaction routing to shield Ethereum and BSC users from sandwich attacks.",
+    twitter: "@BlockSecTeam",
+  },
+  "48club": {
+    url: "https://48.club",
+    description:
+      "48 Club is a BNB Chain validator collective behind the KOGE token. Its Privacy RPC, successor of Puissant, routes BSC transactions privately through its own validators to prevent frontrunning.",
+  },
+  pancakeswap: {
+    url: "https://pancakeswap.finance",
+    description:
+      "PancakeSwap is the largest DEX on BNB Chain. MEV Guard is its user-facing protected RPC, powered by 48 Club infrastructure and shipped as the default anti-sandwich endpoint for PancakeSwap traders.",
+    twitter: "@PancakeSwap",
+  },
   "defi-saver": {
     url: "https://defisaver.com",
     description:
