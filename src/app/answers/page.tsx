@@ -4,7 +4,12 @@ import { ArrowUpRight } from "lucide-react";
 import { loadAllAnswers } from "@/lib/answers";
 import { loadBenchmark } from "@/lib/spec";
 import { renderTemplate } from "@/lib/bench-template";
-import { cleanLeftoverTokens } from "@/lib/answers-template";
+import {
+  benchDataPendingFallback,
+  cleanLeftoverTokens,
+  hasLiveDataTokens,
+} from "@/lib/answers-template";
+import { leader } from "@/lib/citation";
 import { SITE } from "@/data/site";
 import { safeJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import { pageMetadata } from "@/lib/page-metadata";
@@ -34,6 +39,19 @@ export default async function AnswersHubPage() {
   const rendered = await Promise.all(
     answers.map(async (a) => {
       const bench = await loadBenchmark(a.benchmark, { chain: a.chain });
+      // Match the pending-data guard on the answer detail page: if the
+      // referenced bench has no defensible leader AND the source string
+      // depends on live tokens, swap the whole short_answer with the
+      // canned bench-scoped fallback so the hub never surfaces the
+      // grammatically broken "The current leader currently leads at
+      // measured live (p50, 24h)" sentence.
+      if (bench && !leader(bench) && hasLiveDataTokens(a.short_answer)) {
+        const fallback = benchDataPendingFallback(
+          bench.title,
+          `${SITE.url}/benchmarks/${bench.slug}`,
+        );
+        return { ...a, shortAnswer: fallback.short_answer };
+      }
       const partial = bench
         ? renderTemplate(a.short_answer, bench)
         : a.short_answer;
