@@ -16,6 +16,20 @@ import {
   type RenderState,
   type ViewId,
 } from "@/lib/export-video/types";
+import { matchesChainSlug } from "@/lib/chain-aliases";
+
+/** The four drill-down dimensions a spec can declare. Rendered in this
+ *  order so the modal mirrors the tab order on the bench page. */
+const DIM_IDS = ["chain", "region", "kind", "venue"] as const;
+type DimId = (typeof DIM_IDS)[number];
+const DIM_LABEL: Record<DimId, string> = {
+  chain: "Chain",
+  region: "Region",
+  kind: "Kind",
+  venue: "Venue",
+};
+type DimOption = { value: string; label: string };
+type DimState = Partial<Record<DimId, string | null>>;
 
 type Props = {
   slug: string;
@@ -140,12 +154,52 @@ function ModalBody({
       return next;
     });
 
-  // Mirror the bench page's URL filters — chain=ethereum or region=eu-west
-  // — so a video exported from a chain-scoped tab uses the chain-scoped
-  // series rather than the (often empty) global view.
+  // Dimension pickers. One pill row per dimension the spec declares
+  // (chain, region, kind, venue), each with an "All" pill meaning no
+  // filter. The bench page's URL filters (?chain=ethereum) seed the
+  // initial selection so a video exported from a chain-scoped tab
+  // defaults to the chain-scoped series, but the user can repick any
+  // combination without leaving the modal.
   const searchParams = useSearchParams();
-  const chain = searchParams.get("chain");
-  const region = searchParams.get("region");
+  const dimOptions = useMemo(() => {
+    const out: Partial<Record<DimId, DimOption[]>> = {};
+    for (const dim of DIM_IDS) {
+      const entries = (benchmark.dimensions?.[dim] ?? []).filter(
+        (d) => d.value.toLowerCase() !== "all",
+      );
+      if (entries.length > 0) out[dim] = entries;
+    }
+    return out;
+  }, [benchmark]);
+  const [dims, setDims] = useState<DimState>(() => {
+    const out: DimState = {};
+    for (const dim of DIM_IDS) {
+      const raw = searchParams.get(dim)?.toLowerCase().trim();
+      if (!raw || raw === "all") continue;
+      // Canonical-aware chain lookup: ?chain=gram still selects the
+      // dimension whose YAML value is the legacy "ton".
+      const match = (benchmark.dimensions?.[dim] ?? []).find((d) =>
+        dim === "chain" ? matchesChainSlug(d.value, raw) : d.value.toLowerCase() === raw,
+      );
+      if (match && match.value.toLowerCase() !== "all") out[dim] = match.value;
+    }
+    return out;
+  });
+  const setDim = (dim: DimId, value: string | null) =>
+    setDims((prev) => ({ ...prev, [dim]: value }));
+  // Active filters (unset / "all" excluded), in declared order.
+  const activeDims = useMemo(
+    () =>
+      DIM_IDS.flatMap((dim) => {
+        const v = dims[dim];
+        if (!v || v === "all" || !dimOptions[dim]) return [];
+        const opt = dimOptions[dim]!.find((o) => o.value === v);
+        return opt ? [{ dim, value: opt.value, label: opt.label }] : [];
+      }),
+    [dims, dimOptions],
+  );
+  const chain = dims.chain ?? null;
+  const region = dims.region ?? null;
 
   const onRender = async () => {
     if (selected.size === 0) {
@@ -269,6 +323,33 @@ function ModalBody({
               ))}
             </Segment>
           </div>
+
+          {/* Dimension filters: one pill row per dimension the bench
+              declares. Mirrors the tab pickers on the bench page. */}
+          {DIM_IDS.filter((dim) => dimOptions[dim]).map((dim) => (
+            <div key={dim} role="group" aria-label={`Filter by ${DIM_LABEL[dim].toLowerCase()}`}>
+              <Label>{DIM_LABEL[dim]}</Label>
+              <div className="inline-flex flex-wrap gap-1 rounded-md border border-rule p-1 bg-paper-2">
+                <SegmentButton
+                  active={!dims[dim] || dims[dim] === "all"}
+                  onClick={() => setDim(dim, null)}
+                  disabled={isBusy}
+                >
+                  All
+                </SegmentButton>
+                {dimOptions[dim]!.map((o) => (
+                  <SegmentButton
+                    key={o.value}
+                    active={dims[dim] === o.value}
+                    onClick={() => setDim(dim, o.value)}
+                    disabled={isBusy}
+                  >
+                    {o.label}
+                  </SegmentButton>
+                ))}
+              </div>
+            </div>
+          ))}
 
           {/* Format */}
           <div>
