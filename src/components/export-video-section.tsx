@@ -255,6 +255,17 @@ function ModalBody({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveBench]);
 
+  // Exact title the video will display: the bench title plus the human
+  // labels of the active filters, e.g. "RPC capabilities (Ethereum, EU
+  // West)". Injected into the render payload and shown verbatim in the
+  // modal header so there is no surprise in the MP4.
+  const videoTitle = useMemo(() => {
+    const labels = activeDims.map((d) => d.label);
+    return labels.length > 0
+      ? `${benchmark.title} (${labels.join(", ")})`
+      : benchmark.title;
+  }, [benchmark.title, activeDims]);
+
   // Row list for the picker, ranked order, dead rows flagged.
   const providers = useMemo(
     () =>
@@ -344,7 +355,7 @@ function ModalBody({
       >
         <div className="flex items-center justify-between border-b border-rule px-4 sm:px-6 py-4">
           <span className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink">
-            Export video · {benchmark.title}
+            Export video · {videoTitle}
           </span>
           <button
             onClick={onClose}
