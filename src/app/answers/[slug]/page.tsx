@@ -4,7 +4,12 @@ import Link from "next/link";
 import { ArrowLeft, ArrowUpRight } from "lucide-react";
 import { loadAnswer, loadAllAnswers } from "@/lib/answers";
 import { renderTemplate } from "@/lib/bench-template";
-import { cleanLeftoverTokens } from "@/lib/answers-template";
+import {
+  cleanLeftoverTokens,
+  hasLiveDataTokens,
+  benchDataPendingFallback,
+} from "@/lib/answers-template";
+import { leader } from "@/lib/citation";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { Pill } from "@/components/pill";
 import { ProviderLogo } from "@/components/provider-logo";
@@ -46,11 +51,19 @@ export async function generateMetadata({
   // Clean leftover tokens AFTER renderTemplate so a draft bench never
   // leaks a literal `{{best_name}}` into the meta description,
   // og:description or twitter:description, all of which feed the SERP
-  // and social previews.
-  const description = capDescription(
-    cleanLeftoverTokens(renderTemplate(descSource, ans.bench)),
-    158,
-  );
+  // and social previews. When the referenced bench has no defensible
+  // leader AND the source relies on live tokens, swap the meta
+  // description for the "data pending" fallback so the SERP snippet
+  // does not read as broken grammar.
+  const metaTop = leader(ans.bench);
+  const metaDescription =
+    !metaTop && hasLiveDataTokens(descSource)
+      ? benchDataPendingFallback(
+          ans.bench.title,
+          `${SITE.url}/benchmarks/${ans.bench.slug}`,
+        ).short_answer
+      : cleanLeftoverTokens(renderTemplate(descSource, ans.bench));
+  const description = capDescription(metaDescription, 158);
   return {
     title,
     description,
@@ -93,11 +106,33 @@ export default async function AnswerPage({
   // cleanLeftoverTokens so a placeholder string never reaches the SERP.
   const render = (s: string) => cleanLeftoverTokens(renderTemplate(s, bench));
   const asOfUtc = fmtAsOfUtc(bench.lastRunAt);
-  const shortAnswer = render(ans.short_answer);
-  const intro = render(ans.intro);
-  const methodology = render(ans.methodology);
-  const limitations = ans.limitations.map(render);
-  const faq = ans.faq.map((f) => ({ q: render(f.q), a: render(f.a) }));
+  // Detect the "referenced bench has no defensible leader AND the
+  // source YAML depends on live tokens" case: without this guard the
+  // per-token fallback rewrites {{best_name}} to "The current leader"
+  // and {{best_p50}} to "measured live" inside sentences whose grammar
+  // assumes a proper-noun subject, producing broken output like "The
+  // current leader currently leads Solana transaction landing latency
+  // at measured live (p50, 24h)". When we know both the bench has no
+  // leader and the source string depends on live tokens, swap the
+  // whole prose surface with a canned "data pending" fallback that
+  // reads naturally across every downstream consumer (meta description,
+  // JSON-LD Article.description, LLM grounding trace).
+  const top = leader(bench);
+  const dataPending =
+    !top &&
+    (hasLiveDataTokens(ans.short_answer) ||
+      hasLiveDataTokens(ans.intro) ||
+      hasLiveDataTokens(ans.methodology));
+  const pending = dataPending
+    ? benchDataPendingFallback(bench.title, benchUrl)
+    : null;
+  const shortAnswer = pending
+    ? pending.short_answer
+    : render(ans.short_answer);
+  const intro = pending ? pending.intro : render(ans.intro);
+  const methodology = pending ? pending.methodology : render(ans.methodology);
+  const limitations = pending ? [] : ans.limitations.map(render);
+  const faq = pending ? [] : ans.faq.map((f) => ({ q: render(f.q), a: render(f.a) }));
 
   // Top results from the referenced bench, mirroring the alternatives
   // top-N section: surfaces the answer visually for skim readers + gives
