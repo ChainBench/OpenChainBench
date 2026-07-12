@@ -925,7 +925,12 @@ async function renderSnapshot(
     .map((r) => ({
       slug: r.slug,
       name: r.name,
-      values: benchmark.extras.series24h[r.slug] ?? [],
+      // Dense series carry nulls for empty Prom buckets. The OG snapshot
+      // is a static thumbnail, so skip them (connect across the gap)
+      // rather than break the polyline.
+      values: (benchmark.extras.series24h[r.slug] ?? []).filter(
+        (v): v is number => v != null,
+      ),
       color: colors.get(r.slug) ?? INK_SOFT,
       p50: r.ms.p50,
     }))

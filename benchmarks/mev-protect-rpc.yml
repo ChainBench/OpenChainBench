@@ -4,8 +4,8 @@ slug: mev-protect-rpc
 number: "074"
 title: Fastest MEV protection RPC, live wallet latency and method coverage
 seo_title: "Best MEV protection RPC 2026"
-seo_description: "{{best_name}} leads MEV protection RPC wallet latency at {{best_p50}} (p50, 24h). Flashbots Protect, MEV Blocker, Blink probed on the wallet method set from 3 regions, keyless."
-subtitle: "Median latency of the JSON-RPC method set wallets call constantly (balance, gas, call simulation), measured against public MEV protection gateways from three regions. Read-path hygiene only: inclusion rates and refunds are the write path and cannot be measured without sending transactions."
+seo_description: "{{best_name}} leads MEV protection RPC wallet latency at {{best_p50}} (p50, 24h). Flashbots, MEV Blocker, Blink, bloXroute, BlockSec, 48 Club probed keyless on Ethereum, Base and BSC."
+subtitle: "Median latency of the JSON-RPC method set wallets call constantly (balance, gas, call simulation), measured against public MEV protection gateways on Ethereum, Base and BSC from three regions. Read-path hygiene only: inclusion rates and refunds are the write path and cannot be measured without sending transactions."
 category: RPCs
 status: live
 metric: Wallet call latency
@@ -40,11 +40,15 @@ abstract: |
   than a latency penalty. No transactions are sent.
 
 methodology:
-  - "Providers measured: Flashbots Protect (rpc.flashbots.net), MEV Blocker (rpc.mevblocker.io), Blink, formerly Merkle (ethereum.blinklabs.xyz). SecureRPC probed dead 2026-07-10; the legacy merkle.io hosts alias Blink behind a stricter rate limit and are not probed."
+  - "Providers measured, one row per (provider, chain), all keyless and live-verified 2026-07-12. Ethereum cohort: Flashbots Protect (rpc.flashbots.net), MEV Blocker (rpc.mevblocker.io), Blink formerly Merkle (ethereum.blinklabs.xyz), bloXroute Protect (eth-protect.rpc.blxrbdn.com), BlockSec Anti-MEV (eth.rpc.blocksec.com)."
+  - "Base cohort: Blink (base.merkle.io) alone. No other MEV-protect gateway exposes a keyless Base endpoint today; Flashbots and MEV Blocker are Ethereum-only by design and base.rpc.blxrbdn.com is plain RPC, not documented as Protect."
+  - "BSC cohort: Blink (bsc.merkle.io), bloXroute Protect (bsc.rpc.blxrbdn.com), 48 Club Privacy RPC (rpc.48.club), PancakeSwap MEV Guard (bscrpc.pancakeswap.finance, powered by 48 Club), BlockSec (bsc.rpc.blocksec.com)."
+  - "Exclusions: SecureRPC probed dead 2026-07-10. Alchemy MEV Protect and GetBlock protected endpoints are key-gated. Blink's Ethereum row uses the blinklabs.xyz host because the legacy eth.merkle.io alias rate-limits harder; on Base and BSC the merkle.io hosts are Blink's only keyless surface (base/bsc.blinklabs.xyz do not resolve as of 2026-07-12)."
+  - "Chain dimension: the tabs pin every query to one chain. The All chains headline averages each provider over the chains it actually serves, the same convention as the rpc-capabilities cluster; the Chains covered panel shows the multi-chain footprint explicitly."
   - "Method set: eth_chainId, eth_blockNumber, eth_gasPrice, eth_getBalance, eth_call (USDC balanceOf), eth_estimateGas, eth_feeHistory. One request per method per tick, 1.5s apart, rotating request ids against body-keyed edge caches."
-  - "Cadence: every 60 seconds per region (us-east, eu-west, sgp), 7 requests per provider per tick. Deliberately polite: these gateways rate-ban aggressive callers."
+  - "Cadence: every 60 seconds per region (us-east, eu-west, sgp), 7 requests per gateway per tick, rows probed in parallel so each gateway still sees one request per 1.5s. Deliberately polite: these gateways rate-ban aggressive callers."
   - "Headline: median latency across the methods the provider served that tick, aggregated over 24h with quantile_over_time. A rejected method does not poison the latency; it lowers the coverage panel instead."
-  - "Coverage: mev_rpc_methods_supported counts the wallet methods served on the last tick (max 7). Flashbots rejects eth_call on the public endpoint; Blink blocks full-node reads like eth_getBlockByNumber, which keeps it off the general RPC benches but not off this one."
+  - "Coverage: mev_rpc_methods_supported counts the wallet methods served on the last tick (max 7) per chain. Flashbots rejects eth_call on the public endpoint; Blink blocks full-node reads like eth_getBlockByNumber, which keeps it off the general RPC benches but not off this one."
   - "Out of scope, disclosed: inclusion rate, refund economics and sandwich protection efficacy are the write path and require funded transactions. See the arXiv study Private MEV Protection RPCs (2505.19708) for a one-off execution-quality comparison."
   - "Success rate counts transport failures only (timeouts, throttling, network); a method a gateway refuses by policy is a coverage gap shown in the coverage panel, not an outage. Failures increment mev_rpc_call_total{result}; the gauge keeps its last value so the chart shows the outage in the success column rather than a fake zero."
 
@@ -53,6 +57,10 @@ findings:
   - "{{name:mevblocker}} sits at {{p50:mevblocker}} (p50, 24h) and serves the full 7-method wallet set. MEV Blocker was acquired by Consensys in January 2026; its gateway proxies reads with the lowest overhead of the cohort."
   - "{{name:flashbots}} clocks {{p50:flashbots}} (p50, 24h) but rejects eth_call on the public endpoint, so wallets relying on it for simulation fall back to another provider for that path."
   - "{{name:blinklabs}} returns {{p50:blinklabs}} (p50, 24h) across the full wallet set. Blink, formerly Merkle, is a wallet-facing MEV proxy by design: it serves everything a wallet needs while blocking full-node reads."
+  - "{{name:blinklabs}} is the only gateway in the cohort measurable on all three chains: Ethereum, Base and BSC. Flashbots Protect and MEV Blocker are Ethereum-only by design, bloXroute Protect and BlockSec cover Ethereum plus BSC, and on Base Blink is currently the only keyless MEV-protect endpoint in existence."
+  - "{{name:bloxroute}} answers at {{p50:bloxroute}} (p50, 24h) across Ethereum and BSC. The Protect RPC is the free tier of a paid MEV infrastructure stack, and the gateway inherits the low-latency backbone bloXroute sells to searchers."
+  - "{{name:blocksec}} clocks {{p50:blocksec}} (p50, 24h) on Ethereum and BSC. The Anti-MEV RPC is a security-vendor product: same private-routing idea, marketed to users of the Phalcon toolchain."
+  - "On BSC the local cohort is the real story: {{name:48club}} ({{p50:48club}}) and {{name:pancakeswap}} ({{p50:pancakeswap}}) share the same 48 Club infrastructure behind different edges, and both compete against Blink and bloXroute for the default slot in BSC wallets."
   - "The p50 to p99 gap is the number wallet teams should read: a protect RPC that stalls on one refresh per hundred makes the whole wallet feel unreliable, whatever its median."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/mev-protect-rpc
@@ -75,6 +83,11 @@ faq:
 rank_matrix_query: avg by (provider, region) (quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds[24h]))
 
 dimensions:
+  chain:
+    - { value: all,      label: All chains }
+    - { value: ethereum, label: Ethereum }
+    - { value: base,     label: Base }
+    - { value: bsc,      label: BNB Chain }
   region:
     - { value: all,     label: All regions }
     - { value: us-east, label: US-East }
@@ -82,6 +95,13 @@ dimensions:
     - { value: sgp,     label: Singapore }
 
 metric_panels:
+  - id: chains
+    label: Chains covered
+    metric: count by (provider) (avg by (provider, chain) (mev_rpc_methods_supported{benchmark="mev-protect-rpc"}))
+    label_key: provider
+    unit: count
+    higher_is_better: true
+    description: "Chains where the provider exposes a keyless MEV-protect gateway we can probe (Ethereum, Base, BSC). Multi-chain wallets need one provider across every network they ship, not one per chain."
   - id: coverage
     label: Method coverage
     metric: avg(mev_rpc_methods_supported{benchmark="mev-protect-rpc"})
@@ -139,8 +159,8 @@ providers:
 
   - slug: blinklabs
     name: Blink
-    tag: Formerly Merkle, wallet MEV proxy, full wallet set, powers Ledger
-    formula: "Median latency across the wallet methods served per 60s tick against ethereum.blinklabs.xyz, aggregated over 24h via quantile_over_time; 3-region average."
+    tag: Formerly Merkle, only gateway live on Ethereum, Base and BSC, powers Ledger
+    formula: "Median latency across the wallet methods served per 60s tick against ethereum.blinklabs.xyz, base.merkle.io and bsc.merkle.io, aggregated over 24h via quantile_over_time; 3-region average over the chains served."
     queries:
       p50: quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="blinklabs"}[24h])
       p90: quantile_over_time(0.90, mev_rpc_wallet_latency_milliseconds{provider="blinklabs"}[24h])
@@ -159,3 +179,95 @@ providers:
         - region: ap-southeast
           p50: quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="blinklabs", region="sgp"}[24h])
           series: avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="blinklabs", region="sgp"}[1h])
+
+  - slug: bloxroute
+    name: bloXroute Protect
+    tag: Free protect tier of the bloXroute MEV stack, Ethereum + BSC
+    formula: "Median latency across the wallet methods served per 60s tick against eth-protect.rpc.blxrbdn.com and bsc.rpc.blxrbdn.com, aggregated over 24h via quantile_over_time; 3-region average over the chains served."
+    queries:
+      p50: quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="bloxroute"}[24h])
+      p90: quantile_over_time(0.90, mev_rpc_wallet_latency_milliseconds{provider="bloxroute"}[24h])
+      p99: quantile_over_time(0.99, mev_rpc_wallet_latency_milliseconds{provider="bloxroute"}[24h])
+      mean: avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="bloxroute"}[24h])
+      success: sum(increase(mev_rpc_call_total{provider="bloxroute",result="ok"}[24h])) / clamp_min(sum(increase(mev_rpc_call_total{provider="bloxroute",result!~"blocked|method_not_found"}[24h])), 1)
+      sample_size: sum(increase(mev_rpc_call_total{provider="bloxroute"}[24h]))
+      series: avg(avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="bloxroute"}[1h]))
+      regions:
+        - region: us-east
+          p50: quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="bloxroute", region="us-east"}[24h])
+          series: avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="bloxroute", region="us-east"}[1h])
+        - region: eu-west
+          p50: quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="bloxroute", region="eu-west"}[24h])
+          series: avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="bloxroute", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="bloxroute", region="sgp"}[24h])
+          series: avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="bloxroute", region="sgp"}[1h])
+
+  - slug: blocksec
+    name: BlockSec Anti-MEV
+    tag: Security-vendor private routing, Ethereum + BSC
+    formula: "Median latency across the wallet methods served per 60s tick against eth.rpc.blocksec.com and bsc.rpc.blocksec.com, aggregated over 24h via quantile_over_time; 3-region average over the chains served."
+    queries:
+      p50: quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="blocksec"}[24h])
+      p90: quantile_over_time(0.90, mev_rpc_wallet_latency_milliseconds{provider="blocksec"}[24h])
+      p99: quantile_over_time(0.99, mev_rpc_wallet_latency_milliseconds{provider="blocksec"}[24h])
+      mean: avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="blocksec"}[24h])
+      success: sum(increase(mev_rpc_call_total{provider="blocksec",result="ok"}[24h])) / clamp_min(sum(increase(mev_rpc_call_total{provider="blocksec",result!~"blocked|method_not_found"}[24h])), 1)
+      sample_size: sum(increase(mev_rpc_call_total{provider="blocksec"}[24h]))
+      series: avg(avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="blocksec"}[1h]))
+      regions:
+        - region: us-east
+          p50: quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="blocksec", region="us-east"}[24h])
+          series: avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="blocksec", region="us-east"}[1h])
+        - region: eu-west
+          p50: quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="blocksec", region="eu-west"}[24h])
+          series: avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="blocksec", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="blocksec", region="sgp"}[24h])
+          series: avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="blocksec", region="sgp"}[1h])
+
+  - slug: 48club
+    name: 48 Club Privacy RPC
+    tag: BSC validator collective, Puissant successor
+    formula: "Median latency across the wallet methods served per 60s tick against rpc.48.club, aggregated over 24h via quantile_over_time; 3-region average over the chains served."
+    queries:
+      p50: quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="48club"}[24h])
+      p90: quantile_over_time(0.90, mev_rpc_wallet_latency_milliseconds{provider="48club"}[24h])
+      p99: quantile_over_time(0.99, mev_rpc_wallet_latency_milliseconds{provider="48club"}[24h])
+      mean: avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="48club"}[24h])
+      success: sum(increase(mev_rpc_call_total{provider="48club",result="ok"}[24h])) / clamp_min(sum(increase(mev_rpc_call_total{provider="48club",result!~"blocked|method_not_found"}[24h])), 1)
+      sample_size: sum(increase(mev_rpc_call_total{provider="48club"}[24h]))
+      series: avg(avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="48club"}[1h]))
+      regions:
+        - region: us-east
+          p50: quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="48club", region="us-east"}[24h])
+          series: avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="48club", region="us-east"}[1h])
+        - region: eu-west
+          p50: quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="48club", region="eu-west"}[24h])
+          series: avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="48club", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="48club", region="sgp"}[24h])
+          series: avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="48club", region="sgp"}[1h])
+
+  - slug: pancakeswap
+    name: PancakeSwap MEV Guard
+    tag: BSC, powered by 48 Club behind PancakeSwap's edge
+    formula: "Median latency across the wallet methods served per 60s tick against bscrpc.pancakeswap.finance, aggregated over 24h via quantile_over_time; 3-region average over the chains served."
+    queries:
+      p50: quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="pancakeswap"}[24h])
+      p90: quantile_over_time(0.90, mev_rpc_wallet_latency_milliseconds{provider="pancakeswap"}[24h])
+      p99: quantile_over_time(0.99, mev_rpc_wallet_latency_milliseconds{provider="pancakeswap"}[24h])
+      mean: avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="pancakeswap"}[24h])
+      success: sum(increase(mev_rpc_call_total{provider="pancakeswap",result="ok"}[24h])) / clamp_min(sum(increase(mev_rpc_call_total{provider="pancakeswap",result!~"blocked|method_not_found"}[24h])), 1)
+      sample_size: sum(increase(mev_rpc_call_total{provider="pancakeswap"}[24h]))
+      series: avg(avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="pancakeswap"}[1h]))
+      regions:
+        - region: us-east
+          p50: quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="pancakeswap", region="us-east"}[24h])
+          series: avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="pancakeswap", region="us-east"}[1h])
+        - region: eu-west
+          p50: quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="pancakeswap", region="eu-west"}[24h])
+          series: avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="pancakeswap", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: quantile_over_time(0.50, mev_rpc_wallet_latency_milliseconds{provider="pancakeswap", region="sgp"}[24h])
+          series: avg_over_time(mev_rpc_wallet_latency_milliseconds{provider="pancakeswap", region="sgp"}[1h])

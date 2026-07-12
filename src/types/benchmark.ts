@@ -104,7 +104,12 @@ export type RegionPoint = {
   p50: number;
 };
 
-export type Series24h = number[];
+/** Dense per-window series aligned to the Prom query_range grid. `null`
+ *  marks an evaluation bucket with no sample (harness outage, provider
+ *  offline) so renderers can draw an honest gap instead of silently
+ *  compressing the X-axis. Older worker blobs predate the nulls and
+ *  carry bare number arrays — a valid subset of this type. */
+export type Series24h = (number | null)[];
 
 export type MetricPanel = {
   id: string;
@@ -125,14 +130,15 @@ export type MetricPanel = {
   valuesMeta?: Record<string, { observedAt: number; staleSince?: number }>;
   /** Per-provider 24h time-series (72 points by default), keyed by
    *  provider slug. Powers the multi-line chart view of the panel.
-   *  Providers with no Prom data for the query are absent from the map. */
-  seriesByProvider?: Record<string, number[]>;
+   *  Providers with no Prom data for the query are absent from the map.
+   *  Entries are dense with nulls for empty buckets (see Series24h). */
+  seriesByProvider?: Record<string, Series24h>;
   /** Per-provider 7 day time-series (84 points by default). Used by the
    *  chart's 7D range tab when a panel is active. */
-  seriesByProvider7d?: Record<string, number[]>;
+  seriesByProvider7d?: Record<string, Series24h>;
   /** Per-provider 30 day time-series (60 points by default). Used by the
    *  chart's 30D range tab when a panel is active. */
-  seriesByProvider30d?: Record<string, number[]>;
+  seriesByProvider30d?: Record<string, Series24h>;
 };
 
 export type ResultExtras = {

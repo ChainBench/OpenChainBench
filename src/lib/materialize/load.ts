@@ -643,12 +643,12 @@ async function tryLoadLive(
 
   try {
     const liveResults: ProviderResult[] = [];
-    const series24h: Record<string, number[]> = {};
-    const series7d: Record<string, number[]> = {};
-    const series30d: Record<string, number[]> = {};
-    const seriesByRegion24h: Record<string, Record<string, number[]>> = {};
-    const seriesByRegion7d: Record<string, Record<string, number[]>> = {};
-    const seriesByRegion30d: Record<string, Record<string, number[]>> = {};
+    const series24h: Record<string, (number | null)[]> = {};
+    const series7d: Record<string, (number | null)[]> = {};
+    const series30d: Record<string, (number | null)[]> = {};
+    const seriesByRegion24h: Record<string, Record<string, (number | null)[]>> = {};
+    const seriesByRegion7d: Record<string, Record<string, (number | null)[]>> = {};
+    const seriesByRegion30d: Record<string, Record<string, (number | null)[]>> = {};
     const regions: Record<string, { region: string; p50: number }[]> = {};
     let totalSamples = 0;
     const sevenDaysSec = 7 * 86_400;
@@ -841,9 +841,9 @@ async function tryLoadLive(
     const metricPanels: MetricPanel[] = [];
     for (const panel of spec.metric_panels ?? []) {
       const values: Record<string, number> = {};
-      const seriesByProvider: Record<string, number[]> = {};
-      const seriesByProvider7d: Record<string, number[]> = {};
-      const seriesByProvider30d: Record<string, number[]> = {};
+      const seriesByProvider: Record<string, (number | null)[]> = {};
+      const seriesByProvider7d: Record<string, (number | null)[]> = {};
+      const seriesByProvider30d: Record<string, (number | null)[]> = {};
       await Promise.all(
         spec.providers.map(async (p) => {
           const sel = `${panel.label_key}="${escapePromLabelValue(p.slug)}"`;

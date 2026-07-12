@@ -1,0 +1,35 @@
+slug: which-mev-protection-rpc-is-the-most-consistent
+question: "Which MEV protection RPC is the most consistent?"
+short_answer: |
+  Consistency means the p99 to p50 gap, not the median. On the live OpenChainBench MEV protection benchmark, Blink (formerly Merkle) holds the flattest tail of the cohort: its p99 sits within roughly 10 percent of its p50, while the fastest median gateway spikes an order of magnitude above its own p50 at the tail. For a wallet that fires a balance refresh, a gas estimate and a simulation on every screen, the tail is what users feel.
+
+benchmark: mev-protect-rpc
+
+intro: |
+  Wallet teams picking a default MEV protection RPC usually compare medians, because medians are what marketing pages publish. But a wallet calls its RPC constantly: every open screen triggers balance refreshes, gas estimates and eth_call simulations. At that call volume the user experiences the p99, not the p50. A gateway that answers in 33 ms most of the time but stalls to 400 ms on one call in a hundred produces a wallet that feels randomly broken several times per session. This page reads the live OpenChainBench mev-protect-rpc benchmark through the consistency lens: which of the public keyless gateways (Flashbots Protect, MEV Blocker, Blink, bloXroute Protect, BlockSec, 48 Club, PancakeSwap MEV Guard) keeps its tail closest to its median.
+
+methodology: |
+  Same data as the parent benchmark. Every 60 seconds, from us-east, eu-west and Singapore, the harness sends the 7-method wallet set (chainId, blockNumber, gasPrice, getBalance, call, estimateGas, feeHistory) to each public MEV protection gateway, keyless, one request per 1.5 seconds. The per-tick median across served methods feeds a Prometheus gauge; p50, p90 and p99 are quantile_over_time over 24 hours, averaged across regions. Consistency is read as the ratio between the p99 and p50 columns of the same provider. No transactions are sent; this is the read path a wallet exercises all day.
+
+limitations:
+  - "Consistency of the read gateway says nothing about inclusion rates or refund economics, which are write-path properties requiring funded transactions to measure. OpenChainBench does not extrapolate them."
+  - "A flat tail with a moderate median can coexist with a fast median and a heavy tail. Which profile is better depends on the product: trading bots care about the median, consumer wallets about the tail."
+  - "Success rate must be read next to both numbers. A gateway can post flat latency while throttling a share of calls; throttled calls do not enter the latency distribution."
+
+faq:
+  - q: "Which MEV protection RPC has the flattest latency tail?"
+    a: "Blink (formerly Merkle) currently posts the flattest p99 to p50 ratio of the measured cohort on Ethereum, with a tail within roughly 10 percent of its median. The live columns on the benchmark page update every minute and the ranking can move; the ratio between the p99 and p50 columns is the number to read."
+  - q: "Why does consistency matter more than median latency for a wallet?"
+    a: "Because a wallet fires dozens of RPC calls per session. At 50 calls per session, a 1-in-100 stall hits most sessions at least once. The user does not experience the median; they experience the worst call on the screen they are currently looking at."
+  - q: "Is the fastest median MEV protect RPC also the most consistent?"
+    a: "Not currently. The gateway with the best p50 on Ethereum shows a p99 an order of magnitude above its own median, while the most consistent gateway trades a slower median for a nearly flat tail. The benchmark page shows both columns side by side so the trade-off is explicit."
+  - q: "Does this ranking cover Base and BSC too?"
+    a: "The parent benchmark measures Ethereum, Base and BSC as separate chain tabs. On Base only one MEV protection gateway is measurable keyless today (Blink); on BSC the cohort includes Blink, bloXroute Protect, 48 Club, PancakeSwap MEV Guard and BlockSec, so the consistency comparison is meaningful there as well."
+
+related:
+  - drpc-vs-publicnode-vs-1rpc
+  - alchemy-vs-quicknode-vs-infura-latency
+
+seo_title: "Most consistent MEV protection RPC 2026"
+seo_description: "Which MEV protection RPC has the flattest latency tail? Blink, MEV Blocker, Flashbots Protect and 4 more compared on p99 vs p50, measured live and keyless."
+status: live

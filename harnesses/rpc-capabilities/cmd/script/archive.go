@@ -43,6 +43,11 @@ var depthBuckets = []uint64{300, 7200, 216000, 1296000, 5000000}
 func StartArchiveLoop(ctx context.Context) {
 	for _, c := range chains() {
 		c := c
+		if c.Kind == "solana" {
+			// eth_getBalance at historical heights has no Solana
+			// equivalent on public endpoints; skip the archive loop.
+			continue
+		}
 		for _, p := range c.Providers {
 			p := p
 			go archiveOne(ctx, c, p)
