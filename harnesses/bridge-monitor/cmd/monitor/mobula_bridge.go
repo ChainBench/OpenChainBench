@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/ecdsa"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -8,6 +10,10 @@ import (
 	"net/http"
 	"strconv"
 	"time"
+
+	ethmath "github.com/ethereum/go-ethereum/common/math"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/signer/core/apitypes"
 )
 
 type MobulaBridge struct {
@@ -17,12 +23,22 @@ type MobulaBridge struct {
 
 type MobulaQuoteResponse struct {
 	Data struct {
+		// Two-step flow fields: EVM origins return SignatureRequired=true
+		// and require a re-quote with the EIP-712 signature over TypedData
+		// before the deposit becomes executable (unsigned deposit stays
+		// unregistered server-side and the solver never picks it up).
+		IntentId          string          `json:"intentId"`
+		Deadline          int64           `json:"deadline"`
+		SignatureRequired bool            `json:"signatureRequired"`
+		TypedData         json.RawMessage `json:"typedData"`
+
 		EstimatedAmountOut    string `json:"estimatedAmountOut"`
 		EstimatedAmountOutUsd string `json:"estimatedAmountOutUsd"`
 		EstimatedTimeMs       int64  `json:"estimatedTimeMs"`
 		MaxTradeUsd           int64  `json:"maxTradeUsd"`
 		Fees                  struct {
 			BridgeFeeBps int    `json:"bridgeFeeBps"`
+			BridgeFeeUsd string `json:"bridgeFeeUsd"`
 			GasFeeUsd    string `json:"gasFeeUsd"`
 			TotalFeeUsd  string `json:"totalFeeUsd"`
 		} `json:"fees"`
@@ -87,7 +103,105 @@ func (m *MobulaBridge) APIKey() string {
 	return m.apiKey
 }
 
+// mobulaTypedData mirrors the typedData block of the quote response for
+// EIP-712 signing.
+type mobulaTypedData struct {
+	Domain struct {
+		Name    string `json:"name"`
+		Version string `json:"version"`
+		ChainId int64  `json:"chainId"`
+	} `json:"domain"`
+	Types       apitypes.Types            `json:"types"`
+	PrimaryType string                    `json:"primaryType"`
+	Message     apitypes.TypedDataMessage `json:"message"`
+}
+
+// GetQuote fetches an unsigned quote. For EVM origins the returned deposit is
+// a placeholder that the solver will not fill: use GetSignedQuote for real
+// executions.
 func (m *MobulaBridge) GetQuote(originChain, originToken, destChain, destToken, senderAddress, walletAddress string, amount float64) (*MobulaQuoteResponse, time.Duration, error) {
+	return m.quote(originChain, originToken, destChain, destToken, senderAddress, walletAddress, amount, "")
+}
+
+// GetSignedQuote runs the full two-step flow: unsigned quote → EIP-712 sign
+// the returned typedData → re-quote echoing signature/intentId/deadline/
+// minAmountOut. Only the second response's deposit is executable. Solana
+// origins skip the second call. evmKey==nil falls back to the unsigned quote
+// (used by the read-only quote loop where no key is configured).
+func (m *MobulaBridge) GetSignedQuote(originChain, originToken, destChain, destToken, senderAddress, walletAddress string, amount float64, evmKey *ecdsa.PrivateKey) (*MobulaQuoteResponse, time.Duration, error) {
+	quote, latency, err := m.GetQuote(originChain, originToken, destChain, destToken, senderAddress, walletAddress, amount)
+	if err != nil {
+		return nil, latency, err
+	}
+	if !quote.Data.SignatureRequired {
+		return quote, latency, nil
+	}
+	if evmKey == nil {
+		log.Printf("    [mobula] ⚠️ origin %s requires an EIP-712 signature but no EVM key is configured — returning unsigned quote (NOT executable)", originChain)
+		return quote, latency, nil
+	}
+	if len(quote.Data.TypedData) == 0 || quote.Data.IntentId == "" || quote.Data.Deadline == 0 {
+		return nil, latency, fmt.Errorf("signatureRequired but quote is missing typedData/intentId/deadline")
+	}
+	signature, minAmountOut, err := signBridgeIntent(quote.Data.TypedData, evmKey)
+	if err != nil {
+		return nil, latency, fmt.Errorf("failed to sign bridge intent: %w", err)
+	}
+	if minAmountOut == "" {
+		return nil, latency, fmt.Errorf("typedData message has no minAmountOut")
+	}
+	log.Printf("    [mobula] 🔏 Signed intent %s (deadline %d), fetching signed quote...", quote.Data.IntentId, quote.Data.Deadline)
+	extra := fmt.Sprintf("&signature=%s&intentId=%s&deadline=%d&minAmountOut=%s", signature, quote.Data.IntentId, quote.Data.Deadline, minAmountOut)
+	signed, signedLatency, err := m.quote(originChain, originToken, destChain, destToken, senderAddress, walletAddress, amount, extra)
+	if err != nil {
+		return nil, latency + signedLatency, fmt.Errorf("signed quote failed: %w", err)
+	}
+	return signed, latency + signedLatency, nil
+}
+
+// signBridgeIntent hashes the EIP-712 typedData v4 and signs with evmKey.
+// Returns the 0x-prefixed 65-byte signature and the minAmountOut extracted
+// from the message (echoed back to the confirm endpoint).
+func signBridgeIntent(typedDataJSON json.RawMessage, key *ecdsa.PrivateKey) (string, string, error) {
+	var raw mobulaTypedData
+	if err := json.Unmarshal(typedDataJSON, &raw); err != nil {
+		return "", "", fmt.Errorf("parse typedData: %w", err)
+	}
+	td := apitypes.TypedData{
+		Types:       raw.Types,
+		PrimaryType: raw.PrimaryType,
+		Domain: apitypes.TypedDataDomain{
+			Name:    raw.Domain.Name,
+			Version: raw.Domain.Version,
+			ChainId: ethmath.NewHexOrDecimal256(raw.Domain.ChainId),
+		},
+		Message: raw.Message,
+	}
+	minAmountOut := ""
+	if v, ok := raw.Message["minAmountOut"]; ok {
+		minAmountOut = fmt.Sprintf("%v", v)
+	}
+	domainSep, err := td.HashStruct("EIP712Domain", td.Domain.Map())
+	if err != nil {
+		return "", "", fmt.Errorf("hash domain: %w", err)
+	}
+	msgHash, err := td.HashStruct(td.PrimaryType, td.Message)
+	if err != nil {
+		return "", "", fmt.Errorf("hash message: %w", err)
+	}
+	digest := crypto.Keccak256([]byte("\x19\x01"), domainSep, msgHash)
+	sig, err := crypto.Sign(digest, key)
+	if err != nil {
+		return "", "", fmt.Errorf("sign digest: %w", err)
+	}
+	// canonical v is 27 or 28 (crypto.Sign returns 0/1)
+	if sig[64] < 27 {
+		sig[64] += 27
+	}
+	return "0x" + hex.EncodeToString(sig), minAmountOut, nil
+}
+
+func (m *MobulaBridge) quote(originChain, originToken, destChain, destToken, senderAddress, walletAddress string, amount float64, extraParams string) (*MobulaQuoteResponse, time.Duration, error) {
 	start := time.Now()
 
 	url := fmt.Sprintf(
@@ -99,6 +213,7 @@ func (m *MobulaBridge) GetQuote(originChain, originToken, destChain, destToken, 
 	if senderAddress != "" {
 		url += "&senderAddress=" + senderAddress
 	}
+	url += extraParams
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
