@@ -14,14 +14,74 @@ import (
 // like a benchmark execution. cmd/rebalance stays as the manual fallback.
 
 const (
-	// Two attempts per tier slot: one transfer plus one retry covers transient
-	// quote failures without letting a broken bridge drain the daily budget.
-	maxRebalanceAttemptsPerSlot = 2
+	// Two corrective transfers per SCHEDULER SLOT, shared across every rung
+	// of the downgrade ladder. One transfer plus one retry covers transient
+	// pre-broadcast failures without letting a broken bridge drain the daily
+	// budget. Before this was per rung, a single $300 slot could broadcast
+	// up to six transfers back to back.
+	maxCorrectiveTransfersPerSlot = 2
 
 	// Move 10 percent more than the computed shortfall so bridge fees and
 	// slippage on the transfer itself do not leave the leg short again.
 	rebalanceBufferFactor = 1.10
 )
+
+// slotBudget caps corrective transfers for one scheduler slot. A single
+// instance is created per slot and threaded through every ladder rung.
+type slotBudget struct {
+	remaining int
+	// inFlight marks that a corrective transfer broadcast a TX whose bridge
+	// status never resolved. The funds are most likely still moving (legit
+	// fills can take 2-5 minutes, longer than our status polling), so any
+	// rung that needs the same destination leg must stand down for the rest
+	// of the slot instead of double-sending.
+	inFlight      bool
+	inFlightChain string
+}
+
+func newSlotBudget() *slotBudget {
+	return &slotBudget{remaining: maxCorrectiveTransfersPerSlot}
+}
+
+// blockedByInFlight reports whether a rung needing refillChain must stand
+// down because an earlier transfer to that leg is still unresolved.
+func (b *slotBudget) blockedByInFlight(refillChain string) bool {
+	return b != nil && b.inFlight && strings.EqualFold(b.inFlightChain, refillChain)
+}
+
+// correctiveOutcome classifies a corrective transfer attempt for retry logic.
+type correctiveOutcome int
+
+const (
+	// outcomePreBroadcast: nothing left the wallet (quote failed, approval
+	// failed to broadcast, insufficient funds). Safe to consume another
+	// attempt from the slot budget.
+	outcomePreBroadcast correctiveOutcome = iota
+	// outcomeInFlight: a TX was broadcast but the attempt did not confirm as
+	// a success. The deposit may well have confirmed with the bridge fill
+	// still pending, so the funds must be assumed to be in flight. TERMINAL
+	// for the slot: retrying here is exactly how a double-send happens.
+	outcomeInFlight
+	// outcomeSuccess: the transfer confirmed end to end.
+	outcomeSuccess
+)
+
+// classifyCorrectiveResult decides whether a corrective transfer attempt may
+// be retried. Anything that produced a TxHash moved, or may have moved, real
+// funds and is terminal. Only failures that provably never broadcast are
+// safe to retry.
+func classifyCorrectiveResult(result *ExecutionResult) correctiveOutcome {
+	if result == nil {
+		return outcomePreBroadcast
+	}
+	if result.Success {
+		return outcomeSuccess
+	}
+	if result.TxHash != "" {
+		return outcomeInFlight
+	}
+	return outcomePreBroadcast
+}
 
 // legSpec describes one home leg of the USDC triangle.
 type legSpec struct {
@@ -142,22 +202,37 @@ func (r *Rebalancer) canAct() bool {
 	return r != nil && r.executor != nil && r.executor.txExecutor != nil && r.executor.txExecutor.CanExecute()
 }
 
-// TryUnblockTier attempts up to maxRebalanceAttemptsPerSlot corrective
-// transfers to make the given failed simulation viable. Returns the latest
-// simulation and whether the tier can now run. Callers must only pass
-// non-degraded balances: rebalancing on unreadable balances could move real
-// funds based on phantom zeros.
-func (r *Rebalancer) TryUnblockTier(sim CycleSimulation, balances map[string]map[string]float64, tierLabel string) (CycleSimulation, bool) {
+// TryUnblockTier attempts corrective transfers to make the given failed
+// simulation viable, consuming from the slot-wide budget shared across all
+// ladder rungs. Returns the latest simulation and whether the tier can now
+// run. Callers must only pass non-degraded balances: rebalancing on
+// unreadable balances could move real funds based on phantom zeros.
+func (r *Rebalancer) TryUnblockTier(sim CycleSimulation, balances map[string]map[string]float64, tierLabel string, budget *slotBudget) (CycleSimulation, bool) {
 	if !r.canAct() {
 		return sim, false
 	}
+	if budget == nil {
+		budget = newSlotBudget()
+	}
 
-	for attempt := 1; attempt <= maxRebalanceAttemptsPerSlot; attempt++ {
-		if r.executor.config.DailySpentUSD >= r.executor.config.MaxDailySpendUSD {
+	for {
+		if budget.blockedByInFlight(sim.RefillChain) {
+			log.Printf("🔧 Tier $%.0f needs %s but a corrective transfer to that leg is already in flight, standing down for this slot",
+				sim.Tier, sim.RefillChain)
+			return sim, false
+		}
+		if budget.remaining <= 0 {
+			bridgeRebalanceAttempts.WithLabelValues("capped").Inc()
+			_ = r.slack.NotifyRebalance("capped", fmt.Sprintf(
+				"Tier $%.0f (%s) still blocked (%s) but this slot's corrective transfer budget (%d) is spent. Standing down until next slot.",
+				sim.Tier, tierLabel, sim.Reason, maxCorrectiveTransfersPerSlot))
+			return sim, false
+		}
+		if spent := r.executor.DailySpent(); spent >= r.executor.config.MaxDailySpendUSD {
 			bridgeRebalanceAttempts.WithLabelValues("capped").Inc()
 			_ = r.slack.NotifyRebalance("capped", fmt.Sprintf(
 				"Tier $%.0f (%s) blocked (%s) but daily spend limit is reached ($%.2f / $%.2f). No rebalance attempted.",
-				sim.Tier, tierLabel, sim.Reason, r.executor.config.DailySpentUSD, r.executor.config.MaxDailySpendUSD))
+				sim.Tier, tierLabel, sim.Reason, spent, r.executor.config.MaxDailySpendUSD))
 			return sim, false
 		}
 
@@ -171,26 +246,45 @@ func (r *Rebalancer) TryUnblockTier(sim CycleSimulation, balances map[string]map
 			return sim, false
 		}
 
+		budget.remaining--
+		attempt := maxCorrectiveTransfersPerSlot - budget.remaining
 		bridgeRebalanceAttempts.WithLabelValues("attempted").Inc()
-		log.Printf("🔧 Rebalance attempt %d/%d: $%.2f %s -> %s (unblocks tier $%.0f)",
-			attempt, maxRebalanceAttemptsPerSlot, amountUSD, route.FromChain, route.ToChain, sim.Tier)
+		log.Printf("🔧 Rebalance attempt %d/%d (slot budget): $%.2f %s -> %s (unblocks tier $%.0f)",
+			attempt, maxCorrectiveTransfersPerSlot, amountUSD, route.FromChain, route.ToChain, sim.Tier)
 		_ = r.slack.NotifyRebalance("attempted", fmt.Sprintf(
-			"Tier $%.0f (%s) blocked: %s\nMoving $%.2f from %s %s to %s %s (attempt %d/%d).",
+			"Tier $%.0f (%s) blocked: %s\nMoving $%.2f from %s %s to %s %s (slot attempt %d/%d).",
 			sim.Tier, tierLabel, sim.Reason, amountUSD, route.FromChain, sourceSymbol(route), route.ToChain, sim.RefillToken,
-			attempt, maxRebalanceAttemptsPerSlot))
+			attempt, maxCorrectiveTransfersPerSlot))
 
 		result := r.ExecuteCheapest(route, amountUSD)
-		if result == nil || !result.Success {
+		switch classifyCorrectiveResult(result) {
+		case outcomeInFlight:
+			// The deposit TX exists on-chain but the bridge status never
+			// resolved. Funds are most likely still moving toward the short
+			// leg: any further transfer to that leg this slot would be a
+			// double send. Terminal for the whole scheduler slot.
+			budget.inFlight = true
+			budget.inFlightChain = sim.RefillChain
+			bridgeRebalanceAttempts.WithLabelValues("in_flight").Inc()
+			_ = r.slack.NotifyRebalance("in_flight", fmt.Sprintf(
+				"Corrective transfer for tier $%.0f broadcast (tx %s) but its bridge status did not resolve. Funds are likely still in flight: standing down until next slot to avoid a double send.",
+				sim.Tier, result.TxHash))
+			return sim, false
+
+		case outcomePreBroadcast:
 			bridgeRebalanceAttempts.WithLabelValues("failed").Inc()
 			detail := "no bridge produced a usable quote"
 			if result != nil && result.Error != nil {
 				detail = result.Error.Error()
 			}
 			_ = r.slack.NotifyRebalance("failed", fmt.Sprintf(
-				"Rebalance transfer for tier $%.0f failed: %s", sim.Tier, detail))
-		} else {
+				"Rebalance transfer for tier $%.0f failed before broadcast: %s", sim.Tier, detail))
+			// Nothing left the wallet, so another attempt is safe if the
+			// slot budget still allows one.
+			continue
+
+		case outcomeSuccess:
 			bridgeRebalanceAttempts.WithLabelValues("succeeded").Inc()
-			r.executor.config.DailySpentUSD += result.ActualFeeUSD
 			_ = r.slack.NotifyRebalance("succeeded", fmt.Sprintf(
 				"Moved $%.2f from %s to %s via %s (fee $%.4f, tx %s). Re-checking tier $%.0f viability.",
 				amountUSD, route.FromChain, route.ToChain, result.Bridge, result.ActualFeeUSD, result.TxHash, sim.Tier))
@@ -211,12 +305,6 @@ func (r *Rebalancer) TryUnblockTier(sim CycleSimulation, balances map[string]map
 			return sim, true
 		}
 	}
-
-	bridgeRebalanceAttempts.WithLabelValues("capped").Inc()
-	_ = r.slack.NotifyRebalance("capped", fmt.Sprintf(
-		"Tier $%.0f still not viable after %d rebalance attempts: %s",
-		sim.Tier, maxRebalanceAttemptsPerSlot, sim.Reason))
-	return sim, false
 }
 
 // ExecuteCheapest quotes all three executing bridges and broadcasts through
@@ -231,7 +319,12 @@ func (r *Rebalancer) ExecuteCheapest(route TestRoute, amountUSD float64) *Execut
 	log.Printf("🔧 Cheapest bridge for %s: %s (quoted fee $%.4f)", route.Name, bridge, fee)
 
 	rawUnits := toRawUnits(amountUSD)
-	return r.executor.executeOnBridge(bridge, route, amountUSD, amountUSD, rawUnits)
+	result := r.executor.executeOnBridge(bridge, route, amountUSD, amountUSD, rawUnits)
+	// Book the cost here so both callers (tier rebalancer and reaper) share
+	// the same accounting, including the flat estimate for broadcasts that
+	// never confirmed.
+	r.executor.accountSpend(result)
+	return result
 }
 
 // quoteCheapest fetches quotes from Mobula, Relay and LI.FI and returns the

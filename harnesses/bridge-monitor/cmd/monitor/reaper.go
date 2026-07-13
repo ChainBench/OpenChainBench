@@ -191,13 +191,23 @@ func reaperTick(fetch func() (map[string]map[string]float64, bool, error), rebal
 		return
 	}
 
-	if rebalancer.executor.config.DailySpentUSD >= rebalancer.executor.config.MaxDailySpendUSD {
+	if spent := rebalancer.executor.DailySpent(); spent >= rebalancer.executor.config.MaxDailySpendUSD {
 		_ = slack.NotifyReaper(fmt.Sprintf(
 			"$%.2f of %s stranded on %s for %.1fh, but daily spend limit is reached ($%.2f / $%.2f). Will retry next tick.",
 			amount, worst.Token, worst.Chain, worstHours,
-			rebalancer.executor.config.DailySpentUSD, rebalancer.executor.config.MaxDailySpendUSD))
+			spent, rebalancer.executor.config.MaxDailySpendUSD))
 		return
 	}
+
+	// Single-flight: never broadcast while a scheduler slot (triangle run,
+	// rebalance, gas top-up) holds the execution lock. Skip instead of
+	// queueing: waiting here could fire a stale corrective transfer right
+	// after the slot already rebalanced the same leg.
+	if !execMu.TryLock() {
+		log.Printf("🧹 Reaper: execution lock busy (another actor is broadcasting), skipping corrective transfer this tick")
+		return
+	}
+	defer execMu.Unlock()
 
 	dest := neediestHomeLeg(balances)
 	if amount > reaperMaxTransferUSD {
@@ -219,19 +229,24 @@ func reaperTick(fetch func() (map[string]map[string]float64, bool, error), rebal
 		"Moving $%.2f of stranded %s from %s (stuck %.1fh) home to %s %s via cheapest bridge.",
 		amount, worst.Token, worst.Chain, worstHours, dest.Chain, dest.Token))
 
+	// ExecuteCheapest books the spend (realized fee on success, flat estimate
+	// for a broadcast that never confirmed), so no accounting here.
 	result := rebalancer.ExecuteCheapest(route, amount)
-	if result == nil || !result.Success {
+	switch classifyCorrectiveResult(result) {
+	case outcomeSuccess:
+		_ = slack.NotifyReaper(fmt.Sprintf(
+			"Corrective transfer succeeded via %s (fee $%.4f, tx %s).", result.Bridge, result.ActualFeeUSD, result.TxHash))
+	case outcomeInFlight:
+		_ = slack.NotifyReaper(fmt.Sprintf(
+			"Corrective transfer broadcast (tx %s) but its bridge status did not resolve. Funds may still be in flight; standing down, next tick re-evaluates fresh balances.",
+			result.TxHash))
+	default:
 		detail := "no bridge produced a usable quote"
 		if result != nil && result.Error != nil {
 			detail = result.Error.Error()
 		}
-		_ = slack.NotifyReaper(fmt.Sprintf("Corrective transfer FAILED: %s. Will retry next tick.", detail))
-		return
+		_ = slack.NotifyReaper(fmt.Sprintf("Corrective transfer FAILED before broadcast: %s. Will retry next tick.", detail))
 	}
-
-	rebalancer.executor.config.DailySpentUSD += result.ActualFeeUSD
-	_ = slack.NotifyReaper(fmt.Sprintf(
-		"Corrective transfer succeeded via %s (fee $%.4f, tx %s).", result.Bridge, result.ActualFeeUSD, result.TxHash))
 }
 
 // neediestHomeLeg returns the triangle leg with the lowest balance: stranded

@@ -105,6 +105,15 @@ func (g *GasTopper) CheckAndTopUp(balances map[string]map[string]float64) {
 				"Native gas is $%.2f but today's top-up budget ($%.2f) is already spent.", gasUSD, g.topupUSD))
 			continue
 		}
+		// Same daily-cap pre-check the executor applies before any broadcast:
+		// a top-up is still spend and must not blow past MaxDailySpendUSD.
+		if spent := g.executor.DailySpent(); spent >= g.executor.config.MaxDailySpendUSD {
+			bridgeGasTopup.WithLabelValues(gc.Chain, "capped").Inc()
+			_ = g.slack.NotifyGasTopUp(gc.Chain, "capped", fmt.Sprintf(
+				"Native gas is $%.2f but the daily spend limit is reached ($%.2f / $%.2f). No top-up attempted.",
+				gasUSD, spent, g.executor.config.MaxDailySpendUSD))
+			continue
+		}
 
 		amount := g.topupUSD - g.spentToday[gc.Chain]
 		if amount > g.topupUSD {
@@ -156,6 +165,9 @@ func (g *GasTopper) topUpChain(gc gasChain, amountUSD, gasUSD float64) {
 		time.Sleep(5 * time.Second)
 		if ok, err := g.executor.txExecutor.CheckEVMTxStatus(gc.Chain, approvalHash); err != nil || !ok {
 			bridgeGasTopup.WithLabelValues(gc.Chain, "failed").Inc()
+			// The approval TX was broadcast and likely paid gas even though
+			// it never confirmed: book the conservative estimate.
+			g.executor.AddDailySpend(failedTxFeeEstimateUSD())
 			_ = g.slack.NotifyGasTopUp(gc.Chain, "failed", "USDC approval not confirmed")
 			return
 		}
@@ -179,6 +191,9 @@ func (g *GasTopper) topUpChain(gc gasChain, amountUSD, gasUSD float64) {
 		time.Sleep(8 * time.Second)
 		if ok, err := g.executor.txExecutor.CheckEVMTxStatus(gc.Chain, txHash); err != nil || !ok {
 			bridgeGasTopup.WithLabelValues(gc.Chain, "failed").Inc()
+			// Broadcast happened: even a reverted or unconfirmed swap TX
+			// bled gas, so it counts toward the daily cap.
+			g.executor.AddDailySpend(failedTxFeeEstimateUSD())
 			_ = g.slack.NotifyGasTopUp(gc.Chain, "failed", fmt.Sprintf("Swap TX not confirmed or reverted: %s", txHash))
 			return
 		}
@@ -189,7 +204,7 @@ func (g *GasTopper) topUpChain(gc gasChain, amountUSD, gasUSD float64) {
 	for _, f := range quote.Estimate.FeeCosts {
 		fee += parseFloatOrZero(f.AmountUSD)
 	}
-	g.executor.config.DailySpentUSD += fee
+	g.executor.AddDailySpend(fee)
 	bridgeGasTopup.WithLabelValues(gc.Chain, "succeeded").Inc()
 	_ = g.slack.NotifyGasTopUp(gc.Chain, "succeeded", fmt.Sprintf(
 		"Swapped $%.2f USDC to %s (was $%.2f, fee $%.4f, tx %s). Daily budget used: $%.2f / $%.2f.",
