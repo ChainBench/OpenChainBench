@@ -4,6 +4,7 @@ import { z } from "zod";
 import { getBenchmark, getBenchmarks } from "@/data/benchmarks";
 import { SITE } from "@/data/site";
 import {
+  citableAsOf,
   citationQuote,
   fieldValue,
   headlineSentence,
@@ -225,7 +226,7 @@ const mcpHandler = createMcpHandler(
             leader: top,
             headline: headlineSentence(b),
             url: `${SITE.url}/benchmarks/${b.slug}`,
-            asOf: b.lastRunAt,
+            asOf: citableAsOf(b),
           };
         });
         return {
@@ -321,7 +322,7 @@ const mcpHandler = createMcpHandler(
           quote: citationQuote(b, SITE.url),
           pageUrl: `${SITE.url}/benchmarks/${b.slug}`,
           ogImage: `${SITE.url}/api/og/${b.slug}`,
-          asOf: b.lastRunAt,
+          asOf: citableAsOf(b),
           methodology: b.methodology,
           source: b.source,
         };
@@ -497,7 +498,10 @@ const mcpHandler = createMcpHandler(
         md.push(`- Page: ${SITE.url}/benchmarks/${b.slug}`);
         md.push(`- Source: ${b.source}`);
         md.push(`- License: CC-BY-4.0`);
-        md.push(`- Last sample: ${b.lastRunAt}`);
+        {
+          const asOf = citableAsOf(b);
+          md.push(`- Last sample: ${asOf ?? "(no measurement yet, draft)"}`);
+        }
         md.push("");
         md.push(`**Headline.** ${headlineSentence(b)}`);
         md.push("");
@@ -555,7 +559,7 @@ const mcpHandler = createMcpHandler(
           headline: headlineSentence(b),
           quote: citationQuote(b, SITE.url),
           pageUrl: `${SITE.url}/benchmarks/${b.slug}`,
-          asOf: b.lastRunAt,
+          asOf: citableAsOf(b),
           methodology: b.methodology,
           source: b.source,
         };

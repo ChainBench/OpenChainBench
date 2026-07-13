@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowLeft, ArrowUpRight } from "lucide-react";
 import { getBenchmark } from "@/data/benchmarks";
 import { Breadcrumb } from "@/components/breadcrumb";
+import { citableAsOf } from "@/lib/citation";
 import { liveResults } from "@/lib/provider-filters";
 import { fmtUnit } from "@/lib/format";
 import { capDescription } from "@/lib/seo-text";
@@ -363,7 +364,9 @@ export default async function BenchmarkChainPage({
         articleBody: `${keyFacts} ${stripInlineMarkdown(explainer.body)}`,
         image: `${SITE.url}/api/og/${benchmark.slug}`,
         datePublished: getBenchCreatedAt(benchmark.slug).toISOString(),
-        dateModified: benchmark.lastRunAt,
+        ...(citableAsOf(benchmark)
+          ? { dateModified: benchmark.lastRunAt }
+          : {}),
         author: { "@id": `${SITE.url}/#org` },
         publisher: { "@id": `${SITE.url}/#org` },
         about: { "@id": `${benchmarkUrl}#dataset` },
