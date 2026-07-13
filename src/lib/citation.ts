@@ -169,6 +169,13 @@ export type CiteBundle = {
   plain: string;
   bibtex: string;
   apa: string;
+  /** RIS record (Research Information Systems) for Zotero, EndNote,
+   *  Mendeley and every academic reference manager that speaks the
+   *  format. Same fields as bibtex, RIS field codes: TY (type),
+   *  AU (author), TI (title), PY (year), UR (url), Y2 (retrieved
+   *  date), ER (end record). Type GEN is the neutral fallback for a
+   *  dataset citation — RIS has no "benchmark" type. */
+  ris: string;
 };
 
 const MONTHS = [
@@ -202,6 +209,17 @@ export function citeBundle(
     plain: `OpenChainBench. "${b.title}". Retrieved ${isoDate}. ${url}`,
     bibtex: `@misc{${bibKey},\n  author = {OpenChainBench},\n  title  = {${b.title}},\n  year   = {${yyyy}},\n  url    = {${url}},\n  note   = {Retrieved ${isoDate}}\n}`,
     apa: `OpenChainBench. (${yyyy}). ${b.title}. Retrieved ${longDate}, from ${url}`,
+    // RIS records use CRLF line endings by convention (RFC-style),
+    // which every consumer we've tested (Zotero 6+, EndNote 20+,
+    // Mendeley) accepts either way — using \r\n stays safe.
+    ris:
+      `TY  - GEN\r\n` +
+      `AU  - OpenChainBench\r\n` +
+      `TI  - ${b.title}\r\n` +
+      `PY  - ${yyyy}\r\n` +
+      `UR  - ${url}\r\n` +
+      `Y2  - ${isoDate}\r\n` +
+      `ER  - \r\n`,
   };
 }
 
