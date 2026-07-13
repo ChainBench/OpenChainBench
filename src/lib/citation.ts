@@ -25,8 +25,13 @@ function citationCandidates(b: Benchmark): ProviderResult[] {
  *  a wall-clock `lastRunAt` for type safety (Benchmark.lastRunAt is a
  *  non-nullable string), which downstream JSON, JSON-LD and MCP surfaces
  *  would otherwise expose as a real freshness signal to LLM crawlers.
- *  Use this helper on every machine-readable surface. */
-export function citableAsOf(b: Benchmark): string | null {
+ *  Use this helper on every machine-readable surface.
+ *
+ *  Accepts any object that carries `status` + `lastRunAt` so the slim
+ *  `ProviderAppearance.benchmark` (a Pick of Benchmark) can use it too. */
+export function citableAsOf(
+  b: Pick<Benchmark, "status" | "lastRunAt">,
+): string | null {
   return b.status === "draft" ? null : b.lastRunAt;
 }
 
