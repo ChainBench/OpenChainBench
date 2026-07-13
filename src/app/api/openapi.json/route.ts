@@ -158,6 +158,83 @@ export async function GET() {
           },
         },
       },
+      "/api/sparkline/{slug}": {
+        get: {
+          summary:
+            "Standalone SVG sparkline of the current leader's 24 h series. Small enough to inline in Perplexity Pages, Notion, dev.to, and any embed that speaks img/svg. Query params: w (default 240), h (default 60), theme (light|dark).",
+          operationId: "get_sparkline_svg",
+          parameters: [
+            { name: "slug", in: "path", required: true, schema: { type: "string" } },
+            {
+              name: "w",
+              in: "query",
+              required: false,
+              schema: { type: "integer", minimum: 40, maximum: 1200 },
+              description: "Width in pixels. Defaults to 240.",
+            },
+            {
+              name: "h",
+              in: "query",
+              required: false,
+              schema: { type: "integer", minimum: 20, maximum: 400 },
+              description: "Height in pixels. Defaults to 60.",
+            },
+            {
+              name: "theme",
+              in: "query",
+              required: false,
+              schema: { type: "string", enum: ["light", "dark"] },
+              description: "Stroke and background. Defaults to `light`.",
+            },
+          ],
+          responses: {
+            "200": {
+              description: "SVG",
+              content: { "image/svg+xml": {} },
+            },
+            "404": { description: "Unknown slug" },
+          },
+        },
+      },
+      "/api/cite/{slug}/{format}": {
+        get: {
+          summary:
+            "Per-bench citation record with the correct MIME so Zotero, EndNote, Mendeley, Google Scholar and Perplexity's cite-picker recognize the response as an importable citation rather than plain text.",
+          operationId: "get_citation_file",
+          parameters: [
+            {
+              name: "slug",
+              in: "path",
+              required: true,
+              schema: { type: "string" },
+              description: "Benchmark slug.",
+            },
+            {
+              name: "format",
+              in: "path",
+              required: true,
+              schema: {
+                type: "string",
+                enum: ["bib", "ris", "apa", "txt"],
+              },
+              description:
+                "bib -> application/x-bibtex, ris -> application/x-research-info-systems, apa/txt -> text/plain.",
+            },
+          ],
+          responses: {
+            "200": {
+              description: "Citation record",
+              content: {
+                "application/x-bibtex": {},
+                "application/x-research-info-systems": {},
+                "text/plain": {},
+              },
+            },
+            "400": { description: "Malformed slug or unknown format" },
+            "404": { description: "Unknown slug" },
+          },
+        },
+      },
       "/api/llm-context": {
         get: {
           summary:
