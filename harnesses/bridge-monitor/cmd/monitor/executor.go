@@ -899,6 +899,12 @@ func (e *Executor) recordExecutionMetrics(result *ExecutionResult) {
 		result.Route.ToToken,
 		amountStr,
 		e.region,
+		// chain dimension label, same convention as every quote path
+		// (mobula_bridge.go etc). This 8th label was missed when the
+		// metrics gained the chain dimension, and because execution was
+		// paused in prod the mismatch only surfaced at the first real
+		// single-test (panic: inconsistent label cardinality).
+		result.Route.ToChain,
 	}
 
 	// Record latencies
