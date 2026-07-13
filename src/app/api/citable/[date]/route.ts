@@ -3,6 +3,7 @@ import { getBenchmarks } from "@/data/benchmarks";
 import { SITE } from "@/data/site";
 import { AllBenchmarksDraftError } from "@/lib/spec";
 import { citeBundle, fieldValue, leader, headlineSentence } from "@/lib/citation";
+import { valueInDeclaredUnit } from "@/lib/format";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
@@ -111,6 +112,13 @@ export async function GET(
   const data = benches.map((b) => {
     const top = leader(b);
     const insufficient = b.dataConfidence === "insufficient";
+    // `value` and `leader.value` are published in the declared `unit`.
+    // Latency benches with unit "s" store ms internally (fmtUnit
+    // convention); valueInDeclaredUnit converts so a snapshot never
+    // claims 627 seconds for a 627 ms head lag. Same conversion as
+    // the live /api/citable route; missing here caused sub-1 unit
+    // values to leak through as their internal ms representation.
+    const raw = insufficient ? null : fieldValue(b);
     return {
       slug: b.slug,
       title: b.title,
@@ -118,17 +126,24 @@ export async function GET(
       metric: b.metric,
       unit: b.unit,
       status: b.status,
-      value: insufficient ? null : fieldValue(b),
+      value: raw == null ? null : valueInDeclaredUnit(raw, b.unit),
       leader:
         insufficient
           ? null
           : top
-            ? { name: top.name, slug: top.slug, value: top.value }
+            ? {
+                name: top.name,
+                slug: top.slug,
+                value: valueInDeclaredUnit(top.value, b.unit),
+              }
             : null,
       sampleSize: b.sampleSize,
       expectedN: b.expectedN,
       dataConfidence: b.dataConfidence,
-      asOf: b.lastRunAt,
+      // Same rule as the live /api/citable route: draft benches carry
+      // a wall-clock `lastRunAt` for type safety, not a real
+      // measurement, so null it here rather than spoofing freshness.
+      asOf: b.status === "draft" ? null : b.lastRunAt,
       headline: headlineSentence(b),
       url: `${SITE.url}/benchmarks/${b.slug}`,
       api: `${SITE.url}/api/stat/${b.slug}`,

@@ -33,7 +33,28 @@ export async function GET(
   if (!SLUG_RE.test(slug)) {
     return NextResponse.json({ error: "bad_slug" }, { status: 400 });
   }
-  const b = await getBenchmark(slug);
+  // Dimension query params (?chain=, ?region=, ?kind=, ?venue=) mirror
+  // the same client-side selector on the bench page, so a citer asking
+  // "fastest ethereum us-east RPC" gets the per cell leader instead of
+  // the cross chain aggregate. Values are pass-through; the loader
+  // validates each against the bench's declared dimensions and falls
+  // back to unfiltered when a value is unknown.
+  const url = new URL(req.url);
+  const filters: {
+    chain?: string;
+    region?: string;
+    kind?: string;
+    venue?: string;
+  } = {};
+  const chainParam = url.searchParams.get("chain");
+  const regionParam = url.searchParams.get("region");
+  const kindParam = url.searchParams.get("kind");
+  const venueParam = url.searchParams.get("venue");
+  if (chainParam && chainParam !== "all") filters.chain = chainParam;
+  if (regionParam && regionParam !== "all") filters.region = regionParam;
+  if (kindParam && kindParam !== "all") filters.kind = kindParam;
+  if (venueParam && venueParam !== "all") filters.venue = venueParam;
+  const b = await getBenchmark(slug, filters);
   if (!b || b.editorialStatus !== "live") {
     return NextResponse.json(
       { error: "unknown_slug", slug },
