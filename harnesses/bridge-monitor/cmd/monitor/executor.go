@@ -133,12 +133,21 @@ func (e *Executor) RunDryRun(route TestRoute, amountUSD float64) *ExecutionResul
 
 	log.Printf("🧪 [DRY-RUN] Testing %s with $%.0f", route.Name, amountUSD)
 
-	// Step 1: Check balances
+	// Step 1: Check balances. Keyless dry-run has no balance checker, so fall
+	// back to the SIMULATE_BALANCES snapshot instead of crashing.
 	log.Printf("  📊 Checking balances...")
-	balances, err := e.balanceCheck.GetAllBalances()
-	if err != nil {
-		log.Printf("  ❌ Balance check failed: %v", err)
-		result.Error = err
+	var balances map[string]map[string]float64
+	if e.balanceCheck != nil {
+		var err error
+		balances, err = e.balanceCheck.GetAllBalances()
+		if err != nil {
+			log.Printf("  ❌ Balance check failed: %v", err)
+			result.Error = err
+			return result
+		}
+	} else if balances = SimulateBalances(); balances == nil {
+		log.Printf("  ❌ No balance checker and SIMULATE_BALANCES not set")
+		result.Error = fmt.Errorf("no balance source in dry-run")
 		return result
 	}
 
