@@ -113,7 +113,12 @@ func spendStatePath() string {
 	if p := strings.TrimSpace(os.Getenv("SPEND_STATE_PATH")); p != "" {
 		return p
 	}
-	return "./spend-state.json"
+	// Dry-run gets its own default file so simulated spend never eats the
+	// production budget when both run on the same host (review pass 2).
+	if strings.EqualFold(strings.TrimSpace(os.Getenv("EXECUTION_MODE")), "production") {
+		return "./spend-state.json"
+	}
+	return "./spend-state.dryrun.json"
 }
 
 // failedTxFeeEstimateUSD is booked against the daily cap for any broadcast
