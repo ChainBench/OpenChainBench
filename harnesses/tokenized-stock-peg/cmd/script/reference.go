@@ -77,7 +77,7 @@ func fetchReferencePrices(client *http.Client) map[string]refQuote {
 			} `json:"result"`
 		} `json:"spark"`
 	}
-	if err := json.Unmarshal(raw, &envel); err == nil && len(envel.Spark.Result) > 0 {
+	if err := json.Unmarshal(raw, &envel); err == nil {
 		for _, r := range envel.Spark.Result {
 			if len(r.Response) == 0 || r.Response[0].Meta.RegularMarketPrice <= 0 {
 				continue
@@ -87,27 +87,48 @@ func fetchReferencePrices(client *http.Client) map[string]refQuote {
 				AsOfSec: r.Response[0].Meta.RegularMarketTime,
 			}
 		}
-		return prices
 	}
-	var flat map[string]struct {
-		RegularMarketPrice float64 `json:"regularMarketPrice"`
-		Timestamp          []int64 `json:"timestamp"`
-	}
-	if err := json.Unmarshal(raw, &flat); err == nil {
-		for sym, v := range flat {
-			if v.RegularMarketPrice <= 0 {
-				continue
-			}
-			q := refQuote{Price: v.RegularMarketPrice}
-			if n := len(v.Timestamp); n > 0 {
-				q.AsOfSec = v.Timestamp[n-1]
-			}
-			prices[strings.ToLower(sym)] = q
+	if len(prices) == 0 {
+		// Flat spark shape (observed live 2026-07-13):
+		// {"MSFT":{"timestamp":[...],"close":[...],"previousClose":X},...}
+		// Price = last non-null close; previousClose is the fallback when
+		// the close array is empty (market closed all day).
+		var flat map[string]struct {
+			Timestamp     []int64    `json:"timestamp"`
+			Close         []*float64 `json:"close"`
+			PreviousClose *float64   `json:"previousClose"`
 		}
-		return prices
+		if err := json.Unmarshal(raw, &flat); err == nil {
+			for sym, v := range flat {
+				q := refQuote{}
+				for i := len(v.Close) - 1; i >= 0; i-- {
+					if v.Close[i] != nil && *v.Close[i] > 0 {
+						q.Price = *v.Close[i]
+						if i < len(v.Timestamp) {
+							q.AsOfSec = v.Timestamp[i]
+						}
+						break
+					}
+				}
+				if q.Price == 0 && v.PreviousClose != nil && *v.PreviousClose > 0 {
+					q.Price = *v.PreviousClose
+				}
+				if q.Price > 0 {
+					prices[strings.ToLower(sym)] = q
+				}
+			}
+		}
 	}
-	tspSourceCall.WithLabelValues("yahoo", "parse").Inc()
-	return nil
+	if len(prices) == 0 {
+		tspSourceCall.WithLabelValues("yahoo", "parse_empty").Inc()
+		head := string(raw)
+		if len(head) > 400 {
+			head = head[:400]
+		}
+		fmt.Printf("[yahoo] spark yielded no symbols; body head: %s\n", head)
+		return nil
+	}
+	return prices
 }
 
 // fetchTradingPeriods reads currentTradingPeriod from one chart call.
