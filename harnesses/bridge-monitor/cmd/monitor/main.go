@@ -247,6 +247,7 @@ func main() {
 		log.Println("⚠️  This will execute REAL transactions!")
 
 		bridges := []string{"mobula", "relay", "lifi"}
+		execMu.Lock()
 		for _, bridge := range bridges {
 			log.Printf("\n━━━ Bridge: %s ━━━", bridge)
 			for _, route := range triangleRoutes {
@@ -255,6 +256,7 @@ func main() {
 				time.Sleep(2 * time.Second)
 			}
 		}
+		execMu.Unlock()
 
 		log.Println("\n✅ Single-test complete! Exiting.")
 		return
@@ -369,9 +371,11 @@ func main() {
 				now := time.Now().UTC()
 				if now.Weekday() == time.Monday && now.YearDay() != lastMemeDay {
 					log.Println("💸 Running $5 meme execution tests (weekly)...")
+					execMu.Lock()
 					for _, route := range GetMemeRoutes() {
 						executor.RunReal(route, 5.0)
 					}
+					execMu.Unlock()
 					lastMemeDay = now.YearDay()
 				}
 			}
@@ -420,8 +424,19 @@ func runTierIfViable(executor *Executor, bc *BalanceChecker, slack *SlackNotifie
 		return false
 	}
 
+	// Single-flight: this slot owns the wallets end to end (gas top-up,
+	// corrective rebalances, triangle runs). The reaper TryLocks and skips
+	// its corrective action while this is held.
+	execMu.Lock()
+	defer execMu.Unlock()
+
 	ladder := downgradeLadder(tier)
 	blockedReason := ""
+
+	// ONE corrective-transfer budget for the whole scheduler slot, shared by
+	// every ladder rung. Without sharing, each rung consumed its own attempt
+	// counter and a single slot could broadcast up to six transfers.
+	budget := newSlotBudget()
 
 	for i, amount := range ladder {
 		balances, degraded, err := bc.GetAllBalancesDetailed()
@@ -444,7 +459,7 @@ func runTierIfViable(executor *Executor, bc *BalanceChecker, slack *SlackNotifie
 
 		sim := SimulateTriangleCycle(balances, amount)
 		if !sim.Viable && rebalancer != nil {
-			sim, _ = rebalancer.TryUnblockTier(sim, balances, tierLabel)
+			sim, _ = rebalancer.TryUnblockTier(sim, balances, tierLabel, budget)
 		}
 		if !sim.Viable {
 			if blockedReason == "" {

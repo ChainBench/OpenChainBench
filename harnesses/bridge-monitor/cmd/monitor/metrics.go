@@ -137,10 +137,11 @@ var (
 		Help: "1 if wallet balances are currently unreadable via both API and RPC, 0 otherwise",
 	})
 
-	// Auto-rebalance attempts by outcome: attempted, succeeded, failed, capped.
+	// Auto-rebalance attempts by outcome: attempted, succeeded, failed,
+	// capped, in_flight (broadcast whose bridge status never resolved).
 	bridgeRebalanceAttempts = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "bridge_rebalance_attempts_total",
-		Help: "Total automatic rebalance attempts by outcome (attempted, succeeded, failed, capped)",
+		Help: "Total automatic rebalance attempts by outcome (attempted, succeeded, failed, capped, in_flight)",
 	}, []string{"outcome"})
 
 	// Set to 1 when a scheduled tier was downgraded to a smaller amount because
@@ -171,7 +172,7 @@ var (
 // query, so the series exist on /metrics from process start instead of only
 // after the first event.
 func initSelfHealingMetrics() {
-	for _, outcome := range []string{"attempted", "succeeded", "failed", "capped"} {
+	for _, outcome := range []string{"attempted", "succeeded", "failed", "capped", "in_flight"} {
 		bridgeRebalanceAttempts.WithLabelValues(outcome).Add(0)
 	}
 	bridgeTierDowngraded.WithLabelValues("300", "50").Set(0)

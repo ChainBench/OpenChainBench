@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"math"
 	"testing"
 	"time"
@@ -117,6 +118,74 @@ func TestDowngradeLadder(t *testing.T) {
 				break
 			}
 		}
+	}
+}
+
+func TestClassifyCorrectiveResult(t *testing.T) {
+	if got := classifyCorrectiveResult(nil); got != outcomePreBroadcast {
+		t.Errorf("nil result: got %v, want pre-broadcast", got)
+	}
+	if got := classifyCorrectiveResult(&ExecutionResult{Success: true, TxHash: "0xabc"}); got != outcomeSuccess {
+		t.Errorf("confirmed fill: got %v, want success", got)
+	}
+	// A broadcast whose status never resolved is TERMINAL: the deposit may
+	// have confirmed with the fill still pending, so a retry double-sends.
+	if got := classifyCorrectiveResult(&ExecutionResult{Success: false, TxHash: "0xabc", Error: fmt.Errorf("status poll failed: timeout")}); got != outcomeInFlight {
+		t.Errorf("status timeout with TxHash: got %v, want in-flight", got)
+	}
+	// A revert or refund also carries a hash and stays terminal for the slot.
+	if got := classifyCorrectiveResult(&ExecutionResult{Reverted: true, TxHash: "0xabc"}); got != outcomeInFlight {
+		t.Errorf("reverted with TxHash: got %v, want in-flight", got)
+	}
+	// Pre-broadcast failures (quote failed, approval failed to broadcast,
+	// insufficient funds) have no hash and may consume another attempt.
+	if got := classifyCorrectiveResult(&ExecutionResult{Error: fmt.Errorf("quote failed")}); got != outcomePreBroadcast {
+		t.Errorf("quote failure: got %v, want pre-broadcast", got)
+	}
+}
+
+func TestSlotBudgetSharedAcrossRungs(t *testing.T) {
+	if maxCorrectiveTransfersPerSlot != 2 {
+		t.Fatalf("slot budget must be 2 corrective transfers, got %d", maxCorrectiveTransfersPerSlot)
+	}
+	b := newSlotBudget()
+	if b.remaining != 2 {
+		t.Fatalf("fresh budget: got %d remaining, want 2", b.remaining)
+	}
+
+	// Rung 1 ($300) consumes one attempt, rung 2 ($50) consumes the second:
+	// the SAME budget instance is threaded through the ladder, so rung 3
+	// ($5) has nothing left. Per-rung counters allowed up to 6 transfers.
+	b.remaining--
+	b.remaining--
+	if b.remaining > 0 {
+		t.Fatalf("after two attempts across rungs the slot budget must be exhausted, got %d", b.remaining)
+	}
+}
+
+func TestSlotBudgetInFlightBlocksSameLeg(t *testing.T) {
+	b := newSlotBudget()
+	if b.blockedByInFlight("Solana") {
+		t.Fatal("fresh budget must not block any leg")
+	}
+
+	// A transfer to Solana broadcast but never resolved: every later rung
+	// needing Solana stands down, regardless of remaining budget.
+	b.inFlight = true
+	b.inFlightChain = "Solana"
+	if !b.blockedByInFlight("Solana") {
+		t.Error("rung needing the in-flight leg must stand down")
+	}
+	if !b.blockedByInFlight("solana") {
+		t.Error("leg matching must be case-insensitive")
+	}
+	if b.blockedByInFlight("Base") {
+		t.Error("a rung needing a different leg is not blocked by the in-flight transfer")
+	}
+
+	var nilBudget *slotBudget
+	if nilBudget.blockedByInFlight("Solana") {
+		t.Error("nil budget must not block")
 	}
 }
 
