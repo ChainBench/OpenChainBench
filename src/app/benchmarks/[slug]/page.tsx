@@ -35,6 +35,7 @@ import { buildBreadcrumbJsonLd, buildFaqPageJsonLd, safeJsonLd } from "@/lib/jso
 import {
   buildBenchDatasetJsonLd,
   buildBenchStatReportJsonLd,
+  buildBenchVariableMeasured,
 } from "@/lib/dataset-jsonld";
 import { renderTemplate } from "@/lib/bench-template";
 import { canonicalChainSlug } from "@/lib/chain-aliases";
@@ -288,16 +289,29 @@ export default async function BenchmarkPage({
   // never emit a structured "Observation" with a fabricated value.
   const currentLeader = leader(benchmark);
   // variableMeasured ships as an array so Google's Dataset validator
-  // reports each statistical aggregate individually rather than as one
-  // opaque string. Order matches what /api/stat/<slug> returns per
-  // provider, so a crawler can map field names 1:1.
-  const variableMeasured = [
-    benchmark.metric,
-    `${benchmark.metric}_p50`,
-    `${benchmark.metric}_p90`,
-    `${benchmark.metric}_p99`,
-    "sample_size",
-  ];
+  // reports each statistical aggregate individually. When a defensible
+  // leader exists the p50/p90/p99 aggregates ship as PropertyValue
+  // objects with the numeric value in the declared unit, so Google
+  // Dataset Search and academic LLM tools extract the measurement as a
+  // structured fact rather than opaque axis labels. Drafts and
+  // insufficient benches fall back to bare strings so we never publish
+  // a fabricated numeric aggregate.
+  const leaderResult = currentLeader
+    ? benchmark.results.find((r) => r.slug === currentLeader.slug)
+    : undefined;
+  const variableMeasured = buildBenchVariableMeasured({
+    metric: benchmark.metric,
+    unit: benchmark.unit,
+    leader:
+      currentLeader && leaderResult
+        ? {
+            name: currentLeader.name,
+            p50: valueInDeclaredUnit(leaderResult.ms.p50, benchmark.unit),
+            p90: valueInDeclaredUnit(leaderResult.ms.p90, benchmark.unit),
+            p99: valueInDeclaredUnit(leaderResult.ms.p99, benchmark.unit),
+          }
+        : null,
+  });
   const datasetNode = {
     ...buildBenchDatasetJsonLd({
       slug: benchmark.slug,

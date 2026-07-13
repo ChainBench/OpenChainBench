@@ -117,21 +117,84 @@ export const GLOBAL_DATASET_JSONLD = {
 /** Inputs for a per-bench Dataset entry. Keeps the call site at
  *  /benchmarks/[slug] decoupled from the Benchmark type so the helper is
  *  trivially reusable from the per-chain page and future variants. */
+/** Schema.org PropertyValue node used inside variableMeasured to publish
+ *  a measured aggregate with its numeric value. This is the shape Google
+ *  Dataset Search + academic LLM tools extract as a structured fact,
+ *  unlike a bare label string which is opaque to a crawler.
+ *
+ *  `value` is the current leader's p50 (or leader's p90/p99) expressed in
+ *  the same unit as `unitText`; downstream consumers can key on
+ *  `propertyID` for machine matching and on `name` for display. */
+export type VariableMeasuredValue = {
+  "@type": "PropertyValue";
+  propertyID: string;
+  name: string;
+  value: number;
+  unitText: string;
+};
+
 export type BenchDatasetInput = {
   slug: string;
   name: string;
   alternateName?: string;
   description: string;
   url: string;
-  /** Schema.org Dataset accepts variableMeasured as a string or array.
-   *  We pass an array of metric labels (p50, p90, p99, sample_size, ...)
-   *  so Google's validator reports each metric individually. */
-  variableMeasured: string[];
+  /** Schema.org Dataset accepts variableMeasured as a string, a
+   *  PropertyValue, or an array mixing both. Pass PropertyValue objects
+   *  when the current leader's numeric aggregates are available (Google
+   *  Dataset Search / academic LLM tools index the numeric `value`
+   *  directly); fall back to bare label strings for drafts or when the
+   *  aggregate is `sample_size`-shaped rather than a per-percentile
+   *  measurement. */
+  variableMeasured: Array<string | VariableMeasuredValue>;
   category: string;
   datePublished: string;
   dateModified?: string;
   measurementTechnique?: string;
 };
+
+/** Build the `variableMeasured` array for a bench Dataset node.
+ *  - When the leader carries a real numeric p50 (and unit), the p50 /
+ *    p90 / p99 percentiles ship as PropertyValue objects so Google
+ *    Dataset Search and academic LLM tools extract the numeric fact
+ *    without parsing prose.
+ *  - `sample_size` and the bare metric label stay as strings — they
+ *    describe axes, not measured values.
+ *  - When no defensible leader exists (draft, insufficient) the array
+ *    degrades to the legacy string-only shape so we never publish a
+ *    fabricated PropertyValue with a zero-fallback value. */
+export function buildBenchVariableMeasured(input: {
+  metric: string;
+  unit: string;
+  leader: { name: string; p50: number; p90: number; p99: number } | null;
+}): Array<string | VariableMeasuredValue> {
+  if (!input.leader || input.leader.p50 <= 0) {
+    return [
+      input.metric,
+      `${input.metric}_p50`,
+      `${input.metric}_p90`,
+      `${input.metric}_p99`,
+      "sample_size",
+    ];
+  }
+  const mk = (
+    suffix: "p50" | "p90" | "p99",
+    value: number,
+  ): VariableMeasuredValue => ({
+    "@type": "PropertyValue",
+    propertyID: `${input.metric.toLowerCase().replace(/\s+/g, "_")}_${suffix}`,
+    name: `${input.metric} ${suffix}`,
+    value,
+    unitText: input.unit,
+  });
+  return [
+    input.metric,
+    mk("p50", input.leader.p50),
+    mk("p90", input.leader.p90),
+    mk("p99", input.leader.p99),
+    "sample_size",
+  ];
+}
 
 /** Inputs for the per-bench StatisticalReport companion node. Wrapping
  *  the single-leader claim as `StatisticalReport` + inline `Observation`
@@ -220,7 +283,12 @@ export function buildBenchDatasetJsonLd(
     keywords: [
       input.category,
       ...KEYWORDS,
-      ...input.variableMeasured,
+      // Keywords should stay flat strings for indexer compat, so pull
+      // the display name off any PropertyValue entries rather than
+      // leaking `[object Object]` into the graph.
+      ...input.variableMeasured.map((v) =>
+        typeof v === "string" ? v : v.name,
+      ),
     ],
     creator: CREATOR_PUBLISHER,
     publisher: CREATOR_PUBLISHER,
