@@ -63,11 +63,7 @@ func NewStrandedTracker() *StrandedTracker {
 // the exported gauge resets. Pure given (balances, now), unit-tested.
 func (t *StrandedTracker) Update(balances map[string]map[string]float64, now time.Time) map[strandKey]float64 {
 	hours := make(map[strandKey]float64)
-
-	// Zero out anything previously tracked; re-add below if still stranded.
-	for k := range t.firstSeen {
-		hours[k] = 0
-	}
+	current := make(map[strandKey]bool)
 
 	for chain, tokens := range balances {
 		home := homeTokens[chain]
@@ -77,10 +73,10 @@ func (t *StrandedTracker) Update(balances map[string]map[string]float64, now tim
 				continue
 			}
 			if usd <= strandedDustUSD || (home != nil && home[token]) {
-				delete(t.firstSeen, strandKey{chain, token})
 				continue
 			}
 			k := strandKey{chain, token}
+			current[k] = true
 			first, seen := t.firstSeen[k]
 			if !seen {
 				first = now
@@ -90,14 +86,12 @@ func (t *StrandedTracker) Update(balances map[string]map[string]float64, now tim
 		}
 	}
 
-	// Drop firstSeen entries that vanished from the snapshot entirely.
+	// Keys that just came home report an explicit 0 (so the exported gauge
+	// resets) and lose their firstSeen entry (so a later re-strand restarts
+	// the clock instead of inheriting the old one).
 	for k := range t.firstSeen {
-		if _, still := hours[k]; !still {
-			delete(t.firstSeen, k)
-		}
-	}
-	for k, h := range hours {
-		if h == 0 {
+		if !current[k] {
+			hours[k] = 0
 			delete(t.firstSeen, k)
 		}
 	}
