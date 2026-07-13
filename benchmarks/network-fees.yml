@@ -2,10 +2,10 @@
 
 slug: network-fees
 number: "031"
-title: Cheapest blockchain transaction fee, live across 14 L1 and L2 chains
+title: Cheapest blockchain transaction fee, live across 15 L1 and L2 chains
 seo_title: "Cheapest crypto transaction fee 2026"
-seo_description: "Cheapest blockchain transaction fee in USD live across 14 chains. Solana, Base, Arbitrum, BNB Chain ranked."
-subtitle: "Live USD cost of one native token transaction on 14 Layer 1 and Layer 2 chains, refreshed every 30 seconds."
+seo_description: "Cheapest blockchain transaction fee in USD live across 15 chains. Solana, Base, Robinhood Chain, Arbitrum, BNB ranked."
+subtitle: "Live USD cost of one native token transaction on 15 Layer 1 and Layer 2 chains, refreshed every 30 seconds."
 
 seo_intro: |
   This page answers one question. How much does it cost in dollars to send one transaction on each major blockchain right now. We track 14 chains in parallel and refresh the number every 30 seconds. The eight Layer 1 chains are Ethereum, Solana, BNB Chain, TRON, Cardano, Sui, Litecoin and Monero. The six Layer 2 rollups are Arbitrum, Base, zkSync Era, Linea, Mantle and Taiko. For every chain we query its own fee market directly (eth_feeHistory for the EVM family, getRecentPrioritizationFees on Solana, koios epoch params on Cardano, get_fee_estimate on Monero, the mempool oracle on Litecoin, getChainParameters on TRON, suix_getReferenceGasPrice on Sui), convert the result to the smallest native unit, then multiply by the live USD price of the chain's native token from Mobula. The output is the actual dollar amount a wallet user pays today. No gwei to lamport conversion, no marketing claim. Compare Ethereum gas now versus Solana fee in USD, see whether Arbitrum is still cheaper than Base today, find out which Layer 1 has the lowest transaction cost this minute.
@@ -71,6 +71,10 @@ per_chain_explainer:
     h2: "Arbitrum transaction fee"
     body: |
       Arbitrum One native transfer fee is {{p50:arbitrum}} (p50, 24h). Arbitrum Nitro runs an EIP-1559 fee market against the sequencer at sub-second cadence; native ETH transfers are 21000 gas and sit at fractions of a cent because the sequencer's priority fee is near-zero by design. The L1 data-posting component (Ethereum blobs since Dencun) is not yet included in this figure, only L2 execution cost. Computed via `eth_feeHistory` on the Arbitrum sequencer RPC times live ETH price.
+  - slug: robinhood
+    h2: "Robinhood Chain transaction fee"
+    body: |
+      Robinhood Chain native transfer fee is {{p50:robinhood}} (p50, 24h). Robinhood's Arbitrum Orbit rollup posts a very low base fee (~0.05 gwei) and zero priority rewards, the typical Orbit pattern where the centralized sequencer needs no tip market; ETH is the gas asset and the L1 blob-posting cost is excluded from this figure like every other L2 on this page. Computed via `eth_feeHistory` on the official sequencer RPC times live ETH price.
   - slug: base
     h2: "Base transaction fee"
     body: |
@@ -264,6 +268,18 @@ providers:
       mean: avg_over_time(tx_fee_native_transfer_usd{chain="arbitrum",tier="std"}[24h])
       success: avg_over_time(tx_fee_health{chain="arbitrum"}[24h])
       series: tx_fee_native_transfer_usd{chain="arbitrum",tier="std"}
+  - slug: robinhood
+    name: Robinhood Chain
+    layer: l2
+    tag: "Arbitrum Orbit rollup Robinhood, 21000 gas"
+    formula: "Median USD cost of a native ETH transfer on Robinhood Chain over 24h. L2 execution cost only, L1 data posting fee excluded for now."
+    queries:
+      p50: quantile_over_time(0.50, tx_fee_native_transfer_usd{chain="robinhood",tier="std"}[24h])
+      p90: quantile_over_time(0.90, tx_fee_native_transfer_usd{chain="robinhood",tier="fast"}[24h])
+      p99: quantile_over_time(0.99, tx_fee_native_transfer_usd{chain="robinhood",tier="fast"}[24h])
+      mean: avg_over_time(tx_fee_native_transfer_usd{chain="robinhood",tier="std"}[24h])
+      success: avg_over_time(tx_fee_health{chain="robinhood"}[24h])
+      series: tx_fee_native_transfer_usd{chain="robinhood",tier="std"}
   - slug: base
     name: Base
     layer: l2

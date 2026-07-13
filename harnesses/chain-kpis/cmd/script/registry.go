@@ -52,6 +52,7 @@ var Registry = []Chain{
 	{Slug: "arbitrum", DefiLlama: "Arbitrum", Mobula: "Arbitrum", NativeSymbol: "ETH"},
 	{Slug: "optimism", DefiLlama: "Optimism", Mobula: "Optimistic", NativeSymbol: "ETH"},
 	{Slug: "base", DefiLlama: "Base", Mobula: "Base", NativeSymbol: "ETH"},
+	{Slug: "robinhood", DefiLlama: "Robinhood Chain", Mobula: "Robinhood Chain", NativeSymbol: "ETH"},
 	{Slug: "zksync", DefiLlama: "ZKsync Era", Mobula: "ZkSync", NativeSymbol: "ETH"},
 	{Slug: "linea", DefiLlama: "Linea", Mobula: "Linea", NativeSymbol: "ETH"},
 	{Slug: "scroll", DefiLlama: "Scroll", Mobula: "Scroll", NativeSymbol: "ETH"},

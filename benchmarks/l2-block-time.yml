@@ -2,12 +2,16 @@
 
 slug: l2-block-time
 number: "009"
-title: Fastest L2 block time, live across Arbitrum, Base, Optimism and 6 more
+title: Fastest L2 block time, live across Robinhood, Arbitrum, Base and 7 more
 seo_title: "Fastest L2 block time 2026"
-seo_description: "Fastest L2 sequencer block time live: Arbitrum, Blast, Optimism, Base, Linea and more ranked by newHeads interval."
+seo_description: "Fastest L2 sequencer block time live: Robinhood Chain, Arbitrum, Optimism, Base, Linea and more ranked by real block interval."
 subtitle: Wall-clock interval in milliseconds between two consecutive newHeads events on each L2 sequencer, refreshed continuously.
 
 per_chain_explainer:
+  - slug: robinhood
+    h2: "Robinhood Chain block time"
+    body: |
+      Robinhood Chain block time is {{p50:robinhood}} (p50, 24h), the most aggressive cadence in the cohort: the Arbitrum Orbit stack lets Robinhood's sequencer target ~100 ms blocks for tokenized-stock settlement. The chain launched mainnet on July 1, 2026, pays gas in ETH and settles to Ethereum blobs. Measurement note: Robinhood exposes no public WebSocket, so block time here is derived from block-number deltas over 2-second HTTP poll windows, an accurate average that does not capture per-block jitter.
   - slug: arbitrum
     h2: "Arbitrum One block time"
     body: |
@@ -66,6 +70,7 @@ abstract: |
   outlier sample is capped at 5 min so a reconnect can't pollute p50.
 
 methodology:
+  - "Robinhood Chain exception: the sequencer exposes no public WebSocket, so its block time is derived from eth_blockNumber deltas polled every 2 seconds over HTTP. A window that advanced N blocks contributes N samples of (elapsed / N) ms, which preserves per-block weighting and yields an accurate average; per-block jitter is not captured on this chain and this note is the disclosure."
   - "Cadence: continuous WebSocket subscription per L2, one persistent connection, no polling."
   - "Subscribe payload: `{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_subscribe\",\"params\":[\"newHeads\"]}`. No API key, public endpoints (publicnode.com mostly, era.zksync.io/ws for zkSync)."
   - "Sample: block-time(N) = T_recv(N) − T_recv(N-1), measured in milliseconds with `time.Now()` precision on the harness clock. Block-number duplicates from the same connection are filtered."
@@ -101,6 +106,18 @@ faq:
     a: "Polygon zkEVM and Mode don't expose a public WebSocket endpoint without an API key, so we defer them to v2 when an API-keyed contributor endpoint lands. Starknet uses the Cairo stack with a different RPC shape, it would live in a dedicated bench rather than be shoehorned into the EVM cohort here. Berachain, Sonic and other adjacent chains are L1s, not L2s, so they live in the l1-finality bench."
 
 providers:
+  - slug: robinhood
+    name: Robinhood Chain
+    tag: Arbitrum Orbit, ~100ms blocks, HTTP-polled (no public WSS)
+    formula: "Median milliseconds per block on Robinhood Chain, derived from eth_blockNumber deltas over 2s HTTP poll windows (no public WebSocket), p50 over 24h."
+    queries:
+      p50: histogram_quantile(0.50, sum(rate(l2_block_time_milliseconds_histogram_bucket{chain="robinhood"}[24h])) by (le))
+      p90: histogram_quantile(0.90, sum(rate(l2_block_time_milliseconds_histogram_bucket{chain="robinhood"}[24h])) by (le))
+      p99: histogram_quantile(0.99, sum(rate(l2_block_time_milliseconds_histogram_bucket{chain="robinhood"}[24h])) by (le))
+      mean: sum(rate(l2_block_time_milliseconds_histogram_sum{chain="robinhood"}[24h])) / sum(rate(l2_block_time_milliseconds_histogram_count{chain="robinhood"}[24h]))
+      success: avg_over_time(l2_block_time_health{chain="robinhood"}[24h])
+      sample_size: sum(increase(l2_block_time_samples_total{chain="robinhood"}[24h]))
+      series: avg_over_time(l2_block_time_milliseconds{chain="robinhood"}[1h])
   - slug: arbitrum
     name: Arbitrum One
     tag: Nitro fast-finality, sub-second sequencer
