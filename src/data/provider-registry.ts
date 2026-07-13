@@ -228,32 +228,32 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   aapl: {
     url: "https://www.apple.com",
     description:
-      "Apple tokenized equity issued by Robinhood on Robinhood Chain (contract 0xaF3D76f1834A1d425780943C99Ea8A608f8a93f9), trading against USDG on Uniswap v4 around the clock. OpenChainBench measures its live price deviation from the real market on the tokenized stock peg benchmark.",
+      "Apple tokenized equity measured across issuers on the RWA benchmarks: Robinhood's token on Robinhood Chain (Uniswap v4 vs USDG) and Backed's xStock on Solana (Jupiter executable mid vs USDC), each tracked live against the real market price.",
   },
   nvda: {
     url: "https://www.nvidia.com",
     description:
-      "Nvidia tokenized equity issued by Robinhood on Robinhood Chain (contract 0xd0601CE157Db5bdC3162BbaC2a2C8aF5320D9EEC), trading against USDG on Uniswap v4 around the clock. OpenChainBench measures its live price deviation from the real market on the tokenized stock peg benchmark.",
+      "Nvidia tokenized equity measured across issuers on the RWA benchmarks: Robinhood's token on Robinhood Chain (Uniswap v4 vs USDG) and Backed's xStock on Solana (Jupiter executable mid vs USDC), each tracked live against the real market price.",
   },
   googl: {
     url: "https://abc.xyz",
     description:
-      "Alphabet tokenized equity issued by Robinhood on Robinhood Chain (contract 0x2e0847E8910a9732eB3fb1bb4b70a580ADAD4FE3), trading against USDG on Uniswap v4 around the clock. OpenChainBench measures its live price deviation from the real market on the tokenized stock peg benchmark.",
+      "Alphabet tokenized equity measured across issuers on the RWA benchmarks: Robinhood's token on Robinhood Chain (Uniswap v4 vs USDG) and Backed's xStock on Solana (Jupiter executable mid vs USDC), each tracked live against the real market price.",
   },
   tsla: {
     url: "https://www.tesla.com",
     description:
-      "Tesla tokenized equity issued by Robinhood on Robinhood Chain (contract 0x322F0929c4625eD5bAd873c95208D54E1c003b2d), trading against USDG on Uniswap v4 around the clock. OpenChainBench measures its live price deviation from the real market on the tokenized stock peg benchmark.",
+      "Tesla tokenized equity measured across issuers on the RWA benchmarks: Robinhood's token on Robinhood Chain (Uniswap v4 vs USDG) and Backed's xStock on Solana (Jupiter executable mid vs USDC), each tracked live against the real market price.",
   },
   pltr: {
     url: "https://www.palantir.com",
     description:
-      "Palantir tokenized equity issued by Robinhood on Robinhood Chain (contract 0x894E1EC2D74FFE5AEF8Dc8A9e84686acCB964F2A), trading against USDG on Uniswap v4 around the clock. OpenChainBench measures its live price deviation from the real market on the tokenized stock peg benchmark.",
+      "Palantir tokenized equity measured across issuers on the RWA benchmarks: Robinhood's token on Robinhood Chain (Uniswap v4 vs USDG) and Backed's xStock on Solana (Jupiter executable mid vs USDC), each tracked live against the real market price.",
   },
   meta: {
     url: "https://www.meta.com",
     description:
-      "Meta Platforms tokenized equity issued by Robinhood on Robinhood Chain (contract 0xc0D6457C16Cc70d6790Dd43521C899C87ce02f35), trading against USDG on Uniswap v4 around the clock. OpenChainBench measures its live price deviation from the real market on the tokenized stock peg benchmark.",
+      "Meta Platforms tokenized equity measured across issuers on the RWA benchmarks: Robinhood's token on Robinhood Chain (Uniswap v4 vs USDG) and Backed's xStock on Solana (Jupiter executable mid vs USDC), each tracked live against the real market price.",
   },
   amd: {
     url: "https://www.amd.com",
@@ -263,22 +263,47 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   msft: {
     url: "https://www.microsoft.com",
     description:
-      "Microsoft tokenized equity issued by Robinhood on Robinhood Chain (contract 0xe93237C50D904957Cf27E7B1133b510C669c2e74), trading against USDG on Uniswap v4 around the clock. OpenChainBench measures its live price deviation from the real market on the tokenized stock peg benchmark.",
+      "Microsoft tokenized equity measured across issuers on the RWA benchmarks: Robinhood's token on Robinhood Chain (Uniswap v4 vs USDG) and Backed's xStock on Solana (Jupiter executable mid vs USDC), each tracked live against the real market price.",
   },
   amzn: {
     url: "https://www.amazon.com",
     description:
-      "Amazon tokenized equity issued by Robinhood on Robinhood Chain (contract 0x12f190a9F9d7D37a250758b26824B97CE941bF54), trading against USDG on Uniswap v4 around the clock. OpenChainBench measures its live price deviation from the real market on the tokenized stock peg benchmark.",
+      "Amazon tokenized equity measured across issuers on the RWA benchmarks: Robinhood's token on Robinhood Chain (Uniswap v4 vs USDG) and Backed's xStock on Solana (Jupiter executable mid vs USDC), each tracked live against the real market price.",
   },
   spy: {
     url: "https://www.ssga.com",
     description:
-      "SPDR S&P 500 ETF (State Street) tokenized equity issued by Robinhood on Robinhood Chain (contract 0x117cc2133c37B721F49dE2A7a74833232B3B4C0C), trading against USDG on Uniswap v4 around the clock. OpenChainBench measures its live price deviation from the real market on the tokenized stock peg benchmark.",
+      "SPDR S&P 500 ETF (State Street) tokenized equity measured across issuers on the RWA benchmarks: Robinhood's token on Robinhood Chain (Uniswap v4 vs USDG) and Backed's xStock on Solana (Jupiter executable mid vs USDC), each tracked live against the real market price.",
   },
   mu: {
     url: "https://www.micron.com",
     description:
       "Micron Technology tokenized equity issued by Robinhood on Robinhood Chain (contract 0xfF080c8ce2E5feadaCa0Da81314Ae59D232d4afD), trading against USDG on Uniswap v4 around the clock. OpenChainBench measures its live price deviation from the real market on the tokenized stock peg benchmark.",
+  },
+  hood: {
+    url: "https://robinhood.com",
+    description:
+      "Robinhood Markets tokenized equity, issued by Backed as HOODx on Solana. Notably absent from Robinhood's own chain: the only onchain HOOD is third party. Tracked live against the Nasdaq price on the xStocks peg benchmark.",
+  },
+  qqq: {
+    url: "https://www.invesco.com",
+    description:
+      "Invesco QQQ Nasdaq 100 ETF, tokenized by Backed as QQQx on Solana. Tracked live against the real ETF price on the xStocks peg benchmark.",
+  },
+  coin: {
+    url: "https://www.coinbase.com",
+    description:
+      "Coinbase tokenized equity, issued by Backed as COINx on Solana, a crypto exchange's stock trading on a blockchain. Tracked live against the Nasdaq price on the xStocks peg benchmark.",
+  },
+  "orca-solana": {
+    url: "https://www.orca.so",
+    description:
+      "Orca is Solana's concentrated liquidity DEX. Its USDY/USDC whirlpool is the deepest genuine venue for Ondo's tokenized treasury and the market leg of the USDY NAV basis benchmark.",
+  },
+  "pyth-market": {
+    url: "https://pyth.network",
+    description:
+      "Pyth Network's USDY/USD market composite aggregates USDY trading into one feed. Measured against Pyth's own USDY redemption rate feed on the NAV basis benchmark.",
   },
   bloxroute: {
     url: "https://bloxroute.com",
