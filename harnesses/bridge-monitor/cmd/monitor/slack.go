@@ -176,7 +176,7 @@ func (s *SlackNotifier) getBalanceSummary() string {
 
 // fetchBalances calls Mobula API to get wallet balances
 func (s *SlackNotifier) fetchBalances(wallet, blockchain string) string {
-	url := fmt.Sprintf("https://api.mobula.io/api/1/wallet/portfolio?wallet=%s&blockchains=%s", wallet, blockchain)
+	url := fmt.Sprintf("https://demo-api.mobula.io/api/1/wallet/portfolio?wallet=%s&blockchains=%s", wallet, blockchain)
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
