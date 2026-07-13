@@ -31,6 +31,13 @@ func main() {
 	// Log configuration
 	config.LogConfig()
 
+	// SIMULATE_BALANCES is a dry-run testing aid only. In any mode that can
+	// broadcast, phantom balances could green-light real transfers, so the
+	// flag is ignored everywhere outside dry-run (see SimulateBalances).
+	if config.SimulateBalances && config.ExecutionMode != string(ModeDryRun) {
+		log.Printf("⚠️  SIMULATE_BALANCES=true is set but EXECUTION_MODE is %q: simulated balances are IGNORED outside dry-run", config.ExecutionMode)
+	}
+
 	// Initialize bridges
 	var mobulaBridge *MobulaBridge
 	if config.MobulaAPIKey != "" {

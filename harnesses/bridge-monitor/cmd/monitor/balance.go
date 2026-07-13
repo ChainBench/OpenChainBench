@@ -410,10 +410,16 @@ func (bc *BalanceChecker) GetTotalBalanceUSD() (float64, error) {
 	return total, nil
 }
 
-// SimulateBalances returns fake balances for dry-run mode
-func SimulateBalances() map[string]map[string]float64 {
+// SimulateBalances returns fake balances for dry-run mode. Outside dry-run it
+// always returns nil: simulated balances feeding a broadcast-capable process
+// could green-light real transfers based on made-up numbers.
+func SimulateBalances(mode ExecutionMode) map[string]map[string]float64 {
 	// Check if we should simulate
 	if os.Getenv("SIMULATE_BALANCES") != "true" {
+		return nil
+	}
+	if mode != ModeDryRun {
+		log.Printf("⚠️  SIMULATE_BALANCES=true ignored: EXECUTION_MODE is %q, simulated balances are only honored in dry-run", mode)
 		return nil
 	}
 
