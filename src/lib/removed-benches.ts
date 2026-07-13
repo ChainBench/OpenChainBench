@@ -37,5 +37,6 @@ export const REMOVED_BENCH_SLUGS = new Set([
   "rpc-keyed-latency",
   "explorer-chain-coverage",
   "solana-rpc",
+  "tokenized-stock-peg",
   "portfolio-chain-coverage",
 ]);
