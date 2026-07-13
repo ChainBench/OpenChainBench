@@ -410,7 +410,7 @@ func downgradeLadder(tier float64) []float64 {
 // simulation says the cycle cannot complete, it first lets the auto-rebalancer
 // try to unblock the tier, then walks the downgrade ladder to a smaller amount.
 // Only if nothing on the ladder is viable does it emit ONE Slack "couldn't run"
-// message and skip — next scheduler tick will retry. Returns true if any
+// message and skip, so the next scheduler tick retries. Returns true if any
 // amount actually ran.
 func runTierIfViable(executor *Executor, bc *BalanceChecker, slack *SlackNotifier,
 	rebalancer *Rebalancer, gasTopper *GasTopper, routes []TestRoute, tier float64, tierLabel string,
