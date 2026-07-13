@@ -75,7 +75,12 @@ func StartSequencerWS() {
 		go func() {
 			backoff := minBackoff
 			for {
-				err := runChain(ch)
+				var err error
+				if ch.Poll {
+					err = runPollChain(ch)
+				} else {
+					err = runChain(ch)
+				}
 				blockTimeHealth.WithLabelValues(ch.Slug).Set(0)
 				blockTimeReconnectCtr.WithLabelValues(ch.Slug).Inc()
 				if err != nil {
