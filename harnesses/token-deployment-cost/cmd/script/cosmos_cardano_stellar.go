@@ -175,7 +175,18 @@ type koiosEpochParams []struct {
 	CoinsPerUtxoSize json.Number `json:"coins_per_utxo_size"`
 }
 
+// Cached for an hour: epoch params move once per 5-day epoch and the
+// shared koios public tier (5k/day per IP) is also consumed by the
+// transaction-fee harness on this host.
+var cardanoCostCache struct {
+	sample    Sample
+	fetchedAt time.Time
+}
+
 func (s *cardanoSampler) Sample(ch ChainConfig) (Sample, error) {
+	if time.Since(cardanoCostCache.fetchedAt) < time.Hour && cardanoCostCache.sample.CostNative > 0 {
+		return cardanoCostCache.sample, nil
+	}
 	resp, err := s.http.Get(ch.RPCURL + "/epoch_params")
 	if err != nil {
 		return Sample{}, err
@@ -200,13 +211,16 @@ func (s *cardanoSampler) Sample(ch ChainConfig) (Sample, error) {
 	}
 	utxoSize := float64(cardanoEntryOverheadBytes + cardanoBundleBytes)
 	lovelace := coins*utxoSize + cardanoMintTxFeeLovelace
-	return Sample{CostNative: lovelace, NativeUnit: "lovelace", GasUnits: math.NaN()}, nil
+	out := Sample{CostNative: lovelace, NativeUnit: "lovelace", GasUnits: math.NaN()}
+	cardanoCostCache.sample = out
+	cardanoCostCache.fetchedAt = time.Now()
+	return out, nil
 }
 
 // ----- Stellar ----------------------------------------------------------
 
-// Stellar custom asset cost is 3 base reserves locked (issuer account +
-// distribution account + trustline on distribution) + 2 tx fees
+// Stellar custom asset cost is 5 base reserves locked (2 per new
+// account for issuer + distribution, 1 for the trustline) + 2 tx fees
 // (create_account + change_trust). base_reserve_in_stroops and
 // base_fee_in_stroops are in /ledgers — we use the latest ledger.
 // Reusing the issuer as the distribution account is an anti-pattern
@@ -240,8 +254,11 @@ func (s *stellarSampler) Sample(ch ChainConfig) (Sample, error) {
 		return Sample{}, fmt.Errorf("empty ledgers response")
 	}
 	rec := l.Embedded.Records[0]
-	// 3 × base_reserve (issuer + distribution + trustline) + 2 × base_fee
-	// (create_account + change_trust).
-	stroops := 3*rec.BaseReserve + 2*rec.BaseFee
+	// 5 × base_reserve + 2 × base_fee (create_account + change_trust).
+	// Protocol minimums: every new account locks 2 base reserves and
+	// each trustline adds 1, so issuer (2) + distribution (2) +
+	// trustline on distribution (1) = 5. The previous formula counted
+	// 3 and understated the locked capital by a full XLM.
+	stroops := 5*rec.BaseReserve + 2*rec.BaseFee
 	return Sample{CostNative: float64(stroops), NativeUnit: "stroop", GasUnits: math.NaN()}, nil
 }
