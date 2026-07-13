@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/ecdsa"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -474,12 +475,18 @@ func (e *Executor) executeMobula(route TestRoute, amount float64, quoteStart tim
 
 	log.Printf("    [mobula] Getting quote: %s → %s, amount: %.4f, sender: %s", route.FromChain, route.ToChain, amount, senderAddress[:8]+"...")
 
-	// Get quote with TX
-	quote, _, err := e.mobula.GetQuote(
+	// Two-step quote: for EVM origins the first response's deposit is a
+	// placeholder; only the signed re-quote's deposit is executable. See
+	// mobula_bridge.go GetSignedQuote for the flow.
+	var evmKey *ecdsa.PrivateKey
+	if e.txExecutor != nil {
+		evmKey = e.txExecutor.EVMPrivateKey()
+	}
+	quote, _, err := e.mobula.GetSignedQuote(
 		route.FromChainAPI, route.FromToken,
 		route.ToChainAPI, route.ToToken,
 		senderAddress, receiverAddress,
-		amount,
+		amount, evmKey,
 	)
 	if err != nil {
 		log.Printf("    [mobula] ❌ Quote error: %v", err)
