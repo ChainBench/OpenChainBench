@@ -9,6 +9,9 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/gagliardetto/solana-go"
 )
 
 // BalanceChecker fetches wallet balances from Mobula API
@@ -17,6 +20,18 @@ type BalanceChecker struct {
 	apiKey        string
 	evmAddress    string
 	solanaAddress string
+
+	// Fallback on-chain reader. When the Mobula portfolio API fails we read the
+	// triangle tokens directly from RPC instead of silently returning zeros,
+	// which used to make every tier look like "insufficient funds" during an
+	// API outage. Nil in quote-only mode (no TxExecutor).
+	onchain *TxExecutor
+}
+
+// SetOnchainFallback wires the RPC-based balance readers. Called after the
+// TxExecutor exists because the BalanceChecker is constructed first in main.
+func (bc *BalanceChecker) SetOnchainFallback(tx *TxExecutor) {
+	bc.onchain = tx
 }
 
 // MobulaWalletResponse represents the Mobula wallet API response
@@ -53,6 +68,17 @@ func NewBalanceChecker(apiKey, evmAddress, solanaAddress string) *BalanceChecker
 // GetAllBalances fetches balances for all configured wallets
 // Returns map[chain][token] = balance_usd
 func (bc *BalanceChecker) GetAllBalances() (map[string]map[string]float64, error) {
+	balances, _, err := bc.GetAllBalancesDetailed()
+	return balances, err
+}
+
+// GetAllBalancesDetailed fetches balances for all configured wallets.
+// Primary source is the Mobula portfolio API; on per-chain failure it falls
+// back to direct RPC reads of the triangle tokens. The degraded flag is true
+// when at least one chain could not be read by EITHER path: callers must treat
+// degraded balances as unreadable (never "empty wallet") and must not trigger
+// automatic rebalancing from them.
+func (bc *BalanceChecker) GetAllBalancesDetailed() (map[string]map[string]float64, bool, error) {
 	result := make(map[string]map[string]float64)
 
 	// Initialize chains
@@ -60,11 +86,17 @@ func (bc *BalanceChecker) GetAllBalances() (map[string]map[string]float64, error
 	result["Base"] = make(map[string]float64)
 	result["Arbitrum"] = make(map[string]float64)
 
+	degraded := false
+
 	// Fetch Solana balances
 	if bc.solanaAddress != "" {
 		solBalances, err := bc.fetchWalletBalance(bc.solanaAddress)
 		if err != nil {
 			log.Printf("⚠️  Failed to fetch Solana balances: %v", err)
+			if !bc.fillSolanaFromChain(result) {
+				log.Printf("⚠️  On-chain Solana fallback also failed: balances degraded")
+				degraded = true
+			}
 		} else {
 			indexAssets(result, solBalances, "Solana")
 		}
@@ -76,6 +108,10 @@ func (bc *BalanceChecker) GetAllBalances() (map[string]map[string]float64, error
 		baseBalances, err := bc.fetchWalletBalanceByChain(bc.evmAddress, "base")
 		if err != nil {
 			log.Printf("⚠️  Failed to fetch Base balances: %v", err)
+			if !bc.fillEVMFromChain(result, "Base") {
+				log.Printf("⚠️  On-chain Base fallback also failed: balances degraded")
+				degraded = true
+			}
 		} else {
 			indexAssets(result, baseBalances, "Base")
 		}
@@ -84,12 +120,118 @@ func (bc *BalanceChecker) GetAllBalances() (map[string]map[string]float64, error
 		arbBalances, err := bc.fetchWalletBalanceByChain(bc.evmAddress, "arbitrum")
 		if err != nil {
 			log.Printf("⚠️  Failed to fetch Arbitrum balances: %v", err)
+			if !bc.fillEVMFromChain(result, "Arbitrum") {
+				log.Printf("⚠️  On-chain Arbitrum fallback also failed: balances degraded")
+				degraded = true
+			}
 		} else {
 			indexAssets(result, arbBalances, "Arbitrum")
 		}
 	}
 
-	return result, nil
+	if degraded {
+		bridgeBalanceReadDegraded.Set(1)
+	} else {
+		bridgeBalanceReadDegraded.Set(0)
+	}
+
+	return result, degraded, nil
+}
+
+// Token addresses read by the on-chain fallback. Stablecoins are valued at $1
+// parity (good enough to gate executions); SOL and ETH go through the price
+// cache with a static fallback because during a Mobula outage the pricer may
+// be down too, and a stale gas estimate beats a zero.
+const (
+	solanaUSDCMint = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+	baseUSDCAddr   = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+	arbUSDTAddr    = "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9"
+	arbUSDCAddr    = "0xaf88d065e77c8cc2239327c5edb3a432268e5831"
+)
+
+// fillSolanaFromChain reads Solana USDC + native SOL via RPC. Returns true only
+// when the triangle token (USDC) was read successfully: SOL alone is not enough
+// to run the cycle simulation, so a USDC read failure keeps the chain degraded.
+func (bc *BalanceChecker) fillSolanaFromChain(result map[string]map[string]float64) bool {
+	if bc.onchain == nil || bc.onchain.solanaClient == nil {
+		return false
+	}
+	owner, err := solana.PublicKeyFromBase58(bc.solanaAddress)
+	if err != nil {
+		return false
+	}
+
+	mint := solana.MustPublicKeyFromBase58(solanaUSDCMint)
+	raw, err := bc.onchain.solanaSPLBalanceOf(owner, mint)
+	if err != nil {
+		return false
+	}
+	usd := rawToFloat(raw, 6)
+	result["Solana"]["USDC"] = usd
+	result["Solana"][strings.ToLower(solanaUSDCMint)] = usd
+
+	if lamports, err := bc.onchain.solanaNativeBalance(owner); err == nil {
+		result["Solana"]["SOL"] = rawToFloat(lamports, 9) * TokenPriceUSD("SOL", 150)
+	}
+	log.Printf("✅ Solana balances recovered via on-chain fallback (USDC $%.2f)", usd)
+	return true
+}
+
+// fillEVMFromChain reads the chain's triangle stablecoin + native ETH via RPC.
+// Same success rule as Solana: the triangle token read must succeed.
+func (bc *BalanceChecker) fillEVMFromChain(result map[string]map[string]float64, chain string) bool {
+	if bc.onchain == nil {
+		return false
+	}
+	owner := common.HexToAddress(bc.evmAddress)
+
+	type tokenRead struct {
+		addr    string
+		symbols []string
+	}
+	var reads []tokenRead
+	switch chain {
+	case "Base":
+		reads = []tokenRead{{baseUSDCAddr, []string{"USDC"}}}
+	case "Arbitrum":
+		// Both USDT0 and USDT symbols: cycle_sim reads "USDT0" (Mobula naming)
+		// while route helpers fall back to "USDT".
+		reads = []tokenRead{
+			{arbUSDTAddr, []string{"USDT0", "USDT"}},
+			{arbUSDCAddr, []string{"USDC"}},
+		}
+	default:
+		return false
+	}
+
+	ok := false
+	for i, r := range reads {
+		raw, err := bc.onchain.erc20BalanceOf(chain, common.HexToAddress(r.addr), owner)
+		if err != nil {
+			// Only the first entry is the triangle token; secondary reads are
+			// best-effort for the stranded-fund gauges.
+			if i == 0 {
+				return false
+			}
+			continue
+		}
+		usd := rawToFloat(raw, 6)
+		for _, sym := range r.symbols {
+			result[chain][sym] = usd
+		}
+		result[chain][strings.ToLower(r.addr)] = usd
+		if i == 0 {
+			ok = true
+		}
+	}
+
+	if wei, err := bc.onchain.evmNativeBalance(chain, owner); err == nil {
+		result[chain]["ETH"] = rawToFloat(wei, 18) * TokenPriceUSD("ETH", 3000)
+	}
+	if ok {
+		log.Printf("✅ %s balances recovered via on-chain fallback", chain)
+	}
+	return ok
 }
 
 // indexAssets stores balances in the result map, keyed by BOTH symbol AND contract address (lowercase).
@@ -268,10 +410,16 @@ func (bc *BalanceChecker) GetTotalBalanceUSD() (float64, error) {
 	return total, nil
 }
 
-// SimulateBalances returns fake balances for dry-run mode
-func SimulateBalances() map[string]map[string]float64 {
+// SimulateBalances returns fake balances for dry-run mode. Outside dry-run it
+// always returns nil: simulated balances feeding a broadcast-capable process
+// could green-light real transfers based on made-up numbers.
+func SimulateBalances(mode ExecutionMode) map[string]map[string]float64 {
 	// Check if we should simulate
 	if os.Getenv("SIMULATE_BALANCES") != "true" {
+		return nil
+	}
+	if mode != ModeDryRun {
+		log.Printf("⚠️  SIMULATE_BALANCES=true ignored: EXECUTION_MODE is %q, simulated balances are only honored in dry-run", mode)
 		return nil
 	}
 

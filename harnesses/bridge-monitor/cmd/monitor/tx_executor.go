@@ -158,9 +158,14 @@ func (tx *TxExecutor) ExecuteSolanaTransaction(serializedTxBase64 string) (strin
 		return "", fmt.Errorf("failed to sign tx: %w", err)
 	}
 
-	// Send transaction
+	// Send transaction. Same send-ambiguity rule as the EVM path: a send
+	// error can follow node acceptance, so surface the signature when the
+	// client returns one and let callers treat it as in-flight.
 	sig, err := tx.solanaClient.SendTransaction(ctx, transaction)
 	if err != nil {
+		if sig != (solana.Signature{}) {
+			return sig.String(), fmt.Errorf("failed to send tx (may be accepted, sig %s): %w", sig.String(), err)
+		}
 		return "", fmt.Errorf("failed to send tx: %w", err)
 	}
 
@@ -235,9 +240,14 @@ func (tx *TxExecutor) ExecuteSolanaFromInstructions(instructions []RelaySolanaIn
 		return "", fmt.Errorf("failed to sign tx: %w", err)
 	}
 
-	// Send transaction
+	// Send transaction. Same send-ambiguity rule as the EVM path: a send
+	// error can follow node acceptance, so surface the signature when the
+	// client returns one and let callers treat it as in-flight.
 	sig, err := tx.solanaClient.SendTransaction(ctx, transaction)
 	if err != nil {
+		if sig != (solana.Signature{}) {
+			return sig.String(), fmt.Errorf("failed to send tx (may be accepted, sig %s): %w", sig.String(), err)
+		}
 		return "", fmt.Errorf("failed to send tx: %w", err)
 	}
 
@@ -314,13 +324,16 @@ func (tx *TxExecutor) ExecuteEVMTransaction(chain string, to string, data string
 		return "", fmt.Errorf("failed to sign tx: %w", err)
 	}
 
-	// Send transaction
+	// Send transaction. On error the node may STILL have accepted the tx
+	// (RPC timeout after acceptance): return the locally computed hash so
+	// callers classify this as in-flight, never as retry-safe. Discarding
+	// it caused the residual double-send hole found in review pass 2.
+	txHash := signedTx.Hash().Hex()
 	err = client.SendTransaction(ctx, signedTx)
 	if err != nil {
-		return "", fmt.Errorf("failed to send tx: %w", err)
+		return txHash, fmt.Errorf("failed to send tx (may be accepted, hash %s): %w", txHash, err)
 	}
 
-	txHash := signedTx.Hash().Hex()
 	log.Printf("📤 %s TX sent: %s", chain, txHash)
 	return txHash, nil
 }
