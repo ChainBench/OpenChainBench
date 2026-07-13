@@ -7,7 +7,7 @@ seo_title: "Tokenized stock price tracker 2026"
 seo_description: "Do tokenized stocks track the real market? AAPL, TSLA, NVDA and 8 more on Robinhood Chain vs their Nasdaq price, deviation in bps, live and keyless."
 subtitle: "Absolute deviation between each tokenized equity's Uniswap v4 pool price on Robinhood Chain and its real market reference price, in basis points, labeled by market session. The only live public measurement of whether onchain stocks actually track their underlying."
 
-category: Trading
+category: RWA
 status: live
 metric: Price deviation
 unit: bps

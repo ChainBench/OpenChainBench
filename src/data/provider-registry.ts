@@ -225,6 +225,61 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     description:
       "LeoRPC is a community Solana RPC operation exposing a publicly documented FREE tier through a query key, one of the few remaining keyless ways to read Solana mainnet.",
   },
+  aapl: {
+    url: "https://www.apple.com",
+    description:
+      "Apple tokenized equity issued by Robinhood on Robinhood Chain (contract 0xaF3D76f1834A1d425780943C99Ea8A608f8a93f9), trading against USDG on Uniswap v4 around the clock. OpenChainBench measures its live price deviation from the real market on the tokenized stock peg benchmark.",
+  },
+  nvda: {
+    url: "https://www.nvidia.com",
+    description:
+      "Nvidia tokenized equity issued by Robinhood on Robinhood Chain (contract 0xd0601CE157Db5bdC3162BbaC2a2C8aF5320D9EEC), trading against USDG on Uniswap v4 around the clock. OpenChainBench measures its live price deviation from the real market on the tokenized stock peg benchmark.",
+  },
+  googl: {
+    url: "https://abc.xyz",
+    description:
+      "Alphabet tokenized equity issued by Robinhood on Robinhood Chain (contract 0x2e0847E8910a9732eB3fb1bb4b70a580ADAD4FE3), trading against USDG on Uniswap v4 around the clock. OpenChainBench measures its live price deviation from the real market on the tokenized stock peg benchmark.",
+  },
+  tsla: {
+    url: "https://www.tesla.com",
+    description:
+      "Tesla tokenized equity issued by Robinhood on Robinhood Chain (contract 0x322F0929c4625eD5bAd873c95208D54E1c003b2d), trading against USDG on Uniswap v4 around the clock. OpenChainBench measures its live price deviation from the real market on the tokenized stock peg benchmark.",
+  },
+  pltr: {
+    url: "https://www.palantir.com",
+    description:
+      "Palantir tokenized equity issued by Robinhood on Robinhood Chain (contract 0x894E1EC2D74FFE5AEF8Dc8A9e84686acCB964F2A), trading against USDG on Uniswap v4 around the clock. OpenChainBench measures its live price deviation from the real market on the tokenized stock peg benchmark.",
+  },
+  meta: {
+    url: "https://www.meta.com",
+    description:
+      "Meta Platforms tokenized equity issued by Robinhood on Robinhood Chain (contract 0xc0D6457C16Cc70d6790Dd43521C899C87ce02f35), trading against USDG on Uniswap v4 around the clock. OpenChainBench measures its live price deviation from the real market on the tokenized stock peg benchmark.",
+  },
+  amd: {
+    url: "https://www.amd.com",
+    description:
+      "AMD tokenized equity issued by Robinhood on Robinhood Chain (contract 0x86923f96303D656E4aa86D9d42D1e57ad2023fdC), trading against USDG on Uniswap v4 around the clock. OpenChainBench measures its live price deviation from the real market on the tokenized stock peg benchmark.",
+  },
+  msft: {
+    url: "https://www.microsoft.com",
+    description:
+      "Microsoft tokenized equity issued by Robinhood on Robinhood Chain (contract 0xe93237C50D904957Cf27E7B1133b510C669c2e74), trading against USDG on Uniswap v4 around the clock. OpenChainBench measures its live price deviation from the real market on the tokenized stock peg benchmark.",
+  },
+  amzn: {
+    url: "https://www.amazon.com",
+    description:
+      "Amazon tokenized equity issued by Robinhood on Robinhood Chain (contract 0x12f190a9F9d7D37a250758b26824B97CE941bF54), trading against USDG on Uniswap v4 around the clock. OpenChainBench measures its live price deviation from the real market on the tokenized stock peg benchmark.",
+  },
+  spy: {
+    url: "https://www.ssga.com",
+    description:
+      "SPDR S&P 500 ETF (State Street) tokenized equity issued by Robinhood on Robinhood Chain (contract 0x117cc2133c37B721F49dE2A7a74833232B3B4C0C), trading against USDG on Uniswap v4 around the clock. OpenChainBench measures its live price deviation from the real market on the tokenized stock peg benchmark.",
+  },
+  mu: {
+    url: "https://www.micron.com",
+    description:
+      "Micron Technology tokenized equity issued by Robinhood on Robinhood Chain (contract 0xfF080c8ce2E5feadaCa0Da81314Ae59D232d4afD), trading against USDG on Uniswap v4 around the clock. OpenChainBench measures its live price deviation from the real market on the tokenized stock peg benchmark.",
+  },
   bloxroute: {
     url: "https://bloxroute.com",
     description:
