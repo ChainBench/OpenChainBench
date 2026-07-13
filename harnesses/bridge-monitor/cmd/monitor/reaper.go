@@ -103,7 +103,17 @@ func (t *StrandedTracker) Update(balances map[string]map[string]float64, now tim
 // working during a pause. The corrective transfer only fires in production
 // mode, unpaused, with broadcast-capable keys.
 func StartReaper(bc *BalanceChecker, rebalancer *Rebalancer, slack *SlackNotifier, mode string, paused bool) {
-	if bc == nil {
+	// Balance source: real checker in normal operation, the SIMULATE_BALANCES
+	// snapshot in keyless dry-run so the gauge path stays testable locally.
+	var fetch func() (map[string]map[string]float64, bool, error)
+	switch {
+	case bc != nil:
+		fetch = bc.GetAllBalancesDetailed
+	case SimulateBalances() != nil:
+		fetch = func() (map[string]map[string]float64, bool, error) {
+			return SimulateBalances(), false, nil
+		}
+	default:
 		log.Println("🧹 Reaper disabled: no balance checker")
 		return
 	}
@@ -116,19 +126,19 @@ func StartReaper(bc *BalanceChecker, rebalancer *Rebalancer, slack *SlackNotifie
 
 	go func() {
 		// First evaluation immediately so gauges exist right after boot, then hourly.
-		reaperTick(bc, rebalancer, slack, tracker, strandedHours, canAct)
+		reaperTick(fetch, rebalancer, slack, tracker, strandedHours, canAct)
 		ticker := time.NewTicker(1 * time.Hour)
 		defer ticker.Stop()
 		for range ticker.C {
-			reaperTick(bc, rebalancer, slack, tracker, strandedHours, canAct)
+			reaperTick(fetch, rebalancer, slack, tracker, strandedHours, canAct)
 		}
 	}()
 }
 
-func reaperTick(bc *BalanceChecker, rebalancer *Rebalancer, slack *SlackNotifier,
+func reaperTick(fetch func() (map[string]map[string]float64, bool, error), rebalancer *Rebalancer, slack *SlackNotifier,
 	tracker *StrandedTracker, thresholdHours float64, canAct bool,
 ) {
-	balances, degraded, err := bc.GetAllBalancesDetailed()
+	balances, degraded, err := fetch()
 	if err != nil || degraded {
 		// Without trustworthy balances we cannot tell stranded from home, so
 		// neither the gauge nor a transfer would mean anything this tick.
