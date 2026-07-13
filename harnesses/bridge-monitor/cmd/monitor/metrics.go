@@ -6,11 +6,17 @@ import (
 )
 
 var (
-	// Quote latency (time to get quote response)
+	// Quote latency (time to get bridge quote in ms). Sub-50ms buckets
+	// (10, 25) added 2026-07-13 because Near Intents on solver-cached
+	// corridors (HyperCore in particular) returns in <50ms via the 1Click
+	// coordinator's cached-price fast path, and the previous [50, ...]
+	// scheme lumped every one of those observations into the (0, 50]
+	// bucket. histogram_quantile then linearly interpolated to ~25ms
+	// regardless of the true value, hiding the real bimodality.
 	bridgeQuoteLatency = promauto.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "bridge_quote_latency_ms",
 		Help:    "Latency to get bridge quote in milliseconds",
-		Buckets: []float64{50, 100, 200, 500, 1000, 2000, 5000, 10000},
+		Buckets: []float64{10, 25, 50, 100, 200, 500, 1000, 2000, 5000, 10000},
 	}, []string{"bridge", "from_chain", "to_chain", "from_token", "to_token", "amount_usd", "region", "chain"})
 
 	// Execution latency (broadcast to funds received)

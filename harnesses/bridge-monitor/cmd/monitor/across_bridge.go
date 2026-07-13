@@ -188,7 +188,7 @@ func (a *AcrossBridge) TestRoute(route TestRoute, amount, amountUsd float64, raw
 	// Latency is only meaningful for quotes that returned a usable route
 	// (same rule as the other bridges). Fast 4xx rejections must not enter
 	// the histogram or they skew the leaderboard.
-	bridgeQuoteLatency.WithLabelValues(labels...).Observe(float64(quoteLatency.Milliseconds()))
+	bridgeQuoteLatency.WithLabelValues(labels...).Observe(float64(quoteLatency.Nanoseconds()) / 1e6)
 	bridgeQuoteSuccess.WithLabelValues(labels...).Set(1)
 
 	// fees.total.amountUsd is Across's own USD valuation of input value minus

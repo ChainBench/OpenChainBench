@@ -54,7 +54,7 @@ methodology:
   - "Notional sizes: $5, $50, $300 per quote."
   - "Cadence: full sweep (4 routes × 3 amounts × N bridges) every 5 minutes for 24 hours."
   - "Region: eu-west. Single point of measurement; multi-region requires running additional monitor instances."
-  - "Histogram buckets: 50, 100, 200, 500, 1000, 2000, 5000, 10000 ms."
+  - "Histogram buckets: 10, 25, 50, 100, 200, 500, 1000, 2000, 5000, 10000 ms. Sub-50ms buckets added 2026-07-13 so solver-cached fast paths (Near Intents on HyperCore in particular) surface their true p50 instead of being floored at the interpolation of the (0, 50] bucket."
   - "Failures (quote_failed, execution_failed, unsupported route) excluded from latency aggregates and counted toward success rate."
 
 # Per-corridor leader rewrite deferred: this YAML does not yet declare
@@ -89,7 +89,7 @@ faq:
   - q: "Are intent and relay bridges always faster than aggregators?"
     a: "On a single-route query, usually. Intent layers like Relay quote against a pool of pre-positioned solvers, so the API is a thin price-discovery call. Aggregators like LI.FI run a route-search graph over N underlying bridges per request, which adds 100 to 400 ms of irreducible work. On multi-hop or rare-corridor queries the aggregator advantage in coverage matters more than the latency gap, and the comparison flips."
   - q: "How does OpenChainBench measure bridge quote latency?"
-    a: "The harness issues identical quote requests against every bridge for the same route and notional, every five minutes, from a single eu-west origin. Each request times wall-clock duration from send to last byte received, then publishes a Prometheus histogram (50, 100, 200, 500, 1000, 2000, 5000, 10000 ms buckets). p50, p90 and p99 are derived via `histogram_quantile` over a rolling 24-hour window. Errored quotes (quote_failed, unsupported route, timeout) are excluded from the latency aggregate and counted toward success rate so a fast-but-broken bridge cannot game the headline."
+    a: "The harness issues identical quote requests against every bridge for the same route and notional, every five minutes, from a single eu-west origin. Each request times wall-clock duration from send to last byte received, then publishes a Prometheus histogram (10, 25, 50, 100, 200, 500, 1000, 2000, 5000, 10000 ms buckets). p50, p90 and p99 are derived via `histogram_quantile` over a rolling 24-hour window. Errored quotes (quote_failed, unsupported route, timeout) are excluded from the latency aggregate and counted toward success rate so a fast-but-broken bridge cannot game the headline."
   - q: "Does quote latency affect the price the user gets?"
     a: "Indirectly, yes. A slower quote API leaves a larger window between the moment the price is quoted and the moment the user signs. On volatile corridors the underlying spot can drift in that window, which surfaces as a quoted-vs-realized gap. Intent layers compensate by re-quoting at signing time; aggregators usually pass through a slippage parameter. The fee benchmark on this site (`/benchmarks/bridge-fee`) measures the realized cost; this page measures the latency half of the same flow."
 
