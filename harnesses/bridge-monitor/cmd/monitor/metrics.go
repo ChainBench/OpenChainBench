@@ -128,4 +128,12 @@ var (
 		Name: "bridge_consecutive_failures",
 		Help: "Number of consecutive execution failures for a bridge (resets on success)",
 	}, []string{"bridge", "region"})
+
+	// 1 when at least one chain's balances could not be read by either the
+	// Mobula API or the on-chain fallback. Lets alerting distinguish "wallet is
+	// empty" from "we cannot see the wallet".
+	bridgeBalanceReadDegraded = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "bridge_balance_read_degraded",
+		Help: "1 if wallet balances are currently unreadable via both API and RPC, 0 otherwise",
+	})
 )

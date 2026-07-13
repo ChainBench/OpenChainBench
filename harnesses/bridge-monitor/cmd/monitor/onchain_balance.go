@@ -12,6 +12,7 @@ import (
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/gagliardetto/solana-go"
 	"github.com/gagliardetto/solana-go/rpc"
 )
@@ -47,6 +48,27 @@ func (tx *TxExecutor) evmClientFor(chain string) interface{ CallContract(context
 		return tx.arbitrumClient
 	}
 	return nil
+}
+
+// evmNativeBalance returns the native (ETH) balance of owner in wei. Needed by
+// the balance fallback path: the Mobula portfolio API is the primary source, but
+// when it is down we still need gas balances to gate executions safely.
+func (tx *TxExecutor) evmNativeBalance(chain string, owner common.Address) (*big.Int, error) {
+	var client *ethclient.Client
+	switch strings.ToLower(chain) {
+	case "base":
+		client = tx.baseClient
+	case "arbitrum":
+		client = tx.arbitrumClient
+	default:
+		return nil, fmt.Errorf("unknown EVM chain: %s", chain)
+	}
+	if client == nil {
+		return nil, fmt.Errorf("no RPC client for %s", chain)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	return client.BalanceAt(ctx, owner, nil)
 }
 
 // solanaSPLBalanceOf returns the SPL token balance for `owner` and `mint`. If

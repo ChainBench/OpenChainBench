@@ -112,6 +112,11 @@ func NewExecutor(
 		} else {
 			e.txExecutor = txExec
 			log.Println("✅ TxExecutor initialized")
+			// Give the balance checker an RPC fallback so a Mobula portfolio
+			// API outage no longer reads as an empty wallet.
+			if balanceCheck != nil {
+				balanceCheck.SetOnchainFallback(txExec)
+			}
 		}
 	}
 
