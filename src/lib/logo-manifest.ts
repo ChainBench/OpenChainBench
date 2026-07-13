@@ -176,6 +176,9 @@ const RAW: Record<string, string> = {
   amzn: "/logos/amzn.png",
   spy: "/logos/spy.svg",
   mu: "/logos/mu.png",
+  qqq: "/logos/qqq.png",
+  "orca-solana": "/logos/orca.png",
+  "pyth-market": "/logos/pyth.jpg",
 
   // ─── Buyback audit (bench 018) ───
   sky: "/logos/sky.svg",
@@ -378,6 +381,8 @@ const ALIASES: Record<string, string> = {
   "sonic-official": "sonic",
   "monad-official": "monad",
   "solana-official": "solana",
+  hood: "robinhood",
+  coin: "coinbase",
   "megaeth-official": "megaeth",
   "celo-official": "celo",
   "blast-official": "blast",
