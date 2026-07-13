@@ -93,119 +93,119 @@ providers:
     tag: "Nvidia, ~$290k pool depth, 0.3% fee"
     formula: "p50 over 24h of the absolute deviation (bps) between the NVDA Uniswap v4 pool price on Robinhood Chain and the Yahoo reference, regular market hours only."
     queries:
-      p50: quantile_over_time(0.50, tsp_deviation_bps{asset="nvda", market_state="regular"}[24h])
-      p90: quantile_over_time(0.90, tsp_deviation_bps{asset="nvda", market_state="regular"}[24h])
-      p99: quantile_over_time(0.99, tsp_deviation_bps{asset="nvda", market_state="regular"}[24h])
-      mean: avg_over_time(tsp_deviation_bps{asset="nvda", market_state="regular"}[24h])
+      p50: quantile_over_time(0.50, tsp_deviation_bps{issuer="robinhood", asset="nvda", market_state="regular"}[24h])
+      p90: quantile_over_time(0.90, tsp_deviation_bps{issuer="robinhood", asset="nvda", market_state="regular"}[24h])
+      p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="robinhood", asset="nvda", market_state="regular"}[24h])
+      mean: avg_over_time(tsp_deviation_bps{issuer="robinhood", asset="nvda", market_state="regular"}[24h])
       success: avg_over_time(tsp_health{asset="nvda"}[24h])
-      series: tsp_deviation_bps{asset="nvda", market_state="regular"}
+      series: tsp_deviation_bps{issuer="robinhood", asset="nvda", market_state="regular"}
   - slug: aapl
     name: AAPL
     tag: "Apple, ~$330k pool depth, 1% fee"
     formula: "p50 over 24h of the absolute deviation (bps) between the AAPL Uniswap v4 pool price on Robinhood Chain and the Yahoo reference, regular market hours only."
     queries:
-      p50: quantile_over_time(0.50, tsp_deviation_bps{asset="aapl", market_state="regular"}[24h])
-      p90: quantile_over_time(0.90, tsp_deviation_bps{asset="aapl", market_state="regular"}[24h])
-      p99: quantile_over_time(0.99, tsp_deviation_bps{asset="aapl", market_state="regular"}[24h])
-      mean: avg_over_time(tsp_deviation_bps{asset="aapl", market_state="regular"}[24h])
+      p50: quantile_over_time(0.50, tsp_deviation_bps{issuer="robinhood", asset="aapl", market_state="regular"}[24h])
+      p90: quantile_over_time(0.90, tsp_deviation_bps{issuer="robinhood", asset="aapl", market_state="regular"}[24h])
+      p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="robinhood", asset="aapl", market_state="regular"}[24h])
+      mean: avg_over_time(tsp_deviation_bps{issuer="robinhood", asset="aapl", market_state="regular"}[24h])
       success: avg_over_time(tsp_health{asset="aapl"}[24h])
-      series: tsp_deviation_bps{asset="aapl", market_state="regular"}
+      series: tsp_deviation_bps{issuer="robinhood", asset="aapl", market_state="regular"}
   - slug: googl
     name: GOOGL
     tag: "Alphabet, ~$280k pool depth, 1% fee"
     formula: "p50 over 24h of the absolute deviation (bps) between the GOOGL Uniswap v4 pool price on Robinhood Chain and the Yahoo reference, regular market hours only."
     queries:
-      p50: quantile_over_time(0.50, tsp_deviation_bps{asset="googl", market_state="regular"}[24h])
-      p90: quantile_over_time(0.90, tsp_deviation_bps{asset="googl", market_state="regular"}[24h])
-      p99: quantile_over_time(0.99, tsp_deviation_bps{asset="googl", market_state="regular"}[24h])
-      mean: avg_over_time(tsp_deviation_bps{asset="googl", market_state="regular"}[24h])
+      p50: quantile_over_time(0.50, tsp_deviation_bps{issuer="robinhood", asset="googl", market_state="regular"}[24h])
+      p90: quantile_over_time(0.90, tsp_deviation_bps{issuer="robinhood", asset="googl", market_state="regular"}[24h])
+      p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="robinhood", asset="googl", market_state="regular"}[24h])
+      mean: avg_over_time(tsp_deviation_bps{issuer="robinhood", asset="googl", market_state="regular"}[24h])
       success: avg_over_time(tsp_health{asset="googl"}[24h])
-      series: tsp_deviation_bps{asset="googl", market_state="regular"}
+      series: tsp_deviation_bps{issuer="robinhood", asset="googl", market_state="regular"}
   - slug: tsla
     name: TSLA
     tag: "Tesla, most active pool of the cohort, 0.3% fee"
     formula: "p50 over 24h of the absolute deviation (bps) between the TSLA Uniswap v4 pool price on Robinhood Chain and the Yahoo reference, regular market hours only."
     queries:
-      p50: quantile_over_time(0.50, tsp_deviation_bps{asset="tsla", market_state="regular"}[24h])
-      p90: quantile_over_time(0.90, tsp_deviation_bps{asset="tsla", market_state="regular"}[24h])
-      p99: quantile_over_time(0.99, tsp_deviation_bps{asset="tsla", market_state="regular"}[24h])
-      mean: avg_over_time(tsp_deviation_bps{asset="tsla", market_state="regular"}[24h])
+      p50: quantile_over_time(0.50, tsp_deviation_bps{issuer="robinhood", asset="tsla", market_state="regular"}[24h])
+      p90: quantile_over_time(0.90, tsp_deviation_bps{issuer="robinhood", asset="tsla", market_state="regular"}[24h])
+      p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="robinhood", asset="tsla", market_state="regular"}[24h])
+      mean: avg_over_time(tsp_deviation_bps{issuer="robinhood", asset="tsla", market_state="regular"}[24h])
       success: avg_over_time(tsp_health{asset="tsla"}[24h])
-      series: tsp_deviation_bps{asset="tsla", market_state="regular"}
+      series: tsp_deviation_bps{issuer="robinhood", asset="tsla", market_state="regular"}
   - slug: pltr
     name: PLTR
     tag: "Palantir, ~$31k pool depth, 1% fee"
     formula: "p50 over 24h of the absolute deviation (bps) between the PLTR Uniswap v4 pool price on Robinhood Chain and the Yahoo reference, regular market hours only."
     queries:
-      p50: quantile_over_time(0.50, tsp_deviation_bps{asset="pltr", market_state="regular"}[24h])
-      p90: quantile_over_time(0.90, tsp_deviation_bps{asset="pltr", market_state="regular"}[24h])
-      p99: quantile_over_time(0.99, tsp_deviation_bps{asset="pltr", market_state="regular"}[24h])
-      mean: avg_over_time(tsp_deviation_bps{asset="pltr", market_state="regular"}[24h])
+      p50: quantile_over_time(0.50, tsp_deviation_bps{issuer="robinhood", asset="pltr", market_state="regular"}[24h])
+      p90: quantile_over_time(0.90, tsp_deviation_bps{issuer="robinhood", asset="pltr", market_state="regular"}[24h])
+      p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="robinhood", asset="pltr", market_state="regular"}[24h])
+      mean: avg_over_time(tsp_deviation_bps{issuer="robinhood", asset="pltr", market_state="regular"}[24h])
       success: avg_over_time(tsp_health{asset="pltr"}[24h])
-      series: tsp_deviation_bps{asset="pltr", market_state="regular"}
+      series: tsp_deviation_bps{issuer="robinhood", asset="pltr", market_state="regular"}
   - slug: meta
     name: META
     tag: "Meta, ~$89k pool depth, 0.3% fee"
     formula: "p50 over 24h of the absolute deviation (bps) between the META Uniswap v4 pool price on Robinhood Chain and the Yahoo reference, regular market hours only."
     queries:
-      p50: quantile_over_time(0.50, tsp_deviation_bps{asset="meta", market_state="regular"}[24h])
-      p90: quantile_over_time(0.90, tsp_deviation_bps{asset="meta", market_state="regular"}[24h])
-      p99: quantile_over_time(0.99, tsp_deviation_bps{asset="meta", market_state="regular"}[24h])
-      mean: avg_over_time(tsp_deviation_bps{asset="meta", market_state="regular"}[24h])
+      p50: quantile_over_time(0.50, tsp_deviation_bps{issuer="robinhood", asset="meta", market_state="regular"}[24h])
+      p90: quantile_over_time(0.90, tsp_deviation_bps{issuer="robinhood", asset="meta", market_state="regular"}[24h])
+      p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="robinhood", asset="meta", market_state="regular"}[24h])
+      mean: avg_over_time(tsp_deviation_bps{issuer="robinhood", asset="meta", market_state="regular"}[24h])
       success: avg_over_time(tsp_health{asset="meta"}[24h])
-      series: tsp_deviation_bps{asset="meta", market_state="regular"}
+      series: tsp_deviation_bps{issuer="robinhood", asset="meta", market_state="regular"}
   - slug: amd
     name: AMD
     tag: "AMD, ~$25k pool depth, 1% fee"
     formula: "p50 over 24h of the absolute deviation (bps) between the AMD Uniswap v4 pool price on Robinhood Chain and the Yahoo reference, regular market hours only."
     queries:
-      p50: quantile_over_time(0.50, tsp_deviation_bps{asset="amd", market_state="regular"}[24h])
-      p90: quantile_over_time(0.90, tsp_deviation_bps{asset="amd", market_state="regular"}[24h])
-      p99: quantile_over_time(0.99, tsp_deviation_bps{asset="amd", market_state="regular"}[24h])
-      mean: avg_over_time(tsp_deviation_bps{asset="amd", market_state="regular"}[24h])
+      p50: quantile_over_time(0.50, tsp_deviation_bps{issuer="robinhood", asset="amd", market_state="regular"}[24h])
+      p90: quantile_over_time(0.90, tsp_deviation_bps{issuer="robinhood", asset="amd", market_state="regular"}[24h])
+      p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="robinhood", asset="amd", market_state="regular"}[24h])
+      mean: avg_over_time(tsp_deviation_bps{issuer="robinhood", asset="amd", market_state="regular"}[24h])
       success: avg_over_time(tsp_health{asset="amd"}[24h])
-      series: tsp_deviation_bps{asset="amd", market_state="regular"}
+      series: tsp_deviation_bps{issuer="robinhood", asset="amd", market_state="regular"}
   - slug: msft
     name: MSFT
     tag: "Microsoft, ~$50k pool depth, 2% fee"
     formula: "p50 over 24h of the absolute deviation (bps) between the MSFT Uniswap v4 pool price on Robinhood Chain and the Yahoo reference, regular market hours only."
     queries:
-      p50: quantile_over_time(0.50, tsp_deviation_bps{asset="msft", market_state="regular"}[24h])
-      p90: quantile_over_time(0.90, tsp_deviation_bps{asset="msft", market_state="regular"}[24h])
-      p99: quantile_over_time(0.99, tsp_deviation_bps{asset="msft", market_state="regular"}[24h])
-      mean: avg_over_time(tsp_deviation_bps{asset="msft", market_state="regular"}[24h])
+      p50: quantile_over_time(0.50, tsp_deviation_bps{issuer="robinhood", asset="msft", market_state="regular"}[24h])
+      p90: quantile_over_time(0.90, tsp_deviation_bps{issuer="robinhood", asset="msft", market_state="regular"}[24h])
+      p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="robinhood", asset="msft", market_state="regular"}[24h])
+      mean: avg_over_time(tsp_deviation_bps{issuer="robinhood", asset="msft", market_state="regular"}[24h])
       success: avg_over_time(tsp_health{asset="msft"}[24h])
-      series: tsp_deviation_bps{asset="msft", market_state="regular"}
+      series: tsp_deviation_bps{issuer="robinhood", asset="msft", market_state="regular"}
   - slug: amzn
     name: AMZN
     tag: "Amazon, ~$24k pool depth, 2% fee"
     formula: "p50 over 24h of the absolute deviation (bps) between the AMZN Uniswap v4 pool price on Robinhood Chain and the Yahoo reference, regular market hours only."
     queries:
-      p50: quantile_over_time(0.50, tsp_deviation_bps{asset="amzn", market_state="regular"}[24h])
-      p90: quantile_over_time(0.90, tsp_deviation_bps{asset="amzn", market_state="regular"}[24h])
-      p99: quantile_over_time(0.99, tsp_deviation_bps{asset="amzn", market_state="regular"}[24h])
-      mean: avg_over_time(tsp_deviation_bps{asset="amzn", market_state="regular"}[24h])
+      p50: quantile_over_time(0.50, tsp_deviation_bps{issuer="robinhood", asset="amzn", market_state="regular"}[24h])
+      p90: quantile_over_time(0.90, tsp_deviation_bps{issuer="robinhood", asset="amzn", market_state="regular"}[24h])
+      p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="robinhood", asset="amzn", market_state="regular"}[24h])
+      mean: avg_over_time(tsp_deviation_bps{issuer="robinhood", asset="amzn", market_state="regular"}[24h])
       success: avg_over_time(tsp_health{asset="amzn"}[24h])
-      series: tsp_deviation_bps{asset="amzn", market_state="regular"}
+      series: tsp_deviation_bps{issuer="robinhood", asset="amzn", market_state="regular"}
   - slug: spy
     name: SPY
     tag: "S&P 500 ETF, ~$65k pool depth, 1% fee"
     formula: "p50 over 24h of the absolute deviation (bps) between the SPY Uniswap v4 pool price on Robinhood Chain and the Yahoo reference, regular market hours only."
     queries:
-      p50: quantile_over_time(0.50, tsp_deviation_bps{asset="spy", market_state="regular"}[24h])
-      p90: quantile_over_time(0.90, tsp_deviation_bps{asset="spy", market_state="regular"}[24h])
-      p99: quantile_over_time(0.99, tsp_deviation_bps{asset="spy", market_state="regular"}[24h])
-      mean: avg_over_time(tsp_deviation_bps{asset="spy", market_state="regular"}[24h])
+      p50: quantile_over_time(0.50, tsp_deviation_bps{issuer="robinhood", asset="spy", market_state="regular"}[24h])
+      p90: quantile_over_time(0.90, tsp_deviation_bps{issuer="robinhood", asset="spy", market_state="regular"}[24h])
+      p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="robinhood", asset="spy", market_state="regular"}[24h])
+      mean: avg_over_time(tsp_deviation_bps{issuer="robinhood", asset="spy", market_state="regular"}[24h])
       success: avg_over_time(tsp_health{asset="spy"}[24h])
-      series: tsp_deviation_bps{asset="spy", market_state="regular"}
+      series: tsp_deviation_bps{issuer="robinhood", asset="spy", market_state="regular"}
   - slug: mu
     name: MU
     tag: "Micron, ~$35k pool depth, 1% fee"
     formula: "p50 over 24h of the absolute deviation (bps) between the MU Uniswap v4 pool price on Robinhood Chain and the Yahoo reference, regular market hours only."
     queries:
-      p50: quantile_over_time(0.50, tsp_deviation_bps{asset="mu", market_state="regular"}[24h])
-      p90: quantile_over_time(0.90, tsp_deviation_bps{asset="mu", market_state="regular"}[24h])
-      p99: quantile_over_time(0.99, tsp_deviation_bps{asset="mu", market_state="regular"}[24h])
-      mean: avg_over_time(tsp_deviation_bps{asset="mu", market_state="regular"}[24h])
+      p50: quantile_over_time(0.50, tsp_deviation_bps{issuer="robinhood", asset="mu", market_state="regular"}[24h])
+      p90: quantile_over_time(0.90, tsp_deviation_bps{issuer="robinhood", asset="mu", market_state="regular"}[24h])
+      p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="robinhood", asset="mu", market_state="regular"}[24h])
+      mean: avg_over_time(tsp_deviation_bps{issuer="robinhood", asset="mu", market_state="regular"}[24h])
       success: avg_over_time(tsp_health{asset="mu"}[24h])
-      series: tsp_deviation_bps{asset="mu", market_state="regular"}
+      series: tsp_deviation_bps{issuer="robinhood", asset="mu", market_state="regular"}

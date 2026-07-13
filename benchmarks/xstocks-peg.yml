@@ -1,0 +1,207 @@
+# OpenChainBench. Bench № 077
+
+slug: xstocks-peg
+number: "077"
+title: xStocks price accuracy, live onchain vs Nasdaq across 12 equities on Solana
+seo_title: "xStocks price tracker 2026"
+seo_description: "Do Backed's xStocks track the real market? AAPLx, TSLAx, NVDAx and 9 more on Solana vs their Nasdaq price, deviation in bps, live and keyless."
+subtitle: "Absolute deviation between each xStock's executable Jupiter price on Solana and its real market reference, in basis points, labeled by market session. Companion to the Robinhood Chain tokenized stock bench: same methodology, different issuer, so the two pages read as a head to head."
+
+category: RWA
+status: live
+metric: Price deviation
+unit: bps
+higher_is_better: false
+
+seo_intro: |
+  Backed's xStocks are the other big tokenized equity program: 20+ US
+  stocks and ETFs issued on Solana and distributed through Kraken and
+  Bybit, trading around the clock on Raydium and Orca with pool depths
+  that reach several million dollars. This page measures how closely
+  each xStock's executable price tracks its real market reference,
+  every 60 seconds, keyless on both legs. The price measured is the
+  Jupiter aggregated quote for actually swapping one share in each
+  direction, so it is an executable mid, not a theoretical pool spot.
+  Sessions are labeled pre, regular, post and closed, and the closed
+  series is the weekend drift panel. The same methodology runs against
+  Robinhood Chain's tokenized equities on the companion bench, which
+  turns the two pages into the first public issuer head to head for
+  tokenized stocks. Fun fact this page makes measurable: HOODx, the
+  tokenized Robinhood stock, trades here on Solana, while Robinhood's
+  own chain does not tokenize HOOD at all.
+
+abstract: |
+  Every 60 seconds the harness quotes one share of each of 12 xStocks
+  through Jupiter's keyless lite API in both directions (sell to USDC,
+  buy back), takes the executable mid, corrects for the Token-2022
+  scaled amount multiplier where present, and compares against the
+  Yahoo reference price with holiday-aware session labels. Deviation is
+  10000 x |mid - reference| / reference in basis points. Same metric
+  contract as the Robinhood Chain bench with issuer="xstocks".
+
+methodology:
+  - "Onchain leg: Jupiter lite-api swap quotes, keyless, both directions per symbol (sell 1 share to USDC, buy the proceeds back), spaced 1.1s apart, ~26s per sweep for 12 symbols. Price = mid of the two implied prices: an executable aggregated price across Raydium, Orca and every routed venue, not a single pool spot."
+  - "Token-2022 correction: 7 of 12 xStocks mints carry a ScaledUiAmount multiplier (~1.0009 observed). One batched price/v3 call per tick supplies the live multiplier per mint (usdPrice over usdPricePrescaled), converting raw quote units to exactly one UI share. Ignoring it would bake a ~9bp systematic error into affected symbols."
+  - "Reference leg: Yahoo Finance spark batch, one keyless call for all 12 underliers per tick, 1 minute candles; session labels (pre, regular, post, closed) derived from Yahoo currentTradingPeriod, holiday aware. HOODx maps to HOOD, SPYx to SPY, QQQx to QQQ, COINx to COIN."
+  - "Deviation: 10000 x |executable mid - reference| / reference, quantiles over 24h via quantile_over_time. Headline pins market_state=\"regular\"; the closed series is the weekend drift panel."
+  - "Cohort: the 12 xStocks with verified Jupiter routes at under 2bp of 1-share price impact (2026-07-13): TSLAx, NVDAx, AAPLx, MSFTx, AMZNx, GOOGLx, METAx, HOODx, SPYx, QQQx, COINx, PLTRx. All mints 8 decimals, verified individually; counterfeit lookalike mints excluded by address allowlist."
+  - "Round-trip honesty: the sell/buy spread observed at verification was ~11bp on TSLAx. Using the mid rather than one side keeps the fee component out of the deviation number; the spread itself is executable cost, not tracking error."
+  - "Quote asset caveat: prices are in USDC against USD references. A USDC peg wobble would appear as a correlated deviation across all 12 symbols simultaneously."
+  - "Cross-issuer reading: this bench shares its metric contract with the Robinhood Chain tokenized stock bench (issuer label). Same equity, same reference, two issuers: the pages are directly comparable, with the depth difference disclosed (Solana xStocks pools run 10x to 100x deeper)."
+
+findings:
+  - "{{best_name}} tracks its reference tightest at {{best_p50}} (p50, 24h) across {{count}} measured xStocks."
+  - "{{name:tsla}} deviates {{p50:tsla}} (p50, 24h) against a Raydium pool holding about $2.1M, roughly 50x the depth of the equivalent Robinhood Chain pool, and the tighter tracking that buys is exactly what the cross-issuer comparison exists to show."
+  - "{{name:hood}} ({{p50:hood}}) is the page's inside joke made measurable: the tokenized Robinhood stock trades on Solana via a third-party issuer while Robinhood's own chain does not tokenize HOOD."
+  - "{{name:spy}} ({{p50:spy}}) and {{name:qqq}} ({{p50:qqq}}) give the bench its index rows, useful because index arbitrage against deep ETF markets should in theory be the tightest peg of all."
+  - "The number to watch on weekends: pools trade around the clock while the reference freezes at Friday close, and the closed-session drift measured here is the honest answer to what a 24/7 stock is worth on a Sunday."
+
+faq:
+  - q: "Do xStocks track their real stock price?"
+    a: "During regular hours the liquid names track within tens of basis points, and this page shows the live per-symbol number measured as an executable Jupiter mid, not a theoretical pool spot. Outside market hours the peg loosens by construction, and the closed-session series quantifies exactly how much."
+  - q: "How is this different from the Robinhood Chain tokenized stock bench?"
+    a: "Same methodology, different issuer and chain: Backed's xStocks on Solana measured through Jupiter, Robinhood's tokens on their own chain measured through Uniswap v4. The two benches share a metric contract, so the same equity can be compared across issuers directly, depth differences disclosed."
+  - q: "Why measure the Jupiter quote instead of a specific pool?"
+    a: "Because it is what a user actually gets: the aggregated executable route across every venue with the fee baked into the round trip. Taking the mid of both directions removes the fee component and leaves the tracking signal. A single pool spot can sit anywhere inside its fee band without being arbitrageable."
+  - q: "What is the ScaledUiAmount correction?"
+    a: "Seven xStocks mints use Token-2022 scaled amounts, where raw token units map to UI shares through a live multiplier (about 1.0009 at verification). The harness reads the multiplier every tick from Jupiter's price API and applies it, without which those symbols would carry a permanent ~9bp phantom deviation."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/xstocks-peg
+
+prometheus:
+  window: 24h
+  freshness_metric: tsp_deviation_bps
+
+providers:
+  - slug: tsla
+    name: TSLAx
+    tag: "Tesla xStock, deepest pool of the cohort (~$2.1M Raydium)"
+    formula: "p50 over 24h of the absolute deviation (bps) between the executable Jupiter mid for TSLAx on Solana and the Yahoo reference, regular market hours only."
+    queries:
+      p50: quantile_over_time(0.50, tsp_deviation_bps{issuer="xstocks", asset="tsla", market_state="regular"}[24h])
+      p90: quantile_over_time(0.90, tsp_deviation_bps{issuer="xstocks", asset="tsla", market_state="regular"}[24h])
+      p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="xstocks", asset="tsla", market_state="regular"}[24h])
+      mean: avg_over_time(tsp_deviation_bps{issuer="xstocks", asset="tsla", market_state="regular"}[24h])
+      success: avg_over_time(tsp_health{asset="tsla"}[24h])
+      series: tsp_deviation_bps{issuer="xstocks", asset="tsla", market_state="regular"}
+  - slug: nvda
+    name: NVDAx
+    tag: "Nvidia xStock, ~$2.7M Raydium pool"
+    formula: "p50 over 24h of the absolute deviation (bps) between the executable Jupiter mid for NVDAx on Solana and the Yahoo reference, regular market hours only."
+    queries:
+      p50: quantile_over_time(0.50, tsp_deviation_bps{issuer="xstocks", asset="nvda", market_state="regular"}[24h])
+      p90: quantile_over_time(0.90, tsp_deviation_bps{issuer="xstocks", asset="nvda", market_state="regular"}[24h])
+      p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="xstocks", asset="nvda", market_state="regular"}[24h])
+      mean: avg_over_time(tsp_deviation_bps{issuer="xstocks", asset="nvda", market_state="regular"}[24h])
+      success: avg_over_time(tsp_health{asset="nvda"}[24h])
+      series: tsp_deviation_bps{issuer="xstocks", asset="nvda", market_state="regular"}
+  - slug: aapl
+    name: AAPLx
+    tag: "Apple xStock"
+    formula: "p50 over 24h of the absolute deviation (bps) between the executable Jupiter mid for AAPLx on Solana and the Yahoo reference, regular market hours only."
+    queries:
+      p50: quantile_over_time(0.50, tsp_deviation_bps{issuer="xstocks", asset="aapl", market_state="regular"}[24h])
+      p90: quantile_over_time(0.90, tsp_deviation_bps{issuer="xstocks", asset="aapl", market_state="regular"}[24h])
+      p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="xstocks", asset="aapl", market_state="regular"}[24h])
+      mean: avg_over_time(tsp_deviation_bps{issuer="xstocks", asset="aapl", market_state="regular"}[24h])
+      success: avg_over_time(tsp_health{asset="aapl"}[24h])
+      series: tsp_deviation_bps{issuer="xstocks", asset="aapl", market_state="regular"}
+  - slug: msft
+    name: MSFTx
+    tag: "Microsoft xStock"
+    formula: "p50 over 24h of the absolute deviation (bps) between the executable Jupiter mid for MSFTx on Solana and the Yahoo reference, regular market hours only."
+    queries:
+      p50: quantile_over_time(0.50, tsp_deviation_bps{issuer="xstocks", asset="msft", market_state="regular"}[24h])
+      p90: quantile_over_time(0.90, tsp_deviation_bps{issuer="xstocks", asset="msft", market_state="regular"}[24h])
+      p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="xstocks", asset="msft", market_state="regular"}[24h])
+      mean: avg_over_time(tsp_deviation_bps{issuer="xstocks", asset="msft", market_state="regular"}[24h])
+      success: avg_over_time(tsp_health{asset="msft"}[24h])
+      series: tsp_deviation_bps{issuer="xstocks", asset="msft", market_state="regular"}
+  - slug: amzn
+    name: AMZNx
+    tag: "Amazon xStock"
+    formula: "p50 over 24h of the absolute deviation (bps) between the executable Jupiter mid for AMZNx on Solana and the Yahoo reference, regular market hours only."
+    queries:
+      p50: quantile_over_time(0.50, tsp_deviation_bps{issuer="xstocks", asset="amzn", market_state="regular"}[24h])
+      p90: quantile_over_time(0.90, tsp_deviation_bps{issuer="xstocks", asset="amzn", market_state="regular"}[24h])
+      p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="xstocks", asset="amzn", market_state="regular"}[24h])
+      mean: avg_over_time(tsp_deviation_bps{issuer="xstocks", asset="amzn", market_state="regular"}[24h])
+      success: avg_over_time(tsp_health{asset="amzn"}[24h])
+      series: tsp_deviation_bps{issuer="xstocks", asset="amzn", market_state="regular"}
+  - slug: googl
+    name: GOOGLx
+    tag: "Alphabet xStock"
+    formula: "p50 over 24h of the absolute deviation (bps) between the executable Jupiter mid for GOOGLx on Solana and the Yahoo reference, regular market hours only."
+    queries:
+      p50: quantile_over_time(0.50, tsp_deviation_bps{issuer="xstocks", asset="googl", market_state="regular"}[24h])
+      p90: quantile_over_time(0.90, tsp_deviation_bps{issuer="xstocks", asset="googl", market_state="regular"}[24h])
+      p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="xstocks", asset="googl", market_state="regular"}[24h])
+      mean: avg_over_time(tsp_deviation_bps{issuer="xstocks", asset="googl", market_state="regular"}[24h])
+      success: avg_over_time(tsp_health{asset="googl"}[24h])
+      series: tsp_deviation_bps{issuer="xstocks", asset="googl", market_state="regular"}
+  - slug: meta
+    name: METAx
+    tag: "Meta xStock"
+    formula: "p50 over 24h of the absolute deviation (bps) between the executable Jupiter mid for METAx on Solana and the Yahoo reference, regular market hours only."
+    queries:
+      p50: quantile_over_time(0.50, tsp_deviation_bps{issuer="xstocks", asset="meta", market_state="regular"}[24h])
+      p90: quantile_over_time(0.90, tsp_deviation_bps{issuer="xstocks", asset="meta", market_state="regular"}[24h])
+      p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="xstocks", asset="meta", market_state="regular"}[24h])
+      mean: avg_over_time(tsp_deviation_bps{issuer="xstocks", asset="meta", market_state="regular"}[24h])
+      success: avg_over_time(tsp_health{asset="meta"}[24h])
+      series: tsp_deviation_bps{issuer="xstocks", asset="meta", market_state="regular"}
+  - slug: hood
+    name: HOODx
+    tag: "Robinhood stock, tokenized by Backed, not by Robinhood"
+    formula: "p50 over 24h of the absolute deviation (bps) between the executable Jupiter mid for HOODx on Solana and the Yahoo reference, regular market hours only."
+    queries:
+      p50: quantile_over_time(0.50, tsp_deviation_bps{issuer="xstocks", asset="hood", market_state="regular"}[24h])
+      p90: quantile_over_time(0.90, tsp_deviation_bps{issuer="xstocks", asset="hood", market_state="regular"}[24h])
+      p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="xstocks", asset="hood", market_state="regular"}[24h])
+      mean: avg_over_time(tsp_deviation_bps{issuer="xstocks", asset="hood", market_state="regular"}[24h])
+      success: avg_over_time(tsp_health{asset="hood"}[24h])
+      series: tsp_deviation_bps{issuer="xstocks", asset="hood", market_state="regular"}
+  - slug: spy
+    name: SPYx
+    tag: "S&P 500 ETF xStock"
+    formula: "p50 over 24h of the absolute deviation (bps) between the executable Jupiter mid for SPYx on Solana and the Yahoo reference, regular market hours only."
+    queries:
+      p50: quantile_over_time(0.50, tsp_deviation_bps{issuer="xstocks", asset="spy", market_state="regular"}[24h])
+      p90: quantile_over_time(0.90, tsp_deviation_bps{issuer="xstocks", asset="spy", market_state="regular"}[24h])
+      p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="xstocks", asset="spy", market_state="regular"}[24h])
+      mean: avg_over_time(tsp_deviation_bps{issuer="xstocks", asset="spy", market_state="regular"}[24h])
+      success: avg_over_time(tsp_health{asset="spy"}[24h])
+      series: tsp_deviation_bps{issuer="xstocks", asset="spy", market_state="regular"}
+  - slug: qqq
+    name: QQQx
+    tag: "Nasdaq 100 ETF xStock"
+    formula: "p50 over 24h of the absolute deviation (bps) between the executable Jupiter mid for QQQx on Solana and the Yahoo reference, regular market hours only."
+    queries:
+      p50: quantile_over_time(0.50, tsp_deviation_bps{issuer="xstocks", asset="qqq", market_state="regular"}[24h])
+      p90: quantile_over_time(0.90, tsp_deviation_bps{issuer="xstocks", asset="qqq", market_state="regular"}[24h])
+      p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="xstocks", asset="qqq", market_state="regular"}[24h])
+      mean: avg_over_time(tsp_deviation_bps{issuer="xstocks", asset="qqq", market_state="regular"}[24h])
+      success: avg_over_time(tsp_health{asset="qqq"}[24h])
+      series: tsp_deviation_bps{issuer="xstocks", asset="qqq", market_state="regular"}
+  - slug: coin
+    name: COINx
+    tag: "Coinbase xStock"
+    formula: "p50 over 24h of the absolute deviation (bps) between the executable Jupiter mid for COINx on Solana and the Yahoo reference, regular market hours only."
+    queries:
+      p50: quantile_over_time(0.50, tsp_deviation_bps{issuer="xstocks", asset="coin", market_state="regular"}[24h])
+      p90: quantile_over_time(0.90, tsp_deviation_bps{issuer="xstocks", asset="coin", market_state="regular"}[24h])
+      p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="xstocks", asset="coin", market_state="regular"}[24h])
+      mean: avg_over_time(tsp_deviation_bps{issuer="xstocks", asset="coin", market_state="regular"}[24h])
+      success: avg_over_time(tsp_health{asset="coin"}[24h])
+      series: tsp_deviation_bps{issuer="xstocks", asset="coin", market_state="regular"}
+  - slug: pltr
+    name: PLTRx
+    tag: "Palantir xStock, thinnest route of the cohort (1.8bp impact)"
+    formula: "p50 over 24h of the absolute deviation (bps) between the executable Jupiter mid for PLTRx on Solana and the Yahoo reference, regular market hours only."
+    queries:
+      p50: quantile_over_time(0.50, tsp_deviation_bps{issuer="xstocks", asset="pltr", market_state="regular"}[24h])
+      p90: quantile_over_time(0.90, tsp_deviation_bps{issuer="xstocks", asset="pltr", market_state="regular"}[24h])
+      p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="xstocks", asset="pltr", market_state="regular"}[24h])
+      mean: avg_over_time(tsp_deviation_bps{issuer="xstocks", asset="pltr", market_state="regular"}[24h])
+      success: avg_over_time(tsp_health{asset="pltr"}[24h])
+      series: tsp_deviation_bps{issuer="xstocks", asset="pltr", market_state="regular"}
