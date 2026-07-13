@@ -347,6 +347,10 @@ func main() {
 		rebalancer = NewRebalancer(executor, slackNotifier)
 	}
 
+	// Stuck-fund reaper: gauges in every mode (alerting must survive a pause),
+	// corrective transfers only in production and unpaused.
+	StartReaper(balanceChecker, rebalancer, slackNotifier, config.ExecutionMode, paused)
+
 	// Track last meme execution day to run weekly
 	lastMemeDay := -1
 
