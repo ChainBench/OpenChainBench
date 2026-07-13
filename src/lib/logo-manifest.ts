@@ -164,6 +164,18 @@ const RAW: Record<string, string> = {
   nextblock: "/logos/nextblock.png",
   astralane: "/logos/astralane.svg",
   solanavibestation: "/logos/solanavibestation.png",
+  leorpc: "/logos/leorpc.png",
+  aapl: "/logos/aapl.svg",
+  nvda: "/logos/nvda.svg",
+  googl: "/logos/googl.svg",
+  tsla: "/logos/tsla.svg",
+  pltr: "/logos/pltr.svg",
+  meta: "/logos/meta.svg",
+  amd: "/logos/amd.svg",
+  msft: "/logos/msft.svg",
+  amzn: "/logos/amzn.png",
+  spy: "/logos/spy.svg",
+  mu: "/logos/mu.png",
 
   // ─── Buyback audit (bench 018) ───
   sky: "/logos/sky.svg",
