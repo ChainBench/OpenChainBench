@@ -32,6 +32,30 @@ export async function GET() {
           },
         },
       },
+      "/api/citable/{date}": {
+        get: {
+          summary:
+            "Immutable per-day snapshot of the citable index. Same shape as /api/citable; values freeze at end-of-day for past dates. Lets citers pin a citation to a stable URL that keeps returning the number they quoted.",
+          operationId: "list_benchmarks_snapshot",
+          parameters: [
+            {
+              name: "date",
+              in: "path",
+              required: true,
+              schema: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
+              description: "ISO 8601 calendar date (YYYY-MM-DD).",
+            },
+          ],
+          responses: {
+            "200": {
+              description: "OK",
+              content: { "application/json": { schema: { $ref: "#/components/schemas/CitableIndex" } } },
+            },
+            "400": { description: "Malformed or out-of-range date" },
+            "503": { description: "Benchmarks temporarily unavailable" },
+          },
+        },
+      },
       "/api/stat/{slug}": {
         get: {
           summary: "Single benchmark with rankings, sparkline, and a ready-to-paste citation.",
@@ -44,13 +68,80 @@ export async function GET() {
               schema: { type: "string" },
               description: "Benchmark slug (e.g. 'aggregator-head-lag').",
             },
+            {
+              name: "chain",
+              in: "query",
+              required: false,
+              schema: { type: "string" },
+              description:
+                "Restrict the response to a specific chain dimension (e.g. 'ethereum'). Unknown values 404.",
+            },
+            {
+              name: "region",
+              in: "query",
+              required: false,
+              schema: { type: "string" },
+              description:
+                "Restrict the response to a specific region dimension (e.g. 'us-east'). Unknown values 404.",
+            },
+            {
+              name: "kind",
+              in: "query",
+              required: false,
+              schema: { type: "string" },
+              description:
+                "Restrict the response to a specific bench-defined `kind` dimension when the spec declares one.",
+            },
+            {
+              name: "venue",
+              in: "query",
+              required: false,
+              schema: { type: "string" },
+              description:
+                "Restrict the response to a specific bench-defined `venue` dimension when the spec declares one.",
+            },
           ],
           responses: {
             "200": {
               description: "OK",
               content: { "application/json": { schema: { $ref: "#/components/schemas/Stat" } } },
             },
-            "404": { description: "Unknown slug" },
+            "404": { description: "Unknown slug or unknown dimension value" },
+          },
+        },
+      },
+      "/api/compare/{a}/{b}": {
+        get: {
+          summary:
+            "Head-to-head comparison of two providers on every benchmark where they both appear. One tool call resolves an X-vs-Y query end to end instead of two /api/stat lookups plus reasoning across them.",
+          operationId: "compare_providers",
+          parameters: [
+            {
+              name: "a",
+              in: "path",
+              required: true,
+              schema: { type: "string" },
+              description: "Provider slug for the left side of the comparison.",
+            },
+            {
+              name: "b",
+              in: "path",
+              required: true,
+              schema: { type: "string" },
+              description: "Provider slug for the right side of the comparison.",
+            },
+          ],
+          responses: {
+            "200": {
+              description: "OK",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/Compare" },
+                },
+              },
+            },
+            "400": { description: "Malformed or identical provider slugs" },
+            "404": { description: "One of the providers or no shared benchmark" },
           },
         },
       },
@@ -163,12 +254,91 @@ export async function GET() {
               description: "Current leading value, expressed in `unit`.",
             },
             unit: { type: "string" },
+            filters: {
+              type: "object",
+              nullable: true,
+              description:
+                "Echo of the applied dimension filter (chain, region, kind, venue) when the request scoped the response to a sub-cell; null when the response is the cross-dimension aggregate.",
+              properties: {
+                chain: { type: "string" },
+                region: { type: "string" },
+                kind: { type: "string" },
+                venue: { type: "string" },
+              },
+            },
             rankings: { type: "array" },
             sparkline: { type: "array", items: { type: "number" } },
             headline: { type: "string" },
             quote: { type: "string" },
             pageUrl: { type: "string", format: "uri" },
-            asOf: { type: "string", format: "date-time" },
+            asOf: {
+              type: "string",
+              format: "date-time",
+              nullable: true,
+              description:
+                "Last measurement timestamp. Null when the bench has no live samples yet (draft state).",
+            },
+          },
+        },
+        Compare: {
+          type: "object",
+          properties: {
+            a: {
+              type: "object",
+              description: "Left side of the head-to-head.",
+              properties: {
+                slug: { type: "string" },
+                name: { type: "string" },
+              },
+            },
+            b: {
+              type: "object",
+              description: "Right side of the head-to-head.",
+              properties: {
+                slug: { type: "string" },
+                name: { type: "string" },
+              },
+            },
+            shared: {
+              type: "array",
+              description:
+                "Per benchmark head-to-head rows for every bench where both providers appear. Each row publishes p50 for each side in the declared unit, which side is faster on the metric's higher-is-better convention, and the numeric delta.",
+              items: {
+                type: "object",
+                properties: {
+                  slug: { type: "string" },
+                  title: { type: "string" },
+                  metric: { type: "string" },
+                  unit: { type: "string" },
+                  higherIsBetter: { type: "boolean" },
+                  aValue: { type: "number", nullable: true },
+                  bValue: { type: "number", nullable: true },
+                  winner: {
+                    type: "string",
+                    enum: ["a", "b", "tie"],
+                    description: "Which side wins on this benchmark.",
+                  },
+                  delta: {
+                    type: "number",
+                    nullable: true,
+                    description:
+                      "Absolute difference between aValue and bValue in the declared unit. Positive means a > b regardless of the higher-is-better convention.",
+                  },
+                  pageUrl: { type: "string", format: "uri" },
+                  asOf: {
+                    type: "string",
+                    format: "date-time",
+                    nullable: true,
+                  },
+                },
+              },
+            },
+            comparePageUrl: {
+              type: "string",
+              format: "uri",
+              description:
+                "Canonical HTML comparison page (openchainbench.com/compare/{a}-vs-{b}) with the full leaderboard tables.",
+            },
           },
         },
       },
