@@ -156,6 +156,14 @@ export const CHAINS: ChainEntry[] = [
       "OP Stack reference rollup, 2 s sequencer cadence, EIP-4844 blob calldata settlement on Ethereum.",
   },
   {
+    slug: "robinhood",
+    label: "Robinhood Chain",
+    category: "L2",
+    nativeSymbol: "ETH",
+    description:
+      "Robinhood's Arbitrum Orbit rollup for tokenized stocks, ~100 ms blocks, ETH gas, Ethereum blob settlement, sequencer operated by Robinhood with 10% of chain fees shared to ArbitrumDAO.",
+  },
+  {
     slug: "base",
     label: "Base",
     category: "L2",
