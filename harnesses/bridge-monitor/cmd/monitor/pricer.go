@@ -52,7 +52,7 @@ func TokenPriceUSD(symbol string, fallback float64) float64 {
 
 func fetchPriceUSD(symbol string) float64 {
 	apiKey := os.Getenv("MOBULA_API_KEY")
-	url := fmt.Sprintf("https://api.mobula.io/api/1/market/data?symbol=%s", symbol)
+	url := fmt.Sprintf("https://demo-api.mobula.io/api/1/market/data?symbol=%s", symbol)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return 0
