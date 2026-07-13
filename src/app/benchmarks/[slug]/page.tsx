@@ -20,6 +20,7 @@ import { ExportVideoSection } from "@/components/export-video-section";
 import { ReportSection } from "@/components/report-section";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
 import {
+  citableAsOf,
   groundingTraceLine,
   groundingTraceParts,
   headlineSentence,
@@ -310,7 +311,12 @@ export default async function BenchmarkPage({
       variableMeasured,
       category: benchmark.category,
       datePublished: getBenchCreatedAt(benchmark.slug).toISOString(),
-      dateModified: benchmark.lastRunAt,
+      // For drafts (no measurement history) skip dateModified so the
+      // structured-data channel does not spoof freshness. Same rule
+      // applied to /api/citable, /api/stat and the MCP surface.
+      ...(citableAsOf(benchmark)
+        ? { dateModified: benchmark.lastRunAt }
+        : {}),
       measurementTechnique: benchmark.methodology.join(" "),
     }),
     // Re-bind creator + publisher to the global @id reference so the bench
@@ -365,7 +371,9 @@ export default async function BenchmarkPage({
         // Clears the "Missing field image" warning in Rich Results Test.
         image: `${SITE.url}/api/og/${benchmark.slug}`,
         datePublished: getBenchCreatedAt(benchmark.slug).toISOString(),
-        dateModified: benchmark.lastRunAt,
+        ...(citableAsOf(benchmark)
+          ? { dateModified: benchmark.lastRunAt }
+          : {}),
         author: { "@id": `${SITE.url}/#org` },
         publisher: { "@id": `${SITE.url}/#org` },
         about: { "@id": `${benchmarkUrl}#dataset` },
