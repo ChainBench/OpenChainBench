@@ -266,7 +266,7 @@ func indexAssets(result map[string]map[string]float64, resp *MobulaWalletRespons
 
 // fetchWalletBalance fetches balance for a single wallet (all chains)
 func (bc *BalanceChecker) fetchWalletBalance(address string) (*MobulaWalletResponse, error) {
-	url := fmt.Sprintf("https://api.mobula.io/api/1/wallet/portfolio?wallet=%s", address)
+	url := fmt.Sprintf("https://demo-api.mobula.io/api/1/wallet/portfolio?wallet=%s", address)
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -298,7 +298,7 @@ func (bc *BalanceChecker) fetchWalletBalance(address string) (*MobulaWalletRespo
 
 // fetchWalletBalanceByChain fetches balance for a specific chain
 func (bc *BalanceChecker) fetchWalletBalanceByChain(address, chain string) (*MobulaWalletResponse, error) {
-	url := fmt.Sprintf("https://api.mobula.io/api/1/wallet/portfolio?wallet=%s&blockchains=%s", address, chain)
+	url := fmt.Sprintf("https://demo-api.mobula.io/api/1/wallet/portfolio?wallet=%s&blockchains=%s", address, chain)
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {

@@ -420,7 +420,7 @@ func (tx *TxExecutor) PollMobulaStatus(txHash string, timeout time.Duration) (*B
 }
 
 func (tx *TxExecutor) getMobulaStatus(txHash string) (*BridgeStatus, error) {
-	url := fmt.Sprintf("https://api.mobula.io/api/2/bridge/status/%s", txHash)
+	url := fmt.Sprintf("https://demo-api.mobula.io/api/2/bridge/status/%s", txHash)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
