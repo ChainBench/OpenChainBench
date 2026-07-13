@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -275,6 +276,67 @@ Waiting for next scheduled slot. Top up the blocked leg to unblock.
 %s`,
 		tier, tierLabel, reason, balances,
 	)
+	return s.send(message)
+}
+
+// NotifyRebalance reports every auto-rebalance event (attempted, succeeded,
+// failed, capped) so the owner can audit what the self-healing loop moved.
+func (s *SlackNotifier) NotifyRebalance(outcome, detail string) error {
+	if s == nil {
+		return nil
+	}
+	emoji := map[string]string{
+		"attempted": "🔧",
+		"succeeded": "✅",
+		"failed":    "❌",
+		"capped":    "🛑",
+	}[outcome]
+	if emoji == "" {
+		emoji = "🔧"
+	}
+	message := fmt.Sprintf(`%s *Auto-Rebalance %s*
+
+%s`, emoji, strings.ToUpper(outcome), detail)
+	return s.send(message)
+}
+
+// NotifyTierDowngrade reports that a scheduled tier ran at a smaller amount
+// because the requested size was not viable. Partial data beats none, but the
+// owner should know the wallet needs attention.
+func (s *SlackNotifier) NotifyTierDowngrade(from, to float64, reason string) error {
+	if s == nil {
+		return nil
+	}
+	message := fmt.Sprintf(`⬇️ *Tier DOWNGRADED: $%.0f to $%.0f*
+
+*Reason $%.0f was blocked:* %s
+
+Running the smaller tier so the benchmark keeps producing data.`,
+		from, to, from, reason)
+	return s.send(message)
+}
+
+// NotifyReaper reports stuck-fund reaper actions (corrective transfer of funds
+// stranded off their home triangle leg).
+func (s *SlackNotifier) NotifyReaper(detail string) error {
+	if s == nil {
+		return nil
+	}
+	message := fmt.Sprintf(`🧹 *Stuck-Fund Reaper*
+
+%s`, detail)
+	return s.send(message)
+}
+
+// NotifyGasTopUp reports gas top-up events (low native gas detected, swap
+// attempted, succeeded, failed, capped or gated).
+func (s *SlackNotifier) NotifyGasTopUp(chain, outcome, detail string) error {
+	if s == nil {
+		return nil
+	}
+	message := fmt.Sprintf(`⛽ *Gas Top-Up %s on %s*
+
+%s`, strings.ToUpper(outcome), chain, detail)
 	return s.send(message)
 }
 
