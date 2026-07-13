@@ -189,6 +189,24 @@ func TestSlotBudgetInFlightBlocksSameLeg(t *testing.T) {
 	}
 }
 
+func TestSimulateBalancesOnlyInDryRun(t *testing.T) {
+	t.Setenv("SIMULATE_BALANCES", "true")
+	if SimulateBalances(ModeDryRun) == nil {
+		t.Fatal("dry-run with SIMULATE_BALANCES=true must return the snapshot")
+	}
+	if SimulateBalances(ModeProduction) != nil {
+		t.Fatal("production mode must ignore SIMULATE_BALANCES")
+	}
+	if SimulateBalances(ModeSingleTest) != nil {
+		t.Fatal("single-test mode must ignore SIMULATE_BALANCES")
+	}
+
+	t.Setenv("SIMULATE_BALANCES", "false")
+	if SimulateBalances(ModeDryRun) != nil {
+		t.Fatal("no snapshot when SIMULATE_BALANCES is off")
+	}
+}
+
 func TestStrandedHoursComputation(t *testing.T) {
 	tracker := NewStrandedTracker()
 	t0 := time.Date(2026, 7, 12, 10, 0, 0, 0, time.UTC)

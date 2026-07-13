@@ -105,13 +105,16 @@ func (t *StrandedTracker) Update(balances map[string]map[string]float64, now tim
 func StartReaper(bc *BalanceChecker, rebalancer *Rebalancer, slack *SlackNotifier, mode string, paused bool) {
 	// Balance source: real checker in normal operation, the SIMULATE_BALANCES
 	// snapshot in keyless dry-run so the gauge path stays testable locally.
+	// SimulateBalances itself refuses to return anything outside dry-run, so
+	// a production process with keys can never act on made-up numbers.
+	execMode := ExecutionMode(mode)
 	var fetch func() (map[string]map[string]float64, bool, error)
 	switch {
 	case bc != nil:
 		fetch = bc.GetAllBalancesDetailed
-	case SimulateBalances() != nil:
+	case SimulateBalances(execMode) != nil:
 		fetch = func() (map[string]map[string]float64, bool, error) {
-			return SimulateBalances(), false, nil
+			return SimulateBalances(execMode), false, nil
 		}
 	default:
 		log.Println("🧹 Reaper disabled: no balance checker")

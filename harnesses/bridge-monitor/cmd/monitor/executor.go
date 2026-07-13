@@ -177,7 +177,7 @@ func (e *Executor) RunDryRun(route TestRoute, amountUSD float64) *ExecutionResul
 			result.Error = err
 			return result
 		}
-	} else if balances = SimulateBalances(); balances == nil {
+	} else if balances = SimulateBalances(e.config.Mode); balances == nil {
 		log.Printf("  ❌ No balance checker and SIMULATE_BALANCES not set")
 		result.Error = fmt.Errorf("no balance source in dry-run")
 		return result
