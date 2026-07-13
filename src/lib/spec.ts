@@ -201,6 +201,16 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
     // ISR re-render bursts.
     const stored = await benchFromStore(slug, "");
     if (stored) return slimBenchmarkForCache(overlayEditorial(stored, spec));
+    if (spec.status === "live") {
+      // A live spec with no readable blob is a transient store failure
+      // (proxy timeout, worker mid-write), not a real state. Returning
+      // undefined would cache the miss for the whole revalidate window:
+      // home row + /api/stat then serve "Awaiting samples" while the
+      // bench page reads fine (bnb-rpc incident, 2026-07-13). Throwing
+      // makes unstable_cache keep the last good entry; cold-cache
+      // callers already catch and fall back to the draft placeholder.
+      throw new Error(`store blob missing for live bench ${slug}`);
+    }
     return undefined;
   },
   // Version key bumped when Benchmark shape changes so stale cache entries
