@@ -25,7 +25,7 @@ func truncate(s string, n int) string {
 
 // providerOrder is the column order in the condensed line, log table, and
 // any debug dump.
-var providerOrder = []string{"moralis", "alchemy", "opensea", "rarible"}
+var providerOrder = []string{"moralis", "alchemy", "opensea"}
 
 // fieldLetter maps each field to a single-letter code (NIDFE) used in the
 // condensed per-collection log line.
@@ -228,10 +228,11 @@ func runCheckAllProviders(cfg *Config) {
 		results["opensea"] = osRes
 		openSeaWaitTurn() // accounts for the second internal call's spacing
 
-		// Rarible is serial @ 1 req/sec.
-		raribleWaitTurn()
-		raRes := checkRarible(coll, cfg.RaribleAPIKey, cfg.MonitorRegion)
-		results["rarible"] = raRes
+		// Rarible delisted 2026-07-13: the free tier caps at 100 requests
+		// per MONTH (one 50-collection cycle burns half of it), below any
+		// measurable cadence. The probe code stays in rarible.go for a
+		// sponsored or paid key revival; it was never a spec provider, so
+		// nothing user-facing changes.
 
 		for _, p := range providerOrder {
 			applyResult(results[p], cfg.MonitorRegion)
