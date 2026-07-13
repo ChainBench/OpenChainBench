@@ -13,6 +13,12 @@ type L2Chain struct {
 	Slug string
 	Name string
 	URL  string
+	// Poll switches the chain to HTTP block-number polling instead of a
+	// WebSocket newHeads subscription, for sequencers that expose no
+	// public WSS (Robinhood Chain). Block time is then derived from
+	// block-number deltas over each poll window; per-block jitter is
+	// not captured and the methodology discloses it.
+	Poll bool
 }
 
 // l2Chains is the source of truth for which Layer-2s appear in the
@@ -22,6 +28,12 @@ type L2Chain struct {
 // rebuild — useful if a public endpoint goes flaky.
 func l2Chains() []L2Chain {
 	return []L2Chain{
+		{
+			Slug: "robinhood",
+			Name: "Robinhood Chain",
+			URL:  envDefault("RPC_HTTP_ROBINHOOD", "https://rpc.mainnet.chain.robinhood.com"),
+			Poll: true,
+		},
 		{
 			Slug: "arbitrum",
 			Name: "Arbitrum One",

@@ -137,6 +137,15 @@ func loadConfig() *Config {
 				Layer:             "l2",
 			},
 			{
+				Slug:              "robinhood",
+				Name:              "Robinhood Chain",
+				Kind:              KindEVM,
+				RPCURL:            getenvDefault("RPC_ROBINHOOD", "https://rpc.mainnet.chain.robinhood.com"),
+				MobulaSlug:        "ethereum",
+				HasPriorityMarket: true,
+				Layer:             "l2",
+			},
+			{
 				Slug:              "base",
 				Name:              "Base",
 				Kind:              KindEVM,
