@@ -38,5 +38,7 @@ export const REMOVED_BENCH_SLUGS = new Set([
   "explorer-chain-coverage",
   "solana-rpc",
   "tokenized-stock-peg",
+  "xstocks-peg",
+  "usdy-nav-basis",
   "portfolio-chain-coverage",
 ]);

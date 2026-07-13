@@ -10,11 +10,11 @@ import (
 
 func main() {
 	installLogCapture()
-	fmt.Println("=== Tokenized Stock Peg Harness ===")
-	fmt.Println("OpenChainBench — Robinhood Chain tokenized equities vs Nasdaq reference.")
-	fmt.Printf("Cohort: %d assets | poll: %s | RPC: %s\n", len(assets), pollInterval, rpcURL())
+	fmt.Println("=== xStocks Peg Harness ===")
+	fmt.Println("OpenChainBench — Backed xStocks on Solana vs Nasdaq reference.")
+	fmt.Printf("Cohort: %d assets | poll: %s | Jupiter lite-api\n", len(assets), pollInterval)
 	for _, a := range assets {
-		fmt.Printf("  - %-6s token=%s pool=%s… fee=%.2f%%\n", a.Symbol, a.Token[:10]+"…", a.PoolID[:14], float64(a.FeePPM)/10000)
+		fmt.Printf("  - %-6s mint=%s\n", a.Symbol, a.Mint)
 	}
 
 	go func() {
@@ -43,7 +43,8 @@ func main() {
 		}
 
 		refs := fetchReferencePrices(client)
-		onchain := fetchOnchainPrices(client)
+		multipliers := fetchMultipliers(client)
+		onchain := fetchOnchainPrices(client, multipliers)
 
 		for _, a := range assets {
 			sym := strings.ToLower(a.Symbol)
@@ -56,11 +57,11 @@ func main() {
 				}
 			}
 			if hasPool {
-				tspPriceOnchain.WithLabelValues(sym, "robinhood").Set(pool)
+				tspPriceOnchain.WithLabelValues(sym, issuerLabel).Set(pool)
 			}
 			if hasRef && hasPool && ref.Price > 0 {
 				dev := math.Abs(pool-ref.Price) / ref.Price * 10000
-				tspDeviationBps.WithLabelValues(sym, state, "robinhood").Set(dev)
+				tspDeviationBps.WithLabelValues(sym, state, issuerLabel).Set(dev)
 				tspHealth.WithLabelValues(sym).Set(1)
 				flag := ""
 				if dev > logThresholdBps && state == "regular" {
