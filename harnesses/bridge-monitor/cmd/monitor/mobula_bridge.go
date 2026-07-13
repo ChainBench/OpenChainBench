@@ -91,7 +91,7 @@ func (m *MobulaBridge) GetQuote(originChain, originToken, destChain, destToken, 
 	start := time.Now()
 
 	url := fmt.Sprintf(
-		"https://api.mobula.io/api/2/bridge/quote?originChainId=%s&originToken=%s&destinationChainId=%s&destinationToken=%s&amount=%s&walletAddress=%s&apiKey=%s",
+		"https://demo-api.mobula.io/api/2/bridge/quote?originChainId=%s&originToken=%s&destinationChainId=%s&destinationToken=%s&amount=%s&walletAddress=%s&apiKey=%s",
 		originChain, originToken, destChain, destToken,
 		strconv.FormatFloat(amount, 'f', -1, 64),
 		walletAddress, m.apiKey,
@@ -135,7 +135,7 @@ func (m *MobulaBridge) GetQuote(originChain, originToken, destChain, destToken, 
 }
 
 func (m *MobulaBridge) GetStatus(txHash string) (*MobulaStatusResponse, error) {
-	url := fmt.Sprintf("https://api.mobula.io/api/2/bridge/status/%s", txHash)
+	url := fmt.Sprintf("https://demo-api.mobula.io/api/2/bridge/status/%s", txHash)
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -164,7 +164,7 @@ func (m *MobulaBridge) GetStatus(txHash string) (*MobulaStatusResponse, error) {
 }
 
 func (m *MobulaBridge) VerifyRoutes() (*MobulaRoutesResponse, error) {
-	url := "https://api.mobula.io/api/2/bridge/routes"
+	url := "https://demo-api.mobula.io/api/2/bridge/routes"
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
