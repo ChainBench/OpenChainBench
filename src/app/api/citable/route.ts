@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getBenchmarks } from "@/data/benchmarks";
 import { SITE } from "@/data/site";
 import { AllBenchmarksDraftError } from "@/lib/spec";
-import { citeBundle, fieldValue, leader, headlineSentence } from "@/lib/citation";
+import { citableAsOf, citeBundle, fieldValue, leader, headlineSentence } from "@/lib/citation";
 import { valueInDeclaredUnit } from "@/lib/format";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 
@@ -80,7 +80,7 @@ export async function GET(req: Request) {
       sampleSize: b.sampleSize,
       expectedN: b.expectedN,
       dataConfidence: b.dataConfidence,
-      asOf: b.lastRunAt,
+      asOf: citableAsOf(b),
       headline: headlineSentence(b),
       url: `${SITE.url}/benchmarks/${b.slug}`,
       api: `${SITE.url}/api/stat/${b.slug}`,
