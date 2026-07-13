@@ -48,7 +48,7 @@ func fetchReferencePrices(client *http.Client) map[string]refQuote {
 	for _, a := range assets {
 		syms = append(syms, a.Symbol)
 	}
-	url := sparkHost + "?symbols=" + strings.Join(syms, ",") + "&range=1d&interval=5m"
+	url := sparkHost + "?symbols=" + strings.Join(syms, ",") + "&range=1d&interval=1m"
 	raw, status := yahooGet(client, url)
 	if raw == nil {
 		tspSourceCall.WithLabelValues("yahoo", status).Inc()
