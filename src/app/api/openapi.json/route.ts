@@ -299,6 +299,16 @@ export async function GET() {
                 name: { type: "string" },
               },
             },
+            totalWins: {
+              type: "object",
+              description:
+                "Head-to-head win tally across the shared benchmark set. Sum of a + b + tie equals shared.length.",
+              properties: {
+                a: { type: "integer" },
+                b: { type: "integer" },
+                tie: { type: "integer" },
+              },
+            },
             shared: {
               type: "array",
               description:
