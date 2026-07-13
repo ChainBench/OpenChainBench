@@ -1,0 +1,90 @@
+# OpenChainBench. Bench № 078
+
+slug: usdy-nav-basis
+number: "078"
+title: USDY NAV basis, live market price vs official redemption rate
+seo_title: "USDY price vs NAV 2026"
+seo_description: "Does USDY trade at its NAV? Live basis between Ondo's tokenized treasury market price (Orca, Pyth) and its official redemption rate, in bps, keyless."
+subtitle: "Signed basis between USDY's onchain market price and the official Ondo redemption rate published on Pyth, in basis points. Tokenized treasuries are the largest RWA segment; this is the live answer to whether the market actually prices the NAV."
+
+category: RWA
+status: live
+metric: NAV basis
+unit: bps
+higher_is_better: false
+
+seo_intro: |
+  USDY is Ondo's yield-bearing tokenized treasury note, one of the
+  largest RWA tokens by float. Its official value is the redemption
+  rate Ondo publishes (the NAV a redeeming holder receives), but its
+  price on the open market is whatever the pools say. This page
+  measures the gap live: the Orca USDY/USDC whirlpool on Solana (the
+  deepest genuine venue, about $2.9M) and the Pyth market composite,
+  each against the Pyth redemption rate feed, every 60 seconds,
+  keyless on every leg. A persistent negative basis means the market
+  discounts the NAV (liquidity preference, exit friction); a positive
+  one means buyers pay a premium over redemption value. Most tokenized
+  treasuries (OUSG, BUIDL, BENJI) are transfer-restricted and never
+  trade on open pools, so their NAV can never be market-tested; USDY
+  is the rare one where the question is measurable at all.
+
+abstract: |
+  Every 60 seconds the harness reads the Ondo redemption rate and the
+  Pyth USDY/USD market composite from one Hermes call, and the Orca
+  USDY/USDC whirlpool price from one Solana getAccountInfo (sqrtPrice
+  decoded from the account bytes). Basis = (market - NAV) / NAV in
+  signed basis points per venue. No keys, no transactions.
+
+methodology:
+  - "NAV leg: the Pyth Hermes feed Crypto.USDY/USD.RR (the redemption rate Ondo publishes onchain), fetched keyless. The same Hermes call carries the Pyth USDY/USD market composite, which doubles as a venue row."
+  - "Market leg, Orca: the USDY/USDC whirlpool on Solana (~$2.9M, the deepest genuine USDY pool anywhere), price decoded straight from getAccountInfo bytes (sqrtPrice u128 at offset 65, both mints 6 decimals). Keyless against a public RPC."
+  - "Basis: signed, (market - NAV) / NAV x 10000. Negative = the market discounts the NAV. The ranking sorts by absolute basis; the sign is the story and both are displayed."
+  - "Excluded, verified 2026-07-13: the Arbitrum Camelot USDY/USDC pool holds 232 USDY against 7M USDC, effectively drained, its stale price sitting ~345bps under NAV with near zero volume. Kept out of the ranking as the textbook example of why pool depth gates peg quality; revisited monthly."
+  - "Also not measurable, disclosed: OUSG, BUIDL and BENJI are transfer-restricted mint/redeem instruments with no genuine open pools, so no market test of their NAV exists to publish."
+  - "USDY is yield accruing: the redemption rate rises daily, so a naive USD peg comparison would show permanent drift. Comparing against the live RR feed removes that by construction."
+
+findings:
+  - "{{best_name}} trades closest to NAV at {{best_p50}} (p50 absolute basis, 24h) across {{count}} measured venues."
+  - "{{name:orca-solana}} ({{p50:orca-solana}}) is the deepest genuine USDY venue anywhere at about $2.9M; its basis is the closest thing to a market verdict on Ondo's published NAV."
+  - "{{name:pyth-market}} ({{p50:pyth-market}}) aggregates offchain and onchain USDY trading into one composite; its spread against the RR feed is the cleanest single number for the NAV discount."
+  - "The excluded Camelot pool on Arbitrum is the finding that did not make the table: drained to 232 USDY, price frozen ~345bps under NAV. Depth is not a detail in RWA pricing, it is the whole game."
+
+faq:
+  - q: "Does USDY trade at its NAV?"
+    a: "Close to it, with a measurable basis that this page tracks live. At verification the Orca pool sat within a few bps of the redemption rate and the Pyth market composite about 10bps under. A persistent discount reflects exit friction and liquidity preference, not a broken product; the point is that it is now measured instead of assumed."
+  - q: "Why only two venues?"
+    a: "Because genuine USDY liquidity is rarer than the token's float suggests. The Arbitrum Camelot pool is drained and excluded (232 USDY left, price frozen well under NAV), and most other tokenized treasuries never trade openly at all. Two honest venues beat five misleading ones."
+  - q: "What does a negative basis mean?"
+    a: "The market prices USDY under its redemption value. Redeeming through Ondo takes time and has minimums, so sellers who want out now accept a small discount. The size and persistence of that discount is exactly what this bench publishes."
+  - q: "Why is USDY measurable when OUSG and BUIDL are not?"
+    a: "OUSG, BUIDL and BENJI are transfer-restricted: they move between allowlisted addresses and cannot trade on open AMMs, so no market price exists to compare against NAV. USDY circulates freely and has genuine pools, which makes it the one tokenized treasury where the NAV question can be answered by measurement."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/usdy-nav-basis
+
+prometheus:
+  window: 24h
+  freshness_metric: usdy_basis_bps
+
+providers:
+  - slug: orca-solana
+    name: Orca (Solana)
+    tag: "USDY/USDC whirlpool, ~$2.9M, deepest genuine USDY venue"
+    formula: "p50 over 24h of the absolute signed basis (bps) between the Orca whirlpool USDY/USDC price and the Pyth redemption rate."
+    queries:
+      p50: quantile_over_time(0.50, abs(usdy_basis_bps{venue="orca-solana"})[24h:])
+      p90: quantile_over_time(0.90, abs(usdy_basis_bps{venue="orca-solana"})[24h:])
+      p99: quantile_over_time(0.99, abs(usdy_basis_bps{venue="orca-solana"})[24h:])
+      mean: avg_over_time(abs(usdy_basis_bps{venue="orca-solana"})[24h:])
+      success: avg_over_time(usdy_health{venue="orca-solana"}[24h])
+      series: usdy_basis_bps{venue="orca-solana"}
+  - slug: pyth-market
+    name: Pyth market composite
+    tag: "Crypto.USDY/USD aggregate vs the RR feed, same oracle network"
+    formula: "p50 over 24h of the absolute signed basis (bps) between the Pyth USDY/USD market composite and the Pyth redemption rate."
+    queries:
+      p50: quantile_over_time(0.50, abs(usdy_basis_bps{venue="pyth-market"})[24h:])
+      p90: quantile_over_time(0.90, abs(usdy_basis_bps{venue="pyth-market"})[24h:])
+      p99: quantile_over_time(0.99, abs(usdy_basis_bps{venue="pyth-market"})[24h:])
+      mean: avg_over_time(abs(usdy_basis_bps{venue="pyth-market"})[24h:])
+      success: avg_over_time(usdy_health{venue="pyth-market"}[24h])
+      series: usdy_basis_bps{venue="pyth-market"}
