@@ -32,6 +32,19 @@ const MAX_W = 1200;
 const MIN_H = 20;
 const MAX_H = 400;
 
+/** Minimal XML escape for user-controlled strings interpolated into the
+ *  SVG's <title> element and aria-label attribute. Bench titles and
+ *  provider names come from YAML / a registry and can contain `&`, `<`,
+ *  `>`, `"`; librsvg and Chrome inline-SVG both refuse to render
+ *  malformed XML, so an embedder would silently see a broken image. */
+function xmlEscape(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 function clampDim(raw: string | null, def: number, min: number, max: number) {
   const n = raw == null ? NaN : Number(raw);
   if (!Number.isFinite(n) || n < min) return def;
@@ -123,7 +136,9 @@ export async function GET(
       `stroke-width="${strokeWidth}" stroke-linecap="round" ` +
       `stroke-linejoin="round"/>`;
   }
-  const title = `${bench.title} — 24h sparkline${top ? ` (${top.name})` : ""}`;
+  const title = xmlEscape(
+    `${bench.title} — 24h sparkline${top ? ` (${top.name})` : ""}`,
+  );
   const svg =
     `<?xml version="1.0" encoding="UTF-8"?>\n` +
     `<svg xmlns="http://www.w3.org/2000/svg" ` +
