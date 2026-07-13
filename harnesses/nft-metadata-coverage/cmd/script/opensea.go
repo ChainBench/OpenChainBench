@@ -43,7 +43,12 @@ var openSeaClient = &http.Client{Timeout: 10 * time.Second}
 func resolveOpenSeaSlug(contract, apiKey, region string) (string, error) {
 	url := fmt.Sprintf("https://api.opensea.io/api/v2/chain/ethereum/contract/%s", contract)
 	req, _ := http.NewRequest("GET", url, nil)
-	req.Header.Set("x-api-key", apiKey)
+	// OpenSea v2 serves these endpoints keyless (verified 2026-07-13),
+	// but an EMPTY x-api-key header gets a 401. Only set it when a key
+	// is actually configured.
+	if apiKey != "" {
+		req.Header.Set("x-api-key", apiKey)
+	}
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", userAgent)
 
@@ -73,12 +78,9 @@ func resolveOpenSeaSlug(contract, apiKey, region string) (string, error) {
 func checkOpenSea(coll NFTCollection, apiKey, region string) NFTResult {
 	res := newResult("opensea", coll.Name)
 
-	if apiKey == "" {
-		res.Error = "missing_api_key"
-		res.ErrorType = "config"
-		recordError("opensea", region, "config")
-		return res
-	}
+	// Keyless mode is supported: OpenSea v2 collections/stats/contract
+	// endpoints answer without a key (verified 2026-07-13, incl. burst).
+	// A configured key only raises the rate-limit headroom.
 	if coll.OpenSeaSlug == "" {
 		res.Error = "missing_slug"
 		res.ErrorType = "slug_resolve_error"
@@ -91,7 +93,9 @@ func checkOpenSea(coll NFTCollection, apiKey, region string) NFTResult {
 	// Call 1: collection metadata
 	url1 := fmt.Sprintf("https://api.opensea.io/api/v2/collections/%s", coll.OpenSeaSlug)
 	req1, _ := http.NewRequest("GET", url1, nil)
-	req1.Header.Set("x-api-key", apiKey)
+	if apiKey != "" {
+		req1.Header.Set("x-api-key", apiKey)
+	}
 	req1.Header.Set("Accept", "application/json")
 	req1.Header.Set("User-Agent", userAgent)
 
@@ -130,7 +134,9 @@ func checkOpenSea(coll NFTCollection, apiKey, region string) NFTResult {
 	// Call 2: stats (floor price). Non-fatal if it fails — we still score 4/5.
 	url2 := fmt.Sprintf("https://api.opensea.io/api/v2/collections/%s/stats", coll.OpenSeaSlug)
 	req2, _ := http.NewRequest("GET", url2, nil)
-	req2.Header.Set("x-api-key", apiKey)
+	if apiKey != "" {
+		req2.Header.Set("x-api-key", apiKey)
+	}
 	req2.Header.Set("Accept", "application/json")
 	req2.Header.Set("User-Agent", userAgent)
 
