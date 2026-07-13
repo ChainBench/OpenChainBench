@@ -18,4 +18,6 @@ export const CATEGORY_COLOR: Record<string, string> = {
   // in use. Picks up OpenSea/Alchemy/Moralis brand palettes which all
   // cluster around blues/purples.
   "NFT APIs": "#6366f1",
+  // RWA: teal, the tradfi-meets-onchain lane gets its own hue.
+  RWA: "#0d9488",
 };
