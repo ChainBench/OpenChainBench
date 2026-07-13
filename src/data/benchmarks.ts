@@ -115,7 +115,7 @@ export const getBenchmarksSafe = cache(loadAllBenchmarksSafe);
 
 export async function getBenchmark(
   slug: string,
-  options: { chain?: string; region?: string } = {}
+  options: { chain?: string; region?: string; kind?: string; venue?: string } = {}
 ): Promise<Benchmark | undefined> {
   return loadBenchmark(slug, options);
 }
