@@ -120,6 +120,13 @@ func (tx *TxExecutor) CanExecute() bool {
 	return tx.solanaPrivateKey != nil && tx.evmPrivateKey != nil && !tx.dryRun
 }
 
+// EVMPrivateKey exposes the loaded EVM key so the Mobula client can EIP-712
+// sign the bridge intent on the confirm step. Returns nil in quote-only mode
+// (no key configured), which GetSignedQuote handles by degrading to unsigned.
+func (tx *TxExecutor) EVMPrivateKey() *ecdsa.PrivateKey {
+	return tx.evmPrivateKey
+}
+
 // ExecuteSolanaTransaction signs and broadcasts a Solana transaction
 func (tx *TxExecutor) ExecuteSolanaTransaction(serializedTxBase64 string) (string, error) {
 	if tx.dryRun {
