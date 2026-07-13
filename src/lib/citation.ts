@@ -20,6 +20,16 @@ function citationCandidates(b: Benchmark): ProviderResult[] {
   return live.filter((r) => r.dataConfidence !== "insufficient");
 }
 
+/** Timestamp of the last real measurement, or null when the bench has
+ *  no measurement history yet (draft placeholder). Draft benches carry
+ *  a wall-clock `lastRunAt` for type safety (Benchmark.lastRunAt is a
+ *  non-nullable string), which downstream JSON, JSON-LD and MCP surfaces
+ *  would otherwise expose as a real freshness signal to LLM crawlers.
+ *  Use this helper on every machine-readable surface. */
+export function citableAsOf(b: Benchmark): string | null {
+  return b.status === "draft" ? null : b.lastRunAt;
+}
+
 /** Median value of the benchmark (the field shown in the headline). */
 export function fieldValue(b: Benchmark): number | null {
   if (b.status !== "live") return null;

@@ -15,6 +15,7 @@ import { SITE } from "@/data/site";
 import { loadAlternative } from "@/lib/alternatives";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { buildBreadcrumbJsonLd, safeJsonLd } from "@/lib/jsonld";
+import { citableAsOf } from "@/lib/citation";
 import { ProviderLogo } from "@/components/provider-logo";
 import { ProviderTypeBadge } from "@/components/provider-type-badge";
 import { isRegion } from "@/lib/brand";
@@ -124,7 +125,7 @@ export default async function AlternativePage({
         isAccessibleForFree: true,
         license: "https://creativecommons.org/licenses/by/4.0/",
         datePublished: getBenchCreatedAt(bench.slug).toISOString(),
-        dateModified: bench.lastRunAt,
+        ...(citableAsOf(bench) ? { dateModified: bench.lastRunAt } : {}),
         variableMeasured: bench.metric,
         isBasedOn: benchUrl,
       },
@@ -137,7 +138,7 @@ export default async function AlternativePage({
         mainEntityOfPage: url,
         articleBody: alt.intro,
         datePublished: getBenchCreatedAt(bench.slug).toISOString(),
-        dateModified: bench.lastRunAt,
+        ...(citableAsOf(bench) ? { dateModified: bench.lastRunAt } : {}),
         author: { "@id": `${SITE.url}/#org` },
         publisher: { "@id": `${SITE.url}/#org` },
         about: { "@id": `${url}#dataset` },
