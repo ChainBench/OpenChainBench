@@ -167,6 +167,17 @@ func signBridgeIntent(typedDataJSON json.RawMessage, key *ecdsa.PrivateKey) (str
 	if err := json.Unmarshal(typedDataJSON, &raw); err != nil {
 		return "", "", fmt.Errorf("parse typedData: %w", err)
 	}
+	// Mobula's typedData omits the EIP712Domain type definition (only
+	// BridgeIntent is listed under types). go-ethereum requires it to hash
+	// the domain, so we synthesize one from the domain fields we actually
+	// received (name/version/chainId).
+	if _, ok := raw.Types["EIP712Domain"]; !ok {
+		raw.Types["EIP712Domain"] = []apitypes.Type{
+			{Name: "name", Type: "string"},
+			{Name: "version", Type: "string"},
+			{Name: "chainId", Type: "uint256"},
+		}
+	}
 	td := apitypes.TypedData{
 		Types:       raw.Types,
 		PrimaryType: raw.PrimaryType,
