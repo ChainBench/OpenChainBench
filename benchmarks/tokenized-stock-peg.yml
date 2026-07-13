@@ -48,6 +48,8 @@ methodology:
   - "Cohort: the 11 official tokenized equities (name pattern <Company> * Robinhood Token, shared verified Stock implementation) whose USDG pool has real liquidity and swap history: NVDA, AAPL, GOOGL, TSLA, PLTR, META, AMD, MSFT, AMZN, SPY, MU. Pool fees range 0.3% to 2%."
   - "Excluded, with reasons: SPCX (SpaceX pool holds ~$196k but SpaceX is not listed, no reference price exists), SNDK and QQQ (pool depth under $2k, deviation would be noise), CRCL (pool at zero liquidity), ~80 other official tokens (issuer-seeded placeholder pools at 90-95% fee, zero swaps), HOOD (never issued onchain, all HOOD tokens on the chain are third-party spam)."
   - "Thin liquidity is part of the story, not a defect: pool depths run $24k to $330k, so a single mid-size swap can move the onchain price meaningfully off the reference until arbitrage closes it. The bench measures how fast that closure actually happens."
+  - "Reading grid: an AMM price can sit anywhere inside the pool's fee band without creating an arbitrage opportunity, so a 2% fee pool resting 150 bps off its reference is economically at equilibrium, not broken. Cross-symbol ranking therefore partly reflects each pool's fee tier (disclosed in every tag); the within-symbol trend over time is the purest signal."
+  - "Quote-asset caveat: pool prices are denominated in USDG and compared against USD references. A USDG peg wobble would appear as a correlated deviation across all 11 symbols simultaneously, which is the signature to check before reading a broad move as tracking error."
   - "Caveats: the issuer can pause or blocklist a token (the harness drops the sample and lets the series age out rather than freezing), and the Stock contract carries a split multiplier; a corporate action can look like a one-day deviation spike until reconciled."
 
 findings:
@@ -74,8 +76,6 @@ source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/tokeniz
 prometheus:
   window: 24h
   freshness_metric: tsp_deviation_bps
-
-rank_matrix_query: avg by (asset) (quantile_over_time(0.50, tsp_deviation_bps{market_state="regular"}[24h]))
 
 # Metrics emitted by the tokenized-stock-peg harness:
 #   tsp_deviation_bps{asset, market_state}  gauge, abs deviation in bps
