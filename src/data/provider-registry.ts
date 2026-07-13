@@ -236,7 +236,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Nvidia tokenized equity measured across issuers on the RWA benchmarks: Robinhood's token on Robinhood Chain (Uniswap v4 vs USDG) and Backed's xStock on Solana (Jupiter executable mid vs USDC), each tracked live against the real market price.",
   },
   googl: {
-    url: "https://abc.xyz",
+    url: "https://www.google.com",
     description:
       "Alphabet tokenized equity measured across issuers on the RWA benchmarks: Robinhood's token on Robinhood Chain (Uniswap v4 vs USDG) and Backed's xStock on Solana (Jupiter executable mid vs USDC), each tracked live against the real market price.",
   },
