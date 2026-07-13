@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getBenchmark } from "@/data/benchmarks";
 import { SITE } from "@/data/site";
 import {
+  citableAsOf,
   citationQuote,
   citeBundle,
   fieldValue,
@@ -33,7 +34,31 @@ export async function GET(
   if (!SLUG_RE.test(slug)) {
     return NextResponse.json({ error: "bad_slug" }, { status: 400 });
   }
-  const b = await getBenchmark(slug);
+  // Dimension query params (?chain=, ?region=, ?kind=, ?venue=) mirror
+  // the same client-side selector on the bench page, so a citer asking
+  // "fastest ethereum us-east RPC" gets the per cell leader instead of
+  // the cross chain aggregate. Values pass through to the loader
+  // unchanged. An unknown value (`?chain=nonexistent`) does NOT fall
+  // back to the unfiltered aggregate — the loader returns undefined and
+  // the route below 404s. That is intentional: silently substituting
+  // the aggregate for a mistyped filter would make citers cite the
+  // wrong number without knowing.
+  const url = new URL(req.url);
+  const filters: {
+    chain?: string;
+    region?: string;
+    kind?: string;
+    venue?: string;
+  } = {};
+  const chainParam = url.searchParams.get("chain");
+  const regionParam = url.searchParams.get("region");
+  const kindParam = url.searchParams.get("kind");
+  const venueParam = url.searchParams.get("venue");
+  if (chainParam && chainParam !== "all") filters.chain = chainParam;
+  if (regionParam && regionParam !== "all") filters.region = regionParam;
+  if (kindParam && kindParam !== "all") filters.kind = kindParam;
+  if (venueParam && venueParam !== "all") filters.venue = venueParam;
+  const b = await getBenchmark(slug, filters);
   if (!b || b.editorialStatus !== "live") {
     return NextResponse.json(
       { error: "unknown_slug", slug },
@@ -58,6 +83,11 @@ export async function GET(
     unit: b.unit,
     status: b.status,
     higherIsBetter: b.higherIsBetter,
+    // Echo the applied dimension filter so a citer can verify which
+    // cell (chain / region / kind / venue) their answer covers.
+    // Missing key = "all" for that dimension.
+    filters:
+      Object.keys(filters).length > 0 ? filters : null,
     // Aggregate is "insufficient" (median per-provider sample health
     // below 10 percent of expected_n): refuse to publish a value or
     // leader; the headline is rewritten by headlineSentence so the
@@ -88,7 +118,7 @@ export async function GET(
     sampleSize: b.sampleSize,
     expectedN: b.expectedN,
     dataConfidence: b.dataConfidence,
-    asOf: b.lastRunAt,
+    asOf: citableAsOf(b),
     headline: headlineSentence(b),
     quote: citationQuote(b, SITE.url),
     cite: citeBundle(b, SITE.url),
