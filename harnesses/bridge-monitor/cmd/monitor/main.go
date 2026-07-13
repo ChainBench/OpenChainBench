@@ -139,6 +139,9 @@ func main() {
 		}
 	}
 
+	// Pre-seed the self-healing series so alerting rules match from startup.
+	initSelfHealingMetrics()
+
 	// Start Prometheus metrics endpoint. Railway / most PaaS inject $PORT
 	// and route external traffic to whatever value they chose. If we bind
 	// to the wrong port the edge proxy returns 502 with x-railway-fallback.
@@ -336,6 +339,14 @@ func main() {
 		log.Println("🚀 Production mode: fixed-time scheduler started")
 	}
 
+	// Auto-rebalancer shares the executor's quote and broadcast plumbing. Inert
+	// unless the executor can actually broadcast (production mode, keys present),
+	// so it costs nothing in dry-run or while paused.
+	var rebalancer *Rebalancer
+	if executor != nil {
+		rebalancer = NewRebalancer(executor, slackNotifier)
+	}
+
 	// Track last meme execution day to run weekly
 	lastMemeDay := -1
 
@@ -345,7 +356,7 @@ func main() {
 		case <-getSchedulerChan(scheduler, "$5"):
 			// $5 execution loop - daily at 10:00 UTC
 			if executor != nil && config.ExecutionMode == "production" {
-				runTierIfViable(executor, balanceChecker, slackNotifier, GetTriangleRoutes(), 5.0, "daily")
+				runTierIfViable(executor, balanceChecker, slackNotifier, rebalancer, GetTriangleRoutes(), 5.0, "daily")
 
 				// Meme routes use independent capital (TRUMP) — always attempt,
 				// the per-route RunReal check catches insufficient TRUMP.
@@ -361,49 +372,110 @@ func main() {
 
 		case <-getSchedulerChan(scheduler, "$50"):
 			if executor != nil && config.ExecutionMode == "production" {
-				runTierIfViable(executor, balanceChecker, slackNotifier, GetTriangleRoutes(), 50.0, "Mon+Thu")
+				runTierIfViable(executor, balanceChecker, slackNotifier, rebalancer, GetTriangleRoutes(), 50.0, "Mon+Thu")
 			}
 
 		case <-getSchedulerChan(scheduler, "$300"):
 			if executor != nil && config.ExecutionMode == "production" {
-				runTierIfViable(executor, balanceChecker, slackNotifier, GetTriangleRoutes(), 300.0, "Mon weekly")
+				runTierIfViable(executor, balanceChecker, slackNotifier, rebalancer, GetTriangleRoutes(), 300.0, "Mon weekly")
 			}
 		}
 	}
 }
 
+// downgradeLadder returns the tier amounts to try, largest first, starting at
+// the scheduled tier. Partial data beats none: if $300 cannot run we still
+// want the $50 or $5 datapoint from the same slot.
+func downgradeLadder(tier float64) []float64 {
+	all := []float64{300, 50, 5}
+	var out []float64
+	for _, t := range all {
+		if t <= tier {
+			out = append(out, t)
+		}
+	}
+	if len(out) == 0 {
+		out = []float64{tier}
+	}
+	return out
+}
+
 // runTierIfViable pre-flights the full R1→R2→R3 cycle at the given tier. If the
-// simulation says the cycle cannot complete, emit ONE Slack "couldn't run" message
-// and skip — next scheduler tick will retry. Returns true if the tier actually ran.
+// simulation says the cycle cannot complete, it first lets the auto-rebalancer
+// try to unblock the tier, then walks the downgrade ladder to a smaller amount.
+// Only if nothing on the ladder is viable does it emit ONE Slack "couldn't run"
+// message and skip — next scheduler tick will retry. Returns true if any
+// amount actually ran.
 func runTierIfViable(executor *Executor, bc *BalanceChecker, slack *SlackNotifier,
-	routes []TestRoute, tier float64, tierLabel string,
+	rebalancer *Rebalancer, routes []TestRoute, tier float64, tierLabel string,
 ) bool {
 	if bc == nil {
 		log.Printf("⚠️  No balance checker — skipping tier $%.0f pre-flight", tier)
 		return false
 	}
 
-	balances, err := bc.GetAllBalances()
-	if err != nil {
-		log.Printf("⚠️  Pre-flight balance fetch failed for $%.0f tier: %v", tier, err)
-		if slack != nil {
-			_ = slack.NotifyTierSkipped(tier, tierLabel, fmt.Sprintf("Balance API error: %v", err))
+	ladder := downgradeLadder(tier)
+	blockedReason := ""
+
+	for i, amount := range ladder {
+		balances, degraded, err := bc.GetAllBalancesDetailed()
+		if err != nil || degraded {
+			// Unreadable is not the same as empty: refuse to act (and above all
+			// refuse to rebalance) on balances we cannot trust.
+			log.Printf("⚠️  Pre-flight balances unreadable for $%.0f tier (degraded=%v err=%v)", tier, degraded, err)
+			if slack != nil {
+				_ = slack.NotifyTierSkipped(tier, tierLabel,
+					fmt.Sprintf("Balances unreadable (degraded=%v, err=%v). Refusing to run or rebalance blind.", degraded, err))
+			}
+			return false
 		}
-		return false
+
+		sim := SimulateTriangleCycle(balances, amount)
+		if !sim.Viable && rebalancer != nil {
+			sim, _ = rebalancer.TryUnblockTier(sim, balances, tierLabel)
+		}
+		if !sim.Viable {
+			if blockedReason == "" {
+				blockedReason = sim.Reason
+			}
+			log.Printf("⏭️  Tier $%.0f not viable at $%.0f: %s", tier, amount, sim.Reason)
+			continue
+		}
+
+		if i > 0 {
+			log.Printf("⬇️  Tier $%.0f downgraded to $%.0f: %s", tier, amount, blockedReason)
+			bridgeTierDowngraded.WithLabelValues(tierAmountLabel(tier), tierAmountLabel(amount)).Set(1)
+			if slack != nil {
+				_ = slack.NotifyTierDowngrade(tier, amount, blockedReason)
+			}
+		} else {
+			// The scheduled tier runs at full size again: clear its downgrade
+			// gauges so the alert stops firing.
+			for _, smaller := range ladder[1:] {
+				bridgeTierDowngraded.WithLabelValues(tierAmountLabel(tier), tierAmountLabel(smaller)).Set(0)
+			}
+		}
+
+		runTriangle(executor, routes, amount)
+		return true
 	}
 
-	sim := SimulateTriangleCycle(balances, tier)
-	if !sim.Viable {
-		log.Printf("⏭️  Tier $%.0f skipped: %s", tier, sim.Reason)
-		if slack != nil {
-			_ = slack.NotifyTierSkipped(tier, tierLabel, sim.Reason)
-		}
-		return false
+	log.Printf("⏭️  Tier $%.0f skipped entirely: %s", tier, blockedReason)
+	if slack != nil {
+		_ = slack.NotifyTierSkipped(tier, tierLabel, blockedReason)
 	}
+	return false
+}
 
-	// Sequential per-bridge orchestration: each bridge runs a full R1→R2→R3 triangle
-	// before the next bridge starts. Halves the peak capital need per leg, gives a
-	// clean round-trip cost per provider, and unlocks larger tiers with less capital.
+func tierAmountLabel(tier float64) string {
+	return strconv.FormatFloat(tier, 'f', 0, 64)
+}
+
+// runTriangle runs the sequential per-bridge orchestration: each bridge runs a
+// full R1→R2→R3 triangle before the next bridge starts. Halves the peak capital
+// need per leg, gives a clean round-trip cost per provider, and unlocks larger
+// tiers with less capital.
+func runTriangle(executor *Executor, routes []TestRoute, tier float64) {
 	log.Printf("💸 Running $%.0f triangle (sequential per-bridge)...", tier)
 	bridges := []string{"mobula", "relay", "lifi"}
 	for _, bridge := range bridges {
@@ -423,7 +495,6 @@ func runTierIfViable(executor *Executor, bc *BalanceChecker, slack *SlackNotifie
 			}
 		}
 	}
-	return true
 }
 
 // getSchedulerChan returns the appropriate scheduler channel or nil
