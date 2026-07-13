@@ -363,7 +363,7 @@ func (m *MobulaBridge) TestRoute(route TestRoute, amount, amountUsd float64, reg
 	}
 
 	// Success-only: see debridge_bridge.go, failures must not enter the histogram.
-	bridgeQuoteLatency.WithLabelValues(labels...).Observe(float64(quoteLatency.Milliseconds()))
+	bridgeQuoteLatency.WithLabelValues(labels...).Observe(float64(quoteLatency.Nanoseconds()) / 1e6)
 
 	bridgeQuoteSuccess.WithLabelValues(labels...).Set(1)
 
