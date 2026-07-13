@@ -343,8 +343,10 @@ func main() {
 	// unless the executor can actually broadcast (production mode, keys present),
 	// so it costs nothing in dry-run or while paused.
 	var rebalancer *Rebalancer
+	var gasTopper *GasTopper
 	if executor != nil {
 		rebalancer = NewRebalancer(executor, slackNotifier)
+		gasTopper = NewGasTopper(executor, slackNotifier)
 	}
 
 	// Stuck-fund reaper: gauges in every mode (alerting must survive a pause),
@@ -360,7 +362,7 @@ func main() {
 		case <-getSchedulerChan(scheduler, "$5"):
 			// $5 execution loop - daily at 10:00 UTC
 			if executor != nil && config.ExecutionMode == "production" {
-				runTierIfViable(executor, balanceChecker, slackNotifier, rebalancer, GetTriangleRoutes(), 5.0, "daily")
+				runTierIfViable(executor, balanceChecker, slackNotifier, rebalancer, gasTopper, GetTriangleRoutes(), 5.0, "daily")
 
 				// Meme routes use independent capital (TRUMP) — always attempt,
 				// the per-route RunReal check catches insufficient TRUMP.
@@ -376,12 +378,12 @@ func main() {
 
 		case <-getSchedulerChan(scheduler, "$50"):
 			if executor != nil && config.ExecutionMode == "production" {
-				runTierIfViable(executor, balanceChecker, slackNotifier, rebalancer, GetTriangleRoutes(), 50.0, "Mon+Thu")
+				runTierIfViable(executor, balanceChecker, slackNotifier, rebalancer, gasTopper, GetTriangleRoutes(), 50.0, "Mon+Thu")
 			}
 
 		case <-getSchedulerChan(scheduler, "$300"):
 			if executor != nil && config.ExecutionMode == "production" {
-				runTierIfViable(executor, balanceChecker, slackNotifier, rebalancer, GetTriangleRoutes(), 300.0, "Mon weekly")
+				runTierIfViable(executor, balanceChecker, slackNotifier, rebalancer, gasTopper, GetTriangleRoutes(), 300.0, "Mon weekly")
 			}
 		}
 	}
@@ -411,7 +413,7 @@ func downgradeLadder(tier float64) []float64 {
 // message and skip — next scheduler tick will retry. Returns true if any
 // amount actually ran.
 func runTierIfViable(executor *Executor, bc *BalanceChecker, slack *SlackNotifier,
-	rebalancer *Rebalancer, routes []TestRoute, tier float64, tierLabel string,
+	rebalancer *Rebalancer, gasTopper *GasTopper, routes []TestRoute, tier float64, tierLabel string,
 ) bool {
 	if bc == nil {
 		log.Printf("⚠️  No balance checker — skipping tier $%.0f pre-flight", tier)
@@ -432,6 +434,12 @@ func runTierIfViable(executor *Executor, bc *BalanceChecker, slack *SlackNotifie
 					fmt.Sprintf("Balances unreadable (degraded=%v, err=%v). Refusing to run or rebalance blind.", degraded, err))
 			}
 			return false
+		}
+
+		// Gas check once per slot: the same balances snapshot already carries
+		// SOL / ETH, and an execution without gas fails later anyway.
+		if i == 0 {
+			gasTopper.CheckAndTopUp(balances)
 		}
 
 		sim := SimulateTriangleCycle(balances, amount)
