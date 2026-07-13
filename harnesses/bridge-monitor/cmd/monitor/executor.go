@@ -18,16 +18,17 @@ const (
 	ModeProduction ExecutionMode = "production"  // Full execution loop
 )
 
-// ExecutionConfig holds the execution loop configuration
+// ExecutionConfig holds the execution loop configuration.
+// Daily spend tracking lives in the Executor's SpendTracker (UTC-date keyed,
+// persisted to disk), not here: a plain struct field never reset and was
+// zeroed by every restart.
 type ExecutionConfig struct {
-	Mode              ExecutionMode
-	Freq5USD          time.Duration // How often to run $5 tests
-	Freq50USD         time.Duration // How often to run $50 tests
-	Freq300USD        time.Duration // How often to run $300 tests
-	EnableDebridge    bool          // Whether to execute Debridge (expensive)
-	MaxDailySpendUSD  float64       // Safety cap on daily spending
-	DailySpentUSD     float64       // Track daily spending
-	LastResetDay      int           // Day of month for daily reset
+	Mode             ExecutionMode
+	Freq5USD         time.Duration // How often to run $5 tests
+	Freq50USD        time.Duration // How often to run $50 tests
+	Freq300USD       time.Duration // How often to run $300 tests
+	EnableDebridge   bool          // Whether to execute Debridge (expensive)
+	MaxDailySpendUSD float64       // Safety cap on daily spending
 }
 
 // ExecutionResult holds the result of an execution test
@@ -68,6 +69,36 @@ type Executor struct {
 	debridge      *DebridgeBridge
 	region        string
 	slack         *SlackNotifier
+	spend         *SpendTracker
+}
+
+// DailySpent returns today's consumed budget via the mutex-guarded tracker.
+// All cap checks must go through here, never through a raw field, so the
+// reaper goroutine and the scheduler loop cannot race on the counter.
+func (e *Executor) DailySpent() float64 {
+	return e.spend.Spent()
+}
+
+// AddDailySpend books usd against today's budget (UTC-date keyed, persisted).
+func (e *Executor) AddDailySpend(usd float64) {
+	e.spend.Add(usd)
+}
+
+// accountSpend books a broadcast's cost against the daily cap. A successful
+// fill books the realized fee. Any broadcast that produced a TxHash but did
+// not confirm as a success books a conservative flat estimate, because the
+// deposit or approval TX most likely burned gas even without a fill. Results
+// that never broadcast cost nothing.
+func (e *Executor) accountSpend(result *ExecutionResult) {
+	if result == nil || result.DryRun {
+		return
+	}
+	switch {
+	case result.Success:
+		e.AddDailySpend(result.ActualFeeUSD)
+	case result.TxHash != "":
+		e.AddDailySpend(failedTxFeeEstimateUSD())
+	}
 }
 
 // NewExecutor creates a new executor
@@ -92,6 +123,7 @@ func NewExecutor(
 		debridge:      debridge,
 		region:        region,
 		slack:         slack,
+		spend:         NewSpendTracker(spendStatePath(), time.Now),
 	}
 
 	// Initialize TxExecutor if we have private keys
@@ -112,6 +144,11 @@ func NewExecutor(
 		} else {
 			e.txExecutor = txExec
 			log.Println("✅ TxExecutor initialized")
+			// Give the balance checker an RPC fallback so a Mobula portfolio
+			// API outage no longer reads as an empty wallet.
+			if balanceCheck != nil {
+				balanceCheck.SetOnchainFallback(txExec)
+			}
 		}
 	}
 
@@ -128,12 +165,21 @@ func (e *Executor) RunDryRun(route TestRoute, amountUSD float64) *ExecutionResul
 
 	log.Printf("🧪 [DRY-RUN] Testing %s with $%.0f", route.Name, amountUSD)
 
-	// Step 1: Check balances
+	// Step 1: Check balances. Keyless dry-run has no balance checker, so fall
+	// back to the SIMULATE_BALANCES snapshot instead of crashing.
 	log.Printf("  📊 Checking balances...")
-	balances, err := e.balanceCheck.GetAllBalances()
-	if err != nil {
-		log.Printf("  ❌ Balance check failed: %v", err)
-		result.Error = err
+	var balances map[string]map[string]float64
+	if e.balanceCheck != nil {
+		var err error
+		balances, err = e.balanceCheck.GetAllBalances()
+		if err != nil {
+			log.Printf("  ❌ Balance check failed: %v", err)
+			result.Error = err
+			return result
+		}
+	} else if balances = SimulateBalances(e.config.Mode); balances == nil {
+		log.Printf("  ❌ No balance checker and SIMULATE_BALANCES not set")
+		result.Error = fmt.Errorf("no balance source in dry-run")
 		return result
 	}
 
@@ -198,8 +244,8 @@ func (e *Executor) RunReal(route TestRoute, amountUSD float64) []*ExecutionResul
 	}
 
 	// Check daily spending limit
-	if e.config.DailySpentUSD >= e.config.MaxDailySpendUSD {
-		msg := fmt.Sprintf("Daily spending limit reached ($%.2f / $%.2f)", e.config.DailySpentUSD, e.config.MaxDailySpendUSD)
+	if spent := e.DailySpent(); spent >= e.config.MaxDailySpendUSD {
+		msg := fmt.Sprintf("Daily spending limit reached ($%.2f / $%.2f)", spent, e.config.MaxDailySpendUSD)
 		log.Printf("⚠️  %s", msg)
 		if e.slack != nil {
 			_ = e.slack.NotifyScheduledSkip(route.Name, route.FromChain, route.FromToken, amountUSD, msg)
@@ -261,10 +307,9 @@ func (e *Executor) RunReal(route TestRoute, amountUSD float64) []*ExecutionResul
 				}
 			}
 
-			// Update daily spending
-			if result.Success {
-				e.config.DailySpentUSD += result.ActualFeeUSD
-			}
+			// Update daily spending (realized fee on success, flat gas
+			// estimate on a broadcast that never confirmed).
+			e.accountSpend(result)
 		}
 
 		// Wait between bridges to avoid rate limiting
@@ -282,8 +327,8 @@ func (e *Executor) RunBridgeOnRoute(bridge string, route TestRoute, amountUSD fl
 	if e.txExecutor == nil || !e.txExecutor.CanExecute() {
 		return nil
 	}
-	if e.config.DailySpentUSD >= e.config.MaxDailySpendUSD {
-		log.Printf("⚠️  Daily spending limit reached ($%.2f / $%.2f)", e.config.DailySpentUSD, e.config.MaxDailySpendUSD)
+	if spent := e.DailySpent(); spent >= e.config.MaxDailySpendUSD {
+		log.Printf("⚠️  Daily spending limit reached ($%.2f / $%.2f)", spent, e.config.MaxDailySpendUSD)
 		return nil
 	}
 
@@ -306,9 +351,7 @@ func (e *Executor) RunBridgeOnRoute(bridge string, route TestRoute, amountUSD fl
 		}
 	}
 
-	if result.Success {
-		e.config.DailySpentUSD += result.ActualFeeUSD
-	}
+	e.accountSpend(result)
 	return result
 }
 
@@ -356,13 +399,17 @@ func (e *Executor) executeOnBridge(bridge string, route TestRoute, amount, amoun
 	result.ToToken = route.ToToken
 	result.AmountUSD = amountUSD
 
+	// Keep the TxHash even when the attempt errored out: callers use it to
+	// tell a pre-broadcast failure (safe to retry) from a broadcast whose
+	// final status is unknown (terminal, funds may still be in flight) and
+	// to account the gas a failed TX still burned.
+	result.TxHash = txHash
+
 	if err != nil {
 		log.Printf("    ❌ Execution failed: %v", err)
 		result.Error = err
 		return result
 	}
-
-	result.TxHash = txHash
 	// If the sub-function flagged a refund/revert, keep Success=false so Slack and
 	// Prometheus correctly classify it (Reverted takes precedence over Success).
 	result.Success = !result.Reverted
@@ -1004,8 +1051,8 @@ func (e *Executor) testBridgeDryRun(bridge string, route TestRoute, amountUSD fl
 	log.Printf("      💰 Estimated cost: $%.4f", expectedCost)
 
 	// Update daily spending tracker (even in dry-run for estimation)
-	e.config.DailySpentUSD += expectedCost
-	log.Printf("      📈 Daily spend estimate: $%.2f / $%.2f max", e.config.DailySpentUSD, e.config.MaxDailySpendUSD)
+	e.AddDailySpend(expectedCost)
+	log.Printf("      📈 Daily spend estimate: $%.2f / $%.2f max", e.DailySpent(), e.config.MaxDailySpendUSD)
 }
 
 // ValidateSetup checks that everything is configured correctly

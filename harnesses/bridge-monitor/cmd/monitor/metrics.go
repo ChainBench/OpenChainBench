@@ -128,4 +128,63 @@ var (
 		Name: "bridge_consecutive_failures",
 		Help: "Number of consecutive execution failures for a bridge (resets on success)",
 	}, []string{"bridge", "region"})
+
+	// 1 when at least one chain's balances could not be read by either the
+	// Mobula API or the on-chain fallback. Lets alerting distinguish "wallet is
+	// empty" from "we cannot see the wallet".
+	bridgeBalanceReadDegraded = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "bridge_balance_read_degraded",
+		Help: "1 if wallet balances are currently unreadable via both API and RPC, 0 otherwise",
+	})
+
+	// Auto-rebalance attempts by outcome: attempted, succeeded, failed,
+	// capped, in_flight (broadcast whose bridge status never resolved).
+	bridgeRebalanceAttempts = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "bridge_rebalance_attempts_total",
+		Help: "Total automatic rebalance attempts by outcome (attempted, succeeded, failed, capped, in_flight)",
+	}, []string{"outcome"})
+
+	// Set to 1 when a scheduled tier was downgraded to a smaller amount because
+	// the requested tier was not viable even after rebalancing. Reset to 0 when
+	// the original tier runs at full size again.
+	bridgeTierDowngraded = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "bridge_tier_downgraded",
+		Help: "1 when the last run of tier `from` was downgraded to tier `to`, 0 otherwise",
+	}, []string{"from", "to"})
+
+	// Hours funds have been sitting off their home triangle leg. 0 when the
+	// wallet only holds expected inventory. Exported continuously (also while
+	// paused) so Prometheus alerting can fire without any execution enabled.
+	bridgeStrandedHours = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "bridge_stranded_hours",
+		Help: "Hours a balance has been stranded off its home triangle leg (0 when home)",
+	}, []string{"chain", "token"})
+
+	// Gas top-up attempts per chain by outcome: attempted, succeeded, failed,
+	// capped, gated (needed but GAS_TOPUP_ENABLED is off).
+	bridgeGasTopup = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "bridge_gas_topup_total",
+		Help: "Total gas top-up attempts by chain and outcome",
+	}, []string{"chain", "outcome"})
 )
+
+// initSelfHealingMetrics pre-seeds the label combinations the alerting rules
+// query, so the series exist on /metrics from process start instead of only
+// after the first event.
+func initSelfHealingMetrics() {
+	for _, outcome := range []string{"attempted", "succeeded", "failed", "capped", "in_flight"} {
+		bridgeRebalanceAttempts.WithLabelValues(outcome).Add(0)
+	}
+	bridgeTierDowngraded.WithLabelValues("300", "50").Set(0)
+	bridgeTierDowngraded.WithLabelValues("300", "5").Set(0)
+	bridgeTierDowngraded.WithLabelValues("50", "5").Set(0)
+	bridgeStrandedHours.WithLabelValues("Solana", "USDC").Set(0)
+	bridgeStrandedHours.WithLabelValues("Base", "USDC").Set(0)
+	bridgeStrandedHours.WithLabelValues("Arbitrum", "USDT0").Set(0)
+	for _, chain := range []string{"Solana", "Base", "Arbitrum"} {
+		for _, outcome := range []string{"attempted", "succeeded", "failed", "capped", "gated"} {
+			bridgeGasTopup.WithLabelValues(chain, outcome).Add(0)
+		}
+	}
+	bridgeBalanceReadDegraded.Set(0)
+}
