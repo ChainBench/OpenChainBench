@@ -9,7 +9,7 @@ import {
   hasLiveDataTokens,
   benchDataPendingFallback,
 } from "@/lib/answers-template";
-import { leader } from "@/lib/citation";
+import { citableAsOf, leader } from "@/lib/citation";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { Pill } from "@/components/pill";
 import { ProviderLogo } from "@/components/provider-logo";
@@ -105,7 +105,13 @@ export default async function AnswerPage({
   // YAML's slug reference) fall through to a neutral fallback via
   // cleanLeftoverTokens so a placeholder string never reaches the SERP.
   const render = (s: string) => cleanLeftoverTokens(renderTemplate(s, bench));
-  const asOfUtc = fmtAsOfUtc(bench.lastRunAt);
+  // Real measurement timestamp on live benches, null on drafts (whose
+  // lastRunAt is a wall-clock placeholder from the loader). Prevents the
+  // visible "Data as of ..." line and the associated <time dateTime>
+  // structured-data anchor from spoofing freshness for a bench that has
+  // never actually been measured.
+  const asOfStamp = citableAsOf(bench);
+  const asOfUtc = asOfStamp ? fmtAsOfUtc(asOfStamp) : null;
   // Detect the "referenced bench has no defensible leader AND the
   // source YAML depends on live tokens" case: without this guard the
   // per-token fallback rewrites {{best_name}} to "The current leader"
@@ -165,7 +171,9 @@ export default async function AnswerPage({
         mainEntityOfPage: url,
         articleBody: `${shortAnswer}\n\n${intro}\n\n${methodology}`,
         datePublished: getBenchCreatedAt(bench.slug).toISOString(),
-        dateModified: bench.lastRunAt,
+        ...(citableAsOf(bench)
+          ? { dateModified: bench.lastRunAt }
+          : {}),
         author: { "@id": `${SITE.url}/#org` },
         publisher: { "@id": `${SITE.url}/#org` },
         image: `${SITE.url}/api/og/${bench.slug}`,
@@ -229,9 +237,9 @@ export default async function AnswerPage({
             Answer engines quote a claim far more readily when the date
             of measurement sits beside it. Uses the referenced bench's
             lastRunAt (real data timestamp), not build time. */}
-        {asOfUtc && (
+        {asOfUtc && asOfStamp && (
           <p className="mt-3 text-[11px] text-ink-faint">
-            Data as of <time dateTime={bench.lastRunAt}>{asOfUtc}</time>,
+            Data as of <time dateTime={asOfStamp}>{asOfUtc}</time>,
             refreshed continuously.
           </p>
         )}

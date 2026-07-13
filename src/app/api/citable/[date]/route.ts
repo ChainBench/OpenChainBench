@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getBenchmarks } from "@/data/benchmarks";
 import { SITE } from "@/data/site";
 import { AllBenchmarksDraftError } from "@/lib/spec";
-import { citeBundle, fieldValue, leader, headlineSentence } from "@/lib/citation";
+import { citableAsOf, citeBundle, fieldValue, leader, headlineSentence } from "@/lib/citation";
 import { valueInDeclaredUnit } from "@/lib/format";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 
@@ -140,10 +140,7 @@ export async function GET(
       sampleSize: b.sampleSize,
       expectedN: b.expectedN,
       dataConfidence: b.dataConfidence,
-      // Same rule as the live /api/citable route: draft benches carry
-      // a wall-clock `lastRunAt` for type safety, not a real
-      // measurement, so null it here rather than spoofing freshness.
-      asOf: b.status === "draft" ? null : b.lastRunAt,
+      asOf: citableAsOf(b),
       headline: headlineSentence(b),
       url: `${SITE.url}/benchmarks/${b.slug}`,
       api: `${SITE.url}/api/stat/${b.slug}`,
