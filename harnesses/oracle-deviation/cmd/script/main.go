@@ -320,6 +320,7 @@ func main() {
 	installLogCapture() // capture stdout into /logs ring buffer
 	fmt.Println("=== Oracle Deviation Harness ===")
 	fmt.Println("OpenChainBench № 025 — 4 oracles × 10 pairs, max deviation gauge.")
+	fmt.Println("OpenChainBench № 082 — oracle freshness (chainlink eth/arb/base, pyth hermes, redstone gateway).")
 	fmt.Println()
 
 	specs := pairs()
@@ -331,12 +332,16 @@ func main() {
 	fmt.Println()
 	fmt.Printf("RPC primary:  %s\n", rpcEndpoint())
 	fmt.Printf("RPC fallback: %s\n", rpcEndpointFallback())
+	// :2112 is the OCB convention (see top-of-file comment). The env
+	// override exists for LOCAL runs only, e.g. when another process
+	// already holds 2112 on a dev machine. Never set it in production.
+	metricsAddr := envDefault("ORACLE_METRICS_ADDR", ":2112")
 	fmt.Printf("Poll cadence: %s per source per pair\n", pollInterval)
-	fmt.Println("Metrics server: :2112/metrics")
+	fmt.Printf("Metrics server: %s/metrics\n", metricsAddr)
 	fmt.Println()
 
 	go func() {
-		if err := StartMetricsServer(":2112"); err != nil {
+		if err := StartMetricsServer(metricsAddr); err != nil {
 			fmt.Printf("[fatal] metrics server: %v\n", err)
 			os.Exit(1)
 		}
@@ -350,6 +355,12 @@ func main() {
 	go runBinance(ctx, specs)
 	go runCoinbase(ctx, specs)
 	go runLatencyUpdater(ctx)
+
+	// № 082 freshness-only pollers. Kept out of the deviation store by
+	// construction (see ChainFeed / runRedstone docs).
+	go runChainlinkChains(ctx, extraChainlinkFeeds())
+	go runRedstone(ctx, redstoneFeeds())
+	go runFreshnessUpdater(ctx)
 
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)

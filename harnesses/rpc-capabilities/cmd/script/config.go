@@ -57,8 +57,12 @@ type Chain struct {
 // (drpc caches eth_blockNumber → only 2 clean providers), opBNB
 // (1rpc 429s at probe cadence, only 3 solid providers), Mode
 // (3 providers), Zora / Abstract / HyperEVM (≤2 keyless providers).
+//
+// Local-run filter: OCB_CHAINS=ethereum,base restricts the matrix to
+// the listed slugs (unset or unmatched = full matrix). Used for local
+// smoke runs; never set in production.
 func chains() []Chain {
-	return []Chain{
+	all := []Chain{
 		// ─── Solana mainnet — added 2026-07-12, all 5 endpoints keyless
 		// and live-verified (getSlot + getLatestBlockhash + getVersion,
 		// mutually consistent advancing slots). Excluded by that sweep:
@@ -364,6 +368,25 @@ func chains() []Chain {
 			},
 		},
 	}
+
+	filter := strings.TrimSpace(os.Getenv("OCB_CHAINS"))
+	if filter == "" {
+		return all
+	}
+	keep := make(map[string]bool)
+	for _, s := range strings.Split(filter, ",") {
+		keep[strings.TrimSpace(s)] = true
+	}
+	var out []Chain
+	for _, c := range all {
+		if keep[c.Slug] {
+			out = append(out, c)
+		}
+	}
+	if len(out) == 0 {
+		return all
+	}
+	return out
 }
 
 func envDefault(key, def string) string {

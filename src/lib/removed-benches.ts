@@ -36,11 +36,13 @@ export const REMOVED_BENCH_SLUGS = new Set([
   "indexing-freshness",
   "rpc-keyed-latency",
   "explorer-chain-coverage",
-  "solana-rpc",
-  "tokenized-stock-peg",
-  "tokenized-stock-weekend-drift",
   "tokenized-stock-arb-latency",
-  "xstocks-peg",
-  "usdy-nav-basis",
   "portfolio-chain-coverage",
+  // bench vague 2 (081-085): validating on staging until harnesses have
+  // 48h of clean data on the VPS, then ship dev -> main
+  "ws-head-latency",
+  "oracle-freshness",
+  "rpc-reliability",
+  "indexer-latency",
+  "evm-block-builders",
 ]);

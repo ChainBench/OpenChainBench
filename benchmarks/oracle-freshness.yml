@@ -1,0 +1,167 @@
+# OpenChainBench. Bench № 082
+
+slug: oracle-freshness
+number: "082"
+title: Chainlink vs Pyth vs RedStone, live oracle freshness
+seo_title: "Chainlink vs Pyth vs RedStone oracle staleness 2026"
+seo_description: "How old is the oracle price your protocol settles on? Chainlink (Ethereum, Arbitrum, Base), Pyth Hermes and RedStone ranked live by ETH/USD staleness in seconds, p50/p99 over 24h, keyless and reproducible."
+subtitle: Seconds since each oracle's own last-update timestamp for ETH/USD, polled every 30 seconds across Chainlink on three chains, Pyth via Hermes and RedStone via its public gateway. Paired with a stale-but-moved flag that fires only when an old price has also been left behind by the market.
+category: Trading
+status: live
+metric: Oracle staleness
+unit: s
+higher_is_better: false
+
+disclaimer: |
+  Read before ranking. The three oracles use different update models, and that difference IS the measurement. Chainlink pushes on-chain only on a deviation trigger or heartbeat, so hundreds of seconds of staleness in a calm market is by design, not failure. Pyth and RedStone publish continuously off-chain and are pulled on demand. The dangerous state is not "old", it is "old while the market moved": that is the companion `ocb_oracle_stale_but_moved` signal, not the headline.
+
+seo_intro: |
+  Every lending market, perp DEX and stablecoin issuer settles on an
+  oracle price that is, by construction, some number of seconds old.
+  This page publishes that number live. We read each oracle's own
+  update timestamp (not our fetch time): Chainlink's on-chain
+  `latestRoundData().updatedAt` on Ethereum, Arbitrum and Base, Pyth's
+  Hermes `publish_time`, and the timestamp of RedStone's latest signed
+  data package, and publish `now - last_update` as a Prometheus gauge
+  in seconds, quantiled over 24 hours. Why it matters: liquidation
+  cascades are a freshness problem before they are a price problem.
+  When ETH drops 3% and the on-chain feed has not updated for ten
+  minutes, underwater positions sit unliquidated, accruing bad debt;
+  when the round finally lands, every overdue liquidation fires in the
+  same block, keepers race, gas spikes, and the forced selling deepens
+  the move that caused it. The honest complication, stated up front:
+  Chainlink is a push oracle whose feeds are SUPPOSED to be stale in
+  calm markets (updates cost gas, so they land only on a 0.5%
+  deviation or a 1 hour heartbeat), while Pyth and RedStone are
+  pull-model oracles whose off-chain publication runs at 1 to 25
+  second cadence and whose on-chain freshness depends on who pulls.
+  We are comparing different update models on the same clock, which is
+  exactly the design decision an integrator is making when they pick
+  one. The signal that separates "calm market, by design" from "your
+  liquidation engine is trading on a fossil" is the stale-but-moved
+  flag: staleness above 300 seconds while the CEX print has moved more
+  than 0.5% since the oracle's last update.
+
+abstract: |
+  We measure oracle freshness by reading each oracle's own
+  last-update timestamp every 30 seconds and publishing
+  `ocb_oracle_staleness_seconds{oracle, pair, chain}` (refreshed every
+  5 seconds in-harness so the gauge climbs monotonically between
+  polls). Timestamps come from the source, never from our clock:
+  Chainlink's `latestRoundData().updatedAt` via keyless `eth_call` on
+  Ethereum, Arbitrum and Base; Pyth's `publish_time` from the Hermes
+  REST batch endpoint (Pyth is pull-based, so Hermes IS the price an
+  integrator would put on-chain, making publish_time the honest
+  freshness measure); RedStone's signed data-package timestamp from
+  its keyless per-symbol API. Two companion series complete the
+  picture: `ocb_oracle_update_events_total` counts observed update
+  timestamp advances, and `ocb_oracle_stale_but_moved` flags the
+  dangerous state, staleness above 300 s while the Binance/Coinbase
+  reference price moved more than 0.5% since the update. The headline
+  ranks the three oracles by p50 ETH/USD staleness over 24 h
+  (Chainlink pinned to its Ethereum mainnet feed; the Arbitrum and
+  Base series are queryable under the `chain` label). Lower is
+  fresher, but the disclaimer applies: push and pull oracles are
+  different machines, and the leaderboard quantifies the trade-off
+  rather than declaring one model wrong.
+
+methodology:
+  - "Staleness definition. `staleness = now - last_update_ts`, where last_update_ts is the oracle's OWN declared timestamp, never our fetch time: Chainlink's on-chain `latestRoundData().updatedAt`, Pyth's Hermes `publish_time`, RedStone's signed data-package `timestamp`. Published as `ocb_oracle_staleness_seconds{oracle, pair, chain}` in seconds."
+  - "Chainlink leg. Keyless `eth_call(latestRoundData())` against the canonical ETH/USD AggregatorV3 contracts on three chains: Ethereum mainnet (0x5f4eC3Df...8419), Arbitrum One (0x639Fe6ab...a612) and Base (0x71041ddd...Bb70), via public RPCs with a fallback per chain. The headline pins `chain=\"ethereum\"`; Arbitrum and Base are live under the same metric's `chain` label."
+  - "Pyth leg. Hermes REST batch endpoint, no key. Pyth is a pull oracle: there is no continuously-updated on-chain price to read, integrators fetch a signed update from Hermes and post it in their own transaction. Hermes `publish_time` is therefore the freshness of the price you would actually put on-chain, and that is what we measure (`chain=\"hermes\"`). At fetch time the publish_time is typically 1-2 s old; see the observation-lag bullet for what the quantiles report."
+  - "RedStone leg. Keyless per-symbol price API (`provider=redstone`, the primary production service), which returns the latest signed data package's value and timestamp (`chain=\"gateway\"`). We poll per symbol because the full data-packages gateway payload for the service is ~1.7 MB per request; the per-symbol object is a few hundred bytes. Packages are produced on a roughly 10 s cadence; at fetch time the package timestamp is typically 15-25 s old."
+  - "Cadence and aggregation. Every (oracle, pair, chain) is polled every 30 s; the staleness gauge is additionally re-published every 5 s in-harness so it climbs between polls instead of stair-stepping. Leaderboard numbers are `quantile_over_time` p50/p90/p99 over 24 h. Total added load is ~8 requests/minute on top of the host harness's 80, all keyless."
+  - "Observation lag, stated honestly. For oracles that publish faster than our 30 s poll (Pyth, RedStone), the gauge keeps aging until the next poll, so reported quantiles sit about half a poll interval above the true publication age: Pyth's p50 reads mid-teens of seconds even though Hermes is 1-2 s old at every fetch. The numbers are upper bounds with a shared floor set by our cadence, negligible against push-feed staleness measured in hundreds of seconds."
+  - "Update events. `ocb_oracle_update_events_total` increments each time the source-declared timestamp moves forward between observations. With a 30 s poll it undercounts sources that update faster than the poll (Pyth publishes near-continuously), so treat it as a lower bound on update frequency; it is exact for Chainlink's minutes-to-hours round cadence."
+  - "Stale-but-moved. `ocb_oracle_stale_but_moved` is 1 when staleness exceeds 300 s AND the CEX reference (Binance, Coinbase fallback, from the same harness's bench 025 pollers) has moved more than 0.5% since the update was observed. 0.5% matches the widest deviation trigger configured on the measured Chainlink feeds: if the market moved past the feed's own trigger and no round landed, the feed is late by its own standard."
+  - "Threshold rationale. 300 s sits below Chainlink's 1 h heartbeat and above healthy deviation-triggered gaps (feasibility runs saw fresh rounds 398-1069 s apart on quiet hours, sub-minute during moves). Alone it flags nothing; with the 0.5% move condition it isolates the window where liquidations execute on a price the market has left. Cold-start caveat: after a restart the CEX reference snapshots at boot, converging on the first real update."
+  - "Push vs pull is the comparison, not a flaw. Chainlink pays gas per update so it updates sparsely by design; Pyth and RedStone publish off-chain continuously and shift the on-chain freshness question to whoever pulls. Ranking them on the same staleness clock quantifies the trade-off an integrator accepts with each model. The per-oracle tag states the model so the table is read correctly."
+  - "Isolation from bench 025. This bench shares the oracle-deviation harness but emits NEW metric families with an `oracle`/`chain` label set. Bench 025's metrics, labels and error counters are untouched; freshness-only sources (RedStone, Arbitrum/Base Chainlink) never enter 025's deviation store, and freshness scrape failures land in `ocb_oracle_freshness_scrape_errors_total`, not 025's error counter."
+  - "Excluded in v1, with reasons. Chronicle: reads are whitelist-gated on-chain (`toll` access control), so there is no keyless public read to reproduce. API3: the measured-pair proxy addresses we probed were dead or unverifiable without an integration contract. Both are candidates for a follow-up once a reproducible keyless read path exists. Uniswap TWAP is out of scope: it is a derivation of the same CEX prints, not an oracle network with its own update timestamp."
+  - "Reproducibility. Every leg is a keyless public endpoint: `eth_call` with selector 0xfeaf968c on the published feed addresses, the Hermes batch REST endpoint, and the RedStone per-symbol API. Anyone can replay any sample with curl and get the same timestamps we do."
+
+findings:
+  - "{{best_name}} is currently the freshest at {{best_p50}} (p50 ETH/USD staleness, 24 h) across {{count}} measured oracles. Remember the disclaimer before reading this as a quality ranking: the leader is fresh because its update model publishes continuously off-chain, not because the others are broken."
+  - "{{name:pyth}} sits at {{p50:pyth}}. Hermes aggregates publisher prices at sub-second cadence and its publish_time is 1-2 s old at every fetch; the reported p50 is higher because our gauge ages between 30 s polls (upper-bound semantics, see methodology). Two honest asterisks, then: the number carries our observation lag, and the on-chain freshness of a Pyth integration is ultimately set by how often the integrating protocol pulls."
+  - "{{name:chainlink}} reads {{p50:chainlink}} on the Ethereum mainnet ETH/USD feed. That number is the deviation-trigger economics made visible: rounds land only when the off-chain aggregate drifts ~0.5% or the 1 h heartbeat expires, so calm hours accumulate hundreds of seconds of staleness by design. The Arbitrum and Base deployments of the same feed are published under the chain label for comparison."
+  - "{{name:redstone}} lands at {{p50:redstone}}. RedStone's primary production service signs a fresh data package roughly every 10 s, and its per-symbol API served packages 15-25 s old at fetch during feasibility: slower than Hermes, orders of magnitude fresher than a push feed between rounds, with the same observation-lag and pull-model asterisks as Pyth."
+  - "The alarm metric is not on this leaderboard. `ocb_oracle_stale_but_moved` fires only when a feed is over 300 s old AND the CEX print moved over 0.5% since its last update, which is the state where liquidation engines execute on a price the market has left. In calm markets it should read 0 for every oracle, including a 900-second-stale Chainlink feed."
+
+faq:
+  - q: "What is oracle staleness and why should a protocol care?"
+    a: "Staleness is the age of the oracle price at the moment your contract reads it: now minus the oracle's own last-update timestamp. Every on-chain settlement (a liquidation, a mint, a perp funding tick) executes at that possibly-old price. If ETH moves 3% while a feed sits unchanged for ten minutes, positions that should liquidate do not, bad debt accrues, and when the update finally lands every overdue liquidation fires in the same block. That burst, keepers racing to close stale-priced positions all at once, is how freshness problems become liquidation cascades. This bench publishes the age live, per oracle, so the risk is sized before integration."
+  - q: "Chainlink shows hundreds of seconds of staleness. Is it broken?"
+    a: "No, and this is the most important caveat on the page. Chainlink is a push oracle: node operators pay gas to post each round on-chain, so feeds are configured to update only when the off-chain aggregate drifts past a deviation trigger (0.5% on the measured ETH/USD feeds) or a heartbeat expires (1 hour). Between triggers the on-chain price legitimately ages. A 900-second-old Chainlink price in a flat market is the system working as designed and costs integrators nothing. The failure mode worth alarming on is captured by the separate stale_but_moved flag: an old price after the market has moved past the feed's own trigger threshold."
+  - q: "Why is Pyth measured at Hermes instead of on-chain, and is that fair?"
+    a: "Because pull oracles have no continuously-updated on-chain price to read. A Pyth integrator fetches a signed price update from Hermes and posts it inside their own transaction; the on-chain contract only stores whatever was last pushed by someone. Measuring Pyth's freshness on-chain would measure the pull habits of whichever protocols happen to share the feed, not the oracle. Hermes publish_time is the age of the price actually available to any integrator at the moment of the pull, which is the like-for-like comparison against Chainlink's updatedAt. The trade-off is stated openly: Hermes is 1-2 s old at pull time (our reported quantiles add up to 30 s of observation lag from the poll cadence), and a protocol that pulls lazily inherits its own staleness on top."
+  - q: "What exactly does stale_but_moved measure and why 300 seconds and 0.5%?"
+    a: "It is 1 when two conditions hold at once: the oracle's price is older than 300 seconds, and the CEX reference (Binance, Coinbase fallback) has moved more than 0.5% since that update was observed. 0.5% mirrors the widest deviation trigger on the measured Chainlink feeds, so the flag fires precisely when a feed is late by its own configured standard. 300 s sits above every healthy deviation-triggered gap we observed during fast markets and far below the 1 h heartbeat, isolating genuine lag without penalizing calm-market aging. Both thresholds are documented constants in the harness source and can be recomputed from the raw staleness and price series."
+  - q: "Why are Chronicle and API3 not on the leaderboard?"
+    a: "Both failed the bench's reproducibility bar for v1. Chronicle gates on-chain reads behind a whitelist (its toll access control), so there is no keyless public read a third party can replay. For API3, the measured-pair proxy addresses we probed were dead or unverifiable without deploying an integration contract. OpenChainBench only publishes numbers anyone can reproduce with curl and a public RPC, so both are excluded and documented rather than measured badly. If either ships a keyless read path for the measured pairs, they are straightforward to add: the harness's freshness tracker is oracle-agnostic."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/oracle-deviation
+
+prometheus:
+  window: 24h
+  freshness_metric: ocb_oracle_staleness_seconds
+
+# Metric families emitted by the oracle-deviation harness for this bench
+# (bench 025's families are separate and untouched):
+#   ocb_oracle_staleness_seconds{oracle, pair, chain}              gauge (s)
+#   ocb_oracle_update_events_total{oracle, pair, chain}            counter
+#   ocb_oracle_stale_but_moved{oracle, pair, chain}                gauge (0/1)
+#   ocb_oracle_freshness_scrape_errors_total{oracle, pair, chain}  counter
+#
+# oracle is "chainlink" | "pyth" | "redstone". chain is where the
+# freshness timestamp lives: ethereum | arbitrum | base for Chainlink
+# deployments, "hermes" for Pyth (publish_time), "gateway" for
+# RedStone (signed data-package timestamp).
+#
+# The headline ranks the three oracles by p50 ETH/USD staleness over
+# 24h; Chainlink is pinned to its Ethereum mainnet feed and its
+# Arbitrum + Base series remain queryable under the chain label.
+# Success rate divides freshness scrape failures by the 30s poll
+# cadence (1 expected attempt per 30s per series).
+
+providers:
+  - slug: chainlink
+    name: Chainlink
+    tag: "Push onchain · ETH/USD · ethereum, arbitrum, base"
+    type: protocol
+    formula: "p50 over 24h of seconds since the Chainlink ETH/USD aggregator's on-chain updatedAt on Ethereum mainnet. Deviation-triggered push feed: high staleness in calm markets is by design. Arbitrum and Base series live under the chain label."
+    queries:
+      p50: quantile_over_time(0.50, ocb_oracle_staleness_seconds{oracle="chainlink", pair="ETH/USD", chain="ethereum"}[24h])
+      p90: quantile_over_time(0.90, ocb_oracle_staleness_seconds{oracle="chainlink", pair="ETH/USD", chain="ethereum"}[24h])
+      p99: quantile_over_time(0.99, ocb_oracle_staleness_seconds{oracle="chainlink", pair="ETH/USD", chain="ethereum"}[24h])
+      mean: avg_over_time(ocb_oracle_staleness_seconds{oracle="chainlink", pair="ETH/USD", chain="ethereum"}[24h])
+      success: clamp_min(clamp_max(1 - sum(rate(ocb_oracle_freshness_scrape_errors_total{oracle="chainlink", pair="ETH/USD", chain="ethereum"}[24h])) / (1/30), 1), 0)
+      sample_size: count_over_time(ocb_oracle_staleness_seconds{oracle="chainlink", pair="ETH/USD", chain="ethereum"}[24h])
+      series: ocb_oracle_staleness_seconds{oracle="chainlink", pair="ETH/USD", chain="ethereum"}
+
+  - slug: pyth
+    name: Pyth
+    tag: "Pull via Hermes · ETH/USD · publish_time"
+    type: protocol
+    formula: "p50 over 24h of seconds since the Hermes publish_time of Pyth's ETH/USD feed. Pull oracle: Hermes is the price an integrator would post on-chain, so publish_time is the freshness of what is available to pull."
+    queries:
+      p50: quantile_over_time(0.50, ocb_oracle_staleness_seconds{oracle="pyth", pair="ETH/USD", chain="hermes"}[24h])
+      p90: quantile_over_time(0.90, ocb_oracle_staleness_seconds{oracle="pyth", pair="ETH/USD", chain="hermes"}[24h])
+      p99: quantile_over_time(0.99, ocb_oracle_staleness_seconds{oracle="pyth", pair="ETH/USD", chain="hermes"}[24h])
+      mean: avg_over_time(ocb_oracle_staleness_seconds{oracle="pyth", pair="ETH/USD", chain="hermes"}[24h])
+      success: clamp_min(clamp_max(1 - sum(rate(ocb_oracle_freshness_scrape_errors_total{oracle="pyth", pair="ETH/USD", chain="hermes"}[24h])) / (1/30), 1), 0)
+      sample_size: count_over_time(ocb_oracle_staleness_seconds{oracle="pyth", pair="ETH/USD", chain="hermes"}[24h])
+      series: ocb_oracle_staleness_seconds{oracle="pyth", pair="ETH/USD", chain="hermes"}
+
+  - slug: redstone
+    name: RedStone
+    tag: "Modular push-pull · ETH/USD · signed package timestamp"
+    type: protocol
+    formula: "p50 over 24h of seconds since the timestamp of RedStone's latest signed ETH data package on the keyless per-symbol API (primary production service). Packages are produced on a roughly 10s cadence."
+    queries:
+      p50: quantile_over_time(0.50, ocb_oracle_staleness_seconds{oracle="redstone", pair="ETH/USD", chain="gateway"}[24h])
+      p90: quantile_over_time(0.90, ocb_oracle_staleness_seconds{oracle="redstone", pair="ETH/USD", chain="gateway"}[24h])
+      p99: quantile_over_time(0.99, ocb_oracle_staleness_seconds{oracle="redstone", pair="ETH/USD", chain="gateway"}[24h])
+      mean: avg_over_time(ocb_oracle_staleness_seconds{oracle="redstone", pair="ETH/USD", chain="gateway"}[24h])
+      success: clamp_min(clamp_max(1 - sum(rate(ocb_oracle_freshness_scrape_errors_total{oracle="redstone", pair="ETH/USD", chain="gateway"}[24h])) / (1/30), 1), 0)
+      sample_size: count_over_time(ocb_oracle_staleness_seconds{oracle="redstone", pair="ETH/USD", chain="gateway"}[24h])
+      series: ocb_oracle_staleness_seconds{oracle="redstone", pair="ETH/USD", chain="gateway"}
