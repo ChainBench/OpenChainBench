@@ -101,6 +101,9 @@ per_chain_explainer:
   - slug: myriad
     h2: Myriad API latency
     body: "Myriad's API is a single region Heroku deployment in US East with no order book endpoint and no WebSocket. Its cohort worst {{p50:myriad}} p50 (24h, all regions) is mostly geography: from eu-west and Singapore every request crosses an ocean first. When checking whether the Myriad API is down, look at the us-east region figure, since a global latency rise that spares us-east is network weather, not a venue incident. Myriad also runs the tightest keyless request budget in the cohort, covered in the pm-rate-limits bench."
+  - slug: predexon
+    h2: Predexon API latency
+    body: "Predexon is a multi-venue aggregator that unifies Polymarket, Kalshi and Limitless behind one schema. Its API answers at {{p50:predexon}} p50 (24h, all regions), measured on the same market-price endpoint the harness probes on the native venues, so the direct comparison of a unified aggregator against three venue-native APIs is head to head. Predexon aggregates upstream data; a Predexon latency higher than the sum of its three underliers is the cost of unification. Lower is the value of having one contract instead of three."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/pm-rate-limits
 
@@ -128,14 +131,14 @@ metric_panels:
   - id: uptime_24h
     label: Uptime 24h
     description: "Share of probe cycles that succeeded over the last 24 hours, averaged across the three probe regions. 100 percent means every 5 second probe of the venue's API came back healthy."
-    metric: 100 * avg(avg_over_time(pmapi_health{source="direct",venue=~"polymarket|kalshi|limitless|manifold|myriad"}[24h]))
+    metric: 100 * avg(avg_over_time(pmapi_health{source="direct",venue=~"polymarket|kalshi|limitless|manifold|myriad"}[24h])) or 100 * avg(avg_over_time(pmapi_health{source="predexon"}[24h]))
     label_key: venue
     unit: pct
     higher_is_better: true
   - id: uptime_7d
     label: Uptime 7d
     description: "Same health gauge averaged over 7 days. Short outages that vanish from the 24h figure stay visible here for a week."
-    metric: 100 * avg(avg_over_time(pmapi_health{source="direct",venue=~"polymarket|kalshi|limitless|manifold|myriad"}[7d]))
+    metric: 100 * avg(avg_over_time(pmapi_health{source="direct",venue=~"polymarket|kalshi|limitless|manifold|myriad"}[7d])) or 100 * avg(avg_over_time(pmapi_health{source="predexon"}[7d]))
     label_key: venue
     unit: pct
     higher_is_better: true
@@ -228,3 +231,15 @@ providers:
       success: clamp_max(sum(rate(pmapi_requests_total{venue="myriad",source="direct",class="price",conn="warm",outcome="ok"}[24h])) / sum(rate(pmapi_requests_total{venue="myriad",source="direct",class="price",conn="warm",outcome!="probe_invalid"}[24h])), 1)
       sample_size: sum(increase(pmapi_requests_total{venue="myriad",source="direct",class="price",conn="warm",outcome!="probe_invalid"}[24h]))
       series: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{venue="myriad",source="direct",class="price",conn="warm",cache!="hit"}[1h])) by (le))
+  - slug: predexon
+    name: Predexon
+    tag: Multi-venue aggregator API (Polymarket, Kalshi, Limitless), unified schema
+    formula: "p50 of warm, non CDN cached round trips against the Predexon market-price endpoints for the three covered venues, keyless-equivalent (free-tier key), successful requests only, 24h window."
+    queries:
+      p50: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{source="predexon",class="price",conn="warm",cache!="hit"}[24h])) by (le))
+      p90: 1000 * histogram_quantile(0.90, sum(rate(pmapi_request_duration_seconds_bucket{source="predexon",class="price",conn="warm",cache!="hit"}[24h])) by (le))
+      p99: 1000 * histogram_quantile(0.99, sum(rate(pmapi_request_duration_seconds_bucket{source="predexon",class="price",conn="warm",cache!="hit"}[24h])) by (le))
+      mean: 1000 * sum(rate(pmapi_request_duration_seconds_sum{source="predexon",class="price",conn="warm",cache!="hit"}[24h])) / sum(rate(pmapi_request_duration_seconds_count{source="predexon",class="price",conn="warm",cache!="hit"}[24h]))
+      success: clamp_max(sum(rate(pmapi_requests_total{source="predexon",class="price",conn="warm",outcome="ok"}[24h])) / sum(rate(pmapi_requests_total{source="predexon",class="price",conn="warm",outcome!="probe_invalid"}[24h])), 1)
+      sample_size: sum(increase(pmapi_requests_total{source="predexon",class="price",conn="warm",outcome!="probe_invalid"}[24h]))
+      series: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{source="predexon",class="price",conn="warm",cache!="hit"}[1h])) by (le))
