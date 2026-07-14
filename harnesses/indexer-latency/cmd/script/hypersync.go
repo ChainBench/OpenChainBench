@@ -19,7 +19,8 @@ import (
 
 const hypersyncBase = "https://eth.hypersync.xyz"
 
-func checkHyperSync(bn uint64, txHash string) (bool, error) {
+func checkHyperSync(ev probeEvent) (bool, error) {
+	bn, txHash := ev.Block, ev.TxHash
 	apiCalls.WithLabelValues("hypersync").Inc()
 	body := fmt.Sprintf(
 		`{"from_block":%d,"to_block":%d,"logs":[{"address":["%s"],"topics":[["%s"]]}],"field_selection":{"log":["transaction_hash","block_number","log_index"]}}`,

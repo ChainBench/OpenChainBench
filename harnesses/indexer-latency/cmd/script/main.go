@@ -55,7 +55,7 @@ func main() {
 		fmt.Printf("  - %-10s %s\n", p.Slug, state)
 	}
 	if enabled == 0 {
-		fmt.Println("[warn] no provider credentials set (HYPERSYNC_TOKEN / GRAPH_API_KEY / ALCHEMY_API_KEY)")
+		fmt.Println("[warn] no provider credentials set (HYPERSYNC_TOKEN / GRAPH_API_KEY / MOBULA_API_KEY)")
 		fmt.Println("[warn] running in degraded mode: events sampled, all providers report result=disabled")
 	}
 
@@ -89,12 +89,12 @@ func runEvents(ctx context.Context) {
 	eventN := 0
 	for {
 		eventN++
-		bn, txHash, t0 := waitFreshEvent(ctx, lastSeen)
-		if bn == 0 {
+		ev, t0 := waitFreshEvent(ctx, lastSeen)
+		if ev.Block == 0 {
 			return // ctx cancelled
 		}
-		lastSeen = bn
-		fmt.Printf("[event %d] block=%d usdc-transfer tx=%s\n", eventN, bn, txHash[:14]+"…")
+		lastSeen = ev.Block
+		fmt.Printf("[event %d] block=%d usdc-transfer tx=%s\n", eventN, ev.Block, ev.TxHash[:14]+"…")
 
 		var wg sync.WaitGroup
 		for _, p := range cohort {
@@ -115,7 +115,7 @@ func runEvents(ctx context.Context) {
 			wg.Add(1)
 			go func(p Provider) {
 				defer wg.Done()
-				raceProvider(ctx, p, bn, txHash, t0)
+				raceProvider(ctx, p, ev, t0)
 			}(p)
 		}
 		wg.Wait()
@@ -131,7 +131,7 @@ func runEvents(ctx context.Context) {
 // raceProvider polls one indexing pipeline on the shared front-loaded
 // schedule until block bn's probe event is queryable, or the schedule
 // is exhausted (timeout), or every poll errored (error).
-func raceProvider(ctx context.Context, p Provider, bn uint64, txHash string, t0 time.Time) {
+func raceProvider(ctx context.Context, p Provider, ev probeEvent, t0 time.Time) {
 	var lastErr error
 	polls, errs := 0, 0
 	for _, after := range pollSchedule {
@@ -144,7 +144,7 @@ func raceProvider(ctx context.Context, p Provider, bn uint64, txHash string, t0 
 			}
 		}
 		polls++
-		found, err := p.Check(bn, txHash)
+		found, err := p.Check(ev)
 		if err != nil {
 			errs++
 			lastErr = err
@@ -231,7 +231,17 @@ func headBlock() (uint64, error) {
 }
 
 type rpcLog struct {
-	TransactionHash string `json:"transactionHash"`
+	TransactionHash string   `json:"transactionHash"`
+	Topics          []string `json:"topics"`
+}
+
+// recipient extracts the ERC-20 Transfer `to` address from topics[2]
+// (32-byte left-padded). Empty string when the log shape is unexpected.
+func recipient(l rpcLog) string {
+	if len(l.Topics) < 3 || len(l.Topics[2]) != 66 {
+		return ""
+	}
+	return "0x" + l.Topics[2][26:]
 }
 
 // usdcTransfersInBlock returns the tx hashes of USDC Transfer logs in
@@ -253,11 +263,11 @@ func usdcTransfersInBlock(bn uint64) ([]rpcLog, error) {
 // lastSeen containing at least one USDC Transfer shows up. T0 is the
 // instant we first observed the new head. Returns (0, "", zero) only
 // when ctx is cancelled.
-func waitFreshEvent(ctx context.Context, lastSeen uint64) (uint64, string, time.Time) {
+func waitFreshEvent(ctx context.Context, lastSeen uint64) (probeEvent, time.Time) {
 	for {
 		select {
 		case <-ctx.Done():
-			return 0, "", time.Time{}
+			return probeEvent{}, time.Time{}
 		default:
 		}
 		bn, err := headBlock()
@@ -276,8 +286,8 @@ func waitFreshEvent(ctx context.Context, lastSeen uint64) (uint64, string, time.
 			}
 			if len(logs) > 0 {
 				pick := logs[rand.Intn(len(logs))]
-				if strings.HasPrefix(pick.TransactionHash, "0x") && len(pick.TransactionHash) == 66 {
-					return bn, strings.ToLower(pick.TransactionHash), t0
+				if strings.HasPrefix(pick.TransactionHash, "0x") && len(pick.TransactionHash) == 66 && recipient(pick) != "" {
+					return probeEvent{Block: bn, TxHash: strings.ToLower(pick.TransactionHash), Wallet: strings.ToLower(recipient(pick))}, t0
 				}
 			}
 			// Rare on ETH mainnet: block without a USDC transfer. Skip it.
