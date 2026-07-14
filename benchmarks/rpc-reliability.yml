@@ -1,0 +1,294 @@
+# OpenChainBench. Bench № 083
+
+slug: rpc-reliability
+number: "083"
+title: Most reliable free public RPC, correctness incidents across 7 EVM chains
+seo_title: "Most reliable free public RPC 2026"
+seo_description: "Free public RPCs ranked by correctness incidents: block-hash quorum disagreements, eth_getLogs completeness and eth_getBalance state integrity, live and keyless."
+subtitle: "Correctness incidents per 24 hours for free no-key RPC endpoints: block hashes disagreeing with the cross-provider quorum, eth_getLogs counts deviating from the majority, divergent eth_getBalance state and blocked or gated methods, measured continuously alongside consensus head lag."
+category: RPCs
+status: live
+metric: Reliability incidents
+unit: count
+higher_is_better: false
+
+disclaimer: >
+  A zero row means no incident was caught in the window, not a proof of
+  correctness. Most providers post zero most days; this bench exists for
+  the days they do not, and for the errors: a blocked eth_getLogs or a
+  balance read gated behind a paid key at 40 blocks of depth counts as
+  an incident because it is one from the caller's seat.
+
+seo_intro: |
+  Bench 010 answers which free public RPC is fastest; this page answers
+  the question that should come first. which one is telling the truth.
+  A fast endpoint that serves a stale head, drops logs from an
+  eth_getLogs response, or answers eth_getBalance from a diverged state
+  view is worse than a slow honest one, and none of that shows up in a
+  latency percentile. So we cross-examine the same keyless provider
+  cohort the latency bench probes, continuously, on three axes. First,
+  consensus head lag: every 60 seconds each provider's reported
+  (height, hash) pair feeds a per-chain quorum map, and the gap between
+  a provider's head and the highest head any provider reported is
+  published as a gauge. Second, hash integrity: when at least two
+  providers agree on the hash at a height, a provider reporting a
+  different hash at that same height is counted, once per height, as a
+  mismatch incident. Third, fixed-vector integrity: every 5 minutes,
+  one chain at a time, every provider gets the identical eth_getLogs
+  query for the chain's canonical USDC contract over a 10-block window
+  behind the tip, plus an eth_getBalance read at the same fixed block;
+  answers are compared across providers and a deviation from the strict
+  majority is an incident. Errors count too, deliberately: 1RPC blocks
+  eth_getLogs outright with a -32000, and PublicNode began gating
+  keyless reads a few dozen blocks deep behind a personal token
+  (-32602) in July 2026. Those are reliability failures a latency bench
+  renders invisible, and here they are the headline.
+
+abstract: |
+  We measure the correctness of free no-key RPC endpoints, not their
+  speed. The harness reuses the bench-010 probe matrix (same providers,
+  same chains, same 60-second header fetch) and adds three metric
+  families. rpc_consensus_lag_blocks tracks each provider's head
+  against the highest head seen across providers for that chain.
+  rpc_hash_mismatch_total counts same-height hash disagreements with
+  the two-or-more-provider quorum, at most once per height, with a
+  strict-plurality rule so a live reorg splitting providers two against
+  two counts nobody. rpc_integrity_check_total classifies fixed-vector
+  checks (eth_getLogs for the chain's canonical USDC over a 10-block
+  window at a daily-rotating depth behind tip, and eth_getBalance of a
+  fixed well-known address at the same block) as ok, error or disagree
+  against the cross-provider majority. The headline is the raw
+  incident count over 24 hours: errors plus disagreements plus hash
+  mismatches. No weighted composite: weights invite gaming disputes,
+  and an incident is an incident.
+
+methodology:
+  - "Consensus lag: the bench-010 latency probe fetches the full latest header every 60 seconds per (provider, chain); its height and hash, previously discarded, feed this bench. rpc_consensus_lag_blocks is the gap between the provider's reported head and the highest head any probed provider reported for that chain (rolling max). Valid-but-stale responses still count as observations; failed probes delete the series so dead endpoints age out."
+  - "Hash quorum: per chain, a height-to-hash vote map. When one hash at height H is backed by at least 2 providers AND strictly more than any competing hash, it is canonical; a provider that reported a different hash at H is counted in rpc_hash_mismatch_total, at most once per (provider, height). A 2-2 split, the signature of a live reorg, resolves to no quorum and counts nobody."
+  - "Fixed-vector integrity, cadence: every 5 minutes ONE chain is checked, rotating through the 7 chains with a canonical high-traffic USDC deployment (Ethereum, Arbitrum, Optimism, Base, Polygon, BNB, Avalanche). Each provider on that chain gets 2 checks per round, so a single-chain provider accrues ~82 checks per day and a 7-chain provider ~575."
+  - "Logs completeness vector: eth_getLogs for the chain's canonical USDC contract (Circle native deployments; Binance-peg on BNB) over a 10-block window ending at tip minus N. Returned log counts are compared across providers; deviation from the strict majority count increments rpc_logs_disagreement_total and books a disagree incident. Live calibration on Ethereum returned 1371 logs consistently on drpc, tenderly and blastapi over the same fixed range."
+  - "Anti-gaming rotation: N rotates daily over {20, 30, 40, 50, 60} blocks, so a provider cannot special-case a published fixed range, and request ids rotate on every call (the same edge-cache defeat as the latency probe). All depths stay far inside non-archive territory, so a pruned-but-honest node is never penalized."
+  - "State consistency vector: eth_getBalance of a fixed well-known address (the same Vitalik address the archive-depth probe uses) at the tip-minus-N block. The hex answer must be byte-identical across providers; divergence from the strict majority increments rpc_state_disagreement_total. Live calibration showed byte-identical balances across all responding providers at a fixed block."
+  - "Errors are signal: rpc_integrity_check_total{result} is ok, error or disagree. error covers blocked methods (1RPC answers eth_getLogs with -32000), depth gating (PublicNode keyless regressed to under 150 blocks of archive depth in July 2026, returning -32602 asking for a personal token), and transport failures. The headline counts error and disagree alike: a method you cannot call is unreliable regardless of why."
+  - "Headline: incidents per 24h = increase of integrity checks with result error or disagree, plus increase of hash mismatches, from the eu-west vantage. Raw counts, no weighting; the p90/p99 columns are consensus-lag quantiles in blocks, published as raw companion dimensions."
+  - "Single-region disclosure: incidents are counted from the eu-west probe only. Correctness, unlike latency, is location-independent in principle, but every provider fronts with anycast, so what we audit is the serving cluster eu-west traffic lands on; a diverged cache in another region is invisible to this bench. The us-east and sgp replicas emit the same metrics for cross-checking on the time-series chart."
+  - "Quorum honesty: strict plurality everywhere. Two agreeing providers outvote one dissenter; two against two resolves to no quorum and books nothing; a lone answer with no second opinion is unverifiable, not wrong, and books ok. Disagreement requires being outvoted by an established majority."
+  - "Cohort: 12 keyless providers from the bench-010 audited matrix. Excluded: LlamaRPC (fully down, HTTP 521, already delisted from the harness), 1RPC (delisted 2026-07-09 at under 13 percent success; when probed live it also blocked eth_getLogs with -32000, exactly the incident class this bench counts), Ankr / NodeReal / GetBlock / Chainstack (key-gated). Avalanche's foundation endpoint is probed by the harness and visible on bench 010; it is left out here only to keep the cohort at 12."
+  - "Provider matrix and vector addresses are documented in harnesses/rpc-capabilities/cmd/script/config.go and integrity.go; the harness is shared with bench 010, so both benches see the identical provider set and probe budget."
+
+findings:
+  - "Consensus lag is real and measurable at 60-second resolution: calibration rounds of simultaneous eth_getBlockByNumber across the Ethereum cohort caught individual gateways one block behind the cross-provider tip in 2 of 4 rounds, while every provider at equal height returned byte-identical hashes. The lag gauge turns that from an anecdote into a 24h p90/p99 per provider."
+  - "The completeness gap is not hypothetical. On the same fixed 10-block USDC range, drpc, tenderly and blastapi each returned exactly 1371 logs, 1RPC refused the method with -32000, and PublicNode's keyless tier had regressed its archive depth to under 150 blocks, answering -32602 and asking for a personal token. Three providers agreed, two could not answer; both failure modes are incidents here."
+  - "State reads are the quiet good news: eth_getBalance at a fixed recent block came back byte-identical across every responding provider during calibration. rpc_state_disagreement_total exists for the day that stops being true, which is precisely the day you want a public counter."
+  - "{{name:cloudflare}} shows why errors must count: the endpoint answers HTTP 200 fast and fails inside the JSON-RPC body. A correctness bench that only compared successful answers would score it clean; counting error results books its blocked calls as the incidents they are."
+  - "Zero is the normal reading and that is the point. Free public RPCs mostly do tell the truth; the bench prices the exceptions, publicly timestamps regressions like PublicNode's July 2026 keyless depth gating, and gives the honest majority a way to prove they stayed honest."
+
+faq:
+  - q: "What counts as a reliability incident?"
+    a: "Three things, summed over 24 hours from the eu-west probe. An integrity check that errored (method blocked, depth gated behind a key, transport failure). An integrity check whose answer deviated from the strict cross-provider majority (an eth_getLogs count differing from the count at least two other providers agree on, or an eth_getBalance hex that is not byte-identical to the majority answer). And a block-hash mismatch, where the provider reported a hash at a height where at least two providers agreed on a different one. Raw counts, no weights; lower is better and zero is common."
+  - q: "Why do method errors count as incidents when this is a correctness bench?"
+    a: "Because from the caller's seat a method you cannot call is a reliability failure regardless of the reason. 1RPC blocks eth_getLogs with a -32000 error; PublicNode's keyless tier started answering balance reads a few dozen blocks deep with -32602 and a demand for a personal token. Neither returns wrong data, but both break the contract a developer assumes when pasting a no-key URL into a dapp. Counting them alongside genuine disagreements keeps the headline honest: it measures whether the endpoint reliably does what an EVM JSON-RPC endpoint is expected to do."
+  - q: "Can a provider game this benchmark by special-casing the test queries?"
+    a: "The vectors are designed to make that expensive. The eth_getLogs window is anchored at tip minus N where N rotates daily over five depths, so the exact range is never fixed; request ids rotate on every call, defeating body-keyed edge caches; and the USDC contracts are the busiest transfer contracts on each chain, so serving them correctly IS serving real traffic correctly. The head-lag and hash-quorum signals cannot be gamed at all without actually running well-synced nodes, because they are computed from the same latest-header probe the latency bench uses."
+  - q: "Does a reorg unfairly flag providers as mismatching?"
+    a: "No, by construction. During a live reorg two providers can legitimately hold different hashes at the same height. The quorum rule requires a strict plurality: one hash backed by at least two providers and strictly more than any competing hash. A two-against-two split resolves to no quorum and counts nobody, and a mismatch is booked at most once per provider per height. What remains after those guards, a provider outvoted by an established majority at a settled height, is the signal this bench exists to record."
+  - q: "Why is this measured from one region only?"
+    a: "The headline counts incidents from the eu-west vantage because correctness, unlike latency, does not depend on where the client stands: a node serving the canonical chain serves it to everyone. The honest caveat is anycast: each probe sees the serving cluster its region lands on, so a diverged cache serving only another continent is invisible to the eu-west counter. The us-east and Singapore replicas emit the same metric families, and the per-region series are on the chart for cross-checking; the headline stays single-region so the same incident is never double-counted."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
+
+prometheus:
+  window: 24h
+  freshness_metric: rpc_consensus_lag_blocks
+
+# Real metrics emitted by the rpc-capabilities harness (bench-083 set):
+#   rpc_consensus_lag_blocks{provider, chain, region}          gauge
+#   rpc_hash_mismatch_total{provider, chain, region}           counter
+#   rpc_logs_count{provider, chain, region}                    gauge
+#   rpc_logs_disagreement_total{provider, chain, region}       counter
+#   rpc_state_disagreement_total{provider, chain, region}      counter
+#   rpc_integrity_check_total{provider, chain, region, check, result}
+#     counter, check in {logs, balance}, result in {ok, error, disagree}
+# Counters are zero-initialized for the whole (provider x chain) matrix
+# at harness start, so increase() reads 0 (not absent) for clean rows.
+# Headline scopes region="eu-west" (see methodology); the chain tab
+# injects chain="X" into every query.
+
+dimensions:
+  chain:
+    - { value: all,       label: All chains }
+    - { value: ethereum,  label: Ethereum }
+    - { value: polygon,   label: Polygon }
+    - { value: arbitrum,  label: Arbitrum }
+    - { value: optimism,  label: Optimism }
+    - { value: base,      label: Base }
+    - { value: bnb,       label: BNB Chain }
+    - { value: avalanche, label: Avalanche }
+
+rank_matrix_query: sum by (provider, chain) (increase(rpc_integrity_check_total{region="eu-west",result=~"error|disagree"}[24h])) + sum by (provider, chain) (increase(rpc_hash_mismatch_total{region="eu-west"}[24h]))
+
+# ~82 integrity checks per provider per chain per day (2 checks per
+# 5-min rotation over 7 chains); single-chain providers are the floor.
+expected_n: 80
+
+ledger_columns:
+  - { label: "Incidents 24h", slot: p50, unit: count }
+  - { label: "Head lag p90", slot: p90, unit: count }
+  - { label: "Head lag p99", slot: p99, unit: count }
+
+providers:
+  - slug: publicnode
+    name: PublicNode
+    tag: Allnodes-operated; keyless archive depth gated since July 2026
+    formula: "Incidents in 24h (eu-west): integrity checks (USDC eth_getLogs count, eth_getBalance bytes) that errored or diverged from the cross-provider majority, plus block-hash quorum disagreements, summed over its measured chains."
+    queries:
+      p50: sum(increase(rpc_integrity_check_total{provider="publicnode",region="eu-west",result=~"error|disagree"}[24h])) + sum(increase(rpc_hash_mismatch_total{provider="publicnode",region="eu-west"}[24h]))
+      p90: avg(quantile_over_time(0.90, rpc_consensus_lag_blocks{provider="publicnode",region="eu-west"}[24h]))
+      p99: avg(quantile_over_time(0.99, rpc_consensus_lag_blocks{provider="publicnode",region="eu-west"}[24h]))
+      mean: avg(avg_over_time(rpc_consensus_lag_blocks{provider="publicnode",region="eu-west"}[24h]))
+      success: sum(increase(rpc_integrity_check_total{provider="publicnode",region="eu-west",result="ok"}[24h])) / sum(increase(rpc_integrity_check_total{provider="publicnode",region="eu-west"}[24h]))
+      sample_size: sum(increase(rpc_integrity_check_total{provider="publicnode",region="eu-west"}[24h]))
+      series: sum(increase(rpc_integrity_check_total{provider="publicnode",region="eu-west",result=~"error|disagree"}[1h])) + sum(increase(rpc_hash_mismatch_total{provider="publicnode",region="eu-west"}[1h]))
+
+  - slug: drpc
+    name: dRPC
+    tag: Decentralized RPC mesh, consensus-checked routing
+    formula: "Incidents in 24h (eu-west): integrity checks (USDC eth_getLogs count, eth_getBalance bytes) that errored or diverged from the cross-provider majority, plus block-hash quorum disagreements, summed over its measured chains."
+    queries:
+      p50: sum(increase(rpc_integrity_check_total{provider="drpc",region="eu-west",result=~"error|disagree"}[24h])) + sum(increase(rpc_hash_mismatch_total{provider="drpc",region="eu-west"}[24h]))
+      p90: avg(quantile_over_time(0.90, rpc_consensus_lag_blocks{provider="drpc",region="eu-west"}[24h]))
+      p99: avg(quantile_over_time(0.99, rpc_consensus_lag_blocks{provider="drpc",region="eu-west"}[24h]))
+      mean: avg(avg_over_time(rpc_consensus_lag_blocks{provider="drpc",region="eu-west"}[24h]))
+      success: sum(increase(rpc_integrity_check_total{provider="drpc",region="eu-west",result="ok"}[24h])) / sum(increase(rpc_integrity_check_total{provider="drpc",region="eu-west"}[24h]))
+      sample_size: sum(increase(rpc_integrity_check_total{provider="drpc",region="eu-west"}[24h]))
+      series: sum(increase(rpc_integrity_check_total{provider="drpc",region="eu-west",result=~"error|disagree"}[1h])) + sum(increase(rpc_hash_mismatch_total{provider="drpc",region="eu-west"}[1h]))
+
+  - slug: tenderly
+    name: Tenderly
+    tag: Multi-chain public gateway, no key
+    formula: "Incidents in 24h (eu-west): integrity checks (USDC eth_getLogs count, eth_getBalance bytes) that errored or diverged from the cross-provider majority, plus block-hash quorum disagreements, summed over its measured chains."
+    queries:
+      p50: sum(increase(rpc_integrity_check_total{provider="tenderly",region="eu-west",result=~"error|disagree"}[24h])) + sum(increase(rpc_hash_mismatch_total{provider="tenderly",region="eu-west"}[24h]))
+      p90: avg(quantile_over_time(0.90, rpc_consensus_lag_blocks{provider="tenderly",region="eu-west"}[24h]))
+      p99: avg(quantile_over_time(0.99, rpc_consensus_lag_blocks{provider="tenderly",region="eu-west"}[24h]))
+      mean: avg(avg_over_time(rpc_consensus_lag_blocks{provider="tenderly",region="eu-west"}[24h]))
+      success: sum(increase(rpc_integrity_check_total{provider="tenderly",region="eu-west",result="ok"}[24h])) / sum(increase(rpc_integrity_check_total{provider="tenderly",region="eu-west"}[24h]))
+      sample_size: sum(increase(rpc_integrity_check_total{provider="tenderly",region="eu-west"}[24h]))
+      series: sum(increase(rpc_integrity_check_total{provider="tenderly",region="eu-west",result=~"error|disagree"}[1h])) + sum(increase(rpc_hash_mismatch_total{provider="tenderly",region="eu-west"}[1h]))
+
+  - slug: nodies
+    name: Nodies
+    tag: POKT Network's decentralized public RPC successor
+    formula: "Incidents in 24h (eu-west): integrity checks (USDC eth_getLogs count, eth_getBalance bytes) that errored or diverged from the cross-provider majority, plus block-hash quorum disagreements, summed over its measured chains."
+    queries:
+      p50: sum(increase(rpc_integrity_check_total{provider="nodies",region="eu-west",result=~"error|disagree"}[24h])) + sum(increase(rpc_hash_mismatch_total{provider="nodies",region="eu-west"}[24h]))
+      p90: avg(quantile_over_time(0.90, rpc_consensus_lag_blocks{provider="nodies",region="eu-west"}[24h]))
+      p99: avg(quantile_over_time(0.99, rpc_consensus_lag_blocks{provider="nodies",region="eu-west"}[24h]))
+      mean: avg(avg_over_time(rpc_consensus_lag_blocks{provider="nodies",region="eu-west"}[24h]))
+      success: sum(increase(rpc_integrity_check_total{provider="nodies",region="eu-west",result="ok"}[24h])) / sum(increase(rpc_integrity_check_total{provider="nodies",region="eu-west"}[24h]))
+      sample_size: sum(increase(rpc_integrity_check_total{provider="nodies",region="eu-west"}[24h]))
+      series: sum(increase(rpc_integrity_check_total{provider="nodies",region="eu-west",result=~"error|disagree"}[1h])) + sum(increase(rpc_hash_mismatch_total{provider="nodies",region="eu-west"}[1h]))
+
+  - slug: lava
+    name: Lava
+    tag: Decentralized RPC mesh (ETH + Arbitrum no-key)
+    formula: "Incidents in 24h (eu-west) on Ethereum and Arbitrum: integrity checks (USDC eth_getLogs count, eth_getBalance bytes) that errored or diverged from the cross-provider majority, plus block-hash quorum disagreements."
+    queries:
+      p50: sum(increase(rpc_integrity_check_total{provider="lava",region="eu-west",result=~"error|disagree"}[24h])) + sum(increase(rpc_hash_mismatch_total{provider="lava",region="eu-west"}[24h]))
+      p90: avg(quantile_over_time(0.90, rpc_consensus_lag_blocks{provider="lava",region="eu-west"}[24h]))
+      p99: avg(quantile_over_time(0.99, rpc_consensus_lag_blocks{provider="lava",region="eu-west"}[24h]))
+      mean: avg(avg_over_time(rpc_consensus_lag_blocks{provider="lava",region="eu-west"}[24h]))
+      success: sum(increase(rpc_integrity_check_total{provider="lava",region="eu-west",result="ok"}[24h])) / sum(increase(rpc_integrity_check_total{provider="lava",region="eu-west"}[24h]))
+      sample_size: sum(increase(rpc_integrity_check_total{provider="lava",region="eu-west"}[24h]))
+      series: sum(increase(rpc_integrity_check_total{provider="lava",region="eu-west",result=~"error|disagree"}[1h])) + sum(increase(rpc_hash_mismatch_total{provider="lava",region="eu-west"}[1h]))
+
+  - slug: meowrpc
+    name: MeowRPC
+    tag: Free public RPC (ETH + Arbitrum)
+    formula: "Incidents in 24h (eu-west) on Ethereum and Arbitrum: integrity checks (USDC eth_getLogs count, eth_getBalance bytes) that errored or diverged from the cross-provider majority, plus block-hash quorum disagreements."
+    queries:
+      p50: sum(increase(rpc_integrity_check_total{provider="meowrpc",region="eu-west",result=~"error|disagree"}[24h])) + sum(increase(rpc_hash_mismatch_total{provider="meowrpc",region="eu-west"}[24h]))
+      p90: avg(quantile_over_time(0.90, rpc_consensus_lag_blocks{provider="meowrpc",region="eu-west"}[24h]))
+      p99: avg(quantile_over_time(0.99, rpc_consensus_lag_blocks{provider="meowrpc",region="eu-west"}[24h]))
+      mean: avg(avg_over_time(rpc_consensus_lag_blocks{provider="meowrpc",region="eu-west"}[24h]))
+      success: sum(increase(rpc_integrity_check_total{provider="meowrpc",region="eu-west",result="ok"}[24h])) / sum(increase(rpc_integrity_check_total{provider="meowrpc",region="eu-west"}[24h]))
+      sample_size: sum(increase(rpc_integrity_check_total{provider="meowrpc",region="eu-west"}[24h]))
+      series: sum(increase(rpc_integrity_check_total{provider="meowrpc",region="eu-west",result=~"error|disagree"}[1h])) + sum(increase(rpc_hash_mismatch_total{provider="meowrpc",region="eu-west"}[1h]))
+
+  - slug: flashbots
+    name: Flashbots
+    tag: Private-mempool read proxy, Ethereum only
+    formula: "Incidents in 24h (eu-west) on Ethereum: integrity checks (USDC eth_getLogs count, eth_getBalance bytes) that errored or diverged from the cross-provider majority, plus block-hash quorum disagreements."
+    queries:
+      p50: sum(increase(rpc_integrity_check_total{provider="flashbots",region="eu-west",result=~"error|disagree"}[24h])) + sum(increase(rpc_hash_mismatch_total{provider="flashbots",region="eu-west"}[24h]))
+      p90: avg(quantile_over_time(0.90, rpc_consensus_lag_blocks{provider="flashbots",region="eu-west"}[24h]))
+      p99: avg(quantile_over_time(0.99, rpc_consensus_lag_blocks{provider="flashbots",region="eu-west"}[24h]))
+      mean: avg(avg_over_time(rpc_consensus_lag_blocks{provider="flashbots",region="eu-west"}[24h]))
+      success: sum(increase(rpc_integrity_check_total{provider="flashbots",region="eu-west",result="ok"}[24h])) / sum(increase(rpc_integrity_check_total{provider="flashbots",region="eu-west"}[24h]))
+      sample_size: sum(increase(rpc_integrity_check_total{provider="flashbots",region="eu-west"}[24h]))
+      series: sum(increase(rpc_integrity_check_total{provider="flashbots",region="eu-west",result=~"error|disagree"}[1h])) + sum(increase(rpc_hash_mismatch_total{provider="flashbots",region="eu-west"}[1h]))
+
+  - slug: cloudflare
+    name: Cloudflare
+    tag: Permissioned mode; the errors-are-signal exhibit
+    formula: "Incidents in 24h (eu-west) on Ethereum: integrity checks (USDC eth_getLogs count, eth_getBalance bytes) that errored or diverged from the cross-provider majority, plus block-hash quorum disagreements. Blocked methods count as errors."
+    queries:
+      p50: sum(increase(rpc_integrity_check_total{provider="cloudflare",region="eu-west",result=~"error|disagree"}[24h])) + sum(increase(rpc_hash_mismatch_total{provider="cloudflare",region="eu-west"}[24h]))
+      p90: avg(quantile_over_time(0.90, rpc_consensus_lag_blocks{provider="cloudflare",region="eu-west"}[24h]))
+      p99: avg(quantile_over_time(0.99, rpc_consensus_lag_blocks{provider="cloudflare",region="eu-west"}[24h]))
+      mean: avg(avg_over_time(rpc_consensus_lag_blocks{provider="cloudflare",region="eu-west"}[24h]))
+      success: sum(increase(rpc_integrity_check_total{provider="cloudflare",region="eu-west",result="ok"}[24h])) / sum(increase(rpc_integrity_check_total{provider="cloudflare",region="eu-west"}[24h]))
+      sample_size: sum(increase(rpc_integrity_check_total{provider="cloudflare",region="eu-west"}[24h]))
+      series: sum(increase(rpc_integrity_check_total{provider="cloudflare",region="eu-west",result=~"error|disagree"}[1h])) + sum(increase(rpc_hash_mismatch_total{provider="cloudflare",region="eu-west"}[1h]))
+
+  - slug: base-official
+    name: Base
+    tag: Coinbase-operated, Base mainnet only
+    formula: "Incidents in 24h (eu-west) on Base: integrity checks (USDC eth_getLogs count, eth_getBalance bytes) that errored or diverged from the cross-provider majority, plus block-hash quorum disagreements."
+    queries:
+      p50: sum(increase(rpc_integrity_check_total{provider="base-official",region="eu-west",result=~"error|disagree"}[24h])) + sum(increase(rpc_hash_mismatch_total{provider="base-official",region="eu-west"}[24h]))
+      p90: avg(quantile_over_time(0.90, rpc_consensus_lag_blocks{provider="base-official",region="eu-west"}[24h]))
+      p99: avg(quantile_over_time(0.99, rpc_consensus_lag_blocks{provider="base-official",region="eu-west"}[24h]))
+      mean: avg(avg_over_time(rpc_consensus_lag_blocks{provider="base-official",region="eu-west"}[24h]))
+      success: sum(increase(rpc_integrity_check_total{provider="base-official",region="eu-west",result="ok"}[24h])) / sum(increase(rpc_integrity_check_total{provider="base-official",region="eu-west"}[24h]))
+      sample_size: sum(increase(rpc_integrity_check_total{provider="base-official",region="eu-west"}[24h]))
+      series: sum(increase(rpc_integrity_check_total{provider="base-official",region="eu-west",result=~"error|disagree"}[1h])) + sum(increase(rpc_hash_mismatch_total{provider="base-official",region="eu-west"}[1h]))
+
+  - slug: arbitrum-official
+    name: Arbitrum
+    tag: Arbitrum Foundation RPC, Arbitrum One only
+    formula: "Incidents in 24h (eu-west) on Arbitrum One: integrity checks (USDC eth_getLogs count, eth_getBalance bytes) that errored or diverged from the cross-provider majority, plus block-hash quorum disagreements."
+    queries:
+      p50: sum(increase(rpc_integrity_check_total{provider="arbitrum-official",region="eu-west",result=~"error|disagree"}[24h])) + sum(increase(rpc_hash_mismatch_total{provider="arbitrum-official",region="eu-west"}[24h]))
+      p90: avg(quantile_over_time(0.90, rpc_consensus_lag_blocks{provider="arbitrum-official",region="eu-west"}[24h]))
+      p99: avg(quantile_over_time(0.99, rpc_consensus_lag_blocks{provider="arbitrum-official",region="eu-west"}[24h]))
+      mean: avg(avg_over_time(rpc_consensus_lag_blocks{provider="arbitrum-official",region="eu-west"}[24h]))
+      success: sum(increase(rpc_integrity_check_total{provider="arbitrum-official",region="eu-west",result="ok"}[24h])) / sum(increase(rpc_integrity_check_total{provider="arbitrum-official",region="eu-west"}[24h]))
+      sample_size: sum(increase(rpc_integrity_check_total{provider="arbitrum-official",region="eu-west"}[24h]))
+      series: sum(increase(rpc_integrity_check_total{provider="arbitrum-official",region="eu-west",result=~"error|disagree"}[1h])) + sum(increase(rpc_hash_mismatch_total{provider="arbitrum-official",region="eu-west"}[1h]))
+
+  - slug: optimism-official
+    name: Optimism
+    tag: Optimism Foundation RPC, OP mainnet only
+    formula: "Incidents in 24h (eu-west) on Optimism: integrity checks (USDC eth_getLogs count, eth_getBalance bytes) that errored or diverged from the cross-provider majority, plus block-hash quorum disagreements."
+    queries:
+      p50: sum(increase(rpc_integrity_check_total{provider="optimism-official",region="eu-west",result=~"error|disagree"}[24h])) + sum(increase(rpc_hash_mismatch_total{provider="optimism-official",region="eu-west"}[24h]))
+      p90: avg(quantile_over_time(0.90, rpc_consensus_lag_blocks{provider="optimism-official",region="eu-west"}[24h]))
+      p99: avg(quantile_over_time(0.99, rpc_consensus_lag_blocks{provider="optimism-official",region="eu-west"}[24h]))
+      mean: avg(avg_over_time(rpc_consensus_lag_blocks{provider="optimism-official",region="eu-west"}[24h]))
+      success: sum(increase(rpc_integrity_check_total{provider="optimism-official",region="eu-west",result="ok"}[24h])) / sum(increase(rpc_integrity_check_total{provider="optimism-official",region="eu-west"}[24h]))
+      sample_size: sum(increase(rpc_integrity_check_total{provider="optimism-official",region="eu-west"}[24h]))
+      series: sum(increase(rpc_integrity_check_total{provider="optimism-official",region="eu-west",result=~"error|disagree"}[1h])) + sum(increase(rpc_hash_mismatch_total{provider="optimism-official",region="eu-west"}[1h]))
+
+  - slug: binance
+    name: Binance
+    tag: BNB Chain dataseed RPC, BNB only
+    formula: "Incidents in 24h (eu-west) on BNB Chain: integrity checks (USDC eth_getLogs count, eth_getBalance bytes) that errored or diverged from the cross-provider majority, plus block-hash quorum disagreements."
+    queries:
+      p50: sum(increase(rpc_integrity_check_total{provider="binance",region="eu-west",result=~"error|disagree"}[24h])) + sum(increase(rpc_hash_mismatch_total{provider="binance",region="eu-west"}[24h]))
+      p90: avg(quantile_over_time(0.90, rpc_consensus_lag_blocks{provider="binance",region="eu-west"}[24h]))
+      p99: avg(quantile_over_time(0.99, rpc_consensus_lag_blocks{provider="binance",region="eu-west"}[24h]))
+      mean: avg(avg_over_time(rpc_consensus_lag_blocks{provider="binance",region="eu-west"}[24h]))
+      success: sum(increase(rpc_integrity_check_total{provider="binance",region="eu-west",result="ok"}[24h])) / sum(increase(rpc_integrity_check_total{provider="binance",region="eu-west"}[24h]))
+      sample_size: sum(increase(rpc_integrity_check_total{provider="binance",region="eu-west"}[24h]))
+      series: sum(increase(rpc_integrity_check_total{provider="binance",region="eu-west",result=~"error|disagree"}[1h])) + sum(increase(rpc_hash_mismatch_total{provider="binance",region="eu-west"}[1h]))

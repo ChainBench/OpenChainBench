@@ -57,6 +57,57 @@ var (
 		},
 		[]string{"provider", "chain", "region", "depth"},
 	)
+
+	// ─── Bench 083 rpc-reliability: correctness / integrity metrics ────
+	// Emitted from the same probe matrix; consensus.go + integrity.go.
+
+	rpcConsensusLag = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "rpc_consensus_lag_blocks",
+			Help: "Blocks (slots on Solana) between this provider's reported head and the highest head any probed provider reported for the same chain. Set on every valid head probe (ok or stale); deleted on failure so a dead endpoint ages out instead of freezing at its last lag.",
+		},
+		[]string{"provider", "chain", "region"},
+	)
+
+	rpcHashMismatch = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "rpc_hash_mismatch_total",
+			Help: "Times a provider reported a block hash at height H that disagrees with the hash at least 2 other-or-same providers agreed on at H (strict plurality). Incremented at most once per (provider, height); a 2-2 reorg split yields no quorum and nobody is counted.",
+		},
+		[]string{"provider", "chain", "region"},
+	)
+
+	rpcLogsCount = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "rpc_logs_count",
+			Help: "Number of logs the provider returned for the fixed-vector `eth_getLogs` check (canonical USDC contract, 10-block range at a daily-rotating depth behind tip). Deleted when the call errors so a blocked method doesn't freeze a stale count.",
+		},
+		[]string{"provider", "chain", "region"},
+	)
+
+	rpcLogsDisagreement = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "rpc_logs_disagreement_total",
+			Help: "Times a provider's `eth_getLogs` count for the fixed vector deviated from the strict cross-provider majority count in the same round.",
+		},
+		[]string{"provider", "chain", "region"},
+	)
+
+	rpcStateDisagreement = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "rpc_state_disagreement_total",
+			Help: "Times a provider's `eth_getBalance` hex at the fixed recent block was not byte-identical to the strict cross-provider majority answer in the same round.",
+		},
+		[]string{"provider", "chain", "region"},
+	)
+
+	rpcIntegrityCheck = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "rpc_integrity_check_total",
+			Help: "Fixed-vector integrity check outcomes. check is `logs` (eth_getLogs USDC 10-block window) or `balance` (eth_getBalance at a fixed recent block). result is ok (matches majority), error (method blocked, archive gated, transport failure: errors are signal), or disagree (diverged from the >=2-provider majority).",
+		},
+		[]string{"provider", "chain", "region", "check", "result"},
+	)
 )
 
 // StartMetricsServer binds /metrics + /health on addr. Blocking call —
