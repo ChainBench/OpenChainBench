@@ -1,0 +1,127 @@
+# OpenChainBench. Bench № 081
+
+slug: ws-head-latency
+number: "081"
+title: Fastest WebSocket newHeads push, live block-push lag across RPC providers
+seo_title: "Fastest WebSocket RPC newHeads push 2026"
+seo_description: "{{best_name}} pushes Ethereum newHeads first. Live WebSocket block-push lag for PublicNode, dRPC and Tenderly, measured per block against the earliest arrival in the cohort."
+subtitle: Per-block WebSocket push lag in milliseconds versus the earliest provider to deliver the same Ethereum head, measured continuously from one eu-west vantage point.
+
+category: RPCs
+status: live
+metric: Block push lag
+unit: ms
+higher_is_better: false
+
+seo_intro: |
+  Every trading bot, MEV searcher, liquidation keeper and live dashboard
+  that subscribes to `eth_subscribe("newHeads")` cares about one number
+  first: how many milliseconds after the network produces a block does my
+  RPC provider actually push it to me? Marketing pages say "real-time
+  WebSocket streaming"; this page says who delivers block N first and by
+  how much the others trail. The harness holds one persistent WebSocket
+  per provider from the same eu-west host, timestamps every newHeads
+  frame on receipt, and scores each Ethereum block as a race: the
+  earliest arrival sets T0, every other provider's lag is its arrival
+  minus T0. The headline is pinned to Ethereum, where all three keyless
+  providers compete; the same harness also races Base heads and Solana
+  slots for cross-chain context. Because the measurement is relative,
+  the leader reads near zero by construction, so the win-rate and the
+  shape of the trailing distribution (p50 vs p99) are the numbers to
+  read, not the absolute magnitude. {{best_name}} currently leads at
+  {{best_p50}} (p50, 24 h) across {{count}} measured providers.
+
+abstract: |
+  We race RPC providers on WebSocket block delivery. One harness holds a
+  persistent `eth_subscribe("newHeads")` connection to each provider from
+  the same host and timestamps every head frame on receipt. Per block,
+  the earliest arrival across providers defines T0; each provider's
+  sample is its own arrival minus T0, in milliseconds. A block's cohort
+  stays open 5 seconds after the first arrival, then it is scored:
+  lag histogram per provider, a win for the earliest, and a gap counter
+  for any live provider that never delivered the block. The measurement
+  is relative to the fastest provider observed from our vantage point,
+  not an absolute network latency; the same-path subtraction is exactly
+  what makes the ordering fair. Solana runs the identical race on
+  `slotSubscribe` slot notifications.
+
+methodology:
+  - "Providers measured (keyless WebSocket endpoints): PublicNode (wss://ethereum-rpc.publicnode.com), dRPC (wss://eth.drpc.org), Tenderly (wss://mainnet.gateway.tenderly.co). Keyed providers (Alchemy, Infura, Chainstack) join the cohort when contributor keys are wired; the harness reads them from env vars and skips them cleanly when unset."
+  - "Chains: Ethereum (headline, all three providers compete), Base via newHeads and Solana via slotSubscribe as secondary cohorts. Headline queries on this page are pinned to chain=ethereum so the ranking never mixes block cadences."
+  - "Race scoring: the first provider to deliver block N sets T0. Each provider's sample for block N is arrival(N) minus T0 in milliseconds. The cohort closes 5 seconds after the first arrival; a provider arriving later than that is scored as a missed block (ws_block_gap_total), not as a huge latency sample."
+  - "Relative, not absolute: a single vantage point cannot separate its own network path from provider pipeline time, so we subtract the two arrivals over the same path instead. Consequence: the fastest provider reads ~0 by construction, and the honest readings are win rate, the trailers' lag distribution, and gap counts, not the leader's absolute number."
+  - "Blocks where only one provider delivered within the window emit no lag samples and no win: a one-horse race carries no relative information. Gap counters still increment for live providers that missed the block."
+  - "Connection discipline: one persistent WebSocket per (provider, chain), client ping every 30s, read deadline 60s, plus a 90s head watchdog that forces a reconnect when a provider keeps the socket heartbeat alive but silently drops the subscription (a failure mode we have observed in production on other benches). Reconnects use exponential backoff 2s to 60s and are counted in ws_reconnects_total."
+  - "Coverage score: ws_head_blocks_seen_total per provider divided by the cohort maximum over the same 24h window, clamped to 1. A provider that pushes fast but skips blocks loses on this column rather than hiding in the latency percentiles."
+  - "Aggregation: per-provider lag histogram (5ms to 10s exponential buckets), p50/p90/p99 via histogram_quantile over the 24h rate. Duplicate announcements of the same block on one connection are dropped; per-provider liveness is exported as ws_health (1 = connected and delivered a message in the last 120s)."
+  - "Cheat vector disclosure: a provider could theoretically pre-announce heads it has not fully validated to win the race. We keyed the cohort on block number as pushed; hash-level cross-checking against a reference node is on the v2 list. Reading win rate together with the gap counter already flags a provider that pushes early but wrong (retracted heads show up as cohort inconsistencies and reorg noise)."
+  - "Vantage point: a single eu-west host. Geography moves absolute arrival times but affects all providers over the same path; still, a provider whose nearest edge is far from eu-west is disadvantaged, and a us-east probe is the planned second vantage before any cross-region claim is made."
+
+findings:
+  - "{{best_name}} leads the Ethereum cohort at {{best_p50}} (p50, 24 h) across {{count}} measured providers. Remember the construction: the per-block winner defines zero, so the leader's near-zero p50 mostly says it wins most races; the informative numbers are the trailers' medians and the p99 tails."
+  - "{{name:drpc}} trails the winner by {{p50:drpc}} at the median. That is the extra time a liquidation bot or MEV searcher on dRPC's keyless endpoint waits for block N after the fastest feed already delivered it."
+  - "{{name:tenderly}} trails by {{p50:tenderly}} (p50, 24 h). Tenderly's gateway is built around simulation and developer tooling rather than raw head-push fan-out, and the push pipeline depth shows up in this race."
+  - "The p99 column is the integration-grade number: {{p99:publicnode}} / {{p99:drpc}} / {{p99:tenderly}}. A provider with a tight p50 but a multi-second p99 will occasionally hand your bot a stale head exactly when the chain is busiest."
+  - "Win rate and block coverage are the robust readings. A provider can look decent on median lag while silently skipping blocks; the success column (blocks seen vs cohort max) and ws_block_gap_total keep that visible."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/ws-head-latency
+
+expected_n: 7000
+
+prometheus:
+  window: 24h
+  freshness_metric: ws_head_blocks_seen_total
+
+faq:
+  - q: "Which RPC provider pushes new Ethereum blocks first over WebSocket?"
+    a: "{{best_name}} currently wins most per-block races, with a median lag of {{best_p50}} versus the earliest arrival (p50, 24 h) across {{count}} measured keyless providers. The leaderboard re-scores on every Ethereum block, roughly every 12 seconds, so the answer reflects sustained live measurement, not a one-off test. Check the win rate and the trailers' p99 before wiring a latency-sensitive bot to any single provider."
+  - q: "Why does the fastest provider show a lag near zero?"
+    a: "By construction. Each block is scored as a race: the earliest arrival among providers defines T0 and every sample is measured against it, so the provider that wins most races accumulates mostly zero samples. This is deliberate. A single vantage point cannot measure absolute chain-to-client latency without a reference node co-located with block producers; it can measure, fairly, which provider delivers the same block earlier over the same network path. Read the leader's win rate and the trailers' distributions, not the leader's absolute number."
+  - q: "Is this absolute latency from block production to my client?"
+    a: "No. The number is relative lag versus the fastest provider observed from our eu-west host. Absolute delivery latency includes the propagation time from the block producer to each provider's infrastructure plus the path to you, which shifts with your geography. What transfers to your integration is the ordering and the spread: if a provider trails the winner by 800 ms at the median from our vantage point, its pipeline is structurally behind, and that gap does not disappear because you probe from another region."
+  - q: "Could a provider cheat by pushing heads before validating them?"
+    a: "In principle yes: pre-announcing an unvalidated head wins the race at the cost of occasionally pushing a block that gets reorged or retracted. That is why the bench exports more than the lag histogram. A provider that pushes early but wrong shows up as cohort inconsistencies, elevated reorg noise and gaps, and the coverage column (blocks seen versus the cohort maximum) penalises skipped or retracted blocks. Hash-level cross-checking against an independent reference node is planned for v2 of the harness."
+  - q: "How is WebSocket head lag measured on OpenChainBench?"
+    a: "One Go harness holds a persistent eth_subscribe('newHeads') WebSocket per provider from the same eu-west host, plus slotSubscribe for the Solana cohort. Every frame is timestamped on receipt with time.Now() precision. A block's cohort stays open for 5 seconds after the first arrival, then each provider's lag versus the earliest is observed into a Prometheus histogram (5 ms to 10 s exponential buckets); p50/p90/p99 come from histogram_quantile over the 24 h window. Connections carry a 90 s silent-subscription watchdog and exponential-backoff reconnects so a flaky endpoint degrades to health=0 instead of corrupting the race."
+  - q: "Why are only PublicNode, dRPC and Tenderly listed?"
+    a: "V1 measures the keyless tier: endpoints anyone can open a WebSocket to without an account, which is also the tier where claims are hardest to verify and marketing is loudest. Alchemy, Infura and Chainstack require API keys; the harness already accepts them via environment variables and they join the leaderboard once contributor keys are wired into the deployment. Keyed tiers usually run on better-provisioned infrastructure, so expect the keyless numbers here to be the floor, not the ceiling, of each vendor's performance."
+
+providers:
+  - slug: publicnode
+    name: PublicNode
+    tag: Keyless WS, wss://ethereum-rpc.publicnode.com
+    formula: "Median ms behind the earliest provider to push each Ethereum newHeads frame, from one persistent WebSocket per provider on the same eu-west host, histogram_quantile over 24h. The per-block winner scores 0 by construction."
+    queries:
+      p50: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="publicnode", chain="ethereum"}[24h])))
+      p90: histogram_quantile(0.90, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="publicnode", chain="ethereum"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="publicnode", chain="ethereum"}[24h])))
+      mean: sum(rate(ws_head_lag_milliseconds_sum{provider="publicnode", chain="ethereum"}[24h])) / sum(rate(ws_head_lag_milliseconds_count{provider="publicnode", chain="ethereum"}[24h]))
+      success: clamp_max(sum(increase(ws_head_blocks_seen_total{provider="publicnode", chain="ethereum"}[24h])) / max(sum by (provider) (increase(ws_head_blocks_seen_total{chain="ethereum"}[24h]))), 1)
+      sample_size: sum(increase(ws_head_lag_milliseconds_count{provider="publicnode", chain="ethereum"}[24h]))
+      series: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="publicnode", chain="ethereum"}[1h])))
+
+  - slug: drpc
+    name: dRPC
+    tag: Keyless WS, wss://eth.drpc.org
+    formula: "Median ms behind the earliest provider to push each Ethereum newHeads frame, from one persistent WebSocket per provider on the same eu-west host, histogram_quantile over 24h. Lag is relative to the per-block winner."
+    queries:
+      p50: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="drpc", chain="ethereum"}[24h])))
+      p90: histogram_quantile(0.90, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="drpc", chain="ethereum"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="drpc", chain="ethereum"}[24h])))
+      mean: sum(rate(ws_head_lag_milliseconds_sum{provider="drpc", chain="ethereum"}[24h])) / sum(rate(ws_head_lag_milliseconds_count{provider="drpc", chain="ethereum"}[24h]))
+      success: clamp_max(sum(increase(ws_head_blocks_seen_total{provider="drpc", chain="ethereum"}[24h])) / max(sum by (provider) (increase(ws_head_blocks_seen_total{chain="ethereum"}[24h]))), 1)
+      sample_size: sum(increase(ws_head_lag_milliseconds_count{provider="drpc", chain="ethereum"}[24h]))
+      series: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="drpc", chain="ethereum"}[1h])))
+
+  - slug: tenderly
+    name: Tenderly
+    tag: Keyless WS, wss://mainnet.gateway.tenderly.co
+    formula: "Median ms behind the earliest provider to push each Ethereum newHeads frame, from one persistent WebSocket per provider on the same eu-west host, histogram_quantile over 24h. Lag is relative to the per-block winner."
+    queries:
+      p50: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="tenderly", chain="ethereum"}[24h])))
+      p90: histogram_quantile(0.90, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="tenderly", chain="ethereum"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="tenderly", chain="ethereum"}[24h])))
+      mean: sum(rate(ws_head_lag_milliseconds_sum{provider="tenderly", chain="ethereum"}[24h])) / sum(rate(ws_head_lag_milliseconds_count{provider="tenderly", chain="ethereum"}[24h]))
+      success: clamp_max(sum(increase(ws_head_blocks_seen_total{provider="tenderly", chain="ethereum"}[24h])) / max(sum by (provider) (increase(ws_head_blocks_seen_total{chain="ethereum"}[24h]))), 1)
+      sample_size: sum(increase(ws_head_lag_milliseconds_count{provider="tenderly", chain="ethereum"}[24h]))
+      series: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="tenderly", chain="ethereum"}[1h])))
