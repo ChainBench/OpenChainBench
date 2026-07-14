@@ -30,7 +30,8 @@ export type Category =
   | "Wallets"
   | "RPCs"
   | "NFT APIs"
-  | "Explorers";
+  | "Explorers"
+  | "RWA";
 
 export type CategoryEntry = {
   /** URL slug. Lowercase, kebab-case, ASCII. */
@@ -92,6 +93,13 @@ export const CATEGORIES: readonly CategoryEntry[] = [
     heading: "Explorer benchmarks",
     description:
       "Live measurements for block explorer APIs. Compare how many chains each family actually serves with a working indexer, probe-verified daily against the vendors' own registries.",
+  },
+  {
+    slug: "rwa",
+    label: "RWA",
+    heading: "RWA benchmarks",
+    description:
+      "Live measurements for tokenized real world assets. How closely tokenized stocks and treasuries track their underlying market price, measured onchain around the clock, including nights and weekends when the real markets are closed.",
   },
   {
     slug: "nft-apis",

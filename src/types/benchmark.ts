@@ -215,7 +215,7 @@ export type Benchmark = {
     kind?: { value: string; label: string }[];
     venue?: { value: string; label: string }[];
   };
-  category: "Aggregators" | "Bridges" | "Blockchains" | "Trading" | "Wallets" | "RPCs" | "NFT APIs" | "Explorers";
+  category: "Aggregators" | "Bridges" | "Blockchains" | "Trading" | "Wallets" | "RPCs" | "NFT APIs" | "Explorers" | "RWA";
   results: ProviderResult[];
   /** Per-chain leader, computed only on the unfiltered ("All chains") view
    *  when the spec declares `dimensions.chain`. Key = chain slug from the
