@@ -10,6 +10,7 @@ import {
 } from "@/lib/hl-builder-stats";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { HlBuilderDashboard } from "@/components/hl-builder-dashboard";
+import { ProviderLogo } from "@/components/provider-logo";
 import { pageMetadata } from "@/lib/page-metadata";
 import { safeJsonLd } from "@/lib/jsonld";
 
@@ -145,9 +146,12 @@ export default async function HlFrontendPage({
 
       <header className="mb-8">
         <p className="label-mono text-ink-faint mb-2">Hyperliquid frontend</p>
-        <h1 className="display text-4xl sm:text-5xl text-ink">
-          {frontend.name}
-        </h1>
+        <div className="flex items-center gap-4">
+          <ProviderLogo slug={slug} name={frontend.name} size={56} />
+          <h1 className="display text-4xl sm:text-5xl text-ink">
+            {frontend.name}
+          </h1>
+        </div>
         <p
           className="mt-2 text-[12px] text-ink-faint"
           style={{ fontFamily: "var(--font-mono, monospace)" }}
