@@ -133,6 +133,7 @@ func runEvents(ctx context.Context) {
 // is exhausted (timeout), or every poll errored (error).
 func raceProvider(ctx context.Context, p Provider, bn uint64, txHash string, t0 time.Time) {
 	var lastErr error
+	polls, errs := 0, 0
 	for _, after := range pollSchedule {
 		wait := time.Until(t0.Add(time.Duration(after) * time.Second))
 		if wait > 0 {
@@ -142,8 +143,10 @@ func raceProvider(ctx context.Context, p Provider, bn uint64, txHash string, t0 
 			case <-time.After(wait):
 			}
 		}
+		polls++
 		found, err := p.Check(bn, txHash)
 		if err != nil {
+			errs++
 			lastErr = err
 			continue
 		}
@@ -158,12 +161,20 @@ func raceProvider(ctx context.Context, p Provider, bn uint64, txHash string, t0 
 		}
 	}
 	health.WithLabelValues(p.Slug).Set(0)
-	if lastErr != nil {
+	// "error" only when EVERY poll of the event errored (matches the spec's
+	// classification). An event with at least one clean "not yet" answer is a
+	// timeout: reclassifying it as error would drop it from the success-rate
+	// denominator and let transient blips inflate a provider's score.
+	if errs == polls && lastErr != nil {
 		probeTotal.WithLabelValues(p.Slug, "error").Inc()
 		fmt.Printf("  %-10s error: %s\n", p.Slug, sanitize(lastErr))
 		return
 	}
 	probeTotal.WithLabelValues(p.Slug, "timeout").Inc()
+	if lastErr != nil {
+		fmt.Printf("  %-10s TIMEOUT (not queryable within %ds; %d/%d polls errored, last: %s)\n", p.Slug, pollSchedule[len(pollSchedule)-1], errs, polls, sanitize(lastErr))
+		return
+	}
 	fmt.Printf("  %-10s TIMEOUT (not queryable within %ds)\n", p.Slug, pollSchedule[len(pollSchedule)-1])
 }
 
