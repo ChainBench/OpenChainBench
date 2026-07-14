@@ -2,9 +2,9 @@
 
 slug: indexer-latency
 number: "084"
-title: Fastest blockchain indexer. Envio HyperSync, The Graph, Alchemy
-seo_title: "Fastest blockchain indexer 2026: HyperSync vs The Graph vs Alchemy"
-seo_description: "How fast do indexing pipelines make new onchain events queryable? Envio HyperSync, The Graph and Alchemy measured live on organic Ethereum USDC transfers, second by second."
+title: Fastest blockchain indexer. Envio HyperSync, The Graph, Mobula
+seo_title: "Fastest blockchain indexer 2026: HyperSync vs The Graph vs Mobula"
+seo_description: "How fast do indexing pipelines make new onchain events queryable? Envio HyperSync, The Graph and Mobula measured live on organic Ethereum USDC transfers, second by second."
 subtitle: Seconds between a USDC transfer confirming on Ethereum and the moment each indexing pipeline first makes that block's data queryable, measured continuously on organic transfers.
 category: Aggregators
 status: live
@@ -26,7 +26,7 @@ seo_intro: |
   publicly re-verifiable from the tx hash. Cohort. Envio HyperSync
   (low level log query engine), The Graph (decentralized subgraph
   network, probed through the canonical Uniswap V3 subgraph) and
-  Alchemy (indexed transfers API), all probed on the identical
+  Mobula (wallet-history pipeline), all probed on the identical
   schedule from the same host. This cohort is indexing
   infrastructure; wallet data APIs (Zerion, Moralis, Mobula and
   friends) are raced separately in bench 070, with zero provider
@@ -43,7 +43,7 @@ abstract: |
   parser free where the API returns the tx hash verbatim. Because the
   three pipelines expose different query surfaces, the probed entity
   differs per provider and is disclosed. HyperSync is asked for the
-  exact Transfer log, Alchemy for the exact transfer via its indexed
+  exact Transfer log, Mobula for the exact transfer via its indexed
   transfers API, The Graph for a block pinned query on the canonical
   Uniswap V3 subgraph that only succeeds once the subgraph has indexed
   the reference block. The measured question is identical in all three
@@ -56,11 +56,12 @@ methodology:
   - "Ground truth: one probe event per 5 minutes. The harness watches new Ethereum blocks through its own keyless reference RPC (publicnode, never a cohort member's endpoint) and picks one random USDC Transfer log from the newest block. T0 is the instant the harness first observes the containing block; the same T0 is used for every provider."
   - "Anti-gaming by construction: the probe target is a random organic USDC transfer, different on every event, so no provider can pre-warm a known benchmark entity. Every measurement is re-verifiable by anyone from the public tx hash. No canary contract is deployed; the benchmark piggybacks on the natural high frequency USDC stream at zero onchain cost."
   - "Poll schedule: each provider is polled at 1, 2, 3, 5, 8, 12, 20, 30, 45, 60, 90, 120, 180 and 240 seconds after T0. Reported lag is the first poll at which block N's data is queryable, an upper bound with resolution equal to the gap between consecutive polls."
-  - "Probed entity per provider, disclosed because the pipelines expose different query surfaces: HyperSync is queried via POST /query for the exact Transfer log in block N; Alchemy via alchemy_getAssetTransfers with a fromBlock=N filter and the USDC contract; The Graph via a block pinned GraphQL query on the canonical Uniswap V3 Ethereum subgraph, which graph-node rejects until the subgraph has indexed block N. The measured question is identical: is block N data queryable at time T."
+  - "Probed entity per provider, disclosed because the pipelines expose different query surfaces: HyperSync is queried via POST /query for the exact Transfer log in block N; Mobula via its wallet-transactions endpoint for the transfer recipient captured from the log topics; The Graph via a block pinned GraphQL query on the canonical Uniswap V3 Ethereum subgraph, which graph-node rejects until the subgraph has indexed block N. The measured question is identical: is block N data queryable at time T."
   - "The Graph number therefore includes the full subgraph pipeline (firehose, indexer sync, gateway routing) rather than a raw data lookup. That is the honest comparison: it is the path every subgraph consumer actually waits on, but readers should know it is a pipeline measurement, not a single database read."
-  - "Detection is parser free where possible: HyperSync and Alchemy responses are scanned for the tx hash substring, so no provider gains or loses from response schema differences. The Graph probe succeeds when the block pinned query returns data without a block range error."
+  - "Detection is parser free where possible: HyperSync and Mobula responses are scanned for the tx hash substring, so no provider gains or loses from response schema differences. The Graph probe succeeds when the block pinned query returns data without a block range error."
   - "Classification: found (lag recorded), timeout (not queryable within 240s), error (provider errored on every poll of the event), quota_paused (monthly guard tripped), disabled (credential not configured). Percentiles are computed from the histogram of found lags over 24h; the timeout rate is published alongside because latency without reliability is a misleading ranking signal."
-  - "Quota fairness: per provider monthly call budgets sized to each free tier with headroom, enforced by a guard that pauses probing at 90 percent. The Graph joins every second event (100k gateway queries/month free plan); HyperSync and Alchemy join every event. Sample sizes per provider are published."
+  - "Quota fairness: per provider monthly call budgets sized to each free tier with headroom, enforced by a guard that pauses probing at 90 percent. The Graph joins every second event (100k gateway queries/month free plan); HyperSync and Mobula join every event. Sample sizes per provider are published."
+  - "Disclosure: Mobula operates OpenChainBench. Its poller runs the identical probe schedule, quota guard and tx hash detection as every other cohort member, and every measurement is re-verifiable from the public tx hash. Alchemy was measured during development but is excluded from the live cohort because probing it rides a paid plan, and this bench only races pipelines that cost nothing to probe; a dedicated free tier key would re-qualify it."
   - "Excluded from v1 with reasons: Goldsky (requires deploying and paying for your own subgraph, no neutral shared surface to probe), Dune (2500 free credits/month cannot sustain continuous probing), Bitquery (free tier is a one month trial), Moralis (already raced in bench 070 and its free key is saturated there), SubQuery and Ponder (no measurable hosted free tier)."
   - "Cohort positioning: this bench races indexing infrastructure. Wallet data APIs (Zerion, Moralis, Allium, GoldRush, Mobula) are a different product layer and are raced separately in bench 070 with an identical T0 and poll design; the two cohorts share zero providers by construction."
   - "Scope: Ethereum mainnet, single probe region. Time to queryable is measured in seconds while cross region network deltas are milliseconds, so multi region probing would add cost without changing the ranking."
@@ -69,16 +70,16 @@ findings:
   - "{{best_name}} currently leads at {{best_p50}} (p50 of found lags, 24h) on organic Ethereum USDC transfers."
   - "{{name:hypersync}} sits at {{p50:hypersync}}. Envio's marketing claims 10x faster retrieval than alternatives; this page is the first continuously measured public number behind that claim."
   - "{{name:thegraph}} runs at {{p50:thegraph}} through the canonical Uniswap V3 subgraph. This is a full pipeline measurement (firehose, indexer, gateway), the path every subgraph consumer actually waits on."
-  - "{{name:alchemy}} sits at {{p50:alchemy}} on its indexed transfers API, the same surface portfolio and activity feeds built on Alchemy consume."
+  - "{{name:mobula}} sits at {{p50:mobula}} on its wallet-history pipeline, the same surface portfolio and activity feeds built on Mobula consume."
   - "Read the reliability column before the latency one: a pipeline that occasionally never surfaces an event within 240 seconds breaks downstream consumers in a way a slow median does not."
 
 faq:
   - q: "Which blockchain indexer makes new events queryable fastest?"
     a: "Per the live leaderboard above: {{best_name}} at {{best_p50}} (p50 over 24h of organic Ethereum USDC transfers). The ranking re-sorts continuously as probe events land every 5 minutes. Check the reliability column too; a pipeline that occasionally never surfaces an event within 240 seconds is worse for most consumers than one that is a second slower on median."
   - q: "How is indexer latency measured here?"
-    a: "The harness picks a random organic USDC transfer from the newest Ethereum block, records T0 when its own keyless reference RPC first shows the block, then polls each provider on an identical front loaded schedule (1s to 240s) until that block's data is queryable. HyperSync and Alchemy are asked for the exact transfer; The Graph is asked a block pinned query on the canonical Uniswap V3 subgraph that only succeeds once block N is indexed. The full harness is open source and each measurement can be re-verified from the public tx hash."
-  - q: "Is comparing HyperSync, The Graph and Alchemy apples to apples?"
-    a: "Not perfectly, and the asymmetry is disclosed rather than hidden. HyperSync and Alchemy serve raw or lightly transformed data; The Graph serves subgraph entities, so its number includes the whole firehose plus indexer plus gateway pipeline. All three answer the same operational question a builder has: after an event confirms onchain, how long until my query layer can see it. That is the number this page publishes, per pipeline, with the probed entity documented."
+    a: "The harness picks a random organic USDC transfer from the newest Ethereum block, records T0 when its own keyless reference RPC first shows the block, then polls each provider on an identical front loaded schedule (1s to 240s) until that block's data is queryable. HyperSync and Mobula are asked for the exact transfer; The Graph is asked a block pinned query on the canonical Uniswap V3 subgraph that only succeeds once block N is indexed. The full harness is open source and each measurement can be re-verified from the public tx hash."
+  - q: "Is comparing HyperSync, The Graph and Mobula apples to apples?"
+    a: "Not perfectly, and the asymmetry is disclosed rather than hidden. HyperSync serves raw data and Mobula a wallet-scoped view of it; The Graph serves subgraph entities, so its number includes the whole firehose plus indexer plus gateway pipeline. All three answer the same operational question a builder has: after an event confirms onchain, how long until my query layer can see it. That is the number this page publishes, per pipeline, with the probed entity documented."
   - q: "Why are Goldsky, Dune, SubQuery and Ponder missing?"
     a: "Each lacks a neutral, continuously probeable free surface in v1. Goldsky requires deploying your own subgraph, so any probe would measure our deployment, not the platform baseline. Dune's free tier (2500 credits/month) cannot sustain a 5 minute cadence. Bitquery's free tier is a one month trial. SubQuery and Ponder have no measurable hosted free tier. Moralis is already raced in the wallet data cohort of bench 070. Providers change tiers often; the cohort is revisited when a fair probe becomes possible."
   - q: "Why does indexer latency matter in 2026?"
@@ -114,14 +115,14 @@ providers:
       success: sum(increase(idx_probe_total{provider="thegraph", result="found"}[24h])) / sum(increase(idx_probe_total{provider="thegraph", result=~"found|timeout"}[24h]))
       sample_size: sum(increase(idx_probe_total{provider="thegraph", result=~"found|timeout"}[24h]))
       series: avg_over_time(idx_latency_last_seconds{provider="thegraph"}[1h])
-  - slug: alchemy
-    name: Alchemy
-    tag: Indexed transfers API on the Alchemy data platform
-    formula: "Median (p50) over 24h of seconds between our reference RPC first showing a block and alchemy_getAssetTransfers returning that block's probe USDC transfer with a fromBlock filter, from the shared histogram estimator."
+  - slug: mobula
+    name: Mobula
+    tag: Wallet-history indexing pipeline (Octopus engine)
+    formula: "Median (p50) over 24h of seconds between our reference RPC first showing a block and Mobula's wallet-transactions endpoint returning that block's probe USDC transfer for the recipient wallet, from the shared histogram estimator."
     queries:
-      p50: histogram_quantile(0.5, sum by (le) (increase(idx_latency_seconds_bucket{provider="alchemy"}[24h])))
-      p90: histogram_quantile(0.9, sum by (le) (increase(idx_latency_seconds_bucket{provider="alchemy"}[24h])))
-      p99: histogram_quantile(0.99, sum by (le) (increase(idx_latency_seconds_bucket{provider="alchemy"}[24h])))
-      success: sum(increase(idx_probe_total{provider="alchemy", result="found"}[24h])) / sum(increase(idx_probe_total{provider="alchemy", result=~"found|timeout"}[24h]))
-      sample_size: sum(increase(idx_probe_total{provider="alchemy", result=~"found|timeout"}[24h]))
-      series: avg_over_time(idx_latency_last_seconds{provider="alchemy"}[1h])
+      p50: histogram_quantile(0.5, sum by (le) (increase(idx_latency_seconds_bucket{provider="mobula"}[24h])))
+      p90: histogram_quantile(0.9, sum by (le) (increase(idx_latency_seconds_bucket{provider="mobula"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (increase(idx_latency_seconds_bucket{provider="mobula"}[24h])))
+      success: sum(increase(idx_probe_total{provider="mobula", result="found"}[24h])) / sum(increase(idx_probe_total{provider="mobula", result=~"found|timeout"}[24h]))
+      sample_size: sum(increase(idx_probe_total{provider="mobula", result=~"found|timeout"}[24h]))
+      series: avg_over_time(idx_latency_last_seconds{provider="mobula"}[1h])
