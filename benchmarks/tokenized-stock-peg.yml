@@ -1,0 +1,211 @@
+# OpenChainBench. Bench № 076
+
+slug: tokenized-stock-peg
+number: "076"
+title: Tokenized stock price accuracy, live onchain vs Nasdaq across 11 equities
+seo_title: "Tokenized stock price tracker 2026"
+seo_description: "Do tokenized stocks track the real market? AAPL, TSLA, NVDA and 8 more on Robinhood Chain vs their Nasdaq price, deviation in bps, live and keyless."
+subtitle: "Absolute deviation between each tokenized equity's Uniswap v4 pool price on Robinhood Chain and its real market reference price, in basis points, labeled by market session. The only live public measurement of whether onchain stocks actually track their underlying."
+
+category: RWA
+status: live
+metric: Price deviation
+unit: bps
+higher_is_better: false
+
+seo_intro: |
+  Robinhood Chain tokenizes ~95 equities, and its Uniswap v4 pools trade
+  them 24/7 while the Nasdaq closes every evening and every weekend.
+  This page answers the question that setup begs. how far does the
+  onchain price drift from the real one. Every 60 seconds we read each
+  pool's spot price straight from the chain (StateView getSlot0, keyless)
+  and compare it to the live reference price, labeling every sample with
+  the market session it was taken in (pre, regular, post, closed). The
+  regular-hours deviation is the headline ranking; the closed-state
+  series is the weekend drift nobody else publishes: what AAPL is worth
+  onchain on a Saturday when no market maker has a reference to arb
+  against. Of the ~95 tokenized equities only 14 have pools with real
+  liquidity; we measure the 11 with a listed underlying. SpaceX trades
+  onchain too, but SpaceX is not listed anywhere, so there is no
+  reference price to measure against, which says something about
+  tokenized private equity all by itself.
+
+abstract: |
+  Every 60 seconds the harness reads the Uniswap v4 spot price of 11
+  tokenized equities on Robinhood Chain (one batched eth_call to the
+  StateView contract, keyless) and fetches the reference equity price
+  from Yahoo Finance (one batched spark call). Deviation is
+  10000 x |pool - reference| / reference, in basis points, published
+  with a market_state label derived from Yahoo's holiday-aware session
+  windows. No API keys, no transactions, both legs reproducible from
+  public endpoints.
+
+methodology:
+  - "Onchain leg: one JSON-RPC batch per tick to StateView (0xF3334192D15450CdD385c8B70e03f9A6bD9E673b) getSlot0(poolId) on the Uniswap v4 PoolManager singleton, keyless against the official Robinhood Chain RPC. sqrtPriceX96 converts to USDG per share with the per-pool currency ordering and the USDG 6 vs stock 18 decimal gap (factor 1e12)."
+  - "Reference leg: Yahoo Finance v8 spark batch, one call for all 11 symbols per tick, browser User-Agent, no key. regularMarketPrice doubles as the last-close reference when the market is closed, which is exactly the weekend baseline."
+  - "Market session labels: derived from Yahoo currentTradingPeriod epochs (pre / regular / post / closed), which Yahoo publishes holiday-aware, so the harness maintains no NYSE calendar. The headline ranking pins market_state=\"regular\"; the closed series is the drift panel."
+  - "Deviation: 10000 x |pool_price - reference_price| / reference_price, sampled every 60 seconds, quantiles over 24h via quantile_over_time."
+  - "Cohort: the 11 official tokenized equities (name pattern <Company> * Robinhood Token, shared verified Stock implementation) whose USDG pool has real liquidity and swap history: NVDA, AAPL, GOOGL, TSLA, PLTR, META, AMD, MSFT, AMZN, SPY, MU. Pool fees range 0.3% to 2%."
+  - "Excluded, with reasons: SPCX (SpaceX pool holds ~$196k but SpaceX is not listed, no reference price exists), SNDK and QQQ (pool depth under $2k, deviation would be noise), CRCL (pool at zero liquidity), ~80 other official tokens (issuer-seeded placeholder pools at 90-95% fee, zero swaps), HOOD (never issued onchain, all HOOD tokens on the chain are third-party spam)."
+  - "Thin liquidity is part of the story, not a defect: pool depths run $24k to $330k, so a single mid-size swap can move the onchain price meaningfully off the reference until arbitrage closes it. The bench measures how fast that closure actually happens."
+  - "Reading grid: an AMM price can sit anywhere inside the pool's fee band without creating an arbitrage opportunity, so a 2% fee pool resting 150 bps off its reference is economically at equilibrium, not broken. Cross-symbol ranking therefore partly reflects each pool's fee tier (disclosed in every tag); the within-symbol trend over time is the purest signal."
+  - "Quote-asset caveat: pool prices are denominated in USDG and compared against USD references. A USDG peg wobble would appear as a correlated deviation across all 11 symbols simultaneously, which is the signature to check before reading a broad move as tracking error."
+  - "Caveats: the issuer can pause or blocklist a token (the harness drops the sample and lets the series age out rather than freezing), and the Stock contract carries a split multiplier; a corporate action can look like a one-day deviation spike until reconciled."
+
+findings:
+  - "{{best_name}} tracks its reference tightest at {{best_p50}} (p50, 24h) across {{count}} measured tokenized equities."
+  - "{{name:aapl}} deviates {{p50:aapl}} (p50, 24h) with roughly $330k of pool depth, the deepest tokenized-stock pool on the chain alongside {{name:nvda}} ({{p50:nvda}}, ~$290k)."
+  - "{{name:tsla}} ({{p50:tsla}}) has the most active pool of the cohort by swap count, which is what keeps an AMM price honest between arbitrage passes."
+  - "The spread between the regular-hours deviation and the closed-market drift is the number this bench exists for: pools keep trading nights and weekends with no reference to arb against, and the drift until Monday open is measurable here, live."
+  - "Of the ~95 equities Robinhood tokenized, only 14 have a pool anyone actually trades. The other 80 sit in issuer-seeded placeholder pools at 90-95% fees with zero swaps. Tokenization is easy; markets are hard."
+
+faq:
+  - q: "Do tokenized stocks track their real market price?"
+    a: "During regular Nasdaq hours, mostly yes: arbitrageurs keep the Uniswap v4 pools within tens of basis points of the reference on the liquid names, and this page shows the live per-symbol number. Outside market hours the tether loosens, the pools keep trading around the clock with no authoritative reference, and the closed-session drift measured here is the honest answer to how far a 24/7 stock wanders from its 9:30-to-4 anchor."
+  - q: "What happens to tokenized stock prices on weekends?"
+    a: "The pools trade continuously, so the onchain price becomes pure supply and demand against the Friday close. This bench samples that drift every minute all weekend and publishes it as the closed-session series. Monday pre-market usually snaps it back; the interesting data is how far it got before that."
+  - q: "Why only 11 stocks when Robinhood tokenized about 95?"
+    a: "Because only 14 of the 95 have a USDG pool with real liquidity and swap activity, and 3 of those are unmeasurable: SpaceX has no listed reference price, and SNDK plus QQQ hold under $2k of depth. The other 80 tokens sit in placeholder pools at 90-95% fees that nobody has ever traded. The gap between tokens issued and markets that exist is one of this page's findings."
+  - q: "How is the onchain price read?"
+    a: "One batched keyless eth_call per minute to the StateView contract of the Uniswap v4 singleton on Robinhood Chain, decoding sqrtPriceX96 from getSlot0 for each pool and converting with the pool's currency ordering and the 6-vs-18 decimals gap. No indexer, no API key, reproducible with curl."
+  - q: "Where does the reference price come from?"
+    a: "Yahoo Finance's public chart API, one batched call per minute with the session windows read from currentTradingPeriod, which is holiday-aware. When the market is closed the reference is the last regular close, which is exactly the baseline the weekend drift should be measured against."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/tokenized-stock-peg
+
+prometheus:
+  window: 24h
+  freshness_metric: tsp_deviation_bps
+
+# Metrics emitted by the tokenized-stock-peg harness:
+#   tsp_deviation_bps{asset, market_state}  gauge, abs deviation in bps
+#   tsp_price_onchain_usdg{asset}           gauge, v4 pool spot
+#   tsp_price_reference_usd{asset}          gauge, yahoo reference
+#   tsp_reference_age_seconds{asset}        gauge
+#   tsp_market_session{market_state}        gauge, active session flag
+#   tsp_health{asset}                       gauge
+#   tsp_source_call_total{source, result}   counter
+#   tsp_source_latency_milliseconds{source} gauge
+
+providers:
+  - slug: nvda
+    name: NVDA
+    tag: "Nvidia, ~$290k pool depth, 0.3% fee"
+    formula: "p50 over 24h of the absolute deviation (bps) between the NVDA Uniswap v4 pool price on Robinhood Chain and the Yahoo reference, regular market hours only."
+    queries:
+      p50: quantile_over_time(0.50, tsp_deviation_bps{issuer="robinhood", asset="nvda", market_state="regular"}[24h])
+      p90: quantile_over_time(0.90, tsp_deviation_bps{issuer="robinhood", asset="nvda", market_state="regular"}[24h])
+      p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="robinhood", asset="nvda", market_state="regular"}[24h])
+      mean: avg_over_time(tsp_deviation_bps{issuer="robinhood", asset="nvda", market_state="regular"}[24h])
+      success: avg_over_time(tsp_health{asset="nvda"}[24h])
+      series: tsp_deviation_bps{issuer="robinhood", asset="nvda", market_state="regular"}
+  - slug: aapl
+    name: AAPL
+    tag: "Apple, ~$330k pool depth, 1% fee"
+    formula: "p50 over 24h of the absolute deviation (bps) between the AAPL Uniswap v4 pool price on Robinhood Chain and the Yahoo reference, regular market hours only."
+    queries:
+      p50: quantile_over_time(0.50, tsp_deviation_bps{issuer="robinhood", asset="aapl", market_state="regular"}[24h])
+      p90: quantile_over_time(0.90, tsp_deviation_bps{issuer="robinhood", asset="aapl", market_state="regular"}[24h])
+      p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="robinhood", asset="aapl", market_state="regular"}[24h])
+      mean: avg_over_time(tsp_deviation_bps{issuer="robinhood", asset="aapl", market_state="regular"}[24h])
+      success: avg_over_time(tsp_health{asset="aapl"}[24h])
+      series: tsp_deviation_bps{issuer="robinhood", asset="aapl", market_state="regular"}
+  - slug: googl
+    name: GOOGL
+    tag: "Alphabet, ~$280k pool depth, 1% fee"
+    formula: "p50 over 24h of the absolute deviation (bps) between the GOOGL Uniswap v4 pool price on Robinhood Chain and the Yahoo reference, regular market hours only."
+    queries:
+      p50: quantile_over_time(0.50, tsp_deviation_bps{issuer="robinhood", asset="googl", market_state="regular"}[24h])
+      p90: quantile_over_time(0.90, tsp_deviation_bps{issuer="robinhood", asset="googl", market_state="regular"}[24h])
+      p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="robinhood", asset="googl", market_state="regular"}[24h])
+      mean: avg_over_time(tsp_deviation_bps{issuer="robinhood", asset="googl", market_state="regular"}[24h])
+      success: avg_over_time(tsp_health{asset="googl"}[24h])
+      series: tsp_deviation_bps{issuer="robinhood", asset="googl", market_state="regular"}
+  - slug: tsla
+    name: TSLA
+    tag: "Tesla, most active pool of the cohort, 0.3% fee"
+    formula: "p50 over 24h of the absolute deviation (bps) between the TSLA Uniswap v4 pool price on Robinhood Chain and the Yahoo reference, regular market hours only."
+    queries:
+      p50: quantile_over_time(0.50, tsp_deviation_bps{issuer="robinhood", asset="tsla", market_state="regular"}[24h])
+      p90: quantile_over_time(0.90, tsp_deviation_bps{issuer="robinhood", asset="tsla", market_state="regular"}[24h])
+      p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="robinhood", asset="tsla", market_state="regular"}[24h])
+      mean: avg_over_time(tsp_deviation_bps{issuer="robinhood", asset="tsla", market_state="regular"}[24h])
+      success: avg_over_time(tsp_health{asset="tsla"}[24h])
+      series: tsp_deviation_bps{issuer="robinhood", asset="tsla", market_state="regular"}
+  - slug: pltr
+    name: PLTR
+    tag: "Palantir, ~$31k pool depth, 1% fee"
+    formula: "p50 over 24h of the absolute deviation (bps) between the PLTR Uniswap v4 pool price on Robinhood Chain and the Yahoo reference, regular market hours only."
+    queries:
+      p50: quantile_over_time(0.50, tsp_deviation_bps{issuer="robinhood", asset="pltr", market_state="regular"}[24h])
+      p90: quantile_over_time(0.90, tsp_deviation_bps{issuer="robinhood", asset="pltr", market_state="regular"}[24h])
+      p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="robinhood", asset="pltr", market_state="regular"}[24h])
+      mean: avg_over_time(tsp_deviation_bps{issuer="robinhood", asset="pltr", market_state="regular"}[24h])
+      success: avg_over_time(tsp_health{asset="pltr"}[24h])
+      series: tsp_deviation_bps{issuer="robinhood", asset="pltr", market_state="regular"}
+  - slug: meta
+    name: META
+    tag: "Meta, ~$89k pool depth, 0.3% fee"
+    formula: "p50 over 24h of the absolute deviation (bps) between the META Uniswap v4 pool price on Robinhood Chain and the Yahoo reference, regular market hours only."
+    queries:
+      p50: quantile_over_time(0.50, tsp_deviation_bps{issuer="robinhood", asset="meta", market_state="regular"}[24h])
+      p90: quantile_over_time(0.90, tsp_deviation_bps{issuer="robinhood", asset="meta", market_state="regular"}[24h])
+      p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="robinhood", asset="meta", market_state="regular"}[24h])
+      mean: avg_over_time(tsp_deviation_bps{issuer="robinhood", asset="meta", market_state="regular"}[24h])
+      success: avg_over_time(tsp_health{asset="meta"}[24h])
+      series: tsp_deviation_bps{issuer="robinhood", asset="meta", market_state="regular"}
+  - slug: amd
+    name: AMD
+    tag: "AMD, ~$25k pool depth, 1% fee"
+    formula: "p50 over 24h of the absolute deviation (bps) between the AMD Uniswap v4 pool price on Robinhood Chain and the Yahoo reference, regular market hours only."
+    queries:
+      p50: quantile_over_time(0.50, tsp_deviation_bps{issuer="robinhood", asset="amd", market_state="regular"}[24h])
+      p90: quantile_over_time(0.90, tsp_deviation_bps{issuer="robinhood", asset="amd", market_state="regular"}[24h])
+      p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="robinhood", asset="amd", market_state="regular"}[24h])
+      mean: avg_over_time(tsp_deviation_bps{issuer="robinhood", asset="amd", market_state="regular"}[24h])
+      success: avg_over_time(tsp_health{asset="amd"}[24h])
+      series: tsp_deviation_bps{issuer="robinhood", asset="amd", market_state="regular"}
+  - slug: msft
+    name: MSFT
+    tag: "Microsoft, ~$50k pool depth, 2% fee"
+    formula: "p50 over 24h of the absolute deviation (bps) between the MSFT Uniswap v4 pool price on Robinhood Chain and the Yahoo reference, regular market hours only."
+    queries:
+      p50: quantile_over_time(0.50, tsp_deviation_bps{issuer="robinhood", asset="msft", market_state="regular"}[24h])
+      p90: quantile_over_time(0.90, tsp_deviation_bps{issuer="robinhood", asset="msft", market_state="regular"}[24h])
+      p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="robinhood", asset="msft", market_state="regular"}[24h])
+      mean: avg_over_time(tsp_deviation_bps{issuer="robinhood", asset="msft", market_state="regular"}[24h])
+      success: avg_over_time(tsp_health{asset="msft"}[24h])
+      series: tsp_deviation_bps{issuer="robinhood", asset="msft", market_state="regular"}
+  - slug: amzn
+    name: AMZN
+    tag: "Amazon, ~$24k pool depth, 2% fee"
+    formula: "p50 over 24h of the absolute deviation (bps) between the AMZN Uniswap v4 pool price on Robinhood Chain and the Yahoo reference, regular market hours only."
+    queries:
+      p50: quantile_over_time(0.50, tsp_deviation_bps{issuer="robinhood", asset="amzn", market_state="regular"}[24h])
+      p90: quantile_over_time(0.90, tsp_deviation_bps{issuer="robinhood", asset="amzn", market_state="regular"}[24h])
+      p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="robinhood", asset="amzn", market_state="regular"}[24h])
+      mean: avg_over_time(tsp_deviation_bps{issuer="robinhood", asset="amzn", market_state="regular"}[24h])
+      success: avg_over_time(tsp_health{asset="amzn"}[24h])
+      series: tsp_deviation_bps{issuer="robinhood", asset="amzn", market_state="regular"}
+  - slug: spy
+    name: SPY
+    tag: "S&P 500 ETF, ~$65k pool depth, 1% fee"
+    formula: "p50 over 24h of the absolute deviation (bps) between the SPY Uniswap v4 pool price on Robinhood Chain and the Yahoo reference, regular market hours only."
+    queries:
+      p50: quantile_over_time(0.50, tsp_deviation_bps{issuer="robinhood", asset="spy", market_state="regular"}[24h])
+      p90: quantile_over_time(0.90, tsp_deviation_bps{issuer="robinhood", asset="spy", market_state="regular"}[24h])
+      p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="robinhood", asset="spy", market_state="regular"}[24h])
+      mean: avg_over_time(tsp_deviation_bps{issuer="robinhood", asset="spy", market_state="regular"}[24h])
+      success: avg_over_time(tsp_health{asset="spy"}[24h])
+      series: tsp_deviation_bps{issuer="robinhood", asset="spy", market_state="regular"}
+  - slug: mu
+    name: MU
+    tag: "Micron, ~$35k pool depth, 1% fee"
+    formula: "p50 over 24h of the absolute deviation (bps) between the MU Uniswap v4 pool price on Robinhood Chain and the Yahoo reference, regular market hours only."
+    queries:
+      p50: quantile_over_time(0.50, tsp_deviation_bps{issuer="robinhood", asset="mu", market_state="regular"}[24h])
+      p90: quantile_over_time(0.90, tsp_deviation_bps{issuer="robinhood", asset="mu", market_state="regular"}[24h])
+      p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="robinhood", asset="mu", market_state="regular"}[24h])
+      mean: avg_over_time(tsp_deviation_bps{issuer="robinhood", asset="mu", market_state="regular"}[24h])
+      success: avg_over_time(tsp_health{asset="mu"}[24h])
+      series: tsp_deviation_bps{issuer="robinhood", asset="mu", market_state="regular"}
