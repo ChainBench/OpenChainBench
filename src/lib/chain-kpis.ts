@@ -34,6 +34,12 @@ export type ChainKpis = {
   nativePrice: number | null;
   /** Mobula native token circulating market cap in USD. */
   nativeMcap: number | null;
+  /** Robinhood Chain gas subsidy: days remaining until 2026-09-29 (null on every other chain). */
+  subsidyDaysRemaining: number | null;
+  /** Robinhood Chain gas subsidy: cumulative USD Robinhood has paid the sequencer since launch. */
+  subsidyCostToDate: number | null;
+  /** Robinhood Chain gas subsidy: projected total cost at the current daily rate through Sep 29. */
+  subsidyProjectedTotal: number | null;
 };
 
 /** TVL daily samples for the sparkline chart. Last 30 days, oldest first. */
@@ -78,14 +84,28 @@ export async function fetchChainKpisFresh(
   }
 
   const sel = `{chain="${slug}"}`;
-  const [tvl, dexVolume24h, stablesMcap, nativePrice, nativeMcap] =
-    await Promise.all([
-      prom.scalar(`chain_tvl_usd${sel}`),
-      prom.scalar(`chain_dex_volume_24h_usd${sel}`),
-      prom.scalar(`chain_stables_mcap_usd${sel}`),
-      prom.scalar(`chain_native_price_usd${sel}`),
-      prom.scalar(`chain_native_mcap_usd${sel}`),
-    ]);
+  const isRobinhood = slug === "robinhood";
+  const [
+    tvl,
+    dexVolume24h,
+    stablesMcap,
+    nativePrice,
+    nativeMcap,
+    subsidyDaysRemaining,
+    subsidyCostToDate,
+    subsidyProjectedTotal,
+  ] = await Promise.all([
+    prom.scalar(`chain_tvl_usd${sel}`),
+    prom.scalar(`chain_dex_volume_24h_usd${sel}`),
+    prom.scalar(`chain_stables_mcap_usd${sel}`),
+    prom.scalar(`chain_native_price_usd${sel}`),
+    prom.scalar(`chain_native_mcap_usd${sel}`),
+    // Robinhood-only. On every other chain these queries return null,
+    // and the strip skips the cards silently.
+    isRobinhood ? prom.scalar(`robinhood_subsidy_days_remaining`) : Promise.resolve(null),
+    isRobinhood ? prom.scalar(`robinhood_subsidy_chainside_cost_total_usd`) : Promise.resolve(null),
+    isRobinhood ? prom.scalar(`robinhood_subsidy_projected_total_usd`) : Promise.resolve(null),
+  ]);
 
   return {
     slug,
@@ -94,6 +114,9 @@ export async function fetchChainKpisFresh(
     stablesMcap,
     nativePrice,
     nativeMcap,
+    subsidyDaysRemaining,
+    subsidyCostToDate,
+    subsidyProjectedTotal,
   };
 }
 
@@ -146,7 +169,10 @@ export function hasAnyKpi(k: ChainKpis | null): boolean {
     k.dexVolume24h != null ||
     k.stablesMcap != null ||
     k.nativePrice != null ||
-    k.nativeMcap != null
+    k.nativeMcap != null ||
+    k.subsidyDaysRemaining != null ||
+    k.subsidyCostToDate != null ||
+    k.subsidyProjectedTotal != null
   );
 }
 
