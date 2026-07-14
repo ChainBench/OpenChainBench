@@ -305,6 +305,21 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     description:
       "Pyth Network's USDY/USD market composite aggregates USDY trading into one feed. Measured against Pyth's own USDY redemption rate feed on the NAV basis benchmark.",
   },
+  slash: {
+    url: "https://slash.trade",
+    description:
+      "Slash is a Telegram trading bot for Hyperliquid perps, routing user orders via its builder code and collecting builder fees. Tracked live on the Hyperliquid frontends leaderboard.",
+  },
+  topdog: {
+    url: "https://t.me/topdog_trade_bot",
+    description:
+      "TopDog is a Telegram-native social trading bot on Hyperliquid, tagline 'Never Trade Alone', built around copying and coordinating around active traders. Routes orders via its builder code.",
+  },
+  "markets-mobile": {
+    url: "https://markets.xyz",
+    description:
+      "Markets by Kinetiq is a mobile-first Hyperliquid frontend focused on clean UX for perp trading on iOS and Android. Routes flow through its builder code and appears on the Hyperliquid frontends leaderboard.",
+  },
   bloxroute: {
     url: "https://bloxroute.com",
     description:
