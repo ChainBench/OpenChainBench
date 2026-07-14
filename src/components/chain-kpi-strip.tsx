@@ -20,6 +20,8 @@ type CardDef = {
   label: string;
   value: number | null;
   tip: string;
+  /** Optional formatter override; defaults to fmtUSD. */
+  fmt?: (v: number) => string;
 };
 
 export function ChainKpiStrip({
@@ -35,7 +37,32 @@ export function ChainKpiStrip({
   tvlHistory?: ChainTvlHistory | null;
   chainLabel: string;
 }) {
+  const subsidyCards: CardDef[] = slug === "robinhood"
+    ? [
+        {
+          label: "Gas subsidy days left",
+          value: kpis.subsidyDaysRemaining,
+          tip:
+            "Days remaining until Robinhood Chain's 90-day launch gas subsidy ends on 2026-09-29. Users pay $0 in gas during this window; Robinhood covers the sequencer cost.",
+          fmt: fmtDays,
+        },
+        {
+          label: "Subsidy paid so far",
+          value: kpis.subsidyCostToDate,
+          tip:
+            "Estimated cumulative USD Robinhood has paid the sequencer since launch to cover user gas. This is NOT growthepie's fees_paid_by_users (~$0 during the subsidy by design). Refreshed hourly.",
+        },
+        {
+          label: "Projected subsidy total",
+          value: kpis.subsidyProjectedTotal,
+          tip:
+            "Where the subsidy lands if the current daily burn rate holds through Sep 29. Linear projection: cumulative_cost x (90 / days_elapsed).",
+        },
+      ]
+    : [];
+
   const staticCards: CardDef[] = [
+    ...subsidyCards,
     {
       label: "TVL",
       value: kpis.tvl,
@@ -133,13 +160,19 @@ function KpiCard({ card }: { card: CardDef }) {
         {card.label}
       </p>
       <p className="mt-auto text-lg sm:text-xl font-semibold tabular-nums leading-tight">
-        {fmtUSD(card.value!)}
+        {(card.fmt ?? fmtUSD)(card.value!)}
       </p>
       {/* Empty slot mirrors the live-card sparkline space so static and
           live KpiCards share the exact same baseline geometry. */}
       <div className="mt-1.5 h-[24px]" aria-hidden />
     </div>
   );
+}
+
+function fmtDays(v: number): string {
+  if (!Number.isFinite(v)) return "-";
+  if (v < 0) return "ended";
+  return `${Math.round(v)}d`;
 }
 
 function fmtUSD(v: number): string {
