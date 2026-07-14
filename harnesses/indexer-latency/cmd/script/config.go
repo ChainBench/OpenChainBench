@@ -9,12 +9,15 @@ import (
 
 // indexer-latency — bench №084.
 //
-// Cohort: indexing INFRASTRUCTURE (HyperSync, The Graph, Alchemy raw
-// data API). Deliberately zero provider overlap with bench 070
-// (indexing-freshness), which races wallet-data APIs (Zerion, Moralis,
-// Allium, GoldRush, Mobula). Same measured question, different layer of
-// the stack: how fast does new onchain data become queryable through
-// each indexing pipeline.
+// Cohort: indexing pipelines reachable at $0 recurring cost (HyperSync,
+// The Graph, Mobula). Bench 070 (indexing-freshness) races wallet-data
+// APIs on Base native transfers; Mobula appears in both cohorts but on
+// a different chain and event class (Ethereum ERC-20 event
+// queryability here), so the two benches stay complementary. Alchemy
+// was dropped from the cohort: the team's Alchemy account is a paid
+// plan, and this bench only runs providers that cost nothing to probe.
+// (checkAlchemy stays in the tree for a future dedicated free-tier
+// key.)
 
 // Provider is one indexing pipeline we race. Enabled reports whether
 // the required credential is present; a provider without one runs in
@@ -31,10 +34,19 @@ type Provider struct {
 	Enabled func() bool
 	// Check asks the provider whether the probe event (USDC Transfer
 	// tx in block bn) is queryable yet. The probed entity differs per
-	// provider (raw log vs subgraph block head) — disclosed in the
-	// bench methodology; the question is identical: "is block N data
-	// queryable at time T?".
-	Check func(bn uint64, txHash string) (bool, error)
+	// provider (raw log vs subgraph block head vs wallet history) —
+	// disclosed in the bench methodology; the question is identical:
+	// "is block N data queryable at time T?".
+	Check func(ev probeEvent) (bool, error)
+}
+
+// probeEvent is one sampled USDC Transfer: block, tx hash, and the
+// recipient wallet (topics[2] of the Transfer log), which
+// wallet-scoped pipelines like Mobula need to form their query.
+type probeEvent struct {
+	Block  uint64
+	TxHash string
+	Wallet string
 }
 
 var cohort = []Provider{
@@ -46,10 +58,10 @@ var cohort = []Provider{
 	// 5-min event cadence = 1 probe event / 10 min → 144 events/day ×
 	// 14 polls ≈ 60k queries/month worst case, inside the 90k budget.
 	{Slug: "thegraph", EveryN: 2, Budget: 90_000, Enabled: func() bool { return graphAPIKey() != "" }, Check: checkTheGraph},
-	// Alchemy free tier: 30M CU/month; alchemy_getAssetTransfers ≈ 150
-	// CU/call. 288 events/day × 14 polls ≈ 121k calls/month ≈ 18M CU.
-	// Budget 180k calls ≈ 27M CU keeps the guard inside the tier.
-	{Slug: "alchemy", EveryN: 1, Budget: 180_000, Enabled: func() bool { return alchemyAPIKey() != "" }, Check: checkAlchemy},
+	// Mobula: operated by the same team as OpenChainBench (disclosed in
+	// the spec); free for this project. Budget mirrors bench 070's
+	// Mobula guard so the two harnesses stay inside one key's comfort.
+	{Slug: "mobula", EveryN: 1, Budget: 250_000, Enabled: func() bool { return mobulaAPIKey() != "" }, Check: checkMobula},
 }
 
 const chainSlug = "ethereum"
@@ -64,6 +76,7 @@ const (
 func hypersyncToken() string { return strings.TrimSpace(os.Getenv("HYPERSYNC_TOKEN")) }
 func graphAPIKey() string    { return strings.TrimSpace(os.Getenv("GRAPH_API_KEY")) }
 func alchemyAPIKey() string  { return strings.TrimSpace(os.Getenv("ALCHEMY_API_KEY")) }
+func mobulaAPIKey() string   { return strings.TrimSpace(os.Getenv("MOBULA_API_KEY")) }
 
 // rpcHTTP: OUR keyless reference RPC. T0 = the instant it first shows
 // the block containing the probe event. publicnode by default; never a

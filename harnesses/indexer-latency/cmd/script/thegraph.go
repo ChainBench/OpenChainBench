@@ -24,7 +24,8 @@ import (
 
 const uniswapV3SubgraphID = "5zvR82QoaXYFyDEKLZ9t6v9adgnptxYpKpSbxtgVENFV"
 
-func checkTheGraph(bn uint64, _ string) (bool, error) {
+func checkTheGraph(ev probeEvent) (bool, error) {
+	bn := ev.Block
 	apiCalls.WithLabelValues("thegraph").Inc()
 	q := fmt.Sprintf(`{"query":"{ pools(block: {number: %d}, first: 1) { id } }"}`, bn)
 	u := "https://gateway.thegraph.com/api/subgraphs/id/" + uniswapV3SubgraphID

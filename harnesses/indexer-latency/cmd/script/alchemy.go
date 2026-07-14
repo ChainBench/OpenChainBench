@@ -17,7 +17,8 @@ import (
 // The key rides in the URL path per Alchemy convention; sanitize()
 // strips URLs from any logged error so it can never leak.
 
-func checkAlchemy(bn uint64, txHash string) (bool, error) {
+func checkAlchemy(ev probeEvent) (bool, error) {
+	bn, txHash := ev.Block, ev.TxHash
 	apiCalls.WithLabelValues("alchemy").Inc()
 	blk := fmt.Sprintf("0x%x", bn)
 	body := fmt.Sprintf(
