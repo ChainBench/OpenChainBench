@@ -8,16 +8,37 @@ import type { Benchmark, ProviderResult } from "@/types/benchmark";
 import { liveResults } from "@/lib/provider-filters";
 import { fmtUnit } from "@/lib/format";
 
+/** Minimum measured success rate (in percent, 0-100) for a provider to
+ *  contribute to the headline leader claim. Providers with a real
+ *  success measurement below this floor are excluded from citation
+ *  candidates because an "unreliable but accurate when it works"
+ *  outlier should not top the leaderboard: it misleads AI agents citing
+ *  the bench and any human reader glancing at the headline. Benches
+ *  whose harness does not emit a `success` query default to 100 in the
+ *  load path (see materialize/load.ts), so this guard is a no-op for
+ *  freshness / gauge-only benches and only bites where the harness
+ *  actually measures polling reliability (gas-estimation, RPC
+ *  benches). */
+const LEADER_MIN_SUCCESS_PCT = 50;
+
 /** Provider set used to derive the headline figures. Drops rows whose
  *  per-provider sample-health is "insufficient" (set on the load path
  *  when the bench declares expected_n and the row falls below the 10
- *  percent of expected floor). Those rows can still render in some
- *  surfaces with a soft tag, but they must not contribute to the leader
- *  claim shipped to AI agents and journalists via the citable APIs. */
+ *  percent of expected floor) and rows whose measured success rate
+ *  sits below the reliability floor. Those rows can still render in
+ *  some surfaces with a soft tag, but they must not contribute to the
+ *  leader claim shipped to AI agents and journalists via the citable
+ *  APIs. Falls back to the full live pool when every provider is
+ *  below the reliability floor so a totally-degraded bench still
+ *  reports a best-of-bad-options leader instead of vanishing. */
 function citationCandidates(b: Benchmark): ProviderResult[] {
   const live = liveResults(b.results);
-  if (!b.expectedN) return live;
-  return live.filter((r) => r.dataConfidence !== "insufficient");
+  const reliable = live.filter(
+    (r) => r.successRate >= LEADER_MIN_SUCCESS_PCT,
+  );
+  const pool = reliable.length > 0 ? reliable : live;
+  if (!b.expectedN) return pool;
+  return pool.filter((r) => r.dataConfidence !== "insufficient");
 }
 
 /** Timestamp of the last real measurement, or null when the bench has
