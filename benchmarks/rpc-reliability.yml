@@ -125,7 +125,10 @@ dimensions:
     - { value: bnb,       label: BNB Chain }
     - { value: avalanche, label: Avalanche }
 
-rank_matrix_query: sum by (provider, chain) (increase(rpc_integrity_check_total{region="eu-west",result=~"error|disagree"}[24h])) + sum by (provider, chain) (increase(rpc_hash_mismatch_total{region="eu-west"}[24h]))
+# clamp_min floor: the cell-rank loader drops samples <= 0 (guard against
+# absent-series garbage on latency benches), but 0 incidents is this bench's
+# BEST and most common value; the epsilon keeps clean providers ranked.
+rank_matrix_query: clamp_min(sum by (provider, chain) (increase(rpc_integrity_check_total{region="eu-west",result=~"error|disagree"}[24h])) + sum by (provider, chain) (increase(rpc_hash_mismatch_total{region="eu-west"}[24h])), 0.001)
 
 # ~82 integrity checks per provider per chain per day (2 checks per
 # 5-min rotation over 7 chains); single-chain providers are the floor.
