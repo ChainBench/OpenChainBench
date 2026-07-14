@@ -1,7 +1,11 @@
-# oracle-deviation — OpenChainBench № 025
+# oracle-deviation — OpenChainBench № 025 + № 082
 
 Compares four price oracles in real time across ten USD pairs and
-publishes the per-pair deviation as Prometheus gauges.
+publishes the per-pair deviation as Prometheus gauges (bench № 025).
+The same process also tracks oracle freshness (bench № 082):
+staleness in seconds derived from each oracle's own last-update
+timestamp, for Chainlink on three chains, Pyth via Hermes and
+RedStone via its public per-symbol API.
 
 ## Sources
 
@@ -11,6 +15,14 @@ publishes the per-pair deviation as Prometheus gauges.
 | Pyth      | Hermes REST `/api/latest_price_feeds` (batch) | none | 30 s    |
 | Binance   | REST `/api/v3/ticker/price`                   | none | 30 s    |
 | Coinbase  | REST `/products/<P>/ticker`                   | none | 30 s    |
+
+Freshness-only sources (№ 082, never enter the № 025 deviation matrix):
+
+| Source              | Transport                                        | Auth | Cadence |
+| ------------------- | ------------------------------------------------ | ---- | ------- |
+| Chainlink Arbitrum  | `eth_call` on AggregatorV3 (ETH/USD)             | none | 30 s    |
+| Chainlink Base      | `eth_call` on AggregatorV3 (ETH/USD)             | none | 30 s    |
+| RedStone            | REST `/prices?symbol=<S>&provider=redstone`      | none | 30 s    |
 
 ## Pairs
 
@@ -48,6 +60,25 @@ ocb_oracle_scrape_errors_total{source, pair}                counter
 ocb_oracle_last_round_age_seconds{source="chainlink", pair} gauge
 ```
 
+Bench № 082 (freshness) families. New label set (`oracle`, `pair`,
+`chain`) instead of adding a `chain` label to the № 025 families,
+which would have split their series and changed the live bench's
+numbers:
+
+```
+ocb_oracle_staleness_seconds{oracle, pair, chain}              gauge (s)
+ocb_oracle_update_events_total{oracle, pair, chain}            counter
+ocb_oracle_stale_but_moved{oracle, pair, chain}                gauge (0/1)
+ocb_oracle_freshness_scrape_errors_total{oracle, pair, chain}  counter
+```
+
+`chain` is where the freshness timestamp lives: `ethereum` /
+`arbitrum` / `base` for Chainlink deployments, `hermes` for Pyth
+(publish_time), `gateway` for RedStone (signed data-package
+timestamp). `stale_but_moved` is 1 when staleness > 300 s AND the
+Binance/Coinbase reference moved > 0.5 % since the update was
+observed (thresholds documented in `freshness.go`).
+
 The headline ranking signal for the OCB leaderboard is
 `ocb_oracle_max_deviation_pct` — a per-pair quantile over time
 (`quantile_over_time(0.95, ocb_oracle_max_deviation_pct[24h])`)
@@ -76,3 +107,7 @@ curl -s :2112/metrics | grep ocb_oracle_max_deviation_pct
 | ------------------------ | ------------------------------------------- |
 | `ORACLE_RPC_PRIMARY`     | `https://ethereum-rpc.publicnode.com`       |
 | `ORACLE_RPC_FALLBACK`    | `https://eth.llamarpc.com`                  |
+| `ORACLE_RPC_ARBITRUM`    | `https://arbitrum-one-rpc.publicnode.com`   |
+| `ORACLE_RPC_BASE`        | `https://base-rpc.publicnode.com`           |
+| `ORACLE_REDSTONE_URL`    | `https://api.redstone.finance/prices`       |
+| `ORACLE_METRICS_ADDR`    | `:2112` (local-run override only)           |

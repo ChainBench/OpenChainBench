@@ -83,6 +83,7 @@ type rpcBlockEnvelope struct {
 
 type blockHeader struct {
 	Number string `json:"number"`
+	Hash   string `json:"hash"`
 }
 
 // callLatestBlock issues `eth_getBlockByNumber("latest", false)` and
@@ -95,8 +96,9 @@ type blockHeader struct {
 // node, which let cache-fronted gateways top the latency leaderboard
 // on cache hits rather than real RPC work. Fetching the full latest
 // header with a rotating request id defeats body-keyed edge caches;
-// the header's `number` field keeps the staleness check intact.
-func callLatestBlock(ctx context.Context, url string) (block uint64, result string, latencyMs float64, err error) {
+// the header's `number` field keeps the staleness check intact and its
+// `hash` feeds the bench-083 cross-provider quorum map (consensus.go).
+func callLatestBlock(ctx context.Context, url string) (block uint64, hash string, result string, latencyMs float64, err error) {
 	body := []byte(fmt.Sprintf(
 		`{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["latest",false],"id":%d}`,
 		time.Now().UnixNano(),
@@ -112,48 +114,49 @@ func callLatestBlock(ctx context.Context, url string) (block uint64, result stri
 
 	if err != nil {
 		if ctx.Err() != nil || strings.Contains(err.Error(), "deadline exceeded") || strings.Contains(err.Error(), "Timeout") {
-			return 0, "timeout", latencyMs, err
+			return 0, "", "timeout", latencyMs, err
 		}
-		return 0, "http_err", latencyMs, err
+		return 0, "", "http_err", latencyMs, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
 		_, _ = io.Copy(io.Discard, resp.Body)
-		return 0, "http_err", latencyMs, fmt.Errorf("status %d", resp.StatusCode)
+		return 0, "", "http_err", latencyMs, fmt.Errorf("status %d", resp.StatusCode)
 	}
 
 	raw, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return 0, "http_err", latencyMs, err
+		return 0, "", "http_err", latencyMs, err
 	}
 	var r rpcBlockEnvelope
 	if err := json.Unmarshal(raw, &r); err != nil {
-		return 0, "http_err", latencyMs, err
+		return 0, "", "http_err", latencyMs, err
 	}
 	if r.Error != nil {
-		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("rpc -%d: %s", r.Error.Code, r.Error.Message)
+		return 0, "", "jsonrpc_err", latencyMs, fmt.Errorf("rpc -%d: %s", r.Error.Code, r.Error.Message)
 	}
 	if len(r.Result) == 0 || string(r.Result) == "null" {
-		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("empty result")
+		return 0, "", "jsonrpc_err", latencyMs, fmt.Errorf("empty result")
 	}
 	var hdr blockHeader
 	if err := json.Unmarshal(r.Result, &hdr); err != nil {
-		return 0, "jsonrpc_err", latencyMs, err
+		return 0, "", "jsonrpc_err", latencyMs, err
 	}
 	if hdr.Number == "" {
-		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("header missing number")
+		return 0, "", "jsonrpc_err", latencyMs, fmt.Errorf("header missing number")
 	}
 	n, err := strconv.ParseUint(strings.TrimPrefix(hdr.Number, "0x"), 16, 64)
 	if err != nil {
-		return 0, "jsonrpc_err", latencyMs, err
+		return 0, "", "jsonrpc_err", latencyMs, err
 	}
-	return n, "ok", latencyMs, nil
+	return n, hdr.Hash, "ok", latencyMs, nil
 }
 
 // StartProbeLoop spawns one goroutine per (chain × provider). Each
 // goroutine runs forever, ticking every probeInterval.
 func StartProbeLoop(ctx context.Context) {
+	initConsensusMetrics()
 	for _, c := range chains() {
 		c := c
 		for _, p := range c.Providers {
@@ -180,13 +183,14 @@ func probeOne(ctx context.Context, c Chain, p Provider) {
 		probeCtx, cancel := context.WithTimeout(ctx, probeTimeout)
 		defer cancel()
 		var block uint64
+		var hash string
 		var result string
 		var latency float64
 		var err error
 		if c.Kind == "solana" {
 			block, result, latency, err = callLatestSlot(probeCtx, p.URL)
 		} else {
-			block, result, latency, err = callLatestBlock(probeCtx, p.URL)
+			block, hash, result, latency, err = callLatestBlock(probeCtx, p.URL)
 		}
 
 		if result == "ok" {
@@ -199,6 +203,15 @@ func probeOne(ctx context.Context, c Chain, p Provider) {
 			if tip > 0 && block+gap < tip {
 				result = "stale"
 			}
+		}
+		// Bench 083: valid observations (fresh or stale, both carry a
+		// real height + hash) feed the consensus lag gauge and the
+		// height→hash quorum map; anything else deletes the lag series
+		// so a dead endpoint ages out instead of freezing.
+		if result == "ok" || result == "stale" {
+			consensus.observe(c.Slug, p.Slug, block, hash)
+		} else {
+			rpcConsensusLag.DeleteLabelValues(p.Slug, c.Slug, currentRegion)
 		}
 		rpcCallTotal.WithLabelValues(p.Slug, c.Slug, currentRegion, result).Inc()
 		if result == "ok" {
