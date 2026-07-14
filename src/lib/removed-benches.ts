@@ -40,7 +40,6 @@ export const REMOVED_BENCH_SLUGS = new Set([
   "tokenized-stock-peg",
   "tokenized-stock-weekend-drift",
   "tokenized-stock-arb-latency",
-  "robinhood-subsidy",
   "xstocks-peg",
   "usdy-nav-basis",
   "portfolio-chain-coverage",
