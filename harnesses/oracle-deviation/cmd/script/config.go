@@ -83,6 +83,71 @@ func pairs() []PairSpec {
 	}
 }
 
+// ChainFeed wires one Chainlink AggregatorV3 deployment on a non-
+// Ethereum chain to the freshness tracker (bench № 082). These feeds
+// are freshness-only: they never enter the 025 deviation store (the
+// price store is keyed by (pair, source), so an Arbitrum ETH/USD
+// sample would silently overwrite the Ethereum one and change 025's
+// deviation numbers).
+type ChainFeed struct {
+	Pair  Pair
+	Chain string // freshness `chain` label: arbitrum | base
+	Feed  string // AggregatorV3 contract on that chain
+	RPCs  []string
+}
+
+// extraChainlinkFeeds lists the non-Ethereum Chainlink deployments the
+// freshness bench tracks. Ethereum mainnet feeds are covered by the
+// existing 025 poller (which now also feeds recordFreshness).
+func extraChainlinkFeeds() []ChainFeed {
+	return []ChainFeed{
+		{
+			Pair:  "ETH/USD",
+			Chain: ChainArbitrum,
+			Feed:  "0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612",
+			RPCs: []string{
+				envDefault("ORACLE_RPC_ARBITRUM", "https://arbitrum-one-rpc.publicnode.com"),
+				"https://arb1.arbitrum.io/rpc",
+			},
+		},
+		{
+			Pair:  "ETH/USD",
+			Chain: ChainBase,
+			Feed:  "0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70",
+			RPCs: []string{
+				envDefault("ORACLE_RPC_BASE", "https://base-rpc.publicnode.com"),
+				"https://mainnet.base.org",
+			},
+		},
+	}
+}
+
+// RedstoneFeed maps a canonical OCB pair to RedStone's symbol on the
+// public per-symbol price API.
+type RedstoneFeed struct {
+	Pair   Pair
+	Symbol string
+}
+
+// redstoneFeeds is the freshness cohort for RedStone. ETH + BTC only
+// in v1: the per-symbol endpoint costs one request per symbol per
+// tick, and the bench's headline is ETH/USD.
+func redstoneFeeds() []RedstoneFeed {
+	return []RedstoneFeed{
+		{Pair: "ETH/USD", Symbol: "ETH"},
+		{Pair: "BTC/USD", Symbol: "BTC"},
+	}
+}
+
+// redstoneBaseURL is RedStone's public per-symbol price API. The
+// data-packages gateway payload for the whole redstone-primary-prod
+// service is ~1.7 MB per request; the per-symbol endpoint returns a
+// single small object with the signed package's value + timestamp,
+// so we poll per symbol instead.
+func redstoneBaseURL() string {
+	return envDefault("ORACLE_REDSTONE_URL", "https://api.redstone.finance/prices")
+}
+
 // rpcEndpoint is the Ethereum mainnet public RPC used by the
 // Chainlink poller to call latestRoundData() on the AggregatorV3
 // contracts. Two free public endpoints are kept; the second is a

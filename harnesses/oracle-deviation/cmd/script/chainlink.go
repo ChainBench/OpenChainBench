@@ -66,9 +66,11 @@ type rpcResp struct {
 
 type chainlinkPoller struct {
 	httpClient *http.Client
-	// rotated[i] is the index of the next RPC to try; on consecutive
-	// errors the poller flips to the fallback. Cheap atomic instead
-	// of a mutex since the field is only read/written by this poller.
+	// rpcs is the ordered endpoint list for the chain this poller
+	// reads from. rpcIdx rotates through it on transient errors.
+	// Cheap atomic instead of a mutex since the field is only
+	// read/written by this poller.
+	rpcs   []string
 	rpcIdx atomic.Int32
 	// decimals cache (feed → decimals). Populated lazily on first
 	// successful read.
@@ -80,9 +82,10 @@ type chainlinkPoller struct {
 	failureCount map[string]int
 }
 
-func newChainlinkPoller() *chainlinkPoller {
+func newChainlinkPoller(rpcs []string) *chainlinkPoller {
 	return &chainlinkPoller{
 		httpClient:    &http.Client{Timeout: httpTimeout},
+		rpcs:          rpcs,
 		decimalsCache: make(map[string]int),
 		unsupported:   make(map[string]bool),
 		failureCount:  make(map[string]int),
@@ -90,10 +93,11 @@ func newChainlinkPoller() *chainlinkPoller {
 }
 
 func (c *chainlinkPoller) rpcURL() string {
-	if c.rpcIdx.Load()%2 == 0 {
-		return rpcEndpoint()
+	idx := int(c.rpcIdx.Load()) % len(c.rpcs)
+	if idx < 0 {
+		idx = -idx
 	}
-	return rpcEndpointFallback()
+	return c.rpcs[idx]
 }
 
 // runChainlink loops every pair every pollInterval. The 10 pairs are
@@ -101,7 +105,7 @@ func (c *chainlinkPoller) rpcURL() string {
 // (one batched request would be ideal — public RPCs often refuse
 // JSON-RPC batches, so we stick to one call per pair).
 func runChainlink(ctx context.Context, specs []PairSpec) {
-	c := newChainlinkPoller()
+	c := newChainlinkPoller([]string{rpcEndpoint(), rpcEndpointFallback()})
 	t := time.NewTicker(pollInterval)
 	defer t.Stop()
 
@@ -127,6 +131,7 @@ func runChainlink(ctx context.Context, specs []PairSpec) {
 			cancel()
 			if err != nil {
 				oracleScrapeErrors.WithLabelValues(string(SourceChainlink), string(s.Pair)).Inc()
+				freshnessScrapeErrors.WithLabelValues(string(SourceChainlink), string(s.Pair), ChainEthereum).Inc()
 				c.failureCount[s.ChainlinkFeed]++
 				// Distinguish reverts (permanent — bad address /
 				// non-AggregatorV3 contract) from transient HTTP
@@ -150,11 +155,71 @@ func runChainlink(ctx context.Context, specs []PairSpec) {
 			// values (which would tag Chainlink's heartbeat lag as
 			// "deviation" — that artifact is exactly what Fix C kills).
 			recordPriceAt(SourceChainlink, s.Pair, price, time.Unix(updatedAt, 0))
+			// Feed the № 082 freshness tracker with the same on-chain
+			// updatedAt (chain=ethereum). Freshness for other chains
+			// comes from runChainlinkChains.
+			recordFreshness(string(SourceChainlink), s.Pair, ChainEthereum, time.Unix(updatedAt, 0))
 			ageS := time.Since(time.Unix(updatedAt, 0)).Seconds()
 			if ageS < 0 {
 				ageS = 0
 			}
 			oracleLastRoundAge.WithLabelValues(string(SourceChainlink), string(s.Pair)).Set(ageS)
+		}
+	}
+
+	tick()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+			tick()
+		}
+	}
+}
+
+// runChainlinkChains polls the non-Ethereum Chainlink deployments
+// (bench № 082, freshness only). Same read path as the mainnet
+// poller, one dedicated chainlinkPoller per chain so the RPC rotation
+// and decimals cache stay chain-local. Successes feed ONLY the
+// freshness tracker: these prices never enter the 025 deviation store
+// (see ChainFeed doc in config.go). Errors go to the freshness error
+// counter, never to ocb_oracle_scrape_errors_total.
+func runChainlinkChains(ctx context.Context, feeds []ChainFeed) {
+	pollers := make(map[string]*chainlinkPoller)
+	for _, f := range feeds {
+		if _, ok := pollers[f.Chain]; !ok {
+			pollers[f.Chain] = newChainlinkPoller(f.RPCs)
+		}
+	}
+	t := time.NewTicker(pollInterval)
+	defer t.Stop()
+
+	tick := func() {
+		for _, f := range feeds {
+			c := pollers[f.Chain]
+			if c.unsupported[f.Feed] {
+				freshnessScrapeErrors.WithLabelValues(string(SourceChainlink), string(f.Pair), f.Chain).Inc()
+				continue
+			}
+			pollCtx, cancel := context.WithTimeout(ctx, httpTimeout*2)
+			price, updatedAt, err := c.read(pollCtx, f.Feed)
+			cancel()
+			if err != nil || price <= 0 {
+				freshnessScrapeErrors.WithLabelValues(string(SourceChainlink), string(f.Pair), f.Chain).Inc()
+				c.failureCount[f.Feed]++
+				if isRevert(err) && c.failureCount[f.Feed] >= 3 {
+					c.unsupported[f.Feed] = true
+					fmt.Printf("[chainlink-%s/%s] feed %s marked unsupported after 3 reverts\n", f.Chain, f.Pair, f.Feed)
+				}
+				if err != nil && !isRevert(err) {
+					c.rpcIdx.Add(1)
+				}
+				fmt.Printf("[chainlink-%s/%s] err: %v (price=%v)\n", f.Chain, f.Pair, err, price)
+				continue
+			}
+			c.failureCount[f.Feed] = 0
+			recordFreshness(string(SourceChainlink), f.Pair, f.Chain, time.Unix(updatedAt, 0))
 		}
 	}
 
