@@ -122,8 +122,12 @@ func runChainlink(ctx context.Context, specs []PairSpec) {
 			}
 			if c.unsupported[s.ChainlinkFeed] {
 				// Mark error every cycle so the deviation calc skips
-				// stale values, but skip the network round-trip.
+				// stale values, but skip the network round-trip. Also
+				// signal the freshness error counter (mirrors
+				// runChainlinkChains) so a dead feed's climbing
+				// staleness gauge is distinguishable from a quiet feed.
 				oracleScrapeErrors.WithLabelValues(string(SourceChainlink), string(s.Pair)).Inc()
+				freshnessScrapeErrors.WithLabelValues(string(SourceChainlink), string(s.Pair), ChainEthereum).Inc()
 				continue
 			}
 			pollCtx, cancel := context.WithTimeout(ctx, httpTimeout*2)
