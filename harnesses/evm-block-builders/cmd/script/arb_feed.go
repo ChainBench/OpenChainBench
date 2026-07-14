@@ -104,7 +104,11 @@ func runArbFeed(ctx context.Context, state *arbFeedState) {
 	fmt.Printf("[arb-feed] connecting %s\n", url)
 	backoff := arbMinBackoff
 	for ctx.Err() == nil {
+		connStart := time.Now()
 		err := readArbFeed(ctx, url, state)
+		if time.Since(connStart) > 5*time.Minute {
+			backoff = arbMinBackoff // stable session: don't carry stale backoff
+		}
 		arbFeedHealth.Set(0)
 		streamReconnects.WithLabelValues("arb-feed").Inc()
 		if err != nil {
@@ -241,6 +245,17 @@ func runArbHeadPoller(ctx context.Context, state *arbFeedState) {
 					if n >= minSupport && cand > offset {
 						offset = cand
 					}
+				}
+				if offset <= 0 {
+					// No candidate reached support (feed stalled mid-window,
+					// so cand drifted and the counts spread out). Locking
+					// offset=0 would silence the lag histogram forever;
+					// discard the window and re-calibrate instead.
+					fmt.Printf("[arb-rpc] calibration failed (no candidate with >=%d support over %d samples), retrying\n", minSupport, calibCount)
+					candidates = map[int64]int{}
+					calibCount = 0
+					warmup = 0
+					continue
 				}
 				calibrated = true
 				prevHead = head

@@ -18,7 +18,8 @@ import (
 //
 // publicnode 403s default Go/Python User-Agents (bench 067 lesson), so
 // EVERY outbound HTTP request and WS dial in this harness sends
-// harnessUserAgent - see newRequest / wsDialer.
+// harnessUserAgent - see newRequest and the WS dial headers in
+// arb_feed.go / base_flashblocks.go.
 
 const (
 	defaultEthRPC          = "https://ethereum-rpc.publicnode.com"

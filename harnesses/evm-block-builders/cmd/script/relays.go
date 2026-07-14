@@ -61,6 +61,7 @@ func pollRelay(ctx context.Context, r relayEndpoint) {
 	fmt.Printf("[relay:%s] polling %s every %s\n", r.Slug, url, relayPollInterval)
 
 	var maxSeenSlot int64
+	primed := false // first successful fetch seeds the high-water-mark only
 	t := time.NewTicker(relayPollInterval)
 	defer t.Stop()
 	for {
@@ -83,9 +84,19 @@ func pollRelay(ctx context.Context, r relayEndpoint) {
 					maxSeenSlot = slots[0]
 				}
 			}
-			relayPayloadsTotal.WithLabelValues(r.Slug).Add(float64(fresh))
+			if !primed {
+				// First fetch after (re)start returns up to 50 historical
+				// payloads that were already counted before the restart.
+				// Seed the high-water-mark from them WITHOUT incrementing:
+				// Prom increase() tolerates counter resets, but re-counting
+				// old slots would inflate the series after every restart.
+				primed = true
+				fmt.Printf("[relay:%s] primed high-water-mark maxSlot=%d (skipped %d historical)\n", r.Slug, maxSeenSlot, fresh)
+			} else {
+				relayPayloadsTotal.WithLabelValues(r.Slug).Add(float64(fresh))
+				fmt.Printf("[relay:%s] delivered=%d fresh=%d maxSlot=%d\n", r.Slug, len(slots), fresh, maxSeenSlot)
+			}
 			relayLastSlot.WithLabelValues(r.Slug).Set(float64(maxSeenSlot))
-			fmt.Printf("[relay:%s] delivered=%d fresh=%d maxSlot=%d\n", r.Slug, len(slots), fresh, maxSeenSlot)
 		}
 
 		select {

@@ -94,7 +94,11 @@ func runBaseFlashblocks(ctx context.Context, state *baseFeedState) {
 	fmt.Printf("[base-fb] connecting %s\n", url)
 	backoff := baseMinBackoff
 	for ctx.Err() == nil {
+		connStart := time.Now()
 		err := readBaseFlashblocks(ctx, url, state)
+		if time.Since(connStart) > 5*time.Minute {
+			backoff = baseMinBackoff // stable session: don't carry stale backoff
+		}
 		baseFeedHealth.Set(0)
 		streamReconnects.WithLabelValues("base-flashblocks").Inc()
 		if err != nil {
