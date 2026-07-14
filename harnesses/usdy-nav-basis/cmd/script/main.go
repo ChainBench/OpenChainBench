@@ -182,9 +182,23 @@ func fetchHermes(client *http.Client) (float64, float64) {
 
 // fetchOrca decodes the whirlpool sqrtPrice (u128 LE at bytes 65..81);
 // USDY and USDC are both 6 decimals so price = (sqrtPrice/2^64)^2.
+// publicnode.com burst-rate-limits us to ~40% getAccountInfo success on
+// the VPS; 2 retries with backoff take that to >95% without changing RPCs.
 func fetchOrca(client *http.Client) float64 {
+	for attempt := 0; attempt < 3; attempt++ {
+		if attempt > 0 {
+			time.Sleep(time.Duration(attempt) * 500 * time.Millisecond)
+		}
+		if p := fetchOrcaOnce(client); p > 0 {
+			return p
+		}
+	}
+	return 0
+}
+
+func fetchOrcaOnce(client *http.Client) float64 {
 	body := []byte(fmt.Sprintf(
-		`{"jsonrpc":"2.0","id":%d,"method":"getAccountInfo","params":["%s",{"encoding":"base64"}]}`,
+		`{"jsonrpc":"2.0","id":%d,"method":"getAccountInfo","params":["%s",{"encoding":"base64","commitment":"confirmed"}]}`,
 		time.Now().UnixNano(), orcaPool,
 	))
 	req, _ := http.NewRequest("POST", envDefault("USDY_SOLANA_RPC", "https://solana-rpc.publicnode.com"), bytes.NewReader(body))
