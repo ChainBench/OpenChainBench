@@ -273,7 +273,7 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // buckets (gap rendering fix). Cached v26 entries hold the old
   // hole-compressed arrays whose indices no longer map onto the nominal
   // step grid the chart back-computes timestamps from.
-  ["bench-unfiltered-v30", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  ["bench-unfiltered-v31", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -428,7 +428,7 @@ const loadAllBenchmarksCached = unstable_cache(
   // gated catalog to /products for 30+ min after the deploy).
   // v29: bumped with bench-unfiltered-v26 (monad-rpc + megaeth-rpc ship).
   // v30: bumped with bench-unfiltered-v27 (dense series with nulls).
-  ["all-benchmarks-v33", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  ["all-benchmarks-v34", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -507,7 +507,7 @@ const loadBenchmarkFiltered = unstable_cache(
   // v16: bumped with the bench 074 ship (lockstep rule, see all-benchmarks-v28).
   // v17: bumped with the monad-rpc + megaeth-rpc ship (lockstep rule).
   // v18: bumped with bench-unfiltered-v27 (dense series with nulls).
-  ["bench-filters-v21", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  ["bench-filters-v22", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
