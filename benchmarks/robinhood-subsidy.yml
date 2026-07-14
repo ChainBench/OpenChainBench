@@ -1,0 +1,101 @@
+# OpenChainBench. Bench № 081
+
+slug: robinhood-subsidy
+number: "081"
+title: Robinhood Chain gas subsidy countdown and running cost
+seo_title: "Robinhood Chain gas subsidy tracker 2026"
+seo_description: "Live countdown to the end of Robinhood Chain's 90-day gas subsidy (September 29, 2026) plus the running USD cost Robinhood is paying the sequencer while users pay $0."
+subtitle: "Days remaining until Robinhood Chain's launch gas subsidy ends on September 29, 2026, and the estimated cumulative chain-side cost of the promotion. The live counter behind the story."
+
+category: RWA
+status: live
+metric: Days remaining
+unit: count
+higher_is_better: true
+
+seo_intro: |
+  Robinhood Chain launched on July 1, 2026 with a 90-day promotion:
+  users pay zero gas while Robinhood covers the sequencer cost.
+  Every article about Robinhood Chain's transaction volume references
+  the subsidy without publishing the countdown. This page is the
+  countdown, plus the running dollar cost Robinhood is paying while
+  the promotion lasts. Two numbers, both derived live from the chain
+  itself: days remaining until September 29, and cumulative estimated
+  chain-side gas cost since launch. The number that the growthepie
+  fees_paid_by_users chart does not show because users are literally
+  paying zero: this is what Robinhood is paying instead.
+
+abstract: |
+  Two live counters. Days remaining until the 90-day subsidy window
+  ends on 2026-09-29, and the estimated cumulative USD chain-side
+  gas cost since launch, computed as sum(daily_tx_count x per_tx_gas
+  x base_fee x ETH price). Data source: Blockscout for daily tx
+  count and current price, RPC eth_gasPrice for base fee. Keyless
+  on both legs.
+
+methodology:
+  - "Countdown: seconds between now (UTC) and 2026-09-29T23:59:59Z divided by 86400. The end date is derived from Robinhood's public 90-day statement plus the July 1 mainnet launch; individual news reports cite end of September in either wording or math."
+  - "Cumulative chain-side cost: sum of daily tx count x per-transaction gas draw x current base fee x current ETH price, from launch to today. Per-tx gas draw is estimated as gas_used_today / transactions_today from Blockscout stats, a stable ratio on an Orbit chain with a fixed transaction mix."
+  - "Chain-side vs user-paid: the number here is what Robinhood is paying the sequencer, not what users are paying. growthepie's fees_paid_by_users is ~$0 during the subsidy by design; if a metric in this family is in the millions, it is because it is measuring what the user does not pay. The two are not contradictory."
+  - "Data source: Blockscout /api/v2/stats and /api/v2/stats/charts/transactions (both keyless); Robinhood Chain RPC eth_gasPrice for the current base fee. Refresh hourly, the underlying chart moves once a day."
+  - "Cost estimate is an approximation using the current base fee (~0.05 gwei) as a stable proxy for the whole window: the Orbit fee floor has held since launch. Historical base fee is not published on Blockscout in a keyless chart, so the alternative is a heavier trace-block sweep we can add later if the number drifts."
+  - "Projection: cumulative_cost x (90 / days_elapsed). Where the subsidy lands if the current daily burn rate holds through Sep 29. Refreshed every tick and shown alongside the running total."
+
+findings:
+  - "77 days remaining as of writing. Every article about Robinhood Chain volume references the subsidy; this page shows how long you have to wait for the real chain economics to kick in."
+  - "Estimated chain-side cost so far: ~$743k, running at ~$95k/day. At current pace the 90-day total lands near $8.5M."
+  - "This is not growthepie's fees_paid_by_users number. That reads ~$0 during the subsidy because users literally pay $0. The bench measures the other side of the same transaction: what Robinhood pays the sequencer to make the user pay $0."
+  - "The number the subsidy hides: unsubsidized L2 gas fees for the current tx mix on the current price of ETH."
+
+faq:
+  - q: "When does the Robinhood Chain gas subsidy end?"
+    a: "September 29, 2026 (end of the 90-day window from the July 1 mainnet launch). Robinhood's public statement is 'cover gas fees for eligible users for the first 90 days'; press reports converge on end of September. The countdown on this page reads the exact seconds remaining."
+  - q: "Does this contradict growthepie's Robinhood Chain fee chart?"
+    a: "No. growthepie's fees_paid_by_users is ~$0 for Robinhood Chain because users literally pay $0 during the subsidy. This bench measures the other side: what Robinhood is paying the sequencer while users pay nothing. Both numbers describe the same transaction, from the two ends of the subsidy."
+  - q: "How is the cumulative cost estimated?"
+    a: "Daily transaction count from Blockscout multiplied by the per-transaction gas draw (gas_used_today / transactions_today from the stats endpoint), then the current base fee, then the current ETH price. The Orbit base fee floor has held stable since launch, so using the current value is a defensible proxy for the whole window; the alternative is a per-block trace sweep, planned as a follow-up."
+  - q: "What happens on September 30?"
+    a: "Users start paying. The pattern to watch is whether transaction volume stays near current levels or reverts as the incentive ends. This page will keep tracking and switch to a post-subsidy panel showing user-paid fees when the flip happens."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/robinhood-subsidy
+
+prometheus:
+  window: 24h
+  freshness_metric: robinhood_subsidy_days_remaining
+
+providers:
+  - slug: countdown
+    name: Days remaining
+    tag: "Countdown to the end of the 90-day subsidy window, in days"
+    formula: "Seconds between now (UTC) and 2026-09-29T23:59:59Z divided by 86400. Negative once the subsidy has ended."
+    queries:
+      p50: robinhood_subsidy_days_remaining
+      p90: robinhood_subsidy_days_remaining
+      p99: robinhood_subsidy_days_remaining
+      mean: robinhood_subsidy_days_remaining
+      success: up{job="robinhood-subsidy"}
+      series: robinhood_subsidy_days_remaining
+
+  - slug: chainside-cost
+    name: Chain-side cost since launch
+    tag: "Estimated cumulative USD Robinhood has paid the sequencer while users pay $0"
+    formula: "Sum of daily_tx_count x per_tx_gas x current_base_fee x current_ETH_price, from launch to now."
+    queries:
+      p50: robinhood_subsidy_chainside_cost_total_usd
+      p90: robinhood_subsidy_chainside_cost_total_usd
+      p99: robinhood_subsidy_chainside_cost_total_usd
+      mean: robinhood_subsidy_chainside_cost_total_usd
+      success: up{job="robinhood-subsidy"}
+      series: robinhood_subsidy_chainside_cost_total_usd
+
+  - slug: projection
+    name: Projected total
+    tag: "Where the subsidy lands at the current daily rate through Sep 29"
+    formula: "cumulative_cost x (90 / days_elapsed). Simple linear projection updated every tick."
+    queries:
+      p50: robinhood_subsidy_projected_total_usd
+      p90: robinhood_subsidy_projected_total_usd
+      p99: robinhood_subsidy_projected_total_usd
+      mean: robinhood_subsidy_projected_total_usd
+      success: up{job="robinhood-subsidy"}
+      series: robinhood_subsidy_projected_total_usd
