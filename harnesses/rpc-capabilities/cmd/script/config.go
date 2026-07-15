@@ -29,9 +29,17 @@ type Chain struct {
 	Slug      string
 	Name      string
 	Providers []Provider
-	// Kind selects the probe path: "" (EVM, eth_getBlockByNumber) or
-	// "solana" (getSlot at processed commitment, slot-based staleness,
-	// no archive-depth loop).
+	// Kind selects the probe path:
+	//   "" or "evm": eth_getBlockByNumber("latest", false), block-based
+	//     staleness, archive-depth loop.
+	//   "solana": getSlot at processed commitment, slot-based staleness,
+	//     no archive-depth loop.
+	//   "polkadot": chain_getHeader against Substrate JSON-RPC,
+	//     block-based staleness (Polkadot relay produces one block every
+	//     ~6 s so staleBlockGap needs a Polkadot-specific override, see
+	//     polkadotStaleBlockGap), no archive-depth loop (Polkadot's
+	//     state model does not map onto the eth_getBalance-by-depth
+	//     probe cleanly).
 	Kind string
 }
 
@@ -63,6 +71,28 @@ type Chain struct {
 // smoke runs; never set in production.
 func chains() []Chain {
 	all := []Chain{
+		// ─── Polkadot relay chain — first non-EVM, non-Solana chain
+		// added to the cohort. Substrate JSON-RPC via chain_getHeader
+		// (returns hex block number, staleness by relay-block gap).
+		// Providers verified keyless with 4 consecutive probes on
+		// 2026-07-15: rpc.polkadot.io (Parity official), OnFinality
+		// public gateway, and PublicNode (Allnodes). Excluded by that
+		// sweep: 1RPC (chain_getHeader filtered as "Not Allowed" on
+		// their privacy relay), Dwellir (503 Service Unavailable
+		// during audit, retry when their gateway stabilises), Ankr
+		// (paid Polkadot tier only), Chainstack (key-gated),
+		// RadiumBlock (empty response without referral header), Grove/
+		// Thirdweb (invalid-chain or key-gated).
+		{
+			Slug: "polkadot",
+			Name: "Polkadot",
+			Kind: "polkadot",
+			Providers: []Provider{
+				{Slug: "polkadot-official", Name: "Parity", URL: envDefault("RPC_URL_POLKADOT_OFFICIAL", "https://rpc.polkadot.io")},
+				{Slug: "onfinality", Name: "OnFinality", URL: envDefault("RPC_URL_POLKADOT_ONFINALITY", "https://polkadot.api.onfinality.io/public")},
+				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_POLKADOT_PUBLICNODE", "https://polkadot-rpc.publicnode.com")},
+			},
+		},
 		// ─── Solana mainnet — added 2026-07-12, all 5 endpoints keyless
 		// and live-verified (getSlot + getLatestBlockhash + getVersion,
 		// mutually consistent advancing slots). Excluded by that sweep:
