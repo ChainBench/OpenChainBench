@@ -594,6 +594,24 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   },
 
   // ─── Public RPC providers ─────────────────────────────────────
+  parity: {
+    url: "https://www.parity.io",
+    description:
+      "Parity Technologies is the primary implementation shop behind Polkadot and Substrate, and the operator of the reference public relay RPC at rpc.polkadot.io. Also builds the Polkadot-JS Apps UI, Kusama tooling, and enterprise Substrate deployments.",
+    twitter: "@ParityTech",
+  },
+  "polkadot-official": {
+    url: "https://rpc.polkadot.io",
+    description:
+      "Parity-operated Polkadot relay-chain public RPC endpoint (rpc.polkadot.io). Substrate JSON-RPC (chain_getHeader, state_getRuntimeVersion, system_health), keyless, rate-limited per IP. The reference endpoint any Polkadot integrator points at before wiring a dedicated node.",
+    twitter: "@ParityTech",
+  },
+  dwellir: {
+    url: "https://www.dwellir.com",
+    description:
+      "Web3 Foundation grantee running production-grade Substrate infrastructure across globally distributed bare-metal servers. Keyless public gateways on Polkadot, Kusama and every major parachain, plus dedicated node service.",
+    twitter: "@dwellir",
+  },
   "monad-official": {
     url: "https://docs.monad.xyz",
     description:

@@ -41,6 +41,11 @@ const PRODUCT_ALIASES: Record<string, string> = {
   "avalanche-official": "avalanche",
   "base-official": "base",
   "optimism-official": "optimism",
+  // Polkadot's "official" endpoint is Parity-operated, so the product
+  // page for the endpoint slug collapses to the Parity brand rather
+  // than a synthetic "Polkadot Foundation RPC" entry (there is no such
+  // separate operator).
+  "polkadot-official": "parity",
   // Oracle pair → underlying chain / asset
   "eth-usd": "ethereum",
   "sol-usd": "solana",
@@ -75,6 +80,10 @@ const CANONICAL_NAMES: Record<string, string> = {
   arbitrum: "Arbitrum",
   base: "Base",
   optimism: "Optimism",
+  polkadot: "Polkadot",
+  parity: "Parity",
+  onfinality: "OnFinality",
+  dwellir: "Dwellir",
   // NFT bench 040 providers — explicit brand casing.
   opensea: "OpenSea",
   // Other brand casings frequently referenced.
