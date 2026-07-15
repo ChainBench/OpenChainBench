@@ -1558,6 +1558,76 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "zkSync hybrid CEX/DEX perp venue with privacy-preserving order matching.",
     twitter: "@grvt_io",
   },
+
+  // ─── Oracles (bench № 082 oracle-freshness) ───────────────────
+  pyth: {
+    url: "https://www.pyth.network",
+    description:
+      "Pull-based oracle network publishing sub-second price updates through the Hermes service; consumers post the signed update onchain only when they need it. Prices are contributed by exchanges and market makers.",
+    twitter: "@PythNetwork",
+  },
+  redstone: {
+    url: "https://www.redstone.finance",
+    description:
+      "Modular oracle delivering signed price packages every few seconds through its data gateway, consumed push or pull. The freshness bench reads the primary-prod feed keyless.",
+    twitter: "@redstone_defi",
+  },
+
+  // ─── Ethereum block builders (bench № 085) ────────────────────
+  // Attribution rows come from the extraData self-label each builder
+  // stamps into its blocks. Where no legal entity is public, the
+  // description says so instead of guessing.
+  titan: {
+    url: "https://www.titanbuilder.xyz",
+    description:
+      "Dominant private Ethereum block builder, self-labeled `Titan (titanbuilder.xyz)` in block extraData. Regularly builds around half of all MEV-Boost blocks and also operates the Titan relay.",
+    twitter: "@titanbuilderxyz",
+  },
+  quasar: {
+    url: "https://quasar.win",
+    description:
+      "Ethereum block builder self-described as neutral and non-censoring, second-largest by extraData share. The operating entity is not publicly named; identity rests on the `quasar` extraData self-label and the quasarbuilder.eth fee recipient.",
+    twitter: "@QuasarBuilder",
+  },
+  eureka: {
+    url: "https://eurekalabs.xyz",
+    description:
+      "Ethereum block builder by Eureka Labs, founded late 2024 and backed by a $6.7M seed round (Spark Capital, Collider Ventures) to develop programmable blocks. Attributed via the `eureka` extraData self-label.",
+    twitter: "@EurekaBuilder",
+  },
+  buildernet: {
+    url: "https://buildernet.org",
+    description:
+      "Decentralized block-building network initiated by Flashbots, with Beaverbuild and Nethermind among the early node operators. Blocks are built inside TEEs by multiple operators and carry the `BuilderNet` extraData tag; conceived as the mutualized counterweight to private-builder concentration.",
+  },
+  beaverbuild: {
+    url: "https://beaverbuild.org",
+    description:
+      "Pseudonymous Ethereum block builder that dominated block building through 2023-2024 alongside rsync. Labels its blocks `beaverbuild.org` in extraData; no legal entity is publicly identified.",
+    twitter: "@beaverbuild",
+  },
+  btcs: {
+    url: "https://www.btcs.com/builder/",
+    description:
+      "Builder+ is the Ethereum block-building operation of BTCS Inc., a Nasdaq-listed blockchain infrastructure company (NodeOps staking, Builder+, Imperium DeFi). Attributed via the `Builder+` extraData self-label.",
+    twitter: "@NasdaqBTCS",
+  },
+  bobthebuilder: {
+    url: "https://bobthebuilder.xyz",
+    description:
+      "Pseudonymous Ethereum block builder, self-labeled `bob-the-builder` in block extraData with the bob-the-builder.eth fee recipient. No operating entity is publicly identified; identity rests on the extraData self-label.",
+    twitter: "@0xb0bthebuilder",
+  },
+  vanilla: {
+    url: "https://ethereum.org/en/developers/docs/mev/",
+    description:
+      "Not a company: blocks whose extraData is empty or carries an execution client's default tag (geth, reth, nethermind, besu, erigon), meaning the proposer built the block locally instead of outsourcing to a MEV-Boost builder. The live measure of how much of Ethereum still self-builds.",
+  },
+  other: {
+    url: "https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/evm-block-builders",
+    description:
+      "Aggregate long-tail bucket, not a single provider. On the block-builder bench it collects blocks whose extraData tag is not in the curated attribution table; every raw string is logged so named rows can be added as the table grows.",
+  },
 };
 
 /**
