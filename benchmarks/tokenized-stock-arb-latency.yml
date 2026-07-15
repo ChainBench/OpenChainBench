@@ -10,7 +10,7 @@ subtitle: "Median seconds between a 50 bps one-minute move on the reference mark
 category: RWA
 status: live
 metric: Arb latency
-unit: s
+unit: sec
 higher_is_better: false
 
 seo_intro: |
@@ -42,9 +42,9 @@ methodology:
   - "Caveat: the 50 bps trigger filters out normal market chop while catching real moves. Symbols with fewer than 3 events per 24h during quiet market days will show sparse data; the sample_size column is the honest read of statistical weight."
 
 findings:
-  - "{{best_name}} closes a 50 bps gap fastest at {{best_p50}} seconds (p50, 24h) across {{count}} tokenized equities."
-  - "Fast arbs on the liquid names (NVDA, TSLA, AAPL) validate that the market is real during regular hours."
-  - "Slow arbs on the 2 percent fee pools (MSFT, AMZN) confirm the story the peg bench tells: thin pools do not just deviate more, they take longer to snap back."
+  - "{{best_name}} closes a 50 bps gap fastest at {{best_p50}} (p50, 24h) across {{count}} tokenized equities."
+  - "Fast arbs on the liquid low-fee pools validate that the market is real during regular hours; which tickers those are on a given day depends on where the 50 bps moves landed."
+  - "Slow arbs on the 2 percent fee pools confirm the story the peg bench tells: thin pools do not just deviate more, they take longer to snap back."
   - "The still_open counter is the number that matters most for downstream products using the pool price as an oracle: it is the count of moves the arbs did not close before regular hours ended."
 
 faq:
