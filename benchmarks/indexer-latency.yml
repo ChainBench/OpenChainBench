@@ -9,7 +9,7 @@ subtitle: Seconds between a USDC transfer confirming on Ethereum and the moment 
 category: Aggregators
 status: live
 metric: Time to queryable
-unit: s
+unit: sec
 higher_is_better: false
 
 seo_intro: |
@@ -18,7 +18,7 @@ seo_intro: |
   question again. Dune is sunsetting Sim, teams are re-evaluating
   their data stack, and Envio markets HyperSync as "10x faster" than
   alternatives without publishing comparable numbers. This benchmark
-  measures the claim the only way that cannot be gamed. we pick a
+  measures the claim the only way that cannot be gamed. We pick a
   random, organic USDC transfer from the newest Ethereum block, then
   poll each indexing pipeline until that block's data is queryable.
   Because the ground truth is a random real transaction there is
@@ -33,7 +33,7 @@ seo_intro: |
   overlap between the two.
 
 abstract: |
-  We measure time to queryable for indexing infrastructure. the delay
+  We measure time to queryable for indexing infrastructure. The delay
   between an organic USDC transfer confirming on Ethereum (T0 = the
   instant our own keyless reference RPC first shows the containing
   block) and the first poll at which each provider can return that

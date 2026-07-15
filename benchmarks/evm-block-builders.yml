@@ -179,32 +179,6 @@ providers:
       sample_size: sum(increase(ebb_blocks_total{builder="beaverbuild"}[24h]))
       series: 100 * sum(rate(ebb_blocks_total{builder="beaverbuild"}[1h])) / scalar(sum(rate(ebb_blocks_total[1h])))
 
-  - slug: rsync
-    name: rsync
-    tag: rsync-builder.xyz
-    formula: "Blocks whose extraData contains the rsync tag, as a percentage of all Ethereum blocks observed in the last 24h."
-    queries:
-      p50: 100 * sum(increase(ebb_blocks_total{builder="rsync"}[24h])) / scalar(sum(increase(ebb_blocks_total[24h])))
-      p90: 100 * sum(increase(ebb_blocks_total{builder="rsync"}[24h])) / scalar(sum(increase(ebb_blocks_total[24h])))
-      p99: 100 * sum(increase(ebb_blocks_total{builder="rsync"}[24h])) / scalar(sum(increase(ebb_blocks_total[24h])))
-      mean: 100 * sum(increase(ebb_blocks_total{builder="rsync"}[24h])) / scalar(sum(increase(ebb_blocks_total[24h])))
-      success: avg_over_time(ebb_eth_poll_health[24h])
-      sample_size: sum(increase(ebb_blocks_total{builder="rsync"}[24h]))
-      series: 100 * sum(rate(ebb_blocks_total{builder="rsync"}[1h])) / scalar(sum(rate(ebb_blocks_total[1h])))
-
-  - slug: flashbots
-    name: Flashbots
-    tag: The original MEV-Boost builder
-    formula: "Blocks whose extraData contains a Flashbots builder tag (flashbots or Illuminate Dmocratize), as a percentage of all Ethereum blocks observed in the last 24h."
-    queries:
-      p50: 100 * sum(increase(ebb_blocks_total{builder="flashbots"}[24h])) / scalar(sum(increase(ebb_blocks_total[24h])))
-      p90: 100 * sum(increase(ebb_blocks_total{builder="flashbots"}[24h])) / scalar(sum(increase(ebb_blocks_total[24h])))
-      p99: 100 * sum(increase(ebb_blocks_total{builder="flashbots"}[24h])) / scalar(sum(increase(ebb_blocks_total[24h])))
-      mean: 100 * sum(increase(ebb_blocks_total{builder="flashbots"}[24h])) / scalar(sum(increase(ebb_blocks_total[24h])))
-      success: avg_over_time(ebb_eth_poll_health[24h])
-      sample_size: sum(increase(ebb_blocks_total{builder="flashbots"}[24h]))
-      series: 100 * sum(rate(ebb_blocks_total{builder="flashbots"}[1h])) / scalar(sum(rate(ebb_blocks_total[1h])))
-
   - slug: btcs
     name: Builder+
     tag: BTCS Builder+
