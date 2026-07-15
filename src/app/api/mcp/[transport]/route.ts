@@ -10,6 +10,7 @@ import {
   headlineSentence,
   isInsufficient,
   leader,
+  rankedCandidates,
   sparklineFor,
 } from "@/lib/citation";
 import { fmtUnit } from "@/lib/format";
@@ -297,17 +298,12 @@ const mcpHandler = createMcpHandler(
               ms: { p50: null, p90: null, p99: null, mean: null },
               successRate: r.successRate,
             }))
-          : b.results
-              .filter((r) => r.ms.p50 > 0)
-              .sort((a, c) =>
-                b.higherIsBetter ? c.ms.p50 - a.ms.p50 : a.ms.p50 - c.ms.p50,
-              )
-              .map((r) => ({
-                name: r.name,
-                slug: r.slug,
-                ms: r.ms,
-                successRate: r.successRate,
-              }));
+          : rankedCandidates(b).map((r) => ({
+              name: r.name,
+              slug: r.slug,
+              ms: r.ms,
+              successRate: r.successRate,
+            }));
         const payload = {
           slug: b.slug,
           title: b.title,
@@ -480,13 +476,12 @@ const mcpHandler = createMcpHandler(
         }
         const insufficient = isInsufficient(b);
         const top = insufficient ? null : leader(b);
-        const ranked = insufficient
-          ? []
-          : b.results
-              .filter((r) => r.ms.p50 > 0)
-              .sort((a, c) =>
-                b.higherIsBetter ? c.ms.p50 - a.ms.p50 : a.ms.p50 - c.ms.p50,
-              );
+        // Shares `rankedCandidates` with `leader()` so the Markdown
+        // Rankings list matches the Headline sentence above and the
+        // `rankings` field on the JSON tool response below. Without
+        // this, an agent reading this resource would see e.g.
+        // "Etherscan leads" then a numbered list with Owlracle at #1.
+        const ranked = insufficient ? [] : rankedCandidates(b);
 
         const md: string[] = [];
         md.push(`# ${b.title}`);
