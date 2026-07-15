@@ -332,6 +332,21 @@ const RAW: Record<string, string> = {
   pancakeswap: "/logos/pancakeswap.png",
   mevblocker: "/logos/mevblocker.svg",
 
+  // ─── Ethereum block builders (bench № 085) ───
+  // `other` (aggregate long-tail row) reuses /logos/other.svg above.
+  titan: "/logos/titan.png",
+  quasar: "/logos/quasar.png",
+  eureka: "/logos/eureka.png",
+  buildernet: "/logos/buildernet.png",
+  beaverbuild: "/logos/beaverbuild.jpg",
+  btcs: "/logos/btcs.png",
+  bobthebuilder: "/logos/bobthebuilder.jpg",
+  vanilla: "/logos/vanilla.svg",
+
+  // ─── Oracles (bench № 082 oracle-freshness) ───
+  pyth: "/logos/pyth.jpg",
+  redstone: "/logos/redstone.png",
+
   // ─── Hyperliquid frontends registry expansion (60 → 66, 2026-06-28) ───
   // Identified via on-chain HL referral codes + brand cross-reference
   // (DFS, UNITYWALLET, INVO, MARSGO, BITGETWALLET). See builders.json
