@@ -343,6 +343,10 @@ const RAW: Record<string, string> = {
   bobthebuilder: "/logos/bobthebuilder.jpg",
   vanilla: "/logos/vanilla.svg",
 
+  // ─── Oracles (bench № 082 oracle-freshness) ───
+  pyth: "/logos/pyth.jpg",
+  redstone: "/logos/redstone.png",
+
   // ─── Hyperliquid frontends registry expansion (60 → 66, 2026-06-28) ───
   // Identified via on-chain HL referral codes + brand cross-reference
   // (DFS, UNITYWALLET, INVO, MARSGO, BITGETWALLET). See builders.json

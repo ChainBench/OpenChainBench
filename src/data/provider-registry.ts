@@ -1559,6 +1559,20 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     twitter: "@grvt_io",
   },
 
+  // ─── Oracles (bench № 082 oracle-freshness) ───────────────────
+  pyth: {
+    url: "https://www.pyth.network",
+    description:
+      "Pull-based oracle network publishing sub-second price updates through the Hermes service; consumers post the signed update onchain only when they need it. Prices are contributed by exchanges and market makers.",
+    twitter: "@PythNetwork",
+  },
+  redstone: {
+    url: "https://www.redstone.finance",
+    description:
+      "Modular oracle delivering signed price packages every few seconds through its data gateway, consumed push or pull. The freshness bench reads the primary-prod feed keyless.",
+    twitter: "@redstone_defi",
+  },
+
   // ─── Ethereum block builders (bench № 085) ────────────────────
   // Attribution rows come from the extraData self-label each builder
   // stamps into its blocks. Where no legal entity is public, the
