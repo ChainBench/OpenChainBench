@@ -12,6 +12,7 @@ import { cache } from "react";
 import { unstable_cache } from "next/cache";
 import { getBenchmarksSafe } from "@/data/benchmarks";
 import { liveResults } from "@/lib/provider-filters";
+import { citationCandidates } from "@/lib/citation";
 import { readBestPerChain } from "@/lib/per-chain-contract";
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
 
@@ -212,7 +213,15 @@ export type ProviderProfile = {
 };
 
 function rankProviders(b: Benchmark): ProviderResult[] {
-  const live = liveResults(b.results);
+  // Drives the /products hub `wins` count and per-chain leadership
+  // chips. Shares the reliability + insufficient-sample filters with
+  // `leader()` (citation.ts) so a provider that is filtered from the
+  // bench headline never gets credited as a bench winner on its
+  // product page. Falls back to the raw live pool when every
+  // candidate is filtered so a totally degraded bench still surfaces
+  // a best-of-bad-options ranking.
+  const pool = citationCandidates(b);
+  const live = pool.length > 0 ? pool : liveResults(b.results);
   return [...live].sort((a, c) =>
     b.higherIsBetter ? c.ms.p50 - a.ms.p50 : a.ms.p50 - c.ms.p50,
   );

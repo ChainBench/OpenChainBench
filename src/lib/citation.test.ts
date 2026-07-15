@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { leader, fieldValue } from "./citation";
+import { leader, fieldValue, rankedCandidates } from "./citation";
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
 
 function r(
@@ -93,5 +93,21 @@ describe("citation reliability threshold", () => {
     // Flaky wins on raw value but is filtered out; Mid (80) wins the
     // reliable pool.
     expect(leader(b)?.slug).toBe("mid-reliable");
+  });
+
+  test("rankedCandidates[0] matches leader for the same bench", () => {
+    // Locks the invariant that downstream surfaces (/api/stat rankings,
+    // llm-context, MCP resource) can share `rankedCandidates` with
+    // `leader()` and never emit a document where the "leader" field
+    // contradicts the first entry of the "rankings" list.
+    const b = bench([
+      r("owlracle", "Owlracle", 0.001, 6.48),
+      r("etherscan", "Etherscan", 1.0, 95.7),
+      r("publicnode", "PublicNode", 1.5, 99.99),
+    ]);
+    const top = leader(b);
+    const ranks = rankedCandidates(b);
+    expect(top?.slug).toBe(ranks[0].slug);
+    expect(top?.value).toBe(ranks[0].ms.p50);
   });
 });

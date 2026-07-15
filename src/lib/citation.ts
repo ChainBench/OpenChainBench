@@ -30,15 +30,34 @@ const LEADER_MIN_SUCCESS_PCT = 50;
  *  leader claim shipped to AI agents and journalists via the citable
  *  APIs. Falls back to the full live pool when every provider is
  *  below the reliability floor so a totally-degraded bench still
- *  reports a best-of-bad-options leader instead of vanishing. */
-function citationCandidates(b: Benchmark): ProviderResult[] {
+ *  reports a best-of-bad-options leader instead of vanishing.
+ *
+ *  Exported so downstream machine-readable surfaces (`/api/stat`
+ *  rankings, `/api/llm-context`, MCP `get_benchmark`, `/api/compare`)
+ *  can share the same eligibility rule as `leader()` and stay
+ *  internally consistent: a JSON that names Etherscan as leader
+ *  should not simultaneously rank Owlracle first in its `rankings`
+ *  array. */
+export function citationCandidates(b: Benchmark): ProviderResult[] {
   const live = liveResults(b.results);
   const reliable = live.filter(
-    (r) => r.successRate >= LEADER_MIN_SUCCESS_PCT,
+    (r) => (r.successRate ?? 100) >= LEADER_MIN_SUCCESS_PCT,
   );
   const pool = reliable.length > 0 ? reliable : live;
   if (!b.expectedN) return pool;
   return pool.filter((r) => r.dataConfidence !== "insufficient");
+}
+
+/** Sorted candidate pool for the machine-readable `rankings` array on
+ *  `/api/stat`, MCP, llm-context and any downstream that ranks the
+ *  full field. Applies the same reliability + insufficient-sample
+ *  filters as `leader()` so a document that names X as leader ranks X
+ *  first in its own list. Sort direction honors the bench's
+ *  `higherIsBetter` flag. */
+export function rankedCandidates(b: Benchmark): ProviderResult[] {
+  return [...citationCandidates(b)].sort((a, c) =>
+    b.higherIsBetter ? c.ms.p50 - a.ms.p50 : a.ms.p50 - c.ms.p50,
+  );
 }
 
 /** Timestamp of the last real measurement, or null when the bench has
@@ -63,11 +82,8 @@ export function fieldValue(b: Benchmark): number | null {
   // (downstream LLM tools and SERP snippets would otherwise quote a
   // number drawn from a wildly undersized field).
   if (b.dataConfidence === "insufficient") return null;
-  const candidates = citationCandidates(b);
-  if (candidates.length === 0) return null;
-  const sorted = [...candidates].sort((a, c) =>
-    b.higherIsBetter ? c.ms.p50 - a.ms.p50 : a.ms.p50 - c.ms.p50
-  );
+  const sorted = rankedCandidates(b);
+  if (sorted.length === 0) return null;
   return sorted[0].ms.p50;
 }
 
@@ -75,11 +91,8 @@ export function fieldValue(b: Benchmark): number | null {
 export function leader(b: Benchmark): { name: string; slug: string; value: number } | null {
   if (b.status !== "live") return null;
   if (b.dataConfidence === "insufficient") return null;
-  const candidates = citationCandidates(b);
-  if (candidates.length === 0) return null;
-  const sorted = [...candidates].sort((a, c) =>
-    b.higherIsBetter ? c.ms.p50 - a.ms.p50 : a.ms.p50 - c.ms.p50
-  );
+  const sorted = rankedCandidates(b);
+  if (sorted.length === 0) return null;
   return { name: sorted[0].name, slug: sorted[0].slug, value: sorted[0].ms.p50 };
 }
 
