@@ -7,6 +7,7 @@ import {
   headlineSentence,
   isInsufficient,
   leader,
+  rankedCandidates,
 } from "@/lib/citation";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 
@@ -84,11 +85,11 @@ export async function GET(req: Request) {
       lines.push(`- Headline: ${headlineSentence(b)}`);
       lines.push("");
       lines.push(`**Rankings (p50, 24h):**`);
-      const ranked = [...b.results]
-        .filter((r) => r.ms.p50 > 0)
-        .sort((a, c) =>
-          b.higherIsBetter ? c.ms.p50 - a.ms.p50 : a.ms.p50 - c.ms.p50,
-        );
+      // Shares `rankedCandidates` with `leader()` so the numbered list
+      // below matches the Headline sentence above. Without the shared
+      // filter, an LLM pasting this block would see e.g. "Etherscan
+      // leads" then a rankings list with Owlracle at #1.
+      const ranked = rankedCandidates(b);
       for (let i = 0; i < ranked.length; i++) {
         const r = ranked[i];
         lines.push(
