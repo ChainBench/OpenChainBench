@@ -136,6 +136,16 @@ export async function publishSnapshot(
       5_000,
     ).catch(() => {});
   }
+  // Last-known-good copy, no TTL: the read-path's fallback when the
+  // pointer/blob pair is gone (worker outage past BLOB_TTL_SEC, DEL
+  // race, transient miss). Best-effort — a failed LKG write must not
+  // fail the publish, the fresh path above is already committed.
+  await redis(["SET", matKeys.lkg(snap.slug, snap.sig), json], 15_000).catch(
+    (err) =>
+      console.warn(
+        `materialize lkg write failed for ${snap.slug}/${snap.sig || "all"}: ${err instanceof Error ? err.message : err}`,
+      ),
+  );
 }
 
 /** Refresh the current blob's safety-net TTL without rewriting it.
@@ -159,21 +169,38 @@ export async function readHeartbeat(): Promise<number | null> {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
-/** Read the current snapshot for (slug, sig). Null on miss, parse
- *  failure, or version mismatch — callers fall back to the live path. */
+/** Read the current snapshot for (slug, sig), falling back to the
+ *  last-known-good copy when the fresh pointer/blob path misses. Null
+ *  only when the bench has never published (or on schema-version
+ *  mismatch) — callers then render the draft placeholder. */
 export async function readMaterialized(
   slug: string,
   sig: string,
 ): Promise<MaterializedSnapshot | null> {
   try {
     const hash = await redis(["GET", matKeys.pointer(slug, sig)]);
-    if (typeof hash !== "string" || !hash) return null;
-    const raw = await redis(["GET", matKeys.blob(slug, sig, hash)], 8_000);
+    if (typeof hash === "string" && hash) {
+      const raw = await redis(["GET", matKeys.blob(slug, sig, hash)], 8_000);
+      if (typeof raw === "string" && raw) {
+        const snap = parseSnapshot(raw);
+        if (snap) return snap;
+      }
+    }
+  } catch (err) {
+    console.warn(
+      `materialize read failed for ${slug}/${sig || "all"}: ${err instanceof Error ? err.message : err}`,
+    );
+  }
+  // Fresh path missed: serve the stamped-stale LKG copy instead of
+  // collapsing to the "awaiting" placeholder. dataAsOf inside the
+  // snapshot keeps the freshness badge honest about the age.
+  try {
+    const raw = await redis(["GET", matKeys.lkg(slug, sig)], 8_000);
     if (typeof raw !== "string" || !raw) return null;
     return parseSnapshot(raw);
   } catch (err) {
     console.warn(
-      `materialize read failed for ${slug}/${sig || "all"}: ${err instanceof Error ? err.message : err}`,
+      `materialize lkg read failed for ${slug}/${sig || "all"}: ${err instanceof Error ? err.message : err}`,
     );
     return null;
   }
