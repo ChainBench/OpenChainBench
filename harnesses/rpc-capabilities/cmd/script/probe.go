@@ -30,6 +30,11 @@ const (
 	// ~2 minutes behind the cross-provider tip - the same order of
 	// tolerance the EVM gap gives a 12s-block chain.
 	solanaStaleSlotGap uint64 = 300
+	// polkadotStaleBlockGap: Polkadot relay produces one block every
+	// ~6 s, so 40 blocks ≈ 4 min. Same order of tolerance the EVM
+	// gap gives a 12s-block chain, scaled for the faster relay
+	// cadence.
+	polkadotStaleBlockGap uint64 = 40
 )
 
 // chainTips tracks the highest block seen for each chain across all
@@ -183,9 +188,12 @@ func probeOne(ctx context.Context, c Chain, p Provider) {
 		var result string
 		var latency float64
 		var err error
-		if c.Kind == "solana" {
+		switch c.Kind {
+		case "solana":
 			block, result, latency, err = callLatestSlot(probeCtx, p.URL)
-		} else {
+		case "polkadot":
+			block, result, latency, err = callSubstrateHeader(probeCtx, p.URL)
+		default:
 			block, result, latency, err = callLatestBlock(probeCtx, p.URL)
 		}
 
@@ -193,8 +201,11 @@ func probeOne(ctx context.Context, c Chain, p Provider) {
 			tips.update(c.Slug, block)
 			tip := tips.get(c.Slug)
 			gap := staleBlockGap
-			if c.Kind == "solana" {
+			switch c.Kind {
+			case "solana":
 				gap = solanaStaleSlotGap
+			case "polkadot":
+				gap = polkadotStaleBlockGap
 			}
 			if tip > 0 && block+gap < tip {
 				result = "stale"
@@ -293,6 +304,74 @@ func callLatestSlot(ctx context.Context, url string) (slot uint64, result string
 	n, err := strconv.ParseUint(strings.TrimSpace(string(r.Result)), 10, 64)
 	if err != nil {
 		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("non-numeric slot: %s", string(r.Result)[:min(len(r.Result), 40)])
+	}
+	return n, "ok", latencyMs, nil
+}
+
+// substrateHeader is the shape of the `chain_getHeader` result on
+// Polkadot and every Substrate-based relay chain. The block number is
+// hex-encoded (`0x` prefix) matching the EVM header convention, so the
+// parse path reuses the same strconv rule.
+type substrateHeader struct {
+	Number string `json:"number"`
+}
+
+// callSubstrateHeader is the Polkadot probe path: chain_getHeader with a
+// rotating request id (same anti-cache rule as the EVM header fetch).
+// Returns the relay-chain block height so the caller can plug into the
+// same tips machinery the EVM path uses; staleness classification in
+// probeOne uses polkadotStaleBlockGap.
+func callSubstrateHeader(ctx context.Context, url string) (block uint64, result string, latencyMs float64, err error) {
+	body := []byte(fmt.Sprintf(
+		`{"jsonrpc":"2.0","method":"chain_getHeader","params":[],"id":%d}`,
+		time.Now().UnixNano(),
+	))
+	req, _ := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", "OpenChainBench/1.0 (+https://openchainbench.com)")
+	client := &http.Client{Timeout: probeTimeout}
+
+	start := time.Now()
+	resp, err := client.Do(req)
+	latencyMs = float64(time.Since(start).Milliseconds())
+
+	if err != nil {
+		if ctx.Err() != nil || strings.Contains(err.Error(), "deadline exceeded") || strings.Contains(err.Error(), "Timeout") {
+			return 0, "timeout", latencyMs, err
+		}
+		return 0, "http_err", latencyMs, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		return 0, "http_err", latencyMs, fmt.Errorf("status %d", resp.StatusCode)
+	}
+
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 0, "http_err", latencyMs, err
+	}
+	var r rpcBlockEnvelope
+	if err := json.Unmarshal(raw, &r); err != nil {
+		return 0, "http_err", latencyMs, err
+	}
+	if r.Error != nil {
+		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("rpc -%d: %s", r.Error.Code, r.Error.Message)
+	}
+	if len(r.Result) == 0 || string(r.Result) == "null" {
+		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("empty result")
+	}
+	var hdr substrateHeader
+	if err := json.Unmarshal(r.Result, &hdr); err != nil {
+		return 0, "jsonrpc_err", latencyMs, err
+	}
+	if hdr.Number == "" {
+		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("substrate header missing number")
+	}
+	n, err := strconv.ParseUint(strings.TrimPrefix(hdr.Number, "0x"), 16, 64)
+	if err != nil {
+		return 0, "jsonrpc_err", latencyMs, err
 	}
 	return n, "ok", latencyMs, nil
 }
