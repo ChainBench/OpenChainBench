@@ -1058,11 +1058,6 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Owly.fi is a non custodial AI powered copy trading and asset management terminal on Hyperliquid, executing perp orders via a registered builder code.",
     twitter: "@owlyfi",
   },
-  topdog: {
-    url: "https://topdog.gg",
-    description:
-      "TopDog is a Discord signal bot delivering real time trade alerts from top performing Hyperliquid wallets, with execution routed via a registered builder code.",
-  },
   goodcryptox: {
     url: "https://goodcrypto.app",
     description:
