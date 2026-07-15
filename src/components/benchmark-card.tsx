@@ -27,12 +27,18 @@ export function BenchmarkCard({ benchmark }: { benchmark: BenchmarkCardData }) {
   const insufficient = !isDraft && isInsufficient(b);
   const catColor = CATEGORY_COLOR[b.category] ?? "var(--color-ink-muted)";
 
-  // Field composite p50: best-of-class (or worst if higher-is-better is
-  // false). We pick the leader, same heuristic as the table.
+  // Prefer the canonical leader from citation.ts (reliability floor +
+  // insufficient-sample filter applied at projection). Falls back to
+  // the raw best of the projected results when the projection never
+  // returned a leader (draft, insufficient, or every provider filtered
+  // out) so the card still surfaces a headline value instead of "n/a"
+  // whenever any result is present.
   const sorted = [...b.results].sort(
     b.higherIsBetter ? (a, x) => x.ms.p50 - a.ms.p50 : (a, x) => a.ms.p50 - x.ms.p50,
   );
-  const leader = sorted[0];
+  const leader = b.leaderSlug
+    ? (sorted.find((r) => r.slug === b.leaderSlug) ?? sorted[0])
+    : sorted[0];
   const headlineValue =
     !isDraft && !insufficient && leader ? fmtValue(leader.ms.p50, b.unit) : "n/a";
   // Pass the leader's p50 so unitSuffix mirrors fmtUnit's auto-conversion

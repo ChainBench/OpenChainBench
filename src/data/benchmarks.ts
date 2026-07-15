@@ -9,6 +9,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import yaml from "js-yaml";
 import { cache } from "react";
+import { leader } from "@/lib/citation";
 import { downsample, MINI_CHART_POINTS } from "@/lib/downsample";
 import type { Benchmark } from "@/types/benchmark";
 import {
@@ -51,6 +52,14 @@ export type BenchmarkCardData = {
   sampleSize: number;
   lastRunAt: string;
   metric: string;
+  /** Slug of the citation-eligible leader for this bench (result of
+   *  `leader(b)` in citation.ts). Passed at the projection boundary so
+   *  the hub card can render the same headline the bench page names
+   *  without duplicating the reliability + insufficient-sample filter
+   *  logic. Null when the bench has no defensible leader (draft,
+   *  insufficient, or every provider below the reliability floor with
+   *  an empty live pool). */
+  leaderSlug: string | null;
   results: {
     slug: string;
     name: string;
@@ -76,6 +85,7 @@ export function toBenchmarkCardData(b: Benchmark): BenchmarkCardData {
     sampleSize: b.sampleSize,
     lastRunAt: b.lastRunAt,
     metric: b.metric,
+    leaderSlug: leader(b)?.slug ?? null,
     results: b.results.map((r) => ({
       slug: r.slug,
       name: r.name,
