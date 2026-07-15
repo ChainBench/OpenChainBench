@@ -285,7 +285,7 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // step grid the chart back-computes timestamps from.
 // v28: bench vague 2 ships 081-085 (ws-head-latency, oracle-freshness,
   // rpc-reliability, indexer-latency, evm-block-builders). Bench SET changed.
-  ["bench-unfiltered-v29", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  ["bench-unfiltered-v36", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -441,7 +441,7 @@ const loadAllBenchmarksCached = unstable_cache(
   // v29: bumped with bench-unfiltered-v26 (monad-rpc + megaeth-rpc ship).
   // v30: bumped with bench-unfiltered-v27 (dense series with nulls).
 // v31: bumped with bench-unfiltered-v28 (bench vague 2, 081-085).
-  ["all-benchmarks-v32", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  ["all-benchmarks-v39", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -521,7 +521,7 @@ const loadBenchmarkFiltered = unstable_cache(
   // v17: bumped with the monad-rpc + megaeth-rpc ship (lockstep rule).
   // v18: bumped with bench-unfiltered-v27 (dense series with nulls).
   // v19: bumped with bench-unfiltered-v28 (bench vague 2, 081-085).
-  ["bench-filters-v20", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  ["bench-filters-v27", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
