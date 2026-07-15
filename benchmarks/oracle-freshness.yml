@@ -9,7 +9,7 @@ subtitle: Seconds since each oracle's own last-update timestamp for ETH/USD, pol
 category: Trading
 status: live
 metric: Oracle staleness
-unit: s
+unit: sec
 higher_is_better: false
 
 disclaimer: |

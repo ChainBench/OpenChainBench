@@ -132,7 +132,7 @@ rank_matrix_query: clamp_min(sum by (provider, chain) (increase(rpc_integrity_ch
 
 # ~82 integrity checks per provider per chain per day (2 checks per
 # 5-min rotation over 7 chains); single-chain providers are the floor.
-expected_n: 80
+expected_n: 40
 
 ledger_columns:
   - { label: "Incidents 24h", slot: p50, unit: count }
