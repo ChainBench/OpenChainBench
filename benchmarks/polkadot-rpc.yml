@@ -1,0 +1,161 @@
+# OpenChainBench. Bench № 086
+
+slug: polkadot-rpc
+number: "086"
+title: Fastest free Polkadot RPC, live no-key endpoint latency
+seo_title: "Fastest free Polkadot RPC 2026"
+seo_description: "{{best_name}} leads free Polkadot RPC at {{best_p50}} (chain_getHeader p50, 24h). 3 no-key providers measured every 60s from 3 regions."
+subtitle: HTTP round-trip latency for chain_getHeader against every free, no-key public Polkadot relay-chain endpoint, audited every 60 seconds from 3 regions.
+
+category: RPCs
+status: live
+metric: RPC latency
+unit: ms
+higher_is_better: false
+
+seo_intro: |
+  Polkadot is the first non-EVM, non-Solana chain in the RPC latency
+  cluster. Substrate-based relay chain, JSON-RPC 2.0 wire but a
+  different method set: the probe is `chain_getHeader` (returns the
+  latest header with a hex-encoded block number) rather than
+  `eth_getBlockByNumber`. Everything else on this page is the same
+  bench pattern used on Ethereum, Base, Solana and the 20+ other
+  chains: identical POST every 60 seconds from three regions, latency
+  measured client-side at millisecond precision, per-region breakdowns
+  first class. Provider cohort at launch: Parity's official
+  `rpc.polkadot.io`, OnFinality's public gateway, and PublicNode
+  (Allnodes). Dwellir + 1RPC audited alongside and excluded (Dwellir
+  503 during the launch sweep; 1RPC filters `chain_getHeader` on its
+  privacy relay); both will be revisited when a stable no-key path
+  reappears.
+
+abstract: |
+  Per-chain member of the RPC latency cluster, extended for Substrate.
+  We measure the round-trip latency of a single, identical JSON-RPC
+  call (`chain_getHeader`) against every no-key public Polkadot
+  relay-chain endpoint that sustains continuous probing, 3 providers
+  at launch, every 60 seconds, from us-east, eu-west and Singapore. The harness
+  classifies every response (ok / http_err / jsonrpc_err / stale /
+  timeout) with a relay-chain-scaled staleness gap (40 blocks ≈ 4
+  minutes at Polkadot's ~6 s block time), so the leaderboard rewards
+  sustained, honest availability rather than a fast error message.
+  The cross-chain view lives on the parent `rpc-capabilities`
+  benchmark; this page is the Polkadot-scoped answer with per-region
+  breakdowns as a first-class dimension.
+
+methodology:
+  - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus `avg(quantile_over_time(...))`; per-region breakdowns are first-class on this page via the region tabs."
+  - "Payload: `{\"jsonrpc\":\"2.0\",\"id\":<rotating>,\"method\":\"chain_getHeader\",\"params\":[]}`. Plain HTTP POST, identical for every endpoint, no API key in any request. Non-cacheable by design: the latest-header fetch with a rotating id defeats edge caches that would answer a bare head query without touching a node."
+  - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms → 10 s), so percentiles are computed via Prometheus `quantile_over_time` over the last 24 hours."
+  - "Call-result classification: `ok` (HTTP 200 + non-empty result with a parsable hex block number), `http_err`, `jsonrpc_err` (HTTP 200 carrying an error body), `stale` (more than 40 relay blocks behind the cross-provider tip, roughly 4 minutes at Polkadot's ~6 s block time), `timeout`. Latency without reliability is a misleading ranking signal."
+  - "No archive-depth loop on this chain. Polkadot's state model is accessed via `state_getStorage` keyed by a Blake2-hashed storage key rather than the EVM `eth_getBalance(address, height)` pattern, so the archive probe used on the EVM cluster is not applied here."
+  - "No cross-provider hash quorum on this chain. `chain_getHeader` returns the parent-block hash rather than the current-block hash (the current hash is derived by Blake2 over the SCALE-encoded header). Bench 083's height-hash quorum check is therefore skipped for Polkadot; the same reliability signal is still captured via `ok` / `stale` classification against the rolling cross-provider tip."
+  - "This page is part of the per-chain RPC cluster derived from the cross-chain [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities) benchmark; the identical harness, cadence and exclusion rules apply on every chain."
+  - "Chain scope: every query on this page is pinned to `chain=\"polkadot\"`. Provider coverage at launch: 3 no-key endpoints (Parity official, OnFinality public gateway, PublicNode). Excluded by the launch audit: 1RPC filters `chain_getHeader` as \"Not Allowed\" on its privacy relay; Dwellir returned 503 during the audit sweep; Ankr paid Polkadot tier only; Chainstack key-gated; RadiumBlock requires a referral header; Grove and Thirdweb return invalid-chain or key-gated."
+
+findings:
+  - "{{best_name}} currently leads free Polkadot RPC at {{best_p50}} (`chain_getHeader` p50, 24h) across 3 measured providers."
+  - "{{name:onfinality}} is a Web3 Foundation grantee that serves a large share of Polkadot ecosystem infra; the bench measures its public gateway under the same probe used for the multi-chain gateways, so the leaderboard is directly comparable to what a chain-agnostic integrator sees."
+  - "{{name:publicnode}} extends its universal multi-chain footprint onto Substrate without a keyed path; the reliability column is what to read alongside p50 here since Substrate JSON-RPC has different failure modes than EVM (SCALE decode timeouts, sudden peer drops during finality gaps)."
+
+faq:
+  - q: "What is the fastest free Polkadot RPC right now?"
+    a: "{{best_name}} currently leads at {{best_p50}} (`chain_getHeader` p50 over the last 24h), measured against 3 no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples, so the answer on this page is the answer right now, not a quarterly snapshot. Use the region tabs to see the leader from the origin closest to your deployment."
+  - q: "Which Polkadot RPCs work without an API key?"
+    a: "Three endpoints sustain continuous keyless probing at launch: Parity's official `rpc.polkadot.io`, OnFinality's public gateway and PublicNode (operated by Allnodes). Every listed endpoint was live-verified with four consecutive `chain_getHeader` probes returning a parsable hex block number before inclusion. Excluded by the audit: 1RPC filters `chain_getHeader` as \"Not Allowed\" on its privacy relay, Dwellir returned 503 Service Unavailable during the sweep (will be revisited once stable), Ankr requires a paid Polkadot key, Chainstack is key-gated on Substrate, and RadiumBlock rejects requests without a referral header."
+  - q: "Does the fastest Polkadot RPC change by region?"
+    a: "Frequently, and often more sharply than EVM chains. Polkadot's public infra is heavily weighted toward Web3 Foundation grantees whose primary data centers sit in Europe; a gateway that wins from Amsterdam can lose from Singapore by multiples. The region tabs at the top of the page re-scope every number on the page to a single origin; pick the one closest to where your requests actually originate."
+  - q: "How is Polkadot RPC latency measured here, technically?"
+    a: "One identical Substrate JSON-RPC POST (`chain_getHeader`) every 60 seconds against each provider from each of 3 regions, using the same plain HTTP client the EVM cluster uses. The response is a header object containing a hex-encoded relay-block number and the parent-block hash; the harness parses the number (`strconv.ParseUint(strings.TrimPrefix(hdr.Number, \"0x\"), 16, 64)`, same rule as EVM). Wall-clock round-trip is recorded at millisecond precision; p50/p90/p99 are computed via Prometheus `quantile_over_time` over 24 hours. Responses are classified (`ok` / `http_err` / `jsonrpc_err` / `stale` / `timeout`) so an endpoint stuck on an old head or returning errors behind HTTP 200 is never ranked as fastest."
+  - q: "Why is the probe `chain_getHeader` and not `system_health`?"
+    a: "Two reasons. First, `chain_getHeader` returns the head block number, which lets the harness plug into the cluster's cross-provider tip machinery for staleness classification without adding a chain-specific code path. Second, `system_health` returns a small object about peer count and sync state that any polite CDN can synthesize without touching the underlying node, defeating the point of a latency probe on the RPC path. `chain_getHeader` forces the endpoint to actually read the head from the runtime, which is what integrators care about."
+  - q: "Why is there no archive-depth or hash-quorum column for Polkadot?"
+    a: "Polkadot's state model accesses historical state via `state_getStorage` keyed by a Blake2-hashed storage key, which has no chain-agnostic depth analog for the EVM `eth_getBalance(address, height)` probe the cluster uses on other chains. Similarly, `chain_getHeader` returns the parent-block hash (not the current-block hash: the current hash is derived by Blake2 over the SCALE-encoded header), so the cross-provider height-hash quorum check from bench 083 cannot be run against Polkadot without adding a Substrate-native encoder to the harness. Both columns are omitted honestly rather than filled with a proxy that would misrepresent the chain."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
+
+prometheus:
+  window: 24h
+  freshness_metric: rpc_latency_milliseconds
+
+# Per-cell (region) ranking matrix for scoped badge claims. Chain is
+# fixed for the whole bench, so cells key on region alone.
+rank_matrix_query: avg by (provider, region) (ocb:rpc_latency_milliseconds:p50_24h{chain="polkadot"})
+
+# Region is the only dimension: chain is baked into every query.
+dimensions:
+  region:
+    - { value: all,     label: All regions }
+    - { value: us-east, label: US-East }
+    - { value: eu-west, label: EU-West }
+    - { value: sgp,     label: Singapore }
+
+providers:
+  - slug: polkadot-official
+    name: Parity
+    tag: Parity's official Polkadot relay endpoint
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `chain_getHeader` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Parity's official Polkadot relay endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="polkadot-official", chain="polkadot"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="polkadot-official", chain="polkadot"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="polkadot-official", chain="polkadot"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="polkadot-official", chain="polkadot"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="polkadot-official", chain="polkadot"}) / sum(ocb:rpc_call:rate_24h{provider="polkadot-official", chain="polkadot"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="polkadot-official", chain="polkadot"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="polkadot-official", chain="polkadot"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="polkadot-official", chain="polkadot", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="polkadot-official", chain="polkadot", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="polkadot-official", chain="polkadot", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="polkadot-official", chain="polkadot", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="polkadot-official", chain="polkadot", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="polkadot-official", chain="polkadot", region="sgp"}[1h])
+
+  - slug: onfinality
+    name: OnFinality
+    tag: Substrate-native public gateway, Web3 Foundation grantee
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `chain_getHeader` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to OnFinality's public Polkadot endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="onfinality", chain="polkadot"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="onfinality", chain="polkadot"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="onfinality", chain="polkadot"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="onfinality", chain="polkadot"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="onfinality", chain="polkadot"}) / sum(ocb:rpc_call:rate_24h{provider="onfinality", chain="polkadot"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="onfinality", chain="polkadot"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="onfinality", chain="polkadot"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="onfinality", chain="polkadot", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="onfinality", chain="polkadot", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="onfinality", chain="polkadot", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="onfinality", chain="polkadot", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="onfinality", chain="polkadot", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="onfinality", chain="polkadot", region="sgp"}[1h])
+
+  - slug: publicnode
+    name: PublicNode
+    tag: Allnodes-operated, 70+ chains, includes Substrate
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `chain_getHeader` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to PublicNode's no-key Polkadot endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="polkadot"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="publicnode", chain="polkadot"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="publicnode", chain="polkadot"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="publicnode", chain="polkadot"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="publicnode", chain="polkadot"}) / sum(ocb:rpc_call:rate_24h{provider="publicnode", chain="polkadot"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="publicnode", chain="polkadot"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="polkadot"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="polkadot", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="polkadot", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="polkadot", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="polkadot", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="polkadot", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="polkadot", region="sgp"}[1h])

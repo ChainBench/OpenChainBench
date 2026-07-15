@@ -138,8 +138,14 @@ func quorumHash(votes map[string]string) string {
 // providers that never misbehave (which is, hopefully, most of them).
 func initConsensusMetrics() {
 	for _, c := range chains() {
-		if c.Kind == "solana" {
-			continue // no hash to vote on
+		if c.Kind == "solana" || c.Kind == "polkadot" {
+			// solana: getSlot returns a number only, no hash to vote on.
+			// polkadot: chain_getHeader returns parentHash (N-1) but no
+			// current block hash; deriving it needs Blake2 over the
+			// SCALE-encoded header, which is not worth wiring for a
+			// bench 083 cross-provider quorum check that already has
+			// value on 20+ EVM chains.
+			continue
 		}
 		for _, p := range c.Providers {
 			rpcHashMismatch.WithLabelValues(p.Slug, c.Slug, currentRegion).Add(0)
