@@ -109,7 +109,6 @@ const RAW: Record<string, string> = {
   "1rpc": "/logos/1rpc.svg",
   cloudflare: "/logos/cloudflare.svg",
   parity: "/logos/parity.png",
-  onfinality: "/logos/onfinality.png",
   polkadot: "/logos/polkadot.png",
   "base-official": "/logos/base.jpeg",
   binance: "/logos/binance.png",
