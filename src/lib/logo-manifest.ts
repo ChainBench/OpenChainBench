@@ -108,6 +108,8 @@ const RAW: Record<string, string> = {
   drpc: "/logos/drpc.webp",
   "1rpc": "/logos/1rpc.svg",
   cloudflare: "/logos/cloudflare.svg",
+  parity: "/logos/parity.png",
+  polkadot: "/logos/polkadot.png",
   "base-official": "/logos/base.jpeg",
   binance: "/logos/binance.png",
   lava: "/logos/lava.webp",
@@ -380,6 +382,7 @@ const ALIASES: Record<string, string> = {
   // Long-tail RPC cluster (055-066).
   "sonic-official": "sonic",
   "monad-official": "monad",
+  "polkadot-official": "parity",
   hood: "robinhood",
   coin: "coinbase",
   "megaeth-official": "megaeth",

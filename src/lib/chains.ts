@@ -309,6 +309,14 @@ export const CHAINS: ChainEntry[] = [
     description:
       "Sony Block Solutions OP Stack rollup in the Optimism Superchain, 2 s blocks, consumer and entertainment focus.",
   },
+  {
+    slug: "polkadot",
+    label: "Polkadot",
+    category: "L1",
+    nativeSymbol: "DOT",
+    description:
+      "Substrate-based relay chain coordinating a parachain ecosystem via shared security. GRANDPA finality with BABE block production, ~6 s block time.",
+  },
 ];
 
 export const CHAIN_BY_SLUG = new Map(CHAINS.map((c) => [c.slug, c]));
