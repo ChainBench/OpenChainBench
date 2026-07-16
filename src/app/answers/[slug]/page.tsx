@@ -11,7 +11,6 @@ import {
 } from "@/lib/answers-template";
 import { citableAsOf, leader } from "@/lib/citation";
 import { Breadcrumb } from "@/components/breadcrumb";
-import { Byline } from "@/components/byline";
 import { Pill } from "@/components/pill";
 import { ProviderLogo } from "@/components/provider-logo";
 import { fmtAsOfUtc, fmtValue, fmtUnit, unitSuffix } from "@/lib/format";
@@ -299,7 +298,6 @@ export default async function AnswerPage({
           <p className="mt-3 text-base leading-relaxed text-ink-soft">
             {expertTake}
           </p>
-          <Byline reviewed={ans.expert_take_reviewed} />
         </section>
       )}
 
