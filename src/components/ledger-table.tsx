@@ -781,6 +781,14 @@ function Row({
                 </span>
               </Hint>
             )}
+            {!isMuted && r.liveStatus === "down" && (
+              <Hint label="The provider's live feed has produced no new events in the last several minutes. The percentiles shown are the last-known values from the 24-hour window and will keep displaying until fresh events resume. Rolling reliability (Success column) barely moves on a short outage, which is why this pill exists.">
+                <span className="inline-flex items-center gap-1 shrink-0 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-muted">
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-[var(--color-danger,#b0402e)]" aria-hidden />
+                  Feed down
+                </span>
+              </Hint>
+            )}
             {!isMuted && r.dataConfidence === "low" && (
               <Hint
                 label={
