@@ -38,18 +38,17 @@ export const REMOVED_BENCH_SLUGS = new Set([
   // removed; kept in the 410 list so any indexed URL returns Gone
   // instead of 404.
   "indexer-latency",
+  // oracle-freshness (082) spec dropped 2026-07-16: apples vs oranges
+  // (push oracle Chainlink vs pull oracles Pyth/RedStone measure
+  // different things; splitting into 2 sub-benches would leave each
+  // with 1-2 providers). Redundant with 025 oracle-deviation which
+  // measures the same feeds via CEX deviation, more actionable signal.
+  // Harness code retained in oracle-deviation (metrics still emit, no
+  // reader on the site).
+  "oracle-freshness",
   // staging pipeline, held back until validated / announced
   "indexing-freshness",
   "rpc-keyed-latency",
   "explorer-chain-coverage",
   "portfolio-chain-coverage",
-  // bench vague 2 remaining gated. 081 renamed to
-  // ws-head-latency-ethereum + shipped; 083 rpc-reliability shipped
-  // 2026-07-16 (Nodies leader, conf=healthy, cohort extended to +4
-  // keyless providers); 085 evm-block-builders shipped 2026-07-16;
-  // 080 tokenized-stock-arb-latency shipped 2026-07-16 (cohort
-  // reduced to 6 liquid tickers after 5 illiquid dropped). Only
-  // oracle-freshness stays gated pending drop decision (apples vs
-  // oranges push vs pull, redundant with 025 oracle-deviation).
-  "oracle-freshness",
 ]);
