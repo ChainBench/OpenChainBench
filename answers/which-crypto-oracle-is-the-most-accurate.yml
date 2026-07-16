@@ -39,7 +39,7 @@ related:
 
 seo_title: "Which crypto price oracle is the most accurate in 2026?"
 seo_description: "OpenChainBench measures cross oracle agreement (p99 max pairwise deviation in bps, 24h) between Chainlink, Pyth, Binance and Coinbase on 10 USD pairs. Live per pair numbers on the bench page."
-status: liveexpert_take_reviewed: "2026-07-16"expert_take_reviewed: "2026-07-16"
+status: live
 
 expert_take: |
   Oracle accuracy is a per-pair question dressed as a per-provider question. Continuous CEX tickers publish every tick and track the market by construction. Push oracles anchored on chain post a new round only when the off-chain aggregate has drifted past a deviation trigger or a heartbeat has elapsed, which is not a bug but a gas cost tradeoff; between updates the on-chain value legitimately lags. Pull oracles ship a signed off-chain quote that the caller inserts into their own transaction, moving the freshness question from the publisher to the integrator. Cross-oracle deviation is therefore not a scalar; it is a distribution across pairs, and the same oracle can lead on BTC where the trigger fires often and trail on a volatile alt where the same trigger produces multi-minute lag. Readers integrating an oracle into a settlement contract should read the per-pair p99 gap on the exact asset they liquidate, then read the round-age gauge next to it to attribute a large gap to the correct cause (lagging push oracle vs a CEX outlier). Ranking oracles as a single leaderboard obscures the mechanic that matters.
