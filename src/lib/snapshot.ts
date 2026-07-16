@@ -86,6 +86,7 @@ const ProviderResultSchema = z.object({
   meta: StalenessMetaSchema.optional(),
   query: z.string().optional(),
   formula: z.string().optional(),
+  liveStatus: z.enum(["healthy", "down", "unknown"]).optional(),
 });
 
 const RegionPointSchema = z.object({

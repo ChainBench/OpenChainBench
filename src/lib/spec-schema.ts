@@ -80,6 +80,14 @@ const queries = z
     success: promql.optional(),
     sample_size: promql.optional(),
     series: promql.optional(),
+    /** Short-window "is this provider's live feed producing new events
+     *  right now" probe. Instant query returning a scalar count > 0 when
+     *  fresh events arrived in the past few minutes, 0 when the source
+     *  is silent. Distinct from `success` (24h rolling reliability),
+     *  which is too slow to move on a 30-60 min outage. Rendered as a
+     *  "Feed down" pill + top-of-page banner when 0 and probe_ok
+     *  confirms our end is fine. */
+    live_activity: promql.optional(),
     /** Optional slot-level companion queries. Solana-native benches set
      *  these to surface slot_delta p50/p99 alongside the ms columns. The
      *  ms numbers are wall-clock derived; slot_delta is the canonical
@@ -309,6 +317,15 @@ export const SpecSchema = z
           .string()
           .regex(/^[a-zA-Z_:][a-zA-Z0-9_:]*$/, "Must be a bare metric name")
           .optional(),
+        /** Bench-level sanity check for the per-provider `live_activity`
+         *  probe: an instant query that must be > 0 for the "Feed down"
+         *  UI to trust its per-provider verdicts. Meant to answer "are
+         *  ANY of our probes still emitting". Zero means our end
+         *  (harness / Prom scrape) is broken, not the provider — so the
+         *  UI suppresses all per-provider down badges to avoid falsely
+         *  blaming every source at once. When omitted, per-provider
+         *  activity is trusted unconditionally. */
+        probe_ok: promql.optional(),
       })
       .optional(),
 
