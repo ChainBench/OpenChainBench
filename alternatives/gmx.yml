@@ -11,3 +11,12 @@ seo_title: "GMX alternatives: live benchmark"
 seo_description: Compare GMX v2 against Hyperliquid, dYdX, Lighter and gains.trade on live taker fee plus spread crossed at $1000 notional, refreshed every five minutes.
 
 status: live
+
+positioning: |
+  GMX V2 uses isolated GM liquidity pools rather than an orderbook. Each market has its own pool that pays out trader profits and absorbs trader losses, priced against a low-latency 
+  oracle rather than crossed against maker quotes. The V2 architecture runs on Arbitrum, Avalanche and MegaETH, with keeper contracts executing opens and closes so that the trader su
+  bmits an intent and the keeper fills it at the next oracle price. This oracle-driven pool model is architecturally distinct from CLOB perp venues: there is no maker side, so there 
+  is no maker rebate to earn, and the fee schedule replaces the taker-only price with a bundle of position fee, price impact fee, borrow fee, and funding fee. For the perp-fees axis,
+   this matters because a headline taker-only comparison understates GMX cost on skewed markets, where the borrow fee accrues hourly against the dominant side, and understates saving
+  s on balanced markets, where the position fee drops when a trade reduces open-interest skew. The typical use case is directional traders on major pairs who prefer no order manageme
+  nt; teams migrate to CLOB venues once they need maker rebates or tight passive quoting.

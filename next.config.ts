@@ -91,6 +91,13 @@ const nextConfig: NextConfig = {
       "./answers/**/*.yaml",
       "./alternatives/**/*.yml",
       "./alternatives/**/*.yaml",
+      // Prebuild-generated manifest of editorial hub-page git mtimes.
+      // Read at module scope by src/app/sitemap.ts so <lastmod> reflects
+      // real edit history instead of Vercel's build-container mtime
+      // reset (which pins every file to Oct 20 2018). Not committed
+      // (regenerated every build) so it must be traced in explicitly to
+      // ship in the serverless bundle.
+      "./data/page-mtimes.json",
     ],
   },
   async headers() {

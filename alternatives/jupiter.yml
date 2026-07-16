@@ -11,3 +11,13 @@ seo_title: "Jupiter alternatives: live benchmark"
 seo_description: Compare Jupiter against Mobula, OpenOcean and Raydium on live Solana quote latency. 100 USDC to long-tail token, polled every 60 seconds from 3 regions.
 
 status: live
+
+positioning: |
+  Jupiter is Solana-native and structured around two paired products. Metis is the routing primitive; Ultra is the managed execution engine on top. The Metis Update post describes sl
+  ippage-aware routing, dynamic intermediate tokens and just-in-time routing as the mechanics behind route selection, and the Ultra vs Metis comparison frames Metis as a routing libr
+  ary callers wrap with their own RPC and transaction pipeline, while Ultra bundles transaction construction, priority-fee optimization, confirmation polling and error handling behin
+  d a single /order endpoint that averages 400 to 600 milliseconds end-to-end with p95 under one second. For a Solana DEX quote-latency benchmark, the load-bearing detail is that Jup
+  iter runs the routing infrastructure that the majority of Solana DeFi frontends and aggregators call into, so the quote surface is a first-party product rather than a resold feed. 
+  The Quote API accepts inputMint, outputMint, amount and slippageBps, and returns a route that can traverse multiple Solana AMMs including Raydium, Orca, Meteora and Phoenix. Teams 
+  pick Jupiter when the target chain is Solana and a single call needs to price a swap across the full venue set. Teams migrate when the workflow leaves Solana or requires custom mar
+  ket-making beyond aggregated liquidity.

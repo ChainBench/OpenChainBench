@@ -8,6 +8,7 @@ import { SearchProvider } from "@/components/search/search-provider";
 import { buildSearchIndex } from "@/lib/search/buildIndex";
 import { SITE } from "@/data/site";
 import { safeJsonLd } from "@/lib/jsonld";
+import { PERSON_ID, PERSON_JSONLD } from "@/lib/hub-jsonld";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -140,6 +141,11 @@ const ORG_JSONLD = {
         name: "Mobula",
         url: "https://mobula.io",
       },
+      // Named founder, anchored to the canonical Person node emitted below
+      // in the same @graph. Lets Search Console + AI answer surfaces
+      // attribute the project to a real human, which is the missing
+      // E-E-A-T signal on data-driven editorial pages.
+      founder: { "@id": PERSON_ID },
       sameAs: [
         SITE.github,
         `https://x.com/${SITE.twitter.replace(/^@/, "")}`,
@@ -162,6 +168,13 @@ const ORG_JSONLD = {
         "query-input": "required name=search_term_string",
       },
     },
+    // Canonical Person node for the sole named maintainer. Referenced by
+    // Organization.founder above, by every bench's StatisticalReport
+    // (contributor) and by bench TechArticles (author + reviewedBy).
+    // Anchoring here in the site-wide @graph means every per-page node
+    // that references PERSON_ID resolves against a single authoritative
+    // definition instead of duplicating the Person shape across pages.
+    PERSON_JSONLD,
   ],
 };
 
