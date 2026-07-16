@@ -88,6 +88,7 @@ type rpcBlockEnvelope struct {
 
 type blockHeader struct {
 	Number string `json:"number"`
+	Hash   string `json:"hash"`
 }
 
 // callLatestBlock issues `eth_getBlockByNumber("latest", false)` and
@@ -100,8 +101,9 @@ type blockHeader struct {
 // node, which let cache-fronted gateways top the latency leaderboard
 // on cache hits rather than real RPC work. Fetching the full latest
 // header with a rotating request id defeats body-keyed edge caches;
-// the header's `number` field keeps the staleness check intact.
-func callLatestBlock(ctx context.Context, url string) (block uint64, result string, latencyMs float64, err error) {
+// the header's `number` field keeps the staleness check intact and its
+// `hash` feeds the bench-083 cross-provider quorum map (consensus.go).
+func callLatestBlock(ctx context.Context, url string) (block uint64, hash string, result string, latencyMs float64, err error) {
 	body := []byte(fmt.Sprintf(
 		`{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["latest",false],"id":%d}`,
 		time.Now().UnixNano(),
@@ -117,48 +119,49 @@ func callLatestBlock(ctx context.Context, url string) (block uint64, result stri
 
 	if err != nil {
 		if ctx.Err() != nil || strings.Contains(err.Error(), "deadline exceeded") || strings.Contains(err.Error(), "Timeout") {
-			return 0, "timeout", latencyMs, err
+			return 0, "", "timeout", latencyMs, err
 		}
-		return 0, "http_err", latencyMs, err
+		return 0, "", "http_err", latencyMs, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
 		_, _ = io.Copy(io.Discard, resp.Body)
-		return 0, "http_err", latencyMs, fmt.Errorf("status %d", resp.StatusCode)
+		return 0, "", "http_err", latencyMs, fmt.Errorf("status %d", resp.StatusCode)
 	}
 
 	raw, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return 0, "http_err", latencyMs, err
+		return 0, "", "http_err", latencyMs, err
 	}
 	var r rpcBlockEnvelope
 	if err := json.Unmarshal(raw, &r); err != nil {
-		return 0, "http_err", latencyMs, err
+		return 0, "", "http_err", latencyMs, err
 	}
 	if r.Error != nil {
-		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("rpc -%d: %s", r.Error.Code, r.Error.Message)
+		return 0, "", "jsonrpc_err", latencyMs, fmt.Errorf("rpc -%d: %s", r.Error.Code, r.Error.Message)
 	}
 	if len(r.Result) == 0 || string(r.Result) == "null" {
-		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("empty result")
+		return 0, "", "jsonrpc_err", latencyMs, fmt.Errorf("empty result")
 	}
 	var hdr blockHeader
 	if err := json.Unmarshal(r.Result, &hdr); err != nil {
-		return 0, "jsonrpc_err", latencyMs, err
+		return 0, "", "jsonrpc_err", latencyMs, err
 	}
 	if hdr.Number == "" {
-		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("header missing number")
+		return 0, "", "jsonrpc_err", latencyMs, fmt.Errorf("header missing number")
 	}
 	n, err := strconv.ParseUint(strings.TrimPrefix(hdr.Number, "0x"), 16, 64)
 	if err != nil {
-		return 0, "jsonrpc_err", latencyMs, err
+		return 0, "", "jsonrpc_err", latencyMs, err
 	}
-	return n, "ok", latencyMs, nil
+	return n, hdr.Hash, "ok", latencyMs, nil
 }
 
 // StartProbeLoop spawns one goroutine per (chain × provider). Each
 // goroutine runs forever, ticking every probeInterval.
 func StartProbeLoop(ctx context.Context) {
+	initConsensusMetrics()
 	for _, c := range chains() {
 		c := c
 		for _, p := range c.Providers {
@@ -185,6 +188,7 @@ func probeOne(ctx context.Context, c Chain, p Provider) {
 		probeCtx, cancel := context.WithTimeout(ctx, probeTimeout)
 		defer cancel()
 		var block uint64
+		var hash string
 		var result string
 		var latency float64
 		var err error
@@ -192,9 +196,9 @@ func probeOne(ctx context.Context, c Chain, p Provider) {
 		case "solana":
 			block, result, latency, err = callLatestSlot(probeCtx, p.URL)
 		case "polkadot":
-			block, result, latency, err = callSubstrateHeader(probeCtx, p.URL)
+			block, hash, result, latency, err = callSubstrateHeader(probeCtx, p.URL)
 		default:
-			block, result, latency, err = callLatestBlock(probeCtx, p.URL)
+			block, hash, result, latency, err = callLatestBlock(probeCtx, p.URL)
 		}
 
 		if result == "ok" {
@@ -209,6 +213,23 @@ func probeOne(ctx context.Context, c Chain, p Provider) {
 			}
 			if tip > 0 && block+gap < tip {
 				result = "stale"
+			}
+		}
+		// Bench 083: valid observations (fresh or stale, both carry a
+		// real height + hash) feed the consensus lag gauge and the
+		// height→hash quorum map; anything else deletes the lag series
+		// so a dead endpoint ages out instead of freezing. Skipped on
+		// chains whose probe cannot return the current-block hash
+		// (Solana: getSlot returns a number only; Polkadot: header
+		// carries parentHash, not the current block hash).
+		switch c.Kind {
+		case "solana", "polkadot":
+			// no consensus participation
+		default:
+			if result == "ok" || result == "stale" {
+				consensus.observe(c.Slug, p.Slug, block, hash)
+			} else {
+				rpcConsensusLag.DeleteLabelValues(p.Slug, c.Slug, currentRegion)
 			}
 		}
 		rpcCallTotal.WithLabelValues(p.Slug, c.Slug, currentRegion, result).Inc()
@@ -309,19 +330,24 @@ func callLatestSlot(ctx context.Context, url string) (slot uint64, result string
 }
 
 // substrateHeader is the shape of the `chain_getHeader` result on
-// Polkadot and every Substrate-based relay chain. The block number is
-// hex-encoded (`0x` prefix) matching the EVM header convention, so the
-// parse path reuses the same strconv rule.
+// Polkadot / Kusama and every Substrate-based relay chain. The block
+// number is hex-encoded (`0x` prefix) matching the EVM header convention,
+// so the parse path reuses the same strconv rule. `parentHash` is here
+// so the consensus.go quorum map can key on it identically to EVM
+// (bench 083 cross-provider height-hash agreement).
 type substrateHeader struct {
-	Number string `json:"number"`
+	Number     string `json:"number"`
+	ParentHash string `json:"parentHash"`
 }
 
 // callSubstrateHeader is the Polkadot probe path: chain_getHeader with a
 // rotating request id (same anti-cache rule as the EVM header fetch).
-// Returns the relay-chain block height so the caller can plug into the
-// same tips machinery the EVM path uses; staleness classification in
-// probeOne uses polkadotStaleBlockGap.
-func callSubstrateHeader(ctx context.Context, url string) (block uint64, result string, latencyMs float64, err error) {
+// Returns the block number and parent hash so the caller can plug the
+// probe result into the same tips / consensus machinery the EVM chain
+// path uses. The returned "block" is the relay-chain block height, not
+// a chain-agnostic slot: staleness classification uses
+// polkadotStaleBlockGap in probeOne.
+func callSubstrateHeader(ctx context.Context, url string) (block uint64, hash string, result string, latencyMs float64, err error) {
 	body := []byte(fmt.Sprintf(
 		`{"jsonrpc":"2.0","method":"chain_getHeader","params":[],"id":%d}`,
 		time.Now().UnixNano(),
@@ -337,41 +363,41 @@ func callSubstrateHeader(ctx context.Context, url string) (block uint64, result 
 
 	if err != nil {
 		if ctx.Err() != nil || strings.Contains(err.Error(), "deadline exceeded") || strings.Contains(err.Error(), "Timeout") {
-			return 0, "timeout", latencyMs, err
+			return 0, "", "timeout", latencyMs, err
 		}
-		return 0, "http_err", latencyMs, err
+		return 0, "", "http_err", latencyMs, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
 		_, _ = io.Copy(io.Discard, resp.Body)
-		return 0, "http_err", latencyMs, fmt.Errorf("status %d", resp.StatusCode)
+		return 0, "", "http_err", latencyMs, fmt.Errorf("status %d", resp.StatusCode)
 	}
 
 	raw, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return 0, "http_err", latencyMs, err
+		return 0, "", "http_err", latencyMs, err
 	}
 	var r rpcBlockEnvelope
 	if err := json.Unmarshal(raw, &r); err != nil {
-		return 0, "http_err", latencyMs, err
+		return 0, "", "http_err", latencyMs, err
 	}
 	if r.Error != nil {
-		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("rpc -%d: %s", r.Error.Code, r.Error.Message)
+		return 0, "", "jsonrpc_err", latencyMs, fmt.Errorf("rpc -%d: %s", r.Error.Code, r.Error.Message)
 	}
 	if len(r.Result) == 0 || string(r.Result) == "null" {
-		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("empty result")
+		return 0, "", "jsonrpc_err", latencyMs, fmt.Errorf("empty result")
 	}
 	var hdr substrateHeader
 	if err := json.Unmarshal(r.Result, &hdr); err != nil {
-		return 0, "jsonrpc_err", latencyMs, err
+		return 0, "", "jsonrpc_err", latencyMs, err
 	}
 	if hdr.Number == "" {
-		return 0, "jsonrpc_err", latencyMs, fmt.Errorf("substrate header missing number")
+		return 0, "", "jsonrpc_err", latencyMs, fmt.Errorf("substrate header missing number")
 	}
 	n, err := strconv.ParseUint(strings.TrimPrefix(hdr.Number, "0x"), 16, 64)
 	if err != nil {
-		return 0, "jsonrpc_err", latencyMs, err
+		return 0, "", "jsonrpc_err", latencyMs, err
 	}
-	return n, "ok", latencyMs, nil
+	return n, hdr.ParentHash, "ok", latencyMs, nil
 }

@@ -45,8 +45,10 @@ func StartArchiveLoop(ctx context.Context) {
 		c := c
 		if c.Kind == "solana" || c.Kind == "polkadot" {
 			// eth_getBalance at historical heights has no Solana or
-			// Substrate equivalent on public endpoints; skip the
-			// archive loop.
+			// Substrate equivalent on public endpoints (Polkadot state
+			// is accessed via state_getStorage keyed by a Blake2
+			// hashed storage key, no chain-agnostic depth analog);
+			// skip the archive loop.
 			continue
 		}
 		for _, p := range c.Providers {

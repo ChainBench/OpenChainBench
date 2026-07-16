@@ -73,11 +73,16 @@ func main() {
 		}
 	}
 	fmt.Println()
-	fmt.Println("Metrics server: :2112/metrics")
+
+	// OCB_METRICS_ADDR: explicit local-run override only (e.g. a dev
+	// box where :2112 is taken). We still ignore Railway's injected
+	// $PORT on purpose; Prometheus scrapes <service>:2112 in prod.
+	addr := envDefault("OCB_METRICS_ADDR", ":2112")
+	fmt.Printf("Metrics server: %s/metrics\n", addr)
 	fmt.Println()
 
 	go func() {
-		if err := StartMetricsServer(":2112"); err != nil {
+		if err := StartMetricsServer(addr); err != nil {
 			fmt.Printf("[fatal] metrics server: %v\n", err)
 			os.Exit(1)
 		}
@@ -88,6 +93,7 @@ func main() {
 
 	StartProbeLoop(ctx)
 	StartArchiveLoop(ctx)
+	StartIntegrityLoop(ctx)
 
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
