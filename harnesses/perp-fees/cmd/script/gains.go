@@ -225,8 +225,13 @@ func findGainsPair(client *http.Client, asset string) (*gainsPair, error) {
 	}
 	gainsCacheMu.Unlock()
 
+	// Gains v8 has grown well past 60 pairs; a narrow scan silently misses
+	// USD-quoted pairs (SOL/USD sits past the first crypto majors) and lets
+	// a same-symbol non-USD pair win the cache slot. 200 is enough headroom
+	// for the current listed universe with the 3-consecutive-errors early
+	// exit still handling the tail.
 	consecutiveErrors := 0
-	for i := 0; i < 60; i++ {
+	for i := 0; i < 200; i++ {
 		p, err := gainsReadPair(client, i)
 		if err != nil {
 			fmt.Printf("[PERP][gains] pair scan idx %d: %v\n", i, err)
@@ -240,12 +245,21 @@ func findGainsPair(client *http.Client, asset string) (*gainsPair, error) {
 		if p.From == "" {
 			continue
 		}
+		// Only cache USD-quoted pairs. Gains lists cross pairs like SOL/BTC
+		// alongside SOL/USD, and keying the cache by From alone would let a
+		// non-USD pair (with a different feeIndex/spreadP) win the slot for
+		// an asset that also has a USD pair. That was the source of the
+		// uniform-4.333-bps SOL bug: SOL's non-USD pair pinned the cache to
+		// a crypto-major feeIndex before SOL/USD was reached in the scan.
+		if !strings.EqualFold(p.To, "USD") {
+			continue
+		}
 		gainsCacheMu.Lock()
 		gainsPairCache[strings.ToUpper(p.From)] = p
 		gainsPairIdxCache[strings.ToUpper(p.From)] = i
 		gainsPairAt[strings.ToUpper(p.From)] = time.Now()
 		gainsCacheMu.Unlock()
-		if strings.EqualFold(p.From, asset) && strings.EqualFold(p.To, "USD") {
+		if strings.EqualFold(p.From, asset) {
 			return p, nil
 		}
 		time.Sleep(150 * time.Millisecond)
