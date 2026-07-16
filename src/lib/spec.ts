@@ -124,6 +124,11 @@ function overlayEditorial(stored: Benchmark, spec: Spec): Benchmark {
     // and the bench page filters without waiting on the materialise
     // worker to rewrite the snapshot.
     dimensions: spec.dimensions ?? stored.dimensions,
+    // provider_notes is a YAML editorial declaration: drives the
+    // per-provider chip rendered next to the name in the ranking row.
+    // Overlay so newly added notes surface immediately without waiting
+    // on the materialize worker to rewrite the snapshot.
+    providerNotes: spec.provider_notes ?? stored.providerNotes,
     // expected_n is a YAML editorial declaration too: drives the
     // sample-health badge logic on the page + the citable APIs. A
     // freshly added/edited value must take effect immediately, before

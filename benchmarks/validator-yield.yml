@@ -15,6 +15,11 @@ higher_is_better: true
 disclaimer: |
   Honest scope. (1) `net_yield = gross_apr × uptime`. NOT "yield net of MEV", Stakewiz `total_apy` already folds Jito MEV into gross, MEV is INCLUDED. `mev_share_bps` exists for transparency, not subtraction. (2) Solana median is dragged by ~42 vals at 0% APY (commission 100% or zero leader slots). (3) Hyperliquid: centralised sequencer, no separate MEV layer, ~30 vals only. (4) Ethereum: one network-average consensus-layer APR from the beacon spec formula, execution tips and MEV excluded.
 
+provider_notes:
+  solana: "MEV inc."
+  ethereum: "MEV excl."
+  hyperliquid: "no MEV"
+
 seo_intro: |
   This benchmark answers the question every staker asks when
   choosing a chain or a validator. what is the live net yield I
