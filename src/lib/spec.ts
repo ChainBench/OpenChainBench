@@ -297,7 +297,12 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v31: 084 indexer-latency dropped entirely (spec + harness deleted;
   // HyperSync + The Graph required paid credentials for sustained
   // cadence). Bench SET shrank.
-  ["bench-unfiltered-v32", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v32: 085 evm-block-builders ungated on prod (Titan leader).
+  // v33: batch ship 080 tokenized-stock-arb-latency + 083 rpc-reliability
+  // to prod (files added + REMOVED entries removed) + 085 file finally
+  // copied to main (was ungated in v32 but file was dev-only). Bench
+  // SET grew by 3 slugs on prod.
+  ["bench-unfiltered-v33", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -456,7 +461,9 @@ const loadAllBenchmarksCached = unstable_cache(
   // v32: bumped with bench-unfiltered-v30 (081 slug rename ws-head-latency
   // -> ws-head-latency-ethereum + ungate on prod).
   // v34: bumped with bench-unfiltered-v31 (084 indexer-latency dropped).
-  ["all-benchmarks-v35", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v36: bumped with bench-unfiltered-v33 (batch ship 080 + 083 + 085
+  // file-add to main). Bench SET grew by 3 on prod.
+  ["all-benchmarks-v36", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);

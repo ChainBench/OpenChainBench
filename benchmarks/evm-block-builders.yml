@@ -1,0 +1,232 @@
+# OpenChainBench. Bench № 085
+
+slug: evm-block-builders
+number: "085"
+title: Ethereum block builder market share
+seo_title: "Ethereum block builders benchmark 2026, live builder market share"
+seo_description: "Live benchmark of who builds Ethereum blocks. Builder market share attributed via block extraData, cross-checked against MEV-Boost relay bidtraces."
+subtitle: Share of Ethereum mainnet blocks attributed to each block builder via the extraData self-label, cross-checked against relay bidtraces. Observational, no transactions sent.
+category: Trading
+status: live
+metric: Block share (24h)
+unit: pct
+higher_is_better: true
+
+disclaimer: |
+  Attribution relies on the extraData tag each builder voluntarily stamps into its blocks. A builder can change or strip its tag at any time; unrecognized tags land in the Other row and every raw string is logged so the table grows. High share is a centralization datapoint, not a quality ranking.
+
+seo_intro: |
+  Who actually builds Ethereum? Since MEV-Boost, validators outsource
+  block construction to a handful of specialized builders, and the
+  builders sign their work: each stamps a self-label into the block's
+  extraData field ("Titan (titanbuilder.xyz)", "beaverbuild.org", and
+  so on). This benchmark decodes the extraData of every mainnet block,
+  attributes it to a curated table of known builder tags, and publishes
+  the live market share. The result is the concentration story in one
+  chart: 95 percent plus of Ethereum blocks are built by a handful of
+  private builders, and the top two regularly build most of the chain.
+  Blocks carrying an execution client's default tag (geth, reth,
+  nethermind, besu version strings) are counted as vanilla, meaning the
+  proposer built locally instead of outsourcing; that row is the live
+  measure of how much of Ethereum still self-builds. As an independent
+  cross-check the harness also polls the public bidtrace data APIs of
+  seven MEV-Boost relays (Flashbots, ultrasound, Agnostic, bloXroute
+  max-profit and regulated, Titan, Aestus) and counts delivered
+  payloads per relay, a signal that does not depend on any builder's
+  self-chosen label.
+
+abstract: |
+  We attribute every Ethereum mainnet block to its builder by decoding
+  the block's extraData field, the 32 bytes a builder uses to sign its
+  work in human-readable ASCII. The harness polls the head of the chain
+  through a keyless public RPC once per 12 second slot, backfills any
+  blocks missed between polls by number, decodes extraData to printable
+  ASCII and matches it against a curated substring table of known
+  builder tags (Titan, Quasar, Eureka, BuilderNet, beaverbuild, rsync,
+  Flashbots, Builder+ and more). Client-default tags (geth, reth,
+  nethermind, besu, erigon version strings) and empty extraData count
+  as vanilla, locally built blocks. Anything unrecognized counts as
+  Other, increments an unattributed counter, and logs the raw string so
+  the table can grow, the same philosophy as the tip-wallet table in
+  bench 016. The headline metric is each builder's percentage of all
+  blocks observed in the last 24 hours. Two companion measurements ship
+  in the same harness. First, an independent cross-check: the public
+  bidtrace APIs of seven MEV-Boost relays are polled every five minutes
+  and delivered payloads are counted per relay, deduped per relay by
+  slot high-water-mark; the same slot appearing on several relays is
+  normal because builders multi-home their bids. Second, an L2
+  soft-confirmation study: the harness holds the Arbitrum sequencer
+  feed and the Base flashblocks stream open and measures how far those
+  preconfirmation channels run ahead of the public RPC head, emitted as
+  histograms for a future bench page. At inception a 50 block live
+  sample attributed 98 percent cleanly: Titan 19, Quasar 16, Eureka 6,
+  BuilderNet 2, beaverbuild 1, Builder+ 1, one vanilla block.
+
+methodology:
+  - "Source: keyless public Ethereum RPC (ethereum-rpc.publicnode.com by default, env-overridable). eth_getBlockByNumber(latest) every 12s, matching the mainnet slot time. Gaps between polls are backfilled by block number (capped at 10) so the counters see every block, not just the ones that happen to be head at poll time."
+  - "Attribution: extraData hex is decoded to printable ASCII and matched, lowercase, against a curated substring table (titan, quasar, eureka, buildernet, beaverbuild, rsync, builder0x69, flashbots, bloxroute, builder+/btcs, penguinbuild and more). First match wins; most specific substrings are ordered first."
+  - "Vanilla detection: empty extraData or execution-client default tags (geth, reth, nethermind, besu, erigon, go1.x, platform strings) count as builder=vanilla, meaning the proposer built the block locally instead of outsourcing to a builder. This row is the live self-built share of Ethereum."
+  - "Unattributed handling: any non-empty tag not in the table counts as builder=other, increments ebb_unattributed_total, and logs the raw extraData string. The table grows from operator logs instead of silently under-counting, the bench 016 pattern."
+  - "Self-labeling caveat: extraData is voluntary. A builder can rebrand, blank its tag, or impersonate another. The relay cross-check below is the independent signal; a large divergence between extraData share and relay-side delivered payloads would surface tag games."
+  - "Relay cross-check: seven MEV-Boost relay data APIs (Flashbots, ultrasound, Agnostic, bloXroute max-profit, bloXroute regulated, Titan, Aestus) are polled keyless every 5 min via GET /relay/v1/data/bidtraces/proposer_payload_delivered?limit=50. Delivered payloads are counted per relay (ebb_relay_payloads_total), deduped per relay by slot high-water-mark. The same slot on multiple relays is normal: builders multi-home bids, so relay counters measure relay share, not a partition of blocks."
+  - "Single vantage: one harness in one region observes the chain through one public RPC. Attribution is not latency-sensitive (extraData is consensus data, identical from every vantage), so single-vantage only affects liveness, which the health gauges expose."
+  - "Companion L2 metrics: the same harness measures Arbitrum sequencer-feed soft-confirmation lag (ebb_arb_softconf_lag_milliseconds, feed arrival to public RPC visibility, offset derived at runtime) and Base flashblocks cadence plus flashblock-to-RPC lag (ebb_base_flashblock_interval_milliseconds, ebb_base_softconf_lag_milliseconds). These are per-chain, not per-builder, so this spec surfaces builder share only; the L2 lag series feed a future bench page."
+
+findings:
+  - "{{best_name}} currently builds {{best_p50}} of Ethereum blocks observed over the last 24h, across {{count}} attribution rows. The top two builders regularly account for the majority of the chain, the concentration this bench exists to make visible."
+  - "{{name:beaverbuild}} sits at {{p50:beaverbuild}}. beaverbuild dominated 2023-2024 alongside rsync; its slide against Titan and the newer Quasar and Eureka operations is the clearest sign the builder market still churns even as it concentrates."
+  - "{{name:buildernet}} carries {{p50:buildernet}}. BuilderNet is the Flashbots-initiated attempt to mutualize block building into a multi-operator network precisely because of the concentration this page measures; its share is the decentralization counter-signal to watch."
+  - "{{name:vanilla}} blocks, built locally by the proposer without a builder, sit at {{p50:vanilla}}. This is the live measure of how much of Ethereum still self-builds rather than outsourcing to the MEV supply chain."
+  - "{{worst_name}} trails at {{worst_p50}}. The long tail matters less than the head here: the bench's story is that a validator set of a million keys funnels block construction through a single-digit number of firms."
+
+faq:
+  - q: "How is a block attributed to a builder?"
+    a: "Builders stamp a self-label into the 32-byte extraData field of every block they construct, for example 'Titan (titanbuilder.xyz)' or 'beaverbuild.org'. The harness decodes extraData to ASCII and matches it against a curated substring table. Empty or client-default extraData (geth, reth, nethermind version strings) means the proposer built the block locally and counts as vanilla. Unrecognized tags count as Other and are logged raw so the table grows. At inception, 98 percent of a live 50-block sample attributed cleanly."
+  - q: "Can a builder game this by changing its extraData?"
+    a: "Yes, extraData is voluntary self-labeling, and that is disclosed as the bench's main caveat. A builder could blank its tag (blocks would fall into Other, and the unattributed counter plus raw-string logging would surface the shift within hours) or imitate another builder's tag (detectable by divergence against relay bidtraces, which report the builder's signing pubkey rather than its label). In practice builders keep their tags stable because the label is marketing: searchers pick builders partly on public share stats."
+  - q: "Why do the p50, p90 and p99 columns show the same number?"
+    a: "This bench has no latency dimension, so the percentile slots are repurposed, same convention as bench 016. Every aggregate column carries the builder's 24h block share; the sample column carries the raw block count and the success column reports the harness's own RPC poll health, not anything about the builder. The ranking signal is the share itself."
+  - q: "What is the relay cross-check and why does it not sum to 100 percent?"
+    a: "Seven MEV-Boost relays expose a public data API listing every payload they delivered to a proposer. The harness counts delivered payloads per relay every five minutes. Because builders submit the same bid through several relays and every relay that carried the winning payload reports it, one block can legitimately appear on multiple relays. Relay counts therefore measure relay market share and act as an attribution sanity check independent of extraData; they are not a partition of blocks and do not sum to the block count."
+  - q: "Why does builder concentration matter?"
+    a: "Under MEV-Boost, validators outsource block construction, so whoever builds most blocks decides transaction ordering and inclusion for most of Ethereum. Concentration in two or three private firms creates censorship surface (a dominant builder filtering transactions affects most blocks), a single point of failure for liveness of the fee market, and information asymmetry for anyone trading on-chain. Projects like BuilderNet exist specifically to mutualize this layer; this bench provides the neutral number for whether concentration is getting better or worse."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/evm-block-builders
+
+prometheus:
+  window: 24h
+  expected_freshness_seconds: 120
+  freshness_metric: ebb_eth_last_block
+
+# Real metrics emitted by the evm-block-builders harness:
+#   ebb_blocks_total{builder}                        counter (attributed blocks)
+#   ebb_unattributed_total                           counter
+#   ebb_eth_poll_health                              gauge (0|1)
+#   ebb_eth_last_block                               gauge (freshness)
+#   ebb_relay_payloads_total{relay}                  counter (cross-check)
+#   ebb_arb_softconf_lag_milliseconds                histogram (future bench)
+#   ebb_base_flashblock_interval_milliseconds        histogram (future bench)
+#   ebb_base_softconf_lag_milliseconds               histogram (future bench)
+#
+# Each "provider" is one builder attribution row. The headline is the
+# builder's share of all blocks observed in 24h (pct). p50/p90/p99/mean
+# carry the same share scalar (016 convention); sample_size carries the
+# raw block count; success carries harness poll health.
+
+providers:
+  - slug: titan
+    name: Titan
+    tag: titanbuilder.xyz, dominant private builder
+    formula: "Blocks whose extraData contains the Titan tag, as a percentage of all Ethereum blocks observed in the last 24h."
+    queries:
+      p50: 100 * sum(increase(ebb_blocks_total{builder="titan"}[24h])) / scalar(sum(increase(ebb_blocks_total[24h])))
+      p90: 100 * sum(increase(ebb_blocks_total{builder="titan"}[24h])) / scalar(sum(increase(ebb_blocks_total[24h])))
+      p99: 100 * sum(increase(ebb_blocks_total{builder="titan"}[24h])) / scalar(sum(increase(ebb_blocks_total[24h])))
+      mean: 100 * sum(increase(ebb_blocks_total{builder="titan"}[24h])) / scalar(sum(increase(ebb_blocks_total[24h])))
+      success: avg_over_time(ebb_eth_poll_health[24h])
+      sample_size: sum(increase(ebb_blocks_total{builder="titan"}[24h]))
+      series: 100 * sum(rate(ebb_blocks_total{builder="titan"}[1h])) / scalar(sum(rate(ebb_blocks_total[1h])))
+
+  - slug: quasar
+    name: Quasar
+    tag: Fast-rising private builder
+    formula: "Blocks whose extraData contains the Quasar tag, as a percentage of all Ethereum blocks observed in the last 24h."
+    queries:
+      p50: 100 * sum(increase(ebb_blocks_total{builder="quasar"}[24h])) / scalar(sum(increase(ebb_blocks_total[24h])))
+      p90: 100 * sum(increase(ebb_blocks_total{builder="quasar"}[24h])) / scalar(sum(increase(ebb_blocks_total[24h])))
+      p99: 100 * sum(increase(ebb_blocks_total{builder="quasar"}[24h])) / scalar(sum(increase(ebb_blocks_total[24h])))
+      mean: 100 * sum(increase(ebb_blocks_total{builder="quasar"}[24h])) / scalar(sum(increase(ebb_blocks_total[24h])))
+      success: avg_over_time(ebb_eth_poll_health[24h])
+      sample_size: sum(increase(ebb_blocks_total{builder="quasar"}[24h]))
+      series: 100 * sum(rate(ebb_blocks_total{builder="quasar"}[1h])) / scalar(sum(rate(ebb_blocks_total[1h])))
+
+  - slug: eureka
+    name: Eureka
+    tag: Private builder, newer entrant
+    formula: "Blocks whose extraData contains the Eureka tag, as a percentage of all Ethereum blocks observed in the last 24h."
+    queries:
+      p50: 100 * sum(increase(ebb_blocks_total{builder="eureka"}[24h])) / scalar(sum(increase(ebb_blocks_total[24h])))
+      p90: 100 * sum(increase(ebb_blocks_total{builder="eureka"}[24h])) / scalar(sum(increase(ebb_blocks_total[24h])))
+      p99: 100 * sum(increase(ebb_blocks_total{builder="eureka"}[24h])) / scalar(sum(increase(ebb_blocks_total[24h])))
+      mean: 100 * sum(increase(ebb_blocks_total{builder="eureka"}[24h])) / scalar(sum(increase(ebb_blocks_total[24h])))
+      success: avg_over_time(ebb_eth_poll_health[24h])
+      sample_size: sum(increase(ebb_blocks_total{builder="eureka"}[24h]))
+      series: 100 * sum(rate(ebb_blocks_total{builder="eureka"}[1h])) / scalar(sum(rate(ebb_blocks_total[1h])))
+
+  - slug: buildernet
+    name: BuilderNet
+    tag: Flashbots-initiated multi-operator building network
+    formula: "Blocks whose extraData contains the BuilderNet tag, as a percentage of all Ethereum blocks observed in the last 24h."
+    queries:
+      p50: 100 * sum(increase(ebb_blocks_total{builder="buildernet"}[24h])) / scalar(sum(increase(ebb_blocks_total[24h])))
+      p90: 100 * sum(increase(ebb_blocks_total{builder="buildernet"}[24h])) / scalar(sum(increase(ebb_blocks_total[24h])))
+      p99: 100 * sum(increase(ebb_blocks_total{builder="buildernet"}[24h])) / scalar(sum(increase(ebb_blocks_total[24h])))
+      mean: 100 * sum(increase(ebb_blocks_total{builder="buildernet"}[24h])) / scalar(sum(increase(ebb_blocks_total[24h])))
+      success: avg_over_time(ebb_eth_poll_health[24h])
+      sample_size: sum(increase(ebb_blocks_total{builder="buildernet"}[24h]))
+      series: 100 * sum(rate(ebb_blocks_total{builder="buildernet"}[1h])) / scalar(sum(rate(ebb_blocks_total[1h])))
+
+  - slug: beaverbuild
+    name: beaverbuild
+    tag: beaverbuild.org, former market leader
+    formula: "Blocks whose extraData contains the beaverbuild tag, as a percentage of all Ethereum blocks observed in the last 24h."
+    queries:
+      p50: 100 * sum(increase(ebb_blocks_total{builder="beaverbuild"}[24h])) / scalar(sum(increase(ebb_blocks_total[24h])))
+      p90: 100 * sum(increase(ebb_blocks_total{builder="beaverbuild"}[24h])) / scalar(sum(increase(ebb_blocks_total[24h])))
+      p99: 100 * sum(increase(ebb_blocks_total{builder="beaverbuild"}[24h])) / scalar(sum(increase(ebb_blocks_total[24h])))
+      mean: 100 * sum(increase(ebb_blocks_total{builder="beaverbuild"}[24h])) / scalar(sum(increase(ebb_blocks_total[24h])))
+      success: avg_over_time(ebb_eth_poll_health[24h])
+      sample_size: sum(increase(ebb_blocks_total{builder="beaverbuild"}[24h]))
+      series: 100 * sum(rate(ebb_blocks_total{builder="beaverbuild"}[1h])) / scalar(sum(rate(ebb_blocks_total[1h])))
+
+  - slug: bobthebuilder
+    name: Bob The Builder
+    tag: bobthebuilder.xyz, pseudonymous builder
+    formula: "Blocks whose extraData contains the bobthebuilder tag, as a percentage of all Ethereum blocks observed in the last 24h."
+    queries:
+      p50: 100 * sum(increase(ebb_blocks_total{builder="bobthebuilder"}[24h])) / scalar(sum(increase(ebb_blocks_total[24h])))
+      p90: 100 * sum(increase(ebb_blocks_total{builder="bobthebuilder"}[24h])) / scalar(sum(increase(ebb_blocks_total[24h])))
+      p99: 100 * sum(increase(ebb_blocks_total{builder="bobthebuilder"}[24h])) / scalar(sum(increase(ebb_blocks_total[24h])))
+      mean: 100 * sum(increase(ebb_blocks_total{builder="bobthebuilder"}[24h])) / scalar(sum(increase(ebb_blocks_total[24h])))
+      success: avg_over_time(ebb_eth_poll_health[24h])
+      sample_size: sum(increase(ebb_blocks_total{builder="bobthebuilder"}[24h]))
+      series: 100 * sum(rate(ebb_blocks_total{builder="bobthebuilder"}[1h])) / scalar(sum(rate(ebb_blocks_total[1h])))
+
+  - slug: btcs
+    name: Builder+
+    tag: BTCS Builder+
+    formula: "Blocks whose extraData contains the Builder+ or BTCS tag, as a percentage of all Ethereum blocks observed in the last 24h."
+    queries:
+      p50: 100 * sum(increase(ebb_blocks_total{builder="btcs"}[24h])) / scalar(sum(increase(ebb_blocks_total[24h])))
+      p90: 100 * sum(increase(ebb_blocks_total{builder="btcs"}[24h])) / scalar(sum(increase(ebb_blocks_total[24h])))
+      p99: 100 * sum(increase(ebb_blocks_total{builder="btcs"}[24h])) / scalar(sum(increase(ebb_blocks_total[24h])))
+      mean: 100 * sum(increase(ebb_blocks_total{builder="btcs"}[24h])) / scalar(sum(increase(ebb_blocks_total[24h])))
+      success: avg_over_time(ebb_eth_poll_health[24h])
+      sample_size: sum(increase(ebb_blocks_total{builder="btcs"}[24h]))
+      series: 100 * sum(rate(ebb_blocks_total{builder="btcs"}[1h])) / scalar(sum(rate(ebb_blocks_total[1h])))
+
+  - slug: vanilla
+    name: Vanilla
+    tag: Locally built by the proposer, no builder
+    formula: "Blocks with empty or execution-client default extraData (geth, reth, nethermind, besu, erigon), meaning the proposer built locally, as a percentage of all blocks observed in 24h."
+    queries:
+      p50: 100 * sum(increase(ebb_blocks_total{builder="vanilla"}[24h])) / scalar(sum(increase(ebb_blocks_total[24h])))
+      p90: 100 * sum(increase(ebb_blocks_total{builder="vanilla"}[24h])) / scalar(sum(increase(ebb_blocks_total[24h])))
+      p99: 100 * sum(increase(ebb_blocks_total{builder="vanilla"}[24h])) / scalar(sum(increase(ebb_blocks_total[24h])))
+      mean: 100 * sum(increase(ebb_blocks_total{builder="vanilla"}[24h])) / scalar(sum(increase(ebb_blocks_total[24h])))
+      success: avg_over_time(ebb_eth_poll_health[24h])
+      sample_size: sum(increase(ebb_blocks_total{builder="vanilla"}[24h]))
+      series: 100 * sum(rate(ebb_blocks_total{builder="vanilla"}[1h])) / scalar(sum(rate(ebb_blocks_total[1h])))
+
+  - slug: other
+    name: Other
+    tag: Unrecognized extraData tags, logged raw for table growth
+    formula: "Blocks whose extraData carries a non-empty tag not in the curated table, as a percentage of all blocks observed in 24h. Every raw string is logged so the attribution table grows."
+    queries:
+      p50: 100 * sum(increase(ebb_blocks_total{builder="other"}[24h])) / scalar(sum(increase(ebb_blocks_total[24h])))
+      p90: 100 * sum(increase(ebb_blocks_total{builder="other"}[24h])) / scalar(sum(increase(ebb_blocks_total[24h])))
+      p99: 100 * sum(increase(ebb_blocks_total{builder="other"}[24h])) / scalar(sum(increase(ebb_blocks_total[24h])))
+      mean: 100 * sum(increase(ebb_blocks_total{builder="other"}[24h])) / scalar(sum(increase(ebb_blocks_total[24h])))
+      success: avg_over_time(ebb_eth_poll_health[24h])
+      sample_size: sum(increase(ebb_blocks_total{builder="other"}[24h]))
+      series: 100 * sum(rate(ebb_blocks_total{builder="other"}[1h])) / scalar(sum(rate(ebb_blocks_total[1h])))
