@@ -83,6 +83,14 @@ source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/aggrega
 
 prometheus:
   window: 24h
+  # Live-feed sanity gate. Sums event-arrival changes across every
+  # aggregator series in the last 15min. If this is 0, ALL our probes
+  # are silent (harness crash / Prom scrape failing / config drift) and
+  # the per-provider "Feed down" badges would be misleading, so the UI
+  # suppresses them. If > 0, at least one provider is actively receiving
+  # events from us, which means a provider showing 0 changes on its own
+  # is genuinely silent from Codex/Mobula/Gecko upstream.
+  probe_ok: sum(changes(head_lag_seconds[15m]))
 
 faq:
   - q: "Which crypto data API has the lowest latency right now?"
@@ -154,6 +162,12 @@ providers:
       success: clamp_max(count_over_time(head_lag_seconds{aggregator="mobula"}[24h]) / 5760, 1)
       sample_size: sum(count_over_time(head_lag_seconds{aggregator="mobula"}[24h]))
       series: avg_over_time(head_lag_seconds{aggregator="mobula"}[1h]) * 1000
+      # Total gauge-value changes on this aggregator across chains and
+      # regions in the last 15min. Non-zero = fresh events arrived; 0 =
+      # every subscription has been silent for 15+ minutes (the gauge is
+      # frozen at its last value). Threshold is > 0 rather than a rate
+      # so quiet chains at night don't false-flag the aggregate view.
+      live_activity: sum(changes(head_lag_seconds{aggregator="mobula"}[15m]))
       regions:
         - region: us-east
           p50: quantile_over_time(0.50, head_lag_seconds{aggregator="mobula", region="us-east"}[24h]) * 1000
@@ -177,6 +191,7 @@ providers:
       success: clamp_max(count_over_time(head_lag_seconds{aggregator="codex"}[24h]) / 5760, 1)
       sample_size: sum(count_over_time(head_lag_seconds{aggregator="codex"}[24h]))
       series: avg_over_time(head_lag_seconds{aggregator="codex"}[1h]) * 1000
+      live_activity: sum(changes(head_lag_seconds{aggregator="codex"}[15m]))
       regions:
         - region: us-east
           p50: quantile_over_time(0.50, head_lag_seconds{aggregator="codex", region="us-east"}[24h]) * 1000
@@ -200,6 +215,7 @@ providers:
       success: clamp_max(count_over_time(head_lag_seconds{aggregator="geckoterminal"}[24h]) / 5760, 1)
       sample_size: sum(count_over_time(head_lag_seconds{aggregator="geckoterminal"}[24h]))
       series: avg_over_time(head_lag_seconds{aggregator="geckoterminal"}[1h]) * 1000
+      live_activity: sum(changes(head_lag_seconds{aggregator="geckoterminal"}[15m]))
       regions:
         - region: us-east
           p50: quantile_over_time(0.50, head_lag_seconds{aggregator="geckoterminal", region="us-east"}[24h]) * 1000

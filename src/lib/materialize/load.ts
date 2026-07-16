@@ -538,6 +538,7 @@ function applyDimensionsToSpec(spec: Spec, labels: Record<string, string>): Spec
             success: inject(p.queries.success),
             sample_size: inject(p.queries.sample_size),
             series: inject(p.queries.series),
+            live_activity: inject(p.queries.live_activity),
             regions: p.queries.regions?.map((r) => ({
               ...r,
               p50: inject(r.p50),
@@ -546,6 +547,9 @@ function applyDimensionsToSpec(spec: Spec, labels: Record<string, string>): Spec
           }
         : p.queries,
     })),
+    prometheus: spec.prometheus
+      ? { ...spec.prometheus, probe_ok: inject(spec.prometheus.probe_ok) }
+      : spec.prometheus,
   };
 }
 
@@ -654,6 +658,19 @@ async function tryLoadLive(
     const sevenDaysSec = 7 * 86_400;
     const thirtyDaysSec = 30 * 86_400;
 
+    // Bench-level "is our end fine" gate. Fetched once per sweep; feeds
+    // every provider's liveStatus verdict below so a broken harness / Prom
+    // scrape can't fake-flag every provider as down at once. Absent when
+    // the spec doesn't declare probe_ok — in which case we trust each
+    // provider's live_activity unconditionally.
+    const probeOkQuery = spec.prometheus?.probe_ok;
+    const probeOk = probeOkQuery
+      ? await prom.scalar(probeOkQuery)
+      : null;
+    // Interpret: >0 or null-when-not-declared → trust per-provider verdicts.
+    // Explicit 0 (or NaN) → the probe itself is down; suppress all badges.
+    const trustLiveVerdicts = !probeOkQuery || (probeOk != null && probeOk > 0);
+
     for (const p of spec.providers) {
       const q = p.queries;
       if (!q) return null;
@@ -663,12 +680,13 @@ async function tryLoadLive(
         q.p90 ? prom.scalar(q.p90) : Promise.resolve(null),
         q.p99 ? prom.scalar(q.p99) : Promise.resolve(null),
       ]);
-      const [mean, success, sampleSize, slotP50, slotP99] = await Promise.all([
+      const [mean, success, sampleSize, slotP50, slotP99, liveActivity] = await Promise.all([
         q.mean ? prom.scalar(q.mean) : Promise.resolve(null),
         q.success ? prom.scalar(q.success) : Promise.resolve(null),
         q.sample_size ? prom.scalar(q.sample_size) : Promise.resolve(null),
         q.slot_p50 ? prom.scalar(q.slot_p50) : Promise.resolve(null),
         q.slot_p99 ? prom.scalar(q.slot_p99) : Promise.resolve(null),
+        q.live_activity ? prom.scalar(q.live_activity) : Promise.resolve(null),
       ]);
 
       // One retry on the load-bearing percentiles. A null here is either
@@ -734,6 +752,22 @@ async function tryLoadLive(
         continue;
       }
 
+      // liveStatus: only computed when the spec declares live_activity.
+      // "unknown" wins whenever we can't tell (probe_ok says our side is
+      // broken, or the activity query returned no sample) — never falls
+      // through to "down" on ambiguous data, since a false red pill on
+      // a live provider is worse than a missing pill on a real outage.
+      let liveStatus: "healthy" | "down" | "unknown" | undefined;
+      if (q.live_activity) {
+        if (!trustLiveVerdicts || liveActivity == null) {
+          liveStatus = "unknown";
+        } else if (liveActivity > 0) {
+          liveStatus = "healthy";
+        } else {
+          liveStatus = "down";
+        }
+      }
+
       liveResults.push({
         name: p.name,
         slug: p.slug,
@@ -750,6 +784,7 @@ async function tryLoadLive(
         secondary: p.secondary,
         query: q.p50,
         formula: p.formula,
+        liveStatus,
       });
 
       if (q.series) {
