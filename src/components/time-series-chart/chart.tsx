@@ -22,6 +22,11 @@ type ChartProps = {
   onZoom?: (next: { startFrac: number; endFrac: number } | null) => void;
   onToggleExclude?: (slug: string) => void;
   onResetExcluded?: () => void;
+  /** Only render the downtime bands + pill labels when the parent bench
+   *  opted in (spec declared live_activity). Otherwise natural nulls in
+   *  any bench's series24h would fire a "DATA MISSING" pill on charts
+   *  that never asked for the feature (observed on rpc-reliability). */
+  showDowntime?: boolean;
 };
 
 export function Chart({
@@ -33,6 +38,7 @@ export function Chart({
   onZoom,
   onToggleExclude,
   onResetExcluded,
+  showDowntime = false,
 }: ChartProps) {
   const W = 1000;
   const H = 360;
@@ -389,7 +395,7 @@ export function Chart({
         {/* Downtime bands. Rendered before the lines so the stroke stays
             on top of the highlight. Contiguous null-buckets (from spec
             `unless changes == 0`) become visible red columns. */}
-        <DowntimeBands drawn={drawn} padT={padT} innerH={innerH} />
+        {showDowntime && <DowntimeBands drawn={drawn} padT={padT} innerH={innerH} />}
 
         {/* Areas + lines */}
         <SeriesPaths drawn={drawn} unit={unit} />
