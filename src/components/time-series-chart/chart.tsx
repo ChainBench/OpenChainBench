@@ -6,7 +6,7 @@ import {
   type LineWithColor,
 } from "./scales";
 import { YAxis, XAxis } from "./axis";
-import { SeriesGradients, SeriesPaths, HoverMarkers, type DrawnLine } from "./series";
+import { SeriesGradients, SeriesPaths, DowntimeBands, HoverMarkers, type DrawnLine } from "./series";
 import { Legend } from "./legend";
 import { Tooltip } from "./tooltip";
 
@@ -385,6 +385,11 @@ export function Chart({
 
         {/* X tick labels */}
         <XAxis xTicks={xTicks} padL={padL} padT={padT} innerW={innerW} innerH={innerH} />
+
+        {/* Downtime bands. Rendered before the lines so the stroke stays
+            on top of the highlight. Contiguous null-buckets (from spec
+            `unless changes == 0`) become visible red columns. */}
+        <DowntimeBands drawn={drawn} padT={padT} innerH={innerH} />
 
         {/* Areas + lines */}
         <SeriesPaths drawn={drawn} unit={unit} />
