@@ -43,17 +43,22 @@ type Asset struct {
 	USDGIsC0 bool
 }
 
+// Illiquid tickers dropped 2026-07-16: GOOGL, TSLA, MSFT, AMZN, SPY.
+// Their Uniswap v4 pools on Robinhood Chain have no arb activity;
+// the pool spot price stays frozen at the last swap value (repeats
+// tick after tick) while the Yahoo reference moves normally. Ref
+// triggers fire but the pool never converges within the settle
+// window, so events roll over as still_open with zero latency
+// samples. The 5 dropped names surfaced as "unresponsive" on the
+// bench page with no headline number. Cohort restricted to the 6
+// tickers with observable arb activity: NVDA, AAPL, PLTR, META,
+// AMD, MU. Re-add when a pool's swap volume picks up.
 var assets = []Asset{
 	{Symbol: "NVDA", Token: "0xd0601CE157Db5bdC3162BbaC2a2C8aF5320D9EEC", PoolID: "0x3bb34a44f1b2b5f32c034c38a53065a521a47b199700fa9bd19d60985ff24bf1", FeePPM: 3000, USDGIsC0: true},
 	{Symbol: "AAPL", Token: "0xaF3D76f1834A1d425780943C99Ea8A608f8a93f9", PoolID: "0xda4116b5894ee7479e64eae9276e1a2944ef0e5ce863a299d296a15618deee01", FeePPM: 10000, USDGIsC0: true},
-	{Symbol: "GOOGL", Token: "0x2e0847E8910a9732eB3fb1bb4b70a580ADAD4FE3", PoolID: "0xef22239f96c6ac95dcd57b90c6b14c0cc8c3c16844def34daef68dc9dd945344", FeePPM: 10000, USDGIsC0: false},
-	{Symbol: "TSLA", Token: "0x322F0929c4625eD5bAd873c95208D54E1c003b2d", PoolID: "0x8517f8071ae5b831b738052f12125e8e3d6c158b78728aa44ce3b25e5104d32e", FeePPM: 3000, USDGIsC0: false},
 	{Symbol: "PLTR", Token: "0x894E1EC2D74FFE5AEF8Dc8A9e84686acCB964F2A", PoolID: "0xee430ee1003e1985e1828a01b9a20dad67ad4302994fe2abb4a173de4ac54623", FeePPM: 10000, USDGIsC0: true},
 	{Symbol: "META", Token: "0xc0D6457C16Cc70d6790Dd43521C899C87ce02f35", PoolID: "0x5875d407a42965b0e768c8925cea290e06fa50603ef34fc99eb92a1050e6ae36", FeePPM: 3000, USDGIsC0: true},
 	{Symbol: "AMD", Token: "0x86923f96303D656E4aa86D9d42D1e57ad2023fdC", PoolID: "0xde9f85fdd9e05a943a52f2c69ffafe3064a3287df03d02c9b431bc92d4781274", FeePPM: 10000, USDGIsC0: true},
-	{Symbol: "MSFT", Token: "0xe93237C50D904957Cf27E7B1133b510C669c2e74", PoolID: "0xace02af66d24427b162f80329e039b78c226fb9a79669f5e18d5feec2aa0c056", FeePPM: 20000, USDGIsC0: true},
-	{Symbol: "AMZN", Token: "0x12f190a9F9d7D37a250758b26824B97CE941bF54", PoolID: "0xa3280c768df670a535d14af8c22ad3907f2acfc0277c03309fb4d5fc8d43447e", FeePPM: 20000, USDGIsC0: false},
-	{Symbol: "SPY", Token: "0x117cc2133c37B721F49dE2A7a74833232B3B4C0C", PoolID: "0x7eeda68cd84620339e6ad4bf054af9b19878ac13139991c7aaec018c40a8bb6a", FeePPM: 10000, USDGIsC0: false},
 	{Symbol: "MU", Token: "0xfF080c8ce2E5feadaCa0Da81314Ae59D232d4afD", PoolID: "0x6fa3ee0048e78bf0a513eb0ab56f482944a767c21db990fcf555605e69f05659", FeePPM: 10000, USDGIsC0: true},
 }
 
