@@ -292,7 +292,7 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v31: 084 indexer-latency dropped entirely (spec + harness deleted;
   // HyperSync + The Graph required paid credentials for sustained
   // cadence). Bench SET shrank.
-  ["bench-unfiltered-v31", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  ["bench-unfiltered-v32", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -451,7 +451,7 @@ const loadAllBenchmarksCached = unstable_cache(
   // v32: bumped with bench-unfiltered-v30 (081 slug rename ws-head-latency
   // -> ws-head-latency-ethereum + ungate on prod).
   // v34: bumped with bench-unfiltered-v31 (084 indexer-latency dropped).
-  ["all-benchmarks-v34", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  ["all-benchmarks-v35", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
