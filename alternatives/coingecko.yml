@@ -9,3 +9,12 @@ intro: |
 
 seo_title: "CoinGecko alternatives: live benchmark"
 seo_description: Compare CoinGecko alternatives on the number of blockchains each major onchain data API officially supports. Live data, refreshed every six hours.
+
+positioning: |
+  CoinGecko's moat is aggregation breadth across both centralized and decentralized venues under a single independent methodology. The core surface indexes 1,500+ CEXs and 18,000+ co
+  ins; the on-chain arm, delivered through GeckoTerminal and exposed under the /onchain endpoint family, adds 200+ blockchain networks, 1,500+ DEXs and tens of millions of tokens. Fo
+  r a chain-coverage benchmark on market data, this is the widest reported footprint of any listed provider in the cluster. Delivery is REST across every tier, with WebSocket and web
+  hook channels gated to higher tiers. Data is not sourced from partner feeds or exchange-owned data providers but crawled and aggregated independently, which is the architectural re
+  ason CoinGecko's price on a long-tail token often differs from a venue-native quote. The /onchain/networks and /onchain/pools endpoints are the practical entry points for chain-sco
+  ped queries. CoinGecko wins for teams building broad market-data dashboards, tax and PnL products, or research tools that need one API to cover every chain a user might touch; team
+  s focused on a single L2 or a specific DEX with millisecond freshness typically pair it with a narrower, WebSocket-native vendor.

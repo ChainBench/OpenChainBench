@@ -11,3 +11,13 @@ seo_title: "PublicNode alternatives: live benchmark"
 seo_description: "PublicNode alternatives on eth_blockNumber p50 latency. dRPC, 1RPC, Tenderly, Nodies, Lava ranked live."
 
 status: live
+
+positioning: |
+  PublicNode is a free, registration-less RPC endpoint service operated by Allnodes, a node-hosting company. Every endpoint is served from Allnodes' own validator and full-node fleet
+   across 78 blockchains, with global load balancing across regional clusters and no per-user API key. MEV-protected endpoints are enabled by default on Ethereum, Base, BSC, Solana, 
+  and Arbitrum, routing transactions through private order-flow relays rather than the public mempool. This is architecturally distinct from routing layers such as dRPC, which multip
+  lex third-party providers, and distinct from developer-tool RPCs such as Tenderly, which layer proprietary simulation methods on top. PublicNode owns the underlying hardware but ex
+  poses only standard JSON-RPC, WebSocket, and where applicable gRPC and REST surfaces. For the rpc-capabilities axis, this means method coverage is whatever the upstream client (Get
+  h, Erigon, Solana Agave, and so on) natively exposes, without extended tenderly_ or debug_ namespaces added on top. Uptime and latency depend on a single operator rather than a rou
+  ting pool. The typical use case is dApps that need a fallback or public endpoint without a signup flow; teams migrate to paid providers when they need archive depth, guaranteed cap
+  acity, or historical trace methods PublicNode does not expose.
