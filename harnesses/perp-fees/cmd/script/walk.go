@@ -50,6 +50,33 @@ func walkBookForNotional(levels []bookLevel, notional float64) (float64, error) 
 	return notional / totalQty, nil
 }
 
+// totalBookNotional sums price*size across every level, giving the total
+// visible USD depth on this side of the book.
+func totalBookNotional(levels []bookLevel) float64 {
+	total := 0.0
+	for _, l := range levels {
+		if l.Px <= 0 || l.Sz <= 0 {
+			continue
+		}
+		total += l.Px * l.Sz
+	}
+	return total
+}
+
+// walkBookForNotionalCapped walks like walkBookForNotional but returns an
+// error when the walk would consume more than maxFillRatio of the total
+// visible book depth. Depth-capped venues (Paradex depth=100) can otherwise
+// publish an eaten-through effective price when the tier notional is close
+// to or larger than the visible book. Use this for venues where the fetched
+// depth is a hard ceiling on visible liquidity.
+func walkBookForNotionalCapped(levels []bookLevel, notional, maxFillRatio float64) (float64, error) {
+	total := totalBookNotional(levels)
+	if total > 0 && notional > total*maxFillRatio {
+		return 0, fmt.Errorf("book_too_thin: %.2f of visible %.2f > %.0f%%", notional, total, maxFillRatio*100)
+	}
+	return walkBookForNotional(levels, notional)
+}
+
 // applyBookTiers walks the already-fetched ask levels once per tier notional
 // and fills s.Tiers with taker fee + tier spread. Call it after s.TakerFeeBps
 // is known. Costs no extra API calls: the book was fetched for the headline
@@ -63,6 +90,27 @@ func walkBookForNotional(levels []bookLevel, notional float64) (float64, error) 
 func applyBookTiers(s *PerpSample, levels []bookLevel, mid float64) {
 	for _, n := range tierNotionals {
 		effective, err := walkBookForNotional(levels, n)
+		if err != nil {
+			s.SkippedTiers = append(s.SkippedTiers, notionalLabel(n))
+			continue
+		}
+		spread := (effective - mid) / mid * 10000
+		s.Tiers = append(s.Tiers, TierSample{
+			Notional:  notionalLabel(n),
+			SpreadBps: spread,
+			AllInBps:  s.TakerFeeBps + spread,
+		})
+	}
+}
+
+// applyBookTiersCapped is like applyBookTiers but skips any tier whose
+// notional would consume more than maxFillRatio of the visible book depth.
+// Use this on venues that expose a hard depth cap (e.g. Paradex depth=100)
+// where the top of a shallow book gives a misleading "effective price" when
+// the walk eats through the entire visible side.
+func applyBookTiersCapped(s *PerpSample, levels []bookLevel, mid, maxFillRatio float64) {
+	for _, n := range tierNotionals {
+		effective, err := walkBookForNotionalCapped(levels, n, maxFillRatio)
 		if err != nil {
 			s.SkippedTiers = append(s.SkippedTiers, notionalLabel(n))
 			continue
