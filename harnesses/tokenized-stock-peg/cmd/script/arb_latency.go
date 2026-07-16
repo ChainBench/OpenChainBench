@@ -27,10 +27,18 @@ import (
 //   - if in flight but not yet converged, keep waiting (no cap: the
 //     "unresolved" case is the story we want to tell too)
 
+// Trigger threshold lowered from 50 bps to 25 bps on 2026-07-16 after
+// 24h of live data returned only 7 samples across 3 of 11 assets.
+// Nasdaq stocks routinely move 25 bps in a 90s window while a 50 bps
+// move is a headline event, so the tighter cohort under-sampled the
+// steady-state arb latency the bench is meant to measure. Convergence
+// band stays at 20 bps: the "how close is the pool to fair" question
+// is unchanged, only the trigger sensitivity moves.
 const (
-	arbTriggerBps   = 50.0
-	arbConvergedBps = 20.0
-	arbMoveWindow   = 90 * time.Second // ~1 minute plus one poll jitter
+	arbTriggerBps    = 25.0
+	arbConvergedBps  = 20.0
+	arbMoveWindow    = 90 * time.Second // ~1 minute plus one poll jitter
+	subPollLatencySec = 60.0            // credit sub-poll arb closures at one pollInterval
 )
 
 var (
@@ -111,9 +119,7 @@ func (t *arbTracker) observe(asset, issuer string, now time.Time, ref, pool floa
 
 	if !inFlight {
 		// Start a new event only if the reference actually moved and
-		// the pool is currently out of the convergence band. If the
-		// pool was already within band during the move, arbs closed
-		// it faster than one tick, credit as "sub-poll".
+		// the pool is currently out of the convergence band.
 		if moveBps >= arbTriggerBps && devBps > arbConvergedBps {
 			t.open[asset] = arbEvent{
 				startedAt:     now,
@@ -122,6 +128,18 @@ func (t *arbTracker) observe(asset, issuer string, now time.Time, ref, pool floa
 				poolAtTrigger: pool,
 			}
 			tspArbOpenAgeSeconds.WithLabelValues(asset, issuer).Set(0)
+			return
+		}
+		// Sub-poll convergence: the reference moved past the trigger
+		// AND the pool is already within band on this tick, so the arb
+		// closed inside a single poll interval. Historically dropped;
+		// now credited at pollInterval seconds so the histogram picks
+		// up the fast-arb tail that dominates on liquid assets. Without
+		// this, calm sessions publish zero events for well-behaved
+		// pools and the leaderboard reads sparse.
+		if moveBps >= arbTriggerBps {
+			tspArbLatencySeconds.WithLabelValues(asset, issuer).Observe(subPollLatencySec)
+			tspArbEventTotal.WithLabelValues(asset, issuer, "converged").Inc()
 		}
 		return
 	}
