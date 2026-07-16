@@ -39,7 +39,7 @@ related:
 
 seo_title: "Which cross-chain bridge has the cheapest USDC fee in 2026?"
 seo_description: "OpenChainBench ranks six USDC routers (Mobula, Relay, LI.FI, deBridge, Across, Near Intents) on all in cost at $300 notional across Solana, Base and Arbitrum. Live 24h p50 leader on the bench page."
-status: liveexpert_take_reviewed: "2026-07-16"expert_take_reviewed: "2026-07-16"
+status: live
 
 expert_take: |
   Bridging cost lives inside three architectures with different fee shapes. Direct protocols charge a native protocol fee that is largely fixed, so it dominates the percentage at small ticket sizes and dilutes as notional grows. Aggregators route through underlying bridges they have integrated and add a routing markup on top; their best route is constrained to their integration set. Intent layers dispatch the transfer to a solver willing to settle it, so the price the user sees is a competitive spread rather than a sum of fees, and the leader on a corridor is whichever solver has the deepest inventory on that route at that moment. This is why a ranking swaps meaningfully by notional and by corridor; the same table looks different at $300, at $10000, and on a corridor where solver inventory is thin. Readers should read the all-in cost (fee plus slippage plus destination gas) rather than the rack rate any provider advertises, since aggregators and intent layers price implicitly through the spread and a rack-rate comparison rewards the wrong architecture. A common misconception is that aggregators are always cheaper; they are cheaper only on corridors their integration set dominates.

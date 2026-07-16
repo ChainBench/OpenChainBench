@@ -35,7 +35,7 @@ related:
 
 seo_title: "What is the fastest free Ethereum RPC? Live no-key latency ranking"
 seo_description: "{{best_name}} leads free Ethereum RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). 8 no-key endpoints probed every 60s from 3 regions, with success rates and archive depth audits."
-status: liveexpert_take_reviewed: "2026-07-16"expert_take_reviewed: "2026-07-16"
+status: live
 
 expert_take: |
   Free public RPCs share three architectural constraints that decide the ranking. First, they run on anycast edges, so the leader from one region regularly loses to another gateway from a different region; a global average hides that. Second, they answer from a shared node pool with no per-caller quota, which means a fast p50 during quiet hours can collapse under a memecoin mint. Third, and least discussed, a public gateway can return an HTTP 200 whose body is a JSON-RPC error, and any latency table that does not classify response bodies will silently reward a gateway that fails fast. Readers should look past the headline p50 at three things: the success rate column on the row they are picking, the p99 relative to the p50 (a small gap means the tail is real, a large gap means the provider is bursty), and whether archive depth is audited at all. A gateway that only serves the last day of state answers a different question than a free archive endpoint.

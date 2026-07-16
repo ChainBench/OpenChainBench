@@ -41,7 +41,7 @@ related:
 
 seo_title: "Which perpetual DEX has the lowest all in fees on ETH in 2026?"
 seo_description: "OpenChainBench ranks eight perp DEXes (Lighter, Hyperliquid, dYdX, GMX, gains.trade, Paradex, Extended, Polymarket) on the same $1000 ETH 10x long all in cost. Live 24h leader on the bench page."
-status: liveexpert_take_reviewed: "2026-07-16"expert_take_reviewed: "2026-07-16"
+status: live
 
 expert_take: |
   Rack rate taker fee is the number every comparison table quotes, and it is also the number a trader stops being able to read the moment a market order goes in. The other half of the bill lives in the orderbook: the half spread and the price impact walked at the trader's notional. On a deep book, that component is small and the all-in cost tracks the rack rate closely. On a thin book, the same rack rate can clock several multiples worse once notional is walked through visible liquidity. A zero-fee taker on a shallow market is not free; the cost has moved from the fee schedule into the spread. Readers should also separate open cost from funding, since funding is a signed rate paid every hour the position is held and belongs on a different mental line item than the fee paid at open. A common misread is comparing one venue's rack rate to another venue's all-in cost; the fair comparison walks the same notional through both books and sums fees, spread and impact into one basis-point number.
