@@ -1,9 +1,9 @@
 # OpenChainBench. Bench № 081
 
-slug: ws-head-latency
+slug: ws-head-latency-ethereum
 number: "081"
-title: Fastest WebSocket newHeads push, live block-push lag across RPC providers
-seo_title: "Fastest WebSocket RPC newHeads push 2026"
+title: Fastest Ethereum WebSocket newHeads push, live block-push lag across RPC providers
+seo_title: "Fastest Ethereum WebSocket RPC newHeads push 2026"
 seo_description: "{{best_name}} pushes Ethereum newHeads first. Live WebSocket block-push lag for PublicNode, dRPC and Tenderly, measured per block against the earliest arrival in the cohort."
 subtitle: Per-block WebSocket push lag in milliseconds versus the earliest provider to deliver the same Ethereum head, measured continuously from one eu-west vantage point.
 
