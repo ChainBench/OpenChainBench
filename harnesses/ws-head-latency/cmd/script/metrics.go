@@ -16,15 +16,16 @@ import (
 // VPS + Railway hybrid) never collides series across vantage points
 // and no observation site needs to know about the region.
 //
-// Region resolution order at startup: OCB_REGION, then
-// RAILWAY_REPLICA_REGION (Railway sets it automatically), then the
-// eu-west default that matches the historical single-vantage Paris
-// VPS deployment. Set OCB_REGION explicitly on each replica to
+// Region resolution order at startup: REGION (matches the convention
+// used by rpc-capabilities and every other multi-region harness on
+// Railway), then RAILWAY_REPLICA_REGION (Railway auto-sets it), then
+// the eu-west default that matches the historical single-vantage
+// Paris VPS deployment. Set REGION explicitly on each replica to
 // guarantee a stable value across redeploys.
 var region = resolveRegion()
 
 func resolveRegion() string {
-	if r := os.Getenv("OCB_REGION"); r != "" {
+	if r := os.Getenv("REGION"); r != "" {
 		return r
 	}
 	if r := os.Getenv("RAILWAY_REPLICA_REGION"); r != "" {
