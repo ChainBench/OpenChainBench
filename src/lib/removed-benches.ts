@@ -52,5 +52,4 @@ export const REMOVED_BENCH_SLUGS = new Set([
   // follows suit and is not gated.
   "oracle-freshness",
   "rpc-reliability",
-  "evm-block-builders",
 ]);
