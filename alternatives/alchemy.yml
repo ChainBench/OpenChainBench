@@ -9,3 +9,12 @@ intro: |
 
 seo_title: "Alchemy alternatives: live benchmark"
 seo_description: Compare Alchemy alternatives on real-time data freshness. Live head-lag against a canonical archive node, refreshed every minute and published openly.
+
+positioning: |
+  Alchemy's moat is a vertically integrated node platform. It runs archive nodes across 100+ chains (approximately 120 listed on the chain-connect page) and layers a data stack on to
+  p of the same infrastructure (Node API, Prices API, Notify webhooks, Subgraphs). For head lag, the relevant surface is the WebSocket subscription endpoint (eth_subscribe, plus prop
+  rietary alchemy_pendingTransactions and alchemy_minedTransactions) and the Notify webhook system for Address Activity and Custom Webhooks. Alchemy pushes filtered logs rather than 
+  pre-decoded swap events, which means an integrator must maintain a Transfer or Swap topic filter and decode the ABI client-side. The Prices API is a REST product with cached quotes
+   drawn from CEX plus DEX aggregation, not a live swap feed. Alchemy tends to win when a team already runs the Node API for reads and wants notifications on the same account boundar
+  y; teams that need a decoded, cross-chain DEX trade stream typically migrate to a purpose-built aggregator because the client-side decoding overhead adds pipeline hops. Chain cover
+  age skews heavily to EVM plus Solana; long-tail EVM L2s and Bitcoin sit inside the standard Node API surface.

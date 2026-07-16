@@ -9,3 +9,12 @@ intro: |
 
 seo_title: "The Graph alternatives: live benchmark"
 seo_description: Compare The Graph alternatives on the number of blockchains each major onchain data provider officially supports. Live data, refreshed every six hours.
+
+positioning: |
+  The Graph's moat is a decentralized indexing network. Independent Indexers stake GRT and serve GraphQL queries against Subgraphs, which are custom indexing manifests deployed per c
+  ontract or per protocol. Substreams sits underneath as a parallelized firehose for real-time and historical block data. The subgraph surface officially supports 60+ chains includin
+  g Ethereum, Solana, Arbitrum, Optimism, Polygon and Base. The Token API, built by Pinax on top of Substreams, is a REST product covering 25 chains at last count (Arbitrum, Avalanch
+  e, Base, Bitcoin, Blast, BNB, Celo, Ethereum, Gnosis, HyperEVM, Linea, Litecoin, MegaETH, Optimism, Polygon, Robinhood Chain, Solana, Soneium, Unichain, Vaulta, WAX, X Layer, zkSyn
+  c, Zora among others). For a chain-coverage benchmark on market data, The Graph is broad through the subgraph route but the coverage is contingent: each chain and each protocol nee
+  ds a maintained subgraph that returns the requested market fields. Teams win when they own their data model; teams that want turnkey market data on every long-tail chain often reac
+  h for an aggregator instead.

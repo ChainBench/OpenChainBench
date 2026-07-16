@@ -1,4 +1,4 @@
-import { statSync } from "node:fs";
+import { readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import type { MetadataRoute } from "next";
 import { getBenchmarks } from "@/data/benchmarks";
@@ -56,7 +56,32 @@ const BUILD_TIME = process.env.NEXT_PUBLIC_BUILD_TIME
 // crawler sees a current timestamp and keeps the pages in the warm pool.
 const REAL_REPO_BIRTH = new Date("2024-01-01");
 
+// Prebuilt manifest of `src/app/<rel>` → git-log %ct (Unix seconds) for
+// editorial hub pages. Written by scripts/emit-page-mtimes.ts during
+// prebuild so the sitemap can emit a real per-page <lastmod> derived
+// from git history, instead of Vercel's build-container mtime (which
+// resets every file to Oct 20 2018). Missing entries silently fall
+// through to the statSync path below, then to BUILD_TIME. Read once
+// at module scope so /sitemap.xml doesn't restat the file per page.
+const MTIME_MANIFEST_PATH = path.join(
+  process.cwd(),
+  "data",
+  "page-mtimes.json",
+);
+const MTIME_MANIFEST: Record<string, number> = (() => {
+  try {
+    return JSON.parse(readFileSync(MTIME_MANIFEST_PATH, "utf8"));
+  } catch {
+    return {};
+  }
+})();
+
 function pageMtime(relPath: string): Date {
+  const gitSeconds = MTIME_MANIFEST[relPath];
+  if (typeof gitSeconds === "number" && Number.isFinite(gitSeconds)) {
+    const gitDate = new Date(gitSeconds * 1000);
+    if (gitDate > REAL_REPO_BIRTH) return gitDate;
+  }
   try {
     const mtime = statSync(path.join(process.cwd(), "src/app", relPath)).mtime;
     if (mtime < REAL_REPO_BIRTH) return BUILD_TIME;
@@ -97,6 +122,7 @@ function staticHubRoutes(catalogTs: Date): MetadataRoute.Sitemap {
     { url: `${SITE.url}/partners`, lastModified: pageMtime("partners/page.tsx"), changeFrequency: "monthly", priority: 0.7 },
     { url: `${SITE.url}/badges`, lastModified: catalogTs, changeFrequency: "daily", priority: 0.7 },
     { url: `${SITE.url}/about`, lastModified: pageMtime("about/page.tsx"), changeFrequency: "monthly", priority: 0.5 },
+    { url: `${SITE.url}/team`, lastModified: pageMtime("team/page.tsx"), changeFrequency: "monthly", priority: 0.6 },
     { url: `${SITE.url}/press`, lastModified: pageMtime("press/page.tsx"), changeFrequency: "monthly", priority: 0.4 },
     { url: `${SITE.url}/compare`, lastModified: pageMtime("compare/page.tsx"), changeFrequency: "weekly", priority: 0.6 },
     { url: `${SITE.url}/alternatives`, lastModified: pageMtime("alternatives/page.tsx"), changeFrequency: "weekly", priority: 0.6 },

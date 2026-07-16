@@ -16,6 +16,7 @@ import {
   canonicalChainSlug,
   matchesChainSlug,
 } from "@/lib/chain-aliases";
+import { PERSON_ID } from "@/lib/hub-jsonld";
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
 
 // Dedicated per-chain landing pages. Only chains that have a hand-written
@@ -367,7 +368,11 @@ export default async function BenchmarkChainPage({
         ...(citableAsOf(benchmark)
           ? { dateModified: benchmark.lastRunAt }
           : {}),
-        author: { "@id": `${SITE.url}/#org` },
+        // Dual author + reviewedBy. Named human first (E-E-A-T), Org
+        // second (institutional attribution). Same pattern as the
+        // parent /benchmarks/[slug] page.
+        author: [{ "@id": PERSON_ID }, { "@id": `${SITE.url}/#org` }],
+        reviewedBy: { "@id": PERSON_ID },
         publisher: { "@id": `${SITE.url}/#org` },
         about: { "@id": `${benchmarkUrl}#dataset` },
         isPartOf: { "@id": `${benchmarkUrl}#article` },

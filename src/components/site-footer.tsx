@@ -36,6 +36,7 @@ export function SiteFooter() {
               { label: "Alternatives", href: "/alternatives" },
               { label: "Answers", href: "/answers" },
               { label: "Methodology", href: "/methodology" },
+              { label: "Team", href: "/team" },
               { label: "Press kit", href: "/press" },
             ]}
           />
