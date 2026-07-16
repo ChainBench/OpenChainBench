@@ -40,11 +40,12 @@ abstract: |
   benchmark; this page is the Base-scoped answer.
 
 methodology:
-  - "Providers measured (keyless WebSocket endpoints): PublicNode (wss://base-rpc.publicnode.com), dRPC (wss://base.drpc.org). Tenderly does not expose a keyless Base WebSocket path and is scoped out until a public gateway is announced."
+  - "Providers measured (keyless WebSocket endpoints): PublicNode (wss://base-rpc.publicnode.com), dRPC (wss://base.drpc.org). Tenderly does not expose a keyless Base WebSocket path and is scoped out until a public gateway is announced. Keyed providers (Alchemy, Infura, Chainstack, QuickNode) join the cohort when contributor keys are wired via WS_URL_<PROVIDER>_BASE env vars."
+  - "Cohort saturation: Blast, LlamaRPC, BlockPI, 1RPC, mainnet.base.org and Ankr all reject a keyless WebSocket handshake at the time of ship (verified 2026-07), which is why the keyless tier stops at two."
   - "Chain scope: every query on this page is pinned to chain=\"base\". Base block cadence is 2 seconds, so a 24h window carries roughly 43000 samples per provider (versus ~7200 on Ethereum), well above the 7000 sample floor used by the parent bench."
   - "Race scoring: identical to the parent [ws-head-latency](https://openchainbench.com/benchmarks/ws-head-latency-ethereum) benchmark. First provider to deliver block N sets T0. Each provider's sample for block N is arrival(N) minus T0 in milliseconds. Cohort closes 5 seconds after the first arrival; late arrivals are scored as missed blocks via ws_block_gap_total rather than as huge latency samples."
   - "Relative, not absolute: subtraction of two arrivals over the same path removes vantage-point network latency. Consequence: the fastest provider reads near zero by construction. The honest readings are win rate, trailers' lag distribution, and gap counts."
-  - "Aggregation: per-provider lag histogram (5ms to 10s exponential buckets), p50/p90/p99 via histogram_quantile over the 24h rate. Coverage score = ws_head_blocks_seen_total divided by cohort maximum, clamped to 1. A provider that pushes fast but skips blocks loses on this column, not on the latency percentiles."
+  - "Aggregation: per-provider lag histogram with a sub-millisecond floor (0.5 ms bucket up through 10 s tail), p50/p90/p99 via histogram_quantile over the 24h rate. Coverage score = ws_head_blocks_seen_total divided by cohort maximum, clamped to 1. A provider that pushes fast but skips blocks loses on this column, not on the latency percentiles."
   - "Connection discipline: one persistent WebSocket per (provider, chain), client ping every 30s, read deadline 60s, 90s head watchdog forcing reconnect when a socket keeps the heartbeat alive but silently drops the subscription. Exponential backoff 2s to 60s on reconnect."
   - "Vantage point: a single eu-west host. Multi-region deployment is a follow-up on the parent bench roadmap; the same limitation and the reasoning behind it are documented there."
 
