@@ -46,9 +46,20 @@ export function DowntimeBands({ drawn, padT, innerH }: DowntimeBandsProps) {
   const all: Band[] = [];
   for (const d of drawn) {
     if (d.excluded) continue;
+    // Only count gap runs that start AFTER the first observed sample.
+    // A leading run of nulls (Prom retention shorter than the visible
+    // window, harness started mid-range, or provider added recently)
+    // is "we didn't measure yet", not "provider was down for a week".
+    // Without this guard the 30D view on aggregator-head-lag rendered
+    // a chart-wide band during Prom's initial fill period.
+    let seenData = false;
     let runStart: number | null = null;
     const push = (endX: number) => {
       if (runStart == null) return;
+      if (!seenData) {
+        runStart = null;
+        return;
+      }
       const startX = d.pts[runStart].x;
       all.push({
         slug: d.slug,
@@ -66,9 +77,11 @@ export function DowntimeBands({ drawn, padT, innerH }: DowntimeBandsProps) {
         if (runStart == null) runStart = i;
       } else {
         push(d.pts[i].x);
+        seenData = true;
       }
     }
-    // Trailing gap that runs to the current time.
+    // Trailing gap that runs to the current time — meaningful only
+    // when the series had prior data (same seenData guard).
     if (runStart != null) push(d.pts[d.pts.length - 1].x);
   }
   if (all.length === 0) return null;
@@ -133,10 +146,13 @@ export function DowntimeBands({ drawn, padT, innerH }: DowntimeBandsProps) {
       ))}
       {all.map((b, i) => {
         const cx = b.x + b.w / 2;
-        // "NAME DOWN" width estimate: ~5.5 px per char plus 14 px of
-        // horizontal padding (7 each side).
-        const label = `${b.name.toUpperCase()} DOWN`;
-        const pillW = Math.max(50, label.length * 5.5 + 14);
+        // "NAME DATA MISSING" width estimate: ~5.5 px per char plus
+        // 14 px of horizontal padding (7 each side). "DATA MISSING"
+        // stays neutral: absence of samples could be the provider
+        // going down, our harness losing its WebSocket, or a Prom
+        // scrape failure — the pill doesn't blame either side.
+        const label = `${b.name.toUpperCase()} DATA MISSING`;
+        const pillW = Math.max(80, label.length * 5.5 + 14);
         const pillY = padT + 2 + b.slot * (PILL_H + PILL_GAP);
         const pillX = Math.max(0, cx - pillW / 2);
         return (
