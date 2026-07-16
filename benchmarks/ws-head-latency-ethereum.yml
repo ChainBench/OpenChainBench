@@ -46,8 +46,8 @@ abstract: |
   `slotSubscribe` slot notifications.
 
 methodology:
-  - "Providers measured (keyless WebSocket endpoints): PublicNode (wss://ethereum-rpc.publicnode.com), dRPC (wss://eth.drpc.org), Tenderly (wss://mainnet.gateway.tenderly.co). Keyed providers (Alchemy, Infura, Chainstack, QuickNode) join the cohort when contributor keys are wired via WS_URL_<PROVIDER>_ETHEREUM env vars; the harness skips them cleanly when unset."
-  - "Cohort saturation: Ankr, Blast, LlamaRPC, BlockPI, 1RPC, NodeReal and Omniatech all reject a keyless WebSocket handshake at the time of ship (verified 2026-07), which is why the keyless tier stops at three."
+  - "Providers measured (keyless WebSocket endpoints): PublicNode (wss://ethereum-rpc.publicnode.com), dRPC (wss://eth.drpc.org), Tenderly (wss://mainnet.gateway.tenderly.co), Onfinality (wss://eth.api.onfinality.io/public-ws). Keyed providers (Alchemy, Infura, Chainstack, QuickNode) join the cohort when contributor keys are wired via WS_URL_<PROVIDER>_ETHEREUM env vars; the harness skips them cleanly when unset."
+  - "Cohort saturation: Ankr, Blast, LlamaRPC, BlockPI, 1RPC, NodeReal and Omniatech all reject a keyless WebSocket handshake at the time of ship (verified 2026-07), which is why the keyless tier stops at four (PublicNode, dRPC, Tenderly, Onfinality)."
   - "Chains: Ethereum (headline, all three providers compete), Base via newHeads and Solana via slotSubscribe as secondary cohorts. Headline queries on this page are pinned to chain=ethereum so the ranking never mixes block cadences."
   - "Race scoring: the first provider to deliver block N sets T0. Each provider's sample for block N is arrival(N) minus T0 in milliseconds. The cohort closes 5 seconds after the first arrival; a provider arriving later than that is scored as a missed block (ws_block_gap_total), not as a huge latency sample."
   - "Relative, not absolute: a single vantage point cannot separate its own network path from provider pipeline time, so we subtract the two arrivals over the same path instead. Consequence: the fastest provider reads ~0 by construction, and the honest readings are win rate, the trailers' lag distribution, and gap counts, not the leader's absolute number."
@@ -168,3 +168,26 @@ providers:
         - region: ap-southeast
           p50: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="tenderly", chain="ethereum", region="sgp"}[24h])))
           series: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="tenderly", chain="ethereum", region="sgp"}[1h])))
+
+  - slug: onfinality
+    name: OnFinality
+    tag: Keyless WS, wss://eth.api.onfinality.io/public-ws
+    formula: "Median ms behind the earliest provider to push each Ethereum newHeads frame, from one persistent WebSocket per provider on the same eu-west host, histogram_quantile over 24h. Lag is relative to the per-block winner."
+    queries:
+      p50: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="onfinality", chain="ethereum"}[24h])))
+      p90: histogram_quantile(0.90, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="onfinality", chain="ethereum"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="onfinality", chain="ethereum"}[24h])))
+      mean: sum(rate(ws_head_lag_milliseconds_sum{provider="onfinality", chain="ethereum"}[24h])) / sum(rate(ws_head_lag_milliseconds_count{provider="onfinality", chain="ethereum"}[24h]))
+      success: clamp_max(sum(increase(ws_head_blocks_seen_total{provider="onfinality", chain="ethereum"}[24h])) / max(sum by (provider) (increase(ws_head_blocks_seen_total{chain="ethereum"}[24h]))), 1)
+      sample_size: sum(increase(ws_head_lag_milliseconds_count{provider="onfinality", chain="ethereum"}[24h]))
+      series: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="onfinality", chain="ethereum"}[1h])))
+      regions:
+        - region: us-east
+          p50: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="onfinality", chain="ethereum", region="us-east"}[24h])))
+          series: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="onfinality", chain="ethereum", region="us-east"}[1h])))
+        - region: eu-west
+          p50: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="onfinality", chain="ethereum", region="eu-west"}[24h])))
+          series: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="onfinality", chain="ethereum", region="eu-west"}[1h])))
+        - region: ap-southeast
+          p50: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="onfinality", chain="ethereum", region="sgp"}[24h])))
+          series: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="onfinality", chain="ethereum", region="sgp"}[1h])))
