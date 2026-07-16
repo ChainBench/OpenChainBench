@@ -62,8 +62,11 @@ const QUERY_PROM_ALLOWED_METRIC_PREFIXES = [
   "pm_",
   // EVM swap quote latency bench (#033)
   "evm_swap_quote_",
-  // Perp fees + buyback + oracle + validator yield
+  // Perp fees + funding + venue KPIs + execution scanner + buyback + oracle + validator yield
   "perp_fees_",
+  "perp_funding_",
+  "perp_venue_",
+  "perp_execution_",
   "ocb_buyback_",
   "ocb_oracle_",
   "ocb_validator_",
@@ -347,7 +350,8 @@ const mcpHandler = createMcpHandler(
           "  l1_finality_*, l2_block_time_*",
           "  metadata_coverage_*, metadata_api_latency_*, network_coverage_*,",
           "    networks_supported, wallet_labels_*",
-          "  perp_fees_*, ocb_buyback_*, ocb_oracle_*, ocb_validator_*, ocb_chain_*",
+          "  perp_fees_*, perp_funding_*, perp_venue_*, perp_execution_*,",
+          "  ocb_buyback_*, ocb_oracle_*, ocb_validator_*, ocb_chain_*",
           "  gas_error_*, gas_predicted_*, gas_realized_*, gas_oracle_*",
           "  peg_* (stablecoin peg, both variants)",
           "  solana_landing_* (TX landing observational + active)",
