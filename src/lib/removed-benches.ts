@@ -38,18 +38,17 @@ export const REMOVED_BENCH_SLUGS = new Set([
   // removed; kept in the 410 list so any indexed URL returns Gone
   // instead of 404.
   "indexer-latency",
+  // oracle-freshness (082) spec dropped 2026-07-16: apples vs oranges
+  // (push oracle Chainlink vs pull oracles Pyth/RedStone measure
+  // different things; splitting into 2 sub-benches would leave each
+  // with 1-2 providers). Redundant with 025 oracle-deviation which
+  // measures the same feeds via CEX deviation, more actionable signal.
+  // Harness code retained in oracle-deviation (metrics still emit, no
+  // reader on the site).
+  "oracle-freshness",
   // staging pipeline, held back until validated / announced
   "indexing-freshness",
   "rpc-keyed-latency",
   "explorer-chain-coverage",
-  "tokenized-stock-arb-latency",
   "portfolio-chain-coverage",
-  // bench vague 2 (082-085): validating on staging until harnesses have
-  // 48h of clean data on the VPS, then ship dev -> main. 081 renamed
-  // to ws-head-latency-ethereum for slug parity with the base + solana
-  // siblings; both siblings shipped to main without gating (harness has
-  // clean data via Railway 3-region deploy), so the ethereum-scoped one
-  // follows suit and is not gated.
-  "oracle-freshness",
-  "rpc-reliability",
 ]);
