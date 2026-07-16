@@ -846,11 +846,11 @@ async function tryLoadLive(
           prom.series(q.series, thirtyDaysSec, 60),
         ]);
         // Propagate short outages captured on the fine 24h grid up to
-        // the coarser 7d/30d grids. A 40 min blackout at 20 min step
-        // shows as 2-3 nulls on s24, but on s7 (2h step) or s30 (12h
-        // step) the outage rarely aligns with an evaluation window and
-        // Prom returns a healthy average.
-        if (s24 && s24.length > 0) {
+        // the coarser 7d/30d grids. Only when the bench opted in via
+        // `live_activity` — other benches carry natural nulls (sparse
+        // scrapes, backfill edges) that shouldn't fire a "DATA MISSING"
+        // pill on the chart.
+        if (q.live_activity && s24 && s24.length > 0) {
           propagateNullsToCoarser(s24, winSec, s7, sevenDaysSec);
           propagateNullsToCoarser(s24, winSec, s30, thirtyDaysSec);
         }
@@ -880,7 +880,7 @@ async function tryLoadLive(
         regions[p.slug] = points.map(({ region: rg, p50: v }) => ({ region: rg, p50: v }));
         for (const pt of points) {
           // Same short-outage propagation as the global series above.
-          if (pt.series24 && pt.series24.length > 0) {
+          if (q.live_activity && pt.series24 && pt.series24.length > 0) {
             propagateNullsToCoarser(pt.series24, winSec, pt.series7, sevenDaysSec);
             propagateNullsToCoarser(pt.series24, winSec, pt.series30, thirtyDaysSec);
           }
