@@ -40,12 +40,13 @@ abstract: |
   benchmark; this page is the Solana-scoped answer.
 
 methodology:
-  - "Providers measured (keyless WebSocket endpoints): PublicNode (wss://solana-rpc.publicnode.com) and Solana Foundation (wss://api.mainnet-beta.solana.com). Alchemy and Helius are keyed-only and join the cohort when contributor keys are wired."
+  - "Providers measured (keyless WebSocket endpoints): PublicNode (wss://solana-rpc.publicnode.com) and Solana Foundation (wss://api.mainnet-beta.solana.com). Keyed providers (Alchemy, Chainstack, Helius, QuickNode) join the cohort when contributor keys are wired via WS_URL_<PROVIDER>_SOLANA env vars."
+  - "Cohort saturation: dRPC's free Solana tier explicitly disallows slotSubscribe (\"method is not available on freetier\") and the other public Solana WSS gateways audited (Blast, BlockPI, Ankr, extrnode, Chainstack public) all reject the handshake (verified 2026-07), which is why the keyless tier stops at two."
   - "Chain scope: every query on this page is pinned to chain=\"solana\". Solana slot cadence is ~400ms, so a 24h window carries roughly 216000 samples per provider, an order of magnitude beyond the 7000 sample floor used across the head-lag cluster."
   - "RPC method: `slotSubscribe`, not `signatureSubscribe` or `logsSubscribe`. The notification payload includes the slot number and the parent slot; the harness dedupes on slot number and uses the first arrival per slot to define T0."
   - "Race scoring: identical to the parent [ws-head-latency](https://openchainbench.com/benchmarks/ws-head-latency-ethereum) benchmark, applied per slot instead of per block. First provider to deliver slot N sets T0. Each provider's sample for slot N is arrival(N) minus T0 in milliseconds. Cohort closes 5 seconds after the first arrival."
   - "Relative, not absolute: subtraction of two arrivals over the same path removes vantage-point network latency. Consequence: the fastest provider reads near zero by construction. The honest readings are win rate, trailers' lag distribution, and gap counts, not the leader's absolute number."
-  - "Aggregation: per-provider lag histogram (5ms to 10s exponential buckets), p50/p90/p99 via histogram_quantile over the 24h rate. Coverage score = ws_head_blocks_seen_total divided by cohort maximum, clamped to 1."
+  - "Aggregation: per-provider lag histogram with a sub-millisecond floor (0.5 ms bucket up through 10 s tail), p50/p90/p99 via histogram_quantile over the 24h rate. Coverage score = ws_head_blocks_seen_total divided by cohort maximum, clamped to 1."
   - "Connection discipline: one persistent WebSocket per (provider, chain), client ping every 30s, read deadline 60s, 90s slot watchdog forcing reconnect when a socket keeps the heartbeat alive but silently drops the subscription. Exponential backoff 2s to 60s on reconnect."
   - "Vantage point: a single eu-west host. Multi-region deployment is a follow-up on the parent bench roadmap; the same limitation and reasoning are documented there."
 
