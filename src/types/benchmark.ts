@@ -94,6 +94,20 @@ export type ProviderResult = {
    *  headline value is computed. Rendered as the leaderboard-row
    *  hover tooltip. Authored per-bench in YAML (provider.formula). */
   formula?: string;
+  /** Short-window liveness verdict derived at load time from the spec's
+   *  `queries.live_activity` scalar and the bench-level `probe_ok`
+   *  gate. Only populated when the spec declares those queries.
+   *   - "healthy": recent events arrived (activity > 0).
+   *   - "down": no recent events AND probe_ok confirmed our end is
+   *             fine — the provider's live feed is silent, values
+   *             shown are last-known. Renderers should badge it.
+   *   - "unknown": probe_ok reports our side is broken (harness or
+   *                Prom scrape), OR the activity query itself
+   *                returned no sample. Suppress the badge either way
+   *                so a probe hiccup can't fake-flag every provider.
+   *  Absent when the spec doesn't declare live_activity; UI must
+   *  behave identically to today for those benches. */
+  liveStatus?: "healthy" | "down" | "unknown";
 };
 
 /** One provider's standing inside a (chain, region) ranking cell. */
