@@ -38,11 +38,18 @@ type gmxGqlReq struct {
 type gmxMarketInfo struct {
 	Data struct {
 		MarketInfos []struct {
-			ID                                       string `json:"id"`
-			PositionFeeFactorForPositiveImpact       string `json:"positionFeeFactorForPositiveImpact"`
-			PositionFeeFactorForNegativeImpact       string `json:"positionFeeFactorForNegativeImpact"`
+			ID                                 string `json:"id"`
+			PositionFeeFactorForPositiveImpact string `json:"positionFeeFactorForPositiveImpact"`
+			PositionFeeFactorForNegativeImpact string `json:"positionFeeFactorForNegativeImpact"`
+			// Some Subsquid deployments expose an unsuffixed field name.
+			// We fall back to it when the impact-branch fields are absent
+			// so a schema rename does not silently zero the fee.
+			PositionFeeFactor string `json:"positionFeeFactor"`
 		} `json:"marketInfos"`
 	} `json:"data"`
+	Errors []struct {
+		Message string `json:"message"`
+	} `json:"errors"`
 }
 
 type gmxMarketsRESTItem struct {
@@ -73,7 +80,7 @@ func fetchGMX(v VenueConfig) PerpSample {
 	// 1) Position fee from Subsquid (live on-chain factor)
 	q := gmxGqlReq{
 		Query: `query { marketInfos(where: {id_eq: "` + market + `"}) {
-			id positionFeeFactorForPositiveImpact positionFeeFactorForNegativeImpact
+			id positionFeeFactorForPositiveImpact positionFeeFactorForNegativeImpact positionFeeFactor
 		}}`,
 	}
 	bodyBytes, _ := json.Marshal(q)
@@ -81,32 +88,58 @@ func fetchGMX(v VenueConfig) PerpSample {
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := client.Do(req)
 	if err != nil {
-		s.Err = fmt.Sprintf("gql: %v", err)
+		s.Err = fmt.Sprintf("subsquid_failed: %v", err)
 		s.FetchLatencyMs = time.Since(start).Milliseconds()
 		return s
 	}
 	defer resp.Body.Close()
 	respBody, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode != 200 {
-		s.Err = fmt.Sprintf("gql_status_%d: %s", resp.StatusCode, truncate(string(respBody), 200))
+		s.Err = fmt.Sprintf("subsquid_failed: status_%d: %s", resp.StatusCode, truncate(string(respBody), 200))
 		s.FetchLatencyMs = time.Since(start).Milliseconds()
 		return s
 	}
 	var info gmxMarketInfo
 	if err := json.Unmarshal(respBody, &info); err != nil {
-		s.Err = fmt.Sprintf("gql_parse: %v", err)
+		s.Err = fmt.Sprintf("subsquid_failed: parse: %v", err)
+		s.FetchLatencyMs = time.Since(start).Milliseconds()
+		return s
+	}
+	if len(info.Errors) > 0 {
+		s.Err = fmt.Sprintf("subsquid_failed: gql_error: %s", info.Errors[0].Message)
 		s.FetchLatencyMs = time.Since(start).Milliseconds()
 		return s
 	}
 	if len(info.Data.MarketInfos) == 0 {
-		s.Err = "market_not_found"
+		s.Err = "subsquid_failed: market_not_found"
 		s.FetchLatencyMs = time.Since(start).Milliseconds()
 		return s
 	}
 	m := info.Data.MarketInfos[0]
 	// FLOAT_PRECISION = 1e30. positionFeeFactor = factor * 1e30.
 	// e.g. "600000000000000000000000000" = 0.0006 = 6 bps.
-	negativeFee := factor1e30ToBps(m.PositionFeeFactorForNegativeImpact)
+	//
+	// Branch choice: report the NEGATIVE-impact factor. Opening a long
+	// against a bid-heavy book (or a short against an ask-heavy book) pays
+	// the negative-impact branch, which is the worst-case opening cost and
+	// matches the "all-in fee at open" methodology used for the CEXes here.
+	// If the schema is on an older/unsuffixed version we fall back to
+	// positionFeeFactor so a rename does not silently zero the reported fee.
+	rawFactor := m.PositionFeeFactorForNegativeImpact
+	if rawFactor == "" {
+		rawFactor = m.PositionFeeFactor
+	}
+	if rawFactor == "" {
+		s.Err = "subsquid_failed: missing positionFeeFactor fields"
+		s.FetchLatencyMs = time.Since(start).Milliseconds()
+		return s
+	}
+	negativeFee := factor1e30ToBps(rawFactor)
+	if negativeFee == 0 {
+		s.Err = fmt.Sprintf("subsquid_failed: zero fee factor for market %s", market)
+		s.FetchLatencyMs = time.Since(start).Milliseconds()
+		return s
+	}
 	s.TakerFeeBps = negativeFee
 	// On GMX there's no orderbook spread — slippage = priceImpact, which
 	// is ~0 for $1k notional vs. multi-million pool TVL.
