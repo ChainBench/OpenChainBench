@@ -1,0 +1,102 @@
+# OpenChainBench. Bench № 087
+
+slug: ws-head-latency-base
+number: "087"
+title: Fastest Base WebSocket newHeads push, live block-push lag across RPC providers
+seo_title: "Fastest Base WebSocket RPC newHeads push 2026"
+seo_description: "{{best_name}} pushes Base newHeads first. Live WebSocket block-push lag for the free keyless Base cohort, measured per block against the earliest arrival."
+subtitle: Per-block WebSocket push lag in milliseconds versus the earliest provider to deliver the same Base head, measured continuously from one eu-west vantage point.
+
+category: RPCs
+status: live
+metric: Block push lag
+unit: ms
+higher_is_better: false
+
+seo_intro: |
+  Base blocks land every 2 seconds, six times more frequently than
+  Ethereum, and any real-time bot on Base (perp keeper, MEV searcher,
+  live dashboard) inherits its provider's head push pipeline six times
+  as often. This page ranks the free keyless Base WebSocket endpoints
+  by the same relative race the Ethereum sibling uses: earliest
+  provider to deliver block N sets T0, every other provider's sample
+  is arrival minus T0. The harness holds one persistent
+  `eth_subscribe("newHeads")` connection per provider from an eu-west
+  host and timestamps every frame on receipt. Sample volume on Base
+  is substantially higher than Ethereum thanks to the faster cadence,
+  so the leaderboard reflects a rich distribution rather than a
+  handful of tail observations. Provider cohort at launch: PublicNode
+  and dRPC keyless endpoints. Tenderly does not expose a keyless Base
+  WebSocket path at the time of ship.
+
+abstract: |
+  Per-chain member of the WebSocket head-latency cluster, applied to
+  Base. Same harness, same race scoring rules, same reporting
+  cadence: one persistent WebSocket per provider from the same
+  eu-west host, cohort settle window 5 seconds after the first
+  arrival, lag histogram per provider, gap counter for missed blocks
+  inside a live subscription. The cross-chain view lives on the
+  parent [ws-head-latency](https://openchainbench.com/benchmarks/ws-head-latency)
+  benchmark; this page is the Base-scoped answer.
+
+methodology:
+  - "Providers measured (keyless WebSocket endpoints): PublicNode (wss://base-rpc.publicnode.com), dRPC (wss://base.drpc.org). Tenderly does not expose a keyless Base WebSocket path and is scoped out until a public gateway is announced."
+  - "Chain scope: every query on this page is pinned to chain=\"base\". Base block cadence is 2 seconds, so a 24h window carries roughly 43000 samples per provider (versus ~7200 on Ethereum), well above the 7000 sample floor used by the parent bench."
+  - "Race scoring: identical to the parent [ws-head-latency](https://openchainbench.com/benchmarks/ws-head-latency) benchmark. First provider to deliver block N sets T0. Each provider's sample for block N is arrival(N) minus T0 in milliseconds. Cohort closes 5 seconds after the first arrival; late arrivals are scored as missed blocks via ws_block_gap_total rather than as huge latency samples."
+  - "Relative, not absolute: subtraction of two arrivals over the same path removes vantage-point network latency. Consequence: the fastest provider reads near zero by construction. The honest readings are win rate, trailers' lag distribution, and gap counts."
+  - "Aggregation: per-provider lag histogram (5ms to 10s exponential buckets), p50/p90/p99 via histogram_quantile over the 24h rate. Coverage score = ws_head_blocks_seen_total divided by cohort maximum, clamped to 1. A provider that pushes fast but skips blocks loses on this column, not on the latency percentiles."
+  - "Connection discipline: one persistent WebSocket per (provider, chain), client ping every 30s, read deadline 60s, 90s head watchdog forcing reconnect when a socket keeps the heartbeat alive but silently drops the subscription. Exponential backoff 2s to 60s on reconnect."
+  - "Vantage point: a single eu-west host. Multi-region deployment is a follow-up on the parent bench roadmap; the same limitation and the reasoning behind it are documented there."
+
+findings:
+  - "{{best_name}} leads the Base cohort at {{best_p50}} (p50, 24 h) across {{count}} measured providers. Base's 2 second cadence means each provider gets 6 times more samples per unit time than the Ethereum sibling; the distribution here has less tail noise than on Ethereum for the same 24h window."
+  - "{{name:drpc}} trails the winner by {{p50:drpc}} at the median on Base. That is the extra time a Base perp keeper or liquidation bot on dRPC's keyless endpoint waits for block N after the fastest feed already delivered it."
+  - "The p99 column is the integration-grade number for a chain that produces a block every 2 seconds: {{p99:publicnode}} / {{p99:drpc}}. A multi-second p99 on Base means routinely missing an entire block cycle."
+  - "Base is 2 second cadence, Ethereum 12 seconds, Solana ~400ms slots. Cross-chain comparison of the absolute lag numbers is not meaningful; use each per-chain leaderboard on its own terms and the parent [ws-head-latency](https://openchainbench.com/benchmarks/ws-head-latency) page for the Ethereum reference."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/ws-head-latency
+
+expected_n: 7000
+
+prometheus:
+  window: 24h
+  freshness_metric: ws_head_blocks_seen_total
+
+faq:
+  - q: "What is the fastest free Base RPC over WebSocket right now?"
+    a: "{{best_name}} currently wins most per-block races on Base with a median lag of {{best_p50}} versus the earliest arrival (p50, 24 h) across {{count}} measured keyless providers. The leaderboard re-scores on every Base block, roughly every 2 seconds, so the answer reflects sustained live measurement, not a one-off test. Check the win rate and the trailers' p99 before wiring a latency-sensitive Base bot to any single provider."
+  - q: "How is Base WebSocket head lag measured on OpenChainBench?"
+    a: "One Go harness holds a persistent `eth_subscribe(\"newHeads\")` WebSocket per provider from the same eu-west host. Every frame is timestamped on receipt at millisecond precision. Each block is scored as a race: earliest arrival sets T0 and every other provider's lag is arrival minus T0. The cohort closes 5 seconds after the first arrival, then p50/p90/p99 are computed via `histogram_quantile` over 24 hours."
+  - q: "Why does the fastest provider read near zero?"
+    a: "By construction. The measurement is relative to the fastest arrival in the cohort, not to an external reference clock, so the provider that wins most races accumulates mostly zero samples. This is deliberate: without a reference node co-located with the Base sequencer, a single vantage point cannot separate its own network latency from the provider's push pipeline. Read the leader's win rate and the trailers' distributions rather than the leader's absolute number."
+  - q: "Why isn't Tenderly ranked on Base?"
+    a: "Tenderly's public Base gateway does not expose a keyless WebSocket path for `eth_subscribe(\"newHeads\")` at the time this bench went live. When it does, the harness reads the endpoint from an env variable and Tenderly joins the leaderboard automatically."
+  - q: "Base blocks land every 2 seconds. How does that change the numbers?"
+    a: "Sample volume is roughly 6 times higher than Ethereum for the same 24h window. That tightens the confidence interval on every percentile: a 24h p50 on Base is drawn from ~43000 samples per provider versus ~7200 on Ethereum. The percentile numbers themselves are still relative to the per-block winner, so the interpretation is unchanged; the Base leaderboard just carries less tail noise than the Ethereum one."
+
+providers:
+  - slug: publicnode
+    name: PublicNode
+    tag: Keyless WS, wss://base-rpc.publicnode.com
+    formula: "Median ms behind the earliest provider to push each Base newHeads frame, from one persistent WebSocket per provider on the same eu-west host, histogram_quantile over 24h. The per-block winner scores 0 by construction."
+    queries:
+      p50: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="publicnode", chain="base"}[24h])))
+      p90: histogram_quantile(0.90, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="publicnode", chain="base"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="publicnode", chain="base"}[24h])))
+      mean: sum(rate(ws_head_lag_milliseconds_sum{provider="publicnode", chain="base"}[24h])) / sum(rate(ws_head_lag_milliseconds_count{provider="publicnode", chain="base"}[24h]))
+      success: clamp_max(sum(increase(ws_head_blocks_seen_total{provider="publicnode", chain="base"}[24h])) / max(sum by (provider) (increase(ws_head_blocks_seen_total{chain="base"}[24h]))), 1)
+      sample_size: sum(increase(ws_head_lag_milliseconds_count{provider="publicnode", chain="base"}[24h]))
+      series: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="publicnode", chain="base"}[1h])))
+
+  - slug: drpc
+    name: dRPC
+    tag: Keyless WS, wss://base.drpc.org
+    formula: "Median ms behind the earliest provider to push each Base newHeads frame, from one persistent WebSocket per provider on the same eu-west host, histogram_quantile over 24h. Lag is relative to the per-block winner."
+    queries:
+      p50: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="drpc", chain="base"}[24h])))
+      p90: histogram_quantile(0.90, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="drpc", chain="base"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="drpc", chain="base"}[24h])))
+      mean: sum(rate(ws_head_lag_milliseconds_sum{provider="drpc", chain="base"}[24h])) / sum(rate(ws_head_lag_milliseconds_count{provider="drpc", chain="base"}[24h]))
+      success: clamp_max(sum(increase(ws_head_blocks_seen_total{provider="drpc", chain="base"}[24h])) / max(sum by (provider) (increase(ws_head_blocks_seen_total{chain="base"}[24h]))), 1)
+      sample_size: sum(increase(ws_head_lag_milliseconds_count{provider="drpc", chain="base"}[24h]))
+      series: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="drpc", chain="base"}[1h])))
