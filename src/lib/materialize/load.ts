@@ -367,6 +367,48 @@ function activeFilterLabels(opts: BenchmarkFilters): Record<string, string> {
   return out;
 }
 
+
+/**
+ * Nullify every bucket in `coarse` whose covering time-range overlaps
+ * a null bucket in `fine`. Both series are dense right-anchored ("now"
+ * = last index), so index i in a series of length N maps to time-ago
+ * (N - 1 - i) / (N - 1) of the window. Each contiguous null RUN on the
+ * fine grid nulls every coarse bucket its range straddles, so a short
+ * outage detected on the 24h grid stays visible as a contiguous band
+ * on the 7d and 30d grids (not two neighbouring pills).
+ *
+ * No-op when either input is missing or too short. Mutates `coarse`.
+ * Exported for tests.
+ */
+export function propagateNullsToCoarser(
+  fine: (number | null)[] | null | undefined,
+  coarse: (number | null)[] | null | undefined,
+): void {
+  if (!fine || !coarse || fine.length < 2 || coarse.length < 2) return;
+  const denomFine = fine.length - 1;
+  const denomCoarse = coarse.length - 1;
+  const toIdxCoarse = (i: number) =>
+    denomCoarse * (1 - (denomFine - i) / denomFine);
+  let runStart: number | null = null;
+  const closeRun = (endExclusive: number) => {
+    if (runStart == null) return;
+    const startX = toIdxCoarse(runStart);
+    const endX = toIdxCoarse(endExclusive);
+    const lo = Math.max(0, Math.floor(Math.min(startX, endX)));
+    const hi = Math.min(coarse.length - 1, Math.ceil(Math.max(startX, endX)));
+    for (let k = lo; k <= hi; k++) coarse[k] = null;
+    runStart = null;
+  };
+  for (let i = 0; i < fine.length; i++) {
+    if (fine[i] === null) {
+      if (runStart == null) runStart = i;
+    } else {
+      closeRun(i);
+    }
+  }
+  closeRun(fine.length);
+}
+
 /**
  * Run the spec's `rank_matrix_query` (one instant vector with a sample per
  * (provider[, chain][, region])) and fold it into full per-cell rankings.
@@ -794,6 +836,15 @@ async function tryLoadLive(
           prom.series(q.series, sevenDaysSec, 84),
           prom.series(q.series, thirtyDaysSec, 60),
         ]);
+        // Propagate short outages captured on the fine 24h grid up to
+        // the coarser 7d/30d grids. A 40 min blackout at 20 min step
+        // shows as 2-3 nulls on s24, but on s7 (2h step) or s30 (12h
+        // step) the outage rarely aligns with an evaluation window and
+        // Prom returns a healthy average.
+        if (s24 && s24.length > 0) {
+          propagateNullsToCoarser(s24, s7);
+          propagateNullsToCoarser(s24, s30);
+        }
         if (s24 && s24.length > 0) series24h[p.slug] = s24;
         if (s7 && s7.length > 0) series7d[p.slug] = s7;
         if (s30 && s30.length > 0) series30d[p.slug] = s30;
@@ -819,6 +870,11 @@ async function tryLoadLive(
         );
         regions[p.slug] = points.map(({ region: rg, p50: v }) => ({ region: rg, p50: v }));
         for (const pt of points) {
+          // Same short-outage propagation as the global series above.
+          if (pt.series24 && pt.series24.length > 0) {
+            propagateNullsToCoarser(pt.series24, pt.series7);
+            propagateNullsToCoarser(pt.series24, pt.series30);
+          }
           if (pt.series24 && pt.series24.length > 0) {
             (seriesByRegion24h[p.slug] ??= {})[pt.region] = pt.series24;
           }
