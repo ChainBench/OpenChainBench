@@ -45,7 +45,14 @@ func fetchDefillamaChain(c Chain) {
 	anyOK := false
 
 	if tvl, err := defillamaTvl(c.DefiLlama); err == nil {
-		chainTvlUsd.WithLabelValues(c.Slug).Set(tvl)
+		// Skip zero: DefiLlama serves the whole historical series as
+		// zero for chains where the relay layer holds no DeFi (Polkadot
+		// today), so we would render a "$0" card that reads as broken
+		// rather than as "no data". Card hides when the gauge stays
+		// unpublished. Non-zero values, including small ones, publish.
+		if tvl > 0 {
+			chainTvlUsd.WithLabelValues(c.Slug).Set(tvl)
+		}
 		anyOK = true
 	} else {
 		chainKpisFetchErrors.WithLabelValues(c.Slug, "defillama", classifyError(err.Error())).Inc()
