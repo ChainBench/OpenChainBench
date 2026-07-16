@@ -367,6 +367,58 @@ function activeFilterLabels(opts: BenchmarkFilters): Record<string, string> {
   return out;
 }
 
+
+/**
+ * Nullify every bucket in `coarse` whose covering time-range overlaps
+ * a null bucket in `fine`. Both series are dense right-anchored ("now"
+ * = last index), so index i in a series of length N maps to time-ago
+ * (N - 1 - i) / (N - 1) of the window. Each contiguous null RUN on the
+ * fine grid nulls every coarse bucket its range straddles, so a short
+ * outage detected on the 24h grid stays visible as a contiguous band
+ * on the 7d and 30d grids (not two neighbouring pills).
+ *
+ * No-op when either input is missing or too short. Mutates `coarse`.
+ * Exported for tests.
+ */
+export function propagateNullsToCoarser(
+  fine: (number | null)[] | null | undefined,
+  fineWindowSec: number,
+  coarse: (number | null)[] | null | undefined,
+  coarseWindowSec: number,
+): void {
+  if (!fine || !coarse || fine.length < 2 || coarse.length < 2) return;
+  if (fineWindowSec <= 0 || coarseWindowSec <= 0) return;
+  const fineStep = fineWindowSec / (fine.length - 1);
+  const coarseStep = coarseWindowSec / (coarse.length - 1);
+  // Right-anchored: last index = now. Map a fine index to the same
+  // ABSOLUTE time-ago on the coarse grid (both grids share "now"; the
+  // step sizes are what differ, not the reference point). Previous
+  // math scaled by the fine window fraction, which shrank a 7 h ago
+  // outage down to 40 h ago once projected onto the 7 d grid.
+  const toIdxCoarse = (i: number): number => {
+    const secondsAgo = (fine.length - 1 - i) * fineStep;
+    return (coarse.length - 1) - secondsAgo / coarseStep;
+  };
+  let runStart: number | null = null;
+  const closeRun = (endExclusive: number) => {
+    if (runStart == null) return;
+    const startX = toIdxCoarse(runStart);
+    const endX = toIdxCoarse(endExclusive);
+    const lo = Math.max(0, Math.floor(Math.min(startX, endX)));
+    const hi = Math.min(coarse.length - 1, Math.ceil(Math.max(startX, endX)));
+    for (let k = lo; k <= hi; k++) coarse[k] = null;
+    runStart = null;
+  };
+  for (let i = 0; i < fine.length; i++) {
+    if (fine[i] === null) {
+      if (runStart == null) runStart = i;
+    } else {
+      closeRun(i);
+    }
+  }
+  closeRun(fine.length);
+}
+
 /**
  * Run the spec's `rank_matrix_query` (one instant vector with a sample per
  * (provider[, chain][, region])) and fold it into full per-cell rankings.
@@ -539,6 +591,7 @@ function applyDimensionsToSpec(spec: Spec, labels: Record<string, string>): Spec
             success: inject(p.queries.success),
             sample_size: inject(p.queries.sample_size),
             series: inject(p.queries.series),
+            live_activity: inject(p.queries.live_activity),
             regions: p.queries.regions?.map((r) => ({
               ...r,
               p50: inject(r.p50),
@@ -547,6 +600,9 @@ function applyDimensionsToSpec(spec: Spec, labels: Record<string, string>): Spec
           }
         : p.queries,
     })),
+    prometheus: spec.prometheus
+      ? { ...spec.prometheus, probe_ok: inject(spec.prometheus.probe_ok) }
+      : spec.prometheus,
   };
 }
 
@@ -655,6 +711,19 @@ async function tryLoadLive(
     const sevenDaysSec = 7 * 86_400;
     const thirtyDaysSec = 30 * 86_400;
 
+    // Bench-level "is our end fine" gate. Fetched once per sweep; feeds
+    // every provider's liveStatus verdict below so a broken harness / Prom
+    // scrape can't fake-flag every provider as down at once. Absent when
+    // the spec doesn't declare probe_ok — in which case we trust each
+    // provider's live_activity unconditionally.
+    const probeOkQuery = spec.prometheus?.probe_ok;
+    const probeOk = probeOkQuery
+      ? await prom.scalar(probeOkQuery)
+      : null;
+    // Interpret: >0 or null-when-not-declared → trust per-provider verdicts.
+    // Explicit 0 (or NaN) → the probe itself is down; suppress all badges.
+    const trustLiveVerdicts = !probeOkQuery || (probeOk != null && probeOk > 0);
+
     for (const p of spec.providers) {
       const q = p.queries;
       if (!q) return null;
@@ -664,12 +733,13 @@ async function tryLoadLive(
         q.p90 ? prom.scalar(q.p90) : Promise.resolve(null),
         q.p99 ? prom.scalar(q.p99) : Promise.resolve(null),
       ]);
-      const [mean, success, sampleSize, slotP50, slotP99] = await Promise.all([
+      const [mean, success, sampleSize, slotP50, slotP99, liveActivity] = await Promise.all([
         q.mean ? prom.scalar(q.mean) : Promise.resolve(null),
         q.success ? prom.scalar(q.success) : Promise.resolve(null),
         q.sample_size ? prom.scalar(q.sample_size) : Promise.resolve(null),
         q.slot_p50 ? prom.scalar(q.slot_p50) : Promise.resolve(null),
         q.slot_p99 ? prom.scalar(q.slot_p99) : Promise.resolve(null),
+        q.live_activity ? prom.scalar(q.live_activity) : Promise.resolve(null),
       ]);
 
       // One retry on the load-bearing percentiles. A null here is either
@@ -735,6 +805,22 @@ async function tryLoadLive(
         continue;
       }
 
+      // liveStatus: only computed when the spec declares live_activity.
+      // "unknown" wins whenever we can't tell (probe_ok says our side is
+      // broken, or the activity query returned no sample) — never falls
+      // through to "down" on ambiguous data, since a false red pill on
+      // a live provider is worse than a missing pill on a real outage.
+      let liveStatus: "healthy" | "down" | "unknown" | undefined;
+      if (q.live_activity) {
+        if (!trustLiveVerdicts || liveActivity == null) {
+          liveStatus = "unknown";
+        } else if (liveActivity > 0) {
+          liveStatus = "healthy";
+        } else {
+          liveStatus = "down";
+        }
+      }
+
       liveResults.push({
         name: p.name,
         slug: p.slug,
@@ -751,6 +837,7 @@ async function tryLoadLive(
         secondary: p.secondary,
         query: q.p50,
         formula: p.formula,
+        liveStatus,
       });
 
       if (q.series) {
@@ -759,6 +846,15 @@ async function tryLoadLive(
           prom.series(q.series, sevenDaysSec, 84),
           prom.series(q.series, thirtyDaysSec, 60),
         ]);
+        // Propagate short outages captured on the fine 24h grid up to
+        // the coarser 7d/30d grids. Only when the bench opted in via
+        // `live_activity` — other benches carry natural nulls (sparse
+        // scrapes, backfill edges) that shouldn't fire a "DATA MISSING"
+        // pill on the chart.
+        if (q.live_activity && s24 && s24.length > 0) {
+          propagateNullsToCoarser(s24, winSec, s7, sevenDaysSec);
+          propagateNullsToCoarser(s24, winSec, s30, thirtyDaysSec);
+        }
         if (s24 && s24.length > 0) series24h[p.slug] = s24;
         if (s7 && s7.length > 0) series7d[p.slug] = s7;
         if (s30 && s30.length > 0) series30d[p.slug] = s30;
@@ -784,6 +880,11 @@ async function tryLoadLive(
         );
         regions[p.slug] = points.map(({ region: rg, p50: v }) => ({ region: rg, p50: v }));
         for (const pt of points) {
+          // Same short-outage propagation as the global series above.
+          if (q.live_activity && pt.series24 && pt.series24.length > 0) {
+            propagateNullsToCoarser(pt.series24, winSec, pt.series7, sevenDaysSec);
+            propagateNullsToCoarser(pt.series24, winSec, pt.series30, thirtyDaysSec);
+          }
           if (pt.series24 && pt.series24.length > 0) {
             (seriesByRegion24h[p.slug] ??= {})[pt.region] = pt.series24;
           }
