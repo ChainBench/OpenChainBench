@@ -1,8 +1,45 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { EXPORT_VIDEO_ENABLED } from "@/lib/export-video/config";
+import { SLUG_RE } from "@/lib/slug";
+import { VIEW_IDS } from "@/lib/export-video/types";
 
 export const runtime = "nodejs";
+
+// Strict schema for the payload forwarded to the Remotion renderer.
+// Belt-and-suspenders even though the renderer has its own X-Render-Token:
+// this route is a public POST proxy, so anything not shaped like a legit
+// export-video call from the modal must be refused before it reaches
+// upstream. Caps mirror the client widget's actual ranges and prevent
+// pathological inputs (10k providers, 1M timestamps) from consuming
+// renderer CPU/memory.
+const ProviderSeriesSchema = z.object({
+  slug: z.string().max(80),
+  name: z.string().max(200),
+  color: z.string().max(32),
+  logo: z.string().max(500).optional(),
+  values: z.array(z.number()).max(2000),
+});
+const BenchPayloadSchema = z.object({
+  slug: z.string().max(80),
+  title: z.string().max(500),
+  metric: z.string().max(200),
+  unit: z.string().max(40),
+  higherIsBetter: z.boolean(),
+  timestamps: z.array(z.number().int().nonnegative()).max(2000),
+  providers: z.array(ProviderSeriesSchema).max(100),
+});
+const RenderBodySchema = z.object({
+  datasetId: z.string().regex(SLUG_RE),
+  viewId: z.enum(VIEW_IDS as [string, ...string[]]),
+  raceSeconds: z.number().int().min(1).max(300),
+  skipIntro: z.boolean(),
+  format: z.enum(["landscape", "short"]),
+  audio: z.boolean(),
+  beats: z.boolean(),
+  bench: BenchPayloadSchema,
+}).strict();
 // 300s = Vercel Pro Fluid Compute max. Big benches (50+ providers) take
 // 90-120s on the 2-vCPU VPS because each frame has to draw all providers.
 // 300s gives headroom; we'll move to async polling in v2 to drop this
@@ -40,12 +77,21 @@ export async function POST(req: Request) {
     );
   }
 
-  let body: unknown;
+  let rawBody: unknown;
   try {
-    body = await req.json();
+    rawBody = await req.json();
   } catch {
     return NextResponse.json({ error: "bad_json" }, { status: 400 });
   }
+
+  const parsed = RenderBodySchema.safeParse(rawBody);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "bad_body", detail: parsed.error.issues.slice(0, 5) },
+      { status: 400 },
+    );
+  }
+  const body = parsed.data;
 
   let res: Response;
   try {
