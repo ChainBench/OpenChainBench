@@ -4,8 +4,8 @@ slug: tokenized-stock-arb-latency
 number: "080"
 title: Tokenized stock arb latency, how fast pools catch a Nasdaq move
 seo_title: "Tokenized stock arb latency 2026"
-seo_description: "When Nasdaq moves 50 bps, how fast does the onchain pool follow? Live measurement across 11 tokenized equities on Robinhood Chain."
-subtitle: "Median seconds between a 50 bps one-minute move on the reference market and the onchain pool coming back within 20 bps, per tokenized equity, regular hours only."
+seo_description: "When Nasdaq moves 25 bps, how fast does the onchain pool follow? Live measurement across 11 tokenized equities on Robinhood Chain."
+subtitle: "Median seconds between a 25 bps one-minute move on the reference market and the onchain pool coming back within 20 bps, per tokenized equity, regular hours only."
 
 category: RWA
 status: live
@@ -30,20 +30,20 @@ abstract: |
   A derived bench on top of the tokenized-stock-peg series already
   in Prometheus. During market_state=\"regular\", the harness tracks
   the trailing 1-minute reference move and the current pool-to-ref
-  deviation, and observes the seconds between a 50 bps trigger and
+  deviation, and observes the seconds between a 25 bps trigger and
   20 bps convergence into a histogram, per asset.
 
 methodology:
-  - "Trigger: a one-minute reference-price move of at least 50 bps observed while market_state=\"regular\". Only regular Nasdaq hours generate events; pre- and post-market moves are excluded (thin liquidity, unreliable reference)."
+  - "Trigger: a one-minute reference-price move of at least 25 bps observed while market_state=\"regular\". Only regular Nasdaq hours generate events; pre- and post-market moves are excluded (thin liquidity, unreliable reference)."
   - "Convergence: the pool-to-reference deviation drops back below 20 bps. The bench observes seconds from trigger to convergence into a histogram bucket, tagged per asset."
   - "Publication: p50, p90 and p99 of the event distribution over 24 hours, per asset. Events that never converge before regular hours end are counted as still_open on a separate counter, not as latency samples."
   - "Data source: the tsp_price_reference_usd and tsp_price_onchain_usdg series emitted by the tokenized-stock-peg harness at 60s cadence. The event tracker is in-process; no new external calls."
   - "Cohort: the 11 tokenized equities the peg bench measures. Arb latency is a first-order signal of pool quality; the peg deviation number is the second-order signal (how close it stays between moves)."
-  - "Caveat: the 50 bps trigger filters out normal market chop while catching real moves. Symbols with fewer than 3 events per 24h during quiet market days will show sparse data; the sample_size column is the honest read of statistical weight."
+  - "Caveat: the 25 bps trigger filters out normal market chop while catching real moves. Symbols with fewer than 3 events per 24h during quiet market days will show sparse data; the sample_size column is the honest read of statistical weight."
 
 findings:
-  - "{{best_name}} closes a 50 bps gap fastest at {{best_p50}} (p50, 24h) across {{count}} tokenized equities."
-  - "Fast arbs on the liquid low-fee pools validate that the market is real during regular hours; which tickers those are on a given day depends on where the 50 bps moves landed."
+  - "{{best_name}} closes a 25 bps gap fastest at {{best_p50}} (p50, 24h) across {{count}} tokenized equities."
+  - "Fast arbs on the liquid low-fee pools validate that the market is real during regular hours; which tickers those are on a given day depends on where the 25 bps moves landed."
   - "Slow arbs on the 2 percent fee pools confirm the story the peg bench tells: thin pools do not just deviate more, they take longer to snap back."
   - "The still_open counter is the number that matters most for downstream products using the pool price as an oracle: it is the count of moves the arbs did not close before regular hours ended."
 
@@ -51,9 +51,9 @@ faq:
   - q: "What is arb latency and why does it matter?"
     a: "It is the time it takes for an arbitrageur to close the gap between the real stock price and the onchain pool price after the real one moves. Short latency means the tokenized version is a real reflection of the real market. Long latency means it is a delayed screenshot with a stale price."
   - q: "How are events detected?"
-    a: "The harness reads the same Yahoo reference and pool spot every 60 seconds. When the reference moves 50 bps in a single minute while the pool is more than 20 bps off it, a new event opens. The event closes when the pool comes back within 20 bps. Time from open to close is observed into a histogram; p50, p90 and p99 are read from that histogram over 24 hours."
-  - q: "Why 50 bps trigger, 20 bps convergence?"
-    a: "50 bps is above normal intra-minute noise on liquid stocks and low enough to catch a few events per day per liquid symbol. 20 bps is the convergence band that means the pool is meaningfully close to the reference given the fee tiers of the pools measured (0.3 percent to 2 percent). Both thresholds are disclosed and can be varied in a follow-up dimension."
+    a: "The harness reads the same Yahoo reference and pool spot every 60 seconds. When the reference moves 25 bps in a single minute while the pool is more than 20 bps off it, a new event opens. The event closes when the pool comes back within 20 bps. Time from open to close is observed into a histogram; p50, p90 and p99 are read from that histogram over 24 hours."
+  - q: "Why 25 bps trigger, 20 bps convergence?"
+    a: "25 bps is above normal intra-minute noise on liquid stocks and low enough to catch a few events per day per liquid symbol. 20 bps is the convergence band that means the pool is meaningfully close to the reference given the fee tiers of the pools measured (0.3 percent to 2 percent). Both thresholds are disclosed and can be varied in a follow-up dimension."
   - q: "What is the still-open counter?"
     a: "The number of events where the market session ended (Nasdaq closed) before the pool converged. Those are not counted as latency samples because the reference stops moving after 4 pm ET, but they are the honest measure of how many real-market moves the arbs failed to catch that day."
 
@@ -67,7 +67,7 @@ providers:
   - slug: nvda
     name: NVDA
     tag: "Nvidia, 0.3% fee, deepest pool"
-    formula: "Median seconds until the NVDA pool on Robinhood Chain came back within 20 bps of the Yahoo reference after a 50 bps one-minute move, regular hours only, over 24h."
+    formula: "Median seconds until the NVDA pool on Robinhood Chain came back within 20 bps of the Yahoo reference after a 25 bps one-minute move, regular hours only, over 24h."
     queries:
       p50: histogram_quantile(0.50, sum by (le) (rate(tsp_arb_latency_seconds_bucket{issuer="robinhood", asset="nvda"}[24h])))
       p90: histogram_quantile(0.90, sum by (le) (rate(tsp_arb_latency_seconds_bucket{issuer="robinhood", asset="nvda"}[24h])))
@@ -80,7 +80,7 @@ providers:
   - slug: tsla
     name: TSLA
     tag: "Tesla, most active pool of the cohort"
-    formula: "Median seconds until the TSLA pool on Robinhood Chain came back within 20 bps of the Yahoo reference after a 50 bps one-minute move, regular hours only, over 24h."
+    formula: "Median seconds until the TSLA pool on Robinhood Chain came back within 20 bps of the Yahoo reference after a 25 bps one-minute move, regular hours only, over 24h."
     queries:
       p50: histogram_quantile(0.50, sum by (le) (rate(tsp_arb_latency_seconds_bucket{issuer="robinhood", asset="tsla"}[24h])))
       p90: histogram_quantile(0.90, sum by (le) (rate(tsp_arb_latency_seconds_bucket{issuer="robinhood", asset="tsla"}[24h])))
@@ -93,7 +93,7 @@ providers:
   - slug: aapl
     name: AAPL
     tag: "Apple, 1% fee"
-    formula: "Median seconds until the AAPL pool on Robinhood Chain came back within 20 bps of the Yahoo reference after a 50 bps one-minute move, regular hours only, over 24h."
+    formula: "Median seconds until the AAPL pool on Robinhood Chain came back within 20 bps of the Yahoo reference after a 25 bps one-minute move, regular hours only, over 24h."
     queries:
       p50: histogram_quantile(0.50, sum by (le) (rate(tsp_arb_latency_seconds_bucket{issuer="robinhood", asset="aapl"}[24h])))
       p90: histogram_quantile(0.90, sum by (le) (rate(tsp_arb_latency_seconds_bucket{issuer="robinhood", asset="aapl"}[24h])))
@@ -106,7 +106,7 @@ providers:
   - slug: googl
     name: GOOGL
     tag: "Alphabet, 1% fee"
-    formula: "Median seconds until the GOOGL pool on Robinhood Chain came back within 20 bps of the Yahoo reference after a 50 bps one-minute move, regular hours only, over 24h."
+    formula: "Median seconds until the GOOGL pool on Robinhood Chain came back within 20 bps of the Yahoo reference after a 25 bps one-minute move, regular hours only, over 24h."
     queries:
       p50: histogram_quantile(0.50, sum by (le) (rate(tsp_arb_latency_seconds_bucket{issuer="robinhood", asset="googl"}[24h])))
       p90: histogram_quantile(0.90, sum by (le) (rate(tsp_arb_latency_seconds_bucket{issuer="robinhood", asset="googl"}[24h])))
@@ -119,7 +119,7 @@ providers:
   - slug: meta
     name: META
     tag: "Meta, 0.3% fee"
-    formula: "Median seconds until the META pool on Robinhood Chain came back within 20 bps of the Yahoo reference after a 50 bps one-minute move, regular hours only, over 24h."
+    formula: "Median seconds until the META pool on Robinhood Chain came back within 20 bps of the Yahoo reference after a 25 bps one-minute move, regular hours only, over 24h."
     queries:
       p50: histogram_quantile(0.50, sum by (le) (rate(tsp_arb_latency_seconds_bucket{issuer="robinhood", asset="meta"}[24h])))
       p90: histogram_quantile(0.90, sum by (le) (rate(tsp_arb_latency_seconds_bucket{issuer="robinhood", asset="meta"}[24h])))
@@ -132,7 +132,7 @@ providers:
   - slug: amd
     name: AMD
     tag: "AMD, 1% fee"
-    formula: "Median seconds until the AMD pool on Robinhood Chain came back within 20 bps of the Yahoo reference after a 50 bps one-minute move, regular hours only, over 24h."
+    formula: "Median seconds until the AMD pool on Robinhood Chain came back within 20 bps of the Yahoo reference after a 25 bps one-minute move, regular hours only, over 24h."
     queries:
       p50: histogram_quantile(0.50, sum by (le) (rate(tsp_arb_latency_seconds_bucket{issuer="robinhood", asset="amd"}[24h])))
       p90: histogram_quantile(0.90, sum by (le) (rate(tsp_arb_latency_seconds_bucket{issuer="robinhood", asset="amd"}[24h])))
@@ -145,7 +145,7 @@ providers:
   - slug: pltr
     name: PLTR
     tag: "Palantir, 1% fee"
-    formula: "Median seconds until the PLTR pool on Robinhood Chain came back within 20 bps of the Yahoo reference after a 50 bps one-minute move, regular hours only, over 24h."
+    formula: "Median seconds until the PLTR pool on Robinhood Chain came back within 20 bps of the Yahoo reference after a 25 bps one-minute move, regular hours only, over 24h."
     queries:
       p50: histogram_quantile(0.50, sum by (le) (rate(tsp_arb_latency_seconds_bucket{issuer="robinhood", asset="pltr"}[24h])))
       p90: histogram_quantile(0.90, sum by (le) (rate(tsp_arb_latency_seconds_bucket{issuer="robinhood", asset="pltr"}[24h])))
@@ -158,7 +158,7 @@ providers:
   - slug: spy
     name: SPY
     tag: "S&P 500 ETF, 1% fee"
-    formula: "Median seconds until the SPY pool on Robinhood Chain came back within 20 bps of the Yahoo reference after a 50 bps one-minute move, regular hours only, over 24h."
+    formula: "Median seconds until the SPY pool on Robinhood Chain came back within 20 bps of the Yahoo reference after a 25 bps one-minute move, regular hours only, over 24h."
     queries:
       p50: histogram_quantile(0.50, sum by (le) (rate(tsp_arb_latency_seconds_bucket{issuer="robinhood", asset="spy"}[24h])))
       p90: histogram_quantile(0.90, sum by (le) (rate(tsp_arb_latency_seconds_bucket{issuer="robinhood", asset="spy"}[24h])))
@@ -171,7 +171,7 @@ providers:
   - slug: mu
     name: MU
     tag: "Micron, 1% fee"
-    formula: "Median seconds until the MU pool on Robinhood Chain came back within 20 bps of the Yahoo reference after a 50 bps one-minute move, regular hours only, over 24h."
+    formula: "Median seconds until the MU pool on Robinhood Chain came back within 20 bps of the Yahoo reference after a 25 bps one-minute move, regular hours only, over 24h."
     queries:
       p50: histogram_quantile(0.50, sum by (le) (rate(tsp_arb_latency_seconds_bucket{issuer="robinhood", asset="mu"}[24h])))
       p90: histogram_quantile(0.90, sum by (le) (rate(tsp_arb_latency_seconds_bucket{issuer="robinhood", asset="mu"}[24h])))
@@ -184,7 +184,7 @@ providers:
   - slug: msft
     name: MSFT
     tag: "Microsoft, 2% fee, thin pool test"
-    formula: "Median seconds until the MSFT pool on Robinhood Chain came back within 20 bps of the Yahoo reference after a 50 bps one-minute move, regular hours only, over 24h."
+    formula: "Median seconds until the MSFT pool on Robinhood Chain came back within 20 bps of the Yahoo reference after a 25 bps one-minute move, regular hours only, over 24h."
     queries:
       p50: histogram_quantile(0.50, sum by (le) (rate(tsp_arb_latency_seconds_bucket{issuer="robinhood", asset="msft"}[24h])))
       p90: histogram_quantile(0.90, sum by (le) (rate(tsp_arb_latency_seconds_bucket{issuer="robinhood", asset="msft"}[24h])))
@@ -197,7 +197,7 @@ providers:
   - slug: amzn
     name: AMZN
     tag: "Amazon, 2% fee, thin pool test"
-    formula: "Median seconds until the AMZN pool on Robinhood Chain came back within 20 bps of the Yahoo reference after a 50 bps one-minute move, regular hours only, over 24h."
+    formula: "Median seconds until the AMZN pool on Robinhood Chain came back within 20 bps of the Yahoo reference after a 25 bps one-minute move, regular hours only, over 24h."
     queries:
       p50: histogram_quantile(0.50, sum by (le) (rate(tsp_arb_latency_seconds_bucket{issuer="robinhood", asset="amzn"}[24h])))
       p90: histogram_quantile(0.90, sum by (le) (rate(tsp_arb_latency_seconds_bucket{issuer="robinhood", asset="amzn"}[24h])))
