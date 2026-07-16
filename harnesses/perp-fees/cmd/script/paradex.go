@@ -83,7 +83,13 @@ func fetchParadex(v VenueConfig) PerpSample {
 		sz, _ := strconv.ParseFloat(a[1], 64)
 		levels = append(levels, bookLevel{Px: px, Sz: sz})
 	}
-	effective, err := walkBookForNotional(levels, v.NotionalUSD)
+	// Paradex REST caps depth at 100 levels. When the walker eats through
+	// more than ~90% of the visible book the "effective price" is dominated
+	// by the tail levels and stops being a real quote (methodology: skip
+	// when depth thins out). Cap the fill ratio to skip such tiers rather
+	// than publish an inflated bps.
+	const paradexMaxFillRatio = 0.9
+	effective, err := walkBookForNotionalCapped(levels, v.NotionalUSD, paradexMaxFillRatio)
 	if err != nil {
 		s.Err = fmt.Sprintf("walk: %v", err)
 		s.FetchLatencyMs = time.Since(start).Milliseconds()
@@ -91,7 +97,7 @@ func fetchParadex(v VenueConfig) PerpSample {
 	}
 	s.SpreadBps = (effective - mid) / mid * 10000
 	s.AllInBps = s.TakerFeeBps + s.SpreadBps
-	applyBookTiers(&s, levels, mid)
+	applyBookTiersCapped(&s, levels, mid, paradexMaxFillRatio)
 
 	// 3) Funding: per 8h period, normalize to per hour.
 	var fund paradexFunding
