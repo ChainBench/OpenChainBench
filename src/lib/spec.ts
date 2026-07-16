@@ -289,7 +289,10 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // parity with the base + solana siblings + ungated on prod. Bench SET
   // changed (old slug gone, new slug live). Bump to purge cached v29 that
   // still keys the old slug.
-  ["bench-unfiltered-v30", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v31: 084 indexer-latency dropped entirely (spec + harness deleted;
+  // HyperSync + The Graph required paid credentials for sustained
+  // cadence). Bench SET shrank.
+  ["bench-unfiltered-v31", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -447,7 +450,8 @@ const loadAllBenchmarksCached = unstable_cache(
 // v31: bumped with bench-unfiltered-v28 (bench vague 2, 081-085).
   // v32: bumped with bench-unfiltered-v30 (081 slug rename ws-head-latency
   // -> ws-head-latency-ethereum + ungate on prod).
-  ["all-benchmarks-v33", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v34: bumped with bench-unfiltered-v31 (084 indexer-latency dropped).
+  ["all-benchmarks-v34", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
