@@ -36,13 +36,13 @@ abstract: |
   eu-west host, cohort settle window 5 seconds after the first
   arrival, lag histogram per provider, gap counter for missed blocks
   inside a live subscription. The cross-chain view lives on the
-  parent [ws-head-latency](https://openchainbench.com/benchmarks/ws-head-latency)
+  parent [ws-head-latency](https://openchainbench.com/benchmarks/ws-head-latency-ethereum)
   benchmark; this page is the Base-scoped answer.
 
 methodology:
   - "Providers measured (keyless WebSocket endpoints): PublicNode (wss://base-rpc.publicnode.com), dRPC (wss://base.drpc.org). Tenderly does not expose a keyless Base WebSocket path and is scoped out until a public gateway is announced."
   - "Chain scope: every query on this page is pinned to chain=\"base\". Base block cadence is 2 seconds, so a 24h window carries roughly 43000 samples per provider (versus ~7200 on Ethereum), well above the 7000 sample floor used by the parent bench."
-  - "Race scoring: identical to the parent [ws-head-latency](https://openchainbench.com/benchmarks/ws-head-latency) benchmark. First provider to deliver block N sets T0. Each provider's sample for block N is arrival(N) minus T0 in milliseconds. Cohort closes 5 seconds after the first arrival; late arrivals are scored as missed blocks via ws_block_gap_total rather than as huge latency samples."
+  - "Race scoring: identical to the parent [ws-head-latency](https://openchainbench.com/benchmarks/ws-head-latency-ethereum) benchmark. First provider to deliver block N sets T0. Each provider's sample for block N is arrival(N) minus T0 in milliseconds. Cohort closes 5 seconds after the first arrival; late arrivals are scored as missed blocks via ws_block_gap_total rather than as huge latency samples."
   - "Relative, not absolute: subtraction of two arrivals over the same path removes vantage-point network latency. Consequence: the fastest provider reads near zero by construction. The honest readings are win rate, trailers' lag distribution, and gap counts."
   - "Aggregation: per-provider lag histogram (5ms to 10s exponential buckets), p50/p90/p99 via histogram_quantile over the 24h rate. Coverage score = ws_head_blocks_seen_total divided by cohort maximum, clamped to 1. A provider that pushes fast but skips blocks loses on this column, not on the latency percentiles."
   - "Connection discipline: one persistent WebSocket per (provider, chain), client ping every 30s, read deadline 60s, 90s head watchdog forcing reconnect when a socket keeps the heartbeat alive but silently drops the subscription. Exponential backoff 2s to 60s on reconnect."
@@ -52,7 +52,7 @@ findings:
   - "{{best_name}} leads the Base cohort at {{best_p50}} (p50, 24 h) across {{count}} measured providers. Base's 2 second cadence means each provider gets 6 times more samples per unit time than the Ethereum sibling; the distribution here has less tail noise than on Ethereum for the same 24h window."
   - "{{name:drpc}} trails the winner by {{p50:drpc}} at the median on Base. That is the extra time a Base perp keeper or liquidation bot on dRPC's keyless endpoint waits for block N after the fastest feed already delivered it."
   - "The p99 column is the integration-grade number for a chain that produces a block every 2 seconds: {{p99:publicnode}} / {{p99:drpc}}. A multi-second p99 on Base means routinely missing an entire block cycle."
-  - "Base is 2 second cadence, Ethereum 12 seconds, Solana ~400ms slots. Cross-chain comparison of the absolute lag numbers is not meaningful; use each per-chain leaderboard on its own terms and the parent [ws-head-latency](https://openchainbench.com/benchmarks/ws-head-latency) page for the Ethereum reference."
+  - "Base is 2 second cadence, Ethereum 12 seconds, Solana ~400ms slots. Cross-chain comparison of the absolute lag numbers is not meaningful; use each per-chain leaderboard on its own terms and the parent [ws-head-latency](https://openchainbench.com/benchmarks/ws-head-latency-ethereum) page for the Ethereum reference."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/ws-head-latency
 
