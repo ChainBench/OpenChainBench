@@ -73,11 +73,7 @@ func fetchAll(cfg *Config) {
 		{"codex", fetchCodex},
 		{"coinpaprika", fetchCoinPaprika},
 		{"dune", fetchSimDune},
-		// coinstats dropped 2026-07-16: the free tier exhausts credits
-		// well below the harness cadence, so /wallet/blockchains returns
-		// HTTP 406 "Credits limit reached" on every fetch and never
-		// publishes a networks count. Re-add when a paid key is
-		// provisioned; the removed adapter is one revert away in git.
+		{"coinstats", fetchCoinStats},
 	}
 
 	var wg sync.WaitGroup
