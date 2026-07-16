@@ -613,6 +613,37 @@ export default async function BenchmarkPage({
         </div>
       )}
 
+      {/* Live-feed outage banner. Renders when the spec declared
+          live_activity queries and one or more providers came back
+          "down" (short-window activity = 0, bench-level probe_ok
+          confirmed our end is fine). Placed above the fold so a reader
+          landing on the page during an incident sees the caveat before
+          reading last-known percentiles as current truth. */}
+      {(() => {
+        const downProviders = benchmark.results.filter(
+          (r) => r.liveStatus === "down"
+        );
+        if (downProviders.length === 0) return null;
+        const names = downProviders.map((r) => r.name).join(", ");
+        return (
+          <div
+            role="status"
+            className="mt-6 max-w-3xl rounded-md border border-danger/40 bg-danger/10 px-4 py-3 text-[14px] leading-relaxed text-ink"
+          >
+            <p className="label-mono mb-1 text-danger">
+              Live feed silent: {names}
+            </p>
+            <p>
+              No new events received from{" "}
+              {downProviders.length === 1 ? "this feed" : "these feeds"} in
+              the last several minutes. Percentiles and rankings shown are
+              the last-known values from the 24-hour window and update as
+              soon as fresh events resume.
+            </p>
+          </div>
+        );
+      })()}
+
       {/* SEO-tuned intro paragraph rendered server-side under the H1 so
           long-tail query phrases land in the first ~200 words crawlers
           weight heavily. Optional - omitted when the YAML doesn't set it. */}
