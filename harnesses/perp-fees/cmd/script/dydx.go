@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sort"
 	"strconv"
 	"time"
 )
@@ -62,18 +63,45 @@ func fetchDYdX(v VenueConfig) PerpSample {
 		s.FetchLatencyMs = time.Since(start).Milliseconds()
 		return s
 	}
-	bestBid, _ := strconv.ParseFloat(book.Bids[0].Price, 64)
-	bestAsk, _ := strconv.ParseFloat(book.Asks[0].Price, 64)
-	mid := (bestBid + bestAsk) / 2
-	s.MidPrice = mid
 
-	// Walk asks
-	levels := make([]bookLevel, 0, len(book.Asks))
+	// Convert and sort. The dYdX v4 indexer's orderbook endpoint returns
+	// levels in insertion order, NOT sorted by price — walking as-is means
+	// the "top of book" starts at whichever level was most recently posted,
+	// which inflates the effective price by a factor that matches the
+	// observed 1.7-2x too-high headline (asks walked out of order push the
+	// weighted average well past the true best offer). Sort asks ascending
+	// and bids descending before consuming.
+	asks := make([]bookLevel, 0, len(book.Asks))
 	for _, a := range book.Asks {
 		px, _ := strconv.ParseFloat(a.Price, 64)
 		sz, _ := strconv.ParseFloat(a.Size, 64)
-		levels = append(levels, bookLevel{Px: px, Sz: sz})
+		if px > 0 && sz > 0 {
+			asks = append(asks, bookLevel{Px: px, Sz: sz})
+		}
 	}
+	bids := make([]bookLevel, 0, len(book.Bids))
+	for _, b := range book.Bids {
+		px, _ := strconv.ParseFloat(b.Price, 64)
+		sz, _ := strconv.ParseFloat(b.Size, 64)
+		if px > 0 && sz > 0 {
+			bids = append(bids, bookLevel{Px: px, Sz: sz})
+		}
+	}
+	if len(asks) == 0 || len(bids) == 0 {
+		s.Err = "empty_orderbook"
+		s.FetchLatencyMs = time.Since(start).Milliseconds()
+		return s
+	}
+	sort.Slice(asks, func(i, j int) bool { return asks[i].Px < asks[j].Px })
+	sort.Slice(bids, func(i, j int) bool { return bids[i].Px > bids[j].Px })
+
+	bestBid := bids[0].Px
+	bestAsk := asks[0].Px
+	mid := (bestBid + bestAsk) / 2
+	s.MidPrice = mid
+
+	// Walk asks (long open = buying against the ask side).
+	levels := asks
 	effective, err := walkBookForNotional(levels, v.NotionalUSD)
 	if err != nil {
 		s.Err = fmt.Sprintf("walk: %v", err)
