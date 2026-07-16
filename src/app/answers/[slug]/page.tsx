@@ -11,6 +11,7 @@ import {
 } from "@/lib/answers-template";
 import { citableAsOf, leader } from "@/lib/citation";
 import { Breadcrumb } from "@/components/breadcrumb";
+import { Byline } from "@/components/byline";
 import { Pill } from "@/components/pill";
 import { ProviderLogo } from "@/components/provider-logo";
 import { fmtAsOfUtc, fmtValue, fmtUnit, unitSuffix } from "@/lib/format";
@@ -21,6 +22,7 @@ import {
   buildFaqPageJsonLd,
   safeJsonLd,
 } from "@/lib/jsonld";
+import { PERSON_ID } from "@/lib/hub-jsonld";
 import { capDescription } from "@/lib/seo-text";
 import { getBenchCreatedAt } from "@/lib/seo/bench-dates";
 
@@ -156,24 +158,64 @@ export default async function AnswerPage({
     .map((rs) => allAnswers.find((a) => a.slug === rs))
     .filter((a): a is NonNullable<typeof a> => Boolean(a));
 
-  // Article + Dataset reference + Breadcrumb. FAQPage emitted as its own
-  // standalone script per buildFaqPageJsonLd, which has a markedly higher
-  // hit rate in Search Console vs an @graph-nested FAQPage.
+  // Rendered expert commentary from the named maintainer. Only surfaced
+  // when the referenced bench has a defensible leader (dataPending
+  // suppresses it because editorial context without a leaderboard is
+  // meaningless). expert_take is a schema-optional field on the answers
+  // YAML populated in a follow-up editorial pass.
+  const expertTake =
+    !dataPending && ans.expert_take ? render(ans.expert_take) : null;
+
+  // QAPage with acceptedAnswer + optional suggestedAnswer. The upgrade
+  // from generic Article to QAPage lets Search Console + AI answer
+  // surfaces treat the URL as a canonical Q&A rather than a generic
+  // article, which is what the answers cluster is actually shaped like.
+  //   - acceptedAnswer: the auto-generated short answer, Org-authored.
+  //     Data-derived, publishing under institutional attribution.
+  //   - suggestedAnswer: the expert_take paragraph, Person-authored.
+  //     Editorial commentary, attributed to the named maintainer.
+  // FAQPage still ships as a standalone script (higher Search Console
+  // hit rate on standalone vs @graph-nested).
+  const questionNode: Record<string, unknown> = {
+    "@type": "Question",
+    "@id": `${url}#question`,
+    name: ans.question,
+    text: ans.question,
+    acceptedAnswer: {
+      "@type": "Answer",
+      text: capDescription(shortAnswer, 990),
+      url,
+      author: { "@id": `${SITE.url}/#org` },
+    },
+  };
+  if (expertTake) {
+    questionNode.suggestedAnswer = {
+      "@type": "Answer",
+      text: capDescription(expertTake, 990),
+      url,
+      author: { "@id": PERSON_ID },
+      ...(ans.expert_take_reviewed
+        ? { dateModified: ans.expert_take_reviewed }
+        : {}),
+    };
+  }
   const graphLd = {
     "@context": "https://schema.org",
     "@graph": [
       {
-        "@type": "Article",
-        "@id": `${url}#article`,
+        "@type": "QAPage",
+        "@id": `${url}#qapage`,
+        url,
+        mainEntity: questionNode,
         headline: ans.question,
         description: capDescription(shortAnswer, 990),
-        url,
-        mainEntityOfPage: url,
-        articleBody: `${shortAnswer}\n\n${intro}\n\n${methodology}`,
         datePublished: getBenchCreatedAt(bench.slug).toISOString(),
         ...(citableAsOf(bench)
           ? { dateModified: bench.lastRunAt }
           : {}),
+        // Org authors the page as a whole (Q + acceptedAnswer). The
+        // Person's contribution surfaces as suggestedAnswer.author on
+        // the Question node above so attribution stays per-answer.
         author: { "@id": `${SITE.url}/#org` },
         publisher: { "@id": `${SITE.url}/#org` },
         image: `${SITE.url}/api/og/${bench.slug}`,
@@ -248,6 +290,18 @@ export default async function AnswerPage({
       <p className="mt-6 max-w-3xl text-base leading-relaxed text-ink-soft">
         {intro}
       </p>
+
+      {expertTake && (
+        <section className="mt-10 max-w-3xl rounded-lg border border-ink/10 bg-paper-soft/40 px-5 py-5">
+          <h2 className="font-sans text-[11px] uppercase tracking-[0.16em] text-ink-muted font-medium">
+            Editorial context
+          </h2>
+          <p className="mt-3 text-base leading-relaxed text-ink-soft">
+            {expertTake}
+          </p>
+          <Byline reviewed={ans.expert_take_reviewed} />
+        </section>
+      )}
 
       {topResults.length > 0 && (
         <section className="mt-12">

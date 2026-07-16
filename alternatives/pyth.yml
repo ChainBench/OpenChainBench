@@ -11,3 +11,13 @@ seo_title: "Pyth alternatives: live benchmark"
 seo_description: "Pyth vs Chainlink, Binance and Coinbase on live oracle deviation. Max pairwise gap on BTC, ETH, SOL."
 
 status: live
+
+positioning: |
+  Pyth Network is a pull oracle in which first-party publishers (exchanges, banks, trading firms and market makers) submit prices directly to an oracle program running on Pythnet, wh
+  ich aggregates them per slot into a single price and confidence interval, and then distributes signed updates cross-chain for permissionless refresh on the consuming chain. Its arc
+  hitectural moat is the first-party publisher set plus the sub-second aggregation cadence: the off-chain quote refreshes every 400 milliseconds, and the on-chain price advances when
+  ever an integrator submits an update, rather than when a gas-paid node operator crosses a deviation trigger. For an oracle-deviation benchmark against canonical CEX prints, that mo
+  del concentrates the disagreement in Pyth's favour on fast-moving assets, because the off-chain feed tracks continuous publisher submissions rather than a threshold-gated on-chain 
+  round. The API surface for off-chain consumption is Hermes, exposing REST and SSE endpoints for the latest price feeds and update payloads. Perp DEXes, options venues and predictio
+  n market settlement flows integrate Pyth on the volatile-asset path where a Chainlink-style trigger would introduce settlement lag. Teams stay on push oracles for read patterns tha
+  t cannot afford the pull-refresh step or that need a fully synchronous read inside the settlement transaction without external submission.

@@ -11,3 +11,13 @@ seo_title: "dYdX alternatives: live benchmark"
 seo_description: Compare dYdX v4 against Hyperliquid, Lighter, GMX v2 and gains.trade on live taker fee plus spread crossed at $1000 notional, refreshed every five minutes.
 
 status: live
+
+positioning: |
+  dYdX v4 runs on an application-specific Cosmos SDK chain purpose-built for perpetuals, migrated off the Ethereum-based smart contracts in October 2023 with trading going live in No
+  vember 2023. The moat sits at the pipeline level: validators maintain an off-chain in-memory orderbook for low-latency matching, then settle fills on-chain via consensus. Order pla
+  cement and cancellation cost zero gas; fees apply only on execution and accrue to validators and stakers rather than a central operator. This split of matching from settlement is a
+  rchitecturally distinct from Ethereum L1 perp DEXs (fully on-chain, gas per action) and from single-sequencer L2 venues (matching lives on a proprietary node). For the perp-fees ax
+  is, the design has two direct consequences. Fees are set by governance parameter rather than by an operator, so tier changes are proposal-gated and observable on-chain. Rebates flo
+  w to on-chain makers under the same maker-taker schedule that a CEX would run, but with funds routed to the protocol staking layer instead of a company. The typical use case is hig
+  h-volume market makers who want a maker rebate on a decentralized venue without paying per-order gas; teams migrate away when they need cross-margined equity products the Cosmos ch
+  ain does not list.

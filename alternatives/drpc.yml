@@ -11,3 +11,13 @@ seo_title: "dRPC alternatives: live benchmark"
 seo_description: "dRPC alternatives on eth_blockNumber p50 latency. PublicNode, 1RPC, Tenderly, Nodies, Lava ranked live."
 
 status: live
+
+positioning: |
+  dRPC is a routing layer, not a node operator. Every request lands on Dproxy, which scores third-party providers on health, capability, location, and recent compute-unit distributio
+  n; the request is then handed to Dshackle, an open-source fault-tolerant load balancer that picks the specific upstream node based on the method called, the current chain head, and
+   the block context required. The routing is method-aware: a sendRawTransaction fans out to every capable node, a balance read routes only to lag-free upstreams, and a historical re
+  ad filters to nodes that have synced to the requested block. This is architecturally distinct from single-operator RPCs, where a request runs against one homogeneous fleet, and dis
+  tinct from public free RPCs, which have no cross-provider selection at all. For the rpc-capabilities axis, the routing model directly shapes the observed method coverage: a method 
+  that any upstream supports counts as covered network-wide, and uptime aggregates across upstreams rather than depending on any one operator's incident window. Chain coverage spans 
+  120+ chains across 217 networks (Chainlist product) spanning EVM L1s and L2s, Solana, Bitcoin, Cosmos, and TON. The typical use case is teams that want one endpoint per chain with 
+  automatic failover; migration happens when a team needs a proprietary method only one upstream exposes.

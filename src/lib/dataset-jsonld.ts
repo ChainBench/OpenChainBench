@@ -18,6 +18,7 @@
  * https://developers.google.com/search/docs/appearance/structured-data/dataset
  */
 import { SITE } from "@/data/site";
+import { PERSON_ID } from "@/lib/hub-jsonld";
 
 /** Public Hugging Face dataset mirror. CC-BY-4.0, daily parquet snapshots. */
 export const HF_DATASET_URL =
@@ -248,6 +249,11 @@ export function buildBenchStatReportJsonLd(
     temporalCoverage: input.temporalCoverage,
     creator: { "@id": `${SITE.url}/#org` },
     publisher: { "@id": `${SITE.url}/#org` },
+    // Named contributor: the maintainer who signs off on the spec,
+    // harness and statistical review that produce this report. Distinct
+    // from creator/publisher (the Org) so the report carries both an
+    // institutional and a human attribution signal.
+    contributor: { "@id": PERSON_ID },
     isBasedOn: { "@id": `${input.url}#dataset` },
     license: DATASET_LICENSE,
     isAccessibleForFree: true,

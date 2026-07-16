@@ -21,6 +21,15 @@ const ALT_DIR = path.join(process.cwd(), "alternatives");
 
 const slug = z.string().min(1).regex(/^[a-z0-9][a-z0-9-]*$/);
 
+// Editorial voice guard, mirrors spec-schema.ts:176. Em-dash (—) and
+// en-dash (–) are the classic "AI tells" that hurt brand voice; refuse
+// them on any prose field a maintainer can hand-author. Plain hyphen
+// stays legal for compound words.
+const noAiDashes = (s: string) =>
+  !s.includes("—") && !s.includes("–");
+const noAiDashesMsg =
+  "Avoid em or en dashes; use a comma, semicolon, or period instead";
+
 const AlternativeSchema = z.object({
   slug,
   /** Display name of the product the page is alternative-to. */
@@ -41,6 +50,17 @@ const AlternativeSchema = z.object({
   chain: z.string().optional(),
   /** Lead paragraph rendered above the data. */
   intro: z.string().min(40),
+  /** Optional editorial positioning paragraph. Substantive prose (400+
+   *  chars) that explains where the target product fits in the market,
+   *  what problem it solves and how OpenChainBench measures it. Kept
+   *  optional so existing YAMLs keep parsing; populated in a follow-up
+   *  editorial pass. */
+  positioning: z
+    .string()
+    .min(400)
+    .max(2000)
+    .refine(noAiDashes, noAiDashesMsg)
+    .optional(),
   /** Optional SEO override for browser tab + meta title. */
   seo_title: z.string().min(1).optional(),
   /** Optional SEO override for meta description. Falls back to intro. */
