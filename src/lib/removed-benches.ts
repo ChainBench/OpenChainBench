@@ -32,6 +32,12 @@ export const REMOVED_BENCH_SLUGS = new Set([
   // duplicate of solana-tx-landing (bench 016); the 027 active-probe
   // variant never got data on prod and shows an empty placeholder
   "solana-tx-landing-latency",
+  // indexer-latency (084) dropped entirely 2026-07-16: HyperSync + The
+  // Graph providers require paid credentials for the sustained cadence
+  // (Mobula alone left the leaderboard single-provider). Spec + harness
+  // removed; kept in the 410 list so any indexed URL returns Gone
+  // instead of 404.
+  "indexer-latency",
   // staging pipeline, held back until validated / announced
   "indexing-freshness",
   "rpc-keyed-latency",
@@ -46,6 +52,5 @@ export const REMOVED_BENCH_SLUGS = new Set([
   // follows suit and is not gated.
   "oracle-freshness",
   "rpc-reliability",
-  "indexer-latency",
   "evm-block-builders",
 ]);
