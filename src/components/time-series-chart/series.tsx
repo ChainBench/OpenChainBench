@@ -133,10 +133,10 @@ export function DowntimeBands({ drawn, padT, innerH }: DowntimeBandsProps) {
       ))}
       {all.map((b, i) => {
         const cx = b.x + b.w / 2;
-        // "● NAME DOWN" width estimate: ~5.5 px per char plus fixed
-        // padding for the dot and the "DOWN" suffix.
+        // "NAME DOWN" width estimate: ~5.5 px per char plus 14 px of
+        // horizontal padding (7 each side).
         const label = `${b.name.toUpperCase()} DOWN`;
-        const pillW = Math.max(58, label.length * 5.5 + 22);
+        const pillW = Math.max(50, label.length * 5.5 + 14);
         const pillY = padT + 2 + b.slot * (PILL_H + PILL_GAP);
         const pillX = Math.max(0, cx - pillW / 2);
         return (
@@ -151,16 +151,8 @@ export function DowntimeBands({ drawn, padT, innerH }: DowntimeBandsProps) {
               fill={b.color}
               opacity={0.95}
             />
-            {/* Small circle indicator, left of the label. */}
-            <circle
-              cx={pillX + 8}
-              cy={pillY + PILL_H / 2}
-              r={2.3}
-              fill="var(--color-paper, #ffffff)"
-              opacity={0.95}
-            />
             <text
-              x={pillX + pillW / 2 + 4}
+              x={pillX + pillW / 2}
               y={pillY + PILL_H / 2 + 0.5}
               textAnchor="middle"
               dominantBaseline="middle"
