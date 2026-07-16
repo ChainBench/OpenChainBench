@@ -41,9 +41,17 @@ var (
 		prometheus.HistogramOpts{
 			Name: "ws_head_lag_milliseconds",
 			Help: "Per-block push lag vs the earliest provider in the cohort, in milliseconds. Relative measurement: the fastest provider on a block reads 0 by construction.",
-			// 5ms → 10.24s exponential; covers same-frame ties through
-			// multi-second stragglers.
-			Buckets:     prometheus.ExponentialBuckets(5, 2, 12),
+			// Sub-ms floor because the winner reads near zero by
+			// construction; a 5ms first bucket used to collapse every
+			// leader's p50 to ~2.5ms (histogram_quantile interpolation
+			// artifact inside [0,5ms]). Fine buckets from 0.5ms up
+			// through 10s cover same-frame ties through multi-second
+			// stragglers on every chain in the cohort (Solana ~400ms
+			// slots, Base 2s blocks, Ethereum 12s blocks).
+			Buckets: []float64{
+				0.5, 1, 2, 3, 5, 8, 12, 20, 35, 60,
+				100, 160, 260, 420, 680, 1100, 1800, 3000, 5000, 10000,
+			},
 			ConstLabels: regionLabels,
 		},
 		[]string{"provider", "chain"},
