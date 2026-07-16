@@ -760,6 +760,11 @@ function Row({
                 <span itemProp="name">{r.name}</span>
               </Link>
             )}
+            {benchmark.providerNotes?.[r.slug] && !isMuted && (
+              <span className="inline-flex items-center shrink-0 rounded bg-paper-soft px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.12em] text-ink-muted">
+                {benchmark.providerNotes[r.slug]}
+              </span>
+            )}
             {r.tag && !isMuted && (
               <span className="hidden sm:inline-block truncate max-w-[140px] md:max-w-[220px] font-sans text-[10px] uppercase tracking-[0.14em] text-ink-muted">
                 {r.tag}
