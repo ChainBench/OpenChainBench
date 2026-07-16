@@ -1,0 +1,105 @@
+# OpenChainBench. Bench № 088
+
+slug: ws-head-latency-solana
+number: "088"
+title: Fastest Solana WebSocket slotSubscribe push, live slot-push lag across RPC providers
+seo_title: "Fastest Solana WebSocket RPC slotSubscribe push 2026"
+seo_description: "{{best_name}} pushes Solana slots first. Live WebSocket slot-push lag for the free keyless Solana cohort, measured per slot against the earliest arrival."
+subtitle: Per-slot WebSocket push lag in milliseconds versus the earliest provider to deliver the same Solana slot, measured continuously from one eu-west vantage point.
+
+category: RPCs
+status: live
+metric: Slot push lag
+unit: ms
+higher_is_better: false
+
+seo_intro: |
+  Solana slots land every ~400ms, thirty times faster than Ethereum
+  blocks, and every real-time integrator on Solana (perp keeper,
+  liquidator, market maker, on-chain scanner) inherits its provider's
+  slot push pipeline thirty times as often. This page ranks the free
+  keyless Solana WebSocket endpoints by the same relative race the
+  EVM sibling uses on `eth_subscribe("newHeads")`, applied to
+  Solana's `slotSubscribe` RPC. The harness holds one persistent
+  WebSocket per provider from an eu-west host and timestamps every
+  slot notification on receipt. Sample volume is roughly 30 times
+  higher than the Ethereum sibling for the same 24h window, so the
+  distribution is dense and tail estimates are stable. Provider
+  cohort at launch: PublicNode's public Solana gateway and the
+  Solana Foundation's `api.mainnet-beta.solana.com`.
+
+abstract: |
+  Per-chain member of the WebSocket head-latency cluster, applied to
+  Solana. Same harness, same race scoring rules, adapted for
+  Solana's slot model instead of EVM blocks: `slotSubscribe`
+  notifications carry a slot number, the harness treats each
+  distinct slot as one race, the first provider to deliver slot N
+  sets T0, every other provider's sample is arrival minus T0 in
+  milliseconds. The cross-chain view lives on the parent
+  [ws-head-latency](https://openchainbench.com/benchmarks/ws-head-latency)
+  benchmark; this page is the Solana-scoped answer.
+
+methodology:
+  - "Providers measured (keyless WebSocket endpoints): PublicNode (wss://solana-rpc.publicnode.com) and Solana Foundation (wss://api.mainnet-beta.solana.com). Alchemy and Helius are keyed-only and join the cohort when contributor keys are wired."
+  - "Chain scope: every query on this page is pinned to chain=\"solana\". Solana slot cadence is ~400ms, so a 24h window carries roughly 216000 samples per provider, an order of magnitude beyond the 7000 sample floor used across the head-lag cluster."
+  - "RPC method: `slotSubscribe`, not `signatureSubscribe` or `logsSubscribe`. The notification payload includes the slot number and the parent slot; the harness dedupes on slot number and uses the first arrival per slot to define T0."
+  - "Race scoring: identical to the parent [ws-head-latency](https://openchainbench.com/benchmarks/ws-head-latency) benchmark, applied per slot instead of per block. First provider to deliver slot N sets T0. Each provider's sample for slot N is arrival(N) minus T0 in milliseconds. Cohort closes 5 seconds after the first arrival."
+  - "Relative, not absolute: subtraction of two arrivals over the same path removes vantage-point network latency. Consequence: the fastest provider reads near zero by construction. The honest readings are win rate, trailers' lag distribution, and gap counts, not the leader's absolute number."
+  - "Aggregation: per-provider lag histogram (5ms to 10s exponential buckets), p50/p90/p99 via histogram_quantile over the 24h rate. Coverage score = ws_head_blocks_seen_total divided by cohort maximum, clamped to 1."
+  - "Connection discipline: one persistent WebSocket per (provider, chain), client ping every 30s, read deadline 60s, 90s slot watchdog forcing reconnect when a socket keeps the heartbeat alive but silently drops the subscription. Exponential backoff 2s to 60s on reconnect."
+  - "Vantage point: a single eu-west host. Multi-region deployment is a follow-up on the parent bench roadmap; the same limitation and reasoning are documented there."
+
+findings:
+  - "{{best_name}} leads the Solana cohort at {{best_p50}} (p50, 24 h) across {{count}} measured providers. Solana's ~400ms cadence means each provider gets 30 times more samples per unit time than the Ethereum sibling; the distribution here has very little tail noise for the same 24h window."
+  - "{{name:solana-labs}} versus {{name:publicnode}}: the Solana Foundation's public endpoint and PublicNode's Solana gateway measured on identical terms. A latency-sensitive Solana integration should read the win rate alongside p50 to see which endpoint delivers slot N first most often."
+  - "The p99 column matters more on Solana than on any EVM chain in the cluster: at ~400ms slots, a p99 above 1 second means the provider is routinely 2-3 slots behind the leader. That gap is the exact window where a keeper or liquidator loses to a co-located competitor."
+  - "Cross-chain comparison of absolute lag numbers is not meaningful: Solana runs at 400ms slots, Base at 2s, Ethereum at 12s. Use each per-chain leaderboard on its own terms and the parent [ws-head-latency](https://openchainbench.com/benchmarks/ws-head-latency) page for the Ethereum reference."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/ws-head-latency
+
+expected_n: 50000
+
+prometheus:
+  window: 24h
+  freshness_metric: ws_head_blocks_seen_total
+
+faq:
+  - q: "What is the fastest free Solana RPC over WebSocket right now?"
+    a: "{{best_name}} currently wins most per-slot races on Solana with a median lag of {{best_p50}} versus the earliest arrival (p50, 24 h) across {{count}} measured keyless providers. The leaderboard re-scores on every Solana slot, roughly every 400ms, so the answer reflects sustained live measurement, not a one-off test. Check the win rate and the trailers' p99 before wiring a latency-sensitive Solana keeper or MEV integration to any single provider."
+  - q: "How is Solana WebSocket slot lag measured on OpenChainBench?"
+    a: "One Go harness holds a persistent `slotSubscribe` WebSocket per provider from the same eu-west host. Every notification is timestamped on receipt at millisecond precision, keyed on slot number, and deduplicated. Each slot is scored as a race: earliest arrival sets T0 and every other provider's lag is arrival minus T0. The cohort closes 5 seconds after the first arrival, then p50/p90/p99 are computed via `histogram_quantile` over 24 hours."
+  - q: "Why does the fastest provider read near zero?"
+    a: "By construction. The measurement is relative to the fastest arrival in the cohort, not to an external reference clock, so the provider that wins most races accumulates mostly zero samples. Without a validator co-located with block producers, a single vantage point cannot separate its own network latency from the provider's push pipeline. Read the leader's win rate and the trailers' distributions rather than the leader's absolute number."
+  - q: "Why aren't Alchemy and Helius on the leaderboard?"
+    a: "Both are keyed-only for Solana WebSocket subscriptions and V1 measures the keyless tier. The harness reads Alchemy and Helius endpoints from env variables and adds them to the cohort automatically once contributor keys are wired into the deployment."
+  - q: "Solana slots land every ~400ms. How does that change the numbers?"
+    a: "Sample volume is roughly 30 times higher than Ethereum for the same 24h window. Percentile estimates are drawn from ~216000 samples per provider versus ~7200 on Ethereum, so tail noise is negligible. The percentile numbers themselves are still relative to the per-slot winner, so the interpretation is unchanged. At Solana's cadence, a p99 above 1 second means the provider is routinely 2 to 3 slots behind the leader, which is the exact window where a keeper or liquidator loses to a co-located competitor."
+  - q: "Why `slotSubscribe` and not `signatureSubscribe` or `logsSubscribe`?"
+    a: "The race we score is head delivery: which endpoint pushes the newest thing first. On Solana that is a slot notification; `slotSubscribe` fires on every slot with the slot number and parent slot in the payload. `signatureSubscribe` targets one specific transaction and `logsSubscribe` filters by program, so neither is a fair head-delivery race across providers."
+
+providers:
+  - slug: publicnode
+    name: PublicNode
+    tag: Keyless WS, wss://solana-rpc.publicnode.com
+    formula: "Median ms behind the earliest provider to push each Solana slotSubscribe notification, from one persistent WebSocket per provider on the same eu-west host, histogram_quantile over 24h. The per-slot winner scores 0 by construction."
+    queries:
+      p50: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="publicnode", chain="solana"}[24h])))
+      p90: histogram_quantile(0.90, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="publicnode", chain="solana"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="publicnode", chain="solana"}[24h])))
+      mean: sum(rate(ws_head_lag_milliseconds_sum{provider="publicnode", chain="solana"}[24h])) / sum(rate(ws_head_lag_milliseconds_count{provider="publicnode", chain="solana"}[24h]))
+      success: clamp_max(sum(increase(ws_head_blocks_seen_total{provider="publicnode", chain="solana"}[24h])) / max(sum by (provider) (increase(ws_head_blocks_seen_total{chain="solana"}[24h]))), 1)
+      sample_size: sum(increase(ws_head_lag_milliseconds_count{provider="publicnode", chain="solana"}[24h]))
+      series: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="publicnode", chain="solana"}[1h])))
+
+  - slug: solana-labs
+    name: Solana Foundation
+    tag: Keyless WS, wss://api.mainnet-beta.solana.com
+    formula: "Median ms behind the earliest provider to push each Solana slotSubscribe notification, from one persistent WebSocket per provider on the same eu-west host, histogram_quantile over 24h. Lag is relative to the per-slot winner."
+    queries:
+      p50: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="solana-labs", chain="solana"}[24h])))
+      p90: histogram_quantile(0.90, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="solana-labs", chain="solana"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="solana-labs", chain="solana"}[24h])))
+      mean: sum(rate(ws_head_lag_milliseconds_sum{provider="solana-labs", chain="solana"}[24h])) / sum(rate(ws_head_lag_milliseconds_count{provider="solana-labs", chain="solana"}[24h]))
+      success: clamp_max(sum(increase(ws_head_blocks_seen_total{provider="solana-labs", chain="solana"}[24h])) / max(sum by (provider) (increase(ws_head_blocks_seen_total{chain="solana"}[24h]))), 1)
+      sample_size: sum(increase(ws_head_lag_milliseconds_count{provider="solana-labs", chain="solana"}[24h]))
+      series: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="solana-labs", chain="solana"}[1h])))
