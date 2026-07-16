@@ -39,7 +39,7 @@ related:
 
 seo_title: "Which crypto price API has the lowest head lag in 2026?"
 seo_description: "{{best_name}} leads crypto data head lag at {{best_p50}} (p50, 24h) across Mobula, Codex and GeckoTerminal on Base, BNB Chain and Solana. Measured live by OpenChainBench from 3 regions."
-status: liveexpert_take_reviewed: "2026-07-16"expert_take_reviewed: "2026-07-16"
+status: live
 
 expert_take: |
   Head lag is set by two floors and one pipeline. The first floor is the chain's own block cadence, which is a protocol constant; no data provider can publish a swap before the block it lives in is produced. The second floor is the transport contract with the provider. A persistent WebSocket pushes events as soon as the indexer has them, a GraphQL subscription behaves similarly, and a REST poll adds the client's poll interval to every read by construction. Comparing a REST feed to a WebSocket feed on raw p50 is comparing two architectures, not two pipelines. On top of those floors sits the provider's own indexer speed, which is what the benchmark actually isolates when the transport and the chain are held constant. Readers building a trading UI should weigh p99 as heavily as p50; a feed that is quick most of the time but stalls for 20 seconds once a minute makes a chart stutter in a way p50 alone does not surface. Success ratio catches feeds that disappear during volatility.
