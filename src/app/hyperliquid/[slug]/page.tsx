@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import {
   fetchHlBuilderStats,
   fetchHlCohort,
   fetchHlHistory,
   isHlBuilderSlug,
+  type HlCohortRow,
   type HlHistoryFrontendCompact,
 } from "@/lib/hl-builder-stats";
 import { Breadcrumb } from "@/components/breadcrumb";
@@ -56,7 +57,18 @@ export async function generateMetadata({
   const { slug } = await params;
   const history = await fetchHlHistory();
   const frontend = history?.frontends.find((f) => f.slug === slug);
-  if (!frontend) return {};
+  // Fallback title uses a title-cased slug so a tracked builder without
+  // a fresh history entry still ships a meaningful <title> (the page
+  // falls back to a placeholder render below when frontend is missing,
+  // matching this 200 metadata).
+  const displayName = frontend?.name ?? titleCaseSlug(slug);
+  if (!frontend) {
+    return pageMetadata({
+      path: `/hyperliquid/${slug}`,
+      title: `${displayName} — Hyperliquid frontend`,
+      description: `${displayName} on Hyperliquid: 12-month builder fees, volume and first-active date. Rolling 30-day metrics refresh as data becomes available.`,
+    });
+  }
   const currentFees = lastNonNull(frontend.fees);
   const peakFees = peakOf(frontend.fees);
   const description = `${frontend.name} on Hyperliquid: ${fmtUSDShort(
@@ -66,7 +78,7 @@ export async function generateMetadata({
   )}). 12-month history with volume, fees and first-active date.`;
   return pageMetadata({
     path: `/hyperliquid/${slug}`,
-    title: `${frontend.name} — Hyperliquid frontend`,
+    title: `${displayName} — Hyperliquid frontend`,
     description,
   });
 }
@@ -85,13 +97,19 @@ export default async function HlFrontendPage({
   // Data-outage guard: this page is the target of PERMANENT redirects
   // from /products/<slug>, so it must never 404 on a runtime data gap
   // (stale KV snapshot, Prom unreachable). Tracked builders without a
-  // resolvable history bounce temporarily (307) to the hub instead;
-  // crawlers keep the canonical URL and retry, users land somewhere
-  // useful. Unknown slugs still 404.
+  // resolvable history render a lightweight placeholder with HTTP 200
+  // instead of the previous 307 bounce to /hyperliquid. Ahrefs was
+  // flagging sitemap-listed builder URLs as 3xx-in-sitemap during the
+  // brief windows where the history blob dropped their entries; a 200
+  // placeholder keeps the URL crawlable while data catches up. Any
+  // partial data we still have (cohort row from the KPI grid) surfaces
+  // in the placeholder so the page isn't a soft 404. Unknown slugs
+  // still 404.
   const frontend = history?.frontends.find((f) => f.slug === slug);
   if (!history || !frontend) {
-    if (await isHlBuilderSlug(slug)) redirect("/hyperliquid");
-    notFound();
+    if (!(await isHlBuilderSlug(slug))) notFound();
+    const cohortRow = cohort?.rows.find((r) => r.slug === slug);
+    return <HlBuilderPending slug={slug} cohortRow={cohortRow} />;
   }
 
   const cohortRow = cohort?.rows.find((r) => r.slug === slug);
@@ -230,6 +248,110 @@ export default async function HlFrontendPage({
         page reads the same rolling-30d gauges as the /hyperliquid hub;
         data refreshes hourly on the ISR cache.
       </p>
+    </article>
+  );
+}
+
+/** Title-case a slug ("mass-dot-money" → "Mass Dot Money"). Used as the
+ *  display fallback for a tracked builder whose 12-month history entry
+ *  hasn't materialised yet. */
+function titleCaseSlug(slug: string): string {
+  return slug
+    .split("-")
+    .filter(Boolean)
+    .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
+    .join(" ");
+}
+
+/** Lightweight placeholder rendered with HTTP 200 when a builder is in
+ *  the spec catalog but temporarily absent from the history blob. Shows
+ *  whatever cohort data is still resolvable so the page carries real
+ *  content instead of a soft-404 shell. */
+function HlBuilderPending({
+  slug,
+  cohortRow,
+}: {
+  slug: string;
+  cohortRow: HlCohortRow | undefined;
+}) {
+  const name = cohortRow?.name ?? titleCaseSlug(slug);
+  const breadcrumbLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Home",
+        item: "https://openchainbench.com/",
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Hyperliquid",
+        item: "https://openchainbench.com/hyperliquid",
+      },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name,
+        item: `https://openchainbench.com/hyperliquid/${slug}`,
+      },
+    ],
+  };
+  return (
+    <article className="mx-auto max-w-[1200px] px-4 sm:px-6 py-12 sm:py-16">
+      <script
+        type="application/ld+json"
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: serialized via safeJsonLd
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumbLd) }}
+      />
+      <Breadcrumb
+        items={[
+          { label: "Home", href: "/" },
+          { label: "Hyperliquid", href: "/hyperliquid" },
+          { label: name },
+        ]}
+      />
+      <header className="mb-8">
+        <p className="label-mono text-ink-faint mb-2">Hyperliquid frontend</p>
+        <div className="flex items-center gap-4">
+          <ProviderLogo slug={slug} name={name} size={56} />
+          <h1 className="display text-4xl sm:text-5xl text-ink">{name}</h1>
+        </div>
+        <p
+          className="mt-2 text-[12px] text-ink-faint"
+          style={{ fontFamily: "var(--font-mono, monospace)" }}
+        >
+          {slug}
+        </p>
+      </header>
+      {cohortRow ? (
+        <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-10">
+          <Kpi label="Fees 30d" value={fmtUSDShort(cohortRow.revenue30d)} />
+          <Kpi label="Volume 30d" value={fmtUSDShort(cohortRow.volume30d)} />
+          <Kpi label="Users 30d" value={cohortRow.users30d.toLocaleString()} />
+          <Kpi
+            label="Cohort share 24h"
+            value={`${(cohortRow.cohortVolumeShare24h * 100).toFixed(2)}%`}
+          />
+        </section>
+      ) : null}
+      <section className="rounded-lg border border-ink/10 bg-paper-soft/40 p-5 max-w-2xl">
+        <h2 className="text-lg font-semibold text-ink mb-2">
+          12-month history aggregating
+        </h2>
+        <p className="text-sm text-ink-soft">
+          {name} is tracked on the Hyperliquid builder cohort. The full
+          12-month history chart, peer group and detailed KPIs will appear
+          here as soon as the next data sweep completes. In the meantime,
+          browse the{" "}
+          <Link href="/hyperliquid" className="underline hover:no-underline">
+            Hyperliquid frontends grid
+          </Link>{" "}
+          for live rankings.
+        </p>
+      </section>
     </article>
   );
 }

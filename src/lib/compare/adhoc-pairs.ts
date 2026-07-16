@@ -56,8 +56,15 @@ export function adHocPairs(profiles: ProviderProfile[]): AdHocPair[] {
       const bBenches = liveBenchesBySlug.get(bSlug)!;
       let sharedLive = 0;
       for (const s of aBenches) if (bBenches.has(s)) sharedLive += 1;
+      // Buffer above the render-time noindex gate (< 2 live shared). The
+      // page recomputes on its own ISR clock, so a single bench flapping
+      // unavailable/back can drop `liveSharedCount` under 2 for one render
+      // window while the sitemap (force-dynamic) still lists the pair.
+      // Ahrefs then flags "noindex page in sitemap". Requiring >= 3 (brand)
+      // and >= 4 (otherwise) here means a single bench flap can't cross
+      // both thresholds simultaneously.
       const bothBrand = BRAND_WHITELIST.has(aSlug) && BRAND_WHITELIST.has(bSlug);
-      const threshold = bothBrand ? 2 : 3;
+      const threshold = bothBrand ? 3 : 4;
       if (sharedLive < threshold) continue;
       out.push({ a: aSlug, b: bSlug, slug: `${aSlug}-vs-${bSlug}` });
     }
