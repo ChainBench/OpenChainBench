@@ -38,6 +38,7 @@ func endpoints() []Endpoint {
 		{Provider: "drpc", Chain: "base", Kind: "evm", URL: envDefault("WS_URL_DRPC_BASE", "wss://base.drpc.org")},
 		{Provider: "drpc", Chain: "solana", Kind: "solana", URL: envDefault("WS_URL_DRPC_SOLANA", "wss://solana.drpc.org")},
 		{Provider: "tenderly", Chain: "ethereum", Kind: "evm", URL: envDefault("WS_URL_TENDERLY_ETHEREUM", "wss://mainnet.gateway.tenderly.co")},
+		{Provider: "onfinality", Chain: "ethereum", Kind: "evm", URL: envDefault("WS_URL_ONFINALITY_ETHEREUM", "wss://eth.api.onfinality.io/public-ws")},
 		{Provider: "solana-labs", Chain: "solana", Kind: "solana", URL: envDefault("WS_URL_SOLANALABS_SOLANA", "wss://api.mainnet-beta.solana.com")},
 	}
 	// Keyed providers, skipped when the env var is unset. URLs carry the
