@@ -22,21 +22,23 @@ type DowntimeBandsProps = {
   innerH: number;
 };
 
-/** Semi-transparent red rectangles that highlight the exact window each
- *  line was silent (contiguous gap indices). Rendered under SeriesPaths
- *  so the line stroke stays on top; drawn only for visible (non-excluded)
- *  lines so toggling a provider off in the legend hides its band with
- *  it. A single-point gap (1 bucket) still renders as a narrow band by
- *  extending one step to the right — makes a short outage visible
- *  instead of being an invisible zero-width sliver. */
+/** Colored rectangles that highlight the exact window each line was
+ *  silent (contiguous gap indices). Each band tints in the provider's
+ *  own color so multiple simultaneous outages read distinctly (e.g.
+ *  Codex teal + Mobula orange bands overlapping look like two events,
+ *  not one). A small label sits above the band with the provider name
+ *  and a short reason so a reader doesn't need to hover the line to
+ *  understand who dropped off. Rendered under SeriesPaths so the line
+ *  stroke stays on top; skipped for excluded (legend-toggled)
+ *  providers so their bands disappear with the line. A single-point
+ *  gap still renders (min width 4 px) — a short outage matters just
+ *  as much as a long one. */
 export function DowntimeBands({ drawn, padT, innerH }: DowntimeBandsProps) {
   return (
     <>
       {drawn.map((d) => {
         if (d.excluded) return null;
-        // Collect contiguous gap ranges as [startX, endX] pairs. endX is
-        // extended by one step (or the innerH) so a 1-point gap has a
-        // real visible width.
+        // Collect contiguous gap ranges as [startX, endX] pairs.
         const bands: { x: number; w: number }[] = [];
         let runStart: number | null = null;
         for (let i = 0; i < d.pts.length; i++) {
@@ -46,7 +48,7 @@ export function DowntimeBands({ drawn, padT, innerH }: DowntimeBandsProps) {
           } else if (runStart != null) {
             const startX = d.pts[runStart].x;
             const endX = d.pts[i].x;
-            bands.push({ x: startX, w: Math.max(2, endX - startX) });
+            bands.push({ x: startX, w: Math.max(4, endX - startX) });
             runStart = null;
           }
         }
@@ -54,22 +56,77 @@ export function DowntimeBands({ drawn, padT, innerH }: DowntimeBandsProps) {
         if (runStart != null) {
           const startX = d.pts[runStart].x;
           const endX = d.pts[d.pts.length - 1].x;
-          bands.push({ x: startX, w: Math.max(2, endX - startX) });
+          bands.push({ x: startX, w: Math.max(4, endX - startX) });
         }
         if (bands.length === 0) return null;
         return (
           <g key={`down-${d.slug}`} className="ts-downtime">
-            {bands.map((b, i) => (
-              <rect
-                key={i}
-                x={b.x}
-                y={padT}
-                width={b.w}
-                height={innerH}
-                fill="var(--color-danger, #b0402e)"
-                opacity={0.08}
-              />
-            ))}
+            {bands.map((b, i) => {
+              // Label only when the band is wide enough that the text
+              // fits without overflowing. On narrow bands (1 bucket)
+              // the caret above the band carries the meaning alone.
+              const cx = b.x + b.w / 2;
+              const showLabel = b.w >= 42;
+              return (
+                <g key={i}>
+                  {/* Tinted fill spans the outage window. */}
+                  <rect
+                    x={b.x}
+                    y={padT}
+                    width={b.w}
+                    height={innerH}
+                    fill={d.color}
+                    opacity={0.09}
+                  />
+                  {/* Left + right edges: dashed provider-colored strokes so
+                     the boundaries of the outage are unambiguous even
+                     when the tint is subtle. */}
+                  <line
+                    x1={b.x}
+                    x2={b.x}
+                    y1={padT}
+                    y2={padT + innerH}
+                    stroke={d.color}
+                    strokeWidth={0.8}
+                    strokeDasharray="3 3"
+                    opacity={0.55}
+                  />
+                  <line
+                    x1={b.x + b.w}
+                    x2={b.x + b.w}
+                    y1={padT}
+                    y2={padT + innerH}
+                    stroke={d.color}
+                    strokeWidth={0.8}
+                    strokeDasharray="3 3"
+                    opacity={0.55}
+                  />
+                  {/* Caret above the band, then the label. The caret
+                     alone survives on very narrow bands where the text
+                     would be truncated. */}
+                  <path
+                    d={`M ${(cx - 4).toFixed(2)} ${(padT - 2).toFixed(2)} L ${cx.toFixed(2)} ${(padT + 3).toFixed(2)} L ${(cx + 4).toFixed(2)} ${(padT - 2).toFixed(2)} Z`}
+                    fill={d.color}
+                    opacity={0.9}
+                  />
+                  {showLabel && (
+                    <text
+                      x={cx}
+                      y={padT + 14}
+                      textAnchor="middle"
+                      fontFamily="var(--font-sans)"
+                      fontSize="9.5"
+                      fontWeight="600"
+                      letterSpacing="0.06em"
+                      fill={d.color}
+                      opacity={0.95}
+                    >
+                      {d.name.toUpperCase()} · SILENT
+                    </text>
+                  )}
+                </g>
+              );
+            })}
           </g>
         );
       })}
