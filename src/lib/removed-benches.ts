@@ -46,6 +46,16 @@ export const REMOVED_BENCH_SLUGS = new Set([
   // Harness code retained in oracle-deviation (metrics still emit, no
   // reader on the site).
   "oracle-freshness",
+  // tokenized-stock-arb-latency (080) dropped 2026-07-16 after ship-
+  // then-revert: Robinhood Chain tokenized equity pools are too
+  // illiquid (5 of 11 tickers had frozen pool prices, remaining 6 had
+  // p99 pinned at the 32min histogram cap because arbs rarely close
+  // within the settle window). Rob Chain launched Mar 2026, market
+  // still too young for an arb-latency bench. Spec deleted + arb_tracker
+  // removed from tokenized-stock-peg harness. Kept in 410 list for any
+  // indexed URL. Bench 077 tokenized-stock-peg + 079 weekend-drift
+  // (static peg measurements) stay on prod as the honest signal.
+  "tokenized-stock-arb-latency",
   // staging pipeline, held back until validated / announced
   "indexing-freshness",
   "rpc-keyed-latency",

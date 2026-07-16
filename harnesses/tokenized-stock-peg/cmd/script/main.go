@@ -25,8 +25,6 @@ func main() {
 
 	client := &http.Client{Timeout: httpTimeout}
 	var periods *tradingPeriods
-	var prevState string
-	tracker := newArbTracker()
 
 	tick := func() {
 		now := time.Now()
@@ -36,10 +34,6 @@ func main() {
 			}
 		}
 		state := periods.state(now)
-		if prevState == "regular" && state != "regular" {
-			tracker.closeStaleOnStateChange("robinhood")
-		}
-		prevState = state
 		for _, s := range []string{"pre", "regular", "post", "closed", "unknown"} {
 			v := 0.0
 			if s == state {
@@ -67,9 +61,6 @@ func main() {
 			if hasRef && hasPool && ref.Price > 0 {
 				dev := math.Abs(pool-ref.Price) / ref.Price * 10000
 				tspDeviationBps.WithLabelValues(sym, state, "robinhood").Set(dev)
-				if state == "regular" {
-					tracker.observe(sym, "robinhood", now, ref.Price, pool)
-				}
 				tspHealth.WithLabelValues(sym).Set(1)
 				flag := ""
 				if dev > logThresholdBps && state == "regular" {
