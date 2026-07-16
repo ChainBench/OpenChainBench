@@ -266,6 +266,13 @@ export type Benchmark = {
    *  read as the global chain leader). Cells make the honest claim
    *  ("#1 on BNB Chain from Singapore") computable. */
   cellRanks?: Record<string, CellRankEntry[]>;
+  /** Optional per-provider chip labels keyed by provider slug. When set,
+   *  the ranking row renders a small pill next to the provider name so
+   *  scan-readers see context on comparisons that would otherwise be
+   *  apples-to-oranges (validator-yield: Solana "MEV inc.", Ethereum
+   *  "MEV excl.", Hyperliquid "no MEV"). Absent on benches whose spec
+   *  does not declare `provider_notes` — UI renders unchanged. */
+  providerNotes?: Record<string, string>;
   findings: string[];
   methodology: string[];
   source: string;

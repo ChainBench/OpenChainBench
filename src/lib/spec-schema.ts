@@ -374,6 +374,20 @@ export const SpecSchema = z
       })
       .optional(),
 
+    /**
+     * Optional per-provider chip labels rendered next to the provider
+     * name in the ranking row. Keys are provider slugs, values are the
+     * short chip text (max ~20 chars so it fits inline without wrapping).
+     * Used for scan-time context on comparisons that would otherwise read
+     * as apples-to-oranges (e.g. validator-yield: Solana includes MEV,
+     * Ethereum excludes it, Hyperliquid has no MEV layer). Only providers
+     * with a note render a chip; benches without provider_notes render
+     * unchanged.
+     */
+    provider_notes: z
+      .record(slug, z.string().min(1).max(30).refine(noAiDashes, noAiDashesMsg))
+      .optional(),
+
     /* Optional single PromQL returning one instant sample per
      * (provider[, chain][, region]) — e.g.
      *   avg by (provider, chain, region) (quantile_over_time(0.50, m[24h]))
