@@ -42,14 +42,30 @@ func endpoints() []Endpoint {
 	}
 	// Keyed providers, skipped when the env var is unset. URLs carry the
 	// key inline (e.g. wss://eth-mainnet.g.alchemy.com/v2/<key>) so they
-	// live in the deployment env, never in the repo.
-	for _, opt := range []struct{ env, provider, chain string }{
-		{"WS_URL_ALCHEMY_ETHEREUM", "alchemy", "ethereum"},
-		{"WS_URL_INFURA_ETHEREUM", "infura", "ethereum"},
-		{"WS_URL_CHAINSTACK_ETHEREUM", "chainstack", "ethereum"},
+	// live in the deployment env, never in the repo. The public keyless
+	// cohort is already saturated on every chain (Ankr, Blast, LlamaRPC,
+	// BlockPI, 1RPC, NodeReal, Omniatech all failed a live WSS handshake
+	// as of 2026-07 audit), so any new cohort member comes in via one of
+	// the slots below.
+	for _, opt := range []struct{ env, provider, chain, kind string }{
+		// Ethereum keyed
+		{"WS_URL_ALCHEMY_ETHEREUM", "alchemy", "ethereum", "evm"},
+		{"WS_URL_INFURA_ETHEREUM", "infura", "ethereum", "evm"},
+		{"WS_URL_CHAINSTACK_ETHEREUM", "chainstack", "ethereum", "evm"},
+		{"WS_URL_QUICKNODE_ETHEREUM", "quicknode", "ethereum", "evm"},
+		// Base keyed
+		{"WS_URL_ALCHEMY_BASE", "alchemy", "base", "evm"},
+		{"WS_URL_INFURA_BASE", "infura", "base", "evm"},
+		{"WS_URL_CHAINSTACK_BASE", "chainstack", "base", "evm"},
+		{"WS_URL_QUICKNODE_BASE", "quicknode", "base", "evm"},
+		// Solana keyed
+		{"WS_URL_ALCHEMY_SOLANA", "alchemy", "solana", "solana"},
+		{"WS_URL_CHAINSTACK_SOLANA", "chainstack", "solana", "solana"},
+		{"WS_URL_HELIUS_SOLANA", "helius", "solana", "solana"},
+		{"WS_URL_QUICKNODE_SOLANA", "quicknode", "solana", "solana"},
 	} {
 		if url := strings.TrimSpace(os.Getenv(opt.env)); url != "" {
-			eps = append(eps, Endpoint{Provider: opt.provider, Chain: opt.chain, Kind: "evm", URL: url})
+			eps = append(eps, Endpoint{Provider: opt.provider, Chain: opt.chain, Kind: opt.kind, URL: url})
 		}
 	}
 	return eps
