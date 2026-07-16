@@ -83,4 +83,12 @@ var Registry = []Chain{
 	// stablecoin (~$1), the wrong asset for a native-token card.
 	{Slug: "fraxtal", DefiLlama: "Fraxtal", Mobula: "", NativeSymbol: "FRXETH"},
 	{Slug: "soneium", DefiLlama: "Soneium", Mobula: "", NativeSymbol: "ETH"},
+	// Polkadot relay chain. DefiLlama tracks the chain name but reports
+	// zero TVL and 500s on the DEX endpoint: relay chain has no DeFi and
+	// parachain DeFi (Acala, Moonbeam, Hydration) lives under those slugs.
+	// Stables endpoint returns real values via Asset Hub USDC/USDT
+	// issuance. DOT native price and mcap flow through Mobula. The zero
+	// TVL guard in defillama.go drops the empty TVL card so only real
+	// cards render.
+	{Slug: "polkadot", DefiLlama: "Polkadot", Mobula: "", NativeSymbol: "DOT"},
 }
