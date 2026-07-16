@@ -16,6 +16,67 @@ type SeriesPathsProps = {
   unit: string;
 };
 
+type DowntimeBandsProps = {
+  drawn: DrawnLine[];
+  padT: number;
+  innerH: number;
+};
+
+/** Semi-transparent red rectangles that highlight the exact window each
+ *  line was silent (contiguous gap indices). Rendered under SeriesPaths
+ *  so the line stroke stays on top; drawn only for visible (non-excluded)
+ *  lines so toggling a provider off in the legend hides its band with
+ *  it. A single-point gap (1 bucket) still renders as a narrow band by
+ *  extending one step to the right — makes a short outage visible
+ *  instead of being an invisible zero-width sliver. */
+export function DowntimeBands({ drawn, padT, innerH }: DowntimeBandsProps) {
+  return (
+    <>
+      {drawn.map((d) => {
+        if (d.excluded) return null;
+        // Collect contiguous gap ranges as [startX, endX] pairs. endX is
+        // extended by one step (or the innerH) so a 1-point gap has a
+        // real visible width.
+        const bands: { x: number; w: number }[] = [];
+        let runStart: number | null = null;
+        for (let i = 0; i < d.pts.length; i++) {
+          const p = d.pts[i];
+          if (p.gap) {
+            if (runStart == null) runStart = i;
+          } else if (runStart != null) {
+            const startX = d.pts[runStart].x;
+            const endX = d.pts[i].x;
+            bands.push({ x: startX, w: Math.max(2, endX - startX) });
+            runStart = null;
+          }
+        }
+        // Trailing gap that runs to the current time.
+        if (runStart != null) {
+          const startX = d.pts[runStart].x;
+          const endX = d.pts[d.pts.length - 1].x;
+          bands.push({ x: startX, w: Math.max(2, endX - startX) });
+        }
+        if (bands.length === 0) return null;
+        return (
+          <g key={`down-${d.slug}`} className="ts-downtime">
+            {bands.map((b, i) => (
+              <rect
+                key={i}
+                x={b.x}
+                y={padT}
+                width={b.w}
+                height={innerH}
+                fill="var(--color-danger, #b0402e)"
+                opacity={0.08}
+              />
+            ))}
+          </g>
+        );
+      })}
+    </>
+  );
+}
+
 export function SeriesPaths({ drawn, unit }: SeriesPathsProps) {
   return (
     <>
