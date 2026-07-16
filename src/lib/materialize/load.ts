@@ -382,13 +382,23 @@ function activeFilterLabels(opts: BenchmarkFilters): Record<string, string> {
  */
 export function propagateNullsToCoarser(
   fine: (number | null)[] | null | undefined,
+  fineWindowSec: number,
   coarse: (number | null)[] | null | undefined,
+  coarseWindowSec: number,
 ): void {
   if (!fine || !coarse || fine.length < 2 || coarse.length < 2) return;
-  const denomFine = fine.length - 1;
-  const denomCoarse = coarse.length - 1;
-  const toIdxCoarse = (i: number) =>
-    denomCoarse * (1 - (denomFine - i) / denomFine);
+  if (fineWindowSec <= 0 || coarseWindowSec <= 0) return;
+  const fineStep = fineWindowSec / (fine.length - 1);
+  const coarseStep = coarseWindowSec / (coarse.length - 1);
+  // Right-anchored: last index = now. Map a fine index to the same
+  // ABSOLUTE time-ago on the coarse grid (both grids share "now"; the
+  // step sizes are what differ, not the reference point). Previous
+  // math scaled by the fine window fraction, which shrank a 7 h ago
+  // outage down to 40 h ago once projected onto the 7 d grid.
+  const toIdxCoarse = (i: number): number => {
+    const secondsAgo = (fine.length - 1 - i) * fineStep;
+    return (coarse.length - 1) - secondsAgo / coarseStep;
+  };
   let runStart: number | null = null;
   const closeRun = (endExclusive: number) => {
     if (runStart == null) return;
@@ -842,8 +852,8 @@ async function tryLoadLive(
         // step) the outage rarely aligns with an evaluation window and
         // Prom returns a healthy average.
         if (s24 && s24.length > 0) {
-          propagateNullsToCoarser(s24, s7);
-          propagateNullsToCoarser(s24, s30);
+          propagateNullsToCoarser(s24, winSec, s7, sevenDaysSec);
+          propagateNullsToCoarser(s24, winSec, s30, thirtyDaysSec);
         }
         if (s24 && s24.length > 0) series24h[p.slug] = s24;
         if (s7 && s7.length > 0) series7d[p.slug] = s7;
@@ -872,8 +882,8 @@ async function tryLoadLive(
         for (const pt of points) {
           // Same short-outage propagation as the global series above.
           if (pt.series24 && pt.series24.length > 0) {
-            propagateNullsToCoarser(pt.series24, pt.series7);
-            propagateNullsToCoarser(pt.series24, pt.series30);
+            propagateNullsToCoarser(pt.series24, winSec, pt.series7, sevenDaysSec);
+            propagateNullsToCoarser(pt.series24, winSec, pt.series30, thirtyDaysSec);
           }
           if (pt.series24 && pt.series24.length > 0) {
             (seriesByRegion24h[p.slug] ??= {})[pt.region] = pt.series24;
