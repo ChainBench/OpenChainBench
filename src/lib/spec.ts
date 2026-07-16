@@ -285,7 +285,11 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // step grid the chart back-computes timestamps from.
 // v28: bench vague 2 ships 081-085 (ws-head-latency, oracle-freshness,
   // rpc-reliability, indexer-latency, evm-block-builders). Bench SET changed.
-  ["bench-unfiltered-v29", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v30: 081 slug renamed ws-head-latency -> ws-head-latency-ethereum for
+  // parity with the base + solana siblings + ungated on prod. Bench SET
+  // changed (old slug gone, new slug live). Bump to purge cached v29 that
+  // still keys the old slug.
+  ["bench-unfiltered-v30", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -441,7 +445,9 @@ const loadAllBenchmarksCached = unstable_cache(
   // v29: bumped with bench-unfiltered-v26 (monad-rpc + megaeth-rpc ship).
   // v30: bumped with bench-unfiltered-v27 (dense series with nulls).
 // v31: bumped with bench-unfiltered-v28 (bench vague 2, 081-085).
-  ["all-benchmarks-v32", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v32: bumped with bench-unfiltered-v30 (081 slug rename ws-head-latency
+  // -> ws-head-latency-ethereum + ungate on prod).
+  ["all-benchmarks-v33", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
