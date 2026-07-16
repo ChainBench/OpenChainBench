@@ -32,9 +32,9 @@ seo_intro: |
 abstract: |
   We benchmark how many networks each major onchain data provider lists
   in its public "supported networks" endpoint. The harness fetches the
-  official listing every six hours from six providers (GeckoTerminal,
-  Codex, Mobula, CoinPaprika, CoinStats and Dune via Sim API),
-  deduplicates by chain id and counts. Mainnet only,
+  official listing every six hours from five providers (GeckoTerminal,
+  Codex, Mobula, CoinPaprika and Dune via Sim API), deduplicates by
+  chain id and counts. Mainnet only,
   testnets are excluded because providers list them inconsistently and
   the comparison is meant to reflect what a builder can integrate against
   in production. Coverage breadth is one dimension of a data provider's
@@ -47,7 +47,6 @@ methodology:
   - "Codex: GraphQL `getNetworks` query at https://graph.codex.io/graphql with an official API key."
   - "Mobula: GET /api/1/blockchains with an Authorization API key."
   - "CoinPaprika: GET /v1/contracts (no auth). Lists platforms supported for contract lookup."
-  - "CoinStats: GET /wallet/blockchains with X-API-KEY."
   - "Dune (via Sim API): GET https://api.sim.dune.com/v1/evm/supported-chains (no auth). EVM only, mainnets filtered via the `mainnet` tag."
   - "Cadence: full refresh every 6 hours."
   - "Counting: a provider's network is counted once per unique chain id; mainnet only."
@@ -82,7 +81,7 @@ faq:
 
 # Real metrics exposed by the network-coverage harness:
 #   networks_supported_total{provider="geckoterminal"|"codex"|"mobula"|
-#                                     "coinpaprika"|"coinstats"|"dune"}
+#                                     "coinpaprika"|"dune"}
 #     -> gauge, the unique-chain count from the latest successful refresh.
 #   network_supported{provider, chain_id, slug, name} -> gauge (1 per
 #     network; useful for diff queries on the site if we add a
@@ -140,19 +139,6 @@ providers:
       success: clamp_max(networks_supported_total{provider="coinpaprika"} > bool 0, 1)
       sample_size: networks_supported_total{provider="coinpaprika"}
       series: networks_supported_total{provider="coinpaprika"}
-
-  - slug: coinstats
-    name: CoinStats
-    tag: Portfolio + market data
-    formula: "Count of blockchains returned by CoinStats's `/wallet/blockchains` endpoint, refreshed every 6 hours."
-    queries:
-      p50: networks_supported_total{provider="coinstats"}
-      p90: networks_supported_total{provider="coinstats"}
-      p99: networks_supported_total{provider="coinstats"}
-      mean: networks_supported_total{provider="coinstats"}
-      success: clamp_max(networks_supported_total{provider="coinstats"} > bool 0, 1)
-      sample_size: networks_supported_total{provider="coinstats"}
-      series: networks_supported_total{provider="coinstats"}
 
   - slug: dune
     name: Dune
