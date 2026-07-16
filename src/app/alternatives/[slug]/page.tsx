@@ -192,6 +192,15 @@ export default async function AlternativePage({
         {alt.intro}
       </div>
 
+      {alt.positioning && (
+        <div className="mt-6 max-w-3xl">
+          <p className="label-mono text-ink-muted mb-2">Positioning</p>
+          <div className="text-[15px] leading-relaxed text-ink-soft">
+            {alt.positioning}
+          </div>
+        </div>
+      )}
+
       {alt.target_url && (
         <p className="mt-4 text-xs text-ink-muted break-words">
           About {alt.target_product}:{" "}
