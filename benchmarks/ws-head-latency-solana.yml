@@ -63,6 +63,15 @@ prometheus:
   window: 24h
   freshness_metric: ws_head_blocks_seen_total
 
+rank_matrix_query: histogram_quantile(0.50, sum by (provider, region, le) (rate(ws_head_lag_milliseconds_bucket{chain="solana"}[24h])))
+
+dimensions:
+  region:
+    - { value: all,     label: All regions }
+    - { value: us-east, label: US-East }
+    - { value: eu-west, label: EU-West }
+    - { value: sgp,     label: Singapore }
+
 faq:
   - q: "What is the fastest free Solana RPC over WebSocket right now?"
     a: "{{best_name}} currently wins most per-slot races on Solana with a median lag of {{best_p50}} versus the earliest arrival (p50, 24 h) across {{count}} measured keyless providers. The leaderboard re-scores on every Solana slot, roughly every 400ms, so the answer reflects sustained live measurement, not a one-off test. Check the win rate and the trailers' p99 before wiring a latency-sensitive Solana keeper or MEV integration to any single provider."
@@ -90,6 +99,16 @@ providers:
       success: clamp_max(sum(increase(ws_head_blocks_seen_total{provider="publicnode", chain="solana"}[24h])) / max(sum by (provider) (increase(ws_head_blocks_seen_total{chain="solana"}[24h]))), 1)
       sample_size: sum(increase(ws_head_lag_milliseconds_count{provider="publicnode", chain="solana"}[24h]))
       series: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="publicnode", chain="solana"}[1h])))
+      regions:
+        - region: us-east
+          p50: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="publicnode", chain="solana", region="us-east"}[24h])))
+          series: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="publicnode", chain="solana", region="us-east"}[1h])))
+        - region: eu-west
+          p50: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="publicnode", chain="solana", region="eu-west"}[24h])))
+          series: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="publicnode", chain="solana", region="eu-west"}[1h])))
+        - region: ap-southeast
+          p50: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="publicnode", chain="solana", region="sgp"}[24h])))
+          series: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="publicnode", chain="solana", region="sgp"}[1h])))
 
   - slug: solana-labs
     name: Solana Foundation
@@ -103,3 +122,13 @@ providers:
       success: clamp_max(sum(increase(ws_head_blocks_seen_total{provider="solana-labs", chain="solana"}[24h])) / max(sum by (provider) (increase(ws_head_blocks_seen_total{chain="solana"}[24h]))), 1)
       sample_size: sum(increase(ws_head_lag_milliseconds_count{provider="solana-labs", chain="solana"}[24h]))
       series: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="solana-labs", chain="solana"}[1h])))
+      regions:
+        - region: us-east
+          p50: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="solana-labs", chain="solana", region="us-east"}[24h])))
+          series: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="solana-labs", chain="solana", region="us-east"}[1h])))
+        - region: eu-west
+          p50: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="solana-labs", chain="solana", region="eu-west"}[24h])))
+          series: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="solana-labs", chain="solana", region="eu-west"}[1h])))
+        - region: ap-southeast
+          p50: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="solana-labs", chain="solana", region="sgp"}[24h])))
+          series: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="solana-labs", chain="solana", region="sgp"}[1h])))

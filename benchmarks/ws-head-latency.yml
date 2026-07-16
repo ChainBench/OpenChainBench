@@ -72,6 +72,18 @@ prometheus:
   window: 24h
   freshness_metric: ws_head_blocks_seen_total
 
+# Per-cell (region) ranking matrix for scoped badge claims. Chain is
+# fixed for the whole bench, so cells key on provider and region.
+rank_matrix_query: histogram_quantile(0.50, sum by (provider, region, le) (rate(ws_head_lag_milliseconds_bucket{chain="ethereum"}[24h])))
+
+# Region is the only dimension: chain is baked into every query.
+dimensions:
+  region:
+    - { value: all,     label: All regions }
+    - { value: us-east, label: US-East }
+    - { value: eu-west, label: EU-West }
+    - { value: sgp,     label: Singapore }
+
 faq:
   - q: "Which RPC provider pushes new Ethereum blocks first over WebSocket?"
     a: "{{best_name}} currently wins most per-block races, with a median lag of {{best_p50}} versus the earliest arrival (p50, 24 h) across {{count}} measured keyless providers. The leaderboard re-scores on every Ethereum block, roughly every 12 seconds, so the answer reflects sustained live measurement, not a one-off test. Check the win rate and the trailers' p99 before wiring a latency-sensitive bot to any single provider."
@@ -99,6 +111,16 @@ providers:
       success: clamp_max(sum(increase(ws_head_blocks_seen_total{provider="publicnode", chain="ethereum"}[24h])) / max(sum by (provider) (increase(ws_head_blocks_seen_total{chain="ethereum"}[24h]))), 1)
       sample_size: sum(increase(ws_head_lag_milliseconds_count{provider="publicnode", chain="ethereum"}[24h]))
       series: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="publicnode", chain="ethereum"}[1h])))
+      regions:
+        - region: us-east
+          p50: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="publicnode", chain="ethereum", region="us-east"}[24h])))
+          series: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="publicnode", chain="ethereum", region="us-east"}[1h])))
+        - region: eu-west
+          p50: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="publicnode", chain="ethereum", region="eu-west"}[24h])))
+          series: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="publicnode", chain="ethereum", region="eu-west"}[1h])))
+        - region: ap-southeast
+          p50: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="publicnode", chain="ethereum", region="sgp"}[24h])))
+          series: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="publicnode", chain="ethereum", region="sgp"}[1h])))
 
   - slug: drpc
     name: dRPC
@@ -112,6 +134,16 @@ providers:
       success: clamp_max(sum(increase(ws_head_blocks_seen_total{provider="drpc", chain="ethereum"}[24h])) / max(sum by (provider) (increase(ws_head_blocks_seen_total{chain="ethereum"}[24h]))), 1)
       sample_size: sum(increase(ws_head_lag_milliseconds_count{provider="drpc", chain="ethereum"}[24h]))
       series: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="drpc", chain="ethereum"}[1h])))
+      regions:
+        - region: us-east
+          p50: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="drpc", chain="ethereum", region="us-east"}[24h])))
+          series: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="drpc", chain="ethereum", region="us-east"}[1h])))
+        - region: eu-west
+          p50: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="drpc", chain="ethereum", region="eu-west"}[24h])))
+          series: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="drpc", chain="ethereum", region="eu-west"}[1h])))
+        - region: ap-southeast
+          p50: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="drpc", chain="ethereum", region="sgp"}[24h])))
+          series: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="drpc", chain="ethereum", region="sgp"}[1h])))
 
   - slug: tenderly
     name: Tenderly
@@ -125,3 +157,13 @@ providers:
       success: clamp_max(sum(increase(ws_head_blocks_seen_total{provider="tenderly", chain="ethereum"}[24h])) / max(sum by (provider) (increase(ws_head_blocks_seen_total{chain="ethereum"}[24h]))), 1)
       sample_size: sum(increase(ws_head_lag_milliseconds_count{provider="tenderly", chain="ethereum"}[24h]))
       series: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="tenderly", chain="ethereum"}[1h])))
+      regions:
+        - region: us-east
+          p50: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="tenderly", chain="ethereum", region="us-east"}[24h])))
+          series: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="tenderly", chain="ethereum", region="us-east"}[1h])))
+        - region: eu-west
+          p50: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="tenderly", chain="ethereum", region="eu-west"}[24h])))
+          series: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="tenderly", chain="ethereum", region="eu-west"}[1h])))
+        - region: ap-southeast
+          p50: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="tenderly", chain="ethereum", region="sgp"}[24h])))
+          series: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="tenderly", chain="ethereum", region="sgp"}[1h])))
