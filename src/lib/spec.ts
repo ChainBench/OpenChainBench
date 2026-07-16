@@ -201,6 +201,16 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
     // ISR re-render bursts.
     const stored = await benchFromStore(slug, "");
     if (stored) return slimBenchmarkForCache(overlayEditorial(stored, spec));
+    if (spec.status === "live") {
+      // A live spec with no readable blob is a transient store failure
+      // (proxy timeout, worker mid-write), not a real state. Returning
+      // undefined would cache the miss for the whole revalidate window:
+      // home row + /api/stat then serve "Awaiting samples" while the
+      // bench page reads fine (bnb-rpc incident, 2026-07-13). Throwing
+      // makes unstable_cache keep the last good entry; cold-cache
+      // callers already catch and fall back to the draft placeholder.
+      throw new Error(`store blob missing for live bench ${slug}`);
+    }
     return undefined;
   },
   // Version key bumped when Benchmark shape changes so stale cache entries
@@ -273,7 +283,13 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // buckets (gap rendering fix). Cached v26 entries hold the old
   // hole-compressed arrays whose indices no longer map onto the nominal
   // step grid the chart back-computes timestamps from.
-  ["bench-unfiltered-v36", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+// v28: bench vague 2 ships 081-085 (ws-head-latency, oracle-freshness,
+  // rpc-reliability, indexer-latency, evm-block-builders). Bench SET changed.
+  // v30: 081 slug renamed ws-head-latency -> ws-head-latency-ethereum for
+  // parity with the base + solana siblings + ungated on prod. Bench SET
+  // changed (old slug gone, new slug live). Bump to purge cached v29 that
+  // still keys the old slug.
+  ["bench-unfiltered-v30", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -428,7 +444,10 @@ const loadAllBenchmarksCached = unstable_cache(
   // gated catalog to /products for 30+ min after the deploy).
   // v29: bumped with bench-unfiltered-v26 (monad-rpc + megaeth-rpc ship).
   // v30: bumped with bench-unfiltered-v27 (dense series with nulls).
-  ["all-benchmarks-v39", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+// v31: bumped with bench-unfiltered-v28 (bench vague 2, 081-085).
+  // v32: bumped with bench-unfiltered-v30 (081 slug rename ws-head-latency
+  // -> ws-head-latency-ethereum + ungate on prod).
+  ["all-benchmarks-v33", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -507,7 +526,8 @@ const loadBenchmarkFiltered = unstable_cache(
   // v16: bumped with the bench 074 ship (lockstep rule, see all-benchmarks-v28).
   // v17: bumped with the monad-rpc + megaeth-rpc ship (lockstep rule).
   // v18: bumped with bench-unfiltered-v27 (dense series with nulls).
-  ["bench-filters-v27", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v19: bumped with bench-unfiltered-v28 (bench vague 2, 081-085).
+  ["bench-filters-v20", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 

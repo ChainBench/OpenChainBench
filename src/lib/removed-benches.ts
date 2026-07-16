@@ -36,5 +36,16 @@ export const REMOVED_BENCH_SLUGS = new Set([
   "indexing-freshness",
   "rpc-keyed-latency",
   "explorer-chain-coverage",
+  "tokenized-stock-arb-latency",
   "portfolio-chain-coverage",
+  // bench vague 2 (082-085): validating on staging until harnesses have
+  // 48h of clean data on the VPS, then ship dev -> main. 081 renamed
+  // to ws-head-latency-ethereum for slug parity with the base + solana
+  // siblings; both siblings shipped to main without gating (harness has
+  // clean data via Railway 3-region deploy), so the ethereum-scoped one
+  // follows suit and is not gated.
+  "oracle-freshness",
+  "rpc-reliability",
+  "indexer-latency",
+  "evm-block-builders",
 ]);
