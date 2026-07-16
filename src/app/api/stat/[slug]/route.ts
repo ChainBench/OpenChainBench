@@ -8,6 +8,7 @@ import {
   fieldValue,
   headlineSentence,
   leader,
+  rankedCandidates,
   sparklineFor,
 } from "@/lib/citation";
 import { valueInDeclaredUnit } from "@/lib/format";
@@ -98,22 +99,19 @@ export async function GET(
       insufficient || !top
         ? null
         : { ...top, value: valueInDeclaredUnit(top.value, b.unit) },
-    rankings: b.results
-      .filter((r) => r.ms.p50 > 0)
-      // Drop "insufficient" rows from the machine-readable ranking too:
-      // a row that the page hides from the leaderboard must not surface
-      // here either.
-      .filter((r) => r.dataConfidence !== "insufficient")
-      .sort((a, c) => (b.higherIsBetter ? c.ms.p50 - a.ms.p50 : a.ms.p50 - c.ms.p50))
-      .map((r) => ({
-        name: r.name,
-        slug: r.slug,
-        ms: r.ms,
-        successRate: r.successRate,
-        sampleSize: r.sampleSize,
-        sampleHealth: r.sampleHealth,
-        dataConfidence: r.dataConfidence,
-      })),
+    // Shares `rankedCandidates` with `leader()` so `rankings[0]`
+    // stays consistent with the `leader` field on the same JSON blob:
+    // a document that names Etherscan as leader must not also list
+    // Owlracle first here.
+    rankings: rankedCandidates(b).map((r) => ({
+      name: r.name,
+      slug: r.slug,
+      ms: r.ms,
+      successRate: r.successRate,
+      sampleSize: r.sampleSize,
+      sampleHealth: r.sampleHealth,
+      dataConfidence: r.dataConfidence,
+    })),
     sparkline: sparklineFor(b, top?.slug),
     sampleSize: b.sampleSize,
     expectedN: b.expectedN,

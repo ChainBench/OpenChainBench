@@ -38,6 +38,7 @@
 
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
 import { liveResults } from "@/lib/provider-filters";
+import { citationCandidates } from "@/lib/citation";
 import { rankResults } from "@/lib/ranking";
 import { fmtUnit } from "@/lib/format";
 
@@ -87,8 +88,18 @@ function worstForChain(b: Benchmark, chain: string): ProviderResult | undefined 
 
 export function renderTemplate(text: string, benchmark: Benchmark): string {
   if (!text || text.indexOf("{{") === -1) return text;
+  // `live` still drives per-slug lookups so callers of {{p50:some-slug}}
+  // can still address unreliable providers by name (the token is
+  // explicit). `bestPool` applies the same reliability floor as
+  // `leader()` so {{best_name}} and {{best_p50}} tokens in bench copy
+  // never elevate a provider that would be filtered out of the
+  // citation headline.
   const live = liveResults(benchmark.results);
-  const sorted = rankResults(live, benchmark.higherIsBetter);
+  const bestPool = citationCandidates(benchmark);
+  const sorted = rankResults(
+    bestPool.length > 0 ? bestPool : live,
+    benchmark.higherIsBetter,
+  );
   const best = sorted[0];
   const worst = sorted[sorted.length - 1];
 
