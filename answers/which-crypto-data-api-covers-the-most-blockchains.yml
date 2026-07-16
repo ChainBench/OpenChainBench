@@ -41,7 +41,7 @@ related:
 
 seo_title: "Which crypto data API covers the most blockchains in 2026?"
 seo_description: "{{best_name}} leads at {{best_p50}} unique mainnets across GeckoTerminal, Codex, Mobula, CoinPaprika, CoinStats and Dune, audited every 6 hours by OpenChainBench."
-status: liveexpert_take_reviewed: "2026-07-16"expert_take_reviewed: "2026-07-16"
+status: live
 
 expert_take: |
   Chain coverage is a single-axis metric on a two-axis problem. Breadth (how many chain ids the provider lists) and depth (how completely each chain is indexed: pools, swaps, holders, metadata, historical range) are independently priced inside every data platform, and one can grow at the expense of the other. A provider that ships adapters for every new EVM chain within a week can look excellent on a network count while carrying only price ticks on the long tail; a provider with a shorter list may cover every listed chain end to end. Readers should also treat testnet inclusion with suspicion, since testnet registries are inconsistent across vendors and inflate the count without adding integratable surface. The right way to use this ranking is as one input alongside head lag on the chains that matter to the integration, and metadata completeness for the tokens the product will surface. A common misread is treating a coverage leader as automatically the right pick; the shortlist should be built from the intersection of breadth, depth and freshness.
