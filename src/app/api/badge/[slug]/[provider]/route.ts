@@ -220,21 +220,14 @@ export async function GET(
       // Legacy approximation for chain-dimensioned benches without a
       // rank_matrix_query in their spec.
       const scoped = rankOfChain(b, provider, chainParam);
-      if (!scoped) {
-        return new NextResponse("not found", {
-          status: 404,
-          // Short TTL: a scoped miss is usually transient (bench cache
-          // entry predating cellRanks, or a Prom hiccup on the matrix
-          // query), so don't let the CDN pin the 404 for long.
-          headers: { "cache-control": "public, s-maxage=60" },
-        });
-      }
+      // Serve a placeholder SVG instead of 404 on a transient scoped miss
+      // (bench cache entry predating cellRanks, Prom hiccup on the matrix
+      // query, provider without data on the scope). Keeps external embeds
+      // from displaying broken images and Ahrefs from flagging inbound.
+      if (!scoped) return placeholderSvg(b.title);
       r = { rank: scoped.rank, total: scoped.total, value: scoped.value };
     } else {
-      return new NextResponse("not found", {
-        status: 404,
-        headers: { "cache-control": "public, s-maxage=60" },
-      });
+      return placeholderSvg(b.title);
     }
     scopeLabel = [
       chainParam ? chainLabel(b, chainParam) : null,
@@ -244,12 +237,7 @@ export async function GET(
       .join(" · ");
   } else {
     r = rankOf(b.results, provider, b.higherIsBetter);
-    if (!r) {
-      return new NextResponse("not found", {
-        status: 404,
-        headers: { "cache-control": "public, s-maxage=60" },
-      });
-    }
+    if (!r) return placeholderSvg(b.title);
     // Hint the aggregate scope when the bench declares dimensions so
     // embedders can read it. Benches without dimensions get no scope
     // label (it would be noise).
@@ -378,6 +366,41 @@ export async function GET(
       Vary: "Accept, Accept-Encoding",
       "Cache-Control":
         "public, max-age=300, s-maxage=300, stale-while-revalidate=600",
+    },
+  });
+}
+
+/** Placeholder SVG served with HTTP 200 when the provider isn't ranked
+ *  yet on this bench (missing p50, unknown scope cell, provider not in
+ *  results). Serving 200 instead of 404 keeps embed images from breaking
+ *  on partner sites during transient data gaps and keeps Ahrefs from
+ *  flagging inbound links as broken. Short CDN TTL (60s) so a resolved
+ *  gap surfaces quickly. */
+function placeholderSvg(benchTitle: string): NextResponse {
+  const title = truncate(benchTitle, 60);
+  const line1 = "Measurement pending";
+  const line2 = "OpenChainBench";
+  const W = Math.min(
+    W_MAX,
+    Math.max(W_MIN, TEXT_X + title.length * CH_11 + 30),
+  );
+  const svg = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="OpenChainBench: ${escapeXml(title)} — measurement pending">
+  <title>OpenChainBench. ${escapeXml(title)}. Measurement pending.</title>
+  <rect width="${W}" height="${H}" rx="6" fill="#F5F1E8"/>
+  <rect x="0.5" y="0.5" width="${W - 1}" height="${H - 1}" rx="5.5" fill="none" stroke="#22272F" stroke-opacity="0.12"/>
+  <circle cx="24" cy="22" r="10" fill="none" stroke="#22272F" stroke-opacity="0.35" stroke-dasharray="2 2"/>
+  <text x="${TEXT_X}" y="18" font-family="SF Mono, Menlo, monospace" font-size="11" font-weight="600" fill="#22272F">${escapeXml(title)}</text>
+  <text x="${TEXT_X}" y="33" font-family="SF Mono, Menlo, monospace" font-size="10" fill="#6b7280">${escapeXml(line1)}</text>
+  <text x="${W - 8}" y="12" font-family="SF Mono, Menlo, monospace" font-size="7" fill="#22272F" fill-opacity="0.55" text-anchor="end">${escapeXml(line2)}</text>
+</svg>`;
+  return new NextResponse(svg, {
+    status: 200,
+    headers: {
+      "Content-Type": "image/svg+xml; charset=utf-8",
+      Vary: "Accept, Accept-Encoding",
+      "Cache-Control":
+        "public, max-age=60, s-maxage=60, stale-while-revalidate=300",
     },
   });
 }
