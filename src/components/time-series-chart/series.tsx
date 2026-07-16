@@ -23,114 +23,159 @@ type DowntimeBandsProps = {
 };
 
 /** Colored rectangles that highlight the exact window each line was
- *  silent (contiguous gap indices). Each band tints in the provider's
- *  own color so multiple simultaneous outages read distinctly (e.g.
- *  Codex teal + Mobula orange bands overlapping look like two events,
- *  not one). A small label sits above the band with the provider name
- *  and a short reason so a reader doesn't need to hover the line to
- *  understand who dropped off. Rendered under SeriesPaths so the line
- *  stroke stays on top; skipped for excluded (legend-toggled)
- *  providers so their bands disappear with the line. A single-point
- *  gap still renders (min width 4 px) — a short outage matters just
- *  as much as a long one. */
+ *  silent (contiguous gap indices), plus a high-contrast pill label
+ *  above each band naming the provider that dropped off. Pills stack
+ *  vertically when multiple providers went silent at the same time so
+ *  simultaneous outages read as separate lines instead of colliding
+ *  as unreadable overlapping text. Rendered under SeriesPaths so the
+ *  line stroke stays on top; skipped for excluded (legend-toggled)
+ *  providers so their bands disappear with the line. */
 export function DowntimeBands({ drawn, padT, innerH }: DowntimeBandsProps) {
+  // Collect every band across every visible provider before rendering.
+  // Two-pass so we can assign each band a vertical stack slot based on
+  // how many EARLIER-placed bands its X-range overlaps — labels then
+  // don't collide when three providers went dark in the same window.
+  type Band = {
+    slug: string;
+    name: string;
+    color: string;
+    x: number;
+    w: number;
+    slot: number;
+  };
+  const all: Band[] = [];
+  for (const d of drawn) {
+    if (d.excluded) continue;
+    let runStart: number | null = null;
+    const push = (endX: number) => {
+      if (runStart == null) return;
+      const startX = d.pts[runStart].x;
+      all.push({
+        slug: d.slug,
+        name: d.name,
+        color: d.color,
+        x: startX,
+        w: Math.max(6, endX - startX),
+        slot: 0,
+      });
+      runStart = null;
+    };
+    for (let i = 0; i < d.pts.length; i++) {
+      const p = d.pts[i];
+      if (p.gap) {
+        if (runStart == null) runStart = i;
+      } else {
+        push(d.pts[i].x);
+      }
+    }
+    // Trailing gap that runs to the current time.
+    if (runStart != null) push(d.pts[d.pts.length - 1].x);
+  }
+  if (all.length === 0) return null;
+
+  // Slot assignment: for each band, pick the smallest slot not used
+  // by another band whose X-range overlaps this one. Naive O(n²) is
+  // fine — a chart has at most ~20 bands in the pathological case.
+  all.sort((a, b) => a.x - b.x);
+  for (let i = 0; i < all.length; i++) {
+    const b = all[i];
+    const used = new Set<number>();
+    for (let j = 0; j < i; j++) {
+      const p = all[j];
+      if (p.x < b.x + b.w && p.x + p.w > b.x) used.add(p.slot);
+    }
+    let slot = 0;
+    while (used.has(slot)) slot++;
+    b.slot = slot;
+  }
+
+  // Pill geometry constants. Pills sit ABOVE the plot area so they
+  // never occlude data. Small padding on the container's padT keeps
+  // them within the chart frame.
+  const PILL_H = 15;
+  const PILL_GAP = 3;
+
   return (
-    <>
-      {drawn.map((d) => {
-        if (d.excluded) return null;
-        // Collect contiguous gap ranges as [startX, endX] pairs.
-        const bands: { x: number; w: number }[] = [];
-        let runStart: number | null = null;
-        for (let i = 0; i < d.pts.length; i++) {
-          const p = d.pts[i];
-          if (p.gap) {
-            if (runStart == null) runStart = i;
-          } else if (runStart != null) {
-            const startX = d.pts[runStart].x;
-            const endX = d.pts[i].x;
-            bands.push({ x: startX, w: Math.max(4, endX - startX) });
-            runStart = null;
-          }
-        }
-        // Trailing gap that runs to the current time.
-        if (runStart != null) {
-          const startX = d.pts[runStart].x;
-          const endX = d.pts[d.pts.length - 1].x;
-          bands.push({ x: startX, w: Math.max(4, endX - startX) });
-        }
-        if (bands.length === 0) return null;
+    <g className="ts-downtime">
+      {/* Bands first (behind), then all pills on top so no band tint
+          can bleed onto a label from a taller-slot pill. */}
+      {all.map((b, i) => (
+        <g key={`band-${b.slug}-${i}`}>
+          <rect
+            x={b.x}
+            y={padT}
+            width={b.w}
+            height={innerH}
+            fill={b.color}
+            opacity={0.1}
+          />
+          <line
+            x1={b.x}
+            x2={b.x}
+            y1={padT}
+            y2={padT + innerH}
+            stroke={b.color}
+            strokeWidth={0.8}
+            strokeDasharray="3 3"
+            opacity={0.55}
+          />
+          <line
+            x1={b.x + b.w}
+            x2={b.x + b.w}
+            y1={padT}
+            y2={padT + innerH}
+            stroke={b.color}
+            strokeWidth={0.8}
+            strokeDasharray="3 3"
+            opacity={0.55}
+          />
+        </g>
+      ))}
+      {all.map((b, i) => {
+        const cx = b.x + b.w / 2;
+        // "● NAME DOWN" width estimate: ~5.5 px per char plus fixed
+        // padding for the dot and the "DOWN" suffix.
+        const label = `${b.name.toUpperCase()} DOWN`;
+        const pillW = Math.max(58, label.length * 5.5 + 22);
+        const pillY = padT + 2 + b.slot * (PILL_H + PILL_GAP);
+        const pillX = Math.max(0, cx - pillW / 2);
         return (
-          <g key={`down-${d.slug}`} className="ts-downtime">
-            {bands.map((b, i) => {
-              // Label only when the band is wide enough that the text
-              // fits without overflowing. On narrow bands (1 bucket)
-              // the caret above the band carries the meaning alone.
-              const cx = b.x + b.w / 2;
-              const showLabel = b.w >= 42;
-              return (
-                <g key={i}>
-                  {/* Tinted fill spans the outage window. */}
-                  <rect
-                    x={b.x}
-                    y={padT}
-                    width={b.w}
-                    height={innerH}
-                    fill={d.color}
-                    opacity={0.09}
-                  />
-                  {/* Left + right edges: dashed provider-colored strokes so
-                     the boundaries of the outage are unambiguous even
-                     when the tint is subtle. */}
-                  <line
-                    x1={b.x}
-                    x2={b.x}
-                    y1={padT}
-                    y2={padT + innerH}
-                    stroke={d.color}
-                    strokeWidth={0.8}
-                    strokeDasharray="3 3"
-                    opacity={0.55}
-                  />
-                  <line
-                    x1={b.x + b.w}
-                    x2={b.x + b.w}
-                    y1={padT}
-                    y2={padT + innerH}
-                    stroke={d.color}
-                    strokeWidth={0.8}
-                    strokeDasharray="3 3"
-                    opacity={0.55}
-                  />
-                  {/* Caret above the band, then the label. The caret
-                     alone survives on very narrow bands where the text
-                     would be truncated. */}
-                  <path
-                    d={`M ${(cx - 4).toFixed(2)} ${(padT - 2).toFixed(2)} L ${cx.toFixed(2)} ${(padT + 3).toFixed(2)} L ${(cx + 4).toFixed(2)} ${(padT - 2).toFixed(2)} Z`}
-                    fill={d.color}
-                    opacity={0.9}
-                  />
-                  {showLabel && (
-                    <text
-                      x={cx}
-                      y={padT + 14}
-                      textAnchor="middle"
-                      fontFamily="var(--font-sans)"
-                      fontSize="9.5"
-                      fontWeight="600"
-                      letterSpacing="0.06em"
-                      fill={d.color}
-                      opacity={0.95}
-                    >
-                      {d.name.toUpperCase()} · SILENT
-                    </text>
-                  )}
-                </g>
-              );
-            })}
+          <g key={`pill-${b.slug}-${i}`}>
+            <rect
+              x={pillX}
+              y={pillY}
+              width={pillW}
+              height={PILL_H}
+              rx={PILL_H / 2}
+              ry={PILL_H / 2}
+              fill={b.color}
+              opacity={0.95}
+            />
+            {/* Small circle indicator, left of the label. */}
+            <circle
+              cx={pillX + 8}
+              cy={pillY + PILL_H / 2}
+              r={2.3}
+              fill="var(--color-paper, #ffffff)"
+              opacity={0.95}
+            />
+            <text
+              x={pillX + pillW / 2 + 4}
+              y={pillY + PILL_H / 2 + 0.5}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fontFamily="var(--font-sans)"
+              fontSize="9.5"
+              fontWeight="700"
+              letterSpacing="0.06em"
+              fill="var(--color-paper, #ffffff)"
+            >
+              {label}
+            </text>
           </g>
         );
       })}
-    </>
+    </g>
   );
 }
 
