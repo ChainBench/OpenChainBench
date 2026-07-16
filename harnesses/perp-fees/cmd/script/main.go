@@ -105,6 +105,10 @@ func fetchOne(v VenueConfig, cfg *Config) PerpSample {
 		return fetchParadex(v)
 	case "extended":
 		return fetchExtended(v)
+	case "aster":
+		return fetchAster(v)
+	case "edgex":
+		return fetchEdgex(v)
 	default:
 		return PerpSample{Venue: v.Slug, Asset: v.Asset, Err: "unsupported_venue"}
 	}

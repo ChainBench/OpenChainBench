@@ -2,10 +2,10 @@
 
 slug: rpc-capabilities
 number: "010"
-title: Fastest free public RPC for Ethereum, BNB, Polygon and 7 more EVM chains
+title: Fastest free public RPC for Ethereum, BNB, Polygon and 23 more chains (plus Solana and Polkadot)
 seo_title: "Fastest free public RPC 2026"
 seo_description: "Fastest free public RPC live on eth_getBlockByNumber p50. dRPC, PublicNode, Tenderly, Nodies, Lava ranked."
-subtitle: HTTP round-trip latency for eth_getBlockByNumber against free, no-key public RPC endpoints across 10 EVM chains, audited every 60 seconds.
+subtitle: HTTP round-trip latency for eth_getBlockByNumber against free, no-key public RPC endpoints across 26 chains (24 EVM plus Solana and Polkadot), audited every 60 seconds.
 category: RPCs
 status: live
 metric: RPC latency
@@ -13,13 +13,14 @@ unit: ms
 higher_is_better: false
 
 disclaimer: >
-  Latency is conditional on success: the harness times only calls that
-  return a valid, fresh block, so an endpoint failing most calls can
-  still post a fast p50 from its rare successes. Treat rows below 50
-  percent success as degraded. Providers whose probes stop succeeding
-  are pinned below the table as unresponsive. On the All chains tab
-  each number is the mean of per chain, per region 24h p50s; single
-  chain providers are measured on their one chain only.
+  Latency is conditional on success: the harness times only calls
+  returning a valid fresh block, so a mostly-failing endpoint can
+  post a fast p50. Rows below 50 percent success are degraded;
+  unresponsive probes pin below the table. The All chains aggregate
+  favours single-chain foundation endpoints (Base, Binance,
+  Arbitrum, Optimism, Avalanche officials) since they rank on one
+  chain only; use a chain tab for honest comparison. Dead endpoints
+  (cloudflare-eth POST returns -32603) are excluded.
 
 seo_intro: |
   This benchmark answers the question every developer reaching for a
@@ -28,14 +29,15 @@ seo_intro: |
   chain my product runs on. Alchemy and Infura own the keyed-tier
   market; the free public side of the question lives elsewhere, in
   the RPC services dapps hit when a contributor's free quota is the
-  budget. We probe `eth_getBlockByNumber` every 60 seconds against 13
-  audited providers across 10 EVM chains. PublicNode, dRPC,
-  MeowRPC, Tenderly Gateway, Nodies (POKT), Lava Network,
-  Flashbots Protect, Cloudflare and 5 chain-official foundation
-  endpoints (Base, Binance BSC, Avalanche, Arbitrum, Optimism).
-  Chains covered. Ethereum (8 providers), Arbitrum (7), Base (5),
-  Optimism (5), Avalanche (4), BNB (4), Polygon (4), Linea + Scroll + Mantle (3
-  each). The headline question is per chain, not cross-chain. Five
+  budget. We probe `eth_getBlockByNumber` every 60 seconds against
+  audited providers across 26 chains (24 EVM plus Solana and
+  Polkadot). PublicNode, dRPC, MeowRPC, Tenderly Gateway, Nodies
+  (POKT), Lava Network, Flashbots Protect, bloXroute, OnFinality
+  and chain-official foundation endpoints (Base, Binance BSC,
+  Avalanche, Arbitrum, Optimism, Sonic, Gnosis, Celo, Blast, Taiko,
+  Moonbeam, Berachain, zkSync, Cronos, Fraxtal, Unichain, Soneium,
+  Monad, MegaETH, Parity for Polkadot, Solana Labs).
+  Chain footprint spans the L1/L2 majors down to long-tail chains. The headline question is per chain, not cross-chain. Five
   providers are single-chain by design (the foundation endpoints
   above), so a cross-chain aggregate mechanically rewards whichever
   single-chain endpoint happens to be fastest on its one chain.
@@ -53,8 +55,10 @@ seo_intro: |
 
 abstract: |
   We measure the round-trip latency of a single, identical RPC call
-  (`eth_getBlockByNumber`) against every major no-key Ethereum-compatible
-  public RPC endpoint, across 10 EVM chains. The
+  (`eth_getBlockByNumber` for EVM chains, `getSlot` for Solana,
+  `chain_getHeader` for Polkadot) against every major no-key public
+  RPC endpoint, across 26 chains (24 EVM plus Solana and Polkadot).
+  The
   harness emits three metric families from one binary because they
   share the same (provider × chain) client matrix and same 15 s
   scrape interval: (a) `rpc_latency_milliseconds` for the speed
@@ -78,7 +82,7 @@ methodology:
   - "Call-result classification: `ok` (HTTP 200 + non-empty result), `http_err` (status ≠ 200 or transport failure), `jsonrpc_err` (HTTP 200 with an `error` field, the Cloudflare-eth trap), `stale` (returned block more than 20 behind the cross-provider tip for that chain), `timeout`. Counter `rpc_call_total{result}` powers the reliability leaderboard."
   - "Success gating: because failed probes record no latency, a mostly failing endpoint can post a fast p50 from its rare successes. The ledger pairs every latency figure with a Success column computed as ok calls over total calls in the same 24h window; read rows below 50 percent success as degraded. Providers with under 5 percent success lose their latency series to Prometheus staleness and are pinned below the table as unresponsive instead of being ranked."
   - "Archive depth: every 5 minutes we issue `eth_getBalance` at (head, depth) for `depth` in {300, 7200, 216_000, 1_296_000, 5_000_000}. Gauge `rpc_archive_depth_supported{depth}` is 1 when the response is non-pruned, 0 otherwise. The 300/7200 thresholds cover Geth's default pruned-cap range; 216k ≈ 1 month; 1.3M ≈ 6 months; 5M ≈ genesis-era full archive."
-  - "Chain coverage: 10 EVM chains. Ethereum (8 providers), Arbitrum (7), Base (5), Optimism (5), Avalanche (4), BNB (4), Polygon (4), Linea (3), Scroll (3), Mantle (3). Provider matrix per chain is documented in `miniapps/rpc-capabilities/cmd/script/config.go`."
+  - "Chain coverage: 26 chains (24 EVM plus Solana and Polkadot). EVM majors: Ethereum, Arbitrum, Base, Optimism, Avalanche, BNB, Polygon, Linea, Scroll, Mantle. EVM long-tail: Sonic, Gnosis, Celo, Blast, Taiko, Moonbeam, Berachain, zkSync, Cronos, Fraxtal, Unichain, Soneium, Monad, MegaETH. Non-EVM: Solana (getSlot probe), Polkadot (chain_getHeader probe). Provider matrix per chain is documented in `harnesses/rpc-capabilities/cmd/script/config.go`."
   - "Excluded: 1RPC (delisted 2026-07-09, under 13% success even at two chains and one probe per minute), Ankr (key-gated), gateway.fm (29 req/IP budget too tight for 15s polling), LlamaRPC + BlockPI + OmniaTech (Cloudflare 521 region-blocked), Alchemy demo (rate-limited dead), NodeReal + GetBlock + Chainstack (key-gated). Blink, formerly Merkle (no public eth_getBlockByNumber) + Lava and MeowRPC outside ETH/Arb excluded. Every (provider, chain) was live-verified no-key before inclusion."
 
 findings:
@@ -95,7 +99,7 @@ faq:
   - q: "What is the fastest free public RPC right now?"
     a: "The question is per chain because several providers are single-chain by design (Base official, Binance, Arbitrum Foundation, Optimism Foundation, Avalanche) and a cross-chain aggregate mechanically rewards whichever single-chain endpoint happens to be fastest on its one chain. Current per-chain leaders. Ethereum {{best_name:chain:ethereum}} at {{best_p50:chain:ethereum}}, Base {{best_name:chain:base}} at {{best_p50:chain:base}}, BNB Chain {{best_name:chain:bnb}} at {{best_p50:chain:bnb}}, Arbitrum {{best_name:chain:arbitrum}} at {{best_p50:chain:arbitrum}}. The leaderboard re-sorts every 60 seconds against fresh Prometheus samples averaged across us-east, eu-west and sgp probes. Switch the chain tab to see the leader on the network your product runs on."
   - q: "Which public RPCs work without an API key in 2026?"
-    a: "13 audited providers across 10 EVM chains. Universal multi-chain (work on 4+ chains): PublicNode, dRPC, Tenderly Gateway (`gateway.tenderly.co/public/<slug>`), Nodies (POKT successor at `*-pokt.nodies.app`). Ethereum-specific or limited footprint: MeowRPC (ETH + Arbitrum only since 2025), Flashbots Protect, Cloudflare (read-degraded), Lava Network (ETH + Arbitrum no-key, other chains require key), Chain-official foundation RPCs: Arbitrum (`arb1.arbitrum.io/rpc`), Optimism (`mainnet.optimism.io`), Base (`mainnet.base.org`), Avalanche (`api.avax.network`), BNB (`bsc-dataseed1.binance.org`). Excluded: Ankr (key-gated), gateway.fm (29 req/IP), LlamaRPC / BlockPI / OmniaTech (Cloudflare 521 region-blocked), Alchemy demo (rate-limited dead), NodeReal / GetBlock / Chainstack (key-gated)."
+    a: "Audited providers across 26 chains (24 EVM plus Solana and Polkadot). Universal multi-chain: PublicNode, dRPC, Tenderly Gateway (`gateway.tenderly.co/public/<slug>`), Nodies (POKT at `*-pokt.nodies.app`). Ethereum-specific or limited footprint: MeowRPC (ETH + Arbitrum only), Flashbots Protect, Lava Network (ETH + Arbitrum + Sonic + Solana no-key). Chain-official foundation RPCs: Arbitrum, Optimism, Base, Avalanche, BNB, Sonic, Gnosis, Celo, Blast, Taiko, Moonbeam, Berachain, zkSync, Cronos, Fraxtal, Unichain, Soneium, Monad, MegaETH, Parity for Polkadot, Solana Labs, plus regional gateways like OnFinality and bloXroute. Excluded: Ankr (key-gated), gateway.fm (29 req/IP), LlamaRPC / BlockPI / OmniaTech (Cloudflare 521 region-blocked), Alchemy demo (rate-limited dead), NodeReal / GetBlock / Chainstack (key-gated), cloudflare-eth (POST returns -32603)."
   - q: "Does Cloudflare still have a free Ethereum RPC that works?"
     a: "Partially, and the trend is the wrong way. Cloudflare's public Ethereum gateway (cloudflare-eth) switched to a permissioned mode for many JSON-RPC methods. The endpoint still answers HTTP 200 quickly, but the body is increasingly a JSON-RPC error (`-32046 Cannot fulfill request`) rather than a block. This benchmark catches the trap by classifying a call as `ok` only when the HTTP status is 200 AND the JSON-RPC body has a usable `result` field, so Cloudflare's real success rate is visible in the Success column instead of hiding behind fast error responses. Latency without reliability is a misleading ranking signal for a public RPC."
   - q: "Why can an RPC with a low success rate still show a fast latency?"

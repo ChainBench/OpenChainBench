@@ -49,6 +49,16 @@ func loadConfig() *Config {
 		// Extended's taker fee is documented (2.5 bps), not API-exposed;
 		// disclosed in the spec formula.
 		{slug: "extended", display: "Extended", assets: []string{"ETH", "BTC", "SOL"}},
+		// Aster (BSC-based, Binance-style REST). Public depth endpoint
+		// used for the walk; taker fee (5 bps, docs.asterdex.com) is
+		// hardcoded because no fee schedule API is published — disclosed
+		// in the spec formula.
+		{slug: "aster", display: "Aster", assets: []string{"ETH", "BTC", "SOL"}},
+		// edgeX (offchain CLOB perp DEX). Public depth endpoint keyed by
+		// contractId (map hardcoded after a one-time getMetaData lookup);
+		// taker fee (3.8 bps, edgex-1.gitbook.io) hardcoded because no
+		// public fee schedule API — disclosed in the spec formula.
+		{slug: "edgex", display: "edgeX", assets: []string{"ETH", "BTC", "SOL"}},
 	}
 
 	venues := make([]VenueConfig, 0, len(defs)*3)
