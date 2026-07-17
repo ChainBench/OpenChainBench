@@ -71,6 +71,33 @@ export default function ShareSectionModal({
 }: Props) {
   const [activeId, setActiveId] = useState<string>("ranking");
 
+  // Explicit dimension pickers. Seeded from the live URL on mount so a
+  // modal opened from a scoped bench page starts on the same scope, but
+  // user can override in-modal by picking a different chain/region/kind/
+  // venue. State drives the card URL, which forwards to the loader for
+  // data slicing + composes the dynamic title.
+  const initialFromUrl = (key: string): string | null => {
+    if (typeof window === "undefined") return null;
+    const v = new URL(window.location.href).searchParams.get(key);
+    return v && v !== "all" ? v : null;
+  };
+  const chainDims = benchmark.dimensions?.chain ?? [];
+  const regionDims = benchmark.dimensions?.region ?? [];
+  const kindDims = benchmark.dimensions?.kind ?? [];
+  const venueDims = benchmark.dimensions?.venue ?? [];
+  const [chainPick, setChainPick] = useState<string | null>(
+    () => initialFromUrl("chain") ?? chain ?? null,
+  );
+  const [regionPick, setRegionPick] = useState<string | null>(
+    () => initialFromUrl("region"),
+  );
+  const [kindPick, setKindPick] = useState<string | null>(
+    () => initialFromUrl("kind"),
+  );
+  const [venuePick, setVenuePick] = useState<string | null>(
+    () => initialFromUrl("venue"),
+  );
+
   // Lock body scroll while modal is mounted and close on Escape.
   // Effect lives in the modal (not the trigger) because the modal only
   // mounts when `open` is true, so we don't even need to gate on it.
@@ -139,28 +166,15 @@ export default function ShareSectionModal({
   // Build the URL with the right params per template.
   const cardSrc = (templateId: string) => {
     const tpl = TEMPLATES.find((t) => t.id === templateId);
-    // Read every dimension filter from the live URL so the share-card
-    // stays in sync when the user flips a chain / region / kind / venue
-    // tab client-side. `chain` prop is the server-rendered fallback for
-    // the very first render; the other dimensions are read from the URL
-    // only (they're not passed as props today, and the pattern reads
-    // whatever the page's state has serialised).
-    const liveUrl =
-      typeof window !== "undefined"
-        ? new URL(window.location.href)
-        : null;
-    const liveChain = liveUrl
-      ? liveUrl.searchParams.get("chain")
-      : chain ?? null;
-    const chainParam = liveChain ? `&chain=${encodeURIComponent(liveChain)}` : "";
-    const liveRegion = liveUrl ? liveUrl.searchParams.get("region") : null;
-    const regionParam = liveRegion
-      ? `&region=${encodeURIComponent(liveRegion)}`
-      : "";
-    const liveKind = liveUrl ? liveUrl.searchParams.get("kind") : null;
-    const kindParam = liveKind ? `&kind=${encodeURIComponent(liveKind)}` : "";
-    const liveVenue = liveUrl ? liveUrl.searchParams.get("venue") : null;
-    const venueParam = liveVenue ? `&venue=${encodeURIComponent(liveVenue)}` : "";
+    // Dimension filters come from the in-modal picker state (chainPick /
+    // regionPick / kindPick / venuePick), which itself is seeded from the
+    // live URL on mount. User can override via the chips rendered above
+    // the templates; each pick updates state which re-renders the card
+    // preview with the new filter forwarded to the loader.
+    const chainParam = chainPick ? `&chain=${encodeURIComponent(chainPick)}` : "";
+    const regionParam = regionPick ? `&region=${encodeURIComponent(regionPick)}` : "";
+    const kindParam = kindPick ? `&kind=${encodeURIComponent(kindPick)}` : "";
+    const venueParam = venuePick ? `&venue=${encodeURIComponent(venuePick)}` : "";
     // Mirror the active site theme so the exported PNG matches what the
     // user is looking at. SSR can't read the dark state - default to light
     // server-side, the client re-renders with `dark` once mounted.
@@ -258,6 +272,49 @@ export default function ShareSectionModal({
           <p className="text-sm text-ink-muted leading-relaxed max-w-2xl">
             Pick a layout and download a 1200×630 PNG ready for Twitter, Reddit, LinkedIn or any OG-card embed. Same data, same colors as this dashboard.
           </p>
+
+          {/* Dimension pickers — only rendered when the bench declares
+              them. Filters both the data slice (via loader) and the
+              composed title on the exported PNG. */}
+          {(chainDims.length > 0 ||
+            regionDims.length > 0 ||
+            kindDims.length > 0 ||
+            venueDims.length > 0) && (
+            <div className="space-y-3">
+              {chainDims.length > 0 && (
+                <DimensionRow
+                  label="Chain"
+                  options={chainDims}
+                  value={chainPick}
+                  onChange={setChainPick}
+                />
+              )}
+              {regionDims.length > 0 && (
+                <DimensionRow
+                  label="Region"
+                  options={regionDims}
+                  value={regionPick}
+                  onChange={setRegionPick}
+                />
+              )}
+              {kindDims.length > 0 && (
+                <DimensionRow
+                  label="Kind"
+                  options={kindDims}
+                  value={kindPick}
+                  onChange={setKindPick}
+                />
+              )}
+              {venueDims.length > 0 && (
+                <DimensionRow
+                  label="Venue"
+                  options={venueDims}
+                  value={venuePick}
+                  onChange={setVenuePick}
+                />
+              )}
+            </div>
+          )}
 
           {/* Tabs */}
           <div className="flex flex-wrap items-center gap-1 border border-rule rounded p-1 bg-paper-soft w-fit">
@@ -521,6 +578,55 @@ function SharePreview({ src, alt }: { src: string; alt: string }) {
           Failed to generate this preview.
         </div>
       )}
+    </div>
+  );
+}
+
+/** Chip row for one dimension. Renders label + an "All" chip + one
+ * chip per option. `value = null` means "no filter" (the All chip is
+ * active). Clicking a chip toggles the pick (clicking the active pick
+ * clears it back to All). The filter forwards to the share-card
+ * loader for data scope + appears in the composed card title. */
+function DimensionRow({
+  label,
+  options,
+  value,
+  onChange,
+}: {
+  label: string;
+  options: { value: string; label: string }[];
+  value: string | null;
+  onChange: (v: string | null) => void;
+}) {
+  const effective = options.filter((o) => o.value !== "all");
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="text-[10px] font-medium uppercase tracking-[0.16em] text-ink-muted min-w-[52px]">
+        {label}
+      </span>
+      <button
+        onClick={() => onChange(null)}
+        className={`px-2.5 py-1 text-xs rounded border transition-colors ${
+          value === null
+            ? "bg-ink text-paper border-ink"
+            : "border-rule text-ink-muted hover:text-ink hover:border-ink"
+        }`}
+      >
+        All
+      </button>
+      {effective.map((o) => (
+        <button
+          key={o.value}
+          onClick={() => onChange(o.value === value ? null : o.value)}
+          className={`px-2.5 py-1 text-xs rounded border transition-colors ${
+            value === o.value
+              ? "bg-ink text-paper border-ink"
+              : "border-rule text-ink-muted hover:text-ink hover:border-ink"
+          }`}
+        >
+          {o.label}
+        </button>
+      ))}
     </div>
   );
 }
