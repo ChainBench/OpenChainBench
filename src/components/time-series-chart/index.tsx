@@ -29,6 +29,12 @@ type Props = {
    *  filters its lines by this value and hides its internal region tabs
    *  (the parent component renders them in a shared dimension row). */
   region?: string;
+  /** Optional externally-controlled chain. Forwarded to `/api/series` on
+   *  the lazy 7d/30d fetch so the returned sparklines are scoped to the
+   *  same chain the page is currently filtering by. Without this, changing
+   *  the chain tab kept the 7d/30d chart on the previously loaded chain's
+   *  data because the fetch URL had no chain param. */
+  chain?: string;
   /** Optional controlled exclusion set shared with the other chart views
    *  (ranked-bar, distribution, donut). Lets the reader hide a dominant
    *  outlier here too — Y-axis re-zooms smoothly to fit the rest. */
@@ -80,6 +86,7 @@ type Props = {
 export function TimeSeriesChart({
   benchmark,
   region: regionProp,
+  chain: chainProp,
   excluded: controlledExcluded,
   onToggleExclude,
   seriesOverride,
@@ -157,6 +164,7 @@ export function TimeSeriesChart({
     const buildQs = (range: "7d" | "30d") => {
       const qs = new URLSearchParams({ range });
       if (regionProp && regionProp !== "all") qs.set("region", regionProp);
+      if (chainProp && chainProp !== "all") qs.set("chain", chainProp);
       return qs.toString();
     };
     const fetchOne = (range: "7d" | "30d", attempt = 0) => {
@@ -191,7 +199,7 @@ export function TimeSeriesChart({
     return () => {
       cancelled = true;
     };
-  }, [regionProp, benchmark.slug]);
+  }, [regionProp, chainProp, benchmark.slug]);
 
   // Tab availability: 24h is always present (served from the cached
   // Benchmark), 7d / 30d are always offered as tabs since they're
