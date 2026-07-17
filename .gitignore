@@ -37,6 +37,12 @@ yarn-error.log*
 # vercel
 .vercel
 
+# Prebuild-generated sitemap freshness manifest. Written by
+# scripts/emit-page-mtimes.ts on every build (git log %ct of editorial
+# hub pages) so the sitemap can emit a real <lastmod> from git history
+# without depending on Vercel's build-container file mtimes.
+/data/page-mtimes.json
+
 # Internal-only docs that must NOT ship with the open-source repo.
 # Patterns reserved as a tripwire: if a contributor adds a new doc with
 # one of these naming conventions, git won't track it without an

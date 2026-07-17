@@ -27,6 +27,15 @@ const ANSWERS_DIR = path.join(process.cwd(), "answers");
 
 const slugSchema = z.string().min(1).regex(/^[a-z0-9][a-z0-9-]*$/);
 
+// Editorial voice guard, mirrors spec-schema.ts:176. Em-dash (—) and
+// en-dash (–) are the classic "AI tells" that hurt brand voice; refuse
+// them on any prose field a maintainer can hand-author. Plain hyphen
+// stays legal for compound words.
+const noAiDashes = (s: string) =>
+  !s.includes("—") && !s.includes("–");
+const noAiDashesMsg =
+  "Avoid em or en dashes; use a comma, semicolon, or period instead";
+
 const FaqSchema = z.object({
   q: z.string().min(1).max(300),
   a: z.string().min(1).max(2000),
@@ -57,6 +66,26 @@ const AnswerSchema = z.object({
   /** Slugs of related answers, rendered as internal links at the bottom
    *  of the page. Keeps the cluster crawlable. */
   related: z.array(slugSchema).max(8).optional(),
+  /** Optional editorial commentary from the named maintainer, rendered
+   *  as a distinct "Editorial context" block above the leaderboard with
+   *  a byline. Substantive prose (400+ chars) that reads as an expert
+   *  take on the question, not a data restatement. Only shown when the
+   *  referenced bench has a defensible leader (dataPending swap
+   *  suppresses it, since commentary without a leaderboard is meaningless).
+   *  Emitted as QAPage.suggestedAnswer with a Person author. */
+  expert_take: z
+    .string()
+    .min(400)
+    .max(1400)
+    .refine(noAiDashes, noAiDashesMsg)
+    .optional(),
+  /** ISO date (YYYY-MM-DD) of the last editorial review of expert_take.
+   *  Kept as a bare date rather than a datetime because reviews are a
+   *  human-scale event, not a runtime signal. */
+  expert_take_reviewed: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
   /** Optional SEO override for browser tab + meta title. */
   seo_title: z.string().min(1).optional(),
   /** Optional SEO override for meta description. Falls back to short_answer. */

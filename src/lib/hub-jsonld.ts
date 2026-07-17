@@ -8,6 +8,38 @@
 
 const ORIGIN = "https://openchainbench.com";
 
+/** Canonical @id for the sole named maintainer of the project. Referenced
+ *  from the site-wide Organization node (as `founder`), from every bench's
+ *  StatisticalReport (as `contributor`), and from bench TechArticles (as
+ *  `author` + `reviewedBy`). Anchoring a single Person @id sitewide is
+ *  what lets Search Console + AI answer surfaces attribute the numbers
+ *  to a named human, which is the missing E-E-A-T signal on data-driven
+ *  editorial pages that would otherwise read as machine-authored. */
+export const PERSON_ID = `${ORIGIN}/team#florent-tapponnier`;
+
+export const PERSON_JSONLD = {
+  "@type": "Person",
+  "@id": PERSON_ID,
+  name: "Florent Tapponnier",
+  givenName: "Florent",
+  familyName: "Tapponnier",
+  url: `${ORIGIN}/team`,
+  mainEntityOfPage: `${ORIGIN}/team`,
+  jobTitle: "Maintainer",
+  knowsAbout: [
+    "crypto infrastructure benchmarking",
+    "RPC latency measurement",
+    "oracle deviation",
+    "L2 finality",
+    "bridge fees",
+    "statistical methodology",
+  ],
+  sameAs: [
+    "https://github.com/Flotapponnier",
+    "https://www.linkedin.com/in/florent-tapponnier-26324a17a/",
+  ],
+} as const;
+
 function breadcrumb(name: string, path: string) {
   return {
     "@context": "https://schema.org",
@@ -92,6 +124,24 @@ export function pressPageLd() {
       mainEntity: { "@id": `${ORIGIN}/#org` },
     },
     breadcrumb("Press kit", "/press"),
+  ];
+}
+
+export function teamPageLd() {
+  const url = `${ORIGIN}/team`;
+  return [
+    {
+      "@context": "https://schema.org",
+      "@type": "ProfilePage",
+      "@id": `${url}#profile`,
+      url,
+      name: "Team",
+      description:
+        "Who maintains OpenChainBench: spec review, harness design, statistical review and editorial corrections.",
+      mainEntity: { "@id": PERSON_ID },
+    },
+    { "@context": "https://schema.org", ...PERSON_JSONLD },
+    breadcrumb("Team", "/team"),
   ];
 }
 

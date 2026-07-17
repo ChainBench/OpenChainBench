@@ -5,6 +5,7 @@
   "description": "Open benchmarks for crypto infrastructure — aggregators, bridges, price feeds.",
   "scripts": {
     "dev": "next dev",
+    "prebuild": "tsx scripts/emit-page-mtimes.ts",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
