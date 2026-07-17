@@ -43,7 +43,14 @@ export function LiveNumber({
   maxValue?: number;
   className?: string;
 }) {
-  const [display, setDisplay] = useState<number | undefined>(value);
+  // Never SEED the display with a value that already exceeds the
+  // ceiling. Otherwise the very first render (before any useEffect runs)
+  // would paint the garbage, then the monotonic guard would reject
+  // every healthy value that follows as a "down tick" and the garbage
+  // would stick until the tab was closed.
+  const seed =
+    value == null || (maxValue != null && value > maxValue) ? undefined : value;
+  const [display, setDisplay] = useState<number | undefined>(seed);
   const lastRef = useRef<{ value: number; ts: number } | null>(null);
   const prevRef = useRef<{ value: number; ts: number } | null>(null);
   const rafRef = useRef<number | null>(null);
@@ -51,13 +58,18 @@ export function LiveNumber({
   useEffect(() => {
     if (value == null || !Number.isFinite(value)) return;
     if (maxValue != null && value > maxValue) {
-      // Also flush a poisoned lastRef so a healthy value can seed the
-      // pair on the next push instead of being rejected by the
-      // monotonic guard against the stale garbage.
+      // Flush a poisoned lastRef AND the displayed value so a healthy
+      // push can seed the ticker fresh on the next tick. Without
+      // resetting `display`, the monotonic guard below would keep
+      // rejecting the healthy value as smaller than the garbage still
+      // shown to the user.
       if (lastRef.current && lastRef.current.value > maxValue) {
         lastRef.current = null;
         prevRef.current = null;
       }
+      setDisplay((d) =>
+        d != null && maxValue != null && d > maxValue ? undefined : d,
+      );
       return;
     }
     const now = performance.now();
