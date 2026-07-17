@@ -53,6 +53,22 @@ function compactProviderName(name: string): string {
   return map[name] ?? name;
 }
 
+/** Scale the title font size when the bench title is long so it stops
+ * overflowing the layout area on the share-card. Long titles like
+ * "Fastest free public RPC for Ethereum, BNB, Polygon and 23 more
+ * chains (plus Solana and Polkadot)" (105 chars) at the default 44-56
+ * px wrap to 4 lines and collide with the leaderboard rows or the
+ * time-series chart on Snapshot. This linear ramp keeps titles under
+ * 60 chars at the caller's base size and shrinks longer ones on a
+ * predictable slope so the layout stays inside 630 px. */
+function scaledTitleSize(base: number, title: string): number {
+  const len = title.length;
+  if (len <= 60) return base;
+  if (len <= 80) return Math.round(base * 0.78);
+  if (len <= 100) return Math.round(base * 0.62);
+  return Math.round(base * 0.5);
+}
+
 /** Direction-aware comparison label for the Compare card centre cell.
  *  delta = b - a, where a is the leader (rank 1).
  *  - Latency / time benches: a is faster, b is "slower by".
@@ -643,7 +659,7 @@ async function renderRanking(
   // Scale type sizes down when the bench has many providers, otherwise
   // the long names (StellarExpert, WalletExplorer, …) collide.
   const dense = count >= 7;
-  const titleSize = dense ? 44 : 56;
+  const titleSize = scaledTitleSize(dense ? 44 : 56, benchmark.title);
   const valueSize = dense ? 22 : 26;
   const nameSize = dense ? 15 : 18;
   const captionSize = dense ? 11 : 12;
@@ -811,7 +827,7 @@ async function renderLeaderboard(
           <div
             style={{
               display: "flex",
-              fontSize: 50,
+              fontSize: scaledTitleSize(50, benchmark.title),
               fontWeight: 700,
               color: INK,
               letterSpacing: "-0.02em",
@@ -991,7 +1007,7 @@ async function renderSnapshot(
           <div
             style={{
               display: "flex",
-              fontSize: 48,
+              fontSize: scaledTitleSize(48, benchmark.title),
               fontWeight: 700,
               color: INK,
               letterSpacing: "-0.02em",
@@ -1292,7 +1308,7 @@ async function renderCompare(
           <div
             style={{
               display: "flex",
-              fontSize: 36,
+              fontSize: scaledTitleSize(36, benchmark.title),
               fontWeight: 700,
               color: INK,
               letterSpacing: "-0.02em",
