@@ -181,7 +181,23 @@ export default async function ProviderPage({
   // is warming up. Throwing here makes the ISR revalidation fail, so
   // Vercel keeps serving the last good render instead of caching a page
   // full of "data warming up" for the next 5 minutes.
-  if (p.appearances.length >= 3 && p.appearances.every((a) => a.rank === 0)) {
+  //
+  // Exception: providers whose endpoint is legitimately broken (Cloudflare
+  // returns -32046 on most RPC methods, permissioned-mode gateways refuse
+  // reads, etc.) show up with `unresponsive: true` or `availability:
+  // "unavailable"` on every appearance. That's real data, not a store
+  // read failure, and firing the tripwire on it blocks every prod deploy
+  // because the sitemap smoke test catches the 500 and auto-rollbacks.
+  const allUnresponsive = p.appearances.every(
+    (a) =>
+      a.result.unresponsive === true ||
+      a.result.availability === "unavailable",
+  );
+  if (
+    p.appearances.length >= 3 &&
+    p.appearances.every((a) => a.rank === 0) &&
+    !allUnresponsive
+  ) {
     throw new Error(`degraded store read for /products/${slug}: ${p.appearances.length} appearances, all unranked`);
   }
 
