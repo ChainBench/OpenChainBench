@@ -1004,7 +1004,11 @@ async function renderSnapshot(
     .filter((s) => s.values.length > 1);
 
   const chartW = 1086;
-  const chartH = 280;
+  // 280 was too tall - the legend routinely wraps to 2 rows and
+  // overlaps the footer on wide-cohort benches (rpc-capabilities 13,
+  // ethereum-rpc 8, perp-fees 8). 220 leaves ~60px more for 2 legend
+  // rows to fit above the footer.
+  const chartH = 220;
   const all = seriesList.flatMap((s) => s.values);
   const min = all.length ? Math.min(...all) : 0;
   const max = all.length ? Math.max(...all) : 1;
