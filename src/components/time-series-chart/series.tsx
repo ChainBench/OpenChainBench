@@ -31,17 +31,16 @@ type DowntimeBandsProps = {
  *  line stroke stays on top; skipped for excluded (legend-toggled)
  *  providers so their bands disappear with the line. */
 export function DowntimeBands({ drawn, padT, innerH }: DowntimeBandsProps) {
-  // Collect every band across every visible provider before rendering.
-  // Two-pass so we can assign each band a vertical stack slot based on
-  // how many EARLIER-placed bands its X-range overlaps — labels then
-  // don't collide when three providers went dark in the same window.
+  // Collect every gap band across every visible provider. Labels used to
+  // be rendered on top of each band; they were removed because the pill
+  // often mislabelled the cause (harness reconnect vs real crash vs
+  // sample alignment artefact). The tinted band + dashed edges alone
+  // read as "no data here" without asserting a cause.
   type Band = {
     slug: string;
-    name: string;
     color: string;
     x: number;
     w: number;
-    slot: number;
   };
   const all: Band[] = [];
   for (const d of drawn) {
@@ -63,11 +62,9 @@ export function DowntimeBands({ drawn, padT, innerH }: DowntimeBandsProps) {
       const startX = d.pts[runStart].x;
       all.push({
         slug: d.slug,
-        name: d.name,
         color: d.color,
         x: startX,
         w: Math.max(6, endX - startX),
-        slot: 0,
       });
       runStart = null;
     };
@@ -86,32 +83,17 @@ export function DowntimeBands({ drawn, padT, innerH }: DowntimeBandsProps) {
   }
   if (all.length === 0) return null;
 
-  // Slot assignment: for each band, pick the smallest slot not used
-  // by another band whose X-range overlaps this one. Naive O(n²) is
-  // fine — a chart has at most ~20 bands in the pathological case.
-  all.sort((a, b) => a.x - b.x);
-  for (let i = 0; i < all.length; i++) {
-    const b = all[i];
-    const used = new Set<number>();
-    for (let j = 0; j < i; j++) {
-      const p = all[j];
-      if (p.x < b.x + b.w && p.x + p.w > b.x) used.add(p.slot);
-    }
-    let slot = 0;
-    while (used.has(slot)) slot++;
-    b.slot = slot;
-  }
-
-  // Pill geometry constants. Pills sit ABOVE the plot area so they
-  // never occlude data. Small padding on the container's padT keeps
-  // them within the chart frame.
-  const PILL_H = 15;
-  const PILL_GAP = 3;
+  // Label pills were removed intentionally: the guard upstream can't
+  // always tell "aggregator crash" apart from "our harness reconnect"
+  // or "worker step misalignment on a 30 min silence in a 7 d view",
+  // and a mislabelled pill blames the wrong side. The tinted band +
+  // dashed edges alone read as "no data recorded here" without
+  // asserting a cause. When we have a first-party signal that a
+  // specific provider went down, a proper status badge will be added
+  // separately — the sparkline is not the place to assign blame.
 
   return (
     <g className="ts-downtime">
-      {/* Bands first (behind), then all pills on top so no band tint
-          can bleed onto a label from a taller-slot pill. */}
       {all.map((b, i) => (
         <g key={`band-${b.slug}-${i}`}>
           <rect
@@ -144,45 +126,6 @@ export function DowntimeBands({ drawn, padT, innerH }: DowntimeBandsProps) {
           />
         </g>
       ))}
-      {all.map((b, i) => {
-        const cx = b.x + b.w / 2;
-        // "NAME DATA MISSING" width estimate: ~5.5 px per char plus
-        // 14 px of horizontal padding (7 each side). "DATA MISSING"
-        // stays neutral: absence of samples could be the provider
-        // going down, our harness losing its WebSocket, or a Prom
-        // scrape failure — the pill doesn't blame either side.
-        const label = `${b.name.toUpperCase()} DATA MISSING`;
-        const pillW = Math.max(80, label.length * 5.5 + 14);
-        const pillY = padT + 2 + b.slot * (PILL_H + PILL_GAP);
-        const pillX = Math.max(0, cx - pillW / 2);
-        return (
-          <g key={`pill-${b.slug}-${i}`}>
-            <rect
-              x={pillX}
-              y={pillY}
-              width={pillW}
-              height={PILL_H}
-              rx={PILL_H / 2}
-              ry={PILL_H / 2}
-              fill={b.color}
-              opacity={0.95}
-            />
-            <text
-              x={pillX + pillW / 2}
-              y={pillY + PILL_H / 2 + 0.5}
-              textAnchor="middle"
-              dominantBaseline="middle"
-              fontFamily="var(--font-sans)"
-              fontSize="9.5"
-              fontWeight="700"
-              letterSpacing="0.06em"
-              fill="var(--color-paper, #ffffff)"
-            >
-              {label}
-            </text>
-          </g>
-        );
-      })}
     </g>
   );
 }
