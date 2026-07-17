@@ -145,6 +145,17 @@ const MIME: Record<string, string> = {
 };
 
 const _providerLogoCache = new Map<string, string | null>();
+
+// Satori (the JSX-to-SVG renderer next/og uses) only decodes PNG, JPEG
+// and SVG. Feed it AVIF or WebP bytes and the internal decoder throws
+// "TypeError: u2 is not iterable" mid-stream, which surfaces as a
+// generic HTTP 500 on the share-card endpoint with no meaningful log.
+// Skipping unsupported formats here falls back to the initials chip in
+// CardProviderLogo, same as when the logo file is missing entirely.
+// Root cause of the pre-existing 500 on rpc-capabilities (publicnode
+// .avif, drpc / lava .webp), polkadot-rpc, ws-head-latency-*.
+const SATORI_UNSUPPORTED_EXT = new Set([".avif", ".webp"]);
+
 /** Returns a data URL for the registered logo file, or null if missing.
  * Result is cached per slug to avoid hitting the filesystem on every
  * render of the share-card. */
@@ -155,9 +166,14 @@ function getProviderLogoDataUrl(slug: string): string | null {
     _providerLogoCache.set(slug, null);
     return null;
   }
+  const ext = extname(rel).toLowerCase();
+  if (SATORI_UNSUPPORTED_EXT.has(ext)) {
+    _providerLogoCache.set(slug, null);
+    return null;
+  }
   try {
     const buf = readFileSync(join(process.cwd(), "public", rel));
-    const mime = MIME[extname(rel).toLowerCase()] ?? "image/png";
+    const mime = MIME[ext] ?? "image/png";
     const url = `data:${mime};base64,${buf.toString("base64")}`;
     _providerLogoCache.set(slug, url);
     return url;
@@ -203,6 +219,18 @@ function CardProviderLogo({
       </div>
     );
   }
+  // Resolve CSS `var(--color-*)` fallbacks from chipBackground /
+  // chipTextColor to the concrete palette hex. Satori evaluates
+  // `var(...)` to the CSS-wide `initial` keyword and rejects a
+  // `background: initial` declaration, taking the whole render down
+  // with a "Failed to parse declaration" error. Full-cohort case:
+  // evm-block-builders (Titan, BuilderNet, Quasar, Eureka, Builder+,
+  // Vanilla) — none have a registered logo or brand chip color so
+  // every row falls through here and the whole PNG fails to render.
+  const bgRaw = chipBackground(slug);
+  const fgRaw = chipTextColor(slug);
+  const bg = bgRaw.startsWith("var(") ? INK_SOFT : bgRaw;
+  const fg = fgRaw.startsWith("var(") ? PAPER : fgRaw;
   return (
     <div
       style={{
@@ -210,8 +238,8 @@ function CardProviderLogo({
         width: size,
         height: size,
         borderRadius: "50%",
-        background: chipBackground(slug),
-        color: chipTextColor(slug),
+        background: bg,
+        color: fg,
         alignItems: "center",
         justifyContent: "center",
         fontSize: Math.round(size * 0.42),
