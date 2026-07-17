@@ -811,7 +811,10 @@ async function renderLeaderboard(
   colors: Map<string, string>,
   chainLabel?: string | null
 ) {
-  const sorted = sortByP50(benchmark).slice(0, 8);
+  // Row height ~55px + gap 14 = ~70px per row. Content area is
+  // ~450px when title fits on 1 line and ~390px when it wraps to 2.
+  // Cap 6 = 420px which stays under both.
+  const sorted = sortByP50(benchmark).slice(0, 6);
   const maxP50 = Math.max(...sorted.map((r) => r.ms.p50)) || 1;
   const total = benchmark.results.length;
   const subtitleLB =
