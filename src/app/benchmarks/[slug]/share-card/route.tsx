@@ -688,6 +688,7 @@ async function renderRanking(
               color: INK,
               letterSpacing: "-0.02em",
               lineHeight: 1.05,
+              flexShrink: 0,
             }}
           >
             {benchmark.title}
@@ -699,6 +700,7 @@ async function renderRanking(
               color: INK_SOFT,
               lineHeight: 1.3,
               maxWidth: 980,
+              flexShrink: 0,
             }}
           >
             Product ranking by p50 · {benchmark.metric}.
@@ -832,6 +834,7 @@ async function renderLeaderboard(
               color: INK,
               letterSpacing: "-0.02em",
               lineHeight: 1.05,
+              flexShrink: 0,
             }}
           >
             {benchmark.title}
@@ -842,6 +845,7 @@ async function renderLeaderboard(
               fontSize: 16,
               color: INK_SOFT,
               marginTop: 2,
+              flexShrink: 0,
             }}
           >
             {subtitleLB}
@@ -1012,6 +1016,7 @@ async function renderSnapshot(
               color: INK,
               letterSpacing: "-0.02em",
               lineHeight: 1.05,
+              flexShrink: 0,
             }}
           >
             {benchmark.title}
@@ -1022,6 +1027,7 @@ async function renderSnapshot(
               fontSize: 16,
               color: INK_SOFT,
               maxWidth: 980,
+              flexShrink: 0,
             }}
           >
             {benchmark.subtitle}
@@ -1313,6 +1319,7 @@ async function renderCompare(
               color: INK,
               letterSpacing: "-0.02em",
               lineHeight: 1.05,
+              flexShrink: 0,
             }}
           >
             {benchmark.title} · top 2
