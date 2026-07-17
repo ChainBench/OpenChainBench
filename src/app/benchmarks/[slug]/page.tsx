@@ -385,6 +385,7 @@ export default async function BenchmarkPage({
       {
         "@type": "TechArticle",
         "@id": `${benchmarkUrl}#article`,
+        name: benchmark.title,
         headline: benchmark.title,
         description: benchmark.subtitle,
         url: benchmarkUrl,
