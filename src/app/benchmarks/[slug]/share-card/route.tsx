@@ -980,7 +980,10 @@ async function renderSnapshot(
   colors: Map<string, string>,
   chainLabel?: string | null
 ) {
-  const sorted = sortByP50(benchmark);
+  // Cap to top 8 to keep legend on a single wrap row and chart
+  // readable. Beyond 8 lines the polylines pile up illegibly and the
+  // legend overflows the footer.
+  const sorted = sortByP50(benchmark).slice(0, 8);
   const seriesList = sorted
     .map((r) => ({
       slug: r.slug,
