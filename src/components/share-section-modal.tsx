@@ -139,14 +139,28 @@ export default function ShareSectionModal({
   // Build the URL with the right params per template.
   const cardSrc = (templateId: string) => {
     const tpl = TEMPLATES.find((t) => t.id === templateId);
-    // Read the chain from the live URL so the share-card stays in sync
-    // when the user flips chain tabs client-side. `chain` prop is the
-    // server-rendered fallback for the very first render.
-    const liveChain =
+    // Read every dimension filter from the live URL so the share-card
+    // stays in sync when the user flips a chain / region / kind / venue
+    // tab client-side. `chain` prop is the server-rendered fallback for
+    // the very first render; the other dimensions are read from the URL
+    // only (they're not passed as props today, and the pattern reads
+    // whatever the page's state has serialised).
+    const liveUrl =
       typeof window !== "undefined"
-        ? new URL(window.location.href).searchParams.get("chain")
-        : chain ?? null;
+        ? new URL(window.location.href)
+        : null;
+    const liveChain = liveUrl
+      ? liveUrl.searchParams.get("chain")
+      : chain ?? null;
     const chainParam = liveChain ? `&chain=${encodeURIComponent(liveChain)}` : "";
+    const liveRegion = liveUrl ? liveUrl.searchParams.get("region") : null;
+    const regionParam = liveRegion
+      ? `&region=${encodeURIComponent(liveRegion)}`
+      : "";
+    const liveKind = liveUrl ? liveUrl.searchParams.get("kind") : null;
+    const kindParam = liveKind ? `&kind=${encodeURIComponent(liveKind)}` : "";
+    const liveVenue = liveUrl ? liveUrl.searchParams.get("venue") : null;
+    const venueParam = liveVenue ? `&venue=${encodeURIComponent(liveVenue)}` : "";
     // Mirror the active site theme so the exported PNG matches what the
     // user is looking at. SSR can't read the dark state - default to light
     // server-side, the client re-renders with `dark` once mounted.
@@ -154,7 +168,7 @@ export default function ShareSectionModal({
       typeof window !== "undefined" &&
       document.documentElement.classList.contains("dark");
     const themeParam = isDark ? "&theme=dark" : "";
-    const base = `/benchmarks/${slug}/share-card?template=${templateId}${chainParam}${themeParam}`;
+    const base = `/benchmarks/${slug}/share-card?template=${templateId}${chainParam}${regionParam}${kindParam}${venueParam}${themeParam}`;
     if (!tpl) return base;
     if (tpl.pick === "multi") {
       if (
