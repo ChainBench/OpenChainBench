@@ -365,10 +365,12 @@ function CardHeader({
   benchmark,
   showCategory = true,
   chainLabel,
+  filterPills = [],
 }: {
   benchmark: Benchmark;
   showCategory?: boolean;
   chainLabel?: string | null;
+  filterPills?: string[];
 }) {
   return (
     <div
@@ -383,6 +385,9 @@ function CardHeader({
         <LivePill />
         {showCategory && <CategoryPill>{benchmark.category}</CategoryPill>}
         {chainLabel && <ChainPill>{chainLabel}</ChainPill>}
+        {filterPills.map((p) => (
+          <ChainPill key={p}>{p}</ChainPill>
+        ))}
         <div
           style={{
             display: "flex",
@@ -475,6 +480,7 @@ function CardShell({
   rightText,
   showCategory = true,
   chainLabel,
+  filterPills = [],
 }: {
   benchmark: Benchmark;
   accentColor?: string;
@@ -482,6 +488,7 @@ function CardShell({
   rightText?: string;
   showCategory?: boolean;
   chainLabel?: string | null;
+  filterPills?: string[];
 }) {
   return (
     <div
@@ -518,6 +525,7 @@ function CardShell({
           benchmark={benchmark}
           showCategory={showCategory}
           chainLabel={chainLabel}
+          filterPills={filterPills}
         />
         <div
           style={{
@@ -578,12 +586,43 @@ export async function GET(
   const chainOption = isAll
     ? null
     : chainOptions.find((c) => matchesChainSlug(c.value, chainParam)) ?? null;
-  const benchmark = chainOption
-    ? (await getBenchmark(slug, { chain: chainOption.value })) ?? aggregate
-    : aggregate;
+
+  // Same treatment for region / kind / venue - modal chip pickers
+  // (share-section-modal.tsx) send these as `?region=`, `?kind=`,
+  // `?venue=`. Validated against the spec-declared dimensions so an
+  // attacker cannot inject arbitrary label values into the Prom query.
+  const findDim = (paramName: string, dims: { value: string; label: string }[]) => {
+    const raw = url.searchParams.get(paramName);
+    if (!raw || raw === "all") return null;
+    return dims.find((d) => d.value === raw) ?? null;
+  };
+  const regionOption = findDim("region", aggregate.dimensions?.region ?? []);
+  const kindOption = findDim("kind", aggregate.dimensions?.kind ?? []);
+  const venueOption = findDim("venue", aggregate.dimensions?.venue ?? []);
+
+  const loaderOpts: {
+    chain?: string;
+    region?: string;
+    kind?: string;
+    venue?: string;
+  } = {};
+  if (chainOption) loaderOpts.chain = chainOption.value;
+  if (regionOption) loaderOpts.region = regionOption.value;
+  if (kindOption) loaderOpts.kind = kindOption.value;
+  if (venueOption) loaderOpts.venue = venueOption.value;
+
+  const benchmark =
+    Object.keys(loaderOpts).length > 0
+      ? (await getBenchmark(slug, loaderOpts)) ?? aggregate
+      : aggregate;
+
   // No pill for `all` either - it's the unfiltered default view, calling
   // it out as a "chain" reads awkward.
   const chainLabel = chainOption?.label ?? null;
+  const filterPills: string[] = [];
+  if (regionOption) filterPills.push(regionOption.label);
+  if (kindOption) filterPills.push(kindOption.label);
+  if (venueOption) filterPills.push(venueOption.label);
 
   const rawTemplate = url.searchParams.get("template");
   const template: "ranking" | "snapshot" | "headline" | "compare" | "leaderboard" =
@@ -634,16 +673,16 @@ export async function GET(
 
   switch (template) {
     case "snapshot":
-      return renderSnapshot(filteredSafe, colors, chainLabel);
+      return renderSnapshot(filteredSafe, colors, chainLabel, filterPills);
     case "headline":
-      return renderHeadline(benchmark, colors, headlineProvider, chainLabel);
+      return renderHeadline(benchmark, colors, headlineProvider, chainLabel, filterPills);
     case "compare":
-      return renderCompare(benchmark, colors, compareA, compareB, chainLabel);
+      return renderCompare(benchmark, colors, compareA, compareB, chainLabel, filterPills);
     case "leaderboard":
-      return renderLeaderboard(benchmark, colors, chainLabel);
+      return renderLeaderboard(benchmark, colors, chainLabel, filterPills);
     case "ranking":
     default:
-      return renderRanking(benchmark, colors, chainLabel);
+      return renderRanking(benchmark, colors, chainLabel, filterPills);
   }
 }
 
@@ -651,7 +690,8 @@ export async function GET(
 async function renderRanking(
   benchmark: Benchmark,
   colors: Map<string, string>,
-  chainLabel?: string | null
+  chainLabel?: string | null,
+  filterPills: string[] = []
 ) {
   const sorted = sortByP50(benchmark);
   const maxP50 = Math.max(...sorted.map((r) => r.ms.p50)) || 1;
@@ -671,7 +711,7 @@ async function renderRanking(
 
   return new ImageResponse(
     (
-      <CardShell benchmark={benchmark} chainLabel={chainLabel}>
+      <CardShell benchmark={benchmark} chainLabel={chainLabel} filterPills={filterPills}>
         <div
           style={{
             display: "flex",
@@ -809,7 +849,8 @@ async function renderRanking(
 async function renderLeaderboard(
   benchmark: Benchmark,
   colors: Map<string, string>,
-  chainLabel?: string | null
+  chainLabel?: string | null,
+  filterPills: string[] = []
 ) {
   // Row height ~55px + gap 14 = ~70px per row. Content area is
   // ~450px when title fits on 1 line and ~390px when it wraps to 2.
@@ -824,7 +865,7 @@ async function renderLeaderboard(
 
   return new ImageResponse(
     (
-      <CardShell benchmark={benchmark} chainLabel={chainLabel}>
+      <CardShell benchmark={benchmark} chainLabel={chainLabel} filterPills={filterPills}>
         <div
           style={{
             display: "flex",
@@ -978,7 +1019,8 @@ async function renderLeaderboard(
 async function renderSnapshot(
   benchmark: Benchmark,
   colors: Map<string, string>,
-  chainLabel?: string | null
+  chainLabel?: string | null,
+  filterPills: string[] = []
 ) {
   // Cap dynamically by title length: long titles (>=90 chars, 2 lines)
   // eat the vertical space that would otherwise fit the 2nd legend row,
@@ -1017,7 +1059,7 @@ async function renderSnapshot(
 
   return new ImageResponse(
     (
-      <CardShell benchmark={benchmark} chainLabel={chainLabel}>
+      <CardShell benchmark={benchmark} chainLabel={chainLabel} filterPills={filterPills}>
         <div
           style={{
             display: "flex",
@@ -1181,7 +1223,8 @@ async function renderHeadline(
   benchmark: Benchmark,
   colors: Map<string, string>,
   featured?: Benchmark["results"][number],
-  chainLabel?: string | null
+  chainLabel?: string | null,
+  filterPills: string[] = []
 ) {
   const sorted = sortByP50(benchmark);
   const winner = featured ?? sorted[0];
@@ -1193,7 +1236,7 @@ async function renderHeadline(
 
   return new ImageResponse(
     (
-      <CardShell benchmark={benchmark} accentColor={winnerColor} chainLabel={chainLabel}>
+      <CardShell benchmark={benchmark} accentColor={winnerColor} chainLabel={chainLabel} filterPills={filterPills}>
         <div
           style={{
             display: "flex",
@@ -1299,7 +1342,8 @@ async function renderCompare(
   colors: Map<string, string>,
   paneA?: Benchmark["results"][number],
   paneB?: Benchmark["results"][number],
-  chainLabel?: string | null
+  chainLabel?: string | null,
+  filterPills: string[] = []
 ) {
   const sorted = sortByP50(benchmark);
   const a = paneA ?? sorted[0];
@@ -1307,7 +1351,7 @@ async function renderCompare(
     paneB && paneB.slug !== a?.slug
       ? paneB
       : sorted.find((r) => r.slug !== a?.slug);
-  if (!a || !b) return renderHeadline(benchmark, colors, a);
+  if (!a || !b) return renderHeadline(benchmark, colors, a, chainLabel, filterPills);
 
   const aColor = colors.get(a.slug) ?? INK_SOFT;
   const bColor = colors.get(b.slug) ?? INK_SOFT;
@@ -1320,7 +1364,7 @@ async function renderCompare(
 
   return new ImageResponse(
     (
-      <CardShell benchmark={benchmark} chainLabel={chainLabel}>
+      <CardShell benchmark={benchmark} chainLabel={chainLabel} filterPills={filterPills}>
         <div
           style={{
             display: "flex",
