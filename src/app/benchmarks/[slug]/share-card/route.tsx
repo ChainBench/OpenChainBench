@@ -12,10 +12,15 @@ import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { SLUG_RE } from "@/lib/slug";
 
 /** Best → worst, depending on whether higher numbers are better. Drops
- *  rows with missing `ms` or non-positive p50, mirroring /api/stat. Those
- *  zero-value placeholders blow up the bar layout (NaN heights from a
- *  divide-by-zero maxP50, ratios > 1) which makes Satori reject the JSX
- *  with an opaque "Spread syntax" error mid-stream. */
+ *  rows with missing `ms` or non-positive p50. Both zero and negative
+ *  values must be filtered here: zeros blow up bar heights via
+ *  divide-by-zero maxP50, and negatives (used as a "warming up"
+ *  sentinel on funding benches via commit c03c599) produce a negative
+ *  maxP50 and inverted ratios which makes Satori reject the JSX with
+ *  an opaque "Spread syntax" error mid-stream. The `!== 0` rewrite
+ *  was correct for the /products page (which surfaces the negative
+ *  sentinel explicitly) but leaked into the share-card render path
+ *  where negatives are just noise on the bar chart. */
 function sortByP50(b: Benchmark): ProviderResult[] {
   return [...b.results]
     .filter(
@@ -23,7 +28,7 @@ function sortByP50(b: Benchmark): ProviderResult[] {
         !!r &&
         !!r.ms &&
         Number.isFinite(r.ms.p50) &&
-        r.ms.p50 !== 0,
+        r.ms.p50 > 0,
     )
     .sort(
       b.higherIsBetter
