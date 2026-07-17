@@ -811,9 +811,13 @@ async function renderLeaderboard(
   colors: Map<string, string>,
   chainLabel?: string | null
 ) {
-  const sorted = sortByP50(benchmark);
+  const sorted = sortByP50(benchmark).slice(0, 10);
   const maxP50 = Math.max(...sorted.map((r) => r.ms.p50)) || 1;
-  const subtitleLB = `Ranked by p50 · ${benchmark.metric}.`;
+  const total = benchmark.results.length;
+  const subtitleLB =
+    total > sorted.length
+      ? `Top ${sorted.length} of ${total} · ranked by p50 · ${benchmark.metric}.`
+      : `Ranked by p50 · ${benchmark.metric}.`;
 
   return new ImageResponse(
     (
@@ -856,7 +860,7 @@ async function renderLeaderboard(
               display: "flex",
               flexDirection: "column",
               flex: 1,
-              justifyContent: "center",
+              justifyContent: "flex-start",
               gap: 14,
               marginTop: 18,
             }}
