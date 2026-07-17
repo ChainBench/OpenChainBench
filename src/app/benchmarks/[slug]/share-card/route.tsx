@@ -529,67 +529,12 @@ export async function GET(
   const chainOption = isAll
     ? null
     : chainOptions.find((c) => matchesChainSlug(c.value, chainParam)) ?? null;
-
-  // Additional dimension filters. Symmetric with `chain`: each declared
-  // dimension gets a URL param, and when the value matches a spec option
-  // it gets forwarded to the materialize loader so the exported PNG
-  // renders the exact scope the user is looking at on the page. `all`
-  // means "no filter for this dimension" (same convention as chain).
-  const regionParam = url.searchParams.get("region");
-  const regionOptions = aggregate.dimensions?.region ?? [];
-  const regionOption =
-    !regionParam || regionParam === "all"
-      ? null
-      : regionOptions.find((r) => r.value === regionParam) ?? null;
-
-  const kindParam = url.searchParams.get("kind");
-  const kindOptions = aggregate.dimensions?.kind ?? [];
-  const kindOption =
-    !kindParam || kindParam === "all"
-      ? null
-      : kindOptions.find((k) => k.value === kindParam) ?? null;
-
-  const venueParam = url.searchParams.get("venue");
-  const venueOptions = aggregate.dimensions?.venue ?? [];
-  const venueOption =
-    !venueParam || venueParam === "all"
-      ? null
-      : venueOptions.find((v) => v.value === venueParam) ?? null;
-
-  const filters: {
-    chain?: string;
-    region?: string;
-    kind?: string;
-    venue?: string;
-  } = {};
-  if (chainOption) filters.chain = chainOption.value;
-  if (regionOption) filters.region = regionOption.value;
-  if (kindOption) filters.kind = kindOption.value;
-  if (venueOption) filters.venue = venueOption.value;
-
-  const benchmark =
-    Object.keys(filters).length > 0
-      ? (await getBenchmark(slug, filters)) ?? aggregate
-      : aggregate;
+  const benchmark = chainOption
+    ? (await getBenchmark(slug, { chain: chainOption.value })) ?? aggregate
+    : aggregate;
   // No pill for `all` either - it's the unfiltered default view, calling
   // it out as a "chain" reads awkward.
   const chainLabel = chainOption?.label ?? null;
-  const regionLabel = regionOption?.label ?? null;
-  const kindLabel = kindOption?.label ?? null;
-  const venueLabel = venueOption?.label ?? null;
-  // Composed context suffix for the card title. Appends the active
-  // filters after the bench title so a card exported from
-  // `/benchmarks/rpc-capabilities?chain=ethereum&region=sgp` renders
-  // "Fastest free public RPC ... · Ethereum · Singapore" instead of just
-  // the aggregate title. Empty when no filter is active - avoids a
-  // trailing separator on the default view.
-  const contextParts = [chainLabel, regionLabel, kindLabel, venueLabel].filter(
-    (p): p is string => Boolean(p),
-  );
-  const displayTitle =
-    contextParts.length > 0
-      ? `${aggregate.title} · ${contextParts.join(" · ")}`
-      : aggregate.title;
 
   const rawTemplate = url.searchParams.get("template");
   const template: "ranking" | "snapshot" | "headline" | "compare" | "leaderboard" =
@@ -638,26 +583,18 @@ export async function GET(
 
   const colors = buildProviderColors(benchmark.results);
 
-  // Overlay the composed title onto the benchmark that each render
-  // receives, so the existing `{benchmark.title}` slot in every template
-  // picks up the filter context without touching every render signature.
-  // Display-only overlay: keeps the underlying benchmark object intact
-  // for data purposes (results, dimensions, unit, higherIsBetter etc).
-  const filteredWithTitle = { ...filteredSafe, title: displayTitle };
-  const benchmarkWithTitle = { ...benchmark, title: displayTitle };
-
   switch (template) {
     case "snapshot":
-      return renderSnapshot(filteredWithTitle, colors, chainLabel);
+      return renderSnapshot(filteredSafe, colors, chainLabel);
     case "headline":
-      return renderHeadline(benchmarkWithTitle, colors, headlineProvider, chainLabel);
+      return renderHeadline(benchmark, colors, headlineProvider, chainLabel);
     case "compare":
-      return renderCompare(benchmarkWithTitle, colors, compareA, compareB, chainLabel);
+      return renderCompare(benchmark, colors, compareA, compareB, chainLabel);
     case "leaderboard":
-      return renderLeaderboard(benchmarkWithTitle, colors, chainLabel);
+      return renderLeaderboard(benchmark, colors, chainLabel);
     case "ranking":
     default:
-      return renderRanking(benchmarkWithTitle, colors, chainLabel);
+      return renderRanking(benchmark, colors, chainLabel);
   }
 }
 
