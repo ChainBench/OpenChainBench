@@ -980,10 +980,14 @@ async function renderSnapshot(
   colors: Map<string, string>,
   chainLabel?: string | null
 ) {
-  // Cap to top 8 to keep legend on a single wrap row and chart
-  // readable. Beyond 8 lines the polylines pile up illegibly and the
-  // legend overflows the footer.
-  const sorted = sortByP50(benchmark).slice(0, 8);
+  // Cap dynamically by title length: long titles (>=90 chars, 2 lines)
+  // eat the vertical space that would otherwise fit the 2nd legend row,
+  // so shrink the cohort further to keep the legend from overlapping
+  // the footer. Values chosen from empirical layout tests on
+  // rpc-capabilities (106 chars, 13 providers) and oracle-deviation
+  // (60 chars, 10 providers).
+  const cap = benchmark.title.length >= 90 ? 6 : 8;
+  const sorted = sortByP50(benchmark).slice(0, cap);
   const seriesList = sorted
     .map((r) => ({
       slug: r.slug,
