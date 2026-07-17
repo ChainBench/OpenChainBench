@@ -39,6 +39,7 @@ import {
 } from "@/lib/dataset-jsonld";
 import { renderTemplate } from "@/lib/bench-template";
 import { canonicalChainSlug } from "@/lib/chain-aliases";
+import { PERSON_ID } from "@/lib/hub-jsonld";
 import type { Benchmark } from "@/types/benchmark";
 
 // ISR with a 60 s revalidate window. The page is prerendered by
@@ -100,6 +101,15 @@ export async function generateMetadata({
   // link-signal consolidation anyway.
   const b = await getBenchmark(slug);
   if (!b) return {};
+  // Editorially-live benches that are still waiting for their first
+  // samples render as draft in the UI; letting Google index them means
+  // the SERP snippet quotes "no live data yet" against a URL that is
+  // meant to display a leaderboard. noindex/follow keeps the URL
+  // crawlable (internal link equity + fast re-indexing when data lands)
+  // without letting the empty state rank. Mirrors the render-time
+  // `isAwaiting = isDraft && editorialStatus === "live"` gate below.
+  const metaIsDraft = b.status === "draft";
+  const metaIsAwaiting = metaIsDraft && b.editorialStatus === "live";
   const metaTitle = b.seoTitle ?? b.title;
   // Description precedence (most-to-least specific):
   //   1. `seo_description` from the YAML - hand-crafted snippet with the
@@ -137,6 +147,9 @@ export async function generateMetadata({
     title: metaTitle,
     description,
     alternates: { canonical },
+    ...(metaIsAwaiting
+      ? { robots: { index: false, follow: true } }
+      : {}),
     openGraph: {
       title: metaTitle,
       description,
@@ -388,7 +401,12 @@ export default async function BenchmarkPage({
         ...(citableAsOf(benchmark)
           ? { dateModified: benchmark.lastRunAt }
           : {}),
-        author: { "@id": `${SITE.url}/#org` },
+        // Dual author: named maintainer first (E-E-A-T signal for AI
+        // answer surfaces + Search Console) followed by the Org so the
+        // institutional attribution still holds. reviewedBy anchors the
+        // same Person as the accountable reviewer of the on-page claims.
+        author: [{ "@id": PERSON_ID }, { "@id": `${SITE.url}/#org` }],
+        reviewedBy: { "@id": PERSON_ID },
         publisher: { "@id": `${SITE.url}/#org` },
         about: { "@id": `${benchmarkUrl}#dataset` },
       },

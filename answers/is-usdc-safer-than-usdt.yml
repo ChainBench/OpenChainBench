@@ -36,3 +36,8 @@ related:
 seo_title: "Is USDC safer than USDT? Live peg data, not opinions"
 seo_description: "USDC vs USDT measured live: {{p99:usdc}} vs {{p99:usdt}} worst case peg deviation (p99, 24h) on USD quoted venues. What peg data can and cannot tell you about stablecoin safety."
 status: live
+
+expert_take: |
+  Peg tightness and reserve safety are two different questions, and readers regularly conflate them. Peg tightness is a live market signal produced by redemption arbitrage: when the market price drifts from the target, primary redeemers can close the gap in size, and the width of that gap over time measures how well that arbitrage loop is working. Reserve safety lives one layer down, in the banking partners holding the collateral, the attestation cadence and the legal jurisdiction. The two usually correlate; they can decouple within hours during a bank failure or a regulatory action, at which point the price feed reacts only after the news has already moved. Readers should read the p99 deviation and the time outside a 50 bps band as evidence of how the arbitrage loop performs under normal stress, and treat it as necessary but not sufficient for a treasury decision. A stablecoin that has held tight for a long stretch can still break; one that has broken once can still be the right pick if its reserve posture has changed since. Both dimensions belong in the answer.
+
+expert_take_reviewed: "2026-07-16"

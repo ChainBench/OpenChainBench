@@ -42,3 +42,8 @@ related:
 seo_title: "Which Ethereum gas oracle is the most accurate in 2026?"
 seo_description: "{{best_name}} leads at {{best_p50}} gwei (p99 absolute gap, 24h) across PublicNode feeHistory, Owlracle and Etherscan on Ethereum and Polygon, measured per block by OpenChainBench."
 status: live
+
+expert_take: |
+  Gas oracles split into two archetypes that answer different questions, and the leaderboard should be read with that split in mind. Percentile trackers read the protocol-native reward histogram and publish a number that hugs the realized priority fee by construction; the gap to reality is small most of the time, and their failure mode is under-predicting during a spike. Inclusion-confidence oracles were designed for a pre-EIP-1559 world and over-predict on purpose to guarantee the transaction lands; their gap to the realized number is wider, but users almost never miss a block. Comparing them on absolute error alone punishes the oracle that is doing its job correctly. Readers should read the p99 gap and the covered rate together: a low p99 with a low covered rate is a percentile tracker that will occasionally underbid, and a wider p99 with a high covered rate is an inclusion-confidence oracle that trades a small overpay for reliability. The right choice depends on the product; a wallet default that must never miss a block prefers coverage, a batching relayer that can re-broadcast prefers a tight percentile fit. A single-number leaderboard hides this.
+
+expert_take_reviewed: "2026-07-16"
