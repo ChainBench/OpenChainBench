@@ -370,7 +370,7 @@ function CardHeader({
   benchmark: Benchmark;
   showCategory?: boolean;
   chainLabel?: string | null;
-  filterPills?: string[];
+  filterPills?: { kind: string; value: string }[];
 }) {
   return (
     <div
@@ -386,7 +386,9 @@ function CardHeader({
         {showCategory && <CategoryPill>{benchmark.category}</CategoryPill>}
         {chainLabel && <ChainPill>{chainLabel}</ChainPill>}
         {filterPills.map((p) => (
-          <ChainPill key={p}>{p}</ChainPill>
+          <ChainPill key={`${p.kind}-${p.value}`} label={p.kind}>
+            {p.value}
+          </ChainPill>
         ))}
         <div
           style={{
@@ -406,7 +408,13 @@ function CardHeader({
   );
 }
 
-function ChainPill({ children }: { children: React.ReactNode }) {
+function ChainPill({
+  children,
+  label = "CHAIN",
+}: {
+  children: React.ReactNode;
+  label?: string;
+}) {
   return (
     <div
       style={{
@@ -425,7 +433,7 @@ function ChainPill({ children }: { children: React.ReactNode }) {
         fontFamily: "monospace",
       }}
     >
-      <span style={{ color: INK_FAINT, fontSize: 10 }}>CHAIN</span>
+      <span style={{ color: INK_FAINT, fontSize: 10 }}>{label}</span>
       {children}
     </div>
   );
@@ -488,7 +496,7 @@ function CardShell({
   rightText?: string;
   showCategory?: boolean;
   chainLabel?: string | null;
-  filterPills?: string[];
+  filterPills?: { kind: string; value: string }[];
 }) {
   return (
     <div
@@ -619,10 +627,10 @@ export async function GET(
   // No pill for `all` either - it's the unfiltered default view, calling
   // it out as a "chain" reads awkward.
   const chainLabel = chainOption?.label ?? null;
-  const filterPills: string[] = [];
-  if (regionOption) filterPills.push(regionOption.label);
-  if (kindOption) filterPills.push(kindOption.label);
-  if (venueOption) filterPills.push(venueOption.label);
+  const filterPills: { kind: string; value: string }[] = [];
+  if (regionOption) filterPills.push({ kind: "REGION", value: regionOption.label });
+  if (kindOption) filterPills.push({ kind: "KIND", value: kindOption.label });
+  if (venueOption) filterPills.push({ kind: "VENUE", value: venueOption.label });
 
   const rawTemplate = url.searchParams.get("template");
   const template: "ranking" | "snapshot" | "headline" | "compare" | "leaderboard" =
@@ -691,7 +699,7 @@ async function renderRanking(
   benchmark: Benchmark,
   colors: Map<string, string>,
   chainLabel?: string | null,
-  filterPills: string[] = []
+  filterPills: { kind: string; value: string }[] = []
 ) {
   const sorted = sortByP50(benchmark);
   const maxP50 = Math.max(...sorted.map((r) => r.ms.p50)) || 1;
@@ -850,7 +858,7 @@ async function renderLeaderboard(
   benchmark: Benchmark,
   colors: Map<string, string>,
   chainLabel?: string | null,
-  filterPills: string[] = []
+  filterPills: { kind: string; value: string }[] = []
 ) {
   // Row height ~55px + gap 14 = ~70px per row. Content area is
   // ~450px when title fits on 1 line and ~390px when it wraps to 2.
@@ -1020,7 +1028,7 @@ async function renderSnapshot(
   benchmark: Benchmark,
   colors: Map<string, string>,
   chainLabel?: string | null,
-  filterPills: string[] = []
+  filterPills: { kind: string; value: string }[] = []
 ) {
   // Cap dynamically by title length: long titles (>=90 chars, 2 lines)
   // eat the vertical space that would otherwise fit the 2nd legend row,
@@ -1224,7 +1232,7 @@ async function renderHeadline(
   colors: Map<string, string>,
   featured?: Benchmark["results"][number],
   chainLabel?: string | null,
-  filterPills: string[] = []
+  filterPills: { kind: string; value: string }[] = []
 ) {
   const sorted = sortByP50(benchmark);
   const winner = featured ?? sorted[0];
@@ -1343,7 +1351,7 @@ async function renderCompare(
   paneA?: Benchmark["results"][number],
   paneB?: Benchmark["results"][number],
   chainLabel?: string | null,
-  filterPills: string[] = []
+  filterPills: { kind: string; value: string }[] = []
 ) {
   const sorted = sortByP50(benchmark);
   const a = paneA ?? sorted[0];
