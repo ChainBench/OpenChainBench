@@ -811,7 +811,7 @@ async function renderLeaderboard(
   colors: Map<string, string>,
   chainLabel?: string | null
 ) {
-  const sorted = sortByP50(benchmark).slice(0, 10);
+  const sorted = sortByP50(benchmark).slice(0, 8);
   const maxP50 = Math.max(...sorted.map((r) => r.ms.p50)) || 1;
   const total = benchmark.results.length;
   const subtitleLB =
