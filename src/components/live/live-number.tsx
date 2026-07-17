@@ -28,11 +28,19 @@ export function LiveNumber({
   value,
   format,
   monotonic = false,
+  maxValue,
   className,
 }: {
   value: number | undefined;
   format: (n: number | undefined) => string;
   monotonic?: boolean;
+  /** Defensive ceiling. A single garbage push from the upstream relay
+   *  (observed: onchain vol24h briefly returning 8e79) would otherwise
+   *  latch into `lastRef` and, under `monotonic`, stick as the
+   *  displayed value forever because every subsequent healthy push is
+   *  smaller and gets rejected as a "down tick". Reject any incoming
+   *  value above the ceiling before it can pollute the snapshot pair. */
+  maxValue?: number;
   className?: string;
 }) {
   const [display, setDisplay] = useState<number | undefined>(value);
@@ -42,6 +50,16 @@ export function LiveNumber({
 
   useEffect(() => {
     if (value == null || !Number.isFinite(value)) return;
+    if (maxValue != null && value > maxValue) {
+      // Also flush a poisoned lastRef so a healthy value can seed the
+      // pair on the next push instead of being rejected by the
+      // monotonic guard against the stale garbage.
+      if (lastRef.current && lastRef.current.value > maxValue) {
+        lastRef.current = null;
+        prevRef.current = null;
+      }
+      return;
+    }
     const now = performance.now();
     // Only advance the snapshot pair on DISTINCT values. Consecutive pushes
     // with the same value (relay 1 Hz tick × lighthouse 1-5 min poll) would
@@ -53,7 +71,7 @@ export function LiveNumber({
     if (lastRef.current.value === value) return;
     prevRef.current = lastRef.current;
     lastRef.current = { value, ts: now };
-  }, [value]);
+  }, [value, maxValue]);
 
   useEffect(() => {
     let cancelled = false;
