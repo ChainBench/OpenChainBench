@@ -116,6 +116,14 @@ export const CHAINS: ChainEntry[] = [
       "Ouroboros Proof of Stake, deterministic protocol fees set by governance, EUTXO accounting model.",
   },
   {
+    slug: "cosmos-hub",
+    label: "Cosmos Hub",
+    category: "L1",
+    nativeSymbol: "ATOM",
+    description:
+      "Cosmos Hub (ATOM). Tendermint / CometBFT consensus, ~6 s block, instant finality, IBC hub for the wider Cosmos ecosystem.",
+  },
+  {
     slug: "litecoin",
     label: "Litecoin",
     category: "L1",
