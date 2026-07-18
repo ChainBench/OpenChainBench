@@ -60,12 +60,24 @@ const KEYWORDS = [
   "infrastructure",
 ];
 
-const CREATOR_PUBLISHER = {
+/** Embedded Org node used for Dataset `creator` / `publisher`. Exported
+ *  so pages emitting a Dataset outside the home graph can inline the
+ *  full node (Google Search Console flags an `@id`-only reference as
+ *  "missing field creator" when the referenced Org isn't declared on
+ *  the same page). */
+export const CREATOR_PUBLISHER = {
   "@type": "Organization",
   "@id": `${SITE.url}/#org`,
   name: SITE.name,
   url: SITE.url,
 } as const;
+
+/** Full JSON download of the current benchmark corpus. Used as the
+ *  default `distribution.contentUrl` for Dataset nodes emitted outside
+ *  `/benchmarks/[slug]` (products, alternatives, compare) so every
+ *  Dataset carries a machine-readable download link, satisfying the
+ *  Google Dataset "encodingFormat" / "contentUrl" requirements. */
+export const CITABLE_JSON_URL = `${SITE.url}/api/citable`;
 
 /**
  * Site-wide Dataset entry. Emitted on the home page so Google Dataset
