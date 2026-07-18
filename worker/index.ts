@@ -58,6 +58,7 @@ import { CHAINS } from "@/lib/chains";
 import { buildFeaturedLeadersFromStore } from "@/lib/search-featured";
 import type { Benchmark, MetricPanel } from "@/types/benchmark";
 import type { Spec } from "@/lib/spec-schema";
+import { publishAggregate } from "./publish-aggregate";
 
 const SWEEP_SEC = Number(process.env.SWEEP_SEC ?? 60);
 const VARIANT_EVERY = Number(process.env.VARIANT_EVERY ?? 5);
@@ -351,6 +352,26 @@ async function sweep(iteration: number): Promise<void> {
     () => noteHeartbeat(true),
     (e) => noteHeartbeat(false, e),
   );
+
+  // Broadcast the fresh aggregate to a static file that Caddy serves
+  // publicly. The site then reads that URL from the CDN edge instead of
+  // fanning out ~150 concurrent Redis GETs per homepage render. See
+  // worker/publish-aggregate.ts for the full rationale. No-op when
+  // AGGREGATE_OUTPUT_PATH is unset (staged rollout).
+  if (process.env.AGGREGATE_OUTPUT_PATH) {
+    const pubStart = Date.now();
+    const result = await publishAggregate(specs);
+    const elapsedSec = ((Date.now() - pubStart) / 1000).toFixed(1);
+    if (result.ok) {
+      console.log(
+        `[worker] aggregate published in ${elapsedSec}s (${result.bytes} bytes, ${result.liveCount}/${result.total} live, revalidated=${result.revalidated})`,
+      );
+    } else {
+      console.warn(
+        `[worker] aggregate publish failed in ${elapsedSec}s: ${result.error}`,
+      );
+    }
+  }
 
   // Cohort snapshots used by the hub pages and the search dialog. Each
   // builder hits Prom directly (via the in-network http://ocb-prom:9090
