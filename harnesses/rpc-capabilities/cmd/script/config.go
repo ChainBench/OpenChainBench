@@ -107,7 +107,7 @@ func chains() []Chain {
 			Name: "Solana",
 			Kind: "solana",
 			Providers: []Provider{
-				{Slug: "solana-official", Name: "Solana Labs", URL: envDefault("RPC_URL_SOLANA_OFFICIAL", "https://api.mainnet-beta.solana.com")},
+				{Slug: "solana", Name: "Solana", URL: envDefault("RPC_URL_SOLANA_OFFICIAL", "https://api.mainnet-beta.solana.com")},
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_SOLANA_PUBLICNODE", "https://solana-rpc.publicnode.com")},
 				{Slug: "lava", Name: "Lava", URL: envDefault("RPC_URL_SOLANA_LAVA", "https://solana.lava.build")},
 				{Slug: "leorpc", Name: "LeoRPC", URL: envDefault("RPC_URL_SOLANA_LEORPC", "https://solana.leorpc.com/?api_key=FREE")},

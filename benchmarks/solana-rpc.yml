@@ -41,7 +41,7 @@ methodology:
 
 findings:
   - "{{best_name}} currently leads free Solana RPC at {{best_p50}} (getSlot p50, 24h) across 5 measured providers."
-  - "{{name:solana-official}} ({{p50:solana-official}}) is the endpoint every tutorial pastes. Solana Labs documents its limits at 100 requests per 10 seconds per IP, generous for development and exactly the kind of endpoint this bench exists to sanity-check."
+  - "{{name:solana}} ({{p50:solana}}) is the endpoint every tutorial pastes. Solana Labs documents its limits at 100 requests per 10 seconds per IP, generous for development and exactly the kind of endpoint this bench exists to sanity-check."
   - "{{name:publicnode}} ({{p50:publicnode}}) extends its EVM cluster footprint to Solana from the same Allnodes infrastructure, and arrives with the credibility of leading a large share of the EVM per-chain boards."
   - "{{name:lava}} ({{p50:lava}}) routes through the Lava gateway mesh, the same architecture as its Ethereum and Arbitrum endpoints; expect higher variance than single-origin providers."
   - "{{name:leorpc}} ({{p50:leorpc}}) and {{name:solanavibestation}} ({{p50:solanavibestation}}) are the community tier: smaller operations whose continued keyless availability this bench monitors live rather than assumes."
@@ -64,7 +64,7 @@ prometheus:
   window: 24h
   freshness_metric: rpc_latency_milliseconds
 
-rank_matrix_query: avg by (provider, region) (ocb:rpc_latency_milliseconds:p50_24h{provider=~"solana-official|publicnode|lava|leorpc|solanavibestation", chain="solana"})
+rank_matrix_query: avg by (provider, region) (ocb:rpc_latency_milliseconds:p50_24h{provider=~"solana|publicnode|lava|leorpc|solanavibestation", chain="solana"})
 
 dimensions:
   region:
@@ -74,28 +74,28 @@ dimensions:
     - { value: sgp,     label: Singapore }
 
 providers:
-  - slug: solana-official
+  - slug: solana
     name: Solana Labs
     tag: Chain-official api.mainnet-beta.solana.com, 100 req per 10s documented
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `getSlot` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to api.mainnet-beta.solana.com."
     queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="solana-official", chain="solana"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="solana-official", chain="solana"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="solana-official", chain="solana"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="solana-official", chain="solana"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="solana-official", chain="solana"}) / sum(ocb:rpc_call:rate_24h{provider="solana-official", chain="solana"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="solana-official", chain="solana"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="solana-official", chain="solana"}[1h]))
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="solana", chain="solana"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="solana", chain="solana"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="solana", chain="solana"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="solana", chain="solana"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="solana", chain="solana"}) / sum(ocb:rpc_call:rate_24h{provider="solana", chain="solana"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="solana", chain="solana"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="solana", chain="solana"}[1h]))
       regions:
         - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="solana-official", chain="solana", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="solana-official", chain="solana", region="us-east"}[1h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="solana", chain="solana", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="solana", chain="solana", region="us-east"}[1h])
         - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="solana-official", chain="solana", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="solana-official", chain="solana", region="eu-west"}[1h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="solana", chain="solana", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="solana", chain="solana", region="eu-west"}[1h])
         - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="solana-official", chain="solana", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="solana-official", chain="solana", region="sgp"}[1h])
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="solana", chain="solana", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="solana", chain="solana", region="sgp"}[1h])
 
   - slug: publicnode
     name: PublicNode
