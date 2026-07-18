@@ -325,36 +325,34 @@ export default async function BenchmarkPage({
           }
         : null,
   });
-  const datasetNode = {
-    ...buildBenchDatasetJsonLd({
-      slug: benchmark.slug,
-      name: benchmark.seoTitle ?? benchmark.title,
-      alternateName: benchmark.title,
-      // Google Rich Results validator caps description at ~1000 chars even
-      // though schema.org Dataset allows up to 5000. Keep it under 990 to
-      // avoid the "Invalid string length" warning that strips rich snippets.
-      description: capDescription(benchmark.abstract, 990),
-      url: benchmarkUrl,
-      variableMeasured,
-      category: benchmark.category,
-      datePublished: getBenchCreatedAt(benchmark.slug).toISOString(),
-      // For drafts (no measurement history) skip dateModified so the
-      // structured-data channel does not spoof freshness. Same rule
-      // applied to /api/citable, /api/stat and the MCP surface.
-      ...(citableAsOf(benchmark)
-        ? { dateModified: benchmark.lastRunAt }
-        : {}),
-      measurementTechnique: benchmark.methodology.join(" "),
-    }),
-    // Re-bind creator + publisher to the global @id reference so the bench
-    // Dataset resolves to the same Organization node emitted by layout.tsx
-    // when crawlers stitch the site graph back together. The helper sets
-    // an inline Organization for standalone consumption; the page-level
-    // override is the more accurate shape on a site that already declares
-    // the Organization globally.
-    creator: { "@id": `${SITE.url}/#org` },
-    publisher: { "@id": `${SITE.url}/#org` },
-  };
+  // Keep the inline creator/publisher from buildBenchDatasetJsonLd. An
+  // earlier override rebound them to `{ "@id": ... }` references
+  // pointing at the Organization emitted by layout.tsx, but Google
+  // Search Console validates each Dataset in isolation - it does not
+  // stitch cross-document @id refs - and flagged the reference-only
+  // shape as "missing field creator" on /benchmarks/*. The inline Org
+  // still shares the `@id` with the layout node so JSON-LD stitchers
+  // (Perplexity, StatisticalReport isBasedOn) resolve them as one.
+  const datasetNode = buildBenchDatasetJsonLd({
+    slug: benchmark.slug,
+    name: benchmark.seoTitle ?? benchmark.title,
+    alternateName: benchmark.title,
+    // Google Rich Results validator caps description at ~1000 chars even
+    // though schema.org Dataset allows up to 5000. Keep it under 990 to
+    // avoid the "Invalid string length" warning that strips rich snippets.
+    description: capDescription(benchmark.abstract, 990),
+    url: benchmarkUrl,
+    variableMeasured,
+    category: benchmark.category,
+    datePublished: getBenchCreatedAt(benchmark.slug).toISOString(),
+    // For drafts (no measurement history) skip dateModified so the
+    // structured-data channel does not spoof freshness. Same rule
+    // applied to /api/citable, /api/stat and the MCP surface.
+    ...(citableAsOf(benchmark)
+      ? { dateModified: benchmark.lastRunAt }
+      : {}),
+    measurementTechnique: benchmark.methodology.join(" "),
+  });
   // StatisticalReport companion. Only emitted when we have a defensible
   // leader so the shape never publishes an Observation with a fabricated
   // measured value. temporalCoverage uses the ISO 8601 interval form:
