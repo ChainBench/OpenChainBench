@@ -382,6 +382,8 @@ const ALIASES: Record<string, string> = {
   // Long-tail RPC cluster (055-066).
   "sonic-official": "sonic",
   "monad-official": "monad",
+  "solana-official": "solana",
+  "solana-labs": "solana",
   "polkadot-official": "parity",
   hood: "robinhood",
   coin: "coinbase",
