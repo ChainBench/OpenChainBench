@@ -52,7 +52,7 @@ methodology:
 
 findings:
   - "{{best_name}} leads the Solana cohort at {{best_p50}} (p50, 24 h) across {{count}} measured providers. Solana's ~400ms cadence means each provider gets 30 times more samples per unit time than the Ethereum sibling; the distribution here has very little tail noise for the same 24h window."
-  - "{{name:solana-labs}} versus {{name:publicnode}}: the Solana Foundation's public endpoint and PublicNode's Solana gateway measured on identical terms. A latency-sensitive Solana integration should read the win rate alongside p50 to see which endpoint delivers slot N first most often."
+  - "{{name:solana}} versus {{name:publicnode}}: the Solana Foundation's public endpoint and PublicNode's Solana gateway measured on identical terms. A latency-sensitive Solana integration should read the win rate alongside p50 to see which endpoint delivers slot N first most often."
   - "The p99 column matters more on Solana than on any EVM chain in the cluster: at ~400ms slots, a p99 above 1 second means the provider is routinely 2-3 slots behind the leader. That gap is the exact window where a keeper or liquidator loses to a co-located competitor."
   - "Cross-chain comparison of absolute lag numbers is not meaningful: Solana runs at 400ms slots, Base at 2s, Ethereum at 12s. Use each per-chain leaderboard on its own terms and the parent [ws-head-latency](https://openchainbench.com/benchmarks/ws-head-latency-ethereum) page for the Ethereum reference."
 
@@ -111,25 +111,25 @@ providers:
           p50: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="publicnode", chain="solana", region="sgp"}[24h])))
           series: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="publicnode", chain="solana", region="sgp"}[1h])))
 
-  - slug: solana-labs
+  - slug: solana
     name: Solana Foundation
     tag: Keyless WS, wss://api.mainnet-beta.solana.com
     formula: "Median ms behind the earliest provider to push each Solana slotSubscribe notification, from one persistent WebSocket per provider on the same eu-west host, histogram_quantile over 24h. Lag is relative to the per-slot winner."
     queries:
-      p50: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="solana-labs", chain="solana"}[24h])))
-      p90: histogram_quantile(0.90, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="solana-labs", chain="solana"}[24h])))
-      p99: histogram_quantile(0.99, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="solana-labs", chain="solana"}[24h])))
-      mean: sum(rate(ws_head_lag_milliseconds_sum{provider="solana-labs", chain="solana"}[24h])) / sum(rate(ws_head_lag_milliseconds_count{provider="solana-labs", chain="solana"}[24h]))
-      success: clamp_max(sum(increase(ws_head_blocks_seen_total{provider="solana-labs", chain="solana"}[24h])) / max(sum by (provider) (increase(ws_head_blocks_seen_total{chain="solana"}[24h]))), 1)
-      sample_size: sum(increase(ws_head_lag_milliseconds_count{provider="solana-labs", chain="solana"}[24h]))
-      series: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="solana-labs", chain="solana"}[1h])))
+      p50: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="solana", chain="solana"}[24h])))
+      p90: histogram_quantile(0.90, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="solana", chain="solana"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="solana", chain="solana"}[24h])))
+      mean: sum(rate(ws_head_lag_milliseconds_sum{provider="solana", chain="solana"}[24h])) / sum(rate(ws_head_lag_milliseconds_count{provider="solana", chain="solana"}[24h]))
+      success: clamp_max(sum(increase(ws_head_blocks_seen_total{provider="solana", chain="solana"}[24h])) / max(sum by (provider) (increase(ws_head_blocks_seen_total{chain="solana"}[24h]))), 1)
+      sample_size: sum(increase(ws_head_lag_milliseconds_count{provider="solana", chain="solana"}[24h]))
+      series: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="solana", chain="solana"}[1h])))
       regions:
         - region: us-east
-          p50: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="solana-labs", chain="solana", region="us-east"}[24h])))
-          series: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="solana-labs", chain="solana", region="us-east"}[1h])))
+          p50: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="solana", chain="solana", region="us-east"}[24h])))
+          series: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="solana", chain="solana", region="us-east"}[1h])))
         - region: eu-west
-          p50: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="solana-labs", chain="solana", region="eu-west"}[24h])))
-          series: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="solana-labs", chain="solana", region="eu-west"}[1h])))
+          p50: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="solana", chain="solana", region="eu-west"}[24h])))
+          series: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="solana", chain="solana", region="eu-west"}[1h])))
         - region: ap-southeast
-          p50: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="solana-labs", chain="solana", region="sgp"}[24h])))
-          series: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="solana-labs", chain="solana", region="sgp"}[1h])))
+          p50: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="solana", chain="solana", region="sgp"}[24h])))
+          series: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="solana", chain="solana", region="sgp"}[1h])))

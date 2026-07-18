@@ -214,12 +214,6 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Solana transaction landing service by Temporal Labs. Direct-to-leader submission from 9 colocated regions, tip paid only on successful landing.",
     twitter: "@temporal_xyz",
   },
-  "solana-official": {
-    url: "https://solana.com",
-    description:
-      "api.mainnet-beta.solana.com is the chain-official public RPC operated by Solana Labs, the endpoint every tutorial and SDK defaults to, documented at roughly 100 requests per 10 seconds per IP.",
-    twitter: "@solana",
-  },
   leorpc: {
     url: "https://leorpc.com",
     description:
