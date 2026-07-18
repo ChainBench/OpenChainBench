@@ -10,7 +10,7 @@
  */
 
 import { cache } from "react";
-import { unstable_cache } from "next/cache";
+import { unstable_cache, unstable_noStore } from "next/cache";
 import type { Benchmark } from "@/types/benchmark";
 import type { Spec } from "@/lib/spec-schema";
 // Imported from the isolated alias module (NOT @/lib/chains) to avoid
@@ -483,6 +483,16 @@ export const loadAllBenchmarksSafe = cache(
       return await loadAllBenchmarksCached();
     } catch (err) {
       if (err instanceof AllBenchmarksDraftError) {
+        // Opt this render out of every cache layer (ISR + CDN edge). When
+        // the aggregate quorum is lost (SRH stuck, Redis blackout, worker
+        // starved) the placeholder response is a degraded surrogate, NOT
+        // ground truth. Without noStore the placeholder HTML would sit at
+        // Vercel Edge for `revalidate` seconds and — under stale-while-
+        // revalidate — for hours after backend recovery, since SWR only
+        // refreshes on cache miss. Marking the response no-store forces
+        // every subsequent hit to re-render, which immediately picks up
+        // real data as soon as SRH is back — no cache-key bump, no deploy.
+        unstable_noStore();
         const specs = await loadSpecs();
         return specs
           .map((s) => draftPlaceholderForSpec(s))
