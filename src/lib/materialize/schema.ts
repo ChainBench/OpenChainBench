@@ -69,7 +69,7 @@ export function freshnessOf(meta: StalenessMeta | undefined, now = Date.now()): 
  *  display values carry forward separately via StalenessMeta. Cadences
  *  mirror the live loader: 24h = 72 pts @ 20 min, 7d = 84 pts @ 2 h,
  *  30d = 60 pts @ 12 h. */
-export const SeriesRingSchema = z.object({
+const SeriesRingSchema = z.object({
   /** Epoch ms of points[0]. */
   startEpoch: z.number(),
   stepSec: z.number(),
