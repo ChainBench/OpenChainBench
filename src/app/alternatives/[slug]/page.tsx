@@ -12,6 +12,7 @@ import { getBenchCreatedAt } from "@/lib/seo/bench-dates";
 import { capDescription } from "@/lib/seo-text";
 import { SectionLabel, SummaryStat } from "@/components/summary-stat";
 import { SITE } from "@/data/site";
+import { CREATOR_PUBLISHER, CITABLE_JSON_URL, DATASET_LICENSE, HF_DATASET_URL } from "@/lib/dataset-jsonld";
 import { loadAlternative } from "@/lib/alternatives";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { buildBreadcrumbJsonLd, safeJsonLd } from "@/lib/jsonld";
@@ -120,14 +121,27 @@ export default async function AlternativePage({
           bench.metric,
           ...bench.results.map((r) => r.name),
         ].join(", "),
-        creator: { "@id": `${SITE.url}/#org` },
-        publisher: { "@id": `${SITE.url}/#org` },
+        creator: CREATOR_PUBLISHER,
+        publisher: CREATOR_PUBLISHER,
         isAccessibleForFree: true,
-        license: "https://creativecommons.org/licenses/by/4.0/",
+        license: DATASET_LICENSE,
         datePublished: getBenchCreatedAt(bench.slug).toISOString(),
         ...(citableAsOf(bench) ? { dateModified: bench.lastRunAt } : {}),
         variableMeasured: bench.metric,
         isBasedOn: benchUrl,
+        distribution: [
+          {
+            "@type": "DataDownload",
+            encodingFormat: "application/json",
+            contentUrl: `${SITE.url}/api/stat/${bench.slug}`,
+          },
+          {
+            "@type": "DataDownload",
+            encodingFormat: "application/json",
+            contentUrl: CITABLE_JSON_URL,
+          },
+        ],
+        sameAs: [HF_DATASET_URL],
       },
       {
         "@type": "Article",

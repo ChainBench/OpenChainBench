@@ -17,6 +17,7 @@ import { capDescription } from "@/lib/seo-text";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { buildBreadcrumbJsonLd, safeJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
+import { CREATOR_PUBLISHER, DATASET_LICENSE } from "@/lib/dataset-jsonld";
 import type { Benchmark } from "@/types/benchmark";
 import {
   computeInputsHash,
@@ -711,8 +712,10 @@ export default async function ComparePage({
     name: `${a.name} vs ${b.name} OpenChainBench measurements`,
     description: `Side by side live measurements for ${a.name} and ${b.name} on ${shared.length} shared OpenChainBench benchmarks.`,
     url,
-    creator: { "@id": `${SITE.url}/#org` },
-    license: "https://creativecommons.org/licenses/by/4.0/",
+    creator: CREATOR_PUBLISHER,
+    publisher: CREATOR_PUBLISHER,
+    isAccessibleForFree: true,
+    license: DATASET_LICENSE,
     measurementTechnique: `${SITE.url}/methodology`,
     variableMeasured: shared.map((s) => ({
       "@type": "PropertyValue",
