@@ -76,3 +76,7 @@ scripts/hf_publisher/.venv/
 scripts/hf_space/.venv/
 **/__pycache__/
 *.pyc
+
+# Claude harness local state (per-session lock + per-user perms)
+.claude/settings.local.json
+.claude/*.lock
