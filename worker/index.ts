@@ -58,6 +58,7 @@ import { CHAINS } from "@/lib/chains";
 import { buildFeaturedLeadersFromStore } from "@/lib/search-featured";
 import type { Benchmark, MetricPanel } from "@/types/benchmark";
 import type { Spec } from "@/lib/spec-schema";
+import { publishAggregateBlob } from "./publish-blob";
 
 const SWEEP_SEC = Number(process.env.SWEEP_SEC ?? 60);
 const VARIANT_EVERY = Number(process.env.VARIANT_EVERY ?? 5);
@@ -351,6 +352,25 @@ async function sweep(iteration: number): Promise<void> {
     () => noteHeartbeat(true),
     (e) => noteHeartbeat(false, e),
   );
+
+  // Broadcast the fresh aggregate to Vercel Blob so the site can read
+  // it from the CDN edge and stop fanning out ~150 concurrent Redis
+  // GETs per homepage render. See worker/publish-blob.ts for the full
+  // rationale. No-op when BLOB_READ_WRITE_TOKEN is unset (staged rollout).
+  if (process.env.BLOB_READ_WRITE_TOKEN) {
+    const blobStart = Date.now();
+    const result = await publishAggregateBlob(specs);
+    const elapsedSec = ((Date.now() - blobStart) / 1000).toFixed(1);
+    if (result.ok) {
+      console.log(
+        `[worker] blob published in ${elapsedSec}s (${result.bytes} bytes, ${result.liveCount}/${result.total} live, revalidated=${result.revalidated})`,
+      );
+    } else {
+      console.warn(
+        `[worker] blob publish failed in ${elapsedSec}s: ${result.error}`,
+      );
+    }
+  }
 
   // Cohort snapshots used by the hub pages and the search dialog. Each
   // builder hits Prom directly (via the in-network http://ocb-prom:9090

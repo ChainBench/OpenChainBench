@@ -21,6 +21,7 @@
     "@modelcontextprotocol/sdk": "^1.26.0",
     "@react-three/fiber": "^9.6.1",
     "@vercel/analytics": "^2.0.1",
+    "@vercel/blob": "^1.0.0",
     "cmdk": "^1.1.1",
     "fuse.js": "^7.4.2",
     "ioredis": "^5.11.1",
