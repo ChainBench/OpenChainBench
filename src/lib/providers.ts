@@ -41,6 +41,12 @@ const PRODUCT_ALIASES: Record<string, string> = {
   "avalanche-official": "avalanche",
   "base-official": "base",
   "optimism-official": "optimism",
+  // Solana chain-official RPC collapses to the Solana chain brand.
+  // Legacy slugs `solana-official` (rpc-capabilities) and `solana-labs`
+  // (ws-head-latency) resolve to the same canonical entry so old inbound
+  // links keep working while the harnesses re-emit under provider="solana".
+  "solana-official": "solana",
+  "solana-labs": "solana",
   // Polkadot's "official" endpoint is Parity-operated, so the product
   // page for the endpoint slug collapses to the Parity brand rather
   // than a synthetic "Polkadot Foundation RPC" entry (there is no such
