@@ -15,6 +15,7 @@ import {
 } from "@/data/provider-registry";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { buildBreadcrumbJsonLd, safeJsonLd } from "@/lib/jsonld";
+import { CREATOR_PUBLISHER, CITABLE_JSON_URL, DATASET_LICENSE } from "@/lib/dataset-jsonld";
 import {
   fetchHlBuilderStats,
   isHlBuilderSlug,
@@ -427,8 +428,22 @@ export default async function ProviderPage({
           name: a.benchmark.title,
           description: capDescription(a.benchmark.subtitle, 990),
           url: `${SITE.url}/benchmarks/${a.benchmark.slug}`,
-          creator: { "@id": `${SITE.url}/#org` },
-          license: "https://creativecommons.org/licenses/by/4.0/",
+          creator: CREATOR_PUBLISHER,
+          publisher: CREATOR_PUBLISHER,
+          isAccessibleForFree: true,
+          license: DATASET_LICENSE,
+          distribution: [
+            {
+              "@type": "DataDownload",
+              encodingFormat: "application/json",
+              contentUrl: `${SITE.url}/api/stat/${a.benchmark.slug}`,
+            },
+            {
+              "@type": "DataDownload",
+              encodingFormat: "application/json",
+              contentUrl: CITABLE_JSON_URL,
+            },
+          ],
         })),
       },
       // NB: previously emitted a SoftwareApplication node here, but Google's
