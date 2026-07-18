@@ -86,8 +86,9 @@ export async function buildFeaturedLeaders(): Promise<FeaturedLeadersBlob> {
   };
 }
 
-/** Exported for the public endpoint + the dialog's TS type. */
-export const FEATURED_SLUGS = ALL_SLUGS;
+// FEATURED_SLUGS previously re-exported ALL_SLUGS but had zero
+// external consumers. ALL_SLUGS stays used internally by
+// buildFeaturedLeaders below.
 
 /**
  * Worker-safe variant of `buildFeaturedLeaders`. Reads each of the 12
