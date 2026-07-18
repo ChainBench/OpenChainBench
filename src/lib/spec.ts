@@ -26,6 +26,7 @@ import {
   type BenchmarkFilters,
 } from "@/lib/materialize/load";
 import { readMaterialized } from "@/lib/materialize/store";
+import { loadAggregateFromBlob } from "@/lib/aggregate-blob";
 
 export type { Spec } from "@/lib/spec-schema";
 export type { BenchmarkFilters } from "@/lib/materialize/load";
@@ -63,7 +64,7 @@ async function benchFromStore(
  * preserved from the store so the snapshot's measurement payload is
  * untouched.
  */
-function overlayEditorial(stored: Benchmark, spec: Spec): Benchmark {
+export function overlayEditorial(stored: Benchmark, spec: Spec): Benchmark {
   // Reconcile stale provider entries in the stored snapshot against the
   // current spec. The materialize worker may have written a snapshot
   // BEFORE a chain rename rolled through the YAMLs (e.g. ton → gram).
@@ -170,7 +171,7 @@ function overlayEditorial(stored: Benchmark, spec: Spec): Benchmark {
 // /api/series serves these on demand, CDN-cached (60 s s-maxage + 300 s
 // SWR) so the cache miss only hits Prom once per (bench, range) per
 // minute regardless of concurrent visitor count.
-function slimBenchmarkForCache(b: Benchmark): Benchmark {
+export function slimBenchmarkForCache(b: Benchmark): Benchmark {
   const slimPanels = b.metricPanels?.map((panel) => {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { seriesByProvider7d, seriesByProvider30d, ...rest } = panel;
@@ -524,6 +525,20 @@ export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
  */
 export const loadAllBenchmarksSafe = cache(
   async (): Promise<Benchmark[]> => {
+    // Fast path: CDN-cached aggregate blob written by the materialize
+    // worker every ~60 s (see src/lib/aggregate-blob.ts and
+    // worker/publish-aggregate.ts). One HTTP fetch replaces the ~150
+    // concurrent SRH GETs the per-bench aggregator used to fan out on
+    // every homepage revalidate — that fan-out is what saturated SRH's
+    // pool and starved alphabetically-later specs into draft
+    // placeholders. Any failure (network, schema, quorum) falls through
+    // to the Redis-via-SRH path below, so the switch is safe: the worst
+    // case is what we had before this landed.
+    const fromBlob = await loadAggregateFromBlob().catch(() => null);
+    if (fromBlob && fromBlob.length >= 40) {
+      return fromBlob;
+    }
+
     try {
       return await loadAllBenchmarksCached();
     } catch (err) {
