@@ -334,11 +334,56 @@ export class AllBenchmarksDraftError extends Error {
  * suite can exercise the error path without standing up Prometheus or
  * the Next cache backend.
  */
+/** Concurrency cap for the parallel per-bench Redis fan-out below.
+ *
+ *  The naive `Promise.allSettled(specs.map(loadOne))` fires ~68 read
+ *  chains at once (each does GET pointer → GET blob → optional GET lkg =
+ *  ~150-200 Redis ops), which reliably saturated SRH's request pool and
+ *  starved the alphabetically-later specs (`perp-open-interest` → `zksync-rpc`)
+ *  into 8s timeouts — they then rendered as draft placeholders on the
+ *  homepage even though their blobs were sitting in Redis the whole time.
+ *
+ *  Cap at 12 in-flight chains so the total concurrent Redis ops stay
+ *  well under the pool ceiling. The aggregate is behind unstable_cache
+ *  (revalidate 300 s) so the slightly-longer worst-case wall time on
+ *  cache miss is invisible to end users. */
+const AGGREGATE_LOAD_CONCURRENCY = 12;
+
+async function limitedAllSettled<T, R>(
+  items: T[],
+  concurrency: number,
+  fn: (item: T) => Promise<R>,
+): Promise<PromiseSettledResult<R>[]> {
+  const results: PromiseSettledResult<R>[] = new Array(items.length);
+  let cursor = 0;
+  const worker = async () => {
+    while (true) {
+      const i = cursor++;
+      if (i >= items.length) return;
+      try {
+        results[i] = { status: "fulfilled", value: await fn(items[i]) };
+      } catch (reason) {
+        results[i] = { status: "rejected", reason };
+      }
+    }
+  };
+  const workers = Array.from(
+    { length: Math.min(concurrency, items.length) },
+    () => worker(),
+  );
+  await Promise.all(workers);
+  return results;
+}
+
 export async function aggregateBenchmarks(
   specs: Spec[],
   loadOne: (slug: string) => Promise<Benchmark | undefined>,
 ): Promise<Benchmark[]> {
-  const settled = await Promise.allSettled(specs.map((s) => loadOne(s.slug)));
+  const settled = await limitedAllSettled(
+    specs,
+    AGGREGATE_LOAD_CONCURRENCY,
+    (s) => loadOne(s.slug),
+  );
   const benchmarks: Benchmark[] = [];
   for (let i = 0; i < specs.length; i++) {
     const spec = specs[i];
