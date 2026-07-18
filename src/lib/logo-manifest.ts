@@ -401,6 +401,7 @@ const ALIASES: Record<string, string> = {
   "sonic-official": "sonic",
   "monad-official": "monad",
   "solana-official": "solana",
+  "solana-labs": "solana",
   "polkadot-official": "parity",
   hood: "robinhood",
   coin: "coinbase",
