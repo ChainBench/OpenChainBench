@@ -58,7 +58,7 @@ import { CHAINS } from "@/lib/chains";
 import { buildFeaturedLeadersFromStore } from "@/lib/search-featured";
 import type { Benchmark, MetricPanel } from "@/types/benchmark";
 import type { Spec } from "@/lib/spec-schema";
-import { publishAggregate } from "./publish-aggregate";
+import { publishAggregate, publishVariants } from "./publish-aggregate";
 
 const SWEEP_SEC = Number(process.env.SWEEP_SEC ?? 60);
 const VARIANT_EVERY = Number(process.env.VARIANT_EVERY ?? 5);
@@ -209,7 +209,7 @@ async function materializeOne(
   await publishSnapshot(snap);
 }
 
-function variantCombos(spec: Spec): BenchmarkFilters[] {
+export function variantCombos(spec: Spec): BenchmarkFilters[] {
   const dims = spec.dimensions ?? {};
   const chains = (dims.chain ?? []).map((d) => d.value).filter((v) => v !== "all");
   const regions = (dims.region ?? []).map((d) => d.value).filter((v) => v !== "all");
@@ -460,6 +460,26 @@ async function sweep(iteration: number): Promise<void> {
       }
     });
     console.log(`[worker] tierB done in ${((Date.now() - tB0) / 1000).toFixed(1)}s (${jobs.length} variants)`);
+
+    // Broadcast per-variant blobs so the site's filter-tab reads
+    // (/benchmarks/[slug]/[chain] etc.) go to the CDN edge instead of
+    // fanning out through SRH. Mirrors the tier-A per-bench publish
+    // in publishAggregate.
+    if (process.env.AGGREGATE_OUTPUT_PATH) {
+      const vpStart = Date.now();
+      const result = await publishVariants(specs, variantCombos);
+      const elapsedSec = ((Date.now() - vpStart) / 1000).toFixed(1);
+      if (result.ok) {
+        console.log(
+          `[worker] variants published in ${elapsedSec}s (${result.count} files, ${result.bytes} bytes, ${result.errors ?? 0} errors)`,
+        );
+      } else {
+        console.warn(
+          `[worker] variants publish failed in ${elapsedSec}s: ${result.error}`,
+        );
+      }
+    }
+
     await warmUrls(
       jobs.map(({ spec, filters }) => variantPath(spec.slug, filters)),
       "variants",
