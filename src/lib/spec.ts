@@ -27,6 +27,7 @@ import {
 } from "@/lib/materialize/load";
 import { readMaterialized } from "@/lib/materialize/store";
 import { loadAggregateFromBlob } from "@/lib/aggregate-blob";
+import { loadBenchFromBlob, loadVariantFromBlob } from "@/lib/bench-blob";
 
 export type { Spec } from "@/lib/spec-schema";
 export type { BenchmarkFilters } from "@/lib/materialize/load";
@@ -200,11 +201,13 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
     const specs = await loadSpecs();
     const spec = specs.find((s) => s.slug === slug);
     if (!spec) return undefined;
-    // Blob-only: serve whatever the worker last published. Missing or
-    // unparseable blobs fall through to the aggregator's draft
-    // placeholder instead of fanning out a Prom build at render time —
-    // that fan-out is what saturated Prom's query queue under Vercel
-    // ISR re-render bursts.
+    // Fast path: per-bench blob written by the materialize worker
+    // after every tier A sweep. One CDN fetch (~20 ms edge, ~1 s cold)
+    // replaces the 2-3 SRH GETs this used to run. See bench-blob.ts
+    // and worker/publish-aggregate.ts.
+    const fromBlob = await loadBenchFromBlob(slug);
+    if (fromBlob) return slimBenchmarkForCache(overlayEditorial(fromBlob, spec));
+    // Fallback: Redis-via-SRH. Kept until Phase 3 fully retires SRH.
     const stored = await benchFromStore(slug, "");
     if (stored) return slimBenchmarkForCache(overlayEditorial(stored, spec));
     if (spec.status === "live") {
@@ -579,11 +582,12 @@ const loadBenchmarkFiltered = unstable_cache(
     const specs = await loadSpecs();
     const spec = specs.find((s) => s.slug === slug);
     if (!spec) return undefined;
-    // Blob-only: variant blobs are published by the worker's tier-B
-    // sweep. A missing variant blob means the worker has not covered
-    // this filter combination yet — return undefined so the caller can
-    // fall back to the unfiltered "All" view rather than spinning up a
-    // render-time Prom build.
+    // Fast path: per-variant blob written by the worker's tier B
+    // sweep. Missing blob → this filter combo hasn't been covered yet
+    // (or the tier B has never run since worker start) — fall through
+    // to Redis-via-SRH.
+    const fromBlob = await loadVariantFromBlob(slug, sig);
+    if (fromBlob) return slimBenchmarkForCache(overlayEditorial(fromBlob, spec));
     const stored = await benchFromStore(slug, sig);
     if (stored) return slimBenchmarkForCache(overlayEditorial(stored, spec));
     return undefined;
