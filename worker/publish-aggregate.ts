@@ -1,29 +1,40 @@
 /**
- * Aggregate-snapshot broadcaster (self-hosted variant).
+ * Aggregate + per-bench + per-variant snapshot broadcaster (VPS-served).
  *
- * After each Tier A sweep the worker calls `publishAggregate` to:
- *   1. Read back every unfiltered bench snapshot it just wrote to Redis
- *      (worker uses TCP direct via `OCB_REDIS_URL`, never SRH — so the
- *      broadcast is insulated from the very failure mode this whole
- *      pipeline exists to route around).
- *   2. Assemble a lightweight envelope `{ v, builtAt, benches[] }`.
- *   3. Write the JSON to `${AGGREGATE_OUTPUT_PATH}/latest.json` atomically
- *      (write to `.tmp`, `rename` into place — readers never see a torn
- *      snapshot). Caddy on the same VPS serves that path publicly.
- *   4. Optionally POST the site's revalidate hook so the CDN cache tag
- *      purges immediately, no waiting on the ~60 s revalidate window.
+ * Layout of the files this module writes into `AGGREGATE_OUTPUT_PATH`,
+ * which Caddy exposes publicly at `https://kv.openchainbench.com/aggregate/*`:
  *
- * Fail-soft: any step (missing config, disk full, network flap) degrades
- * to a warning log. The worker's happy path is untouched, the site keeps
- * reading via its existing Redis path via SRH. Once this proves stable,
- * the site switches its aggregate reads to the public aggregate URL.
+ *   latest.json                             All 68 unfiltered benches
+ *                                           (homepage source of truth,
+ *                                           4-5 MB, ~1.5 MB gzipped).
+ *   benches/<slug>.json                     One full unfiltered bench
+ *                                           (per-bench detail pages,
+ *                                           /api/series/<slug>).
+ *   variants/<slug>/<sig>.json              One filtered variant
+ *                                           (per-chain, per-region,
+ *                                           per-kind, per-venue pages).
+ *
+ * Every write is atomic (`.tmp` → `rename`) so a Caddy `file_server` GET
+ * never observes a torn read.
+ *
+ * Purpose: eliminate the SRH HTTP-to-Redis proxy from the site's read
+ * path entirely. The site fetches these files from the CDN edge instead
+ * of fanning out Redis GETs through SRH, which was chronically bursting
+ * timeouts (~27 auto-heal incidents / 24 h before this shipped).
+ *
+ * Fail-soft: any single file write failure is warned and swallowed;
+ * one bad bench doesn't block the rest of the cycle.
  */
 
 import { mkdir, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { Benchmark } from "@/types/benchmark";
 import type { Spec } from "@/lib/spec-schema";
-import { draftPlaceholderForSpec } from "@/lib/materialize/load";
+import {
+  draftPlaceholderForSpec,
+  filterSig,
+  type BenchmarkFilters,
+} from "@/lib/materialize/load";
 import { readMaterialized } from "@/lib/materialize/store";
 
 export type PublishResult = {
@@ -33,12 +44,38 @@ export type PublishResult = {
   total?: number;
   liveCount?: number;
   draftCount?: number;
+  perBenchOk?: number;
+  perBenchBytes?: number;
   revalidated?: boolean;
   error?: string;
 };
 
-const AGGREGATE_FILENAME = "latest.json";
+export type VariantsPublishResult = {
+  ok: boolean;
+  count?: number;
+  bytes?: number;
+  errors?: number;
+  error?: string;
+};
 
+const AGGREGATE_FILENAME = "latest.json";
+const BENCHES_SUBDIR = "benches";
+const VARIANTS_SUBDIR = "variants";
+
+async function atomicWrite(finalPath: string, body: string): Promise<void> {
+  const tmpPath = `${finalPath}.tmp`;
+  await writeFile(tmpPath, body, "utf-8");
+  await rename(tmpPath, finalPath);
+}
+
+/**
+ * Tier A publish: aggregate blob + per-bench blobs.
+ *
+ * Reads every unfiltered bench from Redis (worker uses TCP direct via
+ * `OCB_REDIS_URL`, never SRH), assembles a slim aggregate envelope, and
+ * ALSO writes one file per live bench so the site's detail pages can
+ * read straight from the CDN instead of round-tripping SRH.
+ */
 export async function publishAggregate(specs: Spec[]): Promise<PublishResult> {
   const outputDir = process.env.AGGREGATE_OUTPUT_PATH;
   if (!outputDir) {
@@ -71,9 +108,10 @@ export async function publishAggregate(specs: Spec[]): Promise<PublishResult> {
 
   benches.sort((a, b) => (a.number ?? "").localeCompare(b.number ?? ""));
 
+  const builtAt = Date.now();
   const envelope = {
     v: 1,
-    builtAt: Date.now(),
+    builtAt,
     total: benches.length,
     liveCount,
     draftCount,
@@ -82,25 +120,49 @@ export async function publishAggregate(specs: Spec[]): Promise<PublishResult> {
   const body = JSON.stringify(envelope);
   const bytes = Buffer.byteLength(body);
 
-  const finalPath = path.join(outputDir, AGGREGATE_FILENAME);
-  const tmpPath = `${finalPath}.tmp`;
+  const aggregatePath = path.join(outputDir, AGGREGATE_FILENAME);
+  const benchesDir = path.join(outputDir, BENCHES_SUBDIR);
 
   try {
     await mkdir(outputDir, { recursive: true });
-    // Atomic write: readers (Caddy `file_server`) only ever open a
-    // fully-written file. `rename` on the same filesystem is atomic on
-    // POSIX so no torn reads possible.
-    await writeFile(tmpPath, body, "utf-8");
-    await rename(tmpPath, finalPath);
+    await mkdir(benchesDir, { recursive: true });
+    await atomicWrite(aggregatePath, body);
   } catch (err) {
     return {
       ok: false,
-      error: `write failed: ${err instanceof Error ? err.message : String(err)}`,
+      error: `aggregate write failed: ${err instanceof Error ? err.message : String(err)}`,
       bytes,
       total: benches.length,
       liveCount,
       draftCount,
     };
+  }
+
+  // Per-bench files. Live benches only — draft placeholders would let
+  // the site render "Awaiting" on a per-bench page, which is what the
+  // draft-placeholder path already does anyway. Skip the write so stale
+  // files don't outlive their benches; the reader falls back to the
+  // aggregate slice / SRH transparently.
+  let perBenchOk = 0;
+  let perBenchBytes = 0;
+  for (const bench of benches) {
+    if (bench.status !== "live") continue;
+    const benchPath = path.join(benchesDir, `${bench.slug}.json`);
+    const benchBody = JSON.stringify({
+      v: 1,
+      builtAt,
+      slug: bench.slug,
+      bench,
+    });
+    perBenchBytes += Buffer.byteLength(benchBody);
+    try {
+      await atomicWrite(benchPath, benchBody);
+      perBenchOk += 1;
+    } catch (err) {
+      console.warn(
+        `[publish-aggregate] per-bench ${bench.slug} write failed: ${err instanceof Error ? err.message : err}`,
+      );
+    }
   }
 
   let revalidated = false;
@@ -128,11 +190,75 @@ export async function publishAggregate(specs: Spec[]): Promise<PublishResult> {
 
   return {
     ok: true,
-    filePath: finalPath,
+    filePath: aggregatePath,
     bytes,
     total: benches.length,
     liveCount,
     draftCount,
+    perBenchOk,
+    perBenchBytes,
     revalidated,
   };
+}
+
+/**
+ * Tier B publish: per-variant blobs (chain / region / kind / venue combos).
+ *
+ * Called after the tier B materialize loop finishes writing every
+ * variant to Redis. Enumerates the same (spec, filters) space, reads
+ * each variant back, and writes one file per (slug, sig).
+ */
+export async function publishVariants(
+  specs: Spec[],
+  variantsFor: (spec: Spec) => BenchmarkFilters[],
+): Promise<VariantsPublishResult> {
+  const outputDir = process.env.AGGREGATE_OUTPUT_PATH;
+  if (!outputDir) {
+    return { ok: false, error: "AGGREGATE_OUTPUT_PATH not set" };
+  }
+
+  const variantsDir = path.join(outputDir, VARIANTS_SUBDIR);
+  await mkdir(variantsDir, { recursive: true });
+
+  const builtAt = Date.now();
+  let count = 0;
+  let bytes = 0;
+  let errors = 0;
+
+  for (const spec of specs) {
+    let benchDirEnsured = false;
+    for (const filters of variantsFor(spec)) {
+      const sig = filterSig(filters);
+      if (!sig) continue;
+
+      try {
+        const snap = await readMaterialized(spec.slug, sig);
+        if (!snap?.bench) continue;
+
+        const benchDir = path.join(variantsDir, spec.slug);
+        if (!benchDirEnsured) {
+          await mkdir(benchDir, { recursive: true });
+          benchDirEnsured = true;
+        }
+        const filePath = path.join(benchDir, `${sig}.json`);
+        const body = JSON.stringify({
+          v: 1,
+          builtAt,
+          slug: spec.slug,
+          sig,
+          bench: snap.bench,
+        });
+        bytes += Buffer.byteLength(body);
+        await atomicWrite(filePath, body);
+        count += 1;
+      } catch (err) {
+        errors += 1;
+        console.warn(
+          `[publish-variants] ${spec.slug}/${sig}: ${err instanceof Error ? err.message : err}`,
+        );
+      }
+    }
+  }
+
+  return { ok: true, count, bytes, errors };
 }
