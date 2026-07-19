@@ -89,7 +89,9 @@ const PM_VENUES: VenueSeed[] = [
 ];
 
 const PM_DATA_FEEDS: DataFeedSeed[] = [
-  { slug: "mobula",   name: "Mobula",   coverage: ["polymarket"], isReference: false },
+  // Mobula dropped 2026-07-19: they stopped serving the PM WebSocket
+  // relay, so the hub cohort and pm-data-freshness bench no longer
+  // rank a dead endpoint.
   { slug: "codex",    name: "Codex",    coverage: ["polymarket", "kalshi"], isReference: false },
   { slug: "predexon", name: "Predexon", coverage: ["polymarket", "kalshi", "limitless"], isReference: false },
 ];
