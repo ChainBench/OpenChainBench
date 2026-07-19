@@ -34,7 +34,6 @@ export const PM_VENUE_META: Record<string, { url: string; chainLabel: string }> 
 // mobula, and predexon.
 export const PM_FEED_META: Record<string, { url?: string }> = {
   "polymarket-clob": { url: "https://polymarket.com" },
-  mobula: { url: "https://mobula.io" },
   codex: { url: "https://codex.io" },
   predexon: { url: "https://predexon.com" },
 };
