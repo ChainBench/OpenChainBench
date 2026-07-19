@@ -87,7 +87,7 @@ faq:
   - q: "How do you test rate limits without abusing the APIs?"
     a: "Four guardrails. Tiers stay well inside documented budgets where they exist (at most 7 percent of Polymarket's book allowance). Every run aborts as soon as throttled plus server errors exceed 1 percent of a 10 second window, and Kalshi stops at the first 429. Only one region ramps a venue at a time, on disjoint UTC hours. And every request carries an identifying User-Agent with a contact address, so a venue can reach us or filter us selectively. The measurement is throttle onset, not stress to failure."
   - q: "Why measure the venue APIs directly instead of a data provider?"
-    a: "They answer different questions. If you build directly on a venue, its native API latency and throttle behaviour set your floor, and that is what this benchmark measures. If you consume the venue through a data provider such as Mobula or Codex, what matters is how fresh the provider's relay is, which is measured separately in the pm-data-freshness benchmark. Both pages link each other so you can compare the paths."
+    a: "They answer different questions. If you build directly on a venue, its native API latency and throttle behaviour set your floor, and that is what this benchmark measures. If you consume the venue through a data provider such as Codex or Predexon, what matters is how fresh the provider's relay is, which is measured separately in the pm-data-freshness benchmark. Both pages link each other so you can compare the paths."
 
 per_chain_explainer:
   - slug: polymarket
