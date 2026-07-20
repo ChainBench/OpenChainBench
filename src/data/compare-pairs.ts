@@ -116,12 +116,6 @@ export const COMPARE_PAIRS: ComparePair[] = [
     publishedAt: "2026-06-17",
   },
   {
-    slug: "codex-vs-mobula",
-    providerA: "codex",
-    providerB: "mobula",
-    publishedAt: "2026-06-09",
-  },
-  {
     slug: "dai-vs-usdc",
     providerA: "dai",
     providerB: "usdc",
