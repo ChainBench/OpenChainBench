@@ -17,6 +17,10 @@
  */
 
 import type { Benchmark } from "@/types/benchmark";
+import {
+  MAT_SCHEMA_VERSION,
+  type MaterializedSnapshot,
+} from "@/lib/materialize/schema";
 
 const DEFAULT_BASE_URL = "https://kv.openchainbench.com/aggregate";
 const FETCH_TIMEOUT_MS = 5_000;
@@ -89,4 +93,35 @@ export async function loadVariantFromBlob(
   const env = raw as VariantEnvelope;
   if (env.sig !== sig) return null;
   return env.bench;
+}
+
+/**
+ * Snapshot-shaped adapter for callers that expect the exact
+ * `readMaterialized` return value. Lets `readMaterialized(slug, sig)`
+ * call sites become `loadSnapshotFromBlob(slug, sig) ?? readMaterialized(slug, sig)`
+ * with zero downstream code change. `state` is stubbed empty because
+ * the blob broadcast doesn't include ring-buffer state (worker-internal,
+ * never read by the site — only the aggregation loop uses it).
+ */
+export async function loadSnapshotFromBlob(
+  slug: string,
+  sig: string,
+): Promise<MaterializedSnapshot | null> {
+  const url = sig
+    ? `${baseUrl()}/variants/${encodeURIComponent(slug)}/${encodeURIComponent(sig)}.json`
+    : `${baseUrl()}/benches/${encodeURIComponent(slug)}.json`;
+  const raw = await fetchJson(url);
+  if (!isBenchEnvelope(raw) || raw.v !== 1 || raw.slug !== slug) return null;
+  if (sig) {
+    const env = raw as VariantEnvelope;
+    if (env.sig !== sig) return null;
+  }
+  return {
+    v: MAT_SCHEMA_VERSION,
+    slug,
+    sig,
+    builtAt: raw.builtAt,
+    bench: raw.bench,
+    state: { providers: {}, rings: {} },
+  };
 }
