@@ -3,6 +3,7 @@ import { unstable_cache } from "next/cache";
 import { getBenchmark } from "@/data/benchmarks";
 import { filterSig, loadSpecsUncached, specToBenchmark } from "@/lib/materialize/load";
 import { readMaterialized } from "@/lib/materialize/store";
+import { loadSnapshotFromBlob } from "@/lib/bench-blob";
 import { buildProviderColors } from "@/lib/series-colors";
 import { logoPath } from "@/lib/logo-manifest";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
@@ -32,7 +33,10 @@ const getSeriesMapCached = unstable_cache(
     venue: string | undefined,
   ): Promise<Record<string, (number | null)[]> | null> => {
     const sig = filterSig({ chain, region, kind, venue });
-    const stored = await readMaterialized(slug, sig);
+    // Try CDN blob first (Phase 3), fall back to Redis via SRH.
+    const stored =
+      (await loadSnapshotFromBlob(slug, sig)) ??
+      (await readMaterialized(slug, sig));
     if (stored) {
       const fromBlob =
         range === "7d"
