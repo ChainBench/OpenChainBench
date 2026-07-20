@@ -301,7 +301,8 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v31: 084 indexer-latency dropped entirely (spec + harness deleted;
   // HyperSync + The Graph required paid credentials for sustained
   // cadence). Bench SET shrank.
-  ["bench-unfiltered-v37", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v38: mobula dropped from pm-data-freshness (they stopped serving 2026-07-19).
+  ["bench-unfiltered-v38", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -505,7 +506,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v32: bumped with bench-unfiltered-v30 (081 slug rename ws-head-latency
   // -> ws-head-latency-ethereum + ungate on prod).
   // v34: bumped with bench-unfiltered-v31 (084 indexer-latency dropped).
-  ["all-benchmarks-v40", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v41: bumped in lockstep with bench-unfiltered-v38 (mobula drop).
+  ["all-benchmarks-v41", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
