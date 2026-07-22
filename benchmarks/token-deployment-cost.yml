@@ -95,6 +95,7 @@ providers:
       p99: quantile_over_time(0.99, token_deployment_cost_usd{chain="solana"}[24h])
       mean: avg_over_time(token_deployment_cost_usd{chain="solana"}[24h])
       series: token_deployment_cost_usd{chain="solana"}
+      sample_size: count_over_time(token_deployment_cost_usd{chain="solana"}[7d])
 
   - slug: sui
     name: Sui
@@ -107,6 +108,7 @@ providers:
       p99: quantile_over_time(0.99, token_deployment_cost_usd{chain="sui"}[24h])
       mean: avg_over_time(token_deployment_cost_usd{chain="sui"}[24h])
       series: token_deployment_cost_usd{chain="sui"}
+      sample_size: count_over_time(token_deployment_cost_usd{chain="sui"}[7d])
 
   - slug: aptos
     name: Aptos
@@ -119,6 +121,7 @@ providers:
       p99: quantile_over_time(0.99, token_deployment_cost_usd{chain="aptos"}[24h])
       mean: avg_over_time(token_deployment_cost_usd{chain="aptos"}[24h])
       series: token_deployment_cost_usd{chain="aptos"}
+      sample_size: count_over_time(token_deployment_cost_usd{chain="aptos"}[7d])
 
   - slug: osmosis
     name: Osmosis
@@ -131,6 +134,7 @@ providers:
       p99: quantile_over_time(0.99, token_deployment_cost_usd{chain="osmosis"}[24h])
       mean: avg_over_time(token_deployment_cost_usd{chain="osmosis"}[24h])
       series: token_deployment_cost_usd{chain="osmosis"}
+      sample_size: count_over_time(token_deployment_cost_usd{chain="osmosis"}[7d])
 
   - slug: injective
     name: Injective
@@ -143,6 +147,7 @@ providers:
       p99: quantile_over_time(0.99, token_deployment_cost_usd{chain="injective"}[24h])
       mean: avg_over_time(token_deployment_cost_usd{chain="injective"}[24h])
       series: token_deployment_cost_usd{chain="injective"}
+      sample_size: count_over_time(token_deployment_cost_usd{chain="injective"}[7d])
 
   - slug: cardano
     name: Cardano
@@ -155,6 +160,7 @@ providers:
       p99: quantile_over_time(0.99, token_deployment_cost_usd{chain="cardano"}[24h])
       mean: avg_over_time(token_deployment_cost_usd{chain="cardano"}[24h])
       series: token_deployment_cost_usd{chain="cardano"}
+      sample_size: count_over_time(token_deployment_cost_usd{chain="cardano"}[7d])
 
   - slug: stellar
     name: Stellar
@@ -167,3 +173,4 @@ providers:
       p99: quantile_over_time(0.99, token_deployment_cost_usd{chain="stellar"}[24h])
       mean: avg_over_time(token_deployment_cost_usd{chain="stellar"}[24h])
       series: token_deployment_cost_usd{chain="stellar"}
+      sample_size: count_over_time(token_deployment_cost_usd{chain="stellar"}[7d])
