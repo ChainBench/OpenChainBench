@@ -76,6 +76,7 @@ providers:
       p99: quantile_over_time(0.99, max_over_time(tsp_deviation_bps{issuer="robinhood", asset="nvda", market_state="closed"}[72h])[7d:6h])
       mean: avg_over_time(max_over_time(tsp_deviation_bps{issuer="robinhood", asset="nvda", market_state="closed"}[72h])[7d:6h])
       success: avg_over_time(tsp_health{asset="nvda"}[24h])
+      sample_size: count_over_time(tsp_deviation_bps{issuer="robinhood", asset="nvda", market_state="closed"}[7d])
       series: max_over_time(tsp_deviation_bps{issuer="robinhood", asset="nvda", market_state="closed"}[72h])
 
   - slug: aapl
@@ -88,6 +89,7 @@ providers:
       p99: quantile_over_time(0.99, max_over_time(tsp_deviation_bps{issuer="robinhood", asset="aapl", market_state="closed"}[72h])[7d:6h])
       mean: avg_over_time(max_over_time(tsp_deviation_bps{issuer="robinhood", asset="aapl", market_state="closed"}[72h])[7d:6h])
       success: avg_over_time(tsp_health{asset="aapl"}[24h])
+      sample_size: count_over_time(tsp_deviation_bps{issuer="robinhood", asset="aapl", market_state="closed"}[7d])
       series: max_over_time(tsp_deviation_bps{issuer="robinhood", asset="aapl", market_state="closed"}[72h])
 
   - slug: googl
@@ -100,6 +102,7 @@ providers:
       p99: quantile_over_time(0.99, max_over_time(tsp_deviation_bps{issuer="robinhood", asset="googl", market_state="closed"}[72h])[7d:6h])
       mean: avg_over_time(max_over_time(tsp_deviation_bps{issuer="robinhood", asset="googl", market_state="closed"}[72h])[7d:6h])
       success: avg_over_time(tsp_health{asset="googl"}[24h])
+      sample_size: count_over_time(tsp_deviation_bps{issuer="robinhood", asset="googl", market_state="closed"}[7d])
       series: max_over_time(tsp_deviation_bps{issuer="robinhood", asset="googl", market_state="closed"}[72h])
 
   - slug: tsla
@@ -112,6 +115,7 @@ providers:
       p99: quantile_over_time(0.99, max_over_time(tsp_deviation_bps{issuer="robinhood", asset="tsla", market_state="closed"}[72h])[7d:6h])
       mean: avg_over_time(max_over_time(tsp_deviation_bps{issuer="robinhood", asset="tsla", market_state="closed"}[72h])[7d:6h])
       success: avg_over_time(tsp_health{asset="tsla"}[24h])
+      sample_size: count_over_time(tsp_deviation_bps{issuer="robinhood", asset="tsla", market_state="closed"}[7d])
       series: max_over_time(tsp_deviation_bps{issuer="robinhood", asset="tsla", market_state="closed"}[72h])
 
   - slug: msft
@@ -124,6 +128,7 @@ providers:
       p99: quantile_over_time(0.99, max_over_time(tsp_deviation_bps{issuer="robinhood", asset="msft", market_state="closed"}[72h])[7d:6h])
       mean: avg_over_time(max_over_time(tsp_deviation_bps{issuer="robinhood", asset="msft", market_state="closed"}[72h])[7d:6h])
       success: avg_over_time(tsp_health{asset="msft"}[24h])
+      sample_size: count_over_time(tsp_deviation_bps{issuer="robinhood", asset="msft", market_state="closed"}[7d])
       series: max_over_time(tsp_deviation_bps{issuer="robinhood", asset="msft", market_state="closed"}[72h])
 
   - slug: amzn
@@ -136,6 +141,7 @@ providers:
       p99: quantile_over_time(0.99, max_over_time(tsp_deviation_bps{issuer="robinhood", asset="amzn", market_state="closed"}[72h])[7d:6h])
       mean: avg_over_time(max_over_time(tsp_deviation_bps{issuer="robinhood", asset="amzn", market_state="closed"}[72h])[7d:6h])
       success: avg_over_time(tsp_health{asset="amzn"}[24h])
+      sample_size: count_over_time(tsp_deviation_bps{issuer="robinhood", asset="amzn", market_state="closed"}[7d])
       series: max_over_time(tsp_deviation_bps{issuer="robinhood", asset="amzn", market_state="closed"}[72h])
 
   - slug: meta
@@ -148,6 +154,7 @@ providers:
       p99: quantile_over_time(0.99, max_over_time(tsp_deviation_bps{issuer="robinhood", asset="meta", market_state="closed"}[72h])[7d:6h])
       mean: avg_over_time(max_over_time(tsp_deviation_bps{issuer="robinhood", asset="meta", market_state="closed"}[72h])[7d:6h])
       success: avg_over_time(tsp_health{asset="meta"}[24h])
+      sample_size: count_over_time(tsp_deviation_bps{issuer="robinhood", asset="meta", market_state="closed"}[7d])
       series: max_over_time(tsp_deviation_bps{issuer="robinhood", asset="meta", market_state="closed"}[72h])
 
   - slug: amd
@@ -160,6 +167,7 @@ providers:
       p99: quantile_over_time(0.99, max_over_time(tsp_deviation_bps{issuer="robinhood", asset="amd", market_state="closed"}[72h])[7d:6h])
       mean: avg_over_time(max_over_time(tsp_deviation_bps{issuer="robinhood", asset="amd", market_state="closed"}[72h])[7d:6h])
       success: avg_over_time(tsp_health{asset="amd"}[24h])
+      sample_size: count_over_time(tsp_deviation_bps{issuer="robinhood", asset="amd", market_state="closed"}[7d])
       series: max_over_time(tsp_deviation_bps{issuer="robinhood", asset="amd", market_state="closed"}[72h])
 
   - slug: pltr
@@ -172,6 +180,7 @@ providers:
       p99: quantile_over_time(0.99, max_over_time(tsp_deviation_bps{issuer="robinhood", asset="pltr", market_state="closed"}[72h])[7d:6h])
       mean: avg_over_time(max_over_time(tsp_deviation_bps{issuer="robinhood", asset="pltr", market_state="closed"}[72h])[7d:6h])
       success: avg_over_time(tsp_health{asset="pltr"}[24h])
+      sample_size: count_over_time(tsp_deviation_bps{issuer="robinhood", asset="pltr", market_state="closed"}[7d])
       series: max_over_time(tsp_deviation_bps{issuer="robinhood", asset="pltr", market_state="closed"}[72h])
 
   - slug: spy
@@ -184,6 +193,7 @@ providers:
       p99: quantile_over_time(0.99, max_over_time(tsp_deviation_bps{issuer="robinhood", asset="spy", market_state="closed"}[72h])[7d:6h])
       mean: avg_over_time(max_over_time(tsp_deviation_bps{issuer="robinhood", asset="spy", market_state="closed"}[72h])[7d:6h])
       success: avg_over_time(tsp_health{asset="spy"}[24h])
+      sample_size: count_over_time(tsp_deviation_bps{issuer="robinhood", asset="spy", market_state="closed"}[7d])
       series: max_over_time(tsp_deviation_bps{issuer="robinhood", asset="spy", market_state="closed"}[72h])
 
   - slug: mu
@@ -196,4 +206,5 @@ providers:
       p99: quantile_over_time(0.99, max_over_time(tsp_deviation_bps{issuer="robinhood", asset="mu", market_state="closed"}[72h])[7d:6h])
       mean: avg_over_time(max_over_time(tsp_deviation_bps{issuer="robinhood", asset="mu", market_state="closed"}[72h])[7d:6h])
       success: avg_over_time(tsp_health{asset="mu"}[24h])
+      sample_size: count_over_time(tsp_deviation_bps{issuer="robinhood", asset="mu", market_state="closed"}[7d])
       series: max_over_time(tsp_deviation_bps{issuer="robinhood", asset="mu", market_state="closed"}[72h])
