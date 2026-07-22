@@ -763,6 +763,20 @@ async function renderLeaderboard(
   const sorted = sortByP50(benchmark);
   const maxP50 = Math.max(...sorted.map((r) => r.ms.p50)) || 1;
   const subtitleLB = `Ranked by p50 · ${benchmark.metric}.`;
+  // Scale down type + spacing when the roster is dense OR the title is
+  // long, otherwise a 2-line 50pt title collides with the row list in
+  // the 630px canvas (weekend-drift 11 rows + long title case).
+  const count = sorted.length;
+  const titleLen = benchmark.title.length;
+  const dense = count >= 8 || titleLen > 55;
+  const veryDense = count >= 10 || titleLen > 70;
+  const titleSize = veryDense ? 32 : dense ? 40 : 50;
+  const rankSize = veryDense ? 18 : dense ? 20 : 24;
+  const nameSize = veryDense ? 18 : dense ? 20 : 24;
+  const valueSize = veryDense ? 22 : dense ? 24 : 28;
+  const barHeight = veryDense ? 6 : dense ? 7 : 8;
+  const rowGap = veryDense ? 8 : dense ? 10 : 14;
+  const logoSize = veryDense ? 22 : dense ? 24 : 28;
 
   return new ImageResponse(
     (
@@ -778,7 +792,7 @@ async function renderLeaderboard(
           <div
             style={{
               display: "flex",
-              fontSize: 50,
+              fontSize: titleSize,
               fontWeight: 700,
               color: INK,
               letterSpacing: "-0.02em",
@@ -803,9 +817,9 @@ async function renderLeaderboard(
               display: "flex",
               flexDirection: "column",
               flex: 1,
-              justifyContent: "center",
-              gap: 14,
-              marginTop: 18,
+              justifyContent: "flex-start",
+              gap: rowGap,
+              marginTop: 14,
             }}
           >
             {sorted.map((r, i) => {
@@ -814,15 +828,15 @@ async function renderLeaderboard(
               return (
                 <div
                   key={r.slug}
-                  style={{ display: "flex", alignItems: "center", gap: 24 }}
+                  style={{ display: "flex", alignItems: "center", gap: 20 }}
                 >
                   <div
                     style={{
                       display: "flex",
-                      fontSize: 24,
+                      fontSize: rankSize,
                       fontFamily: "monospace",
                       color: INK_FAINT,
-                      width: 36,
+                      width: 32,
                       letterSpacing: "0.05em",
                     }}
                   >
@@ -833,7 +847,7 @@ async function renderLeaderboard(
                       display: "flex",
                       flexDirection: "column",
                       flex: 1,
-                      gap: 6,
+                      gap: 4,
                     }}
                   >
                     <div
@@ -848,7 +862,7 @@ async function renderLeaderboard(
                           display: "flex",
                           alignItems: "center",
                           gap: 10,
-                          fontSize: 24,
+                          fontSize: nameSize,
                           fontWeight: 700,
                           color: color,
                         }}
@@ -856,7 +870,7 @@ async function renderLeaderboard(
                         <CardProviderLogo
                           slug={r.slug}
                           name={r.name}
-                          size={28}
+                          size={logoSize}
                         />
                         {r.name}
                       </span>
@@ -870,7 +884,7 @@ async function renderLeaderboard(
                       >
                         <span
                           style={{
-                            fontSize: 28,
+                            fontSize: valueSize,
                             fontWeight: 700,
                             color: INK,
                             letterSpacing: "-0.02em",
@@ -878,7 +892,7 @@ async function renderLeaderboard(
                         >
                           {fmtValue(r.ms.p50, benchmark.unit)}
                         </span>
-                        <span style={{ fontSize: 16, color: INK_MUTED }}>
+                        <span style={{ fontSize: 14, color: INK_MUTED }}>
                           {unitSuffix(benchmark.unit, r.ms.p50).trim()}
                         </span>
                       </span>
@@ -887,7 +901,7 @@ async function renderLeaderboard(
                       style={{
                         display: "flex",
                         width: "100%",
-                        height: 8,
+                        height: barHeight,
                         background: `${color}22`,
                         borderRadius: 4,
                       }}
@@ -896,7 +910,7 @@ async function renderLeaderboard(
                         style={{
                           display: "flex",
                           width: `${widthPct}%`,
-                          height: 8,
+                          height: barHeight,
                           background: color,
                           borderRadius: 4,
                         }}
