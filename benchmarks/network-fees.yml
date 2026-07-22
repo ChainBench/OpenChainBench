@@ -163,6 +163,7 @@ providers:
       p99: quantile_over_time(0.99, tx_fee_native_transfer_usd{chain="ethereum",tier="fast"}[24h])
       mean: avg_over_time(tx_fee_native_transfer_usd{chain="ethereum",tier="std"}[24h])
       success: avg_over_time(tx_fee_health{chain="ethereum"}[24h])
+      sample_size: count_over_time(tx_fee_native_transfer_usd{chain="ethereum",tier="std"}[7d])
       series: tx_fee_native_transfer_usd{chain="ethereum",tier="std"}
 
   - slug: bnb
@@ -176,6 +177,7 @@ providers:
       p99: quantile_over_time(0.99, tx_fee_native_transfer_usd{chain="bnb",tier="fast"}[24h])
       mean: avg_over_time(tx_fee_native_transfer_usd{chain="bnb",tier="std"}[24h])
       success: avg_over_time(tx_fee_health{chain="bnb"}[24h])
+      sample_size: count_over_time(tx_fee_native_transfer_usd{chain="bnb",tier="std"}[7d])
       series: tx_fee_native_transfer_usd{chain="bnb",tier="std"}
 
   - slug: solana
@@ -189,6 +191,7 @@ providers:
       p99: quantile_over_time(0.99, tx_fee_native_transfer_usd{chain="solana",tier="fast"}[24h])
       mean: avg_over_time(tx_fee_native_transfer_usd{chain="solana",tier="std"}[24h])
       success: avg_over_time(tx_fee_health{chain="solana"}[24h])
+      sample_size: count_over_time(tx_fee_native_transfer_usd{chain="solana",tier="std"}[7d])
       series: tx_fee_native_transfer_usd{chain="solana",tier="std"}
 
   - slug: tron
@@ -202,6 +205,7 @@ providers:
       p99: quantile_over_time(0.99, tx_fee_native_transfer_usd{chain="tron",tier="single"}[24h])
       mean: avg_over_time(tx_fee_native_transfer_usd{chain="tron",tier="single"}[24h])
       success: avg_over_time(tx_fee_health{chain="tron"}[24h])
+      sample_size: count_over_time(tx_fee_native_transfer_usd{chain="tron",tier="single"}[7d])
       series: tx_fee_native_transfer_usd{chain="tron",tier="single"}
 
   - slug: cardano
@@ -215,6 +219,7 @@ providers:
       p99: quantile_over_time(0.99, tx_fee_native_transfer_usd{chain="cardano",tier="single"}[24h])
       mean: avg_over_time(tx_fee_native_transfer_usd{chain="cardano",tier="single"}[24h])
       success: avg_over_time(tx_fee_health{chain="cardano"}[24h])
+      sample_size: count_over_time(tx_fee_native_transfer_usd{chain="cardano",tier="single"}[7d])
       series: tx_fee_native_transfer_usd{chain="cardano",tier="single"}
 
   - slug: sui
@@ -228,6 +233,7 @@ providers:
       p99: quantile_over_time(0.99, tx_fee_native_transfer_usd{chain="sui",tier="std"}[24h])
       mean: avg_over_time(tx_fee_native_transfer_usd{chain="sui",tier="std"}[24h])
       success: avg_over_time(tx_fee_health{chain="sui"}[24h])
+      sample_size: count_over_time(tx_fee_native_transfer_usd{chain="sui",tier="std"}[7d])
       series: tx_fee_native_transfer_usd{chain="sui",tier="std"}
 
   - slug: litecoin
@@ -241,6 +247,7 @@ providers:
       p99: quantile_over_time(0.99, tx_fee_native_transfer_usd{chain="litecoin",tier="fast"}[24h])
       mean: avg_over_time(tx_fee_native_transfer_usd{chain="litecoin",tier="std"}[24h])
       success: avg_over_time(tx_fee_health{chain="litecoin"}[24h])
+      sample_size: count_over_time(tx_fee_native_transfer_usd{chain="litecoin",tier="std"}[7d])
       series: tx_fee_native_transfer_usd{chain="litecoin",tier="std"}
 
   - slug: monero
@@ -254,6 +261,7 @@ providers:
       p99: quantile_over_time(0.99, tx_fee_native_transfer_usd{chain="monero",tier="fast"}[24h])
       mean: avg_over_time(tx_fee_native_transfer_usd{chain="monero",tier="std"}[24h])
       success: avg_over_time(tx_fee_health{chain="monero"}[24h])
+      sample_size: count_over_time(tx_fee_native_transfer_usd{chain="monero",tier="std"}[7d])
       series: tx_fee_native_transfer_usd{chain="monero",tier="std"}
 
   - slug: arbitrum
@@ -267,6 +275,7 @@ providers:
       p99: quantile_over_time(0.99, tx_fee_native_transfer_usd{chain="arbitrum",tier="fast"}[24h])
       mean: avg_over_time(tx_fee_native_transfer_usd{chain="arbitrum",tier="std"}[24h])
       success: avg_over_time(tx_fee_health{chain="arbitrum"}[24h])
+      sample_size: count_over_time(tx_fee_native_transfer_usd{chain="arbitrum",tier="std"}[7d])
       series: tx_fee_native_transfer_usd{chain="arbitrum",tier="std"}
   - slug: robinhood
     name: Robinhood Chain
@@ -279,6 +288,7 @@ providers:
       p99: quantile_over_time(0.99, tx_fee_native_transfer_usd{chain="robinhood",tier="fast"}[24h])
       mean: avg_over_time(tx_fee_native_transfer_usd{chain="robinhood",tier="std"}[24h])
       success: avg_over_time(tx_fee_health{chain="robinhood"}[24h])
+      sample_size: count_over_time(tx_fee_native_transfer_usd{chain="robinhood",tier="std"}[7d])
       series: tx_fee_native_transfer_usd{chain="robinhood",tier="std"}
   - slug: base
     name: Base
@@ -291,6 +301,7 @@ providers:
       p99: quantile_over_time(0.99, tx_fee_native_transfer_usd{chain="base",tier="fast"}[24h])
       mean: avg_over_time(tx_fee_native_transfer_usd{chain="base",tier="std"}[24h])
       success: avg_over_time(tx_fee_health{chain="base"}[24h])
+      sample_size: count_over_time(tx_fee_native_transfer_usd{chain="base",tier="std"}[7d])
       series: tx_fee_native_transfer_usd{chain="base",tier="std"}
   - slug: zksync
     name: zkSync Era
@@ -303,6 +314,7 @@ providers:
       p99: quantile_over_time(0.99, tx_fee_native_transfer_usd{chain="zksync",tier="fast"}[24h])
       mean: avg_over_time(tx_fee_native_transfer_usd{chain="zksync",tier="std"}[24h])
       success: avg_over_time(tx_fee_health{chain="zksync"}[24h])
+      sample_size: count_over_time(tx_fee_native_transfer_usd{chain="zksync",tier="std"}[7d])
       series: tx_fee_native_transfer_usd{chain="zksync",tier="std"}
   - slug: linea
     name: Linea
@@ -315,6 +327,7 @@ providers:
       p99: quantile_over_time(0.99, tx_fee_native_transfer_usd{chain="linea",tier="fast"}[24h])
       mean: avg_over_time(tx_fee_native_transfer_usd{chain="linea",tier="std"}[24h])
       success: avg_over_time(tx_fee_health{chain="linea"}[24h])
+      sample_size: count_over_time(tx_fee_native_transfer_usd{chain="linea",tier="std"}[7d])
       series: tx_fee_native_transfer_usd{chain="linea",tier="std"}
   - slug: mantle
     name: Mantle
@@ -327,6 +340,7 @@ providers:
       p99: quantile_over_time(0.99, tx_fee_native_transfer_usd{chain="mantle",tier="fast"}[24h])
       mean: avg_over_time(tx_fee_native_transfer_usd{chain="mantle",tier="std"}[24h])
       success: avg_over_time(tx_fee_health{chain="mantle"}[24h])
+      sample_size: count_over_time(tx_fee_native_transfer_usd{chain="mantle",tier="std"}[7d])
       series: tx_fee_native_transfer_usd{chain="mantle",tier="std"}
   - slug: taiko
     name: Taiko
@@ -339,4 +353,5 @@ providers:
       p99: quantile_over_time(0.99, tx_fee_native_transfer_usd{chain="taiko",tier="fast"}[24h])
       mean: avg_over_time(tx_fee_native_transfer_usd{chain="taiko",tier="std"}[24h])
       success: avg_over_time(tx_fee_health{chain="taiko"}[24h])
+      sample_size: count_over_time(tx_fee_native_transfer_usd{chain="taiko",tier="std"}[7d])
       series: tx_fee_native_transfer_usd{chain="taiko",tier="std"}
