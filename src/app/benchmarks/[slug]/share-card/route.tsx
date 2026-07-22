@@ -969,14 +969,23 @@ async function renderSnapshot(
             gap: 6,
           }}
         >
+          {/* Title + subtitle. Satori quirk: a bare `display: flex`
+              text div stays at one-line height even when the text
+              visually wraps, so the next sibling stacks on top of the
+              wrapped lines. Explicit `flexDirection: column` on each
+              text box forces satori to measure the wrapped content
+              height. maxWidth pins the wrap point below the container
+              width so long titles never touch the right edge. */}
           <div
             style={{
               display: "flex",
+              flexDirection: "column",
               fontSize: 48,
               fontWeight: 700,
               color: INK,
               letterSpacing: "-0.02em",
               lineHeight: 1.05,
+              maxWidth: 1086,
             }}
           >
             {benchmark.title}
@@ -984,8 +993,10 @@ async function renderSnapshot(
           <div
             style={{
               display: "flex",
+              flexDirection: "column",
               fontSize: 16,
               color: INK_SOFT,
+              lineHeight: 1.35,
               maxWidth: 980,
             }}
           >
