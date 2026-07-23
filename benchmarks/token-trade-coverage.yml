@@ -3,8 +3,8 @@
 slug: token-trade-coverage
 number: "090"
 title: Most complete onchain trade data API, live coverage across Solana, EVM and Stellar
-seo_title: "Best token trade data API 2026 (Mobula vs Bitquery vs Codex vs Moralis)"
-seo_description: "Which onchain data API returns the most complete trade history for a newly launched token? Live coverage % across Mobula, Bitquery, Codex and Moralis on Solana, Ethereum, BSC, Base and Stellar."
+seo_title: "Best token trade data API 2026 (Mobula vs Bitquery vs Codex)"
+seo_description: "Which onchain data API returns the most complete trade history for a newly launched token? Live coverage % across Mobula, Bitquery and Codex on Solana, Ethereum, BSC, Base and Stellar."
 subtitle: For each reference token per chain, we fetch every trade in a fixed measurement window from each provider and compare against the union baseline. Higher percent means the provider returned more of the true trade set, with fewer missed DEXs and fewer dropped fills.
 category: Aggregators
 status: draft
@@ -17,15 +17,15 @@ seo_intro: |
   onchain data API actually returns. For a fixed set of reference tokens
   per chain (Solana, Ethereum, BSC, Base, Stellar), the harness fetches
   every trade in the same measurement window from Mobula, Bitquery,
-  Codex and Moralis, then computes each provider's capture rate against
-  the union baseline (max count across the four). A rate of 100 means
+  Codex, then computes each provider's capture rate against
+  the union baseline (max count across the three). A rate of 100 means
   the provider returned as many trades as the best-covering provider on
   that token. A rate of 20 means the provider missed 80 percent of the
   swaps that did happen. The comparison is chain-scoped because
   coverage is not uniform: a provider strong on Solana DEX indexing can
   be weak on niche BSC pools, and no provider covers every chain
   equally (Stellar coverage in particular is uneven since only two of
-  the four measured providers index it at all today).
+  the three measured providers index it at all today).
 
 abstract: |
   Coverage is measured on a fixed set of reference tokens per chain,
@@ -36,8 +36,7 @@ abstract: |
   volume in the measurement window so a coverage gap actually shows.
   Providers use their official public endpoints. Mobula through
   /api/2/trades/filters, Bitquery through streaming.bitquery.io
-  GraphQL, Codex through graph.codex.io GraphQL, Moralis through the
-  Solana gateway for Solana and the EVM API for Ethereum, BSC, Base.
+  GraphQL, Codex through graph.codex.io GraphQL.
   Stellar is measured only for providers that officially list a
   Stellar trades endpoint; providers that do not index Stellar at all
   are omitted from that chain's row rather than counted as zero.
@@ -48,8 +47,7 @@ methodology:
   - "Mobula: `GET https://api.mobula.io/api/2/trades/filters?from={ts_ms}&to={ts_ms}` with `Authorization: <API_KEY>`. Cursor pagination, limit=5000."
   - "Bitquery: `POST https://streaming.bitquery.io/graphql` with `X-API-KEY`. GraphQL query on `DEXTradeByTokens` with `Block.Time.since` / `till` on the realtime dataset. Hard limit 10000 per call."
   - "Codex: `POST https://graph.codex.io/graphql` with `Authorization: <API_KEY>`. GraphQL query on `getTokenEvents` with `timestamp` bounds. Cursor pagination."
-  - "Moralis: `GET https://solana-gateway.moralis.io/token/mainnet/{addr}/swaps` for Solana; `GET https://deep-index.moralis.io/api/v2.2/erc20/{addr}/swaps` for EVM. `X-API-Key` header. Manual cursor pagination, limit=100."
-  - "Stellar coverage measured only for providers that ship an official Stellar trades endpoint. Providers with no Stellar support are excluded from the Stellar row rather than counted as zero (that would penalise all four providers unfairly against a chain none of them promised)."
+  - "Stellar coverage measured only for providers that ship an official Stellar trades endpoint. Providers with no Stellar support are excluded from the Stellar row rather than counted as zero (that would penalise all three providers unfairly against a chain none of them promised)."
   - "Capture rate: `provider_count / max(provider_count across all providers on that (chain, token)) * 100`. Union baseline is the largest observed count, not a synthetic ground truth."
   - "Cadence: every 30 minutes per (provider, chain, token). One measurement is short (a handful of API calls per token) so the full cycle finishes well inside the 30-minute window."
   - "Failure handling: HTTP timeouts and 5xx count as zero trades for that cycle. Persistent 5xx (three cycles in a row) surfaces as `unresponsive` on the leaderboard, not silent zeros."
@@ -59,7 +57,6 @@ findings:
   - "{{name:mobula}} averages {{p50:mobula}}. Mobula's advantage on this bench is DEX breadth. Coverage of pump.fun, meme AMMs and small aggregator DEXs is what drives the number up on new-launch Solana tokens where competitors often index only Raydium or Meteora."
   - "{{name:bitquery}} averages {{p50:bitquery}}. Bitquery ships strong Solana and EVM coverage through its `DEXTradeByTokens` GraphQL, but the 10000-row hard cap on a single query truncates high-volume tokens in the first hour after launch; the harness paginates when possible, but not every trade type is paginable."
   - "{{name:codex}} averages {{p50:codex}}. Codex (formerly Defined) prioritises depth on EVM and Solana DEX event indexing, which shows here as strong per-chain coverage on the chains they index and no coverage at all on Stellar."
-  - "{{name:moralis}} averages {{p50:moralis}}. Moralis's Solana coverage is limited to two DEXs (PumpSwap and Meteora Dynamic AMM v2), so on any Solana token that trades across more than those two venues the capture rate drops fast; on EVM chains coverage is broader."
   - "Stellar coverage is uneven: only providers that officially list a Stellar trades endpoint appear on that chain's row. This is the honest way to represent the current state of the market. Mobula added Stellar recently, others have not shipped it yet."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/token-trade-coverage
@@ -77,8 +74,6 @@ faq:
     a: "In principle you could walk the block explorer and reconstruct every swap. In practice the ground truth depends on which DEX programs, protocols and vault contracts you include, and that decision is itself opinionated. The union-of-providers baseline is a defensible proxy that mirrors what a trader integrating a public API can actually see. It undercounts the truth uniformly across providers, so relative ranking is preserved even if absolute completeness is not 100."
   - q: "Which chains are covered?"
     a: "Solana, Ethereum, BSC, Base and Stellar. Every provider is measured on each chain it officially supports. Stellar is included because Mobula added Stellar trades to its API recently; other providers that do not ship a Stellar endpoint are excluded from the Stellar row rather than counted as zero."
-  - q: "Is Moralis really that far behind on Solana?"
-    a: "On the Solana row Moralis's rate averages {{p50:moralis:chain:solana}} in this bench. The reason is DEX coverage. Moralis's Solana swaps endpoint at time of writing indexes PumpSwap and Meteora Dynamic AMM v2. Any trade routed through Raydium, Jupiter, Meteora DAMM v1, Orca or the long tail of aggregator DEXs is missed. Providers that index the full DEX set (Mobula, Bitquery, Codex) show much higher capture rates on the same tokens."
 
 dimensions:
   chain:
@@ -134,16 +129,3 @@ providers:
       success: clamp_max(avg_over_time(ocb_token_trade_probe_ok{provider="codex"}[24h]), 1)
       sample_size: count_over_time(ocb_token_trade_capture_pct{provider="codex"}[24h])
       series: ocb_token_trade_capture_pct{provider="codex"}
-
-  - slug: moralis
-    name: Moralis
-    tag: solana-gateway.moralis.io + deep-index.moralis.io
-    formula: "Trades returned by Moralis per-token swaps endpoint (Solana gateway or EVM API) divided by union-across-providers on (chain, token) rolling 60 min. Excluded from Stellar row."
-    queries:
-      p50: avg_over_time(ocb_token_trade_capture_pct{provider="moralis"}[24h])
-      p90: quantile_over_time(0.90, ocb_token_trade_capture_pct{provider="moralis"}[24h])
-      p99: quantile_over_time(0.99, ocb_token_trade_capture_pct{provider="moralis"}[24h])
-      mean: avg_over_time(ocb_token_trade_capture_pct{provider="moralis"}[24h])
-      success: clamp_max(avg_over_time(ocb_token_trade_probe_ok{provider="moralis"}[24h]), 1)
-      sample_size: count_over_time(ocb_token_trade_capture_pct{provider="moralis"}[24h])
-      series: ocb_token_trade_capture_pct{provider="moralis"}

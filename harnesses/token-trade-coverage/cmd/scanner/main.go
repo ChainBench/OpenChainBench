@@ -24,7 +24,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-var providers = []string{"mobula", "bitquery", "codex", "moralis"}
+var providers = []string{"mobula", "bitquery", "codex"}
 
 func main() {
 	cfg := LoadConfig()
@@ -143,8 +143,6 @@ func fetchOne(
 		return fetchBitquery(ctx, client, cfg.BitqueryKey, tok, windowStart, windowEnd)
 	case "codex":
 		return fetchCodex(ctx, client, cfg.CodexKey, tok, windowStart, windowEnd)
-	case "moralis":
-		return fetchMoralis(ctx, client, cfg.MoralisKey, tok, windowStart, windowEnd)
 	}
 	return 0, 0, fmt.Errorf("unknown provider %s", provider)
 }
