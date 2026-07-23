@@ -1,0 +1,4 @@
+.env
+scanner
+/scanner
+cmd/scanner/scanner
