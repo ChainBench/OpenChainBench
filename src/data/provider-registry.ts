@@ -600,6 +600,30 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Parity-operated Polkadot relay-chain public RPC endpoint (rpc.polkadot.io). Substrate JSON-RPC (chain_getHeader, state_getRuntimeVersion, system_health), keyless, rate-limited per IP. The reference endpoint any Polkadot integrator points at before wiring a dedicated node.",
     twitter: "@ParityTech",
   },
+  "osmosis-official": {
+    url: "https://rpc.osmosis.zone",
+    description:
+      "Osmosis Foundation-operated public Cosmos SDK RPC endpoint (rpc.osmosis.zone). Tendermint / CometBFT JSON-RPC (status, block, abci_query), keyless, rate-limited per IP. The reference endpoint Keplr and the Osmosis Frontier route through by default.",
+    twitter: "@osmosiszone",
+  },
+  polkachu: {
+    url: "https://polkachu.com",
+    description:
+      "Community-run Cosmos validator and public RPC network. Operates no-key Tendermint RPC endpoints across 40+ Cosmos SDK chains (osmosis-rpc.polkachu.com, cosmos-rpc.polkachu.com, etc.) with archive support on a paid tier.",
+    twitter: "@Polkachu_com",
+  },
+  imperator: {
+    url: "https://imperator.co",
+    description:
+      "Cosmos-native infrastructure provider with a strong IBC and Osmosis ecosystem focus. Runs no-key Tendermint RPC endpoints (rpc-osmosis.imperator.co) alongside its analytics and data products for Cosmos appchains.",
+    twitter: "@imperatorco",
+  },
+  lavenderfive: {
+    url: "https://lavenderfive.com",
+    description:
+      "Cosmos validator running multi-chain no-key RPC endpoints under rpc.lavenderfive.com/<chain> and lcd.lavenderfive.com/<chain>. Covers Osmosis, Cosmos Hub, Neutron, Injective and 20+ other Cosmos SDK chains.",
+    twitter: "@LavenderFive",
+  },
   dwellir: {
     url: "https://www.dwellir.com",
     description:
