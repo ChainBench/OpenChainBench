@@ -33,6 +33,17 @@ var (
 		Name: "ocb_token_trade_probe_ok",
 		Help: "1 on successful fetch, 0 on error or timeout. Consumed by the bench spec's `success` query.",
 	}, []string{"provider", "chain", "token"})
+
+	// Cumulative API-call counter for quota observability. Counted at
+	// the fetchOne granularity — one increment per (provider, token)
+	// tuple in a sweep, regardless of how many paginated sub-requests
+	// fired underneath — because that's what maps 1:1 to the provider's
+	// monthly point/credit budget as billed. `increase(...[30d])` per
+	// provider gives the running monthly consumption.
+	apiCalls = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "ocb_token_trade_api_calls_total",
+		Help: "Total fetchOne invocations per provider since worker start. Query with increase()[30d] for monthly consumption vs free-tier budget.",
+	}, []string{"provider"})
 )
 
 // Result is the per-call outcome of one provider fetch.
@@ -69,5 +80,6 @@ func emitCycle(results []Result, unionMax int) {
 		} else {
 			capturePct.With(lbl).Set(0)
 		}
+		apiCalls.WithLabelValues(r.Provider).Inc()
 	}
 }

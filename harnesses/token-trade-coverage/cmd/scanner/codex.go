@@ -62,9 +62,13 @@ func fetchCodex(
 	apiKey string,
 	tok Token,
 	windowStart, windowEnd int64,
+	maxPages int,
 ) (int, int, error) {
 	if apiKey == "" {
 		return 0, 0, fmt.Errorf("CODEX_API_KEY not set")
+	}
+	if maxPages <= 0 {
+		maxPages = 10
 	}
 	networkID := codexNetworkID(tok.Chain)
 	if networkID == 0 {
@@ -75,11 +79,10 @@ func fetchCodex(
 	toSec := windowEnd / 1000
 
 	var (
-		total    int
-		cursor   string
-		exchSet  = map[string]struct{}{}
-		hashSet  = map[string]struct{}{}
-		maxPages = 50
+		total   int
+		cursor  string
+		exchSet = map[string]struct{}{}
+		hashSet = map[string]struct{}{}
 	)
 
 	for page := 0; page < maxPages; page++ {

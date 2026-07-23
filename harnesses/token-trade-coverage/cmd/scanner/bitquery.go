@@ -60,9 +60,13 @@ func fetchBitquery(
 	apiKey string,
 	tok Token,
 	windowStart, windowEnd int64,
+	maxRows int,
 ) (int, int, error) {
 	if apiKey == "" {
 		return 0, 0, fmt.Errorf("BITQUERY_API_KEY not set")
+	}
+	if maxRows <= 0 {
+		maxRows = 10000
 	}
 
 	sinceISO := time.Unix(windowStart/1000, 0).UTC().Format(time.RFC3339)
@@ -70,13 +74,13 @@ func fetchBitquery(
 
 	var query string
 	if tok.Chain == "solana" {
-		query = solanaTradesGQL(tok.Address, sinceISO, tillISO)
+		query = solanaTradesGQL(tok.Address, sinceISO, tillISO, maxRows)
 	} else {
 		network := bitqueryEVMNetwork(tok.Chain)
 		if network == "" {
 			return 0, 0, fmt.Errorf("bitquery: unsupported chain %s", tok.Chain)
 		}
-		query = evmTradesGQL(network, tok.Address, sinceISO, tillISO)
+		query = evmTradesGQL(network, tok.Address, sinceISO, tillISO, maxRows)
 	}
 
 	body, _ := json.Marshal(map[string]string{"query": query})
@@ -152,11 +156,11 @@ func bitqueryEVMNetwork(chain string) string {
 	return ""
 }
 
-func solanaTradesGQL(mintAddress, since, till string) string {
+func solanaTradesGQL(mintAddress, since, till string, maxRows int) string {
 	return fmt.Sprintf(`{
   Solana(dataset: realtime) {
     DEXTradeByTokens(
-      limit: {count: 10000}
+      limit: {count: %d}
       where: {
         Block: {Time: {since: "%s", till: "%s"}}
         Trade: {Currency: {MintAddress: {is: "%s"}}}
@@ -166,14 +170,14 @@ func solanaTradesGQL(mintAddress, since, till string) string {
       Trade { Dex { ProtocolName } }
     }
   }
-}`, since, till, mintAddress)
+}`, maxRows, since, till, mintAddress)
 }
 
-func evmTradesGQL(network, tokenAddress, since, till string) string {
+func evmTradesGQL(network, tokenAddress, since, till string, maxRows int) string {
 	return fmt.Sprintf(`{
   EVM(dataset: realtime, network: %s) {
     DEXTrades(
-      limit: {count: 10000}
+      limit: {count: %d}
       where: {
         Block: {Time: {since: "%s", till: "%s"}}
         Trade: {Buy: {Currency: {SmartContract: {is: "%s"}}}}
@@ -183,5 +187,5 @@ func evmTradesGQL(network, tokenAddress, since, till string) string {
       Trade { Dex { ProtocolName } }
     }
   }
-}`, network, since, till, tokenAddress)
+}`, network, maxRows, since, till, tokenAddress)
 }
