@@ -35,6 +35,13 @@ const (
 	// gap gives a 12s-block chain, scaled for the faster relay
 	// cadence.
 	polkadotStaleBlockGap uint64 = 40
+	// cosmosStaleBlockGap: Osmosis (CometBFT) commits one block every
+	// ~6 s (same order as Polkadot's relay), so 40 blocks ≈ 4 min
+	// gives the same reliability tolerance the EVM cluster gets on
+	// 12 s-block chains. Kept as its own constant so a future Cosmos
+	// chain with a faster block time (e.g. Injective ~0.65 s) can
+	// override without touching the Polkadot reader.
+	cosmosStaleBlockGap uint64 = 40
 )
 
 // chainTips tracks the highest block seen for each chain across all
@@ -197,6 +204,8 @@ func probeOne(ctx context.Context, c Chain, p Provider) {
 			block, result, latency, err = callLatestSlot(probeCtx, p.URL)
 		case "polkadot":
 			block, hash, result, latency, err = callSubstrateHeader(probeCtx, p.URL)
+		case "cosmos":
+			block, hash, result, latency, err = callCosmosStatus(probeCtx, p.URL)
 		default:
 			block, hash, result, latency, err = callLatestBlock(probeCtx, p.URL)
 		}
@@ -210,6 +219,8 @@ func probeOne(ctx context.Context, c Chain, p Provider) {
 				gap = solanaStaleSlotGap
 			case "polkadot":
 				gap = polkadotStaleBlockGap
+			case "cosmos":
+				gap = cosmosStaleBlockGap
 			}
 			if tip > 0 && block+gap < tip {
 				result = "stale"
@@ -221,9 +232,14 @@ func probeOne(ctx context.Context, c Chain, p Provider) {
 		// so a dead endpoint ages out instead of freezing. Skipped on
 		// chains whose probe cannot return the current-block hash
 		// (Solana: getSlot returns a number only; Polkadot: header
-		// carries parentHash, not the current block hash).
+		// carries parentHash, not the current block hash; Cosmos:
+		// Tendermint `status` returns `latest_block_hash` on the same
+		// block the height is reported for, so quorum is technically
+		// feasible but the v1 Osmosis add-on ships without it to keep
+		// the reliability change surface small — revisit once the
+		// hash normalisation across Cosmos chains is validated).
 		switch c.Kind {
-		case "solana", "polkadot":
+		case "solana", "polkadot", "cosmos":
 			// no consensus participation
 		default:
 			if result == "ok" || result == "stale" {
@@ -400,4 +416,78 @@ func callSubstrateHeader(ctx context.Context, url string) (block uint64, hash st
 		return 0, "", "jsonrpc_err", latencyMs, err
 	}
 	return n, hdr.ParentHash, "ok", latencyMs, nil
+}
+
+// tendermintStatus is the shape returned by CometBFT / Tendermint
+// `status` on every Cosmos SDK chain. Only `sync_info` is parsed here;
+// `node_info` + `validator_info` are ignored because they carry
+// operator-scoped metadata that doesn't feed the reliability signal.
+// `latest_block_height` is a decimal string (unlike EVM / Substrate
+// which hex-encode). `latest_block_hash` is hex (no `0x` prefix) so it
+// slots into the same consensus.observe path if ever wired.
+type tendermintStatus struct {
+	SyncInfo struct {
+		LatestBlockHeight string `json:"latest_block_height"`
+		LatestBlockHash   string `json:"latest_block_hash"`
+	} `json:"sync_info"`
+}
+
+// callCosmosStatus is the Cosmos SDK probe path: Tendermint `status`
+// via JSON-RPC POST with a rotating request id (same anti-cache rule as
+// the EVM header fetch). Returns the current block height + hash so the
+// caller plugs the probe result into the shared tips machinery.
+// Consensus participation is opted out in probeOne for v1.
+func callCosmosStatus(ctx context.Context, url string) (block uint64, hash string, result string, latencyMs float64, err error) {
+	body := []byte(fmt.Sprintf(
+		`{"jsonrpc":"2.0","method":"status","params":[],"id":%d}`,
+		time.Now().UnixNano(),
+	))
+	req, _ := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", "OpenChainBench/1.0 (+https://openchainbench.com)")
+	client := &http.Client{Timeout: probeTimeout}
+
+	start := time.Now()
+	resp, err := client.Do(req)
+	latencyMs = float64(time.Since(start).Milliseconds())
+
+	if err != nil {
+		if ctx.Err() != nil || strings.Contains(err.Error(), "deadline exceeded") || strings.Contains(err.Error(), "Timeout") {
+			return 0, "", "timeout", latencyMs, err
+		}
+		return 0, "", "http_err", latencyMs, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		return 0, "", "http_err", latencyMs, fmt.Errorf("status %d", resp.StatusCode)
+	}
+
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 0, "", "http_err", latencyMs, err
+	}
+	var r rpcBlockEnvelope
+	if err := json.Unmarshal(raw, &r); err != nil {
+		return 0, "", "http_err", latencyMs, err
+	}
+	if r.Error != nil {
+		return 0, "", "jsonrpc_err", latencyMs, fmt.Errorf("rpc -%d: %s", r.Error.Code, r.Error.Message)
+	}
+	if len(r.Result) == 0 || string(r.Result) == "null" {
+		return 0, "", "jsonrpc_err", latencyMs, fmt.Errorf("empty result")
+	}
+	var st tendermintStatus
+	if err := json.Unmarshal(r.Result, &st); err != nil {
+		return 0, "", "jsonrpc_err", latencyMs, err
+	}
+	if st.SyncInfo.LatestBlockHeight == "" {
+		return 0, "", "jsonrpc_err", latencyMs, fmt.Errorf("tendermint status missing latest_block_height")
+	}
+	n, err := strconv.ParseUint(st.SyncInfo.LatestBlockHeight, 10, 64)
+	if err != nil {
+		return 0, "", "jsonrpc_err", latencyMs, fmt.Errorf("non-numeric latest_block_height: %q", st.SyncInfo.LatestBlockHeight)
+	}
+	return n, st.SyncInfo.LatestBlockHash, "ok", latencyMs, nil
 }
