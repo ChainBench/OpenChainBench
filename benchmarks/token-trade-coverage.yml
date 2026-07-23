@@ -7,7 +7,7 @@ seo_title: "Best token trade data API 2026 (Mobula vs Bitquery vs Codex)"
 seo_description: "Which onchain data API returns the most complete trade history for a newly launched token? Live coverage % across Mobula, Bitquery and Codex on Solana, Ethereum, BSC, Base and Stellar."
 subtitle: For each reference token per chain, we fetch every trade in a fixed measurement window from each provider and compare against the union baseline. Higher percent means the provider returned more of the true trade set, with fewer missed DEXs and fewer dropped fills.
 category: Aggregators
-status: live
+status: draft
 metric: Trade capture rate
 unit: pct
 higher_is_better: true
