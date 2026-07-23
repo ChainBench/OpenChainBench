@@ -84,7 +84,12 @@ func fetchBitquery(
 	if err != nil {
 		return 0, 0, err
 	}
-	req.Header.Set("X-API-KEY", apiKey)
+	// Bitquery's new OAuth-style keys (ory_at_*) require Bearer auth on
+	// streaming.bitquery.io/graphql. The legacy X-API-KEY header on that
+	// endpoint returns HTTP 402 "No active billing period" even when the
+	// account has an active free plan — the migration was silent and the
+	// docs still show the old header on some pages.
+	req.Header.Set("Authorization", "Bearer "+apiKey)
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := client.Do(req)
