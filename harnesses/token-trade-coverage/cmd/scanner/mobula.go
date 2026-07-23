@@ -46,16 +46,19 @@ func fetchMobula(
 	apiKey string,
 	tok Token,
 	windowStart, windowEnd int64,
+	maxPages int,
 ) (int, int, error) {
 	if apiKey == "" {
 		return 0, 0, fmt.Errorf("MOBULA_API_KEY not set")
 	}
+	if maxPages <= 0 {
+		maxPages = 20
+	}
 	var (
-		total    int
-		cursor   string
-		dexSet   = map[string]struct{}{}
-		hashSet  = map[string]struct{}{}
-		maxPages = 50
+		total   int
+		cursor  string
+		dexSet  = map[string]struct{}{}
+		hashSet = map[string]struct{}{}
 	)
 	for page := 0; page < maxPages; page++ {
 		u, _ := url.Parse(mobulaBase)

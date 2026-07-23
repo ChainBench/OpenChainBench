@@ -51,25 +51,60 @@ func main() {
 
 	// First sweep runs immediately at boot so Prom sees data within
 	// SWEEP_SEC + measurement time rather than waiting a full cycle.
-	sweep(ctx, cfg, client)
+	iteration := 0
+	sweep(ctx, cfg, client, iteration)
 	for {
 		select {
 		case <-ctx.Done():
 			log.Printf("[shutdown] signal received")
 			return
 		case <-ticker.C:
-			sweep(ctx, cfg, client)
+			iteration++
+			sweep(ctx, cfg, client, iteration)
 		}
 	}
+}
+
+// providerEnabled reports whether the provider should run on this
+// iteration given its sub-sampling cadence (see Config.*EveryN).
+func providerEnabled(cfg *Config, provider string, iteration int) bool {
+	var everyN int
+	switch provider {
+	case "mobula":
+		everyN = cfg.MobulaEveryN
+	case "bitquery":
+		everyN = cfg.BitqueryEveryN
+	case "codex":
+		everyN = cfg.CodexEveryN
+	default:
+		return false
+	}
+	if everyN <= 1 {
+		return true
+	}
+	return iteration%everyN == 0
 }
 
 // sweep runs one full measurement cycle. For each token, we fan out
 // across every supported provider in parallel, wait for all to finish
 // (or fail), compute the union baseline as max(counts) and emit.
-func sweep(ctx context.Context, cfg *Config, client *http.Client) {
+//
+// `iteration` is the 0-indexed sweep counter — used for per-provider
+// sub-sampling (see providerEnabled). Skipped providers keep their
+// previous capture_pct value in Prom, which `avg_over_time([24h])`
+// then averages across the sparse sample.
+func sweep(ctx context.Context, cfg *Config, client *http.Client, iteration int) {
 	sweepStart := time.Now()
 	windowEnd := sweepStart.UnixMilli()
 	windowStart := windowEnd - cfg.MeasurementWinMs
+
+	activeProviders := make([]string, 0, len(providers))
+	for _, p := range providers {
+		if providerEnabled(cfg, p, iteration) {
+			activeProviders = append(activeProviders, p)
+		}
+	}
+	log.Printf("[sweep] iter=%d active=%v", iteration, activeProviders)
 
 	for _, tok := range cfg.Tokens {
 		if tok.Address == "" {
@@ -77,11 +112,11 @@ func sweep(ctx context.Context, cfg *Config, client *http.Client) {
 			// so the container doesn't spam warnings until they land.
 			continue
 		}
-		results := make([]Result, 0, len(providers))
+		results := make([]Result, 0, len(activeProviders))
 		var mu sync.Mutex
 		var wg sync.WaitGroup
 
-		for _, p := range providers {
+		for _, p := range activeProviders {
 			if !cfg.Supports(p, tok.Chain) {
 				continue
 			}
@@ -127,7 +162,9 @@ func sweep(ctx context.Context, cfg *Config, client *http.Client) {
 	log.Printf("[sweep] done in %.1fs", time.Since(sweepStart).Seconds())
 }
 
-// fetchOne dispatches to the provider-specific fetcher.
+// fetchOne dispatches to the provider-specific fetcher, threading each
+// provider's page/row cap so a runaway pagination loop can never drain
+// a monthly quota in a single sweep.
 func fetchOne(
 	ctx context.Context,
 	client *http.Client,
@@ -138,11 +175,11 @@ func fetchOne(
 ) (int, int, error) {
 	switch provider {
 	case "mobula":
-		return fetchMobula(ctx, client, cfg.MobulaKey, tok, windowStart, windowEnd)
+		return fetchMobula(ctx, client, cfg.MobulaKey, tok, windowStart, windowEnd, cfg.MobulaMaxPages)
 	case "bitquery":
-		return fetchBitquery(ctx, client, cfg.BitqueryKey, tok, windowStart, windowEnd)
+		return fetchBitquery(ctx, client, cfg.BitqueryKey, tok, windowStart, windowEnd, cfg.BitqueryMaxRows)
 	case "codex":
-		return fetchCodex(ctx, client, cfg.CodexKey, tok, windowStart, windowEnd)
+		return fetchCodex(ctx, client, cfg.CodexKey, tok, windowStart, windowEnd, cfg.CodexMaxPages)
 	}
 	return 0, 0, fmt.Errorf("unknown provider %s", provider)
 }

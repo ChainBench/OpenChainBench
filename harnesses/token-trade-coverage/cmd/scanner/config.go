@@ -30,6 +30,23 @@ type Config struct {
 	Tokens           []Token
 	Capabilities     map[string]ProviderCapability // provider -> {chain -> supported}
 	MeasurementWinMs int64                         // rolling window per measurement
+
+	// Per-provider sub-sampling (respects free-tier quotas).
+	// A provider only runs when `iteration % everyN == 0`. Default 1
+	// means every sweep. Higher = sparser samples but preserves free-
+	// tier point budget on providers with tight limits (Bitquery Free
+	// gives 1000 points / month, so on the default 60-min cadence with
+	// EveryN=6 we spend ≤ 960 points / month across 8 supported tokens).
+	MobulaEveryN   int
+	BitqueryEveryN int
+	CodexEveryN    int
+
+	// Page caps: bound the max pagination pages per provider per token
+	// per sweep. Prevents runaway cursor loops on a single very-heavy
+	// token from burning a whole sweep's quota.
+	MobulaMaxPages   int
+	BitqueryMaxRows  int // Bitquery has no cursor — this is the per-query row cap
+	CodexMaxPages    int
 }
 
 // LoadConfig reads env, defaults + hardcoded reference token list.
@@ -38,13 +55,37 @@ type Config struct {
 // goes illiquid.
 func LoadConfig() *Config {
 	return &Config{
-		SweepSec:         envInt("SWEEP_SEC", 1800),
+		// Base cadence: 60 min. Doubled from the initial 30-min value
+		// after quota math on Bitquery's 1000-pt free plan (see
+		// BitqueryEveryN below). 24 sweeps / day gives >= 12 samples per
+		// (chain, token) per day for providers that run every sweep —
+		// plenty for a stable p50 over 24h.
+		SweepSec:         envInt("SWEEP_SEC", 3600),
 		MetricsPort:      envStr("METRICS_PORT", "2112"),
 		HTTPTimeoutSec:   envInt("HTTP_TIMEOUT_SEC", 30),
 		MeasurementWinMs: int64(60*60) * 1000, // 60 min rolling window
 		MobulaKey:        os.Getenv("MOBULA_API_KEY"),
 		BitqueryKey:      os.Getenv("BITQUERY_API_KEY"),
 		CodexKey:         os.Getenv("CODEX_API_KEY"),
+
+		// Mobula: unlimited (own infra). Run every sweep.
+		MobulaEveryN: envInt("MOBULA_EVERY_N", 1),
+		// Bitquery Free: 1000 pts / month. At ~1-2 pts per
+		// DEXTradeByTokens call and 8 supported tokens per sweep,
+		// running every 6th sweep = 4 sweeps / day × 8 tokens × 30
+		// days = 960 calls / month, well inside the free budget.
+		// Bump to 1 if on the Developer plan ($99/mo, 500k pts).
+		BitqueryEveryN: envInt("BITQUERY_EVERY_N", 6),
+		// Codex Free: generous rate-based limits (no monthly point
+		// cap on the current tier). Run every sweep.
+		CodexEveryN: envInt("CODEX_EVERY_N", 1),
+
+		// Page caps. A high-volume token that fires cursor-paginated
+		// requests indefinitely can drain a monthly budget in one
+		// sweep. These bound the worst case per token per sweep.
+		MobulaMaxPages:  envInt("MOBULA_MAX_PAGES", 20),
+		BitqueryMaxRows: envInt("BITQUERY_MAX_ROWS", 10000),
+		CodexMaxPages:   envInt("CODEX_MAX_PAGES", 10),
 		Tokens: []Token{
 			// Reference tokens selected 2026-07-23 via a Mobula
 			// `/api/2/trades/filters` sweep over the last hour, picking
