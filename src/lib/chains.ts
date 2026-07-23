@@ -325,6 +325,14 @@ export const CHAINS: ChainEntry[] = [
     description:
       "Substrate-based relay chain coordinating a parachain ecosystem via shared security. GRANDPA finality with BABE block production, ~6 s block time.",
   },
+  {
+    slug: "osmosis",
+    label: "Osmosis",
+    category: "L1",
+    nativeSymbol: "OSMO",
+    description:
+      "Cosmos SDK appchain and the largest IBC-connected DEX. CometBFT (Tendermint) consensus with deterministic finality per block, ~6 s block time. TokenFactory + IBC v3 native, x/superfluid staking on LP shares.",
+  },
 ];
 
 export const CHAIN_BY_SLUG = new Map(CHAINS.map((c) => [c.slug, c]));

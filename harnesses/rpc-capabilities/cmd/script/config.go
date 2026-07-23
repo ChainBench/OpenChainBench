@@ -40,6 +40,15 @@ type Chain struct {
 	//     polkadotStaleBlockGap), no archive-depth loop (Polkadot's
 	//     state model does not map onto the eth_getBalance-by-depth
 	//     probe cleanly).
+	//   "cosmos": Tendermint / CometBFT `status` method against the
+	//     Cosmos JSON-RPC, block-based staleness (Osmosis ~6 s blocks,
+	//     see cosmosStaleBlockGap), no archive-depth loop. Cosmos chains
+	//     access historical state via ABCI queries keyed on module +
+	//     KV-store, which does not map onto the flat eth_getBalance
+	//     probe. Consensus quorum is opt-out for now because
+	//     latest_block_hash on Tendermint changes on every block just
+	//     like EVM, but a first pass ships without it to keep the
+	//     initial Osmosis add-on isolated to latency + reliability.
 	Kind string
 }
 
@@ -91,6 +100,32 @@ func chains() []Chain {
 				{Slug: "polkadot-official", Name: "Parity", URL: envDefault("RPC_URL_POLKADOT_OFFICIAL", "https://rpc.polkadot.io")},
 				{Slug: "onfinality", Name: "OnFinality", URL: envDefault("RPC_URL_POLKADOT_ONFINALITY", "https://polkadot.api.onfinality.io/public")},
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_POLKADOT_PUBLICNODE", "https://polkadot-rpc.publicnode.com")},
+			},
+		},
+		// ─── Osmosis (Cosmos SDK, CometBFT / Tendermint) — first
+		// Cosmos chain in the cluster. Probed via Tendermint JSON-RPC
+		// `status` (returns sync_info.latest_block_height +
+		// latest_block_hash). Providers verified keyless with a live
+		// `status` POST returning a parsable decimal height on
+		// 2026-07-23. Excluded by that sweep: Lava
+		// (osmosis.tendermintrpc.lava.build 403 without a key despite
+		// the "public" branding), OnFinality (public osmosis endpoint
+		// timing out at probe cadence, unlike their stable Polkadot
+		// gateway), Numia (401 without key), AutoStake (404, path may
+		// have moved), BlockApsis + WhisperNode + Enigma-Validator +
+		// StakeTown + reece.sh (curl-side connect errors, likely IPv6-
+		// only or geo-gated). Ankr and Chainstack require paid Cosmos
+		// tiers.
+		{
+			Slug: "osmosis",
+			Name: "Osmosis",
+			Kind: "cosmos",
+			Providers: []Provider{
+				{Slug: "osmosis-official", Name: "Osmosis Foundation", URL: envDefault("RPC_URL_OSMOSIS_OFFICIAL", "https://rpc.osmosis.zone")},
+				{Slug: "polkachu", Name: "Polkachu", URL: envDefault("RPC_URL_OSMOSIS_POLKACHU", "https://osmosis-rpc.polkachu.com")},
+				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_OSMOSIS_PUBLICNODE", "https://osmosis-rpc.publicnode.com")},
+				{Slug: "imperator", Name: "Imperator", URL: envDefault("RPC_URL_OSMOSIS_IMPERATOR", "https://rpc-osmosis.imperator.co")},
+				{Slug: "lavenderfive", Name: "LavenderFive", URL: envDefault("RPC_URL_OSMOSIS_LAVENDERFIVE", "https://rpc.lavenderfive.com:443/osmosis")},
 			},
 		},
 		// ─── Solana mainnet — added 2026-07-12, all 5 endpoints keyless
