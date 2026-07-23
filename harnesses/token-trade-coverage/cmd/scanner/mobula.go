@@ -16,13 +16,25 @@ const mobulaBase = "https://api.mobula.io/api/2/trades/filters"
 // mobulaResp is the minimal envelope we care about: we only need the
 // count (via len(data)) and the DEX per row for coverage-breadth. Full
 // trade objects are 30+ fields we intentionally ignore.
+//
+// Field names track Mobula's `/api/2/trades/filters` response as of
+// 2026-07-23. `transactionHash` doubles as the dedup key across
+// paginated pages. DEX identity comes from `platform.name` when the
+// venue is a mapped protocol (Raydium, Uniswap v3, …); otherwise the
+// pool address in `marketAddress` acts as a fallback venue proxy.
+type mobulaTrade struct {
+	TransactionHash string `json:"transactionHash"`
+	Platform        *struct {
+		Name string `json:"name"`
+	} `json:"platform"`
+	MarketAddress string `json:"marketAddress"`
+}
+
 type mobulaResp struct {
-	Data []struct {
-		DEX  string `json:"dex"`
-		Hash string `json:"hash"`
-	} `json:"data"`
+	Data       []mobulaTrade `json:"data"`
 	Pagination struct {
-		Cursor string `json:"cursor"`
+		HasMore    bool   `json:"hasMore"`
+		NextCursor string `json:"nextCursor"`
 	} `json:"pagination"`
 }
 
@@ -48,11 +60,12 @@ func fetchMobula(
 	for page := 0; page < maxPages; page++ {
 		u, _ := url.Parse(mobulaBase)
 		q := u.Query()
-		q.Set("chain", mobulaChainName(tok.Chain))
-		q.Set("token", tok.Address)
+		q.Set("blockchain", mobulaChainName(tok.Chain))
+		q.Set("tokenAddress", tok.Address)
 		q.Set("from", strconv.FormatInt(windowStart, 10))
 		q.Set("to", strconv.FormatInt(windowEnd, 10))
 		q.Set("limit", "5000")
+		q.Set("sortOrder", "asc")
 		if cursor != "" {
 			q.Set("cursor", cursor)
 		}
@@ -85,19 +98,26 @@ func fetchMobula(
 			// Dedupe by tx hash across pages. Providers occasionally
 			// return the same hash on consecutive pages when a cursor
 			// resets under the hood.
-			if _, seen := hashSet[t.Hash]; seen {
+			if _, seen := hashSet[t.TransactionHash]; seen {
 				continue
 			}
-			hashSet[t.Hash] = struct{}{}
+			hashSet[t.TransactionHash] = struct{}{}
 			total++
-			if t.DEX != "" {
-				dexSet[t.DEX] = struct{}{}
+			// DEX identity: prefer `platform.name` (mapped protocol),
+			// fall back to `marketAddress` (raw pool address) so a
+			// venue with no mapped platform still contributes one
+			// distinct venue to the coverage-breadth metric instead
+			// of being dropped silently.
+			if t.Platform != nil && t.Platform.Name != "" {
+				dexSet[t.Platform.Name] = struct{}{}
+			} else if t.MarketAddress != "" {
+				dexSet[t.MarketAddress] = struct{}{}
 			}
 		}
-		if r.Pagination.Cursor == "" || len(r.Data) == 0 {
+		if !r.Pagination.HasMore || r.Pagination.NextCursor == "" || len(r.Data) == 0 {
 			break
 		}
-		cursor = r.Pagination.Cursor
+		cursor = r.Pagination.NextCursor
 		// Cursor pages back-to-back can trip provider rate limits; a
 		// short breather keeps the fetch inside its budget without
 		// starving the cadence.

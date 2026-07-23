@@ -27,7 +27,6 @@ type Config struct {
 	MobulaKey        string
 	BitqueryKey      string
 	CodexKey         string
-	MoralisKey       string
 	Tokens           []Token
 	Capabilities     map[string]ProviderCapability // provider -> {chain -> supported}
 	MeasurementWinMs int64                         // rolling window per measurement
@@ -46,7 +45,6 @@ func LoadConfig() *Config {
 		MobulaKey:        os.Getenv("MOBULA_API_KEY"),
 		BitqueryKey:      os.Getenv("BITQUERY_API_KEY"),
 		CodexKey:         os.Getenv("CODEX_API_KEY"),
-		MoralisKey:       os.Getenv("MORALIS_API_KEY"),
 		Tokens: []Token{
 			// Solana. Pump.fun-era memes with high trade frequency across
 			// multiple DEXs so any provider indexing only one venue drops
@@ -77,9 +75,6 @@ func LoadConfig() *Config {
 				"solana": true, "ethereum": true, "bsc": true, "base": true,
 			},
 			"codex": {
-				"solana": true, "ethereum": true, "bsc": true, "base": true,
-			},
-			"moralis": {
 				"solana": true, "ethereum": true, "bsc": true, "base": true,
 			},
 		},
