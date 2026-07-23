@@ -1,0 +1,211 @@
+# OpenChainBench. Bench № 091
+
+slug: osmosis-rpc
+number: "091"
+title: Fastest free Osmosis RPC, live no-key endpoint latency
+seo_title: "Fastest free Osmosis RPC 2026"
+seo_description: "{{best_name}} leads free Osmosis RPC at {{best_p50}} (Tendermint status p50, 24h). 5 no-key providers measured every 60s from 3 regions."
+subtitle: HTTP round-trip latency for the Tendermint `status` method against every free, no-key public Osmosis Cosmos SDK endpoint, audited every 60 seconds from 3 regions.
+
+category: RPCs
+status: live
+metric: RPC latency
+unit: ms
+higher_is_better: false
+
+seo_intro: |
+  Osmosis is the first Cosmos SDK chain in the RPC latency cluster.
+  CometBFT (Tendermint) consensus, JSON-RPC 2.0 wire but a chain-family
+  specific method set: the probe is Tendermint `status` (returns
+  `sync_info.latest_block_height` as a decimal string plus
+  `latest_block_hash`) rather than `eth_getBlockByNumber`. Everything
+  else on this page is the same bench pattern used on Ethereum, Base,
+  Solana, Polkadot and the 20+ other chains: identical POST every 60
+  seconds from three regions, latency measured client-side at
+  millisecond precision, per-region breakdowns first class. Provider
+  cohort at launch: Osmosis Foundation's `rpc.osmosis.zone`, Polkachu,
+  PublicNode (Allnodes), Imperator and LavenderFive. Lava, OnFinality,
+  Numia, AutoStake, BlockApsis, WhisperNode, Enigma-Validator,
+  StakeTown and reece.sh were audited alongside and excluded (Lava
+  403 on the public osmosis endpoint, OnFinality osmosis public
+  gateway timing out at probe cadence, Numia 401 without a key, the
+  others returned connect errors or moved paths during the launch
+  sweep); each will be revisited when a stable no-key path reappears.
+
+abstract: |
+  Per-chain member of the RPC latency cluster, extended for Cosmos SDK.
+  We measure the round-trip latency of a single, identical JSON-RPC
+  call (Tendermint `status`) against every no-key public Osmosis
+  Cosmos SDK endpoint that sustains continuous probing, 5 providers at
+  launch, every 60 seconds, from us-east, eu-west and Singapore. The
+  harness classifies every response (ok / http_err / jsonrpc_err /
+  stale / timeout) with a Cosmos-scaled staleness gap (40 blocks ≈ 4
+  minutes at Osmosis's ~6 s block time), so the leaderboard rewards
+  sustained, honest availability rather than a fast error message.
+  The cross-chain view lives on the parent `rpc-capabilities`
+  benchmark; this page is the Osmosis-scoped answer with per-region
+  breakdowns as a first-class dimension.
+
+methodology:
+  - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus `avg(quantile_over_time(...))`; per-region breakdowns are first-class on this page via the region tabs."
+  - "Payload: `{\"jsonrpc\":\"2.0\",\"id\":<rotating>,\"method\":\"status\",\"params\":[]}`. Plain HTTP POST, identical for every endpoint, no API key in any request. Non-cacheable by design: the rotating id defeats edge caches that would answer a bare status query without touching a node."
+  - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms → 10 s), so percentiles are computed via Prometheus `quantile_over_time` over the last 24 hours."
+  - "Call-result classification: `ok` (HTTP 200 + non-empty result with a parsable decimal `sync_info.latest_block_height`), `http_err`, `jsonrpc_err` (HTTP 200 carrying an error body), `stale` (more than 40 blocks behind the cross-provider tip, roughly 4 minutes at Osmosis's ~6 s block time), `timeout`. Latency without reliability is a misleading ranking signal."
+  - "No archive-depth loop on this chain. Cosmos SDK chains access historical state via ABCI queries keyed on module + KV-store, which does not map onto the flat `eth_getBalance(address, height)` probe cleanly."
+  - "No cross-provider hash quorum on this chain at v1. Tendermint `status` does return `latest_block_hash` on the same block the height is reported for, so a quorum check is technically feasible, but the initial Osmosis add-on ships without it to keep the reliability change surface small; the hash normalisation across Cosmos chains will be validated before wiring bench 083 here."
+  - "This page is part of the per-chain RPC cluster derived from the cross-chain [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities) benchmark; the identical harness, cadence and exclusion rules apply on every chain."
+  - "Chain scope: every query on this page is pinned to `chain=\"osmosis\"`. Provider coverage at launch: 5 no-key endpoints (Osmosis Foundation, Polkachu, PublicNode, Imperator, LavenderFive). Excluded by the launch audit: Lava (osmosis.tendermintrpc.lava.build 403 without a key despite public branding), OnFinality (osmosis public gateway timing out at probe cadence, unlike their stable Polkadot gateway), Numia (401 without key), AutoStake (404, path may have moved), BlockApsis + WhisperNode + Enigma-Validator + StakeTown + reece.sh (connect errors, likely IPv6-only or geo-gated), Ankr and Chainstack (paid Cosmos tiers only)."
+
+findings:
+  - "{{best_name}} currently leads free Osmosis RPC at {{best_p50}} (Tendermint `status` p50, 24h) across 5 measured providers."
+  - "{{name:osmosis-official}} is operated by the Osmosis Foundation itself; the bench measures the same public endpoint that Keplr and Osmosis Frontier route through by default, so the number here reflects what a wallet or dApp integrator sees end-to-end."
+  - "{{name:polkachu}} runs one of the largest Cosmos validator + public RPC networks; latency here is directly comparable to the multi-chain gateways because we probe the same `status` method under the same 60 s cadence rule."
+  - "{{name:publicnode}} extends its universal multi-chain footprint from Ethereum + Polkadot onto Cosmos without a keyed path; the reliability column is what to read alongside p50 here since Cosmos JSON-RPC has different failure modes than EVM (peer set churn during epoch boundaries, gRPC gateway restarts)."
+
+faq:
+  - q: "What is the fastest free Osmosis RPC right now?"
+    a: "{{best_name}} currently leads at {{best_p50}} (Tendermint `status` p50 over the last 24h), measured against 5 no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples, so the answer on this page is the answer right now, not a quarterly snapshot. Use the region tabs to see the leader from the origin closest to your deployment."
+  - q: "Which Osmosis RPCs work without an API key?"
+    a: "Five endpoints sustain continuous keyless probing at launch: Osmosis Foundation's `rpc.osmosis.zone`, Polkachu (`osmosis-rpc.polkachu.com`), PublicNode / Allnodes (`osmosis-rpc.publicnode.com`), Imperator (`rpc-osmosis.imperator.co`) and LavenderFive (`rpc.lavenderfive.com/osmosis`). Every listed endpoint was live-verified with a `status` POST returning a parsable decimal `sync_info.latest_block_height` before inclusion. Excluded by the audit: Lava's `osmosis.tendermintrpc.lava.build` returned 403 without a key, OnFinality's public osmosis gateway kept timing out at probe cadence, Numia rejected without an API key (401), Ankr and Chainstack require paid Cosmos tiers, and several community-run endpoints (BlockApsis, WhisperNode, Enigma-Validator, StakeTown, reece.sh) returned connect errors during the sweep."
+  - q: "Does the fastest Osmosis RPC change by region?"
+    a: "Often. Cosmos public infra is heavily weighted toward validator ops in specific regions; a gateway that wins from Amsterdam can lose from Singapore by multiples, especially for community-run providers with a single data centre. The region tabs at the top of the page re-scope every number on the page to a single origin; pick the one closest to where your requests actually originate."
+  - q: "How is Osmosis RPC latency measured here, technically?"
+    a: "One identical Tendermint JSON-RPC POST (`status`) every 60 seconds against each provider from each of 3 regions, using the same plain HTTP client the EVM and Substrate clusters use. The response is a `result` object containing a `sync_info` block; the harness reads `sync_info.latest_block_height` (a decimal string on Cosmos SDK, unlike EVM / Substrate which hex-encode) and parses it with `strconv.ParseUint`. Wall-clock round-trip is recorded at millisecond precision; p50/p90/p99 are computed via Prometheus `quantile_over_time` over 24 hours. Responses are classified (`ok` / `http_err` / `jsonrpc_err` / `stale` / `timeout`) so an endpoint stuck on an old head or returning errors behind HTTP 200 is never ranked as fastest."
+  - q: "Why is the probe `status` and not `abci_info` or `block`?"
+    a: "Two reasons. First, Tendermint `status` returns `sync_info.latest_block_height` on every Cosmos SDK chain in a shape the cluster's cross-provider tip machinery understands without a chain-specific code path. Second, `abci_info` returns application-level metadata that a polite CDN can synthesise without touching the underlying node, defeating the point of a latency probe on the RPC path; `block` requires a height parameter and would either bias toward providers with a fast archive path or duplicate the head-block work `status` already does. `status` forces the endpoint to actually read the head from the consensus engine, which is what integrators care about."
+  - q: "Why is there no archive-depth or hash-quorum column for Osmosis?"
+    a: "Cosmos SDK chains access historical state via ABCI queries keyed on module + KV-store, which has no chain-agnostic depth analog for the EVM `eth_getBalance(address, height)` probe the cluster uses on other chains. Hash quorum (bench 083 cross-provider height-hash agreement) is technically feasible on Cosmos because `latest_block_hash` in the `status` response corresponds to the same block the height is reported for, but the initial Osmosis add-on ships without it to keep the reliability change surface small; the hash normalisation across Cosmos chains will be validated before wiring the quorum path here. Both columns are omitted honestly rather than filled with a proxy that would misrepresent the chain."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
+
+prometheus:
+  window: 24h
+  freshness_metric: rpc_latency_milliseconds
+
+# Per-cell (region) ranking matrix for scoped badge claims. Chain is
+# fixed for the whole bench, so cells key on region alone.
+rank_matrix_query: avg by (provider, region) (ocb:rpc_latency_milliseconds:p50_24h{chain="osmosis"})
+
+# Region is the only dimension: chain is baked into every query.
+dimensions:
+  region:
+    - { value: all,     label: All regions }
+    - { value: us-east, label: US-East }
+    - { value: eu-west, label: EU-West }
+    - { value: sgp,     label: Singapore }
+
+providers:
+  - slug: osmosis-official
+    name: Osmosis Foundation
+    tag: Osmosis Foundation's official public Cosmos SDK RPC
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint `status` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Osmosis Foundation's official public RPC (`rpc.osmosis.zone`)."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="osmosis-official", chain="osmosis"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="osmosis-official", chain="osmosis"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="osmosis-official", chain="osmosis"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="osmosis-official", chain="osmosis"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="osmosis-official", chain="osmosis"}) / sum(ocb:rpc_call:rate_24h{provider="osmosis-official", chain="osmosis"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="osmosis-official", chain="osmosis"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="osmosis-official", chain="osmosis"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="osmosis-official", chain="osmosis", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="osmosis-official", chain="osmosis", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="osmosis-official", chain="osmosis", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="osmosis-official", chain="osmosis", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="osmosis-official", chain="osmosis", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="osmosis-official", chain="osmosis", region="sgp"}[1h])
+
+  - slug: polkachu
+    name: Polkachu
+    tag: Community Cosmos validator + public RPC network
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint `status` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Polkachu's no-key Osmosis RPC endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="polkachu", chain="osmosis"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="polkachu", chain="osmosis"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="polkachu", chain="osmosis"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="polkachu", chain="osmosis"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="polkachu", chain="osmosis"}) / sum(ocb:rpc_call:rate_24h{provider="polkachu", chain="osmosis"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="polkachu", chain="osmosis"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="polkachu", chain="osmosis"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="polkachu", chain="osmosis", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="polkachu", chain="osmosis", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="polkachu", chain="osmosis", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="polkachu", chain="osmosis", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="polkachu", chain="osmosis", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="polkachu", chain="osmosis", region="sgp"}[1h])
+
+  - slug: publicnode
+    name: PublicNode
+    tag: Allnodes-operated, 70+ chains, includes Cosmos
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint `status` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to PublicNode's no-key Osmosis RPC endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="osmosis"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="publicnode", chain="osmosis"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="publicnode", chain="osmosis"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="publicnode", chain="osmosis"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="publicnode", chain="osmosis"}) / sum(ocb:rpc_call:rate_24h{provider="publicnode", chain="osmosis"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="publicnode", chain="osmosis"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="osmosis"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="osmosis", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="osmosis", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="osmosis", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="osmosis", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="publicnode", chain="osmosis", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="publicnode", chain="osmosis", region="sgp"}[1h])
+
+  - slug: imperator
+    name: Imperator
+    tag: Cosmos-native infra provider, IBC + Osmosis ecosystem focus
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint `status` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Imperator's no-key Osmosis RPC endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="imperator", chain="osmosis"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="imperator", chain="osmosis"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="imperator", chain="osmosis"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="imperator", chain="osmosis"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="imperator", chain="osmosis"}) / sum(ocb:rpc_call:rate_24h{provider="imperator", chain="osmosis"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="imperator", chain="osmosis"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="imperator", chain="osmosis"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="imperator", chain="osmosis", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="imperator", chain="osmosis", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="imperator", chain="osmosis", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="imperator", chain="osmosis", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="imperator", chain="osmosis", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="imperator", chain="osmosis", region="sgp"}[1h])
+
+  - slug: lavenderfive
+    name: LavenderFive
+    tag: Cosmos validator + no-key RPC path, multi-chain
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single Tendermint `status` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to LavenderFive's no-key Osmosis RPC endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="lavenderfive", chain="osmosis"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="lavenderfive", chain="osmosis"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="lavenderfive", chain="osmosis"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="lavenderfive", chain="osmosis"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="lavenderfive", chain="osmosis"}) / sum(ocb:rpc_call:rate_24h{provider="lavenderfive", chain="osmosis"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="lavenderfive", chain="osmosis"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="lavenderfive", chain="osmosis"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="lavenderfive", chain="osmosis", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="lavenderfive", chain="osmosis", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="lavenderfive", chain="osmosis", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="lavenderfive", chain="osmosis", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="lavenderfive", chain="osmosis", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="lavenderfive", chain="osmosis", region="sgp"}[1h])

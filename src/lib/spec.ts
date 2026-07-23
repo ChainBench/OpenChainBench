@@ -302,7 +302,8 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // HyperSync + The Graph required paid credentials for sustained
   // cadence). Bench SET shrank.
   // v38: mobula dropped from pm-data-freshness (they stopped serving 2026-07-19).
-  ["bench-unfiltered-v38", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v39: bench 091 osmosis-rpc ship (Cosmos SDK Kind added to harness).
+  ["bench-unfiltered-v39", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -507,7 +508,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // -> ws-head-latency-ethereum + ungate on prod).
   // v34: bumped with bench-unfiltered-v31 (084 indexer-latency dropped).
   // v41: bumped in lockstep with bench-unfiltered-v38 (mobula drop).
-  ["all-benchmarks-v41", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v42: bumped in lockstep with bench-unfiltered-v39 (osmosis-rpc ship).
+  ["all-benchmarks-v42", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
