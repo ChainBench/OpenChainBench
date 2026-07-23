@@ -1,0 +1,144 @@
+# OpenChainBench. Bench № 089
+
+slug: rwa-yield-accuracy
+number: "089"
+title: Which tokenized T-bill actually pays what it promises
+seo_title: "Tokenized T-bill yield promised vs delivered 2026"
+seo_description: "Signed bps deviation between advertised APY and on-chain distributed yield for BUIDL, BENJI, USDY, USTB, OUSG. Measured live over 30 days, keyless, reproducible."
+subtitle: Signed basis-point deviation between the APY each tokenized U.S. Treasury advertises and the yield the smart contract actually distributes on-chain, measured over 30 days.
+
+category: RWA
+status: live
+metric: Yield deviation
+unit: bps
+higher_is_better: true
+
+seo_intro: |
+  Every tokenized U.S. Treasury on the market publishes an APY.
+  BlackRock BUIDL says 5.3 percent, Franklin BENJI says 5.1 percent,
+  Ondo USDY says 5.4 percent. This page measures what they actually
+  pay their token holders on-chain, using each issuer's own
+  distribution mechanism (rebase, monthly USDC dividend, or NAV
+  appreciation), and compares it to the number each issuer advertises
+  on its public dashboard. The delta in basis points, sign preserved,
+  is the honest read on whether the tokenized wrapper delivers what
+  the marketing page claims. Every measurement traces back to an
+  on-chain event and a citable issuer disclosure. No opinion, just
+  the two numbers side by side.
+
+abstract: |
+  For each tokenized T-bill in the cohort we compute the delivered
+  yield over a 30-day rolling window from the issuer's own on-chain
+  distribution mechanism, then compare to the promised APY published
+  on the issuer's official dashboard. Deviation is expressed in basis
+  points with sign preserved: negative means the token paid less than
+  advertised over the window, positive means more. The three
+  distribution mechanisms measured are rebase (USDY), monthly USDC
+  dividend transfers (BUIDL, USTB) and NAV appreciation reported by
+  the issuer (BENJI, OUSG). Windows: 30-day rolling annualized as the
+  headline, plus 7d and lifetime for volatility context.
+
+methodology:
+  - "Cohort: BUIDL (BlackRock), BENJI (Franklin Templeton), USDY (Ondo), USTB (Superstate), OUSG (Ondo). Top five tokenized U.S. Treasury and money-market funds by assets under management as of 2026-10. Fund tickers link to each issuer's official disclosure page in the provider tag."
+  - "Delivered yield: derived per issuer from on-chain events. Rebase-model tokens compare totalSupply snapshots (t=now vs t=window ago). Dividend-model tokens sum USDC Transfer events from the treasury wallet to holders across the window. NAV-model tokens compare share NAV snapshots published by the issuer (fetched via the issuer's public endpoint, cross-checked with the smart contract's own price oracle where one exists)."
+  - "Promised yield: the APY the issuer publishes on its official dashboard or fund fact sheet. Sourced at least weekly from each issuer's own disclosures, with URL plus date logged in the harness config. When an issuer updates its stated APY, the change is tracked; historical values remain in Prometheus for the retention window."
+  - "Windows: headline is 30-day rolling annualized. Also emitted: 7-day rolling (for volatility) and lifetime since token inception (for the honest cross-issuer comparison unaffected by short-window distribution cycles)."
+  - "Sign: delivered minus promised, in basis points. Negative means the token paid less than advertised over the window. Positive (rare) means more."
+  - "Fees: promised APY is stated net of management fees. Delivered yield is measured on the same net basis. Any residual structural deviation typically reflects distribution timing (dividend-style tokens accrue daily but pay monthly), weekend accrual conventions (T-bills yield on business days only), or measurement methodology, not accounting."
+  - "Cadence: on-chain reads every 60 seconds. Delivered-yield 30d rolling window is recomputed hourly (calculation is heavy, values move slowly). Promised-yield config file is reloaded every 60 seconds so a weekly update lands within a scrape cycle."
+  - "Multi-chain tokens: BUIDL exists on Ethereum plus five L2s, USDY on Ethereum plus Solana, Aptos, Sui. V1 measures each chain separately and aggregates for the headline weighted by supply. V2 will surface per-chain deviations for cross-chain issuers."
+  - "Reproducibility: harness source at github.com/ChainBench/OpenChainBench/tree/main/harnesses/rwa-yield-accuracy. Every delivered-yield number derives from a public RPC read (contract address, event signature, block range documented). Every promised-yield number cites its source URL and date."
+
+findings:
+  - "{{best_name}} tracks its advertised yield most tightly, with a {{best_p50}} deviation over the last 30 days across a cohort of five top tokenized treasuries."
+  - "Rebase-model tokens (USDY) are the most transparent to measure. Delivered yield is a direct function of totalSupply growth on-chain, with no off-chain NAV, no distribution schedule and no treasury wallet to identify."
+  - "Dividend-model tokens (BUIDL, USTB) settle monthly. A 30-day rolling window that starts mid-cycle will underrepresent yield until the next distribution lands. The lifetime column is the honest cross-model comparison; the 30d column is the live signal."
+  - "NAV-model tokens (BENJI, OUSG) rely on the issuer's own daily NAV publication. Any measurable deviation here typically reflects a data pipeline gap (missed NAV update, weekend interpolation) rather than a delivery gap."
+  - "A persistent negative deviation greater than 20 bps warrants investigation. It can point to a management-fee timing gap, a distribution cycle mismatch, or a methodology difference between advertised APY (often SEC-standard 7-day yield) and realized post-fee yield. This benchmark reports the number; the interpretation belongs to the reader and, ultimately, the issuer's own fund managers."
+
+faq:
+  - q: "Why does the delivered yield sometimes differ from the advertised APY?"
+    a: "Three main reasons. First, distribution timing: dividend-style tokens like BUIDL and USTB accrue yield daily but pay it monthly, so a 30-day window that starts mid-cycle undersamples. Second, weekend and holiday accrual: U.S. Treasuries do not yield on Saturdays, Sundays or federal holidays, so a naive calendar-day annualization differs from the SEC's own convention. Third, management-fee timing: fees are accrued daily but recognized at the fund level on different schedules, which can create a 5 to 30 bps short-window gap even when the annual net yield matches the advertised APY exactly."
+  - q: "Which distribution model is the most transparent?"
+    a: "Rebase, exemplified by USDY. Delivered yield is a pure function of totalSupply at t=now versus t=window ago, both readable on-chain by anyone. Dividend-style (BUIDL, USTB) is one step less transparent: delivered yield sums USDC Transfer events from the treasury wallet, which requires knowing the treasury address (documented here). NAV-style (BENJI, OUSG) is the least on-chain-native: the daily NAV is set by the fund manager off-chain and posted daily; a delayed NAV update looks like a yield gap even when the underlying portfolio is fine."
+  - q: "Where does the promised yield come from?"
+    a: "From each issuer's own public dashboard or fund fact sheet, refreshed at least weekly. Each entry in the harness config logs the source URL and the date the value was last read. When an issuer updates the advertised APY, the change is picked up on the next config reload."
+  - q: "Can this benchmark tell me if an issuer is misrepresenting yield?"
+    a: "No. It tells you how the delivered yield tracks the advertised yield over a specific window. A persistent negative deviation is a signal worth investigating, but the cause can be timing, methodology, weekend conventions or fee schedules. This bench provides the number; investors and regulators can investigate the cause with the issuer directly."
+  - q: "Why is BUIDL sometimes below its promised yield at 30 days?"
+    a: "BUIDL distributes dividends monthly, near the end of each calendar month. A 30-day rolling window that ends mid-month will undersample the next distribution. Compare against the lifetime column for the cleanest read, or wait for month-end to see the 30d value re-converge with the stated APY."
+  - q: "Why don't you include DAI, USDS, sUSDe or other yield-bearing stablecoins?"
+    a: "This bench is scoped to tokenized U.S. Treasury and money-market funds where an off-chain issuer publishes a specific advertised APY that can be compared to delivered yield. Yield-bearing stablecoins backed by CDP interest, LSTs or perp funding are a different question with a different measurement contract; they may join a sibling bench later."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rwa-yield-accuracy
+
+prometheus:
+  window: 30d
+  freshness_metric: rwa_yield_last_measured_unix
+  expected_freshness_seconds: 3600
+
+providers:
+  - slug: buidl
+    name: BUIDL
+    tag: "BlackRock, Ethereum, monthly USDC dividend"
+    formula: "Sum of USDC Transfer events from the BUIDL treasury wallet to holders over 30d, divided by average BUIDL supply (share price fixed at 1 USD by design), annualized. Compared to BlackRock's stated APY."
+    queries:
+      p50: rwa_yield_deviation_bps_30d{token="buidl"}
+      p90: rwa_yield_deviation_bps_7d{token="buidl"}
+      p99: rwa_yield_deviation_bps_lifetime{token="buidl"}
+      mean: rwa_yield_delivered_bps_30d{token="buidl"}
+      success: rwa_yield_probe_ok{token="buidl"}
+      sample_size: rwa_yield_aum_usd{token="buidl"}
+      series: rwa_yield_delivered_bps_30d{token="buidl"}
+
+  - slug: benji
+    name: BENJI
+    tag: "Franklin Templeton, Stellar + Ethereum, NAV appreciation"
+    formula: "NAV growth of the Franklin OnChain U.S. Government Money Fund share, NAV(t=now) vs NAV(t=30d ago), annualized. NAV published daily by Franklin, cross-checked against the on-chain price oracle. Compared to the stated 7-day SEC yield."
+    queries:
+      p50: rwa_yield_deviation_bps_30d{token="benji"}
+      p90: rwa_yield_deviation_bps_7d{token="benji"}
+      p99: rwa_yield_deviation_bps_lifetime{token="benji"}
+      mean: rwa_yield_delivered_bps_30d{token="benji"}
+      success: rwa_yield_probe_ok{token="benji"}
+      sample_size: rwa_yield_aum_usd{token="benji"}
+      series: rwa_yield_delivered_bps_30d{token="benji"}
+
+  - slug: usdy
+    name: USDY
+    tag: "Ondo, Ethereum + Solana + Aptos + Sui, daily rebase"
+    formula: "USDY totalSupply growth (t=now vs t=30d ago), annualized. Rebase happens daily via the smart contract; delivered yield is a direct function of supply growth. Compared to Ondo's stated APY."
+    queries:
+      p50: rwa_yield_deviation_bps_30d{token="usdy"}
+      p90: rwa_yield_deviation_bps_7d{token="usdy"}
+      p99: rwa_yield_deviation_bps_lifetime{token="usdy"}
+      mean: rwa_yield_delivered_bps_30d{token="usdy"}
+      success: rwa_yield_probe_ok{token="usdy"}
+      sample_size: rwa_yield_aum_usd{token="usdy"}
+      series: rwa_yield_delivered_bps_30d{token="usdy"}
+
+  - slug: ustb
+    name: USTB
+    tag: "Superstate, Ethereum, monthly USDC dividend"
+    formula: "Sum of USDC Transfer events from the Superstate treasury wallet to USTB holders over 30d, divided by average USTB supply, annualized. Compared to Superstate's stated APY."
+    queries:
+      p50: rwa_yield_deviation_bps_30d{token="ustb"}
+      p90: rwa_yield_deviation_bps_7d{token="ustb"}
+      p99: rwa_yield_deviation_bps_lifetime{token="ustb"}
+      mean: rwa_yield_delivered_bps_30d{token="ustb"}
+      success: rwa_yield_probe_ok{token="ustb"}
+      sample_size: rwa_yield_aum_usd{token="ustb"}
+      series: rwa_yield_delivered_bps_30d{token="ustb"}
+
+  - slug: ousg
+    name: OUSG
+    tag: "Ondo, Ethereum, NAV appreciation"
+    formula: "NAV growth of the OUSG token, NAV(t=now) vs NAV(t=30d ago), annualized. NAV is published by Ondo daily. Compared to Ondo's stated OUSG APY."
+    queries:
+      p50: rwa_yield_deviation_bps_30d{token="ousg"}
+      p90: rwa_yield_deviation_bps_7d{token="ousg"}
+      p99: rwa_yield_deviation_bps_lifetime{token="ousg"}
+      mean: rwa_yield_delivered_bps_30d{token="ousg"}
+      success: rwa_yield_probe_ok{token="ousg"}
+      sample_size: rwa_yield_aum_usd{token="ousg"}
+      series: rwa_yield_delivered_bps_30d{token="ousg"}
