@@ -13,13 +13,20 @@ const codexURL = "https://graph.codex.io/graphql"
 
 // codexResp: minimal envelope. Codex's `getTokenEvents` is cursor-paginated
 // via the `cursor` string returned in each response.
+//
+// Fields kept minimal on purpose. `exchangeAddress` was dropped from
+// the query because it's not a valid field on Codex's `Event` type
+// (GraphQL 400: `Cannot query field exchangeAddress on type Event`).
+// Codex's DEX identity lives one hop away on the `Pair.exchange` type,
+// which would require joining `Pair` records per event and inflates
+// the query volume for a companion metric that we already publish
+// honestly (0) for a provider that doesn't expose it inline.
 type codexResp struct {
 	Data struct {
 		GetTokenEvents struct {
 			Items []struct {
 				TransactionHash string `json:"transactionHash"`
-				EventType       string `json:"eventType"`
-				ExchangeAddress string `json:"exchangeAddress"`
+				EventDisplayType string `json:"eventDisplayType"`
 			} `json:"items"`
 			Cursor string `json:"cursor"`
 		} `json:"getTokenEvents"`
@@ -76,6 +83,10 @@ func fetchCodex(
 	)
 
 	for page := 0; page < maxPages; page++ {
+		var cursorClause string
+		if cursor != "" {
+			cursorClause = fmt.Sprintf(`cursor: %q`, cursor)
+		}
 		query := fmt.Sprintf(`
 query GetEvents {
   getTokenEvents(
@@ -86,16 +97,15 @@ query GetEvents {
       eventType: Swap
     }
     limit: 200
-    cursor: %q
+    %s
   ) {
     items {
       transactionHash
-      eventType
-      exchangeAddress
+      eventDisplayType
     }
     cursor
   }
-}`, tok.Address, networkID, fromSec, toSec, cursor)
+}`, tok.Address, networkID, fromSec, toSec, cursorClause)
 
 		body, _ := json.Marshal(map[string]string{"query": query})
 		req, err := http.NewRequestWithContext(ctx, "POST", codexURL, bytes.NewReader(body))
@@ -130,9 +140,8 @@ query GetEvents {
 			}
 			hashSet[it.TransactionHash] = struct{}{}
 			total++
-			if it.ExchangeAddress != "" {
-				exchSet[it.ExchangeAddress] = struct{}{}
-			}
+			// Codex Event doesn't expose DEX inline; leave dexCount=0
+			// rather than fabricating a synthetic venue.
 		}
 		if r.Data.GetTokenEvents.Cursor == "" || len(r.Data.GetTokenEvents.Items) == 0 {
 			break
