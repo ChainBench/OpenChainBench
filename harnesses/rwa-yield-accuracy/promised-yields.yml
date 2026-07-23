@@ -18,35 +18,39 @@
 # quarterly fact sheet or SEC filing to guard against the marketing
 # page drifting from the regulated disclosure.
 
-updated: 2026-10-15
+updated: 2026-07-22
 
 issuers:
+  - token: usdy
+    promised_apy_bps: 355
+    source: "https://ondo.finance/usdy"
+    source_date: 2026-07-22
+    notes: "Ondo USDY current APY as displayed on the retail dashboard. Rebase happens daily via the token contract; delivered yield is directly measurable from totalSupply growth. Value is net of the 20 bps Ondo fee. Rate reflects Fed policy: 3.55% at the time of this update, down from ~5.4% a year earlier."
+
+  # The four entries below remain in the file so the harness reloader
+  # keeps their promised APYs current for the day the corresponding
+  # probes flip active. They are NOT scraped or displayed on the bench
+  # page while status: staging.
   - token: buidl
-    promised_apy_bps: 528
+    promised_apy_bps: 350
     source: "https://securitize.io/primary-market/buidl"
-    source_date: 2026-10-15
-    notes: "BlackRock BUIDL 7-day net SEC yield as of Q3 2026 fund fact sheet. Gross yield ~5.30%; 2 bps management fee. BUIDL distributes monthly on the last business day, so intra-month 30d measurements can lag by up to 30 bps until the next dividend lands."
+    source_date: 2026-07-22
+    notes: "BlackRock BUIDL 7-day net SEC yield estimate (probe inactive; needs Securitize treasury wallet verification before enable)."
 
   - token: benji
-    promised_apy_bps: 509
+    promised_apy_bps: 345
     source: "https://franklintempleton.com/investments/options/money-market-funds/products/29386"
-    source_date: 2026-10-15
-    notes: "Franklin OnChain U.S. Government Money Fund 7-day SEC yield. Franklin publishes on the fund fact sheet daily. This is the net yield after 20 bps management fee."
-
-  - token: usdy
-    promised_apy_bps: 536
-    source: "https://ondo.finance/usdy"
-    source_date: 2026-10-15
-    notes: "Ondo USDY current APY as displayed on the retail dashboard. Rebase happens daily via the token contract; delivered yield is directly measurable from totalSupply growth. Value is net of the 20 bps Ondo fee."
+    source_date: 2026-07-22
+    notes: "Franklin OnChain U.S. Government Money Fund 7-day SEC yield estimate (probe inactive; NAV endpoint TBD)."
 
   - token: ustb
-    promised_apy_bps: 502
-    source: "https://superstate.co/ustb"
-    source_date: 2026-10-15
-    notes: "Superstate Short-Duration U.S. Treasury Fund 7-day yield as displayed on the Superstate dashboard. Monthly USDC distributions to holders. Gross yield ~5.15%; ~13 bps fee."
+    promised_apy_bps: 352
+    source: "https://superstate.com/ustb"
+    source_date: 2026-07-22
+    notes: "Superstate USTB 30-day yield as displayed on superstate.com (7-day SEC yield not published there). Probe inactive; treasury wallet verification pending."
 
   - token: ousg
-    promised_apy_bps: 487
+    promised_apy_bps: 350
     source: "https://ondo.finance/ousg"
-    source_date: 2026-10-15
-    notes: "Ondo Short-Term U.S. Government Treasuries fund yield. NAV appreciation rather than dividend distribution: share price grows daily. Fee 15 bps."
+    source_date: 2026-07-22
+    notes: "Ondo OUSG NAV-appreciation yield estimate (probe inactive; NAV endpoint TBD)."

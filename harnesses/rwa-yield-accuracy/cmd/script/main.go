@@ -18,18 +18,29 @@ import (
 // this bench is: (1) implement IssuerProbe, (2) add its slug to
 // promised-yields.yml, (3) append here.
 //
-// Sprint 2 cohort: all 5 V1 tokens. USDY (rebase), BUIDL + USTB
-// (dividend), BENJI + OUSG (NAV appreciation).
+// V1 cohort restricted to USDY only. USDY's rebase model is fully
+// verifiable on-chain (totalSupply growth on a single known ERC-20
+// contract, no treasury wallet or off-chain NAV endpoint required)
+// which lets the bench ship with confidence that every number is
+// grounded.
 //
-// Sprint 3 will verify each on-chain address / issuer NAV endpoint
-// against the fund's own docs and cross-check the harness output
-// with each issuer's dashboard before the launch.
+// The other 4 probes (BUIDL, USTB dividend model; BENJI, OUSG NAV
+// model) exist in this repo (buidl.go, ustb.go, benji.go, ousg.go)
+// but stay dormant until each one's treasury address or issuer NAV
+// endpoint has been cross-checked with the fund's own documentation.
+// Enabling them without that check would ship placeholder-zero yield
+// values that look catastrophic (deviation of -530 bps vs promised).
+//
+// To activate a probe once verified: uncomment its constructor below
+// and confirm the corresponding address / endpoint constant in the
+// probe file. The bench spec's provider block for that token becomes
+// meaningful automatically.
 var probes = []IssuerProbe{
 	NewUSDYProbe(),
-	NewBUIDLProbe(),
-	NewUSTBProbe(),
-	NewBENJIProbe(),
-	NewOUSGProbe(),
+	// NewBUIDLProbe(),  // TODO(V2): verify Securitize treasury wallet
+	// NewUSTBProbe(),   // TODO(V2): verify Superstate treasury wallet
+	// NewBENJIProbe(),  // TODO(V2): verify Franklin NAV JSON endpoint
+	// NewOUSGProbe(),   // TODO(V2): verify Ondo NAV JSON endpoint
 }
 
 func main() {
