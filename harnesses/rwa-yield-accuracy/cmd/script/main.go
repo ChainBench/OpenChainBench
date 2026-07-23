@@ -18,11 +18,18 @@ import (
 // this bench is: (1) implement IssuerProbe, (2) add its slug to
 // promised-yields.yml, (3) append here.
 //
-// V1 ships USDY only (rebase, simplest to validate). BUIDL, BENJI,
-// USTB and OUSG land in Sprint 2 once the rebase path is proven end
-// to end.
+// Sprint 2 cohort: all 5 V1 tokens. USDY (rebase), BUIDL + USTB
+// (dividend), BENJI + OUSG (NAV appreciation).
+//
+// Sprint 3 will verify each on-chain address / issuer NAV endpoint
+// against the fund's own docs and cross-check the harness output
+// with each issuer's dashboard before the launch.
 var probes = []IssuerProbe{
 	NewUSDYProbe(),
+	NewBUIDLProbe(),
+	NewUSTBProbe(),
+	NewBENJIProbe(),
+	NewOUSGProbe(),
 }
 
 func main() {
