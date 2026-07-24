@@ -15,6 +15,7 @@
 
 import { getBenchmarks } from "@/data/benchmarks";
 import { readMaterialized } from "@/lib/materialize/store";
+import { loadSnapshotFromBlob } from "@/lib/bench-blob";
 import { leader, fieldValue } from "@/lib/citation";
 
 const FEATURED_BENCH_SLUGS = [
@@ -105,7 +106,10 @@ export async function buildFeaturedLeadersFromStore(): Promise<FeaturedLeadersBl
   const snapshots = await Promise.all(
     ALL_SLUGS.map(async (slug) => {
       try {
-        const snap = await readMaterialized(slug, "");
+        // Try CDN blob first (Phase 3), fall back to Redis via SRH.
+        const snap =
+          (await loadSnapshotFromBlob(slug, "")) ??
+          (await readMaterialized(slug, ""));
         return snap ? snap.bench : null;
       } catch {
         return null;

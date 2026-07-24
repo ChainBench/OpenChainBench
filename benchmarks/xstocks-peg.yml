@@ -83,6 +83,7 @@ providers:
       p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="xstocks", asset="tsla", market_state="regular"}[24h])
       mean: avg_over_time(tsp_deviation_bps{issuer="xstocks", asset="tsla", market_state="regular"}[24h])
       success: avg_over_time(tsp_health{asset="tsla"}[24h])
+      sample_size: count_over_time(tsp_deviation_bps{issuer="xstocks", asset="tsla", market_state="regular"}[7d])
       series: tsp_deviation_bps{issuer="xstocks", asset="tsla", market_state="regular"}
   - slug: nvda
     name: NVDAx
@@ -94,6 +95,7 @@ providers:
       p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="xstocks", asset="nvda", market_state="regular"}[24h])
       mean: avg_over_time(tsp_deviation_bps{issuer="xstocks", asset="nvda", market_state="regular"}[24h])
       success: avg_over_time(tsp_health{asset="nvda"}[24h])
+      sample_size: count_over_time(tsp_deviation_bps{issuer="xstocks", asset="nvda", market_state="regular"}[7d])
       series: tsp_deviation_bps{issuer="xstocks", asset="nvda", market_state="regular"}
   - slug: aapl
     name: AAPLx
@@ -105,6 +107,7 @@ providers:
       p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="xstocks", asset="aapl", market_state="regular"}[24h])
       mean: avg_over_time(tsp_deviation_bps{issuer="xstocks", asset="aapl", market_state="regular"}[24h])
       success: avg_over_time(tsp_health{asset="aapl"}[24h])
+      sample_size: count_over_time(tsp_deviation_bps{issuer="xstocks", asset="aapl", market_state="regular"}[7d])
       series: tsp_deviation_bps{issuer="xstocks", asset="aapl", market_state="regular"}
   - slug: msft
     name: MSFTx
@@ -116,6 +119,7 @@ providers:
       p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="xstocks", asset="msft", market_state="regular"}[24h])
       mean: avg_over_time(tsp_deviation_bps{issuer="xstocks", asset="msft", market_state="regular"}[24h])
       success: avg_over_time(tsp_health{asset="msft"}[24h])
+      sample_size: count_over_time(tsp_deviation_bps{issuer="xstocks", asset="msft", market_state="regular"}[7d])
       series: tsp_deviation_bps{issuer="xstocks", asset="msft", market_state="regular"}
   - slug: amzn
     name: AMZNx
@@ -127,6 +131,7 @@ providers:
       p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="xstocks", asset="amzn", market_state="regular"}[24h])
       mean: avg_over_time(tsp_deviation_bps{issuer="xstocks", asset="amzn", market_state="regular"}[24h])
       success: avg_over_time(tsp_health{asset="amzn"}[24h])
+      sample_size: count_over_time(tsp_deviation_bps{issuer="xstocks", asset="amzn", market_state="regular"}[7d])
       series: tsp_deviation_bps{issuer="xstocks", asset="amzn", market_state="regular"}
   - slug: googl
     name: GOOGLx
@@ -138,6 +143,7 @@ providers:
       p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="xstocks", asset="googl", market_state="regular"}[24h])
       mean: avg_over_time(tsp_deviation_bps{issuer="xstocks", asset="googl", market_state="regular"}[24h])
       success: avg_over_time(tsp_health{asset="googl"}[24h])
+      sample_size: count_over_time(tsp_deviation_bps{issuer="xstocks", asset="googl", market_state="regular"}[7d])
       series: tsp_deviation_bps{issuer="xstocks", asset="googl", market_state="regular"}
   - slug: meta
     name: METAx
@@ -149,6 +155,7 @@ providers:
       p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="xstocks", asset="meta", market_state="regular"}[24h])
       mean: avg_over_time(tsp_deviation_bps{issuer="xstocks", asset="meta", market_state="regular"}[24h])
       success: avg_over_time(tsp_health{asset="meta"}[24h])
+      sample_size: count_over_time(tsp_deviation_bps{issuer="xstocks", asset="meta", market_state="regular"}[7d])
       series: tsp_deviation_bps{issuer="xstocks", asset="meta", market_state="regular"}
   - slug: hood
     name: HOODx
@@ -160,6 +167,7 @@ providers:
       p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="xstocks", asset="hood", market_state="regular"}[24h])
       mean: avg_over_time(tsp_deviation_bps{issuer="xstocks", asset="hood", market_state="regular"}[24h])
       success: avg_over_time(tsp_health{asset="hood"}[24h])
+      sample_size: count_over_time(tsp_deviation_bps{issuer="xstocks", asset="hood", market_state="regular"}[7d])
       series: tsp_deviation_bps{issuer="xstocks", asset="hood", market_state="regular"}
   - slug: spy
     name: SPYx
@@ -171,6 +179,7 @@ providers:
       p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="xstocks", asset="spy", market_state="regular"}[24h])
       mean: avg_over_time(tsp_deviation_bps{issuer="xstocks", asset="spy", market_state="regular"}[24h])
       success: avg_over_time(tsp_health{asset="spy"}[24h])
+      sample_size: count_over_time(tsp_deviation_bps{issuer="xstocks", asset="spy", market_state="regular"}[7d])
       series: tsp_deviation_bps{issuer="xstocks", asset="spy", market_state="regular"}
   - slug: qqq
     name: QQQx
@@ -182,6 +191,7 @@ providers:
       p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="xstocks", asset="qqq", market_state="regular"}[24h])
       mean: avg_over_time(tsp_deviation_bps{issuer="xstocks", asset="qqq", market_state="regular"}[24h])
       success: avg_over_time(tsp_health{asset="qqq"}[24h])
+      sample_size: count_over_time(tsp_deviation_bps{issuer="xstocks", asset="qqq", market_state="regular"}[7d])
       series: tsp_deviation_bps{issuer="xstocks", asset="qqq", market_state="regular"}
   - slug: coin
     name: COINx
@@ -193,6 +203,7 @@ providers:
       p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="xstocks", asset="coin", market_state="regular"}[24h])
       mean: avg_over_time(tsp_deviation_bps{issuer="xstocks", asset="coin", market_state="regular"}[24h])
       success: avg_over_time(tsp_health{asset="coin"}[24h])
+      sample_size: count_over_time(tsp_deviation_bps{issuer="xstocks", asset="coin", market_state="regular"}[7d])
       series: tsp_deviation_bps{issuer="xstocks", asset="coin", market_state="regular"}
   - slug: pltr
     name: PLTRx
@@ -204,4 +215,5 @@ providers:
       p99: quantile_over_time(0.99, tsp_deviation_bps{issuer="xstocks", asset="pltr", market_state="regular"}[24h])
       mean: avg_over_time(tsp_deviation_bps{issuer="xstocks", asset="pltr", market_state="regular"}[24h])
       success: avg_over_time(tsp_health{asset="pltr"}[24h])
+      sample_size: count_over_time(tsp_deviation_bps{issuer="xstocks", asset="pltr", market_state="regular"}[7d])
       series: tsp_deviation_bps{issuer="xstocks", asset="pltr", market_state="regular"}

@@ -238,7 +238,6 @@ func chains() []Chain {
 				{Slug: "nodies", Name: "Nodies (POKT)", URL: envDefault("RPC_URL_ETHEREUM_NODIES", "https://eth-pokt.nodies.app")},
 				{Slug: "lava", Name: "Lava Network", URL: envDefault("RPC_URL_ETHEREUM_LAVA", "https://eth1.lava.build")},
 				{Slug: "blastapi", Name: "Blast API", URL: envDefault("RPC_URL_ETHEREUM_BLASTAPI", "https://eth-mainnet.public.blastapi.io")},
-				{Slug: "thirdweb", Name: "ThirdWeb", URL: envDefault("RPC_URL_ETHEREUM_THIRDWEB", "https://ethereum.rpc.thirdweb.com")},
 				{Slug: "gatewayfm", Name: "Gateway.fm", URL: envDefault("RPC_URL_ETHEREUM_GATEWAYFM", "https://rpc.eth.gateway.fm")},
 				{Slug: "bloxroute", Name: "bloXroute", URL: envDefault("RPC_URL_ETHEREUM_BLOXROUTE", "https://eth.rpc.blxrbdn.com")},
 			},
@@ -252,7 +251,6 @@ func chains() []Chain {
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_POLYGON_DRPC", "https://polygon.drpc.org")},
 				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_POLYGON_TENDERLY", "https://gateway.tenderly.co/public/polygon")},
 				{Slug: "nodies", Name: "Nodies (POKT)", URL: envDefault("RPC_URL_POLYGON_NODIES", "https://polygon-pokt.nodies.app")},
-				{Slug: "thirdweb", Name: "ThirdWeb", URL: envDefault("RPC_URL_POLYGON_THIRDWEB", "https://polygon.rpc.thirdweb.com")},
 			},
 		},
 		// ─── Arbitrum One (8 providers) ─────────────────────────────
@@ -268,7 +266,6 @@ func chains() []Chain {
 				{Slug: "lava", Name: "Lava Network", URL: envDefault("RPC_URL_ARBITRUM_LAVA", "https://arb1.lava.build")},
 				{Slug: "arbitrum-official", Name: "Arbitrum Official", URL: envDefault("RPC_URL_ARBITRUM_OFFICIAL", "https://arb1.arbitrum.io/rpc")},
 				{Slug: "blastapi", Name: "Blast API", URL: envDefault("RPC_URL_ARBITRUM_BLASTAPI", "https://arbitrum-one.public.blastapi.io")},
-				{Slug: "thirdweb", Name: "ThirdWeb", URL: envDefault("RPC_URL_ARBITRUM_THIRDWEB", "https://arbitrum.rpc.thirdweb.com")},
 			},
 		},
 		// ─── Optimism (6 providers) ─────────────────────────────────
@@ -281,7 +278,6 @@ func chains() []Chain {
 				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_OPTIMISM_TENDERLY", "https://gateway.tenderly.co/public/optimism")},
 				{Slug: "nodies", Name: "Nodies (POKT)", URL: envDefault("RPC_URL_OPTIMISM_NODIES", "https://op-pokt.nodies.app")},
 				{Slug: "optimism-official", Name: "Optimism Official", URL: envDefault("RPC_URL_OPTIMISM_OFFICIAL", "https://mainnet.optimism.io")},
-				{Slug: "thirdweb", Name: "ThirdWeb", URL: envDefault("RPC_URL_OPTIMISM_THIRDWEB", "https://optimism.rpc.thirdweb.com")},
 			},
 		},
 		// ─── Base (6 providers) ─────────────────────────────────────
@@ -295,7 +291,6 @@ func chains() []Chain {
 				{Slug: "nodies", Name: "Nodies (POKT)", URL: envDefault("RPC_URL_BASE_NODIES", "https://base-pokt.nodies.app")},
 				{Slug: "base-official", Name: "Base Official", URL: envDefault("RPC_URL_BASE_OFFICIAL", "https://mainnet.base.org")},
 				{Slug: "blastapi", Name: "Blast API", URL: envDefault("RPC_URL_BASE_BLASTAPI", "https://base-mainnet.public.blastapi.io")},
-				{Slug: "thirdweb", Name: "ThirdWeb", URL: envDefault("RPC_URL_BASE_THIRDWEB", "https://base.rpc.thirdweb.com")},
 				{Slug: "bloxroute", Name: "bloXroute", URL: envDefault("RPC_URL_BASE_BLOXROUTE", "https://base.rpc.blxrbdn.com")},
 			},
 		},
@@ -309,7 +304,6 @@ func chains() []Chain {
 				{Slug: "nodies", Name: "Nodies (POKT)", URL: envDefault("RPC_URL_BNB_NODIES", "https://bsc-pokt.nodies.app")},
 				{Slug: "binance", Name: "Binance Official", URL: envDefault("RPC_URL_BNB_OFFICIAL", "https://bsc-dataseed1.binance.org")},
 				{Slug: "blastapi", Name: "Blast API", URL: envDefault("RPC_URL_BNB_BLASTAPI", "https://bsc-mainnet.public.blastapi.io")},
-				{Slug: "thirdweb", Name: "ThirdWeb", URL: envDefault("RPC_URL_BNB_THIRDWEB", "https://bsc.rpc.thirdweb.com")},
 				{Slug: "bloxroute", Name: "bloXroute", URL: envDefault("RPC_URL_BNB_BLOXROUTE", "https://bsc.rpc.blxrbdn.com")},
 			},
 		},
@@ -324,7 +318,6 @@ func chains() []Chain {
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_AVALANCHE_DRPC", "https://avalanche.drpc.org")},
 				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_AVALANCHE_TENDERLY", "https://gateway.tenderly.co/public/avalanche")},
 				{Slug: "avalanche-official", Name: "Avalanche Official", URL: envDefault("RPC_URL_AVALANCHE_OFFICIAL", "https://api.avax.network/ext/bc/C/rpc")},
-				{Slug: "thirdweb", Name: "ThirdWeb", URL: envDefault("RPC_URL_AVALANCHE_THIRDWEB", "https://avalanche.rpc.thirdweb.com")},
 			},
 		},
 		// ─── Linea (4 providers) ────────────────────────────────────
@@ -335,7 +328,6 @@ func chains() []Chain {
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_LINEA_PUBLICNODE", "https://linea-rpc.publicnode.com")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_LINEA_DRPC", "https://linea.drpc.org")},
 				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_LINEA_TENDERLY", "https://gateway.tenderly.co/public/linea")},
-				{Slug: "thirdweb", Name: "ThirdWeb", URL: envDefault("RPC_URL_LINEA_THIRDWEB", "https://linea.rpc.thirdweb.com")},
 			},
 		},
 		// ─── Scroll (4 providers) ───────────────────────────────────
