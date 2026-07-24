@@ -1,0 +1,148 @@
+# OpenChainBench. Bench № 090 (companion split from legacy bench 005 network-coverage)
+
+slug: dex-network-coverage
+number: "090"
+title: DEX indexer with most blockchains, live coverage ranking
+seo_title: "DEX indexer most chains 2026"
+seo_description: "Which DEX indexer supports the most blockchains? Live coverage ranking across GeckoTerminal, Codex, DefiLlama, DexPaprika and Sim by Dune."
+subtitle: Number of blockchains where each major DEX indexer actively indexes pools + swap volumes, audited every six hours against each provider's public networks endpoint.
+category: Aggregators
+status: live
+metric: DEX-indexed chains
+unit: count
+higher_is_better: true
+
+seo_intro: |
+  This benchmark counts how many blockchains each major DEX indexer
+  officially indexes pools + swap volumes on, audited live every six
+  hours from each provider's public networks endpoint. The number is
+  what a DEX-facing builder actually cares about: given a chain,
+  can this API return pool addresses, live swap events, OHLCV candles
+  and trending pools. Providers on this leaderboard run their own DEX
+  pool indexer as a product (GeckoTerminal `/networks`, Codex
+  `getNetworks`, DefiLlama `/chains`, DexPaprika `/networks`, Sim by
+  Dune `/evm/supported-chains`). Asset-registry coverage (chains where
+  an API knows tokens for contract-address lookup) is a different
+  question measured on the sister bench asset-registry-coverage.
+
+abstract: |
+  We benchmark how many networks each major DEX indexer publishes as
+  actively indexed for pools + swap volumes. The harness fetches the
+  official listing every six hours from five providers (GeckoTerminal,
+  Codex, DefiLlama, DexPaprika, Sim by Dune), deduplicates by chain id
+  or platform slug and counts. Mainnet only. Asset-registry coverage
+  (chains where the provider knows tokens for contract-address lookups)
+  is measured on bench asset-registry-coverage because it answers a
+  different question, an API can list tokens on 300 chains through a
+  market-data pipeline while running DEX pool indexing on only a
+  dozen. Both leaderboards live under Aggregators so a reader can
+  compare a provider on the axis that matches their product.
+
+methodology:
+  - "Source: each provider's public DEX-indexer networks endpoint."
+  - "GeckoTerminal: GET /api/v2/networks (paginated, no auth). Chains where GeckoTerminal actively indexes DEX pools + trades."
+  - "Codex: GraphQL `getNetworks` query at https://graph.codex.io/graphql with an official API key. Chains covered by Defined.fi's DEX data pipeline."
+  - "DefiLlama: GET https://api.llama.fi/chains (no auth). Chains tracked by DefiLlama's TVL crawler, every chain with at least one indexed DeFi protocol, DEX chains are a subset."
+  - "DexPaprika: GET https://api.dexpaprika.com/networks (no auth). CoinPaprika's dedicated DEX tracker product, separate from the market-data API."
+  - "Sim by Dune: GET https://api.sim.dune.com/v1/evm/supported-chains (no auth). EVM only, mainnets filtered via the `mainnet` tag."
+  - "Cadence: full refresh every 6 hours."
+  - "Counting: a provider's network is counted once per unique chain id or slug; mainnet only."
+  - "Failures (network errors, rate limits, auth errors) leave the previous count in place and increment a fetch_errors counter. the page falls back to its last successful sample."
+
+findings:
+  - "{{best_name}} currently leads at {{best_p50}} chains across {{count}} measured providers. The count is read live from each provider's DEX-networks endpoint, so the number reflects where each API actively indexes DEX pools + swap volumes today, not a marketing claim."
+  - "{{name:geckoterminal}} sits at {{p50:geckoterminal}} chains via `/api/v2/networks`. GeckoTerminal indexes wherever CoinGecko's DEX pipeline reaches, so the count tracks the CoinGecko DEX-rollout roadmap rather than a standalone listing decision."
+  - "{{name:codex}} clocks {{p50:codex}} chains via `getNetworks`. Defined.fi historically prioritises depth on EVM + Solana DEX coverage rather than breadth across niche chains, which surfaces here as a tighter count with stronger per-chain DEX quality than a raw breadth ranking implies."
+  - "{{name:defillama}} publishes {{p50:defillama}} chains via `/chains`. Broader than DEX-only (includes lending, LSTs, restaking, bridges) because the endpoint tracks every chain with at least one indexed DeFi protocol, DEX chains are a subset. The count is the canonical open reference for chains with meaningful onchain financial activity."
+  - "DEX-indexer breadth is one axis of a data API. Asset-registry breadth (bench asset-registry-coverage) and per-chain head lag (bench aggregator-head-lag) measure the other axes a serious DEX-integration decision needs."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/network-coverage
+
+prometheus:
+  window: 24h
+  expected_freshness_seconds: 43200
+
+faq:
+  - q: "Which DEX indexer supports the most blockchains right now?"
+    a: "{{best_name}} currently leads at {{best_p50}} chains across {{count}} measured providers. The count is read every six hours directly from each provider's own DEX-networks endpoint and deduplicated by chain id, so the leaderboard reflects where each API actively indexes DEX pools + swap volumes today, not a claim from a marketing page."
+  - q: "Why is this bench separate from asset-registry-coverage?"
+    a: "DEX-pool coverage and asset-registry coverage are two different products, not a single metric. GeckoTerminal indexes DEX pools on ~265 chains via `/networks`; CoinPaprika lists 300+ chains in `/v1/contracts` because it indexes token metadata everywhere. Comparing them on one leaderboard makes the number meaningless, a market-data API always wins on chain count while a DEX indexer always wins on pool-level depth. This bench answers the DEX-indexing question. The sister bench asset-registry-coverage answers the token-lookup question."
+  - q: "Does DefiLlama really index DEX pools on 400+ chains?"
+    a: "DefiLlama's `/chains` endpoint tracks every chain with at least one indexed DeFi protocol (DEXes, lending, LSTs, restaking, bridges, oracles), so the count is broader than DEX-only. DEX chains are a subset. DefiLlama sits on the leaderboard because the same crawler backs their DEX-volumes aggregator, and the endpoint is the canonical open reference for `chains with meaningful onchain financial activity`. Read alongside the more DEX-specific counts from GeckoTerminal, Codex and DexPaprika for the DEX-only view."
+  - q: "Why isn't CoinGecko / Mobula / CoinPaprika on this leaderboard?"
+    a: "Those providers are measured on the sister bench asset-registry-coverage because their product is chain-scoped token metadata + market data, not DEX pool indexing. CoinGecko powers GeckoTerminal on the DEX side, but the token-registry number and the DEX-indexed number are measured separately because they answer different questions. Mobula and CoinPaprika are market-data APIs, not DEX pool indexers, DexPaprika is CoinPaprika's dedicated DEX product and is on this leaderboard."
+  - q: "How often is the chain count refreshed?"
+    a: "Every six hours. The harness hits each provider's DEX-networks endpoint, parses the response, deduplicates by chain id, and updates the Prometheus gauge `networks_supported_total{provider}`. Failures leave the previous count in place and increment a `fetch_errors_total` counter, so a temporary outage does not silently drop a provider off the leaderboard."
+  - q: "What counts as a mainnet in this benchmark?"
+    a: "Any chain a provider lists as a production network for DEX indexing, identified by a unique chain id or slug. Ethereum, Solana, Base, Arbitrum, BNB, Avalanche and so on each count once regardless of how the provider labels them internally. Testnet listings are filtered server-side where the provider exposes a testnet flag. Sim by Dune is EVM only by construction of the `/v1/evm/supported-chains` endpoint."
+
+# Real metrics exposed by the network-coverage harness:
+#   networks_supported_total{provider="geckoterminal"|"codex"|
+#                                     "defillama"|"dexpaprika"|"dune"}
+#     -> gauge, the unique-chain count from the latest successful refresh.
+
+providers:
+  - slug: geckoterminal
+    name: GeckoTerminal
+    tag: CoinGecko's DEX index
+    formula: "Count of unique mainnet chain ids returned by GeckoTerminal's `/api/v2/networks` paginated endpoint, refreshed every 6 hours."
+    queries:
+      p50: networks_supported_total{provider="geckoterminal"}
+      p90: networks_supported_total{provider="geckoterminal"}
+      p99: networks_supported_total{provider="geckoterminal"}
+      mean: networks_supported_total{provider="geckoterminal"}
+      success: clamp_max(networks_supported_total{provider="geckoterminal"} > bool 0, 1)
+      sample_size: networks_supported_total{provider="geckoterminal"}
+      series: networks_supported_total{provider="geckoterminal"}
+
+  - slug: codex
+    name: Codex
+    tag: Defined.fi DEX data API
+    formula: "Count of unique mainnet chain ids returned by Codex's GraphQL `getNetworks` query, refreshed every 6 hours."
+    queries:
+      p50: networks_supported_total{provider="codex"}
+      p90: networks_supported_total{provider="codex"}
+      p99: networks_supported_total{provider="codex"}
+      mean: networks_supported_total{provider="codex"}
+      success: clamp_max(networks_supported_total{provider="codex"} > bool 0, 1)
+      sample_size: networks_supported_total{provider="codex"}
+      series: networks_supported_total{provider="codex"}
+
+  - slug: defillama
+    name: DefiLlama
+    tag: TVL + DEX-volumes aggregator
+    formula: "Count of chains returned by DefiLlama's public `/chains` endpoint (chains with at least one indexed DeFi protocol; DEX chains are a subset), refreshed every 6 hours."
+    queries:
+      p50: networks_supported_total{provider="defillama"}
+      p90: networks_supported_total{provider="defillama"}
+      p99: networks_supported_total{provider="defillama"}
+      mean: networks_supported_total{provider="defillama"}
+      success: clamp_max(networks_supported_total{provider="defillama"} > bool 0, 1)
+      sample_size: networks_supported_total{provider="defillama"}
+      series: networks_supported_total{provider="defillama"}
+
+  - slug: dexpaprika
+    name: DexPaprika
+    tag: CoinPaprika's DEX product
+    formula: "Count of chains returned by DexPaprika's public `/networks` endpoint (CoinPaprika's dedicated DEX tracker, separate from the market-data API), refreshed every 6 hours."
+    queries:
+      p50: networks_supported_total{provider="dexpaprika"}
+      p90: networks_supported_total{provider="dexpaprika"}
+      p99: networks_supported_total{provider="dexpaprika"}
+      mean: networks_supported_total{provider="dexpaprika"}
+      success: clamp_max(networks_supported_total{provider="dexpaprika"} > bool 0, 1)
+      sample_size: networks_supported_total{provider="dexpaprika"}
+      series: networks_supported_total{provider="dexpaprika"}
+
+  - slug: dune
+    name: Sim by Dune
+    tag: Onchain analytics + Sim API
+    formula: "Count of EVM chains tagged `mainnet` by Sim by Dune's `/v1/evm/supported-chains` endpoint, refreshed every 6 hours. EVM only."
+    queries:
+      p50: networks_supported_total{provider="dune"}
+      p90: networks_supported_total{provider="dune"}
+      p99: networks_supported_total{provider="dune"}
+      mean: networks_supported_total{provider="dune"}
+      success: clamp_max(networks_supported_total{provider="dune"} > bool 0, 1)
+      sample_size: networks_supported_total{provider="dune"}
+      series: networks_supported_total{provider="dune"}

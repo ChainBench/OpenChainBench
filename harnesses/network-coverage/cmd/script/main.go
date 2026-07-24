@@ -74,6 +74,9 @@ func fetchAll(cfg *Config) {
 		{"coinpaprika", fetchCoinPaprika},
 		{"dune", fetchSimDune},
 		{"coinstats", fetchCoinStats},
+		{"coingecko", fetchCoinGecko},
+		{"defillama", fetchDefiLlama},
+		{"dexpaprika", fetchDexPaprika},
 	}
 
 	var wg sync.WaitGroup
