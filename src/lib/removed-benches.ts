@@ -16,6 +16,31 @@
  * bench-set cache keys in src/lib/spec.ts, ship dev to main.
  */
 /**
+ * Bench slugs renamed / split, mapped to their canonical successor.
+ * Middleware issues a 301 (permanent) redirect on prod so external
+ * backlinks and previously-indexed URLs keep their PageRank pointing
+ * at the current page instead of hitting a 410 / 404.
+ *
+ * Enforced in src/middleware.ts BEFORE the REMOVED_BENCH_SLUGS check
+ * so a slug listed here always wins the 301 over a 410. Only list a
+ * slug here when the successor bench genuinely covers the same reader
+ * intent — do not redirect to unrelated pages.
+ */
+export const RENAMED_BENCH_SLUGS: Record<string, string> = {
+  // network-coverage split (2026-07-24) into 2 apple-to-apple benches:
+  //   - asset-registry-coverage (which chains a data API knows tokens on)
+  //   - dex-network-coverage    (which chains a data API indexes DEX pools on)
+  // The original bench mixed the two definitions, flagged on Twitter by
+  // @sooneggg after CoinPaprika #1 with 307 (asset registry via
+  // /v1/contracts) landed next to GeckoTerminal 265 (DEX indexing via
+  // /networks). CoinPaprika's #1 claim reflects the asset-registry
+  // framing, so 301 the legacy URL there; DEX-only readers reach the
+  // dex-network-coverage bench via the cross-link at the top of the
+  // successor page.
+  "network-coverage": "asset-registry-coverage",
+};
+
+/**
  * Answer pages (answers/<slug>.yml) whose referenced benchmark is in
  * REMOVED_BENCH_SLUGS. Same treatment: 410 on prod direct hits, dropped
  * from the answers listing and sitemap on prod, normal on staging.

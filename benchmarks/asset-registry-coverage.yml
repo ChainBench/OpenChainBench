@@ -1,0 +1,135 @@
+# OpenChainBench. Bench № 005 (successor to legacy bench 005 network-coverage)
+
+slug: asset-registry-coverage
+number: "005"
+title: Crypto data API with most blockchains in asset registry, live coverage ranking
+seo_title: "Crypto data API most chains 2026 (asset registry)"
+seo_description: "Which crypto data API knows tokens on the most blockchains? Live asset-registry coverage ranking across CoinGecko, CoinPaprika, Mobula and CoinStats."
+subtitle: Number of blockchains where each major crypto data API knows tokens (contract-address lookups), audited every six hours against each provider's public asset-registry endpoint.
+category: Aggregators
+status: live
+metric: Asset-registry chains
+unit: count
+higher_is_better: true
+
+seo_intro: |
+  This benchmark counts how many blockchains each major crypto data API
+  officially knows tokens on, audited live every six hours from each
+  provider's public asset-registry endpoint. The number is what a
+  builder integrating a market-data API cares about at token-lookup
+  time: given a chain and a contract address, can this API give me
+  price, market cap, metadata and history for a token on that chain.
+  Coverage is measured against each provider's own listing endpoint
+  (CoinGecko `/asset_platforms`, CoinPaprika `/v1/contracts`, CoinStats
+  `/wallet/blockchains`, Mobula `/blockchains`). Mainnets only.
+  Asset-registry coverage is the aggregator dimension of the product,
+  DEX-pool coverage is a different question measured on the companion
+  bench dex-network-coverage.
+
+abstract: |
+  We benchmark how many blockchains each major crypto data provider
+  supports in its public asset registry (the endpoint used for token
+  lookups by contract address). The harness fetches the official
+  listing every six hours from four providers (CoinGecko, CoinPaprika,
+  CoinStats, Mobula), deduplicates by platform slug or chain id and
+  counts. Mainnet only. DEX-pool indexing coverage is measured
+  separately on bench dex-network-coverage because the two questions
+  are not comparable, an API can know tokens on 300 chains through a
+  market-data pipeline while indexing DEX pools on only a dozen. This
+  bench answers the asset-registry question, the sister bench answers
+  the DEX-indexing question.
+
+methodology:
+  - "Source: each provider's public asset-registry endpoint."
+  - "CoinGecko: GET /api/v3/asset_platforms (public, no auth). Every chain CoinGecko can look up tokens on by contract address."
+  - "CoinPaprika: GET /v1/contracts (no auth). Lists every platform supported for contract-address lookup."
+  - "CoinStats: GET /wallet/blockchains with X-API-KEY. Chains CoinStats indexes for wallet portfolio and token metadata."
+  - "Mobula: GET /api/1/blockchains with an Authorization key. Chains Mobula covers for token metadata + market data."
+  - "Cadence: full refresh every 6 hours."
+  - "Counting: one count per unique chain (platform slug or chain id, whichever the provider exposes); mainnet only."
+  - "Failures (network errors, rate limits, auth errors) leave the previous count in place and increment a fetch_errors counter. the page falls back to its last successful sample."
+
+findings:
+  - "{{best_name}} currently leads at {{best_p50}} chains across {{count}} measured providers. The count is read live from each provider's asset-registry endpoint and deduplicated per platform slug, so the number reflects what is queryable through the API today for token-lookup workflows."
+  - "{{name:coingecko}} exposes {{p50:coingecko}} chains via `/asset_platforms`, which is the reference every downstream tool (CoinGecko Terminal, aggregators, wallets) resolves contract addresses against."
+  - "{{name:coinpaprika}} lists {{p50:coinpaprika}} platforms via `/v1/contracts`. Broader than dedicated DEX indexers because the endpoint covers every chain where the provider indexes token metadata, not only chains with pool-level coverage."
+  - "{{name:mobula}} returns {{p50:mobula}} chains via `/blockchains`. Includes EVM, Solana, Bitcoin, TON and non-EVM chains under a single API with an intent-layer wrapping around it."
+  - "Asset-registry coverage is the aggregator-view dimension of a data API. DEX-pool coverage (bench dex-network-coverage) and per-chain freshness (bench aggregator-head-lag) measure the other two dimensions a serious integration decision needs."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/network-coverage
+
+prometheus:
+  window: 24h
+  expected_freshness_seconds: 43200
+
+faq:
+  - q: "Which crypto data API knows tokens on the most blockchains?"
+    a: "{{best_name}} currently leads at {{best_p50}} chains across {{count}} measured providers. The count is read every six hours directly from each provider's own asset-registry endpoint (CoinGecko `/asset_platforms`, CoinPaprika `/v1/contracts`, CoinStats `/wallet/blockchains`, Mobula `/blockchains`) and deduplicated per platform, so the leaderboard reflects what each API actually publishes as queryable for token-lookup workflows."
+  - q: "Why is this bench separate from dex-network-coverage?"
+    a: "Asset-registry coverage (how many chains a provider knows tokens on for contract-address lookup) and DEX-pool coverage (how many chains a provider indexes DEX pools and swap volumes on) are two different products, not a single metric. CoinPaprika lists 300+ chains in `/v1/contracts` because it indexes token metadata everywhere, but CoinPaprika does not run its own DEX pool indexer, that product lives at DexPaprika with its own separate `/networks` endpoint. Comparing them on a single leaderboard makes the number meaningless. This bench answers the asset-registry question, the sister bench answers the DEX-indexing question."
+  - q: "Does Mobula support more chains than CoinGecko for token lookups?"
+    a: "On this benchmark {{name:mobula}} returns {{p50:mobula}} chains and {{name:coingecko}} returns {{p50:coingecko}} chains. The two have different coverage philosophies. CoinGecko has been building its asset-platforms registry for a decade and covers every chain where a token has ever been listed. Mobula is a younger aggregator focused on breadth-with-quality across EVM, Solana, Bitcoin and non-EVM chains under a single API. Read the live numbers directly from the leaderboard."
+  - q: "Why doesn't this benchmark include GeckoTerminal, Codex or DefiLlama?"
+    a: "Those providers are measured on the sister bench dex-network-coverage because their product is DEX-pool indexing (not token-registry coverage). GeckoTerminal's `/networks` endpoint lists chains where GeckoTerminal actively indexes DEX pools; that is not the same question as `which chains does an API know tokens on`. Putting GeckoTerminal in an asset-registry leaderboard would compare a DEX-indexer's chain list against a token-registry chain list, which is apples-vs-oranges and inflates or deflates depending on the provider's product surface."
+  - q: "How often is the chain count refreshed?"
+    a: "Every six hours. The harness hits each provider's asset-registry endpoint, parses the response, deduplicates by chain id or platform slug, and updates the Prometheus gauge `networks_supported_total{provider}`. Failures (network errors, rate limits, auth errors) leave the previous count in place and increment a `fetch_errors_total` counter, so a temporary outage does not silently drop a provider off the leaderboard."
+  - q: "What counts as a mainnet in this benchmark?"
+    a: "Any chain a provider lists as a production platform for token lookups, identified by a unique chain id or platform slug. Ethereum, Solana, Base, Arbitrum, BNB, Bitcoin and so on each count once regardless of how the provider labels them internally. Bridged variants of the same token on different chains are not the same chain, the chain id is the deduplication key. Testnet listings are filtered server-side where the provider exposes a testnet flag."
+
+# Real metrics exposed by the network-coverage harness:
+#   networks_supported_total{provider="coingecko"|"coinpaprika"|
+#                                     "coinstats"|"mobula"}
+#     -> gauge, the unique-chain count from the latest successful refresh.
+
+providers:
+  - slug: coingecko
+    name: CoinGecko
+    tag: Reference asset-platform registry
+    formula: "Count of chains returned by CoinGecko's public `/api/v3/asset_platforms` endpoint, refreshed every 6 hours."
+    queries:
+      p50: networks_supported_total{provider="coingecko"}
+      p90: networks_supported_total{provider="coingecko"}
+      p99: networks_supported_total{provider="coingecko"}
+      mean: networks_supported_total{provider="coingecko"}
+      success: clamp_max(networks_supported_total{provider="coingecko"} > bool 0, 1)
+      sample_size: networks_supported_total{provider="coingecko"}
+      series: networks_supported_total{provider="coingecko"}
+
+  - slug: coinpaprika
+    name: CoinPaprika
+    tag: Market-data API asset registry
+    formula: "Count of platforms returned by CoinPaprika's public `/v1/contracts` endpoint (chains supported for contract-address lookup), refreshed every 6 hours."
+    queries:
+      p50: networks_supported_total{provider="coinpaprika"}
+      p90: networks_supported_total{provider="coinpaprika"}
+      p99: networks_supported_total{provider="coinpaprika"}
+      mean: networks_supported_total{provider="coinpaprika"}
+      success: clamp_max(networks_supported_total{provider="coinpaprika"} > bool 0, 1)
+      sample_size: networks_supported_total{provider="coinpaprika"}
+      series: networks_supported_total{provider="coinpaprika"}
+
+  - slug: mobula
+    name: Mobula
+    tag: Aggregator + intent layer
+    formula: "Count of chains returned by Mobula's `/api/1/blockchains` endpoint, refreshed every 6 hours."
+    queries:
+      p50: networks_supported_total{provider="mobula"}
+      p90: networks_supported_total{provider="mobula"}
+      p99: networks_supported_total{provider="mobula"}
+      mean: networks_supported_total{provider="mobula"}
+      success: clamp_max(networks_supported_total{provider="mobula"} > bool 0, 1)
+      sample_size: networks_supported_total{provider="mobula"}
+      series: networks_supported_total{provider="mobula"}
+
+  - slug: coinstats
+    name: CoinStats
+    tag: Portfolio + market data
+    formula: "Count of blockchains returned by CoinStats's `/wallet/blockchains` endpoint (chains covered for wallet + token lookups), refreshed every 6 hours."
+    queries:
+      p50: networks_supported_total{provider="coinstats"}
+      p90: networks_supported_total{provider="coinstats"}
+      p99: networks_supported_total{provider="coinstats"}
+      mean: networks_supported_total{provider="coinstats"}
+      success: clamp_max(networks_supported_total{provider="coinstats"} > bool 0, 1)
+      sample_size: networks_supported_total{provider="coinstats"}
+      series: networks_supported_total{provider="coinstats"}
