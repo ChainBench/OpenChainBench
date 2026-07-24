@@ -720,6 +720,12 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Keyed RPC infrastructure across 30+ chains. Endpoint-scoped API tokens; free and paid plans are served from the same shared fleet, dedicated clusters on higher tiers.",
     twitter: "@QuickNode",
   },
+  thirdweb: {
+    url: "https://thirdweb.com",
+    description:
+      "ThirdWeb operates a keyless public RPC gateway at `<chainid>.rpc.thirdweb.com` covering 2000+ EVM chains via chain-id routing. Free tier is rate-limited per IP with no signup; paid tiers unlock higher throughput and dedicated endpoints. Used keyless across 13 chains on the RPC latency cluster (arbitrum, ethereum, polygon, optimism, base, bnb, avalanche, linea, worldchain, kaia, ink, opbnb + more).",
+    twitter: "@thirdweb",
+  },
   infura: {
     url: "https://www.infura.io",
     description:
