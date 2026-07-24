@@ -75,6 +75,7 @@ export function methodologyPageLd() {
       "@type": "TechArticle",
       "@id": `${url}#article`,
       url,
+      name: "OpenChainBench methodology",
       headline: "OpenChainBench methodology",
       description:
         "How OpenChainBench measures: design principles, statistical conventions, and reproduction guidelines.",
