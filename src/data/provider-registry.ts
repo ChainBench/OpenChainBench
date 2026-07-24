@@ -639,6 +639,42 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "TRON Foundation's official public API gateway (api.trongrid.io). Serves both the native TRON REST API (wallet/getnowblock, wallet/triggersmartcontract) and an EVM-compatible JSON-RPC endpoint (/jsonrpc). Keyless with a free API-key tier for higher quotas. The reference endpoint every TronWeb/tronbox integrator points at first.",
     twitter: "@Trondao",
   },
+  "injective-official": {
+    url: "https://injective.com",
+    description:
+      "Injective Foundation-operated public Tendermint RPC (tm.injective.network). Cosmos SDK JSON-RPC (status, block, abci_query), keyless, rate-limited per IP. The reference endpoint every Injective wallet + orderbook integrator points at first.",
+    twitter: "@injective",
+  },
+  "worldchain-official": {
+    url: "https://world.org/world-chain",
+    description:
+      "Tools for Humanity / World Chain Foundation's official public RPC endpoint (worldchain-mainnet.g.alchemy.com/public, Alchemy-hosted on behalf of the chain). Standard EVM JSON-RPC, keyless, rate-limited per IP.",
+    twitter: "@worldcoin",
+  },
+  "kaia-official": {
+    url: "https://kaia.io",
+    description:
+      "Kaia Foundation's official public RPC (public-en.node.kaia.io). Standard EVM JSON-RPC, keyless, rate-limited per IP. The reference endpoint every Kaia dApp integrator points at first, formed from the Klaytn + Finschia merger in Aug 2024.",
+    twitter: "@KaiaChain",
+  },
+  "ink-official": {
+    url: "https://inkonchain.com",
+    description:
+      "Kraken's Ink Chain official public RPC (rpc-gel.inkonchain.com), operated by Gelato Network on behalf of Kraken. Standard EVM JSON-RPC, keyless, rate-limited per IP.",
+    twitter: "@inkonchain",
+  },
+  "ink-quicknode": {
+    url: "https://inkonchain.com",
+    description:
+      "Kraken's Ink Chain second official public RPC (rpc-qnd.inkonchain.com), operated by QuickNode on behalf of Kraken. Standard EVM JSON-RPC, keyless, rate-limited per IP. Runs in parallel with the Gelato-backed endpoint as an active-active pair.",
+    twitter: "@inkonchain",
+  },
+  "opbnb-official": {
+    url: "https://opbnb.bnbchain.org",
+    description:
+      "BNB Chain team's official public opBNB RPC (opbnb-mainnet-rpc.bnbchain.org). Standard EVM JSON-RPC on the OP Stack rollup that settles onto BNB Chain (not Ethereum), keyless, rate-limited per IP.",
+    twitter: "@BNBCHAIN",
+  },
   dwellir: {
     url: "https://www.dwellir.com",
     description:
