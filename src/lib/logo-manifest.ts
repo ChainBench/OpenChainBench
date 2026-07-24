@@ -220,7 +220,8 @@ const RAW: Record<string, string> = {
   quicknode: "/logos/quicknode.svg",
   "the-graph": "/logos/the-graph.svg",
 
-  // ─── network-coverage bench providers (bench № 005 expansion) ───
+  // ─── asset-registry-coverage + dex-network-coverage bench providers
+  //     (bench № 005 split into 005a/005b) ───
   coinpaprika: "/logos/coinpaprika.svg",
   coinstats: "/logos/coinstats.svg",
 
