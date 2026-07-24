@@ -53,7 +53,6 @@ export const REMOVED_ANSWER_SLUGS = new Set([
 export const REMOVED_BENCH_SLUGS = new Set([
   // retired for good
   "bridge-revenue",
-  "evm-quote-latency",
   // duplicate of solana-tx-landing (bench 016); the 027 active-probe
   // variant never got data on prod and shows an empty placeholder
   "solana-tx-landing-latency",
@@ -85,8 +84,14 @@ export const REMOVED_BENCH_SLUGS = new Set([
   // (Mobula pinned at 100% because it returned the highest raw counts).
   // Spec + harness removed; rebuild needs RPC-derived ground truth.
   "token-trade-coverage",
+  // solana-dex-quote-latency (029) held back 2026-07-24: OpenOcean 403s on
+  // Railway ASN (Cloudflare block, permanent), Raydium single-venue no-routes
+  // on the Pulse V2 bonded-token rotation. Board shows 2 of 4 providers as
+  // Unavailable which reads as "half broken" to visitors even though it's
+  // honest signal. Kept on dev/staging while we decide whether to swap in
+  // DFlow (needs partnership key) + drop the two dead providers.
+  "solana-dex-quote-latency",
   // staging pipeline, held back until validated / announced
-  "indexing-freshness",
   "rpc-keyed-latency",
   "explorer-chain-coverage",
   "portfolio-chain-coverage",
