@@ -54,3 +54,9 @@ issuers:
     source: "https://ondo.finance/ousg"
     source_date: 2026-07-22
     notes: "Ondo OUSG NAV-appreciation yield estimate (probe inactive; NAV endpoint TBD)."
+
+  - token: syrup-usdc
+    promised_apy_bps: 482
+    source: "https://yields.llama.fi/pools"
+    source_date: 2026-07-24
+    notes: "Maple SyrupUSDC base APY (loan-book yield only, excludes SYRUP token incentives). Sourced from DefiLlama filter {project:maple, symbol:USDC, chain:Ethereum}. Delivered yield measured via ERC-4626 convertToAssets rate delta - matches the base disclosure, not the boosted APY."
