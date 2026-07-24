@@ -4,20 +4,24 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-// wormhole_vaa_latency_seconds is a histogram of finalization latency,
-// bucketed by source chain (Wormhole emitterChain). Latency is defined
-// as `updatedAt − timestamp` from the wormholescan `/api/v1/vaas`
-// payload: source-chain observation → Guardian quorum + indexer.
+// wormhole_vaa_latency_milliseconds is a histogram of Wormhole VAA
+// finalization latency, bucketed by source chain (Wormhole emitterChain).
+// Latency = `indexedAt − timestamp` from the wormholescan /api/v1/vaas
+// payload: source-chain block observation → Guardian quorum reached +
+// wormholescan first-index. Emitted in MILLISECONDS to match the site's
+// display convention (unit: ms auto-formatting to "1.2 s" for values >
+// 1000ms, "234 ms" otherwise). Emitting seconds instead broke the
+// display formatter (2026-07-24 diagnosis: 4.25s displayed as "0.0 s"
+// after the site's built-in /1000 normalization).
 //
 // Buckets are geometric across the observed distribution (BSC ~5-11s,
-// Ethereum ~15-25s, Solana ~17-26s, Moonbeam ~40s, worst case >5min on
-// slow chains during backfills).
+// Ethereum ~15-25s, Solana ~17-26s, Moonbeam ~40s, tail up to 5min).
 var (
-	vaaLatencySeconds = prometheus.NewHistogramVec(
+	vaaLatencyMs = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
-			Name:    "wormhole_vaa_latency_seconds",
-			Help:    "Time from source-chain observation to Guardian quorum for a Wormhole VAA, by source chain.",
-			Buckets: []float64{2, 5, 10, 15, 20, 30, 45, 60, 90, 120, 180, 300, 600},
+			Name:    "wormhole_vaa_latency_milliseconds",
+			Help:    "Time in milliseconds from source-chain observation to Guardian quorum for a Wormhole VAA, by source chain.",
+			Buckets: []float64{2_000, 5_000, 10_000, 15_000, 20_000, 30_000, 45_000, 60_000, 90_000, 120_000, 180_000, 300_000, 600_000},
 		},
 		[]string{"source_chain"},
 	)
@@ -46,7 +50,7 @@ var (
 )
 
 func init() {
-	prometheus.MustRegister(vaaLatencySeconds)
+	prometheus.MustRegister(vaaLatencyMs)
 	prometheus.MustRegister(vaaSeenTotal)
 	prometheus.MustRegister(pollErrors)
 	prometheus.MustRegister(dedupeCacheSize)

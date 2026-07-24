@@ -129,15 +129,15 @@ func poll(ctx context.Context, client *http.Client, seen *lruSet) error {
 			seen.add(v.ID)
 			continue
 		}
-		delta := ix.Sub(ts).Seconds()
-		if delta < 0 || delta > 3600 {
+		deltaMs := float64(ix.Sub(ts).Milliseconds())
+		if deltaMs < 0 || deltaMs > 3_600_000 {
 			// Guard against clock skew / backfilled VAAs whose
 			// indexedAt refers to a much later re-indexing event.
 			seen.add(v.ID)
 			continue
 		}
 		slug := chainSlug(v.EmitterChain)
-		vaaLatencySeconds.WithLabelValues(slug).Observe(delta)
+		vaaLatencyMs.WithLabelValues(slug).Observe(deltaMs)
 		vaaSeenTotal.WithLabelValues(slug).Inc()
 		seen.add(v.ID)
 		fresh++
