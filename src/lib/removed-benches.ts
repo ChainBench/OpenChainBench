@@ -81,9 +81,30 @@ export const REMOVED_BENCH_SLUGS = new Set([
   // indexed URL. Bench 077 tokenized-stock-peg + 079 weekend-drift
   // (static peg measurements) stay on prod as the honest signal.
   "tokenized-stock-arb-latency",
+  // token-trade-coverage (090) dropped 2026-07-24: self-baseline bias
+  // (Mobula pinned at 100% because it returned the highest raw counts).
+  // Spec + harness removed; rebuild needs RPC-derived ground truth.
+  "token-trade-coverage",
   // staging pipeline, held back until validated / announced
   "indexing-freshness",
   "rpc-keyed-latency",
   "explorer-chain-coverage",
   "portfolio-chain-coverage",
 ]);
+
+/**
+ * Provider slugs whose /products/<slug> route should return 410 Gone
+ * rather than 404. Populated when a provider that once had a product
+ * page loses ALL its bench appearances.
+ *
+ * Enforced only in src/middleware.ts. The /products/[slug] page
+ * already calls notFound() when getProvider() returns null; this set
+ * exists purely to swap the resulting 404 for a 410 on prod.
+ */
+export const REMOVED_PRODUCT_SLUGS = new Set([
+  // bitquery was only referenced in bench 090 token-trade-coverage,
+  // dropped 2026-07-24. Product page was live briefly, so Google
+  // likely indexed the URL. 410 speeds de-indexing.
+  "bitquery",
+]);
+
