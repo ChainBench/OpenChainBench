@@ -16,7 +16,7 @@ Two binaries live here:
 - **`cmd/monitor/`** (the Dockerfile default) is the continuous quote loop + execution scheduler. It scrapes every bridge for quotes, executes the paid leg on its schedule, and exposes every Prometheus metric the two benches above consume.
 - **`cmd/rebalance/`** is a one-shot utility that keeps the execution wallets topped up across chains so the paid leg never runs out of inventory mid-cycle. Build separately with `go build ./cmd/rebalance`.
 
-The numbers on openchainbench.com come from an instance of `cmd/monitor/` running on Mobula's Railway infra. Anyone with the wallet capital documented below can clone this directory, fill `.env`, and reproduce them end-to-end.
+The numbers on openchainbench.com come from an instance of `cmd/monitor/` running on the OpenChainBench VPS (`ocb-par-main`, docker-compose in `/opt/ocb/`, container `ocb-bridge-monitor`). Anyone with the wallet capital documented below can clone this directory, fill `.env`, and reproduce them end-to-end.
 
 ## How it works
 
@@ -32,7 +32,7 @@ Plus daily P&L cron, wallet balance metrics, pre-flight tier simulation, and per
 This harness is a **data producer only**. it exposes `/metrics` on port `9090` (overridable via `METRICS_PORT`). The shared OpenChainBench Prometheus (see [`/infrastructure/prometheus`](../../infrastructure/prometheus)) scrapes that endpoint:
 
 ```
-bridge-monitor.railway.internal:9090 ──► prometheus.railway.internal ──► public site
+ocb-bridge-monitor:2112 ──► ocb-prometheus (docker network `web`) ──► public site
 ```
 
 ## Test routes
@@ -117,9 +117,11 @@ EXECUTION_MODE=single-test TEST_AMOUNT_USD=0.50 go run ./cmd/monitor/
 EXECUTION_MODE=production go run ./cmd/monitor/
 ```
 
-## Run on Railway
+## Run on the OCB VPS
 
-This service is deployed from the OpenChainBench repo, root directory `harnesses/bridge-monitor/`. Set the env vars listed below; the shared Prometheus will pick it up via DNS automatically.
+Deployed as the `bridge-monitor` service in `/opt/ocb/docker-compose.yml` on `ocb-par-main`. The image builds from this directory; env file lives at `/run/ocb/.env.bridge-monitor` (SOPS-managed), state persisted at `/data/state/bridge-monitor`. The compose-networked `ocb-prometheus` scrapes `:2112/metrics` automatically.
+
+Deploy via `rsync` + `docker compose up -d --build bridge-monitor` from a checkout on the VPS.
 
 ## Project layout
 

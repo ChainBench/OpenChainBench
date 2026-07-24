@@ -30,6 +30,7 @@ import {
 } from "@/lib/materialize/load";
 import { REMOVED_BENCH_SLUGS } from "@/lib/removed-benches";
 import { readMaterialized, storeConfigured } from "@/lib/materialize/store";
+import { loadSnapshotFromBlob } from "@/lib/bench-blob";
 import { chainLabelForSlug } from "@/lib/chains";
 import { matchesChainSlug } from "@/lib/chain-aliases";
 import type { Benchmark, ProviderResult } from "@/types/benchmark";
@@ -173,7 +174,10 @@ function liveRows(bench: Benchmark): ProviderResult[] {
 }
 
 async function buildChain(spec: Spec): Promise<RpcHubChain | null> {
-  const snap = await readMaterialized(spec.slug, "");
+  // Try CDN blob first (Phase 3), fall back to Redis via SRH.
+  const snap =
+    (await loadSnapshotFromBlob(spec.slug, "")) ??
+    (await readMaterialized(spec.slug, ""));
   if (!snap) return null;
   const bench = snap.bench;
   const rows = liveRows(bench);
@@ -193,9 +197,14 @@ async function buildChain(spec: Spec): Promise<RpcHubChain | null> {
     }
   }
   const variantSnaps = await Promise.all(
-    RPC_REGION_KEYS.map((region) =>
-      readMaterialized(spec.slug, filterSig({ region })).catch(() => null),
-    ),
+    RPC_REGION_KEYS.map(async (region) => {
+      const sig = filterSig({ region });
+      // Try CDN blob first, fall back to Redis via SRH.
+      return (
+        (await loadSnapshotFromBlob(spec.slug, sig).catch(() => null)) ??
+        (await readMaterialized(spec.slug, sig).catch(() => null))
+      );
+    }),
   );
   for (let i = 0; i < RPC_REGION_KEYS.length; i++) {
     const region = RPC_REGION_KEYS[i];
