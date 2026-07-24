@@ -99,6 +99,7 @@ const RAW: Record<string, string> = {
   lighter: "/logos/lighter.svg",
   debridge: "/logos/debridge.svg",
   "near-intents": "/logos/near-intents.svg",
+  wormhole: "/logos/wormhole.png",
 
   // ─── Public RPC providers ───
   publicnode: "/logos/publicnode.avif",
