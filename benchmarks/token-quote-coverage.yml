@@ -1,0 +1,227 @@
+# OpenChainBench. Bench № 102
+
+slug: token-quote-coverage
+number: "102"
+title: Best DEX aggregator for quoting newly-launched tokens
+seo_title: "Best DEX aggregator for long-tail token coverage 2026"
+seo_description: "Which DEX aggregator can quote the most newly-launched tokens? Live coverage rate across Pump.fun, Virtuals, Four.meme and 4 more launchpads."
+subtitle: Share of newly-launched tokens each aggregator can return a valid swap quote for, sampled hourly from 7 launchpads across Solana, Base and BNB.
+
+per_launchpad_explainer:
+  - slug: pump-fun
+    h2: "Best aggregator for Pump.fun token coverage"
+    body: |
+      {{best_name:launchpad:pump-fun}} currently leads Pump.fun token coverage at {{best_p50:launchpad:pump-fun}} (24h) across {{count}} measured aggregators. Pump.fun graduates 500-1000 tokens per day to Raydium once they bond. The harness samples 20 random graduated tokens per hour and fires a USDC-to-token quote at each aggregator. Jupiter's strictMode=false parameter gives it a structural edge on Solana: it will route any token that has a Raydium pool, regardless of whether it appears on a curated list. Multi-chain aggregators that rely on token indexing databases face a latency penalty until the graduated token propagates through their index.
+  - slug: virtuals
+    h2: "Best aggregator for Virtuals Protocol token coverage"
+    body: |
+      {{best_name:launchpad:virtuals}} currently leads Virtuals Protocol coverage at {{best_p50:launchpad:virtuals}} (24h). Virtuals Protocol is the largest AI-agent token launchpad on Base, launching new agent tokens daily. EVM aggregators that maintain a live Base pool graph (KyberSwap on-chain simulation, Mobula Pulse EVM) can route these tokens within seconds of pool creation. Aggregators that batch-sync their token lists encounter a gap until the next sync window.
+  - slug: four-meme
+    h2: "Best aggregator for Four.meme token coverage"
+    body: |
+      {{best_name:launchpad:four-meme}} currently leads Four.meme coverage at {{best_p50:launchpad:four-meme}} (24h). Four.meme is the dominant memecoin launchpad on BNB Chain, bonding tokens directly to PancakeSwap v2 pools. BNB Chain's 3-second blocks mean a new token's pool can be live within one block of launch. Aggregators that scan for new PancakeSwap pairs via event indexing or contract simulation pick these up the fastest.
+  - slug: wow
+    h2: "Best aggregator for WOW.XYZ token coverage"
+    body: |
+      {{best_name:launchpad:wow}} currently leads WOW.XYZ coverage at {{best_p50:launchpad:wow}} (24h). WOW.XYZ launches memecoins on Base using a factory bonding-curve contract. Unlike Virtuals, WOW tokens use Uniswap V2-style pools post-graduation, which most EVM aggregators already route via standard path enumeration.
+  - slug: moonshot
+    h2: "Best aggregator for Moonshot token coverage"
+    body: |
+      {{best_name:launchpad:moonshot}} currently leads Moonshot coverage at {{best_p50:launchpad:moonshot}} (24h). Moonshot (DEXScreener-owned) lists tokens with a Solana bonding curve that graduates to Raydium, similar to Pump.fun but with a different factory address. Aggregators that listen to Raydium pool creation events pick up Moonshot graduates at the same speed as Pump.fun graduates.
+  - slug: meteora-dbc
+    h2: "Best aggregator for Meteora DBC token coverage"
+    body: |
+      {{best_name:launchpad:meteora-dbc}} currently leads Meteora DBC coverage at {{best_p50:launchpad:meteora-dbc}} (24h). Meteora Dynamic Bonding Curve (DBC) launched in early 2025 as an alternative to Pump.fun, routing graduated tokens into Meteora DLMM pools instead of Raydium. DLMM pools use a different program ID from standard AMMs, so aggregators must explicitly support this pool type to achieve coverage.
+  - slug: clanker
+    h2: "Best aggregator for Clanker token coverage"
+    body: |
+      {{best_name:launchpad:clanker}} currently leads Clanker coverage at {{best_p50:launchpad:clanker}} (24h). Clanker is a Farcaster-native token launcher on Base where users deploy ERC-20s via a Warpcast cast. Tokens go live on Uniswap V3 pools (Base) immediately. Multi-chain aggregators with live Base coverage pick these up in the same cycle as any other Uniswap V3 pair.
+
+category: Aggregators
+status: draft
+metric: Quote coverage
+unit: pct
+higher_is_better: true
+
+disclaimer: |
+  Coverage means the aggregator returned a non-zero output amount for the probed token. It says nothing about quote quality, price accuracy or transaction success rate. A high coverage score means the routing engine has indexed the token and found at least one valid path. Latency of that quote is measured separately on the evm-quote-latency and solana-dex-quote-latency benches. The token universe rotates hourly (20 random graduates per launchpad), so the score reflects live indexer freshness, not a curated whitelist.
+
+seo_intro: |
+  Every DEX aggregator claims to cover "millions of tokens". This
+  benchmark forces the question. given a token that graduated from a
+  launchpad in the last 24 hours, can the aggregator actually return a
+  swap quote for it right now. The harness samples 20 random graduated
+  tokens per launchpad per hour from Dexscreener's latest-pairs feed,
+  fires a 1 USDC to token quote at each aggregator, and records
+  whether a non-zero output amount came back. No whitelists, no
+  curated lists, just the aggregator's live routing engine against
+  the tokens the market is actually trading. The leaderboard splits
+  by launchpad because the coverage challenge is different on each
+  one. Pump.fun graduates need Raydium routing. Virtuals tokens need
+  a live Base pool graph. Four.meme graduates need PancakeSwap v2
+  event indexing. An aggregator that dominates one launchpad can
+  have gaps on another depending on how it discovers new pools.
+  Current leader overall is {{best_name}} at {{best_p50}}.
+
+abstract: |
+  We benchmark DEX aggregators on their ability to quote tokens that
+  graduated from a major launchpad in the last 24 hours. The harness
+  pulls 20 random graduated tokens per launchpad per hour from
+  Dexscreener's latest-pairs API (neutral third-party source), then
+  fires a quote request (1 USDC to token) at each aggregator in
+  parallel. A probe is a coverage hit when the response carries a
+  non-zero output amount. Errors (no route, token not found, 4xx,
+  timeout) count as misses. Coverage is the rolling ratio of hits to
+  attempts over 24 hours, expressed as a percentage.
+
+  The token universe changes every hour: the same token is never
+  probed twice in the same hourly batch, so the score reflects live
+  indexer freshness rather than accumulated historical coverage. The
+  launchpad dimension lets readers see whether a provider's gap is
+  structural (it does not index Meteora DBC pool types) or
+  temporary (it lags new Raydium pairs by a few minutes). The chain
+  dimension narrows to a single chain for providers that are
+  chain-specific (Jupiter is Solana-only; 1inch and KyberSwap are
+  EVM-only on the launchpads they cover).
+
+methodology:
+  - "Token universe: 20 random graduated tokens per launchpad per hour, pulled from Dexscreener's /latest/dex/pairs/{chain} endpoint filtered by the launchpad's factory address. Graduation criteria: the token has a confirmed DEX pool on the launchpad's target venue (Raydium for Pump.fun/Moonshot/Meteora, Uniswap V3 for Virtuals/Clanker, Uniswap V2/PancakeSwap for WOW/Four.meme). Tokens older than 24 hours are excluded from the rotating sample to ensure the bench measures freshness of indexing, not historical catalogue depth."
+  - "Quote probe: 1 USDC to token, fired in parallel to all aggregators. Sell-side is always USDC (or USDC.e on BNB/Base), buy-side is the probed token's contract address. Amount is fixed at 1 USDC to minimise liquidity-related failures on illiquid pools. A response is a hit when outAmount or equivalent is parseable and greater than zero. Errors (no route, token not found, 4xx, 5xx, timeout >10s) are misses."
+  - "Aggregator endpoints: Mobula /api/1/trade/swap/quote (Authorization: Bearer), Jupiter /v6/quote?strictMode=false (Solana), KyberSwap /{chain}/api/v1/routes (EVM), 1inch /swap/v6.0/{chainId}/quote (EVM), OKX DEX /api/v5/dex/aggregator/quote (multi-chain), Odos /sor/quote/v2 (EVM). Each adapter normalises chain identifiers and error responses to the same schema."
+  - "Jupiter strictMode=false: Jupiter is queried with strictMode=false so it will attempt to route any token with an existing pool, not just verified tokens. This matches real-world usage in wallets that display all tradeable tokens."
+  - "Chain-only providers: Jupiter appears with null coverage on EVM launchpads by construction; 1inch and KyberSwap appear with null on Solana. OKX DEX and Mobula are scored on every chain they support. Null-chain cells are excluded from aggregates so chain-specific providers are not penalized for chains they never claimed."
+  - "Coverage metric: sum(token_quote_coverage_success_total{provider, launchpad, chain}) / sum(token_quote_coverage_attempts_total{provider, launchpad, chain}) over a rolling 24h window, multiplied by 100. The harness emits both counters as Prometheus counters; the bench queries compute the ratio live."
+  - "Probe region: single origin (eu-west, OCB VPS). Cross-region would require additional monitor instances; the bench intentionally declares no region dimension for v1."
+  - "Dexscreener as neutral source: the token list is fetched from Dexscreener, not from any of the measured aggregators, to avoid self-reference bias. Any aggregator whose token discovery powers the token list would have a structural information advantage."
+
+findings:
+  - "{{best_name}} currently leads overall at {{best_p50}} coverage (24h) across {{count}} measured aggregators and {{launchpad_count}} launchpads. Rankings diverge sharply by launchpad because each platform graduates tokens to a different DEX venue."
+  - "On Pump.fun, {{best_name:launchpad:pump-fun}} leads at {{best_p50:launchpad:pump-fun}}. Jupiter's strictMode=false approach routes any Raydium pool on demand, so it saturates near 100% on graduated tokens with non-zero liquidity."
+  - "On Virtuals Protocol (Base), {{best_name:launchpad:virtuals}} leads at {{best_p50:launchpad:virtuals}}. Virtuals tokens land on Uniswap V3 (Base), where EVM aggregators with live pool-graph indexing pick them up faster than those relying on token database syncs."
+  - "Four.meme (BNB) is the hardest chain for non-EVM aggregators. {{best_name:launchpad:four-meme}} leads at {{best_p50:launchpad:four-meme}}. Providers without a live BNB Chain pool indexer consistently trail."
+  - "Meteora DBC (Solana) separates aggregators that explicitly support DLMM pool types from those routing only Raydium CPMM. {{best_name:launchpad:meteora-dbc}} leads at {{best_p50:launchpad:meteora-dbc}}."
+  - "Clanker (Base) and WOW.XYZ (Base) show the most consistent coverage across EVM aggregators because both graduate to standard AMM pools (Uniswap V3 and V2 respectively) that are already in every EVM router's graph."
+
+faq:
+  - q: "Which DEX aggregator supports the most newly launched tokens?"
+    a: "{{best_name}} currently leads at {{best_p50}} overall coverage (24h) across {{count}} measured providers. The leaderboard reflects live quote probes on tokens graduated in the last 24 hours from 7 launchpads, not a static token catalogue. Rankings shift by launchpad: an aggregator that saturates Pump.fun may trail on Meteora DBC or Virtuals depending on which pool types its router explicitly supports."
+  - q: "Why measure coverage on graduated tokens only, not all tokens?"
+    a: "Tokens still on a bonding curve cannot be externally swapped by definition. Coverage is meaningful only once a token has a real DEX pool with liquidity that a router can path through. Graduation criteria vary by launchpad: for Pump.fun/Moonshot/Meteora it means the token moved to a Raydium or DLMM pool; for Virtuals/Clanker it means a Uniswap V3 pool was created; for WOW it means a Uniswap V2 pool was created; for Four.meme it means a PancakeSwap v2 pool was seeded."
+  - q: "Does coverage mean the swap will actually succeed on-chain?"
+    a: "No. A coverage hit means the aggregator's routing API returned a non-zero output amount. The actual transaction could still revert due to slippage (low liquidity on a new token), a mempool front-run, or an RPC issue. For on-chain execution reliability, see the bridge execution benches. The quote coverage bench measures indexer freshness and routing engine capability, not transaction success rate."
+  - q: "Why is 1 USDC used as the probe amount instead of a larger notional?"
+    a: "Newly-launched tokens often have thin liquidity. A larger probe amount would trigger high-slippage rejection paths in many aggregators, recording a miss not because the aggregator lacks routing for the token but because the pool cannot absorb the size. 1 USDC isolates routing capability from liquidity depth, which is what coverage measures."
+  - q: "Why is Dexscreener used as the token source rather than each aggregator's own list?"
+    a: "Using any aggregator's own token list as the probe universe would give that aggregator a structural information advantage: it would probe only tokens it already knows about and trivially score 100%. Dexscreener is a neutral third-party indexer that tracks on-chain pool creation events independently of any of the measured providers."
+  - q: "Why is Jupiter queried with strictMode=false?"
+    a: "Jupiter's strictMode=true restricts quotes to verified tokens on its curated list, which defeats the purpose of a coverage bench targeting newly-launched tokens. strictMode=false instructs Jupiter to attempt routing for any token with an existing pool, matching how wallets typically call the API when displaying all tradeable tokens. Quoting with strictMode=true would undercount Jupiter's actual coverage on freshly-graduated tokens."
+  - q: "What happens when a provider is chain-specific?"
+    a: "Jupiter is Solana-only by construction and appears in the Solana tab with null values on Base and BNB launchpad rows. 1inch and KyberSwap are EVM-only and appear as null on Solana launchpad rows. OKX DEX and Mobula cover multiple chains and are probed on all launchpads they support. Null-chain cells are excluded from cross-launchpad aggregates so chain-specific providers are not penalized."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/token-quote-coverage
+
+prometheus:
+  window: 24h
+  expected_freshness_seconds: 7200
+  freshness_metric: token_quote_coverage_attempts_total
+
+dimensions:
+  launchpad:
+    - { value: all,          label: All launchpads }
+    - { value: pump-fun,     label: Pump.fun }
+    - { value: virtuals,     label: Virtuals }
+    - { value: four-meme,    label: Four.meme }
+    - { value: wow,          label: WOW.XYZ }
+    - { value: moonshot,     label: Moonshot }
+    - { value: meteora-dbc,  label: Meteora DBC }
+    - { value: clanker,      label: Clanker }
+  chain:
+    - { value: all,     label: All chains }
+    - { value: solana,  label: Solana }
+    - { value: base,    label: Base }
+    - { value: bnb,     label: BNB }
+
+rank_matrix_query: >
+  sum by (provider, launchpad, chain) (increase(token_quote_coverage_success_total[24h]))
+  /
+  sum by (provider, launchpad, chain) (increase(token_quote_coverage_attempts_total[24h]))
+  * 100
+
+providers:
+  - slug: mobula
+    name: Mobula
+    tag: Multi-chain, Solana + EVM, API key required
+    formula: "Rolling 24h ratio of token_quote_coverage_success_total to token_quote_coverage_attempts_total for provider=mobula, across all launchpads and chains Mobula supports."
+    queries:
+      p50: sum(increase(token_quote_coverage_success_total{provider="mobula"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="mobula"}[24h])) * 100
+      p90: sum(increase(token_quote_coverage_success_total{provider="mobula"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="mobula"}[24h])) * 100
+      p99: sum(increase(token_quote_coverage_success_total{provider="mobula"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="mobula"}[24h])) * 100
+      mean: sum(increase(token_quote_coverage_success_total{provider="mobula"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="mobula"}[24h])) * 100
+      success: clamp_max(sum(increase(token_quote_coverage_success_total{provider="mobula"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="mobula"}[24h])), 1)
+      sample_size: sum(increase(token_quote_coverage_attempts_total{provider="mobula"}[24h]))
+      series: sum(rate(token_quote_coverage_success_total{provider="mobula"}[1h])) / sum(rate(token_quote_coverage_attempts_total{provider="mobula"}[1h])) * 100
+
+  - slug: jupiter
+    name: Jupiter
+    tag: Solana only, strictMode=false
+    formula: "Rolling 24h ratio of hits to attempts for provider=jupiter. Solana launchpads only (Pump.fun, Moonshot, Meteora DBC). EVM launchpad cells are null by construction."
+    queries:
+      p50: sum(increase(token_quote_coverage_success_total{provider="jupiter"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="jupiter"}[24h])) * 100
+      p90: sum(increase(token_quote_coverage_success_total{provider="jupiter"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="jupiter"}[24h])) * 100
+      p99: sum(increase(token_quote_coverage_success_total{provider="jupiter"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="jupiter"}[24h])) * 100
+      mean: sum(increase(token_quote_coverage_success_total{provider="jupiter"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="jupiter"}[24h])) * 100
+      success: clamp_max(sum(increase(token_quote_coverage_success_total{provider="jupiter"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="jupiter"}[24h])), 1)
+      sample_size: sum(increase(token_quote_coverage_attempts_total{provider="jupiter"}[24h]))
+      series: sum(rate(token_quote_coverage_success_total{provider="jupiter"}[1h])) / sum(rate(token_quote_coverage_attempts_total{provider="jupiter"}[1h])) * 100
+
+  - slug: kyberswap
+    name: KyberSwap
+    tag: EVM multi-chain, per-chain aggregator engine
+    formula: "Rolling 24h ratio for provider=kyberswap. EVM launchpads only (Virtuals, WOW, Four.meme, Clanker). Solana cells null."
+    queries:
+      p50: sum(increase(token_quote_coverage_success_total{provider="kyberswap"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="kyberswap"}[24h])) * 100
+      p90: sum(increase(token_quote_coverage_success_total{provider="kyberswap"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="kyberswap"}[24h])) * 100
+      p99: sum(increase(token_quote_coverage_success_total{provider="kyberswap"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="kyberswap"}[24h])) * 100
+      mean: sum(increase(token_quote_coverage_success_total{provider="kyberswap"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="kyberswap"}[24h])) * 100
+      success: clamp_max(sum(increase(token_quote_coverage_success_total{provider="kyberswap"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="kyberswap"}[24h])), 1)
+      sample_size: sum(increase(token_quote_coverage_attempts_total{provider="kyberswap"}[24h]))
+      series: sum(rate(token_quote_coverage_success_total{provider="kyberswap"}[1h])) / sum(rate(token_quote_coverage_attempts_total{provider="kyberswap"}[1h])) * 100
+
+  - slug: oneinch
+    name: 1inch
+    tag: EVM multi-chain, Ethereum + Base + BNB
+    formula: "Rolling 24h ratio for provider=oneinch. EVM launchpads only. Solana cells null."
+    queries:
+      p50: sum(increase(token_quote_coverage_success_total{provider="oneinch"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="oneinch"}[24h])) * 100
+      p90: sum(increase(token_quote_coverage_success_total{provider="oneinch"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="oneinch"}[24h])) * 100
+      p99: sum(increase(token_quote_coverage_success_total{provider="oneinch"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="oneinch"}[24h])) * 100
+      mean: sum(increase(token_quote_coverage_success_total{provider="oneinch"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="oneinch"}[24h])) * 100
+      success: clamp_max(sum(increase(token_quote_coverage_success_total{provider="oneinch"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="oneinch"}[24h])), 1)
+      sample_size: sum(increase(token_quote_coverage_attempts_total{provider="oneinch"}[24h]))
+      series: sum(rate(token_quote_coverage_success_total{provider="oneinch"}[1h])) / sum(rate(token_quote_coverage_attempts_total{provider="oneinch"}[1h])) * 100
+
+  - slug: okx-dex
+    name: OKX DEX
+    tag: Multi-chain, Solana + EVM
+    formula: "Rolling 24h ratio for provider=okx-dex. Covers Solana and EVM chains."
+    queries:
+      p50: sum(increase(token_quote_coverage_success_total{provider="okx-dex"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="okx-dex"}[24h])) * 100
+      p90: sum(increase(token_quote_coverage_success_total{provider="okx-dex"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="okx-dex"}[24h])) * 100
+      p99: sum(increase(token_quote_coverage_success_total{provider="okx-dex"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="okx-dex"}[24h])) * 100
+      mean: sum(increase(token_quote_coverage_success_total{provider="okx-dex"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="okx-dex"}[24h])) * 100
+      success: clamp_max(sum(increase(token_quote_coverage_success_total{provider="okx-dex"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="okx-dex"}[24h])), 1)
+      sample_size: sum(increase(token_quote_coverage_attempts_total{provider="okx-dex"}[24h]))
+      series: sum(rate(token_quote_coverage_success_total{provider="okx-dex"}[1h])) / sum(rate(token_quote_coverage_attempts_total{provider="okx-dex"}[1h])) * 100
+
+  - slug: odos
+    name: Odos
+    tag: EVM multi-chain, Base + BNB + Ethereum
+    formula: "Rolling 24h ratio for provider=odos. EVM launchpads only. Solana cells null."
+    queries:
+      p50: sum(increase(token_quote_coverage_success_total{provider="odos"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="odos"}[24h])) * 100
+      p90: sum(increase(token_quote_coverage_success_total{provider="odos"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="odos"}[24h])) * 100
+      p99: sum(increase(token_quote_coverage_success_total{provider="odos"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="odos"}[24h])) * 100
+      mean: sum(increase(token_quote_coverage_success_total{provider="odos"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="odos"}[24h])) * 100
+      success: clamp_max(sum(increase(token_quote_coverage_success_total{provider="odos"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="odos"}[24h])), 1)
+      sample_size: sum(increase(token_quote_coverage_attempts_total{provider="odos"}[24h]))
+      series: sum(rate(token_quote_coverage_success_total{provider="odos"}[1h])) / sum(rate(token_quote_coverage_attempts_total{provider="odos"}[1h])) * 100
