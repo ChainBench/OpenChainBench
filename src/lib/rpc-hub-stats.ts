@@ -441,7 +441,11 @@ const fetchRpcHubCached = unstable_cache(
   // v3: pivot rows gained medianSuccessPct/errors24h + per-chain
   // successPct/sampleSize; chains gained unresponsive[] rows.
   // v2: chains gained unresponsiveCount (unresponsive provider rows).
-  ["rpc-hub-cohort-v4", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v5: purge sticky-null cache for /chains/<slug> RPC section (2026-07-24).
+  //   Snapshot has all 44 chains + best=YES, but ChainRpcSection was returning
+  //   null on every /chains/<slug> render (Fastest public RPC on <chain> text
+  //   missing prod-wide). Bump busts the stuck v4 entry.
+  ["rpc-hub-cohort-v5", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 60, tags: ["rpc-cohort"] },
 );
 
