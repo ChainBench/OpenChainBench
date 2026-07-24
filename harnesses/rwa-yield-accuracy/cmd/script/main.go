@@ -18,26 +18,19 @@ import (
 // this bench is: (1) implement IssuerProbe, (2) add its slug to
 // promised-yields.yml, (3) append here.
 //
-// Active cohort: USDY (rebase, totalSupply growth), USTB (NAV via
-// Chainlink feed), OUSG (NAV via OndoOracle). All three are fully
-// on-chain measurable — no off-chain HTTP dependency, no treasury
-// wallet assumption.
+// Active cohort:
+//   - USDY (Ondo, rebase)
+//   - USTB (Superstate, Chainlink NAV feed)
+//   - OUSG (Ondo, OndoOracle IPriceOracle)
+//   - SyrupUSDC (Maple, ERC-4626 convertToAssets)
 //
-// BUIDL and BENJI stay dormant:
-//   - BUIDL: distributor 0x5072Ed40EBa6bE38C2370cAD1Cb1df0202924e53
-//     was identified but calls bulkIssuance (mints more BUIDL, not
-//     USDC transfers). The current dividend.go model that scans USDC
-//     Transfer events doesn't fit; needs a rebase-style measurement
-//     PLUS a way to separate yield mints from new subscriptions.
-//   - BENJI: Ethereum wrapper (0x3DDc...50dc9) has 3 holders, ~$48M,
-//     no on-chain sharePrice function. NAV is $1.00 by design; yield
-//     is only knowable via Franklin's off-chain fund page. Reached
-//     out to digitalassets@franklintempleton.com; unblock once they
-//     confirm an API endpoint or Chainlink feed.
+// BUIDL and BENJI dormant: distributor mints conflate yield with
+// subscriptions (BUIDL), Ethereum wrapper lacks on-chain NAV (BENJI).
 var probes = []IssuerProbe{
 	NewUSDYProbe(),
 	NewUSTBProbe(),
 	NewOUSGProbe(),
+	NewSyrupUSDCProbe(),
 	// NewBUIDLProbe(),  // TODO: split bulkIssuance mints from subscriptions
 	// NewBENJIProbe(),  // TODO: waiting Franklin NAV endpoint confirmation
 }
