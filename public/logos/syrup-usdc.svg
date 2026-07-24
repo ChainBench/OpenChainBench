@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="SyrupUSDC">
+  <rect width="64" height="64" rx="14" fill="#4D1F5C"/>
+  <text x="32" y="27" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="14" font-weight="700" letter-spacing="-0.5" fill="#F5D5FF">Syrup</text>
+  <text x="32" y="46" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="14" font-weight="700" letter-spacing="-0.3" fill="#F5F7FA">USDC</text>
+</svg>
