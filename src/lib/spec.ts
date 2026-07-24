@@ -306,7 +306,10 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // duplicate of 016 solana-tx-landing). Bench SET shrank.
   // v46: network-coverage split into asset-registry-coverage + dex-network-coverage
   // (bench 005 legacy slug removed, 2 new slugs added). Bench SET changed.
-  ["bench-unfiltered-v46", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v47: staging pipeline shuffle — evm-quote-latency + indexing-freshness
+  // promoted to prod; solana-dex-quote-latency held back to staging (openocean
+  // 403 + raydium unresponsive = board reads half-broken to visitors).
+  ["bench-unfiltered-v47", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -514,7 +517,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v47: 027 solana-tx-landing-latency removed from main (see bench-unfiltered-v45).
   // v49: network-coverage split into asset-registry-coverage + dex-network-coverage
   // (bench SET changed, see bench-unfiltered-v46).
-  ["all-benchmarks-v49", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v50: staging pipeline shuffle (see bench-unfiltered-v47).
+  ["all-benchmarks-v50", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
