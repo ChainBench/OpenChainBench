@@ -227,7 +227,7 @@ export default async function AnswerPage({
       ]),
     ],
   };
-  const faqLd = buildFaqPageJsonLd(faq, url);
+  const faqLd = buildFaqPageJsonLd(faq, url, null, ans.question);
 
   return (
     <article className="mx-auto max-w-3xl px-4 sm:px-6 py-8 sm:py-12">
