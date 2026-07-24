@@ -333,6 +333,14 @@ export const CHAINS: ChainEntry[] = [
     description:
       "Cosmos SDK appchain and the largest IBC-connected DEX. CometBFT (Tendermint) consensus with deterministic finality per block, ~6 s block time. TokenFactory + IBC v3 native, x/superfluid staking on LP shares.",
   },
+  {
+    slug: "hyperliquid",
+    label: "Hyperliquid",
+    category: "L1",
+    nativeSymbol: "HYPE",
+    description:
+      "HyperEVM (chain id 999). Hyperliquid Labs's EVM execution layer bolted onto the HyperCore perps engine, ~2 s blocks, HyperBFT consensus, native HYPE gas. First on-chain perp DEX to reach $1B+ daily volume.",
+  },
 ];
 
 export const CHAIN_BY_SLUG = new Map(CHAINS.map((c) => [c.slug, c]));

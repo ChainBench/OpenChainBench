@@ -609,6 +609,36 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Cosmos validator running multi-chain no-key RPC endpoints under rpc.lavenderfive.com/<chain> and lcd.lavenderfive.com/<chain>. Covers Osmosis, Cosmos Hub, Neutron, Injective and 20+ other Cosmos SDK chains.",
     twitter: "@LavenderFive",
   },
+  "hyperliquid-official": {
+    url: "https://hyperliquid.xyz",
+    description:
+      "Hyperliquid Labs's official public HyperEVM RPC endpoint (rpc.hyperliquid.xyz/evm). Standard EVM JSON-RPC (eth_blockNumber, eth_getBlockByNumber, eth_getBalance), keyless, rate-limited per IP. The reference endpoint HyperCore front-ends and Hyperliquid dashboards route through by default.",
+    twitter: "@HyperliquidX",
+  },
+  stakely: {
+    url: "https://stakely.io",
+    description:
+      "Non-custodial staking + infra provider running keyless public RPC endpoints across HyperEVM, Cosmos, Solana and 30+ chains. Founded 2019, EU-based, self-hosted validator fleet.",
+    twitter: "@stakely_io",
+  },
+  purroofgroup: {
+    url: "https://purroofgroup.com",
+    description:
+      "Community-operated Hyperliquid validator and public RPC (rpc.purroofgroup.com). One of the earliest independent HyperEVM RPC providers; keyless, community-maintained.",
+    twitter: "@PurroofGroup",
+  },
+  hypurrscan: {
+    url: "https://hypurrscan.io",
+    description:
+      "Community HyperEVM block explorer + public RPC gateway (rpc.hypurrscan.io). Indexed transaction search, contract verification, and a no-key HyperEVM JSON-RPC endpoint alongside the explorer UI.",
+    twitter: "@hypurrscan",
+  },
+  trongrid: {
+    url: "https://www.trongrid.io",
+    description:
+      "TRON Foundation's official public API gateway (api.trongrid.io). Serves both the native TRON REST API (wallet/getnowblock, wallet/triggersmartcontract) and an EVM-compatible JSON-RPC endpoint (/jsonrpc). Keyless with a free API-key tier for higher quotas. The reference endpoint every TronWeb/tronbox integrator points at first.",
+    twitter: "@Trondao",
+  },
   dwellir: {
     url: "https://www.dwellir.com",
     description:

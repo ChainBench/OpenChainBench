@@ -303,7 +303,8 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // cadence). Bench SET shrank.
   // v38: mobula dropped from pm-data-freshness (they stopped serving 2026-07-19).
   // v39: bench 091 osmosis-rpc ship (Cosmos SDK Kind added to harness).
-  ["bench-unfiltered-v39", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v40: benches 092 hyperliquid-rpc + 093 tron-rpc ship (bench SET grew by 2).
+  ["bench-unfiltered-v40", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -509,7 +510,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v34: bumped with bench-unfiltered-v31 (084 indexer-latency dropped).
   // v41: bumped in lockstep with bench-unfiltered-v38 (mobula drop).
   // v42: bumped in lockstep with bench-unfiltered-v39 (osmosis-rpc ship).
-  ["all-benchmarks-v42", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v43: bumped in lockstep with bench-unfiltered-v40 (hyperliquid-rpc + tron-rpc ship).
+  ["all-benchmarks-v43", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
