@@ -3,6 +3,7 @@ import { ArrowUpRight } from "lucide-react";
 import type { Benchmark } from "@/types/benchmark";
 import { Hint } from "@/components/hint";
 import { MiniChart } from "@/components/mini-chart";
+import { ProviderLogo } from "@/components/provider-logo";
 import { CATEGORY_COLOR } from "@/lib/category-colors";
 import { fieldValue, isInsufficient, leader } from "@/lib/citation";
 import { fmtValue, unitSuffix } from "@/lib/format";
@@ -90,9 +91,12 @@ function BenchTitleCell({ b }: { b: Benchmark }) {
           {chips.map((c) => (
             <li key={c.slug} className="inline-flex">
               <Hint label={c.name}>
-                <span className="inline-flex items-center justify-center w-5 h-5 rounded-full border border-rule bg-surface text-[9px] font-semibold text-ink-muted">
-                  {c.name.charAt(0)}
-                </span>
+                {/* Was: bare first-letter chip that collapsed
+                    "Mobula/CoinGecko/CoinPaprika/Moralis" into "M C C M"
+                    with no useful signal. ProviderLogo renders the real
+                    brand mark (falls back to a multi-letter initials
+                    chip when the logo is missing). */}
+                <ProviderLogo slug={c.slug} name={c.name} size={20} />
               </Hint>
             </li>
           ))}

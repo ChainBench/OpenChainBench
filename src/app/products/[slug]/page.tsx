@@ -183,16 +183,25 @@ export default async function ProviderPage({
   // Vercel keeps serving the last good render instead of caching a page
   // full of "data warming up" for the next 5 minutes.
   //
-  // Only fire when at least one appearance has a non-zero p50: that
-  // rules out newly-added providers whose store snapshot lags the harness
-  // by one aggregate cycle (thirdweb ship, 2026-07-24: 4 fresh appearances
-  // all rank=0 while the CDN blob still served the pre-ship snapshot).
+  // Tightened gate: only fire when EVERY appearance claims availability
+  // "live", is not marked unresponsive, AND has a non-zero p50. This
+  // captures the true store-read-failure signature (data present but
+  // ranking silently failed) while excluding newly-added providers whose
+  // store snapshot lags the harness by one aggregate cycle (thirdweb
+  // ship 2026-07-24: 4 fresh appearances all rank=0 while the CDN blob
+  // still served the pre-ship snapshot with p50=0).
+  const allClaimLive = p.appearances.every(
+    (a) =>
+      a.result.availability === "live" &&
+      a.result.unresponsive !== true,
+  );
   const anyMeasuredAppearance = p.appearances.some(
     (a) => (a.result.ms?.p50 ?? 0) > 0,
   );
   if (
     p.appearances.length >= 3 &&
     p.appearances.every((a) => a.rank === 0) &&
+    allClaimLive &&
     anyMeasuredAppearance
   ) {
     throw new Error(`degraded store read for /products/${slug}: ${p.appearances.length} appearances, all unranked`);

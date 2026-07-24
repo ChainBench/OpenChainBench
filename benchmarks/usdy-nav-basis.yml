@@ -76,6 +76,7 @@ providers:
       p99: quantile_over_time(0.99, abs(usdy_basis_bps{venue="orca-solana"})[24h:])
       mean: avg_over_time(abs(usdy_basis_bps{venue="orca-solana"})[24h:])
       success: avg_over_time(usdy_health{venue="orca-solana"}[24h])
+      sample_size: count_over_time(usdy_basis_bps{venue="orca-solana"}[7d])
       series: usdy_basis_bps{venue="orca-solana"}
   - slug: pyth-market
     name: Pyth market composite
@@ -87,4 +88,5 @@ providers:
       p99: quantile_over_time(0.99, abs(usdy_basis_bps{venue="pyth-market"})[24h:])
       mean: avg_over_time(abs(usdy_basis_bps{venue="pyth-market"})[24h:])
       success: avg_over_time(usdy_health{venue="pyth-market"}[24h])
+      sample_size: count_over_time(usdy_basis_bps{venue="pyth-market"}[7d])
       series: usdy_basis_bps{venue="pyth-market"}
