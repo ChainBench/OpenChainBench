@@ -358,6 +358,7 @@ export default async function BenchmarkChainPage({
       {
         "@type": "TechArticle",
         "@id": `${pageUrl}#article`,
+        name: explainer.h2,
         headline: explainer.h2,
         description: capDescription(stripInlineMarkdown(explainer.body), 158),
         url: pageUrl,
