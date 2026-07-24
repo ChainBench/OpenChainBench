@@ -42,10 +42,14 @@ const (
 )
 
 type vaaEntry struct {
-	ID            string `json:"id"`
-	EmitterChain  int    `json:"emitterChain"`
-	Timestamp     string `json:"timestamp"`
-	UpdatedAt     string `json:"updatedAt"`
+	ID           string `json:"id"`
+	EmitterChain int    `json:"emitterChain"`
+	Timestamp    string `json:"timestamp"`
+	// IndexedAt is the moment wormholescan FIRST indexed the VAA as
+	// quorum-signed. Do NOT use `updatedAt`: it gets refreshed by
+	// wormholescan's periodic re-indexing (~5-6 min later), which
+	// pollutes the latency signal with a bimodal ~350s outlier tail.
+	IndexedAt string `json:"indexedAt"`
 }
 
 type vaaResponse struct {
@@ -117,7 +121,7 @@ func poll(ctx context.Context, client *http.Client, seen *lruSet) error {
 			continue
 		}
 		ts, err1 := time.Parse(time.RFC3339, v.Timestamp)
-		ua, err2 := time.Parse(time.RFC3339Nano, v.UpdatedAt)
+		ix, err2 := time.Parse(time.RFC3339Nano, v.IndexedAt)
 		if err1 != nil || err2 != nil {
 			// Skip malformed rows silently — wormholescan occasionally
 			// backfills with non-RFC3339 nano timestamps; not worth
@@ -125,10 +129,10 @@ func poll(ctx context.Context, client *http.Client, seen *lruSet) error {
 			seen.add(v.ID)
 			continue
 		}
-		delta := ua.Sub(ts).Seconds()
+		delta := ix.Sub(ts).Seconds()
 		if delta < 0 || delta > 3600 {
 			// Guard against clock skew / backfilled VAAs whose
-			// updatedAt refers to a much later re-indexing event.
+			// indexedAt refers to a much later re-indexing event.
 			seen.add(v.ID)
 			continue
 		}
