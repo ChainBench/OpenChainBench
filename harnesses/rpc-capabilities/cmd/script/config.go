@@ -128,6 +128,54 @@ func chains() []Chain {
 				{Slug: "lavenderfive", Name: "LavenderFive", URL: envDefault("RPC_URL_OSMOSIS_LAVENDERFIVE", "https://rpc.lavenderfive.com:443/osmosis")},
 			},
 		},
+		// ─── Cosmos Hub (bench 094) — added 2026-07-24. Original Cosmos
+		// SDK chain, ATOM staking. Same Tendermint status probe as Osmosis.
+		// Providers live-verified keyless: publicnode, polkachu,
+		// lavenderfive, lava (`cosmoshub.tendermintrpc.lava.build`).
+		// Excluded: rpc.cosmos.network (Cloudflare 525), OnFinality +
+		// BlockApsis + AllThatNode (DNS-fail or moved).
+		{
+			Slug: "cosmos-hub",
+			Name: "Cosmos Hub",
+			Kind: "cosmos",
+			Providers: []Provider{
+				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_COSMOSHUB_PUBLICNODE", "https://cosmos-rpc.publicnode.com")},
+				{Slug: "polkachu", Name: "Polkachu", URL: envDefault("RPC_URL_COSMOSHUB_POLKACHU", "https://cosmos-rpc.polkachu.com")},
+				{Slug: "lavenderfive", Name: "LavenderFive", URL: envDefault("RPC_URL_COSMOSHUB_LAVENDERFIVE", "https://rpc.lavenderfive.com:443/cosmoshub")},
+				{Slug: "lava", Name: "Lava Network", URL: envDefault("RPC_URL_COSMOSHUB_LAVA", "https://cosmoshub.tendermintrpc.lava.build")},
+			},
+		},
+		// ─── Injective (bench 095) — added 2026-07-24. Cosmos SDK L1
+		// tuned for orderbook DEXs. Providers live-verified keyless:
+		// injective-official (tm.injective.network), publicnode, polkachu,
+		// lavenderfive. Excluded: sentry.tm.injective.network (dupe of
+		// official), AllThatNode (DNS-fail).
+		{
+			Slug: "injective",
+			Name: "Injective",
+			Kind: "cosmos",
+			Providers: []Provider{
+				{Slug: "injective-official", Name: "Injective Foundation", URL: envDefault("RPC_URL_INJECTIVE_OFFICIAL", "https://tm.injective.network")},
+				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_INJECTIVE_PUBLICNODE", "https://injective-rpc.publicnode.com")},
+				{Slug: "polkachu", Name: "Polkachu", URL: envDefault("RPC_URL_INJECTIVE_POLKACHU", "https://injective-rpc.polkachu.com")},
+				{Slug: "lavenderfive", Name: "LavenderFive", URL: envDefault("RPC_URL_INJECTIVE_LAVENDERFIVE", "https://rpc.lavenderfive.com:443/injective")},
+			},
+		},
+		// ─── Neutron (bench 096) — added 2026-07-24. Cosmos SDK smart-
+		// contract chain secured by Cosmos Hub validators via Interchain
+		// Security. Providers live-verified keyless: publicnode, polkachu,
+		// lavenderfive. Excluded: rpc-kralum.neutron-1.neutron.org
+		// (SSL handshake failure), P2P.org + WhisperNode (DNS-fail).
+		{
+			Slug: "neutron",
+			Name: "Neutron",
+			Kind: "cosmos",
+			Providers: []Provider{
+				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_NEUTRON_PUBLICNODE", "https://neutron-rpc.publicnode.com")},
+				{Slug: "polkachu", Name: "Polkachu", URL: envDefault("RPC_URL_NEUTRON_POLKACHU", "https://neutron-rpc.polkachu.com")},
+				{Slug: "lavenderfive", Name: "LavenderFive", URL: envDefault("RPC_URL_NEUTRON_LAVENDERFIVE", "https://rpc.lavenderfive.com:443/neutron")},
+			},
+		},
 		// ─── Solana mainnet — added 2026-07-12, all 5 endpoints keyless
 		// and live-verified (getSlot + getLatestBlockhash + getVersion,
 		// mutually consistent advancing slots). Excluded by that sweep:
@@ -485,6 +533,72 @@ func chains() []Chain {
 				{Slug: "trongrid", Name: "TronGrid", URL: envDefault("RPC_URL_TRON_TRONGRID", "https://api.trongrid.io/jsonrpc")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_TRON_DRPC", "https://tron.drpc.org")},
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_TRON_PUBLICNODE", "https://tron.publicnode.com/jsonrpc")},
+			},
+		},
+		// ─── World Chain (bench 097) — added 2026-07-24. OP Stack rollup
+		// (chain 480) operated by Tools for Humanity, ETH gas, blob
+		// calldata settlement on Ethereum. Providers live-verified
+		// keyless: worldchain-official (Alchemy public path), drpc,
+		// tenderly, thirdweb. Excluded: PublicNode (no worldchain
+		// subdomain yet), Stakelab + Grove (DNS-fail).
+		{
+			Slug: "world-chain",
+			Name: "World Chain",
+			Providers: []Provider{
+				{Slug: "worldchain-official", Name: "World Chain (Alchemy)", URL: envDefault("RPC_URL_WORLDCHAIN_OFFICIAL", "https://worldchain-mainnet.g.alchemy.com/public")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_WORLDCHAIN_DRPC", "https://worldchain.drpc.org")},
+				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_WORLDCHAIN_TENDERLY", "https://worldchain-mainnet.gateway.tenderly.co")},
+				{Slug: "thirdweb", Name: "ThirdWeb", URL: envDefault("RPC_URL_WORLDCHAIN_THIRDWEB", "https://480.rpc.thirdweb.com")},
+			},
+		},
+		// ─── Kaia (bench 098) — added 2026-07-24. EVM L1 formed by
+		// Klaytn + Finschia merger. Providers live-verified keyless:
+		// kaia-official (public-en.node.kaia.io), drpc, thirdweb.
+		// Excluded: BlockPI (`Apikey not found`), Nodies (paid tier),
+		// Alchemy public (KAIA_MAINNET not enabled), AllThatNode +
+		// OnFinality + Chainstack + Tatum + NowNodes (DNS-fail or key
+		// required).
+		{
+			Slug: "kaia",
+			Name: "Kaia",
+			Providers: []Provider{
+				{Slug: "kaia-official", Name: "Kaia Foundation", URL: envDefault("RPC_URL_KAIA_OFFICIAL", "https://public-en.node.kaia.io")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_KAIA_DRPC", "https://klaytn.drpc.org")},
+				{Slug: "thirdweb", Name: "ThirdWeb", URL: envDefault("RPC_URL_KAIA_THIRDWEB", "https://kaia.rpc.thirdweb.com")},
+			},
+		},
+		// ─── Ink (bench 099) — added 2026-07-24. OP Stack rollup
+		// (chain 57073) launched by Kraken. Two official active-active
+		// endpoints: Gelato-backed rpc-gel + QuickNode-backed rpc-qnd.
+		// Providers live-verified keyless: ink-official (Gelato),
+		// ink-quicknode (QuickNode), drpc, tenderly, thirdweb.
+		// Excluded: Alchemy public (chain not enabled on public tier),
+		// Blast API (no longer available).
+		{
+			Slug: "ink",
+			Name: "Ink",
+			Providers: []Provider{
+				{Slug: "ink-official", Name: "Ink (Gelato)", URL: envDefault("RPC_URL_INK_OFFICIAL", "https://rpc-gel.inkonchain.com")},
+				{Slug: "ink-quicknode", Name: "Ink (QuickNode)", URL: envDefault("RPC_URL_INK_QUICKNODE", "https://rpc-qnd.inkonchain.com")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_INK_DRPC", "https://ink.drpc.org")},
+				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_INK_TENDERLY", "https://ink.gateway.tenderly.co")},
+				{Slug: "thirdweb", Name: "ThirdWeb", URL: envDefault("RPC_URL_INK_THIRDWEB", "https://57073.rpc.thirdweb.com")},
+			},
+		},
+		// ─── opBNB (bench 100) — added 2026-07-24. OP Stack rollup
+		// (chain 204) operated by the BNB Chain team, settlement onto
+		// BNB Chain (not Ethereum). Providers live-verified keyless:
+		// opbnb-official (bnbchain.org), publicnode, drpc, thirdweb.
+		// Excluded: NodeReal (API key required), BlockPI (`unknown host`),
+		// Grove (needs app id), Tatum (404).
+		{
+			Slug: "opbnb",
+			Name: "opBNB",
+			Providers: []Provider{
+				{Slug: "opbnb-official", Name: "BNB Chain Team", URL: envDefault("RPC_URL_OPBNB_OFFICIAL", "https://opbnb-mainnet-rpc.bnbchain.org")},
+				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_OPBNB_PUBLICNODE", "https://opbnb-rpc.publicnode.com")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_OPBNB_DRPC", "https://opbnb.drpc.org")},
+				{Slug: "thirdweb", Name: "ThirdWeb", URL: envDefault("RPC_URL_OPBNB_THIRDWEB", "https://204.rpc.thirdweb.com")},
 			},
 		},
 	}
