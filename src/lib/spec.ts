@@ -305,7 +305,8 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v39: bench 091 osmosis-rpc ship (Cosmos SDK Kind added to harness).
   // v40: benches 092 hyperliquid-rpc + 093 tron-rpc ship (bench SET grew by 2).
   // v41: benches 094-100 ship (cosmos-hub, injective, neutron, world-chain, kaia, ink, opbnb — bench SET grew by 7).
-  ["bench-unfiltered-v41", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v42: drop thirdweb from 4 new benches (ink, world-chain, kaia, opbnb) to unblock prod deploy stuck on /products/thirdweb 500.
+  ["bench-unfiltered-v42", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -513,7 +514,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v42: bumped in lockstep with bench-unfiltered-v39 (osmosis-rpc ship).
   // v43: bumped in lockstep with bench-unfiltered-v40 (hyperliquid-rpc + tron-rpc ship).
   // v44: bumped in lockstep with bench-unfiltered-v41 (7 chains ship batch).
-  ["all-benchmarks-v44", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v45: bumped in lockstep with bench-unfiltered-v42 (drop thirdweb from 4 new benches, unblock prod).
+  ["all-benchmarks-v45", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);

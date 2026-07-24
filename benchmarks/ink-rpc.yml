@@ -4,7 +4,7 @@ slug: ink-rpc
 number: "099"
 title: Fastest free Ink RPC, live no-key EVM endpoint latency
 seo_title: "Fastest free Ink RPC 2026"
-seo_description: "{{best_name}} leads free Ink RPC at {{best_p50}} (`eth_getBlockByNumber(\"latest\", false)` p50, 24h). 5 no-key providers measured every 60s from 3 regions."
+seo_description: "{{best_name}} leads free Ink RPC at {{best_p50}} (`eth_getBlockByNumber(\"latest\", false)` p50, 24h). 4 no-key providers measured every 60s from 3 regions."
 subtitle: HTTP round-trip latency for the `eth_getBlockByNumber(\"latest\", false)` method against every free, no-key public Ink EVM endpoint, audited every 60 seconds from 3 regions.
 
 category: RPCs
@@ -20,7 +20,7 @@ abstract: |
   Per-chain member of the RPC latency cluster, extended to Ink.
   We measure the round-trip latency of a single, identical JSON-RPC call
   (`eth_getBlockByNumber(\"latest\", false)`) against every no-key public Ink endpoint
-  that sustains continuous probing, 5 providers at launch,
+  that sustains continuous probing, 4 providers at launch,
   every 60 seconds, from us-east, eu-west and Singapore. The harness
   classifies every response (ok / http_err / jsonrpc_err / stale /
   timeout) with a Ink-scaled staleness gap (25 blocks at
@@ -35,16 +35,16 @@ methodology:
   - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms → 10 s), so percentiles are computed via Prometheus `quantile_over_time` over the last 24 hours."
   - "Call-result classification: `ok` (HTTP 200 + non-empty result with a parsable hex block number), `http_err`, `jsonrpc_err` (HTTP 200 carrying an error body), `stale` (more than 25 blocks behind the cross-provider tip), `timeout`. Latency without reliability is a misleading ranking signal."
   - "This page is part of the per-chain RPC cluster derived from the cross-chain [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities) benchmark; the identical harness, cadence and exclusion rules apply on every chain."
-  - "Chain scope: every query on this page is pinned to `chain=\"ink\"`. Provider coverage at launch: 5 no-key endpoints (Ink (Gelato), Ink (QuickNode), dRPC, Tenderly Gateway, ThirdWeb)."
+  - "Chain scope: every query on this page is pinned to `chain=\"ink\"`. Provider coverage at launch: 4 no-key endpoints (Ink (Gelato), Ink (QuickNode), dRPC, Tenderly Gateway)."
 
 findings:
-  - "{{best_name}} currently leads free Ink RPC at {{best_p50}} (`eth_getBlockByNumber(\"latest\", false)` p50, 24h) across 5 measured providers."
+  - "{{best_name}} currently leads free Ink RPC at {{best_p50}} (`eth_getBlockByNumber(\"latest\", false)` p50, 24h) across 4 measured providers."
 
 faq:
   - q: "What is the fastest free Ink RPC right now?"
-    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber(\"latest\", false)` p50 over the last 24h), measured against 5 no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples, so the answer on this page is the answer right now, not a quarterly snapshot. Use the region tabs to see the leader from the origin closest to your deployment."
+    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber(\"latest\", false)` p50 over the last 24h), measured against 4 no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples, so the answer on this page is the answer right now, not a quarterly snapshot. Use the region tabs to see the leader from the origin closest to your deployment."
   - q: "Which Ink RPCs work without an API key?"
-    a: "5 endpoints sustain continuous keyless probing at launch: Ink (Gelato), Ink (QuickNode), dRPC, Tenderly Gateway, ThirdWeb. Every listed endpoint was live-verified with a `eth_getBlockByNumber(\"latest\", false)` POST returning a parsable response before inclusion. See the methodology section for the specific endpoints that were audited and excluded."
+    a: "5 endpoints sustain continuous keyless probing at launch: Ink (Gelato), Ink (QuickNode), dRPC, Tenderly Gateway. Every listed endpoint was live-verified with a `eth_getBlockByNumber(\"latest\", false)` POST returning a parsable response before inclusion. See the methodology section for the specific endpoints that were audited and excluded."
   - q: "Does the fastest Ink RPC change by region?"
     a: "Often. Public infra concentrates in specific regions; a gateway that wins from Amsterdam can lose from Singapore by multiples. The region tabs at the top of the page re-scope every number to a single origin; pick the one closest to where your requests originate."
   - q: "How is Ink RPC latency measured here, technically?"
@@ -158,25 +158,3 @@ providers:
           p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="tenderly", chain="ink", region="sgp"})
           series: avg_over_time(rpc_latency_milliseconds{provider="tenderly", chain="ink", region="sgp"}[1h])
 
-  - slug: thirdweb
-    name: ThirdWeb
-    tag: ThirdWeb's public multi-chain RPC gateway
-    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to ThirdWeb's no-key ink RPC endpoint."
-    queries:
-      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="ink"})
-      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="thirdweb", chain="ink"})
-      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="thirdweb", chain="ink"})
-      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="thirdweb", chain="ink"})
-      success: sum(ocb:rpc_call:ok_rate_24h{provider="thirdweb", chain="ink"}) / sum(ocb:rpc_call:rate_24h{provider="thirdweb", chain="ink"})
-      sample_size: sum(ocb:rpc_call:increase_24h{provider="thirdweb", chain="ink"})
-      series: avg(avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="ink"}[1h]))
-      regions:
-        - region: us-east
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="ink", region="us-east"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="ink", region="us-east"}[1h])
-        - region: eu-west
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="ink", region="eu-west"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="ink", region="eu-west"}[1h])
-        - region: ap-southeast
-          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="ink", region="sgp"})
-          series: avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="ink", region="sgp"}[1h])
