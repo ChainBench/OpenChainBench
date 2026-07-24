@@ -376,6 +376,12 @@ const RAW: Record<string, string> = {
   invo: "/logos/invo.png",
   marsgo: "/logos/marsgo.jpg",
   "bitget-wallet": "/logos/bitget-wallet.png",
+
+  // ─── RWA yield tokens (bench 089 rwa-yield-accuracy) ───
+  usdy: "/logos/usdy.svg",
+  ousg: "/logos/ousg.svg",
+  ustb: "/logos/ustb.svg",
+  "syrup-usdc": "/logos/syrup-usdc.svg",
 };
 
 // Asset-symbol aliases used by perp-fees as chain dimension values.
