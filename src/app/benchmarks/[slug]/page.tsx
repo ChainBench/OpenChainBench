@@ -425,7 +425,12 @@ export default async function BenchmarkPage({
   // don't leak into the SERP snippet. The visible FAQ section below
   // mirrors every question/answer, satisfying Google's "content visible
   // on the page" requirement.
-  const faqJsonLd = buildFaqPageJsonLd(benchmark.faq, benchmarkUrl);
+  const faqJsonLd = buildFaqPageJsonLd(
+    benchmark.faq,
+    benchmarkUrl,
+    null,
+    `${benchmark.title} — frequently asked questions`,
+  );
 
   return (
     <article className="mx-auto max-w-5xl w-full px-4 sm:px-6 pt-10 sm:pt-14 overflow-x-clip min-w-0">
