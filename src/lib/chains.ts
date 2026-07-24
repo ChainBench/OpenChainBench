@@ -341,6 +341,62 @@ export const CHAINS: ChainEntry[] = [
     description:
       "HyperEVM (chain id 999). Hyperliquid Labs's EVM execution layer bolted onto the HyperCore perps engine, ~2 s blocks, HyperBFT consensus, native HYPE gas. First on-chain perp DEX to reach $1B+ daily volume.",
   },
+  {
+    slug: "cosmos-hub",
+    label: "Cosmos Hub",
+    category: "L1",
+    nativeSymbol: "ATOM",
+    description:
+      "The original Cosmos SDK chain and IBC hub, ATOM staking token, CometBFT (Tendermint) consensus with deterministic per-block finality, ~6 s block time. Interchain Security (v2) rents validator security to consumer chains.",
+  },
+  {
+    slug: "injective",
+    label: "Injective",
+    category: "L1",
+    nativeSymbol: "INJ",
+    description:
+      "Cosmos SDK L1 tuned for DeFi and orderbook DEXs, native CosmWasm + EVM execution modules, ~0.65 s block time, INJ deflationary burn on all app-layer fees.",
+  },
+  {
+    slug: "neutron",
+    label: "Neutron",
+    category: "L1",
+    nativeSymbol: "NTRN",
+    description:
+      "Cosmos SDK smart-contract chain running CosmWasm, secured by Cosmos Hub validators via Interchain Security. ~2 s block time, IBC-native asset flows, home of Astroport and other Cosmos DeFi apps.",
+  },
+  {
+    slug: "world-chain",
+    label: "World Chain",
+    category: "L2",
+    nativeSymbol: "ETH",
+    description:
+      "OP Stack rollup (chain 480) operated by Tools for Humanity, prioritised block space for World ID-verified humans, WLD as an ecosystem token but ETH gas, 2 s sequencer cadence, blob calldata settlement on Ethereum.",
+  },
+  {
+    slug: "kaia",
+    label: "Kaia",
+    category: "L1",
+    nativeSymbol: "KAIA",
+    description:
+      "EVM L1 formed by the Klaytn + Finschia merger in Aug 2024. Istanbul BFT consensus with a fixed validator set, 1 s block target, KAIA gas token, dominant footprint in Korea + Japan through LINE / Kakao integrations.",
+  },
+  {
+    slug: "ink",
+    label: "Ink",
+    category: "L2",
+    nativeSymbol: "ETH",
+    description:
+      "OP Stack rollup (chain 57073) launched by Kraken in late 2024, 1 s sequencer cadence, ETH gas, blob calldata settlement on Ethereum. DeFi-first positioning with a native ecosystem incentive program.",
+  },
+  {
+    slug: "opbnb",
+    label: "opBNB",
+    category: "L2",
+    nativeSymbol: "BNB",
+    description:
+      "OP Stack rollup (chain 204) operated by the BNB Chain team, BNB gas token, ~1 s sequencer cadence, settlement onto BNB Chain (not Ethereum). Positioned as the low-cost execution layer for the BNB ecosystem.",
+  },
 ];
 
 export const CHAIN_BY_SLUG = new Map(CHAINS.map((c) => [c.slug, c]));

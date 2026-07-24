@@ -140,6 +140,12 @@ const RAW: Record<string, string> = {
   hypurrscan: "/logos/hypurrscan.webp",
   purroofgroup: "/logos/purroofgroup.png",
 
+  // ─── Batch 3 RPC cluster chains (benches 094-100) ───
+  "cosmos-hub": "/logos/cosmos-hub.svg",
+  "world-chain": "/logos/world-chain.png",
+  kaia: "/logos/kaia.png",
+  ink: "/logos/ink.svg",
+
   // ─── Gas oracles ───
   etherscan: "/logos/etherscan.svg",
   owlracle: "/logos/owlracle.webp",
@@ -393,6 +399,12 @@ const ALIASES: Record<string, string> = {
   "osmosis-official": "osmosis",
   "hyperliquid-official": "hyperliquid",
   trongrid: "tron",
+  "injective-official": "injective",
+  "worldchain-official": "world-chain",
+  "kaia-official": "kaia",
+  "ink-official": "ink",
+  "ink-quicknode": "ink",
+  "opbnb-official": "opbnb",
   hood: "robinhood",
   coin: "coinbase",
   "megaeth-official": "megaeth",
