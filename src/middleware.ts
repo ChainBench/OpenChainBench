@@ -51,6 +51,7 @@ const CANONICAL_NO_QUERY = new Set([
 import {
   REMOVED_ANSWER_SLUGS,
   REMOVED_BENCH_SLUGS,
+  RENAMED_BENCH_SLUGS,
 } from "@/lib/removed-benches";
 export { REMOVED_BENCH_SLUGS };
 
@@ -75,6 +76,14 @@ export function middleware(req: NextRequest) {
   if (process.env.VERCEL_ENV === "production") {
     const m = pathname.match(BENCH_PATH);
     const a = pathname.match(ANSWER_PATH);
+    // Renamed / split bench: 301 to the successor before the 410 check
+    // fires. Preserves external backlink PageRank + keeps human visitors
+    // landing on the current bench instead of a Gone page.
+    if (m && RENAMED_BENCH_SLUGS[m[1]]) {
+      const url = req.nextUrl.clone();
+      url.pathname = `/benchmarks/${RENAMED_BENCH_SLUGS[m[1]]}`;
+      return NextResponse.redirect(url, 301);
+    }
     if (
       (m && REMOVED_BENCH_SLUGS.has(m[1])) ||
       (a && REMOVED_ANSWER_SLUGS.has(a[1]))
