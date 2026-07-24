@@ -14,14 +14,18 @@ import (
 // display formatter (2026-07-24 diagnosis: 4.25s displayed as "0.0 s"
 // after the site's built-in /1000 normalization).
 //
-// Buckets are geometric across the observed distribution (BSC ~5-11s,
-// Ethereum ~15-25s, Solana ~17-26s, Moonbeam ~40s, tail up to 5min).
+// Buckets span the full observed range: fast chains (BSC ~5-11s,
+// Solana ~17-26s, Moonbeam ~40s) up through Ethereum/Arbitrum whose
+// VAAs only sign after L1 Casper FFG finality (~12.8 min ideal, up
+// to ~19 min real). Ceiling at 30 min catches the true tail without
+// pinning p90/p99 to a bucket edge (2026-07-24: prior 600_000ms cap
+// reported Ethereum/Arbitrum p50 as 600s = bucket edge, not real).
 var (
 	vaaLatencyMs = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Name:    "wormhole_vaa_latency_milliseconds",
 			Help:    "Time in milliseconds from source-chain observation to Guardian quorum for a Wormhole VAA, by source chain.",
-			Buckets: []float64{2_000, 5_000, 10_000, 15_000, 20_000, 30_000, 45_000, 60_000, 90_000, 120_000, 180_000, 300_000, 600_000},
+			Buckets: []float64{2_000, 5_000, 10_000, 15_000, 20_000, 30_000, 45_000, 60_000, 90_000, 120_000, 180_000, 300_000, 600_000, 900_000, 1_200_000, 1_800_000},
 		},
 		[]string{"source_chain"},
 	)
