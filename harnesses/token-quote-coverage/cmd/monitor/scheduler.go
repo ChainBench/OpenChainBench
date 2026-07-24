@@ -19,7 +19,6 @@ func buildProviders(cfg *Config) []Provider {
 		NewJupiterProvider(),
 		NewMobulaProvider(cfg.MobulaAPIKey),
 		NewKyberSwapProvider(),
-		NewOneInchProvider(cfg.OneInchAPIKey),
 		NewOKXDEXProvider(cfg.OKXDEXAPIKey),
 		NewOdosProvider(),
 	}

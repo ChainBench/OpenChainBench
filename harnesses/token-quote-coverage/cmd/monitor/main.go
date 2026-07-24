@@ -23,7 +23,6 @@ func main() {
 
 	fmt.Printf("Region:           %s\n", cfg.MonitorRegion)
 	fmt.Printf("Mobula key set:   %v\n", cfg.MobulaAPIKey != "")
-	fmt.Printf("1inch key set:    %v\n", cfg.OneInchAPIKey != "")
 	fmt.Printf("OKX key set:      %v\n", cfg.OKXDEXAPIKey != "")
 	fmt.Println("Metrics on :2112/metrics, logs on :2112/logs (LOGS_TOKEN gated)")
 	fmt.Println()

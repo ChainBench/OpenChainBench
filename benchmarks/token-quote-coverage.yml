@@ -71,9 +71,9 @@ abstract: |
 methodology:
   - "Token discovery: Dexscreener /token-boosts/latest/v1 returns recently-active tokens sorted by on-chain boost activity. Up to 20 tokens per 30-minute batch are selected from each supported chain (Solana, Base, BNB). A follow-up batch call to /latest/dex/tokens/{addresses} resolves the originating dexId (pool factory), which maps to a venue label: pumpfun/moonshot/meteora-dlmm→Solana venues, virtual-fun/clanker/wow→Base venues, any BNB pair→four-meme."
   - "Quote probe: 1 USDC → token, fired in parallel to all in-scope providers with a 10s timeout. Input token is always USDC (native USDC on Solana and Base, bridged USDC.e on BNB). A probe is a coverage hit when the HTTP response is 2xx and the parsed outAmount field is a non-zero positive integer or decimal. All other outcomes (4xx, 5xx, no-route JSON, empty outAmount, timeout) record as misses."
-  - "Aggregator endpoints: Mobula /api/1/trade/swap/quote (Bearer auth, multi-chain), Jupiter quote-api.jup.ag/v6/quote?strictMode=false (Solana), KyberSwap aggregator-api.kyberswap.com/{chain}/api/v1/routes (EVM), 1inch /swap/v6.0/{chainId}/quote (EVM), OKX DEX /api/v5/dex/aggregator/quote (multi-chain), Odos /sor/quote/v2 (EVM). Each adapter normalises chain identifiers, input/output decimals, and error response shapes before recording outcome."
+  - "Aggregator endpoints: Mobula /api/1/trade/swap/quote (Bearer auth, multi-chain), Jupiter quote-api.jup.ag/v6/quote?strictMode=false (Solana), KyberSwap aggregator-api.kyberswap.com/{chain}/api/v1/routes (EVM), OKX DEX /api/v5/dex/aggregator/quote (multi-chain), Odos /sor/quote/v2 (EVM). Each adapter normalises chain identifiers, input/output decimals, and error response shapes before recording outcome."
   - "Jupiter strictMode=false: queried without the curated-token filter so Jupiter will attempt routing for any token with a discoverable on-chain pool, matching how most wallets call the API. strictMode=true would trivially exclude new tokens and defeat the purpose of the benchmark."
-  - "Chain-scope enforcement: Jupiter probes Solana-only; 1inch and KyberSwap probe EVM chains only (Base, BNB). OKX DEX and Mobula probe all three chains. Providers are never penalised for chains they do not support: Solana cells for 1inch and KyberSwap are null, not zero, and are excluded from cross-chain aggregates."
+  - "Chain-scope enforcement: Jupiter probes Solana-only; KyberSwap and Odos probe EVM chains only (Base, BNB). OKX DEX and Mobula probe all three chains. Providers are never penalised for chains they do not support: Solana cells for KyberSwap and Odos are null, not zero, and are excluded from cross-chain aggregates."
   - "Coverage metric: Prometheus counters token_quote_coverage_success_total and token_quote_coverage_attempts_total carry labels {provider, venue, chain}. The bench queries compute increase(success[24h]) / increase(attempts[24h]) * 100 live at read time. No pre-aggregation; the ratio reflects exactly the tokens probed in the rolling window."
   - "Probe cadence and deduplication: each batch cycles through the current Dexscreener token-boosts feed. Tokens are not deduplicated across batches; the same token may appear in multiple 30-minute windows if it remains boosted. The score therefore reflects freshness of the aggregator's current routing graph, not historical coverage depth."
   - "Single origin: all probes originate from the eu-west OCB VPS. Regional latency is not a factor in this bench (the outcome is binary hit/miss, not latency). No region dimension in v1."
@@ -174,19 +174,6 @@ providers:
       success: clamp_max(sum(increase(token_quote_coverage_success_total{provider="kyberswap"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="kyberswap"}[24h])), 1)
       sample_size: sum(increase(token_quote_coverage_attempts_total{provider="kyberswap"}[24h]))
       series: sum(rate(token_quote_coverage_success_total{provider="kyberswap"}[1h])) / sum(rate(token_quote_coverage_attempts_total{provider="kyberswap"}[1h])) * 100
-
-  - slug: oneinch
-    name: 1inch
-    tag: EVM multi-chain, Ethereum + Base + BNB
-    formula: "Rolling 24h ratio for provider=oneinch. EVM launchpads only. Solana cells null."
-    queries:
-      p50: sum(increase(token_quote_coverage_success_total{provider="oneinch"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="oneinch"}[24h])) * 100
-      p90: sum(increase(token_quote_coverage_attempts_total{provider="oneinch"}[24h]))
-      p99: sum(increase(token_quote_coverage_success_total{provider="oneinch"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="oneinch"}[24h])) * 100
-      mean: sum(increase(token_quote_coverage_success_total{provider="oneinch"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="oneinch"}[24h])) * 100
-      success: clamp_max(sum(increase(token_quote_coverage_success_total{provider="oneinch"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="oneinch"}[24h])), 1)
-      sample_size: sum(increase(token_quote_coverage_attempts_total{provider="oneinch"}[24h]))
-      series: sum(rate(token_quote_coverage_success_total{provider="oneinch"}[1h])) / sum(rate(token_quote_coverage_attempts_total{provider="oneinch"}[1h])) * 100
 
   - slug: okx-dex
     name: OKX DEX
