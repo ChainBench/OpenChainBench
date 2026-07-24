@@ -7,6 +7,20 @@ seo_title: "Best DEX aggregator for long-tail token coverage 2026"
 seo_description: "Which DEX aggregator can quote the most newly-launched tokens? Live coverage rate across Pump.fun, Virtuals, Four.meme and 4 more launchpads."
 subtitle: Share of newly-launched tokens each aggregator can return a valid swap quote for, sampled hourly from 7 launchpads across Solana, Base and BNB.
 
+per_chain_explainer:
+  - slug: solana
+    h2: "Best DEX aggregator for Solana launchpad tokens"
+    body: |
+      {{best_name:chain:solana}} currently leads on Solana at {{best_p50:chain:solana}} coverage (24h) across Pump.fun, Moonshot, and Meteora DBC. All three Solana launchpads graduate tokens to on-chain DEX pools: Pump.fun and Moonshot route to Raydium CPMM, while Meteora DBC graduates to DLMM concentrated liquidity pools. The pool-type split is the key differentiator — aggregators that hardcode Raydium AMM routing miss Meteora DBC graduates entirely. Jupiter's strictMode=false mode routes any token with a discoverable on-chain pool, giving it structural advantage on Pump.fun and Moonshot; DLMM coverage depends on whether the aggregator explicitly registers Meteora pool factories. The probe fires a 1 USDC to token quote at each provider once per 30-minute batch, using Dexscreener token-boosts as the discovery feed to avoid self-selection bias.
+  - slug: base
+    h2: "Best DEX aggregator for Base launchpad token coverage"
+    body: |
+      {{best_name:chain:base}} currently leads on Base at {{best_p50:chain:base}} coverage (24h) across Virtuals Protocol, Clanker, and WOW.XYZ. Base launchpad graduates converge on Uniswap V3 (Virtuals, Clanker) or Uniswap V2-style AMMs (WOW), so EVM aggregators with a live pool-creation event index have the narrowest discovery lag. The practical differentiator is indexing latency: an aggregator scraping the Uniswap V3 Factory log in real time picks up a new token within one block; one relying on a database sync job may lag by hours, recording misses on tokens the market is already actively trading. Clanker and WOW.XYZ show the most consistent coverage across providers because their pool types are already in every EVM router's standard graph. Virtuals agent tokens show wider spread due to metadata-gating in some routing engines.
+  - slug: bnb
+    h2: "Best DEX aggregator for BNB Chain new token coverage"
+    body: |
+      {{best_name:chain:bnb}} currently leads on BNB Chain at {{best_p50:chain:bnb}} coverage (24h) across Four.meme. BNB is the hardest environment in this benchmark for non-native aggregators: Four.meme graduates to PancakeSwap V2, and routing engines that do not maintain a live BNB Chain pool-creation index miss newly-minted pairs entirely. Providers that derive their BNB token list from a shared coingecko-style database rather than on-chain event tracking typically lag by several hours. The probe fires a 1 USDC (via USDC.e bridged) to token quote; BNB-native aggregators (OKX DEX, KyberSwap) have structural coverage advantages over Solana-first providers here.
+
 category: Aggregators
 status: draft
 metric: Quote coverage
@@ -55,14 +69,14 @@ abstract: |
   launchpads they cover).
 
 methodology:
-  - "Token universe: 20 random graduated tokens per launchpad per hour from Dexscreener /latest/dex/pairs/{chain} filtered by factory address. Graduation = confirmed DEX pool on the launchpad's target venue (Raydium for Pump.fun/Moonshot/Meteora, Uniswap V3 for Virtuals/Clanker, PancakeSwap/Uniswap V2 for WOW/Four.meme). Tokens older than 24 hours excluded."
-  - "Quote probe: 1 USDC to token, fired in parallel to all aggregators. Sell-side is always USDC (USDC.e on BNB/Base), buy-side is the probed token's contract address. A response is a hit when outAmount is parseable and greater than zero. Errors (no route, token not found, 4xx, 5xx, timeout >10s) are misses."
-  - "Aggregator endpoints: Mobula /api/1/trade/swap/quote (Bearer auth), Jupiter /v6/quote?strictMode=false (Solana), KyberSwap /{chain}/api/v1/routes (EVM), 1inch /swap/v6.0/{chainId}/quote (EVM), OKX DEX /api/v5/dex/aggregator/quote (multi-chain), Odos /sor/quote/v2 (EVM). Each adapter normalises chain identifiers and error responses."
-  - "Jupiter strictMode=false: Jupiter is queried with strictMode=false so it will attempt to route any token with an existing pool, matching real-world wallet usage rather than curated-list-only mode."
-  - "Chain-only providers: Jupiter appears with null coverage on EVM launchpads by construction; 1inch and KyberSwap appear with null on Solana. OKX DEX and Mobula are scored on every chain they support. Null-chain cells are excluded from aggregates."
-  - "Coverage metric: sum(token_quote_coverage_success_total{provider, venue, chain}) / sum(token_quote_coverage_attempts_total{provider, venue, chain}) over a rolling 24h window * 100. Both counters emitted by the harness; bench queries compute the ratio live."
-  - "Probe region: single origin (eu-west, OCB VPS). No region dimension in v1."
-  - "Dexscreener as neutral source: the token list is fetched from Dexscreener, not from any of the measured aggregators, to avoid self-reference bias."
+  - "Token discovery: Dexscreener /token-boosts/latest/v1 returns recently-active tokens sorted by on-chain boost activity. Up to 20 tokens per 30-minute batch are selected from each supported chain (Solana, Base, BNB). A follow-up batch call to /latest/dex/tokens/{addresses} resolves the originating dexId (pool factory), which maps to a venue label: pumpfun/moonshot/meteora-dlmm→Solana venues, virtual-fun/clanker/wow→Base venues, any BNB pair→four-meme."
+  - "Quote probe: 1 USDC → token, fired in parallel to all in-scope providers with a 10s timeout. Input token is always USDC (native USDC on Solana and Base, bridged USDC.e on BNB). A probe is a coverage hit when the HTTP response is 2xx and the parsed outAmount field is a non-zero positive integer or decimal. All other outcomes (4xx, 5xx, no-route JSON, empty outAmount, timeout) record as misses."
+  - "Aggregator endpoints: Mobula /api/1/trade/swap/quote (Bearer auth, multi-chain), Jupiter quote-api.jup.ag/v6/quote?strictMode=false (Solana), KyberSwap aggregator-api.kyberswap.com/{chain}/api/v1/routes (EVM), 1inch /swap/v6.0/{chainId}/quote (EVM), OKX DEX /api/v5/dex/aggregator/quote (multi-chain), Odos /sor/quote/v2 (EVM). Each adapter normalises chain identifiers, input/output decimals, and error response shapes before recording outcome."
+  - "Jupiter strictMode=false: queried without the curated-token filter so Jupiter will attempt routing for any token with a discoverable on-chain pool, matching how most wallets call the API. strictMode=true would trivially exclude new tokens and defeat the purpose of the benchmark."
+  - "Chain-scope enforcement: Jupiter probes Solana-only; 1inch and KyberSwap probe EVM chains only (Base, BNB). OKX DEX and Mobula probe all three chains. Providers are never penalised for chains they do not support: Solana cells for 1inch and KyberSwap are null, not zero, and are excluded from cross-chain aggregates."
+  - "Coverage metric: Prometheus counters token_quote_coverage_success_total and token_quote_coverage_attempts_total carry labels {provider, venue, chain}. The bench queries compute increase(success[24h]) / increase(attempts[24h]) * 100 live at read time. No pre-aggregation; the ratio reflects exactly the tokens probed in the rolling window."
+  - "Probe cadence and deduplication: each batch cycles through the current Dexscreener token-boosts feed. Tokens are not deduplicated across batches; the same token may appear in multiple 30-minute windows if it remains boosted. The score therefore reflects freshness of the aggregator's current routing graph, not historical coverage depth."
+  - "Single origin: all probes originate from the eu-west OCB VPS. Regional latency is not a factor in this bench (the outcome is binary hit/miss, not latency). No region dimension in v1."
 
 findings:
   - "{{best_name}} currently leads overall at {{best_p50}} coverage (24h) across {{count}} measured aggregators and 7 launchpads. Rankings diverge sharply by launchpad because each platform graduates tokens to a different DEX venue."
