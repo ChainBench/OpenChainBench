@@ -10,13 +10,14 @@ import (
 )
 
 const (
-	mobulaUSDCSolana = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
-	mobulaUSDCBase   = "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
-	mobulaUSDCBSC    = "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d"
-	mobulaUSDCEth    = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+	mobulaUSDCBase = "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
+	mobulaUSDCBSC  = "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d"
+	// dummy wallet required by the quoting endpoint (no funds needed)
+	mobulaWallet = "0x0000000000000000000000000000000000000001"
 )
 
-// MobulaProvider hits api.mobula.io for Solana + EVM chains.
+// MobulaProvider hits api.mobula.io/api/2/swap/quoting for EVM chains (Base + BNB).
+// Solana is excluded: /api/2/swap/quoting does not support Solana.
 type MobulaProvider struct {
 	apiKey string
 	client *http.Client
@@ -30,41 +31,31 @@ func (p *MobulaProvider) Slug() string { return "mobula" }
 
 func (p *MobulaProvider) SupportsChain(chain string) bool {
 	switch chain {
-	case "solana", "base", "bsc":
+	case "base", "bsc":
 		return true
 	}
 	return false
 }
 
 func (p *MobulaProvider) Quote(ctx context.Context, token Token) (ok bool) {
-	var endpoint string
-
+	var chainId, tokenIn string
 	switch token.Chain {
-	case "solana":
-		q := url.Values{}
-		q.Set("tokenIn", mobulaUSDCSolana)
-		q.Set("tokenOut", token.Address)
-		q.Set("amount", "1")
-		q.Set("blockchain", "solana")
-		endpoint = "https://api.mobula.io/api/1/trade/swap/quote?" + q.Encode()
 	case "base":
-		q := url.Values{}
-		q.Set("tokenIn", mobulaUSDCBase)
-		q.Set("tokenOut", token.Address)
-		q.Set("amount", "1")
-		q.Set("chainId", "8453")
-		endpoint = "https://api.mobula.io/api/1/trade/swap/quote?" + q.Encode()
+		chainId, tokenIn = "8453", mobulaUSDCBase
 	case "bsc":
-		q := url.Values{}
-		q.Set("tokenIn", mobulaUSDCBSC)
-		q.Set("tokenOut", token.Address)
-		q.Set("amount", "1")
-		q.Set("chainId", "56")
-		endpoint = "https://api.mobula.io/api/1/trade/swap/quote?" + q.Encode()
+		chainId, tokenIn = "56", mobulaUSDCBSC
 	default:
 		RecordProbe(p.Slug(), token.Venue, token.Chain, false)
 		return false
 	}
+
+	q := url.Values{}
+	q.Set("tokenIn", tokenIn)
+	q.Set("tokenOut", token.Address)
+	q.Set("amount", "1")
+	q.Set("chainId", chainId)
+	q.Set("walletAddress", mobulaWallet)
+	endpoint := "https://api.mobula.io/api/2/swap/quoting?" + q.Encode()
 
 	req, err := http.NewRequestWithContext(ctx, "GET", endpoint, nil)
 	if err != nil {

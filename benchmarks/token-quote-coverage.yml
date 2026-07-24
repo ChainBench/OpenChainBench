@@ -138,7 +138,7 @@ rank_matrix_query: >
 providers:
   - slug: mobula
     name: Mobula
-    tag: Multi-chain, Solana + EVM, API key required
+    tag: EVM only, Base + BNB, API key required
     formula: "Rolling 24h ratio of token_quote_coverage_success_total to token_quote_coverage_attempts_total for provider=mobula, across all launchpads and chains Mobula supports."
     queries:
       p50: sum(increase(token_quote_coverage_success_total{provider="mobula"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="mobula"}[24h])) * 100

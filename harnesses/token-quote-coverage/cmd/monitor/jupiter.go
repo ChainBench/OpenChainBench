@@ -14,7 +14,8 @@ const (
 	jupiterUSDCMint = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
 )
 
-// JupiterProvider hits quote-api.jup.ag/v6/quote for Solana tokens.
+// JupiterProvider hits lite-api.jup.ag/swap/v1/quote for Solana tokens.
+// quote-api.jup.ag is deprecated (NXDOMAIN). lite-api is the current public endpoint.
 type JupiterProvider struct {
 	client *http.Client
 }
@@ -35,8 +36,7 @@ func (p *JupiterProvider) Quote(ctx context.Context, token Token) (ok bool) {
 	q.Set("outputMint", token.Address)
 	q.Set("amount", "1000000")
 	q.Set("slippageBps", "5000")
-	q.Set("strictMode", "false")
-	endpoint := "https://quote-api.jup.ag/v6/quote?" + q.Encode()
+	endpoint := "https://lite-api.jup.ag/swap/v1/quote?" + q.Encode()
 
 	req, err := http.NewRequestWithContext(ctx, "GET", endpoint, nil)
 	if err != nil {
