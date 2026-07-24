@@ -11,8 +11,7 @@ import (
 type Config struct {
 	MonitorRegion string
 	LogsToken     string
-	MobulaAPIKey  string
-	OKXDEXAPIKey  string // optional
+	MobulaAPIKey string
 }
 
 func loadEnv() (*Config, error) {
@@ -21,8 +20,7 @@ func loadEnv() (*Config, error) {
 	c := &Config{
 		MonitorRegion: strings.TrimSpace(os.Getenv("MONITOR_REGION")),
 		LogsToken:     strings.TrimSpace(os.Getenv("LOGS_TOKEN")),
-		MobulaAPIKey:  strings.TrimSpace(os.Getenv("MOBULA_API_KEY")),
-		OKXDEXAPIKey:  strings.TrimSpace(os.Getenv("OKX_DEX_API_KEY")),
+		MobulaAPIKey: strings.TrimSpace(os.Getenv("MOBULA_API_KEY")),
 	}
 	if c.MonitorRegion == "" {
 		c.MonitorRegion = "eu-west"
