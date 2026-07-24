@@ -1742,6 +1742,36 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     description:
       "Aggregate long-tail bucket, not a single provider. On the block-builder bench it collects blocks whose extraData tag is not in the curated attribution table; every raw string is logged so named rows can be added as the table grows.",
   },
+
+  // ─── RWA yield tokens (bench 089 rwa-yield-accuracy) ─────────
+  usdy: {
+    url: "https://ondo.finance/usdy",
+    description:
+      "Ondo USDY is a yield-bearing tokenized U.S. Treasury note. Rebases on Ethereum, also issued on Solana, Aptos and Sui. Delivered yield on bench 089 is read from Ondo's on-chain oracle rather than Ethereum totalSupply to avoid bridge-flow noise.",
+    twitter: "@OndoFinance",
+    docs: "https://docs.ondo.finance/",
+  },
+  ousg: {
+    url: "https://ondo.finance/ousg",
+    description:
+      "Ondo OUSG is a tokenized short-term U.S. Treasury fund. NAV appreciation model — the share price grows daily as yield accrues. Delivered yield on bench 089 is read from Ondo's on-chain oracle (Aave IPriceOracle interface).",
+    twitter: "@OndoFinance",
+    docs: "https://docs.ondo.finance/",
+  },
+  ustb: {
+    url: "https://superstate.com/ustb",
+    description:
+      "Superstate USTB is a tokenized short-duration U.S. Treasury fund. NAV-accrual model, share price published on-chain via a Chainlink NAV feed. Delivered yield on bench 089 reads the Chainlink feed at latest and t-30d blocks.",
+    twitter: "@superstateinc",
+    docs: "https://superstate.com/legal",
+  },
+  "syrup-usdc": {
+    url: "https://syrup.fi",
+    description:
+      "Maple SyrupUSDC is an ERC-4626 vault whose underlying is a book of institutional USDC loans. Not a T-bill wrapper — yield reflects loan-book performance. Delivered yield on bench 089 reads convertToAssets(1 share) at latest and t-30d blocks and compares to the pool's base APY (excludes SYRUP token rewards).",
+    twitter: "@maplefinance",
+    docs: "https://maplefinance.gitbook.io/maple/",
+  },
 };
 
 /**
