@@ -123,6 +123,7 @@ export function buildFaqPageJsonLd(
   faq: FaqItem[] | undefined,
   pageUrl: string,
   chain?: string | null,
+  pageName?: string,
 ): Record<string, unknown> | null {
   if (!faq || faq.length === 0) return null;
   const suffix = chainIdFragment(chain);
@@ -131,11 +132,22 @@ export function buildFaqPageJsonLd(
     "@context": "https://schema.org",
     "@type": "FAQPage",
     "@id": id,
+    // FAQPage inherits `name` from CreativeWork. Google's Rich Results
+    // validator flags missing name as "Item: N/A" on the parent node
+    // even when Question.name is set on each entry. Callers pass a
+    // page-specific name; fallback preserves a valid string for any
+    // caller that predates this arg.
+    name: pageName ?? "Frequently asked questions",
     mainEntity: faq.map((item) => ({
       "@type": "Question",
       name: stripFaqMarkdown(item.q),
       acceptedAnswer: {
         "@type": "Answer",
+        // Answer inherits `name` from CreativeWork too. Reusing the
+        // question text as the answer name is semantically accurate
+        // (this Answer is the answer TO this question) and closes the
+        // same "missing name" gap on the nested node.
+        name: stripFaqMarkdown(item.q),
         text: stripFaqMarkdown(item.a),
       },
     })),
