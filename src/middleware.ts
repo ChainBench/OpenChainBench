@@ -51,12 +51,14 @@ const CANONICAL_NO_QUERY = new Set([
 import {
   REMOVED_ANSWER_SLUGS,
   REMOVED_BENCH_SLUGS,
+  REMOVED_PRODUCT_SLUGS,
   RENAMED_BENCH_SLUGS,
 } from "@/lib/removed-benches";
 export { REMOVED_BENCH_SLUGS };
 
 const BENCH_PATH = /^\/benchmarks\/([a-z0-9][a-z0-9-]{0,79})\/?$/;
 const ANSWER_PATH = /^\/answers\/([a-z0-9][a-z0-9-]{0,79})\/?$/;
+const PRODUCT_PATH = /^\/products\/([a-z0-9][a-z0-9-]{0,79})\/?$/;
 // `/compare/<a>-vs-<b>` with both sides as standard provider slug
 // shapes (lowercase alphanumeric + hyphens). The `-vs-` delimiter is
 // matched literally; provider slugs themselves can contain hyphens
@@ -90,6 +92,13 @@ export function middleware(req: NextRequest) {
     ) {
       return new NextResponse(
         `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>410 Gone</title><meta name="robots" content="noindex"></head><body><h1>410 Gone</h1><p>This benchmark has been retired. See the <a href="/benchmarks">current catalog</a>.</p></body></html>`,
+        { status: 410, headers: { "Content-Type": "text/html; charset=utf-8" } },
+      );
+    }
+    const p = pathname.match(PRODUCT_PATH);
+    if (p && REMOVED_PRODUCT_SLUGS.has(p[1])) {
+      return new NextResponse(
+        `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>410 Gone</title><meta name="robots" content="noindex"></head><body><h1>410 Gone</h1><p>This product page has been retired because the provider is no longer measured in any active benchmark. See the <a href="/products">current catalog</a>.</p></body></html>`,
         { status: 410, headers: { "Content-Type": "text/html; charset=utf-8" } },
       );
     }
@@ -130,5 +139,6 @@ export const config = {
     "/benchmarks/:slug*",
     "/answers/:slug*",
     "/compare/:slug*",
+    "/products/:slug*",
   ],
 };
