@@ -106,6 +106,7 @@ const RAW: Record<string, string> = {
   ankr: "/logos/ankr.png",
   chainstack: "/logos/chainstack.svg",
   drpc: "/logos/drpc.webp",
+  thirdweb: "/logos/thirdweb.png",
   "1rpc": "/logos/1rpc.svg",
   cloudflare: "/logos/cloudflare.svg",
   parity: "/logos/parity.png",
