@@ -11,31 +11,29 @@ import (
 )
 
 // BENJI is Franklin Templeton's OnChain U.S. Government Money Fund
-// share tokenized primarily on Stellar, with an Ethereum wrapper. NAV
-// appreciation model: share price grows daily as yield accrues; there
-// are no on-chain dividend transfers to holders.
+// share, primarily tokenized on Stellar with an Ethereum wrapper.
 //
-// Ethereum wrapper contract (BENJI):
-//   0x... (TODO Sprint 3: confirm Ethereum wrapper address; primary
-//         chain is Stellar)
+// Ethereum wrapper contract:
+//   0x3DDc84940Ab509C11B20B76B466933f40b750dc9
+//     (Only 3 holders on Ethereum, ~$47.9M AUM as of 2026-07;
+//      the vast majority of BENJI supply lives on Stellar.)
 //
-// NAV source: Franklin Templeton's fund page publishes 7-day SEC yield
-// and current NAV. V1 uses the current NAV endpoint and stores daily
-// snapshots in memory for windowed yield computation (see nav.go).
+// DORMANT — no on-chain NAV path. The Ethereum wrapper does not
+// expose sharePrice / NAV via a callable function, and the fund is
+// designed to hold NAV = $1.00 stable (yield materializes off-chain
+// as fund share credits). Delivered yield is only computable via
+// Franklin's own data.
 //
-// V1 caveats:
-//   - Ethereum wrapper may not be widely traded; the "true" BENJI
-//     supply lives on Stellar. Ethereum totalSupply is a lower bound.
-//   - Franklin's official endpoint URL is TBD (V1 uses a placeholder;
-//     Sprint 3 verifies via Franklin's own dashboard).
-//   - The 30d yield only becomes reliable after 30 days of harness
-//     uptime, since we bootstrap NAV history from scratch.
+// Outreach sent to digitalassets@franklintempleton.com asking for a
+// JSON endpoint (or Chainlink feed) exposing daily NAV / 7-day SEC
+// yield. Activate this probe once Franklin confirms an endpoint;
+// update benjiNAVEndpoint and the fetchJSONNumber path below.
 
 const (
-	benjiContractEthereum = "0x0000000000000000000000000000000000000000" // TODO Sprint 3
-	// Franklin publishes the fund's current 7-day SEC yield on its
-	// public fund page. Actual JSON endpoint TBD Sprint 3; placeholder
-	// URL fails cleanly and the probe reports nav_source_err.
+	benjiContractEthereum = "0x3DDc84940Ab509C11B20B76B466933f40b750dc9"
+	// Placeholder: Franklin's public JSON endpoint is not yet published.
+	// The probe will fail cleanly with nav_source_err until this is
+	// updated to the real endpoint (post outreach reply).
 	benjiNAVEndpoint = "https://franklintempleton.com/api/funds/29386/nav"
 )
 

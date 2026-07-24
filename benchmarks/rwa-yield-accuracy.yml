@@ -8,12 +8,12 @@ seo_description: "Signed bps deviation between advertised APY and on-chain distr
 subtitle: Signed basis-point deviation between the APY each tokenized U.S. Treasury advertises and the yield the smart contract actually distributes on-chain, measured over 30 days.
 
 category: RWA
-# Draft until the 4 non-USDY probes (BUIDL/USTB dividend, BENJI/OUSG
-# NAV) are wired to verified treasury addresses and NAV endpoints.
-# V1 ships with USDY only (rebase, fully on-chain verifiable). Others
-# will flip to live once each contract address and issuer endpoint has
-# been cross-checked with the fund's own documentation.
-status: draft
+# Live cohort: USDY (rebase), USTB (NAV via Chainlink feed), OUSG
+# (NAV via Ondo's Aave-style on-chain oracle). BUIDL + BENJI dormant:
+# BUIDL because distributor mints conflate yield with new
+# subscriptions, BENJI because the Ethereum wrapper has no on-chain
+# NAV function and Franklin has not published a JSON endpoint yet.
+status: live
 metric: Yield deviation
 unit: bps
 higher_is_better: true

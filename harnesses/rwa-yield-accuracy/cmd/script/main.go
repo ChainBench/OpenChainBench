@@ -18,29 +18,28 @@ import (
 // this bench is: (1) implement IssuerProbe, (2) add its slug to
 // promised-yields.yml, (3) append here.
 //
-// V1 cohort restricted to USDY only. USDY's rebase model is fully
-// verifiable on-chain (totalSupply growth on a single known ERC-20
-// contract, no treasury wallet or off-chain NAV endpoint required)
-// which lets the bench ship with confidence that every number is
-// grounded.
+// Active cohort: USDY (rebase, totalSupply growth), USTB (NAV via
+// Chainlink feed), OUSG (NAV via OndoOracle). All three are fully
+// on-chain measurable — no off-chain HTTP dependency, no treasury
+// wallet assumption.
 //
-// The other 4 probes (BUIDL, USTB dividend model; BENJI, OUSG NAV
-// model) exist in this repo (buidl.go, ustb.go, benji.go, ousg.go)
-// but stay dormant until each one's treasury address or issuer NAV
-// endpoint has been cross-checked with the fund's own documentation.
-// Enabling them without that check would ship placeholder-zero yield
-// values that look catastrophic (deviation of -530 bps vs promised).
-//
-// To activate a probe once verified: uncomment its constructor below
-// and confirm the corresponding address / endpoint constant in the
-// probe file. The bench spec's provider block for that token becomes
-// meaningful automatically.
+// BUIDL and BENJI stay dormant:
+//   - BUIDL: distributor 0x5072Ed40EBa6bE38C2370cAD1Cb1df0202924e53
+//     was identified but calls bulkIssuance (mints more BUIDL, not
+//     USDC transfers). The current dividend.go model that scans USDC
+//     Transfer events doesn't fit; needs a rebase-style measurement
+//     PLUS a way to separate yield mints from new subscriptions.
+//   - BENJI: Ethereum wrapper (0x3DDc...50dc9) has 3 holders, ~$48M,
+//     no on-chain sharePrice function. NAV is $1.00 by design; yield
+//     is only knowable via Franklin's off-chain fund page. Reached
+//     out to digitalassets@franklintempleton.com; unblock once they
+//     confirm an API endpoint or Chainlink feed.
 var probes = []IssuerProbe{
 	NewUSDYProbe(),
-	// NewBUIDLProbe(),  // TODO(V2): verify Securitize treasury wallet
-	// NewUSTBProbe(),   // TODO(V2): verify Superstate treasury wallet
-	// NewBENJIProbe(),  // TODO(V2): verify Franklin NAV JSON endpoint
-	// NewOUSGProbe(),   // TODO(V2): verify Ondo NAV JSON endpoint
+	NewUSTBProbe(),
+	NewOUSGProbe(),
+	// NewBUIDLProbe(),  // TODO: split bulkIssuance mints from subscriptions
+	// NewBENJIProbe(),  // TODO: waiting Franklin NAV endpoint confirmation
 }
 
 func main() {

@@ -26,11 +26,16 @@ const (
 // rpcURL returns the Ethereum mainnet RPC endpoint used by every
 // probe. All five V1 tokens live on Ethereum; V2 will introduce
 // per-chain endpoints for BUIDL/USDY multi-chain support.
+//
+// Default is dRPC because the harness needs archive access (eth_call
+// at t-30d block). publicnode.com — the usual OCB default — rejects
+// archive requests without an account. dRPC's free tier supports
+// archive reads at least back to 30-day depth.
 func rpcURL() string {
 	if v := strings.TrimSpace(os.Getenv("RPC_ETHEREUM")); v != "" {
 		return v
 	}
-	return "https://ethereum-rpc.publicnode.com"
+	return "https://eth.drpc.org"
 }
 
 func listenAddr() string {
