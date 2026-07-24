@@ -865,11 +865,29 @@ async function renderLeaderboard(
   // Cap 6 = 420px which stays under both.
   const sorted = sortByP50(benchmark).slice(0, 6);
   const maxP50 = Math.max(...sorted.map((r) => r.ms.p50)) || 1;
+<<<<<<< HEAD
   const total = benchmark.results.length;
   const subtitleLB =
     total > sorted.length
       ? `Top ${sorted.length} of ${total} · ranked by p50 · ${benchmark.metric}.`
       : `Ranked by p50 · ${benchmark.metric}.`;
+=======
+  const subtitleLB = `Ranked by p50 · ${benchmark.metric}.`;
+  // Scale down type + spacing when the roster is dense OR the title is
+  // long, otherwise a 2-line 50pt title collides with the row list in
+  // the 630px canvas (weekend-drift 11 rows + long title case).
+  const count = sorted.length;
+  const titleLen = benchmark.title.length;
+  const dense = count >= 8 || titleLen > 55;
+  const veryDense = count >= 10 || titleLen > 70;
+  const titleSize = veryDense ? 32 : dense ? 40 : 50;
+  const rankSize = veryDense ? 18 : dense ? 20 : 24;
+  const nameSize = veryDense ? 18 : dense ? 20 : 24;
+  const valueSize = veryDense ? 22 : dense ? 24 : 28;
+  const barHeight = veryDense ? 6 : dense ? 7 : 8;
+  const rowGap = veryDense ? 8 : dense ? 10 : 14;
+  const logoSize = veryDense ? 22 : dense ? 24 : 28;
+>>>>>>> origin/main
 
   return new ImageResponse(
     (
@@ -885,7 +903,11 @@ async function renderLeaderboard(
           <div
             style={{
               display: "flex",
+<<<<<<< HEAD
               fontSize: scaledTitleSize(50, benchmark.title),
+=======
+              fontSize: titleSize,
+>>>>>>> origin/main
               fontWeight: 700,
               color: INK,
               letterSpacing: "-0.02em",
@@ -913,8 +935,13 @@ async function renderLeaderboard(
               flexDirection: "column",
               flex: 1,
               justifyContent: "flex-start",
+<<<<<<< HEAD
               gap: 14,
               marginTop: 18,
+=======
+              gap: rowGap,
+              marginTop: 14,
+>>>>>>> origin/main
             }}
           >
             {sorted.map((r, i) => {
@@ -923,15 +950,15 @@ async function renderLeaderboard(
               return (
                 <div
                   key={r.slug}
-                  style={{ display: "flex", alignItems: "center", gap: 24 }}
+                  style={{ display: "flex", alignItems: "center", gap: 20 }}
                 >
                   <div
                     style={{
                       display: "flex",
-                      fontSize: 24,
+                      fontSize: rankSize,
                       fontFamily: "monospace",
                       color: INK_FAINT,
-                      width: 36,
+                      width: 32,
                       letterSpacing: "0.05em",
                     }}
                   >
@@ -942,7 +969,7 @@ async function renderLeaderboard(
                       display: "flex",
                       flexDirection: "column",
                       flex: 1,
-                      gap: 6,
+                      gap: 4,
                     }}
                   >
                     <div
@@ -957,7 +984,7 @@ async function renderLeaderboard(
                           display: "flex",
                           alignItems: "center",
                           gap: 10,
-                          fontSize: 24,
+                          fontSize: nameSize,
                           fontWeight: 700,
                           color: color,
                         }}
@@ -965,7 +992,7 @@ async function renderLeaderboard(
                         <CardProviderLogo
                           slug={r.slug}
                           name={r.name}
-                          size={28}
+                          size={logoSize}
                         />
                         {r.name}
                       </span>
@@ -979,7 +1006,7 @@ async function renderLeaderboard(
                       >
                         <span
                           style={{
-                            fontSize: 28,
+                            fontSize: valueSize,
                             fontWeight: 700,
                             color: INK,
                             letterSpacing: "-0.02em",
@@ -987,7 +1014,7 @@ async function renderLeaderboard(
                         >
                           {fmtValue(r.ms.p50, benchmark.unit)}
                         </span>
-                        <span style={{ fontSize: 16, color: INK_MUTED }}>
+                        <span style={{ fontSize: 14, color: INK_MUTED }}>
                           {unitSuffix(benchmark.unit, r.ms.p50).trim()}
                         </span>
                       </span>
@@ -996,7 +1023,7 @@ async function renderLeaderboard(
                       style={{
                         display: "flex",
                         width: "100%",
-                        height: 8,
+                        height: barHeight,
                         background: `${color}22`,
                         borderRadius: 4,
                       }}
@@ -1005,7 +1032,7 @@ async function renderLeaderboard(
                         style={{
                           display: "flex",
                           width: `${widthPct}%`,
-                          height: 8,
+                          height: barHeight,
                           background: color,
                           borderRadius: 4,
                         }}
@@ -1076,15 +1103,31 @@ async function renderSnapshot(
             gap: 6,
           }}
         >
+          {/* Title + subtitle. Satori quirk: a bare `display: flex`
+              text div stays at one-line height even when the text
+              visually wraps, so the next sibling stacks on top of the
+              wrapped lines. Explicit `flexDirection: column` on each
+              text box forces satori to measure the wrapped content
+              height. maxWidth pins the wrap point below the container
+              width so long titles never touch the right edge. */}
           <div
             style={{
               display: "flex",
+<<<<<<< HEAD
               fontSize: scaledTitleSize(48, benchmark.title),
+=======
+              flexDirection: "column",
+              fontSize: 48,
+>>>>>>> origin/main
               fontWeight: 700,
               color: INK,
               letterSpacing: "-0.02em",
               lineHeight: 1.05,
+<<<<<<< HEAD
               flexShrink: 0,
+=======
+              maxWidth: 1086,
+>>>>>>> origin/main
             }}
           >
             {benchmark.title}
@@ -1092,8 +1135,10 @@ async function renderSnapshot(
           <div
             style={{
               display: "flex",
+              flexDirection: "column",
               fontSize: 16,
               color: INK_SOFT,
+              lineHeight: 1.35,
               maxWidth: 980,
               flexShrink: 0,
             }}

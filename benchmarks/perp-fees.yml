@@ -241,6 +241,32 @@ providers:
       sample_size: count_over_time(perp_fees_all_in_bps{venue="extended"}[24h])
       series: perp_fees_all_in_bps{venue="extended"}
 
+  - slug: aster
+    name: Aster
+    tag: BSC perp DEX, 5 bps taker, Binance-style REST book
+    formula: "Average over 24h of (5 bps documented base taker fee plus half-spread and impact from the Aster fapi depth endpoint asks walked for $1000 of buy notional in the selected asset), in bps."
+    queries:
+      p50: avg_over_time(perp_fees_all_in_bps{venue="aster"}[24h])
+      p90: quantile_over_time(0.90, perp_fees_all_in_bps{venue="aster"}[24h])
+      p99: quantile_over_time(0.99, perp_fees_all_in_bps{venue="aster"}[24h])
+      mean: avg_over_time(perp_fees_all_in_bps{venue="aster"}[24h])
+      success: avg_over_time(perp_fees_health{venue="aster"}[24h])
+      sample_size: count_over_time(perp_fees_all_in_bps{venue="aster"}[24h])
+      series: perp_fees_all_in_bps{venue="aster"}
+
+  - slug: edgex
+    name: edgeX
+    tag: Offchain CLOB perp DEX, 3.8 bps taker
+    formula: "Average over 24h of (3.8 bps documented base taker fee plus half-spread and impact from the edgeX public getDepth endpoint asks walked for $1000 of buy notional in the selected asset), in bps."
+    queries:
+      p50: avg_over_time(perp_fees_all_in_bps{venue="edgex"}[24h])
+      p90: quantile_over_time(0.90, perp_fees_all_in_bps{venue="edgex"}[24h])
+      p99: quantile_over_time(0.99, perp_fees_all_in_bps{venue="edgex"}[24h])
+      mean: avg_over_time(perp_fees_all_in_bps{venue="edgex"}[24h])
+      success: avg_over_time(perp_fees_health{venue="edgex"}[24h])
+      sample_size: count_over_time(perp_fees_all_in_bps{venue="edgex"}[24h])
+      series: perp_fees_all_in_bps{venue="edgex"}
+
 # Notional-tier companion panels. The panel metric leaves the chain label
 # unpinned and wraps the selector in avg(), so the ETH / BTC / SOL tab
 # filter is injected exactly like on the headline queries and the panels

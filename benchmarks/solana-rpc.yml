@@ -75,7 +75,11 @@ dimensions:
 
 providers:
   - slug: solana
+<<<<<<< HEAD
     name: Solana Labs
+=======
+    name: Solana
+>>>>>>> origin/main
     tag: Chain-official api.mainnet-beta.solana.com, 100 req per 10s documented
     formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `getSlot` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to api.mainnet-beta.solana.com."
     queries:

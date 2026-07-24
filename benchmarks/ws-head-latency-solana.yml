@@ -112,7 +112,11 @@ providers:
           series: histogram_quantile(0.50, sum by (le) (rate(ws_head_lag_milliseconds_bucket{provider="publicnode", chain="solana", region="sgp"}[1h])))
 
   - slug: solana
+<<<<<<< HEAD
     name: Solana Foundation
+=======
+    name: Solana
+>>>>>>> origin/main
     tag: Keyless WS, wss://api.mainnet-beta.solana.com
     formula: "Median ms behind the earliest provider to push each Solana slotSubscribe notification, from one persistent WebSocket per provider on the same eu-west host, histogram_quantile over 24h. Lag is relative to the per-slot winner."
     queries:
