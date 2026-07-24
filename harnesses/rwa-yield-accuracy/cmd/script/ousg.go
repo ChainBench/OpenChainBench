@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -11,35 +10,33 @@ import (
 )
 
 // OUSG is Ondo's Short-Term U.S. Government Treasuries token. NAV
-// appreciation model: share price grows daily; no dividend transfers.
+// appreciation model: share price grows daily as yield accrues.
 //
-// Ethereum contract (OUSG):
-//   0x1B19C19393e2d034D8Ff31fF34c81252FcBbee92
+// Contracts:
+//   OUSG ERC-20:  0x1B19C19393e2d034D8Ff31fF34c81252FcBbee92
+//   OndoOracle:   0x9Cad45a8BF0Ed41Ff33074449B357C7a1fAb4094
+//     (Exposes Aave IPriceOracle interface: getAssetPrice(OUSG) →
+//      18-decimal USD NAV. Verified 2026-07: returns $115.977, matches
+//      Ondo's public dashboard.)
 //
-// NAV source: Ondo publishes daily NAV on the OUSG dashboard. V1 uses
-// the public endpoint (TBD schema, verified Sprint 3) plus in-memory
-// NAV history for windowed yield.
-//
-// Ondo also runs a Chainlink Proof-of-Reserves feed for OUSG that
-// could serve as an on-chain NAV source. V2 will switch to that feed
-// where available to remove the offchain HTTP dependency.
+// The oracle read at a specific historical block gives the NAV that
+// was current at that block, which is exactly the input we need for
+// windowed yield without any off-chain HTTP dependency.
 
 const (
 	ousgContractEthereum = "0x1B19C19393e2d034D8Ff31fF34c81252FcBbee92"
-	// Ondo publishes NAV on its API. Actual endpoint TBD Sprint 3.
-	ousgNAVEndpoint = "https://api.ondo.finance/v1/products/ousg/nav"
+	ousgOndoOracle       = "0x9Cad45a8BF0Ed41Ff33074449B357C7a1fAb4094"
 )
 
 type ousgProbe struct {
 	contract common.Address
-	ring     *navRing
-	mu       sync.Mutex
+	oracle   common.Address
 }
 
 func NewOUSGProbe() IssuerProbe {
 	return &ousgProbe{
 		contract: common.HexToAddress(ousgContractEthereum),
-		ring:     newNavRing(72),
+		oracle:   common.HexToAddress(ousgOndoOracle),
 	}
 }
 
@@ -50,33 +47,34 @@ func (p *ousgProbe) Chain() string  { return "ethereum" }
 func (p *ousgProbe) Measure(ctx context.Context, rpc *ethclient.Client) (*Measurement, error) {
 	now := time.Now().UTC()
 
-	navNow, err := fetchJSONNumber(ousgNAVEndpoint, []string{"nav"})
+	latest, err := rpc.BlockNumber(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("nav source: %w", err)
+		return nil, fmt.Errorf("latest block: %w", err)
+	}
+	block30dAgo := blockOffsetBySeconds(latest, int64(Window30d.Seconds()))
+	block7dAgo := blockOffsetBySeconds(latest, int64(Window7d.Seconds()))
+
+	navNow, err := readAavePriceOracleNAV(ctx, rpc, p.oracle, p.contract, nil)
+	if err != nil {
+		return nil, fmt.Errorf("nav now: %w", err)
+	}
+	nav30d, err := readAavePriceOracleNAV(ctx, rpc, p.oracle, p.contract, block30dAgo)
+	if err != nil {
+		return nil, fmt.Errorf("nav 30d: %w", err)
+	}
+	nav7d, err := readAavePriceOracleNAV(ctx, rpc, p.oracle, p.contract, block7dAgo)
+	if err != nil {
+		return nil, fmt.Errorf("nav 7d: %w", err)
 	}
 
-	p.mu.Lock()
-	p.ring.push(now, navNow)
-	nav30d := p.ring.navAt(now.Add(-Window30d))
-	nav7d := p.ring.navAt(now.Add(-Window7d))
-	p.mu.Unlock()
-
-	yield30dBps := 0
-	if nav30d > 0 {
-		yield30dBps = annualizedYieldBpsFromNAV(navNow, nav30d, 30.0)
-	}
-	yield7dBps := 0
-	if nav7d > 0 {
-		yield7dBps = annualizedYieldBpsFromNAV(navNow, nav7d, 7.0)
-	}
+	yield30dBps := annualizedYieldBpsFromNAV(navNow, nav30d, 30.0)
+	yield7dBps := annualizedYieldBpsFromNAV(navNow, nav7d, 7.0)
 
 	supply, err := readERC20TotalSupply(ctx, rpc, p.contract, nil)
 	if err != nil {
-		// Non-fatal: NAV yield can still be reported without supply.
 		supply = 0
 	}
 	supplyUnits := supply / 1e18
-	aum := supplyUnits * navNow
 
 	return &Measurement{
 		Token:                p.Slug(),
@@ -84,9 +82,9 @@ func (p *ousgProbe) Measure(ctx context.Context, rpc *ethclient.Client) (*Measur
 		Chain:                p.Chain(),
 		DeliveredBps30d:      yield30dBps,
 		DeliveredBps7d:       yield7dBps,
-		DeliveredBpsLifetime: 0, // V1 placeholder
+		DeliveredBpsLifetime: 0,
 		TotalSupplyUnits:     supplyUnits,
-		AUMUSD:               aum,
+		AUMUSD:               supplyUnits * navNow,
 		NewDistributionsUSD:  0,
 		MeasuredAt:           now,
 	}, nil

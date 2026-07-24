@@ -12,35 +12,29 @@ import (
 )
 
 // BUIDL is BlackRock's USD Institutional Digital Liquidity Fund,
-// tokenized on Ethereum by Securitize. Share price is fixed at
-// exactly $1 by design; yield materializes as monthly USDC dividends
-// distributed from the Securitize treasury wallet to BUIDL holders.
+// tokenized on Ethereum by Securitize.
 //
-// Ethereum contract (BUIDL ERC-20):
-//   0x7712c34205737192402172409a8F7ccef8aA2AEc
+// Contracts:
+//   BUIDL ERC-20:   0x7712c34205737192402172409a8F7ccef8aA2AEc
+//   Distributor:    0x5072Ed40EBa6bE38C2370cAD1Cb1df0202924e53
+//     (Securitize distribution EOA that calls bulkIssuance on BUIDL)
 //
-// Securitize distribution treasury (source of USDC dividends):
-//   0x... (verified against Securitize's own docs on Etherscan)
+// DORMANT — mechanism mismatch. Research showed the distributor
+// mints ADDITIONAL BUIDL rather than transferring USDC. The current
+// dividend.go path (sum USDC Transfer events from treasury) reports
+// zero for BUIDL and is the wrong model for this token.
 //
-// The 30d delivered yield is the sum of USDC Transfer events from
-// treasury to BUIDL holders over the 30-day window, divided by the
-// average BUIDL supply across the window (share price = $1), then
-// annualized.
-//
-// V1 caveats:
-//   - Treasury address is TBD in V1: needs to be verified against
-//     Etherscan for the specific distribution wallet used by the
-//     current BUIDL contract. Placeholder address will make the probe
-//     return zero distributions until confirmed.
-//   - BUIDL distributes monthly, near the end of each calendar month.
-//     A 30-day rolling window that ends mid-month will underrepresent
-//     the yield. Cross-check against lifetime column at publication.
+// To activate, replace Measure with a rebase-style implementation
+// that reads totalSupply growth over the window (like USDY) AND
+// filters out mints attributable to new subscriptions vs yield
+// accrual. Ondo/USDY separates these cleanly at the contract level;
+// BUIDL does not, so cross-referencing with Securitize's monthly
+// dividend announcements will likely be required to net out
+// subscription-driven supply changes.
 
 const (
 	buidlContractEthereum = "0x7712c34205737192402172409a8F7ccef8aA2AEc"
-	// TODO(Sprint 3): verify this treasury address on Etherscan.
-	// Placeholder until confirmed against Securitize's own docs.
-	buidlTreasuryEthereum = "0x0000000000000000000000000000000000000000"
+	buidlTreasuryEthereum = "0x5072Ed40EBa6bE38C2370cAD1Cb1df0202924e53"
 )
 
 type buidlProbe struct {

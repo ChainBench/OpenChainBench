@@ -9,34 +9,34 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
-// USTB is Superstate's Short-Duration U.S. Treasury Fund tokenized
-// on Ethereum. Same distribution model as BUIDL: share price fixed
-// at $1, monthly USDC dividends distributed from the fund's treasury
-// wallet.
+// USTB is Superstate's Short-Duration U.S. Treasury Fund tokenized on
+// Ethereum. NAV-accrual model: share price grows daily as yield accrues.
+// There are no dividend transfers to holders — the "yield" materializes
+// entirely through NAV growth.
 //
-// Ethereum contract (USTB ERC-20):
-//   0x43415eB6f9c1D19a41BC1c17D7D1e9E92dB4B4aE
+// Contracts:
+//   USTB ERC-20:         0x43415eB6ff9DB7E26A15b704e7A3eDCe97d31C4e
+//   Chainlink NAV feed:  0x289B5036cd942e619E1Ee48670F98d214E745AAC
+//     (Superstate publishes USTB NAV/USD via Chainlink, updates daily)
 //
-// Superstate treasury wallet (source of USDC dividends):
-//   0x... (TODO Sprint 3: verify against Superstate's own docs)
-//
-// USTB uses 6 decimals per Superstate's specification.
+// Delivered yield is read directly from the Chainlink feed at latest
+// and at t-30d / t-7d block numbers. No in-memory bootstrap needed
+// (archive RPC provides history since token inception).
 
 const (
-	ustbContractEthereum = "0x43415eB6f9c1D19a41BC1c17D7D1e9E92dB4B4aE"
-	// TODO(Sprint 3): verify treasury address on Etherscan.
-	ustbTreasuryEthereum = "0x0000000000000000000000000000000000000000"
+	ustbContractEthereum = "0x43415eB6ff9DB7E26A15b704e7A3eDCe97d31C4e"
+	ustbChainlinkFeed    = "0x289B5036cd942e619E1Ee48670F98d214E745AAC"
 )
 
 type ustbProbe struct {
 	contract common.Address
-	treasury common.Address
+	navFeed  common.Address
 }
 
 func NewUSTBProbe() IssuerProbe {
 	return &ustbProbe{
 		contract: common.HexToAddress(ustbContractEthereum),
-		treasury: common.HexToAddress(ustbTreasuryEthereum),
+		navFeed:  common.HexToAddress(ustbChainlinkFeed),
 	}
 }
 
@@ -47,11 +47,6 @@ func (p *ustbProbe) Chain() string  { return "ethereum" }
 func (p *ustbProbe) Measure(ctx context.Context, rpc *ethclient.Client) (*Measurement, error) {
 	now := time.Now().UTC()
 
-	supplyNow, err := readERC20TotalSupply(ctx, rpc, p.contract, nil)
-	if err != nil {
-		return nil, fmt.Errorf("supply now: %w", err)
-	}
-
 	latest, err := rpc.BlockNumber(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("latest block: %w", err)
@@ -59,34 +54,28 @@ func (p *ustbProbe) Measure(ctx context.Context, rpc *ethclient.Client) (*Measur
 	block30dAgo := blockOffsetBySeconds(latest, int64(Window30d.Seconds()))
 	block7dAgo := blockOffsetBySeconds(latest, int64(Window7d.Seconds()))
 
-	supply30d, err := readERC20TotalSupply(ctx, rpc, p.contract, block30dAgo)
+	navNow, err := readChainlinkNAV(ctx, rpc, p.navFeed, nil)
 	if err != nil {
-		return nil, fmt.Errorf("supply 30d: %w", err)
+		return nil, fmt.Errorf("nav now: %w", err)
 	}
-	supply7d, err := readERC20TotalSupply(ctx, rpc, p.contract, block7dAgo)
+	nav30d, err := readChainlinkNAV(ctx, rpc, p.navFeed, block30dAgo)
 	if err != nil {
-		return nil, fmt.Errorf("supply 7d: %w", err)
+		return nil, fmt.Errorf("nav 30d: %w", err)
+	}
+	nav7d, err := readChainlinkNAV(ctx, rpc, p.navFeed, block7dAgo)
+	if err != nil {
+		return nil, fmt.Errorf("nav 7d: %w", err)
 	}
 
-	dist30d, err := sumUSDCDistributionsFromTreasury(ctx, rpc, p.treasury, block30dAgo.Uint64(), latest)
+	yield30dBps := annualizedYieldBpsFromNAV(navNow, nav30d, 30.0)
+	yield7dBps := annualizedYieldBpsFromNAV(navNow, nav7d, 7.0)
+
+	// USTB uses 6 decimals per Superstate spec.
+	supply, err := readERC20TotalSupply(ctx, rpc, p.contract, nil)
 	if err != nil {
-		return nil, fmt.Errorf("distributions 30d: %w", err)
+		supply = 0
 	}
-	dist7d, err := sumUSDCDistributionsFromTreasury(ctx, rpc, p.treasury, block7dAgo.Uint64(), latest)
-	if err != nil {
-		return nil, fmt.Errorf("distributions 7d: %w", err)
-	}
-	dist30dUSD := usdcAmountToFloat(dist30d)
-	dist7dUSD := usdcAmountToFloat(dist7d)
-
-	// USTB is 6 decimals per Superstate spec. Share price = $1.
-	avgSupply30dUSD := (supplyNow + supply30d) / 2 / 1e6
-	avgSupply7dUSD := (supplyNow + supply7d) / 2 / 1e6
-
-	yield30dBps := annualizedYieldBpsFromDistribution(dist30dUSD, avgSupply30dUSD, 30.0)
-	yield7dBps := annualizedYieldBpsFromDistribution(dist7dUSD, avgSupply7dUSD, 7.0)
-
-	supplyUnits := supplyNow / 1e6
+	supplyUnits := supply / 1e6
 
 	return &Measurement{
 		Token:                p.Slug(),
@@ -94,10 +83,10 @@ func (p *ustbProbe) Measure(ctx context.Context, rpc *ethclient.Client) (*Measur
 		Chain:                p.Chain(),
 		DeliveredBps30d:      yield30dBps,
 		DeliveredBps7d:       yield7dBps,
-		DeliveredBpsLifetime: 0, // V1 placeholder
+		DeliveredBpsLifetime: 0,
 		TotalSupplyUnits:     supplyUnits,
-		AUMUSD:               supplyUnits,
-		NewDistributionsUSD:  dist30dUSD,
+		AUMUSD:               supplyUnits * navNow,
+		NewDistributionsUSD:  0,
 		MeasuredAt:           now,
 	}, nil
 }
