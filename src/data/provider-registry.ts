@@ -726,6 +726,12 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "ThirdWeb operates a keyless public RPC gateway at `<chainid>.rpc.thirdweb.com` covering 2000+ EVM chains via chain-id routing. Free tier is rate-limited per IP with no signup; paid tiers unlock higher throughput and dedicated endpoints. Used keyless across 13 chains on the RPC latency cluster (arbitrum, ethereum, polygon, optimism, base, bnb, avalanche, linea, worldchain, kaia, ink, opbnb + more).",
     twitter: "@thirdweb",
   },
+  gelato: {
+    url: "https://gelato.network",
+    description:
+      "Gelato Network runs a rollup-as-a-service platform and operates RPC infrastructure for OP Stack + Arbitrum Orbit chains it hosts. On the RPC latency cluster it appears as the Kraken Ink chain's Gelato-backed official endpoint (`rpc-gel.inkonchain.com`), running active-active alongside the QuickNode-backed sibling.",
+    twitter: "@gelatonetwork",
+  },
   infura: {
     url: "https://www.infura.io",
     description:
