@@ -515,7 +515,7 @@ const loadAllBenchmarksCached = unstable_cache(
   // -> ws-head-latency-ethereum + ungate on prod).
   // v34: bumped with bench-unfiltered-v31 (084 indexer-latency dropped).
   // Wormhole VAA latency ship (bench 101).
-  // v47: 027 solana-tx-landing-latency removed from main (see bench-unfiltered-v45).
+  // v47: 027 solana-tx-landing-latency removed from main (see bench-unfiltered-v46).
   // v49: network-coverage split into asset-registry-coverage + dex-network-coverage
   // (bench SET changed, see bench-unfiltered-v46).
   // v50: staging pipeline shuffle (see bench-unfiltered-v47).
