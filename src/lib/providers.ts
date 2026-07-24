@@ -453,6 +453,29 @@ async function buildProviders(): Promise<ProviderProfile[]> {
     });
   }
 
+  // Seed stub profiles for meta-providers registered in PROVIDER_REGISTRY
+  // whose slug is intentionally NOT emitted as a bench row (they wrap
+  // benches at the protocol / infra level instead). Without this,
+  // /products/<slug> 404s even though the registry has a full org page.
+  //   - gelato: hosts Ink's rpc-gel endpoint (bench row uses ink-official)
+  //   - thirdweb: hosts <chainid>.rpc.thirdweb.com paths (currently not
+  //     wired to any bench row after the 2026-07-24 removal that unblocked
+  //     the /products/thirdweb 500 rollback loop)
+  //   - wormhole: is the entire wormhole-vaa-latency bench itself; the
+  //     rows are source_chain slugs (solana / ethereum / …), not "wormhole"
+  for (const v of REGISTRY_STUB_SEED) {
+    const key = v.slug.toLowerCase();
+    if (byKey.has(key)) continue;
+    byKey.set(key, {
+      slug: v.slug,
+      name: v.name,
+      type: "protocol",
+      appearances: [],
+      wins: 0,
+      categories: [],
+    });
+  }
+
   const profiles = Array.from(byKey.values()).filter(
     (p) => !isBlacklistedSlug(p.slug),
   );
@@ -530,6 +553,16 @@ const PERP_VENUE_SEED = [
   { slug: "variational", name: "Variational" },
   { slug: "ostium", name: "Ostium" },
   { slug: "grvt", name: "GRVT" },
+];
+
+// Meta-providers that live in PROVIDER_REGISTRY but never appear as a
+// bench row slug directly. Adding them here creates a stub profile so
+// /products/<slug> renders the Organization page from the registry
+// instead of 404-ing.
+const REGISTRY_STUB_SEED = [
+  { slug: "gelato", name: "Gelato" },
+  { slug: "thirdweb", name: "ThirdWeb" },
+  { slug: "wormhole", name: "Wormhole" },
 ];
 
 /** Cross-request cache. The expensive part isn't `getBenchmarks()`
