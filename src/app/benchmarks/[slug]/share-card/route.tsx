@@ -12,15 +12,10 @@ import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { SLUG_RE } from "@/lib/slug";
 
 /** Best → worst, depending on whether higher numbers are better. Drops
- *  rows with missing `ms` or non-positive p50. Both zero and negative
- *  values must be filtered here: zeros blow up bar heights via
- *  divide-by-zero maxP50, and negatives (used as a "warming up"
- *  sentinel on funding benches via commit c03c599) produce a negative
- *  maxP50 and inverted ratios which makes Satori reject the JSX with
- *  an opaque "Spread syntax" error mid-stream. The `!== 0` rewrite
- *  was correct for the /products page (which surfaces the negative
- *  sentinel explicitly) but leaked into the share-card render path
- *  where negatives are just noise on the bar chart. */
+ *  rows with missing `ms` or non-positive p50, mirroring /api/stat. Those
+ *  zero-value placeholders blow up the bar layout (NaN heights from a
+ *  divide-by-zero maxP50, ratios > 1) which makes Satori reject the JSX
+ *  with an opaque "Spread syntax" error mid-stream. */
 function sortByP50(b: Benchmark): ProviderResult[] {
   return [...b.results]
     .filter(
@@ -28,7 +23,7 @@ function sortByP50(b: Benchmark): ProviderResult[] {
         !!r &&
         !!r.ms &&
         Number.isFinite(r.ms.p50) &&
-        r.ms.p50 > 0,
+        r.ms.p50 !== 0,
     )
     .sort(
       b.higherIsBetter
@@ -51,22 +46,6 @@ function compactProviderName(name: string): string {
     WalletExplorer: "Wallet Exp.",
   };
   return map[name] ?? name;
-}
-
-/** Scale the title font size when the bench title is long so it stops
- * overflowing the layout area on the share-card. Long titles like
- * "Fastest free public RPC for Ethereum, BNB, Polygon and 23 more
- * chains (plus Solana and Polkadot)" (105 chars) at the default 44-56
- * px wrap to 4 lines and collide with the leaderboard rows or the
- * time-series chart on Snapshot. This linear ramp keeps titles under
- * 60 chars at the caller's base size and shrinks longer ones on a
- * predictable slope so the layout stays inside 630 px. */
-function scaledTitleSize(base: number, title: string): number {
-  const len = title.length;
-  if (len <= 60) return base;
-  if (len <= 80) return Math.round(base * 0.78);
-  if (len <= 100) return Math.round(base * 0.62);
-  return Math.round(base * 0.5);
 }
 
 /** Direction-aware comparison label for the Compare card centre cell.
@@ -161,17 +140,6 @@ const MIME: Record<string, string> = {
 };
 
 const _providerLogoCache = new Map<string, string | null>();
-
-// Satori (the JSX-to-SVG renderer next/og uses) only decodes PNG, JPEG
-// and SVG. Feed it AVIF or WebP bytes and the internal decoder throws
-// "TypeError: u2 is not iterable" mid-stream, which surfaces as a
-// generic HTTP 500 on the share-card endpoint with no meaningful log.
-// Skipping unsupported formats here falls back to the initials chip in
-// CardProviderLogo, same as when the logo file is missing entirely.
-// Root cause of the pre-existing 500 on rpc-capabilities (publicnode
-// .avif, drpc / lava .webp), polkadot-rpc, ws-head-latency-*.
-const SATORI_UNSUPPORTED_EXT = new Set([".avif", ".webp"]);
-
 /** Returns a data URL for the registered logo file, or null if missing.
  * Result is cached per slug to avoid hitting the filesystem on every
  * render of the share-card. */
@@ -182,14 +150,9 @@ function getProviderLogoDataUrl(slug: string): string | null {
     _providerLogoCache.set(slug, null);
     return null;
   }
-  const ext = extname(rel).toLowerCase();
-  if (SATORI_UNSUPPORTED_EXT.has(ext)) {
-    _providerLogoCache.set(slug, null);
-    return null;
-  }
   try {
     const buf = readFileSync(join(process.cwd(), "public", rel));
-    const mime = MIME[ext] ?? "image/png";
+    const mime = MIME[extname(rel).toLowerCase()] ?? "image/png";
     const url = `data:${mime};base64,${buf.toString("base64")}`;
     _providerLogoCache.set(slug, url);
     return url;
@@ -235,18 +198,6 @@ function CardProviderLogo({
       </div>
     );
   }
-  // Resolve CSS `var(--color-*)` fallbacks from chipBackground /
-  // chipTextColor to the concrete palette hex. Satori evaluates
-  // `var(...)` to the CSS-wide `initial` keyword and rejects a
-  // `background: initial` declaration, taking the whole render down
-  // with a "Failed to parse declaration" error. Full-cohort case:
-  // evm-block-builders (Titan, BuilderNet, Quasar, Eureka, Builder+,
-  // Vanilla) — none have a registered logo or brand chip color so
-  // every row falls through here and the whole PNG fails to render.
-  const bgRaw = chipBackground(slug);
-  const fgRaw = chipTextColor(slug);
-  const bg = bgRaw.startsWith("var(") ? INK_SOFT : bgRaw;
-  const fg = fgRaw.startsWith("var(") ? PAPER : fgRaw;
   return (
     <div
       style={{
@@ -254,8 +205,8 @@ function CardProviderLogo({
         width: size,
         height: size,
         borderRadius: "50%",
-        background: bg,
-        color: fg,
+        background: chipBackground(slug),
+        color: chipTextColor(slug),
         alignItems: "center",
         justifyContent: "center",
         fontSize: Math.round(size * 0.42),
@@ -365,12 +316,10 @@ function CardHeader({
   benchmark,
   showCategory = true,
   chainLabel,
-  filterPills = [],
 }: {
   benchmark: Benchmark;
   showCategory?: boolean;
   chainLabel?: string | null;
-  filterPills?: { kind: string; value: string }[];
 }) {
   return (
     <div
@@ -385,11 +334,6 @@ function CardHeader({
         <LivePill />
         {showCategory && <CategoryPill>{benchmark.category}</CategoryPill>}
         {chainLabel && <ChainPill>{chainLabel}</ChainPill>}
-        {filterPills.map((p) => (
-          <ChainPill key={`${p.kind}-${p.value}`} label={p.kind}>
-            {p.value}
-          </ChainPill>
-        ))}
         <div
           style={{
             display: "flex",
@@ -408,13 +352,7 @@ function CardHeader({
   );
 }
 
-function ChainPill({
-  children,
-  label = "CHAIN",
-}: {
-  children: React.ReactNode;
-  label?: string;
-}) {
+function ChainPill({ children }: { children: React.ReactNode }) {
   return (
     <div
       style={{
@@ -433,7 +371,7 @@ function ChainPill({
         fontFamily: "monospace",
       }}
     >
-      <span style={{ color: INK_FAINT, fontSize: 10 }}>{label}</span>
+      <span style={{ color: INK_FAINT, fontSize: 10 }}>CHAIN</span>
       {children}
     </div>
   );
@@ -488,7 +426,6 @@ function CardShell({
   rightText,
   showCategory = true,
   chainLabel,
-  filterPills = [],
 }: {
   benchmark: Benchmark;
   accentColor?: string;
@@ -496,7 +433,6 @@ function CardShell({
   rightText?: string;
   showCategory?: boolean;
   chainLabel?: string | null;
-  filterPills?: { kind: string; value: string }[];
 }) {
   return (
     <div
@@ -533,7 +469,6 @@ function CardShell({
           benchmark={benchmark}
           showCategory={showCategory}
           chainLabel={chainLabel}
-          filterPills={filterPills}
         />
         <div
           style={{
@@ -594,43 +529,12 @@ export async function GET(
   const chainOption = isAll
     ? null
     : chainOptions.find((c) => matchesChainSlug(c.value, chainParam)) ?? null;
-
-  // Same treatment for region / kind / venue - modal chip pickers
-  // (share-section-modal.tsx) send these as `?region=`, `?kind=`,
-  // `?venue=`. Validated against the spec-declared dimensions so an
-  // attacker cannot inject arbitrary label values into the Prom query.
-  const findDim = (paramName: string, dims: { value: string; label: string }[]) => {
-    const raw = url.searchParams.get(paramName);
-    if (!raw || raw === "all") return null;
-    return dims.find((d) => d.value === raw) ?? null;
-  };
-  const regionOption = findDim("region", aggregate.dimensions?.region ?? []);
-  const kindOption = findDim("kind", aggregate.dimensions?.kind ?? []);
-  const venueOption = findDim("venue", aggregate.dimensions?.venue ?? []);
-
-  const loaderOpts: {
-    chain?: string;
-    region?: string;
-    kind?: string;
-    venue?: string;
-  } = {};
-  if (chainOption) loaderOpts.chain = chainOption.value;
-  if (regionOption) loaderOpts.region = regionOption.value;
-  if (kindOption) loaderOpts.kind = kindOption.value;
-  if (venueOption) loaderOpts.venue = venueOption.value;
-
-  const benchmark =
-    Object.keys(loaderOpts).length > 0
-      ? (await getBenchmark(slug, loaderOpts)) ?? aggregate
-      : aggregate;
-
+  const benchmark = chainOption
+    ? (await getBenchmark(slug, { chain: chainOption.value })) ?? aggregate
+    : aggregate;
   // No pill for `all` either - it's the unfiltered default view, calling
   // it out as a "chain" reads awkward.
   const chainLabel = chainOption?.label ?? null;
-  const filterPills: { kind: string; value: string }[] = [];
-  if (regionOption) filterPills.push({ kind: "REGION", value: regionOption.label });
-  if (kindOption) filterPills.push({ kind: "KIND", value: kindOption.label });
-  if (venueOption) filterPills.push({ kind: "VENUE", value: venueOption.label });
 
   const rawTemplate = url.searchParams.get("template");
   const template: "ranking" | "snapshot" | "headline" | "compare" | "leaderboard" =
@@ -681,16 +585,16 @@ export async function GET(
 
   switch (template) {
     case "snapshot":
-      return renderSnapshot(filteredSafe, colors, chainLabel, filterPills);
+      return renderSnapshot(filteredSafe, colors, chainLabel);
     case "headline":
-      return renderHeadline(benchmark, colors, headlineProvider, chainLabel, filterPills);
+      return renderHeadline(benchmark, colors, headlineProvider, chainLabel);
     case "compare":
-      return renderCompare(benchmark, colors, compareA, compareB, chainLabel, filterPills);
+      return renderCompare(benchmark, colors, compareA, compareB, chainLabel);
     case "leaderboard":
-      return renderLeaderboard(benchmark, colors, chainLabel, filterPills);
+      return renderLeaderboard(benchmark, colors, chainLabel);
     case "ranking":
     default:
-      return renderRanking(benchmark, colors, chainLabel, filterPills);
+      return renderRanking(benchmark, colors, chainLabel);
   }
 }
 
@@ -698,8 +602,7 @@ export async function GET(
 async function renderRanking(
   benchmark: Benchmark,
   colors: Map<string, string>,
-  chainLabel?: string | null,
-  filterPills: { kind: string; value: string }[] = []
+  chainLabel?: string | null
 ) {
   const sorted = sortByP50(benchmark);
   const maxP50 = Math.max(...sorted.map((r) => r.ms.p50)) || 1;
@@ -707,7 +610,7 @@ async function renderRanking(
   // Scale type sizes down when the bench has many providers, otherwise
   // the long names (StellarExpert, WalletExplorer, …) collide.
   const dense = count >= 7;
-  const titleSize = scaledTitleSize(dense ? 44 : 56, benchmark.title);
+  const titleSize = dense ? 44 : 56;
   const valueSize = dense ? 22 : 26;
   const nameSize = dense ? 15 : 18;
   const captionSize = dense ? 11 : 12;
@@ -719,7 +622,7 @@ async function renderRanking(
 
   return new ImageResponse(
     (
-      <CardShell benchmark={benchmark} chainLabel={chainLabel} filterPills={filterPills}>
+      <CardShell benchmark={benchmark} chainLabel={chainLabel}>
         <div
           style={{
             display: "flex",
@@ -736,7 +639,6 @@ async function renderRanking(
               color: INK,
               letterSpacing: "-0.02em",
               lineHeight: 1.05,
-              flexShrink: 0,
             }}
           >
             {benchmark.title}
@@ -748,7 +650,6 @@ async function renderRanking(
               color: INK_SOFT,
               lineHeight: 1.3,
               maxWidth: 980,
-              flexShrink: 0,
             }}
           >
             Product ranking by p50 · {benchmark.metric}.
@@ -857,23 +758,29 @@ async function renderRanking(
 async function renderLeaderboard(
   benchmark: Benchmark,
   colors: Map<string, string>,
-  chainLabel?: string | null,
-  filterPills: { kind: string; value: string }[] = []
+  chainLabel?: string | null
 ) {
-  // Row height ~55px + gap 14 = ~70px per row. Content area is
-  // ~450px when title fits on 1 line and ~390px when it wraps to 2.
-  // Cap 6 = 420px which stays under both.
-  const sorted = sortByP50(benchmark).slice(0, 6);
+  const sorted = sortByP50(benchmark);
   const maxP50 = Math.max(...sorted.map((r) => r.ms.p50)) || 1;
-  const total = benchmark.results.length;
-  const subtitleLB =
-    total > sorted.length
-      ? `Top ${sorted.length} of ${total} · ranked by p50 · ${benchmark.metric}.`
-      : `Ranked by p50 · ${benchmark.metric}.`;
+  const subtitleLB = `Ranked by p50 · ${benchmark.metric}.`;
+  // Scale down type + spacing when the roster is dense OR the title is
+  // long, otherwise a 2-line 50pt title collides with the row list in
+  // the 630px canvas (weekend-drift 11 rows + long title case).
+  const count = sorted.length;
+  const titleLen = benchmark.title.length;
+  const dense = count >= 8 || titleLen > 55;
+  const veryDense = count >= 10 || titleLen > 70;
+  const titleSize = veryDense ? 32 : dense ? 40 : 50;
+  const rankSize = veryDense ? 18 : dense ? 20 : 24;
+  const nameSize = veryDense ? 18 : dense ? 20 : 24;
+  const valueSize = veryDense ? 22 : dense ? 24 : 28;
+  const barHeight = veryDense ? 6 : dense ? 7 : 8;
+  const rowGap = veryDense ? 8 : dense ? 10 : 14;
+  const logoSize = veryDense ? 22 : dense ? 24 : 28;
 
   return new ImageResponse(
     (
-      <CardShell benchmark={benchmark} chainLabel={chainLabel} filterPills={filterPills}>
+      <CardShell benchmark={benchmark} chainLabel={chainLabel}>
         <div
           style={{
             display: "flex",
@@ -885,12 +792,11 @@ async function renderLeaderboard(
           <div
             style={{
               display: "flex",
-              fontSize: scaledTitleSize(50, benchmark.title),
+              fontSize: titleSize,
               fontWeight: 700,
               color: INK,
               letterSpacing: "-0.02em",
               lineHeight: 1.05,
-              flexShrink: 0,
             }}
           >
             {benchmark.title}
@@ -901,7 +807,6 @@ async function renderLeaderboard(
               fontSize: 16,
               color: INK_SOFT,
               marginTop: 2,
-              flexShrink: 0,
             }}
           >
             {subtitleLB}
@@ -913,8 +818,8 @@ async function renderLeaderboard(
               flexDirection: "column",
               flex: 1,
               justifyContent: "flex-start",
-              gap: 14,
-              marginTop: 18,
+              gap: rowGap,
+              marginTop: 14,
             }}
           >
             {sorted.map((r, i) => {
@@ -923,15 +828,15 @@ async function renderLeaderboard(
               return (
                 <div
                   key={r.slug}
-                  style={{ display: "flex", alignItems: "center", gap: 24 }}
+                  style={{ display: "flex", alignItems: "center", gap: 20 }}
                 >
                   <div
                     style={{
                       display: "flex",
-                      fontSize: 24,
+                      fontSize: rankSize,
                       fontFamily: "monospace",
                       color: INK_FAINT,
-                      width: 36,
+                      width: 32,
                       letterSpacing: "0.05em",
                     }}
                   >
@@ -942,7 +847,7 @@ async function renderLeaderboard(
                       display: "flex",
                       flexDirection: "column",
                       flex: 1,
-                      gap: 6,
+                      gap: 4,
                     }}
                   >
                     <div
@@ -957,7 +862,7 @@ async function renderLeaderboard(
                           display: "flex",
                           alignItems: "center",
                           gap: 10,
-                          fontSize: 24,
+                          fontSize: nameSize,
                           fontWeight: 700,
                           color: color,
                         }}
@@ -965,7 +870,7 @@ async function renderLeaderboard(
                         <CardProviderLogo
                           slug={r.slug}
                           name={r.name}
-                          size={28}
+                          size={logoSize}
                         />
                         {r.name}
                       </span>
@@ -979,7 +884,7 @@ async function renderLeaderboard(
                       >
                         <span
                           style={{
-                            fontSize: 28,
+                            fontSize: valueSize,
                             fontWeight: 700,
                             color: INK,
                             letterSpacing: "-0.02em",
@@ -987,7 +892,7 @@ async function renderLeaderboard(
                         >
                           {fmtValue(r.ms.p50, benchmark.unit)}
                         </span>
-                        <span style={{ fontSize: 16, color: INK_MUTED }}>
+                        <span style={{ fontSize: 14, color: INK_MUTED }}>
                           {unitSuffix(benchmark.unit, r.ms.p50).trim()}
                         </span>
                       </span>
@@ -996,7 +901,7 @@ async function renderLeaderboard(
                       style={{
                         display: "flex",
                         width: "100%",
-                        height: 8,
+                        height: barHeight,
                         background: `${color}22`,
                         borderRadius: 4,
                       }}
@@ -1005,7 +910,7 @@ async function renderLeaderboard(
                         style={{
                           display: "flex",
                           width: `${widthPct}%`,
-                          height: 8,
+                          height: barHeight,
                           background: color,
                           borderRadius: 4,
                         }}
@@ -1027,17 +932,9 @@ async function renderLeaderboard(
 async function renderSnapshot(
   benchmark: Benchmark,
   colors: Map<string, string>,
-  chainLabel?: string | null,
-  filterPills: { kind: string; value: string }[] = []
+  chainLabel?: string | null
 ) {
-  // Cap dynamically by title length: long titles (>=90 chars, 2 lines)
-  // eat the vertical space that would otherwise fit the 2nd legend row,
-  // so shrink the cohort further to keep the legend from overlapping
-  // the footer. Values chosen from empirical layout tests on
-  // rpc-capabilities (106 chars, 13 providers) and oracle-deviation
-  // (60 chars, 10 providers).
-  const cap = benchmark.title.length >= 90 ? 6 : 8;
-  const sorted = sortByP50(benchmark).slice(0, cap);
+  const sorted = sortByP50(benchmark);
   const seriesList = sorted
     .map((r) => ({
       slug: r.slug,
@@ -1054,11 +951,7 @@ async function renderSnapshot(
     .filter((s) => s.values.length > 1);
 
   const chartW = 1086;
-  // 280 was too tall - the legend routinely wraps to 2 rows and
-  // overlaps the footer on wide-cohort benches (rpc-capabilities 13,
-  // ethereum-rpc 8, perp-fees 8). 220 leaves ~60px more for 2 legend
-  // rows to fit above the footer.
-  const chartH = 220;
+  const chartH = 280;
   const all = seriesList.flatMap((s) => s.values);
   const min = all.length ? Math.min(...all) : 0;
   const max = all.length ? Math.max(...all) : 1;
@@ -1067,7 +960,7 @@ async function renderSnapshot(
 
   return new ImageResponse(
     (
-      <CardShell benchmark={benchmark} chainLabel={chainLabel} filterPills={filterPills}>
+      <CardShell benchmark={benchmark} chainLabel={chainLabel}>
         <div
           style={{
             display: "flex",
@@ -1076,15 +969,23 @@ async function renderSnapshot(
             gap: 6,
           }}
         >
+          {/* Title + subtitle. Satori quirk: a bare `display: flex`
+              text div stays at one-line height even when the text
+              visually wraps, so the next sibling stacks on top of the
+              wrapped lines. Explicit `flexDirection: column` on each
+              text box forces satori to measure the wrapped content
+              height. maxWidth pins the wrap point below the container
+              width so long titles never touch the right edge. */}
           <div
             style={{
               display: "flex",
-              fontSize: scaledTitleSize(48, benchmark.title),
+              flexDirection: "column",
+              fontSize: 48,
               fontWeight: 700,
               color: INK,
               letterSpacing: "-0.02em",
               lineHeight: 1.05,
-              flexShrink: 0,
+              maxWidth: 1086,
             }}
           >
             {benchmark.title}
@@ -1092,10 +993,11 @@ async function renderSnapshot(
           <div
             style={{
               display: "flex",
+              flexDirection: "column",
               fontSize: 16,
               color: INK_SOFT,
+              lineHeight: 1.35,
               maxWidth: 980,
-              flexShrink: 0,
             }}
           >
             {benchmark.subtitle}
@@ -1231,8 +1133,7 @@ async function renderHeadline(
   benchmark: Benchmark,
   colors: Map<string, string>,
   featured?: Benchmark["results"][number],
-  chainLabel?: string | null,
-  filterPills: { kind: string; value: string }[] = []
+  chainLabel?: string | null
 ) {
   const sorted = sortByP50(benchmark);
   const winner = featured ?? sorted[0];
@@ -1244,7 +1145,7 @@ async function renderHeadline(
 
   return new ImageResponse(
     (
-      <CardShell benchmark={benchmark} accentColor={winnerColor} chainLabel={chainLabel} filterPills={filterPills}>
+      <CardShell benchmark={benchmark} accentColor={winnerColor} chainLabel={chainLabel}>
         <div
           style={{
             display: "flex",
@@ -1350,8 +1251,7 @@ async function renderCompare(
   colors: Map<string, string>,
   paneA?: Benchmark["results"][number],
   paneB?: Benchmark["results"][number],
-  chainLabel?: string | null,
-  filterPills: { kind: string; value: string }[] = []
+  chainLabel?: string | null
 ) {
   const sorted = sortByP50(benchmark);
   const a = paneA ?? sorted[0];
@@ -1359,7 +1259,7 @@ async function renderCompare(
     paneB && paneB.slug !== a?.slug
       ? paneB
       : sorted.find((r) => r.slug !== a?.slug);
-  if (!a || !b) return renderHeadline(benchmark, colors, a, chainLabel, filterPills);
+  if (!a || !b) return renderHeadline(benchmark, colors, a);
 
   const aColor = colors.get(a.slug) ?? INK_SOFT;
   const bColor = colors.get(b.slug) ?? INK_SOFT;
@@ -1372,7 +1272,7 @@ async function renderCompare(
 
   return new ImageResponse(
     (
-      <CardShell benchmark={benchmark} chainLabel={chainLabel} filterPills={filterPills}>
+      <CardShell benchmark={benchmark} chainLabel={chainLabel}>
         <div
           style={{
             display: "flex",
@@ -1384,12 +1284,11 @@ async function renderCompare(
           <div
             style={{
               display: "flex",
-              fontSize: scaledTitleSize(36, benchmark.title),
+              fontSize: 36,
               fontWeight: 700,
               color: INK,
               letterSpacing: "-0.02em",
               lineHeight: 1.05,
-              flexShrink: 0,
             }}
           >
             {benchmark.title} · top 2

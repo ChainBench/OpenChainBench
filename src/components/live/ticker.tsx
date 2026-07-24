@@ -56,22 +56,30 @@ export const LiveTicker = memo(function LiveTicker({
         </span>
       </div>
 
+      {/* maxValue: defensive ceilings against upstream corruption. Real
+          world highs (crypto ATH): vol24h ~$500B, trades24h ~50M,
+          mcap ~$4T. Ceilings sit 20-100x above those to leave room for
+          plausible growth while catching the 10^20+ garbage tick that
+          latched the ticker at 8e79 on the home page on 2026-07-17. */}
       <Stat
         label="Onchain volume · 24h"
         value={stats?.vol24h}
         format={fmtMoneyFull}
         monotonic
+        maxValue={1e13}
       />
       <Stat
         label="Onchain txs · 24h"
         value={stats?.trades24h}
         format={fmtCountFull}
         monotonic
+        maxValue={1e10}
       />
       <Stat
         label="Total crypto mcap"
         value={stats?.mcap}
         format={fmtMoneyFull}
+        maxValue={1e14}
       />
 
       <button
@@ -90,11 +98,13 @@ function Stat({
   value,
   format,
   monotonic,
+  maxValue,
 }: {
   label: string;
   value: number | undefined;
   format: (n: number | undefined) => string;
   monotonic?: boolean;
+  maxValue?: number;
 }) {
   return (
     <div className="flex items-baseline gap-2 min-w-0">
@@ -103,6 +113,7 @@ function Stat({
         value={value}
         format={format}
         monotonic={monotonic}
+        maxValue={maxValue}
         className="font-sans tabular text-[12px] text-ink-soft"
       />
     </div>

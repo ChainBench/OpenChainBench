@@ -483,6 +483,7 @@ export function TimeSeriesChart({
           onZoom={setZoom}
           onToggleExclude={toggle}
           onResetExcluded={excluded.size > 0 ? reset : undefined}
+          showDowntime={benchmark.results.some((r) => r.liveStatus != null)}
         />
       )}
     </figure>

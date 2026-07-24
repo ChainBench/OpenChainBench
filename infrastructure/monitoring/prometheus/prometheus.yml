@@ -171,6 +171,23 @@ scrape_configs:
           benchmark: rpc-capabilities
     metrics_path: /metrics
 
+  # OpenChainBench bench №081 + siblings 087 (base) + 088 (solana) —
+  # WebSocket head-latency race across free keyless RPC providers.
+  # Same 3-region layout as rpc-capabilities. Each service pins its
+  # REGION env var; the harness bakes it as a ConstLabel on every
+  # ws_head_* metric so Prom fed the union of the 3 replicas gets
+  # {provider, chain, region} triples for the per-region spec tabs.
+  - job_name: 'ws-head-latency'
+    honor_labels: true
+    static_configs:
+      - targets:
+        - 'ws-head-latency-us.railway.internal:2112'   # us-east
+        - 'ws-head-latency-eu.railway.internal:2112'   # eu-west
+        - 'ws-head-latency-sgp.railway.internal:2112'  # sgp
+        labels:
+          benchmark: ws-head-latency
+    metrics_path: /metrics
+
   # OpenChainBench — keyed free-tier RPC latency (Alchemy, Infura,
   # Chainstack, Ankr, Helius). Companion to rpc-capabilities: same
   # metric names + tier="keyed" label, picked up by the shared
