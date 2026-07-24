@@ -135,6 +135,9 @@ const RAW: Record<string, string> = {
   injective: "/logos/injective.svg",
   neutron: "/logos/neutron.svg",
 
+  // ─── HyperEVM RPC provider (bench 092) ───
+  stakely: "/logos/stakely.svg",
+
   // ─── Gas oracles ───
   etherscan: "/logos/etherscan.svg",
   owlracle: "/logos/owlracle.webp",
