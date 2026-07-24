@@ -121,6 +121,16 @@ func probeCoinStats(key string) coverage {
 		if !sweepDue {
 			break
 		}
+		if quotaHit {
+			// One quota-class failure (401/402/403/406/429) already
+			// hit in this cycle (catalog or EVM sweep). Every
+			// remaining probe still spends a billable call while
+			// receiving the same error, which is how we burn ~150
+			// wasted credits per restart during a credit-limit day.
+			// Abort the long-tail loop early — publish-then-leave
+			// keeps the previous cycle's cache alive.
+			break
+		}
 		if len(chainOf) > 0 {
 			if _, inCatalog := chainOf[probe.connectionID]; !inCatalog {
 				// The vendor does not list this chain: nothing to
