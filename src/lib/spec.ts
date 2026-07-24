@@ -304,7 +304,9 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // Wormhole VAA latency ship (bench 101).
   // v44: 027 solana-tx-landing-latency spec removed from main (never got prod data,
   // duplicate of 016 solana-tx-landing). Bench SET shrank.
-  ["bench-unfiltered-v45", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v46: network-coverage split into asset-registry-coverage + dex-network-coverage
+  // (bench 005 legacy slug removed, 2 new slugs added). Bench SET changed.
+  ["bench-unfiltered-v46", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -510,7 +512,9 @@ const loadAllBenchmarksCached = unstable_cache(
   // v34: bumped with bench-unfiltered-v31 (084 indexer-latency dropped).
   // Wormhole VAA latency ship (bench 101).
   // v47: 027 solana-tx-landing-latency removed from main (see bench-unfiltered-v45).
-  ["all-benchmarks-v48", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v49: network-coverage split into asset-registry-coverage + dex-network-coverage
+  // (bench SET changed, see bench-unfiltered-v46).
+  ["all-benchmarks-v49", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -615,7 +619,8 @@ const loadBenchmarkFiltered = unstable_cache(
   // v17: bumped with the monad-rpc + megaeth-rpc ship (lockstep rule).
   // v18: bumped with bench-unfiltered-v27 (dense series with nulls).
   // v19: bumped with bench-unfiltered-v28 (bench vague 2, 081-085).
-  ["bench-filters-v20", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v21: bumped with bench-unfiltered-v46 (network-coverage split).
+  ["bench-filters-v21", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] }
 );
 
