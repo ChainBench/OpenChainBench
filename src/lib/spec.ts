@@ -298,7 +298,8 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // HyperSync + The Graph required paid credentials for sustained
   // cadence). Bench SET shrank.
   // v40: drop thirdweb from 4 new benches (ink, world-chain, kaia, opbnb) to unblock prod deploy stuck on /products/thirdweb 500.
-  ["bench-unfiltered-v40", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v41: add bench 101 wormhole-vaa-latency (bench SET grew by 1).
+  ["bench-unfiltered-v41", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -457,8 +458,9 @@ const loadAllBenchmarksCached = unstable_cache(
   // v32: bumped with bench-unfiltered-v30 (081 slug rename ws-head-latency
   // -> ws-head-latency-ethereum + ungate on prod).
   // v34: bumped with bench-unfiltered-v31 (084 indexer-latency dropped).
-  // v43: bumped in lockstep with bench-unfiltered-v40 (drop thirdweb from 4 new benches, unblock prod).
-  ["all-benchmarks-v43", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v43: bumped in lockstep with bench-unfiltered-v40 (drop thirdweb, unblock prod).
+  // v44: bumped in lockstep with bench-unfiltered-v41 (add bench 101 wormhole-vaa-latency).
+  ["all-benchmarks-v44", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
