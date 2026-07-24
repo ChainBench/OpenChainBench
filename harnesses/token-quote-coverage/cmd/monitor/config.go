@@ -2,7 +2,7 @@ package main
 
 import (
 	"bufio"
-	"fmt"
+	"errors"
 	"os"
 	"strings"
 )
@@ -12,7 +12,6 @@ type Config struct {
 	MonitorRegion string
 	LogsToken     string
 	MobulaAPIKey  string
-	OneInchAPIKey string
 	OKXDEXAPIKey  string // optional
 }
 
@@ -23,17 +22,13 @@ func loadEnv() (*Config, error) {
 		MonitorRegion: strings.TrimSpace(os.Getenv("MONITOR_REGION")),
 		LogsToken:     strings.TrimSpace(os.Getenv("LOGS_TOKEN")),
 		MobulaAPIKey:  strings.TrimSpace(os.Getenv("MOBULA_API_KEY")),
-		OneInchAPIKey: strings.TrimSpace(os.Getenv("ONEINCH_API_KEY")),
 		OKXDEXAPIKey:  strings.TrimSpace(os.Getenv("OKX_DEX_API_KEY")),
 	}
 	if c.MonitorRegion == "" {
 		c.MonitorRegion = "eu-west"
 	}
 	if c.MobulaAPIKey == "" {
-		return nil, fmt.Errorf("MOBULA_API_KEY is required")
-	}
-	if c.OneInchAPIKey == "" {
-		return nil, fmt.Errorf("ONEINCH_API_KEY is required")
+		return nil, errors.New("MOBULA_API_KEY is required")
 	}
 	return c, nil
 }
