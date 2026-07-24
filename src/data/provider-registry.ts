@@ -711,6 +711,21 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "ThirdWeb operates a keyless public RPC gateway at `<chainid>.rpc.thirdweb.com` covering 2000+ EVM chains via chain-id routing. Free tier is rate-limited per IP with no signup; paid tiers unlock higher throughput and dedicated endpoints. Used keyless across 13 chains on the RPC latency cluster (arbitrum, ethereum, polygon, optimism, base, bnb, avalanche, linea, worldchain, kaia, ink, opbnb + more).",
     twitter: "@thirdweb",
   },
+<<<<<<< HEAD
+=======
+  gelato: {
+    url: "https://gelato.network",
+    description:
+      "Gelato Network runs a rollup-as-a-service platform and operates RPC infrastructure for OP Stack + Arbitrum Orbit chains it hosts. On the RPC latency cluster it appears as the Kraken Ink chain's Gelato-backed official endpoint (`rpc-gel.inkonchain.com`), running active-active alongside the QuickNode-backed sibling.",
+    twitter: "@gelatonetwork",
+  },
+  wormhole: {
+    url: "https://wormhole.com",
+    description:
+      "Wormhole is a cross-chain messaging network. A network of 19 Guardian nodes observes events on source chains and signs VAAs (Verified Action Approvals) once source-chain finality is reached; 13-of-19 Guardian signatures constitute quorum. Any signed VAA can then be relayed to any destination chain Wormhole supports (30+ EVM, Solana, Sui, Aptos, Near, Cosmos SDK chains) to unlock the corresponding action.",
+    twitter: "@wormhole",
+  },
+>>>>>>> b8ebfa91 (add bench 101 wormhole-vaa-latency (Wormhole VAA finalization by source chain) (#1374))
   infura: {
     url: "https://www.infura.io",
     description:
