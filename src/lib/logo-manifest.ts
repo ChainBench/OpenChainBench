@@ -140,6 +140,11 @@ const RAW: Record<string, string> = {
   hypurrscan: "/logos/hypurrscan.webp",
   purroofgroup: "/logos/purroofgroup.png",
 
+  // ─── Cosmos RPC providers (Osmosis + Cosmos Hub + Injective + Neutron benches) ───
+  polkachu: "/logos/polkachu.svg",
+  lavenderfive: "/logos/lavenderfive.svg",
+  imperator: "/logos/imperator.svg",
+
   // ─── Batch 3 RPC cluster chains (benches 094-100) ───
   "cosmos-hub": "/logos/cosmos-hub.svg",
   "world-chain": "/logos/world-chain.png",
