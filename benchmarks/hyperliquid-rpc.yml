@@ -1,0 +1,201 @@
+# OpenChainBench. Bench № 092
+
+slug: hyperliquid-rpc
+number: "092"
+title: Fastest free Hyperliquid RPC, live no-key HyperEVM endpoint latency
+seo_title: "Fastest free Hyperliquid RPC 2026"
+seo_description: "{{best_name}} leads free Hyperliquid RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). 5 no-key HyperEVM providers measured every 60s from 3 regions."
+subtitle: HTTP round-trip latency for `eth_getBlockByNumber("latest", false)` against every free, no-key public HyperEVM endpoint, audited every 60 seconds from 3 regions.
+
+category: RPCs
+status: live
+metric: RPC latency
+unit: ms
+higher_is_better: false
+
+seo_intro: |
+  Hyperliquid's HyperEVM (chain id 999) is the EVM execution layer bolted
+  onto the HyperCore perps engine. Standard Ethereum JSON-RPC wire, so
+  the probe is `eth_getBlockByNumber("latest", false)` , the same call
+  the Ethereum, Base, Arbitrum and 20+ other chain benches use. Provider
+  cohort at launch: Hyperliquid Labs's official `rpc.hyperliquid.xyz/evm`,
+  dRPC, Stakely, Purroof Group and Hypurrscan. Alchemy demo path
+  (rate-limited dead), Grove/Pocket public LB (needs an app id at the
+  public LB path), thirdweb (returns "Invalid chain" on HyperEVM) and
+  the AllThatNode / Blast API guesses (DNS not resolving to a public
+  HyperEVM endpoint) were audited alongside and excluded. Each will be
+  revisited when a stable no-key path reappears.
+
+abstract: |
+  Per-chain member of the RPC latency cluster, extended to HyperEVM.
+  We measure the round-trip latency of a single, identical JSON-RPC
+  call (`eth_getBlockByNumber("latest", false)`) against every no-key
+  public HyperEVM endpoint that sustains continuous probing, 5 providers
+  at launch, every 60 seconds, from us-east, eu-west and Singapore. The
+  harness classifies every response (ok / http_err / jsonrpc_err /
+  stale / timeout) with the standard EVM staleness gap (block gap =
+  25 blocks ≈ 50 seconds at HyperEVM's ~2 s block time). The cross-chain
+  view lives on the parent `rpc-capabilities` benchmark; this page is
+  the Hyperliquid-scoped answer with per-region breakdowns as a
+  first-class dimension.
+
+methodology:
+  - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus `avg(quantile_over_time(...))`; per-region breakdowns are first-class on this page via the region tabs."
+  - "Payload: `{\"jsonrpc\":\"2.0\",\"id\":<rotating>,\"method\":\"eth_getBlockByNumber\",\"params\":[\"latest\", false]}`. Plain HTTP POST, identical for every endpoint, no API key in any request. Non-cacheable by design: the rotating id defeats edge caches that would answer a bare head query without touching a node."
+  - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms → 10 s), so percentiles are computed via Prometheus `quantile_over_time` over the last 24 hours."
+  - "Call-result classification: `ok` (HTTP 200 + non-empty result with a parsable hex block number), `http_err`, `jsonrpc_err` (HTTP 200 carrying an error body , this is how the audit caught thirdweb's `Invalid chain` failure), `stale` (more than 25 blocks behind the cross-provider tip, roughly 50 seconds at HyperEVM's ~2 s block time), `timeout`. Latency without reliability is a misleading ranking signal."
+  - "This page is part of the per-chain RPC cluster derived from the cross-chain [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities) benchmark; the identical harness, cadence and exclusion rules apply on every chain."
+  - "Chain scope: every query on this page is pinned to `chain=\"hyperliquid\"`. Provider coverage at launch: 5 no-key endpoints (Hyperliquid Labs official, dRPC, Stakely, Purroof Group, Hypurrscan)."
+  - "Excluded by the launch audit: Alchemy demo path (rate-limited dead), thirdweb (`Invalid chain` on HyperEVM), Grove/Pocket public LB (requires an app id at the LB path), AllThatNode + Blast API + Chainstack + Gelato + Imperator HyperEVM paths (DNS-fail or 401 without a key), PublicNode (no HyperEVM subdomain yet). HyperEVM is a young chain (mainnet Feb 2025) so this list will shift quickly."
+
+findings:
+  - "{{best_name}} currently leads free Hyperliquid RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h) across 5 measured providers."
+  - "{{name:hyperliquid-official}} is operated by Hyperliquid Labs itself; the bench measures the same public endpoint that HyperCore front-ends and Hyperliquid dashboards route through by default, so the number here reflects what a wallet or dApp integrator sees end-to-end."
+  - "{{name:drpc}} routes HyperEVM through its multi-provider load balancer with edge-close routing; latency here is a good proxy for what an integrator using dRPC's paid tier can expect after removing the free-tier caching noise."
+  - "{{name:hypurrscan}} runs a HyperEVM-native explorer alongside its RPC gateway; the reliability column matters as much as p50 since community-run infra can churn during network upgrades or heavy trading periods."
+
+faq:
+  - q: "What is the fastest free Hyperliquid RPC right now?"
+    a: "{{best_name}} currently leads at {{best_p50}} (eth_getBlockByNumber p50 over the last 24h), measured against 5 no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples, so the answer on this page is the answer right now, not a quarterly snapshot. Use the region tabs to see the leader from the origin closest to your deployment."
+  - q: "Which HyperEVM RPCs work without an API key?"
+    a: "Five endpoints sustain continuous keyless probing at launch: Hyperliquid Labs's `rpc.hyperliquid.xyz/evm`, dRPC (`hyperliquid.drpc.org`), Stakely (`hyperliquid-json-rpc.stakely.io`), Purroof Group (`rpc.purroofgroup.com`) and Hypurrscan (`rpc.hypurrscan.io`). Every listed endpoint was live-verified with an `eth_getBlockByNumber` POST returning a parsable hex head before inclusion. Excluded by the audit: Alchemy's demo key path is rate-limited dead, thirdweb returns `Invalid chain` on HyperEVM, Grove/Pocket public LB requires an app id at the LB path, and AllThatNode / Blast API / Chainstack / Gelato / Imperator HyperEVM paths either DNS-fail or 401 without a key. HyperEVM is a young chain so this list will shift as providers stand up dedicated endpoints."
+  - q: "Does the fastest Hyperliquid RPC change by region?"
+    a: "Often. HyperEVM provider infra is heavily weighted toward Europe and the US; a gateway that wins from Amsterdam can lose from Singapore by multiples, especially for community-run providers with a single data centre. The region tabs at the top of the page re-scope every number on the page to a single origin; pick the one closest to where your requests actually originate."
+  - q: "How is Hyperliquid RPC latency measured here, technically?"
+    a: "One identical JSON-RPC POST (`eth_getBlockByNumber(\"latest\", false)`) every 60 seconds against each provider from each of 3 regions, using the same plain HTTP client the rest of the EVM cluster uses. Wall-clock round-trip is recorded at millisecond precision; p50/p90/p99 are computed via Prometheus `quantile_over_time` over 24 hours. Responses are classified (`ok` / `http_err` / `jsonrpc_err` / `stale` / `timeout`) so an endpoint stuck on an old head or returning errors behind HTTP 200 is never ranked as fastest."
+  - q: "Why is the probe `eth_getBlockByNumber` and not `eth_blockNumber`?"
+    a: "Two reasons. First, `eth_getBlockByNumber(\"latest\", false)` forces the node to actually assemble the block header (timestamp, hash, gas metrics) which a polite CDN cannot synthesise from a stale integer , `eth_blockNumber` on its own can be answered from an edge cache without touching a node, defeating the point of a latency probe. Second, the returned header lets the harness populate the `latest_block_hash` and `timestamp` fields the cross-provider tip machinery uses to detect stale endpoints. Both together mean the number on this page is what your app actually pays when it fetches a fresh head."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
+
+prometheus:
+  window: 24h
+  freshness_metric: rpc_latency_milliseconds
+
+# Per-cell (region) ranking matrix for scoped badge claims. Chain is
+# fixed for the whole bench, so cells key on region alone.
+rank_matrix_query: avg by (provider, region) (ocb:rpc_latency_milliseconds:p50_24h{chain="hyperliquid"})
+
+# Region is the only dimension: chain is baked into every query.
+dimensions:
+  region:
+    - { value: all,     label: All regions }
+    - { value: us-east, label: US-East }
+    - { value: eu-west, label: EU-West }
+    - { value: sgp,     label: Singapore }
+
+providers:
+  - slug: hyperliquid-official
+    name: Hyperliquid Labs
+    tag: Hyperliquid Labs's official public HyperEVM RPC
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Hyperliquid Labs's official public HyperEVM RPC."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="hyperliquid-official", chain="hyperliquid"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="hyperliquid-official", chain="hyperliquid"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="hyperliquid-official", chain="hyperliquid"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="hyperliquid-official", chain="hyperliquid"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="hyperliquid-official", chain="hyperliquid"}) / sum(ocb:rpc_call:rate_24h{provider="hyperliquid-official", chain="hyperliquid"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="hyperliquid-official", chain="hyperliquid"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="hyperliquid-official", chain="hyperliquid"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="hyperliquid-official", chain="hyperliquid", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="hyperliquid-official", chain="hyperliquid", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="hyperliquid-official", chain="hyperliquid", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="hyperliquid-official", chain="hyperliquid", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="hyperliquid-official", chain="hyperliquid", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="hyperliquid-official", chain="hyperliquid", region="sgp"}[1h])
+
+  - slug: drpc
+    name: dRPC
+    tag: Multi-provider RPC load balancer, edge-close routing
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key HyperEVM endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="hyperliquid"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="drpc", chain="hyperliquid"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="drpc", chain="hyperliquid"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="drpc", chain="hyperliquid"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="drpc", chain="hyperliquid"}) / sum(ocb:rpc_call:rate_24h{provider="drpc", chain="hyperliquid"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="drpc", chain="hyperliquid"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="hyperliquid"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="hyperliquid", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="hyperliquid", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="hyperliquid", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="hyperliquid", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="hyperliquid", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="hyperliquid", region="sgp"}[1h])
+
+  - slug: stakely
+    name: Stakely
+    tag: EU-based staking + infra provider, keyless HyperEVM path
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Stakely's no-key HyperEVM endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="stakely", chain="hyperliquid"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="stakely", chain="hyperliquid"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="stakely", chain="hyperliquid"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="stakely", chain="hyperliquid"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="stakely", chain="hyperliquid"}) / sum(ocb:rpc_call:rate_24h{provider="stakely", chain="hyperliquid"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="stakely", chain="hyperliquid"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="stakely", chain="hyperliquid"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="stakely", chain="hyperliquid", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="stakely", chain="hyperliquid", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="stakely", chain="hyperliquid", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="stakely", chain="hyperliquid", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="stakely", chain="hyperliquid", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="stakely", chain="hyperliquid", region="sgp"}[1h])
+
+  - slug: purroofgroup
+    name: Purroof Group
+    tag: Community Hyperliquid validator + public RPC
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Purroof Group's no-key HyperEVM endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="purroofgroup", chain="hyperliquid"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="purroofgroup", chain="hyperliquid"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="purroofgroup", chain="hyperliquid"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="purroofgroup", chain="hyperliquid"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="purroofgroup", chain="hyperliquid"}) / sum(ocb:rpc_call:rate_24h{provider="purroofgroup", chain="hyperliquid"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="purroofgroup", chain="hyperliquid"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="purroofgroup", chain="hyperliquid"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="purroofgroup", chain="hyperliquid", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="purroofgroup", chain="hyperliquid", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="purroofgroup", chain="hyperliquid", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="purroofgroup", chain="hyperliquid", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="purroofgroup", chain="hyperliquid", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="purroofgroup", chain="hyperliquid", region="sgp"}[1h])
+
+  - slug: hypurrscan
+    name: Hypurrscan
+    tag: HyperEVM explorer + no-key public RPC gateway
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Hypurrscan's no-key HyperEVM endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="hypurrscan", chain="hyperliquid"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="hypurrscan", chain="hyperliquid"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="hypurrscan", chain="hyperliquid"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="hypurrscan", chain="hyperliquid"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="hypurrscan", chain="hyperliquid"}) / sum(ocb:rpc_call:rate_24h{provider="hypurrscan", chain="hyperliquid"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="hypurrscan", chain="hyperliquid"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="hypurrscan", chain="hyperliquid"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="hypurrscan", chain="hyperliquid", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="hypurrscan", chain="hyperliquid", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="hypurrscan", chain="hyperliquid", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="hypurrscan", chain="hyperliquid", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="hypurrscan", chain="hyperliquid", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="hypurrscan", chain="hyperliquid", region="sgp"}[1h])

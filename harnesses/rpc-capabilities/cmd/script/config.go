@@ -448,6 +448,53 @@ func chains() []Chain {
 				{Slug: "soneium-official", Name: "Soneium Official", URL: envDefault("RPC_URL_SONEIUM_OFFICIAL", "https://rpc.soneium.org")},
 			},
 		},
+		// ─── Hyperliquid HyperEVM (chain 999) — added 2026-07-24. Standard
+		// EVM JSON-RPC surface bolted onto the HyperCore perps engine.
+		// Providers live-verified keyless via eth_blockNumber during launch
+		// audit: hyperliquid-official (rpc.hyperliquid.xyz/evm), dRPC,
+		// Stakely, Purroof Group, Hypurrscan. Excluded by that sweep:
+		// Alchemy demo (rate-limited dead), thirdweb (`Invalid chain`
+		// error on HyperEVM), Grove/Pocket public LB (needs app id at
+		// public LB path), AllThatNode + Blast API + Chainstack + Gelato
+		// + Imperator HyperEVM guesses (DNS-fail or 401 without key),
+		// PublicNode (no HyperEVM subdomain yet).
+		{
+			Slug: "hyperliquid",
+			Name: "Hyperliquid",
+			Providers: []Provider{
+				{Slug: "hyperliquid-official", Name: "Hyperliquid Labs", URL: envDefault("RPC_URL_HYPERLIQUID_OFFICIAL", "https://rpc.hyperliquid.xyz/evm")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_HYPERLIQUID_DRPC", "https://hyperliquid.drpc.org")},
+				{Slug: "stakely", Name: "Stakely", URL: envDefault("RPC_URL_HYPERLIQUID_STAKELY", "https://hyperliquid-json-rpc.stakely.io")},
+				{Slug: "purroofgroup", Name: "Purroof Group", URL: envDefault("RPC_URL_HYPERLIQUID_PURROOF", "https://rpc.purroofgroup.com")},
+				{Slug: "hypurrscan", Name: "Hypurrscan", URL: envDefault("RPC_URL_HYPERLIQUID_HYPURRSCAN", "https://rpc.hypurrscan.io")},
+			},
+		},
+		// ─── TRON (JSON-RPC compat surface only) — added 2026-07-24.
+		// TRON exposes both a native REST API (wallet/getnowblock) and
+		// an EVM-compatible JSON-RPC surface at /jsonrpc. We probe the
+		// JSON-RPC surface because that is the path every cross-chain
+		// wallet + TronWeb/EVM bridge integrates against. Providers
+		// live-verified keyless via eth_blockNumber during launch
+		// audit: TronGrid (api.trongrid.io/jsonrpc — Tron Foundation
+		// official), dRPC and PublicNode/Allnodes. Excluded by that
+		// sweep: Ankr (API key required despite public branding),
+		// Chainstack + NOWNodes + GetBlock + Tatum + BlockPI (all
+		// require API key on TRON JSON-RPC path), OnFinality + Blast
+		// API + AllThatNode (no public TRON JSON-RPC gateway). The
+		// TRON JSON-RPC provider market is materially smaller than
+		// EVM — most TRON infra vendors expose only the native TRON
+		// REST API keyless. Native REST API surface is out of scope
+		// for this cluster; a `tron-rest` bench would need a
+		// chain-specific probe.
+		{
+			Slug: "tron",
+			Name: "TRON",
+			Providers: []Provider{
+				{Slug: "trongrid", Name: "TronGrid", URL: envDefault("RPC_URL_TRON_TRONGRID", "https://api.trongrid.io/jsonrpc")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_TRON_DRPC", "https://tron.drpc.org")},
+				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_TRON_PUBLICNODE", "https://tron.publicnode.com/jsonrpc")},
+			},
+		},
 	}
 
 	filter := strings.TrimSpace(os.Getenv("OCB_CHAINS"))
