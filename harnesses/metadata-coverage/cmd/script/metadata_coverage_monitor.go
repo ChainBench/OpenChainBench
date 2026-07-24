@@ -446,26 +446,34 @@ type JupiterTokenData struct {
 	Decimals int    `json:"decimals"`
 }
 
+// checkJupiterMetadata hits Jupiter's public token search API. Previously
+// we scraped `jup.ag/tokens/<address>` for `__NEXT_DATA__`, but the
+// front-end was migrated off Next.js in 2026 and every scrape returned
+// `next_data_not_found`, dropping Jupiter to 0% coverage (2026-07-24).
+//
+// Replacement: `lite-api.jup.ag/tokens/v2/search?query=<address>` — the
+// JSON endpoint the current Jupiter web app uses. Keyless, rate-limited
+// per IP. Returns [{id, name, symbol, icon, ...}]. Jupiter is
+// swap-focused so description/twitter/website stay false by design,
+// which the bench renders as ~25% coverage floor (1 of 4 tracked
+// fields), matching Jupiter's actual metadata footprint.
 func checkJupiterMetadata(token TokenToCheck) MetadataFields {
 	result := MetadataFields{}
 
-	// Jupiter only supports Solana
 	if token.ChainID != "solana" && token.ChainID != "solana:solana" {
 		result.Error = "unsupported_chain"
 		return result
 	}
 
-	// Scrape the token page
-	pageURL := jupiterTokenPageURL + token.Address
+	apiURL := "https://lite-api.jup.ag/tokens/v2/search?query=" + token.Address
 
-	req, err := http.NewRequest("GET", pageURL, nil)
+	req, err := http.NewRequest("GET", apiURL, nil)
 	if err != nil {
 		result.Error = fmt.Sprintf("request_create_error: %v", err)
 		return result
 	}
-
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36")
-	req.Header.Set("Accept", "text/html,application/xhtml+xml")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", "OpenChainBench/metadata-coverage")
 
 	startTime := time.Now()
 	resp, err := metadataClient.Do(req)
@@ -488,70 +496,44 @@ func checkJupiterMetadata(token TokenToCheck) MetadataFields {
 		return result
 	}
 
-	// Extract __NEXT_DATA__ JSON from HTML
-	htmlContent := string(body)
-	startMarker := `<script id="__NEXT_DATA__" type="application/json">`
-	endMarker := `</script>`
-
-	startIdx := -1
-	for i := 0; i < len(htmlContent)-len(startMarker); i++ {
-		if htmlContent[i:i+len(startMarker)] == startMarker {
-			startIdx = i + len(startMarker)
-			break
-		}
+	var tokens []struct {
+		ID     string `json:"id"`
+		Name   string `json:"name"`
+		Symbol string `json:"symbol"`
+		Icon   string `json:"icon"`
 	}
-
-	if startIdx == -1 {
-		result.Error = "next_data_not_found"
-		return result
-	}
-
-	endIdx := -1
-	for i := startIdx; i < len(htmlContent)-len(endMarker); i++ {
-		if htmlContent[i:i+len(endMarker)] == endMarker {
-			endIdx = i
-			break
-		}
-	}
-
-	if endIdx == -1 {
-		result.Error = "next_data_end_not_found"
-		return result
-	}
-
-	jsonData := htmlContent[startIdx:endIdx]
-
-	var nextData JupiterNextData
-	if err := json.Unmarshal([]byte(jsonData), &nextData); err != nil {
+	if err := json.Unmarshal(body, &tokens); err != nil {
 		result.Error = fmt.Sprintf("parse_error: %v", err)
 		return result
 	}
 
-	// Find token data in queries
-	var tokenData JupiterTokenData
-	for _, query := range nextData.Props.PageProps.DehydratedState.Queries {
-		if query.State.Data.ID == token.Address {
-			tokenData = query.State.Data
+	// Search may return near-matches; find the exact address hit.
+	var match *struct {
+		ID     string `json:"id"`
+		Name   string `json:"name"`
+		Symbol string `json:"symbol"`
+		Icon   string `json:"icon"`
+	}
+	for i := range tokens {
+		if tokens[i].ID == token.Address {
+			match = &tokens[i]
 			break
 		}
 	}
-
-	if tokenData.ID == "" {
+	if match == nil {
 		result.Error = "token_not_found"
 		return result
 	}
 
-	// Check fields - Jupiter only has basic on-chain data
-	result.HasName = tokenData.Name != ""
-	result.HasSymbol = tokenData.Symbol != ""
-	result.HasLogo = tokenData.Icon != ""
-	result.LogoURL = tokenData.Icon
-	// Jupiter doesn't have description or socials
+	result.HasName = match.Name != ""
+	result.HasSymbol = match.Symbol != ""
+	result.HasLogo = match.Icon != ""
+	result.LogoURL = match.Icon
+	// Jupiter's swap-focused model does not carry socials or description.
 	result.HasDescription = false
 	result.HasTwitter = false
 	result.HasWebsite = false
 	result.HasTelegram = false
-
 	return result
 }
 
