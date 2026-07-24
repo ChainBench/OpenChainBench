@@ -1,0 +1,56 @@
+# Promised APY for each token in the rwa-yield-accuracy cohort.
+#
+# This file is the manual source of truth for what each issuer
+# ADVERTISES. Updated at least weekly. Each entry cites its source URL
+# and the date it was last read. When an issuer changes its advertised
+# APY, edit the value + source_date here; the harness reloads this
+# file every 60 seconds so a commit lands within a scrape cycle.
+#
+# Format:
+#   token: <slug>          — matches the provider slug in the bench spec
+#   promised_apy_bps: N    — e.g. 530 for 5.30%
+#   source: <URL>          — the exact page consulted
+#   source_date: YYYY-MM-DD — when this value was last verified
+#   notes: <string>        — methodology caveats (SEC 7-day vs current,
+#                            gross vs net, etc.)
+#
+# When adding a token, cross-check the value against the fund's
+# quarterly fact sheet or SEC filing to guard against the marketing
+# page drifting from the regulated disclosure.
+
+updated: 2026-07-22
+
+issuers:
+  - token: usdy
+    promised_apy_bps: 355
+    source: "https://ondo.finance/usdy"
+    source_date: 2026-07-22
+    notes: "Ondo USDY current APY as displayed on the retail dashboard. Rebase happens daily via the token contract; delivered yield is directly measurable from totalSupply growth. Value is net of the 20 bps Ondo fee. Rate reflects Fed policy: 3.55% at the time of this update, down from ~5.4% a year earlier."
+
+  # The four entries below remain in the file so the harness reloader
+  # keeps their promised APYs current for the day the corresponding
+  # probes flip active. They are NOT scraped or displayed on the bench
+  # page while status: staging.
+  - token: buidl
+    promised_apy_bps: 350
+    source: "https://securitize.io/primary-market/buidl"
+    source_date: 2026-07-22
+    notes: "BlackRock BUIDL 7-day net SEC yield estimate (probe inactive; needs Securitize treasury wallet verification before enable)."
+
+  - token: benji
+    promised_apy_bps: 345
+    source: "https://franklintempleton.com/investments/options/money-market-funds/products/29386"
+    source_date: 2026-07-22
+    notes: "Franklin OnChain U.S. Government Money Fund 7-day SEC yield estimate (probe inactive; NAV endpoint TBD)."
+
+  - token: ustb
+    promised_apy_bps: 352
+    source: "https://superstate.com/ustb"
+    source_date: 2026-07-22
+    notes: "Superstate USTB 30-day yield as displayed on superstate.com (7-day SEC yield not published there). Probe inactive; treasury wallet verification pending."
+
+  - token: ousg
+    promised_apy_bps: 350
+    source: "https://ondo.finance/ousg"
+    source_date: 2026-07-22
+    notes: "Ondo OUSG NAV-appreciation yield estimate (probe inactive; NAV endpoint TBD)."
