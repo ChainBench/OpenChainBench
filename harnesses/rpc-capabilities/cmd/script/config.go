@@ -576,8 +576,8 @@ func chains() []Chain {
 			Slug: "ink",
 			Name: "Ink",
 			Providers: []Provider{
-				{Slug: "ink-official", Name: "Ink (Gelato)", URL: envDefault("RPC_URL_INK_OFFICIAL", "https://rpc-gel.inkonchain.com")},
-				{Slug: "ink-quicknode", Name: "Ink (QuickNode)", URL: envDefault("RPC_URL_INK_QUICKNODE", "https://rpc-qnd.inkonchain.com")},
+				{Slug: "ink-official", Name: "Gelato", URL: envDefault("RPC_URL_INK_OFFICIAL", "https://rpc-gel.inkonchain.com")},
+				{Slug: "ink-quicknode", Name: "QuickNode", URL: envDefault("RPC_URL_INK_QUICKNODE", "https://rpc-qnd.inkonchain.com")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_INK_DRPC", "https://ink.drpc.org")},
 				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_INK_TENDERLY", "https://ink.gateway.tenderly.co")},
 			},
