@@ -548,7 +548,6 @@ func chains() []Chain {
 				{Slug: "worldchain-official", Name: "World Chain", URL: envDefault("RPC_URL_WORLDCHAIN_OFFICIAL", "https://worldchain-mainnet.g.alchemy.com/public")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_WORLDCHAIN_DRPC", "https://worldchain.drpc.org")},
 				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_WORLDCHAIN_TENDERLY", "https://worldchain-mainnet.gateway.tenderly.co")},
-				{Slug: "thirdweb", Name: "ThirdWeb", URL: envDefault("RPC_URL_WORLDCHAIN_THIRDWEB", "https://480.rpc.thirdweb.com")},
 			},
 		},
 		// ─── Kaia (bench 098) — added 2026-07-24. EVM L1 formed by
@@ -564,7 +563,6 @@ func chains() []Chain {
 			Providers: []Provider{
 				{Slug: "kaia-official", Name: "Kaia Foundation", URL: envDefault("RPC_URL_KAIA_OFFICIAL", "https://public-en.node.kaia.io")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_KAIA_DRPC", "https://klaytn.drpc.org")},
-				{Slug: "thirdweb", Name: "ThirdWeb", URL: envDefault("RPC_URL_KAIA_THIRDWEB", "https://kaia.rpc.thirdweb.com")},
 			},
 		},
 		// ─── Ink (bench 099) — added 2026-07-24. OP Stack rollup
@@ -582,7 +580,6 @@ func chains() []Chain {
 				{Slug: "ink-quicknode", Name: "Ink (QuickNode)", URL: envDefault("RPC_URL_INK_QUICKNODE", "https://rpc-qnd.inkonchain.com")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_INK_DRPC", "https://ink.drpc.org")},
 				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_INK_TENDERLY", "https://ink.gateway.tenderly.co")},
-				{Slug: "thirdweb", Name: "ThirdWeb", URL: envDefault("RPC_URL_INK_THIRDWEB", "https://57073.rpc.thirdweb.com")},
 			},
 		},
 		// ─── opBNB (bench 100) — added 2026-07-24. OP Stack rollup
@@ -598,7 +595,6 @@ func chains() []Chain {
 				{Slug: "opbnb-official", Name: "BNB Chain Team", URL: envDefault("RPC_URL_OPBNB_OFFICIAL", "https://opbnb-mainnet-rpc.bnbchain.org")},
 				{Slug: "publicnode", Name: "PublicNode", URL: envDefault("RPC_URL_OPBNB_PUBLICNODE", "https://opbnb-rpc.publicnode.com")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_OPBNB_DRPC", "https://opbnb.drpc.org")},
-				{Slug: "thirdweb", Name: "ThirdWeb", URL: envDefault("RPC_URL_OPBNB_THIRDWEB", "https://204.rpc.thirdweb.com")},
 			},
 		},
 	}
