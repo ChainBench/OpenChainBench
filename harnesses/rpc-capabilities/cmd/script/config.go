@@ -553,7 +553,7 @@ func chains() []Chain {
 			Slug: "world-chain",
 			Name: "World Chain",
 			Providers: []Provider{
-				{Slug: "worldchain-official", Name: "World Chain (Alchemy)", URL: envDefault("RPC_URL_WORLDCHAIN_OFFICIAL", "https://worldchain-mainnet.g.alchemy.com/public")},
+				{Slug: "worldchain-official", Name: "World Chain", URL: envDefault("RPC_URL_WORLDCHAIN_OFFICIAL", "https://worldchain-mainnet.g.alchemy.com/public")},
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_WORLDCHAIN_DRPC", "https://worldchain.drpc.org")},
 				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_WORLDCHAIN_TENDERLY", "https://worldchain-mainnet.gateway.tenderly.co")},
 				{Slug: "thirdweb", Name: "ThirdWeb", URL: envDefault("RPC_URL_WORLDCHAIN_THIRDWEB", "https://480.rpc.thirdweb.com")},
