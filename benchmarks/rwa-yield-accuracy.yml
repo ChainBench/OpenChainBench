@@ -147,3 +147,17 @@ providers:
       success: rwa_yield_probe_ok{token="ousg"}
       sample_size: rwa_yield_aum_usd{token="ousg"}
       series: rwa_yield_delivered_bps_30d{token="ousg"}
+
+  - slug: syrup-usdc
+    name: SyrupUSDC
+    tag: "Maple, Ethereum, ERC-4626 NAV"
+    formula: "ERC-4626 convertToAssets(1 share) delta over 30d, annualized. SyrupUSDC is Maple's yield-bearing USDC vault backed by institutional loans, not T-bills. Compared to the pool's base APY on DefiLlama (excludes SYRUP token incentives)."
+    queries:
+      p50: rwa_yield_deviation_bps_30d{token="syrup-usdc"}
+      p90: rwa_yield_deviation_bps_7d{token="syrup-usdc"}
+      p99: rwa_yield_deviation_bps_lifetime{token="syrup-usdc"}
+      mean: rwa_yield_delivered_bps_30d{token="syrup-usdc"}
+      success: rwa_yield_probe_ok{token="syrup-usdc"}
+      sample_size: rwa_yield_aum_usd{token="syrup-usdc"}
+      series: rwa_yield_delivered_bps_30d{token="syrup-usdc"}
+
