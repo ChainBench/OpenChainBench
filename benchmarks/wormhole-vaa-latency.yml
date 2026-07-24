@@ -10,7 +10,7 @@ subtitle: Wall-clock seconds from a source-chain transaction being observed by t
 category: Bridges
 status: live
 metric: VAA finalization
-unit: s
+unit: ms
 higher_is_better: false
 
 seo_intro: |
@@ -87,237 +87,237 @@ providers:
     tag: Solana → any chain, VAA finality via Guardian quorum on 32-slot Solana confirmation
     formula: "50th percentile over 24h of Wormhole VAA finalization latency for VAAs emitted from Solana: wall-clock delta from source-chain observation to Guardian quorum, indexed via wormholescan."
     queries:
-      p50: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="solana"}[24h])))
-      p90: histogram_quantile(0.90, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="solana"}[24h])))
-      p99: histogram_quantile(0.99, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="solana"}[24h])))
-      mean: sum(rate(wormhole_vaa_latency_seconds_sum{source_chain="solana"}[24h])) / sum(rate(wormhole_vaa_latency_seconds_count{source_chain="solana"}[24h]))
+      p50: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="solana"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="solana"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="solana"}[24h])))
+      mean: sum(rate(wormhole_vaa_latency_milliseconds_sum{source_chain="solana"}[24h])) / sum(rate(wormhole_vaa_latency_milliseconds_count{source_chain="solana"}[24h]))
       sample_size: increase(wormhole_vaa_seen_total{source_chain="solana"}[24h])
-      series: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="solana"}[1h])))
+      series: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="solana"}[1h])))
 
   - slug: ethereum
     name: Ethereum
     tag: Ethereum → any chain, VAA finality after Casper FFG epoch inclusion
     formula: "50th percentile over 24h of Wormhole VAA finalization latency for VAAs emitted from Ethereum: wall-clock delta from source-chain observation to Guardian quorum, indexed via wormholescan."
     queries:
-      p50: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="ethereum"}[24h])))
-      p90: histogram_quantile(0.90, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="ethereum"}[24h])))
-      p99: histogram_quantile(0.99, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="ethereum"}[24h])))
-      mean: sum(rate(wormhole_vaa_latency_seconds_sum{source_chain="ethereum"}[24h])) / sum(rate(wormhole_vaa_latency_seconds_count{source_chain="ethereum"}[24h]))
+      p50: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="ethereum"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="ethereum"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="ethereum"}[24h])))
+      mean: sum(rate(wormhole_vaa_latency_milliseconds_sum{source_chain="ethereum"}[24h])) / sum(rate(wormhole_vaa_latency_milliseconds_count{source_chain="ethereum"}[24h]))
       sample_size: increase(wormhole_vaa_seen_total{source_chain="ethereum"}[24h])
-      series: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="ethereum"}[1h])))
+      series: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="ethereum"}[1h])))
 
   - slug: bnb
     name: BNB Chain
     tag: BNB Chain → any chain, VAA finality via BEP-126 fast-finality
     formula: "50th percentile over 24h of Wormhole VAA finalization latency for VAAs emitted from BNB Chain: wall-clock delta from source-chain observation to Guardian quorum, indexed via wormholescan."
     queries:
-      p50: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="bnb"}[24h])))
-      p90: histogram_quantile(0.90, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="bnb"}[24h])))
-      p99: histogram_quantile(0.99, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="bnb"}[24h])))
-      mean: sum(rate(wormhole_vaa_latency_seconds_sum{source_chain="bnb"}[24h])) / sum(rate(wormhole_vaa_latency_seconds_count{source_chain="bnb"}[24h]))
+      p50: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="bnb"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="bnb"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="bnb"}[24h])))
+      mean: sum(rate(wormhole_vaa_latency_milliseconds_sum{source_chain="bnb"}[24h])) / sum(rate(wormhole_vaa_latency_milliseconds_count{source_chain="bnb"}[24h]))
       sample_size: increase(wormhole_vaa_seen_total{source_chain="bnb"}[24h])
-      series: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="bnb"}[1h])))
+      series: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="bnb"}[1h])))
 
   - slug: polygon
     name: Polygon
     tag: Polygon PoS → any chain, VAA finality after Bor block confirmation
     formula: "50th percentile over 24h of Wormhole VAA finalization latency for VAAs emitted from Polygon: wall-clock delta from source-chain observation to Guardian quorum, indexed via wormholescan."
     queries:
-      p50: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="polygon"}[24h])))
-      p90: histogram_quantile(0.90, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="polygon"}[24h])))
-      p99: histogram_quantile(0.99, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="polygon"}[24h])))
-      mean: sum(rate(wormhole_vaa_latency_seconds_sum{source_chain="polygon"}[24h])) / sum(rate(wormhole_vaa_latency_seconds_count{source_chain="polygon"}[24h]))
+      p50: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="polygon"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="polygon"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="polygon"}[24h])))
+      mean: sum(rate(wormhole_vaa_latency_milliseconds_sum{source_chain="polygon"}[24h])) / sum(rate(wormhole_vaa_latency_milliseconds_count{source_chain="polygon"}[24h]))
       sample_size: increase(wormhole_vaa_seen_total{source_chain="polygon"}[24h])
-      series: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="polygon"}[1h])))
+      series: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="polygon"}[1h])))
 
   - slug: avalanche
     name: Avalanche
     tag: Avalanche C-Chain → any chain, VAA finality via Snowman++ sub-second consensus
     formula: "50th percentile over 24h of Wormhole VAA finalization latency for VAAs emitted from Avalanche: wall-clock delta from source-chain observation to Guardian quorum, indexed via wormholescan."
     queries:
-      p50: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="avalanche"}[24h])))
-      p90: histogram_quantile(0.90, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="avalanche"}[24h])))
-      p99: histogram_quantile(0.99, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="avalanche"}[24h])))
-      mean: sum(rate(wormhole_vaa_latency_seconds_sum{source_chain="avalanche"}[24h])) / sum(rate(wormhole_vaa_latency_seconds_count{source_chain="avalanche"}[24h]))
+      p50: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="avalanche"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="avalanche"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="avalanche"}[24h])))
+      mean: sum(rate(wormhole_vaa_latency_milliseconds_sum{source_chain="avalanche"}[24h])) / sum(rate(wormhole_vaa_latency_milliseconds_count{source_chain="avalanche"}[24h]))
       sample_size: increase(wormhole_vaa_seen_total{source_chain="avalanche"}[24h])
-      series: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="avalanche"}[1h])))
+      series: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="avalanche"}[1h])))
 
   - slug: celo
     name: Celo
     tag: Celo → any chain, VAA finality after single-block deterministic finalization
     formula: "50th percentile over 24h of Wormhole VAA finalization latency for VAAs emitted from Celo: wall-clock delta from source-chain observation to Guardian quorum, indexed via wormholescan."
     queries:
-      p50: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="celo"}[24h])))
-      p90: histogram_quantile(0.90, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="celo"}[24h])))
-      p99: histogram_quantile(0.99, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="celo"}[24h])))
-      mean: sum(rate(wormhole_vaa_latency_seconds_sum{source_chain="celo"}[24h])) / sum(rate(wormhole_vaa_latency_seconds_count{source_chain="celo"}[24h]))
+      p50: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="celo"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="celo"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="celo"}[24h])))
+      mean: sum(rate(wormhole_vaa_latency_milliseconds_sum{source_chain="celo"}[24h])) / sum(rate(wormhole_vaa_latency_milliseconds_count{source_chain="celo"}[24h]))
       sample_size: increase(wormhole_vaa_seen_total{source_chain="celo"}[24h])
-      series: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="celo"}[1h])))
+      series: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="celo"}[1h])))
 
   - slug: moonbeam
     name: Moonbeam
     tag: Moonbeam parachain → any chain, VAA finality after GRANDPA relay-chain justification
     formula: "50th percentile over 24h of Wormhole VAA finalization latency for VAAs emitted from Moonbeam: wall-clock delta from source-chain observation to Guardian quorum, indexed via wormholescan."
     queries:
-      p50: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="moonbeam"}[24h])))
-      p90: histogram_quantile(0.90, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="moonbeam"}[24h])))
-      p99: histogram_quantile(0.99, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="moonbeam"}[24h])))
-      mean: sum(rate(wormhole_vaa_latency_seconds_sum{source_chain="moonbeam"}[24h])) / sum(rate(wormhole_vaa_latency_seconds_count{source_chain="moonbeam"}[24h]))
+      p50: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="moonbeam"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="moonbeam"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="moonbeam"}[24h])))
+      mean: sum(rate(wormhole_vaa_latency_milliseconds_sum{source_chain="moonbeam"}[24h])) / sum(rate(wormhole_vaa_latency_milliseconds_count{source_chain="moonbeam"}[24h]))
       sample_size: increase(wormhole_vaa_seen_total{source_chain="moonbeam"}[24h])
-      series: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="moonbeam"}[1h])))
+      series: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="moonbeam"}[1h])))
 
   - slug: sui
     name: Sui
     tag: Sui → any chain, VAA finality via Mysticeti DAG-BFT checkpoint commit
     formula: "50th percentile over 24h of Wormhole VAA finalization latency for VAAs emitted from Sui: wall-clock delta from source-chain observation to Guardian quorum, indexed via wormholescan."
     queries:
-      p50: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="sui"}[24h])))
-      p90: histogram_quantile(0.90, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="sui"}[24h])))
-      p99: histogram_quantile(0.99, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="sui"}[24h])))
-      mean: sum(rate(wormhole_vaa_latency_seconds_sum{source_chain="sui"}[24h])) / sum(rate(wormhole_vaa_latency_seconds_count{source_chain="sui"}[24h]))
+      p50: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="sui"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="sui"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="sui"}[24h])))
+      mean: sum(rate(wormhole_vaa_latency_milliseconds_sum{source_chain="sui"}[24h])) / sum(rate(wormhole_vaa_latency_milliseconds_count{source_chain="sui"}[24h]))
       sample_size: increase(wormhole_vaa_seen_total{source_chain="sui"}[24h])
-      series: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="sui"}[1h])))
+      series: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="sui"}[1h])))
 
   - slug: arbitrum
     name: Arbitrum
     tag: Arbitrum One → any chain, VAA finality after Nitro block posted + Ethereum L1 confirmation
     formula: "50th percentile over 24h of Wormhole VAA finalization latency for VAAs emitted from Arbitrum: wall-clock delta from source-chain observation to Guardian quorum, indexed via wormholescan."
     queries:
-      p50: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="arbitrum"}[24h])))
-      p90: histogram_quantile(0.90, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="arbitrum"}[24h])))
-      p99: histogram_quantile(0.99, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="arbitrum"}[24h])))
-      mean: sum(rate(wormhole_vaa_latency_seconds_sum{source_chain="arbitrum"}[24h])) / sum(rate(wormhole_vaa_latency_seconds_count{source_chain="arbitrum"}[24h]))
+      p50: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="arbitrum"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="arbitrum"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="arbitrum"}[24h])))
+      mean: sum(rate(wormhole_vaa_latency_milliseconds_sum{source_chain="arbitrum"}[24h])) / sum(rate(wormhole_vaa_latency_milliseconds_count{source_chain="arbitrum"}[24h]))
       sample_size: increase(wormhole_vaa_seen_total{source_chain="arbitrum"}[24h])
-      series: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="arbitrum"}[1h])))
+      series: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="arbitrum"}[1h])))
 
   - slug: optimism
     name: Optimism
     tag: Optimism → any chain, VAA finality after OP Stack sequencer block + settlement confirmation
     formula: "50th percentile over 24h of Wormhole VAA finalization latency for VAAs emitted from Optimism: wall-clock delta from source-chain observation to Guardian quorum, indexed via wormholescan."
     queries:
-      p50: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="optimism"}[24h])))
-      p90: histogram_quantile(0.90, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="optimism"}[24h])))
-      p99: histogram_quantile(0.99, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="optimism"}[24h])))
-      mean: sum(rate(wormhole_vaa_latency_seconds_sum{source_chain="optimism"}[24h])) / sum(rate(wormhole_vaa_latency_seconds_count{source_chain="optimism"}[24h]))
+      p50: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="optimism"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="optimism"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="optimism"}[24h])))
+      mean: sum(rate(wormhole_vaa_latency_milliseconds_sum{source_chain="optimism"}[24h])) / sum(rate(wormhole_vaa_latency_milliseconds_count{source_chain="optimism"}[24h]))
       sample_size: increase(wormhole_vaa_seen_total{source_chain="optimism"}[24h])
-      series: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="optimism"}[1h])))
+      series: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="optimism"}[1h])))
 
   - slug: base
     name: Base
     tag: Base → any chain, VAA finality after OP Stack sequencer block + settlement confirmation
     formula: "50th percentile over 24h of Wormhole VAA finalization latency for VAAs emitted from Base: wall-clock delta from source-chain observation to Guardian quorum, indexed via wormholescan."
     queries:
-      p50: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="base"}[24h])))
-      p90: histogram_quantile(0.90, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="base"}[24h])))
-      p99: histogram_quantile(0.99, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="base"}[24h])))
-      mean: sum(rate(wormhole_vaa_latency_seconds_sum{source_chain="base"}[24h])) / sum(rate(wormhole_vaa_latency_seconds_count{source_chain="base"}[24h]))
+      p50: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="base"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="base"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="base"}[24h])))
+      mean: sum(rate(wormhole_vaa_latency_milliseconds_sum{source_chain="base"}[24h])) / sum(rate(wormhole_vaa_latency_milliseconds_count{source_chain="base"}[24h]))
       sample_size: increase(wormhole_vaa_seen_total{source_chain="base"}[24h])
-      series: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="base"}[1h])))
+      series: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="base"}[1h])))
 
   - slug: scroll
     name: Scroll
     tag: Scroll zkEVM → any chain, VAA finality after L2 sequencer block
     formula: "50th percentile over 24h of Wormhole VAA finalization latency for VAAs emitted from Scroll: wall-clock delta from source-chain observation to Guardian quorum, indexed via wormholescan."
     queries:
-      p50: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="scroll"}[24h])))
-      p90: histogram_quantile(0.90, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="scroll"}[24h])))
-      p99: histogram_quantile(0.99, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="scroll"}[24h])))
-      mean: sum(rate(wormhole_vaa_latency_seconds_sum{source_chain="scroll"}[24h])) / sum(rate(wormhole_vaa_latency_seconds_count{source_chain="scroll"}[24h]))
+      p50: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="scroll"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="scroll"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="scroll"}[24h])))
+      mean: sum(rate(wormhole_vaa_latency_milliseconds_sum{source_chain="scroll"}[24h])) / sum(rate(wormhole_vaa_latency_milliseconds_count{source_chain="scroll"}[24h]))
       sample_size: increase(wormhole_vaa_seen_total{source_chain="scroll"}[24h])
-      series: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="scroll"}[1h])))
+      series: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="scroll"}[1h])))
 
   - slug: mantle
     name: Mantle
     tag: Mantle → any chain, VAA finality after L2 sequencer block
     formula: "50th percentile over 24h of Wormhole VAA finalization latency for VAAs emitted from Mantle: wall-clock delta from source-chain observation to Guardian quorum, indexed via wormholescan."
     queries:
-      p50: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="mantle"}[24h])))
-      p90: histogram_quantile(0.90, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="mantle"}[24h])))
-      p99: histogram_quantile(0.99, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="mantle"}[24h])))
-      mean: sum(rate(wormhole_vaa_latency_seconds_sum{source_chain="mantle"}[24h])) / sum(rate(wormhole_vaa_latency_seconds_count{source_chain="mantle"}[24h]))
+      p50: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="mantle"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="mantle"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="mantle"}[24h])))
+      mean: sum(rate(wormhole_vaa_latency_milliseconds_sum{source_chain="mantle"}[24h])) / sum(rate(wormhole_vaa_latency_milliseconds_count{source_chain="mantle"}[24h]))
       sample_size: increase(wormhole_vaa_seen_total{source_chain="mantle"}[24h])
-      series: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="mantle"}[1h])))
+      series: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="mantle"}[1h])))
 
   - slug: linea
     name: Linea
     tag: Linea zkEVM → any chain, VAA finality after L2 sequencer block
     formula: "50th percentile over 24h of Wormhole VAA finalization latency for VAAs emitted from Linea: wall-clock delta from source-chain observation to Guardian quorum, indexed via wormholescan."
     queries:
-      p50: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="linea"}[24h])))
-      p90: histogram_quantile(0.90, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="linea"}[24h])))
-      p99: histogram_quantile(0.99, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="linea"}[24h])))
-      mean: sum(rate(wormhole_vaa_latency_seconds_sum{source_chain="linea"}[24h])) / sum(rate(wormhole_vaa_latency_seconds_count{source_chain="linea"}[24h]))
+      p50: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="linea"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="linea"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="linea"}[24h])))
+      mean: sum(rate(wormhole_vaa_latency_milliseconds_sum{source_chain="linea"}[24h])) / sum(rate(wormhole_vaa_latency_milliseconds_count{source_chain="linea"}[24h]))
       sample_size: increase(wormhole_vaa_seen_total{source_chain="linea"}[24h])
-      series: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="linea"}[1h])))
+      series: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="linea"}[1h])))
 
   - slug: berachain
     name: Berachain
     tag: Berachain → any chain, VAA finality via BeaconKit consensus
     formula: "50th percentile over 24h of Wormhole VAA finalization latency for VAAs emitted from Berachain: wall-clock delta from source-chain observation to Guardian quorum, indexed via wormholescan."
     queries:
-      p50: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="berachain"}[24h])))
-      p90: histogram_quantile(0.90, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="berachain"}[24h])))
-      p99: histogram_quantile(0.99, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="berachain"}[24h])))
-      mean: sum(rate(wormhole_vaa_latency_seconds_sum{source_chain="berachain"}[24h])) / sum(rate(wormhole_vaa_latency_seconds_count{source_chain="berachain"}[24h]))
+      p50: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="berachain"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="berachain"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="berachain"}[24h])))
+      mean: sum(rate(wormhole_vaa_latency_milliseconds_sum{source_chain="berachain"}[24h])) / sum(rate(wormhole_vaa_latency_milliseconds_count{source_chain="berachain"}[24h]))
       sample_size: increase(wormhole_vaa_seen_total{source_chain="berachain"}[24h])
-      series: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="berachain"}[1h])))
+      series: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="berachain"}[1h])))
 
   - slug: unichain
     name: Unichain
     tag: Unichain → any chain, VAA finality after OP Stack sequencer + Flashblocks
     formula: "50th percentile over 24h of Wormhole VAA finalization latency for VAAs emitted from Unichain: wall-clock delta from source-chain observation to Guardian quorum, indexed via wormholescan."
     queries:
-      p50: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="unichain"}[24h])))
-      p90: histogram_quantile(0.90, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="unichain"}[24h])))
-      p99: histogram_quantile(0.99, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="unichain"}[24h])))
-      mean: sum(rate(wormhole_vaa_latency_seconds_sum{source_chain="unichain"}[24h])) / sum(rate(wormhole_vaa_latency_seconds_count{source_chain="unichain"}[24h]))
+      p50: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="unichain"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="unichain"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="unichain"}[24h])))
+      mean: sum(rate(wormhole_vaa_latency_milliseconds_sum{source_chain="unichain"}[24h])) / sum(rate(wormhole_vaa_latency_milliseconds_count{source_chain="unichain"}[24h]))
       sample_size: increase(wormhole_vaa_seen_total{source_chain="unichain"}[24h])
-      series: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="unichain"}[1h])))
+      series: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="unichain"}[1h])))
 
   - slug: world-chain
     name: World Chain
     tag: World Chain → any chain, VAA finality after OP Stack sequencer block
     formula: "50th percentile over 24h of Wormhole VAA finalization latency for VAAs emitted from World Chain: wall-clock delta from source-chain observation to Guardian quorum, indexed via wormholescan."
     queries:
-      p50: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="world-chain"}[24h])))
-      p90: histogram_quantile(0.90, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="world-chain"}[24h])))
-      p99: histogram_quantile(0.99, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="world-chain"}[24h])))
-      mean: sum(rate(wormhole_vaa_latency_seconds_sum{source_chain="world-chain"}[24h])) / sum(rate(wormhole_vaa_latency_seconds_count{source_chain="world-chain"}[24h]))
+      p50: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="world-chain"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="world-chain"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="world-chain"}[24h])))
+      mean: sum(rate(wormhole_vaa_latency_milliseconds_sum{source_chain="world-chain"}[24h])) / sum(rate(wormhole_vaa_latency_milliseconds_count{source_chain="world-chain"}[24h]))
       sample_size: increase(wormhole_vaa_seen_total{source_chain="world-chain"}[24h])
-      series: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="world-chain"}[1h])))
+      series: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="world-chain"}[1h])))
 
   - slug: monad
     name: Monad
     tag: Monad → any chain, VAA finality after MonadBFT ~800 ms consensus
     formula: "50th percentile over 24h of Wormhole VAA finalization latency for VAAs emitted from Monad: wall-clock delta from source-chain observation to Guardian quorum, indexed via wormholescan."
     queries:
-      p50: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="monad"}[24h])))
-      p90: histogram_quantile(0.90, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="monad"}[24h])))
-      p99: histogram_quantile(0.99, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="monad"}[24h])))
-      mean: sum(rate(wormhole_vaa_latency_seconds_sum{source_chain="monad"}[24h])) / sum(rate(wormhole_vaa_latency_seconds_count{source_chain="monad"}[24h]))
+      p50: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="monad"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="monad"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="monad"}[24h])))
+      mean: sum(rate(wormhole_vaa_latency_milliseconds_sum{source_chain="monad"}[24h])) / sum(rate(wormhole_vaa_latency_milliseconds_count{source_chain="monad"}[24h]))
       sample_size: increase(wormhole_vaa_seen_total{source_chain="monad"}[24h])
-      series: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="monad"}[1h])))
+      series: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="monad"}[1h])))
 
   - slug: ink
     name: Ink
     tag: Ink → any chain, VAA finality after OP Stack sequencer block
     formula: "50th percentile over 24h of Wormhole VAA finalization latency for VAAs emitted from Ink: wall-clock delta from source-chain observation to Guardian quorum, indexed via wormholescan."
     queries:
-      p50: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="ink"}[24h])))
-      p90: histogram_quantile(0.90, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="ink"}[24h])))
-      p99: histogram_quantile(0.99, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="ink"}[24h])))
-      mean: sum(rate(wormhole_vaa_latency_seconds_sum{source_chain="ink"}[24h])) / sum(rate(wormhole_vaa_latency_seconds_count{source_chain="ink"}[24h]))
+      p50: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="ink"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="ink"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="ink"}[24h])))
+      mean: sum(rate(wormhole_vaa_latency_milliseconds_sum{source_chain="ink"}[24h])) / sum(rate(wormhole_vaa_latency_milliseconds_count{source_chain="ink"}[24h]))
       sample_size: increase(wormhole_vaa_seen_total{source_chain="ink"}[24h])
-      series: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="ink"}[1h])))
+      series: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="ink"}[1h])))
 
   - slug: injective
     name: Injective
     tag: Injective → any chain, VAA finality after CometBFT block commit
     formula: "50th percentile over 24h of Wormhole VAA finalization latency for VAAs emitted from Injective: wall-clock delta from source-chain observation to Guardian quorum, indexed via wormholescan."
     queries:
-      p50: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="injective"}[24h])))
-      p90: histogram_quantile(0.90, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="injective"}[24h])))
-      p99: histogram_quantile(0.99, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="injective"}[24h])))
-      mean: sum(rate(wormhole_vaa_latency_seconds_sum{source_chain="injective"}[24h])) / sum(rate(wormhole_vaa_latency_seconds_count{source_chain="injective"}[24h]))
+      p50: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="injective"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="injective"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="injective"}[24h])))
+      mean: sum(rate(wormhole_vaa_latency_milliseconds_sum{source_chain="injective"}[24h])) / sum(rate(wormhole_vaa_latency_milliseconds_count{source_chain="injective"}[24h]))
       sample_size: increase(wormhole_vaa_seen_total{source_chain="injective"}[24h])
-      series: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_seconds_bucket{source_chain="injective"}[1h])))
+      series: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket{source_chain="injective"}[1h])))

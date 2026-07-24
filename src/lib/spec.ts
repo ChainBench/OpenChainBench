@@ -304,7 +304,7 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // Wormhole VAA latency ship (bench 101).
   // v44: 027 solana-tx-landing-latency spec removed from main (never got prod data,
   // duplicate of 016 solana-tx-landing). Bench SET shrank.
-  ["bench-unfiltered-v44", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  ["bench-unfiltered-v45", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -509,8 +509,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // -> ws-head-latency-ethereum + ungate on prod).
   // v34: bumped with bench-unfiltered-v31 (084 indexer-latency dropped).
   // Wormhole VAA latency ship (bench 101).
-  // v47: 027 solana-tx-landing-latency removed from main (see bench-unfiltered-v44).
-  ["all-benchmarks-v47", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v47: 027 solana-tx-landing-latency removed from main (see bench-unfiltered-v45).
+  ["all-benchmarks-v48", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
