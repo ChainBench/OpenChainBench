@@ -10,7 +10,7 @@
  */
 
 import { cache } from "react";
-import { unstable_cache } from "next/cache";
+import { unstable_cache, unstable_noStore } from "next/cache";
 import type { Benchmark } from "@/types/benchmark";
 import type { Spec } from "@/lib/spec-schema";
 // Imported from the isolated alias module (NOT @/lib/chains) to avoid
@@ -26,6 +26,8 @@ import {
   type BenchmarkFilters,
 } from "@/lib/materialize/load";
 import { readMaterialized } from "@/lib/materialize/store";
+import { loadAggregateFromBlob } from "@/lib/aggregate-blob";
+import { loadBenchFromBlob, loadVariantFromBlob } from "@/lib/bench-blob";
 
 export type { Spec } from "@/lib/spec-schema";
 export type { BenchmarkFilters } from "@/lib/materialize/load";
@@ -63,7 +65,7 @@ async function benchFromStore(
  * preserved from the store so the snapshot's measurement payload is
  * untouched.
  */
-function overlayEditorial(stored: Benchmark, spec: Spec): Benchmark {
+export function overlayEditorial(stored: Benchmark, spec: Spec): Benchmark {
   // Reconcile stale provider entries in the stored snapshot against the
   // current spec. The materialize worker may have written a snapshot
   // BEFORE a chain rename rolled through the YAMLs (e.g. ton → gram).
@@ -170,7 +172,7 @@ function overlayEditorial(stored: Benchmark, spec: Spec): Benchmark {
 // /api/series serves these on demand, CDN-cached (60 s s-maxage + 300 s
 // SWR) so the cache miss only hits Prom once per (bench, range) per
 // minute regardless of concurrent visitor count.
-function slimBenchmarkForCache(b: Benchmark): Benchmark {
+export function slimBenchmarkForCache(b: Benchmark): Benchmark {
   const slimPanels = b.metricPanels?.map((panel) => {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { seriesByProvider7d, seriesByProvider30d, ...rest } = panel;
@@ -199,11 +201,13 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
     const specs = await loadSpecs();
     const spec = specs.find((s) => s.slug === slug);
     if (!spec) return undefined;
-    // Blob-only: serve whatever the worker last published. Missing or
-    // unparseable blobs fall through to the aggregator's draft
-    // placeholder instead of fanning out a Prom build at render time —
-    // that fan-out is what saturated Prom's query queue under Vercel
-    // ISR re-render bursts.
+    // Fast path: per-bench blob written by the materialize worker
+    // after every tier A sweep. One CDN fetch (~20 ms edge, ~1 s cold)
+    // replaces the 2-3 SRH GETs this used to run. See bench-blob.ts
+    // and worker/publish-aggregate.ts.
+    const fromBlob = await loadBenchFromBlob(slug);
+    if (fromBlob) return slimBenchmarkForCache(overlayEditorial(fromBlob, spec));
+    // Fallback: Redis-via-SRH. Kept until Phase 3 fully retires SRH.
     const stored = await benchFromStore(slug, "");
     if (stored) return slimBenchmarkForCache(overlayEditorial(stored, spec));
     if (spec.status === "live") {
@@ -297,9 +301,18 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v31: 084 indexer-latency dropped entirely (spec + harness deleted;
   // HyperSync + The Graph required paid credentials for sustained
   // cadence). Bench SET shrank.
+<<<<<<< HEAD
   // v40: drop thirdweb from 4 new benches (ink, world-chain, kaia, opbnb) to unblock prod deploy stuck on /products/thirdweb 500.
   // v41: add bench 101 wormhole-vaa-latency (bench SET grew by 1).
   ["bench-unfiltered-v41", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+=======
+  // v38: mobula dropped from pm-data-freshness (they stopped serving 2026-07-19).
+  // v39: bench 091 osmosis-rpc ship (Cosmos SDK Kind added to harness).
+  // v40: benches 092 hyperliquid-rpc + 093 tron-rpc ship (bench SET grew by 2).
+  // v41: benches 094-100 ship (cosmos-hub, injective, neutron, world-chain, kaia, ink, opbnb — bench SET grew by 7).
+  // v42: drop thirdweb from 4 new benches (ink, world-chain, kaia, opbnb) to unblock prod deploy stuck on /products/thirdweb 500.
+  ["bench-unfiltered-v42", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+>>>>>>> origin/main
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -336,11 +349,56 @@ export class AllBenchmarksDraftError extends Error {
  * suite can exercise the error path without standing up Prometheus or
  * the Next cache backend.
  */
+/** Concurrency cap for the parallel per-bench Redis fan-out below.
+ *
+ *  The naive `Promise.allSettled(specs.map(loadOne))` fires ~68 read
+ *  chains at once (each does GET pointer → GET blob → optional GET lkg =
+ *  ~150-200 Redis ops), which reliably saturated SRH's request pool and
+ *  starved the alphabetically-later specs (`perp-open-interest` → `zksync-rpc`)
+ *  into 8s timeouts — they then rendered as draft placeholders on the
+ *  homepage even though their blobs were sitting in Redis the whole time.
+ *
+ *  Cap at 12 in-flight chains so the total concurrent Redis ops stay
+ *  well under the pool ceiling. The aggregate is behind unstable_cache
+ *  (revalidate 300 s) so the slightly-longer worst-case wall time on
+ *  cache miss is invisible to end users. */
+const AGGREGATE_LOAD_CONCURRENCY = 12;
+
+async function limitedAllSettled<T, R>(
+  items: T[],
+  concurrency: number,
+  fn: (item: T) => Promise<R>,
+): Promise<PromiseSettledResult<R>[]> {
+  const results: PromiseSettledResult<R>[] = new Array(items.length);
+  let cursor = 0;
+  const worker = async () => {
+    while (true) {
+      const i = cursor++;
+      if (i >= items.length) return;
+      try {
+        results[i] = { status: "fulfilled", value: await fn(items[i]) };
+      } catch (reason) {
+        results[i] = { status: "rejected", reason };
+      }
+    }
+  };
+  const workers = Array.from(
+    { length: Math.min(concurrency, items.length) },
+    () => worker(),
+  );
+  await Promise.all(workers);
+  return results;
+}
+
 export async function aggregateBenchmarks(
   specs: Spec[],
   loadOne: (slug: string) => Promise<Benchmark | undefined>,
 ): Promise<Benchmark[]> {
-  const settled = await Promise.allSettled(specs.map((s) => loadOne(s.slug)));
+  const settled = await limitedAllSettled(
+    specs,
+    AGGREGATE_LOAD_CONCURRENCY,
+    (s) => loadOne(s.slug),
+  );
   const benchmarks: Benchmark[] = [];
   for (let i = 0; i < specs.length; i++) {
     const spec = specs[i];
@@ -458,9 +516,18 @@ const loadAllBenchmarksCached = unstable_cache(
   // v32: bumped with bench-unfiltered-v30 (081 slug rename ws-head-latency
   // -> ws-head-latency-ethereum + ungate on prod).
   // v34: bumped with bench-unfiltered-v31 (084 indexer-latency dropped).
+<<<<<<< HEAD
   // v43: bumped in lockstep with bench-unfiltered-v40 (drop thirdweb, unblock prod).
   // v44: bumped in lockstep with bench-unfiltered-v41 (add bench 101 wormhole-vaa-latency).
   ["all-benchmarks-v44", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+=======
+  // v41: bumped in lockstep with bench-unfiltered-v38 (mobula drop).
+  // v42: bumped in lockstep with bench-unfiltered-v39 (osmosis-rpc ship).
+  // v43: bumped in lockstep with bench-unfiltered-v40 (hyperliquid-rpc + tron-rpc ship).
+  // v44: bumped in lockstep with bench-unfiltered-v41 (7 chains ship batch).
+  // v45: bumped in lockstep with bench-unfiltered-v42 (drop thirdweb from 4 new benches, unblock prod).
+  ["all-benchmarks-v45", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+>>>>>>> origin/main
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
@@ -483,10 +550,34 @@ export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
  */
 export const loadAllBenchmarksSafe = cache(
   async (): Promise<Benchmark[]> => {
+    // Fast path: CDN-cached aggregate blob written by the materialize
+    // worker every ~60 s (see src/lib/aggregate-blob.ts and
+    // worker/publish-aggregate.ts). One HTTP fetch replaces the ~150
+    // concurrent SRH GETs the per-bench aggregator used to fan out on
+    // every homepage revalidate — that fan-out is what saturated SRH's
+    // pool and starved alphabetically-later specs into draft
+    // placeholders. Any failure (network, schema, quorum) falls through
+    // to the Redis-via-SRH path below, so the switch is safe: the worst
+    // case is what we had before this landed.
+    const fromBlob = await loadAggregateFromBlob().catch(() => null);
+    if (fromBlob && fromBlob.length >= 40) {
+      return fromBlob;
+    }
+
     try {
       return await loadAllBenchmarksCached();
     } catch (err) {
       if (err instanceof AllBenchmarksDraftError) {
+        // Opt this render out of every cache layer (ISR + CDN edge). When
+        // the aggregate quorum is lost (SRH stuck, Redis blackout, worker
+        // starved) the placeholder response is a degraded surrogate, NOT
+        // ground truth. Without noStore the placeholder HTML would sit at
+        // Vercel Edge for `revalidate` seconds and — under stale-while-
+        // revalidate — for hours after backend recovery, since SWR only
+        // refreshes on cache miss. Marking the response no-store forces
+        // every subsequent hit to re-render, which immediately picks up
+        // real data as soon as SRH is back — no cache-key bump, no deploy.
+        unstable_noStore();
         const specs = await loadSpecs();
         return specs
           .map((s) => draftPlaceholderForSpec(s))
@@ -513,11 +604,12 @@ const loadBenchmarkFiltered = unstable_cache(
     const specs = await loadSpecs();
     const spec = specs.find((s) => s.slug === slug);
     if (!spec) return undefined;
-    // Blob-only: variant blobs are published by the worker's tier-B
-    // sweep. A missing variant blob means the worker has not covered
-    // this filter combination yet — return undefined so the caller can
-    // fall back to the unfiltered "All" view rather than spinning up a
-    // render-time Prom build.
+    // Fast path: per-variant blob written by the worker's tier B
+    // sweep. Missing blob → this filter combo hasn't been covered yet
+    // (or the tier B has never run since worker start) — fall through
+    // to Redis-via-SRH.
+    const fromBlob = await loadVariantFromBlob(slug, sig);
+    if (fromBlob) return slimBenchmarkForCache(overlayEditorial(fromBlob, spec));
     const stored = await benchFromStore(slug, sig);
     if (stored) return slimBenchmarkForCache(overlayEditorial(stored, spec));
     return undefined;

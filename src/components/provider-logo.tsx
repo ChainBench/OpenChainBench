@@ -80,8 +80,11 @@ export function ProviderLogo({
 // hairline shadow so they pop on both light and dark page backgrounds.
 const NEEDS_LIGHT_CHIP = new Set([
   "aptos",
+<<<<<<< HEAD
   "slash",
   "markets-mobile",
+=======
+>>>>>>> origin/main
   "aapl",
   "pltr",
   "leorpc",

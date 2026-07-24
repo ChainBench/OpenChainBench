@@ -238,7 +238,10 @@ func chains() []Chain {
 				{Slug: "nodies", Name: "Nodies (POKT)", URL: envDefault("RPC_URL_ETHEREUM_NODIES", "https://eth-pokt.nodies.app")},
 				{Slug: "lava", Name: "Lava Network", URL: envDefault("RPC_URL_ETHEREUM_LAVA", "https://eth1.lava.build")},
 				{Slug: "blastapi", Name: "Blast API", URL: envDefault("RPC_URL_ETHEREUM_BLASTAPI", "https://eth-mainnet.public.blastapi.io")},
+<<<<<<< HEAD
 				{Slug: "thirdweb", Name: "ThirdWeb", URL: envDefault("RPC_URL_ETHEREUM_THIRDWEB", "https://ethereum.rpc.thirdweb.com")},
+=======
+>>>>>>> origin/main
 				{Slug: "gatewayfm", Name: "Gateway.fm", URL: envDefault("RPC_URL_ETHEREUM_GATEWAYFM", "https://rpc.eth.gateway.fm")},
 				{Slug: "bloxroute", Name: "bloXroute", URL: envDefault("RPC_URL_ETHEREUM_BLOXROUTE", "https://eth.rpc.blxrbdn.com")},
 			},
@@ -268,7 +271,10 @@ func chains() []Chain {
 				{Slug: "lava", Name: "Lava Network", URL: envDefault("RPC_URL_ARBITRUM_LAVA", "https://arb1.lava.build")},
 				{Slug: "arbitrum-official", Name: "Arbitrum Official", URL: envDefault("RPC_URL_ARBITRUM_OFFICIAL", "https://arb1.arbitrum.io/rpc")},
 				{Slug: "blastapi", Name: "Blast API", URL: envDefault("RPC_URL_ARBITRUM_BLASTAPI", "https://arbitrum-one.public.blastapi.io")},
+<<<<<<< HEAD
 				{Slug: "thirdweb", Name: "ThirdWeb", URL: envDefault("RPC_URL_ARBITRUM_THIRDWEB", "https://arbitrum.rpc.thirdweb.com")},
+=======
+>>>>>>> origin/main
 			},
 		},
 		// ─── Optimism (6 providers) ─────────────────────────────────
@@ -295,7 +301,10 @@ func chains() []Chain {
 				{Slug: "nodies", Name: "Nodies (POKT)", URL: envDefault("RPC_URL_BASE_NODIES", "https://base-pokt.nodies.app")},
 				{Slug: "base-official", Name: "Base Official", URL: envDefault("RPC_URL_BASE_OFFICIAL", "https://mainnet.base.org")},
 				{Slug: "blastapi", Name: "Blast API", URL: envDefault("RPC_URL_BASE_BLASTAPI", "https://base-mainnet.public.blastapi.io")},
+<<<<<<< HEAD
 				{Slug: "thirdweb", Name: "ThirdWeb", URL: envDefault("RPC_URL_BASE_THIRDWEB", "https://base.rpc.thirdweb.com")},
+=======
+>>>>>>> origin/main
 				{Slug: "bloxroute", Name: "bloXroute", URL: envDefault("RPC_URL_BASE_BLOXROUTE", "https://base.rpc.blxrbdn.com")},
 			},
 		},
@@ -309,7 +318,10 @@ func chains() []Chain {
 				{Slug: "nodies", Name: "Nodies (POKT)", URL: envDefault("RPC_URL_BNB_NODIES", "https://bsc-pokt.nodies.app")},
 				{Slug: "binance", Name: "Binance Official", URL: envDefault("RPC_URL_BNB_OFFICIAL", "https://bsc-dataseed1.binance.org")},
 				{Slug: "blastapi", Name: "Blast API", URL: envDefault("RPC_URL_BNB_BLASTAPI", "https://bsc-mainnet.public.blastapi.io")},
+<<<<<<< HEAD
 				{Slug: "thirdweb", Name: "ThirdWeb", URL: envDefault("RPC_URL_BNB_THIRDWEB", "https://bsc.rpc.thirdweb.com")},
+=======
+>>>>>>> origin/main
 				{Slug: "bloxroute", Name: "bloXroute", URL: envDefault("RPC_URL_BNB_BLOXROUTE", "https://bsc.rpc.blxrbdn.com")},
 			},
 		},

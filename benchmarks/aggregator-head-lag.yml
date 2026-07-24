@@ -170,7 +170,11 @@ providers:
       # 30D view lost its first ~8 days to a fake wall-to-wall gap.
       # Modern data at 15s cadence carries ~60 samples per 15 min so
       # the guard still fires the moment a WS goes silent.
+<<<<<<< HEAD
       series: avg_over_time(head_lag_seconds{aggregator="mobula"}[1h]) * 1000 unless (changes(head_lag_seconds{aggregator="mobula"}[15m]) == 0 and count_over_time(head_lag_seconds{aggregator="mobula"}[15m]) > 5 and on(chain, region) sum by (chain, region) (changes(head_lag_seconds{}[15m])) > 5 and on(aggregator, region) avg_over_time(ws_connected{aggregator="mobula", chain=""}[15m]) > 0.8)
+=======
+      series: avg_over_time(head_lag_seconds{aggregator="mobula"}[1h]) * 1000 unless (changes(head_lag_seconds{aggregator="mobula"}[15m]) == 0 and count_over_time(head_lag_seconds{aggregator="mobula"}[15m]) > 5)
+>>>>>>> origin/main
       # Total gauge-value changes on this aggregator across chains and
       # regions in the last 15min. Non-zero = fresh events arrived; 0 =
       # every subscription has been silent for 15+ minutes (the gauge is
@@ -180,6 +184,7 @@ providers:
       regions:
         - region: us-east
           p50: quantile_over_time(0.50, head_lag_seconds{aggregator="mobula", region="us-east"}[24h]) * 1000
+<<<<<<< HEAD
           series: avg_over_time(head_lag_seconds{aggregator="mobula", region="us-east"}[1h]) * 1000 unless (changes(head_lag_seconds{aggregator="mobula", region="us-east"}[15m]) == 0 and count_over_time(head_lag_seconds{aggregator="mobula", region="us-east"}[15m]) > 5 and on(chain, region) sum by (chain, region) (changes(head_lag_seconds{region="us-east"}[15m])) > 5 and on(aggregator, region) avg_over_time(ws_connected{aggregator="mobula", region="us-east", chain=""}[15m]) > 0.8)
         - region: eu-west
           p50: quantile_over_time(0.50, head_lag_seconds{aggregator="mobula", region="eu-west"}[24h]) * 1000
@@ -187,6 +192,15 @@ providers:
         - region: ap-southeast
           p50: quantile_over_time(0.50, head_lag_seconds{aggregator="mobula", region="sgp"}[24h]) * 1000
           series: avg_over_time(head_lag_seconds{aggregator="mobula", region="sgp"}[1h]) * 1000 unless (changes(head_lag_seconds{aggregator="mobula", region="sgp"}[15m]) == 0 and count_over_time(head_lag_seconds{aggregator="mobula", region="sgp"}[15m]) > 5 and on(chain, region) sum by (chain, region) (changes(head_lag_seconds{region="sgp"}[15m])) > 5 and on(aggregator, region) avg_over_time(ws_connected{aggregator="mobula", region="sgp", chain=""}[15m]) > 0.8)
+=======
+          series: avg_over_time(head_lag_seconds{aggregator="mobula", region="us-east"}[1h]) * 1000 unless (changes(head_lag_seconds{aggregator="mobula", region="us-east"}[15m]) == 0 and count_over_time(head_lag_seconds{aggregator="mobula", region="us-east"}[15m]) > 5)
+        - region: eu-west
+          p50: quantile_over_time(0.50, head_lag_seconds{aggregator="mobula", region="eu-west"}[24h]) * 1000
+          series: avg_over_time(head_lag_seconds{aggregator="mobula", region="eu-west"}[1h]) * 1000 unless (changes(head_lag_seconds{aggregator="mobula", region="eu-west"}[15m]) == 0 and count_over_time(head_lag_seconds{aggregator="mobula", region="eu-west"}[15m]) > 5)
+        - region: ap-southeast
+          p50: quantile_over_time(0.50, head_lag_seconds{aggregator="mobula", region="sgp"}[24h]) * 1000
+          series: avg_over_time(head_lag_seconds{aggregator="mobula", region="sgp"}[1h]) * 1000 unless (changes(head_lag_seconds{aggregator="mobula", region="sgp"}[15m]) == 0 and count_over_time(head_lag_seconds{aggregator="mobula", region="sgp"}[15m]) > 5)
+>>>>>>> origin/main
 
   - slug: codex
     name: Codex
@@ -199,11 +213,16 @@ providers:
       mean: avg_over_time(head_lag_seconds{aggregator="codex"}[24h]) * 1000
       success: clamp_max(count_over_time(head_lag_seconds{aggregator="codex"}[24h]) / 5760, 1)
       sample_size: sum(count_over_time(head_lag_seconds{aggregator="codex"}[24h]))
+<<<<<<< HEAD
       series: avg_over_time(head_lag_seconds{aggregator="codex"}[1h]) * 1000 unless (changes(head_lag_seconds{aggregator="codex"}[15m]) == 0 and count_over_time(head_lag_seconds{aggregator="codex"}[15m]) > 5 and on(chain, region) sum by (chain, region) (changes(head_lag_seconds{}[15m])) > 5 and on(aggregator, region) avg_over_time(ws_connected{aggregator="codex", chain=""}[15m]) > 0.8)
+=======
+      series: avg_over_time(head_lag_seconds{aggregator="codex"}[1h]) * 1000 unless (changes(head_lag_seconds{aggregator="codex"}[15m]) == 0 and count_over_time(head_lag_seconds{aggregator="codex"}[15m]) > 5)
+>>>>>>> origin/main
       live_activity: sum(changes(head_lag_seconds{aggregator="codex"}[15m]))
       regions:
         - region: us-east
           p50: quantile_over_time(0.50, head_lag_seconds{aggregator="codex", region="us-east"}[24h]) * 1000
+<<<<<<< HEAD
           series: avg_over_time(head_lag_seconds{aggregator="codex", region="us-east"}[1h]) * 1000 unless (changes(head_lag_seconds{aggregator="codex", region="us-east"}[15m]) == 0 and count_over_time(head_lag_seconds{aggregator="codex", region="us-east"}[15m]) > 5 and on(chain, region) sum by (chain, region) (changes(head_lag_seconds{region="us-east"}[15m])) > 5 and on(aggregator, region) avg_over_time(ws_connected{aggregator="codex", region="us-east", chain=""}[15m]) > 0.8)
         - region: eu-west
           p50: quantile_over_time(0.50, head_lag_seconds{aggregator="codex", region="eu-west"}[24h]) * 1000
@@ -211,6 +230,15 @@ providers:
         - region: ap-southeast
           p50: quantile_over_time(0.50, head_lag_seconds{aggregator="codex", region="sgp"}[24h]) * 1000
           series: avg_over_time(head_lag_seconds{aggregator="codex", region="sgp"}[1h]) * 1000 unless (changes(head_lag_seconds{aggregator="codex", region="sgp"}[15m]) == 0 and count_over_time(head_lag_seconds{aggregator="codex", region="sgp"}[15m]) > 5 and on(chain, region) sum by (chain, region) (changes(head_lag_seconds{region="sgp"}[15m])) > 5 and on(aggregator, region) avg_over_time(ws_connected{aggregator="codex", region="sgp", chain=""}[15m]) > 0.8)
+=======
+          series: avg_over_time(head_lag_seconds{aggregator="codex", region="us-east"}[1h]) * 1000 unless (changes(head_lag_seconds{aggregator="codex", region="us-east"}[15m]) == 0 and count_over_time(head_lag_seconds{aggregator="codex", region="us-east"}[15m]) > 5)
+        - region: eu-west
+          p50: quantile_over_time(0.50, head_lag_seconds{aggregator="codex", region="eu-west"}[24h]) * 1000
+          series: avg_over_time(head_lag_seconds{aggregator="codex", region="eu-west"}[1h]) * 1000 unless (changes(head_lag_seconds{aggregator="codex", region="eu-west"}[15m]) == 0 and count_over_time(head_lag_seconds{aggregator="codex", region="eu-west"}[15m]) > 5)
+        - region: ap-southeast
+          p50: quantile_over_time(0.50, head_lag_seconds{aggregator="codex", region="sgp"}[24h]) * 1000
+          series: avg_over_time(head_lag_seconds{aggregator="codex", region="sgp"}[1h]) * 1000 unless (changes(head_lag_seconds{aggregator="codex", region="sgp"}[15m]) == 0 and count_over_time(head_lag_seconds{aggregator="codex", region="sgp"}[15m]) > 5)
+>>>>>>> origin/main
 
   - slug: geckoterminal
     name: GeckoTerminal
@@ -223,11 +251,16 @@ providers:
       mean: avg_over_time(head_lag_seconds{aggregator="geckoterminal"}[24h]) * 1000
       success: clamp_max(count_over_time(head_lag_seconds{aggregator="geckoterminal"}[24h]) / 5760, 1)
       sample_size: sum(count_over_time(head_lag_seconds{aggregator="geckoterminal"}[24h]))
+<<<<<<< HEAD
       series: avg_over_time(head_lag_seconds{aggregator="geckoterminal"}[1h]) * 1000 unless (changes(head_lag_seconds{aggregator="geckoterminal"}[15m]) == 0 and count_over_time(head_lag_seconds{aggregator="geckoterminal"}[15m]) > 5 and on(chain, region) sum by (chain, region) (changes(head_lag_seconds{}[15m])) > 5)
+=======
+      series: avg_over_time(head_lag_seconds{aggregator="geckoterminal"}[1h]) * 1000 unless (changes(head_lag_seconds{aggregator="geckoterminal"}[15m]) == 0 and count_over_time(head_lag_seconds{aggregator="geckoterminal"}[15m]) > 5)
+>>>>>>> origin/main
       live_activity: sum(changes(head_lag_seconds{aggregator="geckoterminal"}[15m]))
       regions:
         - region: us-east
           p50: quantile_over_time(0.50, head_lag_seconds{aggregator="geckoterminal", region="us-east"}[24h]) * 1000
+<<<<<<< HEAD
           series: avg_over_time(head_lag_seconds{aggregator="geckoterminal", region="us-east"}[1h]) * 1000 unless (changes(head_lag_seconds{aggregator="geckoterminal", region="us-east"}[15m]) == 0 and count_over_time(head_lag_seconds{aggregator="geckoterminal", region="us-east"}[15m]) > 5 and on(chain, region) sum by (chain, region) (changes(head_lag_seconds{region="us-east"}[15m])) > 5)
         - region: eu-west
           p50: quantile_over_time(0.50, head_lag_seconds{aggregator="geckoterminal", region="eu-west"}[24h]) * 1000
@@ -235,4 +268,13 @@ providers:
         - region: ap-southeast
           p50: quantile_over_time(0.50, head_lag_seconds{aggregator="geckoterminal", region="sgp"}[24h]) * 1000
           series: avg_over_time(head_lag_seconds{aggregator="geckoterminal", region="sgp"}[1h]) * 1000 unless (changes(head_lag_seconds{aggregator="geckoterminal", region="sgp"}[15m]) == 0 and count_over_time(head_lag_seconds{aggregator="geckoterminal", region="sgp"}[15m]) > 5 and on(chain, region) sum by (chain, region) (changes(head_lag_seconds{region="sgp"}[15m])) > 5)
+=======
+          series: avg_over_time(head_lag_seconds{aggregator="geckoterminal", region="us-east"}[1h]) * 1000 unless (changes(head_lag_seconds{aggregator="geckoterminal", region="us-east"}[15m]) == 0 and count_over_time(head_lag_seconds{aggregator="geckoterminal", region="us-east"}[15m]) > 5)
+        - region: eu-west
+          p50: quantile_over_time(0.50, head_lag_seconds{aggregator="geckoterminal", region="eu-west"}[24h]) * 1000
+          series: avg_over_time(head_lag_seconds{aggregator="geckoterminal", region="eu-west"}[1h]) * 1000 unless (changes(head_lag_seconds{aggregator="geckoterminal", region="eu-west"}[15m]) == 0 and count_over_time(head_lag_seconds{aggregator="geckoterminal", region="eu-west"}[15m]) > 5)
+        - region: ap-southeast
+          p50: quantile_over_time(0.50, head_lag_seconds{aggregator="geckoterminal", region="sgp"}[24h]) * 1000
+          series: avg_over_time(head_lag_seconds{aggregator="geckoterminal", region="sgp"}[1h]) * 1000 unless (changes(head_lag_seconds{aggregator="geckoterminal", region="sgp"}[15m]) == 0 and count_over_time(head_lag_seconds{aggregator="geckoterminal", region="sgp"}[15m]) > 5)
+>>>>>>> origin/main
 

@@ -28,20 +28,50 @@ export function LiveNumber({
   value,
   format,
   monotonic = false,
+  maxValue,
   className,
 }: {
   value: number | undefined;
   format: (n: number | undefined) => string;
   monotonic?: boolean;
+  /** Defensive ceiling. A single garbage push from the upstream relay
+   *  (observed: onchain vol24h briefly returning 8e79) would otherwise
+   *  latch into `lastRef` and, under `monotonic`, stick as the
+   *  displayed value forever because every subsequent healthy push is
+   *  smaller and gets rejected as a "down tick". Reject any incoming
+   *  value above the ceiling before it can pollute the snapshot pair. */
+  maxValue?: number;
   className?: string;
 }) {
-  const [display, setDisplay] = useState<number | undefined>(value);
+  // Never SEED the display with a value that already exceeds the
+  // ceiling. Otherwise the very first render (before any useEffect runs)
+  // would paint the garbage, then the monotonic guard would reject
+  // every healthy value that follows as a "down tick" and the garbage
+  // would stick until the tab was closed.
+  const seed =
+    value == null || (maxValue != null && value > maxValue) ? undefined : value;
+  const [display, setDisplay] = useState<number | undefined>(seed);
   const lastRef = useRef<{ value: number; ts: number } | null>(null);
   const prevRef = useRef<{ value: number; ts: number } | null>(null);
   const rafRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (value == null || !Number.isFinite(value)) return;
+    if (maxValue != null && value > maxValue) {
+      // Flush a poisoned lastRef AND the displayed value so a healthy
+      // push can seed the ticker fresh on the next tick. Without
+      // resetting `display`, the monotonic guard below would keep
+      // rejecting the healthy value as smaller than the garbage still
+      // shown to the user.
+      if (lastRef.current && lastRef.current.value > maxValue) {
+        lastRef.current = null;
+        prevRef.current = null;
+      }
+      setDisplay((d) =>
+        d != null && maxValue != null && d > maxValue ? undefined : d,
+      );
+      return;
+    }
     const now = performance.now();
     // Only advance the snapshot pair on DISTINCT values. Consecutive pushes
     // with the same value (relay 1 Hz tick × lighthouse 1-5 min poll) would
@@ -53,7 +83,7 @@ export function LiveNumber({
     if (lastRef.current.value === value) return;
     prevRef.current = lastRef.current;
     lastRef.current = { value, ts: now };
-  }, [value]);
+  }, [value, maxValue]);
 
   useEffect(() => {
     let cancelled = false;
