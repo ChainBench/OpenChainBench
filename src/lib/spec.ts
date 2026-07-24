@@ -309,7 +309,8 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // v47: staging pipeline shuffle — evm-quote-latency + indexing-freshness
   // promoted to prod; solana-dex-quote-latency held back to staging (openocean
   // 403 + raydium unresponsive = board reads half-broken to visitors).
-  ["bench-unfiltered-v47", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v48: add bench 102 token-quote-coverage (draft). Bench SET grew.
+  ["bench-unfiltered-v48", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -518,7 +519,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v49: network-coverage split into asset-registry-coverage + dex-network-coverage
   // (bench SET changed, see bench-unfiltered-v46).
   // v50: staging pipeline shuffle (see bench-unfiltered-v47).
-  ["all-benchmarks-v50", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v51: add bench 102 token-quote-coverage (draft, see bench-unfiltered-v48).
+  ["all-benchmarks-v51", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
