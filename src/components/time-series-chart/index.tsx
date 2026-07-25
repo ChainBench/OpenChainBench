@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Globe } from "lucide-react";
 import type { Benchmark } from "@/types/benchmark";
 import { brandColor } from "@/lib/brand";
@@ -8,6 +8,7 @@ import { buildProviderColors } from "@/lib/series-colors";
 import { useChartExclusion } from "@/hooks/use-chart-exclusion";
 import { useTopN } from "@/hooks/use-top-n";
 import { LiveDot } from "@/components/live-dot";
+import { ChartExportButton } from "@/components/chart-export-button";
 import { TopNSelector } from "@/components/top-n-selector";
 import {
   RANGES,
@@ -134,6 +135,9 @@ export function TimeSeriesChart({
   // Chart's internal re-renders. Reset to null when range or region
   // changes (the data shape is different, the old zoom doesn't apply).
   const [zoom, setZoom] = useState<{ startFrac: number; endFrac: number } | null>(null);
+  // Ref to the <figure> so ChartExportButton can rasterise the whole
+  // chart (header + SVG + watermark + legend) in one shot.
+  const figureRef = useRef<HTMLElement | null>(null);
   const zoomScopeKey = `${range}|${region}`;
   const [prevZoomScopeKey, setPrevZoomScopeKey] = useState(zoomScopeKey);
   if (prevZoomScopeKey !== zoomScopeKey) {
@@ -435,7 +439,7 @@ export function TimeSeriesChart({
     : RANGE_LABEL[range];
 
   return (
-    <figure className="my-2">
+    <figure className="my-2" ref={figureRef}>
       <div className="mb-3 flex items-center justify-between gap-3 min-h-7">
         <p className="inline-flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
           <LiveDot />
@@ -443,7 +447,11 @@ export function TimeSeriesChart({
             {metricLabelOverride ?? benchmark.metric} · {zoomLabel}
           </span>
         </p>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          <ChartExportButton
+            targetRef={figureRef}
+            filename={`openchainbench-${benchmark.slug}-${range}`}
+          />
           {zoom && (
             <button
               type="button"

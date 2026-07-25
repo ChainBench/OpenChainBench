@@ -9,6 +9,7 @@ import { YAxis, XAxis } from "./axis";
 import { SeriesGradients, SeriesPaths, HoverMarkers, type DrawnLine } from "./series";
 import { Legend } from "./legend";
 import { Tooltip } from "./tooltip";
+import { ChartWatermarkSvg } from "@/components/chart-watermark";
 
 type ChartProps = {
   lines: LineWithColor[];
@@ -469,6 +470,11 @@ export function Chart({
           stroke="var(--color-ink)"
           strokeWidth={1}
         />
+
+        {/* Attribution watermark. Sits inside the plot's right pad so it
+            doesn't overlap data lines; captured in any PNG export via
+            chart-export-button.tsx. Kept low-opacity by ChartWatermarkSvg. */}
+        <ChartWatermarkSvg x={padL + innerW - 2} y={padT + innerH - 6} anchor="end" />
       </svg>
 
       {/* Floating tooltip */}
