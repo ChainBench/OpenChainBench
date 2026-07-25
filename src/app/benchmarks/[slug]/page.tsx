@@ -419,7 +419,12 @@ export default async function BenchmarkPage({
         author: [{ "@id": PERSON_ID }, { "@id": `${SITE.url}/#org` }],
         reviewedBy: { "@id": PERSON_ID },
         publisher: { "@id": `${SITE.url}/#org` },
-        about: { "@id": `${benchmarkUrl}#dataset` },
+        // `about` describes the topic. Use a Thing (matches the
+        // StatisticalReport `about` pattern above) rather than @id-refing
+        // the same-page Dataset. Google's Dataset validator was flagging
+        // @id-only refs as standalone incomplete Datasets even within
+        // the same @graph (see the isBasedOn fix in dataset-jsonld.ts).
+        about: { "@type": "Thing", name: benchmark.metric },
       },
       buildBreadcrumbJsonLd([
         { name: "Home", item: SITE.url },
