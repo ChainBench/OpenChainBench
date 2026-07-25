@@ -199,10 +199,9 @@ export function ShareSection({ slug, title, benchmark, chain }: Props) {
         onClick={() => setOpen(true)}
         aria-label="Export image"
         title="Export image"
-        className="inline-flex items-center gap-1.5 rounded-md border border-ink/15 bg-paper px-2.5 py-1 text-[11px] font-sans font-medium uppercase tracking-[0.1em] text-ink shadow-sm transition-colors hover:bg-paper-soft"
+        className="inline-flex items-center justify-center rounded-md border border-ink/15 bg-paper p-1.5 text-ink shadow-sm transition-colors hover:bg-paper-soft"
       >
-        <ImageIcon size={11} strokeWidth={2} />
-        <span className="hidden sm:inline">Image</span>
+        <ImageIcon size={13} strokeWidth={2} />
       </button>
 
       {open && (

@@ -481,22 +481,6 @@ export default async function BenchmarkPage({
           <ArrowLeft size={14} strokeWidth={2} />
           All benchmarks
         </Link>
-        {!isDraft && (
-          <div className="ml-auto flex flex-wrap items-center gap-2">
-            <ShareSection
-              slug={benchmark.slug}
-              title={benchmark.title}
-              benchmark={benchmark}
-              chain={chain}
-            />
-            <ExportVideoSection
-              slug={benchmark.slug}
-              title={benchmark.title}
-              benchmark={benchmark}
-            />
-            <ReportSection slug={benchmark.slug} />
-          </div>
-        )}
       </div>
 
       {/* Bench identifier - minimal mono line, no SaaS-style pills. */}
@@ -743,6 +727,24 @@ export default async function BenchmarkPage({
             initialKind={kind ?? null}
             initialVenue={venue ?? null}
             hasLongHistory={benchmark.slug === "hyperliquid-frontends"}
+            pageActions={
+              !isDraft ? (
+                <>
+                  <ShareSection
+                    slug={benchmark.slug}
+                    title={benchmark.title}
+                    benchmark={benchmark}
+                    chain={chain}
+                  />
+                  <ExportVideoSection
+                    slug={benchmark.slug}
+                    title={benchmark.title}
+                    benchmark={benchmark}
+                  />
+                  <ReportSection slug={benchmark.slug} />
+                </>
+              ) : undefined
+            }
           />
         </Suspense>
       )}
