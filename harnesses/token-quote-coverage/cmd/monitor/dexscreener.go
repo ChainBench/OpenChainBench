@@ -12,10 +12,13 @@ import (
 
 var dexClient = &http.Client{Timeout: 15 * time.Second}
 
-// boostEntry is one item from /token-boosts/latest/v1.
+// boostEntry is one item from /token-boosts/latest/v1 or a discovery source.
+// Venue is pre-assigned when the source already knows the launchpad (e.g. Virtuals API).
+// An empty Venue is resolved via Dexscreener pair enrichment.
 type boostEntry struct {
 	ChainId      string `json:"chainId"`
 	TokenAddress string `json:"tokenAddress"`
+	Venue        string // optional: pre-assigned venue slug
 }
 
 // FetchBoostedTokens calls the Dexscreener token-boosts endpoint and returns
@@ -131,6 +134,11 @@ func EnrichWithVenue(ctx context.Context, entries []boostEntry) ([]Token, error)
 
 	var tokens []Token
 	for _, e := range entries {
+		if e.Venue != "" {
+			// Venue pre-assigned by discovery source; skip Dexscreener lookup.
+			tokens = append(tokens, Token{Address: e.TokenAddress, Chain: e.ChainId, Venue: e.Venue})
+			continue
+		}
 		k := key{e.ChainId, strings.ToLower(e.TokenAddress)}
 		dexId, ok := dexIdOf[k]
 		if !ok {
