@@ -43,10 +43,15 @@ var headLagPools = []HeadLagPool{
 		ChainName:  "solana",
 	},
 	{
+		// Uniswap V3 WETH/USDC 0.05% — high-activity native USDC pool.
+		// Previous address 0x4c36…4b18 was WETH/USDbC (deprecated bridged
+		// legacy USDC, ~17 swaps/hour, ~$27k liquidity) which routinely
+		// went >5 min between trades and stalled AggregatorHeadLagStale
+		// on chain="base" (2026-07-25 incident).
 		Name:       "WETH/USDC Base",
 		Blockchain: "evm:8453",
 		NetworkID:  8453,
-		Address:    "0x4c36388be6f416a29c8d8eee81c771ce6be14b18",
+		Address:    "0xd0b53d9277642d899df5c87a3966a349a798f224",
 		ChainName:  "base",
 	},
 	{
