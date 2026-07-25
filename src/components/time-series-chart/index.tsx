@@ -451,9 +451,6 @@ export function TimeSeriesChart({
           <ChartExportButton
             targetRef={figureRef}
             filename={`openchainbench-${benchmark.slug}-${range}`}
-            csvLines={lines}
-            rangeHours={RANGE_HOURS[range]}
-            rangePoints={RANGE_EXPECTED_POINTS[range]}
           />
           {zoom && (
             <button
