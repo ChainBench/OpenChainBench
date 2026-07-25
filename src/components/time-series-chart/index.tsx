@@ -53,6 +53,14 @@ type Props = {
    *  picks the matching one when the range tab is 7d or 30d. */
   seriesOverride7d?: Record<string, (number | null)[]>;
   seriesOverride30d?: Record<string, (number | null)[]>;
+  /** Panel id that produced the seriesOverride*. When set (and no
+   *  seriesOverride7d/30d were passed inline — the common case since
+   *  slimBenchmarkForCache strips those to keep cache entries small),
+   *  the chart lazy-fetches /api/series?panel=<id>&range=7d|30d and
+   *  drives the long-range tabs from the response. Without this, 7d
+   *  and 30d pills stayed disabled whenever a metric panel was active
+   *  even though the underlying Prom data existed. */
+  activePanelId?: string | null;
   metricLabelOverride?: string;
   unitOverride?: Benchmark["unit"];
   /** Direction override for ranking when a metric panel is active. Bench
@@ -92,6 +100,7 @@ export function TimeSeriesChart({
   seriesOverride,
   seriesOverride7d,
   seriesOverride30d,
+  activePanelId,
   metricLabelOverride,
   unitOverride,
   higherIsBetterOverride,
@@ -142,6 +151,10 @@ export function TimeSeriesChart({
   // most one fan-out per (bench, range) per minute.
   const [lazySeries7d, setLazySeries7d] = useState<Record<string, (number | null)[]> | null>(null);
   const [lazySeries30d, setLazySeries30d] = useState<Record<string, (number | null)[]> | null>(null);
+  // Per-panel lazy 7d/30d, keyed by panel id. Cached across a panel
+  // switch so flipping back to a previously-viewed panel is instant.
+  const [lazyPanel7d, setLazyPanel7d] = useState<Record<string, Record<string, (number | null)[]>>>({});
+  const [lazyPanel30d, setLazyPanel30d] = useState<Record<string, Record<string, (number | null)[]>>>({});
 
   // Pre-fetch 7d AND 30d in the background as soon as the chart mounts,
   // not just when the user clicks the tab. The fetches are non-blocking
@@ -201,19 +214,92 @@ export function TimeSeriesChart({
     };
   }, [regionProp, chainProp, benchmark.slug]);
 
+  // Panel-scoped lazy fetch. Runs when the active panel id changes and the
+  // parent did NOT ship the panel's own 7d/30d series inline (the common
+  // case since slimBenchmarkForCache drops them). Cache-keyed per panel so
+  // switching between panels re-uses previously loaded data instantly.
+  useEffect(() => {
+    if (!activePanelId) return;
+    // Inline overrides win — skip the fetch when the parent already
+    // supplied panel long-range series (e.g. an unshimmed test caller).
+    if (seriesOverride7d && seriesOverride30d) return;
+    if (lazyPanel7d[activePanelId] && lazyPanel30d[activePanelId]) return;
+    let cancelled = false;
+    const need7d = !seriesOverride7d && !lazyPanel7d[activePanelId];
+    const need30d = !seriesOverride30d && !lazyPanel30d[activePanelId];
+    const done: Record<"7d" | "30d", boolean> = {
+      "7d": !need7d,
+      "30d": !need30d,
+    };
+    const buildQs = (range: "7d" | "30d") => {
+      const qs = new URLSearchParams({ range, panel: activePanelId });
+      if (regionProp && regionProp !== "all") qs.set("region", regionProp);
+      if (chainProp && chainProp !== "all") qs.set("chain", chainProp);
+      return qs.toString();
+    };
+    const fetchOne = (range: "7d" | "30d", attempt = 0) => {
+      if (cancelled || done[range]) return;
+      fetch(`/api/series/${benchmark.slug}?${buildQs(range)}`)
+        .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+        .then((data: { providers: { slug: string; values: (number | null)[] }[] }) => {
+          if (cancelled) return;
+          done[range] = true;
+          const map: Record<string, (number | null)[]> = {};
+          for (const p of data.providers) map[p.slug] = p.values;
+          if (range === "7d") {
+            setLazyPanel7d((prev) => ({ ...prev, [activePanelId]: map }));
+          } else {
+            setLazyPanel30d((prev) => ({ ...prev, [activePanelId]: map }));
+          }
+        })
+        .catch(() => {
+          if (cancelled) return;
+          if (attempt < 2) {
+            setTimeout(() => fetchOne(range, attempt + 1), (attempt + 1) * 2000);
+          } else {
+            done[range] = true;
+            if (range === "7d") {
+              setLazyPanel7d((prev) => ({ ...prev, [activePanelId]: {} }));
+            } else {
+              setLazyPanel30d((prev) => ({ ...prev, [activePanelId]: {} }));
+            }
+          }
+        });
+    };
+    if (need7d) fetchOne("7d");
+    if (need30d) fetchOne("30d");
+    return () => {
+      cancelled = true;
+    };
+    // Deliberately excluding lazyPanel7d/30d from deps — the effect reads
+    // them for its "already cached?" guard, but re-triggering when the
+    // maps mutate would deadloop with the setState calls inside.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activePanelId, regionProp, chainProp, benchmark.slug, seriesOverride7d, seriesOverride30d]);
+
   // Tab availability: 24h is always present (served from the cached
   // Benchmark), 7d / 30d are always offered as tabs since they're
   // lazy-fetchable. The fetch resolves to {} on no-data, which we still
   // treat as "tab available" because the chart can render an empty
   // state inline rather than hide the tab.
   //
-  // Exception: when a metric panel is active (seriesOverride set), the
-  // panel's own 7d / 30d series are no longer cached either, so 7d /
-  // 30d tabs would show 24h data sliced wrong. Disable them in that
-  // case — readers must deactivate the panel to see longer ranges.
+  // Metric-panel scope: when a panel is active, the tab is enabled if
+  //   (a) the parent shipped seriesOverride7d/30d inline, OR
+  //   (b) we have (or are about to have) lazy-fetched panel series via
+  //       activePanelId. Panels without activePanelId still fall back to
+  //       the old behavior (disabled long-range tabs) so untouched
+  //       callers keep working.
   const panelActive = !!seriesOverride;
-  const has7d = !panelActive || !!seriesOverride7d;
-  const has30d = !panelActive || !!seriesOverride30d;
+  const panelLazy7d = activePanelId ? lazyPanel7d[activePanelId] : undefined;
+  const panelLazy30d = activePanelId ? lazyPanel30d[activePanelId] : undefined;
+  const has7d =
+    !panelActive ||
+    !!seriesOverride7d ||
+    (!!activePanelId && panelLazy7d !== undefined);
+  const has30d =
+    !panelActive ||
+    !!seriesOverride30d ||
+    (!!activePanelId && panelLazy30d !== undefined);
 
   const availableRegions = useMemo(() => {
     const set = new Set<string>();
@@ -245,8 +331,18 @@ export function TimeSeriesChart({
     // variant trailing edge. Long range tabs fall back to the 24h
     // variant when the longer one is missing (older specs).
     const pickPanel = (): Record<string, (number | null)[]> | undefined => {
-      if (range === "30d" && seriesOverride30d) return seriesOverride30d;
-      if (range === "7d" && seriesOverride7d) return seriesOverride7d;
+      // Prefer inline overrides (present when parent chose to ship panel
+      // long-range series with the initial payload), then lazy-fetched
+      // panel maps (the common path — long-range series are stripped
+      // from the cached bench and loaded via /api/series?panel=<id>),
+      // then fall back to the 24h override so the chart still renders
+      // something instead of an empty pane.
+      if (range === "30d") {
+        return seriesOverride30d ?? panelLazy30d ?? seriesOverride;
+      }
+      if (range === "7d") {
+        return seriesOverride7d ?? panelLazy7d ?? seriesOverride;
+      }
       return seriesOverride;
     };
     const panel = pickPanel();
