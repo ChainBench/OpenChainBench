@@ -89,10 +89,11 @@ export function ReportSection({ slug }: Props) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-2 rounded-md border border-ink bg-paper px-3.5 py-2 text-[11px] font-medium uppercase tracking-[0.18em] text-ink hover:bg-ink hover:text-paper transition-colors"
+        aria-label="Report an issue"
+        title="Report an issue"
+        className="inline-flex items-center justify-center rounded-md border border-ink/15 bg-paper p-1.5 text-ink shadow-sm transition-colors hover:bg-paper-soft"
       >
-        <AlertTriangle size={14} strokeWidth={2} />
-        Report
+        <AlertTriangle size={13} strokeWidth={2} />
       </button>
 
       {open && (
