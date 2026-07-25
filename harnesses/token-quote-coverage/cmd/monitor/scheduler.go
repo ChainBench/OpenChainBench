@@ -17,11 +17,9 @@ const (
 func buildProviders(cfg *Config) []Provider {
 	providers := []Provider{
 		NewJupiterProvider(),
-		NewRaydiumProvider(),
 		NewMobulaProvider(cfg.MobulaAPIKey),
 		NewKyberSwapProvider(),
 		NewParaSwapProvider(),
-		NewOpenOceanProvider(),
 	}
 	return providers
 }
