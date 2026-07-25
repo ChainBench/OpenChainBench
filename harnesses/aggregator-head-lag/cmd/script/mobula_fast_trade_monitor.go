@@ -37,7 +37,7 @@ var fastTradePools = []struct {
 	},
 	{
 		Blockchain: "evm:8453",
-		Address:    "0x4c36388be6f416a29c8d8eee81c771ce6be14b18", // WETH/USDC Base
+		Address:    "0xd0b53d9277642d899df5c87a3966a349a798f224", // Uniswap V3 WETH/USDC 0.05% Base (was 0x4c36…4b18 = WETH/USDbC dead)
 		ChainName:  "base",
 	},
 	{
