@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Benchmark } from "@/types/benchmark";
 import { liveResults } from "@/lib/provider-filters";
 import { matchesChainSlug } from "@/lib/chain-aliases";
@@ -29,6 +29,7 @@ import { computeFieldStats } from "@/lib/stats";
 import { defaultViewFor, viewsForBenchmark } from "@/lib/views";
 import { useViewPreference } from "@/hooks/use-view-preference";
 import type { ChainMeta } from "@/components/chain-tabs";
+import { FileText, Check } from "lucide-react";
 
 type ChainOption = { value: string; label: string };
 
@@ -135,6 +136,50 @@ const REGION_DISPLAY: Record<string, string> = {
   "ap-southeast": "AP-Southeast",
   global: "Global",
 };
+
+function CsvButton({ benchmark }: { benchmark: Benchmark }) {
+  const [done, setDone] = useState(false);
+
+  const onClick = useCallback(() => {
+    const series = benchmark.extras?.series24h;
+    if (!series || Object.keys(series).length === 0) return;
+    const slugs = benchmark.results.map((r) => r.slug);
+    const nPoints = 72;
+    const stepMs = (24 * 3_600_000) / nPoints;
+    const now = Date.now();
+    const header = ["timestamp", ...slugs].join(",");
+    const rows = Array.from({ length: nPoints }, (_, i) => {
+      const ts = new Date(now - 24 * 3_600_000 + (i + 1) * stepMs).toISOString();
+      return [ts, ...slugs.map((s) => { const v = series[s]?.[i]; return v == null ? "" : String(v); })].join(",");
+    });
+    const blob = new Blob([[header, ...rows].join("\n")], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `openchainbench-${benchmark.slug}-24h.csv`;
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    setDone(true);
+    setTimeout(() => setDone(false), 1600);
+  }, [benchmark]);
+
+  if (!benchmark.extras?.series24h || Object.keys(benchmark.extras.series24h).length === 0) return null;
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex items-center gap-1.5 rounded-md border border-ink/15 bg-paper px-2 py-1 text-ink shadow-sm transition-colors hover:bg-paper-soft"
+      title="Download chart data as CSV (24 h)"
+      aria-label="Download CSV"
+    >
+      {done ? <Check size={11} strokeWidth={2.4} /> : <FileText size={11} strokeWidth={2} />}
+    </button>
+  );
+}
 
 export function BenchmarkBody({
   variants,
@@ -578,6 +623,14 @@ export function BenchmarkBody({
     };
   }, [viewBenchmark, activePanel]);
 
+  const sharedHeaderActions = (
+    <>
+      <CsvButton benchmark={viewBenchmark ?? benchmark} />
+      {pageActions}
+      <ViewSwitcher allowed={allowedViews} value={view} onChange={setView} />
+    </>
+  );
+
   return (
     <>
       {(hasLayerSplit ||
@@ -733,7 +786,7 @@ export function BenchmarkBody({
               {view === "countLeaderboard" && (
                 <CountLeaderboard
                   benchmark={viewBenchmark}
-                  headerActions={<>{pageActions}<ViewSwitcher allowed={allowedViews} value={view} onChange={setView} /></>}
+                  headerActions={<>{sharedHeaderActions}</>}
                 />
               )}
               {view === "rankedBar" && (
@@ -758,7 +811,7 @@ export function BenchmarkBody({
                   onResetExcluded={resetExcluded}
                   disableTopN={hasLayerSplit}
                   topNControl={topNControl}
-                  headerActions={<>{pageActions}<ViewSwitcher allowed={allowedViews} value={view} onChange={setView} /></>}
+                  headerActions={<>{sharedHeaderActions}</>}
                 />
                 </>
               )}
@@ -770,7 +823,7 @@ export function BenchmarkBody({
                   onResetExcluded={resetExcluded}
                   disableTopN={hasLayerSplit}
                   topNControl={topNControl}
-                  headerActions={<>{pageActions}<ViewSwitcher allowed={allowedViews} value={view} onChange={setView} /></>}
+                  headerActions={<>{sharedHeaderActions}</>}
                 />
               )}
               {view === "donut" && (
@@ -780,7 +833,7 @@ export function BenchmarkBody({
                   onToggleExclude={toggleExclude}
                   disableTopN={hasLayerSplit}
                   topNControl={topNControl}
-                  headerActions={<>{pageActions}<ViewSwitcher allowed={allowedViews} value={view} onChange={setView} /></>}
+                  headerActions={<>{sharedHeaderActions}</>}
                 />
               )}
               {view === "timeseries" && (
@@ -813,7 +866,7 @@ export function BenchmarkBody({
                     onResetExcluded={resetExcluded}
                     disableTopN={hasLayerSplit}
                   topNControl={topNControl}
-                    headerActions={<>{pageActions}<ViewSwitcher allowed={allowedViews} value={view} onChange={setView} /></>}
+                    headerActions={<>{sharedHeaderActions}</>}
                     seriesOverride={activePanel?.seriesByProvider}
                     seriesOverride7d={activePanel?.seriesByProvider7d}
                     seriesOverride30d={activePanel?.seriesByProvider30d}
