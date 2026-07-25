@@ -308,7 +308,14 @@ export async function specToBenchmark(
     // Exact per-cell rankings (chain × region) from the spec's single
     // grouped matrix query. Failures are tolerated: badge/product
     // surfaces fall back to the coarser bestPerChain path.
-    const cellRanks = !isFiltered ? await tryLoadCellRanks(spec) : undefined;
+    const cellRankResult = !isFiltered ? await tryLoadCellRanks(spec) : undefined;
+    const cellRanks = cellRankResult?.ranks;
+    if (cellRankResult?.venuesWithData?.length) {
+      live.extras.venuesWithData = cellRankResult.venuesWithData;
+    }
+    if (cellRankResult?.venuesForChain && Object.keys(cellRankResult.venuesForChain).length > 0) {
+      live.extras.venuesForChain = cellRankResult.venuesForChain;
+    }
 
     // Per-provider sample-health classification. When the spec declares
     // expected_n, every live provider gets `dataConfidence` (healthy /
@@ -434,9 +441,15 @@ export function propagateNullsToCoarser(
  * the matrix is unfiltered PromQL, so stray series (retired providers,
  * staging labels) must not leak into rankings.
  */
+type CellRankResult = {
+  ranks: Record<string, CellRankEntry[]>;
+  venuesWithData: string[];
+  venuesForChain: Record<string, string[]>;
+};
+
 async function tryLoadCellRanks(
   spec: Spec,
-): Promise<Record<string, CellRankEntry[]> | undefined> {
+): Promise<CellRankResult | undefined> {
   if (!spec.rank_matrix_query) return undefined;
   const url = spec.prometheus?.url ?? process.env.PROMETHEUS_URL;
   if (!url) return undefined;
@@ -451,6 +464,13 @@ async function tryLoadCellRanks(
     // Canonical dimension value by lowercase, so a harness emitting
     // `chain="Base"` still maps onto the declared `base` value instead
     // of silently dropping the cell.
+    const venueByLower = new Map(
+      (spec.dimensions?.venue ?? [])
+        .filter((v) => v.value !== "all")
+        .map((v) => [v.value.toLowerCase(), v.value] as const),
+    );
+    const venuesWithDataSet = new Set<string>();
+    const venuesForChainMap = new Map<string, Set<string>>();
     const chainByLower = new Map(
       (spec.dimensions?.chain ?? [])
         .filter((c) => c.value !== "all")
@@ -480,6 +500,17 @@ async function tryLoadCellRanks(
       if (regionByLower.size > 0 && !region) continue;
       const v = Number(sample.value[1]);
       if (!Number.isFinite(v) || v <= 0) continue;
+      if (venueByLower.size > 0 && sample.metric.venue) {
+        const venue = venueByLower.get(sample.metric.venue.toLowerCase());
+        if (venue) {
+          venuesWithDataSet.add(venue);
+          if (chain) {
+            const set = venuesForChainMap.get(chain) ?? new Set<string>();
+            set.add(venue);
+            venuesForChainMap.set(chain, set);
+          }
+        }
+      }
       const key = `${chain ?? "all"}|${region ?? "all"}`;
       const cell = acc.get(key) ?? new Map<string, number[]>();
       const vals = cell.get(slug) ?? [];
@@ -552,7 +583,9 @@ async function tryLoadCellRanks(
         (region) => `all|${region}`,
       );
     }
-    return out;
+    const venuesForChain: Record<string, string[]> = {};
+    for (const [c, set] of venuesForChainMap) venuesForChain[c] = [...set];
+    return { ranks: out, venuesWithData: [...venuesWithDataSet], venuesForChain };
   } catch (e) {
     console.warn(
       `cellRanks skip: ${spec.slug} matrix query failed: ${e instanceof Error ? e.message : String(e)}`,

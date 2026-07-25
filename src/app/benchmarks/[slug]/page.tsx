@@ -194,7 +194,13 @@ export default async function BenchmarkPage({
   // sub-100 ms after one warm-up.
   const aggregate = await getBenchmark(slug);
   if (!aggregate) notFound();
-  const chainOptions = aggregate.dimensions?.chain ?? [];
+  const chainsWithData = new Set<string>(Object.keys(aggregate.providersPerChain ?? {}));
+  const chainOptions =
+    chainsWithData.size === 0
+      ? (aggregate.dimensions?.chain ?? [])
+      : (aggregate.dimensions?.chain ?? []).filter(
+          (c) => c.value === "all" || chainsWithData.has(c.value),
+        );
   // Drop declared regions that the harness doesn't actually emit data for
   // (e.g. metadata-coverage lists sgp in the spec but only ever publishes
   // region="unknown"). Without this the picker offers a tab that 404s on
@@ -230,7 +236,13 @@ export default async function BenchmarkPage({
           (r) => r.value === "all" || regionsWithData.has(r.value),
         );
   const kindOptions = aggregate.dimensions?.kind ?? [];
-  const venueOptions = aggregate.dimensions?.venue ?? [];
+  const venuesWithData = new Set<string>(aggregate.extras?.venuesWithData ?? []);
+  const venueOptions =
+    venuesWithData.size === 0
+      ? (aggregate.dimensions?.venue ?? [])
+      : (aggregate.dimensions?.venue ?? []).filter(
+          (v) => v.value === "all" || venuesWithData.has(v.value),
+        );
   const chain = chainOptions[0]?.value ?? null;
   const region = regionOptions[0]?.value ?? null;
   const kind = kindOptions[0]?.value ?? null;
@@ -720,6 +732,7 @@ export default async function BenchmarkPage({
             regionOptions={regionOptions}
             kindOptions={kindOptions}
             venueOptions={venueOptions}
+            venuesForChain={aggregate.extras?.venuesForChain}
             initialChain={chain ?? null}
             initialRegion={region ?? null}
             initialKind={kind ?? null}
