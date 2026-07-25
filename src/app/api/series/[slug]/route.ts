@@ -31,6 +31,7 @@ const getSeriesMapCached = unstable_cache(
     region: string | undefined,
     kind: string | undefined,
     venue: string | undefined,
+    panelId: string | undefined,
   ): Promise<Record<string, (number | null)[]> | null> => {
     const sig = filterSig({ chain, region, kind, venue });
     // Try CDN blob first (Phase 3), fall back to Redis via SRH.
@@ -38,11 +39,25 @@ const getSeriesMapCached = unstable_cache(
       (await loadSnapshotFromBlob(slug, sig)) ??
       (await readMaterialized(slug, sig));
     if (stored) {
-      const fromBlob =
-        range === "7d"
-          ? stored.bench.extras.series7d
-          : stored.bench.extras.series30d;
-      if (fromBlob && Object.keys(fromBlob).length > 0) return fromBlob;
+      // Panel-scoped lookup: returns the companion-metric series for a
+      // specific metricPanel (?panel=<id>), not the main bench series.
+      // Without this, panels have no way to render 7d/30d — the
+      // slimBenchmarkForCache strip drops panel long-range series from
+      // the payload and the chart falls back to a disabled tab.
+      if (panelId) {
+        const panel = stored.bench.metricPanels?.find((p) => p.id === panelId);
+        const fromPanel =
+          range === "7d"
+            ? panel?.seriesByProvider7d
+            : panel?.seriesByProvider30d;
+        if (fromPanel && Object.keys(fromPanel).length > 0) return fromPanel;
+      } else {
+        const fromBlob =
+          range === "7d"
+            ? stored.bench.extras.series7d
+            : stored.bench.extras.series30d;
+        if (fromBlob && Object.keys(fromBlob).length > 0) return fromBlob;
+      }
     }
     // Fallback: blob missing (newly deployed bench) or empty for this
     // variant. Run the live build to seed something; the worker will
@@ -51,12 +66,18 @@ const getSeriesMapCached = unstable_cache(
     const spec = specs.find((s) => s.slug === slug);
     if (!spec || spec.status !== "live") return null;
     const b = await specToBenchmark(spec, { chain, region, kind, venue });
+    if (panelId) {
+      const panel = b.metricPanels?.find((p) => p.id === panelId);
+      return (range === "7d"
+        ? panel?.seriesByProvider7d
+        : panel?.seriesByProvider30d) ?? null;
+    }
     return (range === "7d" ? b.extras.series7d : b.extras.series30d) ?? null;
   },
-  // v4: dense series with explicit nulls for empty Prom buckets. v3
-  // entries hold the old hole-compressed arrays whose length no longer
-  // matches the dense timestamp grid emitted below.
-  ["series-by-range-v4"],
+  // v5: added ?panel=<id> variant for companion-metric long-range series.
+  // v4 keys omit the panelId slot; keep the version bumped so old cache
+  // entries don't collide with the new signature.
+  ["series-by-range-v5"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -112,6 +133,7 @@ export async function GET(
   const allowedSlugs = providersFilter
     ? new Set(providersFilter.split(",").map((s) => s.trim()).filter(Boolean))
     : null;
+  const panelId = url.searchParams.get("panel")?.trim() || undefined;
 
   // Honor the same dimensional filters the bench page itself supports
   // (?chain=ethereum, ?region=eu-west, ?kind=..., ?venue=...). Without
@@ -169,12 +191,18 @@ export async function GET(
         filters.region,
         filters.kind,
         filters.venue,
+        panelId,
       ),
       hasFilters ? getBenchmark(slug, filters) : Promise.resolve(aggregate),
     ]);
   } else {
     bench = hasFilters ? await getBenchmark(slug, filters) : aggregate;
-    seriesMap = bench?.extras.series24h;
+    if (panelId) {
+      const panel = bench?.metricPanels?.find((p) => p.id === panelId);
+      seriesMap = panel?.seriesByProvider;
+    } else {
+      seriesMap = bench?.extras.series24h;
+    }
   }
   const b = bench ?? aggregate;
 

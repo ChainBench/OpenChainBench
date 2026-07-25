@@ -811,6 +811,7 @@ export function BenchmarkBody({
                     seriesOverride={activePanel?.seriesByProvider}
                     seriesOverride7d={activePanel?.seriesByProvider7d}
                     seriesOverride30d={activePanel?.seriesByProvider30d}
+                    activePanelId={activePanel?.id ?? null}
                     metricLabelOverride={activePanel?.label}
                     unitOverride={activePanel?.unit}
                     higherIsBetterOverride={activePanel?.higherIsBetter}
