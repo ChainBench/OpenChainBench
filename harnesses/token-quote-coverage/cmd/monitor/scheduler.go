@@ -20,6 +20,7 @@ func buildProviders(cfg *Config) []Provider {
 		NewMobulaProvider(cfg.MobulaAPIKey),
 		NewKyberSwapProvider(),
 		NewParaSwapProvider(),
+		NewRelayProvider(),
 	}
 	return providers
 }
