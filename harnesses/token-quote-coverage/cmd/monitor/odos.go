@@ -10,8 +10,9 @@ import (
 )
 
 const (
-	odosUSDCBase = "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
-	odosUSDCBSC  = "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d"
+	odosUSDCBase      = "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
+	odosUSDCBSC       = "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d"
+	odosUSDGRobinhood = "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168"
 )
 
 // OdosProvider hits api.odos.xyz/sor/quote/v2 for Base and BSC.
@@ -26,7 +27,7 @@ func NewOdosProvider() *OdosProvider {
 func (p *OdosProvider) Slug() string { return "odos" }
 
 func (p *OdosProvider) SupportsChain(chain string) bool {
-	return chain == "base" || chain == "bsc"
+	return chain == "base" || chain == "bsc" || chain == "robinhood"
 }
 
 func (p *OdosProvider) Quote(ctx context.Context, token Token) (ok bool) {
@@ -39,6 +40,9 @@ func (p *OdosProvider) Quote(ctx context.Context, token Token) (ok bool) {
 	case "bsc":
 		chainId = 56
 		usdcAddr = odosUSDCBSC
+	case "robinhood":
+		chainId = 4663
+		usdcAddr = odosUSDGRobinhood
 	default:
 		RecordProbe(p.Slug(), token.Venue, token.Chain, false)
 		return false
