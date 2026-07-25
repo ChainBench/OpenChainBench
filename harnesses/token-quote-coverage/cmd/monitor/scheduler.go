@@ -56,13 +56,14 @@ func doTick(ctx context.Context, providers []Provider) {
 	defer cancel()
 
 	// Fetch from all discovery sources concurrently: Dexscreener boosts (Solana +
-	// Robinhood), Virtuals Protocol API (Base), GeckoTerminal new pools (BSC).
+	// Robinhood), Virtuals Protocol API (Base), GeckoTerminal new pools (BSC),
+	// GeckoTerminal Moonshot pools (Solana), GeckoTerminal Meteora DBC pools (Solana).
 	type result struct {
 		name    string
 		entries []boostEntry
 		err     error
 	}
-	ch := make(chan result, 3)
+	ch := make(chan result, 5)
 	go func() {
 		e, err := FetchBoostedTokens(fetchCtx)
 		ch <- result{"dexscreener-boosts", e, err}
@@ -75,10 +76,18 @@ func doTick(ctx context.Context, providers []Provider) {
 		e, err := FetchNewBSCTokens(fetchCtx)
 		ch <- result{"geckoterminal-bsc", e, err}
 	}()
+	go func() {
+		e, err := FetchMoonshotTokens(fetchCtx)
+		ch <- result{"geckoterminal-moonshot", e, err}
+	}()
+	go func() {
+		e, err := FetchMeteoraDLMMTokens(fetchCtx)
+		ch <- result{"geckoterminal-meteora-dbc", e, err}
+	}()
 
 	seen := map[string]bool{}
 	var entries []boostEntry
-	for i := 0; i < 3; i++ {
+	for i := 0; i < 5; i++ {
 		r := <-ch
 		if r.err != nil {
 			fmt.Printf("[SCHED] %s error: %v\n", r.name, r.err)

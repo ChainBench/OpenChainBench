@@ -4,8 +4,8 @@ slug: token-quote-coverage
 number: "102"
 title: Best DEX aggregator for quoting newly-launched tokens
 seo_title: "Best DEX aggregator for long-tail token coverage 2026"
-seo_description: "Which DEX aggregator can quote the most newly-launched tokens? Live coverage rate across Pump.fun, Virtuals, Four.meme and 4 more launchpads."
-subtitle: Share of newly-launched tokens each aggregator can return a valid swap quote for, sampled hourly from 7 launchpads across Solana, Base and BNB.
+seo_description: "Which DEX aggregator can quote the most newly-launched tokens? Live coverage rate across Pump.fun, Moonshot, Meteora DBC, Virtuals, Four.meme and Pons."
+subtitle: Share of newly-launched tokens each aggregator can return a valid swap quote for, sampled hourly from 6 launchpads across Solana, Base and BNB.
 
 per_chain_explainer:
   - slug: solana
@@ -15,7 +15,7 @@ per_chain_explainer:
   - slug: base
     h2: "Best DEX aggregator for Base launchpad token coverage"
     body: |
-      {{best_name:chain:base}} currently leads on Base at {{best_p50:chain:base}} coverage (24h) across Virtuals Protocol, Clanker, and WOW.XYZ. Base launchpad graduates converge on Uniswap V3 (Virtuals, Clanker) or Uniswap V2-style AMMs (WOW), so EVM aggregators with a live pool-creation event index have the narrowest discovery lag. The practical differentiator is indexing latency: an aggregator scraping the Uniswap V3 Factory log in real time picks up a new token within one block; one relying on a database sync job may lag by hours, recording misses on tokens the market is already actively trading. Clanker and WOW.XYZ show the most consistent coverage across providers because their pool types are already in every EVM router's standard graph. Virtuals agent tokens show wider spread due to metadata-gating in some routing engines.
+      {{best_name:chain:base}} currently leads on Base at {{best_p50:chain:base}} coverage (24h) across Virtuals Protocol. Base launchpad graduates from Virtuals converge on Uniswap V3 pools, so EVM aggregators with a live pool-creation event index have the narrowest discovery lag. The practical differentiator is indexing latency: an aggregator scraping the Uniswap V3 Factory log in real time picks up a new token within one block; one relying on a database sync job may lag by hours, recording misses on tokens the market is already actively trading. Virtuals agent tokens show wider spread across providers due to metadata-gating in some routing engines.
   - slug: bsc
     h2: "Best DEX aggregator for BNB Chain new token coverage"
     body: |
@@ -68,11 +68,11 @@ abstract: |
   structural (it does not index Meteora DBC pool types) or temporary
   (it lags new Raydium pairs by a few minutes). The chain dimension
   narrows to a single chain for providers that are chain-specific
-  (Jupiter is Solana-only; KyberSwap and Odos are EVM-only on the
+  (Jupiter is Solana-only; KyberSwap, Mobula, and ParaSwap are EVM-only on the
   launchpads they cover).
 
 methodology:
-  - "Token discovery: three sources run in parallel each hour. (1) Dexscreener /token-boosts/latest/v1 covers Solana (pump-fun, moonshot, meteora-dbc) and Robinhood chain (pons). (2) Virtuals Protocol /api/virtuals?filters[status]=SENTIENT covers Base graduated agents (virtuals venue). (3) GeckoTerminal /api/v2/networks/bsc/new_pools covers BSC (four-meme). All token addresses are enriched via a Dexscreener /latest/dex/tokens batch call to resolve the originating dexId and map to venue labels."
+  - "Token discovery: five sources in parallel. (1) Dexscreener token-boosts: pump-fun (Solana) and pons (Robinhood). (2) Virtuals Protocol API: Base graduated agents (virtuals). (3) GeckoTerminal BSC new_pools: four-meme. (4) GeckoTerminal Solana moonshot/pools: moonshot. (5) GeckoTerminal Solana meteora-dbc/pools: meteora-dbc. Boosted tokens from (1) are enriched via Dexscreener batch lookup to resolve dexId to venue labels."
   - "Quote probe: 1 USDC → token, fired in parallel to all in-scope providers with a 10s timeout. Input token is always USDC (native USDC on Solana and Base, bridged USDC.e on BNB). A probe is a coverage hit when the HTTP response is 2xx and the parsed outAmount field is a non-zero positive integer or decimal. All other outcomes (4xx, 5xx, no-route JSON, empty outAmount, timeout) record as misses."
   - "Aggregator endpoints: Mobula /api/2/swap/quoting (Bearer auth, EVM), Jupiter lite-api.jup.ag/swap/v1/quote (Solana), KyberSwap aggregator-api.kyberswap.com/{chain}/api/v1/routes (EVM), ParaSwap apiv5.paraswap.io/prices (EVM). Each adapter normalises chain identifiers, input/output decimals, and error response shapes before recording outcome."
   - "Jupiter strictMode=false: queried without the curated-token filter so Jupiter will attempt routing for any token with a discoverable on-chain pool, matching how most wallets call the API. strictMode=true would trivially exclude new tokens and defeat the purpose of the benchmark."
@@ -82,18 +82,18 @@ methodology:
   - "Single origin: all probes originate from the eu-west OCB VPS. Regional latency is not a factor in this bench (the outcome is binary hit/miss, not latency). No region dimension in v1."
 
 findings:
-  - "{{best_name}} currently leads overall at {{best_p50}} coverage (24h) across {{count}} measured aggregators and 7 launchpads. Rankings diverge sharply by launchpad because each platform graduates tokens to a different DEX venue."
+  - "{{best_name}} currently leads overall at {{best_p50}} coverage (24h) across {{count}} measured aggregators and 6 launchpads. Rankings diverge sharply by launchpad because each platform graduates tokens to a different DEX venue."
   - "On Pump.fun (Solana), Jupiter's strictMode=false approach routes any Raydium pool on demand, so it saturates near 100% on graduated tokens with non-zero liquidity."
   - "On Virtuals Protocol (Base), EVM aggregators with live pool-graph indexing pick up new agent tokens faster than those relying on batch token database syncs."
   - "Four.meme (BNB) is the hardest launchpad for non-EVM-native aggregators. Providers without a live BNB Chain pool indexer consistently trail."
   - "Meteora DBC (Solana) separates aggregators that explicitly support DLMM pool types from those routing only standard Raydium CPMM pools."
-  - "Clanker (Base) and WOW.XYZ (Base) show the most consistent coverage across EVM aggregators because both graduate to standard AMM pools already in every EVM router's graph."
+  - "Virtuals Protocol (Base) graduation to Uniswap V3 pools means EVM aggregators with live pool-graph indexing pick up new agent tokens faster than those relying on batch syncs."
 
 faq:
   - q: "Which DEX aggregator supports the most newly launched tokens?"
-    a: "{{best_name}} currently leads at {{best_p50}} overall coverage (24h) across {{count}} measured providers. The leaderboard reflects live quote probes on tokens graduated in the last 24 hours from 7 launchpads, not a static token catalogue. Rankings shift by launchpad: an aggregator that saturates Pump.fun may trail on Meteora DBC or Virtuals depending on which pool types its router explicitly supports."
+    a: "{{best_name}} currently leads at {{best_p50}} overall coverage (24h) across {{count}} measured providers. The leaderboard reflects live quote probes on tokens graduated in the last 24 hours from 6 launchpads, not a static token catalogue. Rankings shift by launchpad: an aggregator that saturates Pump.fun may trail on Meteora DBC or Virtuals depending on which pool types its router explicitly supports."
   - q: "Why measure coverage on graduated tokens only, not all tokens?"
-    a: "Tokens still on a bonding curve cannot be externally swapped by definition. Coverage is meaningful only once a token has a real DEX pool. Graduation criteria vary: for Pump.fun/Moonshot/Meteora it means a Raydium or DLMM pool; for Virtuals/Clanker a Uniswap V3 pool; for WOW a Uniswap V2 pool; for Four.meme a PancakeSwap v2 pool."
+    a: "Tokens still on a bonding curve cannot be externally swapped by definition. Coverage is meaningful only once a token has a real DEX pool. Graduation criteria vary: for Pump.fun and Moonshot it means a Raydium CPMM pool; for Meteora DBC it means a DLMM concentrated liquidity pool; for Virtuals a Uniswap V3 pool; for Four.meme a PancakeSwap v2 pool; for Pons a Uniswap V3-based pool on Robinhood chain."
   - q: "Does coverage mean the swap will actually succeed on-chain?"
     a: "No. A coverage hit means the routing API returned a non-zero output amount. The actual transaction could still revert due to slippage on a thin pool, a front-run, or an RPC issue. The quote coverage bench measures indexer freshness and routing capability, not transaction success rate."
   - q: "Why is 1 USDC used as the probe amount instead of a larger notional?"
@@ -103,7 +103,7 @@ faq:
   - q: "Why is Jupiter queried with strictMode=false?"
     a: "Jupiter's strictMode=true restricts quotes to verified tokens on its curated list, which defeats the purpose of a coverage bench targeting newly-launched tokens. strictMode=false instructs Jupiter to attempt routing for any token with an existing pool, matching how wallets typically call the API when displaying all tradeable tokens."
   - q: "What happens when a provider is chain-specific?"
-    a: "Jupiter is Solana-only and appears with null values on Base and BNB launchpad rows. KyberSwap, Odos, and Mobula are EVM-only and appear as null on Solana launchpad rows. Null-chain cells are excluded from cross-launchpad aggregates so chain-specific providers are not penalized."
+    a: "Jupiter is Solana-only and appears with null values on Base and BNB launchpad rows. KyberSwap, Mobula, and ParaSwap are EVM-only and appear as null on Solana launchpad rows. Null-chain cells are excluded from cross-launchpad aggregates so chain-specific providers are not penalized."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/token-quote-coverage
 
@@ -119,10 +119,8 @@ dimensions:
     - { value: virtuals,     label: Virtuals }
     - { value: four-meme,    label: Four.meme }
     - { value: pons,         label: Pons }
-    - { value: wow,          label: WOW.XYZ }
     - { value: moonshot,     label: Moonshot }
     - { value: meteora-dbc,  label: Meteora DBC }
-    - { value: clanker,      label: Clanker }
   chain:
     - { value: all,        label: All chains }
     - { value: solana,     label: Solana }
@@ -170,7 +168,7 @@ providers:
   - slug: kyberswap
     name: KyberSwap
     tag: EVM multi-chain, Base + BNB + Robinhood
-    formula: "Rolling 24h ratio for provider=kyberswap. EVM launchpads only (Virtuals, WOW, Four.meme, Clanker). Solana cells null."
+    formula: "Rolling 24h ratio for provider=kyberswap. EVM launchpads only (Virtuals, Four.meme). Solana cells null."
     queries:
       p50: sum(increase(token_quote_coverage_success_total{provider="kyberswap"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="kyberswap"}[24h])) * 100
       p90: sum(increase(token_quote_coverage_attempts_total{provider="kyberswap"}[24h]))
