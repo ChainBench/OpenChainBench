@@ -45,7 +45,6 @@ seo_intro: |
   a live Base pool graph. Four.meme graduates need PancakeSwap v2
   event indexing. An aggregator that dominates one launchpad can
   have gaps on another depending on how it discovers new pools.
-  Current leader overall is {{best_name}} at {{best_p50}}.
 
 abstract: |
   We benchmark DEX aggregators on their ability to quote tokens that
