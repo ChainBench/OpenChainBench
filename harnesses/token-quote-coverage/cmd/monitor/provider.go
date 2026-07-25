@@ -27,21 +27,17 @@ func venueFromPair(chainId, dexId string) string {
 			return "pump-fun"
 		case "moonshot":
 			return "moonshot"
-		case "meteora", "meteora-dlmm":
+		case "meteora", "meteora-dlmm", "meteora-dbc":
 			return "meteora-dbc"
 		default:
-			return "pump-fun"
+			return "all"
 		}
 	case "base":
 		switch dexId {
-		case "virtual-fun", "virtualprotocol", "virtuals":
+		case "virtual-fun", "virtualprotocol", "virtuals", "virtuals-base":
 			return "virtuals"
-		case "wow", "wow-xyz":
-			return "wow"
-		case "clanker":
-			return "clanker"
 		default:
-			return "virtuals"
+			return "all"
 		}
 	case "bsc":
 		return "four-meme"
