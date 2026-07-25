@@ -16,12 +16,14 @@ const (
 )
 
 // OdosProvider hits api.odos.xyz/sor/quote/v2 for Base and BSC.
+// sem limits to 2 concurrent requests to avoid 429 throttling.
 type OdosProvider struct {
 	client *http.Client
+	sem    chan struct{}
 }
 
 func NewOdosProvider() *OdosProvider {
-	return &OdosProvider{client: newWarmHTTPClient()}
+	return &OdosProvider{client: newWarmHTTPClient(), sem: make(chan struct{}, 2)}
 }
 
 func (p *OdosProvider) Slug() string { return "odos" }
@@ -31,6 +33,14 @@ func (p *OdosProvider) SupportsChain(chain string) bool {
 }
 
 func (p *OdosProvider) Quote(ctx context.Context, token Token) (ok bool) {
+	select {
+	case p.sem <- struct{}{}:
+		defer func() { <-p.sem }()
+	case <-ctx.Done():
+		RecordProbe(p.Slug(), token.Venue, token.Chain, false)
+		return false
+	}
+
 	var chainId int
 	var usdcAddr string
 	switch token.Chain {
