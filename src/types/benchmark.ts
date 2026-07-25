@@ -169,6 +169,8 @@ export type ResultExtras = {
   /** Per-region 30d series. */
   seriesByRegion30d?: Record<string, Record<string, Series24h>>;
   regions: Record<string, RegionPoint[]>;
+  /** Venue dimension values that have actual Prom data in the current window. */
+  venuesWithData?: string[];
 };
 
 export type Benchmark = {

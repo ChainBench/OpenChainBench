@@ -119,6 +119,8 @@ dimensions:
     - { value: virtuals,     label: Virtuals }
     - { value: four-meme,    label: Four.meme }
     - { value: pons,         label: Pons }
+    - { value: moonshot,     label: Moonshot }
+    - { value: meteora-dbc,  label: Meteora DBC }
   chain:
     - { value: all,        label: All chains }
     - { value: solana,     label: Solana }
