@@ -371,6 +371,16 @@ export function Chart({
           <SeriesGradients drawn={drawn} />
         </defs>
 
+        {/* Diagonal attribution watermark. Rendered BEFORE the series
+            paths so the data lines stack on top of it — reads as a
+            background stamp, not overlay. Sized to the plot area's
+            shorter axis so it scales gracefully with the chart. */}
+        <ChartWatermarkSvg
+          cx={padL + innerW / 2}
+          cy={padT + innerH / 2}
+          fontSize={Math.round(Math.min(innerW, innerH) * 0.16)}
+        />
+
         {/* Y gridlines + tick labels */}
         <YAxis
           yTicks={yTicks}
@@ -470,11 +480,6 @@ export function Chart({
           stroke="var(--color-ink)"
           strokeWidth={1}
         />
-
-        {/* Attribution watermark. Sits inside the plot's right pad so it
-            doesn't overlap data lines; captured in any PNG export via
-            chart-export-button.tsx. Kept low-opacity by ChartWatermarkSvg. */}
-        <ChartWatermarkSvg x={padL + innerW - 2} y={padT + innerH - 6} anchor="end" />
       </svg>
 
       {/* Floating tooltip */}

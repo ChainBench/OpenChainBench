@@ -234,7 +234,7 @@ export function RankedBarChart({
       <p className="mt-3 text-[11px] font-sans font-medium uppercase tracking-[0.12em] text-ink-faint">
         {useLog ? "Log scale · " : ""}p50 · last 24 h · click rows to exclude
       </p>
-      <ChartWatermarkHtml position="bottom-right" />
+      <ChartWatermarkHtml />
     </figure>
   );
 }
