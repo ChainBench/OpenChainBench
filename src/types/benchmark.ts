@@ -169,6 +169,12 @@ export type ResultExtras = {
   /** Per-region 30d series. */
   seriesByRegion30d?: Record<string, Record<string, Series24h>>;
   regions: Record<string, RegionPoint[]>;
+  /** Venue dimension values that have actual Prom data in the current window. */
+  venuesWithData?: string[];
+  /** Per-chain venue availability: chain value → venue values that have Prom
+   *  data for that chain. Powers cross-dimension tab filtering so clicking
+   *  "Robinhood" hides venues that have no data on Robinhood. */
+  venuesForChain?: Record<string, string[]>;
 };
 
 export type Benchmark = {
