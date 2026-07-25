@@ -91,10 +91,9 @@ function ExportVideoModal({ slug, title, benchmark }: Props) {
         onClick={() => setOpen(true)}
         aria-label="Export video"
         title="Export video"
-        className="inline-flex items-center gap-1.5 rounded-md border border-ink/15 bg-paper px-2.5 py-1 text-[11px] font-sans font-medium uppercase tracking-[0.1em] text-ink shadow-sm transition-colors hover:bg-paper-soft"
+        className="inline-flex items-center justify-center rounded-md border border-ink/15 bg-paper p-1.5 text-ink shadow-sm transition-colors hover:bg-paper-soft"
       >
-        <Video size={11} strokeWidth={2} />
-        <span className="hidden sm:inline">Video</span>
+        <Video size={13} strokeWidth={2} />
       </button>
 
       {open && (
