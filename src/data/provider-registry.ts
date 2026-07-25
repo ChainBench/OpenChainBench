@@ -143,6 +143,15 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "EVM DEX aggregator by Kyber Network. Pathfinder routes across 420+ liquidity sources on 17+ EVM chains, splitting trades atomically for best net output after gas.",
     twitter: "@KyberNetwork",
   },
+  paraswap: {
+    url: "https://www.paraswap.xyz",
+    description:
+      "DEX aggregator and DeFi middleware layer. The Augustus Router splits orders across AMMs, PMMs, and direct pools on 10+ EVM chains to minimize price impact and gas costs. Also offers a developer SDK for integrating best-execution routing into dApps and wallets.",
+    twitter: "@paraswap",
+    longDescription:
+      "ParaSwap aggregates liquidity from Uniswap, Curve, Balancer, AAVE, and dozens of other AMMs and market makers via its Augustus Router. Trades are split across multiple paths atomically, selecting the combination that maximises net output after gas. ParaSwap also runs a delta trading layer — a private RFQ network where professional market makers post competitive quotes for large orders, bypassing on-chain pools entirely. The SDK and API are used by Ledger Live, Safe, and other wallets as the routing engine behind their swap UI.",
+    docs: "https://developers.paraswap.network",
+  },
   bebop: {
     url: "https://bebop.xyz",
     description:
