@@ -74,9 +74,9 @@ abstract: |
 methodology:
   - "Token discovery: three sources run in parallel each hour. (1) Dexscreener /token-boosts/latest/v1 covers Solana (pump-fun, moonshot, meteora-dbc) and Robinhood chain (pons). (2) Virtuals Protocol /api/virtuals?filters[status]=SENTIENT covers Base graduated agents (virtuals venue). (3) GeckoTerminal /api/v2/networks/bsc/new_pools covers BSC (four-meme). All token addresses are enriched via a Dexscreener /latest/dex/tokens batch call to resolve the originating dexId and map to venue labels."
   - "Quote probe: 1 USDC → token, fired in parallel to all in-scope providers with a 10s timeout. Input token is always USDC (native USDC on Solana and Base, bridged USDC.e on BNB). A probe is a coverage hit when the HTTP response is 2xx and the parsed outAmount field is a non-zero positive integer or decimal. All other outcomes (4xx, 5xx, no-route JSON, empty outAmount, timeout) record as misses."
-  - "Aggregator endpoints: Mobula /api/2/swap/quoting (Bearer auth, EVM), Jupiter lite-api.jup.ag/swap/v1/quote (Solana), Raydium api-v3.raydium.io/compute/swap-base-in (Solana), KyberSwap aggregator-api.kyberswap.com/{chain}/api/v1/routes (EVM), ParaSwap apiv5.paraswap.io/prices (EVM), OpenOcean open-api.openocean.finance/v3/{chain}/swap_quote (EVM+Solana). Each adapter normalises chain identifiers, input/output decimals, and error response shapes before recording outcome."
+  - "Aggregator endpoints: Mobula /api/2/swap/quoting (Bearer auth, EVM), Jupiter lite-api.jup.ag/swap/v1/quote (Solana), KyberSwap aggregator-api.kyberswap.com/{chain}/api/v1/routes (EVM), ParaSwap apiv5.paraswap.io/prices (EVM). Each adapter normalises chain identifiers, input/output decimals, and error response shapes before recording outcome."
   - "Jupiter strictMode=false: queried without the curated-token filter so Jupiter will attempt routing for any token with a discoverable on-chain pool, matching how most wallets call the API. strictMode=true would trivially exclude new tokens and defeat the purpose of the benchmark."
-  - "Chain-scope enforcement: Jupiter and Raydium probe Solana-only. KyberSwap and Mobula probe EVM chains (Base, BNB, Robinhood). ParaSwap probes Base and BNB. OpenOcean probes Base, BNB, and Solana. Robinhood chain is currently at 0% coverage across all providers — an accurate reflection that no major aggregator has integrated Robinhood yet. Providers are never penalised for chains they structurally do not support: Solana cells for EVM-only providers are null, not zero."
+  - "Chain-scope enforcement: Jupiter probes Solana-only. KyberSwap, Mobula, and ParaSwap probe EVM chains. KyberSwap and Mobula also cover Robinhood chain; ParaSwap covers Base and BNB only. Robinhood chain is currently at 0% coverage across all providers — an accurate reflection that no major aggregator has integrated Robinhood yet. Providers are never penalised for chains they structurally do not support: Solana cells for EVM-only providers are null, not zero."
   - "Coverage metric: Prometheus counters token_quote_coverage_success_total and token_quote_coverage_attempts_total carry labels {provider, venue, chain}. The bench queries compute increase(success[24h]) / increase(attempts[24h]) * 100 live at read time. No pre-aggregation; the ratio reflects exactly the tokens probed in the rolling window."
   - "Probe cadence and deduplication: each batch cycles through the current Dexscreener token-boosts feed. Tokens are not deduplicated across batches; the same token may appear in multiple 30-minute windows if it remains boosted. The score therefore reflects freshness of the aggregator's current routing graph, not historical coverage depth."
   - "Single origin: all probes originate from the eu-west OCB VPS. Regional latency is not a factor in this bench (the outcome is binary hit/miss, not latency). No region dimension in v1."
@@ -180,19 +180,6 @@ providers:
       sample_size: sum(increase(token_quote_coverage_attempts_total{provider="kyberswap"}[24h]))
       series: sum(rate(token_quote_coverage_success_total{provider="kyberswap"}[1h])) / sum(rate(token_quote_coverage_attempts_total{provider="kyberswap"}[1h])) * 100
 
-  - slug: raydium
-    name: Raydium
-    tag: Solana only
-    formula: "Rolling 24h ratio for provider=raydium. Solana launchpads only (Pump.fun, Moonshot, Meteora DBC). EVM cells null."
-    queries:
-      p50: sum(increase(token_quote_coverage_success_total{provider="raydium"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="raydium"}[24h])) * 100
-      p90: sum(increase(token_quote_coverage_attempts_total{provider="raydium"}[24h]))
-      p99: sum(increase(token_quote_coverage_success_total{provider="raydium"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="raydium"}[24h])) * 100
-      mean: sum(increase(token_quote_coverage_success_total{provider="raydium"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="raydium"}[24h])) * 100
-      success: clamp_max(sum(increase(token_quote_coverage_success_total{provider="raydium"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="raydium"}[24h])), 1)
-      sample_size: sum(increase(token_quote_coverage_attempts_total{provider="raydium"}[24h]))
-      series: sum(rate(token_quote_coverage_success_total{provider="raydium"}[1h])) / sum(rate(token_quote_coverage_attempts_total{provider="raydium"}[1h])) * 100
-
   - slug: paraswap
     name: ParaSwap
     tag: EVM multi-chain, Base + BNB
@@ -206,16 +193,4 @@ providers:
       sample_size: sum(increase(token_quote_coverage_attempts_total{provider="paraswap"}[24h]))
       series: sum(rate(token_quote_coverage_success_total{provider="paraswap"}[1h])) / sum(rate(token_quote_coverage_attempts_total{provider="paraswap"}[1h])) * 100
 
-  - slug: openocean
-    name: OpenOcean
-    tag: Multi-chain, Base + BNB + Solana
-    formula: "Rolling 24h ratio for provider=openocean. Covers Base, BNB, and Solana launchpads. Robinhood cells null."
-    queries:
-      p50: sum(increase(token_quote_coverage_success_total{provider="openocean"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="openocean"}[24h])) * 100
-      p90: sum(increase(token_quote_coverage_attempts_total{provider="openocean"}[24h]))
-      p99: sum(increase(token_quote_coverage_success_total{provider="openocean"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="openocean"}[24h])) * 100
-      mean: sum(increase(token_quote_coverage_success_total{provider="openocean"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="openocean"}[24h])) * 100
-      success: clamp_max(sum(increase(token_quote_coverage_success_total{provider="openocean"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="openocean"}[24h])), 1)
-      sample_size: sum(increase(token_quote_coverage_attempts_total{provider="openocean"}[24h]))
-      series: sum(rate(token_quote_coverage_success_total{provider="openocean"}[1h])) / sum(rate(token_quote_coverage_attempts_total{provider="openocean"}[1h])) * 100
 
