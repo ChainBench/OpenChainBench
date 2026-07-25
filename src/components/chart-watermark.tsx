@@ -1,40 +1,52 @@
 /**
- * Subtle openchainbench.com attribution that renders in both the on-screen
- * chart and inside any PNG capture (see `chart-export-button.tsx`). Kept
- * low-opacity so it never competes with the data; the copy is small enough
- * to survive Twitter/Slack recompression without pixel loss on the value.
+ * DefiLlama-style diagonal attribution that lives BEHIND the chart data.
+ * Large, rotated, very low opacity — reads as "openchainbench.com"
+ * without competing with the lines/bars, and can't be crop-shaved because
+ * it sits at the middle of the frame. Captured in every PNG export
+ * (see `chart-export-button.tsx`).
  *
  * Two variants:
- *   - `<ChartWatermarkSvg>`  → inlined <text> element for SVG charts
- *     (time-series). Positioned bottom-right of the plot area.
- *   - `<ChartWatermarkHtml>` → absolutely-positioned HTML span for
- *     HTML-composed charts (ranked bar). Parent must be `relative`.
+ *   - `<ChartWatermarkSvg>`  → inlined <text> at plot center (rotated
+ *     -22°) for SVG charts (time-series). Must be rendered BEFORE the
+ *     data paths so it sits behind the lines.
+ *   - `<ChartWatermarkHtml>` → absolutely-positioned centered span for
+ *     HTML-composed charts (ranked bar). Parent must be `relative` and
+ *     the watermark must be rendered first (z-index 0) so bars stack on top.
  *
- * Colour picks `--color-ink-faint` so it inherits the dark/light theme
- * variables and stays legible on both without hardcoded hex.
+ * Opacity is intentionally lower than the bottom-right badge it replaced
+ * (0.10 vs 0.28) because the diagonal glyph is much larger and would
+ * otherwise dominate visually. Trade-off: still perfectly readable in a
+ * screenshot recompressed by Twitter/Slack; disappears entirely under
+ * fine-grained chart lines during normal reading.
  */
 
 export function ChartWatermarkSvg({
-  x,
-  y,
-  anchor = "end",
+  cx,
+  cy,
+  fontSize = 48,
 }: {
-  x: number;
-  y: number;
-  anchor?: "start" | "middle" | "end";
+  /** Center X of the plot area (padL + innerW/2). */
+  cx: number;
+  /** Center Y of the plot area (padT + innerH/2). */
+  cy: number;
+  /** Font size in SVG user units — scale up to fill larger charts. */
+  fontSize?: number;
 }) {
   return (
     <text
-      x={x}
-      y={y}
-      textAnchor={anchor}
+      x={cx}
+      y={cy}
+      textAnchor="middle"
+      dominantBaseline="middle"
+      transform={`rotate(-22 ${cx} ${cy})`}
       className="pointer-events-none select-none"
       style={{
         fontFamily: "var(--font-jetbrains-mono, ui-monospace, monospace)",
-        fontSize: "11px",
-        letterSpacing: "0.08em",
+        fontSize: `${fontSize}px`,
+        fontWeight: 600,
+        letterSpacing: "0.06em",
         fill: "var(--color-ink)",
-        fillOpacity: 0.28,
+        fillOpacity: 0.09,
       }}
     >
       openchainbench.com
@@ -42,22 +54,12 @@ export function ChartWatermarkSvg({
   );
 }
 
-export function ChartWatermarkHtml({
-  position = "bottom-right",
-}: {
-  position?: "bottom-right" | "bottom-left" | "top-right";
-}) {
-  const cls =
-    position === "bottom-right"
-      ? "bottom-1 right-2"
-      : position === "bottom-left"
-        ? "bottom-1 left-2"
-        : "top-1 right-2";
+export function ChartWatermarkHtml() {
   return (
     <span
       aria-hidden
-      className={`pointer-events-none absolute ${cls} select-none font-sans font-medium uppercase text-[10px] tracking-[0.1em] text-ink`}
-      style={{ opacity: 0.28 }}
+      className="pointer-events-none absolute inset-0 z-0 flex items-center justify-center select-none font-mono font-semibold uppercase text-[clamp(1.4rem,4.2vw,2.6rem)] tracking-[0.08em] text-ink"
+      style={{ opacity: 0.09, transform: "rotate(-22deg)" }}
     >
       openchainbench.com
     </span>
