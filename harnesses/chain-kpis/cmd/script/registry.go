@@ -91,4 +91,11 @@ var Registry = []Chain{
 	// TVL guard in defillama.go drops the empty TVL card so only real
 	// cards render.
 	{Slug: "polkadot", DefiLlama: "Polkadot", Mobula: "", NativeSymbol: "DOT"},
+	// HyperEVM (chain id 999). Hyperliquid Labs's EVM execution layer
+	// bolted onto the HyperCore perps engine. DefiLlama tracks it as
+	// "Hyperliquid L1" (verified live on /v2/chains, TVL >$1B), Mobula
+	// indexes it under "HyperEVM". Native HYPE serves as gas + trading
+	// asset (Mobula symbol HYPE resolves to the correct market data,
+	// ~$58 spot / ~$13.9B mcap verified live 2026-07-25).
+	{Slug: "hyperliquid", DefiLlama: "Hyperliquid L1", Mobula: "HyperEVM", NativeSymbol: "HYPE"},
 }
