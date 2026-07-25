@@ -67,7 +67,7 @@ func FetchVirtualsTokens(ctx context.Context) ([]boostEntry, error) {
 			continue
 		}
 		seen[k] = true
-		out = append(out, boostEntry{ChainId: "base", TokenAddress: it.TokenAddress})
+		out = append(out, boostEntry{ChainId: "base", TokenAddress: it.TokenAddress, Venue: "virtuals"})
 	}
 	return out, nil
 }
