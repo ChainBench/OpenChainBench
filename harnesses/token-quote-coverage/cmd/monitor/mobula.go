@@ -10,8 +10,9 @@ import (
 )
 
 const (
-	mobulaUSDCBase = "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
-	mobulaUSDCBSC  = "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d"
+	mobulaUSDCBase      = "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
+	mobulaUSDCBSC       = "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d"
+	mobulaUSDGRobinhood = "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168"
 	// dummy wallet required by the quoting endpoint (no funds needed)
 	mobulaWallet = "0x0000000000000000000000000000000000000001"
 )
@@ -31,7 +32,7 @@ func (p *MobulaProvider) Slug() string { return "mobula" }
 
 func (p *MobulaProvider) SupportsChain(chain string) bool {
 	switch chain {
-	case "base", "bsc":
+	case "base", "bsc", "robinhood":
 		return true
 	}
 	return false
@@ -44,6 +45,8 @@ func (p *MobulaProvider) Quote(ctx context.Context, token Token) (ok bool) {
 		chainId, tokenIn = "8453", mobulaUSDCBase
 	case "bsc":
 		chainId, tokenIn = "56", mobulaUSDCBSC
+	case "robinhood":
+		chainId, tokenIn = "4663", mobulaUSDGRobinhood
 	default:
 		RecordProbe(p.Slug(), token.Venue, token.Chain, false)
 		return false

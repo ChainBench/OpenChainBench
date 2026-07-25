@@ -5,8 +5,8 @@ import "context"
 // Token is one recently-active token fetched from Dexscreener.
 type Token struct {
 	Address string
-	Chain   string // "solana", "base", "bsc"
-	Venue   string // "pump-fun", "virtuals", "four-meme", etc.
+	Chain   string // "solana", "base", "bsc", "robinhood"
+	Venue   string // "pump-fun", "virtuals", "four-meme", "pons", etc.
 }
 
 // Provider is the chain-aware quote coverage adapter contract.
@@ -45,6 +45,8 @@ func venueFromPair(chainId, dexId string) string {
 		}
 	case "bsc":
 		return "four-meme"
+	case "robinhood":
+		return "pons"
 	}
 	return "all"
 }
