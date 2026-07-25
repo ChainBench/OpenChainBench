@@ -38,7 +38,9 @@ export function ChartExportButton({
   filename = "openchainbench-chart",
   className = "",
 }: Props) {
-  const [state, setState] = useState<"idle" | "working" | "copied" | "error">("idle");
+  const [state, setState] = useState<
+    "idle" | "working" | "copied" | "downloaded" | "error"
+  >("idle");
 
   const capture = useCallback(async (): Promise<Blob | null> => {
     const el = targetRef.current;
@@ -99,8 +101,8 @@ export function ChartExportButton({
       const blob = await capture();
       if (!blob) throw new Error("no target");
       triggerDownload(blob, filename);
-      setState("copied");
-      setTimeout(() => setState("idle"), 1200);
+      setState("downloaded");
+      setTimeout(() => setState("idle"), 1600);
     } catch (err) {
       console.warn("[chart-export] download failed", err);
       setState("error");
@@ -126,7 +128,11 @@ export function ChartExportButton({
           <Copy size={11} strokeWidth={2} />
         )}
         <span className="hidden sm:inline">
-          {state === "copied" ? "Copied" : state === "error" ? "Failed" : "Copy"}
+          {state === "copied"
+            ? "Copied"
+            : state === "error"
+              ? "Failed"
+              : "Copy"}
         </span>
       </button>
       <span aria-hidden className="h-4 w-px bg-ink/15" />
@@ -138,7 +144,11 @@ export function ChartExportButton({
         title="Download chart as PNG"
         aria-label="Download chart as PNG"
       >
-        <Download size={11} strokeWidth={2} />
+        {state === "downloaded" ? (
+          <Check size={11} strokeWidth={2.4} />
+        ) : (
+          <Download size={11} strokeWidth={2} />
+        )}
       </button>
     </span>
   );
