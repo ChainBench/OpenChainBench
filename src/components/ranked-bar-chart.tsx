@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { Benchmark } from "@/types/benchmark";
 import { fmtUnit } from "@/lib/format";
 import { buildProviderColors } from "@/lib/series-colors";
@@ -9,6 +9,8 @@ import { useTopN } from "@/hooks/use-top-n";
 import { LiveDot } from "@/components/live-dot";
 import { ProviderLogo } from "@/components/provider-logo";
 import { TopNSelector } from "@/components/top-n-selector";
+import { ChartExportButton } from "@/components/chart-export-button";
+import { ChartWatermarkHtml } from "@/components/chart-watermark";
 
 type Props = {
   benchmark: Benchmark;
@@ -42,6 +44,9 @@ export function RankedBarChart({
   );
 
   const [hoveredSlug, setHoveredSlug] = useState<string | null>(null);
+  // Wraps the whole figure so ChartExportButton can rasterise header +
+  // rows + watermark together.
+  const figureRef = useRef<HTMLElement | null>(null);
 
   const colors = useMemo(
     () => buildProviderColors(benchmark.results),
@@ -124,13 +129,17 @@ export function RankedBarChart({
   }
 
   return (
-    <figure className="my-2">
+    <figure className="relative my-2" ref={figureRef}>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3 min-h-7">
         <p className="inline-flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
           <LiveDot />
           <span>{benchmark.metric} · last 24 hours</span>
         </p>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          <ChartExportButton
+            targetRef={figureRef}
+            filename={`openchainbench-${benchmark.slug}-ranking`}
+          />
           {excludedCount > 0 && (
             <button
               type="button"
@@ -225,6 +234,7 @@ export function RankedBarChart({
       <p className="mt-3 text-[11px] font-sans font-medium uppercase tracking-[0.12em] text-ink-faint">
         {useLog ? "Log scale · " : ""}p50 · last 24 h · click rows to exclude
       </p>
+      <ChartWatermarkHtml position="bottom-right" />
     </figure>
   );
 }
