@@ -42,6 +42,21 @@ export function BenchInfobox({ benchmark }: { benchmark: Benchmark }) {
       itemScope
       itemType="https://schema.org/Dataset"
     >
+      {/* Required Dataset microdata fields not surfaced in the visible
+          key/value grid below. Google parses the microdata alongside
+          the JSON-LD block and validates each Dataset in isolation, so
+          the microdata Dataset needs name/description/creator or it
+          flags "Unnamed item, missing name/description" (Rich Results
+          Test 2026-07-25 on ws-head-latency-* + xstocks-peg). Hidden
+          <meta> lets the microdata graph stay complete without adding
+          duplicate visible text to the human infobox. */}
+      <meta itemProp="name" content={benchmark.title} />
+      <meta itemProp="description" content={benchmark.subtitle} />
+      <meta itemProp="url" content={`${SITE.url}/benchmarks/${benchmark.slug}`} />
+      <span itemProp="creator" itemScope itemType="https://schema.org/Organization" style={{ display: "none" }}>
+        <meta itemProp="name" content="OpenChainBench" />
+        <meta itemProp="url" content={SITE.url} />
+      </span>
       <details
         open
         className="group card-soft rounded-lg border border-ink/10 overflow-hidden [&_summary::-webkit-details-marker]:hidden"
