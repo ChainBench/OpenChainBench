@@ -1,0 +1,188 @@
+# OpenChainBench. Bench № 106
+
+slug: axelar-gmp-latency
+number: "106"
+title: Fastest Axelar GMP source chain by end-to-end delivery
+seo_title: "Fastest Axelar GMP source chain 2026"
+seo_description: "{{best_name}} leads Axelar GMP end-to-end delivery at {{best_p50}} (source-tx to destination execution p50, 24h). Observed, not simulated."
+subtitle: Wall-clock seconds from a source-chain transaction to destination-chain execution for an Axelar GMP (General Message Passing) call, measured across supported source chains via the public AxelarScan API.
+
+category: Bridges
+status: draft
+metric: Axelar GMP delivery
+unit: ms
+higher_is_better: false
+
+seo_intro: |
+  Axelar is a cross-chain communication network built on a
+  Cosmos-SDK chain plus a validator-attested gateway on every
+  supported destination. A GMP call flows through four stages:
+  source-chain tx (call), Axelar validator quorum confirms it
+  (confirm), destination Gateway ApproveContractCall (approved),
+  destination executor runs the receiver (executed). AxelarScan's
+  API pre-computes the latency between each stage in seconds; this
+  benchmark surfaces two of them: `call_confirm` (source to quorum)
+  and `total` (source to destination executed).
+  Every value on this page is an observation of real user traffic,
+  Squid Router, ITS, Interchain Amplifier apps. Latency
+  distribution reflects Axelar's own Cosmos block time (6 seconds,
+  so sub-6s latencies quantise to 0 or 6s), destination-chain block
+  time for the approve+execute stages, and validator round-trip.
+
+abstract: |
+  For each Axelar-supported source chain with mainnet traffic, we
+  measure two latencies from AxelarScan's `time_spent` object:
+  `call_confirm` (source tx to validator quorum) and `total` (source
+  tx to destination execution). Data source: the public
+  `https://api.axelarscan.io/gmp/searchGMP` endpoint, polled every
+  60 seconds for the 25 most recent EXECUTED messages. Both values
+  are already computed in seconds server-side; the harness just
+  converts to milliseconds and records per-source-chain histograms.
+  The p50/p90/p99 shown here are computed via Prometheus
+  `histogram_quantile` over the last 24 hours.
+
+methodology:
+  - "Data source: `https://api.axelarscan.io/gmp/searchGMP` (POST), the public AxelarScan API. Polled every 60 seconds, 25 messages per poll (server-side cap)."
+  - "Two latency signals per message: `time_spent.call_confirm` (source-tx to Axelar validator quorum) and `time_spent.total` (source-tx to destination-chain execution). Both are pre-computed in seconds; the harness records both as separate Prometheus histograms."
+  - "Filter: only `status: executed` messages contribute to latency histograms. Non-executed statuses (called, confirmed, approved, error) are counted separately in `axelar_gmp_status_total` so a spike in approved without executed surfaces a stuck-relayer incident."
+  - "Dedupe: last 10 000 message ids kept in memory (rolling FIFO). Axelar GMP sustained rate is ~41 messages/hour network-wide, so the cache holds ~240 hours of history — never overflows in practice."
+  - "Bucketing: histogram with buckets 2, 5, 10, 15, 20, 30, 45, 60, 90, 120, 180, 300, 600, 900, 1200, 1800 seconds (30 min ceiling)."
+  - "Guard: samples with delta `< 0` or `> 30 min` are dropped (clock skew or stuck messages)."
+  - "Cosmos block-time quantisation: Axelar itself has 6-second Tendermint blocks, so sub-6s latencies always quantise to 0 or 6 seconds. This shows up as a visible floor on `call_confirm` for fast source chains and is a property of Axelar's own consensus, not our measurement."
+  - "No canary transactions: this bench observes organic Axelar GMP traffic (Squid Router, ITS, Interchain Amplifier apps). No wallet is funded, no gas is paid."
+  - "Scope: Axelar-supported source chains with mainnet traffic in the observation window. Axelar covers all major EVM L1s and L2s plus a large Cosmos set (Osmosis, Injective, Sei, Celestia, Kava) that no other bench in our cross-chain messaging cluster observes. Notable gap: Axelar mainnet does not support Solana yet."
+  - "Coverage caveat: This is Axelar-exclusive Cosmos coverage. Comparing raw numbers to networks that only cover EVM (LayerZero, CCIP) is only meaningful on shared EVM corridors; the meta-bench view (cross-chain-messaging-comparison) enforces this by only showing cells where both protocols support the corridor."
+
+findings:
+  - "{{best_name}} currently leads Axelar GMP end-to-end delivery at {{best_p50}} (source-tx to destination execution p50, 24h) across measured source chains."
+  - "Cosmos-native source chains (Axelar itself, Osmosis) are competitive despite the 6-second block quantisation, because they skip the EVM source-chain finality wait on the confirm stage."
+  - "The e2e vs confirm gap is dominated by destination-chain approve+execute latency, which is a property of the destination chain's block time and gas dynamics, not Axelar itself."
+
+faq:
+  - q: "What is Axelar GMP?"
+    a: "Axelar General Message Passing is Axelar's cross-chain message API. Applications call the Axelar Gateway on the source chain, Axelar validators observe the event and reach quorum on a Cosmos block, and a destination-chain Gateway then approves and executes the message. It is the primitive underneath Squid Router, ITS, and the Interchain Amplifier ecosystem."
+  - q: "What does this benchmark measure?"
+    a: "Two things. `axelar_gmp_confirm_latency_ms` is the time from source tx submission to Axelar validator quorum confirmation, directly comparable to Wormhole VAA finalization. `axelar_gmp_e2e_latency_ms` is source tx to destination execution, comparable to LayerZero, Chainlink CCIP, and Hyperlane end-to-end delivery."
+  - q: "Why is there a visible 6-second floor on some chains?"
+    a: "Axelar itself runs on a Cosmos chain with 6-second Tendermint blocks. Sub-6s latencies always quantise to 0 or 6 in the reported `time_spent`. This is a property of Axelar's own consensus, not our measurement — the same floor would appear in any latency reading based on Axelar block timestamps."
+  - q: "How does the data get sourced?"
+    a: "The harness POSTs `{size: 25, status: executed}` to `https://api.axelarscan.io/gmp/searchGMP` every 60 seconds and records both `time_spent.call_confirm` and `time_spent.total` for each new message. The endpoint is Axelar's own scan API , no auth required. No canary transactions are sent."
+  - q: "Which source chain is fastest for Axelar today?"
+    a: "{{best_name}} currently leads at {{best_p50}} (p50 over the last 24 hours). The leaderboard re-sorts continuously against fresh Prometheus samples; the ranking on this page is the ranking right now."
+  - q: "Why is Solana missing?"
+    a: "Axelar mainnet does not support Solana yet. A Solana devnet Amplifier is in testing as of early 2025, but there is no mainnet GMP traffic to observe. The bench will add Solana as a source chain when Axelar ships mainnet support."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/axelar-gmp-latency
+
+prometheus:
+  window: 24h
+  freshness_metric: axelar_gmp_seen_total
+
+providers:
+  - slug: ethereum
+    name: Ethereum
+    tag: Ethereum → any chain, validator quorum + destination approve+execute
+    formula: "50th percentile over 24h of Axelar GMP end-to-end delivery latency for messages sourced from Ethereum."
+    queries:
+      p50: histogram_quantile(0.50, sum by(le) (rate(axelar_gmp_e2e_latency_ms_bucket{source_chain="ethereum"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(axelar_gmp_e2e_latency_ms_bucket{source_chain="ethereum"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(axelar_gmp_e2e_latency_ms_bucket{source_chain="ethereum"}[24h])))
+      mean: sum(rate(axelar_gmp_e2e_latency_ms_sum{source_chain="ethereum"}[24h])) / sum(rate(axelar_gmp_e2e_latency_ms_count{source_chain="ethereum"}[24h]))
+      sample_size: sum(increase(axelar_gmp_seen_total{source_chain="ethereum"}[24h]))
+      series: histogram_quantile(0.50, sum by(le) (rate(axelar_gmp_e2e_latency_ms_bucket{source_chain="ethereum"}[1h])))
+
+  - slug: bnb
+    name: BNB Chain
+    tag: BNB Chain → any chain, ~3s block + validator quorum + destination approve+execute
+    formula: "50th percentile over 24h of Axelar GMP end-to-end delivery latency for messages sourced from BNB Chain."
+    queries:
+      p50: histogram_quantile(0.50, sum by(le) (rate(axelar_gmp_e2e_latency_ms_bucket{source_chain="bnb"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(axelar_gmp_e2e_latency_ms_bucket{source_chain="bnb"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(axelar_gmp_e2e_latency_ms_bucket{source_chain="bnb"}[24h])))
+      mean: sum(rate(axelar_gmp_e2e_latency_ms_sum{source_chain="bnb"}[24h])) / sum(rate(axelar_gmp_e2e_latency_ms_count{source_chain="bnb"}[24h]))
+      sample_size: sum(increase(axelar_gmp_seen_total{source_chain="bnb"}[24h]))
+      series: histogram_quantile(0.50, sum by(le) (rate(axelar_gmp_e2e_latency_ms_bucket{source_chain="bnb"}[1h])))
+
+  - slug: polygon
+    name: Polygon
+    tag: Polygon PoS → any chain, Bor block + validator quorum + destination approve+execute
+    formula: "50th percentile over 24h of Axelar GMP end-to-end delivery latency for messages sourced from Polygon."
+    queries:
+      p50: histogram_quantile(0.50, sum by(le) (rate(axelar_gmp_e2e_latency_ms_bucket{source_chain="polygon"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(axelar_gmp_e2e_latency_ms_bucket{source_chain="polygon"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(axelar_gmp_e2e_latency_ms_bucket{source_chain="polygon"}[24h])))
+      mean: sum(rate(axelar_gmp_e2e_latency_ms_sum{source_chain="polygon"}[24h])) / sum(rate(axelar_gmp_e2e_latency_ms_count{source_chain="polygon"}[24h]))
+      sample_size: sum(increase(axelar_gmp_seen_total{source_chain="polygon"}[24h]))
+      series: histogram_quantile(0.50, sum by(le) (rate(axelar_gmp_e2e_latency_ms_bucket{source_chain="polygon"}[1h])))
+
+  - slug: avalanche
+    name: Avalanche
+    tag: Avalanche C-Chain → any chain, sub-second finality + validator quorum + destination approve+execute
+    formula: "50th percentile over 24h of Axelar GMP end-to-end delivery latency for messages sourced from Avalanche."
+    queries:
+      p50: histogram_quantile(0.50, sum by(le) (rate(axelar_gmp_e2e_latency_ms_bucket{source_chain="avalanche"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(axelar_gmp_e2e_latency_ms_bucket{source_chain="avalanche"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(axelar_gmp_e2e_latency_ms_bucket{source_chain="avalanche"}[24h])))
+      mean: sum(rate(axelar_gmp_e2e_latency_ms_sum{source_chain="avalanche"}[24h])) / sum(rate(axelar_gmp_e2e_latency_ms_count{source_chain="avalanche"}[24h]))
+      sample_size: sum(increase(axelar_gmp_seen_total{source_chain="avalanche"}[24h]))
+      series: histogram_quantile(0.50, sum by(le) (rate(axelar_gmp_e2e_latency_ms_bucket{source_chain="avalanche"}[1h])))
+
+  - slug: arbitrum
+    name: Arbitrum
+    tag: Arbitrum One → any chain, sub-second L2 block + validator quorum + destination approve+execute
+    formula: "50th percentile over 24h of Axelar GMP end-to-end delivery latency for messages sourced from Arbitrum."
+    queries:
+      p50: histogram_quantile(0.50, sum by(le) (rate(axelar_gmp_e2e_latency_ms_bucket{source_chain="arbitrum"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(axelar_gmp_e2e_latency_ms_bucket{source_chain="arbitrum"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(axelar_gmp_e2e_latency_ms_bucket{source_chain="arbitrum"}[24h])))
+      mean: sum(rate(axelar_gmp_e2e_latency_ms_sum{source_chain="arbitrum"}[24h])) / sum(rate(axelar_gmp_e2e_latency_ms_count{source_chain="arbitrum"}[24h]))
+      sample_size: sum(increase(axelar_gmp_seen_total{source_chain="arbitrum"}[24h]))
+      series: histogram_quantile(0.50, sum by(le) (rate(axelar_gmp_e2e_latency_ms_bucket{source_chain="arbitrum"}[1h])))
+
+  - slug: base
+    name: Base
+    tag: Base → any chain, 2s block + validator quorum + destination approve+execute
+    formula: "50th percentile over 24h of Axelar GMP end-to-end delivery latency for messages sourced from Base."
+    queries:
+      p50: histogram_quantile(0.50, sum by(le) (rate(axelar_gmp_e2e_latency_ms_bucket{source_chain="base"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(axelar_gmp_e2e_latency_ms_bucket{source_chain="base"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(axelar_gmp_e2e_latency_ms_bucket{source_chain="base"}[24h])))
+      mean: sum(rate(axelar_gmp_e2e_latency_ms_sum{source_chain="base"}[24h])) / sum(rate(axelar_gmp_e2e_latency_ms_count{source_chain="base"}[24h]))
+      sample_size: sum(increase(axelar_gmp_seen_total{source_chain="base"}[24h]))
+      series: histogram_quantile(0.50, sum by(le) (rate(axelar_gmp_e2e_latency_ms_bucket{source_chain="base"}[1h])))
+
+  - slug: optimism
+    name: Optimism
+    tag: Optimism → any chain, 2s block + validator quorum + destination approve+execute
+    formula: "50th percentile over 24h of Axelar GMP end-to-end delivery latency for messages sourced from Optimism."
+    queries:
+      p50: histogram_quantile(0.50, sum by(le) (rate(axelar_gmp_e2e_latency_ms_bucket{source_chain="optimism"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(axelar_gmp_e2e_latency_ms_bucket{source_chain="optimism"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(axelar_gmp_e2e_latency_ms_bucket{source_chain="optimism"}[24h])))
+      mean: sum(rate(axelar_gmp_e2e_latency_ms_sum{source_chain="optimism"}[24h])) / sum(rate(axelar_gmp_e2e_latency_ms_count{source_chain="optimism"}[24h]))
+      sample_size: sum(increase(axelar_gmp_seen_total{source_chain="optimism"}[24h]))
+      series: histogram_quantile(0.50, sum by(le) (rate(axelar_gmp_e2e_latency_ms_bucket{source_chain="optimism"}[1h])))
+
+  - slug: moonbeam
+    name: Moonbeam
+    tag: Moonbeam parachain → any chain, GRANDPA justification + validator quorum + destination approve+execute
+    formula: "50th percentile over 24h of Axelar GMP end-to-end delivery latency for messages sourced from Moonbeam."
+    queries:
+      p50: histogram_quantile(0.50, sum by(le) (rate(axelar_gmp_e2e_latency_ms_bucket{source_chain="moonbeam"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(axelar_gmp_e2e_latency_ms_bucket{source_chain="moonbeam"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(axelar_gmp_e2e_latency_ms_bucket{source_chain="moonbeam"}[24h])))
+      mean: sum(rate(axelar_gmp_e2e_latency_ms_sum{source_chain="moonbeam"}[24h])) / sum(rate(axelar_gmp_e2e_latency_ms_count{source_chain="moonbeam"}[24h]))
+      sample_size: sum(increase(axelar_gmp_seen_total{source_chain="moonbeam"}[24h]))
+      series: histogram_quantile(0.50, sum by(le) (rate(axelar_gmp_e2e_latency_ms_bucket{source_chain="moonbeam"}[1h])))
+
+  - slug: osmosis
+    name: Osmosis
+    tag: Osmosis (Cosmos) → any chain, ~6s block + validator quorum + destination approve+execute
+    formula: "50th percentile over 24h of Axelar GMP end-to-end delivery latency for messages sourced from Osmosis (Cosmos)."
+    queries:
+      p50: histogram_quantile(0.50, sum by(le) (rate(axelar_gmp_e2e_latency_ms_bucket{source_chain="osmosis"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(axelar_gmp_e2e_latency_ms_bucket{source_chain="osmosis"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(axelar_gmp_e2e_latency_ms_bucket{source_chain="osmosis"}[24h])))
+      mean: sum(rate(axelar_gmp_e2e_latency_ms_sum{source_chain="osmosis"}[24h])) / sum(rate(axelar_gmp_e2e_latency_ms_count{source_chain="osmosis"}[24h]))
+      sample_size: sum(increase(axelar_gmp_seen_total{source_chain="osmosis"}[24h]))
+      series: histogram_quantile(0.50, sum by(le) (rate(axelar_gmp_e2e_latency_ms_bucket{source_chain="osmosis"}[1h])))
