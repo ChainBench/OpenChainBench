@@ -113,6 +113,7 @@ const ResultExtrasSchema = z.object({
     .optional(),
   regions: z.record(z.string(), z.array(RegionPointSchema)),
   venuesWithData: z.array(z.string()).optional(),
+  venuesForChain: z.record(z.string(), z.array(z.string())).optional(),
 });
 
 const MetricPanelSchema = z.object({

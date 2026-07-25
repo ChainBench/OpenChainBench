@@ -142,6 +142,7 @@ export function BenchmarkBody({
   regionOptions,
   kindOptions = [],
   venueOptions = [],
+  venuesForChain,
   initialChain,
   initialRegion,
   initialKind = null,
@@ -153,6 +154,9 @@ export function BenchmarkBody({
   regionOptions: ChainOption[];
   kindOptions?: ChainOption[];
   venueOptions?: ChainOption[];
+  /** Per-chain venue availability map. When present, venue tabs are filtered
+   *  to only show venues that have data for the currently selected chain. */
+  venuesForChain?: Record<string, string[]>;
   initialChain: string | null;
   initialRegion: string | null;
   initialKind?: string | null;
@@ -217,6 +221,33 @@ export function BenchmarkBody({
   const effectiveRegion = regionOptions.length > 0 ? (region ?? fallbackRegion) : null;
   const effectiveKind = kindOptions.length > 0 ? (kind ?? fallbackKind) : null;
   const effectiveVenue = venueOptions.length > 0 ? (venue ?? fallbackVenue) : null;
+
+  // Cross-dimension filtering: hide venue tabs with no data for the active
+  // chain, and hide chain tabs with no data for the active venue.
+  const filteredVenueOptions = useMemo(() => {
+    if (!venuesForChain || !effectiveChain || effectiveChain === "all") return venueOptions;
+    const valid = venuesForChain[effectiveChain];
+    if (!valid || valid.length === 0) return venueOptions;
+    const validSet = new Set(valid);
+    return venueOptions.filter((v) => v.value === "all" || validSet.has(v.value));
+  }, [venueOptions, venuesForChain, effectiveChain]);
+
+  const chainsForVenue = useMemo(() => {
+    if (!venuesForChain) return undefined;
+    const out: Record<string, string[]> = {};
+    for (const [c, venues] of Object.entries(venuesForChain)) {
+      for (const v of venues) (out[v] ??= []).push(c);
+    }
+    return out;
+  }, [venuesForChain]);
+
+  const filteredChainOptions = useMemo(() => {
+    if (!chainsForVenue || !effectiveVenue || effectiveVenue === "all") return chainOptions;
+    const valid = chainsForVenue[effectiveVenue];
+    if (!valid || valid.length === 0) return chainOptions;
+    const validSet = new Set(valid);
+    return chainOptions.filter((c) => c.value === "all" || validSet.has(c.value));
+  }, [chainOptions, chainsForVenue, effectiveVenue]);
 
   // The page ships ONLY the aggregate view (embedding every variant made
   // ISR regenerations take 30-60 s). Filtered variants are fetched here
@@ -544,10 +575,10 @@ export function BenchmarkBody({
   return (
     <>
       {(hasLayerSplit ||
-        chainOptions.length > 0 ||
+        filteredChainOptions.length > 0 ||
         regionOptions.length > 0 ||
         kindOptions.length > 0 ||
-        venueOptions.length > 0) && (
+        filteredVenueOptions.length > 0) && (
         <div className="mt-8 space-y-3">
           {hasLayerSplit && (
             <DimensionRow
@@ -560,14 +591,14 @@ export function BenchmarkBody({
               onSelect={(v) => setLayer(v as ProviderLayer)}
             />
           )}
-          {venueOptions.length > 0 && (
+          {filteredVenueOptions.length > 0 && (
             <DimensionRow
               label="Venue"
-              options={venueOptions}
+              options={filteredVenueOptions}
               selected={venue ?? fallbackVenue}
               onSelect={setVenue}
               metaByValue={Object.fromEntries(
-                venueOptions
+                filteredVenueOptions
                   .map((o) => [
                     o.value,
                     summarize(
@@ -596,14 +627,14 @@ export function BenchmarkBody({
               )}
             />
           )}
-          {chainOptions.length > 0 && (
+          {filteredChainOptions.length > 0 && (
             <DimensionRow
               label="Chain"
-              options={chainOptions}
+              options={filteredChainOptions}
               selected={chain ?? fallbackChain}
               onSelect={setChain}
               metaByValue={Object.fromEntries(
-                chainOptions
+                filteredChainOptions
                   .map((o) => [
                     o.value,
                     summarize(variantMap[variantKey(o.value, effectiveRegion, effectiveKind, effectiveVenue)]),
