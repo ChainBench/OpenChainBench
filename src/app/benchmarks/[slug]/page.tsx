@@ -732,6 +732,7 @@ export default async function BenchmarkPage({
             regionOptions={regionOptions}
             kindOptions={kindOptions}
             venueOptions={venueOptions}
+            venuesForChain={aggregate.extras?.venuesForChain}
             initialChain={chain ?? null}
             initialRegion={region ?? null}
             initialKind={kind ?? null}

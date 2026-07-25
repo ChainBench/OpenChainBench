@@ -313,6 +313,9 @@ export async function specToBenchmark(
     if (cellRankResult?.venuesWithData?.length) {
       live.extras.venuesWithData = cellRankResult.venuesWithData;
     }
+    if (cellRankResult?.venuesForChain && Object.keys(cellRankResult.venuesForChain).length > 0) {
+      live.extras.venuesForChain = cellRankResult.venuesForChain;
+    }
 
     // Per-provider sample-health classification. When the spec declares
     // expected_n, every live provider gets `dataConfidence` (healthy /
@@ -441,6 +444,7 @@ export function propagateNullsToCoarser(
 type CellRankResult = {
   ranks: Record<string, CellRankEntry[]>;
   venuesWithData: string[];
+  venuesForChain: Record<string, string[]>;
 };
 
 async function tryLoadCellRanks(
@@ -466,6 +470,7 @@ async function tryLoadCellRanks(
         .map((v) => [v.value.toLowerCase(), v.value] as const),
     );
     const venuesWithDataSet = new Set<string>();
+    const venuesForChainMap = new Map<string, Set<string>>();
     const chainByLower = new Map(
       (spec.dimensions?.chain ?? [])
         .filter((c) => c.value !== "all")
@@ -497,7 +502,14 @@ async function tryLoadCellRanks(
       if (!Number.isFinite(v) || v <= 0) continue;
       if (venueByLower.size > 0 && sample.metric.venue) {
         const venue = venueByLower.get(sample.metric.venue.toLowerCase());
-        if (venue) venuesWithDataSet.add(venue);
+        if (venue) {
+          venuesWithDataSet.add(venue);
+          if (chain) {
+            const set = venuesForChainMap.get(chain) ?? new Set<string>();
+            set.add(venue);
+            venuesForChainMap.set(chain, set);
+          }
+        }
       }
       const key = `${chain ?? "all"}|${region ?? "all"}`;
       const cell = acc.get(key) ?? new Map<string, number[]>();
@@ -571,7 +583,9 @@ async function tryLoadCellRanks(
         (region) => `all|${region}`,
       );
     }
-    return { ranks: out, venuesWithData: [...venuesWithDataSet] };
+    const venuesForChain: Record<string, string[]> = {};
+    for (const [c, set] of venuesForChainMap) venuesForChain[c] = [...set];
+    return { ranks: out, venuesWithData: [...venuesWithDataSet], venuesForChain };
   } catch (e) {
     console.warn(
       `cellRanks skip: ${spec.slug} matrix query failed: ${e instanceof Error ? e.message : String(e)}`,
