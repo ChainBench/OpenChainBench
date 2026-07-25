@@ -79,6 +79,12 @@ export function methodologyPageLd() {
       headline: "OpenChainBench methodology",
       description:
         "How OpenChainBench measures: design principles, statistical conventions, and reproduction guidelines.",
+      // Article rich results require image + datePublished. Reuse the
+      // page's dedicated OG image so schema.org matches the social card.
+      // datePublished pinned to the site launch (matches Org.foundingDate)
+      // since the methodology has been stable since day one.
+      image: `${ORIGIN}/methodology/opengraph-image`,
+      datePublished: "2026-04-28",
       author: { "@id": `${ORIGIN}/#org` },
       publisher: { "@id": `${ORIGIN}/#org` },
       inLanguage: "en",

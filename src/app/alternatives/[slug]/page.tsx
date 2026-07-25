@@ -151,6 +151,10 @@ export default async function AlternativePage({
         url,
         mainEntityOfPage: url,
         articleBody: alt.intro,
+        // Google Article rich results require image (1200px on the longer
+        // side). Reuse the referenced bench's OG card so the schema image
+        // matches what X + LinkedIn + Search Console already render.
+        image: `${SITE.url}/api/og/${bench.slug}`,
         datePublished: getBenchCreatedAt(bench.slug).toISOString(),
         ...(citableAsOf(bench) ? { dateModified: bench.lastRunAt } : {}),
         author: { "@id": `${SITE.url}/#org` },
