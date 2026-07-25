@@ -1,0 +1,178 @@
+# OpenChainBench. Bench № 105
+
+slug: hyperlane-message-latency
+number: "105"
+title: Fastest Hyperlane source chain by end-to-end message delivery
+seo_title: "Fastest Hyperlane source chain 2026"
+seo_description: "{{best_name}} leads Hyperlane end-to-end delivery at {{best_p50}} (source send to destination delivery p50, 24h). Observed, not simulated."
+subtitle: Wall-clock seconds from source-chain send to destination-chain delivery for a Hyperlane message, measured across Hyperlane-deployed source chains via the public Hyperlane Explorer GraphQL API.
+
+category: Bridges
+status: draft
+metric: Hyperlane delivery
+unit: ms
+higher_is_better: false
+
+seo_intro: |
+  Hyperlane is a permissionless cross-chain messaging network. Unlike
+  Wormhole (fixed Guardian set), Chainlink CCIP (fixed DON) or LayerZero
+  (application-selected DVN stack), Hyperlane lets anyone run a Mailbox
+  contract on any chain and lets anyone relay messages between them.
+  Application security is expressed via an Interchain Security Module
+  (ISM) the developer configures per lane. This benchmark measures
+  end-to-end message delivery latency by source chain: wall-clock
+  seconds from Hyperlane Mailbox `Dispatch` event on source to
+  `Process` event on destination, for every delivered message the
+  Hyperlane Explorer indexes.
+  Every value on this page is an observation of real user traffic ,
+  never a canary transaction. Latency reflects whichever relayer
+  actually delivered the message, so the reading is practical UX
+  rather than a theoretical protocol floor. Source-chain block time
+  sets the observation floor; relayer coverage and ISM verification
+  drive the tail.
+
+abstract: |
+  For each Hyperlane-deployed source chain with mainnet traffic, we
+  measure the wall-clock latency between the Hyperlane Mailbox
+  `Dispatch` event on the source chain and the `Process` event on the
+  destination chain. Data source: the public
+  `https://api.hyperlane.xyz/v1/graphql` endpoint (Hasura), queried
+  every 60 seconds for the 100 most recent messages ordered by id
+  DESC. Each `is_delivered=true` message's
+  `delivery_occurred_at - send_occurred_at` is one observation of
+  end-to-end delivery latency, recorded in a per-source-chain
+  histogram. The p50/p90/p99 shown here are computed via Prometheus
+  `histogram_quantile` over the last 24 hours.
+
+methodology:
+  - "Data source: `https://api.hyperlane.xyz/v1/graphql` (Hasura), the public Hyperlane Explorer feed. Polled every 60 seconds, 100 messages per poll ordered by id DESC."
+  - "Latency definition: `delivery_occurred_at - send_occurred_at` from a message row with `is_delivered: true`. Both timestamps come from the Mailbox contract events on the source and destination chains."
+  - "Filter: only delivered messages contribute to latency. Undelivered messages (`is_delivered: false`) are counted separately in `hyperlane_message_undelivered_total` so relayer coverage gaps surface as a distinct signal rather than polluting the latency histogram."
+  - "Dedupe: last 10 000 msg_ids kept in memory (rolling FIFO). Hyperlane sustained rate is ~150 messages/hour network-wide, so the cache holds ~66 hours of history."
+  - "Bucketing: histogram with buckets 2, 5, 10, 15, 20, 30, 45, 60, 90, 120, 180, 300, 600, 900, 1200, 1800 seconds (30 min ceiling)."
+  - "Guard: samples with delta `< 0` or `> 30 min` are dropped (clock skew or stuck messages re-delivered later)."
+  - "No canary transactions: this bench observes organic Hyperlane traffic. No wallet is funded, no gas is paid."
+  - "Scope: Hyperlane-deployed source chains with mainnet traffic in the observation window. Non-EVM domains (Solana) map to their own row when Hyperlane exposes them under a numeric domain id."
+  - "Relayer caveat: Hyperlane is permissionless; the observed latency is whichever relayer actually delivered the message. Applications choosing an under-served or misconfigured Interchain Security Module (ISM) will see structurally slower delivery. The bench reads practical UX, not a theoretical protocol floor."
+
+findings:
+  - "{{best_name}} currently leads Hyperlane end-to-end delivery at {{best_p50}} (source send to destination delivery p50, 24h) across measured source chains."
+  - "Sub-second BFT source chains produce the lowest delivery floors; the tail is dominated by relayer coverage rather than protocol overhead."
+  - "Permissionless relayer model means chains with fewer active relayers see wider p99 spread than chains with well-resourced relayer sets."
+
+faq:
+  - q: "What is Hyperlane?"
+    a: "Hyperlane is a permissionless cross-chain messaging network. Anyone can deploy the Mailbox contract on a new chain and anyone can relay messages between chains. Application security is configured per lane via an Interchain Security Module (ISM), which is the developer's choice, not a global consensus."
+  - q: "What does this benchmark measure?"
+    a: "Wall-clock seconds from a Hyperlane Mailbox `Dispatch` event on the source chain to the `Process` event on the destination chain, for every message the Hyperlane Explorer indexes as delivered. It is a passive measurement of real user traffic."
+  - q: "Why do some source chains have huge tails?"
+    a: "Because Hyperlane relayers are permissionless. If an application chooses an under-served or misconfigured ISM, delivery will be slow regardless of Hyperlane's own protocol speed. The tail on this bench reflects practical UX rather than a theoretical protocol floor."
+  - q: "How does the data get sourced?"
+    a: "The harness POSTs a GraphQL query to `https://api.hyperlane.xyz/v1/graphql` every 60 seconds and records `delivery_occurred_at - send_occurred_at` for each new delivered message. The endpoint is Hyperlane's own Explorer feed , no auth required. No canary transactions are sent, no user funds are used."
+  - q: "Which source chain is fastest for Hyperlane today?"
+    a: "{{best_name}} currently leads at {{best_p50}} (p50 over the last 24 hours). The leaderboard re-sorts continuously against fresh Prometheus samples; the ranking on this page is the ranking right now."
+  - q: "Can I compare this to the LayerZero, CCIP, or Wormhole bench?"
+    a: "Only carefully. Each protocol's security model changes what a fair comparison looks like. Hyperlane observed latency is whichever relayer actually delivered, LayerZero is DVN + Executor, CCIP is DON + finality wait + execution, Wormhole is Guardian quorum. The cross-chain messaging comparison meta-bench exposes a shared corridor view so cell values are directly comparable."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/hyperlane-message-latency
+
+prometheus:
+  window: 24h
+  freshness_metric: hyperlane_message_seen_total
+
+providers:
+  - slug: ethereum
+    name: Ethereum
+    tag: Ethereum → any chain, Mailbox Dispatch → destination Process delivery
+    formula: "50th percentile over 24h of Hyperlane end-to-end delivery latency for messages sourced from Ethereum."
+    queries:
+      p50: histogram_quantile(0.50, sum by(le) (rate(hyperlane_message_latency_milliseconds_bucket{source_chain="ethereum"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(hyperlane_message_latency_milliseconds_bucket{source_chain="ethereum"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(hyperlane_message_latency_milliseconds_bucket{source_chain="ethereum"}[24h])))
+      mean: sum(rate(hyperlane_message_latency_milliseconds_sum{source_chain="ethereum"}[24h])) / sum(rate(hyperlane_message_latency_milliseconds_count{source_chain="ethereum"}[24h]))
+      sample_size: sum(increase(hyperlane_message_seen_total{source_chain="ethereum"}[24h]))
+      series: histogram_quantile(0.50, sum by(le) (rate(hyperlane_message_latency_milliseconds_bucket{source_chain="ethereum"}[1h])))
+
+  - slug: bnb
+    name: BNB Chain
+    tag: BNB Chain → any chain, ~3s block + Mailbox delivery
+    formula: "50th percentile over 24h of Hyperlane end-to-end delivery latency for messages sourced from BNB Chain."
+    queries:
+      p50: histogram_quantile(0.50, sum by(le) (rate(hyperlane_message_latency_milliseconds_bucket{source_chain="bnb"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(hyperlane_message_latency_milliseconds_bucket{source_chain="bnb"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(hyperlane_message_latency_milliseconds_bucket{source_chain="bnb"}[24h])))
+      mean: sum(rate(hyperlane_message_latency_milliseconds_sum{source_chain="bnb"}[24h])) / sum(rate(hyperlane_message_latency_milliseconds_count{source_chain="bnb"}[24h]))
+      sample_size: sum(increase(hyperlane_message_seen_total{source_chain="bnb"}[24h]))
+      series: histogram_quantile(0.50, sum by(le) (rate(hyperlane_message_latency_milliseconds_bucket{source_chain="bnb"}[1h])))
+
+  - slug: polygon
+    name: Polygon
+    tag: Polygon PoS → any chain, Bor block + Mailbox delivery
+    formula: "50th percentile over 24h of Hyperlane end-to-end delivery latency for messages sourced from Polygon."
+    queries:
+      p50: histogram_quantile(0.50, sum by(le) (rate(hyperlane_message_latency_milliseconds_bucket{source_chain="polygon"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(hyperlane_message_latency_milliseconds_bucket{source_chain="polygon"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(hyperlane_message_latency_milliseconds_bucket{source_chain="polygon"}[24h])))
+      mean: sum(rate(hyperlane_message_latency_milliseconds_sum{source_chain="polygon"}[24h])) / sum(rate(hyperlane_message_latency_milliseconds_count{source_chain="polygon"}[24h]))
+      sample_size: sum(increase(hyperlane_message_seen_total{source_chain="polygon"}[24h]))
+      series: histogram_quantile(0.50, sum by(le) (rate(hyperlane_message_latency_milliseconds_bucket{source_chain="polygon"}[1h])))
+
+  - slug: arbitrum
+    name: Arbitrum
+    tag: Arbitrum One → any chain, sub-second L2 block + Mailbox delivery
+    formula: "50th percentile over 24h of Hyperlane end-to-end delivery latency for messages sourced from Arbitrum."
+    queries:
+      p50: histogram_quantile(0.50, sum by(le) (rate(hyperlane_message_latency_milliseconds_bucket{source_chain="arbitrum"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(hyperlane_message_latency_milliseconds_bucket{source_chain="arbitrum"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(hyperlane_message_latency_milliseconds_bucket{source_chain="arbitrum"}[24h])))
+      mean: sum(rate(hyperlane_message_latency_milliseconds_sum{source_chain="arbitrum"}[24h])) / sum(rate(hyperlane_message_latency_milliseconds_count{source_chain="arbitrum"}[24h]))
+      sample_size: sum(increase(hyperlane_message_seen_total{source_chain="arbitrum"}[24h]))
+      series: histogram_quantile(0.50, sum by(le) (rate(hyperlane_message_latency_milliseconds_bucket{source_chain="arbitrum"}[1h])))
+
+  - slug: base
+    name: Base
+    tag: Base → any chain, 2s block + Mailbox delivery
+    formula: "50th percentile over 24h of Hyperlane end-to-end delivery latency for messages sourced from Base."
+    queries:
+      p50: histogram_quantile(0.50, sum by(le) (rate(hyperlane_message_latency_milliseconds_bucket{source_chain="base"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(hyperlane_message_latency_milliseconds_bucket{source_chain="base"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(hyperlane_message_latency_milliseconds_bucket{source_chain="base"}[24h])))
+      mean: sum(rate(hyperlane_message_latency_milliseconds_sum{source_chain="base"}[24h])) / sum(rate(hyperlane_message_latency_milliseconds_count{source_chain="base"}[24h]))
+      sample_size: sum(increase(hyperlane_message_seen_total{source_chain="base"}[24h]))
+      series: histogram_quantile(0.50, sum by(le) (rate(hyperlane_message_latency_milliseconds_bucket{source_chain="base"}[1h])))
+
+  - slug: optimism
+    name: Optimism
+    tag: Optimism → any chain, 2s block + Mailbox delivery
+    formula: "50th percentile over 24h of Hyperlane end-to-end delivery latency for messages sourced from Optimism."
+    queries:
+      p50: histogram_quantile(0.50, sum by(le) (rate(hyperlane_message_latency_milliseconds_bucket{source_chain="optimism"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(hyperlane_message_latency_milliseconds_bucket{source_chain="optimism"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(hyperlane_message_latency_milliseconds_bucket{source_chain="optimism"}[24h])))
+      mean: sum(rate(hyperlane_message_latency_milliseconds_sum{source_chain="optimism"}[24h])) / sum(rate(hyperlane_message_latency_milliseconds_count{source_chain="optimism"}[24h]))
+      sample_size: sum(increase(hyperlane_message_seen_total{source_chain="optimism"}[24h]))
+      series: histogram_quantile(0.50, sum by(le) (rate(hyperlane_message_latency_milliseconds_bucket{source_chain="optimism"}[1h])))
+
+  - slug: avalanche
+    name: Avalanche
+    tag: Avalanche C-Chain → any chain, Snowman++ finality + Mailbox delivery
+    formula: "50th percentile over 24h of Hyperlane end-to-end delivery latency for messages sourced from Avalanche."
+    queries:
+      p50: histogram_quantile(0.50, sum by(le) (rate(hyperlane_message_latency_milliseconds_bucket{source_chain="avalanche"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(hyperlane_message_latency_milliseconds_bucket{source_chain="avalanche"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(hyperlane_message_latency_milliseconds_bucket{source_chain="avalanche"}[24h])))
+      mean: sum(rate(hyperlane_message_latency_milliseconds_sum{source_chain="avalanche"}[24h])) / sum(rate(hyperlane_message_latency_milliseconds_count{source_chain="avalanche"}[24h]))
+      sample_size: sum(increase(hyperlane_message_seen_total{source_chain="avalanche"}[24h]))
+      series: histogram_quantile(0.50, sum by(le) (rate(hyperlane_message_latency_milliseconds_bucket{source_chain="avalanche"}[1h])))
+
+  - slug: solana
+    name: Solana
+    tag: Solana → any chain, sub-second slot + Mailbox delivery
+    formula: "50th percentile over 24h of Hyperlane end-to-end delivery latency for messages sourced from Solana."
+    queries:
+      p50: histogram_quantile(0.50, sum by(le) (rate(hyperlane_message_latency_milliseconds_bucket{source_chain="solana"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(hyperlane_message_latency_milliseconds_bucket{source_chain="solana"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(hyperlane_message_latency_milliseconds_bucket{source_chain="solana"}[24h])))
+      mean: sum(rate(hyperlane_message_latency_milliseconds_sum{source_chain="solana"}[24h])) / sum(rate(hyperlane_message_latency_milliseconds_count{source_chain="solana"}[24h]))
+      sample_size: sum(increase(hyperlane_message_seen_total{source_chain="solana"}[24h]))
+      series: histogram_quantile(0.50, sum by(le) (rate(hyperlane_message_latency_milliseconds_bucket{source_chain="solana"}[1h])))
