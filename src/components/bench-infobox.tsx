@@ -163,14 +163,26 @@ export function BenchInfobox({ benchmark }: { benchmark: Benchmark }) {
             </a>
           </InfoPair>
           <InfoPair label="Live JSON" className="sm:col-span-2">
-            <a
-              href={`${SITE.url}/api/stat/${benchmark.slug}`}
-              className="underline decoration-ink/20 hover:decoration-ink font-mono text-[11.5px] break-all"
-              rel="noopener"
+            {/* itemProp="distribution" needs to point at a DataDownload
+                with encodingFormat + contentUrl (Google flags the bare
+                URL microdata as "Missing field encodingFormat/contentUrl
+                in distribution"). Wrap in itemScope + hidden meta so
+                the visible <a> keeps its href for humans. */}
+            <span
               itemProp="distribution"
+              itemScope
+              itemType="https://schema.org/DataDownload"
             >
-              /api/stat/{benchmark.slug}
-            </a>
+              <meta itemProp="encodingFormat" content="application/json" />
+              <a
+                href={`${SITE.url}/api/stat/${benchmark.slug}`}
+                className="underline decoration-ink/20 hover:decoration-ink font-mono text-[11.5px] break-all"
+                rel="noopener"
+                itemProp="contentUrl"
+              >
+                /api/stat/{benchmark.slug}
+              </a>
+            </span>
           </InfoPair>
         </div>
       </details>
