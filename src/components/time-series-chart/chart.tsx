@@ -371,15 +371,16 @@ export function Chart({
           <SeriesGradients drawn={drawn} />
         </defs>
 
-        {/* Diagonal attribution watermark. Rendered BEFORE the series
-            paths so the data lines stack on top of it — reads as a
-            background stamp, not overlay. Kept intentionally small +
-            near-transparent so it's discernible in screenshots but
-            never competes with the data during normal reading. */}
+        {/* Branded attribution stamp — C-mark between two hairlines
+            with the openchainbench.com wordmark below. Rendered BEFORE
+            the series paths so the lines pass over the top and the
+            composition sits in the background of the plot. Scale
+            follows the plot's shorter axis so the mark stays visually
+            consistent across the range of chart heights we render. */}
         <ChartWatermarkSvg
           cx={padL + innerW / 2}
           cy={padT + innerH / 2}
-          fontSize={Math.round(Math.min(innerW, innerH) * 0.1)}
+          scale={Math.max(1, Math.min(innerW, innerH) / 260)}
         />
 
         {/* Y gridlines + tick labels */}
