@@ -73,45 +73,59 @@ type pairResp struct {
 	} `json:"pairs"`
 }
 
-// EnrichWithVenue batch-looks up pair data for up to 30 tokens and returns
-// a Token slice with Venue populated. Tokens with no pair data are skipped.
+const dexscreenerBatchSize = 30
+
+// EnrichWithVenue resolves pair data for all entries in batches of 30
+// (Dexscreener API limit) and returns a Token slice with Venue populated.
+// Tokens with no pair data are skipped.
 func EnrichWithVenue(ctx context.Context, entries []boostEntry) ([]Token, error) {
 	if len(entries) == 0 {
 		return nil, nil
 	}
 
-	// Build comma-sep address list. Dexscreener accepts up to 30.
-	addrs := make([]string, len(entries))
-	for i, e := range entries {
-		addrs[i] = e.TokenAddress
-	}
-	url := "https://api.dexscreener.com/latest/dex/tokens/" + strings.Join(addrs, ",")
-
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
-	if err != nil {
-		return nil, err
-	}
-	resp, err := dexClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("dexscreener tokens: %w", err)
-	}
-	defer resp.Body.Close()
-	body, _ := io.ReadAll(resp.Body)
-	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("dexscreener tokens: status=%d body=%s", resp.StatusCode, snippet(body))
-	}
-	var pr pairResp
-	if err := json.Unmarshal(body, &pr); err != nil {
-		return nil, fmt.Errorf("dexscreener tokens parse: %w", err)
-	}
-
-	// Build index: lower(tokenAddress) -> first pair's dexId for that chain.
 	type key struct{ chain, addr string }
 	dexIdOf := map[key]string{}
-	for _, pair := range pr.Pairs {
-		k := key{pair.ChainId, strings.ToLower(pair.BaseToken.Address)}
-		if _, exists := dexIdOf[k]; !exists {
-			dexIdOf[k] = pair.DexId
+
+	for i := 0; i < len(entries); i += dexscreenerBatchSize {
+		end := i + dexscreenerBatchSize
+		if end > len(entries) {
+			end = len(entries)
+		}
+		batch := entries[i:end]
+
+		addrs := make([]string, len(batch))
+		for j, e := range batch {
+			addrs[j] = e.TokenAddress
+		}
+		url := "https://api.dexscreener.com/latest/dex/tokens/" + strings.Join(addrs, ",")
+
+		req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+		if err != nil {
+			return nil, err
+		}
+		resp, err := dexClient.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("dexscreener tokens: %w", err)
+		}
+		body, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+
+		if resp.StatusCode != 200 {
+			fmt.Printf("[dexscreener] batch %d-%d status=%d, skipping batch\n", i, end, resp.StatusCode)
+			continue
+		}
+
+		var pr pairResp
+		if err := json.Unmarshal(body, &pr); err != nil {
+			fmt.Printf("[dexscreener] batch %d-%d parse error: %v\n", i, end, err)
+			continue
+		}
+
+		for _, pair := range pr.Pairs {
+			k := key{pair.ChainId, strings.ToLower(pair.BaseToken.Address)}
+			if _, exists := dexIdOf[k]; !exists {
+				dexIdOf[k] = pair.DexId
+			}
 		}
 	}
 
@@ -120,7 +134,6 @@ func EnrichWithVenue(ctx context.Context, entries []boostEntry) ([]Token, error)
 		k := key{e.ChainId, strings.ToLower(e.TokenAddress)}
 		dexId, ok := dexIdOf[k]
 		if !ok {
-			fmt.Printf("[dexscreener] no pair data for %s on %s, skipping\n", e.TokenAddress, e.ChainId)
 			continue
 		}
 		tokens = append(tokens, Token{
