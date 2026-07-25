@@ -159,7 +159,10 @@ export default async function AlternativePage({
         ...(citableAsOf(bench) ? { dateModified: bench.lastRunAt } : {}),
         author: { "@id": `${SITE.url}/#org` },
         publisher: { "@id": `${SITE.url}/#org` },
-        about: { "@id": `${url}#dataset` },
+        // `about` describes the topic. Use a Thing rather than @id-refing
+        // the same-page Dataset (Google validates @id-only refs as
+        // standalone incomplete Datasets even within the same @graph).
+        about: { "@type": "Thing", name: bench.metric },
       },
       buildBreadcrumbJsonLd([
         { name: "Home", item: SITE.url },
