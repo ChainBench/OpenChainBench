@@ -770,6 +770,7 @@ export function BenchmarkBody({
                           ? chartRegion
                           : undefined
                     }
+                    chain={effectiveChain ?? undefined}
                     excluded={excluded}
                     onToggleExclude={toggleExclude}
                     onResetExcluded={resetExcluded}

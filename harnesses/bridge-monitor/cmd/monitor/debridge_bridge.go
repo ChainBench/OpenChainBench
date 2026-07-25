@@ -121,7 +121,7 @@ func (d *DebridgeBridge) TestRoute(route TestRoute, amount, amountUsd float64, r
 	// (the published methodology measures exactly that). Fast failures, e.g.
 	// Cloudflare 403s answered in 30ms, must not enter the histogram: they
 	// made deBridge look 15x faster the moment its API started rejecting us.
-	bridgeQuoteLatency.WithLabelValues(labels...).Observe(float64(quoteLatency.Milliseconds()))
+	bridgeQuoteLatency.WithLabelValues(labels...).Observe(float64(quoteLatency.Nanoseconds()) / 1e6)
 	bridgeQuoteSuccess.WithLabelValues(labels...).Set(1)
 
 	// Debridge returns input (with opEx ajusté) and output

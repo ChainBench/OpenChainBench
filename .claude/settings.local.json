@@ -1,7 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "mcp__openchainbench__list_benchmarks"
-    ]
-  }
-}

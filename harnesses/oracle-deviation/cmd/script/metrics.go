@@ -106,6 +106,59 @@ var (
 		},
 		[]string{"source", "pair"},
 	)
+
+	// --- Bench № 082 (oracle-freshness) metric families -------------
+	//
+	// Deliberately NEW families instead of adding a `chain` label to
+	// the existing ones: bench 025's PromQL surface selects on
+	// {source, pair} and aggregates with count by (source); injecting
+	// a chain label there would split its series and silently change
+	// its numbers. Freshness gets its own label set:
+	//
+	//   oracle: chainlink | pyth | redstone
+	//   pair:   canonical OCB pair (ETH/USD, BTC/USD, ...)
+	//   chain:  where the freshness timestamp lives. For Chainlink
+	//           this is the chain the aggregator contract is deployed
+	//           on (ethereum | arbitrum | base). Pyth is pull-based so
+	//           its authoritative timestamp is the Hermes publish_time
+	//           (chain="hermes"); RedStone's is the signed data-package
+	//           timestamp from its public gateway (chain="gateway").
+
+	oracleStalenessSeconds = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "ocb_oracle_staleness_seconds",
+			Help: "Seconds between now and the oracle's own last-update timestamp (Chainlink latestRoundData.updatedAt per chain, Pyth Hermes publish_time, RedStone data-package timestamp). Refreshed every 5s between polls so staleness grows monotonically until the next observed update.",
+		},
+		[]string{"oracle", "pair", "chain"},
+	)
+
+	oracleUpdateEvents = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "ocb_oracle_update_events_total",
+			Help: "Count of observed oracle updates: increments each time the source-declared update timestamp moves forward. Bounded below by reality and above by the 30s poll cadence (two updates inside one poll window count once).",
+		},
+		[]string{"oracle", "pair", "chain"},
+	)
+
+	oracleStaleButMoved = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "ocb_oracle_stale_but_moved",
+			Help: "1 when the feed is older than 300s AND the CEX reference price (Binance, Coinbase fallback) has moved more than 0.5% since the update was observed, else 0. Staleness alone is normal for deviation-triggered feeds; stale AND moved is the dangerous state.",
+		},
+		[]string{"oracle", "pair", "chain"},
+	)
+
+	// Separate error counter for the freshness pollers. NOT merged into
+	// ocb_oracle_scrape_errors_total because bench 025's success queries
+	// sum that counter across all sources per pair; redstone / L2
+	// chainlink failures must not depress 025's success rate.
+	freshnessScrapeErrors = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "ocb_oracle_freshness_scrape_errors_total",
+			Help: "Failed freshness scrape attempts per (oracle, pair, chain). Kept separate from ocb_oracle_scrape_errors_total so bench 025's error-rate queries are unaffected by freshness-only sources.",
+		},
+		[]string{"oracle", "pair", "chain"},
+	)
 )
 
 // StartMetricsServer binds /metrics + /health on addr. Blocking call —

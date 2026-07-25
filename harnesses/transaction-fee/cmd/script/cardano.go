@@ -51,8 +51,25 @@ type koiosEpochParams struct {
 	MinFeeB float64 `json:"min_fee_b"`
 }
 
+// Koios epoch params change once per 5-day epoch, but this fetcher runs
+// on the 30s harness cycle. Caching for an hour keeps the total koios
+// load around 24 calls/day (both OCB harnesses combined stay far under
+// the 5,000/day public tier that we exhausted before this cache).
+var cardanoParamCache struct {
+	minFeeA, minFeeB float64
+	fetchedAt        time.Time
+}
+
 func (f *cardanoFetcher) Sample(ch ChainConfig) ([]FeeSample, error) {
+	if time.Since(cardanoParamCache.fetchedAt) < time.Hour && cardanoParamCache.minFeeA > 0 {
+		feeLovelace := cardanoParamCache.minFeeB + (cardanoTypicalTxBytes * cardanoParamCache.minFeeA)
+		return []FeeSample{{Chain: ch.Slug, Tier: "single", NativeFee: feeLovelace}}, nil
+	}
 	minFeeA, minFeeB, err := f.fetchProtocolParams(ch.RPCURL)
+	if err == nil {
+		cardanoParamCache.minFeeA, cardanoParamCache.minFeeB = minFeeA, minFeeB
+		cardanoParamCache.fetchedAt = time.Now()
+	}
 	if err != nil {
 		// Fall back to known-good constants rather than emit nothing.
 		fmt.Printf("[cardano] koios fetch failed, using fallback constants: %v\n", err)

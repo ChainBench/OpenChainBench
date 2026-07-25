@@ -27,8 +27,8 @@ export const HF_DATASET_URL =
 /** Concept DOI for the dataset on Zenodo. Always resolves to the latest
  *  version. New version DOIs are minted automatically when we push a
  *  new git tag of the form `vX.Y.Z-dataset`. */
-export const ZENODO_CONCEPT_DOI = "10.5281/zenodo.20800311";
-export const ZENODO_CONCEPT_URL = `https://doi.org/${ZENODO_CONCEPT_DOI}`;
+const ZENODO_CONCEPT_DOI = "10.5281/zenodo.20800311";
+const ZENODO_CONCEPT_URL = `https://doi.org/${ZENODO_CONCEPT_DOI}`;
 
 /** Latest parquet headlines snapshot via Hugging Face's auto-converted
  *  parquet API. The repo itself only holds dated partitions

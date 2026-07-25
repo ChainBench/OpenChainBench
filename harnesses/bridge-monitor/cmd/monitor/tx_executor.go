@@ -120,6 +120,13 @@ func (tx *TxExecutor) CanExecute() bool {
 	return tx.solanaPrivateKey != nil && tx.evmPrivateKey != nil && !tx.dryRun
 }
 
+// EVMPrivateKey exposes the loaded EVM key so the Mobula client can EIP-712
+// sign the bridge intent on the confirm step. Returns nil in quote-only mode
+// (no key configured), which GetSignedQuote handles by degrading to unsigned.
+func (tx *TxExecutor) EVMPrivateKey() *ecdsa.PrivateKey {
+	return tx.evmPrivateKey
+}
+
 // ExecuteSolanaTransaction signs and broadcasts a Solana transaction
 func (tx *TxExecutor) ExecuteSolanaTransaction(serializedTxBase64 string) (string, error) {
 	if tx.dryRun {
@@ -158,9 +165,14 @@ func (tx *TxExecutor) ExecuteSolanaTransaction(serializedTxBase64 string) (strin
 		return "", fmt.Errorf("failed to sign tx: %w", err)
 	}
 
-	// Send transaction
+	// Send transaction. Same send-ambiguity rule as the EVM path: a send
+	// error can follow node acceptance, so surface the signature when the
+	// client returns one and let callers treat it as in-flight.
 	sig, err := tx.solanaClient.SendTransaction(ctx, transaction)
 	if err != nil {
+		if sig != (solana.Signature{}) {
+			return sig.String(), fmt.Errorf("failed to send tx (may be accepted, sig %s): %w", sig.String(), err)
+		}
 		return "", fmt.Errorf("failed to send tx: %w", err)
 	}
 
@@ -235,9 +247,14 @@ func (tx *TxExecutor) ExecuteSolanaFromInstructions(instructions []RelaySolanaIn
 		return "", fmt.Errorf("failed to sign tx: %w", err)
 	}
 
-	// Send transaction
+	// Send transaction. Same send-ambiguity rule as the EVM path: a send
+	// error can follow node acceptance, so surface the signature when the
+	// client returns one and let callers treat it as in-flight.
 	sig, err := tx.solanaClient.SendTransaction(ctx, transaction)
 	if err != nil {
+		if sig != (solana.Signature{}) {
+			return sig.String(), fmt.Errorf("failed to send tx (may be accepted, sig %s): %w", sig.String(), err)
+		}
 		return "", fmt.Errorf("failed to send tx: %w", err)
 	}
 
@@ -314,13 +331,16 @@ func (tx *TxExecutor) ExecuteEVMTransaction(chain string, to string, data string
 		return "", fmt.Errorf("failed to sign tx: %w", err)
 	}
 
-	// Send transaction
+	// Send transaction. On error the node may STILL have accepted the tx
+	// (RPC timeout after acceptance): return the locally computed hash so
+	// callers classify this as in-flight, never as retry-safe. Discarding
+	// it caused the residual double-send hole found in review pass 2.
+	txHash := signedTx.Hash().Hex()
 	err = client.SendTransaction(ctx, signedTx)
 	if err != nil {
-		return "", fmt.Errorf("failed to send tx: %w", err)
+		return txHash, fmt.Errorf("failed to send tx (may be accepted, hash %s): %w", txHash, err)
 	}
 
-	txHash := signedTx.Hash().Hex()
 	log.Printf("📤 %s TX sent: %s", chain, txHash)
 	return txHash, nil
 }
@@ -407,7 +427,7 @@ func (tx *TxExecutor) PollMobulaStatus(txHash string, timeout time.Duration) (*B
 }
 
 func (tx *TxExecutor) getMobulaStatus(txHash string) (*BridgeStatus, error) {
-	url := fmt.Sprintf("https://api.mobula.io/api/2/bridge/status/%s", txHash)
+	url := fmt.Sprintf("https://demo-api.mobula.io/api/2/bridge/status/%s", txHash)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err

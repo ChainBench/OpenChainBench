@@ -219,7 +219,7 @@ func (n *NearIntentsBridge) TestRoute(route TestRoute, amount, amountUsd float64
 	// Latency is only meaningful for quotes that returned a usable response
 	// (same rule as the other bridges). Fast 4xx rejections must not enter
 	// the histogram or they skew the leader board.
-	bridgeQuoteLatency.WithLabelValues(labels...).Observe(float64(quoteLatency.Milliseconds()))
+	bridgeQuoteLatency.WithLabelValues(labels...).Observe(float64(quoteLatency.Nanoseconds()) / 1e6)
 	bridgeQuoteSuccess.WithLabelValues(labels...).Set(1)
 
 	inUsd, _ := strconv.ParseFloat(quote.Quote.AmountInUsd, 64)

@@ -26,6 +26,15 @@ export const matKeys = {
     `ocb:mat:v${MAT_SCHEMA_VERSION}:${slug}:${sig || "all"}:${hash}`,
   pointer: (slug: string, sig: string) =>
     `ocb:mat:v${MAT_SCHEMA_VERSION}:${slug}:${sig || "all"}:current`,
+  /** Last-known-good snapshot, full JSON, NO TTL. Overwritten on every
+   *  successful publish; read as the fallback when the current
+   *  pointer/blob path misses (blob expired during a long worker
+   *  outage, transient Redis error, DEL race). A bench that has
+   *  published once never falls back to the "awaiting" placeholder
+   *  again — the page serves the stamped-stale copy and the existing
+   *  freshness badge (dataAsOf) discloses the age. */
+  lkg: (slug: string, sig: string) =>
+    `ocb:mat:v${MAT_SCHEMA_VERSION}:${slug}:${sig || "all"}:lkg`,
   /** Worker heartbeat, epoch seconds. Read by /api/cron/health-check. */
   heartbeat: `ocb:mat:v${MAT_SCHEMA_VERSION}:heartbeat`,
 };
@@ -60,7 +69,7 @@ export function freshnessOf(meta: StalenessMeta | undefined, now = Date.now()): 
  *  display values carry forward separately via StalenessMeta. Cadences
  *  mirror the live loader: 24h = 72 pts @ 20 min, 7d = 84 pts @ 2 h,
  *  30d = 60 pts @ 12 h. */
-export const SeriesRingSchema = z.object({
+const SeriesRingSchema = z.object({
   /** Epoch ms of points[0]. */
   startEpoch: z.number(),
   stepSec: z.number(),

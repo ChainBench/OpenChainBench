@@ -19,10 +19,14 @@ per_chain_explainer:
   - slug: bnb
     h2: "Best DEX aggregator for BNB Chain new token coverage"
     body: |
-      {{best_name:chain:bnb}} currently leads on BNB Chain at {{best_p50:chain:bnb}} coverage (24h) across Four.meme. BNB is the hardest environment in this benchmark for non-native aggregators: Four.meme graduates to PancakeSwap V2, and routing engines that do not maintain a live BNB Chain pool-creation index miss newly-minted pairs entirely. Providers that derive their BNB token list from a shared coingecko-style database rather than on-chain event tracking typically lag by several hours. The probe fires a 1 USDC (via USDC.e bridged) to token quote; BNB-native aggregators (OKX DEX, KyberSwap) have structural coverage advantages over Solana-first providers here.
+      {{best_name:chain:bnb}} currently leads on BNB Chain at {{best_p50:chain:bnb}} coverage (24h) across Four.meme. BNB is the hardest environment in this benchmark for non-native aggregators: Four.meme graduates to PancakeSwap V2, and routing engines that do not maintain a live BNB Chain pool-creation index miss newly-minted pairs entirely. Providers that derive their BNB token list from a shared coingecko-style database rather than on-chain event tracking typically lag by several hours. The probe fires a 1 USDC (via USDC.e bridged) to token quote; KyberSwap has structural coverage advantages over Solana-first providers here due to its live BNB pool-creation event index.
+  - slug: robinhood
+    h2: "DEX aggregator coverage on Robinhood Chain"
+    body: |
+      Robinhood Chain (chainId 4663) is Robinhood's EVM-compatible Layer 2, launched in 2025. Tokens on Robinhood launch and graduate via the Pons launchpad to Uniswap V3-based pools, with USDG as the primary stablecoin. The bench probes all EVM aggregators (KyberSwap, Mobula) against Pons-graduated tokens. As of launch, no major third-party aggregator has integrated Robinhood chain routing, so coverage is expected to be near 0% across all providers — this gap is the data point. The bench will capture the first aggregator to integrate Robinhood and reflect coverage improvements in real time.
 
 category: Aggregators
-status: draft
+status: live
 metric: Quote coverage
 unit: pct
 higher_is_better: true
@@ -45,7 +49,6 @@ seo_intro: |
   a live Base pool graph. Four.meme graduates need PancakeSwap v2
   event indexing. An aggregator that dominates one launchpad can
   have gaps on another depending on how it discovers new pools.
-  Current leader overall is {{best_name}} at {{best_p50}}.
 
 abstract: |
   We benchmark DEX aggregators on their ability to quote tokens that
@@ -65,15 +68,15 @@ abstract: |
   structural (it does not index Meteora DBC pool types) or temporary
   (it lags new Raydium pairs by a few minutes). The chain dimension
   narrows to a single chain for providers that are chain-specific
-  (Jupiter is Solana-only; 1inch and KyberSwap are EVM-only on the
+  (Jupiter is Solana-only; KyberSwap and Odos are EVM-only on the
   launchpads they cover).
 
 methodology:
-  - "Token discovery: Dexscreener /token-boosts/latest/v1 returns recently-active tokens sorted by on-chain boost activity. Up to 20 tokens per 30-minute batch are selected from each supported chain (Solana, Base, BNB). A follow-up batch call to /latest/dex/tokens/{addresses} resolves the originating dexId (pool factory), which maps to a venue label: pumpfun/moonshot/meteora-dlmm→Solana venues, virtual-fun/clanker/wow→Base venues, any BNB pair→four-meme."
+  - "Token discovery: three sources run in parallel each hour. (1) Dexscreener /token-boosts/latest/v1 covers Solana (pump-fun, moonshot, meteora-dbc) and Robinhood chain (pons). (2) Virtuals Protocol /api/virtuals?filters[status]=SENTIENT covers Base graduated agents (virtuals venue). (3) GeckoTerminal /api/v2/networks/bsc/new_pools covers BSC (four-meme). All token addresses are enriched via a Dexscreener /latest/dex/tokens batch call to resolve the originating dexId and map to venue labels."
   - "Quote probe: 1 USDC → token, fired in parallel to all in-scope providers with a 10s timeout. Input token is always USDC (native USDC on Solana and Base, bridged USDC.e on BNB). A probe is a coverage hit when the HTTP response is 2xx and the parsed outAmount field is a non-zero positive integer or decimal. All other outcomes (4xx, 5xx, no-route JSON, empty outAmount, timeout) record as misses."
-  - "Aggregator endpoints: Mobula /api/1/trade/swap/quote (Bearer auth, multi-chain), Jupiter quote-api.jup.ag/v6/quote?strictMode=false (Solana), KyberSwap aggregator-api.kyberswap.com/{chain}/api/v1/routes (EVM), OKX DEX /api/v5/dex/aggregator/quote (multi-chain), Odos /sor/quote/v2 (EVM). Each adapter normalises chain identifiers, input/output decimals, and error response shapes before recording outcome."
+  - "Aggregator endpoints: Mobula /api/2/swap/quoting (Bearer auth, EVM), Jupiter lite-api.jup.ag/swap/v1/quote (Solana), KyberSwap aggregator-api.kyberswap.com/{chain}/api/v1/routes (EVM), ParaSwap apiv5.paraswap.io/prices (EVM). Each adapter normalises chain identifiers, input/output decimals, and error response shapes before recording outcome."
   - "Jupiter strictMode=false: queried without the curated-token filter so Jupiter will attempt routing for any token with a discoverable on-chain pool, matching how most wallets call the API. strictMode=true would trivially exclude new tokens and defeat the purpose of the benchmark."
-  - "Chain-scope enforcement: Jupiter probes Solana-only; KyberSwap and Odos probe EVM chains only (Base, BNB). OKX DEX and Mobula probe all three chains. Providers are never penalised for chains they do not support: Solana cells for KyberSwap and Odos are null, not zero, and are excluded from cross-chain aggregates."
+  - "Chain-scope enforcement: Jupiter probes Solana-only. KyberSwap, Mobula, and ParaSwap probe EVM chains. KyberSwap and Mobula also cover Robinhood chain; ParaSwap covers Base and BNB only. Robinhood chain is currently at 0% coverage across all providers — an accurate reflection that no major aggregator has integrated Robinhood yet. Providers are never penalised for chains they structurally do not support: Solana cells for EVM-only providers are null, not zero."
   - "Coverage metric: Prometheus counters token_quote_coverage_success_total and token_quote_coverage_attempts_total carry labels {provider, venue, chain}. The bench queries compute increase(success[24h]) / increase(attempts[24h]) * 100 live at read time. No pre-aggregation; the ratio reflects exactly the tokens probed in the rolling window."
   - "Probe cadence and deduplication: each batch cycles through the current Dexscreener token-boosts feed. Tokens are not deduplicated across batches; the same token may appear in multiple 30-minute windows if it remains boosted. The score therefore reflects freshness of the aggregator's current routing graph, not historical coverage depth."
   - "Single origin: all probes originate from the eu-west OCB VPS. Regional latency is not a factor in this bench (the outcome is binary hit/miss, not latency). No region dimension in v1."
@@ -100,7 +103,7 @@ faq:
   - q: "Why is Jupiter queried with strictMode=false?"
     a: "Jupiter's strictMode=true restricts quotes to verified tokens on its curated list, which defeats the purpose of a coverage bench targeting newly-launched tokens. strictMode=false instructs Jupiter to attempt routing for any token with an existing pool, matching how wallets typically call the API when displaying all tradeable tokens."
   - q: "What happens when a provider is chain-specific?"
-    a: "Jupiter is Solana-only and appears with null values on Base and BNB launchpad rows. 1inch and KyberSwap are EVM-only and appear as null on Solana launchpad rows. OKX DEX and Mobula cover multiple chains and are probed on all launchpads they support. Null-chain cells are excluded from cross-launchpad aggregates so chain-specific providers are not penalized."
+    a: "Jupiter is Solana-only and appears with null values on Base and BNB launchpad rows. KyberSwap, Odos, and Mobula are EVM-only and appear as null on Solana launchpad rows. Null-chain cells are excluded from cross-launchpad aggregates so chain-specific providers are not penalized."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/token-quote-coverage
 
@@ -115,15 +118,17 @@ dimensions:
     - { value: pump-fun,     label: Pump.fun }
     - { value: virtuals,     label: Virtuals }
     - { value: four-meme,    label: Four.meme }
+    - { value: pons,         label: Pons }
     - { value: wow,          label: WOW.XYZ }
     - { value: moonshot,     label: Moonshot }
     - { value: meteora-dbc,  label: Meteora DBC }
     - { value: clanker,      label: Clanker }
   chain:
-    - { value: all,     label: All chains }
-    - { value: solana,  label: Solana }
-    - { value: base,    label: Base }
-    - { value: bnb,     label: BNB }
+    - { value: all,        label: All chains }
+    - { value: solana,     label: Solana }
+    - { value: base,       label: Base }
+    - { value: bnb,        label: BNB }
+    - { value: robinhood,  label: Robinhood }
 
 ledger_columns:
   - { label: "Coverage rate", slot: p50, unit: pct }
@@ -138,7 +143,7 @@ rank_matrix_query: >
 providers:
   - slug: mobula
     name: Mobula
-    tag: EVM only, Base + BNB, API key required
+    tag: EVM only, Base + BNB + Robinhood, API key required
     formula: "Rolling 24h ratio of token_quote_coverage_success_total to token_quote_coverage_attempts_total for provider=mobula, across all launchpads and chains Mobula supports."
     queries:
       p50: sum(increase(token_quote_coverage_success_total{provider="mobula"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="mobula"}[24h])) * 100
@@ -164,7 +169,7 @@ providers:
 
   - slug: kyberswap
     name: KyberSwap
-    tag: EVM multi-chain, per-chain aggregator engine
+    tag: EVM multi-chain, Base + BNB + Robinhood
     formula: "Rolling 24h ratio for provider=kyberswap. EVM launchpads only (Virtuals, WOW, Four.meme, Clanker). Solana cells null."
     queries:
       p50: sum(increase(token_quote_coverage_success_total{provider="kyberswap"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="kyberswap"}[24h])) * 100
@@ -175,28 +180,17 @@ providers:
       sample_size: sum(increase(token_quote_coverage_attempts_total{provider="kyberswap"}[24h]))
       series: sum(rate(token_quote_coverage_success_total{provider="kyberswap"}[1h])) / sum(rate(token_quote_coverage_attempts_total{provider="kyberswap"}[1h])) * 100
 
-  - slug: okx-dex
-    name: OKX DEX
-    tag: Multi-chain, Solana + EVM
-    formula: "Rolling 24h ratio for provider=okx-dex. Covers Solana and EVM chains."
+  - slug: paraswap
+    name: ParaSwap
+    tag: EVM multi-chain, Base + BNB
+    formula: "Rolling 24h ratio for provider=paraswap. EVM launchpads only (Base, BNB). Solana and Robinhood cells null."
     queries:
-      p50: sum(increase(token_quote_coverage_success_total{provider="okx-dex"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="okx-dex"}[24h])) * 100
-      p90: sum(increase(token_quote_coverage_attempts_total{provider="okx-dex"}[24h]))
-      p99: sum(increase(token_quote_coverage_success_total{provider="okx-dex"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="okx-dex"}[24h])) * 100
-      mean: sum(increase(token_quote_coverage_success_total{provider="okx-dex"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="okx-dex"}[24h])) * 100
-      success: clamp_max(sum(increase(token_quote_coverage_success_total{provider="okx-dex"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="okx-dex"}[24h])), 1)
-      sample_size: sum(increase(token_quote_coverage_attempts_total{provider="okx-dex"}[24h]))
-      series: sum(rate(token_quote_coverage_success_total{provider="okx-dex"}[1h])) / sum(rate(token_quote_coverage_attempts_total{provider="okx-dex"}[1h])) * 100
+      p50: sum(increase(token_quote_coverage_success_total{provider="paraswap"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="paraswap"}[24h])) * 100
+      p90: sum(increase(token_quote_coverage_attempts_total{provider="paraswap"}[24h]))
+      p99: sum(increase(token_quote_coverage_success_total{provider="paraswap"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="paraswap"}[24h])) * 100
+      mean: sum(increase(token_quote_coverage_success_total{provider="paraswap"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="paraswap"}[24h])) * 100
+      success: clamp_max(sum(increase(token_quote_coverage_success_total{provider="paraswap"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="paraswap"}[24h])), 1)
+      sample_size: sum(increase(token_quote_coverage_attempts_total{provider="paraswap"}[24h]))
+      series: sum(rate(token_quote_coverage_success_total{provider="paraswap"}[1h])) / sum(rate(token_quote_coverage_attempts_total{provider="paraswap"}[1h])) * 100
 
-  - slug: odos
-    name: Odos
-    tag: EVM multi-chain, Base + BNB + Ethereum
-    formula: "Rolling 24h ratio for provider=odos. EVM launchpads only. Solana cells null."
-    queries:
-      p50: sum(increase(token_quote_coverage_success_total{provider="odos"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="odos"}[24h])) * 100
-      p90: sum(increase(token_quote_coverage_attempts_total{provider="odos"}[24h]))
-      p99: sum(increase(token_quote_coverage_success_total{provider="odos"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="odos"}[24h])) * 100
-      mean: sum(increase(token_quote_coverage_success_total{provider="odos"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="odos"}[24h])) * 100
-      success: clamp_max(sum(increase(token_quote_coverage_success_total{provider="odos"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="odos"}[24h])), 1)
-      sample_size: sum(increase(token_quote_coverage_attempts_total{provider="odos"}[24h]))
-      series: sum(rate(token_quote_coverage_success_total{provider="odos"}[1h])) / sum(rate(token_quote_coverage_attempts_total{provider="odos"}[1h])) * 100
+

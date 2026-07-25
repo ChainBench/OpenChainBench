@@ -56,6 +56,7 @@ func runPyth(ctx context.Context, specs []PairSpec) {
 		if err != nil {
 			for _, s := range specs {
 				oracleScrapeErrors.WithLabelValues(string(SourcePyth), string(s.Pair)).Inc()
+				freshnessScrapeErrors.WithLabelValues(string(SourcePyth), string(s.Pair), ChainHermes).Inc()
 			}
 			fmt.Printf("[pyth] http err: %v\n", err)
 			return
@@ -65,6 +66,7 @@ func runPyth(ctx context.Context, specs []PairSpec) {
 		if resp.StatusCode != 200 {
 			for _, s := range specs {
 				oracleScrapeErrors.WithLabelValues(string(SourcePyth), string(s.Pair)).Inc()
+				freshnessScrapeErrors.WithLabelValues(string(SourcePyth), string(s.Pair), ChainHermes).Inc()
 			}
 			fmt.Printf("[pyth] http %d: %s\n", resp.StatusCode, string(body))
 			return
@@ -73,6 +75,7 @@ func runPyth(ctx context.Context, specs []PairSpec) {
 		if err := json.Unmarshal(body, &entries); err != nil {
 			for _, s := range specs {
 				oracleScrapeErrors.WithLabelValues(string(SourcePyth), string(s.Pair)).Inc()
+				freshnessScrapeErrors.WithLabelValues(string(SourcePyth), string(s.Pair), ChainHermes).Inc()
 			}
 			fmt.Printf("[pyth] decode err: %v\n", err)
 			return
@@ -86,9 +89,24 @@ func runPyth(ctx context.Context, specs []PairSpec) {
 			price, err := pythToFloat(e.Price.Price, e.Price.Expo)
 			if err != nil {
 				oracleScrapeErrors.WithLabelValues(string(SourcePyth), string(pair)).Inc()
+				freshnessScrapeErrors.WithLabelValues(string(SourcePyth), string(pair), ChainHermes).Inc()
 				continue
 			}
-			recordPrice(SourcePyth, pair, price)
+			// Bug fix: Hermes attaches publish_time to every price and
+			// we used to discard it (recordPrice stamped fetch time as
+			// SourceTS). Pyth is a pull oracle, so publish_time IS the
+			// authoritative freshness of the price integrators pull.
+			// Use it as SourceTS (typically 1-2s behind fetch, well
+			// inside the 10s alignment tolerance, so the 025 aligned
+			// deviation is unaffected in practice) and feed the № 082
+			// freshness tracker from it.
+			if e.Price.PublishTime > 0 {
+				srcTS := time.Unix(e.Price.PublishTime, 0)
+				recordPriceAt(SourcePyth, pair, price, srcTS)
+				recordFreshness(string(SourcePyth), pair, ChainHermes, srcTS)
+			} else {
+				recordPrice(SourcePyth, pair, price)
+			}
 			got[pair] = true
 		}
 		// Mark missing pairs as errored so the deviation map doesn't
@@ -96,6 +114,7 @@ func runPyth(ctx context.Context, specs []PairSpec) {
 		for _, s := range specs {
 			if !got[s.Pair] {
 				oracleScrapeErrors.WithLabelValues(string(SourcePyth), string(s.Pair)).Inc()
+				freshnessScrapeErrors.WithLabelValues(string(SourcePyth), string(s.Pair), ChainHermes).Inc()
 			}
 		}
 	}

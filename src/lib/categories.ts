@@ -114,7 +114,7 @@ export const CATEGORY_BY_SLUG: ReadonlyMap<string, CategoryEntry> = new Map(
   CATEGORIES.map((c) => [c.slug, c]),
 );
 
-export const CATEGORY_SLUG_BY_LABEL: ReadonlyMap<Category, string> = new Map(
+const CATEGORY_SLUG_BY_LABEL: ReadonlyMap<Category, string> = new Map(
   CATEGORIES.map((c) => [c.label, c.slug]),
 );
 

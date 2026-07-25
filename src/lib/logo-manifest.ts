@@ -284,6 +284,9 @@ const RAW: Record<string, string> = {
   coinpilot: "/logos/coinpilot.png",
   echosync: "/logos/echosync.png",
   fomo: "/logos/fomo.png",
+  slash: "/logos/slash.png",
+  topdog: "/logos/topdog.jpg",
+  "markets-mobile": "/logos/markets-mobile.svg",
   dextrabot: "/logos/dextrabot.png",
   kinto: "/logos/kinto.jpg",
   hypersignals: "/logos/hypersignals.png",
@@ -350,6 +353,21 @@ const RAW: Record<string, string> = {
   "48club": "/logos/48club.png",
   pancakeswap: "/logos/pancakeswap.png",
   mevblocker: "/logos/mevblocker.svg",
+
+  // ─── Ethereum block builders (bench № 085) ───
+  // `other` (aggregate long-tail row) reuses /logos/other.svg above.
+  titan: "/logos/titan.png",
+  quasar: "/logos/quasar.png",
+  eureka: "/logos/eureka.png",
+  buildernet: "/logos/buildernet.png",
+  beaverbuild: "/logos/beaverbuild.jpg",
+  btcs: "/logos/btcs.png",
+  bobthebuilder: "/logos/bobthebuilder.jpg",
+  vanilla: "/logos/vanilla.svg",
+
+  // ─── Oracles (bench № 082 oracle-freshness) ───
+  pyth: "/logos/pyth.jpg",
+  redstone: "/logos/redstone.png",
 
   // ─── Hyperliquid frontends registry expansion (60 → 66, 2026-06-28) ───
   // Identified via on-chain HL referral codes + brand cross-reference
