@@ -39,7 +39,7 @@ func FetchBoostedTokens(ctx context.Context) ([]boostEntry, error) {
 		return nil, fmt.Errorf("dexscreener boosts parse: %w", err)
 	}
 
-	supported := map[string]bool{"solana": true, "base": true, "bsc": true}
+	supported := map[string]bool{"solana": true, "base": true, "bsc": true, "robinhood": true}
 	var out []boostEntry
 	seen := map[string]bool{}
 	for _, e := range entries {

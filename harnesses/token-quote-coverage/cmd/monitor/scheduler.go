@@ -50,22 +50,55 @@ func runScheduler(cfg *Config, stopChan <-chan struct{}) {
 	}
 }
 
-// doTick fetches tokens from Dexscreener and probes all providers in parallel.
+// doTick fetches tokens from all discovery sources in parallel, merges, and probes.
 func doTick(ctx context.Context, providers []Provider) {
 	fetchCtx, cancel := context.WithTimeout(ctx, fetchTimeout)
 	defer cancel()
 
-	fmt.Println("[SCHED] fetching boosted tokens from Dexscreener")
-	entries, err := FetchBoostedTokens(fetchCtx)
-	if err != nil {
-		fmt.Printf("[SCHED] FetchBoostedTokens error: %v\n", err)
-		return
+	// Fetch from all discovery sources concurrently: Dexscreener boosts (Solana +
+	// Robinhood), Virtuals Protocol API (Base), GeckoTerminal new pools (BSC).
+	type result struct {
+		name    string
+		entries []boostEntry
+		err     error
 	}
+	ch := make(chan result, 3)
+	go func() {
+		e, err := FetchBoostedTokens(fetchCtx)
+		ch <- result{"dexscreener-boosts", e, err}
+	}()
+	go func() {
+		e, err := FetchVirtualsTokens(fetchCtx)
+		ch <- result{"virtuals", e, err}
+	}()
+	go func() {
+		e, err := FetchNewBSCTokens(fetchCtx)
+		ch <- result{"geckoterminal-bsc", e, err}
+	}()
+
+	seen := map[string]bool{}
+	var entries []boostEntry
+	for i := 0; i < 3; i++ {
+		r := <-ch
+		if r.err != nil {
+			fmt.Printf("[SCHED] %s error: %v\n", r.name, r.err)
+			continue
+		}
+		for _, e := range r.entries {
+			key := e.ChainId + ":" + e.TokenAddress
+			if !seen[key] {
+				seen[key] = true
+				entries = append(entries, e)
+			}
+		}
+		fmt.Printf("[SCHED] %s: %d tokens\n", r.name, len(r.entries))
+	}
+
 	if len(entries) == 0 {
-		fmt.Println("[SCHED] warning: Dexscreener returned 0 tokens")
+		fmt.Println("[SCHED] warning: all discovery sources returned 0 tokens")
 		return
 	}
-	fmt.Printf("[SCHED] got %d boosted tokens, enriching with venue data\n", len(entries))
+	fmt.Printf("[SCHED] %d unique tokens across all chains, enriching with venue data\n", len(entries))
 
 	tokens, err := EnrichWithVenue(fetchCtx, entries)
 	if err != nil {
