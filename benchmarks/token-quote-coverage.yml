@@ -180,15 +180,3 @@ providers:
       sample_size: sum(increase(token_quote_coverage_attempts_total{provider="kyberswap"}[24h]))
       series: sum(rate(token_quote_coverage_success_total{provider="kyberswap"}[1h])) / sum(rate(token_quote_coverage_attempts_total{provider="kyberswap"}[1h])) * 100
 
-  - slug: odos
-    name: Odos
-    tag: EVM multi-chain, Base + BNB + Ethereum
-    formula: "Rolling 24h ratio for provider=odos. EVM launchpads only. Solana cells null."
-    queries:
-      p50: sum(increase(token_quote_coverage_success_total{provider="odos"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="odos"}[24h])) * 100
-      p90: sum(increase(token_quote_coverage_attempts_total{provider="odos"}[24h]))
-      p99: sum(increase(token_quote_coverage_success_total{provider="odos"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="odos"}[24h])) * 100
-      mean: sum(increase(token_quote_coverage_success_total{provider="odos"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="odos"}[24h])) * 100
-      success: clamp_max(sum(increase(token_quote_coverage_success_total{provider="odos"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="odos"}[24h])), 1)
-      sample_size: sum(increase(token_quote_coverage_attempts_total{provider="odos"}[24h]))
-      series: sum(rate(token_quote_coverage_success_total{provider="odos"}[1h])) / sum(rate(token_quote_coverage_attempts_total{provider="odos"}[1h])) * 100
