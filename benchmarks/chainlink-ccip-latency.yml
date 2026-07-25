@@ -1,0 +1,179 @@
+# OpenChainBench. Bench № 103
+
+slug: chainlink-ccip-latency
+number: "103"
+title: Fastest Chainlink CCIP source chain by end-to-end delivery latency
+seo_title: "Fastest Chainlink CCIP source chain 2026"
+seo_description: "{{best_name}} leads Chainlink CCIP end-to-end delivery at {{best_p50}} (source-tx to destination execution p50, 24h) across CCIP source chains. Observed, not simulated."
+subtitle: Wall-clock seconds from a source-chain transaction to destination-chain execution for a Chainlink CCIP message, measured across CCIP source chains via the public CCIP Tools API.
+
+category: Bridges
+status: draft
+metric: CCIP delivery
+unit: ms
+higher_is_better: false
+
+seo_intro: |
+  Chainlink CCIP (Cross-Chain Interoperability Protocol) is a
+  cross-chain messaging network operated by the Chainlink DON
+  (Decentralized Oracle Network). A CCIP message flows through three
+  stages: source transaction submitted, DON commits a merkle root once
+  source-chain finality is reached, then a destination executor
+  performs the delivery. This benchmark measures end-to-end delivery
+  latency by source chain: wall-clock seconds from source-tx timestamp
+  to destination-tx timestamp, computed for every CCIP message the
+  public CCIP Tools API returns as `status: SUCCESS`.
+  Every value on this page is an observation of real user traffic
+  (Aave, Vault protocols, cross-chain token bridges), never a canary
+  transaction. Latency distribution is dominated by source-chain
+  finality: Ethereum-source lanes routinely take 12-15 minutes waiting
+  for Casper FFG finalization before the DON commits; L2s that inherit
+  Ethereum finality show similar structural floors; sub-second BFT
+  chains (BNB, Solana) finalize fast and land end-to-end in
+  low-single-digit minutes. Choosing a source chain for a CCIP
+  integration is a choice about that structural finality tax.
+
+abstract: |
+  For each of the CCIP-supported source chains with non-trivial
+  mainnet traffic, we measure the wall-clock latency between a
+  source-chain transaction submission and destination-chain
+  execution. Data source: the public `https://api.ccip.chain.link/v2/messages`
+  endpoint, polled every 60 seconds. Each `SUCCESS` message's
+  `receiptTimestamp - sendTimestamp` is one observation of end-to-end
+  latency, recorded in a per-source-chain histogram. The p50/p90/p99
+  shown here are computed via Prometheus `histogram_quantile` over the
+  last 24 hours.
+
+methodology:
+  - "Data source: `https://api.ccip.chain.link/v2/messages?limit=100`, the public CCIP Tools API. Polled every 60 seconds."
+  - "Latency definition: `receiptTimestamp - sendTimestamp` from a CCIP message row with `status: SUCCESS`. `sendTimestamp` is the source-chain tx block time; `receiptTimestamp` is the destination-chain execution block time."
+  - "Filter: only mainnet lanes are observed. Testnet messages (Ethereum Sepolia, TON Testnet, etc.) are dropped before histogram observation."
+  - "Filter: only `status: SUCCESS` messages contribute to latency. In-flight statuses (SENT, SOURCE_FINALIZED, COMMITTED) are counted separately in `ccip_message_status_total` so a spike in COMMITTED without matching SUCCESS surfaces a stuck-execution incident."
+  - "Dedupe: last 10 000 messageIds kept in memory (rolling FIFO). CCIP sustained rate is ~25 messages/minute network-wide, so the cache holds ~7h of history."
+  - "Bucketing: histogram with buckets extending to 90 minutes (5 400 s). Wider than the Wormhole VAA bench because CCIP structurally waits for source-chain finality before its DON commits , Ethereum-source p99 legitimately reaches 25-30 min in adverse epochs."
+  - "Guard: samples with `receiptTimestamp - sendTimestamp < 0` or `> 2h` are dropped (clock skew, stuck messages re-executed later, or timestamp typos)."
+  - "No canary transactions: this bench observes organic CCIP traffic (~500 mainnet messages/day across the top corridors). No wallet is funded, no gas is paid."
+  - "Scope: CCIP-supported source chains with mainnet traffic in the observation window. Long-tail source chains (0G, ADI, Astar) will show wide error bars or a low sample count."
+  - "Fair-comparison caveat: CCIP intentionally waits for source-chain finality before its DON commits, while some other cross-chain messaging networks (Wormhole, LayerZero) sign pre-finality. Comparing raw end-to-end numbers on ETH-source lanes is not apples-to-apples with those networks; the meta-bench view (cross-chain-messaging-comparison) exposes a finality-normalized column that isolates the pure DON+execution work."
+
+findings:
+  - "{{best_name}} currently leads Chainlink CCIP end-to-end delivery at {{best_p50}} (source-tx to destination execution p50, 24h) across measured source chains."
+  - "Sub-second BFT chains lead: BNB Chain and Solana finalize source blocks fast enough that DON commit + execution lands in the low-single-digit minutes rather than the 15+ minute range Ethereum inherits."
+  - "Ethereum-source lanes are structurally slower by ~12-15 minutes than L2s that don't inherit Ethereum finality. This is a property of the CCIP security model (waits for source finality), not a performance bug."
+
+faq:
+  - q: "What is Chainlink CCIP?"
+    a: "CCIP (Cross-Chain Interoperability Protocol) is a cross-chain messaging network operated by the Chainlink DON. It underpins production integrations at Aave, Vault protocols, and multiple cross-chain token bridges. The security model relies on a Risk Management Network (RMN) and finality-aware settlement , the DON waits for source-chain finality before committing a merkle root."
+  - q: "What does this benchmark measure?"
+    a: "Wall-clock seconds from a source-chain transaction to destination-chain execution for CCIP messages that reached `status: SUCCESS`. It is a passive measurement of real user traffic , every observation is a CCIP message that a real user or protocol actually sent."
+  - q: "Why is Ethereum-source so much slower than other chains?"
+    a: "CCIP intentionally waits for source-chain finality before its DON commits a merkle root. On Ethereum, that means waiting for Casper FFG finalization , typically 12-15 minutes, up to ~25 minutes in adverse epochs. This is a security choice, not a performance bug. Sub-second BFT chains (BNB, Solana) finalize quickly, so their end-to-end latency is dominated by DON work + destination execution rather than finality wait."
+  - q: "How does the data get sourced?"
+    a: "The harness polls the public `https://api.ccip.chain.link/v2/messages` endpoint every 60 seconds and records `receiptTimestamp - sendTimestamp` for each new `SUCCESS` message. The endpoint is Chainlink's own CCIP Tools API , no auth required, ~200ms round-trip. No canary transactions are sent, no user funds are used."
+  - q: "Which source chain is fastest for CCIP today?"
+    a: "{{best_name}} currently leads at {{best_p50}} (p50 over the last 24 hours). The leaderboard re-sorts continuously against fresh Prometheus samples; the ranking on this page is the ranking right now."
+  - q: "Can I compare this to the Wormhole VAA bench?"
+    a: "Only carefully. CCIP measures end-to-end delivery (source tx → destination execution) after waiting for source-chain finality, while the Wormhole VAA bench measures observation → quorum (pre-finality signing). On Ethereum-source lanes CCIP will look 12-15 minutes slower, but that reflects a security choice, not raw protocol speed. The cross-chain messaging comparison meta-bench exposes a finality-normalized column so the pure DON+execution work is directly comparable to Wormhole's signing latency."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/chainlink-ccip-latency
+
+prometheus:
+  window: 24h
+  freshness_metric: ccip_message_seen_total
+
+providers:
+  - slug: ethereum
+    name: Ethereum
+    tag: Ethereum → any chain, DON commits after Casper FFG finality
+    formula: "50th percentile over 24h of Chainlink CCIP end-to-end delivery latency for messages sourced from Ethereum: wall-clock delta from source-tx timestamp to destination-execution timestamp, observed via the CCIP Tools API."
+    queries:
+      p50: histogram_quantile(0.50, sum by(le) (rate(ccip_message_latency_milliseconds_bucket{source_chain="ethereum"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(ccip_message_latency_milliseconds_bucket{source_chain="ethereum"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(ccip_message_latency_milliseconds_bucket{source_chain="ethereum"}[24h])))
+      mean: sum(rate(ccip_message_latency_milliseconds_sum{source_chain="ethereum"}[24h])) / sum(rate(ccip_message_latency_milliseconds_count{source_chain="ethereum"}[24h]))
+      sample_size: sum(increase(ccip_message_seen_total{source_chain="ethereum"}[24h]))
+      series: histogram_quantile(0.50, sum by(le) (rate(ccip_message_latency_milliseconds_bucket{source_chain="ethereum"}[1h])))
+
+  - slug: solana
+    name: Solana
+    tag: Solana → any chain, DON commits after Solana finalized commitment
+    formula: "50th percentile over 24h of Chainlink CCIP end-to-end delivery latency for messages sourced from Solana."
+    queries:
+      p50: histogram_quantile(0.50, sum by(le) (rate(ccip_message_latency_milliseconds_bucket{source_chain="solana"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(ccip_message_latency_milliseconds_bucket{source_chain="solana"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(ccip_message_latency_milliseconds_bucket{source_chain="solana"}[24h])))
+      mean: sum(rate(ccip_message_latency_milliseconds_sum{source_chain="solana"}[24h])) / sum(rate(ccip_message_latency_milliseconds_count{source_chain="solana"}[24h]))
+      sample_size: sum(increase(ccip_message_seen_total{source_chain="solana"}[24h]))
+      series: histogram_quantile(0.50, sum by(le) (rate(ccip_message_latency_milliseconds_bucket{source_chain="solana"}[1h])))
+
+  - slug: bnb
+    name: BNB Chain
+    tag: BNB Chain → any chain, DON commits after BEP-126 fast-finality
+    formula: "50th percentile over 24h of Chainlink CCIP end-to-end delivery latency for messages sourced from BNB Chain."
+    queries:
+      p50: histogram_quantile(0.50, sum by(le) (rate(ccip_message_latency_milliseconds_bucket{source_chain="bnb"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(ccip_message_latency_milliseconds_bucket{source_chain="bnb"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(ccip_message_latency_milliseconds_bucket{source_chain="bnb"}[24h])))
+      mean: sum(rate(ccip_message_latency_milliseconds_sum{source_chain="bnb"}[24h])) / sum(rate(ccip_message_latency_milliseconds_count{source_chain="bnb"}[24h]))
+      sample_size: sum(increase(ccip_message_seen_total{source_chain="bnb"}[24h]))
+      series: histogram_quantile(0.50, sum by(le) (rate(ccip_message_latency_milliseconds_bucket{source_chain="bnb"}[1h])))
+
+  - slug: polygon
+    name: Polygon
+    tag: Polygon PoS → any chain, DON commits after Bor block confirmation
+    formula: "50th percentile over 24h of Chainlink CCIP end-to-end delivery latency for messages sourced from Polygon."
+    queries:
+      p50: histogram_quantile(0.50, sum by(le) (rate(ccip_message_latency_milliseconds_bucket{source_chain="polygon"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(ccip_message_latency_milliseconds_bucket{source_chain="polygon"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(ccip_message_latency_milliseconds_bucket{source_chain="polygon"}[24h])))
+      mean: sum(rate(ccip_message_latency_milliseconds_sum{source_chain="polygon"}[24h])) / sum(rate(ccip_message_latency_milliseconds_count{source_chain="polygon"}[24h]))
+      sample_size: sum(increase(ccip_message_seen_total{source_chain="polygon"}[24h]))
+      series: histogram_quantile(0.50, sum by(le) (rate(ccip_message_latency_milliseconds_bucket{source_chain="polygon"}[1h])))
+
+  - slug: avalanche
+    name: Avalanche
+    tag: Avalanche C-Chain → any chain, DON commits after Snowman++ finality
+    formula: "50th percentile over 24h of Chainlink CCIP end-to-end delivery latency for messages sourced from Avalanche."
+    queries:
+      p50: histogram_quantile(0.50, sum by(le) (rate(ccip_message_latency_milliseconds_bucket{source_chain="avalanche"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(ccip_message_latency_milliseconds_bucket{source_chain="avalanche"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(ccip_message_latency_milliseconds_bucket{source_chain="avalanche"}[24h])))
+      mean: sum(rate(ccip_message_latency_milliseconds_sum{source_chain="avalanche"}[24h])) / sum(rate(ccip_message_latency_milliseconds_count{source_chain="avalanche"}[24h]))
+      sample_size: sum(increase(ccip_message_seen_total{source_chain="avalanche"}[24h]))
+      series: histogram_quantile(0.50, sum by(le) (rate(ccip_message_latency_milliseconds_bucket{source_chain="avalanche"}[1h])))
+
+  - slug: arbitrum
+    name: Arbitrum
+    tag: Arbitrum One → any chain, DON commits after inherited Ethereum finality
+    formula: "50th percentile over 24h of Chainlink CCIP end-to-end delivery latency for messages sourced from Arbitrum."
+    queries:
+      p50: histogram_quantile(0.50, sum by(le) (rate(ccip_message_latency_milliseconds_bucket{source_chain="arbitrum"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(ccip_message_latency_milliseconds_bucket{source_chain="arbitrum"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(ccip_message_latency_milliseconds_bucket{source_chain="arbitrum"}[24h])))
+      mean: sum(rate(ccip_message_latency_milliseconds_sum{source_chain="arbitrum"}[24h])) / sum(rate(ccip_message_latency_milliseconds_count{source_chain="arbitrum"}[24h]))
+      sample_size: sum(increase(ccip_message_seen_total{source_chain="arbitrum"}[24h]))
+      series: histogram_quantile(0.50, sum by(le) (rate(ccip_message_latency_milliseconds_bucket{source_chain="arbitrum"}[1h])))
+
+  - slug: base
+    name: Base
+    tag: Base → any chain, DON commits after L2 block + inherited Ethereum finality
+    formula: "50th percentile over 24h of Chainlink CCIP end-to-end delivery latency for messages sourced from Base."
+    queries:
+      p50: histogram_quantile(0.50, sum by(le) (rate(ccip_message_latency_milliseconds_bucket{source_chain="base"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(ccip_message_latency_milliseconds_bucket{source_chain="base"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(ccip_message_latency_milliseconds_bucket{source_chain="base"}[24h])))
+      mean: sum(rate(ccip_message_latency_milliseconds_sum{source_chain="base"}[24h])) / sum(rate(ccip_message_latency_milliseconds_count{source_chain="base"}[24h]))
+      sample_size: sum(increase(ccip_message_seen_total{source_chain="base"}[24h]))
+      series: histogram_quantile(0.50, sum by(le) (rate(ccip_message_latency_milliseconds_bucket{source_chain="base"}[1h])))
+
+  - slug: optimism
+    name: Optimism
+    tag: Optimism → any chain, DON commits after L2 block + inherited Ethereum finality
+    formula: "50th percentile over 24h of Chainlink CCIP end-to-end delivery latency for messages sourced from Optimism."
+    queries:
+      p50: histogram_quantile(0.50, sum by(le) (rate(ccip_message_latency_milliseconds_bucket{source_chain="optimism"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(ccip_message_latency_milliseconds_bucket{source_chain="optimism"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(ccip_message_latency_milliseconds_bucket{source_chain="optimism"}[24h])))
+      mean: sum(rate(ccip_message_latency_milliseconds_sum{source_chain="optimism"}[24h])) / sum(rate(ccip_message_latency_milliseconds_count{source_chain="optimism"}[24h]))
+      sample_size: sum(increase(ccip_message_seen_total{source_chain="optimism"}[24h]))
+      series: histogram_quantile(0.50, sum by(le) (rate(ccip_message_latency_milliseconds_bucket{source_chain="optimism"}[1h])))
