@@ -315,7 +315,35 @@ export function buildBenchDatasetJsonLd(
     datePublished: input.datePublished,
     ...(input.dateModified ? { dateModified: input.dateModified } : {}),
     variableMeasured: input.variableMeasured,
-    isPartOf: { "@id": `${SITE.url}/#dataset` },
+    // Reference to the site-wide Dataset (defined on the home page). Google
+    // Search Console validates each Dataset in isolation and does NOT stitch
+    // cross-document @id refs, so an @id-only shape here made GSC flag the
+    // referenced node as "missing name / description / creator / distribution"
+    // (same failure mode we already fixed for `creator` above). Inline the
+    // fields the validator requires so the reference stands on its own.
+    isPartOf: {
+      "@type": "Dataset",
+      "@id": `${SITE.url}/#dataset`,
+      name: "OpenChainBench Benchmarks",
+      description:
+        "Daily open benchmarks of crypto infrastructure: RPC latency, bridge fees, L2 finality, price feeds, oracle deviation. Continuously measured harnesses, JSON via /api/citable + parquet on Hugging Face.",
+      url: SITE.url,
+      creator: CREATOR_PUBLISHER,
+      license: DATASET_LICENSE,
+      isAccessibleForFree: true,
+      distribution: [
+        {
+          "@type": "DataDownload",
+          encodingFormat: "application/json",
+          contentUrl: CITABLE_JSON_URL,
+        },
+        {
+          "@type": "DataDownload",
+          encodingFormat: "application/parquet",
+          contentUrl: HF_HEADLINES_LATEST,
+        },
+      ],
+    },
     distribution: [
       {
         "@type": "DataDownload",
