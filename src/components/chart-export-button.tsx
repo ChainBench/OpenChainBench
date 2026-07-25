@@ -19,8 +19,10 @@
  */
 
 import { useCallback, useState } from "react";
-import { Copy, Download, Check, Loader2 } from "lucide-react";
+import { Copy, Download, Check, Loader2, FileText } from "lucide-react";
 import { toBlob } from "html-to-image";
+
+type CsvLine = { slug: string; name: string; values: (number | null)[] };
 
 type Props = {
   /** Ref to the element to capture. Should include chart + watermark. */
@@ -29,6 +31,12 @@ type Props = {
   filename?: string;
   /** Optional class to tweak wrapper size. */
   className?: string;
+  /** When provided, shows a CSV download button. */
+  csvLines?: CsvLine[];
+  /** Total hours the series spans (used to back-fill timestamps). */
+  rangeHours?: number;
+  /** Expected number of points in each series. */
+  rangePoints?: number;
 };
 
 const PIXEL_RATIO = 2; // Retina-quality PNG for legible screenshots.
@@ -37,10 +45,14 @@ export function ChartExportButton({
   targetRef,
   filename = "openchainbench-chart",
   className = "",
+  csvLines,
+  rangeHours = 24,
+  rangePoints,
 }: Props) {
   const [state, setState] = useState<
     "idle" | "working" | "copied" | "downloaded" | "error"
   >("idle");
+  const [csvState, setCsvState] = useState<"idle" | "done">("idle");
 
   const capture = useCallback(async (): Promise<Blob | null> => {
     const el = targetRef.current;
@@ -121,6 +133,35 @@ export function ChartExportButton({
     }
   }, [capture, filename]);
 
+  const onDownloadCsv = useCallback(() => {
+    if (!csvLines || csvLines.length === 0) return;
+    const now = Date.now();
+    const rangeMs = rangeHours * 3_600_000;
+    const nPoints = rangePoints ?? csvLines[0]?.values.length ?? 72;
+    const stepMs = rangeMs / nPoints;
+    const header = ["timestamp", ...csvLines.map((l) => l.name)].join(",");
+    const rows = (csvLines[0]?.values ?? []).map((_, i) => {
+      const ts = new Date(now - rangeMs + (i + 1) * stepMs).toISOString();
+      const vals = csvLines.map((l) => {
+        const v = l.values[i];
+        return v == null ? "" : String(v);
+      });
+      return [ts, ...vals].join(",");
+    });
+    const blob = new Blob([[header, ...rows].join("\n")], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${filename}.csv`;
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    setCsvState("done");
+    setTimeout(() => setCsvState("idle"), 1600);
+  }, [csvLines, rangeHours, rangePoints, filename]);
+
   return (
     <span
       data-chart-export-button="true"
@@ -154,7 +195,7 @@ export function ChartExportButton({
         type="button"
         onClick={onDownload}
         disabled={state === "working"}
-        className="inline-flex items-center gap-1.5 rounded-r-md px-2 py-1 text-ink transition-colors hover:bg-paper-soft disabled:opacity-60"
+        className={`inline-flex items-center gap-1.5 px-2 py-1 text-ink transition-colors hover:bg-paper-soft disabled:opacity-60 ${csvLines && csvLines.length > 0 ? "" : "rounded-r-md"}`}
         title="Download chart as PNG"
         aria-label="Download chart as PNG"
       >
@@ -164,6 +205,24 @@ export function ChartExportButton({
           <Download size={11} strokeWidth={2} />
         )}
       </button>
+      {csvLines && csvLines.length > 0 && (
+        <>
+          <span aria-hidden className="h-4 w-px bg-ink/15" />
+          <button
+            type="button"
+            onClick={onDownloadCsv}
+            className="inline-flex items-center gap-1.5 rounded-r-md px-2 py-1 text-ink transition-colors hover:bg-paper-soft"
+            title="Download chart data as CSV"
+            aria-label="Download chart data as CSV"
+          >
+            {csvState === "done" ? (
+              <Check size={11} strokeWidth={2.4} />
+            ) : (
+              <FileText size={11} strokeWidth={2} />
+            )}
+          </button>
+        </>
+      )}
     </span>
   );
 }
