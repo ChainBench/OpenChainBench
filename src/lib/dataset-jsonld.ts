@@ -266,7 +266,23 @@ export function buildBenchStatReportJsonLd(
     // from creator/publisher (the Org) so the report carries both an
     // institutional and a human attribution signal.
     contributor: { "@id": PERSON_ID },
-    isBasedOn: { "@id": `${input.url}#dataset` },
+    // Reference to the bench Dataset defined in the same @graph on this
+    // page. Google Rich Results Test still validates @id-only refs as
+    // standalone Dataset items (see the isPartOf fix in this file), so
+    // inline the required fields to prevent "3 items detected: some
+    // invalid" (the isBasedOn ref was the mystery 3rd Dataset flagged
+    // on ws-head-latency-*, xstocks-peg and every bench with a
+    // StatisticalReport companion).
+    isBasedOn: {
+      "@type": "Dataset",
+      "@id": `${input.url}#dataset`,
+      name: input.benchTitle,
+      description: input.description,
+      url: input.url,
+      creator: CREATOR_PUBLISHER,
+      license: DATASET_LICENSE,
+      isAccessibleForFree: true,
+    },
     license: DATASET_LICENSE,
     isAccessibleForFree: true,
     mainEntity: {

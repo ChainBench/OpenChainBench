@@ -375,8 +375,20 @@ export default async function BenchmarkChainPage({
         author: [{ "@id": PERSON_ID }, { "@id": `${SITE.url}/#org` }],
         reviewedBy: { "@id": PERSON_ID },
         publisher: { "@id": `${SITE.url}/#org` },
-        about: { "@id": `${benchmarkUrl}#dataset` },
-        isPartOf: { "@id": `${benchmarkUrl}#article` },
+        // `about` describes the topic. Point at the metric as a Thing
+        // rather than @id-referencing the parent bench Dataset (cross-doc
+        // @id refs get validated as standalone incomplete Datasets by
+        // Google, same class of issue as the isPartOf/isBasedOn fixes).
+        about: { "@type": "Thing", name: benchmark.metric },
+        // isPartOf: parent bench article. Inline the required fields so
+        // the reference validates on its own (Google does not stitch
+        // cross-page @id refs).
+        isPartOf: {
+          "@type": "TechArticle",
+          "@id": `${benchmarkUrl}#article`,
+          name: benchmark.title,
+          url: benchmarkUrl,
+        },
       },
       buildBreadcrumbJsonLd([
         { name: "Home", item: SITE.url },
