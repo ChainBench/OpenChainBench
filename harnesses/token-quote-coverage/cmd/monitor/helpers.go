@@ -29,6 +29,22 @@ func classifyNetErr(err error) string {
 	return "network"
 }
 
+// chainSlug maps Virtuals API chain names (e.g. "ROBINHOOD", "BASE") to our chain slugs.
+func chainSlug(apiChain string) string {
+	switch strings.ToUpper(apiChain) {
+	case "ROBINHOOD":
+		return "robinhood"
+	case "BASE":
+		return "base"
+	case "BSC", "BNB":
+		return "bsc"
+	case "SOLANA":
+		return "solana"
+	default:
+		return "base" // fallback: Virtuals was originally Base-only
+	}
+}
+
 // snippet returns at most 200 bytes of a response body for logging.
 func snippet(b []byte) string {
 	if len(b) > 200 {
