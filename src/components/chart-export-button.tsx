@@ -20,7 +20,7 @@
 
 import { useCallback, useState } from "react";
 import { Copy, Download, Check, Loader2 } from "lucide-react";
-import { toPng } from "html-to-image";
+import { toBlob } from "html-to-image";
 
 type Props = {
   /** Ref to the element to capture. Should include chart + watermark. */
@@ -47,24 +47,35 @@ export function ChartExportButton({
     if (!el) return null;
     // Force a solid background — html-to-image renders transparency by
     // default which produces unreadable screenshots on dark UIs when the
-    // user pastes into a light chat / doc.
+    // user pastes into a light chat / doc. The computed value from the
+    // page CSS is normally an oklch(...) triple which the canvas ctx
+    // accepts fine, but if unset we hard-fall-back to a dark hex so
+    // the export never leaks a transparent PNG.
     const bg =
+      getComputedStyle(document.body).backgroundColor ||
       getComputedStyle(document.documentElement)
         .getPropertyValue("--color-paper")
-        .trim() || "#0b0b0d";
-    const dataUrl = await toPng(el, {
+        .trim() ||
+      "#0b0b0d";
+    // toBlob → direct Blob output. Avoids the dataURL → fetch → blob()
+    // intermediate step which OOMs for large canvases in Safari and
+    // sometimes silently produces empty PNGs. Also skips the "download
+    // blocked because the click gesture context expired" trap since we
+    // hand a real Blob to the caller synchronously right after await.
+    const blob = await toBlob(el, {
       pixelRatio: PIXEL_RATIO,
       backgroundColor: bg,
       cacheBust: true,
-      // Skip external images with tainted crossOrigin (provider logos are
-      // same-origin from /logos/* so they render fine; anything else that
-      // fails to load is silently dropped rather than aborting the whole
-      // export).
       skipFonts: false,
+      // Drop the export button itself from the capture — no point
+      // baking the "Copy" pill into every screenshot.
+      filter: (node) => {
+        if (!(node instanceof HTMLElement)) return true;
+        return !node.dataset.chartExportButton;
+      },
       style: { boxShadow: "none" },
     });
-    const res = await fetch(dataUrl);
-    return await res.blob();
+    return blob;
   }, [targetRef]);
 
   const onCopy = useCallback(async () => {
@@ -89,7 +100,7 @@ export function ChartExportButton({
       setState("copied");
       setTimeout(() => setState("idle"), 1600);
     } catch (err) {
-      console.warn("[chart-export] copy failed", err);
+      console.error("[chart-export] copy failed", err);
       setState("error");
       setTimeout(() => setState("idle"), 2200);
     }
@@ -99,19 +110,22 @@ export function ChartExportButton({
     setState("working");
     try {
       const blob = await capture();
-      if (!blob) throw new Error("no target");
+      if (!blob) throw new Error("capture returned no blob");
       triggerDownload(blob, filename);
       setState("downloaded");
       setTimeout(() => setState("idle"), 1600);
     } catch (err) {
-      console.warn("[chart-export] download failed", err);
+      console.error("[chart-export] download failed", err);
       setState("error");
       setTimeout(() => setState("idle"), 2200);
     }
   }, [capture, filename]);
 
   return (
-    <span className={`inline-flex items-center rounded-md border border-ink/15 bg-paper shadow-sm ${className}`}>
+    <span
+      data-chart-export-button="true"
+      className={`inline-flex items-center rounded-md border border-ink/15 bg-paper shadow-sm ${className}`}
+    >
       <button
         type="button"
         onClick={onCopy}
@@ -159,8 +173,12 @@ function triggerDownload(blob: Blob, filename: string) {
   const a = document.createElement("a");
   a.href = url;
   a.download = `${filename}.png`;
+  // Safari occasionally aborts programmatic downloads if the object URL
+  // is revoked before the browser processes the click. Give it a full
+  // second before releasing the URL.
+  a.rel = "noopener";
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
 }
