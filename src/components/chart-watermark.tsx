@@ -23,7 +23,7 @@
 export function ChartWatermarkSvg({
   cx,
   cy,
-  fontSize = 48,
+  fontSize = 34,
 }: {
   /** Center X of the plot area (padL + innerW/2). */
   cx: number;
@@ -43,10 +43,10 @@ export function ChartWatermarkSvg({
       style={{
         fontFamily: "var(--font-jetbrains-mono, ui-monospace, monospace)",
         fontSize: `${fontSize}px`,
-        fontWeight: 600,
+        fontWeight: 500,
         letterSpacing: "0.06em",
         fill: "var(--color-ink)",
-        fillOpacity: 0.09,
+        fillOpacity: 0.04,
       }}
     >
       openchainbench.com
@@ -58,8 +58,8 @@ export function ChartWatermarkHtml() {
   return (
     <span
       aria-hidden
-      className="pointer-events-none absolute inset-0 z-0 flex items-center justify-center select-none font-mono font-semibold uppercase text-[clamp(1.4rem,4.2vw,2.6rem)] tracking-[0.08em] text-ink"
-      style={{ opacity: 0.09, transform: "rotate(-22deg)" }}
+      className="pointer-events-none absolute inset-0 z-0 flex items-center justify-center select-none font-mono font-medium uppercase text-[clamp(1rem,3vw,1.9rem)] tracking-[0.08em] text-ink"
+      style={{ opacity: 0.045, transform: "rotate(-22deg)" }}
     >
       openchainbench.com
     </span>

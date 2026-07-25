@@ -42,6 +42,7 @@ func FetchVirtualsTokens(ctx context.Context) ([]boostEntry, error) {
 
 	type item struct {
 		TokenAddress string `json:"tokenAddress"`
+		Chain        string `json:"chain"`
 	}
 
 	var items []item
@@ -67,7 +68,8 @@ func FetchVirtualsTokens(ctx context.Context) ([]boostEntry, error) {
 			continue
 		}
 		seen[k] = true
-		out = append(out, boostEntry{ChainId: "base", TokenAddress: it.TokenAddress, Venue: "virtuals"})
+		chain := chainSlug(it.Chain)
+		out = append(out, boostEntry{ChainId: chain, TokenAddress: it.TokenAddress, Venue: "virtuals"})
 	}
 	return out, nil
 }
