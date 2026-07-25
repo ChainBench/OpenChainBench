@@ -111,19 +111,19 @@ export function renderTemplate(text: string, benchmark: Benchmark): string {
       const k = keyword.toLowerCase();
       if (k === "best_name") {
         const lead = bestForChain(benchmark, chain);
-        return lead ? lead.name : whole;
+        return lead ? lead.name : "";
       }
       if (k === "best_p50") {
         const lead = bestForChain(benchmark, chain);
-        return lead ? fmtUnit(lead.ms.p50, benchmark.unit) : whole;
+        return lead ? fmtUnit(lead.ms.p50, benchmark.unit) : "";
       }
       if (k === "worst_name") {
         const trailer = worstForChain(benchmark, chain);
-        return trailer ? trailer.name : whole;
+        return trailer ? trailer.name : "";
       }
       if (k === "worst_p50") {
         const trailer = worstForChain(benchmark, chain);
-        return trailer ? fmtUnit(trailer.ms.p50, benchmark.unit) : whole;
+        return trailer ? fmtUnit(trailer.ms.p50, benchmark.unit) : "";
       }
       return whole;
     },
@@ -146,13 +146,13 @@ export function renderTemplate(text: string, benchmark: Benchmark): string {
         return fmtUnit(raw, benchmark.unit);
       }
       case "best_name":
-        return best ? best.name : whole;
+        return best ? best.name : "";
       case "best_p50":
-        return best ? fmtUnit(best.ms.p50, benchmark.unit) : whole;
+        return best ? fmtUnit(best.ms.p50, benchmark.unit) : "";
       case "worst_name":
-        return worst ? worst.name : whole;
+        return worst ? worst.name : "";
       case "worst_p50":
-        return worst ? fmtUnit(worst.ms.p50, benchmark.unit) : whole;
+        return worst ? fmtUnit(worst.ms.p50, benchmark.unit) : "";
       case "count":
         return String(live.length);
       default:

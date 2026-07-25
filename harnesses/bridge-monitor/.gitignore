@@ -1,5 +1,7 @@
 .env
 bin/
+spend-state.json
+spend-state.json.tmp
 *.log
 prometheus_data/
 grafana_data/
