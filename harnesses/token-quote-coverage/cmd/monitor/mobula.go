@@ -58,10 +58,14 @@ func (p *MobulaProvider) Quote(ctx context.Context, token Token) (ok bool) {
 		return false
 	}
 
+	amount := "1"
+	if token.Chain == "solana" {
+		amount = "1000000"
+	}
 	q := url.Values{}
 	q.Set("tokenIn", tokenIn)
 	q.Set("tokenOut", token.Address)
-	q.Set("amount", "1000000")
+	q.Set("amount", amount)
 	q.Set("chainId", chainId)
 	q.Set("walletAddress", wallet)
 	endpoint := "https://api.mobula.io/api/2/swap/quoting?" + q.Encode()
