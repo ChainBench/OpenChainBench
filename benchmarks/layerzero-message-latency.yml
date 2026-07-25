@@ -1,0 +1,177 @@
+# OpenChainBench. Bench № 104
+
+slug: layerzero-message-latency
+number: "104"
+title: Fastest LayerZero source chain by end-to-end message delivery
+seo_title: "Fastest LayerZero source chain 2026"
+seo_description: "{{best_name}} leads LayerZero end-to-end delivery at {{best_p50}} (source-tx to destination execution p50, 24h). Observed, not simulated."
+subtitle: Wall-clock seconds from source-chain transaction to destination-chain execution for a LayerZero message, measured across LayerZero source chains via the public layerzero-scan feed.
+
+category: Bridges
+status: draft
+metric: LayerZero delivery
+unit: ms
+higher_is_better: false
+
+seo_intro: |
+  LayerZero is a cross-chain messaging network built on a
+  configurable Decentralized Verifier Network (DVN) stack. When a
+  transaction on a source chain emits a LayerZero message, the
+  application-selected DVNs each verify the source block, the
+  application-selected Executor then delivers the message on the
+  destination chain. This benchmark measures end-to-end message
+  delivery latency by source chain: wall-clock seconds from the
+  source-tx block timestamp to the destination-tx block timestamp for
+  every DELIVERED message returned by layerzero-scan.
+  Every value on this page is an observation of real user traffic
+  (Stargate, LayerZero-native applications, cross-chain token
+  bridges), never a canary transaction. Latency distribution reflects
+  the combined DVN verification time + Executor delivery time +
+  destination block inclusion. Sub-second BFT source chains (BNB,
+  Sui) minimize the observation floor; L1s with longer block times
+  (Ethereum ~12s) inherit that floor before DVN work even begins.
+
+abstract: |
+  For each LayerZero-supported source chain with non-trivial mainnet
+  traffic, we measure the wall-clock latency between a source-chain
+  transaction and destination-chain execution. Data source: the public
+  `https://scan.layerzero-api.com/v1/messages/latest` feed, polled
+  every 60 seconds with two pages of 150 messages each. Each
+  DELIVERED message's `destination.blockTimestamp -
+  source.blockTimestamp` is one observation of end-to-end latency,
+  recorded in a per-source-chain histogram. The p50/p90/p99 shown
+  here are computed via Prometheus `histogram_quantile` over the
+  last 24 hours.
+
+methodology:
+  - "Data source: `https://scan.layerzero-api.com/v1/messages/latest?limit=150`, the public LayerZero Scan API. Polled every 60 seconds, 2 pages per poll (cursor via `nextToken`)."
+  - "Latency definition: `destination.tx.blockTimestamp - source.tx.blockTimestamp` from a LayerZero message row with `status.name: DELIVERED`. Both timestamps are Unix seconds from the source and destination chain blocks respectively."
+  - "Filter: only `DELIVERED` messages contribute to latency. In-flight statuses (INFLIGHT, CONFIRMING, PAYLOAD_STORED, BLOCKED, FAILED) are counted separately in `lz_message_status_total` so a spike in CONFIRMING without matching DELIVERED surfaces a stuck-message incident."
+  - "Dedupe: last 10 000 guids kept in memory (rolling FIFO). LayerZero sustained rate is ~4 messages/second network-wide, so the cache holds ~40 minutes of history."
+  - "Bucketing: histogram with buckets 2, 5, 10, 15, 20, 30, 45, 60, 90, 120, 180, 300, 600, 900, 1200, 1800 seconds (30 min ceiling)."
+  - "Guard: samples with delta `< 0` or `> 30 min` are dropped (clock skew, stuck messages re-executed later)."
+  - "No canary transactions: this bench observes organic LayerZero traffic (~250 messages/hour network-wide). No wallet is funded, no gas is paid."
+  - "Scope: LayerZero-supported source chains with mainnet traffic in the observation window. LayerZero exposes many exotic chains (orderly, flare, ape, robinhood) that show up as separate rows once volume is non-trivial; low-traffic sources will have wide error bars."
+  - "Fair-comparison caveat: LayerZero DVNs sign pre-finality by default, so end-to-end delivery excludes the source-chain finality wait that finality-aware networks (Chainlink CCIP) impose. Comparing raw numbers to CCIP on ETH-source lanes is not apples-to-apples; the meta-bench view (cross-chain-messaging-comparison) exposes a finality-normalized column."
+
+findings:
+  - "{{best_name}} currently leads LayerZero end-to-end delivery at {{best_p50}} (source-tx to destination execution p50, 24h) across measured source chains."
+  - "Sub-second BFT source chains lead: BNB Chain and Solana finalize source blocks fast enough that end-to-end delivery lands in single-digit seconds once DVN verification and Executor delivery complete."
+  - "Ethereum-source lanes inherit the ~12s block-time floor; delivery to the destination adds DVN verification round-trip (typically 20-60s) and destination block inclusion."
+
+faq:
+  - q: "What is LayerZero?"
+    a: "LayerZero is a cross-chain messaging network built on a configurable DVN (Decentralized Verifier Network) stack. Applications choose which DVNs verify their messages and which Executor delivers them, so the security model is application-defined rather than a single global consensus like Wormhole or CCIP."
+  - q: "What does this benchmark measure?"
+    a: "Wall-clock seconds from a source-chain transaction to destination-chain execution for LayerZero messages that reached DELIVERED status. It is a passive measurement of real user traffic , every observation is a LayerZero message a real user or protocol actually sent."
+  - q: "Why do some source chains have huge tails?"
+    a: "Two causes typically. First, some source chains have long block times (Ethereum ~12s), which sets a floor before DVN work even begins. Second, the DVN + Executor pair the application selects can be slow if it is a low-liquidity or under-resourced set , this is a choice the application makes, not a property of LayerZero itself."
+  - q: "How does the data get sourced?"
+    a: "The harness polls the public `https://scan.layerzero-api.com/v1/messages/latest` endpoint every 60 seconds and records `destination.blockTimestamp - source.blockTimestamp` for each new DELIVERED message. The endpoint is LayerZero's own scan API , no auth required. No canary transactions are sent, no user funds are used."
+  - q: "Which source chain is fastest for LayerZero today?"
+    a: "{{best_name}} currently leads at {{best_p50}} (p50 over the last 24 hours). The leaderboard re-sorts continuously against fresh Prometheus samples; the ranking on this page is the ranking right now."
+  - q: "Can I compare this to the Chainlink CCIP or Wormhole bench?"
+    a: "Only carefully. LayerZero DVNs sign pre-finality by default; CCIP waits for source-chain finality before its DON commits; Wormhole Guardians sign a VAA that a relayer then delivers separately. Each protocol measures a slightly different thing when you look at end-to-end wall-clock. The cross-chain messaging comparison meta-bench exposes a finality-normalized column so DVN+Executor work can be compared to CCIP's DON+execution work directly."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/layerzero-message-latency
+
+prometheus:
+  window: 24h
+  freshness_metric: lz_message_seen_total
+
+providers:
+  - slug: ethereum
+    name: Ethereum
+    tag: Ethereum → any chain, ~12s block time floor before DVN verification begins
+    formula: "50th percentile over 24h of LayerZero end-to-end delivery latency for messages sourced from Ethereum."
+    queries:
+      p50: histogram_quantile(0.50, sum by(le) (rate(lz_message_latency_milliseconds_bucket{source_chain="ethereum"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(lz_message_latency_milliseconds_bucket{source_chain="ethereum"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(lz_message_latency_milliseconds_bucket{source_chain="ethereum"}[24h])))
+      mean: sum(rate(lz_message_latency_milliseconds_sum{source_chain="ethereum"}[24h])) / sum(rate(lz_message_latency_milliseconds_count{source_chain="ethereum"}[24h]))
+      sample_size: sum(increase(lz_message_seen_total{source_chain="ethereum"}[24h]))
+      series: histogram_quantile(0.50, sum by(le) (rate(lz_message_latency_milliseconds_bucket{source_chain="ethereum"}[1h])))
+
+  - slug: solana
+    name: Solana
+    tag: Solana → any chain, sub-second slot inclusion + DVN verification
+    formula: "50th percentile over 24h of LayerZero end-to-end delivery latency for messages sourced from Solana."
+    queries:
+      p50: histogram_quantile(0.50, sum by(le) (rate(lz_message_latency_milliseconds_bucket{source_chain="solana"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(lz_message_latency_milliseconds_bucket{source_chain="solana"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(lz_message_latency_milliseconds_bucket{source_chain="solana"}[24h])))
+      mean: sum(rate(lz_message_latency_milliseconds_sum{source_chain="solana"}[24h])) / sum(rate(lz_message_latency_milliseconds_count{source_chain="solana"}[24h]))
+      sample_size: sum(increase(lz_message_seen_total{source_chain="solana"}[24h]))
+      series: histogram_quantile(0.50, sum by(le) (rate(lz_message_latency_milliseconds_bucket{source_chain="solana"}[1h])))
+
+  - slug: bnb
+    name: BNB Chain
+    tag: BNB Chain → any chain, ~3s block time + DVN verification
+    formula: "50th percentile over 24h of LayerZero end-to-end delivery latency for messages sourced from BNB Chain."
+    queries:
+      p50: histogram_quantile(0.50, sum by(le) (rate(lz_message_latency_milliseconds_bucket{source_chain="bnb"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(lz_message_latency_milliseconds_bucket{source_chain="bnb"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(lz_message_latency_milliseconds_bucket{source_chain="bnb"}[24h])))
+      mean: sum(rate(lz_message_latency_milliseconds_sum{source_chain="bnb"}[24h])) / sum(rate(lz_message_latency_milliseconds_count{source_chain="bnb"}[24h]))
+      sample_size: sum(increase(lz_message_seen_total{source_chain="bnb"}[24h]))
+      series: histogram_quantile(0.50, sum by(le) (rate(lz_message_latency_milliseconds_bucket{source_chain="bnb"}[1h])))
+
+  - slug: arbitrum
+    name: Arbitrum
+    tag: Arbitrum One → any chain, sub-second L2 block + DVN verification
+    formula: "50th percentile over 24h of LayerZero end-to-end delivery latency for messages sourced from Arbitrum."
+    queries:
+      p50: histogram_quantile(0.50, sum by(le) (rate(lz_message_latency_milliseconds_bucket{source_chain="arbitrum"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(lz_message_latency_milliseconds_bucket{source_chain="arbitrum"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(lz_message_latency_milliseconds_bucket{source_chain="arbitrum"}[24h])))
+      mean: sum(rate(lz_message_latency_milliseconds_sum{source_chain="arbitrum"}[24h])) / sum(rate(lz_message_latency_milliseconds_count{source_chain="arbitrum"}[24h]))
+      sample_size: sum(increase(lz_message_seen_total{source_chain="arbitrum"}[24h]))
+      series: histogram_quantile(0.50, sum by(le) (rate(lz_message_latency_milliseconds_bucket{source_chain="arbitrum"}[1h])))
+
+  - slug: base
+    name: Base
+    tag: Base → any chain, 2s block time + DVN verification
+    formula: "50th percentile over 24h of LayerZero end-to-end delivery latency for messages sourced from Base."
+    queries:
+      p50: histogram_quantile(0.50, sum by(le) (rate(lz_message_latency_milliseconds_bucket{source_chain="base"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(lz_message_latency_milliseconds_bucket{source_chain="base"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(lz_message_latency_milliseconds_bucket{source_chain="base"}[24h])))
+      mean: sum(rate(lz_message_latency_milliseconds_sum{source_chain="base"}[24h])) / sum(rate(lz_message_latency_milliseconds_count{source_chain="base"}[24h]))
+      sample_size: sum(increase(lz_message_seen_total{source_chain="base"}[24h]))
+      series: histogram_quantile(0.50, sum by(le) (rate(lz_message_latency_milliseconds_bucket{source_chain="base"}[1h])))
+
+  - slug: optimism
+    name: Optimism
+    tag: Optimism → any chain, 2s block time + DVN verification
+    formula: "50th percentile over 24h of LayerZero end-to-end delivery latency for messages sourced from Optimism."
+    queries:
+      p50: histogram_quantile(0.50, sum by(le) (rate(lz_message_latency_milliseconds_bucket{source_chain="optimism"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(lz_message_latency_milliseconds_bucket{source_chain="optimism"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(lz_message_latency_milliseconds_bucket{source_chain="optimism"}[24h])))
+      mean: sum(rate(lz_message_latency_milliseconds_sum{source_chain="optimism"}[24h])) / sum(rate(lz_message_latency_milliseconds_count{source_chain="optimism"}[24h]))
+      sample_size: sum(increase(lz_message_seen_total{source_chain="optimism"}[24h]))
+      series: histogram_quantile(0.50, sum by(le) (rate(lz_message_latency_milliseconds_bucket{source_chain="optimism"}[1h])))
+
+  - slug: polygon
+    name: Polygon
+    tag: Polygon PoS → any chain, Bor block time + DVN verification
+    formula: "50th percentile over 24h of LayerZero end-to-end delivery latency for messages sourced from Polygon."
+    queries:
+      p50: histogram_quantile(0.50, sum by(le) (rate(lz_message_latency_milliseconds_bucket{source_chain="polygon"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(lz_message_latency_milliseconds_bucket{source_chain="polygon"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(lz_message_latency_milliseconds_bucket{source_chain="polygon"}[24h])))
+      mean: sum(rate(lz_message_latency_milliseconds_sum{source_chain="polygon"}[24h])) / sum(rate(lz_message_latency_milliseconds_count{source_chain="polygon"}[24h]))
+      sample_size: sum(increase(lz_message_seen_total{source_chain="polygon"}[24h]))
+      series: histogram_quantile(0.50, sum by(le) (rate(lz_message_latency_milliseconds_bucket{source_chain="polygon"}[1h])))
+
+  - slug: avalanche
+    name: Avalanche
+    tag: Avalanche C-Chain → any chain, Snowman++ sub-second finality + DVN verification
+    formula: "50th percentile over 24h of LayerZero end-to-end delivery latency for messages sourced from Avalanche."
+    queries:
+      p50: histogram_quantile(0.50, sum by(le) (rate(lz_message_latency_milliseconds_bucket{source_chain="avalanche"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(lz_message_latency_milliseconds_bucket{source_chain="avalanche"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(lz_message_latency_milliseconds_bucket{source_chain="avalanche"}[24h])))
+      mean: sum(rate(lz_message_latency_milliseconds_sum{source_chain="avalanche"}[24h])) / sum(rate(lz_message_latency_milliseconds_count{source_chain="avalanche"}[24h]))
+      sample_size: sum(increase(lz_message_seen_total{source_chain="avalanche"}[24h]))
+      series: histogram_quantile(0.50, sum by(le) (rate(lz_message_latency_milliseconds_bucket{source_chain="avalanche"}[1h])))
