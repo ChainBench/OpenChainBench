@@ -10,8 +10,9 @@ import (
 )
 
 const (
-	kyberUSDCBase = "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
-	kyberUSDCBSC  = "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d"
+	kyberUSDCBase      = "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
+	kyberUSDCBSC       = "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d"
+	kyberUSDGRobinhood = "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168"
 )
 
 // KyberSwapProvider hits aggregator-api.kyberswap.com for Base and BSC.
@@ -26,7 +27,7 @@ func NewKyberSwapProvider() *KyberSwapProvider {
 func (p *KyberSwapProvider) Slug() string { return "kyberswap" }
 
 func (p *KyberSwapProvider) SupportsChain(chain string) bool {
-	return chain == "base" || chain == "bsc"
+	return chain == "base" || chain == "bsc" || chain == "robinhood"
 }
 
 func (p *KyberSwapProvider) Quote(ctx context.Context, token Token) (ok bool) {
@@ -38,6 +39,9 @@ func (p *KyberSwapProvider) Quote(ctx context.Context, token Token) (ok bool) {
 	case "bsc":
 		slug = "bsc"
 		usdcAddr = kyberUSDCBSC
+	case "robinhood":
+		slug = "robinhood"
+		usdcAddr = kyberUSDGRobinhood
 	default:
 		RecordProbe(p.Slug(), token.Venue, token.Chain, false)
 		return false
