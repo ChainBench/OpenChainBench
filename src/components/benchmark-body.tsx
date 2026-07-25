@@ -148,6 +148,7 @@ export function BenchmarkBody({
   initialKind = null,
   initialVenue = null,
   hasLongHistory = false,
+  pageActions,
 }: {
   variants: Record<string, Benchmark>;
   chainOptions: ChainOption[];
@@ -165,6 +166,11 @@ export function BenchmarkBody({
    *  below the main ledger. Only set on benches whose harness ships a
    *  long-window archive blob (currently: hyperliquid-frontends). */
   hasLongHistory?: boolean;
+  /** Page-level toolbar (Image / Video / Report). Rendered inline in the
+   *  chart's header row on the left of the ViewSwitcher so the sharing
+   *  affordances sit visually next to the per-chart Copy / Download
+   *  button instead of floating alone at the top of the page. */
+  pageActions?: import("react").ReactNode;
 }) {
   // Read ?chain= / ?region= / ?kind= client-side. The server can't read these any
   // more (doing so would force /benchmarks/<slug> to render dynamic on
@@ -727,7 +733,7 @@ export function BenchmarkBody({
               {view === "countLeaderboard" && (
                 <CountLeaderboard
                   benchmark={viewBenchmark}
-                  headerActions={<ViewSwitcher allowed={allowedViews} value={view} onChange={setView} />}
+                  headerActions={<>{pageActions}<ViewSwitcher allowed={allowedViews} value={view} onChange={setView} /></>}
                 />
               )}
               {view === "rankedBar" && (
@@ -752,7 +758,7 @@ export function BenchmarkBody({
                   onResetExcluded={resetExcluded}
                   disableTopN={hasLayerSplit}
                   topNControl={topNControl}
-                  headerActions={<ViewSwitcher allowed={allowedViews} value={view} onChange={setView} />}
+                  headerActions={<>{pageActions}<ViewSwitcher allowed={allowedViews} value={view} onChange={setView} /></>}
                 />
                 </>
               )}
@@ -764,7 +770,7 @@ export function BenchmarkBody({
                   onResetExcluded={resetExcluded}
                   disableTopN={hasLayerSplit}
                   topNControl={topNControl}
-                  headerActions={<ViewSwitcher allowed={allowedViews} value={view} onChange={setView} />}
+                  headerActions={<>{pageActions}<ViewSwitcher allowed={allowedViews} value={view} onChange={setView} /></>}
                 />
               )}
               {view === "donut" && (
@@ -774,7 +780,7 @@ export function BenchmarkBody({
                   onToggleExclude={toggleExclude}
                   disableTopN={hasLayerSplit}
                   topNControl={topNControl}
-                  headerActions={<ViewSwitcher allowed={allowedViews} value={view} onChange={setView} />}
+                  headerActions={<>{pageActions}<ViewSwitcher allowed={allowedViews} value={view} onChange={setView} /></>}
                 />
               )}
               {view === "timeseries" && (
@@ -807,7 +813,7 @@ export function BenchmarkBody({
                     onResetExcluded={resetExcluded}
                     disableTopN={hasLayerSplit}
                   topNControl={topNControl}
-                    headerActions={<ViewSwitcher allowed={allowedViews} value={view} onChange={setView} />}
+                    headerActions={<>{pageActions}<ViewSwitcher allowed={allowedViews} value={view} onChange={setView} /></>}
                     seriesOverride={activePanel?.seriesByProvider}
                     seriesOverride7d={activePanel?.seriesByProvider7d}
                     seriesOverride30d={activePanel?.seriesByProvider30d}
