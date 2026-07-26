@@ -72,7 +72,7 @@ export function PmVenuesLeaderboard({ rows }: { rows: PmVenueRow[] }) {
           {filtered.length} of {rows.length} venues
         </p>
         <input
-          type="search"
+          type="search" aria-label="Search venue..."
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search venue..."
