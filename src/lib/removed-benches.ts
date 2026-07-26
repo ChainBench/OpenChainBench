@@ -48,6 +48,13 @@ export const RENAMED_BENCH_SLUGS: Record<string, string> = {
 export const REMOVED_ANSWER_SLUGS = new Set([
   "which-evm-aggregator-has-the-fastest-quote",
   "which-solana-rpc-lands-the-most-transactions",
+  // References rpc-keyed-latency (bench 069, staging-only, in
+  // REMOVED_BENCH_SLUGS below). Prod was returning 404 on this answer
+  // page because the underlying bench 410s. Answer stays on staging.
+  "alchemy-vs-quicknode-vs-infura-latency",
+  // References solana-dex-quote-latency (staging-only, in
+  // REMOVED_BENCH_SLUGS). Same pattern.
+  "which-solana-dex-aggregator-is-the-fastest",
 ]);
 
 export const REMOVED_BENCH_SLUGS = new Set([
