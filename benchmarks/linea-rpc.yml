@@ -30,7 +30,7 @@ methodology:
 
 findings:
   - "{{best_name}} currently leads free Linea RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h) across 3 measured providers."
-  - "With only 4 qualifying providers, a single gateway having a bad day reshuffles the whole board; the success-rate column is the tiebreaker the median doesn't show."
+  - "With only 3 qualifying providers, a single gateway having a bad day reshuffles the whole board; the success-rate column is the tiebreaker the median doesn't show."
   - "{{name:tenderly}} covers Linea in its 9-chain public gateway, one of the few non-major chains where its no-key tier reaches."
 
 faq:
