@@ -507,9 +507,24 @@ export default async function BenchmarkPage({
       <h1 className="mt-5 display text-3xl sm:text-4xl md:text-5xl tracking-tight text-ink break-words">
         {benchmark.title}
       </h1>
-      <p className="mt-4 max-w-3xl text-lg sm:text-xl text-ink-muted leading-snug break-words">
-        {benchmark.subtitle}
-      </p>
+      {/* Grounding-line first-under-H1: Perplexity / ChatGPT search /
+          Claude Deep Research scrape the first prose sentence after the
+          H1 as the "citable claim." Previously the methodology-flavoured
+          subtitle sat here; the current-leader sentence carries a
+          concrete provider + number + unit that AI answer engines quote
+          verbatim ("Codex leads head lag at 0.8 s (p50, 24h)..."). Fall
+          back to the subtitle when no defensible leader exists (draft,
+          insufficient, cold start). */}
+      {sentence ? (
+        <p className="mt-4 max-w-3xl text-lg sm:text-xl text-ink leading-snug break-words">
+          <span className="font-medium">{sentence}</span>{" "}
+          <span className="text-ink-muted">{benchmark.subtitle}</span>
+        </p>
+      ) : (
+        <p className="mt-4 max-w-3xl text-lg sm:text-xl text-ink-muted leading-snug break-words">
+          {benchmark.subtitle}
+        </p>
+      )}
 
       {/* Compact "At a glance" card. Rendered as a native <details>
           element so it collapses to a one line summary on click while
