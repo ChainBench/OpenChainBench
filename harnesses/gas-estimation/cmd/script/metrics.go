@@ -124,6 +124,49 @@ var (
 		},
 		[]string{"chain", "kind"},
 	)
+
+	// Over/under split: an inclusion-confidence oracle (over-predicts
+	// on purpose) and a percentile tracker (under-predicts on tail
+	// spikes) can post the same abs error but with opposite user
+	// consequences — over = overpay a few wei, under = tx stuck
+	// waiting for a spike to subside. Emitting the two branches as
+	// separate histograms lets the leaderboard rank them independently
+	// or compose them into an asymmetric loss (over-weight = 0.1,
+	// under-weight = 0.9 → pinball loss at τ=0.9) without ever
+	// hiding the split behind a single abs number.
+	gasErrorPriorityOverHist = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "gas_error_priority_over_gwei_histogram",
+			Help:    "Histogram of over-prediction gap (predicted − realized when predicted > realized, in gwei) per (oracle, tier, chain). Zero when the oracle under-predicts. Reads high for inclusion-confidence oracles by design (Etherscan, MetaMask 'high').",
+			Buckets: []float64{0.001, 0.005, 0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10, 25, 50, 100, 250},
+		},
+		[]string{"oracle", "tier", "chain"},
+	)
+
+	gasErrorPriorityUnderHist = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "gas_error_priority_under_gwei_histogram",
+			Help:    "Histogram of under-prediction gap (realized − predicted when predicted < realized, in gwei) per (oracle, tier, chain). Zero when the oracle over-predicts. Reads high for percentile trackers during spikes (PublicNode feeHistory, Owlracle) — that's when a wrong number actually costs the user their block.",
+			Buckets: []float64{0.001, 0.005, 0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10, 25, 50, 100, 250},
+		},
+		[]string{"oracle", "tier", "chain"},
+	)
+
+	// Lag2 grade: the primary histogram grades a prediction against
+	// the very next block, which rewards whichever oracle scraped the
+	// mempool 100 ms before we did (a latency race, not accuracy).
+	// This companion series grades the same prediction two blocks
+	// later — closer to what a wallet UX actually delivers (sign,
+	// broadcast, propagate). Same buckets so the two are directly
+	// comparable via `quantile_over_time`.
+	gasErrorPriorityLag2Hist = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "gas_error_priority_lag2_gwei_histogram",
+			Help:    "Histogram of |predicted − realized| in gwei, graded 2 blocks after the prediction's target (removes the very-next-block latency-race bias). Buckets identical to the primary histogram so they can be compared directly on the leaderboard.",
+			Buckets: []float64{0.001, 0.005, 0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10, 25, 50, 100, 250},
+		},
+		[]string{"oracle", "tier", "chain"},
+	)
 )
 
 // StartMetricsServer binds /metrics + /health on addr. Blocking call —

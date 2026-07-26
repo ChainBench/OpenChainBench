@@ -301,16 +301,6 @@ func processBlock(ctx context.Context, buf *Buffer, blockNum uint64, chain Chain
 		gasRealizedPriority.WithLabelValues(string(TierP99), chain.Slug).Set(pcts.P99)
 	}
 
-	// Join: pull every pending prediction for THIS block (exact
-	// match) plus the previous block (some oracles target a slightly
-	// different head than the realizer's RPC sees, ±1 tolerance
-	// covers it).
-	predictionsToCheck := buf.Take(blockNum)
-	predictionsToCheck = append(predictionsToCheck, buf.Take(blockNum-1)...)
-	if len(predictionsToCheck) == 0 {
-		return
-	}
-
 	// Every tier now grades against a real percentile of the mined
 	// block. p75 and p99 used to be approximated as (p50+p90)/2 and
 	// p90 respectively — replaced with real values so the leaderboard
@@ -323,21 +313,57 @@ func processBlock(ctx context.Context, buf *Buffer, blockNum uint64, chain Chain
 		TierP99: pcts.P99,
 	}
 
+	// Primary join: pull every pending prediction for THIS block
+	// (exact match) plus the previous block (some oracles target a
+	// slightly different head than the realizer's RPC sees, ±1
+	// tolerance covers it).
+	predictionsToCheck := buf.Take(blockNum)
+	predictionsToCheck = append(predictionsToCheck, buf.Take(blockNum-1)...)
+
 	now := time.Now()
-	for _, p := range predictionsToCheck {
-		ref, ok := realized[p.Tier]
-		if !ok || pcts.TxCount == 0 {
-			continue
-		}
-		errPriority := math.Abs(p.PriorityGwei - ref)
-		gasErrorPriorityGauge.WithLabelValues(string(p.Oracle), string(p.Tier), chain.Slug).Set(errPriority)
-		gasErrorPriorityHist.WithLabelValues(string(p.Oracle), string(p.Tier), chain.Slug).Observe(errPriority)
-		errBase := math.Abs(p.BaseGwei - baseGwei)
-		gasErrorBaseGauge.WithLabelValues(string(p.Oracle), chain.Slug).Set(errBase)
-		if !p.CapturedAt.IsZero() {
-			gasPredictionAge.WithLabelValues(string(p.Oracle), chain.Slug).Observe(now.Sub(p.CapturedAt).Seconds())
+	if len(predictionsToCheck) > 0 && pcts.TxCount > 0 {
+		for _, p := range predictionsToCheck {
+			ref, ok := realized[p.Tier]
+			if !ok {
+				continue
+			}
+			errPriority := math.Abs(p.PriorityGwei - ref)
+			gasErrorPriorityGauge.WithLabelValues(string(p.Oracle), string(p.Tier), chain.Slug).Set(errPriority)
+			gasErrorPriorityHist.WithLabelValues(string(p.Oracle), string(p.Tier), chain.Slug).Observe(errPriority)
+			// Over/under split: only the side the oracle actually
+			// erred on gets a sample this cycle. Percentile trackers
+			// will build fat under histograms, inclusion-confidence
+			// oracles will build fat over histograms; the leaderboard
+			// can then rank on whichever side matches user intent.
+			if p.PriorityGwei > ref {
+				gasErrorPriorityOverHist.WithLabelValues(string(p.Oracle), string(p.Tier), chain.Slug).Observe(p.PriorityGwei - ref)
+			} else if p.PriorityGwei < ref {
+				gasErrorPriorityUnderHist.WithLabelValues(string(p.Oracle), string(p.Tier), chain.Slug).Observe(ref - p.PriorityGwei)
+			}
+			errBase := math.Abs(p.BaseGwei - baseGwei)
+			gasErrorBaseGauge.WithLabelValues(string(p.Oracle), chain.Slug).Set(errBase)
+			if !p.CapturedAt.IsZero() {
+				gasPredictionAge.WithLabelValues(string(p.Oracle), chain.Slug).Observe(now.Sub(p.CapturedAt).Seconds())
+			}
 		}
 	}
+
+	// Lag2 join: at block N, grade predictions that targeted block
+	// N-2 against the current block. Same tier reference values.
+	// Emits into a separate histogram so the primary ranking is
+	// unaffected while the leaderboard can add a "lag=2" secondary
+	// column that removes the very-next-block latency-race bias.
+	if blockNum >= 2 && pcts.TxCount > 0 {
+		lag2Predictions := buf.TakeLag2(blockNum - 2)
+		for _, p := range lag2Predictions {
+			ref, ok := realized[p.Tier]
+			if !ok {
+				continue
+			}
+			gasErrorPriorityLag2Hist.WithLabelValues(string(p.Oracle), string(p.Tier), chain.Slug).Observe(math.Abs(p.PriorityGwei - ref))
+		}
+	}
+
 	fmt.Printf("[realizer/%s] block=%d txs=%d base=%.3f p25/p50/p75/p90/p99=%.3f/%.3f/%.3f/%.3f/%.3f matched=%d\n",
 		chain.Slug, blockNum, pcts.TxCount, baseGwei, pcts.P25, pcts.P50, pcts.P75, pcts.P90, pcts.P99, len(predictionsToCheck))
 }
