@@ -30,6 +30,7 @@ import { defaultViewFor, viewsForBenchmark } from "@/lib/views";
 import { useViewPreference } from "@/hooks/use-view-preference";
 import type { ChainMeta } from "@/components/chain-tabs";
 import { FileText, Check } from "lucide-react";
+import { Hint } from "@/components/hint";
 
 type ChainOption = { value: string; label: string };
 
@@ -139,7 +140,6 @@ const REGION_DISPLAY: Record<string, string> = {
 
 function CsvButton({ benchmark }: { benchmark: Benchmark }) {
   const [done, setDone] = useState(false);
-
   const onClick = useCallback(() => {
     const series = benchmark.extras?.series24h;
     if (!series || Object.keys(series).length === 0) return;
@@ -165,19 +165,18 @@ function CsvButton({ benchmark }: { benchmark: Benchmark }) {
     setDone(true);
     setTimeout(() => setDone(false), 1600);
   }, [benchmark]);
-
   if (!benchmark.extras?.series24h || Object.keys(benchmark.extras.series24h).length === 0) return null;
-
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="inline-flex items-center gap-1.5 rounded-md border border-ink/15 bg-paper px-2 py-1 text-ink shadow-sm transition-colors hover:bg-paper-soft"
-      title="Download chart data as CSV (24 h)"
-      aria-label="Download CSV"
-    >
-      {done ? <Check size={11} strokeWidth={2.4} /> : <FileText size={11} strokeWidth={2} />}
-    </button>
+    <Hint label="Download CSV (24 h)">
+      <button
+        type="button"
+        onClick={onClick}
+        aria-label="Download CSV"
+        className="inline-flex items-center justify-center rounded-md border border-ink/15 bg-paper p-1.5 text-ink shadow-sm transition-colors hover:bg-paper-soft"
+      >
+        {done ? <Check size={13} strokeWidth={2.4} /> : <FileText size={13} strokeWidth={2} />}
+      </button>
+    </Hint>
   );
 }
 

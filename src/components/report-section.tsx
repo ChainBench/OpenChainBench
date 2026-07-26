@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AlertTriangle, CheckCircle2, Loader2, X } from "lucide-react";
+import { Hint } from "@/components/hint";
 
 type Status = "idle" | "submitting" | "ok" | "error";
 
@@ -86,15 +87,16 @@ export function ReportSection({ slug }: Props) {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        aria-label="Report an issue"
-        title="Report an issue"
-        className="inline-flex items-center justify-center rounded-md border border-ink/15 bg-paper p-1.5 text-ink shadow-sm transition-colors hover:bg-paper-soft"
-      >
-        <AlertTriangle size={13} strokeWidth={2} />
-      </button>
+      <Hint label="Report an issue">
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          aria-label="Report an issue"
+          className="inline-flex items-center justify-center rounded-md border border-ink/15 bg-paper p-1.5 text-ink shadow-sm transition-colors hover:bg-paper-soft"
+        >
+          <AlertTriangle size={13} strokeWidth={2} />
+        </button>
+      </Hint>
 
       {open && (
         <div

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Video, X, Check, Loader2, Download, Copy, Share2 } from "lucide-react";
 import type { Benchmark } from "@/types/benchmark";
+import { Hint } from "@/components/hint";
 import { EXPORT_VIDEO_ENABLED } from "@/lib/export-video/config";
 import { fetchBenchSeries } from "@/lib/export-video/fetch-series";
 import { ProviderLogo } from "@/components/provider-logo";
@@ -86,15 +87,16 @@ function ExportVideoModal({ slug, title, benchmark }: Props) {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        aria-label="Export video"
-        title="Export video"
-        className="inline-flex items-center justify-center rounded-md border border-ink/15 bg-paper p-1.5 text-ink shadow-sm transition-colors hover:bg-paper-soft"
-      >
-        <Video size={13} strokeWidth={2} />
-      </button>
+      <Hint label="Export video">
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          aria-label="Export video"
+          className="inline-flex items-center justify-center rounded-md border border-ink/15 bg-paper p-1.5 text-ink shadow-sm transition-colors hover:bg-paper-soft"
+        >
+          <Video size={13} strokeWidth={2} />
+        </button>
+      </Hint>
 
       {open && (
         <ModalBody
