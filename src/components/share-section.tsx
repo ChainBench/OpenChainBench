@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Download, Image as ImageIcon, Loader2, X } from "lucide-react";
 import type { Benchmark } from "@/types/benchmark";
+import { Hint } from "@/components/hint";
 
 type Template = {
   id: string;
@@ -194,15 +195,16 @@ export function ShareSection({ slug, title, benchmark, chain }: Props) {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        aria-label="Export image"
-        title="Export image"
-        className="inline-flex items-center justify-center rounded-md border border-ink/15 bg-paper p-1.5 text-ink shadow-sm transition-colors hover:bg-paper-soft"
-      >
-        <ImageIcon size={13} strokeWidth={2} />
-      </button>
+      <Hint label="Export image">
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          aria-label="Export image"
+          className="inline-flex items-center justify-center rounded-md border border-ink/15 bg-paper p-1.5 text-ink shadow-sm transition-colors hover:bg-paper-soft"
+        >
+          <ImageIcon size={13} strokeWidth={2} />
+        </button>
+      </Hint>
 
       {open && (
         <div
