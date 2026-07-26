@@ -110,7 +110,7 @@ func chains() []Chain {
 			Slug:         "avalanche",
 			ChainID:      43114,
 			RealizedRPC:  envDefault("GAS_REALIZED_RPC_AVALANCHE", "https://avalanche-c-chain-rpc.publicnode.com"),
-			VerifyRPC:    envDefault("GAS_REALIZED_RPC_VERIFY_AVALANCHE", "https://api.avax.network/ext/bc/C/rpc"),
+			VerifyRPC:    envDefault("GAS_REALIZED_RPC_VERIFY_AVALANCHE", "https://avalanche.drpc.org"),
 			OwlracleSlug: "avax",
 			BlockTimeSec: 2,
 			// Etherscan v2 returns "Free API access is not supported for this chain" on chainid=43114 — paid plan required.
