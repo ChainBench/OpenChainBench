@@ -36,7 +36,7 @@ export async function GET(
     });
   }
   const aggregate = await getBenchmark(slug);
-  if (!aggregate || aggregate.editorialStatus !== "live") {
+  if (!aggregate) {
     return new NextResponse("not found", {
       status: 404,
       headers: { "cache-control": "public, s-maxage=60" },
