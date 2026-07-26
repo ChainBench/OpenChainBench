@@ -70,6 +70,8 @@ findings:
   - "{{name:aevo}} sits at {{p50:aevo}} of open interest. Optimism L2 orderbook perps, options-focused history."
   - "{{name:gains}} sits at {{p50:gains}} of open interest. Synthetic perps across Arbitrum, Base, Polygon and ApeChain."
 
+disclaimer: "gains.trade aggregates open interest across four chains (Arbitrum, Base, Polygon, ApeChain) into a single number, while most other venues operate on one chain. This inflates gains.trade's total relative to single-chain venues and makes a direct OI comparison unfair. The per-venue tags call this out; for a single-chain view of gains.trade, use the per-chain breakdown once available."
+
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/perp-cohort-stats
 
 prometheus:
@@ -245,7 +247,7 @@ providers:
 
   - slug: gains
     name: gains.trade
-    tag: Synthetic perps across Arbitrum, Base, Polygon, ApeChain
+    tag: Synthetic perps across Arbitrum + Base + Polygon + ApeChain (4-chain aggregate — not directly comparable to single-chain venues)
     formula: "Open interest from the gains.trade trading-variables endpoint per chain backend: per-collateral pairOis long+short, normalized by precision x collateralPriceUsd, summed across 4 chains; headline is the 24h time average."
     queries:
       p50: avg_over_time(perp_venue_oi_usd{venue="gains"}[24h])
