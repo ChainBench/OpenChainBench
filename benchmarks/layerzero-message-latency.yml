@@ -177,3 +177,27 @@ providers:
       mean: sum(rate(lz_message_latency_milliseconds_sum{source_chain="avalanche"}[24h])) / sum(rate(lz_message_latency_milliseconds_count{source_chain="avalanche"}[24h]))
       sample_size: sum(increase(lz_message_seen_total{source_chain="avalanche"}[24h]))
       series: histogram_quantile(0.50, sum by(le) (rate(lz_message_latency_milliseconds_bucket{source_chain="avalanche"}[1h])))
+
+  - slug: robinhood
+    name: Robinhood Chain
+    tag: Robinhood Chain → any chain, Nitro block time + DVN verification
+    formula: "50th percentile over 24h of LayerZero end-to-end delivery latency for messages sourced from Robinhood Chain."
+    queries:
+      p50: histogram_quantile(0.50, sum by(le) (rate(lz_message_latency_milliseconds_bucket{source_chain="robinhood"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(lz_message_latency_milliseconds_bucket{source_chain="robinhood"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(lz_message_latency_milliseconds_bucket{source_chain="robinhood"}[24h])))
+      mean: sum(rate(lz_message_latency_milliseconds_sum{source_chain="robinhood"}[24h])) / sum(rate(lz_message_latency_milliseconds_count{source_chain="robinhood"}[24h]))
+      sample_size: sum(increase(lz_message_seen_total{source_chain="robinhood"}[24h]))
+      series: histogram_quantile(0.50, sum by(le) (rate(lz_message_latency_milliseconds_bucket{source_chain="robinhood"}[1h])))
+
+  - slug: monad
+    name: Monad
+    tag: Monad → any chain, sub-second block + DVN verification
+    formula: "50th percentile over 24h of LayerZero end-to-end delivery latency for messages sourced from Monad."
+    queries:
+      p50: histogram_quantile(0.50, sum by(le) (rate(lz_message_latency_milliseconds_bucket{source_chain="monad"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(lz_message_latency_milliseconds_bucket{source_chain="monad"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(lz_message_latency_milliseconds_bucket{source_chain="monad"}[24h])))
+      mean: sum(rate(lz_message_latency_milliseconds_sum{source_chain="monad"}[24h])) / sum(rate(lz_message_latency_milliseconds_count{source_chain="monad"}[24h]))
+      sample_size: sum(increase(lz_message_seen_total{source_chain="monad"}[24h]))
+      series: histogram_quantile(0.50, sum by(le) (rate(lz_message_latency_milliseconds_bucket{source_chain="monad"}[1h])))
