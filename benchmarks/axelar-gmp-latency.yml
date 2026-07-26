@@ -94,17 +94,6 @@ providers:
       sample_size: sum(increase(axelar_gmp_seen_total{source_chain="ethereum"}[24h]))
       series: histogram_quantile(0.50, sum by(le) (rate(axelar_gmp_e2e_latency_milliseconds_bucket{source_chain="ethereum"}[1h])))
 
-  - slug: bnb
-    name: BNB Chain
-    tag: BNB Chain → any chain, ~3s block + validator quorum + destination approve+execute
-    formula: "50th percentile over 24h of Axelar GMP end-to-end delivery latency for messages sourced from BNB Chain."
-    queries:
-      p50: histogram_quantile(0.50, sum by(le) (rate(axelar_gmp_e2e_latency_milliseconds_bucket{source_chain="bnb"}[24h])))
-      p90: histogram_quantile(0.90, sum by(le) (rate(axelar_gmp_e2e_latency_milliseconds_bucket{source_chain="bnb"}[24h])))
-      p99: histogram_quantile(0.99, sum by(le) (rate(axelar_gmp_e2e_latency_milliseconds_bucket{source_chain="bnb"}[24h])))
-      mean: sum(rate(axelar_gmp_e2e_latency_milliseconds_sum{source_chain="bnb"}[24h])) / sum(rate(axelar_gmp_e2e_latency_milliseconds_count{source_chain="bnb"}[24h]))
-      sample_size: sum(increase(axelar_gmp_seen_total{source_chain="bnb"}[24h]))
-      series: histogram_quantile(0.50, sum by(le) (rate(axelar_gmp_e2e_latency_milliseconds_bucket{source_chain="bnb"}[1h])))
 
   - slug: polygon
     name: Polygon
@@ -118,29 +107,7 @@ providers:
       sample_size: sum(increase(axelar_gmp_seen_total{source_chain="polygon"}[24h]))
       series: histogram_quantile(0.50, sum by(le) (rate(axelar_gmp_e2e_latency_milliseconds_bucket{source_chain="polygon"}[1h])))
 
-  - slug: avalanche
-    name: Avalanche
-    tag: Avalanche C-Chain → any chain, sub-second finality + validator quorum + destination approve+execute
-    formula: "50th percentile over 24h of Axelar GMP end-to-end delivery latency for messages sourced from Avalanche."
-    queries:
-      p50: histogram_quantile(0.50, sum by(le) (rate(axelar_gmp_e2e_latency_milliseconds_bucket{source_chain="avalanche"}[24h])))
-      p90: histogram_quantile(0.90, sum by(le) (rate(axelar_gmp_e2e_latency_milliseconds_bucket{source_chain="avalanche"}[24h])))
-      p99: histogram_quantile(0.99, sum by(le) (rate(axelar_gmp_e2e_latency_milliseconds_bucket{source_chain="avalanche"}[24h])))
-      mean: sum(rate(axelar_gmp_e2e_latency_milliseconds_sum{source_chain="avalanche"}[24h])) / sum(rate(axelar_gmp_e2e_latency_milliseconds_count{source_chain="avalanche"}[24h]))
-      sample_size: sum(increase(axelar_gmp_seen_total{source_chain="avalanche"}[24h]))
-      series: histogram_quantile(0.50, sum by(le) (rate(axelar_gmp_e2e_latency_milliseconds_bucket{source_chain="avalanche"}[1h])))
 
-  - slug: arbitrum
-    name: Arbitrum
-    tag: Arbitrum One → any chain, sub-second L2 block + validator quorum + destination approve+execute
-    formula: "50th percentile over 24h of Axelar GMP end-to-end delivery latency for messages sourced from Arbitrum."
-    queries:
-      p50: histogram_quantile(0.50, sum by(le) (rate(axelar_gmp_e2e_latency_milliseconds_bucket{source_chain="arbitrum"}[24h])))
-      p90: histogram_quantile(0.90, sum by(le) (rate(axelar_gmp_e2e_latency_milliseconds_bucket{source_chain="arbitrum"}[24h])))
-      p99: histogram_quantile(0.99, sum by(le) (rate(axelar_gmp_e2e_latency_milliseconds_bucket{source_chain="arbitrum"}[24h])))
-      mean: sum(rate(axelar_gmp_e2e_latency_milliseconds_sum{source_chain="arbitrum"}[24h])) / sum(rate(axelar_gmp_e2e_latency_milliseconds_count{source_chain="arbitrum"}[24h]))
-      sample_size: sum(increase(axelar_gmp_seen_total{source_chain="arbitrum"}[24h]))
-      series: histogram_quantile(0.50, sum by(le) (rate(axelar_gmp_e2e_latency_milliseconds_bucket{source_chain="arbitrum"}[1h])))
 
   - slug: base
     name: Base
@@ -154,17 +121,6 @@ providers:
       sample_size: sum(increase(axelar_gmp_seen_total{source_chain="base"}[24h]))
       series: histogram_quantile(0.50, sum by(le) (rate(axelar_gmp_e2e_latency_milliseconds_bucket{source_chain="base"}[1h])))
 
-  - slug: optimism
-    name: Optimism
-    tag: Optimism → any chain, 2s block + validator quorum + destination approve+execute
-    formula: "50th percentile over 24h of Axelar GMP end-to-end delivery latency for messages sourced from Optimism."
-    queries:
-      p50: histogram_quantile(0.50, sum by(le) (rate(axelar_gmp_e2e_latency_milliseconds_bucket{source_chain="optimism"}[24h])))
-      p90: histogram_quantile(0.90, sum by(le) (rate(axelar_gmp_e2e_latency_milliseconds_bucket{source_chain="optimism"}[24h])))
-      p99: histogram_quantile(0.99, sum by(le) (rate(axelar_gmp_e2e_latency_milliseconds_bucket{source_chain="optimism"}[24h])))
-      mean: sum(rate(axelar_gmp_e2e_latency_milliseconds_sum{source_chain="optimism"}[24h])) / sum(rate(axelar_gmp_e2e_latency_milliseconds_count{source_chain="optimism"}[24h]))
-      sample_size: sum(increase(axelar_gmp_seen_total{source_chain="optimism"}[24h]))
-      series: histogram_quantile(0.50, sum by(le) (rate(axelar_gmp_e2e_latency_milliseconds_bucket{source_chain="optimism"}[1h])))
 
   - slug: moonbeam
     name: Moonbeam
@@ -189,3 +145,15 @@ providers:
       mean: sum(rate(axelar_gmp_e2e_latency_milliseconds_sum{source_chain="osmosis"}[24h])) / sum(rate(axelar_gmp_e2e_latency_milliseconds_count{source_chain="osmosis"}[24h]))
       sample_size: sum(increase(axelar_gmp_seen_total{source_chain="osmosis"}[24h]))
       series: histogram_quantile(0.50, sum by(le) (rate(axelar_gmp_e2e_latency_milliseconds_bucket{source_chain="osmosis"}[1h])))
+
+  - slug: axelar
+    name: Axelar
+    tag: Axelar Cosmos chain → any chain, native validator quorum + destination approve+execute
+    formula: "50th percentile over 24h of Axelar GMP end-to-end delivery latency for messages sourced from the Axelar Cosmos chain itself."
+    queries:
+      p50: histogram_quantile(0.50, sum by(le) (rate(axelar_gmp_e2e_latency_milliseconds_bucket{source_chain="axelar"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(axelar_gmp_e2e_latency_milliseconds_bucket{source_chain="axelar"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(axelar_gmp_e2e_latency_milliseconds_bucket{source_chain="axelar"}[24h])))
+      mean: sum(rate(axelar_gmp_e2e_latency_milliseconds_sum{source_chain="axelar"}[24h])) / sum(rate(axelar_gmp_e2e_latency_milliseconds_count{source_chain="axelar"}[24h]))
+      sample_size: sum(increase(axelar_gmp_seen_total{source_chain="axelar"}[24h]))
+      series: histogram_quantile(0.50, sum by(le) (rate(axelar_gmp_e2e_latency_milliseconds_bucket{source_chain="axelar"}[1h])))
