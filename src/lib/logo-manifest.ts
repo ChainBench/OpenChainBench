@@ -101,6 +101,11 @@ const RAW: Record<string, string> = {
   debridge: "/logos/debridge.svg",
   "near-intents": "/logos/near-intents.svg",
   wormhole: "/logos/wormhole.png",
+  hyperlane: "/logos/hyperlane.webp",
+  layerzero: "/logos/layerzero.webp",
+  axelar: "/logos/axelar.webp",
+  // Chainlink CCIP reuses the parent Chainlink brand mark.
+  "chainlink-ccip": "/logos/chainlink.svg",
 
   // ─── Public RPC providers ───
   publicnode: "/logos/publicnode.avif",
