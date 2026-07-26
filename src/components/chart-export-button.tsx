@@ -21,6 +21,7 @@
 import { useCallback, useState } from "react";
 import { Copy, Download, Check, Loader2, FileText } from "lucide-react";
 import { toBlob } from "html-to-image";
+import { Hint } from "@/components/hint";
 
 type CsvLine = { slug: string; name: string; values: (number | null)[] };
 
@@ -167,60 +168,63 @@ export function ChartExportButton({
       data-chart-export-button="true"
       className={`inline-flex items-center rounded-md border border-ink/15 bg-paper shadow-sm ${className}`}
     >
-      <button
-        type="button"
-        onClick={onCopy}
-        disabled={state === "working"}
-        className="inline-flex items-center gap-1.5 rounded-l-md px-2.5 py-1 text-[11px] font-sans font-medium uppercase tracking-[0.1em] text-ink transition-colors hover:bg-paper-soft disabled:opacity-60"
-        title="Copy chart as PNG to clipboard"
-        aria-label="Copy chart as PNG"
-      >
-        {state === "working" ? (
-          <Loader2 size={11} strokeWidth={2} className="animate-spin" />
-        ) : state === "copied" ? (
-          <Check size={11} strokeWidth={2.4} />
-        ) : (
-          <Copy size={11} strokeWidth={2} />
-        )}
-        <span className="hidden sm:inline">
-          {state === "copied"
-            ? "Copied"
-            : state === "error"
-              ? "Failed"
-              : "Copy"}
-        </span>
-      </button>
+      <Hint label="Copy chart as PNG">
+        <button
+          type="button"
+          onClick={onCopy}
+          disabled={state === "working"}
+          className="inline-flex items-center gap-1.5 rounded-l-md px-2.5 py-1 text-[11px] font-sans font-medium uppercase tracking-[0.1em] text-ink transition-colors hover:bg-paper-soft disabled:opacity-60"
+          aria-label="Copy chart as PNG"
+        >
+          {state === "working" ? (
+            <Loader2 size={11} strokeWidth={2} className="animate-spin" />
+          ) : state === "copied" ? (
+            <Check size={11} strokeWidth={2.4} />
+          ) : (
+            <Copy size={11} strokeWidth={2} />
+          )}
+          <span className="hidden sm:inline">
+            {state === "copied"
+              ? "Copied"
+              : state === "error"
+                ? "Failed"
+                : "Copy"}
+          </span>
+        </button>
+      </Hint>
       <span aria-hidden className="h-4 w-px bg-ink/15" />
-      <button
-        type="button"
-        onClick={onDownload}
-        disabled={state === "working"}
-        className={`inline-flex items-center gap-1.5 px-2 py-1 text-ink transition-colors hover:bg-paper-soft disabled:opacity-60 ${csvLines && csvLines.length > 0 ? "" : "rounded-r-md"}`}
-        title="Download chart as PNG"
-        aria-label="Download chart as PNG"
-      >
-        {state === "downloaded" ? (
-          <Check size={11} strokeWidth={2.4} />
-        ) : (
-          <Download size={11} strokeWidth={2} />
-        )}
-      </button>
+      <Hint label="Download PNG">
+        <button
+          type="button"
+          onClick={onDownload}
+          disabled={state === "working"}
+          className={`inline-flex items-center gap-1.5 px-2 py-1 text-ink transition-colors hover:bg-paper-soft disabled:opacity-60 ${csvLines && csvLines.length > 0 ? "" : "rounded-r-md"}`}
+          aria-label="Download chart as PNG"
+        >
+          {state === "downloaded" ? (
+            <Check size={11} strokeWidth={2.4} />
+          ) : (
+            <Download size={11} strokeWidth={2} />
+          )}
+        </button>
+      </Hint>
       {csvLines && csvLines.length > 0 && (
         <>
           <span aria-hidden className="h-4 w-px bg-ink/15" />
-          <button
-            type="button"
-            onClick={onDownloadCsv}
-            className="inline-flex items-center gap-1.5 rounded-r-md px-2 py-1 text-ink transition-colors hover:bg-paper-soft"
-            title="Download chart data as CSV"
-            aria-label="Download chart data as CSV"
-          >
-            {csvState === "done" ? (
-              <Check size={11} strokeWidth={2.4} />
-            ) : (
-              <FileText size={11} strokeWidth={2} />
-            )}
-          </button>
+          <Hint label="Download CSV">
+            <button
+              type="button"
+              onClick={onDownloadCsv}
+              className="inline-flex items-center gap-1.5 rounded-r-md px-2 py-1 text-ink transition-colors hover:bg-paper-soft"
+              aria-label="Download chart data as CSV"
+            >
+              {csvState === "done" ? (
+                <Check size={11} strokeWidth={2.4} />
+              ) : (
+                <FileText size={11} strokeWidth={2} />
+              )}
+            </button>
+          </Hint>
         </>
       )}
     </span>
