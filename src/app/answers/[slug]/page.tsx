@@ -182,6 +182,9 @@ export default async function AnswerPage({
     text: ans.question,
     acceptedAnswer: {
       "@type": "Answer",
+      // Google's Rich Results validator flags Answer nodes without a
+      // `name` field (parity with the compare-page FAQPage builder).
+      name: ans.question,
       text: capDescription(shortAnswer, 990),
       url,
       author: { "@id": `${SITE.url}/#org` },
@@ -190,6 +193,7 @@ export default async function AnswerPage({
   if (expertTake) {
     questionNode.suggestedAnswer = {
       "@type": "Answer",
+      name: ans.question,
       text: capDescription(expertTake, 990),
       url,
       author: { "@id": PERSON_ID },
@@ -218,7 +222,16 @@ export default async function AnswerPage({
         author: { "@id": `${SITE.url}/#org` },
         publisher: { "@id": `${SITE.url}/#org` },
         image: `${SITE.url}/api/og/${bench.slug}`,
-        isBasedOn: benchUrl,
+        // Inline the referenced bench Dataset (bare URL ref gets
+        // validated as a standalone incomplete Dataset by Google, same
+        // failure mode as PR #1442's isBasedOn fix).
+        isBasedOn: {
+          "@type": "Dataset",
+          "@id": `${benchUrl}#dataset`,
+          name: bench.title,
+          description: bench.subtitle,
+          url: benchUrl,
+        },
       },
       buildBreadcrumbJsonLd([
         { name: "Home", item: SITE.url },

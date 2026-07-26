@@ -16,6 +16,7 @@ import {
 import { Breadcrumb } from "@/components/breadcrumb";
 import { buildBreadcrumbJsonLd, safeJsonLd } from "@/lib/jsonld";
 import { CREATOR_PUBLISHER, CITABLE_JSON_URL, DATASET_LICENSE } from "@/lib/dataset-jsonld";
+import { getBenchCreatedAt } from "@/lib/seo/bench-dates";
 import {
   fetchHlBuilderStats,
   isHlBuilderSlug,
@@ -446,9 +447,18 @@ export default async function ProviderPage({
         ...(sameAs.length > 0 ? { sameAs } : {}),
         subjectOf: sorted.map((a) => ({
           "@type": "Dataset",
+          // GSC + Google Dataset Search flag anonymous Datasets
+          // ("Unnamed item" with recommended fields missing) when the
+          // @id + datePublished are absent (audit 2026-07-26). Match
+          // the shape used by the bench page's own Dataset node so
+          // cross-page identifiers align.
+          "@id": `${SITE.url}/benchmarks/${a.benchmark.slug}#dataset`,
           name: a.benchmark.title,
           description: capDescription(a.benchmark.subtitle, 990),
           url: `${SITE.url}/benchmarks/${a.benchmark.slug}`,
+          identifier: a.benchmark.slug,
+          variableMeasured: a.benchmark.metric,
+          datePublished: getBenchCreatedAt(a.benchmark.slug).toISOString(),
           creator: CREATOR_PUBLISHER,
           publisher: CREATOR_PUBLISHER,
           isAccessibleForFree: true,
