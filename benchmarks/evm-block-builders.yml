@@ -13,7 +13,7 @@ unit: pct
 higher_is_better: true
 
 disclaimer: |
-  Attribution relies on the extraData tag each builder voluntarily stamps into its blocks. A builder can change or strip its tag at any time; unrecognized tags land in the Other row and every raw string is logged so the table grows. High share is a centralization datapoint, not a quality ranking.
+  Attribution relies on the extraData tag each builder voluntarily stamps into its blocks. A builder can change or strip its tag at any time; unrecognized tags land in the Other row and every raw string is logged so the table grows. The Vanilla row (locally built blocks) could be marginally overstated if a builder deliberately uses a client-default tag to avoid attribution — the relay cross-check is the independent signal that surfaces this divergence. High share is a centralization datapoint, not a quality ranking.
 
 seo_intro: |
   Who actually builds Ethereum? Since MEV-Boost, validators outsource
@@ -207,8 +207,8 @@ providers:
 
   - slug: vanilla
     name: Vanilla
-    tag: Locally built by the proposer, no builder
-    formula: "Blocks with empty or execution-client default extraData (geth, reth, nethermind, besu, erigon), meaning the proposer built locally, as a percentage of all blocks observed in 24h."
+    tag: Locally built by the proposer — or a builder who blanked/faked a client-default tag (rare; relay cross-check surfaces divergence)
+    formula: "Blocks with empty or execution-client default extraData (geth, reth, nethermind, besu, erigon), meaning the proposer built locally, as a percentage of all blocks observed in 24h. Could be marginally overstated if a builder fakes a client-default tag; the relay cross-check is the independent verification signal."
     queries:
       p50: 100 * sum(increase(ebb_blocks_total{builder="vanilla"}[24h])) / scalar(sum(increase(ebb_blocks_total[24h])))
       p90: 100 * sum(increase(ebb_blocks_total{builder="vanilla"}[24h])) / scalar(sum(increase(ebb_blocks_total[24h])))
