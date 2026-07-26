@@ -287,13 +287,10 @@ export function BenchmarkBody({
 
   // Cross-dimension filtering: hide venue tabs with no data for the active
   // chain, and hide chain tabs with no data for the active venue.
-  const filteredVenueOptions = useMemo(() => {
-    if (!venuesForChain || !effectiveChain || effectiveChain === "all") return venueOptions;
-    const valid = venuesForChain[effectiveChain];
-    if (!valid || valid.length === 0) return venueOptions;
-    const validSet = new Set(valid);
-    return venueOptions.filter((v) => v.value === "all" || validSet.has(v.value));
-  }, [venueOptions, venuesForChain, effectiveChain]);
+  // Venue tabs are never filtered by chain: the user picks a launchpad first,
+  // then drills into a chain. The reverse (chain → hides venues) is confusing
+  // because launchpad tabs disappear unexpectedly.
+  const filteredVenueOptions = venueOptions;
 
   const chainsForVenue = useMemo(() => {
     if (!venuesForChain) return undefined;
@@ -705,13 +702,7 @@ export function BenchmarkBody({
               label="Chain"
               options={filteredChainOptions}
               selected={chain ?? fallbackChain}
-              onSelect={(v) => {
-                setChain(v);
-                if (v !== "all" && effectiveVenue && effectiveVenue !== "all" && venuesForChain) {
-                  const validVenues = venuesForChain[v];
-                  if (validVenues && !validVenues.includes(effectiveVenue)) setVenue(null);
-                }
-              }}
+              onSelect={setChain}
               metaByValue={Object.fromEntries(
                 filteredChainOptions
                   .map((o) => [
