@@ -93,6 +93,8 @@ methodology:
   - "Polling result classification. `ok`, `http_err`, `parse_err`, `throttled` (HTTP 429 or oracle-specific quota message), `timeout`. Counter `gas_oracle_call_total{oracle, result, chain}` powers the reliability column."
   - "Ranking metric. The table ranks on the p99 of the absolute gap over 24h, not the p50. At current fee levels the typical-minute gaps are fractions of a micro-gwei apart across oracles (ranking noise); the p99 captures behaviour during the volatile minutes where a wrong prediction either overpays or misses the block. The typical p50 and p90 gaps stay visible as secondary columns."
   - "Prediction age disclosure. `gas_prediction_age_seconds{oracle, chain}` records the wall-clock time between an oracle's poll returning and the realized block being graded. This surfaces the free-tier cadence asymmetry (Owlracle at 60s vs PublicNode at 12s vs Etherscan at 15s) so readers can see how much of an oracle's error is stale-sample rather than model quality; it is not part of the ranking, only a diagnostic column."
+  - "Over/under split. In parallel with the absolute-error histogram, the harness emits `gas_error_priority_over_gwei_histogram` (predicted > realized, cost = overpay) and `gas_error_priority_under_gwei_histogram` (predicted < realized, cost = transaction stuck). Same buckets. The two branches lets the leaderboard decompose asymmetric behaviour: inclusion-confidence oracles skew fat on the over side by design, percentile trackers skew fat on the under side during spikes."
+  - "Lag=2 secondary grade. `gas_error_priority_lag2_gwei_histogram` grades each prediction against the block 2 slots after its target, not the very-next block. Removes the latency-race bias where whoever scraped the mempool 100ms before us wins by construction; closer to the wallet UX (sign, broadcast, propagate) than block+1. Same buckets as the primary histogram so a leaderboard column can plot the two side by side."
   - "Covered rate. Share of time (24h) each oracle's posted p50-tier prediction was at or above the realized p50 priority fee, recorded as `ocb:gas_p50_covered:pct_24h` via a recording rule. Same-instant gauge comparison (current prediction vs latest realized block), a proxy pending a harness-side matched counter. High = errs on the side of inclusion; low = under-bids vs the block's realized median."
   - "Excluded by design. (a) BNB Chain (not EIP-1559). (b) L2 OP Stack chains (Optimism, Base, Arbitrum), priority fee ≈ 0 there because sequencer is centralised, the relevant cost is L1 data fee which is a different metric and belongs in a separate bench. (c) Rough median oracles that publish only a single number (no tier breakdown). (d) Solana, different fee model entirely (lamports per CU, MEV via Jito), separate bench needed."
 
@@ -151,6 +153,9 @@ dimensions:
 #   gas_pending_buffer_size{oracle, chain}                  gauge
 #   gas_prediction_age_seconds{oracle, chain}               histogram (poll-to-grade lag; discloses cadence asymmetry)
 #   gas_realized_quorum_disagreement_total{chain, kind}     counter (primary vs verify RPC baseFee mismatches)
+#   gas_error_priority_over_gwei_histogram{oracle,tier,chain}  histogram (over-prediction branch of the split — overpay cost)
+#   gas_error_priority_under_gwei_histogram{oracle,tier,chain} histogram (under-prediction branch — tx-stuck risk)
+#   gas_error_priority_lag2_gwei_histogram{oracle,tier,chain}  histogram (same as gwei_histogram but graded at target+2 blocks — removes next-block latency-race bias)
 #
 # Tier note: the leaderboard ranks oracles on their p50-tier
 # prediction error (standard speed, the tier wallets use by default).
