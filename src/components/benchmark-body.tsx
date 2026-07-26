@@ -698,7 +698,7 @@ export function BenchmarkBody({
               )}
             />
           )}
-          {filteredChainOptions.length > 0 && (
+          {filteredChainOptions.length > 2 && (
             <DimensionRow
               label="Chain"
               options={filteredChainOptions}
