@@ -201,6 +201,15 @@ export default async function RootLayout({
           title="OpenChainBench — new benchmarks"
           href="/rss.xml"
         />
+        {/* JSON Feed 1.1 companion. Modern feed readers + AI agent
+            tooling (Perplexity, LangChain document loaders, MCP
+            clients) parse JSON without an XML dependency. */}
+        <link
+          rel="alternate"
+          type="application/feed+json"
+          title="OpenChainBench — new benchmarks (JSON Feed)"
+          href="/feed.json"
+        />
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var t=localStorage.getItem('ocb-theme');var d=t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d)document.documentElement.classList.add('dark');}catch(e){}})();`,

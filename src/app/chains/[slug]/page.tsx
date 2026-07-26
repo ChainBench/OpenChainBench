@@ -50,7 +50,7 @@ export async function generateMetadata({
   const url = `${SITE.url}/chains/${slug}`;
   const title = `${chain.label} live benchmarks: finality, fees, RPC`;
   const description = capDescription(
-    `${benches.length} live OpenChainBench measurements covering ${chain.label}. ${chain.description}`,
+    `${benches.length} live OpenChainBench measurement${benches.length === 1 ? "" : "s"} covering ${chain.label}. ${chain.description}`,
     158,
   );
   return {
