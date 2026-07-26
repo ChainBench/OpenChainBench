@@ -89,7 +89,7 @@ export function ProvidersTable({ providers }: { providers: Row[] }) {
             className="absolute left-3 text-ink-faint group-focus-within:text-ink-muted pointer-events-none"
           />
           <input
-            type="search"
+            type="search" aria-label="Search products..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search products..."

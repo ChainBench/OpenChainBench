@@ -68,7 +68,7 @@ export function PmDataFeedsLeaderboard({ rows }: { rows: PmDataFeedRow[] }) {
           {filtered.length} of {rows.length} feeds
         </p>
         <input
-          type="search"
+          type="search" aria-label="Search feed..."
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search feed..."

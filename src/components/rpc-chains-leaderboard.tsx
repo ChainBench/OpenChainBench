@@ -89,7 +89,7 @@ export function RpcChainsLeaderboard({ rows }: { rows: RpcHubChain[] }) {
           regions
         </p>
         <input
-          type="search"
+          type="search" aria-label="Search chain or provider..."
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search chain or provider..."
