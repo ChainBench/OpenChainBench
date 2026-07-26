@@ -310,7 +310,12 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // promoted to prod; solana-dex-quote-latency held back to staging (openocean
   // 403 + raydium unresponsive = board reads half-broken to visitors).
   // v48: add bench 102 token-quote-coverage (draft). Bench SET grew.
-  ["bench-unfiltered-v48", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v49: token-quote-coverage flipped draft→live 2026-07-26; cached
+  // v48 entries hold editorialStatus=draft, so /api/stat filters it as
+  // unknown_slug and the page renders "data warming up" despite fresh
+  // Jupiter/Mobula runtime numbers in citable. Bench SET unchanged; the
+  // bump is purely to invalidate the stale editorialStatus.
+  ["bench-unfiltered-v49", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -520,7 +525,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // (bench SET changed, see bench-unfiltered-v46).
   // v50: staging pipeline shuffle (see bench-unfiltered-v47).
   // v51: add bench 102 token-quote-coverage (draft, see bench-unfiltered-v48).
-  ["all-benchmarks-v51", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v52: token-quote-coverage flipped draft→live (see bench-unfiltered-v49).
+  ["all-benchmarks-v52", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);
