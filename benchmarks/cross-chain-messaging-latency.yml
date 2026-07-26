@@ -2,10 +2,10 @@
 
 slug: cross-chain-messaging-latency
 number: "107"
-title: Fastest cross-chain messaging protocol, live end-to-end latency
+title: Fastest cross-chain messaging protocol, live end-to-end delivery latency
 seo_title: "Fastest cross-chain messaging protocol 2026"
-seo_description: "{{best_name}} leads the cross-chain messaging cohort at {{best_p50}} (end-to-end p50, 24h). First neutral third-party comparison of Wormhole, LayerZero, Chainlink CCIP, Hyperlane and Axelar."
-subtitle: End-to-end wall-clock delivery latency across the six major cross-chain messaging protocols, measured passively from each protocol's own public message tracker every 60 seconds.
+seo_description: "{{best_name}} leads end-to-end cross-chain delivery at {{best_p50}} (p50, 24h). First neutral third-party comparison of LayerZero, Chainlink CCIP, Hyperlane and Axelar on the same shared observation stack."
+subtitle: End-to-end wall-clock delivery latency across the four cross-chain messaging protocols that expose source-tx-to-destination-execution data publicly (LayerZero, Chainlink CCIP, Hyperlane, Axelar), measured passively from each protocol's own tracker every 60 seconds.
 
 category: Bridges
 status: draft
@@ -15,79 +15,72 @@ higher_is_better: false
 
 seo_intro: |
   Cross-chain messaging is the plumbing under every serious bridge,
-  cross-chain vault and interchain governance system. Five networks
-  dominate mainnet traffic: Wormhole, LayerZero, Chainlink CCIP,
-  Hyperlane and Axelar. Each publishes their own throughput and
-  latency numbers but there was no neutral third-party comparison
-  running side-by-side on the same corridors, until now.
-  This benchmark measures end-to-end delivery latency for each
-  protocol as observed passively from that protocol's own public
-  message tracker. No canary transactions are sent; every
-  observation is a real user message. The value on this page is
-  the network-average latency across all corridors each protocol
-  covers, over the last 24 hours.
-  For a per-corridor breakdown (Ethereum to Base vs Ethereum to
-  Solana, etc.) each protocol has its own dedicated OCB bench:
-  wormhole-vaa-latency, layerzero-message-latency,
-  chainlink-ccip-latency, hyperlane-message-latency and
-  axelar-gmp-latency.
+  cross-chain vault and interchain governance system. Four networks
+  expose an end-to-end delivery signal on their public trackers:
+  LayerZero, Chainlink CCIP, Hyperlane, Axelar. This bench compares
+  their end-to-end delivery latency side-by-side on the same
+  observation stack.
+  Wormhole is measured separately (see wormhole-vaa-latency): its
+  public tracker only exposes Guardian signing time, not
+  destination-side execution, so it is not apples-to-apples with the
+  four end-to-end signals here. Including it in this comparison
+  would make Wormhole look 3x faster than it actually is at end-to-end
+  delivery.
+  Circle CCTP is on the roadmap: its Iris API does not expose a
+  list-recent endpoint, so passive polling requires chain-scan on
+  every CCTP source chain (5-7 days of build vs the 1-2 days each
+  of the four benches here took).
+  Every value on this page is a real user message; no canary
+  transactions are sent. The p50/p90/p99 shown are aggregate across
+  every corridor each protocol covers, over the last 24 hours.
 
 abstract: |
-  For each of the five major cross-chain messaging protocols with
-  non-trivial mainnet traffic, we measure end-to-end delivery
-  latency by polling that protocol's own public message tracker
-  every 60 seconds. Each observation is one delivered message.
-  The p50/p90/p99 shown here are aggregate across every corridor
-  each protocol covers, over the last 24 hours. Data sources:
-  wormholescan.io (Wormhole), scan.layerzero-api.com (LayerZero),
+  For each of the four cross-chain messaging protocols that expose
+  source-tx-to-destination-execution timestamps publicly, we
+  measure end-to-end delivery latency by polling that protocol's
+  own message tracker every 60 seconds. Each observation is one
+  delivered message. The p50/p90/p99 shown are aggregate across
+  every corridor each protocol covers, over the last 24 hours.
+  Data sources: scan.layerzero-api.com (LayerZero),
   api.ccip.chain.link (Chainlink CCIP), api.hyperlane.xyz
   (Hyperlane), api.axelarscan.io (Axelar).
 
 methodology:
-  - "Data sources: each protocol's own public message tracker, polled every 60 seconds. Wormhole via wormholescan.io/api/v1/vaas, LayerZero via scan.layerzero-api.com/v1/messages/latest, Chainlink CCIP via api.ccip.chain.link/v2/messages, Hyperlane via api.hyperlane.xyz/v1/graphql, Axelar via api.axelarscan.io/gmp/searchGMP."
-  - "Latency definition: end-to-end wall-clock seconds from source-chain observation to destination-chain execution, computed from each tracker's own timestamps. Semantics vary per protocol and are documented on each dedicated bench: Wormhole reports source-tx-to-Guardian-quorum, the others report source-tx-to-destination-execution."
-  - "Fairness caveat: Wormhole and LayerZero sign pre-finality; Chainlink CCIP waits for source-chain finality (12-15 min on Ethereum) before its DON commits, so ETH-source lanes look structurally slower on CCIP for security reasons, not performance. Hyperlane and Axelar report delivery time from real relayers, reflecting practical UX."
-  - "Aggregation: the number on this page is the p50/p90/p99 across ALL corridors each protocol observes over the last 24 hours. Per-corridor breakdown is on each dedicated bench (wormhole-vaa-latency, layerzero-message-latency, chainlink-ccip-latency, hyperlane-message-latency, axelar-gmp-latency)."
-  - "Coverage: Wormhole and LayerZero cover 30+ chains including Solana. CCIP and Hyperlane cover most EVMs and Solana in some deployments. Axelar covers all major EVMs plus a Cosmos set (Osmosis, Injective, Sei, Celestia) but not Solana. Aggregation is honest because each protocol is aggregated over its own footprint; per-corridor drill-down lives on each dedicated bench."
-  - "No canary transactions: every value on this page is a real user message. No wallet is funded, no gas is paid. Total observation cost is the API polling itself."
-  - "Circle CCTP not included: Circle's Iris API does not expose a list-recent endpoint (verified 2026-07-26), so passive polling is not feasible without maintaining nonce state via chain-scan on all ~10 CCTP source chains + Solana. A CCTP bench is on the roadmap but structurally more expensive to ship than the five networks measured here."
+  - "Data sources: each protocol's own public message tracker, polled every 60 seconds. LayerZero via scan.layerzero-api.com/v1/messages/latest, Chainlink CCIP via api.ccip.chain.link/v2/messages, Hyperlane via api.hyperlane.xyz/v1/graphql, Axelar via api.axelarscan.io/gmp/searchGMP."
+  - "Latency definition: wall-clock seconds from source-chain transaction submission to destination-chain execution, computed from each tracker's own source and destination block timestamps. All four protocols expose the same shape (source_ts, destination_ts); the harness converts to milliseconds and records a per-source-chain histogram."
+  - "Fairness caveat: Chainlink CCIP waits for source-chain finality (12-15 min on Ethereum) before its DON commits, so ETH-source lanes look structurally slower on CCIP for security reasons, not performance. The other three (LayerZero, Hyperlane, Axelar) sign pre-finality by default."
+  - "Wormhole excluded from this side-by-side: wormholescan only exposes source-tx-to-Guardian-quorum (signing) latency, not destination-side execution. Including Wormhole would compare signing time (about 18s) against end-to-end delivery time (about 30-55s) and make Wormhole look 3x faster than it actually is. Wormhole gets its own dedicated bench at wormhole-vaa-latency with the same signing-time methodology."
+  - "Aggregation: the number on this page is the p50/p90/p99 across ALL corridors each protocol observes over the last 24 hours. Per-corridor breakdown is on each dedicated bench (layerzero-message-latency, chainlink-ccip-latency, hyperlane-message-latency, axelar-gmp-latency)."
+  - "Coverage: LayerZero covers 30+ chains including Solana. Chainlink CCIP and Hyperlane cover most EVMs; CCIP added Solana Oct 2025. Axelar covers all major EVMs plus a Cosmos set (Osmosis, Injective, Sei, Celestia) but not Solana. Aggregation is honest because each protocol is aggregated over its own footprint; per-corridor drill-down lives on each dedicated bench."
+  - "No canary transactions: every value on this page is a real user message. No wallet is funded, no gas is paid. Total observation cost is API polling."
+  - "Circle CCTP not included: Circle's Iris API does not expose a list-recent endpoint, so passive polling is not feasible without maintaining nonce state via chain-scan on all ~10 CCTP source chains plus Solana. A CCTP bench is on the roadmap."
 
 findings:
-  - "{{best_name}} currently leads cross-chain messaging end-to-end delivery at {{best_p50}} (p50 aggregate across all corridors, 24h) across the five measured protocols."
-  - "The four protocols with pre-finality signing (Wormhole, LayerZero, Hyperlane, Axelar) sit in the seconds-to-tens-of-seconds range; Chainlink CCIP sits in the minutes range because it waits for source-chain finality before its DON commits. This is a security tradeoff visible directly in the data."
-  - "Per-corridor variance is large. The aggregate on this page is a headline; the individual bench for each protocol shows the per-source-chain breakdown that answers what you'd actually feel in production."
+  - "{{best_name}} currently leads end-to-end cross-chain delivery at {{best_p50}} (p50 aggregate across all corridors, 24h) across the four measured protocols."
+  - "Pre-finality signing (LayerZero, Hyperlane, Axelar) delivers in the seconds-to-tens-of-seconds range. Chainlink CCIP sits in the minutes range because it waits for source-chain finality before its DON commits. That is a security tradeoff visible directly in the data."
+  - "Per-corridor variance is large. The aggregate here is a headline; the individual bench for each protocol shows the per-source-chain breakdown that answers what you would feel in production."
 
 faq:
-  - q: "Why aren't all six of Wormhole, LayerZero, CCIP, Hyperlane, Axelar and Circle CCTP measured?"
-    a: "Five of the six are. Circle CCTP is missing because Circle's Iris API does not expose a list-recent endpoint, so passive polling requires maintaining nonce state via on-chain event scanning on all ~10 CCTP source chains plus Solana. That is on the roadmap but structurally more expensive than the five networks measured here."
+  - q: "Why isn't Wormhole in this comparison?"
+    a: "Wormhole's public tracker (wormholescan) only exposes signing time, source-tx-to-Guardian-quorum. It does not consistently expose destination-side execution timestamps. Including Wormhole here would compare its signing time (about 18s aggregate) against LayerZero/CCIP/Hyperlane/Axelar end-to-end delivery (about 30s-20min) and make Wormhole look 3x faster than it actually is at delivery. Wormhole gets its own dedicated bench at wormhole-vaa-latency with correct signing-only methodology and full disclosure."
   - q: "Why is Chainlink CCIP so much slower?"
-    a: "CCIP intentionally waits for source-chain finality before its DON commits a merkle root. On Ethereum, that means waiting for Casper FFG finalization (12-15 minutes typical, up to 25 minutes in adverse epochs). Wormhole, LayerZero, Hyperlane and Axelar all sign pre-finality by default, so their end-to-end delivery excludes that wait. This is a security tradeoff, not a performance bug."
-  - q: "Is comparing these five raw numbers actually fair?"
-    a: "Only for the headline question of aggregate speed. Each protocol has its own coverage footprint (LayerZero and Wormhole cover Solana, Axelar covers Cosmos, Hyperlane is permissionless, CCIP is enterprise-focused), so the honest use of this bench is 'which protocol is fastest in general' rather than 'which is fastest for MY integration'. For the second question, drill down to the per-corridor breakdown on each dedicated bench."
+    a: "CCIP intentionally waits for source-chain finality before its DON commits a merkle root. On Ethereum, that means Casper FFG finalization (12-15 minutes typical, up to 25 minutes in adverse epochs). LayerZero, Hyperlane and Axelar all sign pre-finality by default, so their end-to-end delivery excludes that wait. This is a security tradeoff, not a performance bug."
+  - q: "Where is Circle CCTP?"
+    a: "Circle's Iris API does not expose a list-recent endpoint, so passive polling requires maintaining nonce state via on-chain event scanning on all ~10 CCTP source chains plus Solana. That is on the roadmap but structurally more expensive than the four protocols measured here (5-7 days of work vs 1-2 days each)."
+  - q: "Is comparing these four raw numbers actually fair?"
+    a: "Yes for aggregate end-to-end speed. Each protocol has its own coverage footprint (LayerZero covers Solana, Axelar covers Cosmos, CCIP has enterprise-only lanes, Hyperlane is permissionless), so the honest use of this bench is 'which protocol is fastest on end-to-end delivery in general' rather than 'which is fastest for MY integration'. For the second question, drill into the per-corridor breakdown on each dedicated bench."
   - q: "How does the data get sourced?"
-    a: "Five independent Go harnesses, one per protocol, each polling that protocol's own public message tracker every 60 seconds. No canary transactions, no gas cost. Total infrastructure is five Go processes writing to a shared Prometheus. The harness code for all five is open source under harnesses/*-latency/ in the OCB repo."
+    a: "Four independent Go harnesses, one per protocol, each polling that protocol's public message tracker every 60 seconds. No canary transactions, no gas cost. Total infrastructure is four Go processes writing to a shared Prometheus. Harness code is open source under harnesses/*-latency/ in the OCB repo."
   - q: "Which cross-chain messaging protocol is fastest today?"
-    a: "{{best_name}} currently leads at {{best_p50}} (p50 aggregate across all corridors, 24h). The leaderboard re-sorts continuously against fresh Prometheus samples; the ranking on this page is the ranking right now. For per-corridor detail, drill into each protocol's dedicated bench."
+    a: "{{best_name}} currently leads at {{best_p50}} (p50 aggregate across all corridors, 24h). The leaderboard re-sorts continuously against fresh Prometheus samples; the ranking on this page is the ranking right now."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses
 
 prometheus:
   window: 24h
-  freshness_metric: wormhole_vaa_seen_total
+  freshness_metric: lz_message_seen_total
 
 providers:
-  - slug: wormhole
-    name: Wormhole
-    tag: 19-Guardian quorum, source-tx to VAA finalization on wormholescan
-    formula: "50th percentile over 24h of Wormhole VAA finalization latency, aggregated across every source chain Wormhole observes: source-tx observation to Guardian quorum, per wormholescan."
-    queries:
-      p50: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket[24h])))
-      p90: histogram_quantile(0.90, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket[24h])))
-      p99: histogram_quantile(0.99, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket[24h])))
-      mean: sum(rate(wormhole_vaa_latency_milliseconds_sum[24h])) / sum(rate(wormhole_vaa_latency_milliseconds_count[24h]))
-      sample_size: sum(increase(wormhole_vaa_seen_total[24h]))
-      series: histogram_quantile(0.50, sum by(le) (rate(wormhole_vaa_latency_milliseconds_bucket[1h])))
-
   - slug: layerzero
     name: LayerZero
     tag: Application-configurable DVN + Executor stack, source-tx to destination execution
@@ -99,18 +92,6 @@ providers:
       mean: sum(rate(lz_message_latency_milliseconds_sum[24h])) / sum(rate(lz_message_latency_milliseconds_count[24h]))
       sample_size: sum(increase(lz_message_seen_total[24h]))
       series: histogram_quantile(0.50, sum by(le) (rate(lz_message_latency_milliseconds_bucket[1h])))
-
-  - slug: chainlink-ccip
-    name: Chainlink CCIP
-    tag: Chainlink DON commit + Risk Management Network, source-tx to destination execution
-    formula: "50th percentile over 24h of Chainlink CCIP end-to-end delivery latency, aggregated across every source chain CCIP supports. Structurally slower than pre-finality signers because the DON waits for source-chain finality before committing."
-    queries:
-      p50: histogram_quantile(0.50, sum by(le) (rate(ccip_message_latency_milliseconds_bucket[24h])))
-      p90: histogram_quantile(0.90, sum by(le) (rate(ccip_message_latency_milliseconds_bucket[24h])))
-      p99: histogram_quantile(0.99, sum by(le) (rate(ccip_message_latency_milliseconds_bucket[24h])))
-      mean: sum(rate(ccip_message_latency_milliseconds_sum[24h])) / sum(rate(ccip_message_latency_milliseconds_count[24h]))
-      sample_size: sum(increase(ccip_message_seen_total[24h]))
-      series: histogram_quantile(0.50, sum by(le) (rate(ccip_message_latency_milliseconds_bucket[1h])))
 
   - slug: hyperlane
     name: Hyperlane
@@ -127,11 +108,23 @@ providers:
   - slug: axelar
     name: Axelar
     tag: Cosmos validator quorum + destination gateway approve+execute, source-tx to destination execution
-    formula: "50th percentile over 24h of Axelar GMP end-to-end delivery latency, aggregated across every source chain Axelar observes. Includes Cosmos coverage (Osmosis, Injective, Sei, Celestia) unavailable on the other four networks."
+    formula: "50th percentile over 24h of Axelar GMP end-to-end delivery latency, aggregated across every source chain Axelar observes. Includes Cosmos coverage (Osmosis, Injective, Sei, Celestia) unavailable on the other three networks."
     queries:
-      p50: histogram_quantile(0.50, sum by(le) (rate(axelar_gmp_e2e_latency_ms_bucket[24h])))
-      p90: histogram_quantile(0.90, sum by(le) (rate(axelar_gmp_e2e_latency_ms_bucket[24h])))
-      p99: histogram_quantile(0.99, sum by(le) (rate(axelar_gmp_e2e_latency_ms_bucket[24h])))
-      mean: sum(rate(axelar_gmp_e2e_latency_ms_sum[24h])) / sum(rate(axelar_gmp_e2e_latency_ms_count[24h]))
+      p50: histogram_quantile(0.50, sum by(le) (rate(axelar_gmp_e2e_latency_milliseconds_bucket[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(axelar_gmp_e2e_latency_milliseconds_bucket[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(axelar_gmp_e2e_latency_milliseconds_bucket[24h])))
+      mean: sum(rate(axelar_gmp_e2e_latency_milliseconds_sum[24h])) / sum(rate(axelar_gmp_e2e_latency_milliseconds_count[24h]))
       sample_size: sum(increase(axelar_gmp_seen_total[24h]))
-      series: histogram_quantile(0.50, sum by(le) (rate(axelar_gmp_e2e_latency_ms_bucket[1h])))
+      series: histogram_quantile(0.50, sum by(le) (rate(axelar_gmp_e2e_latency_milliseconds_bucket[1h])))
+
+  - slug: chainlink-ccip
+    name: Chainlink CCIP
+    tag: Chainlink DON commit + Risk Management Network, source-tx to destination execution (includes source-chain finality wait)
+    formula: "50th percentile over 24h of Chainlink CCIP end-to-end delivery latency, aggregated across every source chain CCIP supports. Structurally slower than pre-finality signers because the DON waits for source-chain finality before committing."
+    queries:
+      p50: histogram_quantile(0.50, sum by(le) (rate(ccip_message_latency_milliseconds_bucket[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(ccip_message_latency_milliseconds_bucket[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(ccip_message_latency_milliseconds_bucket[24h])))
+      mean: sum(rate(ccip_message_latency_milliseconds_sum[24h])) / sum(rate(ccip_message_latency_milliseconds_count[24h]))
+      sample_size: sum(increase(ccip_message_seen_total[24h]))
+      series: histogram_quantile(0.50, sum by(le) (rate(ccip_message_latency_milliseconds_bucket[1h])))
