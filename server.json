@@ -1,0 +1,18 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.chainbench/openchainbench",
+  "title": "OpenChainBench",
+  "description": "Live, reproducible crypto infrastructure benchmarks. Query 94 live measurements across RPC latency, bridge fees, L1 finality, oracle accuracy, aggregators, prediction markets, cross-chain messaging. Three tools (list_benchmarks, get_benchmark, query_prom) plus per-bench resources. No API key, CC-BY-4.0 data.",
+  "version": "1.0.0",
+  "repository": {
+    "url": "https://github.com/ChainBench/OpenChainBench",
+    "source": "github"
+  },
+  "websiteUrl": "https://openchainbench.com",
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://openchainbench.com/api/mcp/mcp"
+    }
+  ]
+}
