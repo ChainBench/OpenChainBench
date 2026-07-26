@@ -141,7 +141,7 @@ export default async function McpPage() {
             Claude Desktop
           </p>
           <p className="mt-2 text-sm text-ink-soft leading-relaxed">
-            No deeplink yet — the fastest path is{" "}
+            No deeplink yet. The fastest path is{" "}
             <strong className="text-ink">
               Settings → Developer → Model Context Protocol → Add server
             </strong>{" "}
