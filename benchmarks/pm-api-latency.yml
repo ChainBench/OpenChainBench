@@ -105,7 +105,7 @@ per_chain_explainer:
     h2: Predexon API latency
     body: "Predexon is a multi-venue aggregator that unifies Polymarket, Kalshi and Limitless behind one schema. Its API answers at {{p50:predexon}} p50 (24h, all regions), measured on the same market-price endpoint the harness probes on the native venues, so the direct comparison of a unified aggregator against three venue-native APIs is head to head. Predexon aggregates upstream data; a Predexon latency higher than the sum of its three underliers is the cost of unification. Lower is the value of having one contract instead of three."
 
-source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/pm-rate-limits
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/pm-api-latency
 
 prometheus:
   window: 24h
