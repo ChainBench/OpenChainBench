@@ -6,10 +6,10 @@ import (
 
 // Two histograms per Axelar GMP message so both fair-comparisons are
 // available downstream:
-//   - `axelar_gmp_confirm_latency_ms` = source tx observed by Axelar
+//   - `axelar_gmp_confirm_latency_milliseconds` = source tx observed by Axelar
 //     validators, quorum signed (`time_spent.call_confirm`). Direct
 //     analogue of Wormhole VAA finalization time.
-//   - `axelar_gmp_e2e_latency_ms` = source tx submitted to destination
+//   - `axelar_gmp_e2e_latency_milliseconds` = source tx submitted to destination
 //     executed (`time_spent.total`). Analogue of LayerZero/CCIP/Hyperlane
 //     end-to-end delivery.
 //
@@ -19,7 +19,7 @@ import (
 var (
 	axelarConfirmLatencyMs = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
-			Name:    "axelar_gmp_confirm_latency_ms",
+			Name:    "axelar_gmp_confirm_latency_milliseconds",
 			Help:    "Axelar GMP source tx to validator quorum confirmation latency (ms), from time_spent.call_confirm.",
 			Buckets: []float64{2_000, 5_000, 10_000, 15_000, 20_000, 30_000, 45_000, 60_000, 90_000, 120_000, 180_000, 300_000, 600_000, 900_000, 1_200_000, 1_800_000},
 		},
@@ -28,7 +28,7 @@ var (
 
 	axelarE2ELatencyMs = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
-			Name:    "axelar_gmp_e2e_latency_ms",
+			Name:    "axelar_gmp_e2e_latency_milliseconds",
 			Help:    "Axelar GMP end-to-end delivery latency (ms), from source tx to destination execution, via time_spent.total.",
 			Buckets: []float64{2_000, 5_000, 10_000, 15_000, 20_000, 30_000, 45_000, 60_000, 90_000, 120_000, 180_000, 300_000, 600_000, 900_000, 1_200_000, 1_800_000},
 		},
