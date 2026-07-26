@@ -597,6 +597,82 @@ func chains() []Chain {
 				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_OPBNB_DRPC", "https://opbnb.drpc.org")},
 			},
 		},
+		// ─── Sei EVM (bench 108) — added 2026-07-26. Cosmos SDK L1 with
+		// EVM parallel-execution layer (chain 1329). Native EVM JSON-RPC.
+		// The 2026-07-03 sweep excluded Sei because drpc cached
+		// eth_blockNumber leaving only 2 clean providers; re-audit on
+		// 2026-07-26 confirms dRPC no longer caches, and Thirdweb +
+		// Stakeme.pro have come online, restoring 4 clean keyless
+		// providers. Providers live-verified: sei-official
+		// (evm-rpc.sei-apis.com), drpc, thirdweb, stakeme. Excluded:
+		// PublicNode (no sei-evm subdomain), Tenderly public (no
+		// sei route), BlockPI (Apikey required), MeowRPC (defunct),
+		// Basement Nodes / Node75 / AllThatNode (host unresolvable
+		// or key-gated). Sei's dual Cosmos + EVM stack means this bench
+		// scopes strictly to the EVM side; the Cosmos JSON-RPC would
+		// need a Kind:"cosmos" entry as we did for Osmosis.
+		{
+			Slug: "sei",
+			Name: "Sei EVM",
+			Providers: []Provider{
+				{Slug: "sei-official", Name: "Sei Labs", URL: envDefault("RPC_URL_SEI_OFFICIAL", "https://evm-rpc.sei-apis.com")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_SEI_DRPC", "https://sei.drpc.org")},
+				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_SEI_THIRDWEB", "https://sei.rpc.thirdweb.com")},
+				{Slug: "stakeme", Name: "Stakeme", URL: envDefault("RPC_URL_SEI_STAKEME", "https://sei-evm-rpc.stakeme.pro")},
+			},
+		},
+		// ─── Mode (bench 109) — added 2026-07-26. OP Stack L2 (chain
+		// 34443), Base-ecosystem-adjacent, DeFi + AI positioning. The
+		// 2026-07-03 sweep excluded Mode with 3 providers; re-audit on
+		// 2026-07-26 adds Thirdweb (now live on Mode) to bring the count
+		// to 4 clean keyless providers. Providers live-verified:
+		// mode-official (mainnet.mode.network), drpc, 1rpc, thirdweb.
+		// Excluded: Tenderly public (no mode route), Blast API
+		// (discontinued), MeowRPC + PublicNode (no mode subdomain).
+		{
+			Slug: "mode",
+			Name: "Mode",
+			Providers: []Provider{
+				{Slug: "mode-official", Name: "Mode Labs", URL: envDefault("RPC_URL_MODE_OFFICIAL", "https://mainnet.mode.network")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_MODE_DRPC", "https://mode.drpc.org")},
+				{Slug: "1rpc", Name: "1RPC", URL: envDefault("RPC_URL_MODE_1RPC", "https://1rpc.io/mode")},
+				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_MODE_THIRDWEB", "https://mode.rpc.thirdweb.com")},
+			},
+		},
+		// ─── Ronin (bench 110) — added 2026-07-26. EVM gaming L1
+		// (chain 2020) operated by Sky Mavis, primary home of Axie
+		// Infinity + Pixels + a broader gaming ecosystem. 4 clean
+		// keyless providers live-verified: ronin-official
+		// (api.roninchain.com), drpc, tenderly, thirdweb. Excluded:
+		// Ronin Tech secondary (DNS-fail), PublicNode (no ronin
+		// subdomain), lgns.net (DNS-fail).
+		{
+			Slug: "ronin",
+			Name: "Ronin",
+			Providers: []Provider{
+				{Slug: "ronin-official", Name: "Sky Mavis", URL: envDefault("RPC_URL_RONIN_OFFICIAL", "https://api.roninchain.com/rpc")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_RONIN_DRPC", "https://ronin.drpc.org")},
+				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_RONIN_TENDERLY", "https://ronin.gateway.tenderly.co")},
+				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_RONIN_THIRDWEB", "https://ronin.rpc.thirdweb.com")},
+			},
+		},
+		// ─── Immutable zkEVM (bench 111) — added 2026-07-26. Polygon
+		// CDK-based zkEVM L2 (chain 13371) operated by Immutable,
+		// dedicated Web3 gaming stack. 4 clean keyless providers
+		// live-verified: immutable-official (rpc.immutable.com), drpc,
+		// tenderly, thirdweb. Excluded: PublicNode (no subdomain),
+		// Alchemy public (chain not enabled), Tenderly's rpc.
+		// -prefixed alias (route redirects to keyed path).
+		{
+			Slug: "immutable",
+			Name: "Immutable zkEVM",
+			Providers: []Provider{
+				{Slug: "immutable-official", Name: "Immutable", URL: envDefault("RPC_URL_IMMUTABLE_OFFICIAL", "https://rpc.immutable.com")},
+				{Slug: "drpc", Name: "dRPC", URL: envDefault("RPC_URL_IMMUTABLE_DRPC", "https://immutable-zkevm.drpc.org")},
+				{Slug: "tenderly", Name: "Tenderly Gateway", URL: envDefault("RPC_URL_IMMUTABLE_TENDERLY", "https://immutable.gateway.tenderly.co")},
+				{Slug: "thirdweb", Name: "Thirdweb", URL: envDefault("RPC_URL_IMMUTABLE_THIRDWEB", "https://immutable-zkevm.rpc.thirdweb.com")},
+			},
+		},
 	}
 
 	filter := strings.TrimSpace(os.Getenv("OCB_CHAINS"))
