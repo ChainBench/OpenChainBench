@@ -119,6 +119,25 @@ func chains() []Chain {
 			// Three oracles only (PublicNode feeHistory + Owlracle + MetaMask).
 			SupportedSet: []Oracle{OraclePublicNode, OracleOwlracle, OracleMetaMask},
 		},
+		{
+			// Arbitrum One is an L2 rollup: the sequencer is centralised,
+			// so the priority-fee auction that gives EIP-1559 chains
+			// their tail behaviour effectively doesn't exist here (fees
+			// converge to a single number close to L2 baseFee). This
+			// bench measures that empirically — all oracles collapse
+			// to ~0 priority — and the disclaimer on the bench page
+			// tells users the meaningful L2 cost is L1 data fee, a
+			// different metric planned for a separate harness. All 4
+			// oracles verified live on chainid=42161 without a key
+			// (Etherscan v2 free tier covers it, Owlracle uses `arb`).
+			Slug:         "arbitrum",
+			ChainID:      42161,
+			RealizedRPC:  envDefault("GAS_REALIZED_RPC_ARBITRUM", "https://arbitrum-one-rpc.publicnode.com"),
+			VerifyRPC:    envDefault("GAS_REALIZED_RPC_VERIFY_ARBITRUM", "https://arbitrum.drpc.org"),
+			OwlracleSlug: "arb",
+			BlockTimeSec: 1, // Arb One has sub-second nominal block time; realizer catch-up loop handles the burst.
+			SupportedSet: []Oracle{OraclePublicNode, OracleOwlracle, OracleEtherscan, OracleMetaMask},
+		},
 	}
 }
 

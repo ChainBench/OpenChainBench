@@ -167,7 +167,34 @@ var (
 		},
 		[]string{"oracle", "tier", "chain"},
 	)
+
+	// Asymmetric Pinball Loss at τ=0.9 (Koenker & Bassett 1978, a
+	// proper scoring rule per Gneiting & Raftery 2007). Per-sample
+	// value: `(1-τ) × over_gap` if predicted > realized, else
+	// `τ × under_gap`. τ=0.9 encodes "under-prediction is 9× worse
+	// than over-prediction" — matches real wallet UX where a stuck
+	// tx is far more painful than paying 20 % over. Emitting this as
+	// its own histogram (not derived from over/under histograms via
+	// PromQL) lets `quantile_over_time` produce a stable per-oracle
+	// APL median that can be ranked directly. Same bucket ladder as
+	// the abs error hist so the two are comparable at a glance.
+	gasErrorPriorityAPLHist = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "gas_error_priority_apl_gwei_histogram",
+			Help:    "Histogram of per-sample asymmetric pinball loss (τ=0.9, gwei) per (oracle, tier, chain). Under-prediction is 9× more expensive than over-prediction, matching wallet UX where a stuck tx hurts more than a small overpay. Proper scoring rule; ranks stably at n=few-hundred where p99 abs error is still noisy.",
+			Buckets: []float64{0.001, 0.005, 0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10, 25, 50, 100, 250},
+		},
+		[]string{"oracle", "tier", "chain"},
+	)
 )
+
+// aplTau is the asymmetric pinball loss target quantile. 0.9 encodes
+// the wallet UX asymmetry: under-prediction (stuck tx) is 9× more
+// costly than over-prediction (small overpay). If we ever add a
+// second APL curve (e.g. τ=0.5 for symmetric ranking), give it a
+// separate metric — do not overload one histogram with a tau label
+// or the buckets will not align across taus.
+const aplTau = 0.9
 
 // StartMetricsServer binds /metrics + /health on addr. Blocking call —
 // run in its own goroutine.
