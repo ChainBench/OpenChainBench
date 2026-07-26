@@ -13,15 +13,19 @@ import (
 // + executor delivery), not just protocol signing latency.
 //
 // Emitted in MILLISECONDS to match the site's `unit: ms` display
-// convention. Buckets extend to 30 min: LayerZero rarely runs longer
-// than a few minutes end-to-end (fewer finality waits than CCIP), but
-// the tail catches DVN misconfig or destination-chain congestion.
+// convention. Buckets aligned with the other three e2e cross-chain
+// messaging benches (CCIP, Hyperlane, Axelar) — up to 90 min — so
+// the cross-chain-messaging-latency meta-bench compares equivalent
+// bucket resolution across all four protocols. LayerZero typically
+// runs a few minutes end-to-end but real stuck deliveries at 30-60
+// min have been observed on low-liquidity DVN configurations, and
+// the tail must be preserved for honest p99.
 var (
 	lzLatencyMs = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Name:    "lz_message_latency_milliseconds",
 			Help:    "End-to-end delivery latency (ms) for a LayerZero message, from source-chain block to destination-chain block, labeled by source + destination chain.",
-			Buckets: []float64{2_000, 5_000, 10_000, 15_000, 20_000, 30_000, 45_000, 60_000, 90_000, 120_000, 180_000, 300_000, 600_000, 900_000, 1_200_000, 1_800_000},
+			Buckets: []float64{5_000, 15_000, 30_000, 60_000, 120_000, 180_000, 300_000, 600_000, 900_000, 1_200_000, 1_800_000, 2_400_000, 3_000_000, 3_600_000, 4_500_000, 5_400_000},
 		},
 		[]string{"source_chain", "dest_chain"},
 	)

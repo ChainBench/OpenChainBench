@@ -49,9 +49,13 @@ const (
 	requestTimeout      = 15 * time.Second
 	dedupeCacheMaxLen   = 10_000
 	metricsListenAddr   = ":2112"
-	// 30 min hard ceiling — Hyperlane relayers are typically < 2 min
-	// end-to-end; > 30 min is either a stuck message or clock skew.
-	maxLatencyMs = 1_800_000
+	// 2h hard ceiling. Aligned with the other e2e cross-chain messaging
+	// benches (CCIP, LayerZero, Axelar) so the drop threshold is
+	// consistent across the cross-chain-messaging-latency meta-bench.
+	// Hyperlane relayers are typically < 2 min but real stuck deliveries
+	// have been observed at 30-90 min; we want the tail preserved for
+	// meaningful p99 comparison.
+	maxLatencyMs = 7_200_000 // 2 hours
 )
 
 type hyperlaneMessage struct {
