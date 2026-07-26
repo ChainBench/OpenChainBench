@@ -112,7 +112,7 @@ export default async function RpcHubPage() {
           the same probe: one identical <code>eth_blockNumber</code> call
           every 15 seconds from 3 regions (N. Virginia, Amsterdam,
           Singapore). The matrix below folds the per-chain leaderboards
-          into one view — fastest provider per chain, fastest per region,
+          into one view: fastest provider per chain, fastest per region,
           and which gateway covers your whole multichain stack. Headline
           numbers are 24h p50 round-trip latency; methodology and
           exclusion rules live on the{" "}
@@ -205,7 +205,7 @@ export default async function RpcHubPage() {
             Data warming up
           </p>
           <p className="text-sm text-ink-soft max-w-2xl leading-relaxed">
-            The cross-chain snapshot has not been published yet — the
+            The cross-chain snapshot has not been published yet. The
             materialize worker writes it every minute once the RPC
             cluster is sweeping. The per-chain leaderboards are already
             live on their bench pages:
