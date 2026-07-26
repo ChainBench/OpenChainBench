@@ -19,38 +19,17 @@ export async function generateStaticParams() {
   return [];
 }
 
-// Emit one OG image per (slug, chain) combo so social shares of
-// `/benchmarks/{slug}?chain=X` render a chain-honest card instead of the
-// cross-chain aggregate leader (which is the misleading baseline-skew
-// case bench-001 ran into: GMGN looking like "fastest crypto data API"
-// on the unfiltered view because Solana's faster baseline drags the
-// average down). The `id` Next.js threads through to the default image
-// handler is the chain value; the unfiltered card uses `id="default"`.
-export async function generateImageMetadata({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
-  const { slug } = await params;
-  // Load editorial-only via getBenchmark (memoised; safe at build time).
-  const b = await getBenchmark(slug);
-  const chains = (b?.dimensions?.chain ?? []).filter(
-    (c) => c.value !== "all",
-  );
-  return [
-    {
-      id: "default",
-      alt,
-      size,
-      contentType,
-    },
-    ...chains.map((c) => ({
-      id: c.value,
-      alt: `${alt}. ${c.label}`,
-      size,
-      contentType,
-    })),
-  ];
+// Emit a SINGLE OG image for the aggregate bench page. Previously we
+// fanned out one entry per chain variant so `/benchmarks/{slug}?chain=X`
+// social shares could render a chain-honest card, but Next hoists every
+// generateImageMetadata entry into a separate <meta property="og:image">
+// on the parent page — X, LinkedIn, Slack pick nondeterministically
+// among them, so a share of `?chain=solana` might render the `robinhood`
+// card. Chain-scoped pages live at `/benchmarks/[slug]/[chain]` and can
+// carry their own opengraph-image handler if per-chain cards become a
+// priority; today they inherit the site-wide default OG.
+export async function generateImageMetadata() {
+  return [{ id: "default", alt, size, contentType }];
 }
 
 export default async function OG({
