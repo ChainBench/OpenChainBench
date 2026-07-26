@@ -165,7 +165,12 @@ export async function generateMetadata({
     },
     other: {
       citation_title: metaTitle,
-      citation_author: "OpenChainBench",
+      // Highwire Press citation_author expects a person name (Scholar
+      // routinely rejects records where author reads as a publisher
+      // organisation). The Person is also anchored in the JSON-LD
+      // Dataset creator + StatisticalReport contributor, so the two
+      // signals agree.
+      citation_author: "Florent Tapponnier",
       citation_publisher: "OpenChainBench",
       ...(isoPubDate ? { citation_publication_date: isoPubDate } : {}),
       citation_doi: "10.5281/zenodo.20800312",
