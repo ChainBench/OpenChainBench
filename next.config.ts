@@ -122,22 +122,11 @@ const nextConfig: NextConfig = {
         ],
       },
       {
-        // Sitemap: force-dynamic in the route file (Data Cache 2MB cap
-        // blows past for the 500+ URL corpus), so nothing caches it by
-        // default and every crawler hit re-runs the full loader chain.
-        // Hold it edge-side for an hour with SWR so cold hits stay fast.
-        source: "/sitemap.xml",
-        headers: [
-          {
-            key: "Cache-Control",
-            value: "public, s-maxage=3600, stale-while-revalidate=86400",
-          },
-        ],
-      },
-      {
         // Citable JSON is polled by LLM crawlers (Perplexity, ChatGPT,
         // Claude Deep Research) — a bare `public` with no s-maxage sent
-        // every scrape to origin. Same freshness window as sitemap.
+        // every scrape to origin. Sitemap's Cache-Control is set inside
+        // its route.ts (`src/app/sitemap.xml/route.ts`) because metadata
+        // routes ignore next.config headers().
         source: "/api/citable",
         headers: [
           {
