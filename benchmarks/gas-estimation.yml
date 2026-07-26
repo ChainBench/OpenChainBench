@@ -134,6 +134,7 @@ dimensions:
   chain:
     - { value: ethereum,  label: Ethereum }
     - { value: polygon,   label: Polygon }
+    - { value: arbitrum,  label: Arbitrum }
 
 # Real metrics emitted by the gas-estimation harness:
 #   gas_predicted_priority_gwei{oracle, tier, chain}        gauge
