@@ -102,7 +102,9 @@ func runOraclePoller(ctx context.Context, o Oracle, ep OracleEndpoint, interval 
 			}
 			target = h + 1
 		}
+		now := time.Now()
 		for _, p := range res.Predictions {
+			p.CapturedAt = now
 			buf.Add(target, p)
 			gasPredictedPriority.WithLabelValues(string(p.Oracle), string(p.Tier), chain.Slug).Set(p.PriorityGwei)
 		}

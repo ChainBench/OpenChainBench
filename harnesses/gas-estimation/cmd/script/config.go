@@ -32,6 +32,7 @@ const (
 	OraclePublicNode  Oracle = "publicnode-feehistory"
 	OracleOwlracle    Oracle = "owlracle"
 	OracleEtherscan   Oracle = "etherscan"
+	OracleMetaMask    Oracle = "metamask"
 )
 
 type Oracle string
@@ -48,6 +49,7 @@ var pollIntervals = map[Oracle]time.Duration{
 	OraclePublicNode:  12 * time.Second,
 	OracleOwlracle:    60 * time.Second,
 	OracleEtherscan:   15 * time.Second,
+	OracleMetaMask:    12 * time.Second,
 }
 
 // Realized-block poll cadence per chain. Picked close to each chain's
@@ -74,12 +76,13 @@ const pendingTTLBlocks = 25
 // an API key on that chain. The verification matrix lives in the
 // commit message of the multi-chain expansion. one row per chain.
 type Chain struct {
-	Slug          string   // canonical OCB chain slug (lowercase)
-	ChainID       int      // EVM chain id (1 / 137 / 43114)
-	RealizedRPC   string   // PublicNode JSON-RPC endpoint for eth_getBlockByNumber + eth_feeHistory
-	OwlracleSlug  string   // path slug for api.owlracle.info/v4/<slug>/gas
-	BlockTimeSec  int      // nominal block time, used only for log lines
-	SupportedSet  []Oracle // oracles verified no-key on this chain
+	Slug         string   // canonical OCB chain slug (lowercase)
+	ChainID      int      // EVM chain id (1 / 137 / 43114)
+	RealizedRPC  string   // primary JSON-RPC for eth_getBlockByNumber + eth_feeHistory
+	VerifyRPC    string   // optional second RPC from a different upstream; when set, its baseFee for the same block is compared to the primary and any mismatch increments gas_realized_quorum_disagreement_total. Empty string = no verification (single-node realized).
+	OwlracleSlug string   // path slug for api.owlracle.info/v4/<slug>/gas
+	BlockTimeSec int      // nominal block time, used only for log lines
+	SupportedSet []Oracle // oracles verified no-key on this chain
 }
 
 // chains returns the chain matrix. Order matters only for log output.
@@ -89,29 +92,54 @@ func chains() []Chain {
 			Slug:         "ethereum",
 			ChainID:      1,
 			RealizedRPC:  envDefault("GAS_REALIZED_RPC_ETHEREUM", "https://ethereum-rpc.publicnode.com"),
+			VerifyRPC:    envDefault("GAS_REALIZED_RPC_VERIFY_ETHEREUM", "https://eth.drpc.org"),
 			OwlracleSlug: "eth",
 			BlockTimeSec: 12,
 			// Etherscan v2 free tier covers chainid=1. All four oracles work.
-			SupportedSet: []Oracle{OraclePublicNode, OracleOwlracle, OracleEtherscan},
+			SupportedSet: []Oracle{OraclePublicNode, OracleOwlracle, OracleEtherscan, OracleMetaMask},
 		},
 		{
 			Slug:         "polygon",
 			ChainID:      137,
 			RealizedRPC:  envDefault("GAS_REALIZED_RPC_POLYGON", "https://polygon-bor-rpc.publicnode.com"),
+			VerifyRPC:    envDefault("GAS_REALIZED_RPC_VERIFY_POLYGON", "https://polygon.drpc.org"),
 			OwlracleSlug: "poly",
 			BlockTimeSec: 2,
 			// Etherscan v2 free tier covers chainid=137 (verified). All four oracles work.
-			SupportedSet: []Oracle{OraclePublicNode, OracleOwlracle, OracleEtherscan},
+			SupportedSet: []Oracle{OraclePublicNode, OracleOwlracle, OracleEtherscan, OracleMetaMask},
 		},
 		{
 			Slug:         "avalanche",
 			ChainID:      43114,
 			RealizedRPC:  envDefault("GAS_REALIZED_RPC_AVALANCHE", "https://avalanche-c-chain-rpc.publicnode.com"),
+			VerifyRPC:    envDefault("GAS_REALIZED_RPC_VERIFY_AVALANCHE", "https://avalanche.drpc.org"),
 			OwlracleSlug: "avax",
 			BlockTimeSec: 2,
 			// Etherscan v2 returns "Free API access is not supported for this chain" on chainid=43114 — paid plan required.
-			// Three oracles only (Blocknative + PublicNode feeHistory + Owlracle).
-			SupportedSet: []Oracle{OraclePublicNode, OracleOwlracle},
+			// Three oracles only (PublicNode feeHistory + Owlracle + MetaMask).
+			SupportedSet: []Oracle{OraclePublicNode, OracleOwlracle, OracleMetaMask},
+		},
+		{
+			// Arbitrum One is an L2 rollup: the sequencer is centralised,
+			// so the priority-fee auction that gives EIP-1559 chains
+			// their tail behaviour effectively doesn't exist here (fees
+			// converge to a single number close to L2 baseFee). This
+			// bench measures that empirically — all oracles collapse
+			// to ~0 priority — and the disclaimer on the bench page
+			// tells users the meaningful L2 cost is L1 data fee, a
+			// different metric planned for a separate harness. All 4
+			// oracles verified live on chainid=42161 without a key
+			// (Etherscan v2 free tier covers it, Owlracle uses `arb`).
+			Slug:         "arbitrum",
+			ChainID:      42161,
+			RealizedRPC:  envDefault("GAS_REALIZED_RPC_ARBITRUM", "https://arbitrum-one-rpc.publicnode.com"),
+			// dRPC's arbitrum public routes to 1rpc.io which rate-limits within 30s.
+			// arb1.arbitrum.io is Offchain Labs' own hosted RPC — genuinely different
+			// upstream from PublicNode (Node Fleet), sustains 5+ req/s in tests.
+			VerifyRPC:    envDefault("GAS_REALIZED_RPC_VERIFY_ARBITRUM", "https://arb1.arbitrum.io/rpc"),
+			OwlracleSlug: "arb",
+			BlockTimeSec: 1, // Arb One has sub-second nominal block time; realizer catch-up loop handles the burst.
+			SupportedSet: []Oracle{OraclePublicNode, OracleOwlracle, OracleEtherscan, OracleMetaMask},
 		},
 	}
 }
@@ -154,8 +182,21 @@ func endpointForChain(o Oracle, c Chain) OracleEndpoint {
 			URL: fmt.Sprintf("https://api.owlracle.info/v4/%s/gas", c.OwlracleSlug),
 		}
 	case OracleEtherscan:
+		// Etherscan v2 no-key limit is 1 req/5s per IP, shared across
+		// chains. With 4 chains × 15s poll + 6s global gate we bump
+		// against that ceiling and start emitting `throttled` results.
+		// When ETHERSCAN_API_KEY is set (shared with explorer-chain-
+		// coverage / buyback-audit harnesses on the same VPS, 100k/day
+		// quota) we append it as query string — free-tier key raises
+		// the limit to 5 req/s across all chains, way past our need.
+		u := fmt.Sprintf("https://api.etherscan.io/v2/api?chainid=%d&module=gastracker&action=gasoracle", c.ChainID)
+		if k := envDefault("ETHERSCAN_API_KEY", ""); k != "" {
+			u += "&apikey=" + k
+		}
+		return OracleEndpoint{URL: u}
+	case OracleMetaMask:
 		return OracleEndpoint{
-			URL: fmt.Sprintf("https://api.etherscan.io/v2/api?chainid=%d&module=gastracker&action=gasoracle", c.ChainID),
+			URL: fmt.Sprintf("https://gas.api.cx.metamask.io/networks/%d/suggestedGasFees", c.ChainID),
 		}
 	}
 	return OracleEndpoint{}

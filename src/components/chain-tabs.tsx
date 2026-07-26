@@ -101,7 +101,7 @@ function Tab({
       {info && (info.providers > 0 || info.leader) && (
         <span
           role="tooltip"
-          className="pointer-events-none absolute left-1/2 top-full z-30 mt-1.5 hidden -translate-x-1/2 w-[min(16rem,90vw)] rounded-md border border-rule bg-paper p-2.5 shadow-xl group-hover:block text-left normal-case tracking-normal"
+          className="pointer-events-none absolute left-1/2 top-full z-30 mt-1.5 hidden -translate-x-1/2 w-[min(16rem,90vw)] rounded-md border border-rule bg-paper p-2.5 shadow-xl [@media(hover:hover)]:group-hover:block text-left normal-case tracking-normal"
         >
           <p
             className="text-[10px] font-medium uppercase tracking-[0.16em]"

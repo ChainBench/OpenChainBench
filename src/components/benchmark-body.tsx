@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Benchmark } from "@/types/benchmark";
 import { liveResults } from "@/lib/provider-filters";
 import { matchesChainSlug } from "@/lib/chain-aliases";
@@ -29,6 +29,8 @@ import { computeFieldStats } from "@/lib/stats";
 import { defaultViewFor, viewsForBenchmark } from "@/lib/views";
 import { useViewPreference } from "@/hooks/use-view-preference";
 import type { ChainMeta } from "@/components/chain-tabs";
+import { FileText, Check } from "lucide-react";
+import { Hint } from "@/components/hint";
 
 type ChainOption = { value: string; label: string };
 
@@ -136,6 +138,61 @@ const REGION_DISPLAY: Record<string, string> = {
   global: "Global",
 };
 
+const RANGE_CFG: Record<string, { nPoints: number; hours: number; label: string }> = {
+  "1h": { nPoints: 3, hours: 1, label: "1 h" },
+  "6h": { nPoints: 18, hours: 6, label: "6 h" },
+  "24h": { nPoints: 72, hours: 24, label: "24 h" },
+  "7d": { nPoints: 84, hours: 168, label: "7 d" },
+  "30d": { nPoints: 60, hours: 720, label: "30 d" },
+};
+
+function CsvButton({ benchmark, range }: { benchmark: Benchmark; range: string }) {
+  const [done, setDone] = useState(false);
+  const cfg = RANGE_CFG[range] ?? RANGE_CFG["24h"];
+  const series =
+    (range === "7d" ? benchmark.extras.series7d : undefined) ??
+    (range === "30d" ? benchmark.extras.series30d : undefined) ??
+    benchmark.extras.series24h;
+
+  const onClick = useCallback(() => {
+    if (!series || Object.keys(series).length === 0) return;
+    const slugs = benchmark.results.map((r) => r.slug);
+    const stepMs = (cfg.hours * 3_600_000) / cfg.nPoints;
+    const now = Date.now();
+    const header = ["timestamp", ...slugs].join(",");
+    const rows = Array.from({ length: cfg.nPoints }, (_, i) => {
+      const ts = new Date(now - cfg.hours * 3_600_000 + (i + 1) * stepMs).toISOString();
+      return [ts, ...slugs.map((s) => { const v = series[s]?.[i]; return v == null ? "" : String(v); })].join(",");
+    });
+    const blob = new Blob([[header, ...rows].join("\n")], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `openchainbench-${benchmark.slug}-${range}.csv`;
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    setDone(true);
+    setTimeout(() => setDone(false), 1600);
+  }, [benchmark, series, cfg, range]);
+
+  if (!series || Object.keys(series).length === 0) return null;
+  return (
+    <Hint label={`Download CSV (${cfg.label})`}>
+      <button
+        type="button"
+        onClick={onClick}
+        aria-label="Download CSV"
+        className="inline-flex items-center justify-center rounded-md border border-ink/15 bg-paper p-1.5 text-ink shadow-sm transition-colors hover:bg-paper-soft"
+      >
+        {done ? <Check size={13} strokeWidth={2.4} /> : <FileText size={13} strokeWidth={2} />}
+      </button>
+    </Hint>
+  );
+}
+
 export function BenchmarkBody({
   variants,
   chainOptions,
@@ -230,13 +287,10 @@ export function BenchmarkBody({
 
   // Cross-dimension filtering: hide venue tabs with no data for the active
   // chain, and hide chain tabs with no data for the active venue.
-  const filteredVenueOptions = useMemo(() => {
-    if (!venuesForChain || !effectiveChain || effectiveChain === "all") return venueOptions;
-    const valid = venuesForChain[effectiveChain];
-    if (!valid || valid.length === 0) return venueOptions;
-    const validSet = new Set(valid);
-    return venueOptions.filter((v) => v.value === "all" || validSet.has(v.value));
-  }, [venueOptions, venuesForChain, effectiveChain]);
+  // Venue tabs are never filtered by chain: the user picks a launchpad first,
+  // then drills into a chain. The reverse (chain → hides venues) is confusing
+  // because launchpad tabs disappear unexpectedly.
+  const filteredVenueOptions = venueOptions;
 
   const chainsForVenue = useMemo(() => {
     if (!venuesForChain) return undefined;
@@ -252,7 +306,9 @@ export function BenchmarkBody({
     const valid = chainsForVenue[effectiveVenue];
     if (!valid || valid.length === 0) return chainOptions;
     const validSet = new Set(valid);
-    return chainOptions.filter((c) => c.value === "all" || validSet.has(c.value));
+    // Strip the "all" aggregate option when a specific venue is selected: mixing
+    // chains is unfair (a Solana-only provider scores 0% on Base tokens).
+    return chainOptions.filter((c) => c.value !== "all" && validSet.has(c.value));
   }, [chainOptions, chainsForVenue, effectiveVenue]);
 
   // The page ships ONLY the aggregate view (embedding every variant made
@@ -345,7 +401,7 @@ export function BenchmarkBody({
     // variantMap intentionally omitted: presence is re-checked inside the
     // functional setState, a duplicate in-flight fetch is harmless.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [effectiveChain, effectiveRegion, effectiveKind, aggregateBench]);
+  }, [effectiveChain, effectiveRegion, effectiveKind, effectiveVenue, aggregateBench]);
 
   const benchmark = variantMap[activeKey] ?? aggregateBench;
   // True while the selected chain/region/kind variant is still loading:
@@ -578,6 +634,14 @@ export function BenchmarkBody({
     };
   }, [viewBenchmark, activePanel]);
 
+  const sharedHeaderActions = (
+    <>
+      <CsvButton benchmark={viewBenchmark ?? benchmark} range={chartRange} />
+      {pageActions}
+      <ViewSwitcher allowed={allowedViews} value={view} onChange={setView} />
+    </>
+  );
+
   return (
     <>
       {(hasLayerSplit ||
@@ -633,18 +697,12 @@ export function BenchmarkBody({
               )}
             />
           )}
-          {filteredChainOptions.length > 0 && (
+          {filteredChainOptions.length > 1 && (
             <DimensionRow
               label="Chain"
               options={filteredChainOptions}
               selected={chain ?? fallbackChain}
-              onSelect={(v) => {
-                setChain(v);
-                if (v !== "all" && effectiveVenue && effectiveVenue !== "all" && venuesForChain) {
-                  const validVenues = venuesForChain[v];
-                  if (validVenues && !validVenues.includes(effectiveVenue)) setVenue(null);
-                }
-              }}
+              onSelect={setChain}
               metaByValue={Object.fromEntries(
                 filteredChainOptions
                   .map((o) => [
@@ -739,7 +797,7 @@ export function BenchmarkBody({
               {view === "countLeaderboard" && (
                 <CountLeaderboard
                   benchmark={viewBenchmark}
-                  headerActions={<>{pageActions}<ViewSwitcher allowed={allowedViews} value={view} onChange={setView} /></>}
+                  headerActions={<>{sharedHeaderActions}</>}
                 />
               )}
               {view === "rankedBar" && (
@@ -764,7 +822,7 @@ export function BenchmarkBody({
                   onResetExcluded={resetExcluded}
                   disableTopN={hasLayerSplit}
                   topNControl={topNControl}
-                  headerActions={<>{pageActions}<ViewSwitcher allowed={allowedViews} value={view} onChange={setView} /></>}
+                  headerActions={<>{sharedHeaderActions}</>}
                 />
                 </>
               )}
@@ -776,7 +834,7 @@ export function BenchmarkBody({
                   onResetExcluded={resetExcluded}
                   disableTopN={hasLayerSplit}
                   topNControl={topNControl}
-                  headerActions={<>{pageActions}<ViewSwitcher allowed={allowedViews} value={view} onChange={setView} /></>}
+                  headerActions={<>{sharedHeaderActions}</>}
                 />
               )}
               {view === "donut" && (
@@ -786,7 +844,7 @@ export function BenchmarkBody({
                   onToggleExclude={toggleExclude}
                   disableTopN={hasLayerSplit}
                   topNControl={topNControl}
-                  headerActions={<>{pageActions}<ViewSwitcher allowed={allowedViews} value={view} onChange={setView} /></>}
+                  headerActions={<>{sharedHeaderActions}</>}
                 />
               )}
               {view === "timeseries" && (
@@ -819,7 +877,7 @@ export function BenchmarkBody({
                     onResetExcluded={resetExcluded}
                     disableTopN={hasLayerSplit}
                   topNControl={topNControl}
-                    headerActions={<>{pageActions}<ViewSwitcher allowed={allowedViews} value={view} onChange={setView} /></>}
+                    headerActions={<>{sharedHeaderActions}</>}
                     seriesOverride={activePanel?.seriesByProvider}
                     seriesOverride7d={activePanel?.seriesByProvider7d}
                     seriesOverride30d={activePanel?.seriesByProvider30d}
