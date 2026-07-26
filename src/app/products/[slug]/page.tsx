@@ -144,7 +144,7 @@ export async function generateMetadata({
     description,
     alternates: { canonical: canonicalUrl },
     openGraph: { title, description, type: "profile", url: canonicalUrl },
-    twitter: { card: "summary_large_image", title, description },
+    twitter: { card: "summary_large_image", site: SITE.twitter, title, description },
   };
 }
 
