@@ -32,6 +32,7 @@ const (
 	OraclePublicNode  Oracle = "publicnode-feehistory"
 	OracleOwlracle    Oracle = "owlracle"
 	OracleEtherscan   Oracle = "etherscan"
+	OracleMetaMask    Oracle = "metamask"
 )
 
 type Oracle string
@@ -48,6 +49,7 @@ var pollIntervals = map[Oracle]time.Duration{
 	OraclePublicNode:  12 * time.Second,
 	OracleOwlracle:    60 * time.Second,
 	OracleEtherscan:   15 * time.Second,
+	OracleMetaMask:    12 * time.Second,
 }
 
 // Realized-block poll cadence per chain. Picked close to each chain's
@@ -94,7 +96,7 @@ func chains() []Chain {
 			OwlracleSlug: "eth",
 			BlockTimeSec: 12,
 			// Etherscan v2 free tier covers chainid=1. All four oracles work.
-			SupportedSet: []Oracle{OraclePublicNode, OracleOwlracle, OracleEtherscan},
+			SupportedSet: []Oracle{OraclePublicNode, OracleOwlracle, OracleEtherscan, OracleMetaMask},
 		},
 		{
 			Slug:         "polygon",
@@ -104,7 +106,7 @@ func chains() []Chain {
 			OwlracleSlug: "poly",
 			BlockTimeSec: 2,
 			// Etherscan v2 free tier covers chainid=137 (verified). All four oracles work.
-			SupportedSet: []Oracle{OraclePublicNode, OracleOwlracle, OracleEtherscan},
+			SupportedSet: []Oracle{OraclePublicNode, OracleOwlracle, OracleEtherscan, OracleMetaMask},
 		},
 		{
 			Slug:         "avalanche",
@@ -114,8 +116,8 @@ func chains() []Chain {
 			OwlracleSlug: "avax",
 			BlockTimeSec: 2,
 			// Etherscan v2 returns "Free API access is not supported for this chain" on chainid=43114 — paid plan required.
-			// Three oracles only (Blocknative + PublicNode feeHistory + Owlracle).
-			SupportedSet: []Oracle{OraclePublicNode, OracleOwlracle},
+			// Three oracles only (PublicNode feeHistory + Owlracle + MetaMask).
+			SupportedSet: []Oracle{OraclePublicNode, OracleOwlracle, OracleMetaMask},
 		},
 	}
 }
@@ -160,6 +162,10 @@ func endpointForChain(o Oracle, c Chain) OracleEndpoint {
 	case OracleEtherscan:
 		return OracleEndpoint{
 			URL: fmt.Sprintf("https://api.etherscan.io/v2/api?chainid=%d&module=gastracker&action=gasoracle", c.ChainID),
+		}
+	case OracleMetaMask:
+		return OracleEndpoint{
+			URL: fmt.Sprintf("https://gas.api.cx.metamask.io/networks/%d/suggestedGasFees", c.ChainID),
 		}
 	}
 	return OracleEndpoint{}
