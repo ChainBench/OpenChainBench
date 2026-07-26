@@ -98,4 +98,22 @@ var Registry = []Chain{
 	// asset (Mobula symbol HYPE resolves to the correct market data,
 	// ~$58 spot / ~$13.9B mcap verified live 2026-07-25).
 	{Slug: "hyperliquid", DefiLlama: "Hyperliquid L1", Mobula: "HyperEVM", NativeSymbol: "HYPE"},
+	// Sei EVM (chain 1329). Cosmos SDK L1 with parallel-execution EVM
+	// layer. DefiLlama tracks it as "Sei" (verified /v2/chains 2026-07-26).
+	// Mobula left empty until the free-tier blockchains endpoint is
+	// re-accessible with a key; the KPI page renders fine with just
+	// DefiLlama fees/TVL/stables. Native SEI serves as gas for both
+	// the Cosmos and EVM sides.
+	{Slug: "sei", DefiLlama: "Sei", Mobula: "", NativeSymbol: "SEI"},
+	// Mode (chain 34443). OP Stack L2 in the Base ecosystem, DeFi + AI
+	// positioning. DefiLlama slug "Mode" verified.
+	{Slug: "mode", DefiLlama: "Mode", Mobula: "", NativeSymbol: "ETH"},
+	// Ronin (chain 2020). Sky Mavis' EVM gaming L1, home of Axie /
+	// Pixels and a broader gaming stack. DefiLlama slug "Ronin" verified.
+	// RON native token.
+	{Slug: "ronin", DefiLlama: "Ronin", Mobula: "", NativeSymbol: "RON"},
+	// Immutable zkEVM (chain 13371). Polygon CDK zkEVM L2 dedicated to
+	// Web3 gaming, operated by Immutable. DefiLlama slug "Immutable zkEVM"
+	// verified — the space is intentional and matches /v2/chains casing.
+	{Slug: "immutable", DefiLlama: "Immutable zkEVM", Mobula: "", NativeSymbol: "IMX"},
 }
