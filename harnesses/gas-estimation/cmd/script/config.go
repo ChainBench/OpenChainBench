@@ -182,9 +182,18 @@ func endpointForChain(o Oracle, c Chain) OracleEndpoint {
 			URL: fmt.Sprintf("https://api.owlracle.info/v4/%s/gas", c.OwlracleSlug),
 		}
 	case OracleEtherscan:
-		return OracleEndpoint{
-			URL: fmt.Sprintf("https://api.etherscan.io/v2/api?chainid=%d&module=gastracker&action=gasoracle", c.ChainID),
+		// Etherscan v2 no-key limit is 1 req/5s per IP, shared across
+		// chains. With 4 chains × 15s poll + 6s global gate we bump
+		// against that ceiling and start emitting `throttled` results.
+		// When ETHERSCAN_API_KEY is set (shared with explorer-chain-
+		// coverage / buyback-audit harnesses on the same VPS, 100k/day
+		// quota) we append it as query string — free-tier key raises
+		// the limit to 5 req/s across all chains, way past our need.
+		u := fmt.Sprintf("https://api.etherscan.io/v2/api?chainid=%d&module=gastracker&action=gasoracle", c.ChainID)
+		if k := envDefault("ETHERSCAN_API_KEY", ""); k != "" {
+			u += "&apikey=" + k
 		}
+		return OracleEndpoint{URL: u}
 	case OracleMetaMask:
 		return OracleEndpoint{
 			URL: fmt.Sprintf("https://gas.api.cx.metamask.io/networks/%d/suggestedGasFees", c.ChainID),
