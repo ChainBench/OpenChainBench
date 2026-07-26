@@ -96,18 +96,6 @@ providers:
       sample_size: sum(increase(ccip_message_seen_total{source_chain="ethereum"}[24h]))
       series: histogram_quantile(0.50, sum by(le) (rate(ccip_message_latency_milliseconds_bucket{source_chain="ethereum"}[1h])))
 
-  - slug: solana
-    name: Solana
-    tag: Solana → any chain, DON commits after Solana finalized commitment
-    formula: "50th percentile over 24h of Chainlink CCIP end-to-end delivery latency for messages sourced from Solana."
-    queries:
-      p50: histogram_quantile(0.50, sum by(le) (rate(ccip_message_latency_milliseconds_bucket{source_chain="solana"}[24h])))
-      p90: histogram_quantile(0.90, sum by(le) (rate(ccip_message_latency_milliseconds_bucket{source_chain="solana"}[24h])))
-      p99: histogram_quantile(0.99, sum by(le) (rate(ccip_message_latency_milliseconds_bucket{source_chain="solana"}[24h])))
-      mean: sum(rate(ccip_message_latency_milliseconds_sum{source_chain="solana"}[24h])) / sum(rate(ccip_message_latency_milliseconds_count{source_chain="solana"}[24h]))
-      sample_size: sum(increase(ccip_message_seen_total{source_chain="solana"}[24h]))
-      series: histogram_quantile(0.50, sum by(le) (rate(ccip_message_latency_milliseconds_bucket{source_chain="solana"}[1h])))
-
   - slug: bnb
     name: BNB Chain
     tag: BNB Chain → any chain, DON commits after BEP-126 fast-finality
@@ -168,14 +156,14 @@ providers:
       sample_size: sum(increase(ccip_message_seen_total{source_chain="base"}[24h]))
       series: histogram_quantile(0.50, sum by(le) (rate(ccip_message_latency_milliseconds_bucket{source_chain="base"}[1h])))
 
-  - slug: optimism
-    name: Optimism
-    tag: Optimism → any chain, DON commits after L2 block + inherited Ethereum finality
-    formula: "50th percentile over 24h of Chainlink CCIP end-to-end delivery latency for messages sourced from Optimism."
+  - slug: robinhood
+    name: Robinhood Chain
+    tag: Robinhood Chain → any chain, DON commits after Robinhood chain block confirmation
+    formula: "50th percentile over 24h of Chainlink CCIP end-to-end delivery latency for messages sourced from Robinhood chain."
     queries:
-      p50: histogram_quantile(0.50, sum by(le) (rate(ccip_message_latency_milliseconds_bucket{source_chain="optimism"}[24h])))
-      p90: histogram_quantile(0.90, sum by(le) (rate(ccip_message_latency_milliseconds_bucket{source_chain="optimism"}[24h])))
-      p99: histogram_quantile(0.99, sum by(le) (rate(ccip_message_latency_milliseconds_bucket{source_chain="optimism"}[24h])))
-      mean: sum(rate(ccip_message_latency_milliseconds_sum{source_chain="optimism"}[24h])) / sum(rate(ccip_message_latency_milliseconds_count{source_chain="optimism"}[24h]))
-      sample_size: sum(increase(ccip_message_seen_total{source_chain="optimism"}[24h]))
-      series: histogram_quantile(0.50, sum by(le) (rate(ccip_message_latency_milliseconds_bucket{source_chain="optimism"}[1h])))
+      p50: histogram_quantile(0.50, sum by(le) (rate(ccip_message_latency_milliseconds_bucket{source_chain="robinhood"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(ccip_message_latency_milliseconds_bucket{source_chain="robinhood"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(ccip_message_latency_milliseconds_bucket{source_chain="robinhood"}[24h])))
+      mean: sum(rate(ccip_message_latency_milliseconds_sum{source_chain="robinhood"}[24h])) / sum(rate(ccip_message_latency_milliseconds_count{source_chain="robinhood"}[24h]))
+      sample_size: sum(increase(ccip_message_seen_total{source_chain="robinhood"}[24h]))
+      series: histogram_quantile(0.50, sum by(le) (rate(ccip_message_latency_milliseconds_bucket{source_chain="robinhood"}[1h])))
