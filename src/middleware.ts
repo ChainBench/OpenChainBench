@@ -69,6 +69,17 @@ const COMPARE_PATH = /^\/compare\/([a-z0-9][a-z0-9-]{0,79})\/?$/;
 export function middleware(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
 
+  // Case normalisation. `/products/Alchemy` and `/Benchmarks/foo` used
+  // to serve 200 with the mixed-case URL while the HTML canonical
+  // pointed at the lowercase form — Google indexed the mixed-case URL
+  // as a valid variant and burned crawl budget on both. Force lowercase
+  // via 308 so only the canonical shape reaches origin.
+  if (pathname !== pathname.toLowerCase()) {
+    const url = req.nextUrl.clone();
+    url.pathname = pathname.toLowerCase();
+    return NextResponse.redirect(url, 308);
+  }
+
   if (search && CANONICAL_NO_QUERY.has(pathname)) {
     const canonical = req.nextUrl.clone();
     canonical.search = "";
@@ -136,6 +147,11 @@ export const config = {
     "/api/llm-context",
     "/api/freshness",
     "/api/openapi.json",
+    // Wildcard `/((?!_next|.*\..*).*)` covers every HTML route so the
+    // case-normalisation redirect fires on any URL, not just the
+    // enumerated bench/answer/compare/product paths. Excludes _next
+    // internals and any file with an extension (assets, RSS, sitemap).
+    "/((?!_next|api|.*\\..*).*)",
     "/benchmarks/:slug*",
     "/answers/:slug*",
     "/compare/:slug*",

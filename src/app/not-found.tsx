@@ -4,7 +4,17 @@ import { ArrowLeft } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Page not found",
-  robots: { index: false },
+  // Full robots shape so Next replaces (not merges) the layout's robots
+  // meta. Previous shape `{ index: false }` caused two `<meta name="robots"
+  // content="noindex">` tags on prod 404s (layout emitted one from its
+  // own defaults, this route emitted a second) — Bing had been observed
+  // to ignore the duplicated tag and fall through to the layout's
+  // index=true. Match the shape used by the layout's IS_STAGING branch.
+  robots: {
+    index: false,
+    follow: false,
+    googleBot: { index: false, follow: false },
+  },
 };
 
 export default function NotFound() {
