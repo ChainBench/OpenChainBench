@@ -121,6 +121,7 @@ export default async function HlFrontendPage({
 
   const peers = pickPeers(history.frontends, frontend, 5);
 
+  const pageUrl = `https://openchainbench.com/hyperliquid/${slug}`;
   const breadcrumbLd = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
@@ -141,7 +142,49 @@ export default async function HlFrontendPage({
         "@type": "ListItem",
         position: 3,
         name: frontend.name,
-        item: `https://openchainbench.com/hyperliquid/${slug}`,
+        item: pageUrl,
+      },
+    ],
+  };
+
+  // Content-shape schema. Previously only BreadcrumbList was emitted,
+  // which GSC treats as "no structured data for the primary content"
+  // on data-heavy pages (frontend revenue + volume timeseries). Add a
+  // Dataset node so Google Dataset Search + LLM crawlers index the
+  // 30-day revenue/volume figures as a citable measurement rather than
+  // treating the page as generic prose.
+  const datasetLd = {
+    "@context": "https://schema.org",
+    "@type": "Dataset",
+    "@id": `${pageUrl}#dataset`,
+    name: `${frontend.name} — HyperLiquid frontend revenue + volume`,
+    description: `Daily HyperLiquid frontend fees and volume for ${frontend.name}, sourced from the OpenChainBench hyperliquid-frontends benchmark. First measured ${firstDay}.`,
+    url: pageUrl,
+    identifier: slug,
+    creator: {
+      "@type": "Organization",
+      "@id": "https://openchainbench.com/#org",
+      name: "OpenChainBench",
+      url: "https://openchainbench.com",
+    },
+    publisher: {
+      "@type": "Organization",
+      "@id": "https://openchainbench.com/#org",
+      name: "OpenChainBench",
+      url: "https://openchainbench.com",
+    },
+    isAccessibleForFree: true,
+    license: "https://creativecommons.org/licenses/by/4.0/",
+    variableMeasured: [
+      "HyperLiquid frontend fees (30d)",
+      "HyperLiquid frontend volume (30d)",
+    ],
+    temporalCoverage: `${new Date(firstDayMs).toISOString().slice(0, 10)}/..`,
+    distribution: [
+      {
+        "@type": "DataDownload",
+        encodingFormat: "application/json",
+        contentUrl: "https://openchainbench.com/api/stat/hyperliquid-frontends",
       },
     ],
   };
@@ -152,6 +195,11 @@ export default async function HlFrontendPage({
         type="application/ld+json"
         // biome-ignore lint/security/noDangerouslySetInnerHtml: serialized via safeJsonLd
         dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumbLd) }}
+      />
+      <script
+        type="application/ld+json"
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: serialized via safeJsonLd
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(datasetLd) }}
       />
 
       <Breadcrumb
