@@ -341,17 +341,24 @@ type etherscanResp struct {
 }
 
 // etherscanGate serialises Etherscan calls across ALL chains. The
-// free-tier limit is 1 req/5s per IP, shared. With multiple chains
-// each polling on its own ticker, two unlucky jitter offsets can
-// land within a 5 s window and trip the throttle. The gate ensures
-// at least etherscanMinGap between any two Etherscan requests
-// regardless of which (oracle, chain) goroutine made them.
+// free-tier no-key limit is 1 req/5s per IP shared, so without a
+// key we enforce ≥6s between any two Etherscan requests regardless
+// of which (oracle, chain) goroutine made them. With ETHERSCAN_API_KEY
+// set, the limit rises to 5 req/s across all chains, so we drop the
+// gap to 250ms — enough to serialise bursts but not enough to make
+// chain4 wait past our httpTimeout (which caused visible `timeout`
+// counters on Polygon and Arbitrum before the key was wired).
 var (
 	etherscanMu   sync.Mutex
 	etherscanLast time.Time
 )
 
-const etherscanMinGap = 6 * time.Second
+var etherscanMinGap = func() time.Duration {
+	if os.Getenv("ETHERSCAN_API_KEY") != "" {
+		return 250 * time.Millisecond
+	}
+	return 6 * time.Second
+}()
 
 func etherscanGate(ctx context.Context) error {
 	etherscanMu.Lock()
