@@ -803,7 +803,7 @@ export default async function ComparePage({
     // FAQPage parent even when Question.name is set. Add here + on
     // Answer nodes so the compare page matches the shared FAQ builder
     // in src/lib/jsonld.ts.
-    name: `${a.name} vs ${b.name} — frequently asked questions`,
+    name: `${a.name} vs ${b.name}: frequently asked questions`,
     mainEntity: faqEntries.map((e) => ({
       "@type": "Question",
       name: e.q,

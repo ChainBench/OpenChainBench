@@ -4,7 +4,7 @@
 
 [![License: MIT](https://img.shields.io/badge/code-MIT-blue.svg)](./LICENSE) [![Data: CC-BY-4.0](https://img.shields.io/badge/data-CC--BY--4.0-lightgrey.svg)](https://creativecommons.org/licenses/by/4.0/) [![Benchmarks](https://img.shields.io/badge/benchmarks-94_live-green.svg)](https://openchainbench.com/benchmarks) [![MCP](https://img.shields.io/badge/MCP-ready-purple.svg)](https://openchainbench.com/mcp) [![llms.txt](https://img.shields.io/badge/llms.txt-yes-orange.svg)](https://openchainbench.com/llms.txt)
 
-OpenChainBench publishes one benchmark at a time, each shipping with the harness that produces its data. The goal is to make performance an observable property of crypto infra — measured in the open, by anyone who wants to add a provider or a metric.
+OpenChainBench publishes one benchmark at a time, each shipping with the harness that produces its data. The goal is to make performance an observable property of crypto infra, measured in the open, by anyone who wants to add a provider or a metric.
 
 Community-run, MIT-licensed harnesses + CC-BY-4.0 data, PRs from any party including the providers we benchmark.
 
@@ -14,7 +14,7 @@ Community-run, MIT-licensed harnesses + CC-BY-4.0 data, PRs from any party inclu
 - **50** self-contained Go harnesses, each shipping a `/metrics` Prometheus endpoint
 - **32** curated question/answer pages · **23** "alternatives to X" landing pages
 - **26** machine-readable API routes (citation, badges, MCP, feeds, per-format quotes)
-- One shared Prometheus, one materialization worker, CDN-fastpath snapshot store — cold reads in < 100 ms edge, no origin fan-out on hot paths
+- One shared Prometheus, one materialization worker, CDN-fastpath snapshot store: cold reads in < 100 ms edge, no origin fan-out on hot paths
 
 ## Quickstart
 
