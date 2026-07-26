@@ -4,7 +4,7 @@ slug: aggregator-head-lag
 number: "001"
 title: Fastest crypto price API, live head lag across Mobula, Codex, GeckoTerminal
 seo_title: "Fastest crypto price API 2026"
-seo_description: "Leader varies by chain: on Base {{best_name:chain:base}} at {{best_p50:chain:base}}, on Solana {{best_name:chain:solana}} at {{best_p50:chain:solana}}. Mobula WebSocket, Codex GraphQL, GeckoTerminal REST benchmarked live."
+seo_description: "{{best_name}} leads fastest crypto price API at {{best_p50}} (cross-chain avg p50, 24h). Mobula WebSocket, Codex GraphQL, GeckoTerminal REST live across Base, BNB, Solana, Robinhood."
 subtitle: Wall-clock head lag in seconds from on-chain swap event to API emission, measured live for Mobula, Codex and GeckoTerminal on Base, BNB Chain, Solana and Robinhood Chain.
 
 per_chain_explainer:
@@ -70,7 +70,7 @@ methodology:
   - "Cardinality: 3 aggregators × 4 chains × 3 regions = 36 active series."
 
 findings:
-  - "No single provider leads on every chain. On Base the leader is {{best_name:chain:base}} at {{best_p50:chain:base}} (p50, 24 h); on Solana it is {{best_name:chain:solana}} at {{best_p50:chain:solana}}; on BNB Chain it is {{best_name:chain:bnb}} at {{best_p50:chain:bnb}}; on Robinhood Chain it is {{best_name:chain:robinhood}} at {{best_p50:chain:robinhood}}. Chains have different baseline cadences (Solana 400 ms slots vs Base/BNB 2-3 s blocks), so the per-chain numbers are what matters for an integration decision."
+  - "The cross-chain average puts {{best_name}} on top at {{best_p50}} (p50, 24 h) over {{count}} measured providers. No single provider leads on every chain: on Base the leader is {{best_name:chain:base}} at {{best_p50:chain:base}}; on Solana it is {{best_name:chain:solana}} at {{best_p50:chain:solana}}; on BNB Chain {{best_name:chain:bnb}} at {{best_p50:chain:bnb}}; on Robinhood Chain {{best_name:chain:robinhood}} at {{best_p50:chain:robinhood}}. Read the per-chain tabs for integration decisions — chains differ in block cadence (Solana 400 ms vs Base/BNB 2-3 s), which shifts the floor independently of provider speed."
   - "On Solana the leader is {{best_name:chain:solana}} at {{best_p50:chain:solana}} (p50, 24 h); the trailer is {{worst_name:chain:solana}} at {{worst_p50:chain:solana}}. Slot cadence is sub-second, so any second-scale aggregate latency is on the provider's pipeline, not the chain."
   - "On Base the leader is {{best_name:chain:base}} at {{best_p50:chain:base}} (p50, 24 h); the trailer is {{worst_name:chain:base}} at {{worst_p50:chain:base}}. Base targets a 2 s block cadence, so head lag here measures pipeline latency on top of the chain's natural block interval."
   - "On BNB Chain the leader is {{best_name:chain:bnb}} at {{best_p50:chain:bnb}} (p50, 24 h); the trailer is {{worst_name:chain:bnb}} at {{worst_p50:chain:bnb}}. BNB's ~3 s blocks set the floor; the spread between leader and trailer is the provider-side delta."
@@ -106,12 +106,17 @@ faq:
   - q: "Which data provider should I pick for a real-time trading interface?"
     a: "Read both the p50 and the p99 columns. p50 tells the typical experience, p99 tells the worst minute a user will see when a chain spikes or a region's path degrades. A 500 ms p50 with a 30 s p99 means most of the time the UI feels snappy and once per minute it stutters. The leaderboard splits both, plus the success rate column flags providers whose feed dropped during the measurement window."
 
-# Chain filter tabs above the chart. No "all" option: prom.scalar takes
-# result[0] from multi-series vectors, which is alphabetically chain="base",
-# so a cross-chain aggregate silently shows Base data for every provider and
-# gives Codex (Base leader) a false global #1. Per-chain tabs only.
+# Chain filter tabs above the chart. prom.scalar takes result[0] from
+# multi-series vectors, so bare quantile_over_time queries in "All chains"
+# mode return chain="base" (alphabetically first) for every provider —
+# a silent Base-only view. All scalar queries are wrapped with
+# `avg by (aggregator) (...)` to collapse multi-chain results into a
+# single cross-chain mean before prom.scalar reads result[0]. When a
+# chain filter is injected (e.g. chain="base"), avg by (aggregator)
+# collapses the 3 region series instead — so the fix works both ways.
 dimensions:
   chain:
+    - { value: all,       label: All chains }
     - { value: base,      label: Base }
     - { value: bnb,       label: BNB Chain }
     - { value: solana,    label: Solana }
@@ -155,11 +160,11 @@ providers:
     tag: WebSocket feed
     formula: "Median seconds between an on-chain swap landing on Base/BNB/Solana archive nodes and the same event arriving on Mobula's WebSocket, sampled every 15s over 24h."
     queries:
-      p50: quantile_over_time(0.50, head_lag_seconds{aggregator="mobula"}[24h]) * 1000
-      p90: quantile_over_time(0.90, head_lag_seconds{aggregator="mobula"}[24h]) * 1000
-      p99: quantile_over_time(0.99, head_lag_seconds{aggregator="mobula"}[24h]) * 1000
-      mean: avg_over_time(head_lag_seconds{aggregator="mobula"}[24h]) * 1000
-      success: clamp_max(count_over_time(head_lag_seconds{aggregator="mobula"}[24h]) / 5760, 1)
+      p50: avg by (aggregator) (quantile_over_time(0.50, head_lag_seconds{aggregator="mobula"}[24h])) * 1000
+      p90: avg by (aggregator) (quantile_over_time(0.90, head_lag_seconds{aggregator="mobula"}[24h])) * 1000
+      p99: avg by (aggregator) (quantile_over_time(0.99, head_lag_seconds{aggregator="mobula"}[24h])) * 1000
+      mean: avg by (aggregator) (avg_over_time(head_lag_seconds{aggregator="mobula"}[24h])) * 1000
+      success: clamp_max(avg by (aggregator) (count_over_time(head_lag_seconds{aggregator="mobula"}[24h]) / 5760), 1)
       sample_size: sum(count_over_time(head_lag_seconds{aggregator="mobula"}[24h]))
       # Hybrid `unless` guard: drop the sample when the gauge saw no
       # fresh event in the last 15 min AND we have enough scrapes in
@@ -179,13 +184,13 @@ providers:
       live_activity: sum(changes(head_lag_seconds{aggregator="mobula"}[15m]))
       regions:
         - region: us-east
-          p50: quantile_over_time(0.50, head_lag_seconds{aggregator="mobula", region="us-east"}[24h]) * 1000
+          p50: avg by (aggregator) (quantile_over_time(0.50, head_lag_seconds{aggregator="mobula", region="us-east"}[24h])) * 1000
           series: avg_over_time(head_lag_seconds{aggregator="mobula", region="us-east"}[1h]) * 1000 unless (changes(head_lag_seconds{aggregator="mobula", region="us-east"}[15m]) == 0 and count_over_time(head_lag_seconds{aggregator="mobula", region="us-east"}[15m]) > 5 and on(chain, region) sum by (chain, region) (changes(head_lag_seconds{region="us-east"}[15m])) > 5 and on(aggregator, region) avg_over_time(ws_connected{aggregator="mobula", region="us-east", chain=""}[15m]) > 0.8)
         - region: eu-west
-          p50: quantile_over_time(0.50, head_lag_seconds{aggregator="mobula", region="eu-west"}[24h]) * 1000
+          p50: avg by (aggregator) (quantile_over_time(0.50, head_lag_seconds{aggregator="mobula", region="eu-west"}[24h])) * 1000
           series: avg_over_time(head_lag_seconds{aggregator="mobula", region="eu-west"}[1h]) * 1000 unless (changes(head_lag_seconds{aggregator="mobula", region="eu-west"}[15m]) == 0 and count_over_time(head_lag_seconds{aggregator="mobula", region="eu-west"}[15m]) > 5 and on(chain, region) sum by (chain, region) (changes(head_lag_seconds{region="eu-west"}[15m])) > 5 and on(aggregator, region) avg_over_time(ws_connected{aggregator="mobula", region="eu-west", chain=""}[15m]) > 0.8)
         - region: ap-southeast
-          p50: quantile_over_time(0.50, head_lag_seconds{aggregator="mobula", region="sgp"}[24h]) * 1000
+          p50: avg by (aggregator) (quantile_over_time(0.50, head_lag_seconds{aggregator="mobula", region="sgp"}[24h])) * 1000
           series: avg_over_time(head_lag_seconds{aggregator="mobula", region="sgp"}[1h]) * 1000 unless (changes(head_lag_seconds{aggregator="mobula", region="sgp"}[15m]) == 0 and count_over_time(head_lag_seconds{aggregator="mobula", region="sgp"}[15m]) > 5 and on(chain, region) sum by (chain, region) (changes(head_lag_seconds{region="sgp"}[15m])) > 5 and on(aggregator, region) avg_over_time(ws_connected{aggregator="mobula", region="sgp", chain=""}[15m]) > 0.8)
 
   - slug: codex
@@ -193,23 +198,23 @@ providers:
     tag: GraphQL feed
     formula: "Median seconds between an on-chain swap landing on Base/BNB/Solana archive nodes and the same event arriving on Codex's GraphQL subscription, sampled every 15s over 24h."
     queries:
-      p50: quantile_over_time(0.50, head_lag_seconds{aggregator="codex"}[24h]) * 1000
-      p90: quantile_over_time(0.90, head_lag_seconds{aggregator="codex"}[24h]) * 1000
-      p99: quantile_over_time(0.99, head_lag_seconds{aggregator="codex"}[24h]) * 1000
-      mean: avg_over_time(head_lag_seconds{aggregator="codex"}[24h]) * 1000
-      success: clamp_max(count_over_time(head_lag_seconds{aggregator="codex"}[24h]) / 5760, 1)
+      p50: avg by (aggregator) (quantile_over_time(0.50, head_lag_seconds{aggregator="codex"}[24h])) * 1000
+      p90: avg by (aggregator) (quantile_over_time(0.90, head_lag_seconds{aggregator="codex"}[24h])) * 1000
+      p99: avg by (aggregator) (quantile_over_time(0.99, head_lag_seconds{aggregator="codex"}[24h])) * 1000
+      mean: avg by (aggregator) (avg_over_time(head_lag_seconds{aggregator="codex"}[24h])) * 1000
+      success: clamp_max(avg by (aggregator) (count_over_time(head_lag_seconds{aggregator="codex"}[24h]) / 5760), 1)
       sample_size: sum(count_over_time(head_lag_seconds{aggregator="codex"}[24h]))
       series: avg_over_time(head_lag_seconds{aggregator="codex"}[1h]) * 1000 unless (changes(head_lag_seconds{aggregator="codex"}[15m]) == 0 and count_over_time(head_lag_seconds{aggregator="codex"}[15m]) > 5 and on(chain, region) sum by (chain, region) (changes(head_lag_seconds{}[15m])) > 5 and on(aggregator, region) avg_over_time(ws_connected{aggregator="codex", chain=""}[15m]) > 0.8)
       live_activity: sum(changes(head_lag_seconds{aggregator="codex"}[15m]))
       regions:
         - region: us-east
-          p50: quantile_over_time(0.50, head_lag_seconds{aggregator="codex", region="us-east"}[24h]) * 1000
+          p50: avg by (aggregator) (quantile_over_time(0.50, head_lag_seconds{aggregator="codex", region="us-east"}[24h])) * 1000
           series: avg_over_time(head_lag_seconds{aggregator="codex", region="us-east"}[1h]) * 1000 unless (changes(head_lag_seconds{aggregator="codex", region="us-east"}[15m]) == 0 and count_over_time(head_lag_seconds{aggregator="codex", region="us-east"}[15m]) > 5 and on(chain, region) sum by (chain, region) (changes(head_lag_seconds{region="us-east"}[15m])) > 5 and on(aggregator, region) avg_over_time(ws_connected{aggregator="codex", region="us-east", chain=""}[15m]) > 0.8)
         - region: eu-west
-          p50: quantile_over_time(0.50, head_lag_seconds{aggregator="codex", region="eu-west"}[24h]) * 1000
+          p50: avg by (aggregator) (quantile_over_time(0.50, head_lag_seconds{aggregator="codex", region="eu-west"}[24h])) * 1000
           series: avg_over_time(head_lag_seconds{aggregator="codex", region="eu-west"}[1h]) * 1000 unless (changes(head_lag_seconds{aggregator="codex", region="eu-west"}[15m]) == 0 and count_over_time(head_lag_seconds{aggregator="codex", region="eu-west"}[15m]) > 5 and on(chain, region) sum by (chain, region) (changes(head_lag_seconds{region="eu-west"}[15m])) > 5 and on(aggregator, region) avg_over_time(ws_connected{aggregator="codex", region="eu-west", chain=""}[15m]) > 0.8)
         - region: ap-southeast
-          p50: quantile_over_time(0.50, head_lag_seconds{aggregator="codex", region="sgp"}[24h]) * 1000
+          p50: avg by (aggregator) (quantile_over_time(0.50, head_lag_seconds{aggregator="codex", region="sgp"}[24h])) * 1000
           series: avg_over_time(head_lag_seconds{aggregator="codex", region="sgp"}[1h]) * 1000 unless (changes(head_lag_seconds{aggregator="codex", region="sgp"}[15m]) == 0 and count_over_time(head_lag_seconds{aggregator="codex", region="sgp"}[15m]) > 5 and on(chain, region) sum by (chain, region) (changes(head_lag_seconds{region="sgp"}[15m])) > 5 and on(aggregator, region) avg_over_time(ws_connected{aggregator="codex", region="sgp", chain=""}[15m]) > 0.8)
 
   - slug: geckoterminal
@@ -217,22 +222,22 @@ providers:
     tag: REST feed
     formula: "Median seconds between an on-chain swap landing on Base/BNB/Solana archive nodes and the same event surfacing on GeckoTerminal's REST endpoint, sampled every 15s over 24h."
     queries:
-      p50: quantile_over_time(0.50, head_lag_seconds{aggregator="geckoterminal"}[24h]) * 1000
-      p90: quantile_over_time(0.90, head_lag_seconds{aggregator="geckoterminal"}[24h]) * 1000
-      p99: quantile_over_time(0.99, head_lag_seconds{aggregator="geckoterminal"}[24h]) * 1000
-      mean: avg_over_time(head_lag_seconds{aggregator="geckoterminal"}[24h]) * 1000
-      success: clamp_max(count_over_time(head_lag_seconds{aggregator="geckoterminal"}[24h]) / 5760, 1)
+      p50: avg by (aggregator) (quantile_over_time(0.50, head_lag_seconds{aggregator="geckoterminal"}[24h])) * 1000
+      p90: avg by (aggregator) (quantile_over_time(0.90, head_lag_seconds{aggregator="geckoterminal"}[24h])) * 1000
+      p99: avg by (aggregator) (quantile_over_time(0.99, head_lag_seconds{aggregator="geckoterminal"}[24h])) * 1000
+      mean: avg by (aggregator) (avg_over_time(head_lag_seconds{aggregator="geckoterminal"}[24h])) * 1000
+      success: clamp_max(avg by (aggregator) (count_over_time(head_lag_seconds{aggregator="geckoterminal"}[24h]) / 5760), 1)
       sample_size: sum(count_over_time(head_lag_seconds{aggregator="geckoterminal"}[24h]))
       series: avg_over_time(head_lag_seconds{aggregator="geckoterminal"}[1h]) * 1000 unless (changes(head_lag_seconds{aggregator="geckoterminal"}[15m]) == 0 and count_over_time(head_lag_seconds{aggregator="geckoterminal"}[15m]) > 5 and on(chain, region) sum by (chain, region) (changes(head_lag_seconds{}[15m])) > 5)
       live_activity: sum(changes(head_lag_seconds{aggregator="geckoterminal"}[15m]))
       regions:
         - region: us-east
-          p50: quantile_over_time(0.50, head_lag_seconds{aggregator="geckoterminal", region="us-east"}[24h]) * 1000
+          p50: avg by (aggregator) (quantile_over_time(0.50, head_lag_seconds{aggregator="geckoterminal", region="us-east"}[24h])) * 1000
           series: avg_over_time(head_lag_seconds{aggregator="geckoterminal", region="us-east"}[1h]) * 1000 unless (changes(head_lag_seconds{aggregator="geckoterminal", region="us-east"}[15m]) == 0 and count_over_time(head_lag_seconds{aggregator="geckoterminal", region="us-east"}[15m]) > 5 and on(chain, region) sum by (chain, region) (changes(head_lag_seconds{region="us-east"}[15m])) > 5)
         - region: eu-west
-          p50: quantile_over_time(0.50, head_lag_seconds{aggregator="geckoterminal", region="eu-west"}[24h]) * 1000
+          p50: avg by (aggregator) (quantile_over_time(0.50, head_lag_seconds{aggregator="geckoterminal", region="eu-west"}[24h])) * 1000
           series: avg_over_time(head_lag_seconds{aggregator="geckoterminal", region="eu-west"}[1h]) * 1000 unless (changes(head_lag_seconds{aggregator="geckoterminal", region="eu-west"}[15m]) == 0 and count_over_time(head_lag_seconds{aggregator="geckoterminal", region="eu-west"}[15m]) > 5 and on(chain, region) sum by (chain, region) (changes(head_lag_seconds{region="eu-west"}[15m])) > 5)
         - region: ap-southeast
-          p50: quantile_over_time(0.50, head_lag_seconds{aggregator="geckoterminal", region="sgp"}[24h]) * 1000
+          p50: avg by (aggregator) (quantile_over_time(0.50, head_lag_seconds{aggregator="geckoterminal", region="sgp"}[24h])) * 1000
           series: avg_over_time(head_lag_seconds{aggregator="geckoterminal", region="sgp"}[1h]) * 1000 unless (changes(head_lag_seconds{aggregator="geckoterminal", region="sgp"}[15m]) == 0 and count_over_time(head_lag_seconds{aggregator="geckoterminal", region="sgp"}[15m]) > 5 and on(chain, region) sum by (chain, region) (changes(head_lag_seconds{region="sgp"}[15m])) > 5)
 
