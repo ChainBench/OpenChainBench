@@ -385,7 +385,7 @@ function placeholderSvg(benchTitle: string): NextResponse {
     Math.max(W_MIN, TEXT_X + title.length * CH_11 + 30),
   );
   const svg = `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="OpenChainBench: ${escapeXml(title)} — measurement pending">
+<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="OpenChainBench: ${escapeXml(title)}, measurement pending">
   <title>OpenChainBench. ${escapeXml(title)}. Measurement pending.</title>
   <rect width="${W}" height="${H}" rx="6" fill="#F5F1E8"/>
   <rect x="0.5" y="0.5" width="${W - 1}" height="${H - 1}" rx="5.5" fill="none" stroke="#22272F" stroke-opacity="0.12"/>

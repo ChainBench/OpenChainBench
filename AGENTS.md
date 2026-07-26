@@ -21,6 +21,6 @@ Two long-lived branches:
 **Rules:**
 
 - Never push directly to `main` or `dev`. PRs only.
-- The staging URL emits `<meta robots=noindex>` and serves `robots.txt: Disallow /` — see `src/app/robots.ts` and `src/app/layout.tsx`. Don't undo without thinking through duplicate-content SEO impact on the prod domain. Vercel Preview SSO is disabled (URL is publicly shareable), so the noindex is the only thing keeping crawlers out.
+- The staging URL emits `<meta robots=noindex>` and serves `robots.txt: Disallow /`, see `src/app/robots.ts` and `src/app/layout.tsx`. Don't undo without thinking through duplicate-content SEO impact on the prod domain. Vercel Preview SSO is disabled (URL is publicly shareable), so the noindex is the only thing keeping crawlers out.
 - Hotfix path: if prod is on fire and waiting through `dev` is unacceptable, open the fix PR directly against `main`, merge (CI deploys automatically), then immediately fast-forward `dev` from `main` (`git checkout dev && git merge --ff-only main && git push`) so the two branches don't diverge.
 - Required GitHub secrets (repo-level, not environment-scoped): `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`.

@@ -65,7 +65,7 @@ export async function generateMetadata({
   if (!frontend) {
     return pageMetadata({
       path: `/hyperliquid/${slug}`,
-      title: `${displayName} — Hyperliquid frontend`,
+      title: `${displayName}, Hyperliquid frontend`,
       description: `${displayName} on Hyperliquid: 12-month builder fees, volume and first-active date. Rolling 30-day metrics refresh as data becomes available.`,
     });
   }
@@ -78,7 +78,7 @@ export async function generateMetadata({
   )}). 12-month history with volume, fees and first-active date.`;
   return pageMetadata({
     path: `/hyperliquid/${slug}`,
-    title: `${displayName} — Hyperliquid frontend`,
+    title: `${displayName}, Hyperliquid frontend`,
     description,
   });
 }
@@ -157,7 +157,7 @@ export default async function HlFrontendPage({
     "@context": "https://schema.org",
     "@type": "Dataset",
     "@id": `${pageUrl}#dataset`,
-    name: `${frontend.name} — HyperLiquid frontend revenue + volume`,
+    name: `${frontend.name}, HyperLiquid frontend revenue + volume`,
     description: `Daily HyperLiquid frontend fees and volume for ${frontend.name}, sourced from the OpenChainBench hyperliquid-frontends benchmark. First measured ${firstDay}.`,
     url: pageUrl,
     identifier: slug,
