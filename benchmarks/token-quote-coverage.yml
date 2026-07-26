@@ -15,7 +15,7 @@ per_chain_explainer:
   - slug: base
     h2: "Best DEX aggregator for Base launchpad token coverage"
     body: |
-      {{best_name:chain:base}} currently leads on Base at {{best_p50:chain:base}} coverage (24h) across Virtuals Protocol. Base launchpad graduates from Virtuals converge on Uniswap V3 pools, so EVM aggregators with a live pool-creation event index have the narrowest discovery lag. The practical differentiator is indexing latency: an aggregator scraping the Uniswap V3 Factory log in real time picks up a new token within one block; one relying on a database sync job may lag by hours, recording misses on tokens the market is already actively trading. Virtuals agent tokens show wider spread across providers due to metadata-gating in some routing engines.
+      {{best_name:chain:base}} currently leads on Base at {{best_p50:chain:base}} coverage (24h). Virtuals Protocol has expanded its presence across chains: newer Virtuals agents now graduate to Robinhood Chain (chainId 4663) rather than Base. EVM aggregators with a live Uniswap V3 pool-creation event index have the narrowest discovery lag on Base-native tokens.
   - slug: bsc
     h2: "Best DEX aggregator for BNB Chain new token coverage"
     body: |
@@ -68,15 +68,15 @@ abstract: |
   structural (it does not index Meteora DBC pool types) or temporary
   (it lags new Raydium pairs by a few minutes). The chain dimension
   narrows to a single chain for providers that are chain-specific
-  (Jupiter is Solana-only; ParaSwap covers Base and BNB only; KyberSwap, Mobula,
+  (Jupiter is Solana-only; ParaSwap covers Base, BNB and Robinhood; KyberSwap, Mobula,
   and Relay cover all four chains).
 
 methodology:
-  - "Token discovery: five sources in parallel. (1) Dexscreener token-boosts: pump-fun (Solana) and pons (Robinhood). (2) Virtuals Protocol API: Base graduated agents (virtuals). (3) GeckoTerminal BSC new_pools: four-meme. (4) GeckoTerminal Solana moonshot/pools: moonshot. (5) GeckoTerminal Solana meteora-dbc/pools: meteora-dbc. Boosted tokens from (1) are enriched via Dexscreener batch lookup to resolve dexId to venue labels."
+  - "Token discovery: five sources in parallel. (1) Dexscreener token-boosts: pump-fun (Solana) and pons (Robinhood). (2) Virtuals Protocol API: Virtuals agents on Base and Robinhood chain (virtuals). (3) GeckoTerminal BSC new_pools: four-meme. (4) GeckoTerminal Solana moonshot/pools: moonshot. (5) GeckoTerminal Solana meteora-dbc/pools: meteora-dbc. Boosted tokens from (1) are enriched via Dexscreener batch lookup to resolve dexId to venue labels."
   - "Quote probe: 1 USDC → token, fired in parallel to all in-scope providers with a 10s timeout. Input token is always USDC (native USDC on Solana and Base, bridged USDC.e on BNB). A probe is a coverage hit when the HTTP response is 2xx and the parsed outAmount field is a non-zero positive integer or decimal. All other outcomes (4xx, 5xx, no-route JSON, empty outAmount, timeout) record as misses."
   - "Aggregator endpoints: Jupiter lite-api.jup.ag/swap/v1/quote (Solana), KyberSwap aggregator-api.kyberswap.com/{chain}/api/v1/routes (EVM), ParaSwap apiv5.paraswap.io/prices (EVM), Mobula /api/2/swap/quoting (EVM + Solana, API key), Relay api.relay.link/quote (EVM + Solana, no key). Each adapter normalises chain identifiers, input/output decimals, and error response shapes before recording outcome."
   - "Jupiter strictMode=false: queried without the curated-token filter so Jupiter will attempt routing for any token with a discoverable on-chain pool, matching how most wallets call the API. strictMode=true would trivially exclude new tokens and defeat the purpose of the benchmark."
-  - "Chain-scope enforcement: Jupiter probes Solana-only. ParaSwap probes Base and BNB only. KyberSwap probes Base, BNB, and Robinhood. Mobula and Relay probe all four chains (Solana, Base, BNB, Robinhood). Providers are never penalised for chains they do not support: null cells are excluded from cross-chain aggregates."
+  - "Chain-scope enforcement: Jupiter probes Solana-only. ParaSwap probes Base, BNB and Robinhood. KyberSwap probes Base, BNB, and Robinhood. Mobula and Relay probe all four chains (Solana, Base, BNB, Robinhood). Providers are never penalised for chains they do not support: null cells are excluded from cross-chain aggregates."
   - "Coverage metric: Prometheus counters token_quote_coverage_success_total and token_quote_coverage_attempts_total carry labels {provider, venue, chain}. The bench queries compute increase(success[24h]) / increase(attempts[24h]) * 100 live at read time. No pre-aggregation; the ratio reflects exactly the tokens probed in the rolling window."
   - "Probe cadence and deduplication: each batch cycles through the current Dexscreener token-boosts feed. Tokens are not deduplicated across batches; the same token may appear in multiple 30-minute windows if it remains boosted. The score therefore reflects freshness of the aggregator's current routing graph, not historical coverage depth."
   - "Single origin: all probes originate from the eu-west OCB VPS. Regional latency is not a factor in this bench (the outcome is binary hit/miss, not latency). No region dimension in v1."
@@ -103,7 +103,7 @@ faq:
   - q: "Why is Jupiter queried with strictMode=false?"
     a: "Jupiter's strictMode=true restricts quotes to verified tokens on its curated list, which defeats the purpose of a coverage bench targeting newly-launched tokens. strictMode=false instructs Jupiter to attempt routing for any token with an existing pool, matching how wallets typically call the API when displaying all tradeable tokens."
   - q: "What happens when a provider is chain-specific?"
-    a: "Jupiter is Solana-only and appears as null on EVM rows. ParaSwap covers Base and BNB only. KyberSwap covers Base, BNB, and Robinhood. Mobula and Relay cover all four chains including Solana. Null cells are excluded from cross-chain aggregates so chain-restricted providers are not penalized."
+    a: "Jupiter is Solana-only and appears as null on EVM rows. ParaSwap covers Base, BNB, and Robinhood. KyberSwap covers Base, BNB, and Robinhood. Mobula and Relay cover all four chains including Solana. Null cells are excluded from cross-chain aggregates so chain-restricted providers are not penalized."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/token-quote-coverage
 
@@ -180,8 +180,8 @@ providers:
 
   - slug: paraswap
     name: ParaSwap
-    tag: EVM multi-chain, Base + BNB
-    formula: "Rolling 24h ratio for provider=paraswap. EVM launchpads only (Base, BNB). Solana and Robinhood cells null."
+    tag: EVM multi-chain, Base + BNB + Robinhood
+    formula: "Rolling 24h ratio for provider=paraswap. EVM launchpads only (Base, BNB, Robinhood). Solana cells null."
     queries:
       p50: sum(increase(token_quote_coverage_success_total{provider="paraswap"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="paraswap"}[24h])) * 100
       p90: sum(increase(token_quote_coverage_attempts_total{provider="paraswap"}[24h]))
