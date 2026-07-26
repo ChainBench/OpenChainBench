@@ -65,7 +65,7 @@ export function HlCohortLeaderboard({
           {filtered.length} of {rows.length} builders
         </p>
         <input
-          type="search"
+          type="search" aria-label="Search builder…"
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search builder…"
