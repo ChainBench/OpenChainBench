@@ -102,7 +102,7 @@ export function RpcProvidersPivot({
           p50 across {chains.length} chains
         </p>
         <input
-          type="search"
+          type="search" aria-label="Search provider..."
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search provider..."
