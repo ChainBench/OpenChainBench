@@ -4,8 +4,8 @@ slug: perp-fees
 number: "007"
 title: Cheapest perp DEX, live all-in cost from $1k to $1M on ETH, BTC and SOL
 seo_title: "Cheapest perp DEX 2026"
-seo_description: "{{best_name}} leads cheapest perp DEX at {{best_p50}} all-in (24h avg). ETH, BTC and SOL market orders at $1k, $100k and $1M. Lighter, Hyperliquid, Polymarket, Paradex, Extended, dYdX, GMX, gains.trade ranked live."
-subtitle: "All-in cost in basis points to open a long, measured on ETH, BTC and SOL at three order sizes: $1k where fees decide, $100k where impact appears, $1M where book depth takes over. Taker fee plus half-spread plus impact, read live from public APIs across 8 venues including Lighter, Hyperliquid, Polymarket, Paradex and Extended."
+seo_description: "{{best_name}} leads cheapest perp DEX at {{best_p50}} all-in (24h avg). ETH, BTC and SOL market orders at $1k, $100k and $1M. Lighter, Hyperliquid, Polymarket, Paradex, Extended, dYdX, GMX, gains.trade, Aster, edgex ranked live."
+subtitle: "All-in cost in basis points to open a long, measured on ETH, BTC and SOL at three order sizes: $1k where fees decide, $100k where impact appears, $1M where book depth takes over. Taker fee plus half-spread plus impact, read live from public APIs across 10 venues including Lighter, Hyperliquid, Polymarket, Paradex, Extended, Aster and edgex."
 category: Trading
 status: live
 metric: All-in cost

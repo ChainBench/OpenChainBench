@@ -54,7 +54,7 @@ methodology:
   - "No canary transactions: this bench observes organic Axelar GMP traffic (Squid Router, ITS, Interchain Amplifier apps). No wallet is funded, no gas is paid."
   - "Scope: Axelar-supported source chains with mainnet traffic in the observation window. Axelar covers all major EVM L1s and L2s plus a large Cosmos set (Osmosis, Injective, Sei, Celestia, Kava) that no other bench in our cross-chain messaging cluster observes. Notable gap: Axelar mainnet does not support Solana yet."
   - "Fair-comparison caveat: Axelar validators wait for source-chain confirmations before signing (about 96 blocks / 20 minutes on Ethereum), so Ethereum-source lanes are structurally slower than pre-finality signers (LayerZero, Hyperlane) but still faster than Chainlink CCIP which waits for full Casper FFG finality. The meta-bench (cross-chain-messaging-latency) documents this ranking."
-  - "Coverage caveat: This is Axelar-exclusive Cosmos coverage. Comparing raw numbers to networks that only cover EVM (LayerZero, CCIP) is only meaningful on shared EVM corridors; the meta-bench view (cross-chain-messaging-comparison) enforces this by only showing cells where both protocols support the corridor."
+  - "Coverage caveat: This is Axelar-exclusive Cosmos coverage. Comparing raw numbers to networks that only cover EVM (LayerZero, CCIP) is only meaningful on shared EVM corridors; the meta-bench view (cross-chain-messaging-latency) enforces this by only showing cells where both protocols support the corridor."
 
 findings:
   - "{{best_name}} currently leads Axelar GMP end-to-end delivery at {{best_p50}} (source-tx to destination execution p50, 24h) across measured source chains."

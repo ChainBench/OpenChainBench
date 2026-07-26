@@ -4,8 +4,8 @@ slug: perp-open-interest
 number: "042"
 title: Perp DEX open interest, live USD notional ranked
 seo_title: "Perp DEX open interest 2026"
-seo_description: "Live perpetual futures open interest in USD across 12 major perp DEX venues: Hyperliquid, Aster, Lighter, GRVT, Extended, Ostium, Pacifica, Vertex, dYdX, Aevo, Paradex, gains.trade. Refreshed every 5 minutes."
-subtitle: Live aggregate open interest in USD across 12 major decentralized perpetual futures venues. Higher means more notional sits open. Read live from each venue's public API.
+seo_description: "Live perpetual futures open interest in USD across 13 major perp DEX venues: Hyperliquid, Aster, Lighter, GRVT, Extended, Ostium, Pacifica, Vertex, dYdX, Aevo, Paradex, gains.trade, Polymarket. Refreshed every 5 minutes."
+subtitle: Live aggregate open interest in USD across 13 major decentralized perpetual futures venues. Higher means more notional sits open. Read live from each venue's public API.
 category: Trading
 status: live
 metric: Open interest
@@ -18,14 +18,14 @@ seo_intro: |
   number for perpetual futures: it tells you how much notional sits
   open right now, on every market, on a given venue. We poll each
   venue's public API every 5 minutes, sum open interest across all
-  listed perps, and publish one gauge per venue. The cohort covers 12
+  listed perps, and publish one gauge per venue. The cohort covers 13
   venues: Hyperliquid, Aster, Lighter, GRVT, Extended, Ostium, Pacifica,
   Vertex, dYdX v4, Aevo, Paradex and gains.trade. Headline number is the 24h average
   of the live OI gauge so a single noisy print does not move the
   ranking.
 
 abstract: |
-  The bench polls 12 perp DEX venues every 5 minutes for live open
+  The bench polls 13 perp DEX venues every 5 minutes for live open
   interest and exposes a USD-aggregated gauge per venue. Each venue's
   public API is queried directly (Hyperliquid info metaAndAssetCtxs,
   Aster fapi openInterest, Lighter orderBookDetails, GRVT public
@@ -56,7 +56,7 @@ methodology:
   - "Failures. A venue that errors or times out keeps its last gauge value and its perp_venue_health gauge drops toward 0; the leaderboard tags it as stale."
 
 findings:
-  - "{{best_name}} currently leads the cohort at {{best_p50}} of open interest (24h average) across 12 measured perp DEX venues."
+  - "{{best_name}} currently leads the cohort at {{best_p50}} of open interest (24h average) across 13 measured perp DEX venues."
   - "{{name:hyperliquid}} sits at {{p50:hyperliquid}} of open interest. HyperBFT orderbook is the deepest decentralized perp venue by a wide margin."
   - "{{name:lighter}} clocks {{p50:lighter}} of open interest. Fully onchain orderbook on zkSync with zero taker fee."
   - "{{name:aster}} sits at {{p50:aster}} of open interest. BNB Chain perps DEX with a Binance-compatible API surface."
