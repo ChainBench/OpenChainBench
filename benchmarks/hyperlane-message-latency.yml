@@ -95,17 +95,6 @@ providers:
       sample_size: sum(increase(hyperlane_message_seen_total{source_chain="ethereum"}[24h]))
       series: histogram_quantile(0.50, sum by(le) (rate(hyperlane_message_latency_milliseconds_bucket{source_chain="ethereum"}[1h])))
 
-  - slug: bnb
-    name: BNB Chain
-    tag: BNB Chain → any chain, ~3s block + Mailbox delivery
-    formula: "50th percentile over 24h of Hyperlane end-to-end delivery latency for messages sourced from BNB Chain."
-    queries:
-      p50: histogram_quantile(0.50, sum by(le) (rate(hyperlane_message_latency_milliseconds_bucket{source_chain="bnb"}[24h])))
-      p90: histogram_quantile(0.90, sum by(le) (rate(hyperlane_message_latency_milliseconds_bucket{source_chain="bnb"}[24h])))
-      p99: histogram_quantile(0.99, sum by(le) (rate(hyperlane_message_latency_milliseconds_bucket{source_chain="bnb"}[24h])))
-      mean: sum(rate(hyperlane_message_latency_milliseconds_sum{source_chain="bnb"}[24h])) / sum(rate(hyperlane_message_latency_milliseconds_count{source_chain="bnb"}[24h]))
-      sample_size: sum(increase(hyperlane_message_seen_total{source_chain="bnb"}[24h]))
-      series: histogram_quantile(0.50, sum by(le) (rate(hyperlane_message_latency_milliseconds_bucket{source_chain="bnb"}[1h])))
 
   - slug: polygon
     name: Polygon
@@ -143,38 +132,14 @@ providers:
       sample_size: sum(increase(hyperlane_message_seen_total{source_chain="base"}[24h]))
       series: histogram_quantile(0.50, sum by(le) (rate(hyperlane_message_latency_milliseconds_bucket{source_chain="base"}[1h])))
 
-  - slug: optimism
-    name: Optimism
-    tag: Optimism → any chain, 2s block + Mailbox delivery
-    formula: "50th percentile over 24h of Hyperlane end-to-end delivery latency for messages sourced from Optimism."
+  - slug: sonic
+    name: Sonic
+    tag: Sonic → any chain, sub-second finality + Mailbox delivery
+    formula: "50th percentile over 24h of Hyperlane end-to-end delivery latency for messages sourced from Sonic."
     queries:
-      p50: histogram_quantile(0.50, sum by(le) (rate(hyperlane_message_latency_milliseconds_bucket{source_chain="optimism"}[24h])))
-      p90: histogram_quantile(0.90, sum by(le) (rate(hyperlane_message_latency_milliseconds_bucket{source_chain="optimism"}[24h])))
-      p99: histogram_quantile(0.99, sum by(le) (rate(hyperlane_message_latency_milliseconds_bucket{source_chain="optimism"}[24h])))
-      mean: sum(rate(hyperlane_message_latency_milliseconds_sum{source_chain="optimism"}[24h])) / sum(rate(hyperlane_message_latency_milliseconds_count{source_chain="optimism"}[24h]))
-      sample_size: sum(increase(hyperlane_message_seen_total{source_chain="optimism"}[24h]))
-      series: histogram_quantile(0.50, sum by(le) (rate(hyperlane_message_latency_milliseconds_bucket{source_chain="optimism"}[1h])))
-
-  - slug: avalanche
-    name: Avalanche
-    tag: Avalanche C-Chain → any chain, Snowman++ finality + Mailbox delivery
-    formula: "50th percentile over 24h of Hyperlane end-to-end delivery latency for messages sourced from Avalanche."
-    queries:
-      p50: histogram_quantile(0.50, sum by(le) (rate(hyperlane_message_latency_milliseconds_bucket{source_chain="avalanche"}[24h])))
-      p90: histogram_quantile(0.90, sum by(le) (rate(hyperlane_message_latency_milliseconds_bucket{source_chain="avalanche"}[24h])))
-      p99: histogram_quantile(0.99, sum by(le) (rate(hyperlane_message_latency_milliseconds_bucket{source_chain="avalanche"}[24h])))
-      mean: sum(rate(hyperlane_message_latency_milliseconds_sum{source_chain="avalanche"}[24h])) / sum(rate(hyperlane_message_latency_milliseconds_count{source_chain="avalanche"}[24h]))
-      sample_size: sum(increase(hyperlane_message_seen_total{source_chain="avalanche"}[24h]))
-      series: histogram_quantile(0.50, sum by(le) (rate(hyperlane_message_latency_milliseconds_bucket{source_chain="avalanche"}[1h])))
-
-  - slug: solana
-    name: Solana
-    tag: Solana → any chain, sub-second slot + Mailbox delivery
-    formula: "50th percentile over 24h of Hyperlane end-to-end delivery latency for messages sourced from Solana."
-    queries:
-      p50: histogram_quantile(0.50, sum by(le) (rate(hyperlane_message_latency_milliseconds_bucket{source_chain="solana"}[24h])))
-      p90: histogram_quantile(0.90, sum by(le) (rate(hyperlane_message_latency_milliseconds_bucket{source_chain="solana"}[24h])))
-      p99: histogram_quantile(0.99, sum by(le) (rate(hyperlane_message_latency_milliseconds_bucket{source_chain="solana"}[24h])))
-      mean: sum(rate(hyperlane_message_latency_milliseconds_sum{source_chain="solana"}[24h])) / sum(rate(hyperlane_message_latency_milliseconds_count{source_chain="solana"}[24h]))
-      sample_size: sum(increase(hyperlane_message_seen_total{source_chain="solana"}[24h]))
-      series: histogram_quantile(0.50, sum by(le) (rate(hyperlane_message_latency_milliseconds_bucket{source_chain="solana"}[1h])))
+      p50: histogram_quantile(0.50, sum by(le) (rate(hyperlane_message_latency_milliseconds_bucket{source_chain="sonic"}[24h])))
+      p90: histogram_quantile(0.90, sum by(le) (rate(hyperlane_message_latency_milliseconds_bucket{source_chain="sonic"}[24h])))
+      p99: histogram_quantile(0.99, sum by(le) (rate(hyperlane_message_latency_milliseconds_bucket{source_chain="sonic"}[24h])))
+      mean: sum(rate(hyperlane_message_latency_milliseconds_sum{source_chain="sonic"}[24h])) / sum(rate(hyperlane_message_latency_milliseconds_count{source_chain="sonic"}[24h]))
+      sample_size: sum(increase(hyperlane_message_seen_total{source_chain="sonic"}[24h]))
+      series: histogram_quantile(0.50, sum by(le) (rate(hyperlane_message_latency_milliseconds_bucket{source_chain="sonic"}[1h])))
