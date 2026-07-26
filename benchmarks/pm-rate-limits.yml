@@ -59,7 +59,7 @@ methodology:
   - "Ramp abort guard: the run stops the moment throttled plus 5xx responses exceed 1 percent of any 10 second window. The headline ramp metric is p50 latency during the tier minus the warm baseline p50 of the previous hour in the same region, because venues behind Cloudflare queue bursts without ever returning 429, and added latency is the only honest throttle signal there."
   - "WebSocket panel covers venues with a public market WebSocket, which today means Polymarket only. Kalshi requires authentication for WS, Manifold and Myriad have none, Limitless uses socket.io. Absence is shown, not penalized."
   - "Myriad's origin is a single region US East deployment behind Heroku. Latency from eu-west and sgp is geography, reported as measured."
-  - "All probes hit documented public developer APIs with the identifying User-Agent `OpenChainBench/1.0 (+https://openchainbench.com/methodology; contact@mobula.io)`. We publish latency measurements only, never order book contents or prices, in line with venue data redistribution terms (Kalshi's in particular, applied to all venues equally)."
+  - "All probes hit documented public developer APIs with the identifying User-Agent `OpenChainBench/1.0 (+https://openchainbench.com/methodology; contact@openchainbench.com)`. We publish latency measurements only, never order book contents or prices, in line with venue data redistribution terms (Kalshi's in particular, applied to all venues equally)."
   - "Regions: us-east, eu-west, sgp (Railway). Histogram buckets 25ms to 10s."
 
 findings:
