@@ -49,9 +49,13 @@ const (
 	requestTimeout    = 15 * time.Second
 	dedupeCacheMaxLen = 10_000
 	metricsListenAddr = ":2112"
-	// 30 min hard ceiling — Axelar GMP typically < 60s e2e; > 30 min
-	// is either a stuck message or clock skew.
-	maxLatencyMs = 1_800_000
+	// 2h hard ceiling. Aligned with the other e2e cross-chain messaging
+	// benches (CCIP, LayerZero, Hyperlane) so the drop threshold is
+	// consistent across the cross-chain-messaging-latency meta-bench.
+	// Axelar validators wait for source-chain finality on EVM (Ethereum
+	// ~20 min), so the tail legitimately reaches 30-60 min on ETH-source
+	// lanes and must not be trimmed.
+	maxLatencyMs = 7_200_000 // 2 hours
 )
 
 type axelarCall struct {

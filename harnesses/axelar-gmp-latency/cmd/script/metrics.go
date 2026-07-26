@@ -13,15 +13,18 @@ import (
 //     executed (`time_spent.total`). Analogue of LayerZero/CCIP/Hyperlane
 //     end-to-end delivery.
 //
-// Both bucketed to 30 min ceiling; confirm typically finishes in
-// 10-30s, e2e in 20-60s. The tail catches Cosmos block-time quantisation
-// (~6s floor) and validator downtime spikes.
+// Buckets aligned with the other three e2e cross-chain messaging
+// benches (CCIP, LayerZero, Hyperlane) up to 90 min so the meta-bench
+// (cross-chain-messaging-latency) compares equivalent bucket
+// resolution across all four protocols. Axelar validators wait for
+// source-chain finality on Ethereum (~20 min), so ETH-source lanes
+// legitimately reach 30-40 min end-to-end and must not be capped.
 var (
 	axelarConfirmLatencyMs = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Name:    "axelar_gmp_confirm_latency_milliseconds",
 			Help:    "Axelar GMP source tx to validator quorum confirmation latency (ms), from time_spent.call_confirm.",
-			Buckets: []float64{2_000, 5_000, 10_000, 15_000, 20_000, 30_000, 45_000, 60_000, 90_000, 120_000, 180_000, 300_000, 600_000, 900_000, 1_200_000, 1_800_000},
+			Buckets: []float64{5_000, 15_000, 30_000, 60_000, 120_000, 180_000, 300_000, 600_000, 900_000, 1_200_000, 1_800_000, 2_400_000, 3_000_000, 3_600_000, 4_500_000, 5_400_000},
 		},
 		[]string{"source_chain"},
 	)
@@ -30,7 +33,7 @@ var (
 		prometheus.HistogramOpts{
 			Name:    "axelar_gmp_e2e_latency_milliseconds",
 			Help:    "Axelar GMP end-to-end delivery latency (ms), from source tx to destination execution, via time_spent.total.",
-			Buckets: []float64{2_000, 5_000, 10_000, 15_000, 20_000, 30_000, 45_000, 60_000, 90_000, 120_000, 180_000, 300_000, 600_000, 900_000, 1_200_000, 1_800_000},
+			Buckets: []float64{5_000, 15_000, 30_000, 60_000, 120_000, 180_000, 300_000, 600_000, 900_000, 1_200_000, 1_800_000, 2_400_000, 3_000_000, 3_600_000, 4_500_000, 5_400_000},
 		},
 		[]string{"source_chain", "dest_chain"},
 	)

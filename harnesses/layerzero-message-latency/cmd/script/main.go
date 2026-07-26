@@ -54,10 +54,12 @@ const (
 	requestTimeout    = 15 * time.Second
 	dedupeCacheMaxLen = 10_000
 	metricsListenAddr = ":2112"
-	// Guard against clock skew and stuck messages. LayerZero rarely
-	// exceeds 15 min end-to-end; anything beyond 30 min is almost
-	// certainly bad data.
-	maxLatencyMs = 1_800_000 // 30 min
+	// Guard against clock skew and stuck messages. Aligned with the
+	// other e2e cross-chain messaging benches (CCIP, Hyperlane, Axelar)
+	// at 2 hours so the drop threshold is consistent across the
+	// cross-chain-messaging-latency meta-bench. Any single message
+	// beyond 2h is almost certainly a stuck/re-delivered artifact.
+	maxLatencyMs = 7_200_000 // 2 hours
 )
 
 type lzTx struct {
