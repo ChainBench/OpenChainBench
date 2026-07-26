@@ -165,32 +165,11 @@ providers:
       sample_size: sum(increase(token_quote_coverage_attempts_total{provider="jupiter"}[24h]))
       series: sum(rate(token_quote_coverage_success_total{provider="jupiter"}[1h])) / sum(rate(token_quote_coverage_attempts_total{provider="jupiter"}[1h])) * 100
 
-  - slug: kyberswap
-    name: KyberSwap
-    tag: EVM multi-chain, Base + BNB + Robinhood
-    formula: "Rolling 24h ratio for provider=kyberswap. EVM launchpads only (Virtuals, Four.meme). Solana cells null."
-    queries:
-      p50: sum(increase(token_quote_coverage_success_total{provider="kyberswap"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="kyberswap"}[24h])) * 100
-      p90: sum(increase(token_quote_coverage_attempts_total{provider="kyberswap"}[24h]))
-      p99: sum(increase(token_quote_coverage_success_total{provider="kyberswap"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="kyberswap"}[24h])) * 100
-      mean: sum(increase(token_quote_coverage_success_total{provider="kyberswap"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="kyberswap"}[24h])) * 100
-      success: clamp_max(sum(increase(token_quote_coverage_success_total{provider="kyberswap"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="kyberswap"}[24h])), 1)
-      sample_size: sum(increase(token_quote_coverage_attempts_total{provider="kyberswap"}[24h]))
-      series: sum(rate(token_quote_coverage_success_total{provider="kyberswap"}[1h])) / sum(rate(token_quote_coverage_attempts_total{provider="kyberswap"}[1h])) * 100
-
-  - slug: paraswap
-    name: ParaSwap
-    tag: EVM multi-chain, Base + BNB + Robinhood
-    formula: "Rolling 24h ratio for provider=paraswap. EVM launchpads only (Base, BNB, Robinhood). Solana cells null."
-    queries:
-      p50: sum(increase(token_quote_coverage_success_total{provider="paraswap"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="paraswap"}[24h])) * 100
-      p90: sum(increase(token_quote_coverage_attempts_total{provider="paraswap"}[24h]))
-      p99: sum(increase(token_quote_coverage_success_total{provider="paraswap"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="paraswap"}[24h])) * 100
-      mean: sum(increase(token_quote_coverage_success_total{provider="paraswap"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="paraswap"}[24h])) * 100
-      success: clamp_max(sum(increase(token_quote_coverage_success_total{provider="paraswap"}[24h])) / sum(increase(token_quote_coverage_attempts_total{provider="paraswap"}[24h])), 1)
-      sample_size: sum(increase(token_quote_coverage_attempts_total{provider="paraswap"}[24h]))
-      series: sum(rate(token_quote_coverage_success_total{provider="paraswap"}[1h])) / sum(rate(token_quote_coverage_attempts_total{provider="paraswap"}[1h])) * 100
-
+  # KyberSwap + ParaSwap declared in earlier revisions of this spec are
+  # currently not emitting on the harness (no token_quote_coverage_*
+  # metric with those provider labels in Prom). Removed from the public
+  # providers list until the harness ships probes for them, to avoid
+  # readers seeing a 5-provider claim that renders as 3.
   - slug: relay
     name: Relay
     tag: Multi-chain, Solana + Base + BNB + Robinhood, no key
