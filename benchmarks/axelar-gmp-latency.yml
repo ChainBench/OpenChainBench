@@ -8,7 +8,7 @@ seo_description: "{{best_name}} leads Axelar GMP end-to-end delivery at {{best_p
 subtitle: Wall-clock seconds from a source-chain transaction to destination-chain execution for an Axelar GMP (General Message Passing) call, measured across supported source chains via the public AxelarScan API.
 
 category: Bridges
-status: draft
+status: live
 metric: Axelar GMP delivery
 unit: ms
 higher_is_better: false

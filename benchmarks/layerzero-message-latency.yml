@@ -8,7 +8,7 @@ seo_description: "{{best_name}} leads LayerZero end-to-end delivery at {{best_p5
 subtitle: Wall-clock seconds from source-chain transaction to destination-chain execution for a LayerZero message, measured across LayerZero source chains via the public layerzero-scan feed.
 
 category: Bridges
-status: draft
+status: live
 metric: LayerZero delivery
 unit: ms
 higher_is_better: false
