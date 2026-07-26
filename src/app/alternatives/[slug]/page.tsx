@@ -128,7 +128,19 @@ export default async function AlternativePage({
         datePublished: getBenchCreatedAt(bench.slug).toISOString(),
         ...(citableAsOf(bench) ? { dateModified: bench.lastRunAt } : {}),
         variableMeasured: bench.metric,
-        isBasedOn: benchUrl,
+        // Cross-doc @id-only refs get validated as standalone
+        // incomplete Datasets by Google (same failure mode as PR #1442's
+        // isBasedOn fix). Inline the required fields per bench.
+        isBasedOn: {
+          "@type": "Dataset" as const,
+          "@id": `${benchUrl}#dataset`,
+          name: bench.title,
+          description: bench.subtitle,
+          url: benchUrl,
+          creator: CREATOR_PUBLISHER,
+          license: DATASET_LICENSE,
+          isAccessibleForFree: true,
+        },
         distribution: [
           {
             "@type": "DataDownload",
