@@ -504,7 +504,7 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
   ];
 }
 
-export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+export async function buildSitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     return await buildFullSitemap();
   } catch (err) {
