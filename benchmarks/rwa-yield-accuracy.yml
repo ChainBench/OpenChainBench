@@ -2,8 +2,8 @@
 
 slug: rwa-yield-accuracy
 number: "089"
-title: Which tokenized T-bill actually pays what it promises
-seo_title: "Tokenized T-bill yield promised vs delivered 2026"
+title: Which tokenized T-bill or yield fund actually pays what it promises
+seo_title: "Tokenized treasury and yield fund promised vs delivered 2026"
 seo_description: "Signed bps deviation between advertised APY and on-chain distributed yield for USDY, USTB, OUSG and SyrupUSDC. Measured live over 30 days, keyless, reproducible."
 subtitle: Signed basis-point deviation between the APY each tokenized U.S. Treasury advertises and the yield the smart contract actually distributes on-chain, measured over 30 days.
 

@@ -4,7 +4,7 @@ slug: mev-protect-rpc
 number: "074"
 title: Fastest MEV protection RPC, live wallet latency and method coverage
 seo_title: "Best MEV protection RPC 2026"
-seo_description: "{{best_name}} leads MEV protection RPC wallet latency at {{best_p50}} (p50, 24h). Flashbots, MEV Blocker, Blink, bloXroute, BlockSec, 48 Club probed keyless on Ethereum, Base and BSC."
+seo_description: "{{best_name}} leads MEV protection RPC wallet latency at {{best_p50}} (p50, 24h). Flashbots, MEV Blocker, Blink, bloXroute, BlockSec, 48 Club, PancakeSwap probed keyless on Ethereum, Base and BSC."
 subtitle: "Median latency of the JSON-RPC method set wallets call constantly (balance, gas, call simulation), measured against public MEV protection gateways on Ethereum, Base and BSC from three regions. Read-path hygiene only: inclusion rates and refunds are the write path and cannot be measured without sending transactions."
 category: RPCs
 status: live
