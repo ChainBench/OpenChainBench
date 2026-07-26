@@ -136,11 +136,6 @@ const ORG_JSONLD = {
         email: SITE.email,
         availableLanguage: ["English"],
       },
-      parentOrganization: {
-        "@type": "Organization",
-        name: "Mobula",
-        url: "https://mobula.io",
-      },
       // Named founder, anchored to the canonical Person node emitted below
       // in the same @graph. Lets Search Console + AI answer surfaces
       // attribute the project to a real human, which is the missing
