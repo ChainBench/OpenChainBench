@@ -8,7 +8,7 @@ seo_description: "{{best_name}} leads Chainlink CCIP end-to-end delivery at {{be
 subtitle: Wall-clock seconds from a source-chain transaction to destination-chain execution for a Chainlink CCIP message, measured across CCIP source chains via the public CCIP Tools API.
 
 category: Bridges
-status: draft
+status: live
 metric: CCIP delivery
 unit: ms
 higher_is_better: false

@@ -8,7 +8,7 @@ seo_description: "{{best_name}} leads Hyperlane end-to-end delivery at {{best_p5
 subtitle: Wall-clock seconds from source-chain send to destination-chain delivery for a Hyperlane message, measured across Hyperlane-deployed source chains via the public Hyperlane Explorer GraphQL API.
 
 category: Bridges
-status: draft
+status: live
 metric: Hyperlane delivery
 unit: ms
 higher_is_better: false
