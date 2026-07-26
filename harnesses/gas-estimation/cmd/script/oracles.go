@@ -50,6 +50,8 @@ func pollOracle(ctx context.Context, o Oracle, ep OracleEndpoint) pollResult {
 		return pollOwlracle(ctx, ep)
 	case OracleEtherscan:
 		return pollEtherscan(ctx, ep)
+	case OracleMetaMask:
+		return pollMetaMask(ctx, ep)
 	default:
 		return pollResult{Err: fmt.Errorf("unknown oracle: %s", o)}
 	}
@@ -397,6 +399,77 @@ func pollEtherscan(ctx context.Context, ep OracleEndpoint) pollResult {
 			{Oracle: OracleEtherscan, Tier: TierP25, PriorityGwei: safe, BaseGwei: base},
 			{Oracle: OracleEtherscan, Tier: TierP50, PriorityGwei: prop, BaseGwei: base},
 			{Oracle: OracleEtherscan, Tier: TierP90, PriorityGwei: fast, BaseGwei: base},
+		},
+	}
+}
+
+// ─── MetaMask (gas.api.cx.metamask.io) ────────────────────────────
+//
+// Public no-key endpoint that powers the MetaMask wallet's
+// suggested-fee UI at real production scale. EIP-1559 native:
+// returns explicit low/medium/high tiers each with their own
+// `suggestedMaxPriorityFeePerGas` and `suggestedMaxFeePerGas`
+// (gwei decimal strings), plus a baseline `estimatedBaseFee`.
+// We map low→p25, medium→p50, high→p90 — the same mapping the
+// wallet's own slow/market/fast selector uses. Tiers collapse
+// during calm blocks (medium and high often equal), which
+// mirrors the upstream model's documented behaviour; the bench
+// surfaces this as-is rather than masking it.
+
+type mmTier struct {
+	SuggestedMaxPriorityFeePerGas string `json:"suggestedMaxPriorityFeePerGas"`
+	SuggestedMaxFeePerGas         string `json:"suggestedMaxFeePerGas"`
+}
+
+type mmResp struct {
+	Low              mmTier `json:"low"`
+	Medium           mmTier `json:"medium"`
+	High             mmTier `json:"high"`
+	EstimatedBaseFee string `json:"estimatedBaseFee"`
+}
+
+func pollMetaMask(ctx context.Context, ep OracleEndpoint) pollResult {
+	req, _ := http.NewRequestWithContext(ctx, "GET", ep.URL, nil)
+	body, status, err := httpDo(ctx, req)
+	if err != nil {
+		return pollResult{Err: err}
+	}
+	if status == 429 {
+		return pollResult{Err: fmt.Errorf("throttled (HTTP 429)")}
+	}
+	if status != 200 {
+		return pollResult{Err: fmt.Errorf("http %d", status)}
+	}
+	var r mmResp
+	if err := json.Unmarshal(body, &r); err != nil {
+		return pollResult{Err: fmt.Errorf("parse: %w", err)}
+	}
+	base, err := strconv.ParseFloat(r.EstimatedBaseFee, 64)
+	if err != nil {
+		return pollResult{Err: fmt.Errorf("baseFee parse: %w", err)}
+	}
+	parseTier := func(field, name string) (float64, error) {
+		v, err := strconv.ParseFloat(field, 64)
+		if err != nil {
+			return 0, fmt.Errorf("%s parse: %w", name, err)
+		}
+		return v, nil
+	}
+	low, e1 := parseTier(r.Low.SuggestedMaxPriorityFeePerGas, "low")
+	med, e2 := parseTier(r.Medium.SuggestedMaxPriorityFeePerGas, "medium")
+	high, e3 := parseTier(r.High.SuggestedMaxPriorityFeePerGas, "high")
+	if e1 != nil || e2 != nil || e3 != nil {
+		return pollResult{Err: fmt.Errorf("tier parse: %v / %v / %v", e1, e2, e3)}
+	}
+	// No explicit target block: the API applies to "the next block"
+	// but never names it. Realizer grafts head+1 the same way it
+	// does for Owlracle.
+	return pollResult{
+		BaseGwei: base,
+		Predictions: []Prediction{
+			{Oracle: OracleMetaMask, Tier: TierP25, PriorityGwei: low, BaseGwei: base},
+			{Oracle: OracleMetaMask, Tier: TierP50, PriorityGwei: med, BaseGwei: base},
+			{Oracle: OracleMetaMask, Tier: TierP90, PriorityGwei: high, BaseGwei: base},
 		},
 	}
 }
