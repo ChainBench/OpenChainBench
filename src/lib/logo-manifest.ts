@@ -49,6 +49,14 @@ const RAW: Record<string, string> = {
   onfinality: "/logos/onfinality.png",
   berachain: "/logos/berachain.png",
 
+
+  // Vague-1 chains (2026-07-26, benches 108-111)
+  sei: "/logos/sei.svg",
+  mode: "/logos/mode.webp",
+  ronin: "/logos/ronin.svg",
+  immutable: "/logos/immutable.svg",
+  stakeme: "/logos/stakeme.jpg",
+
   // ─── Providers ───
   mobula: "/logos/mobula.svg",
   codex: "/logos/codex.svg",
@@ -444,17 +452,11 @@ const ALIASES: Record<string, string> = {
   "ink-official": "gelato",
   "ink-quicknode": "quicknode",
   "opbnb-official": "opbnb",
-  // Vague-1 chains added 2026-07-26 (benches 108-111). chain-official
-  // aliases point to the chain logo (same pattern as ink/kaia/opbnb).
-  sei: "/logos/sei.svg",
+  // Vague-1 chains (2026-07-26, benches 108-111) — paths in RAW above, only aliases here
   "sei-official": "sei",
-  mode: "/logos/mode.webp",
   "mode-official": "mode",
-  ronin: "/logos/ronin.svg",
   "ronin-official": "ronin",
-  immutable: "/logos/immutable.svg",
   "immutable-official": "immutable",
-  stakeme: "/logos/stakeme.jpg",
   hood: "robinhood",
   coin: "coinbase",
   "megaeth-official": "megaeth",
