@@ -83,32 +83,10 @@ prometheus:
   expected_freshness_seconds: 3600
 
 providers:
-  - slug: buidl
-    name: BUIDL
-    tag: "BlackRock, Ethereum, monthly USDC dividend"
-    formula: "Sum of USDC Transfer events from the BUIDL treasury wallet to holders over 30d, divided by average BUIDL supply (share price fixed at 1 USD by design), annualized. Compared to BlackRock's stated APY."
-    queries:
-      p50: rwa_yield_deviation_bps_30d{token="buidl"}
-      p90: rwa_yield_deviation_bps_7d{token="buidl"}
-      p99: rwa_yield_deviation_bps_lifetime{token="buidl"}
-      mean: rwa_yield_delivered_bps_30d{token="buidl"}
-      success: rwa_yield_probe_ok{token="buidl"}
-      sample_size: rwa_yield_aum_usd{token="buidl"}
-      series: rwa_yield_delivered_bps_30d{token="buidl"}
-
-  - slug: benji
-    name: BENJI
-    tag: "Franklin Templeton, Stellar + Ethereum, NAV appreciation"
-    formula: "NAV growth of the Franklin OnChain U.S. Government Money Fund share, NAV(t=now) vs NAV(t=30d ago), annualized. NAV published daily by Franklin, cross-checked against the on-chain price oracle. Compared to the stated 7-day SEC yield."
-    queries:
-      p50: rwa_yield_deviation_bps_30d{token="benji"}
-      p90: rwa_yield_deviation_bps_7d{token="benji"}
-      p99: rwa_yield_deviation_bps_lifetime{token="benji"}
-      mean: rwa_yield_delivered_bps_30d{token="benji"}
-      success: rwa_yield_probe_ok{token="benji"}
-      sample_size: rwa_yield_aum_usd{token="benji"}
-      series: rwa_yield_delivered_bps_30d{token="benji"}
-
+  # BUIDL + BENJI dormant per the spec comment above (distributor mints
+  # conflate yield with new subscriptions on BUIDL, no on-chain NAV on
+  # BENJI). Removed from the public providers list until the harness
+  # can emit a defensible number; kept in methodology text as context.
   - slug: usdy
     name: USDY
     tag: "Ondo, Ethereum + Solana + Aptos + Sui, daily rebase"
