@@ -1,0 +1,159 @@
+# OpenChainBench. Bench № 108
+
+slug: sei-rpc
+number: "108"
+title: Fastest free Sei RPC, live no-key EVM endpoint latency
+seo_title: "Fastest free Sei RPC 2026"
+seo_description: "{{best_name}} leads free Sei RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h). 4 no-key providers measured every 60s from 3 regions."
+subtitle: HTTP round-trip latency for the `eth_getBlockByNumber(\"latest\", false)` method against every free, no-key public Sei EVM endpoint, audited every 60 seconds from 3 regions.
+
+category: RPCs
+status: live
+metric: RPC latency
+unit: ms
+higher_is_better: false
+
+seo_intro: |
+  Sei is a Cosmos SDK L1 (chain 1329) with a parallel-execution EVM layer bolted onto Tendermint consensus, launched by Sei Labs and positioned as a high-throughput trading chain. Standard EVM JSON-RPC on the EVM side; the Cosmos JSON-RPC would need a separate `Kind:"cosmos"` cluster entry as we did for Osmosis. Excluded by the launch audit: PublicNode (no `sei-evm` subdomain), Tenderly public (no `sei` route), BlockPI (`Apikey not found`), MeowRPC (defunct), AllThatNode + Basement Nodes + Node75 (host unresolvable or key-gated). The 2026-07-03 sweep had originally excluded Sei because dRPC cached `eth_blockNumber`; the re-audit on 2026-07-26 confirms dRPC no longer caches and Thirdweb + Stakeme have come online, restoring 4 clean keyless providers. Every listed provider live-verified with 4 consecutive keyless probes at re-launch.
+
+abstract: |
+  Per-chain member of the RPC latency cluster, extended to Sei.
+  We measure the round-trip latency of a single, identical JSON-RPC call
+  (`eth_getBlockByNumber(\"latest\", false)`) against every no-key public
+  Sei endpoint that sustains continuous probing, 4 providers
+  at launch, every 60 seconds, from us-east, eu-west and Singapore. The
+  harness classifies every response (ok / http_err / jsonrpc_err / stale
+  / timeout) with a Sei-scaled staleness gap (25 blocks
+  at Sei's ~1 s block time). The cross-chain view
+  lives on the parent `rpc-capabilities` benchmark; this page is the
+  Sei-scoped answer with per-region breakdowns as a first-class
+  dimension.
+
+methodology:
+  - "Cadence: every 60 seconds per provider, from each of 3 probe regions (us-east Virginia, eu-west Amsterdam, sgp Singapore). Headline p50/p90/p99 aggregate across all 3 regions via Prometheus `avg(quantile_over_time(...))`; per-region breakdowns are first-class on this page via the region tabs."
+  - "Payload: `{\"jsonrpc\":\"2.0\",\"id\":<rotating>,\"method\":\"eth_getBlockByNumber\",\"params\":[\"latest\", false]}`. Plain HTTP POST, identical for every endpoint, no API key in any request. Non-cacheable by design: the rotating id defeats edge caches that would answer a bare head query without touching a node."
+  - "Latency: client-side round-trip delta in milliseconds, exposed as both a gauge and a histogram (buckets 50 ms → 10 s), so percentiles are computed via Prometheus `quantile_over_time` over the last 24 hours."
+  - "Call-result classification: `ok` (HTTP 200 + non-empty result with a parsable hex block number), `http_err`, `jsonrpc_err` (HTTP 200 carrying an error body), `stale` (more than 25 blocks behind the cross-provider tip), `timeout`. Latency without reliability is a misleading ranking signal."
+  - "This page is part of the per-chain RPC cluster derived from the cross-chain [rpc-capabilities](https://openchainbench.com/benchmarks/rpc-capabilities) benchmark; the identical harness, cadence and exclusion rules apply on every chain."
+  - "Chain scope: every query on this page is pinned to `chain=\"sei\"`. Provider coverage at launch: 4 no-key endpoints."
+
+findings:
+  - "{{best_name}} currently leads free Sei RPC at {{best_p50}} (`eth_getBlockByNumber` p50, 24h) across 4 measured providers."
+
+faq:
+  - q: "What is the fastest free Sei RPC right now?"
+    a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber(\"latest\", false)` p50 over the last 24h), measured against 4 no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples. Use the region tabs to see the leader from the origin closest to your deployment."
+  - q: "Which Sei RPCs work without an API key?"
+    a: "4 endpoints sustain continuous keyless probing at launch. Every listed endpoint was live-verified with a `eth_getBlockByNumber` POST returning a parsable response before inclusion. See the methodology section for the endpoints that were audited and excluded."
+  - q: "Does the fastest Sei RPC change by region?"
+    a: "Often. Public infra concentrates in specific regions; a gateway that wins from Amsterdam can lose from Singapore by multiples. The region tabs at the top of the page re-scope every number to a single origin; pick the one closest to where your requests originate."
+  - q: "How is Sei RPC latency measured here, technically?"
+    a: "One identical `eth_getBlockByNumber(\"latest\", false)` POST every 60 seconds against each provider from each of 3 regions, using the same plain HTTP client the rest of the RPC cluster uses. Wall-clock round-trip is recorded at millisecond precision; p50/p90/p99 are computed via Prometheus `quantile_over_time` over 24 hours. Responses are classified (`ok` / `http_err` / `jsonrpc_err` / `stale` / `timeout`) so an endpoint stuck on an old head or returning errors behind HTTP 200 is never ranked as fastest."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
+
+prometheus:
+  window: 24h
+  freshness_metric: rpc_latency_milliseconds
+
+rank_matrix_query: avg by (provider, region) (ocb:rpc_latency_milliseconds:p50_24h{chain="sei"})
+
+dimensions:
+  region:
+    - { value: all,     label: All regions }
+    - { value: us-east, label: US-East }
+    - { value: eu-west, label: EU-West }
+    - { value: sgp,     label: Singapore }
+
+providers:
+  - slug: sei-official
+    name: Sei Labs
+    tag: Sei Labs official EVM public RPC
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Sei Labs's no-key sei RPC endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="sei-official", chain="sei"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="sei-official", chain="sei"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="sei-official", chain="sei"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="sei-official", chain="sei"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="sei-official", chain="sei"}) / sum(ocb:rpc_call:rate_24h{provider="sei-official", chain="sei"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="sei-official", chain="sei"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="sei-official", chain="sei"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="sei-official", chain="sei", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="sei-official", chain="sei", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="sei-official", chain="sei", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="sei-official", chain="sei", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="sei-official", chain="sei", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="sei-official", chain="sei", region="sgp"}[1h])
+
+  - slug: drpc
+    name: dRPC
+    tag: dRPC gateway routing to Sei EVM node pool
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to dRPC's no-key sei RPC endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="sei"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="drpc", chain="sei"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="drpc", chain="sei"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="drpc", chain="sei"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="drpc", chain="sei"}) / sum(ocb:rpc_call:rate_24h{provider="drpc", chain="sei"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="drpc", chain="sei"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="sei"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="sei", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="sei", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="sei", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="sei", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="drpc", chain="sei", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="drpc", chain="sei", region="sgp"}[1h])
+
+  - slug: thirdweb
+    name: Thirdweb
+    tag: Thirdweb public RPC gateway for Sei EVM
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Thirdweb's no-key sei RPC endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="sei"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="thirdweb", chain="sei"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="thirdweb", chain="sei"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="thirdweb", chain="sei"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="thirdweb", chain="sei"}) / sum(ocb:rpc_call:rate_24h{provider="thirdweb", chain="sei"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="thirdweb", chain="sei"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="sei"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="sei", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="sei", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="sei", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="sei", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="sei", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="sei", region="sgp"}[1h])
+
+  - slug: stakeme
+    name: Stakeme
+    tag: Stakeme.pro validator-run public EVM RPC
+    formula: "50th percentile over 24h of client-side round-trip latency (ms) for a single `eth_getBlockByNumber(\"latest\", false)` POST sent every 60s from 3 regions (us-east + eu-west + sgp) to Stakeme's no-key sei RPC endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="stakeme", chain="sei"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="stakeme", chain="sei"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="stakeme", chain="sei"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="stakeme", chain="sei"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="stakeme", chain="sei"}) / sum(ocb:rpc_call:rate_24h{provider="stakeme", chain="sei"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="stakeme", chain="sei"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="stakeme", chain="sei"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="stakeme", chain="sei", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="stakeme", chain="sei", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="stakeme", chain="sei", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="stakeme", chain="sei", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="stakeme", chain="sei", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="stakeme", chain="sei", region="sgp"}[1h])
