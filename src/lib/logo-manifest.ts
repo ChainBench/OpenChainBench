@@ -444,6 +444,17 @@ const ALIASES: Record<string, string> = {
   "ink-official": "gelato",
   "ink-quicknode": "quicknode",
   "opbnb-official": "opbnb",
+  // Vague-1 chains added 2026-07-26 (benches 108-111). chain-official
+  // aliases point to the chain logo (same pattern as ink/kaia/opbnb).
+  sei: "/logos/sei.svg",
+  "sei-official": "sei",
+  mode: "/logos/mode.webp",
+  "mode-official": "mode",
+  ronin: "/logos/ronin.svg",
+  "ronin-official": "ronin",
+  immutable: "/logos/immutable.svg",
+  "immutable-official": "immutable",
+  stakeme: "/logos/stakeme.jpg",
   hood: "robinhood",
   coin: "coinbase",
   "megaeth-official": "megaeth",
