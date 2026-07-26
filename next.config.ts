@@ -12,19 +12,24 @@ const RELAY_WS = "wss://stream.openchainbench.com";
 // modal's <video> tag can play the result, and in connect-src so the
 // proxy's success URL can be opportunistically pre-fetched.
 const VIDEO_RENDERER_ORIGIN = "https://video.openchainbench.com";
+// Ahrefs Web Analytics. Loaded from analytics.ahrefs.com and beacons
+// back to the same origin — needs both script-src and connect-src
+// allowlist entries. Kept as a distinct constant so a future analytics
+// swap is a one-line change.
+const AHREFS_ORIGIN = "https://analytics.ahrefs.com";
 const IS_DEV = process.env.NODE_ENV !== "production";
 // React dev mode needs 'unsafe-eval' for fast refresh / call stack reconstruction.
 // In prod we keep the lock-tight policy.
 const SCRIPT_SRC = IS_DEV
-  ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
-  : "script-src 'self' 'unsafe-inline'";
+  ? `script-src 'self' 'unsafe-inline' 'unsafe-eval' ${AHREFS_ORIGIN}`
+  : `script-src 'self' 'unsafe-inline' ${AHREFS_ORIGIN}`;
 const CSP = [
   "default-src 'self'",
   SCRIPT_SRC,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self' data:",
-  `connect-src 'self' ${RELAY_WS} ${VIDEO_RENDERER_ORIGIN}`,
+  `connect-src 'self' ${RELAY_WS} ${VIDEO_RENDERER_ORIGIN} ${AHREFS_ORIGIN}`,
   `media-src 'self' ${VIDEO_RENDERER_ORIGIN}`,
   "frame-ancestors 'none'",
   "base-uri 'self'",
