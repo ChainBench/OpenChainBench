@@ -80,7 +80,7 @@ export function PerpVenuesLeaderboard({ rows }: { rows: PerpVenueRow[] }) {
           {filtered.length} of {rows.length} venues
         </p>
         <input
-          type="search"
+          type="search" aria-label="Search venue or chain..."
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search venue or chain..."

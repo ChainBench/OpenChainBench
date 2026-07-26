@@ -58,7 +58,7 @@ export function HlHip3Leaderboard({ rows }: { rows: HlHip3Row[] }) {
           {filtered.length} of {rows.length} dexes
         </p>
         <input
-          type="search"
+          type="search" aria-label="Search dex…"
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search dex…"
