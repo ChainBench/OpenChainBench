@@ -146,14 +146,3 @@ providers:
       sample_size: sum(increase(axelar_gmp_seen_total{source_chain="osmosis"}[24h]))
       series: histogram_quantile(0.50, sum by(le) (rate(axelar_gmp_e2e_latency_milliseconds_bucket{source_chain="osmosis"}[1h])))
 
-  - slug: axelar
-    name: Axelar
-    tag: Axelar Cosmos chain → any chain, native validator quorum + destination approve+execute
-    formula: "50th percentile over 24h of Axelar GMP end-to-end delivery latency for messages sourced from the Axelar Cosmos chain itself."
-    queries:
-      p50: histogram_quantile(0.50, sum by(le) (rate(axelar_gmp_e2e_latency_milliseconds_bucket{source_chain="axelar"}[24h])))
-      p90: histogram_quantile(0.90, sum by(le) (rate(axelar_gmp_e2e_latency_milliseconds_bucket{source_chain="axelar"}[24h])))
-      p99: histogram_quantile(0.99, sum by(le) (rate(axelar_gmp_e2e_latency_milliseconds_bucket{source_chain="axelar"}[24h])))
-      mean: sum(rate(axelar_gmp_e2e_latency_milliseconds_sum{source_chain="axelar"}[24h])) / sum(rate(axelar_gmp_e2e_latency_milliseconds_count{source_chain="axelar"}[24h]))
-      sample_size: sum(increase(axelar_gmp_seen_total{source_chain="axelar"}[24h]))
-      series: histogram_quantile(0.50, sum by(le) (rate(axelar_gmp_e2e_latency_milliseconds_bucket{source_chain="axelar"}[1h])))
