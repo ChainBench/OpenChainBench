@@ -149,7 +149,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "DEX aggregator and DeFi middleware layer. The Augustus Router splits orders across AMMs, PMMs, and direct pools on 10+ EVM chains to minimize price impact and gas costs. Also offers a developer SDK for integrating best-execution routing into dApps and wallets.",
     twitter: "@paraswap",
     longDescription:
-      "ParaSwap aggregates liquidity from Uniswap, Curve, Balancer, AAVE, and dozens of other AMMs and market makers via its Augustus Router. Trades are split across multiple paths atomically, selecting the combination that maximises net output after gas. ParaSwap also runs a delta trading layer — a private RFQ network where professional market makers post competitive quotes for large orders, bypassing on-chain pools entirely. The SDK and API are used by Ledger Live, Safe, and other wallets as the routing engine behind their swap UI.",
+      "ParaSwap aggregates liquidity from Uniswap, Curve, Balancer, AAVE, and dozens of other AMMs and market makers via its Augustus Router. Trades are split across multiple paths atomically, selecting the combination that maximises net output after gas. ParaSwap also runs a delta trading layer: a private RFQ network where professional market makers post competitive quotes for large orders, bypassing on-chain pools entirely. The SDK and API are used by Ledger Live, Safe, and other wallets as the routing engine behind their swap UI.",
     docs: "https://developers.paraswap.network",
   },
   bebop: {
@@ -1793,7 +1793,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   ousg: {
     url: "https://ondo.finance/ousg",
     description:
-      "Ondo OUSG is a tokenized short-term U.S. Treasury fund. NAV appreciation model — the share price grows daily as yield accrues. Delivered yield on bench 089 is read from Ondo's on-chain oracle (Aave IPriceOracle interface).",
+      "Ondo OUSG is a tokenized short-term U.S. Treasury fund. NAV appreciation model: the share price grows daily as yield accrues. Delivered yield on bench 089 is read from Ondo's on-chain oracle (Aave IPriceOracle interface).",
     twitter: "@OndoFinance",
     docs: "https://docs.ondo.finance/",
   },
@@ -1807,7 +1807,7 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
   "syrup-usdc": {
     url: "https://syrup.fi",
     description:
-      "Maple SyrupUSDC is an ERC-4626 vault whose underlying is a book of institutional USDC loans. Not a T-bill wrapper — yield reflects loan-book performance. Delivered yield on bench 089 reads convertToAssets(1 share) at latest and t-30d blocks and compares to the pool's base APY (excludes SYRUP token rewards).",
+      "Maple SyrupUSDC is an ERC-4626 vault whose underlying is a book of institutional USDC loans. Not a T-bill wrapper. Yield reflects loan-book performance. Delivered yield on bench 089 reads convertToAssets(1 share) at latest and t-30d blocks and compares to the pool's base APY (excludes SYRUP token rewards).",
     twitter: "@maplefinance",
     docs: "https://maplefinance.gitbook.io/maple/",
   },
