@@ -26,7 +26,7 @@ seo_intro: |
   one prices flow.
 
 abstract: |
-  The bench polls 10 perp DEX venues every 5 minutes for the trailing
+  The bench polls 11 perp DEX venues every 5 minutes for the trailing
   24 hour taker notional and exposes a USD gauge per venue. Sources:
   Hyperliquid info dayNtlVlm (per-asset day notional summed in USD),
   Aster fapi 24h ticker per instrument, Lighter public stats endpoint,

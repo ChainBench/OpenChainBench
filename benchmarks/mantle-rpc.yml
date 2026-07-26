@@ -14,7 +14,7 @@ unit: ms
 higher_is_better: false
 
 seo_intro: |
-  Mantle rounds out the cluster's long tail with 4 qualifying no-key providers, all multi-chain gateways (PublicNode, dRPC, Tenderly). Like every chain in the family, the number that matters is a sustained median, the same `eth_getBlockByNumber` call every 60 seconds from three regions over a rolling 24 hours, not a one-off marketing burst, and archive-depth support is audited separately every 5 minutes.
+  Mantle rounds out the cluster's long tail with 3 qualifying no-key providers, all multi-chain gateways (PublicNode, dRPC, Tenderly). Like every chain in the family, the number that matters is a sustained median, the same `eth_getBlockByNumber` call every 60 seconds from three regions over a rolling 24 hours, not a one-off marketing burst, and archive-depth support is audited separately every 5 minutes.
 
 abstract: |
   Per-chain member of the RPC latency cluster. We measure the round-trip latency of a single, identical RPC call (`eth_getBlockByNumber`) against every no-key public Mantle endpoint that sustains continuous probing, 3 providers, every 60 seconds, from us-east, eu-west and Singapore. The harness also classifies every response (ok / http_err / jsonrpc_err / stale / timeout) and audits archive depth every 5 minutes, so the leaderboard rewards sustained, honest availability rather than a fast error message. The cross-chain view lives on the parent rpc-capabilities benchmark; this page is the Mantle-scoped answer with per-region breakdowns as a first-class dimension.
@@ -43,7 +43,7 @@ faq:
   - q: "How is Mantle RPC latency measured here?"
     a: "One identical JSON-RPC POST (`eth_getBlockByNumber`) every 60 seconds against each provider from each of 3 regions, with the same plain HTTP client. Wall-clock round-trip is recorded at millisecond precision; p50/p90/p99 are computed via Prometheus `quantile_over_time` over 24 hours. Responses are classified (`ok` / `http_err` / `jsonrpc_err` / `stale` / `timeout`) so an endpoint stuck on an old head or returning errors behind HTTP 200 is never ranked as fastest. The harness is open source and every number on this page is a public Prometheus query you can run yourself."
   - q: "Are free Mantle RPCs reliable enough to build on?"
-    a: "The four qualifying gateways all maintain high measured success rates on Mantle, but a 4-provider field means less redundancy if one degrades. Use the current leader as primary and the runner-up as fallback, and re-check this page after incidents, the ranking is live and the honest answer moves."
+    a: "The three qualifying gateways all maintain high measured success rates on Mantle, but a 3-provider field means less redundancy if one degrades. Use the current leader as primary and the runner-up as fallback, and re-check this page after incidents, the ranking is live and the honest answer moves."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 
