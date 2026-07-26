@@ -717,12 +717,36 @@ export default async function ComparePage({
     isAccessibleForFree: true,
     license: DATASET_LICENSE,
     measurementTechnique: `${SITE.url}/methodology`,
-    variableMeasured: shared.map((s) => ({
-      "@type": "PropertyValue",
+    // PropertyValue in a Dataset variableMeasured needs a numeric `value`
+    // for Google Dataset Search + academic LLM tools to extract the
+    // structured fact. Fallback to the aggregate winner's p50 in the
+    // shared unit; skip PropertyValue.value entirely when neither side
+    // returned data so we never publish a fabricated zero.
+    variableMeasured: shared.map((s) => {
+      const winner = s.aggregateWinner === "a" ? s.aResult : s.bResult;
+      const v = winner?.p50;
+      return {
+        "@type": "PropertyValue" as const,
+        name: s.title,
+        unitText: s.unit,
+        ...(typeof v === "number" && v > 0 ? { value: v } : {}),
+      };
+    }),
+    // isBasedOn is a cross-doc reference to each bench Dataset. Google
+    // validates each Dataset in isolation and does not stitch bare-URL
+    // refs, so previously flagged them as standalone Datasets without
+    // name/description (same failure mode as PR #1442's isBasedOn fix
+    // in dataset-jsonld.ts). Inline the required fields per bench.
+    isBasedOn: shared.map((s) => ({
+      "@type": "Dataset" as const,
+      "@id": `${SITE.url}/benchmarks/${s.slug}#dataset`,
       name: s.title,
-      unitText: s.unit,
+      description: `${s.metric} (${s.unit}) benchmark on OpenChainBench: live measurements for ${a.name} and ${b.name}.`,
+      url: `${SITE.url}/benchmarks/${s.slug}`,
+      creator: CREATOR_PUBLISHER,
+      license: DATASET_LICENSE,
+      isAccessibleForFree: true,
     })),
-    isBasedOn: shared.map((s) => `${SITE.url}/benchmarks/${s.slug}`),
     distribution: shared.map((s) => ({
       "@type": "DataDownload",
       encodingFormat: "application/json",
@@ -772,6 +796,9 @@ export default async function ComparePage({
   const faqJsonLd = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
+    // GSC's Rich Results tester flags FAQPage nodes without an `@id`
+    // (every other FAQPage on the site emits one via the shared builder).
+    "@id": `${url}#faq`,
     // Google's Rich Results validator flags missing `name` on the
     // FAQPage parent even when Question.name is set. Add here + on
     // Answer nodes so the compare page matches the shared FAQ builder
@@ -881,6 +908,32 @@ export default async function ComparePage({
               aName={a.name}
               bName={b.name}
             />
+          ))}
+        </div>
+      </section>
+
+      {/* Visible FAQ parity with the FAQPage JSON-LD above. Google
+          requires visible Q&A text matching the schema entries or it
+          silently drops the rich result — the compare pages had FAQ
+          jsonld without any visible questions, so the FAQPage never
+          rendered in the SERP snippet. */}
+      <section className="mt-12 max-w-3xl">
+        <h2 className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted">
+          Frequently asked questions
+        </h2>
+        <div className="mt-4 space-y-4">
+          {faqEntries.map((e) => (
+            <details
+              key={e.q}
+              className="border border-rule rounded-lg px-4 py-3"
+            >
+              <summary className="cursor-pointer text-sm font-medium text-ink leading-tight">
+                {e.q}
+              </summary>
+              <p className="mt-3 text-sm leading-relaxed text-ink-soft">
+                {e.a}
+              </p>
+            </details>
           ))}
         </div>
       </section>
