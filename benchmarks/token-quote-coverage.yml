@@ -5,13 +5,17 @@ number: "102"
 title: Best DEX aggregator for quoting newly-launched tokens
 seo_title: "Best DEX aggregator for long-tail token coverage 2026"
 seo_description: "Which DEX aggregator can quote the most newly-launched tokens? Live coverage rate across Pump.fun, Moonshot, Meteora DBC, Virtuals, Four.meme and Pons."
-subtitle: Share of newly-launched tokens each aggregator can return a valid swap quote for, sampled hourly from 6 launchpads across Solana, BNB and Robinhood.
+subtitle: Share of newly-launched tokens each aggregator can return a valid swap quote for, sampled hourly from 6 launchpads across Solana, Base, BNB and Robinhood.
 
 per_chain_explainer:
   - slug: solana
     h2: "Best DEX aggregator for Solana launchpad tokens"
     body: |
       {{best_name:chain:solana}} currently leads on Solana at {{best_p50:chain:solana}} coverage (24h) across Pump.fun, Moonshot, and Meteora DBC. All three Solana launchpads graduate tokens to on-chain DEX pools: Pump.fun and Moonshot route to Raydium CPMM, while Meteora DBC graduates to DLMM concentrated liquidity pools. The pool-type split is the key differentiator,aggregators that hardcode Raydium AMM routing miss Meteora DBC graduates entirely. Jupiter's strictMode=false mode routes any token with a discoverable on-chain pool, giving it structural advantage on Pump.fun and Moonshot; DLMM coverage depends on whether the aggregator explicitly registers Meteora pool factories. The probe fires a 1 USDC to token quote at each provider once per 30-minute batch, using Dexscreener token-boosts as the discovery feed to avoid self-selection bias.
+  - slug: base
+    h2: "Best DEX aggregator for Base launchpad token coverage"
+    body: |
+      {{best_name:chain:base}} currently leads on Base at {{best_p50:chain:base}} coverage (24h). Virtuals Protocol has expanded its presence across chains: newer Virtuals agents now graduate to Robinhood Chain (chainId 4663) rather than Base. EVM aggregators with a live Uniswap V3 pool-creation event index have the narrowest discovery lag on Base-native tokens.
   - slug: bsc
     h2: "Best DEX aggregator for BNB Chain new token coverage"
     body: |
@@ -120,6 +124,7 @@ dimensions:
   chain:
     - { value: all,        label: All chains }
     - { value: solana,     label: Solana }
+    - { value: base,       label: Base }
     - { value: bsc,        label: BNB }
     - { value: robinhood,  label: Robinhood }
 
