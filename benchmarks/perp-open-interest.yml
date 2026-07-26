@@ -80,11 +80,11 @@ prometheus:
 
 faq:
   - q: "What does this benchmark measure?"
-    a: "The live aggregate open interest of 12 major perp DEX venues in USD. Headline is the 24h average of the live OI gauge so single prints do not skew the ranking."
+    a: "The live aggregate open interest of 13 major perp DEX venues in USD. Headline is the 24h average of the live OI gauge so single prints do not skew the ranking."
   - q: "How is open interest different from volume?"
     a: "Volume counts every trade that crosses the book during a window. Open interest counts notional that currently sits open, regardless of when it was opened. A high-volume venue with high turnover can carry lower OI than a slower venue with sticky positions."
   - q: "Which venues are in the cohort?"
-    a: "Hyperliquid, Aster, Lighter, GRVT, Extended, Ostium, Pacifica, Vertex, dYdX v4, Aevo, Paradex and gains.trade, the 12 decentralized perp venues whose public APIs expose open interest cleanly enough to compare without backfilling. Other venues join as their endpoints document the same series."
+    a: "Hyperliquid, Aster, Lighter, GRVT, Extended, Ostium, Pacifica, Vertex, dYdX v4, Aevo, Paradex, gains.trade and Polymarket, the 13 decentralized perp venues whose public APIs expose open interest cleanly enough to compare without backfilling. Other venues join as their endpoints document the same series."
   - q: "Is OI a good proxy for venue health?"
     a: "It is one of the cleanest. A venue can spike volume with wash trading or incentive programs, but real OI is harder to fake because it ties up margin. Compared against perp-volume-share, persistent OI dominance signals real position-holding flow rather than turnover."
 
