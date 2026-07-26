@@ -747,6 +747,30 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Wormhole is a cross-chain messaging network. A network of 19 Guardian nodes observes events on source chains and signs VAAs (Verified Action Approvals) once source-chain finality is reached; 13-of-19 Guardian signatures constitute quorum. Any signed VAA can then be relayed to any destination chain Wormhole supports (30+ EVM, Solana, Sui, Aptos, Near, Cosmos SDK chains) to unlock the corresponding action.",
     twitter: "@wormhole",
   },
+  layerzero: {
+    url: "https://layerzero.network",
+    description:
+      "LayerZero is an omnichain messaging protocol built on a configurable Decentralized Verifier Network (DVN) stack. Applications choose which DVNs verify their messages and which Executor delivers them, so the security model is application-defined rather than fixed. Live on 100+ chains, powering Stargate, Radiant, Ethena and many other cross-chain applications.",
+    twitter: "@LayerZero_Core",
+  },
+  hyperlane: {
+    url: "https://hyperlane.xyz",
+    description:
+      "Hyperlane is a permissionless cross-chain messaging network. Anyone can deploy the Mailbox contract on a new chain and anyone can relay messages between them. Application security is expressed via an Interchain Security Module (ISM) the developer configures per lane. Deployed on 100+ EVM chains plus Solana, powering the Nexus liquidity network and many rollup-native apps.",
+    twitter: "@hyperlane",
+  },
+  axelar: {
+    url: "https://axelar.network",
+    description:
+      "Axelar is a cross-chain communication network built on a Cosmos-SDK chain plus validator-attested gateways on every supported destination. Its General Message Passing (GMP) API underpins Squid Router, Interchain Token Service (ITS) and the Interchain Amplifier. Bridges 60+ EVM chains and 20+ Cosmos chains through a proof-of-stake validator set that signs cross-chain calls.",
+    twitter: "@axelar",
+  },
+  "chainlink-ccip": {
+    url: "https://chain.link/cross-chain",
+    description:
+      "Chainlink Cross-Chain Interoperability Protocol (CCIP) is an enterprise-grade cross-chain messaging network operated by the Chainlink Decentralized Oracle Network (DON). CCIP waits for source-chain finality before its DON commits a merkle root, then a Risk Management Network (RMN) independently verifies before destination execution. Powers production integrations at Aave, SWIFT, and multiple institutional token bridges. Live on Ethereum, all major L2s, Avalanche, BNB, Polygon, and Solana.",
+    twitter: "@chainlink",
+  },
   infura: {
     url: "https://www.infura.io",
     description:
