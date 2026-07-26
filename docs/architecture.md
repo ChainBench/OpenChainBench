@@ -70,7 +70,7 @@ build clones the OCB `dev` branch fresh).
 ## Known constraints
 
 - Prometheus must be reachable from the materialization worker; the site only needs the Redis store (plus Prometheus for the live fallback path).
-- Worker sweep cost grows linearly with providers (one Prometheus call per provider per metric per benchmark) — the heaviest bench, hyperliquid-frontends, declares 100+ providers. The Prom client bounds concurrency with a global query semaphore.
+- Worker sweep cost grows linearly with providers (one Prometheus call per provider per metric per benchmark), the heaviest bench, hyperliquid-frontends, declares 100+ providers. The Prom client bounds concurrency with a global query semaphore.
 - `generateStaticParams` reads the YAML filenames directly so the route table is stable even when Prometheus or the store is offline.
 - Spec changes that alter a bench's provider list require a worker image rebuild to show up on the site (the worker bakes its OCB checkout at build time).
 
@@ -105,7 +105,7 @@ The live dashboard at [openchainbench.com](https://openchainbench.com) has its *
 ```
 
 The browser opens a WebSocket **directly to the Railway relay**. Vercel
-Functions are never invoked for live data — keeps cost flat at ~$5/mo
+Functions are never invoked for live data, keeps cost flat at ~$5/mo
 regardless of viewer count.
 
 ### Why a separate relay (not Vercel SSE)
@@ -122,9 +122,9 @@ Three message types arrive on `/ws`, all JSON:
 
 | `type` | When | Payload |
 |---|---|---|
-| `snapshot` | First message on every connect | `{ buckets: [{ ts, perChain }], nowMs }` — the last 10 min of incremental per-chain volume, padded with empty buckets on the left so the chart is full from t=0. |
-| `swap` | Per real trade (filtered: `buy`/`sell`, `operation=regular\|arbitrage`) | `{ chain, pool, pair, exchange, side, usd, hash, onChainMs, mobulaMs, receivedMs }` — enriched with pair name + DEX from a top-N catalog fetched at boot. |
-| `stats` | Every 1 s | `{ global: {vol24h, trades24h, …, mcap, byChain[]}, live: {swaps, vol, chains}, nowMs }` — ground-truth global stats from REST + per-session live counters. |
+| `snapshot` | First message on every connect | `{ buckets: [{ ts, perChain }], nowMs }`, the last 10 min of incremental per-chain volume, padded with empty buckets on the left so the chart is full from t=0. |
+| `swap` | Per real trade (filtered: `buy`/`sell`, `operation=regular\|arbitrage`) | `{ chain, pool, pair, exchange, side, usd, hash, onChainMs, mobulaMs, receivedMs }`, enriched with pair name + DEX from a top-N catalog fetched at boot. |
+| `stats` | Every 1 s | `{ global: {vol24h, trades24h, …, mcap, byChain[]}, live: {swaps, vol, chains}, nowMs }`, ground-truth global stats from REST + per-session live counters. |
 
 The browser snapshots the first message, then accumulates `swap` events into incremental buckets matching the relay's bucket boundaries (using the snapshot's `nowMs` to learn the relay/browser clock offset).
 
