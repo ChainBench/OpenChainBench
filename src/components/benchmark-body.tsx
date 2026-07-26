@@ -138,25 +138,37 @@ const REGION_DISPLAY: Record<string, string> = {
   global: "Global",
 };
 
-function CsvButton({ benchmark }: { benchmark: Benchmark }) {
+const RANGE_CFG: Record<string, { nPoints: number; hours: number; label: string }> = {
+  "1h": { nPoints: 3, hours: 1, label: "1 h" },
+  "6h": { nPoints: 18, hours: 6, label: "6 h" },
+  "24h": { nPoints: 72, hours: 24, label: "24 h" },
+  "7d": { nPoints: 84, hours: 168, label: "7 d" },
+  "30d": { nPoints: 60, hours: 720, label: "30 d" },
+};
+
+function CsvButton({ benchmark, range }: { benchmark: Benchmark; range: string }) {
   const [done, setDone] = useState(false);
+  const cfg = RANGE_CFG[range] ?? RANGE_CFG["24h"];
+  const series =
+    (range === "7d" ? benchmark.extras.series7d : undefined) ??
+    (range === "30d" ? benchmark.extras.series30d : undefined) ??
+    benchmark.extras.series24h;
+
   const onClick = useCallback(() => {
-    const series = benchmark.extras?.series24h;
     if (!series || Object.keys(series).length === 0) return;
     const slugs = benchmark.results.map((r) => r.slug);
-    const nPoints = 72;
-    const stepMs = (24 * 3_600_000) / nPoints;
+    const stepMs = (cfg.hours * 3_600_000) / cfg.nPoints;
     const now = Date.now();
     const header = ["timestamp", ...slugs].join(",");
-    const rows = Array.from({ length: nPoints }, (_, i) => {
-      const ts = new Date(now - 24 * 3_600_000 + (i + 1) * stepMs).toISOString();
+    const rows = Array.from({ length: cfg.nPoints }, (_, i) => {
+      const ts = new Date(now - cfg.hours * 3_600_000 + (i + 1) * stepMs).toISOString();
       return [ts, ...slugs.map((s) => { const v = series[s]?.[i]; return v == null ? "" : String(v); })].join(",");
     });
     const blob = new Blob([[header, ...rows].join("\n")], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `openchainbench-${benchmark.slug}-24h.csv`;
+    a.download = `openchainbench-${benchmark.slug}-${range}.csv`;
     a.rel = "noopener";
     document.body.appendChild(a);
     a.click();
@@ -164,10 +176,11 @@ function CsvButton({ benchmark }: { benchmark: Benchmark }) {
     setTimeout(() => URL.revokeObjectURL(url), 4000);
     setDone(true);
     setTimeout(() => setDone(false), 1600);
-  }, [benchmark]);
-  if (!benchmark.extras?.series24h || Object.keys(benchmark.extras.series24h).length === 0) return null;
+  }, [benchmark, series, cfg, range]);
+
+  if (!series || Object.keys(series).length === 0) return null;
   return (
-    <Hint label="Download CSV (24 h)">
+    <Hint label={`Download CSV (${cfg.label})`}>
       <button
         type="button"
         onClick={onClick}
@@ -624,7 +637,7 @@ export function BenchmarkBody({
 
   const sharedHeaderActions = (
     <>
-      <CsvButton benchmark={viewBenchmark ?? benchmark} />
+      <CsvButton benchmark={viewBenchmark ?? benchmark} range={chartRange} />
       {pageActions}
       <ViewSwitcher allowed={allowedViews} value={view} onChange={setView} />
     </>
