@@ -912,6 +912,32 @@ export default async function ComparePage({
         </div>
       </section>
 
+      {/* Visible FAQ parity with the FAQPage JSON-LD above. Google
+          requires visible Q&A text matching the schema entries or it
+          silently drops the rich result — the compare pages had FAQ
+          jsonld without any visible questions, so the FAQPage never
+          rendered in the SERP snippet. */}
+      <section className="mt-12 max-w-3xl">
+        <h2 className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted">
+          Frequently asked questions
+        </h2>
+        <div className="mt-4 space-y-4">
+          {faqEntries.map((e) => (
+            <details
+              key={e.q}
+              className="border border-rule rounded-lg px-4 py-3"
+            >
+              <summary className="cursor-pointer text-sm font-medium text-ink leading-tight">
+                {e.q}
+              </summary>
+              <p className="mt-3 text-sm leading-relaxed text-ink-soft">
+                {e.a}
+              </p>
+            </details>
+          ))}
+        </div>
+      </section>
+
       <section className="mt-12 max-w-3xl">
         <h2 className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted">
           How this pair was selected
