@@ -44,6 +44,8 @@ abstract: |
   shown here are computed via Prometheus `histogram_quantile` over the
   last 24 hours.
 
+  See cross-chain-messaging-latency for the side-by-side comparison across all four end-to-end protocols on the same shared observation stack.
+
 methodology:
   - "Data source: `https://api.ccip.chain.link/v2/messages?limit=100`, the public CCIP Tools API. Polled every 60 seconds."
   - "Latency definition: `receiptTimestamp - sendTimestamp` from a CCIP message row with `status: SUCCESS`. `sendTimestamp` is the source-chain tx block time; `receiptTimestamp` is the destination-chain execution block time."
