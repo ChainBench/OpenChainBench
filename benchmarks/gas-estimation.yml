@@ -82,9 +82,9 @@ abstract: |
 
 methodology:
   - "Chains: Ethereum mainnet (chainid=1), Polygon PoS (chainid=137). Both are EIP-1559 with proper dynamic base fee, so priority-fee prediction is apples-to-apples comparable. BNB Chain excluded (not EIP-1559). Avalanche C-Chain excluded (auto-tuning drives priority fee to ~0, prediction-error collapses to ~0)."
-  - "Oracles per chain. Ethereum + Polygon: PublicNode feeHistory, Owlracle, Etherscan v2 (free tier)."
-  - "Per-oracle endpoints. PublicNode `eth_feeHistory` on each chain's RPC; Owlracle `/v4/{eth|poly}/gas` (slug per chain); Etherscan v2 `?chainid=<N>&module=gastracker&action=gasoracle`."
-  - "Cadences. PublicNode feeHistory every 12s per chain; Owlracle every 60s per chain (free quota ceiling); Etherscan every 15s per chain with a global rate-gate enforcing ≥6s between any two Etherscan requests across chains (no-key limit is 1 req/5s per IP, shared)."
+  - "Oracles per chain. Ethereum + Polygon: PublicNode feeHistory, Owlracle, Etherscan v2 (free tier), MetaMask. Avalanche: same set minus Etherscan (free plan restricted for chainid 43114)."
+  - "Per-oracle endpoints. PublicNode `eth_feeHistory` on each chain's RPC; Owlracle `/v4/{eth|poly|avax}/gas` (slug per chain); Etherscan v2 `?chainid=<N>&module=gastracker&action=gasoracle`; MetaMask `gas.api.cx.metamask.io/networks/<N>/suggestedGasFees` (public no-key, EIP-1559 low/medium/high mapped to p25/p50/p90)."
+  - "Cadences. PublicNode feeHistory and MetaMask every 12s per chain; Owlracle every 60s per chain (free quota ceiling); Etherscan every 15s per chain with a global rate-gate enforcing ≥6s between any two Etherscan requests across chains (no-key limit is 1 req/5s per IP, shared)."
   - "Tier normalization. Each oracle's named tiers (fast / standard / slow / safe / propose) are mapped onto a unified p25 / p50 / p75 / p90 / p99 scheme. The leaderboard ranks the p50 tier (the standard speed wallets use by default)."
   - "Realized priority fee. For each pending block, the harness pulls the full block via `eth_getBlockByNumber(.., true)` on the chain's primary RPC and computes p25/p50/p75/p90/p99 directly from the actual effective `maxPriorityFeePerGas` values across every included transaction. Every tier is a real percentile of the mined block, none are interpolated. Empty or low-tx blocks (`gas_realized_tx_count` near zero) are surfaced separately because the realized percentile is noisy when tx count is low."
   - "Realized-side independence check. Each chain configures a second RPC on a different upstream (dRPC / native chain RPC) as `GAS_REALIZED_RPC_VERIFY_<CHAIN>`; on each block the harness cross-checks baseFee and increments `gas_realized_quorum_disagreement_total{chain, kind}` on mismatch. Primary is still trusted; the counter makes visible whether our ground truth is actually independent across upstreams."
@@ -217,3 +217,16 @@ providers:
       success: sum(rate(gas_oracle_call_total{oracle="etherscan", result="ok"}[24h])) / sum(rate(gas_oracle_call_total{oracle="etherscan"}[24h]))
       sample_size: sum(increase(gas_oracle_call_total{oracle="etherscan"}[24h]))
       series: gas_error_priority_gwei{oracle="etherscan", tier="p50"}
+
+  - slug: metamask
+    name: MetaMask
+    tag: Wallet-native, no key, EIP-1559 low/medium/high
+    formula: "p99 over 24h of |MetaMask's medium-tier suggestedMaxPriorityFeePerGas mapped to p50 − realized p50 priority fee| in gwei, polled every 12s and matched to the next-mined block on the active chain."
+    queries:
+      p50: quantile_over_time(0.99, gas_error_priority_gwei{oracle="metamask", tier="p50"}[24h])
+      p90: quantile_over_time(0.90, gas_error_priority_gwei{oracle="metamask", tier="p50"}[24h])
+      p99: quantile_over_time(0.50, gas_error_priority_gwei{oracle="metamask", tier="p50"}[24h])
+      mean: avg_over_time(gas_error_priority_gwei{oracle="metamask", tier="p50"}[24h])
+      success: sum(rate(gas_oracle_call_total{oracle="metamask", result="ok"}[24h])) / sum(rate(gas_oracle_call_total{oracle="metamask"}[24h]))
+      sample_size: sum(increase(gas_oracle_call_total{oracle="metamask"}[24h]))
+      series: gas_error_priority_gwei{oracle="metamask", tier="p50"}
