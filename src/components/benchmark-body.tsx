@@ -402,7 +402,7 @@ export function BenchmarkBody({
     // variantMap intentionally omitted: presence is re-checked inside the
     // functional setState, a duplicate in-flight fetch is harmless.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [effectiveChain, effectiveRegion, effectiveKind, aggregateBench]);
+  }, [effectiveChain, effectiveRegion, effectiveKind, effectiveVenue, aggregateBench]);
 
   const benchmark = variantMap[activeKey] ?? aggregateBench;
   // True while the selected chain/region/kind variant is still loading:
