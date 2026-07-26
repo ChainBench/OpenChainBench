@@ -43,7 +43,7 @@ faq:
   - q: "How is Linea RPC latency measured here?"
     a: "One identical JSON-RPC POST (`eth_getBlockByNumber`) every 60 seconds against each provider from each of 3 regions, with the same plain HTTP client. Wall-clock round-trip is recorded at millisecond precision; p50/p90/p99 are computed via Prometheus `quantile_over_time` over 24 hours. Responses are classified (`ok` / `http_err` / `jsonrpc_err` / `stale` / `timeout`) so an endpoint stuck on an old head or returning errors behind HTTP 200 is never ranked as fastest. The harness is open source and every number on this page is a public Prometheus query you can run yourself."
   - q: "Why do so few free RPCs support Linea?"
-    a: "Free-tier coverage follows demand: gateways add no-key chains when traffic justifies the infrastructure. Linea's cohort (3 providers) is typical of newer L2s, compare with 9 on Ethereum and 8 on Arbitrum. The flip side is that the providers that do qualify are the disciplined multi-chain operators, so the reliability floor is high even where the field is thin."
+    a: "Free-tier coverage follows demand: gateways add no-key chains when traffic justifies the infrastructure. Linea's cohort (3 providers) is typical of newer L2s, compare with 8 on Ethereum and 7 on Arbitrum. The flip side is that the providers that do qualify are the disciplined multi-chain operators, so the reliability floor is high even where the field is thin."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
 
