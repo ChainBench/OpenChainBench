@@ -4,7 +4,7 @@ slug: ws-head-latency-ethereum
 number: "081"
 title: Fastest Ethereum WebSocket newHeads push, live block-push lag across RPC providers
 seo_title: "Fastest Ethereum WebSocket RPC newHeads push 2026"
-seo_description: "{{best_name}} pushes Ethereum newHeads first. Live WebSocket block-push lag for PublicNode, dRPC and Tenderly, measured per block against the earliest arrival in the cohort."
+seo_description: "{{best_name}} pushes Ethereum newHeads first. Live WebSocket block-push lag for PublicNode, dRPC, Tenderly and OnFinality, measured per block against the earliest arrival in the cohort."
 subtitle: Per-block WebSocket push lag in milliseconds versus the earliest provider to deliver the same Ethereum head, measured continuously from one eu-west vantage point.
 
 category: RPCs
@@ -23,7 +23,7 @@ seo_intro: |
   per provider from the same eu-west host, timestamps every newHeads
   frame on receipt, and scores each Ethereum block as a race: the
   earliest arrival sets T0, every other provider's lag is its arrival
-  minus T0. The headline is pinned to Ethereum, where all three keyless
+  minus T0. The headline is pinned to Ethereum, where all four keyless
   providers compete; the same harness also races Base heads and Solana
   slots for cross-chain context. Because the measurement is relative,
   the leader reads near zero by construction, so the win-rate and the
@@ -48,7 +48,7 @@ abstract: |
 methodology:
   - "Providers measured (keyless WebSocket endpoints): PublicNode (wss://ethereum-rpc.publicnode.com), dRPC (wss://eth.drpc.org), Tenderly (wss://mainnet.gateway.tenderly.co), Onfinality (wss://eth.api.onfinality.io/public-ws). Keyed providers (Alchemy, Infura, Chainstack, QuickNode) join the cohort when contributor keys are wired via WS_URL_<PROVIDER>_ETHEREUM env vars; the harness skips them cleanly when unset."
   - "Cohort saturation: Ankr, Blast, LlamaRPC, BlockPI, 1RPC, NodeReal and Omniatech all reject a keyless WebSocket handshake at the time of ship (verified 2026-07), which is why the keyless tier stops at four (PublicNode, dRPC, Tenderly, Onfinality)."
-  - "Chains: Ethereum (headline, all three providers compete), Base via newHeads and Solana via slotSubscribe as secondary cohorts. Headline queries on this page are pinned to chain=ethereum so the ranking never mixes block cadences."
+  - "Chains: Ethereum (headline, all four providers compete), Base via newHeads and Solana via slotSubscribe as secondary cohorts. Headline queries on this page are pinned to chain=ethereum so the ranking never mixes block cadences."
   - "Race scoring: the first provider to deliver block N sets T0. Each provider's sample for block N is arrival(N) minus T0 in milliseconds. The cohort closes 5 seconds after the first arrival; a provider arriving later than that is scored as a missed block (ws_block_gap_total), not as a huge latency sample."
   - "Relative, not absolute: a single vantage point cannot separate its own network path from provider pipeline time, so we subtract the two arrivals over the same path instead. Consequence: the fastest provider reads ~0 by construction, and the honest readings are win rate, the trailers' lag distribution, and gap counts, not the leader's absolute number."
   - "Blocks where only one provider delivered within the window emit no lag samples and no win: a one-horse race carries no relative information. Gap counters still increment for live providers that missed the block."

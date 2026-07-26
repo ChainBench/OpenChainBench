@@ -43,7 +43,7 @@ seo_intro: |
   `swqos_only=true` mode (isolates the Helius own-path from the
   Jito leg). Astralane Iris (tip-refund mechanism). Nozomi by
   Temporal Labs (premium tier, hard 1M lamport tip floor).
-  0slot.trade (premium tier). NextBlock, bloXroute and
+  Mobula (multi-RPC fan-out via api.mobula.io). NextBlock, bloXroute and
   SolanaVibeStation arrive in the next tier (V1) once the first
   sponsors land. Companion bench. /benchmarks/solana-tx-landing
   measures market share via on-chain tip-wallet attribution -
