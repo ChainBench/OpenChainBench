@@ -217,14 +217,26 @@ func runRealizer(ctx context.Context, buf *Buffer, chain Chain) {
 			lastObserved = head
 			return
 		}
-		// Catch up at most 5 blocks per tick to bound the per-tick
-		// work even if the realizer lagged behind. On Polygon /
-		// Avalanche (2s block time, 12s realizer cadence) we expect
-		// to see 6 new blocks per tick on average, so the catch-up
-		// loop intentionally trails reality by a block or two —
-		// that's fine because the buffer holds predictions for
-		// pendingTTLBlocks worth of blocks anyway.
-		for n := lastObserved + 1; n <= head && n <= lastObserved+5; n++ {
+		// Per-chain catch-up cap. ETH (12s blocks) needs 5, Polygon
+		// and Avalanche (2s blocks) need ~10, Arbitrum L2 (sub-second
+		// blocks) sees ~48 new blocks per 12s realizer tick and falls
+		// hopelessly behind at cap=5 (buffers spike to 99 predictions
+		// per oracle, most get evicted before grading). Cap scales as
+		// `max(5, ceil(realizedPollInterval / BlockTimeSec) + 5)` —
+		// one tick of blocks plus a small slack. Hard ceiling of 60
+		// so a stalled realizer can never fill the tick window with
+		// fetches on the busiest chain.
+		catchupCap := uint64(5)
+		if chain.BlockTimeSec > 0 {
+			c := uint64(int(realizedPollInterval.Seconds())/chain.BlockTimeSec + 5)
+			if c > catchupCap {
+				catchupCap = c
+			}
+		}
+		if catchupCap > 60 {
+			catchupCap = 60
+		}
+		for n := lastObserved + 1; n <= head && n <= lastObserved+catchupCap; n++ {
 			processBlock(ctx, buf, n, chain)
 			lastObserved = n
 		}

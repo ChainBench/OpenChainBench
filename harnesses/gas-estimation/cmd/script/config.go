@@ -133,7 +133,10 @@ func chains() []Chain {
 			Slug:         "arbitrum",
 			ChainID:      42161,
 			RealizedRPC:  envDefault("GAS_REALIZED_RPC_ARBITRUM", "https://arbitrum-one-rpc.publicnode.com"),
-			VerifyRPC:    envDefault("GAS_REALIZED_RPC_VERIFY_ARBITRUM", "https://arbitrum.drpc.org"),
+			// dRPC's arbitrum public routes to 1rpc.io which rate-limits within 30s.
+			// arb1.arbitrum.io is Offchain Labs' own hosted RPC — genuinely different
+			// upstream from PublicNode (Node Fleet), sustains 5+ req/s in tests.
+			VerifyRPC:    envDefault("GAS_REALIZED_RPC_VERIFY_ARBITRUM", "https://arb1.arbitrum.io/rpc"),
 			OwlracleSlug: "arb",
 			BlockTimeSec: 1, // Arb One has sub-second nominal block time; realizer catch-up loop handles the burst.
 			SupportedSet: []Oracle{OraclePublicNode, OracleOwlracle, OracleEtherscan, OracleMetaMask},

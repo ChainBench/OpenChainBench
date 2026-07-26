@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -20,6 +22,39 @@ import (
 const (
 	httpTimeout = 8 * time.Second
 )
+
+// proxyClient is a rotating-IP HTTP client built at process start
+// from HTTPS_PROXY / HTTP_PROXY. Used only by pollers that need to
+// evade per-IP throttles (currently: Owlracle, whose 10 req/h guest
+// ceiling per IP made every 60 s poll from a single VPS collapse
+// into HTTP 403 within an hour). Keep-alives are disabled so every
+// request opens a fresh TCP conn and the rotating proxy (webshare)
+// assigns a new upstream IP per request. If no proxy env is set,
+// proxyClient stays nil and pollers fall back to the default client.
+var proxyClient *http.Client
+
+func init() {
+	raw := os.Getenv("HTTPS_PROXY")
+	if raw == "" {
+		raw = os.Getenv("HTTP_PROXY")
+	}
+	if raw == "" {
+		return
+	}
+	parsed, err := url.Parse(raw)
+	if err != nil {
+		fmt.Printf("[proxy] parse %q: %v\n", raw, err)
+		return
+	}
+	proxyClient = &http.Client{
+		Timeout: httpTimeout,
+		Transport: &http.Transport{
+			Proxy:             http.ProxyURL(parsed),
+			DisableKeepAlives: true,
+		},
+	}
+	fmt.Printf("[proxy] wired via %s\n", parsed.Host)
+}
 
 // pollResult is what every oracle client returns. TargetBlock is the
 // block these predictions apply to (oracle-specific: Blocknative
@@ -228,7 +263,12 @@ type owlResp struct {
 
 func pollOwlracle(ctx context.Context, ep OracleEndpoint) pollResult {
 	req, _ := http.NewRequestWithContext(ctx, "GET", ep.URL, nil)
-	body, status, err := httpDo(ctx, req)
+	// Owlracle's guest tier is 10 req/h per IP. Our 4 chains × 60s
+	// poll = 240 req/h from a single VPS IP, which collapses to a
+	// permanent HTTP 403 within an hour. Route through the rotating
+	// proxy pool so each request gets a fresh upstream IP and stays
+	// under the per-IP guest ceiling.
+	body, status, err := httpDoProxied(ctx, req)
 	if err != nil {
 		return pollResult{Err: err}
 	}
@@ -480,6 +520,27 @@ func httpDo(ctx context.Context, req *http.Request) ([]byte, int, error) {
 	req.Header.Set("User-Agent", "OpenChainBench/1.0 (+https://openchainbench.com)")
 	client := &http.Client{Timeout: httpTimeout}
 	resp, err := client.Do(req)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer resp.Body.Close()
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, resp.StatusCode, err
+	}
+	return raw, resp.StatusCode, nil
+}
+
+// httpDoProxied routes the request through proxyClient if a proxy is
+// configured (webshare rotating pool via HTTPS_PROXY env). Falls
+// back to httpDo when no proxy is set — useful for local runs
+// without proxy access.
+func httpDoProxied(ctx context.Context, req *http.Request) ([]byte, int, error) {
+	if proxyClient == nil {
+		return httpDo(ctx, req)
+	}
+	req.Header.Set("User-Agent", "OpenChainBench/1.0 (+https://openchainbench.com)")
+	resp, err := proxyClient.Do(req)
 	if err != nil {
 		return nil, 0, err
 	}
