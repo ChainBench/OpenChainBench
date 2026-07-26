@@ -11,7 +11,7 @@ per_chain_explainer:
   - slug: ethereum
     h2: "Most accurate Ethereum gas oracle"
     body: |
-      {{best_name:chain:ethereum}} currently leads the Ethereum gas-oracle field at {{best_p50:chain:ethereum}} (gwei, p99 absolute gap, 24h) across 3 oracles. Ethereum's EIP-1559 base fee adjusts by up to 12.5 percent per block based on prior gas usage, so percentile trackers (PublicNode `eth_feeHistory`) hug the realized priority fee by construction while inclusion-confidence oracles (Etherscan) deliberately over-predict. Realized priority percentiles are computed per next-mined block from actual `maxPriorityFeePerGas` values.
+      {{best_name:chain:ethereum}} currently leads the Ethereum gas-oracle field at {{best_p50:chain:ethereum}} (gwei, p99 absolute gap, 24h) across 4 oracles. Ethereum's EIP-1559 base fee adjusts by up to 12.5 percent per block based on prior gas usage, so percentile trackers (PublicNode `eth_feeHistory`) hug the realized priority fee by construction while inclusion-confidence oracles (Etherscan) deliberately over-predict. Realized priority percentiles are computed per next-mined block from actual `maxPriorityFeePerGas` values.
   - slug: polygon
     h2: "Most accurate Polygon gas oracle"
     body: |
@@ -46,8 +46,8 @@ seo_intro: |
   actually diverge. A covered-rate column shows the share of time
   each prediction sat at or above the realized p50 (the
   inclusion-side risk an absolute gap cannot show). Coverage.
-  Ethereum mainnet (PublicNode feeHistory + Owlracle + Etherscan v2)
-  and Polygon (same three). Use the chain tab above to
+  Ethereum mainnet (PublicNode feeHistory + Owlracle + Etherscan v2 + MetaMask)
+  and Polygon (same four). Use the chain tab above to
   slice the leaderboard. Avalanche C-Chain was dropped because its
   auto-tuning fee market drives the priority fee to ~0 by design,
   which collapses prediction-error to ~0 across all oracles and makes
@@ -72,7 +72,7 @@ abstract: |
   and records the absolute error per (oracle, tier, chain) as
   both a gauge and a histogram. p50 / p90 / p99 are computed via
   Prometheus `quantile_over_time` over the 24 h window. Per-chain
-  coverage: Ethereum and Polygon both have all three oracles
+  coverage: Ethereum and Polygon both have all four oracles
   (Etherscan v2 free tier covers chainid 1 and 137). The
   Etherscan call goes through a global rate-gate (≥6s between any
   two Etherscan requests across chains) because the no-key limit

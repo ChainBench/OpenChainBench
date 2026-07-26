@@ -44,7 +44,7 @@ faq:
   - q: "What is the fastest free World Chain RPC right now?"
     a: "{{best_name}} currently leads at {{best_p50}} (`eth_getBlockByNumber(\"latest\", false)` p50 over the last 24h), measured against 3 no-key providers probed every 60 seconds from us-east, eu-west and Singapore. The leaderboard re-sorts continuously against fresh Prometheus samples, so the answer on this page is the answer right now, not a quarterly snapshot. Use the region tabs to see the leader from the origin closest to your deployment."
   - q: "Which World Chain RPCs work without an API key?"
-    a: "4 endpoints sustain continuous keyless probing at launch: World Chain, dRPC, Tenderly Gateway. Every listed endpoint was live-verified with a `eth_getBlockByNumber(\"latest\", false)` POST returning a parsable response before inclusion. See the methodology section for the specific endpoints that were audited and excluded."
+    a: "3 endpoints sustain continuous keyless probing at launch: World Chain, dRPC, Tenderly Gateway. Every listed endpoint was live-verified with a `eth_getBlockByNumber(\"latest\", false)` POST returning a parsable response before inclusion. See the methodology section for the specific endpoints that were audited and excluded."
   - q: "Does the fastest World Chain RPC change by region?"
     a: "Often. Public infra concentrates in specific regions; a gateway that wins from Amsterdam can lose from Singapore by multiples. The region tabs at the top of the page re-scope every number to a single origin; pick the one closest to where your requests originate."
   - q: "How is World Chain RPC latency measured here, technically?"
