@@ -4,8 +4,8 @@ slug: perp-volume-share
 number: "041"
 title: Perp DEX volume share, live 24h notional ranked
 seo_title: "Perp DEX volume 24h ranking 2026"
-seo_description: "Live 24h perp DEX volume in USD notional across 10 major venues: Hyperliquid, Aster, Lighter, GRVT, Extended, Pacifica, Vertex, dYdX, Aevo, Paradex. Refreshed every 5 minutes."
-subtitle: 24h rolling perpetual futures notional volume in USD across 10 major decentralized venues. Higher means more flow. Read live from each venue's public API.
+seo_description: "Live 24h perp DEX volume in USD notional across 11 major venues: Hyperliquid, Aster, Lighter, GRVT, Extended, Pacifica, Vertex, dYdX, Aevo, Paradex, Polymarket. Refreshed every 5 minutes."
+subtitle: 24h rolling perpetual futures notional volume in USD across 11 major decentralized venues. Higher means more flow. Read live from each venue's public API.
 category: Trading
 status: live
 metric: 24h perp volume
@@ -18,8 +18,8 @@ seo_intro: |
   for where perpetual futures flow actually lives today. We poll each
   venue's public API every 5 minutes, read the venue's own trailing 24
   hour taker notional in USD, and publish a single gauge per venue.
-  The cohort covers 10 venues: Hyperliquid, Aster, Lighter, GRVT,
-  Extended, Pacifica, Vertex, dYdX v4, Aevo and Paradex. Headline
+  The cohort covers 11 venues: Hyperliquid, Aster, Lighter, GRVT,
+  Extended, Pacifica, Vertex, dYdX v4, Aevo, Paradex and Polymarket. Headline
   number is the 24h average of the live 24h gauge so a single noisy
   print does not move the ranking. The companion benches price the
   cost side (perp-fees for opening, perp-funding for holding); this
@@ -52,7 +52,7 @@ methodology:
   - "Failures. A venue that errors or times out keeps its last gauge value and its perp_venue_health gauge drops toward 0; the leaderboard tags it as stale."
 
 findings:
-  - "{{best_name}} currently leads the cohort at {{best_p50}} of 24h notional (24h average) across 10 measured perp DEX venues."
+  - "{{best_name}} currently leads the cohort at {{best_p50}} of 24h notional (24h average) across 11 measured perp DEX venues."
   - "{{name:hyperliquid}} sits at {{p50:hyperliquid}} of 24h notional, the deepest decentralized perp book in the field."
   - "{{name:aster}} sits at {{p50:aster}} of 24h notional. BNB Chain perps DEX with a Binance-compatible API."
   - "{{name:lighter}} clocks {{p50:lighter}} of 24h notional. Zero taker fee plus a fully onchain orderbook on zkSync."
@@ -72,11 +72,11 @@ prometheus:
 
 faq:
   - q: "What does this benchmark measure?"
-    a: "The trailing 24 hour taker notional volume of 10 major perp DEX venues in USD. Headline is the 24h average of the live 24h gauge so single prints do not skew the ranking."
+    a: "The trailing 24 hour taker notional volume of 11 major perp DEX venues in USD. Headline is the 24h average of the live 24h gauge so single prints do not skew the ranking."
   - q: "Why 24h rolling instead of daily snapshots?"
     a: "Every venue in the cohort publishes a live rolling 24 hour window on its own public API, so a rolling comparison sidesteps timezone bucketing and the noise of a single calendar day. The 24h average smooths intraday micro-spikes without hiding regime shifts within the window."
   - q: "Which venues are in the cohort?"
-    a: "Hyperliquid, Aster, Lighter, GRVT, Extended, Pacifica, Vertex, dYdX v4, Aevo and Paradex, the 10 decentralized perp venues whose public APIs expose 24h taker notional cleanly enough to compare without backfilling. Other venues join as their endpoints document the same series."
+    a: "Hyperliquid, Aster, Lighter, GRVT, Extended, Pacifica, Vertex, dYdX v4, Aevo, Paradex and Polymarket, the 11 decentralized perp venues whose public APIs expose 24h taker notional cleanly enough to compare without backfilling. Other venues join as their endpoints document the same series."
   - q: "Is this the same as DeFiLlama volume?"
     a: "Methodology is similar in spirit but each venue is queried directly here, not via an aggregator. Numbers should sit close to DeFiLlama on most days, divergences usually mean a downstream feed lagged."
 
