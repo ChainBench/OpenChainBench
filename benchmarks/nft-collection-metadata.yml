@@ -66,7 +66,7 @@ findings:
   - "external_url is the field most likely to differ between providers: OpenSea and Moralis surface the collection's website on most blue-chips, Alchemy's `openSeaMetadata.externalUrl` is structurally null on the same set. p99 ({{p99:moralis}} / {{p99:alchemy}} / {{p99:opensea}}) is what a portfolio tracker sees during the worst 6h window in the day."
   - "{{worst_name}} trails at {{worst_p50}} (p50, 24 h). A 20-point gap on this leaderboard means roughly one in five field renders falls back to a placeholder when displaying a blue-chip collection."
 
-source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/nft-collection-metadata
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/nft-metadata-coverage
 
 prometheus:
   window: 24h
