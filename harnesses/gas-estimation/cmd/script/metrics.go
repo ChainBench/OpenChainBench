@@ -107,6 +107,23 @@ var (
 		},
 		[]string{"oracle", "chain"},
 	)
+
+	gasPredictionAge = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "gas_prediction_age_seconds",
+			Help:    "Age of a prediction (wall-clock seconds between the oracle poll returning and the realized block being graded). Discloses cadence asymmetry: an oracle polled every 60s is on average ~30s stale on a 12s-block chain, which the leaderboard should surface rather than hide.",
+			Buckets: []float64{1, 3, 5, 8, 12, 15, 20, 30, 45, 60, 90, 120, 180},
+		},
+		[]string{"oracle", "chain"},
+	)
+
+	gasRealizedQuorumDisagree = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "gas_realized_quorum_disagreement_total",
+			Help: "Count of blocks where the primary realized RPC and the independent verify RPC returned different baseFeePerGas for the same block number. High values indicate one endpoint is stale or forked; used to detect whether our realized ground truth is actually independent across upstreams.",
+		},
+		[]string{"chain", "kind"},
+	)
 )
 
 // StartMetricsServer binds /metrics + /health on addr. Blocking call —

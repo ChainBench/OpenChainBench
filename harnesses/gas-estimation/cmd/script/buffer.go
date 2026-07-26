@@ -2,6 +2,7 @@ package main
 
 import (
 	"sync"
+	"time"
 )
 
 // Prediction is one oracle's tip+base estimate for one specific
@@ -17,6 +18,11 @@ type Prediction struct {
 	// tier prediction for that cycle — base-fee prediction has no
 	// tier dimension).
 	BaseGwei float64
+	// CapturedAt is the wall-clock time the poll returned. Used at
+	// join time to emit gas_prediction_age_seconds so oracles with
+	// slower cadences (e.g. Owlracle 60s) don't silently win/lose
+	// on the freshness axis without disclosure.
+	CapturedAt time.Time
 }
 
 // Buffer stores pending predictions keyed by the block number they

@@ -64,6 +64,44 @@ func fetchBlock(ctx context.Context, url string, blockNum uint64) (*rpcRawBlock,
 	return &r, nil
 }
 
+// fetchBlockBaseFee is a header-only variant of fetchBlock used by
+// the quorum-verify path. It calls eth_getBlockByNumber with
+// includeTxs=false so free-tier verify RPCs (Ankr / Cloudflare /
+// dRPC public) don't rate-limit us for pulling the full tx list
+// on every block when all we need to cross-check is the baseFee.
+func fetchBlockBaseFee(ctx context.Context, url string, blockNum uint64) (uint64, error) {
+	tag := fmt.Sprintf("0x%x", blockNum)
+	body := []byte(fmt.Sprintf(`{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["%s",false],"id":1}`, tag))
+	req, _ := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	raw, status, err := httpDo(ctx, req)
+	if err != nil {
+		return 0, err
+	}
+	if status != 200 {
+		return 0, fmt.Errorf("http %d", status)
+	}
+	var r struct {
+		Result *struct {
+			BaseFeePerGas string `json:"baseFeePerGas"`
+		} `json:"result"`
+		Error *struct {
+			Code    int    `json:"code"`
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(raw, &r); err != nil {
+		return 0, fmt.Errorf("parse: %w", err)
+	}
+	if r.Error != nil {
+		return 0, fmt.Errorf("rpc -%d: %s", r.Error.Code, r.Error.Message)
+	}
+	if r.Result == nil {
+		return 0, fmt.Errorf("nil result")
+	}
+	return parseHexU64(r.Result.BaseFeePerGas)
+}
+
 func headBlock(ctx context.Context, url string) (uint64, error) {
 	body := []byte(`{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}`)
 	req, _ := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(body))
@@ -84,19 +122,29 @@ func headBlock(ctx context.Context, url string) (uint64, error) {
 	return parseHexU64(r.Result)
 }
 
-// derivePercentiles computes p25/p50/p90 of the validator-effective
-// priority fee across all txs in the block. For EIP-1559 txs the
-// effective priority is `min(maxPriorityFeePerGas, maxFeePerGas -
-// baseFeePerGas)` clamped at 0. For legacy txs (type 0x0) priority
-// is implied: `max(0, gasPrice - baseFeePerGas)`. Both are included
-// in the same sorted series because they competed for the same
-// blockspace.
-//
-// Returns (p25, p50, p90, txCount) in gwei. Returns 0/0/0/0 for
-// empty blocks; the caller treats that as a skip.
-func derivePercentiles(baseGwei float64, txs []rpcTx) (float64, float64, float64, int) {
+// realizedPercentiles is the full set of grade-against values a
+// single block produces. Every tier an oracle can emit needs a real
+// number to compare against; historically we approximated p75 as
+// (p50+p90)/2 and p99 as p90 which was a factual bug — a vendor's
+// engineer could grep it in 30 seconds and use it to invalidate
+// every "p99 error" number on the leaderboard. Now every tier is
+// computed from the actual tx effective-priority set.
+type realizedPercentiles struct {
+	P25, P50, P75, P90, P99 float64
+	TxCount                 int
+}
+
+// derivePercentiles computes p25/p50/p75/p90/p99 of the validator-
+// effective priority fee across all txs in the block. For EIP-1559
+// txs the effective priority is `min(maxPriorityFeePerGas,
+// maxFeePerGas - baseFeePerGas)` clamped at 0. For legacy txs
+// (type 0x0) priority is implied: `max(0, gasPrice - baseFeePerGas)`.
+// Both are included in the same sorted series because they competed
+// for the same blockspace. Returns a zeroed struct for empty blocks;
+// the caller treats that as a skip.
+func derivePercentiles(baseGwei float64, txs []rpcTx) realizedPercentiles {
 	if len(txs) == 0 {
-		return 0, 0, 0, 0
+		return realizedPercentiles{}
 	}
 	baseWei := uint64(baseGwei * 1e9)
 	effective := make([]uint64, 0, len(txs))
@@ -130,14 +178,21 @@ func derivePercentiles(baseGwei float64, txs []rpcTx) (float64, float64, float64
 		}
 	}
 	if len(effective) == 0 {
-		return 0, 0, 0, 0
+		return realizedPercentiles{}
 	}
 	sort.Slice(effective, func(i, j int) bool { return effective[i] < effective[j] })
 	get := func(p float64) float64 {
 		idx := int(math.Floor(p * float64(len(effective)-1)))
 		return float64(effective[idx]) / 1e9
 	}
-	return get(0.25), get(0.50), get(0.90), len(effective)
+	return realizedPercentiles{
+		P25:     get(0.25),
+		P50:     get(0.50),
+		P75:     get(0.75),
+		P90:     get(0.90),
+		P99:     get(0.99),
+		TxCount: len(effective),
+	}
 }
 
 // runRealizer polls head every realizedPollInterval for ONE chain,
@@ -212,13 +267,38 @@ func processBlock(ctx context.Context, buf *Buffer, blockNum uint64, chain Chain
 		baseWei = 0
 	}
 	baseGwei := float64(baseWei) / 1e9
-	p25, p50, p90, txCount := derivePercentiles(baseGwei, blk.Result.Transactions)
+
+	// Independent-upstream verification (red-team A1): if a second
+	// RPC is configured for this chain, fetch the same block and
+	// compare baseFee. Any mismatch increments a counter so the
+	// leaderboard can surface how independent our ground truth
+	// actually is. We do NOT stall on mismatch — the primary is
+	// still trusted — because both endpoints being on public free
+	// tiers means one being briefly stale is expected. Sustained
+	// disagreement is a real signal.
+	if chain.VerifyRPC != "" {
+		vCtx, vCancel := context.WithTimeout(ctx, httpTimeout)
+		vBaseWei, vErr := fetchBlockBaseFee(vCtx, chain.VerifyRPC, blockNum)
+		vCancel()
+		if vErr != nil {
+			gasRealizedQuorumDisagree.WithLabelValues(chain.Slug, "verify_fetch_err").Inc()
+			fmt.Printf("[realizer/%s] verify fetch err block=%d: %v\n", chain.Slug, blockNum, vErr)
+		} else if vBaseWei != baseWei {
+			gasRealizedQuorumDisagree.WithLabelValues(chain.Slug, "basefee_mismatch").Inc()
+			fmt.Printf("[realizer/%s] quorum disagree block=%d primary_base=%.6f verify_base=%.6f\n",
+				chain.Slug, blockNum, baseGwei, float64(vBaseWei)/1e9)
+		}
+	}
+
+	pcts := derivePercentiles(baseGwei, blk.Result.Transactions)
 	gasRealizedBase.WithLabelValues(chain.Slug).Set(baseGwei)
-	gasRealizedTxCount.WithLabelValues(chain.Slug).Set(float64(txCount))
-	if txCount > 0 {
-		gasRealizedPriority.WithLabelValues(string(TierP25), chain.Slug).Set(p25)
-		gasRealizedPriority.WithLabelValues(string(TierP50), chain.Slug).Set(p50)
-		gasRealizedPriority.WithLabelValues(string(TierP90), chain.Slug).Set(p90)
+	gasRealizedTxCount.WithLabelValues(chain.Slug).Set(float64(pcts.TxCount))
+	if pcts.TxCount > 0 {
+		gasRealizedPriority.WithLabelValues(string(TierP25), chain.Slug).Set(pcts.P25)
+		gasRealizedPriority.WithLabelValues(string(TierP50), chain.Slug).Set(pcts.P50)
+		gasRealizedPriority.WithLabelValues(string(TierP75), chain.Slug).Set(pcts.P75)
+		gasRealizedPriority.WithLabelValues(string(TierP90), chain.Slug).Set(pcts.P90)
+		gasRealizedPriority.WithLabelValues(string(TierP99), chain.Slug).Set(pcts.P99)
 	}
 
 	// Join: pull every pending prediction for THIS block (exact
@@ -231,18 +311,22 @@ func processBlock(ctx context.Context, buf *Buffer, blockNum uint64, chain Chain
 		return
 	}
 
-	realized := map[Tier]float64{TierP25: p25, TierP50: p50, TierP90: p90}
-	// p75/p99 are emitted by Blocknative & Owlracle; we approximate
-	// realized p75 = (p50 + p90)/2 and p99 = p90 to give those
-	// tiers a comparator even though we don't compute them directly.
-	// Better than dropping the metric — but the realized side is
-	// noisy for tail tiers, so the bench page should footnote this.
-	realized[TierP75] = (p50 + p90) / 2
-	realized[TierP99] = p90
+	// Every tier now grades against a real percentile of the mined
+	// block. p75 and p99 used to be approximated as (p50+p90)/2 and
+	// p90 respectively — replaced with real values so the leaderboard
+	// doesn't measure predictions against synthetic references.
+	realized := map[Tier]float64{
+		TierP25: pcts.P25,
+		TierP50: pcts.P50,
+		TierP75: pcts.P75,
+		TierP90: pcts.P90,
+		TierP99: pcts.P99,
+	}
 
+	now := time.Now()
 	for _, p := range predictionsToCheck {
 		ref, ok := realized[p.Tier]
-		if !ok || txCount == 0 {
+		if !ok || pcts.TxCount == 0 {
 			continue
 		}
 		errPriority := math.Abs(p.PriorityGwei - ref)
@@ -250,7 +334,10 @@ func processBlock(ctx context.Context, buf *Buffer, blockNum uint64, chain Chain
 		gasErrorPriorityHist.WithLabelValues(string(p.Oracle), string(p.Tier), chain.Slug).Observe(errPriority)
 		errBase := math.Abs(p.BaseGwei - baseGwei)
 		gasErrorBaseGauge.WithLabelValues(string(p.Oracle), chain.Slug).Set(errBase)
+		if !p.CapturedAt.IsZero() {
+			gasPredictionAge.WithLabelValues(string(p.Oracle), chain.Slug).Observe(now.Sub(p.CapturedAt).Seconds())
+		}
 	}
-	fmt.Printf("[realizer/%s] block=%d txs=%d base=%.3f p25/p50/p90=%.3f/%.3f/%.3f matched=%d\n",
-		chain.Slug, blockNum, txCount, baseGwei, p25, p50, p90, len(predictionsToCheck))
+	fmt.Printf("[realizer/%s] block=%d txs=%d base=%.3f p25/p50/p75/p90/p99=%.3f/%.3f/%.3f/%.3f/%.3f matched=%d\n",
+		chain.Slug, blockNum, pcts.TxCount, baseGwei, pcts.P25, pcts.P50, pcts.P75, pcts.P90, pcts.P99, len(predictionsToCheck))
 }

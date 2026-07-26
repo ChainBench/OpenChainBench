@@ -74,12 +74,13 @@ const pendingTTLBlocks = 25
 // an API key on that chain. The verification matrix lives in the
 // commit message of the multi-chain expansion. one row per chain.
 type Chain struct {
-	Slug          string   // canonical OCB chain slug (lowercase)
-	ChainID       int      // EVM chain id (1 / 137 / 43114)
-	RealizedRPC   string   // PublicNode JSON-RPC endpoint for eth_getBlockByNumber + eth_feeHistory
-	OwlracleSlug  string   // path slug for api.owlracle.info/v4/<slug>/gas
-	BlockTimeSec  int      // nominal block time, used only for log lines
-	SupportedSet  []Oracle // oracles verified no-key on this chain
+	Slug         string   // canonical OCB chain slug (lowercase)
+	ChainID      int      // EVM chain id (1 / 137 / 43114)
+	RealizedRPC  string   // primary JSON-RPC for eth_getBlockByNumber + eth_feeHistory
+	VerifyRPC    string   // optional second RPC from a different upstream; when set, its baseFee for the same block is compared to the primary and any mismatch increments gas_realized_quorum_disagreement_total. Empty string = no verification (single-node realized).
+	OwlracleSlug string   // path slug for api.owlracle.info/v4/<slug>/gas
+	BlockTimeSec int      // nominal block time, used only for log lines
+	SupportedSet []Oracle // oracles verified no-key on this chain
 }
 
 // chains returns the chain matrix. Order matters only for log output.
@@ -89,6 +90,7 @@ func chains() []Chain {
 			Slug:         "ethereum",
 			ChainID:      1,
 			RealizedRPC:  envDefault("GAS_REALIZED_RPC_ETHEREUM", "https://ethereum-rpc.publicnode.com"),
+			VerifyRPC:    envDefault("GAS_REALIZED_RPC_VERIFY_ETHEREUM", "https://eth.drpc.org"),
 			OwlracleSlug: "eth",
 			BlockTimeSec: 12,
 			// Etherscan v2 free tier covers chainid=1. All four oracles work.
@@ -98,6 +100,7 @@ func chains() []Chain {
 			Slug:         "polygon",
 			ChainID:      137,
 			RealizedRPC:  envDefault("GAS_REALIZED_RPC_POLYGON", "https://polygon-bor-rpc.publicnode.com"),
+			VerifyRPC:    envDefault("GAS_REALIZED_RPC_VERIFY_POLYGON", "https://polygon.drpc.org"),
 			OwlracleSlug: "poly",
 			BlockTimeSec: 2,
 			// Etherscan v2 free tier covers chainid=137 (verified). All four oracles work.
@@ -107,6 +110,7 @@ func chains() []Chain {
 			Slug:         "avalanche",
 			ChainID:      43114,
 			RealizedRPC:  envDefault("GAS_REALIZED_RPC_AVALANCHE", "https://avalanche-c-chain-rpc.publicnode.com"),
+			VerifyRPC:    envDefault("GAS_REALIZED_RPC_VERIFY_AVALANCHE", "https://api.avax.network/ext/bc/C/rpc"),
 			OwlracleSlug: "avax",
 			BlockTimeSec: 2,
 			// Etherscan v2 returns "Free API access is not supported for this chain" on chainid=43114 — paid plan required.
