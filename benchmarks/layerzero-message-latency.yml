@@ -43,6 +43,8 @@ abstract: |
   here are computed via Prometheus `histogram_quantile` over the
   last 24 hours.
 
+  See cross-chain-messaging-latency for the side-by-side comparison across all four end-to-end protocols on the same shared observation stack.
+
 methodology:
   - "Data source: `https://scan.layerzero-api.com/v1/messages/latest?limit=150`, the public LayerZero Scan API. Polled every 60 seconds, 2 pages per poll (cursor via `nextToken`)."
   - "Latency definition: `destination.tx.blockTimestamp - source.tx.blockTimestamp` from a LayerZero message row with `status.name: DELIVERED`. Both timestamps are Unix seconds from the source and destination chain blocks respectively."

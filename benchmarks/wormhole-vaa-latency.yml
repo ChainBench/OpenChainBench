@@ -46,6 +46,8 @@ abstract: |
   in a per-chain histogram. The p50/p90/p99 shown here are computed
   via Prometheus `histogram_quantile` over the last 24 hours.
 
+  See cross-chain-messaging-latency for the side-by-side comparison across all four end-to-end protocols on the same shared observation stack.
+
 methodology:
   - "Data source: `https://api.wormholescan.io/api/v1/vaas?pageSize=100`, the public wormholescan indexer of Wormhole VAAs. Polled every 60 seconds."
   - "Latency definition: `updatedAt − timestamp` from the VAA row. `timestamp` is the source-chain observation time (block containing the Wormhole message); `updatedAt` is the moment wormholescan first indexed the VAA as fully-signed by 13-of-19 Guardians."
