@@ -198,7 +198,7 @@ export default async function RootLayout({
         <link
           rel="alternate"
           type="application/rss+xml"
-          title="OpenChainBench — new benchmarks"
+          title="OpenChainBench: new benchmarks"
           href="/rss.xml"
         />
         {/* JSON Feed 1.1 companion. Modern feed readers + AI agent
@@ -207,7 +207,7 @@ export default async function RootLayout({
         <link
           rel="alternate"
           type="application/feed+json"
-          title="OpenChainBench — new benchmarks (JSON Feed)"
+          title="OpenChainBench: new benchmarks (JSON Feed)"
           href="/feed.json"
         />
         <script

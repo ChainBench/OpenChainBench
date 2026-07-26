@@ -451,7 +451,7 @@ export default async function BenchmarkPage({
     benchmark.faq,
     benchmarkUrl,
     null,
-    `${benchmark.title} — frequently asked questions`,
+    `${benchmark.title}: frequently asked questions`,
   );
 
   return (
