@@ -699,6 +699,36 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "BNB Chain team's official public opBNB RPC (opbnb-mainnet-rpc.bnbchain.org). Standard EVM JSON-RPC on the OP Stack rollup that settles onto BNB Chain (not Ethereum), keyless, rate-limited per IP.",
     twitter: "@BNBCHAIN",
   },
+  "sei-official": {
+    url: "https://www.sei.io",
+    description:
+      "Sei Labs' official public EVM RPC (evm-rpc.sei-apis.com) for the parallel-execution EVM layer on Sei's Cosmos SDK L1 (chain 1329). Standard EVM JSON-RPC, keyless, rate-limited per IP.",
+    twitter: "@SeiNetwork",
+  },
+  "mode-official": {
+    url: "https://mode.network",
+    description:
+      "Mode Labs' official public RPC (mainnet.mode.network) for the OP Stack L2 in the Base / Superchain ecosystem (chain 34443). Standard EVM JSON-RPC, keyless, rate-limited per IP.",
+    twitter: "@modenetwork",
+  },
+  "ronin-official": {
+    url: "https://roninchain.com",
+    description:
+      "Sky Mavis' official public Ronin RPC (api.roninchain.com/rpc) for the EVM gaming L1 (chain 2020) that hosts Axie Infinity, Pixels and a broader gaming stack. Standard EVM JSON-RPC, keyless, rate-limited per IP.",
+    twitter: "@Ronin_Network",
+  },
+  "immutable-official": {
+    url: "https://www.immutable.com",
+    description:
+      "Immutable's official public zkEVM RPC (rpc.immutable.com) for the Polygon CDK zkEVM L2 dedicated to Web3 gaming (chain 13371). Standard EVM JSON-RPC, keyless, rate-limited per IP.",
+    twitter: "@Immutable",
+  },
+  stakeme: {
+    url: "https://stakeme.pro",
+    description:
+      "Stakeme is an independent validator operator running keyless public RPC endpoints for select L1s. Currently listed on OCB for Sei EVM (sei-evm-rpc.stakeme.pro).",
+    twitter: "@stakeme_pro",
+  },
   dwellir: {
     url: "https://www.dwellir.com",
     description:
