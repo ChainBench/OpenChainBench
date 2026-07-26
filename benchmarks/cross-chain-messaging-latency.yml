@@ -8,7 +8,7 @@ seo_description: "{{best_name}} leads end-to-end cross-chain delivery at {{best_
 subtitle: End-to-end wall-clock delivery latency across the four cross-chain messaging protocols that expose source-tx-to-destination-execution data publicly (LayerZero, Chainlink CCIP, Hyperlane, Axelar), measured passively from each protocol's own tracker every 60 seconds.
 
 category: Bridges
-status: draft
+status: live
 metric: Cross-chain delivery
 unit: ms
 higher_is_better: false
