@@ -75,14 +75,25 @@ export async function generateMetadata({
       type: "article",
       url,
       siteName: SITE.name,
-      images: [{ url: `${SITE.url}/opengraph-image`, width: 1200, height: 630 }],
+      // Use the referenced bench's OG card instead of the site-wide
+      // default. Perplexity / ChatGPT / Claude Deep Research scrape the
+      // og:image alongside the answer text; showing the bench-specific
+      // leader card gives the AI a real datapoint next to the answer
+      // rather than the generic homepage tile.
+      images: [
+        {
+          url: `${SITE.url}/api/og/${ans.bench.slug}`,
+          width: 1200,
+          height: 630,
+        },
+      ],
     },
     twitter: {
       card: "summary_large_image",
       site: SITE.twitter,
       title,
       description,
-      images: [`${SITE.url}/twitter-image`],
+      images: [`${SITE.url}/api/og/${ans.bench.slug}`],
     },
   };
 }
