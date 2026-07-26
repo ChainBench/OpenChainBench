@@ -309,7 +309,9 @@ export function BenchmarkBody({
     const valid = chainsForVenue[effectiveVenue];
     if (!valid || valid.length === 0) return chainOptions;
     const validSet = new Set(valid);
-    return chainOptions.filter((c) => c.value === "all" || validSet.has(c.value));
+    // Strip the "all" aggregate option when a specific venue is selected: mixing
+    // chains is unfair (a Solana-only provider scores 0% on Base tokens).
+    return chainOptions.filter((c) => c.value !== "all" && validSet.has(c.value));
   }, [chainOptions, chainsForVenue, effectiveVenue]);
 
   // The page ships ONLY the aggregate view (embedding every variant made
@@ -698,7 +700,7 @@ export function BenchmarkBody({
               )}
             />
           )}
-          {filteredChainOptions.length > 2 && (
+          {filteredChainOptions.length > 1 && (
             <DimensionRow
               label="Chain"
               options={filteredChainOptions}
