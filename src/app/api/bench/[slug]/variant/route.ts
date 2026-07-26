@@ -80,6 +80,8 @@ export async function GET(
       ? variant
       : {
           ...variant,
+          status: aggregate.status,
+          editorialStatus: aggregate.editorialStatus,
           findings: aggregate.findings,
           faq: aggregate.faq,
           seoIntro: aggregate.seoIntro,
