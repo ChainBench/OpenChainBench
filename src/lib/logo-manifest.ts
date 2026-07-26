@@ -51,10 +51,10 @@ const RAW: Record<string, string> = {
 
 
   // Vague-1 chains (2026-07-26, benches 108-111)
-  sei: "/logos/sei.svg",
-  mode: "/logos/mode.webp",
-  ronin: "/logos/ronin.svg",
-  immutable: "/logos/immutable.svg",
+  sei: "/logos/sei.png",
+  mode: "/logos/mode.png",
+  ronin: "/logos/ronin.png",
+  immutable: "/logos/immutable.png",
   stakeme: "/logos/stakeme.jpg",
 
   // ─── Providers ───
