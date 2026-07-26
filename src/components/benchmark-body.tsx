@@ -602,7 +602,7 @@ export function BenchmarkBody({
               label="Venue"
               options={filteredVenueOptions}
               selected={venue ?? fallbackVenue}
-              onSelect={setVenue}
+              onSelect={(v) => { setVenue(v); setChain(null); }}
               metaByValue={Object.fromEntries(
                 filteredVenueOptions
                   .map((o) => [
@@ -638,7 +638,13 @@ export function BenchmarkBody({
               label="Chain"
               options={filteredChainOptions}
               selected={chain ?? fallbackChain}
-              onSelect={setChain}
+              onSelect={(v) => {
+                setChain(v);
+                if (v !== "all" && effectiveVenue && effectiveVenue !== "all" && venuesForChain) {
+                  const validVenues = venuesForChain[v];
+                  if (validVenues && !validVenues.includes(effectiveVenue)) setVenue(null);
+                }
+              }}
               metaByValue={Object.fromEntries(
                 filteredChainOptions
                   .map((o) => [
