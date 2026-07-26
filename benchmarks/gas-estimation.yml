@@ -16,6 +16,10 @@ per_chain_explainer:
     h2: "Most accurate Polygon gas oracle"
     body: |
       {{best_name:chain:polygon}} currently leads the Polygon gas-oracle field at {{best_p50:chain:polygon}} (gwei, p99 absolute gap, 24h). Polygon PoS runs EIP-1559 with a 2 s Bor block target, and its priority-fee distribution is structurally more volatile than Ethereum's: validator-set churn and MATIC-denominated tip auctions push priority spikes higher and more often, which is where inclusion-confidence oracles widen their gap against percentile trackers. The harness compares predicted versus realized p50 priority fees block by block.
+  - slug: arbitrum
+    h2: "Most accurate Arbitrum gas oracle"
+    body: |
+      {{best_name:chain:arbitrum}} currently posts the closest priority-fee estimate on Arbitrum at {{best_p50:chain:arbitrum}} (gwei, p99 absolute gap, 24h). Arbitrum One is an OP Stack-adjacent rollup with a centralised sequencer, which means there is no priority-fee auction in the usual sense — every oracle converges to a near-zero priority number close to L2 baseFee. The bench measures this empirically: differences between oracles here are basis-points, not gwei, because there is nothing to predict. The meaningful cost on an L2 is L1 data fee (what the sequencer pays Ethereum mainnet to post the batch), which is a different prediction problem and belongs in a separate bench we are scoping.
 
 category: RPCs
 status: live
@@ -81,16 +85,21 @@ abstract: |
   ~0 across all oracles and making the bench non-informative).
 
 methodology:
-  - "Chains: Ethereum mainnet (chainid=1), Polygon PoS (chainid=137). Both are EIP-1559 with proper dynamic base fee, so priority-fee prediction is apples-to-apples comparable. BNB Chain excluded (not EIP-1559). Avalanche C-Chain excluded (auto-tuning drives priority fee to ~0, prediction-error collapses to ~0)."
-  - "Oracles per chain. Ethereum + Polygon: PublicNode feeHistory, Owlracle, Etherscan v2 (free tier)."
-  - "Per-oracle endpoints. PublicNode `eth_feeHistory` on each chain's RPC; Owlracle `/v4/{eth|poly}/gas` (slug per chain); Etherscan v2 `?chainid=<N>&module=gastracker&action=gasoracle`."
-  - "Cadences. PublicNode feeHistory every 12s per chain; Owlracle every 60s per chain (free quota ceiling); Etherscan every 15s per chain with a global rate-gate enforcing ≥6s between any two Etherscan requests across chains (no-key limit is 1 req/5s per IP, shared)."
+  - "Chains: Ethereum (chainid=1), Polygon PoS (chainid=137), Arbitrum One (chainid=42161). Ethereum and Polygon are EIP-1559 with dynamic base fee. Arbitrum is included as an L2 reference where priority fee converges to ~0 (centralised sequencer, no MEV auction); the bench shows this empirically. Actually-meaningful L2 cost is L1 data fee, planned for a separate bench. BNB Chain excluded (not EIP-1559). Avalanche C-Chain also collapses to ~0 priority."
+  - "Oracles per chain. Ethereum + Polygon: PublicNode feeHistory, Owlracle, Etherscan v2 (free tier), MetaMask. Avalanche: same set minus Etherscan (free plan restricted for chainid 43114)."
+  - "Per-oracle endpoints. PublicNode `eth_feeHistory` on each chain's RPC; Owlracle `/v4/{eth|poly|avax}/gas` (slug per chain); Etherscan v2 `?chainid=<N>&module=gastracker&action=gasoracle`; MetaMask `gas.api.cx.metamask.io/networks/<N>/suggestedGasFees` (public no-key, EIP-1559 low/medium/high mapped to p25/p50/p90)."
+  - "Cadences. PublicNode feeHistory and MetaMask every 12s per chain; Owlracle every 60s per chain (free quota ceiling); Etherscan every 15s per chain with a global rate-gate enforcing ≥6s between any two Etherscan requests across chains (no-key limit is 1 req/5s per IP, shared)."
   - "Tier normalization. Each oracle's named tiers (fast / standard / slow / safe / propose) are mapped onto a unified p25 / p50 / p75 / p90 / p99 scheme. The leaderboard ranks the p50 tier (the standard speed wallets use by default)."
-  - "Realized priority fee. For each pending block, the harness pulls the full block via `eth_getBlockByNumber(.., true)` on the chain's PublicNode RPC and computes the percentile from actual `maxPriorityFeePerGas` values across every included transaction. Empty or low-tx blocks (`gas_realized_tx_count` near zero) are surfaced separately because the realized percentile is noisy when tx count is low."
+  - "Realized priority fee. For each pending block, the harness pulls the full block via `eth_getBlockByNumber(.., true)` on the chain's primary RPC and computes p25/p50/p75/p90/p99 directly from the actual effective `maxPriorityFeePerGas` values across every included transaction. Every tier is a real percentile of the mined block, none are interpolated. Empty or low-tx blocks (`gas_realized_tx_count` near zero) are surfaced separately because the realized percentile is noisy when tx count is low."
+  - "Realized-side independence check. Each chain configures a second RPC on a different upstream (dRPC / native chain RPC) as `GAS_REALIZED_RPC_VERIFY_<CHAIN>`; on each block the harness cross-checks baseFee and increments `gas_realized_quorum_disagreement_total{chain, kind}` on mismatch. Primary is still trusted; the counter makes visible whether our ground truth is actually independent across upstreams."
   - "Realized base fee. Recorded for completeness as `gas_realized_base_gwei{chain}` and per-oracle baseFee error as `gas_error_base_gwei{oracle, chain}`. Not the ranking signal since every EIP-1559 oracle inherits this from `eth_feeHistory` and converges."
   - "Pending buffer. Per (oracle, chain) in-memory map of predictions waiting on a realized block. TTL is ~25 blocks (~5 minutes on Ethereum, ~50 seconds on Polygon due to faster blocks). Beyond that, predictions are dropped as no-longer-informative. Buffer growth surfaces via `gas_pending_buffer_size{oracle, chain}`."
   - "Polling result classification. `ok`, `http_err`, `parse_err`, `throttled` (HTTP 429 or oracle-specific quota message), `timeout`. Counter `gas_oracle_call_total{oracle, result, chain}` powers the reliability column."
   - "Ranking metric. The table ranks on the p99 of the absolute gap over 24h, not the p50. At current fee levels the typical-minute gaps are fractions of a micro-gwei apart across oracles (ranking noise); the p99 captures behaviour during the volatile minutes where a wrong prediction either overpays or misses the block. The typical p50 and p90 gaps stay visible as secondary columns."
+  - "Prediction age disclosure. `gas_prediction_age_seconds{oracle, chain}` records the wall-clock time between an oracle's poll returning and the realized block being graded. This surfaces the free-tier cadence asymmetry (Owlracle at 60s vs PublicNode at 12s vs Etherscan at 15s) so readers can see how much of an oracle's error is stale-sample rather than model quality; it is not part of the ranking, only a diagnostic column."
+  - "Over/under split. In parallel with the absolute-error histogram, the harness emits `gas_error_priority_over_gwei_histogram` (predicted > realized, cost = overpay) and `gas_error_priority_under_gwei_histogram` (predicted < realized, cost = transaction stuck). Same buckets. The two branches lets the leaderboard decompose asymmetric behaviour: inclusion-confidence oracles skew fat on the over side by design, percentile trackers skew fat on the under side during spikes."
+  - "Lag=2 secondary grade. `gas_error_priority_lag2_gwei_histogram` grades each prediction against the block 2 slots after its target, not the very-next block. Removes the latency-race bias where whoever scraped the mempool 100ms before us wins by construction; closer to the wallet UX (sign, broadcast, propagate) than block+1. Same buckets as the primary histogram so a leaderboard column can plot the two side by side."
+  - "Asymmetric Pinball Loss (APL). `gas_error_priority_apl_gwei_histogram` emits a proper scoring rule (Koenker & Bassett 1978): per sample `(1-τ)·over_gap` if the oracle over-predicted, else `τ·under_gap`, with τ=0.9. Encodes wallet UX asymmetry: under-prediction (tx stuck) is 9× more costly than over-prediction (small overpay). Same buckets as the abs error histogram. Rank-stable at n=few-hundred samples where p99 of abs error is still dominated by 2-3 tail blocks."
   - "Covered rate. Share of time (24h) each oracle's posted p50-tier prediction was at or above the realized p50 priority fee, recorded as `ocb:gas_p50_covered:pct_24h` via a recording rule. Same-instant gauge comparison (current prediction vs latest realized block), a proxy pending a harness-side matched counter. High = errs on the side of inclusion; low = under-bids vs the block's realized median."
   - "Excluded by design. (a) BNB Chain (not EIP-1559). (b) L2 OP Stack chains (Optimism, Base, Arbitrum), priority fee ≈ 0 there because sequencer is centralised, the relevant cost is L1 data fee which is a different metric and belongs in a separate bench. (c) Rough median oracles that publish only a single number (no tier breakdown). (d) Solana, different fee model entirely (lamports per CU, MEV via Jito), separate bench needed."
 
@@ -139,7 +148,7 @@ dimensions:
 # Real metrics emitted by the gas-estimation harness:
 #   gas_predicted_priority_gwei{oracle, tier, chain}        gauge
 #   gas_predicted_base_gwei{oracle, chain}                  gauge
-#   gas_realized_priority_gwei{tier, chain}                 gauge
+#   gas_realized_priority_gwei{tier, chain}                 gauge (tier ∈ p25/p50/p75/p90/p99, all real percentiles of the block's tx set)
 #   gas_realized_base_gwei{chain}                           gauge
 #   gas_error_priority_gwei{oracle, tier, chain}            gauge (latest |pred, real|)
 #   gas_error_priority_gwei_histogram{oracle, tier, chain}  histogram (per-block samples)
@@ -148,6 +157,12 @@ dimensions:
 #   gas_oracle_health{oracle, chain}                        gauge (0|1)
 #   gas_realized_tx_count{chain}                            gauge
 #   gas_pending_buffer_size{oracle, chain}                  gauge
+#   gas_prediction_age_seconds{oracle, chain}               histogram (poll-to-grade lag; discloses cadence asymmetry)
+#   gas_realized_quorum_disagreement_total{chain, kind}     counter (primary vs verify RPC baseFee mismatches)
+#   gas_error_priority_over_gwei_histogram{oracle,tier,chain}  histogram (over-prediction branch of the split — overpay cost)
+#   gas_error_priority_under_gwei_histogram{oracle,tier,chain} histogram (under-prediction branch — tx-stuck risk)
+#   gas_error_priority_lag2_gwei_histogram{oracle,tier,chain}  histogram (same as gwei_histogram but graded at target+2 blocks — removes next-block latency-race bias)
+#   gas_error_priority_apl_gwei_histogram{oracle,tier,chain}   histogram (asymmetric pinball loss τ=0.9 — proper scoring rule, rank-stable at low N)
 #
 # Tier note: the leaderboard ranks oracles on their p50-tier
 # prediction error (standard speed, the tier wallets use by default).
@@ -164,6 +179,7 @@ ledger_columns:
   - { label: "Gap p99 (24h)", slot: p50, unit: gwei }
   - { label: "Gap p90", slot: p90, unit: gwei }
   - { label: "Gap p50 (typical)", slot: p99, unit: gwei }
+  - { label: "APL τ=0.9", panel: apl_median, unit: gwei }
   - { label: "Covered p50", panel: covered_rate, unit: pct }
 
 metric_panels:
@@ -174,6 +190,13 @@ metric_panels:
     label_key: oracle
     unit: pct
     higher_is_better: true
+  - id: apl_median
+    label: APL median (τ=0.9)
+    description: Median asymmetric pinball loss (Koenker & Bassett 1978) in gwei over 24h, per oracle. τ=0.9 penalises under-prediction (tx stuck) 9× more than over-prediction (small overpay). Proper scoring rule, rank-stable at low sample counts. Lower is better.
+    metric: histogram_quantile(0.5, sum by(le, oracle) (rate(gas_error_priority_apl_gwei_histogram_bucket{tier="p50"}[24h])))
+    label_key: oracle
+    unit: gwei
+    higher_is_better: false
 
 providers:
   - slug: publicnode-feehistory
@@ -214,3 +237,16 @@ providers:
       success: sum(rate(gas_oracle_call_total{oracle="etherscan", result="ok"}[24h])) / sum(rate(gas_oracle_call_total{oracle="etherscan"}[24h]))
       sample_size: sum(increase(gas_oracle_call_total{oracle="etherscan"}[24h]))
       series: gas_error_priority_gwei{oracle="etherscan", tier="p50"}
+
+  - slug: metamask
+    name: MetaMask
+    tag: Wallet-native, no key, EIP-1559 low/medium/high
+    formula: "p99 over 24h of |MetaMask's medium-tier suggestedMaxPriorityFeePerGas mapped to p50 − realized p50 priority fee| in gwei, polled every 12s and matched to the next-mined block on the active chain."
+    queries:
+      p50: quantile_over_time(0.99, gas_error_priority_gwei{oracle="metamask", tier="p50"}[24h])
+      p90: quantile_over_time(0.90, gas_error_priority_gwei{oracle="metamask", tier="p50"}[24h])
+      p99: quantile_over_time(0.50, gas_error_priority_gwei{oracle="metamask", tier="p50"}[24h])
+      mean: avg_over_time(gas_error_priority_gwei{oracle="metamask", tier="p50"}[24h])
+      success: sum(rate(gas_oracle_call_total{oracle="metamask", result="ok"}[24h])) / sum(rate(gas_oracle_call_total{oracle="metamask"}[24h]))
+      sample_size: sum(increase(gas_oracle_call_total{oracle="metamask"}[24h]))
+      series: gas_error_priority_gwei{oracle="metamask", tier="p50"}

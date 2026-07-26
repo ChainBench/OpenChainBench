@@ -397,6 +397,38 @@ export const CHAINS: ChainEntry[] = [
     description:
       "OP Stack rollup (chain 204) operated by the BNB Chain team, BNB gas token, ~1 s sequencer cadence, settlement onto BNB Chain (not Ethereum). Positioned as the low-cost execution layer for the BNB ecosystem.",
   },
+  {
+    slug: "sei",
+    label: "Sei",
+    category: "L1",
+    nativeSymbol: "SEI",
+    description:
+      "Cosmos SDK L1 (chain 1329) with a parallel-execution EVM layer bolted onto Tendermint consensus, launched by Sei Labs. SEI gas token for both sides, sub-second finality, positioned as a high-throughput trading chain.",
+  },
+  {
+    slug: "mode",
+    label: "Mode",
+    category: "L2",
+    nativeSymbol: "ETH",
+    description:
+      "OP Stack rollup (chain 34443) in the Base / Superchain ecosystem, ETH gas, DeFi + AI-agent positioning. 2 s sequencer cadence, standard OP Stack blob settlement on Ethereum.",
+  },
+  {
+    slug: "ronin",
+    label: "Ronin",
+    category: "L1",
+    nativeSymbol: "RON",
+    description:
+      "EVM L1 (chain 2020) operated by Sky Mavis, purpose-built for Web3 gaming and home of Axie Infinity, Pixels and a broader gaming stack. RON gas, delegated proof-of-stake, 3 s block cadence.",
+  },
+  {
+    slug: "immutable",
+    label: "Immutable zkEVM",
+    category: "L2",
+    nativeSymbol: "IMX",
+    description:
+      "Polygon CDK zkEVM L2 (chain 13371) operated by Immutable, dedicated Web3 gaming stack, IMX gas token, 2 s block cadence, settlement onto Ethereum via zk-proofs.",
+  },
 ];
 
 export const CHAIN_BY_SLUG = new Map(CHAINS.map((c) => [c.slug, c]));

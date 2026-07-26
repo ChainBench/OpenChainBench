@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -20,6 +22,39 @@ import (
 const (
 	httpTimeout = 8 * time.Second
 )
+
+// proxyClient is a rotating-IP HTTP client built at process start
+// from HTTPS_PROXY / HTTP_PROXY. Used only by pollers that need to
+// evade per-IP throttles (currently: Owlracle, whose 10 req/h guest
+// ceiling per IP made every 60 s poll from a single VPS collapse
+// into HTTP 403 within an hour). Keep-alives are disabled so every
+// request opens a fresh TCP conn and the rotating proxy (webshare)
+// assigns a new upstream IP per request. If no proxy env is set,
+// proxyClient stays nil and pollers fall back to the default client.
+var proxyClient *http.Client
+
+func init() {
+	raw := os.Getenv("HTTPS_PROXY")
+	if raw == "" {
+		raw = os.Getenv("HTTP_PROXY")
+	}
+	if raw == "" {
+		return
+	}
+	parsed, err := url.Parse(raw)
+	if err != nil {
+		fmt.Printf("[proxy] parse %q: %v\n", raw, err)
+		return
+	}
+	proxyClient = &http.Client{
+		Timeout: httpTimeout,
+		Transport: &http.Transport{
+			Proxy:             http.ProxyURL(parsed),
+			DisableKeepAlives: true,
+		},
+	}
+	fmt.Printf("[proxy] wired via %s\n", parsed.Host)
+}
 
 // pollResult is what every oracle client returns. TargetBlock is the
 // block these predictions apply to (oracle-specific: Blocknative
@@ -50,6 +85,8 @@ func pollOracle(ctx context.Context, o Oracle, ep OracleEndpoint) pollResult {
 		return pollOwlracle(ctx, ep)
 	case OracleEtherscan:
 		return pollEtherscan(ctx, ep)
+	case OracleMetaMask:
+		return pollMetaMask(ctx, ep)
 	default:
 		return pollResult{Err: fmt.Errorf("unknown oracle: %s", o)}
 	}
@@ -226,7 +263,12 @@ type owlResp struct {
 
 func pollOwlracle(ctx context.Context, ep OracleEndpoint) pollResult {
 	req, _ := http.NewRequestWithContext(ctx, "GET", ep.URL, nil)
-	body, status, err := httpDo(ctx, req)
+	// Owlracle's guest tier is 10 req/h per IP. Our 4 chains × 60s
+	// poll = 240 req/h from a single VPS IP, which collapses to a
+	// permanent HTTP 403 within an hour. Route through the rotating
+	// proxy pool so each request gets a fresh upstream IP and stays
+	// under the per-IP guest ceiling.
+	body, status, err := httpDoProxied(ctx, req)
 	if err != nil {
 		return pollResult{Err: err}
 	}
@@ -299,17 +341,24 @@ type etherscanResp struct {
 }
 
 // etherscanGate serialises Etherscan calls across ALL chains. The
-// free-tier limit is 1 req/5s per IP, shared. With multiple chains
-// each polling on its own ticker, two unlucky jitter offsets can
-// land within a 5 s window and trip the throttle. The gate ensures
-// at least etherscanMinGap between any two Etherscan requests
-// regardless of which (oracle, chain) goroutine made them.
+// free-tier no-key limit is 1 req/5s per IP shared, so without a
+// key we enforce ≥6s between any two Etherscan requests regardless
+// of which (oracle, chain) goroutine made them. With ETHERSCAN_API_KEY
+// set, the limit rises to 5 req/s across all chains, so we drop the
+// gap to 250ms — enough to serialise bursts but not enough to make
+// chain4 wait past our httpTimeout (which caused visible `timeout`
+// counters on Polygon and Arbitrum before the key was wired).
 var (
 	etherscanMu   sync.Mutex
 	etherscanLast time.Time
 )
 
-const etherscanMinGap = 6 * time.Second
+var etherscanMinGap = func() time.Duration {
+	if os.Getenv("ETHERSCAN_API_KEY") != "" {
+		return 250 * time.Millisecond
+	}
+	return 6 * time.Second
+}()
 
 func etherscanGate(ctx context.Context) error {
 	etherscanMu.Lock()
@@ -401,12 +450,104 @@ func pollEtherscan(ctx context.Context, ep OracleEndpoint) pollResult {
 	}
 }
 
+// ─── MetaMask (gas.api.cx.metamask.io) ────────────────────────────
+//
+// Public no-key endpoint that powers the MetaMask wallet's
+// suggested-fee UI at real production scale. EIP-1559 native:
+// returns explicit low/medium/high tiers each with their own
+// `suggestedMaxPriorityFeePerGas` and `suggestedMaxFeePerGas`
+// (gwei decimal strings), plus a baseline `estimatedBaseFee`.
+// We map low→p25, medium→p50, high→p90 — the same mapping the
+// wallet's own slow/market/fast selector uses. Tiers collapse
+// during calm blocks (medium and high often equal), which
+// mirrors the upstream model's documented behaviour; the bench
+// surfaces this as-is rather than masking it.
+
+type mmTier struct {
+	SuggestedMaxPriorityFeePerGas string `json:"suggestedMaxPriorityFeePerGas"`
+	SuggestedMaxFeePerGas         string `json:"suggestedMaxFeePerGas"`
+}
+
+type mmResp struct {
+	Low              mmTier `json:"low"`
+	Medium           mmTier `json:"medium"`
+	High             mmTier `json:"high"`
+	EstimatedBaseFee string `json:"estimatedBaseFee"`
+}
+
+func pollMetaMask(ctx context.Context, ep OracleEndpoint) pollResult {
+	req, _ := http.NewRequestWithContext(ctx, "GET", ep.URL, nil)
+	body, status, err := httpDo(ctx, req)
+	if err != nil {
+		return pollResult{Err: err}
+	}
+	if status == 429 {
+		return pollResult{Err: fmt.Errorf("throttled (HTTP 429)")}
+	}
+	if status != 200 {
+		return pollResult{Err: fmt.Errorf("http %d", status)}
+	}
+	var r mmResp
+	if err := json.Unmarshal(body, &r); err != nil {
+		return pollResult{Err: fmt.Errorf("parse: %w", err)}
+	}
+	base, err := strconv.ParseFloat(r.EstimatedBaseFee, 64)
+	if err != nil {
+		return pollResult{Err: fmt.Errorf("baseFee parse: %w", err)}
+	}
+	parseTier := func(field, name string) (float64, error) {
+		v, err := strconv.ParseFloat(field, 64)
+		if err != nil {
+			return 0, fmt.Errorf("%s parse: %w", name, err)
+		}
+		return v, nil
+	}
+	low, e1 := parseTier(r.Low.SuggestedMaxPriorityFeePerGas, "low")
+	med, e2 := parseTier(r.Medium.SuggestedMaxPriorityFeePerGas, "medium")
+	high, e3 := parseTier(r.High.SuggestedMaxPriorityFeePerGas, "high")
+	if e1 != nil || e2 != nil || e3 != nil {
+		return pollResult{Err: fmt.Errorf("tier parse: %v / %v / %v", e1, e2, e3)}
+	}
+	// No explicit target block: the API applies to "the next block"
+	// but never names it. Realizer grafts head+1 the same way it
+	// does for Owlracle.
+	return pollResult{
+		BaseGwei: base,
+		Predictions: []Prediction{
+			{Oracle: OracleMetaMask, Tier: TierP25, PriorityGwei: low, BaseGwei: base},
+			{Oracle: OracleMetaMask, Tier: TierP50, PriorityGwei: med, BaseGwei: base},
+			{Oracle: OracleMetaMask, Tier: TierP90, PriorityGwei: high, BaseGwei: base},
+		},
+	}
+}
+
 // ─── helpers ───────────────────────────────────────────────────────
 
 func httpDo(ctx context.Context, req *http.Request) ([]byte, int, error) {
 	req.Header.Set("User-Agent", "OpenChainBench/1.0 (+https://openchainbench.com)")
 	client := &http.Client{Timeout: httpTimeout}
 	resp, err := client.Do(req)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer resp.Body.Close()
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, resp.StatusCode, err
+	}
+	return raw, resp.StatusCode, nil
+}
+
+// httpDoProxied routes the request through proxyClient if a proxy is
+// configured (webshare rotating pool via HTTPS_PROXY env). Falls
+// back to httpDo when no proxy is set — useful for local runs
+// without proxy access.
+func httpDoProxied(ctx context.Context, req *http.Request) ([]byte, int, error) {
+	if proxyClient == nil {
+		return httpDo(ctx, req)
+	}
+	req.Header.Set("User-Agent", "OpenChainBench/1.0 (+https://openchainbench.com)")
+	resp, err := proxyClient.Do(req)
 	if err != nil {
 		return nil, 0, err
 	}

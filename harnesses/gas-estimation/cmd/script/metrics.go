@@ -107,7 +107,94 @@ var (
 		},
 		[]string{"oracle", "chain"},
 	)
+
+	gasPredictionAge = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "gas_prediction_age_seconds",
+			Help:    "Age of a prediction (wall-clock seconds between the oracle poll returning and the realized block being graded). Discloses cadence asymmetry: an oracle polled every 60s is on average ~30s stale on a 12s-block chain, which the leaderboard should surface rather than hide.",
+			Buckets: []float64{1, 3, 5, 8, 12, 15, 20, 30, 45, 60, 90, 120, 180},
+		},
+		[]string{"oracle", "chain"},
+	)
+
+	gasRealizedQuorumDisagree = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "gas_realized_quorum_disagreement_total",
+			Help: "Count of blocks where the primary realized RPC and the independent verify RPC returned different baseFeePerGas for the same block number. High values indicate one endpoint is stale or forked; used to detect whether our realized ground truth is actually independent across upstreams.",
+		},
+		[]string{"chain", "kind"},
+	)
+
+	// Over/under split: an inclusion-confidence oracle (over-predicts
+	// on purpose) and a percentile tracker (under-predicts on tail
+	// spikes) can post the same abs error but with opposite user
+	// consequences — over = overpay a few wei, under = tx stuck
+	// waiting for a spike to subside. Emitting the two branches as
+	// separate histograms lets the leaderboard rank them independently
+	// or compose them into an asymmetric loss (over-weight = 0.1,
+	// under-weight = 0.9 → pinball loss at τ=0.9) without ever
+	// hiding the split behind a single abs number.
+	gasErrorPriorityOverHist = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "gas_error_priority_over_gwei_histogram",
+			Help:    "Histogram of over-prediction gap (predicted − realized when predicted > realized, in gwei) per (oracle, tier, chain). Zero when the oracle under-predicts. Reads high for inclusion-confidence oracles by design (Etherscan, MetaMask 'high').",
+			Buckets: []float64{0.001, 0.005, 0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10, 25, 50, 100, 250},
+		},
+		[]string{"oracle", "tier", "chain"},
+	)
+
+	gasErrorPriorityUnderHist = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "gas_error_priority_under_gwei_histogram",
+			Help:    "Histogram of under-prediction gap (realized − predicted when predicted < realized, in gwei) per (oracle, tier, chain). Zero when the oracle over-predicts. Reads high for percentile trackers during spikes (PublicNode feeHistory, Owlracle) — that's when a wrong number actually costs the user their block.",
+			Buckets: []float64{0.001, 0.005, 0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10, 25, 50, 100, 250},
+		},
+		[]string{"oracle", "tier", "chain"},
+	)
+
+	// Lag2 grade: the primary histogram grades a prediction against
+	// the very next block, which rewards whichever oracle scraped the
+	// mempool 100 ms before we did (a latency race, not accuracy).
+	// This companion series grades the same prediction two blocks
+	// later — closer to what a wallet UX actually delivers (sign,
+	// broadcast, propagate). Same buckets so the two are directly
+	// comparable via `quantile_over_time`.
+	gasErrorPriorityLag2Hist = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "gas_error_priority_lag2_gwei_histogram",
+			Help:    "Histogram of |predicted − realized| in gwei, graded 2 blocks after the prediction's target (removes the very-next-block latency-race bias). Buckets identical to the primary histogram so they can be compared directly on the leaderboard.",
+			Buckets: []float64{0.001, 0.005, 0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10, 25, 50, 100, 250},
+		},
+		[]string{"oracle", "tier", "chain"},
+	)
+
+	// Asymmetric Pinball Loss at τ=0.9 (Koenker & Bassett 1978, a
+	// proper scoring rule per Gneiting & Raftery 2007). Per-sample
+	// value: `(1-τ) × over_gap` if predicted > realized, else
+	// `τ × under_gap`. τ=0.9 encodes "under-prediction is 9× worse
+	// than over-prediction" — matches real wallet UX where a stuck
+	// tx is far more painful than paying 20 % over. Emitting this as
+	// its own histogram (not derived from over/under histograms via
+	// PromQL) lets `quantile_over_time` produce a stable per-oracle
+	// APL median that can be ranked directly. Same bucket ladder as
+	// the abs error hist so the two are comparable at a glance.
+	gasErrorPriorityAPLHist = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "gas_error_priority_apl_gwei_histogram",
+			Help:    "Histogram of per-sample asymmetric pinball loss (τ=0.9, gwei) per (oracle, tier, chain). Under-prediction is 9× more expensive than over-prediction, matching wallet UX where a stuck tx hurts more than a small overpay. Proper scoring rule; ranks stably at n=few-hundred where p99 abs error is still noisy.",
+			Buckets: []float64{0.001, 0.005, 0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10, 25, 50, 100, 250},
+		},
+		[]string{"oracle", "tier", "chain"},
+	)
 )
+
+// aplTau is the asymmetric pinball loss target quantile. 0.9 encodes
+// the wallet UX asymmetry: under-prediction (stuck tx) is 9× more
+// costly than over-prediction (small overpay). If we ever add a
+// second APL curve (e.g. τ=0.5 for symmetric ranking), give it a
+// separate metric — do not overload one histogram with a tau label
+// or the buckets will not align across taus.
+const aplTau = 0.9
 
 // StartMetricsServer binds /metrics + /health on addr. Blocking call —
 // run in its own goroutine.
