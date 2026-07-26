@@ -335,11 +335,20 @@ func processBlock(ctx context.Context, buf *Buffer, blockNum uint64, chain Chain
 			// will build fat under histograms, inclusion-confidence
 			// oracles will build fat over histograms; the leaderboard
 			// can then rank on whichever side matches user intent.
+			var apl float64
 			if p.PriorityGwei > ref {
-				gasErrorPriorityOverHist.WithLabelValues(string(p.Oracle), string(p.Tier), chain.Slug).Observe(p.PriorityGwei - ref)
+				over := p.PriorityGwei - ref
+				gasErrorPriorityOverHist.WithLabelValues(string(p.Oracle), string(p.Tier), chain.Slug).Observe(over)
+				apl = (1.0 - aplTau) * over
 			} else if p.PriorityGwei < ref {
-				gasErrorPriorityUnderHist.WithLabelValues(string(p.Oracle), string(p.Tier), chain.Slug).Observe(ref - p.PriorityGwei)
+				under := ref - p.PriorityGwei
+				gasErrorPriorityUnderHist.WithLabelValues(string(p.Oracle), string(p.Tier), chain.Slug).Observe(under)
+				apl = aplTau * under
 			}
+			// APL is emitted for every sample including exact matches
+			// (apl=0 in that case) so the histogram_count matches the
+			// number of graded predictions per (oracle, tier, chain).
+			gasErrorPriorityAPLHist.WithLabelValues(string(p.Oracle), string(p.Tier), chain.Slug).Observe(apl)
 			errBase := math.Abs(p.BaseGwei - baseGwei)
 			gasErrorBaseGauge.WithLabelValues(string(p.Oracle), chain.Slug).Set(errBase)
 			if !p.CapturedAt.IsZero() {
