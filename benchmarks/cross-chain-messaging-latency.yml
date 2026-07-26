@@ -55,10 +55,10 @@ methodology:
   - "No canary transactions: every value on this page is a real user message. No wallet is funded, no gas is paid. Total observation cost is API polling."
   - "Circle CCTP not included: Circle's Iris API does not expose a list-recent endpoint, so passive polling is not feasible without maintaining nonce state via chain-scan on all ~10 CCTP source chains plus Solana. A CCTP bench is on the roadmap."
 
-disclaimer: "These four protocols make different security tradeoffs that directly affect their delivery time. LayerZero and Hyperlane sign messages before source-chain finality, so they deliver in seconds. Chainlink CCIP and Axelar wait for source-chain finality before signing (12-20 min on Ethereum-source lanes). A lower p50 here does not mean a protocol is technically superior — it may mean it accepts more re-org risk. Use the per-corridor bench for each protocol to compare like-for-like lanes."
+disclaimer: "These four protocols make different security tradeoffs that directly affect their delivery time. LayerZero and Hyperlane sign messages before source-chain finality, so they deliver in seconds. Chainlink CCIP and Axelar wait for source-chain finality before signing (12-20 min on Ethereum-source lanes). A lower p50 here does not mean a protocol is technically superior, it may mean it accepts more re-org risk. Use the per-corridor bench for each protocol to compare like-for-like lanes."
 
 findings:
-  - "The numbers on this page reflect a security tradeoff, not just engineering speed. LayerZero and Hyperlane sign pre-finality and deliver in seconds. Chainlink CCIP and Axelar wait for source-chain finality (12-20 min on Ethereum-source lanes) before signing. A lower p50 here can mean faster delivery or less re-org protection — read both together."
+  - "The numbers on this page reflect a security tradeoff, not just engineering speed. LayerZero and Hyperlane sign pre-finality and deliver in seconds. Chainlink CCIP and Axelar wait for source-chain finality (12-20 min on Ethereum-source lanes) before signing. A lower p50 here can mean faster delivery or less re-org protection, read both together."
   - "{{best_name}} currently leads end-to-end cross-chain delivery at {{best_p50}} (p50 aggregate across all corridors, 24h). Pre-finality signers structurally dominate this aggregate on high-Ethereum-volume days."
   - "Per-corridor variance is large. The aggregate here is a headline; the individual bench for each protocol shows the per-source-chain breakdown that answers what you would feel in production."
 
