@@ -1,29 +1,49 @@
 /**
- * Server-side helper for the /bridge hub page. Loads both bridge bench
- * blobs (bridge-fee and bridge-quote-latency) from the CDN and merges
- * them into a unified per-provider shape.
+ * Server-side helper for the /bridge hub page.
  *
- * No Prometheus queries at render time. Both benches are already written
- * by the materialise worker, so this is two blob fetches and a join.
- * Degrades gracefully: if only one blob is available, the hub renders
- * whatever columns it has and marks the others null.
+ * Loads the bridge-fee blob (aggregate + 4 per-chain variants) and the
+ * bridge-quote-latency blob, then merges them into a unified per-provider
+ * shape that includes per-corridor breakdowns.
+ *
+ * No Prometheus queries at render time. All data comes from CDN blobs
+ * written by the materialise worker. Degrades gracefully if any blob
+ * is unavailable.
  */
 
 import { unstable_cache } from "next/cache";
-import { loadBenchFromBlob } from "@/lib/bench-blob";
+import { loadBenchFromBlob, loadVariantFromBlob } from "@/lib/bench-blob";
+import { filterSig } from "@/lib/materialize/load";
 import type { ProviderType } from "@/types/benchmark";
+
+export type CorridorKey = "Base" | "Arbitrum" | "Solana" | "HyperCore";
+
+export const CORRIDORS: { value: CorridorKey; label: string; short: string }[] =
+  [
+    { value: "Base", label: "Sol → Base", short: "Sol→Base" },
+    { value: "Arbitrum", label: "Base → Arb", short: "Base→Arb" },
+    { value: "Solana", label: "Arb → Sol", short: "Arb→Sol" },
+    { value: "HyperCore", label: "Arb → HC", short: "Arb→HC" },
+  ];
+
+export type CorridorFee = {
+  corridor: CorridorKey;
+  feep50: number | null;
+};
 
 export type BridgeProviderRow = {
   slug: string;
   name: string;
   type: ProviderType | undefined;
   tag: string | undefined;
+  // Aggregate (cross-corridor avg)
   feep50: number | null;
   feep99: number | null;
   feeSuccess: number | null;
   quotep50: number | null;
   quotep99: number | null;
   quoteSuccess: number | null;
+  // Per-corridor fee p50 (null = provider does not quote this corridor)
+  corridors: CorridorFee[];
 };
 
 export type BridgeHubData = {
@@ -36,12 +56,17 @@ export type BridgeHubData = {
   fastestName: string | null;
   fastestP50: number | null;
   bridgeCount: number;
+  regionCount: number;
 };
 
 async function _fetchBridgeHub(): Promise<BridgeHubData | null> {
-  const [feeBench, latencyBench] = await Promise.all([
+  // Load aggregate blobs + 4 per-corridor variants for fee bench in parallel
+  const [feeBench, latencyBench, ...corridorVariants] = await Promise.all([
     loadBenchFromBlob("bridge-fee"),
     loadBenchFromBlob("bridge-quote-latency"),
+    ...CORRIDORS.map((c) =>
+      loadVariantFromBlob("bridge-fee", filterSig({ chain: c.value }))
+    ),
   ]);
 
   if (!feeBench && !latencyBench) return null;
@@ -51,10 +76,21 @@ async function _fetchBridgeHub(): Promise<BridgeHubData | null> {
   for (const r of latencyBench?.results ?? []) slugSet.add(r.slug);
 
   const feeBySlug = new Map(
-    (feeBench?.results ?? []).map((r) => [r.slug, r]),
+    (feeBench?.results ?? []).map((r) => [r.slug, r])
   );
   const latBySlug = new Map(
-    (latencyBench?.results ?? []).map((r) => [r.slug, r]),
+    (latencyBench?.results ?? []).map((r) => [r.slug, r])
+  );
+
+  // Per-corridor fee maps: corridorIndex → slug → p50
+  const corridorMaps = corridorVariants.map(
+    (variant) =>
+      new Map(
+        (variant?.results ?? []).map((r) => [
+          r.slug,
+          r.availability !== "unavailable" ? (r.ms.p50 ?? null) : null,
+        ])
+      )
   );
 
   const providers: BridgeProviderRow[] = [];
@@ -64,6 +100,12 @@ async function _fetchBridgeHub(): Promise<BridgeHubData | null> {
     const base = feeRow ?? latRow!;
     const feeAlive = feeRow?.availability !== "unavailable";
     const latAlive = latRow?.availability !== "unavailable";
+
+    const corridors: CorridorFee[] = CORRIDORS.map((c, i) => ({
+      corridor: c.value,
+      feep50: corridorMaps[i].get(slug) ?? null,
+    }));
+
     providers.push({
       slug,
       name: base.name,
@@ -75,12 +117,13 @@ async function _fetchBridgeHub(): Promise<BridgeHubData | null> {
       quotep50: latAlive ? (latRow?.ms.p50 ?? null) : null,
       quotep99: latAlive ? (latRow?.ms.p99 ?? null) : null,
       quoteSuccess: latRow?.successRate ?? null,
+      corridors,
     });
   }
 
   // Sort by fee p50 asc (lower = cheaper), nulls last
   providers.sort(
-    (a, b) => (a.feep50 ?? Infinity) - (b.feep50 ?? Infinity),
+    (a, b) => (a.feep50 ?? Infinity) - (b.feep50 ?? Infinity)
   );
 
   const byQuote = [...providers]
@@ -90,12 +133,19 @@ async function _fetchBridgeHub(): Promise<BridgeHubData | null> {
   const cheapest = providers.find((p) => p.feep50 != null) ?? null;
   const fastest = byQuote[0] ?? null;
 
-  const corridors =
+  const corridorsDisplay =
     feeBench?.dimensions?.chain ?? latencyBench?.dimensions?.chain ?? [];
+
+  // Count how many distinct regions the latency bench declares
+  const regionDimensions = latencyBench?.dimensions?.region ?? [];
+  const regionCount = Math.max(
+    1,
+    regionDimensions.filter((r) => r.value !== "all").length
+  );
 
   return {
     providers,
-    corridors,
+    corridors: corridorsDisplay,
     cheapestSlug: cheapest?.slug ?? null,
     cheapestName: cheapest?.name ?? null,
     cheapestP50: cheapest?.feep50 ?? null,
@@ -103,11 +153,12 @@ async function _fetchBridgeHub(): Promise<BridgeHubData | null> {
     fastestName: fastest?.name ?? null,
     fastestP50: fastest?.quotep50 ?? null,
     bridgeCount: slugSet.size,
+    regionCount,
   };
 }
 
 export const fetchBridgeHub = unstable_cache(
   _fetchBridgeHub,
   ["bridge-hub"],
-  { revalidate: 60 },
+  { revalidate: 60 }
 );
