@@ -17,6 +17,8 @@ type Config struct {
 	DebridgeAPIKey     string
 	LiFiAPIKey         string
 	NearIntentsAPIKey  string
+	SquidIntegratorID  string
+	SocketAPIKey       string
 
 	// Wallet Configuration
 	WalletEVMPrivateKey string
@@ -74,6 +76,8 @@ func loadEnv() (*Config, error) {
 	config.DebridgeAPIKey = strings.TrimSpace(os.Getenv("DEBRIDGE_API_KEY"))
 	config.LiFiAPIKey = strings.TrimSpace(os.Getenv("LIFI_API_KEY"))
 	config.NearIntentsAPIKey = strings.TrimSpace(os.Getenv("NEARINTENTS_API_KEY"))
+	config.SquidIntegratorID = strings.TrimSpace(os.Getenv("SQUID_INTEGRATOR_ID"))
+	config.SocketAPIKey = strings.TrimSpace(os.Getenv("SOCKET_API_KEY"))
 
 	// Wallet configuration
 	config.WalletEVMPrivateKey = strings.TrimSpace(os.Getenv("WALLET_EVM_PRIVATE_KEY"))
