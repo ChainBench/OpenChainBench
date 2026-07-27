@@ -43,11 +43,7 @@ export default async function BridgeHubPage() {
       }
     : null;
 
-  const byFee = hub
-    ? [...hub.providers].sort(
-        (a, b) => (a.feep50 ?? Infinity) - (b.feep50 ?? Infinity),
-      )
-    : [];
+  const byFee = hub?.providers ?? [];
 
   const bySpeed = hub
     ? [...hub.providers]
@@ -147,9 +143,9 @@ export default async function BridgeHubPage() {
               tip="Across, deBridge, LI.FI, Mobula, Near Intents, Relay."
             />
             <SummaryCard
-              label="Corridors"
-              value={`${hub.corridors.length} USDC routes`}
-              tip="Sol→Base, Base→Arb, Arb→Sol, Arb→HyperCore."
+              label="Probe region"
+              value="1 · eu-west"
+              tip="All measurements originate from eu-west (Amsterdam). Results reflect European latency and solver inventory. Multi-region coverage (us-east, Singapore) requires additional harness instances."
             />
           </section>
 
