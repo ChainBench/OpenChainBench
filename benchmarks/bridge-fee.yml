@@ -212,7 +212,7 @@ providers:
   - slug: socket
     name: Socket Protocol
     tag: Aggregator
-    formula: "Per-corridor 24h median of total cost percent on a $300 USDC best-output route from Socket Protocol's v2 API, averaged across supported EVM corridors (Base to Arb). Routes through underlying bridges (Across, Stargate, CCTP); cost = inputValueInUsd minus outputValueInUsd."
+    formula: "All-in cost percent p50 over 24h on a $300 USDC best-output route via Socket Protocol's v2 API (routes through Across, Stargate, CCTP), EVM corridors only (Base to Arb)."
     type: aggregator
     queries:
       p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="socket", amount_usd="300"}[24h]))
@@ -226,7 +226,7 @@ providers:
   - slug: mayan
     name: Mayan Finance
     tag: Intent layer (Wormhole)
-    formula: "Per-corridor 24h median of total cost percent on a $300 USDC quote from Mayan Finance's v3 API (Swift fast path), averaged across supported Solana corridors (Sol to Base, Arb to Sol). Cost = input minus expectedAmountOut including relayer and swap fees."
+    formula: "All-in cost percent p50 over 24h on a $300 USDC quote from Mayan Finance's v3 Swift API, Solana corridors only (Sol to Base, Arb to Sol). Cost = input minus expectedAmountOut."
     type: intent
     queries:
       p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="mayan", amount_usd="300"}[24h]))
