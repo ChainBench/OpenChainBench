@@ -352,6 +352,7 @@ export function ShareSection({ slug, title, benchmark, chain }: Props) {
             panelOptions={panelOptions}
             panelView={panelView}
             onPanelChange={setPanelView}
+            mainLabel={benchmark.panelMainLabel ?? benchmark.metric}
           />
         )}
 
@@ -576,6 +577,7 @@ function ScopePicker({
   panelOptions,
   panelView,
   onPanelChange,
+  mainLabel,
 }: {
   dimOptions: Partial<Record<ScopeDim, { value: string; label: string }[]>>;
   scope: Record<ScopeDim, string>;
@@ -585,6 +587,7 @@ function ScopePicker({
   panelOptions: { value: string; label: string }[];
   panelView: string;
   onPanelChange: (v: string) => void;
+  mainLabel: string;
 }) {
   const activeDims = SCOPE_DIMS.filter((d) => dimOptions[d]);
   const hasFilter =
@@ -675,7 +678,13 @@ function ScopePicker({
               onChange={(e) => onPanelChange(e.target.value)}
               className="rounded border border-rule bg-paper px-2 py-1 text-xs text-ink focus:outline-none focus:ring-1 focus:ring-ink/20"
             >
-              <option value={ALL_VALUE}>Main metric</option>
+              {/* Default view label falls back to `panelMainLabel` when
+                  the spec provides one (perp-fees ships "All-in at $1k"),
+                  else the spec's headline metric. "Main metric" was a
+                  generic placeholder that read as an extra fake option to
+                  readers who saw 3 tabs on-page but only 2 named entries
+                  plus "Main metric" in the dropdown. */}
+              <option value={ALL_VALUE}>{mainLabel}</option>
               {panelOptions.map((o) => (
                 <option key={o.value} value={o.value}>
                   {o.label}
