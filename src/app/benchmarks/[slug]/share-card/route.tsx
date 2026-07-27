@@ -520,21 +520,59 @@ export async function GET(
       headers: { "cache-control": "public, s-maxage=60" },
     });
   }
-  const chainParam = url.searchParams.get("chain");
-  const chainOptions = aggregate.dimensions?.chain ?? [];
-  // `all` is a synthetic option meaning "no chain filter" - same exception
-  // as the bench detail page. Don't pass it down to the Prom loader or the
-  // query labels won't match anything and every value reads 0.
-  const isAll = chainParam === "all";
-  const chainOption = isAll
-    ? null
-    : chainOptions.find((c) => matchesChainSlug(c.value, chainParam)) ?? null;
-  const benchmark = chainOption
-    ? (await getBenchmark(slug, { chain: chainOption.value })) ?? aggregate
-    : aggregate;
-  // No pill for `all` either - it's the unfiltered default view, calling
-  // it out as a "chain" reads awkward.
-  const chainLabel = chainOption?.label ?? null;
+  // Validate every declared dimension (chain / region / venue / kind)
+  // against the spec's option list before passing to the loader. The
+  // share-section UI mirrors the whole live filter set into the URL, so
+  // the export must apply every filter the reader currently has active
+  // on the dashboard, not just chain. Pre-fix (until 2026-07-27), only
+  // chain was read; a user on `?region=us-east` or `?venue=polymarket`
+  // got a cross-region / cross-venue aggregate PNG that did not match
+  // what they were staring at.
+  //
+  // `all` is the synthetic "no filter" sentinel per dimension - matches
+  // the bench detail page. Do not pass it to the loader or the Prom
+  // label selector matches nothing and every value reads 0.
+  const aggregateDims = aggregate.dimensions ?? {};
+  function pickOption(
+    dim: "chain" | "region" | "venue" | "kind",
+    matcher?: (optValue: string, param: string) => boolean,
+  ): { value: string; label: string } | null {
+    const param = url.searchParams.get(dim);
+    if (!param || param === "all") return null;
+    const opts = aggregateDims[dim] ?? [];
+    const match = matcher
+      ? opts.find((o) => matcher(o.value, param))
+      : opts.find((o) => o.value === param);
+    return match ?? null;
+  }
+  const chainOption = pickOption("chain", matchesChainSlug);
+  const regionOption = pickOption("region");
+  const venueOption = pickOption("venue");
+  const kindOption = pickOption("kind");
+  const filters: {
+    chain?: string;
+    region?: string;
+    venue?: string;
+    kind?: string;
+  } = {};
+  if (chainOption) filters.chain = chainOption.value;
+  if (regionOption) filters.region = regionOption.value;
+  if (venueOption) filters.venue = venueOption.value;
+  if (kindOption) filters.kind = kindOption.value;
+  const benchmark =
+    Object.keys(filters).length > 0
+      ? (await getBenchmark(slug, filters)) ?? aggregate
+      : aggregate;
+  // Pill label: chain reads cleanest as-is; region / venue / kind get
+  // prefixed so a reader glancing at the card understands what slice
+  // they are looking at. Concatenated with " · " when multiple filters
+  // are active so a Solana + US-East pin renders as "Solana · US-East".
+  const labelParts: string[] = [];
+  if (chainOption) labelParts.push(chainOption.label);
+  if (regionOption) labelParts.push(regionOption.label);
+  if (venueOption) labelParts.push(venueOption.label);
+  if (kindOption) labelParts.push(kindOption.label);
+  const chainLabel = labelParts.length > 0 ? labelParts.join(" · ") : null;
 
   const rawTemplate = url.searchParams.get("template");
   const template: "ranking" | "snapshot" | "headline" | "compare" | "leaderboard" =
