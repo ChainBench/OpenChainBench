@@ -278,10 +278,22 @@ async function buildChain(spec: Spec): Promise<RpcHubChain | null> {
       : {}),
     best: { provider: leader.slug, providerName: leader.name, p50Ms: round1(leader.ms.p50) },
     bestP90Ms: Number.isFinite(leader.ms.p90) && leader.ms.p90 > 0 ? round1(leader.ms.p90) : undefined,
-    bestArchiveDepthBlocks:
-      leader.archiveDepth && leader.archiveDepth.supportedBlocks.length > 0
-        ? Math.max(...leader.archiveDepth.supportedBlocks)
-        : undefined,
+    bestArchiveDepthBlocks: (() => {
+      // Max archive depth across ALL providers on this chain — not just
+      // the latency leader. The fastest provider is often a pruned
+      // public endpoint (e.g. PublicNode's default Geth pruned node),
+      // so gating on `leader.archiveDepth` would silence the column
+      // even when other providers on the same chain serve full archive.
+      // This column answers "what's the deepest historical state I can
+      // pull from ANY listed provider", which is what indexers need.
+      let best = 0;
+      for (const r of rows) {
+        if (!r.archiveDepth || r.archiveDepth.supportedBlocks.length === 0) continue;
+        const m = Math.max(...r.archiveDepth.supportedBlocks);
+        if (m > best) best = m;
+      }
+      return best > 0 ? best : undefined;
+    })(),
     regions,
     providers: rows.map((r) => ({
       provider: r.slug,
