@@ -157,7 +157,13 @@ export type RpcHubSnapshot = {
 /** Upstash key for the rpc-hub cohort blob, written by the materialize
  *  worker after every tier sweep. The cohort-snapshot module appends
  *  its own `:v1`. */
-const RPC_HUB_KEY = "rpc-hub";
+// v2: mev-protect filtered out (bench 074 is a category, not a chain).
+//     The worker on VPS still writes to the v1 slot with the pre-fix
+//     snapshot until its docker rebuild lands; changing the key here
+//     forces Vercel to miss the stale blob and rebuild fresh using the
+//     new NON_CHAIN_RPC_SLUGS filter. Worker will start writing to v2
+//     after next rebuild; until then Vercel's fresh rebuild covers it.
+const RPC_HUB_KEY = "rpc-hub-v2";
 
 const round1 = (v: number) => Math.round(v * 10) / 10;
 const round2 = (v: number) => Math.round(v * 100) / 100;
