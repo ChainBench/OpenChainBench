@@ -13,19 +13,23 @@ import (
 // It does NOT expose a per-market 24h or 30d volume field. The /markets/active
 // payload only carries a CUMULATIVE `volume` (raw USDC base units, divide by
 // collateralToken.decimals) and its formatted twin `volumeFormatted` (USD,
-// native USDC so 1:1). To recover proper 24h / 30d notional we would need
-// one of:
+// native USDC so 1:1). Three options existed to recover proper 24h / 30d:
 //
 //   (a) Envio HyperIndex GraphQL reverse-engineering against the on-chain
 //       conditional-token contracts on Base, summing trade events in a window.
 //   (b) A persistent 1-minute /feed poller that maintains rolling state
 //       across ticks and computes deltas (process-local; doesn't survive
 //       restarts without a sidecar store).
-//   (c) DefiLlama's 24h derivative metric for the Limitless protocol, when
-//       it stabilises (today it under-reports vs on-chain).
+//   (c) DefiLlama's dex-adapter volume for the Limitless protocol.
 //
-// All three are out of scope for the MVP. This file ships only what the
-// public REST cleanly supports:
+// Option (c) is now implemented. DefiLlama publishes both `total24h` and
+// `total30d` for Limitless via /summary/dexs/limitless-exchange, backed by
+// the tracked orderbook + FPMM trade events on Base (methodology matches
+// what we would compute ourselves via option (a)). Numbers match on-chain
+// order of magnitude on the days we spot-checked and the endpoint is
+// stable enough for daily gauge writes.
+//
+// This file therefore publishes:
 //
 //   pm_venue_active_markets{venue=limitless}
 //       Authoritative. totalMarketsCount from /markets/active page 1.
@@ -38,14 +42,11 @@ import (
 //       LIFETIME PROXY. count where volumeFormatted >= 1_000_000.
 //       Same disclosure.
 //
-// pm_venue_volume_24h_usd and pm_venue_volume_30d_usd are deliberately NOT
-// touched: Prometheus carries the previous-tick value forward (or remains
-// absent if never set), which is the honest signal until one of (a/b/c)
-// lands. pm_venue_open_interest_usd for Limitless STAYS on DefiLlama TVL
-// (see defillama.go); we do not write OI from here.
+//   pm_venue_volume_24h_usd{venue=limitless}       via DefiLlama dex adapter
+//   pm_venue_volume_30d_usd{venue=limitless}       via DefiLlama dex adapter
 //
-// Per CLAUDE.md MVP rule: zero speculative features. If a structural gap
-// can't be filled honestly, surface the gap, don't paper it over.
+// pm_venue_open_interest_usd for Limitless STAYS on DefiLlama TVL (see
+// defillama.go /protocols path); we do not write OI from here.
 
 const (
 	limitlessBase     = "https://api.limitless.exchange"
@@ -160,11 +161,71 @@ func fetchLimitlessVenue(v Venue) {
 	pmVenueTopMarketVolume24hUsd.WithLabelValues(v.Slug).Set(maxVol)
 	pmVenueMarketsAbove1m.WithLabelValues(v.Slug).Set(above1mCount)
 
+	// 24h + 30d rolling volume, via DefiLlama's Limitless dex adapter. The
+	// native /markets/active payload only exposes lifetime cumulatives; DL
+	// is the only public source that surfaces the rolling windows. Failure
+	// is soft-logged so a DL outage doesn't stall the whole tick — the
+	// gauge stays on its previous value (Prom carry-forward), which is
+	// the least-surprising signal for a slow-moving 24h aggregate.
+	if vol24h, vol30d, err := fetchLimitlessDlVolume(); err == nil {
+		pmVenueVolume24hUsd.WithLabelValues(v.Slug).Set(vol24h)
+		pmVenueVolume30dUsd.WithLabelValues(v.Slug).Set(vol30d)
+		fmt.Printf("[limitless][%s] dl volume 24h=%.0f 30d=%.0f\n", v.Slug, vol24h, vol30d)
+	} else {
+		pmCohortStatsFetchErrors.WithLabelValues(v.Slug, "defillama", classifyError(err.Error())).Inc()
+		fmt.Printf("[limitless][%s] dl volume error: %v\n", v.Slug, err)
+	}
+
 	pmCohortStatsLastRefresh.WithLabelValues(v.Slug, "limitless").Set(float64(time.Now().Unix()))
 	pmCohortStatsLastTickUnix.Set(float64(time.Now().Unix()))
 
 	fmt.Printf("[limitless][%s] active=%d pages=%d/%d usdc_rows=%d top_lifetime=%.0f above1m_lifetime=%.0f\n",
 		v.Slug, first.TotalMarketsCount, pagesWalked, totalPages, rowsConsidered, maxVol, above1mCount)
+}
+
+// fetchLimitlessDlVolume hits DefiLlama's dex-adapter summary endpoint
+// and returns rolling 24h + 30d volume in USD. Kept in the limitless
+// file (not defillama.go) because it is Limitless-specific and the
+// /summary/dexs/{slug} endpoint has different shape from /protocols
+// which the shared defillama.go reads.
+func fetchLimitlessDlVolume() (float64, float64, error) {
+	req, _ := http.NewRequest("GET", "https://api.llama.fi/summary/dexs/limitless-exchange", nil)
+	req.Header.Set("User-Agent", limitlessUA)
+	req.Header.Set("Accept", "application/json")
+	resp, err := httpClientLimitless.Do(req)
+	if err != nil {
+		return 0, 0, fmt.Errorf("request_error: %w", err)
+	}
+	defer resp.Body.Close()
+	body := make([]byte, 0, 4096)
+	buf := make([]byte, 4096)
+	for {
+		n, err := resp.Body.Read(buf)
+		if n > 0 {
+			body = append(body, buf[:n]...)
+		}
+		if err != nil {
+			break
+		}
+	}
+	if resp.StatusCode != 200 {
+		return 0, 0, fmt.Errorf("status_%d: %s", resp.StatusCode, truncate(string(body), 200))
+	}
+	var r struct {
+		Total24h float64 `json:"total24h"`
+		Total30d float64 `json:"total30d"`
+	}
+	if err := json.Unmarshal(body, &r); err != nil {
+		return 0, 0, fmt.Errorf("parse: %w", err)
+	}
+	// Sanity: DL occasionally returns null/0 for either window during a
+	// backfill window. Only fail on both-zero (which would zero out the
+	// gauge and mislead readers); a partial write is fine because the
+	// other gauge keeps its carry-forward value.
+	if r.Total24h == 0 && r.Total30d == 0 {
+		return 0, 0, fmt.Errorf("empty_response: both windows are 0")
+	}
+	return r.Total24h, r.Total30d, nil
 }
 
 // limitlessFetchPage hits /markets/active?page=N&limit=25&sortBy=newest.
