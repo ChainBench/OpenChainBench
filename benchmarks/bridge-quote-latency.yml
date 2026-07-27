@@ -29,6 +29,10 @@ dimensions:
     - { value: eu-west, label: EU-West }
     - { value: us-east, label: US-East }
     - { value: sgp,     label: Singapore }
+  amount_usd:
+    - { value: "300", label: "$300" }
+    - { value: "50",  label: "$50" }
+    - { value: "5",   label: "$5" }
 
 seo_intro: |
   This benchmark measures how fast each cross-chain bridge quote API
