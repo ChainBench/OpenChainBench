@@ -990,10 +990,27 @@ async function renderSnapshot(
 
   const chartW = 1086;
   const chartH = 280;
-  const all = seriesList.flatMap((s) => s.values);
-  const min = all.length ? Math.min(...all) : 0;
+  const all = seriesList.flatMap((s) => s.values).filter((v) => v > 0);
+  const rawMin = all.length ? Math.min(...all) : 0;
   const max = all.length ? Math.max(...all) : 1;
+  // Log-scale when the roster spans more than one order of magnitude
+  // (e.g. evm-swap-quote-latency has Mobula at 160 ms next to CoW at
+  // 3.34 s → 20x spread that squashes 4 of 5 lines into a single wiggle
+  // on a linear scale). Mirrors the on-page chart's LOG SCALE toggle.
+  const useLog = rawMin > 0 && max / rawMin >= 10;
+  // Log lower bound sits below the smallest value so that value doesn't
+  // pin to the very bottom edge. Linear keeps the true min so the "min
+  // <n>" caption reads honestly.
+  const min = useLog ? rawMin / 1.4 : rawMin;
   const range = max - min || 1;
+  const logMin = useLog ? Math.log10(min) : 0;
+  const logRange = useLog ? Math.log10(max) - logMin || 1 : 1;
+  const project = (v: number) => {
+    if (useLog && v > 0) {
+      return (Math.log10(v) - logMin) / logRange;
+    }
+    return (v - min) / range;
+  };
   const maxLen = Math.max(...seriesList.map((s) => s.values.length), 1);
 
   return new ImageResponse(
@@ -1080,8 +1097,25 @@ async function renderSnapshot(
                 letterSpacing: "0.06em",
               }}
             >
-              min {fmtUnit(min, benchmark.unit)}
+              min {fmtUnit(rawMin, benchmark.unit)}
             </div>
+            {useLog && (
+              <div
+                style={{
+                  position: "absolute",
+                  right: 10,
+                  top: 6,
+                  display: "flex",
+                  fontSize: 10,
+                  fontFamily: "monospace",
+                  color: INK_FAINT,
+                  letterSpacing: "0.1em",
+                  textTransform: "uppercase",
+                }}
+              >
+                log scale
+              </div>
+            )}
 
             <svg
               width={chartW}
@@ -1093,16 +1127,14 @@ async function renderSnapshot(
                 const points = values
                   .map((v, i) => {
                     const x = (i / Math.max(1, maxLen - 1)) * chartW;
-                    const y =
-                      chartH - ((v - min) / range) * (chartH - 16) - 8;
+                    const y = chartH - project(v) * (chartH - 16) - 8;
                     return `${x.toFixed(2)},${y.toFixed(2)}`;
                   })
                   .join(" ");
                 const last = values[values.length - 1];
                 const lastX =
                   ((values.length - 1) / Math.max(1, maxLen - 1)) * chartW;
-                const lastY =
-                  chartH - ((last - min) / range) * (chartH - 16) - 8;
+                const lastY = chartH - project(last) * (chartH - 16) - 8;
                 return (
                   <g key={slug}>
                     <polyline
