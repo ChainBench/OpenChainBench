@@ -130,19 +130,25 @@ function getLogoDataUrl() {
   return _logoDataUrl;
 }
 
+// Satori (the renderer @vercel/og uses under the hood) reliably decodes
+// PNG / JPEG / SVG only. WebP support is spotty across versions and AVIF
+// is unsupported, which crashes the whole ImageResponse render mid-flow
+// with an opaque error instead of just skipping the offending <img>.
+// Observed on ws-head-latency-base whose two providers (dRPC .webp,
+// PublicNode .avif) both fell into the unsupported bucket so all 5
+// templates 500'd. Restrict the data-URL path to the safe formats; the
+// unsafe ones fall through to the initials chip which is deterministic.
 const MIME: Record<string, string> = {
   ".png": "image/png",
   ".jpeg": "image/jpeg",
   ".jpg": "image/jpeg",
   ".svg": "image/svg+xml",
-  ".webp": "image/webp",
-  ".avif": "image/avif",
 };
 
 const _providerLogoCache = new Map<string, string | null>();
-/** Returns a data URL for the registered logo file, or null if missing.
- * Result is cached per slug to avoid hitting the filesystem on every
- * render of the share-card. */
+/** Returns a data URL for the registered logo file, or null if missing
+ * or in a format Satori cannot decode. Result is cached per slug to
+ * avoid hitting the filesystem on every render of the share-card. */
 function getProviderLogoDataUrl(slug: string): string | null {
   if (_providerLogoCache.has(slug)) return _providerLogoCache.get(slug) ?? null;
   const rel = logoPath(slug); // e.g. "/logos/ethereum.png"
@@ -150,9 +156,14 @@ function getProviderLogoDataUrl(slug: string): string | null {
     _providerLogoCache.set(slug, null);
     return null;
   }
+  const mime = MIME[extname(rel).toLowerCase()];
+  if (!mime) {
+    // Unsupported format (.webp / .avif). Fall back to initials chip.
+    _providerLogoCache.set(slug, null);
+    return null;
+  }
   try {
     const buf = readFileSync(join(process.cwd(), "public", rel));
-    const mime = MIME[extname(rel).toLowerCase()] ?? "image/png";
     const url = `data:${mime};base64,${buf.toString("base64")}`;
     _providerLogoCache.set(slug, url);
     return url;
