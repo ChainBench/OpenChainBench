@@ -96,6 +96,7 @@ const nextConfig: NextConfig = {
       "./answers/**/*.yaml",
       "./alternatives/**/*.yml",
       "./alternatives/**/*.yaml",
+      "./src/content/reports/**/*.mdx",
       // Prebuild-generated manifest of editorial hub-page git mtimes.
       // Read at module scope by src/app/sitemap.ts so <lastmod> reflects
       // real edit history instead of Vercel's build-container mtime
