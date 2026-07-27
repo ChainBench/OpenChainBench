@@ -479,6 +479,22 @@ scrape_configs:
           source: hl-archive
     metrics_path: /metrics
 
+  # OpenChainBench bench №002 + №003 - bridge quote latency and effective fee.
+  # Two Railway services run quote-only mode (no wallet keys, BENCHMARK_PAUSED=true)
+  # from us-east and sgp. VPS (ocb-par-main) covers eu-west via the bridge-monitor
+  # job in the VPS prometheus — not scraped here to avoid duplicate eu-west samples.
+  # honor_labels: each instance self-labels MONITOR_REGION via ConstLabel baked at startup,
+  # so Prometheus receives {region="us-east"|"sgp"} on every metric here.
+  - job_name: 'bridge-monitor'
+    honor_labels: true
+    static_configs:
+      - targets:
+        - 'bridge-monitor-us.railway.internal:2112'   # us-east
+        - 'bridge-monitor-sgp.railway.internal:2112'  # sgp
+        labels:
+          benchmark: bridge-monitor
+    metrics_path: /metrics
+
   # OpenChainBench bench — live USD cost to create a fungible token on
   # each supported chain, using the canonical method per chain (ERC20
   # deploy for EVM, SPL mint for Solana, TokenFactory denom for Cosmos,
