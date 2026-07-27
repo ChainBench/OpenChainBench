@@ -96,44 +96,49 @@ export function ShareSection({ slug, title, benchmark, chain }: Props) {
   const hasAnyDim = Object.keys(dimOptions).length > 0;
 
   // Scope state: one entry per SCOPE_DIMS. Default is "all" per dim.
-  // Initialised once from window.location when the modal opens, so the
-  // dropdowns start on whatever the user was filtering on the dashboard
-  // (not surprising) but can be changed freely from inside the modal.
+  // Re-seeded from window.location every time the modal opens, so the
+  // dropdowns start on whatever the reader was filtering on the
+  // dashboard (not surprising) but can be changed freely from inside
+  // the modal.
   const [scope, setScope] = useState<Record<ScopeDim, string>>({
     chain: chain ?? ALL_VALUE,
     region: ALL_VALUE,
     venue: ALL_VALUE,
     kind: ALL_VALUE,
   });
-  // Re-sync scope from URL every time the modal opens: reader might
-  // have changed a chain / region tab on the dashboard between clicks,
-  // and expecting a fresh open to reflect that is less surprising than
-  // stale sticky state.
-  useEffect(() => {
-    if (!open) return;
-    if (typeof window === "undefined") return;
-    const url = new URL(window.location.href);
-    const next: Record<ScopeDim, string> = {
-      chain: url.searchParams.get("chain") || ALL_VALUE,
-      region: url.searchParams.get("region") || ALL_VALUE,
-      venue: url.searchParams.get("venue") || ALL_VALUE,
-      kind: url.searchParams.get("kind") || ALL_VALUE,
-    };
-    // Coerce values the current bench does not offer back to "all". A
-    // chain the reader was previously filtering by can vanish between
-    // deploys (spec edit); silently falling back beats a broken picker.
-    for (const dim of SCOPE_DIMS) {
-      const opts = dimOptions[dim];
-      if (
-        opts &&
-        next[dim] !== ALL_VALUE &&
-        !opts.some((o) => o.value === next[dim])
-      ) {
-        next[dim] = ALL_VALUE;
+  // Re-seed scope from URL on each open transition. Uses the "adjust
+  // state during render on transition" pattern instead of a useEffect
+  // (react-hooks/set-state-in-effect flags synchronous setState calls
+  // inside effect bodies). `prevOpen` gates the reseed so subsequent
+  // renders while the modal stays open don't clobber the dropdowns.
+  const [prevOpen, setPrevOpen] = useState(false);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
+    if (open && typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      const next: Record<ScopeDim, string> = {
+        chain: url.searchParams.get("chain") || ALL_VALUE,
+        region: url.searchParams.get("region") || ALL_VALUE,
+        venue: url.searchParams.get("venue") || ALL_VALUE,
+        kind: url.searchParams.get("kind") || ALL_VALUE,
+      };
+      // Coerce values the current bench does not offer back to "all".
+      // A chain the reader was previously filtering by can vanish
+      // between deploys (spec edit); silently falling back beats a
+      // broken picker.
+      for (const dim of SCOPE_DIMS) {
+        const opts = dimOptions[dim];
+        if (
+          opts &&
+          next[dim] !== ALL_VALUE &&
+          !opts.some((o) => o.value === next[dim])
+        ) {
+          next[dim] = ALL_VALUE;
+        }
       }
+      setScope(next);
     }
-    setScope(next);
-  }, [open, dimOptions]);
+  }
 
   // Lock body scroll while modal open and close on Escape.
   useEffect(() => {
@@ -545,26 +550,33 @@ function ScopePicker({
 }) {
   const activeDims = SCOPE_DIMS.filter((d) => dimOptions[d]);
   const hasFilter = activeDims.some((d) => scope[d] !== ALL_VALUE);
-  const [status, setStatus] = useState<"ok" | "empty" | "checking" | "idle">(
-    "idle",
-  );
 
-  // Any dim change triggers a data-existence probe. AbortController
-  // discards stale responses if the reader clicks a second dropdown
-  // before the first request comes back.
-  useEffect(() => {
-    if (!hasFilter) {
-      setStatus("idle");
-      return;
-    }
-    const ctrl = new AbortController();
-    setStatus("checking");
+  // Data-existence probe. `probe.key` is the URL we last resolved; the
+  // rendered status is derived (below), so the effect body only needs
+  // async setState inside .then() / .catch() callbacks — no sync
+  // setState-in-effect (blocked by react-hooks/set-state-in-effect).
+  const probeKey = useMemo(() => {
+    if (!hasFilter) return "";
     const qs = new URLSearchParams();
     for (const d of activeDims) {
       if (scope[d] !== ALL_VALUE) qs.set(d, scope[d]);
     }
-    const url = `/api/stat/${slug}?${qs.toString()}`;
-    fetch(url, { signal: ctrl.signal })
+    return `/api/stat/${slug}?${qs.toString()}`;
+  }, [slug, activeDims, scope, hasFilter]);
+  const [probe, setProbe] = useState<{
+    key: string;
+    result: "ok" | "empty" | null;
+  }>({ key: "", result: null });
+  const status: "ok" | "empty" | "checking" | "idle" = !hasFilter
+    ? "idle"
+    : probe.key !== probeKey || probe.result == null
+      ? "checking"
+      : probe.result;
+
+  useEffect(() => {
+    if (!probeKey) return;
+    const ctrl = new AbortController();
+    fetch(probeKey, { signal: ctrl.signal })
       .then((r) => {
         if (r.status === 404) return { rankings: [] as unknown[] };
         return r.json();
@@ -572,15 +584,14 @@ function ScopePicker({
       .then((json: { rankings?: unknown[]; leader?: unknown } | undefined) => {
         const hasRows =
           !!json && Array.isArray(json.rankings) && json.rankings.length > 0;
-        setStatus(hasRows ? "ok" : "empty");
+        setProbe({ key: probeKey, result: hasRows ? "ok" : "empty" });
       })
       .catch((err) => {
         if ((err as Error).name === "AbortError") return;
-        setStatus("empty");
+        setProbe({ key: probeKey, result: "empty" });
       });
     return () => ctrl.abort();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slug, scope.chain, scope.region, scope.venue, scope.kind]);
+  }, [probeKey]);
 
   return (
     <div className="border border-rule rounded p-3 bg-paper-soft">
