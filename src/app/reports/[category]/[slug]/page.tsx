@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { MDXRemote } from "next-mdx-remote/rsc";
 import { StatTable } from "@/components/reports/stat-table";
+import { RegionWinners } from "@/components/reports/region-winners";
 import {
   getAllReports,
   getReport,
@@ -62,6 +63,7 @@ function slugify(text: string): string {
 
 const MDX_COMPONENTS = {
   StatTable,
+  RegionWinners,
 
   // Table of contents — pipe-separated section names, auto-generates anchor hrefs
   TOC: ({ sections }: { sections: string }) => {
