@@ -50,11 +50,6 @@ function CorridorDot({
 export function BridgeHubTable({ rows }: { rows: BridgeProviderRow[] }) {
   if (rows.length === 0) return null;
 
-  // Only show per-region columns when at least one non-EU region has data
-  const hasMultiRegion = rows.some((r) =>
-    r.regions.some((reg) => reg.region !== "eu-west" && reg.quotep50 != null)
-  );
-
   return (
     <div className="overflow-x-auto rounded-xl border border-ink/10">
       <table className="w-full text-sm">
@@ -65,18 +60,11 @@ export function BridgeHubTable({ rows }: { rows: BridgeProviderRow[] }) {
             <th className="text-left px-3 py-3 text-[11px] label-mono text-ink-faint font-normal hidden sm:table-cell">Type</th>
             <th className="text-right px-4 py-3 text-[11px] label-mono text-ink-faint font-normal">Fee p50</th>
             <th className="text-right px-4 py-3 text-[11px] label-mono text-ink-faint font-normal hidden lg:table-cell">Fee p99</th>
-            {hasMultiRegion ? (
-              REGIONS.map((r) => (
-                <th key={r.value} className="text-right px-4 py-3 text-[11px] label-mono text-ink-faint font-normal hidden md:table-cell">
-                  {r.short}
-                </th>
-              ))
-            ) : (
-              <>
-                <th className="text-right px-4 py-3 text-[11px] label-mono text-ink-faint font-normal hidden md:table-cell">Quote p50</th>
-                <th className="text-right px-4 py-3 text-[11px] label-mono text-ink-faint font-normal hidden xl:table-cell">Quote p99</th>
-              </>
-            )}
+            {REGIONS.map((r) => (
+              <th key={r.value} className="text-right px-4 py-3 text-[11px] label-mono text-ink-faint font-normal hidden md:table-cell">
+                {r.short}
+              </th>
+            ))}
             <th className="text-right px-4 py-3 text-[11px] label-mono text-ink-faint font-normal hidden md:table-cell">Success</th>
             <th className="text-center px-4 py-3 text-[11px] label-mono text-ink-faint font-normal hidden lg:table-cell">Corridors</th>
           </tr>
@@ -86,22 +74,11 @@ export function BridgeHubTable({ rows }: { rows: BridgeProviderRow[] }) {
               all-in fee · $300 USDC
             </td>
             <td className="px-4 py-1 text-[10px] text-indigo-500 label-mono text-right hidden md:table-cell lg:hidden" />
-            {hasMultiRegion ? (
-              REGIONS.map((r) => (
-                <td key={r.value} className="px-4 py-1 text-[10px] text-ink-faint label-mono text-right hidden md:table-cell">
-                  quote p50
-                </td>
-              ))
-            ) : (
-              <>
-                <td className="px-4 py-1 text-[10px] text-ink-faint label-mono text-right hidden md:table-cell">
-                  quote latency
-                </td>
-                <td className="px-4 py-1 text-[10px] text-ink-faint label-mono text-right hidden xl:table-cell">
-                  quote latency
-                </td>
-              </>
-            )}
+            {REGIONS.map((r) => (
+              <td key={r.value} className="px-4 py-1 text-[10px] text-ink-faint label-mono text-right hidden md:table-cell">
+                quote p50
+              </td>
+            ))}
             <td className="hidden md:table-cell" />
             <td className="hidden lg:table-cell px-4 py-1 text-[10px] text-ink-faint label-mono text-center">
               Sol↗ Base↗ Sol↗ HC
@@ -142,26 +119,15 @@ export function BridgeHubTable({ rows }: { rows: BridgeProviderRow[] }) {
                 <td className="px-4 py-3.5 text-right tabular-nums text-ink-soft hidden lg:table-cell">
                   {fmtPct(row.feep99)}
                 </td>
-                {hasMultiRegion ? (
-                  REGIONS.map((r) => {
-                    const regionData = row.regions.find((x) => x.region === r.value);
-                    const val = regionData?.quotep50 ?? null;
-                    return (
-                      <td key={r.value} className="px-4 py-3.5 text-right tabular-nums text-ink-soft hidden md:table-cell">
-                        {fmtMs(val)}
-                      </td>
-                    );
-                  })
-                ) : (
-                  <>
-                    <td className="px-4 py-3.5 text-right tabular-nums text-ink-soft hidden md:table-cell">
-                      {fmtMs(row.quotep50)}
+                {REGIONS.map((r) => {
+                  const regionData = row.regions.find((x) => x.region === r.value);
+                  const val = regionData?.quotep50 ?? null;
+                  return (
+                    <td key={r.value} className="px-4 py-3.5 text-right tabular-nums text-ink-soft hidden md:table-cell">
+                      {fmtMs(val)}
                     </td>
-                    <td className="px-4 py-3.5 text-right tabular-nums text-ink-soft hidden xl:table-cell">
-                      {fmtMs(row.quotep99)}
-                    </td>
-                  </>
-                )}
+                  );
+                })}
                 <td className="px-4 py-3.5 text-right tabular-nums hidden md:table-cell">
                   <span className={row.feeSuccess != null && row.feeSuccess < 80 ? "text-amber-600" : "text-ink-soft"}>
                     {fmtSuccess(row.feeSuccess)}
