@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { MDXRemote } from "next-mdx-remote/rsc";
-import { SectionRule } from "@/components/section-rule";
 import { StatTable } from "@/components/reports/stat-table";
 import {
   getAllReports,
@@ -14,6 +13,8 @@ import { PERSON_ID } from "@/lib/hub-jsonld";
 import { SITE } from "@/data/site";
 
 export const revalidate = 3600;
+
+const SERIF: React.CSSProperties = { fontFamily: "var(--font-serif)" };
 
 type Props = { params: Promise<{ category: string; slug: string }> };
 
@@ -57,52 +58,61 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 const MDX_COMPONENTS = {
   StatTable,
-  // Typography overrides so MDX content picks up the editorial design
-  // without needing Tailwind @prose or a CSS module
   h2: (props: React.HTMLAttributes<HTMLHeadingElement>) => (
-    <div className="mt-14 mb-7">
-      <h2 className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-muted">
+    <div className="mt-16 mb-8 flex items-center gap-5">
+      <div className="flex-1 h-px bg-rule" />
+      <h2 className="label-mono text-[10px] uppercase tracking-[0.22em] text-ink-muted whitespace-nowrap shrink-0">
         {props.children}
       </h2>
-      <div className="mt-2 h-px bg-rule" />
+      <div className="flex-1 h-px bg-rule" />
     </div>
   ),
   h3: (props: React.HTMLAttributes<HTMLHeadingElement>) => (
     <h3
-      className="mt-8 mb-3 text-lg font-semibold tracking-tight text-ink"
+      className="display mt-10 mb-4 text-xl sm:text-2xl tracking-tight text-ink"
       {...props}
     />
   ),
   p: (props: React.HTMLAttributes<HTMLParagraphElement>) => (
-    <p className="mt-4 text-base leading-relaxed text-ink-soft" {...props} />
+    <p
+      className="mt-5 text-[17px] leading-[1.85] text-ink-soft"
+      style={SERIF}
+      {...props}
+    />
   ),
   ul: (props: React.HTMLAttributes<HTMLUListElement>) => (
-    <ul className="mt-4 space-y-2 text-base leading-relaxed text-ink-soft" {...props} />
+    <ul
+      className="mt-5 space-y-2 pl-6 list-disc text-[17px] leading-[1.85] text-ink-soft"
+      style={SERIF}
+      {...props}
+    />
   ),
   ol: (props: React.HTMLAttributes<HTMLOListElement>) => (
-    <ol className="mt-4 space-y-2 text-base leading-relaxed text-ink-soft list-decimal list-inside" {...props} />
+    <ol
+      className="mt-5 space-y-2 pl-6 list-decimal text-[17px] leading-[1.85] text-ink-soft"
+      style={SERIF}
+      {...props}
+    />
   ),
   li: (props: React.HTMLAttributes<HTMLLIElement>) => (
-    <li className="flex gap-3" {...props}>
-      <span className="text-ink-faint shrink-0">·</span>
-      <span>{props.children}</span>
-    </li>
+    <li className="pl-1" {...props} />
   ),
   blockquote: (props: React.HTMLAttributes<HTMLElement>) => (
     <blockquote
-      className="my-6 border-l-4 border-ink pl-6 py-2 text-base leading-relaxed text-ink-soft italic"
+      className="my-10 border-y-2 border-ink py-7 text-center [&_p]:mt-0 [&_p]:text-xl [&_p]:leading-snug [&_p]:text-ink [&_p]:italic"
+      style={SERIF}
       {...props}
     />
   ),
   code: (props: React.HTMLAttributes<HTMLElement>) => (
     <code
-      className="label-mono text-[0.85em] bg-[var(--color-paper-soft)] px-1 py-0.5 rounded"
+      className="label-mono text-[0.85em] bg-[var(--color-paper-soft)] border border-rule px-1.5 py-0.5"
       {...props}
     />
   ),
   pre: (props: React.HTMLAttributes<HTMLPreElement>) => (
     <pre
-      className="my-6 overflow-x-auto bg-ink text-paper p-4 text-sm label-mono leading-relaxed"
+      className="my-8 overflow-x-auto bg-ink text-paper p-5 text-sm label-mono leading-relaxed"
       {...props}
     />
   ),
@@ -112,7 +122,7 @@ const MDX_COMPONENTS = {
   strong: (props: React.HTMLAttributes<HTMLElement>) => (
     <strong className="font-semibold text-ink" {...props} />
   ),
-  hr: () => <div className="my-10 h-px bg-rule" />,
+  hr: () => <div className="my-12 h-px bg-rule" />,
 };
 
 function reportJsonLd(report: ReturnType<typeof getReport>) {
@@ -164,7 +174,7 @@ export default async function ReportPage({ params }: Props) {
   const lds = reportJsonLd(report);
 
   return (
-    <article className="mx-auto max-w-3xl px-4 sm:px-6 py-8 sm:py-12">
+    <article className="mx-auto max-w-[740px] px-4 sm:px-6 py-8 sm:py-14">
       {lds.map((ld, i) => (
         <script
           key={i}
@@ -174,7 +184,7 @@ export default async function ReportPage({ params }: Props) {
         />
       ))}
 
-      <nav className="mb-6 flex items-center gap-2 label-mono text-[11px] text-ink-muted">
+      <nav className="mb-8 flex items-center gap-2 label-mono text-[11px] text-ink-muted">
         <Link href="/reports" className="hover:text-ink transition-colors">
           Reports
         </Link>
@@ -189,9 +199,9 @@ export default async function ReportPage({ params }: Props) {
         <span className="text-ink truncate max-w-[200px]">{report.period}</span>
       </nav>
 
-      <header className="border-b-2 border-ink pb-8">
-        <div className="flex items-center gap-2 mb-4">
-          <span className="label-mono text-[10px] border border-ink px-2 py-0.5 text-ink uppercase">
+      <header className="border-b-2 border-ink pb-10 mb-2">
+        <div className="flex items-center gap-2 mb-5">
+          <span className="label-mono text-[10px] border border-ink px-2 py-0.5 text-ink uppercase tracking-[0.12em]">
             {catMeta?.label ?? category}
           </span>
           <span className="label-mono text-[10px] text-ink-faint">
@@ -199,19 +209,30 @@ export default async function ReportPage({ params }: Props) {
           </span>
         </div>
 
-        <h1 className="display text-3xl sm:text-4xl tracking-tight leading-tight">
+        <h1 className="display text-4xl sm:text-5xl tracking-tight leading-[1.05]">
           {report.title}
         </h1>
 
-        <blockquote className="mt-5 border-l-4 border-ink pl-5 text-base sm:text-lg leading-relaxed text-ink-soft italic">
-          {report.heroFinding}
-        </blockquote>
-
-        <p className="mt-5 text-base text-ink-soft leading-relaxed">
+        <p
+          className="mt-5 text-lg sm:text-xl leading-relaxed text-ink-soft"
+          style={SERIF}
+        >
           {report.summary}
         </p>
 
-        <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 text-[12px] label-mono text-ink-muted border-t border-rule pt-4">
+        <div className="mt-7 border-l-[3px] border-ink pl-5 py-0.5">
+          <p className="label-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted mb-2">
+            Key finding
+          </p>
+          <p
+            className="text-lg sm:text-xl leading-snug text-ink italic"
+            style={SERIF}
+          >
+            &ldquo;{report.heroFinding}&rdquo;
+          </p>
+        </div>
+
+        <div className="mt-7 flex flex-wrap items-center gap-x-6 gap-y-2 text-[12px] label-mono text-ink-muted border-t border-rule pt-4">
           <span>
             By{" "}
             <Link href="/team" className="lnk">
@@ -235,8 +256,14 @@ export default async function ReportPage({ params }: Props) {
         <MDXRemote source={report.content} components={MDX_COMPONENTS as any} />
       </div>
 
-      <SectionRule label="Filed under" />
-      <div className="flex flex-wrap gap-2">
+      <div className="mt-16 flex items-center gap-4">
+        <div className="flex-1 h-px bg-rule" />
+        <span className="label-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted shrink-0">
+          Filed under
+        </span>
+        <div className="flex-1 h-px bg-rule" />
+      </div>
+      <div className="mt-4 flex flex-wrap gap-2">
         <Link
           href={`/reports/${category}`}
           className="label-mono text-[11px] border border-rule px-2 py-1 text-ink-muted hover:text-ink hover:border-ink transition-colors"
@@ -251,11 +278,11 @@ export default async function ReportPage({ params }: Props) {
         </Link>
       </div>
 
-      <div className="mt-10 border border-rule p-5 text-sm text-ink-muted leading-relaxed">
-        <strong className="text-ink label-mono text-[11px] uppercase tracking-wide">
+      <div className="mt-10 border border-rule p-6 text-sm text-ink-muted leading-relaxed bg-[var(--color-paper-soft)]">
+        <p className="label-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted mb-3">
           Cite this report
-        </strong>
-        <p className="mt-2">
+        </p>
+        <p>
           OpenChainBench Research. <em>{report.title}</em>. OpenChainBench,{" "}
           {new Date(report.publishedAt).toLocaleDateString("en-US", {
             year: "numeric",
