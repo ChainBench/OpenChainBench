@@ -59,6 +59,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 const MDX_COMPONENTS = {
   StatTable,
 
+  // Summary box — key findings list at article top
+  Summary: ({ children }: { children: React.ReactNode }) => (
+    <aside className="my-8 border border-ink/20 bg-[var(--color-paper-soft)] [&_ul]:mt-0 [&_ul]:space-y-2 [&_li]:text-[14px] [&_li]:leading-[1.6] [&_li]:text-ink-soft">
+      <div className="px-5 py-3 border-b border-ink/10">
+        <p className="label-mono text-[10px] uppercase tracking-[0.22em] text-ink">Key findings</p>
+      </div>
+      <div className="px-5 py-4">{children}</div>
+    </aside>
+  ),
+
   // Decision Framework card — used explicitly in MDX
   UseCase: ({ label, children }: { label: string; children: React.ReactNode }) => (
     <div className="mt-4 border border-rule hover:border-ink/50 transition-colors p-5">
