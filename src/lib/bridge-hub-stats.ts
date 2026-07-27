@@ -13,51 +13,10 @@
 import { unstable_cache } from "next/cache";
 import { loadBenchFromBlob, loadVariantFromBlob } from "@/lib/bench-blob";
 import { filterSig } from "@/lib/materialize/load";
-import type { ProviderType } from "@/types/benchmark";
-
-export type CorridorKey = "Base" | "Arbitrum" | "Solana" | "HyperCore";
-
-export const CORRIDORS: { value: CorridorKey; label: string; short: string }[] =
-  [
-    { value: "Base", label: "Sol → Base", short: "Sol→Base" },
-    { value: "Arbitrum", label: "Base → Arb", short: "Base→Arb" },
-    { value: "Solana", label: "Arb → Sol", short: "Arb→Sol" },
-    { value: "HyperCore", label: "Arb → HC", short: "Arb→HC" },
-  ];
-
-export type CorridorFee = {
-  corridor: CorridorKey;
-  feep50: number | null;
-};
-
-export type BridgeProviderRow = {
-  slug: string;
-  name: string;
-  type: ProviderType | undefined;
-  tag: string | undefined;
-  // Aggregate (cross-corridor avg)
-  feep50: number | null;
-  feep99: number | null;
-  feeSuccess: number | null;
-  quotep50: number | null;
-  quotep99: number | null;
-  quoteSuccess: number | null;
-  // Per-corridor fee p50 (null = provider does not quote this corridor)
-  corridors: CorridorFee[];
-};
-
-export type BridgeHubData = {
-  providers: BridgeProviderRow[];
-  corridors: { value: string; label: string }[];
-  cheapestSlug: string | null;
-  cheapestName: string | null;
-  cheapestP50: number | null;
-  fastestSlug: string | null;
-  fastestName: string | null;
-  fastestP50: number | null;
-  bridgeCount: number;
-  regionCount: number;
-};
+import { CORRIDORS } from "@/lib/bridge-hub-types";
+import type { CorridorFee, BridgeProviderRow, BridgeHubData } from "@/lib/bridge-hub-types";
+export type { CorridorKey, CorridorFee, BridgeProviderRow, BridgeHubData } from "@/lib/bridge-hub-types";
+export { CORRIDORS } from "@/lib/bridge-hub-types";
 
 async function _fetchBridgeHub(): Promise<BridgeHubData | null> {
   // Load aggregate blobs + 4 per-corridor variants for fee bench in parallel
