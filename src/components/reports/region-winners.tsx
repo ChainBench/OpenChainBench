@@ -18,82 +18,71 @@ export async function RegionWinners({ bench }: Props) {
     )
   );
 
-  const rows = REGIONS.map((region, i) => {
+  const columns = REGIONS.map((region, i) => {
     const b = results[i];
-    if (!b || b.editorialStatus !== "live") return { region, fastest: null, reliable: null };
-    const ranked = rankedCandidates(b);
-    if (!ranked.length) return { region, fastest: null, reliable: null };
-
-    const fastest = ranked[0];
-    const reliable = [...ranked].sort(
-      (a, c) => (c.successRate ?? 0) - (a.successRate ?? 0)
-    )[0];
-    const sameProvider = fastest.slug === reliable.slug;
-
-    return { region, fastest, reliable: sameProvider ? null : reliable };
+    if (!b || b.editorialStatus !== "live") return { region, ranked: [] };
+    return { region, ranked: rankedCandidates(b) };
   });
+
+  const anyData = columns.some((c) => c.ranked.length > 0);
+  if (!anyData) return null;
+
+  const maxRows = Math.max(...columns.map((c) => c.ranked.length));
 
   return (
     <figure className="my-10 not-prose">
-      <div className="border-t-[2px] border-ink grid grid-cols-3 divide-x divide-rule">
-        {rows.map(({ region, fastest, reliable }) => (
-          <div key={region.key} className="px-4 pt-4 pb-5">
-            <p className="label-mono text-[10px] uppercase tracking-[0.18em] text-ink mb-0.5">
-              {region.label}
-            </p>
-            <p className="label-mono text-[10px] text-ink-faint mb-4">{region.sub}</p>
-
-            {fastest ? (
-              <div className="space-y-3">
-                <div>
-                  <p className="label-mono text-[9px] uppercase tracking-[0.14em] text-ink-faint mb-1.5">
-                    Fastest
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <ProviderLogo slug={fastest.slug} name={fastest.name} size={16} />
-                    <Link
-                      href={`/products/${fastest.slug}`}
-                      className="text-[13px] font-semibold text-ink hover:underline leading-tight"
-                    >
-                      {fastest.name}
-                    </Link>
-                  </div>
-                  <p className="label-mono text-[11px] text-ink-soft mt-1 tabular-nums">
-                    {fastest.ms.p50 != null ? `${Math.round(fastest.ms.p50)} ms` : "—"}
-                  </p>
-                </div>
-
-                {reliable && (
-                  <div>
-                    <p className="label-mono text-[9px] uppercase tracking-[0.14em] text-ink-faint mb-1.5">
-                      Most reliable
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <ProviderLogo slug={reliable.slug} name={reliable.name} size={16} />
-                      <Link
-                        href={`/products/${reliable.slug}`}
-                        className="text-[13px] font-semibold text-ink hover:underline leading-tight"
-                      >
-                        {reliable.name}
-                      </Link>
-                    </div>
-                    <p className="label-mono text-[11px] text-ink-soft mt-1 tabular-nums">
-                      {reliable.successRate != null
-                        ? `${reliable.successRate.toFixed(1)}% success`
-                        : "—"}
-                    </p>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <p className="text-xs text-ink-muted italic">No data</p>
-            )}
-          </div>
-        ))}
+      <div className="border-t-[2px] border-ink overflow-x-auto">
+        <table className="w-full text-sm border-collapse">
+          <thead>
+            <tr className="border-b border-rule">
+              <th className="text-left py-2.5 pr-3 pl-0 label-mono text-[10px] uppercase tracking-[0.15em] text-ink-muted font-medium w-6">#</th>
+              {columns.map(({ region }) => (
+                <th
+                  key={region.key}
+                  className="text-left py-2.5 pr-4 label-mono text-[10px] uppercase tracking-[0.15em] text-ink-muted font-medium"
+                  colSpan={2}
+                >
+                  {region.label}
+                  <span className="normal-case text-ink-faint ml-1">({region.sub})</span>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {Array.from({ length: maxRows }).map((_, i) => (
+              <tr key={i} className="border-b border-rule hover:bg-[var(--color-paper-soft)]/50 transition-colors">
+                <td className="py-2 pr-3 pl-0 label-mono text-[12px] text-ink-faint">{i + 1}</td>
+                {columns.map(({ region, ranked }) => {
+                  const r = ranked[i];
+                  if (!r) return <td key={region.key} colSpan={2} className="py-2 pr-4" />;
+                  const isFirst = i === 0;
+                  return (
+                    <td key={region.key} colSpan={2} className="py-2 pr-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <ProviderLogo slug={r.slug} name={r.name} size={16} />
+                          <Link
+                            href={`/products/${r.slug}`}
+                            className={`text-[13px] leading-tight hover:text-ink transition-colors truncate ${isFirst ? "font-semibold text-ink" : "text-ink-soft"}`}
+                          >
+                            {r.name}
+                          </Link>
+                        </div>
+                        <span className={`label-mono tabular-nums shrink-0 ${isFirst ? "text-[13px] font-bold text-ink" : "text-[12px] text-ink-soft"}`}>
+                          {r.ms.p50 != null ? `${Math.round(r.ms.p50)} ms` : "—"}
+                        </span>
+                      </div>
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
       <figcaption className="mt-3 flex items-center justify-between gap-4">
         <p className="text-xs text-ink-muted leading-relaxed">
-          Per-region leader for Ethereum RPC — live data, updated every 60 s.
+          Ethereum RPC ranked by p50 latency per probe region. Same providers, different positions and values.
         </p>
         <div className="flex items-center gap-1.5 shrink-0">
           <span className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0" />

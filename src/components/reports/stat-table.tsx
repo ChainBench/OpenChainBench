@@ -37,11 +37,18 @@ export async function StatTable({
 
   const hasSuccess = showSuccessRate && ranked.some((r) => r.successRate != null);
 
-  // Fastest = #1 by p50. Most reliable = best success rate (only when hasSuccess).
-  const fastestSlug = ranked[0].slug;
+  // Leader = #1 by p50. Most reliable = best success rate (only when hasSuccess).
+  // Label is "FASTEST" for latency benches (ms/s/sec), "LEADER" for count/rate/other.
+  const leaderSlug = ranked[0].slug;
+  const leaderLabel = ["ms", "s", "sec"].includes(b.unit ?? "") ? "FASTEST" : "LEADER";
   const reliableSlug = hasSuccess
     ? [...ranked].sort((a, c) => (c.successRate ?? 0) - (a.successRate ?? 0))[0].slug
     : null;
+  // Show RELIABLE badge on the most-reliable provider regardless of whether
+  // it's also the latency leader (fastestSlug === reliableSlug). When they
+  // coincide, one row shows both badges, surfacing the "double winner" case
+  // instead of hiding the reliability signal entirely.
+  const fastestSlug = leaderSlug;
 
   return (
     <figure className="my-10 not-prose">
@@ -68,7 +75,7 @@ export async function StatTable({
           <tbody>
             {ranked.map((r, i) => {
               const isFastest = r.slug === fastestSlug;
-              const isReliable = reliableSlug !== null && r.slug === reliableSlug && r.slug !== fastestSlug;
+              const isReliable = reliableSlug !== null && r.slug === reliableSlug;
               const successPct = r.successRate ?? 100;
               const successColor =
                 successPct >= 99
@@ -106,7 +113,7 @@ export async function StatTable({
                       </Link>
                       {isFastest && (
                         <span className="label-mono text-[9px] bg-ink text-paper px-1.5 py-px uppercase tracking-[0.1em] shrink-0">
-                          FASTEST
+                          {leaderLabel}
                         </span>
                       )}
                       {isReliable && (
