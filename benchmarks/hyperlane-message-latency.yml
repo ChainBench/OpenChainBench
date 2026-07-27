@@ -43,9 +43,6 @@ abstract: |
   end-to-end delivery latency, recorded in a per-source-chain
   histogram. The p50/p90/p99 shown here are computed via Prometheus
   `histogram_quantile` over the last 24 hours.
-
-  See cross-chain-messaging-latency for the side-by-side comparison across all four end-to-end protocols on the same shared observation stack.
-
 methodology:
   - "Data source: `https://api.hyperlane.xyz/v1/graphql` (Hasura), the public Hyperlane Explorer feed. Polled every 60 seconds, 100 messages per poll ordered by id DESC."
   - "Latency definition: `delivery_occurred_at - send_occurred_at` from a message row with `is_delivered: true`. Both timestamps come from the Mailbox contract events on the source and destination chains."
