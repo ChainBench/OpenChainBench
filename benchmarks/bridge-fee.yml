@@ -250,6 +250,7 @@ providers:
     formula: "Per-corridor 24h median of total cost percent on a $300 USDC quote from the Near Intents 1Click API, averaged across corridors. The quoted amountOut already nets out solver spread, bridge fee and destination withdrawal fee."
     type: intent
     queries:
+<<<<<<< HEAD
       p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="near-intents", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"}[24h]))
       p90: avg(quantile_over_time(0.90, bridge_cost_percent{bridge="near-intents", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"}[24h]))
       p99: avg(quantile_over_time(0.99, bridge_cost_percent{bridge="near-intents", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"}[24h]))
@@ -267,6 +268,15 @@ providers:
         - region: ap-southeast
           p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="near-intents", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="sgp"}[24h]))
           series: avg_over_time(bridge_cost_percent{bridge="near-intents", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="sgp"}[1h])
+=======
+      p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="near-intents", amount_usd="300", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"}[24h]))
+      p90: avg(quantile_over_time(0.90, bridge_cost_percent{bridge="near-intents", amount_usd="300", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"}[24h]))
+      p99: avg(quantile_over_time(0.99, bridge_cost_percent{bridge="near-intents", amount_usd="300", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"}[24h]))
+      mean: avg(avg_over_time(bridge_cost_percent{bridge="near-intents", amount_usd="300", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"}[24h]))
+      success: avg(avg_over_time(bridge_quote_success{bridge="near-intents", amount_usd="300", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"}[24h]))
+      sample_size: sum(count_over_time(bridge_cost_percent{bridge="near-intents", amount_usd="300", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"}[24h]))
+      series: avg_over_time(bridge_cost_percent{bridge="near-intents", amount_usd="300", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"}[1h])
+>>>>>>> origin/main
 
   - slug: squid
     name: Squid Router
@@ -274,6 +284,7 @@ providers:
     formula: "Per-corridor 24h median of total cost percent on a $300 USDC quote from Squid Router's v2 API, averaged across supported EVM corridors (Base to Arb). Cost = fromAmountUSD minus toAmountUSD including all relayer and gas fees."
     type: aggregator
     queries:
+<<<<<<< HEAD
       p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="squid"}[24h]))
       p90: avg(quantile_over_time(0.90, bridge_cost_percent{bridge="squid"}[24h]))
       p99: avg(quantile_over_time(0.99, bridge_cost_percent{bridge="squid"}[24h]))
@@ -291,6 +302,15 @@ providers:
         - region: ap-southeast
           p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="squid", region="sgp"}[24h]))
           series: avg_over_time(bridge_cost_percent{bridge="squid", region="sgp"}[1h])
+=======
+      p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="squid", amount_usd="300"}[24h]))
+      p90: avg(quantile_over_time(0.90, bridge_cost_percent{bridge="squid", amount_usd="300"}[24h]))
+      p99: avg(quantile_over_time(0.99, bridge_cost_percent{bridge="squid", amount_usd="300"}[24h]))
+      mean: avg(avg_over_time(bridge_cost_percent{bridge="squid", amount_usd="300"}[24h]))
+      success: avg(avg_over_time(bridge_quote_success{bridge="squid", amount_usd="300"}[24h]))
+      sample_size: sum(count_over_time(bridge_cost_percent{bridge="squid", amount_usd="300"}[24h]))
+      series: avg_over_time(bridge_cost_percent{bridge="squid", amount_usd="300"}[1h])
+>>>>>>> origin/main
 
   - slug: socket
     name: Socket Protocol
@@ -298,6 +318,7 @@ providers:
     formula: "All-in cost percent p50 over 24h on a $300 USDC best-output route via Socket Protocol's v2 API (routes through Across, Stargate, CCTP), EVM corridors only (Base to Arb)."
     type: aggregator
     queries:
+<<<<<<< HEAD
       p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="socket"}[24h]))
       p90: avg(quantile_over_time(0.90, bridge_cost_percent{bridge="socket"}[24h]))
       p99: avg(quantile_over_time(0.99, bridge_cost_percent{bridge="socket"}[24h]))
@@ -315,6 +336,15 @@ providers:
         - region: ap-southeast
           p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="socket", region="sgp"}[24h]))
           series: avg_over_time(bridge_cost_percent{bridge="socket", region="sgp"}[1h])
+=======
+      p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="socket", amount_usd="300"}[24h]))
+      p90: avg(quantile_over_time(0.90, bridge_cost_percent{bridge="socket", amount_usd="300"}[24h]))
+      p99: avg(quantile_over_time(0.99, bridge_cost_percent{bridge="socket", amount_usd="300"}[24h]))
+      mean: avg(avg_over_time(bridge_cost_percent{bridge="socket", amount_usd="300"}[24h]))
+      success: avg(avg_over_time(bridge_quote_success{bridge="socket", amount_usd="300"}[24h]))
+      sample_size: sum(count_over_time(bridge_cost_percent{bridge="socket", amount_usd="300"}[24h]))
+      series: avg_over_time(bridge_cost_percent{bridge="socket", amount_usd="300"}[1h])
+>>>>>>> origin/main
 
   - slug: mayan
     name: Mayan Finance
@@ -322,6 +352,7 @@ providers:
     formula: "All-in cost percent p50 over 24h on a $300 USDC quote from Mayan Finance's v3 Swift API, Solana corridors only (Sol to Base, Arb to Sol). Cost = input minus expectedAmountOut."
     type: intent
     queries:
+<<<<<<< HEAD
       p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="mayan"}[24h]))
       p90: avg(quantile_over_time(0.90, bridge_cost_percent{bridge="mayan"}[24h]))
       p99: avg(quantile_over_time(0.99, bridge_cost_percent{bridge="mayan"}[24h]))
@@ -339,3 +370,12 @@ providers:
         - region: ap-southeast
           p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="mayan", region="sgp"}[24h]))
           series: avg_over_time(bridge_cost_percent{bridge="mayan", region="sgp"}[1h])
+=======
+      p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="mayan", amount_usd="300"}[24h]))
+      p90: avg(quantile_over_time(0.90, bridge_cost_percent{bridge="mayan", amount_usd="300"}[24h]))
+      p99: avg(quantile_over_time(0.99, bridge_cost_percent{bridge="mayan", amount_usd="300"}[24h]))
+      mean: avg(avg_over_time(bridge_cost_percent{bridge="mayan", amount_usd="300"}[24h]))
+      success: avg(avg_over_time(bridge_quote_success{bridge="mayan", amount_usd="300"}[24h]))
+      sample_size: sum(count_over_time(bridge_cost_percent{bridge="mayan", amount_usd="300"}[24h]))
+      series: avg_over_time(bridge_cost_percent{bridge="mayan", amount_usd="300"}[1h])
+>>>>>>> origin/main
