@@ -43,6 +43,15 @@ export type ProviderResult = {
   successRate: number;
   /** Per-provider sample count over the run window. */
   sampleSize?: number;
+  /** RPC-cluster only: which archive depths this provider supports
+   *  (values from the harness `depthBuckets` set: 300 / 7200 / 216000
+   *  / 1296000 / 5000000 blocks). Populated by the loader for
+   *  `-rpc` benches from `rpc_archive_depth_supported`. A provider
+   *  that returns `[300]` is Geth-default-pruned; `[300, 7200,
+   *  216000, 1296000, 5000000]` is full archive back to genesis-era.
+   *  Absent on non-RPC benches and on chains where the archive probe
+   *  is skipped (Solana slot model, Substrate state model). */
+  archiveDepth?: { supportedBlocks: number[] };
   /**
    * Sample-health classification derived from sampleSize / expectedN.
    *
