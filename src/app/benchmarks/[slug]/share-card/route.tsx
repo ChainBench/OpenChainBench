@@ -800,10 +800,11 @@ async function renderLeaderboard(
 ) {
   const allSorted = sortByP50(benchmark);
   // Hard row cap so the last row can't collide with the CardFooter
-  // border in the 630 px canvas (observed on wormhole-vaa-latency with
-  // 14 chains: Moonbeam overprinted the "OPENCHAINBENCH.COM · No 101"
-  // divider). If truncated, an "and N more" line is appended below.
-  const MAX_ROWS = 10;
+  // border in the 630 px canvas. First pass used 10 but Moonbeam (row 10)
+  // still bled into the footer divider on wormhole-vaa-latency (14 chains,
+  // long two-line title). 9 rows + one italic "and N more" line lands
+  // comfortably above the footer even in the worst-case title wrap.
+  const MAX_ROWS = 9;
   const sorted = allSorted.slice(0, MAX_ROWS);
   const truncatedCount = Math.max(0, allSorted.length - sorted.length);
   const maxP50 = Math.max(...sorted.map((r) => r.ms.p50)) || 1;
