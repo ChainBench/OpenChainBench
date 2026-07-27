@@ -96,10 +96,15 @@ export type RpcHubChain = {
   best: RpcRegionBest | null;
   /** p90 of the overall best provider (same row as `best`). Optional so old blobs stay parseable. */
   bestP90Ms?: number;
-  /** Max archive block depth supported by the overall best provider
-   *  (0 or absent = archive not measured / provider Geth-pruned). Used
-   *  by the hub as a compact single-cell 'archive support' badge. */
+  /** Max archive block depth supported across ALL providers on this
+   *  chain (0 or absent = archive not measured / all providers pruned).
+   *  Paired with bestArchiveProviders which names the providers hitting
+   *  that max depth — the tooltip in the /rpc hub reads both. */
   bestArchiveDepthBlocks?: number;
+  /** Providers whose supported set includes bestArchiveDepthBlocks
+   *  (i.e. the ones actually offering the max archive on this chain).
+   *  Empty when bestArchiveDepthBlocks is undefined. */
+  bestArchiveProviders?: string[];
   /** Best provider per probe region. */
   regions: Partial<Record<RpcRegionKey, RpcRegionBest>>;
   /** Full live provider field, sorted fastest first. */
@@ -278,21 +283,22 @@ async function buildChain(spec: Spec): Promise<RpcHubChain | null> {
       : {}),
     best: { provider: leader.slug, providerName: leader.name, p50Ms: round1(leader.ms.p50) },
     bestP90Ms: Number.isFinite(leader.ms.p90) && leader.ms.p90 > 0 ? round1(leader.ms.p90) : undefined,
-    bestArchiveDepthBlocks: (() => {
-      // Max archive depth across ALL providers on this chain — not just
-      // the latency leader. The fastest provider is often a pruned
-      // public endpoint (e.g. PublicNode's default Geth pruned node),
-      // so gating on `leader.archiveDepth` would silence the column
-      // even when other providers on the same chain serve full archive.
-      // This column answers "what's the deepest historical state I can
-      // pull from ANY listed provider", which is what indexers need.
+    ...(() => {
+      // Max archive depth across ALL providers + which providers hit it.
+      // Fastest provider is often the pruned one (PublicNode etc), so
+      // this column answers 'what's the deepest historical state I can
+      // pull from ANY listed provider on this chain' and names them.
       let best = 0;
       for (const r of rows) {
         if (!r.archiveDepth || r.archiveDepth.supportedBlocks.length === 0) continue;
         const m = Math.max(...r.archiveDepth.supportedBlocks);
         if (m > best) best = m;
       }
-      return best > 0 ? best : undefined;
+      if (best === 0) return {} as const;
+      const names = rows
+        .filter((r) => r.archiveDepth?.supportedBlocks.includes(best))
+        .map((r) => r.name);
+      return { bestArchiveDepthBlocks: best, bestArchiveProviders: names } as const;
     })(),
     regions,
     providers: rows.map((r) => ({
