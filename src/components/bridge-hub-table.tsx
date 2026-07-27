@@ -50,6 +50,20 @@ function CorridorDot({
 export function BridgeHubTable({ rows }: { rows: BridgeProviderRow[] }) {
   if (rows.length === 0) return null;
 
+  // Per-region: find fastest and slowest slug among rows with data
+  const regionRank: Record<string, { fastest: string | null; slowest: string | null }> = {};
+  for (const r of REGIONS) {
+    const withData = rows
+      .map((row) => ({ slug: row.slug, v: row.regions.find((x) => x.region === r.value)?.quotep50 ?? null }))
+      .filter((x) => x.v != null && Number.isFinite(x.v));
+    if (withData.length < 2) {
+      regionRank[r.value] = { fastest: withData[0]?.slug ?? null, slowest: null };
+    } else {
+      withData.sort((a, b) => (a.v ?? Infinity) - (b.v ?? Infinity));
+      regionRank[r.value] = { fastest: withData[0].slug, slowest: withData[withData.length - 1].slug };
+    }
+  }
+
   return (
     <div className="overflow-x-auto rounded-xl border border-ink/10">
       <table className="w-full text-sm">
@@ -122,9 +136,17 @@ export function BridgeHubTable({ rows }: { rows: BridgeProviderRow[] }) {
                 {REGIONS.map((r) => {
                   const regionData = row.regions.find((x) => x.region === r.value);
                   const val = regionData?.quotep50 ?? null;
+                  const isFastest = val != null && regionRank[r.value]?.fastest === row.slug;
+                  const isSlowest = val != null && regionRank[r.value]?.slowest === row.slug;
                   return (
-                    <td key={r.value} className="px-4 py-3.5 text-right tabular-nums text-ink-soft hidden md:table-cell">
-                      {fmtMs(val)}
+                    <td key={r.value} className="px-4 py-3.5 text-right tabular-nums hidden md:table-cell">
+                      {val == null ? (
+                        <span className="text-ink/20">—</span>
+                      ) : (
+                        <span className={isFastest ? "font-semibold text-emerald-600" : isSlowest ? "text-amber-600" : "text-ink-soft"}>
+                          {fmtMs(val)}
+                        </span>
+                      )}
                     </td>
                   );
                 })}
