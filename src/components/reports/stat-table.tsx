@@ -44,7 +44,7 @@ export async function StatTable({
     : null;
 
   return (
-    <figure className="my-10 not-prose -mx-4 sm:-mx-6 lg:-mx-16">
+    <figure className="my-10 not-prose">
       <div className="border-t-[2px] border-ink overflow-x-auto">
         <table className="w-full text-sm border-collapse">
           <thead>
@@ -142,7 +142,7 @@ export async function StatTable({
       </div>
 
       {caption && (
-        <figcaption className="mt-3 px-4 sm:px-6 lg:px-16 flex items-start gap-4 justify-between">
+        <figcaption className="mt-3 flex items-start gap-4 justify-between">
           <p className="text-xs text-ink-muted leading-relaxed">{caption}</p>
           <div className="flex items-center gap-1.5 shrink-0 pt-0.5">
             <span className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0" />
