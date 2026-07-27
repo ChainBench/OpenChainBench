@@ -74,14 +74,13 @@ func (m *MayanBridge) getQuote(route TestRoute, amountUsd float64) (*mayanQuoteR
 	start := time.Now()
 
 	params := url.Values{}
-	// Mayan takes the human-readable amount in USD equivalent, not raw token units.
-	params.Set("amount", strconv.FormatFloat(amountUsd, 'f', 2, 64))
+	params.Set("amountIn", strconv.FormatFloat(amountUsd, 'f', 2, 64))
 	params.Set("fromToken", route.FromToken)
 	params.Set("toToken", route.ToToken)
 	params.Set("fromChain", mayanChainName(route.FromChain))
 	params.Set("toChain", mayanChainName(route.ToChain))
-	params.Set("slippage", "0.5")
-	params.Set("sdkVersion", "15") // latest as of 2026-07-27
+	params.Set("slippageBps", "50")
+	params.Set("sdkVersion", "15")
 
 	req, err := http.NewRequest(http.MethodGet, "https://price-api.mayan.finance/v3/quote?"+params.Encode(), nil)
 	if err != nil {
