@@ -215,19 +215,23 @@ export function variantCombos(spec: Spec): BenchmarkFilters[] {
   const regions = (dims.region ?? []).map((d) => d.value).filter((v) => v !== "all");
   const kinds = (dims.kind ?? []).map((d) => d.value).filter((v) => v !== "all");
   const venues = (dims.venue ?? []).map((d) => d.value).filter((v) => v !== "all");
+  const amounts = (dims.amount_usd ?? []).map((d) => d.value);
   const opt = <T,>(xs: T[]): (T | undefined)[] => (xs.length ? [undefined, ...xs] : [undefined]);
   const combos: BenchmarkFilters[] = [];
   for (const chain of opt(chains)) {
     for (const region of opt(regions)) {
       for (const kind of opt(kinds)) {
         for (const venue of opt(venues)) {
-          if (!chain && !region && !kind && !venue) continue; // the aggregate is tier A
-          combos.push({
-            ...(chain ? { chain } : {}),
-            ...(region ? { region } : {}),
-            ...(kind ? { kind } : {}),
-            ...(venue ? { venue } : {}),
-          });
+          for (const amount_usd of opt(amounts)) {
+            if (!chain && !region && !kind && !venue && !amount_usd) continue; // the aggregate is tier A
+            combos.push({
+              ...(chain ? { chain } : {}),
+              ...(region ? { region } : {}),
+              ...(kind ? { kind } : {}),
+              ...(venue ? { venue } : {}),
+              ...(amount_usd ? { amount_usd } : {}),
+            });
+          }
         }
       }
     }
