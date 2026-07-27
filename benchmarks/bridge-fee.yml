@@ -194,3 +194,45 @@ providers:
       success: avg(avg_over_time(bridge_quote_success{bridge="near-intents", amount_usd="300", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"}[24h]))
       sample_size: sum(count_over_time(bridge_cost_percent{bridge="near-intents", amount_usd="300", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"}[24h]))
       series: avg_over_time(bridge_cost_percent{bridge="near-intents", amount_usd="300", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN"}[1h])
+
+  - slug: squid
+    name: Squid Router
+    tag: Aggregator (Axelar)
+    formula: "Per-corridor 24h median of total cost percent on a $300 USDC quote from Squid Router's v2 API, averaged across supported EVM corridors (Base to Arb). Cost = fromAmountUSD minus toAmountUSD including all relayer and gas fees."
+    type: aggregator
+    queries:
+      p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="squid", amount_usd="300"}[24h]))
+      p90: avg(quantile_over_time(0.90, bridge_cost_percent{bridge="squid", amount_usd="300"}[24h]))
+      p99: avg(quantile_over_time(0.99, bridge_cost_percent{bridge="squid", amount_usd="300"}[24h]))
+      mean: avg(avg_over_time(bridge_cost_percent{bridge="squid", amount_usd="300"}[24h]))
+      success: avg(avg_over_time(bridge_quote_success{bridge="squid", amount_usd="300"}[24h]))
+      sample_size: sum(count_over_time(bridge_cost_percent{bridge="squid", amount_usd="300"}[24h]))
+      series: avg_over_time(bridge_cost_percent{bridge="squid", amount_usd="300"}[1h])
+
+  - slug: socket
+    name: Socket Protocol
+    tag: Aggregator
+    formula: "All-in cost percent p50 over 24h on a $300 USDC best-output route via Socket Protocol's v2 API (routes through Across, Stargate, CCTP), EVM corridors only (Base to Arb)."
+    type: aggregator
+    queries:
+      p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="socket", amount_usd="300"}[24h]))
+      p90: avg(quantile_over_time(0.90, bridge_cost_percent{bridge="socket", amount_usd="300"}[24h]))
+      p99: avg(quantile_over_time(0.99, bridge_cost_percent{bridge="socket", amount_usd="300"}[24h]))
+      mean: avg(avg_over_time(bridge_cost_percent{bridge="socket", amount_usd="300"}[24h]))
+      success: avg(avg_over_time(bridge_quote_success{bridge="socket", amount_usd="300"}[24h]))
+      sample_size: sum(count_over_time(bridge_cost_percent{bridge="socket", amount_usd="300"}[24h]))
+      series: avg_over_time(bridge_cost_percent{bridge="socket", amount_usd="300"}[1h])
+
+  - slug: mayan
+    name: Mayan Finance
+    tag: Intent layer (Wormhole)
+    formula: "All-in cost percent p50 over 24h on a $300 USDC quote from Mayan Finance's v3 Swift API, Solana corridors only (Sol to Base, Arb to Sol). Cost = input minus expectedAmountOut."
+    type: intent
+    queries:
+      p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="mayan", amount_usd="300"}[24h]))
+      p90: avg(quantile_over_time(0.90, bridge_cost_percent{bridge="mayan", amount_usd="300"}[24h]))
+      p99: avg(quantile_over_time(0.99, bridge_cost_percent{bridge="mayan", amount_usd="300"}[24h]))
+      mean: avg(avg_over_time(bridge_cost_percent{bridge="mayan", amount_usd="300"}[24h]))
+      success: avg(avg_over_time(bridge_quote_success{bridge="mayan", amount_usd="300"}[24h]))
+      sample_size: sum(count_over_time(bridge_cost_percent{bridge="mayan", amount_usd="300"}[24h]))
+      series: avg_over_time(bridge_cost_percent{bridge="mayan", amount_usd="300"}[1h])
