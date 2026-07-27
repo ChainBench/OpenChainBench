@@ -106,6 +106,10 @@ faq:
 #
 # Label is `bridge=`, not `provider=`. Keep that in mind when extending.
 
+# rank_matrix_query required by spec validator when dimensions.region is declared.
+# label_replace maps bridge= → provider= so badge scoping works per region.
+rank_matrix_query: histogram_quantile(0.50, sum by (provider, region, le) (label_replace(rate(bridge_quote_latency_ms_bucket[24h]), "provider", "$1", "bridge", "(.+)")))
+
 providers:
   - slug: mobula
     name: Mobula
@@ -225,7 +229,7 @@ providers:
   - slug: across
     name: Across
     tag: Intent layer
-    formula: "Median wall-clock ms over 24h for Across's Swap API to return a usable USDC quote, sampled every 5 minutes across supported routes (Sol to Base, Base to Arb) and 3 notionals from 3 regions (eu-west, us-east, sgp). Arb to Sol excluded: Across does not support destination swaps to Solana."
+    formula: "Median wall-clock ms over 24h for Across's Swap API to return a usable USDC quote across supported corridors (Sol to Base, Base to Arb) from 3 regions. Arb to Sol excluded: no destination swaps to Solana."
     queries:
       p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="across"}[24h])))
       p90: histogram_quantile(0.90, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="across"}[24h])))
