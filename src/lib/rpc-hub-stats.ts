@@ -54,6 +54,7 @@ export type RpcHubProvider = {
   provider: string;
   name: string;
   p50Ms: number;
+  p90Ms?: number;
   p99Ms?: number;
   successPct?: number;
   sampleSize?: number;
@@ -88,6 +89,8 @@ export type RpcHubChain = {
    *  field: old blobs without it still parse. */
   unresponsive?: RpcHubUnresponsiveProvider[];
   best: RpcRegionBest | null;
+  /** p90 of the overall best provider (same row as `best`). Optional so old blobs stay parseable. */
+  bestP90Ms?: number;
   /** Best provider per probe region. */
   regions: Partial<Record<RpcRegionKey, RpcRegionBest>>;
   /** Full live provider field, sorted fastest first. */
@@ -265,11 +268,13 @@ async function buildChain(spec: Spec): Promise<RpcHubChain | null> {
         }
       : {}),
     best: { provider: leader.slug, providerName: leader.name, p50Ms: round1(leader.ms.p50) },
+    bestP90Ms: Number.isFinite(leader.ms.p90) && leader.ms.p90 > 0 ? round1(leader.ms.p90) : undefined,
     regions,
     providers: rows.map((r) => ({
       provider: r.slug,
       name: r.name,
       p50Ms: round1(r.ms.p50),
+      p90Ms: Number.isFinite(r.ms.p90) && r.ms.p90 > 0 ? round1(r.ms.p90) : undefined,
       p99Ms: Number.isFinite(r.ms.p99) && r.ms.p99 > 0 ? round1(r.ms.p99) : undefined,
       successPct:
         Number.isFinite(r.successRate) && r.successRate > 0
