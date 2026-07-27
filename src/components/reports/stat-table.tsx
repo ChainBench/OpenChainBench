@@ -37,7 +37,7 @@ export async function StatTable({
   const hasSuccess = showSuccessRate && ranked.some((r) => r.successRate != null);
 
   return (
-    <figure className="my-10 not-prose">
+    <figure className="my-10 not-prose -mx-4 sm:-mx-6 lg:-mx-16">
       <div className="border-t-[2px] border-ink overflow-x-auto">
         <table className="w-full text-sm border-collapse">
           <thead>
@@ -65,7 +65,7 @@ export async function StatTable({
               const successColor =
                 successPct >= 99
                   ? "text-ink"
-                  : successPct >= 90
+                  : successPct >= 95
                     ? "text-ink-soft"
                     : "text-amber-600 dark:text-amber-400";
 
@@ -103,14 +103,14 @@ export async function StatTable({
                     </div>
                   </td>
                   <td
-                    className={`py-3 pr-3 text-right label-mono ${
+                    className={`py-3 pr-3 text-right label-mono tabular-nums ${
                       isBest ? "text-[15px] font-bold text-ink" : "text-[13px] text-ink-soft"
                     }`}
                   >
                     {fmtUnit(r.ms.p50, b.unit)}
                   </td>
                   {hasSuccess && (
-                    <td className={`py-3 text-right label-mono text-[13px] ${successColor}`}>
+                    <td className={`py-3 text-right label-mono text-[13px] tabular-nums ${successColor}`}>
                       {successPct.toFixed(1)}%
                     </td>
                   )}
@@ -122,7 +122,7 @@ export async function StatTable({
       </div>
 
       {caption && (
-        <figcaption className="mt-3 flex items-start gap-4 justify-between">
+        <figcaption className="mt-3 px-4 sm:px-6 lg:px-16 flex items-start gap-4 justify-between">
           <p className="text-xs text-ink-muted leading-relaxed">{caption}</p>
           <div className="flex items-center gap-1.5 shrink-0 pt-0.5">
             <span className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0" />

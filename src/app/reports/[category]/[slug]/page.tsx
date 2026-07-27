@@ -89,7 +89,7 @@ const MDX_COMPONENTS = {
 
   p: (props: React.HTMLAttributes<HTMLParagraphElement>) => (
     <p
-      className="mt-5 text-[17px] leading-[1.85] text-ink-soft"
+      className="mt-5 text-[17px] leading-[1.65] text-ink-soft"
       style={SERIF}
       {...props}
     />
@@ -97,7 +97,7 @@ const MDX_COMPONENTS = {
 
   ul: (props: React.HTMLAttributes<HTMLUListElement>) => (
     <ul
-      className="mt-5 space-y-2 pl-6 list-disc text-[17px] leading-[1.85] text-ink-soft"
+      className="mt-5 space-y-2 pl-6 list-disc text-[17px] leading-[1.65] text-ink-soft"
       style={SERIF}
       {...props}
     />
@@ -105,7 +105,7 @@ const MDX_COMPONENTS = {
 
   ol: (props: React.HTMLAttributes<HTMLOListElement>) => (
     <ol
-      className="mt-5 space-y-2 pl-6 list-decimal text-[17px] leading-[1.85] text-ink-soft"
+      className="mt-5 space-y-2 pl-6 list-decimal text-[17px] leading-[1.65] text-ink-soft"
       style={SERIF}
       {...props}
     />
@@ -212,7 +212,7 @@ export default async function ReportPage({ params }: Props) {
   const lds = reportJsonLd(report);
 
   return (
-    <article className="mx-auto max-w-[740px] px-4 sm:px-6 py-8 sm:py-14">
+    <article className="mx-auto max-w-[680px] px-4 sm:px-6 py-8 sm:py-14">
       {lds.map((ld, i) => (
         <script
           key={i}
