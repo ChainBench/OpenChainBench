@@ -40,13 +40,13 @@ An RPC endpoint can return an HTTP 200 with a JSON body in milliseconds and stil
 
 OpenChainBench classifies every probe response. A 200 that contains `{"jsonrpc":"2.0","error":{"code":-32603}}` counts as `jsonrpc_err`, not as a successful call. A 200 that returns a block number 15 blocks behind the tip counts as `stale`. Only probes classified `ok` count toward the success rate.
 
-When you apply this filter, the ranking changes dramatically. Cloudflare-eth is the clearest example in this cohort: <Mark>it returns sub-second HTTP 200s, but a large share carry a JSON-RPC error body (`-32046 Cannot fulfill request`) rather than a block number.</Mark> Fast on latency metrics, wrong in practice. Providers that dominate raw-latency rankings often fall to the middle or bottom once correctness is factored in.
+When you apply this filter, the ranking changes dramatically. Cloudflare-eth is the clearest example in this cohort: it returns sub-second HTTP 200s, but a large share carry a JSON-RPC error body (`-32046 Cannot fulfill request`) rather than a block number. <Mark>Fast on latency metrics, wrong in practice.</Mark> Providers that dominate raw-latency rankings often fall to the middle or bottom once correctness is factored in.
 
-One provider, Merkle, is excluded from this bench entirely. Its endpoint sits behind an aggressive bot filter that locks out programmatic clients for 20 minutes after a single request. It does not appear on any status page. A benchmark that included it would be testing cache-hit latency, not production availability.
+One provider, Merkle, is excluded from this bench entirely. Its endpoint sits behind an aggressive bot filter that <Mark>locks out programmatic clients for 20 minutes</Mark> after a single request. It does not appear on any status page. A benchmark that included it would be testing cache-hit latency, not production availability.
 
 <StatTable bench="ethereum-rpc" caption="Ethereum RPC providers ranked by p50 latency. Success rate column separates the unreliable fast from the reliable fast." />
 
-The lesson is not that latency is unimportant. A 400 ms p50 would disqualify a provider for real-time frontend use regardless of its success rate. The lesson is that <Mark>a success rate below 95% should disqualify a provider before latency enters the conversation.</Mark>
+The lesson is not that latency is unimportant. A 400 ms p50 would disqualify a provider for real-time frontend use regardless of its success rate. The lesson is that <Mark>below 95% success rate, latency is irrelevant.</Mark>
 
 ### Why free public endpoints degrade
 
@@ -60,13 +60,13 @@ One provider consistently outperforms the field on success rate across multiple 
 
 PublicNode runs near-100% success rates on Ethereum, Arbitrum, Base, Optimism, and Avalanche over the measurement window. It achieves this without a premium tier for RPC access: the project is community-funded and operates endpoints as a public good. Its architecture uses geographic PoP distribution with automatic failover. A failure in one data center is invisible to the probe.
 
-What makes PublicNode structurally different is that it has no paid conversion funnel for RPC access. Every other provider in this cohort has an incentive to throttle free-tier users to push them toward paid plans. PublicNode does not. That incentive structure shows up in the data.
+What makes PublicNode structurally different is that it has <Mark>no paid conversion funnel for RPC access.</Mark> Every other provider in this cohort has an incentive to throttle free-tier users to push them toward paid plans. PublicNode does not. That incentive structure shows up in the data.
 
 <StatTable bench="rpc-reliability" caption="Multi-chain success rate comparison. Providers that sustain high success across every chain are structural leads, not lucky measurement windows." />
 
-The practical implication is simple: <Mark>if you need a free RPC for anything that fails silently on error, PublicNode is the standout option in the no-key free tier.</Mark>
+The practical implication is simple: if you need a free RPC for anything that fails silently on error, PublicNode is the standout option in the no-key free tier.
 
-The remaining providers in the Ethereum cohort sit in a wide band below that threshold. A sub-90% success rate means one in ten of your `eth_call` requests silently fails. At 100 reads per minute, that is ten failed reads every minute, or 600 per hour. Whether that is tolerable depends entirely on how your application handles errors.
+The remaining providers in the Ethereum cohort sit in a wide band below that threshold. A sub-90% success rate means one in ten of your `eth_call` requests silently fails. At 100 reads per minute, that is <Mark>600 failed reads per hour.</Mark> Whether that is tolerable depends entirely on how your application handles errors.
 
 ## Chain-by-Chain Standouts
 
@@ -104,23 +104,13 @@ Hyperliquid's EVM presents a distinct case. Hyperliquid Labs operates the primar
 
 ## Regional Divergence
 
-<Mark>The headline p50 in every table above is an average across three probe regions. Breaking it down by origin tells a different story.</Mark> The provider that ranks first globally often loses in specific regions, and the margin can be large.
+The headline p50 in every table above is an average across three probe regions. The same provider that ranks first globally can rank last in Singapore. The latency gap is not marginal: a provider routing from North America adds a full trans-Pacific round-trip, easily 150 ms on top of its US figure.
 
-### US-East (Virginia)
+The table below shows who ranks first on latency in each region right now.
 
-<StatTable bench="ethereum-rpc" region="us-east" caption="Ethereum RPC from us-east-1 (Virginia). Providers with US infrastructure cluster at the top." />
+<RegionWinners bench="ethereum-rpc" />
 
-### EU-West (Amsterdam)
-
-<StatTable bench="ethereum-rpc" region="eu-west" caption="Ethereum RPC from eu-west-1 (Amsterdam). Rankings shift compared to the US view — European PoPs gain ground here." />
-
-### Singapore
-
-<StatTable bench="ethereum-rpc" region="sgp" caption="Ethereum RPC from Singapore. This is where rankings diverge most from the global average. Providers routing from North America add a full trans-Pacific penalty." />
-
-The Singapore probe is the most revealing. A provider that wins the global average can lose Singapore by a wide margin because it routes through North America. No single public RPC is optimal everywhere.
-
-The implication for architecture: if your users are global, a geo-routing strategy (CDN-edge RPC selection, or multiple endpoints with latency-based fallback) beats any static selection. The [RPC Capabilities bench](/benchmarks/rpc-capabilities) exposes these per-region breakdowns for every provider and chain, queryable via `?region=us-east|eu-west|sgp`. The live view is on the [RPC hub](/rpc).
+<Mark>No single public RPC is optimal everywhere.</Mark> If your users are global, a geo-routing strategy (CDN-edge RPC selection, or multiple endpoints with latency-based fallback) beats any static choice. The [RPC Capabilities bench](/benchmarks/rpc-capabilities) has live per-region breakdowns for every provider, queryable via `?region=us-east|eu-west|sgp`.
 
 ## Reproducibility Recipe
 
