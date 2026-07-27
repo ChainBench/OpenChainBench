@@ -200,7 +200,7 @@ export default async function ProviderPage({
     (a) => (a.result.ms?.p50 ?? 0) > 0,
   );
   if (
-    p.appearances.length >= 3 &&
+    p.appearances.length >= 8 &&
     p.appearances.every((a) => a.rank === 0) &&
     allClaimLive &&
     anyMeasuredAppearance
