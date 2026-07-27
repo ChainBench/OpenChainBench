@@ -4,8 +4,8 @@ slug: bridge-quote-latency
 number: "002"
 title: Fastest cross-chain bridge quote API, live ms ranking
 seo_title: "Fastest bridge quote API 2026"
-seo_description: "Live p50 latency for cross-chain bridge quote APIs. Mobula, deBridge, Relay, LI.FI, Near Intents ranked."
-subtitle: Time to receive a usable cross-chain quote, in milliseconds. Identical route and identical notional, measured every five minutes across Mobula, deBridge, Relay, LI.FI and Near Intents.
+seo_description: "Live p50 latency for cross-chain bridge quote APIs. Mobula, deBridge, Relay, LI.FI, Near Intents, Across ranked."
+subtitle: Time to receive a usable cross-chain quote, in milliseconds. Identical route and identical notional, measured every five minutes across Mobula, deBridge, Relay, LI.FI, Near Intents and Across.
 category: Bridges
 status: live
 metric: Quote latency
@@ -221,3 +221,16 @@ providers:
         - region: ap-southeast
           p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="near-intents", region="sgp"}[24h])))
           series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="near-intents", region="sgp"}[1h])))
+
+  - slug: across
+    name: Across
+    tag: Intent layer
+    formula: "Median wall-clock ms over 24h for Across's Swap API to return a usable USDC quote, sampled every 5 minutes across supported routes (Sol to Base, Base to Arb) and 3 notionals from 3 regions (eu-west, us-east, sgp). Arb to Sol excluded: Across does not support destination swaps to Solana."
+    queries:
+      p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="across"}[24h])))
+      p90: histogram_quantile(0.90, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="across"}[24h])))
+      p99: histogram_quantile(0.99, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="across"}[24h])))
+      mean: sum(rate(bridge_quote_latency_ms_sum{bridge="across"}[24h])) / sum(rate(bridge_quote_latency_ms_count{bridge="across"}[24h]))
+      success: avg(avg_over_time(bridge_quote_success{bridge="across"}[24h]))
+      sample_size: sum(increase(bridge_quote_latency_ms_count{bridge="across"}[24h]))
+      series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="across"}[1h])))
