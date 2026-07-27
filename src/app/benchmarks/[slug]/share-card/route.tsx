@@ -130,19 +130,25 @@ function getLogoDataUrl() {
   return _logoDataUrl;
 }
 
+// Satori (the renderer @vercel/og uses under the hood) reliably decodes
+// PNG / JPEG / SVG only. WebP support is spotty across versions and AVIF
+// is unsupported, which crashes the whole ImageResponse render mid-flow
+// with an opaque error instead of just skipping the offending <img>.
+// Observed on ws-head-latency-base whose two providers (dRPC .webp,
+// PublicNode .avif) both fell into the unsupported bucket so all 5
+// templates 500'd. Restrict the data-URL path to the safe formats; the
+// unsafe ones fall through to the initials chip which is deterministic.
 const MIME: Record<string, string> = {
   ".png": "image/png",
   ".jpeg": "image/jpeg",
   ".jpg": "image/jpeg",
   ".svg": "image/svg+xml",
-  ".webp": "image/webp",
-  ".avif": "image/avif",
 };
 
 const _providerLogoCache = new Map<string, string | null>();
-/** Returns a data URL for the registered logo file, or null if missing.
- * Result is cached per slug to avoid hitting the filesystem on every
- * render of the share-card. */
+/** Returns a data URL for the registered logo file, or null if missing
+ * or in a format Satori cannot decode. Result is cached per slug to
+ * avoid hitting the filesystem on every render of the share-card. */
 function getProviderLogoDataUrl(slug: string): string | null {
   if (_providerLogoCache.has(slug)) return _providerLogoCache.get(slug) ?? null;
   const rel = logoPath(slug); // e.g. "/logos/ethereum.png"
@@ -150,9 +156,14 @@ function getProviderLogoDataUrl(slug: string): string | null {
     _providerLogoCache.set(slug, null);
     return null;
   }
+  const mime = MIME[extname(rel).toLowerCase()];
+  if (!mime) {
+    // Unsupported format (.webp / .avif). Fall back to initials chip.
+    _providerLogoCache.set(slug, null);
+    return null;
+  }
   try {
     const buf = readFileSync(join(process.cwd(), "public", rel));
-    const mime = MIME[extname(rel).toLowerCase()] ?? "image/png";
     const url = `data:${mime};base64,${buf.toString("base64")}`;
     _providerLogoCache.set(slug, url);
     return url;
@@ -559,10 +570,50 @@ export async function GET(
   if (regionOption) filters.region = regionOption.value;
   if (venueOption) filters.venue = venueOption.value;
   if (kindOption) filters.kind = kindOption.value;
-  const benchmark =
+  const rawBenchmark =
     Object.keys(filters).length > 0
       ? (await getBenchmark(slug, filters)) ?? aggregate
       : aggregate;
+  // Metric-panel override. Perp-fees and any bench declaring
+  // `metric_panels` in its YAML expose per-provider companion scalars
+  // (e.g. ALL-IN AT $1K / $100K / $1M for perp-fees). The reader picks
+  // one via the on-page ViewSwitcher; the URL carries the choice as
+  // ?view=<panelId>. Without this transformation the exported PNG
+  // always rendered the spec's main metric even though the reader was
+  // clearly staring at a panel — the mismatch was the reported bug.
+  //
+  // Mirrors the panelViewBenchmark logic in benchmark-body.tsx: swap
+  // metric label + unit, remap results[i].ms.p50 to the panel's scalar,
+  // drop providers with no value for this panel, and (for the snapshot
+  // template) swap extras.series24h to the panel's per-provider series
+  // so the 24h chart line follows the panel too.
+  const viewParam = url.searchParams.get("view");
+  const activePanel =
+    viewParam && rawBenchmark.metricPanels
+      ? rawBenchmark.metricPanels.find((p) => p.id === viewParam) ?? null
+      : null;
+  const benchmark = activePanel
+    ? {
+        ...rawBenchmark,
+        metric: activePanel.label,
+        unit: activePanel.unit ?? rawBenchmark.unit,
+        higherIsBetter: activePanel.higherIsBetter,
+        results: rawBenchmark.results
+          .filter(
+            (r) =>
+              activePanel.values[r.slug] != null &&
+              Number.isFinite(activePanel.values[r.slug]),
+          )
+          .map((r) => ({
+            ...r,
+            ms: { ...r.ms, p50: activePanel.values[r.slug] },
+          })),
+        extras: {
+          ...rawBenchmark.extras,
+          series24h: activePanel.seriesByProvider ?? rawBenchmark.extras.series24h,
+        },
+      }
+    : rawBenchmark;
   // Pill label: chain reads cleanest as-is; region / venue / kind get
   // prefixed so a reader glancing at the card understands what slice
   // they are looking at. Concatenated with " · " when multiple filters
@@ -798,7 +849,15 @@ async function renderLeaderboard(
   colors: Map<string, string>,
   chainLabel?: string | null
 ) {
-  const sorted = sortByP50(benchmark);
+  const allSorted = sortByP50(benchmark);
+  // Hard row cap so the last row can't collide with the CardFooter
+  // border in the 630 px canvas. First pass used 10 but Moonbeam (row 10)
+  // still bled into the footer divider on wormhole-vaa-latency (14 chains,
+  // long two-line title). 9 rows + one italic "and N more" line lands
+  // comfortably above the footer even in the worst-case title wrap.
+  const MAX_ROWS = 9;
+  const sorted = allSorted.slice(0, MAX_ROWS);
+  const truncatedCount = Math.max(0, allSorted.length - sorted.length);
   const maxP50 = Math.max(...sorted.map((r) => r.ms.p50)) || 1;
   const subtitleLB = `Ranked by p50 · ${benchmark.metric}.`;
   // Scale down type + spacing when the roster is dense OR the title is
@@ -958,6 +1017,21 @@ async function renderLeaderboard(
                 </div>
               );
             })}
+            {truncatedCount > 0 && (
+              <div
+                style={{
+                  display: "flex",
+                  paddingLeft: 52,
+                  paddingTop: 2,
+                  fontSize: 14,
+                  color: INK_MUTED,
+                  letterSpacing: "0.06em",
+                  fontStyle: "italic",
+                }}
+              >
+                and {truncatedCount} more on openchainbench.com
+              </div>
+            )}
           </div>
         </div>
       </CardShell>
@@ -990,10 +1064,27 @@ async function renderSnapshot(
 
   const chartW = 1086;
   const chartH = 280;
-  const all = seriesList.flatMap((s) => s.values);
-  const min = all.length ? Math.min(...all) : 0;
+  const all = seriesList.flatMap((s) => s.values).filter((v) => v > 0);
+  const rawMin = all.length ? Math.min(...all) : 0;
   const max = all.length ? Math.max(...all) : 1;
+  // Log-scale when the roster spans more than one order of magnitude
+  // (e.g. evm-swap-quote-latency has Mobula at 160 ms next to CoW at
+  // 3.34 s → 20x spread that squashes 4 of 5 lines into a single wiggle
+  // on a linear scale). Mirrors the on-page chart's LOG SCALE toggle.
+  const useLog = rawMin > 0 && max / rawMin >= 10;
+  // Log lower bound sits below the smallest value so that value doesn't
+  // pin to the very bottom edge. Linear keeps the true min so the "min
+  // <n>" caption reads honestly.
+  const min = useLog ? rawMin / 1.4 : rawMin;
   const range = max - min || 1;
+  const logMin = useLog ? Math.log10(min) : 0;
+  const logRange = useLog ? Math.log10(max) - logMin || 1 : 1;
+  const project = (v: number) => {
+    if (useLog && v > 0) {
+      return (Math.log10(v) - logMin) / logRange;
+    }
+    return (v - min) / range;
+  };
   const maxLen = Math.max(...seriesList.map((s) => s.values.length), 1);
 
   return new ImageResponse(
@@ -1080,8 +1171,25 @@ async function renderSnapshot(
                 letterSpacing: "0.06em",
               }}
             >
-              min {fmtUnit(min, benchmark.unit)}
+              min {fmtUnit(rawMin, benchmark.unit)}
             </div>
+            {useLog && (
+              <div
+                style={{
+                  position: "absolute",
+                  right: 10,
+                  top: 6,
+                  display: "flex",
+                  fontSize: 10,
+                  fontFamily: "monospace",
+                  color: INK_FAINT,
+                  letterSpacing: "0.1em",
+                  textTransform: "uppercase",
+                }}
+              >
+                log scale
+              </div>
+            )}
 
             <svg
               width={chartW}
@@ -1093,16 +1201,14 @@ async function renderSnapshot(
                 const points = values
                   .map((v, i) => {
                     const x = (i / Math.max(1, maxLen - 1)) * chartW;
-                    const y =
-                      chartH - ((v - min) / range) * (chartH - 16) - 8;
+                    const y = chartH - project(v) * (chartH - 16) - 8;
                     return `${x.toFixed(2)},${y.toFixed(2)}`;
                   })
                   .join(" ");
                 const last = values[values.length - 1];
                 const lastX =
                   ((values.length - 1) / Math.max(1, maxLen - 1)) * chartW;
-                const lastY =
-                  chartH - ((last - min) / range) * (chartH - 16) - 8;
+                const lastY = chartH - project(last) * (chartH - 16) - 8;
                 return (
                   <g key={slug}>
                     <polyline

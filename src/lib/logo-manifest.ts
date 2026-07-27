@@ -109,18 +109,18 @@ const RAW: Record<string, string> = {
   debridge: "/logos/debridge.svg",
   "near-intents": "/logos/near-intents.svg",
   wormhole: "/logos/wormhole.png",
-  hyperlane: "/logos/hyperlane.webp",
-  layerzero: "/logos/layerzero.webp",
-  axelar: "/logos/axelar.webp",
+  hyperlane: "/logos/hyperlane.png",
+  layerzero: "/logos/layerzero.png",
+  axelar: "/logos/axelar.png",
   // Chainlink CCIP reuses the parent Chainlink brand mark.
   "chainlink-ccip": "/logos/chainlink.svg",
 
   // ─── Public RPC providers ───
-  publicnode: "/logos/publicnode.avif",
+  publicnode: "/logos/publicnode.png",
   infura: "/logos/infura.png",
   ankr: "/logos/ankr.png",
   chainstack: "/logos/chainstack.svg",
-  drpc: "/logos/drpc.webp",
+  drpc: "/logos/drpc.png",
   thirdweb: "/logos/thirdweb.png",
   gelato: "/logos/gelato.svg",
   "1rpc": "/logos/1rpc.svg",
@@ -129,7 +129,7 @@ const RAW: Record<string, string> = {
   polkadot: "/logos/polkadot.png",
   "base-official": "/logos/base.jpeg",
   binance: "/logos/binance.png",
-  lava: "/logos/lava.webp",
+  lava: "/logos/lava.png",
   nodies: "/logos/nodies.png",
   tenderly: "/logos/tenderly.svg",
   tonapi: "/logos/tonapi.png",
@@ -154,7 +154,7 @@ const RAW: Record<string, string> = {
 
   // ─── HyperEVM RPC providers (bench 092) ───
   stakely: "/logos/stakely.svg",
-  hypurrscan: "/logos/hypurrscan.webp",
+  hypurrscan: "/logos/hypurrscan.png",
   purroofgroup: "/logos/purroofgroup.png",
 
   // ─── Cosmos RPC providers (Osmosis + Cosmos Hub + Injective + Neutron benches) ───
@@ -170,7 +170,7 @@ const RAW: Record<string, string> = {
 
   // ─── Gas oracles ───
   etherscan: "/logos/etherscan.svg",
-  owlracle: "/logos/owlracle.webp",
+  owlracle: "/logos/owlracle.png",
   // publicnode-feehistory aliased to publicnode below (same brand)
 
   // ─── Stablecoins ───
@@ -227,7 +227,7 @@ const RAW: Record<string, string> = {
   alchemy: "/logos/alchemy.svg",
   birdeye: "/logos/birdeye.png",
   bitquery: "/logos/bitquery.png",
-  coingecko: "/logos/coingecko.webp",
+  coingecko: "/logos/coingecko.png",
   dune: "/logos/dune.png",
   opensea: "/logos/opensea.svg",
   "pump-portal": "/logos/pump-portal.svg",
@@ -334,7 +334,7 @@ const RAW: Record<string, string> = {
   "ranger-finance": "/logos/ranger-finance.svg",
   senpi: "/logos/senpi.png",
   vibeliquid: "/logos/vibeliquid.svg",
-  superx: "/logos/superx.avif",
+  superx: "/logos/superx.png",
   supurr: "/logos/supurr.svg",
   unigox: "/logos/unigox.svg",
   uxuy: "/logos/uxuy.svg",
