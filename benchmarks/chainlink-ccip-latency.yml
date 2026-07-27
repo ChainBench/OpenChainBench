@@ -44,8 +44,6 @@ abstract: |
   shown here are computed via Prometheus `histogram_quantile` over the
   last 24 hours.
 
-  See cross-chain-messaging-latency for the side-by-side comparison across all four end-to-end protocols on the same shared observation stack.
-
 methodology:
   - "Data source: `https://api.ccip.chain.link/v2/messages?limit=100`, the public CCIP Tools API. Polled every 60 seconds."
   - "Latency definition: `receiptTimestamp - sendTimestamp` from a CCIP message row with `status: SUCCESS`. `sendTimestamp` is the source-chain tx block time; `receiptTimestamp` is the destination-chain execution block time."
@@ -56,7 +54,7 @@ methodology:
   - "Guard: samples with `receiptTimestamp - sendTimestamp < 0` or `> 2h` are dropped (clock skew, stuck messages re-executed later, or timestamp typos)."
   - "No canary transactions: this bench observes organic CCIP traffic (~500 mainnet messages/day across the top corridors). No wallet is funded, no gas is paid."
   - "Scope: CCIP-supported source chains with mainnet traffic in the observation window. Long-tail source chains (0G, ADI, Astar) will show wide error bars or a low sample count."
-  - "Fair-comparison caveat: CCIP intentionally waits for source-chain finality before its DON commits, while some other cross-chain messaging networks (Wormhole, LayerZero) sign pre-finality. Comparing raw end-to-end numbers on ETH-source lanes is not apples-to-apples with those networks; the meta-bench view (cross-chain-messaging-latency) exposes a finality-normalized column that isolates the pure DON+execution work."
+  - "Fair-comparison caveat: CCIP intentionally waits for source-chain finality before its DON commits, while some other cross-chain messaging networks (Wormhole, LayerZero) sign pre-finality. Comparing raw end-to-end numbers on ETH-source lanes is not apples-to-apples with those networks."
 
 findings:
   - "{{best_name}} currently leads Chainlink CCIP end-to-end delivery at {{best_p50}} (source-tx to destination execution p50, 24h) across measured source chains."

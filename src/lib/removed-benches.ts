@@ -91,6 +91,17 @@ export const REMOVED_BENCH_SLUGS = new Set([
   // (Mobula pinned at 100% because it returned the highest raw counts).
   // Spec + harness removed; rebuild needs RPC-derived ground truth.
   "token-trade-coverage",
+  // cross-chain-messaging-latency dropped 2026-07-27: apples-to-oranges
+  // by construction. Each protocol self-reports via its own tracker
+  // (LZ Scan, Axelarscan, Hyperlane Nexus, CCIP Explorer) so there's
+  // no shared methodology, no independent ground truth. On top of that
+  // they don't measure the same thing (Hyperlane instant attestation
+  // vs CCIP structural finality wait) and rolling every source→dest
+  // pair into one p50 hides the story entirely. Spec deleted; the four
+  // per-protocol benches (axelar-gmp-latency, chainlink-ccip-latency,
+  // hyperlane-message-latency, layerzero-message-latency) + wormhole
+  // stay on prod as the honest signal.
+  "cross-chain-messaging-latency",
   // solana-dex-quote-latency (029) held back 2026-07-24: OpenOcean 403s on
   // Railway ASN (Cloudflare block, permanent), Raydium single-venue no-routes
   // on the Pulse V2 bonded-token rotation. Board shows 2 of 4 providers as
