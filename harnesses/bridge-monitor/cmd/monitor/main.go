@@ -458,10 +458,15 @@ func runTierIfViable(executor *Executor, bc *BalanceChecker, slack *SlackNotifie
 			return false
 		}
 
-		// Gas check once per slot: the same balances snapshot already carries
-		// SOL / ETH, and an execution without gas fails later anyway.
-		if i == 0 {
-			gasTopper.CheckAndTopUp(balances)
+		// Gas check at every rung: the tier guard uses the rung amount, so a
+		// smaller tier may unlock a top-up that $300 could not afford. A chain
+		// with blocked gas will fail the TX anyway — skip the rung cleanly.
+		if !gasTopper.CheckAndTopUp(balances, amount) {
+			log.Printf("Tier $%.0f skipped: gas blocked on at least one triangle chain", amount)
+			if blockedReason == "" {
+				blockedReason = "insufficient native gas after top-up attempt"
+			}
+			continue
 		}
 
 		sim := SimulateTriangleCycle(balances, amount)
