@@ -322,7 +322,9 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // unknown_slug and the page renders "data warming up" despite fresh
   // Jupiter/Mobula runtime numbers in citable. Bench SET unchanged; the
   // bump is purely to invalidate the stale editorialStatus.
-  ["bench-unfiltered-v52", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v53: overlayEditorial now prunes providers absent from spec.providers.
+  // Bump to flush v52 cached entries that still carry stale Flashbots row.
+  ["bench-unfiltered-v53", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -533,7 +535,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v50: staging pipeline shuffle (see bench-unfiltered-v47).
   // v51: add bench 102 token-quote-coverage (draft, see bench-unfiltered-v48).
   // v52: token-quote-coverage flipped draft→live (see bench-unfiltered-v49).
-  ["all-benchmarks-v55", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v53: lockstep with bench-unfiltered-v53 (Flashbots prune).
+  ["all-benchmarks-v56", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);

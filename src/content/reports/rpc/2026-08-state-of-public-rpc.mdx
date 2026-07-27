@@ -80,7 +80,11 @@ On Arbitrum, Base, and Optimism, the picture is different. The foundation-operat
 
 <StatTable bench="arbitrum-rpc" caption="Arbitrum RPC: foundation vs specialist endpoints." />
 
+<RegionWinners bench="arbitrum-rpc" />
+
 <StatTable bench="base-rpc" caption="Base RPC providers. Third-party providers systematically outperform mainnet.base.org on both latency and reliability." />
+
+<RegionWinners bench="base-rpc" />
 
 The official foundation endpoints typically trail behind third-party specialist providers on success rate across Arbitrum, Base, and Optimism. The cause is capacity. Foundation endpoints are maintained to be accessible, not to be fast. They are sized for the long tail of infrequent callers, not for continuous probing or indexing traffic. The specialist providers that sell dedicated nodes keep their free tier competitive because it feeds developer acquisition — a different incentive from the throttle-toward-paid dynamic that degrades endpoints whose paid base is already large enough to not care about free-tier quality.
 
