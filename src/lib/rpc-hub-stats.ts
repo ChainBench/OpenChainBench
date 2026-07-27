@@ -44,6 +44,19 @@ export const RPC_REGION_KEYS: readonly RpcRegionKey[] = [
   "sgp",
 ] as const;
 
+/** `-rpc`-suffixed bench slugs that are NOT chain leaderboards and must
+ *  never be pivoted into the /rpc cross-chain matrix. Right now this is
+ *  bench 074 mev-protect-rpc, which measures MEV-protection endpoints
+ *  (Flashbots, MEV Blocker, Blink, bloXroute, etc.) on the same probe
+ *  methodology but as a distinct category — same JSON-RPC surface, a
+ *  different SLA (send-tx privacy vs read speed), and pooling it with
+ *  the per-chain public-read cluster would list "MEV Protect" as if it
+ *  were a chain. Extend this set for future category `-rpc` benches
+ *  (e.g. gateway-rpc, private-mempool-rpc). */
+export const NON_CHAIN_RPC_SLUGS: ReadonlySet<string> = new Set([
+  "mev-protect-rpc",
+]);
+
 export type RpcRegionBest = {
   provider: string;
   providerName: string;
@@ -393,7 +406,7 @@ export async function buildRpcHubSnapshotFresh(): Promise<RpcHubSnapshot | null>
   if (!storeConfigured()) return null;
   const specs = await loadSpecsUncached();
   const rpcSpecs = specs
-    .filter((s) => s.slug.endsWith("-rpc"))
+    .filter((s) => s.slug.endsWith("-rpc") && !NON_CHAIN_RPC_SLUGS.has(s.slug))
     .sort((a, b) => a.slug.localeCompare(b.slug));
   if (rpcSpecs.length === 0) return null;
 
@@ -491,7 +504,7 @@ const fetchRpcHubCached = unstable_cache(
   //   Snapshot has all 44 chains + best=YES, but ChainRpcSection was returning
   //   null on every /chains/<slug> render (Fastest public RPC on <chain> text
   //   missing prod-wide). Bump busts the stuck v4 entry.
-  ["rpc-hub-cohort-v5", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  ["rpc-hub-cohort-v6", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 60, tags: ["rpc-cohort"] },
 );
 
