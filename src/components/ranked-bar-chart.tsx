@@ -130,7 +130,10 @@ export function RankedBarChart({
 
   return (
     <figure className="relative my-2" ref={figureRef}>
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3 min-h-7">
+      <div
+        data-chart-export-omit="true"
+        className="mb-3 flex flex-wrap items-center justify-between gap-3 min-h-7"
+      >
         <p className="inline-flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
           <LiveDot />
           <span>{benchmark.metric} · last 24 hours</span>
@@ -152,7 +155,10 @@ export function RankedBarChart({
           {headerActions}
         </div>
       </div>
-      <div className="mb-4 flex flex-wrap items-center justify-end gap-1">
+      <div
+        data-chart-export-omit="true"
+        className="mb-4 flex flex-wrap items-center justify-end gap-1"
+      >
         <TopNSelector value={topN} options={topNOptions} onChange={setTopN} />
       </div>
       <ul className="space-y-2">

@@ -798,7 +798,14 @@ async function renderLeaderboard(
   colors: Map<string, string>,
   chainLabel?: string | null
 ) {
-  const sorted = sortByP50(benchmark);
+  const allSorted = sortByP50(benchmark);
+  // Hard row cap so the last row can't collide with the CardFooter
+  // border in the 630 px canvas (observed on wormhole-vaa-latency with
+  // 14 chains: Moonbeam overprinted the "OPENCHAINBENCH.COM · No 101"
+  // divider). If truncated, an "and N more" line is appended below.
+  const MAX_ROWS = 10;
+  const sorted = allSorted.slice(0, MAX_ROWS);
+  const truncatedCount = Math.max(0, allSorted.length - sorted.length);
   const maxP50 = Math.max(...sorted.map((r) => r.ms.p50)) || 1;
   const subtitleLB = `Ranked by p50 · ${benchmark.metric}.`;
   // Scale down type + spacing when the roster is dense OR the title is
@@ -958,6 +965,21 @@ async function renderLeaderboard(
                 </div>
               );
             })}
+            {truncatedCount > 0 && (
+              <div
+                style={{
+                  display: "flex",
+                  paddingLeft: 52,
+                  paddingTop: 2,
+                  fontSize: 14,
+                  color: INK_MUTED,
+                  letterSpacing: "0.06em",
+                  fontStyle: "italic",
+                }}
+              >
+                and {truncatedCount} more on openchainbench.com
+              </div>
+            )}
           </div>
         </div>
       </CardShell>

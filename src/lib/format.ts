@@ -107,6 +107,12 @@ export function fmtUnit(value: number, unit: string) {
     if (abs < 1000) return `$${value.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
     return `$${formatCompactCount(value)}`;
   }
+  // Auto-flip to minutes at 60 s and to seconds at 1 s, mirroring the
+  // suffix returned by unitSuffix(). Without the min flip, wormhole-
+  // vaa-latency ranking cards rendered "858.79 min" for what was really
+  // 14.3 min (858.79 s), because fmtValue stripped the trailing " s" that
+  // fmtUnit produced but unitSuffix independently returned " min".
+  if (value >= 60000) return `${(value / 60000).toFixed(1)} min`;
   if (value >= 1000) return `${(value / 1000).toFixed(2)} s`;
   // Sub-millisecond values keep one decimal: pm-data-freshness's 0.5 ms
   // anchor rendered "1 ms", contradicting the 0.5 published by the
