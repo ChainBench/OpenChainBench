@@ -110,7 +110,6 @@ const RAW: Record<string, string> = {
   "near-intents": "/logos/near-intents.svg",
   squid: "/logos/squid.svg",
   socket: "/logos/socket.webp",
-  mayan: "/logos/mayan.svg",
   wormhole: "/logos/wormhole.png",
   hyperlane: "/logos/hyperlane.png",
   layerzero: "/logos/layerzero.png",
