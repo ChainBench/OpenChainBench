@@ -24,6 +24,11 @@ dimensions:
     - { value: Arbitrum,  label: Base to Arb }
     - { value: Solana,    label: Arb to Sol }
     - { value: HyperCore, label: Arb to HyperCore }
+  region:
+    - { value: all,     label: All regions }
+    - { value: eu-west, label: EU-West }
+    - { value: us-east, label: US-East }
+    - { value: sgp,     label: Singapore }
 
 seo_intro: |
   This benchmark measures how fast each cross-chain bridge quote API
@@ -32,14 +37,15 @@ seo_intro: |
   flow into a wallet, an aggregator or a chat-app care about the same
   number every public roundup ignores. how many milliseconds the API
   burns before the user sees a price. We hammer the same USDC routes
-  (Solana, Base, Arbitrum) against every bridge from a single eu-west
-  point, every five minutes, on three notional sizes. p50, p90 and p99
-  are computed via Prometheus `histogram_quantile` over the 24-hour
-  window, so the leaderboard reflects sustained API performance, not a
-  lucky cold-start. The same harness records failure mode for every
-  request (quote_failed, unsupported route, timeout) and keeps it out
-  of the latency aggregate, surfacing it as success rate instead so
-  that a fast-but-broken provider cannot game the headline number.
+  (Solana, Base, Arbitrum) against every bridge from three geographic
+  origins (EU-West, US-East, Singapore), every five minutes, on three
+  notional sizes. p50, p90 and p99 are computed via Prometheus
+  `histogram_quantile` over the 24-hour window, so the leaderboard
+  reflects sustained API performance, not a lucky cold-start. The same
+  harness records failure mode for every request (quote_failed,
+  unsupported route, timeout) and keeps it out of the latency aggregate,
+  surfacing it as success rate instead so that a fast-but-broken provider
+  cannot game the headline number.
 
 abstract: |
   We benchmark how long the major bridge APIs take to return a usable
@@ -53,7 +59,7 @@ methodology:
   - "Routes: USDC pairs spanning Solana, Base and Arbitrum."
   - "Notional sizes: $5, $50, $300 per quote."
   - "Cadence: full sweep (4 routes × 3 amounts × N bridges) every 5 minutes for 24 hours."
-  - "Region: eu-west. Single point of measurement; multi-region requires running additional monitor instances."
+  - "Regions: eu-west, us-east, sgp. Three independent instances probe simultaneously; the All-regions aggregate uses the full union; per-region tabs isolate the view to one origin."
   - "Histogram buckets: 10, 25, 50, 100, 200, 500, 1000, 2000, 5000, 10000 ms. Sub-50ms buckets added 2026-07-13 so solver-cached fast paths (Near Intents on HyperCore in particular) surface their true p50 instead of being floored at the interpolation of the (0, 50] bucket."
   - "Failures (quote_failed, execution_failed, unsupported route) excluded from latency aggregates and counted toward success rate."
 
@@ -89,7 +95,7 @@ faq:
   - q: "Are intent and relay bridges always faster than aggregators?"
     a: "On a single-route query, usually. Intent layers like Relay quote against a pool of pre-positioned solvers, so the API is a thin price-discovery call. Aggregators like LI.FI run a route-search graph over N underlying bridges per request, which adds 100 to 400 ms of irreducible work. On multi-hop or rare-corridor queries the aggregator advantage in coverage matters more than the latency gap, and the comparison flips."
   - q: "How does OpenChainBench measure bridge quote latency?"
-    a: "The harness issues identical quote requests against every bridge for the same route and notional, every five minutes, from a single eu-west origin. Each request times wall-clock duration from send to last byte received, then publishes a Prometheus histogram (10, 25, 50, 100, 200, 500, 1000, 2000, 5000, 10000 ms buckets). p50, p90 and p99 are derived via `histogram_quantile` over a rolling 24-hour window. Errored quotes (quote_failed, unsupported route, timeout) are excluded from the latency aggregate and counted toward success rate so a fast-but-broken bridge cannot game the headline."
+    a: "The harness issues identical quote requests against every bridge for the same route and notional, every five minutes, from three origins (eu-west, us-east, sgp) simultaneously. Each request times wall-clock duration from send to last byte received, then publishes a Prometheus histogram (10, 25, 50, 100, 200, 500, 1000, 2000, 5000, 10000 ms buckets). p50, p90 and p99 are derived via `histogram_quantile` over a rolling 24-hour window. Errored quotes (quote_failed, unsupported route, timeout) are excluded from the latency aggregate and counted toward success rate so a fast-but-broken bridge cannot game the headline."
   - q: "Does quote latency affect the price the user gets?"
     a: "Indirectly, yes. A slower quote API leaves a larger window between the moment the price is quoted and the moment the user signs. On volatile corridors the underlying spot can drift in that window, which surfaces as a quoted-vs-realized gap. Intent layers compensate by re-quoting at signing time; aggregators usually pass through a slippage parameter. The fee benchmark on this site (`/benchmarks/bridge-fee`) measures the realized cost; this page measures the latency half of the same flow."
 
@@ -104,7 +110,7 @@ providers:
   - slug: mobula
     name: Mobula
     tag: Aggregator + intent layer
-    formula: "Median wall-clock ms over 24h for Mobula's quote API to return a usable USDC route, sampled every 5 minutes across 4 routes and 3 notionals from eu-west."
+    formula: "Median wall-clock ms over 24h for Mobula's quote API to return a usable USDC route, sampled every 5 minutes across 4 routes and 3 notionals from 3 regions (eu-west, us-east, sgp)."
     queries:
       p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="mobula"}[24h])))
       p90: histogram_quantile(0.90, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="mobula"}[24h])))
@@ -113,11 +119,21 @@ providers:
       success: avg(avg_over_time(bridge_quote_success{bridge="mobula"}[24h]))
       sample_size: sum(increase(bridge_quote_latency_ms_count{bridge="mobula"}[24h]))
       series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="mobula"}[1h])))
+      regions:
+        - region: eu-west
+          p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="mobula", region="eu-west"}[24h])))
+          series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="mobula", region="eu-west"}[1h])))
+        - region: us-east
+          p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="mobula", region="us-east"}[24h])))
+          series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="mobula", region="us-east"}[1h])))
+        - region: ap-southeast
+          p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="mobula", region="sgp"}[24h])))
+          series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="mobula", region="sgp"}[1h])))
 
   - slug: relay
     name: Relay
     tag: Cross-chain relay
-    formula: "Median wall-clock ms over 24h for Relay's solver-quote API to return a usable USDC route, sampled every 5 minutes across 4 routes and 3 notionals from eu-west."
+    formula: "Median wall-clock ms over 24h for Relay's solver-quote API to return a usable USDC route, sampled every 5 minutes across 4 routes and 3 notionals from 3 regions (eu-west, us-east, sgp)."
     queries:
       p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="relay"}[24h])))
       p90: histogram_quantile(0.90, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="relay"}[24h])))
@@ -126,11 +142,21 @@ providers:
       success: avg(avg_over_time(bridge_quote_success{bridge="relay"}[24h]))
       sample_size: sum(increase(bridge_quote_latency_ms_count{bridge="relay"}[24h]))
       series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="relay"}[1h])))
+      regions:
+        - region: eu-west
+          p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="relay", region="eu-west"}[24h])))
+          series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="relay", region="eu-west"}[1h])))
+        - region: us-east
+          p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="relay", region="us-east"}[24h])))
+          series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="relay", region="us-east"}[1h])))
+        - region: ap-southeast
+          p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="relay", region="sgp"}[24h])))
+          series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="relay", region="sgp"}[1h])))
 
   - slug: lifi
     name: LI.FI
     tag: Aggregator
-    formula: "Median wall-clock ms over 24h for LI.FI's route-search API to return a usable USDC route across underlying bridges, sampled every 5 minutes across 4 routes and 3 notionals from eu-west."
+    formula: "Median wall-clock ms over 24h for LI.FI's route-search API to return a usable USDC route across underlying bridges, sampled every 5 minutes across 4 routes and 3 notionals from 3 regions (eu-west, us-east, sgp)."
     queries:
       p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="lifi"}[24h])))
       p90: histogram_quantile(0.90, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="lifi"}[24h])))
@@ -139,11 +165,21 @@ providers:
       success: avg(avg_over_time(bridge_quote_success{bridge="lifi"}[24h]))
       sample_size: sum(increase(bridge_quote_latency_ms_count{bridge="lifi"}[24h]))
       series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="lifi"}[1h])))
+      regions:
+        - region: eu-west
+          p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="lifi", region="eu-west"}[24h])))
+          series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="lifi", region="eu-west"}[1h])))
+        - region: us-east
+          p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="lifi", region="us-east"}[24h])))
+          series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="lifi", region="us-east"}[1h])))
+        - region: ap-southeast
+          p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="lifi", region="sgp"}[24h])))
+          series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="lifi", region="sgp"}[1h])))
 
   - slug: debridge
     name: deBridge
     tag: Native-token fees
-    formula: "Median wall-clock ms over 24h for deBridge's direct-protocol quote API to return a single-route USDC quote, sampled every 5 minutes across 4 routes and 3 notionals from eu-west."
+    formula: "Median wall-clock ms over 24h for deBridge's direct-protocol quote API to return a single-route USDC quote, sampled every 5 minutes across 4 routes and 3 notionals from 3 regions (eu-west, us-east, sgp)."
     queries:
       p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="debridge"}[24h])))
       p90: histogram_quantile(0.90, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="debridge"}[24h])))
@@ -152,11 +188,21 @@ providers:
       success: avg(avg_over_time(bridge_quote_success{bridge="debridge"}[24h]))
       sample_size: sum(increase(bridge_quote_latency_ms_count{bridge="debridge"}[24h]))
       series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="debridge"}[1h])))
+      regions:
+        - region: eu-west
+          p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="debridge", region="eu-west"}[24h])))
+          series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="debridge", region="eu-west"}[1h])))
+        - region: us-east
+          p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="debridge", region="us-east"}[24h])))
+          series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="debridge", region="us-east"}[1h])))
+        - region: ap-southeast
+          p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="debridge", region="sgp"}[24h])))
+          series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="debridge", region="sgp"}[1h])))
 
   - slug: near-intents
     name: Near Intents
     tag: Intent layer (NEAR)
-    formula: "Median wall-clock ms over 24h for Near Intents 1Click API to return a usable USDC quote via the solver auction bus, sampled every 5 minutes across the supported routes and 3 notionals from eu-west."
+    formula: "Median wall-clock ms over 24h for Near Intents 1Click API to return a usable USDC quote via the solver auction bus, sampled every 5 minutes across the supported routes and 3 notionals from 3 regions (eu-west, us-east, sgp)."
     queries:
       p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="near-intents"}[24h])))
       p90: histogram_quantile(0.90, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="near-intents"}[24h])))
@@ -165,3 +211,13 @@ providers:
       success: avg(avg_over_time(bridge_quote_success{bridge="near-intents"}[24h]))
       sample_size: sum(increase(bridge_quote_latency_ms_count{bridge="near-intents"}[24h]))
       series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="near-intents"}[1h])))
+      regions:
+        - region: eu-west
+          p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="near-intents", region="eu-west"}[24h])))
+          series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="near-intents", region="eu-west"}[1h])))
+        - region: us-east
+          p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="near-intents", region="us-east"}[24h])))
+          series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="near-intents", region="us-east"}[1h])))
+        - region: ap-southeast
+          p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="near-intents", region="sgp"}[24h])))
+          series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="near-intents", region="sgp"}[1h])))

@@ -70,11 +70,11 @@ export default async function BridgeHubPage() {
           Cross-chain bridge benchmarks, live.
         </h1>
         <p className="mt-4 max-w-2xl text-base sm:text-lg text-ink-soft leading-snug">
-          Two live benches, sampled every five minutes from eu-west. One
-          measures the all-in cost of bridging $300 USDC across four
-          Solana/Base/Arbitrum/HyperCore corridors. The other measures
-          how fast each bridge returns a usable quote. Same corridors,
-          same notional, same origin.
+          Two live benches, sampled every five minutes from three regions
+          (EU-West, US-East, Singapore). One measures the all-in cost of
+          bridging $300 USDC across four Solana/Base/Arbitrum/HyperCore
+          corridors. The other measures how fast each bridge returns a
+          usable quote from each origin. Same corridors, same notional.
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-2 text-[12px]">
           <Link
