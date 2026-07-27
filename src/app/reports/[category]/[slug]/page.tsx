@@ -275,11 +275,8 @@ export default async function ReportPage({ params }: Props) {
           <p className="label-mono text-[10px] uppercase tracking-[0.22em] text-ink-muted text-center mb-5">
             Key finding
           </p>
-          <p
-            className="text-2xl sm:text-[1.9rem] leading-[1.2] text-ink italic text-center max-w-[560px] mx-auto"
-            style={SERIF}
-          >
-            &ldquo;{report.heroFinding}&rdquo;
+          <p className="display text-2xl sm:text-[2rem] leading-[1.15] text-ink text-center max-w-[580px] mx-auto font-bold tracking-tight">
+            {report.heroFinding}
           </p>
         </div>
 
