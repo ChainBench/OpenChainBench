@@ -51,6 +51,7 @@ methodology:
   - "Coverage: mev_rpc_methods_supported counts the wallet methods served on the last tick (max 7) per chain. Flashbots rejects eth_call on the public endpoint; Blink blocks full-node reads like eth_getBlockByNumber, which keeps it off the general RPC benches but not off this one."
   - "Out of scope, disclosed: inclusion rate, refund economics and sandwich protection efficacy are the write path and require funded transactions. See the arXiv study Private MEV Protection RPCs (2505.19708) for a one-off execution-quality comparison."
   - "Success rate counts transport failures only (timeouts, throttling, network); a method a gateway refuses by policy is a coverage gap shown in the coverage panel, not an outage. Failures increment mev_rpc_call_total{result}; the gauge keeps its last value so the chart shows the outage in the success column rather than a fake zero."
+  - "Scope discipline: this bench is deliberately kept off the /rpc chain leaderboard. The per-chain RPCs cluster (ethereum-rpc, base-rpc, bsc-rpc) ranks public read gateways on eth_getBlockByNumber latency. Ranking Flashbots Protect against PublicNode on that axis would flatter the wrong SLA: Flashbots is optimised for send-tx privacy, PublicNode for read speed. MEV protect gateways live here, ranked against each other on the read-path wallets actually feel."
 
 findings:
   - "{{best_name}} leads at {{best_p50}} (p50, 24h) on the cross-region wallet call median over {{count}} measured gateways."
@@ -77,6 +78,8 @@ faq:
     a: "All three route your transactions away from the public mempool to prevent sandwich attacks, and they monetize the order flow differently: refunds shared with users (MEV Blocker pays a share of backrun value), enterprise deals with wallets (Blink powers Ledger and sells through the QuickNode marketplace), or the Flashbots auction. This page compares the part of the product you can verify from outside: the latency and coverage of the read gateway your wallet talks to all day."
   - q: "Why is inclusion rate not on this benchmark?"
     a: "Measuring inclusion or refunds requires signing and funding real transactions on every gateway around the clock, which is expensive and hard to keep neutral. The one rigorous comparison of that layer is a one-off academic study (arXiv 2505.19708). This benchmark tracks the layer that can be measured continuously and keyless, and says so instead of extrapolating."
+  - q: "Why is Flashbots not on the ethereum-rpc leaderboard?"
+    a: "Because ranking it against PublicNode or Cloudflare on eth_getBlockByNumber latency would flatter the wrong axis. The /rpc cluster ranks public read gateways on read speed; Flashbots Protect and the rest of this cohort are optimised for send-tx privacy and refunds. Same JSON-RPC surface, different SLA, and mixing them would either penalise the protect gateways for the read hop they add or reward them for a metric their users do not choose them on. They score against each other here instead, on the wallet method set that actually matters once you set them as default."
 
 # Per-region badge scoping, same alias pattern as the other RPC benches:
 # the harness emits `provider`, the badge infra expects `provider`.
