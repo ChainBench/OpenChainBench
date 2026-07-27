@@ -603,25 +603,18 @@ export function BenchmarkBody({
     !hlArchiveCache[longRangeKey]
   );
 
-  if (!benchmark || !viewBenchmark) return null;
-
-  const pendingCls = variantPending
-    ? " opacity-40 animate-pulse pointer-events-none"
-    : "";
-  const pendingLabel = [effectiveChain, effectiveRegion, effectiveKind]
-    .filter((v): v is string => !!v && v !== "all")
-    .join(" · ");
-  const isDraft = viewBenchmark.status === "draft";
-  const { fieldMin, fieldMedian, fieldMax, tailMin, tailMax, tailSpread } =
-    computeFieldStats(viewBenchmark.results);
-  const activePanel =
-    benchmark.metricPanels?.find((p) => p.id === activePanelId) ?? null;
   // Value views (ranked bars) swap each provider's headline p50 for the
   // active panel's scalar so the size tabs work on the default chart,
   // not only on the timeseries view. Providers the panel has no value
   // for (book could not fill the tier) drop out of the ranking, which
   // is the skipped-not-extrapolated rule made visible.
+  //
+  // Kept ABOVE the `if (!benchmark || !viewBenchmark) return null` early
+  // return so this useMemo is called on every render (rules-of-hooks).
+  const activePanel =
+    benchmark?.metricPanels?.find((p) => p.id === activePanelId) ?? null;
   const panelViewBenchmark = useMemo(() => {
+    if (!viewBenchmark) return null;
     if (!activePanel) return viewBenchmark;
     const vals = activePanel.values ?? {};
     return {
@@ -633,6 +626,18 @@ export function BenchmarkBody({
         .map((r) => ({ ...r, ms: { ...r.ms, p50: vals[r.slug] } })),
     };
   }, [viewBenchmark, activePanel]);
+
+  if (!benchmark || !viewBenchmark || !panelViewBenchmark) return null;
+
+  const pendingCls = variantPending
+    ? " opacity-40 animate-pulse pointer-events-none"
+    : "";
+  const pendingLabel = [effectiveChain, effectiveRegion, effectiveKind]
+    .filter((v): v is string => !!v && v !== "all")
+    .join(" · ");
+  const isDraft = viewBenchmark.status === "draft";
+  const { fieldMin, fieldMedian, fieldMax, tailMin, tailMax, tailSpread } =
+    computeFieldStats(viewBenchmark.results);
 
   const sharedHeaderActions = (
     <>

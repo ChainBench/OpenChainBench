@@ -55,21 +55,30 @@ export function LiveNumber({
   const prevRef = useRef<{ value: number; ts: number } | null>(null);
   const rafRef = useRef<number | null>(null);
 
+  // Render-time reset when the incoming value exceeds the ceiling AND
+  // the displayed value is already poisoned. React allows setState during
+  // render on the same component, and moving this out of the effect
+  // avoids the react-hooks/set-state-in-effect rule while keeping the
+  // same "flush poison before a healthy push seeds fresh" behavior.
+  if (
+    value != null &&
+    maxValue != null &&
+    value > maxValue &&
+    display != null &&
+    display > maxValue
+  ) {
+    setDisplay(undefined);
+  }
+
   useEffect(() => {
     if (value == null || !Number.isFinite(value)) return;
     if (maxValue != null && value > maxValue) {
-      // Flush a poisoned lastRef AND the displayed value so a healthy
-      // push can seed the ticker fresh on the next tick. Without
-      // resetting `display`, the monotonic guard below would keep
-      // rejecting the healthy value as smaller than the garbage still
-      // shown to the user.
+      // Flush a poisoned lastRef so a healthy push can seed the ticker
+      // fresh on the next tick.
       if (lastRef.current && lastRef.current.value > maxValue) {
         lastRef.current = null;
         prevRef.current = null;
       }
-      setDisplay((d) =>
-        d != null && maxValue != null && d > maxValue ? undefined : d,
-      );
       return;
     }
     const now = performance.now();

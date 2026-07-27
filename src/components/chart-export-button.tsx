@@ -81,10 +81,15 @@ export function ChartExportButton({
       cacheBust: true,
       skipFonts: false,
       // Drop the export button itself from the capture — no point
-      // baking the "Copy" pill into every screenshot.
+      // baking the "Copy" pill into every screenshot. Also drop any
+      // element marked with data-chart-export-omit (e.g. the chart's
+      // header metadata row and the Top-N selector) so the exported
+      // PNG focuses on the plot itself, not the interactive UI chrome.
       filter: (node) => {
         if (!(node instanceof HTMLElement)) return true;
-        return !node.dataset.chartExportButton;
+        if (node.dataset.chartExportButton) return false;
+        if (node.dataset.chartExportOmit) return false;
+        return true;
       },
       style: { boxShadow: "none" },
     });
