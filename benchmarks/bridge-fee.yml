@@ -222,17 +222,3 @@ providers:
       success: avg(avg_over_time(bridge_quote_success{bridge="socket", amount_usd="300"}[24h]))
       sample_size: sum(count_over_time(bridge_cost_percent{bridge="socket", amount_usd="300"}[24h]))
       series: avg_over_time(bridge_cost_percent{bridge="socket", amount_usd="300"}[1h])
-
-  - slug: mayan
-    name: Mayan Finance
-    tag: Intent layer (Wormhole)
-    formula: "All-in cost percent p50 over 24h on a $300 USDC quote from Mayan Finance's v3 Swift API, Solana corridors only (Sol to Base, Arb to Sol). Cost = input minus expectedAmountOut."
-    type: intent
-    queries:
-      p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="mayan", amount_usd="300"}[24h]))
-      p90: avg(quantile_over_time(0.90, bridge_cost_percent{bridge="mayan", amount_usd="300"}[24h]))
-      p99: avg(quantile_over_time(0.99, bridge_cost_percent{bridge="mayan", amount_usd="300"}[24h]))
-      mean: avg(avg_over_time(bridge_cost_percent{bridge="mayan", amount_usd="300"}[24h]))
-      success: avg(avg_over_time(bridge_quote_success{bridge="mayan", amount_usd="300"}[24h]))
-      sample_size: sum(count_over_time(bridge_cost_percent{bridge="mayan", amount_usd="300"}[24h]))
-      series: avg_over_time(bridge_cost_percent{bridge="mayan", amount_usd="300"}[1h])
