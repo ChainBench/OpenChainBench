@@ -260,6 +260,23 @@ export function BenchmarkBody({
   const [kind, setKind] = useState<string | null>(resolvedInitialKind);
   const [venue, setVenue] = useState<string | null>(resolvedInitialVenue);
   const [layer, setLayer] = useState<ProviderLayer>(resolvedInitialLayer);
+  // Active companion-metric panel. null = main spec metric (default chart
+  // data, default unit, default header). When a panel id is set, the
+  // chart pulls its per-provider series from panel.seriesByProvider,
+  // swaps the header label to panel.label, and the Y-axis unit to
+  // panel.unit. Hydrated from ?view=<id> so the share-card / video
+  // exporters (which read window.location) can reproduce the reader's
+  // current view; the URL-sync useEffect below writes the reverse trip.
+  // Validity is checked against the initial variant map; a stale ?view=
+  // (e.g. panel dropped from the spec between deploys) falls back to
+  // null instead of pinning an invalid id.
+  const urlView = searchParams.get("view");
+  const [activePanelId, setActivePanelId] = useState<string | null>(() => {
+    if (!urlView) return null;
+    const seedPanels =
+      Object.values(variants)[0]?.metricPanels ?? [];
+    return seedPanels.some((p) => p.id === urlView) ? urlView : null;
+  });
 
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -270,11 +287,15 @@ export function BenchmarkBody({
     // Layer param: drop when default ("l1"), keep when user picked l2.
     if (layer === "l1") url.searchParams.delete("layer");
     else url.searchParams.set("layer", layer);
+    // View param: metric-panel selection. null = main spec metric =
+    // no param (canonical URL stays clean when no view has been picked).
+    if (activePanelId) url.searchParams.set("view", activePanelId);
+    else url.searchParams.delete("view");
     const next = url.pathname + (url.search ? url.search : "");
     if (next !== window.location.pathname + window.location.search) {
       window.history.replaceState(null, "", next);
     }
-  }, [chain, region, kind, venue, layer, chainOptions, regionOptions, kindOptions, venueOptions]);
+  }, [chain, region, kind, venue, layer, activePanelId, chainOptions, regionOptions, kindOptions, venueOptions]);
 
   const fallbackChain = chainOptions[0]?.value ?? null;
   const fallbackRegion = regionOptions[0]?.value ?? null;
@@ -479,11 +500,9 @@ export function BenchmarkBody({
   const showChartRegionRow = regionOptions.length === 0 && chartRegions.length > 1;
   const [chartRegion, setChartRegion] = useState<string>("all");
 
-  // Active companion-metric panel. null = main spec metric (default chart
-  // data, default unit, default header). When a panel id is set, the chart
-  // pulls its per-provider series from panel.seriesByProvider, swaps the
-  // header label to panel.label, and the Y-axis unit to panel.unit.
-  const [activePanelId, setActivePanelId] = useState<string | null>(null);
+  // activePanelId is declared earlier (before the URL-sync effect) so
+  // ?view=<id> stays in lockstep with chain / region / kind / venue in
+  // replaceState. See the initializer above.
   // Single Top-N value shared across every chart view AND the ledger
   // so a reader who picks "Top 5" sees the same 5 providers in every
   // surface. Each chart still computes its own option set off its own

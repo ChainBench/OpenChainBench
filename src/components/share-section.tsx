@@ -95,6 +95,21 @@ export function ShareSection({ slug, title, benchmark, chain }: Props) {
   }, [benchmark]);
   const hasAnyDim = Object.keys(dimOptions).length > 0;
 
+  // Metric-panel options. Benches like perp-fees expose companion
+  // scalars via `metricPanels` (e.g. ALL-IN AT $1K / $100K / $1M).
+  // The on-page ViewSwitcher writes ?view=<id>; the modal reads the
+  // same URL on open and lets the reader retarget the export to any
+  // panel without leaving the dashboard. Dropped when the spec has 0
+  // or 1 panels (a single-view bench doesn't need the picker at all).
+  const panelOptions = useMemo(
+    () =>
+      (benchmark.metricPanels ?? [])
+        .filter((p) => p.tab !== false)
+        .map((p) => ({ value: p.id, label: p.label })),
+    [benchmark],
+  );
+  const hasPanels = panelOptions.length > 0;
+
   // Scope state: one entry per SCOPE_DIMS. Default is "all" per dim.
   // Re-seeded from window.location every time the modal opens, so the
   // dropdowns start on whatever the reader was filtering on the
@@ -106,6 +121,10 @@ export function ShareSection({ slug, title, benchmark, chain }: Props) {
     venue: ALL_VALUE,
     kind: ALL_VALUE,
   });
+  // View (metric panel) state, orthogonal to SCOPE_DIMS. ALL_VALUE
+  // means "main spec metric" (no ?view= param). Re-seeded on open like
+  // the scope dropdowns.
+  const [panelView, setPanelView] = useState<string>(ALL_VALUE);
   // Re-seed scope from URL on each open transition. Uses the "adjust
   // state during render on transition" pattern instead of a useEffect
   // (react-hooks/set-state-in-effect flags synchronous setState calls
@@ -137,6 +156,12 @@ export function ShareSection({ slug, title, benchmark, chain }: Props) {
         }
       }
       setScope(next);
+      const urlView = url.searchParams.get("view");
+      if (urlView && panelOptions.some((o) => o.value === urlView)) {
+        setPanelView(urlView);
+      } else {
+        setPanelView(ALL_VALUE);
+      }
     }
   }
 
@@ -216,6 +241,9 @@ export function ShareSection({ slug, title, benchmark, chain }: Props) {
       if (val && val !== ALL_VALUE) {
         dimParams.push(`&${dim}=${encodeURIComponent(val)}`);
       }
+    }
+    if (panelView && panelView !== ALL_VALUE) {
+      dimParams.push(`&view=${encodeURIComponent(panelView)}`);
     }
     // Mirror the active site theme so the exported PNG matches what the
     // user is looking at. SSR can't read the dark state - default to light
@@ -304,22 +332,26 @@ export function ShareSection({ slug, title, benchmark, chain }: Props) {
           Pick a layout and download a 1200×630 PNG ready for Twitter, Reddit, LinkedIn or any OG-card embed. Same data, same colors as this dashboard.
         </p>
 
-        {hasAnyDim && (
+        {(hasAnyDim || hasPanels) && (
           <ScopePicker
             dimOptions={dimOptions}
             scope={scope}
             onChange={(dim, value) =>
               setScope((prev) => ({ ...prev, [dim]: value }))
             }
-            onReset={() =>
+            onReset={() => {
               setScope({
                 chain: ALL_VALUE,
                 region: ALL_VALUE,
                 venue: ALL_VALUE,
                 kind: ALL_VALUE,
-              })
-            }
+              });
+              setPanelView(ALL_VALUE);
+            }}
             slug={slug}
+            panelOptions={panelOptions}
+            panelView={panelView}
+            onPanelChange={setPanelView}
           />
         )}
 
@@ -541,15 +573,22 @@ function ScopePicker({
   onChange,
   onReset,
   slug,
+  panelOptions,
+  panelView,
+  onPanelChange,
 }: {
   dimOptions: Partial<Record<ScopeDim, { value: string; label: string }[]>>;
   scope: Record<ScopeDim, string>;
   onChange: (dim: ScopeDim, value: string) => void;
   onReset: () => void;
   slug: string;
+  panelOptions: { value: string; label: string }[];
+  panelView: string;
+  onPanelChange: (v: string) => void;
 }) {
   const activeDims = SCOPE_DIMS.filter((d) => dimOptions[d]);
-  const hasFilter = activeDims.some((d) => scope[d] !== ALL_VALUE);
+  const hasFilter =
+    activeDims.some((d) => scope[d] !== ALL_VALUE) || panelView !== ALL_VALUE;
 
   // Data-existence probe. `probe.key` is the URL we last resolved; the
   // rendered status is derived (below), so the effect body only needs
@@ -561,6 +600,11 @@ function ScopePicker({
     for (const d of activeDims) {
       if (scope[d] !== ALL_VALUE) qs.set(d, scope[d]);
     }
+    // /api/stat doesn't apply metric-panel overrides, so we only include
+    // scope dims in the probe URL. The panel choice is validated
+    // separately via panelOptions membership; a bad panel id is not a
+    // "no data for this cell" state, it just can't happen from the
+    // dropdown at all.
     return `/api/stat/${slug}?${qs.toString()}`;
   }, [slug, activeDims, scope, hasFilter]);
   const [probe, setProbe] = useState<{
@@ -621,6 +665,25 @@ function ScopePicker({
             </label>
           );
         })}
+        {panelOptions.length > 0 && (
+          <label className="flex flex-col gap-1">
+            <span className="text-[10px] font-medium uppercase tracking-[0.12em] text-ink-muted">
+              View
+            </span>
+            <select
+              value={panelView}
+              onChange={(e) => onPanelChange(e.target.value)}
+              className="rounded border border-rule bg-paper px-2 py-1 text-xs text-ink focus:outline-none focus:ring-1 focus:ring-ink/20"
+            >
+              <option value={ALL_VALUE}>Main metric</option>
+              {panelOptions.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         {hasFilter && (
           <button
             type="button"
