@@ -102,14 +102,14 @@ export default async function BridgeHubPage() {
             <span className="text-ink">bridge-quote-latency</span>
           </Link>
           <span className="inline-flex items-center rounded-full border border-ink/10 px-3 py-1 text-ink-muted">
-            {hub ? (hub.regionCount > 1 ? `${hub.regionCount} regions` : "eu-west") : "eu-west"}
+            {hub && hub.regionCount > 1 ? `${hub.regionCount} regions` : "eu-west"}
           </span>
         </div>
       </header>
 
       {hub ? (
         <>
-          <section className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
+          <section className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-8">
             <SummaryCard
               label="Cheapest bridge"
               value={
@@ -134,11 +134,6 @@ export default async function BridgeHubPage() {
               value={String(hub.bridgeCount)}
               tip="Across, deBridge, LI.FI, Mobula, Near Intents, Relay."
             />
-            <SummaryCard
-              label="Probe regions"
-              value={hub.regionCount > 1 ? `${hub.regionCount} · EU / US / SGP` : "1 · eu-west"}
-              tip="Measurements from EU-West (Amsterdam), US-East, and Singapore. Fee bench aggregates across regions; latency bench ranks by region."
-            />
           </section>
 
           <section className="mb-10">
@@ -162,7 +157,7 @@ export default async function BridgeHubPage() {
               </div>
             </div>
             <p className="text-sm text-ink-muted mb-4">
-              Sorted by fee p50 (shown under provider name). Quote speed broken out per region: EU-West, US-East, Singapore. Corridor dots show which routes each provider quotes. Trailing 24h.
+              Sorted by fee p50 (all-in cost at $300 USDC). Quote latency p50/p99 from bench 002. Success from fee bench. Trailing 24h.
             </p>
             <BridgeHubTable rows={hub.providers} />
           </section>

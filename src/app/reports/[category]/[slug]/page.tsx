@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { MDXRemote } from "next-mdx-remote/rsc";
 import { StatTable } from "@/components/reports/stat-table";
+import { RegionWinners } from "@/components/reports/region-winners";
 import {
   getAllReports,
   getReport,
@@ -56,8 +57,60 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
+function slugify(text: string): string {
+  return text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+}
+
 const MDX_COMPONENTS = {
   StatTable,
+  RegionWinners,
+
+  // Table of contents — pipe-separated section names, auto-generates anchor hrefs
+  TOC: ({ sections }: { sections: string }) => {
+    const items = sections.split("|").map((s) => s.trim());
+    return (
+      <nav className="my-8 border border-ink/20 not-prose">
+        <div className="px-5 py-3 border-b border-ink/10 bg-[var(--color-paper-soft)]">
+          <p className="label-mono text-[10px] uppercase tracking-[0.22em] text-ink">In this report</p>
+        </div>
+        <ol className="divide-y divide-ink/[0.06]">
+          {items.map((label, i) => (
+            <li key={i}>
+              <a
+                href={`#${slugify(label)}`}
+                className="flex items-center gap-4 px-5 py-2.5 text-[13px] text-ink-soft hover:text-ink hover:bg-[var(--color-paper-soft)] transition-colors no-underline"
+              >
+                <span className="label-mono text-[10px] text-ink-faint w-5 shrink-0 tabular-nums">
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+                {label}
+              </a>
+            </li>
+          ))}
+        </ol>
+      </nav>
+    );
+  },
+
+  // Summary box — key findings list at article top
+  Summary: ({ children }: { children: React.ReactNode }) => (
+    <aside className="my-8 border border-ink/20 bg-[var(--color-paper-soft)] [&_ul]:mt-0 [&_ul]:space-y-2 [&_li]:text-[14px] [&_li]:leading-[1.6] [&_li]:text-ink-soft">
+      <div className="px-5 py-3 border-b border-ink/10">
+        <p className="label-mono text-[10px] uppercase tracking-[0.22em] text-ink">Key findings</p>
+      </div>
+      <div className="px-5 py-4">{children}</div>
+    </aside>
+  ),
+
+  // Orange highlighter on key sentences
+  Mark: ({ children }: { children: React.ReactNode }) => (
+    <span
+      className="font-semibold text-ink"
+      style={{ background: "linear-gradient(transparent 55%, rgba(251,146,60,0.32) 55%)" }}
+    >
+      {children}
+    </span>
+  ),
 
   // Decision Framework card — used explicitly in MDX
   UseCase: ({ label, children }: { label: string; children: React.ReactNode }) => (
@@ -71,14 +124,17 @@ const MDX_COMPONENTS = {
     </div>
   ),
 
-  // Economist-style section header: thick rule above, label below
-  h2: (props: React.HTMLAttributes<HTMLHeadingElement>) => (
-    <div className="mt-16 mb-8 border-t-[2px] border-ink pt-5">
-      <h2 className="label-mono text-[10px] uppercase tracking-[0.22em] text-ink">
-        {props.children}
-      </h2>
-    </div>
-  ),
+  // Economist-style section header with scroll-target ID for TOC anchors
+  h2: (props: React.HTMLAttributes<HTMLHeadingElement>) => {
+    const text = typeof props.children === "string" ? props.children : "";
+    return (
+      <div id={slugify(text)} className="mt-16 mb-8 border-t-[2px] border-ink pt-5 scroll-mt-6">
+        <h2 className="label-mono text-[10px] uppercase tracking-[0.22em] text-ink">
+          {props.children}
+        </h2>
+      </div>
+    );
+  },
 
   h3: (props: React.HTMLAttributes<HTMLHeadingElement>) => (
     <h3
@@ -89,7 +145,7 @@ const MDX_COMPONENTS = {
 
   p: (props: React.HTMLAttributes<HTMLParagraphElement>) => (
     <p
-      className="mt-5 text-[17px] leading-[1.85] text-ink-soft"
+      className="mt-5 text-[17px] leading-[1.8] text-ink-soft"
       style={SERIF}
       {...props}
     />
@@ -97,7 +153,7 @@ const MDX_COMPONENTS = {
 
   ul: (props: React.HTMLAttributes<HTMLUListElement>) => (
     <ul
-      className="mt-5 space-y-2 pl-6 list-disc text-[17px] leading-[1.85] text-ink-soft"
+      className="mt-5 space-y-2 pl-6 list-disc text-[17px] leading-[1.8] text-ink-soft"
       style={SERIF}
       {...props}
     />
@@ -105,7 +161,7 @@ const MDX_COMPONENTS = {
 
   ol: (props: React.HTMLAttributes<HTMLOListElement>) => (
     <ol
-      className="mt-5 space-y-2 pl-6 list-decimal text-[17px] leading-[1.85] text-ink-soft"
+      className="mt-5 space-y-2 pl-6 list-decimal text-[17px] leading-[1.8] text-ink-soft"
       style={SERIF}
       {...props}
     />
@@ -212,7 +268,7 @@ export default async function ReportPage({ params }: Props) {
   const lds = reportJsonLd(report);
 
   return (
-    <article className="mx-auto max-w-[740px] px-4 sm:px-6 py-8 sm:py-14">
+    <article className="mx-auto max-w-[760px] px-4 sm:px-6 py-8 sm:py-14">
       {lds.map((ld, i) => (
         <script
           key={i}
@@ -265,11 +321,8 @@ export default async function ReportPage({ params }: Props) {
           <p className="label-mono text-[10px] uppercase tracking-[0.22em] text-ink-muted text-center mb-5">
             Key finding
           </p>
-          <p
-            className="text-2xl sm:text-[1.9rem] leading-[1.2] text-ink italic text-center max-w-[560px] mx-auto"
-            style={SERIF}
-          >
-            &ldquo;{report.heroFinding}&rdquo;
+          <p className="display text-2xl sm:text-[2rem] leading-[1.15] text-ink text-center max-w-[580px] mx-auto font-bold tracking-tight">
+            {report.heroFinding}
           </p>
         </div>
 
