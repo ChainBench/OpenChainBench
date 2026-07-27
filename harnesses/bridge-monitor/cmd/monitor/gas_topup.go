@@ -91,11 +91,12 @@ func stableForTopup(balances map[string]map[string]float64, gc gasChain) (addr s
 	if chain == nil {
 		return "", 0
 	}
-	if v := chain[gc.PrimaryStable]; v > 0 {
+	// Balance map keys contract addresses as lowercase (indexAssets / fillSolanaFromChain).
+	if v := chain[strings.ToLower(gc.PrimaryStable)]; v > 0 {
 		return gc.PrimaryStable, v
 	}
 	if gc.FallbackStable != "" {
-		if v := chain[gc.FallbackStable]; v > 0 {
+		if v := chain[strings.ToLower(gc.FallbackStable)]; v > 0 {
 			return gc.FallbackStable, v
 		}
 	}
