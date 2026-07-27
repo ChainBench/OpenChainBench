@@ -133,15 +133,25 @@ The full harness source, including all probe types and Prometheus metric definit
 
 Which free RPC you should use depends on what you are building.
 
-**Frontend dApp / wallet UI.** Latency matters because it affects perceived speed for end users. Success rates above 95% are necessary but not differentiating — the user retries failed wallet operations. Use the p50 leader for each chain in your target region. For Ethereum in Europe: Flashbots or PublicNode. For Ethereum in Asia: check the `sgp` regional filter on the [RPC Capabilities bench](/benchmarks/rpc-capabilities) for the current leader.
+<UseCase label="Frontend dApp / wallet UI">
+Latency matters because it affects perceived speed for end users. Success rates above 95% are necessary but not differentiating — the user retries failed wallet operations. Use the p50 leader for each chain in your target region. For Ethereum in Europe: Flashbots or PublicNode. For Ethereum in Asia: check the `sgp` regional filter on the [RPC Capabilities bench](/benchmarks/rpc-capabilities) for the current leader.
+</UseCase>
 
-**Indexer / event listener.** Success rate is the primary variable. One `jsonrpc_err` on `eth_getLogs` means a missed event and a corrupted index. Use PublicNode (100% success, archive supported) or Flashbots (100% success, archive supported). Both serve full archive depth. Build in exponential backoff with a secondary fallback; even 100%-success providers have incident windows.
+<UseCase label="Indexer / event listener">
+Success rate is the primary variable. One `jsonrpc_err` on `eth_getLogs` means a missed event and a corrupted index. Use PublicNode (100% success, archive supported) or Flashbots (100% success, archive supported). Both serve full archive depth. Build in exponential backoff with a secondary fallback; even 100%-success providers have incident windows.
+</UseCase>
 
-**MEV bot / frontrunner.** Latency is critical and the public RPC market is the wrong solution. Any free public endpoint with shared infrastructure introduces queueing delay that a co-located private node eliminates. This report covers public no-key endpoints only; MEV infrastructure is outside scope.
+<UseCase label="MEV bot / frontrunner">
+Latency is critical and the public RPC market is the wrong solution. Any free public endpoint with shared infrastructure introduces queueing delay that a co-located private node eliminates. This report covers public no-key endpoints only; MEV infrastructure is outside scope.
+</UseCase>
 
-**Archive query workload.** Filter first by archive depth support using the [RPC Capabilities bench](/benchmarks/rpc-capabilities), then by latency. Four of the eight Ethereum providers in this cohort do not support archive queries at all. Sending historical `eth_getLogs` to them returns an error, silently if your client does not check error codes.
+<UseCase label="Archive query workload">
+Filter first by archive depth support using the [RPC Capabilities bench](/benchmarks/rpc-capabilities), then by latency. Four of the eight Ethereum providers in this cohort do not support archive queries at all. Sending historical `eth_getLogs` to them returns an error, silently if your client does not check error codes.
+</UseCase>
 
-**Multi-chain app.** PublicNode is the only provider in this cohort with 100% success rate across five or more EVM chains simultaneously. If you need a single RPC provider for a multi-chain architecture, it is the only option in the no-key free tier that meets reliability thresholds across the board.
+<UseCase label="Multi-chain app">
+PublicNode is the only provider in this cohort with 100% success rate across five or more EVM chains simultaneously. If you need a single RPC provider for a multi-chain architecture, it is the only option in the no-key free tier that meets reliability thresholds across the board.
+</UseCase>
 
 ## What Changed vs July 2026
 
