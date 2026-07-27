@@ -237,20 +237,9 @@ export function RpcChainsLeaderboard({ rows }: { rows: RpcHubChain[] }) {
                       : "No provider on this chain reports archive support (either the archive probe is skipped for the chain family — Solana / Substrate — or every listed provider serves only the default pruned window)."
                   }
                 >
-                  {r.bestArchiveDepthBlocks ? (
-                    <span className="inline-flex items-baseline gap-1.5">
-                      <span className="tabular-nums">{fmtArchive(r.bestArchiveDepthBlocks)}</span>
-                      {r.bestArchiveProviders && r.bestArchiveProviders.length > 0 && (
-                        <span className="text-[10.5px] text-ink-faint truncate max-w-[110px]">
-                          {r.bestArchiveProviders.length === 1
-                            ? r.bestArchiveProviders[0]
-                            : `${r.bestArchiveProviders[0]} +${r.bestArchiveProviders.length - 1}`}
-                        </span>
-                      )}
-                    </span>
-                  ) : (
-                    <span className="text-ink-faint">-</span>
-                  )}
+                  {r.bestArchiveDepthBlocks
+                    ? fmtArchive(r.bestArchiveDepthBlocks)
+                    : <span className="text-ink-faint">-</span>}
                 </Td>
                 {REGION_COLS.map((c) => {
                   const b = r.regions[c.key];
