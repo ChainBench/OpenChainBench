@@ -242,7 +242,7 @@ providers:
   - slug: squid
     name: Squid Router
     tag: Aggregator (Axelar)
-    formula: "Median wall-clock ms over 24h for Squid Router's v2 API to return a best-output USDC route, sampled every 5 minutes across supported EVM corridors (Base to Arb) and 3 notionals from 3 regions. Solana corridors excluded: Squid v2 Solana source returns a server-side error."
+    formula: "Median wall-clock ms for Squid Router's v2 API to return a best-output USDC route, p50 over 24h, EVM corridors only (Base to Arb). Solana source excluded: API returns server error."
     queries:
       p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="squid"}[24h])))
       p90: histogram_quantile(0.90, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="squid"}[24h])))
@@ -255,7 +255,7 @@ providers:
   - slug: socket
     name: Socket Protocol
     tag: Aggregator
-    formula: "Median wall-clock ms over 24h for Socket Protocol's v2 API to return the best-output USDC route across underlying bridges (Across, Stargate, CCTP), sampled every 5 minutes across supported EVM corridors (Base to Arb) and 3 notionals from 3 regions. Solana is receive-only in Socket's chain list."
+    formula: "Median wall-clock ms for Socket Protocol's v2 API to return a best-output USDC route (via Across, Stargate, CCTP), p50 over 24h, EVM corridors only (Base to Arb)."
     queries:
       p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="socket"}[24h])))
       p90: histogram_quantile(0.90, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="socket"}[24h])))
@@ -268,7 +268,7 @@ providers:
   - slug: mayan
     name: Mayan Finance
     tag: Intent layer (Wormhole)
-    formula: "Median wall-clock ms over 24h for Mayan Finance's v3 quote API to return a Swift or MCTP USDC route, sampled every 5 minutes across supported Solana corridors (Sol to Base, Arb to Sol) and 3 notionals from 3 regions. Pure EVM corridors are outside Mayan's scope."
+    formula: "Median wall-clock ms for Mayan Finance's v3 quote API (Swift fast path), p50 over 24h, Solana corridors only (Sol to Base, Arb to Sol). Pure EVM corridors outside Mayan's scope."
     queries:
       p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="mayan"}[24h])))
       p90: histogram_quantile(0.90, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="mayan"}[24h])))
