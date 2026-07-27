@@ -60,6 +60,11 @@ export type RpcHubProvider = {
   sampleSize?: number;
   /** p50 per probe region, keyed by region value. */
   regions: Partial<Record<RpcRegionKey, number>>;
+  /** Archive block depths this provider supports (subset of the
+   *  harness's `depthBuckets` = {300, 7200, 216000, 1296000, 5000000}).
+   *  Absent = not measured (Solana / Substrate chains skip archive)
+   *  or not yet propagated by the worker. */
+  archiveDepth?: { supportedBlocks: number[] };
 };
 
 export type RpcHubUnresponsiveProvider = {
@@ -91,6 +96,10 @@ export type RpcHubChain = {
   best: RpcRegionBest | null;
   /** p90 of the overall best provider (same row as `best`). Optional so old blobs stay parseable. */
   bestP90Ms?: number;
+  /** Max archive block depth supported by the overall best provider
+   *  (0 or absent = archive not measured / provider Geth-pruned). Used
+   *  by the hub as a compact single-cell 'archive support' badge. */
+  bestArchiveDepthBlocks?: number;
   /** Best provider per probe region. */
   regions: Partial<Record<RpcRegionKey, RpcRegionBest>>;
   /** Full live provider field, sorted fastest first. */
@@ -269,6 +278,10 @@ async function buildChain(spec: Spec): Promise<RpcHubChain | null> {
       : {}),
     best: { provider: leader.slug, providerName: leader.name, p50Ms: round1(leader.ms.p50) },
     bestP90Ms: Number.isFinite(leader.ms.p90) && leader.ms.p90 > 0 ? round1(leader.ms.p90) : undefined,
+    bestArchiveDepthBlocks:
+      leader.archiveDepth && leader.archiveDepth.supportedBlocks.length > 0
+        ? Math.max(...leader.archiveDepth.supportedBlocks)
+        : undefined,
     regions,
     providers: rows.map((r) => ({
       provider: r.slug,
@@ -276,6 +289,7 @@ async function buildChain(spec: Spec): Promise<RpcHubChain | null> {
       p50Ms: round1(r.ms.p50),
       p90Ms: Number.isFinite(r.ms.p90) && r.ms.p90 > 0 ? round1(r.ms.p90) : undefined,
       p99Ms: Number.isFinite(r.ms.p99) && r.ms.p99 > 0 ? round1(r.ms.p99) : undefined,
+      archiveDepth: r.archiveDepth,
       successPct:
         Number.isFinite(r.successRate) && r.successRate > 0
           ? round2(r.successRate)

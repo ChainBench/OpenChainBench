@@ -22,6 +22,7 @@ type SortKey =
   | "name"
   | "bestP50"
   | "bestP90"
+  | "archive"
   | "us-east"
   | "eu-west"
   | "sgp"
@@ -37,6 +38,7 @@ function sortValue(r: RpcHubChain, k: SortKey): number | string | null {
   if (k === "name") return r.name.toLowerCase();
   if (k === "bestP50") return r.best?.p50Ms ?? null;
   if (k === "bestP90") return r.bestP90Ms ?? null;
+  if (k === "archive") return r.bestArchiveDepthBlocks ?? null;
   if (k === "providerCount") return r.providerCount;
   return r.regions[k]?.p50Ms ?? null;
 }
@@ -129,6 +131,15 @@ export function RpcChainsLeaderboard({ rows }: { rows: RpcHubChain[] }) {
                   Best p90
                 </span>
               </ThSort>
+              <ThSort
+                active={sortKey === "archive"}
+                dir={sortDir}
+                onClick={() => setSort("archive")}
+              >
+                <span title="Max archive block depth supported by the leader (`eth_getBalance` at head-N returns non-pruned). Higher = better for indexers / subgraphs / backfill jobs that need historical state.">
+                  Archive
+                </span>
+              </ThSort>
               {REGION_COLS.map((c) => (
                 <ThSort
                   key={c.key}
@@ -216,6 +227,18 @@ export function RpcChainsLeaderboard({ rows }: { rows: RpcHubChain[] }) {
                     <span className="text-ink-faint">-</span>
                   )}
                 </Td>
+                <Td
+                  mono
+                  tip={
+                    r.bestArchiveDepthBlocks
+                      ? `Leader supports ${r.bestArchiveDepthBlocks.toLocaleString()} blocks of historical state. Set = {300, 7.2k, 216k, 1.3M, 5M}: 300 blocks is Geth default pruned; 5M is genesis-era full archive.`
+                      : undefined
+                  }
+                >
+                  {r.bestArchiveDepthBlocks
+                    ? fmtArchive(r.bestArchiveDepthBlocks)
+                    : <span className="text-ink-faint">-</span>}
+                </Td>
                 {REGION_COLS.map((c) => {
                   const b = r.regions[c.key];
                   return (
@@ -273,7 +296,7 @@ export function RpcChainsLeaderboard({ rows }: { rows: RpcHubChain[] }) {
             {filtered.length === 0 && (
               <tr>
                 <td
-                  colSpan={9}
+                  colSpan={10}
                   className="px-3 py-8 text-center text-[12px] text-ink-faint"
                 >
                   No chain matches &ldquo;{q}&rdquo;.
@@ -353,4 +376,18 @@ function fmtMs(v: number | null | undefined): string {
   if (v == null || !Number.isFinite(v)) return "...";
   if (v < 1000) return `${Math.round(v)} ms`;
   return `${(v / 1000).toFixed(2)} s`;
+}
+
+// Compact archive-depth display. Maps the harness's discrete depthBuckets
+// to short labels: 300 blocks = "pruned" (Geth default), 7.2k blocks ≈
+// 24h on 12s-block chains, 216k ≈ 30d, 1.3M ≈ 6mo, 5M ≈ 2yr. On sub-second
+// chains (Arbitrum, Sei) these translate to shorter wall-clock windows;
+// the raw block count in the tooltip disambiguates.
+function fmtArchive(blocks: number): string {
+  if (blocks >= 5_000_000) return "5M+";
+  if (blocks >= 1_296_000) return "1.3M";
+  if (blocks >= 216_000) return "216k";
+  if (blocks >= 7200) return "7.2k";
+  if (blocks >= 300) return "300";
+  return blocks.toLocaleString();
 }
