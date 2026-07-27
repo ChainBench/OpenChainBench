@@ -1,32 +1,32 @@
-/**
- * Server-side helper for the /bridge hub page.
- *
- * Loads the bridge-fee blob (aggregate + 4 per-chain variants) and the
- * bridge-quote-latency blob, then merges them into a unified per-provider
- * shape that includes per-corridor breakdowns.
- *
- * No Prometheus queries at render time. All data comes from CDN blobs
- * written by the materialise worker. Degrades gracefully if any blob
- * is unavailable.
- */
-
 import { unstable_cache } from "next/cache";
 import { loadBenchFromBlob, loadVariantFromBlob } from "@/lib/bench-blob";
 import { filterSig } from "@/lib/materialize/load";
-import { CORRIDORS } from "@/lib/bridge-hub-types";
-import type { CorridorFee, BridgeProviderRow, BridgeHubData } from "@/lib/bridge-hub-types";
-export type { CorridorKey, CorridorFee, BridgeProviderRow, BridgeHubData } from "@/lib/bridge-hub-types";
-export { CORRIDORS } from "@/lib/bridge-hub-types";
+import { CORRIDORS, REGIONS } from "@/lib/bridge-hub-types";
+import type { CorridorFee, RegionLatency, BridgeProviderRow, BridgeHubData } from "@/lib/bridge-hub-types";
+export type { CorridorKey, RegionKey, CorridorFee, RegionLatency, BridgeProviderRow, BridgeHubData } from "@/lib/bridge-hub-types";
+export { CORRIDORS, REGIONS } from "@/lib/bridge-hub-types";
 
 async function _fetchBridgeHub(): Promise<BridgeHubData | null> {
-  // Load aggregate blobs + 4 per-corridor variants for fee bench in parallel
-  const [feeBench, latencyBench, ...corridorVariants] = await Promise.all([
+  const nCorridors = CORRIDORS.length;
+  const nRegions = REGIONS.length;
+
+  const results = await Promise.all([
     loadBenchFromBlob("bridge-fee"),
     loadBenchFromBlob("bridge-quote-latency"),
+    // Per-corridor fee variants (p50 + p99)
     ...CORRIDORS.map((c) =>
       loadVariantFromBlob("bridge-fee", filterSig({ chain: c.value }))
     ),
+    // Per-region latency variants (p50)
+    ...REGIONS.map((r) =>
+      loadVariantFromBlob("bridge-quote-latency", filterSig({ region: r.value }))
+    ),
   ]);
+
+  const feeBench = results[0];
+  const latencyBench = results[1];
+  const corridorVariants = results.slice(2, 2 + nCorridors);
+  const regionVariants = results.slice(2 + nCorridors, 2 + nCorridors + nRegions);
 
   if (!feeBench && !latencyBench) return null;
 
@@ -41,8 +41,28 @@ async function _fetchBridgeHub(): Promise<BridgeHubData | null> {
     (latencyBench?.results ?? []).map((r) => [r.slug, r])
   );
 
-  // Per-corridor fee maps: corridorIndex → slug → p50
-  const corridorMaps = corridorVariants.map(
+  // Per-corridor: slug → { p50, p99 }
+  const corridorP50Maps = corridorVariants.map(
+    (variant) =>
+      new Map(
+        (variant?.results ?? []).map((r) => [
+          r.slug,
+          r.availability !== "unavailable" ? (r.ms.p50 ?? null) : null,
+        ])
+      )
+  );
+  const corridorP99Maps = corridorVariants.map(
+    (variant) =>
+      new Map(
+        (variant?.results ?? []).map((r) => [
+          r.slug,
+          r.availability !== "unavailable" ? (r.ms.p99 ?? null) : null,
+        ])
+      )
+  );
+
+  // Per-region latency: slug → p50
+  const regionMaps = regionVariants.map(
     (variant) =>
       new Map(
         (variant?.results ?? []).map((r) => [
@@ -62,7 +82,13 @@ async function _fetchBridgeHub(): Promise<BridgeHubData | null> {
 
     const corridors: CorridorFee[] = CORRIDORS.map((c, i) => ({
       corridor: c.value,
-      feep50: corridorMaps[i].get(slug) ?? null,
+      feep50: corridorP50Maps[i].get(slug) ?? null,
+      feep99: corridorP99Maps[i].get(slug) ?? null,
+    }));
+
+    const regions: RegionLatency[] = REGIONS.map((r, i) => ({
+      region: r.value,
+      quotep50: regionMaps[i].get(slug) ?? null,
     }));
 
     providers.push({
@@ -77,10 +103,10 @@ async function _fetchBridgeHub(): Promise<BridgeHubData | null> {
       quotep99: latAlive ? (latRow?.ms.p99 ?? null) : null,
       quoteSuccess: latRow?.successRate ?? null,
       corridors,
+      regions,
     });
   }
 
-  // Sort by fee p50 asc (lower = cheaper), nulls last
   providers.sort(
     (a, b) => (a.feep50 ?? Infinity) - (b.feep50 ?? Infinity)
   );
@@ -95,7 +121,6 @@ async function _fetchBridgeHub(): Promise<BridgeHubData | null> {
   const corridorsDisplay =
     feeBench?.dimensions?.chain ?? latencyBench?.dimensions?.chain ?? [];
 
-  // Count how many distinct regions the latency bench declares
   const regionDimensions = latencyBench?.dimensions?.region ?? [];
   const regionCount = Math.max(
     1,
