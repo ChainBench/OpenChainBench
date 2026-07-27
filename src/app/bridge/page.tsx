@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { fetchBridgeHub } from "@/lib/bridge-hub-stats";
-import { BridgeHubTable } from "@/components/bridge-hub-table";
+import { BridgeHubTable, BridgeCorridorMatrix } from "@/components/bridge-hub-table";
 import { pageMetadata } from "@/lib/page-metadata";
 import { safeJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
@@ -102,7 +102,7 @@ export default async function BridgeHubPage() {
             <span className="text-ink">bridge-quote-latency</span>
           </Link>
           <span className="inline-flex items-center rounded-full border border-ink/10 px-3 py-1 text-ink-muted">
-            eu-west only
+            {hub ? (hub.regionCount > 1 ? `${hub.regionCount} regions` : "eu-west") : "eu-west"}
           </span>
         </div>
       </header>
@@ -135,9 +135,9 @@ export default async function BridgeHubPage() {
               tip="Across, deBridge, LI.FI, Mobula, Near Intents, Relay."
             />
             <SummaryCard
-              label="Probe region"
-              value="1 · eu-west"
-              tip="All measurements originate from eu-west (Amsterdam). Results reflect European latency and solver inventory. Multi-region coverage (us-east, Singapore) requires additional harness instances."
+              label="Probe regions"
+              value={hub.regionCount > 1 ? `${hub.regionCount} · EU / US / SGP` : "1 · eu-west"}
+              tip="Measurements from EU-West (Amsterdam), US-East, and Singapore. Fee bench aggregates across regions; latency bench ranks by region."
             />
           </section>
 
@@ -162,14 +162,27 @@ export default async function BridgeHubPage() {
               </div>
             </div>
             <p className="text-sm text-ink-muted mb-4">
-              Sorted by fee p50 (all-in cost at $300 USDC). Quote columns from
-              bench 002. Success from fee bench. Trailing 24h, eu-west, cross-corridor average.
+              Sorted by fee p50 (all-in cost at $300 USDC, cross-corridor average). Dots show which corridors each provider quotes. Quote latency from bench 002. Trailing 24h.
             </p>
             <BridgeHubTable rows={hub.providers} />
-            <p className="mt-2 text-[11px] text-ink-faint italic">
-              Across is not in the quote latency bench (dashes in quote columns).
-              Per-corridor splits on the individual bench pages.
+          </section>
+
+          <section className="mb-10">
+            <div className="flex items-baseline justify-between gap-4 mb-1">
+              <h2 className="display text-xl sm:text-2xl text-ink">
+                Fee by corridor
+              </h2>
+              <Link
+                href="/benchmarks/bridge-fee"
+                className="text-[12px] text-ink-soft hover:text-ink underline"
+              >
+                full p50/p99 breakdown
+              </Link>
+            </div>
+            <p className="text-sm text-ink-muted mb-4">
+              All-in fee p50 per provider per route. Cross-corridor averages above can hide large per-route spreads — the cheapest bridge on Sol to Base is often not the cheapest on Arb to Sol.
             </p>
+            <BridgeCorridorMatrix rows={hub.providers} />
           </section>
 
           <section className="mb-10">
@@ -210,9 +223,7 @@ export default async function BridgeHubPage() {
               ))}
             </div>
             <p className="text-sm text-ink-muted">
-              Per-corridor leaders can diverge from the cross-corridor
-              aggregate. Full corridor tabs with p50/p90/p99 splits are on
-              the{" "}
+              Each provider may only quote a subset of corridors. The corridor matrix above shows which ones are supported and at what cost. Full p50/p90/p99 splits with regional breakdown are on the{" "}
               <Link
                 href="/benchmarks/bridge-fee"
                 className="underline hover:text-ink"
@@ -272,8 +283,7 @@ export default async function BridgeHubPage() {
             histogram_quantile(0.50, sum by (le)
             (rate(bridge_quote_latency_ms_bucket[24h])))
           </code>
-          . Both benches run from eu-west only; multi-region expansion
-          requires additional harness instances. Failures (quote_failed,
+          . Benches run from three regions (EU-West Amsterdam, US-East, Singapore); regional breakdown on individual bench pages. Failures (quote_failed,
           unsupported route, timeout) excluded from aggregates, counted
           toward success rate.
         </p>
