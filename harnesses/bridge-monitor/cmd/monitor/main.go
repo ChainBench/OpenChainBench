@@ -70,6 +70,15 @@ func main() {
 		log.Println("⚠️  Near Intents bridge initialized (anonymous mode - adds ~10 bps appFee and lower solver priority)")
 	}
 
+	squidBridge := NewSquidBridge(config.SquidIntegratorID)
+	log.Println("✅ Squid bridge initialized (public integrator ID)")
+
+	socketBridge := NewSocketBridge(config.SocketAPIKey)
+	log.Println("✅ Socket bridge initialized (public demo key)")
+
+	mayanBridge := NewMayanBridge()
+	log.Println("✅ Mayan bridge initialized (no key needed)")
+
 	// Initialize wallet manager
 	walletManager, err := NewWalletManager(config)
 	if err != nil {
@@ -233,7 +242,7 @@ func main() {
 	}
 
 	// Run quote tests immediately on startup (all routes)
-	runQuoteTests(mobulaBridge, relayBridge, debridgeBridge, lifiBridge, acrossBridge, nearIntentsBridge, allRoutes, config.MonitorRegion, solAddress, evmAddress)
+	runQuoteTests(mobulaBridge, relayBridge, debridgeBridge, lifiBridge, acrossBridge, nearIntentsBridge, squidBridge, socketBridge, mayanBridge, allRoutes, config.MonitorRegion, solAddress, evmAddress)
 
 	// If in dry-run mode, run a single dry-run test
 	if config.ExecutionMode == "dry-run" && executor != nil {
@@ -281,7 +290,7 @@ func main() {
 			done := make(chan struct{})
 			go func() {
 				defer close(done)
-				runQuoteTests(mobulaBridge, relayBridge, debridgeBridge, lifiBridge, acrossBridge, nearIntentsBridge, GetTestRoutes(), config.MonitorRegion, solAddress, evmAddress)
+				runQuoteTests(mobulaBridge, relayBridge, debridgeBridge, lifiBridge, acrossBridge, nearIntentsBridge, squidBridge, socketBridge, mayanBridge, GetTestRoutes(), config.MonitorRegion, solAddress, evmAddress)
 			}()
 			select {
 			case <-done:
@@ -568,6 +577,9 @@ func runQuoteTests(
 	lifiBridge *LiFiBridge,
 	acrossBridge *AcrossBridge,
 	nearIntentsBridge *NearIntentsBridge,
+	squidBridge *SquidBridge,
+	socketBridge *SocketBridge,
+	mayanBridge *MayanBridge,
 	routes []TestRoute, region, solAddress, evmAddress string,
 ) {
 	timestamp := time.Now().Format("2006-01-02 15:04:05")
@@ -612,6 +624,23 @@ func runQuoteTests(
 			// TestRoute without emitting metrics, so the bench-fee bucket stays
 			// honest (no fake unsupported-route failures).
 			nearIntentsBridge.TestRoute(route, amount, amountUsd, rawUnits, region, solAddress, evmAddress)
+			time.Sleep(500 * time.Millisecond)
+
+			// Squid Router (Axelar): EVM-only (Base/Arb). Solana source returns
+			// server-side 500 — TestRoute returns early for unsupported corridors.
+			squidBridge.TestRoute(route, amount, amountUsd, rawUnits, region, solAddress, evmAddress)
+			time.Sleep(500 * time.Millisecond)
+
+			// Socket Protocol (Bungee): EVM-only aggregator (Base/Arb).
+			// Returns best-output route across Across, Stargate, CCTP, etc.
+			socketBridge.TestRoute(route, amount, amountUsd, rawUnits, region, solAddress, evmAddress)
+			time.Sleep(500 * time.Millisecond)
+
+			// Mayan Finance: Solana-EVM only. TestRoute returns early for pure
+			// EVM corridors. May emit ROUTE_NOT_FOUND on some corridors during
+			// API outages; harness records those as quote_failed so success rate
+			// reflects availability rather than latency.
+			mayanBridge.TestRoute(route, amount, amountUsd, rawUnits, region, solAddress, evmAddress)
 			time.Sleep(500 * time.Millisecond)
 		}
 	}
