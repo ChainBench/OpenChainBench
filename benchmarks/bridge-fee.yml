@@ -121,7 +121,7 @@ prometheus:
 
 # rank_matrix_query required when dimensions.region is declared.
 # label_replace maps bridge= → provider= so badge scoping works per region.
-rank_matrix_query: avg by (provider, region) (quantile_over_time(0.50, label_replace(bridge_cost_percent[24h], "provider", "$1", "bridge", "(.+)")))
+rank_matrix_query: avg by (provider, region) (label_replace(quantile_over_time(0.50, bridge_cost_percent[24h]), "provider", "$1", "bridge", "(.+)"))
 
 providers:
   - slug: mobula
