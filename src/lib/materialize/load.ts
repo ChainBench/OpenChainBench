@@ -1014,6 +1014,51 @@ async function tryLoadLive(
       });
     }
 
+    // Archive depth augmentation for `-rpc` benches (bench cluster
+    // 044+). Reads `rpc_archive_depth_supported{chain="<slug>"}` from
+    // Prom (one instant query, no per-provider fan-out), aggregates
+    // "supported if ANY region reports 1", and attaches the ascending
+    // list of supported block depths to each provider row so the /rpc
+    // hub can render an archive column without a second Prom trip.
+    // Silent no-op when the query returns empty (chains where the
+    // archive probe is skipped: Solana / Substrate) or when the spec
+    // isn't a -rpc bench.
+    if (spec.slug.endsWith("-rpc")) {
+      try {
+        const chainForArchive = spec.slug.replace(/-rpc$/, "");
+        const archiveQuery = `max by(provider, depth)(rpc_archive_depth_supported{chain="${chainForArchive}"} == 1)`;
+        const res = await prom.query(archiveQuery);
+        if (res.resultType === "vector") {
+          const byProvider = new Map<string, number[]>();
+          for (const row of res.result) {
+            const provider = row.metric.provider;
+            const depthStr = row.metric.depth;
+            if (!provider || !depthStr) continue;
+            const d = Number(depthStr);
+            if (!Number.isFinite(d) || d <= 0) continue;
+            const arr = byProvider.get(provider) ?? [];
+            if (!arr.includes(d)) arr.push(d);
+            byProvider.set(provider, arr);
+          }
+          for (const r of liveResults) {
+            const supported = byProvider.get(r.slug);
+            if (supported && supported.length > 0) {
+              supported.sort((a, b) => a - b);
+              r.archiveDepth = { supportedBlocks: supported };
+            }
+          }
+        }
+      } catch (e) {
+        // archive is a nice-to-have; a failure here must never
+        // collapse the bench. Log and continue.
+        console.warn(
+          `[load/${spec.slug}] archive-depth augmentation failed: ${
+            e instanceof Error ? e.message : String(e)
+          }`,
+        );
+      }
+    }
+
     // Derive lastRunAt from the actual Prom data freshness. We probe the
     // first provider that has a p50 query and ask Prom for the age of
     // its underlying metric. This is consistent across pages (Prom is the
