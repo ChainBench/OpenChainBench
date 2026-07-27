@@ -770,6 +770,32 @@ function Row({
                 {r.tag}
               </span>
             )}
+            {!isMuted && r.archiveDepth && r.archiveDepth.supportedBlocks.length > 0 && (
+              <Hint
+                label={`Archive support: this provider returns non-pruned eth_getBalance at (head - N) for N in [${r.archiveDepth.supportedBlocks
+                  .map((b) => b.toLocaleString())
+                  .join(", ")}] blocks. Depth set = {300 (Geth default pruned), 7,200 (~24h), 216,000 (~30d), 1,296,000 (~6mo), 5,000,000 (genesis-era full archive)}. Wall-clock windows shorter on sub-second-block chains.`}
+              >
+                <span
+                  className={`inline-flex items-center shrink-0 rounded font-mono text-[9px] uppercase tracking-[0.12em] px-1.5 py-0.5 ${
+                    Math.max(...r.archiveDepth.supportedBlocks) >= 1_296_000
+                      ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                      : Math.max(...r.archiveDepth.supportedBlocks) >= 7200
+                      ? "bg-paper-soft text-ink-muted"
+                      : "bg-paper-soft text-ink-faint"
+                  }`}
+                >
+                  {(() => {
+                    const m = Math.max(...r.archiveDepth.supportedBlocks);
+                    if (m >= 5_000_000) return "5M archive";
+                    if (m >= 1_296_000) return "1.3M archive";
+                    if (m >= 216_000) return "216k archive";
+                    if (m >= 7200) return "7.2k archive";
+                    return "pruned";
+                  })()}
+                </span>
+              </Hint>
+            )}
             {isOffline && (
               <Hint label="No samples returned this cycle. Provider or its upstream is unavailable. Values reappear once data resumes.">
                 <span className="inline-flex items-center gap-1 shrink-0 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-muted">
