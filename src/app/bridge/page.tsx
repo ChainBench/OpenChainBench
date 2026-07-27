@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { fetchBridgeHub } from "@/lib/bridge-hub-stats";
-import type { BridgeProviderRow } from "@/lib/bridge-hub-stats";
+import { BridgeHubTable } from "@/components/bridge-hub-table";
 import { pageMetadata } from "@/lib/page-metadata";
 import { safeJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
@@ -42,14 +42,6 @@ export default async function BridgeHubPage() {
         })),
       }
     : null;
-
-  const byFee = hub?.providers ?? [];
-
-  const bySpeed = hub
-    ? [...hub.providers]
-        .filter((p) => p.quotep50 != null)
-        .sort((a, b) => (a.quotep50 ?? Infinity) - (b.quotep50 ?? Infinity))
-    : [];
 
   return (
     <article
@@ -117,7 +109,7 @@ export default async function BridgeHubPage() {
 
       {hub ? (
         <>
-          <section className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-10">
+          <section className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
             <SummaryCard
               label="Cheapest bridge"
               value={
@@ -152,40 +144,32 @@ export default async function BridgeHubPage() {
           <section className="mb-10">
             <div className="flex items-baseline justify-between gap-4 mb-1">
               <h2 className="display text-xl sm:text-2xl text-ink">
-                Cost ranking
+                Bridge leaderboard
               </h2>
-              <Link
-                href="/benchmarks/bridge-fee"
-                className="text-[12px] text-ink-soft hover:text-ink underline"
-              >
-                per-corridor breakdown
-              </Link>
+              <div className="flex gap-3 text-[12px]">
+                <Link
+                  href="/benchmarks/bridge-fee"
+                  className="text-ink-soft hover:text-ink underline"
+                >
+                  fee breakdown
+                </Link>
+                <Link
+                  href="/benchmarks/bridge-quote-latency"
+                  className="text-ink-soft hover:text-ink underline"
+                >
+                  quote speed breakdown
+                </Link>
+              </div>
             </div>
             <p className="text-sm text-ink-muted mb-4">
-              All-in fee at $300 USDC (fees + slippage + destination gas) as
-              % of notional. p50 over 24h, cross-corridor average. Lower is
-              better.
+              Sorted by fee p50 (all-in cost at $300 USDC). Quote columns from
+              bench 002. Success from fee bench. Trailing 24h, eu-west, cross-corridor average.
             </p>
-            <BridgeTable rows={byFee} metric="fee" />
-          </section>
-
-          <section className="mb-10">
-            <div className="flex items-baseline justify-between gap-4 mb-1">
-              <h2 className="display text-xl sm:text-2xl text-ink">
-                Quote speed ranking
-              </h2>
-              <Link
-                href="/benchmarks/bridge-quote-latency"
-                className="text-[12px] text-ink-soft hover:text-ink underline"
-              >
-                per-corridor breakdown
-              </Link>
-            </div>
-            <p className="text-sm text-ink-muted mb-4">
-              Time to receive a usable quote, wall-clock ms. p50 over 24h,
-              cross-corridor average. Lower is better.
+            <BridgeHubTable rows={hub.providers} />
+            <p className="mt-2 text-[11px] text-ink-faint italic">
+              Across is not in the quote latency bench (dashes in quote columns).
+              Per-corridor splits on the individual bench pages.
             </p>
-            <BridgeTable rows={bySpeed} metric="latency" />
           </section>
 
           <section className="mb-10">
@@ -279,20 +263,19 @@ export default async function BridgeHubPage() {
       <footer className="mt-16 pt-6 border-t border-ink/10 text-[12px] text-ink-soft leading-relaxed">
         <p className="label-mono text-ink-faint mb-2">Methodology</p>
         <p>
-          Cost rows:{" "}
-          <code>bridge_cost_percent</code> (all-in: fees + slippage +
-          destination gas) at $300 USDC, p50 over the trailing 24h
-          averaged across corridors each provider supports. Quote latency
-          rows: wall-clock time from request send to last byte received,
-          p50 over the trailing 24h via{" "}
+          Fee column: <code>bridge_cost_percent</code> (all-in: fees +
+          slippage + destination gas) at $300 USDC, p50 over the trailing
+          24h averaged across corridors each provider supports. Quote
+          latency: wall-clock time from request send to last byte received,
+          p50 via{" "}
           <code>
             histogram_quantile(0.50, sum by (le)
             (rate(bridge_quote_latency_ms_bucket[24h])))
           </code>
           . Both benches run from eu-west only; multi-region expansion
           requires additional harness instances. Failures (quote_failed,
-          unsupported route, timeout) are excluded from cost and latency
-          aggregates and counted toward success rate.
+          unsupported route, timeout) excluded from aggregates, counted
+          toward success rate.
         </p>
         <p className="mt-3">
           Data and methodology released under{" "}
@@ -346,103 +329,6 @@ function SummaryCard({
   );
 }
 
-function BridgeTable({
-  rows,
-  metric,
-}: {
-  rows: BridgeProviderRow[];
-  metric: "fee" | "latency";
-}) {
-  if (rows.length === 0) return null;
-  return (
-    <div className="overflow-x-auto rounded-xl border border-ink/10">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-ink/10 bg-ink/[0.02]">
-            <th className="text-left px-4 py-3 text-[11px] label-mono text-ink-faint font-normal">
-              #
-            </th>
-            <th className="text-left px-4 py-3 text-[11px] label-mono text-ink-faint font-normal">
-              Provider
-            </th>
-            <th className="text-left px-4 py-3 text-[11px] label-mono text-ink-faint font-normal hidden sm:table-cell">
-              Type
-            </th>
-            {metric === "fee" ? (
-              <>
-                <th className="text-right px-4 py-3 text-[11px] label-mono text-ink-faint font-normal">
-                  p50 fee
-                </th>
-                <th className="text-right px-4 py-3 text-[11px] label-mono text-ink-faint font-normal hidden md:table-cell">
-                  p99 fee
-                </th>
-                <th className="text-right px-4 py-3 text-[11px] label-mono text-ink-faint font-normal hidden md:table-cell">
-                  Success
-                </th>
-              </>
-            ) : (
-              <>
-                <th className="text-right px-4 py-3 text-[11px] label-mono text-ink-faint font-normal">
-                  p50 quote
-                </th>
-                <th className="text-right px-4 py-3 text-[11px] label-mono text-ink-faint font-normal hidden md:table-cell">
-                  p99 quote
-                </th>
-                <th className="text-right px-4 py-3 text-[11px] label-mono text-ink-faint font-normal hidden md:table-cell">
-                  Success
-                </th>
-              </>
-            )}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, i) => {
-            const p50 = metric === "fee" ? row.feep50 : row.quotep50;
-            const p99 = metric === "fee" ? row.feep99 : row.quotep99;
-            const success =
-              metric === "fee" ? row.feeSuccess : row.quoteSuccess;
-            const fmt = metric === "fee" ? fmtPct : fmtMs;
-            return (
-              <tr
-                key={row.slug}
-                className="border-b border-ink/5 last:border-0 hover:bg-ink/[0.02]"
-              >
-                <td className="px-4 py-3 text-ink-faint tabular-nums text-[12px]">
-                  {i + 1}
-                </td>
-                <td className="px-4 py-3">
-                  <Link
-                    href={`/products/${row.slug}`}
-                    className="font-medium text-ink hover:underline"
-                  >
-                    {row.name}
-                  </Link>
-                </td>
-                <td className="px-4 py-3 hidden sm:table-cell">
-                  {row.type && (
-                    <span className="inline-flex rounded-full bg-ink/5 px-2 py-0.5 text-[11px] text-ink-soft">
-                      {TYPE_LABELS[row.type] ?? row.type}
-                    </span>
-                  )}
-                </td>
-                <td className="px-4 py-3 text-right tabular-nums font-medium">
-                  {p50 != null ? fmt(p50) : <span className="text-ink-faint">—</span>}
-                </td>
-                <td className="px-4 py-3 text-right tabular-nums text-ink-soft hidden md:table-cell">
-                  {p99 != null ? fmt(p99) : <span className="text-ink-faint">—</span>}
-                </td>
-                <td className="px-4 py-3 text-right tabular-nums text-ink-soft hidden md:table-cell">
-                  {success != null ? fmtSuccess(success) : <span className="text-ink-faint">—</span>}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
 function ArchCard({
   label,
   examples,
@@ -461,13 +347,6 @@ function ArchCard({
   );
 }
 
-const TYPE_LABELS: Record<string, string> = {
-  intent: "Intent layer",
-  relay: "Relay",
-  aggregator: "Aggregator",
-  protocol: "Protocol",
-};
-
 function fmtPct(v: number): string {
   if (!Number.isFinite(v)) return "...";
   return `${v.toFixed(2)}%`;
@@ -477,9 +356,4 @@ function fmtMs(v: number): string {
   if (!Number.isFinite(v)) return "...";
   if (v < 1000) return `${Math.round(v)} ms`;
   return `${(v / 1000).toFixed(2)} s`;
-}
-
-function fmtSuccess(v: number): string {
-  if (!Number.isFinite(v)) return "...";
-  return `${(v * 100).toFixed(0)}%`;
 }
