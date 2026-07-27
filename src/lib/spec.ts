@@ -106,9 +106,16 @@ export function overlayEditorial(stored: Benchmark, spec: Spec): Benchmark {
     }
   }
 
+  // Prune providers that are no longer declared in the spec. Stale
+  // snapshots keep results for providers removed from the YAML (retired
+  // endpoints, editorial exclusions) until the worker next sweeps. Without
+  // this filter those phantom rows persist in rankings indefinitely.
+  const specSlugs = new Set(providerByCanonSlug.keys());
+  const prunedResults = reconciledResults.filter((r) => specSlugs.has(r.slug));
+
   const overlaid: Benchmark = {
     ...stored,
-    results: reconciledResults,
+    results: prunedResults,
     seoTitle: spec.seo_title ?? stored.seoTitle,
     seoDescription: spec.seo_description ?? stored.seoDescription,
     seoIntro: spec.seo_intro ?? stored.seoIntro,
