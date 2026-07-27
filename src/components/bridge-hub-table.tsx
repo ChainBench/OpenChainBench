@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { ProviderLogo } from "@/components/provider-logo";
 import type { BridgeProviderRow, CorridorKey } from "@/lib/bridge-hub-types";
-import { CORRIDORS } from "@/lib/bridge-hub-types";
+import { CORRIDORS, REGIONS } from "@/lib/bridge-hub-stats";
 
 const TYPE_LABELS: Record<string, string> = {
   intent: "Intent layer",
@@ -46,7 +46,7 @@ function CorridorDot({
   );
 }
 
-/** Main leaderboard table */
+/** Main leaderboard — sorted by fee p50 (shown as sub-label), quote speed broken out per region */
 export function BridgeHubTable({ rows }: { rows: BridgeProviderRow[] }) {
   if (rows.length === 0) return null;
 
@@ -58,25 +58,21 @@ export function BridgeHubTable({ rows }: { rows: BridgeProviderRow[] }) {
             <th className="text-left px-4 py-3 text-[11px] label-mono text-ink-faint font-normal w-8">#</th>
             <th className="text-left px-4 py-3 text-[11px] label-mono text-ink-faint font-normal">Provider</th>
             <th className="text-left px-3 py-3 text-[11px] label-mono text-ink-faint font-normal hidden sm:table-cell">Type</th>
-            <th className="text-right px-4 py-3 text-[11px] label-mono text-ink-faint font-normal">Fee p50</th>
-            <th className="text-right px-4 py-3 text-[11px] label-mono text-ink-faint font-normal hidden lg:table-cell">Fee p99</th>
-            <th className="text-right px-4 py-3 text-[11px] label-mono text-ink-faint font-normal hidden md:table-cell">Quote p50</th>
-            <th className="text-right px-4 py-3 text-[11px] label-mono text-ink-faint font-normal hidden xl:table-cell">Quote p99</th>
+            {REGIONS.map((r) => (
+              <th key={r.value} className="text-right px-4 py-3 text-[11px] label-mono text-ink-faint font-normal hidden md:table-cell">
+                {r.short}
+              </th>
+            ))}
             <th className="text-right px-4 py-3 text-[11px] label-mono text-ink-faint font-normal hidden md:table-cell">Success</th>
             <th className="text-center px-4 py-3 text-[11px] label-mono text-ink-faint font-normal hidden lg:table-cell">Corridors</th>
           </tr>
           <tr className="border-b border-ink/5 bg-ink/[0.01]">
             <td colSpan={3} />
-            <td colSpan={2} className="px-4 py-1 text-[10px] text-indigo-500 label-mono text-right hidden lg:table-cell">
-              all-in fee · $300 USDC
-            </td>
-            <td className="px-4 py-1 text-[10px] text-indigo-500 label-mono text-right hidden md:table-cell lg:hidden" />
-            <td colSpan={2} className="px-4 py-1 text-[10px] text-ink-faint label-mono text-right hidden xl:table-cell">
-              quote latency
-            </td>
-            <td className="hidden md:table-cell xl:hidden px-4 py-1 text-[10px] text-ink-faint label-mono text-right">
-              quote latency
-            </td>
+            {REGIONS.map((r) => (
+              <td key={r.value} className="px-4 py-1 text-[10px] text-ink-faint label-mono text-right hidden md:table-cell">
+                quote p50
+              </td>
+            ))}
             <td className="hidden md:table-cell" />
             <td className="hidden lg:table-cell px-4 py-1 text-[10px] text-ink-faint label-mono text-center">
               Sol↗ Base↗ Sol↗ HC
@@ -101,7 +97,12 @@ export function BridgeHubTable({ rows }: { rows: BridgeProviderRow[] }) {
                 <td className="px-4 py-3.5">
                   <Link href={`/products/${row.slug}`} className="inline-flex items-center gap-2.5 group">
                     <ProviderLogo slug={row.slug} name={row.name} size={24} />
-                    <span className="font-medium text-ink group-hover:underline leading-tight">{row.name}</span>
+                    <div className="leading-tight">
+                      <span className="font-medium text-ink group-hover:underline">{row.name}</span>
+                      {row.feep50 != null && (
+                        <p className="text-[11px] text-ink-faint tabular-nums">{fmtPct(row.feep50)} fee p50</p>
+                      )}
+                    </div>
                   </Link>
                 </td>
                 <td className="px-3 py-3.5 hidden sm:table-cell">
@@ -111,24 +112,20 @@ export function BridgeHubTable({ rows }: { rows: BridgeProviderRow[] }) {
                     </span>
                   )}
                 </td>
-                <td className="px-4 py-3.5 text-right tabular-nums font-semibold text-ink">
-                  {fmtPct(row.feep50)}
-                </td>
-                <td className="px-4 py-3.5 text-right tabular-nums text-ink-soft hidden lg:table-cell">
-                  {fmtPct(row.feep99)}
-                </td>
-                <td className="px-4 py-3.5 text-right tabular-nums text-ink-soft hidden md:table-cell">
-                  {fmtMs(row.quotep50)}
-                </td>
-                <td className="px-4 py-3.5 text-right tabular-nums text-ink-soft hidden xl:table-cell">
-                  {fmtMs(row.quotep99)}
-                </td>
+                {REGIONS.map((r) => {
+                  const regionData = row.regions.find((x) => x.region === r.value);
+                  const val = regionData?.quotep50 ?? null;
+                  return (
+                    <td key={r.value} className="px-4 py-3.5 text-right tabular-nums text-ink-soft hidden md:table-cell">
+                      {fmtMs(val)}
+                    </td>
+                  );
+                })}
                 <td className="px-4 py-3.5 text-right tabular-nums hidden md:table-cell">
                   <span className={row.feeSuccess != null && row.feeSuccess < 80 ? "text-amber-600" : "text-ink-soft"}>
                     {fmtSuccess(row.feeSuccess)}
                   </span>
                 </td>
-                {/* Corridor coverage dots */}
                 <td className="px-4 py-3.5 hidden lg:table-cell">
                   <div className="flex items-center justify-center gap-1.5">
                     {CORRIDORS.map((c) => {
@@ -148,18 +145,17 @@ export function BridgeHubTable({ rows }: { rows: BridgeProviderRow[] }) {
   );
 }
 
-/** Per-corridor breakdown matrix — fee p50 per provider × corridor */
+/** Per-corridor breakdown matrix — fee p50 + p99 per provider × corridor */
 export function BridgeCorridorMatrix({ rows }: { rows: BridgeProviderRow[] }) {
   if (rows.length === 0) return null;
 
-  // Find per-corridor cheapest slug for highlighting
-  const cheapestByCorr: Partial<Record<CorridorKey, string>> = {};
+  const cheapestP50ByCorr: Partial<Record<CorridorKey, string>> = {};
   for (const c of CORRIDORS) {
     const viable = rows
       .map((r) => ({ slug: r.slug, v: r.corridors.find((x) => x.corridor === c.value)?.feep50 ?? null }))
       .filter((x) => x.v != null)
       .sort((a, b) => (a.v ?? Infinity) - (b.v ?? Infinity));
-    if (viable.length > 0) cheapestByCorr[c.value] = viable[0].slug;
+    if (viable.length > 0) cheapestP50ByCorr[c.value] = viable[0].slug;
   }
 
   return (
@@ -172,6 +168,7 @@ export function BridgeCorridorMatrix({ rows }: { rows: BridgeProviderRow[] }) {
               <th
                 key={c.value}
                 className="text-right px-4 py-3 text-[11px] label-mono text-ink-faint font-normal"
+                colSpan={2}
               >
                 {c.short}
               </th>
@@ -180,9 +177,14 @@ export function BridgeCorridorMatrix({ rows }: { rows: BridgeProviderRow[] }) {
           <tr className="border-b border-ink/5 bg-ink/[0.01]">
             <td />
             {CORRIDORS.map((c) => (
-              <td key={c.value} className="px-4 py-1 text-[10px] text-ink-faint label-mono text-right">
-                fee p50
-              </td>
+              <>
+                <td key={`${c.value}-p50`} className="px-3 py-1 text-[10px] text-indigo-500 label-mono text-right">
+                  p50
+                </td>
+                <td key={`${c.value}-p99`} className="px-3 py-1 text-[10px] text-ink-faint label-mono text-right">
+                  p99
+                </td>
+              </>
             ))}
           </tr>
         </thead>
@@ -197,24 +199,28 @@ export function BridgeCorridorMatrix({ rows }: { rows: BridgeProviderRow[] }) {
               </td>
               {CORRIDORS.map((c) => {
                 const cf = row.corridors.find((x) => x.corridor === c.value);
-                const val = cf?.feep50 ?? null;
-                const isCheapest = cheapestByCorr[c.value] === row.slug && val != null;
+                const p50 = cf?.feep50 ?? null;
+                const p99 = cf?.feep99 ?? null;
+                const isCheapest = cheapestP50ByCorr[c.value] === row.slug && p50 != null;
                 return (
-                  <td key={c.value} className="px-4 py-3 text-right tabular-nums">
-                    {val == null ? (
-                      <span className="text-ink/20 text-[12px]">—</span>
-                    ) : (
-                      <span
-                        className={
-                          isCheapest
-                            ? "font-semibold text-emerald-600"
-                            : "text-ink-soft"
-                        }
-                      >
-                        {fmtPct(val)}
-                      </span>
-                    )}
-                  </td>
+                  <>
+                    <td key={`${c.value}-p50`} className="px-3 py-3 text-right tabular-nums">
+                      {p50 == null ? (
+                        <span className="text-ink/20 text-[12px]">—</span>
+                      ) : (
+                        <span className={isCheapest ? "font-semibold text-emerald-600" : "text-ink-soft"}>
+                          {fmtPct(p50)}
+                        </span>
+                      )}
+                    </td>
+                    <td key={`${c.value}-p99`} className="px-3 py-3 text-right tabular-nums">
+                      {p99 == null ? (
+                        <span className="text-ink/20 text-[12px]">—</span>
+                      ) : (
+                        <span className="text-ink/40 text-[12px]">{fmtPct(p99)}</span>
+                      )}
+                    </td>
+                  </>
                 );
               })}
             </tr>
@@ -222,7 +228,7 @@ export function BridgeCorridorMatrix({ rows }: { rows: BridgeProviderRow[] }) {
         </tbody>
       </table>
       <p className="px-4 py-2 text-[10px] text-ink-faint border-t border-ink/5">
-        Green = cheapest on that corridor. — = provider does not quote this route. All-in cost: fees + slippage + gas at $300 USDC, trailing 24h.
+        Green = cheapest p50 on that corridor. p99 in grey. — = not quoted. All-in cost: fees + slippage + gas at $300 USDC, trailing 24h.
       </p>
     </div>
   );
