@@ -8,6 +8,14 @@ import { SearchTrigger } from "@/components/search/search-trigger";
 import { SiteLogoSwitcher } from "@/components/site-logo-switcher";
 import { ThemeToggle } from "@/components/theme-toggle";
 
+function XIcon({ size = 15 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 1200 1227" fill="currentColor" aria-hidden>
+      <path d="M714.163 519.284 1160.89 0h-105.86L667.137 450.887 357.328 0H0l468.492 681.821L0 1226.37h105.866l409.625-476.152 327.181 476.152H1200L714.137 519.284h.026ZM569.165 687.828l-47.468-67.894-377.686-540.24h162.604l304.797 435.991 47.468 67.894 396.2 566.721H892.476L569.165 687.854v-.026Z"/>
+    </svg>
+  );
+}
+
 function GithubIcon({ size = 15 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="currentColor" aria-hidden>
@@ -120,8 +128,17 @@ export function SiteHeader() {
             <SearchTrigger variant="desktop" />
           </div>
 
-          {/* Utilities - GitHub + theme, gap-spaced, no pipe. */}
+          {/* Utilities - X + GitHub + theme, gap-spaced, no pipe. */}
           <div className="hidden md:flex items-center gap-4 text-ink-muted shrink-0">
+            <a
+              href="https://x.com/OpenChainBench"
+              className="inline-flex items-center hover:text-ink transition-colors"
+              aria-label="Follow @OpenChainBench on X"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <XIcon size={14} />
+            </a>
             <a
               href="https://github.com/ChainBench/OpenChainBench"
               className="inline-flex items-center hover:text-ink transition-colors"
