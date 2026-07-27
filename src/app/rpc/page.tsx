@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { fetchRpcHub } from "@/lib/rpc-hub-stats";
+import { fetchRpcHub, NON_CHAIN_RPC_SLUGS } from "@/lib/rpc-hub-stats";
 import { getSpecs } from "@/lib/spec";
 import { RpcHubTabs } from "@/components/rpc-hub-tabs";
 import { pageMetadata } from "@/lib/page-metadata";
@@ -35,7 +35,7 @@ export default async function RpcHubPage() {
   // Spec-derived chain list: stable across snapshot outages, so the
   // JSON-LD ItemList and the empty state never churn with data blips.
   const rpcSpecs = specs
-    .filter((s) => s.slug.endsWith("-rpc"))
+    .filter((s) => s.slug.endsWith("-rpc") && !NON_CHAIN_RPC_SLUGS.has(s.slug))
     .sort((a, b) => a.slug.localeCompare(b.slug));
 
   const breadcrumbLd = {
@@ -240,6 +240,21 @@ export default async function RpcHubPage() {
           a fast error message never ranks as fastest. Providers that
           key-gate, region-block or rate-limit below the probe cadence
           are excluded rather than listed with an asterisk.
+        </p>
+        <p className="mt-3">
+          MEV-protection gateways (Flashbots Protect, MEV Blocker, Blink,
+          bloXroute Protect) share this probe surface but are optimised
+          for send-tx privacy, not read speed. They are ranked against
+          each other on{" "}
+          <Link
+            href="/benchmarks/mev-protect-rpc"
+            className="underline hover:text-ink"
+          >
+            mev-protect-rpc
+          </Link>{" "}
+          and deliberately kept off this chain matrix so that a fast
+          public read gateway is never compared against a private-mempool
+          RPC on the wrong axis.
         </p>
         <p className="mt-3">
           Data and methodology released under{" "}
