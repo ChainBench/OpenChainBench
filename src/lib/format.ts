@@ -82,7 +82,10 @@ export function fmtUnit(value: number, unit: string) {
     // "essentially zero".
     if (value > 0 && value < 0.01) return "~0";
     if (value > 0 && value < 1) return value.toFixed(3);
-    return formatCompactCount(value);
+    // Prometheus aggregation leaves float noise on integer counts (32.01,
+    // 247.04). Round before formatting so incident/chain counts render as
+    // clean integers, not decimal noise.
+    return formatCompactCount(Math.round(value));
   }
   if (unit === "gwei") {
     // Same near-zero semantics as count (gas-estimation gaps converge

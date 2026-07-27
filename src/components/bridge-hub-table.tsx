@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { ProviderLogo } from "@/components/provider-logo";
 import type { BridgeProviderRow, CorridorKey } from "@/lib/bridge-hub-types";
-import { CORRIDORS, REGIONS } from "@/lib/bridge-hub-stats";
+import { CORRIDORS, REGIONS } from "@/lib/bridge-hub-types";
 
 const TYPE_LABELS: Record<string, string> = {
   intent: "Intent layer",
@@ -46,9 +46,23 @@ function CorridorDot({
   );
 }
 
-/** Main leaderboard — sorted by fee p50 (shown as sub-label), quote speed broken out per region */
+/** Main leaderboard — sorted by fee p50, quote speed per region when multi-region data is available */
 export function BridgeHubTable({ rows }: { rows: BridgeProviderRow[] }) {
   if (rows.length === 0) return null;
+
+  // Per-region: find fastest and slowest slug among rows with data
+  const regionRank: Record<string, { fastest: string | null; slowest: string | null }> = {};
+  for (const r of REGIONS) {
+    const withData = rows
+      .map((row) => ({ slug: row.slug, v: row.regions.find((x) => x.region === r.value)?.quotep50 ?? null }))
+      .filter((x) => x.v != null && Number.isFinite(x.v));
+    if (withData.length < 2) {
+      regionRank[r.value] = { fastest: withData[0]?.slug ?? null, slowest: null };
+    } else {
+      withData.sort((a, b) => (a.v ?? Infinity) - (b.v ?? Infinity));
+      regionRank[r.value] = { fastest: withData[0].slug, slowest: withData[withData.length - 1].slug };
+    }
+  }
 
   return (
     <div className="overflow-x-auto rounded-xl border border-ink/10">
@@ -58,6 +72,8 @@ export function BridgeHubTable({ rows }: { rows: BridgeProviderRow[] }) {
             <th className="text-left px-4 py-3 text-[11px] label-mono text-ink-faint font-normal w-8">#</th>
             <th className="text-left px-4 py-3 text-[11px] label-mono text-ink-faint font-normal">Provider</th>
             <th className="text-left px-3 py-3 text-[11px] label-mono text-ink-faint font-normal hidden sm:table-cell">Type</th>
+            <th className="text-right px-4 py-3 text-[11px] label-mono text-ink-faint font-normal">Fee p50</th>
+            <th className="text-right px-4 py-3 text-[11px] label-mono text-ink-faint font-normal hidden lg:table-cell">Fee p99</th>
             {REGIONS.map((r) => (
               <th key={r.value} className="text-right px-4 py-3 text-[11px] label-mono text-ink-faint font-normal hidden md:table-cell">
                 {r.short}
@@ -68,6 +84,10 @@ export function BridgeHubTable({ rows }: { rows: BridgeProviderRow[] }) {
           </tr>
           <tr className="border-b border-ink/5 bg-ink/[0.01]">
             <td colSpan={3} />
+            <td colSpan={2} className="px-4 py-1 text-[10px] text-indigo-500 label-mono text-right hidden lg:table-cell">
+              all-in fee · $300 USDC
+            </td>
+            <td className="px-4 py-1 text-[10px] text-indigo-500 label-mono text-right hidden md:table-cell lg:hidden" />
             {REGIONS.map((r) => (
               <td key={r.value} className="px-4 py-1 text-[10px] text-ink-faint label-mono text-right hidden md:table-cell">
                 quote p50
@@ -97,12 +117,7 @@ export function BridgeHubTable({ rows }: { rows: BridgeProviderRow[] }) {
                 <td className="px-4 py-3.5">
                   <Link href={`/products/${row.slug}`} className="inline-flex items-center gap-2.5 group">
                     <ProviderLogo slug={row.slug} name={row.name} size={24} />
-                    <div className="leading-tight">
-                      <span className="font-medium text-ink group-hover:underline">{row.name}</span>
-                      {row.feep50 != null && (
-                        <p className="text-[11px] text-ink-faint tabular-nums">{fmtPct(row.feep50)} fee p50</p>
-                      )}
-                    </div>
+                    <span className="font-medium text-ink group-hover:underline leading-tight">{row.name}</span>
                   </Link>
                 </td>
                 <td className="px-3 py-3.5 hidden sm:table-cell">
@@ -112,12 +127,26 @@ export function BridgeHubTable({ rows }: { rows: BridgeProviderRow[] }) {
                     </span>
                   )}
                 </td>
+                <td className="px-4 py-3.5 text-right tabular-nums font-semibold text-ink">
+                  {fmtPct(row.feep50)}
+                </td>
+                <td className="px-4 py-3.5 text-right tabular-nums text-ink-soft hidden lg:table-cell">
+                  {fmtPct(row.feep99)}
+                </td>
                 {REGIONS.map((r) => {
                   const regionData = row.regions.find((x) => x.region === r.value);
                   const val = regionData?.quotep50 ?? null;
+                  const isFastest = val != null && regionRank[r.value]?.fastest === row.slug;
+                  const isSlowest = val != null && regionRank[r.value]?.slowest === row.slug;
                   return (
-                    <td key={r.value} className="px-4 py-3.5 text-right tabular-nums text-ink-soft hidden md:table-cell">
-                      {fmtMs(val)}
+                    <td key={r.value} className="px-4 py-3.5 text-right tabular-nums hidden md:table-cell">
+                      {val == null ? (
+                        <span className="text-ink/20">—</span>
+                      ) : (
+                        <span className={isFastest ? "font-semibold text-emerald-600" : isSlowest ? "text-amber-600" : "text-ink-soft"}>
+                          {fmtMs(val)}
+                        </span>
+                      )}
                     </td>
                   );
                 })}
