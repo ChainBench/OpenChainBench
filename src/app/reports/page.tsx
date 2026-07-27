@@ -17,7 +17,7 @@ export const metadata: Metadata = pageMetadata({
 
 export default function ReportsPage() {
   const reports = getAllReports();
-  const categories = Object.entries(REPORT_CATEGORY_META) as Array<[string, { label: string; description: string }]>;
+  const categories = Object.entries(REPORT_CATEGORY_META);
 
   return (
     <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
