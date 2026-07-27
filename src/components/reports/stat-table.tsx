@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getBenchmark } from "@/data/benchmarks";
 import { rankedCandidates } from "@/lib/citation";
 import { fmtUnit } from "@/lib/format";
+import { ProviderLogo } from "@/components/provider-logo";
 
 type Props = {
   bench: string;
@@ -36,23 +37,29 @@ export async function StatTable({
 
   const hasSuccess = showSuccessRate && ranked.some((r) => r.successRate != null);
 
+  // Fastest = #1 by p50. Most reliable = best success rate (only when hasSuccess).
+  const fastestSlug = ranked[0].slug;
+  const reliableSlug = hasSuccess
+    ? [...ranked].sort((a, c) => (c.successRate ?? 0) - (a.successRate ?? 0))[0].slug
+    : null;
+
   return (
     <figure className="my-10 not-prose -mx-4 sm:-mx-6 lg:-mx-16">
       <div className="border-t-[2px] border-ink overflow-x-auto">
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b border-rule">
-              <th className="text-left py-3 pr-3 pl-0 label-mono text-[10px] uppercase tracking-[0.15em] text-ink-muted font-medium w-8">
+              <th className="text-left py-2.5 pr-3 pl-0 label-mono text-[10px] uppercase tracking-[0.15em] text-ink-muted font-medium w-6">
                 #
               </th>
-              <th className="text-left py-3 pr-3 label-mono text-[10px] uppercase tracking-[0.15em] text-ink-muted font-medium">
+              <th className="text-left py-2.5 pr-3 label-mono text-[10px] uppercase tracking-[0.15em] text-ink-muted font-medium">
                 Provider
               </th>
-              <th className="text-right py-3 pr-3 label-mono text-[10px] uppercase tracking-[0.15em] text-ink-muted font-medium">
+              <th className="text-right py-2.5 pr-3 label-mono text-[10px] uppercase tracking-[0.15em] text-ink-muted font-medium">
                 p50 {b.unit && <span className="normal-case">({b.unit})</span>}
               </th>
               {hasSuccess && (
-                <th className="text-right py-3 label-mono text-[10px] uppercase tracking-[0.15em] text-ink-muted font-medium">
+                <th className="text-right py-2.5 label-mono text-[10px] uppercase tracking-[0.15em] text-ink-muted font-medium">
                   Success
                 </th>
               )}
@@ -60,7 +67,8 @@ export async function StatTable({
           </thead>
           <tbody>
             {ranked.map((r, i) => {
-              const isBest = i === 0;
+              const isFastest = r.slug === fastestSlug;
+              const isReliable = reliableSlug !== null && r.slug === reliableSlug && r.slug !== fastestSlug;
               const successPct = r.successRate ?? 100;
               const successColor =
                 successPct >= 99
@@ -73,45 +81,57 @@ export async function StatTable({
                 <tr
                   key={r.slug}
                   className={`border-b border-rule transition-colors ${
-                    isBest
+                    isFastest || isReliable
                       ? "bg-[var(--color-paper-soft)]"
                       : "hover:bg-[var(--color-paper-soft)]/50"
                   }`}
                 >
                   <td
-                    className={`py-3 pr-3 pl-0 label-mono text-[13px] ${
-                      isBest ? "font-bold text-ink" : "text-ink-faint"
+                    className={`py-2 pr-3 pl-0 label-mono text-[12px] ${
+                      isFastest || isReliable ? "font-bold text-ink" : "text-ink-faint"
                     }`}
                   >
                     {i + 1}
                   </td>
-                  <td className="py-3 pr-3">
-                    <div className="flex items-center gap-2 flex-wrap">
+                  <td className="py-2 pr-3">
+                    <div className="flex items-center gap-2.5">
+                      <ProviderLogo slug={r.slug} name={r.name} size={20} />
                       <Link
                         href={`/products/${r.slug}`}
-                        className={`hover:text-ink transition-colors ${
-                          isBest ? "font-semibold text-ink" : "text-ink-soft"
+                        className={`hover:text-ink transition-colors text-[13px] leading-tight ${
+                          isFastest || isReliable ? "font-semibold text-ink" : "text-ink-soft"
                         }`}
                       >
                         {r.name}
                       </Link>
-                      {isBest && (
-                        <span className="label-mono text-[9px] bg-ink text-paper px-1.5 py-px uppercase tracking-[0.1em]">
-                          LEADER
+                      {isFastest && (
+                        <span className="label-mono text-[9px] bg-ink text-paper px-1.5 py-px uppercase tracking-[0.1em] shrink-0">
+                          FASTEST
+                        </span>
+                      )}
+                      {isReliable && (
+                        <span className="label-mono text-[9px] border border-ink text-ink px-1.5 py-px uppercase tracking-[0.1em] shrink-0">
+                          RELIABLE
                         </span>
                       )}
                     </div>
                   </td>
                   <td
-                    className={`py-3 pr-3 text-right label-mono tabular-nums ${
-                      isBest ? "text-[15px] font-bold text-ink" : "text-[13px] text-ink-soft"
+                    className={`py-2 pr-3 text-right label-mono tabular-nums ${
+                      isFastest ? "text-[14px] font-bold text-ink" : "text-[13px] text-ink-soft"
                     }`}
                   >
                     {fmtUnit(r.ms.p50, b.unit)}
                   </td>
                   {hasSuccess && (
-                    <td className={`py-3 text-right label-mono text-[13px] tabular-nums ${successColor}`}>
-                      {successPct.toFixed(1)}%
+                    <td className={`py-2 text-right label-mono text-[13px] tabular-nums ${successColor}`}>
+                      <span className="flex items-center justify-end gap-2">
+                        <span
+                          className="hidden sm:block h-1 rounded-full bg-current opacity-25 shrink-0"
+                          style={{ width: `${Math.round(successPct * 0.4)}px` }}
+                        />
+                        {successPct.toFixed(1)}%
+                      </span>
                     </td>
                   )}
                 </tr>
