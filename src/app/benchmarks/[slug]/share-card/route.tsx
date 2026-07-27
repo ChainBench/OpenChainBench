@@ -570,10 +570,50 @@ export async function GET(
   if (regionOption) filters.region = regionOption.value;
   if (venueOption) filters.venue = venueOption.value;
   if (kindOption) filters.kind = kindOption.value;
-  const benchmark =
+  const rawBenchmark =
     Object.keys(filters).length > 0
       ? (await getBenchmark(slug, filters)) ?? aggregate
       : aggregate;
+  // Metric-panel override. Perp-fees and any bench declaring
+  // `metric_panels` in its YAML expose per-provider companion scalars
+  // (e.g. ALL-IN AT $1K / $100K / $1M for perp-fees). The reader picks
+  // one via the on-page ViewSwitcher; the URL carries the choice as
+  // ?view=<panelId>. Without this transformation the exported PNG
+  // always rendered the spec's main metric even though the reader was
+  // clearly staring at a panel — the mismatch was the reported bug.
+  //
+  // Mirrors the panelViewBenchmark logic in benchmark-body.tsx: swap
+  // metric label + unit, remap results[i].ms.p50 to the panel's scalar,
+  // drop providers with no value for this panel, and (for the snapshot
+  // template) swap extras.series24h to the panel's per-provider series
+  // so the 24h chart line follows the panel too.
+  const viewParam = url.searchParams.get("view");
+  const activePanel =
+    viewParam && rawBenchmark.metricPanels
+      ? rawBenchmark.metricPanels.find((p) => p.id === viewParam) ?? null
+      : null;
+  const benchmark = activePanel
+    ? {
+        ...rawBenchmark,
+        metric: activePanel.label,
+        unit: activePanel.unit ?? rawBenchmark.unit,
+        higherIsBetter: activePanel.higherIsBetter,
+        results: rawBenchmark.results
+          .filter(
+            (r) =>
+              activePanel.values[r.slug] != null &&
+              Number.isFinite(activePanel.values[r.slug]),
+          )
+          .map((r) => ({
+            ...r,
+            ms: { ...r.ms, p50: activePanel.values[r.slug] },
+          })),
+        extras: {
+          ...rawBenchmark.extras,
+          series24h: activePanel.seriesByProvider ?? rawBenchmark.extras.series24h,
+        },
+      }
+    : rawBenchmark;
   // Pill label: chain reads cleanest as-is; region / venue / kind get
   // prefixed so a reader glancing at the card understands what slice
   // they are looking at. Concatenated with " · " when multiple filters
