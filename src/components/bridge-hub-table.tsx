@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { ProviderLogo } from "@/components/provider-logo";
 import type { BridgeProviderRow, CorridorKey } from "@/lib/bridge-hub-types";
-import { CORRIDORS, REGIONS } from "@/lib/bridge-hub-stats";
+import { CORRIDORS, REGIONS } from "@/lib/bridge-hub-types";
 
 const TYPE_LABELS: Record<string, string> = {
   intent: "Intent layer",
