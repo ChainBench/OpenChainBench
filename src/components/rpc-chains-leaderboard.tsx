@@ -21,6 +21,7 @@ import type { RpcHubChain, RpcRegionKey } from "@/lib/rpc-hub-stats";
 type SortKey =
   | "name"
   | "bestP50"
+  | "bestP90"
   | "us-east"
   | "eu-west"
   | "sgp"
@@ -35,6 +36,7 @@ const REGION_COLS: { key: RpcRegionKey; label: string }[] = [
 function sortValue(r: RpcHubChain, k: SortKey): number | string | null {
   if (k === "name") return r.name.toLowerCase();
   if (k === "bestP50") return r.best?.p50Ms ?? null;
+  if (k === "bestP90") return r.bestP90Ms ?? null;
   if (k === "providerCount") return r.providerCount;
   return r.regions[k]?.p50Ms ?? null;
 }
@@ -118,6 +120,15 @@ export function RpcChainsLeaderboard({ rows }: { rows: RpcHubChain[] }) {
                   Best overall (3-region avg)
                 </span>
               </ThSort>
+              <ThSort
+                active={sortKey === "bestP90"}
+                dir={sortDir}
+                onClick={() => setSort("bestP90")}
+              >
+                <span title="p90 latency of the same overall-best provider — the slow-tail number users actually feel. Empty when the provider's histogram doesn't have enough samples yet.">
+                  Best p90
+                </span>
+              </ThSort>
               {REGION_COLS.map((c) => (
                 <ThSort
                   key={c.key}
@@ -149,20 +160,30 @@ export function RpcChainsLeaderboard({ rows }: { rows: RpcHubChain[] }) {
                   {i + 1}
                 </Td>
                 <Td>
-                  <Link
-                    href={`/benchmarks/${r.slug}`}
-                    className="flex items-center gap-2 min-w-0 group"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <ProviderLogo slug={r.chain} name={r.name} size={18} />
-                    <span className="font-medium text-ink truncate group-hover:underline underline-offset-2">
-                      {r.name}
-                    </span>
-                    <ChevronRight
-                      size={14}
-                      className="text-ink-faint shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                    />
-                  </Link>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Link
+                      href={`/benchmarks/${r.slug}`}
+                      className="flex items-center gap-2 min-w-0 group"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <ProviderLogo slug={r.chain} name={r.name} size={18} />
+                      <span className="font-medium text-ink truncate group-hover:underline underline-offset-2">
+                        {r.name}
+                      </span>
+                      <ChevronRight
+                        size={14}
+                        className="text-ink-faint shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                      />
+                    </Link>
+                    <Link
+                      href={`/chains/${r.chain}`}
+                      className="text-[10px] text-ink-faint hover:text-ink underline underline-offset-2 shrink-0"
+                      title={`Open the ${r.name} chain hub (KPI cards + full RPC leaderboard)`}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      hub
+                    </Link>
+                  </div>
                 </Td>
                 <Td>
                   {r.best ? (
@@ -184,6 +205,15 @@ export function RpcChainsLeaderboard({ rows }: { rows: RpcHubChain[] }) {
                     </span>
                   ) : (
                     <span className="text-ink-faint">...</span>
+                  )}
+                </Td>
+                <Td mono>
+                  {r.bestP90Ms != null ? (
+                    <span className="tabular-nums text-ink-soft">
+                      {fmtMs(r.bestP90Ms)}
+                    </span>
+                  ) : (
+                    <span className="text-ink-faint">-</span>
                   )}
                 </Td>
                 {REGION_COLS.map((c) => {
@@ -215,7 +245,7 @@ export function RpcChainsLeaderboard({ rows }: { rows: RpcHubChain[] }) {
                   mono
                   tip={
                     r.unresponsiveCount
-                      ? `${r.unresponsiveCount} cohort provider${r.unresponsiveCount > 1 ? "s" : ""} currently unresponsive on ${r.name} (probed, all calls failing). Not counted in best/fastest.`
+                      ? `${r.unresponsiveCount} cohort provider${r.unresponsiveCount > 1 ? "s" : ""} currently unresponsive on ${r.name} (probed, all calls failing). Not counted in best/fastest. Providers: ${(r.unresponsive ?? []).map((u) => u.name).join(", ") || "n/a"}`
                       : undefined
                   }
                 >
@@ -243,7 +273,7 @@ export function RpcChainsLeaderboard({ rows }: { rows: RpcHubChain[] }) {
             {filtered.length === 0 && (
               <tr>
                 <td
-                  colSpan={8}
+                  colSpan={9}
                   className="px-3 py-8 text-center text-[12px] text-ink-faint"
                 >
                   No chain matches &ldquo;{q}&rdquo;.
