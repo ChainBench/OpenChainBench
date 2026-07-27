@@ -231,15 +231,29 @@ export function RpcChainsLeaderboard({ rows }: { rows: RpcHubChain[] }) {
                   mono
                   tip={
                     r.bestArchiveDepthBlocks
-                      ? `${r.bestArchiveDepthBlocks.toLocaleString()} blocks of historical state. Providers offering this depth: ${
+                      ? `${r.bestArchiveDepthBlocks.toLocaleString()} blocks of historical state, served by: ${
                           r.bestArchiveProviders?.join(", ") || "(none listed)"
-                        }. Depth set = {300, 7.2k, 216k, 1.3M, 5M}: 300 is Geth default pruned; 5M is genesis-era full archive. On sub-second-block chains (Arbitrum, Sei) 5M translates to weeks not years — see the per-chain bench page for the exact wall-clock window.`
-                      : "No provider on this chain reports archive support (either the archive probe is skipped for the chain family — Solana / Substrate — or every listed provider serves only the default pruned window)."
+                        }. Depth set = {300, 7.2k, 216k, 1.3M, 5M}: 300 is Geth default pruned; 5M is genesis-era full archive. On sub-second-block chains (Arbitrum, Sei) 5M translates to weeks not years, see the per-chain bench page for the exact wall-clock window.`
+                      : "No provider on this chain reports archive support (either the archive probe is skipped for the chain family, Solana / Substrate, or every listed provider serves only the default pruned window)."
                   }
                 >
-                  {r.bestArchiveDepthBlocks
-                    ? fmtArchive(r.bestArchiveDepthBlocks)
-                    : <span className="text-ink-faint">-</span>}
+                  {r.bestArchiveDepthBlocks ? (
+                    <span className="inline-flex items-baseline gap-1.5">
+                      <span className="tabular-nums">
+                        {fmtArchive(r.bestArchiveDepthBlocks)}
+                      </span>
+                      {r.bestArchiveProviders &&
+                        r.bestArchiveProviders.length > 0 && (
+                          <span className="text-[10.5px] text-ink-faint truncate max-w-[90px]">
+                            {r.bestArchiveProviders.length === 1
+                              ? r.bestArchiveProviders[0]
+                              : `${r.bestArchiveProviders[0]} +${r.bestArchiveProviders.length - 1}`}
+                          </span>
+                        )}
+                    </span>
+                  ) : (
+                    <span className="text-ink-faint">-</span>
+                  )}
                 </Td>
                 {REGION_COLS.map((c) => {
                   const b = r.regions[c.key];
