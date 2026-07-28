@@ -1,7 +1,7 @@
 import { getBenchmarks } from "@/data/benchmarks";
 import { SITE } from "@/data/site";
 import { AllBenchmarksDraftError } from "@/lib/spec";
-import { headlineSentence } from "@/lib/citation";
+import { groundingTraceLine } from "@/lib/citation";
 
 export const runtime = "nodejs";
 export const revalidate = 300;
@@ -56,7 +56,7 @@ export async function GET() {
     lines.push(`- JSON: ${SITE.url}/api/stat/${b.slug}`);
     lines.push(`- Category: ${b.category}`);
     lines.push(`- Metric: ${b.metric} (${b.unit})`);
-    lines.push(`- Headline: ${headlineSentence(b)}`);
+    lines.push(`- Headline: ${groundingTraceLine(b, SITE.url)}`);
     lines.push("");
   }
 
