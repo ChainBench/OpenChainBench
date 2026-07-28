@@ -1,0 +1,41 @@
+slug: what-is-the-fastest-free-base-rpc
+question: "What is the fastest free Base RPC?"
+short_answer: |
+  {{best_name}} is currently the fastest free Base RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h), measured by OpenChainBench every 60 seconds against 5 no-key providers from us-east, eu-west and Singapore.
+
+benchmark: base-rpc
+
+intro: |
+  Base is Coinbase's OP Stack L2 and one of the highest-volume chains in the ecosystem. Coinbase operates both the sequencer and the official mainnet.base.org endpoint, giving the house URL every locational advantage on paper. In practice, third-party gateways trade the lead with the official endpoint depending on the probe's region, which is exactly what continuous measurement reveals that a one-off ping cannot. OpenChainBench probes all 5 free, no-key Base endpoints (PublicNode, dRPC, Tenderly, Nodies and Base) with an identical eth_getBlockByNumber call every 60 seconds from three regions. Blink (formerly Merkle) was delisted in July 2026 because its gateway returns a JSON-RPC -32601 on eth_getBlockByNumber, the standard anti-cache probe used across the cluster; it cannot be compared on equal terms until it supports the call.
+
+methodology: |
+  One identical JSON-RPC POST (eth_getBlockByNumber with a rotating request id, non-cacheable by design) every 60 seconds against each provider from us-east, eu-west and Singapore, using the same plain HTTP client for every endpoint and no API key in any request. Wall-clock round-trip is recorded at millisecond precision; p50, p90 and p99 come from Prometheus quantile_over_time over 24 hours, averaged across the three origins for the headline. Responses are classified ok, http_err, jsonrpc_err, stale (more than 20 blocks behind the cross-provider tip) or timeout, and only ok calls enter the latency distribution. Archive depth is probed every 5 minutes with eth_getBalance at five historical depths up to 5M blocks.
+
+limitations:
+  - "Latency is conditional on success. Failed calls never enter the percentile; read every latency figure next to its success column."
+  - "Three probe origins only (Virginia, Amsterdam, Singapore). Per-region leaders regularly diverge, and a gateway that wins from the US can lose from Europe or Asia."
+  - "One method probed for the headline. eth_getBlockByNumber says nothing about WebSocket subscription latency, which matters for real-time apps on Base's 2-second block cadence. See the ws-head-latency-base benchmark for that metric."
+  - "Free public endpoints share rate-limit budgets with the entire internet and carry no SLA."
+  - "Blink (formerly Merkle) was excluded after returning JSON-RPC -32601 on the standard probe call; it is not measured until it supports eth_getBlockByNumber on a no-key path."
+
+faq:
+  - q: "Which Base RPC URL works without an API key?"
+    a: "Five endpoints sustain continuous no-key probing and are ranked live above: PublicNode, dRPC, Tenderly, Nodies and Base. Blink (formerly Merkle) was delisted in July 2026 because it returns JSON-RPC -32601 on the standard eth_getBlockByNumber probe. Every listed provider was live-verified no-key before inclusion."
+  - q: "Is Coinbase's official Base RPC faster than third-party gateways?"
+    a: "Not consistently. Despite Coinbase operating the sequencer, mainnet.base.org trades the lead with PublicNode, dRPC and Tenderly depending on region. Check the region tabs on the benchmark page to see which provider leads from the origin closest to your deployment."
+  - q: "Does the fastest Base RPC depend on where my server runs?"
+    a: "Strongly. The headline number averages three probe origins, but per-region leaders regularly diverge. A gateway that wins from Virginia can lose from Singapore by multiples. Use the region tabs on the benchmark page scoped to your actual deployment origin."
+  - q: "How is Base RPC latency measured here?"
+    a: "One identical JSON-RPC POST (eth_getBlockByNumber) every 60 seconds against each provider from each of 3 regions, with the same plain HTTP client. Wall-clock round-trip at millisecond precision; p50/p90/p99 via Prometheus quantile_over_time over 24 hours. Responses are classified so stale heads and error bodies never rank as fast."
+  - q: "What about WebSocket latency for real-time Base apps?"
+    a: "Base's 2-second block cadence makes WebSocket push timing especially important. The ws-head-latency-base benchmark races PublicNode and dRPC on per-block newHeads delivery lag; check that page for bot and keeper integrations that need block-push timing rather than HTTP request latency."
+
+related:
+  - which-base-rpc-pushes-new-blocks-the-fastest
+  - what-is-the-fastest-free-arbitrum-rpc
+  - what-is-the-fastest-free-optimism-rpc
+  - what-is-the-fastest-free-ethereum-rpc
+
+seo_title: "What is the fastest free Base RPC? Live no-key latency ranking 2026"
+seo_description: "{{best_name}} leads free Base RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). 5 no-key endpoints probed every 60s from 3 regions, with success rates and archive depth audits."
+status: live
