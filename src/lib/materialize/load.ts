@@ -44,6 +44,7 @@ export type BenchmarkFilters = {
   region?: string;
   kind?: string;
   venue?: string;
+  amount_usd?: string;
 };
 
 export function filterSig(f: BenchmarkFilters): string {
@@ -60,8 +61,8 @@ export function parseFilterSig(sig: string): BenchmarkFilters {
   if (!sig) return out;
   for (const kv of sig.split("&")) {
     const [k, v] = kv.split("=");
-    if (k && v && (k === "chain" || k === "region" || k === "kind" || k === "venue")) {
-      out[k as "chain" | "region" | "kind" | "venue"] = v;
+    if (k && v && (k === "chain" || k === "region" || k === "kind" || k === "venue" || k === "amount_usd")) {
+      out[k as "chain" | "region" | "kind" | "venue" | "amount_usd"] = v;
     }
   }
   return out;
