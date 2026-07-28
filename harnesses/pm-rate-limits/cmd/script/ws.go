@@ -10,6 +10,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -117,14 +118,15 @@ func wsSession(ctx context.Context, st *venueState, token string) bool {
 
 // kalshiWSURL is the Kalshi trading API WebSocket endpoint.
 // Requires RSA-PSS-SHA256 signed auth headers; returns 403 from non-US IPs.
-const kalshiWSURL = "wss://trading-api.kalshi.com/trade-api/ws/v2"
+// Kalshi REST API migrated to api.elections.kalshi.com; WS follows same domain.
+const kalshiWSURL = "wss://api.elections.kalshi.com/trade-api/ws/v2"
 
 // kalshiAuthHeaders computes the three headers Kalshi requires for WS auth.
 // Signature: RSA-PSS SHA256 over "{timestamp_ms}GET/trade-api/ws/v2".
 func kalshiAuthHeaders(keyID, privateKeyPEM string) (http.Header, error) {
 	block, _ := pem.Decode([]byte(privateKeyPEM))
 	if block == nil {
-		return nil, log.Output(0, "kalshi: invalid PEM block") // surfaces in log
+		return nil, fmt.Errorf("kalshi: invalid PEM block")
 	}
 	raw, err := x509.ParsePKCS8PrivateKey(block.Bytes)
 	if err != nil {
