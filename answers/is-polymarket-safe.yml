@@ -1,0 +1,80 @@
+slug: is-polymarket-safe
+question: "Is Polymarket safe to use?"
+benchmark: pm-api-latency
+status: live
+
+short_answer: |
+  Polymarket's custody model is safer than a centralized exchange: funds are held as USDC in audited
+  smart contracts on Polygon, not in a company bank account. OpenChainBench measures Polymarket API
+  uptime live at {{p50:polymarket}} warm latency with near-100% uptime historically. Smart contract
+  risk and Polygon network risk exist, as with any onchain protocol. This page covers infrastructure
+  and custody safety, not investment advice.
+
+intro: |
+  "Safe" means different things when applied to a prediction market. It can mean: will the platform
+  run away with my funds (custody safety), will the platform stay online (uptime), will markets
+  resolve honestly (oracle safety), or is it legally permitted in my jurisdiction (regulatory safety).
+  This page covers the first three. Regulatory access is covered on the is-polymarket-legal-in-the-us
+  answer page.
+
+  On custody: Polymarket holds user funds as USDC in audited smart contracts on Polygon, not in a
+  company bank account. This is meaningfully safer than a centralized exchange where the platform
+  controls a pooled hot wallet. A Polymarket contract bug could be exploited, but the platform cannot
+  unilaterally move your USDC to a different address without a transaction on Polygon. Polymarket's
+  contracts have been audited by multiple security firms, and the platform has processed hundreds of
+  millions in trading volume since its 2020 launch without a custody breach.
+
+  On oracle safety: markets resolve through UMA's optimistic oracle. Someone proposes an outcome
+  onchain, a dispute window opens, and if no one disputes, the outcome is accepted and markets pay
+  out. If someone disputes, the question goes to a vote of UMA token holders. UMA's design means
+  there is no single Polymarket employee who can decree a market resolution; the process is onchain
+  and requires either silence (no dispute) or a token holder vote to reach a wrong answer. The UMA
+  oracle has been used for hundreds of thousands of market resolutions without a systemic failure.
+
+  On uptime: OpenChainBench measures Polymarket's API live. The current p50 warm latency is
+  {{p50:polymarket}}, and uptime has been near 100% historically across three probe regions. Brief
+  outages occur (usually affecting one region before recovering), but extended outages are rare. The
+  uptime panel on the pm-api-latency bench shows the live 24h and 7d figures.
+
+  Polymarket is not regulated by the US CFTC for its international exchange (geoblocked for US users
+  since 2022). Polymarket US (QCX) is a separate CFTC-regulated entity for US users launched in
+  December 2025. There is no FDIC or SIPC protection (Polymarket is not a bank or broker). Smart
+  contract bugs and Polygon network events are real risks that exist independently of Polymarket's
+  own team.
+
+methodology: |
+  OpenChainBench measures Polymarket API uptime and latency through the pm-api-latency bench, which
+  probes Polymarket's CLOB midpoint endpoint every 5 seconds from three regions (US East, EU West,
+  Singapore) over warm connections. Each probe records the full round-trip, classifies the outcome
+  (ok, timeout, 4xx, 5xx, network error), and feeds a health gauge. The 24h and 7d uptime figures
+  are the average of that health gauge over the respective window. The p50 warm latency is the median
+  round-trip of successful, non-cached requests over 24 hours. This measures infrastructure uptime,
+  not smart contract integrity or oracle correctness.
+
+limitations:
+  - "Smart contract risk exists independently of Polymarket's uptime. A bug in the UMA CTF adapters or the Polygon bridge could allow theft of funds even when the API is fully operational. Smart contract risk is not measured by this bench."
+  - "Polygon network risk exists. Polymarket runs on Polygon Mainnet, and a Polygon-level incident (validator outage, reorg, consensus bug) would affect Polymarket independently of Polymarket's own infrastructure. Polygon is a top-10 blockchain by TVL and has a strong track record, but network-level risk is not zero."
+  - "UMA oracle disputes are infrequent but can affect payout timing significantly. A disputed market waits for UMA token holder voting, which takes days. The dispute rate is tracked on the polymarket-resolution-delay bench."
+  - "Uptime measured by OpenChainBench is uptime of the API from three specific probe locations at a polite request rate. A venue can be up for the bench and degraded for a user in a different region during a partial outage. The bench is a signal, not a guarantee."
+  - "This page covers infrastructure and custody safety, not investment safety. Prediction market positions can lose value. This is not investment advice."
+
+faq:
+  - q: "Where are Polymarket funds held?"
+    a: "Polymarket funds are held as USDC in audited smart contracts on Polygon Mainnet, not in a company bank account. When you deposit to Polymarket, your USDC is controlled by the contract, not by a Polymarket company wallet. Winnings are redeemable by calling the contract after onchain resolution. This design is safer than a centralized exchange from a custody standpoint, because a rogue employee cannot move your funds unilaterally. Smart contract bugs remain a risk."
+  - q: "What happens if Polymarket shuts down?"
+    a: "If Polymarket LLC ceases to operate, your USDC remains locked in the smart contracts on Polygon. Markets that have resolved onchain are redeemable directly from the contract. Markets that have not resolved may be stuck if the UMA oracle requires Polymarket's input to proceed. This is a material risk for positions in unresolved markets. Polymarket has published contract addresses; sophisticated users can interact with the contracts directly on Polygon without Polymarket's frontend."
+  - q: "Is Polymarket regulated?"
+    a: "Polymarket's international exchange (polymarket.com) is not regulated by the US CFTC and has geoblocked US users since a 2022 settlement in which Polymarket LLC paid $1.4M to the CFTC for operating an unregistered facility. Polymarket US (QCX) is a separate CFTC-regulated entity that launched in December 2025 and is accessible to US users. Kalshi is the other primary CFTC-regulated prediction market. There is no FDIC or SIPC protection on either international Polymarket or Polymarket US (QCX); these are not bank or brokerage accounts."
+  - q: "What is UMA and how does it affect Polymarket safety?"
+    a: "UMA (Universal Market Access) is an optimistic oracle protocol on Ethereum and Polygon. When a Polymarket market event concludes, someone proposes the outcome onchain through UMA. A dispute window opens (duration varies by market type). If no one disputes, the outcome is finalized and funds distributed. If someone disputes, UMA token holders vote on the correct outcome over several days. UMA has been used for hundreds of thousands of Polymarket market resolutions. A failure of UMA's governance (e.g., a bad vote on a disputed market) is a risk, though UMA's dispute rate and vote history are tracked publicly."
+  - q: "Has Polymarket ever been hacked?"
+    a: "Polymarket has not suffered a smart contract exploit or custody breach as of July 2026. The platform experienced a social engineering attack against a customer support vendor in 2024 that exposed some user email addresses, but no funds were affected. Smart contract security audits are public record; the contracts are open source and have been reviewed by multiple auditors. No security review eliminates all risk, but the audit history and the onchain custody model represent a meaningful security baseline."
+
+related:
+  - polymarket-fees-explained
+  - how-long-does-polymarket-take-to-resolve
+  - is-polymarket-legal-in-the-us
+  - which-prediction-market-data-api-is-the-freshest
+
+seo_title: "Is Polymarket safe? Custody, uptime and oracle safety explained"
+seo_description: "Polymarket holds funds in audited USDC smart contracts on Polygon, not company wallets. OCB measures {{p50:polymarket}} p50 latency and near-100% uptime live. Smart contract and oracle risks explained."
