@@ -1,7 +1,7 @@
 slug: which-prediction-market-data-api-is-the-freshest
 question: "Which prediction market data API publishes the freshest Polymarket data?"
 short_answer: |
-  {{best_name}} currently relays Polymarket trades the fastest at {{best_p50}} (p50, 24h) versus Polymarket's own CLOB WebSocket gateway, measured by cross correlating trade events on Polymarket and Codex on the same rotating basket of top 20 markets by 24 hour volume.
+  Polymarket's own CLOB WebSocket gateway is the canonical fastest source by definition (T0, sub-50ms from EU West) and is not a competing data provider. Among third-party data providers, Codex currently leads at {{p50:codex}} (p50, 24h) on the Polymarket tab, measured as lag from venue publish to provider relay; Codex indexes the onchain Polygon confirmation so its structural floor is roughly 2 seconds of block time. Live per-venue ranking at openchainbench.com/benchmarks/pm-data-freshness.
 
 benchmark: pm-data-freshness
 
@@ -38,5 +38,5 @@ related:
   - which-crypto-price-api-is-the-fastest
 
 seo_title: "Which prediction market data API is the freshest in 2026?"
-seo_description: "{{best_name}} leads at {{best_p50}} (p50, 24h) versus Polymarket's CLOB gateway, with Codex measured live by OpenChainBench on the top 20 Polymarket markets by volume."
+seo_description: "Polymarket's own CLOB gateway is the canonical T0 (fastest by definition). Among third-party providers, Codex leads freshness delta live, measured by OpenChainBench on the top 20 Polymarket and Kalshi markets by volume."
 status: live
