@@ -48,6 +48,9 @@ func main() {
 		if v.Slug == "polymarket" {
 			go runPolymarketWS(ctx, v.state)
 		}
+		if v.Slug == "kalshi" && cfg.KalshiAPIKeyID != "" && cfg.KalshiPrivateKeyPEM != "" {
+			go runKalshiWS(ctx, v.state, cfg.KalshiAPIKeyID, cfg.KalshiPrivateKeyPEM)
+		}
 	}
 
 	// Aggregator probes. One goroutine per (venue, source) pair; reuses
