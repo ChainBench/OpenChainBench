@@ -135,6 +135,44 @@ func venues() []*Venue {
 			PinFunc:   pinMyriad,
 			RampRates: nil,
 		},
+		{
+			Slug: "predictit",
+			Classes: []Class{
+				// PredictIt documents 5 req/min. 15s interval gives 4 req/min with safety margin.
+				// No book endpoint exists on their API.
+				{Name: "price", Interval: 15 * time.Second, Timeout: 12 * time.Second,
+					URL: func(p Pin) string {
+						return "https://www.predictit.org/api/marketdata/markets/" + p.Market
+					}},
+				{Name: "list", Interval: 15 * time.Second, Timeout: 12 * time.Second,
+					URL: func(Pin) string {
+						return "https://www.predictit.org/api/marketdata/all"
+					}},
+			},
+			PinFunc:   pinPredictIt,
+			RampRates: nil, // rate-limited: no ramp; probing at their published cap already
+			StopOn429: true,
+		},
+		{
+			Slug: "smarkets",
+			Classes: []Class{
+				{Name: "book", Interval: 5 * time.Second, Timeout: 8 * time.Second,
+					URL: func(p Pin) string {
+						return "https://api.smarkets.com/v3/markets/" + p.Market + "/quotes/"
+					}},
+				{Name: "price", Interval: 5 * time.Second, Timeout: 8 * time.Second,
+					URL: func(p Pin) string {
+						return "https://api.smarkets.com/v3/markets/" + p.Market + "/"
+					}},
+				{Name: "list", Interval: 30 * time.Second, Timeout: 15 * time.Second,
+					URL: func(Pin) string {
+						// Popular events listing, no event-ID dependency for the list probe
+						return "https://api.smarkets.com/v3/events/?type_domain=politics&sort=popular&per_page=20&state=upcoming"
+					}},
+			},
+			PinFunc:   pinSmarkets,
+			RampRates: []int{10, 25, 50},
+		},
 	}
 }
 
