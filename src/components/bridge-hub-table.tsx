@@ -4,7 +4,11 @@ import Link from "next/link";
 import { Fragment } from "react";
 import { ProviderLogo } from "@/components/provider-logo";
 import type { BridgeProviderRow, CorridorKey } from "@/lib/bridge-hub-types";
+<<<<<<< HEAD
 import { CORRIDORS, REGIONS } from "@/lib/bridge-hub-types";
+=======
+import { CORRIDORS, REGIONS } from "@/lib/bridge-hub-stats";
+>>>>>>> origin/main
 
 const TYPE_LABELS: Record<string, string> = {
   intent: "Intent layer",
@@ -29,6 +33,13 @@ function fmtSuccess(v: number | null): string {
   return `${v.toFixed(1)}%`;
 }
 
+function successClass(v: number | null): string {
+  if (v == null || !Number.isFinite(v)) return "text-ink-soft";
+  if (v >= 99) return "text-emerald-600";
+  if (v >= 80) return "text-ink-soft";
+  return "text-amber-600";
+}
+
 function CorridorDot({
   value,
   label,
@@ -47,7 +58,11 @@ function CorridorDot({
   );
 }
 
+<<<<<<< HEAD
 /** Main leaderboard — sorted by fee p50, quote speed per region when multi-region data is available */
+=======
+/** Main leaderboard — sorted by fee p50 (shown as sub-label), quote speed broken out per region */
+>>>>>>> origin/main
 export function BridgeHubTable({ rows }: { rows: BridgeProviderRow[] }) {
   if (rows.length === 0) return null;
 
@@ -73,22 +88,32 @@ export function BridgeHubTable({ rows }: { rows: BridgeProviderRow[] }) {
             <th className="text-left px-4 py-3 text-[11px] label-mono text-ink-faint font-normal w-8">#</th>
             <th className="text-left px-4 py-3 text-[11px] label-mono text-ink-faint font-normal">Provider</th>
             <th className="text-left px-3 py-3 text-[11px] label-mono text-ink-faint font-normal hidden sm:table-cell">Type</th>
+<<<<<<< HEAD
             <th className="text-right px-4 py-3 text-[11px] label-mono text-ink-faint font-normal">Fee p50</th>
             <th className="text-right px-4 py-3 text-[11px] label-mono text-ink-faint font-normal hidden lg:table-cell">Fee p99</th>
+=======
+>>>>>>> origin/main
             {REGIONS.map((r) => (
               <th key={r.value} className="text-right px-4 py-3 text-[11px] label-mono text-ink-faint font-normal hidden md:table-cell">
                 {r.short}
               </th>
             ))}
+<<<<<<< HEAD
             <th className="text-right px-4 py-3 text-[11px] label-mono text-ink-faint font-normal hidden md:table-cell">Success</th>
+=======
+            <th className="text-right px-4 py-3 text-[11px] label-mono text-ink-faint font-normal hidden md:table-cell">Fee ok</th>
+>>>>>>> origin/main
             <th className="text-center px-4 py-3 text-[11px] label-mono text-ink-faint font-normal hidden lg:table-cell">Corridors</th>
           </tr>
           <tr className="border-b border-ink/5 bg-ink/[0.01]">
             <td colSpan={3} />
+<<<<<<< HEAD
             <td colSpan={2} className="px-4 py-1 text-[10px] text-indigo-500 label-mono text-right hidden lg:table-cell">
               all-in fee · $300 USDC
             </td>
             <td className="px-4 py-1 text-[10px] text-indigo-500 label-mono text-right hidden md:table-cell lg:hidden" />
+=======
+>>>>>>> origin/main
             {REGIONS.map((r) => (
               <td key={r.value} className="px-4 py-1 text-[10px] text-ink-faint label-mono text-right hidden md:table-cell">
                 quote p50
@@ -118,7 +143,12 @@ export function BridgeHubTable({ rows }: { rows: BridgeProviderRow[] }) {
                 <td className="px-4 py-3.5">
                   <Link href={`/products/${row.slug}`} className="inline-flex items-center gap-2.5 group">
                     <ProviderLogo slug={row.slug} name={row.name} size={24} />
-                    <span className="font-medium text-ink group-hover:underline leading-tight">{row.name}</span>
+                    <div className="leading-tight">
+                      <span className="font-medium text-ink group-hover:underline">{row.name}</span>
+                      {row.feep50 != null && (
+                        <p className="text-[11px] text-ink-faint tabular-nums">{fmtPct(row.feep50)} fee p50</p>
+                      )}
+                    </div>
                   </Link>
                 </td>
                 <td className="px-3 py-3.5 hidden sm:table-cell">
@@ -128,6 +158,7 @@ export function BridgeHubTable({ rows }: { rows: BridgeProviderRow[] }) {
                     </span>
                   )}
                 </td>
+<<<<<<< HEAD
                 <td className="px-4 py-3.5 text-right tabular-nums font-semibold text-ink">
                   {fmtPct(row.feep50)}
                 </td>
@@ -148,11 +179,22 @@ export function BridgeHubTable({ rows }: { rows: BridgeProviderRow[] }) {
                           {fmtMs(val)}
                         </span>
                       )}
+=======
+                {REGIONS.map((r) => {
+                  const regionData = row.regions.find((x) => x.region === r.value);
+                  const val = regionData?.quotep50 ?? null;
+                  return (
+                    <td key={r.value} className="px-4 py-3.5 text-right tabular-nums text-ink-soft hidden md:table-cell">
+                      {fmtMs(val)}
+>>>>>>> origin/main
                     </td>
                   );
                 })}
                 <td className="px-4 py-3.5 text-right tabular-nums hidden md:table-cell">
-                  <span className={row.feeSuccess != null && row.feeSuccess < 80 ? "text-amber-600" : "text-ink-soft"}>
+                  <span
+                    className={successClass(row.feeSuccess)}
+                    title={row.quoteSuccess != null ? `Quote success: ${fmtSuccess(row.quoteSuccess)}` : undefined}
+                  >
                     {fmtSuccess(row.feeSuccess)}
                   </span>
                 </td>
@@ -207,6 +249,7 @@ export function BridgeCorridorMatrix({ rows }: { rows: BridgeProviderRow[] }) {
           <tr className="border-b border-ink/5 bg-ink/[0.01]">
             <td />
             {CORRIDORS.map((c) => (
+<<<<<<< HEAD
               <Fragment key={c.value}>
                 <td className="px-3 py-1 text-[10px] text-indigo-500 label-mono text-right">
                   p50
@@ -215,6 +258,16 @@ export function BridgeCorridorMatrix({ rows }: { rows: BridgeProviderRow[] }) {
                   p99
                 </td>
               </Fragment>
+=======
+              <>
+                <td key={`${c.value}-p50`} className="px-3 py-1 text-[10px] text-indigo-500 label-mono text-right">
+                  p50
+                </td>
+                <td key={`${c.value}-p99`} className="px-3 py-1 text-[10px] text-ink-faint label-mono text-right">
+                  p99
+                </td>
+              </>
+>>>>>>> origin/main
             ))}
           </tr>
         </thead>
@@ -233,8 +286,13 @@ export function BridgeCorridorMatrix({ rows }: { rows: BridgeProviderRow[] }) {
                 const p99 = cf?.feep99 ?? null;
                 const isCheapest = cheapestP50ByCorr[c.value] === row.slug && p50 != null;
                 return (
+<<<<<<< HEAD
                   <Fragment key={c.value}>
                     <td className="px-3 py-3 text-right tabular-nums">
+=======
+                  <>
+                    <td key={`${c.value}-p50`} className="px-3 py-3 text-right tabular-nums">
+>>>>>>> origin/main
                       {p50 == null ? (
                         <span className="text-ink/20 text-[12px]">—</span>
                       ) : (
@@ -243,14 +301,22 @@ export function BridgeCorridorMatrix({ rows }: { rows: BridgeProviderRow[] }) {
                         </span>
                       )}
                     </td>
+<<<<<<< HEAD
                     <td className="px-3 py-3 text-right tabular-nums">
+=======
+                    <td key={`${c.value}-p99`} className="px-3 py-3 text-right tabular-nums">
+>>>>>>> origin/main
                       {p99 == null ? (
                         <span className="text-ink/20 text-[12px]">—</span>
                       ) : (
                         <span className="text-ink/40 text-[12px]">{fmtPct(p99)}</span>
                       )}
                     </td>
+<<<<<<< HEAD
                   </Fragment>
+=======
+                  </>
+>>>>>>> origin/main
                 );
               })}
             </tr>
