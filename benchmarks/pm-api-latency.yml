@@ -4,8 +4,8 @@ slug: pm-api-latency
 number: "038"
 title: Best prediction market API, ranked by live latency and uptime
 seo_title: "Best prediction market API 2026"
-seo_description: "Is the Polymarket API up? Live uptime and latency for Polymarket, Kalshi, Limitless, Manifold, Myriad price endpoints."
-subtitle: Warm price endpoint latency of five prediction market venue APIs from three regions, plus a live uptime panel that answers whether each API is up right now.
+seo_description: "Is the Polymarket API up? Live uptime and latency for Polymarket, Kalshi, Limitless, Manifold, Myriad, PredictIt and Smarkets price endpoints."
+subtitle: Warm price endpoint latency of seven prediction market venue APIs from three regions, plus a live uptime panel that answers whether each API is up right now.
 
 category: Trading
 status: live
@@ -41,10 +41,10 @@ abstract: |
   this API up" is answered by direct measurement from three regions rather
   than by user reports. Samples that fail because our pinned market
   expired are classified probe_invalid and never count against the venue.
-  Third party data aggregators that resell venue prices (Codex, Predexon)
+  Third party data aggregators that resell venue prices (Codex)
   are tracked separately in the pm-data-freshness bench and on
   the data feeds tab of the prediction markets hub. This page ranks the
-  five venues' own APIs only, so the leaderboard answers one clean
+  seven venues' own APIs only, so the leaderboard answers one clean
   question: which prediction market venue API is fastest right now.
 
 methodology:
@@ -56,7 +56,7 @@ methodology:
   - "Division of labor with the sibling benches: how each venue behaves as request rates climb, including throttle onset and 429 handling, is measured in pm-rate-limits (bench 037). How fresh third party data providers relay Polymarket data is measured in pm-data-freshness (bench 032). This bench ranks the venues' own APIs on latency and uptime at a polite request rate."
   - "Myriad's origin is a single region US East deployment behind Heroku, so its latency from eu-west and sgp is dominated by geography. Reported as measured, called out per region."
   - "All five venues are probed by the same open source harness as bench 037, from the same processes, so the two benches share one probe budget and one identifying User-Agent: `OpenChainBench/1.0 (+https://openchainbench.com/methodology; contact@openchainbench.com)`. We publish latency and uptime measurements only, never market data."
-  - "Aggregators that resell venue data (Codex, Predexon) are deliberately excluded from this leaderboard. They are not venue APIs, they are relays on top of venue APIs, and ranking them next to the venues they relay would compare two different products on one axis. Their freshness lag against the Polymarket CLOB T0 stream is the relevant metric, measured in the pm-data-freshness bench. The prediction markets hub data feeds tab lists each aggregator with the venues it covers."
+  - "Aggregators that resell venue data (Codex) are deliberately excluded from this leaderboard. They are not venue APIs, they are relays on top of venue APIs, and ranking them next to the venues they relay would compare two different products on one axis. Their freshness lag against the Polymarket CLOB T0 stream is the relevant metric, measured in the pm-data-freshness bench. The prediction markets hub data feeds tab lists each aggregator with the venues it covers."
   - "Regions: us-east, eu-west, sgp (Railway). Histogram buckets 25ms to 10s."
 
 findings:
@@ -65,7 +65,7 @@ findings:
   - "{{name:manifold}} would look faster than it is if cache hits counted: its whole API sits behind a 5 second CDN cache. With cache hits excluded its origin answers at {{p50:manifold}} p50, an honest number a trading bot polling fresh quotes will actually see."
   - "{{name:myriad}} serves every region from a single US East origin, so its cohort worst p50 of {{p50:myriad}} is mostly geography. Switch the region dimension to us-east to see the API itself rather than the speed of light."
   - "{{name:polymarket}} answers its midpoint endpoint at {{p50:polymarket}} p50. Because we probe it every 5 seconds from three regions, the uptime panel doubles as a Polymarket API status check that updates continuously instead of waiting for user reports."
-  - "For builders who consume venue data through a managed relay, the relevant question is freshness lag, not request latency. Codex and Predexon are measured in the pm-data-freshness bench (T0 against the Polymarket CLOB stream). The prediction markets hub data feeds tab lists each aggregator with the venues it covers."
+  - "For builders who consume venue data through a managed relay, the relevant question is freshness lag, not request latency. Codex is measured in the pm-data-freshness bench (T0 against the Polymarket CLOB stream). The prediction markets hub data feeds tab lists each aggregator with the venues it covers."
 
 disclaimer: "Uptime here means our probes succeeded from three specific regions at a polite request rate. A venue can be up for us and degraded for you, especially during regional network incidents, and a brief blip between probe cycles can go unrecorded. Treat the panel as a measured signal, not a guarantee."
 
@@ -83,7 +83,7 @@ faq:
   - q: "Why do latency numbers exclude CDN cache hits?"
     a: "Because a cache hit measures the distance to the nearest edge node, not the venue's API. Manifold serves its entire API behind a 5 second cache and Kalshi's market list sits on CloudFront, so a naive average would mostly rank CDN proximity. Every sample carries a cache flag read from the response headers, and the headline aggregates only non cached, successful requests. The number you see is what a client polling for fresh quotes actually experiences at the origin."
   - q: "Does this benchmark cover throttling or data providers?"
-    a: "No, deliberately. What happens to each venue's API as request rates climb, including 429 onset and queueing behaviour, is its own benchmark, pm-rate-limits, which runs a careful daily ramp. And if you consume venue data through a provider such as Codex or Predexon rather than calling the venue directly, the relevant number is relay freshness, measured in pm-data-freshness. This page answers two narrower questions: which venue API is fastest at a polite request rate, and is it up right now."
+    a: "No, deliberately. What happens to each venue's API as request rates climb, including 429 onset and queueing behaviour, is its own benchmark, pm-rate-limits, which runs a careful daily ramp. And if you consume venue data through a provider such as Codex rather than calling the venue directly, the relevant number is relay freshness, measured in pm-data-freshness. This page answers two narrower questions: which venue API is fastest at a polite request rate, and is it up right now."
 
 per_chain_explainer:
   - slug: polymarket
@@ -107,9 +107,6 @@ per_chain_explainer:
   - slug: smarkets
     h2: Smarkets API latency
     body: "Smarkets is a UK-regulated peer-to-peer betting exchange with a public CLOB order book endpoint. The harness probes /v3/markets/{id}/ for price (5s interval) and /v3/markets/{id}/quotes/ for the book (5s interval). No authentication is required for either. No visible CDN layer sits between the probe and origin, so latency reflects the API server response time directly. Smarkets is the only non-US venue in the cohort and its primary user base and server infrastructure are UK-centric, which affects the relative latency from US East vs EU West probe nodes."
-  - slug: predexon
-    h2: Predexon API latency
-    body: "Predexon is a multi-venue aggregator that unifies Polymarket, Kalshi and Limitless behind one schema. Its API answers at {{p50:predexon}} p50 (24h, all regions), measured on the same market-price endpoint the harness probes on the native venues, so the direct comparison of a unified aggregator against three venue-native APIs is head to head. Predexon aggregates upstream data; a Predexon latency higher than the sum of its three underliers is the cost of unification. Lower is the value of having one contract instead of three."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/pm-rate-limits
 
@@ -139,21 +136,21 @@ metric_panels:
   - id: uptime_24h
     label: Uptime 24h
     description: "Share of probe cycles that succeeded over the last 24 hours, averaged across the three probe regions. 100 percent means every 5 second probe of the venue's API came back healthy."
-    metric: 100 * avg(avg_over_time(pmapi_health{source="direct",venue=~"polymarket|kalshi|limitless|manifold|myriad"}[24h])) or 100 * avg(avg_over_time(pmapi_health{source="predexon"}[24h]))
+    metric: 100 * avg(avg_over_time(pmapi_health{source="direct",venue=~"polymarket|kalshi|limitless|manifold|myriad|predictit|smarkets"}[24h]))
     label_key: venue
     unit: pct
     higher_is_better: true
   - id: uptime_7d
     label: Uptime 7d
     description: "Same health gauge averaged over 7 days. Short outages that vanish from the 24h figure stay visible here for a week."
-    metric: 100 * avg(avg_over_time(pmapi_health{source="direct",venue=~"polymarket|kalshi|limitless|manifold|myriad"}[7d])) or 100 * avg(avg_over_time(pmapi_health{source="predexon"}[7d]))
+    metric: 100 * avg(avg_over_time(pmapi_health{source="direct",venue=~"polymarket|kalshi|limitless|manifold|myriad|predictit|smarkets"}[7d]))
     label_key: venue
     unit: pct
     higher_is_better: true
   - id: uptime_30d
     label: Uptime 30d
     description: "Same health gauge averaged over 30 days. Feeds the ledger's 30d window toggle so a one-hour outage that's already aged out of the 24h panel still shows up in the table over a month."
-    metric: 100 * avg(avg_over_time(pmapi_health{source="direct",venue=~"polymarket|kalshi|limitless|manifold|myriad"}[30d]))
+    metric: 100 * avg(avg_over_time(pmapi_health{source="direct",venue=~"polymarket|kalshi|limitless|manifold|myriad|predictit|smarkets"}[30d]))
     label_key: venue
     unit: pct
     higher_is_better: true
@@ -161,7 +158,7 @@ metric_panels:
   - id: cold_connect_p50
     label: Cold connect
     description: "TCP plus TLS handshake time on the once a minute cold probe with keep alives disabled. The startup cost a brand new client pays before its first request."
-    metric: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_connect_seconds_bucket{source="direct",venue=~"polymarket|kalshi|limitless|manifold|myriad"}[24h])) by (le))
+    metric: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_connect_seconds_bucket{source="direct",venue=~"polymarket|kalshi|limitless|manifold|myriad|predictit|smarkets"}[24h])) by (le))
     label_key: venue
     unit: ms
     higher_is_better: false
@@ -239,6 +236,7 @@ providers:
       success: clamp_max(sum(rate(pmapi_requests_total{venue="myriad",source="direct",class="price",conn="warm",outcome="ok"}[24h])) / sum(rate(pmapi_requests_total{venue="myriad",source="direct",class="price",conn="warm",outcome!="probe_invalid"}[24h])), 1)
       sample_size: sum(increase(pmapi_requests_total{venue="myriad",source="direct",class="price",conn="warm",outcome!="probe_invalid"}[24h]))
       series: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{venue="myriad",source="direct",class="price",conn="warm",cache!="hit"}[1h])) by (le))
+<<<<<<< HEAD
   - slug: predictit
     name: PredictIt
     tag: "CFTC no-action letter, US political markets only, probed at 15s due to 5 req/min rate limit"
@@ -277,3 +275,5 @@ providers:
       success: clamp_max(sum(rate(pmapi_requests_total{source="predexon",class="price",conn="warm",outcome="ok"}[24h])) / sum(rate(pmapi_requests_total{source="predexon",class="price",conn="warm",outcome!="probe_invalid"}[24h])), 1)
       sample_size: sum(increase(pmapi_requests_total{source="predexon",class="price",conn="warm",outcome!="probe_invalid"}[24h]))
       series: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{source="predexon",class="price",conn="warm",cache!="hit"}[1h])) by (le))
+=======
+>>>>>>> c38fc1c9 (feat(pm): add pm-ws-latency bench, remove predexon from pm-api-latency)
