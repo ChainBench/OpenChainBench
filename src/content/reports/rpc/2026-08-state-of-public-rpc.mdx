@@ -127,29 +127,6 @@ Latency leadership at the top is typically stable — the same provider that win
 | Foundation (own-chain) | 5 | 5 | 5 | 15 |
 | dRPC | 5 | 4 | 5 | 14 |
 
-**Per-chain regional winner**
-
-| Chain | US-East | EU-West | Singapore | Wins |
-|---|---|---|---|---:|
-| Ethereum | dRPC | PublicNode | dRPC | dRPC ×2, PublicNode ×1 |
-| Arbitrum | PublicNode | PublicNode | PublicNode | PublicNode ×3 |
-| Base | PublicNode | PublicNode | PublicNode | PublicNode ×3 |
-| Optimism | PublicNode | PublicNode | PublicNode | PublicNode ×3 |
-| Avalanche | PublicNode | PublicNode | PublicNode | PublicNode ×3 |
-| Linea | PublicNode | PublicNode | PublicNode | PublicNode ×3 |
-| Scroll | PublicNode | PublicNode | PublicNode | PublicNode ×3 |
-| Sonic | PublicNode | PublicNode | PublicNode | PublicNode ×3 |
-| Gnosis | PublicNode | PublicNode | PublicNode | PublicNode ×3 |
-| Celo | PublicNode | PublicNode | PublicNode | PublicNode ×3 |
-| Polygon | dRPC | dRPC | dRPC | dRPC ×3 |
-| zkSync | dRPC | dRPC | dRPC | dRPC ×3 |
-| Mantle | dRPC | dRPC | dRPC | dRPC ×3 |
-| HyperEVM | dRPC | dRPC | dRPC | dRPC ×3 |
-| BNB Chain | BNB Foundation | BNB Foundation | BNB Foundation | Foundation ×3 |
-| Solana | Solana Foundation | Solana Foundation | Solana Foundation | Foundation ×3 |
-| Monad | Monad Foundation | Monad Foundation | Monad Foundation | Foundation ×3 |
-| Blast | Blast Foundation | Blast Foundation | Blast Foundation | Foundation ×3 |
-| Berachain | Berachain Foundation | Berachain Foundation | Berachain Foundation | Foundation ×3 |
 
 Foundation endpoints win exclusively on their own chain and cannot serve traffic on other networks. Among third-party providers, PublicNode takes 28 slots across 10 chains; dRPC, the next third-party provider, trails by 14 wins (28 vs 14) concentrated on 5 chains. The per-region breakdown for every chain is live on the [RPC Capabilities bench](/benchmarks/rpc-capabilities) via `?region=us-east|eu-west|sgp`.
 
