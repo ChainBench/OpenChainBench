@@ -4,7 +4,7 @@ slug: bridge-fee
 number: "003"
 title: Cheapest cross-chain bridge for USDC at $300 notional
 seo_title: "Cheapest cross-chain bridge 2026"
-seo_description: "Cheapest cross-chain bridge for USDC at $300. Total cost (fees, slippage, gas) across Across, deBridge, LI.FI, Mobula, Relay, Near Intents."
+seo_description: "Cheapest cross-chain bridge for USDC at $300. Total cost (fees, slippage, gas) across Across, deBridge, LI.FI, Mobula, Near Intents, Relay, Squid and Socket."
 subtitle: Total cost as a percent of notional, fees plus slippage plus destination gas combined, sampled at $300 USDC across Solana, Base and Arbitrum corridors.
 category: Bridges
 status: live
@@ -144,7 +144,7 @@ providers:
         - region: us-east
           p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="mobula", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="us-east"}[24h]))
           series: avg_over_time(bridge_cost_percent{bridge="mobula", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="us-east"}[1h])
-        - region: ap-southeast
+        - region: sgp
           p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="mobula", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="sgp"}[24h]))
           series: avg_over_time(bridge_cost_percent{bridge="mobula", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="sgp"}[1h])
 
@@ -168,7 +168,7 @@ providers:
         - region: us-east
           p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="relay", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="us-east"}[24h]))
           series: avg_over_time(bridge_cost_percent{bridge="relay", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="us-east"}[1h])
-        - region: ap-southeast
+        - region: sgp
           p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="relay", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="sgp"}[24h]))
           series: avg_over_time(bridge_cost_percent{bridge="relay", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="sgp"}[1h])
 
@@ -192,7 +192,7 @@ providers:
         - region: us-east
           p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="lifi", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="us-east"}[24h]))
           series: avg_over_time(bridge_cost_percent{bridge="lifi", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="us-east"}[1h])
-        - region: ap-southeast
+        - region: sgp
           p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="lifi", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="sgp"}[24h]))
           series: avg_over_time(bridge_cost_percent{bridge="lifi", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="sgp"}[1h])
 
@@ -216,7 +216,7 @@ providers:
         - region: us-east
           p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="debridge", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="us-east"}[24h]))
           series: avg_over_time(bridge_cost_percent{bridge="debridge", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="us-east"}[1h])
-        - region: ap-southeast
+        - region: sgp
           p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="debridge", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="sgp"}[24h]))
           series: avg_over_time(bridge_cost_percent{bridge="debridge", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="sgp"}[1h])
 
@@ -240,7 +240,7 @@ providers:
         - region: us-east
           p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="across", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="us-east"}[24h]))
           series: avg_over_time(bridge_cost_percent{bridge="across", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="us-east"}[1h])
-        - region: ap-southeast
+        - region: sgp
           p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="across", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="sgp"}[24h]))
           series: avg_over_time(bridge_cost_percent{bridge="across", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="sgp"}[1h])
 
@@ -264,7 +264,7 @@ providers:
         - region: us-east
           p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="near-intents", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="us-east"}[24h]))
           series: avg_over_time(bridge_cost_percent{bridge="near-intents", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="us-east"}[1h])
-        - region: ap-southeast
+        - region: sgp
           p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="near-intents", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="sgp"}[24h]))
           series: avg_over_time(bridge_cost_percent{bridge="near-intents", from_token!="6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN", region="sgp"}[1h])
 
@@ -288,7 +288,7 @@ providers:
         - region: us-east
           p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="squid", region="us-east"}[24h]))
           series: avg_over_time(bridge_cost_percent{bridge="squid", region="us-east"}[1h])
-        - region: ap-southeast
+        - region: sgp
           p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="squid", region="sgp"}[24h]))
           series: avg_over_time(bridge_cost_percent{bridge="squid", region="sgp"}[1h])
 
@@ -312,6 +312,6 @@ providers:
         - region: us-east
           p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="socket", region="us-east"}[24h]))
           series: avg_over_time(bridge_cost_percent{bridge="socket", region="us-east"}[1h])
-        - region: ap-southeast
+        - region: sgp
           p50: avg(quantile_over_time(0.50, bridge_cost_percent{bridge="socket", region="sgp"}[24h]))
           series: avg_over_time(bridge_cost_percent{bridge="socket", region="sgp"}[1h])

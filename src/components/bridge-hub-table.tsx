@@ -87,7 +87,7 @@ export function BridgeHubTable({ rows }: { rows: BridgeProviderRow[] }) {
                 {r.short}
               </th>
             ))}
-            <th className="text-right px-4 py-3 text-[11px] label-mono text-ink-faint font-normal hidden md:table-cell">Fee ok</th>
+            <th className="text-right px-4 py-3 text-[11px] label-mono text-ink-faint font-normal hidden md:table-cell">Fee success</th>
             <th className="text-center px-4 py-3 text-[11px] label-mono text-ink-faint font-normal hidden lg:table-cell">Corridors</th>
           </tr>
           <tr className="border-b border-ink/5 bg-ink/[0.01]">
