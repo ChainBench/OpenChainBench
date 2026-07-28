@@ -4,8 +4,8 @@ slug: bridge-quote-latency
 number: "002"
 title: Fastest cross-chain bridge quote API, live ms ranking
 seo_title: "Fastest bridge quote API 2026"
-seo_description: "Live p50 latency for cross-chain bridge quote APIs. Mobula, deBridge, Relay, LI.FI, Near Intents, Across ranked."
-subtitle: Time to receive a usable cross-chain quote, in milliseconds. Identical route and identical notional, measured every five minutes across Mobula, deBridge, Relay, LI.FI, Near Intents and Across.
+seo_description: "Live p50 latency for cross-chain bridge quote APIs. Mobula, deBridge, Relay, LI.FI, Near Intents, Across, Squid and Socket ranked."
+subtitle: Time to receive a usable cross-chain quote, in milliseconds. Identical route and identical notional, measured every five minutes across Mobula, deBridge, Relay, LI.FI, Near Intents, Across, Squid and Socket.
 category: Bridges
 status: live
 metric: Quote latency
@@ -91,7 +91,7 @@ prometheus:
 
 faq:
   - q: "Which cross-chain bridge has the lowest API latency?"
-    a: "{{best_name}} currently leads the cross-corridor aggregate at {{best_p50}} (p50, 24 h) across {{count}} measured bridges, averaged over the 4 USDC routes the harness sweeps. The leaderboard re-sorts every five minutes against fresh Prometheus samples, so the ranking reflects the last 24 hours of actual API performance from a single eu-west origin under the same routes. Per-corridor latency leaders can differ from this aggregate where one provider has a solver pool closer to a specific destination chain, that breakdown is on the roadmap once corridor dimensions are surfaced in the page UI."
+    a: "{{best_name}} currently leads the cross-corridor aggregate at {{best_p50}} (p50, 24 h) across {{count}} measured bridges, averaged over the 4 USDC routes the harness sweeps. The leaderboard re-sorts every five minutes against fresh Prometheus samples, so the ranking reflects the last 24 hours of actual API performance from 3 regions (eu-west, us-east, sgp) under the same routes. Per-corridor latency leaders can differ from this aggregate where one provider has a solver pool closer to a specific destination chain, that breakdown is on the roadmap once corridor dimensions are surfaced in the page UI."
   - q: "What is the difference between quote latency and bridge fill time?"
     a: "Quote latency is the wall-clock time the bridge API takes to return a price. Fill time is the wall-clock time the funds take to land on the destination chain after the user signs. They are decoupled: a bridge can quote in 100 ms and take 30 seconds to settle, or quote in 2 seconds and settle in 5 seconds. This benchmark measures the quote half because that is the part a wallet, an aggregator or an embedded swap UI feels first and tunes its UX around."
   - q: "Why does bridge quote latency matter for builders?"
