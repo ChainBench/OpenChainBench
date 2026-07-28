@@ -16,8 +16,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { getBenchmark } from "@/data/benchmarks";
 import { getArchive } from "@/lib/hl-archive-store";
-import { loadSpecsUncached } from "@/lib/materialize/load";
-import { Prometheus } from "@/lib/prometheus";
+import { loadSnapshotFromBlob } from "@/lib/bench-blob";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import type {
   HlArchiveDailyPoint,
@@ -44,10 +43,6 @@ function isWindow(v: string | null): v is HlArchiveWindow {
 
 function isLongWindow(w: HlArchiveWindow): w is HlArchiveLongWindow {
   return (HL_ARCHIVE_LONG_WINDOWS as readonly string[]).includes(w);
-}
-
-function escapePromLabelValue(v: string): string {
-  return v.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
 
 function rank(
@@ -117,31 +112,27 @@ async function buildFromProm(
 }
 
 /**
- * Prom-based fallback for 90d/180d windows when the hl-archive blob is not
- * yet available. Uses the 30d panels for the leaderboard (best available
- * approximation) and queries hl_frontend_fees_usd_7d_v2 over the window for
- * the time-series chart so the trajectory is still meaningful.
+ * Blob-based fallback for 90d/180d windows when the hl-archive service
+ * hasn't written a blob yet. Uses 30d panel values for the leaderboard
+ * and the stored series30d from the CDN blob for the time-series chart.
+ * No live Prom queries needed — the chart data comes from the same CDN
+ * source that powers the 30D range tab, so it's always available.
  */
-async function buildFromPromLongWindow(
+async function buildFromBlobFallback(
   window: HlArchiveLongWindow,
 ): Promise<HlArchiveHistoryResponse | null> {
-  // Only 90d and 180d — 1y and all-time require the archive service.
+  // Only 90d and 180d — 1y/all-time require the full archive service.
   if (window !== "90d" && window !== "180d") return null;
 
-  const [bench, specs] = await Promise.all([
+  // Load in parallel: slim bench (for panel values + results list) and
+  // raw blob (for series30d which is stripped from the slim cache).
+  const [bench, snap] = await Promise.all([
     getBenchmark(BENCH_SLUG),
-    loadSpecsUncached(),
+    loadSnapshotFromBlob(BENCH_SLUG, ""),
   ]);
   if (!bench) return null;
 
-  const spec = specs.find((s) => s.slug === BENCH_SLUG);
-  if (!spec) return null;
-
-  const promUrl = spec.prometheus?.url ?? process.env.PROMETHEUS_URL;
-  if (!promUrl) return null;
-  const prom = new Prometheus(promUrl);
-
-  // Leaderboard: use 30d panels as a proxy for longer windows.
+  // Leaderboard: 30d panel values are the best available approximation.
   const rev30Panel = bench.metricPanels?.find((p) => p.id === "revenue_30d");
   const vol30Panel = bench.metricPanels?.find((p) => p.id === "volume_30d");
   const rows: Omit<HlArchiveRankedRow, "rank">[] = [];
@@ -153,39 +144,38 @@ async function buildFromPromLongWindow(
     rows.push({ slug: r.slug, name: r.name, volume_usd: volume, fees_usd: fees, fills: 0 });
   }
 
-  // Time-series: query 7d rolling fees over the window. Each point shows
-  // how much a frontend earned in the preceding 7 days — a smooth trend
-  // indicator the chart can render without the archive service.
-  const windowSec = window === "90d" ? 90 * 86_400 : 180 * 86_400;
-  const numPoints = window === "90d" ? 90 : 180;
-  const timeseries_daily: Record<string, HlArchiveDailyPoint[]> = {};
-  const startMs = Date.now() - windowSec * 1000;
-
-  await Promise.all(
-    spec.providers.map(async (p) => {
-      const q = `hl_frontend_fees_usd_7d_v2{builder="${escapePromLabelValue(p.slug)}"}`;
-      const series = await prom.series(q, windowSec, numPoints).catch(() => null);
-      if (!series || series.length === 0) return;
-      const hasData = series.some((v) => v != null && v > 0);
-      if (!hasData) return;
-      timeseries_daily[p.slug] = series.map((v, i) => {
-        const dayMs = startMs + (i * windowSec * 1000) / Math.max(1, numPoints - 1);
-        return {
-          day: new Date(dayMs).toISOString().slice(0, 10),
-          fees: v ?? 0,
-          vol: 0,
-          fills: 0,
-        };
-      });
-    }),
-  );
+  // Time-series: use the stored 30d main-metric series from the CDN blob.
+  // series30d is stripped from the slim getBenchmark cache but present in
+  // the raw blob. The chart shows 30 days of trend data regardless of
+  // whether the tab says 90D or 180D — better than an empty chart.
+  const series30d = snap?.bench.extras.series30d;
+  let timeseries_daily: Record<string, HlArchiveDailyPoint[]> | undefined;
+  if (series30d && Object.keys(series30d).length > 0) {
+    const pts0 = Object.values(series30d)[0];
+    const numPoints = pts0.length;
+    const windowMs = 30 * 24 * 3600 * 1000;
+    const endMs = Date.now();
+    const startMs = endMs - windowMs;
+    const stepMs = numPoints > 1 ? windowMs / (numPoints - 1) : 0;
+    timeseries_daily = {};
+    for (const [slug, pts] of Object.entries(series30d)) {
+      if (!pts.some((v) => v != null && (v as number) > 0)) continue;
+      timeseries_daily[slug] = (pts as (number | null)[]).map((v, i) => ({
+        day: new Date(startMs + i * stepMs).toISOString().slice(0, 10),
+        fees: v ?? 0,
+        vol: 0,
+        fills: 0,
+      }));
+    }
+    if (Object.keys(timeseries_daily).length === 0) timeseries_daily = undefined;
+  }
 
   return {
     window,
     source: "prom",
     updated_at: bench.lastRunAt,
     rows: rank(rows),
-    timeseries_daily: Object.keys(timeseries_daily).length > 0 ? timeseries_daily : undefined,
+    timeseries_daily,
   };
 }
 
@@ -220,7 +210,7 @@ export async function GET(req: NextRequest) {
     // 90d/180d (uses 30d panels for the leaderboard + 7d rolling metric for
     // the time-series chart). 1y/all-time require the archive service and
     // return the original 503 so the UI reverts to the 30d range.
-    const fallback = await buildFromPromLongWindow(window);
+    const fallback = await buildFromBlobFallback(window);
     if (fallback) {
       return NextResponse.json(fallback, { headers: { "cache-control": "public, s-maxage=120, stale-while-revalidate=300" } });
     }
