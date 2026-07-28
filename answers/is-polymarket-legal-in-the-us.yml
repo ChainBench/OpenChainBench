@@ -1,0 +1,87 @@
+slug: is-polymarket-legal-in-the-us
+question: "Is Polymarket legal in the United States?"
+benchmark: pm-geographic-access
+status: live
+
+short_answer: |
+  Polymarket's international exchange (polymarket.com) geoblocked US users after a 2022 CFTC
+  settlement. Polymarket US (QCX), a separate CFTC-regulated entity, launched December 3, 2025 and
+  is legally accessible to US users. Kalshi (Kalshi Exchange LLC) is CFTC-regulated and fully
+  accessible to US users. Minnesota enacted a state-level prediction market ban effective August 1,
+  2026, which the CFTC is challenging in court. This is not legal advice.
+
+intro: |
+  The legal status of Polymarket in the United States involves two distinct entities and a changing
+  regulatory environment. Getting the facts right matters because the answer is different depending
+  on which Polymarket you mean.
+
+  Polymarket International (polymarket.com) entered a consent order with the CFTC in January 2022.
+  Polymarket LLC agreed to pay $1.4 million, stop offering binary options and event contracts to US
+  persons, and implement geoblocking. Since then, polymarket.com has geoblocked US IP addresses.
+  A user in the United States who accesses polymarket.com via a VPN is violating Polymarket's
+  terms of service, and VPN use does not resolve the legal status of trading on an unregistered
+  facility from the US.
+
+  Polymarket US (QCX) is a separate legal entity that launched on December 3, 2025. It is registered
+  with the CFTC as a Designated Contract Market (DCM) and offers a limited set of event contracts to
+  US users. It launched initially as iOS-only with a waitlist; the waitlist dropped in May 2026.
+  Polymarket US (QCX) is the legally sanctioned way for US persons to trade on Polymarket-branded
+  infrastructure.
+
+  The CFTC has separately been working to allow US users access to the broader polymarket.com
+  exchange. As of July 2026, this regulatory process is ongoing. The outcome is not certain.
+
+  Kalshi (Kalshi Exchange LLC) has been registered with the CFTC as a DCM since 2020 and is
+  fully accessible to US users without restriction. Kalshi covers political, sports, economic and
+  other event markets.
+
+  Minnesota enacted a law effective August 1, 2026 that bans prediction markets in the state.
+  The CFTC filed to challenge this law in federal court, arguing that federal CFTC regulation
+  preempts state-level bans on federally regulated markets. The challenge is ongoing as of July 2026.
+  Multiple other US states have issued cease-and-desist orders to prediction market platforms in
+  prior years; the legal landscape at the state level remains active.
+
+  OpenChainBench measures geographic access to prediction market APIs at the HTTP level. The
+  pm-geographic-access bench records which regions receive 200 OK vs blocked responses from each
+  venue. This is infrastructure measurement, not legal advice.
+
+  This page describes factual events in the public record. It is not legal advice. Consult qualified
+  legal counsel regarding your specific jurisdiction and trading activity.
+
+methodology: |
+  The pm-geographic-access bench probes each venue's market listing endpoint from 12 regional probe
+  nodes every 15 minutes. A 200 OK is classified as accessible. A 403, a redirect to a block page,
+  or a TCP connection reset before response is classified as blocked. Timeouts are classified as
+  unreachable. The pct metric is the share of probe regions returning 200 OK in the trailing 24
+  hours. Polymarket international and Polymarket US (QCX) are probed separately. US-region probes
+  specifically label whether the response is 200 OK or blocked so the geographic restriction
+  pattern is visible in the bench data. This is HTTP-level infrastructure measurement. The bench
+  does not determine legal access rights.
+
+limitations:
+  - "This page describes observable facts and public regulatory history. It is not legal advice, and nothing here constitutes legal advice about your specific situation. US prediction market law is evolving rapidly and state-by-state."
+  - "HTTP-level access (getting a 200 OK from an API endpoint) is not the same as legal access. A venue could technically serve requests from a US IP without that being legally permissible, and a geoblocked venue does not make all trading activity by US persons illegal (the legal question turns on other facts)."
+  - "State-level prediction market law is unsettled. Minnesota banned prediction markets in 2026; other states have issued cease-and-desist orders. The CFTC's federal preemption challenge to the Minnesota law is ongoing. The legal landscape at the state level will continue to evolve."
+  - "The regulatory status of Polymarket US (QCX) as a CFTC DCM does not guarantee that all event contracts on that platform are legally tradeable in all US states. State law may impose additional restrictions independent of federal CFTC registration."
+  - "VPN use to access geoblocked venues does not resolve legal status and violates venue terms of service. This bench does not recommend or endorse VPN use for this purpose."
+
+faq:
+  - q: "Can US users use Polymarket?"
+    a: "Not legally on the international exchange (polymarket.com). Polymarket LLC agreed to geoblock US users in a 2022 CFTC consent order that included a $1.4M fine. US IP addresses receive a block response from polymarket.com. Polymarket US (QCX), a separate CFTC-regulated entity, launched December 3, 2025 and is legally accessible to US users with a limited set of event contracts. The CFTC is also pursuing a process that could allow broader US access to polymarket.com, as of July 2026."
+  - q: "What about Kalshi for US users?"
+    a: "Kalshi (Kalshi Exchange LLC) is a CFTC-registered Designated Contract Market that has been accessible to US users since 2020. It requires a US address and SSN for account creation (KYC). Kalshi covers political markets, sports markets, economic markets and other event categories. It is the primary CFTC-regulated prediction market accessible to US users and a fully legal option."
+  - q: "What is Polymarket US (QCX)?"
+    a: "Polymarket US (QCX) is a separate legal entity from Polymarket LLC, registered with the CFTC as a Designated Contract Market. It launched December 3, 2025 as an iOS-only app with a waitlist, initially offering a limited set of event contracts to US users. The waitlist dropped in May 2026. QCX operates under CFTC oversight and is the Polymarket-branded product designed for US regulatory compliance. It is a different product from the international polymarket.com exchange in terms of available markets and regulatory framework."
+  - q: "Can states ban prediction markets if the CFTC allows them?"
+    a: "This is the core legal question raised by Minnesota's August 1, 2026 law banning prediction markets. The CFTC filed to challenge the law in federal court, arguing that the Commodity Exchange Act (CEA) preempts state-level bans on federally regulated markets (the same preemption doctrine that limits state regulation of futures markets). If the CFTC prevails, state bans on CFTC-regulated prediction markets like Kalshi would be unenforceable. The court challenge is ongoing as of July 2026. State laws banning non-CFTC-regulated platforms are a separate question."
+  - q: "Is using a VPN to access Polymarket legal?"
+    a: "Using a VPN to circumvent Polymarket's geographic restrictions from the US violates Polymarket's terms of service and does not change the legal status of trading on an unregistered facility. The CFTC's concern was not merely IP origin but the offering of unregistered event contracts to US persons. VPN use does not make the underlying activity legal. This bench does not recommend VPN use for this purpose. This is general information, not legal advice."
+
+related:
+  - polymarket-fees-explained
+  - is-polymarket-safe
+  - best-prediction-market-for-politics
+  - which-prediction-market-data-api-is-the-freshest
+
+seo_title: "Is Polymarket legal in the US? CFTC settlement, QCX and state bans explained"
+seo_description: "Polymarket.com geoblocked US users after a 2022 CFTC settlement. Polymarket US (QCX) launched December 2025 as the CFTC-regulated US option. Kalshi is also CFTC-regulated. Minnesota banned prediction markets Aug 2026."

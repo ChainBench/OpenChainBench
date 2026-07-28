@@ -22,6 +22,21 @@ import { SITE } from "@/data/site";
  * because it lists venue identities, not metric values.
  */
 
+const ANSWERS = [
+  { slug: "how-long-does-polymarket-take-to-resolve", question: "How long does Polymarket take to resolve a market?" },
+  { slug: "polymarket-vs-kalshi-resolution-speed", question: "Polymarket vs Kalshi, which resolves prediction markets faster?" },
+  { slug: "which-prediction-market-data-api-is-the-freshest", question: "Which prediction market data API publishes the freshest Polymarket data?" },
+  { slug: "which-prediction-market-has-the-strictest-rate-limits", question: "Which prediction market API has the strictest rate limits?" },
+  { slug: "polymarket-fees-explained", question: "What fees does Polymarket charge?" },
+  { slug: "polymarket-vs-kalshi-fees", question: "Polymarket vs Kalshi fees, which is cheaper to trade?" },
+  { slug: "is-polymarket-safe", question: "Is Polymarket safe to use?" },
+  { slug: "best-prediction-market-for-sports", question: "Which prediction market is best for sports?" },
+  { slug: "best-prediction-market-for-politics", question: "Which prediction market is best for politics and elections?" },
+  { slug: "manifold-markets-vs-polymarket", question: "Manifold Markets vs Polymarket, which should you use?" },
+  { slug: "is-polymarket-legal-in-the-us", question: "Is Polymarket legal in the United States?" },
+  { slug: "prediction-market-api-for-developers", question: "Which prediction market API is best for developers?" },
+] as const;
+
 const DESCRIPTION =
   "Polymarket vs Kalshi plus Limitless, Manifold and Myriad on one cross-venue leaderboard: volume, OI, resolution delay, API latency, freshness.";
 
@@ -184,6 +199,24 @@ export default async function PredictionMarketsHubPage() {
           </section>
 
           <PmHubTabs cohort={cohort} />
+
+          <section className="mt-10">
+            <p className="label-mono text-teal-600 mb-3 text-[11px]" style={{ fontFamily: "var(--font-mono, monospace)" }}>
+              Measured answers
+            </p>
+            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {ANSWERS.map((a) => (
+                <li key={a.slug}>
+                  <Link
+                    href={`/answers/${a.slug}`}
+                    className="card-soft flex items-start gap-2 rounded-lg border border-ink/10 px-4 py-3 text-sm text-ink hover:border-teal-500/40 hover:bg-teal-500/5 transition-colors"
+                  >
+                    {a.question}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
 
           <p className="mt-4 text-[11px] text-ink-faint italic">
             Source:{" "}
