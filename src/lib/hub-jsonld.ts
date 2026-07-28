@@ -152,24 +152,6 @@ export function teamPageLd() {
   ];
 }
 
-export function reportsLandingLd() {
-  const url = `${ORIGIN}/reports`;
-  return [
-    {
-      "@context": "https://schema.org",
-      "@type": "CollectionPage",
-      "@id": `${url}#collection`,
-      url,
-      name: "OpenChainBench Reports",
-      description:
-        "Monthly and quarterly research on crypto infrastructure performance. Citable, reproducible, CC BY 4.0.",
-      publisher: { "@id": `${ORIGIN}/#org` },
-      inLanguage: "en",
-    },
-    breadcrumb("Reports", "/reports"),
-  ];
-}
-
 export function mcpPageLd() {
   const url = `${ORIGIN}/mcp`;
   return [
