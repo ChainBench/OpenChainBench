@@ -86,6 +86,8 @@ const PM_VENUES: VenueSeed[] = [
   { slug: "limitless",  name: "Limitless",  type: "onchain",  chain: "base" },
   { slug: "manifold",   name: "Manifold",   type: "offchain" },
   { slug: "myriad",     name: "Myriad",     type: "offchain" },
+  { slug: "predictit",  name: "PredictIt",  type: "offchain" },
+  { slug: "smarkets",   name: "Smarkets",   type: "offchain" },
 ];
 
 const PM_DATA_FEEDS: DataFeedSeed[] = [

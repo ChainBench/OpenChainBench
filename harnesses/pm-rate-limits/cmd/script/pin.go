@@ -239,6 +239,104 @@ func pinMyriad(ctx context.Context, c *http.Client, avoid string) (Pin, error) {
 	return best, nil
 }
 
+func pinPredictIt(ctx context.Context, c *http.Client, avoid string) (Pin, error) {
+	var out struct {
+		Markets []struct {
+			ID        int    `json:"id"`
+			Name      string `json:"name"`
+			Status    string `json:"status"`
+			Contracts []struct {
+				ID             int     `json:"id"`
+				LastTradePrice float64 `json:"lastTradePrice"`
+				BestBuyYesCost float64 `json:"bestBuyYesCost"`
+				Volume         float64 `json:"volume"` // may be null -> 0
+			} `json:"contracts"`
+		} `json:"markets"`
+	}
+	if err := fetchJSON(ctx, c, "https://www.predictit.org/api/marketdata/all", &out); err != nil {
+		return Pin{}, fmt.Errorf("predictit list: %w", err)
+	}
+	best := Pin{}
+	bestVol := -1.0
+	for _, m := range out.Markets {
+		if m.Status != "Open" || len(m.Contracts) != 2 {
+			continue
+		}
+		id := fmt.Sprintf("%d", m.ID)
+		if id == avoid {
+			continue
+		}
+		// Use the first contract's lastTradePrice as a proxy for YES probability
+		p := m.Contracts[0].LastTradePrice
+		if p < 0.15 || p > 0.85 {
+			continue
+		}
+		vol := 0.0
+		for _, ct := range m.Contracts {
+			vol += ct.Volume
+		}
+		if vol > bestVol {
+			bestVol = vol
+			best = Pin{Market: id, Expiry: time.Now().Add(72 * time.Hour)} // optimistic horizon
+		}
+	}
+	if best.Market == "" {
+		return Pin{}, errors.New("predictit: no open binary market with near-the-money price")
+	}
+	return best, nil
+}
+
+func pinSmarkets(ctx context.Context, c *http.Client, avoid string) (Pin, error) {
+	// Step 1: get popular upcoming politics events
+	var eventsOut struct {
+		Events []struct {
+			ID   string `json:"id"`
+			Name string `json:"name"`
+		} `json:"events"`
+	}
+	evURL := "https://api.smarkets.com/v3/events/?type_domain=politics&sort=popular&per_page=20&state=upcoming"
+	if err := fetchJSON(ctx, c, evURL, &eventsOut); err != nil {
+		return Pin{}, fmt.Errorf("smarkets events: %w", err)
+	}
+	// Step 2: for each event, look for binary markets with real quotes
+	for _, ev := range eventsOut.Events {
+		var mktsOut struct {
+			Markets []struct {
+				ID          string `json:"id"`
+				Name        string `json:"name"`
+				Type        string `json:"type"`
+				DisplayType string `json:"display_type"`
+				State       string `json:"state"`
+			} `json:"markets"`
+		}
+		mkURL := fmt.Sprintf("https://api.smarkets.com/v3/events/%s/markets/?per_page=20", ev.ID)
+		if err := fetchJSON(ctx, c, mkURL, &mktsOut); err != nil {
+			continue
+		}
+		for _, m := range mktsOut.Markets {
+			if m.State != "open" {
+				continue
+			}
+			if m.ID == avoid {
+				continue
+			}
+			// Verify the quotes endpoint returns data before committing
+			var quotes struct {
+				Contracts map[string]interface{} `json:"contracts"`
+			}
+			qURL := fmt.Sprintf("https://api.smarkets.com/v3/markets/%s/quotes/", m.ID)
+			if err := fetchJSON(ctx, c, qURL, &quotes); err != nil || len(quotes.Contracts) == 0 {
+				continue
+			}
+			return Pin{
+				Market: m.ID,
+				Expiry: time.Now().Add(72 * time.Hour),
+			}, nil
+		}
+	}
+	return Pin{}, errors.New("smarkets: no open politics market with live quotes found")
+}
+
 // stalenessPolymarket reads the ms timestamp Polymarket embeds in every book
 // response (string in the docs, tolerate a bare number).
 func stalenessPolymarket(class string, body []byte) (int64, bool) {

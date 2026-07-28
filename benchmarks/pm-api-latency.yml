@@ -101,6 +101,12 @@ per_chain_explainer:
   - slug: myriad
     h2: Myriad API latency
     body: "Myriad's API is a single region Heroku deployment in US East with no order book endpoint and no WebSocket. Its cohort worst {{p50:myriad}} p50 (24h, all regions) is mostly geography: from eu-west and Singapore every request crosses an ocean first. When checking whether the Myriad API is down, look at the us-east region figure, since a global latency rise that spares us-east is network weather, not a venue incident. Myriad also runs the tightest keyless request budget in the cohort, covered in the pm-rate-limits bench."
+  - slug: predictit
+    h2: PredictIt API latency
+    body: "PredictIt is a CFTC-regulated US political prediction market probed at 15-second intervals due to its published rate limit of 5 requests per minute. The harness targets the single-market endpoint /api/marketdata/markets/{id} for price probes and records the full round trip. Because the probe cadence is 3 times slower than other venues in the cohort, PredictIt's latency samples are fewer and the p50 reflects fewer data points per hour. No book endpoint exists on their API; the closest equivalent (the all-markets snapshot at /api/marketdata/all) is also probed at 15s for the list class."
+  - slug: smarkets
+    h2: Smarkets API latency
+    body: "Smarkets is a UK-regulated peer-to-peer betting exchange with a public CLOB order book endpoint. The harness probes /v3/markets/{id}/ for price (5s interval) and /v3/markets/{id}/quotes/ for the book (5s interval). No authentication is required for either. No visible CDN layer sits between the probe and origin, so latency reflects the API server response time directly. Smarkets is the only non-US venue in the cohort and its primary user base and server infrastructure are UK-centric, which affects the relative latency from US East vs EU West probe nodes."
   - slug: predexon
     h2: Predexon API latency
     body: "Predexon is a multi-venue aggregator that unifies Polymarket, Kalshi and Limitless behind one schema. Its API answers at {{p50:predexon}} p50 (24h, all regions), measured on the same market-price endpoint the harness probes on the native venues, so the direct comparison of a unified aggregator against three venue-native APIs is head to head. Predexon aggregates upstream data; a Predexon latency higher than the sum of its three underliers is the cost of unification. Lower is the value of having one contract instead of three."
@@ -111,7 +117,7 @@ prometheus:
   window: 24h
   expected_freshness_seconds: 300
 
-rank_matrix_query: 1000 * label_replace(histogram_quantile(0.50, sum by (venue, region, le) (rate(pmapi_request_duration_seconds_bucket{source="direct",venue=~"polymarket|kalshi|limitless|manifold|myriad",conn="warm",class="price",cache!="hit"}[24h]))), "provider", "$1", "venue", "(.+)")
+rank_matrix_query: 1000 * label_replace(histogram_quantile(0.50, sum by (venue, region, le) (rate(pmapi_request_duration_seconds_bucket{source="direct",venue=~"polymarket|kalshi|limitless|manifold|myriad|predictit|smarkets",conn="warm",class="price",cache!="hit"}[24h]))), "provider", "$1", "venue", "(.+)")
 
 dimensions:
   venue:
@@ -121,6 +127,8 @@ dimensions:
     - { value: limitless, label: Limitless }
     - { value: manifold, label: Manifold }
     - { value: myriad, label: Myriad }
+    - { value: predictit, label: PredictIt }
+    - { value: smarkets, label: Smarkets }
   region:
     - { value: all, label: All regions }
     - { value: us-east, label: US East }
@@ -231,6 +239,32 @@ providers:
       success: clamp_max(sum(rate(pmapi_requests_total{venue="myriad",source="direct",class="price",conn="warm",outcome="ok"}[24h])) / sum(rate(pmapi_requests_total{venue="myriad",source="direct",class="price",conn="warm",outcome!="probe_invalid"}[24h])), 1)
       sample_size: sum(increase(pmapi_requests_total{venue="myriad",source="direct",class="price",conn="warm",outcome!="probe_invalid"}[24h]))
       series: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{venue="myriad",source="direct",class="price",conn="warm",cache!="hit"}[1h])) by (le))
+  - slug: predictit
+    name: PredictIt
+    tag: "CFTC no-action letter, US political markets only, probed at 15s due to 5 req/min rate limit"
+    formula: "p50 of warm price requests at 15s intervals against /api/marketdata/markets/{id}, successful requests only, 24h window. Rate limit constraint means fewer samples than other venues."
+    queries:
+      p50: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{venue="predictit",source="direct",class="price",conn="warm"}[24h])) by (le))
+      p90: 1000 * histogram_quantile(0.90, sum(rate(pmapi_request_duration_seconds_bucket{venue="predictit",source="direct",class="price",conn="warm"}[24h])) by (le))
+      p99: 1000 * histogram_quantile(0.99, sum(rate(pmapi_request_duration_seconds_bucket{venue="predictit",source="direct",class="price",conn="warm"}[24h])) by (le))
+      mean: 1000 * sum(rate(pmapi_request_duration_seconds_sum{venue="predictit",source="direct",class="price",conn="warm"}[24h])) / sum(rate(pmapi_request_duration_seconds_count{venue="predictit",source="direct",class="price",conn="warm"}[24h]))
+      success: clamp_max(sum(rate(pmapi_requests_total{venue="predictit",source="direct",class="price",conn="warm",outcome="ok"}[24h])) / sum(rate(pmapi_requests_total{venue="predictit",source="direct",class="price",conn="warm",outcome!="probe_invalid"}[24h])), 1)
+      sample_size: sum(increase(pmapi_requests_total{venue="predictit",source="direct",class="price",conn="warm",outcome!="probe_invalid"}[24h]))
+      series: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{venue="predictit",source="direct",class="price",conn="warm"}[1h])) by (le))
+
+  - slug: smarkets
+    name: Smarkets
+    tag: "UK FCA-regulated CLOB exchange, public book endpoint, political and sports markets"
+    formula: "p50 of warm price requests against /v3/markets/{id}/, successful requests only, 24h window. Origin-level responses, no CDN cache."
+    queries:
+      p50: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{venue="smarkets",source="direct",class="price",conn="warm",cache!="hit"}[24h])) by (le))
+      p90: 1000 * histogram_quantile(0.90, sum(rate(pmapi_request_duration_seconds_bucket{venue="smarkets",source="direct",class="price",conn="warm",cache!="hit"}[24h])) by (le))
+      p99: 1000 * histogram_quantile(0.99, sum(rate(pmapi_request_duration_seconds_bucket{venue="smarkets",source="direct",class="price",conn="warm",cache!="hit"}[24h])) by (le))
+      mean: 1000 * sum(rate(pmapi_request_duration_seconds_sum{venue="smarkets",source="direct",class="price",conn="warm",cache!="hit"}[24h])) / sum(rate(pmapi_request_duration_seconds_count{venue="smarkets",source="direct",class="price",conn="warm",cache!="hit"}[24h]))
+      success: clamp_max(sum(rate(pmapi_requests_total{venue="smarkets",source="direct",class="price",conn="warm",outcome="ok"}[24h])) / sum(rate(pmapi_requests_total{venue="smarkets",source="direct",class="price",conn="warm",outcome!="probe_invalid"}[24h])), 1)
+      sample_size: sum(increase(pmapi_requests_total{venue="smarkets",source="direct",class="price",conn="warm",outcome!="probe_invalid"}[24h]))
+      series: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{venue="smarkets",source="direct",class="price",conn="warm",cache!="hit"}[1h])) by (le))
+
   - slug: predexon
     name: Predexon
     tag: Multi-venue aggregator API (Polymarket, Kalshi, Limitless), unified schema
