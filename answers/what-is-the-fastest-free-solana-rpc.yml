@@ -1,0 +1,40 @@
+slug: what-is-the-fastest-free-solana-rpc
+question: "What is the fastest free Solana RPC?"
+short_answer: |
+  {{best_name}} is currently the fastest free Solana RPC at {{best_p50}} (getSlot p50, 24h), measured by OpenChainBench every 60 seconds against 5 no-key providers from us-east, eu-west and Singapore.
+
+benchmark: solana-rpc
+
+intro: |
+  "Best Solana RPC" roundups keep circulating endpoints that key-gated or died years ago. dRPC moved Solana to paid tiers, Ankr 403s without a key, OnFinality's shared public quota is permanently exhausted. This page probes the 5 endpoints that actually answer keyless in 2026: the Solana Labs official api.mainnet-beta.solana.com that every tutorial pastes, PublicNode, Lava, LeoRPC (which uses a publicly documented FREE query key requiring no signup) and Solana Vibe Station. Every 60 seconds from three regions, using the standard getSlot call at the processed commitment. Staleness is measured in slots against the cross-provider tip, and only ok calls enter the latency distribution. The first non-EVM member of OpenChainBench's per-chain RPC cluster.
+
+methodology: |
+  One identical JSON-RPC POST (getSlot at the processed commitment, with a rotating request id) every 60 seconds against each provider from us-east, eu-west and Singapore, using the same plain HTTP client for every endpoint and no API key in any request. Wall-clock round-trip is recorded at millisecond precision; p50, p90 and p99 come from Prometheus quantile_over_time over 24 hours, averaged across the three origins for the headline. Responses are classified ok, http_err, jsonrpc_err, stale (more than 300 slots, about 2 minutes, behind the cross-provider tip) or timeout. The EVM archive-depth audit (eth_getBalance at historical blocks) has no keyless Solana equivalent and is not performed.
+
+limitations:
+  - "Latency is conditional on success. Failed calls never enter the percentile; read every latency figure next to its success column."
+  - "Three probe origins only (Virginia, Amsterdam, Singapore). Solana validator geography is heavily weighted toward the US; APAC probes can see significantly higher latency than US or EU probes."
+  - "getSlot at the processed commitment is a lightweight probe call that does not exercise transaction submission, WebSocket slot subscriptions or program interaction. For transaction landing latency see the separate Solana transaction landing benchmark."
+  - "No archive-depth audit. The EVM cluster probes historical balance queries to detect archive support; no equivalent keyless query exists on public Solana endpoints."
+  - "Community endpoints (LeoRPC, Solana Vibe Station) have unpublished rate limits that can shift without notice. The bench monitors their availability live rather than assuming it."
+
+faq:
+  - q: "Which Solana RPC URL works without an API key?"
+    a: "Five endpoints sustain continuous no-key probing: Solana Labs (api.mainnet-beta.solana.com, documented at roughly 100 requests per 10 seconds per IP), PublicNode (solana-rpc.publicnode.com), Lava (solana.lava.build), LeoRPC (publicly documented FREE key, no signup required) and Solana Vibe Station (public.rpc.solanavibestation.com). Excluded with verified refusals: dRPC moved Solana to paid tiers, Ankr returns 403, OnFinality's shared quota is permanently exhausted, Helius and Shyft are key-gated."
+  - q: "Is api.mainnet-beta.solana.com good enough for production?"
+    a: "For development, demos and light read workloads: yes. Solana Labs documents roughly 100 requests per 10 seconds per IP, which is generous for development. For production trading, indexing or anything latency-sensitive, dedicated providers exist for a reason, and this page measures the free tier so you know exactly what the default gets you."
+  - q: "How is Solana RPC latency measured here?"
+    a: "One identical JSON-RPC POST (getSlot at the processed commitment) every 60 seconds against each provider from each of 3 regions. Wall-clock round-trip at millisecond precision; p50/p90/p99 via Prometheus quantile_over_time over 24 hours. Responses are classified so an endpoint stuck behind the cross-provider slot tip or erroring behind HTTP 200 is never ranked as fastest."
+  - q: "Why is there no archive-depth column like the Ethereum pages?"
+    a: "The EVM cluster probes eth_getBalance at historical block heights to expose which free endpoints serve archive state. Public Solana endpoints expose no comparable keyless historical-state query, so the audit is disclosed as not applicable rather than approximated."
+  - q: "Does the fastest Solana RPC depend on where my server runs?"
+    a: "More than on most EVM chains. Solana validator geography is concentrated in the US, so us-east probes see notably lower latency than Singapore probes on several providers. Use the region tabs on the benchmark page scoped to the origin closest to your deployment."
+
+related:
+  - what-is-the-fastest-free-ethereum-rpc
+  - which-ethereum-rpc-pushes-new-blocks-the-fastest
+  - which-crypto-price-api-is-the-fastest
+
+seo_title: "What is the fastest free Solana RPC? Live no-key latency ranking 2026"
+seo_description: "{{best_name}} leads free Solana RPC at {{best_p50}} (getSlot p50, 24h). 5 no-key endpoints probed every 60s from 3 regions by OpenChainBench. dRPC, Ankr, OnFinality exclusions documented."
+status: live
