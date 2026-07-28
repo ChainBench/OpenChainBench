@@ -1,0 +1,73 @@
+slug: best-prediction-market-for-sports
+question: "Which prediction market is best for sports?"
+benchmark: polymarket-resolution-delay
+status: live
+
+short_answer: |
+  For non-US users, Polymarket has the deepest sports books and the widest market variety. Sports
+  resolution on Polymarket currently runs {{p50:sports}} median from first onchain proposal. For US
+  users, Kalshi is the only CFTC-regulated real-money option with NFL, NBA and other sports coverage.
+  Manifold has sports markets but is play-money.
+
+intro: |
+  Sports is the highest-volume category on Polymarket and the one that tests prediction market
+  infrastructure most directly: the game ends, millions of dollars of positions move, and traders
+  want their winnings quickly. The best venue depends on where you are located and what you are
+  optimizing for.
+
+  Polymarket has the deepest sports CLOB, the widest market variety (including obscure leagues and
+  in-game markets), and the largest sports trading volume globally. Polymarket's international
+  exchange is geoblocked for US IPs, but for international users it is the primary destination for
+  real-money sports prediction markets.
+
+  Kalshi is CFTC-regulated and accessible to US users. It covers major US sports leagues: NFL, NBA,
+  MLB, NHL and major college football and basketball events. Kalshi's order books are thinner than
+  Polymarket's for the same events, and the fee structure (per-contract schedule) differs from
+  Polymarket's flat 2%. For US users, Kalshi is the primary legitimate real-money option.
+
+  Limitless has sports markets but with noticeably thinner books than Polymarket. It is a viable
+  option for smaller positions on major events.
+
+  Manifold uses play-money (mana) and has extensive sports markets. It is the best option for
+  learning how prediction markets work without financial risk, and for tracking calibration on
+  sports forecasts over time. No real money changes hands.
+
+  Resolution speed matters for sports because the gap between the final whistle and your payout
+  arrival is all dead time. OpenChainBench measures Polymarket sports resolution delay live.
+  Current median from first onchain proposal to payout availability is {{p50:sports}}, and the p99
+  sits at {{p99:sports}}. Disputes are rare on sports markets but do happen on contested finishes and
+  stat corrections, and a dispute extends the wait from hours to days.
+
+methodology: |
+  OpenChainBench measures resolution delay on the polymarket-resolution-delay bench, which listens
+  to UMA CTF adapter events on Polygon and records the time between the first onchain outcome
+  proposal (ProposePrice) and the onchain resolution (payout claim availability). Markets are
+  classified by category (sports, politics, crypto, other) using Polymarket's Gamma API metadata.
+  The sports category median is computed from a rolling 24-hour window of resolved sports markets.
+  Disputed markets are tracked in a separate series so the clean-path median reflects the typical
+  experience rather than the worst case.
+
+limitations:
+  - "Polymarket sports resolution delay is measured from the first onchain proposal, not from when the game ends. The time between the final whistle and the first UMA proposal is offchain and not observable onchain, so measured figures are a lower bound on total wait time."
+  - "Sports resolution disputes are rare but real. A contested finish, stat correction, or late score review can trigger a UMA dispute, which extends resolution from hours to days. The clean-path median does not represent disputed market experience."
+  - "Kalshi sports coverage and liquidity are measured separately and are not yet included in the polymarket-resolution-delay bench. The resolution delay comparison between Polymarket and Kalshi on sports markets requires the Kalshi harness, which is in development."
+  - "US access restrictions are regulatory context, not a quality judgment. Polymarket's international exchange being geoblocked for US users reflects a 2022 CFTC settlement, not platform quality. For US users, Kalshi is the regulated alternative."
+
+faq:
+  - q: "Polymarket vs Kalshi for sports, which is better?"
+    a: "For non-US users: Polymarket has deeper books, wider market selection and higher sports volume. For US users: Kalshi is the only CFTC-regulated option and covers major US sports leagues. The fee comparison differs by contract price: Polymarket is cheaper at mid-range prices, Kalshi may be cheaper on heavy favorites with near-certainty probabilities. If you are in the US, Kalshi is your primary option. If you are outside the US, Polymarket is usually the answer on both liquidity and market variety."
+  - q: "Are there NFL prediction markets on Polymarket?"
+    a: "Yes, Polymarket has NFL markets including game winner markets, over/under total points, playoff bracket markets and Super Bowl winner futures. NFL markets are among the highest volume on Polymarket during the season. Note that Polymarket's international exchange is geoblocked for US IPs following a 2022 CFTC settlement. US users should use Kalshi for NFL markets, which covers similar NFL events with CFTC-regulated access."
+  - q: "How fast does Polymarket resolve sports markets?"
+    a: "OpenChainBench measures sports resolution delay live on the polymarket-resolution-delay bench. The current median from first onchain proposal to payout availability is {{p50:sports}}. The p99 sits at {{p99:sports}}. The clock starts at the first UMA outcome proposal, not when the game ends. Add the offchain gap between final whistle and first proposal (typically minutes to hours) for total wait time from event end to payout."
+  - q: "Can US users use Polymarket for sports?"
+    a: "Polymarket's international exchange geoblocked US IP addresses following a 2022 CFTC settlement. Using a VPN to access it from the US violates Polymarket's terms of service. Polymarket US (QCX), a separate CFTC-regulated entity, launched in December 2025 with a limited set of event contracts. For a broader regulated US sports prediction market, Kalshi covers major league sports with documented API access and full CFTC oversight."
+
+related:
+  - how-long-does-polymarket-take-to-resolve
+  - best-prediction-market-for-politics
+  - polymarket-vs-kalshi-resolution-speed
+  - polymarket-fees-explained
+
+seo_title: "Best prediction market for sports 2026: Polymarket vs Kalshi"
+seo_description: "Polymarket leads on sports liquidity ({{p50:sports}} median resolution). For US users, Kalshi is the regulated option with NFL/NBA coverage. Full comparison by OpenChainBench."

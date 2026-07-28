@@ -1,0 +1,78 @@
+slug: manifold-markets-vs-polymarket
+question: "Manifold Markets vs Polymarket, which should you use?"
+benchmark: pm-api-latency
+status: live
+
+short_answer: |
+  They serve different use cases. Manifold uses play-money (mana) with no real financial risk, is
+  US-accessible, and explicitly welcomes developers and bots. Polymarket uses real USDC on Polygon,
+  has the deepest real-money books, and is geoblocked for US users on the international exchange.
+  API latency: Polymarket at {{p50:polymarket}} p50, Manifold at {{p50:manifold}} p50 origin
+  (CDN-cached responses excluded).
+
+intro: |
+  Manifold Markets and Polymarket occupy opposite ends of the prediction market spectrum, and
+  choosing between them requires knowing what you want from a prediction market in the first place.
+
+  Manifold is a play-money platform. Users trade in mana, Manifold's internal currency, which has no
+  real-world financial value. You cannot deposit dollars, you cannot withdraw dollars, and winning
+  big on Manifold does not make you money. What Manifold offers instead is frictionless access to a
+  large catalog of prediction questions, an explicitly developer-friendly API, and no regulatory
+  barriers. Manifold is fully accessible to US users, has no KYC, and publishes its API with 500
+  requests per minute per IP and explicit encouragement for bots and researchers.
+
+  Polymarket is a real-money platform. Users hold USDC on Polygon, trade in a CLOB with real
+  financial consequences, and collect real profits or losses at resolution. The liquidity is
+  dramatically deeper on Polymarket for popular events because real money attracts serious traders.
+  Polymarket's international exchange is geoblocked for US IPs following a 2022 CFTC settlement.
+  Polymarket US (QCX) launched December 2025 for US users with a limited set of CFTC-regulated
+  event contracts.
+
+  For API access: Manifold's whole API sits behind a 5-second CDN cache. The {{p50:manifold}} latency
+  shown here is the origin response after excluding cache hits. A polling bot will see cache hits most
+  of the time, which are fast but not fresh. Polymarket serves its CLOB via WebSocket
+  (wss://ws-subscriptions-clob.polymarket.com) with no CDN layer in the data path, giving real-time
+  order book updates. The {{p50:polymarket}} latency is the warm origin round-trip on the CLOB price
+  endpoint.
+
+  For claiming winnings: Polymarket requires a Polygon gas transaction to redeem winning shares.
+  Moving funds off Polygon to a bank account requires additional bridging steps. Manifold has no
+  withdrawal because there is nothing real to withdraw.
+
+  The summary: use Manifold for learning, research, calibration tracking, bot prototyping, or any
+  use case where real money is not the point. Use Polymarket for real-money forecasting where you
+  want genuine financial stakes and deep books.
+
+methodology: |
+  OpenChainBench measures API latency for both venues on the pm-api-latency bench, probing each
+  venue's price endpoint every 5-7 seconds from three regions over warm connections. Manifold probes
+  fire every 7 seconds and every response is labeled with cache status from the response headers.
+  Cache hits (max-age=5, stale-while-revalidate=10) are excluded from the latency aggregate so the
+  displayed figure reflects origin round-trip, not CDN proximity. Polymarket probes fire every 5
+  seconds on the CLOB midpoint endpoint; Cloudflare sits in front but the CLOB data path is
+  effectively uncached. Both figures are 24-hour p50 of non-cached successful requests.
+
+limitations:
+  - "Manifold's CDN cache means most real polling requests see cached responses, not origin. The {{p50:manifold}} origin latency shown here is what you experience after the 5-second cache expires. For real-time data on Manifold, you must either poll at under 5 seconds (burn the cache) or accept potentially stale prices."
+  - "Polymarket requires onchain gas to redeem winnings. This adds an ETH-equivalent cost on Polygon (typically less than $0.01 but nonzero) and requires a crypto wallet. Manifold has no such requirement."
+  - "Polymarket's international exchange is geoblocked for US users. This comparison is most relevant for non-US users choosing between the two, or for developers choosing an API for a data product."
+  - "Liquidity comparison is not captured in the latency bench. Polymarket's CLOB has orders of magnitude more real-money liquidity on popular markets than Manifold. For any use case involving real money, this difference dominates."
+
+faq:
+  - q: "Is Manifold play-money or real money?"
+    a: "Manifold is entirely play-money. Users trade in mana, an internal currency with no real-world value. You cannot deposit dollars, and winning on Manifold produces only mana, not real money. Manifold does allow charity donations of mana (converting to real charitable donations), but the trading itself involves no financial risk. This makes Manifold ideal for learning how prediction markets work, for researchers studying forecasting calibration, or for anyone who wants to participate without real financial stakes."
+  - q: "Which is better for building a prediction market bot?"
+    a: "Depends on what the bot does. For a research or data collection bot with no real-money trades: Manifold is better. The API is explicitly documented for bots, the rate limit (500 req/min per IP) is generous, there is no authentication required for reading data, and a bot that makes bad trades loses only mana. For a real-money trading bot: Polymarket is the primary option. It has the deepest CLOB, a public WebSocket for real-time order book data, and no authentication required for market data. Auth is required for trading. The bot must handle Polygon gas for transaction execution."
+  - q: "Which API is faster for developers?"
+    a: "Polymarket at {{p50:polymarket}} origin p50 vs Manifold at {{p50:manifold}} origin p50, both measured by OpenChainBench with cache hits excluded. Manifold's cached responses are faster (the CDN edge is close) but not fresh. Polymarket's origin is faster in absolute terms, and the WebSocket feed for real-time order book data has no polling ceiling. For a dashboard that polls every few seconds, Polymarket's origin is faster and fresher. For a dashboard that tolerates 5-second stale data, Manifold's cache makes development easier."
+  - q: "Can US users access both Manifold and Polymarket?"
+    a: "Manifold is fully accessible to US users with no geographic restrictions, no KYC, and no regulatory barriers. Polymarket's international exchange is geoblocked for US IPs following a 2022 CFTC settlement. Polymarket US (QCX), a separate CFTC-regulated entity, launched in December 2025 and is accessible to US users, initially with a limited set of event contracts. For US users who want real-money prediction markets, the options are Kalshi (broad coverage, CFTC-regulated) and Polymarket US (QCX) (limited contracts, CFTC-regulated)."
+
+related:
+  - polymarket-fees-explained
+  - prediction-market-api-for-developers
+  - which-prediction-market-has-the-strictest-rate-limits
+  - is-polymarket-safe
+
+seo_title: "Manifold Markets vs Polymarket 2026: which should you use?"
+seo_description: "Manifold is play-money (mana), US-accessible, bot-friendly API at {{p50:manifold}} p50. Polymarket is real USDC, deepest books, {{p50:polymarket}} p50, US-geoblocked. Full comparison by OCB."

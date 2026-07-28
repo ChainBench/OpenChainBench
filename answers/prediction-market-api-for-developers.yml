@@ -1,0 +1,87 @@
+slug: prediction-market-api-for-developers
+question: "Which prediction market API is best for developers?"
+benchmark: pm-api-latency
+status: live
+
+short_answer: |
+  For trading bots: Polymarket (public WebSocket, deepest CLOB, {{p50:polymarket}} p50) or Kalshi
+  (documented API contract, CFTC-regulated). For dashboards and research: Manifold (500 req/min,
+  explicit bot welcome, {{p50:manifold}} p50 origin) or Kalshi (most stable docs). Current latency
+  leader across the cohort: {{best_name}} at {{best_p50}} p50.
+
+intro: |
+  The five prediction market venues tracked by OpenChainBench have very different APIs, and the
+  best choice for a developer depends on what you are building.
+
+  Polymarket has the deepest CLOB in the cohort and offers both REST and WebSocket access. The
+  WebSocket gateway (wss://ws-subscriptions-clob.polymarket.com) pushes order book updates in real
+  time with no polling delay. No authentication is required for market data; auth (API key) is
+  required for placing orders. The CLOB model means fills happen at exact prices rather than against
+  an AMM curve, which matters for trading bots. Polymarket's international exchange is geoblocked
+  for US IPs following a 2022 CFTC settlement; US developers can still build data products against
+  the API, but trading from a US IP requires Polymarket US (QCX) infrastructure.
+
+  Kalshi has a documented REST API with a published fee schedule and tiered rate limits. It is the
+  only venue in this cohort with a documented API contract that resembles an SLA. There is no
+  public WebSocket for streaming market data (as of July 2026); real-time data requires polling the
+  REST API. Auth is required for trading. Kalshi is CFTC-regulated, which makes it the correct
+  choice for any US-regulated product that requires a compliant data source.
+
+  Manifold is the most developer-friendly venue for non-financial use cases. It documents 500
+  requests per minute per IP, explicitly welcomes bots and researchers, and requires no API key for
+  reading data. The entire API sits behind a 5-second CDN cache; the {{p50:manifold}} latency shown
+  here is the origin response after excluding cache hits. This means Manifold's API looks fast on
+  cached reads but the underlying data is up to 5 seconds stale. For dashboards, research scrapers,
+  or calibration trackers, Manifold is the most permissive and easiest to integrate.
+
+  Limitless has undocumented rate limits and a notable gotcha for developers: error responses are
+  CDN-cached for 4 hours. A request for an expired or resolved market keeps returning the same 400
+  error long after the fact. A client that does not handle this will misread the API's state for
+  hours. The {{p50:limitless}} latency reflects origin performance; CDN-cached errors make the
+  effective behavior worse for developers who do not handle them explicitly.
+
+  Myriad has the smallest API surface in the cohort: no WebSocket, no order book endpoint, and a
+  single-region US East origin (Heroku). The latency from EU West and Singapore ({{p50:myriad}}) is
+  mostly geography. Its keyless request budget is the tightest in the cohort at 30 requests per 10
+  seconds, covered in the pm-rate-limits bench. For developers outside the US, Myriad's latency is
+  uncompetitive without a regional CDN.
+
+  The current latency leader across the cohort is {{best_name}} at {{best_p50}} p50, measured by
+  OpenChainBench across all five venues on the warm price endpoint.
+
+methodology: |
+  OpenChainBench measures API latency for all five venues on the pm-api-latency bench. Each venue's
+  price endpoint is probed every 5 seconds (7 seconds on Manifold) from three regions (US East, EU
+  West, Singapore) over warm connections. Every sample records a cache flag from response headers;
+  latency aggregates exclude CDN cache hits so figures reflect origin round-trip, not CDN proximity.
+  The rate limit bench (pm-rate-limits) runs a daily ramp at rising request rates per venue to
+  measure throttle onset behavior and 429 handling. API documentation quality is assessed manually
+  and described in the findings section; it is not a quantitative metric.
+
+limitations:
+  - "API documentation quality and stability are assessed manually by the OCB team, not by automated measurement. Kalshi being described as having the most stable docs is an editorial assessment based on change frequency, not a measurable benchmark metric."
+  - "WebSocket availability is correct as of July 2026. API surfaces change. Verify WebSocket endpoint availability directly from each venue's developer documentation before building against it."
+  - "Rate limit figures from the pm-rate-limits bench reflect behavior at conservative ramp tiers (well below documented maximums where they exist). True rate limit ceilings require testing that could abuse the venues' APIs, which the bench deliberately avoids."
+  - "Limitless 4-hour cached error responses are a measured behavior as of the bench's last probe cycle, not a permanent guarantee. Limitless could change this CDN configuration at any time."
+  - "Polymarket US (QCX) API access is not yet covered by the pm-api-latency bench. The bench measures the international Polymarket CLOB only."
+
+faq:
+  - q: "Which prediction market API has a WebSocket?"
+    a: "Polymarket has a public WebSocket at wss://ws-subscriptions-clob.polymarket.com for real-time order book and trade data. No auth is required for subscribing to market data. Kalshi does not have a public WebSocket for market data as of July 2026; real-time data requires REST polling. Manifold, Limitless and Myriad also lack public WebSocket feeds. For any use case requiring real-time order book data without polling latency, Polymarket is currently the only option in this cohort."
+  - q: "Which prediction market API has the best documentation?"
+    a: "Kalshi has the most comprehensive and stable documentation among the five venues. It documents tiered rate limits, a published fee schedule, endpoint contracts, and authentication flows with a level of detail that resembles an exchange API contract. Manifold's documentation is shorter but covers the key endpoints and explicitly addresses bots and researchers. Polymarket's CLOB documentation is functional but has changed more frequently. Limitless documents almost nothing, including rate limits. Myriad has minimal public documentation."
+  - q: "How do prediction market API rate limits compare?"
+    a: "Manifold: 500 req/min per IP, documented, explicitly welcomes bots. Kalshi: tiered token bucket, roughly 20 req/sec on the basic read tier, documented. Polymarket: documented per-endpoint budgets (up to 1500 req/10s for the book endpoint) but Cloudflare queues bursts instead of returning 429, so throttle onset appears as latency not errors. Limitless: undocumented rate limits. Myriad: 30 req/10s keyless, the tightest in the cohort. The pm-rate-limits bench measures actual throttle onset behavior daily from three regions."
+  - q: "How do I build a trading bot for prediction markets?"
+    a: "For a real-money trading bot: Polymarket is the primary option. Use the WebSocket for real-time order book data and the CLOB REST API for placing orders (auth required). Handle Polygon gas for order transactions. For a US-regulated trading bot: Kalshi is the only CFTC-registered option with a documented API contract. For a play-money research bot: Manifold is the most permissive option with a generous rate limit and no authentication requirement. In all cases, read the venue's API terms before building to understand allowed use cases."
+  - q: "How do I build a prediction market data dashboard?"
+    a: "For a dashboard covering all five venues: use each venue's REST API for market data. Polymarket CLOB REST plus WebSocket for real-time; Kalshi REST; Manifold REST (accept 5-second cache latency or poll at under 5 seconds); Limitless REST (handle 4-hour cached errors explicitly); Myriad REST (expect high latency from non-US regions). For a dashboard specifically tracking prediction market API latency and uptime: use OpenChainBench's pm-api-latency bench data via the public Prom endpoint at openchainbench.com."
+
+related:
+  - which-prediction-market-has-the-strictest-rate-limits
+  - which-prediction-market-data-api-is-the-freshest
+  - manifold-markets-vs-polymarket
+  - polymarket-vs-kalshi-resolution-speed
+
+seo_title: "Best prediction market API for developers 2026"
+seo_description: "Polymarket: WebSocket, deepest CLOB, {{p50:polymarket}} p50. Kalshi: documented contract, CFTC-regulated. Manifold: 500 req/min, bot-friendly. Current leader: {{best_name}} at {{best_p50}}. OCB live bench."
