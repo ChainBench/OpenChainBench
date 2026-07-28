@@ -314,7 +314,12 @@ async function fetchPerpCohortRaw(): Promise<PerpCohortSummary | null> {
   const snapshot = await readCohortSnapshot<PerpCohortSummary>(
     PERP_COHORT_KEY,
   );
-  if (snapshot) return snapshot.data;
+  // Only use the snapshot if it was written within the last 2 minutes.
+  // Without this check, the 24h KV TTL means stale Prometheus data is
+  // served indefinitely even though the harness publishes every minute.
+  if (snapshot && snapshot.ageMs < 2 * 60 * 1000) {
+    return snapshot.data;
+  }
   const fresh = await fetchPerpCohortFresh();
   if (fresh) {
     try {
@@ -434,7 +439,7 @@ const PERP_BY_ASSET_KEY = "perp-by-asset";
 // works for the worker; readers get the worker-written blob.
 async function fetchPerpByAssetMatrixRaw(): Promise<PerpAssetRow[]> {
   const snapshot = await readCohortSnapshot<PerpAssetRow[]>(PERP_BY_ASSET_KEY);
-  if (snapshot && Array.isArray(snapshot.data) && snapshot.data.length > 0) {
+  if (snapshot && snapshot.ageMs < 2 * 60 * 1000 && Array.isArray(snapshot.data) && snapshot.data.length > 0) {
     return snapshot.data;
   }
   const fresh = await fetchPerpByAssetMatrixFresh();
