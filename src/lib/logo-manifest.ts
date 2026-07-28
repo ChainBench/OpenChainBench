@@ -108,6 +108,7 @@ const RAW: Record<string, string> = {
   lighter: "/logos/lighter.svg",
   debridge: "/logos/debridge.svg",
   "near-intents": "/logos/near-intents.svg",
+  mayan: "/logos/mayan.svg",
   squid: "/logos/squid.svg",
   socket: "/logos/socket.webp",
   wormhole: "/logos/wormhole.png",
