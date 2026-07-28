@@ -1,0 +1,40 @@
+slug: what-is-the-fastest-free-hyperliquid-rpc
+question: "What is the fastest free Hyperliquid RPC?"
+short_answer: |
+  {{best_name}} is currently the fastest free Hyperliquid RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h), measured by OpenChainBench every 60 seconds against 5 no-key HyperEVM providers from us-east, eu-west and Singapore.
+
+benchmark: hyperliquid-rpc
+
+intro: |
+  Hyperliquid's HyperEVM (chain id 999) is the EVM execution layer bolted onto the HyperCore perps engine, and it is the fastest-growing new chain where developers are deploying EVM contracts in 2026. Standard Ethereum JSON-RPC wire, so existing tooling works, but the provider ecosystem is early: a pre-launch audit found that Alchemy's demo key path is rate-limited dead, thirdweb returns "Invalid chain", Grove requires an app id, and most aggregator gateways either DNS-fail or 401 without a key. The 5 endpoints that survive keyless continuous probing are Hyperliquid Labs's official rpc.hyperliquid.xyz/evm, dRPC, Stakely, Purroof Group and Hypurrscan. OpenChainBench probes all 5 every 60 seconds from three regions with the same eth_getBlockByNumber call used across the 20+ EVM chains in the cluster.
+
+methodology: |
+  One identical JSON-RPC POST (eth_getBlockByNumber with a rotating request id, non-cacheable by design) every 60 seconds against each provider from us-east, eu-west and Singapore, using the same plain HTTP client for every endpoint and no API key in any request. Wall-clock round-trip is recorded at millisecond precision; p50, p90 and p99 come from Prometheus quantile_over_time over 24 hours, averaged across the three origins for the headline. Responses are classified ok, http_err, jsonrpc_err, stale (more than 25 blocks behind the cross-provider tip, about 50 seconds at HyperEVM's 2-second block time) or timeout, and only ok calls enter the latency distribution.
+
+limitations:
+  - "HyperEVM is a young chain (mainnet February 2025). The provider cohort will shift quickly as more gateways stand up dedicated HyperEVM endpoints; this page is re-audited and updated when new keyless paths appear."
+  - "Latency is conditional on success. Community-run providers like Purroof Group and Hypurrscan can churn during Hyperliquid network upgrades or heavy trading periods; read the success rate column alongside the p50."
+  - "Provider infra for HyperEVM is heavily weighted toward Europe and the US. The Singapore probe regularly sees higher latency than the eu-west and us-east probes for community providers with a single data centre."
+  - "The benchmark measures HyperEVM read latency (eth_getBlockByNumber). It does not measure HyperCore API latency (order placement, perp data), which uses a separate REST+WebSocket API on api.hyperliquid.xyz."
+
+faq:
+  - q: "Which HyperEVM RPC URL works without an API key?"
+    a: "Five endpoints sustain continuous keyless probing: Hyperliquid Labs's rpc.hyperliquid.xyz/evm, dRPC (hyperliquid.drpc.org), Stakely (hyperliquid-json-rpc.stakely.io), Purroof Group (rpc.purroofgroup.com) and Hypurrscan (rpc.hypurrscan.io). Excluded by the launch audit: Alchemy demo key is rate-limited dead, thirdweb returns Invalid chain, Grove requires an app id at the LB path, AllThatNode and Blast API DNS-fail, Chainstack 401s without a key."
+  - q: "Is the official Hyperliquid Labs RPC the fastest?"
+    a: "Not always. The official rpc.hyperliquid.xyz/evm is operated by Hyperliquid Labs and has infrastructure advantages, but dRPC's edge-close routing can beat it from certain regions. Use the region tabs on the benchmark page to find the fastest endpoint from the origin closest to your deployment."
+  - q: "Does HyperEVM use the same RPC API as Ethereum?"
+    a: "Yes. HyperEVM is standard EVM with chain id 999, so any Ethereum JSON-RPC call works: eth_getBlockByNumber, eth_call, eth_sendRawTransaction and so on. Existing Ethereum libraries (ethers, viem, web3.py) work without modification by pointing at a HyperEVM RPC URL."
+  - q: "How is Hyperliquid RPC latency measured here?"
+    a: "One identical JSON-RPC POST (eth_getBlockByNumber) every 60 seconds against each provider from each of 3 regions. Staleness is defined as more than 25 blocks behind the cross-provider tip (about 50 seconds at HyperEVM's ~2 second block time). Wall-clock round-trip at millisecond precision; p50/p90/p99 via Prometheus quantile_over_time over 24 hours."
+  - q: "What is the difference between HyperEVM and HyperCore RPCs?"
+    a: "HyperCore is Hyperliquid's native perps and spot engine; it exposes a separate REST and WebSocket API at api.hyperliquid.xyz for order placement, position reads and market data. HyperEVM is the EVM smart-contract layer that shares consensus with HyperCore; it exposes a standard Ethereum JSON-RPC interface. This benchmark measures HyperEVM read latency only."
+
+related:
+  - who-is-winning-hyperliquid-ecosystem
+  - which-hyperliquid-frontend-has-the-most-builder-revenue
+  - what-is-the-fastest-free-ethereum-rpc
+  - what-is-the-fastest-free-base-rpc
+
+seo_title: "What is the fastest free Hyperliquid RPC? Live HyperEVM no-key latency 2026"
+seo_description: "{{best_name}} leads free Hyperliquid RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). 5 no-key HyperEVM providers probed every 60s from 3 regions by OpenChainBench."
+status: live
