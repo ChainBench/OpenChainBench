@@ -115,29 +115,41 @@ Latency leadership at the top is typically stable — the same provider that win
 
 ## Provider Wins Across 19 Chains
 
-The per-chain sections above tell stories about individual networks. This section steps back to the full matrix: which providers win the most regional contests when you count every chain the harness tracks.
+19 chains, 3 probe regions — 57 regional contests. A "win" is the lowest p50 among providers returning a classified `ok` response in that region for that chain.
 
-The harness covers 19 chains, probed from 3 regions each — 57 regional slots in total. A "win" means the lowest p50 latency among providers returning a classified `ok` response in that region for that chain. Ties are rare and broken by success rate.
+**Win count summary**
 
 | Provider | US-East | EU-West | Singapore | Total / 57 |
 |---|---:|---:|---:|---:|
-| **PublicNode** | **9** | **10** | **9** | **28** |
-| Foundation endpoints (own chain) | 5 | 5 | 5 | 15 |
-| **dRPC** | **5** | **4** | **5** | **14** |
+| PublicNode | 9 | 10 | 9 | 28 |
+| Foundation (own-chain) | 5 | 5 | 5 | 15 |
+| dRPC | 5 | 4 | 5 | 14 |
 
-<Mark>PublicNode wins 28 of 57 regional contests</Mark> — nearly half the matrix — across chains spanning Ethereum, Arbitrum, Base, Optimism, Avalanche, Linea, Scroll, Sonic, Gnosis, and Celo. No other third-party provider comes close: dRPC, the second-ranked third-party provider, takes 14 wins concentrated on a tighter set of chains where its infrastructure shows a structural edge.
+**Per-chain regional winner**
 
-Foundation endpoints account for 15 wins, but those are own-chain victories: BNB Chain's foundation endpoint wins every BNB slot, Solana's wins every Solana slot, and so on for Monad, Blast, and Berachain. These wins are not transferable — a foundation endpoint for Monad cannot serve your Arbitrum traffic. When you scope to chains where a third-party provider must compete against other third-party providers, the leaderboard condenses to PublicNode and dRPC.
+| Chain | US-East | EU-West | Singapore |
+|---|---|---|---|
+| Ethereum | dRPC | PublicNode | dRPC |
+| Arbitrum | PublicNode | PublicNode | PublicNode |
+| Base | PublicNode | PublicNode | PublicNode |
+| Optimism | PublicNode | PublicNode | PublicNode |
+| Avalanche | PublicNode | PublicNode | PublicNode |
+| Linea | PublicNode | PublicNode | PublicNode |
+| Scroll | PublicNode | PublicNode | PublicNode |
+| Sonic | PublicNode | PublicNode | PublicNode |
+| Gnosis | PublicNode | PublicNode | PublicNode |
+| Celo | PublicNode | PublicNode | PublicNode |
+| Polygon | dRPC | dRPC | dRPC |
+| zkSync | dRPC | dRPC | dRPC |
+| Mantle | dRPC | dRPC | dRPC |
+| HyperEVM | dRPC | dRPC | dRPC |
+| BNB Chain | BNB Foundation | BNB Foundation | BNB Foundation |
+| Solana | Solana Foundation | Solana Foundation | Solana Foundation |
+| Monad | Monad Foundation | Monad Foundation | Monad Foundation |
+| Blast | Blast Foundation | Blast Foundation | Blast Foundation |
+| Berachain | Berachain Foundation | Berachain Foundation | Berachain Foundation |
 
-### Where dRPC's wins come from
-
-dRPC's 14 wins cluster on five chains: Ethereum (two regions), Polygon (all three), zkSync (all three), Mantle (all three), and HyperEVM (all three). These are not marginal wins. On Polygon, dRPC posts a p50 of 14–15 ms against PublicNode's 86–89 ms — a roughly 6x margin that signals validator co-location, not just low-latency peering. On zkSync, Mantle, and HyperEVM the gap is narrower but the pattern is consistent: dRPC has infrastructure that is genuinely closer to the node on these chains.
-
-The caveat is reliability. dRPC's wins on Polygon, zkSync, Mantle, and HyperEVM come with success rates that run 75–80% in the measurement window. A provider that wins every latency contest but fails one call in four or five is the definition of the speed trap described in the opening section. <Mark>dRPC leads on speed where it wins; PublicNode leads on correctness everywhere.</Mark>
-
-### Reading the table
-
-Win counts flatten chains. A win on Ethereum — the most contested bench in the cohort, with 10+ providers — carries more signal than a win on HyperEVM, where the competitive field is thin. That asymmetry is worth keeping in mind when interpreting dRPC's concentrated wins versus PublicNode's broad ones. PublicNode's wins are spread across the highest-competition chains in the matrix; dRPC's wins are deep on a smaller set. Both patterns have legitimate interpretations depending on which chains your stack actually touches.
+Foundation endpoints win on their own chain only and cannot serve traffic on other networks. Among third-party providers, PublicNode takes 28 slots across 10 chains and dRPC takes 14 slots across 5 chains. The per-region breakdown for every chain is live on the [RPC Capabilities bench](/benchmarks/rpc-capabilities) via `?region=us-east|eu-west|sgp`.
 
 ## Reproducibility Recipe
 
