@@ -43,7 +43,7 @@ prometheus:
   window: 24h
   expected_freshness_seconds: 1800
 
-rank_matrix_query: 100 * label_replace(avg_over_time(pm_geo_accessible[1h]), "provider", "$1", "venue", "(.+)")
+rank_matrix_query: 100 * label_replace(avg by (venue) (avg_over_time(pm_geo_accessible[1h])), "provider", "$1", "venue", "(.+)")
 
 dimensions:
   region:
