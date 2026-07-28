@@ -83,6 +83,12 @@ export async function generateMetadata({
       alternates: { canonical: canonicalUrl },
     };
   }
+  // Perp venue pages have a richer dedicated route at /perp/<slug>.
+  // Polymarket is excluded because it also carries a PM venue section
+  // on the products page that the perp route does not cover.
+  if (PERP_PRODUCT_PILL_SLUGS.has(slug) && slug !== "polymarket") {
+    return { alternates: { canonical: `${SITE.url}/perp/${slug}` } };
+  }
   const p = await getProvider(slug);
   if (!p) return {};
   const reg = getProviderRegistry(p.slug);
@@ -166,12 +172,13 @@ export default async function ProviderPage({
   // /products/<hl-slug> straight there so backlinks + old SERP entries
   // land on the richer hub without splitting rank signal across two URLs.
   if (await isHlBuilderSlug(slug)) {
-    // 308, not 307: this is a permanent migration. A temporary
-    // redirect tells Google to keep the old /products URL indexed and
-    // re-crawl it forever without transferring signals — Ahrefs showed
-    // all 95 HL product URLs stuck in "indexable became non-indexable"
-    // limbo under the 307 (2026-07-08).
     permanentRedirect(`/hyperliquid/${slug}`);
+  }
+  // Perp venue pages have a dedicated /perp/<slug> route with richer
+  // stats (charts, all-time totals, vault breakdown). Polymarket is
+  // excluded here because it also carries a PM venue section on this page.
+  if (PERP_PRODUCT_PILL_SLUGS.has(slug) && slug !== "polymarket") {
+    permanentRedirect(`/perp/${slug}`);
   }
   const p = await getProvider(slug);
   if (!p) notFound();
