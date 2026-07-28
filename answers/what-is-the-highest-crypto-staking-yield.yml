@@ -1,18 +1,18 @@
 slug: what-is-the-highest-crypto-staking-yield
 question: "What is the highest crypto staking yield right now?"
 short_answer: |
-  {{best_name}} currently pays the highest staking yield at {{best_p50}} (median validator net yield, 24h) across the {{count}} chains OpenChainBench measures live: Solana, Hyperliquid and Ethereum. Net yield means gross APR multiplied by validator uptime, after commission, with MEV included where the chain has a validator level MEV market.
+  {{best_name}} currently pays the highest staking yield at {{best_p50}} (median validator net yield, 24h) across the {{count}} chains OpenChainBench measures live: Solana, Hyperliquid, Ethereum, Cardano, SUI, Cosmos Hub and Avalanche. Net yield means gross APR multiplied by validator uptime, after commission, with MEV included where the chain has a validator level MEV market.
 
 benchmark: validator-yield
 
 intro: |
-  Staking yield marketing quotes "up to 7% APY" without naming the validator, the uptime assumption, or whether MEV tips are folded in. Every staker choosing between chains asks the same underlying question: what would I actually earn today, on a real validator, after commission and downtime. This page answers it with live on chain measurement rather than a marketing rate card. OpenChainBench polls each chain's canonical yield source every 5 minutes: Stakewiz for Solana (top 200 validators by stake, MEV tips already folded into the APR), the Hyperliquid validatorSummaries endpoint (all ~30 active validators, no MEV layer exists), and the beacon chain spec reward formula on Ethereum's live total effective balance (one network average consensus layer figure, MEV excluded). The headline per chain is the median net yield in basis points, where 1% APY equals 100 bps, so the number reflects where a delegator's stake would actually land, not the best case a marketing page can cherry pick.
+  Staking yield marketing quotes "up to 7% APY" without naming the validator, the uptime assumption, or whether MEV tips are folded in. Every staker choosing between chains asks the same underlying question: what would I actually earn today, on a real validator, after commission and downtime. This page answers it with live on chain measurement rather than a marketing rate card. OpenChainBench polls each chain's canonical yield source every 5 minutes: Stakewiz for Solana (top 200 validators by stake, MEV tips already folded into the APR), the Hyperliquid validatorSummaries endpoint (all ~30 active validators, no MEV layer exists), the beacon chain spec reward formula on Ethereum's live total effective balance (one network average consensus layer figure, MEV excluded), Koios for Cardano (top 50 pools by stake), the SUI validator RPC for SUI, the Cosmos Hub staking module for Cosmos Hub, and the P-chain API for Avalanche. The headline per chain is the median net yield in basis points, where 1% APY equals 100 bps, so the number reflects where a delegator's stake would actually land, not the best case a marketing page can cherry pick.
 
 methodology: |
   Net yield per validator is computed as gross APR multiplied by the validator's uptime fraction, in basis points. Solana gross APR comes from the Stakewiz validators API, a 30 epoch trailing estimate that already includes Jito MEV tips; Jito Kobe enriches each validator with the MEV share split for transparency. Hyperliquid uses predictedApr.day multiplied by the daily uptime fraction from the public info endpoint. Ethereum publishes one network average consensus layer APR from the beacon spec reward formula on the live total effective balance (ultrasound.money), execution tips and MEV excluded. The leaderboard number per chain is the median across tracked validators, refreshed every 5 minutes. Solana is capped to the top 200 validators by activated stake, which represent roughly 90% of staked SOL by value.
 
 limitations:
-  - "Three chains only. Cosmos, Polkadot, Avalanche, Cardano and every liquid staking product are out of scope, so the highest yield here is the highest among Solana, Hyperliquid and Ethereum, not across all of crypto."
+  - "Seven chains measured (Solana, Hyperliquid, Ethereum, Cardano, SUI, Cosmos Hub, Avalanche), but the benchmark still excludes Polkadot, Tezos, Near, Celestia and every liquid staking product, so the highest yield here is the highest among the measured set, not all of crypto."
   - "The Solana median is dragged down by roughly 42 of the tracked 200 validators currently emitting 0% APY, either commission set to 100% or zero leader slots this epoch. A staker who picks a sane validator earns closer to the modal 6.0% than the chain median."
   - "The Ethereum figure is consensus layer only. Execution tips and MEV are excluded, so a proposer running MEV-Boost realizes more in practice, and the number is a solo validator nominal APR, not a Lido or Coinbase product rate."
   - "The bench reports APR, not APY. No compounding adjustment is applied because the upstream sources publish simple yield; a staker who restakes rewards compounds above these figures."
@@ -35,5 +35,5 @@ related:
   - which-blockchain-has-cheapest-transaction-fees
 
 seo_title: "What is the highest crypto staking yield right now? Live validator data"
-seo_description: "{{best_name}} currently pays the highest staking yield at {{best_p50}} (median validator net yield, 24h) across Solana, Hyperliquid and Ethereum, measured live on chain by OpenChainBench."
+seo_description: "{{best_name}} currently pays the highest staking yield at {{best_p50}} (median validator net yield, 24h) across {{count}} chains (Solana, Hyperliquid, Ethereum, Cardano, SUI, Cosmos Hub, Avalanche), measured live on chain by OpenChainBench."
 status: live

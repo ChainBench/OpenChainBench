@@ -29,6 +29,13 @@ function fmtSuccess(v: number | null): string {
   return `${v.toFixed(1)}%`;
 }
 
+function successClass(v: number | null): string {
+  if (v == null || !Number.isFinite(v)) return "text-ink-soft";
+  if (v >= 99) return "text-emerald-600";
+  if (v >= 80) return "text-ink-soft";
+  return "text-amber-600";
+}
+
 function CorridorDot({
   value,
   label,
@@ -80,7 +87,7 @@ export function BridgeHubTable({ rows }: { rows: BridgeProviderRow[] }) {
                 {r.short}
               </th>
             ))}
-            <th className="text-right px-4 py-3 text-[11px] label-mono text-ink-faint font-normal hidden md:table-cell">Success</th>
+            <th className="text-right px-4 py-3 text-[11px] label-mono text-ink-faint font-normal hidden md:table-cell">Fee ok</th>
             <th className="text-center px-4 py-3 text-[11px] label-mono text-ink-faint font-normal hidden lg:table-cell">Corridors</th>
           </tr>
           <tr className="border-b border-ink/5 bg-ink/[0.01]">
@@ -152,7 +159,10 @@ export function BridgeHubTable({ rows }: { rows: BridgeProviderRow[] }) {
                   );
                 })}
                 <td className="px-4 py-3.5 text-right tabular-nums hidden md:table-cell">
-                  <span className={row.feeSuccess != null && row.feeSuccess < 80 ? "text-amber-600" : "text-ink-soft"}>
+                  <span
+                    className={successClass(row.feeSuccess)}
+                    title={row.quoteSuccess != null ? `Quote success: ${fmtSuccess(row.quoteSuccess)}` : undefined}
+                  >
                     {fmtSuccess(row.feeSuccess)}
                   </span>
                 </td>
