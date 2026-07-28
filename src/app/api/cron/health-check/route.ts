@@ -299,6 +299,8 @@ export async function GET(req: NextRequest) {
   let pairsFailed = 0;
   let productsWarmed = 0;
   let productsFailed = 0;
+  let hubsWarmed = 0;
+  let hubsFailed = 0;
 
   const pairWork = Promise.all(
     COMPARE_PAIRS.map(async (pair) => {
@@ -326,7 +328,20 @@ export async function GET(req: NextRequest) {
     );
   })();
 
-  await Promise.all([pairWork, productWork]);
+  // Warm hub pages that carry their own heavy server fetches and are not
+  // covered by the products loop above. /perps fetches the full perp
+  // cohort snapshot + per-asset matrix; without this the ISR render is
+  // triggered by the first real user after each 60s window instead of
+  // the cron.
+  const hubWork = Promise.all(
+    ["/perps"].map(async (path) => {
+      const r = await warmFetch(path);
+      if (r === "ok") hubsWarmed += 1;
+      else hubsFailed += 1;
+    }),
+  );
+
+  await Promise.all([pairWork, productWork, hubWork]);
 
   return NextResponse.json({
     checked: liveSpecs.length,
@@ -340,6 +355,8 @@ export async function GET(req: NextRequest) {
     comparePairsFailed: pairsFailed,
     productsWarmed,
     productsFailed,
+    hubsWarmed,
+    hubsFailed,
   });
 }
 
