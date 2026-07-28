@@ -236,7 +236,6 @@ providers:
       success: clamp_max(sum(rate(pmapi_requests_total{venue="myriad",source="direct",class="price",conn="warm",outcome="ok"}[24h])) / sum(rate(pmapi_requests_total{venue="myriad",source="direct",class="price",conn="warm",outcome!="probe_invalid"}[24h])), 1)
       sample_size: sum(increase(pmapi_requests_total{venue="myriad",source="direct",class="price",conn="warm",outcome!="probe_invalid"}[24h]))
       series: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{venue="myriad",source="direct",class="price",conn="warm",cache!="hit"}[1h])) by (le))
-<<<<<<< HEAD
   - slug: predictit
     name: PredictIt
     tag: "CFTC no-action letter, US political markets only, probed at 15s due to 5 req/min rate limit"
@@ -262,18 +261,3 @@ providers:
       success: clamp_max(sum(rate(pmapi_requests_total{venue="smarkets",source="direct",class="price",conn="warm",outcome="ok"}[24h])) / sum(rate(pmapi_requests_total{venue="smarkets",source="direct",class="price",conn="warm",outcome!="probe_invalid"}[24h])), 1)
       sample_size: sum(increase(pmapi_requests_total{venue="smarkets",source="direct",class="price",conn="warm",outcome!="probe_invalid"}[24h]))
       series: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{venue="smarkets",source="direct",class="price",conn="warm",cache!="hit"}[1h])) by (le))
-
-  - slug: predexon
-    name: Predexon
-    tag: Multi-venue aggregator API (Polymarket, Kalshi, Limitless), unified schema
-    formula: "p50 of warm, non CDN cached round trips against the Predexon market-price endpoints for the three covered venues, keyless-equivalent (free-tier key), successful requests only, 24h window."
-    queries:
-      p50: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{source="predexon",class="price",conn="warm",cache!="hit"}[24h])) by (le))
-      p90: 1000 * histogram_quantile(0.90, sum(rate(pmapi_request_duration_seconds_bucket{source="predexon",class="price",conn="warm",cache!="hit"}[24h])) by (le))
-      p99: 1000 * histogram_quantile(0.99, sum(rate(pmapi_request_duration_seconds_bucket{source="predexon",class="price",conn="warm",cache!="hit"}[24h])) by (le))
-      mean: 1000 * sum(rate(pmapi_request_duration_seconds_sum{source="predexon",class="price",conn="warm",cache!="hit"}[24h])) / sum(rate(pmapi_request_duration_seconds_count{source="predexon",class="price",conn="warm",cache!="hit"}[24h]))
-      success: clamp_max(sum(rate(pmapi_requests_total{source="predexon",class="price",conn="warm",outcome="ok"}[24h])) / sum(rate(pmapi_requests_total{source="predexon",class="price",conn="warm",outcome!="probe_invalid"}[24h])), 1)
-      sample_size: sum(increase(pmapi_requests_total{source="predexon",class="price",conn="warm",outcome!="probe_invalid"}[24h]))
-      series: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{source="predexon",class="price",conn="warm",cache!="hit"}[1h])) by (le))
-=======
->>>>>>> c38fc1c9 (feat(pm): add pm-ws-latency bench, remove predexon from pm-api-latency)
