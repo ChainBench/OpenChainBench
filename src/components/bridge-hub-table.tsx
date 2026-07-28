@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Fragment } from "react";
 import { ProviderLogo } from "@/components/provider-logo";
 import type { BridgeProviderRow, CorridorKey } from "@/lib/bridge-hub-types";
 import { CORRIDORS, REGIONS } from "@/lib/bridge-hub-types";
@@ -95,7 +96,7 @@ export function BridgeHubTable({ rows }: { rows: BridgeProviderRow[] }) {
             ))}
             <td className="hidden md:table-cell" />
             <td className="hidden lg:table-cell px-4 py-1 text-[10px] text-ink-faint label-mono text-center">
-              Sol↗ Base↗ Sol↗ HC
+              {CORRIDORS.map((c) => c.short).join(" · ")}
             </td>
           </tr>
         </thead>
@@ -206,14 +207,14 @@ export function BridgeCorridorMatrix({ rows }: { rows: BridgeProviderRow[] }) {
           <tr className="border-b border-ink/5 bg-ink/[0.01]">
             <td />
             {CORRIDORS.map((c) => (
-              <>
-                <td key={`${c.value}-p50`} className="px-3 py-1 text-[10px] text-indigo-500 label-mono text-right">
+              <Fragment key={c.value}>
+                <td className="px-3 py-1 text-[10px] text-indigo-500 label-mono text-right">
                   p50
                 </td>
-                <td key={`${c.value}-p99`} className="px-3 py-1 text-[10px] text-ink-faint label-mono text-right">
+                <td className="px-3 py-1 text-[10px] text-ink-faint label-mono text-right">
                   p99
                 </td>
-              </>
+              </Fragment>
             ))}
           </tr>
         </thead>
@@ -232,8 +233,8 @@ export function BridgeCorridorMatrix({ rows }: { rows: BridgeProviderRow[] }) {
                 const p99 = cf?.feep99 ?? null;
                 const isCheapest = cheapestP50ByCorr[c.value] === row.slug && p50 != null;
                 return (
-                  <>
-                    <td key={`${c.value}-p50`} className="px-3 py-3 text-right tabular-nums">
+                  <Fragment key={c.value}>
+                    <td className="px-3 py-3 text-right tabular-nums">
                       {p50 == null ? (
                         <span className="text-ink/20 text-[12px]">—</span>
                       ) : (
@@ -242,14 +243,14 @@ export function BridgeCorridorMatrix({ rows }: { rows: BridgeProviderRow[] }) {
                         </span>
                       )}
                     </td>
-                    <td key={`${c.value}-p99`} className="px-3 py-3 text-right tabular-nums">
+                    <td className="px-3 py-3 text-right tabular-nums">
                       {p99 == null ? (
                         <span className="text-ink/20 text-[12px]">—</span>
                       ) : (
                         <span className="text-ink/40 text-[12px]">{fmtPct(p99)}</span>
                       )}
                     </td>
-                  </>
+                  </Fragment>
                 );
               })}
             </tr>

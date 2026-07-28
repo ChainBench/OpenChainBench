@@ -6,7 +6,7 @@ import { safeJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
 
 const DESCRIPTION =
-  "Live cross-chain bridge benchmarks: cheapest all-in fee and fastest quote API for $300 USDC across Across, deBridge, LI.FI, Mobula, Near Intents and Relay. 4 corridors, refreshed every 5 minutes.";
+  "Live cross-chain bridge benchmarks: cheapest all-in fee and fastest quote API for $300 USDC across Across, deBridge, LI.FI, Mobula, Near Intents, Relay, Squid and Socket. 4 corridors, refreshed every 5 minutes.";
 
 export const metadata: import("next").Metadata = pageMetadata({
   path: "/bridge",
@@ -132,7 +132,7 @@ export default async function BridgeHubPage() {
             <SummaryCard
               label="Bridges tracked"
               value={String(hub.bridgeCount)}
-              tip="Across, deBridge, LI.FI, Mobula, Near Intents, Relay."
+              tip="Across, deBridge, LI.FI, Mobula, Near Intents, Relay, Squid, Socket."
             />
           </section>
 
@@ -192,8 +192,8 @@ export default async function BridgeHubPage() {
               />
               <ArchCard
                 label="Aggregators"
-                examples={["LI.FI"]}
-                body="Route through the cheapest available underlying bridge plus a thin markup. Benefit is route coverage: they surface paths that no single protocol quotes."
+                examples={["LI.FI", "Squid", "Socket"]}
+                body="Route through the cheapest available underlying bridge plus a thin markup. Benefit is route coverage: they surface paths that no single protocol quotes. Squid and Socket cover EVM corridors only."
               />
               <ArchCard
                 label="Direct protocols"
