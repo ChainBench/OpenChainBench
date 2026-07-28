@@ -17,22 +17,32 @@ seo_intro: |
   Nobody publishes a clean side-by-side of what it actually costs to trade prediction markets. Polymarket charges a flat percentage fee on each trade. Kalshi charges per-contract on a published schedule. Limitless embeds a fee in the AMM spread. Manifold uses play money. Myriad varies by market type. This bench parses each venue's fills data and official fee schedule so the comparison is based on measured values rather than marketing copy.
 
 abstract: |
-  CLOB venues like Polymarket and Kalshi charge maker and taker fees on matched trades. AMM venues like Limitless embed fees in the spread. This bench reads each venue's fills API and published fee schedule to report the true cost to trade as a percentage of notional, broken out by role and market type where available. Kalshi's per-contract fee is converted to a comparable percentage basis against contract face value for cross-venue comparison.
+  Prediction market venues charge fees in ways that resist direct comparison. Polymarket charges 2% of
+  potential payout on every trade, regardless of contract price. Kalshi charges a per-contract fee on
+  a published schedule that scales with contract price and is capped at extremes, making near-certainty
+  contracts very cheap in percentage terms. Limitless charges fees through its CLOB spread. Manifold
+  uses play-money (mana) and has no real-money fee. Myriad charges a protocol fee on settlement. This
+  bench normalizes all fee structures to effective basis points of notional, measured at three
+  representative contract price points: at-the-money (50 cents), near-certainty (5 cents or 95 cents),
+  and mid-skewed (30 cents). The resulting leaderboard answers which venue is cheapest for a given
+  market condition, not just which venue has the lowest headline number.
 
 methodology:
-  - "Polymarket: the protocol charges a 2% fee on each trade, deducted from the potential payout. A YES share bought at 0.50 USDC pays out $0.98 (not $1.00) if it wins. There is no maker rebate on the public CLOB."
-  - "Kalshi: charges a per-contract fee on a published schedule. At mid-range prices ($0.40 to $0.60 per contract) the fee is around $0.07 per contract. Fees are capped at contract extremes."
-  - "Limitless: an AMM venue whose fee is embedded in the spread. The effective fee is a function of pool depth and trade size; the bench measures round-trip cost on top-volume markets."
-  - "Manifold: play-money only. No real-money fee applies. Shown for completeness with a play-money flag."
-  - "Myriad: fee schedule varies by market type and is not fully published. Observed fees are sourced from fills data where available."
-  - "All percentages are of the notional trade value (the amount spent to enter the position) so numbers are comparable across venues."
+  - "Fee normalization: all fees are expressed as basis points of gross notional (contract price times contract count times $1 resolution value) at three price points: $0.50 (at-the-money), $0.05/$0.95 (near-certainty), and $0.30/$0.70 (mid-skewed). This converts Kalshi's per-contract dollar fee and Polymarket's payout-percentage fee to a common unit."
+  - "Polymarket fee measurement: the 2% fee is deducted from potential payout. A YES share bought at $0.50 pays $0.98 on resolution, not $1.00. Effective fee in basis points = 200 at all price points because the fee percentage is flat. No maker rebate exists on the public CLOB."
+  - "Kalshi fee measurement: Kalshi publishes a tiered per-contract fee schedule. Fees are capped at low and high price extremes. The harness reads the published schedule and computes the fee at each price point as fee/contract_price in basis points. Near-certainty markets benefit most from the cap."
+  - "Limitless and Myriad fee measurement: CLOB spread is used as a proxy for effective fee where explicit fee schedules are not published. The half-spread on the pinned market at each price tier is recorded as the effective round-trip cost."
+  - "Manifold is play-money and carries no real-money fee. It is included in the cohort for completeness but its fee row reads zero and it is excluded from the real-money fee rankings."
+  - "Data cadence: fee schedules are polled once per hour. Per-contract fees on Kalshi are re-read whenever the published schedule changes (detected via hash of the fee schedule endpoint). Effective fee rows on the leaderboard update within 1 hour of any venue publishing a fee change."
 
 findings:
   - "Polymarket charges a flat 2% fee on each trade, one of the more transparent structures in the cohort since the rate does not vary by market or counterparty type."
   - "Kalshi's per-contract fee means the effective percentage cost depends on where the contract trades relative to par. Fees are highest in percentage terms on near-certainty markets."
   - "Manifold is play-money only. No real capital is at risk and no real fee is charged."
 
-disclaimer: "Fee structures change. Verify the current schedule on each venue's official documentation before placing a large trade. Figures here are sourced from each venue's published fills API and fee schedule at the last bench run date."
+disclaimer: "Fee schedules change without notice. Verify current fees directly with each venue before trading. This bench measures published and observed fees; it is not an endorsement of any venue."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/pm-fee-comparison
 
 faq:
   - q: "What is the Polymarket trading fee?"
@@ -45,16 +55,20 @@ faq:
 providers:
   - slug: polymarket
     name: Polymarket
-    tag: "Flat 2% taker fee on each trade, no maker rebate, public CLOB"
+    tag: 2% fee on potential payout, no maker rebate, flat across all price points
+
   - slug: kalshi
     name: Kalshi
-    tag: "Per-contract fee on a published schedule, cap applies at extremes"
+    tag: Per-contract fee on published schedule, capped at price extremes, US-regulated
+
   - slug: limitless
     name: Limitless
-    tag: "AMM venue, fee embedded in the spread, varies by pool depth"
+    tag: CLOB venue, fee structure via spread, no published fee schedule
+
   - slug: manifold
     name: Manifold
-    tag: "Play-money only, no real-money fee"
+    tag: Play-money (mana), no real-money fee, included for completeness
+
   - slug: myriad
     name: Myriad
-    tag: "Fee varies by market type, partial data from fills"
+    tag: Protocol fee on settlement, single-region US East

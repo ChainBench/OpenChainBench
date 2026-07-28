@@ -1,0 +1,77 @@
+slug: polymarket-vs-kalshi-fees
+question: "Polymarket vs Kalshi fees, which is cheaper to trade?"
+benchmark: pm-fee-comparison
+status: live
+
+short_answer: |
+  It depends on the contract price. Polymarket charges a flat 2% on potential payout at every price
+  point. Kalshi charges a per-contract dollar fee (roughly $0.07 at mid-range) that is capped at
+  extremes. At 50-cent markets, Polymarket is cheaper. At near-certainty markets, Kalshi's cap makes
+  it far cheaper. The cross-over point is around $0.20 and $0.80 contracts.
+
+intro: |
+  "Which prediction market is cheaper?" is a question with no single answer because Polymarket and
+  Kalshi use fundamentally different fee models.
+
+  Polymarket charges a flat 2% on the potential payout of every trade. On a 50-cent YES contract,
+  that is 2 cents per share, or 200 basis points of the $1.00 resolution value. On a 5-cent YES
+  contract, the same 2-cent fee represents 40% of your capital at risk, because the payout is still
+  $1.00 but your outlay was only 5 cents. The fee percentage is always 2% of notional; it is not 2%
+  of what you spend.
+
+  Kalshi charges a per-contract dollar fee published on a schedule. At mid-range prices ($0.40 to
+  $0.60 contracts), the fee is around $0.07 per contract. On a $0.50 contract, that is a 14%
+  effective fee on your outlay, far higher than Polymarket's 2% of notional. Kalshi's published fee
+  schedule caps fees at very low and very high price extremes, so near-certainty contracts cost only
+  a fraction of a cent to trade. A $0.02 YES contract (98% implied probability) might cost $0.001
+  per share in Kalshi fees, which is less than one-tenth of Polymarket's 2-cent flat fee on the same
+  position.
+
+  The cross-over point is around contracts priced at $0.20 or $0.80. Below $0.20 and above $0.80,
+  Kalshi's capped fee is generally cheaper than Polymarket's flat 2% of notional. Between $0.20 and
+  $0.80, Polymarket is cheaper.
+
+  Manifold is play-money and has no real fee. It is not a meaningful comparison for real-money traders.
+
+  For US users, only Kalshi is legally accessible for real-money trading without a VPN. Polymarket's
+  international exchange geoblocked US users after a 2022 CFTC settlement. Polymarket US (QCX),
+  launched December 2025, is CFTC-regulated and accessible to US users.
+
+  The pm-fee-comparison benchmark normalizes both fee models to basis points of notional at three
+  price points so the cross-over is visible directly on the leaderboard.
+
+methodology: |
+  The pm-fee-comparison bench normalizes all venue fee structures to effective basis points of notional
+  at three representative contract price points: $0.50 (at-the-money), $0.05 or $0.95
+  (near-certainty), and $0.30 or $0.70 (mid-skewed). Polymarket's 2% of potential payout converts
+  to a flat 200 bps of notional at all price points. Kalshi's per-contract fee is read from the
+  published Kalshi fee schedule endpoint; the bench re-reads it whenever the schedule hash changes.
+  Kalshi's effective bps are computed as fee per contract divided by contract price. At low and high
+  price extremes, Kalshi's cap reduces the effective fee to a small fraction of the mid-range rate.
+  Both venues are compared on the same bps-of-notional axis so the cross-over point is observable
+  directly on the leaderboard.
+
+limitations:
+  - "The pm-fee-comparison bench is in draft status. Published fee schedule figures are used for Polymarket and Kalshi. Live harness data will replace static schedule reads when the bench reaches live status."
+  - "Kalshi's fee schedule is published but can change. The bench detects changes via schedule hash comparison and updates within one polling cycle. Check the Kalshi fee schedule directly for the most current rates."
+  - "The comparison is on stated fees only, not on total execution cost including spread. Kalshi's market depth and spreads differ from Polymarket's. Tighter spreads can offset higher stated fees for large trades."
+  - "US regulatory context affects which venue you can legally use. For US users, Kalshi is the primary accessible regulated option. This fee comparison is about economics, not legal access."
+
+faq:
+  - q: "Is Polymarket cheaper than Kalshi?"
+    a: "At mid-range contract prices ($0.40-$0.60), yes. Polymarket charges 2% of potential payout (200 bps of notional, or 4% of your position on a 50-cent contract). Kalshi charges roughly $0.07 per contract at mid-range, which is about 14% of your 50-cent position outlay. Polymarket is cheaper at these prices. At near-certainty prices ($0.02-$0.05 or $0.95-$0.98 contracts), Kalshi's fee cap makes it far cheaper than Polymarket's flat 2% of the $1.00 payout."
+  - q: "What is the Kalshi fee schedule?"
+    a: "Kalshi publishes a tiered fee schedule based on contract price. At mid-range prices ($0.40-$0.60 contracts), the fee is approximately $0.07 per contract. The fee is capped at low and high price extremes: near-certainty contracts (close to $0.01 or $0.99) pay a much lower fee per contract. The exact schedule is published on Kalshi's website and changes occasionally. The pm-fee-comparison bench polls the schedule hourly and records the current rates."
+  - q: "Does fee comparison matter for US users?"
+    a: "Yes, but with the caveat that US users can only legally access Kalshi and Polymarket US (QCX) for real-money trading without a VPN. Polymarket's international exchange geoblocked US users after a 2022 CFTC settlement. Polymarket US (QCX), launched December 2025, is CFTC-regulated with a limited set of event contracts. For US users choosing between Kalshi and Polymarket US (QCX), the fee comparison still applies: Kalshi is cheaper on near-certainty markets, Polymarket US (QCX) may be cheaper at mid-range prices if it adopts the same 2% fee structure as the international exchange."
+  - q: "Which venue has the lowest fees for sports betting?"
+    a: "Sports markets are typically priced at or near $0.50 for close matchups, which is where Polymarket is cheaper than Kalshi at mid-range prices. For a close game priced at $0.50, Polymarket's 2% of notional (4% of position) beats Kalshi's roughly 14% effective fee at that price. However, strong favorites (90%+ implied probability) flip the comparison: Kalshi's capped fee becomes cheaper than Polymarket's flat 2% of the $1.00 payout on a $0.95 contract."
+
+related:
+  - polymarket-fees-explained
+  - polymarket-vs-kalshi-resolution-speed
+  - is-polymarket-safe
+  - best-prediction-market-for-politics
+
+seo_title: "Polymarket vs Kalshi fees 2026: which is cheaper?"
+seo_description: "Polymarket charges 2% of payout. Kalshi charges per-contract on a published schedule, capped at extremes. Polymarket wins at mid-range, Kalshi wins near certainty. Full comparison by OpenChainBench."
