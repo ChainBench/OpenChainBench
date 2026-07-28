@@ -157,7 +157,11 @@ export default async function BridgeHubPage() {
               </div>
             </div>
             <p className="text-sm text-ink-muted mb-4">
+<<<<<<< HEAD
               Sorted by fee p50 (all-in cost at $300 USDC). Quote latency p50/p99 from bench 002. Success from fee bench. Trailing 24h.
+=======
+              Sorted by fee p50 (shown under provider name). Quote speed broken out per region: EU-West, US-East, Singapore. Corridor dots show which routes each provider quotes. Trailing 24h.
+>>>>>>> origin/main
             </p>
             <BridgeHubTable rows={hub.providers} />
           </section>
