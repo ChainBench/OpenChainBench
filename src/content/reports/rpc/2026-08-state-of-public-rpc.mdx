@@ -7,7 +7,7 @@ period: "August 2026"
 summary: "Free public RPCs are faster than ever, and less reliable than most builders assume. This report ranks Ethereum providers by what actually matters."
 heroFinding: "The fastest free RPC in this cohort fails more than one call in five. The most reliable fails fewer than one in a hundred."
 author: "OpenChainBench Research"
-readingTime: 12
+readingTime: 15
 canonical: "https://openchainbench.com/reports/rpc/2026-08-state-of-public-rpc"
 ---
 
@@ -17,10 +17,11 @@ canonical: "https://openchainbench.com/reports/rpc/2026-08-state-of-public-rpc"
 - PublicNode is the only provider in this cohort sustaining near-100% success across five or more EVM chains simultaneously.
 - Foundation endpoints on L2s (Arbitrum, Base, Optimism) consistently trail third-party providers on both speed and reliability.
 - Latency grows with geographic distance. Providers without regional infrastructure pay the largest penalty in Singapore — but leadership at the top of the ranking is more stable than the gap in values suggests.
+- Across 19 chains and 3 regions, PublicNode wins 28 of 57 regional contests. No other provider is within 14 wins of that total.
 - For indexers and event listeners, filter by success rate first. A 90% success rate means hundreds of silent failures per hour at typical read rates.
 </Summary>
 
-<TOC sections="Methodology|The Speed Trap: Why Latency Rankings Mislead|Reliability Champion|Chain-by-Chain Standouts|Regional Divergence|Reproducibility Recipe|Decision Framework|What to Watch Next|Sources and Reproducibility" />
+<TOC sections="Methodology|The Speed Trap: Why Latency Rankings Mislead|Reliability Champion|Chain-by-Chain Standouts|Regional Divergence|Provider Wins Across 19 Chains|Reproducibility Recipe|Decision Framework|What to Watch Next|Sources and Reproducibility" />
 
 ## Methodology
 
@@ -111,6 +112,32 @@ The headline p50 in every table above is a global average. The table below shows
 <RegionWinners bench="ethereum-rpc" />
 
 Latency leadership at the top is typically stable — the same provider that wins Virginia usually wins Singapore. What changes is the magnitude: every provider's p50 grows as probes travel further, and those without infrastructure in the probe's region carry the largest penalty. One data point worth calling out: PublicNode's Singapore p50 comes in below its Virginia figure — direct evidence of an Asian PoP that genuinely co-locates closer to the Singapore probe than the Virginia one does. That is structurally rare in the free-tier cohort. <Mark>No single public RPC is optimal everywhere.</Mark> If your users are global, a geo-routing strategy (CDN-edge RPC selection, or multiple endpoints with latency-based fallback) beats any static choice. The [RPC Capabilities bench](/benchmarks/rpc-capabilities) has live per-region breakdowns for every provider, queryable via `?region=us-east|eu-west|sgp`.
+
+## Provider Wins Across 19 Chains
+
+The per-chain sections above tell stories about individual networks. This section steps back to the full matrix: which providers win the most regional contests when you count every chain the harness tracks.
+
+The harness covers 19 chains, probed from 3 regions each — 57 regional slots in total. A "win" means the lowest p50 latency among providers returning a classified `ok` response in that region for that chain. Ties are rare and broken by success rate.
+
+| Provider | US-East | EU-West | Singapore | Total / 57 |
+|---|---:|---:|---:|---:|
+| **PublicNode** | **9** | **10** | **9** | **28** |
+| Foundation endpoints (own chain) | 5 | 5 | 5 | 15 |
+| **dRPC** | **5** | **4** | **5** | **14** |
+
+<Mark>PublicNode wins 28 of 57 regional contests</Mark> — nearly half the matrix — across chains spanning Ethereum, Arbitrum, Base, Optimism, Avalanche, Linea, Scroll, Sonic, Gnosis, and Celo. No other third-party provider comes close: dRPC, the second-ranked third-party provider, takes 14 wins concentrated on a tighter set of chains where its infrastructure shows a structural edge.
+
+Foundation endpoints account for 15 wins, but those are own-chain victories: BNB Chain's foundation endpoint wins every BNB slot, Solana's wins every Solana slot, and so on for Monad, Blast, and Berachain. These wins are not transferable — a foundation endpoint for Monad cannot serve your Arbitrum traffic. When you scope to chains where a third-party provider must compete against other third-party providers, the leaderboard condenses to PublicNode and dRPC.
+
+### Where dRPC's wins come from
+
+dRPC's 14 wins cluster on five chains: Ethereum (two regions), Polygon (all three), zkSync (all three), Mantle (all three), and HyperEVM (all three). These are not marginal wins. On Polygon, dRPC posts a p50 of 14–15 ms against PublicNode's 86–89 ms — a roughly 6x margin that signals validator co-location, not just low-latency peering. On zkSync, Mantle, and HyperEVM the gap is narrower but the pattern is consistent: dRPC has infrastructure that is genuinely closer to the node on these chains.
+
+The caveat is reliability. dRPC's wins on Polygon, zkSync, Mantle, and HyperEVM come with success rates that run 75–80% in the measurement window. A provider that wins every latency contest but fails one call in four or five is the definition of the speed trap described in the opening section. <Mark>dRPC leads on speed where it wins; PublicNode leads on correctness everywhere.</Mark>
+
+### Reading the table
+
+Win counts flatten chains. A win on Ethereum — the most contested bench in the cohort, with 10+ providers — carries more signal than a win on HyperEVM, where the competitive field is thin. That asymmetry is worth keeping in mind when interpreting dRPC's concentrated wins versus PublicNode's broad ones. PublicNode's wins are spread across the highest-competition chains in the matrix; dRPC's wins are deep on a smaller set. Both patterns have legitimate interpretations depending on which chains your stack actually touches.
 
 ## Reproducibility Recipe
 
