@@ -81,131 +81,78 @@ function fmtCount(v: number): string {
 // Gains.trade — backend-global.gains.trade
 // ---------------------------------------------------------------------------
 
+// API returns { stats: [...] } in descending date order; fields are numbers
 type GainsStatsRow = {
   date: string;
-  leveraged_volume: string;
-  vault_tvl: string;
-  lp_apr: string;
-  trades_count: string;
-  daily_users: string;
+  leveraged_volume: number;
+  vault_tvl: number;
+  lp_apr: number;
+  trades_count: number;
 };
 
-type GainsAprResp = {
-  sssApr?: string;
-  collateralRewards?: {
-    symbol: string;
-    vaultTvl: string;
-    vaultApr: string;
-  }[];
-};
+type GainsApiResp = { stats: GainsStatsRow[] };
 
 async function fetchGainsStats(): Promise<PerpVenueExternalStats> {
-  const [arbStats, baseStats, aprRes] = await Promise.all([
-    jf<GainsStatsRow[]>(
-      "https://backend-global.gains.trade/api/stats?chainId=42161",
-    ),
-    jf<GainsStatsRow[]>(
-      "https://backend-global.gains.trade/api/stats?chainId=8453",
-    ),
-    jf<GainsAprResp>(
-      "https://backend-global.gains.trade/api/apr?chainId=42161",
-    ),
+  const [arbResp, baseResp] = await Promise.all([
+    jf<GainsApiResp>("https://backend-global.gains.trade/api/stats?chainId=42161"),
+    jf<GainsApiResp>("https://backend-global.gains.trade/api/stats?chainId=8453"),
   ]);
 
-  const stats = Array.isArray(arbStats) ? arbStats : [];
-  if (stats.length === 0) return {};
+  const rawRows = arbResp?.stats;
+  if (!Array.isArray(rawRows) || rawRows.length === 0) return {};
 
-  const last = stats[stats.length - 1];
+  // Deduplicate by date (multiple snapshots/day) — keep first (newest per day)
+  const byDate = new Map<string, GainsStatsRow>();
+  for (const row of rawRows) {
+    const d = row.date.split("T")[0];
+    if (!byDate.has(d)) byDate.set(d, row);
+  }
+  // Sort ascending for delta computation
+  const sorted = [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
+  if (sorted.length === 0) return {};
 
-  // all-time = cumulative value in last row
-  const totalVolumeUsd = parseFloat(last.leveraged_volume) || undefined;
-  const totalTradeCount = parseInt(last.trades_count) || undefined;
-  const vaultTvlUsd = parseFloat(last.vault_tvl) || undefined;
-  const stakingAprPct = last.lp_apr
-    ? parseFloat(last.lp_apr) * 100
-    : undefined;
+  const newest = sorted[sorted.length - 1];
+  const totalVolumeUsd = newest.leveraged_volume || undefined;
+  const totalTradeCount = newest.trades_count || undefined;
+  const vaultTvlUsd = newest.vault_tvl || undefined;
 
-  // daily volume bars = delta between consecutive cumulative rows
+  // Daily volume bars from last 30 days of cumulative deltas
+  const last31 = sorted.slice(-31);
   const dailyVolumeChart: DailyBar[] = [];
-  for (let i = 1; i < stats.length; i++) {
-    const prevRow = stats[i - 1];
-    const curRow = stats[i];
-    if (!prevRow?.leveraged_volume || !curRow?.leveraged_volume) continue;
-    const prev = parseFloat(prevRow.leveraged_volume);
-    const cur = parseFloat(curRow.leveraged_volume);
-    const vol = cur - prev;
-    if (vol >= 0) {
-      dailyVolumeChart.push({
-        date: stats[i].date.split("T")[0],
-        valueUsd: vol,
-      });
-    }
+  for (let i = 1; i < last31.length; i++) {
+    const vol = last31[i].leveraged_volume - last31[i - 1].leveraged_volume;
+    if (vol > 0) dailyVolumeChart.push({ date: last31[i].date.split("T")[0], valueUsd: vol });
   }
 
-  // Add Base chain volume on top of Arb daily bars if same date range
+  // Add Base chain on top
   let combinedTotal = totalVolumeUsd ?? 0;
-  if (Array.isArray(baseStats) && baseStats.length > 0) {
-    const baseByDate = new Map<string, number>();
-    for (let i = 1; i < baseStats.length; i++) {
-      const prevRow = baseStats[i - 1];
-      const curRow = baseStats[i];
-      if (!prevRow?.leveraged_volume || !curRow?.leveraged_volume) continue;
-      const prev = parseFloat(prevRow.leveraged_volume);
-      const cur = parseFloat(curRow.leveraged_volume);
-      const vol = cur - prev;
-      if (vol >= 0) baseByDate.set(baseStats[i].date.split("T")[0], vol);
+  const baseRaw = baseResp?.stats;
+  if (Array.isArray(baseRaw) && baseRaw.length > 0) {
+    const baseByDate = new Map<string, GainsStatsRow>();
+    for (const row of baseRaw) {
+      const d = row.date.split("T")[0];
+      if (!baseByDate.has(d)) baseByDate.set(d, row);
     }
-    for (const bar of dailyVolumeChart) {
-      bar.valueUsd += baseByDate.get(bar.date) ?? 0;
+    const baseSorted = [...baseByDate.values()].sort((a, b) => a.date.localeCompare(b.date));
+    const baseLast31 = baseSorted.slice(-31);
+    const baseDailyMap = new Map<string, number>();
+    for (let i = 1; i < baseLast31.length; i++) {
+      const vol = baseLast31[i].leveraged_volume - baseLast31[i - 1].leveraged_volume;
+      if (vol > 0) baseDailyMap.set(baseLast31[i].date.split("T")[0], vol);
     }
-    const baseLast = baseStats[baseStats.length - 1];
-    combinedTotal += parseFloat(baseLast.leveraged_volume) || 0;
+    for (const bar of dailyVolumeChart) bar.valueUsd += baseDailyMap.get(bar.date) ?? 0;
+    const baseNewest = baseSorted[baseSorted.length - 1];
+    combinedTotal += baseNewest?.leveraged_volume ?? 0;
   }
-
-  return buildGainsResult(
-    combinedTotal > 0 ? combinedTotal : totalVolumeUsd,
-    totalTradeCount,
-    vaultTvlUsd,
-    stakingAprPct,
-    dailyVolumeChart,
-    aprRes,
-  );
-}
-
-function buildGainsResult(
-  totalVolumeUsd: number | undefined,
-  totalTradeCount: number | undefined,
-  vaultTvlUsd: number | undefined,
-  stakingAprPct: number | undefined,
-  dailyVolumeChart: DailyBar[],
-  aprRes: GainsAprResp | null,
-): PerpVenueExternalStats {
-  const collateralBreakdown =
-    aprRes?.collateralRewards
-      ?.filter((cr) => parseFloat(cr.vaultTvl) > 0)
-      .map((cr) => ({
-        symbol: cr.symbol,
-        tvlUsd: parseFloat(cr.vaultTvl) || 0,
-        aprPct: parseFloat(cr.vaultApr) * 100 || 0,
-      })) ?? [];
-
-  const stakingAprDisplay =
-    aprRes?.sssApr
-      ? parseFloat(aprRes.sssApr) * 100
-      : stakingAprPct;
 
   const extraKpis: { label: string; value: string }[] = [];
-  if (totalTradeCount) {
-    extraKpis.push({ label: "Total trades", value: fmtCount(totalTradeCount) });
-  }
+  if (totalTradeCount) extraKpis.push({ label: "Total trades", value: fmtCount(totalTradeCount) });
 
   return {
-    totalVolumeUsd,
+    totalVolumeUsd: combinedTotal > 0 ? combinedTotal : totalVolumeUsd,
     totalTradeCount,
     vaultTvlUsd,
-    stakingAprPct: stakingAprDisplay,
     dailyVolumeChart,
-    collateralBreakdown,
     extraKpis,
   };
 }

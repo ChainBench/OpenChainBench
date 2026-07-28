@@ -1,9 +1,8 @@
+"use client";
+
+import { useState } from "react";
 import type { DailyBar } from "@/lib/perp-venue-external";
 
-/**
- * Minimal SVG bar chart for the /perp/[slug] volume & fees panels.
- * Server component — no JS bundle cost, no hydration.
- */
 export function PerpBarChart({
   bars,
   title,
@@ -13,6 +12,8 @@ export function PerpBarChart({
   title: string;
   color?: "teal" | "cyan" | "indigo";
 }) {
+  const [hovered, setHovered] = useState<number | null>(null);
+
   const valid = bars.filter((b) => b.valueUsd > 0);
   if (valid.length < 3) return null;
 
@@ -26,42 +27,54 @@ export function PerpBarChart({
 
   const fill =
     color === "cyan"
-      ? "rgba(6,182,212,0.55)"
+      ? "rgba(6,182,212,0.45)"
       : color === "indigo"
-        ? "rgba(99,102,241,0.55)"
-        : "rgba(20,184,166,0.55)";
+        ? "rgba(99,102,241,0.45)"
+        : "rgba(20,184,166,0.45)";
 
   const fillHover =
     color === "cyan"
-      ? "rgba(6,182,212,0.8)"
+      ? "rgba(6,182,212,0.9)"
       : color === "indigo"
-        ? "rgba(99,102,241,0.8)"
-        : "rgba(20,184,166,0.8)";
+        ? "rgba(99,102,241,0.9)"
+        : "rgba(20,184,166,0.9)";
 
   const first = valid[0]?.date ?? "";
   const last = valid[valid.length - 1]?.date ?? "";
 
+  const hoveredBar = hovered !== null ? valid[hovered] : null;
+
   return (
     <div className="w-full">
-      <p
-        className="text-[10px] text-ink-faint uppercase tracking-wide mb-2"
-        style={{ fontFamily: "var(--font-mono, monospace)" }}
-      >
-        {title}
-      </p>
+      <div className="flex items-center justify-between mb-2">
+        <p
+          className="text-[10px] text-ink-faint uppercase tracking-wide"
+          style={{ fontFamily: "var(--font-mono, monospace)" }}
+        >
+          {title}
+        </p>
+        {hoveredBar && (
+          <p
+            className="text-[10px] text-ink-soft tabular-nums"
+            style={{ fontFamily: "var(--font-mono, monospace)" }}
+          >
+            {fmtDate(hoveredBar.date)} · {fmtUsdShort(hoveredBar.valueUsd)}
+          </p>
+        )}
+      </div>
       <svg
         viewBox={`0 0 ${W} ${H}`}
         className="w-full"
         style={{ height: 72 }}
         aria-hidden
         role="img"
+        onMouseLeave={() => setHovered(null)}
       >
         {valid.map((bar, i) => {
           const h = Math.max(2, (bar.valueUsd / max) * H);
           const x = i * (barW + gap);
           const y = H - h;
-          // Highlight the last bar (most recent day)
-          const isLast = i === valid.length - 1;
+          const isActive = hovered === i || (hovered === null && i === valid.length - 1);
           return (
             <rect
               key={bar.date}
@@ -69,11 +82,11 @@ export function PerpBarChart({
               y={y}
               width={barW}
               height={h}
-              fill={isLast ? fillHover : fill}
+              fill={isActive ? fillHover : fill}
               rx={1}
-            >
-              <title>{`${bar.date}: ${fmtUsdShort(bar.valueUsd)}`}</title>
-            </rect>
+              onMouseEnter={() => setHovered(i)}
+              style={{ cursor: "default" }}
+            />
           );
         })}
       </svg>
