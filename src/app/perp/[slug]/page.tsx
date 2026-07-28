@@ -14,7 +14,7 @@ import { fetchPerpVenueExternalStats } from "@/lib/perp-venue-external";
 import { PerpVenueKpiStrip } from "@/components/perp-venue-kpi-strip";
 import { PerpVenueBenchCards } from "@/components/perp-venue-bench-cards";
 import { PerpBarChart } from "@/components/perp-bar-chart";
-import { ProviderLogo } from "@/components/provider-logo";
+import { logoPath } from "@/lib/logo-manifest";
 import { buildBreadcrumbJsonLd, safeJsonLd } from "@/lib/jsonld";
 
 export const revalidate = 60;
@@ -159,7 +159,17 @@ export default async function PerpVenuePage({
       {/* Header */}
       <header className="flex flex-wrap items-start justify-between gap-4 border-b-2 border-ink pb-8 mb-8">
         <div className="flex items-center gap-4 min-w-0">
-          <ProviderLogo slug={cohortSlug} name={seed.name} size={52} />
+          {(() => {
+            const lp = logoPath(cohortSlug);
+            return lp ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={lp} alt={seed.name} width={52} height={52} className="rounded-lg object-contain" />
+            ) : (
+              <div className="w-[52px] h-[52px] rounded-lg bg-paper-soft border border-rule flex items-center justify-center text-lg font-semibold text-ink-soft shrink-0">
+                {seed.name[0]}
+              </div>
+            );
+          })()}
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="display text-2xl sm:text-3xl font-semibold tracking-tight">
