@@ -16,6 +16,8 @@ export type SeriesFilters = {
   region?: string | null;
   kind?: string | null;
   venue?: string | null;
+  /** Metric panel id — when set, returns series for that companion metric. */
+  panel?: string | null;
 };
 
 /** What /api/series actually emits: dense values with `null` for empty
@@ -68,6 +70,7 @@ export async function fetchBenchSeries(
     const v = filters[dim];
     if (v && v !== "all") qs.set(dim, v);
   }
+  if (filters.panel) qs.set("panel", filters.panel);
   const res = await fetch(
     `/api/series/${encodeURIComponent(slug)}?${qs.toString()}`,
     { cache: "no-store" },

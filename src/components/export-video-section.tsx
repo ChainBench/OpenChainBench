@@ -133,6 +133,18 @@ function ModalBody({
   const [state, setState] = useState<RenderState>({ status: "idle" });
   const [copied, setCopied] = useState(false);
 
+  // Metric-panel picker. Benches with companion metrics (e.g. hyperliquid-frontends
+  // exposes Revenue / Volume / Users / Effective fee / Outage tabs) can race any
+  // of those via the panel picker. `tab: false` panels are data-only (no series)
+  // and are excluded. Seeds from ?view= in the URL, same as the bench page.
+  const panelOptions = useMemo(
+    () =>
+      (benchmark.metricPanels ?? [])
+        .filter((p) => p.tab !== false)
+        .map((p) => ({ value: p.id, label: p.label })),
+    [benchmark],
+  );
+
   // Dimension pickers. One pill row per dimension the spec declares
   // (chain, region, kind, venue), each with an "All" pill meaning no
   // filter. The bench page's URL filters (?chain=ethereum) seed the
@@ -164,6 +176,19 @@ function ModalBody({
     }
     return out;
   });
+
+  // Metric panel selection. Seeds from ?view= in URL.
+  const [panelId, setPanelId] = useState<string | null>(() => {
+    const raw = searchParams.get("view")?.trim();
+    if (!raw || raw === "all") return null;
+    const found = (benchmark.metricPanels ?? []).find(
+      (p) => p.id === raw && p.tab !== false,
+    );
+    return found?.id ?? null;
+  });
+  const activeMetricPanel = panelId
+    ? (benchmark.metricPanels ?? []).find((p) => p.id === panelId) ?? null
+    : null;
   const setDim = (dim: DimId, value: string | null) =>
     setDims((prev) => ({ ...prev, [dim]: value }));
   // Active filters (unset / "all" excluded), in declared order.
@@ -208,12 +233,36 @@ function ModalBody({
     };
   }, [slug, activeDims, hasDims, dimKey]);
   const variant = variantState?.key === dimKey ? variantState.bench : null;
-  const variantLoading = hasDims && variantState?.key !== dimKey;
+  // Panel path uses in-memory values — no async fetch, so never "loading".
+  const variantLoading = !activeMetricPanel && hasDims && variantState?.key !== dimKey;
 
-  // The bench whose numbers the preview and the provider list reflect:
-  // the fetched variant when filters are active, the aggregate otherwise.
-  // Null while a variant is still in flight.
-  const effectiveBench = hasDims ? variant : benchmark;
+  // The bench whose numbers the preview and the provider list reflect.
+  // Priority: active panel (uses in-memory values from benchmark prop,
+  // no extra fetch) > fetched dim variant > base aggregate.
+  // Null while a dim variant is still in flight (panel path is instant).
+  const effectiveBench = (() => {
+    if (activeMetricPanel) {
+      return {
+        ...benchmark,
+        metric: activeMetricPanel.label,
+        unit: (activeMetricPanel.unit ?? benchmark.unit) as Benchmark["unit"],
+        higherIsBetter:
+          activeMetricPanel.higherIsBetter ?? benchmark.higherIsBetter,
+        results: benchmark.results
+          .filter(
+            (r) =>
+              activeMetricPanel.values[r.slug] != null &&
+              Number.isFinite(activeMetricPanel.values[r.slug]),
+          )
+          .map((r) => ({
+            ...r,
+            ms: { ...r.ms, p50: activeMetricPanel.values[r.slug] },
+          })),
+      };
+    }
+    if (hasDims) return variant;
+    return benchmark;
+  })();
 
   // Live rows ranked by headline value (video order), dead rows last.
   const rankedResults = useMemo(() => {
@@ -254,15 +303,15 @@ function ModalBody({
   };
 
   // Exact title the video will display: the bench title plus the human
-  // labels of the active filters, e.g. "RPC capabilities (Ethereum, EU
-  // West)". Injected into the render payload and shown verbatim in the
-  // modal header so there is no surprise in the MP4.
+  // labels of the active filters and panel, e.g. "RPC capabilities (Ethereum, EU West)"
+  // or "Hyperliquid frontends (Volume routed)". Injected into the render payload.
   const videoTitle = useMemo(() => {
-    const labels = activeDims.map((d) => d.label);
-    return labels.length > 0
-      ? `${benchmark.title} (${labels.join(", ")})`
+    const parts = activeDims.map((d) => d.label);
+    if (activeMetricPanel) parts.push(activeMetricPanel.label);
+    return parts.length > 0
+      ? `${benchmark.title} (${parts.join(", ")})`
       : benchmark.title;
-  }, [benchmark.title, activeDims]);
+  }, [benchmark.title, activeDims, activeMetricPanel]);
 
   // Row list for the picker, ranked order, dead rows flagged.
   const providers = useMemo(
@@ -304,6 +353,7 @@ function ModalBody({
         region: dims.region,
         kind: dims.kind,
         venue: dims.venue,
+        panel: panelId ?? undefined,
       });
       const filtered: BenchPayload = {
         ...full,
@@ -424,6 +474,33 @@ function ModalBody({
               ))}
             </Segment>
           </div>
+
+          {/* Metric panel picker. Shown for benches with companion metrics
+              (e.g. hyperliquid-frontends: Revenue / Volume / Users / ...). */}
+          {panelOptions.length > 0 && (
+            <div role="group" aria-label="Select metric view">
+              <Label>View</Label>
+              <div className="inline-flex flex-wrap gap-1 rounded-md border border-rule p-1 bg-paper-2">
+                <SegmentButton
+                  active={!panelId}
+                  onClick={() => setPanelId(null)}
+                  disabled={isBusy}
+                >
+                  {benchmark.panelMainLabel ?? benchmark.metric}
+                </SegmentButton>
+                {panelOptions.map((o) => (
+                  <SegmentButton
+                    key={o.value}
+                    active={panelId === o.value}
+                    onClick={() => setPanelId(o.value)}
+                    disabled={isBusy}
+                  >
+                    {o.label}
+                  </SegmentButton>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Dimension filters: one pill row per dimension the bench
               declares. Mirrors the tab pickers on the bench page. */}

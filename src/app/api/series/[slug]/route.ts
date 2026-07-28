@@ -255,20 +255,28 @@ export async function GET(
       };
     });
 
+  // When a panel is active, use its metadata (label / unit / higherIsBetter)
+  // instead of the bench-level values so the video renderer labels the y-axis
+  // and sorts the race correctly for companion metrics.
+  const activePanelMeta = panelId
+    ? b.metricPanels?.find((p) => p.id === panelId)
+    : undefined;
+  const sourceUnit = activePanelMeta?.unit ?? b.unit;
+
   // Normalize OCB internal units to display-friendly ones for the video
   // renderer, which appends the unit string as a label and has no knowledge
   // of OCB's internal conventions:
   //   "bps" = stored in basis points, site displays as % (÷100) → send "pct" + divide values
   //   "s"   = stored in milliseconds, site displays as seconds   → send "s"  + divide values
   //   "pct", "bp", "usd", "count", …                            → pass through unchanged
-  let displayUnit = b.unit;
+  let displayUnit = sourceUnit;
   const providers = rawProviders.map((p) => ({ ...p }));
-  if (b.unit === "bps") {
+  if (sourceUnit === "bps") {
     displayUnit = "pct";
     for (const p of providers) {
       p.values = p.values.map((v) => (v == null ? null : v / 100));
     }
-  } else if (b.unit === "s") {
+  } else if (sourceUnit === "s") {
     for (const p of providers) {
       p.values = p.values.map((v) => (v == null ? null : v / 1000));
     }
@@ -278,9 +286,9 @@ export async function GET(
     {
       slug: b.slug,
       title: b.title,
-      metric: b.metric,
+      metric: activePanelMeta?.label ?? b.metric,
       unit: displayUnit,
-      higherIsBetter: b.higherIsBetter,
+      higherIsBetter: activePanelMeta?.higherIsBetter ?? b.higherIsBetter,
       range: rangeParam,
       timestamps,
       providers,
