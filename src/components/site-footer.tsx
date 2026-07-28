@@ -27,7 +27,8 @@ export function SiteFooter() {
             title="Read"
             links={[
               { label: "Benchmarks", href: "/benchmarks" },
-{ label: "Products", href: "/products" },
+              { label: "Reports", href: "/reports" },
+              { label: "Products", href: "/products" },
               { label: "Chains", href: "/chains" },
               { label: "Prediction markets", href: "/prediction-markets" },
               { label: "RPC", href: "/rpc" },
