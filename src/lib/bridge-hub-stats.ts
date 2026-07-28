@@ -107,15 +107,20 @@ async function _fetchBridgeHub(): Promise<BridgeHubData | null> {
     });
   }
 
-  providers.sort(
+  // Drop providers with no usable data (dropped from bench spec but still in stale blob)
+  const active = providers.filter(
+    (p) => p.feep50 != null || p.quotep50 != null || p.corridors.some((c) => c.feep50 != null)
+  );
+
+  active.sort(
     (a, b) => (a.feep50 ?? Infinity) - (b.feep50 ?? Infinity)
   );
 
-  const byQuote = [...providers]
+  const byQuote = [...active]
     .filter((p) => p.quotep50 != null)
     .sort((a, b) => (a.quotep50 ?? Infinity) - (b.quotep50 ?? Infinity));
 
-  const cheapest = providers.find((p) => p.feep50 != null) ?? null;
+  const cheapest = active.find((p) => p.feep50 != null) ?? null;
   const fastest = byQuote[0] ?? null;
 
   const corridorsDisplay =
@@ -128,7 +133,7 @@ async function _fetchBridgeHub(): Promise<BridgeHubData | null> {
   );
 
   return {
-    providers,
+    providers: active,
     corridors: corridorsDisplay,
     cheapestSlug: cheapest?.slug ?? null,
     cheapestName: cheapest?.name ?? null,
@@ -136,7 +141,7 @@ async function _fetchBridgeHub(): Promise<BridgeHubData | null> {
     fastestSlug: fastest?.slug ?? null,
     fastestName: fastest?.name ?? null,
     fastestP50: fastest?.quotep50 ?? null,
-    bridgeCount: slugSet.size,
+    bridgeCount: active.length,
     regionCount,
   };
 }
