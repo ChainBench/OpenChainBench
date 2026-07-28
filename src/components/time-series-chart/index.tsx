@@ -155,10 +155,14 @@ export function TimeSeriesChart({
   // most one fan-out per (bench, range) per minute.
   const [lazySeries7d, setLazySeries7d] = useState<Record<string, (number | null)[]> | null>(null);
   const [lazySeries30d, setLazySeries30d] = useState<Record<string, (number | null)[]> | null>(null);
-  // Per-panel lazy 7d/30d, keyed by panel id. Cached across a panel
+  // Per-panel lazy series, keyed by panel id. Cached across a panel
   // switch so flipping back to a previously-viewed panel is instant.
+  // 7d/30d: fetched on panel activation. 90d/1y: fetched on-demand when
+  // the user clicks those tabs (Prom-backed, not archive-backed).
   const [lazyPanel7d, setLazyPanel7d] = useState<Record<string, Record<string, (number | null)[]>>>({});
   const [lazyPanel30d, setLazyPanel30d] = useState<Record<string, Record<string, (number | null)[]>>>({});
+  const [lazyPanel90d, setLazyPanel90d] = useState<Record<string, Record<string, (number | null)[]>>>({});
+  const [lazyPanel1y, setLazyPanel1y] = useState<Record<string, Record<string, (number | null)[]>>>({});
 
   // Pre-fetch 7d AND 30d in the background as soon as the chart mounts,
   // not just when the user clicks the tab. The fetches are non-blocking
@@ -281,21 +285,50 @@ export function TimeSeriesChart({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activePanelId, regionProp, chainProp, benchmark.slug, seriesOverride7d, seriesOverride30d]);
 
-  // Tab availability: 24h is always present (served from the cached
-  // Benchmark), 7d / 30d are always offered as tabs since they're
-  // lazy-fetchable. The fetch resolves to {} on no-data, which we still
-  // treat as "tab available" because the chart can render an empty
-  // state inline rather than hide the tab.
-  //
-  // Metric-panel scope: when a panel is active, the tab is enabled if
-  //   (a) the parent shipped seriesOverride7d/30d inline, OR
-  //   (b) we have (or are about to have) lazy-fetched panel series via
-  //       activePanelId. Panels without activePanelId still fall back to
-  //       the old behavior (disabled long-range tabs) so untouched
-  //       callers keep working.
+  // Lazy fetch for 90d / 1y panel series. These are Prom-backed (not
+  // archive-backed) so the fetch goes to /api/series?panel=<id>&range=90d.
+  // Triggered the first time a panel becomes active — we prefetch both
+  // ranges so the user can switch between them without extra round-trips.
+  useEffect(() => {
+    if (!activePanelId) return;
+    const need90d = !lazyPanel90d[activePanelId];
+    const need1y = !lazyPanel1y[activePanelId];
+    if (!need90d && !need1y) return;
+    let cancelled = false;
+    const buildQs = (r: "90d" | "1y") => {
+      const qs = new URLSearchParams({ range: r, panel: activePanelId });
+      if (regionProp && regionProp !== "all") qs.set("region", regionProp);
+      if (chainProp && chainProp !== "all") qs.set("chain", chainProp);
+      return qs.toString();
+    };
+    const fetchOne = (r: "90d" | "1y") => {
+      if (cancelled) return;
+      fetch(`/api/series/${benchmark.slug}?${buildQs(r)}`)
+        .then((res) => (res.ok ? res.json() : Promise.reject(res.status)))
+        .then((data: { providers: { slug: string; values: (number | null)[] }[] }) => {
+          if (cancelled) return;
+          const map: Record<string, (number | null)[]> = {};
+          for (const p of data.providers) map[p.slug] = p.values;
+          if (r === "90d") setLazyPanel90d((prev) => ({ ...prev, [activePanelId]: map }));
+          else setLazyPanel1y((prev) => ({ ...prev, [activePanelId]: map }));
+        })
+        .catch(() => {
+          if (cancelled) return;
+          if (r === "90d") setLazyPanel90d((prev) => ({ ...prev, [activePanelId]: {} }));
+          else setLazyPanel1y((prev) => ({ ...prev, [activePanelId]: {} }));
+        });
+    };
+    if (need90d) fetchOne("90d");
+    if (need1y) fetchOne("1y");
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activePanelId, regionProp, chainProp, benchmark.slug]);
+
   const panelActive = !!seriesOverride;
   const panelLazy7d = activePanelId ? lazyPanel7d[activePanelId] : undefined;
   const panelLazy30d = activePanelId ? lazyPanel30d[activePanelId] : undefined;
+  const panelLazy90d = activePanelId ? lazyPanel90d[activePanelId] : undefined;
+  const panelLazy1y = activePanelId ? lazyPanel1y[activePanelId] : undefined;
   const has7d =
     !panelActive ||
     !!seriesOverride7d ||
@@ -347,6 +380,11 @@ export function TimeSeriesChart({
       if (range === "7d") {
         return seriesOverride7d ?? panelLazy7d ?? seriesOverride;
       }
+      // 90d / 1y: served from Prom via lazy fetch. Return empty map while
+      // loading so the chart shows an empty state rather than stale 24h data.
+      // 180d / all: no panel data — these tabs stay disabled for panels.
+      if (range === "90d") return panelLazy90d ?? {};
+      if (range === "1y") return panelLazy1y ?? {};
       return seriesOverride;
     };
     const panel = pickPanel();
@@ -395,7 +433,7 @@ export function TimeSeriesChart({
       return higherIsBetter ? bv - av : av - bv;
     });
     return built;
-  }, [benchmark, range, region, colors, excluded, seriesOverride, seriesOverride7d, seriesOverride30d, higherIsBetterOverride, lazySeries7d, lazySeries30d, isLongRange, longRangeSeries]);
+  }, [benchmark, range, region, colors, excluded, seriesOverride, seriesOverride7d, seriesOverride30d, higherIsBetterOverride, lazySeries7d, lazySeries30d, isLongRange, longRangeSeries, panelLazy90d, panelLazy1y]);
 
   // Top-N selector — sized off the post-filter line count via the
   // shared `useTopN` hook so the option set agrees across every
@@ -512,9 +550,12 @@ export function TimeSeriesChart({
               />
               {LONG_RANGES.map((r) => {
                 const active = r === range;
-                const disabled = longRangeDisabled || panelActive;
-                const title = panelActive
-                  ? "Switch off the metric panel to see long-range history"
+                // 90d / 1y are Prom-backed for panel views; 180d / all are
+                // archive-only and stay disabled when a panel is active.
+                const panelBlocks = panelActive && r !== "90d" && r !== "1y";
+                const disabled = longRangeDisabled || panelBlocks;
+                const title = panelBlocks
+                  ? "Switch to the main metric for 180D / ALL history"
                   : longRangeDisabled
                     ? (longRangeDisabledTitle ??
                       "Archive temporarily unavailable")
@@ -536,7 +577,7 @@ export function TimeSeriesChart({
                     title={title}
                   >
                     {r}
-                    {disabled && !panelActive && (
+                    {disabled && !panelBlocks && (
                       <span className="ml-1 text-[9px] text-ink-faint">soon</span>
                     )}
                   </button>
