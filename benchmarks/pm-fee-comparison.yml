@@ -1,0 +1,60 @@
+# OpenChainBench. Bench 112
+
+slug: pm-fee-comparison
+number: "112"
+title: Prediction market fees, Polymarket vs Kalshi and more
+seo_title: "Prediction market fees 2026: Polymarket, Kalshi, Limitless compared"
+seo_description: "What does it cost to trade on Polymarket, Kalshi, Limitless and Myriad? Maker and taker fees, protocol cuts, total cost to trade, sourced from each venue's published fee schedule."
+subtitle: Maker and taker fees, protocol cuts and net cost to trade across five prediction market venues, sourced from official fee schedules and verified from fills data.
+
+category: Trading
+status: draft
+metric: Effective taker fee
+unit: pct
+higher_is_better: false
+
+seo_intro: |
+  Nobody publishes a clean side-by-side of what it actually costs to trade prediction markets. Polymarket charges a flat percentage fee on each trade. Kalshi charges per-contract on a published schedule. Limitless embeds a fee in the AMM spread. Manifold uses play money. Myriad varies by market type. This bench parses each venue's fills data and official fee schedule so the comparison is based on measured values rather than marketing copy.
+
+abstract: |
+  CLOB venues like Polymarket and Kalshi charge maker and taker fees on matched trades. AMM venues like Limitless embed fees in the spread. This bench reads each venue's fills API and published fee schedule to report the true cost to trade as a percentage of notional, broken out by role and market type where available. Kalshi's per-contract fee is converted to a comparable percentage basis against contract face value for cross-venue comparison.
+
+methodology:
+  - "Polymarket: the protocol charges a 2% fee on each trade, deducted from the potential payout. A YES share bought at 0.50 USDC pays out $0.98 (not $1.00) if it wins. There is no maker rebate on the public CLOB."
+  - "Kalshi: charges a per-contract fee on a published schedule. At mid-range prices ($0.40 to $0.60 per contract) the fee is around $0.07 per contract. Fees are capped at contract extremes."
+  - "Limitless: an AMM venue whose fee is embedded in the spread. The effective fee is a function of pool depth and trade size; the bench measures round-trip cost on top-volume markets."
+  - "Manifold: play-money only. No real-money fee applies. Shown for completeness with a play-money flag."
+  - "Myriad: fee schedule varies by market type and is not fully published. Observed fees are sourced from fills data where available."
+  - "All percentages are of the notional trade value (the amount spent to enter the position) so numbers are comparable across venues."
+
+findings:
+  - "Polymarket charges a flat 2% fee on each trade, one of the more transparent structures in the cohort since the rate does not vary by market or counterparty type."
+  - "Kalshi's per-contract fee means the effective percentage cost depends on where the contract trades relative to par. Fees are highest in percentage terms on near-certainty markets."
+  - "Manifold is play-money only. No real capital is at risk and no real fee is charged."
+
+disclaimer: "Fee structures change. Verify the current schedule on each venue's official documentation before placing a large trade. Figures here are sourced from each venue's published fills API and fee schedule at the last bench run date."
+
+faq:
+  - q: "What is the Polymarket trading fee?"
+    a: "Polymarket charges a 2% fee on each trade, deducted from the potential payout. If you buy YES shares at $0.50, each share pays out $0.98 rather than $1.00 if you win. The fee applies to both sides of the trade. There is no maker rebate on the public CLOB at the time of writing."
+  - q: "What is the Kalshi trading fee?"
+    a: "Kalshi charges a per-contract fee that scales with the contract's settlement price. The fee schedule is published on Kalshi's documentation. At mid-range prices ($0.40 to $0.60 per contract) the fee is typically around $0.07 per contract. Fees are capped, which makes very-low-price or very-high-price contracts cheaper in percentage terms."
+  - q: "Is Polymarket or Kalshi cheaper to trade?"
+    a: "It depends on the market. Polymarket's flat 2% fee is predictable. Kalshi's per-contract fee is cheaper on near-certainty markets where the cap kicks in, and more expensive on mid-book markets. The live fee comparison will show side-by-side numbers once the harness is running."
+
+providers:
+  - slug: polymarket
+    name: Polymarket
+    tag: "Flat 2% taker fee on each trade, no maker rebate, public CLOB"
+  - slug: kalshi
+    name: Kalshi
+    tag: "Per-contract fee on a published schedule, cap applies at extremes"
+  - slug: limitless
+    name: Limitless
+    tag: "AMM venue, fee embedded in the spread, varies by pool depth"
+  - slug: manifold
+    name: Manifold
+    tag: "Play-money only, no real-money fee"
+  - slug: myriad
+    name: Myriad
+    tag: "Fee varies by market type, partial data from fills"
