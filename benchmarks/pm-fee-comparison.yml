@@ -8,7 +8,7 @@ seo_description: "What does it cost to trade on Polymarket, Kalshi, Limitless an
 subtitle: Maker and taker fees, protocol cuts and net cost to trade across five prediction market venues, sourced from official fee schedules and verified from fills data.
 
 category: Trading
-status: draft
+status: live
 metric: Effective taker fee
 unit: pct
 higher_is_better: false
@@ -44,6 +44,78 @@ disclaimer: "Fee schedules change without notice. Verify current fees directly w
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/pm-fee-comparison
 
+prometheus:
+  window: 24h
+  expected_freshness_seconds: 7200
+
+rank_matrix_query: label_replace(pm_fee_taker_bps, "provider", "$1", "venue", "(.+)")
+
+providers:
+  - slug: polymarket
+    name: Polymarket
+    tag: 2% fee on potential payout, no maker rebate, flat across all price points
+    formula: "Flat 200 bps of gross notional ($1 resolution value) at all price points. Fee = 2% × $1 payout = $0.02/contract. Source: Polymarket published fee schedule."
+    queries:
+      p50: pm_fee_taker_bps{venue="polymarket"}
+      p90: pm_fee_taker_bps{venue="polymarket"}
+      p99: pm_fee_taker_bps{venue="polymarket"}
+      mean: pm_fee_taker_bps{venue="polymarket"}
+      success: vector(1)
+      sample_size: vector(1)
+      series: pm_fee_taker_bps{venue="polymarket"}
+
+  - slug: kalshi
+    name: Kalshi
+    tag: Per-contract fee on published schedule, capped at price extremes, US-regulated
+    formula: "Approximately 700 bps ($0.07/contract ÷ $1 resolution value) at ATM ($0.50 contract price). Source: Kalshi published fee schedule. Fees are capped at price extremes."
+    queries:
+      p50: pm_fee_taker_bps{venue="kalshi"}
+      p90: pm_fee_taker_bps{venue="kalshi"}
+      p99: pm_fee_taker_bps{venue="kalshi"}
+      mean: pm_fee_taker_bps{venue="kalshi"}
+      success: vector(1)
+      sample_size: vector(1)
+      series: pm_fee_taker_bps{venue="kalshi"}
+
+  - slug: limitless
+    name: Limitless
+    tag: Live half-spread from active USDC markets, refreshed hourly
+    formula: "Median half-spread in bps across active USDC binary markets, computed from tradePrices.buy.market[0] and tradePrices.sell.market[0]. Half-spread = ((ask - bid) / 2) × 10000. Refreshed hourly."
+    queries:
+      p50: pm_fee_taker_bps{venue="limitless"}
+      p90: pm_fee_taker_bps{venue="limitless"}
+      p99: pm_fee_taker_bps{venue="limitless"}
+      mean: pm_fee_taker_bps{venue="limitless"}
+      success: pm_fee_last_refresh_seconds{venue="limitless"} > bool 0
+      sample_size: vector(1)
+      series: pm_fee_taker_bps{venue="limitless"}
+
+  - slug: manifold
+    name: Manifold
+    tag: Play-money (mana), no real-money fee, included for completeness
+    formula: "0 bps. Manifold uses play-money (mana) only. No real capital is at risk and no real fee is charged."
+    queries:
+      p50: pm_fee_taker_bps{venue="manifold"}
+      p90: pm_fee_taker_bps{venue="manifold"}
+      p99: pm_fee_taker_bps{venue="manifold"}
+      mean: pm_fee_taker_bps{venue="manifold"}
+      success: vector(1)
+      sample_size: vector(1)
+      series: pm_fee_taker_bps{venue="manifold"}
+
+  - slug: myriad
+    name: Myriad
+    tag: Protocol fee on settlement, single-region US East
+    formula: "200 bps (2% protocol settlement fee). Source: Myriad published protocol documentation."
+    queries:
+      p50: pm_fee_taker_bps{venue="myriad"}
+      p90: pm_fee_taker_bps{venue="myriad"}
+      p99: pm_fee_taker_bps{venue="myriad"}
+      mean: pm_fee_taker_bps{venue="myriad"}
+      success: vector(1)
+      sample_size: vector(1)
+      series: pm_fee_taker_bps{venue="myriad"}
+
 faq:
   - q: "What is the Polymarket trading fee?"
     a: "Polymarket charges a 2% fee on each trade, deducted from the potential payout. If you buy YES shares at $0.50, each share pays out $0.98 rather than $1.00 if you win. The fee applies to both sides of the trade. There is no maker rebate on the public CLOB at the time of writing."
@@ -52,23 +124,3 @@ faq:
   - q: "Is Polymarket or Kalshi cheaper to trade?"
     a: "It depends on the market. Polymarket's flat 2% fee is predictable. Kalshi's per-contract fee is cheaper on near-certainty markets where the cap kicks in, and more expensive on mid-book markets. The live fee comparison will show side-by-side numbers once the harness is running."
 
-providers:
-  - slug: polymarket
-    name: Polymarket
-    tag: 2% fee on potential payout, no maker rebate, flat across all price points
-
-  - slug: kalshi
-    name: Kalshi
-    tag: Per-contract fee on published schedule, capped at price extremes, US-regulated
-
-  - slug: limitless
-    name: Limitless
-    tag: CLOB venue, fee structure via spread, no published fee schedule
-
-  - slug: manifold
-    name: Manifold
-    tag: Play-money (mana), no real-money fee, included for completeness
-
-  - slug: myriad
-    name: Myriad
-    tag: Protocol fee on settlement, single-region US East
