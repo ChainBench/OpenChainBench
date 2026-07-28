@@ -59,7 +59,7 @@ func fetchEdgex(v VenueConfig) PerpSample {
 	s.TakerFeeBps = edgexTakerBps
 
 	var book edgexDepthResp
-	url := fmt.Sprintf("%s/api/v1/public/quote/getDepth?contractId=%s&level=100", edgexBase, contractID)
+	url := fmt.Sprintf("%s/api/v1/public/quote/getDepth?contractId=%s&level=200", edgexBase, contractID)
 	if err := edgexGet(client, url, &book); err != nil {
 		s.Err = fmt.Sprintf("orderbook: %v", err)
 		s.FetchLatencyMs = time.Since(start).Milliseconds()
