@@ -9,6 +9,11 @@ import { logoPath } from "@/lib/logo-manifest";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import { SLUG_RE } from "@/lib/slug";
 import { matchesChainSlug } from "@/lib/chain-aliases";
+import { Prometheus } from "@/lib/prometheus";
+
+function escapePromLabelValue(v: string): string {
+  return v.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+}
 
 // Dedicated cache for the (slug, range, chain, region, kind, venue) →
 // series map.
@@ -26,58 +31,91 @@ import { matchesChainSlug } from "@/lib/chain-aliases";
 const getSeriesMapCached = unstable_cache(
   async (
     slug: string,
-    range: "7d" | "30d",
+    range: "7d" | "30d" | "90d" | "1y",
     chain: string | undefined,
     region: string | undefined,
     kind: string | undefined,
     venue: string | undefined,
     panelId: string | undefined,
   ): Promise<Record<string, (number | null)[]> | null> => {
-    const sig = filterSig({ chain, region, kind, venue });
-    // Try CDN blob first (Phase 3), fall back to Redis via SRH.
-    const stored =
-      (await loadSnapshotFromBlob(slug, sig)) ??
-      (await readMaterialized(slug, sig));
-    if (stored) {
-      // Panel-scoped lookup: returns the companion-metric series for a
-      // specific metricPanel (?panel=<id>), not the main bench series.
-      // Without this, panels have no way to render 7d/30d — the
-      // slimBenchmarkForCache strip drops panel long-range series from
-      // the payload and the chart falls back to a disabled tab.
-      if (panelId) {
-        const panel = stored.bench.metricPanels?.find((p) => p.id === panelId);
-        const fromPanel =
-          range === "7d"
-            ? panel?.seriesByProvider7d
-            : panel?.seriesByProvider30d;
-        if (fromPanel && Object.keys(fromPanel).length > 0) return fromPanel;
-      } else {
-        const fromBlob =
-          range === "7d"
-            ? stored.bench.extras.series7d
-            : stored.bench.extras.series30d;
-        if (fromBlob && Object.keys(fromBlob).length > 0) return fromBlob;
+    // ── Standard ranges (7d / 30d): blob → Redis → live build ──────────
+    if (range === "7d" || range === "30d") {
+      const sig = filterSig({ chain, region, kind, venue });
+      const stored =
+        (await loadSnapshotFromBlob(slug, sig)) ??
+        (await readMaterialized(slug, sig));
+      if (stored) {
+        if (panelId) {
+          const panel = stored.bench.metricPanels?.find((p) => p.id === panelId);
+          const fromPanel =
+            range === "7d"
+              ? panel?.seriesByProvider7d
+              : panel?.seriesByProvider30d;
+          if (fromPanel && Object.keys(fromPanel).length > 0) return fromPanel;
+        } else {
+          const fromBlob =
+            range === "7d"
+              ? stored.bench.extras.series7d
+              : stored.bench.extras.series30d;
+          if (fromBlob && Object.keys(fromBlob).length > 0) return fromBlob;
+        }
       }
+      const specs = await loadSpecsUncached();
+      const spec = specs.find((s) => s.slug === slug);
+      if (!spec || spec.status !== "live") return null;
+      const b = await specToBenchmark(spec, { chain, region, kind, venue });
+      if (panelId) {
+        const panel = b.metricPanels?.find((p) => p.id === panelId);
+        return (range === "7d"
+          ? panel?.seriesByProvider7d
+          : panel?.seriesByProvider30d) ?? null;
+      }
+      return (range === "7d" ? b.extras.series7d : b.extras.series30d) ?? null;
     }
-    // Fallback: blob missing (newly deployed bench) or empty for this
-    // variant. Run the live build to seed something; the worker will
-    // overwrite on its next sweep.
+
+    // ── Extended ranges (90d / 1y): query Prom directly ─────────────────
+    // No blobs exist for these windows. Prometheus retention is 365d so
+    // the data is there; we just need to ask with a wider query_range.
+    // unstable_cache keeps the result warm for 5 min so cold-start cost
+    // (many concurrent series queries) is paid at most once per cache window.
     const specs = await loadSpecsUncached();
     const spec = specs.find((s) => s.slug === slug);
     if (!spec || spec.status !== "live") return null;
-    const b = await specToBenchmark(spec, { chain, region, kind, venue });
-    if (panelId) {
-      const panel = b.metricPanels?.find((p) => p.id === panelId);
-      return (range === "7d"
-        ? panel?.seriesByProvider7d
-        : panel?.seriesByProvider30d) ?? null;
-    }
-    return (range === "7d" ? b.extras.series7d : b.extras.series30d) ?? null;
+
+    const promUrl = spec.prometheus?.url ?? process.env.PROMETHEUS_URL;
+    if (!promUrl) return null;
+    const prom = new Prometheus(promUrl);
+
+    const windowSec = range === "90d" ? 90 * 86_400 : 365 * 86_400;
+    // ~1 point per day for 90d, ~3 days per point for 1y — dense enough
+    // for a smooth bar-chart race without blowing Prom step budgets.
+    const numPoints = range === "90d" ? 90 : 120;
+
+    const result: Record<string, (number | null)[]> = {};
+    await Promise.all(
+      spec.providers.map(async (p) => {
+        let q: string | undefined;
+        if (panelId) {
+          const panel = spec.metric_panels?.find((mp) => mp.id === panelId);
+          if (!panel) return;
+          const labelKey = panel.label_key ?? "builder";
+          const sel = `${labelKey}="${escapePromLabelValue(p.slug)}"`;
+          q = panel.metric.includes("{")
+            ? panel.metric.replace("{", `{${sel},`)
+            : `${panel.metric}{${sel}}`;
+        } else {
+          q = p.queries?.series;
+        }
+        if (!q) return;
+        const s = await prom.series(q, windowSec, numPoints);
+        if (s && s.length > 0) result[p.slug] = s;
+      }),
+    );
+
+    return Object.keys(result).length > 0 ? result : null;
   },
-  // v5: added ?panel=<id> variant for companion-metric long-range series.
-  // v4 keys omit the panelId slot; keep the version bumped so old cache
-  // entries don't collide with the new signature.
-  ["series-by-range-v5"],
+  // v6: added 90d / 1y extended-range support with direct Prom queries.
+  ["series-by-range-v6"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -101,6 +139,8 @@ const RANGE_CONFIG = {
   "24h": { windowMs: 24 * 3600 * 1000, points: 72 },
   "7d": { windowMs: 7 * 24 * 3600 * 1000, points: 84 },
   "30d": { windowMs: 30 * 24 * 3600 * 1000, points: 60 },
+  "90d": { windowMs: 90 * 24 * 3600 * 1000, points: 90 },
+  "1y": { windowMs: 365 * 24 * 3600 * 1000, points: 120 },
 } as const;
 
 type RangeKey = keyof typeof RANGE_CONFIG;
@@ -174,7 +214,7 @@ export async function GET(
   }
   const hasFilters = Object.keys(filters).length > 0;
 
-  // 24h is served from the slim cached Benchmark (cheap). 7d / 30d
+  // 24h is served from the slim cached Benchmark (cheap). 7d / 30d / 90d / 1y
   // come from the dedicated getSeriesMapCached above (Prom fan-out the
   // first time, then 5 min of free reads from unstable_cache). Loading
   // a 100-KB series map is cheap enough that we still need the row
@@ -182,7 +222,7 @@ export async function GET(
   // separately so its slim ~50 KB payload reuses the existing cache.
   let seriesMap: Record<string, (number | null)[]> | undefined | null;
   let bench;
-  if (rangeParam === "7d" || rangeParam === "30d") {
+  if (rangeParam !== "24h") {
     [seriesMap, bench] = await Promise.all([
       getSeriesMapCached(
         slug,
