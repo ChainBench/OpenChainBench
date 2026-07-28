@@ -380,13 +380,6 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
     twitter: "@AcrossProtocol",
     docs: "https://docs.across.to",
   },
-  mayan: {
-    url: "https://mayan.finance",
-    description:
-      "Cross-chain swap protocol using Wormhole messaging. Routes trades via a solver network (Mayan Swift) with optimistic confirmation, covering EVM and Solana corridors.",
-    twitter: "@MayanFinance",
-    docs: "https://docs.mayan.finance",
-  },
   squid: {
     url: "https://squidrouter.com",
     description:
