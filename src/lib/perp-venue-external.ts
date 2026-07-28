@@ -112,7 +112,7 @@ async function fetchGainsStats(): Promise<PerpVenueExternalStats> {
     ),
   ]);
 
-  const stats = arbStats ?? [];
+  const stats = Array.isArray(arbStats) ? arbStats : [];
   if (stats.length === 0) return {};
 
   const last = stats[stats.length - 1];
@@ -128,8 +128,11 @@ async function fetchGainsStats(): Promise<PerpVenueExternalStats> {
   // daily volume bars = delta between consecutive cumulative rows
   const dailyVolumeChart: DailyBar[] = [];
   for (let i = 1; i < stats.length; i++) {
-    const prev = parseFloat(stats[i - 1].leveraged_volume);
-    const cur = parseFloat(stats[i].leveraged_volume);
+    const prevRow = stats[i - 1];
+    const curRow = stats[i];
+    if (!prevRow?.leveraged_volume || !curRow?.leveraged_volume) continue;
+    const prev = parseFloat(prevRow.leveraged_volume);
+    const cur = parseFloat(curRow.leveraged_volume);
     const vol = cur - prev;
     if (vol >= 0) {
       dailyVolumeChart.push({
@@ -141,11 +144,14 @@ async function fetchGainsStats(): Promise<PerpVenueExternalStats> {
 
   // Add Base chain volume on top of Arb daily bars if same date range
   let combinedTotal = totalVolumeUsd ?? 0;
-  if (baseStats && baseStats.length > 0) {
+  if (Array.isArray(baseStats) && baseStats.length > 0) {
     const baseByDate = new Map<string, number>();
     for (let i = 1; i < baseStats.length; i++) {
-      const prev = parseFloat(baseStats[i - 1].leveraged_volume);
-      const cur = parseFloat(baseStats[i].leveraged_volume);
+      const prevRow = baseStats[i - 1];
+      const curRow = baseStats[i];
+      if (!prevRow?.leveraged_volume || !curRow?.leveraged_volume) continue;
+      const prev = parseFloat(prevRow.leveraged_volume);
+      const cur = parseFloat(curRow.leveraged_volume);
       const vol = cur - prev;
       if (vol >= 0) baseByDate.set(baseStats[i].date.split("T")[0], vol);
     }
@@ -591,29 +597,29 @@ async function fetchExternalRaw(
   try {
     switch (cohortSlug) {
       case "gains":
-        return fetchGainsStats();
+        return await fetchGainsStats();
       case "lighter":
-        return fetchLighterStats();
+        return await fetchLighterStats();
       case "gmx-v2":
-        return fetchGmxStats();
+        return await fetchGmxStats();
       case "hyperliquid":
-        return fetchHyperliquidStats();
+        return await fetchHyperliquidStats();
       case "dydx":
-        return fetchDydxStats();
+        return await fetchDydxStats();
       case "vertex":
-        return fetchVertexStats();
+        return await fetchVertexStats();
       case "aevo":
-        return fetchAevoStats();
+        return await fetchAevoStats();
       case "aster":
-        return fetchAsterStats();
+        return await fetchAsterStats();
       case "ostium":
-        return fetchOstiumStats();
+        return await fetchOstiumStats();
       case "extended":
-        return fetchExtendedStats();
+        return await fetchExtendedStats();
       case "paradex":
-        return fetchParadexStats();
+        return await fetchParadexStats();
       case "polymarket":
-        return fetchPolymarketStats();
+        return await fetchPolymarketStats();
       default:
         return {};
     }
