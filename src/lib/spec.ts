@@ -106,9 +106,16 @@ export function overlayEditorial(stored: Benchmark, spec: Spec): Benchmark {
     }
   }
 
+  // Prune providers that are no longer declared in the spec. Stale
+  // snapshots keep results for providers removed from the YAML (retired
+  // endpoints, editorial exclusions) until the worker next sweeps. Without
+  // this filter those phantom rows persist in rankings indefinitely.
+  const specSlugs = new Set(providerByCanonSlug.keys());
+  const prunedResults = reconciledResults.filter((r) => specSlugs.has(r.slug));
+
   const overlaid: Benchmark = {
     ...stored,
-    results: reconciledResults,
+    results: prunedResults,
     seoTitle: spec.seo_title ?? stored.seoTitle,
     seoDescription: spec.seo_description ?? stored.seoDescription,
     seoIntro: spec.seo_intro ?? stored.seoIntro,
@@ -315,7 +322,9 @@ const loadBenchmarkUnfilteredCached = unstable_cache(
   // unknown_slug and the page renders "data warming up" despite fresh
   // Jupiter/Mobula runtime numbers in citable. Bench SET unchanged; the
   // bump is purely to invalidate the stale editorialStatus.
-  ["bench-unfiltered-v51", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v53: overlayEditorial now prunes providers absent from spec.providers.
+  // Bump to flush v52 cached entries that still carry stale Flashbots row.
+  ["bench-unfiltered-v53", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 
@@ -526,7 +535,8 @@ const loadAllBenchmarksCached = unstable_cache(
   // v50: staging pipeline shuffle (see bench-unfiltered-v47).
   // v51: add bench 102 token-quote-coverage (draft, see bench-unfiltered-v48).
   // v52: token-quote-coverage flipped draft→live (see bench-unfiltered-v49).
-  ["all-benchmarks-v54", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
+  // v53: lockstep with bench-unfiltered-v53 (Flashbots prune).
+  ["all-benchmarks-v56", process.env.VERCEL_ENV === "production" ? "prod" : "all"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 export const loadAllBenchmarks = cache(loadAllBenchmarksCached);

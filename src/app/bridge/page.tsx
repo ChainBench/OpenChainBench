@@ -6,7 +6,7 @@ import { safeJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/data/site";
 
 const DESCRIPTION =
-  "Live cross-chain bridge benchmarks: cheapest all-in fee and fastest quote API for $300 USDC across Across, deBridge, LI.FI, Mobula, Near Intents and Relay. 4 corridors, refreshed every 5 minutes.";
+  "Live cross-chain bridge benchmarks: cheapest all-in fee and fastest quote API for $300 USDC across Across, deBridge, LI.FI, Mobula, Near Intents, Relay, Squid and Socket. 4 corridors, refreshed every 5 minutes.";
 
 export const metadata: import("next").Metadata = pageMetadata({
   path: "/bridge",
@@ -14,7 +14,7 @@ export const metadata: import("next").Metadata = pageMetadata({
   description: DESCRIPTION,
 });
 
-export const revalidate = 60;
+export const revalidate = 300;
 
 export default async function BridgeHubPage() {
   const hub = await fetchBridgeHub();
@@ -102,14 +102,14 @@ export default async function BridgeHubPage() {
             <span className="text-ink">bridge-quote-latency</span>
           </Link>
           <span className="inline-flex items-center rounded-full border border-ink/10 px-3 py-1 text-ink-muted">
-            {hub ? (hub.regionCount > 1 ? `${hub.regionCount} regions` : "eu-west") : "eu-west"}
+            {hub && hub.regionCount > 1 ? `${hub.regionCount} regions` : "eu-west"}
           </span>
         </div>
       </header>
 
       {hub ? (
         <>
-          <section className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
+          <section className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-8">
             <SummaryCard
               label="Cheapest bridge"
               value={
@@ -132,12 +132,7 @@ export default async function BridgeHubPage() {
             <SummaryCard
               label="Bridges tracked"
               value={String(hub.bridgeCount)}
-              tip="Across, deBridge, LI.FI, Mobula, Near Intents, Relay."
-            />
-            <SummaryCard
-              label="Probe regions"
-              value={hub.regionCount > 1 ? `${hub.regionCount} · EU / US / SGP` : "1 · eu-west"}
-              tip="Measurements from EU-West (Amsterdam), US-East, and Singapore. Fee bench aggregates across regions; latency bench ranks by region."
+              tip="Across, deBridge, LI.FI, Mobula, Near Intents, Relay, Squid, Socket."
             />
           </section>
 
@@ -162,7 +157,7 @@ export default async function BridgeHubPage() {
               </div>
             </div>
             <p className="text-sm text-ink-muted mb-4">
-              Sorted by fee p50 (shown under provider name). Quote speed broken out per region: EU-West, US-East, Singapore. Corridor dots show which routes each provider quotes. Trailing 24h.
+              Sorted by fee p50 (all-in cost at $300 USDC). Quote latency p50/p99 from bench 002. Success from fee bench. Trailing 24h.
             </p>
             <BridgeHubTable rows={hub.providers} />
           </section>
@@ -197,8 +192,8 @@ export default async function BridgeHubPage() {
               />
               <ArchCard
                 label="Aggregators"
-                examples={["LI.FI"]}
-                body="Route through the cheapest available underlying bridge plus a thin markup. Benefit is route coverage: they surface paths that no single protocol quotes."
+                examples={["LI.FI", "Squid", "Socket"]}
+                body="Route through the cheapest available underlying bridge plus a thin markup. Benefit is route coverage: they surface paths that no single protocol quotes. Squid and Socket cover EVM corridors only."
               />
               <ArchCard
                 label="Direct protocols"

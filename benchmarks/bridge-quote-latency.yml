@@ -29,6 +29,10 @@ dimensions:
     - { value: eu-west, label: EU-West }
     - { value: us-east, label: US-East }
     - { value: sgp,     label: Singapore }
+  amount_usd:
+    - { value: "300", label: "$300" }
+    - { value: "50",  label: "$50" }
+    - { value: "5",   label: "$5" }
 
 seo_intro: |
   This benchmark measures how fast each cross-chain bridge quote API
@@ -130,7 +134,7 @@ providers:
         - region: us-east
           p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="mobula", region="us-east"}[24h])))
           series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="mobula", region="us-east"}[1h])))
-        - region: ap-southeast
+        - region: sgp
           p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="mobula", region="sgp"}[24h])))
           series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="mobula", region="sgp"}[1h])))
 
@@ -153,7 +157,7 @@ providers:
         - region: us-east
           p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="relay", region="us-east"}[24h])))
           series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="relay", region="us-east"}[1h])))
-        - region: ap-southeast
+        - region: sgp
           p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="relay", region="sgp"}[24h])))
           series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="relay", region="sgp"}[1h])))
 
@@ -176,7 +180,7 @@ providers:
         - region: us-east
           p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="lifi", region="us-east"}[24h])))
           series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="lifi", region="us-east"}[1h])))
-        - region: ap-southeast
+        - region: sgp
           p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="lifi", region="sgp"}[24h])))
           series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="lifi", region="sgp"}[1h])))
 
@@ -199,7 +203,7 @@ providers:
         - region: us-east
           p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="debridge", region="us-east"}[24h])))
           series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="debridge", region="us-east"}[1h])))
-        - region: ap-southeast
+        - region: sgp
           p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="debridge", region="sgp"}[24h])))
           series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="debridge", region="sgp"}[1h])))
 
@@ -222,7 +226,7 @@ providers:
         - region: us-east
           p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="near-intents", region="us-east"}[24h])))
           series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="near-intents", region="us-east"}[1h])))
-        - region: ap-southeast
+        - region: sgp
           p50: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="near-intents", region="sgp"}[24h])))
           series: histogram_quantile(0.50, sum by (le) (rate(bridge_quote_latency_ms_bucket{bridge="near-intents", region="sgp"}[1h])))
 
