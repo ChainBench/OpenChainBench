@@ -39,4 +39,4 @@ related:
 
 seo_title: "Which Solana DEX aggregator returns the fastest swap quote in 2026?"
 seo_description: "{{best_name}} leads Solana DEX quote latency at {{best_p50}} (p50, 24h) across Jupiter, Mobula, OpenOcean and Raydium on a rotating trending token basket. Measured live by OpenChainBench from 3 regions."
-status: live
+status: draft
