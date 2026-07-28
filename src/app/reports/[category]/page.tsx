@@ -9,6 +9,8 @@ import {
   REPORT_CATEGORY_META,
 } from "@/lib/reports/loader";
 import { pageMetadata } from "@/lib/page-metadata";
+import { safeJsonLd, buildBreadcrumbJsonLd } from "@/lib/jsonld";
+import { SITE } from "@/data/site";
 
 type Props = { params: Promise<{ category: string }> };
 
@@ -33,9 +35,46 @@ export default async function CategoryPage({ params }: Props) {
   if (!meta) notFound();
 
   const reports = getReportsByCategory(category);
+  const pageUrl = `${SITE.url}/reports/${category}`;
+
+  const breadcrumbLd = {
+    "@context": "https://schema.org",
+    ...buildBreadcrumbJsonLd([
+      { name: "Home", item: SITE.url },
+      { name: "Reports", item: `${SITE.url}/reports` },
+      { name: `${meta.label} Reports`, item: pageUrl },
+    ]),
+  };
+
+  const collectionLd = {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    "@id": `${pageUrl}#collection`,
+    name: `${meta.label} Reports`,
+    description: meta.description,
+    url: pageUrl,
+    numberOfItems: reports.length,
+    hasPart: reports.map((r) => ({
+      "@type": "Article",
+      name: r.title,
+      url: `${SITE.url}/reports/${category}/${r.slug}`,
+      datePublished: r.publishedAt,
+      description: r.summary,
+    })),
+  };
 
   return (
     <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+      <script
+        type="application/ld+json"
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: serialized via safeJsonLd
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumbLd) }}
+      />
+      <script
+        type="application/ld+json"
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: serialized via safeJsonLd
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(collectionLd) }}
+      />
       <nav className="mb-6 flex items-center gap-2 label-mono text-[11px] text-ink-muted">
         <Link href="/reports" className="hover:text-ink transition-colors">
           Reports
