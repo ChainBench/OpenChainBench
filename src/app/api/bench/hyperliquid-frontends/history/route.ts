@@ -17,6 +17,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { getBenchmark } from "@/data/benchmarks";
 import { getArchive } from "@/lib/hl-archive-store";
 import { loadSnapshotFromBlob } from "@/lib/bench-blob";
+import { readMaterialized } from "@/lib/materialize/store";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import type {
   HlArchiveDailyPoint,
@@ -125,10 +126,12 @@ async function buildFromBlobFallback(
   if (window !== "90d" && window !== "180d") return null;
 
   // Load in parallel: slim bench (for panel values + results list) and
-  // raw blob (for series30d which is stripped from the slim cache).
+  // raw blob / Redis (for series30d which is stripped from the slim cache).
   const [bench, snap] = await Promise.all([
     getBenchmark(BENCH_SLUG),
-    loadSnapshotFromBlob(BENCH_SLUG, ""),
+    loadSnapshotFromBlob(BENCH_SLUG, "").then(
+      (s) => s ?? readMaterialized(BENCH_SLUG, "").catch(() => null),
+    ),
   ]);
   if (!bench) return null;
 
@@ -231,8 +234,13 @@ export async function GET(req: NextRequest) {
     const w = b.windows[window];
     if (!w) continue;
     if (w.volume_usd === 0 && w.fees_usd === 0 && w.fills === 0) continue;
+    // Use the OCB slug (b.slug) so the chart can look up by provider slug.
+    // The archive keyed builders by Ethereum address; the chart looks up
+    // by OCB slug (e.g. "phantom-perps"). Fall back to addr only when the
+    // slug is absent (should not happen in prod but defensive).
+    const rowSlug = b.slug || addr;
     rows.push({
-      slug: addr,
+      slug: rowSlug,
       name: b.name,
       volume_usd: w.volume_usd,
       fees_usd: w.fees_usd,
@@ -240,7 +248,7 @@ export async function GET(req: NextRequest) {
       users: w.users,
     });
     if (b.timeseries_daily && b.timeseries_daily.length > 0) {
-      timeseriesBySlug[addr] = b.timeseries_daily;
+      timeseriesBySlug[rowSlug] = b.timeseries_daily;
     }
   }
 
