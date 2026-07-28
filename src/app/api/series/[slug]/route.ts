@@ -240,7 +240,7 @@ export async function GET(
   const origin = `${reqUrl.protocol}//${reqUrl.host}`;
   const absolutize = (p: string) => (p.startsWith("http") ? p : `${origin}${p}`);
 
-  const providers = b.results
+  const rawProviders = b.results
     .filter((p) => seriesMap[p.slug] && seriesMap[p.slug].length > 0)
     .filter((p) => !allowedSlugs || allowedSlugs.has(p.slug))
     .map((p) => {
@@ -255,12 +255,31 @@ export async function GET(
       };
     });
 
+  // Normalize OCB internal units to display-friendly ones for the video
+  // renderer, which appends the unit string as a label and has no knowledge
+  // of OCB's internal conventions:
+  //   "bps" = stored in basis points, site displays as % (÷100) → send "pct" + divide values
+  //   "s"   = stored in milliseconds, site displays as seconds   → send "s"  + divide values
+  //   "pct", "bp", "usd", "count", …                            → pass through unchanged
+  let displayUnit = b.unit;
+  const providers = rawProviders.map((p) => ({ ...p }));
+  if (b.unit === "bps") {
+    displayUnit = "pct";
+    for (const p of providers) {
+      p.values = p.values.map((v) => (v == null ? null : v / 100));
+    }
+  } else if (b.unit === "s") {
+    for (const p of providers) {
+      p.values = p.values.map((v) => (v == null ? null : v / 1000));
+    }
+  }
+
   return NextResponse.json(
     {
       slug: b.slug,
       title: b.title,
       metric: b.metric,
-      unit: b.unit,
+      unit: displayUnit,
       higherIsBetter: b.higherIsBetter,
       range: rangeParam,
       timestamps,
