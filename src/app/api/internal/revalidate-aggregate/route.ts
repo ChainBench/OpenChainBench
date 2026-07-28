@@ -36,5 +36,12 @@ export async function POST(req: Request): Promise<NextResponse> {
   // "default" applies the standard purge semantics for the CDN + ISR
   // cache layers this route is meant to invalidate.
   revalidateTag("bench-aggregate", "default");
-  return NextResponse.json({ revalidated: true, tag: "bench-aggregate" });
+  // Also invalidate per-bench caches so answer detail pages (/answers/[slug])
+  // and benchmark pages refresh from the same generation as the aggregate
+  // surfaces (llms.txt, /api/citable, /answers hub). Without this, per-bench
+  // caches run on their 300s TTL clock independently and answer detail pages
+  // can serve different values than the hub for up to 5 minutes after a
+  // worker publish.
+  revalidateTag("benchmarks", "default");
+  return NextResponse.json({ revalidated: true, tags: ["bench-aggregate", "benchmarks"] });
 }

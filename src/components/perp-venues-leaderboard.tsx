@@ -155,10 +155,9 @@ export function PerpVenuesLeaderboard({ rows }: { rows: PerpVenueRow[] }) {
           </thead>
           <tbody>
             {filtered.map((r, i) => {
-              // GMX v2 lives at /products/gmx in the registry. Other
-              // venues match the cohort slug to the product slug 1:1.
+              // GMX v2's product slug is "gmx"; all others match cohort slug.
               const productHref =
-                r.slug === "gmx-v2" ? "/products/gmx" : `/products/${r.slug}`;
+                r.slug === "gmx-v2" ? "/perp/gmx" : `/perp/${r.slug}`;
               const vor = ratio(r);
               return (
                 <tr
