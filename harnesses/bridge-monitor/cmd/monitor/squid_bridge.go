@@ -169,7 +169,7 @@ func (s *SquidBridge) TestRoute(route TestRoute, amount, amountUsd float64, rawU
 		gasUsd += v
 	}
 
-	costUsd := inUsd - outUsd
+	costUsd := inUsd - outUsd + gasUsd
 	if costUsd < 0 {
 		costUsd = 0
 	}
