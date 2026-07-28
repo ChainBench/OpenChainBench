@@ -28,6 +28,7 @@ export const PERP_VENUE_META: Record<
   hyperliquid: { url: "https://hyperliquid.xyz", chainLabel: "Hyperliquid L1" },
   lighter:     { url: "https://lighter.xyz",     chainLabel: "Lighter L2" },
   "gmx-v2":    { url: "https://gmx.io",          chainLabel: "Arbitrum", productSlug: "gmx" },
+  gains:       { url: "https://gains.trade",     chainLabel: "Arbitrum" },
   dydx:        { url: "https://dydx.trade",      chainLabel: "Cosmos" },
   drift:       { url: "https://drift.trade",     chainLabel: "Solana" },
   vertex:      { url: "https://vertexprotocol.com", chainLabel: "Arbitrum" },
@@ -40,6 +41,7 @@ export const PERP_VENUE_META: Record<
   variational: { url: "https://variational.io",  chainLabel: "Arbitrum" },
   ostium:      { url: "https://ostium.app",      chainLabel: "Arbitrum" },
   grvt:        { url: "https://grvt.io",         chainLabel: "zkSync" },
+  polymarket:  { url: "https://polymarket.com",  chainLabel: "Polygon" },
 };
 
 /**
