@@ -16,6 +16,8 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { getBenchmark } from "@/data/benchmarks";
 import { getArchive } from "@/lib/hl-archive-store";
+import { loadSpecsUncached } from "@/lib/materialize/load";
+import { Prometheus } from "@/lib/prometheus";
 import { clientKey, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 import type {
   HlArchiveDailyPoint,
@@ -42,6 +44,10 @@ function isWindow(v: string | null): v is HlArchiveWindow {
 
 function isLongWindow(w: HlArchiveWindow): w is HlArchiveLongWindow {
   return (HL_ARCHIVE_LONG_WINDOWS as readonly string[]).includes(w);
+}
+
+function escapePromLabelValue(v: string): string {
+  return v.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
 
 function rank(
@@ -110,6 +116,79 @@ async function buildFromProm(
   };
 }
 
+/**
+ * Prom-based fallback for 90d/180d windows when the hl-archive blob is not
+ * yet available. Uses the 30d panels for the leaderboard (best available
+ * approximation) and queries hl_frontend_fees_usd_7d_v2 over the window for
+ * the time-series chart so the trajectory is still meaningful.
+ */
+async function buildFromPromLongWindow(
+  window: HlArchiveLongWindow,
+): Promise<HlArchiveHistoryResponse | null> {
+  // Only 90d and 180d — 1y and all-time require the archive service.
+  if (window !== "90d" && window !== "180d") return null;
+
+  const [bench, specs] = await Promise.all([
+    getBenchmark(BENCH_SLUG),
+    loadSpecsUncached(),
+  ]);
+  if (!bench) return null;
+
+  const spec = specs.find((s) => s.slug === BENCH_SLUG);
+  if (!spec) return null;
+
+  const promUrl = spec.prometheus?.url ?? process.env.PROMETHEUS_URL;
+  if (!promUrl) return null;
+  const prom = new Prometheus(promUrl);
+
+  // Leaderboard: use 30d panels as a proxy for longer windows.
+  const rev30Panel = bench.metricPanels?.find((p) => p.id === "revenue_30d");
+  const vol30Panel = bench.metricPanels?.find((p) => p.id === "volume_30d");
+  const rows: Omit<HlArchiveRankedRow, "rank">[] = [];
+  for (const r of bench.results) {
+    if (r.availability === "unavailable") continue;
+    const fees = rev30Panel?.values[r.slug] ?? r.ms.p50;
+    const volume = vol30Panel?.values[r.slug] ?? 0;
+    if (fees === 0 && volume === 0) continue;
+    rows.push({ slug: r.slug, name: r.name, volume_usd: volume, fees_usd: fees, fills: 0 });
+  }
+
+  // Time-series: query 7d rolling fees over the window. Each point shows
+  // how much a frontend earned in the preceding 7 days — a smooth trend
+  // indicator the chart can render without the archive service.
+  const windowSec = window === "90d" ? 90 * 86_400 : 180 * 86_400;
+  const numPoints = window === "90d" ? 90 : 180;
+  const timeseries_daily: Record<string, HlArchiveDailyPoint[]> = {};
+  const startMs = Date.now() - windowSec * 1000;
+
+  await Promise.all(
+    spec.providers.map(async (p) => {
+      const q = `hl_frontend_fees_usd_7d_v2{builder="${escapePromLabelValue(p.slug)}"}`;
+      const series = await prom.series(q, windowSec, numPoints).catch(() => null);
+      if (!series || series.length === 0) return;
+      const hasData = series.some((v) => v != null && v > 0);
+      if (!hasData) return;
+      timeseries_daily[p.slug] = series.map((v, i) => {
+        const dayMs = startMs + (i * windowSec * 1000) / Math.max(1, numPoints - 1);
+        return {
+          day: new Date(dayMs).toISOString().slice(0, 10),
+          fees: v ?? 0,
+          vol: 0,
+          fills: 0,
+        };
+      });
+    }),
+  );
+
+  return {
+    window,
+    source: "prom",
+    updated_at: bench.lastRunAt,
+    rows: rank(rows),
+    timeseries_daily: Object.keys(timeseries_daily).length > 0 ? timeseries_daily : undefined,
+  };
+}
+
 export async function GET(req: NextRequest) {
   const rl = rateLimit(clientKey(req, "hl-archive-history"), 120, 60, req);
   if (!rl.ok) return tooManyRequests(rl.retryAfterSec);
@@ -137,6 +216,14 @@ export async function GET(req: NextRequest) {
 
   const archive = await getArchive();
   if (!archive) {
+    // Archive blob not ready. Fall back to a Prom-derived approximation for
+    // 90d/180d (uses 30d panels for the leaderboard + 7d rolling metric for
+    // the time-series chart). 1y/all-time require the archive service and
+    // return the original 503 so the UI reverts to the 30d range.
+    const fallback = await buildFromPromLongWindow(window);
+    if (fallback) {
+      return NextResponse.json(fallback, { headers: { "cache-control": "public, s-maxage=120, stale-while-revalidate=300" } });
+    }
     return NextResponse.json(
       {
         error: "archive_pending",
