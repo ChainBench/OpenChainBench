@@ -202,6 +202,28 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "AMM prediction market with a keyless public REST API budgeted at 30 requests per 10 seconds. No order book endpoint and no public WebSocket.",
     twitter: "@MyriadMarkets",
   },
+  predictit: {
+    url: "https://www.predictit.org",
+    description:
+      "CFTC-regulated US political prediction market. Real-money contracts on US elections, legislation and political events. REST API returns market data without authentication; rate-limited to 5 requests per minute.",
+    twitter: "@PredictIt_",
+    longDescription:
+      "PredictIt operates under a CFTC no-action letter and is limited to US political event contracts. Each market is capped at $850 per person per contract. The public REST API at predictit.org/api/marketdata provides market and contract data without authentication but enforces a 5 request per minute rate limit per IP.",
+    features: ["US political markets", "CFTC no-action letter", "Public API", "No auth required for market data"],
+    docs: "https://www.predictit.org/api/marketdata/all",
+    founded: 2014,
+  },
+  smarkets: {
+    url: "https://smarkets.com",
+    description:
+      "UK-regulated peer-to-peer betting exchange with a public CLOB REST API. Covers political, sports and entertainment markets. No authentication required for market data including full order book quotes.",
+    twitter: "@SmarketsHQ",
+    longDescription:
+      "Smarkets is an FCA-regulated UK betting exchange offering peer-to-peer markets on political outcomes, sports and entertainment. The REST API at api.smarkets.com/v3 exposes full order book data (bids and offers) per market contract without authentication. Political market coverage includes UK and US elections with real orderbook depth.",
+    features: ["CLOB order book", "Political and sports markets", "FCA-regulated UK exchange", "No auth for market data"],
+    docs: "https://docs.smarkets.com",
+    founded: 2010,
+  },
 
   // ─── Solana transaction landing services ──────────────────────
   jito: {
