@@ -31,8 +31,6 @@ Latency figures are the p50 over a 24-hour rolling window. Success rate is the f
 
 This report covers data from the [Ethereum RPC bench](/benchmarks/ethereum-rpc), [RPC Reliability bench](/benchmarks/rpc-reliability), [RPC Capabilities bench](/benchmarks/rpc-capabilities), and a selection of per-chain RPC leaderboards. The live cross-chain view across all providers and chains is on the [RPC hub](/rpc).
 
-**Cohort note:** Flashbots Protect was present in earlier drafts of this report and remains active on the live bench pages. It is excluded from the prose here because its primary design goal is send-tx privacy (MEV protection), not read-path performance — comparing it against public read RPCs on latency metrics is the wrong axis. It is benchmarked separately on [mev-protect-rpc](/benchmarks/mev-protect-rpc).
-
 ## The Speed Trap: Why Latency Rankings Mislead
 
 Every "fastest RPC" ranking on the web is a latency ranking. p50 milliseconds, median response time, average latency. The implicit assumption is that a faster response is a better response.
