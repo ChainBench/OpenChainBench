@@ -1,0 +1,72 @@
+slug: polymarket-fees-explained
+question: "What fees does Polymarket charge?"
+benchmark: pm-fee-comparison
+status: live
+
+short_answer: |
+  Polymarket charges a 2% fee on each trade, deducted from the potential payout. A YES share bought
+  at $0.50 pays out $0.98 (not $1.00) if it wins. The fee is flat across all market types and price
+  points, with no maker rebate on the public CLOB. Compared to traditional sportsbooks (vig roughly
+  4-10%), Polymarket is competitive for active traders.
+
+intro: |
+  The Polymarket fee structure is simpler than most trading venues but easy to misread if you expect
+  a commission model. Polymarket does not charge a percentage of your buy price. Instead, it charges
+  a 2% fee on the potential payout of each winning position. If you buy a YES share at $0.50 and it
+  resolves YES, your share pays $0.98, not $1.00. The 2 cents per share is the fee.
+
+  This matters because the fee compounds on every position you enter and exit. A trader who buys YES
+  at $0.40, watches the market move to $0.70, and sells pays the 2% fee twice: once on the $0.70
+  payout they would have received if they held to resolution, and once on the position entered by
+  whoever bought their shares. The round-trip cost for active traders who do not hold to resolution
+  is therefore higher than the headline 2% suggests.
+
+  There is no maker rebate on Polymarket's public CLOB. Limit order providers and market order takers
+  pay the same 2% fee. This is different from centralized exchanges that offer maker rebates to
+  incentivize liquidity provision.
+
+  The 2% fee funds the Polymarket protocol and covers UMA oracle costs, which are the onchain
+  infrastructure costs of resolving markets through an optimistic oracle and a potential dispute
+  process. The fee has been stable at 2% since Polymarket's relaunch in 2020.
+
+  OpenChainBench's pm-fee-comparison benchmark tracks the effective fee rate across all five major
+  prediction market venues, normalized to basis points of notional so Polymarket's payout-percentage
+  model and Kalshi's per-contract schedule can be compared on the same axis.
+
+methodology: |
+  The pm-fee-comparison bench normalizes all venue fee structures to effective basis points of notional
+  at three representative contract price points: $0.50 (at-the-money), $0.05 or $0.95 (near-certainty),
+  and $0.30 or $0.70 (mid-skewed). For Polymarket, the 2% fee on potential payout translates to a flat
+  200 basis points at all price points because the fee percentage does not vary with contract price.
+  For a $0.50 contract: 2% of $1.00 payout = $0.02 fee = 200 bps of $1.00 notional. For a $0.10
+  contract: 2% of $1.00 payout = $0.02 fee = 20 cents on a 10-cent position, which is 200 bps of
+  notional but 20% of the money at risk. The bench reports both bps-of-notional and pct-of-position
+  so readers can compare on whichever axis matters to their trading strategy.
+
+limitations:
+  - "The 2% fee is on potential payout, not on the dollar amount you spend. For low-priced contracts (10 cents or less), the fee as a percentage of your actual outlay is much higher than 2%. A $0.05 contract paying $0.02 fee is a 40% fee on your capital at risk."
+  - "Round-trip costs are higher than 2% for traders who exit positions before resolution. Each trade pays 2% separately, so buying and selling before resolution costs roughly 4% of notional total, ignoring spread."
+  - "No maker rebate means Polymarket CLOB liquidity is provided at a disadvantage compared to venues that pay rebates to limit order providers. Thin books on smaller markets are a structural consequence."
+  - "The pm-fee-comparison bench is currently in draft status. The normalized fee figures shown here are computed from Polymarket's published fee schedule, not from live harness data. The harness launches when the bench reaches live status."
+  - "Fee schedules can change without notice. Polymarket has kept the 2% rate stable since 2020, but this is not guaranteed. Monitor the bench changelog for any changes."
+
+faq:
+  - q: "What is the Polymarket fee?"
+    a: "Polymarket charges a 2% fee on each trade, deducted from the potential payout of winning shares. A YES share at $0.50 pays $0.98 if it wins, not $1.00. A YES share at $0.10 pays $0.98 if it wins (the fee is 2% of the $1.00 resolution value, not 2% of your $0.10 purchase price). The fee applies to both sides of every trade and is flat across all market types."
+  - q: "How does the Polymarket fee compare to sportsbooks?"
+    a: "Traditional US sportsbooks charge a vig (also called juice or overround) of roughly 4-10% of the amount wagered, built into the odds. A standard -110 line implies a 4.5% vig. Polymarket's 2% fee on notional is competitive at mid-range contract prices, particularly for at-the-money contracts where the fee as a percentage of your position is lowest. For near-certainty contracts (very cheap YES or NO shares), the 2% fee on the full $1.00 resolution value represents a much higher percentage of your actual outlay."
+  - q: "Is there a maker rebate on Polymarket?"
+    a: "No. Polymarket's public CLOB does not offer maker rebates. Limit order providers and market order takers both pay the same 2% fee on potential payout. This is unusual among CLOB venues: most CLOB exchanges pay rebates to liquidity providers and charge higher fees to takers to incentivize order book depth. Polymarket's flat fee structure keeps the model simple but means large traders cannot offset costs by providing liquidity."
+  - q: "How do Kalshi fees compare to Polymarket fees?"
+    a: "Kalshi charges a per-contract dollar fee on a published schedule that scales with contract price and is capped at extremes. At mid-range prices ($0.40-$0.60), Kalshi's effective fee is around $0.07 per contract, which on a $0.50 contract equals 14% of your position outlay, far higher than Polymarket's 2% of notional. However, Kalshi's fee cap means near-certainty contracts (very low or very high probability) are very cheap in percentage terms, while Polymarket's flat 2% of notional remains the same. The fee comparison inverts depending on the market price. The pm-fee-comparison bench shows the cross-over point on the leaderboard."
+  - q: "Do Polymarket fees change?"
+    a: "Polymarket has maintained a 2% fee since its relaunch in 2020. The fee is set by the Polymarket protocol and has not changed publicly in that period. There is no announced schedule for fee changes, and any change would be noted in the pm-fee-comparison bench changelog. For live fee monitoring, the benchmark polls Polymarket's published fee schedule hourly."
+
+related:
+  - polymarket-vs-kalshi-fees
+  - is-polymarket-safe
+  - best-prediction-market-for-sports
+  - polymarket-vs-kalshi-resolution-speed
+
+seo_title: "What fees does Polymarket charge? The 2% rule explained"
+seo_description: "Polymarket charges a flat 2% fee on potential payout per trade. A YES share at $0.50 pays $0.98 if it wins. Full comparison to Kalshi and sportsbooks, measured by OpenChainBench."

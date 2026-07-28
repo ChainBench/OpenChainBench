@@ -32,6 +32,9 @@ related:
   - polymarket-vs-kalshi-resolution-speed
   - which-prediction-market-data-api-is-the-freshest
   - which-prediction-market-has-the-strictest-rate-limits
+  - best-prediction-market-for-sports
+  - best-prediction-market-for-politics
+  - is-polymarket-safe
 
 seo_title: "How long does Polymarket take to resolve? Measured onchain"
 seo_description: "Median Polymarket resolution is {{p50:all-markets}} from first outcome proposal to onchain payout, p99 {{p99:all-markets}}. Sports vs crypto vs politics, disputes and the pending backlog, measured live from Polygon."

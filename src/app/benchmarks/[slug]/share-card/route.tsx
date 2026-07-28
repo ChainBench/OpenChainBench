@@ -693,7 +693,10 @@ async function renderRanking(
   colors: Map<string, string>,
   chainLabel?: string | null
 ) {
-  const sorted = sortByP50(benchmark);
+  // Bar chart layout breaks above ~12 bars (1200px / 104 = 11px per bar crashes Satori).
+  // Leaderboard template handles large rosters with its MAX_ROWS cap.
+  const MAX_BARS = 12;
+  const sorted = sortByP50(benchmark).slice(0, MAX_BARS);
   const maxP50 = Math.max(...sorted.map((r) => r.ms.p50)) || 1;
   const count = sorted.length;
   // Scale type sizes down when the bench has many providers, otherwise
