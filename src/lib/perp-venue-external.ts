@@ -256,32 +256,37 @@ type HlAssetCtx = {
 };
 
 async function fetchHyperliquidStats(): Promise<PerpVenueExternalStats> {
-  const data = await jfPost<[{ universe: { name: string }[] }, HlAssetCtx[]]>(
-    "https://api.hyperliquid.xyz/info",
-    { type: "metaAndAssetCtxs" },
-  );
-  if (!data) return {};
+  const [data, feesLlama, volLlama] = await Promise.all([
+    jfPost<[{ universe: { name: string }[] }, HlAssetCtx[]]>(
+      "https://api.hyperliquid.xyz/info",
+      { type: "metaAndAssetCtxs" },
+    ),
+    jf<LlamaChartResp>("https://api.llama.fi/summary/fees/hyperliquid"),
+    jf<LlamaChartResp>("https://api.llama.fi/summary/dexs/hyperliquid"),
+  ]);
 
-  const [meta, ctxs] = data;
-  const vol24h = ctxs.reduce(
-    (s, c) => s + (parseFloat(c.dayNtlVlm ?? "0") || 0),
-    0,
-  );
-  const totalOI = ctxs.reduce(
-    (s, c) => s + (parseFloat(c.openInterest ?? "0") || 0),
-    0,
-  );
+  const extraKpis: { label: string; value: string }[] = [];
+  if (data) {
+    const [meta, ctxs] = data;
+    const vol24h = ctxs.reduce((s, c) => s + (parseFloat(c.dayNtlVlm ?? "0") || 0), 0);
+    const totalOI = ctxs.reduce((s, c) => s + (parseFloat(c.openInterest ?? "0") || 0), 0);
+    if (vol24h > 0) extraKpis.push({ label: "Volume 24h", value: fmtUsdShort(vol24h) });
+    if (totalOI > 0) extraKpis.push({ label: "Open Interest", value: fmtUsdShort(totalOI) });
+    extraKpis.push({ label: "Listed assets", value: String(meta.universe?.length ?? ctxs.length) });
+  }
 
-  const extraKpis: { label: string; value: string }[] = [
-    { label: "Volume 24h", value: fmtUsdShort(vol24h) },
-    { label: "Open Interest", value: fmtUsdShort(totalOI) },
-    {
-      label: "Listed assets",
-      value: String(meta.universe?.length ?? ctxs.length),
-    },
-  ];
+  const totalFeesUsd = feesLlama?.totalAllTime;
+  const totalVolumeUsd = volLlama?.totalAllTime;
 
-  return { extraKpis };
+  const dailyFeesChart: DailyBar[] = (feesLlama?.totalDataChart ?? [])
+    .slice(-30)
+    .map(([ts, v]) => ({ date: new Date(ts * 1000).toISOString().split("T")[0], valueUsd: v }));
+
+  const dailyVolumeChart: DailyBar[] = (volLlama?.totalDataChart ?? [])
+    .slice(-30)
+    .map(([ts, v]) => ({ date: new Date(ts * 1000).toISOString().split("T")[0], valueUsd: v }));
+
+  return { totalVolumeUsd, totalFeesUsd, dailyVolumeChart, dailyFeesChart, extraKpis };
 }
 
 // ---------------------------------------------------------------------------
@@ -535,6 +540,54 @@ async function fetchPolymarketStats(): Promise<PerpVenueExternalStats> {
 }
 
 // ---------------------------------------------------------------------------
+// Drift — DeFiLlama fees + volume
+// ---------------------------------------------------------------------------
+
+async function fetchDriftStats(): Promise<PerpVenueExternalStats> {
+  const [fees, vol] = await Promise.all([
+    jf<LlamaChartResp>("https://api.llama.fi/summary/fees/drift"),
+    jf<LlamaChartResp>("https://api.llama.fi/summary/dexs/drift"),
+  ]);
+
+  const totalFeesUsd = fees?.totalAllTime;
+  const totalVolumeUsd = vol?.totalAllTime;
+
+  const dailyFeesChart: DailyBar[] = (fees?.totalDataChart ?? [])
+    .slice(-30)
+    .map(([ts, v]) => ({ date: new Date(ts * 1000).toISOString().split("T")[0], valueUsd: v }));
+
+  const dailyVolumeChart: DailyBar[] = (vol?.totalDataChart ?? [])
+    .slice(-30)
+    .map(([ts, v]) => ({ date: new Date(ts * 1000).toISOString().split("T")[0], valueUsd: v }));
+
+  return { totalVolumeUsd, totalFeesUsd, dailyVolumeChart, dailyFeesChart };
+}
+
+// ---------------------------------------------------------------------------
+// EdgeX — DeFiLlama fees + volume
+// ---------------------------------------------------------------------------
+
+async function fetchEdgexStats(): Promise<PerpVenueExternalStats> {
+  const [fees, vol] = await Promise.all([
+    jf<LlamaChartResp>("https://api.llama.fi/summary/fees/edgex"),
+    jf<LlamaChartResp>("https://api.llama.fi/summary/dexs/edgex"),
+  ]);
+
+  const totalFeesUsd = fees?.totalAllTime;
+  const totalVolumeUsd = vol?.totalAllTime;
+
+  const dailyFeesChart: DailyBar[] = (fees?.totalDataChart ?? [])
+    .slice(-30)
+    .map(([ts, v]) => ({ date: new Date(ts * 1000).toISOString().split("T")[0], valueUsd: v }));
+
+  const dailyVolumeChart: DailyBar[] = (vol?.totalDataChart ?? [])
+    .slice(-30)
+    .map(([ts, v]) => ({ date: new Date(ts * 1000).toISOString().split("T")[0], valueUsd: v }));
+
+  return { totalVolumeUsd, totalFeesUsd, dailyVolumeChart, dailyFeesChart };
+}
+
+// ---------------------------------------------------------------------------
 // Dispatch
 // ---------------------------------------------------------------------------
 
@@ -567,6 +620,10 @@ async function fetchExternalRaw(
         return await fetchParadexStats();
       case "polymarket":
         return await fetchPolymarketStats();
+      case "drift":
+        return await fetchDriftStats();
+      case "edgex":
+        return await fetchEdgexStats();
       default:
         return {};
     }
