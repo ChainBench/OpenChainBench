@@ -217,6 +217,35 @@ const MDX_COMPONENTS = {
   ),
 
   hr: () => <div className="my-12 h-px bg-rule" />,
+
+  table: (props: React.HTMLAttributes<HTMLTableElement>) => (
+    <div className="my-8 overflow-x-auto">
+      <table className="w-full text-[13px] label-mono border border-rule" {...props} />
+    </div>
+  ),
+
+  thead: (props: React.HTMLAttributes<HTMLTableSectionElement>) => (
+    <thead className="bg-[var(--color-paper-soft)] border-b border-rule" {...props} />
+  ),
+
+  tbody: (props: React.HTMLAttributes<HTMLTableSectionElement>) => (
+    <tbody className="divide-y divide-rule" {...props} />
+  ),
+
+  tr: (props: React.HTMLAttributes<HTMLTableRowElement>) => (
+    <tr className="hover:bg-[var(--color-paper-soft)] transition-colors" {...props} />
+  ),
+
+  th: (props: React.ThHTMLAttributes<HTMLTableCellElement>) => (
+    <th
+      className="px-4 py-2.5 text-left text-[10px] uppercase tracking-[0.18em] text-ink-faint font-normal"
+      {...props}
+    />
+  ),
+
+  td: (props: React.TdHTMLAttributes<HTMLTableCellElement>) => (
+    <td className="px-4 py-2.5 text-ink-soft tabular-nums" {...props} />
+  ),
 };
 
 function reportJsonLd(report: ReturnType<typeof getReport>) {
