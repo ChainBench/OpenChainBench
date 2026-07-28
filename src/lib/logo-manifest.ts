@@ -66,6 +66,8 @@ const RAW: Record<string, string> = {
   limitless: "/logos/limitless.png",
   manifold: "/logos/manifold.svg",
   myriad: "/logos/myriad.png",
+  predictit: "/logos/predictit.svg",
+  smarkets: "/logos/smarkets.svg",
 
   // ─── Perp DEX cohort (perps hub /perps) ───
   drift: "/logos/drift.png",
