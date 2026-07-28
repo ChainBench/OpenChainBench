@@ -117,7 +117,7 @@ providers:
       p90: 1000 * histogram_quantile(0.90, sum(rate(pmapi_ws_connect_to_snapshot_seconds_bucket{source="direct",venue="polymarket"}[24h])) by (le))
       p99: 1000 * histogram_quantile(0.99, sum(rate(pmapi_ws_connect_to_snapshot_seconds_bucket{source="direct",venue="polymarket"}[24h])) by (le))
       mean: 1000 * sum(rate(pmapi_ws_connect_to_snapshot_seconds_sum{source="direct",venue="polymarket"}[24h])) / sum(rate(pmapi_ws_connect_to_snapshot_seconds_count{source="direct",venue="polymarket"}[24h]))
-      success: 1
+      success: clamp_max(sum(rate(pmapi_ws_connect_to_snapshot_seconds_count{source="direct",venue="polymarket"}[24h])) / (sum(rate(pmapi_ws_connect_to_snapshot_seconds_count{source="direct",venue="polymarket"}[24h])) + sum(rate(pmapi_ws_disconnects_total{source="direct",venue="polymarket"}[24h]))), 1)
       sample_size: sum(increase(pmapi_ws_connect_to_snapshot_seconds_count{source="direct",venue="polymarket"}[24h]))
       series: 1000 * histogram_quantile(0.50, sum(rate(pmapi_ws_connect_to_snapshot_seconds_bucket{source="direct",venue="polymarket"}[1h])) by (le))
 
