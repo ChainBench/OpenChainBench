@@ -63,13 +63,34 @@ const getSeriesMapCached = unstable_cache(
       const specs = await loadSpecsUncached();
       const spec = specs.find((s) => s.slug === slug);
       if (!spec || spec.status !== "live") return null;
-      const b = await specToBenchmark(spec, { chain, region, kind, venue });
+
       if (panelId) {
-        const panel = b.metricPanels?.find((p) => p.id === panelId);
-        return (range === "7d"
-          ? panel?.seriesByProvider7d
-          : panel?.seriesByProvider30d) ?? null;
+        // Targeted Prom query for just this panel's metric instead of the
+        // full specToBenchmark (which fires O(providers × panels) queries
+        // and times out on large benches like hyperliquid-frontends).
+        const panel = spec.metric_panels?.find((mp) => mp.id === panelId);
+        if (!panel) return null;
+        const promUrl = spec.prometheus?.url ?? process.env.PROMETHEUS_URL;
+        if (!promUrl) return null;
+        const prom = new Prometheus(promUrl);
+        const windowSec = range === "7d" ? 7 * 86_400 : 30 * 86_400;
+        const numPoints = range === "7d" ? 84 : 60;
+        const labelKey = panel.label_key ?? "builder";
+        const result: Record<string, (number | null)[]> = {};
+        await Promise.all(
+          spec.providers.map(async (p) => {
+            const sel = `${labelKey}="${escapePromLabelValue(p.slug)}"`;
+            const q = panel.metric.includes("{")
+              ? panel.metric.replace("{", `{${sel},`)
+              : `${panel.metric}{${sel}}`;
+            const s = await prom.series(q, windowSec, numPoints);
+            if (s && s.length > 0) result[p.slug] = s;
+          }),
+        );
+        return Object.keys(result).length > 0 ? result : null;
       }
+
+      const b = await specToBenchmark(spec, { chain, region, kind, venue });
       return (range === "7d" ? b.extras.series7d : b.extras.series30d) ?? null;
     }
 
@@ -114,8 +135,8 @@ const getSeriesMapCached = unstable_cache(
 
     return Object.keys(result).length > 0 ? result : null;
   },
-  // v6: added 90d / 1y extended-range support with direct Prom queries.
-  ["series-by-range-v6"],
+  // v7: targeted Prom fallback for panel 7d/30d misses (avoids specToBenchmark O(providers×panels)).
+  ["series-by-range-v7"],
   { revalidate: 300, tags: ["benchmarks"] },
 );
 

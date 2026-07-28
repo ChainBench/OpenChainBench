@@ -478,8 +478,8 @@ function ModalBody({
           {/* Metric panel picker. Shown for benches with companion metrics
               (e.g. hyperliquid-frontends: Revenue / Volume / Users / ...). */}
           {panelOptions.length > 0 && (
-            <div role="group" aria-label="Select metric view">
-              <Label>View</Label>
+            <div role="group" aria-label="Select metric">
+              <Label>Metric</Label>
               <div className="inline-flex flex-wrap gap-1 rounded-md border border-rule p-1 bg-paper-2">
                 <SegmentButton
                   active={!panelId}
