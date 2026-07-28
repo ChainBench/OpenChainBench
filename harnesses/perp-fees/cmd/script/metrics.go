@@ -121,8 +121,24 @@ func init() {
 
 func recordSample(s PerpSample) {
 	if s.Err != "" {
-		fetchErrorsCtr.WithLabelValues(s.Venue, s.Asset, classifyErr(s.Err)).Inc()
+		errType := classifyErr(s.Err)
+		fetchErrorsCtr.WithLabelValues(s.Venue, s.Asset, errType).Inc()
 		healthGauge.WithLabelValues(s.Venue, s.Asset).Set(0)
+		// Permanent failures (asset delisted, unsupported venue) must delete
+		// the gauge series so stale values don't persist as ghost metrics.
+		// Transient failures (timeout, rate limit, server error) intentionally
+		// keep the last good value so a brief outage doesn't blank the board.
+		if errType == "not_found" {
+			allInGauge.DeleteLabelValues(s.Venue, s.Asset)
+			spreadGauge.DeleteLabelValues(s.Venue, s.Asset)
+			takerFeeGauge.DeleteLabelValues(s.Venue, s.Asset)
+			fundingGauge.DeleteLabelValues(s.Venue, s.Asset)
+			fetchLatencyGauge.DeleteLabelValues(s.Venue, s.Asset)
+			lastRefreshGauge.DeleteLabelValues(s.Venue, s.Asset)
+			for _, n := range tierNotionals {
+				allInTierGauge.DeleteLabelValues(s.Venue, s.Asset, notionalLabel(n))
+			}
+		}
 		return
 	}
 	takerFeeGauge.WithLabelValues(s.Venue, s.Asset).Set(s.TakerFeeBps)
@@ -149,6 +165,8 @@ func recordSample(s PerpSample) {
 
 func classifyErr(msg string) string {
 	switch {
+	case contains(msg, "asset_not_found") || contains(msg, "unsupported_venue"):
+		return "not_found"
 	case contains(msg, "timeout"):
 		return "timeout"
 	case contains(msg, "401") || contains(msg, "403"):
