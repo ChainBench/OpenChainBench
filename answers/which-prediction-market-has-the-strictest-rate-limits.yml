@@ -1,7 +1,7 @@
 slug: which-prediction-market-has-the-strictest-rate-limits
 question: "Which prediction market API has the strictest rate limits?"
 short_answer: |
-  {{best_name}} currently posts the lowest warm book endpoint latency at {{best_p50}} (p50, 24h) across Polymarket, Kalshi, Limitless, Manifold and Myriad, measured live by OpenChainBench with a daily throttle ramp from 3 regions.
+  Myriad documents the tightest published rate limit in the cohort at 30 requests per 10 seconds. Polymarket has no hard 429 threshold at polite rates — its Cloudflare front queues bursts and adds latency instead of returning errors. Kalshi runs a documented token bucket per access tier. Live warm-book p50 latency and daily throttle-ramp results for all five venues at openchainbench.com/benchmarks/pm-rate-limits.
 
 benchmark: pm-rate-limits
 
@@ -40,5 +40,5 @@ related:
   - which-perp-dex-has-the-lowest-fees
 
 seo_title: "Which prediction market API has the strictest rate limits in 2026?"
-seo_description: "{{best_name}} posts the lowest warm book endpoint latency at {{best_p50}} (p50, 24h) across Polymarket, Kalshi, Limitless, Manifold and Myriad. Daily throttle ramp from 3 regions."
+seo_description: "Myriad has the strictest documented rate limit in the cohort (30 req/10s). Polymarket queues via Cloudflare, Kalshi uses a token bucket per tier. Live throttle ramp and warm-book latency for all five venues at OpenChainBench."
 status: live

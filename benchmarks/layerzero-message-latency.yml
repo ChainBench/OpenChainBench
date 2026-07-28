@@ -42,9 +42,6 @@ abstract: |
   recorded in a per-source-chain histogram. The p50/p90/p99 shown
   here are computed via Prometheus `histogram_quantile` over the
   last 24 hours.
-
-  See cross-chain-messaging-latency for the side-by-side comparison across all four end-to-end protocols on the same shared observation stack.
-
 methodology:
   - "Data source: `https://scan.layerzero-api.com/v1/messages/latest?limit=150`, the public LayerZero Scan API. Polled every 60 seconds, 2 pages per poll (cursor via `nextToken`)."
   - "Latency definition: `destination.tx.blockTimestamp - source.tx.blockTimestamp` from a LayerZero message row with `status.name: DELIVERED`. Both timestamps are Unix seconds from the source and destination chain blocks respectively."
@@ -54,7 +51,7 @@ methodology:
   - "Guard: samples with delta `< 0` or `> 30 min` are dropped (clock skew, stuck messages re-executed later)."
   - "No canary transactions: this bench observes organic LayerZero traffic (~250 messages/hour network-wide). No wallet is funded, no gas is paid."
   - "Scope: LayerZero-supported source chains with mainnet traffic in the observation window. LayerZero exposes many exotic chains (orderly, flare, ape, robinhood) that show up as separate rows once volume is non-trivial; low-traffic sources will have wide error bars."
-  - "Fair-comparison caveat: LayerZero DVNs sign pre-finality by default, so end-to-end delivery excludes the source-chain finality wait that finality-aware networks (Chainlink CCIP, Axelar on Ethereum-source) impose. Comparing raw numbers to those on ETH-source lanes is not apples-to-apples; the meta-bench (cross-chain-messaging-latency) documents the tradeoff."
+  - "Fair-comparison caveat: LayerZero DVNs sign pre-finality by default, so end-to-end delivery excludes the source-chain finality wait that finality-aware networks (Chainlink CCIP, Axelar on Ethereum-source) impose. Comparing raw numbers to those on ETH-source lanes is not apples-to-apples."
 
 findings:
   - "{{best_name}} currently leads LayerZero end-to-end delivery at {{best_p50}} (source-tx to destination execution p50, 24h) across measured source chains."

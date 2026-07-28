@@ -1,7 +1,7 @@
 slug: drpc-vs-publicnode-vs-1rpc
 question: "dRPC vs PublicNode vs 1RPC, which no-key public RPC is fastest?"
 short_answer: |
-  OpenChainBench ranks dRPC, PublicNode and 1RPC alongside 12 other no-key public RPCs on identical eth_getBlockByNumber probes from three regions across 10 EVM chains. Aggregate leaders on the full 15-provider board are often chain-official gateways (Binance, Base, Avalanche) rather than the multi-chain trio, and 1RPC was delisted from the leaderboard 2026-07-09 for a sustained sub-13 percent success rate. Live per chain and per region ranking at openchainbench.com/benchmarks/rpc-capabilities.
+  Between the three providers, dRPC and PublicNode trade the top two spots by chain and region; 1RPC was delisted 2026-07-09 for a sustained sub-13% success rate and is pinned below the ranked table. On the wider 15-provider board, chain-official gateways (Binance, Base, Avalanche) often post faster aggregate p50. Live per-chain and per-region ranking at openchainbench.com/benchmarks/rpc-capabilities.
 
 benchmark: rpc-capabilities
 
