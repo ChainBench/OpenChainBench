@@ -373,6 +373,34 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Cross-chain intent protocol using the DLN solver network. Liquidity is filled by solvers on the destination chain, no wrapped assets or LP pools.",
     twitter: "@deBridgeFinance",
   },
+  across: {
+    url: "https://across.to",
+    description:
+      "Optimistic cross-chain bridge by Risk Labs. Intents are filled by relayers who front liquidity on the destination, repaid from a canonical hub pool. Settlement is typically sub-30 seconds on liquid corridors.",
+    twitter: "@AcrossProtocol",
+    docs: "https://docs.across.to",
+  },
+  mayan: {
+    url: "https://mayan.finance",
+    description:
+      "Cross-chain swap protocol using Wormhole messaging. Routes trades via a solver network (Mayan Swift) with optimistic confirmation, covering EVM and Solana corridors.",
+    twitter: "@MayanFinance",
+    docs: "https://docs.mayan.finance",
+  },
+  squid: {
+    url: "https://squidrouter.com",
+    description:
+      "Cross-chain swap and liquidity routing built on Axelar. The Squid Router API sources routes across EVM chains via Axelar GMP, covering swaps and bridges in a single call.",
+    twitter: "@squidrouter",
+    docs: "https://docs.squidrouter.com",
+  },
+  socket: {
+    url: "https://socket.tech",
+    description:
+      "Cross-chain interoperability protocol and bridge aggregator. The Socket API routes bridging and swap transactions across major EVM chains via underlying bridges including Across, Stargate, and CCTP.",
+    twitter: "@SocketDotTech",
+    docs: "https://docs.socket.tech",
+  },
   "near-intents": {
     url: "https://near-intents.org",
     description:
