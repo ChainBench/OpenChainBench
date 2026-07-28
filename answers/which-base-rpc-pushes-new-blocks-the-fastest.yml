@@ -1,0 +1,39 @@
+slug: which-base-rpc-pushes-new-blocks-the-fastest
+question: "Which Base RPC pushes new blocks the fastest over WebSocket?"
+short_answer: |
+  {{best_name}} pushes Base newHeads the fastest at {{best_p50}} lag versus the earliest provider in the cohort (p50, 24h), measured per block by OpenChainBench across {{count}} keyless WebSocket providers (PublicNode, dRPC) from a persistent eu-west connection.
+
+benchmark: ws-head-latency-base
+
+intro: |
+  Base blocks land every 2 seconds, six times more frequently than Ethereum. Any real-time bot on Base, whether a perp keeper, MEV searcher or live dashboard, inherits its provider's head push pipeline six times as often. A multi-second p99 on Ethereum is annoying; on Base it means routinely missing an entire block cycle. This page races the two keyless Base WebSocket endpoints (PublicNode and dRPC) using the same relative scoring as the Ethereum sibling: one persistent eth_subscribe("newHeads") WebSocket per provider from the same eu-west host, earliest arrival per block sets T0, every other provider's lag is arrival minus T0. Tenderly does not expose a keyless Base WebSocket path; mainnet.base.org, Blast, LlamaRPC, BlockPI and Ankr all reject a keyless handshake.
+
+methodology: |
+  One persistent eth_subscribe("newHeads") WebSocket per provider from the same eu-west host; each frame is timestamped on receipt. Per block, the earliest arrival defines T0. Each provider's sample is arrival(N) minus T0 in milliseconds. The cohort closes 5 seconds after the first arrival; a provider arriving after that is scored as a missed block. p50, p90 and p99 are computed via Prometheus histogram_quantile over the 24h rate. Base's 2-second cadence generates roughly 43,000 samples per 24h per provider, versus ~7,200 on Ethereum, so the distribution is well-populated. Connection discipline: client ping every 30 seconds, 90-second head watchdog forcing reconnect on silent subscription drop, exponential-backoff reconnects.
+
+limitations:
+  - "Relative, not absolute. The lag measured is between providers over the same network path, not absolute chain-to-client latency. The ordering and the spread transfer to your integration; the absolute numbers shift with your geography."
+  - "Single vantage point (eu-west). Providers whose infrastructure is US-centric may be disadvantaged relative to what a US-based integration would see."
+  - "Only 2 keyless providers in V1. Tenderly does not expose a keyless Base WebSocket; other gateways reject keyless handshakes. The cohort expands when new keyless paths are verified."
+  - "Win rate and coverage are the robust readings. A provider with a tight p50 that skips blocks loses on the success column rather than hiding in the latency percentiles."
+
+faq:
+  - q: "Which Base RPC delivers newHeads first over WebSocket?"
+    a: "{{best_name}} currently wins most per-block races at {{best_p50}} lag versus the earliest provider (p50, 24h) across {{count}} measured keyless providers. The leaderboard re-scores every ~2 seconds on each Base block."
+  - q: "Why does Base WebSocket latency matter more than Ethereum's?"
+    a: "Base produces a block every 2 seconds; Ethereum every 12. A keeper or MEV searcher wired to a provider that trails by 500 ms misses a meaningful fraction of Base blocks, versus a smaller share on Ethereum's slower cadence. The p99 column is especially important: a multi-second p99 on Base means your app routinely learns about a new block an entire block cycle late."
+  - q: "Why are only 2 providers listed?"
+    a: "V1 measures the keyless tier only: WebSocket endpoints anyone can open without an account. Tenderly does not expose a keyless Base WebSocket path at the time of ship. mainnet.base.org, Blast, LlamaRPC, BlockPI and Ankr all reject a keyless WebSocket handshake. Keyed providers join when contributor keys are wired via environment variables."
+  - q: "Is this the same as Base block time?"
+    a: "No. Base's block interval is fixed at 2 seconds. WebSocket head lag is the additional time between the network producing a block and your RPC provider pushing it to a subscribed client. The lag measured here is relative to the fastest keyless provider observed from eu-west, not absolute."
+  - q: "How does Base WebSocket latency compare to Ethereum?"
+    a: "Cross-chain comparison of absolute lag numbers is not meaningful because block cadences differ. The relative ordering between providers is comparable: if PublicNode leads dRPC by X ms on Ethereum, the gap on Base may differ depending on each provider's Base-specific infrastructure. Use each per-chain leaderboard on its own terms."
+
+related:
+  - what-is-the-fastest-free-base-rpc
+  - which-ethereum-rpc-pushes-new-blocks-the-fastest
+  - what-is-the-fastest-free-arbitrum-rpc
+
+seo_title: "Which Base RPC pushes new blocks the fastest over WebSocket? 2026"
+seo_description: "{{best_name}} leads Base WebSocket newHeads push at {{best_p50}} lag (p50, 24h) across {{count}} keyless providers. Live per-block race by OpenChainBench from eu-west."
+status: live

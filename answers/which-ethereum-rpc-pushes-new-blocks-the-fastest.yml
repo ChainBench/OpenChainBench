@@ -1,0 +1,41 @@
+slug: which-ethereum-rpc-pushes-new-blocks-the-fastest
+question: "Which Ethereum RPC pushes new blocks the fastest over WebSocket?"
+short_answer: |
+  {{best_name}} pushes Ethereum newHeads the fastest at {{best_p50}} lag versus the earliest provider in the cohort (p50, 24h), measured per block by OpenChainBench across {{count}} keyless WebSocket providers (PublicNode, dRPC, Tenderly, OnFinality) from a persistent eu-west connection.
+
+benchmark: ws-head-latency-ethereum
+
+intro: |
+  Every trading bot, MEV searcher, liquidation keeper and live dashboard that subscribes to eth_subscribe("newHeads") cares about one number: how many milliseconds after Ethereum produces a block does my RPC provider push it to me? Marketing pages say "real-time WebSocket streaming" on all of them. This page says who delivers block N first and by how much the others trail. The harness holds one persistent WebSocket per keyless provider from the same eu-west host, timestamps every newHeads frame on receipt, and scores each block as a race: the earliest arrival sets T0, every other provider's lag is its arrival minus T0. Because the measurement is relative, the winner reads near zero by construction; the informative numbers are win rate, the trailers' lag distributions, and gap counts for blocks a live provider silently missed.
+
+methodology: |
+  One persistent eth_subscribe("newHeads") WebSocket per provider from the same eu-west host; each frame is timestamped on receipt. Per block, the earliest arrival across all providers defines T0. Each provider's sample is arrival(N) minus T0 in milliseconds. The cohort closes 5 seconds after the first arrival; a provider arriving after that is scored as a missed block (ws_block_gap_total), not as a huge latency sample. p50, p90 and p99 are computed via Prometheus histogram_quantile over the 24h rate. Connection discipline: client ping every 30 seconds, read deadline 60 seconds, 90-second head watchdog that forces a reconnect when a provider keeps the heartbeat alive but silently drops the subscription. Keyless providers at launch: PublicNode, dRPC, Tenderly, OnFinality. Keyed providers join when contributor keys are wired via environment variables.
+
+limitations:
+  - "Relative, not absolute. The measurement is the lag between providers over the same network path, not absolute chain-to-client latency. A provider that trails by 300 ms here trails by 300 ms from your deployment if you are in the same region; the absolute numbers shift with your geography."
+  - "Single vantage point (eu-west). A provider whose nearest edge is far from Amsterdam is disadvantaged; a us-east probe is planned as a second vantage before cross-region claims are made."
+  - "Win rate and coverage are the robust readings. A provider can look decent on median lag while silently missing blocks; the success column (blocks seen versus cohort maximum) and ws_block_gap_total keep that visible."
+  - "Keyed providers (Alchemy, Infura, QuickNode) are not yet in the keyless cohort. They join when contributor keys are wired; expect their absolute numbers to be lower than the keyless floor shown here."
+  - "A provider could theoretically pre-announce unvalidated heads to win the race. Elevated gap counts, cohort inconsistencies and reorg noise signal this failure mode."
+
+faq:
+  - q: "Which RPC provider pushes new Ethereum blocks first over WebSocket?"
+    a: "{{best_name}} currently wins most per-block races at {{best_p50}} lag versus the earliest provider (p50, 24h) across {{count}} measured keyless providers. The leaderboard re-scores on every Ethereum block, roughly every 12 seconds. Check win rate and the trailers' p99 before wiring a latency-sensitive bot to any single provider."
+  - q: "Why does the fastest provider show a lag near zero?"
+    a: "By construction. Each block is scored as a race: the earliest arrival defines T0 and every sample is measured against it. The provider winning most races accumulates mostly zero samples. This is deliberate: a single vantage point cannot measure absolute chain-to-client latency without a co-located reference node; it can measure, fairly, which provider delivers the same block earlier over the same network path."
+  - q: "Is this the same as Ethereum block time?"
+    a: "No. Ethereum's slot interval is fixed at 12 seconds. WebSocket head lag is the additional time between the network producing a block and your RPC provider pushing it to a subscribed client. A provider with a 500 ms p50 here means your subscription receives each block roughly half a second after the earliest provider in the cohort already delivered it."
+  - q: "How is WebSocket head lag measured technically?"
+    a: "One persistent eth_subscribe('newHeads') WebSocket per provider from the same eu-west host. Every newHeads frame is timestamped with time.Now() on receipt. Per block, the earliest arrival sets T0; every provider's sample is arrival minus T0. Lag histogram: 0.5 ms bucket up through 10 s tail. p50/p90/p99 via histogram_quantile over the 24h rate. Connections carry a 90 s silent-subscription watchdog and exponential-backoff reconnects."
+  - q: "Why are only 4 providers listed?"
+    a: "V1 measures the keyless tier: WebSocket endpoints anyone can open without an account. Ankr, Blast, LlamaRPC, BlockPI, 1RPC, NodeReal and Omniatech all reject a keyless WebSocket handshake. Alchemy, Infura and Chainstack require API keys; the harness accepts them via environment variables and they join the leaderboard once contributor keys are wired in."
+
+related:
+  - what-is-the-fastest-free-ethereum-rpc
+  - which-base-rpc-pushes-new-blocks-the-fastest
+  - best-rpc-for-indexer
+  - alchemy-vs-quicknode-vs-infura-latency
+
+seo_title: "Which Ethereum RPC pushes new blocks the fastest over WebSocket? 2026"
+seo_description: "{{best_name}} leads Ethereum WebSocket newHeads push at {{best_p50}} lag (p50, 24h) across {{count}} keyless providers. Live per-block race by OpenChainBench from eu-west."
+status: live

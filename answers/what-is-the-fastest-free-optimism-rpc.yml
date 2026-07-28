@@ -1,0 +1,41 @@
+slug: what-is-the-fastest-free-optimism-rpc
+question: "What is the fastest free Optimism RPC?"
+short_answer: |
+  {{best_name}} is currently the fastest free Optimism RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h), measured by OpenChainBench every 60 seconds against 5 no-key providers from us-east, eu-west and Singapore.
+
+benchmark: optimism-rpc
+
+intro: |
+  Optimism and Base both run on the OP Stack, share similar block times, and both have an Optimism Foundation or Coinbase-operated official endpoint alongside the same multi-chain gateways. The infrastructure is not the same, and the leaderboard is not the same either: two chains on identical software can diverge on median latency and p99 tail depending on operator choices, peering and regional gateway placement. This page is the live measurement for Optimism mainnet. OpenChainBench probes all 5 free, no-key Optimism endpoints (PublicNode, dRPC, Tenderly, Nodies and the Optimism Foundation's mainnet.optimism.io) with an identical eth_getBlockByNumber call every 60 seconds from three regions. The Foundation endpoint is documented as best-effort, and continuous measurement confirms the signature: an acceptable p50 and a p99 several multiples worse, exactly what best-effort means in data.
+
+methodology: |
+  One identical JSON-RPC POST (eth_getBlockByNumber with a rotating request id, non-cacheable by design) every 60 seconds against each provider from us-east, eu-west and Singapore, using the same plain HTTP client for every endpoint and no API key in any request. Wall-clock round-trip is recorded at millisecond precision; p50, p90 and p99 come from Prometheus quantile_over_time over 24 hours, averaged across the three origins for the headline. Responses are classified ok, http_err, jsonrpc_err, stale (more than 20 blocks behind the cross-provider tip) or timeout, and only ok calls enter the latency distribution. Archive depth is probed every 5 minutes with eth_getBalance at five historical depths up to 5M blocks.
+
+limitations:
+  - "Latency is conditional on success. Failed calls never enter the percentile; read every latency figure next to its success column."
+  - "Three probe origins only (Virginia, Amsterdam, Singapore). The headline averages all three; per-region leaders can differ significantly."
+  - "One method probed. eth_getBlockByNumber is representative of read latency but says nothing about transaction submission or WebSocket subscriptions."
+  - "Free public endpoints share rate-limit budgets with the entire internet and carry no SLA."
+  - "OP Stack parity is not infrastructure parity: comparing this page with the Base leaderboard shows how two chains sharing a stack diverge purely on operator choices."
+
+faq:
+  - q: "Which Optimism RPC URL works without an API key?"
+    a: "Five endpoints sustain continuous no-key probing on Optimism mainnet and are ranked live above: PublicNode, dRPC, Tenderly, Nodies and the Optimism Foundation's mainnet.optimism.io. Every provider was live-verified no-key before inclusion."
+  - q: "Is the Optimism Foundation's RPC good for production?"
+    a: "Not for latency-sensitive paths. The Foundation documents mainnet.optimism.io as best-effort, intended for development. Continuous measurement confirms the profile: acceptable median, p99 several multiples worse than the leading gateways. Use it as a fallback or for development."
+  - q: "Do Base and Optimism RPCs perform the same since both run on OP Stack?"
+    a: "No. The stack is shared but the infrastructure is not. Different operators, different peering, different gateway coverage produce measurably different rankings. If you deploy on both chains, pick the fastest RPC per chain from each page rather than assuming OP Stack parity."
+  - q: "Does the fastest Optimism RPC depend on where my server runs?"
+    a: "Strongly. The headline averages three probe origins, but per-region leaders regularly diverge. Use the region tabs on the benchmark page scoped to the origin closest to your deployment."
+  - q: "How is Optimism RPC latency measured here?"
+    a: "One identical JSON-RPC POST (eth_getBlockByNumber) every 60 seconds against each provider from each of 3 regions. Wall-clock round-trip at millisecond precision; p50/p90/p99 via Prometheus quantile_over_time over 24 hours. Responses are classified so stale heads and error bodies never rank as fast."
+
+related:
+  - what-is-the-fastest-free-base-rpc
+  - what-is-the-fastest-free-arbitrum-rpc
+  - what-is-the-fastest-free-ethereum-rpc
+  - alchemy-vs-quicknode-vs-infura-latency
+
+seo_title: "What is the fastest free Optimism RPC? Live no-key latency ranking 2026"
+seo_description: "{{best_name}} leads free Optimism RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). 5 no-key endpoints probed every 60s from 3 regions, with success rates and archive depth audits."
+status: live
