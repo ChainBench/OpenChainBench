@@ -41,10 +41,6 @@ type gmxMarketInfo struct {
 			ID                                 string `json:"id"`
 			PositionFeeFactorForPositiveImpact string `json:"positionFeeFactorForPositiveImpact"`
 			PositionFeeFactorForNegativeImpact string `json:"positionFeeFactorForNegativeImpact"`
-			// Some Subsquid deployments expose an unsuffixed field name.
-			// We fall back to it when the impact-branch fields are absent
-			// so a schema rename does not silently zero the fee.
-			PositionFeeFactor string `json:"positionFeeFactor"`
 		} `json:"marketInfos"`
 	} `json:"data"`
 	Errors []struct {
@@ -80,7 +76,7 @@ func fetchGMX(v VenueConfig) PerpSample {
 	// 1) Position fee from Subsquid (live on-chain factor)
 	q := gmxGqlReq{
 		Query: `query { marketInfos(where: {id_eq: "` + market + `"}) {
-			id positionFeeFactorForPositiveImpact positionFeeFactorForNegativeImpact positionFeeFactor
+			id positionFeeFactorForPositiveImpact positionFeeFactorForNegativeImpact
 		}}`,
 	}
 	bodyBytes, _ := json.Marshal(q)
@@ -126,9 +122,6 @@ func fetchGMX(v VenueConfig) PerpSample {
 	// If the schema is on an older/unsuffixed version we fall back to
 	// positionFeeFactor so a rename does not silently zero the reported fee.
 	rawFactor := m.PositionFeeFactorForNegativeImpact
-	if rawFactor == "" {
-		rawFactor = m.PositionFeeFactor
-	}
 	if rawFactor == "" {
 		s.Err = "subsquid_failed: missing positionFeeFactor fields"
 		s.FetchLatencyMs = time.Since(start).Milliseconds()
