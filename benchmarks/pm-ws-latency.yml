@@ -1,0 +1,158 @@
+# OpenChainBench. Bench 114
+
+slug: pm-ws-latency
+number: "114"
+title: Polymarket WebSocket latency, live connection and update speed from 3 regions
+seo_title: "Polymarket WebSocket latency 2026: connection time and update speed"
+seo_description: "How fast does the Polymarket WebSocket connect and deliver market updates? Live p50 from us-east, eu-west and Singapore measured continuously by OpenChainBench."
+subtitle: Time from WebSocket dial to first market snapshot plus inter-message update rate on the Polymarket CLOB feed, probed from three regions 24 hours a day.
+
+category: Trading
+status: live
+metric: WS connect to snapshot
+unit: ms
+higher_is_better: false
+
+seo_intro: |
+  REST polling tells you how fast a venue answers one request. WebSocket
+  latency tells you how fast live market data reaches your process after
+  you connect, which is the number that matters for bots watching fills,
+  dashboards streaming odds and arbitrage strategies reacting to price
+  changes. Polymarket is the only major prediction market venue with a
+  public, no-auth WebSocket feed on its CLOB. This bench connects from
+  three regions, measures how long the dial-to-first-snapshot takes, and
+  records how often the feed delivers updates so you know both the startup
+  cost and the steady-state data velocity. The other venues in the cohort
+  are REST-only by design or require authentication not viable for a
+  public benchmark, noted in the per-venue section below.
+
+abstract: |
+  A persistent WebSocket client runs in each of three Railway regions
+  (us-east, eu-west, sgp) against the Polymarket CLOB feed at
+  wss://ws-subscriptions-clob.polymarket.com/ws/market. The client
+  subscribes to a pinned high-volume market, sends a literal PING every
+  10 seconds for keepalive, and records two histograms: the time from
+  dial start to receiving the first non-PONG data frame (connect-to-snapshot),
+  and the time between consecutive data frames once the feed is streaming
+  (inter-arrival). A PING keepalive goroutine detects stale connections
+  and reconnects, so the process also records disconnect counts. All
+  three histograms export to Prometheus every scrape interval. The
+  headline metric is connect-to-snapshot p50 across all three regions,
+  which is the startup latency a new subscriber pays to go from nothing
+  to live market data.
+
+methodology:
+  - "Connect-to-snapshot: wall clock from websocket.Dial call start to receiving the first non-PONG frame. Covers TCP connection, TLS handshake, HTTP upgrade and the time the venue takes to deliver the first orderbook snapshot after receiving the subscribe message. Measured per reconnect event."
+  - "Inter-arrival: wall clock between consecutive received data frames while the session is stable. Measures the velocity of the live feed, i.e. how often the venue pushes orderbook or price updates on a typical active market. Measured per message pair."
+  - "Regions: us-east (Railway us-east4), eu-west (Railway europe-west4), sgp (Railway asia-southeast1). The Polymarket CLOB WS endpoint is globally distributed via Cloudflare, so regional differences reflect edge proximity and routing, not server capacity."
+  - "Keepalive: a background goroutine sends the literal text PING every 10 seconds and the venue responds with PONG. Sessions that stop receiving data are detected by the reconnect logic on the next PING timeout. Disconnect rate is exported as a counter."
+  - "Pin: the harness targets the same market used by the pm-rate-limits bench (highest 24h volume binary market with last trade price between 0.15 and 0.85), refreshed daily at 00:00 UTC. The WS client re-subscribes automatically when the pin changes."
+  - "Metrics: pmapi_ws_connect_to_snapshot_seconds histogram and pmapi_ws_update_interarrival_seconds histogram, both labeled by venue, region and source. The same pm-rate-limits harness process that probes REST endpoints runs the WS session, so both REST and WS data share one Railway deployment per region."
+  - "Other venues: Kalshi WS (wss://external-api-ws.kalshi.com) requires RSA-PSS signed headers from a US KYC account and returns 403 from non-US IPs, making it not viable for a public three-region benchmark. Limitless uses socket.io over HTTP long-polling, not standard WebSocket. Manifold, Myriad, PredictIt and Smarkets have no public WebSocket endpoint."
+
+findings:
+  - "Polymarket's CLOB WebSocket connects and delivers the first snapshot in {{p50:polymarket}} p50 (24h, all regions). This is the startup cost a new subscriber pays to go from a fresh dial to live market data."
+  - "Kalshi's WebSocket is probed from us-east only (RSA-PSS auth required, 403 from non-US IPs) and records {{p50:kalshi}} p50 connect-to-snapshot from the east US region. Its inter-arrival and disconnect metrics are in the panels below."
+  - "Inter-arrival time on the feed (the steady-state update rate on an active market) is published as a metric panel below for both venues. The faster the inter-arrival, the more granular the real-time picture a subscriber gets."
+
+disclaimer: "Connect-to-snapshot includes Cloudflare edge latency and routing from each probe region. Numbers vary with network conditions and market activity. This bench measures observed end-to-end startup time, not venue-side processing time alone."
+
+faq:
+  - q: "How fast does the Polymarket WebSocket connect?"
+    a: "The harness currently records {{p50:polymarket}} p50 connect-to-snapshot (24h, all regions). This is the time from dial start to receiving the first data frame on the market subscription, covering TCP connection, TLS handshake, the HTTP upgrade to WebSocket and the venue delivering the initial snapshot. It is the startup cost a new subscriber pays before live data starts arriving."
+  - q: "Does Kalshi have a public WebSocket?"
+    a: "Kalshi has a WebSocket API at wss://trading-api.kalshi.com/trade-api/ws/v2 that requires RSA-PSS-SHA256 signed authentication headers from a US KYC-verified account. The us-east probe node connects with a keyed account and is measured on this bench. The eu-west and sgp probe nodes return 403 even with valid credentials, so Kalshi's rank matrix entry reflects us-east latency only, not a three-region average. If you are building a US-hosted system with Kalshi credentials, the connection and subscription pattern uses standard JSON framing after the auth headers are computed."
+  - q: "Why is Limitless not on this benchmark?"
+    a: "Limitless uses socket.io over HTTP long-polling rather than a standard WebSocket. Socket.io uses a custom framing protocol on top of the transport and is not directly comparable to a native WebSocket connection. It is excluded here to keep the comparison honest. Limitless REST latency is measured in pm-api-latency."
+  - q: "What is inter-arrival time and why does it matter?"
+    a: "Inter-arrival is the time between consecutive data frames on an active WebSocket session. A short inter-arrival (say, 200ms) means the feed pushes an update roughly 5 times per second on an active market. A long inter-arrival (2s) means updates are sparse and your subscriber will lag behind price moves if it relies on the feed alone. The inter-arrival panel below shows the live p50 and p90 so you can see both the typical case and the tail."
+  - q: "How often does the Polymarket WebSocket disconnect?"
+    a: "The harness tracks disconnects per region. Under normal conditions the feed is stable and reconnects are rare. The disconnect counter panel below shows any spikes. When a disconnect happens, the harness reconnects immediately with exponential backoff (5s initial, capped at 30s), so brief interruptions are recovered automatically."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/pm-rate-limits
+
+prometheus:
+  window: 24h
+  expected_freshness_seconds: 120
+
+rank_matrix_query: 1000 * label_replace(histogram_quantile(0.50, sum by (venue, region, le) (rate(pmapi_ws_connect_to_snapshot_seconds_bucket{source="direct",venue=~"polymarket|kalshi"}[24h]))), "provider", "$1", "venue", "(.+)")
+
+dimensions:
+  region:
+    - { value: all, label: All regions }
+    - { value: us-east, label: US East }
+    - { value: eu-west, label: EU West }
+    - { value: sgp, label: Singapore }
+
+metric_panels:
+  - id: interarrival_p50
+    label: Update interval p50
+    description: "Median time between consecutive data frames on the live feed. Lower means the venue pushes updates more frequently. Measured on the pinned active market."
+    metric: 1000 * histogram_quantile(0.50, sum by (venue) (rate(pmapi_ws_update_interarrival_seconds_bucket{source="direct",venue=~"polymarket|kalshi"}[24h])))
+    label_key: venue
+    unit: ms
+    higher_is_better: false
+  - id: interarrival_p90
+    label: Update interval p90
+    description: "90th percentile inter-arrival time. The tail cost a subscriber pays during quiet periods or between trade clusters."
+    metric: 1000 * histogram_quantile(0.90, sum by (venue) (rate(pmapi_ws_update_interarrival_seconds_bucket{source="direct",venue=~"polymarket|kalshi"}[24h])))
+    label_key: venue
+    unit: ms
+    higher_is_better: false
+  - id: disconnect_rate
+    label: Disconnects 24h
+    description: "Number of WebSocket disconnects recorded across all regions in the last 24 hours. Kalshi probes us-east only; Polymarket probes all three regions."
+    metric: sum by (venue) (increase(pmapi_ws_disconnects_total{source="direct",venue=~"polymarket|kalshi"}[24h]))
+    label_key: venue
+    unit: count
+    higher_is_better: false
+
+providers:
+  - slug: polymarket
+    name: Polymarket
+    tag: Public no-auth CLOB WebSocket, globally distributed via Cloudflare, PING keepalive, 3 regions
+    formula: "p50 of connect-to-snapshot time across all three regions (24h). Covers dial, TLS, HTTP upgrade and initial snapshot delivery."
+    queries:
+      p50: 1000 * histogram_quantile(0.50, sum(rate(pmapi_ws_connect_to_snapshot_seconds_bucket{source="direct",venue="polymarket"}[24h])) by (le))
+      p90: 1000 * histogram_quantile(0.90, sum(rate(pmapi_ws_connect_to_snapshot_seconds_bucket{source="direct",venue="polymarket"}[24h])) by (le))
+      p99: 1000 * histogram_quantile(0.99, sum(rate(pmapi_ws_connect_to_snapshot_seconds_bucket{source="direct",venue="polymarket"}[24h])) by (le))
+      mean: 1000 * sum(rate(pmapi_ws_connect_to_snapshot_seconds_sum{source="direct",venue="polymarket"}[24h])) / sum(rate(pmapi_ws_connect_to_snapshot_seconds_count{source="direct",venue="polymarket"}[24h]))
+      success: clamp_max(sum(rate(pmapi_ws_connect_to_snapshot_seconds_count{source="direct",venue="polymarket"}[24h])) / (sum(rate(pmapi_ws_connect_to_snapshot_seconds_count{source="direct",venue="polymarket"}[24h])) + sum(rate(pmapi_ws_disconnects_total{source="direct",venue="polymarket"}[24h]))), 1)
+      sample_size: sum(increase(pmapi_ws_connect_to_snapshot_seconds_count{source="direct",venue="polymarket"}[24h]))
+      series: 1000 * histogram_quantile(0.50, sum(rate(pmapi_ws_connect_to_snapshot_seconds_bucket{source="direct",venue="polymarket"}[1h])) by (le))
+
+  - slug: kalshi
+    name: Kalshi
+    tag: RSA-PSS auth required, CFTC-regulated, probed from us-east only (403 from non-US IPs)
+    formula: "p50 of connect-to-snapshot time from us-east only (24h). Kalshi WS returns 403 from eu-west and sgp even with valid credentials, so cross-region comparison is not available."
+    queries:
+      p50: 1000 * histogram_quantile(0.50, sum(rate(pmapi_ws_connect_to_snapshot_seconds_bucket{source="direct",venue="kalshi",region="us-east"}[24h])) by (le))
+      p90: 1000 * histogram_quantile(0.90, sum(rate(pmapi_ws_connect_to_snapshot_seconds_bucket{source="direct",venue="kalshi",region="us-east"}[24h])) by (le))
+      p99: 1000 * histogram_quantile(0.99, sum(rate(pmapi_ws_connect_to_snapshot_seconds_bucket{source="direct",venue="kalshi",region="us-east"}[24h])) by (le))
+      mean: 1000 * sum(rate(pmapi_ws_connect_to_snapshot_seconds_sum{source="direct",venue="kalshi",region="us-east"}[24h])) / sum(rate(pmapi_ws_connect_to_snapshot_seconds_count{source="direct",venue="kalshi",region="us-east"}[24h]))
+      success: clamp_max(sum(rate(pmapi_ws_connect_to_snapshot_seconds_count{source="direct",venue="kalshi",region="us-east"}[24h])) / (sum(rate(pmapi_ws_connect_to_snapshot_seconds_count{source="direct",venue="kalshi",region="us-east"}[24h])) + sum(rate(pmapi_ws_disconnects_total{source="direct",venue="kalshi",region="us-east"}[24h]))), 1)
+      sample_size: sum(increase(pmapi_ws_connect_to_snapshot_seconds_count{source="direct",venue="kalshi",region="us-east"}[24h]))
+      series: 1000 * histogram_quantile(0.50, sum(rate(pmapi_ws_connect_to_snapshot_seconds_bucket{source="direct",venue="kalshi",region="us-east"}[1h])) by (le))
+
+per_chain_explainer:
+  - slug: polymarket
+    h2: Polymarket WebSocket
+    body: "Polymarket publishes a public CLOB WebSocket at wss://ws-subscriptions-clob.polymarket.com/ws/market with no authentication required. After subscribing with an assets_ids array, the feed delivers orderbook snapshots and price change events. The harness records connect-to-snapshot at {{p50:polymarket}} p50 (24h, all regions) and the inter-arrival distribution visible in the panels below. The feed is fronted by Cloudflare so regional latency differences are small. The PING keepalive every 10 seconds keeps idle connections alive. This is the only venue in the cohort with a standard, public, unauthenticated WebSocket."
+  - slug: kalshi
+    h2: Kalshi WebSocket
+    body: "Kalshi's WebSocket API at wss://trading-api.kalshi.com/trade-api/ws/v2 requires RSA-PSS-SHA256 signed authentication headers (KALSHI-ACCESS-KEY, KALSHI-ACCESS-TIMESTAMP, KALSHI-ACCESS-SIGNATURE) and a US IP address. The us-east probe node connects with a keyed account and records connect-to-snapshot and inter-arrival metrics. The eu-west and sgp probe nodes return 403 even with valid credentials, so Kalshi's latency in the rank matrix reflects us-east only. The connect-to-snapshot number shown for Kalshi is therefore comparable to Polymarket's us-east column, not its global average."
+  - slug: limitless
+    h2: Limitless
+    body: "Limitless does not expose a standard WebSocket. Its real-time channel uses socket.io, which runs over HTTP long-polling with a custom framing protocol that is not directly comparable to a native WebSocket dial-to-snapshot measurement. Limitless REST latency is in the pm-api-latency bench."
+  - slug: manifold
+    h2: Manifold Markets
+    body: "Manifold has no public WebSocket endpoint. All data access goes through its REST API, which sits behind a 5-second CDN cache. Manifold is a play-money venue; its REST latency is tracked in pm-api-latency for completeness."
+  - slug: myriad
+    h2: Myriad
+    body: "Myriad has no public WebSocket endpoint and no order book API. REST access runs through a single US East origin. Myriad REST latency and the geography-driven cross-region latency gap are tracked in pm-api-latency."
+  - slug: predictit
+    h2: PredictIt
+    body: "PredictIt has no WebSocket. The REST API is rate-limited to 5 requests per minute, making polling at any granularity useful for live data impractical. PredictIt REST latency at 15-second probe intervals is tracked in pm-api-latency."
+  - slug: smarkets
+    h2: Smarkets
+    body: "Smarkets has no public WebSocket endpoint. The REST API at api.smarkets.com/v3 provides order book access without authentication. Smarkets REST latency is tracked in pm-api-latency."

@@ -105,6 +105,12 @@ per_chain_explainer:
   - slug: myriad
     h2: Myriad API rate limits
     body: "Myriad's keyless budget is 30 requests per 10 seconds, the tightest in the cohort, which is why it is excluded from the ramp: ramping it would measure our own quota, not the API. There is no order book endpoint and no WebSocket. The origin is a single region Heroku deployment in US East, so latency from Europe and Asia reflects geography, reported as measured. Warm price endpoint p50: {{p50:myriad}}."
+  - slug: predictit
+    h2: PredictIt rate limits
+    body: "PredictIt enforces a published rate limit of 5 requests per minute (one request per 12 seconds) per IP. The harness probes at 15 seconds to stay within budget with a safety margin. This makes PredictIt the tightest rate-limited venue in the cohort by a wide margin. The daily ramp is disabled for PredictIt: running any ramp tier above 4 requests per minute would immediately exceed their documented budget. The benchmark records latency at the steady-state probe rate only."
+  - slug: smarkets
+    h2: Smarkets rate limits
+    body: "Smarkets showed no visible rate limiting during reconnaissance probes at up to 6 rapid requests per second. The daily ramp uses conservative tiers (10, 25, 50 requests per 10 seconds) with the standard abort guard. The CLOB quotes endpoint returns full bid-offer depth for the pinned market on every request. Unlike Polymarket which queues bursts under Cloudflare, Smarkets returns direct origin responses, so the ramp records actual latency scaling rather than queue inflation."
 
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/pm-rate-limits
 
@@ -112,9 +118,18 @@ prometheus:
   window: 24h
   expected_freshness_seconds: 300
 
-rank_matrix_query: 1000 * label_replace(histogram_quantile(0.50, sum by (venue, region, le) (rate(pmapi_request_duration_seconds_bucket{cache!="hit",conn="warm",class="book"}[24h]) or rate(pmapi_request_duration_seconds_bucket{cache!="hit",conn="warm",class="price",venue="myriad"}[24h]))), "provider", "$1", "venue", "(.+)")
+rank_matrix_query: 1000 * label_replace(histogram_quantile(0.50, sum by (venue, region, le) (rate(pmapi_request_duration_seconds_bucket{cache!="hit",conn="warm",class="book"}[24h]) or rate(pmapi_request_duration_seconds_bucket{cache!="hit",conn="warm",class="price",venue=~"myriad|predictit"}[24h]))), "provider", "$1", "venue", "(.+)")
 
 dimensions:
+  venue:
+    - { value: all, label: All venues }
+    - { value: polymarket, label: Polymarket }
+    - { value: kalshi, label: Kalshi }
+    - { value: limitless, label: Limitless }
+    - { value: manifold, label: Manifold }
+    - { value: myriad, label: Myriad }
+    - { value: predictit, label: PredictIt }
+    - { value: smarkets, label: Smarkets }
   region:
     - { value: all, label: All regions }
     - { value: us-east, label: US East }
@@ -226,3 +241,29 @@ providers:
       success: clamp_max(sum(rate(pmapi_requests_total{venue="myriad",class="price",conn="warm",outcome="ok"}[24h])) / sum(rate(pmapi_requests_total{venue="myriad",class="price",conn="warm",outcome!="probe_invalid"}[24h])), 1)
       sample_size: sum(increase(pmapi_requests_total{venue="myriad",class="price",conn="warm",outcome!="probe_invalid"}[24h]))
       series: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="myriad",class="price",conn="warm"}[1h])) by (le))
+
+  - slug: predictit
+    name: PredictIt
+    tag: "CFTC no-action letter, 5 req/min rate limit, price class only (no book endpoint)"
+    formula: "p50 of warm price requests at 15s intervals against /api/marketdata/markets/{id}, successful requests only, 24h window. No book endpoint on their API; ramp is disabled."
+    queries:
+      p50: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="predictit",class="price",conn="warm"}[24h])) by (le))
+      p90: 1000 * histogram_quantile(0.90, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="predictit",class="price",conn="warm"}[24h])) by (le))
+      p99: 1000 * histogram_quantile(0.99, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="predictit",class="price",conn="warm"}[24h])) by (le))
+      mean: 1000 * sum(rate(pmapi_request_duration_seconds_sum{cache!="hit",venue="predictit",class="price",conn="warm"}[24h])) / sum(rate(pmapi_request_duration_seconds_count{cache!="hit",venue="predictit",class="price",conn="warm"}[24h]))
+      success: clamp_max(sum(rate(pmapi_requests_total{venue="predictit",class="price",conn="warm",outcome="ok"}[24h])) / sum(rate(pmapi_requests_total{venue="predictit",class="price",conn="warm",outcome!="probe_invalid"}[24h])), 1)
+      sample_size: sum(increase(pmapi_requests_total{venue="predictit",class="price",conn="warm",outcome!="probe_invalid"}[24h]))
+      series: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="predictit",class="price",conn="warm"}[1h])) by (le))
+
+  - slug: smarkets
+    name: Smarkets
+    tag: "UK FCA-regulated CLOB exchange, public book endpoint, no visible rate limiting"
+    formula: "p50 of warm book requests against /v3/markets/{id}/quotes/, successful requests only, 24h window. Direct origin responses, daily ramp at 10/25/50 requests per 10s."
+    queries:
+      p50: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="smarkets",class="book",conn="warm"}[24h])) by (le))
+      p90: 1000 * histogram_quantile(0.90, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="smarkets",class="book",conn="warm"}[24h])) by (le))
+      p99: 1000 * histogram_quantile(0.99, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="smarkets",class="book",conn="warm"}[24h])) by (le))
+      mean: 1000 * sum(rate(pmapi_request_duration_seconds_sum{cache!="hit",venue="smarkets",class="book",conn="warm"}[24h])) / sum(rate(pmapi_request_duration_seconds_count{cache!="hit",venue="smarkets",class="book",conn="warm"}[24h]))
+      success: clamp_max(sum(rate(pmapi_requests_total{venue="smarkets",class="book",conn="warm",outcome="ok"}[24h])) / sum(rate(pmapi_requests_total{venue="smarkets",class="book",conn="warm",outcome!="probe_invalid"}[24h])), 1)
+      sample_size: sum(increase(pmapi_requests_total{venue="smarkets",class="book",conn="warm",outcome!="probe_invalid"}[24h]))
+      series: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="smarkets",class="book",conn="warm"}[1h])) by (le))
