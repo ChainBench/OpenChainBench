@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { MDXRemote } from "next-mdx-remote/rsc";
+import remarkGfm from "remark-gfm";
 import { StatTable } from "@/components/reports/stat-table";
 import { RegionWinners } from "@/components/reports/region-winners";
 import {
@@ -378,7 +379,11 @@ export default async function ReportPage({ params }: Props) {
       {/* Body */}
       <div className="mt-2">
         {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-        <MDXRemote source={report.content} components={MDX_COMPONENTS as any} />
+        <MDXRemote
+          source={report.content}
+          components={MDX_COMPONENTS as any}
+          options={{ mdxOptions: { remarkPlugins: [remarkGfm] } }}
+        />
       </div>
 
       {/* Footer */}
