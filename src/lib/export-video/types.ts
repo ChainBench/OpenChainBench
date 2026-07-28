@@ -26,12 +26,14 @@ export type BenchPayload = {
   providers: ProviderSeries[];
 };
 
-export type RangeId = "24h" | "7d" | "30d";
-export const RANGE_IDS: RangeId[] = ["24h", "7d", "30d"];
+export type RangeId = "24h" | "7d" | "30d" | "90d" | "1y";
+export const RANGE_IDS: RangeId[] = ["24h", "7d", "30d", "90d", "1y"];
 export const RANGE_LABEL: Record<RangeId, string> = {
   "24h": "Last 24h",
   "7d": "Last 7d",
   "30d": "Last 30d",
+  "90d": "Last 90d",
+  "1y": "Last year",
 };
 
 export type ViewId =
