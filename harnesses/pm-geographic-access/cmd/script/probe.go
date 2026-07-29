@@ -20,6 +20,13 @@ type venueProbe struct {
 // venueProbes is the list of market-listing endpoints to probe.
 // Each URL returns a 200 when the venue is accessible from the probe region,
 // a 403 when geo-blocked, or a redirect to a block page.
+//
+// Manifold is intentionally excluded: it is play-money (no real money at
+// stake) and has no documented geographic restrictions — it would always
+// score 100% from every region, making it uninteresting for this bench.
+// ForecastEx (Interactive Brokers CFTC-regulated exchange) is included
+// because it is US-regulated and may exhibit geo restrictions from non-US
+// regions, mirroring the Kalshi vs Polymarket story for a third regulated venue.
 var venueProbes = []venueProbe{
 	{
 		Venue: "polymarket",
@@ -34,12 +41,12 @@ var venueProbes = []venueProbe{
 		URL:   "https://api.limitless.exchange/markets/active?page=1&limit=1&sortBy=newest",
 	},
 	{
-		Venue: "manifold",
-		URL:   "https://api.manifold.markets/v0/markets?limit=1",
-	},
-	{
 		Venue: "myriad",
 		URL:   "https://api-v2.myriadprotocol.com/markets?state=open&limit=1",
+	},
+	{
+		Venue: "forecastex",
+		URL:   "https://forecastex.com/api/v1/contracts",
 	},
 }
 
