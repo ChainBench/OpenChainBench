@@ -4,8 +4,8 @@ slug: pm-resolution-delay
 number: "039"
 title: Resolution delay, Polymarket vs Kalshi
 seo_title: "Prediction market resolution delay live 2026"
-seo_description: "Polymarket and Kalshi resolution time measured live: median delay from close to payout, broken down by category. Polymarket anchored on UMA ProposePrice, Kalshi on API-observed finalization."
-subtitle: How long from market close to final settlement — Polymarket measured onchain via UMA ProposePrice→QuestionResolved, Kalshi measured via REST API polling (close_time to first observed finalized status).
+seo_description: "Polymarket and Kalshi resolution time measured live: median delay from close to payout, broken down by category. Polymarket anchored on UMA ProposePrice, Kalshi on settlement_ts from the public API."
+subtitle: How long from market close to final settlement — Polymarket measured onchain via UMA ProposePrice→QuestionResolved, Kalshi via settlement_ts minus close_time from the public REST API. Auto-generated multivariate parlays excluded from Kalshi data.
 
 category: Trading
 status: live
@@ -31,17 +31,19 @@ abstract: |
   Oracle they call (ProposePrice, DisputePrice). Delay = first ProposePrice
   block to QuestionResolved block, joined to Gamma for category tags.
 
-  Kalshi: a poller hits the public /trade-api/v2/markets endpoint every 5
-  minutes. Delay = market close_time to the first poll at which result != null.
-  Accuracy is ±5 min, negligible for delays measured in minutes to hours. No
-  auth required.
+  Kalshi: a poller hits the public /trade-api/v2/markets?status=settled endpoint
+  every 5 minutes. Delay = settlement_ts - close_time (both from API, exact,
+  no polling error). Categories resolved via /events/{event_ticker}. Auto-generated
+  multivariate parlay markets (Kalshi "Exotics" category) are excluded: they
+  settle algorithmically in seconds and are not prediction market questions. No auth required.
 
 methodology:
   - "Polymarket anchor: the first OO ProposePrice block timestamp, not Gamma fields. Verified live: Gamma closedTime equals the QuestionResolved block timestamp (circular by construction) and endDate is a scheduled buffer most markets beat."
   - "Polymarket sources: Polygon logs of the post-migration UMA CTF adapters (binary 0x65070BE9..., neg-risk 0x69c47De9...) and their Optimistic Oracle (0x2c0367a9...). Gamma supplies the market catalogue and category tags."
   - "Polymarket join: questionID = keccak256 of the proposal ancillary data, verified against QuestionInitialized events."
-  - "Kalshi anchor: close_time from the public markets API. Delay = observed finalization time (first poll at which result != null) minus close_time. Accuracy bounded by 5-minute poll interval."
-  - "Kalshi source: public REST API /trade-api/v2/markets, no auth. 30-day lookback window. Categories mapped: Sports→sports, Politics→politics, Crypto/Cryptocurrency→crypto, everything else→other."
+  - "Kalshi anchor: settlement_ts from the public markets API (exact timestamp, no polling error). Delay = settlement_ts - close_time. close_time is the scheduled market close, not the real-world event end."
+  - "Kalshi scope: /trade-api/v2/markets?status=settled, 30-day lookback. Exotics excluded (auto-generated multivariate parlays that settle algorithmically in seconds — not prediction market questions). Categories from /events/{event_ticker}: Sports→sports, Politics/Elections→politics, Crypto/Financials→crypto, everything else→other."
+  - "Anchor asymmetry: Polymarket's 2h UMA challenge window is protocol-enforced — no market can resolve in under 2h on the clean path. Kalshi has no such floor; traditional sports and politics markets settle in minutes to hours after close_time. The difference in distributions reflects both operational speed and architecture."
   - "Categories: sports, politics, crypto, other, consistent across venues. Per-category rows are the honest unit of comparison because market types run different resolution windows."
   - "Disputes (Polymarket only): a DisputePrice before resolution marks the market disputed. Disputed delays land in the disputed series and are excluded from the main category rows."
   - "Pending backlog (Polymarket only): markets past their scheduled endDate with no onchain resolution, polled from Gamma every cycle."
@@ -49,11 +51,11 @@ methodology:
 
 findings:
   - "Polymarket across all markets: median onchain resolution delay {{p50:polymarket-all}} from first proposal to resolution, p99 at {{p99:polymarket-all}}. The within 2 hours share is in the table above, measured, and does not match the 93 percent figure that circulates without a methodology."
-  - "Kalshi across all markets: median resolution delay {{p50:kalshi-all}} from close_time to observed finalization. This measures a different thing than Polymarket: Kalshi's resolution process is internal, not onchain, so the anchor is the scheduled market close."
+  - "Kalshi across all markets (excluding auto-generated parlays): median resolution delay {{p50:kalshi-all}} from scheduled close_time to settlement_ts. Kalshi resolves internally — no onchain oracle, no mandatory challenge window. The difference vs Polymarket's median reflects both operational speed and Polymarket's protocol-enforced 2h minimum."
   - "Categories are not comparable on a single median: sports, crypto and politics markets run different resolution processes on each venue."
   - "Disputes (Polymarket only) are rare but expensive: disputed markets carry materially longer delays than the clean path."
 
-disclaimer: "Polymarket delay is measured from the first onchain outcome proposal, not from the real world event ending. Kalshi delay is measured from scheduled close_time with ±5 min accuracy. Both are lower bounds on total user wait."
+disclaimer: "Polymarket delay is measured from the first onchain outcome proposal to resolution (UMA challenge window, minimum 2h by protocol). Kalshi delay is settlement_ts - close_time (exact from API), where close_time is the scheduled market close, not the real-world event end. Kalshi auto-generated parlay markets (Exotics) are excluded. Both anchors are lower bounds on total user wait from the real-world event ending."
 
 faq:
   - q: "How long does Polymarket take to pay out after a market ends?"
