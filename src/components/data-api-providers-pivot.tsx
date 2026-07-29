@@ -235,8 +235,9 @@ function GroupCell({
         : "var(--color-ink-soft)";
 
   return (
-    <div
-      className="inline-flex flex-col items-start gap-1 rounded-md px-2 py-1.5 min-w-[120px]"
+    <Link
+      href={`/benchmarks/${bestCell.benchSlug}`}
+      className="inline-flex flex-col items-start gap-1 rounded-md px-2 py-1.5 min-w-[120px] hover:opacity-80 transition-opacity"
       style={{ background: bg }}
     >
       {/* Global rank + value */}
@@ -264,7 +265,7 @@ function GroupCell({
           />
         </div>
       )}
-    </div>
+    </Link>
   );
 }
 
