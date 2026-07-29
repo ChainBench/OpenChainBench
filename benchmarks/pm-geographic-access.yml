@@ -2,7 +2,7 @@
 
 slug: pm-geographic-access
 number: "113"
-status: live
+status: retired
 title: Prediction market geographic access, which countries can reach each venue
 subtitle: HTTP probes from regional nodes checking 200 OK vs blocked or redirect for Polymarket, Kalshi, Limitless, Myriad and ForecastEx, reported as percent of regions returning a successful response.
 category: Trading
