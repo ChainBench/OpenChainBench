@@ -20,9 +20,11 @@ import { logoPath } from "@/lib/logo-manifest";
 
 export const PM_VENUE_META: Record<string, { url: string; chainLabel: string }> = {
   polymarket: { url: "https://polymarket.com", chainLabel: "Polygon" },
+  "polymarket-us": { url: "https://polymarketexchange.com", chainLabel: "Offchain US" },
   kalshi: { url: "https://kalshi.com", chainLabel: "Offchain US" },
   limitless: { url: "https://limitless.exchange", chainLabel: "Base" },
   myriad: { url: "https://myriad.markets", chainLabel: "Abstract L2" },
+  manifold: { url: "https://manifold.markets", chainLabel: "Offchain" },
 };
 
 export const PM_FEED_META: Record<string, { url?: string }> = {
@@ -109,7 +111,7 @@ export function benchRowsForVenue(
       tone: "teal",
     },
     {
-      benchSlug: "polymarket-resolution-delay",
+      benchSlug: "pm-resolution-delay",
       label: "Resolution delay",
       blurb: "ProposePrice anchor to QuestionResolved block, median.",
       rank: rankWithinCohort(cohort.venues, "medianResolutionDelayMin", venue.slug),
