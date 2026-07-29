@@ -4,7 +4,7 @@ slug: pm-geographic-access
 number: "113"
 status: live
 title: Prediction market geographic access, which countries can reach each venue
-subtitle: HTTP probes from regional nodes checking 200 OK vs blocked or redirect for Polymarket, Kalshi, Limitless, Manifold and Myriad, reported as percent of regions returning a successful response.
+subtitle: HTTP probes from regional nodes checking 200 OK vs blocked or redirect for Polymarket, Kalshi, Limitless, Myriad and ForecastEx, reported as percent of regions returning a successful response.
 category: Trading
 metric: Geographic accessibility rate
 unit: pct
@@ -13,10 +13,10 @@ higher_is_better: true
 abstract: |
   Prediction market venues operate under different regulatory regimes and enforce access restrictions
   at the HTTP layer. Polymarket's international exchange has geoblocked US IP addresses since a 2022
-  CFTC settlement. Polymarket US (QCX), a separate CFTC-regulated entity, launched in December 2025
-  and is accessible to US users. Kalshi is CFTC-regulated and accessible to US users without
-  restriction. Minnesota enacted a law banning prediction markets effective August 1, 2026, which is
-  being challenged in court by the CFTC. This bench probes each venue's market listing endpoint every
+  CFTC settlement. Kalshi is CFTC-regulated and accessible to US users without restriction. ForecastEx,
+  operated by Interactive Brokers and CFTC-regulated, is targeted at US users and may exhibit
+  geo-restrictions for non-US regions. Myriad Protocol is an onchain venue on the Abstract L2 with
+  no documented geographic restrictions. This bench probes each venue's market listing endpoint every
   15 minutes from probe nodes in EU West (VPS Paris), US East, and Singapore and records the HTTP
   response code. A 200 OK counts as accessible; a 403, redirect to a block page, or connection reset
   counts as blocked. The result is expressed as the percentage of probe time the endpoint returned 200
@@ -115,18 +115,18 @@ providers:
       sample_size: increase(pm_geo_probe_total{venue="limitless"}[24h])
       series: 100 * avg_over_time(pm_geo_accessible{venue="limitless"}[1h])
 
-  - slug: manifold
-    name: Manifold
-    tag: Play-money, US-accessible, no geographic restrictions
+  - slug: forecastex
+    name: ForecastEx
+    tag: CFTC-regulated by Interactive Brokers, US users only
     formula: "Fraction of 15-minute probe cycles returning HTTP 200 OK from each probe region, averaged over 24 hours."
     queries:
-      p50: 100 * avg_over_time(pm_geo_accessible{venue="manifold"}[24h])
-      p90: 100 * avg_over_time(pm_geo_accessible{venue="manifold",region="eu-west"}[24h])
-      p99: 100 * avg_over_time(pm_geo_accessible{venue="manifold",region="eu-west"}[24h])
-      mean: 100 * avg_over_time(pm_geo_accessible{venue="manifold"}[24h])
+      p50: 100 * avg_over_time(pm_geo_accessible{venue="forecastex"}[24h])
+      p90: 100 * avg_over_time(pm_geo_accessible{venue="forecastex",region="eu-west"}[24h])
+      p99: 100 * avg_over_time(pm_geo_accessible{venue="forecastex",region="eu-west"}[24h])
+      mean: 100 * avg_over_time(pm_geo_accessible{venue="forecastex"}[24h])
       success: vector(1)
-      sample_size: increase(pm_geo_probe_total{venue="manifold"}[24h])
-      series: 100 * avg_over_time(pm_geo_accessible{venue="manifold"}[1h])
+      sample_size: increase(pm_geo_probe_total{venue="forecastex"}[24h])
+      series: 100 * avg_over_time(pm_geo_accessible{venue="forecastex"}[1h])
 
   - slug: myriad
     name: Myriad

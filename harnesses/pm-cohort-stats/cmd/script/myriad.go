@@ -127,9 +127,14 @@ func fetchMyriadVenue(v Venue) {
 	}()
 
 	// --- Track A: open markets, sorted by lifetime volume_notional.
+	// Myriad's API occasionally returns 500 on this sort; fall back to
+	// volume_notional_24h and then to no sort before giving up.
 	openRows, ok := myriadFetchAll(v, "open", "volume_notional")
 	if !ok {
-		// Nothing publishable on a hard failure. Errors already bucketed.
+		time.Sleep(2 * time.Second)
+		openRows, ok = myriadFetchAll(v, "open", "volume_notional_24h")
+	}
+	if !ok {
 		return
 	}
 
