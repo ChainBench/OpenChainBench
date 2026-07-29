@@ -202,9 +202,10 @@ function RegionStrip({
   return (
     <div className="flex flex-wrap gap-1.5">
       {sorted.map((l) => (
-        <div
+        <Link
           key={l.region}
-          className="flex items-center gap-1 rounded-md border border-ink/8 bg-paper-soft/60 px-2 py-1"
+          href={`/products/${l.providerSlug}`}
+          className="flex items-center gap-1 rounded-md border border-ink/8 bg-paper-soft/60 px-2 py-1 hover:border-ink/20 hover:bg-paper-soft transition-colors"
           title={`${l.label}: ${l.providerName} — ${fmtDataValue(l.p50, unit)}`}
         >
           <span
@@ -223,7 +224,7 @@ function RegionStrip({
           >
             {fmtDataValue(l.p50, unit)}
           </span>
-        </div>
+        </Link>
       ))}
     </div>
   );
@@ -247,9 +248,10 @@ function ChainStrip({
     return (
       <div className="flex flex-wrap gap-1 items-center">
         {visible.map((l) => (
-          <div
+          <Link
             key={l.chain}
-            className="flex items-center gap-0.5 rounded border border-ink/8 bg-paper-soft/60 px-1.5 py-0.5"
+            href={`/products/${l.providerSlug}`}
+            className="flex items-center gap-0.5 rounded border border-ink/8 bg-paper-soft/60 px-1.5 py-0.5 hover:border-ink/20 hover:bg-paper-soft transition-colors"
             title={`${l.label}: ${l.providerName} — ${fmtDataValue(l.p50, unit)}`}
           >
             <span
@@ -259,7 +261,7 @@ function ChainStrip({
               {l.label}
             </span>
             <ProviderLogo slug={l.providerSlug} name={l.providerName} size={10} />
-          </div>
+          </Link>
         ))}
         {overflow > 0 && (
           <span className="text-[9px] text-ink-faint">+{overflow}</span>
@@ -276,9 +278,10 @@ function ChainStrip({
   return (
     <div className="flex flex-wrap gap-1.5 items-center">
       {visible.map((l) => (
-        <div
+        <Link
           key={l.chain}
-          className="flex items-center gap-1 rounded-md border border-ink/8 bg-paper-soft/60 px-2 py-1"
+          href={`/products/${l.providerSlug}`}
+          className="flex items-center gap-1 rounded-md border border-ink/8 bg-paper-soft/60 px-2 py-1 hover:border-ink/20 hover:bg-paper-soft transition-colors"
           title={`${l.label}: ${l.providerName} — ${fmtDataValue(l.p50, unit)}`}
         >
           <span
@@ -297,7 +300,7 @@ function ChainStrip({
           >
             {fmtDataValue(l.p50, unit)}
           </span>
-        </div>
+        </Link>
       ))}
       {overflow > 0 && (
         <span className="text-[10px] text-ink-faint">+{overflow}</span>
