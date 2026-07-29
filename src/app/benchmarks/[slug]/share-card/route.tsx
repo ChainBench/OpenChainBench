@@ -209,6 +209,14 @@ function CardProviderLogo({
       </div>
     );
   }
+  // chipBackground / chipTextColor return CSS variables ("var(--color-ink-soft)",
+  // "var(--color-paper)", "var(--color-ink)") for unbranded or dark-brand providers.
+  // Satori cannot resolve CSS variables and crashes the whole ImageResponse stream.
+  // Resolve to the local hex palette variables instead.
+  const rawBg = chipBackground(slug);
+  const chipBg = rawBg.startsWith("#") ? rawBg : INK_SOFT;
+  const rawFg = chipTextColor(slug);
+  const chipFg = rawFg === "var(--color-ink)" ? INK : PAPER;
   return (
     <div
       style={{
@@ -216,8 +224,8 @@ function CardProviderLogo({
         width: size,
         height: size,
         borderRadius: "50%",
-        background: chipBackground(slug),
-        color: chipTextColor(slug),
+        background: chipBg,
+        color: chipFg,
         alignItems: "center",
         justifyContent: "center",
         fontSize: Math.round(size * 0.42),
@@ -1058,6 +1066,9 @@ async function renderSnapshot(
   colors: Map<string, string>,
   chainLabel?: string | null
 ) {
+  // Cap series to avoid unreadable charts and Satori element-count limits
+  // on large benches (e.g. hyperliquid-frontends has 104 providers).
+  const MAX_SNAPSHOT_SERIES = 16;
   const sorted = sortByP50(benchmark);
   const seriesList = sorted
     .map((r) => ({
@@ -1072,7 +1083,8 @@ async function renderSnapshot(
       color: colors.get(r.slug) ?? INK_SOFT,
       p50: r.ms.p50,
     }))
-    .filter((s) => s.values.length > 1);
+    .filter((s) => s.values.length > 1)
+    .slice(0, MAX_SNAPSHOT_SERIES);
 
   const chartW = 1086;
   const chartH = 280;

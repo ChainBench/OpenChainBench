@@ -143,6 +143,13 @@ export type DataApiGroupRow = {
   benches: DataApiBenchRow[];
 };
 
+export type DataApiRegionScore = {
+  region: string;
+  label: string;
+  rank: number;
+  p50: number;
+};
+
 export type DataApiProviderCell = {
   benchSlug: string;
   benchShortTitle: string;
@@ -151,6 +158,8 @@ export type DataApiProviderCell = {
   p50: number;
   unit: Benchmark["unit"];
   higherIsBetter: boolean;
+  /** Per-region ranks for benches that have extras.regions populated. */
+  regions?: DataApiRegionScore[];
 };
 
 export type DataApiProviderPivotRow = {
@@ -251,6 +260,67 @@ function computeChainLeaders(bench: Benchmark): ChainLeader[] {
     .sort((a, b) => a.label.localeCompare(b.label));
 }
 
+const REGION_ORDER = ["us-east", "eu-west", "sgp"] as const;
+const REGION_LABELS: Record<string, string> = {
+  "us-east": "US",
+  "eu-west": "EU",
+  sgp: "SGP",
+  "ap-southeast": "SGP",
+};
+
+/**
+ * For each live provider in a bench, compute their rank per probe region.
+ * Returns a map: providerSlug → sorted DataApiRegionScore[].
+ * Empty map when bench has no extras.regions data.
+ */
+function computeProviderRegionScores(
+  bench: Benchmark,
+  live: ProviderResult[],
+): Map<string, DataApiRegionScore[]> {
+  const { regions } = bench.extras;
+  if (!regions || Object.keys(regions).length === 0) return new Map();
+
+  // Collect per-region p50 for all live providers
+  const byRegion = new Map<string, { slug: string; p50: number }[]>();
+  for (const provider of live) {
+    const pts = regions[provider.slug] ?? [];
+    for (const pt of pts) {
+      if (pt.region === "global") continue;
+      const norm = pt.region === "ap-southeast" ? "sgp" : pt.region;
+      if (!byRegion.has(norm)) byRegion.set(norm, []);
+      byRegion.get(norm)!.push({ slug: provider.slug, p50: pt.p50 });
+    }
+  }
+
+  // Sort each region and assign ranks
+  const result = new Map<string, DataApiRegionScore[]>();
+  for (const [region, entries] of byRegion.entries()) {
+    const sorted = [...entries].sort((a, b) =>
+      bench.higherIsBetter ? b.p50 - a.p50 : a.p50 - b.p50,
+    );
+    for (const [idx, { slug, p50 }] of sorted.entries()) {
+      if (!result.has(slug)) result.set(slug, []);
+      result.get(slug)!.push({
+        region,
+        label: REGION_LABELS[region] ?? region.toUpperCase(),
+        rank: idx + 1,
+        p50,
+      });
+    }
+  }
+
+  // Sort each provider's scores in canonical region order
+  for (const scores of result.values()) {
+    scores.sort(
+      (a, b) =>
+        (REGION_ORDER as readonly string[]).indexOf(a.region) -
+        (REGION_ORDER as readonly string[]).indexOf(b.region),
+    );
+  }
+
+  return result;
+}
+
 function toBenchRow(slug: string, bench: Benchmark): DataApiBenchRow {
   const live = sortedResults(liveResults(bench), bench.higherIsBetter);
   return {
@@ -344,10 +414,12 @@ async function buildSnapshot(): Promise<DataApiSnapshot | null> {
     const group = BENCH_GROUP[slug];
     if (!group) continue;
     const live = sortedResults(liveResults(bench), bench.higherIsBetter);
+    const regionScores = computeProviderRegionScores(bench, live);
     for (const [idx, r] of live.entries()) {
       if (!providerMap.has(r.slug)) {
         providerMap.set(r.slug, { name: r.name, cells: [] });
       }
+      const regions = regionScores.get(r.slug);
       providerMap.get(r.slug)!.cells.push({
         benchSlug: slug,
         benchShortTitle: BENCH_SHORT_TITLE[slug] ?? slug,
@@ -356,6 +428,7 @@ async function buildSnapshot(): Promise<DataApiSnapshot | null> {
         p50: r.ms.p50,
         unit: bench.unit,
         higherIsBetter: bench.higherIsBetter,
+        regions: regions && regions.length > 0 ? regions : undefined,
       });
     }
   }
