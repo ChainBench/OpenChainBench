@@ -147,7 +147,7 @@ const ORG_JSONLD = {
         // Wikidata entity: anchors the OpenChainBench brand in the
         // Knowledge Graph so the brand query resolves to this domain
         // instead of the unrelated "OpenBench" homonyms.
-        "https://www.wikidata.org/wiki/Q140172649",
+        "https://www.wikidata.org/wiki/Q140756438",
       ],
     },
     {
