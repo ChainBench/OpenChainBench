@@ -115,6 +115,23 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Independent crypto market data API. Token prices, OHLCV, exchange tickers, and contract/platform lookups across 300+ supported chains. Public free tier with no auth.",
     twitter: "@coinpaprika",
   },
+  dexpaprika: {
+    url: "https://dexpaprika.com",
+    description:
+      "DEX data API by the CoinPaprika team. REST endpoints for pools, OHLCV candles, trades, and token prices across 35+ blockchains. No auth required on the public tier.",
+    longDescription:
+      "DexPaprika is CoinPaprika's dedicated DEX pool indexer, built as a standalone product separate from the market-data API. It exposes REST endpoints for pool discovery, OHLCV candles, live trade feeds, and token prices across 35+ EVM and non-EVM chains. The public tier requires no API key, making it practical for prototyping and open-source tooling. Because DexPaprika is purpose-built for DEX data, its network list reflects actual pool-indexing depth rather than the broader chain coverage of the parent CoinPaprika market-data API.",
+    twitter: "@coinpaprika",
+    docs: "https://api.dexpaprika.com",
+    parent: "coinpaprika",
+    features: [
+      "Pool discovery and search across 35+ chains",
+      "OHLCV candles for any DEX pair",
+      "Live trade feed per pool",
+      "Token price derived from on-chain DEX data",
+      "No API key required on public tier",
+    ],
+  },
   coinstats: {
     url: "https://coinstats.app",
     description:

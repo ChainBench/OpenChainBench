@@ -241,6 +241,7 @@ const RAW: Record<string, string> = {
   // ─── asset-registry-coverage + dex-network-coverage bench providers
   //     (bench № 005 split into 005a/005b) ───
   coinpaprika: "/logos/coinpaprika.svg",
+  dexpaprika: "/logos/dexpaprika.svg",
   coinstats: "/logos/coinstats.svg",
 
   // ─── portfolio-chain-coverage bench providers (bench № 067) ───
