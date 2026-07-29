@@ -183,6 +183,11 @@ func (k *kalshiTracker) pollClosed() {
 	k.mu.Lock()
 	defer k.mu.Unlock()
 	for _, m := range markets {
+		// KXMV* = auto-generated multivariate parlays. They can briefly pass
+		// through status=closed (6-10s window) before auto-settling. Exclude.
+		if strings.HasPrefix(m.Ticker, "KXMV") {
+			continue
+		}
 		ct, err := time.Parse(time.RFC3339, m.CloseTime)
 		if err != nil {
 			continue
