@@ -46,11 +46,6 @@ const NAV: NavItem[] = [
     label: "Methodology",
     match: (p) => p === "/methodology",
   },
-  {
-    href: "/reports",
-    label: "Reports",
-    match: (p) => p === "/reports" || p.startsWith("/reports/"),
-  },
   { href: "/about", label: "About", match: (p) => p === "/about" },
   { href: "/contribute", label: "Contribute", match: (p) => p === "/contribute" },
 ];
