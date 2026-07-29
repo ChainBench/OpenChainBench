@@ -314,12 +314,13 @@ async function fetchPerpCohortRaw(): Promise<PerpCohortSummary | null> {
   const snapshot = await readCohortSnapshot<PerpCohortSummary>(
     PERP_COHORT_KEY,
   );
-  // Only use the snapshot if it was written within the last 2 minutes.
-  // Without this check, the 24h KV TTL means stale Prometheus data is
-  // served indefinitely even though the harness publishes every minute.
+  // Fresh snapshot (written within the last 2 min) is the fast path.
   if (snapshot && snapshot.ageMs < 2 * 60 * 1000) {
     return snapshot.data;
   }
+  // Snapshot stale or missing — try live Prom. On Vercel, promUrl()
+  // returns null (VPS Prom is not publicly exposed), so this only
+  // succeeds from the worker process.
   const fresh = await fetchPerpCohortFresh();
   if (fresh) {
     try {
@@ -331,18 +332,41 @@ async function fetchPerpCohortRaw(): Promise<PerpCohortSummary | null> {
         }`,
       );
     }
+    return fresh;
   }
-  return fresh;
+  // Both paths failed. Serve the stale snapshot as a last resort so a
+  // brief worker hiccup or Vercel cache-miss race doesn't blank the
+  // page. Cap at 10 min: beyond that we surface "unavailable" so a
+  // sustained worker outage is still visible.
+  if (snapshot && snapshot.ageMs < 10 * 60 * 1000) {
+    console.warn(
+      `perp-cohort: serving stale snapshot (${Math.round(snapshot.ageMs / 1000)}s old)`,
+    );
+    return snapshot.data;
+  }
+  return null;
 }
 
 const fetchPerpCohortCached = unstable_cache(
-  fetchPerpCohortRaw,
+  async () => {
+    const data = await fetchPerpCohortRaw();
+    // Throw on null so unstable_cache does not store a cached null —
+    // a single worker hiccup would otherwise blank the page for the
+    // full 60 s revalidate window. The public wrapper catches and
+    // returns null so the page still renders its fallback banner.
+    if (data === null) throw new Error("perp-cohort-unavailable");
+    return data;
+  },
   ["perp-cohort-v1"],
   { revalidate: 60, tags: ["perp-cohort"] },
 );
 
 export async function fetchPerpCohort(): Promise<PerpCohortSummary | null> {
-  return fetchPerpCohortCached();
+  try {
+    return await fetchPerpCohortCached();
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -453,18 +477,35 @@ async function fetchPerpByAssetMatrixRaw(): Promise<PerpAssetRow[]> {
         }`,
       );
     }
+    return fresh;
+  }
+  // Prom failed — serve stale snapshot up to 10 min rather than empty.
+  if (snapshot && snapshot.ageMs < 10 * 60 * 1000 && Array.isArray(snapshot.data) && snapshot.data.length > 0) {
+    console.warn(
+      `perp-by-asset: serving stale snapshot (${Math.round(snapshot.ageMs / 1000)}s old)`,
+    );
+    return snapshot.data;
   }
   return fresh;
 }
 
 const fetchPerpByAssetMatrixCached = unstable_cache(
-  fetchPerpByAssetMatrixRaw,
+  async () => {
+    const data = await fetchPerpByAssetMatrixRaw();
+    // Don't cache an empty result — same rationale as perp-cohort above.
+    if (data.length === 0) throw new Error("perp-by-asset-unavailable");
+    return data;
+  },
   ["perp-by-asset-matrix-v2"],
   { revalidate: 120, tags: ["perp-by-asset"] },
 );
 
 export async function fetchPerpByAssetMatrix(): Promise<PerpAssetRow[]> {
-  return fetchPerpByAssetMatrixCached();
+  try {
+    return await fetchPerpByAssetMatrixCached();
+  } catch {
+    return [];
+  }
 }
 
 /**
