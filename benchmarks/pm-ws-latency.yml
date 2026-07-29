@@ -5,7 +5,7 @@ number: "114"
 title: Polymarket WebSocket latency, live connection and update speed from 3 regions
 seo_title: "Polymarket WebSocket latency 2026: connection time and update speed"
 seo_description: "How fast does the Polymarket WebSocket connect and deliver market updates? Live p50 from us-east, eu-west and Singapore measured continuously by OpenChainBench."
-subtitle: Time from WebSocket dial to first market snapshot plus inter-message update rate on the Polymarket CLOB feed, probed from three regions 24 hours a day.
+subtitle: Connect-to-snapshot latency, inter-message update rate, and trade publication lag on the Polymarket and Kalshi WebSocket feeds, probed from three regions 24 hours a day.
 
 category: Trading
 status: live
@@ -96,6 +96,20 @@ metric_panels:
     label: Update interval p90
     description: "90th percentile inter-arrival time. The tail cost a subscriber pays during quiet periods or between trade clusters."
     metric: 1000 * histogram_quantile(0.90, sum by (venue) (rate(pmapi_ws_update_interarrival_seconds_bucket{source="direct",venue=~"polymarket|kalshi"}[24h])))
+    label_key: venue
+    unit: ms
+    higher_is_better: false
+  - id: trade_pub_lag_p50
+    label: Trade pub lag p50
+    description: "Median delay between venue server-side trade creation and WS subscriber receipt. Polymarket: CLOB WS timestamp field vs receive time (all regions). Kalshi: REST create_date vs WS ticker receive time (us-east only). Lower is better."
+    metric: 1000 * histogram_quantile(0.50, sum by (venue) (rate(pmapi_ws_trade_pub_lag_seconds_bucket{source="direct",venue=~"polymarket|kalshi"}[24h])))
+    label_key: venue
+    unit: ms
+    higher_is_better: false
+  - id: trade_pub_lag_p90
+    label: Trade pub lag p90
+    description: "90th percentile trade publication lag. The tail cost a subscriber pays waiting for the venue to push a confirmed trade. Kalshi us-east only."
+    metric: 1000 * histogram_quantile(0.90, sum by (venue) (rate(pmapi_ws_trade_pub_lag_seconds_bucket{source="direct",venue=~"polymarket|kalshi"}[24h])))
     label_key: venue
     unit: ms
     higher_is_better: false

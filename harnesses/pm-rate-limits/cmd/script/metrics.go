@@ -67,6 +67,12 @@ var (
 		Help: "WebSocket connections dropped after being established.",
 	}, []string{"venue", "region", "source"})
 
+	wsTradePublishLag = promauto.NewHistogramVec(prometheus.HistogramOpts{
+		Name:    "pmapi_ws_trade_pub_lag_seconds",
+		Help:    "Delay between venue server-side trade creation and WS subscriber receipt. Polymarket: CLOB WS timestamp field vs recv time. Kalshi: REST create_date vs WS ticker recv time (us-east only).",
+		Buckets: []float64{0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30},
+	}, []string{"venue", "region", "source"})
+
 	rampDuration = promauto.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "pmapi_ramp_request_duration_seconds",
 		Help:    "Round-trip during the daily rate-limit ramp, by tier (requests per 10 s window). Successful requests only.",
