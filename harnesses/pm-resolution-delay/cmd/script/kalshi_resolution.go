@@ -28,12 +28,13 @@ const (
 )
 
 type kalshiMarketRecord struct {
-	Ticker    string `json:"ticker"`
-	Title     string `json:"title"`
-	CloseTime string `json:"close_time"` // RFC3339
-	Status    string `json:"status"`     // "open", "closed", "finalized"
-	Result    string `json:"result"`     // "yes", "no", "" when unresolved
-	Category  string `json:"category"`   // "Sports", "Politics", "Crypto", etc.
+	Ticker       string `json:"ticker"`
+	Title        string `json:"title"`
+	CloseTime    string `json:"close_time"`    // RFC3339
+	SettlementTs string `json:"settlement_ts"` // RFC3339, present when settled
+	Status       string `json:"status"`        // "open", "closed", "finalized"
+	Result       string `json:"result"`        // "yes", "no", "" when unresolved
+	Category     string `json:"category"`      // "Sports", "Politics", "Crypto", etc.
 }
 
 type kalshiMarketsResponse struct {
@@ -129,13 +130,14 @@ func (k *kalshiTracker) pollClosed() {
 	}
 }
 
-// pollFinalized fetches recently finalized markets and emits histogram
-// observations for any we haven't recorded yet.
+// pollFinalized fetches recently settled markets and emits histogram
+// observations for any we haven't recorded yet. The API filter param is
+// "settled"; the status field in the response body is "finalized".
+// Delay is settlement_ts - close_time (accurate from API, no poll-interval error).
 func (k *kalshiTracker) pollFinalized() {
 	cutoff := time.Now().Add(-kalshiLookbackDays * 24 * time.Hour)
-	now := time.Now()
 
-	markets, _, err := k.fetchPage("finalized", "")
+	markets, _, err := k.fetchPage("settled", "")
 	if err != nil {
 		log.Printf("[kalshi-res] pollFinalized error: %v", err)
 		return
@@ -160,15 +162,23 @@ func (k *kalshiTracker) pollFinalized() {
 		k.recorded[m.Ticker] = struct{}{}
 		delete(k.watched, m.Ticker)
 
-		delay := now.Sub(ct).Seconds()
+		// Prefer settlement_ts (exact); fall back to now (first-poll proxy, ±5 min).
+		var settleAt time.Time
+		if m.SettlementTs != "" {
+			settleAt, _ = time.Parse(time.RFC3339Nano, m.SettlementTs)
+		}
+		if settleAt.IsZero() {
+			settleAt = time.Now()
+		}
+		delay := settleAt.Sub(ct).Seconds()
 		if delay < 0 || delay > float64(kalshiLookbackDays*24*3600) {
 			continue
 		}
 		cat := normalizeKalshiCategory(m.Category)
 		resolutionDelay.WithLabelValues("kalshi", cat, "false").Observe(delay)
 		resolutionsTotal.WithLabelValues("kalshi", cat, "false").Inc()
-		log.Printf("[kalshi-res] resolved ticker=%s category=%s delay=%.0fs close_time=%s result=%s",
-			m.Ticker, cat, delay, m.CloseTime, m.Result)
+		log.Printf("[kalshi-res] resolved ticker=%s category=%s delay=%.0fs close_time=%s settled=%s result=%s",
+			m.Ticker, cat, delay, m.CloseTime, settleAt.UTC().Format(time.RFC3339), m.Result)
 	}
 }
 
