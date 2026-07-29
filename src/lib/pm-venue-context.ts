@@ -20,6 +20,7 @@ import { logoPath } from "@/lib/logo-manifest";
 
 export const PM_VENUE_META: Record<string, { url: string; chainLabel: string }> = {
   polymarket: { url: "https://polymarket.com", chainLabel: "Polygon" },
+  "polymarket-us": { url: "https://polymarketexchange.com", chainLabel: "CFTC DCM" },
   kalshi: { url: "https://kalshi.com", chainLabel: "Offchain US" },
   limitless: { url: "https://limitless.exchange", chainLabel: "Base" },
   myriad: { url: "https://myriad.markets", chainLabel: "Abstract L2" },

@@ -337,6 +337,45 @@ func pinSmarkets(ctx context.Context, c *http.Client, avoid string) (Pin, error)
 	return Pin{}, errors.New("smarkets: no open politics market with live quotes found")
 }
 
+func pinPolymarketUS(ctx context.Context, c *http.Client, avoid string) (Pin, error) {
+	var out struct {
+		Markets []struct {
+			Slug        string `json:"slug"`
+			EndDate     string `json:"endDate"`
+			Active      bool   `json:"active"`
+			Closed      bool   `json:"closed"`
+			MarketSides []struct {
+				Long  bool   `json:"long"`
+				Price string `json:"price"`
+			} `json:"marketSides"`
+		} `json:"markets"`
+	}
+	url := "https://gateway.polymarket.us/v1/markets?limit=100&active=true&closed=false"
+	if err := fetchJSON(ctx, c, url, &out); err != nil {
+		return Pin{}, fmt.Errorf("polymarket-us list: %w", err)
+	}
+	for _, m := range out.Markets {
+		if m.Slug == avoid || m.Slug == "" || m.Closed || !m.Active {
+			continue
+		}
+		end, err := time.Parse(time.RFC3339, m.EndDate)
+		if err != nil || time.Until(end) < minPinHorizon {
+			continue
+		}
+		for _, s := range m.MarketSides {
+			if !s.Long {
+				continue
+			}
+			p, err := strconv.ParseFloat(s.Price, 64)
+			if err != nil || p < 0.15 || p > 0.85 {
+				continue
+			}
+			return Pin{Market: m.Slug, Expiry: end}, nil
+		}
+	}
+	return Pin{}, errors.New("polymarket-us: no near-the-money open market with >24h horizon")
+}
+
 // stalenessPolymarket reads the ms timestamp Polymarket embeds in every book
 // response (string in the docs, tolerate a bare number).
 func stalenessPolymarket(class string, body []byte) (int64, bool) {
@@ -357,6 +396,28 @@ func stalenessPolymarket(class string, body []byte) (int64, bool) {
 		return int64(t), true
 	}
 	return 0, false
+}
+
+// stalenessPolymarketUS reads lastPriceSample.ts from the BBO response payload.
+func stalenessPolymarketUS(class string, body []byte) (int64, bool) {
+	if class != "price" {
+		return 0, false
+	}
+	var b struct {
+		MarketData struct {
+			LastPriceSample struct {
+				Ts string `json:"ts"`
+			} `json:"lastPriceSample"`
+		} `json:"marketData"`
+	}
+	if json.Unmarshal(body, &b) != nil || b.MarketData.LastPriceSample.Ts == "" {
+		return 0, false
+	}
+	t, err := time.Parse(time.RFC3339Nano, b.MarketData.LastPriceSample.Ts)
+	if err != nil {
+		return 0, false
+	}
+	return t.UnixMilli(), true
 }
 
 // stalenessManifold reads lastUpdatedTime (ms) from the single-market payload.

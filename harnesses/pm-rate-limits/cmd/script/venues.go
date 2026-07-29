@@ -173,6 +173,34 @@ func venues() []*Venue {
 			PinFunc:   pinSmarkets,
 			RampRates: []int{10, 25, 50},
 		},
+		{
+			// Polymarket US (QCX LLC) — CFTC-regulated DCM launched Dec 2025.
+			// Separate from Polymarket Global (Polygon USDC CLOB): different
+			// API, different settlement (USD via broker), KYC required for
+			// trading. Market data is publicly available via the read-only
+			// gateway at gateway.polymarket.us with no API key.
+			// Rate limit: 20 req/s per IP on the public gateway; we use
+			// conservative tiers (5/10/20 per 10s = max 10% of the limit).
+			Slug: "polymarket-us",
+			Classes: []Class{
+				{Name: "book", Interval: 5 * time.Second, Timeout: 8 * time.Second,
+					URL: func(p Pin) string {
+						return "https://gateway.polymarket.us/v1/markets/" + p.Market + "/book"
+					}},
+				{Name: "price", Interval: 5 * time.Second, Timeout: 8 * time.Second,
+					URL: func(p Pin) string {
+						return "https://gateway.polymarket.us/v1/markets/" + p.Market + "/bbo"
+					}},
+				{Name: "list", Interval: 30 * time.Second, Timeout: 15 * time.Second,
+					URL: func(Pin) string {
+						return "https://gateway.polymarket.us/v1/markets?limit=20&active=true&closed=false"
+					}},
+			},
+			PinFunc:     pinPolymarketUS,
+			StalenessMs: stalenessPolymarketUS,
+			RampRates:   []int{5, 10, 20},
+			InvalidBody: []string{"not found", "Not Found"},
+		},
 	}
 }
 

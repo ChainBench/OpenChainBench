@@ -61,6 +61,7 @@ const RAW: Record<string, string> = {
   mobula: "/logos/mobula.svg",
   codex: "/logos/codex.svg",
   polymarket: "/logos/polymarket.png",
+  "polymarket-us": "/logos/polymarket.png",
   kalshi: "/logos/kalshi.jpg",
   limitless: "/logos/limitless.png",
   manifold: "/logos/manifold.svg",
