@@ -37,11 +37,6 @@ const NAV: NavItem[] = [
     match: (p) => p === "/benchmarks" || p.startsWith("/benchmarks/"),
   },
   {
-    href: "/data-api",
-    label: "Data APIs",
-    match: (p) => p === "/data-api" || p.startsWith("/data-api/"),
-  },
-  {
     href: "/products",
     label: "Products",
     match: (p) => p === "/products" || p.startsWith("/products/"),
