@@ -51,6 +51,9 @@ func main() {
 		if v.Slug == "kalshi" && cfg.KalshiAPIKeyID != "" && cfg.KalshiPrivateKeyPEM != "" {
 			go runKalshiWS(ctx, v.state, cfg.KalshiAPIKeyID, cfg.KalshiPrivateKeyPEM)
 		}
+		if v.Slug == "kalshi" && cfg.KalshiAPIKeyID != "" && cfg.KalshiPrivateKeyPEM != "" {
+			go runKalshiTradeRestPoll(ctx, v.state)
+		}
 	}
 
 	// Aggregator probes. One goroutine per (venue, source) pair; reuses
