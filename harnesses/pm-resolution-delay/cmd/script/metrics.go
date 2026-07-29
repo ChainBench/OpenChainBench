@@ -21,21 +21,23 @@ var (
 	// claim the bench fact-checks.
 	delayBuckets = []float64{300, 900, 1800, 3600, 7200, 14400, 43200, 86400, 172800, 604800, 1209600}
 
+	// venue label added 2026-07 for multi-venue support (kalshi + future).
+	// Polymarket = "polymarket", Kalshi = "kalshi".
 	resolutionDelay = promauto.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "pmres_resolution_delay_seconds",
-		Help:    "QuestionResolved block timestamp minus first OO ProposePrice block timestamp for the same questionID. Includes the UMA challenge window (~2h), so the floor is the market's liveness. disputed=true means at least one OO DisputePrice / adapter QuestionReset occurred before resolution.",
+		Help:    "Time from resolution anchor to settlement. Polymarket: ProposePrice→QuestionResolved (UMA, ~2h floor). Kalshi: close_time→observed settlement (~minutes to hours). disputed=true = at least one UMA DisputePrice before resolution (Polymarket only).",
 		Buckets: delayBuckets,
-	}, []string{"category", "disputed"})
+	}, []string{"venue", "category", "disputed"})
 
 	resolutionsTotal = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "pmres_resolutions_total",
-		Help: "QuestionResolved events observed and successfully joined to a proposal. Re-counts the 7-day backfill window after a restart (no DB), so prefer rate()/increase() over raw values.",
-	}, []string{"category", "disputed"})
+		Help: "Resolved markets recorded. Polymarket re-counts the 7-day backfill on restart; Kalshi accumulates since harness start.",
+	}, []string{"venue", "category", "disputed"})
 
 	disputesTotal = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "pmres_disputes_total",
-		Help: "Questions that saw their first OO DisputePrice (or adapter QuestionReset) before resolution. Counted once per question, not per dispute round.",
-	}, []string{"category"})
+		Help: "Markets disputed before resolution (Polymarket/UMA only). Counted once per question.",
+	}, []string{"venue", "category"})
 
 	pendingMarkets = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "pmres_pending_markets",
