@@ -167,6 +167,13 @@ export type DataApiChainScore = {
   p50: number;
 };
 
+/** Per-region chain wins: in this region, the provider is #1 on these chains. */
+export type DataApiCellWin = {
+  region: string;
+  regionLabel: string;
+  chains: { chain: string; label: string }[];
+};
+
 export type DataApiProviderCell = {
   benchSlug: string;
   benchShortTitle: string;
@@ -175,10 +182,10 @@ export type DataApiProviderCell = {
   p50: number;
   unit: Benchmark["unit"];
   higherIsBetter: boolean;
-  /** Per-region ranks for benches that have extras.regions populated. */
+  /** Per-region ranks for benches that have extras.regions but no cellRanks. */
   regions?: DataApiRegionScore[];
-  /** Chains this provider leads on in this bench (rank 1 per chain). */
-  chains?: DataApiChainScore[];
+  /** Per-region chain wins from cellRanks (supersedes regions when present). */
+  cellWins?: DataApiCellWin[];
 };
 
 export type DataApiProviderPivotRow = {
@@ -340,31 +347,6 @@ function computeProviderRegionScores(
   return result;
 }
 
-/**
- * Returns the chains where providerSlug is the winner (rank 1) in this bench.
- */
-function computeProviderChainScores(
-  bench: Benchmark,
-  providerSlug: string,
-): DataApiChainScore[] {
-  if (!bench.bestPerChain) return [];
-  const scores: DataApiChainScore[] = [];
-  for (const [chain, r] of Object.entries(bench.bestPerChain)) {
-    if (
-      r.slug === providerSlug &&
-      r.availability !== "unavailable" &&
-      !r.unresponsive &&
-      r.ms.p50 > 0
-    ) {
-      scores.push({
-        chain,
-        label: CHAIN_LABELS[chain] ?? chain,
-        p50: r.ms.p50,
-      });
-    }
-  }
-  return scores.sort((a, b) => a.label.localeCompare(b.label));
-}
 
 function toBenchRow(slug: string, bench: Benchmark): DataApiBenchRow {
   const live = sortedResults(liveResults(bench), bench.higherIsBetter);
@@ -421,6 +403,41 @@ export function fmtDataValue(v: number, unit: Benchmark["unit"]): string {
   }
 }
 
+/**
+ * From bench.cellRanks (keys "chain|region"), extract the cells where
+ * providerSlug is rank #1, grouped by region.
+ * e.g. US → [BNB, Base], EU → [BNB], SGP → [SOL, RH]
+ */
+function computeProviderCellWins(
+  bench: Benchmark,
+  providerSlug: string,
+): DataApiCellWin[] {
+  if (!bench.cellRanks) return [];
+
+  const regionChains = new Map<string, string[]>();
+  for (const [key, entries] of Object.entries(bench.cellRanks)) {
+    const [chain, region] = key.split("|");
+    if (chain === "all" || region === "all") continue;
+    if (entries[0]?.slug !== providerSlug) continue;
+    const chains = regionChains.get(region) ?? [];
+    chains.push(chain);
+    regionChains.set(region, chains);
+  }
+
+  if (regionChains.size === 0) return [];
+
+  return (["us-east", "eu-west", "ap-southeast", "sgp"] as const)
+    .filter((r) => regionChains.has(r))
+    .map((r) => ({
+      region: r,
+      regionLabel: REGION_LABELS[r] ?? r.toUpperCase(),
+      chains: (regionChains.get(r) ?? []).map((c) => ({
+        chain: c,
+        label: CHAIN_LABELS[c] ?? c,
+      })),
+    }));
+}
+
 async function buildSnapshot(): Promise<DataApiSnapshot | null> {
   const settled = await Promise.allSettled(
     BENCH_SLUGS.map((s) => loadBenchFromBlob(s)),
@@ -464,8 +481,8 @@ async function buildSnapshot(): Promise<DataApiSnapshot | null> {
       if (!providerMap.has(r.slug)) {
         providerMap.set(r.slug, { name: r.name, cells: [] });
       }
-      const regions = regionScores.get(r.slug);
-      const chains = computeProviderChainScores(bench, r.slug);
+      const cellWins = computeProviderCellWins(bench, r.slug);
+      const regions = cellWins.length === 0 ? regionScores.get(r.slug) : undefined;
       providerMap.get(r.slug)!.cells.push({
         benchSlug: slug,
         benchShortTitle: BENCH_SHORT_TITLE[slug] ?? slug,
@@ -475,7 +492,7 @@ async function buildSnapshot(): Promise<DataApiSnapshot | null> {
         unit: bench.unit,
         higherIsBetter: bench.higherIsBetter,
         regions: regions && regions.length > 0 ? regions : undefined,
-        chains: chains.length > 0 ? chains : undefined,
+        cellWins: cellWins.length > 0 ? cellWins : undefined,
       });
     }
   }

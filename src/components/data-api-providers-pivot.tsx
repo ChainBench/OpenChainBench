@@ -9,6 +9,7 @@ import {
   fmtDataValue,
   type DataApiProviderPivotRow,
   type DataApiRegionScore,
+  type DataApiCellWin,
   type DataApiGroup,
 } from "@/lib/data-api-stats";
 
@@ -216,8 +217,8 @@ function GroupCell({
 
   const { bestRank, bestCell } = cell;
   const accent = GROUP_META[group].accent;
-  const hasRegions = bestCell.regions && bestCell.regions.length > 0;
-  const hasSub = hasRegions;
+  const hasCellWins = bestCell.cellWins && bestCell.cellWins.length > 0;
+  const hasRegions = !hasCellWins && bestCell.regions && bestCell.regions.length > 0;
 
   const bg =
     bestRank === 1
@@ -235,7 +236,7 @@ function GroupCell({
 
   return (
     <div
-      className="inline-flex flex-col items-start gap-1 rounded-md px-2 py-1.5 min-w-[110px]"
+      className="inline-flex flex-col items-start gap-1 rounded-md px-2 py-1.5 min-w-[120px]"
       style={{ background: bg }}
     >
       {/* Global rank + value */}
@@ -251,8 +252,10 @@ function GroupCell({
       <span className="text-[9px] text-ink-faint leading-tight">
         {bestCell.benchShortTitle.replace("coverage", "cov.").replace("freshness", "fresh.")}
       </span>
-      {/* Region sub-scores */}
-      {hasSub && (
+      {hasCellWins && (
+        <CellWinsRow wins={bestCell.cellWins!} accent={accent} />
+      )}
+      {hasRegions && (
         <div className="flex flex-wrap items-center gap-1.5 pt-0.5 border-t border-ink/8 w-full">
           <RegionSubScores
             regions={bestCell.regions!}
@@ -300,6 +303,33 @@ function RegionSubScores({
   );
 }
 
+function CellWinsRow({ wins, accent }: { wins: DataApiCellWin[]; accent: string }) {
+  return (
+    <div className="flex flex-col gap-0.5 pt-0.5 border-t border-ink/8 w-full">
+      {wins.map((w) => (
+        <div key={w.region} className="flex items-center gap-1">
+          <span
+            className="text-[8px] font-medium uppercase text-ink-faint w-6 shrink-0"
+            style={{ letterSpacing: "0.04em" }}
+          >
+            {w.regionLabel}
+          </span>
+          <div className="flex flex-wrap gap-0.5">
+            {w.chains.map((c) => (
+              <span
+                key={c.chain}
+                className="text-[8px] font-bold"
+                style={{ color: accent }}
+              >
+                {c.label}
+              </span>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 function RankBadge({ rank, accent }: { rank: number; accent: string }) {
   const bg = rank === 1 ? accent : "transparent";
