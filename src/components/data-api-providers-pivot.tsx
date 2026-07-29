@@ -9,6 +9,7 @@ import {
   fmtDataValue,
   type DataApiProviderPivotRow,
   type DataApiRegionScore,
+  type DataApiChainScore,
   type DataApiGroup,
 } from "@/lib/data-api-stats";
 
@@ -217,6 +218,8 @@ function GroupCell({
   const { bestRank, bestCell } = cell;
   const accent = GROUP_META[group].accent;
   const hasRegions = bestCell.regions && bestCell.regions.length > 0;
+  const hasChains = bestCell.chains && bestCell.chains.length > 0;
+  const hasSub = hasRegions || hasChains;
 
   const bg =
     bestRank === 1
@@ -250,13 +253,20 @@ function GroupCell({
       <span className="text-[9px] text-ink-faint leading-tight">
         {bestCell.benchShortTitle.replace("coverage", "cov.").replace("freshness", "fresh.")}
       </span>
-      {/* Regional sub-scores */}
-      {hasRegions && (
-        <RegionSubScores
-          regions={bestCell.regions!}
-          unit={bestCell.unit}
-          accent={accent}
-        />
+      {/* Region + chain sub-scores merged in one row */}
+      {hasSub && (
+        <div className="flex flex-wrap items-center gap-1.5 pt-0.5 border-t border-ink/8 w-full">
+          {hasRegions && (
+            <RegionSubScores
+              regions={bestCell.regions!}
+              unit={bestCell.unit}
+              accent={accent}
+            />
+          )}
+          {hasChains && (
+            <ChainSubScores chains={bestCell.chains!} accent={accent} />
+          )}
+        </div>
       )}
     </div>
   );
@@ -272,7 +282,7 @@ function RegionSubScores({
   accent: string;
 }) {
   return (
-    <div className="flex items-center gap-1.5 pt-0.5 border-t border-ink/8 w-full">
+    <>
       {regions.map((r) => (
         <div
           key={r.region}
@@ -293,7 +303,40 @@ function RegionSubScores({
           </span>
         </div>
       ))}
-    </div>
+    </>
+  );
+}
+
+function ChainSubScores({
+  chains,
+  accent,
+}: {
+  chains: DataApiChainScore[];
+  accent: string;
+}) {
+  const MAX = 4;
+  const visible = chains.slice(0, MAX);
+  const overflow = chains.length - MAX;
+  return (
+    <>
+      {visible.map((c) => (
+        <span
+          key={c.chain}
+          className="text-[8px] font-bold rounded px-1 py-0.5"
+          style={{
+            color: accent,
+            background: `${accent}22`,
+            letterSpacing: "0.04em",
+          }}
+          title={`${c.label}: #1`}
+        >
+          {c.label}
+        </span>
+      ))}
+      {overflow > 0 && (
+        <span className="text-[8px] text-ink-faint">+{overflow}</span>
+      )}
+    </>
   );
 }
 
