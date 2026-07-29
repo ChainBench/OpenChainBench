@@ -75,11 +75,17 @@ export function ChartExportButton({
     // sometimes silently produces empty PNGs. Also skips the "download
     // blocked because the click gesture context expired" trap since we
     // hand a real Blob to the caller synchronously right after await.
+    // Use scrollHeight/scrollWidth so the full content is captured even
+    // when a parent scroll container makes only part of the figure visible
+    // on screen. Without this, html-to-image uses offsetHeight which clips
+    // the legend when it wraps into many rows (100+ provider benches).
     const blob = await toBlob(el, {
       pixelRatio: PIXEL_RATIO,
       backgroundColor: bg,
       cacheBust: true,
       skipFonts: false,
+      width: el.scrollWidth || el.offsetWidth,
+      height: el.scrollHeight || el.offsetHeight,
       // Drop the export button itself from the capture — no point
       // baking the "Copy" pill into every screenshot. Also drop any
       // element marked with data-chart-export-omit (e.g. the chart's
