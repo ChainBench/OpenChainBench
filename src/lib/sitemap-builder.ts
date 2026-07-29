@@ -2,7 +2,6 @@ import { readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import type { MetadataRoute } from "next";
 import { getBenchmarks } from "@/data/benchmarks";
-import { getAllReports, getAllReportCategories } from "@/lib/reports/loader";
 import { COMPARE_PAIRS } from "@/data/compare-pairs";
 import { adHocPairs } from "@/lib/compare/adhoc-pairs";
 import { REMOVED_BENCH_SLUGS } from "@/middleware";
@@ -106,38 +105,6 @@ async function safeLoad<T>(
     );
     return fallback;
   }
-}
-
-function reportsRoutes(): MetadataRoute.Sitemap {
-  const entries: MetadataRoute.Sitemap = [
-    {
-      url: `${SITE.url}/reports`,
-      lastModified: BUILD_TIME,
-      changeFrequency: "monthly",
-      priority: 0.8,
-    },
-  ];
-  try {
-    for (const cat of getAllReportCategories()) {
-      entries.push({
-        url: `${SITE.url}/reports/${cat}`,
-        lastModified: BUILD_TIME,
-        changeFrequency: "monthly",
-        priority: 0.7,
-      });
-    }
-    for (const r of getAllReports()) {
-      entries.push({
-        url: `${SITE.url}/reports/${r.categorySlug}/${r.slug}`,
-        lastModified: new Date(r.publishedAt),
-        changeFrequency: "monthly",
-        priority: 0.85,
-      });
-    }
-  } catch {
-    // content dir may not exist yet
-  }
-  return entries;
 }
 
 function staticHubRoutes(catalogTs: Date): MetadataRoute.Sitemap {
@@ -527,7 +494,6 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
 
   return [
     ...staticRoutes,
-    ...reportsRoutes(),
     ...benchmarkRoutes,
     ...providerRoutes,
     ...hlBuilderRoutes,
