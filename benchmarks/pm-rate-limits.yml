@@ -114,10 +114,6 @@ per_chain_explainer:
   - slug: metaculus
     h2: Metaculus rate limits
     body: "Metaculus does not document API rate limits. The harness uses the most conservative ramp in the cohort (5/10/20 requests per 10 seconds) with the standard abort guard. There is no order book endpoint and no WebSocket. Because Metaculus is a forecasting aggregator rather than a betting exchange, its API is designed for low-frequency access; polling faster than once per 5 seconds on a single question likely hits undocumented limits. Warm price endpoint p50: {{p50:metaculus}}."
-  - slug: betfair
-    h2: Betfair rate limits
-    body: "Betfair's Exchange API documents a rate limit of 5 requests per second per AppKey for the listMarketBook endpoint, enforced with 429 responses. The daily ramp uses tiers of 10/25/50 requests per 10 seconds and stops at the first 429, consistent with the documented contract. Unlike Polymarket, Betfair does not queue under Cloudflare — it applies a hard token bucket. All API calls are POST with JSON body and require X-Application (AppKey) plus X-Authentication (session token). Betfair is the only venue in this cohort where the price probe is a POST request. Warm book p50: {{p50:betfair}}."
-
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/pm-rate-limits
 
 prometheus:
@@ -137,7 +133,6 @@ dimensions:
     - { value: predictit, label: PredictIt }
     - { value: smarkets, label: Smarkets }
     - { value: metaculus, label: Metaculus }
-    - { value: betfair, label: Betfair }
   region:
     - { value: all, label: All regions }
     - { value: us-east, label: US East }
@@ -289,15 +284,3 @@ providers:
       sample_size: sum(increase(pmapi_requests_total{venue="metaculus",class="price",conn="warm",outcome!="probe_invalid"}[24h]))
       series: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="metaculus",class="price",conn="warm"}[1h])) by (le))
 
-  - slug: betfair
-    name: Betfair
-    tag: "UK FCA-regulated exchange, auth required, listMarketBook POST, token bucket rate limiting"
-    formula: "p50 of warm listMarketBook POST requests against the Exchange API for the pinned binary market, successful requests only, 24h window. Requires BETFAIR_APP_KEY + credentials. Ramp at 10/25/50 per 10s, stops on first 429."
-    queries:
-      p50: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="betfair",class="book",conn="warm"}[24h])) by (le))
-      p90: 1000 * histogram_quantile(0.90, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="betfair",class="book",conn="warm"}[24h])) by (le))
-      p99: 1000 * histogram_quantile(0.99, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="betfair",class="book",conn="warm"}[24h])) by (le))
-      mean: 1000 * sum(rate(pmapi_request_duration_seconds_sum{cache!="hit",venue="betfair",class="book",conn="warm"}[24h])) / sum(rate(pmapi_request_duration_seconds_count{cache!="hit",venue="betfair",class="book",conn="warm"}[24h]))
-      success: clamp_max(sum(rate(pmapi_requests_total{venue="betfair",class="book",conn="warm",outcome="ok"}[24h])) / sum(rate(pmapi_requests_total{venue="betfair",class="book",conn="warm",outcome!="probe_invalid"}[24h])), 1)
-      sample_size: sum(increase(pmapi_requests_total{venue="betfair",class="book",conn="warm",outcome!="probe_invalid"}[24h]))
-      series: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="betfair",class="book",conn="warm"}[1h])) by (le))
