@@ -380,12 +380,19 @@ export function TimeSeriesChart({
       if (range === "7d") {
         return seriesOverride7d ?? panelLazy7d ?? seriesOverride;
       }
-      // 90d / 1y: served from Prom via lazy fetch. Return empty map while
-      // loading so the chart shows an empty state rather than stale 24h data.
-      // 180d / all: no panel data — these tabs stay disabled for panels.
-      if (range === "90d") return panelLazy90d ?? {};
-      if (range === "1y") return panelLazy1y ?? {};
-      return seriesOverride;
+      // 90d / 1y: use Prom-backed lazy series when available, otherwise
+      // return undefined so pickBenchValues falls through to longRangeSeries
+      // (archive). An empty map would hide the archive lines.
+      // 180d / all: no Prom panel data; fall through to longRangeSeries.
+      if (range === "90d") {
+        if (panelLazy90d && Object.keys(panelLazy90d).length > 0) return panelLazy90d;
+        return undefined;
+      }
+      if (range === "1y") {
+        if (panelLazy1y && Object.keys(panelLazy1y).length > 0) return panelLazy1y;
+        return undefined;
+      }
+      return undefined;
     };
     const panel = pickPanel();
     const sliceOverride = (full: (number | null)[]): (number | null)[] => {
@@ -542,17 +549,16 @@ export function TimeSeriesChart({
               {/* Hairline separator between live (Prom) and archive
                   ranges so the reader sees they come from a different
                   data source — kept inside the same pill strip so the
-                  selection feels like one control. Panel tabs disable
-                  the archive ranges (panel data is not archived). */}
+                  selection feels like one control. */}
               <span
                 aria-hidden
                 className="mx-1 inline-block h-4 w-px bg-rule"
               />
               {LONG_RANGES.map((r) => {
                 const active = r === range;
-                // 90d / 1y are Prom-backed for panel views; 180d / all are
-                // archive-only and stay disabled when a panel is active.
-                const panelBlocks = panelActive && r !== "90d" && r !== "1y";
+                // Archive series covers all long-range windows (90d/180d/1y/all)
+                // even when a panel is active — panelBlocks no longer needed.
+                const panelBlocks = false;
                 const disabled = longRangeDisabled || panelBlocks;
                 const title = panelBlocks
                   ? "Switch to the main metric for 180D / ALL history"
