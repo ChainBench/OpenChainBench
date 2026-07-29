@@ -252,11 +252,9 @@ function GroupCell({
       <span className="text-[9px] text-ink-faint leading-tight">
         {bestCell.benchShortTitle.replace("coverage", "cov.").replace("freshness", "fresh.")}
       </span>
-      {/* Per-region chain wins (cellRanks) */}
       {hasCellWins && (
         <CellWinsRow wins={bestCell.cellWins!} accent={accent} />
       )}
-      {/* Fallback: plain region ranks when no cellRanks available */}
       {hasRegions && (
         <div className="flex flex-wrap items-center gap-1.5 pt-0.5 border-t border-ink/8 w-full">
           <RegionSubScores
@@ -305,11 +303,6 @@ function RegionSubScores({
   );
 }
 
-
-/**
- * Shows per-region chain wins: "US  BNB · Base   EU  BNB   SGP  SOL · RH"
- * Region label faint, chain labels accent-colored.
- */
 function CellWinsRow({ wins, accent }: { wins: DataApiCellWin[]; accent: string }) {
   return (
     <div className="flex flex-col gap-0.5 pt-0.5 border-t border-ink/8 w-full">
