@@ -9,10 +9,10 @@ import { SITE } from "@/data/site";
  * Hub landing page for the prediction markets cohort. SSR'd against
  * the `pm-cohort-stats` harness gauges plus the existing PM bench
  * gauges (pm-api-latency, pm-resolution-delay, pm-ws-latency). One
- * server fetch, one client tab swap between Venues and Data feeds.
+ * server fetch, sortable venue leaderboard below.
  *
  * The page positions OCB as the neutral cross venue measurement layer:
- * resolution honesty, API quality, freshness lag, all on the same
+ * resolution honesty, API quality, WS latency, all on the same
  * timeline and with the same methodology. Per venue pages live on the
  * bench specs (`/benchmarks/pm-*`); cross venue context lives here.
  *
@@ -38,7 +38,7 @@ const ANSWERS = [
 ] as const;
 
 const DESCRIPTION =
-  "Polymarket vs Kalshi plus Limitless, Myriad and more on one cross-venue leaderboard: volume, OI, resolution delay, API latency, freshness.";
+  "Polymarket vs Kalshi plus Limitless and Myriad on one cross-venue leaderboard: volume, open interest, resolution delay and API latency.";
 
 export const metadata: import("next").Metadata = pageMetadata({
   path: "/prediction-markets",
@@ -230,10 +230,10 @@ export default async function PredictionMarketsHubPage() {
             </Link>{" "}
             (volume, OI, active markets, top market, markets &gt;$1M)
             plus the live PM bench fleet (api latency, resolution delay,
-            freshness). All gauges scraped from the public OCB Prom,
-            refresh interval 60s. Click a venue or feed row above to
-            open its dedicated product page. Hover the dotted underline
-            on any value to see how it is computed.
+            ws latency). All gauges scraped from the public OCB Prom,
+            refresh interval 60s. Click a venue row above to open its
+            dedicated product page. Hover the dotted underline on any
+            value to see how it is computed.
           </p>
         </>
       ) : (
