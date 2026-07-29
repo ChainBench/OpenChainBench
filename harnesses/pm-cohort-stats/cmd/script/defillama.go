@@ -120,7 +120,59 @@ func fetchAllDefillama() {
 		fmt.Printf("[defillama][%s] tvl=%.0f change_1d=%.2f%%\n", slug, row.TVL, row.Change1d)
 	}
 
+	// Fetch Polymarket trading volume from the DeFiLlama dexs summary endpoint.
+	// /protocols only carries TVL; the dexs/summary endpoint exposes the actual
+	// aggregate trading volume that covers all markets including recently settled
+	// ones. This overrides the gamma-api vol24h/vol30d with a more complete figure.
+	fetchDefillamaPolymarketVolume()
+
 	pmCohortStatsLastTickUnix.Set(float64(time.Now().Unix()))
+}
+
+// fetchDefillamaPolymarketVolume queries DeFiLlama's /summary/dexs endpoint
+// for Polymarket's aggregate trading volume. The /protocols list only carries
+// TVL; this endpoint exposes total24h and total30d which cover all settled
+// and active markets — significantly more complete than summing volume24hr
+// from the active-only gamma-api pass. The slug tried first is
+// "polymarket-international"; "polymarket" is the fallback. If neither
+// resolves (endpoint unavailable or network error) the function returns
+// silently and the gamma-api values from the Polymarket fetcher carry forward.
+func fetchDefillamaPolymarketVolume() {
+	type dexsResp struct {
+		Total24h float64 `json:"total24h"`
+		Total7d  float64 `json:"total7d"`
+		Total30d float64 `json:"total30d"`
+	}
+
+	slugs := []string{"polymarket-international", "polymarket"}
+	var r dexsResp
+	var found bool
+	for _, s := range slugs {
+		url := fmt.Sprintf("%s/summary/dexs/%s", defillamaBase, s)
+		body, err := getJSONDefillama(httpClientDefillama, url)
+		if err != nil {
+			continue
+		}
+		if err := json.Unmarshal(body, &r); err != nil {
+			continue
+		}
+		if r.Total24h > 0 || r.Total30d > 0 {
+			found = true
+			break
+		}
+	}
+	if !found {
+		fmt.Printf("[defillama-vol][polymarket] dexs endpoint unavailable or zero; keeping gamma-api values\n")
+		return
+	}
+	if r.Total24h > 0 {
+		pmVenueVolume24hUsd.WithLabelValues("polymarket").Set(r.Total24h)
+	}
+	if r.Total30d > 0 {
+		pmVenueVolume30dUsd.WithLabelValues("polymarket").Set(r.Total30d)
+	}
+	fmt.Printf("[defillama-vol][polymarket] vol24h=%.0f vol7d=%.0f vol30d=%.0f\n",
+		r.Total24h, r.Total7d, r.Total30d)
 }
 
 // normalizeName lower-cases and strips spaces / punctuation so
