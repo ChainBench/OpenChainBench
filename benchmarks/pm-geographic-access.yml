@@ -83,7 +83,7 @@ providers:
     queries:
       p50: 100 * avg_over_time(pm_geo_accessible{venue="polymarket"}[24h])
       p90: 100 * avg_over_time(pm_geo_accessible{venue="polymarket",region="eu-west"}[24h])
-      p99: 100 * avg_over_time(pm_geo_accessible{venue="polymarket",region="us-east"}[24h])
+      p99: 100 * avg_over_time(pm_geo_accessible{venue="polymarket",region="eu-west"}[24h])
       mean: 100 * avg_over_time(pm_geo_accessible{venue="polymarket"}[24h])
       success: vector(1)
       sample_size: increase(pm_geo_probe_total{venue="polymarket"}[24h])
@@ -96,7 +96,7 @@ providers:
     queries:
       p50: 100 * avg_over_time(pm_geo_accessible{venue="kalshi"}[24h])
       p90: 100 * avg_over_time(pm_geo_accessible{venue="kalshi",region="eu-west"}[24h])
-      p99: 100 * avg_over_time(pm_geo_accessible{venue="kalshi",region="us-east"}[24h])
+      p99: 100 * avg_over_time(pm_geo_accessible{venue="kalshi",region="eu-west"}[24h])
       mean: 100 * avg_over_time(pm_geo_accessible{venue="kalshi"}[24h])
       success: vector(1)
       sample_size: increase(pm_geo_probe_total{venue="kalshi"}[24h])
@@ -109,7 +109,7 @@ providers:
     queries:
       p50: 100 * avg_over_time(pm_geo_accessible{venue="limitless"}[24h])
       p90: 100 * avg_over_time(pm_geo_accessible{venue="limitless",region="eu-west"}[24h])
-      p99: 100 * avg_over_time(pm_geo_accessible{venue="limitless",region="us-east"}[24h])
+      p99: 100 * avg_over_time(pm_geo_accessible{venue="limitless",region="eu-west"}[24h])
       mean: 100 * avg_over_time(pm_geo_accessible{venue="limitless"}[24h])
       success: vector(1)
       sample_size: increase(pm_geo_probe_total{venue="limitless"}[24h])
@@ -122,7 +122,7 @@ providers:
     queries:
       p50: 100 * avg_over_time(pm_geo_accessible{venue="manifold"}[24h])
       p90: 100 * avg_over_time(pm_geo_accessible{venue="manifold",region="eu-west"}[24h])
-      p99: 100 * avg_over_time(pm_geo_accessible{venue="manifold",region="us-east"}[24h])
+      p99: 100 * avg_over_time(pm_geo_accessible{venue="manifold",region="eu-west"}[24h])
       mean: 100 * avg_over_time(pm_geo_accessible{venue="manifold"}[24h])
       success: vector(1)
       sample_size: increase(pm_geo_probe_total{venue="manifold"}[24h])
@@ -135,7 +135,7 @@ providers:
     queries:
       p50: 100 * avg_over_time(pm_geo_accessible{venue="myriad"}[24h])
       p90: 100 * avg_over_time(pm_geo_accessible{venue="myriad",region="eu-west"}[24h])
-      p99: 100 * avg_over_time(pm_geo_accessible{venue="myriad",region="us-east"}[24h])
+      p99: 100 * avg_over_time(pm_geo_accessible{venue="myriad",region="eu-west"}[24h])
       mean: 100 * avg_over_time(pm_geo_accessible{venue="myriad"}[24h])
       success: vector(1)
       sample_size: increase(pm_geo_probe_total{venue="myriad"}[24h])
