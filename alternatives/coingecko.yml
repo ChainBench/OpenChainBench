@@ -2,7 +2,7 @@ slug: coingecko
 target_product: CoinGecko
 target_url: https://www.coingecko.com/en/api
 description: Crypto price + market data API, multi-chain
-benchmark: network-coverage
+benchmark: asset-registry-coverage
 
 intro: |
   CoinGecko is a coin-centric price and market data REST API built around a curated asset list (the `/coins` universe) rather than around on-chain events. Tokens are added through a listing process, prices land on the API after that process completes, and the free tier is famously throttled (around 30 requests per minute on the demo key) which pushes any real product onto a paid plan within days of integration. The on-chain DEX side ships as a separate `/onchain` namespace inherited from GeckoTerminal, with its own quotas. Teams usually leave CoinGecko at one of two points: when the launch cadence of the tokens they care about outpaces the listing pipeline, or when the per-minute cap on the free tier forces a migration before the product is monetised enough to justify the enterprise tier.
