@@ -17,12 +17,8 @@ type Config struct {
 	MobulaAPIKey         string // Authorization: <key> on api.mobula.io
 	PredexonAPIKey       string // x-api-key on api.predexon.com
 	DefinedSessionCookie string // 7-day cookie used to mint Codex JWT
-	KalshiAPIKeyID       string // KALSHI-ACCESS-KEY header for WS auth
-	KalshiPrivateKeyPEM  string // RSA private key PEM for WS signature
-	BetfairAppKey        string // BETFAIR_APP_KEY — developer application key
-	BetfairUsername      string // BETFAIR_USERNAME — login credential for session token
-	BetfairPassword      string // BETFAIR_PASSWORD — login credential for session token
-	BetfairSessionToken  string // BETFAIR_SESSION_TOKEN — pre-obtained token (alternative to user/pass)
+	KalshiAPIKeyID      string // KALSHI-ACCESS-KEY header for WS auth
+	KalshiPrivateKeyPEM string // RSA private key PEM for WS signature
 }
 
 func loadConfig() Config {
@@ -30,17 +26,12 @@ func loadConfig() Config {
 		MobulaAPIKey:         strings.TrimSpace(os.Getenv("MOBULA_API_KEY")),
 		PredexonAPIKey:       strings.TrimSpace(os.Getenv("PREDEXON_API_KEY")),
 		DefinedSessionCookie: strings.TrimSpace(os.Getenv("DEFINED_SESSION_COOKIE")),
-		KalshiAPIKeyID:       strings.TrimSpace(os.Getenv("KALSHI_API_KEY_ID")),
-		KalshiPrivateKeyPEM:  strings.TrimSpace(os.Getenv("KALSHI_PRIVATE_KEY_PEM")),
-		BetfairAppKey:        strings.TrimSpace(os.Getenv("BETFAIR_APP_KEY")),
-		BetfairUsername:      strings.TrimSpace(os.Getenv("BETFAIR_USERNAME")),
-		BetfairPassword:      strings.TrimSpace(os.Getenv("BETFAIR_PASSWORD")),
-		BetfairSessionToken:  strings.TrimSpace(os.Getenv("BETFAIR_SESSION_TOKEN")),
+		KalshiAPIKeyID:      strings.TrimSpace(os.Getenv("KALSHI_API_KEY_ID")),
+		KalshiPrivateKeyPEM: strings.TrimSpace(os.Getenv("KALSHI_PRIVATE_KEY_PEM")),
 	}
-	fmt.Printf("[providers] mobula=%v predexon=%v codex=%v kalshi_ws=%v betfair=%v\n",
+	fmt.Printf("[providers] mobula=%v predexon=%v codex=%v kalshi_ws=%v\n",
 		cfg.MobulaAPIKey != "", cfg.PredexonAPIKey != "", cfg.DefinedSessionCookie != "",
-		cfg.KalshiAPIKeyID != "" && cfg.KalshiPrivateKeyPEM != "",
-		cfg.BetfairAppKey != "")
+		cfg.KalshiAPIKeyID != "" && cfg.KalshiPrivateKeyPEM != "")
 	return cfg
 }
 

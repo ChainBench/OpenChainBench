@@ -26,7 +26,6 @@ export const PM_VENUE_META: Record<string, { url: string; chainLabel: string }> 
   myriad: { url: "https://myriad.markets", chainLabel: "Abstract L2" },
   manifold: { url: "https://manifold.markets", chainLabel: "Offchain" },
   metaculus: { url: "https://www.metaculus.com", chainLabel: "Offchain" },
-  betfair: { url: "https://www.betfair.com", chainLabel: "Offchain UK" },
 };
 
 export const PM_FEED_META: Record<string, { url?: string }> = {
