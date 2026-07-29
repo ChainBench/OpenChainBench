@@ -135,9 +135,12 @@ export function TimeSeriesChart({
   // Chart's internal re-renders. Reset to null when range or region
   // changes (the data shape is different, the old zoom doesn't apply).
   const [zoom, setZoom] = useState<{ startFrac: number; endFrac: number } | null>(null);
-  // Ref to the <figure> so ChartExportButton can rasterise the whole
-  // chart (header + SVG + watermark + legend) in one shot.
   const figureRef = useRef<HTMLElement | null>(null);
+  // Points to just the SVG+legend block so the exported PNG captures
+  // only the chart body — the omitted header/pills divs still occupy
+  // layout space inside <figure> and would create blank whitespace at
+  // the top of the image if we used figureRef as the export target.
+  const chartBodyRef = useRef<HTMLDivElement | null>(null);
   const zoomScopeKey = `${range}|${region}`;
   const [prevZoomScopeKey, setPrevZoomScopeKey] = useState(zoomScopeKey);
   if (prevZoomScopeKey !== zoomScopeKey) {
@@ -494,7 +497,7 @@ export function TimeSeriesChart({
         </p>
         <div className="flex items-center gap-2">
           <ChartExportButton
-            targetRef={figureRef}
+            targetRef={chartBodyRef}
             filename={`openchainbench-${benchmark.slug}-${range}`}
           />
           {zoom && (
@@ -619,23 +622,25 @@ export function TimeSeriesChart({
         <TopNSelector value={topN} options={topNOptions} onChange={setTopN} />
       </div>
 
-      {lines.length === 0 ? (
-        <div className="border-y-2 border-ink py-12 text-center text-ink-muted text-sm">
-          No time-series data emitted for this range yet.
-        </div>
-      ) : (
-        <Chart
-          key={seriesKey}
-          lines={lines as LineWithColor[]}
-          unit={unitOverride ?? benchmark.unit}
-          windowHours={RANGE_HOURS[range]}
-          expectedPoints={RANGE_EXPECTED_POINTS[range]}
-          zoom={zoom}
-          onZoom={setZoom}
-          onToggleExclude={toggle}
-          onResetExcluded={excluded.size > 0 ? reset : undefined}
-        />
-      )}
+      <div ref={chartBodyRef}>
+        {lines.length === 0 ? (
+          <div className="border-y-2 border-ink py-12 text-center text-ink-muted text-sm">
+            No time-series data emitted for this range yet.
+          </div>
+        ) : (
+          <Chart
+            key={seriesKey}
+            lines={lines as LineWithColor[]}
+            unit={unitOverride ?? benchmark.unit}
+            windowHours={RANGE_HOURS[range]}
+            expectedPoints={RANGE_EXPECTED_POINTS[range]}
+            zoom={zoom}
+            onZoom={setZoom}
+            onToggleExclude={toggle}
+            onResetExcluded={excluded.size > 0 ? reset : undefined}
+          />
+        )}
+      </div>
     </figure>
   );
 }
