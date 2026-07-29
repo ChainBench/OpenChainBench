@@ -4,8 +4,8 @@ slug: pm-rate-limits
 number: "037"
 title: Prediction market API rate limits, tested with a daily ramp
 seo_title: "Prediction market API rate limits 2026"
-seo_description: "Prediction market API rate limits measured live: daily request ramp against Polymarket, Kalshi, Limitless, Manifold, Myriad."
-subtitle: Warm latency on book, price and list endpoints of five prediction market venue APIs, plus a daily rate limit ramp that records added latency and throttle onset per request tier.
+seo_description: "Prediction market API rate limits measured live: daily request ramp against Polymarket, Kalshi, Limitless, Manifold, Myriad, PredictIt, Smarkets and Metaculus."
+subtitle: Warm latency on book, price and list endpoints of eight prediction market venue APIs, plus a daily rate limit ramp that records added latency and throttle onset per request tier.
 
 category: Trading
 status: live
@@ -49,13 +49,13 @@ abstract: |
   second window.
 
 methodology:
-  - "Endpoint classes per venue. Polymarket: CLOB `/book`, `/midpoint`, Gamma `/markets`. Kalshi: `/markets/{ticker}/orderbook`, `/markets/{ticker}`, `/markets`. Limitless: `/markets/{slug}/orderbook`, `/markets/{slug}`, `/markets/active`. Manifold: `/v0/bets`, `/v0/market/{id}`, `/v0/markets`. Myriad: `/markets/{slug}`, `/markets`. Myriad exposes no order book endpoint; that absence is reported, not worked around."
+  - "Endpoint classes per venue. Polymarket: CLOB `/book`, `/midpoint`, Gamma `/markets`. Kalshi: `/markets/{ticker}/orderbook`, `/markets/{ticker}`, `/markets`. Limitless: `/markets/{slug}/orderbook`, `/markets/{slug}`, `/markets/active`. Manifold: `/v0/bets`, `/v0/market/{id}`, `/v0/markets`. Myriad: `/markets/{slug}`, `/markets`. PredictIt: `/api/marketdata/markets/{id}`, `/api/marketdata/all` (no book endpoint, 15s interval). Smarkets: `/v3/markets/{id}/quotes/`, `/v3/markets/{id}/`, `/v3/events/`. Metaculus: `/api2/questions/{id}/`, `/api2/questions/` (no book or WebSocket). Myriad and Metaculus expose no order book endpoint; that absence is reported, not worked around."
   - "Pinned market per venue: most liquid, near the money (price between 0.15 and 0.85), expiring more than 24h out. Re pinned daily at 00:00 UTC and immediately on probe_invalid. A degenerate 0.99 book has a latency profile that does not represent real usage."
   - "Warm probes every 5s (7s on Manifold, whose entire API sits behind max-age=5 plus stale-while-revalidate=10; tighter spacing would only measure the cache). Cold connect probe once per minute with keep alives disabled, TCP plus TLS handshake recorded separately."
   - "Every sample records a cache flag from cf-cache-status, x-cache and age headers. Kalshi's market list is served from CloudFront with max-age=15, so its list latency measures the edge, not the API. Edge served samples (cache=hit) are excluded from every latency aggregate and reported through the cache label, so no venue ranks on its CDN."
   - "Outcome classification: ok, timeout (8s), http_4xx, http_5xx, throttled (429), probe_invalid, net_error. Latency aggregates include successful requests only; failures count toward the success rate. probe_invalid covers stale pins, e.g. Limitless serves a CDN cached 400 for four hours once a market expires. Those are our fault, never the venue's."
   - "Daily ramp: 60s per tier at rising requests per 10s window against the book endpoint, one venue at a time, one region at a time on disjoint UTC hours (02:00 us-east, 04:00 eu-west, 06:00 sgp)."
-  - "Ramp tier clamps: Polymarket and Kalshi 25/50/100 per 10s (at most 7 percent of Polymarket's documented 1500 per 10s book budget), Manifold 15/30/60 (500 req/min per IP documented), Limitless 10/20/40 (limits undocumented, so conservative). Kalshi stops at the first 429 since its token bucket is documented. Myriad is excluded: its keyless budget is 30 req per 10s and ramping it would only measure our own quota."
+  - "Ramp tier clamps: Polymarket and Kalshi 25/50/100 per 10s (at most 7 percent of Polymarket's documented 1500 per 10s book budget), Manifold 15/30/60 (500 req/min per IP documented), Limitless 10/20/40 (limits undocumented, so conservative), Smarkets 10/25/50 (limits undocumented), Metaculus 5/10/20 (limits undocumented, forecasting API). Kalshi stops at the first 429 since its token bucket is documented. Myriad is excluded: its keyless budget is 30 req per 10s and ramping it would only measure our own quota. PredictIt is excluded: its documented 5 req/min limit means any ramp tier above 4 req/10s exceeds the budget."
   - "Ramp abort guard: the run stops the moment throttled plus 5xx responses exceed 1 percent of any 10 second window. The headline ramp metric is p50 latency during the tier minus the warm baseline p50 of the previous hour in the same region, because venues behind Cloudflare queue bursts without ever returning 429, and added latency is the only honest throttle signal there."
   - "WebSocket panel covers venues with a public market WebSocket, which today means Polymarket only. Kalshi requires authentication for WS, Manifold and Myriad have none, Limitless uses socket.io. Absence is shown, not penalized."
   - "Myriad's origin is a single region US East deployment behind Heroku. Latency from eu-west and sgp is geography, reported as measured."
@@ -143,7 +143,7 @@ metric_panels:
   - id: ramp_added_latency
     label: Ramp added latency
     description: "Worst tier of the daily ramp: p50 latency during the burst minus the warm baseline p50 of the previous hour, same region. Venues that queue under load instead of returning 429 show up here."
-    metric: 1000 * max(max_over_time(pmapi_ramp_added_latency_seconds{venue!="predictit",venue!="myriad",venue!="metaculus"}[24h]))
+    metric: 1000 * max(max_over_time(pmapi_ramp_added_latency_seconds{venue!="predictit",venue!="myriad"}[24h]))
     label_key: venue
     unit: ms
     higher_is_better: false

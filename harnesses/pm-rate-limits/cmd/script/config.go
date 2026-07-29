@@ -8,7 +8,7 @@ import (
 
 // userAgent identifies every probe per the OCB methodology page. Venues can
 // contact us or block the UA selectively instead of banning a bare Go client.
-const userAgent = "OpenChainBench/1.0 (+https://openchainbench.com/methodology; contact@mobula.io)"
+const userAgent = "OpenChainBench/1.0 (+https://openchainbench.com/methodology; contact@openchainbench.com)"
 
 // Config groups the env-driven knobs the harness needs at startup. Direct
 // venue probes don't need any of these; the aggregator goroutines stay

@@ -5,7 +5,7 @@ number: "038"
 title: Best prediction market API, ranked by live latency and uptime
 seo_title: "Best prediction market API 2026"
 seo_description: "Is the Polymarket API up? Live uptime and latency for Polymarket, Kalshi, Limitless, Manifold, Myriad, PredictIt and Smarkets price endpoints."
-subtitle: Warm price endpoint latency of seven prediction market venue APIs from three regions, plus a live uptime panel that answers whether each API is up right now.
+subtitle: Warm price endpoint latency of eight prediction market venue APIs from three regions, plus a live uptime panel that answers whether each API is up right now.
 
 category: Trading
 status: live
@@ -17,11 +17,11 @@ seo_intro: |
   When the Polymarket API stops answering, the only pages that notice are
   downdetector clones aggregating complaints. None of them actually probe
   the API. This benchmark does. A harness in three regions requests the
-  price endpoint of Polymarket, Kalshi, Limitless, Manifold and Myriad
-  every 5 seconds over warm connections, records every round trip, and
-  publishes two things venue status pages do not: a latency leaderboard
-  ranking the best prediction market API by measured p50, and a per venue
-  uptime panel computed from the same probes. If you are here to check
+  price endpoint of Polymarket, Kalshi, Limitless, Manifold, Myriad,
+  PredictIt, Smarkets and Metaculus every 5 seconds over warm connections,
+  records every round trip, and publishes two things venue status pages
+  do not: a latency leaderboard ranking the best prediction market API
+  by measured p50, and a per venue uptime panel computed from the same probes. If you are here to check
   whether the Polymarket API is up right now, the uptime panel below is a
   direct measurement, refreshed continuously, not a complaint counter.
   If you are choosing which venue API to build on, the leaderboard ranks
@@ -46,7 +46,7 @@ abstract: |
   fastest right now.
 
 methodology:
-  - "Price endpoint per venue. Polymarket: CLOB `/midpoint`. Kalshi: `/markets/{ticker}`. Limitless: `/markets/{slug}`. Manifold: `/v0/market/{id}`. Myriad: `/markets/{slug}`. This is the hot path of real integrations: one market, one quote, polled in a loop."
+  - "Price endpoint per venue. Polymarket: CLOB `/midpoint`. Kalshi: `/markets/{ticker}`. Limitless: `/markets/{slug}`. Manifold: `/v0/market/{id}`. Myriad: `/markets/{slug}`. PredictIt: `/api/marketdata/markets/{id}` (15s interval, 5 req/min limit). Smarkets: `/v3/markets/{id}/`. Metaculus: `/api2/questions/{id}/`. This is the hot path of real integrations: one market, one quote, polled in a loop."
   - "Warm probes every 5s (7s on Manifold, whose API sits behind max-age=5 plus stale-while-revalidate=10) from us-east, eu-west and sgp over a keep alive pool. A separate cold connect probe once per minute records the TCP plus TLS handshake a brand new client pays."
   - "Every sample carries a cache flag read from cf-cache-status, x-cache and age headers. Latency aggregates exclude cache hits: a CDN hit measures the nearest edge, not the venue's API, and including Manifold's residual cache hits would flatter it by design."
   - "Uptime is the average of a per venue, per region health gauge (pmapi_health) computed by the harness from probe outcomes. 100 percent means every probe cycle in the window succeeded from that region. The 24h and 7d panels below are the live answer to whether each API is up."
@@ -59,7 +59,7 @@ methodology:
 
 findings:
   - "{{best_name}} currently has the lowest warm price endpoint latency at {{best_p50}} p50 over the last 24h, making it the fastest prediction market API in the cohort by direct measurement."
-  - "All five venue APIs typically sit above 99 percent measured uptime; the gaps that do appear are short and regional, which is exactly what a complaint based status page cannot tell you. The uptime panels show the live 24h and 7d figures per venue."
+  - "All eight venue APIs typically sit above 99 percent measured uptime; the gaps that do appear are short and regional, which is exactly what a complaint based status page cannot tell you. The uptime panels show the live 24h and 7d figures per venue."
   - "{{name:manifold}} would look faster than it is if cache hits counted: its whole API sits behind a 5 second CDN cache. With cache hits excluded its origin answers at {{p50:manifold}} p50, an honest number a trading bot polling fresh quotes will actually see."
   - "{{name:myriad}} serves every region from a single US East origin, so its cohort worst p50 of {{p50:myriad}} is mostly geography. Switch the region dimension to us-east to see the API itself rather than the speed of light."
   - "{{name:polymarket}} answers its midpoint endpoint at {{p50:polymarket}} p50. Because we probe it every 5 seconds from three regions, the uptime panel doubles as a Polymarket API status check that updates continuously instead of waiting for user reports."
@@ -242,13 +242,13 @@ providers:
     tag: "CFTC no-action letter, US political markets only, probed at 15s due to 5 req/min rate limit"
     formula: "p50 of warm price requests at 15s intervals against /api/marketdata/markets/{id}, successful requests only, 24h window. Rate limit constraint means fewer samples than other venues."
     queries:
-      p50: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{venue="predictit",source="direct",class="price",conn="warm"}[24h])) by (le))
-      p90: 1000 * histogram_quantile(0.90, sum(rate(pmapi_request_duration_seconds_bucket{venue="predictit",source="direct",class="price",conn="warm"}[24h])) by (le))
-      p99: 1000 * histogram_quantile(0.99, sum(rate(pmapi_request_duration_seconds_bucket{venue="predictit",source="direct",class="price",conn="warm"}[24h])) by (le))
-      mean: 1000 * sum(rate(pmapi_request_duration_seconds_sum{venue="predictit",source="direct",class="price",conn="warm"}[24h])) / sum(rate(pmapi_request_duration_seconds_count{venue="predictit",source="direct",class="price",conn="warm"}[24h]))
+      p50: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{venue="predictit",source="direct",class="price",conn="warm",cache!="hit"}[24h])) by (le))
+      p90: 1000 * histogram_quantile(0.90, sum(rate(pmapi_request_duration_seconds_bucket{venue="predictit",source="direct",class="price",conn="warm",cache!="hit"}[24h])) by (le))
+      p99: 1000 * histogram_quantile(0.99, sum(rate(pmapi_request_duration_seconds_bucket{venue="predictit",source="direct",class="price",conn="warm",cache!="hit"}[24h])) by (le))
+      mean: 1000 * sum(rate(pmapi_request_duration_seconds_sum{venue="predictit",source="direct",class="price",conn="warm",cache!="hit"}[24h])) / sum(rate(pmapi_request_duration_seconds_count{venue="predictit",source="direct",class="price",conn="warm",cache!="hit"}[24h]))
       success: clamp_max(sum(rate(pmapi_requests_total{venue="predictit",source="direct",class="price",conn="warm",outcome="ok"}[24h])) / sum(rate(pmapi_requests_total{venue="predictit",source="direct",class="price",conn="warm",outcome!="probe_invalid"}[24h])), 1)
       sample_size: sum(increase(pmapi_requests_total{venue="predictit",source="direct",class="price",conn="warm",outcome!="probe_invalid"}[24h]))
-      series: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{venue="predictit",source="direct",class="price",conn="warm"}[1h])) by (le))
+      series: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{venue="predictit",source="direct",class="price",conn="warm",cache!="hit"}[1h])) by (le))
 
   - slug: smarkets
     name: Smarkets
