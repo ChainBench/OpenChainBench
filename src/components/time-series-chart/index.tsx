@@ -186,7 +186,7 @@ export function TimeSeriesChart({
     // never refetched.
     const done: Record<"7d" | "30d", boolean> = { "7d": false, "30d": false };
     const buildQs = (range: "7d" | "30d") => {
-      const qs = new URLSearchParams({ range });
+      const qs = new URLSearchParams({ range, raw: "1" });
       if (regionProp && regionProp !== "all") qs.set("region", regionProp);
       if (chainProp && chainProp !== "all") qs.set("chain", chainProp);
       return qs.toString();
@@ -243,7 +243,7 @@ export function TimeSeriesChart({
       "30d": !need30d,
     };
     const buildQs = (range: "7d" | "30d") => {
-      const qs = new URLSearchParams({ range, panel: activePanelId });
+      const qs = new URLSearchParams({ range, panel: activePanelId, raw: "1" });
       if (regionProp && regionProp !== "all") qs.set("region", regionProp);
       if (chainProp && chainProp !== "all") qs.set("chain", chainProp);
       return qs.toString();
@@ -299,7 +299,7 @@ export function TimeSeriesChart({
     if (!need90d && !need1y) return;
     let cancelled = false;
     const buildQs = (r: "90d" | "1y") => {
-      const qs = new URLSearchParams({ range: r, panel: activePanelId });
+      const qs = new URLSearchParams({ range: r, panel: activePanelId, raw: "1" });
       if (regionProp && regionProp !== "all") qs.set("region", regionProp);
       if (chainProp && chainProp !== "all") qs.set("chain", chainProp);
       return qs.toString();
