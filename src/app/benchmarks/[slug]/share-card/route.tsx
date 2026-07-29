@@ -672,18 +672,27 @@ export async function GET(
 
   const colors = buildProviderColors(benchmark.results);
 
-  switch (template) {
-    case "snapshot":
-      return renderSnapshot(filteredSafe, colors, chainLabel);
-    case "headline":
-      return renderHeadline(benchmark, colors, headlineProvider, chainLabel);
-    case "compare":
-      return renderCompare(benchmark, colors, compareA, compareB, chainLabel);
-    case "leaderboard":
-      return renderLeaderboard(benchmark, colors, chainLabel);
-    case "ranking":
-    default:
-      return renderRanking(benchmark, colors, chainLabel);
+  try {
+    switch (template) {
+      case "snapshot":
+        return await renderSnapshot(filteredSafe, colors, chainLabel);
+      case "headline":
+        return await renderHeadline(benchmark, colors, headlineProvider, chainLabel);
+      case "compare":
+        return await renderCompare(benchmark, colors, compareA, compareB, chainLabel);
+      case "leaderboard":
+        return await renderLeaderboard(benchmark, colors, chainLabel);
+      case "ranking":
+      default:
+        return await renderRanking(benchmark, colors, chainLabel);
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? `${err.message}\n${err.stack}` : String(err);
+    console.error(`[share-card] ${slug} template=${template} ERROR:`, msg);
+    return new Response(`render_error: ${err instanceof Error ? err.message : String(err)}`, {
+      status: 500,
+      headers: { "content-type": "text/plain" },
+    });
   }
 }
 

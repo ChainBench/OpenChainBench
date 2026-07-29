@@ -282,13 +282,21 @@ export function fmtDataValue(v: number, unit: Benchmark["unit"]): string {
     case "pct":
       return `${v.toFixed(1)}%`;
     case "count":
-      return String(Math.round(v));
-    case "s":
-    case "sec":
-      return v < 1
-        ? `${(v * 1000).toFixed(0)} ms`
-        : `${v.toFixed(2)} s`;
+      return v >= 1000 ? `${Math.round(v / 1000)}k` : String(Math.round(v));
+    case "s": {
+      // Convention: benches with unit "s" store ms in ms.p50 (see format.ts)
+      const s = v / 1000;
+      if (s >= 60) return `${(s / 60).toFixed(1)} min`;
+      if (s < 1) return `${Math.round(v)} ms`;
+      return `${s.toFixed(2)} s`;
+    }
+    case "sec": {
+      // True seconds (indexing-freshness, etc.)
+      if (v >= 60) return `${(v / 60).toFixed(1)} min`;
+      return `${v.toFixed(1)} s`;
+    }
     case "ms":
+      if (v >= 1000) return `${(v / 1000).toFixed(2)} s`;
       return `${Math.round(v)} ms`;
     case "bps":
     case "bp":
