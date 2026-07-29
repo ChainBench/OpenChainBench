@@ -22,8 +22,7 @@ export const PM_VENUE_META: Record<string, { url: string; chainLabel: string }> 
   polymarket: { url: "https://polymarket.com", chainLabel: "Polygon" },
   kalshi: { url: "https://kalshi.com", chainLabel: "Offchain US" },
   limitless: { url: "https://limitless.exchange", chainLabel: "Base" },
-  manifold: { url: "https://manifold.markets", chainLabel: "Offchain play money" },
-  myriad: { url: "https://myriad.markets", chainLabel: "Offchain multi chain" },
+  myriad: { url: "https://myriad.markets", chainLabel: "Abstract L2" },
 };
 
 // Logo paths come from the central manifest (`src/lib/logo-manifest.ts`)
@@ -34,7 +33,6 @@ export const PM_VENUE_META: Record<string, { url: string; chainLabel: string }> 
 // mobula, and predexon.
 export const PM_FEED_META: Record<string, { url?: string }> = {
   "polymarket-clob": { url: "https://polymarket.com" },
-  codex: { url: "https://codex.io" },
   predexon: { url: "https://predexon.com" },
 };
 
@@ -128,9 +126,9 @@ export function benchRowsForVenue(
       tone: "cyan",
     },
     {
-      benchSlug: "pm-data-freshness",
-      label: "Data freshness",
-      blurb: "Third party relays vs the venue's canonical T0 stream.",
+      benchSlug: "pm-ws-latency",
+      label: "WS latency",
+      blurb: "Connect-to-snapshot and trade publication lag on the venue WebSocket.",
       rank: null,
       cohortSize,
       value: null,
@@ -153,9 +151,9 @@ export function benchRowsForVenue(
 export function benchRowsForDataFeed(feed: PmDataFeedRow): PmVenueBenchRow[] {
   return [
     {
-      benchSlug: "pm-data-freshness",
-      label: "Freshness vs T0",
-      blurb: "Lag between this relay and Polymarket CLOB T0.",
+      benchSlug: "pm-ws-latency",
+      label: "WS latency",
+      blurb: "Venue WebSocket connect-to-snapshot and trade publication lag.",
       rank: null,
       cohortSize: 0,
       value: feed.isReference ? null : fmtMs(feed.freshnessP50Ms),

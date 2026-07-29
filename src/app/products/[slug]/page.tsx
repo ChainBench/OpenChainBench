@@ -575,23 +575,12 @@ export default async function ProviderPage({
                       jump from a venue/data provider product page to the
                       PM coverage hub. Hard-coded slug list, same shape
                       as the HL companion treatment elsewhere. */}
-                  {/* Prediction-market pill: 6 native venues + Codex.
-                      Codex is the aggregator measured on pm-data-freshness
-                      alongside Polymarket + Kalshi as the third data
-                      provider indexing PM feeds; retaining the pill lets
-                      readers jump from /products/codex to the PM hub
-                      where its freshness ranking surfaces. Mobula was
-                      previously in this list but does not currently
-                      appear on any PM bench and the pill read as a
-                      routing bug on its data-API profile. */}
                   {(
                     p.slug === "polymarket" ||
                     p.slug === "kalshi" ||
                     p.slug === "limitless" ||
-                    p.slug === "manifold" ||
                     p.slug === "myriad" ||
-                    p.slug === "predexon" ||
-                    p.slug === "codex"
+                    p.slug === "predexon"
                   ) && (
                     <>
                       <span className="text-ink-faint"> · </span>
