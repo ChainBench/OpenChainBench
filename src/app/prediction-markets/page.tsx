@@ -25,7 +25,6 @@ import { SITE } from "@/data/site";
 const ANSWERS = [
   { slug: "how-long-does-polymarket-take-to-resolve", question: "How long does Polymarket take to resolve a market?" },
   { slug: "polymarket-vs-kalshi-resolution-speed", question: "Polymarket vs Kalshi, which resolves prediction markets faster?" },
-  { slug: "which-prediction-market-data-api-is-the-freshest", question: "Which prediction market data API publishes the freshest Polymarket data?" },
   { slug: "which-prediction-market-has-the-strictest-rate-limits", question: "Which prediction market API has the strictest rate limits?" },
   { slug: "polymarket-fees-explained", question: "What fees does Polymarket charge?" },
   { slug: "polymarket-vs-kalshi-fees", question: "Polymarket vs Kalshi fees, which is cheaper to trade?" },

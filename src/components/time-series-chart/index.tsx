@@ -478,7 +478,7 @@ export function TimeSeriesChart({
 
   return (
     <figure className="my-2" ref={figureRef}>
-      <div className="mb-3 flex items-center justify-between gap-3 min-h-7">
+      <div className="mb-3 flex items-center justify-between gap-3 min-h-7" data-chart-export-omit="true">
         <p className="inline-flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.18em] text-ink-muted">
           <LiveDot />
           <span>
@@ -508,7 +508,7 @@ export function TimeSeriesChart({
           {headerActions}
         </div>
       </div>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3" data-chart-export-omit="true">
         <div className="flex flex-wrap items-center gap-1">
           {RANGES.map((r) => {
             const active = r === range;
