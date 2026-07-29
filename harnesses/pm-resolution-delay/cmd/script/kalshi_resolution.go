@@ -3,15 +3,19 @@ package main
 // Kalshi resolution delay poller.
 //
 // Kalshi resolves via its own internal process (no onchain oracle).
-// Delay = settlement_ts - close_time, both from the public API (exact, no
-// polling error). The categories come from the /events/{event_ticker}
-// endpoint (the /markets endpoint omits the category field).
+// Delay = settlement_ts - close_time (both from the public API, exact).
 //
-// "Exotics" markets (KXMV* — auto-generated multivariate parlays) are
-// excluded: they settle by algorithm in 0–200 seconds and are not
-// comparable to traditional prediction market questions on either venue.
+// Exotics filter (auto-generated multivariate parlays):
+//   Exotics auto-settle so fast they skip the "closed" state entirely —
+//   they go from open → finalized within seconds.  pollClosed() uses
+//   status=closed, which never returns Exotics, so the watched map is
+//   naturally Exotics-free.  pollFinalized() emits only for watched
+//   markets, so Exotics can never appear in the histogram.
 //
-// No auth required — uses the public /trade-api/v2/markets + events endpoints.
+// Category: the /markets endpoint has no category field. We look it up
+// lazily from /events/{event_ticker} (in-memory cache, stable forever).
+//
+// No auth required — uses the public /trade-api/v2 endpoints.
 
 import (
 	"context"
@@ -36,8 +40,8 @@ type kalshiMarketRecord struct {
 	CloseTime    string `json:"close_time"`    // RFC3339
 	SettlementTs string `json:"settlement_ts"` // RFC3339Nano, present when settled
 	EventTicker  string `json:"event_ticker"`  // parent event, used to look up category
-	Status       string `json:"status"`        // "open", "closed", "finalized"
-	Result       string `json:"result"`        // "yes", "no", "" when unresolved
+	Status       string `json:"status"`
+	Result       string `json:"result"` // "yes", "no", "" when unresolved
 }
 
 type kalshiMarketsResponse struct {
@@ -45,8 +49,14 @@ type kalshiMarketsResponse struct {
 	Cursor  string               `json:"cursor"`
 }
 
+// kalshiWatched holds the metadata stored when a market enters pollClosed.
+type kalshiWatched struct {
+	closeTime   time.Time
+	eventTicker string
+}
+
 // kalshiCategoryCache lazily fetches and caches event_ticker → category
-// from /events/{event_ticker}. The cache is never evicted (events are stable).
+// from /events/{event_ticker}. Cache is never evicted (events are stable).
 type kalshiCategoryCache struct {
 	mu     sync.Mutex
 	cats   map[string]string
@@ -54,10 +64,7 @@ type kalshiCategoryCache struct {
 }
 
 func newKalshiCategoryCache(client *http.Client) *kalshiCategoryCache {
-	return &kalshiCategoryCache{
-		cats:   make(map[string]string),
-		client: client,
-	}
+	return &kalshiCategoryCache{cats: make(map[string]string), client: client}
 }
 
 func (c *kalshiCategoryCache) get(eventTicker string) string {
@@ -77,13 +84,13 @@ func (c *kalshiCategoryCache) get(eventTicker string) string {
 	}
 	req.Header.Set("User-Agent", userAgent)
 	resp, err := c.client.Do(req)
-	if err != nil || resp.StatusCode != http.StatusOK {
-		if resp != nil {
-			resp.Body.Close()
-		}
+	if err != nil {
 		return ""
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return ""
+	}
 	body, _ := io.ReadAll(resp.Body)
 	var wrapper struct {
 		Event struct {
@@ -94,7 +101,6 @@ func (c *kalshiCategoryCache) get(eventTicker string) string {
 		return ""
 	}
 	cat := wrapper.Event.Category
-
 	c.mu.Lock()
 	c.cats[eventTicker] = cat
 	c.mu.Unlock()
@@ -103,8 +109,8 @@ func (c *kalshiCategoryCache) get(eventTicker string) string {
 
 type kalshiTracker struct {
 	mu       sync.Mutex
-	watched  map[string]time.Time // ticker → close_time
-	recorded map[string]struct{}  // tickers already emitted
+	watched  map[string]kalshiWatched // ticker → metadata (non-Exotics only)
+	recorded map[string]struct{}      // tickers already emitted
 	client   *http.Client
 	catCache *kalshiCategoryCache
 }
@@ -112,7 +118,7 @@ type kalshiTracker struct {
 func newKalshiTracker() *kalshiTracker {
 	client := &http.Client{Timeout: 15 * time.Second}
 	return &kalshiTracker{
-		watched:  make(map[string]time.Time),
+		watched:  make(map[string]kalshiWatched),
 		recorded: make(map[string]struct{}),
 		client:   client,
 		catCache: newKalshiCategoryCache(client),
@@ -150,8 +156,7 @@ func (k *kalshiTracker) fetchPage(status, cursor string) ([]kalshiMarketRecord, 
 	return body.Markets, body.Cursor, nil
 }
 
-// normalizeKalshiCategory maps Kalshi's event category strings to lowercase
-// slugs comparable to Polymarket's categories.
+// normalizeKalshiCategory maps Kalshi's event category to our standard slugs.
 func normalizeKalshiCategory(raw string) string {
 	switch strings.ToLower(raw) {
 	case "sports":
@@ -165,8 +170,9 @@ func normalizeKalshiCategory(raw string) string {
 	}
 }
 
-// pollClosed fetches recently closed (unresolved) markets and adds them to
-// the watch list so we notice when they become settled.
+// pollClosed fetches markets currently in the "closed" (pending settlement)
+// state and adds them to the watch list. Exotics never appear here: they
+// auto-settle so fast they skip the closed state entirely.
 func (k *kalshiTracker) pollClosed() {
 	cutoff := time.Now().Add(-kalshiLookbackDays * 24 * time.Hour)
 	markets, _, err := k.fetchPage("closed", "")
@@ -185,16 +191,15 @@ func (k *kalshiTracker) pollClosed() {
 			break
 		}
 		if _, ok := k.watched[m.Ticker]; !ok {
-			k.watched[m.Ticker] = ct
+			k.watched[m.Ticker] = kalshiWatched{closeTime: ct, eventTicker: m.EventTicker}
 		}
 	}
 }
 
 // pollFinalized fetches recently settled markets and emits histogram
-// observations for traditional prediction market questions. Auto-generated
-// multivariate parlays (Kalshi "Exotics" category, KXMV* prefix) are
-// excluded because they settle algorithmically in seconds and are not
-// comparable to either venue's real prediction market questions.
+// observations for any that are in the watched map (i.e. were seen in the
+// "closed" state first). This naturally excludes Exotics.
+// Delay = settlement_ts - close_time (exact from API).
 func (k *kalshiTracker) pollFinalized() {
 	cutoff := time.Now().Add(-kalshiLookbackDays * 24 * time.Hour)
 
@@ -204,12 +209,16 @@ func (k *kalshiTracker) pollFinalized() {
 		return
 	}
 
-	// Collect candidates outside the lock so we can do HTTP calls for categories.
+	// Collect candidates that need category lookup (outside lock).
 	type candidate struct {
-		m  kalshiMarketRecord
-		ct time.Time
+		ticker      string
+		eventTicker string
+		closeTime   time.Time
+		settlementTs string
+		result      string
+		closeTimeStr string
 	}
-	var candidates []candidate
+	var pending []candidate
 
 	k.mu.Lock()
 	for _, m := range markets {
@@ -226,54 +235,53 @@ func (k *kalshiTracker) pollFinalized() {
 		if m.Result == "" {
 			continue
 		}
-		candidates = append(candidates, candidate{m: m, ct: ct})
+		w, watched := k.watched[m.Ticker]
+		if !watched {
+			// Not in watchlist: either Exotics or outside our lookback window.
+			// Mark recorded to avoid rechecking.
+			k.recorded[m.Ticker] = struct{}{}
+			continue
+		}
+		pending = append(pending, candidate{
+			ticker:      m.Ticker,
+			eventTicker: w.eventTicker,
+			closeTime:   w.closeTime,
+			settlementTs: m.SettlementTs,
+			result:      m.Result,
+			closeTimeStr: m.CloseTime,
+		})
 	}
 	k.mu.Unlock()
 
-	for _, c := range candidates {
-		// Fetch event category (cached after first call).
-		rawCat := k.catCache.get(c.m.EventTicker)
+	for _, c := range pending {
+		rawCat := k.catCache.get(c.eventTicker)
+		cat := normalizeKalshiCategory(rawCat)
 
-		// Skip auto-generated multivariate parlays: they settle by algorithm
-		// in seconds and are not comparable to prediction market questions.
-		if strings.EqualFold(rawCat, "exotics") {
-			k.mu.Lock()
-			k.recorded[c.m.Ticker] = struct{}{}
-			k.mu.Unlock()
-			continue
-		}
-
-		// settlement_ts - close_time (exact from API).
 		var settleAt time.Time
-		if c.m.SettlementTs != "" {
-			settleAt, _ = time.Parse(time.RFC3339Nano, c.m.SettlementTs)
+		if c.settlementTs != "" {
+			settleAt, _ = time.Parse(time.RFC3339Nano, c.settlementTs)
 		}
 		if settleAt.IsZero() {
 			settleAt = time.Now()
 		}
-		delay := settleAt.Sub(c.ct).Seconds()
-		if delay < 0 || delay > float64(kalshiLookbackDays*24*3600) {
-			k.mu.Lock()
-			k.recorded[c.m.Ticker] = struct{}{}
-			k.mu.Unlock()
-			continue
-		}
-
-		cat := normalizeKalshiCategory(rawCat)
+		delay := settleAt.Sub(c.closeTime).Seconds()
 
 		k.mu.Lock()
-		if _, done := k.recorded[c.m.Ticker]; done {
+		if _, done := k.recorded[c.ticker]; done {
 			k.mu.Unlock()
 			continue
 		}
-		k.recorded[c.m.Ticker] = struct{}{}
-		delete(k.watched, c.m.Ticker)
+		k.recorded[c.ticker] = struct{}{}
+		delete(k.watched, c.ticker)
 		k.mu.Unlock()
 
+		if delay < 0 || delay > float64(kalshiLookbackDays*24*3600) {
+			continue
+		}
 		resolutionDelay.WithLabelValues("kalshi", cat, "false").Observe(delay)
 		resolutionsTotal.WithLabelValues("kalshi", cat, "false").Inc()
 		log.Printf("[kalshi-res] resolved ticker=%s category=%s(%s) delay=%.0fs close=%s settled=%s result=%s",
-			c.m.Ticker, cat, rawCat, delay, c.m.CloseTime, settleAt.UTC().Format(time.RFC3339), c.m.Result)
+			c.ticker, cat, rawCat, delay, c.closeTimeStr, settleAt.UTC().Format(time.RFC3339), c.result)
 	}
 }
 
@@ -282,7 +290,6 @@ func runKalshiResolutionLoop(ctx context.Context) {
 	defer t.Stop()
 
 	tracker := newKalshiTracker()
-	// Prime the watch list and backfill immediately on startup.
 	tracker.pollClosed()
 	tracker.pollFinalized()
 
