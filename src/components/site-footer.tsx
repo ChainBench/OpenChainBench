@@ -32,6 +32,7 @@ export function SiteFooter() {
               { label: "Chains", href: "/chains" },
               { label: "Prediction markets", href: "/prediction-markets" },
               { label: "RPC", href: "/rpc" },
+              { label: "Data APIs", href: "/data-api" },
               { label: "Perpetuals", href: "/perps" },
               { label: "Compare", href: "/compare" },
               { label: "Alternatives", href: "/alternatives" },
