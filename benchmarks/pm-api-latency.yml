@@ -4,8 +4,8 @@ slug: pm-api-latency
 number: "038"
 title: Best prediction market API, ranked by live latency and uptime
 seo_title: "Best prediction market API 2026"
-seo_description: "Is the Polymarket API up? Live uptime and latency for Polymarket, Kalshi, Limitless, Manifold, Myriad, PredictIt and Smarkets price endpoints."
-subtitle: Warm price endpoint latency of seven prediction market venue APIs from three regions, plus a live uptime panel that answers whether each API is up right now.
+seo_description: "Is the Polymarket API up? Live uptime and latency for Polymarket, Polymarket US, Kalshi, Limitless, Manifold, Myriad, PredictIt and Smarkets price endpoints."
+subtitle: Warm price endpoint latency of eight prediction market venue APIs from three regions, plus a live uptime panel that answers whether each API is up right now.
 
 category: Trading
 status: live
@@ -87,6 +87,9 @@ per_chain_explainer:
   - slug: polymarket
     h2: Polymarket API latency
     body: "Polymarket's CLOB answers its midpoint endpoint at {{p50:polymarket}} p50 over warm connections (24h). The API fronts Cloudflare, so brief origin trouble often appears here as a latency spike before it ever becomes an error, which makes the latency series a useful early status signal. The uptime panel above is a live Polymarket API status check, computed from probes fired every 5 seconds from three regions, so it reacts within seconds of a real outage instead of waiting for user reports. For how the CLOB behaves under bursts, see the pm-rate-limits bench."
+  - slug: polymarket-us
+    h2: Polymarket US API latency
+    body: "Polymarket US (QCX LLC) is the CFTC-regulated DCM launched December 2025 for US residents, separate from Polymarket Global. Its read-only market data gateway at gateway.polymarket.us exposes a public BBO endpoint requiring no API key, which is what this bench probes. The BBO response embeds a lastPriceSample timestamp, making Polymarket US one of two venues in the cohort with verifiable data age. KYC is required for trading but not for market data reads. Current BBO p50: {{p50:polymarket-us}}."
   - slug: kalshi
     h2: Kalshi API latency
     body: "Kalshi's public single market endpoint goes to origin on every request and currently answers at {{p50:kalshi}} p50 warm (24h). That makes its uptime figure here a clean origin measurement, unlike its CDN cached market list. Kalshi is the regulated US venue and the only one in the cohort with a documented API contract, so an unexplained dip in its health gauge is more notable than elsewhere. If Kalshi's API seems down for you, compare the per region figures: a single region dip usually means a network issue, not a venue outage."
@@ -112,12 +115,13 @@ prometheus:
   window: 24h
   expected_freshness_seconds: 300
 
-rank_matrix_query: 1000 * label_replace(histogram_quantile(0.50, sum by (venue, region, le) (rate(pmapi_request_duration_seconds_bucket{source="direct",venue=~"polymarket|kalshi|limitless|manifold|myriad|predictit|smarkets",conn="warm",class="price",cache!="hit"}[24h]))), "provider", "$1", "venue", "(.+)")
+rank_matrix_query: 1000 * label_replace(histogram_quantile(0.50, sum by (venue, region, le) (rate(pmapi_request_duration_seconds_bucket{source="direct",venue=~"polymarket|polymarket-us|kalshi|limitless|manifold|myriad|predictit|smarkets",conn="warm",class="price",cache!="hit"}[24h]))), "provider", "$1", "venue", "(.+)")
 
 dimensions:
   venue:
     - { value: all, label: All venues }
     - { value: polymarket, label: Polymarket }
+    - { value: polymarket-us, label: Polymarket US }
     - { value: kalshi, label: Kalshi }
     - { value: limitless, label: Limitless }
     - { value: manifold, label: Manifold }
@@ -134,21 +138,21 @@ metric_panels:
   - id: uptime_24h
     label: Uptime 24h
     description: "Share of probe cycles that succeeded over the last 24 hours, averaged across the three probe regions. 100 percent means every 5 second probe of the venue's API came back healthy."
-    metric: 100 * avg(avg_over_time(pmapi_health{source="direct",venue=~"polymarket|kalshi|limitless|manifold|myriad|predictit|smarkets"}[24h]))
+    metric: 100 * avg(avg_over_time(pmapi_health{source="direct",venue=~"polymarket|polymarket-us|kalshi|limitless|manifold|myriad|predictit|smarkets"}[24h]))
     label_key: venue
     unit: pct
     higher_is_better: true
   - id: uptime_7d
     label: Uptime 7d
     description: "Same health gauge averaged over 7 days. Short outages that vanish from the 24h figure stay visible here for a week."
-    metric: 100 * avg(avg_over_time(pmapi_health{source="direct",venue=~"polymarket|kalshi|limitless|manifold|myriad|predictit|smarkets"}[7d]))
+    metric: 100 * avg(avg_over_time(pmapi_health{source="direct",venue=~"polymarket|polymarket-us|kalshi|limitless|manifold|myriad|predictit|smarkets"}[7d]))
     label_key: venue
     unit: pct
     higher_is_better: true
   - id: uptime_30d
     label: Uptime 30d
     description: "Same health gauge averaged over 30 days. Feeds the ledger's 30d window toggle so a one-hour outage that's already aged out of the 24h panel still shows up in the table over a month."
-    metric: 100 * avg(avg_over_time(pmapi_health{source="direct",venue=~"polymarket|kalshi|limitless|manifold|myriad|predictit|smarkets"}[30d]))
+    metric: 100 * avg(avg_over_time(pmapi_health{source="direct",venue=~"polymarket|polymarket-us|kalshi|limitless|manifold|myriad|predictit|smarkets"}[30d]))
     label_key: venue
     unit: pct
     higher_is_better: true
@@ -156,7 +160,7 @@ metric_panels:
   - id: cold_connect_p50
     label: Cold connect
     description: "TCP plus TLS handshake time on the once a minute cold probe with keep alives disabled. The startup cost a brand new client pays before its first request."
-    metric: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_connect_seconds_bucket{source="direct",venue=~"polymarket|kalshi|limitless|manifold|myriad|predictit|smarkets"}[24h])) by (le))
+    metric: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_connect_seconds_bucket{source="direct",venue=~"polymarket|polymarket-us|kalshi|limitless|manifold|myriad|predictit|smarkets"}[24h])) by (le))
     label_key: venue
     unit: ms
     higher_is_better: false
@@ -182,6 +186,19 @@ providers:
       success: clamp_max(sum(rate(pmapi_requests_total{venue="polymarket",source="direct",class="price",conn="warm",outcome="ok"}[24h])) / sum(rate(pmapi_requests_total{venue="polymarket",source="direct",class="price",conn="warm",outcome!="probe_invalid"}[24h])), 1)
       sample_size: sum(increase(pmapi_requests_total{venue="polymarket",source="direct",class="price",conn="warm",outcome!="probe_invalid"}[24h]))
       series: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{venue="polymarket",source="direct",class="price",conn="warm",cache!="hit"}[1h])) by (le))
+
+  - slug: polymarket-us
+    name: Polymarket US
+    tag: CFTC DCM (QCX LLC), USD settlement, KYC required for trading; market data public via gateway.polymarket.us
+    formula: "p50 of warm round trips against the BBO endpoint for the pinned market, no auth required, 24h window. Separate from Polymarket Global: different API, different settlement, different regulatory regime."
+    queries:
+      p50: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{venue="polymarket-us",source="direct",class="price",conn="warm",cache!="hit"}[24h])) by (le))
+      p90: 1000 * histogram_quantile(0.90, sum(rate(pmapi_request_duration_seconds_bucket{venue="polymarket-us",source="direct",class="price",conn="warm",cache!="hit"}[24h])) by (le))
+      p99: 1000 * histogram_quantile(0.99, sum(rate(pmapi_request_duration_seconds_bucket{venue="polymarket-us",source="direct",class="price",conn="warm",cache!="hit"}[24h])) by (le))
+      mean: 1000 * sum(rate(pmapi_request_duration_seconds_sum{venue="polymarket-us",source="direct",class="price",conn="warm",cache!="hit"}[24h])) / sum(rate(pmapi_request_duration_seconds_count{venue="polymarket-us",source="direct",class="price",conn="warm",cache!="hit"}[24h]))
+      success: clamp_max(sum(rate(pmapi_requests_total{venue="polymarket-us",source="direct",class="price",conn="warm",outcome="ok"}[24h])) / sum(rate(pmapi_requests_total{venue="polymarket-us",source="direct",class="price",conn="warm",outcome!="probe_invalid"}[24h])), 1)
+      sample_size: sum(increase(pmapi_requests_total{venue="polymarket-us",source="direct",class="price",conn="warm",outcome!="probe_invalid"}[24h]))
+      series: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{venue="polymarket-us",source="direct",class="price",conn="warm",cache!="hit"}[1h])) by (le))
 
   - slug: kalshi
     name: Kalshi

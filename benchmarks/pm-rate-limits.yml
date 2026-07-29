@@ -4,8 +4,8 @@ slug: pm-rate-limits
 number: "037"
 title: Prediction market API rate limits, tested with a daily ramp
 seo_title: "Prediction market API rate limits 2026"
-seo_description: "Prediction market API rate limits measured live: daily request ramp against Polymarket, Kalshi, Limitless, Manifold, Myriad."
-subtitle: Warm latency on book, price and list endpoints of five prediction market venue APIs, plus a daily rate limit ramp that records added latency and throttle onset per request tier.
+seo_description: "Prediction market API rate limits measured live: daily request ramp against Polymarket, Polymarket US, Kalshi, Limitless, Manifold, Myriad."
+subtitle: Warm latency on book, price and list endpoints of six prediction market venue APIs, plus a daily rate limit ramp that records added latency and throttle onset per request tier.
 
 category: Trading
 status: live
@@ -93,6 +93,9 @@ per_chain_explainer:
   - slug: polymarket
     h2: Polymarket API rate limits
     body: "Polymarket's CLOB API documents per endpoint budgets (around 1500 requests per 10s for the book endpoint) and sits behind Cloudflare. At our ramp tiers it queues instead of returning 429, so the honest throttle signal is added latency, shown in the ramp panel. The book endpoint embeds a millisecond timestamp, making Polymarket one of only two venues here whose data age is verifiable. Warm book p50: {{p50:polymarket}}."
+  - slug: polymarket-us
+    h2: Polymarket US API rate limits
+    body: "Polymarket US (QCX LLC) is a CFTC DCM whose market data gateway (gateway.polymarket.us) is publicly accessible at 20 requests per second per IP. The ramp uses conservative tiers (5/10/20 per 10s, max 10% of the documented limit) and respects the regulated venue context. The BBO endpoint embeds a lastPriceSample timestamp, making Polymarket US one of two venues with verifiable data age. No 429 mechanism was observed during reconnaissance probes; throttle behaviour will appear as added latency if it occurs. Warm BBO p50: {{p50:polymarket-us}}."
   - slug: kalshi
     h2: Kalshi API rate limits
     body: "Kalshi documents a token bucket per access tier, around 20 requests per second for basic read access. Its order book and single market endpoints go to origin on every request, but the market list is served from CloudFront with max-age=15, so list reads measure the edge. The WebSocket requires authentication, so Kalshi is absent from the WS panel. Our ramp stops at the first 429. Warm book p50: {{p50:kalshi}}."
@@ -118,12 +121,13 @@ prometheus:
   window: 24h
   expected_freshness_seconds: 300
 
-rank_matrix_query: 1000 * label_replace(histogram_quantile(0.50, sum by (venue, region, le) (rate(pmapi_request_duration_seconds_bucket{cache!="hit",conn="warm",class="book"}[24h]) or rate(pmapi_request_duration_seconds_bucket{cache!="hit",conn="warm",class="price",venue=~"myriad|predictit"}[24h]))), "provider", "$1", "venue", "(.+)")
+rank_matrix_query: 1000 * label_replace(histogram_quantile(0.50, sum by (venue, region, le) (rate(pmapi_request_duration_seconds_bucket{cache!="hit",conn="warm",class="book"}[24h]) or rate(pmapi_request_duration_seconds_bucket{cache!="hit",conn="warm",class="price",venue=~"myriad|predictit|polymarket-us"}[24h]))), "provider", "$1", "venue", "(.+)")
 
 dimensions:
   venue:
     - { value: all, label: All venues }
     - { value: polymarket, label: Polymarket }
+    - { value: polymarket-us, label: Polymarket US }
     - { value: kalshi, label: Kalshi }
     - { value: limitless, label: Limitless }
     - { value: manifold, label: Manifold }
@@ -189,6 +193,19 @@ providers:
       success: clamp_max(sum(rate(pmapi_requests_total{venue="polymarket",class="book",conn="warm",outcome="ok"}[24h])) / sum(rate(pmapi_requests_total{venue="polymarket",class="book",conn="warm",outcome!="probe_invalid"}[24h])), 1)
       sample_size: sum(increase(pmapi_requests_total{venue="polymarket",class="book",conn="warm",outcome!="probe_invalid"}[24h]))
       series: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="polymarket",class="book",conn="warm"}[1h])) by (le))
+
+  - slug: polymarket-us
+    name: Polymarket US
+    tag: CFTC DCM (QCX LLC), public data gateway, BBO used as price proxy (no separate book latency class), conservative ramp (public gateway, CFTC regulated)
+    formula: "p50 of warm round trips against the public BBO endpoint at gateway.polymarket.us for the pinned market, no auth required, 24h window. Book class uses the full order book endpoint on the same gateway. Ramp tiers capped at 5/10/20 per 10s (10% of the 20 req/s public limit)."
+    queries:
+      p50: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="polymarket-us",class="price",conn="warm"}[24h])) by (le))
+      p90: 1000 * histogram_quantile(0.90, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="polymarket-us",class="price",conn="warm"}[24h])) by (le))
+      p99: 1000 * histogram_quantile(0.99, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="polymarket-us",class="price",conn="warm"}[24h])) by (le))
+      mean: 1000 * sum(rate(pmapi_request_duration_seconds_sum{cache!="hit",venue="polymarket-us",class="price",conn="warm"}[24h])) / sum(rate(pmapi_request_duration_seconds_count{cache!="hit",venue="polymarket-us",class="price",conn="warm"}[24h]))
+      success: clamp_max(sum(rate(pmapi_requests_total{venue="polymarket-us",class="price",conn="warm",outcome="ok"}[24h])) / sum(rate(pmapi_requests_total{venue="polymarket-us",class="price",conn="warm",outcome!="probe_invalid"}[24h])), 1)
+      sample_size: sum(increase(pmapi_requests_total{venue="polymarket-us",class="price",conn="warm",outcome!="probe_invalid"}[24h]))
+      series: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="polymarket-us",class="price",conn="warm"}[1h])) by (le))
 
   - slug: kalshi
     name: Kalshi
