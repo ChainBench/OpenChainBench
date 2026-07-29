@@ -885,8 +885,12 @@ async function renderLeaderboard(
   // the 630px canvas (weekend-drift 11 rows + long title case).
   const count = sorted.length;
   const titleLen = benchmark.title.length;
-  const dense = count >= 8 || titleLen > 55;
-  const veryDense = count >= 10 || titleLen > 70;
+  // The "and N more" line counts as an extra row for density — 9 rows +
+  // truncation line overflows the 630px canvas at dense (not veryDense)
+  // sizing, pushing the text on top of the CardFooter border.
+  const effectiveCount = count + (truncatedCount > 0 ? 1 : 0);
+  const dense = effectiveCount >= 8 || titleLen > 55;
+  const veryDense = effectiveCount >= 10 || titleLen > 70;
   const titleSize = veryDense ? 32 : dense ? 40 : 50;
   const rankSize = veryDense ? 18 : dense ? 20 : 24;
   const nameSize = veryDense ? 18 : dense ? 20 : 24;
