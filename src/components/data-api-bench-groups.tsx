@@ -165,19 +165,9 @@ function BenchRow({
       {/* Region / chain breakdown */}
       <td className="pl-3 pr-5 py-3.5 align-top hidden lg:table-cell">
         {showRegionChain ? (
-          <div className="flex flex-col gap-2">
-            {hasRegions && (
-              <div className="flex flex-col gap-1">
-                <span className="label-mono text-[8px] text-ink-faint uppercase tracking-wider" style={{ fontFamily: "var(--font-mono, monospace)" }}>Region</span>
-                <RegionStrip leaders={bench.regionLeaders} unit={bench.unit} />
-              </div>
-            )}
-            {hasChains && (
-              <div className="flex flex-col gap-1">
-                <span className="label-mono text-[8px] text-ink-faint uppercase tracking-wider" style={{ fontFamily: "var(--font-mono, monospace)" }}>Chain</span>
-                <ChainStrip leaders={bench.chainLeaders} unit={bench.unit} />
-              </div>
-            )}
+          <div className="flex flex-wrap gap-1.5">
+            {hasRegions && <RegionStrip leaders={bench.regionLeaders} unit={bench.unit} />}
+            {hasChains && <ChainStrip leaders={bench.chainLeaders} unit={bench.unit} />}
           </div>
         ) : (
           <span className="text-ink-faint text-[11px]">global</span>
@@ -200,7 +190,7 @@ function RegionStrip({
   );
 
   return (
-    <div className="flex flex-wrap gap-1.5">
+    <>
       {sorted.map((l) => (
         <Link
           key={l.region}
@@ -226,7 +216,7 @@ function RegionStrip({
           </span>
         </Link>
       ))}
-    </div>
+    </>
   );
 }
 
@@ -240,14 +230,14 @@ function ChainStrip({
   const uniqueWinners = new Set(leaders.map((l) => l.providerSlug)).size;
   const isSpecialist = uniqueWinners === leaders.length && leaders.length > 3;
 
-  if (isSpecialist) {
-    // Each chain has its own specialist — compact icon-only chips
-    const MAX = 5;
-    const visible = leaders.slice(0, MAX);
-    const overflow = leaders.length - MAX;
-    return (
-      <div className="flex flex-wrap gap-1 items-center">
-        {visible.map((l) => (
+  const MAX = isSpecialist ? 5 : 3;
+  const visible = leaders.slice(0, MAX);
+  const overflow = leaders.length - MAX;
+
+  return (
+    <>
+      {visible.map((l) =>
+        isSpecialist ? (
           <Link
             key={l.chain}
             href={`/products/${l.providerSlug}`}
@@ -262,50 +252,36 @@ function ChainStrip({
             </span>
             <ProviderLogo slug={l.providerSlug} name={l.providerName} size={10} />
           </Link>
-        ))}
-        {overflow > 0 && (
-          <span className="text-[9px] text-ink-faint">+{overflow}</span>
-        )}
-      </div>
-    );
-  }
-
-  // Some provider dominates multiple chains — full pills capped at 3
-  const MAX = 3;
-  const visible = leaders.slice(0, MAX);
-  const overflow = leaders.length - MAX;
-
-  return (
-    <div className="flex flex-wrap gap-1.5 items-center">
-      {visible.map((l) => (
-        <Link
-          key={l.chain}
-          href={`/products/${l.providerSlug}`}
-          className="flex items-center gap-1 rounded-md border border-ink/8 bg-paper-soft/60 px-2 py-1 hover:border-ink/20 hover:bg-paper-soft transition-colors"
-          title={`${l.label}: ${l.providerName} — ${fmtDataValue(l.p50, unit)}`}
-        >
-          <span
-            className="label-mono text-[9px] text-ink-faint uppercase tracking-wide"
-            style={{ fontFamily: "var(--font-mono, monospace)" }}
+        ) : (
+          <Link
+            key={l.chain}
+            href={`/products/${l.providerSlug}`}
+            className="flex items-center gap-1 rounded-md border border-ink/8 bg-paper-soft/60 px-2 py-1 hover:border-ink/20 hover:bg-paper-soft transition-colors"
+            title={`${l.label}: ${l.providerName} — ${fmtDataValue(l.p50, unit)}`}
           >
-            {l.label}
-          </span>
-          <ProviderLogo slug={l.providerSlug} name={l.providerName} size={12} />
-          <span className="text-[10.5px] text-ink-soft font-medium">
-            {l.providerName.split(" ")[0]}
-          </span>
-          <span
-            className="label-mono text-[10px] text-ink-faint"
-            style={{ fontFamily: "var(--font-mono, monospace)" }}
-          >
-            {fmtDataValue(l.p50, unit)}
-          </span>
-        </Link>
-      ))}
+            <span
+              className="label-mono text-[9px] text-ink-faint uppercase tracking-wide"
+              style={{ fontFamily: "var(--font-mono, monospace)" }}
+            >
+              {l.label}
+            </span>
+            <ProviderLogo slug={l.providerSlug} name={l.providerName} size={12} />
+            <span className="text-[10.5px] text-ink-soft font-medium">
+              {l.providerName.split(" ")[0]}
+            </span>
+            <span
+              className="label-mono text-[10px] text-ink-faint"
+              style={{ fontFamily: "var(--font-mono, monospace)" }}
+            >
+              {fmtDataValue(l.p50, unit)}
+            </span>
+          </Link>
+        )
+      )}
       {overflow > 0 && (
         <span className="text-[10px] text-ink-faint">+{overflow}</span>
       )}
-    </div>
+    </>
   );
 }
 
