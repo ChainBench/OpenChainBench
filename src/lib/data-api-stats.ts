@@ -150,6 +150,12 @@ export type DataApiRegionScore = {
   p50: number;
 };
 
+export type DataApiChainScore = {
+  chain: string;
+  label: string;
+  p50: number;
+};
+
 export type DataApiProviderCell = {
   benchSlug: string;
   benchShortTitle: string;
@@ -160,6 +166,8 @@ export type DataApiProviderCell = {
   higherIsBetter: boolean;
   /** Per-region ranks for benches that have extras.regions populated. */
   regions?: DataApiRegionScore[];
+  /** Chains this provider leads on in this bench (rank 1 per chain). */
+  chains?: DataApiChainScore[];
 };
 
 export type DataApiProviderPivotRow = {
@@ -321,6 +329,32 @@ function computeProviderRegionScores(
   return result;
 }
 
+/**
+ * Returns the chains where providerSlug is the winner (rank 1) in this bench.
+ */
+function computeProviderChainScores(
+  bench: Benchmark,
+  providerSlug: string,
+): DataApiChainScore[] {
+  if (!bench.bestPerChain) return [];
+  const scores: DataApiChainScore[] = [];
+  for (const [chain, r] of Object.entries(bench.bestPerChain)) {
+    if (
+      r.slug === providerSlug &&
+      r.availability !== "unavailable" &&
+      !r.unresponsive &&
+      r.ms.p50 > 0
+    ) {
+      scores.push({
+        chain,
+        label: CHAIN_LABELS[chain] ?? chain,
+        p50: r.ms.p50,
+      });
+    }
+  }
+  return scores.sort((a, b) => a.label.localeCompare(b.label));
+}
+
 function toBenchRow(slug: string, bench: Benchmark): DataApiBenchRow {
   const live = sortedResults(liveResults(bench), bench.higherIsBetter);
   return {
@@ -420,6 +454,7 @@ async function buildSnapshot(): Promise<DataApiSnapshot | null> {
         providerMap.set(r.slug, { name: r.name, cells: [] });
       }
       const regions = regionScores.get(r.slug);
+      const chains = computeProviderChainScores(bench, r.slug);
       providerMap.get(r.slug)!.cells.push({
         benchSlug: slug,
         benchShortTitle: BENCH_SHORT_TITLE[slug] ?? slug,
@@ -429,6 +464,7 @@ async function buildSnapshot(): Promise<DataApiSnapshot | null> {
         unit: bench.unit,
         higherIsBetter: bench.higherIsBetter,
         regions: regions && regions.length > 0 ? regions : undefined,
+        chains: chains.length > 0 ? chains : undefined,
       });
     }
   }
