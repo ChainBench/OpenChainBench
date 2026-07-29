@@ -104,6 +104,17 @@ const CHAIN_LABELS: Record<string, string> = {
   solana: "SOL",
   robinhood: "RH",
   ethereum: "ETH",
+  xrp: "XRP",
+  stellar: "XLM",
+  ripple: "XRP",
+  polygon: "POL",
+  avalanche: "AVAX",
+  arbitrum: "ARB",
+  optimism: "OP",
+  tron: "TRX",
+  sui: "SUI",
+  aptos: "APT",
+  ton: "TON",
 };
 
 export type RegionLeader = {

@@ -320,18 +320,24 @@ function ChainSubScores({
   return (
     <>
       {visible.map((c) => (
-        <span
+        <div
           key={c.chain}
-          className="text-[8px] font-bold rounded px-1 py-0.5"
-          style={{
-            color: accent,
-            background: `${accent}22`,
-            letterSpacing: "0.04em",
-          }}
+          className="flex items-center gap-0.5"
           title={`${c.label}: #1`}
         >
-          {c.label}
-        </span>
+          <span
+            className="text-[8px] font-medium uppercase text-ink-faint"
+            style={{ letterSpacing: "0.04em" }}
+          >
+            {c.label}
+          </span>
+          <span
+            className="text-[9px] font-bold"
+            style={{ color: accent }}
+          >
+            #1
+          </span>
+        </div>
       ))}
       {overflow > 0 && (
         <span className="text-[8px] text-ink-faint">+{overflow}</span>
