@@ -4,12 +4,9 @@ package main
 //
 // Unlike Polymarket (UMA on-chain events, 2h floor), Kalshi resolves via its
 // own internal process. Delay is measured as:
-//   observed_resolution_time - market.close_time
+//   settlement_ts - market.close_time
 //
-// where observed_resolution_time = first poll at which result != null.
-// Accuracy is bounded by KALSHI_POLL_SECONDS (default 300 = 5 min), which
-// is negligible for delays measured in hours.
-//
+// settlement_ts is returned directly by the Kalshi API (exact, no polling error).
 // No auth required — uses the public /trade-api/v2/markets endpoint.
 
 import (
@@ -23,7 +20,7 @@ import (
 )
 
 const (
-	kalshiMarketsURL  = "https://api.elections.kalshi.com/trade-api/v2/markets"
+	kalshiMarketsURL   = "https://api.elections.kalshi.com/trade-api/v2/markets"
 	kalshiLookbackDays = 30
 )
 
@@ -31,7 +28,7 @@ type kalshiMarketRecord struct {
 	Ticker       string `json:"ticker"`
 	Title        string `json:"title"`
 	CloseTime    string `json:"close_time"`    // RFC3339
-	SettlementTs string `json:"settlement_ts"` // RFC3339, present when settled
+	SettlementTs string `json:"settlement_ts"` // RFC3339Nano, present when settled
 	Status       string `json:"status"`        // "open", "closed", "finalized"
 	Result       string `json:"result"`        // "yes", "no", "" when unresolved
 	Category     string `json:"category"`      // "Sports", "Politics", "Crypto", etc.
@@ -133,7 +130,7 @@ func (k *kalshiTracker) pollClosed() {
 // pollFinalized fetches recently settled markets and emits histogram
 // observations for any we haven't recorded yet. The API filter param is
 // "settled"; the status field in the response body is "finalized".
-// Delay is settlement_ts - close_time (accurate from API, no poll-interval error).
+// Delay is settlement_ts - close_time (exact, from API, no polling error).
 func (k *kalshiTracker) pollFinalized() {
 	cutoff := time.Now().Add(-kalshiLookbackDays * 24 * time.Hour)
 
