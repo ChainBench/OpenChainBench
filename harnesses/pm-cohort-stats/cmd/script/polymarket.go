@@ -69,7 +69,11 @@ const (
 	polymarketLimit    = 500
 	polymarketStride   = 100
 	polymarketMaxPages = 100
-	polymarketUA       = "OCB-pm-cohort-stats/1.0"
+	// Secondary pass: markets that closed in the last 25h. We cap at 10
+	// pages (1000 markets) because recently-closed high-volume markets
+	// cluster near offset 0 when sorted by end_date descending.
+	polymarketClosedMaxPages = 10
+	polymarketUA             = "OCB-pm-cohort-stats/1.0"
 )
 
 var httpClientPolymarket = &http.Client{Timeout: 20 * time.Second}
@@ -158,6 +162,64 @@ func fetchPolymarketVenue(v Venue) {
 		// expected and is NOT an end-of-list signal).
 	}
 
+	// Pass 2: markets that resolved in the last 25h. These are excluded by
+	// the active=true filter above but still have non-zero volume24hr from
+	// trades placed before resolution. The end_date_min filter limits the
+	// walk to recently-closed markets; a cap of polymarketClosedMaxPages
+	// bounds the extra latency to ~10 additional round trips.
+	//
+	// We sum vol24h and vol30d contributions, but do NOT increment
+	// activeCount (these markets are no longer open). The above1m counter
+	// is also updated so the lifetime "markets above $1M" count stays
+	// complete. If gamma-api does not support end_date_min, the walk
+	// falls back to closed=true pagination and terminates early once all
+	// rows in a page show volume24hr == 0.
+	{
+		cutoffStr := time.Now().UTC().Add(-25 * time.Hour).Format(time.RFC3339)
+		for page := 0; page < polymarketClosedMaxPages; page++ {
+			offset := page * polymarketStride
+			closedURL := fmt.Sprintf("%s/markets?closed=true&active=false&end_date_min=%s&limit=%d&offset=%d",
+				polymarketBase, cutoffStr, polymarketLimit, offset)
+			body, err := getJSON(httpClientPolymarket, closedURL)
+			if err != nil {
+				if contains(err.Error(), "status_422") {
+					break
+				}
+				fmt.Printf("[polymarket][%s] closed page=%d error: %v\n", v.Slug, page, err)
+				break
+			}
+			var rows []polymarketMarket
+			if err := json.Unmarshal(body, &rows); err != nil {
+				fmt.Printf("[polymarket][%s] closed page=%d parse error: %v\n", v.Slug, page, err)
+				break
+			}
+			if len(rows) == 0 {
+				break
+			}
+			allZero := true
+			for _, r := range rows {
+				v24 := float64(r.Volume24hr)
+				if v24 > 0 {
+					allZero = false
+				}
+				v30 := float64(r.Volume1mo)
+				vTot := float64(r.Volume)
+				vol24Sum += v24
+				vol30Sum += v30
+				if v24 > topVol24 {
+					topVol24 = v24
+				}
+				if vTot >= 1_000_000 {
+					above1mCount++
+				}
+			}
+			pagesOK++
+			if allZero {
+				break
+			}
+		}
+	}
+
 	if pagesOK == 0 {
 		// Total miss; gauges left untouched via Prom carry-forward.
 		pmCohortStatsLastTickUnix.Set(float64(time.Now().Unix()))
@@ -179,7 +241,7 @@ func fetchPolymarketVenue(v Venue) {
 	pmCohortStatsLastRefresh.WithLabelValues(v.Slug, "polymarket").Set(float64(time.Now().Unix()))
 	pmCohortStatsLastTickUnix.Set(float64(time.Now().Unix()))
 
-	fmt.Printf("[polymarket][%s] pages=%d active=%.0f vol24h=%.0f vol30d=%.0f oi=%.0f top24h=%.0f above1m=%.0f\n",
+	fmt.Printf("[polymarket][%s] pages=%d active=%.0f vol24h=%.0f vol30d=%.0f oi=%.0f top24h=%.0f above1m=%.0f (includes closed-market vol24h)\n",
 		v.Slug, pagesOK, activeCount, vol24Sum, vol30Sum, oiSum, topVol24, above1mCount)
 }
 

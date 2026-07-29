@@ -38,7 +38,7 @@ const ANSWERS = [
 ] as const;
 
 const DESCRIPTION =
-  "Polymarket vs Kalshi plus Limitless, Manifold and Myriad on one cross-venue leaderboard: volume, OI, resolution delay, API latency, freshness.";
+  "Polymarket vs Kalshi plus Limitless, Myriad and more on one cross-venue leaderboard: volume, OI, resolution delay, API latency, freshness.";
 
 export const metadata: import("next").Metadata = pageMetadata({
   path: "/prediction-markets",
