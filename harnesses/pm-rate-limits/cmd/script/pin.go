@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -335,6 +336,94 @@ func pinSmarkets(ctx context.Context, c *http.Client, avoid string) (Pin, error)
 		}
 	}
 	return Pin{}, errors.New("smarkets: no open politics market with live quotes found")
+}
+
+func pinMetaculus(ctx context.Context, c *http.Client, avoid string) (Pin, error) {
+	var out struct {
+		Results []struct {
+			ID        int    `json:"id"`
+			CloseTime string `json:"close_time"`
+			Active    bool   `json:"active"`
+		} `json:"results"`
+	}
+	url := "https://www.metaculus.com/api2/questions/?limit=50&order_by=-activity&status=open&type=forecast&forecast_type=binary"
+	if err := fetchJSON(ctx, c, url, &out); err != nil {
+		return Pin{}, fmt.Errorf("metaculus list: %w", err)
+	}
+	for _, m := range out.Results {
+		if !m.Active {
+			continue
+		}
+		id := fmt.Sprintf("%d", m.ID)
+		if id == avoid {
+			continue
+		}
+		ct, err := time.Parse(time.RFC3339, m.CloseTime)
+		if err != nil {
+			continue
+		}
+		if time.Until(ct) < minPinHorizon {
+			continue
+		}
+		return Pin{Market: id, Expiry: ct}, nil
+	}
+	return Pin{}, errors.New("metaculus: no open binary question with >24h close horizon")
+}
+
+func pinBetfair(ctx context.Context, c *http.Client, avoid string) (Pin, error) {
+	const catalogueURL = "https://api.betfair.com/exchange/betting/rest/v1.0/listMarketCatalogue/"
+	body := []byte(`{"filter":{"inPlayOnly":false},"sort":"FIRST_TO_START","maxResults":"200","marketProjection":["MARKET_START_TIME","RUNNER_DESCRIPTION"]}`)
+
+	var markets []struct {
+		MarketID        string            `json:"marketId"`
+		MarketStartTime string            `json:"marketStartTime"`
+		Runners         []json.RawMessage `json:"runners"`
+	}
+	if err := postJSON(ctx, c, catalogueURL, body, &markets, betfairRequestMutator()); err != nil {
+		return Pin{}, fmt.Errorf("betfair catalogue: %w", err)
+	}
+	for _, m := range markets {
+		if m.MarketID == avoid || len(m.Runners) != 2 {
+			continue
+		}
+		// Betfair uses "2006-01-02T15:04:05.000Z" format
+		start, err := time.Parse("2006-01-02T15:04:05.000Z", m.MarketStartTime)
+		if err != nil {
+			start, err = time.Parse(time.RFC3339, m.MarketStartTime)
+			if err != nil {
+				continue
+			}
+		}
+		if time.Until(start) < 48*time.Hour {
+			continue
+		}
+		return Pin{Market: m.MarketID, Expiry: start}, nil
+	}
+	return Pin{}, errors.New("betfair: no binary market with >48h horizon in first 200 results")
+}
+
+// postJSON sends a POST request with a JSON body and decodes the JSON response.
+func postJSON(ctx context.Context, c *http.Client, url string, body []byte, out any, mutator func(*http.Request)) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("User-Agent", userAgent)
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Content-Type", "application/json")
+	if mutator != nil {
+		mutator(req)
+	}
+	resp, err := c.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<10))
+		return fmt.Errorf("status %d: %s", resp.StatusCode, b)
+	}
+	return json.NewDecoder(io.LimitReader(resp.Body, 8<<20)).Decode(out)
 }
 
 // stalenessPolymarket reads the ms timestamp Polymarket embeds in every book
