@@ -586,12 +586,19 @@ export function BenchmarkBody({
   }, [hasLongHistory, longRangeKey, hlArchiveCache]);
 
   // Derive the chart's `longRangeSeries` prop from the archive cache.
-  // Each entry maps `slug -> daily-fees array` because the HL bench
-  // headline metric is builder fees collected (USD). The leaderboard
-  // below independently shows volume + fees + fills, so the wire shape
-  // carries all three — only `fees` is fed to the chart Y-axis.
+  // The mapped field is chosen based on the active panel so that switching
+  // to a users/volume/fees panel also updates the long-range chart Y-axis.
   const hlLongRangeSeries = useMemo(() => {
     if (!hasLongHistory) return undefined;
+    // Pick the archive field that matches the active panel metric so the
+    // chart shows the right series when a panel (users / volume / fees) is
+    // selected and the Prom 90d/1y panel series isn't available.
+    const field =
+      activePanelId === "users" || activePanelId === "users_7d" || activePanelId === "users_30d"
+        ? "users" as const
+        : activePanelId === "volume" || activePanelId === "volume_7d" || activePanelId === "volume_30d"
+          ? "vol" as const
+          : "fees" as const;
     const map: Partial<Record<ChartRange, Record<string, number[]>>> = {};
     for (const w of LONG_RANGES) {
       const cached = hlArchiveCache[w];
@@ -599,15 +606,14 @@ export function BenchmarkBody({
       const ts = cached.timeseries_daily ?? {};
       const perBuilder: Record<string, number[]> = {};
       for (const [slug, days] of Object.entries(ts)) {
-        // Builder fees collected. If the metric mapping later grows to
-        // include companion charts (volume / fills), this branch picks
-        // the matching field per metric label.
-        perBuilder[slug] = days.map((d) => d.fees);
+        perBuilder[slug] = days.map((d) =>
+          field === "users" ? (d.users ?? 0) : field === "vol" ? d.vol : d.fees
+        );
       }
       map[w] = perBuilder;
     }
     return map;
-  }, [hasLongHistory, hlArchiveCache]);
+  }, [hasLongHistory, hlArchiveCache, activePanelId]);
 
   const hlActiveArchive: HlArchiveHistoryResponse | null = useMemo(() => {
     if (!hasLongHistory || !longRangeKey) return null;

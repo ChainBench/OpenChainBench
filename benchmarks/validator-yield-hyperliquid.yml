@@ -1,0 +1,447 @@
+# OpenChainBench. Bench № 115
+
+slug: validator-yield-hyperliquid
+number: "115"
+title: Hyperliquid validator leaderboard — live net APR, uptime, commission
+seo_title: "Best Hyperliquid validators 2026: yield, commission, uptime ranked"
+seo_description: "Live Hyperliquid validator leaderboard ranked by net APR. All 34 validators tracked: net yield in bps, commission rate, uptime %, delegated stake in USD. Updated every 5 minutes from /info validatorSummaries."
+subtitle: Per-validator net yield (predictedApr.day × uptime) in basis points across all 34 Hyperliquid validators. Ranked by net APR; commission and uptime shown as secondary columns.
+category: Blockchains
+status: live
+metric: Net yield
+unit: bps
+higher_is_better: true
+
+disclaimer: |
+  Honest scope. (1) `net_yield = predictedApr.day × uptimeFraction` from the Hyperliquid `/info validatorSummaries` endpoint. (2) No MEV layer exists at the validator level on Hyperliquid — the centralised sequencer captures order-flow value upstream. MEV is structurally absent from all figures. (3) Jailed validators (currently 6) land in the dataset with `predictedApr=0` and `net_yield=0`; they rank at the bottom. (4) APRs across the active set are tightly clustered (~200–225 bps) because Hyperliquid distributes rewards evenly across non-jailed validators — commission rate is the primary differentiator for delegators.
+
+seo_intro: |
+  Hyperliquid runs a permissioned validator set of ~30 active nodes. Unlike
+  Solana's ~3000-validator market where yield spreads across hundreds of bps,
+  every non-jailed Hyperliquid validator earns the same gross APR from the
+  protocol — the only differentiation is commission rate, uptime, and jail
+  risk. This page surfaces the full active set, ranked by net yield
+  (gross APR after commission and downtime drag), so a delegator can see
+  exactly which operators take the smallest cut and stay online.
+
+  The data updates every 5 minutes from the Hyperliquid `/info
+  validatorSummaries` endpoint. Net yield is `predictedApr.day ×
+  uptimeFraction`, expressed in basis points (1% = 100 bps).
+
+abstract: |
+  Every 5 minutes, the validator-yield harness POSTs `{"type":
+  "validatorSummaries"}` to `api.hyperliquid.xyz/info` and reads
+  `predictedApr.day` × `stats[day].uptimeFraction` per validator. Jailed
+  validators receive `net_yield_bps = 0` regardless of their published APR.
+  Commission is taken from the `commission` field (decimal fraction, e.g.
+  `0.04` = 4% = 400 bps). Delegated stake is the `stake` field divided by
+  `1e8` (HYPE token has 8 decimal places) then multiplied by the live HYPE
+  oracle price from `metaAndAssetCtxs`. All metrics land in Prometheus under
+  `ocb_validator_net_yield_bps{chain="hyperliquid", validator=<addr>,
+  name=<label>}`.
+
+methodology:
+  - "Source: `POST api.hyperliquid.xyz/info {type: validatorSummaries}`. Fields used: `predictedApr` (day window), `stats[day].uptimeFraction`, `commission`, `stake` (in HYPE-wei, divide by 1e8), `isJailed`, `isActive`."
+  - "Net yield formula: `net_yield_bps = predictedApr.day × uptimeFraction × 10000`. Jailed validators are forced to 0 regardless of published APR."
+  - "Commission is a decimal fraction from the API (0.04 = 4%). Displayed in bps (0.04 × 10000 = 400 bps). Lower commission = better for delegators."
+  - "Stake USD: `(stake / 1e8) × HYPE oracle price`. HYPE price from `metaAndAssetCtxs` `oraclePx` (fallback: markPx, midPx)."
+  - "Cadence: 5-minute scrape. HL validator stats move on sub-hour timescales (consensus window = day, but jail/unjail is near-instant), so 5-minute polling is sufficient."
+  - "The bench includes all 34 validators currently returned by validatorSummaries, including jailed and near-zero-stake nodes, for complete transparency. Jailed nodes land at 0 bps yield."
+
+findings:
+  - "Commission is the only meaningful differentiator among healthy Hyperliquid validators: all active non-jailed validators earn the same gross APR (~225 bps as of this snapshot). A delegator choosing between them is effectively choosing a commission rate."
+  - "Zero-commission validators (infinitefield.xyz, HyperStake, CMI, Flowdex) lead the net yield ranking by construction — they take no cut from delegators."
+  - "The four Hyper Foundation validators (1–4) collectively hold ~$10B+ in staked HYPE and charge 3% commission (300 bps). Foundation-5 added later at the same terms."
+  - "Anchorage By Figment charges 10% commission (1000 bps), the highest among active non-jailed validators, which reduces delegator net yield by ~20 bps relative to zero-commission nodes."
+  - "6 validators are currently jailed (Figment, Falcon Capital, Asymmetric Research, HyperCN X hlscan, Red Pond, cp0x by STAKR.space). They earn 0 yield and their delegated stake is minimal (<10k HYPE each)."
+
+faq:
+  - q: "Why are all active Hyperliquid validators at nearly the same APR?"
+    a: "Hyperliquid distributes staking rewards evenly across the active (non-jailed) validator set. There is no MEV layer at the validator level, and no per-validator block-production variability like on Solana. The gross APR is set by the protocol reward pool divided equally. Commission rate is the only variable that affects delegator yield, which is why the net yield ranking is almost a direct inversion of the commission ranking."
+  - q: "What does 'jailed' mean on Hyperliquid?"
+    a: "Jailed validators have been penalised by the consensus mechanism for a fault (e.g., double-sign, downtime threshold breach). A jailed validator earns no rewards and its delegators earn nothing. The validator can be unjailed after a cooldown period. This bench surfaces jailed validators explicitly rather than filtering them, so delegators can see which operators have a jail history."
+  - q: "Why does Hyperliquid yield (~200 bps) look lower than Solana (~560 bps)?"
+    a: "Three structural reasons. (1) Hyperliquid pays staking rewards in HYPE only, with no inflation subsidy analogous to Solana's ~5% protocol issuance. (2) No MEV tips exist at the validator level. (3) The reward pool is split evenly across ~30 validators, giving a flat ~2% APR. A delegator choosing Hyperliquid is accepting lower yield in exchange for simpler, more predictable returns with no MEV variance."
+  - q: "How often does the data update?"
+    a: "Every 5 minutes. Validator APR on Hyperliquid moves on consensus window timescales (the day stat window refreshes continuously), so 5-minute polling captures any commission changes, jail events, or APR shifts within a single business-hour interval."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/validator-yield
+
+prometheus:
+  window: 24h
+  expected_freshness_seconds: 600
+
+providers:
+  - slug: hyper-foundation-3
+    name: "Hyper Foundation 3"
+    tag: "3% commission · 55.7M HYPE staked"
+    formula: "Net yield = predictedApr.day × uptimeFraction. Commission 3% (300 bps). Hyper Foundation validator."
+    queries:
+      p50: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="Hyper Foundation 3"}[24h])
+      success: clamp_max(avg_over_time(ocb_validator_uptime_pct{chain="hyperliquid",name="Hyper Foundation 3"}[24h]) / 100, 1)
+      mean: ocb_validator_commission_bps{chain="hyperliquid",name="Hyper Foundation 3"}
+      sample_size: ocb_validator_stake_usd{chain="hyperliquid",name="Hyper Foundation 3"}
+      series: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="Hyper Foundation 3"}[24h])
+
+  - slug: hyper-foundation-2
+    name: "Hyper Foundation 2"
+    tag: "3% commission · 55.1M HYPE staked"
+    formula: "Net yield = predictedApr.day × uptimeFraction. Commission 3% (300 bps). Hyper Foundation validator."
+    queries:
+      p50: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="Hyper Foundation 2"}[24h])
+      success: clamp_max(avg_over_time(ocb_validator_uptime_pct{chain="hyperliquid",name="Hyper Foundation 2"}[24h]) / 100, 1)
+      mean: ocb_validator_commission_bps{chain="hyperliquid",name="Hyper Foundation 2"}
+      sample_size: ocb_validator_stake_usd{chain="hyperliquid",name="Hyper Foundation 2"}
+      series: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="Hyper Foundation 2"}[24h])
+
+  - slug: hyper-foundation-1
+    name: "Hyper Foundation 1"
+    tag: "3% commission · 52.4M HYPE staked"
+    formula: "Net yield = predictedApr.day × uptimeFraction. Commission 3% (300 bps). Hyper Foundation validator."
+    queries:
+      p50: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="Hyper Foundation 1"}[24h])
+      success: clamp_max(avg_over_time(ocb_validator_uptime_pct{chain="hyperliquid",name="Hyper Foundation 1"}[24h]) / 100, 1)
+      mean: ocb_validator_commission_bps{chain="hyperliquid",name="Hyper Foundation 1"}
+      sample_size: ocb_validator_stake_usd{chain="hyperliquid",name="Hyper Foundation 1"}
+      series: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="Hyper Foundation 1"}[24h])
+
+  - slug: hyper-foundation-4
+    name: "Hyper Foundation 4"
+    tag: "3% commission · 34.7M HYPE staked"
+    formula: "Net yield = predictedApr.day × uptimeFraction. Commission 3% (300 bps). Hyper Foundation validator."
+    queries:
+      p50: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="Hyper Foundation 4"}[24h])
+      success: clamp_max(avg_over_time(ocb_validator_uptime_pct{chain="hyperliquid",name="Hyper Foundation 4"}[24h]) / 100, 1)
+      mean: ocb_validator_commission_bps{chain="hyperliquid",name="Hyper Foundation 4"}
+      sample_size: ocb_validator_stake_usd{chain="hyperliquid",name="Hyper Foundation 4"}
+      series: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="Hyper Foundation 4"}[24h])
+
+  - slug: anchorage-by-figment
+    name: "Anchorage By Figment"
+    tag: "10% commission · 29.6M HYPE staked"
+    formula: "Net yield = predictedApr.day × uptimeFraction. Commission 10% (1000 bps) — highest among active non-jailed validators."
+    queries:
+      p50: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="Anchorage By Figment"}[24h])
+      success: clamp_max(avg_over_time(ocb_validator_uptime_pct{chain="hyperliquid",name="Anchorage By Figment"}[24h]) / 100, 1)
+      mean: ocb_validator_commission_bps{chain="hyperliquid",name="Anchorage By Figment"}
+      sample_size: ocb_validator_stake_usd{chain="hyperliquid",name="Anchorage By Figment"}
+      series: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="Anchorage By Figment"}[24h])
+
+  - slug: hypurrscanning
+    name: "Hypurrscanning"
+    tag: "1% commission · 23.3M HYPE staked"
+    formula: "Net yield = predictedApr.day × uptimeFraction. Commission 1% (100 bps)."
+    queries:
+      p50: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="Hypurrscanning"}[24h])
+      success: clamp_max(avg_over_time(ocb_validator_uptime_pct{chain="hyperliquid",name="Hypurrscanning"}[24h]) / 100, 1)
+      mean: ocb_validator_commission_bps{chain="hyperliquid",name="Hypurrscanning"}
+      sample_size: ocb_validator_stake_usd{chain="hyperliquid",name="Hypurrscanning"}
+      series: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="Hypurrscanning"}[24h])
+
+  - slug: hyperliquid-strategies-x-unit
+    name: "Hyperliquid Strategies x Unit"
+    tag: "2% commission · 22.6M HYPE staked"
+    formula: "Net yield = predictedApr.day × uptimeFraction. Commission 2% (200 bps)."
+    queries:
+      p50: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="Hyperliquid Strategies x Unit"}[24h])
+      success: clamp_max(avg_over_time(ocb_validator_uptime_pct{chain="hyperliquid",name="Hyperliquid Strategies x Unit"}[24h]) / 100, 1)
+      mean: ocb_validator_commission_bps{chain="hyperliquid",name="Hyperliquid Strategies x Unit"}
+      sample_size: ocb_validator_stake_usd{chain="hyperliquid",name="Hyperliquid Strategies x Unit"}
+      series: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="Hyperliquid Strategies x Unit"}[24h])
+
+  - slug: nansen-x-hypurrcollective
+    name: "Nansen x HypurrCollective"
+    tag: "2% commission · 21.9M HYPE staked"
+    formula: "Net yield = predictedApr.day × uptimeFraction. Commission 2% (200 bps)."
+    queries:
+      p50: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="Nansen x HypurrCollective"}[24h])
+      success: clamp_max(avg_over_time(ocb_validator_uptime_pct{chain="hyperliquid",name="Nansen x HypurrCollective"}[24h]) / 100, 1)
+      mean: ocb_validator_commission_bps{chain="hyperliquid",name="Nansen x HypurrCollective"}
+      sample_size: ocb_validator_stake_usd{chain="hyperliquid",name="Nansen x HypurrCollective"}
+      series: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="Nansen x HypurrCollective"}[24h])
+
+  - slug: infinitefield-xyz
+    name: "infinitefield.xyz"
+    tag: "0% commission · 18.2M HYPE staked"
+    formula: "Net yield = predictedApr.day × uptimeFraction. Commission 0% — takes no cut from delegators."
+    queries:
+      p50: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="infinitefield.xyz"}[24h])
+      success: clamp_max(avg_over_time(ocb_validator_uptime_pct{chain="hyperliquid",name="infinitefield.xyz"}[24h]) / 100, 1)
+      mean: ocb_validator_commission_bps{chain="hyperliquid",name="infinitefield.xyz"}
+      sample_size: ocb_validator_stake_usd{chain="hyperliquid",name="infinitefield.xyz"}
+      series: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="infinitefield.xyz"}[24h])
+
+  - slug: hyper-foundation-5
+    name: "Hyper Foundation 5"
+    tag: "3% commission · 15.3M HYPE staked"
+    formula: "Net yield = predictedApr.day × uptimeFraction. Commission 3% (300 bps). Hyper Foundation validator."
+    queries:
+      p50: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="Hyper Foundation 5"}[24h])
+      success: clamp_max(avg_over_time(ocb_validator_uptime_pct{chain="hyperliquid",name="Hyper Foundation 5"}[24h]) / 100, 1)
+      mean: ocb_validator_commission_bps{chain="hyperliquid",name="Hyper Foundation 5"}
+      sample_size: ocb_validator_stake_usd{chain="hyperliquid",name="Hyper Foundation 5"}
+      series: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="Hyper Foundation 5"}[24h])
+
+  - slug: hyperstake
+    name: "HyperStake"
+    tag: "0% commission · 9.9M HYPE staked"
+    formula: "Net yield = predictedApr.day × uptimeFraction. Commission 0% — takes no cut from delegators."
+    queries:
+      p50: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="HyperStake"}[24h])
+      success: clamp_max(avg_over_time(ocb_validator_uptime_pct{chain="hyperliquid",name="HyperStake"}[24h]) / 100, 1)
+      mean: ocb_validator_commission_bps{chain="hyperliquid",name="HyperStake"}
+      sample_size: ocb_validator_stake_usd{chain="hyperliquid",name="HyperStake"}
+      series: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="HyperStake"}[24h])
+
+  - slug: cmi
+    name: "CMI"
+    tag: "0% commission · 9.3M HYPE staked"
+    formula: "Net yield = predictedApr.day × uptimeFraction. Commission 0% — takes no cut from delegators."
+    queries:
+      p50: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="CMI"}[24h])
+      success: clamp_max(avg_over_time(ocb_validator_uptime_pct{chain="hyperliquid",name="CMI"}[24h]) / 100, 1)
+      mean: ocb_validator_commission_bps{chain="hyperliquid",name="CMI"}
+      sample_size: ocb_validator_stake_usd{chain="hyperliquid",name="CMI"}
+      series: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="CMI"}[24h])
+
+  - slug: hyperdash
+    name: "Hyperdash"
+    tag: "3% commission · 9.2M HYPE staked"
+    formula: "Net yield = predictedApr.day × uptimeFraction. Commission 3% (300 bps)."
+    queries:
+      p50: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="Hyperdash"}[24h])
+      success: clamp_max(avg_over_time(ocb_validator_uptime_pct{chain="hyperliquid",name="Hyperdash"}[24h]) / 100, 1)
+      mean: ocb_validator_commission_bps{chain="hyperliquid",name="Hyperdash"}
+      sample_size: ocb_validator_stake_usd{chain="hyperliquid",name="Hyperdash"}
+      series: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="Hyperdash"}[24h])
+
+  - slug: asxn
+    name: "ASXN"
+    tag: "4.9% commission · 8.8M HYPE staked"
+    formula: "Net yield = predictedApr.day × uptimeFraction. Commission 4.9% (490 bps)."
+    queries:
+      p50: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="ASXN"}[24h])
+      success: clamp_max(avg_over_time(ocb_validator_uptime_pct{chain="hyperliquid",name="ASXN"}[24h]) / 100, 1)
+      mean: ocb_validator_commission_bps{chain="hyperliquid",name="ASXN"}
+      sample_size: ocb_validator_stake_usd{chain="hyperliquid",name="ASXN"}
+      series: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="ASXN"}[24h])
+
+  - slug: hypurrcorea-spacebar-x-despread
+    name: "HypurrCorea - Spacebar x DeSpread"
+    tag: "3% commission · 8.2M HYPE staked"
+    formula: "Net yield = predictedApr.day × uptimeFraction. Commission 3% (300 bps)."
+    queries:
+      p50: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="HypurrCorea - Spacebar x DeSpread"}[24h])
+      success: clamp_max(avg_over_time(ocb_validator_uptime_pct{chain="hyperliquid",name="HypurrCorea - Spacebar x DeSpread"}[24h]) / 100, 1)
+      mean: ocb_validator_commission_bps{chain="hyperliquid",name="HypurrCorea - Spacebar x DeSpread"}
+      sample_size: ocb_validator_stake_usd{chain="hyperliquid",name="HypurrCorea - Spacebar x DeSpread"}
+      series: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="HypurrCorea - Spacebar x DeSpread"}[24h])
+
+  - slug: usdt0-x-luganodes
+    name: "USDT0 x Luganodes"
+    tag: "3% commission · 7.5M HYPE staked"
+    formula: "Net yield = predictedApr.day × uptimeFraction. Commission 3% (300 bps)."
+    queries:
+      p50: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="USDT0 x Luganodes"}[24h])
+      success: clamp_max(avg_over_time(ocb_validator_uptime_pct{chain="hyperliquid",name="USDT0 x Luganodes"}[24h]) / 100, 1)
+      mean: ocb_validator_commission_bps{chain="hyperliquid",name="USDT0 x Luganodes"}
+      sample_size: ocb_validator_stake_usd{chain="hyperliquid",name="USDT0 x Luganodes"}
+      series: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="USDT0 x Luganodes"}[24h])
+
+  - slug: purrposeful-x-hybridge-x-pip
+    name: "Purrposeful x HyBridge x PiP"
+    tag: "1.75% commission · 7.2M HYPE staked"
+    formula: "Net yield = predictedApr.day × uptimeFraction. Commission 1.75% (175 bps)."
+    queries:
+      p50: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="Purrposeful x HyBridge x PiP"}[24h])
+      success: clamp_max(avg_over_time(ocb_validator_uptime_pct{chain="hyperliquid",name="Purrposeful x HyBridge x PiP"}[24h]) / 100, 1)
+      mean: ocb_validator_commission_bps{chain="hyperliquid",name="Purrposeful x HyBridge x PiP"}
+      sample_size: ocb_validator_stake_usd{chain="hyperliquid",name="Purrposeful x HyBridge x PiP"}
+      series: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="Purrposeful x HyBridge x PiP"}[24h])
+
+  - slug: kinetiq-x-hyperion
+    name: "Kinetiq x Hyperion"
+    tag: "4% commission · 7.0M HYPE staked"
+    formula: "Net yield = predictedApr.day × uptimeFraction. Commission 4% (400 bps)."
+    queries:
+      p50: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="Kinetiq x Hyperion"}[24h])
+      success: clamp_max(avg_over_time(ocb_validator_uptime_pct{chain="hyperliquid",name="Kinetiq x Hyperion"}[24h]) / 100, 1)
+      mean: ocb_validator_commission_bps{chain="hyperliquid",name="Kinetiq x Hyperion"}
+      sample_size: ocb_validator_stake_usd{chain="hyperliquid",name="Kinetiq x Hyperion"}
+      series: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="Kinetiq x Hyperion"}[24h])
+
+  - slug: validao
+    name: "ValiDAO"
+    tag: "4% commission · 6.7M HYPE staked"
+    formula: "Net yield = predictedApr.day × uptimeFraction. Commission 4% (400 bps)."
+    queries:
+      p50: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="ValiDAO"}[24h])
+      success: clamp_max(avg_over_time(ocb_validator_uptime_pct{chain="hyperliquid",name="ValiDAO"}[24h]) / 100, 1)
+      mean: ocb_validator_commission_bps{chain="hyperliquid",name="ValiDAO"}
+      sample_size: ocb_validator_stake_usd{chain="hyperliquid",name="ValiDAO"}
+      series: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="ValiDAO"}[24h])
+
+  - slug: bitwise-onchain-solutions-x-falconx
+    name: "Bitwise Onchain Solutions x FalconX"
+    tag: "3% commission · 5.6M HYPE staked"
+    formula: "Net yield = predictedApr.day × uptimeFraction. Commission 3% (300 bps)."
+    queries:
+      p50: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="Bitwise Onchain Solutions x FalconX"}[24h])
+      success: clamp_max(avg_over_time(ocb_validator_uptime_pct{chain="hyperliquid",name="Bitwise Onchain Solutions x FalconX"}[24h]) / 100, 1)
+      mean: ocb_validator_commission_bps{chain="hyperliquid",name="Bitwise Onchain Solutions x FalconX"}
+      sample_size: ocb_validator_stake_usd{chain="hyperliquid",name="Bitwise Onchain Solutions x FalconX"}
+      series: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="Bitwise Onchain Solutions x FalconX"}[24h])
+
+  - slug: alphaticks
+    name: "Alphaticks"
+    tag: "1% commission · 5.5M HYPE staked"
+    formula: "Net yield = predictedApr.day × uptimeFraction. Commission 1% (100 bps)."
+    queries:
+      p50: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="Alphaticks"}[24h])
+      success: clamp_max(avg_over_time(ocb_validator_uptime_pct{chain="hyperliquid",name="Alphaticks"}[24h]) / 100, 1)
+      mean: ocb_validator_commission_bps{chain="hyperliquid",name="Alphaticks"}
+      sample_size: ocb_validator_stake_usd{chain="hyperliquid",name="Alphaticks"}
+      series: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="Alphaticks"}[24h])
+
+  - slug: b-harvest
+    name: "B-Harvest"
+    tag: "5% commission · 5.2M HYPE staked"
+    formula: "Net yield = predictedApr.day × uptimeFraction. Commission 5% (500 bps)."
+    queries:
+      p50: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="B-Harvest"}[24h])
+      success: clamp_max(avg_over_time(ocb_validator_uptime_pct{chain="hyperliquid",name="B-Harvest"}[24h]) / 100, 1)
+      mean: ocb_validator_commission_bps{chain="hyperliquid",name="B-Harvest"}
+      sample_size: ocb_validator_stake_usd{chain="hyperliquid",name="B-Harvest"}
+      series: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="B-Harvest"}[24h])
+
+  - slug: flowdex
+    name: "Flowdex"
+    tag: "0% commission · 5.1M HYPE staked"
+    formula: "Net yield = predictedApr.day × uptimeFraction. Commission 0% — takes no cut from delegators."
+    queries:
+      p50: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="Flowdex"}[24h])
+      success: clamp_max(avg_over_time(ocb_validator_uptime_pct{chain="hyperliquid",name="Flowdex"}[24h]) / 100, 1)
+      mean: ocb_validator_commission_bps{chain="hyperliquid",name="Flowdex"}
+      sample_size: ocb_validator_stake_usd{chain="hyperliquid",name="Flowdex"}
+      series: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="Flowdex"}[24h])
+
+  - slug: liquid-spirit-x-hydromancer-x-rekt-gang
+    name: "Liquid Spirit x Hydromancer x Rekt Gang"
+    tag: "3% commission · 4.5M HYPE staked"
+    formula: "Net yield = predictedApr.day × uptimeFraction. Commission 3% (300 bps)."
+    queries:
+      p50: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="Liquid Spirit x Hydromancer x Rekt Gang"}[24h])
+      success: clamp_max(avg_over_time(ocb_validator_uptime_pct{chain="hyperliquid",name="Liquid Spirit x Hydromancer x Rekt Gang"}[24h]) / 100, 1)
+      mean: ocb_validator_commission_bps{chain="hyperliquid",name="Liquid Spirit x Hydromancer x Rekt Gang"}
+      sample_size: ocb_validator_stake_usd{chain="hyperliquid",name="Liquid Spirit x Hydromancer x Rekt Gang"}
+      series: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="Liquid Spirit x Hydromancer x Rekt Gang"}[24h])
+
+  - slug: hyperbeat-x-p2p-x-hypio
+    name: "Hyperbeat x P2P x Hypio"
+    tag: "2% commission · 3.9M HYPE staked"
+    formula: "Net yield = predictedApr.day × uptimeFraction. Commission 2% (200 bps)."
+    queries:
+      p50: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="Hyperbeat x P2P x Hypio"}[24h])
+      success: clamp_max(avg_over_time(ocb_validator_uptime_pct{chain="hyperliquid",name="Hyperbeat x P2P x Hypio"}[24h]) / 100, 1)
+      mean: ocb_validator_commission_bps{chain="hyperliquid",name="Hyperbeat x P2P x Hypio"}
+      sample_size: ocb_validator_stake_usd{chain="hyperliquid",name="Hyperbeat x P2P x Hypio"}
+      series: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="Hyperbeat x P2P x Hypio"}[24h])
+
+  - slug: enigma-hypedexer-com-x-meria
+    name: "Enigma - Hypedexer.com X Meria"
+    tag: "3% commission · 3.3M HYPE staked"
+    formula: "Net yield = predictedApr.day × uptimeFraction. Commission 3% (300 bps)."
+    queries:
+      p50: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="Enigma - Hypedexer.com X Meria"}[24h])
+      success: clamp_max(avg_over_time(ocb_validator_uptime_pct{chain="hyperliquid",name="Enigma - Hypedexer.com X Meria"}[24h]) / 100, 1)
+      mean: ocb_validator_commission_bps{chain="hyperliquid",name="Enigma - Hypedexer.com X Meria"}
+      sample_size: ocb_validator_stake_usd{chain="hyperliquid",name="Enigma - Hypedexer.com X Meria"}
+      series: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="Enigma - Hypedexer.com X Meria"}[24h])
+
+  - slug: galaxydigital
+    name: "GalaxyDigital"
+    tag: "5% commission · 640K HYPE staked"
+    formula: "Net yield = predictedApr.day × uptimeFraction. Commission 5% (500 bps)."
+    queries:
+      p50: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="GalaxyDigital"}[24h])
+      success: clamp_max(avg_over_time(ocb_validator_uptime_pct{chain="hyperliquid",name="GalaxyDigital"}[24h]) / 100, 1)
+      mean: ocb_validator_commission_bps{chain="hyperliquid",name="GalaxyDigital"}
+      sample_size: ocb_validator_stake_usd{chain="hyperliquid",name="GalaxyDigital"}
+      series: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="GalaxyDigital"}[24h])
+
+  - slug: meria
+    name: "Meria"
+    tag: "2.9% commission · 1.6K HYPE staked"
+    formula: "Net yield = predictedApr.day × uptimeFraction. Commission 2.9% (290 bps). Near-zero stake."
+    queries:
+      p50: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="Meria"}[24h])
+      success: clamp_max(avg_over_time(ocb_validator_uptime_pct{chain="hyperliquid",name="Meria"}[24h]) / 100, 1)
+      mean: ocb_validator_commission_bps{chain="hyperliquid",name="Meria"}
+      sample_size: ocb_validator_stake_usd{chain="hyperliquid",name="Meria"}
+      series: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="Meria"}[24h])
+
+  - slug: figment
+    name: "Figment"
+    tag: "5% commission · JAILED"
+    formula: "Net yield = 0 (jailed). Commission 5% (500 bps). Jailed validators earn no rewards."
+    queries:
+      p50: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="Figment"}[24h])
+      success: clamp_max(avg_over_time(ocb_validator_uptime_pct{chain="hyperliquid",name="Figment"}[24h]) / 100, 1)
+      mean: ocb_validator_commission_bps{chain="hyperliquid",name="Figment"}
+      sample_size: ocb_validator_stake_usd{chain="hyperliquid",name="Figment"}
+      series: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="Figment"}[24h])
+
+  - slug: falcon-capital
+    name: "Falcon Capital"
+    tag: "100% commission · JAILED"
+    formula: "Net yield = 0 (jailed). Commission 100% (10000 bps). Jailed validators earn no rewards."
+    queries:
+      p50: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="Falcon Capital"}[24h])
+      success: clamp_max(avg_over_time(ocb_validator_uptime_pct{chain="hyperliquid",name="Falcon Capital"}[24h]) / 100, 1)
+      mean: ocb_validator_commission_bps{chain="hyperliquid",name="Falcon Capital"}
+      sample_size: ocb_validator_stake_usd{chain="hyperliquid",name="Falcon Capital"}
+      series: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="Falcon Capital"}[24h])
+
+  - slug: asymmetric-research
+    name: "Asymmetric Research"
+    tag: "1.5% commission · JAILED"
+    formula: "Net yield = 0 (jailed). Commission 1.5% (150 bps). Jailed validators earn no rewards."
+    queries:
+      p50: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="Asymmetric Research"}[24h])
+      success: clamp_max(avg_over_time(ocb_validator_uptime_pct{chain="hyperliquid",name="Asymmetric Research"}[24h]) / 100, 1)
+      mean: ocb_validator_commission_bps{chain="hyperliquid",name="Asymmetric Research"}
+      sample_size: ocb_validator_stake_usd{chain="hyperliquid",name="Asymmetric Research"}
+      series: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="Asymmetric Research"}[24h])
+
+  - slug: hypercn-x-hlscan
+    name: "HyperCN X hlscan"
+    tag: "1% commission · JAILED"
+    formula: "Net yield = 0 (jailed). Commission 1% (100 bps). Jailed validators earn no rewards."
+    queries:
+      p50: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="HyperCN X hlscan"}[24h])
+      success: clamp_max(avg_over_time(ocb_validator_uptime_pct{chain="hyperliquid",name="HyperCN X hlscan"}[24h]) / 100, 1)
+      mean: ocb_validator_commission_bps{chain="hyperliquid",name="HyperCN X hlscan"}
+      sample_size: ocb_validator_stake_usd{chain="hyperliquid",name="HyperCN X hlscan"}
+      series: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="HyperCN X hlscan"}[24h])
+
+  - slug: red-pond
+    name: "Red Pond"
+    tag: "1% commission · JAILED"
+    formula: "Net yield = 0 (jailed). Commission 1% (100 bps). Jailed validators earn no rewards."
+    queries:
+      p50: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="Red Pond"}[24h])
+      success: clamp_max(avg_over_time(ocb_validator_uptime_pct{chain="hyperliquid",name="Red Pond"}[24h]) / 100, 1)
+      mean: ocb_validator_commission_bps{chain="hyperliquid",name="Red Pond"}
+      sample_size: ocb_validator_stake_usd{chain="hyperliquid",name="Red Pond"}
+      series: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="Red Pond"}[24h])
+
+  - slug: cp0x-by-stakr-space
+    name: "cp0x by STAKR.space"
+    tag: "0% commission · JAILED"
+    formula: "Net yield = 0 (jailed). Commission 0%. Jailed validators earn no rewards."
+    queries:
+      p50: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="cp0x by STAKR.space"}[24h])
+      success: clamp_max(avg_over_time(ocb_validator_uptime_pct{chain="hyperliquid",name="cp0x by STAKR.space"}[24h]) / 100, 1)
+      mean: ocb_validator_commission_bps{chain="hyperliquid",name="cp0x by STAKR.space"}
+      sample_size: ocb_validator_stake_usd{chain="hyperliquid",name="cp0x by STAKR.space"}
+      series: avg_over_time(ocb_validator_net_yield_bps{chain="hyperliquid",name="cp0x by STAKR.space"}[24h])

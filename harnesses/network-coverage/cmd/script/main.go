@@ -75,7 +75,6 @@ func fetchAll(cfg *Config) {
 		{"dune", fetchSimDune},
 		{"coinstats", fetchCoinStats},
 		{"coingecko", fetchCoinGecko},
-		{"defillama", fetchDefiLlama},
 		{"dexpaprika", fetchDexPaprika},
 	}
 
