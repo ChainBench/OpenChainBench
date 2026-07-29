@@ -21,75 +21,99 @@ type SeriesPathsProps = {
 // now speak for themselves — SeriesPaths renders a natural break wherever
 // the underlying values are null.
 
+// Max number of end-of-line labels rendered. The legend below shows all
+// providers regardless — this cap prevents right-side label clutter when
+// dozens of lines share the same Y range.
+const MAX_INLINE_LABELS = 10;
+// Minimum vertical gap (SVG units) between consecutive placed labels so
+// name + value lines don't overlap.
+const LABEL_GAP = 27;
+
 export function SeriesPaths({ drawn, unit }: SeriesPathsProps) {
+  // Limit labels to top-N non-excluded lines (drawn is pre-sorted by value).
+  const labeledSlugs = new Set(
+    drawn.filter((d) => !d.excluded).slice(0, MAX_INLINE_LABELS).map((d) => d.slug),
+  );
+
+  // Collision deflection: sort labeled lines by their natural Y position,
+  // then push each label down until it clears the previous one.
+  const labelY: Record<string, number> = {};
+  const toPlace = drawn
+    .filter((d) => labeledSlugs.has(d.slug))
+    .map((d) => ({ slug: d.slug, natural: d.lastY }))
+    .sort((a, b) => a.natural - b.natural);
+  let prevBottom = -Infinity;
+  for (const item of toPlace) {
+    const y = Math.max(item.natural, prevBottom);
+    labelY[item.slug] = y;
+    prevBottom = y + LABEL_GAP;
+  }
+
   return (
     <>
-      {drawn.map((d) => (
-        <g
-          key={d.slug}
-          className="ts-line"
-          style={{
-            opacity: d.excluded ? 0 : 1,
-            pointerEvents: d.excluded ? "none" : undefined,
-            transition: "opacity 0.3s ease-out",
-          }}
-        >
-          <path d={d.fillPath} fill={`url(#fill-${d.slug})`} />
-          <path
-            d={d.linePath}
-            fill="none"
-            stroke={d.color}
-            strokeWidth={1.4}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            pathLength={1}
-            strokeDasharray="1"
+      {drawn.map((d) => {
+        const showLabel = labeledSlugs.has(d.slug);
+        const ly = labelY[d.slug] ?? d.lastY;
+        return (
+          <g
+            key={d.slug}
+            className="ts-line"
             style={{
-              // Trigger draw-in via CSS animation
-              animation: "ts-draw 0.7s ease-out forwards",
+              opacity: d.excluded ? 0 : 1,
+              pointerEvents: d.excluded ? "none" : undefined,
+              transition: "opacity 0.3s ease-out",
             }}
-          />
-          {/* Live pulse halo. animated outward */}
-          <circle cx={d.lastX} cy={d.lastY} r={3} fill={d.color} opacity={0.4}>
-            <animate
-              attributeName="r"
-              values="3;10;3"
-              dur="1.8s"
-              repeatCount="indefinite"
-            />
-            <animate
-              attributeName="opacity"
-              values="0.45;0;0.45"
-              dur="1.8s"
-              repeatCount="indefinite"
-            />
-          </circle>
-          {/* Trailing tail dot */}
-          <circle cx={d.lastX} cy={d.lastY} r={2.8} fill={d.color} />
-          {/* End-of-line label */}
-          <text
-            x={d.lastX + 8}
-            y={d.lastY}
-            dominantBaseline="middle"
-            fontFamily="var(--font-sans)"
-            fontSize="11"
-            fontWeight="500"
-            fill={d.color}
           >
-            {d.name}
-          </text>
-          <text
-            x={d.lastX + 8}
-            y={d.lastY + 12}
-            dominantBaseline="middle"
-            fontFamily="var(--font-mono)"
-            fontSize="10"
-            fill="var(--color-ink-muted)"
-          >
-            {fmtUnit(d.last, unit)}
-          </text>
-        </g>
-      ))}
+            <path d={d.fillPath} fill={`url(#fill-${d.slug})`} />
+            <path
+              d={d.linePath}
+              fill="none"
+              stroke={d.color}
+              strokeWidth={1.4}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              pathLength={1}
+              strokeDasharray="1"
+              style={{
+                animation: "ts-draw 0.7s ease-out forwards",
+              }}
+            />
+            {/* Live pulse halo */}
+            <circle cx={d.lastX} cy={d.lastY} r={3} fill={d.color} opacity={0.4}>
+              <animate attributeName="r" values="3;10;3" dur="1.8s" repeatCount="indefinite" />
+              <animate attributeName="opacity" values="0.45;0;0.45" dur="1.8s" repeatCount="indefinite" />
+            </circle>
+            {/* Trailing tail dot */}
+            <circle cx={d.lastX} cy={d.lastY} r={2.8} fill={d.color} />
+            {/* End-of-line label — only for top-N, collision-deflected */}
+            {showLabel && (
+              <>
+                <text
+                  x={d.lastX + 8}
+                  y={ly}
+                  dominantBaseline="middle"
+                  fontFamily="var(--font-sans)"
+                  fontSize="11"
+                  fontWeight="500"
+                  fill={d.color}
+                >
+                  {d.name}
+                </text>
+                <text
+                  x={d.lastX + 8}
+                  y={ly + 13}
+                  dominantBaseline="middle"
+                  fontFamily="var(--font-mono)"
+                  fontSize="10"
+                  fill="var(--color-ink-muted)"
+                >
+                  {fmtUnit(d.last, unit)}
+                </text>
+              </>
+            )}
+          </g>
+        );
+      })}
     </>
   );
 }
