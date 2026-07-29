@@ -55,6 +55,9 @@ export const REMOVED_ANSWER_SLUGS = new Set([
   // References solana-dex-quote-latency (staging-only, in
   // REMOVED_BENCH_SLUGS). Same pattern.
   "which-solana-dex-aggregator-is-the-fastest",
+  // References pm-data-freshness (bench 113, retired 2026-07). Bench
+  // removed; answer returns 404 without this guard.
+  "which-prediction-market-data-api-is-the-freshest",
 ]);
 
 export const REMOVED_BENCH_SLUGS = new Set([
@@ -113,6 +116,11 @@ export const REMOVED_BENCH_SLUGS = new Set([
   "rpc-keyed-latency",
   "explorer-chain-coverage",
   "portfolio-chain-coverage",
+  // pm-data-freshness (bench 113) retired 2026-07: Predexon (the only
+  // measured data relay) discontinued. Spec + harness removed; kept in
+  // the 410 list so any indexed URL returns Gone instead of 404.
+  // Per-venue WS freshness now lives in pm-ws-latency (bench 114).
+  "pm-data-freshness",
 ]);
 
 /**
