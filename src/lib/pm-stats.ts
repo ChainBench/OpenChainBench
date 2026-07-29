@@ -81,7 +81,8 @@ const PM_VENUES: VenueSeed[] = [
 ];
 
 const PM_DATA_FEEDS: DataFeedSeed[] = [
-  { slug: "predexon", name: "Predexon", coverage: ["polymarket", "kalshi", "limitless"], isReference: false },
+  // Predexon was tracked via pm-data-freshness (retired 2026-07). Re-add
+  // when a replacement freshness harness ships.
 ];
 
 function promUrl(): string | null {

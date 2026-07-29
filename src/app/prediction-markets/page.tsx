@@ -193,8 +193,8 @@ export default async function PredictionMarketsHubPage() {
               tip="Median of per venue p50 latency on the warm price endpoint, trailing 24h."
             />
             <SummaryCard
-              label="Tracked venues and feeds"
-              value={`${cohort.venues.length} + ${cohort.dataFeeds.length}`}
+              label="Tracked venues"
+              value={`${cohort.venues.length}${cohort.dataFeeds.length > 0 ? ` + ${cohort.dataFeeds.length}` : ""}`}
             />
           </section>
 

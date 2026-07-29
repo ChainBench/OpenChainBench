@@ -25,15 +25,8 @@ export const PM_VENUE_META: Record<string, { url: string; chainLabel: string }> 
   myriad: { url: "https://myriad.markets", chainLabel: "Abstract L2" },
 };
 
-// Logo paths come from the central manifest (`src/lib/logo-manifest.ts`)
-// so a slug whose file extension changes (e.g. predexon.svg → predexon.png)
-// only needs the manifest edit, not a parallel update here. The previous
-// shape hardcoded ".png" for slugs whose actual asset was ".svg" and the
-// header in PmDataFeedSection rendered a broken-image glyph for codex,
-// mobula, and predexon.
 export const PM_FEED_META: Record<string, { url?: string }> = {
   "polymarket-clob": { url: "https://polymarket.com" },
-  predexon: { url: "https://predexon.com" },
 };
 
 export type PmVenueContext = {

@@ -579,8 +579,7 @@ export default async function ProviderPage({
                     p.slug === "polymarket" ||
                     p.slug === "kalshi" ||
                     p.slug === "limitless" ||
-                    p.slug === "myriad" ||
-                    p.slug === "predexon"
+                    p.slug === "myriad"
                   ) && (
                     <>
                       <span className="text-ink-faint"> · </span>
