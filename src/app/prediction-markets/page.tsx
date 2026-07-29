@@ -8,7 +8,7 @@ import { SITE } from "@/data/site";
 /**
  * Hub landing page for the prediction markets cohort. SSR'd against
  * the `pm-cohort-stats` harness gauges plus the existing PM bench
- * gauges (pm-api-latency, pm-resolution-delay, pm-data-freshness). One
+ * gauges (pm-api-latency, pm-resolution-delay, pm-ws-latency). One
  * server fetch, one client tab swap between Venues and Data feeds.
  *
  * The page positions OCB as the neutral cross venue measurement layer:
@@ -138,7 +138,7 @@ export default async function PredictionMarketsHubPage() {
             <span className="text-ink">pm-resolution-delay</span>
           </Link>
           <Link
-            href="/benchmarks/pm-data-freshness"
+            href="/benchmarks/pm-ws-latency"
             className="inline-flex items-center gap-1.5 rounded-full border border-teal-500/30 bg-teal-500/10 px-3 py-1 hover:bg-teal-500/15"
           >
             <span
@@ -147,7 +147,7 @@ export default async function PredictionMarketsHubPage() {
             >
               Bench
             </span>
-            <span className="text-ink">pm-data-freshness</span>
+            <span className="text-ink">pm-ws-latency</span>
           </Link>
           <Link
             href="/benchmarks/pm-rate-limits"
@@ -251,8 +251,8 @@ export default async function PredictionMarketsHubPage() {
             /benchmarks/polymarket-resolution-delay
           </Link>
           ,{" "}
-          <Link href="/benchmarks/pm-data-freshness" className="underline">
-            /benchmarks/pm-data-freshness
+          <Link href="/benchmarks/pm-ws-latency" className="underline">
+            /benchmarks/pm-ws-latency
           </Link>{" "}
           and{" "}
           <Link href="/benchmarks/pm-rate-limits" className="underline">
