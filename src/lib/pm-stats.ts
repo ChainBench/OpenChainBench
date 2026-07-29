@@ -79,6 +79,10 @@ const PM_VENUES: VenueSeed[] = [
   { slug: "kalshi",        name: "Kalshi",        type: "offchain" },
   { slug: "limitless",     name: "Limitless",     type: "onchain",  chain: "base" },
   { slug: "myriad",        name: "Myriad",        type: "onchain",  chain: "abstract" },
+  { slug: "manifold",      name: "Manifold",      type: "offchain" },
+  { slug: "predictit",     name: "PredictIt",     type: "offchain" },
+  { slug: "smarkets",      name: "Smarkets",      type: "offchain" },
+  { slug: "metaculus",     name: "Metaculus",     type: "offchain" },
 ];
 
 const PM_DATA_FEEDS: DataFeedSeed[] = [
