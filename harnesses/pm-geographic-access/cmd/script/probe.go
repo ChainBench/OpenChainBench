@@ -45,8 +45,12 @@ var venueProbes = []venueProbe{
 		URL:   "https://api-v2.myriadprotocol.com/markets?state=open&limit=1",
 	},
 	{
+		// ForecastEx (Interactive Brokers CFTC-regulated exchange). The root
+		// domain returns 200 when accessible, or a geo-block response for
+		// regions where IBKR restricts access. No public unauthenticated API
+		// endpoint exists; we probe the market listing page directly.
 		Venue: "forecastex",
-		URL:   "https://forecastex.com/api/v1/contracts",
+		URL:   "https://forecastex.com/markets",
 	},
 }
 
