@@ -183,6 +183,12 @@ export async function GET(
   }
 
   const url = new URL(req.url);
+  // When ?raw=1 the response values stay in OCB's internal unit convention
+  // (milliseconds for "s" benches, basis points for "bps" benches) so the
+  // time-series chart can pass them directly to fmtUnit without a second
+  // division. The video renderer omits raw=1 and gets the display-friendly
+  // conversion (seconds / percent) it expects.
+  const rawMode = url.searchParams.get("raw") === "1";
   const rangeParam = url.searchParams.get("range") ?? "24h";
   if (!isRangeKey(rangeParam)) {
     return NextResponse.json(
@@ -330,16 +336,20 @@ export async function GET(
   //   "bps" = stored in basis points, site displays as % (÷100) → send "pct" + divide values
   //   "s"   = stored in milliseconds, site displays as seconds   → send "s"  + divide values
   //   "pct", "bp", "usd", "count", …                            → pass through unchanged
+  // When ?raw=1 (time-series chart), skip conversion so fmtUnit receives
+  // values in the same internal unit as the 24h series from the bench object.
   let displayUnit = sourceUnit;
   const providers = rawProviders.map((p) => ({ ...p }));
-  if (sourceUnit === "bps") {
-    displayUnit = "pct";
-    for (const p of providers) {
-      p.values = p.values.map((v) => (v == null ? null : v / 100));
-    }
-  } else if (sourceUnit === "s") {
-    for (const p of providers) {
-      p.values = p.values.map((v) => (v == null ? null : v / 1000));
+  if (!rawMode) {
+    if (sourceUnit === "bps") {
+      displayUnit = "pct";
+      for (const p of providers) {
+        p.values = p.values.map((v) => (v == null ? null : v / 100));
+      }
+    } else if (sourceUnit === "s") {
+      for (const p of providers) {
+        p.values = p.values.map((v) => (v == null ? null : v / 1000));
+      }
     }
   }
 
