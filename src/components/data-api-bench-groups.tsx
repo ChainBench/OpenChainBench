@@ -36,7 +36,7 @@ export function DataApiBenchGroups({ groups }: { groups: DataApiGroupRow[] }) {
                       <Th className="px-3 py-3 text-right w-[60px]">Providers</Th>
                       <Th className="px-3 py-3 text-left">Leader</Th>
                       <Th className="px-3 py-3 text-left hidden sm:table-cell">Runners-up</Th>
-                      <Th className="pl-3 pr-5 py-3 text-left hidden lg:table-cell">By region / chain</Th>
+                      <Th className="pl-3 pr-5 py-3 text-left hidden md:table-cell">By region / chain</Th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-ink/5">

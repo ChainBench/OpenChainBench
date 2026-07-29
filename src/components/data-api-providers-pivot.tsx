@@ -8,6 +8,7 @@ import {
   GROUP_META,
   fmtDataValue,
   type DataApiProviderPivotRow,
+  type DataApiRegionScore,
   type DataApiGroup,
 } from "@/lib/data-api-stats";
 
@@ -215,8 +216,8 @@ function GroupCell({
 
   const { bestRank, bestCell } = cell;
   const accent = GROUP_META[group].accent;
+  const hasRegions = bestCell.regions && bestCell.regions.length > 0;
 
-  // Color intensity by rank
   const bg =
     bestRank === 1
       ? `${accent}22`
@@ -233,10 +234,10 @@ function GroupCell({
 
   return (
     <div
-      className="inline-flex flex-col items-start gap-0.5 rounded-md px-2 py-1.5"
+      className="inline-flex flex-col items-start gap-1 rounded-md px-2 py-1.5 min-w-[110px]"
       style={{ background: bg }}
-      title={`${bestCell.benchShortTitle}: #${bestRank} — ${fmtDataValue(bestCell.p50, bestCell.unit)}`}
     >
+      {/* Global rank + value */}
       <div className="flex items-center gap-1.5">
         <RankBadge rank={bestRank} accent={accent} />
         <span
@@ -249,6 +250,49 @@ function GroupCell({
       <span className="text-[9px] text-ink-faint leading-tight">
         {bestCell.benchShortTitle.replace("coverage", "cov.").replace("freshness", "fresh.")}
       </span>
+      {/* Regional sub-scores */}
+      {hasRegions && (
+        <RegionSubScores
+          regions={bestCell.regions!}
+          unit={bestCell.unit}
+          accent={accent}
+        />
+      )}
+    </div>
+  );
+}
+
+function RegionSubScores({
+  regions,
+  unit,
+  accent,
+}: {
+  regions: DataApiRegionScore[];
+  unit: DataApiProviderPivotRow["cells"][number]["unit"];
+  accent: string;
+}) {
+  return (
+    <div className="flex items-center gap-1.5 pt-0.5 border-t border-ink/8 w-full">
+      {regions.map((r) => (
+        <div
+          key={r.region}
+          className="flex items-center gap-0.5"
+          title={`${r.label}: #${r.rank} — ${fmtDataValue(r.p50, unit)}`}
+        >
+          <span
+            className="text-[8px] font-medium uppercase text-ink-faint"
+            style={{ letterSpacing: "0.04em" }}
+          >
+            {r.label}
+          </span>
+          <span
+            className="text-[9px] font-bold"
+            style={{ color: r.rank === 1 ? accent : "var(--color-ink-faint)" }}
+          >
+            #{r.rank}
+          </span>
+        </div>
+      ))}
     </div>
   );
 }
