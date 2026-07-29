@@ -19,7 +19,7 @@ import { loadSnapshotFromBlob } from "@/lib/bench-blob";
 import { leader, fieldValue } from "@/lib/citation";
 
 const FEATURED_BENCH_SLUGS = [
-  "pm-data-freshness",
+  "pm-ws-latency",
   "aggregator-head-lag",
   "l1-finality",
   "rpc-capabilities",

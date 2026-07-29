@@ -1,16 +1,9 @@
 /**
  * Server-side helper for the /prediction-markets hub page. Reads the
- * `pm_venue_*` gauges exposed by the `pm-cohort-stats` harness, plus a
- * handful of cross-bench histograms already in prod:
+ * `pm_venue_*` gauges exposed by the `pm-cohort-stats` harness, plus
+ * cross-bench histograms:
  *   - pmapi_request_duration_seconds_bucket   (bench pm-api-latency)
- *   - pm_health                               (bench pm-data-freshness, uptime)
  *   - pmres_resolution_delay_seconds_bucket   (bench pm-resolution-delay)
- *   - pm_freshness_delta_ms_bucket            (bench pm-data-freshness)
- *
- * The freshness bench publishes a histogram keyed by
- * `{provider, venue, kind}` (NOT a pre-aggregated p50/p99 gauge), so we
- * compute the quantile client-side via `histogram_quantile()` and key
- * the data-feed rows by the `provider` label.
  *
  * Shape mirrors `hl-builder-stats.ts` exactly so the page composes the
  * same way as /hyperliquid: one server fetch, one client tab swap.
@@ -88,10 +81,6 @@ const PM_VENUES: VenueSeed[] = [
 ];
 
 const PM_DATA_FEEDS: DataFeedSeed[] = [
-  // Mobula dropped 2026-07-19: they stopped serving the PM WebSocket
-  // relay, so the hub cohort and pm-data-freshness bench no longer
-  // rank a dead endpoint.
-  { slug: "codex",    name: "Codex",    coverage: ["polymarket", "kalshi"], isReference: false },
   { slug: "predexon", name: "Predexon", coverage: ["polymarket", "kalshi", "limitless"], isReference: false },
 ];
 
@@ -136,9 +125,6 @@ export async function fetchPmCohortFresh(): Promise<PmCohortSummary | null> {
     marketsAbove1m,
     apiLatencyP50,
     resolutionDelayP50,
-    freshnessP50,
-    freshnessP99,
-    uptime24h,
   ] = await Promise.all([
     queryVector(prom, `pm_venue_volume_30d_usd`),
     queryVector(prom, `pm_venue_volume_24h_usd`),
@@ -159,18 +145,6 @@ export async function fetchPmCohortFresh(): Promise<PmCohortSummary | null> {
     queryVector(
       prom,
       `histogram_quantile(0.5, sum by (le) (rate(pmres_resolution_delay_seconds_bucket[30d])))`,
-    ),
-    queryVector(
-      prom,
-      `histogram_quantile(0.5, sum by (provider, le) (rate(pm_freshness_delta_ms_bucket{venue="polymarket",provider!="polymarket"}[1h])))`,
-    ),
-    queryVector(
-      prom,
-      `histogram_quantile(0.99, sum by (provider, le) (rate(pm_freshness_delta_ms_bucket{venue="polymarket",provider!="polymarket"}[1h])))`,
-    ),
-    queryVector(
-      prom,
-      `avg_over_time(pm_health{venue="polymarket",provider!="polymarket"}[24h])`,
     ),
   ]);
 
@@ -228,31 +202,15 @@ export async function fetchPmCohortFresh(): Promise<PmCohortSummary | null> {
     row.medianResolutionDelayMin = Number.isFinite(s.value) ? s.value / 60 : null;
   }
 
-  // Data feeds. Coverage stays static (taken from the seed); the live
-  // values come from the freshness bench, which keys by `provider`. The
-  // T0 reference (Polymarket CLOB) is excluded from PM_DATA_FEEDS since
-  // measuring it against itself would always yield zero lag.
-  const freshnessP50By = new Map<string, number>();
-  const freshnessP99By = new Map<string, number>();
-  const uptimeBy = new Map<string, number>();
-  for (const s of freshnessP50 ?? []) {
-    const r = s.labels.provider;
-    if (r) freshnessP50By.set(r, s.value);
-  }
-  for (const s of freshnessP99 ?? []) {
-    const r = s.labels.provider;
-    if (r) freshnessP99By.set(r, s.value);
-  }
-  for (const s of uptime24h ?? []) {
-    const r = s.labels.provider;
-    if (r) uptimeBy.set(r, s.value);
-  }
+  // Data feeds. Coverage stays static (taken from the seed). The
+  // freshness bench was retired in 2026-07, so all numeric fields are null
+  // until a replacement harness ships.
   const dataFeeds: PmDataFeedRow[] = PM_DATA_FEEDS.map((f) => ({
     slug: f.slug,
     name: f.name,
-    freshnessP50Ms: f.isReference ? null : (freshnessP50By.get(f.slug) ?? null),
-    freshnessP99Ms: f.isReference ? null : (freshnessP99By.get(f.slug) ?? null),
-    uptime24h: f.isReference ? null : (uptimeBy.get(f.slug) ?? null),
+    freshnessP50Ms: null,
+    freshnessP99Ms: null,
+    uptime24h: null,
     coverage: f.coverage,
     isReference: f.isReference,
   }));
