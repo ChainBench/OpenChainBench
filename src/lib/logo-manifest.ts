@@ -60,7 +60,6 @@ const RAW: Record<string, string> = {
   // ─── Providers ───
   mobula: "/logos/mobula.svg",
   codex: "/logos/codex.svg",
-  predexon: "/logos/predexon.svg",
   polymarket: "/logos/polymarket.png",
   kalshi: "/logos/kalshi.jpg",
   limitless: "/logos/limitless.png",
