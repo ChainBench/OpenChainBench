@@ -39,17 +39,19 @@ export function PmHubTabs({ cohort }: { cohort: PmCohortSummary }) {
         >
           Venues
         </TabButton>
-        <TabButton
-          active={tab === "feeds"}
-          onClick={() => setTab("feeds")}
-          count={feedsCount}
-        >
-          Data feeds
-        </TabButton>
+        {feedsCount > 0 && (
+          <TabButton
+            active={tab === "feeds"}
+            onClick={() => setTab("feeds")}
+            count={feedsCount}
+          >
+            Data feeds
+          </TabButton>
+        )}
       </div>
 
       {tab === "venues" && <PmVenuesLeaderboard rows={cohort.venues} />}
-      {tab === "feeds" && <PmDataFeedsLeaderboard rows={cohort.dataFeeds} />}
+      {tab === "feeds" && feedsCount > 0 && <PmDataFeedsLeaderboard rows={cohort.dataFeeds} />}
     </>
   );
 }
