@@ -69,7 +69,7 @@ export function ExportVideoSection({ slug, title, benchmark, availableRanges }: 
   return <ExportVideoModal slug={slug} title={title} benchmark={benchmark} availableRanges={availableRanges} />;
 }
 
-function ExportVideoModal({ slug, title, benchmark }: Props) {
+function ExportVideoModal({ slug, title, benchmark, availableRanges }: Props) {
   const [open, setOpen] = useState(false);
 
   // Lock body scroll + Esc to close. Same pattern share-section.tsx uses.
@@ -105,6 +105,7 @@ function ExportVideoModal({ slug, title, benchmark }: Props) {
           slug={slug}
           title={title}
           benchmark={benchmark}
+          availableRanges={availableRanges}
           onClose={() => setOpen(false)}
         />
       )}
