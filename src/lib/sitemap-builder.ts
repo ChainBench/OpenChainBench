@@ -541,10 +541,13 @@ async function buildFullSitemap(): Promise<MetadataRoute.Sitemap> {
 
 export async function buildSitemap(): Promise<MetadataRoute.Sitemap> {
   try {
-    return await buildFullSitemap();
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("sitemap build timeout")), 25_000),
+    );
+    return await Promise.race([buildFullSitemap(), timeout]);
   } catch (err) {
     console.warn(
-      "[sitemap] full build threw, returning static fallback:",
+      "[sitemap] full build threw or timed out, returning static fallback:",
       err,
     );
     return buildStaticFallback();
