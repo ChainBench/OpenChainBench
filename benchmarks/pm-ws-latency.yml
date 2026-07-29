@@ -75,7 +75,7 @@ prometheus:
   window: 24h
   expected_freshness_seconds: 120
 
-rank_matrix_query: 1000 * label_replace(histogram_quantile(0.50, sum by (venue, region, le) (rate(pmapi_ws_connect_to_snapshot_seconds_bucket{source="direct",venue=~"polymarket|kalshi"}[24h]))), "provider", "$1", "venue", "(.+)")
+rank_matrix_query: 1000 * label_replace(histogram_quantile(0.50, sum by (venue, region, le) (rate(pmapi_ws_connect_to_snapshot_seconds_bucket{source="direct",venue="polymarket"}[24h]))), "provider", "$1", "venue", "(.+)")
 
 dimensions:
   region:
