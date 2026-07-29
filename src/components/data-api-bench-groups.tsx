@@ -105,7 +105,10 @@ function BenchRow({
       {/* Leader */}
       <td className="px-3 py-3.5 align-top min-w-[160px]">
         {bench.leader ? (
-          <div className="flex items-center gap-2">
+          <Link
+            href={`/products/${bench.leader.slug}`}
+            className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+          >
             <ProviderLogo
               slug={bench.leader.slug}
               name={bench.leader.name}
@@ -122,7 +125,7 @@ function BenchRow({
                 {fmtDataValue(bench.leader.p50, bench.unit)}
               </span>
             </div>
-          </div>
+          </Link>
         ) : (
           <span className="text-ink-faint">warming up</span>
         )}
@@ -133,7 +136,11 @@ function BenchRow({
         <div className="flex flex-col gap-1">
           {bench.runners.length > 0 ? (
             bench.runners.map((r, i) => (
-              <div key={r.slug} className="flex items-center gap-1.5">
+              <Link
+                key={r.slug}
+                href={`/products/${r.slug}`}
+                className="flex items-center gap-1.5 hover:opacity-80 transition-opacity"
+              >
                 <span className="text-[10px] text-ink-faint w-3 text-right flex-shrink-0">
                   {i + 2}
                 </span>
@@ -147,7 +154,7 @@ function BenchRow({
                 >
                   {fmtDataValue(r.p50, bench.unit)}
                 </span>
-              </div>
+              </Link>
             ))
           ) : (
             <span className="text-ink-faint text-[12px]">...</span>
@@ -223,6 +230,39 @@ function ChainStrip({
   leaders: ChainLeader[];
   unit: DataApiBenchRow["unit"];
 }) {
+  const uniqueWinners = new Set(leaders.map((l) => l.providerSlug)).size;
+  const isSpecialist = uniqueWinners === leaders.length && leaders.length > 3;
+
+  if (isSpecialist) {
+    // Each chain has its own specialist — compact icon-only chips
+    const MAX = 5;
+    const visible = leaders.slice(0, MAX);
+    const overflow = leaders.length - MAX;
+    return (
+      <div className="flex flex-wrap gap-1 items-center">
+        {visible.map((l) => (
+          <div
+            key={l.chain}
+            className="flex items-center gap-0.5 rounded border border-ink/8 bg-paper-soft/60 px-1.5 py-0.5"
+            title={`${l.label}: ${l.providerName} — ${fmtDataValue(l.p50, unit)}`}
+          >
+            <span
+              className="label-mono text-[8px] text-ink-faint uppercase tracking-wide"
+              style={{ fontFamily: "var(--font-mono, monospace)" }}
+            >
+              {l.label}
+            </span>
+            <ProviderLogo slug={l.providerSlug} name={l.providerName} size={10} />
+          </div>
+        ))}
+        {overflow > 0 && (
+          <span className="text-[9px] text-ink-faint">+{overflow}</span>
+        )}
+      </div>
+    );
+  }
+
+  // Some provider dominates multiple chains — full pills capped at 3
   const MAX = 3;
   const visible = leaders.slice(0, MAX);
   const overflow = leaders.length - MAX;
