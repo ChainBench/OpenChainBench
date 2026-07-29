@@ -8,7 +8,7 @@ seo_description: "What does it cost to trade on Polymarket, Kalshi, Limitless an
 subtitle: Maker and taker fees, protocol cuts and net cost to trade across five prediction market venues, sourced from official fee schedules and verified from fills data.
 
 category: Trading
-status: live
+status: retired
 metric: Effective taker fee
 unit: pct
 higher_is_better: false
