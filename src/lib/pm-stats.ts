@@ -74,10 +74,11 @@ type DataFeedSeed = {
 };
 
 const PM_VENUES: VenueSeed[] = [
-  { slug: "polymarket", name: "Polymarket", type: "onchain",  chain: "polygon" },
-  { slug: "kalshi",     name: "Kalshi",     type: "offchain" },
-  { slug: "limitless",  name: "Limitless",  type: "onchain",  chain: "base" },
-  { slug: "myriad",     name: "Myriad",     type: "onchain",  chain: "abstract" },
+  { slug: "polymarket",    name: "Polymarket",    type: "onchain",  chain: "polygon" },
+  { slug: "polymarket-us", name: "Polymarket US", type: "offchain" },
+  { slug: "kalshi",        name: "Kalshi",        type: "offchain" },
+  { slug: "limitless",     name: "Limitless",     type: "onchain",  chain: "base" },
+  { slug: "myriad",        name: "Myriad",        type: "onchain",  chain: "abstract" },
 ];
 
 const PM_DATA_FEEDS: DataFeedSeed[] = [
