@@ -84,7 +84,6 @@ const PM_VENUES: VenueSeed[] = [
   { slug: "polymarket", name: "Polymarket", type: "onchain",  chain: "polygon" },
   { slug: "kalshi",     name: "Kalshi",     type: "offchain" },
   { slug: "limitless",  name: "Limitless",  type: "onchain",  chain: "base" },
-  { slug: "manifold",   name: "Manifold",   type: "offchain" },
   { slug: "myriad",     name: "Myriad",     type: "offchain" },
   { slug: "predictit",  name: "PredictIt",  type: "offchain" },
   { slug: "smarkets",   name: "Smarkets",   type: "offchain" },
