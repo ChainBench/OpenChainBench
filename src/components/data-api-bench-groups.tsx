@@ -36,7 +36,7 @@ export function DataApiBenchGroups({ groups }: { groups: DataApiGroupRow[] }) {
                       <Th className="px-3 py-3 text-right w-[60px]">Providers</Th>
                       <Th className="px-3 py-3 text-left">Leader</Th>
                       <Th className="px-3 py-3 text-left hidden sm:table-cell">Runners-up</Th>
-                      <Th className="pl-3 pr-5 py-3 text-left hidden md:table-cell">By region / chain</Th>
+                      <Th className="pl-3 pr-5 py-3 text-left hidden md:table-cell">Breakdown</Th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-ink/5">
@@ -167,10 +167,16 @@ function BenchRow({
         {showRegionChain ? (
           <div className="flex flex-col gap-2">
             {hasRegions && (
-              <RegionStrip leaders={bench.regionLeaders} unit={bench.unit} />
+              <div className="flex flex-col gap-1">
+                <span className="label-mono text-[8px] text-ink-faint uppercase tracking-wider" style={{ fontFamily: "var(--font-mono, monospace)" }}>Region</span>
+                <RegionStrip leaders={bench.regionLeaders} unit={bench.unit} />
+              </div>
             )}
-            {hasChains && !hasRegions && (
-              <ChainStrip leaders={bench.chainLeaders} unit={bench.unit} />
+            {hasChains && (
+              <div className="flex flex-col gap-1">
+                <span className="label-mono text-[8px] text-ink-faint uppercase tracking-wider" style={{ fontFamily: "var(--font-mono, monospace)" }}>Chain</span>
+                <ChainStrip leaders={bench.chainLeaders} unit={bench.unit} />
+              </div>
             )}
           </div>
         ) : (
