@@ -44,6 +44,8 @@ type Props = {
   slug: string;
   title: string;
   benchmark: Benchmark;
+  /** When provided, only these ranges appear in the selector (skips the probe). */
+  availableRanges?: Set<string>;
 };
 
 /**
@@ -58,16 +60,16 @@ type Props = {
  * Gated by NEXT_PUBLIC_EXPORT_VIDEO at the render entry point; if the
  * flag isn't on, this component renders nothing (no DOM, no bundle weight).
  */
-export function ExportVideoSection({ slug, title, benchmark }: Props) {
+export function ExportVideoSection({ slug, title, benchmark, availableRanges }: Props) {
   // Hide on environments without the flag set. The flag is read at build
   // time via NEXT_PUBLIC_; flipping it requires a redeploy, which is the
   // exact rollback we want for a feature still in soak.
   if (!EXPORT_VIDEO_ENABLED) return null;
 
-  return <ExportVideoModal slug={slug} title={title} benchmark={benchmark} />;
+  return <ExportVideoModal slug={slug} title={title} benchmark={benchmark} availableRanges={availableRanges} />;
 }
 
-function ExportVideoModal({ slug, title, benchmark }: Props) {
+function ExportVideoModal({ slug, title, benchmark, availableRanges }: Props) {
   const [open, setOpen] = useState(false);
 
   // Lock body scroll + Esc to close. Same pattern share-section.tsx uses.
@@ -103,6 +105,7 @@ function ExportVideoModal({ slug, title, benchmark }: Props) {
           slug={slug}
           title={title}
           benchmark={benchmark}
+          availableRanges={availableRanges}
           onClose={() => setOpen(false)}
         />
       )}
@@ -113,9 +116,14 @@ function ExportVideoModal({ slug, title, benchmark }: Props) {
 function ModalBody({
   slug,
   benchmark,
+  availableRanges,
   onClose,
 }: Props & { onClose: () => void }) {
   const [range, setRange] = useState<RangeId>("30d");
+  // null = still probing, Set = probed result.
+  const [probedAvail, setProbedAvail] = useState<Set<RangeId> | null>(
+    availableRanges ? new Set(RANGE_IDS.filter((r) => availableRanges.has(r))) : null,
+  );
   const [view, setView] = useState<ViewId>("BarChartRace");
   // 12s default — long enough to land the trajectory, short enough to keep
   // the first-render wall-clock under 30-40s on the standard VPS. User can
@@ -132,6 +140,45 @@ function ModalBody({
   const [beats, setBeats] = useState(false);
   const [state, setState] = useState<RenderState>({ status: "idle" });
   const [copied, setCopied] = useState(false);
+
+  // Probe each range when the modal opens without an availableRanges prop.
+  useEffect(() => {
+    if (availableRanges) return; // parent already told us which ranges exist
+    let cancelled = false;
+    Promise.allSettled(
+      RANGE_IDS.map((r) =>
+        fetch(`/api/series/${encodeURIComponent(slug)}?range=${r}&raw=1`)
+          .then((res) => (res.ok ? res.json() : Promise.reject(res.status)))
+          .then((data: { providers: { slug: string; values: (number | null)[] }[] }) =>
+            data.providers.length > 0 ? r : null,
+          )
+          .catch(() => null),
+      ),
+    ).then((results) => {
+      if (cancelled) return;
+      const avail = new Set<RangeId>();
+      for (const r of results) {
+        if (r.status === "fulfilled" && r.value) avail.add(r.value as RangeId);
+      }
+      setProbedAvail(avail);
+      // If current range has no data, switch to the longest that does.
+      setRange((prev) => {
+        if (avail.has(prev)) return prev;
+        const best = [...RANGE_IDS].reverse().find((r) => avail.has(r));
+        return (best as RangeId | undefined) ?? "24h";
+      });
+    });
+    return () => { cancelled = true; };
+  // Run once on mount; slug is stable for the modal's lifetime.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Effective ranges: from prop, from probe, or all while probing.
+  const effectiveRanges: RangeId[] = availableRanges
+    ? RANGE_IDS.filter((r) => availableRanges.has(r))
+    : probedAvail
+      ? RANGE_IDS.filter((r) => probedAvail.has(r))
+      : RANGE_IDS;
 
   // Metric-panel picker. Benches with companion metrics (e.g. hyperliquid-frontends
   // exposes Revenue / Volume / Users / Effective fee / Outage tabs) can race any
@@ -444,18 +491,31 @@ function ModalBody({
           {/* Range */}
           <div>
             <Label>Range</Label>
-            <Segment>
-              {RANGE_IDS.map((id) => (
-                <SegmentButton
-                  key={id}
-                  active={range === id}
-                  onClick={() => setRange(id)}
-                  disabled={isBusy}
-                >
-                  {RANGE_LABEL[id]}
-                </SegmentButton>
-              ))}
-            </Segment>
+            {!availableRanges && probedAvail === null ? (
+              <div className="inline-flex gap-1 rounded-md border border-rule p-1 bg-paper-2 animate-pulse">
+                {RANGE_IDS.map((id) => (
+                  <div
+                    key={id}
+                    className="rounded px-3 py-1.5 text-[12px] bg-rule text-transparent select-none"
+                  >
+                    {RANGE_LABEL[id]}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <Segment>
+                {effectiveRanges.map((id) => (
+                  <SegmentButton
+                    key={id}
+                    active={range === id}
+                    onClick={() => setRange(id)}
+                    disabled={isBusy}
+                  >
+                    {RANGE_LABEL[id]}
+                  </SegmentButton>
+                ))}
+              </Segment>
+            )}
           </div>
 
           {/* View */}
