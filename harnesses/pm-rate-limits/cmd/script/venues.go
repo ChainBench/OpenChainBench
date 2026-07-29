@@ -21,6 +21,8 @@ type Class struct {
 	Interval time.Duration
 	Timeout  time.Duration
 	URL      func(p Pin) string
+	Method   string           // "" or "GET" → GET; "POST" for venues with POST-only APIs
+	BodyFn   func(Pin) []byte // POST body generator; nil = no body
 }
 
 // Venue defines the probe matrix for one native prediction-market API.
@@ -29,19 +31,20 @@ type Class struct {
 // from the daily ramp (Myriad: keyless 30 req/10s budget, ramping it would
 // just measure our own quota).
 type Venue struct {
-	Slug        string
-	Classes     []Class
-	PinFunc     func(ctx context.Context, c *http.Client, avoid string) (Pin, error)
-	StalenessMs func(class string, body []byte) (int64, bool)
-	RampRates   []int
-	StopOn429   bool     // Kalshi: documented token bucket, stop at first 429
-	InvalidBody []string // 4xx body substrings that mark a probe_invalid (stale pin)
+	Slug           string
+	Classes        []Class
+	PinFunc        func(ctx context.Context, c *http.Client, avoid string) (Pin, error)
+	StalenessMs    func(class string, body []byte) (int64, bool)
+	RampRates      []int
+	StopOn429      bool     // Kalshi: documented token bucket, stop at first 429
+	InvalidBody    []string // body substrings that mark a probe_invalid (stale pin)
+	RequestMutator func(*http.Request) // optional: stamps auth/custom headers before send
 
 	state *venueState // wired at startup
 }
 
-func venues() []*Venue {
-	return []*Venue{
+func venues(cfg Config) []*Venue {
+	vs := []*Venue{
 		{
 			Slug: "polymarket",
 			Classes: []Class{
@@ -173,7 +176,76 @@ func venues() []*Venue {
 			PinFunc:   pinSmarkets,
 			RampRates: []int{10, 25, 50},
 		},
+		// Metaculus: public forecasting platform, no auth, no order book.
+		// Primary class is price (single question endpoint). Conservative ramp
+		// because limits are undocumented.
+		{
+			Slug: "metaculus",
+			Classes: []Class{
+				{Name: "price", Interval: 5 * time.Second, Timeout: 8 * time.Second,
+					URL: func(p Pin) string {
+						return "https://www.metaculus.com/api2/questions/" + p.Market + "/"
+					}},
+				{Name: "list", Interval: 30 * time.Second, Timeout: 15 * time.Second,
+					URL: func(Pin) string {
+						return "https://www.metaculus.com/api2/questions/?limit=20&order_by=-activity&status=open"
+					}},
+			},
+			PinFunc:   pinMetaculus,
+			RampRates: []int{5, 10, 20},
+		},
 	}
+	// Betfair: UK-regulated exchange, auth required. All Exchange API calls are
+	// POST with JSON body, so we use Class.Method="POST" + Class.BodyFn.
+	// Only wired when BETFAIR_APP_KEY is set.
+	if cfg.BetfairAppKey != "" && (cfg.BetfairUsername != "" || cfg.BetfairSessionToken != "") {
+		vs = append(vs, &Venue{
+			Slug: "betfair",
+			Classes: []Class{
+				{
+					Name: "book", Method: "POST",
+					Interval: 5 * time.Second, Timeout: 8 * time.Second,
+					URL: func(Pin) string {
+						return "https://api.betfair.com/exchange/betting/rest/v1.0/listMarketBook/"
+					},
+					BodyFn: func(p Pin) []byte {
+						if p.Market == "" {
+							return nil
+						}
+						return []byte(`{"marketIds":["` + p.Market + `"],"priceProjection":{"priceData":["EX_BEST_OFFERS"]}}`)
+					},
+				},
+				{
+					Name: "price", Method: "POST",
+					Interval: 5 * time.Second, Timeout: 8 * time.Second,
+					URL: func(Pin) string {
+						return "https://api.betfair.com/exchange/betting/rest/v1.0/listMarketBook/"
+					},
+					BodyFn: func(p Pin) []byte {
+						if p.Market == "" {
+							return nil
+						}
+						return []byte(`{"marketIds":["` + p.Market + `"]}`)
+					},
+				},
+				{
+					Name: "list", Method: "POST",
+					Interval: 30 * time.Second, Timeout: 15 * time.Second,
+					URL: func(Pin) string {
+						return "https://api.betfair.com/exchange/betting/rest/v1.0/listMarketCatalogue/"
+					},
+					BodyFn: func(Pin) []byte {
+						return []byte(`{"filter":{"inPlayOnly":false},"sort":"FIRST_TO_START","maxResults":"20","marketProjection":["MARKET_START_TIME"]}`)
+					},
+				},
+			},
+			PinFunc:        pinBetfair,
+			RequestMutator: betfairRequestMutator(),
+			RampRates:      []int{10, 25, 50},
+			StopOn429:      true,
+		})
+	}
+	return vs
 }
 
 // ProbeSource is one (venue, source) cell the aggregator harness probes
