@@ -223,9 +223,13 @@ function ChainStrip({
   leaders: ChainLeader[];
   unit: DataApiBenchRow["unit"];
 }) {
+  const MAX = 3;
+  const visible = leaders.slice(0, MAX);
+  const overflow = leaders.length - MAX;
+
   return (
-    <div className="flex flex-wrap gap-1.5">
-      {leaders.map((l) => (
+    <div className="flex flex-wrap gap-1.5 items-center">
+      {visible.map((l) => (
         <div
           key={l.chain}
           className="flex items-center gap-1 rounded-md border border-ink/8 bg-paper-soft/60 px-2 py-1"
@@ -249,6 +253,9 @@ function ChainStrip({
           </span>
         </div>
       ))}
+      {overflow > 0 && (
+        <span className="text-[10px] text-ink-faint">+{overflow}</span>
+      )}
     </div>
   );
 }
