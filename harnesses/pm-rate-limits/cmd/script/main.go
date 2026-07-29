@@ -32,10 +32,6 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	if cfg.BetfairAppKey != "" {
-		initBetfairAuth(cfg)
-	}
-
 	pinClient := &http.Client{Timeout: 20 * time.Second}
 	vs := venues(cfg)
 	stateByVenue := map[string]*venueState{}

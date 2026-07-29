@@ -195,56 +195,6 @@ func venues(cfg Config) []*Venue {
 			RampRates: []int{5, 10, 20},
 		},
 	}
-	// Betfair: UK-regulated exchange, auth required. All Exchange API calls are
-	// POST with JSON body, so we use Class.Method="POST" + Class.BodyFn.
-	// Only wired when BETFAIR_APP_KEY is set.
-	if cfg.BetfairAppKey != "" && (cfg.BetfairUsername != "" || cfg.BetfairSessionToken != "") {
-		vs = append(vs, &Venue{
-			Slug: "betfair",
-			Classes: []Class{
-				{
-					Name: "book", Method: "POST",
-					Interval: 5 * time.Second, Timeout: 8 * time.Second,
-					URL: func(Pin) string {
-						return "https://api.betfair.com/exchange/betting/rest/v1.0/listMarketBook/"
-					},
-					BodyFn: func(p Pin) []byte {
-						if p.Market == "" {
-							return nil
-						}
-						return []byte(`{"marketIds":["` + p.Market + `"],"priceProjection":{"priceData":["EX_BEST_OFFERS"]}}`)
-					},
-				},
-				{
-					Name: "price", Method: "POST",
-					Interval: 5 * time.Second, Timeout: 8 * time.Second,
-					URL: func(Pin) string {
-						return "https://api.betfair.com/exchange/betting/rest/v1.0/listMarketBook/"
-					},
-					BodyFn: func(p Pin) []byte {
-						if p.Market == "" {
-							return nil
-						}
-						return []byte(`{"marketIds":["` + p.Market + `"]}`)
-					},
-				},
-				{
-					Name: "list", Method: "POST",
-					Interval: 30 * time.Second, Timeout: 15 * time.Second,
-					URL: func(Pin) string {
-						return "https://api.betfair.com/exchange/betting/rest/v1.0/listMarketCatalogue/"
-					},
-					BodyFn: func(Pin) []byte {
-						return []byte(`{"filter":{"inPlayOnly":false},"sort":"FIRST_TO_START","maxResults":"20","marketProjection":["MARKET_START_TIME"]}`)
-					},
-				},
-			},
-			PinFunc:        pinBetfair,
-			RequestMutator: betfairRequestMutator(),
-			RampRates:      []int{10, 25, 50},
-			StopOn429:      true,
-		})
-	}
 	return vs
 }
 

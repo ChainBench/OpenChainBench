@@ -108,17 +108,13 @@ per_chain_explainer:
   - slug: metaculus
     h2: Metaculus API latency
     body: "Metaculus is a public forecasting aggregator with no real-money markets, probed via its /api2/questions/{id}/ endpoint every 5 seconds from three regions. No authentication is required and no CDN cache layer was detected on the single-question endpoint. Metaculus has no order book and no WebSocket: all data access is REST. The uptime panel shows the live health gauge for the question API; the latency reflects the Django origin server without a CDN buffer. For builders querying aggregate community forecasts rather than market prices, Metaculus is the only venue in this cohort with a purely public read API at sub-second latency."
-  - slug: betfair
-    h2: Betfair API latency
-    body: "Betfair is the world's largest regulated betting exchange, probed via its Exchange API listMarketBook endpoint (POST with JSON body). Unlike every other venue in this cohort, all Betfair API calls are POST and require X-Application (developer AppKey) plus X-Authentication (session token). Betfair's infrastructure is UK-centric, so latency from us-east and sgp is higher than from eu-west. The latency shown is the full round trip of a listMarketBook call on a pinned binary market. For how Betfair behaves under rising request rates, see the pm-rate-limits bench."
-
 source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/pm-rate-limits
 
 prometheus:
   window: 24h
   expected_freshness_seconds: 300
 
-rank_matrix_query: 1000 * label_replace(histogram_quantile(0.50, sum by (venue, region, le) (rate(pmapi_request_duration_seconds_bucket{source="direct",venue=~"polymarket|kalshi|limitless|manifold|myriad|predictit|smarkets|metaculus|betfair",conn="warm",class="price",cache!="hit"}[24h]))), "provider", "$1", "venue", "(.+)")
+rank_matrix_query: 1000 * label_replace(histogram_quantile(0.50, sum by (venue, region, le) (rate(pmapi_request_duration_seconds_bucket{source="direct",venue=~"polymarket|kalshi|limitless|manifold|myriad|predictit|smarkets|metaculus",conn="warm",class="price",cache!="hit"}[24h]))), "provider", "$1", "venue", "(.+)")
 
 dimensions:
   venue:
@@ -131,7 +127,6 @@ dimensions:
     - { value: predictit, label: PredictIt }
     - { value: smarkets, label: Smarkets }
     - { value: metaculus, label: Metaculus }
-    - { value: betfair, label: Betfair }
   region:
     - { value: all, label: All regions }
     - { value: us-east, label: US East }
@@ -142,21 +137,21 @@ metric_panels:
   - id: uptime_24h
     label: Uptime 24h
     description: "Share of probe cycles that succeeded over the last 24 hours, averaged across the three probe regions. 100 percent means every 5 second probe of the venue's API came back healthy."
-    metric: 100 * avg(avg_over_time(pmapi_health{source="direct",venue=~"polymarket|kalshi|limitless|manifold|myriad|predictit|smarkets|metaculus|betfair"}[24h]))
+    metric: 100 * avg(avg_over_time(pmapi_health{source="direct",venue=~"polymarket|kalshi|limitless|manifold|myriad|predictit|smarkets|metaculus"}[24h]))
     label_key: venue
     unit: pct
     higher_is_better: true
   - id: uptime_7d
     label: Uptime 7d
     description: "Same health gauge averaged over 7 days. Short outages that vanish from the 24h figure stay visible here for a week."
-    metric: 100 * avg(avg_over_time(pmapi_health{source="direct",venue=~"polymarket|kalshi|limitless|manifold|myriad|predictit|smarkets|metaculus|betfair"}[7d]))
+    metric: 100 * avg(avg_over_time(pmapi_health{source="direct",venue=~"polymarket|kalshi|limitless|manifold|myriad|predictit|smarkets|metaculus"}[7d]))
     label_key: venue
     unit: pct
     higher_is_better: true
   - id: uptime_30d
     label: Uptime 30d
     description: "Same health gauge averaged over 30 days. Feeds the ledger's 30d window toggle so a one-hour outage that's already aged out of the 24h panel still shows up in the table over a month."
-    metric: 100 * avg(avg_over_time(pmapi_health{source="direct",venue=~"polymarket|kalshi|limitless|manifold|myriad|predictit|smarkets|metaculus|betfair"}[30d]))
+    metric: 100 * avg(avg_over_time(pmapi_health{source="direct",venue=~"polymarket|kalshi|limitless|manifold|myriad|predictit|smarkets|metaculus"}[30d]))
     label_key: venue
     unit: pct
     higher_is_better: true
@@ -164,7 +159,7 @@ metric_panels:
   - id: cold_connect_p50
     label: Cold connect
     description: "TCP plus TLS handshake time on the once a minute cold probe with keep alives disabled. The startup cost a brand new client pays before its first request."
-    metric: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_connect_seconds_bucket{source="direct",venue=~"polymarket|kalshi|limitless|manifold|myriad|predictit|smarkets|metaculus|betfair"}[24h])) by (le))
+    metric: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_connect_seconds_bucket{source="direct",venue=~"polymarket|kalshi|limitless|manifold|myriad|predictit|smarkets|metaculus"}[24h])) by (le))
     label_key: venue
     unit: ms
     higher_is_better: false
@@ -281,15 +276,3 @@ providers:
       sample_size: sum(increase(pmapi_requests_total{venue="metaculus",source="direct",class="price",conn="warm",outcome!="probe_invalid"}[24h]))
       series: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{venue="metaculus",source="direct",class="price",conn="warm",cache!="hit"}[1h])) by (le))
 
-  - slug: betfair
-    name: Betfair
-    tag: "UK FCA-regulated exchange, auth required, price endpoint is listMarketBook POST"
-    formula: "p50 of warm round trips against the Exchange API listMarketBook endpoint (POST, pinned binary market), successful requests only, 24h window. Requires BETFAIR_APP_KEY + credentials to run."
-    queries:
-      p50: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{venue="betfair",source="direct",class="price",conn="warm",cache!="hit"}[24h])) by (le))
-      p90: 1000 * histogram_quantile(0.90, sum(rate(pmapi_request_duration_seconds_bucket{venue="betfair",source="direct",class="price",conn="warm",cache!="hit"}[24h])) by (le))
-      p99: 1000 * histogram_quantile(0.99, sum(rate(pmapi_request_duration_seconds_bucket{venue="betfair",source="direct",class="price",conn="warm",cache!="hit"}[24h])) by (le))
-      mean: 1000 * sum(rate(pmapi_request_duration_seconds_sum{venue="betfair",source="direct",class="price",conn="warm",cache!="hit"}[24h])) / sum(rate(pmapi_request_duration_seconds_count{venue="betfair",source="direct",class="price",conn="warm",cache!="hit"}[24h]))
-      success: clamp_max(sum(rate(pmapi_requests_total{venue="betfair",source="direct",class="price",conn="warm",outcome="ok"}[24h])) / sum(rate(pmapi_requests_total{venue="betfair",source="direct",class="price",conn="warm",outcome!="probe_invalid"}[24h])), 1)
-      sample_size: sum(increase(pmapi_requests_total{venue="betfair",source="direct",class="price",conn="warm",outcome!="probe_invalid"}[24h]))
-      series: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{venue="betfair",source="direct",class="price",conn="warm",cache!="hit"}[1h])) by (le))
