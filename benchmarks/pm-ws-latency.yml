@@ -5,7 +5,7 @@ number: "114"
 title: Polymarket WebSocket latency, live connection and update speed from 3 regions
 seo_title: "Polymarket WebSocket latency 2026: connection time and update speed"
 seo_description: "How fast does the Polymarket WebSocket connect and deliver market updates? Live p50 from us-east, eu-west and Singapore measured continuously by OpenChainBench."
-subtitle: Connect-to-snapshot latency, inter-message update rate, and trade publication lag on the Polymarket and Kalshi WebSocket feeds, probed from three regions 24 hours a day.
+subtitle: Connect-to-snapshot latency, inter-message update rate, and trade publication lag on the Polymarket WebSocket feed (ranked) and Kalshi WebSocket (measured, not ranked), probed from three regions 24 hours a day.
 
 category: Trading
 status: live
@@ -48,7 +48,7 @@ methodology:
   - "Keepalive: a background goroutine sends the literal text PING every 10 seconds and the venue responds with PONG. Sessions that stop receiving data are detected by the reconnect logic on the next PING timeout. Disconnect rate is exported as a counter."
   - "Pin: the harness targets the same market used by the pm-rate-limits bench (highest 24h volume binary market with last trade price between 0.15 and 0.85), refreshed daily at 00:00 UTC. The WS client re-subscribes automatically when the pin changes."
   - "Metrics: pmapi_ws_connect_to_snapshot_seconds histogram and pmapi_ws_update_interarrival_seconds histogram, both labeled by venue, region and source. The same pm-rate-limits harness process that probes REST endpoints runs the WS session, so both REST and WS data share one Railway deployment per region. Note on Kalshi: its ticker channel sends incremental price updates only (no state snapshot on subscribe), so the connect-to-snapshot metric measures time to the first price change rather than time to initial data, which depends on market activity."
-  - "Other venues: Kalshi WS (wss://external-api-ws.kalshi.com) requires RSA-PSS signed headers from a US KYC account and returns 403 from non-US IPs, making it not viable for a public three-region benchmark. Limitless uses socket.io over HTTP long-polling, not standard WebSocket. Manifold, Myriad, PredictIt and Smarkets have no public WebSocket endpoint."
+  - "Other venues: Kalshi WS (wss://api.elections.kalshi.com/trade-api/ws/v2) requires RSA-PSS signed headers from a US KYC account and returns 403 from non-US IPs, so it is measured from us-east only and excluded from the rank matrix. Limitless uses socket.io over HTTP long-polling, not standard WebSocket. Manifold, Myriad, PredictIt, Smarkets and Metaculus have no public WebSocket endpoint."
 
 findings:
   - "Polymarket's CLOB WebSocket connects and delivers the first orderbook snapshot in {{p50:polymarket}} p50 (24h, all regions). This is the startup cost a new subscriber pays to go from a fresh dial to live market data."
@@ -170,3 +170,6 @@ per_chain_explainer:
   - slug: smarkets
     h2: Smarkets
     body: "Smarkets has no public WebSocket endpoint. The REST API at api.smarkets.com/v3 provides order book access without authentication. Smarkets REST latency is tracked in pm-api-latency."
+  - slug: metaculus
+    h2: Metaculus
+    body: "Metaculus has no WebSocket endpoint. It is a public forecasting platform accessed entirely via REST (/api2/questions/). For REST latency and rate limit measurements, see pm-api-latency and pm-rate-limits."
