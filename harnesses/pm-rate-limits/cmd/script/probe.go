@@ -153,14 +153,33 @@ func probeOnce(ctx context.Context, client *http.Client, v *Venue, cl Class, con
 		},
 		GotFirstResponseByte: func() { res.ttfb = time.Since(start).Seconds() },
 	}
-	url := cl.URL(v.pinOf(ctx))
-	req, err := http.NewRequestWithContext(httptrace.WithClientTrace(pctx, trace), http.MethodGet, url, nil)
+	pin := v.pinOf(ctx)
+	url := cl.URL(pin)
+
+	method := http.MethodGet
+	var bodyReader io.Reader
+	if strings.EqualFold(cl.Method, "POST") {
+		method = http.MethodPost
+		if cl.BodyFn != nil {
+			if b := cl.BodyFn(pin); b != nil {
+				bodyReader = bytes.NewReader(b)
+			}
+		}
+	}
+
+	req, err := http.NewRequestWithContext(httptrace.WithClientTrace(pctx, trace), method, url, bodyReader)
 	if err != nil {
 		res.outcome = "net_error"
 		return res
 	}
 	req.Header.Set("User-Agent", userAgent)
 	req.Header.Set("Accept", "application/json")
+	if method == http.MethodPost {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	if v.RequestMutator != nil {
+		v.RequestMutator(req)
+	}
 
 	resp, err := client.Do(req)
 	if err != nil {
