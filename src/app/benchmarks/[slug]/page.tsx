@@ -78,7 +78,7 @@ type Params = { slug: string };
 // Rendered ON DEMAND (first request, then ISR-cached). Prerendering the
 // 25+ bench pages at build pushed the full multi-bench Prom load through
 // the CI runner, whose DNS resolver throttles under hundreds of lookups;
-// observed 2026-06-11: /benchmarks/pm-data-freshness failing 3×60s
+// observed 2026-06-11: a bench page failing 3×60s
 // export attempts and killing the deploy. Without the embedded variant
 // matrix an on-demand first render is a few seconds once per deploy per
 // slug, then the CDN serves it.

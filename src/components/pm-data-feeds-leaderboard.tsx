@@ -8,11 +8,10 @@ import { ProviderLogo } from "@/components/provider-logo";
 import type { PmDataFeedRow } from "@/lib/pm-stats";
 
 /**
- * Data feeds leaderboard for /prediction-markets. Ranks every relay
- * tracked by the pm-data-freshness bench by p50 freshness lag against
- * the T0 reference (the venue itself). The reference row is rendered
- * with a "T0 reference" badge so it never claims a 0 ms freshness
- * lead over itself.
+ * Data feeds leaderboard for /prediction-markets. Lists every tracked
+ * relay with p50 freshness lag when available. The reference row is
+ * rendered with a "T0 reference" badge so it never claims a 0 ms
+ * freshness lead over itself.
  */
 
 type SortKey = "freshnessP50Ms" | "freshnessP99Ms" | "uptime24h";

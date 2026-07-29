@@ -41,11 +41,9 @@ abstract: |
   this API up" is answered by direct measurement from three regions rather
   than by user reports. Samples that fail because our pinned market
   expired are classified probe_invalid and never count against the venue.
-  Third party data aggregators that resell venue prices (Codex)
-  are tracked separately in the pm-data-freshness bench and on
-  the data feeds tab of the prediction markets hub. This page ranks the
-  seven venues' own APIs only, so the leaderboard answers one clean
-  question: which prediction market venue API is fastest right now.
+  This page ranks the venues' own APIs only, so the leaderboard
+  answers one clean question: which prediction market venue API is
+  fastest right now.
 
 methodology:
   - "Price endpoint per venue. Polymarket: CLOB `/midpoint`. Kalshi: `/markets/{ticker}`. Limitless: `/markets/{slug}`. Manifold: `/v0/market/{id}`. Myriad: `/markets/{slug}`. This is the hot path of real integrations: one market, one quote, polled in a loop."
@@ -53,10 +51,10 @@ methodology:
   - "Every sample carries a cache flag read from cf-cache-status, x-cache and age headers. Latency aggregates exclude cache hits: a CDN hit measures the nearest edge, not the venue's API, and including Manifold's residual cache hits would flatter it by design."
   - "Uptime is the average of a per venue, per region health gauge (pmapi_health) computed by the harness from probe outcomes. 100 percent means every probe cycle in the window succeeded from that region. The 24h and 7d panels below are the live answer to whether each API is up."
   - "Outcome classification: ok, timeout (8s), http_4xx, http_5xx, throttled, probe_invalid, net_error. probe_invalid covers failures that are our pin's fault, such as a market that resolved intraday; those are excluded from both latency and uptime. The pinned market is re selected daily at 00:00 UTC and immediately on probe_invalid."
-  - "Division of labor with the sibling benches: how each venue behaves as request rates climb, including throttle onset and 429 handling, is measured in pm-rate-limits (bench 037). How fresh third party data providers relay Polymarket data is measured in pm-data-freshness (bench 032). This bench ranks the venues' own APIs on latency and uptime at a polite request rate."
+  - "Division of labor with the sibling benches: how each venue behaves as request rates climb, including throttle onset and 429 handling, is measured in pm-rate-limits (bench 037). WebSocket connect-to-snapshot and trade publication lag are measured in pm-ws-latency (bench 114). This bench ranks the venues' own APIs on latency and uptime at a polite request rate."
   - "Myriad's origin is a single region US East deployment behind Heroku, so its latency from eu-west and sgp is dominated by geography. Reported as measured, called out per region."
   - "All five venues are probed by the same open source harness as bench 037, from the same processes, so the two benches share one probe budget and one identifying User-Agent: `OpenChainBench/1.0 (+https://openchainbench.com/methodology; contact@openchainbench.com)`. We publish latency and uptime measurements only, never market data."
-  - "Aggregators that resell venue data (Codex) are deliberately excluded from this leaderboard. They are not venue APIs, they are relays on top of venue APIs, and ranking them next to the venues they relay would compare two different products on one axis. Their freshness lag against the Polymarket CLOB T0 stream is the relevant metric, measured in the pm-data-freshness bench. The prediction markets hub data feeds tab lists each aggregator with the venues it covers."
+  - "Data aggregators that resell venue prices are deliberately excluded from this leaderboard. They are relays on top of venue APIs, and ranking them next to the venues they relay would compare two different products on one axis. The prediction markets hub data feeds tab lists each aggregator with the venues it covers."
   - "Regions: us-east, eu-west, sgp (Railway). Histogram buckets 25ms to 10s."
 
 findings:
@@ -65,7 +63,7 @@ findings:
   - "{{name:manifold}} would look faster than it is if cache hits counted: its whole API sits behind a 5 second CDN cache. With cache hits excluded its origin answers at {{p50:manifold}} p50, an honest number a trading bot polling fresh quotes will actually see."
   - "{{name:myriad}} serves every region from a single US East origin, so its cohort worst p50 of {{p50:myriad}} is mostly geography. Switch the region dimension to us-east to see the API itself rather than the speed of light."
   - "{{name:polymarket}} answers its midpoint endpoint at {{p50:polymarket}} p50. Because we probe it every 5 seconds from three regions, the uptime panel doubles as a Polymarket API status check that updates continuously instead of waiting for user reports."
-  - "For builders who consume venue data through a managed relay, the relevant question is freshness lag, not request latency. Codex is measured in the pm-data-freshness bench (T0 against the Polymarket CLOB stream). The prediction markets hub data feeds tab lists each aggregator with the venues it covers."
+  - "For builders who consume venue data through a managed relay, the relevant question is freshness lag and WebSocket latency, not REST request latency. The pm-ws-latency bench measures trade publication lag on the Polymarket CLOB WebSocket. The prediction markets hub data feeds tab lists each aggregator with the venues it covers."
 
 disclaimer: "Uptime here means our probes succeeded from three specific regions at a polite request rate. A venue can be up for us and degraded for you, especially during regional network incidents, and a brief blip between probe cycles can go unrecorded. Treat the panel as a measured signal, not a guarantee."
 
@@ -83,7 +81,7 @@ faq:
   - q: "Why do latency numbers exclude CDN cache hits?"
     a: "Because a cache hit measures the distance to the nearest edge node, not the venue's API. Manifold serves its entire API behind a 5 second cache and Kalshi's market list sits on CloudFront, so a naive average would mostly rank CDN proximity. Every sample carries a cache flag read from the response headers, and the headline aggregates only non cached, successful requests. The number you see is what a client polling for fresh quotes actually experiences at the origin."
   - q: "Does this benchmark cover throttling or data providers?"
-    a: "No, deliberately. What happens to each venue's API as request rates climb, including 429 onset and queueing behaviour, is its own benchmark, pm-rate-limits, which runs a careful daily ramp. And if you consume venue data through a provider such as Codex rather than calling the venue directly, the relevant number is relay freshness, measured in pm-data-freshness. This page answers two narrower questions: which venue API is fastest at a polite request rate, and is it up right now."
+    a: "No, deliberately. What happens to each venue's API as request rates climb, including 429 onset and queueing behaviour, is its own benchmark, pm-rate-limits, which runs a careful daily ramp. WebSocket latency and trade publication lag are covered in pm-ws-latency. This page answers two narrower questions: which venue API is fastest at a polite request rate, and is it up right now."
 
 per_chain_explainer:
   - slug: polymarket
