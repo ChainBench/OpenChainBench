@@ -9,7 +9,6 @@ import {
   fmtDataValue,
   type DataApiProviderPivotRow,
   type DataApiRegionScore,
-  type DataApiChainScore,
   type DataApiGroup,
 } from "@/lib/data-api-stats";
 
@@ -218,8 +217,7 @@ function GroupCell({
   const { bestRank, bestCell } = cell;
   const accent = GROUP_META[group].accent;
   const hasRegions = bestCell.regions && bestCell.regions.length > 0;
-  const hasChains = bestCell.chains && bestCell.chains.length > 0;
-  const hasSub = hasRegions || hasChains;
+  const hasSub = hasRegions;
 
   const bg =
     bestRank === 1
@@ -253,19 +251,14 @@ function GroupCell({
       <span className="text-[9px] text-ink-faint leading-tight">
         {bestCell.benchShortTitle.replace("coverage", "cov.").replace("freshness", "fresh.")}
       </span>
-      {/* Region + chain sub-scores merged in one row */}
+      {/* Region sub-scores */}
       {hasSub && (
         <div className="flex flex-wrap items-center gap-1.5 pt-0.5 border-t border-ink/8 w-full">
-          {hasRegions && (
-            <RegionSubScores
-              regions={bestCell.regions!}
-              unit={bestCell.unit}
-              accent={accent}
-            />
-          )}
-          {hasChains && (
-            <ChainSubScores chains={bestCell.chains!} accent={accent} />
-          )}
+          <RegionSubScores
+            regions={bestCell.regions!}
+            unit={bestCell.unit}
+            accent={accent}
+          />
         </div>
       )}
     </div>
@@ -307,44 +300,6 @@ function RegionSubScores({
   );
 }
 
-function ChainSubScores({
-  chains,
-  accent,
-}: {
-  chains: DataApiChainScore[];
-  accent: string;
-}) {
-  const MAX = 4;
-  const visible = chains.slice(0, MAX);
-  const overflow = chains.length - MAX;
-  return (
-    <>
-      {visible.map((c) => (
-        <div
-          key={c.chain}
-          className="flex items-center gap-0.5"
-          title={`${c.label}: #1`}
-        >
-          <span
-            className="text-[8px] font-medium uppercase text-ink-faint"
-            style={{ letterSpacing: "0.04em" }}
-          >
-            {c.label}
-          </span>
-          <span
-            className="text-[9px] font-bold"
-            style={{ color: accent }}
-          >
-            #1
-          </span>
-        </div>
-      ))}
-      {overflow > 0 && (
-        <span className="text-[8px] text-ink-faint">+{overflow}</span>
-      )}
-    </>
-  );
-}
 
 function RankBadge({ rank, accent }: { rank: number; accent: string }) {
   const bg = rank === 1 ? accent : "transparent";
