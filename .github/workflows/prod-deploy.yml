@@ -108,6 +108,14 @@ jobs:
           # status (a red X on the commit + an email).
           exit 1
 
+      - name: Ping IndexNow (post-deploy)
+        if: steps.smoke.outcome != 'failure' && secrets.CRON_SECRET != ''
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            https://openchainbench.com/api/cron/indexnow || echo "000")
+          echo "IndexNow ping: $code"
+
       - name: Summary
         if: always()
         run: |
