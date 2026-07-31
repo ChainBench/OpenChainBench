@@ -5,7 +5,7 @@ number: "039"
 title: Resolution delay, Polymarket vs Kalshi
 seo_title: "Prediction market resolution delay live 2026"
 seo_description: "Polymarket and Kalshi resolution time measured live: median delay from close to payout, broken down by category. Polymarket anchored on UMA ProposePrice, Kalshi on settlement_ts from the public API."
-subtitle: How long from market close to final settlement — Polymarket measured onchain via UMA ProposePrice→QuestionResolved, Kalshi via settlement_ts minus close_time from the public REST API. Auto-generated multivariate parlays excluded from Kalshi data.
+subtitle: "How long from market close to final settlement: Polymarket measured onchain via UMA ProposePrice to QuestionResolved, Kalshi via settlement_ts minus close_time from the public REST API. Auto-generated multivariate parlays excluded from Kalshi data."
 
 category: Trading
 status: live
@@ -43,7 +43,7 @@ methodology:
   - "Polymarket join: questionID = keccak256 of the proposal ancillary data, verified against QuestionInitialized events."
   - "Kalshi anchor: settlement_ts from the public markets API (exact timestamp, no polling error). Delay = settlement_ts - close_time. close_time is the scheduled market close, not the real-world event end."
   - "Kalshi scope: traditional prediction markets only. Exotics (auto-generated multivariate parlays) are excluded by design: they auto-settle so fast they never appear in status=closed, so the watchlist only contains real market questions. Categories from /events/{event_ticker} (lazy cache): Sports→sports, Politics/Elections→politics, Crypto/Financials→crypto, everything else→other."
-  - "Anchor asymmetry: Polymarket's 2h UMA challenge window is protocol-enforced — no market can resolve in under 2h on the clean path. Kalshi has no such floor; traditional sports and politics markets settle in minutes to hours after close_time. The difference in distributions reflects both operational speed and architecture."
+  - "Anchor asymmetry: Polymarket's 2h UMA challenge window is protocol-enforced: no market can resolve in under 2h on the clean path. Kalshi has no such floor; traditional sports and politics markets settle in minutes to hours after close_time. The difference in distributions reflects both operational speed and architecture."
   - "Categories: sports, politics, crypto, other, consistent across venues. Per-category rows are the honest unit of comparison because market types run different resolution windows."
   - "Disputes (Polymarket only): a DisputePrice before resolution marks the market disputed. Disputed delays land in the disputed series and are excluded from the main category rows."
   - "Pending backlog (Polymarket only): markets past their scheduled endDate with no onchain resolution, polled from Gamma every cycle."
@@ -51,7 +51,7 @@ methodology:
 
 findings:
   - "Polymarket across all markets: median onchain resolution delay {{p50:polymarket-all}} from first proposal to resolution, p99 at {{p99:polymarket-all}}. The within 2 hours share is in the table above, measured, and does not match the 93 percent figure that circulates without a methodology."
-  - "Kalshi across all markets (excluding auto-generated parlays): median resolution delay {{p50:kalshi-all}} from scheduled close_time to settlement_ts. Kalshi resolves internally — no onchain oracle, no mandatory challenge window. The difference vs Polymarket's median reflects both operational speed and Polymarket's protocol-enforced 2h minimum."
+  - "Kalshi across all markets (excluding auto-generated parlays): median resolution delay {{p50:kalshi-all}} from scheduled close_time to settlement_ts. Kalshi resolves internally: no onchain oracle, no mandatory challenge window. The difference vs Polymarket's median reflects both operational speed and Polymarket's protocol-enforced 2h minimum."
   - "Categories are not comparable on a single median: sports, crypto and politics markets run different resolution processes on each venue."
   - "Disputes (Polymarket only) are rare but expensive: disputed markets carry materially longer delays than the clean path."
 
