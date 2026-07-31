@@ -47,7 +47,7 @@ methodology:
   - "Regions: us-east (Railway us-east4), eu-west (Railway europe-west4), sgp (Railway asia-southeast1). The Polymarket CLOB WS endpoint is globally distributed via Cloudflare, so regional differences reflect edge proximity and routing, not server capacity."
   - "Keepalive: a background goroutine sends the literal text PING every 10 seconds and the venue responds with PONG. Sessions that stop receiving data are detected by the reconnect logic on the next PING timeout. Disconnect rate is exported as a counter."
   - "Pin: the harness targets the same market used by the pm-rate-limits bench (highest 24h volume binary market with last trade price between 0.15 and 0.85), refreshed daily at 00:00 UTC. The WS client re-subscribes automatically when the pin changes."
-  - "Metrics: pmapi_ws_connect_to_snapshot_seconds histogram and pmapi_ws_update_interarrival_seconds histogram, both labeled by venue, region and source. The same pm-rate-limits harness process that probes REST endpoints runs the WS session, so both REST and WS data share one Railway deployment per region. Note on Kalshi: its ticker channel sends incremental price updates only (no state snapshot on subscribe), so the connect-to-snapshot metric measures time to the first price change rather than time to initial data, which depends on market activity."
+  - "Metrics: pmapi_ws_connect_to_snapshot_seconds and pmapi_ws_update_interarrival_seconds histograms, labeled by venue, region and source. The pm-rate-limits harness runs the WS session alongside REST probes, sharing one Railway deployment per region. Kalshi note: its ticker channel is delta-only (no snapshot on subscribe), so connect-to-snapshot measures time to the first price change, which depends on market activity."
   - "Other venues: Kalshi WS (wss://api.elections.kalshi.com/trade-api/ws/v2) requires RSA-PSS signed headers from a US KYC account and returns 403 from non-US IPs, so it is measured from us-east only and excluded from the rank matrix. Limitless uses socket.io over HTTP long-polling, not standard WebSocket. Manifold, Myriad, PredictIt, Smarkets and Metaculus have no public WebSocket endpoint."
 
 findings:
@@ -138,7 +138,7 @@ providers:
   - slug: kalshi
     name: Kalshi
     tag: RSA-PSS auth required, CFTC-regulated, probed from us-east only (403 from non-US IPs)
-    formula: "p50 of time-to-first-price-update from us-east only (24h). Kalshi's ticker channel is delta-only (no snapshot on subscribe), so this measures time from dial to the next price change — not an initial snapshot delivery. Kalshi WS returns 403 from eu-west and sgp even with valid credentials."
+    formula: "p50 of time-to-first-price-update from us-east only (24h). Kalshi's ticker channel is delta-only (no snapshot on subscribe), so this measures time from dial to the next price change — not an initial snapshot delivery."
     queries:
       p50: 1000 * histogram_quantile(0.50, sum(rate(pmapi_ws_connect_to_snapshot_seconds_bucket{source="direct",venue="kalshi",region="us-east"}[24h])) by (le))
       p90: 1000 * histogram_quantile(0.90, sum(rate(pmapi_ws_connect_to_snapshot_seconds_bucket{source="direct",venue="kalshi",region="us-east"}[24h])) by (le))
