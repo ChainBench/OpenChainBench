@@ -30,7 +30,7 @@ const etherscanBaseDefault = "https://api.etherscan.io"
 // new listing never silently moves the number before a human
 // classifies it.
 var etherscanMainnets = map[int64]bool{
-	1: true, 56: true, 137: true, 8453: true, 42161: true, 59144: true,
+	1: true, 56: true, 137: true, 8453: true, 42161: true,
 	81457: true, 10: true, 43114: true, 199: true, 42220: true, 252: true,
 	100: true, 5000: true, 4352: true, 1284: true, 1285: true, 204: true,
 	167000: true, 50: true, 33139: true, 480: true, 146: true, 130: true,
@@ -192,6 +192,10 @@ func parseEtherscanBlockNoByTime(raw []byte) (bool, error) {
 		return true, nil
 	}
 	lr := strings.ToLower(resp.Result + " " + resp.Message)
+	if strings.Contains(lr, "max calls per sec") {
+		// Per-second throttle: transient, skip chain rather than aborting the cycle.
+		return false, nil
+	}
 	if strings.Contains(lr, "rate limit") {
 		return false, fmt.Errorf("etherscan rate limit: %s", resp.Result)
 	}
