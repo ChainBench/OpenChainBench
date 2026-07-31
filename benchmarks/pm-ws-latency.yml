@@ -124,7 +124,7 @@ metric_panels:
 providers:
   - slug: polymarket
     name: Polymarket
-    tag: Public no-auth CLOB WebSocket, globally distributed via Cloudflare, PING keepalive, 3 regions
+    tag: Public no-auth CLOB WebSocket, Cloudflare CDN, PING keepalive, 3 regions
     formula: "p50 of connect-to-snapshot time across all three regions (24h). Covers dial, TLS, HTTP upgrade and initial snapshot delivery."
     queries:
       p50: 1000 * histogram_quantile(0.50, sum(rate(pmapi_ws_connect_to_snapshot_seconds_bucket{source="direct",venue="polymarket"}[24h])) by (le))
@@ -137,7 +137,7 @@ providers:
 
   - slug: kalshi
     name: Kalshi
-    tag: RSA-PSS auth required, CFTC-regulated, probed from us-east only (403 from non-US IPs)
+    tag: RSA-PSS auth required, CFTC-regulated, us-east only (403 from non-US IPs)
     formula: "p50 of time-to-first-price-update from us-east only (24h). Kalshi's ticker channel is delta-only (no snapshot on subscribe), so this measures time from dial to the next price change — not an initial snapshot delivery."
     queries:
       p50: 1000 * histogram_quantile(0.50, sum(rate(pmapi_ws_connect_to_snapshot_seconds_bucket{source="direct",venue="kalshi",region="us-east"}[24h])) by (le))
