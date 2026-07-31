@@ -234,7 +234,7 @@ providers:
 
   - slug: myriad
     name: Myriad
-    tag: No order book endpoint, no WebSocket, single region Heroku origin, keyless 30 req/10s
+    tag: No order book, no WebSocket, single region Heroku origin, keyless 30 req/10s
     formula: "p50 of warm full round trips against the single market endpoint (Myriad exposes no order book, so the price class is its hot path), successful requests only, 24h window. Cross region latency reflects the single US East origin."
     queries:
       p50: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="myriad",class="price",conn="warm"}[24h])) by (le))
@@ -273,7 +273,7 @@ providers:
 
   - slug: metaculus
     name: Metaculus
-    tag: "Public forecasting platform, no auth, no book endpoint, conservative ramp 5/10/20 per 10s"
+    tag: "Public forecasting platform, no auth, no book endpoint, ramp 5/10/20 per 10s"
     formula: "p50 of warm price requests against /api2/questions/{id}/, successful requests only, 24h window. No book endpoint. Ramp at 5/10/20 per 10s (limits undocumented)."
     queries:
       p50: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{cache!="hit",venue="metaculus",class="price",conn="warm"}[24h])) by (le))
