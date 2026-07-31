@@ -131,10 +131,15 @@ export function PmVenuesLeaderboard({ rows }: { rows: PmVenueRow[] }) {
             </tr>
           </thead>
           <tbody>
-            {filtered.map((r, i) => (
+            {filtered.map((r, i) => {
+              const href = r.benched === false && r.externalUrl
+                ? r.externalUrl
+                : `/products/${r.slug}`;
+              const isExternal = r.benched === false;
+              return (
               <tr
                 key={r.slug}
-                onClick={() => router.push(`/products/${r.slug}`)}
+                onClick={() => isExternal ? window.open(href, "_blank") : router.push(href)}
                 className="border-t border-ink/5 hover:bg-paper-soft/40 transition-colors cursor-pointer"
               >
                 <Td muted mono>
@@ -142,7 +147,9 @@ export function PmVenuesLeaderboard({ rows }: { rows: PmVenueRow[] }) {
                 </Td>
                 <Td>
                   <Link
-                    href={`/products/${r.slug}`}
+                    href={href}
+                    target={isExternal ? "_blank" : undefined}
+                    rel={isExternal ? "noopener noreferrer" : undefined}
                     className="flex items-center gap-2 min-w-0 group"
                     onClick={(e) => e.stopPropagation()}
                   >
@@ -182,7 +189,8 @@ export function PmVenuesLeaderboard({ rows }: { rows: PmVenueRow[] }) {
                 <Td mono>{fmtMs(r.p50ApiLatencyMs)}</Td>
                 <Td mono>{fmtCount(r.marketsAbove1m)}</Td>
               </tr>
-            ))}
+              );
+            })}
             {filtered.length === 0 && (
               <tr>
                 <td

@@ -27,6 +27,9 @@ export type PmVenueRow = {
   name: string;
   type: PmVenueType;
   chain?: string;
+  /** false = hub-only venue (volume tracked but no bench probes; no /products page) */
+  benched: boolean;
+  externalUrl?: string;
   volume30d: number | null;
   volume24h: number | null;
   openInterest: number | null;
@@ -64,6 +67,8 @@ type VenueSeed = {
   name: string;
   type: PmVenueType;
   chain?: string;
+  benched?: boolean;
+  externalUrl?: string;
 };
 
 type DataFeedSeed = {
@@ -75,7 +80,7 @@ type DataFeedSeed = {
 
 const PM_VENUES: VenueSeed[] = [
   { slug: "polymarket",    name: "Polymarket",    type: "onchain",  chain: "polygon" },
-  { slug: "polymarket-us", name: "Polymarket US", type: "offchain" },
+  { slug: "polymarket-us", name: "Polymarket US", type: "offchain", benched: false, externalUrl: "https://polymarketexchange.com" },
   { slug: "kalshi",        name: "Kalshi",        type: "offchain" },
   { slug: "limitless",     name: "Limitless",     type: "onchain",  chain: "base" },
   { slug: "myriad",        name: "Myriad",        type: "onchain",  chain: "abstract" },
@@ -164,6 +169,8 @@ export async function fetchPmCohortFresh(): Promise<PmCohortSummary | null> {
       name: v.name,
       type: v.type,
       chain: v.chain,
+      benched: v.benched ?? true,
+      externalUrl: v.externalUrl,
       volume30d: null,
       volume24h: null,
       openInterest: null,
@@ -177,7 +184,7 @@ export async function fetchPmCohortFresh(): Promise<PmCohortSummary | null> {
 
   const apply = (
     series: { labels: Record<string, string>; value: number }[] | null,
-    field: keyof Omit<PmVenueRow, "slug" | "name" | "type" | "chain">,
+    field: keyof Omit<PmVenueRow, "slug" | "name" | "type" | "chain" | "benched" | "externalUrl">,
   ) => {
     for (const s of series ?? []) {
       const v = s.labels.venue;
