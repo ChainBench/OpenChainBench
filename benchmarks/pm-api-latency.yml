@@ -239,7 +239,7 @@ providers:
       series: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{venue="myriad",source="direct",class="price",conn="warm",cache!="hit"}[1h])) by (le))
   - slug: predictit
     name: PredictIt
-    tag: "CFTC no-action letter, US political markets only, probed at 15s due to 5 req/min rate limit"
+    tag: "CFTC no-action letter, US political markets only, 15s probe interval (5 req/min)"
     formula: "p50 of warm price requests at 15s intervals against /api/marketdata/markets/{id}, successful requests only, 24h window. Rate limit constraint means fewer samples than other venues."
     queries:
       p50: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{venue="predictit",source="direct",class="price",conn="warm",cache!="hit"}[24h])) by (le))
@@ -252,7 +252,7 @@ providers:
 
   - slug: smarkets
     name: Smarkets
-    tag: "UK FCA-regulated CLOB exchange, public book endpoint, political and sports markets"
+    tag: "UK FCA-regulated CLOB, public book endpoint, political and sports markets"
     formula: "p50 of warm price requests against /v3/markets/{id}/, successful requests only, 24h window. Origin-level responses, no CDN cache."
     queries:
       p50: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{venue="smarkets",source="direct",class="price",conn="warm",cache!="hit"}[24h])) by (le))
@@ -265,7 +265,7 @@ providers:
 
   - slug: metaculus
     name: Metaculus
-    tag: "Public forecasting platform, no auth, no order book, binary questions probed via /api2/questions/{id}/"
+    tag: "Public forecasting platform, no auth, no order book, REST /api2/questions/"
     formula: "p50 of warm round trips against the single question endpoint /api2/questions/{id}/, successful requests only, 24h window. No CDN cache layer detected."
     queries:
       p50: 1000 * histogram_quantile(0.50, sum(rate(pmapi_request_duration_seconds_bucket{venue="metaculus",source="direct",class="price",conn="warm",cache!="hit"}[24h])) by (le))
