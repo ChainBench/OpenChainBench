@@ -27,6 +27,7 @@ import { getPmVenueContext } from "@/lib/pm-venue-context";
 import { fetchPmDataFeedKpis } from "@/lib/pm-venue-data";
 import { fetchPerpVenueKpis } from "@/lib/perp-venue-data";
 import { hasRpcProviderData } from "@/lib/rpc-hub-stats";
+import { loadBenchFromBlob } from "@/lib/bench-blob";
 import { PmVenueSection } from "@/components/pm-venue-section";
 import {
   getPerpVenueContext,
@@ -231,7 +232,11 @@ export default async function ProviderPage({
   const pmContext = await getPmVenueContext(p.slug);
 
   // Perp DEX cohort dashboard. Same pattern as the PM context above.
-  const perpContext = await getPerpVenueContext(p.slug);
+  const isPerpSlug = PERP_PRODUCT_PILL_SLUGS.has(p.slug);
+  const feesAtSizeBench = isPerpSlug
+    ? await loadBenchFromBlob("perp-fees-at-size")
+    : null;
+  const perpContext = await getPerpVenueContext(p.slug, feesAtSizeBench);
 
   // KPI-domain availability, resolved upfront so the pill bar knows
   // every domain before rendering. A pill must never open onto an empty

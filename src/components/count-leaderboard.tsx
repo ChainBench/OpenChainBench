@@ -28,11 +28,20 @@ export function CountLeaderboard({
   const colors = useMemo(() => buildProviderColors(benchmark.results), [benchmark.results]);
   const [hoveredSlug, setHoveredSlug] = useState<string | null>(null);
 
-  const leader = ranked[0];
-  const trailer = ranked[ranked.length - 1];
-  const gap = leader && trailer && trailer.ms.p50 > 0
-    ? leader.ms.p50 / trailer.ms.p50
-    : 0;
+  const validRanked = ranked.filter((r) => r.ms.p50 > 0);
+  const leader = validRanked[0];
+  const trailer = validRanked[validRanked.length - 1];
+  const gapRatio =
+    leader && trailer && leader.ms.p50 > 0
+      ? benchmark.higherIsBetter
+        ? leader.ms.p50 / trailer.ms.p50
+        : trailer.ms.p50 / leader.ms.p50
+      : 0;
+  // range: always ascending (best → worst). for lower-is-better leader is min,
+  // trailer is max; for higher-is-better flip them so low is still left.
+  const [rangeMin, rangeMax] = benchmark.higherIsBetter
+    ? [trailer, leader]
+    : [leader, trailer];
 
   return (
     <>
@@ -52,17 +61,21 @@ export function CountLeaderboard({
       <dl className="grid grid-cols-1 sm:flex sm:flex-wrap items-baseline gap-x-3 sm:gap-x-8 gap-y-2 sm:gap-y-3 border-y border-rule py-4">
         <CountStat
           label="Leader"
-          value={fmtValue(leader?.ms.p50 ?? 0, benchmark.unit)}
+          value={leader ? fmtValue(leader.ms.p50, benchmark.unit) : "-"}
           hint={leader?.name}
         />
         <CountStat
           label="Range"
-          value={`${fmtValue(trailer?.ms.p50 ?? 0, benchmark.unit)} → ${fmtValue(leader?.ms.p50 ?? 0, benchmark.unit)}`}
-          hint={`${benchmark.results.length} providers`}
+          value={
+            rangeMin && rangeMax
+              ? `${fmtValue(rangeMin.ms.p50, benchmark.unit)} → ${fmtValue(rangeMax.ms.p50, benchmark.unit)}`
+              : "-"
+          }
+          hint={`${validRanked.length} providers`}
         />
         <CountStat
           label="Gap"
-          value={gap > 0 ? `${gap.toFixed(1)}×` : "-"}
+          value={gapRatio > 0 ? `${gapRatio.toFixed(1)}×` : "-"}
           hint="leader vs lowest"
         />
       </dl>
