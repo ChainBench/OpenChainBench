@@ -1,0 +1,125 @@
+# OpenChainBench. Bench No 127
+
+slug: cyber-rpc
+number: "127"
+title: Fastest free Cyber Network RPC, live no-key EVM endpoint latency
+seo_title: "Fastest free Cyber Network RPC 2026"
+seo_description: "{{best_name}} leads free Cyber Network RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). 3 no-key providers measured every 60s from 3 regions."
+subtitle: HTTP round-trip latency for the eth_getBlockByNumber method against every free, no-key public Cyber Network endpoint, audited every 60 seconds from 3 regions.
+
+category: RPCs
+status: live
+metric: RPC latency
+unit: ms
+higher_is_better: false
+
+seo_intro: |
+  Cyber Network is a OP Stack L2 (chain 7560) by CyberConnect, social graph protocol, live-verified 2026-08-02 with 3 no-key providers.
+
+abstract: |
+  Per-chain member of the RPC latency cluster, extended to Cyber Network.
+  Measures round-trip latency of eth_getBlockByNumber against every no-key
+  public endpoint, 3 providers, every 60 seconds from us-east, eu-west and Singapore.
+
+methodology:
+  - "Cadence: every 60 seconds per provider, from 3 probe regions."
+  - "Payload: eth_getBlockByNumber(latest, false). No API key. Rotating id defeats edge caches."
+  - "Latency: client-side round-trip ms, histogram 50ms to 10s, percentiles via quantile_over_time 24h."
+  - "Classification: ok / http_err / jsonrpc_err / stale (>20 blocks behind tip) / timeout."
+  - "Chain scope: every query pinned to chain=cyber. Provider coverage at launch: 3 no-key endpoints."
+
+findings:
+  - "{{best_name}} currently leads free Cyber Network RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h) across 3 measured providers."
+
+faq:
+  - q: "What is the fastest free Cyber Network RPC right now?"
+    a: "{{best_name}} leads at {{best_p50}} measured against 3 no-key providers every 60 seconds from us-east, eu-west and Singapore."
+  - q: "Which Cyber Network RPCs work without an API key?"
+    a: "3 endpoints at launch, all live-verified with eth_getBlockByNumber returning a parsable response."
+  - q: "Does the fastest Cyber Network RPC change by region?"
+    a: "Often. The region tabs re-scope every number to a single origin."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
+
+prometheus:
+  window: 24h
+  freshness_metric: rpc_latency_milliseconds
+
+rank_matrix_query: avg by (provider, region) (ocb:rpc_latency_milliseconds:p50_24h{chain="cyber"})
+
+dimensions:
+  region:
+    - { value: all,     label: All regions }
+    - { value: us-east, label: US-East }
+    - { value: eu-west, label: EU-West }
+    - { value: sgp,     label: Singapore }
+
+providers:
+  - slug: cyber-official
+    name: CyberConnect
+    tag: Cyber Network official public RPC
+    formula: "50th percentile over 24h of round-trip latency (ms) for eth_getBlockByNumber every 60s from 3 regions to CyberConnect's no-key cyber endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="cyber-official", chain="cyber"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="cyber-official", chain="cyber"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="cyber-official", chain="cyber"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="cyber-official", chain="cyber"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="cyber-official", chain="cyber"}) / sum(ocb:rpc_call:rate_24h{provider="cyber-official", chain="cyber"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="cyber-official", chain="cyber"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="cyber-official", chain="cyber"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="cyber-official", chain="cyber", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="cyber-official", chain="cyber", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="cyber-official", chain="cyber", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="cyber-official", chain="cyber", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="cyber-official", chain="cyber", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="cyber-official", chain="cyber", region="sgp"}[1h])
+
+  - slug: altlayer
+    name: AltLayer
+    tag: AltLayer sequencer RPC for Cyber Network
+    formula: "50th percentile over 24h of round-trip latency (ms) for eth_getBlockByNumber every 60s from 3 regions to AltLayer's no-key cyber endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="altlayer", chain="cyber"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="altlayer", chain="cyber"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="altlayer", chain="cyber"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="altlayer", chain="cyber"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="altlayer", chain="cyber"}) / sum(ocb:rpc_call:rate_24h{provider="altlayer", chain="cyber"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="altlayer", chain="cyber"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="altlayer", chain="cyber"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="altlayer", chain="cyber", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="altlayer", chain="cyber", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="altlayer", chain="cyber", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="altlayer", chain="cyber", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="altlayer", chain="cyber", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="altlayer", chain="cyber", region="sgp"}[1h])
+
+  - slug: thirdweb
+    name: Thirdweb
+    tag: Thirdweb public RPC gateway for Cyber Network (chain-id routed)
+    formula: "50th percentile over 24h of round-trip latency (ms) for eth_getBlockByNumber every 60s from 3 regions to Thirdweb's no-key cyber endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="cyber"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="thirdweb", chain="cyber"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="thirdweb", chain="cyber"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="thirdweb", chain="cyber"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="thirdweb", chain="cyber"}) / sum(ocb:rpc_call:rate_24h{provider="thirdweb", chain="cyber"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="thirdweb", chain="cyber"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="cyber"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="cyber", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="cyber", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="cyber", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="cyber", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="cyber", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="cyber", region="sgp"}[1h])

@@ -1,0 +1,125 @@
+# OpenChainBench. Bench No 126
+
+slug: swellchain-rpc
+number: "126"
+title: Fastest free Swellchain RPC, live no-key EVM endpoint latency
+seo_title: "Fastest free Swellchain RPC 2026"
+seo_description: "{{best_name}} leads free Swellchain RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h). 3 no-key providers measured every 60s from 3 regions."
+subtitle: HTTP round-trip latency for the eth_getBlockByNumber method against every free, no-key public Swellchain endpoint, audited every 60 seconds from 3 regions.
+
+category: RPCs
+status: live
+metric: RPC latency
+unit: ms
+higher_is_better: false
+
+seo_intro: |
+  Swellchain is a OP Stack L2 (chain 1923) by Swell Network, liquid restaking protocol, live-verified 2026-08-02 with 3 no-key providers.
+
+abstract: |
+  Per-chain member of the RPC latency cluster, extended to Swellchain.
+  Measures round-trip latency of eth_getBlockByNumber against every no-key
+  public endpoint, 3 providers, every 60 seconds from us-east, eu-west and Singapore.
+
+methodology:
+  - "Cadence: every 60 seconds per provider, from 3 probe regions."
+  - "Payload: eth_getBlockByNumber(latest, false). No API key. Rotating id defeats edge caches."
+  - "Latency: client-side round-trip ms, histogram 50ms to 10s, percentiles via quantile_over_time 24h."
+  - "Classification: ok / http_err / jsonrpc_err / stale (>20 blocks behind tip) / timeout."
+  - "Chain scope: every query pinned to chain=swellchain. Provider coverage at launch: 3 no-key endpoints."
+
+findings:
+  - "{{best_name}} currently leads free Swellchain RPC at {{best_p50}} (eth_getBlockByNumber p50, 24h) across 3 measured providers."
+
+faq:
+  - q: "What is the fastest free Swellchain RPC right now?"
+    a: "{{best_name}} leads at {{best_p50}} measured against 3 no-key providers every 60 seconds from us-east, eu-west and Singapore."
+  - q: "Which Swellchain RPCs work without an API key?"
+    a: "3 endpoints at launch, all live-verified with eth_getBlockByNumber returning a parsable response."
+  - q: "Does the fastest Swellchain RPC change by region?"
+    a: "Often. The region tabs re-scope every number to a single origin."
+
+source: https://github.com/ChainBench/OpenChainBench/tree/main/harnesses/rpc-capabilities
+
+prometheus:
+  window: 24h
+  freshness_metric: rpc_latency_milliseconds
+
+rank_matrix_query: avg by (provider, region) (ocb:rpc_latency_milliseconds:p50_24h{chain="swellchain"})
+
+dimensions:
+  region:
+    - { value: all,     label: All regions }
+    - { value: us-east, label: US-East }
+    - { value: eu-west, label: EU-West }
+    - { value: sgp,     label: Singapore }
+
+providers:
+  - slug: ankr
+    name: Ankr
+    tag: Ankr public RPC gateway for Swellchain
+    formula: "50th percentile over 24h of round-trip latency (ms) for eth_getBlockByNumber every 60s from 3 regions to Ankr's no-key swellchain endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ankr", chain="swellchain"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="ankr", chain="swellchain"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="ankr", chain="swellchain"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="ankr", chain="swellchain"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="ankr", chain="swellchain"}) / sum(ocb:rpc_call:rate_24h{provider="ankr", chain="swellchain"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="ankr", chain="swellchain"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="ankr", chain="swellchain"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ankr", chain="swellchain", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="ankr", chain="swellchain", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ankr", chain="swellchain", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="ankr", chain="swellchain", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="ankr", chain="swellchain", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="ankr", chain="swellchain", region="sgp"}[1h])
+
+  - slug: sentio
+    name: Sentio
+    tag: Sentio public RPC for Swellchain
+    formula: "50th percentile over 24h of round-trip latency (ms) for eth_getBlockByNumber every 60s from 3 regions to Sentio's no-key swellchain endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="sentio", chain="swellchain"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="sentio", chain="swellchain"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="sentio", chain="swellchain"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="sentio", chain="swellchain"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="sentio", chain="swellchain"}) / sum(ocb:rpc_call:rate_24h{provider="sentio", chain="swellchain"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="sentio", chain="swellchain"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="sentio", chain="swellchain"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="sentio", chain="swellchain", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="sentio", chain="swellchain", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="sentio", chain="swellchain", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="sentio", chain="swellchain", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="sentio", chain="swellchain", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="sentio", chain="swellchain", region="sgp"}[1h])
+
+  - slug: thirdweb
+    name: Thirdweb
+    tag: Thirdweb public RPC gateway for Swellchain (chain-id routed)
+    formula: "50th percentile over 24h of round-trip latency (ms) for eth_getBlockByNumber every 60s from 3 regions to Thirdweb's no-key swellchain endpoint."
+    queries:
+      p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="swellchain"})
+      p90: avg(ocb:rpc_latency_milliseconds:p90_24h{provider="thirdweb", chain="swellchain"})
+      p99: avg(ocb:rpc_latency_milliseconds:p99_24h{provider="thirdweb", chain="swellchain"})
+      mean: avg(ocb:rpc_latency_milliseconds:mean_24h{provider="thirdweb", chain="swellchain"})
+      success: sum(ocb:rpc_call:ok_rate_24h{provider="thirdweb", chain="swellchain"}) / sum(ocb:rpc_call:rate_24h{provider="thirdweb", chain="swellchain"})
+      sample_size: sum(ocb:rpc_call:increase_24h{provider="thirdweb", chain="swellchain"})
+      series: avg(avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="swellchain"}[1h]))
+      regions:
+        - region: us-east
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="swellchain", region="us-east"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="swellchain", region="us-east"}[1h])
+        - region: eu-west
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="swellchain", region="eu-west"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="swellchain", region="eu-west"}[1h])
+        - region: ap-southeast
+          p50: avg(ocb:rpc_latency_milliseconds:p50_24h{provider="thirdweb", chain="swellchain", region="sgp"})
+          series: avg_over_time(rpc_latency_milliseconds{provider="thirdweb", chain="swellchain", region="sgp"}[1h])

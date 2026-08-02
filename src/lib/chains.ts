@@ -445,6 +445,46 @@ export const CHAINS: ChainEntry[] = [
     description:
       "OP Stack rollup (chain 7777777) operated by Zora Network, optimised for NFT minting and creative media on-chain, ~2 s sequencer cadence, ETH gas, blob calldata settlement on Ethereum.",
   },
+  {
+    slug: "abstract",
+    label: "Abstract",
+    category: "L2",
+    nativeSymbol: "ETH",
+    description:
+      "ZK Stack Layer 2 (chain 2741) by Abstract Labs, home to the Pudgy Penguins ecosystem, ETH gas, ~1 s block cadence, ZK proof settlement on Ethereum.",
+  },
+  {
+    slug: "apechain",
+    label: "ApeChain",
+    category: "L2",
+    nativeSymbol: "APE",
+    description:
+      "Arbitrum Orbit Layer 2 (chain 33139) built for the APE ecosystem by the APE Foundation, APE gas token, ~1 s block cadence, settlement on Arbitrum.",
+  },
+  {
+    slug: "lisk",
+    label: "Lisk",
+    category: "L2",
+    nativeSymbol: "ETH",
+    description:
+      "OP Stack Layer 2 (chain 1135) by the Lisk Foundation, migrated from an independent DPOS blockchain in 2024, ETH gas, 2 s sequencer cadence, blob calldata settlement on Ethereum.",
+  },
+  {
+    slug: "swellchain",
+    label: "Swellchain",
+    category: "L2",
+    nativeSymbol: "ETH",
+    description:
+      "OP Stack Layer 2 (chain 1923) by Swell Network, backed by restaked ETH deposits providing native yield, ETH gas, 2 s sequencer cadence, EigenDA data availability.",
+  },
+  {
+    slug: "cyber",
+    label: "Cyber",
+    category: "L2",
+    nativeSymbol: "ETH",
+    description:
+      "OP Stack Layer 2 (chain 7560) by CyberConnect, social graph protocol, ETH gas, 2 s sequencer cadence, blob calldata settlement on Ethereum.",
+  },
 ];
 
 export const CHAIN_BY_SLUG = new Map(CHAINS.map((c) => [c.slug, c]));

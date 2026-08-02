@@ -1913,6 +1913,42 @@ export const PROVIDER_REGISTRY: Record<string, ProviderRegistryEntry> = {
       "Zora Network's official public RPC (rpc.zora.energy) for the OP Stack rollup dedicated to NFT minting and creative media on-chain (chain 7777777). Standard EVM JSON-RPC, keyless, rate-limited per IP.",
     twitter: "@ourzora",
   },
+  "abstract-official": {
+    url: "https://abs.xyz",
+    description:
+      "Abstract Labs' official public RPC (api.mainnet.abs.xyz) for the ZK Stack Layer 2 (chain 2741) home to the Pudgy Penguins ecosystem. Standard EVM JSON-RPC, keyless, rate-limited per IP.",
+    twitter: "@abstractchain",
+  },
+  "apechain-official": {
+    url: "https://apechain.com",
+    description:
+      "APE Foundation's official public RPC (rpc.apechain.com) for the Arbitrum Orbit Layer 2 (chain 33139) built for the APE ecosystem. Standard EVM JSON-RPC, keyless, rate-limited per IP.",
+    twitter: "@apecoin",
+  },
+  "lisk-official": {
+    url: "https://lisk.com",
+    description:
+      "Lisk Foundation's official public RPC (rpc.api.lisk.com) for the OP Stack Layer 2 (chain 1135). Standard EVM JSON-RPC, keyless, rate-limited per IP.",
+    twitter: "@LiskHQ",
+  },
+  sentio: {
+    url: "https://sentio.xyz",
+    description:
+      "Sentio is a blockchain analytics and observability platform providing public RPC endpoints for select chains, including Swellchain (swell-mainnet.rpc.sentio.xyz). Keyless, rate-limited per IP.",
+    twitter: "@sentioxyz",
+  },
+  altlayer: {
+    url: "https://altlayer.io",
+    description:
+      "AltLayer is a restaked rollup protocol providing sequencer infrastructure and public RPC endpoints for rollups deployed on its stack, including Cyber Network (cyber.alt.technology). Keyless, rate-limited per IP.",
+    twitter: "@alt_layer",
+  },
+  "cyber-official": {
+    url: "https://cyber.co",
+    description:
+      "CyberConnect's official public RPC (rpc.cyber.co) for the OP Stack Layer 2 (chain 7560). Standard EVM JSON-RPC, keyless, rate-limited per IP.",
+    twitter: "@cyberconnecthq",
+  },
 };
 
 /**

@@ -172,6 +172,16 @@ const RAW: Record<string, string> = {
   kaia: "/logos/kaia.png",
   ink: "/logos/ink.svg",
 
+  // ─── RPC cluster expansion (benches 121-127, 2026-08-02) ───
+  kava: "/logos/kava.png",
+  zora: "/logos/zora.png",
+  abstract: "/logos/abstract.png",
+  apechain: "/logos/apechain.png",
+  lisk: "/logos/lisk.png",
+  swellchain: "/logos/swellchain.png",
+  cyber: "/logos/cyber.png",
+  altlayer: "/logos/altlayer.png",
+
   // ─── Gas oracles ───
   etherscan: "/logos/etherscan.svg",
   owlracle: "/logos/owlracle.png",
@@ -477,6 +487,13 @@ const ALIASES: Record<string, string> = {
   "fraxtal-official": "fraxtal",
   "soneium-official": "soneium",
 
+  // ─── RPC cluster expansion (benches 121-127, 2026-08-02) ───
+  "kava-official": "kava",
+  "zora-official": "zora",
+  "abstract-official": "abstract",
+  "apechain-official": "apechain",
+  "lisk-official": "lisk",
+  "cyber-official": "cyber",
 };
 
 export function logoPath(slug: string): string | null {
