@@ -11,6 +11,7 @@ import {
 import { fetchPerpVenueKpis } from "@/lib/perp-venue-data";
 import { fetchPerpCohort } from "@/lib/perp-stats";
 import { fetchPerpVenueExternalStats } from "@/lib/perp-venue-external";
+import { loadBenchFromBlob } from "@/lib/bench-blob";
 import { PerpVenueKpiStrip } from "@/components/perp-venue-kpi-strip";
 import { PerpVenueBenchCards } from "@/components/perp-venue-bench-cards";
 import { PerpBarChart } from "@/components/perp-bar-chart";
@@ -90,15 +91,18 @@ export default async function PerpVenuePage({
 
   const { seed, meta, cohortSlug } = v;
 
-  const [cohort, kpis, ext] = await Promise.all([
+  const [cohort, kpis, ext, feesAtSizeBench] = await Promise.all([
     fetchPerpCohort(),
     fetchPerpVenueKpis(cohortSlug),
     fetchPerpVenueExternalStats(cohortSlug),
+    loadBenchFromBlob("perp-fees-at-size"),
   ]);
 
   const venueRow = cohort?.venues.find((r) => r.slug === cohortSlug);
   const benchRows =
-    cohort && venueRow ? benchRowsForVenue(cohort, venueRow) : [];
+    cohort && venueRow
+      ? benchRowsForVenue(cohort, venueRow, feesAtSizeBench)
+      : [];
   const measured = benchRows.filter((r) => r.value !== null && r.rank !== null);
 
   const externalHost = (() => {
