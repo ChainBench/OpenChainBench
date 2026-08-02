@@ -4,6 +4,8 @@ import {
   type PerpVenueRow,
   type PerpVenueType,
 } from "@/lib/perp-stats";
+import { loadBenchFromBlob } from "@/lib/bench-blob";
+import type { Benchmark } from "@/types/benchmark";
 import type { PerpVenueBenchRow } from "@/components/perp-venue-bench-cards";
 
 /**
@@ -89,6 +91,8 @@ export async function getPerpVenueContext(
   const venue = cohort.venues.find((v) => v.slug === cohortSlug);
   if (!venue) return null;
 
+  const feesAtSizeBench = await loadBenchFromBlob("perp-fees-at-size");
+
   return {
     kind: "venue",
     slug,
@@ -97,15 +101,27 @@ export async function getPerpVenueContext(
     chainLabel: meta.chainLabel,
     externalUrl: meta.url,
     venueType: venue.venueType,
-    benchRows: benchRowsForVenue(cohort, venue),
+    benchRows: benchRowsForVenue(cohort, venue, feesAtSizeBench),
   };
 }
 
 export function benchRowsForVenue(
   cohort: PerpCohortSummary,
   venue: PerpVenueRow,
+  feesAtSizeBench?: Benchmark | null,
 ): PerpVenueBenchRow[] {
   const cohortSize = cohort.venues.length;
+
+  const activeMarketsVenues = cohort.venues
+    .filter((v) => v.activeMarkets != null && Number.isFinite(v.activeMarkets))
+    .sort((a, b) => (b.activeMarkets as number) - (a.activeMarkets as number));
+  const activeMarketsRank =
+    activeMarketsVenues.findIndex((v) => v.slug === venue.slug) + 1 || null;
+
+  const feesAtSize = feesAtSizeBench
+    ? rankFromBench(feesAtSizeBench, venue.slug)
+    : null;
+
   return [
     {
       benchSlug: "perp-fees",
@@ -129,6 +145,31 @@ export function benchRowsForVenue(
       vsMedian: null,
       tone: "cyan",
     },
+    {
+      benchSlug: "perp-active-markets",
+      label: "Active markets",
+      blurb:
+        "Live count of active perp markets across 14 venues, polled every 5 minutes.",
+      rank: activeMarketsRank,
+      cohortSize: activeMarketsVenues.length || cohortSize,
+      value:
+        venue.activeMarkets != null
+          ? Math.round(venue.activeMarkets).toLocaleString("en-US")
+          : null,
+      vsMedian: null,
+      tone: "indigo",
+    },
+    {
+      benchSlug: "perp-fees-at-size",
+      label: "Fee at $100k",
+      blurb:
+        "All-in cost at $100k notional (taker + spread + impact), 24h average. Oracle venues hold flat regardless of size.",
+      rank: feesAtSize?.rank ?? null,
+      cohortSize: feesAtSize?.total ?? cohortSize,
+      value: feesAtSize?.value != null ? fmtBps(feesAtSize.value) : null,
+      vsMedian: null,
+      tone: "violet",
+    },
   ];
 }
 
@@ -144,6 +185,25 @@ function rankWithinCohort(
   populated.sort((a, b) => (a.v as number) - (b.v as number));
   const idx = populated.findIndex((r) => r.slug === slug);
   return idx >= 0 ? idx + 1 : null;
+}
+
+function rankFromBench(
+  bench: Benchmark,
+  slug: string,
+): { rank: number | null; total: number; value: number | null } {
+  const live = bench.results.filter(
+    (r) => r.ms?.p50 != null && Number.isFinite(r.ms.p50),
+  );
+  const sorted = [...live].sort((a, b) =>
+    bench.higherIsBetter ? b.ms.p50 - a.ms.p50 : a.ms.p50 - b.ms.p50,
+  );
+  const idx = sorted.findIndex((r) => r.slug === slug);
+  const provider = bench.results.find((r) => r.slug === slug);
+  return {
+    rank: idx >= 0 ? idx + 1 : null,
+    total: sorted.length,
+    value: provider?.ms?.p50 ?? null,
+  };
 }
 
 function fmtBps(v: number | null): string | null {
