@@ -59,13 +59,13 @@ const RAW: Record<string, string> = {
 
   // RPC wave-2 chains (2026-08-02, benches 121-129)
   kava: "/logos/kava.png",
-  zora: "/logos/zora.png",
-  abstract: "/logos/abstract.png",
-  apechain: "/logos/apechain.png",
-  lisk: "/logos/lisk.png",
-  swellchain: "/logos/swellchain.png",
-  cyber: "/logos/cyber.png",
-  altlayer: "/logos/altlayer.png",
+  zora: "/logos/zora.webp",
+  abstract: "/logos/abstract.webp",
+  apechain: "/logos/apechain.webp",
+  lisk: "/logos/lisk.webp",
+  swellchain: "/logos/swellchain.webp",
+  cyber: "/logos/cyber.webp",
+  altlayer: "/logos/altlayer.webp",
   sentio: "/logos/sentio.png",
 
   // ─── Providers ───
