@@ -52,11 +52,11 @@ abstract: |
 
 methodology:
   - "Cadence: derived in PromQL from perp_fees_all_in_bps_tier, refreshed every 5 minutes by the perp-fees harness (bench 007)."
-  - "Cost slope = avg_over_time(all_in_bps_tier{notional=1000000}[24h]) / avg_over_time(all_in_bps_tier{notional=1000}[24h]) per venue per asset. A ratio of 1.00 means flat cost across sizes."
+  - "Cost slope = avg_over_time(all_in_bps_tier{notional=1000000}[24h]) / ignoring(notional) avg_over_time(all_in_bps_tier{notional=1000}[24h]) per venue per asset. A ratio of 1.00 means flat cost across sizes."
   - "Oracle-priced venues (gains.trade, GMX v2): the fee is a flat percentage of position size with no orderbook. The $1M all-in equals the $1k all-in in bps exactly, so slope = 1.00 always."
   - "Orderbook venues (Hyperliquid, dYdX, Lighter, Paradex, Extended, Aster, edgeX): the $1M tier walks deeper into the book than the $1k tier, so the spread component grows and slope > 1.00."
   - "Missing $1M tier: when the visible book cannot absorb $1M the harness skips the tier and increments perp_fees_tier_skipped_total rather than extrapolating. The slope PromQL returns no data for that venue, shown as N/A in the leaderboard."
-  - "Fill-rate panel: count_over_time(tier{notional=1000000}[24h]) / count_over_time(tier{notional=1000}[24h]) per venue per asset. 1.00 = tier always filled; 0.50 = tier filled half the time; 0.00 = tier never filled."
+  - "Fill-rate panel: count_over_time(tier{notional=1000000}[24h]) / ignoring(notional) count_over_time(tier{notional=1000}[24h]) per venue per asset. 1.00 = tier always filled; 0.50 = tier filled half the time; 0.00 = tier never filled."
   - "Chain tabs: the board is scoped per asset (ETH, BTC, SOL) because book depth differs significantly across assets and cross-asset averaging obscures the signal."
   - "Failures and stale data: inherited from the perp-fees harness. A venue that errors keeps its last gauge and its health drops to 0."
 
@@ -124,7 +124,7 @@ panel_main_label: "Cost slope ($1M / $1k)"
 metric_panels:
   - id: fill_rate_1m
     label: "$1M fill rate"
-    metric: "avg(count_over_time(perp_fees_all_in_bps_tier{notional=\"1000000\"}[24h]) / count_over_time(perp_fees_all_in_bps_tier{notional=\"1000\"}[24h]))"
+    metric: "avg(count_over_time(perp_fees_all_in_bps_tier{notional=\"1000000\"}[24h]) / ignoring(notional) count_over_time(perp_fees_all_in_bps_tier{notional=\"1000\"}[24h]))"
     label_key: venue
     unit: count
     higher_is_better: true
@@ -136,10 +136,10 @@ providers:
     tag: "Synthetic perps on Base, oracle-priced, flat cost at any size"
     formula: "all_in_bps_tier{notional=1000000}[24h] / all_in_bps_tier{notional=1000}[24h]. Oracle-priced (flat % of notional, no orderbook): ratio always 1.00 by construction."
     queries:
-      p50: avg_over_time(perp_fees_all_in_bps_tier{venue="gains",notional="1000000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="gains",notional="1000"}[24h])
-      p90: avg_over_time(perp_fees_all_in_bps_tier{venue="gains",notional="100000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="gains",notional="1000"}[24h])
-      p99: avg_over_time(perp_fees_all_in_bps_tier{venue="gains",notional="10000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="gains",notional="1000"}[24h])
-      mean: avg_over_time(perp_fees_all_in_bps_tier{venue="gains",notional="1000000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="gains",notional="1000"}[24h])
+      p50: avg_over_time(perp_fees_all_in_bps_tier{venue="gains",notional="1000000"}[24h]) / ignoring(notional) avg_over_time(perp_fees_all_in_bps_tier{venue="gains",notional="1000"}[24h])
+      p90: avg_over_time(perp_fees_all_in_bps_tier{venue="gains",notional="100000"}[24h]) / ignoring(notional) avg_over_time(perp_fees_all_in_bps_tier{venue="gains",notional="1000"}[24h])
+      p99: avg_over_time(perp_fees_all_in_bps_tier{venue="gains",notional="10000"}[24h]) / ignoring(notional) avg_over_time(perp_fees_all_in_bps_tier{venue="gains",notional="1000"}[24h])
+      mean: avg_over_time(perp_fees_all_in_bps_tier{venue="gains",notional="1000000"}[24h]) / ignoring(notional) avg_over_time(perp_fees_all_in_bps_tier{venue="gains",notional="1000"}[24h])
       success: avg_over_time(perp_fees_health{venue="gains"}[24h])
       sample_size: count_over_time(perp_fees_all_in_bps_tier{venue="gains",notional="1000000"}[24h])
       series: perp_fees_all_in_bps_tier{venue="gains",notional="1000000"}
@@ -149,10 +149,10 @@ providers:
     tag: "Synthetics on Arbitrum, oracle-priced, flat cost at any size"
     formula: "all_in_bps_tier{notional=1000000}[24h] / all_in_bps_tier{notional=1000}[24h]. Oracle-priced (positionFeeFactor flat % of notional, no orderbook): ratio always 1.00."
     queries:
-      p50: avg_over_time(perp_fees_all_in_bps_tier{venue="gmx",notional="1000000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="gmx",notional="1000"}[24h])
-      p90: avg_over_time(perp_fees_all_in_bps_tier{venue="gmx",notional="100000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="gmx",notional="1000"}[24h])
-      p99: avg_over_time(perp_fees_all_in_bps_tier{venue="gmx",notional="10000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="gmx",notional="1000"}[24h])
-      mean: avg_over_time(perp_fees_all_in_bps_tier{venue="gmx",notional="1000000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="gmx",notional="1000"}[24h])
+      p50: avg_over_time(perp_fees_all_in_bps_tier{venue="gmx",notional="1000000"}[24h]) / ignoring(notional) avg_over_time(perp_fees_all_in_bps_tier{venue="gmx",notional="1000"}[24h])
+      p90: avg_over_time(perp_fees_all_in_bps_tier{venue="gmx",notional="100000"}[24h]) / ignoring(notional) avg_over_time(perp_fees_all_in_bps_tier{venue="gmx",notional="1000"}[24h])
+      p99: avg_over_time(perp_fees_all_in_bps_tier{venue="gmx",notional="10000"}[24h]) / ignoring(notional) avg_over_time(perp_fees_all_in_bps_tier{venue="gmx",notional="1000"}[24h])
+      mean: avg_over_time(perp_fees_all_in_bps_tier{venue="gmx",notional="1000000"}[24h]) / ignoring(notional) avg_over_time(perp_fees_all_in_bps_tier{venue="gmx",notional="1000"}[24h])
       success: avg_over_time(perp_fees_health{venue="gmx"}[24h])
       sample_size: count_over_time(perp_fees_all_in_bps_tier{venue="gmx",notional="1000000"}[24h])
       series: perp_fees_all_in_bps_tier{venue="gmx",notional="1000000"}
@@ -162,10 +162,10 @@ providers:
     tag: "HyperBFT L1 perp DEX, deepest onchain book"
     formula: "all_in_bps_tier{notional=1000000}[24h] / all_in_bps_tier{notional=1000}[24h]. Orderbook: $1M tier walks deeper than $1k, raising the spread component above 1.00."
     queries:
-      p50: avg_over_time(perp_fees_all_in_bps_tier{venue="hyperliquid",notional="1000000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="hyperliquid",notional="1000"}[24h])
-      p90: avg_over_time(perp_fees_all_in_bps_tier{venue="hyperliquid",notional="100000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="hyperliquid",notional="1000"}[24h])
-      p99: avg_over_time(perp_fees_all_in_bps_tier{venue="hyperliquid",notional="10000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="hyperliquid",notional="1000"}[24h])
-      mean: avg_over_time(perp_fees_all_in_bps_tier{venue="hyperliquid",notional="1000000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="hyperliquid",notional="1000"}[24h])
+      p50: avg_over_time(perp_fees_all_in_bps_tier{venue="hyperliquid",notional="1000000"}[24h]) / ignoring(notional) avg_over_time(perp_fees_all_in_bps_tier{venue="hyperliquid",notional="1000"}[24h])
+      p90: avg_over_time(perp_fees_all_in_bps_tier{venue="hyperliquid",notional="100000"}[24h]) / ignoring(notional) avg_over_time(perp_fees_all_in_bps_tier{venue="hyperliquid",notional="1000"}[24h])
+      p99: avg_over_time(perp_fees_all_in_bps_tier{venue="hyperliquid",notional="10000"}[24h]) / ignoring(notional) avg_over_time(perp_fees_all_in_bps_tier{venue="hyperliquid",notional="1000"}[24h])
+      mean: avg_over_time(perp_fees_all_in_bps_tier{venue="hyperliquid",notional="1000000"}[24h]) / ignoring(notional) avg_over_time(perp_fees_all_in_bps_tier{venue="hyperliquid",notional="1000"}[24h])
       success: avg_over_time(perp_fees_health{venue="hyperliquid"}[24h])
       sample_size: count_over_time(perp_fees_all_in_bps_tier{venue="hyperliquid",notional="1000000"}[24h])
       series: perp_fees_all_in_bps_tier{venue="hyperliquid",notional="1000000"}
@@ -175,10 +175,10 @@ providers:
     tag: "zk-rollup, zero taker fee, onchain orderbook"
     formula: "all_in_bps_tier{notional=1000000}[24h] / all_in_bps_tier{notional=1000}[24h]. Orderbook: $1M tier walks 100 levels of the Lighter zk-rollup book."
     queries:
-      p50: avg_over_time(perp_fees_all_in_bps_tier{venue="lighter",notional="1000000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="lighter",notional="1000"}[24h])
-      p90: avg_over_time(perp_fees_all_in_bps_tier{venue="lighter",notional="100000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="lighter",notional="1000"}[24h])
-      p99: avg_over_time(perp_fees_all_in_bps_tier{venue="lighter",notional="10000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="lighter",notional="1000"}[24h])
-      mean: avg_over_time(perp_fees_all_in_bps_tier{venue="lighter",notional="1000000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="lighter",notional="1000"}[24h])
+      p50: avg_over_time(perp_fees_all_in_bps_tier{venue="lighter",notional="1000000"}[24h]) / ignoring(notional) avg_over_time(perp_fees_all_in_bps_tier{venue="lighter",notional="1000"}[24h])
+      p90: avg_over_time(perp_fees_all_in_bps_tier{venue="lighter",notional="100000"}[24h]) / ignoring(notional) avg_over_time(perp_fees_all_in_bps_tier{venue="lighter",notional="1000"}[24h])
+      p99: avg_over_time(perp_fees_all_in_bps_tier{venue="lighter",notional="10000"}[24h]) / ignoring(notional) avg_over_time(perp_fees_all_in_bps_tier{venue="lighter",notional="1000"}[24h])
+      mean: avg_over_time(perp_fees_all_in_bps_tier{venue="lighter",notional="1000000"}[24h]) / ignoring(notional) avg_over_time(perp_fees_all_in_bps_tier{venue="lighter",notional="1000"}[24h])
       success: avg_over_time(perp_fees_health{venue="lighter"}[24h])
       sample_size: count_over_time(perp_fees_all_in_bps_tier{venue="lighter",notional="1000000"}[24h])
       series: perp_fees_all_in_bps_tier{venue="lighter",notional="1000000"}
@@ -188,10 +188,10 @@ providers:
     tag: "Cosmos appchain orderbook"
     formula: "all_in_bps_tier{notional=1000000}[24h] / all_in_bps_tier{notional=1000}[24h]. Orderbook: full dYdX v4 indexer book walked at each tier."
     queries:
-      p50: avg_over_time(perp_fees_all_in_bps_tier{venue="dydx",notional="1000000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="dydx",notional="1000"}[24h])
-      p90: avg_over_time(perp_fees_all_in_bps_tier{venue="dydx",notional="100000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="dydx",notional="1000"}[24h])
-      p99: avg_over_time(perp_fees_all_in_bps_tier{venue="dydx",notional="10000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="dydx",notional="1000"}[24h])
-      mean: avg_over_time(perp_fees_all_in_bps_tier{venue="dydx",notional="1000000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="dydx",notional="1000"}[24h])
+      p50: avg_over_time(perp_fees_all_in_bps_tier{venue="dydx",notional="1000000"}[24h]) / ignoring(notional) avg_over_time(perp_fees_all_in_bps_tier{venue="dydx",notional="1000"}[24h])
+      p90: avg_over_time(perp_fees_all_in_bps_tier{venue="dydx",notional="100000"}[24h]) / ignoring(notional) avg_over_time(perp_fees_all_in_bps_tier{venue="dydx",notional="1000"}[24h])
+      p99: avg_over_time(perp_fees_all_in_bps_tier{venue="dydx",notional="10000"}[24h]) / ignoring(notional) avg_over_time(perp_fees_all_in_bps_tier{venue="dydx",notional="1000"}[24h])
+      mean: avg_over_time(perp_fees_all_in_bps_tier{venue="dydx",notional="1000000"}[24h]) / ignoring(notional) avg_over_time(perp_fees_all_in_bps_tier{venue="dydx",notional="1000"}[24h])
       success: avg_over_time(perp_fees_health{venue="dydx"}[24h])
       sample_size: count_over_time(perp_fees_all_in_bps_tier{venue="dydx",notional="1000000"}[24h])
       series: perp_fees_all_in_bps_tier{venue="dydx",notional="1000000"}
@@ -201,10 +201,10 @@ providers:
     tag: "Starknet appchain perps, 100-level book"
     formula: "all_in_bps_tier{notional=1000000}[24h] / all_in_bps_tier{notional=1000}[24h]. Orderbook: Starknet appchain, 100-level book depth caps visible depth at ~$1M on majors."
     queries:
-      p50: avg_over_time(perp_fees_all_in_bps_tier{venue="paradex",notional="1000000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="paradex",notional="1000"}[24h])
-      p90: avg_over_time(perp_fees_all_in_bps_tier{venue="paradex",notional="100000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="paradex",notional="1000"}[24h])
-      p99: avg_over_time(perp_fees_all_in_bps_tier{venue="paradex",notional="10000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="paradex",notional="1000"}[24h])
-      mean: avg_over_time(perp_fees_all_in_bps_tier{venue="paradex",notional="1000000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="paradex",notional="1000"}[24h])
+      p50: avg_over_time(perp_fees_all_in_bps_tier{venue="paradex",notional="1000000"}[24h]) / ignoring(notional) avg_over_time(perp_fees_all_in_bps_tier{venue="paradex",notional="1000"}[24h])
+      p90: avg_over_time(perp_fees_all_in_bps_tier{venue="paradex",notional="100000"}[24h]) / ignoring(notional) avg_over_time(perp_fees_all_in_bps_tier{venue="paradex",notional="1000"}[24h])
+      p99: avg_over_time(perp_fees_all_in_bps_tier{venue="paradex",notional="10000"}[24h]) / ignoring(notional) avg_over_time(perp_fees_all_in_bps_tier{venue="paradex",notional="1000"}[24h])
+      mean: avg_over_time(perp_fees_all_in_bps_tier{venue="paradex",notional="1000000"}[24h]) / ignoring(notional) avg_over_time(perp_fees_all_in_bps_tier{venue="paradex",notional="1000"}[24h])
       success: avg_over_time(perp_fees_health{venue="paradex"}[24h])
       sample_size: count_over_time(perp_fees_all_in_bps_tier{venue="paradex",notional="1000000"}[24h])
       series: perp_fees_all_in_bps_tier{venue="paradex",notional="1000000"}
@@ -214,10 +214,10 @@ providers:
     tag: "Starknet perps, full public book"
     formula: "all_in_bps_tier{notional=1000000}[24h] / all_in_bps_tier{notional=1000}[24h]. Orderbook: full public Starknet book walked at each tier."
     queries:
-      p50: avg_over_time(perp_fees_all_in_bps_tier{venue="extended",notional="1000000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="extended",notional="1000"}[24h])
-      p90: avg_over_time(perp_fees_all_in_bps_tier{venue="extended",notional="100000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="extended",notional="1000"}[24h])
-      p99: avg_over_time(perp_fees_all_in_bps_tier{venue="extended",notional="10000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="extended",notional="1000"}[24h])
-      mean: avg_over_time(perp_fees_all_in_bps_tier{venue="extended",notional="1000000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="extended",notional="1000"}[24h])
+      p50: avg_over_time(perp_fees_all_in_bps_tier{venue="extended",notional="1000000"}[24h]) / ignoring(notional) avg_over_time(perp_fees_all_in_bps_tier{venue="extended",notional="1000"}[24h])
+      p90: avg_over_time(perp_fees_all_in_bps_tier{venue="extended",notional="100000"}[24h]) / ignoring(notional) avg_over_time(perp_fees_all_in_bps_tier{venue="extended",notional="1000"}[24h])
+      p99: avg_over_time(perp_fees_all_in_bps_tier{venue="extended",notional="10000"}[24h]) / ignoring(notional) avg_over_time(perp_fees_all_in_bps_tier{venue="extended",notional="1000"}[24h])
+      mean: avg_over_time(perp_fees_all_in_bps_tier{venue="extended",notional="1000000"}[24h]) / ignoring(notional) avg_over_time(perp_fees_all_in_bps_tier{venue="extended",notional="1000"}[24h])
       success: avg_over_time(perp_fees_health{venue="extended"}[24h])
       sample_size: count_over_time(perp_fees_all_in_bps_tier{venue="extended",notional="1000000"}[24h])
       series: perp_fees_all_in_bps_tier{venue="extended",notional="1000000"}
@@ -227,10 +227,10 @@ providers:
     tag: "Polygon perps, up to 500 book levels"
     formula: "all_in_bps_tier{notional=1000000}[24h] / all_in_bps_tier{notional=1000}[24h]. Orderbook: Polygon CLOB, up to 500 book levels walked per tier."
     queries:
-      p50: avg_over_time(perp_fees_all_in_bps_tier{venue="polymarket",notional="1000000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="polymarket",notional="1000"}[24h])
-      p90: avg_over_time(perp_fees_all_in_bps_tier{venue="polymarket",notional="100000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="polymarket",notional="1000"}[24h])
-      p99: avg_over_time(perp_fees_all_in_bps_tier{venue="polymarket",notional="10000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="polymarket",notional="1000"}[24h])
-      mean: avg_over_time(perp_fees_all_in_bps_tier{venue="polymarket",notional="1000000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="polymarket",notional="1000"}[24h])
+      p50: avg_over_time(perp_fees_all_in_bps_tier{venue="polymarket",notional="1000000"}[24h]) / ignoring(notional) avg_over_time(perp_fees_all_in_bps_tier{venue="polymarket",notional="1000"}[24h])
+      p90: avg_over_time(perp_fees_all_in_bps_tier{venue="polymarket",notional="100000"}[24h]) / ignoring(notional) avg_over_time(perp_fees_all_in_bps_tier{venue="polymarket",notional="1000"}[24h])
+      p99: avg_over_time(perp_fees_all_in_bps_tier{venue="polymarket",notional="10000"}[24h]) / ignoring(notional) avg_over_time(perp_fees_all_in_bps_tier{venue="polymarket",notional="1000"}[24h])
+      mean: avg_over_time(perp_fees_all_in_bps_tier{venue="polymarket",notional="1000000"}[24h]) / ignoring(notional) avg_over_time(perp_fees_all_in_bps_tier{venue="polymarket",notional="1000"}[24h])
       success: avg_over_time(perp_fees_health{venue="polymarket"}[24h])
       sample_size: count_over_time(perp_fees_all_in_bps_tier{venue="polymarket",notional="1000000"}[24h])
       series: perp_fees_all_in_bps_tier{venue="polymarket",notional="1000000"}
@@ -240,10 +240,10 @@ providers:
     tag: "BNB Chain perp DEX, Binance-style REST book"
     formula: "all_in_bps_tier{notional=1000000}[24h] / all_in_bps_tier{notional=1000}[24h]. Orderbook: BNB Chain CLOB, fapi depth endpoint walked per tier."
     queries:
-      p50: avg_over_time(perp_fees_all_in_bps_tier{venue="aster",notional="1000000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="aster",notional="1000"}[24h])
-      p90: avg_over_time(perp_fees_all_in_bps_tier{venue="aster",notional="100000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="aster",notional="1000"}[24h])
-      p99: avg_over_time(perp_fees_all_in_bps_tier{venue="aster",notional="10000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="aster",notional="1000"}[24h])
-      mean: avg_over_time(perp_fees_all_in_bps_tier{venue="aster",notional="1000000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="aster",notional="1000"}[24h])
+      p50: avg_over_time(perp_fees_all_in_bps_tier{venue="aster",notional="1000000"}[24h]) / ignoring(notional) avg_over_time(perp_fees_all_in_bps_tier{venue="aster",notional="1000"}[24h])
+      p90: avg_over_time(perp_fees_all_in_bps_tier{venue="aster",notional="100000"}[24h]) / ignoring(notional) avg_over_time(perp_fees_all_in_bps_tier{venue="aster",notional="1000"}[24h])
+      p99: avg_over_time(perp_fees_all_in_bps_tier{venue="aster",notional="10000"}[24h]) / ignoring(notional) avg_over_time(perp_fees_all_in_bps_tier{venue="aster",notional="1000"}[24h])
+      mean: avg_over_time(perp_fees_all_in_bps_tier{venue="aster",notional="1000000"}[24h]) / ignoring(notional) avg_over_time(perp_fees_all_in_bps_tier{venue="aster",notional="1000"}[24h])
       success: avg_over_time(perp_fees_health{venue="aster"}[24h])
       sample_size: count_over_time(perp_fees_all_in_bps_tier{venue="aster",notional="1000000"}[24h])
       series: perp_fees_all_in_bps_tier{venue="aster",notional="1000000"}
@@ -253,10 +253,10 @@ providers:
     tag: "Offchain CLOB perp DEX"
     formula: "all_in_bps_tier{notional=1000000}[24h] / all_in_bps_tier{notional=1000}[24h]. Orderbook: offchain CLOB, public getDepth endpoint walked per tier."
     queries:
-      p50: avg_over_time(perp_fees_all_in_bps_tier{venue="edgex",notional="1000000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="edgex",notional="1000"}[24h])
-      p90: avg_over_time(perp_fees_all_in_bps_tier{venue="edgex",notional="100000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="edgex",notional="1000"}[24h])
-      p99: avg_over_time(perp_fees_all_in_bps_tier{venue="edgex",notional="10000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="edgex",notional="1000"}[24h])
-      mean: avg_over_time(perp_fees_all_in_bps_tier{venue="edgex",notional="1000000"}[24h]) / avg_over_time(perp_fees_all_in_bps_tier{venue="edgex",notional="1000"}[24h])
+      p50: avg_over_time(perp_fees_all_in_bps_tier{venue="edgex",notional="1000000"}[24h]) / ignoring(notional) avg_over_time(perp_fees_all_in_bps_tier{venue="edgex",notional="1000"}[24h])
+      p90: avg_over_time(perp_fees_all_in_bps_tier{venue="edgex",notional="100000"}[24h]) / ignoring(notional) avg_over_time(perp_fees_all_in_bps_tier{venue="edgex",notional="1000"}[24h])
+      p99: avg_over_time(perp_fees_all_in_bps_tier{venue="edgex",notional="10000"}[24h]) / ignoring(notional) avg_over_time(perp_fees_all_in_bps_tier{venue="edgex",notional="1000"}[24h])
+      mean: avg_over_time(perp_fees_all_in_bps_tier{venue="edgex",notional="1000000"}[24h]) / ignoring(notional) avg_over_time(perp_fees_all_in_bps_tier{venue="edgex",notional="1000"}[24h])
       success: avg_over_time(perp_fees_health{venue="edgex"}[24h])
       sample_size: count_over_time(perp_fees_all_in_bps_tier{venue="edgex",notional="1000000"}[24h])
       series: perp_fees_all_in_bps_tier{venue="edgex",notional="1000000"}
